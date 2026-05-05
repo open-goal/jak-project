@@ -5,6 +5,11 @@
 ;; name in dgo: timer
 ;; dgos: ENGINE, GAME
 
+(defglobalconstant EE_SECONDS_PER_TICK (/ 1.0 300000000)) ;; 300MHz is a "decent enough" estimate
+(defmacro cpu-ticks-to-seconds (ticks)
+  `(* ,EE_SECONDS_PER_TICK ,ticks)
+  )
+
 ;; DECOMP BEGINS
 
 (defun timer-count ((arg0 timer-bank))
@@ -15,110 +20,144 @@
     )
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v0, Status]
+(defmacro timer1-time ()
+  `(timer-count TIMER1_BANK)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Interrupt Control
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; cop0 status register "interrupt enable" flag
+;; if cop0 status is needed anywhere else, move this elsewhere
+(defconstant COP0_STATUS_IE (the-as uint #x1))
+
 (defun disable-irq ()
-  (local-vars (v0-0 int))
-  (let ((v1-0 (the-as uint #xfffffffe)))
-    (.mfc0 v0-0 Status)
-    (let ((v0-1 (logand v0-0 v1-0)))
-      (.mtc0 Status v0-1)
+  "Disable all interrupts. Has no effect on PC Port."
+  (rlet ((status :class gpr :type uint))
+    (let ((status-mask (lognot COP0_STATUS_IE)))
+      (.mfc0 status Status)
+      (logand! status status-mask) ;; should status-mask be replaced directly?
+      (.mtc0 Status status)
+      (.sync.p)
       )
     )
-  (.sync.p)
-  0
-  (none)
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v0, Status]
 (defun enable-irq ()
-  (local-vars (v0-0 int))
-  (.mfc0 v0-0 Status)
-  (let ((v0-1 (logior v0-0 1)))
-    (.mtc0 Status v0-1)
+  "Enable all interrupts. Has no effect on PC Port."
+  (rlet ((status :class gpr :type uint))
+    (.mfc0 status Status)
+    (logior! status COP0_STATUS_IE)
+    (.mtc0 Status status)
+    (.sync.p)
     )
-  (.sync.p)
-  0
-  (none)
   )
 
-(defun stopwatch-init ((arg0 stopwatch))
-  (set! (-> arg0 begin-level) 0)
-  (set! (-> arg0 prev-time-elapsed) 0)
-  0
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Stopwatch (CPU clock cycle counting)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun stopwatch-init ((this stopwatch))
+  "Init a stopwatch."
+  (set! (-> this begin-level) 0)
+  (set! (-> this prev-time-elapsed) 0)
   )
 
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defun stopwatch-reset ((arg0 stopwatch))
-  (local-vars (v1-3 int))
-  (set! (-> arg0 prev-time-elapsed) 0)
-  (when (> (-> arg0 begin-level) 0)
-    0
-    (.mfc0 v1-3 Count)
-    (set! (-> arg0 start-time) (the-as time-frame v1-3))
-    )
-  0
-  )
 
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defun stopwatch-start ((arg0 stopwatch))
-  (local-vars (v1-4 int))
-  (when (zero? (-> arg0 begin-level))
-    (set! (-> arg0 begin-level) 1)
-    0
-    (.mfc0 v1-4 Count)
-    (set! (-> arg0 start-time) (the-as time-frame v1-4))
-    )
-  0
-  )
-
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 a1, Count]
-(defun stopwatch-stop ((arg0 stopwatch))
-  (local-vars (a1-0 int))
-  (when (> (-> arg0 begin-level) 0)
-    (set! (-> arg0 begin-level) 0)
-    0
-    (.mfc0 a1-0 Count)
-    (+! (-> arg0 prev-time-elapsed) (- (the-as time-frame a1-0) (-> arg0 start-time)))
-    )
-  0
-  (none)
-  )
-
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defun stopwatch-begin ((arg0 stopwatch))
-  (local-vars (v1-3 int))
-  (when (zero? (-> arg0 begin-level))
-    0
-    (.mfc0 v1-3 Count)
-    (set! (-> arg0 start-time) (the-as time-frame v1-3))
-    )
-  (+! (-> arg0 begin-level) 1)
-  0
-  )
-
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 a1, Count]
-(defun stopwatch-end ((arg0 stopwatch))
-  (local-vars (a1-0 int))
-  (+! (-> arg0 begin-level) -1)
-  (when (zero? (-> arg0 begin-level))
-    0
-    (.mfc0 a1-0 Count)
-    (+! (-> arg0 prev-time-elapsed) (- (the-as time-frame a1-0) (-> arg0 start-time)))
-    )
-  0
-  (none)
-  )
-
-;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
-(defun stopwatch-elapsed-ticks ((arg0 stopwatch))
-  (local-vars (v1-3 int))
-  (let ((v0-0 (-> arg0 prev-time-elapsed)))
-    (when (> (-> arg0 begin-level) 0)
-      0
-      (.mfc0 v1-3 Count)
-      (+! v0-0 (- (the-as time-frame v1-3) (-> arg0 start-time)))
+(defun stopwatch-reset ((this stopwatch))
+  "Restart a stopwatch's times."
+  (set! (-> this prev-time-elapsed) 0)
+  (when (> (-> this begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> this start-time) count)
       )
-    v0-0
+    )
+  )
+
+(defun stopwatch-start ((this stopwatch))
+  "Start a stopwatch from scratch."
+  (when (zero? (-> this begin-level))
+    (set! (-> this begin-level) 1)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> this start-time) count)
+      )
+    )
+  )
+
+(defun stopwatch-stop ((this stopwatch))
+  "Fully stop a stopwatch and save its elapsed time."
+  (when (> (-> this begin-level) 0)
+    (set! (-> this begin-level) 0)
+    (let ((count 0))
+      (let ((count 0))
+        (.mfc0 count Count) ;; wrong register? a typo in a rlet? who knows.
+        (#when PC_PORT
+          (set! count (the int (get-cpu-clock)))
+          )
+        (+! (-> this prev-time-elapsed) (- count (-> this start-time)))
+        )
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-begin ((this stopwatch))
+  "Begin a stopwatch level, and starts it if it hasn't yet."
+  (when (zero? (-> this begin-level))
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> this start-time) count)
+      )
+    )
+  (+! (-> this begin-level) 1)
+  )
+
+(defun stopwatch-end ((this stopwatch))
+  "End a stopwatch level. Stops the stopwatch if it's back to level zero.
+   There is no guard against ending a stopwatch too many times, and a negative level
+   will cause errors!"
+  (+! (-> this begin-level) -1)
+  (when (zero? (-> this begin-level))
+    (set! (-> this begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+
+      (+! (-> this prev-time-elapsed) (- count (-> this start-time)))
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-elapsed-ticks ((this stopwatch))
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch."
+  (let ((elapsed (-> this prev-time-elapsed)))
+    (when (> (-> this begin-level) 0)
+      (let ((count 0))
+        (.mfc0 count Count)
+        (#when PC_PORT
+          (set! count (the int (get-cpu-clock)))
+          )
+
+        (+! elapsed (- count (-> this start-time)))
+        (set! count elapsed) ;; ??
+        )
+      )
+    elapsed
     )
   )
 
@@ -137,15 +176,16 @@
                   )
               )
         )
-    (set! (-> this time-adjust-ratio) (/ f0-6 5))
+    (set! (-> this time-adjust-ratio) (* 0.2 f0-6))
     )
-  (set! (-> this seconds-per-frame) (/ (-> this time-adjust-ratio) 60))
+  (set! (-> this seconds-per-frame) (* 0.016666668 (-> this time-adjust-ratio)))
   (set! (-> this frames-per-second) (if (= (-> this time-adjust-ratio) 0.0)
                                         0.0
                                         (* 60.0 (/ 1.0 (-> this time-adjust-ratio)))
                                         )
         )
-  (let* ((v1-12 (the-as number (- (-> this frame-counter) (-> this old-frame-counter))))
+  ;; og:preserve-this removed number cast
+  (let* ((v1-12 (- (-> this frame-counter) (-> this old-frame-counter)))
          (f0-14 (the-as float v1-12))
          (f1-9 (* 0.2 (the float v1-12)))
          )

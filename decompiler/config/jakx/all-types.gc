@@ -151,6 +151,7 @@
 (define-extern *kernel-boot-message* symbol)
 (define-extern *kernel-boot-art-group* string)
 
+(define-extern *user* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gcommon                        ;;
@@ -536,6 +537,7 @@
 (declare-type event-message-block structure)
 (declare-type level basic)
 
+;; +++gkernel-h:process-mask
 (defenum process-mask
   :type uint32
   :bitfield #t
@@ -570,6 +572,7 @@
   (vehicle 27)
   (network 28)
   )
+;; ---gkernel-h:process-mask
 
 (deftype kernel-context (basic)
   ((prevent-from-run   process-mask  :offset-assert 4) ;; guessed by decompiler
@@ -714,7 +717,7 @@
   (:methods
     (new "Allocate a dead pool and set up dead processes" (symbol type int int string) _type_) ;; 0
     (get-process "Allocate a process from the pool, or #f if it fails." (_type_ type int object) process) ;; 15
-    (return-process "Return a process to the pool." (_type_ process) int) ;; 16
+    (return-process "Return a process to the pool." (_type_ process) none) ;; 16
     )
   )
 
@@ -1073,8 +1076,8 @@
 ;; (define-extern string-suffix= function) ;; (function string string symbol)
 ;; (define-extern string-position function) ;; (function string string int)
 ;; (define-extern string-charp= function) ;; (function string (pointer uint8) symbol)
-;; (define-extern name= function) ;; (function object object symbol)
-;; (define-extern copyn-string<-charp function) ;; (function string (pointer uint8) int string)
+(define-extern name= (function object object symbol)) ;; 
+(define-extern copyn-string<-charp (function string (pointer uint8) int string)) ;; 
 ;; (define-extern string<-charp function) ;; (function string (pointer uint8) string)
 ;; (define-extern charp<-string function) ;; (function (pointer uint8) string int)
 ;; (define-extern copyn-charp<-string function) ;; (function (pointer uint8) string int none)
@@ -1090,7 +1093,7 @@
 ;; (define-extern string<=? function) ;; (function string string symbol)
 ;; (define-extern string>=? function) ;; (function string string symbol)
 ;; (define-extern *string-tmp-str* object) ;; string
-;; (define-extern string-skip-to-char function) ;; (function (pointer uint8) uint (pointer uint8))
+(define-extern string-skip-to-char (function (pointer uint8) uint (pointer uint8))) ;; 
 ;; (define-extern string-cat-to-last-char function) ;; (function string string uint (pointer uint8))
 ;; (define-extern string-skip-whitespace function) ;; (function (pointer uint8) (pointer uint8))
 ;; (define-extern string-suck-up! function) ;; (function string (pointer uint8) symbol)
@@ -1206,10 +1209,10 @@
 ;; math                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (deftype float-type (uint32)
-;;   ()
-;;   :flag-assert #x900000004
-;;   )
+(deftype float-type (uint32)
+  ()
+  :flag-assert #x900000004
+  )
 
 (deftype rgba (uint32)
   ((r uint8 :offset 0)
@@ -1221,15 +1224,15 @@
   :no-runtime-type
   )
 
-;; (deftype xyzw (uint128)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
+(deftype xyzw (uint128)
+  ()
+  :flag-assert #x900000010
+  )
 
-;; (deftype xyzwh (uint128)
-;;   ()
-;;   :flag-assert #x900000010
-;;   )
+(deftype xyzwh (uint128)
+  ()
+  :flag-assert #x900000010
+  )
 
 (deftype random-generator (basic)
   ((seed uint32  :offset-assert 4)
@@ -1742,10 +1745,11 @@
    Does the x, y, z, and w compoments"
   (function vector vector float))
 (define-extern vector4-dot-vu "Take the dot product (xyzw). Using VU0." (function vector vector float))
-;; TODO:
-;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f2]
-;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f1, f3]
-(define-extern vector-xz-dot (function vector vector float))
+(define-extern vector-xz-dot 
+  "Take the dot product of two vectors.
+   Only does the x and z compoments.
+   Originally handwritten assembly to space out loads and use FPU accumulator"
+  (function vector vector float))
 (define-extern vector+! "Set dst = a + b. The w component of dst is set to 0." (function vector vector vector vector))
 (define-extern vector-! "Set dst = a - b. The w componenent of dst is set to 0." (function vector vector vector vector))
 (define-extern vector-zero! "Set xyzw to 0." (function vector vector))
@@ -3234,7 +3238,6 @@
   )
 ;; ---timer-h:timer-clock-selection
 
-;; +++timer-h:timer-mode
 (deftype timer-mode (uint32)
   "This matches the Tn_MODE register structure of the ps2 EE timers.
    Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero."
@@ -3255,7 +3258,6 @@
    (ovff  uint8 :offset 11 :size 1) ;; overflow-flag
    )
   )
-;; ---timer-h:timer-mode
 
 (deftype timer-bank (structure)
   "This matches an EE timer (without a HOLD register, timers 2 and 3).
@@ -3507,6 +3509,7 @@
   :flag-assert #x900000008
   )
 
+;; +++dma-h:dma-tag-id
 (defenum dma-tag-id
     :bitfield #f
     :type uint8
@@ -3519,6 +3522,7 @@
     (ret 6)  ;;
     (end 7)  ;; next, but ends.
     )
+;; ---dma-h:dma-tag-id
 
 (deftype dma-tag (uint64)
   "The 64-bit tag used by the DMA system."
@@ -3713,7 +3717,6 @@
 
 ;; +++vu1-user-h:bucket-id
 ;; <renderer>-l<level>-<tpage>
-;; TODO - iirc, this gets filled out as required
 (defenum bucket-id
   :type int32
   (bucket0 0)
@@ -5856,65 +5859,166 @@
     arg0 is the point. arg1/arg2 are the endpoints of the line segment.
     arg3 is an optional output closest point."
   (function vector vector vector vector float))
-;; (define-extern vector-segment-xz-distance-point! function) ;; (function vector vector vector vector float)
-;; (define-extern vector-line-distance function) ;; (function vector vector vector float)
-;; (define-extern vector-line-distance-point! function) ;; (function vector vector vector vector float)
-;; (define-extern vector-line-xz-distance-point! function) ;; (function vector vector vector vector float)
-;; (define-extern vector-segment-overlap function) ;; (function vector vector vector float)
-;; (define-extern line-sphere-intersection? function) ;; (function vector vector vector symbol)
-;; (define-extern nearest-dist2-between-moving-points function) ;; (function vector vector vector vector float float)
+(define-extern vector-segment-xz-distance-point! (function vector vector vector vector float))
+(define-extern vector-line-distance
+  "Weird function: given a point arg1, and an infinite line connecting arg2 and arg1, compute the distance
+   from arg0 to that line."
+  (function vector vector vector float))
+(define-extern vector-line-distance-point!
+  "Same as above function, but returns the point on arg2/arg1 in arg3 (ignored if #f)"
+  (function vector vector vector vector float))
+(define-extern vector-line-xz-distance-point! (function vector vector vector vector float))
+(define-extern vector-segment-overlap
+  "Seems to compute (v1 - v0).dot(v2 - v1), but in a weird way."
+  (function vector vector vector float))
+(define-extern line-sphere-intersection?
+  "Does [arg1, arg2] intersect sphere arg0?"
+  (function vector vector vector symbol))
+(define-extern nearest-dist2-between-moving-points (function vector vector vector vector float float))
+(define-extern vector-orient-by-quat!
+  "Rotate a vector by a quaternion."
+  (function vector vector quaternion vector))
 (define-extern vector-orient-by-quat! (function vector vector quaternion vector))
 (define-extern vector-inv-orient-by-quat! (function vector vector quaternion vector)) ;; 
-;; (define-extern vector-cap-rotation! function)
-;; (define-extern vector-interp-angle! function)
-;; (define-extern forward-down->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-down-nopitch->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up-nopitch->inv-matrix function) ;; (function matrix vector vector matrix)
-;; (define-extern forward-up-nopitch->quaternion function) ;; (function quaternion vector vector quaternion)
-;; (define-extern forward-up->quaternion function) ;; (function quaternion vector vector quaternion)
-;; (define-extern quaternion-from-two-vectors! function) ;; (function quaternion vector vector quaternion)
-;; (define-extern quaternion-from-two-vectors-partial! function) ;; (function quaternion vector vector float quaternion)
+(define-extern vector-cap-rotation! (function vector vector vector float vector))
+(define-extern vector-interp-angle! (function vector vector vector float vector))
+(define-extern forward-down->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is down (-y). Will have the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-down-nopitch->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is down (-y). Will not use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->inv-matrix
+  "Create a matrix representing an inverse transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will not use the pitch of forward."
+  (function matrix vector vector matrix))
+(define-extern forward-up-nopitch->quaternion
+  "Create a quaternion representing a transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will not use the pitch of forward."
+  (function quaternion vector vector quaternion))
+(define-extern forward-up->quaternion
+  "Create a quaternion representing a transform where arg1 is forward (+z)
+   and arg2 is up (+y). Will use the pitch of forward."
+  (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors!
+  "Create a quaternion representing the rotation between two vectors."
+  (function quaternion vector vector quaternion))
+(define-extern quaternion-from-two-vectors-partial!
+  "Create a quaternion representing the rotation between two vectors,
+   doing arg3 fraction of the total rotation."
+  (function quaternion vector vector float quaternion))
 (define-extern quaternion-from-two-vectors-max-angle!
   "Create a quaternion representing the rotation between two vectors,
    allowing at most a rotation of arg3 degrees."
   (function quaternion vector vector float quaternion))
-;; (define-extern quaternion-from-two-vectors-max-angle-partial! function) ;; (function quaternion vector vector float float quaternion)
-;; (define-extern matrix-from-two-vectors! function) ;; (function matrix vector vector matrix)
-;; (define-extern matrix-from-two-vectors-max-angle! function) ;; (function matrix vector vector float matrix)
-;; (define-extern matrix-from-two-vectors-smooth! function) ;; (function matrix vector vector float int matrix)
-;; (define-extern matrix-from-two-vectors-the-long-way-smooth! function) ;; (function matrix vector vector float int matrix)
-;; (define-extern quaternion-from-two-vectors-smooth! function) ;; (function quaternion vector vector float int quaternion)
-;; (define-extern matrix-from-two-vectors-max-angle-partial! function) ;; (function matrix vector vector float float matrix)
-;; (define-extern matrix-from-two-vectors-partial-linear! function) ;; (function matrix vector vector float matrix)
-;; (define-extern matrix-remove-z-rot function) ;; (function matrix vector matrix)
-;; (define-extern matrix-rot-diff! function) ;; (function quaternion matrix matrix float)
-;; (define-extern quaternion-seek function) ;; (function quaternion quaternion quaternion float float quaternion)
-;; (define-extern vector-deg-seek function) ;; (function vector vector vector float vector)
-;; (define-extern vector-deg-slerp function) ;; (function vector vector vector float vector)
-;; (define-extern vector-vector-deg-slerp! function) ;; (function vector vector vector float vector vector)
-;; (define-extern normal-of-plane function) ;; (function vector vector vector vector vector)
-;; (define-extern vector-3pt-cross! function) ;; (function vector vector vector vector vector)
-;; (define-extern closest-pt-in-triangle function) ;; (function vector vector matrix vector none)
-;; (define-extern point-in-triangle-cross function) ;; (function vector vector vector vector vector symbol)
-;; (define-extern point-in-plane-<-point+normal! function) ;; (function vector vector vector vector)
-;; (define-extern circle-circle-xz-intersect function) ;; (function sphere sphere vector vector int)
-;; (define-extern circle-test function) ;; (function none)
-;; (define-extern vector-circle-tangent-new function) ;; (function vector vector vector vector none)
-;; (define-extern vector-circle-tangent function) ;; (function vector vector vector vector none)
-;; (define-extern find-knot-span function) ;; (function int int float (inline-array vector) int)
-;; (define-extern calculate-basis-functions-vector! function) ;; (function vector int float (pointer float) vector)
-;; (define-extern curve-evaluate! function) ;; (function vector float (inline-array vector) int (pointer float) int vector)
-;; (define-extern curve-get-pos! function) ;; (function vector float curve vector)
-;; (define-extern curve-length function) ;; (function curve float)
-;; (define-extern curve-copy! function) ;; (function curve curve curve)
-;; (define-extern curve-closest-point function) ;; (function curve vector float float int float float)
-;; (define-extern vector-plane-distance function) ;; (function vector plane vector float)
-;; (define-extern intersect-ray-plane function) ;; (function vector vector vector vector float)
-;; (define-extern line-line-find-intersection-xz function) ;; (function vector vector vector vector vector float)
-;; (define-extern segment-segment-find-intersection-xz function) ;; (function vector vector vector vector float)
-;; (define-extern generate-rand-vector-on-sphere function) ;; (function vector vector)
-;; (define-extern ellipsoid-get-foci function)
+(define-extern quaternion-from-two-vectors-max-angle-partial!
+  "Create a quaternion representing the arg4 fraction of the rotation between two vectors,
+   allowing at most a rotation of arg3 degrees."
+  (function quaternion vector vector float float quaternion))
+(define-extern matrix-from-two-vectors!
+  "Create a rotation matrix representing the rotation between two vectors."
+  (function matrix vector vector matrix))
+(define-extern matrix-from-two-vectors-max-angle!
+  "Create a rotation matrix representing the rotation between two vectors,
+   allowing at most a rotation of arg3 degrees."
+  (function matrix vector vector float matrix))
+(define-extern matrix-from-two-vectors-smooth!
+  "This function can help smoothly rotate from a current heading vector to a target one.
+   It returns a rotation to move arg1 closer to arg2, subject to two different speed limits.
+   arg3 is a rotations-per-frame rate. This limit takes frame rate into account (when lagging, the rotation is larger)
+   arg4 is a 'slow down when getting close to the end' limit.
+   This is used in rotate-toward-orientation, which is much improved from jak 1."
+  (function matrix vector vector float int matrix))
+(define-extern matrix-from-two-vectors-the-long-way-smooth!
+  "Same as above, but rotates you away from the target.
+   Note that the 'near the end' smoothing will apply when you're near the target."
+  (function matrix vector vector float int matrix))
+(define-extern quaternion-from-two-vectors-smooth!
+  "Same as above, but returns a quaternion."
+  (function quaternion vector vector float int quaternion))
+(define-extern matrix-from-two-vectors-max-angle-partial!
+  "Create a rotation matrix representing the given fraction of the rotation between two heading vectors,
+   rotating by at most the given angle."
+  (function matrix vector vector float float matrix))
+(define-extern matrix-from-two-vectors-partial-linear!
+  "Create a rotation matrix representing doing arg3 fraction of the rotation between two vectors."
+  (function matrix vector vector float matrix))
+(define-extern matrix-remove-z-rot "Remove the z rotation component of a rotation." (function matrix vector matrix))
+(define-extern matrix-rot-diff!
+  "Get the difference of rotation between two matrices, expressed as a quaternion."
+  (function quaternion matrix matrix float))
+(define-extern quaternion-seek
+  "Strange quaternion rotate toward function. arg3 is ignored. arg4 is the max seek amount."
+  (function quaternion quaternion quaternion float float quaternion))
+(define-extern vector-deg-seek
+  "Make one vector closer to another, doing at most a rotation by arg3 degrees."
+  (function vector vector vector float vector))
+(define-extern vector-deg-slerp
+  "Slerp for vectors. (imagine that they are the z axis of two frames)"
+  (function vector vector vector float vector))
+(define-extern vector-vector-deg-slerp! "Unused. No clue what this does." (function vector vector vector float vector vector))
+(define-extern normal-of-plane
+  "Given three points on a plane, compute the plane's normal."
+  (function vector vector vector vector vector))
+(define-extern vector-3pt-cross!
+  "Cross product of 2 - 1 and 3 - 1. (will give a normal to the plane, but not of magnitude 1)"
+  (function vector vector vector vector vector))
+(define-extern closest-pt-in-triangle
+  "arg2 is the vertices of the triangle, arg3 is the normal, arg1 is the input point, arg0 is the output."
+  (function vector vector matrix vector none))
+(define-extern point-in-triangle-cross
+  "Check if point is in the triangle using cross product check (so you have to get the order of points right)."
+  (function vector vector vector vector vector symbol))
+(define-extern point-in-plane-<-point+normal!
+  "Very strange function. Takes a plane, in point-normal form, then returns some other point on that plane.
+   It will move 1m in two of {x, y, z} directions. The direction not moved in is the one which is closest to point-in-triangle-cross
+   in the same direction of the normal (this prevent moving huge distances for nearly vertical planes for example)."
+  (function vector vector vector vector))
+(define-extern circle-circle-xz-intersect
+  "This function is unused and really complicated, so not implementing it for now."
+  (function sphere sphere vector vector int))
+(define-extern circle-test "Test the circle-circle-xz-intersect function." (function none))
+(define-extern vector-circle-tangent-new "Unused." (function vector vector vector vector none))
+(define-extern vector-circle-tangent "Also unused." (function vector vector vector vector none))
+(define-extern find-knot-span
+  "Binary serach over knots to find which contains the value float in (arg0 arg1). Unused."
+  (function int int float (inline-array vector) int))
+(define-extern calculate-basis-functions-vector!
+  "Calculate polynomial basis for a given control point."
+  (function vector int float (pointer float) vector))
+(define-extern curve-evaluate!
+  "Evaluate a curve.
+   arg0 is the output
+   arg1 is the input.
+   arg2 is control vertices.
+   arg3 is the number of control vertices.
+   arg4 is the knot points.
+   arg5 is the number of knots."
+  (function vector float (inline-array vector) int (pointer float) int vector))
+(define-extern curve-get-pos!
+  "Get the position on the curve at the given input."
+  (function vector float curve vector))
+(define-extern curve-length
+  "Compute the approximate curve length as the sum of distances between knots."
+  (function curve float))
+(define-extern curve-copy! "Shallow copy a curve." (function curve curve curve))
+(define-extern curve-closest-point
+  "Get the input value for the point on the curve. Approximate! And is O(n_knots)."
+  (function curve vector float float int float float))
+(define-extern vector-plane-distance "Unused." (function vector plane vector float))
+(define-extern intersect-ray-plane
+  "arg1 is ray direction, arg3 is plane normal, others don't really make sense to me."
+  (function vector vector vector vector float))
+(define-extern line-line-find-intersection-xz (function vector vector vector vector vector float))
+(define-extern segment-segment-find-intersection-xz (function vector vector vector vector float))
+(define-extern generate-rand-vector-on-sphere (function vector vector))
+(define-extern ellipsoid-get-foci (function ellipsoid vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; timer                          ;;
@@ -6191,15 +6295,33 @@
 ;; file-io                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++file-io:file-kind
+(defenum file-kind
+  :bitfield #f
+  (level-bt 0) ;; aka bsp-header.
+  (art-group 1)
+  (tpage 2)
+  (dir-tpage 3)
+  (level-vs 4)
+  (tx 5)
+  (vis 6)
+  (map 7)
+  )
+;; ---file-io:file-kind
+
 (deftype file-stream (basic)
-  ()
+  ((flags uint32  :offset-assert 4)
+   (mode  symbol  :offset-assert 8)
+   (name  string  :offset-assert 12)
+   (file  uint32  :offset-assert 16)
+   )
+  (:methods
+    (new (symbol type string symbol) _type_)
+    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
-  ;; Failed to read fields.
   )
-|#
 
 (deftype file-info (basic)
   ((file-type      (pointer string) :offset-assert 4) ;; guessed by decompiler
@@ -6215,18 +6337,18 @@
   :flag-assert         #x900000020
   )
 
-;; (define-extern file-stream-read-string function) ;; (function file-stream string string)
-;; (define-extern *file-temp-string* object) ;; string
-;; (define-extern make-file-name function) ;; (function file-kind string int symbol string)
-;; (define-extern make-vfile-name function) ;; (function file-kind string string)
-;; (define-extern file-info-correct-version? function) ;; (function file-info file-kind int symbol)
-;; (define-extern *sqlpipe-file-path-send* object)
-;; (define-extern *sqlpipe-file-path-recv* object)
-;; (define-extern *sqlpipe-file-buffer* object)
-;; (define-extern file-stream-read-complete function)
-;; (define-extern sqlpipe-query function)
-;; (define-extern old-sql-query object)
-;; (define-extern sql-query object) ;; (function string sql-result)
+(define-extern file-stream-read-string (function file-stream string string))
+(define-extern *file-temp-string* string)
+(define-extern make-file-name (function file-kind string int symbol string))
+(define-extern make-vfile-name (function file-kind string string))
+(define-extern file-info-correct-version? (function file-info file-kind int symbol))
+(define-extern *sqlpipe-file-path-send* symbol)
+(define-extern *sqlpipe-file-path-recv* symbol)
+(define-extern *sqlpipe-file-buffer* (pointer uint32))
+(define-extern file-stream-read-complete (function file-stream pointer int int))
+(define-extern sqlpipe-query (function string sql-result))
+(define-extern old-sql-query function)
+(define-extern sql-query (function string sql-result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; loader-h                       ;;
@@ -6254,8 +6376,13 @@
   )
 
 (deftype load-dir-art-group (load-dir)
-  ()
+  "Specialization of load-dir for `art-group`s."
+  ((art-group-array (array art-group) :offset 12)
+   )
   :flag-assert #xb00000010
+  (:methods
+    (new (symbol type int level) _type_) ;; 0
+    )
   )
 
 (deftype external-art-buffer (basic)
@@ -10027,32 +10154,24 @@
   :size-assert         #x254
   :flag-assert         #x1b00000254
   (:methods
-    (blit-standard "Draw a full-width quad of the given height to copy from raster to display buffer"
-                   (_type_ dma-buffer int int int) none) ;; 9
-    (blit-slow-time
-      "Draw a full-screen triangle fan to copy from raster to display buffer.
-       The fan is centered in the center of the screen.
-       This applies a gradient of alpha from 192 at the center to arg3 at the corners."
-      (_type_ dma-buffer int int int) none) ;; 10
-    (draw-sprite-color (_type_ dma-buffer int) none) ;; 11
-    (draw-letterbox (_type_ dma-buffer float int float) none) ;; 12
-    (draw-antialias
-      "Draw the raster buffer on top of itself, with a half-pixel offset.
-       This is used as an antialiasing effect."
-      (_type_ dma-buffer int int int) none) ;; 13
-    (draw-color-filter (_type_ dma-buffer vector) none) ;; 14
-    (fx-to-raster-flipped (_type_ dma-buffer) none) ;; 15
-    (draw-zoom-blur (_type_ dma-buffer int) none) ;; 16
-    (setup-zoom-blur-2d (_type_ vector int float symbol) none) ;; 17
-    (draw-brightness-and-contrast (_type_ dma-buffer float float) none) ;; 18
-    (do-blit-displays (_type_) none) ;; 19 (called from main.gc)
-    (blit-menu-mode (_type_ dma-buffer) none) ;; 20
-    (get-menu-mode (_type_) symbol) ;; 21
-    (get-screen-copied (_type_) symbol) ;; 22
-    (get-horizontal-flip-flag (_type_) symbol) ;; 23
-    (set-menu-mode (_type_ symbol) symbol) ;; 24
-    (set-screen-copied (_type_ symbol) symbol) ;; 25
-    (set-horizontal-flip-flag (_type_ symbol) symbol) ;; 26
+    (blit-displays-work-method-9 () none) ;; 9 ;; (blit-standard (_type_ dma-buffer int int int) none)
+    (blit-displays-work-method-10 () none) ;; 10 ;; (blit-slow-time (_type_ dma-buffer int int int) none)
+    (blit-displays-work-method-11 () none) ;; 11 ;; (draw-sprite-color (_type_ dma-buffer int) none)
+    (blit-displays-work-method-12 () none) ;; 12 ;; (draw-letterbox (_type_ dma-buffer float int float) none)
+    (blit-displays-work-method-13 () none) ;; 13 ;; (draw-antialias (_type_ dma-buffer int int int) none)
+    (blit-displays-work-method-14 () none) ;; 14 ;; (draw-color-filter (_type_ dma-buffer vector) none)
+    (blit-displays-work-method-15 () none) ;; 15 ;; (fx-to-raster-flipped (_type_ dma-buffer) none)
+    (blit-displays-work-method-16 () none) ;; 16 ;; (draw-zoom-blur (_type_ dma-buffer int) none)
+    (blit-displays-work-method-17 () none) ;; 17 ;; (setup-zoom-blur-2d (_type_ vector int float symbol) none)
+    (blit-displays-work-method-18 () none) ;; 18 ;; (draw-brightness-and-contrast (_type_ dma-buffer float float) none)
+    (get-horizontal-flip-flag (_type_) symbol) ;; 19 ;; (do-blit-displays (_type_) none)
+    (set-horizontal-flip-flag (_type_ symbol) symbol) ;; 20 ;; (blit-menu-mode (_type_ dma-buffer) none)
+    (blit-displays-work-method-21 () none) ;; 21 ;; (get-menu-mode (_type_) symbol)
+    (blit-displays-work-method-22 () none) ;; 22 ;; (get-screen-copied (_type_) symbol)
+    (blit-displays-work-method-23 () none) ;; 23 ;; ( (_type_) symbol)
+    (blit-displays-work-method-24 () none) ;; 24 ;; (set-menu-mode (_type_ symbol) symbol)
+    (blit-displays-work-method-25 () none) ;; 25 ;; (set-screen-copied (_type_ symbol) symbol)
+    (blit-displays-work-method-26 () none) ;; 26 ;; ( (_type_ symbol) symbol)
     )
   )
 
@@ -16404,11 +16523,11 @@
   (shmetal    27)
   (hdwood     28)
   (squish     29)
-  (mhshroom   30)
+  (invisible  30) ;; mhshroom
   (forest     31)
-  (mhswamp    32)
+  (forcefield 32) ;; mhswamp
   (dmaker     33)
-  )
+)
 ;; ---pat-h:pat-material
 
 ;; +++pat-h:pat-event
@@ -16416,25 +16535,25 @@
   :type uint8
   (none        0)
   (deadly      1)
-  (endlessfall 2)
-  (burn        3)
-  (deadlyup    4)
-  (burnup      5)
-  (melt        6)
-  (slide       7)
-  (lip         8)
-  (lipramp     9)
-  (shock      10)
-  (shockup    11)
-  (hide       12)
-  (rail       13)
+  (nodamage    2)  ;; endlessfall
+  (e01         3)  ;; burn
+  (e02         4)  ;; deadlyup
+  (e03         5)  ;; burnup
+  (e04         6)  ;; melt
+  (e05         7)  ;; slide
+  (e06         8)  ;; lip
+  (e07         9)  ;; lipramp
+  (e08        10)  ;; shock
+  (e09        11)  ;; shockup
+  (e10        12)  ;; hide
+  (e11        13)  ;; rail
   (slippery   14)
-  (drag       15)
-  (waterfloor 16)
-  (hang       17)
-  (fry        18)
-  (slime      19)
-  )
+  (e13        15)  ;; drag
+  (e14        16)  ;; waterfloor
+  (e15        17)  ;; hang
+  (e16        18)  ;; fry
+  (e17        19)  ;; slime
+)
 ;; ---pat-h:pat-event
 
 (deftype pat-surface (uint32)
@@ -32797,7 +32916,6 @@
 ;; collide-touch                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype add-prims-touching-work (structure)
   ((tri1 collide-tri-result  :offset-assert 0)
    (tri2 collide-tri-result  :offset-assert 4)
@@ -32806,7 +32924,6 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
 ;; (define-extern get-intersect-point function) ;; (function vector touching-prims-entry collide-shape touching-shapes-entry vector)
 

@@ -49,9 +49,23 @@
     )
   )
 
+;; og:preserve-this
 (defun vector*! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Elementwise product. Set w = 1."
-  (vector*! arg0 arg1 arg2)
+  (declare (inline))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf4 (&-> arg1 quad))
+    (.lvf vf5 (&-> arg2 quad))
+    (.add.x.vf.w vf6 vf0 vf0)
+    (.mul.vf.xyz vf6 vf4 vf5)
+    (.svf (&-> arg0 quad) vf6)
+    arg0
+    )
   )
 
 (defun vector+*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
@@ -277,7 +291,38 @@
     )
   )
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(defun vector= ((arg0 vector) (arg1 vector))
+  "Are the two vectors equal? Does not compare the w component.
+   The implementation is cool."
+  ;; (label L91)
+  ;;   (set! v0-0 #t)
+  ;;   (set! v1-0 #xffff)
+  (let* ((v1-0 #xffff)
+         ;;   (set! a0-1 (l.q a0-0))
+         (a0-1 (-> arg0 quad))
+         ;;   (set! v1-1 (sll v1-0 48))
+         (v1-1 (shl v1-0 48))
+         ;;   (set! a1-1 (l.q a1-0))
+         (a1-1 (-> arg1 quad))
+         (a0-2 (the uint128 0))
+         (r0 (the uint128 0))
+         )
+    ;;   (.pceqw a0-2 a0-1 a1-1)
+    (.pceqw a0-2 a0-1 a1-1)
+    ;;   (.ppach a0-3 r0-0 a0-2)
+    (.ppach a0-2 r0 a0-2)
+    ;;   (set! v1-2 (logior a0-3 v1-1))
+    (set! v1-1 (logior (the int a0-2) v1-1))
+    ;;   (set! v1-3 (+ v1-2 1))
+    ;; will overflow the 64-bit integer if xyz is equal.
+    (set! v1-1 (+ v1-1 1))
+    (zero? v1-1)
+    )
+  ;;   (b! (zero? v1-3) L92 (nop!))
+  ;;   (set! v0-0 #f)
+  ;; (label L92)
+  ;;   (ret-value v0-0)
+  )
 
 (defun vector-delta ((arg0 vector) (arg1 vector))
   "Sum of the elementwise absolute value of differences."
