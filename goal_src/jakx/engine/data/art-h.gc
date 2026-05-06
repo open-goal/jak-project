@@ -57,3 +57,133 @@
 
 ;; DECOMP BEGINS
 
+(deftype joint-anim (basic)
+  "Base class for all joint animations. These are animations that store joint transforms."
+  ((name   string  :offset-assert 4) ;; guessed by decompiler
+   (number int16   :offset-assert 8)
+   (length int16   :offset-assert 10)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype joint-anim-matrix (joint-anim)
+  "Joint animation which stores matrices directly. Not used."
+  ((data  matrix :inline :dynamic :offset 16))
+  :flag-assert #x900000010
+  )
+
+(deftype joint-anim-transformq (joint-anim)
+  "Joint animation which stores transformq's directly. Not used."
+  ((data    transformq :dynamic :inline :offset-assert 16) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype joint-anim-drawable (joint-anim)
+  "Mysterious unused joint animation type."
+  ((data drawable :dynamic :offset-assert 12) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype joint-anim-frame (structure)
+  "Frame containing all joint transforms. Note that there are two special frames: align and prejoint.
+   The 'align' frame is used for the complicated animation alignment system, which allows the animation to move
+   a character, among other things. The prejoint is just the root of the skeleton.
+   The remaining transformq's are the joint transforms you'd expect."
+  ((matrices matrix     2  :inline      :offset-assert 0) ;; guessed by decompiler
+   (data     transformq :dynamic :inline :offset-assert 128) ;; guessed by decompiler
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    )
+  :method-count-assert 9
+  :size-assert         #x80
+  :flag-assert         #x900000080
+  )
+
+(deftype joint-anim-compressed-hdr (structure)
+  "Header for the compressed joint animation format."
+  ((control-bits uint32 14 :offset-assert 0) ;; guessed by decompiler
+   (num-joints   uint32    :offset-assert 56)
+   (matrix-bits  uint32    :offset-assert 60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype joint-anim-compressed-fixed (structure)
+  ((hdr       joint-anim-compressed-hdr :inline :offset-assert 0)
+   (offset-64 uint32                            :offset-assert 64)
+   (offset-32 uint32                            :offset-assert 68)
+   (offset-16 uint32                            :offset-assert 72)
+   (reserved  uint32                            :offset-assert 76)
+   (data      vector                    133 :inline    :offset-assert 80) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #x8a0
+  :flag-assert         #x9000008a0
+  )
+
+(deftype joint-anim-compressed-frame (structure)
+  ((offset-64 uint32     :offset-assert 0)
+   (offset-32 uint32     :offset-assert 4)
+   (offset-16 uint32     :offset-assert 8)
+   (reserved  uint32     :offset-assert 12)
+   (data      vector 133 :inline :offset-assert 16) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #x860
+  :flag-assert         #x900000860
+  )
+
+(deftype joint-anim-compressed-control (structure)
+  ((num-frames uint16                               :offset-assert 0)
+   (flags      uint16                               :offset-assert 2)
+   (fixed-qwc  uint32                               :offset-assert 4)
+   (frame-qwc  uint32                               :offset-assert 8)
+   (fixed      joint-anim-compressed-fixed          :offset-assert 12)
+   (data       joint-anim-compressed-frame :dynamic :offset-assert 16) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype art (basic)
+  "Base class for anything considered `art`. This is typically foreground model data.
+   This can be either an art container containing more arts, or an actual art thing (art-element)."
+  ((name   string    :offset 8) ;; guessed by decompiler
+   (length int32     :offset-assert 12)
+   (extra  res-lump  :offset-assert 16) ;; guessed by decompiler
+   )
+  :method-count-assert 14
+  :size-assert         #x14
+  :flag-assert         #xe00000014
+  (:methods
+    (login (_type_) _type_) ;; 9
+    (art-method-10 (_type_) _type_) ;; 10
+    (get-art-by-name-method "Look inside this art for an art with the given name and type. Return #f if not found" (_type_ string type) basic) ;; 11
+    (get-art-idx-by-name-method "Look inside this art for an art with the given name and type and return the index of the art. Return #f if not found." (_type_ string type) int) ;; 12
+    (contains-art-for-other-group? "Some art groups have placeholder #f's for some art that will be loaded separately as needed.
+                                    Does this art group contain art that needs to be added to another group?" (_type_) symbol) ;; 13
+    )
+  )
+
+(deftype art-element (art)
+  "Base class Art which is not a container of more art."
+  ((master-art-group-name  string :offset-assert 20)
+   (master-art-group-index int32  :offset-assert 24)
+   (pad uint8 20)
+   )
+  :method-count-assert 14
+  :size-assert         #x30
+  :flag-assert         #xe00000030
+  )

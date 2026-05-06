@@ -5,6 +5,23 @@
 ;; name in dgo: connect
 ;; dgos: ENGINE, GAME
 
+#|@file
+This extremely confusing "connection system" allows the connection between
+"engines" and "processes".  Basically, a process can "register" itself with any number of "engines".
+The "engines" can then iterate through all the connected processes. If a process is destroyed, it will
+be removed from all engines.  It is okay to connect a process to multiple engines, or even to the same engine
+multiple times.
+
+Some example uses:
+- a "foreground-engine" has connections to all foreground objects that need to be drawn on each frame.
+- when a process wants to change a game setting, it opens a connection to the settings engine to request a change.
+  when the process is killed (or it stops requesting the change), the setting change is reverted.
+
+A "connection" is really just a function that gets called when the engine runs, or a set of parameters that the engine can iterate through.
+|#
+
+(declare-type engine basic)
+
 ;; DECOMP BEGINS
 
 (deftype connectable (structure)
@@ -187,7 +204,8 @@ New for Jak 2: You can use a child class of [[connection]]."
             (set! (-> (the-as connectable v1-10) prev0)
                   (the-as connectable (&- (the-as pointer v1-10) (the-as uint (-> arg2 size))))
                   )
-            (set! (-> (the-as (pointer int32) v1-10)) (&+ (the-as pointer v1-10) (-> arg2 size)))
+            ;; og:preserve-this cast changed to (pointer pointer)
+            (set! (-> (the-as (pointer pointer) v1-10)) (&+ (the-as pointer v1-10) (-> arg2 size)))
             (set! v1-10 (&+ (the-as pointer v1-10) (-> arg2 size)))
             (+! a0-6 1)
             )
@@ -195,7 +213,8 @@ New for Jak 2: You can use a child class of [[connection]]."
         (set! (-> (the-as connectable v1-10) prev0)
               (the-as connectable (&- (the-as pointer v1-10) (the-as uint (-> arg2 size))))
               )
-        (set! (-> (the-as (pointer int32) v1-10)) (-> v0-0 dead-list-end))
+        ;; og:preserve-this cast changed to (pointer collectable)
+        (set! (-> (the-as (pointer connectable) v1-10)) (-> v0-0 dead-list-end))
         )
       )
     v0-0
@@ -512,11 +531,12 @@ Unlike [[engine]], users can use [[engine-pers]] as a parent class."
     (set! (-> v0-0 alive-list) #f)
     (set! (-> v0-0 dead-list) (the-as connection-pers (-> v0-0 data)))
     (let ((v1-3 (the-as object (-> v0-0 data))))
+      ;; og:preserve-this
       (dotimes (a0-1 arg1)
-        (set! (-> (the-as (pointer pointer) v1-3) 0) (&+ (the-as pointer v1-3) (-> arg2 size)))
+        (set! (-> (the-as (pointer uint32) v1-3) 0) (the-as uint (&+ (the-as pointer v1-3) (-> arg2 size))))
         (set! v1-3 (&+ (the-as pointer v1-3) (-> arg2 size)))
         )
-      (set! (-> (the-as (pointer int32) (&- (the-as pointer v1-3) (the-as uint (-> arg2 size))))) #f)
+      (set! (-> (the-as (pointer symbol) (&- (the-as pointer v1-3) (the-as uint (-> arg2 size))))) #f)
       )
     v0-0
     )

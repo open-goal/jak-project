@@ -5,6 +5,230 @@
 ;; name in dgo: settings-h
 ;; dgos: ENGINE, GAME
 
+(declare-type setting-control structure)
+(define-extern *setting-control* setting-control)
+
+;; +++cam-master-options
+(defenum cam-master-options
+  :type uint64
+  :bitfield #t
+  (HAVE_TARGET) ;; 1
+  (SET_COMBINER_AXIS) ;; 2
+  (FLIP_COMBINER) ;; 4
+  (HAVE_EASE_TO_POS) ;; 8
+  (IN_BASE_REGION) ;; 10
+  (IGNORE_ANALOG) ;; 20
+  (BLOCK_RIGHT_STICK) ;; 40
+  (USE_L1_R1) ;; 80
+  (READ_BUTTONS)
+  (IMMEDIATE_STRING_MIN_MAX)
+  )
+;; ---cam-master-options
+
+
+;; +++cam-slave-options
+(defenum cam-slave-options
+  :type uint64
+  :bitfield #t
+  (BUTT_CAM)
+  (SAME_SIDE)
+  (MOVE_SPHERICAL)
+  (ALLOW_Z_ROT)
+  (JUMP_PITCHES)
+  (COLLIDE)
+  (FIND_HIDDEN_TARGET)
+  (DRAG)
+  (PLAYER_MOVING_CAMERA)
+  (LINE_OF_SIGHT)
+  (MOVEMENT_BLOCKED)
+  (SHRINK_MAX_ANGLE)
+  (GOTO_GOOD_POINT)
+  (BIKE_MODE)
+  (NO_ROTATE)
+  (STICKY_ANGLE)
+  (BLOCK_RIGHT_STICK)
+  (ALLOW_SHIFT_BUTTONS)
+  (GUN_CAM)
+  (WIDE_FOV)
+  (RAPID_TRACKING)
+  (EASE_SPLINE_IDX)
+  (VERTICAL_FOLLOW_MATCHES_CAMERA)
+  (HAVE_BUTT_HANDLE)
+  (BOMBBOT)
+  (JUMP_LAG)
+  )
+;; ---cam-slave-options
+
+
+;; +++game-feature
+(defenum game-feature
+  :type uint64
+  :bitfield #t
+  (feature0 0)
+  (feature1 1)
+  (feature2 2)
+  (feature3 3)
+  (feature4 4)
+  (gun 5)
+  (gun-red-1 6)
+  (gun-red-2 7)
+  (gun-red-3 8)
+  (gun-yellow-1 9)
+  (gun-yellow-2 10)
+  (gun-yellow-3 11)
+  (gun-blue-1 12)
+  (gun-blue-2 13)
+  (gun-blue-3 14)
+  (gun-dark-1 15)
+  (gun-dark-2 16)
+  (gun-dark-3 17)
+  (board 18)
+  (feature19 19)
+  (sidekick 20)
+  (feature21 21)
+  (feature22 22)
+  (gun-upgrade-yellow-ammo-1 23)
+  (gun-upgrade-yellow-ammo-2 24)
+  (gun-upgrade-red-ammo-1 25)
+  (gun-upgrade-red-ammo-2 26)
+  (gun-upgrade-blue-ammo-1 27)
+  (gun-upgrade-blue-ammo-2 28)
+  (gun-upgrade-dark-ammo-1 29)
+  (gun-upgrade-dark-ammo-2 30)
+  (feature31 31)
+  (feature32 32)
+  (feature33 33)
+  (feature34 34)
+  (feature35 35)
+  (feature36 36)
+  (board-launch 37)
+  (board-trail 38)
+  (board-zap 39)
+  (darkjak 40)
+  (darkjak-smack 41)
+  (darkjak-bomb0 42)
+  (darkjak-bomb1 43)
+  (darkjak-tracking 44)
+  (darkjak-invinc 45)
+  (lightjak 46)
+  (lightjak-regen 47)
+  (lightjak-swoop 48)
+  (lightjak-freeze 49)
+  (lightjak-shield 50)
+  (artifact-invis 51)
+  (armor0 52)
+  (armor1 53)
+  (armor2 54)
+  (armor3 55)
+  (jakc 56)
+  (lighteco 57)
+  (darkeco 58)
+  (feature59 59)
+  (feature60 60)
+  (feature61 61)
+  (feature62 62)
+  (feature63 63)
+  )
+;; ---game-feature
+
+
+;; +++game-secrets
+(defenum game-secrets
+  :type uint64
+  :bitfield #t
+  (hero-mode 0)
+  )
+;; ---game-secrets
+
+(defmacro setting-control-func! (func s &rest args)
+  (let ((argb #f)
+        (argi 0)
+        (argf 0.0)
+        (setting (car s)))
+    (cond
+      (#t
+        (set! argb (car args))
+        (set! argf (cadr args))
+        (set! argi (caddr args))
+        )
+      )
+    `(,func *setting-control* (with-pp pp) ,s ,argb ,argf ,argi)
+    )
+  )
+
+(defmacro add-setting! (s &rest args)
+  `(setting-control-func! add-setting ,s ,@args)
+  )
+(defmacro set-setting! (s &rest args)
+  `(setting-control-func! set-setting ,s ,@args)
+  )
+(defmacro remove-setting! (s)
+  `(remove-setting *setting-control* (with-pp pp) ,s)
+  )
+
+;; +++game-score
+(defenum game-score
+  :type uint64
+  (none)
+  (gs0)
+  (gs1)
+  (gs2)
+  (gs3)
+  (gs4)
+  (gs5)
+  (gs6)
+  (gs7)
+  (gs8)
+  (gs9)
+  (gs10)
+  (gs11)
+  (gs12)
+  (gs13)
+  (gs14)
+  (gs15)
+  (gs16)
+  (gs17)
+  (gs18)
+  (gs19)
+  (gs20)
+  )
+;; ---game-score
+
+
+;; +++game-vehicles
+(defenum game-vehicles
+  :type uint64
+  :bitfield #t
+  (v-turtle 0)
+  (v-snake 1)
+  (v-scorpion 2)
+  (v-toad 3)
+  (v-fox 4)
+  (v-rhino 5)
+  (v-mirage 6)
+  (v-x-ride 7)
+  )
+;; ---game-vehicles
+
+
+(declare-type resetter-spec structure)
+
+;; +++game-vehicle-u8
+(defenum game-vehicle-u8
+  :type uint8
+  :bitfield #t
+  :copy-entries game-vehicles
+  )
+;; ---game-vehicle-u8
+
+(defmacro language? (&rest langs)
+  "is the current language any of the ones specified?"
+  `(or ,@(apply (lambda (x) `(= (-> *setting-control* user-default language) (language-enum ,x))) langs)))
+
+(defmacro text-language? (&rest langs)
+  "is the current language any of the ones specified?"
+  `(or ,@(apply (lambda (x) `(= (-> *pc-settings* text-language) (pc-language ,x))) langs)))
+
 ;; DECOMP BEGINS
 
 (define *settings-dialog-volume* 0.95)

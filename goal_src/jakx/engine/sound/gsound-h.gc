@@ -36,3 +36,403 @@
 
 ;; DECOMP BEGINS
 
+(deftype sound-stream-name (structure)
+  ((name uint8 48 :offset-assert 0) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype sound-id (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+(deftype sound-bank-id (uint32)
+  ()
+  :flag-assert #x900000004
+  )
+
+(deftype sound-name (uint128)
+  ((lo  uint64  :offset 0) ;; added to help with cases where they access it by u64.
+   (hi  uint64  :offset 64)
+   )
+  :flag-assert #x900000010
+  )
+
+(deftype sound-rpc-cmd (structure)
+  ((rsvd1   uint16  :offset-assert 0)
+   (command uint16  :offset-assert 2) ;; sound-command
+   )
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-play-params (structure)
+  ((mask      uint8  :offset-assert 0) ;; uint16
+   (group     uint8  :offset-assert 1)
+   (volume    int16  :offset-assert 2) ;; int32
+   (pitch-mod int16  :offset-assert 4)
+   (bend      int16  :offset-assert 6)
+   (pan       int16  :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xa
+  :flag-assert         #x90000000a
+  )
+
+(deftype sound-rpc-bank-cmd (sound-rpc-cmd)
+  ((bank-name uint128  :offset-assert 16) ;; sound-name
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-test-cmd (sound-rpc-cmd)
+  ((ee-addr pointer  :offset-assert 4) ;; guessed by decompiler
+   (param0  uint16   :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xa
+  :flag-assert         #x90000000a
+  )
+
+(deftype sound-rpc-sound-cmd (sound-rpc-cmd)
+  ((id sound-id  :offset-assert 4) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-group-cmd (sound-rpc-cmd)
+  ((group uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
+  ((ee-addr  pointer  :offset-assert 32) ;; guessed by decompiler
+   (mode     uint32   :offset-assert 36)
+   (priority uint32   :offset-assert 40)
+   )
+  :method-count-assert 9
+  :size-assert         #x2c
+  :flag-assert         #x90000002c
+  )
+
+(deftype sound-rpc-load-music (sound-rpc-bank-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-rpc-unload-bank (sound-rpc-cmd)
+  ((mode uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-play (sound-rpc-sound-cmd)
+  ((name   uint128                   :offset-assert 16) ;; sound-name
+   (params sound-play-params :inline :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x2a
+  :flag-assert         #x90000002a
+  )
+
+(deftype sound-rpc-pause-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-stop-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-continue-sound (sound-rpc-sound-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-set-param (sound-rpc-sound-cmd)
+  ((params    sound-play-params :inline :offset-assert 16)
+   (auto-time int32                     :offset-assert 28)
+   (auto-from int32                     :offset-assert 32)
+   )
+  :method-count-assert 9
+  :size-assert         #x24
+  :flag-assert         #x900000024
+  )
+
+(deftype sound-rpc-set-master-volume (sound-rpc-group-cmd)
+  ((volume int32  :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype sound-rpc-pause-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-stop-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-continue-group (sound-rpc-group-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-cancel-dgo (sound-rpc-group-cmd)
+  ((id uint32  :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype sound-rpc-get-irx-version (sound-rpc-cmd)
+  ((major   uint32   :offset-assert 4)
+   (minor   uint32   :offset-assert 8)
+   (ee-addr pointer  :offset-assert 12) ;; guessed by decompiler
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype sound-rpc-set-language (sound-rpc-cmd)
+  ((lang uint32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-set-stereo-mode (sound-rpc-cmd)
+  ((mode int32  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-set-reverb (sound-rpc-cmd)
+  ((core   uint8   :offset-assert 4)
+   (reverb int32   :offset-assert 8)
+   (left   uint32  :offset-assert 12)
+   (right  uint32  :offset-assert 16)
+   )
+  :method-count-assert 9
+  :size-assert         #x14
+  :flag-assert         #x900000014
+  )
+
+(deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
+  ((ear-trans1   int32 3 :offset-assert 4) ;; guessed by decompiler
+   (ear-trans0   int32 3 :offset-assert 16) ;; guessed by decompiler
+   (cam-trans    int32 3 :offset-assert 28) ;; guessed by decompiler
+   (cam-forward  int32 3 :offset-assert 40) ;; guessed by decompiler
+   (cam-left     int32 3 :offset-assert 52) ;; guessed by decompiler
+   (cam-scale    int32   :offset-assert 64)
+   (cam-inverted int32   :offset-assert 68)
+   )
+  :method-count-assert 9
+  :size-assert         #x48
+  :flag-assert         #x900000048
+  )
+
+(deftype sound-rpc-shutdown (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-set-fps (sound-rpc-cmd)
+  ((fps uint8  :offset-assert 4)
+   )
+  :method-count-assert 9
+  :size-assert         #x5
+  :flag-assert         #x900000005
+  )
+
+(deftype sound-rpc-set-globals (sound-rpc-cmd)
+  ((cam-inverted    uint8  :offset-assert 4)
+   (music-pitch-mod int16  :offset-assert 6)
+   )
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
+(deftype sound-rpc-list-sounds (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-unload-music (sound-rpc-cmd)
+  ()
+  :method-count-assert 9
+  :size-assert         #x4
+  :flag-assert         #x900000004
+  )
+
+(deftype sound-rpc-union (structure)
+  ((data              uint32                      12 :offset-assert 0) ;; guessed by decompiler
+   (load-bank         sound-rpc-load-bank            :offset 0)
+   (unload-bank       sound-rpc-unload-bank          :offset 0)
+   (play              sound-rpc-play                 :offset 0)
+   (pause-sound       sound-rpc-pause-sound          :offset 0)
+   (stop-sound        sound-rpc-stop-sound           :offset 0)
+   (continue-sound    sound-rpc-continue-sound       :offset 0)
+   (set-param         sound-rpc-set-param            :offset 0)
+   (set-master-volume sound-rpc-set-master-volume    :offset 0)
+   (pause-group       sound-rpc-pause-group          :offset 0)
+   (stop-group        sound-rpc-stop-group           :offset 0)
+   (continue-group    sound-rpc-continue-group       :offset 0)
+   (get-irx-version   sound-rpc-get-irx-version      :offset 0)
+   (set-language      sound-rpc-set-language         :offset 0)
+   (set-reverb        sound-rpc-set-reverb           :offset 0)
+   (set-fps           sound-rpc-set-fps              :offset 0)
+   (set-globals       sound-rpc-set-globals          :offset 0)
+   (shutdown          sound-rpc-shutdown             :offset 0)
+   (list-sounds       sound-rpc-list-sounds          :offset 0)
+   (unload-music      sound-rpc-unload-music         :offset 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x30
+  :flag-assert         #x900000030
+  )
+
+(deftype sound-info (structure)
+  ((flags         uint32   :offset-assert 0)
+   (num-instances uint32   :offset-assert 4)
+   (index         uint32   :offset-assert 8)
+   (name          uint128  :offset-assert 16)
+   (group         uint8    :offset-assert 32)
+   (fo-power      float    :offset-assert 36)
+   (fo-min        float    :offset-assert 40)
+   (fo-max        float    :offset-assert 44)
+   (volume        float    :offset-assert 48)
+   (pan           float    :offset-assert 52)
+   (priority      int8     :offset-assert 56)
+   (duck-amount   float    :offset-assert 60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype sound-spec (sound-play-params)
+  ((auto-time  int32              :offset-assert 12)
+   (auto-from  int32              :offset-assert 16)
+   (info       sound-info         :offset-assert 20)
+   (info-index uint32             :offset-assert 24)
+   (trans      vector     :inline :offset-assert 32) ;; int32 4
+   (flags      uint16             :offset-assert 48)
+   (fo-min     float              :offset-assert 52) ;; int16
+   (fo-max     float              :offset-assert 56) ;; int16
+   (fo-power   float              :offset-assert 60)
+   )
+  :method-count-assert 9
+  :size-assert         #x40
+  :flag-assert         #x900000040
+  )
+
+(deftype sound-handle (structure)
+  ((proc          uint64  :offset-assert 0)
+   (flags         uint64  :offset-assert 8)
+   (fader-cur     float   :offset-assert 16)
+   (fader-targ    float   :offset-assert 20)
+   (dist          float   :offset-assert 24)
+   (viewport      int8    :offset-assert 28)
+   (num-instances uint8   :offset-assert 29)
+   (svc           uint8   :offset-assert 30)
+   (index         uint8   :offset-assert 31)
+   )
+  :method-count-assert 9
+  :size-assert         #x20
+  :flag-assert         #x900000020
+  )
+
+(deftype sound-instance (sound-spec)
+  ((last-update uint64        :offset-assert 64)
+   (joint       uint8         :offset-assert 72)
+   (sh          sound-handle  :offset-assert 76)
+   (id          uint32        :offset-assert 80)
+   (pan-angle   float         :offset-assert 84)
+   (volumef     float         :offset-assert 88)
+   )
+  :method-count-assert 9
+  :size-assert         #x5c
+  :flag-assert         #x90000005c
+  )
+
+;; +++gsound-h:sound-bank-mode
+(defenum sound-bank-mode
+  :type uint32
+  (none 0)
+  (unknown 1)
+  (common 2)
+  (mode 3)
+  (full 4)
+  (half 5)
+  (halfa 6)
+  (halfb 7)
+  (halfc 8)
+  (virtual 9)
+  )
+;; ---gsound-h:sound-bank-mode
+
+(deftype sound-bank-state (structure)
+  ((name     symbol           :offset-assert 0) ;; guessed by decompiler
+   (mode     sound-bank-mode  :offset-assert 4) ;; guessed by decompiler
+   (high     basic            :offset-assert 8)
+   (str-name basic            :offset-assert 12)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+;; +++gsound-h:stream-status
+(defenum stream-status
+  :type uint32
+  :bitfield #t
+  (ss1 1) ;; id-is-playing
+  (ss4 4) ;; is-playing
+  (ss6 6) ;; id-is-playing
+  (ss9 9)
+  )
+;; ---gsound-h:stream-status
