@@ -80,5 +80,5 @@
   "garage-turntable-ag.go"
   "garage-door-ag.go"
   "interface-cam-ag.go"
-;;   "menu2.o" already in common
+  "menu2.go"
  ))
