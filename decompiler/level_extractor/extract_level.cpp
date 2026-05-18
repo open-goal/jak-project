@@ -1,11 +1,13 @@
 #include "extract_level.h"
 
 #include <set>
+#include <thread>
 
 #include "extract_anim.h"
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/SimpleThreadGroup.h"
 #include "common/util/compress.h"
 #include "common/util/string_util.h"
 
@@ -412,9 +414,19 @@ void extract_all_levels(const ObjectFileDB& db,
   auto entities_dir = file_util::get_jak_project_dir() / "decompiler_out" /
                       game_version_names[config.game_version] / "entities";
   file_util::create_dir_if_needed(entities_dir);
-  for (size_t idx = 0; idx < dgo_names.size(); idx++) {
-    extract_from_level(db, tex_db, dgo_names[idx], config, output_path, entities_dir);
+
+  int num_workers = dgo_names.size();
+  if (tex_db.replace_texture_dir) {
+    num_workers = 1;
   }
+
+  SimpleThreadGroup threads;
+  threads.run(
+      [&](int idx) {
+        extract_from_level(db, tex_db, dgo_names[idx], config, output_path, entities_dir);
+      },
+      dgo_names.size(), num_workers);
+  threads.join();
 }
 
 }  // namespace decompiler
