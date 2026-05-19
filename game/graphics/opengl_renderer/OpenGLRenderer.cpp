@@ -39,6 +39,14 @@
 #endif
 #include "common/util/string_util.h"
 
+#if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
+constexpr bool kUseDirectHudPris2 = false;
+constexpr bool kUseDirectSubtitle = false;
+#else
+constexpr bool kUseDirectHudPris2 = true;
+constexpr bool kUseDirectSubtitle = true;
+#endif
+
 namespace {
 std::string g_current_renderer;
 }
@@ -409,7 +417,8 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     init_bucket_renderer<ProgressRenderer>("hud-draw-hud-alpha", BucketCategory::OTHER,
                                            BucketId::HUD_DRAW_HUD_ALPHA, 0x8000);
     init_bucket_renderer<TextureUploadHandler>("tex-hud-pris2", BucketCategory::TEX,
-                                               BucketId::TEX_HUD_PRIS2, m_texture_animator, true);
+                                               BucketId::TEX_HUD_PRIS2, m_texture_animator,
+                                               kUseDirectHudPris2);
     init_bucket_renderer<ProgressRenderer>("hud-draw-pris2", BucketCategory::OTHER,
                                            BucketId::HUD_DRAW_PRIS2, 0x8000);
     init_bucket_renderer<ProgressRenderer>("progress", BucketCategory::OTHER, BucketId::BUCKET582,
@@ -620,7 +629,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<DirectRenderer>("screen-filter", BucketCategory::OTHER,
                                        BucketId::SCREEN_FILTER, 256);
   init_bucket_renderer<TextureUploadHandler>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE,
-                                             m_texture_animator, true);
+                                             m_texture_animator, kUseDirectSubtitle);
   init_bucket_renderer<DirectRenderer>("debug2", BucketCategory::OTHER, BucketId::DEBUG2, 0x8000);
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF2, 0x8000);
