@@ -3,7 +3,7 @@
 /*[amd64, arm, ppc, x86]:
    by default, co_swap_function is marked as a text (code) section
    if not supported, uncomment the below line to use mprotect instead */
-#define LIBCO_MPROTECT
+/* #define LIBCO_MPROTECT */
 
 /*[amd64]:
    Win64 only: provides a substantial speed-up, but will thrash XMM regs
@@ -24,17 +24,22 @@
 #endif
 
 #if __STDC_VERSION__ >= 201112L
-  #define alignas(bytes) _Alignas(bytes)
+  #include <stdalign.h>
 #else
   #define alignas(bytes)
 #endif
 
 #if defined(_MSC_VER)
-  #define section(name) __declspec(allocate("." #name))
+  #pragma section(".text")
+  #define section(name) __declspec(allocate(".text"))
 #elif defined(__APPLE__)
   #define section(name) __attribute__((section("__TEXT,__" #name)))
-#else
+#elif defined(__GNUC__) && !defined(__clang__)
+  /* the # is treated as comment token by the GNU assembler. */
+  /* this is a hack to avoid a warning about changed section attributes. */
   #define section(name) __attribute__((section("." #name "#")))
+#else
+  #define section(name) __attribute__((section("." #name)))
 #endif
 
 /* if defined(LIBCO_C) */

@@ -40,7 +40,8 @@ void swap_context(struct ppc64_context* read, struct ppc64_context* write);
 __asm__(
   ".text\n"
   ".align 4\n"
-  ".type swap_context @function\n"
+  ".globl swap_context\n"
+  ".type swap_context, @function\n"
   "swap_context:\n"
   ".cfi_startproc\n"
 
