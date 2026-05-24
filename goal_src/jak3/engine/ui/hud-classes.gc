@@ -137,8 +137,8 @@
     ((nonzero? (-> this values 5 current))
      (let ((f30-1
              (the float
-                  ;; og:preserve-this use base-clock instead of game-clock so it keeps flashing after file is X hours old
-                  (+ (the int (* 127.0 (sin (* 182.04445 (the float (-> *display* base-clock frame-counter)))))) 127)
+                  ;; og:preserve-this mod by 360 to avoid sine breaking at high float values (fix flash effect breaking after X hours)
+                  (+ (the int (* 127.0 (sin (degrees (mod (-> *display* game-clock frame-counter) 360))))) 127)
                   )
              )
            )
@@ -161,14 +161,15 @@
              (+ 0.5
                 (* 0.5
                    (sin
-                     (* 182.04445 (the float (* (if (>= (-> this values 2 current) (the int (-> *FACT-bank* darkjak-bomb-min)))
+                     ;; og:preserve-this mod by 360 to avoid sine breaking at high float values (fix flash effect breaking after X hours)
+                     (degrees (mod (* (if (>= (-> this values 2 current) (the int (-> *FACT-bank* darkjak-bomb-min)))
                                                     2
                                                     1
                                                     )
-                                                ;; og:preserve-this use base-clock instead of game-clock so it keeps flashing after file is X hours old
-                                                (-> *display* base-clock frame-counter)
+                                                (-> *display* game-clock frame-counter)
                                                 )
-                                       )
+                                   360
+                                   )
                         )
                      )
                    )
