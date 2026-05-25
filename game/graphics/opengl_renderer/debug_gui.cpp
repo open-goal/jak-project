@@ -166,12 +166,18 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
         if (ImGui::TreeNode(label.c_str())) {
           const auto num_controllers =
               Display::GetMainDisplay()->get_input_manager()->get_num_controllers();
+          std::unordered_map<std::string, int> controller_name_counts;
           for (int i = 0; i < num_controllers; i++) {
             const auto controller_name =
                 Display::GetMainDisplay()->get_input_manager()->get_controller_name(i);
+            int count = controller_name_counts[controller_name]++;
+            std::string display_name = controller_name;
+            if (count > 0) {
+              display_name += " (" + std::to_string(count) + ")";
+            }
             auto is_controller_active =
                 Display::GetMainDisplay()->get_input_manager()->get_controller_index(port) == i;
-            if (ImGui::RadioButton(controller_name.c_str(), is_controller_active)) {
+            if (ImGui::RadioButton(display_name.c_str(), is_controller_active)) {
               Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(i, port);
             }
           }
