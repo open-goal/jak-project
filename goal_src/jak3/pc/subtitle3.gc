@@ -379,8 +379,22 @@
   )
 
 
+(defmethod subtitles-enabled? ((self subtitle3))
+  "should the subtitle3 process do any per-frame subtitle work?"
+  (and (or *gui-kick-str* (= *master-mode* 'game))
+       (if (-> self movie-mode?)
+           (-> *setting-control* user-current subtitle)
+           (-> *pc-settings* hinttitles?))))
+
+
 (defmethod draw-subtitles ((self subtitle3))
   "do the subtitle drawing"
+
+  (when (not (subtitles-enabled? self))
+    (false! (-> self have-subtitles?))
+    (set-action! *gui-control* (gui-action hidden) (-> self gui-id)
+                (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f))
+    (return 0))
 
   ;; check the gui queue for lines to add to the line queue
   (let ((line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines 0) (-> self lines 1)))
@@ -617,29 +631,38 @@
             )
         )
 
-    (load-level-subtitle3-files 0)
+    ;; If subtitles are disabled, avoid doing per-frame subtitle bookkeeping while speech is active.
+    ;; This skips GUI scanning, audio-position queries, scene lookup, formatting, and text layout.
+    (if (subtitles-enabled? self)
+        (begin
+          (load-level-subtitle3-files 0)
 
-    ;; get subtitles
-    (cond
-      ((not (-> self movie-mode?))
-        ;; get rid of invalid gui entries
-        (update-gui-connections self)
-        ;; queue up valid ones
-        (get-active-subtitles self)
-        )
-      ((-> self movie-gui)
-        ;; wipe the queue
-        (clear-queue self)
-        ;; queue up the movie gui - this is the only one we want in movie mode
-        (add-to-queue self (-> self movie-gui))
-        )
-      (else
-        ;; something weird happened
-        (if *debug-segment*
-            (format #t "bad movie gui~%"))
-        (set! (-> self movie-mode?) #f)
-        (clear-queue self))
-      )
+          ;; get subtitles
+          (cond
+            ((not (-> self movie-mode?))
+              ;; get rid of invalid gui entries
+              (update-gui-connections self)
+              ;; queue up valid ones
+              (get-active-subtitles self)
+              )
+            ((-> self movie-gui)
+              ;; wipe the queue
+              (clear-queue self)
+              ;; queue up the movie gui - this is the only one we want in movie mode
+              (add-to-queue self (-> self movie-gui))
+              )
+            (else
+              ;; something weird happened
+              (if *debug-segment*
+                  (format #t "bad movie gui~%"))
+              (set! (-> self movie-mode?) #f)
+              (clear-queue self))
+            ))
+        (begin
+          (false! (-> self have-message?))
+          (false! (-> self have-minimap?))
+          (false! (-> self have-subtitles?))
+          (clear-queue self)))
     )
 
   :post (behavior ()
