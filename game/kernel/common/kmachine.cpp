@@ -1,8 +1,13 @@
 #include "kmachine.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cstring>
 #include <random>
+#include <unordered_map>
 
 #include "common/global_profiler/GlobalProfiler.h"
+#include "common/goal_constants.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
@@ -15,9 +20,11 @@
 #include "game/graphics/gfx.h"
 #include "game/graphics/screenshot.h"
 #include "game/kernel/common/Ptr.h"
+#include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/kernel_types.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/mips2c/font_length.h"
 #include "game/mips2c/mips2c_table.h"
 #include "game/runtime.h"
 #include "game/sce/libcdvd_ee.h"
@@ -472,6 +479,379 @@ u64 pc_filter_debug_string(u32 str_ptr, u32 dist_ptr) {
 
 CommonPCPortFunctionWrappers g_pc_port_funcs;
 
+namespace {
+Mips2C::font_length::Cache g_font_length_cache = {};
+GameVersion g_font_length_cache_version = GameVersion::Jak1;
+u32 g_direct_font_length_function = 0;
+
+constexpr u32 kFontFlagMiddle = 1 << 2;
+constexpr u32 kFontFlagMiddleVert = 1 << 3;
+constexpr u32 kFontFlagLarge = 1 << 5;
+
+constexpr int kFontCtxOriginX = 12;
+constexpr int kFontCtxOriginY = 16;
+constexpr int kFontCtxWidth = 44;
+constexpr int kFontCtxHeight = 48;
+constexpr int kFontCtxScale = 56;
+constexpr int kFontCtxColor = 60;
+constexpr int kFontCtxFlags = 64;
+constexpr int kFontCtxStartLine = 72;
+constexpr int kFontWorkLastColor = 2864;
+
+constexpr int kSubtitle2TextInfoLength = 0;
+constexpr int kSubtitle2TextInfoVersion = 2;
+constexpr int kSubtitle2TextInfoLang = 4;
+constexpr int kSubtitle2TextInfoData = 12;
+constexpr int kSubtitle2SceneName = 0;
+constexpr int kSubtitle2SceneSize = 12;
+
+struct Subtitle2SceneCache {
+  u32 text_info = 0;
+  s16 length = 0;
+  u16 version = 0;
+  u16 lang = 0;
+  std::unordered_map<std::string, u32> scenes;
+};
+
+Subtitle2SceneCache g_subtitle2_scene_cache;
+
+u32 symbol_value(const char* name) {
+  return Ptr<Symbol4<u32>>(g_pc_port_funcs.intern_from_c(name).offset)->value();
+}
+
+bool is_false_or_null(u32 obj) {
+  return obj == 0 || obj == s7.offset;
+}
+
+bool valid_goal_range(u32 addr, u32 size) {
+  return addr >= EE_MAIN_MEM_LOW_PROTECT && addr <= EE_MAIN_MEM_SIZE &&
+         size <= EE_MAIN_MEM_SIZE - addr;
+}
+
+u8 read_u8(u32 addr) {
+  u8 result = 0;
+  std::memcpy(&result, g_ee_main_mem + addr, sizeof(result));
+  return result;
+}
+
+s16 read_s16(u32 addr) {
+  s16 result = 0;
+  std::memcpy(&result, g_ee_main_mem + addr, sizeof(result));
+  return result;
+}
+
+u16 read_u16(u32 addr) {
+  u16 result = 0;
+  std::memcpy(&result, g_ee_main_mem + addr, sizeof(result));
+  return result;
+}
+
+u32 read_u32(u32 addr) {
+  u32 result = 0;
+  std::memcpy(&result, g_ee_main_mem + addr, sizeof(result));
+  return result;
+}
+
+float read_f32(u32 addr) {
+  float result = 0.f;
+  std::memcpy(&result, g_ee_main_mem + addr, sizeof(result));
+  return result;
+}
+
+void write_u32(u32 addr, u32 value) {
+  std::memcpy(g_ee_main_mem + addr, &value, sizeof(value));
+}
+
+void write_f32(u32 addr, float value) {
+  std::memcpy(g_ee_main_mem + addr, &value, sizeof(value));
+}
+
+float low_float_from_u64(u64 value) {
+  float result = 0.f;
+  std::memcpy(&result, &value, sizeof(result));
+  return result;
+}
+
+u64 float_to_u64(float value) {
+  u64 result = 0;
+  std::memcpy(&result, &value, sizeof(value));
+  return result;
+}
+
+std::string goal_string_upper_key(u32 str) {
+  std::string result;
+  if (is_false_or_null(str) || !valid_goal_range(str, sizeof(String))) {
+    return result;
+  }
+
+  const auto* text = Ptr<String>(str).c()->data();
+  const u32 allocated = read_u32(str);
+  const u32 limit = allocated > 0 && allocated < 4096 ? allocated : 4096;
+  result.reserve(std::min<u32>(limit, 64));
+  for (u32 i = 0; i < limit; ++i) {
+    const unsigned char ch = static_cast<unsigned char>(text[i]);
+    if (ch == 0) {
+      break;
+    }
+    result.push_back(static_cast<char>(std::toupper(ch)));
+  }
+  return result;
+}
+
+void update_subtitle2_scene_cache(u32 text_info) {
+  const s16 length = read_s16(text_info + kSubtitle2TextInfoLength);
+  const u16 version = read_u16(text_info + kSubtitle2TextInfoVersion);
+  const u16 lang = read_u16(text_info + kSubtitle2TextInfoLang);
+  if (g_subtitle2_scene_cache.text_info == text_info && g_subtitle2_scene_cache.length == length &&
+      g_subtitle2_scene_cache.version == version && g_subtitle2_scene_cache.lang == lang) {
+    return;
+  }
+
+  g_subtitle2_scene_cache.text_info = text_info;
+  g_subtitle2_scene_cache.length = length;
+  g_subtitle2_scene_cache.version = version;
+  g_subtitle2_scene_cache.lang = lang;
+  g_subtitle2_scene_cache.scenes.clear();
+
+  if (length <= 0) {
+    return;
+  }
+
+  g_subtitle2_scene_cache.scenes.reserve(length);
+  const u32 data = text_info + kSubtitle2TextInfoData;
+  for (s16 i = 0; i < length; ++i) {
+    const u32 scene = data + (static_cast<u32>(i) * kSubtitle2SceneSize);
+    if (!valid_goal_range(scene, kSubtitle2SceneSize)) {
+      break;
+    }
+    const u32 scene_name = read_u32(scene + kSubtitle2SceneName);
+    auto key = goal_string_upper_key(scene_name);
+    if (!key.empty()) {
+      // Keep the first scene for duplicate names, matching the old linear scan.
+      g_subtitle2_scene_cache.scenes.emplace(std::move(key), scene);
+    }
+  }
+}
+
+void update_font_length_cache() {
+  if (g_font_length_cache.font_work && g_font_length_cache_version == g_game_version) {
+    return;
+  }
+
+  g_font_length_cache.font_work = Ptr<u8>(g_pc_port_funcs.intern_from_c("*font-work*").offset).c();
+  g_font_length_cache.font12_table =
+      Ptr<u8>(g_pc_port_funcs.intern_from_c("*font12-table*").offset).c();
+  g_font_length_cache.font24_table =
+      Ptr<u8>(g_pc_port_funcs.intern_from_c("*font24-table*").offset).c();
+  g_font_length_cache.video_params =
+      Ptr<u8>(g_pc_port_funcs.intern_from_c("*video-params*").offset).c();
+  g_font_length_cache_version = g_game_version;
+}
+
+u64 pc_get_string_length_asm(u32 text, u32 ctx) {
+  update_font_length_cache();
+  switch (g_game_version) {
+    case GameVersion::Jak2:
+      return Mips2C::font_length::execute(text, ctx, g_font_length_cache, 2876, 2880);
+    case GameVersion::Jak3:
+      return Mips2C::font_length::execute(text, ctx, g_font_length_cache, 3024, 3028);
+    default:
+      return 0;
+  }
+}
+
+u32 get_direct_font_length_function() {
+  if (!g_direct_font_length_function) {
+    g_direct_font_length_function =
+        g_pc_port_funcs
+            .make_function_symbol_from_c("get-string-length-asm", (void*)pc_get_string_length_asm)
+            .offset;
+  }
+  return g_direct_font_length_function;
+}
+
+float goal_string_length(u32 text, u32 ctx) {
+  static u32 get_string_length_function = 0;
+  if (!get_string_length_function) {
+    get_string_length_function = symbol_value("get-string-length");
+  }
+  return low_float_from_u64(
+      call_goal(Ptr<Function>(get_string_length_function), text, ctx, 0, s7.offset, g_ee_main_mem));
+}
+
+void draw_print_game_text_line(u32 line, u32 ctx, u32 bucket) {
+  static u32 draw_line_function = 0;
+  if (!draw_line_function) {
+    draw_line_function = symbol_value("pc-print-game-text-draw-line");
+  }
+  call_goal(Ptr<Function>(draw_line_function), line, ctx, bucket, s7.offset, g_ee_main_mem);
+}
+
+float pc_print_game_text_impl(u32 text, u32 ctx, bool measure_only, int line_height, u32 bucket) {
+  if (read_f32(ctx + kFontCtxScale) <= 0.1f) {
+    return 0.f;
+  }
+
+  const float saved_x = read_f32(ctx + kFontCtxOriginX);
+  const float saved_y = read_f32(ctx + kFontCtxOriginY);
+  const u32 saved_flags = read_u32(ctx + kFontCtxFlags);
+  const u32 saved_color = read_u32(ctx + kFontCtxColor);
+
+  u32 flags = saved_flags;
+  if (flags & kFontFlagMiddleVert) {
+    flags &= ~kFontFlagMiddleVert;
+    write_u32(ctx + kFontCtxFlags, flags);
+    const float measured = pc_print_game_text_impl(text, ctx, true, 44, bucket);
+    const int y_adjust = static_cast<int>(0.5f * (read_f32(ctx + kFontCtxHeight) - measured));
+    write_f32(ctx + kFontCtxOriginY,
+              read_f32(ctx + kFontCtxOriginY) + static_cast<float>(y_adjust));
+  }
+
+  const u32 word_string = symbol_value("*game-text-word*");
+  const u32 line_string = symbol_value("*game-text-line*");
+  auto* word = reinterpret_cast<u8*>(Ptr<String>(word_string)->data());
+  auto* line = reinterpret_cast<u8*>(Ptr<String>(line_string)->data());
+
+  u32 source = text + sizeof(String);
+  float word_x = read_f32(ctx + kFontCtxOriginX);
+  const float line_start_x = read_f32(ctx + kFontCtxOriginX);
+  const float max_x = read_f32(ctx + kFontCtxOriginX) + read_f32(ctx + kFontCtxWidth);
+  const float max_y = read_f32(ctx + kFontCtxOriginY) + read_f32(ctx + kFontCtxHeight);
+  const float space_width = goal_string_length(symbol_value("*pc-print-game-text-space*"), ctx);
+  const float scaled_line_height = static_cast<float>((flags & kFontFlagLarge) ? line_height : 28) *
+                                   read_f32(ctx + kFontCtxScale);
+
+  if (flags & kFontFlagMiddle) {
+    write_f32(ctx + kFontCtxOriginX,
+              read_f32(ctx + kFontCtxOriginX) + (read_f32(ctx + kFontCtxWidth) / 2.f));
+  }
+
+  u8 ch = read_u8(source);
+  int word_len = 0;
+  int line_len = 0;
+  int line_idx = 0;
+  bool flush_word = false;
+  int pending_lines = 0;
+  int drawn_line_count = 0;
+  const u32 start_line = read_u32(ctx + kFontCtxStartLine);
+  line[0] = 0;
+
+  while (!(ch == 0 && word_len == 0 && line_len == 0) && max_y >= read_f32(ctx + kFontCtxOriginY)) {
+    int word_width = 0;
+    const u8 next_ch = read_u8(source + 1);
+
+    if (ch > 0 && ch < 4) {
+      word[word_len++] = ch;
+      word[word_len++] = next_ch;
+      ++source;
+    } else if (ch == ' ') {
+      word[word_len++] = ch;
+      flush_word = true;
+    } else if (ch == 0) {
+      if (word_len != 0) {
+        flush_word = true;
+      }
+      ++pending_lines;
+    } else if (ch == '\\' && next_ch == '\\') {
+      ++source;
+      if (word_len != 0) {
+        flush_word = true;
+      }
+      ++pending_lines;
+    } else if (ch == '_' && next_ch == '_') {
+      ++source;
+      word[word_len++] = ' ';
+    } else {
+      word[word_len++] = ch;
+    }
+
+    if (flush_word) {
+      word[word_len] = 0;
+      word_width = static_cast<int>(goal_string_length(word_string, ctx));
+      float word_end_x = word_x + static_cast<float>(word_width);
+      if (word_len > 0 && word[word_len - 1] == ' ') {
+        word_end_x -= space_width;
+      }
+
+      if (max_x < word_end_x) {
+        ++pending_lines;
+      } else {
+        std::memcpy(line + line_len, word, word_len + 1);
+        line_len += word_len;
+        word_len = 0;
+        word_x += static_cast<float>(word_width);
+        flush_word = false;
+      }
+    }
+
+    while (pending_lines > 0) {
+      const float next_y = read_f32(ctx + kFontCtxOriginY) + scaled_line_height;
+      if (line_idx >= static_cast<int>(start_line)) {
+        if (line_len > 0 && line[line_len - 1] == ' ') {
+          line[line_len - 1] = 0;
+        }
+        if (line[0] != 0) {
+          ++drawn_line_count;
+        }
+        if (!measure_only) {
+          draw_print_game_text_line(line_string, ctx, bucket);
+          const u32 font_work = Mips2C::font_length::ptr_from_symbol(g_font_length_cache.font_work);
+          write_u32(ctx + kFontCtxColor, read_u32(font_work + kFontWorkLastColor));
+        }
+        write_f32(ctx + kFontCtxOriginY, next_y);
+      }
+
+      ++line_idx;
+      line[0] = 0;
+      line_len = 0;
+      --pending_lines;
+      word_x = line_start_x;
+
+      if (flush_word) {
+        std::memcpy(line + line_len, word, word_len + 1);
+        line_len += word_len;
+        word_len = 0;
+        flush_word = false;
+        word_x += static_cast<float>(word_width);
+      }
+    }
+
+    if (ch != 0) {
+      ++source;
+      ch = read_u8(source);
+    }
+  }
+
+  write_f32(ctx + kFontCtxOriginX, saved_x);
+  write_f32(ctx + kFontCtxOriginY, saved_y);
+  write_u32(ctx + kFontCtxFlags, saved_flags);
+  write_u32(ctx + kFontCtxColor, saved_color);
+
+  return drawn_line_count > 0 ? scaled_line_height * static_cast<float>(drawn_line_count) : 0.f;
+}
+
+u64 pc_print_game_text(u32 text, u32 ctx, u32 measure_symbol, u32 line_height, u32 bucket) {
+  update_font_length_cache();
+  return float_to_u64(pc_print_game_text_impl(text, ctx, measure_symbol != s7.offset,
+                                              static_cast<int>(line_height), bucket));
+}
+
+u64 pc_subtitle2_get_scene_by_name(u32 text_info, u32 name) {
+  if (g_game_version != GameVersion::Jak2 || is_false_or_null(text_info) ||
+      is_false_or_null(name) || !valid_goal_range(text_info, kSubtitle2TextInfoData)) {
+    return s7.offset;
+  }
+
+  update_subtitle2_scene_cache(text_info);
+  const auto key = goal_string_upper_key(name);
+  const auto it = g_subtitle2_scene_cache.scenes.find(key);
+  if (it == g_subtitle2_scene_cache.scenes.end()) {
+    return s7.offset;
+  }
+  return it->second;
+}
+}  // namespace
+
 u64 read_ee_timer() {
   u64 ns = ee_clock_timer.getNs();
   return (ns * 3) / 10;
@@ -501,6 +881,10 @@ void pc_texture_relocate(u32 dst, u32 src, u32 format) {
 
 u64 pc_get_mips2c(u32 name) {
   const char* n = Ptr<String>(name).c()->data();
+  if ((g_game_version == GameVersion::Jak2 || g_game_version == GameVersion::Jak3) &&
+      std::strcmp(n, "get-string-length-asm") == 0) {
+    return get_direct_font_length_function();
+  }
   return Mips2C::gLinkedFunctionTable.get(n);
 }
 
@@ -1087,6 +1471,7 @@ void init_common_pc_port_functions(
     std::function<Ptr<Function>(const char*, void*)> make_func_symbol_func,
     std::function<InternFromCInfo(const char*)> intern_from_c_func,
     std::function<u64(const char*)> make_string_from_c_func) {
+  g_pc_port_funcs.make_function_symbol_from_c = make_func_symbol_func;
   g_pc_port_funcs.intern_from_c = intern_from_c_func;
   g_pc_port_funcs.make_string_from_c = make_string_from_c_func;
   // Get a 300MHz timer value. Called from EE thread
@@ -1101,6 +1486,10 @@ void init_common_pc_port_functions(
   // Called from the game thread at initialization. The game thread is the only one to touch the
   // mips2c function table (through the linker and ugh this function), so no locking is needed.
   make_func_symbol_func("__pc-get-mips2c", (void*)pc_get_mips2c);
+  // Native implementation of the expensive GOAL print-game-text wrap/layout loop.
+  make_func_symbol_func("pc-print-game-text", (void*)pc_print_game_text);
+  // Native cached lookup for JAK II subtitle scenes by gui/audio name.
+  make_func_symbol_func("pc-subtitle2-get-scene-by-name", (void*)pc_subtitle2_get_scene_by_name);
 
   // -- DISPLAY RELATED --
   // Returns the name of the display with the given id or #f if not found / empty
