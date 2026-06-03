@@ -5,11 +5,21 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "common/goos/ParseHelpers.h"
+#include "common/log/log.h"
 
 class DataObjectGenerator {
  public:
   int add_word(u32 word);
   int add_word_float(float f);
+  int add_empty_list();
+  void add_goos_obj(const goos::Object& obj,
+                    bool last_obj,
+                    const std::optional<std::map<std::string, size_t>>& entity_slots,
+                    const std::optional<std::map<int, size_t>>& actor_group_slots);
+  int add_pair(const goos::Object& pair,
+               const std::optional<std::map<std::string, size_t>>& entity_slots,
+               const std::optional<std::map<int, size_t>>& actor_group_slots);
   void set_word(u32 word_idx, u32 val);
   void link_word_to_word(int source, int target, int offset = 0);
   void link_word_to_byte(int source_word, int target_byte);
