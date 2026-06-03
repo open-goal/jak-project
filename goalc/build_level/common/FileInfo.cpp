@@ -5,11 +5,18 @@
 #include "common/versions/versions.h"
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
+#include <fmt/chrono.h>
 
 std::string get_current_time_and_date() {
   auto const now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
-  auto const time = std::chrono::current_zone()->to_local(now);
-  return std::format("{:%a %b %d %H:%M:%S %Y}", time);
+  std::time_t const t = std::chrono::system_clock::to_time_t(now);
+  std::tm tm{};
+#if defined(_WIN32)
+  localtime_s(&tm, &t);
+#else
+  localtime_r(&t, &tm);
+#endif
+  return fmt::format("{:%a %b %d %H:%M:%S %Y}", tm);
 }
 
 size_t FileInfo::add_to_object_file(DataObjectGenerator& gen) const {

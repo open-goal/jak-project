@@ -106,6 +106,9 @@ struct DrawableTreeRegionPrim {
   math::Vector4f bsphere;
   DrawableInlineArrayRegionPrim data2;
 
+  DrawableTreeRegionPrim() = default;
+  explicit DrawableTreeRegionPrim(std::string name_) : name(std::move(name_)) {}
+
   size_t generate(DataObjectGenerator& gen) const;
   size_t add_to_object_file(DataObjectGenerator& gen, size_t);
 };
