@@ -33,7 +33,7 @@ size_t gen_pair(DataObjectGenerator& gen, const goos::Object& pair) {
   return gen.add_pair(pair, g_entity_slots, g_actor_group_slots);
 }
 
-void Region::generate_pairs(DataObjectGenerator& gen, std::vector<size_t> pair_slots) {
+void Region::generate_pairs(DataObjectGenerator& gen, const std::vector<size_t>& pair_slots) {
   auto on_enter_slot = pair_slots[0];
   auto on_inside_slot = pair_slots[1];
   auto on_exit_slot = pair_slots[2];

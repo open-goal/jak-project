@@ -52,7 +52,7 @@ struct Region {
   std::optional<std::map<std::string, size_t>> actor_slots;
 
   size_t generate(DataObjectGenerator& gen) const;
-  void generate_pairs(DataObjectGenerator& gen, std::vector<size_t> pair_slots);
+  void generate_pairs(DataObjectGenerator& gen, const std::vector<size_t>& pair_slots);
   size_t add_to_object_file(DataObjectGenerator& gen, size_t);
   std::string print();
 };
