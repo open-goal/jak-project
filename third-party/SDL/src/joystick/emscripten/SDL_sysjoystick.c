@@ -100,11 +100,33 @@ static int SDL_IsEmscriptenJoystickXInput(int device_index)
     }, device_index);
 }
 
+static int SDL_GetEmscriptenOSID()
+{
+    return MAIN_THREAD_EM_ASM_INT({
+        const os = ([
+            'Android',
+            'Linux',
+            'iPhone',
+            'Macintosh',
+            'Windows',
+        ]);
+        const ua = navigator['userAgent'];
+        for (let i = 0; i < os.length; i++) {
+            if (ua['indexOf'](os[i]) >= 0) {
+                return i + 1;
+            }
+        }
+        return 0;
+    });
+}
+
 static EM_BOOL Emscripten_JoyStickConnected(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData)
 {
     SDL_joylist_item *item;
     int i;
+    Uint16 bus;
     Uint16 vendor, product;
+    Uint8 os_id;
     bool is_xinput;
 
     SDL_LockJoysticks();
@@ -121,6 +143,7 @@ static EM_BOOL Emscripten_JoyStickConnected(int eventType, const EmscriptenGamep
     SDL_zerop(item);
     item->index = gamepadEvent->index;
 
+    bus = SDL_HARDWARE_BUS_UNKNOWN;
     vendor = SDL_GetEmscriptenJoystickVendor(gamepadEvent->index);
     product = SDL_GetEmscriptenJoystickProduct(gamepadEvent->index);
     is_xinput = SDL_IsEmscriptenJoystickXInput(gamepadEvent->index);
@@ -130,6 +153,21 @@ static EM_BOOL Emscripten_JoyStickConnected(int eventType, const EmscriptenGamep
         vendor = USB_VENDOR_MICROSOFT;
         product = USB_PRODUCT_XBOX360_XUSB_CONTROLLER;
     }
+    
+    os_id = SDL_GetEmscriptenOSID();
+
+    if (os_id != 0) {
+        if (os_id == 1 || os_id == 3) { // Android or iOS (mobile)
+            bus = SDL_HARDWARE_BUS_BLUETOOTH;
+        } else { // Desktop
+            bus = SDL_HARDWARE_BUS_USB;
+        }
+    }
+
+    if (SDL_strcmp(gamepadEvent->mapping, "standard") == 0) {
+        // We should differentiate between devices that are mapped or unmapped by the browser.
+        os_id += 0x80;
+    }
 
     item->name = SDL_CreateJoystickName(vendor, product, NULL, gamepadEvent->id);
     if (!item->name) {
@@ -138,9 +176,10 @@ static EM_BOOL Emscripten_JoyStickConnected(int eventType, const EmscriptenGamep
     }
 
     if (vendor && product) {
-        item->guid = SDL_CreateJoystickGUID(SDL_HARDWARE_BUS_UNKNOWN, vendor, product, 0, NULL, item->name, 0, 0);
+        item->guid = SDL_CreateJoystickGUID(bus, vendor, product, 0, NULL, gamepadEvent->id, 0, os_id);
     } else {
         item->guid = SDL_CreateJoystickGUIDForName(item->name);
+        item->guid.data[15] = os_id;
     }
 
     if (is_xinput) {
@@ -448,7 +487,6 @@ static SDL_JoystickID EMSCRIPTEN_JoystickGetDeviceInstanceID(int device_index)
 static bool EMSCRIPTEN_JoystickOpen(SDL_Joystick *joystick, int device_index)
 {
     SDL_joylist_item *item = JoystickByDeviceIndex(device_index);
-    bool rumble_available = false;
 
     if (!item) {
         return SDL_SetError("No such device");
@@ -466,20 +504,22 @@ static bool EMSCRIPTEN_JoystickOpen(SDL_Joystick *joystick, int device_index)
     joystick->nbuttons = item->nbuttons;
     joystick->naxes = item->naxes;
 
-    rumble_available = MAIN_THREAD_EM_ASM_INT({
-        let gamepads = navigator['getGamepads']();
-        if (!gamepads) {
-            return 0;
-        }
-        let gamepad = gamepads[$0];
-        if (!gamepad || !gamepad['vibrationActuator']) {
-            return 0;
-        }
-        return 1;
+    item->rumble_available = MAIN_THREAD_EM_ASM_INT({
+        let gamepad = navigator['getGamepads']()[$0];
+        return gamepad && gamepad['vibrationActuator'] && gamepad['vibrationActuator']['effects'] && gamepad['vibrationActuator']['effects']['includes']('dual-rumble');
         }, item->index);
 
-    if (rumble_available) {
+    if (item->rumble_available) {
         SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_RUMBLE_BOOLEAN, true);
+    }
+
+    item->trigger_rumble_available = MAIN_THREAD_EM_ASM_INT({
+        let gamepad = navigator['getGamepads']()[$0];
+        return gamepad && gamepad['vibrationActuator'] && gamepad['vibrationActuator']['effects'] && gamepad['vibrationActuator']['effects']['includes']('trigger-rumble');
+        }, item->index);
+
+    if (item->trigger_rumble_available) {
+        SDL_SetBooleanProperty(SDL_GetJoystickProperties(joystick), SDL_PROP_JOYSTICK_CAP_TRIGGER_RUMBLE_BOOLEAN, true);
     }
 
     return true;
@@ -582,36 +622,49 @@ static SDL_GUID EMSCRIPTEN_JoystickGetDeviceGUID(int device_index)
     return JoystickByDeviceIndex(device_index)->guid;
 }
 
-static bool EMSCRIPTEN_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
+static bool Emscripten_UpdateRumble(SDL_joylist_item *item)
 {
-    SDL_joylist_item *item = (SDL_joylist_item *)joystick->hwdata;
-
-    // clang-format off
     bool result = MAIN_THREAD_EM_ASM_INT({
-        let gamepads = navigator['getGamepads']();
-        if (!gamepads) {
-            return 0;
+        let gamepad = navigator['getGamepads']()[$0];
+        if (!gamepad) {
+            return false;
         }
-        let gamepad = gamepads[$0];
-        if (!gamepad || !gamepad['vibrationActuator']) {
-            return 0;
-        }
-
+        // We check if rumble is available in EMSCRIPTEN_JoystickRumble() and EMSCRIPTEN_JoystickRumbleTriggers().
+        // From my testing using "dual-rumble" here covers both main rumble and trigger rumble.
         gamepad['vibrationActuator']['playEffect']('dual-rumble', {
             'startDelay': 0,
             'duration': 3000,
-            'weakMagnitude': $2 / 0xFFFF,
-            'strongMagnitude': $1 / 0xFFFF,
+            'weakMagnitude': $1 / 0xFFFF,
+            'strongMagnitude': $2 / 0xFFFF,
+            'leftTrigger': $3 / 0xFFFF,
+            'rightTrigger': $4 / 0xFFFF,
         });
-        return 1;
-        }, item->index, low_frequency_rumble, high_frequency_rumble);
 
+        return true;
+        }, item->index, item->weak_magnitude_rumble, item->strong_magnitude_rumble, item->left_trigger_rumble, item->right_trigger_rumble);
     return result;
+}
+
+static bool EMSCRIPTEN_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
+{
+    SDL_joylist_item *item = (SDL_joylist_item *)joystick->hwdata;
+    if (!item || !item->rumble_available) {
+        return SDL_Unsupported();
+    }
+    item->strong_magnitude_rumble = low_frequency_rumble;
+    item->weak_magnitude_rumble = high_frequency_rumble;
+    return Emscripten_UpdateRumble(item);
 }
 
 static bool EMSCRIPTEN_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_rumble, Uint16 right_rumble)
 {
-    return SDL_Unsupported();
+    SDL_joylist_item *item = (SDL_joylist_item *)joystick->hwdata;
+    if (!item || !item->trigger_rumble_available) {
+        return SDL_Unsupported();
+    }
+    item->left_trigger_rumble = left_rumble;
+    item->right_trigger_rumble = right_rumble;
+    return Emscripten_UpdateRumble(item);
 }
 
 static bool EMSCRIPTEN_JoystickGetGamepadMapping(int device_index, SDL_GamepadMapping *out)

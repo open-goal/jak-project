@@ -56,7 +56,7 @@
 
 #ifdef SDL_JOYSTICK_RAWINPUT_WGI
 #include "../../core/windows/SDL_windows.h"
-typedef struct WindowsGamingInputGamepadState WindowsGamingInputGamepadState;
+struct WindowsGamingInputGamepadState;
 #define GamepadButtons_GUIDE 0x40000000
 #define COBJMACROS
 #include "windows.gaming.input.h"
@@ -157,7 +157,7 @@ struct joystick_hwdata
     Uint8 wgi_correlation_id;
     Uint8 wgi_correlation_count;
     Uint8 wgi_uncorrelate_count;
-    WindowsGamingInputGamepadState *wgi_slot;
+    struct WindowsGamingInputGamepadState *wgi_slot;
     struct __x_ABI_CWindows_CGaming_CInput_CGamepadVibration vibration;
 #endif
 
@@ -1976,20 +1976,24 @@ static void RAWINPUT_UpdateOtherAPIs(SDL_Joystick *joystick)
                 state = SDL_POWERSTATE_ON_BATTERY;
                 break;
             }
-            switch (battery_info->BatteryLevel) {
-            case BATTERY_LEVEL_EMPTY:
-                percent = 10;
-                break;
-            case BATTERY_LEVEL_LOW:
-                percent = 40;
-                break;
-            case BATTERY_LEVEL_MEDIUM:
-                percent = 70;
-                break;
-            default:
-            case BATTERY_LEVEL_FULL:
-                percent = 100;
-                break;
+            if (state == SDL_POWERSTATE_ON_BATTERY || state == SDL_POWERSTATE_CHARGING) {
+                switch (battery_info->BatteryLevel) {
+                case BATTERY_LEVEL_EMPTY:
+                    percent = 10;
+                    break;
+                case BATTERY_LEVEL_LOW:
+                    percent = 40;
+                    break;
+                case BATTERY_LEVEL_MEDIUM:
+                    percent = 70;
+                    break;
+                default:
+                case BATTERY_LEVEL_FULL:
+                    percent = 100;
+                    break;
+                }
+            } else {
+                percent = -1;
             }
             SDL_SendJoystickPowerInfo(joystick, state, percent);
         }
