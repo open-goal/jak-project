@@ -117,7 +117,7 @@ void Loader::draw_debug_window() {
   const char* preview = m_selected_level_for_reload.empty() ? "(select a level)"
                                                             : m_selected_level_for_reload.c_str();
   if (ImGui::BeginCombo("Level Select", preview)) {
-    for (const auto& name : m_loaded_tfrag3_levels | std::views::keys) {
+    for (const auto& [name, data] : m_loaded_tfrag3_levels) {
       bool selected = (name == m_selected_level_for_reload);
       if (ImGui::Selectable(name.c_str(), selected)) {
         m_selected_level_for_reload = name;
