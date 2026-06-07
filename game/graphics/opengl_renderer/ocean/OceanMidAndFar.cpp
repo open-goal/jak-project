@@ -3,15 +3,23 @@
 #include "third-party/imgui/imgui.h"
 
 OceanMidAndFar::OceanMidAndFar(const std::string& name, int my_id)
-    : BucketRenderer(name, my_id), m_direct(name, my_id, 4096), m_texture_renderer(true) {}
+    : BucketRenderer(name, my_id),
+      m_direct(name, my_id, 4096),
+      m_envmap_renderer(name + "-envmap", my_id, 4096),
+      m_texture_renderer(true) {}
 
 void OceanMidAndFar::draw_debug_window() {
+  if (ImGui::TreeNode("envmap")) {
+    m_envmap_renderer.draw_debug_window();
+    ImGui::TreePop();
+  }
   m_texture_renderer.draw_debug_window();
   m_direct.draw_debug_window();
 }
 
 void OceanMidAndFar::init_textures(TexturePool& pool, GameVersion version) {
   m_texture_renderer.init_textures(pool, version);
+  m_envmap_renderer.init_textures(pool, version);
 }
 
 void OceanMidAndFar::render(DmaFollower& dma,
@@ -96,15 +104,16 @@ void OceanMidAndFar::render_jak2(DmaFollower& dma,
   }
   m_direct.reset_state();
 
-  // TODO handle ocean::89 and ocean::79
-  // handle_ocean_89_jak2(dma, render_state, prof);
+  {
+    auto p = prof.make_scoped_child("envmap");
+    m_envmap_renderer.handle_ocean_envmap_jak2(dma, render_state, p);
+  }
 
   {
     auto p = prof.make_scoped_child("texture");
     m_texture_renderer.handle_ocean_texture_jak2(dma, render_state, p);
   }
 
-  // handle_ocean_79_jak2(dma, render_state, prof);
   handle_ocean_far(dma, render_state, prof);
   m_direct.flush_pending(render_state, prof);
 
@@ -189,7 +198,3 @@ void OceanMidAndFar::handle_ocean_mid(DmaFollower& dma,
     dma.read_and_advance();
   }
 }
-
-void handle_ocean_89_jak2(DmaFollower&, SharedRenderState*, ScopedProfilerNode&) {}
-
-void handle_ocean_79_jak2(DmaFollower&, SharedRenderState*, ScopedProfilerNode&) {}
