@@ -80,6 +80,7 @@ struct InternFromCInfo {
 // this is needed because the handlers for the functions are stateless
 // and using the functions via the handler's capture lists requires templating nonsense
 struct CommonPCPortFunctionWrappers {
+  std::function<Ptr<Function>(const char*, void*)> make_function_symbol_from_c;
   std::function<InternFromCInfo(const char*)> intern_from_c;
   std::function<u64(const char*)> make_string_from_c;
 };

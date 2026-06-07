@@ -43,6 +43,8 @@
 ;;;;  access subtitle heap
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define-extern pc-subtitle2-get-scene-by-name (function subtitle2-text-info string subtitle2-scene))
+
 
 (defmethod get-speaker ((obj subtitle2-text-info) (speaker pc-subtitle2-speaker))
   "get the translated string for that speaker"
@@ -53,28 +55,7 @@
 
 (defmethod get-scene-by-name ((obj subtitle2-text-info) (name string))
   "get a subtitle scene info with the corresponding name. #f = none found"
-
-  ;; invalid name so return invalid scene.
-  (if (not name)
-      (return (the subtitle2-scene #f)))
-
-  ;; bounds checking
-  (when (> (length name) (-> *vag-temp-string* allocated-length))
-      (format 0 "vag temp string is too short!! wanted: ~D chars~%" (length name)))
-
-  ;; uppercase the string so we have a consistent name format
-  (string-upcase name *vag-temp-string*)
-  (dotimes (i (length obj))
-    ;; bounds checking
-    (when (> (length (-> obj data i name)) (-> *vag-temp-string-2* allocated-length))
-        (format 0 "vag temp string is too short!! wanted: ~D chars~%" (length name)))
-    ;; name and kind matches, return that!
-    (string-upcase (-> obj data i name) *vag-temp-string-2*)
-    (when (string= *vag-temp-string-2* *vag-temp-string*)
-      (return (-> obj data i)))
-    )
-
-  (the subtitle2-scene #f))
+  (pc-subtitle2-get-scene-by-name obj name))
 
 
 (defmethod get-line-at-pos ((obj subtitle2-scene) (pos float) (index int))
@@ -893,6 +874,3 @@
 
 ;; start the subtitle2 process when this file loads.
 (subtitle2-start)
-
-
-
