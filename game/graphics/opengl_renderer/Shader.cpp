@@ -134,6 +134,8 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::TIE_WIND) = {"tie_wind", version};
   at(ShaderId::SIMPLE_TEXTURE) = {"simple_texture", version};
   at(ShaderId::SLOW_TIME) = {"slow_time", version};
+  at(ShaderId::OCEAN_ENVMAP) = {"ocean_envmap", version};
+  at(ShaderId::OCEAN_ENVMAP_HAZE) = {"ocean_envmap_haze", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");
