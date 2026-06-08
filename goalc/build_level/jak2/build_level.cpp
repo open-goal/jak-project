@@ -201,8 +201,7 @@ bool run_build_level(const std::string& input_file,
           if (tex.name == tex0) {
             lg::info("custom level: adding texture {} from tpage {} ({})", tex.name, tex.page,
                      tex_db.tpage_names.at(tex.page));
-            pc_level.textures.push_back(
-                make_texture(id, tex, tex_db.tpage_names.at(tex.page), true));
+            pc_level.textures.push_back(make_texture(id, tex_db, true));
             processed_textures.push_back(tex.name);
           }
         }

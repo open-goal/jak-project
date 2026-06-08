@@ -61,18 +61,17 @@ bool is_valid_bsp(const decompiler::LinkedObjectFile& file) {
   return true;
 }
 
-tfrag3::Texture make_texture(u32 id,
-                             const TextureDB::TextureData& tex,
-                             const std::string& tpage_name,
-                             bool pool_load) {
+tfrag3::Texture make_texture(u32 id, const TextureDB& tex_db, bool pool_load) {
+  const auto& tex = tex_db.textures.at(id);
+  auto resolved = tex_db.resolve_texture(id);
+
   tfrag3::Texture new_tex;
   new_tex.combo_id = id;
-  new_tex.w = tex.w;
-  new_tex.h = tex.h;
-  new_tex.debug_tpage_name = tpage_name;
+  new_tex.w = resolved.w;
+  new_tex.h = resolved.h;
+  new_tex.debug_tpage_name = tex_db.tpage_names.at(tex.page);
   new_tex.debug_name = tex.name;
-  new_tex.data = tex.rgba_bytes;
-  new_tex.combo_id = id;
+  new_tex.data = std::move(resolved.rgba);
   new_tex.load_to_pool = pool_load;
   return new_tex;
 }
@@ -80,12 +79,13 @@ tfrag3::Texture make_texture(u32 id,
 void add_all_textures_from_level(tfrag3::Level& lev,
                                  const std::string& level_name,
                                  const TextureDB& tex_db) {
-  const auto& level_it = tex_db.texture_ids_per_level.find(level_name);
-  if (level_it != tex_db.texture_ids_per_level.end()) {
-    for (auto id : level_it->second) {
-      const auto& tex = tex_db.textures.at(id);
-      lev.textures.push_back(make_texture(id, tex, tex_db.tpage_names.at(tex.page), true));
-    }
+  auto level_it = tex_db.texture_ids_per_level.find(level_name);
+  if (level_it == tex_db.texture_ids_per_level.end()) {
+    return;
+  }
+
+  for (auto id : level_it->second) {
+    lev.textures.push_back(make_texture(id, tex_db, true));
   }
 }
 
@@ -313,8 +313,7 @@ void extract_common(const ObjectFileDB& db,
     if (config.common_tpages.count(normal_texture.page) && !textures_we_have_id.count(id)) {
       textures_we_have.insert(normal_texture.name);
       textures_we_have_id.insert(id);
-      tfrag_level.textures.push_back(
-          make_texture(id, normal_texture, tex_db.tpage_names.at(normal_texture.page), true));
+      tfrag_level.textures.push_back(make_texture(id, tex_db, true));
     }
   }
 
@@ -323,13 +322,16 @@ void extract_common(const ObjectFileDB& db,
     if (config.animated_textures.count(normal_texture.name) &&
         !textures_we_have.count(normal_texture.name)) {
       textures_we_have.insert(normal_texture.name);
-      tfrag_level.textures.push_back(
-          make_texture(id, normal_texture, tex_db.tpage_names.at(normal_texture.page), false));
+      tfrag_level.textures.push_back(make_texture(id, tex_db, false));
     }
   }
 
   Serializer ser;
   tfrag_level.serialize(ser);
+  if (!config.rip_levels) {
+    tfrag_level.textures.clear();
+    tfrag_level.textures.shrink_to_fit();
+  }
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
 
@@ -369,6 +371,10 @@ void extract_from_level(const ObjectFileDB& db,
 
   Serializer ser;
   level_data.serialize(ser);
+  if (!config.rip_levels) {
+    level_data.textures.clear();
+    level_data.textures.shrink_to_fit();
+  }
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
   lg::info("stats for {}", level_data.level_name);
@@ -408,12 +414,18 @@ void extract_all_levels(const ObjectFileDB& db,
   auto entities_dir = file_util::get_jak_project_dir() / "decompiler_out" /
                       game_version_names[config.game_version] / "entities";
   file_util::create_dir_if_needed(entities_dir);
+
+  int num_workers = dgo_names.size();
+  if (tex_db.replace_texture_dir) {
+    num_workers = 1;
+  }
+
   SimpleThreadGroup threads;
   threads.run(
       [&](int idx) {
         extract_from_level(db, tex_db, dgo_names[idx], config, output_path, entities_dir);
       },
-      dgo_names.size());
+      dgo_names.size(), num_workers);
   threads.join();
 }
 
