@@ -1,0 +1,159 @@
+name: 🧪 Offline Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: offline-tests
+  cancel-in-progress: false
+
+# curl -s https://api.github.com/users/<GH_USER_NAME> | jq -r .id
+
+jobs:
+  validate-author:
+    name: Verify Permissions
+    runs-on: self-hosted
+    if: github.repository == 'open-goal/jak-project'
+    timeout-minutes: 5
+    outputs:
+      trusted: ${{ steps.verify.outputs.trusted }}
+      sha: ${{ steps.verify.outputs.sha }}
+    steps:
+      - id: verify
+        name: Verify Permissions
+        if: github.event_name != 'issue_comment' || github.event.issue.pull_request
+        env:
+          EVENT: ${{ github.event_name }}
+          AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+          COMMENT_ID: ${{ github.event.comment.user.id }}
+          COMMENT: ${{ github.event.comment.body }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -e
+
+          mkdir -p ./.tmp-ci
+
+          curl -fsSL \
+            https://raw.githubusercontent.com/open-goal/jak-project/master/.github/offline-allowlist.txt \
+            -o ./.tmp-ci/allowlist.txt
+
+          is_trusted=false
+
+          # ---- PUSH: always trusted ----
+          if [ "$EVENT" = "push" ]; then
+            echo "push event detected, these are always trusted"
+            is_trusted=true
+            SHA="${{ github.sha }}"
+
+          # ---- PULL REQUEST: check author ----
+          elif [ "$EVENT" = "pull_request" ]; then
+            echo "pull request event detected, these may be trusted if in the allowlist"
+            SHA="${{ github.event.pull_request.head.sha }}"
+            if grep -Fxq "$AUTHOR_ID" ./.tmp-ci/allowlist.txt; then
+              echo "PR author found in the allowlist, it's trusted"
+              is_trusted=true
+            else
+              echo "PR author NOT found in the allowlist"
+            fi
+
+          # ---- ISSUE COMMENT: "ok to test" gate ----
+          elif [ "$EVENT" = "issue_comment" ]; then
+            echo "comment event detected, these may be trusted if in the allowlist"
+            SHA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER --jq '.head.sha')
+            if [ "$COMMENT" = "ok to test" ] && grep -Fxq "$COMMENT_ID" ./.tmp-ci/allowlist.txt; then
+              is_trusted=true
+            fi
+          fi
+
+          echo "trusted=$is_trusted" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+          rm -rf ./.tmp-ci
+  offline-tests:
+    name: Run Tests
+    needs: validate-author
+    if: needs.validate-author.outputs.trusted == 'true' && github.repository == 'open-goal/jak-project'
+    runs-on: self-hosted
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ needs.validate-author.outputs.sha }}
+          clean: false
+
+      - name: Build Binaries
+        run: |
+          cmake -B build --preset="Release-linux-clang-static" -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build build --target offline-test --target extractor --parallel $(`nproc`)
+
+      - name: Build Release
+        run: |
+          rm -r ./ci-artifacts || true
+          mkdir ./ci-artifacts
+          chmod +x ./.github/scripts/releases/extract_build_unix.sh
+          PREP_BIN=false ./.github/scripts/releases/extract_build_unix.sh ./ci-artifacts ./build ./
+          cp ./build/decompiler/extractor ./ci-artifacts
+
+      - name: Install Jak 1
+        run: |
+          cd ./ci-artifacts
+          ./extractor ~/isos/jak1_ntsc.iso --game jak1 --extract --validate --proj-path "$PWD/data"
+          ./extractor ~/isos/jak1_ntsc.iso --game jak1 --decompile --proj-path "$PWD/data"
+          ./extractor ~/isos/jak1_ntsc.iso --game jak1 --compile --proj-path "$PWD/data"
+          rm -r ./data/out || true
+          rm -r ./data/iso_data || true
+          rm -r ./data/decompiler_out || true
+
+      - name: Install Jak 2
+        run: |
+          cd ./ci-artifacts
+          ./extractor ~/isos/jak2_ntsc.iso --game jak2 --extract --validate --proj-path "$PWD/data"
+          ./extractor ~/isos/jak2_ntsc.iso --game jak2 --decompile --proj-path "$PWD/data"
+          ./extractor ~/isos/jak2_ntsc.iso --game jak2 --compile --proj-path "$PWD/data"
+          rm -r ./data/out || true
+          rm -r ./data/iso_data || true
+          rm -r ./data/decompiler_out || true
+
+      - name: Install Jak 3
+        run: |
+          cd ./ci-artifacts
+          ./extractor ~/isos/jak3_ntsc.iso --game jak3 --extract --validate --proj-path "$PWD/data"
+          ./extractor ~/isos/jak3_ntsc.iso --game jak3 --decompile --proj-path "$PWD/data"
+          ./extractor ~/isos/jak3_ntsc.iso --game jak3 --compile --proj-path "$PWD/data"
+          rm -r ./data/out || true
+          rm -r ./data/iso_data || true
+          rm -r ./data/decompiler_out || true
+
+      - name: Cleanup Installation
+        run: |
+          rm -r ./ci-artifacts || true
+
+      - name: Run Offline Tests - Jak 1
+        run: |
+          7z x ~/isos/jak1_ntsc.iso -o./iso_data/jak1 -aos
+          task set-game-jak1
+          task offline-tests
+          rm -rf ./iso_data/jak1/*
+
+      - name: Run Offline Tests - Jak 2
+        run: |
+          7z x ~/isos/jak2_ntsc.iso -o./iso_data/jak2 -aos
+          task set-game-jak2
+          task offline-tests
+          rm -rf ./iso_data/jak2/*
+
+      - name: Run Offline Tests - Jak 3
+        run: |
+          7z x ~/isos/jak3_ntsc.iso -o./iso_data/jak3 -aos
+          task set-game-jak3
+          task offline-tests
+          rm -rf ./iso_data/jak3/*
