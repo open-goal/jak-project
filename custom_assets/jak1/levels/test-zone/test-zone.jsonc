@@ -26,6 +26,9 @@
   // float types: float, meters (1 meter = 4096.0 units), degrees (65536.0 = 360°)
   // vector types: vector (normal floats), vector4m (meters), vector3m (meters with w set to 1.0), vector-vol (normal floats with w in meters), movie-pos (meters with w in degrees)
   // special types: symbol, type, string, eco-info, cell-info, buzzer-info, water-height
+  // by default, lumps will always use the default keyframe value of -1000000000.0 (DEFAULT_RES_TIME).
+  // most of the actor code will be using that value, but there are some exceptions (camera entities, water volumes, etc.)
+  // you can specify a different keyframe by suffixing the lump type with e.g. "@0.5", so for a float at keyframe 0.5, the type would be "float@0.5".
   //
   // examples:
   //
@@ -133,6 +136,49 @@
         "type": "'hint",
         "text-id": ["enum-uint32", "(text-id fuel-cell)"], // text id for the "POWER CELL" text
         "play-mode": "'notice"
+      }
+    }
+  ],
+
+  // Camera entities you want to use in your level. These are used to dynamically adjust camera settings/modes when Jak enters a volume.
+  // There are a couple of different camera modes, depending on what lumps are present:
+  // - cam-circular: orbits a specified point. requires "pivot" lump.
+  //   - optional lumps: "maxAngle", "focalPull"
+  // - cam-standoff: requires "align" lump.
+  // - cam-string: the default camera mode. used when any of these lumps are present to override the default cam mode behavior:
+  //   - "stringMaxLength", "stringMinLength", "stringMaxHeight", "stringMinHeight"
+  //
+  // Some generic lumps that can be used for all camera modes:
+  // - "fov": set the camera fov (default is 64).
+  // - "interpTime": set the cam blend time when entering the camera entity volume.
+  // - "tiltAdjust": set the camera roll value.
+  //
+  // There's a "flags" lump that takes a cam-slave-options enum value:
+  // "flags": ["enum-uint32", "(cam-slave-options SAME_SIDE COLLIDE)"]
+  //
+  // There's three different volume types (these all have to be defined in keyframe 0, e.g. ["vector-vol@0.0": ...]):
+  // vol: sets camera entity when Jak is inside.
+  // pvol: preferred volume when camera entities overlap.
+  // cutoutvol: disables camera entity when Jak is inside.
+  //
+  // "interesting" is an optional vector lump that can be set to be used as a "point of interest" for the camera to focus on.
+  "cameras": [
+    {
+      "trans": [17.26, 9.0, 13.2],
+      "quat": [0.020696, 0.784734, -0.618932, 0.026241],
+      "lump": {
+        "name": "test-cam",
+        "pivot": ["vector3m", [15.0761, 2.6482, 25.548]],
+        "interpTime": ["float", 0.1],
+        "vol": [
+          "vector-vol@0",
+          [-0.09046, 0.025624, 0.99557, 32.528575],
+          [-0.995854, 0.007292, -0.090673, -8.671137],
+          [0.09046, -0.025624, -0.99557, -16.528584],
+          [0.995854, -0.007292, 0.090673, 24.671144],
+          [-0.009584, -0.999645, 0.024858, 0.695884],
+          [0.009584, 0.999645, -0.024858, 15.304117]
+        ]
       }
     }
   ],
