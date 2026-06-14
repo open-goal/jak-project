@@ -57,6 +57,16 @@
   )
 ;; ---draw-control-global-effect
 
+(declare-type merc-eye-anim-block structure)
+(declare-type merc-ctrl structure)
+(declare-type process-drawable process-nettable)
+(declare-type ripple-control basic)
+(declare-type shadow-geo structure)
+(declare-type shadow-control structure)
+(declare-type cloth-base basic)
+(declare-type verlet-particle-system cloth-base)
+(declare-type cloth-system verlet-particle-system)
+(declare-type joint-control basic)
 
 ;; DECOMP BEGINS
 
@@ -348,3 +358,127 @@ This stores settings like the name of the art-group, shadow/level-of-detail sett
 (defmethod get-skeleton-origin ((this draw-control))
   (-> this skeleton bones 0 transform trans)
   )
+
+;; og:preserve-this
+;; look up the index of an art element in an art group.
+(desfun art-elt-index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
+        (if (not (car ag-info))
+            (error (symbol->string ag-name))
+            (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+              (if (not (car elt-info))
+                  (error (symbol->string ag-name))
+                  (cadr (cdr elt-info)))
+              )
+            )
+        )
+      )
+  )
+
+(defmacro joint-node-index (jg-name name)
+  (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
+      (if (not (car jg-info))
+          -1
+          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+              (if (not (car joint-node))
+                  -1
+                  (cadr (cdr joint-node)))
+              )
+          )
+      )
+  )
+
+(defmacro joint-node (jg name)
+  `(-> self node-list data (joint-node-index ,jg ,name))
+  )
+
+(defmacro defskelgroup (name ag-name joint-geom joint-anim lods
+                        &key (shadow 0)
+                        &key bounds
+                        &key (longest-edge 0.0)
+                        &key (texture-level 0)
+                        &key (sort 0)
+                        &key (version ART_GROUP_FILE_VERSION) ;; do NOT use this!
+                        &key (origin-joint-index 0)
+                        &key (shadow-joint-index 0)
+                        &key (light-index 0)
+                        &key (global-effects 0)
+                        &key (clothing ())
+                        )
+  "Define a new static skeleton-group."
+  `(let ((skel (new 'static 'skeleton-group
+                        :name ,(symbol->string name)
+                        :extra #f
+                        :info #f
+                        :art-group-name ,(symbol->string ag-name)
+                        :bounds ,bounds
+                        :longest-edge ,longest-edge
+                        :texture-level ,texture-level
+                        :version ,version
+                        :shadow ,(art-elt-index (string->symbol-format "{}-ag" ag-name) shadow)
+                        :shadow-joint-index ,shadow-joint-index
+                        :origin-joint-index ,origin-joint-index
+                        :max-lod ,(- (length lods) 1)
+                        :sort ,sort
+                        :light-index ,light-index
+                        :global-effects ,global-effects
+                        :clothing #f
+                        )))
+
+        ;; set cloth params array if present
+        (when ,(neq? clothing '())
+          (set! (-> skel clothing) (new 'static 'boxed-array :type cloth-params :length 0 :allocated-length ,(length clothing)))
+          ,@(apply-i (lambda (x i)
+            `(set! (-> skel clothing ,i) (static-cloth-params ,(string->symbol-format "{}-ag" ag-name) ,x))) clothing)
+          (set! (-> skel clothing length) ,(length clothing))
+          )
+
+        ;; set joint geometry and joint bones
+        (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-anim))
+
+        ;; set lods
+        ,@(apply-i (lambda (x i)
+                      `(begin
+                          (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) (car x)))
+                          (set! (-> skel lod-dist ,i) ,(cadr x))
+                          )
+                      ) lods)
+
+        ;; define skel group
+        (define ,name skel)
+        ;; add to level
+        (add-to-loading-level ,name)
+        )
+  )
+
+(defmacro def-actor (name &key (idle #f) &key (lods #f) &key (art (idle-ja)) &key (joints ()) &key (shadow 0) &key bounds &key (longest-edge 0.0) &key (texture-level 0) &key (sort 0) &key (version 7) &key (origin-joint-index 0) &key (shadow-joint-index 0) &key (light-index 0) &key (global-effects 0) &key (clothing ()))
+  `(begin
+    (def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-lod0-jg" name) 0)
+    (def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-lod0-mg" name) 1)
+    ,@(apply-i (lambda (x i)
+               `(def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-{}" name x) ,(+ i 2)))
+             art)
+    ,@(apply-i (lambda (x i) `(def-joint-node ,(string->symbol-format "{}-lod0-jg" name) ,(symbol->string x) ,(1+ i))) joints)
+    (defskelgroup ,(string->symbol-format "*{}-sg*" name)
+      ,name
+      ,(string->symbol-format "{}-lod0-jg" name)
+      ,(if idle (string->symbol-format "{}-{}" name idle) (string->symbol-format "{}-{}" name (car art)))
+      ,(if lods
+        `(,@(apply (lambda (x) `(,(string->symbol-format "{}-{}-mg" name (car x)) (meters ,(cadr x)))) lods))
+        `((,(string->symbol-format "{}-lod0-mg" name) (meters 999999))))
+      :version ,version
+      :shadow ,shadow
+      :bounds (static-spherem ,@bounds)
+      :longest-edge ,longest-edge
+      :texture-level ,texture-level
+      :sort ,sort
+      :origin-joint-index ,origin-joint-index
+      :shadow-joint-index ,shadow-joint-index
+      :light-index ,light-index
+      :global-effects ,global-effects
+      :clothing ,clothing)))
+
+;; TODO JAKX - data files, import them

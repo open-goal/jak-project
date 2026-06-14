@@ -5,6 +5,23 @@
 ;; name in dgo: history
 ;; dgos: ENGINE, GAME
 
+;; +++history-channel
+(defenum history-channel
+  :type uint8
+  (trans 0)
+  (transv 1)
+  (transv-in 2)
+  (transv-out 3)
+  (intersect 4)
+  (local-normal 5)
+  (surface-normal 6)
+  (collide-status 7)
+  (pat 8)
+  (time 9)
+  (friction 10)
+  )
+;; ---history-channel
+
 ;; DECOMP BEGINS
 
 ;; this file is debug only
@@ -376,14 +393,14 @@
 (defun history-draw ((arg0 history-iterator))
   (let ((sv-16 (the-as vector #f))
         (sv-20 (the-as vector #f))
-        (sv-24 0)
+        (sv-24 0.0)
         )
     (until #f
       (let ((s5-0 (update-entries! arg0)))
         (if (not s5-0)
             (goto cfg-34)
             )
-        (when (logtest? (-> arg0 channel-mask) (ash 1 (-> s5-0 channel)))
+        (when (logtest? (-> arg0 channel-mask) (ash 1 (the-as int (-> s5-0 channel))))
           (let* ((f0-0 (get-age arg0 s5-0))
                  (v1-8 (the int (lerp 4.0 128.0 f0-0)))
                  )
@@ -449,14 +466,19 @@
                  )
                )
               (((history-channel local-normal) (history-channel surface-normal))
-               (let ((t1-7 (incomplete-bitfield-access (-> *pat-mode-info* (shr (shl (the-as int sv-24) 54) 61) hilite-color))))
+               (let ((t1-7
+                       (logand (the-as uint (-> *pat-mode-info* (shr (shl (the-as int sv-24) 54) 61) hilite-color))
+                               (the-as uint #xffffffff00ffffff)
+                               )
+                       )
+                     )
                  (add-debug-vector
                    #t
                    (bucket-id bucket785)
                    (-> s5-0 origin)
                    (-> s5-0 vector)
                    (meters 1)
-                   (logior t1-7 (shl v1-8 24))
+                   (the-as rgba (logior t1-7 (shl v1-8 24)))
                    )
                  )
                )

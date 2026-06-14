@@ -7,7 +7,7 @@
 
 ;; +++font-flags
 (defenum font-flags
-  :type uint16
+  :type uint32
   :bitfield #t
   (shadow 0)
   (kerning 1)
@@ -74,6 +74,15 @@
   )
 ;; ---font-color
 
+;; +++draw-string-result
+(deftype draw-string-result (uint64)
+  ((length float :offset 0)
+   (b float :offset 32))
+  )
+;; ---draw-string-result
+
+(declare-type font-context structure)
+(define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
 
 ;; DECOMP BEGINS
 
@@ -143,7 +152,6 @@
     )
   )
 
-;; ERROR: failed type prop at 31: Could not figure out load: (set! a2 (l.wu (+ gp 12)))
 
 ;; WARN: Return type mismatch font-context vs none.
 (defmethod set-mat! ((this font-context) (arg0 matrix))
@@ -195,9 +203,8 @@
   )
 
 ;; WARN: Return type mismatch font-context vs none.
-;; ERROR: Failed store: (s.w! (+ this 12) arg0) at op 0
 (defmethod set-flags! ((this font-context) (arg0 font-flags))
-  (s.w! (+ this 12) arg0)
+  (set! (-> this flags) arg0)
   (none)
   )
 
@@ -249,7 +256,6 @@
   (none)
   )
 
-;; ERROR: Failed store: (s.w! (+ v1-2 12) arg5) at op 13
 (defmethod new font-context ((allocation symbol)
                            (type-to-make type)
                            (arg0 matrix)
@@ -260,9 +266,7 @@
                            (arg5 font-flags)
                            )
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (let ((v1-2 v0-0))
-      (s.w! (+ v1-2 12) arg5)
-      )
+    (set! (-> v0-0 flags) arg5)
     (set! (-> v0-0 mat) arg0)
     (let ((v1-4 v0-0))
       (set! (-> v1-4 origin x) (the float arg1))

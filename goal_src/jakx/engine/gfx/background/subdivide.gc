@@ -229,7 +229,7 @@
       (when GSH_ENABLE
         (let ((v1-5 GSH_BUCKET))
           (let ((a0-2 GSH_WHICH_STAT))
-            (set! gp-0 (+ (* v1-5 2) a0-2))
+            (set! gp-0 (+ (* (the-as uint v1-5) 2) a0-2))
             )
           (when GSH_MAX_DISPLAY
             (let ((a0-7 (logand (-> *perf-stats* data 0 frame-number) (+ GSH_TIME -1))))
@@ -271,7 +271,7 @@
            )
           (else
             (let ((a1-61 (logand gp-0 1))
-                  (a0-62 (the-as uint #x80004010))
+                  (a0-62 #x80004010)
                   )
               (cond
                 ((zero? a1-61)
@@ -302,8 +302,17 @@
   (none)
   )
 
+;; og:preserve-this this part is patched
 (if (not *debug-segment*)
-    (set! start-perf-stat-collection L1)
+    (set! start-perf-stat-collection
+          (lambda ()
+            (dotimes (v1-0 51)
+              (set! (-> *perf-stats* data v1-0 count) (the-as uint 0))
+              )
+            0
+            (none)
+            )
+          )
     )
 
 (defun-debug end-perf-stat-collection ()
