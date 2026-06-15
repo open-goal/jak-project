@@ -1,0 +1,10 @@
+("CLIFCTF.DGO"
+ ("ctf-part.o"
+  "ctf-obs.o"
+  "net-ctf.o"
+  "tpage-1346.go"
+  "tpage-1347.go"
+  "ctf-base-ag.go"
+  "fuel-cell-ag.go"
+  "clifctf.o"
+ ))

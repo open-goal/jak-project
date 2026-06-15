@@ -1,0 +1,10 @@
+("KLEVL2.DGO"
+ ("bear-chassis-ag.o"
+  "bear-door-d-ag.go"
+  "bear-hood-e-ag.go"
+  "bear-r-fender-c-ag.go"
+  "bear-roof-b-ag.go"
+  "bear-trunk-c-ag.go"
+  "wheel-m-ag.go"
+  "klevl2.o"
+ ))

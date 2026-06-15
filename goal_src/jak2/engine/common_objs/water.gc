@@ -654,11 +654,6 @@
   )
 
 (defmethod water-control-method-10 ((this water-control))
-  (local-vars
-    (sv-272 (function vector entity-actor skeleton-group vector object none :behavior manipy))
-    (sv-288 vector)
-    (sv-304 entity-actor)
-    )
   (with-pp
     (let ((s4-0 (-> this flags))
           (s5-0 (new 'stack-no-clear 'water-info))
@@ -760,37 +755,18 @@
               (when (and (not (handle->process (-> this ripple)))
                          (>= (+ (current-time) (seconds -1.5)) (-> this enter-water-time))
                          )
-                (let* ((s1-0 (get-process *default-dead-pool* manipy #x4000))
-                       (s2-0
-                         (when s1-0
-                           (let ((t9-6 (method-of-type manipy activate)))
-                             (t9-6 (the-as manipy s1-0) (-> this process) (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                             )
-                           (let ((s2-1 run-function-in-process)
-                                 (s0-0 s1-0)
-                                 )
-                             (set! sv-272 manipy-init)
-                             (set! sv-288 s3-0)
-                             (set! sv-304 (-> this process entity))
-                             (let ((t0-0 (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f)))
-                                   (t1-0 #f)
-                                   (t2-0 0)
-                                   )
-                               ((the-as (function object object object object object object object none) s2-1)
-                                s0-0
-                                sv-272
-                                sv-288
-                                sv-304
-                                t0-0
-                                t1-0
-                                t2-0
-                                )
-                               )
-                             )
-                           (-> s1-0 ppointer)
-                           )
-                         )
-                       )
+                (let ((s2-0 (process-spawn
+                              manipy
+                              :init manipy-init
+                              s3-0
+                              (-> this process entity)
+                              (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer uint32) #f))
+                              #f
+                              0
+                              :to (-> this process)
+                              )
+                            )
+                      )
                   (set! (-> this ripple) (ppointer->handle s2-0))
                   (when s2-0
                     (send-event (ppointer->process s2-0) 'anim-mode 'loop)
@@ -1484,7 +1460,6 @@
 
 (defmethod water-info-init! ((this collide-shape) (arg0 water-info) (arg1 collide-action))
   "Initialize a [[water-info]] with the currently loaded regions."
-  (local-vars (sv-80 int))
   (let ((s3-0 (new 'stack 'water-info)))
     (set! (-> s3-0 flags) (water-flags))
     (set! (-> s3-0 handle) (the-as handle #f))
@@ -1500,22 +1475,22 @@
         (when (= (-> v1-8 status) 'active)
           (let ((s1-0 (-> v1-8 bsp region-trees)))
             (when (nonzero? s1-0)
-              (let ((s0-0 (-> s1-0 length)))
-                (set! sv-80 0)
-                (let ((a0-10 (-> s1-0 sv-80)))
-                  (while (< sv-80 s0-0)
-                    (if (= (-> a0-10 name) 'water)
-                        ;; og:preserve-this scratchpad
-                        (collect-regions
-                          a0-10
-                          (the-as sphere (-> (scratchpad-object region-prim-area) pos))
-                          0
-                          (-> (scratchpad-object region-prim-area) region-prim-list)
-                          )
+              (let* ((s0-0 (-> s1-0 length))
+                     (sv-80 0)
+                     (a0-10 (-> s1-0 sv-80))
+                     )
+                (while (< sv-80 s0-0)
+                  (if (= (-> a0-10 name) 'water)
+                      ;; og:preserve-this scratchpad
+                      (collect-regions
+                        a0-10
+                        (the-as sphere (-> (scratchpad-object region-prim-area) pos))
+                        0
+                        (-> (scratchpad-object region-prim-area) region-prim-list)
                         )
-                    (set! sv-80 (+ sv-80 1))
-                    (set! a0-10 (-> s1-0 sv-80))
-                    )
+                      )
+                  (+! sv-80 1)
+                  (set! a0-10 (-> s1-0 sv-80))
                   )
                 )
               )

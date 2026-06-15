@@ -1,0 +1,10 @@
+("ICETOURS.DGO"
+ ("tpage-2959.o"
+  "tpage-3355.go"
+  "tpage-3362.go"
+  "tpage-2960.go"
+  "tpage-3602.go"
+  "peak-snowball-ag.go"
+  "finish-banner-ag.go"
+  "icetours.o"
+ ))

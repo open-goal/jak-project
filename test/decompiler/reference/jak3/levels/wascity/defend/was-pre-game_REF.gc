@@ -2465,13 +2465,6 @@
 ;; definition for method 27 of type was-pre-game
 ;; INFO: Used lq/sq
 (defmethod update-game-state ((this was-pre-game))
-  (local-vars
-    (sv-32 function)
-    (sv-48 process)
-    (sv-64 (function entity-actor vector int time-frame float object :behavior pre-game-bubble))
-    (sv-80 entity-actor)
-    (sv-96 int)
-    )
   (+! (-> this beam-clock) (* 300.0 (seconds-per-frame)))
   (dotimes (s5-0 4)
     (set! (-> this beam s5-0 min) (+ 0.4 (* 0.2 (sin (* 36.40889 (-> this beam-clock))))))
@@ -2539,29 +2532,16 @@
                  )
                 )
               )
-            (let ((s0-0 (get-process *default-dead-pool* pre-game-bubble #x4000 1)))
-              (when s0-0
-                (let ((t9-8 (method-of-type pre-game-bubble activate)))
-                  (t9-8 (the-as pre-game-bubble s0-0) this "pre-game-bubble" (the-as pointer #x70004000))
-                  )
-                (set! sv-32 run-function-in-process)
-                (set! sv-48 s0-0)
-                (set! sv-64 pre-game-bubble-init)
-                (set! sv-80 (-> this entity))
-                (set! sv-96 0)
-                (let ((t2-1 (rand-vu-float-range (-> s5-2 gravity-min) (-> s5-2 gravity-max))))
-                  ((the-as (function object object object object object object object none) sv-32)
-                   sv-48
-                   sv-64
-                   sv-80
-                   s2-0
-                   s1-0
-                   sv-96
-                   t2-1
-                   )
-                  )
-                (-> s0-0 ppointer)
-                )
+            (process-spawn
+              pre-game-bubble
+              :init pre-game-bubble-init
+              (-> this entity)
+              s2-0
+              s1-0
+              0
+              (rand-vu-float-range (-> s5-2 gravity-min) (-> s5-2 gravity-max))
+              :name "pre-game-bubble"
+              :to this
               )
             )
           )

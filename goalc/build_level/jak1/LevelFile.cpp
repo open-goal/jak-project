@@ -125,7 +125,7 @@ std::vector<u8> LevelFile::save_object_file() const {
   auto file_info_slot = info.add_to_object_file(gen);
   gen.link_word_to_byte(1, file_info_slot);
 
-  ambient_arr_slot = jak1::generate_inline_array_ambients(gen, ambients);
+  ambient_arr_slot = generate_inline_array_ambients(gen, ambients);
 
   //(bsphere                vector :inline                   :offset-assert  16)
   //(all-visible-list       (pointer uint16)                 :offset-assert  32)
@@ -153,6 +153,8 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(actors                 drawable-inline-array-actor      :offset-assert 112)
   gen.link_word_to_byte(112 / 4, generate_inline_array_actors(gen, actors));
   //(cameras                (array entity-camera)            :offset-assert 116)
+  if (!cameras.empty())
+    gen.link_word_to_byte(116 / 4, generate_cameras_array(gen, cameras));
   //(nodes                  (inline-array bsp-node)          :offset-assert 120)
   //(level                  level                            :offset-assert 124)
   //(current-leaf-idx       uint16                           :offset-assert 128)

@@ -811,10 +811,6 @@
     (target-board-handler proc argc message block)
     )
   :enter (behavior ((arg0 meters) (arg1 meters) (arg2 symbol))
-    (local-vars
-      (sv-144 (function vector entity-actor skeleton-group vector object none :behavior manipy))
-      (sv-160 entity-actor)
-      )
     (if (= arg2 'hit)
         (set! arg2 #f)
         )
@@ -845,36 +841,19 @@
            (set! (-> s3-2 quad) (-> self control trans quad))
            (+! (-> s3-2 y) 2048.0)
            (part-tracker-spawn :to self :group group-board-quick-jump :mat-joint s3-2)
-           (let* ((s1-1 (get-process *default-dead-pool* manipy #x4000))
-                  (s2-2
-                    (when s1-1
-                      (let ((t9-8 (method-of-type manipy activate)))
-                        (t9-8 (the-as manipy s1-1) self (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                        )
-                      (let ((s2-3 run-function-in-process)
-                            (s0-1 s1-1)
-                            )
-                        (set! sv-144 manipy-init)
-                        (set! sv-160 (-> self entity))
-                        (let ((t0-2 (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer uint32) #f)))
-                              (t1-1 #f)
-                              (t2-1 0)
-                              )
-                          ((the-as (function object object object object object object object none) s2-3)
-                           s0-1
-                           sv-144
-                           s3-2
-                           sv-160
-                           t0-2
-                           t1-1
-                           t2-1
-                           )
-                          )
-                        )
-                      (-> s1-1 ppointer)
-                      )
-                    )
-                  )
+           (let ((s2-2
+                   (process-spawn
+                     manipy
+                     :init manipy-init
+                     s3-2
+                     (-> self entity)
+                     (art-group-get-by-name *level* "skel-generic-blast" (the-as (pointer uint32) #f))
+                     #f
+                     0
+                     :to self
+                     )
+                   )
+                 )
              (when s2-2
                (quaternion-copy! (-> (the-as board (-> s2-2 0)) root quat) (-> self control quat-for-control))
                (send-event (ppointer->process s2-2) 'anim-mode 'play1)

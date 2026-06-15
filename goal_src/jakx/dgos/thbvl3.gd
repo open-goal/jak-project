@@ -1,0 +1,10 @@
+("THBVL3.DGO"
+ ("gila-chassis-ag.o"
+  "gila-f-bumper-e-ag.go"
+  "gila-f-fender-d-ag.go"
+  "gila-r-fender-e-ag.go"
+  "gila-roof-b-ag.go"
+  "gila-trunk-d-ag.go"
+  "wheel-p-ag.go"
+  "thbvl3.o"
+ ))

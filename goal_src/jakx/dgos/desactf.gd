@@ -1,0 +1,10 @@
+("DESACTF.DGO"
+ ("ctf-part.o"
+  "ctf-obs.o"
+  "net-ctf.o"
+  "tpage-1793.go"
+  "tpage-1794.go"
+  "ctf-base-ag.go"
+  "fuel-cell-ag.go"
+  "desactf.o"
+ ))

@@ -206,7 +206,7 @@ static void draw(SDL_Renderer *renderer, const float (*edges)[6], const Player p
         for (i = 0; i < players_len; i++) {
             const Player *player = &players[i];
             float mod_x = (float)(i % part_hor);
-            float mod_y = (float)(i / part_hor);
+            float mod_y = (float)i / part_hor;
             float hor_origin = (mod_x + 0.5f) * size_hor;
             float ver_origin = (mod_y + 0.5f) * size_ver;
             float cam_origin = (float)(0.5 * SDL_sqrt(size_hor * size_hor + size_ver * size_ver));
@@ -265,7 +265,7 @@ static void draw(SDL_Renderer *renderer, const float (*edges)[6], const Player p
             SDL_RenderLine(renderer, hor_origin-10, ver_origin, hor_origin+10, ver_origin);
         }
     }
-    SDL_SetRenderClipRect(renderer, 0);
+    SDL_SetRenderClipRect(renderer, NULL);
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderDebugText(renderer, 0, 0, debug_string);
     SDL_RenderPresent(renderer);
@@ -347,7 +347,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         return SDL_APP_FAILURE;
     }
-    if (!SDL_CreateWindowAndRenderer("examples/demo/woodeneye-008", 640, 480, 0, &as->window, &as->renderer)) {
+    if (!SDL_CreateWindowAndRenderer("examples/demo/woodeneye-008", 640, 480, SDL_WINDOW_RESIZABLE, &as->window, &as->renderer)) {
         return SDL_APP_FAILURE;
     }
 

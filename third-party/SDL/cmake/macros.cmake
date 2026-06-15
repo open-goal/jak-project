@@ -21,7 +21,7 @@ macro(option_string _NAME _DESC _VALUE)
   add_to_alloptions(${_NAME})
   set(${_NAME} ${_VALUE} CACHE STRING "${_DESC}")
   set(HAVE_${_NAME} ${_VALUE})
-ENDMACRO()
+endmacro()
 
 macro(message_bool_option _NAME _VALUE)
   set(_PAD "\t")
@@ -296,15 +296,15 @@ endfunction()
 function(check_linker_supports_version_file VAR)
   SDL_detect_linker()
   if(CMAKE_C_COMPILER_LINKER_ID MATCHES "^(MSVC)$")
-    set(LINKER_SUPPORTS_VERSION_SCRIPT FALSE)
+    set(${VAR} FALSE)
   else()
     cmake_push_check_state(RESET)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/dummy.sym" "n_0 {\n global:\n  func;\n local: *;\n};\n")
     list(APPEND CMAKE_REQUIRED_LINK_OPTIONS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/dummy.sym")
-    check_c_source_compiles("int func(void) {return 0;} int main(int argc,char*argv[]){(void)argc;(void)argv;return func();}" LINKER_SUPPORTS_VERSION_SCRIPT FAIL_REGEX "(unsupported|syntax error|unrecognized option)")
+    check_c_source_compiles("int func(void) {return 0;} int main(int argc,char*argv[]){(void)argc;(void)argv;return func();}" ${VAR} FAIL_REGEX "(unsupported|syntax error|unrecognized option)")
     cmake_pop_check_state()
   endif()
-  set(${VAR} "${LINKER_SUPPORTS_VERSION_SCRIPT}" PARENT_SCOPE)
+  set(${VAR} "${${VAR}}" PARENT_SCOPE)
 endfunction()
 
 if(CMAKE_VERSION VERSION_LESS 3.18)
@@ -334,6 +334,29 @@ if(APPLE)
   endif()
 endif()
 
+function(PrintEnabledBackends _SUBSYS _REGEXP)
+  get_cmake_property(_ALLVARS VARIABLES)
+  foreach(_VAR IN LISTS _ALLVARS)
+    if(_VAR AND _VAR MATCHES "${_REGEXP}")
+      string(TOLOWER "${CMAKE_MATCH_1}" _LOWERED)
+      if(NOT _LOWERED MATCHES "available|default|dynamic")  # a little hack
+        if(${_VAR}_DYNAMIC)
+          list(APPEND _ENABLED_BACKENDS "${_LOWERED}(dynamic)")
+        else()
+          list(APPEND _ENABLED_BACKENDS "${_LOWERED}")
+        endif()
+      endif()
+    endif()
+  endforeach()
+
+  if(_ENABLED_BACKENDS STREQUAL "")
+    set(_SPACEDOUT "(none)")
+  else()
+    string(REPLACE ";" " " _SPACEDOUT "${_ENABLED_BACKENDS}")
+  endif()
+  message(STATUS "  ${_SUBSYS}: ${_SPACEDOUT}")
+endfunction()
+
 function(SDL_PrintSummary)
   ##### Info output #####
   message(STATUS "")
@@ -362,13 +385,23 @@ function(SDL_PrintSummary)
   message(STATUS "")
   message(STATUS " Build Shared Library: ${SDL_SHARED}")
   message(STATUS " Build Static Library: ${SDL_STATIC}")
-  if(SDL_STATIC)
-    message(STATUS " Build Static Library with Position Independent Code: ${SDL_STATIC_PIC}")
-  endif()
   if(APPLE)
     message(STATUS " Build libraries as Apple Framework: ${SDL_FRAMEWORK}")
   endif()
   message(STATUS "")
+
+  message(STATUS "Enabled backends:")
+  PrintEnabledBackends("Video drivers" "^SDL_VIDEO_DRIVER_([A-Z0-9]*)$")
+  if(SDL_VIDEO_DRIVER_X11)
+    PrintEnabledBackends("X11 libraries" "^SDL_VIDEO_DRIVER_X11_([A-Z0-9]*)$")
+  endif()
+  PrintEnabledBackends("Render drivers" "^SDL_VIDEO_RENDER_([A-Z0-9_]*)$")
+  PrintEnabledBackends("GPU drivers" "^SDL_GPU_([A-Z0-9]*)$")
+  PrintEnabledBackends("Audio drivers" "^SDL_AUDIO_DRIVER_([A-Z0-9]*)$")
+  PrintEnabledBackends("Joystick drivers" "^SDL_JOYSTICK_([A-Z0-9]*)$")
+  PrintEnabledBackends("Camera drivers" "^SDL_CAMERA_DRIVER_([A-Z0-9]*)$")
+  message(STATUS "")
+
   if(UNIX)
     message(STATUS "If something was not detected, although the libraries")
     message(STATUS "were installed, then make sure you have set the")
@@ -385,13 +418,29 @@ function(SDL_PrintSummary)
           "Most likely, this is not wanted."
           "\n"
           "On Linux, install the packages listed at "
-          "https://github.com/libsdl-org/SDL/blob/main/docs/README-linux.md#build-dependencies "
+          "https://wiki.libsdl.org/SDL3/README-linux#build-dependencies "
           "\n"
           "If you really don't need desktop windows, the documentation tells you how to skip this check. "
           "https://github.com/libsdl-org/SDL/blob/main/docs/README-cmake.md#cmake-fails-to-build-without-x11-or-wayland-support\n"
         )
       endif()
     endif()
+  endif()
+endfunction()
+
+function(SDL_missing_dependency NAME OPTION)
+  if(LINUX)
+    message( FATAL_ERROR
+      "Couldn't find dependency package for ${NAME}. Please install the needed packages or configure with -D${OPTION}=OFF"
+      "\n"
+      "The full set of dependencies is available at "
+      "https://wiki.libsdl.org/SDL3/README-linux#build-dependencies "
+      "\n"
+    )
+  else()
+    message( FATAL_ERROR
+      "Couldn't find dependency package for ${NAME}. Please install the needed packages or configure with -D${OPTION}=OFF"
+    )
   endif()
 endfunction()
 

@@ -1274,7 +1274,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod set-time-limit ((this task-manager-arena-training))
-  (local-vars (sv-16 res-tag))
   (when (not *arena-trainer-checkpoint-valid*)
     (set! *arena-trainer-checkpoint-time* 0.0)
     (set! (-> *arena-trainer-checkpoint-tokens* 0) (the-as uint -1))
@@ -1288,12 +1287,13 @@
   (let ((a0-6 (entity-by-name "arena-trainer-1")))
     (when a0-6
       (set! (-> this entity) (the-as entity-actor a0-6))
-      (set! sv-16 (new 'static 'res-tag))
-      (let ((v0-5 (res-lump-data a0-6 'actor-groups pointer :tag-ptr (& sv-16))))
+      (let* ((sv-16 (new 'static 'res-tag))
+             (v0-5 (res-lump-data a0-6 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+             )
         (cond
           ((and v0-5 (nonzero? (-> sv-16 elt-count)))
            (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
-           (set! (-> this actor-group) (the-as (pointer actor-group) v0-5))
+           (set! (-> this actor-group) v0-5)
            )
           (else
             (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> this node-info task)))
@@ -1544,3 +1544,7 @@
   (logclear! (-> this mask) (process-mask actor-pause))
   (go (method-of-object this idle))
   )
+
+
+
+

@@ -1,0 +1,9 @@
+("SPX.DGO"
+ ("spargus-obs.o"
+  "spargus-ocean.o"
+  "spargus-part.o"
+  "tpage-2300.go"
+  "tpage-2422.go"
+  "spar-lighthouse-light-ag.go"
+  "spargusx-vis.o"
+ ))

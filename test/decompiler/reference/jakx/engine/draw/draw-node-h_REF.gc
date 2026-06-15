@@ -1,0 +1,74 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type draw-node
+(deftype draw-node (drawable)
+  "Node in a bounding volume heirarchy. This is a base class, and there are no children.
+The child is a pointer to the start of inline array of drawables (note: not a drawable-inline-array, literally a bunch of plain drawables)
+The size of this array is child-count. The type is either more draw-nodes, or, some other drawable like tfragment, depending on the flags.
+Different renderers have different restrictions on the tree structure, like max child count, or if all children have the same depth.
+Generally, tfrag/collide use a very rigid equal depth, max 8 children rule, but with shrub, anything goes.
+This is a very awkward data structure to traverse, but it is designed for fast view frustum culling.
+Note that there can be multiple ways to reach drawables in here in some cases - for example you can follow
+this tree, or check one of the depth arrays found in tfrag.
+"
+  ((child-count  uint8     :offset   6)
+   (flags        uint8     :offset   7)
+   (child        drawable  :offset   8)
+   (distance     float     :offset  12)
+   )
+  )
+
+;; definition for method 3 of type draw-node
+(defmethod inspect ((this draw-node))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> this bsphere))
+  (format #t "~1Tchild-count: ~D~%" (-> this child-count))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tchild: #x~X~%" (-> this child))
+  (format #t "~1Tdistance: #x~X~%" (-> this distance))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type drawable-inline-array-node
+(deftype drawable-inline-array-node (drawable-inline-array)
+  "Top level container for a BVH made of draw-nodes."
+  ((data  draw-node  1 :inline)
+   (pad   uint32)
+   )
+  )
+
+;; definition of type draw-node-dma
+(deftype draw-node-dma (structure)
+  "DMA buffer layout for draw node culling routine, which copies draw-nodes directly to scratchpad in bulk.
+This would not work with the memory layout of shrub."
+  ((banka  draw-node  32 :inline)
+   (bankb  draw-node  32 :inline)
+   )
+  )
+
+;; definition for method 3 of type draw-node-dma
+(defmethod inspect ((this draw-node-dma))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'draw-node-dma)
+  (format #t "~1Tbanka[32] @ #x~X~%" (-> this banka))
+  (format #t "~1Tbankb[32] @ #x~X~%" (-> this bankb))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

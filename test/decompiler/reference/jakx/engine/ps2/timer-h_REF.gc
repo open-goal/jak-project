@@ -1,0 +1,196 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type timer-mode
+(deftype timer-mode (uint32)
+  "This matches the Tn_MODE register structure of the ps2 EE timers.
+Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero."
+  ((clks timer-clock-selection :offset   0 :size   2)
+   (gate uint8                 :offset   2 :size   1)
+   (gats uint8                 :offset   3 :size   1)
+   (gatm uint8                 :offset   4 :size   2)
+   (zret uint8                 :offset   6 :size   1)
+   (cue  uint8                 :offset   7 :size   1)
+   (cmpe uint8                 :offset   8 :size   1)
+   (ovfe uint8                 :offset   9 :size   1)
+   (equf uint8                 :offset  10 :size   1)
+   (ovff uint8                 :offset  11 :size   1)
+   )
+  )
+
+;; definition of type timer-bank
+(deftype timer-bank (structure)
+  "This matches an EE timer (without a HOLD register, timers 2 and 3).
+Each register is 128-bits wide, but only the lower 32-bits are usable, and the upper
+16-bits of that are hardwired to zero."
+  ((count  uint32)
+   (mode   timer-mode  :offset  16)
+   (comp   uint32      :offset  32)
+   )
+  )
+
+;; definition for method 3 of type timer-bank
+(defmethod inspect ((this timer-bank))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'timer-bank)
+  (format #t "~1Tcount: #x~X~%" (-> this count))
+  (format #t "~1Tmode: #x~X~%" (-> this mode))
+  (format #t "~1Tcomp: #x~X~%" (-> this comp))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type timer-hold-bank
+(deftype timer-hold-bank (timer-bank)
+  "This matches an EE timer (with a HOLD register, timers 0 and 1)."
+  ((hold  uint32  :offset  48)
+   )
+  )
+
+;; definition for method 3 of type timer-hold-bank
+(defmethod inspect ((this timer-hold-bank))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'timer-hold-bank)
+  (format #t "~1Tcount: #x~X~%" (-> this count))
+  (format #t "~1Tmode: #x~X~%" (-> this mode))
+  (format #t "~1Tcomp: #x~X~%" (-> this comp))
+  (format #t "~1Thold: #x~X~%" (-> this hold))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type stopwatch
+(deftype stopwatch (basic)
+  "Stopwatches are used to measure CPU clock cycles.
+They don't use the timer above, but instead the Count COP0 register,
+which counts CPU clock cycles directly."
+  ((prev-time-elapsed  time-frame)
+   (start-time         time-frame)
+   (begin-level        int32)
+   )
+  )
+
+;; definition for method 3 of type stopwatch
+(defmethod inspect ((this stopwatch))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tprev-time-elapsed: ~D~%" (-> this prev-time-elapsed))
+  (format #t "~1Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~1Tbegin-level: ~D~%" (-> this begin-level))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *ticks-per-frame*, type int
+(define *ticks-per-frame* 9765)
+
+;; definition for function timer-init
+(defun timer-init ((arg0 timer-bank) (arg1 timer-mode))
+  "Initiate a timer, start counting at a rate of 1 every 256 bus clocks (BUSCLK: ~147.456MHz)."
+  (set! (-> arg0 mode) arg1)
+  (set! (-> arg0 count) (the-as uint 0))
+  0
+  )
+
+;; failed to figure out what this is:
+(timer-init
+  (the-as timer-bank #x10000800)
+  (new 'static 'timer-mode :clks (timer-clock-selection busclk/256) :cue #x1)
+  )
+
+;; definition of type sce-cd-clock
+(deftype sce-cd-clock (structure)
+  ((stat    uint8)
+   (second  uint8)
+   (minute  uint8)
+   (hour    uint8)
+   (pad     uint8)
+   (day     uint8)
+   (month   uint8)
+   (year    uint8)
+   )
+  )
+
+;; definition for method 3 of type sce-cd-clock
+(defmethod inspect ((this sce-cd-clock))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'sce-cd-clock)
+  (format #t "~1Tstat: ~D~%" (-> this stat))
+  (format #t "~1Tsecond: ~D~%" (-> this second))
+  (format #t "~1Tminute: ~D~%" (-> this minute))
+  (format #t "~1Thour: ~D~%" (-> this hour))
+  (format #t "~1Tpad: ~D~%" (-> this pad))
+  (format #t "~1Tday: ~D~%" (-> this day))
+  (format #t "~1Tmonth: ~D~%" (-> this month))
+  (format #t "~1Tyear: ~D~%" (-> this year))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function bcd-conv
+(defun bcd-conv ((arg0 uint))
+  "Binary coded decimal to integer"
+  (+ (* 10 (the-as int (/ (the-as int arg0) 16))) (logand arg0 15))
+  )
+
+;; definition for symbol *month-days*, type (pointer uint32)
+(define *month-days*
+  (new 'static 'array uint32 12 #x1f #x1c #x1f #x1e #x1f #x1e #x1f #x1f #x1e #x1f #x1e #x1f)
+  )
+
+;; definition for function is-leap
+(defun is-leap ((arg0 uint))
+  (or (zero? (mod (the-as int arg0) 400)) (and (not (logtest? arg0 3)) (nonzero? (mod (the-as int arg0) 100))))
+  )
+
+;; definition for function mdy-to-day
+(defun mdy-to-day ((arg0 int) (arg1 int) (arg2 uint))
+  (if (is-leap arg2)
+      (set! (-> *month-days* 1) (the-as uint 29))
+      (set! (-> *month-days* 1) (the-as uint 28))
+      )
+  (let ((v1-2 (+ arg0 -1))
+        (v0-1 (+ arg1 -1))
+        )
+    (dotimes (a0-4 v1-2)
+      (+! v0-1 (-> (the-as (pointer int32) (&+ *month-days* (* a0-4 4)))))
+      )
+    v0-1
+    )
+  )
+
+;; definition for function rtclock-to-secs
+(defun rtclock-to-secs ((arg0 sce-cd-clock))
+  (let ((s5-0 0)
+        (s4-0 (bcd-conv (-> arg0 year)))
+        )
+    (if (< s4-0 2000)
+        (+! s4-0 2000)
+        )
+    (dotimes (s3-0 (+ s4-0 -1970))
+      (+! s5-0 (* #x15180 (mdy-to-day 12 32 (the-as uint (+ s3-0 1970)))))
+      )
+    (+ s5-0
+       (* #x15180 (mdy-to-day (bcd-conv (-> arg0 month)) (bcd-conv (-> arg0 day)) (the-as uint s4-0)))
+       (* 3600 (bcd-conv (-> arg0 hour)))
+       (* 60 (bcd-conv (-> arg0 minute)))
+       (bcd-conv (-> arg0 second))
+       )
+    )
+  )
+
+
+
+

@@ -45,6 +45,8 @@ If the previous let variables appear in the definition of new one, make the let 
 
 namespace {
 FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats);
+FormElement* rewrite_multi_let_as_vector_dot(LetElement* in, const Env& env, FormPool& pool);
+bool let_uses_stack_slot_access(const LetElement* in);
 
 std::vector<Form*> path_up_tree(Form* in, const Env&) {
   std::vector<Form*> path;
@@ -2409,6 +2411,18 @@ FormElement* rewrite_set_font_single(LetElement* in,
 FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewriteStats& stats) {
   // ordered based on frequency. for best performance, you check the most likely rewrites first!
 
+  if (in->entries().size() >= 6) {
+    auto as_vector_dot = rewrite_multi_let_as_vector_dot(in, env, pool);
+    if (as_vector_dot) {
+      stats.vector_dot++;
+      return as_vector_dot;
+    }
+  }
+
+  if (let_uses_stack_slot_access(in)) {
+    return nullptr;
+  }
+
   auto as_unused = rewrite_empty_let(in, env, pool);
   if (as_unused) {
     stats.unused++;
@@ -3073,6 +3087,18 @@ FormElement* rewrite_multi_let(LetElement* in,
                                const Env& env,
                                FormPool& pool,
                                LetRewriteStats& stats) {
+  if (in->entries().size() >= 6) {
+    auto as_vector_dot = rewrite_multi_let_as_vector_dot(in, env, pool);
+    if (as_vector_dot) {
+      stats.vector_dot++;
+      return as_vector_dot;
+    }
+  }
+
+  if (let_uses_stack_slot_access(in)) {
+    return in;
+  }
+
   if (in->entries().size() >= 2) {
     auto as_with_dma_buf_add_bucket = rewrite_with_dma_buf_add_bucket(in, env, pool);
     if (as_with_dma_buf_add_bucket) {
@@ -3098,14 +3124,6 @@ FormElement* rewrite_multi_let(LetElement* in,
     if (as_launch_particles) {
       stats.launch_particles++;
       return as_launch_particles;
-    }
-  }
-
-  if (in->entries().size() >= 6) {
-    auto as_vector_dot = rewrite_multi_let_as_vector_dot(in, env, pool);
-    if (as_vector_dot) {
-      stats.vector_dot++;
-      return as_vector_dot;
     }
   }
 
@@ -3569,6 +3587,12 @@ FormElement* rewrite_let_sequence(const std::vector<LetElement*>& in,
                                   const Env& env,
                                   FormPool& pool,
                                   LetRewriteStats& stats) {
+  for (const auto* let : in) {
+    if (let_uses_stack_slot_access(let)) {
+      return nullptr;
+    }
+  }
+
   if (in.size() == 3) {
     auto as_dma_buffer_add_gs_set = rewrite_dma_buffer_add_gs_set(in, env, pool);
     if (as_dma_buffer_add_gs_set) {
@@ -3607,6 +3631,15 @@ Form* insert_cast_for_let(RegisterAccess dst,
   }
 
   return src;
+}
+
+bool let_uses_stack_slot_access(const LetElement* in) {
+  for (const auto& entry : in->entries()) {
+    if (is_stack_slot_access(entry.dest)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool register_can_hold_var(const Register& reg) {

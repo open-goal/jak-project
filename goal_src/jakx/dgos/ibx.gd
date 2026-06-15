@@ -1,0 +1,11 @@
+("IBX.DGO"
+ ("common-part.o"
+  "common-obs.o"
+  "peak-part.o"
+  "tpage-2745.go"
+  "tpage-2746.go"
+  "tpage-3157.go"
+  "tpage-3158.go"
+  "snow-icebreak-c-ag.go"
+  "icebergx-vis.o"
+ ))

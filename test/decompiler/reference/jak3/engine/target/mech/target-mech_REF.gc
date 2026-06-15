@@ -635,7 +635,7 @@
 ;; definition for function target-mech-handler
 ;; INFO: Used lq/sq
 (defbehavior target-mech-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (v0-0 object) (a0-19 symbol) (sv-96 target) (sv-112 process))
+  (local-vars (v0-0 object) (a0-19 symbol))
   (cond
     ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
      'mech
@@ -725,16 +725,14 @@
            (let ((s2-0 (the-as pointer s3-0))
                  (s1-0 (method-of-type attack-info compute-intersect-info))
                  (s0-0 (-> arg3 param 1))
+                 (sv-96 self)
                  )
-             (set! sv-96 self)
-             (set! sv-112 arg0)
-             (let ((a3-2 (if (type? sv-112 process-drawable)
-                             sv-112
-                             )
-                         )
-                   (t0-0 (-> arg3 param 0))
-                   )
-               (s1-0 (the-as attack-info s2-0) s0-0 sv-96 a3-2 (the-as touching-shapes-entry t0-0))
+             (s1-0
+               (the-as attack-info s2-0)
+               s0-0
+               sv-96
+               (as-type arg0 process-drawable)
+               (the-as touching-shapes-entry (-> arg3 param 0))
                )
              )
            (format 0 "info: ~A~%" (-> (the-as attack-info s3-0) mode))
@@ -986,7 +984,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defbehavior mech-update-ik target ()
-  (local-vars (sv-720 vector))
   (let ((gp-0 (new 'stack-no-clear 'collide-query))
         (s5-0 (-> (the-as process-drawable (-> self parent 0)) root))
         )
@@ -1022,11 +1019,9 @@
         (-> s3-0 shoulder-matrix-no-ik)
         (let ((v1-13 (-> s3-0 elbow-matrix-no-ik))
               (s0-0 (new 'stack-no-clear 'vector))
+              (sv-720 (new 'stack-no-clear 'vector))
               )
-          (set! sv-720 (new 'stack-no-clear 'vector))
-          (let ((a0-5 (-> *y-vector* quad)))
-            (set! (-> sv-720 quad) a0-5)
-            )
+          (vector-copy! sv-720 *y-vector*)
           (let ((s2-0 (new 'stack-no-clear 'vector)))
             (new 'stack-no-clear 'vector)
             (new 'stack-no-clear 'vector)
@@ -1039,11 +1034,7 @@
                 (seek! (-> s3-0 user-blend) f0-11 (* 4.0 (seconds-per-frame)))
                 )
               (vector+*! (-> gp-0 start-pos) s0-0 sv-720 6144.0)
-              (let ((v1-19 (-> gp-0 move-dist))
-                    (f0-16 -20480.0)
-                    )
-                (vector-float*! v1-19 sv-720 f0-16)
-                )
+              (vector-float*! (-> gp-0 move-dist) sv-720 -20480.0)
               (let ((v1-21 gp-0))
                 (set! (-> v1-21 radius) 4.096)
                 (set! (-> v1-21 collide-with) (-> gp-0 collide-with))
@@ -1090,11 +1081,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defbehavior target-mech-init target ((arg0 handle) (arg1 float) (arg2 symbol))
-  (local-vars
-    (sv-160 (function vector entity-actor skeleton-group vector manipy-options none :behavior manipy))
-    (sv-176 vector)
-    (sv-192 entity-actor)
-    )
   (target-gun-end-mode #f)
   (target-exit)
   (when (zero? (-> self mech))
@@ -1173,40 +1159,21 @@
         (s3-0 (-> self level))
         )
     (process-entity-set! self (-> self mech entity))
-    (let ((s2-0 (get-process *8k-dead-pool* manipy #x20000 1)))
-      (set! (-> self manipy)
-            (the-as
-              (pointer manipy)
-              (when s2-0
-                (let ((t9-13 (method-of-type manipy activate)))
-                  (t9-13 (the-as manipy s2-0) self "manipy" (the-as pointer #x70004000))
-                  )
-                (let ((s1-0 run-function-in-process)
-                      (s0-0 s2-0)
-                      )
-                  (set! sv-160 manipy-init)
-                  (set! sv-176 (-> self control trans))
-                  (set! sv-192 (-> self entity))
-                  (let ((t0-1 (art-group-get-by-name *level* "skel-mech" (the-as (pointer level) #f)))
-                        (t1-0 #f)
-                        (t2-0 0)
-                        )
-                    ((the-as (function object object object object object object object none) s1-0)
-                     s0-0
-                     sv-160
-                     sv-176
-                     sv-192
-                     t0-1
-                     t1-0
-                     t2-0
-                     )
-                    )
-                  )
-                (-> s2-0 ppointer)
-                )
-              )
+    (set! (-> self manipy)
+          (process-spawn
+            manipy
+            :init manipy-init
+            (-> self control trans)
+            (-> self entity)
+            (art-group-get-by-name *level* "skel-mech" (the-as (pointer level) #f))
+            #f
+            0
+            :name "manipy"
+            :from *8k-dead-pool*
+            :to self
+            :stack-size #x20000
             )
-      )
+          )
     (set! (-> self entity) s4-1)
     (set! (-> self level) s3-0)
     )

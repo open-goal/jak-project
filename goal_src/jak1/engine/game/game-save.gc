@@ -17,7 +17,6 @@
 ;; Having two state machines, one in C++ and one in GOAL is kind of a questionable and confusing design.
 
 (define-extern mark-speedrun-started (function none))
-;; DECOMP BEGINS
 
 ;; version identifier
 (defconstant SAVE_VERSION 1)
@@ -187,19 +186,14 @@
   (let ((tag (the-as game-save-tag (-> this tag)))
         (tag-idx 0))
     (while (< (the-as int tag) (the-as int (&-> this tag 0 user-int8 (-> this length))))
-      (let ((a3-2 (game-save-elt->string (-> tag elt-type)))
-            (t0-1 (-> tag elt-count))
-            (t1-1 (-> tag elt-size))
-            (t2-1 (-> tag user-uint64))
-            (t3-0 (-> tag user-float0)))
-        (format #t
-                "~T  [~3D] ~-32S [~3D/~3D]  ~12D ~8f    "
-                tag-idx
-                (game-save-elt->string (-> tag elt-type))
-                (-> tag elt-count)
-                (-> tag elt-size)
-                (-> tag user-uint64)
-                (-> tag user-float0)))
+      (format #t
+              "~T  [~3D] ~-32S [~3D/~3D]  ~12D ~8f    "
+              tag-idx
+              (game-save-elt->string (-> tag elt-type))
+              (-> tag elt-count)
+              (-> tag elt-size)
+              (-> tag user-uint64)
+              (-> tag user-float0))
       (let ((v1-0 (-> tag elt-type)))
         (if (or (= v1-0 (game-save-elt name)) (= v1-0 (game-save-elt continue)))
           (format #t "= \"~G\"~%" (&+ (the-as pointer tag) 16))
@@ -327,7 +321,7 @@
       (set! (-> s2-0 elt-type) (game-save-elt name))
       (set! (-> s2-0 elt-count) (+ (length arg1) 1))
       (set! (-> s2-0 elt-size) (the-as uint 1)))
-    (copy-charp<-charp (the-as (pointer uint8) (-> (the-as (inline-array game-save-tag) s3-2) 1)) (-> arg1 data))
+    (copy-charp<-charp (-> (the-as (inline-array game-save-tag) s3-2) 1 user-uint8) (-> arg1 data))
     (let ((v1-37 (&+ (the-as pointer s3-2) (+ (logand -16 (+ (-> (the-as (inline-array game-save-tag) s3-2) 0 elt-count) 15)) 16))))
       (let ((a0-15 (the-as game-save-tag (&+ v1-37 0))))
         (set! (-> a0-15 elt-type) (game-save-elt base-time))
@@ -354,7 +348,7 @@
                   (set! (-> s2-1 elt-type) (game-save-elt continue))
                   (set! (-> s2-1 elt-count) (+ ((method-of-type string length) s3-3) 1))
                   (set! (-> s2-1 elt-size) (the-as uint 1)))
-                (copy-charp<-charp (the-as (pointer uint8) (the-as game-save-tag (&+ (the-as game-save-tag s4-1) 16))) (-> s3-3 data)))
+                (copy-charp<-charp (-> (the-as game-save-tag (&+ (the-as game-save-tag s4-1) 16)) user-uint8) (-> s3-3 data)))
               (let ((v1-50 (&+ (the-as pointer s4-1) (+ (logand -16 (+ (-> (the-as game-save-tag s4-1) elt-count) 15)) 16))))
                 (let ((a0-24 (the-as game-save-tag (&+ v1-50 0))))
                   (set! (-> a0-24 elt-type) (game-save-elt life))
@@ -836,36 +830,35 @@
   ((method-of-type process deactivate) this)
   (none))
 
-(defmethod relocate ((this auto-save) (arg0 int))
+(defmethod relocate ((this auto-save) (offset int))
   "Relocate an auto-save process by arg0 bytes."
   ;; update our reference particle launch control, which is allocated on our process heap
-  (if (nonzero? (-> this part)) (&+! (-> this part) arg0))
+  (if (nonzero? (-> this part)) (&+! (-> this part) offset))
   ;; then relocate the process. This will relocate the heap (memory, and basics on it).
-  (the-as auto-save ((method-of-type process relocate) this arg0)))
+  (the-as auto-save ((method-of-type process relocate) this offset)))
 
 (defbehavior auto-save-post auto-save ()
-  ;; debug text
-  (when (and (= *cheat-mode* 'debug) (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3)))
+  (when (and (= *cheat-mode* 'debug) (cpad-hold? 0 l3))
     (let ((gp-0 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
-      (let ((v1-5 gp-0)) (set! (-> v1-5 width) (the float 440)))
-      (let ((v1-6 gp-0)) (set! (-> v1-6 height) (the float 80)))
+      (set-width! gp-0 440)
+      (set-height! gp-0 80)
       (set! (-> gp-0 flags) (font-flags shadow kerning))
       (format (clear *temp-string*) "~S / ~S ~D~%" (-> self mode) (-> self state name) (-> self which))
       (print-game-text *temp-string* gp-0 #f 128 22)))
   ;; auto-save drawing
   (when (and (= (-> self mode) 'auto-save) (!= (-> self next-state name) 'done))
     (let ((gp-1 (new 'stack 'font-context *font-default-matrix* 20 40 0.0 (font-color default) (font-flags shadow kerning))))
-      (let ((v1-15 gp-1)) (set! (-> v1-15 scale) 0.8))
-      (let ((v1-16 gp-1)) (set! (-> v1-16 width) (the float 472)))
-      (let ((v1-17 gp-1)) (set! (-> v1-17 height) (the float 20)))
+      (set-scale! gp-1 0.8)
+      (set-width! gp-1 472)
+      (set-height! gp-1 20)
       (set! (-> gp-1 flags) (font-flags shadow kerning middle middle-vert large))
       ;; if this is the first time saving, display a warning.
       (when (zero? (-> *game-info* auto-save-count))
         (print-game-text (lookup-text! *common-text* (text-id saving-data) #f) gp-1 #f 128 22)
         (set! (-> gp-1 origin x) 20.0)
         (set! (-> gp-1 origin y) 130.0)
-        (let ((v1-23 gp-1)) (set! (-> v1-23 scale) 0.7))
-        (let ((v1-24 gp-1)) (set! (-> v1-24 height) (the float 40)))
+        (set-scale! gp-1 0.7)
+        (set-height! gp-1 40)
         (let ((s5-2 print-game-text))
           ((the-as (function object string object none) format)
            (clear *temp-string*)
@@ -908,7 +901,7 @@
   (set! (-> self result) (mc-status-code ok))
   (set! (-> self save) #f)
   (set! (-> self notify) (process->handle notify-proc))
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 656) self))
+  (set! (-> self part) (create-launch-control group-part-save-icon self))
   (set! (-> self part matrix) (sprite-allocate-user-hvdf))
   (cond
     ((= desired-mode 'auto-save)
@@ -1068,7 +1061,7 @@
           (debug-print (-> self save) (user? dass)))
         (label cfg-7)
         (set! (-> self result)
-              (mc-save (-> self card) (-> self which) (&-> (-> self save) type) (the-as int (-> self save info-int32))))
+              (mc-save (-> self card) (-> self which) (&-> self save type) (the-as int (-> self save info-int32))))
         (when (!= (-> self result) (mc-status-code ok))
           (suspend)
           (goto cfg-7))
@@ -1184,7 +1177,7 @@
              (activate-progress *dproc* (progress-screen auto-save))))))))
 
 (defun auto-save-command ((arg0 symbol) (arg1 int) (arg2 int) (arg3 process-tree))
-  (process-spawn auto-save arg0 arg3 arg1 arg2)
+  (process-spawn auto-save arg0 arg3 arg1 arg2 :stack *kernel-dram-stack*)
   (none))
 
 (defun auto-save-check ()

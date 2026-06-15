@@ -251,7 +251,6 @@
          (arg2 (function form-search-info float))
          (arg3 form-search-info)
          )
-  (local-vars (sv-80 int))
   (let ((s2-0 (new 'stack-no-clear 'array 'int32 32)))
     (dotimes (v1-0 arg0)
       (set! (-> s2-0 v1-0) 0)
@@ -265,16 +264,16 @@
            0
            )
           (else
-            (let ((s0-0 arg1))
-              (set! sv-80 s1-0)
-              (let ((a1-1 (if (odd? s1-0)
-                              (-> s2-0 s1-0)
-                              0
-                              )
-                          )
-                    (a2-1 arg3)
+            (let ((s0-0 arg1)
+                  (sv-80 s1-0)
+                  )
+              (s0-0
+                sv-80
+                (if (odd? s1-0)
+                    (-> s2-0 s1-0)
+                    0
                     )
-                (s0-0 sv-80 a1-1 a2-1)
+                arg3
                 )
               )
             (+! (-> s2-0 s1-0) 1)
@@ -750,7 +749,6 @@
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this hover-formation) (arg0 entity-actor))
   "Set up a newly created process from the entity that created it."
-  (local-vars (sv-32 vector))
   (stack-size-set! (-> this main-thread) 32)
   (set! (-> this path) (new 'process 'path-control this 'path 0.0 (-> this entity) #f))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
@@ -765,25 +763,29 @@
                    )
                )
          (s0-0 (res-lump-float (-> this entity) 'notice-dist :default 225280.0))
+         (t9-4 (method-of-type res-lump get-property-struct))
+         (a0-6 (-> this entity))
+         (a1-5 'trans-offset)
+         (a2-3 'interp)
+         (a3-2 -1000000000.0)
+         (t0-2 (new 'stack-no-clear 'vector))
          )
-    (let ((t9-4 (method-of-type res-lump get-property-struct))
-          (a0-6 (-> this entity))
-          (a1-5 'trans-offset)
-          (a2-3 'interp)
-          (a3-2 -1000000000.0)
-          (t0-2 (new 'stack-no-clear 'vector))
+    (set! (-> t0-2 x) 0.0)
+    (set! (-> t0-2 y) 20480.0)
+    (set! (-> t0-2 z) 61440.0)
+    (set! (-> t0-2 w) 1.0)
+    (set! (-> this formation)
+          (s5-0
+            s4-0
+            s3-0
+            s2-0
+            s1-0
+            s0-0
+            (the-as vector (t9-4 a0-6 a1-5 a2-3 a3-2 t0-2 (the-as (pointer res-tag) #f) *res-static-buf*))
+            (res-lump-float (-> this entity) 'formation-rotinc :default 5461.3335)
+            (the-as handle #f)
+            )
           )
-      (set! (-> t0-2 x) 0.0)
-      (set! (-> t0-2 y) 20480.0)
-      (set! (-> t0-2 z) 61440.0)
-      (set! (-> t0-2 w) 1.0)
-      (set! sv-32 (the-as vector (t9-4 a0-6 a1-5 a2-3 a3-2 t0-2 (the-as (pointer res-tag) #f) *res-static-buf*)))
-      )
-    (let ((t2-4 (res-lump-float (-> this entity) 'formation-rotinc :default 5461.3335))
-          (t3-0 #f)
-          )
-      (set! (-> this formation) (s5-0 s4-0 s3-0 s2-0 s1-0 s0-0 sv-32 t2-4 (the-as handle t3-0)))
-      )
     )
   (set-time! (-> this formation-timer))
   (logclear! (-> this mask) (process-mask actor-pause))

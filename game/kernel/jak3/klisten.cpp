@@ -1,6 +1,10 @@
 #include "klisten.h"
 
+#include "kmachine.h"
+
+#include "common/log/log.h"
 #include "common/symbols.h"
+#include "common/util/string_util.h"
 
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/Symbol4.h"
@@ -111,8 +115,106 @@ void ProcessListenerMessage(Ptr<char> msg) {
   SendAck();
 }
 
-int sql_query_sync(Ptr<String> /*string_in*/) {
-  ASSERT_NOT_REACHED();
+// (deftype sql-result (basic)
+struct SQLResult {
+  // (len int32 :offset-assert 4)
+  s32 len;
+  // (allocated-length  uint32 :offset-assert 8)
+  u32 allocated_length;
+  // (error  symbol :offset-assert 12)
+  u32 error;
+  // (data   string :dynamic :offset-assert 16)
+  // don't be fooled by the [1] here, it can hold as many as we allocate when calling `new`
+  Ptr<String> data[1];
+};
+
+int sql_query_sync(Ptr<String> string_in) {
+  if (!MasterDebug) {
+    // not debugging, no sql results.
+    return s7.offset + S7_OFF_FIX_SYM_EMPTY_PAIR;
+  } else {
+    /* Original code, disabled
+      // output sql query to the compiler
+      output_sql_query(string_in->data());
+      // clear pending listener stuff, so we don't run it again.
+      ListenerFunction->value() = s7.offset;
+      ListenerStatus = 1;
+      ClearPending();
+      SendAck();
+    */
+
+    std::string query_str = string_in->data();
+    str_util::replace(query_str, "LAST_INSERT_ID()", "last_insert_rowid()");
+    lg::debug("[SQL] Query '{}'", query_str);
+
+    // ensure the DB is initialized
+    initialize_sql_db();
+
+    // clear global
+    SqlResult->value() = s7.offset;
+
+    kdebugheap->top.offset -= 0x4000;  // not sure what it's used for...
+
+    const auto& result = run_sql_query(query_str);
+    // TODO - check for errors
+
+    auto sym = find_symbol_from_c(-1, "sql-result");
+    if (sym.offset) {
+      // TODO - can their sql-result type not return multiple rows and the data is just the columns?
+      // or do they make assumptions and iterate the data like a 2d flattened array
+      //
+      // Collect string results
+      std::vector<std::string> results;
+      for (const auto& row : result.rows) {
+        for (const auto& val : row) {
+          lg::debug("[SQL] Result \"{}\"", val.data());
+          results.push_back(val.data());
+        }
+      }
+
+      // Make the GOAL type to hold them
+      Ptr<Type> type = Ptr<Type>(sym->value());
+      auto new_result_ptr = call_method_of_type_arg2(intern_from_c(-1, 0, "debug").offset, type,
+                                                     GOAL_NEW_METHOD, type.offset, results.size());
+      SQLResult* new_result = Ptr<SQLResult>(new_result_ptr).c();
+      for (int i = 0; i < (int)results.size(); i++) {
+        new_result->data[i] = Ptr<String>(make_debug_string_from_c(results.at(i).data()));
+      }
+      new_result->len = results.size();
+
+      // TODO - possible values here (when to set them?)
+      // 'error = the default, fairly obvious
+      // 'select = the result of a select
+      new_result->error = intern_from_c(-1, 0, "select").offset;
+
+      kdebugheap->top.offset += 0x4000;
+
+      // Store the result in the convienant debugging global (stores last query resp)
+      SqlResult->value() = new_result_ptr;
+      return new_result_ptr;
+    }
+
+    return s7.offset;
+
+    /* Original code, disabled
+      // didn't we just set these to false?
+      if (ListenerFunction->value() == s7.offset && SqlResult->value() == s7.offset) {
+        do {
+          KernelDispatch(sync_dispatcher->value());
+          SendAck();
+          if (SqlResult->value() != s7.offset) {
+            break;
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          iVar2 = 99999;
+          do {
+            bVar1 = iVar2 != 0;
+            iVar2 = iVar2 + -1;
+          } while (bVar1);
+        } while (SqlResult->value() == s7.offset);
+      }
+    */
+  }
 }
 
 }  // namespace jak3

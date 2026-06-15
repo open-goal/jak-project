@@ -187,444 +187,275 @@
 ;; WARN: Stack slot offset 96 signed mismatch
 ;; WARN: Stack slot offset 96 signed mismatch
 (defbehavior target-send-attack target ((arg0 process) (arg1 symbol) (arg2 touching-shapes-entry) (arg3 int) (arg4 int) (arg5 penetrate))
-  (local-vars
-    (sv-96 symbol)
-    (sv-100 touching-prims-entry)
-    (sv-128 touching-prims-entry)
-    (sv-176 touching-prims-entry)
-    (sv-224 penetrate)
-    (sv-240 int)
-    (sv-256 symbol)
-    (sv-272 symbol)
-    (sv-288 symbol)
-    (sv-304 vector)
-    (sv-320 matrix)
-    (sv-336 int)
-    (sv-352 symbol)
-    (sv-368 symbol)
-    (sv-384 symbol)
-    (sv-400 vector)
-    (sv-416 matrix)
-    (sv-432 int)
-    (sv-448 symbol)
-    (sv-464 symbol)
-    (sv-480 symbol)
-    (sv-496 vector)
-    (sv-512 matrix)
-    (sv-528 int)
-    (sv-544 symbol)
-    (sv-560 symbol)
-    (sv-576 symbol)
-    (sv-592 vector)
-    (sv-608 matrix)
-    (sv-624 int)
-    (sv-640 symbol)
-    (sv-656 symbol)
-    (sv-672 symbol)
-    (sv-688 vector)
-    (sv-704 matrix)
-    )
-  (set! sv-224 arg5)
-  (let* ((s4-0 (the-as process (as-type arg0 process-focusable)))
+  (let* ((sv-224 arg5)
+         (s4-0 (the-as process (as-type arg0 process-focusable)))
          (s3-1 (and s4-0 (focus-test? (the-as process-focusable s4-0) dead hit)))
+         (a1-2 (new 'stack-no-clear 'event-message-block))
          )
-    (set! sv-96
+    (set! (-> a1-2 from) (process->ppointer self))
+    (set! (-> a1-2 num-params) 2)
+    (set! (-> a1-2 message) 'attack)
+    (set! (-> a1-2 param 0) (the-as uint arg2))
+    (set! (-> a1-2 param 1)
           (the-as
-            symbol
-            (send-event
-              arg0
-              'attack
-              arg2
-              (static-attack-info ((id (the-as uint arg3)) (mode arg1) (count (the-as uint arg4)) (penetrate-using sv-224)))
-              )
+            uint
+            (static-attack-info ((id (the-as uint arg3)) (mode arg1) (count (the-as uint arg4)) (penetrate-using sv-224)))
             )
           )
-    (when sv-96
-      (set! (-> self control send-attack-dest) (process->handle arg0))
-      (set-time! (-> self control send-attack-time))
-      (send-event self 'hit arg1 arg0 arg2)
-      (set! arg0 (and (and (focus-test? self dark)
-                           (nonzero? (-> self darkjak))
-                           (logtest? (-> self darkjak stage) (darkjak-stage active))
-                           )
-                      arg0
-                      )
-            )
-      (when (the-as object arg0)
-        (when (and s4-0 (not s3-1) (-> self control danger-mode) (not (logtest? (-> s4-0 mask) (process-mask dark-effect))))
-          (logior! (-> s4-0 mask) (process-mask dark-effect))
-          (process-spawn-function
-            process
-            (lambda :behavior target
-              ((arg0 handle))
-              (local-vars (sv-112 vector) (sv-128 matrix))
-              (let ((gp-0 (-> self parent)))
-                (let ((s4-0 0)
-                      (s3-0 (current-time))
-                      )
-                  (set! (-> self clock) (-> gp-0 0 clock))
-                  (while (let ((v1-48 gp-0))
-                           (and (or (focus-test?
-                                      (the-as process-focusable (if v1-48
-                                                                    (the-as process-focusable (-> v1-48 0 self))
-                                                                    )
-                                              )
-                                      dead
-                                      hit
-                                      )
-                                    (let ((v1-53 gp-0))
-                                      (and (-> (the-as process-focusable (if v1-53
-                                                                             (the-as process-focusable (-> v1-53 0 self))
-                                                                             )
-                                                       )
-                                               next-state
-                                               )
-                                           (let ((v1-56 gp-0))
-                                             (= (-> (the-as process-focusable (if v1-56
-                                                                                  (the-as process-focusable (-> v1-56 0 self))
-                                                                                  )
-                                                            )
-                                                    next-state
-                                                    name
-                                                    )
-                                                'knocked
+    (let ((sv-96 (the-as symbol (send-event-function arg0 a1-2))))
+      (when sv-96
+        (set! (-> self control send-attack-dest) (process->handle arg0))
+        (set-time! (-> self control send-attack-time))
+        (send-event self 'hit arg1 arg0 arg2)
+        (set! arg0 (and (and (focus-test? self dark)
+                             (nonzero? (-> self darkjak))
+                             (logtest? (-> self darkjak stage) (darkjak-stage active))
+                             )
+                        arg0
+                        )
+              )
+        (when (the-as object arg0)
+          (when (and s4-0 (not s3-1) (-> self control danger-mode) (not (logtest? (-> s4-0 mask) (process-mask dark-effect))))
+            (logior! (-> s4-0 mask) (process-mask dark-effect))
+            (process-spawn-function
+              process
+              (lambda :behavior target
+                ((arg0 handle))
+                (let ((gp-0 (-> self parent)))
+                  (let ((s4-0 0)
+                        (s3-0 (current-time))
+                        )
+                    (set! (-> self clock) (-> gp-0 0 clock))
+                    (while (let ((v1-48 gp-0))
+                             (and (or (focus-test?
+                                        (the-as process-focusable (if v1-48
+                                                                      (the-as process-focusable (-> v1-48 0 self))
+                                                                      )
                                                 )
-                                             )
-                                           )
-                                      )
-                                    )
-                                (not (time-elapsed? s3-0 (seconds 15)))
-                                (not (logtest? (-> (the-as process-focusable (-> gp-0 0)) draw status) (draw-control-status no-draw no-draw-temp))
-                                     )
-                                )
-                           )
-                    (let ((s2-0 sp-launch-particles-var)
-                          (s1-0 *sp-particle-system-2d*)
-                          (s0-0 (-> *part-id-table* 178))
-                          )
-                      (set! sv-128 *launch-matrix*)
-                      (set! sv-112 (-> sv-128 trans))
-                      (let ((v1-9 (-> (process-drawable-random-point!
-                                        (the-as process-drawable (ppointer->process gp-0))
-                                        (new 'stack-no-clear 'vector)
+                                        dead
+                                        hit
                                         )
-                                      quad
+                                      (let ((v1-53 gp-0))
+                                        (and (-> (the-as process-focusable (if v1-53
+                                                                               (the-as process-focusable (-> v1-53 0 self))
+                                                                               )
+                                                         )
+                                                 next-state
+                                                 )
+                                             (let ((v1-56 gp-0))
+                                               (= (-> (the-as process-focusable (if v1-56
+                                                                                    (the-as process-focusable (-> v1-56 0 self))
+                                                                                    )
+                                                              )
+                                                      next-state
+                                                      name
+                                                      )
+                                                  'knocked
+                                                  )
+                                               )
+                                             )
+                                        )
                                       )
+                                  (not (time-elapsed? s3-0 (seconds 15)))
+                                  (not (logtest? (-> (the-as process-focusable (-> gp-0 0)) draw status) (draw-control-status no-draw no-draw-temp))
+                                       )
                                   )
+                             )
+                      (let ((s2-0 sp-launch-particles-var)
+                            (s1-0 *sp-particle-system-2d*)
+                            (s0-0 (-> *part-id-table* 178))
+                            (sv-128 *launch-matrix*)
                             )
-                        (set! (-> sv-112 quad) v1-9)
+                        (let ((sv-112 (-> sv-128 trans)))
+                          (set! (-> sv-112 quad) (-> (process-drawable-random-point!
+                                                       (the-as process-drawable (ppointer->process gp-0))
+                                                       (new 'stack-no-clear 'vector)
+                                                       )
+                                                     quad
+                                                     )
+                                )
+                          )
+                        (s2-0 s1-0 s0-0 sv-128 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
                         )
-                      (let ((a3-0 #f)
-                            (t0-0 #f)
-                            (t1-0 1.0)
-                            )
-                        (s2-0 s1-0 s0-0 sv-128 (the-as sparticle-launch-state a3-0) (the-as sparticle-launch-control t0-0) t1-0)
-                        )
-                      )
-                    (send-event (ppointer->process gp-0) 'color-effect 'dark (seconds 0.2))
-                    (when (time-elapsed? (the-as time-frame s4-0) (seconds 0.05))
-                      (set! s4-0 (the-as int (current-time)))
-                      (cond
-                        ((and (not (time-elapsed? s3-0 (seconds 0.5))) (handle->process arg0))
-                         (process-drawable2-shock-effect
-                           (the-as process-drawable (handle->process arg0))
-                           (the-as process-drawable (ppointer->process gp-0))
-                           (-> *lightning-spec-id-table* 9)
-                           lightning-probe-callback
-                           (-> *part-id-table* 179)
+                      (send-event (ppointer->process gp-0) 'color-effect 'dark (seconds 0.2))
+                      (when (time-elapsed? (the-as time-frame s4-0) (seconds 0.05))
+                        (set! s4-0 (the-as int (current-time)))
+                        (cond
+                          ((and (not (time-elapsed? s3-0 (seconds 0.5))) (handle->process arg0))
+                           (process-drawable2-shock-effect
+                             (the-as process-drawable (handle->process arg0))
+                             (the-as process-drawable (ppointer->process gp-0))
+                             (-> *lightning-spec-id-table* 9)
+                             lightning-probe-callback
+                             (-> *part-id-table* 179)
+                             )
                            )
-                         )
-                        (else
-                          (send-event (handle->process arg0) 'color-effect 'shock (seconds 0.2))
-                          (process-drawable-shock-effect
-                            (the-as process-drawable (ppointer->process gp-0))
-                            (-> *lightning-spec-id-table* 9)
-                            lightning-probe-callback
-                            (-> *part-id-table* 179)
-                            0
-                            0
-                            40960.0
+                          (else
+                            (send-event (handle->process arg0) 'color-effect 'shock (seconds 0.2))
+                            (process-drawable-shock-effect
+                              (the-as process-drawable (ppointer->process gp-0))
+                              (-> *lightning-spec-id-table* 9)
+                              lightning-probe-callback
+                              (-> *part-id-table* 179)
+                              0
+                              0
+                              40960.0
+                              )
                             )
                           )
                         )
+                      (suspend)
                       )
-                    (suspend)
+                    )
+                  (logclear! (-> gp-0 0 mask) (process-mask dark-effect))
+                  (send-event (ppointer->process gp-0) 'color-effect #f 0)
+                  )
+                (none)
+                )
+              (process->handle self)
+              :to s4-0
+              )
+            )
+          )
+        (let ((v1-37 arg1))
+          (cond
+            ((or (= v1-37 'spin) (= v1-37 'spin-air) (= v1-37 'board-spin))
+             (let ((sv-100 (prims-touching? arg2 (-> self control) (the-as uint 256))))
+               (if sv-100
+                   (part-tracker-spawn
+                     :to self
+                     :group group-spin-hit
+                     :callback (the-as symbol #f)
+                     :userdata (the-as symbol #f)
+                     :target (the-as symbol #f)
+                     :mat-joint (get-intersect-point (new 'stack-no-clear 'vector) sv-100 (-> self control) arg2)
+                     )
+                   (do-effect (-> self skel effect) 'group-spin-hit -1.0 38)
+                   )
+               )
+             (play-effect-sound (-> self skel effect) arg1 -1.0 38 (the-as basic #f) (cond
+                                                                                       ((= arg1 'board-spin)
+                                                                                        (static-sound-name "board-impact")
+                                                                                        )
+                                                                                       ((using-gun? self)
+                                                                                        (static-sound-name "gun-spin-hit")
+                                                                                        )
+                                                                                       (else
+                                                                                         (static-sound-name "spin-hit")
+                                                                                         )
+                                                                                       )
+                                )
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
+             )
+            ((or (= v1-37 'punch) (= v1-37 'mech-punch))
+             (when arg2
+               (let ((sv-128 (prims-touching? arg2 (-> self control) (the-as uint 256))))
+                 (cond
+                   (sv-128
+                     (part-tracker-spawn
+                       :to self
+                       :group group-punch-hit
+                       :callback (the-as symbol #f)
+                       :userdata (the-as symbol #f)
+                       :target (the-as symbol #f)
+                       :mat-joint (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2)
+                       )
+                     )
+                   ((let ((v0-20 (prims-touching? arg2 (-> self control) (the-as uint 128))))
+                      (set! sv-128 v0-20)
+                      v0-20
+                      )
+                    (part-tracker-spawn
+                      :to self
+                      :group group-punch-hit
+                      :callback (the-as symbol #f)
+                      :userdata (the-as symbol #f)
+                      :target (the-as symbol #f)
+                      :mat-joint (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2)
+                      )
+                    )
+                   )
+                 )
+               )
+             (case arg1
+               (('mech-punch)
+                (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) (static-sound-name "mech-punch-hit"))
+                )
+               (else
+                 (let ((t1-6 (if (using-gun? self)
+                                 (static-sound-name "gun-punch-hit")
+                                 (static-sound-name "punch-hit")
+                                 )
+                             )
+                       )
+                   (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) t1-6)
+                   )
+                 )
+               )
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
+             )
+            ((= v1-37 'flip)
+             (play-effect-sound (-> self skel effect) arg1 -1.0 38 (the-as basic #f) (static-sound-name "punch-hit"))
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.1))
+             )
+            ((= v1-37 'uppercut)
+             (let ((sv-176 (prims-touching? arg2 (-> self control) (the-as uint 256))))
+               (cond
+                 (sv-176
+                   (part-tracker-spawn
+                     :to self
+                     :group group-punch-hit
+                     :callback (the-as symbol #f)
+                     :userdata (the-as symbol #f)
+                     :target (the-as symbol #f)
+                     :mat-joint (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2)
+                     )
+                   )
+                 ((let ((v0-34 (prims-touching? arg2 (-> self control) (the-as uint 128))))
+                    (set! sv-176 v0-34)
+                    v0-34
+                    )
+                  (part-tracker-spawn
+                    :to self
+                    :group group-punch-hit
+                    :callback (the-as symbol #f)
+                    :userdata (the-as symbol #f)
+                    :target (the-as symbol #f)
+                    :mat-joint (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2)
                     )
                   )
-                (logclear! (-> gp-0 0 mask) (process-mask dark-effect))
-                (send-event (ppointer->process gp-0) 'color-effect #f 0)
-                )
-              (none)
-              )
-            (process->handle self)
-            :to s4-0
+                 )
+               )
+             (do-effect (-> self skel effect) 'group-uppercut-hit -1.0 22)
+             (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) (static-sound-name "uppercut-hit"))
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
+             )
+            ((or (= v1-37 'flop) (= v1-37 'flop-down))
+             (do-effect (-> self skel effect) 'group-flop-hit -1.0 22)
+             (do-effect (-> self skel effect) 'group-flop-hit -1.0 18)
+             (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) (static-sound-name "flop-hit"))
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
+             )
+            ((= v1-37 'flut-attack)
+             (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) (static-sound-name "punch-hit"))
+             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.2))
+             )
+            ((= v1-37 'darkjak)
+             (set-time! (-> self darkjak attack-time))
+             (let* ((v1-160 *game-info*)
+                    (a0-102 (+ (-> v1-160 attack-id) 1))
+                    )
+               (set! (-> v1-160 attack-id) a0-102)
+               (set! (-> self darkjak attack-id) a0-102)
+               a0-102
+               )
+             )
             )
           )
         )
-      (let ((v1-37 arg1))
-        (cond
-          ((or (= v1-37 'spin) (= v1-37 'spin-air) (= v1-37 'board-spin))
-           (set! sv-100 (prims-touching? arg2 (-> self control) (the-as uint 256)))
-           (cond
-             (sv-100
-               (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                 (when s4-1
-                   (let ((t9-8 (method-of-type part-tracker activate)))
-                     (t9-8 (the-as part-tracker s4-1) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                     )
-                   (let ((s3-4 run-function-in-process)
-                         (s2-1 s4-1)
-                         (s1-1 part-tracker-init)
-                         (s0-1 group-spin-hit)
-                         )
-                     (set! sv-240 0)
-                     (set! sv-256 (the-as symbol #f))
-                     (set! sv-272 (the-as symbol #f))
-                     (set! sv-288 (the-as symbol #f))
-                     (set! sv-320 *launch-matrix*)
-                     (set! sv-304 (-> sv-320 trans))
-                     (let ((v1-50 (-> (get-intersect-point (new 'stack-no-clear 'vector) sv-100 (-> self control) arg2) quad)))
-                       (set! (-> sv-304 quad) v1-50)
-                       )
-                     ((the-as (function object object object object object object object object none) s3-4)
-                      s2-1
-                      s1-1
-                      s0-1
-                      sv-240
-                      sv-256
-                      sv-272
-                      sv-288
-                      sv-320
-                      )
-                     )
-                   (-> s4-1 ppointer)
-                   )
-                 )
-               )
-             (else
-               (do-effect (-> self skel effect) 'group-spin-hit -1.0 38)
-               )
-             )
-           (play-effect-sound (-> self skel effect) arg1 -1.0 38 (the-as basic #f) (cond
-                                                                                     ((= arg1 'board-spin)
-                                                                                      (static-sound-name "board-impact")
-                                                                                      )
-                                                                                     ((using-gun? self)
-                                                                                      (static-sound-name "gun-spin-hit")
-                                                                                      )
-                                                                                     (else
-                                                                                       (static-sound-name "spin-hit")
-                                                                                       )
-                                                                                     )
-                              )
-           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
-           )
-          ((or (= v1-37 'punch) (= v1-37 'mech-punch))
-           (when arg2
-             (set! sv-128 (prims-touching? arg2 (-> self control) (the-as uint 256)))
-             (cond
-               (sv-128
-                 (let ((s4-3 (get-process *default-dead-pool* part-tracker #x4000)))
-                   (when s4-3
-                     (let ((t9-17 (method-of-type part-tracker activate)))
-                       (t9-17 (the-as part-tracker s4-3) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                       )
-                     (let ((s3-6 run-function-in-process)
-                           (s2-3 s4-3)
-                           (s1-3 part-tracker-init)
-                           (s0-3 group-punch-hit)
-                           )
-                       (set! sv-336 0)
-                       (set! sv-352 (the-as symbol #f))
-                       (set! sv-368 (the-as symbol #f))
-                       (set! sv-384 (the-as symbol #f))
-                       (set! sv-416 *launch-matrix*)
-                       (set! sv-400 (-> sv-416 trans))
-                       (let ((v1-77 (-> (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2) quad)))
-                         (set! (-> sv-400 quad) v1-77)
-                         )
-                       ((the-as (function object object object object object object object object none) s3-6)
-                        s2-3
-                        s1-3
-                        s0-3
-                        sv-336
-                        sv-352
-                        sv-368
-                        sv-384
-                        sv-416
-                        )
-                       )
-                     (-> s4-3 ppointer)
-                     )
-                   )
-                 )
-               ((let ((v0-20 (prims-touching? arg2 (-> self control) (the-as uint 128))))
-                  (set! sv-128 v0-20)
-                  v0-20
-                  )
-                (let ((s4-4 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s4-4
-                    (let ((t9-22 (method-of-type part-tracker activate)))
-                      (t9-22 (the-as part-tracker s4-4) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                      )
-                    (let ((s3-7 run-function-in-process)
-                          (s2-4 s4-4)
-                          (s1-4 part-tracker-init)
-                          (s0-4 group-punch-hit)
-                          )
-                      (set! sv-432 0)
-                      (set! sv-448 (the-as symbol #f))
-                      (set! sv-464 (the-as symbol #f))
-                      (set! sv-480 (the-as symbol #f))
-                      (set! sv-512 *launch-matrix*)
-                      (set! sv-496 (-> sv-512 trans))
-                      (let ((v1-91 (-> (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2) quad)))
-                        (set! (-> sv-496 quad) v1-91)
-                        )
-                      ((the-as (function object object object object object object object object none) s3-7)
-                       s2-4
-                       s1-4
-                       s0-4
-                       sv-432
-                       sv-448
-                       sv-464
-                       sv-480
-                       sv-512
-                       )
-                      )
-                    (-> s4-4 ppointer)
-                    )
-                  )
-                )
-               )
-             )
-           (case arg1
-             (('mech-punch)
-              (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) (static-sound-name "mech-punch-hit"))
-              )
-             (else
-               (let ((t1-6 (if (using-gun? self)
-                               (static-sound-name "gun-punch-hit")
-                               (static-sound-name "punch-hit")
-                               )
-                           )
-                     )
-                 (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) t1-6)
-                 )
-               )
-             )
-           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
-           )
-          ((= v1-37 'flip)
-           (play-effect-sound (-> self skel effect) arg1 -1.0 38 (the-as basic #f) (static-sound-name "punch-hit"))
-           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.1))
-           )
-          ((= v1-37 'uppercut)
-           (set! sv-176 (prims-touching? arg2 (-> self control) (the-as uint 256)))
-           (cond
-             (sv-176
-               (let ((s4-5 (get-process *default-dead-pool* part-tracker #x4000)))
-                 (when s4-5
-                   (let ((t9-33 (method-of-type part-tracker activate)))
-                     (t9-33 (the-as part-tracker s4-5) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                     )
-                   (let ((s3-8 run-function-in-process)
-                         (s2-5 s4-5)
-                         (s1-5 part-tracker-init)
-                         (s0-5 group-punch-hit)
-                         )
-                     (set! sv-528 0)
-                     (set! sv-544 (the-as symbol #f))
-                     (set! sv-560 (the-as symbol #f))
-                     (set! sv-576 (the-as symbol #f))
-                     (set! sv-608 *launch-matrix*)
-                     (set! sv-592 (-> sv-608 trans))
-                     (let ((v1-123 (-> (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2) quad)))
-                       (set! (-> sv-592 quad) v1-123)
-                       )
-                     ((the-as (function object object object object object object object object none) s3-8)
-                      s2-5
-                      s1-5
-                      s0-5
-                      sv-528
-                      sv-544
-                      sv-560
-                      sv-576
-                      sv-608
-                      )
-                     )
-                   (-> s4-5 ppointer)
-                   )
-                 )
-               )
-             ((let ((v0-34 (prims-touching? arg2 (-> self control) (the-as uint 128))))
-                (set! sv-176 v0-34)
-                v0-34
-                )
-              (let ((s4-6 (get-process *default-dead-pool* part-tracker #x4000)))
-                (when s4-6
-                  (let ((t9-38 (method-of-type part-tracker activate)))
-                    (t9-38 (the-as part-tracker s4-6) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                    )
-                  (let ((s3-9 run-function-in-process)
-                        (s2-6 s4-6)
-                        (s1-6 part-tracker-init)
-                        (s0-6 group-punch-hit)
-                        )
-                    (set! sv-624 0)
-                    (set! sv-640 (the-as symbol #f))
-                    (set! sv-656 (the-as symbol #f))
-                    (set! sv-672 (the-as symbol #f))
-                    (set! sv-704 *launch-matrix*)
-                    (set! sv-688 (-> sv-704 trans))
-                    (let ((v1-137 (-> (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2) quad)))
-                      (set! (-> sv-688 quad) v1-137)
-                      )
-                    ((the-as (function object object object object object object object object none) s3-9)
-                     s2-6
-                     s1-6
-                     s0-6
-                     sv-624
-                     sv-640
-                     sv-656
-                     sv-672
-                     sv-704
-                     )
-                    )
-                  (-> s4-6 ppointer)
-                  )
-                )
-              )
-             )
-           (do-effect (-> self skel effect) 'group-uppercut-hit -1.0 22)
-           (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) (static-sound-name "uppercut-hit"))
-           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
-           )
-          ((or (= v1-37 'flop) (= v1-37 'flop-down))
-           (do-effect (-> self skel effect) 'group-flop-hit -1.0 22)
-           (do-effect (-> self skel effect) 'group-flop-hit -1.0 18)
-           (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) (static-sound-name "flop-hit"))
-           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
-           )
-          ((= v1-37 'flut-attack)
-           (play-effect-sound (-> self skel effect) arg1 -1.0 22 (the-as basic #f) (static-sound-name "punch-hit"))
-           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.2))
-           )
-          ((= v1-37 'darkjak)
-           (set-time! (-> self darkjak attack-time))
-           (let* ((v1-160 *game-info*)
-                  (a0-102 (+ (-> v1-160 attack-id) 1))
-                  )
-             (set! (-> v1-160 attack-id) a0-102)
-             (set! (-> self darkjak attack-id) a0-102)
-             a0-102
-             )
-           )
-          )
-        )
+      sv-96
       )
     )
-  sv-96
   )
 
 ;; definition for function target-generic-event-handler

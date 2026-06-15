@@ -1,0 +1,10 @@
+("UR8VL3.DGO"
+ ("wheel-q-ag.o"
+  "wolf-chassis-ag.go"
+  "wolf-door-c-ag.go"
+  "wolf-f-bumper-c-ag.go"
+  "wolf-hood-c-ag.go"
+  "wolf-r-bumper-d-ag.go"
+  "wolf-roof-d-ag.go"
+  "ur8vl3.o"
+ ))

@@ -1,0 +1,12 @@
+("SPATOURW.DGO"
+ ("canyon-part.o"
+  "canyon-effects.o"
+  "canyon-obs.o"
+  "temple-ocean.o"
+  "spargus-ocean.o"
+  "spargus-part.o"
+  "temple-part.o"
+  "temple-effects.o"
+  "tpage-2786.go"
+  "spatourw.o"
+ ))

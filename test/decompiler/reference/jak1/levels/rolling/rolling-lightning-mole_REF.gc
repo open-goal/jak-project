@@ -4,7 +4,7 @@
 ;; definition for function find-adjacent-bounds-one
 ;; INFO: Used lq/sq
 (defun find-adjacent-bounds-one ((arg0 nav-mesh) (arg1 nav-poly) (arg2 int) (arg3 (array int8)) (arg4 (array int8)) (arg5 vector))
-  (local-vars (v0-2 object) (v1-2 int) (v1-30 int) (a0-2 int) (a0-12 int) (sv-16 nav-poly) (sv-32 int))
+  (local-vars (v0-2 object) (v1-2 int) (v1-30 int) (a0-2 int) (a0-12 int))
   (let ((v1-1 (+ arg2 1)))
     (let ((a0-1 2))
       (set-on-less-than a0-2 a0-1 v1-1)
@@ -21,51 +21,53 @@
        )
       )
     )
-  (let ((s0-0 (-> arg1 vertex (-> arg3 arg2))))
-    (set! sv-16 arg1)
+  (let ((s0-0 (-> arg1 vertex (-> arg3 arg2)))
+        (sv-16 arg1)
+        )
     (while (begin (label cfg-28) #t)
-      (set! sv-32 0)
-      (while (< sv-32 3)
-        (cond
-          ((and (= sv-32 arg2) (= sv-16 arg1))
-           )
-          ((= s0-0 (-> sv-16 vertex (-> arg4 sv-32)))
-           (vector+! arg5 (-> arg0 origin) (the-as vector (-> arg0 vertex (-> sv-16 vertex (-> arg3 sv-32)))))
-           (let ((v1-29 (+ sv-32 1)))
-             (let ((a0-11 2))
-               (set-on-less-than a0-12 a0-11 v1-29)
-               )
-             (move-if-not-zero v1-30 0 a0-12 v1-29)
+      (let ((sv-32 0))
+        (while (< sv-32 3)
+          (cond
+            ((and (= sv-32 arg2) (= sv-16 arg1))
              )
-           (let ((v1-32 (-> sv-16 adj-poly v1-30)))
-             (if (= v1-32 255)
-                 (return #t)
+            ((= s0-0 (-> sv-16 vertex (-> arg4 sv-32)))
+             (vector+! arg5 (-> arg0 origin) (the-as vector (-> arg0 vertex (-> sv-16 vertex (-> arg3 sv-32)))))
+             (let ((v1-29 (+ sv-32 1)))
+               (let ((a0-11 2))
+                 (set-on-less-than a0-12 a0-11 v1-29)
                  )
-             (let ((v1-35 (-> arg0 poly v1-32)))
-               (set! v0-2 (cond
-                            ((= arg1 v1-35)
-                             (format 0 "ERROR<GMJ>: find-adjacent-bounds-one given tried to go back~%")
-                             )
-                            (else
-                              (cond
-                                ((logtest? (-> v1-35 pat) 1)
-                                 (return #t)
-                                 )
-                                (else
-                                  (set! arg1 sv-16)
-                                  (set! sv-16 v1-35)
-                                  (goto cfg-28)
+               (move-if-not-zero v1-30 0 a0-12 v1-29)
+               )
+             (let ((v1-32 (-> sv-16 adj-poly v1-30)))
+               (if (= v1-32 255)
+                   (return #t)
+                   )
+               (let ((v1-35 (-> arg0 poly v1-32)))
+                 (set! v0-2 (cond
+                              ((= arg1 v1-35)
+                               (format 0 "ERROR<GMJ>: find-adjacent-bounds-one given tried to go back~%")
+                               )
+                              (else
+                                (cond
+                                  ((logtest? (-> v1-35 pat) 1)
+                                   (return #t)
+                                   )
+                                  (else
+                                    (set! arg1 sv-16)
+                                    (set! sv-16 v1-35)
+                                    (goto cfg-28)
+                                    )
                                   )
+                                v0-2
                                 )
-                              v0-2
                               )
-                            )
-                     )
+                       )
+                 )
                )
              )
-           )
+            )
+          (+! sv-32 1)
           )
-        (set! sv-32 (+ sv-32 1))
         )
       (format 0 "ERROR<GMJ>: abnormal exit from find-adjacent-bounds-one~%")
       (return #f)
@@ -219,7 +221,6 @@
 ;; definition for function fleeing-nav-enemy-clip-travel
 ;; INFO: Used lq/sq
 (defun fleeing-nav-enemy-clip-travel ((arg0 fleeing-nav-enemy) (arg1 vector))
-  (local-vars (sv-224 vector) (sv-240 vector) (sv-256 vector) (sv-272 vector) (sv-288 vector))
   (let ((s2-0 (new 'stack 'clip-travel-vector-to-mesh-return-info))
         (gp-0 (new 'stack-no-clear 'vector))
         (s1-0 #f)
@@ -252,21 +253,8 @@
                  (cond
                    ((< (cos f28-1) f30-0)
                     (vector--float*! s3-0 s0-0 (-> s2-0 boundary-normal) f30-0)
-                    (let ((s0-1 vector-normalize!))
-                      (set! sv-224 s3-0)
-                      (let ((a1-7 (sin f28-1)))
-                        (s0-1 sv-224 a1-7)
-                        )
-                      )
-                    (let ((s0-2 vector+float*!))
-                      (set! sv-240 s3-0)
-                      (set! sv-256 s3-0)
-                      (let ((s2-1 (-> s2-0 boundary-normal))
-                            (a3-1 (cos f28-1))
-                            )
-                        (s0-2 sv-240 sv-256 s2-1 a3-1)
-                        )
-                      )
+                    (vector-normalize! s3-0 (sin f28-1))
+                    (vector+float*! s3-0 s3-0 (-> s2-0 boundary-normal) (cos f28-1))
                     )
                    (else
                      (let ((v1-15 s3-0))
@@ -280,31 +268,13 @@
               ((< (cos (-> arg0 flee-info min-reflect-angle)) f30-0)
                (vector--float*! s3-0 s0-0 (-> s2-0 boundary-normal) f30-0)
                (vector-normalize! s3-0 (sin (-> arg0 flee-info min-reflect-angle)))
-               (let ((s1-2 vector--float*!)
-                     (s0-4 s3-0)
-                     )
-                 (set! sv-272 s3-0)
-                 (let ((s2-2 (-> s2-0 boundary-normal))
-                       (a3-3 (cos (-> arg0 flee-info min-reflect-angle)))
-                       )
-                   (s1-2 s0-4 sv-272 s2-2 a3-3)
-                   )
-                 )
+               (vector--float*! s3-0 s3-0 (-> s2-0 boundary-normal) (cos (-> arg0 flee-info min-reflect-angle)))
                (set! s1-0 #t)
                )
               ((< f30-0 (cos (-> arg0 flee-info max-reflect-angle)))
                (vector--float*! s3-0 s0-0 (-> s2-0 boundary-normal) f30-0)
                (vector-normalize! s3-0 (sin (-> arg0 flee-info max-reflect-angle)))
-               (let ((s1-4 vector--float*!)
-                     (s0-6 s3-0)
-                     )
-                 (set! sv-288 s3-0)
-                 (let ((s2-3 (-> s2-0 boundary-normal))
-                       (a3-5 (cos (-> arg0 flee-info max-reflect-angle)))
-                       )
-                   (s1-4 s0-6 sv-288 s2-3 a3-5)
-                   )
-                 )
+               (vector--float*! s3-0 s3-0 (-> s2-0 boundary-normal) (cos (-> arg0 flee-info max-reflect-angle)))
                (set! s1-0 #t)
                )
               (else
@@ -572,41 +542,41 @@
 
 ;; definition for function lightning-mole-task-complete?
 (defbehavior lightning-mole-task-complete? lightning-mole ()
-  (local-vars (sv-16 symbol))
   (process-entity-status! self (entity-perm-status complete) #t)
   (when (or (-> self link prev) (-> self link next))
-    (set! sv-16 (the-as symbol #f))
-    (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
-    (cond
-      (sv-16
-        (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-        (process-spawn-function
-          process
-          (lambda :behavior lightning-mole
-            ()
-            (while (or (-> *setting-control* current ambient)
-                       (-> *setting-control* current movie)
-                       (-> *setting-control* current hint)
-                       )
-              (suspend)
+    (let ((sv-16 (the-as symbol #f)))
+      (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
+      (cond
+        (sv-16
+          (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
+          (process-spawn-function
+            process
+            (lambda :behavior lightning-mole
+              ()
+              (while (or (-> *setting-control* current ambient)
+                         (-> *setting-control* current movie)
+                         (-> *setting-control* current hint)
+                         )
+                (suspend)
+                )
+              (level-hint-spawn
+                (text-id rolling-moles-resolution)
+                "sksp0112"
+                (the-as entity #f)
+                *entity-pool*
+                (game-task none)
+                )
+              (none)
               )
-            (level-hint-spawn
-              (text-id rolling-moles-resolution)
-              "sksp0112"
-              (the-as entity #f)
-              *entity-pool*
-              (game-task none)
-              )
-            (none)
+            :to self
             )
-          :to self
+          (format #t "lightning-mole task is complete~%")
           )
-        (format #t "lightning-mole task is complete~%")
+        (else
+          )
         )
-      (else
-        )
+      sv-16
       )
-    sv-16
     )
   )
 

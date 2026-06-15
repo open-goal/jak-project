@@ -62,14 +62,14 @@
   (set! (-> self tpos-curr-adj quad) (-> self tpos-old quad))
   (set! (-> self tpos-tgt quad) (-> self tpos-old quad))
   (quaternion->matrix (-> self tgt-rot-mat) (-> *target* control dir-targ))
-  (quaternion->matrix (-> self tgt-face-mat) (-> *target* control unknown-quaternion00))
+  (quaternion->matrix (-> self tgt-face-mat) (-> *target* control quat-for-control))
   (vector-reset! (-> self pitch-off))
   (set! (-> self upspeed) 0.0)
   (set! (-> self foot-offset) (-> *CAMERA_MASTER-bank* onscreen-foot-height))
   (set! (-> self head-offset) (-> *CAMERA_MASTER-bank* onscreen-head-height))
   (set! (-> self target-height) (-> *CAMERA_MASTER-bank* target-height))
   (set! (-> self on-ground)
-        (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+        (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                   (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                   )
              )
@@ -103,8 +103,8 @@
       )
     )
   (cond
-    ((and (logtest? (-> *target* water flags) (water-flags wt12))
-          (not (logtest? (-> *target* water flags) (water-flags wt04)))
+    ((and (logtest? (-> *target* water flag) (water-flag under-water))
+          (not (logtest? (-> *target* water flag) (water-flag swim-ground)))
           )
      (set! (-> self under-water) 2)
      )
@@ -333,8 +333,8 @@
            )
          )
        (cond
-         ((and (logtest? (-> *target* water flags) (water-flags wt12))
-               (not (logtest? (-> *target* water flags) (water-flags wt04)))
+         ((and (logtest? (-> *target* water flag) (water-flag under-water))
+               (not (logtest? (-> *target* water flag) (water-flag swim-ground)))
                )
           (set! (-> self under-water) 2)
           )
@@ -345,7 +345,7 @@
        (set! (-> self tpos-old quad) (-> self tpos-curr quad))
        (set! (-> self tpos-old-adj quad) (-> self tpos-curr-adj quad))
        (quaternion->matrix (-> self tgt-rot-mat) (-> *target* control dir-targ))
-       (quaternion->matrix (-> self tgt-face-mat) (-> *target* control unknown-quaternion00))
+       (quaternion->matrix (-> self tgt-face-mat) (-> *target* control quat-for-control))
        (cond
          ((< (-> self ease-t) 1.0)
           (new 'stack-no-clear 'vector)
@@ -405,7 +405,7 @@
            )
          )
        (set! (-> self on-ground)
-             (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+             (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                        (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                        )
                   )
@@ -413,10 +413,10 @@
        (let ((gp-6 (new-stack-vector0)))
          0.0
          (cond
-           ((and (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+           ((and (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                       (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                       )
-                 (!= (-> *target* control unknown-surface00 name) 'launch-jump)
+                 (!= (-> *target* control mod-surface name) 'launch-jump)
                  )
             (if *display-cam-los-debug*
                 (format *stdcon* "air tracking~%")
@@ -460,7 +460,7 @@
              (vector-! gp-6 (-> self tpos-curr) (-> self tpos-old))
              (let ((f0-38 (vector-dot gp-6 (-> self local-down))))
                (cond
-                 ((logtest? (-> *target* water flags) (water-flags wt09))
+                 ((logtest? (-> *target* water flag) (water-flag touch-water))
                   (set! (-> self upspeed) 0.0)
                   )
                  ((< 0.0 f0-38)
@@ -488,8 +488,8 @@
        (if (not (logtest? (-> self slave-options) 16))
            (reset-follow)
            )
-       (let ((v1-196 (-> *target* water flags)))
-         (when (and (logtest? v1-196 (water-flags wt09)) (logtest? v1-196 (water-flags wt11 wt12)))
+       (let ((v1-196 (-> *target* water flag)))
+         (when (and (logtest? v1-196 (water-flag touch-water)) (logtest? v1-196 (water-flag swimming under-water)))
            (let ((f0-45 (- (-> *target* water base-height) (-> self target-height))))
              (if (< (-> self tpos-curr-adj y) f0-45)
                  (set! (-> self tpos-curr-adj y) f0-45)
@@ -534,22 +534,21 @@
 ;; definition for function in-cam-entity-volume?
 ;; INFO: Used lq/sq
 (defun in-cam-entity-volume? ((arg0 vector) (arg1 entity) (arg2 float) (arg3 symbol))
-  (local-vars (sv-16 res-tag))
   (let ((s2-0 0))
     (loop
-      (set! sv-16 (new 'static 'res-tag))
-      (let ((v1-1 (the-as object ((method-of-type res-lump get-property-data)
-                                  arg1
-                                  arg3
-                                  'exact
-                                  (the float s2-0)
-                                  (the-as pointer #f)
-                                  (& sv-16)
-                                  *res-static-buf*
-                                  )
-                          )
-                  )
-            )
+      (let* ((sv-16 (new 'static 'res-tag))
+             (v1-1 (the-as object ((method-of-type res-lump get-property-data)
+                                   arg1
+                                   arg3
+                                   'exact
+                                   (the float s2-0)
+                                   (the-as pointer #f)
+                                   (& sv-16)
+                                   *res-static-buf*
+                                   )
+                           )
+                   )
+             )
         (cond
           ((not (the-as pointer v1-1))
            (return #f)
@@ -651,14 +650,7 @@
 ;; definition for function master-switch-to-entity
 ;; INFO: Used lq/sq
 (defbehavior master-switch-to-entity camera-master ((arg0 entity))
-  (local-vars
-    (v0-21 object)
-    (gp-0 (pointer process))
-    (sv-16 res-tag)
-    (sv-112 process)
-    (sv-128 string)
-    (sv-144 string)
-    )
+  (local-vars (v0-21 object) (gp-0 (pointer process)))
   (set! (-> self cam-entity) arg0)
   10
   (let ((s4-0 (cam-state-from-entity arg0)))
@@ -690,81 +682,78 @@
         )
       )
     )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((s4-2 (res-lump-data arg0 'alternates (pointer string) :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (s4-2 (res-lump-data arg0 'alternates (pointer string) :tag-ptr (& sv-16)))
+         )
     (when s4-2
       (dotimes (s3-2 (the-as int (-> sv-16 elt-count)))
         (let ((s2-0 (entity-by-name (-> s4-2 s3-2))))
-          (set! v0-21
-                (cond
-                  (s2-0
-                    (let ((s0-0 (cam-state-from-entity s2-0)))
-                      (cond
-                        ((= s0-0 *camera-base-mode*)
-                         (deactivate (-> gp-0 0))
-                         (master-base-region s2-0)
-                         (return #t)
-                         v0-21
-                         )
-                        (s0-0
-                          (set! sv-112 (get-process *camera-dead-pool* camera-slave #x4000))
-                          (let ((s1-0 (when sv-112
-                                        (let ((t9-15 (method-of-type camera-slave activate)))
-                                          (t9-15 (the-as camera-slave sv-112) self 'camera-slave (the-as pointer #x70004000))
+          (set! v0-21 (cond
+                        (s2-0
+                          (let ((s0-0 (cam-state-from-entity s2-0)))
+                            (cond
+                              ((= s0-0 *camera-base-mode*)
+                               (deactivate (-> gp-0 0))
+                               (master-base-region s2-0)
+                               (return #t)
+                               v0-21
+                               )
+                              (s0-0
+                                (let* ((sv-112 (get-process *camera-dead-pool* camera-slave #x4000))
+                                       (s1-0 (when sv-112
+                                               ((method-of-type camera-slave activate)
+                                                (the-as camera-slave sv-112)
+                                                self
+                                                'camera-slave
+                                                (the-as pointer #x70004000)
+                                                )
+                                               (run-now-in-process sv-112 cam-slave-init s0-0 s2-0)
+                                               (-> sv-112 ppointer)
+                                               )
+                                             )
+                                       )
+                                  (cond
+                                    (s1-0
+                                      (setup-slave-for-hopefull (the-as camera-slave (ppointer->process s1-0)))
+                                      (cond
+                                        ((master-is-hopeful-better?
+                                           (the-as camera-slave (ppointer->process gp-0))
+                                           (the-as camera-slave (ppointer->process s1-0))
+                                           )
+                                         (deactivate (-> gp-0 0))
+                                         (set! gp-0 s1-0)
+                                         gp-0
+                                         )
+                                        (else
+                                          (deactivate (-> s1-0 0))
                                           )
-                                        (run-now-in-process sv-112 cam-slave-init s0-0 s2-0)
-                                        (-> sv-112 ppointer)
                                         )
                                       )
-                                )
-                            (cond
-                              (s1-0
-                                (setup-slave-for-hopefull (the-as camera-slave (ppointer->process s1-0)))
-                                (cond
-                                  ((master-is-hopeful-better?
-                                     (the-as camera-slave (ppointer->process gp-0))
-                                     (the-as camera-slave (ppointer->process s1-0))
-                                     )
-                                   (deactivate (-> gp-0 0))
-                                   (set! gp-0 s1-0)
-                                   gp-0
-                                   )
-                                  (else
-                                    (deactivate (-> s1-0 0))
+                                    (else
+                                      (format 0 "ERROR <GMJ>: alternate region activate failed~%")
+                                      )
                                     )
                                   )
                                 )
                               (else
-                                (format 0 "ERROR <GMJ>: alternate region activate failed~%")
+                                (format
+                                  0
+                                  "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%"
+                                  (res-lump-struct s2-0 'name structure)
+                                  )
                                 )
                               )
                             )
                           )
                         (else
-                          (let ((s1-1 format)
-                                (s0-1 0)
-                                )
-                            (set! sv-128 "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%")
-                            (let ((a2-10 (res-lump-struct s2-0 'name structure)))
-                              (s1-1 s0-1 sv-128 a2-10)
-                              )
+                          (format
+                            0
+                            "ERROR <GMJ>: alternate '~S' not found for '~S'~%"
+                            (-> s4-2 s3-2)
+                            (res-lump-struct arg0 'name structure)
                             )
                           )
                         )
-                      )
-                    )
-                  (else
-                    (let ((s2-1 format)
-                          (s1-2 0)
-                          (s0-2 "ERROR <GMJ>: alternate '~S' not found for '~S'~%")
-                          )
-                      (set! sv-144 (-> s4-2 s3-2))
-                      (let ((a3-8 (res-lump-struct arg0 'name structure)))
-                        (s2-1 s1-2 s0-2 sv-144 a3-8)
-                        )
-                      )
-                    )
-                  )
                 )
           )
         )

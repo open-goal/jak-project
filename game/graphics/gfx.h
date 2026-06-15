@@ -6,8 +6,10 @@
  */
 
 #include <array>
+#include <atomic>
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include "common/common_types.h"
 #include "common/util/FileUtil.h"
@@ -43,6 +45,9 @@ struct GfxRendererModule {
   std::function<void(u32, u32, u32)> texture_relocate;
   std::function<void(const std::vector<std::string>&)> set_levels;
   std::function<void(const std::vector<std::string>&)> set_active_levels;
+  std::function<void()> force_reload_all;
+  std::function<void(const std::string&)> force_reload_level;
+  std::function<void()> force_reload_common;
   std::function<void(float)> set_pmode_alp;
   GfxPipeline pipeline;
   const char* name;
@@ -129,5 +134,13 @@ bool CollisionRendererGetMask(GfxGlobalSettings::CollisionRendererMode mode, s64
 void CollisionRendererSetMask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask_id);
 void CollisionRendererClearMask(GfxGlobalSettings::CollisionRendererMode mode, s64 mask_id);
 void CollisionRendererSetMode(GfxGlobalSettings::CollisionRendererMode mode);
+
+struct SplashScreen {
+  std::vector<u8> data;
+  int width = 0;
+  int height = 0;
+  std::atomic<bool> ready{false};
+};
+extern SplashScreen g_splash;
 
 }  // namespace Gfx

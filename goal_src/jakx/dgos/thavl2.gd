@@ -1,0 +1,9 @@
+("THAVL2.DGO"
+ ("panther-chassis-ag.o"
+  "panther-door-e-ag.go"
+  "panther-f-bumper-e-ag.go"
+  "panther-hood-e-ag.go"
+  "panther-roof-e-ag.go"
+  "wheel-o-ag.go"
+  "thavl2.o"
+ ))

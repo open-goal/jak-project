@@ -6,7 +6,8 @@
    (base       vector :inline)
    (old-base   vector :inline)
    (bob-offset int64)
-   (bob-amount float))
+   (bob-amount float)
+   (last-fast-rot time-frame))
   (:methods
    (init-collision! (_type_) object))
   (:state-methods
@@ -73,6 +74,7 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
+        (('rot) (set-time! (-> self last-fast-rot)))
         (('attack 'touch)
          ; (if (= (-> proc type) target)
          ;   (send-event proc 'attack #f (static-attack-info ((shove-up (meters 2.5)) (shove-back (meters 7.5)))))
@@ -81,7 +83,7 @@
   :code
     (behavior ()
       (loop
-        (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* (degrees 45) (seconds-per-frame)))
+        (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* (degrees (if (not (time-elapsed? (-> self last-fast-rot) (seconds 2))) 240 45)) (seconds-per-frame)))
         (let ((bob (-> self bob-amount)))
           (when (< 0.0 bob)
             (set! (-> self root trans y)
@@ -98,3 +100,27 @@
         ;   )
         (suspend)))
   :post transform-post)
+
+(deftype water-anim-test-zone (water-anim) ())
+
+(define ripple-for-water-anim-test-zone (new 'static 'ripple-wave-set
+                                        :count 3
+                                        :converted #f
+                                        :normal-scale 1.0
+                                        :wave (new 'static 'inline-array ripple-wave 4
+                                          (new 'static 'ripple-wave :scale 10.0 :xdiv 1 :speed 1.5)
+                                          (new 'static 'ripple-wave :scale 10.0 :xdiv -1 :zdiv 1 :speed 1.5)
+                                          (new 'static 'ripple-wave :scale 5.0 :xdiv 5 :zdiv 3 :speed 0.75)
+                                          (new 'static 'ripple-wave)
+                                          )
+                                        )
+        )
+
+(defmethod init-water! ((this water-anim-test-zone))
+  (call-parent-method this)
+  (set! (-> this draw ripple) (new 'process 'ripple-control))
+  (set! (-> this draw ripple global-scale) (meters 0.75))
+  (set! (-> this draw ripple close-fade-dist) (meters 40))
+  (set! (-> this draw ripple far-fade-dist) (meters 60))
+  (set! (-> this draw ripple waveform) ripple-for-water-anim-test-zone)
+  )

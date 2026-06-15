@@ -67,14 +67,14 @@
               (matrix-axis-angle! s3-0 (-> *camera* local-down) (- (-> s5-0 y)))
               (vector-matrix*! s4-0 s4-0 s3-0)
               )
-            (forward-down->inv-matrix (the-as matrix (-> self tracking)) s4-0 (-> *camera* local-down))
+            (forward-down->inv-matrix (-> self tracking inv-mat) s4-0 (-> *camera* local-down))
             )
           (set! (-> self pivot-rad) (- (-> self pivot-rad) (-> gp-0 z)))
           (if (< (-> self pivot-rad) 4096.0)
               (set! (-> self pivot-rad) 4096.0)
               )
           (set-vector! gp-0 0.0 0.0 (- (-> self pivot-rad)) 1.0)
-          (vector-matrix*! (-> self trans) gp-0 (the-as matrix (-> self tracking)))
+          (vector-matrix*! (-> self trans) gp-0 (-> self tracking inv-mat))
           )
         )
       (suspend)
@@ -95,7 +95,7 @@
 
 (defun cam-mouse-input ((arg0 vector) (arg1 vector))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
-    (vector-! v1-0 (the-as vector (-> *mouse* pos)) (-> *mouse* pos 1))
+    (vector-! v1-0 (-> *mouse* pos 0) (-> *mouse* pos 1))
     (cond
       ((mouse-hold? left)
        (let ((a0-7 (new 'stack-no-clear 'vector)))
@@ -106,12 +106,7 @@
              (#f
                (let* ((f28-0 (* (/ f30-0 100) (-> v1-0 x)))
                       (f26-0 (* (/ f30-0 100) (-> v1-0 y)))
-                      (f0-5 f28-0)
-                      (f0-7 (* f0-5 f0-5))
-                      (f1-2 f26-0)
-                      (f0-8 (+ f0-7 (* f1-2 f1-2)))
-                      (f1-5 f30-0)
-                      (f22-0 (- (sqrtf (+ f0-8 (* f1-5 f1-5))) f30-0))
+                      (f22-0 (- (sqrtf (+ (square f28-0) (square f26-0) (square f30-0))) f30-0))
                       (f24-0 (atan f26-0 f30-0))
                       (f0-12 (atan (- f28-0) f30-0))
                       )
@@ -287,13 +282,13 @@
           ((cpad-hold? arg3 r2)
            (when (logtest? (-> *camera* settings master-options) (cam-master-options READ_BUTTONS))
              (if (cpad-hold? arg3 r1)
-                 (+! (-> arg1 y) (+ (* 0.2 (-> *CAM_FREE-bank* speed)) (analog-input
-                                                                         (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
-                                                                         0.0
-                                                                         32.0
-                                                                         230.0
-                                                                         (* 0.2 (-> *CAM_FREE-bank* speed))
-                                                                         )
+                 (+! (-> arg1 y) (+ (/ (-> *CAM_FREE-bank* speed) 5) (analog-input
+                                                                       (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
+                                                                       0.0
+                                                                       32.0
+                                                                       230.0
+                                                                       (/ (-> *CAM_FREE-bank* speed) 5)
+                                                                       )
                                     )
                      )
                  )
@@ -301,13 +296,13 @@
            (when (logtest? (-> *camera* settings master-options) (cam-master-options READ_BUTTONS))
              (if (cpad-hold? arg3 l1)
                  (set! (-> arg1 y)
-                       (- (-> arg1 y) (+ (* 0.2 (-> *CAM_FREE-bank* speed)) (analog-input
-                                                                              (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
-                                                                              0.0
-                                                                              32.0
-                                                                              230.0
-                                                                              (* 0.2 (-> *CAM_FREE-bank* speed))
-                                                                              )
+                       (- (-> arg1 y) (+ (/ (-> *CAM_FREE-bank* speed) 5) (analog-input
+                                                                            (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
+                                                                            0.0
+                                                                            32.0
+                                                                            230.0
+                                                                            (/ (-> *CAM_FREE-bank* speed) 5)
+                                                                            )
                                          )
                           )
                        )
@@ -417,7 +412,7 @@
         (matrix*! arg0 arg0 (-> s3-0 tm))
         )
       )
-    (matrix-axis-angle! (-> s3-0 tm) (the-as vector (-> arg0 vector)) (- (-> s3-0 rv x)))
+    (matrix-axis-angle! (-> s3-0 tm) (-> arg0 vector 0) (- (-> s3-0 rv x)))
     (matrix*! arg0 arg0 (-> s3-0 tm))
     (matrix-axis-angle! (-> s3-0 tm) (-> arg0 vector 2) (- (-> s3-0 rv z)))
     (matrix*! arg0 arg0 (-> s3-0 tm))
@@ -451,7 +446,7 @@
             (set! a2-0 (the-as vector #f))
             )
         (cam-free-floating-move
-          (the-as matrix (-> self tracking))
+          (-> self tracking inv-mat)
           (-> self trans)
           a2-0
           (the-as int (-> *CAMERA-bank* joypad))

@@ -1638,7 +1638,6 @@
       )
     )
   :code (behavior ((arg0 object) (arg1 handle))
-    (local-vars (sv-96 res-tag))
     (sound-play "pu-powercell")
     (clear-collide-with-as (-> self root))
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -1661,8 +1660,8 @@
       (format #t "WARNING: fuel-cell stall on not cloning.~%")
       (suspend)
       )
-    (set! sv-96 (new 'static 'res-tag))
-    (let* ((v1-34
+    (let* ((sv-96 (new 'static 'res-tag))
+           (v1-34
              (res-lump-data
                (-> self entity)
                'movie-pos
@@ -2441,20 +2440,9 @@
     (v1-58 symbol)
     (v1-64 symbol)
     (v1-71 symbol)
-    (sv-32 fact-info)
-    (sv-48 int)
-    (sv-64 process)
-    (sv-80 process)
-    (sv-96 process)
-    (sv-112 process)
-    (sv-128 process)
-    (sv-144 process)
-    (sv-160 process)
-    (sv-176 process)
-    (sv-192 (pointer process))
     )
-  (set! sv-32 arg5)
-  (let ((s1-0 (new-stack-vector0))
+  (let ((sv-32 arg5)
+        (s1-0 (new-stack-vector0))
         (t9-0 (method-of-type res-lump get-property-value-float))
         )
     (let ((v1-1 sv-32))
@@ -2485,10 +2473,11 @@
                    *res-static-buf*
                    )
                  )
+          (sv-192 (the-as (pointer process) #f))
           )
-      (set! sv-192 (the-as (pointer process) #f))
-      (set! sv-48 (the int arg2))
-      (let ((s0-0 (new 'static 'fact-info)))
+      (let ((sv-48 (the int arg2))
+            (s0-0 (new 'static 'fact-info))
+            )
         (set! (-> s0-0 options) (fact-options))
         (if sv-32
             (mem-copy! (&-> s0-0 type) (&-> sv-32 type) 40)
@@ -2496,7 +2485,7 @@
         (set! (-> s0-0 pickup-type) arg1)
         (set! (-> s0-0 pickup-spawn-amount) 1.0)
         (while (> sv-48 0)
-          (set! sv-48 (+ sv-48 -1))
+          (+! sv-48 -1)
           (when arg3
             (set-vector! s1-0 0.0 57001.605 f30-0 1.0)
             (vector-rotate-around-y! s1-0 s1-0 (/ (* 65536.0 (the float sv-48)) arg2))
@@ -2504,118 +2493,117 @@
           (let ((v1-25 arg1))
             (cond
               ((= v1-25 (pickup-type eco-yellow))
-               (set! sv-64 (get-process *pickup-dead-pool* eco-yellow #x4000))
-               (set! v1-28 (when sv-64
-                             (set! sv-192 (the-as (pointer process) v1-28))
-                             (let ((t9-4 (method-of-type eco-yellow activate)))
-                               (t9-4 (the-as eco-yellow sv-64) arg4 'eco-yellow (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process sv-64 initialize-eco-by-other arg0 s1-0 s0-0)
-                             (set! sv-192 (-> sv-64 ppointer))
-                             v1-28
-                             )
-                     )
+               (let ((sv-64 (get-process *pickup-dead-pool* eco-yellow #x4000)))
+                 (set! v1-28
+                       (when sv-64
+                         (set! sv-192 (the-as (pointer process) v1-28))
+                         ((method-of-type eco-yellow activate) (the-as eco-yellow sv-64) arg4 'eco-yellow (the-as pointer #x70004000))
+                         (run-now-in-process sv-64 initialize-eco-by-other arg0 s1-0 s0-0)
+                         (set! sv-192 (-> sv-64 ppointer))
+                         v1-28
+                         )
+                       )
+                 )
                sv-192
                )
               ((= v1-25 (pickup-type eco-red))
-               (set! sv-80 (get-process *pickup-dead-pool* eco-red #x4000))
-               (set! v1-34 (when sv-80
-                             (set! sv-192 (the-as (pointer process) v1-34))
-                             (let ((t9-7 (method-of-type eco-red activate)))
-                               (t9-7 (the-as eco-red sv-80) arg4 'eco-red (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process sv-80 initialize-eco-by-other arg0 s1-0 s0-0)
-                             (set! sv-192 (-> sv-80 ppointer))
-                             v1-34
-                             )
-                     )
+               (let ((sv-80 (get-process *pickup-dead-pool* eco-red #x4000)))
+                 (set! v1-34
+                       (when sv-80
+                         (set! sv-192 (the-as (pointer process) v1-34))
+                         ((method-of-type eco-red activate) (the-as eco-red sv-80) arg4 'eco-red (the-as pointer #x70004000))
+                         (run-now-in-process sv-80 initialize-eco-by-other arg0 s1-0 s0-0)
+                         (set! sv-192 (-> sv-80 ppointer))
+                         v1-34
+                         )
+                       )
+                 )
                (level-hint-spawn (text-id misty-eco-red-hint) "sksp0071" (the-as entity #f) *entity-pool* (game-task none))
                )
               ((= v1-25 (pickup-type eco-blue))
-               (set! sv-96 (get-process *pickup-dead-pool* eco-blue #x4000))
-               (set! v1-40 (when sv-96
-                             (set! sv-192 (the-as (pointer process) v1-40))
-                             (let ((t9-11 (method-of-type eco-blue activate)))
-                               (t9-11 (the-as eco-blue sv-96) arg4 'eco-blue (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process sv-96 initialize-eco-by-other arg0 s1-0 s0-0)
-                             (set! sv-192 (-> sv-96 ppointer))
-                             v1-40
-                             )
-                     )
+               (let ((sv-96 (get-process *pickup-dead-pool* eco-blue #x4000)))
+                 (set! v1-40
+                       (when sv-96
+                         (set! sv-192 (the-as (pointer process) v1-40))
+                         ((method-of-type eco-blue activate) (the-as eco-blue sv-96) arg4 'eco-blue (the-as pointer #x70004000))
+                         (run-now-in-process sv-96 initialize-eco-by-other arg0 s1-0 s0-0)
+                         (set! sv-192 (-> sv-96 ppointer))
+                         v1-40
+                         )
+                       )
+                 )
                sv-192
                )
               ((= v1-25 (pickup-type eco-green))
-               (set! sv-112 (get-process *pickup-dead-pool* health #x4000))
-               (set! v1-46 (when sv-112
-                             (set! sv-192 (the-as (pointer process) v1-46))
-                             (let ((t9-14 (method-of-type health activate)))
-                               (t9-14 (the-as health sv-112) arg4 'health (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process sv-112 initialize-eco-by-other arg0 s1-0 s0-0)
-                             (set! sv-192 (-> sv-112 ppointer))
-                             v1-46
-                             )
-                     )
+               (let ((sv-112 (get-process *pickup-dead-pool* health #x4000)))
+                 (set! v1-46
+                       (when sv-112
+                         (set! sv-192 (the-as (pointer process) v1-46))
+                         ((method-of-type health activate) (the-as health sv-112) arg4 'health (the-as pointer #x70004000))
+                         (run-now-in-process sv-112 initialize-eco-by-other arg0 s1-0 s0-0)
+                         (set! sv-192 (-> sv-112 ppointer))
+                         v1-46
+                         )
+                       )
+                 )
                sv-192
                )
               ((= v1-25 (pickup-type eco-pill))
-               (set! sv-128 (get-process *pickup-dead-pool* eco-pill #x4000))
-               (set! v1-52 (when sv-128
-                             (set! sv-192 (the-as (pointer process) v1-52))
-                             (let ((t9-17 (method-of-type eco-pill activate)))
-                               (t9-17 (the-as eco-pill sv-128) arg4 'eco-pill (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process sv-128 initialize-eco-by-other arg0 s1-0 s0-0)
-                             (set! sv-192 (-> sv-128 ppointer))
-                             v1-52
-                             )
-                     )
+               (let ((sv-128 (get-process *pickup-dead-pool* eco-pill #x4000)))
+                 (set! v1-52
+                       (when sv-128
+                         (set! sv-192 (the-as (pointer process) v1-52))
+                         ((method-of-type eco-pill activate) (the-as eco-pill sv-128) arg4 'eco-pill (the-as pointer #x70004000))
+                         (run-now-in-process sv-128 initialize-eco-by-other arg0 s1-0 s0-0)
+                         (set! sv-192 (-> sv-128 ppointer))
+                         v1-52
+                         )
+                       )
+                 )
                sv-192
                )
               ((= v1-25 (pickup-type money))
-               (set! sv-144 (get-process *pickup-dead-pool* money #x4000))
-               (set! v1-58 (when sv-144
-                             (set! sv-192 (the-as (pointer process) v1-58))
-                             (let ((t9-20 (method-of-type money activate)))
-                               (t9-20 (the-as money sv-144) arg4 'money (the-as pointer #x70004000))
+               (let ((sv-144 (get-process *pickup-dead-pool* money #x4000)))
+                 (set! v1-58 (when sv-144
+                               (set! sv-192 (the-as (pointer process) v1-58))
+                               ((method-of-type money activate) (the-as money sv-144) arg4 'money (the-as pointer #x70004000))
+                               (run-now-in-process sv-144 money-init-by-other arg0 s1-0 s0-0 (-> self entity))
+                               (set! sv-192 (-> sv-144 ppointer))
+                               v1-58
                                )
-                             (run-now-in-process sv-144 money-init-by-other arg0 s1-0 s0-0 (-> self entity))
-                             (set! sv-192 (-> sv-144 ppointer))
-                             v1-58
-                             )
-                     )
+                       )
+                 )
                sv-192
                )
               ((= v1-25 (pickup-type fuel-cell))
                (set! (-> s0-0 pickup-spawn-amount) arg2)
-               (set! sv-160 (get-process *pickup-dead-pool* fuel-cell #x4000))
-               (set! v1-64 (when sv-160
-                             (set! sv-192 (the-as (pointer process) v1-64))
-                             (let ((t9-23 (method-of-type fuel-cell activate)))
-                               (t9-23 (the-as fuel-cell sv-160) arg4 'fuel-cell (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process sv-160 fuel-cell-init-by-other arg0 s1-0 s0-0 (-> self entity))
-                             (set! sv-192 (-> sv-160 ppointer))
-                             v1-64
-                             )
-                     )
+               (let ((sv-160 (get-process *pickup-dead-pool* fuel-cell #x4000)))
+                 (set! v1-64
+                       (when sv-160
+                         (set! sv-192 (the-as (pointer process) v1-64))
+                         ((method-of-type fuel-cell activate) (the-as fuel-cell sv-160) arg4 'fuel-cell (the-as pointer #x70004000))
+                         (run-now-in-process sv-160 fuel-cell-init-by-other arg0 s1-0 s0-0 (-> self entity))
+                         (set! sv-192 (-> sv-160 ppointer))
+                         v1-64
+                         )
+                       )
+                 )
                (set! sv-48 0)
                sv-48
                )
               ((= v1-25 (pickup-type buzzer))
                (set! (-> s0-0 pickup-spawn-amount) arg2)
-               (set! sv-176 (get-process *pickup-dead-pool* buzzer #x4000))
-               (set! v1-71 (when sv-176
-                             (set! sv-192 (the-as (pointer process) v1-71))
-                             (let ((t9-26 (method-of-type buzzer activate)))
-                               (t9-26 (the-as buzzer sv-176) arg4 'buzzer (the-as pointer #x70004000))
-                               )
-                             (run-now-in-process sv-176 buzzer-init-by-other arg0 s1-0 s0-0 (-> self entity))
-                             (set! sv-192 (-> sv-176 ppointer))
-                             v1-71
-                             )
-                     )
+               (let ((sv-176 (get-process *pickup-dead-pool* buzzer #x4000)))
+                 (set! v1-71
+                       (when sv-176
+                         (set! sv-192 (the-as (pointer process) v1-71))
+                         ((method-of-type buzzer activate) (the-as buzzer sv-176) arg4 'buzzer (the-as pointer #x70004000))
+                         (run-now-in-process sv-176 buzzer-init-by-other arg0 s1-0 s0-0 (-> self entity))
+                         (set! sv-192 (-> sv-176 ppointer))
+                         v1-71
+                         )
+                       )
+                 )
                (set! sv-48 0)
                sv-48
                )
@@ -2627,9 +2615,9 @@
             )
           )
         )
+      sv-192
       )
     )
-  sv-192
   )
 
 ;; definition for method 9 of type fact-info

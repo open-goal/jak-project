@@ -1,0 +1,9 @@
+("UR8VL2.DGO"
+ ("bobcat-chassis-ag.o"
+  "bobcat-door-d-ag.go"
+  "bobcat-f-fender-c-ag.go"
+  "bobcat-r-fender-e-ag.go"
+  "bobcat-roof-e-ag.go"
+  "wheel-s-ag.go"
+  "ur8vl2.o"
+ ))

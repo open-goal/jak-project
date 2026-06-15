@@ -363,7 +363,7 @@
 
 ;; definition for method 31 of type mother-spider
 (defmethod is-player-stuck? ((this mother-spider))
-  (when (and *target* (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+  (when (and *target* (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                                 (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                                 )
                            )
@@ -506,7 +506,6 @@
 ;; definition for method 21 of type mother-spider
 ;; INFO: Used lq/sq
 (defmethod mother-spider-method-21 ((this mother-spider) (arg0 vector) (arg1 float) (arg2 symbol))
-  (local-vars (sv-112 process) (sv-128 vector) (sv-144 vector))
   (let ((f30-0 (vector-length (-> this swing-pos))))
     (when (< 0.0 f30-0)
       (let ((s1-0 (new 'stack-no-clear 'vector))
@@ -543,9 +542,10 @@
           (logior! (-> this leg-socket-part-mask) (ash 1 s4-1))
           (set-time! (-> this leg-socket-part-time s4-1))
           (let ((s1-1 (-> *mother-spider-leg-infos* s4-1)))
-            (let ((s0-0 (new 'stack-no-clear 'vector)))
-              (set! sv-128 (new 'stack-no-clear 'vector))
-              (set! sv-144 (new 'stack-no-clear 'vector))
+            (let ((s0-0 (new 'stack-no-clear 'vector))
+                  (sv-128 (new 'stack-no-clear 'vector))
+                  (sv-144 (new 'stack-no-clear 'vector))
+                  )
               (vector<-cspace! s0-0 (-> this node-list data (-> s1-1 joint-index0)))
               (vector<-cspace! sv-128 (-> this node-list data (-> s1-1 joint-index1)))
               (vector-! sv-128 sv-128 s0-0)
@@ -554,13 +554,17 @@
               (vector-normalize! sv-144 1.0)
               (+! (-> sv-144 y) (rand-vu-float-range 0.0 0.3))
               (vector-normalize! sv-144 1.0)
-              (set! sv-112 (get-process *default-dead-pool* mother-spider-leg #x4000))
-              (when sv-112
-                (let ((t9-15 (method-of-type mother-spider-leg activate)))
-                  (t9-15 (the-as mother-spider-leg sv-112) this 'mother-spider-leg (the-as pointer #x70004000))
+              (let ((sv-112 (get-process *default-dead-pool* mother-spider-leg #x4000)))
+                (when sv-112
+                  ((method-of-type mother-spider-leg activate)
+                   (the-as mother-spider-leg sv-112)
+                   this
+                   'mother-spider-leg
+                   (the-as pointer #x70004000)
+                   )
+                  (run-now-in-process sv-112 mother-spider-leg-init-by-other this s0-0 sv-128 sv-144)
+                  (-> sv-112 ppointer)
                   )
-                (run-now-in-process sv-112 mother-spider-leg-init-by-other this s0-0 sv-128 sv-144)
-                (-> sv-112 ppointer)
                 )
               )
             (let ((v1-43 (-> (the-as collide-shape-prim-group s3-1) prims (-> s1-1 cprim-index))))
@@ -1054,7 +1058,7 @@
             )
         )
       )
-    (if (or (not *target*) (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+    (if (or (not *target*) (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                                 (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                                 )
             )
@@ -1640,7 +1644,6 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this mother-spider) (arg0 entity-actor))
-  (local-vars (sv-16 res-tag) (sv-64 vector))
   (set! (-> this baby-count) 0)
   (set! (-> this spit-counter) 0)
   (set! (-> this leg-socket-part-mask) 0)
@@ -1781,8 +1784,9 @@
   (set! (-> this max-swing-radius) 73728.0)
   (set! (-> this max-baby-count) 4)
   (let ((s4-1 #f))
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((v0-31 (res-lump-data arg0 'mother-spider pointer :tag-ptr (& sv-16))))
+    (let* ((sv-16 (new 'static 'res-tag))
+           (v0-31 (res-lump-data arg0 'mother-spider pointer :tag-ptr (& sv-16)))
+           )
       (cond
         (v0-31
           (+! (-> this thread-min-trans y) (-> (the-as (pointer float) v0-31) 0))
@@ -1849,14 +1853,7 @@
                 (eval-path-curve-div! (-> this path) s4-2 (the float s2-9) 'interp)
                 (vector-! s3-1 (target-pos 0) s4-2)
                 (set! (-> s3-1 y) 0.0)
-                (let ((s1-2 vector-rotate-around-y!)
-                      (s0-0 s3-1)
-                      )
-                  (set! sv-64 s3-1)
-                  (let ((a2-21 (rand-vu-float-range -7281.778 7281.778)))
-                    (s1-2 s0-0 sv-64 a2-21)
-                    )
-                  )
+                (vector-rotate-around-y! s3-1 s3-1 (rand-vu-float-range -7281.778 7281.778))
                 (vector-normalize! s3-1 1.0)
                 (spawn-child this s4-2 s3-1 #f)
                 )

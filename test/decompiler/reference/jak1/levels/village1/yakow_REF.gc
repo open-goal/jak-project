@@ -217,7 +217,6 @@ yakow-default-event-handler
 
 ;; definition for function yakow-task-complete?
 (defbehavior yakow-task-complete? yakow ((arg0 symbol))
-  (local-vars (sv-16 symbol) (sv-20 (pointer process-tree)))
   (let ((gp-0
           (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
           )
@@ -227,30 +226,32 @@ yakow-default-event-handler
         (process-entity-status! self (entity-perm-status complete) #f)
         )
     (when (or (-> self link prev) (-> self link next))
-      (set! sv-16 (the-as symbol #f))
-      (set! sv-20 (-> self child))
-      (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
-      (cond
-        (sv-16
-          (close-specific-task! (-> self entity extra perm task) (task-status need-hint))
-          (close-specific-task! (-> self entity extra perm task) (task-status need-introduction))
-          (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-          (if gp-0
-              (yakow-cam)
+      (let ((sv-16 (the-as symbol #f)))
+        (let ((sv-20 (-> self child)))
+          )
+        (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
+        (cond
+          (sv-16
+            (close-specific-task! (-> self entity extra perm task) (task-status need-hint))
+            (close-specific-task! (-> self entity extra perm task) (task-status need-introduction))
+            (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
+            (if gp-0
+                (yakow-cam)
+                )
+            (level-hint-spawn
+              (text-id village1-yakow-resolution)
+              "sksp018a"
+              (the-as entity #f)
+              *entity-pool*
+              (game-task none)
               )
-          (level-hint-spawn
-            (text-id village1-yakow-resolution)
-            "sksp018a"
-            (the-as entity #f)
-            *entity-pool*
-            (game-task none)
+            )
+          (else
+            (open-specific-task! (-> self entity extra perm task) (task-status need-reminder))
             )
           )
-        (else
-          (open-specific-task! (-> self entity extra perm task) (task-status need-reminder))
-          )
+        sv-16
         )
-      sv-16
       )
     )
   )
@@ -807,7 +808,7 @@ yakow-default-event-handler
         )
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this water) (new 'process 'water-control this 6 0.0 8192.0 2048.0))
-  (set! (-> this water flags) (water-flags wt01))
+  (set! (-> this water flag) (water-flag active))
   (set! (-> this water height) (res-lump-float (-> this entity) 'water-height))
   (set! (-> this water ripple-size) 12288.0)
   (set! (-> this home-base quad) (-> this root trans quad))

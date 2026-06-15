@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,6 +33,7 @@ typedef struct GPU_PipelineParameters
     GPU_VertexShaderID vert_shader;
     SDL_GPUTextureFormat attachment_format;
     SDL_GPUPrimitiveType primitive_type;
+    SDL_GPUShader *custom_frag_shader;
 } GPU_PipelineParameters;
 
 typedef struct GPU_PipelineCache

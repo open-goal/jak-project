@@ -14,7 +14,7 @@
     (when (and (logtest? (-> s5-0 collide-with) (-> s4-0 prim-core collide-as))
                (logtest? (-> s5-0 prim-core action) (collide-action rider-plat-sticky))
                (logtest? (-> s4-0 prim-core action) (collide-action rider-target)))
-      (let ((f0-4 (- (- (vector-vector-distance (the-as vector (-> s5-0 prim-core)) (the-as vector (-> s4-0 prim-core)))
+      (let ((f0-4 (- (- (vector-vector-distance (-> s5-0 prim-core world-sphere) (-> s4-0 prim-core world-sphere))
                         (-> s5-0 prim-core world-sphere w))
                      (-> s4-0 prim-core world-sphere w))))
         (if (< f0-4 122.88) (on-platform-test s5-0 s4-0 arg1 f0-4)))))
@@ -32,7 +32,7 @@
         ;; check collide kind
         (when (and (logtest? (-> s1-0 collide-with) s3-0) (logtest? (-> s1-0 prim-core action) (collide-action rider-plat-sticky)))
           ;; check dist
-          (let ((f0-2 (- (- (vector-vector-distance (the-as vector (-> s1-0 prim-core)) (the-as vector (-> arg0 prim-core)))
+          (let ((f0-2 (- (- (vector-vector-distance (-> s1-0 prim-core world-sphere) (-> arg0 prim-core world-sphere))
                             (-> s1-0 prim-core world-sphere w))
                          (-> arg0 prim-core world-sphere w))))
             ;; dist close enough, check!
@@ -48,7 +48,7 @@
        (dotimes (s2-0 (-> (the-as collide-shape-prim-group arg0) num-prims))
          (let ((s1-0 (-> (the-as collide-shape-prim-group arg0) prims s2-0)))
            (when (and (logtest? s3-0 (-> s1-0 prim-core collide-as)) (logtest? (-> s1-0 prim-core action) (collide-action rider-target)))
-             (let ((f0-2 (- (- (vector-vector-distance (the-as vector (-> this prim-core)) (the-as vector (-> s1-0 prim-core)))
+             (let ((f0-2 (- (- (vector-vector-distance (-> this prim-core world-sphere) (-> s1-0 prim-core world-sphere))
                                (-> this prim-core world-sphere w))
                             (-> s1-0 prim-core world-sphere w))))
                (if (< f0-2 122.88) (on-platform-test this s1-0 arg1 f0-2))))))))
@@ -64,15 +64,11 @@
                   (set! (-> this mesh-cache-tris) (the-as (inline-array collide-mesh-cache-tri) v1-17))
                   (set! (-> this mesh-cache-id) (-> s2-1 id))
                   (populate-cache! s3-1
-                                   (the-as collide-mesh-cache-tri (-> this mesh-cache-tris))
+                                   (-> this mesh-cache-tris 0)
                                    (-> this cshape process node-list data (-> this transform-index) bone transform)))
                  (else (return #f))))))
          (let* ((s2-2 (new 'stack-no-clear 'collide-tri-result))
-                (f0-4 (sphere-on-platform-test s3-1
-                                               (the-as collide-mesh-cache-tri (-> this mesh-cache-tris))
-                                               s2-2
-                                               (the-as vector (-> arg0 prim-core))
-                                               (-> arg1 best-dist))))
+                (f0-4 (sphere-on-platform-test s3-1 (-> this mesh-cache-tris 0) s2-2 (-> arg0 prim-core world-sphere) (-> arg1 best-dist))))
            (when (< f0-4 (-> arg1 best-dist))
              (set! (-> arg1 best-dist) f0-4)
              (set! (-> arg1 best-from-prim) this)
@@ -115,7 +111,7 @@
             *collide-player-list*
             (let ((s3-0 (-> v1-7 next0)))
               (while (!= v1-7 (-> *collide-player-list* alive-list-end))
-                (let* ((s2-0 (-> (the-as connection v1-7) param1))
+                (let* ((s2-0 (the-as object (-> (the-as connection v1-7) param1)))
                        (v1-8 (-> (the-as collide-shape s2-0) root-prim)))
                   (when (logtest? s4-0 (-> v1-8 prim-core collide-as))
                     (when (and (logtest? (-> v1-8 prim-core action) (collide-action rider-target))
@@ -142,7 +138,7 @@
               *collide-hit-by-player-list*
               (let ((s3-1 (-> v1-37 next0)))
                 (while (!= v1-37 (-> *collide-hit-by-player-list* alive-list-end))
-                  (let* ((s2-1 (-> (the-as connection v1-37) param1))
+                  (let* ((s2-1 (the-as object (-> (the-as connection v1-37) param1)))
                          (v1-38 (-> (the-as collide-shape s2-1) root-prim)))
                     (when (logtest? s4-0 (-> v1-38 prim-core collide-as))
                       (when (and (logtest? (-> v1-38 prim-core action) (collide-action rider-target))
@@ -168,7 +164,7 @@
               *collide-usually-hit-by-player-list*
               (let ((s3-2 (-> v1-66 next0)))
                 (while (!= v1-66 (-> *collide-usually-hit-by-player-list* alive-list-end))
-                  (let* ((s2-2 (-> (the-as connection v1-66) param1))
+                  (let* ((s2-2 (the-as object (-> (the-as connection v1-66) param1)))
                          (v1-67 (-> (the-as collide-shape s2-2) root-prim)))
                     (when (logtest? s4-0 (-> v1-67 prim-core collide-as))
                       (when (and (logtest? (-> v1-67 prim-core action) (collide-action rider-target))
@@ -194,7 +190,7 @@
               *collide-hit-by-others-list*
               (let ((s3-3 (-> v1-94 next0)))
                 (while (!= v1-94 (-> *collide-hit-by-others-list* alive-list-end))
-                  (let* ((s2-3 (-> (the-as connection v1-94) param1))
+                  (let* ((s2-3 (the-as object (-> (the-as connection v1-94) param1)))
                          (v1-95 (-> (the-as collide-shape s2-3) root-prim)))
                     (when (logtest? s4-0 (-> v1-95 prim-core collide-as))
                       (when (and (logtest? (-> v1-95 prim-core action) (collide-action rider-target))
@@ -240,7 +236,7 @@
 
 (defmethod pull-rider! ((this collide-shape) (arg0 pull-rider-info))
   "Move a rider."
-  (local-vars (at-0 int) (sv-160 (function collide-shape-moving float collide-kind none)))
+  (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf))
@@ -254,11 +250,7 @@
           ((logtest? (-> this root-prim prim-core action) (collide-action rider-plat))
            (let ((s1-0 (-> this root-prim prim-core collide-as)))
              (set! (-> this root-prim prim-core collide-as) (collide-kind))
-             (let ((s0-0 gp-0))
-               (set! sv-160 (method-of-object s0-0 fill-cache-for-shape!))
-               (let ((a1-3 (+ 8192.0 (vector-length s3-0)))
-                     (a2-0 (-> gp-0 root-prim collide-with)))
-                 (sv-160 s0-0 a1-3 a2-0)))
+             (fill-cache-for-shape! gp-0 (+ 8192.0 (vector-length s3-0)) (-> gp-0 root-prim collide-with))
              (set! (-> this root-prim prim-core collide-as) s1-0))
            (let ((s2-1 (new 'stack-no-clear 'vector)))
              (set! (-> s2-1 quad) (-> s3-0 quad))

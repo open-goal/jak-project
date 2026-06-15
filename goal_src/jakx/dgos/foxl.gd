@@ -1,0 +1,11 @@
+("FOXL.DGO"
+ ("fox-chassis-ag.o"
+  "fox-door-a-ag.go"
+  "fox-f-fender-a-ag.go"
+  "fox-hood-a-ag.go"
+  "fox-r-fender-a-ag.go"
+  "fox-roof-a-ag.go"
+  "fox-trunk-a-ag.go"
+  "fox-wheel-ag.go"
+  "foxl.o"
+ ))

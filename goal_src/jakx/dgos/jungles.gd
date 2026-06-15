@@ -1,0 +1,11 @@
+("JUNGLES.DGO"
+ ("tpage-2375.o"
+  "tpage-1682.go"
+  "tpage-2563.go"
+  "tpage-2333.go"
+  "tpage-1847.go"
+  "jungle-stone-snake-head-ag.go"
+  "jungle-statue-small-outdoors-ag.go"
+  "jungle-statue-small-debris-ag.go"
+  "jungles.o"
+ ))

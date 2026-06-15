@@ -131,8 +131,16 @@ ArtJointAnim::ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<J
   speed = 1.0f;
   artist_base = 0.0f;
   artist_step = 1.0f;
-  master_art_group_name = name;
-  master_art_group_index = 2;
+  if (!anim.master_art_group_name.empty()) {
+    master_art_group_name = anim.master_art_group_name;
+  } else {
+    master_art_group_name = name;
+  }
+  if (anim.master_art_group_index != -1) {
+    master_art_group_index = anim.master_art_group_index;
+  } else {
+    master_art_group_index = 2;
+  }
   for (auto& joint : joints) {
     data.emplace_back(joint, anim.frames.size());
   }
@@ -378,7 +386,7 @@ static size_t gen_dummy_frag_geo(DataObjectGenerator& gen) {
       0x432e7f86, 0x254646,   0x71a20044, 0x43657f86, 0x154949,   0x43400024, 0x719b8186,
       0x154c4c,   0x71c00064, 0x71d28186, 0x254f4f,   0x435e0000, 0x71d27f86, 0x250707,
       0x435e8000, 0x43658186, 0x150d0d,   0x43408024, 0x0,        0x0,        0x0,
-      0xcb01005a, 0xcb00fffa, 0xcb01005a, 0x2101e01,  0x0,        0x0,        0x306,
+      0xcb01005a, 0xcb00fffa, 0xcb01005a, 0x2101e00,  0x0,        0x0,        0x306,
       0x4030000,  0x120,      0x0,        0x1cf02c14, 0x66c801d,  0x0,        0x0,
       0x34,       0x0,        0x0,        0x0,        0x8,        0x0,        0x44,
       0x80,       0x42,       0x0,
@@ -564,7 +572,7 @@ int ArtGroup::get_joint_idx(const std::string& name) {
  */
 bool run_build_actor(const std::string& mdl_name,
                      const std::string& ag_out,
-                     const BuildActorParams& params) {
+                     const BuildActorParams1& params) {
   std::string ag_name;
   if (fs::exists(file_util::get_jak_project_dir() / mdl_name)) {
     ag_name = fs::path(mdl_name).stem().string();
@@ -595,7 +603,8 @@ bool run_build_actor(const std::string& mdl_name,
     // convert to game format
     joints = convert_joints(skeleton_joints);
     // get animation from user.
-    user_anims = process_anim(model, skeleton_joints);
+    user_anims = process_anim(model, skeleton_joints, params.master_art_group, params.master_ag_map,
+                              params.framerate);
 
   } else {
     auto identity = math::Matrix4f::identity();

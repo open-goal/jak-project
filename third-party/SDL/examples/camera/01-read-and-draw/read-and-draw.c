@@ -33,7 +33,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     }
 
-    if (!SDL_CreateWindowAndRenderer("examples/camera/read-and-draw", 640, 480, 0, &window, &renderer)) {
+    if (!SDL_CreateWindowAndRenderer("examples/camera/read-and-draw", 640, 480, SDL_WINDOW_RESIZABLE, &window, &renderer)) {
         SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -44,6 +44,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
         return SDL_APP_FAILURE;
     } else if (devcount == 0) {
         SDL_Log("Couldn't find any camera devices! Please connect a camera and try again.");
+        SDL_free(devices);
         return SDL_APP_FAILURE;
     }
 
@@ -83,6 +84,7 @@ SDL_AppResult SDL_AppIterate(void *appstate)
            the window when we get a first frame from the camera. */
         if (!texture) {
             SDL_SetWindowSize(window, frame->w, frame->h);  /* Resize the window to match */
+            SDL_SetRenderLogicalPresentation(renderer, frame->w, frame->h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
             texture = SDL_CreateTexture(renderer, frame->format, SDL_TEXTUREACCESS_STREAMING, frame->w, frame->h);
         }
 

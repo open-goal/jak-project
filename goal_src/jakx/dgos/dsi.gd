@@ -1,0 +1,10 @@
+("DSI.DGO"
+ ("desisle-ocean.o"
+  "desisle-effects.o"
+  "desisle-part.o"
+  "tpage-2634.go"
+  "tpage-2635.go"
+  "tpage-3971.go"
+  "tpage-2636.go"
+  "desisle-vis.o"
+ ))

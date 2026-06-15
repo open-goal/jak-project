@@ -1,0 +1,9 @@
+("TEMPTBOX.DGO"
+ ("net-time-box.o"
+  "time-box-obs.o"
+  "tpage-3444.go"
+  "tpage-3445.go"
+  "time-freeze-ag.go"
+  "time-freeze-debris-ag.go"
+  "temptbox.o"
+ ))

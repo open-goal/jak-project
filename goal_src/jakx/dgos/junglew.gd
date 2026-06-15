@@ -1,0 +1,12 @@
+("JUNGLEW.DGO"
+ ("jungle-part.o"
+  "jungle-part2.o"
+  "jungle-obs.o"
+  "jungle-effects.o"
+  "jungle-ocean.o"
+  "havjung-effects.o"
+  "tpage-544.go"
+  "jungle-flaming-arrow-ag.go"
+  "jungle-branch-collision-a-ag.go"
+  "junglew.o"
+ ))

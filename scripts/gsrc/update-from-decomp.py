@@ -153,6 +153,8 @@ with open(decomp_file_path) as f:
                         decomp_form_paren_stack = []
                         i = i + 1
                         break
+                if i + 1 == len(lines):
+                    break
         else:
             decomp_lines.append(line)
             i = i + 1

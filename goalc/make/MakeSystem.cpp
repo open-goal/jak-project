@@ -160,7 +160,11 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
     if (in.is_pair()) {
       step->input.clear();
       goos::for_each_in_list(in, [&](const goos::Object& o) {
-        step->input.push_back(m_path_map.apply_remaps(o.as_string()->data));
+        if (o.type == goos::ObjectType::STRING) {
+          step->input.push_back(m_path_map.apply_remaps(o.as_string()->data));
+        } else {
+          step->input.push_back(m_path_map.apply_remaps(o.print()));
+        }
       });
     } else {
       step->input = {m_path_map.apply_remaps(in.as_string()->data)};

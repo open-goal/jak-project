@@ -26,10 +26,8 @@
 
 (defun entity-actor-lookup ((lump res-lump) (name symbol) (idx int))
   "Given an entity (the res-lump), look up a reference to another entity and return that entity."
-  (local-vars (sv-16 res-tag))
-  (set! sv-16 (new 'static 'res-tag))
-  ;; look up the reference
-  (let ((v1-1 (res-lump-data lump name (pointer uint32) :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-1 (res-lump-data lump name (pointer uint32) :tag-ptr (& sv-16))))
     (the-as entity-actor
             ;; check in range, and lookup succesful
             (when (and v1-1 (< idx (the-as int (-> sv-16 elt-count))))
@@ -41,9 +39,8 @@
 (defun entity-actor-count ((res res-lump) (name symbol))
   "Get the number of entities that this res references under the name.
    This works on more than just next/prev."
-  (local-vars (tag res-tag))
-  (set! tag (new 'static 'res-tag))
-  (if (res-lump-data res name pointer :tag-ptr (& tag)) (the-as int (-> tag elt-count)) 0))
+  (let ((tag (new 'static 'res-tag)))
+    (if (res-lump-data res name pointer :tag-ptr (& tag)) (the-as int (-> tag elt-count)) 0)))
 
 ;; entity-actors are part of a linked list of entities.
 ;; these prevent you from looking up next-actor, prev-actor again and again to iterate.

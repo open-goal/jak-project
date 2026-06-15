@@ -32,8 +32,8 @@
            (movie?)
            (handle->process (-> *game-info* pov-camera-handle))
            (handle->process (-> *game-info* other-camera-handle))
-           (< (-> *display* base-frame-counter) (-> *game-info* letterbox-time))
-           (< (-> *display* base-frame-counter) (-> *game-info* blackout-time))
+           (< (current-time) (-> *game-info* letterbox-time))
+           (< (current-time) (-> *game-info* blackout-time))
            (!= (-> *setting-control* current bg-a) 0.0)
            (!= (-> *setting-control* current bg-a-force) 0.0)
            (not (-> *setting-control* current allow-progress))
@@ -43,7 +43,7 @@
                (= *cheat-mode* 'camera)))))
 
 (defun pause-allowed? ()
-  (not (or (< (-> *display* base-frame-counter) (-> *game-info* blackout-time))
+  (not (or (< (current-time) (-> *game-info* blackout-time))
            (!= (-> *setting-control* current bg-a) 0.0)
            (!= (-> *setting-control* current bg-a-force) 0.0)
            (not (-> *setting-control* current allow-pause))
@@ -229,6 +229,7 @@
 
 (define *progress-save-info* (new 'global 'mc-slot-info))
 
+;; og:preserve-this
 (defmacro progress-make-icon (this &key skel &key x &key y &key z &key scale-x &key scale-y)
   `(when (< (-> ,this nb-of-icons) 6)
     (let ((icon-idx (-> ,this nb-of-icons)))
@@ -410,6 +411,7 @@
 
 (define *progress-stack* (the-as (pointer uint8) (malloc 'global #x3800)))
 
+;; og:preserve-this
 (defconstant *progress-stack-top* (&-> *progress-stack* #x3800))
 
 (defun activate-progress ((creator process) (screen progress-screen))
@@ -421,6 +423,7 @@
          (make-levels-with-tasks-available-to-progress)
          (disable-level-text-file-loading)
          (set! (-> *progress-state* starting-state) screen)
+         ;; og:preserve-this
          (set! *progress-process* (process-spawn progress :to creator :stack *progress-stack-top*))
          (let ((s5-1 *progress-process*))
            (set! (-> s5-1 0 completion-percentage) (calculate-completion (-> s5-1 0)))
@@ -485,18 +488,18 @@
   0
   (none))
 
-(defmethod relocate ((this game-count-info) (arg0 int))
+(defmethod relocate ((this game-count-info) (offset int))
   "Load in the game-count-info. This is a bit of a hack."
   (set! *game-counts* this)
   this)
 
-(defmethod relocate ((this progress) (arg0 int))
+(defmethod relocate ((this progress) (offset int))
   (dotimes (v1-0 (-> this nb-of-particles))
     (when (-> this particles v1-0 part)
       (if (nonzero? (-> this particles v1-0 part))
         (set! (-> this particles v1-0 part)
-              (the-as sparticle-launch-control (&+ (the-as pointer (-> this particles v1-0 part)) arg0))))))
-  (the-as progress ((method-of-type process relocate) this arg0)))
+              (the-as sparticle-launch-control (&+ (the-as pointer (-> this particles v1-0 part)) offset))))))
+  (the-as progress ((method-of-type process relocate) this offset)))
 
 (defmethod adjust-sprites ((this progress))
   (let ((f0-1 (* (1/ METER_LENGTH) (the float (-> this in-out-position)))))
@@ -998,7 +1001,7 @@
                (set! (-> (the-as (pointer float) (-> s5-0 (-> this option-index) value-to-modify)))
                      (-> *progress-state* slider-backup)))
               (((game-option-type language))
-               (set! (-> (the-as (pointer language-enum) (-> s5-0 (-> this option-index) value-to-modify)))
+               (set! (-> (the-as (pointer language-enum) (-> s5-0 (-> this option-index) value-to-modify)) 0)
                      (-> *progress-state* language-backup)))
               (((game-option-type on-off))
                (set! (-> (the-as (pointer symbol) (-> s5-0 (-> this option-index) value-to-modify)) 0)
@@ -1157,7 +1160,7 @@
                     (sound-volume-off)
                     (set! (-> *game-info* mode) 'play)
                     (cond
-                      ;; Start a new game differently if speedrunning mode is active
+                      ;; og:preserve-this start a new game differently if speedrunning mode is active
                       ((= (-> *pc-settings* speedrunner-mode?) #t) (speedrun-start-full-game-run))
                       ;; start the game normally
                       (else
@@ -1356,8 +1359,8 @@
                               (the-as float 8325000.0)
                               (font-color progress-blue)
                               (font-flags shadow kerning))))
-              (let ((v1-103 s5-1)) (set! (-> v1-103 width) (the float 328)))
-              (let ((v1-104 s5-1)) (set! (-> v1-104 height) (the float 45)))
+              (set-width! s5-1 328)
+              (set-height! s5-1 45)
               (set! (-> s5-1 flags) (font-flags shadow kerning middle middle-vert large))
               (print-game-text-scaled (lookup-text! *common-text* (-> gp-0 level-name-id) #f) f30-0 s5-1 (the int (* 128.0 f30-0)))))))
       (case (-> self display-state)
@@ -1523,9 +1526,9 @@
                                  (bucket-id debug)
                                  gp-3
                                  (the-as (pointer dma-tag) a3-10))))
-      (let ((gp-4 (new 'stack 'font-context *font-default-matrix* 32 50 0.0 (font-color default) (font-flags shadow kerning))))
-        (let ((v1-42 gp-4)) (set! (-> v1-42 width) (the float 328)))
-        (let ((v1-43 gp-4)) (set! (-> v1-43 height) (the float 100)))
+      (let ((gp-4 (new 'stack 'font-context *font-default-matrix* 32 50 (the-as float 0.0) (font-color default) (font-flags shadow kerning))))
+        (set-width! gp-4 328)
+        (set-height! gp-4 100)
         (logior! (-> gp-4 flags) (font-flags shadow kerning large))
         (draw-debug-text-box gp-4)
         (print-game-text (-> *common-text* data (-> self current-debug-string) text) gp-4 #f 128 22))))

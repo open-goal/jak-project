@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -94,7 +94,7 @@ bool HAIKU_GL_SwapWindow(SDL_VideoDevice *_this, SDL_Window * window)
 
 bool HAIKU_GL_MakeCurrent(SDL_VideoDevice *_this, SDL_Window * window, SDL_GLContext context)
 {
-    BGLView* glView = (BGLView*)context;
+    BGLView *glView = (BGLView *)context;
     // printf("HAIKU_GL_MakeCurrent(%llx), win = %llx, thread = %d\n", (uint64)context, (uint64)window, find_thread(NULL));
     if (glView) {
         if ((glView->Window() == NULL) || (!window) || (_ToBeWin(window)->GetGLView() != glView)) {
@@ -150,8 +150,8 @@ SDL_GLContext HAIKU_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window * window
 bool HAIKU_GL_DestroyContext(SDL_VideoDevice *_this, SDL_GLContext context)
 {
     // printf("HAIKU_GL_DestroyContext(%llx), thread = %d\n", (uint64)context, find_thread(NULL));
-    BGLView* glView = (BGLView*)context;
-    SDL_BWin *bwin = (SDL_BWin*)glView->Window();
+    BGLView *glView = (BGLView *)context;
+    SDL_BWin *bwin = (SDL_BWin *)glView->Window();
     if (!bwin) {
         delete glView;
     } else {

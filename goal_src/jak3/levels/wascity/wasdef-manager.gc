@@ -2232,7 +2232,7 @@
   (set! (-> self prim-targeted) -1)
   (set! (-> self damage-idx) 0)
   (dotimes (s4-2 5)
-    (set! (-> self damage-info s4-2 part) (create-launch-control (-> *part-group-id-table* 543) self))
+    (set! (-> self damage-info s4-2 part) (create-launch-control group-maker-damage-sparks self))
     ;; og:preserve-this
     (vector-reset! (-> self damage-info s4-2 pos))
     (set! (-> self damage-info s4-2 jnt) (the-as uint (-> *maker-damage-joint-array* s4-2)))
@@ -2342,18 +2342,25 @@
        )
      )
     (('event-over)
-     ;; og:preserve-this handle->process nonsense
-     (let ((makers (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 maker))))
-           (flyer-shots (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 dm-flyer-shot))))
-           (grenades (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 maker-grenade))))
-           )
-       (and
-         (not (process->handle makers))
-         (not (process->handle flyer-shots))
-         (not (process->handle grenades))
-         (-> this completed)
-         )
-       )
+     (and (not (handle->process
+                 (process->handle (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 maker))))
+                 )
+               )
+          (not (handle->process
+                 (process->handle
+                   (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 dm-flyer-shot)))
+                   )
+                 )
+               )
+          (and (not (handle->process
+                      (process->handle
+                        (search-process-tree *active-pool* (lambda ((arg0 process-tree)) (type? arg0 maker-grenade)))
+                        )
+                      )
+                    )
+               (-> this completed)
+               )
+          )
      )
     (('fail)
      ((method-of-type task-manager taskman-event-handler) this arg0 arg1 arg2 arg3)
@@ -2396,10 +2403,8 @@
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       0.0
       (set-vector! s5-0 6585594.5 263189.94 -1938929.1 1.0)
-      (let ((f0-5 (vector-vector-distance-squared s5-0 (target-pos 0)))
-            (f1-0 409600.0)
-            )
-        (if (and (< (* f1-0 f1-0) f0-5) (!= (-> this info index) 1))
+      (let ((f0-5 (vector-vector-distance-squared s5-0 (target-pos 0))))
+        (if (and (< (square 409600.0) f0-5) (!= (-> this info index) 1))
             (send-event this 'fail)
             )
         )

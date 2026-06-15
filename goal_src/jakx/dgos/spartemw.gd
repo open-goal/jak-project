@@ -1,0 +1,13 @@
+("SPARTEMW.DGO"
+ ("spargus-ocean.o"
+  "spargus-part.o"
+  "temple-part.o"
+  "temple-effects.o"
+  "spargus-obs.o"
+  "spargus-ocean.o"
+  "spargus-part.o"
+  "temple-ocean.o"
+  "temple-part.o"
+  "temple-effects.o"
+  "spartemw.o"
+ ))

@@ -384,7 +384,6 @@
     (check-vehicle-exit self)
     )
   :code (behavior ()
-    (local-vars (sv-128 float))
     (ja-channel-push! 1 (seconds 0.1))
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (ja-no-eval :group! crocadog-escort-jump-in-vehicle-ja
@@ -408,27 +407,18 @@
               (compute-seat-position (the-as vehicle s3-1) (-> gp-0 vector 0) (-> self vehicle-seat-index))
               )
             (vector-! (-> gp-0 vector 1) (-> gp-0 vector 0) s5-2)
-            (let ((s3-2 lerp-scale)
-                  (s2-0 0.0)
-                  (s1-0 1.0)
-                  (s0-0 (ja-aframe-num 0))
-                  )
-              (set! sv-128 (ja-aframe 1.0 0))
-              (let* ((t0-0 (ja-aframe 4.0 0))
-                     (f30-0 (s3-2 s2-0 s1-0 s0-0 sv-128 t0-0))
-                     )
-                (quaternion-rotate-local-y!
-                  (the-as quaternion (-> gp-0 vector 2))
-                  (the-as quaternion (-> gp-0 vector 2))
-                  (* f30-0 (if (zero? (-> self vehicle-seat-index))
-                               -16384.0
-                               16384.0
-                               )
-                     )
-                  )
-                (quaternion-slerp! (-> self root quat) s4-0 (the-as quaternion (-> gp-0 vector 2)) f30-0)
-                (vector+float*! (-> self root trans) s5-2 (-> gp-0 vector 1) f30-0)
+            (let ((f30-0 (lerp-scale 0.0 1.0 (ja-aframe-num 0) (ja-aframe 1.0 0) (ja-aframe 4.0 0))))
+              (quaternion-rotate-local-y!
+                (the-as quaternion (-> gp-0 vector 2))
+                (the-as quaternion (-> gp-0 vector 2))
+                (* f30-0 (if (zero? (-> self vehicle-seat-index))
+                             -16384.0
+                             16384.0
+                             )
+                   )
                 )
+              (quaternion-slerp! (-> self root quat) s4-0 (the-as quaternion (-> gp-0 vector 2)) f30-0)
+              (vector+float*! (-> self root trans) s5-2 (-> gp-0 vector 1) f30-0)
               )
             (suspend)
             (ja :num! (seek! (ja-aframe 5.0 0) 0.5))

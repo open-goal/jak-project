@@ -39,7 +39,7 @@
     (let* ((total-normal-phase (- 1.0 total-easing-phase))
            (f0-10 out-param)
            (f1-12 (+ out-param total-normal-phase))
-           (f2-5 (* f0-10 f0-10))
+           (f2-5 (square f0-10))
            (f3-3 (+ (* 2.0 f0-10 (- f1-12 f0-10)) f2-5))
            (f4-3 (/ f0-10 (- 1.0 f1-12)))
            (y-end (+ (* (- 1.0 f1-12) (- 1.0 f1-12) f4-3) f3-3)))
@@ -74,9 +74,8 @@
 (defmethod load-params! ((this sync-info) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
   "Load params from the res of a process, and set them up. If the res lookup fails, returns #f and uses
    the specified defaults."
-  (local-vars (sv-16 res-tag))
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
     (cond
       (v1-1
        ;; res lookup succeeded, we should have two values: a period (not yet in seconds) and a phase.
@@ -94,9 +93,8 @@
 (defmethod load-params! ((this sync-info-eased) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
   "Load settings from a res. Can load settings from just a sync-info and uses defaults.
    If res lookup totally fails, will return #f and use all defaults."
-  (local-vars (sv-16 res-tag))
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
     (cond
       (v1-1
        ;; we may not get all the parameters
@@ -116,9 +114,8 @@
 
 (defmethod load-params! ((this sync-info-paused) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
   "Load and setup a sync-info-paused."
-  (local-vars (sv-16 res-tag))
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
     (cond
       (v1-1
        (if (>= (-> sv-16 elt-count) (the-as uint 4))
@@ -286,7 +283,7 @@
    max-times-two: maximum range. result is centered around zero."
   (set! (-> this min-time) min-tim)
   (set! (-> this max-time) max-time)
-  (set! (-> this max-val) (* 0.5 max-times-two))
+  (set! (-> this max-val) (/ max-times-two 2))
   (set! (-> this start-time) 0)
   (set! (-> this timer) 0)
   (set! (-> this value) 0.0)
@@ -383,8 +380,8 @@
    y-range: y results in (-range/2, range/2)"
   (set! (-> this min-time) min-time)
   (set! (-> this max-time) max-time)
-  (set! (-> this xz-max) (* 0.5 xz-range))
-  (set! (-> this y-max) (* 0.5 y-range))
+  (set! (-> this xz-max) (/ xz-range 2))
+  (set! (-> this y-max) (/ y-range 2))
   (set! (-> this start-time) 0)
   (set! (-> this timer) 0)
   (vector-reset! (-> this value))

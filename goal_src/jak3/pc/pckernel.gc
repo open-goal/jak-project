@@ -496,6 +496,9 @@
 (defmethod update-cheats ((obj pc-settings-jak3))
   "run cheats."
 
+  ;; sync mirror mode cheat
+  (set! *PC-MIRROR-MODE-SET* (logtest? (-> *game-info* secrets) (game-secrets hflip-screen)))
+
   ;; run cheats here.
   ;;;;;;;;;;;;;;;;;;;
 
@@ -536,6 +539,11 @@
     )
 
   (pc-set-gfx-hack (pc-gfx-hack no-tex) (pc-cheats? (-> obj cheats) no-textures))
+
+  (if (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+            *PC-MIRROR-MODE-SET*)
+      (sound-set-mirror-mode (sound-mirror-mode mirrored))
+      (sound-set-mirror-mode (sound-mirror-mode normal)))
 
   ;; run cheats end!!!
   ;;;;;;;;;;;;;;;;;;;;
@@ -658,6 +666,7 @@
     (("cheats-unlocked") (set! (-> obj cheats-unlocked) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-backup") (file-stream-read-int file)) ;; TODO - Don't remove this, parsing code can't handle unexpected keys
     (("memcard-subtitles?") (set! (-> obj memcard-subtitles?) (file-stream-read-symbol file)))
+    (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
     (("music-unlocked")
       (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
         (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
@@ -668,6 +677,8 @@
         (set! (-> obj flava-unlocked i) (file-stream-read-symbol file))
         )
       )
+    (("speedrunner-mode-hm-secrets") (set! (-> obj speedrunner-mode-hm-secrets) (file-stream-read-int file)))
+
     ;; (("stats")
     ;;   (dosettings (file)
     ;;     (case-str *pc-temp-string*
@@ -713,12 +724,15 @@
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
   (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
   (format file "  (memcard-subtitles? ~A)~%" (-> obj memcard-subtitles?))
+  (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
 
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
     (format file " #x~x" (int64<-bit-array (-> obj music-unlocked) (* i 64)))
     )
   (format file ")~%")
+
+  (format file "  (speedrunner-mode-hm-secrets #x~x)~%" (-> obj speedrunner-mode-hm-secrets))
 
   ;; (format file "  (stats~%")
   ;; (format file "    (kill-stats~%")

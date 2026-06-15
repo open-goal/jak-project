@@ -1,0 +1,13 @@
+("KRASW.DGO"
+ ("kras-effects.o"
+  "kras-part.o"
+  "kras-obs.o"
+  "kras-ocean.o"
+  "construction-obs.o"
+  "tpage-207.go"
+  "tpage-185.go"
+  "kras-pump-break-ag.go"
+  "crate-ag.go"
+  "kras-fireworks-ship-a-ag.go"
+  "krasw.o"
+ ))

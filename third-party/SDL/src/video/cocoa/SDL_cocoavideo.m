@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -211,8 +211,8 @@ static bool Cocoa_VideoInit(SDL_VideoDevice *_this)
 
         // Assume we have a mouse and keyboard
         // We could use GCMouse and GCKeyboard if we needed to, as is done in SDL_uikitevents.m
-        SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL, false);
-        SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL, false);
+        SDL_AddKeyboard(SDL_DEFAULT_KEYBOARD_ID, NULL);
+        SDL_AddMouse(SDL_DEFAULT_MOUSE_ID, NULL);
 
         data.allow_spaces = SDL_GetHintBoolean(SDL_HINT_VIDEO_MAC_FULLSCREEN_SPACES, true);
         data.trackpad_is_touch_only = SDL_GetHintBoolean(SDL_HINT_TRACKPAD_IS_TOUCH_ONLY, false);
@@ -244,7 +244,7 @@ void Cocoa_VideoQuit(SDL_VideoDevice *_this)
 SDL_SystemTheme Cocoa_GetSystemTheme(void)
 {
     if (@available(macOS 10.14, *)) {
-        NSAppearance* appearance = [[NSApplication sharedApplication] effectiveAppearance];
+        NSAppearance *appearance = [[NSApplication sharedApplication] effectiveAppearance];
 
         if ([appearance.name containsString: @"Dark"]) {
             return SDL_SYSTEM_THEME_DARK;

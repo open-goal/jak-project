@@ -129,7 +129,7 @@
          )
     (let ((s4-0 (-> s3-0 vector 2)))
       (vector-normalize! (vector-flatten! (-> s3-0 vector 1) s1-0 s4-0) 1.0)
-      (vector-cross! (the-as vector (-> s3-0 vector)) (-> s3-0 vector 1) s4-0)
+      (vector-cross! (-> s3-0 vector 0) (-> s3-0 vector 1) s4-0)
       )
     (let ((a1-5 (matrix-rotate-z! (new 'stack-no-clear 'matrix) arg0)))
       (matrix*! s3-0 a1-5 s3-0)
@@ -138,7 +138,7 @@
     )
   )
 
-(defmethod roll-relative-to-gravity trsqv ((this trsqv))
+(defmethod roll-relative-to-gravity ((this trsqv))
   "Get our roll, relative to 'down' from gravity"
   (let* ((s5-0 (get-quaternion this))
          (gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) s5-0))
@@ -154,6 +154,9 @@
     )
   )
 
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
 (defmethod rotate-toward-orientation! ((this trsqv) (arg0 quaternion) (arg1 float) (arg2 float) (arg3 int) (arg4 int) (arg5 float))
   "Adjust our orientation toward target, subject to some rate limits.
    For jak 1, I said:
@@ -161,65 +164,47 @@
     where an axis flips by 180 degrees.
    But now they use matrix-from-two-vectors-the-long-way-smooth to fix it! Good job.
    This additionally uses the fancy logic of matrix-from-two-vectors-smooth."
-  (local-vars
-    (f0-4 float)
-    (sv-192 (function quaternion vector vector float int quaternion))
-    (sv-208 quaternion)
-    (sv-224 vector)
-    (sv-240 int)
-    (sv-256 vector)
-    (sv-272 vector)
-    )
-  (set! sv-240 arg4)
-  (let ((s2-0 arg5)
+  (local-vars (f0-4 float))
+  (let ((sv-240 arg4)
+        (s2-0 arg5)
         (s5-0 (get-quaternion this))
         )
     (let ((gp-0 (new 'stack-no-clear 'quaternion)))
       (when (< 0.0 arg2)
-        (set! sv-192 quaternion-from-two-vectors-smooth!)
-        (set! sv-208 gp-0)
-        (set! sv-224 (vector-y-quaternion! (new 'stack-no-clear 'vector) s5-0))
-        (let ((a2-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) arg0)))
-          (sv-192 sv-208 sv-224 a2-1 arg2 sv-240)
+        (quaternion-from-two-vectors-smooth!
+          gp-0
+          (vector-y-quaternion! (new 'stack-no-clear 'vector) s5-0)
+          (vector-y-quaternion! (new 'stack-no-clear 'vector) arg0)
+          arg2
+          sv-240
           )
         (quaternion-normalize! (quaternion*! s5-0 gp-0 s5-0))
         )
       (when (< 0.0 arg1)
-        (set! sv-256 (vector-y-quaternion! (new 'stack-no-clear 'vector) s5-0))
-        (let ((s1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) s5-0)))
-          (set! sv-272 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0))
-          (let ((s0-1 (new 'stack-no-clear 'matrix)))
-            (vector-flatten! s1-2 s1-2 sv-256)
-            (vector-flatten! sv-272 sv-272 sv-256)
-            (vector-normalize! s1-2 1.0)
-            (vector-normalize! sv-272 1.0)
-            (cond
-              ((!= s2-0 0.0)
-               (let* ((v1-5 (vector-cross! (new 'stack-no-clear 'vector) s1-2 sv-272))
-                      ;; og:preserve-this inlined vector-dot
-                      ; (f0-3 (-> sv-256 x))
-                      ; (f1-3 (-> sv-256 y))
-                      ; (f2-0 (-> sv-256 z))
-                      ; (f3-0 (-> v1-5 x))
-                      ; (f4-0 (-> v1-5 y))
-                      ; (f5-0 (-> v1-5 z))
-                      )
-                 (set! f0-4 (vector-dot sv-256 v1-5))
-                 ; (.mula.s f0-3 f3-0)
-                 ; (.madda.s f1-3 f4-0)
-                 ; (.madd.s f0-4 f2-0 f5-0)
-                 )
-               (if (< (* f0-4 s2-0) 0.0)
-                   (matrix-from-two-vectors-the-long-way-smooth! s0-1 s1-2 sv-272 arg1 arg3)
-                   (matrix-from-two-vectors-smooth! s0-1 s1-2 sv-272 arg1 arg3)
-                   )
-               )
-              (else
-                (matrix-from-two-vectors-smooth! s0-1 s1-2 sv-272 arg1 arg3)
-                )
+        (let ((sv-256 (vector-y-quaternion! (new 'stack-no-clear 'vector) s5-0))
+              (s1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) s5-0))
+              (sv-272 (vector-z-quaternion! (new 'stack-no-clear 'vector) arg0))
+              (s0-1 (new 'stack-no-clear 'matrix))
               )
-            (matrix->quaternion gp-0 s0-1)
+          (vector-flatten! s1-2 s1-2 sv-256)
+          (vector-flatten! sv-272 sv-272 sv-256)
+          (vector-normalize! s1-2 1.0)
+          (vector-normalize! sv-272 1.0)
+          (cond
+            ((!= s2-0 0.0)
+             (let* ((v1-5 (vector-cross! (new 'stack-no-clear 'vector) s1-2 sv-272)))
+               (set! f0-4 (vector-dot sv-256 v1-5))
+               )
+             (if (< (* f0-4 s2-0) 0.0)
+                 (matrix-from-two-vectors-the-long-way-smooth! s0-1 s1-2 sv-272 arg1 arg3)
+                 (matrix-from-two-vectors-smooth! s0-1 s1-2 sv-272 arg1 arg3)
+                 )
+             )
+            (else
+              (matrix-from-two-vectors-smooth! s0-1 s1-2 sv-272 arg1 arg3)
+              )
             )
+          (matrix->quaternion gp-0 s0-1)
           )
         (quaternion-normalize! (quaternion*! s5-0 gp-0 s5-0))
         )

@@ -1,10 +1,13 @@
 #pragma once
 #include "common/common_types.h"
+#include "common/util/Timer.h"
 
 #define GAME_TERRITORY_SCEA 0  // sony america
 #define GAME_TERRITORY_SCEE 1  // sony europe
 #define GAME_TERRITORY_SCEI 2  // sony inc. (japan)
 #define GAME_TERRITORY_SCEK 3  // sony korea
+
+#define SPLASH_SCREEN_TIME 3.f  // how long to display the splash screen for
 
 enum class RuntimeExitStatus {
   RUNNING = 0,
@@ -40,6 +43,10 @@ extern char DebugBootMessage[64];
 
 // Added in PC port, option to run listener functions without the kernel for debugging
 extern u32 MasterUseKernel;
+
+// Added in PC port for splash screen
+extern Timer SplashTimer;
+extern u32 SplashScreen;
 
 struct MasterConfig {
   u16 language;          //! GOAL language 0

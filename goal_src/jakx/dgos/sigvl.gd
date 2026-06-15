@@ -1,0 +1,9 @@
+("SIGVL.DGO"
+ ("leopard-chassis-ag.o"
+  "leopard-door-b-ag.go"
+  "leopard-f-fender-b-ag.go"
+  "leopard-hood-b-ag.go"
+  "leopard-r-fender-b-ag.go"
+  "wheel-j-ag.go"
+  "sigvl.o"
+ ))

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,8 +23,7 @@
 #endif
 
 /* Call this instead of exit(), so we can clean up SDL: atexit() is evil. */
-static void
-quit(int rc)
+static void quit(int rc)
 {
     SDL_Quit();
     /* Let 'main()' return normally */
@@ -33,9 +32,9 @@ quit(int rc)
     }
 }
 
-static int SDLCALL
-button_messagebox(void *eventNumber)
+static int SDLCALL button_messagebox(void *eventNumber)
 {
+    int i;
     const SDL_MessageBoxButtonData buttons[] = {
         { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT,
           0,
@@ -43,52 +42,79 @@ button_messagebox(void *eventNumber)
         { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT,
           1,
           "Cancel" },
+        { 0,
+          2,
+          "Retry" }
     };
-
     SDL_MessageBoxData data = {
         SDL_MESSAGEBOX_INFORMATION,
         NULL, /* no parent window */
         "Custom MessageBox",
         "This is a custom messagebox",
-        2,
+        SDL_arraysize(buttons),
         NULL, /* buttons */
         NULL  /* Default color scheme */
     };
 
-    int button = -1;
-    int success = 0;
-    data.buttons = buttons;
-    if (eventNumber) {
-        data.message = "This is a custom messagebox from a background thread.";
-    }
+    for (i = 0; ; ++i) {
+        SDL_MessageBoxColorScheme colorScheme;
+        if (i != 0) {
+            int j;
+            for (j = 0; j < SDL_MESSAGEBOX_COLOR_COUNT; ++j) {
+                colorScheme.colors[j].r = SDL_rand(256);
+                colorScheme.colors[j].g = SDL_rand(256);
+                colorScheme.colors[j].b = SDL_rand(256);
+            }
+            data.colorScheme = &colorScheme;
+        } else {
+            data.colorScheme = NULL;
+        }
 
-    success = SDL_ShowMessageBox(&data, &button);
-    if (success == -1) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        int button = -1;
+        data.buttons = buttons;
+        if (eventNumber) {
+            data.message = "This is a custom messagebox from a background thread.";
+        }
+
+        if (!SDL_ShowMessageBox(&data, &button)) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+            if (eventNumber) {
+                SDL_Event event;
+                event.type = (Uint32)(intptr_t)eventNumber;
+                SDL_PushEvent(&event);
+                return 1;
+            } else {
+                quit(2);
+            }
+        }
+
+        const char* text;
+        if (button == 1) {
+            text = "Cancel";
+        } else if (button == 2) {
+            text = "Retry";
+        } else {
+            text = "OK";
+        }
+        SDL_Log("Pressed button: %d, %s", button, button == -1 ? "[closed]" : text);
+
+        if (button == 2) {
+            continue;
+        }
+
         if (eventNumber) {
             SDL_Event event;
             event.type = (Uint32)(intptr_t)eventNumber;
             SDL_PushEvent(&event);
-            return 1;
-        } else {
-            quit(2);
         }
-    }
-    SDL_Log("Pressed button: %d, %s", button, button == -1 ? "[closed]" : button == 1 ? "Cancel"
-                                                                                        : "OK");
 
-    if (eventNumber) {
-        SDL_Event event;
-        event.type = (Uint32)(intptr_t)eventNumber;
-        SDL_PushEvent(&event);
+        return 0;
     }
-
-    return 0;
 }
 
 int main(int argc, char *argv[])
 {
-    int success;
+    bool success;
     SDLTest_CommonState *state;
 
     /* Initialize test framework */
@@ -111,7 +137,7 @@ int main(int argc, char *argv[])
         quit(1);
     }
 
-    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_WARNING,
                                        "Simple MessageBox",
                                        "This is a simple MessageBox with a newline:\r\nHello world!",
                                        NULL);
@@ -138,6 +164,11 @@ int main(int argc, char *argv[])
         quit(1);
     }
 
+    success = SDL_ShowSimpleMessageBox(0,
+                                       "No icon",
+                                       "This is a MessageBox with no icon!",
+                                       NULL);
+
     /* Google says this is Traditional Chinese for "beef with broccoli" */
     success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                                        "UTF-8 Simple MessageBox",
@@ -157,7 +188,7 @@ int main(int argc, char *argv[])
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
         quit(1);
     }
-
+    
     /* Google says this is Traditional Chinese for "beef with broccoli" */
     success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                                        "牛肉西蘭花",
@@ -167,7 +198,116 @@ int main(int argc, char *argv[])
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
         quit(1);
     }
-
+    
+	/* Various other Unicode tests */
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Latin",
+                                       "Türkçe özellikle çok güzel bir dil.\nBjörn/Bjørn\nÆgypt",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+    
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Arabic",
+                                       "يتم استخدام أنظمة الكتابة لتسجيل اللغة البشرية.",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+    
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Arabic (multi line)",
+                                       "سطر طويل جدًا من النص\nخط قصير\nسطر طويل للغاية من النص مذهل بشكل لا يصدق في اللغة العربية التي يتم التحدث بها في منطقة الشرق الأوسط وشمال أفريقيا",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+    
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Cyrillic (Ukranian)",
+                                       "Для запису людської мови використовуються системи письма.",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+    
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Japanese",
+                                       "文字体系は人間の言語を記録するために使用されます。",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+ 
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Indian",
+                                       "लेखन प्रणालियों का उपयोग मानव भाषा को रिकॉर्ड करने के लिए किया जाता है।",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+  
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Korean",
+                                       "문자 체계는 인간의 언어를 기록하는 데 사용됩니다.",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+      
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Thai",
+                                       "ระบบการเขียนใช้เพื่อบันทึกภาษาของมนุษย์",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+    
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Greek",
+                                       "Τα συστήματα γραφής χρησιμοποιούνται για την καταγραφή της ανθρώπινης γλώσσας.",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }
+          
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Hebrew",
+                                       "מערכות כתיבה משמשות לרישום שפה אנושית.",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }          
+    
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Armenian",
+                                       "Գրային համակարգերը օգտագործվում են մարդկային լեզուն գրանցելու համար։",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }         
+     
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                                       "Georgian",
+                                       "წერის სისტემები გამოიყენება ადამიანის ენის ჩასაწერად.",
+                                       NULL);
+    if (!success) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s", SDL_GetError());
+        quit(1);
+    }    
+          
     button_messagebox(NULL);
 
     /* Test showing a message box from a background thread.
@@ -218,7 +358,9 @@ int main(int argc, char *argv[])
         }
 
         while (SDL_WaitEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT || event.type == SDL_EVENT_KEY_UP) {
+            if (event.type == SDL_EVENT_QUIT ||
+                event.type == SDL_EVENT_KEY_UP ||
+                event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
                 break;
             }
         }

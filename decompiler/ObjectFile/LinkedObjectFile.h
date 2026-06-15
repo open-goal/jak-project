@@ -67,6 +67,7 @@ class LinkedObjectFile {
                                          bool write_hex,
                                          const std::string& extra_name);
   std::string print_asm_function_disassembly(const std::string& my_name);
+  void dump_asm_function_metadata(std::unordered_map<std::string, std::string>& map);
 
   u32 read_data_word(const DecompilerLabel& label);
   const DecompilerLabel& get_label_by_name(const std::string& name) const;

@@ -611,6 +611,9 @@ The following enums have been renamed:
 The following structures have been renamed:
 * SDL_GameController => SDL_Gamepad
 
+The following structures have been removed:
+* SDL_GameControllerButtonBind - replaced with SDL_GamepadBinding
+
 The following functions have been renamed:
 * SDL_GameControllerAddMapping() => SDL_AddGamepadMapping()
 * SDL_GameControllerAddMappingsFromFile() => SDL_AddGamepadMappingsFromFile()
@@ -1444,7 +1447,7 @@ The following functions have been removed:
 * SDL_GetTextureUserData() - use SDL_GetTextureProperties() instead
 * SDL_RenderGetIntegerScale()
 * SDL_RenderSetIntegerScale() - this is now explicit with SDL_LOGICAL_PRESENTATION_INTEGER_SCALE
-* SDL_RenderTargetSupported() - render targets are always supported
+* SDL_RenderTargetSupported() - render targets are usually supported; just create a texture with SDL_TEXTUREACCESS_TARGET and see if it fails.
 * SDL_SetTextureUserData() - use SDL_GetTextureProperties() instead
 
 The following enums have been renamed:
@@ -1458,8 +1461,8 @@ The following symbols have been removed:
 * SDL_RENDERER_ACCELERATED - all renderers except `SDL_SOFTWARE_RENDERER` are accelerated
 * SDL_RENDERER_PRESENTVSYNC - replaced with SDL_PROP_RENDERER_CREATE_PRESENT_VSYNC_NUMBER during renderer creation and SDL_PROP_RENDERER_VSYNC_NUMBER after renderer creation
 * SDL_RENDERER_SOFTWARE - you can check whether the name of the renderer is `SDL_SOFTWARE_RENDERER`
-* SDL_RENDERER_TARGETTEXTURE - all renderers support target texture functionality
-* SDL_ScaleModeBest = use SDL_SCALEMODE_LINEAR instead
+* SDL_RENDERER_TARGETTEXTURE - most renderers support target texture functionality; just create a texture with SDL_TEXTUREACCESS_TARGET and see if it fails.
+* SDL_ScaleModeBest - use SDL_SCALEMODE_LINEAR instead
 
 ## SDL_rwops.h
 

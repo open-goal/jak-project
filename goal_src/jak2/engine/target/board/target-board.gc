@@ -46,7 +46,7 @@
   (when (not (-> this combo-in-progress?))
     (set! (-> this combo-in-progress?) #t)
     (reset-combo! this))
-  (when (< (-> this num-tricks-in-combo) 15)
+  (when (< (-> this num-tricks-in-combo) 16)
     (set! (-> this tricks-in-combo (-> this num-tricks-in-combo)) trick)
     (set! (-> this num-tricks-in-combo) (inc (-> this num-tricks-in-combo)))
     (set! (-> this points-in-combo) (+ (-> this points-in-combo) points)))
@@ -83,13 +83,13 @@
           (let ((times (-> freq trick))
                 (color (case trick
                           (((board-tricks board-boost) (board-tricks board-jump) (board-tricks board-duck-jump) (board-tricks board-quick-jump))
-                          "~9L") ;; pink
+                          "~9L") ;; pink (X tricks)
                           (((board-tricks board-rail) (board-tricks board-rail-jump))
-                          "~3L") ;; red
+                          "~3L") ;; red (square tricks)
                           (((board-tricks board-spin) (board-tricks board-flip) (board-tricks board-board-flip) (board-tricks board-nosegrab))
-                          "~26L") ;; pad-triangle
+                          "~26L") ;; pad-triangle (green, r1 tricks)
                           (((board-tricks board-board-spin) (board-tricks board-method) (board-tricks board-noseflip) (board-tricks board-kickflip))
-                          "~15L"))) ;; menu-flag-on
+                          "~15L"))) ;; menu-flag-on (yellow, l1 tricks)
                 (padding (if (zero? i) "" " + "))
                 (trick-name (lookup-text! *common-text* (board-trick->text-id trick) #f)))
 
@@ -777,6 +777,9 @@
   (set! (-> self board flip-count) 0)
   (set! (-> self board unknown-float00) 0.0)
   (set! (-> self board unknown-float01) 0.0)
+  ;; og:preserve-this reset trick display
+  (#when PC_PORT
+    (reset-combo! *board-trick-tracker*))
   (set! (-> self board trick-count) 0)
   (countdown (v1-62 16)
     (set! (-> self board trick-list 0) (board-tricks none))
@@ -2054,7 +2057,6 @@
 
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
 (defbehavior target-board-compute-edge target ()
-  (local-vars (sv-768 int))
   (let ((s4-0 *edge-grab-info*)
         (gp-0 (new 'stack-no-clear 'vector))
         )
@@ -2268,8 +2270,8 @@
                    )
                  (s3-8 (new 'stack-no-clear 'collide-query))
                  (f26-1 81920.0)
+                 (sv-768 8)
                  )
-            (set! sv-768 8)
             (let ((v1-234 s3-8))
               (set! (-> v1-234 radius) 1228.8)
               (set! (-> v1-234 collide-with)

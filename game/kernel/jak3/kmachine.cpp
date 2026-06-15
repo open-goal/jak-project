@@ -4,6 +4,7 @@
 
 #include "common/symbols.h"
 
+#include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/jak3_texture_remap.h"
 #include "game/graphics/sceGraphicsInterface.h"
@@ -127,6 +128,8 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: debug mode\n");
       MasterDebug = 1;
       DebugSegment = 1;
+      // disable splash in debug
+      SplashScreen = 0;
     }
 
     // the "debug-mem" mode is used to set up GOAL in debug mode, but not to load debug-segments
@@ -185,6 +188,12 @@ void InitParms(int argc, const char* const* argv) {
     if (arg == "-nosound") {
       Msg(6, "dkernel: no sound mode\n");
       masterConfig.disable_sound = true;
+    }
+
+    // added in pc port to skip the splash screen
+    if (arg == "-nosplash") {
+      Msg(6, "dkernel: skipping splash screen\n");
+      SplashScreen = false;
     }
   }
 }
@@ -309,9 +318,64 @@ u32 KeybdGetData(u32 /*_mouse*/) {
   // ASSERT_NOT_REACHED();
 }
 
-u32 MouseGetData(u32 /*_mouse*/) {
-  // ASSERT_NOT_REACHED();
-  return 0;
+u32 MouseGetData(u32 _mouse) {
+  auto mouse = Ptr<MouseInfo>(_mouse).c();
+
+  mouse->active = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->valid = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->cursor = offset_of_s7() + jak2_symbols::FIX_SYM_TRUE;
+  mouse->status = 1;
+  // Contrary to the name, this is a 16bitfield
+  // where:
+  // 0 = left button
+  // 1 = right button
+  // 2 = middle button
+  mouse->button0 = 0;
+
+  s32 xpos = 0;
+  s32 ypos = 0;
+  if (Display::GetMainDisplay()) {
+    std::tie(xpos, ypos) = Display::GetMainDisplay()->get_input_manager()->get_mouse_pos();
+    const auto mouse_button_status =
+        Display::GetMainDisplay()->get_input_manager()->get_mouse_button_status();
+    mouse->button0 |= (mouse_button_status.left ? 1 : 0);
+    mouse->button0 |= (mouse_button_status.right ? 2 : 0);
+    mouse->button0 |= (mouse_button_status.middle ? 4 : 0);
+  }
+
+  // NOTE - ignoring speed and setting position directly
+  // the game assumes resolutions, so this makes it a lot easier to make it actually
+  // line up with the mouse cursor
+
+  // TODO - probably factor in scaling as well
+  auto win_width = 0;
+  auto win_height = 0;
+  auto game_width = 0;
+  auto game_height = 0;
+  if (Display::GetMainDisplay()) {
+    win_width = Display::GetMainDisplay()->get_display_manager()->get_window_width();
+    win_height = Display::GetMainDisplay()->get_display_manager()->get_window_height();
+    game_width = Display::GetMainDisplay()->get_display_manager()->get_window_game_width();
+    game_height = Display::GetMainDisplay()->get_display_manager()->get_window_game_height();
+  }
+  xpos -= (win_width - game_width) / 2;
+  ypos -= (win_height - game_height) / 2;
+
+  // These are used to calculate the speed at which to move the mouse to it's new coordinates
+  // zero'd out so they are ignored and don't impact the position we are about to set
+  mouse->deltax = 0;
+  mouse->deltay = 0;
+  // These positions will get capped to:
+  // - [-256.0, 256.0] for width
+  // - [-208.0, 208.0] for height
+  // (then 208 or 256 is always added to them to get the final screen coordinate)
+  // So just normalize the actual window's values to this range
+  double width_per = xpos / double(game_width);
+  double height_per = ypos / double(game_height);
+  mouse->posx = (512.0 * width_per) - 256.0;
+  mouse->posy = (416.0 * height_per) - 208.0;
+  // fmt::print("Mouse - X:{}({}), Y:{}({})\n", xpos, mouse->posx, ypos, mouse->posy);
+  return _mouse;
 }
 
 /*!
@@ -520,6 +584,68 @@ void InitMachineScheme() {
     printf("calling play-boot!\n");
     call_goal_function_by_name("play-boot");  // new function for jak2!
   }
+}
+
+sqlite::SQLiteDatabase sql_db;
+
+void initialize_sql_db() {
+  // If the DB has already been initialized, no-op
+  if (sql_db.is_open()) {
+    return;
+  }
+  // In the original environment, they relied on a database already being setup with the correct
+  // schema We are using an embedded SQLite database, which isn't already setup, so we have to do
+  // that here!
+
+  fs::path db_path = file_util::get_user_misc_dir(g_game_version) / "jak3-editor.db";
+  file_util::create_dir_if_needed_for_file(db_path);
+
+  const bool did_db_exist = file_util::file_exists(db_path.string());
+
+  // Attempt to open the database
+  const auto opened = sql_db.open_db(db_path.string());
+  (void)opened;
+
+  fs::path schema_file =
+      file_util::get_jak_project_dir() / "goal_src" / "jak3" / "tools" / "editable-schema.sql";
+  if (!file_util::file_exists(schema_file.string())) {
+    lg::error("Unable to locate SQL Schema file at {}", schema_file.string());
+    return;
+  }
+
+  const auto success = sql_db.run_query(file_util::read_text_file(schema_file));
+  // TODO - error check
+
+  // If the database did not originally exist, let's seed it with original game data
+  if (!did_db_exist) {
+    lg::warn("[SQL]: Seeding database, this may take a bit");
+    fs::path level_info_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak3" / "tools" /
+                                  "db-fixtures" / "fixture-level_info.sql";
+    if (file_util::file_exists(level_info_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(level_info_fixture));
+      // TODO - error check
+    }
+    fs::path light_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak3" / "tools" /
+                             "db-fixtures" / "fixture-light.sql";
+    if (file_util::file_exists(light_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(light_fixture));
+      // TODO - error check
+    }
+    fs::path region_fixture = file_util::get_jak_project_dir() / "goal_src" / "jak3" / "tools" /
+                              "db-fixtures" / "fixture-region.sql";
+    if (file_util::file_exists(region_fixture.string())) {
+      const auto success = sql_db.run_query(file_util::read_text_file(region_fixture));
+      // TODO - error check
+    }
+  }
+}
+
+sqlite::GenericResponse run_sql_query(const std::string& query) {
+  if (!sql_db.is_open()) {
+    // TODO - error
+    return sqlite::GenericResponse();
+  }
+  return sql_db.run_query(query);
 }
 
 }  // namespace jak3

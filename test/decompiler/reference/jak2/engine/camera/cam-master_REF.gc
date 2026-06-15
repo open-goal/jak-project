@@ -347,16 +347,7 @@
 ;; definition for function master-choose-entity
 ;; INFO: Used lq/sq
 (defbehavior master-choose-entity camera-master ((arg0 cam-setting-data))
-  (local-vars
-    (v1-22 symbol)
-    (sv-96 res-tag)
-    (sv-112 process)
-    (sv-128 (pointer process))
-    (sv-144 int)
-    (sv-160 string)
-    (sv-176 string)
-    (sv-192 uint)
-    )
+  (local-vars (v1-22 symbol) (sv-128 (pointer process)))
   (let ((s5-0 (entity-by-name (-> arg0 entity-name))))
     (set! (-> arg0 real-entity-name) #f)
     (when s5-0
@@ -373,8 +364,9 @@
             (format 0 "ERROR <GMJ>: camera entity '~S' didn't produce a state~%" (res-lump-struct s5-0 'name structure))
             )
           )
-        (set! sv-96 (new 'static 'res-tag))
-        (let ((s4-1 (res-lump-data s5-0 'alternates pointer :tag-ptr (& sv-96))))
+        (let* ((sv-96 (new 'static 'res-tag))
+               (s4-1 (res-lump-data s5-0 'alternates pointer :tag-ptr (& sv-96)))
+               )
           (when s4-1
             (let* ((s1-1 (get-process *camera-dead-pool* camera-slave #x4000))
                    (s3-1 (when s1-1
@@ -402,22 +394,21 @@
                       (let ((s1-2 (cam-state-from-entity s0-0)))
                         (cond
                           (s1-2
-                            (set! sv-112 (get-process *camera-dead-pool* camera-slave #x4000))
-                            (set! v1-22 (when sv-112
-                                          (set! sv-128 (the-as (pointer process) v1-22))
-                                          (let ((t9-14 (method-of-type camera-slave activate)))
-                                            (t9-14
-                                              (the-as camera-slave sv-112)
-                                              *camera*
-                                              (symbol->string (-> camera-slave symbol))
-                                              (the-as pointer #x70004000)
-                                              )
+                            (let ((sv-112 (get-process *camera-dead-pool* camera-slave #x4000)))
+                              (set! v1-22 (when sv-112
+                                            (set! sv-128 (the-as (pointer process) v1-22))
+                                            ((method-of-type camera-slave activate)
+                                             (the-as camera-slave sv-112)
+                                             *camera*
+                                             (symbol->string (-> camera-slave symbol))
+                                             (the-as pointer #x70004000)
+                                             )
+                                            (run-now-in-process sv-112 cam-slave-init s1-2 s0-0)
+                                            (set! sv-128 (-> sv-112 ppointer))
+                                            v1-22
                                             )
-                                          (run-now-in-process sv-112 cam-slave-init s1-2 s0-0)
-                                          (set! sv-128 (-> sv-112 ppointer))
-                                          v1-22
-                                          )
-                                  )
+                                    )
+                              )
                             (cond
                               (sv-128
                                 (setup-slave-for-hopefull (the-as camera-slave (ppointer->process sv-128)))
@@ -444,26 +435,21 @@
                               )
                             )
                           (else
-                            (let ((s1-5 format))
-                              (set! sv-144 0)
-                              (set! sv-160 "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%")
-                              (let ((a2-14 (res-lump-struct s0-0 'name structure)))
-                                (s1-5 sv-144 sv-160 a2-14)
-                                )
+                            (format
+                              0
+                              "ERROR <GMJ>: alternate camera region '~S' didn't produce a state~%"
+                              (res-lump-struct s0-0 'name structure)
                               )
                             )
                           )
                         )
                       )
                     (else
-                      (let ((s1-7 format)
-                            (s0-1 0)
-                            )
-                        (set! sv-176 "ERROR <GMJ>: alternate '~S' not found for '~S'~%")
-                        (set! sv-192 (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4)))))
-                        (let ((a3-8 (res-lump-struct s5-0 'name structure)))
-                          (s1-7 s0-1 sv-176 sv-192 a3-8)
-                          )
+                      (format
+                        0
+                        "ERROR <GMJ>: alternate '~S' not found for '~S'~%"
+                        (-> (the-as (pointer uint32) (&+ s4-1 (* s2-1 4))))
+                        (res-lump-struct s5-0 'name structure)
                         )
                       )
                     )

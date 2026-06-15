@@ -1,0 +1,10 @@
+("UR8VL.DGO"
+ ("bear-chassis-ag.o"
+  "bear-door-b-ag.go"
+  "bear-hood-b-ag.go"
+  "bear-r-fender-b-ag.go"
+  "bear-roof-a-ag.go"
+  "bear-trunk-b-ag.go"
+  "wheel-i-ag.go"
+  "ur8vl.o"
+ ))

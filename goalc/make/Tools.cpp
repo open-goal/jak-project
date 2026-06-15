@@ -313,29 +313,49 @@ bool BuildLevel3Tool::run(const ToolInput& task, const PathMap& path_map) {
 BuildActorTool::BuildActorTool() : Tool("build-actor") {}
 
 bool BuildActorTool::needs_run(const ToolInput& task, const PathMap& path_map) {
-  if (task.input.size() > 4) {
+  if (task.input.size() > 8) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   auto rerun = task.input.at(2) == "#t";
-  std::vector<std::string> deps{task.input.at(0)};
+  std::vector deps{task.input.at(0)};
   return rerun || Tool::needs_run({deps, deps, task.output, task.arg}, path_map);
 }
 
 bool BuildActorTool::run(const ToolInput& task, const PathMap& path_map) {
   (void)path_map;
-  if (task.input.size() > 4) {
+  if (task.input.size() > 8) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  jak1::BuildActorParams params;
+  jak1::BuildActorParams1 params;
   params.gen_collide_mesh = task.input.at(1) == "#t";
   if (task.input.at(3) == "#f") {
     params.texture_bucket = -1;
   } else {
     try {
-      params.texture_bucket = static_cast<u8>(std::stoi(task.input.at(3)));
+      params.texture_bucket = static_cast<s8>(std::stoi(task.input.at(3)));
     } catch (std::invalid_argument&) {
       throw std::runtime_error("[build-actor] texture-bucket must be #f or a valid integer.");
     }
+  }
+  params.framerate = std::stof(task.input.at(4));
+  if (task.input.at(5) != "#f") {
+    params.master_art_group = task.input.at(5);
+  }
+  auto master_ag_list = m_reader.read_from_string(task.input.at(6));
+  // e.g. ((jakb-board-stance 180) (jakb-board-airwalk 181))
+  if (!master_ag_list.as_pair()->cdr.is_empty_list()) {
+    std::map<std::string, int> master_ag_map;
+    goos::for_each_in_list(master_ag_list.as_pair()->cdr.as_pair()->car,
+                           [&](const goos::Object& o) {
+                             auto map = o.as_pair();
+                             auto ja = std::string(map->car.as_symbol().name_ptr);
+                             auto idx = map->cdr.as_pair()->car.as_int();
+                             master_ag_map.insert({ja, idx});
+                           });
+    params.master_ag_map = master_ag_map;
+  }
+  if (task.input.at(7) != "6") {
+    params.joint_channel = std::stoi(task.input.at(7));
   }
   return jak1::run_build_actor(task.input.at(0), task.output.at(0), params);
 }
@@ -343,29 +363,48 @@ bool BuildActorTool::run(const ToolInput& task, const PathMap& path_map) {
 BuildActor2Tool::BuildActor2Tool() : Tool("build-actor2") {}
 
 bool BuildActor2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
-  if (task.input.size() > 4) {
+  if (task.input.size() > 8) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   auto rerun = task.input.at(2) == "#t";
-  std::vector<std::string> deps{task.input.at(0)};
+  std::vector deps{task.input.at(0)};
   return rerun || Tool::needs_run({deps, deps, task.output, task.arg}, path_map);
 }
 
 bool BuildActor2Tool::run(const ToolInput& task, const PathMap& path_map) {
   (void)path_map;
-  if (task.input.size() > 4) {
+  if (task.input.size() > 8) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  jak2::BuildActorParams params;
+  jak2::BuildActorParams2 params;
   params.gen_collide_mesh = task.input.at(1) == "#t";
   if (task.input.at(3) == "#f") {
     params.texture_bucket = -1;
   } else {
     try {
-      params.texture_bucket = static_cast<u8>(std::stoi(task.input.at(3)));
+      params.texture_bucket = static_cast<s8>(std::stoi(task.input.at(3)));
     } catch (std::invalid_argument&) {
       throw std::runtime_error("[build-actor2] texture-bucket must be #f or a valid integer.");
     }
+  }
+  params.framerate = std::stof(task.input.at(4));
+  if (task.input.at(5) != "#f") {
+    params.master_art_group = task.input.at(5);
+  }
+  auto master_ag_list = m_reader.read_from_string(task.input.at(6));
+  if (!master_ag_list.as_pair()->cdr.is_empty_list()) {
+    std::map<std::string, int> master_ag_map;
+    goos::for_each_in_list(master_ag_list.as_pair()->cdr.as_pair()->car,
+                           [&](const goos::Object& o) {
+                             auto map = o.as_pair();
+                             auto ja = std::string(map->car.as_symbol().name_ptr);
+                             auto idx = map->cdr.as_pair()->car.as_int();
+                             master_ag_map.insert({ja, idx});
+                           });
+    params.master_ag_map = master_ag_map;
+  }
+  if (task.input.at(7) != "6") {
+    params.joint_channel = std::stoi(task.input.at(7));
   }
   return jak2::run_build_actor(task.input.at(0), task.output.at(0), params);
 }
@@ -373,29 +412,48 @@ bool BuildActor2Tool::run(const ToolInput& task, const PathMap& path_map) {
 BuildActor3Tool::BuildActor3Tool() : Tool("build-actor3") {}
 
 bool BuildActor3Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
-  if (task.input.size() > 4) {
+  if (task.input.size() > 8) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   auto rerun = task.input.at(2) == "#t";
-  std::vector<std::string> deps{task.input.at(0)};
+  std::vector deps{task.input.at(0)};
   return rerun || Tool::needs_run({deps, deps, task.output, task.arg}, path_map);
 }
 
 bool BuildActor3Tool::run(const ToolInput& task, const PathMap& path_map) {
   (void)path_map;
-  if (task.input.size() > 4) {
+  if (task.input.size() > 8) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  jak3::BuildActorParams params;
+  jak3::BuildActorParams3 params;
   params.gen_collide_mesh = task.input.at(1) == "#t";
   if (task.input.at(3) == "#f") {
     params.texture_bucket = -1;
   } else {
     try {
-      params.texture_bucket = static_cast<u8>(std::stoi(task.input.at(3)));
+      params.texture_bucket = static_cast<s8>(std::stoi(task.input.at(3)));
     } catch (std::invalid_argument&) {
       throw std::runtime_error("[build-actor3] texture-bucket must be #f or a valid integer.");
     }
+  }
+  params.framerate = std::stof(task.input.at(4));
+  if (task.input.at(5) != "#f") {
+    params.master_art_group = task.input.at(5);
+  }
+  auto master_ag_list = m_reader.read_from_string(task.input.at(6));
+  if (!master_ag_list.as_pair()->cdr.is_empty_list()) {
+    std::map<std::string, int> master_ag_map;
+    goos::for_each_in_list(master_ag_list.as_pair()->cdr.as_pair()->car,
+                           [&](const goos::Object& o) {
+                             auto map = o.as_pair();
+                             auto ja = std::string(map->car.as_symbol().name_ptr);
+                             auto idx = map->cdr.as_pair()->car.as_int();
+                             master_ag_map.insert({ja, idx});
+                           });
+    params.master_ag_map = master_ag_map;
+  }
+  if (task.input.at(7) != "6") {
+    params.joint_channel = std::stoi(task.input.at(7));
   }
   return jak3::run_build_actor(task.input.at(0), task.output.at(0), params);
 }

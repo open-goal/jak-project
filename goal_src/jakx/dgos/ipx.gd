@@ -1,0 +1,10 @@
+("IPX.DGO"
+ ("common-part.o"
+  "common-obs.o"
+  "peak-part.o"
+  "tpage-2711.go"
+  "tpage-2712.go"
+  "tpage-3155.go"
+  "snow-icebreak-c-ag.go"
+  "icepassx-vis.o"
+ ))

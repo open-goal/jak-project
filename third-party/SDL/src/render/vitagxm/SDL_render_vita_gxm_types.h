@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -105,6 +105,7 @@ typedef struct
 {
     SDL_Rect viewport;
     bool viewport_dirty;
+    bool viewport_is_set;
     SDL_Texture *texture;
     SDL_Texture *target;
     SDL_FColor color;
@@ -206,7 +207,8 @@ typedef struct
     bool yuv;
     bool nv12;
     SDL_ScaleMode scale_mode;
-    SDL_TextureAddressMode address_mode;
+    SDL_TextureAddressMode address_mode_u;
+    SDL_TextureAddressMode address_mode_v;
 } VITA_GXM_TextureData;
 
 #endif // SDL_RENDER_VITA_GXM_TYPES_H

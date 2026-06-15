@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -13,6 +13,9 @@
 /* Definitions for platform dependent windowing functions to test SDL
    integration with native windows
 */
+
+#ifndef testnative_h_
+#define testnative_h_
 
 #include <SDL3/SDL.h>
 
@@ -44,3 +47,5 @@ extern NativeWindowFactory X11WindowFactory;
 #define TEST_NATIVE_COCOA
 extern NativeWindowFactory CocoaWindowFactory;
 #endif
+
+#endif /* testnative_h_ */

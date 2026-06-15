@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -223,9 +223,7 @@ static void OPENSLES_DestroyPCMRecorder(SDL_AudioDevice *device)
         audiodata->playsem = NULL;
     }
 
-    if (audiodata->mixbuff) {
-        SDL_free(audiodata->mixbuff);
-    }
+    SDL_free(audiodata->mixbuff);
 }
 
 // !!! FIXME: make this non-blocking!
@@ -419,35 +417,38 @@ static void OPENSLES_DestroyPCMPlayer(SDL_AudioDevice *device)
         audiodata->playsem = NULL;
     }
 
-    if (audiodata->mixbuff) {
-        SDL_free(audiodata->mixbuff);
-    }
+    SDL_free(audiodata->mixbuff);
 }
 
 static bool OPENSLES_CreatePCMPlayer(SDL_AudioDevice *device)
 {
-    /* If we want to add floating point audio support (requires API level 21)
-       it can be done as described here:
-        https://developer.android.com/ndk/guides/audio/opensl/android-extensions.html#floating-point
-    */
+    /* according to https://developer.android.com/ndk/guides/audio/opensl/opensl-for-android,
+       Android's OpenSL ES only supports Uint8 and _littleendian_ Sint16.
+       (and float32, with an extension we use, below.) */
     if (SDL_GetAndroidSDKVersion() >= 21) {
         const SDL_AudioFormat *closefmts = SDL_ClosestAudioFormats(device->spec.format);
         SDL_AudioFormat test_format;
         while ((test_format = *(closefmts++)) != 0) {
-            if (SDL_AUDIO_ISSIGNED(test_format)) {
+            switch (test_format) {
+            case SDL_AUDIO_U8:
+            case SDL_AUDIO_S16LE:
+            case SDL_AUDIO_F32:
                 break;
+            default:
+                continue;
             }
+            break;
         }
 
         if (!test_format) {
             // Didn't find a compatible format :
-            LOGI("No compatible audio format, using signed 16-bit audio");
-            test_format = SDL_AUDIO_S16;
+            LOGI("No compatible audio format, using signed 16-bit LE audio");
+            test_format = SDL_AUDIO_S16LE;
         }
         device->spec.format = test_format;
     } else {
         // Just go with signed 16-bit audio as it's the most compatible
-        device->spec.format = SDL_AUDIO_S16;
+        device->spec.format = SDL_AUDIO_S16LE;
     }
 
     // Update the fragment size as size in bytes

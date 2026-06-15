@@ -167,14 +167,14 @@
 
 (defmethod init-from-entity! ((this nst-metalhead-eggs) (arg0 entity-actor))
   "Set up a newly created process from the entity that created it."
-  (local-vars (sv-16 res-tag))
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (init-skel-and-jcontrol! this)
   (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
   (set! (-> this root pause-adjust-distance) 204800.0)
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-7 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-7 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16)))
+         )
     (if (and v1-7 (= (-> sv-16 elt-count) 1))
         (set! (-> this actor-group) (the-as actor-group (-> (the-as (pointer uint32) v1-7))))
         (set! (-> this actor-group) #f)
@@ -951,7 +951,6 @@
 
 (defmethod init-from-entity! ((this nst-falling-stone-bridge) (arg0 entity-actor))
   "Set up a newly created process from the entity that created it."
-  (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 512)
   (let ((t9-1 (method-of-type nst-bridge-base init-from-entity!)))
     (t9-1 this arg0)
@@ -980,8 +979,9 @@
         (set! (-> this fall-anim) 3)
         )
     )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-10 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-10 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16)))
+         )
     (if (and v1-10 (= (-> sv-16 elt-count) 1))
         (set! (-> this actor-group) (the-as actor-group (-> (the-as (pointer uint32) v1-10))))
         (set! (-> this actor-group) #f)
@@ -1193,7 +1193,6 @@
   )
 
 (defmethod init-collision! ((this nst-collapsing-stone-bridge))
-  (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 type) (sv-48 collide-shape-moving))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1255,29 +1254,29 @@
              (s2-0 (-> s3-0 car))
              )
         (while (not (null? s3-0))
-          (let ((s1-0 (method-of-type collide-shape-prim-mesh new))
-                (s0-0 'process)
-                )
-            (set! sv-32 collide-shape-prim-mesh)
-            (set! sv-48 s5-0)
-            (let ((a3-2 (command-get-int (-> (the-as pair s2-0) car) 0))
-                  (t0-1 0)
+          (let ((sv-16
+                  (new
+                    'process
+                    'collide-shape-prim-mesh
+                    s5-0
+                    (the-as uint (command-get-int (-> (the-as pair s2-0) car) 0))
+                    (the-as uint 0)
+                    )
                   )
-              (set! sv-16 (s1-0 s0-0 sv-32 sv-48 (the-as uint a3-2) (the-as uint t0-1)))
+                )
+            (let ((s1-1 sv-16))
+              (set! (-> s1-1 prim-core collide-as) (-> s4-0 prim-core collide-as))
+              (set! (-> s1-1 prim-core collide-with) (-> s4-0 prim-core collide-with))
+              (set! (-> s1-1 prim-core action) (-> s4-0 prim-core action))
+              (set! (-> s1-1 transform-index) (command-get-int (-> (the-as pair (-> (the-as pair s2-0) cdr)) car) 0))
               )
-            )
-          (let ((s1-1 sv-16))
-            (set! (-> s1-1 prim-core collide-as) (-> s4-0 prim-core collide-as))
-            (set! (-> s1-1 prim-core collide-with) (-> s4-0 prim-core collide-with))
-            (set! (-> s1-1 prim-core action) (-> s4-0 prim-core action))
-            (set! (-> s1-1 transform-index) (command-get-int (-> (the-as pair (-> (the-as pair s2-0) cdr)) car) 0))
-            )
-          (set-vector!
-            (-> sv-16 local-sphere)
-            0.0
-            0.0
-            0.0
-            (command-get-float (-> (the-as pair (-> (the-as pair (-> (the-as pair s2-0) cdr)) cdr)) car) 0.0)
+            (set-vector!
+              (-> sv-16 local-sphere)
+              0.0
+              0.0
+              0.0
+              (command-get-float (-> (the-as pair (-> (the-as pair (-> (the-as pair s2-0) cdr)) cdr)) car) 0.0)
+              )
             )
           (set! s3-0 (the-as pair (-> s3-0 cdr)))
           (set! s2-0 (-> s3-0 car))
@@ -1920,7 +1919,6 @@
 
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod fire-shot! ((this nst-cocoon-a) (arg0 symbol))
-  (local-vars (sv-192 int) (sv-208 int) (sv-224 (function vector vector float)))
   (let ((s3-0 (new 'stack-no-clear 'traj2d-params))
         (s5-0 (new 'stack-no-clear 'vector))
         )
@@ -1932,21 +1930,18 @@
           (s1-0 -1)
           (s2-0 (new 'stack-no-clear 'projectile-init-by-other-params))
           )
-      (let ((s0-0 (-> *nst-cocoon-a-goop-joints* length)))
-        (set! sv-192 0)
-        (set! sv-208 (-> *nst-cocoon-a-goop-joints* sv-192))
+      (let* ((s0-0 (-> *nst-cocoon-a-goop-joints* length))
+             (sv-192 0)
+             (sv-208 (-> *nst-cocoon-a-goop-joints* sv-192))
+             )
         (while (< sv-192 s0-0)
-          (set! sv-224 vector-vector-xz-distance)
-          (let* ((a0-8 (target-pos 0))
-                 (a1-3 (-> this node-list data sv-208 bone transform trans))
-                 (f0-4 (sv-224 a0-8 a1-3))
-                 )
+          (let ((f0-4 (vector-vector-xz-distance (target-pos 0) (-> this node-list data sv-208 bone transform trans))))
             (when (< f0-4 f30-0)
               (set! f30-0 f0-4)
               (set! s1-0 sv-208)
               )
             )
-          (set! sv-192 (+ sv-192 1))
+          (+! sv-192 1)
           (set! sv-208 (-> *nst-cocoon-a-goop-joints* sv-192))
           )
         )

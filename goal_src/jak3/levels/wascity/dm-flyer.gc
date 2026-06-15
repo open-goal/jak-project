@@ -191,41 +191,39 @@
         (set! (-> s5-0 ignore-proc) (process->handle #f))
         (explosion-spawn s5-0 (the-as process-drawable *default-pool*))
         )
-      (let ((f0-6 81920.0))
-        (cond
-          ((< (* f0-6 f0-6) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
-           (forward-up->inv-matrix gp-0 (-> self pre-move-transv) *up-vector*)
-           (vector-copy! (-> gp-0 trans) (-> self root trans))
-           (if (logtest? (-> group-maker-grenade-explosion flags) (sp-group-flag sp13))
-               (part-tracker-spawn
-                 part-tracker-subsampler
-                 :to *entity-pool*
-                 :group group-maker-grenade-explosion
-                 :mat-joint gp-0
-                 )
-               (part-tracker-spawn part-tracker :to *entity-pool* :group group-maker-grenade-explosion :mat-joint gp-0)
+      (cond
+        ((< (square 81920.0) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
+         (forward-up->inv-matrix gp-0 (-> self pre-move-transv) *up-vector*)
+         (vector-copy! (-> gp-0 trans) (-> self root trans))
+         (if (logtest? (-> group-maker-grenade-explosion flags) (sp-group-flag sp13))
+             (part-tracker-spawn
+               part-tracker-subsampler
+               :to *entity-pool*
+               :group group-maker-grenade-explosion
+               :mat-joint gp-0
                )
-           (sound-play "ball-explode")
-           )
-          (else
-            (quaternion->matrix gp-0 (-> *target* control quat))
-            (vector-copy! (-> gp-0 trans) (-> *target* control trans))
-            (if (logtest? (-> group-maker-grenade-explosion-bottom flags) (sp-group-flag sp13))
-                (part-tracker-spawn
-                  part-tracker-subsampler
-                  :to *entity-pool*
-                  :group group-maker-grenade-explosion-bottom
-                  :mat-joint gp-0
-                  )
-                (part-tracker-spawn
-                  part-tracker
-                  :to *entity-pool*
-                  :group group-maker-grenade-explosion-bottom
-                  :mat-joint gp-0
-                  )
+             (part-tracker-spawn part-tracker :to *entity-pool* :group group-maker-grenade-explosion :mat-joint gp-0)
+             )
+         (sound-play "ball-explode")
+         )
+        (else
+          (quaternion->matrix gp-0 (-> *target* control quat))
+          (vector-copy! (-> gp-0 trans) (-> *target* control trans))
+          (if (logtest? (-> group-maker-grenade-explosion-bottom flags) (sp-group-flag sp13))
+              (part-tracker-spawn
+                part-tracker-subsampler
+                :to *entity-pool*
+                :group group-maker-grenade-explosion-bottom
+                :mat-joint gp-0
                 )
-            (sound-play "ball-hit-turret")
-            )
+              (part-tracker-spawn
+                part-tracker
+                :to *entity-pool*
+                :group group-maker-grenade-explosion-bottom
+                :mat-joint gp-0
+                )
+              )
+          (sound-play "ball-hit-turret")
           )
         )
       )
@@ -501,12 +499,6 @@
 ;; ERROR: Stack slot load at 112 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 128 mismatch: defined as size 4, got size 16
 (defmethod init-proj-settings! ((this dm-flyer-shot))
-  (local-vars
-    (sv-80 (function float float float float float float))
-    (sv-96 float)
-    (sv-112 float)
-    (sv-128 float)
-    )
   (with-pp
     (initialize-skeleton
       this
@@ -577,20 +569,11 @@
            (f0-12 (vector-dot s5-6 *y-vector*))
            (s4-3 (new 'stack-no-clear 'vector))
            )
-      (let ((s3-1 vector-lerp!)
-            (s2-0 s4-3)
-            (s1-0 *y-vector*)
-            (s0-0 *x-vector*)
-            )
-        (set! sv-80 lerp-scale)
-        (set! sv-96 (the-as float 0.0))
-        (set! sv-112 (the-as float 1.0))
-        (set! sv-128 f0-12)
-        (let ((a3-5 (cos 14563.556))
-              (t0-2 0.0)
-              )
-          (s3-1 s2-0 s1-0 s0-0 (sv-80 sv-96 sv-112 sv-128 a3-5 t0-2))
-          )
+      (vector-lerp!
+        s4-3
+        *y-vector*
+        *x-vector*
+        (lerp-scale (the-as float 0.0) (the-as float 1.0) f0-12 (cos 14563.556) 0.0)
         )
       (forward-up->quaternion (-> this root quat) s5-6 s4-3)
       )

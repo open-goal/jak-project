@@ -1,0 +1,12 @@
+("DROMDOCW.DGO"
+ ("train-obs.o"
+  "docks-effects.o"
+  "docks-part.o"
+  "docks-ocean.o"
+  "drome-effects.o"
+  "drome-part.o"
+  "drome-obs.o"
+  "drome-ocean.o"
+  "tpage-2872.go"
+  "dromdocw.o"
+ ))

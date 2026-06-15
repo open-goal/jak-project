@@ -1,0 +1,343 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: stats-h.gc
+;; name in dgo: stats-h
+;; dgos: ENGINE, GAME
+
+;; +++perf-stat-bucket
+(defenum perf-stat-bucket
+  :type uint32
+  (all-code)
+  (spatial-hash-build)
+  (spatial-hash-search)
+  (collide)
+  (collide-list)
+  (collide-fill)
+  (actor-hash)
+  (nav)
+  (nav-dma-all)
+  (nav-dma-read)
+  (nav-dma-write) ;; 10
+  (nav-dma-work)
+  (nav-part1)
+  (nav-part2)
+  (nav-part3)
+  (nav-part4)
+  (nav-part5)
+  (nav-part6)
+  (nav-part7)
+  (nav-part8)
+  (nav-part9) ;; 20
+  (nav-part10)
+
+  ;; renamed
+  (rb-all)                      ;; add-to-translation
+  (rb-fc)                       ;; update-current-poly
+  (rb-physics)                  ;; clamp-vector-to-mesh
+  (rb-callback)                 ;; ray-step
+  (rb-move)                     ;; update-spheres
+  (rb-probe)                    ;; travel-around-spheres
+  (vqp-all)                     ;; avoid-spheres
+  (vqp-sound)                   ;; check-vector-collision-with-nav-spheres
+  (vqp-parts)                   ;; find-nearest-poly
+  (vqp-ja-post)                 ;; find-containing-poly ;; 30
+
+  (vqp-sections)                ;; generate-velocity
+  (vqp-post)                    ;; apply-rotation
+  (vqp-common)                  ;; apply-velocity
+  (find-nearest-poly)           ;; travel-post
+  (find-containing-poly)        ;; common-post
+  (misc)
+  (mercneric)
+  (tie-generic)
+  (background) ;; 40
+  (drawable)
+  (tfrag)
+  (tfrag-scissor)
+  (inst-shrub)
+  (proto-shrub)
+  (inst-tie)
+  (proto-tie)
+  (bones)
+  (camera)
+  (foreground) ;; 50
+  ;; hover / vehicle / hud renames
+  (vehicle-ai)                  ;; hover-path
+  (vehicle-ai-calculate-vector) ;; hover-spheres
+  (update-los)                  ;; hover-update
+  (race-line)                   ;; hover-move
+  (hud)                         ;; hover-find-closest
+  (hud-format)                  ;; update-los
+  ;; explicit HUD buckets
+  (hud-draw-string)             ;; perf-stat-bucket-57
+  (hud-draw-sprite)             ;; perf-stat-bucket-58
+)
+;; ---perf-stat-bucket
+
+
+;; DECOMP BEGINS
+
+(deftype tr-stat (structure)
+  "triangle stats for a renderer. This can apply to a lot of different renderer types."
+  ((groups     uint16)
+   (fragments  uint16)
+   (tris       uint32)
+   (dverts     uint32)
+   (instances  uint16)
+   (pad        uint16)
+   )
+  )
+
+
+(deftype merc-global-stats (structure)
+  "Triangle stats for all merc renderers."
+  ((merc       tr-stat  :inline)
+   (emerc      tr-stat  :inline)
+   (mercneric  tr-stat  :inline)
+   )
+  )
+
+
+(deftype perf-stat (structure)
+  "Performance statistics for a single 'bucket' or category. Unlike the more general profile-bars,
+this records statistics like cache hits/instruction counts."
+  ((frame-number    uint32)
+   (count           uint32)
+   (cycles          uint32)
+   (instructions    uint32)
+   (icache          uint32)
+   (dcache          uint32)
+   (select          uint32)
+   (ctrl            uint32)
+   (accum0          uint32)
+   (accum1          uint32)
+   (to-vu0-waits    uint32)
+   (to-spr-waits    uint32)
+   (from-spr-waits  uint32)
+   )
+  :pack-me
+  (:methods
+    (perf-stat-method-9 () none)
+    (print-to-stream (_type_ string basic) none)
+    (start-profiling! (_type_) none)
+    (stop-profiling! (_type_) none)
+    (update-wait-stats (_type_ uint uint uint) none)
+    )
+  )
+
+
+(defun-debug perf-stat-bucket->string ((arg0 perf-stat-bucket))
+  (case arg0
+    (((perf-stat-bucket collide-fill))
+     "collide-fill"
+     )
+    (((perf-stat-bucket nav))
+     "nav"
+     )
+    (((perf-stat-bucket bones))
+     "bones"
+     )
+    (((perf-stat-bucket hud-draw-string))
+     "hud-draw-string"
+     )
+    (((perf-stat-bucket rb-move))
+     "rb-move"
+     )
+    (((perf-stat-bucket vehicle-ai))
+     "vehicle-ai"
+     )
+    (((perf-stat-bucket foreground))
+     "foreground"
+     )
+    (((perf-stat-bucket inst-tie))
+     "inst-tie"
+     )
+    (((perf-stat-bucket vqp-common))
+     "vqp-common"
+     )
+    (((perf-stat-bucket nav-dma-write))
+     "nav-dma-write"
+     )
+    (((perf-stat-bucket collide-list))
+     "collide-list"
+     )
+    (((perf-stat-bucket rb-physics))
+     "rb-physics"
+     )
+    (((perf-stat-bucket nav-part3))
+     "nav-part3"
+     )
+    (((perf-stat-bucket mercneric))
+     "mercneric"
+     )
+    (((perf-stat-bucket rb-probe))
+     "rb-probe"
+     )
+    (((perf-stat-bucket vehicle-ai-calculate-vector))
+     "vehicle-ai-calculate-vector"
+     )
+    (((perf-stat-bucket tfrag-scissor))
+     "tfrag-scissor"
+     )
+    (((perf-stat-bucket vqp-sections))
+     "vqp-sections"
+     )
+    (((perf-stat-bucket misc))
+     "misc"
+     )
+    (((perf-stat-bucket find-nearest-poly))
+     "find-nearest-poly"
+     )
+    (((perf-stat-bucket nav-part6))
+     "nav-part6"
+     )
+    (((perf-stat-bucket nav-part2))
+     "nav-part2"
+     )
+    (((perf-stat-bucket inst-shrub))
+     "inst-shrub"
+     )
+    (((perf-stat-bucket proto-shrub))
+     "proto-shrub"
+     )
+    (((perf-stat-bucket rb-all))
+     "rb-all"
+     )
+    (((perf-stat-bucket drawable))
+     "drawable"
+     )
+    (((perf-stat-bucket nav-part9))
+     "nav-part9"
+     )
+    (((perf-stat-bucket all-code))
+     "all-code"
+     )
+    (((perf-stat-bucket actor-hash))
+     "actor-hash"
+     )
+    (((perf-stat-bucket nav-dma-all))
+     "nav-dma-all"
+     )
+    (((perf-stat-bucket hud-draw-sprite))
+     "hud-draw-sprite"
+     )
+    (((perf-stat-bucket nav-part10))
+     "nav-part10"
+     )
+    (((perf-stat-bucket hud-format))
+     "hud-format"
+     )
+    (((perf-stat-bucket race-line))
+     "race-line"
+     )
+    (((perf-stat-bucket nav-dma-work))
+     "nav-dma-work"
+     )
+    (((perf-stat-bucket update-los))
+     "update-los"
+     )
+    (((perf-stat-bucket proto-tie))
+     "proto-tie"
+     )
+    (((perf-stat-bucket nav-part4))
+     "nav-part4"
+     )
+    (((perf-stat-bucket spatial-hash-search))
+     "spatial-hash-search"
+     )
+    (((perf-stat-bucket find-containing-poly))
+     "find-containing-poly"
+     )
+    (((perf-stat-bucket vqp-ja-post))
+     "vqp-ja-post"
+     )
+    (((perf-stat-bucket rb-callback))
+     "rb-callback"
+     )
+    (((perf-stat-bucket nav-part7))
+     "nav-part7"
+     )
+    (((perf-stat-bucket tfrag))
+     "tfrag"
+     )
+    (((perf-stat-bucket vqp-sound))
+     "vqp-sound"
+     )
+    (((perf-stat-bucket hud))
+     "hud"
+     )
+    (((perf-stat-bucket collide))
+     "collide"
+     )
+    (((perf-stat-bucket nav-dma-read))
+     "nav-dma-read"
+     )
+    (((perf-stat-bucket rb-fc))
+     "rb-fc"
+     )
+    (((perf-stat-bucket vqp-post))
+     "vqp-post"
+     )
+    (((perf-stat-bucket vqp-parts))
+     "vqp-parts"
+     )
+    (((perf-stat-bucket spatial-hash-build))
+     "spatial-hash-build"
+     )
+    (((perf-stat-bucket camera))
+     "camera"
+     )
+    (((perf-stat-bucket tie-generic))
+     "tie-generic"
+     )
+    (((perf-stat-bucket vqp-all))
+     "vqp-all"
+     )
+    (((perf-stat-bucket background))
+     "background"
+     )
+    (((perf-stat-bucket nav-part5))
+     "nav-part5"
+     )
+    (((perf-stat-bucket nav-part1))
+     "nav-part1"
+     )
+    (((perf-stat-bucket nav-part8))
+     "nav-part8"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(deftype perf-stat-array (inline-array-class)
+  "Array of all stats for all buckets."
+  ((data  perf-stat  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> perf-stat-array heap-base) (the-as uint 52))
+
+(defmethod start-profiling! ((this perf-stat))
+  0
+  (none)
+  )
+
+(defmethod stop-profiling! ((this perf-stat))
+  0
+  (none)
+  )
+
+(defmethod update-wait-stats ((this perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
+  0
+  (none)
+  )
+
+(when (not *debug-segment*)
+  (set! (-> perf-stat method-table 11) nothing)
+  (set! (-> perf-stat method-table 12) nothing)
+  (set! (-> perf-stat method-table 13) nothing)
+  )

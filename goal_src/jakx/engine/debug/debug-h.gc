@@ -1,0 +1,178 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: debug-h.gc
+;; name in dgo: debug-h
+;; dgos: ENGINE, GAME
+
+(define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
+(define-extern add-debug-matrix (function symbol bucket-id matrix meters matrix))
+(define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
+(define-extern add-debug-text-sphere (function symbol bucket-id vector meters string rgba symbol))
+(define-extern add-debug-vector (function symbol bucket-id vector vector meters rgba symbol))
+(define-extern add-debug-quaternion (function symbol bucket-id vector quaternion none))
+(define-extern drawable-frag-count (function drawable int))
+(define-extern drawable-tri-count (function drawable int))
+(define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
+(define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
+(define-extern add-debug-flat-triangle (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern add-debug-box-with-transform (function symbol bucket-id bounding-box matrix rgba symbol))
+(define-extern add-debug-line-sphere (function symbol bucket-id vector vector float rgba none))
+
+;; DECOMP BEGINS
+
+(deftype pos-history (structure)
+  ((points      (inline-array vector))
+   (num-points  int32)
+   (h-first     int32)
+   (h-last      int32)
+   )
+  )
+
+
+(deftype debug-vertex (structure)
+  ((trans   vector4w  :inline)
+   (normal  vector3h  :inline)
+   (st      vector2h  :inline)
+   (color   uint32)
+   )
+  )
+
+
+(deftype debug-vertex-stats (basic)
+  ((length     int32)
+   (pos-count  int32)
+   (vertex     debug-vertex  600 :inline)
+   )
+  )
+
+
+(define *color-black* (new 'static 'rgba :a #x80))
+
+(define *color-white* (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
+
+(define *color-gray* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+(define *color-red* (new 'static 'rgba :r #xff :a #x80))
+
+(define *color-green* (new 'static 'rgba :g #xff :a #x80))
+
+(define *color-blue* (new 'static 'rgba :b #xff :a #x80))
+
+(define *color-cyan* (new 'static 'rgba :g #xff :b #xff :a #x80))
+
+(define *color-magenta* (new 'static 'rgba :r #xff :b #xff :a #x80))
+
+(define *color-yellow* (new 'static 'rgba :r #xff :g #xff :a #x80))
+
+(define *color-purple* (new 'static 'rgba :r #x40 :b #x80 :a #x80))
+
+(define *color-light-gray* (new 'static 'rgba :r #xb0 :g #xb0 :b #xb0 :a #xb0))
+
+(define *color-light-red* (new 'static 'rgba :r #xff :g #x80 :b #x80 :a #x80))
+
+(define *color-light-green* (new 'static 'rgba :r #x80 :g #xff :b #x80 :a #x80))
+
+(define *color-light-blue* (new 'static 'rgba :r #x80 :g #x80 :b #xff :a #x80))
+
+(define *color-light-cyan* (new 'static 'rgba :r #x80 :g #xff :b #xff :a #x80))
+
+(define *color-light-magenta* (new 'static 'rgba :r #xff :g #x80 :b #xff :a #x80))
+
+(define *color-light-yellow* (new 'static 'rgba :r #xff :g #xff :b #x80 :a #x80))
+
+(define *color-dark-red* (new 'static 'rgba :r #x80 :a #x80))
+
+(define *color-dark-green* (new 'static 'rgba :g #x80 :a #x80))
+
+(define *color-dark-blue* (new 'static 'rgba :b #x80 :a #x80))
+
+(define *color-dark-cyan* (new 'static 'rgba :g #x80 :b #x80 :a #x80))
+
+(define *color-dark-magenta* (new 'static 'rgba :r #x80 :b #x80 :a #x80))
+
+(define *color-dark-yellow* (new 'static 'rgba :r #x80 :g #x80 :a #x80))
+
+(define *color-orange* (new 'static 'rgba :r #xff :g #x80 :a #x80))
+
+(defun-debug draw-debug-text-3d ((arg0 string) (arg1 vector) (arg2 bucket-id) (arg3 font-color) (arg4 vector2h) (arg5 rgba))
+  (add-debug-text-3d #t arg2 arg0 arg1 arg3 arg4)
+  0
+  (none)
+  )
+
+(defun-debug draw-debug-x ((arg0 vector) (arg1 bucket-id) (arg2 rgba))
+  (add-debug-x #t arg1 arg0 arg2)
+  0
+  (none)
+  )
+
+(defun-debug draw-debug-line ((arg0 vector) (arg1 vector) (arg2 bucket-id) (arg3 rgba) (arg4 symbol) (arg5 rgba))
+  (add-debug-line #t arg2 arg0 arg1 arg3 arg4 arg5)
+  0
+  (none)
+  )
+
+(defun-debug draw-debug-vector ((arg0 vector) (arg1 vector) (arg2 bucket-id) (arg3 rgba) (arg4 meters))
+  (add-debug-vector #t arg2 arg0 arg1 arg4 arg3)
+  0
+  (none)
+  )
+
+(defun-debug draw-debug-flat-triangle ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 bucket-id) (arg4 rgba))
+  (add-debug-flat-triangle #t arg3 arg0 arg1 arg2 arg4)
+  0
+  (none)
+  )
+
+(defun-debug draw-debug-sphere ((arg0 vector) (arg1 bucket-id) (arg2 float) (arg3 rgba))
+  (add-debug-sphere
+    #t
+    arg1
+    arg0
+    (if (< 0.0 arg2)
+        arg2
+        (-> arg0 w)
+        )
+    arg3
+    )
+  0
+  (none)
+  )
+
+(defun-debug draw-debug-matrix ((arg0 matrix) (arg1 bucket-id) (arg2 float))
+  (add-debug-matrix #t arg1 arg0 arg2)
+  0
+  (none)
+  )
+
+(defun-debug draw-debug-box-with-transform ((arg0 bounding-box) (arg1 matrix) (arg2 bucket-id) (arg3 rgba))
+  (add-debug-box-with-transform #t arg2 arg0 arg1 arg3)
+  0
+  (none)
+  )
+
+(defun-debug draw-debug-line-sphere ((arg0 vector) (arg1 vector) (arg2 bucket-id) (arg3 float) (arg4 rgba))
+  (add-debug-line-sphere
+    #t
+    arg2
+    arg0
+    arg1
+    (if (< 0.0 arg3)
+        arg3
+        (-> arg0 w)
+        )
+    arg4
+    )
+  0
+  (none)
+  )
+
+(deftype stack-debug (structure)
+  ((r29         uint128)
+   (r31         uint128)
+   (test-count  int32)
+   (visit       int32)
+   (obj         basic)
+   )
+  )

@@ -11,6 +11,10 @@ u32 DiskBoot;
 // Set to 1 to enable debug heap
 u32 MasterDebug;
 
+// added in pc port for splash screen
+Timer SplashTimer;
+u32 SplashScreen;
+
 // Set to 1 to load debug code
 u32 DebugSegment;
 
@@ -31,6 +35,7 @@ void kboot_init_globals_common() {
   MasterDebug = 1;
   DebugSegment = 1;
   MasterUseKernel = 1;
+  SplashScreen = 1;
   strcpy(DebugBootLevel, "#f");      // no specified level
   strcpy(DebugBootMessage, "play");  // play mode, the default retail mode
   memset(&masterConfig, 0, sizeof(MasterConfig));

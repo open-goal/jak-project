@@ -50,21 +50,17 @@
 (defmethod play-hum ((this comb-field))
   (let ((v1-0 *target*))
     (when v1-0
-      (let ((f0-0 (vector-vector-distance-squared (-> this root trans) (-> v1-0 control trans)))
-            (f1-0 655360.0)
-            )
-        (cond
-          ((< f0-0 (* f1-0 f1-0))
-           (if (zero? (-> this hum-sound-id))
-               (set! (-> this hum-sound-id) (new-sound-id))
-               )
-           (sound-play "barrier-loop" :id (-> this hum-sound-id))
-           )
-          (else
-            (sound-stop (-> this hum-sound-id))
-            (set! (-> this hum-sound-id) (new 'static 'sound-id))
-            0
-            )
+      (cond
+        ((< (vector-vector-distance-squared (-> this root trans) (-> v1-0 control trans)) (square 655360.0))
+         (if (zero? (-> this hum-sound-id))
+             (set! (-> this hum-sound-id) (new-sound-id))
+             )
+         (sound-play "barrier-loop" :id (-> this hum-sound-id))
+         )
+        (else
+          (sound-stop (-> this hum-sound-id))
+          (set! (-> this hum-sound-id) (new 'static 'sound-id))
+          0
           )
         )
       )
@@ -251,16 +247,12 @@
         (matrix->quaternion (-> s1-0 quat) s2-2)
         (set! (-> this plane quad) (-> s2-2 fvec quad))
         (set! (-> this plane w) (- (vector-dot (-> s2-2 fvec) (-> this root trans))))
-        (let ((v0-8 (-> this root root-prim local-sphere)))
-          (set! (-> v0-8 x) 0.0)
-          (set! (-> v0-8 y) (* 0.00024414062 (/ arg1 2)))
-          (set! (-> v0-8 z) 0.0)
-          (let ((f0-18 0.5)
-                (f1-5 (* f30-1 f30-1))
-                (f2-1 arg1)
-                )
-            (set! (-> v0-8 w) (* f0-18 (sqrtf (+ f1-5 (* f2-1 f2-1)))))
-            )
+        (set-vector!
+          (-> this root root-prim local-sphere)
+          0.0
+          (* 0.00024414062 (/ arg1 2))
+          0.0
+          (* 0.5 (sqrtf (+ (square f30-1) (square arg1))))
           )
         )
       )

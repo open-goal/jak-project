@@ -1,0 +1,13 @@
+("ATX.DGO"
+ ("atoll-ocean.o"
+  "atoll-effects.o"
+  "atoll-part.o"
+  "atoll-obs.o"
+  "tpage-3033.go"
+  "tpage-3037.go"
+  "tpage-3035.go"
+  "tpage-3036.go"
+  "atoll-dish-ag.go"
+  "atoll-rotor-ag.go"
+  "atollx-vis.o"
+ ))

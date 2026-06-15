@@ -365,9 +365,7 @@
       (when a0-4
         (let ((a0-5 (get-trans a0-4 0)))
           (when (and (>= (- (-> a0-5 y) (-> self root trans y)) -6144.0)
-                     (let ((f0-18 11264.0))
-                       (>= (* f0-18 f0-18) (vector-vector-xz-distance-squared a0-5 (-> self root trans)))
-                       )
+                     (>= (square 11264.0) (vector-vector-xz-distance-squared a0-5 (-> self root trans)))
                      )
             (if (time-elapsed? (-> self last-recharge-time) (seconds 1))
                 (sound-play "oxygen-recharge")
@@ -652,7 +650,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
@@ -673,8 +670,9 @@
     )
   (process-drawable-from-entity! this arg0)
   (-> this root)
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-16 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-16 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16)))
+         )
     (when v1-16
       (+! (-> this root trans x) (-> v1-16 0))
       (+! (-> this root trans y) (-> v1-16 1))
@@ -1479,10 +1477,8 @@
           (.add.mul.y.vf.x acc vf2 vf1 acc)
           (.add.mul.z.vf.x vf1 vf2 vf1 acc)
           (.mov a0-8 vf1)
-          (let ((f0-9 a0-8)
-                (f1-4 28672.0)
-                )
-            (if (< (* f1-4 f1-4) f0-9)
+          (let ((f0-9 a0-8))
+            (if (< (square 28672.0) f0-9)
                 (vector-float*! v1-21 v1-21 (/ 28672.0 (sqrtf f0-9)))
                 )
             )

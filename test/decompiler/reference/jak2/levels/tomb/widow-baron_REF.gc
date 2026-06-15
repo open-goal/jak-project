@@ -1129,7 +1129,7 @@
 ;; definition for function widow-handler
 ;; INFO: Used lq/sq
 (defbehavior widow-handler widow ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (v0-0 object) (sv-224 symbol) (sv-240 symbol) (sv-256 vector) (sv-272 matrix))
+  (local-vars (v0-0 object))
   (case arg2
     (('attack)
      (let ((v1-1 (the-as object (-> arg3 param 1))))
@@ -1139,43 +1139,13 @@
                   )
          (set! (-> self last-attack-id) (-> (the-as attack-info v1-1) id))
          (send-event self 'bomb-hit (target-pos 0) 4)
-         (let ((gp-2 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when gp-2
-             (let ((t9-3 (method-of-type part-tracker activate)))
-               (t9-3
-                 (the-as part-tracker gp-2)
-                 *entity-pool*
-                 (symbol->string (-> part-tracker symbol))
-                 (the-as pointer #x70004000)
-                 )
-               )
-             (let ((s5-0 run-function-in-process)
-                   (s4-0 gp-2)
-                   (s3-0 part-tracker-init)
-                   (s2-0 group-spydroid-explode)
-                   (s1-0 600)
-                   (s0-0 #f)
-                   )
-               (set! sv-224 (the-as symbol #f))
-               (set! sv-240 (the-as symbol #f))
-               (set! sv-272 *launch-matrix*)
-               (set! sv-256 (-> sv-272 trans))
-               (let ((v1-16 (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node widow-lod0-jg Lwrist)) quad)))
-                 (set! (-> sv-256 quad) v1-16)
-                 )
-               ((the-as (function object object object object object object object object none) s5-0)
-                s4-0
-                s3-0
-                s2-0
-                s1-0
-                s0-0
-                sv-224
-                sv-240
-                sv-272
-                )
-               )
-             (-> gp-2 ppointer)
-             )
+         (part-tracker-spawn
+           :to *entity-pool*
+           :group group-spydroid-explode
+           :duration 600
+           :userdata (the-as symbol #f)
+           :target (the-as symbol #f)
+           :mat-joint (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node widow-lod0-jg Lwrist))
            )
          )
        )

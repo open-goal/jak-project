@@ -287,14 +287,14 @@
 
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod set-offset-and-look! ((this water-anim))
-  (local-vars (sv-16 res-tag))
   (set! (-> this play-ambient-sound?) #t)
   (set! (-> this visible) #t)
   (set! (-> this look)
         (res-lump-value (-> this entity) 'look wanim-look :default (the-as uint128 -1) :time -1000000000.0)
         )
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-4 (res-lump-data (-> this entity) 'trans-offset vector :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-4 (res-lump-data (-> this entity) 'trans-offset vector :tag-ptr (& sv-16)))
+         )
     (when v1-4
       (+! (-> this root trans x) (-> v1-4 x))
       (+! (-> this root trans y) (-> v1-4 y))
@@ -347,7 +347,6 @@
 
 ;; WARN: Return type mismatch water-flag vs none.
 (defmethod water-anim-init! ((this water-anim))
-  (local-vars (sv-16 res-tag))
   (set! (-> this attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
                                                (-> this entity)
                                                'attack-event
@@ -371,19 +370,19 @@
     (set! (-> this attack-id) a0-7)
     )
   (set! (-> this target) (the-as handle #f))
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-10 (the-as (pointer float) ((method-of-type res-lump get-property-data)
-                                        (-> this entity)
-                                        'water-height
-                                        'exact
-                                        -1000000000.0
-                                        (the-as pointer #f)
-                                        (& sv-16)
-                                        *res-static-buf*
-                                        )
-                       )
-               )
-        )
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-10 (the-as (pointer float) ((method-of-type res-lump get-property-data)
+                                         (-> this entity)
+                                         'water-height
+                                         'exact
+                                         -1000000000.0
+                                         (the-as pointer #f)
+                                         (& sv-16)
+                                         *res-static-buf*
+                                         )
+                        )
+                )
+         )
     (when v1-10
       (set! (-> this water-height) (-> v1-10 0))
       (set! (-> this wade-height) (-> v1-10 1))

@@ -1,0 +1,124 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: minimap-h.gc
+;; name in dgo: minimap-h
+;; dgos: ENGINE, GAME
+
+;; +++minimap-flag
+(defenum minimap-flag
+  :type uint32
+  :bitfield #t
+  (active 0)
+  (minimap 1)
+  (fade-in 2)
+  (fade-out 3)
+  (task-graph 4)
+  (flash 5)
+  (racer 6)
+  )
+;; ---minimap-flag
+
+
+;; +++minimap-class
+(defenum minimap-class
+  :type uint16
+  (none 0)
+  (racer-0 1)
+  (racer-1 2)
+  (racer-2 3)
+  (racer-3 4)
+  (racer-4 5)
+  (racer-5 6)
+  (racer-6 7)
+  (raptor 8)
+  (goal 9)
+  (red-flag 10)
+  (blue-flag 11)
+  (neutral-flag 12)
+  (success-seeker 13)
+  (chicken-drone 14)
+)
+;; ---minimap-class
+
+
+;; DECOMP BEGINS
+
+(deftype minimap-class-node (structure)
+  ((default-position  vector     :inline)
+   (flags             minimap-flag)
+   (name              string)
+   (icon-xy           vector2ub  :inline)
+   (class             minimap-class)
+   (scale             float)
+   (color             rgba)
+   )
+  (:methods
+    (minimap-class-node-method-9 (_type_) symbol)
+    )
+  )
+
+
+(deftype connection-minimap (connection-pers)
+  ((next            connection-minimap :override)
+   (handle          handle              :overlay-at update-time)
+   (position        vector              :overlay-at (-> param 0))
+   (alpha           float               :overlay-at (-> param 1))
+   (flags           minimap-flag        :overlay-at (-> param 2))
+   (class           minimap-class-node  :overlay-at (-> param 3))
+   (node            uint16)
+   (edge-ry         int16)
+   (last-world-pos  vector              :inline)
+   )
+  )
+
+
+(deftype engine-minimap (engine-pers)
+  ((alive-list  connection-minimap :override)
+   (dead-list   connection-minimap :override)
+   )
+  )
+
+
+(deftype minimap-draw-work (structure)
+  ((buf           dma-buffer)
+   (global-flags  uint32)
+   (draw-pos      vector4w  :inline)
+   (mat           matrix    :inline)
+   (corner        vector    4 :inline)
+   (vec           vector    :inline)
+   (pos           vector    :inline)
+   (mid-val       float)
+   )
+  )
+
+
+(deftype minimap (structure)
+  ((draw-tmpl         dma-gif-packet  :inline)
+   (sprite-tmpl       dma-gif-packet  :inline)
+   (sprite2-tmpl      dma-gif-packet  :inline)
+   (adgif-tmpl        dma-gif-packet  :inline)
+   (color             vector4w        :inline)
+   (tex-coords        bounding-box2   :inline)
+   (race-corner       vector          :inline)
+   (mat               matrix          :inline)
+   (tex-offset        vector2         :inline)
+   (race-tex          texture)
+   (race-scale        float)
+   (meters-per-texel  float)
+   (icon-inv-scale    float)
+   (fade              float)
+   (goal-time         float)
+   (engine            engine-minimap)
+   (engine-key        uint32)
+   )
+  (:methods
+    (minimap-method-9 () none)
+    (minimap-method-10 () none)
+    (minimap-method-11 () none)
+    (minimap-method-12 () none)
+    (minimap-method-13 () none)
+    (minimap-method-14 () none)
+    (minimap-method-15 () none)
+    )
+  )

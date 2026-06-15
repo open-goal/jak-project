@@ -457,11 +457,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun movie-nest-metalkor-shot-draw-impact ((arg0 scene-player) (arg1 vector) (arg2 vector))
-  (local-vars
-    (sv-240 (function vector entity-actor skeleton-group vector object none :behavior manipy))
-    (sv-256 vector)
-    (sv-272 entity-actor)
-    )
   (let ((v0-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg2 arg1) 2048.0))
         (gp-0 (new 'stack-no-clear 'vector))
         )
@@ -525,36 +520,18 @@
           (matrix->quaternion gp-1 s2-0)
           )
         (sound-play "nboss-shoot-hit")
-        (let* ((s1-2 (get-process *default-dead-pool* manipy #x4000))
-               (s2-2 (when s1-2
-                       (let ((t9-10 (method-of-type manipy activate)))
-                         (t9-10 (the-as manipy s1-2) arg0 (symbol->string (-> manipy symbol)) (the-as pointer #x70004000))
-                         )
-                       (let ((s2-3 run-function-in-process)
-                             (s0-1 s1-2)
-                             )
-                         (set! sv-240 manipy-init)
-                         (set! sv-256 s4-1)
-                         (set! sv-272 (-> arg0 entity))
-                         (let ((t0-2 (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f)))
-                               (t1-2 #f)
-                               (t2-2 0)
-                               )
-                           ((the-as (function object object object object object object object none) s2-3)
-                            s0-1
-                            sv-240
-                            sv-256
-                            sv-272
-                            t0-2
-                            t1-2
-                            t2-2
-                            )
-                           )
-                         )
-                       (-> s1-2 ppointer)
-                       )
-                     )
-               )
+        (let ((s2-2 (process-spawn
+                      manipy
+                      :init manipy-init
+                      s4-1
+                      (-> arg0 entity)
+                      (art-group-get-by-name *level* "skel-bomb-blast" (the-as (pointer uint32) #f))
+                      #f
+                      0
+                      :to arg0
+                      )
+                    )
+              )
           (when s2-2
             (send-event (ppointer->process s2-2) 'anim-mode 'play1)
             (send-event (ppointer->process s2-2) 'anim "idle")

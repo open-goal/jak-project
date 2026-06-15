@@ -133,16 +133,13 @@
   ;; the basic idea is that we apply two rotations:
   ;; the first moves our y axis toward the desired's y axis, and the second moves
   ;; out z axis. These are both rate limited.
-  (local-vars (sv-96 vector))
   (let ((quat (get-quaternion this)))
     (let ((temp-quat (new 'stack-no-clear 'quaternion)))
       (when (< 0.0 z-rate)
-        (let ((s1-0 quaternion-from-two-vectors-max-angle!)
-              (s0-0 temp-quat))
-          (set! sv-96 (vector-y-quaternion! (new 'stack-no-clear 'vector) quat))
-          (let ((a2-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) target))
-                (a3-1 (* z-rate (seconds-per-frame))))
-            (s1-0 s0-0 sv-96 a2-1 a3-1)))
+        (quaternion-from-two-vectors-max-angle! temp-quat
+                                                (vector-y-quaternion! (new 'stack-no-clear 'vector) quat)
+                                                (vector-y-quaternion! (new 'stack-no-clear 'vector) target)
+                                                (* z-rate (seconds-per-frame)))
         (quaternion-normalize! (quaternion*! quat temp-quat quat)))
       (when (< 0.0 y-rate)
         (quaternion-from-two-vectors-max-angle! temp-quat

@@ -1,0 +1,9 @@
+("DKKRTBOX.DGO"
+ ("net-time-box.o"
+  "time-box-obs.o"
+  "tpage-2828.go"
+  "tpage-2829.go"
+  "time-freeze-ag.go"
+  "time-freeze-debris-ag.go"
+  "dkkrtbox.o"
+ ))

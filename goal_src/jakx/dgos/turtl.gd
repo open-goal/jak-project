@@ -1,0 +1,11 @@
+("TURTL.DGO"
+ ("turtle-chassis-ag.o"
+  "turtle-door-a-ag.go"
+  "turtle-f-fender-a-ag.go"
+  "turtle-hood-a-ag.go"
+  "turtle-r-fender-a-ag.go"
+  "turtle-roof-a-ag.go"
+  "turtle-trunk-a-ag.go"
+  "turtle-wheel-ag.go"
+  "turtl.o"
+ ))

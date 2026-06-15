@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -324,18 +324,18 @@ static const GUID *SDLFmtToMFVidFmtGuid(SDL_PixelFormat format)
 
 // mf.dll ...
 static HMODULE libmf = NULL;
-typedef HRESULT(WINAPI *pfnMFEnumDeviceSources)(IMFAttributes *,IMFActivate ***,UINT32 *);
-typedef HRESULT(WINAPI *pfnMFCreateDeviceSource)(IMFAttributes  *, IMFMediaSource **);
+typedef HRESULT (WINAPI *pfnMFEnumDeviceSources)(IMFAttributes *,IMFActivate ***,UINT32 *);
+typedef HRESULT (WINAPI *pfnMFCreateDeviceSource)(IMFAttributes  *, IMFMediaSource **);
 static pfnMFEnumDeviceSources pMFEnumDeviceSources = NULL;
 static pfnMFCreateDeviceSource pMFCreateDeviceSource = NULL;
 
 // mfplat.dll ...
 static HMODULE libmfplat = NULL;
-typedef HRESULT(WINAPI *pfnMFStartup)(ULONG, DWORD);
-typedef HRESULT(WINAPI *pfnMFShutdown)(void);
-typedef HRESULT(WINAPI *pfnMFCreateAttributes)(IMFAttributes **, UINT32);
-typedef HRESULT(WINAPI *pfnMFCreateMediaType)(IMFMediaType **);
-typedef HRESULT(WINAPI *pfnMFGetStrideForBitmapInfoHeader)(DWORD, DWORD, LONG *);
+typedef HRESULT (WINAPI *pfnMFStartup)(ULONG, DWORD);
+typedef HRESULT (WINAPI *pfnMFShutdown)(void);
+typedef HRESULT (WINAPI *pfnMFCreateAttributes)(IMFAttributes **, UINT32);
+typedef HRESULT (WINAPI *pfnMFCreateMediaType)(IMFMediaType **);
+typedef HRESULT (WINAPI *pfnMFGetStrideForBitmapInfoHeader)(DWORD, DWORD, LONG *);
 
 static pfnMFStartup pMFStartup = NULL;
 static pfnMFShutdown pMFShutdown = NULL;
@@ -345,7 +345,7 @@ static pfnMFGetStrideForBitmapInfoHeader pMFGetStrideForBitmapInfoHeader = NULL;
 
 // mfreadwrite.dll ...
 static HMODULE libmfreadwrite = NULL;
-typedef HRESULT(WINAPI *pfnMFCreateSourceReaderFromMediaSource)(IMFMediaSource *, IMFAttributes *, IMFSourceReader **);
+typedef HRESULT (WINAPI *pfnMFCreateSourceReaderFromMediaSource)(IMFMediaSource *, IMFAttributes *, IMFSourceReader **);
 static pfnMFCreateSourceReaderFromMediaSource pMFCreateSourceReaderFromMediaSource = NULL;
 
 
@@ -430,7 +430,7 @@ static void SDLCALL CleanupIMFMediaBuffer(void *userdata, void *value)
     SDL_free(objs);
 }
 
-static SDL_CameraFrameResult MEDIAFOUNDATION_AcquireFrame(SDL_Camera *device, SDL_Surface *frame, Uint64 *timestampNS)
+static SDL_CameraFrameResult MEDIAFOUNDATION_AcquireFrame(SDL_Camera *device, SDL_Surface *frame, Uint64 *timestampNS, float *rotation)
 {
     SDL_assert(device->hidden->current_sample != NULL);
 
@@ -562,7 +562,7 @@ static SDL_CameraFrameResult MEDIAFOUNDATION_CopyFrame(SDL_Surface *frame, const
     return SDL_CAMERA_FRAME_READY;
 }
 
-static SDL_CameraFrameResult MEDIAFOUNDATION_AcquireFrame(SDL_Camera *device, SDL_Surface *frame, Uint64 *timestampNS)
+static SDL_CameraFrameResult MEDIAFOUNDATION_AcquireFrame(SDL_Camera *device, SDL_Surface *frame, Uint64 *timestampNS, float *rotation)
 {
     SDL_assert(device->hidden->current_sample != NULL);
 
@@ -675,7 +675,7 @@ static HRESULT GetDefaultStride(IMFMediaType *pType, LONG *plStride)
     LONG lStride = 0;
 
     // Try to get the default stride from the media type.
-    HRESULT ret = IMFMediaType_GetUINT32(pType, &SDL_MF_MT_DEFAULT_STRIDE, (UINT32*)&lStride);
+    HRESULT ret = IMFMediaType_GetUINT32(pType, &SDL_MF_MT_DEFAULT_STRIDE, (UINT32 *)&lStride);
     if (FAILED(ret)) {
         // Attribute not set. Try to calculate the default stride.
 
@@ -741,7 +741,7 @@ static bool MEDIAFOUNDATION_OpenDevice(SDL_Camera *device, const SDL_CameraSpec 
     SDL_Log("CAMERA: opening device with symlink of '%s'", utf8symlink);
     #endif
 
-    wstrsymlink = WIN_UTF8ToString(utf8symlink);
+    wstrsymlink = WIN_UTF8ToStringW(utf8symlink);
     if (!wstrsymlink) {
         goto failed;
     }
@@ -901,7 +901,7 @@ static char *QueryActivationObjectString(IMFActivate *activation, const GUID *pg
         return NULL;
     }
 
-    char *utf8str = WIN_StringToUTF8(wstr);
+    char *utf8str = WIN_StringToUTF8W(wstr);
     CoTaskMemFree(wstr);
     return utf8str;
 }
@@ -1001,7 +1001,7 @@ static void MaybeAddDevice(IMFActivate *activation)
     if (name && symlink) {
         IMFMediaSource *source = NULL;
         // "activating" here only creates an object, it doesn't open the actual camera hardware or start recording.
-        HRESULT ret = IMFActivate_ActivateObject(activation, &SDL_IID_IMFMediaSource, (void**)&source);
+        HRESULT ret = IMFActivate_ActivateObject(activation, &SDL_IID_IMFMediaSource, (void **)&source);
         if (SUCCEEDED(ret) && source) {
             CameraFormatAddData add_data;
             GatherCameraSpecs(source, &add_data);

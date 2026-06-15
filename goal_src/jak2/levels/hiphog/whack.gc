@@ -2139,14 +2139,6 @@
       )
     )
   :code (behavior ((arg0 symbol))
-    (local-vars
-      (sv-48 whack-a-metal)
-      (sv-64 (function vector cspace vector))
-      (sv-80 vector)
-      (sv-96 vector)
-      (sv-112 (function vector cspace vector))
-      (sv-128 vector)
-      )
     (let ((gp-0 (cond
                   ((>= (-> self air-attack-count) 10)
                    daxter-highres-mole-idle-tired-ja
@@ -2167,50 +2159,25 @@
         (ja-no-eval :group! daxter-highres-mole-shock-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (when (rand-vu-percent? 0.2)
-            (let* ((gp-2 (get-process *default-dead-pool* lightning-tracker #x4000))
-                   (v1-26 (when gp-2
-                            (let ((t9-6 (method-of-type lightning-tracker activate)))
-                              (t9-6
-                                (the-as lightning-tracker gp-2)
-                                self
-                                (symbol->string (-> lightning-tracker symbol))
-                                (the-as pointer #x70004000)
-                                )
-                              )
-                            (let ((s5-1 run-function-in-process)
-                                  (s4-0 gp-2)
-                                  (s3-0 lightning-tracker-init)
-                                  (s2-0 (-> *lightning-spec-id-table* 21))
-                                  (s1-0 0)
-                                  (s0-0 lightning-probe-callback)
-                                  )
-                              (set! sv-48 self)
-                              (set! sv-64 vector<-cspace!)
-                              (set! sv-80 (new 'stack-no-clear 'vector))
-                              (let ((a1-8 (-> self node-list data (rand-vu-int-range 3 (+ (-> self node-list length) -1)))))
-                                (set! sv-96 (sv-64 sv-80 a1-8))
-                                )
-                              (set! sv-112 vector<-cspace!)
-                              (set! sv-128 (new 'stack-no-clear 'vector))
-                              (let* ((a1-10 (-> self node-list data (rand-vu-int-range 3 (+ (-> self node-list length) -1))))
-                                     (t3-0 (sv-112 sv-128 a1-10))
-                                     )
-                                ((the-as (function object object object object object object object object none) s5-1)
-                                 s4-0
-                                 s3-0
-                                 s2-0
-                                 s1-0
-                                 s0-0
-                                 sv-48
-                                 sv-96
-                                 t3-0
-                                 )
-                                )
-                              )
-                            (-> gp-2 ppointer)
-                            )
-                          )
-                   )
+            (let ((v1-26 (process-spawn
+                           lightning-tracker
+                           :init lightning-tracker-init
+                           (-> *lightning-spec-id-table* 21)
+                           0
+                           lightning-probe-callback
+                           self
+                           (vector<-cspace!
+                             (new 'stack-no-clear 'vector)
+                             (-> self node-list data (rand-vu-int-range 3 (+ (-> self node-list length) -1)))
+                             )
+                           (vector<-cspace!
+                             (new 'stack-no-clear 'vector)
+                             (-> self node-list data (rand-vu-int-range 3 (+ (-> self node-list length) -1)))
+                             )
+                           :to self
+                           )
+                         )
+                  )
               (when v1-26
                 (set! (-> (the-as lightning-tracker (-> v1-26 0)) user-time 0) 0)
                 0

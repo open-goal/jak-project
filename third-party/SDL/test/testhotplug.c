@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -95,6 +95,11 @@ int main(int argc, char *argv[])
             switch (event.type) {
             case SDL_EVENT_QUIT:
                 keepGoing = false;
+                break;
+            case SDL_EVENT_KEY_DOWN:
+                if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                    keepGoing = false;
+                }
                 break;
             case SDL_EVENT_KEYBOARD_ADDED:
                 SDL_Log("Keyboard '%s' added  : %" SDL_PRIu32, SDL_GetKeyboardNameForID(event.kdevice.which), event.kdevice.which);

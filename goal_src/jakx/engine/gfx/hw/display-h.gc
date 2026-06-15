@@ -1,0 +1,129 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: display-h.gc
+;; name in dgo: display-h
+;; dgos: ENGINE, GAME
+
+(declare-type display basic)
+(define-extern set-display (function display display))
+
+(define-extern *display* display)
+
+(defmacro current-frame ()
+  `(-> *display* frames (-> *display* on-screen))
+  )
+
+(defmacro integral-current-time ()
+  `(-> *display* integral-frame-counter)
+  )
+
+(defmacro real-current-time ()
+  `(-> *display* real-frame-counter)
+  )
+
+;; debug stuff really
+(defmacro get-screen-x (frac)
+  `(the int (* ,frac 512)))
+
+(defmacro get-screen-y (frac)
+  `(the int (* ,frac 416)))
+
+;; DECOMP BEGINS
+
+(deftype display-frame (basic)
+  ((buffer         dma-buffer                 11)
+   (calc-buf       dma-buffer                         :overlay-at (-> buffer 1))
+   (vu1-buf        dma-buffer                         :overlay-at (-> buffer 1))
+   (debug-buf      dma-buffer                         :overlay-at (-> buffer 8))
+   (global-buf     dma-buffer                         :overlay-at (-> buffer 9))
+   (bucket-group   (inline-array dma-bucket)          :overlay-at (-> buffer 10))
+   (profile-array  profile-array              :inline :offset  48)
+   (start-time     uint64                             :offset  56)
+   (run-time       uint64                             :offset  64)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    )
+  )
+
+
+(defmethod new display-frame ((allocation symbol) (type-to-make type))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 calc-buf) (the-as dma-buffer 0))
+    (set! (-> gp-0 global-buf) (the-as dma-buffer 0))
+    (set! (-> gp-0 debug-buf) (the-as dma-buffer 0))
+    (when *debug-segment*
+      (set! (-> gp-0 profile-array data 0) (new 'debug 'profile-segment-array))
+      (set! (-> gp-0 profile-array data 1) (new 'debug 'profile-segment-array))
+      )
+    gp-0
+    )
+  )
+
+(deftype display (basic)
+  ((on-screen             int32)
+   (last-screen           int32)
+   (frames                display-frame  2)
+   (bgcolor               uint64)
+   (pmode                 uint64)
+   (clock                 clock          22)
+   (session-clock         clock          :overlay-at (-> clock 0))
+   (game-clock            clock          :overlay-at (-> clock 1))
+   (base-clock            clock          :overlay-at (-> clock 2))
+   (real-clock            clock          :overlay-at (-> clock 3))
+   (frame-clock           clock          :overlay-at (-> clock 4))
+   (real-frame-clock      clock          :overlay-at (-> clock 5))
+   (target-clock          clock          :overlay-at (-> clock 6))
+   (entity-clock          clock          :overlay-at (-> clock 7))
+   (part-clock            clock          :overlay-at (-> clock 8))
+   (bg-clock              clock          :overlay-at (-> clock 9))
+   (camera-clock          clock          :overlay-at (-> clock 10))
+   (total-game-clock      clock          :overlay-at (-> clock 11))
+   (user0-clock           clock          :overlay-at (-> clock 12))
+   (user1-clock           clock          :overlay-at (-> clock 13))
+   (user2-clock           clock          :overlay-at (-> clock 14))
+   (user3-clock           clock          :overlay-at (-> clock 15))
+   (user4-clock           clock          :overlay-at (-> clock 16))
+   (user5-clock           clock          :overlay-at (-> clock 17))
+   (user6-clock           clock          :overlay-at (-> clock 18))
+   (user7-clock           clock          :overlay-at (-> clock 19))
+   (user8-clock           clock          :overlay-at (-> clock 20))
+   (user9-clock           clock          :overlay-at (-> clock 21))
+   (time-factor           float)
+   (dog-ratio             float)
+   (vblank-start-time     int64          2)
+   (total-run-time        uint64)
+   (run-half-speed        symbol)
+   (vu1-enable-user       uint64)
+   (vu1-enable-user-menu  uint64)
+   (force-sync            uint32)
+   (mem-reserve-size      uint32)
+   (dma-buffer-overflow   symbol)
+   (default-end-buffer    basic)
+   (init-buffer-zbuf-on   basic)
+   (init-buffer-zbuf-off  basic)
+   )
+  (:methods
+    (new (symbol type int int int int int) _type_)
+    (set-time-ratios (_type_ float) float)
+    )
+  )
+
+
+(defmethod new display ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set-display gp-0)
+    (set! (-> gp-0 frames 0) (new 'global 'display-frame))
+    (set! (-> gp-0 frames 1) (new 'global 'display-frame))
+    (set! (-> gp-0 pmode) (the-as uint 165))
+    (set! (-> gp-0 run-half-speed) #f)
+    (set! (-> gp-0 vu1-enable-user-menu) (the-as uint #x5fffffff8))
+    (set! (-> gp-0 vu1-enable-user) (the-as uint #x5fffffff8))
+    gp-0
+    )
+  )
+
+(define *pre-draw-hook* (the-as (function object none) nothing))
+
+(define *post-draw-hook* (the-as (function dma-buffer none) nothing))

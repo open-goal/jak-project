@@ -6,6 +6,7 @@
 
 import argparse
 import re
+from pathlib import Path
 
 parser = argparse.ArgumentParser("generate_dgo_files")
 parser.add_argument("--game", help="The name of the game", type=str)
@@ -14,42 +15,52 @@ args = parser.parse_args()
 
 # Read in the dgo.txt file
 with open(args.dgotxt, "r") as f:
-  lines = f.readlines()[2:] # skip the first two lines, assumed to be a comment header and an empty line
-  # OpenGOAL still doesn't have a data serialization/deserialization format
-  # so read line by line, assuming each DGO is seperated by an empty line
-  current_dgo_name = None
-  current_dgo_lines = []
-  current_o_files = []
-  for line in lines:
-    if line.strip() == "":
-      # Write out contents to the .gd file
-      if current_dgo_name is not None:
-        path = "./goal_src/{}/dgos/{}".format(args.game, current_dgo_name)
-        print("writing to {}".format(path))
-        with open(path, "w") as wf:
-          wf.writelines(current_dgo_lines)
-      current_dgo_name = None
-      current_dgo_lines = []
-      current_o_files = []
-      continue
-    if ".CGO" in line or ".DGO" in line:
-      print("found one! - {}".format(line.strip()))
-      # figure out the name
-      current_dgo_name = line.replace("(", "").replace("\"", "").strip().lower().replace(".dgo", ".gd").replace(".cgo", ".gd")
-      current_dgo_lines.append(line)
-    elif current_dgo_name is not None:
-      match = re.match('\s*\((\"[^ ]+\") (\"[^ ]+\")\)', line)
-      if match:
-        o_file = match.groups()[0]
-        print(" ", o_file)
-        # collect our output file names
-        current_o_files.append(o_file)
-      elif line.strip() == ")":
-        #end of the DGO, write out collected filenames
-        current_dgo_lines.append(" ({}\n".format(current_o_files[0]))
-        #dirty check to sort which files should be .go vs .o TODO confirm this makes sense
-        for file in current_o_files[1:]:
-          if "tpage" in file or "-ag" in file:
-            file = file.replace(".o", ".go")
-          current_dgo_lines.append("  {}\n".format(file))
-        current_dgo_lines.append(" ))\n")
+    lines = f.readlines()[
+        2:
+    ]  # skip the first two lines, assumed to be a comment header and an empty line
+    # OpenGOAL still doesn't have a data serialization/deserialization format
+    # so read line by line, assuming each DGO is seperated by an empty line
+    current_dgo_name = None
+    current_dgo_lines = []
+    current_o_files = []
+    for line in lines:
+        if line.strip() == "":
+            # Write out contents to the .gd file
+            if current_dgo_name is not None:
+                path = "./goal_src/{}/dgos/{}".format(args.game, current_dgo_name)
+                print("writing to {}".format(path))
+                Path(path).parent.mkdir(parents=True, exist_ok=True)
+                with open(path, "w") as wf:
+                    wf.writelines(current_dgo_lines)
+            current_dgo_name = None
+            current_dgo_lines = []
+            current_o_files = []
+            continue
+        if ".CGO" in line or ".DGO" in line:
+            print("found one! - {}".format(line.strip()))
+            # figure out the name
+            current_dgo_name = (
+                line.replace("(", "")
+                .replace('"', "")
+                .strip()
+                .lower()
+                .replace(".dgo", ".gd")
+                .replace(".cgo", ".gd")
+            )
+            current_dgo_lines.append(line)
+        elif current_dgo_name is not None:
+            match = re.match('\s*\(("[^ ]+") ("[^ ]+")\)', line)
+            if match:
+                o_file = match.groups()[0]
+                print(" ", o_file)
+                # collect our output file names
+                current_o_files.append(o_file)
+            elif line.strip() == ")":
+                # end of the DGO, write out collected filenames
+                current_dgo_lines.append(" ({}\n".format(current_o_files[0]))
+                # dirty check to sort which files should be .go vs .o TODO confirm this makes sense
+                for file in current_o_files[1:]:
+                    if "tpage" in file or "-ag" in file:
+                        file = file.replace(".o", ".go")
+                    current_dgo_lines.append("  {}\n".format(file))
+                current_dgo_lines.append(" ))\n")

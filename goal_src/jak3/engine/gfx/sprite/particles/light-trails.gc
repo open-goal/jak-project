@@ -313,28 +313,6 @@
 
 (defmethod build-prim-strip! ((this light-trail))
   "Build the mesh for this light trail."
-  (local-vars
-    (sv-64 time-frame)
-    (sv-72 uint)
-    (sv-80 int)
-    (sv-88 float)
-    (sv-92 float)
-    (sv-96 float)
-    (sv-100 rgbaf)
-    (sv-104 vector)
-    (sv-128 vector)
-    (sv-132 vector)
-    (sv-136 float)
-    (sv-140 float)
-    (sv-144 float)
-    (sv-148 float)
-    (sv-152 float)
-    (sv-156 float)
-    (sv-192 float)
-    (sv-196 float)
-    (sv-200 vector)
-    (sv-204 vector)
-    )
   (set! (-> *dist-cache-array* 0) 0.0)
   (set! *total-length* 0.0)
   (let ((s5-0 (new 'stack-no-clear 'array 'int32 4)))
@@ -359,227 +337,229 @@
         (+! s4-0 1)
         )
       )
-    (set! sv-64 (-> this appearance max-age))
-    (set! sv-72 (- (-> this start-marker) (-> this end-marker)))
-    (set! sv-80 0)
-    (set! sv-88 (the-as float 0.0))
-    (set! sv-92 (the-as float -100.0))
-    (set! sv-96 (the-as float 0.0))
-    (set! sv-100 (new 'stack-no-clear 'rgbaf))
-    (set! sv-104 (new 'stack-no-clear 'vector))
-    (if (= (-> this appearance uv-mode) 3)
-        (set! sv-92 (the-as float 100.0))
+    (let ((sv-64 (-> this appearance max-age)))
+      (let ((sv-72 (- (-> this start-marker) (-> this end-marker))))
         )
-    (set! sv-128 (math-camera-pos))
-    (set! sv-132 (new 'stack-no-clear 'vector))
-    (set! (-> this strip num-verts) (the-as uint 0))
-    (set! (-> this strip tex-id) (-> this appearance tex-id))
-    (cond
-      ((not (-> this appearance zbuffer?))
-       (set! (-> this strip adnops 0 cmds) (gs-reg64 test-1))
-       (set! (-> this strip data0) (new 'static 'gs-test
-                                     :ate #x1
-                                     :atst (gs-atest greater-equal)
-                                     :aref #x80
-                                     :afail #x1
-                                     :zte #x1
-                                     :ztst (gs-ztest greater-equal)
-                                     )
+      (let ((sv-80 0)
+            (sv-88 (the-as float 0.0))
+            (sv-92 (the-as float -100.0))
+            (sv-96 (the-as float 0.0))
+            (sv-100 (new 'stack-no-clear 'rgbaf))
+            (sv-104 (new 'stack-no-clear 'vector))
+            )
+        (if (= (-> this appearance uv-mode) 3)
+            (set! sv-92 (the-as float 100.0))
+            )
+        (let ((sv-128 (math-camera-pos))
+              (sv-132 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> this strip num-verts) (the-as uint 0))
+          (set! (-> this strip tex-id) (-> this appearance tex-id))
+          (cond
+            ((not (-> this appearance zbuffer?))
+             (set! (-> this strip adnops 0 cmds) (gs-reg64 test-1))
+             (set! (-> this strip data0) (new 'static 'gs-test
+                                           :ate #x1
+                                           :atst (gs-atest greater-equal)
+                                           :aref #x80
+                                           :afail #x1
+                                           :zte #x1
+                                           :ztst (gs-ztest greater-equal)
+                                           )
+                   )
              )
-       )
-      (else
-        (set! (-> this strip adnops 0 cmds) (gs-reg64 hack))
-        (set! (-> this strip data0) (new 'static 'gs-test))
-        0
-        )
-      )
-    (let ((v1-34 (-> this appearance blend-mode)))
-      (cond
-        ((= v1-34 1)
-         (set! (-> this strip alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
-         )
-        ((zero? v1-34)
-         (set! (-> this strip alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
-         )
-        ((= v1-34 2)
-         (set! (-> this strip alpha) (new 'static 'gs-alpha :a #x2 :d #x1))
-         )
-        )
-      )
-    (when (-> this strip2)
-      (set! (-> this strip2 num-verts) (the-as uint 0))
-      (set! (-> this strip2 tex-id) (-> this appearance tex-id))
-      (cond
-        ((not (-> this appearance zbuffer?))
-         (set! (-> this strip2 adnops 0 cmds) (gs-reg64 test-1))
-         (set! (-> this strip2 data0) (new 'static 'gs-test
-                                        :ate #x1
-                                        :atst (gs-atest greater-equal)
-                                        :aref #x80
-                                        :afail #x1
-                                        :zte #x1
-                                        :ztst (gs-ztest greater-equal)
-                                        )
+            (else
+              (set! (-> this strip adnops 0 cmds) (gs-reg64 hack))
+              (set! (-> this strip data0) (new 'static 'gs-test))
+              0
+              )
+            )
+          (let ((v1-34 (-> this appearance blend-mode)))
+            (cond
+              ((= v1-34 1)
+               (set! (-> this strip alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
                )
-         )
-        (else
-          (set! (-> this strip2 adnops 0 cmds) (gs-reg64 hack))
-          (set! (-> this strip2 data0) (new 'static 'gs-test))
-          0
-          )
-        )
-      (let ((v1-52 (-> this appearance blend-mode)))
-        (cond
-          ((= v1-52 1)
-           (set! (-> this strip2 alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
-           )
-          ((zero? v1-52)
-           (set! (-> this strip2 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
-           )
-          ((= v1-52 2)
-           (set! (-> this strip2 alpha) (new 'static 'gs-alpha :a #x2 :d #x1))
-           )
-          )
-        )
-      )
-    (countdown (s5-1 (-> s5-0 0))
-      (let* ((s3-1 s5-1)
-             (s4-1 (the-as object (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) s3-1))))
-             )
-        (set! sv-136
-              (/ (the float (+ (- (-> this start-marker) (-> (the-as light-trail-breadcrumb s4-1) birth-time)) sv-80))
-                 (the float sv-64)
-                 )
+              ((zero? v1-34)
+               (set! (-> this strip alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+               )
+              ((= v1-34 2)
+               (set! (-> this strip alpha) (new 'static 'gs-alpha :a #x2 :d #x1))
+               )
               )
-        (when (or (< 1.0 sv-136) (< sv-136 0.0))
-          )
-        (when (and (>= 1.0 sv-136) (>= sv-136 0.0))
-          (let* ((f30-1 (-> *dist-cache-array* s5-1))
-                 (f28-0 (- *total-length* f30-1))
-                 (f26-0 (- (-> this total-distance-traveled) f28-0))
-                 )
-            (set! sv-140 (the-as float 1.0))
-            (set! sv-144 (the-as float 1.0))
-            (set! sv-148 (the-as float 1.0))
-            (set! sv-152 (the-as float 0.0))
-            (set! sv-156 (the-as float 0.0))
-            (when (-> this appearance alpha-curve-1)
-              (set! sv-140
-                    (compute-trail-scaled-t
-                      (-> this appearance alpha-1-mode)
-                      sv-136
-                      f30-1
-                      f28-0
-                      f26-0
-                      (-> this appearance alpha-repeat-dist)
-                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
-                      )
-                    )
-              (set! sv-140 (evaluate (-> this appearance alpha-curve-1) sv-140 (loop-behavior use-default)))
-              )
-            (when (-> this appearance alpha-curve-2)
-              (set! sv-144
-                    (compute-trail-scaled-t
-                      (-> this appearance alpha-2-mode)
-                      sv-136
-                      f30-1
-                      f28-0
-                      f26-0
-                      (-> this appearance alpha-repeat-dist)
-                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
-                      )
-                    )
-              (set! sv-144 (evaluate (-> this appearance alpha-curve-2) sv-144 (loop-behavior use-default)))
-              )
-            (when (-> this appearance width-curve)
-              (set! sv-148
-                    (compute-trail-scaled-t
-                      (-> this appearance width-mode)
-                      sv-136
-                      f30-1
-                      f28-0
-                      f26-0
-                      (-> this appearance width-repeat-dist)
-                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
-                      )
-                    )
-              (set! sv-148 (evaluate (-> this appearance width-curve) sv-148 (loop-behavior use-default)))
-              )
-            (set! sv-152
-                  (compute-trail-scaled-t
-                    (-> this appearance uv-mode)
-                    sv-136
-                    f30-1
-                    f28-0
-                    f26-0
-                    (-> this appearance uv-repeat-dist)
-                    (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
-                    )
-                  )
-            (when (or (< 1.0 sv-152) (< sv-152 0.0))
-              (let ((f0-43 sv-152))
-                (set! sv-152 (- f0-43 (the float (the int f0-43))))
+            )
+          (when (-> this strip2)
+            (set! (-> this strip2 num-verts) (the-as uint 0))
+            (set! (-> this strip2 tex-id) (-> this appearance tex-id))
+            (cond
+              ((not (-> this appearance zbuffer?))
+               (set! (-> this strip2 adnops 0 cmds) (gs-reg64 test-1))
+               (set! (-> this strip2 data0) (new 'static 'gs-test
+                                              :ate #x1
+                                              :atst (gs-atest greater-equal)
+                                              :aref #x80
+                                              :afail #x1
+                                              :zte #x1
+                                              :ztst (gs-ztest greater-equal)
+                                              )
+                     )
+               )
+              (else
+                (set! (-> this strip2 adnops 0 cmds) (gs-reg64 hack))
+                (set! (-> this strip2 data0) (new 'static 'gs-test))
+                0
                 )
               )
-            (set! sv-192 (* sv-140 sv-144 (-> this appearance base-alpha)))
-            (set! sv-196 (* sv-148 (-> this appearance base-width)))
-            (set! sv-200 (new 'stack-no-clear 'vector))
-            (set! sv-204 (new 'stack-no-clear 'vector))
-            (when (-> this appearance color-curve)
-              (set! sv-156
-                    (compute-trail-scaled-t
-                      (-> this appearance color-mode)
-                      sv-136
-                      f30-1
-                      f28-0
-                      f26-0
-                      (-> this appearance color-repeat-dist)
-                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+            (let ((v1-52 (-> this appearance blend-mode)))
+              (cond
+                ((= v1-52 1)
+                 (set! (-> this strip2 alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
+                 )
+                ((zero? v1-52)
+                 (set! (-> this strip2 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+                 )
+                ((= v1-52 2)
+                 (set! (-> this strip2 alpha) (new 'static 'gs-alpha :a #x2 :d #x1))
+                 )
+                )
+              )
+            )
+          (countdown (s5-1 (-> s5-0 0))
+            (let* ((s3-1 s5-1)
+                   (s4-1 (the-as object (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) s3-1))))
+                   (sv-136
+                     (/ (the float (+ (- (-> this start-marker) (-> (the-as light-trail-breadcrumb s4-1) birth-time)) sv-80))
+                        (the float sv-64)
+                        )
+                     )
+                   )
+              (when (or (< 1.0 sv-136) (< sv-136 0.0))
+                )
+              (when (and (>= 1.0 sv-136) (>= sv-136 0.0))
+                (let* ((f30-1 (-> *dist-cache-array* s5-1))
+                       (f28-0 (- *total-length* f30-1))
+                       (f26-0 (- (-> this total-distance-traveled) f28-0))
+                       (sv-140 (the-as float 1.0))
+                       (sv-144 (the-as float 1.0))
+                       (sv-148 (the-as float 1.0))
+                       (sv-152 (the-as float 0.0))
+                       (sv-156 (the-as float 0.0))
+                       )
+                  (when (-> this appearance alpha-curve-1)
+                    (set! sv-140 (compute-trail-scaled-t
+                                   (-> this appearance alpha-1-mode)
+                                   sv-136
+                                   f30-1
+                                   f28-0
+                                   f26-0
+                                   (-> this appearance alpha-repeat-dist)
+                                   (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                                   )
+                          )
+                    (set! sv-140 (evaluate (-> this appearance alpha-curve-1) sv-140 (loop-behavior use-default)))
+                    )
+                  (when (-> this appearance alpha-curve-2)
+                    (set! sv-144 (compute-trail-scaled-t
+                                   (-> this appearance alpha-2-mode)
+                                   sv-136
+                                   f30-1
+                                   f28-0
+                                   f26-0
+                                   (-> this appearance alpha-repeat-dist)
+                                   (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                                   )
+                          )
+                    (set! sv-144 (evaluate (-> this appearance alpha-curve-2) sv-144 (loop-behavior use-default)))
+                    )
+                  (when (-> this appearance width-curve)
+                    (set! sv-148 (compute-trail-scaled-t
+                                   (-> this appearance width-mode)
+                                   sv-136
+                                   f30-1
+                                   f28-0
+                                   f26-0
+                                   (-> this appearance width-repeat-dist)
+                                   (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                                   )
+                          )
+                    (set! sv-148 (evaluate (-> this appearance width-curve) sv-148 (loop-behavior use-default)))
+                    )
+                  (set! sv-152 (compute-trail-scaled-t
+                                 (-> this appearance uv-mode)
+                                 sv-136
+                                 f30-1
+                                 f28-0
+                                 f26-0
+                                 (-> this appearance uv-repeat-dist)
+                                 (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                                 )
+                        )
+                  (when (or (< 1.0 sv-152) (< sv-152 0.0))
+                    (let ((f0-43 sv-152))
+                      (set! sv-152 (- f0-43 (the float (the int f0-43))))
                       )
                     )
-              (evaluate (-> this appearance color-curve) sv-156 (the-as rgbaf sv-200) (loop-behavior use-default))
-              )
-            )
-          (set! (-> sv-200 w) (* (-> sv-200 w) sv-192))
-          (calc-vertex-pos! this (the-as light-trail-breadcrumb s4-1) s3-1 sv-128 sv-204)
-          (when (or (and (= (-> this appearance uv-mode) 3) (< sv-92 sv-152))
-                    (and (!= (-> this appearance uv-mode) 3) (< sv-152 sv-92))
+                  (let ((sv-192 (* sv-140 sv-144 (-> this appearance base-alpha)))
+                        (sv-196 (* sv-148 (-> this appearance base-width)))
+                        (sv-200 (new 'stack-no-clear 'vector))
+                        (sv-204 (new 'stack-no-clear 'vector))
+                        )
+                    (when (-> this appearance color-curve)
+                      (set! sv-156
+                            (compute-trail-scaled-t
+                              (-> this appearance color-mode)
+                              sv-136
+                              f30-1
+                              f28-0
+                              f26-0
+                              (-> this appearance color-repeat-dist)
+                              (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                              )
+                            )
+                      (evaluate (-> this appearance color-curve) sv-156 (the-as rgbaf sv-200) (loop-behavior use-default))
+                      )
+                    (set! (-> sv-200 w) (* (-> sv-200 w) sv-192))
+                    (calc-vertex-pos! this (the-as light-trail-breadcrumb s4-1) s3-1 sv-128 sv-204)
+                    (when (or (and (= (-> this appearance uv-mode) 3) (< sv-92 sv-152))
+                              (and (!= (-> this appearance uv-mode) 3) (< sv-152 sv-92))
+                              )
+                      (let ((s2-0 (new 'stack-no-clear 'inline-array 'vector 5)))
+                        (set! (-> s2-0 3 z) (- sv-152))
+                        (set! (-> s2-0 3 w) (- sv-92 (-> s2-0 3 z)))
+                        (set! (-> s2-0 4 x) (/ sv-92 (-> s2-0 3 w)))
+                        (vector-lerp! (-> s2-0 0) sv-104 (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)) (-> s2-0 4 x))
+                        (rgbaf-lerp! (the-as rgbaf (-> s2-0 2)) sv-100 (the-as rgbaf sv-200) (-> s2-0 4 x))
+                        (set! (-> s2-0 3 y) (lerp sv-96 sv-196 (-> s2-0 4 x)))
+                        (vector-lerp! (-> s2-0 1) sv-132 sv-204 (-> s2-0 4 x))
+                        (set! (-> s2-0 3 x) (the-as float (rgba<-rgbaf (the-as rgba (-> s2-0 3 x)) (the-as rgbaf (-> s2-0 2)))))
+                        (add-tri-pair-to-prim! this (-> s2-0 0) (the-as rgba (-> s2-0 3 x)) (-> s2-0 3 y) (-> s2-0 1) 0.0)
+                        (add-tri-pair-to-prim! this (-> s2-0 0) (the-as rgba (-> s2-0 3 x)) (-> s2-0 3 y) (-> s2-0 1) 1.0)
+                        )
+                      )
+                    (add-tri-pair-to-prim!
+                      this
+                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                      (rgba<-rgbaf (the-as rgba (new 'stack-no-clear 'rgbaf)) (the-as rgbaf sv-200))
+                      sv-196
+                      sv-204
+                      sv-152
+                      )
+                    (when (> s3-1 0)
+                      (let ((v1-149 (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ s3-1 -1)))))
+                        (+! sv-88
+                            (vector-vector-distance (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)) (the-as vector (&+ v1-149 0)))
+                            )
+                        )
+                      )
+                    (set! sv-92 sv-152)
+                    (vector-copy! sv-104 (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)))
+                    (set! sv-96 sv-196)
+                    (set! (-> sv-100 quad) (-> sv-200 quad))
+                    (vector-copy! sv-132 sv-204)
                     )
-            (let ((s2-0 (new 'stack-no-clear 'inline-array 'vector 5)))
-              (set! (-> s2-0 3 z) (- sv-152))
-              (set! (-> s2-0 3 w) (- sv-92 (-> s2-0 3 z)))
-              (set! (-> s2-0 4 x) (/ sv-92 (-> s2-0 3 w)))
-              (vector-lerp! (-> s2-0 0) sv-104 (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)) (-> s2-0 4 x))
-              (rgbaf-lerp! (the-as rgbaf (-> s2-0 2)) sv-100 (the-as rgbaf sv-200) (-> s2-0 4 x))
-              (set! (-> s2-0 3 y) (lerp sv-96 sv-196 (-> s2-0 4 x)))
-              (vector-lerp! (-> s2-0 1) sv-132 sv-204 (-> s2-0 4 x))
-              (set! (-> s2-0 3 x) (the-as float (rgba<-rgbaf (the-as rgba (-> s2-0 3 x)) (the-as rgbaf (-> s2-0 2)))))
-              (add-tri-pair-to-prim! this (-> s2-0 0) (the-as rgba (-> s2-0 3 x)) (-> s2-0 3 y) (-> s2-0 1) 0.0)
-              (add-tri-pair-to-prim! this (-> s2-0 0) (the-as rgba (-> s2-0 3 x)) (-> s2-0 3 y) (-> s2-0 1) 1.0)
+                  )
+                )
               )
             )
-          (add-tri-pair-to-prim!
-            this
-            (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
-            (rgba<-rgbaf (the-as rgba (new 'stack-no-clear 'rgbaf)) (the-as rgbaf sv-200))
-            sv-196
-            sv-204
-            sv-152
-            )
-          (when (> s3-1 0)
-            (let ((v1-149 (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ s3-1 -1)))))
-              (set! sv-88
-                    (+ sv-88
-                       (vector-vector-distance (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)) (the-as vector (&+ v1-149 0)))
-                       )
-                    )
-              )
-            )
-          (set! sv-92 sv-152)
-          (vector-copy! sv-104 (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)))
-          (set! sv-96 sv-196)
-          (set! (-> sv-100 quad) (-> sv-200 quad))
-          (vector-copy! sv-132 sv-204)
           )
         )
       )
@@ -1168,7 +1148,7 @@
           )
         )
       )
-    (vector-cross! arg3 v1-0 (the-as vector (&+ arg0 16)))
+    (vector-cross! arg3 v1-0 (-> (&+ arg0 16) pos))
     )
   (none)
   )

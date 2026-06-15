@@ -1,7 +1,5 @@
 ;; All Types
 
-;; TODO - some of these are likely not needed / copied from jak 2
-
 ;; type system setup
 (define-extern object type)
 (define-extern type type)
@@ -136,6 +134,7 @@
 
 (declare-type sql-result basic)
 (define-extern sql-query (function string sql-result))
+(define-extern *collapse-quote* symbol)
 
 (define-extern loading-level kheap)
 (define-extern dma-sync (function pointer int int int))
@@ -2616,6 +2615,8 @@
   (iop-mem)
   (cancel-dgo)
   (set-stereo-mode)
+  ;; og:preserve-this mirror mode
+  (set-mirror 201)
   )
 
 ;; +++gsound-h:sound-group
@@ -2953,6 +2954,17 @@
   :flag-assert         #x900000004
   )
 
+; added
+(defenum sound-mirror-mode
+  :type uint8
+  (normal)
+  (mirrored)
+  )
+
+; added for mirror mode
+(deftype sound-rpc-set-mirror-mode (sound-rpc-cmd)
+  ((mirror sound-mirror-mode)))
+
 (deftype sound-rpc-union (structure)
   ((data              uint32                      20 :offset-assert 0) ;; guessed by decompiler
    (load-bank         sound-rpc-load-bank            :offset-assert 0 :overlay-at data)
@@ -2976,6 +2988,7 @@
    (shutdown          sound-rpc-shutdown             :offset-assert 0 :overlay-at data)
    (list-sounds       sound-rpc-list-sounds          :offset-assert 0 :overlay-at data)
    (unload-music      sound-rpc-unload-music         :offset-assert 0 :overlay-at data)
+   (mirror-mode       sound-rpc-set-mirror-mode      :offset-assert 0 :overlay-at data)
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -7769,7 +7782,6 @@
    (load-buffer-mode          level-memory-mode                               :offset-assert 4624) ;; guessed by decompiler
    (display-start-time        uint64                                         :offset-assert 4632) ;; time-frame
    (memory-mask uint32 :offset-assert 4640)
-   ; (UNKNOWN                   UNKNOWN                                        :offset-assert -1) ;; field could not be read.
    (task-mask                 task-mask                                      :offset-assert 4644)
    (tfrag-gs-test             gs-test                                         :offset-assert 4648)
    (texture-dirty-masks       texture-mask                           11  :inline    :offset-assert 4656) ;; guessed by decompiler
@@ -7795,9 +7807,7 @@
    (level-type                type                                           :offset-assert 5368) ;; guessed by decompiler
    (load-order                uint64                                         :offset-assert 5376) ;; int64
    (eye-slot-lowres           uint8                                11      :offset-assert 5384)
-   ; (UNKNOWN                   UNKNOWN                                        :offset-assert -1) ;; field could not be read.
    (eye-slot-highres          uint8                                11      :offset-assert 5395)
-   ; (UNKNOWN                   UNKNOWN                                        :offset-assert -1) ;; field could not be read.
    (unknown-pad uint8 14)
    )
   :method-count-assert 30
@@ -10262,25 +10272,6 @@
   (progress-fps-disclaimer-warning #x1314)
   (progress-fps-disclaimer #x1315)
   (progress-highscores-local-score #x1316)
-  (trick-board-none #x1320)
-  (trick-board-spin #x1321)
-  (trick-board-boost #x1322)
-  (trick-board-flip #x1323)
-  (trick-board-rail #x1324)
-  (trick-board-rail-jump #x1325)
-  (trick-board-nosegrab #x1326)
-  (trick-board-method #x1327)
-  (trick-board-board-spin #x1328)
-  (trick-board-board-flip #x1329)
-  (trick-board-noseflip #x132a)
-  (trick-board-kickflip #x132b)
-  (trick-board-jump #x132c)
-  (trick-board-duck-jump #x132d)
-  (trick-board-quick-jump #x132e)
-  (trick-darkjak #x132f)
-  (trick-darkjak-bomb0 #x1330)
-  (trick-darkjak-bomb1 #x1331)
-  (trick-darkjak-giant #x1332)
   (progress-graphics-ps2 #x1333)
   (progress-graphics-actor-culling #x1334)
   (progress-graphics-force-envmap #x1335)
@@ -10309,6 +10300,36 @@
   (progress-controller-options-enable-trigger-effects #x134c)
   (progress-misc-fix-projectile-focus #x134d)
   (progress-controller-options-pacman-dpad #x134e)
+  (progress-controller-options-analog-sensitivity #x134f)
+  (trick-board-none #x1350)
+  (trick-board-board-spin #x1351)
+  (trick-board-board-boost #x1352)
+  (trick-board-board-flip #x1353)
+  (trick-board-board-rail #x1354)
+  (trick-board-board-rail-jump #x1355)
+  (trick-board-board-nosegrab #x1356)
+  (trick-board-board-board-spin #x1357)
+  (trick-board-board-board-flip #x1358)
+  (trick-board-board-noseflip #x1359)
+  (trick-board-board-kickflip #x135a)
+  (trick-board-board-kickspin #x135b)
+  (trick-board-board-method #x135c)
+  (trick-board-board-method-cross #x135d)
+  (trick-board-board-backgrab #x135e)
+  (trick-board-board-airwalk #x135f)
+  (trick-board-board-jump #x1360)
+  (trick-board-board-duck-jump #x1361)
+  (trick-board-board-quick-jump #x1362)
+  (trick-board-darkjak #x1363)
+  (trick-board-darkjak-bomb0 #x1364)
+  (trick-board-darkjak-bomb1 #x1365)
+  (trick-board-darkjak-smack #x1366)
+  (trick-board-darkjak-tracking #x1367)
+  (trick-board-lightjak #x1368)
+  (trick-board-lightjak-regen #x1369)
+  (trick-board-lightjak-swoop #x136a)
+  (trick-board-lightjak-freeze #x136b)
+  (trick-board-lightjak-shield #x136c)
   )
 ;; ---text-h:text-id
 
@@ -15240,26 +15261,6 @@
   :flag-assert         #x900000100
   )
 
-#|
-(deftype gsf-vertex-array (UNKNOWN)
-  ((vtx gsf-vertex :dynamic :offset-assert 0) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
-
-#|
-(deftype gsf-fx-vertex-array (UNKNOWN)
-  ((data gsf-fx-vertex :dynamic :offset-assert 0) ;; guessed by decompiler
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
-
 (deftype gsf-vertex-array (structure)
   ((vtx gsf-vertex :dynamic :offset-assert 0)
    )
@@ -19120,7 +19121,7 @@
 (define-extern reset-light-hash
   "Resets the global [[*light-hash*]] back to having `0` lights, indicies, and buckets.
    @returns [[none]]"
-  (function none)) ;;
+  (function light-hash none)) ;;
 (define-extern update-light-hash (function light-hash none)) ;;
 (define-extern lookup-light-sphere-by-name
   "Search through a given [[light-hash]]'s lights to find the one that matches the given name
@@ -20794,6 +20795,7 @@
 ;; joint-mod-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++joint-mod-h:joint-mod-mode
 (defenum joint-mod-mode
   :bitfield #t
   :type uint32
@@ -20811,6 +20813,7 @@
   (foot-rot)
   (joint-set-world)
   )
+;; ---joint-mod-h:joint-mod-mode
 
 ;; +++joint-mod-h:track-mode
 (defenum track-mode
@@ -20826,6 +20829,7 @@
   )
 ;; ---joint-mod-h:track-mode
 
+;; +++joint-mod-h:joint-mod-ik-flags
 (defenum joint-mod-ik-flags
   :bitfield #t
   :type uint32
@@ -20833,6 +20837,7 @@
   (elbow-trans-neg)
   (elbow-rot-neg)
   )
+;; ---joint-mod-h:joint-mod-ik-flags
 
 (deftype joint-mod (basic)
   "Utility to modify a joint transform from code, rather than just getting it from animation.
@@ -21021,7 +21026,6 @@
   )
 
 ;; added - I really have no idea what is going on here
-
 (deftype joint-mod-blend-world-work (structure)
   ((mat1 matrix :inline)
    (mat2 matrix :inline)
@@ -26172,7 +26176,7 @@
   )
 
 (deftype entity-camera (entity)
-  ((connect connectable :inline :offset-assert 64)
+  ((quat quaternion :inline :offset-assert 64)
    )
   :flag-assert #x1b00000050
   )
@@ -34124,34 +34128,31 @@
 ;; cam-debug                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype cam-dbg-scratch (structure)
-  ((linevec4w      vector :inline :offset-assert 0) ;; vector4w 2 :inline
-   (color          vector :inline :offset-assert 32) ;; vector4w :inline
-   (plotvec        vector :inline :offset-assert 48) ;; vector4w 2 :inline
-   (linevec        vector :inline :offset-assert 80) ;; vector4w 2 :inline
-   (rel-vec        vector :inline :offset-assert 112)
-   (sphere-v-start vector :inline :offset-assert 128)
-   (sphere-v-end   vector :inline :offset-assert 144)
-   (sphere-v-down  vector :inline :offset-assert 160)
-   (sphere-vec     vector :inline :offset-assert 176)
-   (crossvec       vector :inline :offset-assert 192)
-   (bboxvec        vector :inline :offset-assert 240)
-   (fov-vv         vector :inline :offset-assert 336)
-   (fov-src        vector :inline :offset-assert 400)
-   (fov-dest       vector :inline :offset-assert 416)
-   (fov-vert       vector :inline :offset-assert 432)
-   (fov-horz       vector :inline :offset-assert 448)
+  ((linevec4w      vector4w 2 :inline :offset-assert 0) ;; vector4w 2 :inline
+   (color          vector4w   :inline :offset-assert 32) ;; vector4w :inline
+   (plotvec        vector4w 2 :inline :offset-assert 48) ;; vector4w 2 :inline
+   (linevec        vector4w 2 :inline :offset-assert 80) ;; vector4w 2 :inline
+   (rel-vec        vector     :inline :offset-assert 112)
+   (sphere-v-start vector     :inline :offset-assert 128)
+   (sphere-v-end   vector     :inline :offset-assert 144)
+   (sphere-v-down  vector     :inline :offset-assert 160)
+   (sphere-vec     vector     :inline :offset-assert 176)
+   (crossvec       vector 3   :inline :offset-assert 192)
+   (bboxvec        vector 6   :inline :offset-assert 240)
+   (fov-vv         vector 4   :inline :offset-assert 336)
+   (fov-src        vector     :inline :offset-assert 400)
+   (fov-dest       vector     :inline :offset-assert 416)
+   (fov-vert       vector     :inline :offset-assert 432)
+   (fov-horz       vector     :inline :offset-assert 448)
    )
   :method-count-assert 9
   :size-assert         #x1d0
   :flag-assert         #x9000001d0
   )
-|#
 
-#|
 (deftype cam-debug-tri (structure)
-  ((vertex    vector   3       :offset-assert 0) ;; guessed by decompiler
+  ((vertex    vector 3 :inline :offset-assert 0) ;; guessed by decompiler
    (intersect vector   :inline :offset-assert 48)
    (color     vector4w         :offset-assert 64)
    )
@@ -34159,9 +34160,7 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype cam-collision-record (structure)
   ((pos            vector :inline :offset-assert 0)
    (vel            vector :inline :offset-assert 16)
@@ -34183,9 +34182,7 @@
   :size-assert         #xa8
   :flag-assert         #x9000000a8
   )
-|#
 
-#|
 (deftype cam-collision-record-array (inline-array-class)
   ((data cam-collision-record :dynamic :offset-assert 16) ;; guessed by decompiler
    )
@@ -34193,54 +34190,53 @@
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-;; (define-extern *camera-old-cpu* object) ;; int
-;; (define-extern *camera-old-vu* object) ;; int
-;; (define-extern *camera-old-tfrag-bytes* object) ;; int
-;; (define-extern *camera-old-level* object) ;; string
-;; (define-extern *camera-old-stat-string-tfrag* object) ;; string
-;; (define-extern *camera-old-stat-string-tfrag-near* object) ;; string
-;; (define-extern *camera-old-stat-string-total* object) ;; string
+(define-extern *camera-old-cpu* int)
+(define-extern *camera-old-vu* int)
+(define-extern *camera-old-tfrag-bytes* int)
+(define-extern *camera-old-level* string)
+(define-extern *camera-old-stat-string-tfrag* string)
+(define-extern *camera-old-stat-string-tfrag-near* string)
+(define-extern *camera-old-stat-string-total* string)
 (define-extern cam-slave-options->string (function cam-slave-options object string))
 (define-extern cam-index-options->string (function cam-index-options object string))
 (define-extern slave-los-state->string (function slave-los-state string))
-;; (define-extern cam-line-dma function) ;; (function pointer)
-;; (define-extern camera-line2d function) ;; (function vector4w vector4w pointer)
+(define-extern cam-line-dma (function pointer))
+(define-extern camera-line2d (function vector4w vector4w pointer))
 (define-extern camera-plot-float-func (function float float float float (function float float) vector4w none))
 (define-extern camera-line-setup (function vector4w none))
 (define-extern camera-line-draw (function vector vector none))
 (define-extern camera-line (function vector vector vector4w none))
 (define-extern camera-line-rel (function vector vector vector4w none))
 (define-extern camera-line-rel-len (function vector vector float vector4w none))
-;; (define-extern camera-sphere function) ;; (function vector float vector4w none)
+(define-extern camera-sphere (function vector float vector4w none))
 (define-extern camera-cross (function vector vector vector vector4w meters none))
-;; (define-extern camera-bounding-box-draw function) ;; (function bounding-box basic rgba none)
-;; (define-extern *cam-debug-los-tri-current* object) ;; int
-;; (define-extern *cam-debug-los-tri* object) ;; (inline-array cam-debug-tri)
-;; (define-extern *cam-debug-coll-tri-current* object) ;; int
-;; (define-extern *cam-debug-coll-tri* object) ;; (inline-array cam-debug-tri)
+(define-extern camera-bounding-box-draw (function bounding-box basic rgba none))
+(define-extern *cam-debug-los-tri-current* int)
+(define-extern *cam-debug-los-tri* (inline-array cam-debug-tri))
+(define-extern *cam-debug-coll-tri-current* int)
+(define-extern *cam-debug-coll-tri* (inline-array cam-debug-tri))
 (define-extern cam-debug-reset-coll-tri (function none))
 (define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none))
-;; (define-extern cam-debug-add-coll-tri function) ;; (function cam-debug-tri vector cam-debug-tri none)
-;; (define-extern cam-debug-draw-tris function) ;; (function symbol)
-;; (define-extern camera-fov-draw function) ;; (function int int vector float float vector4w none)
+(define-extern cam-debug-add-coll-tri (function cam-debug-tri vector cam-debug-tri none))
+(define-extern cam-debug-draw-tris (function symbol))
+(define-extern camera-fov-draw (function int int vector float float vector4w none))
 (define-extern camera-fov-frame (function matrix vector float float float vector4w symbol))
-;; (define-extern debug-euler function) ;; (function cam-dbg-scratch object)
-;; (define-extern bike-cam-limit function) ;; (function float float)
+(define-extern debug-euler (function cam-dbg-scratch object))
+(define-extern bike-cam-limit (function float float))
 (define-extern camera-slave-debug (function camera-slave none))
-;; (define-extern master-draw-coordinates function) ;; (function vector none)
-;; (define-extern *cam-collision-record-first* object) ;; int
-;; (define-extern *cam-collision-record-last* object) ;; int
-;; (define-extern *cam-collision-record-show* object) ;; int
-;; (define-extern *cam-collision-record* object) ;; cam-collision-record-array
+(define-extern master-draw-coordinates (function vector none))
+(define-extern *cam-collision-record-first* int)
+(define-extern *cam-collision-record-last* int)
+(define-extern *cam-collision-record-show* int)
+(define-extern *cam-collision-record* cam-collision-record-array)
 (define-extern cam-collision-record-save (function vector vector int symbol camera-slave none))
-;; (define-extern cam-collision-record-step function) ;; (function int none)
-;; (define-extern cam-collision-record-draw function) ;; (function none)
+(define-extern cam-collision-record-step (function int none))
+(define-extern cam-collision-record-draw (function none))
 (define-extern camera-master-debug (function camera-master none))
 (define-extern debug-set-camera-pos-rot! (function vector matrix vector))
-;; (define-extern cam-restore function) ;; (function none)
-;; (define-extern cam-restore-generic-bug function)
+(define-extern cam-restore (function none))
+(define-extern cam-restore-generic-bug (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-start                      ;;
@@ -39918,6 +39914,7 @@
   :type uint32
   (mm0 0)
   (mm1 1)
+  (mm2 2)
   )
 ;; ---manipulator:manipulator-mode
 
@@ -39952,7 +39949,7 @@
   :flag-assert         #xf000000b0
   (:methods
     (set-mode (_type_ manipulator-mode) none) ;; 9
-    (manipulator-method-10 (_type_) none) ;; 10
+    (manipulator-method-10 (_type_ vector vector) none) ;; 10
     (manipulator-method-11 (_type_) none) ;; 11
     (manipulator-method-12 (_type_ vector) none) ;; 12
     (manipulator-method-13 (_type_ vector vector) none) ;; 13
@@ -40072,6 +40069,7 @@
   )
 ;; ---editable-h:editable-filter
 
+(declare-type editable-array basic)
 (deftype editable-region (basic)
   ((changed   symbol           :offset-assert 4) ;; guessed by decompiler
    (locked    symbol           :offset-assert 8) ;; guessed by decompiler
@@ -40079,9 +40077,9 @@
    (filter    editable-filter  :offset-assert 24) ;; guessed by decompiler
    (tree      symbol           :offset-assert 28) ;; guessed by decompiler
    (level     string           :offset-assert 32) ;; guessed by decompiler
-   (on-enter  string           :offset-assert 36) ;; guessed by decompiler
-   (on-inside string           :offset-assert 40) ;; guessed by decompiler
-   (on-exit   string           :offset-assert 44) ;; guessed by decompiler
+   (on-enter  pair             :offset-assert 36) ;; guessed by decompiler
+   (on-inside pair             :offset-assert 40) ;; guessed by decompiler
+   (on-exit   pair             :offset-assert 44) ;; guessed by decompiler
    )
   :method-count-assert 13
   :size-assert         #x30
@@ -40089,10 +40087,10 @@
   ;; field on-enter uses ~A with a signed load. field on-inside uses ~A with a signed load. field on-exit uses ~A with a signed load.
   (:methods
     (new (symbol type) _type_) ;; 0
-    (editable-region-method-9 () none) ;; 9 ;; (editable-region-method-9 (_type_ editable-array int int) symbol)
-    (editable-region-method-10 () none) ;; 10 ;; (editable-region-method-10 (_type_ int) symbol)
-    (editable-region-method-11 () none) ;; 11 ;; (editable-region-method-11 (_type_ vector int) none)
-    (editable-region-method-12 () none) ;; 12 ;; (editable-region-method-12 (_type_) editable-filter)
+    (save-region! (_type_ editable-array int int) symbol) ;; 9 ;; (editable-region-method-9 (_type_ editable-array int int) symbol)
+    (editable-region-method-10 (_type_ int) symbol) ;; 10 ;; (editable-region-method-10 (_type_ int) symbol)
+    (print-region-info (_type_ vector int) none) ;; 11 ;; (editable-region-method-11 (_type_ vector int) none)
+    (editable-region-method-12 (_type_) editable-filter) ;; 12 ;; (editable-region-method-12 (_type_) editable-filter)
     )
   )
 
@@ -40127,33 +40125,33 @@
   :size-assert         #x1c
   :flag-assert         #x240000001c
   (:methods
-    (editable-method-9 () none) ;; 9 ;; (get-color (_type_ int) rgba)
-    (editable-method-10 () none) ;; 10 ;; (editable-method-10 (_type_) none)
-    (editable-method-11 () none) ;; 11 ;; (editable-method-11 (_type_ vector) symbol)
-    (editable-method-12 () none) ;; 12 ;; (select-editable! (_type_ symbol) none)
-    (editable-method-13 () none) ;; 13 ;; (edit-get-distance (_type_ vector) float)
-    (editable-method-14 () none) ;; 14 ;; (edit-get-trans (_type_) vector)
-    (editable-method-15 () none) ;; 15 ;; (editable-method-15 (_type_ vector int) none)
-    (editable-method-16 () none) ;; 16 ;; (edit-coord! (_type_ vector editable-flag) none)
-    (editable-method-17 () none) ;; 17 ;; (editable-method-17 (_type_ vector) none)
-    (editable-method-18 () none) ;; 18 ;; (editable-method-18 (_type_ vector matrix) none)
-    (editable-method-19 () none) ;; 19 ;; (editable-method-19 (_type_ vector) none)
-    (editable-method-20 () none) ;; 20 ;; (editable-method-20 (_type_ vector vector vector vector) none)
-    (editable-method-21 () none) ;; 21 ;; (editable-method-21 (_type_ editable-region) none)
-    (editable-method-22 () none) ;; 22 ;; (editable-method-22 (_type_ editable-array int int) symbol)
-    (editable-method-23 () none) ;; 23 ;; (editable-method-23 (_type_) symbol)
-    (editable-method-24 () none) ;; 24 ;; (editable-method-24 (_type_) none)
-    (editable-method-25 () none) ;; 25 ;; (editable-method-25 (_type_ editable-array) none)
-    (editable-method-26 () none) ;; 26 ;; (editable-method-26 (_type_ editable editable-array) none)
-    (editable-method-27 () none) ;; 27 ;; (editable-method-27 (_type_ editable-array) editable)
-    (editable-method-28 () none) ;; 28 ;; (editable-method-28 (_type_ editable-filter) none)
-    (editable-method-29 () none) ;; 29 ;; (editable-method-29 (_type_ editable-filter) symbol)
-    (editable-method-30 () none) ;; 30
-    (editable-method-31 () none) ;; 31
-    (editable-method-32 () none) ;; 32
-    (editable-method-33 () none) ;; 33
-    (editable-method-34 () none) ;; 34
-    (editable-method-35 () none) ;; 35
+    (get-color (_type_) rgba) ;; 9 ;; (get-color (_type_ int) rgba)
+    (editable-method-10 (_type_) none) ;; 10 ;; (editable-method-10 (_type_) none)
+    (editable-method-11 (_type_ vector) symbol) ;; 11 ;; (editable-method-11 (_type_ vector) symbol)
+    (set-selected! (_type_ symbol) none) ;; 12 ;; (select-editable! (_type_ symbol) none)
+    (editable-method-13 (_type_ vector) float) ;; 13 ;; (edit-get-distance (_type_ vector) float)
+    (editable-method-14 (_type_ vector vector) float) ;; 14 ;; (edit-get-trans (_type_) vector)
+    (editable-method-15 (_type_) vector) ;; 15 ;; (editable-method-15 (_type_ vector int) none)
+    (editable-method-16 (_type_) float) ;; 16 ;; (edit-coord! (_type_ vector editable-flag) none)
+    (editable-method-17 (_type_ vector editable-flag) none) ;; 17 ;; (editable-method-17 (_type_ vector) none)
+    (editable-method-18 (_type_ vector int) none) ;; 18 ;; (editable-method-18 (_type_ vector matrix) none)
+    (editable-method-19 (_type_ vector) none) ;; 19 ;; (editable-method-19 (_type_ vector) none)
+    (editable-method-20 (_type_ vector matrix) none) ;; 20 ;; (editable-method-20 (_type_ vector vector vector vector) none)
+    (editable-method-21 (_type_ vector) none) ;; 21 ;; (editable-method-21 (_type_ editable-region) none)
+    (editable-method-22 (_type_ vector vector vector vector) none) ;; 22 ;; (editable-method-22 (_type_ editable-array int int) symbol)
+    (change-region! (_type_ editable-region) none) ;; 23 ;; (editable-method-23 (_type_) symbol)
+    (editable-method-24 (_type_ editable-array int int) symbol) ;; 24 ;; (editable-method-24 (_type_) none)
+    (editable-method-25 (_type_) symbol) ;; 25 ;; (editable-method-25 (_type_ editable-array) none)
+    (editable-method-26 (_type_) none) ;; 26 ;; (editable-method-26 (_type_ editable editable-array) none)
+    (delete! (_type_ editable) none) ;; 27 ;; (editable-method-27 (_type_ editable-array) editable)
+    (editable-method-28 (_type_ editable editable) none) ;; 28 ;; (editable-method-28 (_type_ editable-filter) none)
+    (copy-into-editable-array! (_type_ editable-array) editable) ;; 29 ;; (editable-method-29 (_type_ editable-filter) symbol)
+    (editable-method-30 (_type_ editable-flag) none) ;; 30
+    (editable-method-31 (_type_ editable-flag) none) ;; 31
+    (get-null-vec (_type_) vector) ;; 32
+    (get-null-vec2 (_type_ vector) vector) ;; 33
+    (get-level-offset (_type_ editable-array) vector) ;; 34
+    (editable-method-35 (_type_ vector) none) ;; 35
     )
   )
 
@@ -40186,17 +40184,17 @@
   :flag-assert         #x140000007c
   (:methods
     (new (symbol type int) _type_) ;; 0
-    (editable-array-method-9 () none) ;; 9 ;; (editable-array-method-9 (_type_ editable-command mouse-info) symbol)
-    (editable-array-method-10 () none) ;; 10 ;; (editable-array-method-10 (_type_ vector int) editable)
-    (editable-array-method-11 () none) ;; 11 ;; (editable-array-method-11 (_type_) int)
-    (editable-array-method-12 () none) ;; 12 ;; (editable-array-method-12 (_type_ editable-array) none)
-    (editable-array-method-13 () none) ;; 13 ;; (editable-array-method-13 (_type_ editable-command editable-command string) none)
-    (editable-array-method-14 () none) ;; 14 ;; (editable-array-method-14 (_type_ (function editable editable-region symbol) editable-region) (array editable))
-    (editable-array-method-15 () none) ;; 15 ;; (editable-array-method-15 (_type_ editable) none)
-    (editable-array-method-16 () none) ;; 16 ;; (editable-array-method-16 (_type_) none)
-    (editable-array-method-17 () none) ;; 17 ;; (editable-array-method-17 (_type_ vector vector) vector)
-    (editable-array-method-18 () none) ;; 18
-    (editable-array-method-19 () none) ;; 19
+    (handle-cmd (_type_ editable-command mouse-info object) symbol) ;; 9 ;; (editable-array-method-9 (_type_ editable-command mouse-info) symbol)
+    (editable-array-method-10 (_type_ vector int) editable) ;; 10 ;; (editable-array-method-10 (_type_ vector int) editable)
+    (editable-array-method-11 (_type_ vector vector int) none) ;; 11 ;; (editable-array-method-11 (_type_) int)
+    (get-length (_type_) int) ;; 12 ;; (editable-array-method-12 (_type_ editable-array) none)
+    (editable-array-method-13 (_type_ symbol) symbol) ;; 13 ;; (editable-array-method-13 (_type_ editable-command editable-command string) none)
+    (editable-array-method-14 (_type_ editable-command editable-command string) none) ;; 14 ;; (editable-array-method-14 (_type_ (function editable editable-region symbol) editable-region) (array editable))
+    (editable-array-method-15 (_type_ (function editable editable-region symbol) editable-region) (array editable)) ;; 15 ;; (editable-array-method-15 (_type_ editable) none)
+    (editable-array-method-16 (_type_ editable) none) ;; 16 ;; (editable-array-method-16 (_type_) none)
+    (editable-array-method-17 (_type_) none) ;; 17 ;; (editable-array-method-17 (_type_ vector vector) vector)
+    (editable-array-method-18 (_type_ vector vector) vector) ;; 18
+    (editable-array-method-19 (_type_ string) symbol) ;; 19
     )
   )
 
@@ -40260,7 +40258,8 @@
   :flag-assert         #x2500000044
   (:methods
     (new (symbol type vector float editable-region) _type_) ;; 0
-    (editable-entity-method-36 () none) ;; 36
+    (editable-entity-method-36 (_type_) none) ;; 36
+    (copy-into-editable-array! (_type_ editable-array) editable-entity :replace)
     )
   )
 
@@ -40275,8 +40274,9 @@
   :flag-assert         #x2600000058
   (:methods
     (new (symbol type editable-region) _type_) ;; 0
-    (editable-face-method-36 () none) ;; 36
-    (editable-face-method-37 () none) ;; 37
+    (editable-face-method-36 (_type_ (inline-array vector)) int) ;; 36
+    (editable-face-method-37 (_type_ vector) vector) ;; 37
+    (copy-into-editable-array! (_type_ editable-array) editable-face :replace)
     )
   )
 
@@ -40290,8 +40290,9 @@
   :flag-assert         #x260000002c
   (:methods
     (new (symbol type editable-region) _type_) ;; 0
-    (editable-plane-method-36 () none) ;; 36
-    (editable-plane-method-37 () none) ;; 37
+    (editable-plane-method-36 (_type_ (inline-array vector)) int) ;; 36
+    (editable-plane-method-37 (_type_ vector) vector) ;; 37
+    (copy-into-editable-array! (_type_ editable-array) editable-plane :replace)
     )
   )
 
@@ -40299,10 +40300,10 @@
 (declare-type editable-array basic)
 (deftype editable-player (process-drawable)
   ((current           editable-array           :offset-assert 200) ;; guessed by decompiler
-   (current-command   uint32                   :offset-assert 204)
-   (select-command    function                 :offset-assert 208) ;; guessed by decompiler
+   (current-command   editable-command         :offset-assert 204)
+   (select-command    (function object)        :offset-assert 208) ;; guessed by decompiler
    (drag-command      uint32                   :offset-assert 212)
-   (extra-command     function                 :offset-assert 216) ;; guessed by decompiler
+   (extra-command     (function object)        :offset-assert 216) ;; guessed by decompiler
    (left-handed       basic                    :offset-assert 220)
    (light-names       basic                    :offset-assert 224)
    (external-cam-mode symbol                   :offset-assert 228) ;; guessed by decompiler
@@ -40323,11 +40324,13 @@
   :method-count-assert 24
   :size-assert         #x234
   :flag-assert         #x1801c00234
+  (:state-methods
+    idle
+    )
   (:methods
-    (editable-player-method-20 () none) ;; 20 ;; (idle () _type_ :state)
-    (editable-player-method-21 () none) ;; 21 ;; (editable-player-method-21 (_type_) none)
-    (editable-player-method-22 () none) ;; 22
-    (editable-player-method-23 () none) ;; 23
+    (editable-player-method-21 (_type_) none) ;; 21 ;; (editable-player-method-21 (_type_) none)
+    (editable-player-method-22 (_type_) none) ;; 22
+    (editable-player-method-23 (_type_) symbol) ;; 23
     )
   )
 
@@ -40356,43 +40359,43 @@
 ;; editable                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern common-owner function)
-;; (define-extern update-light-sphere-from-editable-light function) ;; (function editable-light none)
-;; (define-extern load-editable-lights function)
-;; (define-extern *editable-sample-region* object) ;; editable-region
-;; (define-extern *editable-light-region* object) ;; editable-region
-;; (define-extern *editable-entity-region* object) ;; editable-region
+(define-extern common-owner (function editable editable object))
+(define-extern update-light-sphere-from-editable-light (function editable-light object))
+(define-extern load-editable-lights (function editable-array symbol))
+(define-extern *editable-sample-region* editable-region)
+(define-extern *editable-light-region* editable-region)
+(define-extern *editable-entity-region* editable-region)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; editable-player                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cleanup-selection function) ;; (function editable-array none)
-;; (define-extern insert-box function) ;; (function editable-array vector none)
-;; (define-extern insert-wall function)
-;; (define-extern update-manipulator-position function)
-;; (define-extern execute-select function) ;; (function editable-array editable-command mouse-info symbol)
-;; (define-extern execute-mouse-move function) ;; (function editable-array editable-command mouse-info symbol)
-;; (define-extern execute-move function) ;; (function editable-array editable-command mouse-info symbol)
-;; (define-extern get-light-value function)
-;; (define-extern set-light-value function)
-;; (define-extern keybd-set-time-of-day! function)
+(define-extern cleanup-selection (function editable-array object))
+(define-extern insert-box (function editable-array vector vector object))
+(define-extern insert-wall (function editable-array vector vector object))
+(define-extern update-manipulator-position (function editable-array manipulator matrix))
+(define-extern execute-select (function editable-array editable-command mouse-info manipulator symbol))
+(define-extern execute-mouse-move (function editable-array editable-command mouse-info manipulator symbol))
+(define-extern execute-move (function editable-array editable-command mouse-info manipulator symbol))
+(define-extern get-light-value (function uint float))
+(define-extern set-light-value (function int float object))
+(define-extern keybd-set-time-of-day! (function int time-of-day-palette-id object))
 (define-extern editable-player-init (function symbol none :behavior editable-player))
-;; (define-extern set-editable-name function)
-;; (define-extern select-editable-by-name function)
+(define-extern set-editable-name (function string object))
+(define-extern select-editable-by-name (function string object))
 (define-extern *editable-menu-context* debug-menu-context)
-;; (define-extern editable-menu-command function) ;; (function int none)
-;; (define-extern editable-menu-command-no-close function) ;; (function int none)
-;; (define-extern dm-region-tree-pick-func function) ;; (function symbol debug-menu-msg symbol)
-;; (define-extern dm-editable-flag-pick-func function) ;; (function editable-flag debug-menu-msg symbol)
-;; (define-extern dm-editable-filter0-pick-func function) ;; (function editable-filter debug-menu-msg symbol)
-;; (define-extern dm-editable-filter1-pick-func function) ;; (function editable-filter debug-menu-msg symbol)
-;; (define-extern dm-editable-light-float-func function) ;; (function int debug-menu-msg float float float)
-;; (define-extern dm-cam-externalize2 function) ;; (function symbol debug-menu-msg symbol)
-;; (define-extern dm-editable-boolean-toggle-pick-func function) ;; (function int debug-menu-msg symbol)
-;; (define-extern editable-menu-context-make-menus function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern insert-sample-camera function) ;; (function symbol none)
-;; (define-extern *debug-hook* object) ;; pair
+(define-extern editable-menu-command (function int object))
+(define-extern editable-menu-command-no-close (function int object))
+(define-extern dm-region-tree-pick-func (function symbol debug-menu-msg symbol))
+(define-extern dm-editable-flag-pick-func (function editable-flag debug-menu-msg symbol))
+(define-extern dm-editable-filter0-pick-func (function editable-filter debug-menu-msg symbol))
+(define-extern dm-editable-filter1-pick-func (function editable-filter debug-menu-msg symbol))
+(define-extern dm-editable-light-float-func (function int debug-menu-msg float float float))
+(define-extern dm-cam-externalize2 (function symbol debug-menu-msg symbol))
+(define-extern dm-editable-boolean-toggle-pick-func (function int debug-menu-msg symbol))
+(define-extern editable-menu-context-make-menus (function debug-menu-context debug-menu-context))
+(define-extern insert-sample-camera (function symbol object))
+(define-extern *debug-hook* pair)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mysql-nav-graph                ;;
@@ -40413,11 +40416,13 @@
   "This string value is stored in their SQL database"
   :type uint32
   :bitfield #t
-  (visited 0)
-  (blocked 1)
-  (pedestrian 2)
-  (selected 3)
-  (hidden 4)
+  (blocker 0)
+  (pov 1)
+  (visited 2)
+  (blocked 3)
+  (pedestrian 4)
+  (selected 5)
+  (hidden 6)
   )
 ;; ---mysql-nav-graph:nav-node-flag
 
@@ -40495,6 +40500,21 @@
   )
 ;; ---mysql-nav-graph:nav-clock-type
 
+;; +++mysql-nav-graph:nav-minimap-edge-flag
+(defenum nav-minimap-edge-flag
+  "This string value is stored in their SQL database"
+  :type int32
+  :bitfield #t
+  (blocker 0)
+  (one-way 1)
+  (pass-port-mh 2)
+  (pass-port-inda 3)
+  (pass-inda-indb 4)
+  (pass-indb-sluma 5)
+  (pass-slumb-genb 6)
+  )
+;; ---mysql-nav-graph:nav-minimap-edge-flag
+
 (deftype mysql-nav-edge (structure)
   ((mysql-save-flag    mysql-save-flag     :offset-assert 0) ;; guessed by decompiler
    (runtime-id         uint32              :offset-assert 4)
@@ -40514,14 +40534,14 @@
    (nav_territory_type uint32              :offset-assert 60)
    (exclusive_data     uint32              :offset-assert 64)
    (width              float               :offset-assert 68)
-   (minimap_edge_flag  int32               :offset-assert 72) ;; nav-minimap-edge-flag
+   (minimap_edge_flag  nav-minimap-edge-flag :offset-assert 72) ;; nav-minimap-edge-flag
    )
   :allow-misaligned
   :method-count-assert 10
   :size-assert         #x4c
   :flag-assert         #xa0000004c
   (:methods
-    (mysql-nav-edge-method-9 () none) ;; 9 ;; (exec-sql! (_type_) symbol)
+    (exec-sql! (_type_) symbol) ;; 9
     )
   )
 
@@ -40546,7 +40566,7 @@
   :size-assert         #x1c
   :flag-assert         #xa0000001c
   (:methods
-    (mysql-nav-visnode-method-9 () none) ;; 9 ;; (exec-sql! (_type_) symbol)
+    (exec-sql! (_type_) symbol) ;; 9
     )
   )
 
@@ -40582,11 +40602,11 @@
 
 (deftype mysql-nav-graph (basic)
   ((nav_graph_id            uint32                        :offset-assert 4)
-   (graph-type              basic                         :offset-assert 8)
+   (graph-type              symbol                        :offset-assert 8)
    (node-array              mysql-nav-node-array          :offset-assert 12) ;; guessed by decompiler
    (edge-array              mysql-nav-edge-array          :offset-assert 16) ;; guessed by decompiler
    (visnode-array           mysql-nav-visnode-array       :offset-assert 20) ;; guessed by decompiler
-   (pov-conn-array          uint32                        :offset-assert 24)
+   (pov-conn-array          (inline-array mysql-nav-pov-conn) :offset-assert 24)
    (pov-conn-array-length   int32                         :offset-assert 28)
    (level-info-array-length int32                         :offset-assert 32)
    (level-info-last-lookup  int32                         :offset-assert 36)
@@ -40597,21 +40617,21 @@
   :flag-assert         #x1800000428
   (:methods
     (new (symbol type string) _type_) ;; 0
-    (init-from-sql! (_type_ string string) symbol) ;; 9
+    (init-from-sql! (_type_ symbol string) symbol) ;; 9
     (exec-sql! (_type_) symbol) ;; 10
     (indexof-nav-node (_type_ int) int) ;; 11
     (indexof-nav-edge (_type_ int) int) ;; 12
-    (mysql-nav-graph-method-13 (_type_) none) ;; 13 ;; (alloc-new-node! (_type_) int)
-    (mysql-nav-graph-method-14 (_type_) none) ;; 14 ;; (alloc-new-edge! (_type_) int)
-    (mysql-nav-graph-method-15 (_type_) none) ;; 15 ;; (indexof-visnode (_type_ int int) int)
-    (mysql-nav-graph-method-16 (_type_) none) ;; 16 ;; (alloc-new-visnode! (_type_ int int) int)
-    (mysql-nav-graph-method-17 (_type_) none) ;; 17 ;; (mysql-nav-graph-method-17 (_type_) none)
+    (alloc-new-node! (_type_) int) ;; 13
+    (alloc-new-edge! (_type_) int) ;; 14
+    (indexof-visnode (_type_ int int) int) ;; 15
+    (alloc-new-visnode! (_type_ int int) int) ;; 16
+    (mysql-nav-graph-method-17 (_type_) none) ;; 17
     (lookup-level-info2 (_type_ mysql-nav-node symbol) mysql-nav-graph-level-info) ;; 18
-    (mysql-nav-graph-method-19 (_type_) none) ;; 19 ;; (mysql-nav-graph-method-19 (_type_) none)
-    (mysql-nav-graph-method-20 (_type_) none) ;; 20 ;; (mysql-nav-graph-method-20 (_type_) none)
-    (mysql-nav-graph-method-21 (_type_) none) ;; 21
-    (mysql-nav-graph-method-22 (_type_) none) ;; 22
-    (mysql-nav-graph-method-23 (_type_) none) ;; 23
+    (mysql-nav-graph-method-19 (_type_) int) ;; 19
+    (mysql-nav-graph-method-20 (_type_) none) ;; 20
+    (get-graph-type (_type_ symbol) symbol) ;; 21
+    (mysql-nav-graph-method-22 (_type_) int) ;; 22
+    (mysql-nav-graph-method-23 (_type_ vector vector) symbol) ;; 23
     )
   )
 
@@ -40619,8 +40639,21 @@
 ;; nav-graph-editor               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++nav-graph-editor:nav-com-type
+(defenum nav-com-type
+  :type uint32
+  (undo-move-node 0)
+  (undo-delete-edge 1)
+  (undo-delete-node 2)
+  (undo-new-node 3)
+  (undo-new-edge 4)
+  (undo-delete-visnode 5)
+  (undo-new-visnode 6)
+  )
+;; ---nav-graph-editor:nav-com-type
+
 (deftype nav-graph-command (structure)
-  ((com-type uint32         :offset-assert 0)
+  ((com-type nav-com-type   :offset-assert 0)
    (id       int32          :offset-assert 4)
    (index    int32          :offset-assert 8)
    (move-vec vector :inline :offset-assert 16)
@@ -40689,63 +40722,63 @@
     create-pov ;; 28
     )
   (:methods
-    (nav-graph-editor-method-29 () none) ;; 29 ;; (nav-graph-editor-method-29 (_type_ string string string) none)
-    (nav-graph-editor-method-30 () none) ;; 30 ;; (nav-graph-editor-method-30 (_type_ int) symbol)
-    (nav-graph-editor-method-31 () none) ;; 31 ;; (nav-graph-editor-method-31 (_type_ int) symbol)
-    (nav-graph-editor-method-32 () none) ;; 32 ;; (nav-graph-editor-method-32 (_type_ symbol int) none)
-    (nav-graph-editor-method-33 () none) ;; 33 ;; (nav-graph-editor-method-33 (_type_ int) none)
-    (nav-graph-editor-method-34 () none) ;; 34 ;; (nav-graph-editor-method-34 (_type_) object)
-    (nav-graph-editor-method-35 () none) ;; 35 ;; (nav-graph-editor-method-35 (_type_) none)
-    (nav-graph-editor-method-36 () none) ;; 36 ;; (nav-graph-editor-method-36 (_type_) none)
-    (nav-graph-editor-method-37 () none) ;; 37 ;; (nav-graph-editor-method-37 (_type_) none)
-    (nav-graph-editor-method-38 () none) ;; 38 ;; (nav-graph-editor-method-38 (_type_) none)
-    (nav-graph-editor-method-39 () none) ;; 39 ;; (nav-graph-editor-method-39 (_type_) none)
-    (nav-graph-editor-method-40 () none) ;; 40 ;; (nav-graph-editor-method-40 (_type_) none)
-    (nav-graph-editor-method-41 () none) ;; 41 ;; (nav-graph-editor-method-41 (_type_) none)
-    (nav-graph-editor-method-42 () none) ;; 42 ;; (nav-graph-editor-method-42 (_type_) symbol)
-    (nav-graph-editor-method-43 () none) ;; 43 ;; (nav-graph-editor-method-43 (_type_) none)
-    (nav-graph-editor-method-44 () none) ;; 44 ;; (nav-graph-editor-method-44 (_type_) symbol)
-    (nav-graph-editor-method-45 () none) ;; 45 ;; (nav-graph-editor-method-45 (_type_) none)
-    (nav-graph-editor-method-46 () none) ;; 46 ;; (nav-graph-editor-method-46 (_type_) pad-buttons)
-    (nav-graph-editor-method-47 () none) ;; 47 ;; (nav-graph-editor-method-47 (_type_) none)
-    (nav-graph-editor-method-48 () none) ;; 48 ;; (nav-graph-editor-method-48 (_type_ uint) nav-graph-command)
-    (nav-graph-editor-method-49 () none) ;; 49 ;; (nav-graph-editor-method-49 (_type_) nav-graph-command)
-    (nav-graph-editor-method-50 () none) ;; 50 ;; (nav-graph-editor-method-50 (_type_) none)
-    (nav-graph-editor-method-51 () none) ;; 51 ;; (nav-graph-editor-method-51 (_type_) none)
-    (nav-graph-editor-method-52 () none) ;; 52 ;; (nav-graph-editor-method-52 (_type_) uint)
-    (nav-graph-editor-method-53 () none) ;; 53 ;; (nav-graph-editor-method-53 (_type_ int int) none)
-    (nav-graph-editor-method-54 () none) ;; 54 ;; (nav-graph-editor-method-54 (_type_ int) none)
-    (nav-graph-editor-method-55 () none) ;; 55 ;; (nav-graph-editor-method-55 (_type_ int) none)
-    (nav-graph-editor-method-56 () none) ;; 56 ;; (nav-graph-editor-method-56 (_type_ int) none)
-    (nav-graph-editor-method-57 () none) ;; 57 ;; (nav-graph-editor-method-57 (_type_ int int) int)
-    (nav-graph-editor-method-58 () none) ;; 58 ;; (nav-graph-editor-method-58 (_type_) symbol)
-    (nav-graph-editor-method-59 () none) ;; 59 ;; (nav-graph-editor-method-59 (_type_) pad-buttons)
-    (nav-graph-editor-method-60 () none) ;; 60 ;; (nav-graph-editor-method-60 (_type_) none)
-    (nav-graph-editor-method-61 () none) ;; 61 ;; (nav-graph-editor-method-61 (_type_) none)
-    (nav-graph-editor-method-62 () none) ;; 62 ;; (nav-graph-editor-method-62 (_type_ symbol symbol) none)
-    (nav-graph-editor-method-63 () none) ;; 63 ;; (nav-graph-editor-method-63 (_type_) none)
-    (nav-graph-editor-method-64 () none) ;; 64
-    (nav-graph-editor-method-65 () none) ;; 65
-    (nav-graph-editor-method-66 () none) ;; 66
-    (nav-graph-editor-method-67 () none) ;; 67
+    (nav-graph-editor-method-29 (_type_) none) ;; 29 ;; (nav-graph-editor-method-29 (_type_ string string string) none)
+    (nav-graph-editor-method-30 (_type_ string string string) object) ;; 30 ;; (nav-graph-editor-method-30 (_type_ int) symbol)
+    (nav-graph-editor-method-31 (_type_ int) symbol) ;; 31 ;; (nav-graph-editor-method-31 (_type_ int) symbol)
+    (nav-graph-editor-method-32 (_type_ int) symbol) ;; 32 ;; (nav-graph-editor-method-32 (_type_ symbol int) none)
+    (nav-graph-editor-method-33 (_type_ int int) object) ;; 33 ;; (nav-graph-editor-method-33 (_type_ int) none)
+    (nav-graph-editor-method-34 (_type_ int) none) ;; 34 ;; (nav-graph-editor-method-34 (_type_) object)
+    (nav-graph-editor-method-35 (_type_ vector vector) none) ;; 35 ;; (nav-graph-editor-method-35 (_type_) none)
+    (nav-graph-editor-method-36 (_type_) none) ;; 36 ;; (nav-graph-editor-method-36 (_type_) none)
+    (nav-graph-editor-method-37 (_type_) object) ;; 37 ;; (nav-graph-editor-method-37 (_type_) none)
+    (nav-graph-editor-method-38 (_type_) none) ;; 38 ;; (nav-graph-editor-method-38 (_type_) none)
+    (nav-graph-editor-method-39 (_type_) none) ;; 39 ;; (nav-graph-editor-method-39 (_type_) none)
+    (nav-graph-editor-method-40 (_type_) none) ;; 40 ;; (nav-graph-editor-method-40 (_type_) none)
+    (nav-graph-editor-method-41 (_type_) none) ;; 41 ;; (nav-graph-editor-method-41 (_type_) none)
+    (nav-graph-editor-method-42 (_type_) none) ;; 42 ;; (nav-graph-editor-method-42 (_type_) symbol)
+    (nav-graph-editor-method-43 (_type_) none) ;; 43 ;; (nav-graph-editor-method-43 (_type_) none)
+    (nav-graph-editor-method-44 (_type_) none) ;; 44 ;; (nav-graph-editor-method-44 (_type_) symbol)
+    (nav-graph-editor-method-45 (_type_) none) ;; 45 ;; (nav-graph-editor-method-45 (_type_) none)
+    (nav-graph-editor-method-46 (_type_) none) ;; 46 ;; (nav-graph-editor-method-46 (_type_) pad-buttons)
+    (nav-graph-editor-method-47 (_type_) symbol) ;; 47 ;; (nav-graph-editor-method-47 (_type_) none)
+    (nav-graph-editor-method-48 (_type_) none) ;; 48 ;; (nav-graph-editor-method-48 (_type_ uint) nav-graph-command)
+    (nav-graph-editor-method-49 (_type_) symbol) ;; 49 ;; (nav-graph-editor-method-49 (_type_) nav-graph-command)
+    (nav-graph-editor-method-50 (_type_) none) ;; 50 ;; (nav-graph-editor-method-50 (_type_) none)
+    (inc-cmd-id! (_type_) int) ;; 51 ;; (nav-graph-editor-method-51 (_type_) none)
+    (alloc-new-cmd! (_type_ int) nav-graph-command) ;; 52 ;; (nav-graph-editor-method-52 (_type_) uint)
+    (get-last-cmd (_type_) nav-graph-command) ;; 53 ;; (nav-graph-editor-method-53 (_type_ int int) none)
+    (nav-graph-editor-method-54 (_type_) none) ;; 54 ;; (nav-graph-editor-method-54 (_type_ int) none)
+    (nav-graph-editor-method-55 (_type_) none) ;; 55 ;; (nav-graph-editor-method-55 (_type_ int) none)
+    (nav-graph-editor-method-56 (_type_) int) ;; 56 ;; (nav-graph-editor-method-56 (_type_ int) none)
+    (nav-graph-editor-method-57 (_type_ int int) none) ;; 57 ;; (nav-graph-editor-method-57 (_type_ int int) int)
+    (nav-graph-editor-method-58 (_type_ int) symbol) ;; 58 ;; (nav-graph-editor-method-58 (_type_) symbol)
+    (nav-graph-editor-method-59 (_type_ int) none) ;; 59 ;; (nav-graph-editor-method-59 (_type_) pad-buttons)
+    (nav-graph-editor-method-60 (_type_ int) none) ;; 60 ;; (nav-graph-editor-method-60 (_type_) none)
+    (nav-graph-editor-method-61 (_type_ int int) none) ;; 61 ;; (nav-graph-editor-method-61 (_type_) none)
+    (nav-graph-editor-method-62 (_type_) symbol) ;; 62 ;; (nav-graph-editor-method-62 (_type_ symbol symbol) none)
+    (nav-graph-editor-method-63 (_type_) none) ;; 63 ;; (nav-graph-editor-method-63 (_type_) none)
+    (nav-graph-editor-method-64 (_type_) none) ;; 64
+    (nav-graph-editor-method-65 (_type_) none) ;; 65
+    (nav-graph-editor-method-66 (_type_ symbol string) none) ;; 66
+    (nav-graph-editor-method-67 (_type_) none) ;; 67
     )
   )
 
 (define-extern *nav-graph-editor* (pointer nav-graph-editor))
-;; (define-extern get-node-draw-position function)
-;; (define-extern nav-graph-editor-init-by-other function) ;; (function string none :behavior nav-graph-editor)
-(define-extern run-nav-graph-editor (function symbol (pointer process)))
+(define-extern get-node-draw-position (function vector mysql-nav-node vector))
+(define-extern nav-graph-editor-init-by-other (function string symbol object :behavior nav-graph-editor))
+(define-extern run-nav-graph-editor (function symbol symbol (pointer nav-graph-editor)))
 (define-extern get-nav-graph-editor (function nav-graph-editor))
 (define-extern exit-nav-graph-editor (function none))
-;; (define-extern nav-graph-set-level function)
-;; (define-extern set-minimap-edge-flag function) ;; (function nav-minimap-edge-flag uint)
-;; (define-extern set-vehicle-edit-mode function) ;; (function symbol none)
-;; (define-extern translate-nav-graph function) ;; (function float float float symbol)
-;; (define-extern update-nav-meshes function) ;; (function symbol)
-;; (define-extern delete-node-nav-mesh function)
-;; (define-extern smooth-nav-graph function) ;; (function string symbol)
-;; (define-extern update-height function) ;; (function string symbol)
-;; (define-extern update-width function) ;; (function string symbol)
+(define-extern nav-graph-set-level (function symbol object))
+(define-extern set-minimap-edge-flag (function nav-minimap-edge-flag none))
+(define-extern set-vehicle-edit-mode (function symbol none))
+(define-extern translate-nav-graph (function float float float symbol))
+(define-extern update-nav-meshes (function symbol))
+(define-extern delete-node-nav-mesh (function int none))
+(define-extern smooth-nav-graph (function string symbol))
+(define-extern update-height (function string symbol))
+(define-extern update-width (function string symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-mesh-editor-h              ;;
@@ -40761,10 +40794,22 @@
   :flag-assert         #xe00000010
   )
 
+;; +++nav-mesh-editor-h:nav-mesh-poly-flag
+(defenum nav-mesh-poly-flag
+  :type uint32
+  :bitfield #t
+  (gap 0)
+  (off 1)
+  (nmpf2 2)
+  (user0 3)
+  )
+;; ---nav-mesh-editor-h:nav-mesh-poly-flag
+
+(declare-type nav-mesh-editable structure)
 (deftype nav-mesh-poly (structure)
   ((poly-id    uint32  :offset-assert 0)
-   (flags      uint32  :offset-assert 4)
-   (index      basic   :offset-assert 8)
+   (flags      nav-mesh-poly-flag :offset-assert 4)
+   (index      int16-array :offset-assert 8)
    (insert-pos uint32  :offset-assert 12)
    )
   :method-count-assert 15
@@ -40772,12 +40817,12 @@
   :flag-assert         #xf00000010
   (:methods
     (new (symbol type) _type_) ;; 0
-    (nav-mesh-poly-method-9 () none) ;; 9
-    (nav-mesh-poly-method-10 () none) ;; 10
-    (nav-mesh-poly-method-11 () none) ;; 11
-    (nav-mesh-poly-method-12 () none) ;; 12
-    (nav-mesh-poly-method-13 () none) ;; 13
-    (nav-mesh-poly-method-14 () none) ;; 14
+    (init-fields! (_type_) none) ;; 9
+    (nav-mesh-poly-method-10 (_type_ nav-mesh-editable) none) ;; 10
+    (nav-mesh-poly-method-11 (_type_ int) none) ;; 11
+    (nav-mesh-poly-method-12 (_type_ int) none) ;; 12
+    (nav-mesh-poly-method-13 (_type_ int) int) ;; 13
+    (nav-mesh-poly-method-14 (_type_ int int) object) ;; 14
     )
   )
 
@@ -40790,8 +40835,8 @@
   )
 
 (deftype nav-mesh-tri-quad (structure)
-  ((indices int32 4 :offset-assert 0)
-   (poly    uint32    :offset-assert 16)
+  ((indices uint32 4 :offset-assert 0) ;; changed from int32
+   (poly    uint32  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -40806,10 +40851,18 @@
   :flag-assert         #xe00000010
   )
 
+;; +++nav-mesh-editor-h:nav-mesh-editable-flag
+(defenum nav-mesh-editable-flag
+  :type uint32
+  :bitfield #t
+  (nmef0 0)
+  )
+;; ---nav-mesh-editor-h:nav-mesh-editable-flag
+
 (deftype nav-mesh-editable (structure)
-  ((flags         uint32  :offset-assert 0)
-   (verts         basic   :offset-assert 4)
-   (tris          basic   :offset-assert 8)
+  ((flags         nav-mesh-editable-flag  :offset-assert 0)
+   (verts         vector-array :offset-assert 4)
+   (tris          nav-mesh-tri-quad-array :offset-assert 8)
    (quads         nav-mesh-tri-quad-array :offset-assert 12)
    (navmesh-id    uint32  :offset-assert 16)
    (idx           uint32  :offset-assert 20)
@@ -40822,16 +40875,17 @@
   :size-assert         #x28
   :flag-assert         #x1300000028
   (:methods
-    (nav-mesh-editable-method-9 () none) ;; 9
-    (nav-mesh-editable-method-10 () none) ;; 10
-    (nav-mesh-editable-method-11 () none) ;; 11
-    (nav-mesh-editable-method-12 () none) ;; 12
-    (nav-mesh-editable-method-13 () none) ;; 13
-    (nav-mesh-editable-method-14 () none) ;; 14
-    (nav-mesh-editable-method-15 () none) ;; 15
-    (nav-mesh-editable-method-16 () none) ;; 16
-    (nav-mesh-editable-method-17 () none) ;; 17
-    (nav-mesh-editable-method-18 () none) ;; 18
+    (new (symbol type) _type_) ;; 0
+    (init-fields! (_type_) none) ;; 9
+    (nav-mesh-editable-method-10 (_type_ symbol) none) ;; 10
+    (add-vert! (_type_ vector) int) ;; 11
+    (nav-mesh-editable-method-12 (_type_ vector symbol) object) ;; 12
+    (nav-mesh-editable-method-13 (_type_) none) ;; 13
+    (nav-mesh-editable-method-14 (_type_ vector) int) ;; 14
+    (nav-mesh-editable-method-15 (_type_ int) object) ;; 15
+    (nav-mesh-editable-method-16 (_type_) object) ;; 16
+    (nav-mesh-editable-method-17 (_type_) object) ;; 17
+    (nav-mesh-editable-method-18 (_type_) none) ;; 18
     )
   )
 
@@ -40846,16 +40900,16 @@
 (deftype nav-mesh-editor-undo (structure)
   ((current-nav-mesh nav-mesh-editable  :offset-assert 0)
    (selected-poly    uint32             :offset-assert 4)
-   (index            basic              :offset-assert 8)
+   (index            int16-array        :offset-assert 8)
    (insert-pos       uint32             :offset-assert 12)
-   (verts            basic              :offset-assert 16)
+   (verts            vector-array       :offset-assert 16)
    )
   :method-count-assert 10
   :size-assert         #x14
   :flag-assert         #xa00000014
   (:methods
     (new (symbol type) _type_) ;; 0
-    (nav-mesh-editor-undo-method-9 () none) ;; 9
+    (init-fields! (_type_) none) ;; 9
     )
   )
 
@@ -40868,9 +40922,9 @@
   )
 
 (deftype nav-mesh-editor (process-drawable)
-  ((close-menu-time      uint64                    :offset-assert 200)
-   (external-cam-mode    basic                     :offset-assert 208)
-   (mouse-pressed        uint64                    :offset-assert 216)
+  ((close-menu-time      time-frame                :offset-assert 200)
+   (external-cam-mode    symbol                    :offset-assert 208)
+   (mouse-pressed        time-frame                :offset-assert 216)
    (mouse-screen-pos     vector            :inline :offset-assert 224)
    (mouse-pos            vector            :inline :offset-assert 240)
    (mouse-end            vector            :inline :offset-assert 256)
@@ -40886,74 +40940,74 @@
    (lock-action          basic                     :offset-assert 400)
    (mouse-action         uint32                    :offset-assert 404)
    (mouse-action-pos-ref vector            :inline :offset-assert 416)
-   (nav-meshes           basic                     :offset-assert 432)
+   (nav-meshes           nav-mesh-editable-array   :offset-assert 432)
    (current-nav-mesh     nav-mesh-editable         :offset-assert 436)
    (manipulator          manipulator       :inline :offset-assert 448)
-   (level-name           basic                     :offset-assert 624)
+   (level-name           string                    :offset-assert 624)
    (level-id             uint32                    :offset-assert 628)
    (undo-min             uint32                    :offset-assert 632)
    (undo-id              uint32                    :offset-assert 636)
    (undo-max             uint32                    :offset-assert 640)
-   (undos                basic                     :offset-assert 644)
-   (hide-unselected      basic                     :offset-assert 648)
-   (allow-snap           basic                     :offset-assert 652)
+   (undos                nav-mesh-editor-undo-array :offset-assert 644)
+   (hide-unselected      symbol                    :offset-assert 648)
+   (allow-snap           symbol                    :offset-assert 652)
    )
   :method-count-assert 28
   :size-assert         #x290
   :flag-assert         #x1c02100290
+  (:state-methods
+    idle ;; 20
+    )
   (:methods
-    (nav-mesh-editor-method-20 () none) ;; 20
-    (nav-mesh-editor-method-21 () none) ;; 21
-    (nav-mesh-editor-method-22 () none) ;; 22
-    (nav-mesh-editor-method-23 () none) ;; 23
-    (nav-mesh-editor-method-24 () none) ;; 24
-    (nav-mesh-editor-method-25 () none) ;; 25
-    (nav-mesh-editor-method-26 () none) ;; 26
-    (nav-mesh-editor-method-27 () none) ;; 27
+    (nav-mesh-editor-method-21 (_type_) none) ;; 21
+    (nav-mesh-editor-method-22 (_type_) none) ;; 22
+    (set-level-info! (_type_ symbol) none) ;; 23
+    (select-nav-mesh-by-id (_type_ int) object) ;; 24
+    (nav-mesh-editor-method-25 (_type_) none) ;; 25
+    (nav-mesh-editor-method-26 (_type_) none) ;; 26
+    (nav-mesh-editor-method-27 (_type_) object) ;; 27
     )
   )
 
-(define-extern *nav-mesh-editor* nav-mesh-editor)
+(define-extern *nav-mesh-editor* (pointer nav-mesh-editor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-mesh-editor                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype triangulation-vert (structure)
   ((index uint32  :offset-assert 0)
-   (ear?  basic   :offset-assert 4)
+   (ear?  symbol  :offset-assert 4)
    (score float   :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-;; (define-extern snap-level-navmesh function)
-;; (define-extern mouse-intersect-triangle function)
-;; (define-extern *clean-vertex-array* object)
-;; (define-extern *clean-index-array* object)
-;; (define-extern poly-flag-to-string function)
-;; (define-extern point-in-cone function)
-;; (define-extern segment-in-cone function)
-;; (define-extern point-in-triangle function)
-;; (define-extern segments-intersect function)
-;; (define-extern is-diagonal function)
-;; (define-extern *verts-buf-1* object)
-;; (define-extern *verts-buf-2* object)
-;; (define-extern draw-square-point function)
-;; (define-extern get-level-id function)
-;; (define-extern nav-mesh-editor-new function)
-;; (define-extern nav-delete function)
-;; (define-extern nav-mesh-editor-translate function)
-;; (define-extern nav-mesh-editor-rotate-y function)
-;; (define-extern nav-mesh-editor-load function)
-;; (define-extern nav-mesh-editor-set-level function)
-;; (define-extern nav-set-lev function)
-;; (define-extern nav-set-flag function)
-(define-extern nav-mesh-editor-init (function none))
+(define-extern snap-level-navmesh (function vector vector symbol))
+(define-extern mouse-intersect-triangle (function vector vector vector vector float))
+(define-extern *clean-vertex-array* (inline-array vector))
+(define-extern *clean-index-array* (pointer int32))
+(define-extern poly-flag-to-string (function object nav-mesh-poly-flag object))
+(define-extern point-in-cone (function vector vector vector vector symbol))
+(define-extern segment-in-cone (function vector vector vector vector symbol))
+(define-extern point-in-triangle (function vector vector vector vector symbol))
+(define-extern segments-intersect (function vector vector vector vector symbol))
+(define-extern is-diagonal (function int (inline-array triangulation-vert) vector-array int int int symbol))
+(define-extern *verts-buf-1* (inline-array triangulation-vert))
+(define-extern *verts-buf-2* (inline-array triangulation-vert))
+(define-extern draw-square-point (function vector object))
+(define-extern get-level-id (function string int))
+(define-extern nav-mesh-editor-new (function object))
+(define-extern nav-delete (function int object))
+(define-extern nav-mesh-editor-translate (function int float float float object))
+(define-extern nav-mesh-editor-rotate-y (function float object))
+(define-extern nav-mesh-editor-load (function string object))
+(define-extern nav-mesh-editor-set-level (function symbol object))
+(define-extern nav-set-lev (function string object))
+(define-extern nav-set-flag (function nav-mesh-poly-flag object))
+(define-extern nav-mesh-editor-init (function symbol object :behavior nav-mesh-editor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bug-report                     ;;
@@ -40987,12 +41041,12 @@
 ;; sampler                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sampler-mem* object) ;; pointer
-;; (define-extern *sampler-compare* object) ;; uint
-;; (define-extern *sampler-count* object) ;; int
-;; (define-extern timer0-handler function) ;; (function none)
-;; (define-extern sampler-start function) ;; (function none)
-;; (define-extern sampler-stop function) ;; (function none)
+(define-extern *sampler-mem* pointer)
+(define-extern *sampler-compare* uint)
+(define-extern *sampler-count* int)
+(define-extern timer0-handler (function none))
+(define-extern sampler-start (function none))
+(define-extern sampler-stop (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; default-menu                   ;;
@@ -41107,26 +41161,33 @@
 ;; visvol-edit                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++visvol-edit:visvol-edit-func
+(defenum visvol-edit-func
+  :type uint64
+  (visvol-positive 0)
+  (visvol-negative 1)
+  (adjust-sphere 2)
+  (adjust-vis-distance 3)
+  )
+;; ---visvol-edit:visvol-edit-func
+
 (deftype visvol-edit-info (structure)
-  ((editing      basic   :offset-assert 0)
-   (current-func uint64  :offset-assert 8)
-   (analog-func  uint64  :offset-assert 16)
+  ((editing      symbol  :offset-assert 0)
+   (current-func visvol-edit-func  :offset-assert 8)
+   (analog-func  visvol-edit-func  :offset-assert 16)
    )
   :method-count-assert 12
   :size-assert         #x18
   :flag-assert         #xc00000018
   (:methods
-    (visvol-edit-info-method-9 () none) ;; 9
-    (visvol-edit-info-method-10 () none) ;; 10
-    (visvol-edit-info-method-11 () none) ;; 11
+    (handle-pad-input (_type_) object) ;; 9
+    (draw-menu (_type_ process-drawable) object) ;; 10
+    (set-origin-joint-idx! (_type_ process-drawable) none) ;; 11
     )
   )
-|#
 
-#|
 (deftype visvol-editor (process)
-  ((proc uint64  :offset-assert 128)
+  ((proc handle  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x88
@@ -41135,12 +41196,11 @@
     idle ;; 14
     )
   )
-|#
 
-;; (define-extern *visvol-edit-info* object)
-;; (define-extern visvol-editor-init-by-other function)
-;; (define-extern stop-visvol-edit function)
-;; (define-extern visvol-edit function)
+(define-extern *visvol-edit-info* visvol-edit-info)
+(define-extern visvol-editor-init-by-other (function handle object :behavior visvol-editor))
+(define-extern stop-visvol-edit (function object))
+(define-extern visvol-edit (function string object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collision-editor               ;;
@@ -41197,9 +41257,9 @@
   :size-assert         #x1c
   :flag-assert         #xc0000001c
   (:methods
-    (collision-edit-info-method-9 (_type_) none) ;; 9
+    (handle-pad-input (_type_) none) ;; 9
     (draw-menu (_type_ process-drawable) none) ;; 10
-    (collision-edit-info-method-11 (_type_ process-drawable) none) ;; 11
+    (set-current-prim! (_type_ process-drawable) none) ;; 11
     )
   )
 
@@ -41208,7 +41268,7 @@
 (define-extern *collision-editor-mesh-names* (array string))
 (define-extern *collision-editor-art-group-name* string)
 (define-extern collision-editor-add-mesh-to-ccache (function collide-shape-prim-group collide-cache none))
-(define-extern print-default-collision (function process-drawable none))
+(define-extern print-default-collision (function none))
 (define-extern print-actual-collision (function process-drawable none))
 (define-extern collision-edit-get-max-prim (function process-drawable int))
 (define-extern collision-edit-get-prim (function process-drawable int collide-shape-prim))
@@ -42060,7 +42120,7 @@
     (find-offending-pfoc "Figure out the attacker process from the attack message sender and attack-info.
                           This is to handle cases where the attacker process is a non-focusable subprocess,
                           or the attacker is driving a vehicle."(_type_ process attack-info) process-focusable) ;; 145
-    (play-damage-sound "Pick and play the damage/death sound." (_type_ int) sound-id) ;; 146
+    (play-damage-or-death-sound "Pick and play the damage/death sound." (_type_ int) sound-id) ;; 146
     (clear-stale-victory "Remove victory flag if needed." (_type_) none) ;; 147
     (go-gun-dark-2-stretch "Go to the gun-dark-2-stretch state." (_type_) object) ;; 148
     (have-more-than-10-joints? "Does what it says, unused" (_type_) object) ;; 149
@@ -44241,7 +44301,6 @@
 ;; hover-nav-edit                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hover-nav-bsp-point (list-node)
   ((index int32          :offset-assert 8)
    (pos   vector :inline :offset-assert 16)
@@ -44249,10 +44308,11 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
+  (:methods
+    (new (symbol type) _type_) ;; 0
+    )
   )
-|#
 
-#|
 (deftype hover-nav-bsp-node (structure)
   ((split-plane vector              :inline :offset-assert 0)
    (point-list  hover-nav-bsp-point         :offset-assert 16)
@@ -44263,14 +44323,12 @@
   :size-assert         #x1c
   :flag-assert         #xb0000001c
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
-    (hover-nav-bsp-node-method-9 () none) ;; 9 ;; (hover-nav-bsp-node-method-9 (_type_) none)
-    (hover-nav-bsp-node-method-10 () none) ;; 10 ;; (hover-nav-bsp-node-method-10 (_type_ int) none)
+    (new (symbol type) _type_) ;; 0
+    (hover-nav-bsp-node-method-9 (_type_) none) ;; 9
+    (hover-nav-bsp-node-method-10 (_type_ int) none) ;; 10
     )
   )
-|#
 
-#|
 (deftype hover-nav-bsp (structure)
   ((root hover-nav-bsp-node  :offset-assert 0)
    )
@@ -44278,16 +44336,15 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern probe-for-clear-collision? function) ;; (function vector vector symbol)
-;; (define-extern hover-nav-graph-process-points function) ;; (function none)
-;; (define-extern hover-nav-graph-output function) ;; (function symbol)
-;; (define-extern *axes-table* array) ;; (array vector)
-;; (define-extern *hover-bsp* object) ;; hover-nav-bsp
-;; (define-extern hover-nav-graph-output-bsp function) ;; (function hover-nav-bsp)
-;; (define-extern hover-nav-network-build-bsp function) ;; (function (array hover-nav-bsp-point) hover-nav-bsp)
-;; (define-extern hover-nav-bsp-output function) ;; (function hover-nav-bsp none)
+(define-extern probe-for-clear-collision? (function vector vector symbol))
+(define-extern hover-nav-graph-process-points (function none))
+(define-extern hover-nav-graph-output (function string object))
+(define-extern *axes-table* (array vector))
+(define-extern *hover-bsp* hover-nav-bsp)
+(define-extern hover-nav-graph-output-bsp (function hover-nav-bsp))
+(define-extern hover-nav-network-build-bsp (function (array hover-nav-bsp-point) hover-nav-bsp))
+(define-extern hover-nav-bsp-output (function hover-nav-bsp none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dp-bipedal-part                ;;
@@ -56678,23 +56735,30 @@
 ;; pilot-recorder                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++pilot-recorder:pilrec-sample-flag
+(defenum pilrec-sample-flag
+  :type uint8
+  :bitfield #t
+  (square 0)
+  (l1 1)
+  (x 2)
+  )
+;; ---pilot-recorder:pilrec-sample-flag
+
 (deftype pilrec-sample (structure)
-  ((sample-time uint64             :offset-assert 0) ;; time-frame
+  ((sample-time time-frame         :offset-assert 0) ;; time-frame
    (pos         vector     :inline :offset-assert 16)
    (quat        quaternion :inline :offset-assert 32)
    (stick-x     float              :offset-assert 48)
    (stick-y     float              :offset-assert 52)
    (throttle    float              :offset-assert 56)
-   (flags       uint8              :offset-assert 60)
+   (flags       pilrec-sample-flag :offset-assert 60)
    )
   :method-count-assert 9
   :size-assert         #x3d
   :flag-assert         #x90000003d
   )
-|#
 
-#|
 (deftype pilot-recorder-samples (basic)
   ((samples (inline-array pilrec-sample)  :offset-assert 4) ;; guessed by decompiler
    )
@@ -56702,18 +56766,16 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype pilot-recorder (process)
   ((info                 race-info                      :offset-assert 128) ;; guessed by decompiler
    (mesh                 race-mesh                      :offset-assert 132) ;; guessed by decompiler
    (select-race          uint64                         :offset-assert 136)
    (path-num             int32                          :offset-assert 144)
    (sample-count         int32                          :offset-assert 148)
-   (samples              pilot-recorder-samples         :offset-assert 152) ;; guessed by decompiler
-   (state-time           uint64                         :offset-assert 160) ;; time-frame
-   (start-time           uint64                         :offset-assert 168) ;; time-frame
+   (samples              (inline-array pilrec-sample)   :offset-assert 152) ;; guessed by decompiler
+   (state-time           time-frame                     :offset-assert 160) ;; time-frame
+   (start-time           time-frame                     :offset-assert 168) ;; time-frame
    (start-record-plane   plane                  :inline :offset-assert 176)
    (start-record-center  vector                 :inline :offset-assert 192)
    (finish-record-plane  plane                  :inline :offset-assert 208)
@@ -56723,34 +56785,33 @@
   :method-count-assert 31
   :size-assert         #x100
   :flag-assert         #x1f00800100
-  (:methods
-    (pilot-recorder-method-22 () none) ;; 22 ;; (pilot-recorder-method-22 () none)
-    (pilot-recorder-method-23 () none) ;; 23 ;; (pilot-recorder-method-23 () none)
-    (pilot-recorder-method-24 () none) ;; 24 ;; (pilot-recorder-method-24 () none)
-    (pilot-recorder-method-25 () none) ;; 25 ;; (pilot-recorder-method-25 () none)
-    (pilot-recorder-method-26 () none) ;; 26 ;; (pilot-recorder-method-26 () none)
-    (pilot-recorder-method-27 () none) ;; 27 ;; (pilot-recorder-method-27 () none)
-    (pilot-recorder-method-28 () none) ;; 28 ;; (pilot-recorder-method-28 () none)
-    (pilot-recorder-method-29 () none) ;; 29 ;; (pilot-recorder-method-29 () none)
-    (pilot-recorder-method-30 () none) ;; 30 ;; (pilot-recorder-method-30 () none)
-    )
   (:state-methods
-    die-fast ;; 14, old: (die-fast () _type_ :state)
-    fail-full ;; 18, old: (fail-full () _type_ :state)
-    fail-save ;; 21, old: (fail-save () _type_ :state)
-    save ;; 20, old: (save () _type_ :state)
-    finished ;; 19, old: (finished () _type_ :state)
-    recording ;; 17, old: (recording () _type_ :state)
-    active ;; 16, old: (active () _type_ :state)
-    idle ;; 15, old: (idle () _type_ :state)
+    die-fast ;; 14
+    idle ;; 15
+    active ;; 16
+    recording ;; 17
+    fail-full ;; 18
+    finished ;; 19
+    save ;; 20
+    fail-save ;; 21
+    )
+  (:methods
+    (pilot-recorder-method-22 (_type_) symbol) ;; 22
+    (passed-starting-line? (_type_ vector vector) symbol) ;; 23
+    (recording-finished? (_type_ vector vector) symbol) ;; 24
+    (draw-starting-line (_type_ vector vector) none) ;; 25
+    (draw-recorded-path (_type_) none) ;; 26
+    (pilot-recorder-method-27 (_type_) none) ;; 27
+    (record-input-sample! (_type_ pilrec-sample) pilrec-sample-flag) ;; 28
+    (lerp-samples! (_type_ pilrec-sample pilrec-sample pilrec-sample float time-frame) none) ;; 29
+    (save-to-db! (_type_) symbol) ;; 30
     )
   )
-|#
 
-;; (define-extern *pilot-recorder-samples* object)
-;; (define-extern delete-race-path function)
-;; (define-extern *pilot-recorder* object)
-;; (define-extern pilot-recorder-init-by-other function)
+(define-extern *pilot-recorder-samples* pilot-recorder-samples)
+(define-extern delete-race-path (function int int object))
+(define-extern *pilot-recorder* (pointer pilot-recorder))
+(define-extern pilot-recorder-init-by-other (function uint int object :behavior pilot-recorder))
 (define-extern start-pilot-recorder (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

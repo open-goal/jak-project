@@ -1,0 +1,9 @@
+("DROMTBOX.DGO"
+ ("net-time-box.o"
+  "time-box-obs.o"
+  "tpage-3441.go"
+  "tpage-3442.go"
+  "time-freeze-ag.go"
+  "time-freeze-debris-ag.go"
+  "dromtbox.o"
+ ))

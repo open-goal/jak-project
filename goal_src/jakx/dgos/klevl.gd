@@ -1,0 +1,9 @@
+("KLEVL.DGO"
+ ("panther-chassis-ag.o"
+  "panther-door-b-ag.go"
+  "panther-f-bumper-c-ag.go"
+  "panther-hood-a-ag.go"
+  "panther-roof-c-ag.go"
+  "wheel-i-ag.go"
+  "klevl.o"
+ ))

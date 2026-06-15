@@ -159,6 +159,9 @@
 (defmacro copy-vag-files (&rest files)
   `(begin ,@(apply (lambda (x) `(set! *all-vag* (cons (copy-iso-file "VAGWAD" "VAG/" (string-append "." ,x)) *all-vag*))) files)))
 
+(defmacro copy-screen-files (&rest files)
+  `(begin ,@(apply (lambda (x) `(set! *all-screens* (cons (copy-iso-file "SCREEN1" "RES/" (string-append "." ,x)) *all-screens*))) files)))
+
 (defun reverse-list (list)
   (let ((new-list '())
         (curr-elt list))
@@ -253,8 +256,8 @@
               :tool 'build-level3
               :out '(,(string-append "$OUT/obj/" name ".go")))))
 
-(defmacro build-actor (name &key (gen-mesh #f) &key (force-run #f) &key (texture-bucket 0))
+(defmacro build-actor (name &key (gen-mesh #f) &key (force-run #f) &key (texture-bucket 0) &key (framerate 60.0) &key (master-art-group #f) &key (master-ag-map ()) &key (joint-channel 6))
   (let* ((path (string-append "custom_assets/jak3/models/custom_levels/" name ".glb")))
-    `(defstep :in '(,path ,(symbol->string gen-mesh) ,(symbol->string force-run) ,(if (integer? texture-bucket) (int->string texture-bucket) (symbol->string texture-bucket)))
+    `(defstep :in '(,path ,gen-mesh ,force-run ,texture-bucket ,framerate ,master-art-group ,master-ag-map ,joint-channel)
               :tool 'build-actor3
               :out '(,(string-append "$OUT/obj/" name "-ag.go")))))

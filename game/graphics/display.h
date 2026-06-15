@@ -31,6 +31,8 @@ class GfxDisplay {
   virtual std::shared_ptr<InputManager> get_input_manager() const = 0;
 
   virtual void render() = 0;
+  virtual void init_splash() = 0;
+  virtual void draw_splash(int fb_w, int fb_h) = 0;
 
   void set_imgui_visible(bool visible) {
     m_imgui_visible = visible;

@@ -378,7 +378,6 @@
 
 ;; WARN: Return type mismatch int vs object.
 (defbehavior flut-update-ik target ()
-  (local-vars (sv-720 vector))
   (let ((gp-0 (new 'stack-no-clear 'collide-query))
         (s5-0 (-> (the-as process-drawable (-> self parent 0)) root))
         )
@@ -417,11 +416,9 @@
         (-> s3-0 shoulder-matrix-no-ik)
         (let ((v1-17 (-> s3-0 elbow-matrix-no-ik))
               (s0-0 (new 'stack-no-clear 'vector))
+              (sv-720 (new 'stack-no-clear 'vector))
               )
-          (set! sv-720 (new 'stack-no-clear 'vector))
-          (let ((a0-8 (-> *y-vector* quad)))
-            (set! (-> sv-720 quad) a0-8)
-            )
+          (vector-copy! sv-720 *y-vector*)
           (let ((s2-0 (new 'stack-no-clear 'vector)))
             (new 'stack-no-clear 'vector)
             (new 'stack-no-clear 'vector)
@@ -434,11 +431,7 @@
                 (seek! (-> s3-0 user-blend) f0-11 (* 4.0 (seconds-per-frame)))
                 )
               (vector+*! (-> gp-0 start-pos) s0-0 sv-720 6144.0)
-              (let ((v1-23 (-> gp-0 move-dist))
-                    (f0-16 -20480.0)
-                    )
-                (vector-float*! v1-23 sv-720 f0-16)
-                )
+              (vector-float*! (-> gp-0 move-dist) sv-720 -20480.0)
               (let ((v1-25 gp-0))
                 (set! (-> v1-25 radius) 4.096)
                 (set! (-> v1-25 collide-with) (-> gp-0 collide-with))
@@ -960,12 +953,6 @@
       )
     )
   :code (behavior ((arg0 handle) (arg1 symbol) (arg2 int))
-    (local-vars
-      (sv-96 process)
-      (sv-112 (function vector entity-actor skeleton-group vector manipy-options none :behavior manipy))
-      (sv-128 vector)
-      (sv-144 entity-actor)
-      )
     (target-exit)
     (+! (-> *game-info* flut-count) 1)
     (set-setting! 'string-spline-accel 'abs (meters 1) 0)
@@ -1062,39 +1049,20 @@
             (s2-0 (-> self level))
             )
         (process-entity-set! self (-> self flut entity))
-        (let ((s1-0 (get-process *8k-dead-pool* manipy #x20000 1)))
-          (set! (-> self manipy)
-                (the-as
-                  (pointer manipy)
-                  (when s1-0
-                    (let ((t9-18 (method-of-type manipy activate)))
-                      (t9-18 (the-as manipy s1-0) self "manipy" (the-as pointer #x70004000))
-                      )
-                    (let ((s0-0 run-function-in-process))
-                      (set! sv-96 s1-0)
-                      (set! sv-112 manipy-init)
-                      (set! sv-128 (-> self control trans))
-                      (set! sv-144 (-> self entity))
-                      (let ((t0-10 (art-group-get-by-name *level* "skel-flut" (the-as (pointer level) #f)))
-                            (t1-10 'collide-shape-moving)
-                            (t2-0 0)
-                            )
-                        ((the-as (function object object object object object object object none) s0-0)
-                         sv-96
-                         sv-112
-                         sv-128
-                         sv-144
-                         t0-10
-                         t1-10
-                         t2-0
-                         )
-                        )
-                      )
-                    (-> s1-0 ppointer)
-                    )
-                  )
-                )
-          )
+        (set! (-> self manipy) (process-spawn
+                                 manipy
+                                 :init manipy-init
+                                 (-> self control trans)
+                                 (-> self entity)
+                                 (art-group-get-by-name *level* "skel-flut" (the-as (pointer level) #f))
+                                 'collide-shape-moving
+                                 0
+                                 :name "manipy"
+                                 :from *8k-dead-pool*
+                                 :to self
+                                 :stack-size #x20000
+                                 )
+              )
         (set! (-> self entity) s3-0)
         (set! (-> self level) s2-0)
         )

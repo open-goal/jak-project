@@ -52,7 +52,6 @@
 ;; definition for function dark-lightning-handler
 ;; INFO: Used lq/sq
 (defbehavior dark-lightning-handler process-drawable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (sv-112 sparticle-launcher) (sv-160 vector) (sv-164 vector) (sv-176 lightning-spec))
   (let ((s3-0 (new 'static 'vector4w :x -1))
         (s4-0 (new 'static 'vector4w :x -1))
         (s5-0 (command-get-process "jak-highres-prison" *target*))
@@ -98,38 +97,17 @@
              (set! (-> s4-0 x) v1-38)
              (let ((s4-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 8)))
                    (s5-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> (the-as process-drawable s5-0) node-list data 5)))
-                   (s3-3 (get-process *default-dead-pool* lightning-tracker #x4000))
                    )
-               (when s3-3
-                 (let ((t9-17 (method-of-type lightning-tracker activate)))
-                   (t9-17
-                     (the-as lightning-tracker s3-3)
-                     self
-                     (symbol->string (-> lightning-tracker symbol))
-                     (the-as pointer #x70004000)
-                     )
-                   )
-                 (let ((s2-2 run-function-in-process)
-                       (s1-2 s3-3)
-                       (s0-1 lightning-tracker-init)
-                       )
-                   (set! sv-176 (-> *lightning-spec-id-table* 19))
-                   (let ((a3-4 (the int (* 300.0 (rand-vu-float-range 1.0 2.0))))
-                         (t0-1 lightning-probe-callback)
-                         )
-                     ((the-as (function object object object object object object object object none) s2-2)
-                      s1-2
-                      s0-1
-                      sv-176
-                      a3-4
-                      t0-1
-                      gp-2
-                      s4-2
-                      s5-2
-                      )
-                     )
-                   )
-                 (-> s3-3 ppointer)
+               (process-spawn
+                 lightning-tracker
+                 :init lightning-tracker-init
+                 (-> *lightning-spec-id-table* 19)
+                 (the int (* 300.0 (rand-vu-float-range 1.0 2.0)))
+                 lightning-probe-callback
+                 gp-2
+                 s4-2
+                 s5-2
+                 :to self
                  )
                )
              )
@@ -147,51 +125,51 @@
                     (s1-3 (-> s5-3 length))
                     (s0-2 (rand-vu-int-range-exclude 0 (+ v1-52 -1) (-> s3-0 x)))
                     (s1-4 (rand-vu-int-range-exclude 0 (+ s1-3 -1) (-> s4-0 x)))
+                    (sv-112 (-> *part-id-table* 179))
                     )
-               (set! sv-112 (-> *part-id-table* 179))
                (set! (-> s3-0 x) s0-2)
                (set! (-> s4-0 x) s1-4)
-               (set! sv-160 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data (-> s2-3 s0-2))))
-               (set! sv-164 (vector<-cspace!
-                              (new 'stack-no-clear 'vector)
-                              (-> (the-as process-drawable gp-3) node-list data (-> s5-3 s1-4))
+               (let* ((sv-160 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data (-> s2-3 s0-2))))
+                      (sv-164 (vector<-cspace!
+                                (new 'stack-no-clear 'vector)
+                                (-> (the-as process-drawable gp-3) node-list data (-> s5-3 s1-4))
+                                )
                               )
-                     )
-               )
-             (let ((s4-3 (process-spawn
-                           lightning-tracker
-                           :init lightning-tracker-init
-                           (-> *lightning-spec-id-table* 19)
-                           (the int (* 300.0 (rand-vu-float-range 1.0 2.0)))
-                           lightning-probe-callback
-                           self
-                           sv-160
-                           sv-164
-                           :to gp-3
-                           )
+                      (s4-3 (process-spawn
+                              lightning-tracker
+                              :init lightning-tracker-init
+                              (-> *lightning-spec-id-table* 19)
+                              (the int (* 300.0 (rand-vu-float-range 1.0 2.0)))
+                              lightning-probe-callback
+                              self
+                              sv-160
+                              sv-164
+                              :to gp-3
+                              )
+                            )
+                      )
+                 (when (and sv-112 s4-3)
+                   (let ((v1-74 (get-field-spec-by-id sv-112 (sp-field-id spt-timer))))
+                     (if v1-74
+                         (set! (-> v1-74 initial-valuef) (the-as float (-> (the-as lightning-tracker (-> s4-3 0)) duration)))
                          )
-                   )
-               (when (and sv-112 s4-3)
-                 (let ((v1-74 (get-field-spec-by-id sv-112 (sp-field-id spt-timer))))
-                   (if v1-74
-                       (set! (-> v1-74 initial-valuef) (the-as float (-> (the-as lightning-tracker (-> s4-3 0)) duration)))
-                       )
-                   )
-                 (let ((t9-30 sp-launch-particles-var)
-                       (a0-35 *sp-particle-system-2d*)
-                       (a1-37 sv-112)
-                       (a2-19 *launch-matrix*)
-                       )
-                   (set! (-> a2-19 trans quad) (-> sv-160 quad))
-                   (t9-30 a0-35 a1-37 a2-19 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
-                   )
-                 (let ((t9-31 sp-launch-particles-var)
-                       (a0-36 *sp-particle-system-2d*)
-                       (a1-38 sv-112)
-                       (a2-20 *launch-matrix*)
-                       )
-                   (set! (-> a2-20 trans quad) (-> sv-164 quad))
-                   (t9-31 a0-36 a1-38 a2-20 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+                     )
+                   (let ((t9-30 sp-launch-particles-var)
+                         (a0-35 *sp-particle-system-2d*)
+                         (a1-37 sv-112)
+                         (a2-19 *launch-matrix*)
+                         )
+                     (set! (-> a2-19 trans quad) (-> sv-160 quad))
+                     (t9-30 a0-35 a1-37 a2-19 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+                     )
+                   (let ((t9-31 sp-launch-particles-var)
+                         (a0-36 *sp-particle-system-2d*)
+                         (a1-38 sv-112)
+                         (a2-20 *launch-matrix*)
+                         )
+                     (set! (-> a2-20 trans quad) (-> sv-164 quad))
+                     (t9-31 a0-36 a1-38 a2-20 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+                     )
                    )
                  )
                )

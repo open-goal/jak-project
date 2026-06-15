@@ -373,11 +373,9 @@
         )
       (vector-copy! (-> self other-eyeball-jmod transform scale) (-> self root scale))
       (vector-copy! (-> self eyeball-jmod transform scale) (-> self root scale))
-      (let* ((f0-9 (lerp-scale 1.0 0.0 (the float (- (current-time) (-> self state-time))) 0.0 60.0))
-             (f0-11 (* f0-9 f0-9))
-             )
-        (set! (-> self root scale x) (* f0-11 f0-11))
-        )
+      (set! (-> self root scale x)
+            (square (square (lerp-scale 1.0 0.0 (the float (- (current-time) (-> self state-time))) 0.0 60.0)))
+            )
       (set! (-> self root scale y) (+ 1.0 (/ (-> self root scale x) 2)))
       (set! (-> self root scale z) (-> self root scale x))
       (when (= (-> self root scale x) 0.0)
@@ -430,7 +428,6 @@
 
 (defmethod init-from-entity! ((this vol-holo-eye) (arg0 entity-actor))
   "Set up a newly created process from the entity that created it."
-  (local-vars (sv-16 res-tag))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -439,12 +436,13 @@
     (the-as pair 0)
     )
   (set! (-> this trigger-radius) 110592.0)
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-6 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-6 (res-lump-data arg0 'actor-groups (pointer actor-group) :tag-ptr (& sv-16)))
+         )
     (cond
       ((and v1-6 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
-       (set! (-> this actor-group) (the-as (pointer actor-group) v1-6))
+       (set! (-> this actor-group) v1-6)
        )
       (else
         (format 0 "ERROR: ~s: entity missing actor-group!~%" (-> this name))

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -74,7 +74,7 @@ static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int 
     const char *cursor_url = NULL;
     SDL_Surface *conv_surf;
 
-    conv_surf = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_ABGR8888);
+    conv_surf = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_RGBA32);
 
     if (!conv_surf) {
         return NULL;
@@ -196,6 +196,26 @@ static bool Emscripten_SetRelativeMouseMode(bool enabled)
     return false;
 }
 
+static SDL_MouseButtonFlags Emscripten_GetGlobalMouseState(float *x, float *y)
+{
+    *x = MAIN_THREAD_EM_ASM_DOUBLE({
+        return Module['SDL3']['mouse_x'];
+    });
+    *y = MAIN_THREAD_EM_ASM_DOUBLE({
+        return Module['SDL3']['mouse_y'];
+    });
+    SDL_MouseButtonFlags flags = 0;
+    for (int i = 0; i < 5; ++i) {
+        const bool button_down = MAIN_THREAD_EM_ASM_INT({
+            return Module['SDL3']['mouse_buttons'][$0];
+        }, i);
+        if (button_down) {
+            flags |= 1 << i;
+        }
+    }
+    return flags;
+}
+
 void Emscripten_InitMouse(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
@@ -205,6 +225,43 @@ void Emscripten_InitMouse(void)
     mouse->FreeCursor = Emscripten_FreeCursor;
     mouse->CreateSystemCursor = Emscripten_CreateSystemCursor;
     mouse->SetRelativeMouseMode = Emscripten_SetRelativeMouseMode;
+
+    // Add event listeners to track mouse events on the document
+    MAIN_THREAD_EM_ASM({
+        var SDL3 = Module['SDL3'];
+        SDL3['mouse_x'] = 0;
+        SDL3['mouse_y'] = 0;
+        /*
+            Based on https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
+            Possible value for button in the event object is [0, 5)
+            NOTE: Some browsers do not allow handling the forwards and backwards buttons
+        */
+        SDL3['mouse_buttons'] = [];
+        for (var i = 0; i < 5; ++i) {
+            SDL3['mouse_buttons'][i] = false;
+        }
+        document.addEventListener('mousemove', function(e) {
+            // Reacquire from object in case it changed for some reason
+            var SDL3 = Module['SDL3'];
+            SDL3['mouse_x'] = e.clientX;
+            SDL3['mouse_y'] = e.clientY;
+        });
+        document.addEventListener('mousedown', function(e) {
+            // Reacquire from object in case it changed for some reason
+            var SDL3 = Module['SDL3'];
+            if (0 <= e.button && e.button < SDL3['mouse_buttons'].length) {
+                SDL3['mouse_buttons'][e.button] = true;
+            }
+        });
+        document.addEventListener('mouseup', function(e) {
+            // Reacquire from object in case it changed for some reason
+            var SDL3 = Module['SDL3'];
+            if (0 <= e.button && e.button < SDL3['mouse_buttons'].length) {
+                SDL3['mouse_buttons'][e.button] = false;
+            }
+        });
+    });
+    mouse->GetGlobalMouseState = Emscripten_GetGlobalMouseState;
 
     SDL_SetDefaultCursor(Emscripten_CreateDefaultCursor());
 }

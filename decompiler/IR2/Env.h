@@ -44,6 +44,36 @@ struct StackSpillEntry {
   }
 };
 
+constexpr int STACK_SLOT_VAR_STRIDE = 1 << 16;
+
+inline bool is_stack_slot_access(const RegisterAccess& access) {
+  return access.reg() == Register(Reg::GPR, Reg::SP) && access.idx() < 0;
+}
+
+inline int get_stack_slot_offset_from_access(const RegisterAccess& access) {
+  ASSERT(is_stack_slot_access(access));
+  return (-access.idx() - 1) / STACK_SLOT_VAR_STRIDE;
+}
+
+inline int get_stack_slot_var_id_from_access(const RegisterAccess& access) {
+  ASSERT(is_stack_slot_access(access));
+  return (-access.idx() - 1) % STACK_SLOT_VAR_STRIDE;
+}
+
+inline RegisterAccess make_stack_slot_access(int offset, int var_id = 0) {
+  ASSERT(var_id >= 0);
+  ASSERT(var_id < STACK_SLOT_VAR_STRIDE);
+  return RegisterAccess(AccessMode::READ, Register(Reg::GPR, Reg::SP),
+                        -1 - (offset * STACK_SLOT_VAR_STRIDE + var_id), true);
+}
+
+inline bool same_expression_var(const RegisterAccess& a, const RegisterAccess& b) {
+  if (is_stack_slot_access(a) || is_stack_slot_access(b)) {
+    return a == b;
+  }
+  return a.reg() == b.reg();
+}
+
 struct FunctionVariableDefinitions {
   std::optional<goos::Object> local_vars;
   bool had_pp = false;
@@ -126,6 +156,7 @@ class Env {
   void set_local_vars(const VariableNames& names) {
     m_var_names = names;
     m_has_local_vars = true;
+    rebuild_stack_slot_use_def_info();
   }
 
   void set_end_var(RegisterAccess var) { m_end_var = var; }
@@ -193,6 +224,7 @@ class Env {
   }
 
   const UseDefInfo& get_use_def_info(const RegisterAccess& ra) const;
+  RegisterAccess get_stack_slot_access_for_op(int op_id, int offset) const;
   void disable_use(const RegisterAccess& access);
 
   void disable_def(const RegisterAccess& access, DecompWarnings& warnings);
@@ -228,6 +260,8 @@ class Env {
   bool pp_mapped_by_behavior() const { return m_pp_mapped_by_behavior; }
 
  private:
+  void rebuild_stack_slot_use_def_info();
+
   RegisterAccess m_end_var;
 
   bool m_has_reg_use = false;
@@ -235,6 +269,8 @@ class Env {
 
   bool m_has_local_vars = false;
   VariableNames m_var_names;
+  std::unordered_map<RegId, UseDefInfo, RegId::hash> m_stack_slot_use_def_info;
+  std::unordered_map<int, int> m_stack_slot_var_by_op;
 
   bool m_has_types = false;
   bool m_pp_mapped_by_behavior = false;

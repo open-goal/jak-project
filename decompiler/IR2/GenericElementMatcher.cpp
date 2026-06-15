@@ -305,6 +305,13 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         }
       }
 
+      auto as_stack_spill =
+          dynamic_cast<StackSpillValueElement*>(input->try_as_single_active_element());
+      if (as_stack_spill) {
+        got = true;
+        result = as_stack_spill->access();
+      }
+
       if (got) {
         if (m_kind == Kind::REG) {
           return result.reg() == *m_reg;

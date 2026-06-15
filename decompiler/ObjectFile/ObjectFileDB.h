@@ -196,7 +196,8 @@ class ObjectFileDB {
   void write_disassembly(const fs::path& output_dir,
                          bool disassemble_data,
                          bool disassemble_code,
-                         bool print_hex);
+                         bool print_hex,
+                         bool dump_function_metadata);
 
   void process_object_file_data(
       ObjectFileData& data,

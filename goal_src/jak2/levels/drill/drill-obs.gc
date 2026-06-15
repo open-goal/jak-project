@@ -355,7 +355,6 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defbehavior drill-elevator-shaft-init-by-other drill-elevator-shaft ((arg0 vector) (arg1 vector))
-  (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
   (let ((s4-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 7) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 8))
@@ -367,28 +366,29 @@
              (s1-0 (-> (the-as pair s2-0) car))
              )
         (while (not (null? s2-0))
-          (let ((s0-0 (method-of-type collide-shape-prim-mesh new)))
-            (set! sv-32 'process)
-            (set! sv-48 collide-shape-prim-mesh)
-            (set! sv-64 s4-0)
-            (let ((a3-2 (command-get-int (-> (the-as pair s1-0) car) 0))
-                  (t0-1 0)
+          (let ((sv-16
+                  (new
+                    'process
+                    'collide-shape-prim-mesh
+                    s4-0
+                    (the-as uint (command-get-int (-> (the-as pair s1-0) car) 0))
+                    (the-as uint 0)
+                    )
                   )
-              (set! sv-16 (s0-0 sv-32 sv-48 sv-64 (the-as uint a3-2) (the-as uint t0-1)))
+                )
+            (let ((s0-1 sv-16))
+              (set! (-> s0-1 prim-core collide-as) (-> s3-0 prim-core collide-as))
+              (set! (-> s0-1 prim-core collide-with) (-> s3-0 prim-core collide-with))
+              (set! (-> s0-1 prim-core action) (-> s3-0 prim-core action))
+              (set! (-> s0-1 transform-index) (command-get-int (-> (the-as pair (-> (the-as pair s1-0) cdr)) car) 0))
               )
-            )
-          (let ((s0-1 sv-16))
-            (set! (-> s0-1 prim-core collide-as) (-> s3-0 prim-core collide-as))
-            (set! (-> s0-1 prim-core collide-with) (-> s3-0 prim-core collide-with))
-            (set! (-> s0-1 prim-core action) (-> s3-0 prim-core action))
-            (set! (-> s0-1 transform-index) (command-get-int (-> (the-as pair (-> (the-as pair s1-0) cdr)) car) 0))
-            )
-          (set-vector!
-            (-> sv-16 local-sphere)
-            0.0
-            0.0
-            0.0
-            (command-get-float (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) car) 0.0)
+            (set-vector!
+              (-> sv-16 local-sphere)
+              0.0
+              0.0
+              0.0
+              (command-get-float (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) car) 0.0)
+              )
             )
           (set! s2-0 (-> (the-as pair s2-0) cdr))
           (set! s1-0 (-> (the-as pair s2-0) car))
@@ -546,7 +546,6 @@
   "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
    do so.
    @see [[elevator::47]]"
-  (local-vars (sv-16 float))
   (let ((a0-1 *target*))
     (when (and a0-1
                (not (logtest? (focus-status dead inactive in-air grabbed edge-grab pole pilot-riding pilot teleporting)
@@ -554,15 +553,16 @@
                               )
                     )
                )
-      (set! sv-16 (the-as float 0.0))
-      (when (and (find-closest-point-in-path! this (get-trans a0-1 0) (& sv-16) #t #t)
-                 (!= (-> this move-pos 1) sv-16)
-                 (= sv-16 (-> this bottom-top 0))
-                 )
-        (set! (-> this move-pos 0) (-> this move-pos 1))
-        (set! (-> this move-pos 1) sv-16)
-        (logior! (-> this elevator-status) (elevator-status moving))
-        (go (method-of-object this running))
+      (let ((sv-16 (the-as float 0.0)))
+        (when (and (find-closest-point-in-path! this (get-trans a0-1 0) (& sv-16) #t #t)
+                   (!= (-> this move-pos 1) sv-16)
+                   (= sv-16 (-> this bottom-top 0))
+                   )
+          (set! (-> this move-pos 0) (-> this move-pos 1))
+          (set! (-> this move-pos 1) sv-16)
+          (logior! (-> this elevator-status) (elevator-status moving))
+          (go (method-of-object this running))
+          )
         )
       )
     )
@@ -865,12 +865,9 @@
     (set! (-> this deadly-length) (vector-vector-distance (-> s4-1 vector 2) (-> s4-1 vector 0)))
     (let ((v1-39 (-> this root root-prim)))
       (vector-reset! (-> v1-39 local-sphere))
-      (let* ((f0-14 (/ (-> this deadly-width) 2))
-             (f0-16 (* f0-14 f0-14))
-             (f1-7 (/ (-> this deadly-length) 2))
-             )
-        (set! (-> v1-39 local-sphere w) (sqrtf (+ f0-16 (* f1-7 f1-7))))
-        )
+      (set! (-> v1-39 local-sphere w)
+            (sqrtf (+ (square (/ (-> this deadly-width) 2)) (square (/ (-> this deadly-length) 2))))
+            )
       )
     (set! (-> s5-1 0)
           (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (-> s4-1 vector 0)))
@@ -1440,7 +1437,6 @@
    - collision information
    - loading the skeleton group / bones
    - sounds"
-  (local-vars (sv-16 res-tag))
   (set! (-> this firing?) #f)
   (set! (-> this hit-sound-id) (new 'static 'sound-id))
   (set! (-> this root) (new 'process 'trsqv))
@@ -1452,8 +1448,9 @@
         (f28-0 0.0)
         (f26-0 3.0)
         )
-    (set! sv-16 (new 'static 'res-tag))
-    (let ((v1-8 (res-lump-data arg0 'cycle-speed (pointer float) :tag-ptr (& sv-16))))
+    (let* ((sv-16 (new 'static 'res-tag))
+           (v1-8 (res-lump-data arg0 'cycle-speed (pointer float) :tag-ptr (& sv-16)))
+           )
       (when v1-8
         (set! f30-0 (-> v1-8 0))
         (set! f28-0 (-> v1-8 1))

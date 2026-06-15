@@ -1,0 +1,9 @@
+("JGC.DGO"
+ ("tpage-653.o"
+  "tpage-654.go"
+  "jungle-debris-jar-a-ag.go"
+  "jungle-debris-jar-b-ag.go"
+  "jungle-clay-jar-b-ag.go"
+  "jungle-clay-jar-a-ag.go"
+  "junglec-vis.o"
+ ))

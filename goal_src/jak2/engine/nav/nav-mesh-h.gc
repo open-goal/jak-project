@@ -20,6 +20,7 @@
 ;; DECOMP BEGINS
 
 (deftype nav-mesh-work-debug (structure)
+  "Debug outputs for the nav-mesh assembly functions"
   ((debug-vec1    vector  :inline)
    (debug-vec2    vector  :inline)
    (debug-vec3    vector  :inline)
@@ -38,6 +39,7 @@
 
 
 (deftype nav-mesh-work (structure)
+  "Workspace for nav-mesh processing functions."
   ((vert0-table             int8    4)
    (vert1-table             int8    4)
    (edge-mask-table         uint8   3)
@@ -61,6 +63,7 @@
 
 
 (deftype nav-mesh-link (structure)
+  "Link between two different meshes"
   ((id                   uint32)
    (dest-mesh-id         uint32)
    (src-link-poly-id     uint8)
@@ -73,6 +76,8 @@
 
 
 (deftype nav-poly (structure)
+  "Polygon within a nav-mesh. Can be a tri or quad.
+Based on the implementation of point-poly-intersection?, these should likely be convex."
   ((data          uint8   64)
    (vertex        vector  4 :inline :overlay-at (-> data 0))
    (vertex0       vector  :inline   :overlay-at (-> data 0))
@@ -162,6 +167,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 
 
 (deftype nav-mesh (basic)
+  "Mesh used for creature/enemy navigation."
   ((work                   nav-mesh-work)
    (poly-array             (inline-array nav-poly))
    (static-sphere-count    uint8)
@@ -231,6 +237,7 @@ and declared out of order (cannot use forward declared structures in inline arra
 
 
 (defun vector-normalize-unity! ((arg0 vector))
+  "Normalize a vector (xyz only) in place."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -263,6 +270,7 @@ and declared out of order (cannot use forward declared structures in inline arra
   )
 
 (defun vector-normalize-unity-copy! ((arg0 vector) (arg1 vector))
+  "Normalize a vector (xyz only)"
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -296,10 +304,12 @@ and declared out of order (cannot use forward declared structures in inline arra
   )
 
 (defun-debug debug-validate-current-poly ()
+  "Not implemented."
   #f
   )
 
 (defun init-ray ((arg0 nav-ray))
+  "Set up a nav-ray. Assumes that dest-pos and current-pos are set."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -342,17 +352,18 @@ and declared out of order (cannot use forward declared structures in inline arra
     )
   )
 
-(defun point-poly-intersection? ((arg0 nav-mesh) (arg1 vector) (arg2 int) (arg3 (inline-array vector)))
-  (let ((v1-1 (-> arg0 work vert0-table))
-        (a0-2 (-> arg0 work vert1-table))
+(defun point-poly-intersection? ((mesh nav-mesh) (pt vector) (num-verts int) (verts (inline-array vector)))
+  "Check if a point is inside a poly."
+  (let ((v1-1 (-> mesh work vert0-table))
+        (a0-2 (-> mesh work vert1-table))
         )
-    (dotimes (t0-0 arg2)
-      (let* ((t1-3 (-> arg3 (-> v1-1 t0-0)))
-             (t2-3 (-> arg3 (-> a0-2 t0-0)))
+    (dotimes (t0-0 num-verts)
+      (let* ((t1-3 (-> verts (-> v1-1 t0-0)))
+             (t2-3 (-> verts (-> a0-2 t0-0)))
              (f0-1 (- (-> t1-3 z) (-> t2-3 z)))
              (f1-2 (- (-> t2-3 x) (-> t1-3 x)))
-             (f2-2 (- (-> arg1 x) (-> t1-3 x)))
-             (f3-2 (- (-> arg1 z) (-> t1-3 z)))
+             (f2-2 (- (-> pt x) (-> t1-3 x)))
+             (f3-2 (- (-> pt z) (-> t1-3 z)))
              (f0-3 (+ (* f2-2 f0-1) (* f3-2 f1-2)))
              )
         (if (< 0.0 f0-3)
@@ -365,6 +376,7 @@ and declared out of order (cannot use forward declared structures in inline arra
   )
 
 (defmethod point-in-poly? ((this nav-mesh) (arg0 nav-poly) (arg1 vector))
+  "Check if a point is inside a poly of this mesh"
   (let* ((a3-0 this)
          (v1-0 arg1)
          (a0-1 (-> arg0 vertex-count))
@@ -392,40 +404,43 @@ and declared out of order (cannot use forward declared structures in inline arra
 
 ;; WARN: Return type mismatch vector vs none.
 (defmethod closest-point-on-boundary ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
-  (local-vars (sv-48 vector) (sv-52 vector) (sv-56 float))
-  (set! sv-48 (new 'stack-no-clear 'vector))
-  (set! sv-52 (new 'stack-no-clear 'vector))
-  (set! sv-56 (the-as float 10000000000000000000000000000000000000.0))
-  (let* ((s3-0 (-> arg0 vertex-count))
-         (v1-3 (the-as int (+ s3-0 -1)))
-         )
-    (dotimes (s2-0 (the-as int s3-0))
-      (let ((f0-1 (vector-segment-distance-point! arg2 (-> arg0 vertex v1-3) (-> arg0 vertex s2-0) sv-48)))
-        (when (< f0-1 sv-56)
-          (set! sv-56 f0-1)
-          (set! (-> sv-52 quad) (-> sv-48 quad))
-          )
+  "Find the point on the polygon edge that is closest to the query point."
+  (let ((sv-48 (new 'stack-no-clear 'vector))
+        (sv-52 (new 'stack-no-clear 'vector))
         )
-      (set! v1-3 s2-0)
+    (let* ((sv-56 (the-as float 10000000000000000000000000000000000000.0))
+           (s3-0 (-> arg0 vertex-count))
+           (v1-3 (the-as int (+ s3-0 -1)))
+           )
+      (dotimes (s2-0 (the-as int s3-0))
+        (let ((f0-1 (vector-segment-distance-point! arg2 (-> arg0 vertex v1-3) (-> arg0 vertex s2-0) sv-48)))
+          (when (< f0-1 sv-56)
+            (set! sv-56 f0-1)
+            (set! (-> sv-52 quad) (-> sv-48 quad))
+            )
+          )
+        (set! v1-3 s2-0)
+        )
       )
+    (set! (-> arg1 quad) (-> sv-52 quad))
     )
-  (set! (-> arg1 quad) (-> sv-52 quad))
   (none)
   )
 
 ;; WARN: Return type mismatch vector vs none.
 (defmethod project-point-into-poly-2d ((this nav-mesh) (arg0 nav-poly) (arg1 vector) (arg2 vector))
-  (local-vars (sv-48 vector) (sv-52 vector) (sv-56 float))
+  "Find the point in the polygon closest to the query point."
   (cond
     ((point-in-poly? this arg0 arg2)
      (set! (-> arg1 quad) (-> arg2 quad))
      )
     (else
-      (let ((s5-1 arg1))
-        (set! sv-48 (new 'stack-no-clear 'vector))
-        (set! sv-52 (new 'stack-no-clear 'vector))
-        (set! sv-56 (the-as float 10000000000000000000000000000000000000.0))
-        (let* ((s2-0 (-> arg0 vertex-count))
+      (let ((s5-1 arg1)
+            (sv-48 (new 'stack-no-clear 'vector))
+            (sv-52 (new 'stack-no-clear 'vector))
+            )
+        (let* ((sv-56 (the-as float 10000000000000000000000000000000000000.0))
+               (s2-0 (-> arg0 vertex-count))
                (v1-6 (the-as int (+ s2-0 -1)))
                )
           (dotimes (s1-0 (the-as int s2-0))
@@ -446,81 +461,72 @@ and declared out of order (cannot use forward declared structures in inline arra
   )
 
 (defmethod move-along-nav-ray! ((this nav-mesh) (ray nav-ray))
-  (local-vars
-    (next-poly-idx int)
-    (work nav-mesh-work)
-    (current-poly nav-poly)
-    (current-poly-vtx-count uint)
-    (v0-table (pointer int8))
-    (v1-table (pointer int8))
-    (delta-x float)
-    (delta-z float)
-    (adj-vtx-0 vector)
-    (adj-vtx-1 vector)
-    (adj-edge-dz float)
-    (adj-edge-minus-dx float)
-    (sv-68 uint)
-    )
-  (set! next-poly-idx -1)
-  (set! work (-> this work))
-  (set! current-poly (-> ray current-poly))
-  (set! current-poly-vtx-count (-> ray current-poly vertex-count))
-  (set! v0-table (-> this work vert0-table))
-  (set! v1-table (-> this work vert1-table))
-  (set! delta-x (- (-> ray dest-pos x) (-> ray current-pos x)))
-  (set! delta-z (- (-> ray dest-pos z) (-> ray current-pos z)))
-  (dotimes (i (the-as int current-poly-vtx-count))
-    (set! adj-vtx-0 (-> current-poly vertex (-> v0-table i)))
-    (set! adj-vtx-1 (-> current-poly vertex (-> v1-table i)))
-    (set! adj-edge-dz (- (-> adj-vtx-0 z) (-> adj-vtx-1 z)))
-    (set! adj-edge-minus-dx (- (-> adj-vtx-1 x) (-> adj-vtx-0 x)))
-    (let ((heading-dot (+ (* delta-x adj-edge-dz) (* delta-z adj-edge-minus-dx))))
-      (when (< 0.0 heading-dot)
-        (let ((f1-10 (+ (* adj-edge-dz (- (-> adj-vtx-0 x) (-> ray current-pos x)))
-                        (* adj-edge-minus-dx (- (-> adj-vtx-0 z) (-> ray current-pos z)))
-                        )
-                     )
-              )
-          (when (< f1-10 heading-dot)
-            (set! next-poly-idx i)
-            (let ((f0-12 (fmax 0.0 (/ f1-10 heading-dot))))
-              (set! delta-x (* delta-x f0-12))
-              (set! delta-z (* delta-z f0-12))
+  (let ((next-poly-idx -1))
+    (let ((work (-> this work)))
+      )
+    (let ((current-poly (-> ray current-poly))
+          (current-poly-vtx-count (-> ray current-poly vertex-count))
+          (v0-table (-> this work vert0-table))
+          (v1-table (-> this work vert1-table))
+          (delta-x (- (-> ray dest-pos x) (-> ray current-pos x)))
+          (delta-z (- (-> ray dest-pos z) (-> ray current-pos z)))
+          )
+      (dotimes (i (the-as int current-poly-vtx-count))
+        (let* ((adj-vtx-0 (-> current-poly vertex (-> v0-table i)))
+               (adj-vtx-1 (-> current-poly vertex (-> v1-table i)))
+               (adj-edge-dz (- (-> adj-vtx-0 z) (-> adj-vtx-1 z)))
+               (adj-edge-minus-dx (- (-> adj-vtx-1 x) (-> adj-vtx-0 x)))
+               (heading-dot (+ (* delta-x adj-edge-dz) (* delta-z adj-edge-minus-dx)))
+               )
+          (when (< 0.0 heading-dot)
+            (let ((f1-10 (+ (* adj-edge-dz (- (-> adj-vtx-0 x) (-> ray current-pos x)))
+                            (* adj-edge-minus-dx (- (-> adj-vtx-0 z) (-> ray current-pos z)))
+                            )
+                         )
+                  )
+              (when (< f1-10 heading-dot)
+                (set! next-poly-idx i)
+                (let ((f0-12 (fmax 0.0 (/ f1-10 heading-dot))))
+                  (set! delta-x (* delta-x f0-12))
+                  (set! delta-z (* delta-z f0-12))
+                  )
+                )
               )
             )
           )
         )
-      )
-    )
-  (let ((f0-16 (+ (* delta-x (-> ray dir x)) (* delta-z (-> ray dir z)))))
-    (+! (-> ray len) f0-16)
-    )
-  0
-  (set! (-> ray next-poly) #f)
-  (cond
-    ((= next-poly-idx -1)
-     (set! (-> ray current-pos quad) (-> ray dest-pos quad))
-     (set! (-> ray reached-dest) #t)
-     (set! (-> ray terminated) #t)
-     )
-    (else
-      (+! (-> ray current-pos x) delta-x)
-      (+! (-> ray current-pos z) delta-z)
-      (set! sv-68 (-> current-poly adj-poly next-poly-idx))
-      (if (!= sv-68 255)
-          (set! (-> ray next-poly) (-> this poly-array sv-68))
-          )
+      (let ((f0-16 (+ (* delta-x (-> ray dir x)) (* delta-z (-> ray dir z)))))
+        (+! (-> ray len) f0-16)
+        )
+      0
+      (set! (-> ray next-poly) #f)
       (cond
-        ((and (-> ray next-poly) (not (logtest? (-> ray next-poly pat) (-> ray ignore))))
-         (set! (-> ray current-poly) (-> ray next-poly))
+        ((= next-poly-idx -1)
+         (set! (-> ray current-pos quad) (-> ray dest-pos quad))
+         (set! (-> ray reached-dest) #t)
+         (set! (-> ray terminated) #t)
          )
         (else
-          (set! (-> ray last-edge) next-poly-idx)
-          (if (-> ray next-poly)
-              (set! (-> ray hit-gap) #t)
-              (set! (-> ray hit-boundary) #t)
+          (+! (-> ray current-pos x) delta-x)
+          (+! (-> ray current-pos z) delta-z)
+          (let ((sv-68 (-> current-poly adj-poly next-poly-idx)))
+            (if (!= sv-68 255)
+                (set! (-> ray next-poly) (-> this poly-array sv-68))
+                )
+            )
+          (cond
+            ((and (-> ray next-poly) (not (logtest? (-> ray next-poly pat) (-> ray ignore))))
+             (set! (-> ray current-poly) (-> ray next-poly))
+             )
+            (else
+              (set! (-> ray last-edge) next-poly-idx)
+              (if (-> ray next-poly)
+                  (set! (-> ray hit-gap) #t)
+                  (set! (-> ray hit-boundary) #t)
+                  )
+              (set! (-> ray terminated) #t)
               )
-          (set! (-> ray terminated) #t)
+            )
           )
         )
       )
@@ -530,6 +536,7 @@ and declared out of order (cannot use forward declared structures in inline arra
   )
 
 (defun-debug nav-sphere-from-cam ()
+  "Print out a SPHEREM from the current camera position, possibly used by their level-building tool."
   (let ((v1-0 (camera-pos)))
     (format #t "SPHEREM(~4,,1M, ~4,,1M, ~4,,1M, 1.0)~%" (-> v1-0 x) (-> v1-0 y) (-> v1-0 z))
     )

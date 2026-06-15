@@ -717,9 +717,9 @@
   "Send play rpc to play a sound!
    Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
    otherwise, an explicit [[vector]] can be provided"
-  (local-vars (sv-16 sound-group))
-  (set! sv-16 arg5)
-  (let ((s4-0 arg6))
+  (let ((sv-16 arg5)
+        (s4-0 arg6)
+        )
     (when *sound-player-enable*
       (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
         (set! (-> s5-0 command) (sound-command play))
@@ -892,105 +892,99 @@
 ;; WARN: Return type mismatch object vs ambient-sound.
 (defmethod new ambient-sound ((allocation symbol) (type-to-make type) (arg0 basic) (arg1 vector))
   "Set up ambient-sound. Can use an entity-actor (grabs from lump), sound-spec, or name as a string."
-  (local-vars
-    (sv-16 sound-spec)
-    (sv-32 sound-name)
-    (sv-48 (pointer float))
-    (sv-52 pointer)
-    (sv-56 int)
-    (sv-64 res-tag)
-    )
-  (set! sv-16 (the-as sound-spec #f))
-  (set! sv-32 (the-as sound-name 0))
-  (set! sv-48 (the-as (pointer float) #f))
-  (set! sv-52 (the-as pointer #f))
-  (set! sv-56 0)
-  (case (-> arg0 type)
-    ((entity-actor)
-     (let ((v1-2
-             ((method-of-type res-lump get-property-struct)
-              (the-as res-lump arg0)
-              'effect-name
-              'exact
-              0.0
-              (the-as structure #f)
-              (the-as (pointer res-tag) #f)
-              *res-static-buf*
-              )
-             )
-           )
-       (when v1-2
-         (set! sv-32 (string->sound-name (symbol->string v1-2)))
-         (set! sv-48 (res-lump-data (the-as res-lump arg0) 'cycle-speed (pointer float)))
-         (set! sv-16 *ambient-spec*)
-         (set! sv-64 (new 'static 'res-tag))
-         (let ((v1-7
-                 ((method-of-type res-lump get-property-data)
-                  (the-as res-lump arg0)
-                  'effect-param
-                  'exact
-                  0.0
-                  (the-as pointer #f)
-                  (& sv-64)
-                  *res-static-buf*
-                  )
-                 )
+  (let ((sv-16 (the-as sound-spec #f))
+        (sv-32 (the-as sound-name 0))
+        (sv-48 (the-as (pointer float) #f))
+        (sv-52 (the-as pointer #f))
+        (sv-56 0)
+        )
+    (case (-> arg0 type)
+      ((entity-actor)
+       (let ((v1-2
+               ((method-of-type res-lump get-property-struct)
+                (the-as res-lump arg0)
+                'effect-name
+                'exact
+                0.0
+                (the-as structure #f)
+                (the-as (pointer res-tag) #f)
+                *res-static-buf*
+                )
                )
-           (when v1-7
-             (set! sv-52 v1-7)
-             (set! sv-56 (the-as int (-> sv-64 elt-count)))
+             )
+         (when v1-2
+           (set! sv-32 (string->sound-name (symbol->string v1-2)))
+           (set! sv-48 (res-lump-data (the-as res-lump arg0) 'cycle-speed (pointer float)))
+           (set! sv-16 *ambient-spec*)
+           (let* ((sv-64 (new 'static 'res-tag))
+                  (v1-7
+                    ((method-of-type res-lump get-property-data)
+                     (the-as res-lump arg0)
+                     'effect-param
+                     'exact
+                     0.0
+                     (the-as pointer #f)
+                     (& sv-64)
+                     *res-static-buf*
+                     )
+                    )
+                  )
+             (when v1-7
+               (set! sv-52 v1-7)
+               (set! sv-56 (the-as int (-> sv-64 elt-count)))
+               )
              )
            )
          )
        )
-     )
-    ((sound-spec)
-     (set! sv-16 (the-as sound-spec arg0))
-     )
-    ((string)
-     (set! sv-32 (string->sound-name (the-as string arg0)))
-     )
-    (else
-      (format 0 "ERROR: ambient sound was told to play an unknown ~A.~%" arg0)
-      )
-    )
-  (the-as
-    ambient-sound
-    (cond
-      ((or sv-16 (nonzero? sv-32))
-       (let ((s5-1 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
-         (set! (-> (the-as ambient-sound s5-1) spec) sv-16)
-         (set! (-> (the-as ambient-sound s5-1) name) sv-32)
-         (set! (-> (the-as ambient-sound s5-1) playing-id) (new-sound-id))
-         (set! (-> (the-as ambient-sound s5-1) params) (the-as (pointer float) sv-52))
-         (set! (-> (the-as ambient-sound s5-1) param-count) sv-56)
-         (set! (-> (the-as ambient-sound s5-1) entity) #f)
-         (set! (-> (the-as ambient-sound s5-1) sound-count) 1)
-         (set! (-> (the-as ambient-sound s5-1) volume) 1024)
-         (set! (-> (the-as ambient-sound s5-1) pitch) 0)
-         (when (and sv-16 (!= sv-16 *ambient-spec*))
-           (if (logtest? (-> (the-as sound-spec sv-16) mask) (sound-mask volume))
-               (set! (-> (the-as ambient-sound s5-1) volume) (-> (the-as sound-spec sv-16) volume))
-               )
-           (if (logtest? (-> (the-as sound-spec sv-16) mask) (sound-mask pitch))
-               (set! (-> (the-as ambient-sound s5-1) pitch) (-> (the-as sound-spec sv-16) pitch-mod))
-               )
-           )
-         (cond
-           (sv-48
-             (set! (-> (the-as ambient-sound s5-1) time-base) (the-as time-frame (the int (* 300.0 (-> sv-48 0)))))
-             (set! (-> (the-as ambient-sound s5-1) time-random) (the-as time-frame (the int (* 300.0 (-> sv-48 1)))))
-             )
-           (else
-             (set! (-> (the-as ambient-sound s5-1) time-base) -1)
-             )
-           )
-         (set! (-> (the-as ambient-sound s5-1) trans quad) (-> arg1 quad))
-         s5-1
-         )
+      ((sound-spec)
+       (set! sv-16 (the-as sound-spec arg0))
+       )
+      ((string)
+       (set! sv-32 (string->sound-name (the-as string arg0)))
        )
       (else
-        0
+        (format 0 "ERROR: ambient sound was told to play an unknown ~A.~%" arg0)
+        )
+      )
+    (the-as
+      ambient-sound
+      (cond
+        ((or sv-16 (nonzero? sv-32))
+         (let ((s5-1 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
+           (set! (-> (the-as ambient-sound s5-1) spec) sv-16)
+           (set! (-> (the-as ambient-sound s5-1) name) sv-32)
+           (set! (-> (the-as ambient-sound s5-1) playing-id) (new-sound-id))
+           (set! (-> (the-as ambient-sound s5-1) params) (the-as (pointer float) sv-52))
+           (set! (-> (the-as ambient-sound s5-1) param-count) sv-56)
+           (set! (-> (the-as ambient-sound s5-1) entity) #f)
+           (set! (-> (the-as ambient-sound s5-1) sound-count) 1)
+           (set! (-> (the-as ambient-sound s5-1) volume) 1024)
+           (set! (-> (the-as ambient-sound s5-1) pitch) 0)
+           (when (and sv-16 (!= sv-16 *ambient-spec*))
+             (if (logtest? (-> (the-as sound-spec sv-16) mask) (sound-mask volume))
+                 (set! (-> (the-as ambient-sound s5-1) volume) (-> (the-as sound-spec sv-16) volume))
+                 )
+             (if (logtest? (-> (the-as sound-spec sv-16) mask) (sound-mask pitch))
+                 (set! (-> (the-as ambient-sound s5-1) pitch) (-> (the-as sound-spec sv-16) pitch-mod))
+                 )
+             )
+           (cond
+             (sv-48
+               (set! (-> (the-as ambient-sound s5-1) time-base) (the-as time-frame (the int (* 300.0 (-> sv-48 0)))))
+               (set! (-> (the-as ambient-sound s5-1) time-random) (the-as time-frame (the int (* 300.0 (-> sv-48 1)))))
+               )
+             (else
+               (set! (-> (the-as ambient-sound s5-1) time-base) -1)
+               )
+             )
+           (set! (-> (the-as ambient-sound s5-1) trans quad) (-> arg1 quad))
+           s5-1
+           )
+         )
+        (else
+          0
+          )
         )
       )
     )

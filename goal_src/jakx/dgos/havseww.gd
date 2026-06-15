@@ -1,0 +1,12 @@
+("HAVSEWW.DGO"
+ ("haven-effects.o"
+  "haven-part.o"
+  "haven-obs.o"
+  "havsew-effects.o"
+  "train-obs.o"
+  "sewer-effects.o"
+  "sewer-part.o"
+  "construction-obs.o"
+  "tpage-2212.go"
+  "havseww.o"
+ ))

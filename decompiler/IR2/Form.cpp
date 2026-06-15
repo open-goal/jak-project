@@ -7,6 +7,7 @@
 #include "common/type_system/TypeSystem.h"
 #include "common/util/print_float.h"
 
+#include "decompiler/IR2/Env.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "decompiler/util/data_decompile.h"
@@ -2775,8 +2776,13 @@ void VectorFloatLoadStoreElement::collect_vf_regs(RegSet& regs) const {
 StackSpillStoreElement::StackSpillStoreElement(SimpleAtom value,
                                                int size,
                                                int stack_offset,
+                                               RegisterAccess access,
                                                const std::optional<TypeSpec>& cast_type)
-    : m_value(value), m_size(size), m_stack_offset(stack_offset), m_cast_type(cast_type) {}
+    : m_value(value),
+      m_size(size),
+      m_stack_offset(stack_offset),
+      m_access(access),
+      m_cast_type(cast_type) {}
 
 goos::Object StackSpillStoreElement::to_form_internal(const Env& env) const {
   return pretty_print::build_list(
@@ -2801,11 +2807,24 @@ void StackSpillStoreElement::get_modified_regs(RegSet&) const {}
 // StackSpillValueElement
 ////////////////////////////////
 
-StackSpillValueElement::StackSpillValueElement(int size, int stack_offset, bool is_signed)
-    : m_size(size), m_stack_offset(stack_offset), m_is_signed(is_signed) {}
+StackSpillValueElement::StackSpillValueElement(int size,
+                                               int stack_offset,
+                                               RegisterAccess access,
+                                               bool is_signed,
+                                               std::optional<TypeSpec> read_type)
+    : m_size(size),
+      m_stack_offset(stack_offset),
+      m_access(access),
+      m_is_signed(is_signed),
+      m_read_type(std::move(read_type)) {}
 
 goos::Object StackSpillValueElement::to_form_internal(const Env& env) const {
-  return pretty_print::to_symbol(env.get_spill_slot_var_name(m_stack_offset));
+  auto var = m_access;
+  auto base = pretty_print::to_symbol(env.get_spill_slot_var_name(m_stack_offset));
+  if (m_read_type && env.get_variable_type(var, true) != *m_read_type) {
+    return pretty_print::build_list("the-as", m_read_type->print(), base);
+  }
+  return base;
 }
 
 void StackSpillValueElement::apply(const std::function<void(FormElement*)>& f) {
@@ -2813,7 +2832,9 @@ void StackSpillValueElement::apply(const std::function<void(FormElement*)>& f) {
 }
 
 void StackSpillValueElement::apply_form(const std::function<void(Form*)>&) {}
-void StackSpillValueElement::collect_vars(RegAccessSet&, bool) const {}
+void StackSpillValueElement::collect_vars(RegAccessSet& vars, bool) const {
+  vars.insert(m_access);
+}
 void StackSpillValueElement::get_modified_regs(RegSet&) const {}
 
 ////////////////////////////////

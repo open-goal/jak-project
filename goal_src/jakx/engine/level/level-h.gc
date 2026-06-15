@@ -1,0 +1,721 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; name: level-h.gc
+;; name in dgo: level-h
+;; dgos: ENGINE, GAME
+
+;; max amount of levels in level heap
+(defconstant LEVEL_MAX 18)
+;; total amount of levels, including ones outside level heap (default-level)
+(defconstant LEVEL_TOTAL 19)
+
+(declare-type bsp-header basic)
+(declare-type drawable basic)
+(declare-type entity-links-array inline-array-class)
+(declare-type light-hash basic)
+(declare-type engine basic)
+(declare-type game-text-info structure)
+(declare-type entity-links structure)
+(declare-type level-group basic)
+(declare-type level-load-info structure)
+(declare-type text-id uint32)
+(define-extern *level* level-group)
+(define-extern *draw-index* int)
+(define-extern *level-index* int)
+(define-extern *print-login* symbol)
+
+(define-extern level-remap-texture (function texture-id texture-id))
+(define-extern lookup-level-info (function symbol level-load-info))
+
+;; +++vis-info-flag
+(defenum vis-info-flag
+  :type uint32
+  :bitfield #t
+  (dummy0  0)
+  (dummy1  1)
+  (dummy2  2)
+  (dummy3  3)
+  (dummy4  4)
+  (dummy5  5)
+  (dummy6  6)
+  (dummy7  7)
+  (dummy8  8)
+  (dummy9  9)
+  (dummy10 10)
+  (dummy11 11)
+  (dummy12 12)
+  (dummy13 13)
+  (dummy14 14)
+  (dummy15 15)
+  (dummy16 16)
+  (dummy17 17)
+  (dummy18 18)
+  (dummy19 19)
+  (dummy20 20)
+  (dummy21 21)
+  (dummy22 22)
+  (dummy23 23)
+  (dummy24 24)
+  (dummy25 25)
+  (dummy26 26)
+  (dummy27 27)
+  (dummy28 28)
+  (in-iop  29)
+  (loading 30)
+  (vis-valid 31)
+  )
+;; ---vis-info-flag
+
+
+;; +++level-memory-mode
+(defenum level-memory-mode
+  :type uint32
+  (micro 0)
+  (tiny 1)
+  (tiny-edge 2)
+  (tiny-center 3)
+  (small-edge 4)
+  (small-center 5)
+  (city-center 6)
+  (medium 7)
+  (large 8)
+  (alias 9)
+  (borrow 10)
+  (borrow0 11)
+  (borrow1 12)
+  (borrow2 13)
+  (borrow3 14)
+  (borrow4 15)
+  (borrow-city-small 16)
+  (tiny-center-small 17)
+  (tiny-center-micro 18)
+  (city-tiny-edge 19)
+  )
+;; ---level-memory-mode
+
+
+;; +++task-mask
+(defenum task-mask
+  :type uint32
+  :bitfield #t
+  (task0 0)
+  (task1 1)
+  (task2 2)
+  (task3 3)
+  (task4 4)
+  (task5 5)
+  (task6 6)
+  (task7 7)
+  (done 8)
+  (dummy0 9)
+  (network 10)
+  (vehicle 11)
+  (special 12)
+  (primary0 13)
+  (ctywide 14)
+  (never 15)
+  (movie0 16)
+  (movie1 17)
+  (movie2 18)
+  (tm19 19)
+  (tm20 20)
+  (tm21 21)
+  (tm22 22)
+  (tm23 23)
+  (tm24 24)
+  (tm25 25)
+  (tm26 26)
+  (tm27 27)
+  (tm28 28)
+  (tm29 29)
+  (tm30 30)
+  (tm31 31)
+)
+;; ---task-mask
+
+
+;; +++bigmap-id
+(defenum bigmap-id
+  :type uint32
+  (city 0)
+  (comb 1)
+  (desert 2)
+  (factory 3)
+  (forest 4)
+  (mhcity 5)
+  (mine 6)
+  (nest 7)
+  (nest2 8)
+  (none 9)
+  (precursor1 10)
+  (precursor2 11)
+  (rubble 12)
+  (sewer-hum-kg 13)
+  (sewer-kg-met 14)
+  (sewer-met-hum 15)
+  (stadium 16)
+  (temple1 17)
+  (temple2 18)
+  (temple3 19)
+  (temple4 20)
+  (tower 21)
+  (volcano 22)
+  (wascity 23)
+  )
+;; ---bigmap-id
+
+
+;; +++level-flags
+(defenum level-flags
+  :type uint32
+  :bitfield #t
+  (lf0 0)
+  (not-physical 1)
+  (ctycar 2)
+  (ctypes 3)
+  (external 4)
+  (title 5)
+  (borrow-load 6)
+  (end-mode 7)
+  (flut 8)
+  (sky 9)
+  (use-camera-other 10)
+  (display-wait 11)
+  (ocean-near-translucent 12)
+  (ocean-far 13)
+  (low-res-hfrag 14)
+  (city-borrow-available 15)
+  (mech 16)
+  (allow-unloaded 17)
+  (check-taskname-for-continue 18)
+  (city-borrow-high-priority 19)
+  (ocean-all 20)
+  (desert 21)
+  )
+;; ---level-flags
+
+;; +++city-map-bits
+(defenum city-map-bits
+  :type uint64
+  :bitfield #t
+  (cmb0 0)
+  (cmb1 1)
+  (cmb2 2)
+  (cmb3 3)
+  (cmb4 4)
+  (cmb5 5)
+  (cmb6 6)
+  (cmb7 7)
+  (cmb8 8)
+  (cmb9 9)
+  (cmb10 10)
+  (cmb11 11)
+  (cmb12 12)
+  (cmb13 13)
+  (cmb14 14)
+  (cmb15 15)
+  (cmb16 16)
+  (cmb17 17)
+  (cmb18 18)
+  (cmb19 19)
+  (cmb20 20)
+  (cmb21 21)
+  (cmb22 22)
+  (cmb23 23)
+  (cmb24 24)
+  (cmb25 25)
+  (cmb26 26)
+  (cmb27 27)
+  (cmb28 28)
+  (cmb29 29)
+  (cmb30 30)
+  (cmb31 31)
+  (cmb32 32)
+  (cmb33 33)
+  )
+;; ---city-map-bits
+
+(define-extern *level-load-list* pair)
+(define-extern *task-level* (array symbol))
+
+;; DECOMP BEGINS
+
+(deftype level-vis-info (basic)
+  ((level               level)
+   (from-level          symbol)
+   (from-bsp            bsp-header)
+   (flags               vis-info-flag)
+   (length              uint32)
+   (allocated-length    uint32)
+   (dictionary-length   uint32)
+   (dictionary          uint32)
+   (string-block        uint32)
+   (ramdisk             uint32)
+   (vis-bits            uint32  4)
+   (current-vis-string  uint32  4)
+   (vis-string          uint32  :dynamic)
+   )
+  )
+
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this level-vis-info))
+  (the-as int (+ (-> level-vis-info size) (-> this dictionary-length)))
+  )
+
+(deftype level-borrow-info (basic)
+  ((borrow-size  uint16  3)
+   (borrow-info  object  3)
+   )
+  )
+
+
+(deftype level-load-info (basic)
+  ((name-list          symbol  4)
+   (name               symbol  :overlay-at (-> name-list 0))
+   (visname            symbol  :overlay-at (-> name-list 1))
+   (nickname           symbol  :overlay-at (-> name-list 2))
+   (dbname             symbol  :overlay-at (-> name-list 0))
+   (taskname           symbol  :overlay-at (-> name-list 3))
+   (index              int16)
+   (task-level         uint8)
+   (race-minimap       uint8)
+   (level-flags        level-flags)
+   (packages           pair)
+   (memory-mode        level-memory-mode)
+   (mood-func          symbol)
+   (special-mood       symbol)
+   (ocean              symbol)
+   (ocean-height       float)
+   (status-cache       uint16)
+   (status-cache-sync  uint16)
+   (draw-priority      float)
+   (base-task-mask     task-mask)
+   (continues          pair)
+   (callback-list      pair)
+   (borrow             level-borrow-info)
+   (bottom-height      meters)
+   (mood-range         mood-range)
+   )
+  (:methods
+    (level-load-info-method-9 () none)
+    (level-load-info-method-10 () none)
+    )
+  )
+
+
+(deftype login-state (basic)
+  ((state  int32)
+   (pos    uint32)
+   (elts   uint32)
+   (elt    drawable  16)
+   )
+  )
+
+
+(deftype level (basic)
+  ((name                       symbol)
+   (load-name                  symbol)
+   (nickname                   symbol)
+   (index                      int32)
+   (status                     symbol)
+   (borrow-level               level                 3)
+   (borrow-from-level          level)
+   (heap                       kheap                 :inline)
+   (borrow-heap                kheap                 3 :inline)
+   (bsp                        bsp-header)
+   (art-group                  load-dir-art-group)
+   (info                       level-load-info)
+   (level-TODO-01              int32)
+   (texture-page-dir           texture-page-segment  11 :inline)
+   (loaded-texture-page        texture-page          16)
+   (loaded-texture-page-count  int32)
+   (entity                     entity-links-array)
+   (closest-object             meters                10)
+   (tie-min-dist               float                 :offset 376)
+   (fg-tfrag-min-dist          float)
+   (fg-prim-min-dist           float)
+   (fg-shrub-min-dist          float)
+   (fg-warp-min-dist           float                 :offset 396)
+   (fg-prim2-min-dist          float                 :offset 404)
+   (upload-size                int32                 19)
+   (inside-boxes?              symbol)
+   (display?                   symbol)
+   (render?                    symbol)
+   (meta-inside?               symbol)
+   (force-inside?              symbol)
+   (load-id                    uint32)
+   (mood-context               mood-context)
+   (mood-func                  (function mood-context float int none))
+   (mood-init                  (function mood-context none))
+   (vis-bits                   pointer               2)
+   (all-visible?               symbol)
+   (force-all-visible?         symbol)
+   (linking                    symbol)
+   (vis-info                   level-vis-info        8)
+   (vis-self-index             int32)
+   (vis-adj-index              int32)
+   (vis-buffer                 uint32)
+   (mem-usage-block            memory-usage-block)
+   (mem-usage                  int32)
+   (code-memory-start          pointer)
+   (code-memory-end            pointer)
+   (load-start-time            uint64)
+   (load-stop-time             uint64)
+   (load-buffer                uint32                2)
+   (load-buffer-size           uint32)
+   (load-buffer-last           dgo-header)
+   (load-buffer-mode           level-memory-mode)
+   (display-start-time         uint64)
+   (memory-mask                uint32)
+   (task-mask                  task-mask)
+   (tfrag-gs-test              gs-test)
+   (level-TODO-003             int32)
+   (level-TODO-004             int32)
+   (texture-dirty-masks        texture-mask          11 :inline)
+   (texture-mask               texture-mask          19 :inline)
+   (tfrag-last-calls           uint32                6)
+   (texture-anim-array         texture-anim-array    11)
+   (light-hash                 light-hash)
+   (draw-priority              float)
+   (draw-index                 int32)
+   (part-engine                engine)
+   (user-object                basic                 4)
+   (loaded-text-info-count     int32)
+   (loaded-text-info           game-text-info        16)
+   (level-type                 type)
+   (load-order                 uint64)
+   (slot                       int32)
+   (filter-num                 uint32)
+   (filter-name                string                16)
+   (filter-look                uint8                 16)
+   (buffer                     kheap)
+   )
+  (:methods
+    (level-method-9 () none)
+    (level-method-10 () none)
+    (level-method-11 () none)
+    (level-method-12 () none)
+    (level-method-13 () none)
+    (level-method-14 () none)
+    (level-method-15 () none)
+    (level-method-16 () none)
+    (level-method-17 () none)
+    (level-method-18 () none)
+    (level-method-19 () none)
+    (level-method-20 () none)
+    (level-method-21 () none)
+    (level-method-22 () none)
+    (level-method-23 () none)
+    (level-method-24 () none)
+    (level-method-25 () none)
+    (level-method-26 () none)
+    (level-method-27 () none)
+    (level-method-28 () none)
+    (level-method-29 () none)
+    )
+  )
+
+
+(deftype level-group (basic)
+  ((length                int32)
+   (log-in-level-bsp      bsp-header)
+   (loading-level         level)
+   (entity-link           entity-links)
+   (border?               symbol)
+   (vis?                  symbol)
+   (want-level            basic)
+   (receiving-level       basic)
+   (load-commands         pair)
+   (play?                 symbol)
+   (prev-target-pos       vector            2 :inline)
+   (curr-target-pos       vector            2 :inline)
+   (prev-camera-pos       vector            2 :inline)
+   (curr-camera-pos       vector            2 :inline)
+   (heap                  kheap             :inline)
+   (car-heap              kheap             :inline)
+   (driver-heap           kheap             :inline)
+   (cars-heap             kheap             :inline)
+   (sound-bank            sound-bank-state  7 :inline)
+   (disk-load-timing?     symbol)
+   (load-level            symbol)
+   (load-size             uint32)
+   (load-time             float)
+   (load-login-time       float)
+   (draw-level-count      int32)
+   (draw-level            level             19)
+   (draw-index-map        uint8             19)
+   (shared-ties           basic)
+   (status-cache-sync     uint16)
+   (load-order            uint64)
+   (wide-level            level             2)
+   (tfrag-login-level     basic)
+   (level-group-TODO-001  int32             11)
+   (level                 level             19 :inline :offset 544)
+   (level0                level             :inline    :overlay-at (-> level 0))
+   (level1                level             :inline    :offset 1984)
+   (level2                level             :inline    :offset 3424)
+   (level3                level             :inline    :offset 4864)
+   (level4                level             :inline    :offset 6304)
+   (level5                level             :inline    :offset 7744)
+   (car0                  level             :inline    :offset 9184)
+   (car1                  level             :inline    :offset 10624)
+   (car2                  level             :inline    :offset 12064)
+   (car3                  level             :inline    :offset 13504)
+   (car4                  level             :inline    :offset 14944)
+   (car5                  level             :inline    :offset 16384)
+   (driver0               level             :inline    :offset 17824)
+   (driver1               level             :inline    :offset 19264)
+   (driver2               level             :inline    :offset 20704)
+   (driver3               level             :inline    :offset 22144)
+   (driver4               level             :inline    :offset 23584)
+   (driver5               level             :inline    :offset 25024)
+   (level-default         level             :inline    :offset 26464)
+   (pad                   int32)
+   )
+  (:methods
+    (level-group-method-9 () none)
+    (level-group-method-10 () none)
+    (level-group-method-11 () none)
+    (level-group-method-12 () none)
+    (level-group-method-13 () none)
+    (level-group-method-14 () none)
+    (level-group-method-15 () none)
+    (level-group-method-16 () none)
+    (level-group-method-17 () none)
+    (level-group-method-18 () none)
+    (level-group-method-19 () none)
+    (level-group-method-20 () none)
+    (level-group-method-21 () none)
+    (level-group-method-22 () none)
+    (level-group-method-23 () none)
+    (level-group-method-24 () none)
+    (level-group-method-25 () none)
+    (level-group-method-26 () none)
+    (level-group-method-27 () none)
+    (level-group-method-28 () none)
+    (level-group-method-29 () none)
+    (level-group-method-30 () none)
+    (level-group-method-31 () none)
+    (level-group-method-32 () none)
+    (level-group-method-33 () none)
+    )
+  )
+
+
+(when (zero? *level*)
+  (set! *level*
+        (new 'static 'level-group
+          :length 18
+          :log-in-level-bsp #f
+          :loading-level #f
+          :entity-link #f
+          :border? #f
+          :vis? #f
+          :want-level #f
+          :load-commands '()
+          :play? #f
+          :sound-bank (new 'static 'inline-array sound-bank-state 7
+            (new 'static 'sound-bank-state :name #f :mode (sound-bank-mode full))
+            (new 'static 'sound-bank-state :name #f)
+            (new 'static 'sound-bank-state :name #f)
+            (new 'static 'sound-bank-state :name #f)
+            (new 'static 'sound-bank-state :name #f)
+            (new 'static 'sound-bank-state :name #f)
+            (new 'static 'sound-bank-state :name #f)
+            )
+          :disk-load-timing? #f
+          :status-cache-sync #x1
+          :level (new 'static 'inline-array level 19
+            (new 'static 'level :name #f :status 'inactive :inside-boxes? #f :force-inside? #f :linking #f :level-type #f)
+            (new 'static 'level
+              :name #f
+              :index 1
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 2
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 3
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 4
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 5
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 6
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 7
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 8
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 9
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 10
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 11
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 12
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 13
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 14
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 15
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 16
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name #f
+              :index 17
+              :status 'inactive
+              :inside-boxes? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            (new 'static 'level
+              :name 'default
+              :index 18
+              :status 'reserved
+              :bsp #f
+              :inside-boxes? #f
+              :display? #f
+              :force-inside? #f
+              :linking #f
+              :level-type #f
+              )
+            )
+          )
+        )
+  (set! (-> *level* sound-bank 0 str-name) (new 'global 'string 16 (the-as string #f)))
+  (set! (-> *level* sound-bank 1 str-name) (new 'global 'string 16 (the-as string #f)))
+  (set! (-> *level* sound-bank 2 str-name) (new 'global 'string 16 (the-as string #f)))
+  (set! (-> *level* sound-bank 3 str-name) (new 'global 'string 16 (the-as string #f)))
+  (set! (-> *level* sound-bank 4 str-name) (new 'global 'string 16 (the-as string #f)))
+  (set! (-> *level* sound-bank 5 str-name) (new 'global 'string 16 (the-as string #f)))
+  (set! (-> *level* sound-bank 6 str-name) (new 'global 'string 16 (the-as string #f)))
+  (set! *draw-index* 0)
+  (set! *level-index* 0)
+  0
+  )
+
+(define *city-mode* #f)
+
+(define *lobby-levels* (new 'static 'boxed-array :type symbol '#f '#f))
+
+(define *lobby-levels-display* (new 'static 'boxed-array :type symbol '#f '#f))
+
+(define *lobby-levels-tmp* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 6))
+
+(dotimes (v1-27 6)
+  (set! (-> *lobby-levels-tmp* v1-27) #f)
+  )

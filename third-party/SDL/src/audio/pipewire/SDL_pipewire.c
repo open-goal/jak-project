@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -92,6 +92,13 @@ static int (*PIPEWIRE_pw_properties_set)(struct pw_properties *, const char *, c
 static int (*PIPEWIRE_pw_properties_setf)(struct pw_properties *, const char *, const char *, ...) SPA_PRINTF_FUNC(3, 4);
 
 #ifdef SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC
+
+SDL_ELF_NOTE_DLOPEN(
+    "audio-libpipewire",
+    "Support for audio through libpipewire",
+    SDL_ELF_NOTE_DLOPEN_PRIORITY_SUGGESTED,
+    SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC
+)
 
 static const char *pipewire_library = SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC;
 static SDL_SharedObject *pipewire_handle = NULL;
@@ -266,13 +273,11 @@ static bool pipewire_core_version_at_least(int major, int minor, int patch)
 static bool io_list_check_add(struct io_node *node)
 {
     struct io_node *n;
-    bool ret = true;
 
     // See if the node is already in the list
     spa_list_for_each (n, &hotplug_io_list, link) {
         if (n->id == node->id) {
-            ret = false;
-            goto dup_found;
+            return false;
         }
     }
 
@@ -283,9 +288,7 @@ static bool io_list_check_add(struct io_node *node)
         SDL_AddAudioDevice(node->recording, node->name, &node->spec, PW_ID_TO_HANDLE(node->id));
     }
 
-dup_found:
-
-    return ret;
+    return true;
 }
 
 static void io_list_remove(Uint32 id)
@@ -550,7 +553,7 @@ static void node_event_info(void *object, const struct pw_node_info *info)
 
         // Need to parse the parameters to get the sample rate
         for (i = 0; i < info->n_params; ++i) {
-            pw_node_enum_params((struct pw_node*)node->proxy, 0, info->params[i].id, 0, 0, NULL);
+            pw_node_enum_params((struct pw_node *)node->proxy, 0, info->params[i].id, 0, 0, NULL);
         }
 
         hotplug_core_sync(node);
@@ -632,16 +635,12 @@ static int metadata_property(void *object, Uint32 subject, const char *key, cons
 
     if (subject == PW_ID_CORE && key && value) {
         if (!SDL_strcmp(key, "default.audio.sink")) {
-            if (pipewire_default_sink_id) {
-                SDL_free(pipewire_default_sink_id);
-            }
+            SDL_free(pipewire_default_sink_id);
             pipewire_default_sink_id = get_name_from_json(value);
             node->persist = true;
             change_default_device(pipewire_default_sink_id);
         } else if (!SDL_strcmp(key, "default.audio.source")) {
-            if (pipewire_default_source_id) {
-                SDL_free(pipewire_default_source_id);
-            }
+            SDL_free(pipewire_default_source_id);
             pipewire_default_source_id = get_name_from_json(value);
             node->persist = true;
             change_default_device(pipewire_default_source_id);
@@ -935,18 +934,18 @@ static void initialize_spa_info(const SDL_AudioSpec *spec, struct spa_audio_info
 
 static Uint8 *PIPEWIRE_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
 {
-    // See if a buffer is available. If this returns NULL, SDL_PlaybackAudioThreadIterate will return false, but since we own the thread, it won't kill playback.
-    // !!! FIXME: It's not clear to me if this ever returns NULL or if this was just defensive coding.
-
+    // See if a buffer is available. If this sets *buffer_size=0, then SDL_PlaybackAudioThreadIterate will skip this iteration but try again next time.
     struct pw_stream *stream = device->hidden->stream;
     struct pw_buffer *pw_buf = PIPEWIRE_pw_stream_dequeue_buffer(stream);
     if (pw_buf == NULL) {
+        *buffer_size = 0;
         return NULL;
     }
 
     struct spa_buffer *spa_buf = pw_buf->buffer;
     if (spa_buf->datas[0].data == NULL) {
         PIPEWIRE_pw_stream_queue_buffer(stream, pw_buf);
+        *buffer_size = 0;
         return NULL;
     }
 

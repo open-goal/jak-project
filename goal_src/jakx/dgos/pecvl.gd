@@ -1,0 +1,10 @@
+("PECVL.DGO"
+ ("bobcat-chassis-ag.o"
+  "bobcat-door-d-ag.go"
+  "bobcat-f-fender-e-ag.go"
+  "bobcat-hood-d-ag.go"
+  "bobcat-r-fender-e-ag.go"
+  "bobcat-roof-c-ag.go"
+  "wheel-d-ag.go"
+  "pecvl.o"
+ ))

@@ -1,0 +1,10 @@
+("GTBVL.DGO"
+ ("falcon-chassis-ag.o"
+  "falcon-door-b-ag.go"
+  "falcon-hood-b-ag.go"
+  "falcon-r-fender-a-ag.go"
+  "falcon-roof-a-ag.go"
+  "falcon-trunk-c-ag.go"
+  "wheel-k-ag.go"
+  "gtbvl.o"
+ ))

@@ -712,7 +712,6 @@
         )
     )
   :code (behavior ()
-    (local-vars (sv-32 int) (sv-48 int))
     (let* ((gp-0 (-> self change-event-from))
            (f28-0 (the-as float (-> (the-as periscope (-> gp-0 0)) tilt)))
            (f30-0 (the-as float (-> (the-as periscope (-> gp-0 0)) turn)))
@@ -741,28 +740,15 @@
                   )
               (set! (-> s5-0 y) (- (-> s5-0 y) (* 136.53334 (- f26-0))))
               (set! (-> s5-0 x) (- (-> s5-0 x) (* 136.53334 (- f0-0))))
-              (cond
-                ((and (= f26-0 0.0) (= f0-0 0.0))
-                 (sound-stop (-> (the-as periscope (-> gp-0 0)) sound-id))
-                 )
-                (else
-                  (let ((s4-0 sound-play-by-name)
-                        (s3-0 (make-u128 101 (the-as uint #x706f6373656c6574)))
-                        (s2-0 (-> (the-as periscope (-> gp-0 0)) sound-id))
-                        (s1-0 1024)
-                        (s0-0 0)
-                        )
-                    (set! sv-32 0)
-                    (set! sv-48 1)
-                    (let ((t2-0 (target-pos 0)))
-                      (the-as
-                        int
-                        (s4-0 (the-as sound-name s3-0) s2-0 s1-0 s0-0 sv-32 (the-as sound-group sv-48) (the-as symbol t2-0))
-                        )
-                      )
-                    )
+              (if (and (= f26-0 0.0) (= f0-0 0.0))
+                  (sound-stop (-> (the-as periscope (-> gp-0 0)) sound-id))
+                  (the-as int (sound-play
+                                "telescope"
+                                :id (-> (the-as periscope (-> gp-0 0)) sound-id)
+                                :position (the-as symbol (target-pos 0))
+                                )
+                          )
                   )
-                )
               )
             )
           (cond
@@ -1129,19 +1115,19 @@
 
 ;; definition for function periscope-test-task-complete?
 (defbehavior periscope-test-task-complete? periscope ()
-  (local-vars (sv-16 symbol))
-  (set! sv-16 #t)
-  (apply-all
-    (-> self link)
-    (lambda ((arg0 entity-actor) (arg1 (pointer symbol)))
-      (when (and (= (-> arg0 etype) periscope) (not (logtest? (-> arg0 extra perm status) (entity-perm-status complete))))
-        (set! (-> arg1 0) #f)
-        #t
+  (let ((sv-16 #t))
+    (apply-all
+      (-> self link)
+      (lambda ((arg0 entity-actor) (arg1 (pointer symbol)))
+        (when (and (= (-> arg0 etype) periscope) (not (logtest? (-> arg0 extra perm status) (entity-perm-status complete))))
+          (set! (-> arg1 0) #f)
+          #t
+          )
         )
+      (& sv-16)
       )
-    (& sv-16)
+    sv-16
     )
-  sv-16
   )
 
 ;; definition for function peri-beamcam-init-by-other
@@ -1354,7 +1340,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch)
-       (when (and *target* (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+       (when (and *target* (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                                      (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))
                                      )
                                 )

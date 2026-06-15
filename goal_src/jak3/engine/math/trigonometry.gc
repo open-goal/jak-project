@@ -60,7 +60,7 @@ normally.
 
 (defun deg- ((arg0 float) (arg1 float))
   "Compute arg0-arg1, unwrapped, using rotation units.
-Result should be in the range (-180, 180)"
+   Result should be in the range (-180, 180)"
   (the float (sar (- (shl (the int arg0) 48) (shl (the int arg1) 48)) 48))
   )
 
@@ -206,7 +206,7 @@ Result should be in the range (-180, 180)"
   (let ((f2-0 (* 0.000095873795 (unwrap-angle arg0))))
     f2-0
     (let* ((f1-4 (* 0.999998 f2-0))
-           (f0-3 (* f2-0 f2-0))
+           (f0-3 (square f2-0))
            (f2-1 (* f2-0 f0-3))
            (f1-5 (+ f1-4 (* -0.16666014 f2-1)))
            (f2-2 (* f2-1 f0-3))
@@ -268,9 +268,9 @@ Result should be in the range (-180, 180)"
 
 (defun vector-sin-rad! ((arg0 vector) (arg1 vector))
   "Taylor series approximation of sine on all 4 elements in a vector.
-Inputs should be in radians, in -pi to pi.
-Somehow their coefficients are a little bit off.
-Like the first coefficient, which should obviously be 1, is not quite 1."
+   Inputs should be in radians, in -pi to pi.
+   Somehow their coefficients are a little bit off.
+   Like the first coefficient, which should obviously be 1, is not quite 1."
   (rlet ((acc :class vf)
          (vf1 :class vf)
          (vf10 :class vf)
@@ -344,7 +344,7 @@ Like the first coefficient, which should obviously be 1, is not quite 1."
 ;; ERROR: Bad vector register dependency: vf2
 (defun vector-cos-rad! ((arg0 vector) (arg1 vector))
   "Compute the cosine of all 4 vector elements.
-Radians, with no wrapping. Uses taylor series with 4 coefficients."
+   Radians, with no wrapping. Uses taylor series with 4 coefficients."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -378,8 +378,8 @@ Radians, with no wrapping. Uses taylor series with 4 coefficients."
 ;; ERROR: Bad vector register dependency: vf14
 (defun vector-sincos-rad! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Compute the sine and cosine of each element of src, storing it in dst-sin and dst-cos.
-This is more efficient than separate calls to sin and cos.
-Inputs should be radians in -pi to pi."
+   This is more efficient than separate calls to sin and cos.
+   Inputs should be radians in -pi to pi."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -862,7 +862,7 @@ Not sure why this really needs to be separate the from previous function..."
 
 (defun sign ((arg0 float))
   "Similar to above, but returns 0 if input is 0.
-But is more complicated."
+   But is more complicated."
   (cond
     ((< 0.0 arg0)
      1.0
@@ -943,10 +943,7 @@ But is more complicated."
                    16383.996
                    )
                   (else
-                    (let* ((f0-6 1.0)
-                           (f1-2 arg0)
-                           (f0-8 (sqrtf (- f0-6 (* f1-2 f1-2))))
-                           )
+                    (let ((f0-8 (sqrtf (- 1.0 (square arg0)))))
                       (atan0 arg0 f0-8)
                       )
                     )
@@ -981,18 +978,14 @@ But is more complicated."
   "Inverse cosine, radians."
   (cond
     ((>= arg0 0.0)
-     (let* ((f0-1 1.0)
-            (f1-1 arg0)
-            (f0-3 (sqrtf (- f0-1 (* f1-1 f1-1))))
+     (let* ((f0-3 (sqrtf (- 1.0 (square arg0))))
             (f0-5 (/ (- f0-3 arg0) (+ f0-3 arg0)))
             )
        (atan-series-rad f0-5)
        )
      )
     (else
-      (let* ((f0-6 1.0)
-             (f1-6 arg0)
-             (f0-8 (sqrtf (- f0-6 (* f1-6 f1-6))))
+      (let* ((f0-8 (sqrtf (- 1.0 (square arg0))))
              (f0-10 (/ (+ f0-8 arg0) (- f0-8 arg0)))
              )
         (- 3.1415925 (atan-series-rad f0-10))

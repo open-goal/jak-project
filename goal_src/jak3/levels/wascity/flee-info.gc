@@ -22,7 +22,6 @@
 
 
 (defmethod flee-info-method-9 ((this flee-info) (arg0 citizen) (arg1 nav-branch) (arg2 int) (arg3 vector) (arg4 float))
-  (local-vars (sv-32 int))
   (when (nonzero? arg2)
     (-> arg1 src-node)
     (let* ((s2-0 (-> arg1 dest-node))
@@ -37,10 +36,11 @@
             (s1-0 (-> s2-0 branch-count))
             (f30-0 0.0)
             )
-        (set! sv-32 0)
-        (while (< sv-32 s1-0)
-          (+! f30-0 (flee-info-method-9 this arg0 (-> s2-0 branch-array sv-32) (+ arg2 -1) arg3 s0-0))
-          (set! sv-32 (+ sv-32 1))
+        (let ((sv-32 0))
+          (while (< sv-32 s1-0)
+            (+! f30-0 (flee-info-method-9 this arg0 (-> s2-0 branch-array sv-32) (+ arg2 -1) arg3 s0-0))
+            (+! sv-32 1)
+            )
           )
         ;; og:preserve-this fix divide by zero
         (set! arg4 (+ s0-0 (the float (/-signed-0-guard (the int f30-0) s1-0))))
@@ -79,7 +79,6 @@
   )
 
 (defmethod flee-info-method-13 ((this flee-info) (arg0 citizen))
-  (local-vars (sv-80 nav-branch))
   (let* ((s5-0 (-> arg0 controller))
          (s2-0 (-> s5-0 branch dest-node))
          (s4-0 (the-as nav-branch #f))
@@ -100,8 +99,9 @@
                     (f30-0 0.0)
                     )
                 (dotimes (s0-2 s1-2)
-                  (set! sv-80 (-> s2-0 branch-array s0-2))
-                  (let ((f0-5 (flee-info-method-9 this arg0 sv-80 4 (-> arg0 danger-pos) 0.0)))
+                  (let* ((sv-80 (-> s2-0 branch-array s0-2))
+                         (f0-5 (flee-info-method-9 this arg0 sv-80 4 (-> arg0 danger-pos) 0.0))
+                         )
                     (when (< f30-0 f0-5)
                       (set! f30-0 f0-5)
                       (set! s4-0 sv-80)

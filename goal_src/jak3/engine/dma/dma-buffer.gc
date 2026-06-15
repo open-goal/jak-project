@@ -431,7 +431,8 @@
 
   ;; The first 4 bytes of a vu-function object's data are discarded because they aren't aligned.
   (let ((func-ptr (the-as pointer (&-> vu-func data 4)))
-        (qlen (-> vu-func qlength)) ;; number of quadwords
+        ;; og:preserve-this we rely on the vu functions being empty on pc
+        (qlen (#if PC_PORT 0 (-> vu-func qlength))) ;; number of quadwords
         (origin (-> vu-func origin)) ;; destination address in VU instruction memory.
         )
     ;; loop until whole program is transferred.

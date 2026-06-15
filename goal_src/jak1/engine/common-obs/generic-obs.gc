@@ -406,7 +406,7 @@
 (defbehavior command-get-process camera-tracker ((arg0 object) (arg1 process))
   (the-as process
           (cond
-            ((null? arg0) arg1)
+            ((null? arg0) (empty) arg1)
             ((type-type? (rtype-of arg0) process) (the-as process arg0))
             ((= arg0 'target) *target*)
             ((= arg0 'sidekick) (when *target* (let ((v1-6 (-> *target* sidekick))) (if v1-6 (the-as process (-> v1-6 0 self))))))
@@ -421,8 +421,8 @@
                  ((= arg0 'look-at) (handle->process (-> v1-13 look-at-target)))
                  ((= arg0 'pov) (handle->process (-> v1-13 pov-target)))
                  ((= arg0 'anim) (handle->process (-> v1-13 anim-process)))
-                 (else arg1))))
-            (else arg1))))
+                 (else (empty) arg1))))
+            (else (empty) arg1))))
 
 (defun command-get-camera ((arg0 object) (arg1 state))
   (cond
@@ -437,7 +437,7 @@
 
 (defun command-get-trans ((arg0 object) (arg1 vector))
   (cond
-    ((null? arg0) arg1)
+    ((null? arg0) (empty) arg1)
     ((= arg0 'null) *null-vector*)
     ((= arg0 'target) (target-pos 0))
     ((pair? arg0)
@@ -445,8 +445,8 @@
            (v1-4 (command-get-int (car (cdr arg0)) 0)))
        (cond
          (s4-0 (-> (the-as target s4-0) node-list data v1-4 bone transform vector 3))
-         (else arg1))))
-    (else arg1)))
+         (else (empty) arg1))))
+    (else (empty) arg1)))
 
 (defbehavior process-grab? camera-tracker ((arg0 process))
   (let ((gp-0 (command-get-process arg0 *target*)))
@@ -724,12 +724,11 @@
 (define *lev-string* (new 'global 'string 64 (the-as string #f)))
 
 (defmethod init-from-entity! ((this med-res-level) (arg0 entity-actor))
-  (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 128)
   "#f"
   (let ((s4-0 (the-as (pointer sparticle-launch-group) #f)))
-    (set! sv-16 (new 'static 'res-tag))
-    (let* ((s3-0 (res-lump-data arg0 'art-name (pointer symbol) :tag-ptr (& sv-16)))
+    (let* ((sv-16 (new 'static 'res-tag))
+           (s3-0 (res-lump-data arg0 'art-name (pointer symbol) :tag-ptr (& sv-16)))
            (s2-0 (-> s3-0 0)))
       (cond
         ((not s3-0))
@@ -781,7 +780,6 @@
         (suspend))))
 
 (defmethod init-from-entity! ((this part-spawner) (arg0 entity-actor))
-  (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 128)
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this root) (new 'process 'trsqv))
@@ -793,8 +791,8 @@
   (set! (-> this sound) (new 'process 'ambient-sound (-> this entity) (-> this root trans)))
   (let ((s4-0 (the-as object "#f")))
     (let ((s3-0 (the-as (pointer sparticle-launch-group) #f)))
-      (set! sv-16 (new 'static 'res-tag))
-      (let* ((s5-1 (res-lump-data arg0 'art-name (pointer (pointer sparticle-launch-group)) :tag-ptr (& sv-16)))
+      (let* ((sv-16 (new 'static 'res-tag))
+             (s5-1 (res-lump-data arg0 'art-name (pointer (pointer sparticle-launch-group)) :tag-ptr (& sv-16)))
              (s2-0 (-> s5-1 0)))
         (cond
           ((part-group-pointer? s2-0) (set! s3-0 (-> s5-1 0)))
@@ -1337,8 +1335,8 @@
                                :from (the-as process v1-1)
                                #f
                                (-> self event-mode)
-                               (-> *target* control unknown-dword50)
-                               (-> *target* control unknown-dword51)))
+                               (-> *target* control target-attack-id)
+                               (-> *target* control attack-count)))
                   (else
                    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
                      (set! (-> a1-5 from) (the-as process v1-1))

@@ -15,9 +15,12 @@
         )
     (when (wascity-turret-get-reticle-fire-pos s4-0)
       (transform-point-vector! s5-0 s4-0)
-      (if (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
-          (set! (-> s5-0 x) (- (-> s5-0 x)))
-          )
+      ;; og:preserve-this mirror mode
+      ;; Since we don't properly flip the screen, don't mess with the hud (or the reticule moves in the opposite direction)
+      ;; (if (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+      ;;         *PC-MIRROR-MODE-SET*)
+      ;;     (set! (-> s5-0 x) (- (-> s5-0 x)))
+      ;;     )
       (+! (-> s5-0 x) -1792.0)
       (+! (-> s5-0 y) -1840.0)
       (set-hud-piece-position! (-> this sprites 0) (the int (-> s5-0 x)) (the int (-> s5-0 y)))
@@ -62,7 +65,8 @@
         (let ((s3-0 (the-as object (new 'stack-no-clear 'vector4w))))
           (set! (-> (the-as vector4w s3-0) quad) (the-as uint128 0))
           (when (transform-point-qword! (the-as vector4w s3-0) (-> this position s5-2))
-            (when (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+            ;; og:preserve-this mirror mode
+            (when (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen)) *PC-MIRROR-MODE-SET*)
               (+! (-> (the-as (pointer uint32) s3-0) 0) -32768)
               (set! (-> (the-as (pointer uint32) s3-0) 0)
                     (the-as uint (- (the-as int (-> (the-as (pointer uint32) s3-0) 0))))
@@ -130,7 +134,9 @@
           )
       (b! (< (-> this minfo s5-3 pos y) (+ -20480.0 (get-base-height *ocean-map*))) cfg-53)
       (transform-point-vector! s3-3 (-> this minfo s5-3 pos))
-      (if (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+      ;; og:preserve-this mirror mode
+      (if (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+              *PC-MIRROR-MODE-SET*)
           (set! (-> s3-3 x) (- (-> s3-3 x)))
           )
       (+! (-> s3-3 x) -2048.0)
@@ -275,14 +281,16 @@
      0
      )
     (('off-to-left)
-     (logior! (-> this offscreen) (if (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+     ;; og:preserve-this mirror mode
+     (logior! (-> this offscreen) (if (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen)) *PC-MIRROR-MODE-SET*)
                                       2
                                       1
                                       )
               )
      )
     (('off-to-right)
-     (logior! (-> this offscreen) (if (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+     ;; og:preserve-this mirror mode
+     (logior! (-> this offscreen) (if (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen)) *PC-MIRROR-MODE-SET*)
                                       1
                                       2
                                       )

@@ -303,138 +303,141 @@
 ;; definition for function disasm-vif-tag
 ;; INFO: Used lq/sq
 (defun disasm-vif-tag ((data (pointer vif-tag)) (words int) (stream symbol) (details symbol))
-  (local-vars (cmd vif-cmd) (data-ptr (pointer vif-tag)) (data-idx int) (unpack-imm vif-unpack-imm))
   (let ((byte-idx 0))
     (while (< byte-idx (* words 4))
       (let ((packet-size 4))
         (let ((first-tag (-> data 0)))
           (format stream "  #x~X:" data)
           (dotimes (cmd-template-idx (-> *vif-disasm-table* length))
-            (set! cmd (-> first-tag cmd))
-            (when (= (logand cmd (-> *vif-disasm-table* cmd-template-idx mask)) (-> *vif-disasm-table* cmd-template-idx tag))
-              (let ((print-kind (-> *vif-disasm-table* cmd-template-idx print)))
-                (cond
-                  ((zero? print-kind)
-                   (format stream "  (~s :irq ~D)~%" (-> *vif-disasm-table* cmd-template-idx string1) (-> first-tag irq))
-                   )
-                  ((= print-kind 1)
-                   (format
-                     stream
-                     "  (~s :irq ~D :~s #x~X)~%"
-                     (-> *vif-disasm-table* cmd-template-idx string1)
-                     (-> first-tag irq)
-                     (-> *vif-disasm-table* cmd-template-idx string2)
-                     (-> first-tag imm)
+            (let ((cmd (-> first-tag cmd)))
+              (when (= (logand cmd (-> *vif-disasm-table* cmd-template-idx mask)) (-> *vif-disasm-table* cmd-template-idx tag))
+                (let ((print-kind (-> *vif-disasm-table* cmd-template-idx print)))
+                  (cond
+                    ((zero? print-kind)
+                     (format stream "  (~s :irq ~D)~%" (-> *vif-disasm-table* cmd-template-idx string1) (-> first-tag irq))
                      )
-                   )
-                  ((= print-kind 2)
-                   (let ((stcycl-imm (the-as vif-stcycl-imm (-> first-tag imm))))
+                    ((= print-kind 1)
                      (format
                        stream
-                       "  (~s :irq ~D :wl ~D :cl ~D)~%"
+                       "  (~s :irq ~D :~s #x~X)~%"
                        (-> *vif-disasm-table* cmd-template-idx string1)
                        (-> first-tag irq)
-                       (-> stcycl-imm wl)
-                       (-> stcycl-imm cl)
+                       (-> *vif-disasm-table* cmd-template-idx string2)
+                       (-> first-tag imm)
                        )
                      )
-                   )
-                  ((= print-kind 3)
-                   (set! packet-size 8)
-                   (format
-                     stream
-                     "  (~s :irq ~D :~s #x~X)~%"
-                     (-> *vif-disasm-table* cmd-template-idx string1)
-                     (-> first-tag irq)
-                     (-> *vif-disasm-table* cmd-template-idx string2)
-                     (-> data 1)
-                     )
-                   )
-                  ((= print-kind 4)
-                   (set! packet-size 20)
-                   (format
-                     stream
-                     "  (~s :irq ~D :~s "
-                     (-> *vif-disasm-table* cmd-template-idx string1)
-                     (-> first-tag irq)
-                     (-> *vif-disasm-table* cmd-template-idx string2)
-                     )
-                   (format stream "#x~X #x~X #x~X #x~X)~%" (-> data 1) (-> data 2) (-> data 3) (-> data 4))
-                   )
-                  ((= print-kind 5)
-                   (format
-                     stream
-                     "  (~s :irq ~D :instructions #x~D :addr #x~X)~%"
-                     (-> *vif-disasm-table* cmd-template-idx string1)
-                     (-> first-tag irq)
-                     (-> first-tag num)
-                     (-> first-tag imm)
-                     )
-                   )
-                  ((= print-kind 6)
-                   (if (-> first-tag imm)
-                       (set! packet-size #x100000)
-                       (set! packet-size (the-as int (* (-> first-tag imm) 16)))
+                    ((= print-kind 2)
+                     (let ((stcycl-imm (the-as vif-stcycl-imm (-> first-tag imm))))
+                       (format
+                         stream
+                         "  (~s :irq ~D :wl ~D :cl ~D)~%"
+                         (-> *vif-disasm-table* cmd-template-idx string1)
+                         (-> first-tag irq)
+                         (-> stcycl-imm wl)
+                         (-> stcycl-imm cl)
+                         )
                        )
-                   (format
-                     stream
-                     "  (~s :irq ~D :qwc #x~D)~%"
-                     (-> *vif-disasm-table* cmd-template-idx string1)
-                     (-> first-tag irq)
-                     (-> first-tag imm)
                      )
-                   (set! data-ptr (&-> data 1))
-                   (set! data-idx 0)
-                   (while (< data-idx (the-as int (-> first-tag imm)))
+                    ((= print-kind 3)
+                     (set! packet-size 8)
                      (format
                        stream
-                       "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"
-                       (+ (+ (* data-idx 16) 4) (the-as int data))
-                       (-> data-ptr (* data-idx 4))
-                       (-> data-ptr (+ (* data-idx 4) 1))
-                       (-> data-ptr (+ (* data-idx 4) 2))
-                       (-> data-ptr (+ (* data-idx 4) 3))
+                       "  (~s :irq ~D :~s #x~X)~%"
+                       (-> *vif-disasm-table* cmd-template-idx string1)
+                       (-> first-tag irq)
+                       (-> *vif-disasm-table* cmd-template-idx string2)
+                       (-> data 1)
                        )
-                     (set! data-idx (+ data-idx 1))
                      )
-                   #f
-                   )
-                  ((= print-kind 7)
-                   (set! packet-size
-                         (the-as int (+ (logand -4 (+ (* (-> *vif-disasm-table* cmd-template-idx val) (-> first-tag num)) 3)) 4))
+                    ((= print-kind 4)
+                     (set! packet-size 20)
+                     (format
+                       stream
+                       "  (~s :irq ~D :~s "
+                       (-> *vif-disasm-table* cmd-template-idx string1)
+                       (-> first-tag irq)
+                       (-> *vif-disasm-table* cmd-template-idx string2)
+                       )
+                     (format stream "#x~X #x~X #x~X #x~X)~%" (-> data 1) (-> data 2) (-> data 3) (-> data 4))
+                     )
+                    ((= print-kind 5)
+                     (format
+                       stream
+                       "  (~s :irq ~D :instructions #x~D :addr #x~X)~%"
+                       (-> *vif-disasm-table* cmd-template-idx string1)
+                       (-> first-tag irq)
+                       (-> first-tag num)
+                       (-> first-tag imm)
+                       )
+                     )
+                    ((= print-kind 6)
+                     (if (-> first-tag imm)
+                         (set! packet-size #x100000)
+                         (set! packet-size (the-as int (* (-> first-tag imm) 16)))
                          )
-                   (set! unpack-imm (the-as vif-unpack-imm (-> first-tag imm)))
-                   (format
-                     stream
-                     "  (~s :irq ~D :num ~D :addr #x~X "
-                     (-> *vif-disasm-table* cmd-template-idx string1)
-                     (-> first-tag irq)
-                     (-> first-tag num)
-                     (-> unpack-imm addr)
+                     (format
+                       stream
+                       "  (~s :irq ~D :qwc #x~D)~%"
+                       (-> *vif-disasm-table* cmd-template-idx string1)
+                       (-> first-tag irq)
+                       (-> first-tag imm)
+                       )
+                     (let ((data-ptr (&-> data 1))
+                           (data-idx 0)
+                           )
+                       (while (< data-idx (the-as int (-> first-tag imm)))
+                         (format
+                           stream
+                           "  #x~X:    #x~8x #x~8x #x~8x #x~8x~%"
+                           (+ (+ (* data-idx 16) 4) (the-as int data))
+                           (-> data-ptr (* data-idx 4))
+                           (-> data-ptr (+ (* data-idx 4) 1))
+                           (-> data-ptr (+ (* data-idx 4) 2))
+                           (-> data-ptr (+ (* data-idx 4) 3))
+                           )
+                         (+! data-idx 1)
+                         )
+                       )
+                     #f
                      )
-                   (format
-                     stream
-                     ":msk ~D :flg ~D :usn ~D [skip ~d])~%"
-                     (-> first-tag msk)
-                     (-> unpack-imm flg)
-                     (-> unpack-imm usn)
-                     (the-as uint packet-size)
-                     )
-                   (if details
-                       (disasm-vif-details
+                    ((= print-kind 7)
+                     (set! packet-size
+                           (the-as int (+ (logand -4 (+ (* (-> *vif-disasm-table* cmd-template-idx val) (-> first-tag num)) 3)) 4))
+                           )
+                     (let ((unpack-imm (the-as vif-unpack-imm (-> first-tag imm))))
+                       (format
                          stream
-                         (the-as (pointer uint8) data)
-                         (logand cmd (vif-cmd cmd-mask))
-                         (the-as int (-> first-tag num))
+                         "  (~s :irq ~D :num ~D :addr #x~X "
+                         (-> *vif-disasm-table* cmd-template-idx string1)
+                         (-> first-tag irq)
+                         (-> first-tag num)
+                         (-> unpack-imm addr)
+                         )
+                       (format
+                         stream
+                         ":msk ~D :flg ~D :usn ~D [skip ~d])~%"
+                         (-> first-tag msk)
+                         (-> unpack-imm flg)
+                         (-> unpack-imm usn)
+                         (the-as uint packet-size)
                          )
                        )
-                   )
-                  ((= print-kind 8)
-                   (format stream "  (*unknown* vif-tag #x~X)~%" (-> first-tag cmd))
-                   )
+                     (if details
+                         (disasm-vif-details
+                           stream
+                           (the-as (pointer uint8) data)
+                           (logand cmd (vif-cmd cmd-mask))
+                           (the-as int (-> first-tag num))
+                           )
+                         )
+                     )
+                    ((= print-kind 8)
+                     (format stream "  (*unknown* vif-tag #x~X)~%" (-> first-tag cmd))
+                     )
+                    )
                   )
+                (set! cmd-template-idx (-> *vif-disasm-table* length))
                 )
-              (set! cmd-template-idx (-> *vif-disasm-table* length))
               )
             )
           )
@@ -512,17 +515,8 @@
 ;; WARN: Check prologue - tricky store of a0
 ;; INFO: Used lq/sq
 (defun disasm-dma-list ((data dma-packet) (mode symbol) (verbose symbol) (stream symbol) (expected-size int))
-  (local-vars
-    (addr object)
-    (data-2 dma-packet)
-    (qwc int)
-    (ra-1 object)
-    (ra-2 object)
-    (call-depth int)
-    (current-tag dma-tag)
-    )
-  (set! data-2 data)
-  (let ((mode-2 mode)
+  (let ((data-2 data)
+        (mode-2 mode)
         (verbose-2 verbose)
         (stream-2 stream)
         (expected-size-2 expected-size)
@@ -534,174 +528,176 @@
       (let ((total-qwc 0)
             (total-tags 0)
             )
-        (set! addr 0)
-        (set! qwc 0)
-        (set! ra-1 0)
-        (set! ra-2 1)
-        (set! call-depth -1)
-        (set! current-tag (new 'static 'dma-tag))
-        (while (not end-condition)
-          (cond
-            ((not (valid? data-2 (the-as type #f) "dma-list tag pointer" #t stream-2))
-             (format stream-2 "ERROR: dma-list tag pointer invalid~%")
-             (set! end-condition 'error)
-             )
-            (else
-              (set! current-tag (-> data-2 dma))
-              (when (not (or (zero? total-tags) (valid? addr (the-as type #f) "dma-list data pointer" #t stream-2)))
-                (format stream-2 "ERROR: dma-list data pointer invalid~%")
-                (set! end-condition 'error)
-                )
-              (when (logtest? (the-as dma-tag #x3ff0000) current-tag)
-                (format stream-2 "ERROR: dma tag has data in reserved bits ~X~%")
-                (set! end-condition 'error)
-                )
+        (let ((addr 0)
+              (qwc 0)
+              (ra-1 0)
+              (ra-2 1)
+              (call-depth -1)
+              (current-tag (new 'static 'dma-tag))
               )
-            )
-          (when (or verbose-2 (= end-condition 'error))
-            (format stream-2 "#x~8x: " data-2)
+          (while (not end-condition)
             (cond
-              ((zero? call-depth)
-               (format stream-2 "  ")
-               )
-              ((= call-depth 1)
-               (format stream-2 "    ")
-               )
-              )
-            (disasm-dma-tag current-tag stream-2)
-            )
-          (cond
-            (end-condition
-              )
-            ((or (= (-> current-tag id) (dma-tag-id ref))
-                 (= (-> current-tag id) (dma-tag-id refs))
-                 (zero? (-> current-tag id))
-                 )
-             (set! addr (-> current-tag addr))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (when mode-2
-               (let ((v0-10 (disasm-vif-tag (&-> data-2 vif0) 2 stream-2 (= mode-2 'details))))
-                 (disasm-vif-tag
-                   (the-as (pointer vif-tag) (+ addr v0-10))
-                   (the-as int (- (* qwc 4) (the-as uint (/ v0-10 4))))
-                   stream-2
-                   (= mode-2 'details)
-                   )
-                 )
-               )
-             (set! data-2 (the-as dma-packet (&-> (the-as (pointer uint64) data-2) 2)))
-             (if (= (-> current-tag id) (dma-tag-id refe))
-                 (set! end-condition #t)
-                 )
-             )
-            ((= (-> current-tag id) (dma-tag-id cnt))
-             (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (if mode-2
-                 (disasm-vif-tag
-                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
-                   (the-as int (+ (* qwc 4) 2))
-                   stream-2
-                   (= mode-2 'details)
-                   )
-                 )
-             (set! data-2 (the-as dma-packet (+ (the-as uint data-2) (* (+ qwc 1) 16))))
-             data-2
-             )
-            ((= (-> current-tag id) (dma-tag-id next))
-             (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (if mode-2
-                 (disasm-vif-tag
-                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
-                   (the-as int (+ (* qwc 4) 2))
-                   stream-2
-                   (= mode-2 'details)
-                   )
-                 )
-             (when (= data-2 (-> current-tag addr))
-               (format stream-2 "ERROR: next tag creates infinite loop.~%")
+              ((not (valid? data-2 (the-as type #f) "dma-list tag pointer" #t stream-2))
+               (format stream-2 "ERROR: dma-list tag pointer invalid~%")
                (set! end-condition 'error)
                )
-             (set! data-2 (the-as dma-packet (-> current-tag addr)))
-             data-2
-             )
-            ((= (-> current-tag id) (dma-tag-id call))
-             (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (if mode-2
-                 (disasm-vif-tag
-                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
-                   (the-as int (+ (* qwc 4) 2))
-                   stream-2
-                   (= mode-2 'details)
-                   )
-                 )
-             (set! data-2 (the-as dma-packet (-> current-tag addr)))
-             (set! call-depth (+ call-depth 1))
-             (cond
-               ((zero? call-depth)
-                (set! ra-1 (&+ addr qwc))
-                (the-as (pointer uint64) ra-1)
+              (else
+                (set! current-tag (-> data-2 dma))
+                (when (not (or (zero? total-tags) (valid? addr (the-as type #f) "dma-list data pointer" #t stream-2)))
+                  (format stream-2 "ERROR: dma-list data pointer invalid~%")
+                  (set! end-condition 'error)
+                  )
+                (when (logtest? (the-as dma-tag #x3ff0000) current-tag)
+                  (format stream-2 "ERROR: dma tag has data in reserved bits ~X~%")
+                  (set! end-condition 'error)
+                  )
                 )
-               (else
-                 (set! ra-2 (&+ addr qwc))
-                 (the-as (pointer uint64) ra-2)
+              )
+            (when (or verbose-2 (= end-condition 'error))
+              (format stream-2 "#x~8x: " data-2)
+              (cond
+                ((zero? call-depth)
+                 (format stream-2 "  ")
                  )
-               )
-             )
-            ((= (-> current-tag id) (dma-tag-id ret))
-             (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (if mode-2
-                 (disasm-vif-tag
-                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
-                   (the-as int (+ (* qwc 4) 2))
-                   stream-2
-                   (= mode-2 'details)
+                ((= call-depth 1)
+                 (format stream-2 "    ")
+                 )
+                )
+              (disasm-dma-tag current-tag stream-2)
+              )
+            (cond
+              (end-condition
+                )
+              ((or (= (-> current-tag id) (dma-tag-id ref))
+                   (= (-> current-tag id) (dma-tag-id refs))
+                   (zero? (-> current-tag id))
+                   )
+               (set! addr (-> current-tag addr))
+               (set! qwc (the-as int (-> current-tag qwc)))
+               (when mode-2
+                 (let ((v0-10 (disasm-vif-tag (&-> data-2 vif0) 2 stream-2 (= mode-2 'details))))
+                   (disasm-vif-tag
+                     (the-as (pointer vif-tag) (+ (the-as uint addr) v0-10))
+                     (the-as int (- (* (the-as uint qwc) 4) (the-as uint (/ v0-10 4))))
+                     stream-2
+                     (= mode-2 'details)
+                     )
                    )
                  )
-             (let ((v1-123 call-depth))
-               (cond
-                 ((zero? v1-123)
-                  (set! data-2 (the-as dma-packet ra-1))
-                  data-2
-                  )
-                 ((= v1-123 1)
-                  (set! data-2 (the-as dma-packet ra-2))
-                  data-2
-                  )
-                 (else
+               (set! data-2 (the-as dma-packet (&-> (the-as (pointer uint64) data-2) 2)))
+               (if (= (-> current-tag id) (dma-tag-id refe))
                    (set! end-condition #t)
                    )
-                 )
                )
-             (set! call-depth (+ call-depth -1))
-             call-depth
-             )
-            ((= (-> current-tag id) (dma-tag-id end))
-             (set! addr (&-> (the-as (pointer uint64) data-2) 2))
-             (set! qwc (the-as int (-> current-tag qwc)))
-             (set! end-condition #t)
-             (if mode-2
-                 (disasm-vif-tag
-                   (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
-                   (the-as int (+ (* qwc 4) 2))
-                   stream-2
-                   (= mode-2 'details)
+              ((= (-> current-tag id) (dma-tag-id cnt))
+               (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+               (set! qwc (the-as int (-> current-tag qwc)))
+               (if mode-2
+                   (disasm-vif-tag
+                     (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
+                     (the-as int (+ (* (the-as uint qwc) 4) 2))
+                     stream-2
+                     (= mode-2 'details)
+                     )
+                   )
+               (set! data-2 (the-as dma-packet (+ (the-as uint data-2) (* (+ (the-as uint qwc) 1) 16))))
+               data-2
+               )
+              ((= (-> current-tag id) (dma-tag-id next))
+               (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+               (set! qwc (the-as int (-> current-tag qwc)))
+               (if mode-2
+                   (disasm-vif-tag
+                     (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
+                     (the-as int (+ (* (the-as uint qwc) 4) 2))
+                     stream-2
+                     (= mode-2 'details)
+                     )
+                   )
+               (when (= data-2 (-> current-tag addr))
+                 (format stream-2 "ERROR: next tag creates infinite loop.~%")
+                 (set! end-condition 'error)
+                 )
+               (set! data-2 (the-as dma-packet (-> current-tag addr)))
+               data-2
+               )
+              ((= (-> current-tag id) (dma-tag-id call))
+               (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+               (set! qwc (the-as int (-> current-tag qwc)))
+               (if mode-2
+                   (disasm-vif-tag
+                     (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
+                     (the-as int (+ (* (the-as uint qwc) 4) 2))
+                     stream-2
+                     (= mode-2 'details)
+                     )
+                   )
+               (set! data-2 (the-as dma-packet (-> current-tag addr)))
+               (+! call-depth 1)
+               (cond
+                 ((zero? call-depth)
+                  (set! ra-1 (&+ (the-as (pointer uint64) addr) (the-as uint qwc)))
+                  (the-as (pointer uint64) (the-as (pointer uint64) ra-1))
+                  )
+                 (else
+                   (set! ra-2 (&+ (the-as (pointer uint64) addr) (the-as uint qwc)))
+                   (the-as (pointer uint64) (the-as (pointer uint64) ra-2))
                    )
                  )
-             )
-            (else
-              (format stream-2 "ERROR: Unknown DMA TAG command.~%")
-              (set! end-condition 'error)
+               )
+              ((= (-> current-tag id) (dma-tag-id ret))
+               (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+               (set! qwc (the-as int (-> current-tag qwc)))
+               (if mode-2
+                   (disasm-vif-tag
+                     (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
+                     (the-as int (+ (* (the-as uint qwc) 4) 2))
+                     stream-2
+                     (= mode-2 'details)
+                     )
+                   )
+               (let ((v1-123 call-depth))
+                 (cond
+                   ((zero? v1-123)
+                    (set! data-2 (the-as dma-packet ra-1))
+                    data-2
+                    )
+                   ((= v1-123 1)
+                    (set! data-2 (the-as dma-packet ra-2))
+                    data-2
+                    )
+                   (else
+                     (set! end-condition #t)
+                     )
+                   )
+                 )
+               (+! call-depth -1)
+               call-depth
+               )
+              ((= (-> current-tag id) (dma-tag-id end))
+               (set! addr (&-> (the-as (pointer uint64) data-2) 2))
+               (set! qwc (the-as int (-> current-tag qwc)))
+               (set! end-condition #t)
+               (if mode-2
+                   (disasm-vif-tag
+                     (the-as (pointer vif-tag) (&-> (the-as (pointer uint64) data-2) 1))
+                     (the-as int (+ (* (the-as uint qwc) 4) 2))
+                     stream-2
+                     (= mode-2 'details)
+                     )
+                   )
+               )
+              (else
+                (format stream-2 "ERROR: Unknown DMA TAG command.~%")
+                (set! end-condition 'error)
+                )
               )
+            (+! total-qwc qwc)
+            (+! total-tags 1)
+            (if (and (>= expected-size-2 0) (>= total-tags expected-size-2))
+                (set! end-condition #t)
+                )
             )
-          (+! total-qwc qwc)
-          (+! total-tags 1)
-          (if (and (>= expected-size-2 0) (>= total-tags expected-size-2))
-              (set! end-condition #t)
-              )
           )
         (when (or verbose-2 (= end-condition 'error))
           (format stream-2 "NOTICE: Total tags: ~d~%" total-tags)

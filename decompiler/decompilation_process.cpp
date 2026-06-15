@@ -130,7 +130,7 @@ int run_decompilation_process(decompiler::Config config,
   // print disassembly
   if (config.disassemble_code || config.disassemble_data) {
     db.write_disassembly(out_folder, config.disassemble_data, config.disassemble_code,
-                         config.write_hex_near_instructions);
+                         config.write_hex_near_instructions, config.dump_function_metadata);
   }
 
   if (config.process_art_groups) {
@@ -180,7 +180,7 @@ int run_decompilation_process(decompiler::Config config,
 
   if (config.generate_all_types) {
     ASSERT_MSG(config.decompile_code, "Must decompile code to generate all-types");
-    db.ir2_analyze_all_types(out_folder / "new-all-types.gc", config.old_all_types_file,
+    db.ir2_analyze_all_types(out_folder / "_new-all-types.gc", config.old_all_types_file,
                              config.hacks.types_with_bad_inspect_methods);
   }
 
@@ -195,6 +195,12 @@ int run_decompilation_process(decompiler::Config config,
   }
 
   if (config.dump_part_group_table) {
+    if (!config.process_part_group_table || !config.decompile_code) {
+      lg::error(
+          "[DUMP] 'dump_part_group_table' set without setting 'process_part_group_table' or "
+          "'decompile_code'");
+    }
+    lg::info("[DUMP] Dumping part group table");
     db.dump_part_group_table(out_folder, config.part_group_table);
   }
 
@@ -243,6 +249,11 @@ int run_decompilation_process(decompiler::Config config,
   lg::info("[Mem] After spool handling: {} MB", get_peak_rss() / (1024 * 1024));
 
   TextureDB tex_db;
+  if (config.dump_tex_info && (!config.process_tpages && config.levels_extract)) {
+    lg::error(
+        "[DUMP] 'dump_tex_info' set without also setting 'process_tpages' or 'levels_extract'");
+    return 1;
+  }
   if (config.process_tpages || config.levels_extract) {
     auto textures_out = out_folder / "textures";
     auto dump_out = out_folder / "import";
@@ -254,6 +265,10 @@ int run_decompilation_process(decompiler::Config config,
                                  tex_db.generate_texture_dest_adjustment_table());
     }
     if (config.dump_tex_info) {
+      if (!config.write_tpage_imports) {
+        lg::error("[DUMP] 'dump_tex_info' set without setting 'write_tpage_imports'");
+        return 1;
+      }
       auto texture_file_name = out_folder / "dump" / "tex-info.min.json";
       nlohmann::json texture_json = db.dts.textures;
       file_util::create_dir_if_needed_for_file(texture_file_name);

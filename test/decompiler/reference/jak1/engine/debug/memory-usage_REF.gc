@@ -305,7 +305,6 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch memory-usage-block vs none.
 (defmethod print-mem-usage ((this memory-usage-block) (arg0 level) (arg1 object))
-  (local-vars (sv-16 object) (sv-32 string) (sv-48 symbol) (sv-64 int) (sv-80 int))
   (let ((s3-0 (&- (-> arg0 heap current) (the-as uint (-> arg0 heap base)))))
     (let ((v1-2 (+ (-> this data 59 total) (-> this data 60 total))))
       (< #x10000 v1-2)
@@ -317,18 +316,14 @@
       (if (< s2-0 (-> arg0 mem-usage))
           (format arg1 "~3L")
           )
-      (let ((s0-0 format))
-        (set! sv-16 arg1)
-        (set! sv-32 "~0K~10,'-S--~5,'-DK-of-~5,'-DK--~5,'-DK-of-~5,'-DK--")
-        (set! sv-48 (-> arg0 name))
-        (let ((s3-1 (sar s3-0 10))
-              (s2-1 (sar s2-0 10))
-              )
-          (set! sv-64 (sar (memory-used *nk-dead-pool*) 10))
-          (let ((t2-0 (sar (memory-total *nk-dead-pool*) 10)))
-            (s0-0 sv-16 sv-32 sv-48 s3-1 s2-1 sv-64 t2-0)
-            )
-          )
+      (format
+        arg1
+        "~0K~10,'-S--~5,'-DK-of-~5,'-DK--~5,'-DK-of-~5,'-DK--"
+        (-> arg0 name)
+        (sar s3-0 10)
+        (sar s2-0 10)
+        (sar (memory-used *nk-dead-pool*) 10)
+        (sar (memory-total *nk-dead-pool*) 10)
         )
       (format arg1 "~5,'-DK/~5,'-DK--~%" (shr s1-0 10) (sar *max-dma* 10))
       )
@@ -339,16 +334,15 @@
                     arg1
                     )
                 )
-          (s3-2 format)
-          (s1-1 "heap-~5,'-DK/~5,'-DK----~D---~D/~D~%")
-          (s0-1 (sar (memory-used *nk-dead-pool*) 10))
           )
-      (set! sv-80 (sar (memory-total *nk-dead-pool*) 10))
-      (let ((t0-1 (compact-time *nk-dead-pool*))
-            (t1-1 (-> *nk-dead-pool* compact-count))
-            (t2-1 (-> *nk-dead-pool* compact-count-targ))
-            )
-        (s3-2 s2-2 s1-1 s0-1 sv-80 t0-1 t1-1 t2-1)
+      (format
+        s2-2
+        "heap-~5,'-DK/~5,'-DK----~D---~D/~D~%"
+        (sar (memory-used *nk-dead-pool*) 10)
+        (sar (memory-total *nk-dead-pool*) 10)
+        (compact-time *nk-dead-pool*)
+        (-> *nk-dead-pool* compact-count)
+        (-> *nk-dead-pool* compact-count-targ)
         )
       )
     )

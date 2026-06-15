@@ -253,7 +253,6 @@
 (defstate keg-on-path (keg)
   :event keg-event-handler
   :code (behavior ()
-    (local-vars (sv-48 float) (sv-64 float) (sv-80 float) (sv-96 float) (sv-112 float))
     (let ((gp-0 (new-stack-vector0))
           (s5-0 (new 'stack 'vector3s))
           )
@@ -268,90 +267,92 @@
             (/ 1.0 f24-0)
             (let ((f22-0 1.0)
                   (f20-0 2.5)
+                  (sv-48 0.0)
+                  (sv-64 0.0)
+                  (sv-80 (- (-> *standard-dynamics* gravity-length)))
                   )
-              (set! sv-48 0.0)
-              (set! sv-64 0.0)
-              (set! sv-80 (- (-> *standard-dynamics* gravity-length)))
               (loop
-                (let ((f0-13 (+ (get-current-phase (-> (the-as keg-conveyor-paddle (-> self parent 0)) sync)) f26-1)))
-                  (set! sv-96 (- f0-13 (the float (the int f0-13))))
-                  )
-                (if (< sv-96 f30-0)
-                    (go keg-in-chute)
-                    )
-                (set! f30-0 sv-96)
-                (set! sv-112 (* sv-96 f28-0))
-                (eval-path-curve-div!
-                  (-> (the-as keg-conveyor-paddle (-> self parent 0)) path)
-                  (-> self path-position)
-                  sv-112
-                  'interp
-                  )
-                (path-control-method-12 (-> (the-as keg-conveyor-paddle (-> self parent 0)) path) gp-0 sv-112)
-                (seek-toward-heading-vec! (-> self root) gp-0 131072.0 (seconds 0.1))
-                (set! (-> self root trans quad) (-> self path-position quad))
-                (when (= (-> self keg-behavior) 1)
-                  (cond
-                    ((>= (vector4-dot (camera-pos) (-> self shadow-enable-plane)) 0.0)
-                     (let ((v1-32 (-> self draw shadow-ctrl)))
-                       (logclear! (-> v1-32 settings flags) (shadow-flags disable-draw))
+                (let* ((f0-13 (+ (get-current-phase (-> (the-as keg-conveyor-paddle (-> self parent 0)) sync)) f26-1))
+                       (sv-96 (- f0-13 (the float (the int f0-13))))
                        )
-                     0
-                     (let ((v1-35 (-> self draw shadow-ctrl)))
-                       (set! (-> v1-35 settings top-plane w) (- (-> self path-position y)))
-                       )
-                     0
-                     (let ((v1-38 (-> self draw shadow-ctrl)))
-                       (set! (-> v1-38 settings bot-plane w) (- (+ -8192.0 (-> self path-position y))))
-                       )
-                     0
-                     )
-                    (else
-                      (let ((v1-41 (-> self draw shadow-ctrl)))
-                        (logior! (-> v1-41 settings flags) (shadow-flags disable-draw))
+                  (if (< sv-96 f30-0)
+                      (go keg-in-chute)
+                      )
+                  (set! f30-0 sv-96)
+                  (let ((sv-112 (* sv-96 f28-0)))
+                    (eval-path-curve-div!
+                      (-> (the-as keg-conveyor-paddle (-> self parent 0)) path)
+                      (-> self path-position)
+                      sv-112
+                      'interp
+                      )
+                    (path-control-method-12 (-> (the-as keg-conveyor-paddle (-> self parent 0)) path) gp-0 sv-112)
+                    (seek-toward-heading-vec! (-> self root) gp-0 131072.0 (seconds 0.1))
+                    (set! (-> self root trans quad) (-> self path-position quad))
+                    (when (= (-> self keg-behavior) 1)
+                      (cond
+                        ((>= (vector4-dot (camera-pos) (-> self shadow-enable-plane)) 0.0)
+                         (let ((v1-32 (-> self draw shadow-ctrl)))
+                           (logclear! (-> v1-32 settings flags) (shadow-flags disable-draw))
+                           )
+                         0
+                         (let ((v1-35 (-> self draw shadow-ctrl)))
+                           (set! (-> v1-35 settings top-plane w) (- (-> self path-position y)))
+                           )
+                         0
+                         (let ((v1-38 (-> self draw shadow-ctrl)))
+                           (set! (-> v1-38 settings bot-plane w) (- (+ -8192.0 (-> self path-position y))))
+                           )
+                         0
+                         )
+                        (else
+                          (let ((v1-41 (-> self draw shadow-ctrl)))
+                            (logior! (-> v1-41 settings flags) (shadow-flags disable-draw))
+                            )
+                          0
+                          (let ((v1-44 (-> self draw shadow-ctrl)))
+                            (set! (-> v1-44 settings top-plane w) (- (-> self path-position y)))
+                            )
+                          0
+                          (let ((v1-47 (-> self draw shadow-ctrl)))
+                            (set! (-> v1-47 settings bot-plane w) (- (+ -8192.0 (-> self path-position y))))
+                            )
+                          0
+                          )
                         )
-                      0
-                      (let ((v1-44 (-> self draw shadow-ctrl)))
-                        (set! (-> v1-44 settings top-plane w) (- (-> self path-position y)))
+                      (let ((f0-32 (- f28-0 sv-112)))
+                        (if (< f0-32 f20-0)
+                            (set! f22-0 (/ f0-32 f20-0))
+                            )
                         )
-                      0
-                      (let ((v1-47 (-> self draw shadow-ctrl)))
-                        (set! (-> v1-47 settings bot-plane w) (- (+ -8192.0 (-> self path-position y))))
+                      (+! sv-64 (* sv-80 (seconds-per-frame)))
+                      (+! sv-48 (* sv-64 (seconds-per-frame)))
+                      (when (< sv-48 0.0)
+                        (set! sv-48 0.0)
+                        (activate! (-> self smush) -0.15 90 150 1.0 1.0)
+                        (set! sv-64 f24-0)
+                        (sound-play "barrel-bounce" :vol 80)
+                        (process-spawn
+                          part-tracker
+                          :init part-tracker-init
+                          group-keg-bounce
+                          -1
+                          keg-bounce-set-particle-rotation-callback
+                          (-> self ppointer)
+                          #f
+                          (-> self root trans)
+                          :to self
+                          )
                         )
-                      0
+                      (let ((f0-39 (update! (-> self smush))))
+                        (keg-update-smush self f0-39)
+                        )
+                      (+! (-> self root trans y) (* f22-0 sv-48))
+                      (set! (-> s5-0 x) 0.0)
+                      (set! (-> s5-0 y) 1.0)
+                      (set! (-> s5-0 z) 0.0)
                       )
                     )
-                  (let ((f0-32 (- f28-0 sv-112)))
-                    (if (< f0-32 f20-0)
-                        (set! f22-0 (/ f0-32 f20-0))
-                        )
-                    )
-                  (set! sv-64 (+ sv-64 (* sv-80 (seconds-per-frame))))
-                  (set! sv-48 (+ sv-48 (* sv-64 (seconds-per-frame))))
-                  (when (< sv-48 0.0)
-                    (set! sv-48 0.0)
-                    (activate! (-> self smush) -0.15 90 150 1.0 1.0)
-                    (set! sv-64 f24-0)
-                    (sound-play "barrel-bounce" :vol 80)
-                    (process-spawn
-                      part-tracker
-                      :init part-tracker-init
-                      group-keg-bounce
-                      -1
-                      keg-bounce-set-particle-rotation-callback
-                      (-> self ppointer)
-                      #f
-                      (-> self root trans)
-                      :to self
-                      )
-                    )
-                  (let ((f0-39 (update! (-> self smush))))
-                    (keg-update-smush self f0-39)
-                    )
-                  (+! (-> self root trans y) (* f22-0 sv-48))
-                  (set! (-> s5-0 x) 0.0)
-                  (set! (-> s5-0 y) 1.0)
-                  (set! (-> s5-0 z) 0.0)
                   )
                 (ja :num! (loop!))
                 (suspend)

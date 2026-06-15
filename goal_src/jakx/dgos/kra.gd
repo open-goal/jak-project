@@ -1,0 +1,11 @@
+("KRA.DGO"
+ ("tpage-296.o"
+  "tpage-582.go"
+  "tpage-406.go"
+  "tpage-583.go"
+  "kras-rusty-sign-ag.go"
+  "kras-windsock-ag.go"
+  "kras-fishtank-lo-ag.go"
+  "kras-fireworks-ship-a-ag.go"
+  "krasa-vis.o"
+ ))

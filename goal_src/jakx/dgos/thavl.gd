@@ -1,0 +1,9 @@
+("THAVL.DGO"
+ ("possum-chassis-ag.o"
+  "possum-door-e-ag.go"
+  "possum-f-fender-b-ag.go"
+  "possum-hood-d-ag.go"
+  "possum-trunk-c-ag.go"
+  "wheel-c-ag.go"
+  "thavl.o"
+ ))

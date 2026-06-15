@@ -164,6 +164,7 @@ static void init_imgui(SDL_Window* window,
   g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
   g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
   ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
   io.IniFilename = g_gfx_data->imgui_filename.c_str();
   io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
 
@@ -343,7 +344,103 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
       }));
 }
 
+void GLDisplay::init_splash() {
+  if (m_splash_program)
+    return;
+  if (!Gfx::g_splash.ready.load())
+    return;
+
+  auto shader_folder = "game/graphics/opengl_renderer/shaders";
+  auto vert_src =
+      file_util::read_text_file(file_util::get_file_path({shader_folder, "splash.vert"}));
+  auto frag_src =
+      file_util::read_text_file(file_util::get_file_path({shader_folder, "splash.frag"}));
+
+  constexpr int len = 1024;
+  GLint compile_ok;
+  char err[len];
+
+  auto compile_shader = [](GLenum type, const char* src, GLint& compile_ok, char* err) -> GLuint {
+    GLuint s = glCreateShader(type);
+    glShaderSource(s, 1, &src, nullptr);
+    glCompileShader(s);
+    glGetShaderiv(s, GL_COMPILE_STATUS, &compile_ok);
+    if (!compile_ok) {
+      glGetShaderInfoLog(s, len, nullptr, err);
+      lg::error("splash shader compile failed: {}\n", err);
+      glDeleteShader(s);
+      return 0;
+    }
+    return s;
+  };
+
+  GLuint vs = compile_shader(GL_VERTEX_SHADER, vert_src.c_str(), compile_ok, err);
+  GLuint fs = compile_shader(GL_FRAGMENT_SHADER, frag_src.c_str(), compile_ok, err);
+  if (!vs || !fs) {
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    return;
+  }
+
+  m_splash_program = glCreateProgram();
+  glAttachShader(m_splash_program, vs);
+  glAttachShader(m_splash_program, fs);
+  glLinkProgram(m_splash_program);
+  glDeleteShader(vs);
+  glDeleteShader(fs);
+
+  glGetProgramiv(m_splash_program, GL_LINK_STATUS, &compile_ok);
+  if (!compile_ok) {
+    glGetProgramInfoLog(m_splash_program, len, nullptr, err);
+    lg::error("Failed to link splash shader:\n{}", err);
+    glDeleteProgram(m_splash_program);
+    m_splash_program = 0;
+    return;
+  }
+
+  if (!Gfx::g_splash.data.empty()) {
+    glGenTextures(1, &m_splash_texture);
+    glBindTexture(GL_TEXTURE_2D, m_splash_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, Gfx::g_splash.width, Gfx::g_splash.height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, Gfx::g_splash.data.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    Gfx::g_splash.data.clear();
+    Gfx::g_splash.data.shrink_to_fit();
+  }
+
+  glGenVertexArrays(1, &m_splash_vao);
+}
+
+void GLDisplay::draw_splash(int fb_w, int fb_h) {
+  if (!m_splash_program || !m_splash_texture)
+    return;
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glClearColor(0.f, 0.f, 0.f, 1.f);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glViewport(0, 0, fb_w, fb_h);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+  glUseProgram(m_splash_program);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, m_splash_texture);
+  glUniform1i(glGetUniformLocation(m_splash_program, "splash_tex"), 0);
+  glUniform2f(glGetUniformLocation(m_splash_program, "u_res"), fb_w, fb_h);
+  glUniform2f(glGetUniformLocation(m_splash_program, "u_tex"), Gfx::g_splash.width,
+              Gfx::g_splash.height);
+  glBindVertexArray(m_splash_vao);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  glBindVertexArray(0);
+}
+
 GLDisplay::~GLDisplay() {
+  if (m_splash_texture)
+    glDeleteTextures(1, &m_splash_texture);
+  if (m_splash_program)
+    glDeleteProgram(m_splash_program);
+  if (m_splash_vao)
+    glDeleteVertexArrays(1, &m_splash_vao);
   // Cleanup ImGUI
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr;
@@ -550,6 +647,16 @@ void GLDisplay::render() {
     // set the size of the visible/playable portion of the game in the window
     get_display_manager()->set_game_size(Gfx::g_global_settings.lbox_w,
                                          Gfx::g_global_settings.lbox_h);
+
+    // draw splash screen on startup if requested
+    if (SplashScreen && DiskBoot && !m_splash_program) {
+      init_splash();
+    }
+    if (SplashScreen && Gfx::g_splash.ready.load() &&
+        SplashTimer.getSeconds() < SPLASH_SCREEN_TIME) {
+      draw_splash(fbuf_w, fbuf_h);
+    }
+
     render_game_frame(
         game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
         Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
@@ -727,22 +834,37 @@ void gl_set_active_levels(const std::vector<std::string>& levels) {
   g_gfx_data->loader->set_active_levels(levels);
 }
 
+void gl_force_reload_all() {
+  g_gfx_data->loader->request_reload_all();
+}
+
+void gl_force_reload_level(const std::string& name) {
+  g_gfx_data->loader->request_reload_level(name);
+}
+
+void gl_force_reload_common() {
+  g_gfx_data->loader->request_reload_common();
+}
+
 void gl_set_pmode_alp(float val) {
   g_gfx_data->pmode_alp = val;
 }
 
 const GfxRendererModule gRendererOpenGL = {
-    gl_init,                // init
-    gl_make_display,        // make_display
-    gl_exit,                // exit
-    gl_vsync,               // vsync
-    gl_sync_path,           // sync_path
-    gl_send_chain,          // send_chain
-    gl_texture_upload_now,  // texture_upload_now
-    gl_texture_relocate,    // texture_relocate
-    gl_set_levels,          // set_levels
-    gl_set_active_levels,   // set_active_levels
-    gl_set_pmode_alp,       // set_pmode_alp
-    GfxPipeline::OpenGL,    // pipeline
-    "OpenGL 4.3"            // name
+    gl_init,                 // init
+    gl_make_display,         // make_display
+    gl_exit,                 // exit
+    gl_vsync,                // vsync
+    gl_sync_path,            // sync_path
+    gl_send_chain,           // send_chain
+    gl_texture_upload_now,   // texture_upload_now
+    gl_texture_relocate,     // texture_relocate
+    gl_set_levels,           // set_levels
+    gl_set_active_levels,    // set_active_levels
+    gl_force_reload_all,     // force_reload_all
+    gl_force_reload_level,   // force_reload_level
+    gl_force_reload_common,  // force_reload_common
+    gl_set_pmode_alp,        // set_pmode_alp
+    GfxPipeline::OpenGL,     // pipeline
+    "OpenGL 4.3"             // name
 };

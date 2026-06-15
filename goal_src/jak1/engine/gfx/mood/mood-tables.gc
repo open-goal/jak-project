@@ -27,8 +27,8 @@
       (set! (-> v1-2 direction w) 0.0))
     (set-vector! (-> arg0 dir1 color) 0.8 0.775 0.7 1.0)
     (set! (-> arg0 dir1 levels x) arg3)
-    (vector-matrix*! (the-as vector (-> arg0 dir0)) (the-as vector (-> arg0 dir0)) s4-0)
-    (vector-matrix*! (the-as vector (-> arg0 dir1)) (the-as vector (-> arg0 dir1)) s4-0))
+    (vector-matrix*! (-> arg0 dir0 direction) (-> arg0 dir0 direction) s4-0)
+    (vector-matrix*! (-> arg0 dir1 direction) (-> arg0 dir1 direction) s4-0))
   (let ((v1-4 (-> arg0 dir2)))
     (set! (-> v1-4 direction x) 0.0)
     (set! (-> v1-4 direction y) -1.0)
@@ -210,11 +210,7 @@
     (set! (-> v1-0 y) (- (-> arg0 direction y)))
     (set! (-> v1-0 z) (- (-> arg0 direction z)))
     (when (< (-> arg0 direction y) 0.9063)
-      (let* ((f0-7 0.4226)
-             (f1-1 (-> v1-0 x))
-             (f1-3 (* f1-1 f1-1))
-             (f2-0 (-> v1-0 z))
-             (f0-8 (/ f0-7 (sqrtf (+ f1-3 (* f2-0 f2-0))))))
+      (let ((f0-8 (/ 0.4226 (sqrtf (+ (square (-> v1-0 x)) (square (-> v1-0 z)))))))
         (set! (-> v1-0 x) (* (-> v1-0 x) f0-8))
         (set! (-> v1-0 y) -0.9063)
         (set! (-> v1-0 z) (* (-> v1-0 z) f0-8)))))
@@ -241,12 +237,12 @@
       (set! (-> s5-0 x) (* 2.0 (-> s5-0 x)))
       (set! (-> s5-0 y) (* 2.0 (-> s5-0 y)))
       (set! (-> s5-0 z) (* 2.0 (-> s5-0 z)))
-      (vector+float*! (the-as vector s4-0) (-> arg2 amb-color) (-> arg2 lgt-color) (-> arg2 direction y))
-      (vector*! (the-as vector s4-0) (the-as vector s4-0) (-> *ocean-map-village2* far-color))
+      (vector+float*! (-> s4-0 fog-color) (-> arg2 amb-color) (-> arg2 lgt-color) (-> arg2 direction y))
+      (vector*! (-> s4-0 fog-color) (-> s4-0 fog-color) (-> *ocean-map-village2* far-color))
       (set! (-> s4-0 fog-color x) (* 2.0 (-> s4-0 fog-color x)))
       (set! (-> s4-0 fog-color y) (* 2.0 (-> s4-0 fog-color y)))
       (set! (-> s4-0 fog-color z) (* 2.0 (-> s4-0 fog-color z)))
-      (vector4-lerp! s5-0 s5-0 (the-as vector s4-0) 0.5))
+      (vector4-lerp! s5-0 s5-0 (-> s4-0 fog-color) 0.5))
     (let ((f0-15 (* 0.003921569 (- 255.0 (-> arg0 fog-dists w))))) (vector4-lerp! s5-0 s5-0 (-> arg0 fog-color) f0-15)))
   0
   (none))
@@ -660,7 +656,7 @@
                  :shadow
                  (new 'static 'vector :x 0.5393 :y 0.7652 :z -0.3514)))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *village1-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *village1-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *village1-mood-lights-table* data 1))
 
@@ -940,7 +936,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *snow-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *snow-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *snow-mood-lights-table* data 1))
 
@@ -948,8 +944,7 @@
 
 (update-mood-shadow-direction (-> *snow-mood-lights-table* data 3))
 
-(update-mood-erase-color (the-as mood-fog (-> *snow-mood-fog-table* data))
-                         (the-as mood-lights (-> *snow-mood-lights-table* data)))
+(update-mood-erase-color (-> *snow-mood-fog-table* data 0) (-> *snow-mood-lights-table* data 0))
 
 (update-mood-erase-color (-> *snow-mood-fog-table* data 2) (-> *snow-mood-lights-table* data 1))
 
@@ -958,7 +953,7 @@
 (update-mood-erase-color (-> *snow-mood-fog-table* data 6) (-> *snow-mood-lights-table* data 3))
 
 (update-mood-erase-color2 (-> *snow-mood-fog-table* data 1)
-                          (the-as mood-lights (-> *snow-mood-lights-table* data))
+                          (-> *snow-mood-lights-table* data 0)
                           (-> *snow-mood-lights-table* data 1))
 
 (update-mood-erase-color2 (-> *snow-mood-fog-table* data 3)
@@ -971,46 +966,46 @@
 
 (update-mood-erase-color2 (-> *snow-mood-fog-table* data 7)
                           (-> *snow-mood-lights-table* data 3)
-                          (the-as mood-lights (-> *snow-mood-lights-table* data)))
+                          (-> *snow-mood-lights-table* data 0))
 
 (vector4-lerp! (-> *snow-mood-fog-table* data 0 erase-color)
                (-> *snow-mood-fog-table* data 0 erase-color)
-               (the-as vector (-> *snow-mood-fog-table* data))
+               (-> *snow-mood-fog-table* data 0 fog-color)
                0.41)
 
 (vector4-lerp! (-> *snow-mood-fog-table* data 1 erase-color)
                (-> *snow-mood-fog-table* data 1 erase-color)
-               (the-as vector (-> *snow-mood-fog-table* data 1))
+               (-> *snow-mood-fog-table* data 1 fog-color)
                0.41)
 
 (vector4-lerp! (-> *snow-mood-fog-table* data 2 erase-color)
                (-> *snow-mood-fog-table* data 2 erase-color)
-               (the-as vector (-> *snow-mood-fog-table* data 2))
+               (-> *snow-mood-fog-table* data 2 fog-color)
                0.41)
 
 (vector4-lerp! (-> *snow-mood-fog-table* data 3 erase-color)
                (-> *snow-mood-fog-table* data 3 erase-color)
-               (the-as vector (-> *snow-mood-fog-table* data 3))
+               (-> *snow-mood-fog-table* data 3 fog-color)
                0.41)
 
 (vector4-lerp! (-> *snow-mood-fog-table* data 4 erase-color)
                (-> *snow-mood-fog-table* data 4 erase-color)
-               (the-as vector (-> *snow-mood-fog-table* data 4))
+               (-> *snow-mood-fog-table* data 4 fog-color)
                0.41)
 
 (vector4-lerp! (-> *snow-mood-fog-table* data 5 erase-color)
                (-> *snow-mood-fog-table* data 5 erase-color)
-               (the-as vector (-> *snow-mood-fog-table* data 5))
+               (-> *snow-mood-fog-table* data 5 fog-color)
                0.41)
 
 (vector4-lerp! (-> *snow-mood-fog-table* data 6 erase-color)
                (-> *snow-mood-fog-table* data 6 erase-color)
-               (the-as vector (-> *snow-mood-fog-table* data 6))
+               (-> *snow-mood-fog-table* data 6 fog-color)
                0.41)
 
 (vector4-lerp! (-> *snow-mood-fog-table* data 7 erase-color)
                (-> *snow-mood-fog-table* data 7 erase-color)
-               (the-as vector (-> *snow-mood-fog-table* data 7))
+               (-> *snow-mood-fog-table* data 7 fog-color)
                0.41)
 
 (define *snow-mood-sun-table*
@@ -1428,7 +1423,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *misty-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *misty-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *misty-mood-lights-table* data 1))
 
@@ -1623,7 +1618,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *village2-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *village2-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *village2-mood-lights-table* data 1))
 
@@ -1812,7 +1807,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *swamp-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *swamp-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *swamp-mood-lights-table* data 1))
 
@@ -1937,7 +1932,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *sunken-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *sunken-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *sunken-mood-lights-table* data 1))
 
@@ -2102,7 +2097,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *rolling-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *rolling-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *rolling-mood-lights-table* data 1))
 
@@ -2300,7 +2295,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *firecanyon-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *firecanyon-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *firecanyon-mood-lights-table* data 1))
 
@@ -2521,7 +2516,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *ogre-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *ogre-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *ogre-mood-lights-table* data 1))
 
@@ -2616,7 +2611,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *ogre2-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *ogre2-mood-lights-table* data 0))
 
 (update-mood-shadow-direction (-> *ogre2-mood-lights-table* data 1))
 
@@ -2680,7 +2675,7 @@
             (new 'static 'mood-lights)
             (new 'static 'mood-lights))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *ogre3-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *ogre3-mood-lights-table* data 0))
 
 (define *village3-mood-fog-table*
   (new 'static
@@ -2931,7 +2926,7 @@
                  :shadow
                  (new 'static 'vector :y -1.0)))))
 
-(update-mood-shadow-direction (the-as mood-lights (-> *lavatube-mood-lights-table* data)))
+(update-mood-shadow-direction (-> *lavatube-mood-lights-table* data 0))
 
 (define *lavatube-mood-sun-table*
   (new 'static
@@ -3085,8 +3080,7 @@
                  :erase-color
                  (new 'static 'vector :w 128.0)))))
 
-(update-mood-erase-color (the-as mood-fog (-> *finalboss-mood-fog-table* data))
-                         (the-as mood-lights (-> *village1-mood-lights-table* data)))
+(update-mood-erase-color (-> *finalboss-mood-fog-table* data 0) (-> *village1-mood-lights-table* data 0))
 
 (update-mood-erase-color (-> *finalboss-mood-fog-table* data 1) (-> *village1-mood-lights-table* data 1))
 
@@ -3107,42 +3101,42 @@
 
 (vector4-lerp! (-> *finalboss-mood-fog-table* data 0 erase-color)
                (-> *finalboss-mood-fog-table* data 0 erase-color)
-               (the-as vector (-> *finalboss-mood-fog-table* data))
+               (-> *finalboss-mood-fog-table* data 0 fog-color)
                0.41)
 
 (vector4-lerp! (-> *finalboss-mood-fog-table* data 1 erase-color)
                (-> *finalboss-mood-fog-table* data 1 erase-color)
-               (the-as vector (-> *finalboss-mood-fog-table* data 1))
+               (-> *finalboss-mood-fog-table* data 1 fog-color)
                0.41)
 
 (vector4-lerp! (-> *finalboss-mood-fog-table* data 2 erase-color)
                (-> *finalboss-mood-fog-table* data 2 erase-color)
-               (the-as vector (-> *finalboss-mood-fog-table* data 2))
+               (-> *finalboss-mood-fog-table* data 2 fog-color)
                0.41)
 
 (vector4-lerp! (-> *finalboss-mood-fog-table* data 3 erase-color)
                (-> *finalboss-mood-fog-table* data 3 erase-color)
-               (the-as vector (-> *finalboss-mood-fog-table* data 3))
+               (-> *finalboss-mood-fog-table* data 3 fog-color)
                1.0)
 
 (vector4-lerp! (-> *finalboss-mood-fog-table* data 4 erase-color)
                (-> *finalboss-mood-fog-table* data 4 erase-color)
-               (the-as vector (-> *finalboss-mood-fog-table* data 4))
+               (-> *finalboss-mood-fog-table* data 4 fog-color)
                0.41)
 
 (vector4-lerp! (-> *finalboss-mood-fog-table* data 5 erase-color)
                (-> *finalboss-mood-fog-table* data 5 erase-color)
-               (the-as vector (-> *finalboss-mood-fog-table* data 5))
+               (-> *finalboss-mood-fog-table* data 5 fog-color)
                0.41)
 
 (vector4-lerp! (-> *finalboss-mood-fog-table* data 6 erase-color)
                (-> *finalboss-mood-fog-table* data 6 erase-color)
-               (the-as vector (-> *finalboss-mood-fog-table* data 6))
+               (-> *finalboss-mood-fog-table* data 6 fog-color)
                0.41)
 
 (vector4-lerp! (-> *finalboss-mood-fog-table* data 7 erase-color)
                (-> *finalboss-mood-fog-table* data 7 erase-color)
-               (the-as vector (-> *finalboss-mood-fog-table* data 7))
+               (-> *finalboss-mood-fog-table* data 7 fog-color)
                0.41)
 
 (define *citadel-mood-fog-table*

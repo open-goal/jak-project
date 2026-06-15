@@ -1,0 +1,12 @@
+("KRASTRN.DGO"
+ ("net-training.o"
+  "net-training-obs.o"
+  "wcar-drone.o"
+  "tpage-1775.go"
+  "tpage-2862.go"
+  "training-wall-ag.go"
+  "deathrace-drone-ag.go"
+  "start-light-ag.go"
+  "training-marker-ag.go"
+  "krastrn.o"
+ ))

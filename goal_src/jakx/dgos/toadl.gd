@@ -1,0 +1,11 @@
+("TOADL.DGO"
+ ("toad-chassis-ag.o"
+  "toad-door-a-ag.go"
+  "toad-f-fender-a-ag.go"
+  "toad-hood-a-ag.go"
+  "toad-r-fender-a-ag.go"
+  "toad-roof-a-ag.go"
+  "toad-trunk-a-ag.go"
+  "toad-wheel-ag.go"
+  "toadl.o"
+ ))

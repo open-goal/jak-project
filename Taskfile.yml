@@ -97,7 +97,7 @@ tasks:
   build-debug:
     desc: "Build the project using the generated CMake"
     cmds:
-      - "cmake {{.CMAKE_BUILD_DIR_DEBUG}} --parallel 8 --target goalc"
+      - "cmake {{.CMAKE_BUILD_DIR_DEBUG}} --parallel 8"
   repl:
     desc: "Start the REPL"
     preconditions:
@@ -126,9 +126,18 @@ tasks:
     cmds:
       - "{{.FORMATTER_BIN_RELEASE_DIR}}/formatter --write --file '{{.FILE}}'"
   # DECOMPILING
+  disasm:
+    cmds:
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out" --version "{{.DECOMP_CONFIG_VERSION}}" --config-override ''{"disassemble_code": true, "dump_function_metadata": true, "levels_extract": false}'''
+  decomp-no-override:
+    cmds:
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out" --version "{{.DECOMP_CONFIG_VERSION}}"'
   decomp:
     cmds:
       - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out" --version "{{.DECOMP_CONFIG_VERSION}}" --config-override ''{"decompile_code": true, "levels_extract": false}'''
+  disasm-file:
+    cmds:
+      - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out" --version "{{.DECOMP_CONFIG_VERSION}}" --config-override ''{"disassemble_code": true, "decompile_code": false, "levels_extract": false, "allowed_objects": ["{{.FILE}}"]}'''
   decomp-file:
     cmds:
       - '{{.DECOMP_BIN_RELEASE_DIR}}/decompiler "./decompiler/config/{{.DECOMP_CONFIG}}" "./iso_data" "./decompiler_out" --version "{{.DECOMP_CONFIG_VERSION}}" --config-override ''{"decompile_code": true, "levels_extract": false, "allowed_objects": ["{{.FILE}}"]}'''
@@ -218,12 +227,12 @@ tasks:
       - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test{{.EXE_FILE_EXTENSION}} --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --file {{.FILE}}'
   offline-tests-fast:
     cmds:
-      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test{{.EXE_FILE_EXTENSION}} --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --pretty-print --num_threads 32 --dump_current_output --fail-on-cmp'
+      - '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test{{.EXE_FILE_EXTENSION}} --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --pretty-print --num_threads 8 --dump_current_output --fail-on-cmp'
   # TODO - amalgamate offline-tests and this task, run twice if the previous step fails
   update-ref-tests:
     cmds:
       - cmd: "{{.PYTHON}} ./scripts/tasks/delete-file-or-folder.py --path failures"
-      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --pretty-print --num_threads 32 --dump_current_output --fail-on-cmp'
+      - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --pretty-print --num_threads 8 --dump_current_output --fail-on-cmp'
         ignore_error: true
       - "{{.PYTHON}} ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}"
       - task: offline-tests-fast

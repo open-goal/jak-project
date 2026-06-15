@@ -169,24 +169,23 @@
 ;; definition for function level-hint-task-process
 ;; INFO: Used lq/sq
 (defun level-hint-task-process ((arg0 entity) (arg1 uint128) (arg2 string))
-  (local-vars (sv-16 res-tag))
   (let ((gp-0 (res-lump-value arg0 'text-id int :default arg1))
         (s5-0 0)
         )
     (cond
       ((can-hint-be-played? (the-as text-id gp-0) arg0 arg2)
-       (set! sv-16 (new 'static 'res-tag))
-       (let ((s4-1 ((method-of-type res-lump get-property-data)
-                    arg0
-                    'cmds
-                    'exact
-                    -1000000000.0
-                    (the-as pointer #f)
-                    (& sv-16)
-                    *res-static-buf*
+       (let* ((sv-16 (new 'static 'res-tag))
+              (s4-1 ((method-of-type res-lump get-property-data)
+                     arg0
+                     'cmds
+                     'exact
+                     -1000000000.0
+                     (the-as pointer #f)
+                     (& sv-16)
+                     *res-static-buf*
+                     )
                     )
-                   )
-             )
+              )
          (when s4-1
            (while (and (>= s5-0 0) (< s5-0 (the-as int (-> sv-16 elt-count))))
              (set! s5-0 (level-hint-process-cmd (the-as (pointer int32) s4-1) s5-0 (the-as int (-> sv-16 elt-count))))
@@ -689,7 +688,6 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
 (defun ambient-type-sound ((arg0 drawable-ambient) (arg1 vector))
-  (local-vars (sv-16 string) (sv-112 res-tag))
   (let* ((s5-0 (-> arg0 ambient))
          (s4-0 (-> s5-0 ambient-data user-uint64 0))
          )
@@ -704,41 +702,41 @@
               )
         )
       (when (< (the-as uint (- (current-time) (the-as int s4-0))) (the-as uint 300))
-        (let ((f30-0 (the float (rand-vu-int-count (the-as int (-> s5-0 ambient-data user-float 2))))))
-          (set! sv-16 (symbol->string (res-lump-struct s5-0 'effect-name symbol :time f30-0)))
-          (let ((s4-2 (new 'stack 'sound-spec)))
-            (set! (-> s4-2 sound-name) (string->sound-name sv-16))
-            (logior! (-> s4-2 mask) (sound-mask volume))
-            (set! (-> s4-2 volume) 1024)
-            (logior! (-> s4-2 mask) (sound-mask bend))
-            (set! (-> s4-2 bend) (the int (* 327.66998 (rand-vu-float-range -100.0 100.0))))
-            (set! sv-112 (new 'static 'res-tag))
-            (let ((a1-7 ((method-of-type res-lump get-property-data)
-                         s5-0
-                         'effect-param
-                         'exact
-                         f30-0
-                         (the-as pointer #f)
-                         (& sv-112)
-                         *res-static-buf*
-                         )
+        (let* ((f30-0 (the float (rand-vu-int-count (the-as int (-> s5-0 ambient-data user-float 2)))))
+               (sv-16 (symbol->string (res-lump-struct s5-0 'effect-name symbol :time f30-0)))
+               (s4-2 (new 'stack 'sound-spec))
+               )
+          (set! (-> s4-2 sound-name) (string->sound-name sv-16))
+          (logior! (-> s4-2 mask) (sound-mask volume))
+          (set! (-> s4-2 volume) 1024)
+          (logior! (-> s4-2 mask) (sound-mask bend))
+          (set! (-> s4-2 bend) (the int (* 327.66998 (rand-vu-float-range -100.0 100.0))))
+          (let* ((sv-112 (new 'static 'res-tag))
+                 (a1-7 ((method-of-type res-lump get-property-data)
+                        s5-0
+                        'effect-param
+                        'exact
+                        f30-0
+                        (the-as pointer #f)
+                        (& sv-112)
+                        *res-static-buf*
                         )
-                  )
-              (if a1-7
-                  (effect-param->sound-spec s4-2 (the-as (pointer float) a1-7) (the-as int (-> sv-112 elt-count)))
-                  )
-              )
-            (when *debug-effect-control*
-              (format #t "(~5D) effect sound ~A ~S " (current-time) (res-lump-struct s5-0 'name structure) sv-16)
-              (format
-                #t
-                "volume: ~f  pitch-mod: ~f~%"
-                (* 0.09765625 (the float (-> s4-2 volume)))
-                (* 0.000656168 (the float (-> s4-2 pitch-mod)))
+                       )
+                 )
+            (if a1-7
+                (effect-param->sound-spec s4-2 (the-as (pointer float) a1-7) (the-as int (-> sv-112 elt-count)))
                 )
-              )
-            (sound-play-by-spec s4-2 (new-sound-id) (-> arg0 bsphere))
             )
+          (when *debug-effect-control*
+            (format #t "(~5D) effect sound ~A ~S " (current-time) (res-lump-struct s5-0 'name structure) sv-16)
+            (format
+              #t
+              "volume: ~f  pitch-mod: ~f~%"
+              (* 0.09765625 (the float (-> s4-2 volume)))
+              (* 0.000656168 (the float (-> s4-2 pitch-mod)))
+              )
+            )
+          (sound-play-by-spec s4-2 (new-sound-id) (-> arg0 bsphere))
           )
         )
       )
@@ -1099,7 +1097,6 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch int vs none.
 (defmethod draw-debug ((this entity-ambient))
-  (local-vars (sv-16 uint128))
   (let ((gp-0 (-> this trans))
         (s5-0 (res-lump-struct this 'type symbol))
         (s3-0 #f)
@@ -1120,8 +1117,8 @@
        )
       ((= s5-0 'hint)
        (when *display-ambient-hint-marks*
-         (set! sv-16 (res-lump-value this 'text-id uint128))
-         (let ((s3-2 add-debug-text-3d)
+         (let ((sv-16 (res-lump-value this 'text-id uint128))
+               (s3-2 add-debug-text-3d)
                (s2-1 #t)
                (s1-1 68)
                )

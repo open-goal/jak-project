@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,14 +28,14 @@ typedef struct TitleStorageBootStrap
 {
     const char *name;
     const char *desc;
-    SDL_Storage *(*create)(const char*, SDL_PropertiesID);
+    SDL_Storage *(*create)(const char *, SDL_PropertiesID);
 } TitleStorageBootStrap;
 
 typedef struct UserStorageBootStrap
 {
     const char *name;
     const char *desc;
-    SDL_Storage *(*create)(const char*, const char*, SDL_PropertiesID);
+    SDL_Storage *(*create)(const char *, const char *, SDL_PropertiesID);
 } UserStorageBootStrap;
 
 // Not all of these are available in a given build. Use #ifdefs, etc.

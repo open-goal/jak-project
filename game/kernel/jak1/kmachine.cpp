@@ -114,6 +114,12 @@ void InitParms(int argc, const char* const* argv) {
       masterConfig.disable_sound = true;
     }
 
+    // added in pc port to skip the splash screen
+    if (arg == "-nosplash") {
+      Msg(6, "dkernel: skipping splash screen\n");
+      SplashScreen = false;
+    }
+
     // GOAL Settings
     // ----------------------------
 
@@ -137,6 +143,8 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: debug mode\n");
       MasterDebug = 1;
       DebugSegment = 1;
+      // disable splash in debug
+      SplashScreen = 0;
     }
 
     // the "debug-mem" mode is used to set up GOAL in debug mode, but not to load debug-segments

@@ -44,7 +44,6 @@
    (new (symbol type process symbol float) _type_)))
 
 (defmethod new path-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
-  (local-vars (tag res-tag))
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (when (zero? this)
       ;; allocation failed.
@@ -56,11 +55,10 @@
     (let ((ent (-> proc entity)))
       (when (= name 'path)
         ;; if we are a path, try to look up the path-actor.
-        (let ((lookup-entity (entity-actor-lookup (the-as res-lump ent) 'path-actor 0)))
-          (if lookup-entity (set! ent lookup-entity))))
+        (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0))) (if lookup-entity (set! ent lookup-entity))))
       ;; look up the curve data
-      (set! tag (new 'static 'res-tag))
-      (let ((data (res-lump-data ent name pointer :tag-ptr (& tag) :time time)))
+      (let* ((tag (new 'static 'res-tag))
+             (data (res-lump-data ent name pointer :tag-ptr (& tag) :time time)))
         (cond
           (data
            ;; success, we got some data

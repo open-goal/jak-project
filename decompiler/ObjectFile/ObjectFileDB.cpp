@@ -11,6 +11,7 @@
 #include <cstring>
 #include <map>
 #include <set>
+#include <unordered_map>
 
 #include "LinkedObjectFileCreation.h"
 
@@ -34,6 +35,7 @@
 #include "decompiler/data/game_text.h"
 #include "decompiler/data/tpage.h"
 
+#include "third-party/json.hpp"
 #include "third-party/xdelta3/xdelta3.h"
 
 namespace decompiler {
@@ -630,18 +632,28 @@ void ObjectFileDB::write_object_file_words(const fs::path& output_dir,
 void ObjectFileDB::write_disassembly(const fs::path& output_dir,
                                      bool disassemble_data,
                                      bool disassemble_code,
-                                     bool print_hex) {
+                                     bool print_hex,
+                                     bool dump_function_metadata) {
   lg::info("- Writing functions...");
   Timer timer;
   uint32_t total_bytes = 0, total_files = 0;
 
   std::string asm_functions;
+  std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
+      file_func_metadata_map = {};
 
   for_each_obj([&](ObjectFileData& obj) {
     if (((obj.obj_version == 3 || (obj.obj_version == 5 && obj.linked_data.has_any_functions())) &&
          disassemble_code) ||
         (obj.obj_version != 3 && disassemble_data)) {
       auto file_text = obj.linked_data.print_disassembly(print_hex);
+      if (dump_function_metadata) {
+        if (!file_func_metadata_map.contains(obj.to_unique_name())) {
+          file_func_metadata_map[obj.to_unique_name()] =
+              std::unordered_map<std::string, std::string>{};
+        }
+        obj.linked_data.dump_asm_function_metadata(file_func_metadata_map[obj.to_unique_name()]);
+      }
       asm_functions += obj.linked_data.print_asm_function_disassembly(obj.to_unique_name());
       auto file_name = output_dir / (obj.to_unique_name() + ".asm");
 
@@ -654,6 +666,11 @@ void ObjectFileDB::write_disassembly(const fs::path& output_dir,
   total_bytes += asm_functions.size();
   total_files++;
   file_util::write_text_file(output_dir / "asm_functions.func", asm_functions);
+
+  if (dump_function_metadata) {
+    json data = file_func_metadata_map;
+    file_util::write_text_file(output_dir / "_func_metadata.json", data.dump(2));
+  }
 
   lg::info("Wrote functions dumps:");
   lg::info(" Total {} files", total_files);
@@ -751,6 +768,7 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
       animated_slots = jak3_animated_texture_slots();
       break;
     case GameVersion::JakX:
+      // TODO jakx - Implement animation
       break;
     default:
       ASSERT_NOT_REACHED();
@@ -1109,6 +1127,7 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
     ag_result += "\n";
   }
 
+  file_util::create_dir_if_needed_for_file(ag_fpath);
   file_util::write_text_file(ag_fpath, ag_result);
 
   auto jg_fpath = output_dir / "import" / "joint-nodes.gc";

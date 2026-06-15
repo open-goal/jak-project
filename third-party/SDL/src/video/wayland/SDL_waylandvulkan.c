@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -40,6 +40,13 @@
 #else
 #define DEFAULT_VULKAN "libvulkan.so.1"
 #endif
+
+SDL_ELF_NOTE_DLOPEN(
+    "wayland-vulkan",
+    "Support for Vulkan on wayland backend",
+    SDL_ELF_NOTE_DLOPEN_PRIORITY_SUGGESTED,
+    DEFAULT_VULKAN
+)
 
 bool Wayland_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
 {
@@ -96,7 +103,7 @@ bool Wayland_Vulkan_LoadLibrary(SDL_VideoDevice *_this, const char *path)
         SDL_SetError("Installed Vulkan doesn't implement the " VK_KHR_SURFACE_EXTENSION_NAME " extension");
         goto fail;
     } else if (!hasWaylandSurfaceExtension) {
-        SDL_SetError("Installed Vulkan doesn't implement the " VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME "extension");
+        SDL_SetError("Installed Vulkan doesn't implement the " VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME " extension");
         goto fail;
     }
     return true;
@@ -115,7 +122,7 @@ void Wayland_Vulkan_UnloadLibrary(SDL_VideoDevice *_this)
     }
 }
 
-char const* const* Wayland_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this, Uint32 *count)
+char const * const *Wayland_Vulkan_GetInstanceExtensions(SDL_VideoDevice *_this, Uint32 *count)
 {
     static const char *const extensionsForWayland[] = {
         VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME

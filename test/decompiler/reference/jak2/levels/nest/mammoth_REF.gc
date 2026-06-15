@@ -1157,7 +1157,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defbehavior mammoth-update-ik mammoth ()
-  (local-vars (sv-688 vector))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1176,11 +1175,9 @@
           (-> s3-0 shoulder-matrix-no-ik)
           (let ((v1-5 (-> s3-0 elbow-matrix-no-ik))
                 (s0-0 (new 'stack-no-clear 'vector))
+                (sv-688 (new 'stack-no-clear 'vector))
                 )
-            (set! sv-688 (new 'stack-no-clear 'vector))
-            (let ((a0-2 (-> *y-vector* quad)))
-              (set! (-> sv-688 quad) a0-2)
-              )
+            (set! (-> sv-688 quad) (-> *y-vector* quad))
             (let ((s2-0 (new 'stack-no-clear 'vector)))
               (new 'stack-no-clear 'vector)
               (new 'stack-no-clear 'vector)
@@ -1242,11 +1239,7 @@
                   (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                   (.svf (&-> a1-9 quad) vf6)
                   )
-                (let ((v1-15 (-> gp-0 move-dist))
-                      (f0-16 -40960.0)
-                      )
-                  (vector-float*! v1-15 sv-688 f0-16)
-                  )
+                (vector-float*! (-> gp-0 move-dist) sv-688 -40960.0)
                 (let ((v1-17 gp-0))
                   (set! (-> v1-17 radius) 4.096)
                   (set! (-> v1-17 collide-with) (-> gp-0 collide-with))
@@ -1427,7 +1420,6 @@
    - tracks when the enemy was last drawn
    - looks at the target and handles attacking
    @TODO Not extremely well understood yet"
-  (local-vars (sv-752 lightning-spec) (sv-768 int) (sv-784 symbol) (sv-800 mammoth))
   (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
@@ -1521,41 +1513,16 @@
                   )
                 )
               (label cfg-60)
-              (let ((s2-2 (get-process *default-dead-pool* lightning-tracker #x4000)))
-                (when s2-2
-                  (let ((t9-11 (method-of-type lightning-tracker activate)))
-                    (t9-11
-                      (the-as lightning-tracker s2-2)
-                      s5-2
-                      (symbol->string (-> lightning-tracker symbol))
-                      (the-as pointer #x70004000)
-                      )
-                    )
-                  (let ((s5-3 run-function-in-process)
-                        (s1-1 s2-2)
-                        (s0-3 lightning-tracker-init)
-                        )
-                    (set! sv-752 (-> *lightning-spec-id-table* 1))
-                    (set! sv-768 600)
-                    (set! sv-784 (the-as symbol #f))
-                    (set! sv-800 this)
-                    (let ((t2-0 (-> (the-as (pointer int32) (&+ s4-2 (* (rnd-int-count this s3-2) 4)))))
-                          (t3-0 6)
-                          )
-                      ((the-as (function object object object object object object object object none) s5-3)
-                       s1-1
-                       s0-3
-                       sv-752
-                       sv-768
-                       sv-784
-                       sv-800
-                       t2-0
-                       t3-0
-                       )
-                      )
-                    )
-                  (-> s2-2 ppointer)
-                  )
+              (process-spawn
+                lightning-tracker
+                :init lightning-tracker-init
+                (-> *lightning-spec-id-table* 1)
+                600
+                (the-as symbol #f)
+                this
+                (-> (the-as (pointer int32) (&+ s4-2 (* (rnd-int-count this s3-2) 4))))
+                6
+                :to s5-2
                 )
               )
             (set! (-> this lightning-attack-timer)

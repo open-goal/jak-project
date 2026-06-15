@@ -227,7 +227,6 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defbehavior apply-pos-from-entity target ((arg0 continue-point))
-  (local-vars (sv-1328 collide-query))
   (let ((s1-0 (entity-by-name (the-as string (-> arg0 on-goto)))))
     (cond
       (s1-0
@@ -257,28 +256,29 @@
             (set! (-> s2-0 x) (* 4096.0 (the float (-> s0-0 user-int16 0))))
             (set! (-> s2-0 y) (-> s1-0 extra trans y))
             (set! (-> s2-0 z) (* 4096.0 (the float (-> s0-0 user-int16 1))))
-            (set! sv-1328 (new 'stack-no-clear 'collide-query))
-            (set-vector! (-> sv-1328 move-dist) 0.0 -204800.0 0.0 1.0)
-            (vector-copy! (-> sv-1328 start-pos) s2-0)
-            (+! (-> sv-1328 start-pos y) 102400.0)
-            (let ((v1-20 sv-1328))
-              (set! (-> v1-20 radius) 409.6)
-              (set! (-> v1-20 collide-with) (collide-spec backgnd))
-              (set! (-> v1-20 ignore-process0) #f)
-              (set! (-> v1-20 ignore-process1) #f)
-              (set! (-> v1-20 ignore-pat)
-                    (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            (let ((sv-1328 (new 'stack-no-clear 'collide-query)))
+              (set-vector! (-> sv-1328 move-dist) 0.0 -204800.0 0.0 1.0)
+              (vector-copy! (-> sv-1328 start-pos) s2-0)
+              (+! (-> sv-1328 start-pos y) 102400.0)
+              (let ((v1-20 sv-1328))
+                (set! (-> v1-20 radius) 409.6)
+                (set! (-> v1-20 collide-with) (collide-spec backgnd))
+                (set! (-> v1-20 ignore-process0) #f)
+                (set! (-> v1-20 ignore-process1) #f)
+                (set! (-> v1-20 ignore-pat)
+                      (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                      )
+                (set! (-> v1-20 action-mask) (collide-action solid))
+                )
+              (let ((f0-12 (fill-and-probe-using-line-sphere *collide-cache* sv-1328)))
+                (cond
+                  ((>= f0-12 0.0)
+                   (vector+*! s2-0 (-> sv-1328 start-pos) (-> sv-1328 move-dist) f0-12)
+                   (set! (-> s2-0 y) (+ 4096.0 (-> s2-0 y)))
+                   )
+                  (else
+                    (format 0 "failed to find gem ground on pos-from-entity~%")
                     )
-              (set! (-> v1-20 action-mask) (collide-action solid))
-              )
-            (let ((f0-12 (fill-and-probe-using-line-sphere *collide-cache* sv-1328)))
-              (cond
-                ((>= f0-12 0.0)
-                 (vector+*! s2-0 (-> sv-1328 start-pos) (-> sv-1328 move-dist) f0-12)
-                 (set! (-> s2-0 y) (+ 4096.0 (-> s2-0 y)))
-                 )
-                (else
-                  (format 0 "failed to find gem ground on pos-from-entity~%")
                   )
                 )
               )
@@ -1335,336 +1335,337 @@
       )
     )
   :code (behavior ((arg0 symbol) (arg1 attack-info))
-    (local-vars (sv-32 attack-info) (sv-36 vector))
     (logclear! (-> self water flags) (water-flag jump-out))
     (set-time! (-> self state-time))
     (set! (-> self neck flex-blend) 0.0)
-    (set! sv-32 (-> self attack-info))
-    (set! sv-36 (new 'stack-no-clear 'vector))
-    (let ((v1-7 sv-32))
-      (set! (-> v1-7 attacker) (the-as handle #f))
-      (set! (-> v1-7 mode) 'generic)
-      (set! (-> v1-7 shove-back) 6144.0)
-      (set! (-> v1-7 shove-up) 4915.2)
-      (set! (-> v1-7 angle) #f)
-      (set! (-> v1-7 trans quad) (-> self control trans quad))
-      (set! (-> v1-7 control) 0.0)
-      (set! (-> v1-7 invinc-time) (-> *TARGET-bank* hit-invulnerable-timeout))
-      (set! (-> v1-7 damage) (-> *FACT-bank* health-default-inc))
-      )
-    (case arg0
-      (('shove)
-       (let ((v1-10 sv-32))
-         (set! (-> v1-10 shove-back) (-> *TARGET-bank* smack-surface-dist))
-         (set! (-> v1-10 shove-up) (-> *TARGET-bank* smack-surface-height))
-         (set! (-> v1-10 angle) 'shove)
-         )
-       )
-      )
-    (let ((v1-13 (if (logtest? (-> arg1 mask) (attack-mask mode))
-                     (-> arg1 mode)
-                     'generic
-                     )
-                 )
+    (let ((sv-32 (-> self attack-info)))
+      (let ((sv-36 (new 'stack-no-clear 'vector)))
+        (let ((v1-7 sv-32))
+          (set! (-> v1-7 attacker) (the-as handle #f))
+          (set! (-> v1-7 mode) 'generic)
+          (set! (-> v1-7 shove-back) 6144.0)
+          (set! (-> v1-7 shove-up) 4915.2)
+          (set! (-> v1-7 angle) #f)
+          (set! (-> v1-7 trans quad) (-> self control trans quad))
+          (set! (-> v1-7 control) 0.0)
+          (set! (-> v1-7 invinc-time) (-> *TARGET-bank* hit-invulnerable-timeout))
+          (set! (-> v1-7 damage) (-> *FACT-bank* health-default-inc))
           )
-      (when (or (= v1-13 'lava) (or (= v1-13 'melt) (= v1-13 'fry) (= v1-13 'slime)))
-        (let ((v1-16 sv-32))
-          (set! (-> v1-16 shove-up) 32768.0)
-          (set! (-> v1-16 angle) 'lava)
-          (set! (-> v1-16 control) 1.0)
-          (set! (-> v1-16 damage) 4.0)
-          )
-        )
-      )
-    (combine! sv-32 arg1 self)
-    (when (not (logtest? (-> sv-32 mask) (attack-mask vector)))
-      (vector-z-quaternion! (-> sv-32 vector) (-> self control quat-for-control))
-      (vector-xz-normalize! (-> sv-32 vector) (- (fabs (-> sv-32 shove-back))))
-      (set! (-> sv-32 vector y) (-> sv-32 shove-up))
-      )
-    (when (and (focus-test? self dark) (nonzero? (-> self darkjak)))
-      (set! (-> sv-32 damage) (fmax 1.0 (ceil (/ (-> sv-32 damage) 2))))
-      0
-      )
-    (vector-copy! sv-36 (-> sv-32 vector))
-    (let ((f0-19 (vector-dot
-                   (vector-normalize-copy! (new 'stack-no-clear 'vector) sv-36 1.0)
-                   (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))
-                   )
-                 )
-          )
-      (if (not (-> self attack-info angle))
-          (set! (-> self attack-info angle) (if (>= 0.0 f0-19)
-                                                'front
-                                                'back
-                                                )
-                )
-          )
-      )
-    (cond
-      ((= arg0 'attack)
-       (send-event (handle->process (-> self notify)) 'notify 'hit (-> sv-32 mode))
-       (logior! (-> self focus-status) (focus-status hit))
-       (set-time! (-> self game hit-time))
-       (case (-> sv-32 mode)
-         (('endlessfall)
-          (cond
-            ((= (-> self game mode) 'debug)
-             (let ((gp-1 (new-stack-vector0)))
-               (vector-copy! gp-1 (-> self control last-trans-on-ground))
-               (ja-channel-set! 0)
-               (suspend-for (seconds 1)
-                 )
-               (move-to-point! (-> self control) gp-1)
-               )
-             (vector-copy! (-> self control camera-pos) (-> self control trans))
-             (send-event *camera* 'teleport)
-             (go target-stance)
+        (case arg0
+          (('shove)
+           (let ((v1-10 sv-32))
+             (set! (-> v1-10 shove-back) (-> *TARGET-bank* smack-surface-dist))
+             (set! (-> v1-10 shove-up) (-> *TARGET-bank* smack-surface-height))
+             (set! (-> v1-10 angle) 'shove)
              )
-            (else
-              (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
-              (go target-death (-> sv-32 mode))
-              )
-            )
+           )
           )
-         (('fry)
-          (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
-          (cond
-            ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
-             (go target-death (-> sv-32 mode))
-             )
-            (else
-              (sound-play "death-melt")
-              (cond
-                ((logtest? (-> group-lava-death flags) (sp-group-flag sp13))
-                 (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
-                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-lava-death)
-                 )
-                (else
-                  (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
-                  (part-tracker-spawn part-tracker :to *entity-pool* :group group-lava-death)
-                  )
-                )
-              )
-            )
-          )
-         (('lava 'melt 'slime)
-          (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
-          (cond
-            ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
-             (go target-death (-> sv-32 mode))
-             )
-            (else
-              (sound-play "death-melt")
-              (cond
-                ((logtest? (-> group-lava-death flags) (sp-group-flag sp13))
-                 (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
-                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-lava-death)
-                 )
-                (else
-                  (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
-                  (part-tracker-spawn part-tracker :to *entity-pool* :group group-lava-death)
-                  )
-                )
-              )
-            )
-          )
-         (('drown-death
-            'sharkey
-            'dark-eco-pool
-            'instant-death
-            'crush
-            'death
-            'grenade
-            'bot
-            'turret
-            'centipede
-            'big-explosion
-            'tentacle
-            )
-          (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
-          (if (= (-> self game mode) 'play)
-              (go target-death (-> sv-32 mode))
-              )
-          )
-         (('explode)
-          (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
-          (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
-              (go target-death (-> sv-32 mode))
-              )
-          )
-         (('smush)
-          (case (-> sv-32 angle)
-            (('front)
-             (forward-up-nopitch->quaternion
-               (-> self control dir-targ)
-               (vector-negate! (new 'stack-no-clear 'vector) sv-36)
-               (-> self control dynam gravity-normal)
-               )
-             )
-            (else
-              (forward-up-nopitch->quaternion (-> self control dir-targ) sv-36 (-> self control dynam gravity-normal))
-              )
-            )
-          (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
-          (go target-hit-ground-hard (-> *TARGET-bank* fall-far))
-          )
-         (('shock 'shock-red 'shock-green)
-          (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
-          (let* ((v1-211 (-> sv-32 mode))
-                 (gp-9 (cond
-                         ((= v1-211 'shock-red)
-                          group-lightning-red-glow
-                          )
-                         ((= v1-211 'shock-green)
-                          group-lightning-green-glow
-                          )
-                         (else
-                           group-lightning-glow
-                           )
+        (let ((v1-13 (if (logtest? (-> arg1 mask) (attack-mask mode))
+                         (-> arg1 mode)
+                         'generic
                          )
-                       )
-                 )
-            (if (logtest? (-> gp-9 flags) (sp-group-flag sp13))
-                (part-tracker-spawn
-                  part-tracker-subsampler
-                  :to self
-                  :group gp-9
-                  :duration (seconds 1)
-                  :target self
-                  :mat-joint 6
-                  )
-                (part-tracker-spawn part-tracker :to self :group gp-9 :duration (seconds 1) :target self :mat-joint 6)
-                )
-            )
-          (let ((gp-10 (-> self post-hook)))
-            (set! (-> self control mod-surface) *turn-around-mods*)
-            (set! (-> self post-hook) target-no-stick-post)
-            (if (using-gun? self)
-                (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-hit-elec-ja) 0.0 30 0 1.0 0.0 #f)
-                )
-            (let ((v1-247 (new-stack-vector0)))
-              (let ((f0-36 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
-                0.0
-                (vector-!
-                  v1-247
-                  (-> self control transv)
-                  (vector-float*! v1-247 (-> self control dynam gravity-normal) f0-36)
-                  )
-                )
-              (let* ((f0-37 (vector-length v1-247))
-                     (f1-6 f0-37)
-                     (f2-0 0.0)
                      )
-                (vector+!
-                  (-> self control transv)
-                  (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-0)
-                  (vector-float*! v1-247 v1-247 (/ f0-37 f1-6))
+              )
+          (when (or (= v1-13 'lava) (or (= v1-13 'melt) (= v1-13 'fry) (= v1-13 'slime)))
+            (let ((v1-16 sv-32))
+              (set! (-> v1-16 shove-up) 32768.0)
+              (set! (-> v1-16 angle) 'lava)
+              (set! (-> v1-16 control) 1.0)
+              (set! (-> v1-16 damage) 4.0)
+              )
+            )
+          )
+        (combine! sv-32 arg1 self)
+        (when (not (logtest? (-> sv-32 mask) (attack-mask vector)))
+          (vector-z-quaternion! (-> sv-32 vector) (-> self control quat-for-control))
+          (vector-xz-normalize! (-> sv-32 vector) (- (fabs (-> sv-32 shove-back))))
+          (set! (-> sv-32 vector y) (-> sv-32 shove-up))
+          )
+        (when (and (focus-test? self dark) (nonzero? (-> self darkjak)))
+          (set! (-> sv-32 damage) (fmax 1.0 (ceil (/ (-> sv-32 damage) 2))))
+          0
+          )
+        (vector-copy! sv-36 (-> sv-32 vector))
+        (let ((f0-19 (vector-dot
+                       (vector-normalize-copy! (new 'stack-no-clear 'vector) sv-36 1.0)
+                       (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))
+                       )
+                     )
+              )
+          (if (not (-> self attack-info angle))
+              (set! (-> self attack-info angle) (if (>= 0.0 f0-19)
+                                                    'front
+                                                    'back
+                                                    )
+                    )
+              )
+          )
+        (cond
+          ((= arg0 'attack)
+           (send-event (handle->process (-> self notify)) 'notify 'hit (-> sv-32 mode))
+           (logior! (-> self focus-status) (focus-status hit))
+           (set-time! (-> self game hit-time))
+           (case (-> sv-32 mode)
+             (('endlessfall)
+              (cond
+                ((= (-> self game mode) 'debug)
+                 (let ((gp-1 (new-stack-vector0)))
+                   (vector-copy! gp-1 (-> self control last-trans-on-ground))
+                   (ja-channel-set! 0)
+                   (suspend-for (seconds 1)
+                     )
+                   (move-to-point! (-> self control) gp-1)
+                   )
+                 (vector-copy! (-> self control camera-pos) (-> self control trans))
+                 (send-event *camera* 'teleport)
+                 (go target-stance)
+                 )
+                (else
+                  (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
+                  (go target-death (-> sv-32 mode))
                   )
                 )
               )
-            (ja-channel-push! 1 (seconds 0.1))
-            (ja-no-eval :group! jakb-hit-elec-ja :num! (seek!) :frame-num 0.0)
-            (until (ja-done? 0)
-              (let ((v1-263 (new-stack-vector0))
-                    (f0-44 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-                    )
-                0.0
-                (vector-!
-                  v1-263
-                  (-> self control transv)
-                  (vector-float*! v1-263 (-> self control dynam gravity-normal) f0-44)
-                  )
-                (let* ((f1-9 (vector-length v1-263))
-                       (f2-1 f1-9)
-                       (f0-45 (+ f0-44 (* 286720.0 (seconds-per-frame))))
-                       )
-                  (vector+!
-                    (-> self control transv)
-                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f0-45)
-                    (vector-float*! v1-263 v1-263 (/ f1-9 f2-1))
-                    )
-                  )
-                )
-              (when (>= (- (-> *display* game-clock frame-counter) (-> self shock-effect-time)) (seconds 0.03))
-                (set! (-> self shock-effect-time) (-> *display* game-clock frame-counter))
-                (send-event self 'color-effect 'shock (seconds 0.2))
-                (case (-> sv-32 mode)
-                  (('shock-red)
-                   (process-drawable-shock-effect
-                     self
-                     (-> *lightning-spec-id-table* 3)
-                     lightning-probe-callback
-                     (the-as sparticle-launcher #f)
-                     0
-                     0
-                     40960.0
+             (('fry)
+              (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
+              (cond
+                ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
+                 (go target-death (-> sv-32 mode))
+                 )
+                (else
+                  (sound-play "death-melt")
+                  (cond
+                    ((logtest? (-> group-lava-death flags) (sp-group-flag sp13))
+                     (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+                     (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-lava-death)
                      )
-                   )
-                  (('shock-green)
-                   (process-drawable-shock-effect
-                     self
-                     (-> *lightning-spec-id-table* 4)
-                     lightning-probe-callback
-                     (the-as sparticle-launcher #f)
-                     0
-                     0
-                     40960.0
-                     )
-                   )
-                  (else
-                    (process-drawable-shock-effect
-                      self
-                      (-> *lightning-spec-id-table* 1)
-                      lightning-probe-callback
-                      (-> *part-id-table* 160)
-                      0
-                      0
-                      40960.0
+                    (else
+                      (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+                      (part-tracker-spawn part-tracker :to *entity-pool* :group group-lava-death)
                       )
                     )
                   )
                 )
-              (suspend)
-              (ja :num! (seek!))
               )
-            (set! (-> sv-32 angle) 'back)
-            (set! (-> self post-hook) gp-10)
+             (('lava 'melt 'slime)
+              (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
+              (cond
+                ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
+                 (go target-death (-> sv-32 mode))
+                 )
+                (else
+                  (sound-play "death-melt")
+                  (cond
+                    ((logtest? (-> group-lava-death flags) (sp-group-flag sp13))
+                     (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+                     (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-lava-death)
+                     )
+                    (else
+                      (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+                      (part-tracker-spawn part-tracker :to *entity-pool* :group group-lava-death)
+                      )
+                    )
+                  )
+                )
+              )
+             (('drown-death
+                'sharkey
+                'dark-eco-pool
+                'instant-death
+                'crush
+                'death
+                'grenade
+                'bot
+                'turret
+                'centipede
+                'big-explosion
+                'tentacle
+                )
+              (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
+              (if (= (-> self game mode) 'play)
+                  (go target-death (-> sv-32 mode))
+                  )
+              )
+             (('explode)
+              (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
+              (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
+                  (go target-death (-> sv-32 mode))
+                  )
+              )
+             (('smush)
+              (case (-> sv-32 angle)
+                (('front)
+                 (forward-up-nopitch->quaternion
+                   (-> self control dir-targ)
+                   (vector-negate! (new 'stack-no-clear 'vector) sv-36)
+                   (-> self control dynam gravity-normal)
+                   )
+                 )
+                (else
+                  (forward-up-nopitch->quaternion (-> self control dir-targ) sv-36 (-> self control dynam gravity-normal))
+                  )
+                )
+              (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
+              (go target-hit-ground-hard (-> *TARGET-bank* fall-far))
+              )
+             (('shock 'shock-red 'shock-green)
+              (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
+              (let* ((v1-211 (-> sv-32 mode))
+                     (gp-9 (cond
+                             ((= v1-211 'shock-red)
+                              group-lightning-red-glow
+                              )
+                             ((= v1-211 'shock-green)
+                              group-lightning-green-glow
+                              )
+                             (else
+                               group-lightning-glow
+                               )
+                             )
+                           )
+                     )
+                (if (logtest? (-> gp-9 flags) (sp-group-flag sp13))
+                    (part-tracker-spawn
+                      part-tracker-subsampler
+                      :to self
+                      :group gp-9
+                      :duration (seconds 1)
+                      :target self
+                      :mat-joint 6
+                      )
+                    (part-tracker-spawn part-tracker :to self :group gp-9 :duration (seconds 1) :target self :mat-joint 6)
+                    )
+                )
+              (let ((gp-10 (-> self post-hook)))
+                (set! (-> self control mod-surface) *turn-around-mods*)
+                (set! (-> self post-hook) target-no-stick-post)
+                (if (using-gun? self)
+                    (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-hit-elec-ja) 0.0 30 0 1.0 0.0 #f)
+                    )
+                (let ((v1-247 (new-stack-vector0)))
+                  (let ((f0-36 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+                    0.0
+                    (vector-!
+                      v1-247
+                      (-> self control transv)
+                      (vector-float*! v1-247 (-> self control dynam gravity-normal) f0-36)
+                      )
+                    )
+                  (let* ((f0-37 (vector-length v1-247))
+                         (f1-6 f0-37)
+                         (f2-0 0.0)
+                         )
+                    (vector+!
+                      (-> self control transv)
+                      (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-0)
+                      (vector-float*! v1-247 v1-247 (/ f0-37 f1-6))
+                      )
+                    )
+                  )
+                (ja-channel-push! 1 (seconds 0.1))
+                (ja-no-eval :group! jakb-hit-elec-ja :num! (seek!) :frame-num 0.0)
+                (until (ja-done? 0)
+                  (let ((v1-263 (new-stack-vector0))
+                        (f0-44 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+                        )
+                    0.0
+                    (vector-!
+                      v1-263
+                      (-> self control transv)
+                      (vector-float*! v1-263 (-> self control dynam gravity-normal) f0-44)
+                      )
+                    (let* ((f1-9 (vector-length v1-263))
+                           (f2-1 f1-9)
+                           (f0-45 (+ f0-44 (* 286720.0 (seconds-per-frame))))
+                           )
+                      (vector+!
+                        (-> self control transv)
+                        (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f0-45)
+                        (vector-float*! v1-263 v1-263 (/ f1-9 f2-1))
+                        )
+                      )
+                    )
+                  (when (>= (- (-> *display* game-clock frame-counter) (-> self shock-effect-time)) (seconds 0.03))
+                    (set! (-> self shock-effect-time) (-> *display* game-clock frame-counter))
+                    (send-event self 'color-effect 'shock (seconds 0.2))
+                    (case (-> sv-32 mode)
+                      (('shock-red)
+                       (process-drawable-shock-effect
+                         self
+                         (-> *lightning-spec-id-table* 3)
+                         lightning-probe-callback
+                         (the-as sparticle-launcher #f)
+                         0
+                         0
+                         40960.0
+                         )
+                       )
+                      (('shock-green)
+                       (process-drawable-shock-effect
+                         self
+                         (-> *lightning-spec-id-table* 4)
+                         lightning-probe-callback
+                         (the-as sparticle-launcher #f)
+                         0
+                         0
+                         40960.0
+                         )
+                       )
+                      (else
+                        (process-drawable-shock-effect
+                          self
+                          (-> *lightning-spec-id-table* 1)
+                          lightning-probe-callback
+                          (-> *part-id-table* 160)
+                          0
+                          0
+                          40960.0
+                          )
+                        )
+                      )
+                    )
+                  (suspend)
+                  (ja :num! (seek!))
+                  )
+                (set! (-> sv-32 angle) 'back)
+                (set! (-> self post-hook) gp-10)
+                )
+              )
+             (else
+               (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
+               )
+             )
+           (target-hit-effect sv-32)
+           )
+          (else
+            (case (-> sv-32 mode)
+              (('burn 'burnup)
+               (sound-play "get-burned")
+               )
+              )
             )
           )
-         (else
-           (pickup-collectable! (-> self fact) (pickup-type health) (- (-> sv-32 damage)) (the-as handle #f))
-           )
-         )
-       (target-hit-effect sv-32)
-       )
-      (else
-        (case (-> sv-32 mode)
-          (('burn 'burnup)
-           (sound-play "get-burned")
-           )
+        (when (and (= (-> self game mode) 'play) (and (>= 0.0 (-> self fact health)) (using-gun? self)))
+          (send-event (ppointer->process (-> self gun gun)) 'notice 'die)
+          (target-gun-end-mode #f)
           )
+        (set! (-> self control mod-surface) *smack-mods*)
+        (target-hit-setup-anim sv-32)
+        (target-hit-move sv-32 (target-hit-orient sv-32 sv-36) target-falling-anim-trans 1.0)
         )
-      )
-    (when (and (= (-> self game mode) 'play) (and (>= 0.0 (-> self fact health)) (using-gun? self)))
-      (send-event (ppointer->process (-> self gun gun)) 'notice 'die)
-      (target-gun-end-mode #f)
-      )
-    (set! (-> self control mod-surface) *smack-mods*)
-    (target-hit-setup-anim sv-32)
-    (target-hit-move sv-32 (target-hit-orient sv-32 sv-36) target-falling-anim-trans 1.0)
-    (cond
-      ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
-       (go target-death (-> sv-32 mode))
-       )
-      ((and (and (focus-test? self dark) (nonzero? (-> self darkjak))) (>= 1.0 (-> self fact health)))
-       (go target-darkjak-get-off)
-       )
-      ((and (and (focus-test? self light) (nonzero? (-> self lightjak))) (>= 1.0 (-> self fact health)))
-       (go target-lightjak-get-off)
-       )
-      (else
-        (go target-hit-ground #f)
+      (cond
+        ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
+         (go target-death (-> sv-32 mode))
+         )
+        ((and (and (focus-test? self dark) (nonzero? (-> self darkjak))) (>= 1.0 (-> self fact health)))
+         (go target-darkjak-get-off)
+         )
+        ((and (and (focus-test? self light) (nonzero? (-> self lightjak))) (>= 1.0 (-> self fact health)))
+         (go target-lightjak-get-off)
+         )
+        (else
+          (go target-hit-ground #f)
+          )
         )
       )
     )
@@ -1815,7 +1816,6 @@
   )
 
 (defbehavior target-death-main target ((arg0 symbol))
-  (local-vars (sv-96 level) (sv-112 vector))
   (let ((v1-0 arg0))
     (if (= v1-0 'tar)
         (sound-play "death-drown")
@@ -1905,91 +1905,77 @@
         (send-event self 'blend-shape #t)
         (apply-settings *setting-control*)
         (flag-setup)
-        (set! sv-96 (the-as level #f))
-        (art-group-get-by-name *level* "daxter-highres" (new 'stack-no-clear 'array 'level 1))
-        (let ((s4-1 (if (and sv-96 (nonzero? (-> sv-96 entity)) (> (-> sv-96 entity length) 0))
-                        (-> sv-96 entity data 0 entity)
-                        )
-                    )
-              )
-          (when s4-1
-            (let ((s5-2 (ppointer->handle (process-spawn
-                                            pov-camera
-                                            (-> self control trans)
-                                            (art-group-get-by-name *level* "skel-scenecamera" (the-as (pointer level) #f))
-                                            gp-2
-                                            12
-                                            self
-                                            '()
-                                            :name "pov-camera"
-                                            :to *target-pool*
-                                            )
-                                          )
-                        )
-                  )
-              (when (handle->process s5-2)
-                (let* ((s2-1 (get-process *default-dead-pool* manipy #x20000 1))
-                       (s3-1
-                         (when s2-1
-                           (let ((t9-33 (method-of-type manipy activate)))
-                             (t9-33 (the-as manipy s2-1) (handle->process s5-2) "sidekick-highres" (the-as pointer #x70004000))
-                             )
-                           (let ((s3-2 run-function-in-process)
-                                 (s1-1 s2-1)
-                                 (s0-1 manipy-init)
-                                 )
-                             (set! sv-112 (-> self control trans))
-                             (let ((t0-6 (art-group-get-by-name *level* "skel-sidekick-highres" (the-as (pointer level) #f)))
-                                   (t1-5 #f)
-                                   (t2-3 0)
-                                   )
-                               ((the-as (function object object object object object object object none) s3-2)
-                                s1-1
-                                s0-1
-                                sv-112
-                                s4-1
-                                t0-6
-                                t1-5
-                                t2-3
-                                )
-                               )
-                             )
-                           (-> s2-1 ppointer)
-                           )
-                         )
-                       )
-                  (process-spawn-function
-                    process
-                    (lambda :behavior target ((arg0 handle)) (suspend) (send-event (handle->process arg0) 'light-index 240))
-                    (ppointer->handle s3-1)
-                    :to self
-                    )
-                  (send-event (ppointer->process s3-1) 'anim-mode 'clone-anim)
-                  (send-event (ppointer->process s3-1) 'blend-shape #t)
-                  )
-                (send-event (handle->process s5-2) 'music-movie-volume 0.0)
-                (send-event (handle->process s5-2) 'sfx-movie-volume 0.5)
-                (send-event (handle->process s5-2) 'ambient-movie-volume 0.5)
-                (set! (-> self post-hook) target-no-ja-move-post)
-                (ja-channel-set! 0)
-                (while (handle->process s5-2)
-                  (gui-control-method-12
-                    *gui-control*
-                    self
-                    (gui-channel art-load)
-                    (gui-action queue)
-                    (-> gp-2 name)
-                    0
-                    -99.0
-                    (new 'static 'sound-id)
-                    )
-                  (suspend)
-                  )
-                (set-blackout-frames (seconds 0.2))
-                (let ((a0-83 (handle->process s5-2)))
-                  (if a0-83
-                      (deactivate a0-83)
+        (let ((sv-96 (the-as level #f)))
+          (art-group-get-by-name *level* "daxter-highres" (& sv-96))
+          (let ((s4-1 (if (and sv-96 (nonzero? (-> sv-96 entity)) (> (-> sv-96 entity length) 0))
+                          (-> sv-96 entity data 0 entity)
+                          )
                       )
+                )
+            (when s4-1
+              (let ((s5-2 (ppointer->handle (process-spawn
+                                              pov-camera
+                                              (-> self control trans)
+                                              (art-group-get-by-name *level* "skel-scenecamera" (the-as (pointer level) #f))
+                                              gp-2
+                                              12
+                                              self
+                                              '()
+                                              :name "pov-camera"
+                                              :to *target-pool*
+                                              )
+                                            )
+                          )
+                    )
+                (when (handle->process s5-2)
+                  (let ((s3-1
+                          (process-spawn
+                            manipy
+                            :init manipy-init
+                            (-> self control trans)
+                            s4-1
+                            (art-group-get-by-name *level* "skel-sidekick-highres" (the-as (pointer level) #f))
+                            #f
+                            0
+                            :name "sidekick-highres"
+                            :to (handle->process s5-2)
+                            :stack-size #x20000
+                            )
+                          )
+                        )
+                    (process-spawn-function
+                      process
+                      (lambda :behavior target ((arg0 handle)) (suspend) (send-event (handle->process arg0) 'light-index 240))
+                      (ppointer->handle s3-1)
+                      :to self
+                      )
+                    (send-event (ppointer->process s3-1) 'anim-mode 'clone-anim)
+                    (send-event (ppointer->process s3-1) 'blend-shape #t)
+                    )
+                  (send-event (handle->process s5-2) 'music-movie-volume 0.0)
+                  (send-event (handle->process s5-2) 'sfx-movie-volume 0.5)
+                  (send-event (handle->process s5-2) 'ambient-movie-volume 0.5)
+                  (set! (-> self post-hook) target-no-ja-move-post)
+                  (ja-channel-set! 0)
+                  (while (handle->process s5-2)
+                    (gui-control-method-12
+                      *gui-control*
+                      self
+                      (gui-channel art-load)
+                      (gui-action queue)
+                      (-> gp-2 name)
+                      0
+                      -99.0
+                      (new 'static 'sound-id)
+                      )
+                    (suspend)
+                    )
+                  (set-blackout-frames (seconds 0.2))
+                  (let ((a0-83 (handle->process s5-2)))
+                    (if a0-83
+                        (deactivate a0-83)
+                        )
+                    )
                   )
                 )
               )

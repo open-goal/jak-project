@@ -192,7 +192,6 @@
    (:conerot-y (degrees 0) (degrees 360))))
 
 (defbehavior driller-lurker-default-event-handler driller-lurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (sv-96 collide-shape-prim))
   (cond
     ((= arg2 'attack)
      (cond
@@ -215,11 +214,11 @@
                  (let* ((s1-0 (the-as touching-shapes-entry (-> arg3 param 0)))
                         (s0-0 (-> s1-0 head)))
                    (while s0-0
-                     (set! sv-96 (get-touched-prim s0-0 (-> self root-overeride) s1-0))
-                     (if (and (logtest? (-> (get-touched-prim s0-0 (-> s4-0 control) s1-0) prim-core action) (collide-action solid))
-                              (logtest? (-> sv-96 prim-id) 1))
-                       (set! s2-0 #t))
-                     (if (logtest? (-> sv-96 prim-id) 2) (set! s3-0 #t))
+                     (let ((sv-96 (get-touched-prim s0-0 (-> self root-overeride) s1-0)))
+                       (if (and (logtest? (-> (get-touched-prim s0-0 (-> s4-0 control) s1-0) prim-core action) (collide-action solid))
+                                (logtest? (-> sv-96 prim-id) 1))
+                         (set! s2-0 #t))
+                       (if (logtest? (-> sv-96 prim-id) 2) (set! s3-0 #t)))
                      (set! s0-0 (-> s0-0 next))))
                  (cond
                    ((or s2-0 (not s3-0))
@@ -644,7 +643,6 @@
   (none))
 
 (defmethod init-from-entity! ((this driller-lurker) (arg0 entity-actor))
-  (local-vars (sv-16 res-tag))
   (set! (-> this hit-player?) #f)
   (set! (-> this played-drill-sound?) #f)
   (set! (-> this hit-player-time) 0)
@@ -731,7 +729,7 @@
   (set! (-> this path-speed) 15360.0)
   (set! (-> this targ-path-speed) 15360.0)
   (set! (-> this up-blend) 0.0)
-  (set! sv-16 (new 'static 'res-tag))
+  (let ((sv-16 (new 'static 'res-tag))))
   (let ((v1-91 (res-lump-data arg0 'driller-lurker (pointer float) :tag-ptr (the-as (pointer res-tag) (new 'stack-no-clear 'vector)))))
     (when v1-91
       (set! (-> this path-u) (fmax 0.0 (fmin 1.0 (-> v1-91 0))))

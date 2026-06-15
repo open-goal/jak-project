@@ -1,0 +1,11 @@
+("DKX.DGO"
+ ("train-obs.o"
+  "docks-effects.o"
+  "docks-part.o"
+  "docks-obs.o"
+  "docks-ocean.o"
+  "tpage-2677.go"
+  "tpage-2678.go"
+  "train-ag.go"
+  "docksx-vis.o"
+ ))

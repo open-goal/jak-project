@@ -238,12 +238,7 @@
       (set! (-> v1-2 action-mask) (collide-action solid))
       )
     (when (>= (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
-      (let* ((s4-0 (-> s5-0 best-other-tri collide-ptr))
-             (s5-1 (if (type? s4-0 collide-shape-prim-sphere)
-                       s4-0
-                       )
-                   )
-             )
+      (let ((s5-1 (the-as basic (as-type (-> s5-0 best-other-tri collide-ptr) collide-shape-prim-sphere))))
         (when s5-1
           (let ((s4-1 (new 'stack-no-clear 'vector)))
             (vector-rotate-around-y! s4-1 (-> this slave-trans-offset) (if (logtest? (-> this info options) 1)
@@ -350,22 +345,21 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs under-laser.
-(defmethod relocate ((this under-laser) (arg0 int))
+(defmethod relocate ((this under-laser) (offset int))
   (if (nonzero? (-> this lightning))
-      (&+! (-> this lightning) arg0)
+      (&+! (-> this lightning) offset)
       )
-  (the-as under-laser ((method-of-type process-drawable relocate) this arg0))
+  (the-as under-laser ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this under-laser) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
-  (local-vars (sv-64 res-tag))
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (the-as collide-shape-moving (new 'process 'trsqv)))
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -398,8 +392,9 @@ This commonly includes things such as:
   (set! (-> this clock) (-> *display* user0-clock))
   (let ((s5-1 (-> this root)))
     (set-vector! (-> s5-1 scale) 1.25 1.25 1.25 1.0)
-    (set! sv-64 (new 'static 'res-tag))
-    (let ((v1-22 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-64))))
+    (let* ((sv-64 (new 'static 'res-tag))
+           (v1-22 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-64)))
+           )
       (when v1-22
         (+! (-> s5-1 trans x) (-> v1-22 0))
         (+! (-> s5-1 trans y) (-> v1-22 1))

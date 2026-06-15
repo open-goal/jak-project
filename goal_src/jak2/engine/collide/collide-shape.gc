@@ -934,103 +934,94 @@ it returns a triangle and normal direction to push in.
 
 (defun cshape-reaction-update-state ((arg0 control-info) (arg1 collide-query) (arg2 vector))
   "Common update for cshape reaction."
-  (local-vars (sv-48 vector) (sv-52 vector) (sv-56 collide-status) (sv-96 symbol))
-  (set! sv-48 (new-stack-vector0))
-  (set! sv-52 (new-stack-vector0))
-  (set! sv-56 (collide-status))
-
-  ;; do the move!
-  (let ((a1-1 (new 'stack-no-clear 'vector)))
-    (vector-float*! a1-1 (-> arg1 move-dist) (-> arg1 best-dist))
-    (move-by-vector! arg0 a1-1)
-    )
-
-  ;; do reactions
-  (react-to-pat! arg0 (-> arg1 best-other-tri pat))
-
-  ;; direction to the collision point
-  (vector-! sv-48 (the-as vector (-> arg1 best-my-prim prim-core)) (-> arg1 best-other-tri intersect))
-
-  ;; compute "coverage". this is a measure of how much the triangle below us "supports" us.
-  (cond
-    ((and (= (-> arg1 best-dist) 0.0) ;; can't move
-          (< (vector-length sv-48) (+ -40.96 (-> arg1 best-my-prim prim-core world-sphere w))) ;; 1m in collision!
-          )
-
-     ;; hack: things have gone very wrong.
-     ;; added print
-     ;; (format 0 "very far in collision hack running~%")
-     (set! (-> sv-48 quad) (-> arg1 best-other-tri normal quad)) ;; just use the triangle's normal, things are bad.
-     (set! (-> arg0 coverage) 0.0)
-     )
-    (else
-      (set! (-> sv-48 w) 1.0)
-      (vector-normalize! sv-48 1.0)
-      ;; dot with normal is the coverage
-      (set! (-> arg0 coverage) (vector-dot sv-48 (-> arg1 best-other-tri normal)))
-      ;; hack
-      (when (< (-> arg0 coverage) 0.0)
-        ;; no idea how this can happen, but cheat things to project to the plane of the triangle.
-        (set! (-> arg0 coverage) 0.0) ;; would be 0
-        ;; projects to plane
-        (vector-flatten! sv-48 sv-48 (-> arg1 best-other-tri normal))
+  (let ((sv-48 (new-stack-vector0))
+        (sv-52 (new-stack-vector0))
+        (sv-56 (collide-status))
+        )
+    ;; do the move!
+    (let ((a1-1 (new 'stack-no-clear 'vector)))
+      (vector-float*! a1-1 (-> arg1 move-dist) (-> arg1 best-dist))
+      (move-by-vector! arg0 a1-1)
+      )
+    ;; do reactions
+    (react-to-pat! arg0 (-> arg1 best-other-tri pat))
+    ;; direction to the collision point
+    (vector-! sv-48 (-> arg1 best-my-prim prim-core world-sphere) (-> arg1 best-other-tri intersect))
+    ;; compute "coverage". this is a measure of how much the triangle below us "supports" us.
+    (cond
+      ((and (= (-> arg1 best-dist) 0.0) ;; can't move
+            (< (vector-length sv-48) (+ -40.96 (-> arg1 best-my-prim prim-core world-sphere w))) ;; 1m in collision!
+            )
+       ;; hack: things have gone very wrong.
+       ;; added print
+       ;; (format 0 "very far in collision hack running~%")
+       (set! (-> sv-48 quad) (-> arg1 best-other-tri normal quad)) ;; just use the triangle's normal, things are bad.
+       (set! (-> arg0 coverage) 0.0)
+       )
+      (else
+        (set! (-> sv-48 w) 1.0)
         (vector-normalize! sv-48 1.0)
+        ;; dot with normal is the coverage
+        (set! (-> arg0 coverage) (vector-dot sv-48 (-> arg1 best-other-tri normal)))
+        ;; hack
+        (when (< (-> arg0 coverage) 0.0)
+          ;; no idea how this can happen, but cheat things to project to the plane of the triangle.
+          (set! (-> arg0 coverage) 0.0) ;; would be 0
+          ;; projects to plane
+          (vector-flatten! sv-48 sv-48 (-> arg1 best-other-tri normal))
+          (vector-normalize! sv-48 1.0)
+          )
         )
       )
+    ;; ??
+    (set! (-> sv-52 quad) (-> sv-48 quad))
+    ;; hack: if we can't move, move out, but only a very small amount.
+    (if (= (-> arg1 best-dist) 0.0)
+        (move-by-vector! arg0 (vector-normalize-copy! (new-stack-vector0) sv-52 6.0))
+        )
+    ;; fill out normals/angles
+    (set! (-> arg0 poly-normal quad) (-> arg1 best-other-tri normal quad))
+    (collide-shape-moving-angle-set! arg0 sv-52 arg2)
+    ;; flags!
+    (if (< (-> arg0 poly-angle) -0.2)
+        (logior! sv-56 (collide-status touch-ceiling))
+        )
+    (let ((sv-96 (< (fabs (-> arg0 surface-angle)) (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle))))
+      ;; if we hit this function, we hit some surface
+      (logior! sv-56 (collide-status touch-surface))
+      ;; if the thing we hit is spheres, it's not water or background.
+      (if (-> arg1 num-spheres)
+          (logior! sv-56 (collide-status touch-actor))
+          )
+      (cond
+        (sv-96
+          ;; on a wall
+          (logior! sv-56 (collide-status touch-wall))
+          (set! (-> arg0 cur-pat mode) 1)
+          )
+        (else
+          ;; on the ground
+          (logior! sv-56 (collide-status on-surface))
+          (set! (-> arg0 local-normal quad) (-> sv-52 quad))
+          )
+        )
+      (when (and (not sv-96) (>= (-> arg0 coverage) 0.9))
+        ;; on the ground, and not slipping off an edge.
+        (logior! sv-56 (collide-status on-ground))
+        (set! (-> arg0 ground-poly-normal quad) (-> arg0 poly-normal quad))
+        (when (!= (-> arg0 poly-pat mode) (pat-mode wall))
+          (set! (-> arg0 ground-pat) (-> arg0 poly-pat))
+          (set! (-> arg0 grount-touch-point quad) (-> arg1 best-other-tri intersect quad))
+          )
+        )
+      )
+    ;; catch transition to ground.
+    (when (not (logtest? (-> arg0 prev-status) (collide-status on-surface)))
+      (logior! sv-56 (collide-status impact-surface))
+      (set! (-> arg0 ground-impact-vel) (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal))))
+      )
+    (logior! (-> arg0 status) sv-56)
     )
-  ;; ??
-  (let ((v1-25 (-> sv-48 quad)))
-    (set! (-> sv-52 quad) v1-25)
-    )
-  ;; hack: if we can't move, move out, but only a very small amount.
-  (if (= (-> arg1 best-dist) 0.0)
-      (move-by-vector! arg0 (vector-normalize-copy! (new-stack-vector0) sv-52 6.0))
-      )
-
-  ;; fill out normals/angles
-  (set! (-> arg0 poly-normal quad) (-> arg1 best-other-tri normal quad))
-  (collide-shape-moving-angle-set! arg0 sv-52 arg2)
-
-  ;; flags!
-  (if (< (-> arg0 poly-angle) -0.2)
-      (set! sv-56 (logior sv-56 (collide-status touch-ceiling)))
-      )
-  (set! sv-96 (< (fabs (-> arg0 surface-angle)) (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle)))
-
-  ;; if we hit this function, we hit some surface
-  (set! sv-56 (logior sv-56 (collide-status touch-surface)))
-
-  ;; if the thing we hit is spheres, it's not water or background.
-  (if (-> arg1 num-spheres)
-      (set! sv-56 (logior sv-56 (collide-status touch-actor)))
-      )
-  (cond
-    (sv-96
-      ;; on a wall
-      (set! sv-56 (logior sv-56 (collide-status touch-wall)))
-      (set! (-> arg0 cur-pat mode) 1)
-      )
-    (else
-      ;; on the ground
-      (set! sv-56 (logior sv-56 (collide-status on-surface)))
-      (set! (-> arg0 local-normal quad) (-> sv-52 quad))
-      )
-    )
-  (when (and (not sv-96) (>= (-> arg0 coverage) 0.9))
-    ;; on the ground, and not slipping off an edge.
-    (set! sv-56 (logior sv-56 (collide-status on-ground)))
-    (set! (-> arg0 ground-poly-normal quad) (-> arg0 poly-normal quad))
-    (when (!= (-> arg0 poly-pat mode) (pat-mode wall))
-      (set! (-> arg0 ground-pat) (-> arg0 poly-pat))
-      (set! (-> arg0 grount-touch-point quad) (-> arg1 best-other-tri intersect quad))
-      )
-    )
-  ;; catch transition to ground.
-  (when (not (logtest? (-> arg0 prev-status) (collide-status on-surface)))
-    (set! sv-56 (logior sv-56 (collide-status impact-surface)))
-    (set! (-> arg0 ground-impact-vel) (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal))))
-    )
-  (logior! (-> arg0 status) sv-56)
   0
   (none)
   )
@@ -1101,108 +1092,100 @@ it returns a triangle and normal direction to push in.
 
 (defmethod step-collison! ((this collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 float) (arg3 int))
   "Main function to move forward until we hit a single thing, then react."
-  (local-vars (sv-592 int))
-  (with-pp
-    (let ((s5-0 (new 'stack 'collide-query))
-          (s2-0 (new 'stack-no-clear 'vector))
-          )
-      ;; figure out how far we want to move
-      (vector-float*! s2-0 arg1 (* arg2 (seconds-per-frame)))
-      ;; setup collision query
-      (set! (-> s5-0 move-dist quad) (-> s2-0 quad))
-      (set! (-> s5-0 best-dist) -100000000.0)
-      (set! (-> s5-0 best-my-prim) #f)
-      (set! (-> s5-0 num-spheres) (the-as uint #f))
-      (let* ((s1-1 (-> this root-prim))
-             (v1-5 *collide-cache*)
-             (s0-0 (the-as collide-cache-prim (-> v1-5 prims)))
-             )
-        (set! sv-592 (-> v1-5 num-prims))
-
-        ;; collide against everything in the collide cache
-        (while (nonzero? sv-592)
-          (set! sv-592 (+ sv-592 -1))
-          (when (logtest? (-> s1-1 prim-core collide-with) (-> s0-0 prim-core collide-as))
-            (if (>= (the-as int (-> s0-0 prim-core prim-type)) 0)
-                (collide-with-collide-cache-prim-mesh s1-1 s5-0 s0-0)
-                (collide-with-collide-cache-prim-sphere s1-1 s5-0 s0-0)
-                )
-            )
-          (&+! s0-0 48)
-          )
+  (let ((s5-0 (new 'stack 'collide-query))
+        (s2-0 (new 'stack-no-clear 'vector))
         )
-
-      ;; see how far we can move
-      (let ((f30-0 (-> s5-0 best-dist)))
-        (set! f30-0 (cond
-                      ((>= f30-0 0.0) ;; set a positive value, means we can't move all the way!
-
-                       ;; remember velocity before reaction
-                       (let ((s2-1 (new 'stack-no-clear 'vector)))
-                         (if *display-collision-marks*
-                             (set! (-> s2-1 quad) (-> arg1 quad))
+    ;; figure out how far we want to move
+    (vector-float*! s2-0 arg1 (* arg2 (seconds-per-frame)))
+    ;; setup collision query
+    (set! (-> s5-0 move-dist quad) (-> s2-0 quad))
+    (set! (-> s5-0 best-dist) -100000000.0)
+    (set! (-> s5-0 best-my-prim) #f)
+    (set! (-> s5-0 num-spheres) (the-as uint #f))
+    (let* ((s1-1 (-> this root-prim))
+           (v1-5 *collide-cache*)
+           (s0-0 (the-as collide-cache-prim (-> v1-5 prims)))
+           (sv-592 (-> v1-5 num-prims))
+           )
+      ;; collide against everything in the collide cache
+      (while (nonzero? sv-592)
+        (+! sv-592 -1)
+        (when (logtest? (-> s1-1 prim-core collide-with) (-> s0-0 prim-core collide-as))
+          (if (>= (the-as int (-> s0-0 prim-core prim-type)) 0)
+              (collide-with-collide-cache-prim-mesh s1-1 s5-0 s0-0)
+              (collide-with-collide-cache-prim-sphere s1-1 s5-0 s0-0)
+              )
+          )
+        (&+! s0-0 48)
+        )
+      )
+    ;; see how far we can move
+    (let ((f30-0 (-> s5-0 best-dist)))
+      (set! f30-0 (cond
+                    ((>= f30-0 0.0) ;; set a positive value, means we can't move all the way!
+                     ;; remember velocity before reaction
+                     (let ((s2-1 (new 'stack-no-clear 'vector)))
+                       (if *display-collision-marks*
+                           (set! (-> s2-1 quad) (-> arg1 quad))
+                           )
+                       ;; handle collision. will move us.
+                       (set! (-> this prev-status) ((-> this reaction) (the-as control-info this) s5-0 arg0 arg1))
+                       ;; debug draw
+                       (when *display-collision-marks*
+                         (let ((t1-0 (-> *pat-mode-info* (-> s5-0 best-other-tri pat mode) hilite-color)))
+                           (add-debug-outline-triangle
+                             #t
+                             (bucket-id debug-no-zbuf1)
+                             (the-as vector (-> s5-0 best-other-tri))
+                             (-> s5-0 best-other-tri vertex 1)
+                             (-> s5-0 best-other-tri vertex 2)
+                             t1-0
                              )
-
-                         ;; handle collision. will move us.
-                         (set! (-> this prev-status) ((-> this reaction) (the-as control-info this) s5-0 arg0 arg1))
-
-                         ;; debug draw
-                         (when *display-collision-marks*
-                           (let ((t1-0 (-> *pat-mode-info* (-> s5-0 best-other-tri pat mode) hilite-color)))
-                             (add-debug-outline-triangle
+                           )
+                         (add-debug-vector
+                           #t
+                           (bucket-id debug-no-zbuf1)
+                           (-> s5-0 best-other-tri intersect)
+                           s2-1
+                           (meters 0.00007324219)
+                           (new 'static 'rgba :r #xff :g #xa0 :a #x80)
+                           )
+                         (add-debug-vector
+                           #t
+                           (bucket-id debug-no-zbuf1)
+                           (-> s5-0 best-other-tri intersect)
+                           arg0
+                           (meters 0.00007324219)
+                           (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                           )
+                         (if (= (-> this process type) target)
+                             (add-debug-vector
                                #t
                                (bucket-id debug-no-zbuf1)
-                               (the-as vector (-> s5-0 best-other-tri))
-                               (-> s5-0 best-other-tri vertex 1)
-                               (-> s5-0 best-other-tri vertex 2)
-                               t1-0
+                               (-> s5-0 best-other-tri intersect)
+                               (-> this surface-normal)
+                               (meters 0.5)
+                               (-> *pat-mode-info* (-> this cur-pat mode) hilite-color)
                                )
                              )
-                           (add-debug-vector
-                             #t
-                             (bucket-id debug-no-zbuf1)
-                             (-> s5-0 best-other-tri intersect)
-                             s2-1
-                             (meters 0.00007324219)
-                             (new 'static 'rgba :r #xff :g #xa0 :a #x80)
-                             )
-                           (add-debug-vector
-                             #t
-                             (bucket-id debug-no-zbuf1)
-                             (-> s5-0 best-other-tri intersect)
-                             arg0
-                             (meters 0.00007324219)
-                             (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-                             )
-                           (if (= (-> this process type) target)
-                               (add-debug-vector
-                                 #t
-                                 (bucket-id debug-no-zbuf1)
-                                 (-> s5-0 best-other-tri intersect)
-                                 (-> this surface-normal)
-                                 (meters 0.5)
-                                 (-> *pat-mode-info* (-> this cur-pat mode) hilite-color)
-                                 )
-                               )
-                           )
                          )
-                       ;; return how far we went.
-                       f30-0
                        )
-                      (else
-                        ;; didn't collide. call no reaction and clear stuff
-                        (set! (-> this reaction-flag) (cshape-reaction-flags))
-                        ((-> this no-reaction) this s5-0 arg0 arg1)
-                        (set! (-> this prev-status) (collide-status))
-                        ;; move all the way
-                        (move-by-vector! this s2-0)
-                        (set! (-> arg0 quad) (-> arg1 quad))
-                        1.0 ;; return 1 to indicate that we did the whole thing.
-                        )
+                     ;; return how far we went.
+                     f30-0
+                     )
+                    (else
+                      ;; didn't collide. call no reaction and clear stuff
+                      (set! (-> this reaction-flag) (cshape-reaction-flags))
+                      ((-> this no-reaction) this s5-0 arg0 arg1)
+                      (set! (-> this prev-status) (collide-status))
+                      ;; move all the way
+                      (move-by-vector! this s2-0)
+                      (set! (-> arg0 quad) (-> arg1 quad))
+                      1.0 ;; return 1 to indicate that we did the whole thing.
                       )
-              )
-        f30-0
-        )
+                    )
+            )
+      f30-0
       )
     )
   )
@@ -1870,51 +1853,50 @@ it returns a triangle and normal direction to push in.
   )
 
 (defmethod move-to-ground ((this collide-shape-moving) (arg0 float) (arg1 float) (arg2 symbol) (arg3 collide-spec))
-  "Find the ground a move to it."
-  (local-vars (sv-576 profile-segment) (sv-592 int))
+  "Find the ground and move to it."
   (with-profiler 'collide *profile-collide-color*
     (let ((s1-1 (new 'stack-no-clear 'collide-query)))
       (cond
         ((find-ground this s1-1 arg3 arg0 arg1 1024.0)
-         (let ((a1-4 (new 'stack-no-clear 'vector)))
-           (set! (-> a1-4 quad) (-> this trans quad))
-           (set! (-> a1-4 y) (-> s1-1 best-other-tri intersect y))
-           (move-to-point! this a1-4)
-           )
-         (let ((a1-5 (-> s1-1 best-other-tri intersect))
-               (a0-19 (-> s1-1 best-other-tri normal))
-               (v1-25 (-> s1-1 best-other-tri pat))
-               )
-           (set! (-> this grount-touch-point quad) (-> a1-5 quad))
-           (set! (-> this poly-normal quad) (-> a0-19 quad))
-           (set! (-> this surface-normal quad) (-> a0-19 quad))
-           (set! (-> this local-normal quad) (-> a0-19 quad))
-           (set! (-> this ground-poly-normal quad) (-> a0-19 quad))
-           (set! (-> this poly-pat) v1-25)
-           (set! (-> this cur-pat) v1-25)
-           (set! (-> this ground-pat) v1-25)
-           )
-         (logior! (-> this status) (collide-status on-surface on-ground touch-surface))
-         #t
-         )
+        (let ((a1-4 (new 'stack-no-clear 'vector)))
+          (set! (-> a1-4 quad) (-> this trans quad))
+          (set! (-> a1-4 y) (-> s1-1 best-other-tri intersect y))
+          (move-to-point! this a1-4)
+          )
+        (let ((a1-5 (-> s1-1 best-other-tri intersect))
+              (a0-19 (-> s1-1 best-other-tri normal))
+              (v1-25 (-> s1-1 best-other-tri pat))
+              )
+          (set! (-> this grount-touch-point quad) (-> a1-5 quad))
+          (set! (-> this poly-normal quad) (-> a0-19 quad))
+          (set! (-> this surface-normal quad) (-> a0-19 quad))
+          (set! (-> this local-normal quad) (-> a0-19 quad))
+          (set! (-> this ground-poly-normal quad) (-> a0-19 quad))
+          (set! (-> this poly-pat) v1-25)
+          (set! (-> this cur-pat) v1-25)
+          (set! (-> this ground-pat) v1-25)
+          )
+        (logior! (-> this status) (collide-status on-surface on-ground touch-surface))
+        #t
+        )
         (else
           (logclear! (-> this status) (collide-status
-                                       on-surface
-                                       on-ground
-                                       touch-surface
-                                       touch-wall
-                                       touch-ceiling
-                                       touch-actor
-                                       on-special-surface
-                                       touch-edge
-                                       blocked
-                                       on-water
-                                       impact-surface
-                                       touch-background
-                                       stuck
-                                       glance
-                                       )
-                     )
+                                        on-surface
+                                        on-ground
+                                        touch-surface
+                                        touch-wall
+                                        touch-ceiling
+                                        touch-actor
+                                        on-special-surface
+                                        touch-edge
+                                        blocked
+                                        on-water
+                                        impact-surface
+                                        touch-background
+                                        stuck
+                                        glance
+                                        )
+                    )
           (when (not (logtest? (-> this root-prim prim-core action) (collide-action no-normal-reset)))
             (let ((v1-36 (-> this dynam gravity-normal)))
               (set! (-> this local-normal quad) (-> v1-36 quad))
@@ -2474,6 +2456,7 @@ it returns a triangle and normal direction to push in.
 
 (defmethod do-push-aways ((this collide-shape))
   "Push away things."
+  ;; og:preserve-this float -> int
   (local-vars (at-0 int) (v1-55 int) (a2-5 float) (a2-12 float))
   (with-pp
     (rlet ((vf0 :class vf)
@@ -2518,14 +2501,10 @@ it returns a triangle and normal direction to push in.
                         (.add.y.vf.x vf1 vf1 vf1)
                         (.add.z.vf.x vf1 vf1 vf1)
                         (.mov a2-5 vf1)
-                        (let ((f0-0 a2-5)
-                              (f1-1 (+ (-> a1-2 world-sphere w) (-> this root-prim prim-core world-sphere w)))
-                              )
-                          (when (< f0-0 (* f1-1 f1-1))
-                            (when (< *actor-list-length* 256)
-                              (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-3))
-                              (set! *actor-list-length* (+ *actor-list-length* 1))
-                              )
+                        (when (< a2-5 (square (+ (-> a1-2 world-sphere w) (-> this root-prim prim-core world-sphere w))))
+                          (when (< *actor-list-length* 256)
+                            (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-3))
+                            (set! *actor-list-length* (+ *actor-list-length* 1))
                             )
                           )
                         )
@@ -2561,14 +2540,10 @@ it returns a triangle and normal direction to push in.
                         (.add.y.vf.x vf1 vf1 vf1)
                         (.add.z.vf.x vf1 vf1 vf1)
                         (.mov a2-12 vf1)
-                        (let ((f0-1 a2-12)
-                              (f1-5 (+ (-> a1-15 world-sphere w) (-> this root-prim prim-core world-sphere w)))
-                              )
-                          (when (< f0-1 (* f1-5 f1-5))
-                            (when (< *actor-list-length* 256)
-                              (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-6))
-                              (set! *actor-list-length* (+ *actor-list-length* 1))
-                              )
+                        (when (< a2-12 (square (+ (-> a1-15 world-sphere w) (-> this root-prim prim-core world-sphere w))))
+                          (when (< *actor-list-length* 256)
+                            (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-6))
+                            (set! *actor-list-length* (+ *actor-list-length* 1))
                             )
                           )
                         )
@@ -2706,11 +2681,7 @@ it returns a triangle and normal direction to push in.
                   (.add.y.vf.x vf1 vf1 vf1)
                   (.add.z.vf.x vf1 vf1 vf1)
                   (.mov a2-5 vf1)
-                  (let ((f0-0 a2-5)
-                        (f1-1 (+ (-> a1-3 world-sphere w) (-> s3-0 prim-core world-sphere w)))
-                        )
-                    (b! (>= f0-0 (* f1-1 f1-1)) cfg-8 :delay #f)
-                    )
+                  (b! (>= a2-5 (square (+ (-> a1-3 world-sphere w) (-> s3-0 prim-core world-sphere w)))) cfg-8 :delay #f)
                   )
                 )
               (b! (>= *actor-list-length* 256) cfg-8 :delay #f)
@@ -2747,11 +2718,7 @@ it returns a triangle and normal direction to push in.
                   (.add.y.vf.x vf1 vf1 vf1)
                   (.add.z.vf.x vf1 vf1 vf1)
                   (.mov a2-12 vf1)
-                  (let ((f0-1 a2-12)
-                        (f1-5 (+ (-> a1-15 world-sphere w) (-> s3-0 prim-core world-sphere w)))
-                        )
-                    (b! (>= f0-1 (* f1-5 f1-5)) cfg-17 :delay #f)
-                    )
+                  (b! (>= a2-12 (square (+ (-> a1-15 world-sphere w) (-> s3-0 prim-core world-sphere w)))) cfg-17 :delay #f)
                   )
                 )
               (b! (>= *actor-list-length* 256) cfg-17 :delay #f)
@@ -3065,7 +3032,6 @@ it returns a triangle and normal direction to push in.
   )
 
 (defmethod send-shoves ((this collide-shape) (arg0 process) (arg1 touching-shapes-entry) (arg2 float) (arg3 float) (arg4 float))
-  (local-vars (sv-144 process) (sv-160 collide-shape-prim) (sv-176 vector))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
          (vf5 :class vf)
@@ -3073,51 +3039,48 @@ it returns a triangle and normal direction to push in.
          )
     (init-vf0-vector)
     (when arg1
-      (let ((s0-0 (-> arg1 head)))
-        (set! sv-144 arg0)
-        (let ((gp-0 (if (type? sv-144 process-focusable)
-                        sv-144
-                        )
-                    )
-              )
-          (when (and s0-0 gp-0)
-            (while s0-0
-              (set! sv-160 (get-touched-prim s0-0 this arg1))
+      (let ((s0-0 (-> arg1 head))
+            (gp-0 (the-as process (as-type arg0 process-focusable)))
+            )
+        (when (and s0-0 gp-0)
+          (while s0-0
+            (let ((sv-160 (get-touched-prim s0-0 this arg1)))
               (get-touched-prim s0-0 (-> (the-as process-focusable gp-0) root) arg1)
               (when (logtest? (-> sv-160 prim-core action) (collide-action no-standon))
-                (let ((v1-12 (get-middle-of-bsphere-overlap s0-0 (new 'stack-no-clear 'vector))))
-                  (set! sv-176 (new 'stack-no-clear 'vector))
+                (let ((v1-12 (get-middle-of-bsphere-overlap s0-0 (new 'stack-no-clear 'vector)))
+                      (sv-176 (new 'stack-no-clear 'vector))
+                      )
                   (let ((a0-7 (-> sv-160 prim-core)))
                     (.lvf vf4 (&-> v1-12 quad))
                     (.lvf vf5 (&-> a0-7 world-sphere quad))
                     )
-                  )
-                (.mov.vf.w vf6 vf0)
-                (.sub.vf.xyz vf6 vf4 vf5)
-                (.svf (&-> sv-176 quad) vf6)
-                (vector-normalize! sv-176 1.0)
-                (when (and (< arg2 (-> sv-176 y)) (and (not (focus-test? (the-as process-focusable gp-0) dead hit board mech))
-                                                       (< (-> (the-as process-focusable gp-0) root transv y) 4.096)
-                                                       )
-                           )
-                  (let ((s2-1 (new 'stack-no-clear 'vector)))
-                    (set! (-> s2-1 quad) (-> (the-as process-focusable gp-0) root transv quad))
-                    (let* ((v1-26 (-> (the-as process-focusable gp-0) root transv))
-                           (f30-0 (sqrtf (+ (* (-> v1-26 x) (-> v1-26 x)) (* (-> v1-26 z) (-> v1-26 z)))))
-                           )
-                      (if (= f30-0 0.0)
-                          (set! (-> s2-1 quad) (-> (vector-z-quaternion! s2-1 (-> (the-as process-focusable gp-0) root quat)) quad))
-                          )
-                      (vector-xz-normalize! s2-1 (fmax f30-0 arg4))
+                  (.mov.vf.w vf6 vf0)
+                  (.sub.vf.xyz vf6 vf4 vf5)
+                  (.svf (&-> sv-176 quad) vf6)
+                  (vector-normalize! sv-176 1.0)
+                  (when (and (< arg2 (-> sv-176 y)) (and (not (focus-test? (the-as process-focusable gp-0) dead hit board mech))
+                                                         (< (-> (the-as process-focusable gp-0) root transv y) 4.096)
+                                                         )
+                             )
+                    (let ((s2-1 (new 'stack-no-clear 'vector)))
+                      (set! (-> s2-1 quad) (-> (the-as process-focusable gp-0) root transv quad))
+                      (let* ((v1-26 (-> (the-as process-focusable gp-0) root transv))
+                             (f30-0 (sqrtf (+ (* (-> v1-26 x) (-> v1-26 x)) (* (-> v1-26 z) (-> v1-26 z)))))
+                             )
+                        (if (= f30-0 0.0)
+                            (set! (-> s2-1 quad) (-> (vector-z-quaternion! s2-1 (-> (the-as process-focusable gp-0) root quat)) quad))
+                            )
+                        (vector-xz-normalize! s2-1 (fmax f30-0 arg4))
+                        )
+                      (set! (-> s2-1 y) arg3)
+                      (send-event gp-0 'shove arg1 (static-attack-info ((id (new-attack-id)) (vector s2-1) (angle 'jump))))
                       )
-                    (set! (-> s2-1 y) arg3)
-                    (send-event gp-0 'shove arg1 (static-attack-info ((id (new-attack-id)) (vector s2-1) (angle 'jump))))
+                    (return #t)
                     )
-                  (return #t)
                   )
                 )
-              (set! s0-0 (-> s0-0 next))
               )
+            (set! s0-0 (-> s0-0 next))
             )
           )
         )

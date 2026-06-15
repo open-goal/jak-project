@@ -157,14 +157,14 @@
 ;; definition for method 19 of type bigmap
 ;; WARN: Return type mismatch int vs none.
 (defmethod texture-upload-dma ((this bigmap) (arg0 dma-buffer) (arg1 (pointer uint32)) (arg2 int) (arg3 int) (arg4 int) (arg5 gs-psm))
-  (local-vars (sv-16 int))
-  (set! sv-16 arg2)
-  (dma-buffer-add-gs-set arg0
-                         (bitbltbuf (new 'static 'gs-bitbltbuf :dpsm (the-as int arg5) :dbp sv-16 :dbw (/ arg3 64)))
-                         (trxpos (new 'static 'gs-trxpos))
-                         (trxreg (new 'static 'gs-trxreg :rrw arg3 :rrh arg4))
-                         (trxdir (new 'static 'gs-trxdir))
-                         )
+  (let ((sv-16 arg2))
+    (dma-buffer-add-gs-set arg0
+                           (bitbltbuf (new 'static 'gs-bitbltbuf :dpsm (the-as int arg5) :dbp sv-16 :dbw (/ arg3 64)))
+                           (trxpos (new 'static 'gs-trxpos))
+                           (trxreg (new 'static 'gs-trxreg :rrw arg3 :rrh arg4))
+                           (trxdir (new 'static 'gs-trxdir))
+                           )
+    )
   (dma-buffer-add-ref-texture arg0 arg1 arg3 arg4 arg5)
   0
   (none)
@@ -196,7 +196,6 @@
 ;; definition for method 20 of type bigmap
 ;; INFO: Used lq/sq
 (defmethod bigmap-method-20 ((this bigmap) (arg0 dma-buffer))
-  (local-vars (sv-16 uint))
   (let* ((s4-0 (the-as (pointer uint32) (-> this bigmap-image art-group)))
          (f0-1 (* 0.001953125 (the float (- (-> this x1) (-> this x0)))))
          (s3-0 (the int (* 256.0 f0-1)))
@@ -208,37 +207,38 @@
          (s0-0 (/ (+ v1-5 511) 256))
          )
     (-> s4-0 2)
-    (set! sv-16 (* (-> s4-0 3) 256))
-    (while (>= s0-0 s1-0)
-      (texture-upload-dma
-        this
-        arg0
-        (the-as (pointer uint32) (+ (+ (-> s4-0 0) 16) (the-as uint s4-0)))
-        0
-        16
-        16
-        (gs-psm ct32)
-        )
-      (dma-buffer-add-gs-set arg0 (texflush 0))
-      (let ((v1-18 (+ (-> s4-0 1) (* (the-as uint s1-0) sv-16) (* (the int (-> this scroll y)) 256))))
+    (let ((sv-16 (* (-> s4-0 3) 256)))
+      (while (>= s0-0 s1-0)
         (texture-upload-dma
           this
           arg0
-          (the-as (pointer uint32) (+ (+ v1-18 16) (the-as uint s4-0)))
-          8
-          256
-          416
-          (gs-psm mt8)
+          (the-as (pointer uint32) (+ (+ (-> s4-0 0) 16) (the-as uint s4-0)))
+          0
+          16
+          16
+          (gs-psm ct32)
           )
+        (dma-buffer-add-gs-set arg0 (texflush 0))
+        (let ((v1-18 (+ (-> s4-0 1) (* (the-as uint s1-0) sv-16) (* (the int (-> this scroll y)) 256))))
+          (texture-upload-dma
+            this
+            arg0
+            (the-as (pointer uint32) (+ (+ v1-18 16) (the-as uint s4-0)))
+            8
+            256
+            416
+            (gs-psm mt8)
+            )
+          )
+        (dma-buffer-add-gs-set arg0
+                               (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x4 :psm #x13 :tw #x8 :th #x9 :cld #x1))
+                               (tex1-1 (new 'static 'gs-tex1))
+                               (texflush 0)
+                               )
+        (sprite-dma this arg0 (+ s2-0 1792) (+ s3-0 1792 s2-0) (-> this y0) (-> this y1) 0 256)
+        (+! s2-0 s3-0)
+        (+! s1-0 1)
         )
-      (dma-buffer-add-gs-set arg0
-                             (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x4 :psm #x13 :tw #x8 :th #x9 :cld #x1))
-                             (tex1-1 (new 'static 'gs-tex1))
-                             (texflush 0)
-                             )
-      (sprite-dma this arg0 (+ s2-0 1792) (+ s3-0 1792 s2-0) (-> this y0) (-> this y1) 0 256)
-      (+! s2-0 s3-0)
-      (+! s1-0 1)
       )
     )
   #f
@@ -248,7 +248,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw-from-minimap ((this bigmap) (arg0 dma-buffer) (arg1 connection-minimap))
-  (local-vars (sv-80 vector4w))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -286,77 +285,75 @@
       )
     (let ((f30-0 (-> arg1 class scale))
           (s1-0 (-> arg1 class color))
+          (sv-80 (new 'stack-no-clear 'vector4w))
+          (s0-0 (new-stack-vector0))
+          (s2-0 (new-stack-vector0))
+          (s3-2 (new-stack-vector0))
           )
-      (set! sv-80 (new 'stack-no-clear 'vector4w))
-      (let ((s0-0 (new-stack-vector0))
-            (s2-0 (new-stack-vector0))
-            (s3-2 (new-stack-vector0))
+      (let ((f26-0 (-> *video-params* relative-x-scale))
+            (f28-0 (-> *video-params* relative-x-scale-reciprical))
             )
-        (let ((f26-0 (-> *video-params* relative-x-scale))
-              (f28-0 (-> *video-params* relative-x-scale-reciprical))
+        (-> arg1 class)
+        (.lvf vf1 (&-> arg1 last-world-pos quad))
+        (.lvf vf2 (&-> this offset quad))
+        (.add.z.vf.y vf1 vf0 vf1)
+        (.sub.vf vf1 vf1 vf2)
+        (.mul.w.vf vf1 vf1 vf2)
+        (.ftoi.vf vf1 vf1)
+        (.svf (&-> sv-80 quad) vf1)
+        (if (logtest? (-> arg1 class flags) (minimap-flag goal))
+            (set! (-> arg1 class icon-xy x) (the-as uint (mod (the int (-> this goal-time)) 6)))
+            )
+        (bigmap-method-18 this (&-> sv-80 x))
+        (cond
+          ((get-horizontal-flip-flag *blit-displays-work*)
+           (set! f26-0 (- f26-0))
+           (set! (-> s0-0 x) (+ (the float (+ (- 2304 (-> sv-80 x)) (-> this x1))) (-> this scroll x)))
+           )
+          (else
+            (set! (-> s0-0 x) (- (the float (+ (-> sv-80 x) 1792 (-> this x0))) (-> this scroll x)))
+            )
+          )
+        (set! (-> s0-0 y) (+ 1840.0 (* (- (the float (-> sv-80 y)) (-> this scroll y)) f28-0)))
+        (let ((f0-12 (* 20.0 f26-0 f30-0))
+              (f1-8 (* 20.0 f28-0 f30-0))
               )
-          (-> arg1 class)
-          (.lvf vf1 (&-> arg1 last-world-pos quad))
-          (.lvf vf2 (&-> this offset quad))
-          (.add.z.vf.y vf1 vf0 vf1)
-          (.sub.vf vf1 vf1 vf2)
-          (.mul.w.vf vf1 vf1 vf2)
-          (.ftoi.vf vf1 vf1)
-          (.svf (&-> sv-80 quad) vf1)
-          (if (logtest? (-> arg1 class flags) (minimap-flag goal))
-              (set! (-> arg1 class icon-xy x) (the-as uint (mod (the int (-> this goal-time)) 6)))
-              )
-          (bigmap-method-18 this (&-> sv-80 x))
-          (cond
-            ((get-horizontal-flip-flag *blit-displays-work*)
-             (set! f26-0 (- f26-0))
-             (set! (-> s0-0 x) (+ (the float (+ (- 2304 (-> sv-80 x)) (-> this x1))) (-> this scroll x)))
+          (set! (-> s2-0 x) (the float (the int (- (-> s0-0 x) (/ f0-12 2)))))
+          (set! (-> s2-0 y) (the float (the int (- (-> s0-0 y) (/ f1-8 2)))))
+          (set! (-> s3-2 x) (+ (-> s2-0 x) f0-12))
+          (set! (-> s3-2 y) (+ (-> s2-0 y) f1-8))
+          )
+        )
+      (let* ((a2-1 (the-as uint (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8)))
+             (a3-0 (the-as uint (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8)))
+             (v1-55 (+ (the-as int a2-1) 312))
+             (a0-35 (+ (the-as int a3-0) 312))
+             (a1-6 (the-as object (-> arg0 base)))
              )
-            (else
-              (set! (-> s0-0 x) (- (the float (+ (-> sv-80 x) 1792 (-> this x0))) (-> this scroll x)))
-              )
-            )
-          (set! (-> s0-0 y) (+ 1840.0 (* (- (the float (-> sv-80 y)) (-> this scroll y)) f28-0)))
-          (let ((f0-12 (* 20.0 f26-0 f30-0))
-                (f1-8 (* 20.0 f28-0 f30-0))
-                )
-            (set! (-> s2-0 x) (the float (the int (- (-> s0-0 x) (/ f0-12 2)))))
-            (set! (-> s2-0 y) (the float (the int (- (-> s0-0 y) (/ f1-8 2)))))
-            (set! (-> s3-2 x) (+ (-> s2-0 x) f0-12))
-            (set! (-> s3-2 y) (+ (-> s2-0 y) f1-8))
-            )
+        (set! (-> (the-as (inline-array vector4w) a1-6) 0 quad) (-> this sprite-tmpl dma-vif quad))
+        (set! (-> (the-as (inline-array vector4w) a1-6) 1 quad) (-> this sprite-tmpl quad 1))
+        (set-vector!
+          (-> (the-as (inline-array vector4w) a1-6) 2)
+          (the-as int (-> s1-0 r))
+          (the-as int (-> s1-0 g))
+          (the-as int (-> s1-0 b))
+          128
           )
-        (let* ((a2-1 (the-as uint (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8)))
-               (a3-0 (the-as uint (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8)))
-               (v1-55 (+ (the-as int a2-1) 312))
-               (a0-35 (+ (the-as int a3-0) 312))
-               (a1-6 (the-as object (-> arg0 base)))
-               )
-          (set! (-> (the-as (inline-array vector4w) a1-6) 0 quad) (-> this sprite-tmpl dma-vif quad))
-          (set! (-> (the-as (inline-array vector4w) a1-6) 1 quad) (-> this sprite-tmpl quad 1))
-          (set-vector!
-            (-> (the-as (inline-array vector4w) a1-6) 2)
-            (the-as int (-> s1-0 r))
-            (the-as int (-> s1-0 g))
-            (the-as int (-> s1-0 b))
-            128
-            )
-          (set-vector! (-> (the-as (inline-array vector4w) a1-6) 3) (the-as int a2-1) (the-as int a3-0) 0 0)
-          (set-vector!
-            (-> (the-as (inline-array vector4w) a1-6) 4)
-            (the int (* 16.0 (-> s2-0 x)))
-            (the int (* 16.0 (-> s2-0 y)))
-            #xffffff
-            0
-            )
-          (set-vector! (-> (the-as (inline-array vector4w) a1-6) 5) v1-55 a0-35 0 0)
-          (set-vector!
-            (-> (the-as (inline-array vector4w) a1-6) 6)
-            (the int (* 16.0 (-> s3-2 x)))
-            (the int (* 16.0 (-> s3-2 y)))
-            #xffffff
-            0
-            )
+        (set-vector! (-> (the-as (inline-array vector4w) a1-6) 3) (the-as int a2-1) (the-as int a3-0) 0 0)
+        (set-vector!
+          (-> (the-as (inline-array vector4w) a1-6) 4)
+          (the int (* 16.0 (-> s2-0 x)))
+          (the int (* 16.0 (-> s2-0 y)))
+          #xffffff
+          0
+          )
+        (set-vector! (-> (the-as (inline-array vector4w) a1-6) 5) v1-55 a0-35 0 0)
+        (set-vector!
+          (-> (the-as (inline-array vector4w) a1-6) 6)
+          (the int (* 16.0 (-> s3-2 x)))
+          (the int (* 16.0 (-> s3-2 y)))
+          #xffffff
+          0
           )
         )
       )
@@ -448,14 +445,6 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw! ((this bigmap) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
-  (local-vars
-    (sv-96 (inline-array vector4w))
-    (sv-100 texture)
-    (sv-104 matrix)
-    (sv-112 int)
-    (sv-120 float)
-    (sv-240 (function bigmap vector none))
-    )
   (when (and (= (file-status (-> this bigmap-image) "world-map" (the-as int (-> this load-index))) 'active)
              (not (-> this loading-flag))
              )
@@ -540,115 +529,106 @@
             (vector-xz-normalize! s1-3 -1.0)
             (set! (-> s1-3 y) 0.0)
             (set! (-> s1-3 w) 0.0)
-            (set! sv-96 (the-as (inline-array vector4w) (-> s2-0 base)))
-            (set! sv-100 (get-texture map-target-marker progress-minimap))
-            (set! sv-104 (new 'stack-no-clear 'matrix))
-            (set! sv-112 (the int (* 56.0 f30-0)))
-            (set! sv-120 (-> *video-params* relative-x-scale-reciprical))
-            (when sv-100
-              (let ((s0-2 this))
-                (set! sv-240 (method-of-object s0-2 set-pos!))
-                (let ((a1-29 (target-pos 0)))
-                  (sv-240 s0-2 a1-29)
+            (let ((sv-96 (the-as (inline-array vector4w) (-> s2-0 base)))
+                  (sv-100 (get-texture map-target-marker progress-minimap))
+                  (sv-104 (new 'stack-no-clear 'matrix))
                   )
+              (let ((sv-112 (the int (* 56.0 f30-0))))
                 )
-              (let ((s0-3 (new 'stack 'vector4w)))
-                0.0
-                (set! (-> s0-3 quad) (-> this pos quad))
-                (bigmap-method-18 this (&-> s0-3 x))
-                (let ((f0-15 (cond
-                               ((get-horizontal-flip-flag *blit-displays-work*)
-                                (set! f30-0 (- f30-0))
-                                (+ (the float (+ (- 2304 (-> s0-3 x)) (-> this x1))) (-> this scroll x))
-                                )
-                               (else
-                                 (- (the float (+ (-> s0-3 x) 1792 (-> this x0))) (-> this scroll x))
-                                 )
-                               )
-                             )
-                      )
-                  (set-vector! (-> sv-104 rvec) (* (-> s1-3 z) f30-0) 0.0 (- (-> s1-3 x)) 0.0)
-                  (set-vector! (-> sv-104 uvec) 0.0 1.0 0.0 0.0)
-                  (set-vector! (-> sv-104 fvec) (* (-> s1-3 x) f30-0) 0.0 (-> s1-3 z) 1.0)
-                  (set-vector!
-                    (-> sv-104 trans)
-                    f0-15
+              (let ((sv-120 (-> *video-params* relative-x-scale-reciprical)))
+                (when sv-100
+                  (set-pos! this (target-pos 0))
+                  (let ((s0-3 (new 'stack 'vector4w)))
                     0.0
-                    (+ 1840.0 (* (- (the float (-> s0-3 y)) (-> this scroll y)) sv-120))
-                    1.0
+                    (set! (-> s0-3 quad) (-> this pos quad))
+                    (bigmap-method-18 this (&-> s0-3 x))
+                    (let ((f0-15 (cond
+                                   ((get-horizontal-flip-flag *blit-displays-work*)
+                                    (set! f30-0 (- f30-0))
+                                    (+ (the float (+ (- 2304 (-> s0-3 x)) (-> this x1))) (-> this scroll x))
+                                    )
+                                   (else
+                                     (- (the float (+ (-> s0-3 x) 1792 (-> this x0))) (-> this scroll x))
+                                     )
+                                   )
+                                 )
+                          )
+                      (set-vector! (-> sv-104 rvec) (* (-> s1-3 z) f30-0) 0.0 (- (-> s1-3 x)) 0.0)
+                      (set-vector! (-> sv-104 uvec) 0.0 1.0 0.0 0.0)
+                      (set-vector! (-> sv-104 fvec) (* (-> s1-3 x) f30-0) 0.0 (-> s1-3 z) 1.0)
+                      (set-vector!
+                        (-> sv-104 trans)
+                        f0-15
+                        0.0
+                        (+ 1840.0 (* (- (the float (-> s0-3 y)) (-> this scroll y)) sv-120))
+                        1.0
+                        )
+                      )
                     )
+                  (let* ((v1-83 (mod (-> *display* real-clock frame-counter) 360))
+                         (f0-26 (+ 1.5 (* 0.25 (cos (* 182.04445 (the float v1-83))))))
+                         (f0-27 (* 7.0 f0-26))
+                         )
+                    (cond
+                      ((or (= (-> this load-index) (bigmap-id sewer-met-hum)) (= (-> this load-index) (bigmap-id sewer-hum-kg)))
+                       (set-vector! (-> this corner 0) (- f0-27) 0.0 0.0 1.0)
+                       (set-vector! (-> this corner 1) 0.0 0.0 f0-27 1.0)
+                       (set-vector! (-> this corner 2) 0.0 0.0 (- f0-27) 1.0)
+                       (set-vector! (-> this corner 3) f0-27 0.0 0.0 1.0)
+                       )
+                      (else
+                        (set-vector! (-> this corner 0) 0.0 0.0 (- f0-27) 1.0)
+                        (set-vector! (-> this corner 1) f0-27 0.0 0.0 1.0)
+                        (set-vector! (-> this corner 2) (- f0-27) 0.0 0.0 1.0)
+                        (set-vector! (-> this corner 3) 0.0 0.0 f0-27 1.0)
+                        )
+                      )
+                    )
+                  (vector-matrix*! (-> this corner 0) (-> this corner 0) sv-104)
+                  (vector-matrix*! (-> this corner 1) (-> this corner 1) sv-104)
+                  (vector-matrix*! (-> this corner 2) (-> this corner 2) sv-104)
+                  (vector-matrix*! (-> this corner 3) (-> this corner 3) sv-104)
+                  (set! (-> sv-96 0 quad) (-> this adgif-tmpl dma-vif quad))
+                  (set! (-> sv-96 1 quad) (-> this adgif-tmpl quad 1))
+                  (adgif-shader<-texture-simple! (the-as adgif-shader (-> sv-96 2)) sv-100)
+                  (set! (-> sv-96 7 quad) (-> this draw-tmpl dma-vif quad))
+                  (set! (-> sv-96 8 quad) (-> this draw-tmpl quad 1))
+                  (set-vector! (-> sv-96 9) 0 255 255 128)
+                  (set-vector! (-> sv-96 10) 0 0 0 0)
+                  (set-vector!
+                    (-> sv-96 11)
+                    (the int (* 16.0 (-> this corner 0 x)))
+                    (the int (* 16.0 (-> this corner 0 z)))
+                    #xffffff
+                    0
+                    )
+                  (set-vector! (-> sv-96 12) 256 0 0 0)
+                  (set-vector!
+                    (-> sv-96 13)
+                    (the int (* 16.0 (-> this corner 1 x)))
+                    (the int (* 16.0 (-> this corner 1 z)))
+                    #xffffff
+                    0
+                    )
+                  (set-vector! (-> sv-96 14) 0 256 0 0)
+                  (set-vector!
+                    (-> sv-96 15)
+                    (the int (* 16.0 (-> this corner 2 x)))
+                    (the int (* 16.0 (-> this corner 2 z)))
+                    #xffffff
+                    0
+                    )
+                  (set-vector! (-> sv-96 16) 256 256 0 0)
+                  (set-vector!
+                    (-> sv-96 17)
+                    (the int (* 16.0 (-> this corner 3 x)))
+                    (the int (* 16.0 (-> this corner 3 z)))
+                    #xffffff
+                    0
+                    )
+                  (&+! (-> s2-0 base) 288)
                   )
                 )
-              (let* ((v1-83 (mod (-> *display* real-clock frame-counter) 360))
-                     (f0-26 (+ 1.5 (* 0.25 (cos (* 182.04445 (the float v1-83))))))
-                     (f0-27 (* 7.0 f0-26))
-                     )
-                (cond
-                  ((or (= (-> this load-index) (bigmap-id sewer-met-hum)) (= (-> this load-index) (bigmap-id sewer-hum-kg)))
-                   (set-vector! (-> this corner 0) (- f0-27) 0.0 0.0 1.0)
-                   (set-vector! (-> this corner 1) 0.0 0.0 f0-27 1.0)
-                   (set-vector! (-> this corner 2) 0.0 0.0 (- f0-27) 1.0)
-                   (set-vector! (-> this corner 3) f0-27 0.0 0.0 1.0)
-                   )
-                  (else
-                    (set-vector! (-> this corner 0) 0.0 0.0 (- f0-27) 1.0)
-                    (set-vector! (-> this corner 1) f0-27 0.0 0.0 1.0)
-                    (set-vector! (-> this corner 2) (- f0-27) 0.0 0.0 1.0)
-                    (set-vector! (-> this corner 3) 0.0 0.0 f0-27 1.0)
-                    )
-                  )
-                )
-              (vector-matrix*! (-> this corner 0) (-> this corner 0) sv-104)
-              (vector-matrix*! (-> this corner 1) (-> this corner 1) sv-104)
-              (vector-matrix*! (-> this corner 2) (-> this corner 2) sv-104)
-              (vector-matrix*! (-> this corner 3) (-> this corner 3) sv-104)
-              (let ((v1-97 (-> this adgif-tmpl dma-vif quad)))
-                (set! (-> sv-96 0 quad) v1-97)
-                )
-              (let ((v1-98 (-> this adgif-tmpl quad 1)))
-                (set! (-> sv-96 1 quad) v1-98)
-                )
-              (adgif-shader<-texture-simple! (the-as adgif-shader (-> sv-96 2)) sv-100)
-              (let ((v1-100 (-> this draw-tmpl dma-vif quad)))
-                (set! (-> sv-96 7 quad) v1-100)
-                )
-              (let ((v1-101 (-> this draw-tmpl quad 1)))
-                (set! (-> sv-96 8 quad) v1-101)
-                )
-              (set-vector! (-> sv-96 9) 0 255 255 128)
-              (set-vector! (-> sv-96 10) 0 0 0 0)
-              (set-vector!
-                (-> sv-96 11)
-                (the int (* 16.0 (-> this corner 0 x)))
-                (the int (* 16.0 (-> this corner 0 z)))
-                #xffffff
-                0
-                )
-              (set-vector! (-> sv-96 12) 256 0 0 0)
-              (set-vector!
-                (-> sv-96 13)
-                (the int (* 16.0 (-> this corner 1 x)))
-                (the int (* 16.0 (-> this corner 1 z)))
-                #xffffff
-                0
-                )
-              (set-vector! (-> sv-96 14) 0 256 0 0)
-              (set-vector!
-                (-> sv-96 15)
-                (the int (* 16.0 (-> this corner 2 x)))
-                (the int (* 16.0 (-> this corner 2 z)))
-                #xffffff
-                0
-                )
-              (set-vector! (-> sv-96 16) 256 256 0 0)
-              (set-vector!
-                (-> sv-96 17)
-                (the int (* 16.0 (-> this corner 3 x)))
-                (the int (* 16.0 (-> this corner 3 z)))
-                #xffffff
-                0
-                )
-              (&+! (-> s2-0 base) 288)
               )
             )
           )

@@ -1,0 +1,9 @@
+("SPRGSTBX.DGO"
+ ("net-time-box.o"
+  "time-box-obs.o"
+  "tpage-2322.go"
+  "tpage-2819.go"
+  "time-freeze-ag.go"
+  "time-freeze-debris-ag.go"
+  "sprgstbx.o"
+ ))

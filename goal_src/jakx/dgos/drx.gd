@@ -1,0 +1,12 @@
+("DRX.DGO"
+ ("docks-obs.o"
+  "drome-effects.o"
+  "drome-part.o"
+  "drome-obs.o"
+  "drome-ocean.o"
+  "tpage-3030.go"
+  "tpage-3031.go"
+  "drome-tunnel-drum-ag.go"
+  "wind-rotor-ag.go"
+  "dromex-vis.o"
+ ))

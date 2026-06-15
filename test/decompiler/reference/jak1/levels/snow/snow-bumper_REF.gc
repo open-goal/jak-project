@@ -233,7 +233,6 @@
     )
   :trans rider-trans
   :code (behavior ()
-    (local-vars (sv-16 symbol))
     (logclear! (-> self mask) (process-mask actor-pause))
     (sound-play "bumper-pwr-dwn")
     (ja-no-eval :group! snow-bumper-button-ja :num! (seek! max 0.05) :frame-num 0.0)
@@ -254,11 +253,12 @@
       (ja :num! (seek! max 0.02))
       )
     (process-entity-status! self (entity-perm-status complete) #t)
-    (set! sv-16 (the-as symbol #f))
-    (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
-    (when sv-16
-      (save-reminder (get-task-control (game-task snow-bumpers)) (-> self bumper-id) 0)
-      (go snow-bumper-spawn-fuel-cell)
+    (let ((sv-16 (the-as symbol #f)))
+      (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-16))
+      (when sv-16
+        (save-reminder (get-task-control (game-task snow-bumpers)) (-> self bumper-id) 0)
+        (go snow-bumper-spawn-fuel-cell)
+        )
       )
     (go snow-bumper-inactive-idle)
     )
@@ -323,7 +323,6 @@
 ;; INFO: Used lq/sq
 ;; INFO: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this snow-bumper) (arg0 entity-actor))
-  (local-vars (sv-16 res-tag))
   (set! (-> this last-shoved-player-time) 0)
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -382,8 +381,9 @@
   (transform-post)
   (set! (-> this base-shove-ry) 0.0)
   (set! (-> this max-shove-diff-ry) 32768.0)
-  (set! sv-16 (new 'static 'res-tag))
-  (let ((v1-52 (res-lump-data (-> this entity) 'rotmin (pointer float) :tag-ptr (& sv-16))))
+  (let* ((sv-16 (new 'static 'res-tag))
+         (v1-52 (res-lump-data (-> this entity) 'rotmin (pointer float) :tag-ptr (& sv-16)))
+         )
     (when v1-52
       (set! (-> this base-shove-ry) (-> v1-52 0))
       (set! (-> this max-shove-diff-ry) (-> v1-52 1))

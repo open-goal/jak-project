@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,10 +33,10 @@ bool SDL_StretchSurface(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *
     SDL_Rect full_src;
     SDL_Rect full_dst;
 
-    if (!src) {
+    CHECK_PARAM(!src) {
         return SDL_InvalidParamError("src");
     }
-    if (!dst) {
+    CHECK_PARAM(!dst) {
         return SDL_InvalidParamError("dst");
     }
 
@@ -80,12 +80,16 @@ bool SDL_StretchSurface(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *
         return result;
     }
 
-    if (scaleMode != SDL_SCALEMODE_NEAREST && scaleMode != SDL_SCALEMODE_LINEAR) {
+    switch (scaleMode) {
+    case SDL_SCALEMODE_NEAREST:
+        break;
+    case SDL_SCALEMODE_LINEAR:
+        break;
+    case SDL_SCALEMODE_PIXELART:
+        scaleMode = SDL_SCALEMODE_NEAREST;
+        break;
+    default:
         return SDL_InvalidParamError("scaleMode");
-    }
-
-    if (scaleMode != SDL_SCALEMODE_NEAREST) {
-        scaleMode = SDL_SCALEMODE_LINEAR;
     }
 
     if (scaleMode == SDL_SCALEMODE_LINEAR) {
@@ -284,7 +288,7 @@ typedef struct color_t
 #if 0
 static void printf_64(const char *str, void *var)
 {
-    uint8_t *val = (uint8_t*) var;
+    uint8_t *val = (uint8_t *)var;
     printf(" *   %s: %02x %02x %02x %02x _ %02x %02x %02x %02x\n",
            str, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7]);
 }
@@ -371,26 +375,12 @@ static bool scale_mat(const Uint32 *src, int src_w, int src_h, int src_pitch, Ui
     return true;
 }
 
-#ifdef SDL_NEON_INTRINSICS
-#define CAST_uint8x8_t       (uint8x8_t)
-#define CAST_uint32x2_t      (uint32x2_t)
-#endif
-
-#if defined(_MSC_VER)
-#ifdef SDL_NEON_INTRINSICS
-#undef CAST_uint8x8_t
-#undef CAST_uint32x2_t
-#define CAST_uint8x8_t
-#define CAST_uint32x2_t
-#endif
-#endif
-
 #ifdef SDL_SSE2_INTRINSICS
 
 #if 0
 static void SDL_TARGETING("sse2") printf_128(const char *str, __m128i var)
 {
-    uint16_t *val = (uint16_t*) &var;
+    uint16_t *val = (uint16_t *)&var;
     printf(" *   %s: %04x %04x %04x %04x _ %04x %04x %04x %04x\n",
            str, val[0], val[1], val[2], val[3], val[4], val[5], val[6], val[7]);
 }
@@ -583,8 +573,8 @@ static SDL_INLINE void INTERPOL_BILINEAR_NEON(const Uint32 *s0, const Uint32 *s1
     uint16x8_t d0;
     uint8x8_t e0;
 
-    x_00_01 = CAST_uint8x8_t vld1_u32(s0); // Load 2 pixels
-    x_10_11 = CAST_uint8x8_t vld1_u32(s1);
+    x_00_01 = vreinterpret_u8_u32(vld1_u32(s0)); // Load 2 pixels
+    x_10_11 = vreinterpret_u8_u32(vld1_u32(s1));
 
     /* Interpolated == x0 + frac * (x1 - x0) == x0 * (1 - frac) + x1 * frac */
     k0 = vmull_u8(x_00_01, v_frac_h1);     /* k0 := x0 * (1 - frac)    */
@@ -604,7 +594,7 @@ static SDL_INLINE void INTERPOL_BILINEAR_NEON(const Uint32 *s0, const Uint32 *s1
     e0 = vmovn_u16(d0);
 
     // Store 1 pixel
-    *dst = vget_lane_u32(CAST_uint32x2_t e0, 0);
+    *dst = vget_lane_u32(vreinterpret_u32_u8(e0), 0);
 }
 
 static bool scale_mat_NEON(const Uint32 *src, int src_w, int src_h, int src_pitch, Uint32 *dst, int dst_w, int dst_h, int dst_pitch)
@@ -668,14 +658,14 @@ static bool scale_mat_NEON(const Uint32 *src, int src_w, int src_h, int src_pitc
             s_16_17 = (const Uint32 *)((const Uint8 *)src_h1 + index_w_3);
 
             // Interpolation vertical
-            x_00_01 = CAST_uint8x8_t vld1_u32(s_00_01); // Load 2 pixels
-            x_02_03 = CAST_uint8x8_t vld1_u32(s_02_03);
-            x_04_05 = CAST_uint8x8_t vld1_u32(s_04_05);
-            x_06_07 = CAST_uint8x8_t vld1_u32(s_06_07);
-            x_10_11 = CAST_uint8x8_t vld1_u32(s_10_11);
-            x_12_13 = CAST_uint8x8_t vld1_u32(s_12_13);
-            x_14_15 = CAST_uint8x8_t vld1_u32(s_14_15);
-            x_16_17 = CAST_uint8x8_t vld1_u32(s_16_17);
+            x_00_01 = vreinterpret_u8_u32(vld1_u32(s_00_01)); // Load 2 pixels
+            x_02_03 = vreinterpret_u8_u32(vld1_u32(s_02_03));
+            x_04_05 = vreinterpret_u8_u32(vld1_u32(s_04_05));
+            x_06_07 = vreinterpret_u8_u32(vld1_u32(s_06_07));
+            x_10_11 = vreinterpret_u8_u32(vld1_u32(s_10_11));
+            x_12_13 = vreinterpret_u8_u32(vld1_u32(s_12_13));
+            x_14_15 = vreinterpret_u8_u32(vld1_u32(s_14_15));
+            x_16_17 = vreinterpret_u8_u32(vld1_u32(s_16_17));
 
             /* Interpolated == x0 + frac * (x1 - x0) == x0 * (1 - frac) + x1 * frac */
             k0 = vmull_u8(x_00_01, v_frac_h1);     /* k0 := x0 * (1 - frac)    */
@@ -725,7 +715,7 @@ static bool scale_mat_NEON(const Uint32 *src, int src_w, int src_h, int src_pitc
             // Narrow again
             e1 = vmovn_u16(d1);
 
-            f0 = vcombine_u32(CAST_uint32x2_t e0, CAST_uint32x2_t e1);
+            f0 = vcombine_u32(vreinterpret_u32_u8(e0), vreinterpret_u32_u8(e1));
             // Store 4 pixels
             vst1q_u32(dst, f0);
 
@@ -764,10 +754,10 @@ static bool scale_mat_NEON(const Uint32 *src, int src_w, int src_h, int src_pitc
             s_12_13 = (const Uint32 *)((const Uint8 *)src_h1 + index_w_1);
 
             // Interpolation vertical
-            x_00_01 = CAST_uint8x8_t vld1_u32(s_00_01); // Load 2 pixels
-            x_02_03 = CAST_uint8x8_t vld1_u32(s_02_03);
-            x_10_11 = CAST_uint8x8_t vld1_u32(s_10_11);
-            x_12_13 = CAST_uint8x8_t vld1_u32(s_12_13);
+            x_00_01 = vreinterpret_u8_u32(vld1_u32(s_00_01)); // Load 2 pixels
+            x_02_03 = vreinterpret_u8_u32(vld1_u32(s_02_03));
+            x_10_11 = vreinterpret_u8_u32(vld1_u32(s_10_11));
+            x_12_13 = vreinterpret_u8_u32(vld1_u32(s_12_13));
 
             /* Interpolated == x0 + frac * (x1 - x0) == x0 * (1 - frac) + x1 * frac */
             k0 = vmull_u8(x_00_01, v_frac_h1);     /* k0 := x0 * (1 - frac)    */
@@ -797,7 +787,7 @@ static bool scale_mat_NEON(const Uint32 *src, int src_w, int src_h, int src_pitc
             e0 = vmovn_u16(d0);
 
             // Store 2 pixels
-            vst1_u32(dst, CAST_uint32x2_t e0);
+            vst1_u32(dst, vreinterpret_u32_u8(e0));
             dst += 2;
         }
 

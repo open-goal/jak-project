@@ -1,0 +1,10 @@
+("SIGVL3.DGO"
+ ("bear-chassis-ag.o"
+  "bear-door-c-ag.go"
+  "bear-hood-c-ag.go"
+  "bear-r-fender-e-ag.go"
+  "bear-roof-e-ag.go"
+  "bear-trunk-e-ag.go"
+  "wheel-l-ag.go"
+  "sigvl3.o"
+ ))
