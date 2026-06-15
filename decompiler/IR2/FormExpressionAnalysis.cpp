@@ -6666,24 +6666,44 @@ void DynamicMethodAccess::update_from_stack(const Env& env,
   auto reg1_matcher =
       Matcher::match_or({Matcher::any_reg(1), Matcher::cast("int", Matcher::any_reg(1))});
 
+  bool is_type_parent = false;
+
   // (+ (* method-id 4) (the-as int child-type))
   auto mult_matcher =
       Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION, {reg0_matcher, Matcher::integer(4)});
   auto matcher = Matcher::op_fixed(FixedOperatorKind::ADDITION, {mult_matcher, reg1_matcher});
   auto match_result = match(matcher, new_val);
   if (!match_result.matched) {
-    throw std::runtime_error("Could not match DynamicMethodAccess values: " +
-                             new_val->to_string(env));
+    // check for access like (-> some-type parent)
+    auto reg0_matcher0 =
+        Matcher::match_or({Matcher::any_reg(0), Matcher::cast("uint", Matcher::any_reg(0))});
+    auto reg1_matcher0 = Matcher::cast(
+        "int", Matcher::deref(Matcher::any_reg(1), false, {DerefTokenMatcher::string("parent")}));
+    auto mult_matcher0 =
+        Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION, {reg0_matcher0, Matcher::integer(4)});
+    auto matcher0 = Matcher::op_fixed(FixedOperatorKind::ADDITION, {mult_matcher0, reg1_matcher0});
+    auto m_result = match(matcher0, new_val);
+    if (m_result.matched) {
+      is_type_parent = true;
+      match_result = m_result;
+    } else {
+      throw std::runtime_error("Could not match DynamicMethodAccess values: " +
+                               new_val->to_string(env));
+    }
   }
 
   auto idx = match_result.maps.regs.at(0);
   auto base = match_result.maps.regs.at(1);
   ASSERT(idx.has_value() && base.has_value());
 
-  auto deref = pool.alloc_element<DerefElement>(
-      var_to_form(base.value(), pool), false,
-      std::vector<DerefToken>{DerefToken::make_field_name("method-table"),
-                              DerefToken::make_int_expr(var_to_form(idx.value(), pool))});
+  std::vector<DerefToken> token;
+  if (is_type_parent) {
+    token.push_back(DerefToken::make_field_name("parent"));
+  }
+  token.push_back(DerefToken::make_field_name("method-table"));
+  token.push_back(DerefToken::make_int_expr(var_to_form(idx.value(), pool)));
+
+  auto deref = pool.alloc_element<DerefElement>(var_to_form(base.value(), pool), false, token);
   result->push_back(deref);
 }
 

@@ -1,0 +1,355 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function get-knot-name
+(defun get-knot-name ((arg0 symbol))
+  (case arg0
+    (('path)
+     'path-k
+     )
+    (('flow)
+     'flow-k
+     )
+    (('intro)
+     'intro-k
+     )
+    (('pathshort)
+     'pathshort-k
+     )
+    (('patha)
+     'patha-k
+     )
+    (('pathb)
+     'pathb-k
+     )
+    (else
+      (format
+        0
+        "WARNING: curve-control is being asked to look up an unknown name '~A', it will have to do so by string.~%"
+        arg0
+        )
+      (let ((s5-0 string->symbol))
+        (format (clear *temp-string*) "~A-k" arg0)
+        (s5-0 *temp-string*)
+        )
+      )
+    )
+  )
+
+;; definition for function get-distmap-name
+(defun get-distmap-name ((arg0 symbol))
+  (case arg0
+    (('path)
+     'path-distmap
+     )
+    (('intro)
+     'intro-distmap
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+;; definition of type path-control
+(deftype path-control (basic)
+  "The path-control is a reference a path data, which is just a list of points.
+Although it contains a `curve`, the knot part is not populated, so it's just treated as
+a bunch of line segments from the control points.
+The child class curve-control does fill out the knot data and is a proper b-spline.
+These path-controls are typically allocated on a process heap."
+  ((flags       path-control-flag)
+   (name        symbol)
+   (process     process-drawable)
+   (distmap     uint32)
+   (curve       curve   :inline)
+   (num-cverts  int32   :overlay-at (-> curve num-cverts))
+   (cverts      uint32  :overlay-at (-> curve cverts))
+   )
+  (:methods
+    (new (symbol type process symbol float entity symbol) _type_)
+    (path-control-method-9 () none)
+    (path-control-method-10 () none)
+    (path-control-method-11 () none)
+    (path-control-method-12 () none)
+    (path-control-method-13 () none)
+    (path-control-method-14 () none)
+    (path-control-method-15 () none)
+    (path-control-method-16 () none)
+    (get-num-segments (_type_) float)
+    (path-control-method-18 () none)
+    (get-num-verts (_type_) int)
+    (segement-duration->path-duration (_type_ float) float)
+    (average-segment-length (_type_ float) float)
+    (path-control-method-22 () none)
+    (path-control-method-23 () none)
+    (path-control-method-24 () none)
+    (path-control-method-25 () none)
+    (path-control-method-26 () none)
+    (path-control-method-27 () none)
+    (path-control-method-28 () none)
+    (path-control-method-29 () none)
+    (path-control-method-30 () none)
+    (should-display-marks? (_type_) symbol)
+    (path-control-method-32 () none)
+    )
+  )
+
+;; definition for method 3 of type path-control
+(defmethod inspect ((this path-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tflags: #x~X~%" (-> this flags))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tprocess: ~A~%" (-> this process))
+  (format #t "~1Tdistmap: #x~X~%" (-> this distmap))
+  (format #t "~1Tcurve: #<curve @ #x~X>~%" (-> this curve))
+  (format #t "~1Tnum-cverts: ~D~%" (-> this curve num-cverts))
+  (format #t "~1Tcverts: #x~X~%" (-> this curve cverts))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> path-control method-table 9) nothing)
+
+;; definition of type curve-control
+(deftype curve-control (path-control)
+  "A curve-control is like a path control, but it has both control points and knot points."
+  ()
+  (:methods
+    (new (symbol type process symbol res-lump symbol float) _type_)
+    (curve-control-method-33 () none)
+    (curve-control-method-34 () none)
+    )
+  )
+
+;; definition for method 3 of type curve-control
+(defmethod inspect ((this curve-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tflags: #x~X~%" (-> this flags))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tprocess: ~A~%" (-> this process))
+  (format #t "~1Tdistmap: #x~X~%" (-> this distmap))
+  (format #t "~1Tcurve: #<curve @ #x~X>~%" (-> this curve))
+  (format #t "~1Tnum-cverts: ~D~%" (-> this curve num-cverts))
+  (format #t "~1Tcverts: #x~X~%" (-> this curve cverts))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type path-control
+;; INFO: Used lq/sq
+;; ERROR: Stack slot load at 64 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 64 mismatch: defined as size 4, got size 16
+;; WARN: Return type mismatch object vs path-control.
+(defmethod new path-control ((allocation symbol)
+                           (type-to-make type)
+                           (arg0 process)
+                           (arg1 symbol)
+                           (arg2 float)
+                           (arg3 entity)
+                           (arg4 symbol)
+                           )
+  (let ((sv-64 arg2)
+        (s4-0 arg3)
+        (sv-48 arg4)
+        )
+    (if (not s4-0)
+        (set! s4-0 (-> arg0 entity))
+        )
+    (when (= arg1 'path)
+      (let ((v0-0 (entity-actor-lookup s4-0 'path-actor 0)))
+        (if v0-0
+            (set! s4-0 v0-0)
+            )
+        )
+      )
+    (let ((s5-0 (the-as object 0)))
+      (let* ((s2-0 #f)
+             (sv-16 (new 'static 'res-tag))
+             (sv-80 (res-lump-data s4-0 arg1 pointer :tag-ptr (& sv-16) :time sv-64))
+             )
+        (cond
+          (sv-80
+            (set! s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+            (set! (-> (the-as path-control s5-0) distmap) (the-as uint #f))
+            (cond
+              ((nonzero? (the-as path-control s5-0))
+               (set! (-> (the-as path-control s5-0) process) (the-as process-drawable arg0))
+               (set! (-> (the-as path-control s5-0) name) arg1)
+               (set! (-> (the-as path-control s5-0) curve cverts) (the-as (inline-array vector) sv-80))
+               (set! (-> (the-as path-control s5-0) curve num-cverts) (the-as int (-> sv-16 elt-count)))
+               (cond
+                 ((= arg1 'path)
+                  (set! s2-0 'path-distmap)
+                  )
+                 ((= arg1 'path-intro)
+                  (set! s2-0 'path-intro-distmap)
+                  )
+                 )
+               (let* ((sv-32 0)
+                      (v0-3 (res-lump-data s4-0 s2-0 pointer :tag-ptr (the-as (pointer res-tag) (& sv-32))))
+                      )
+                 (when v0-3
+                   (set! (-> (the-as path-control s5-0) distmap) (the-as uint v0-3))
+                   ((method-of-object (the-as path-control s5-0) path-control-method-30))
+                   )
+                 )
+               )
+              (else
+                (go process-drawable-art-error "memory")
+                )
+              )
+            )
+          (else
+            (when (not sv-48)
+              (set! s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+              (set! (-> (the-as path-control s5-0) distmap) (the-as uint #f))
+              (cond
+                ((nonzero? (the-as path-control s5-0))
+                 (logior! (-> (the-as path-control s5-0) flags) (path-control-flag not-found))
+                 (set! (-> (the-as path-control s5-0) process) (the-as process-drawable arg0))
+                 (set! (-> (the-as path-control s5-0) name) arg1)
+                 (set! (-> (the-as path-control s5-0) curve cverts) (the-as (inline-array vector) #f))
+                 (set! (-> (the-as path-control s5-0) curve num-cverts) 0)
+                 0
+                 )
+                (else
+                  (go process-drawable-art-error "memory")
+                  )
+                )
+              )
+            )
+          )
+        )
+      (the-as path-control s5-0)
+      )
+    )
+  )
+
+;; definition for method 31 of type path-control
+(defmethod should-display-marks? ((this path-control))
+  (and *display-path-marks* (logtest? (-> this flags) (path-control-flag display)))
+  )
+
+;; definition for method 17 of type path-control
+(defmethod get-num-segments ((this path-control))
+  (the float (+ (-> this curve num-cverts) -1))
+  )
+
+;; definition for method 19 of type path-control
+(defmethod get-num-verts ((this path-control))
+  (-> this curve num-cverts)
+  )
+
+;; definition for method 20 of type path-control
+(defmethod segement-duration->path-duration ((this path-control) (arg0 float))
+  (* arg0 (get-num-segments this))
+  )
+
+;; definition for method 21 of type path-control
+(defmethod average-segment-length ((this path-control) (arg0 float))
+  (/ arg0 (get-num-segments this))
+  )
+
+;; definition for method 0 of type curve-control
+;; INFO: Used lq/sq
+;; ERROR: Stack slot load at 80 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 80 mismatch: defined as size 4, got size 16
+;; WARN: Return type mismatch object vs curve-control.
+(defmethod new curve-control ((allocation symbol)
+                            (type-to-make type)
+                            (arg0 process)
+                            (arg1 symbol)
+                            (arg2 res-lump)
+                            (arg3 symbol)
+                            (arg4 float)
+                            )
+  (local-vars (r0-0 uint128) (v1-17 uint128))
+  (let ((sv-64 arg3)
+        (sv-80 arg4)
+        )
+    (if (not arg2)
+        (set! arg2 (-> arg0 entity))
+        )
+    (when (= arg1 'path)
+      (let ((v0-0 (entity-actor-lookup arg2 'path-actor 0)))
+        (if v0-0
+            (set! arg2 v0-0)
+            )
+        )
+      )
+    (let ((s5-0 (the-as object 0)))
+      (let* ((s4-0 (get-distmap-name arg1))
+             (sv-112 (get-knot-name arg1))
+             (sv-16 (new 'static 'res-tag))
+             (sv-96 (res-lump-data arg2 arg1 pointer :tag-ptr (& sv-16) :time sv-80))
+             )
+        (cond
+          (sv-96
+            (set! s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+            (set! (-> (the-as curve-control s5-0) distmap) (the-as uint #f))
+            (cond
+              ((nonzero? (the-as curve-control s5-0))
+               (set! (-> (the-as curve-control s5-0) process) (the-as process-drawable arg0))
+               (set! (-> (the-as curve-control s5-0) name) arg1)
+               (set! (-> (the-as curve-control s5-0) curve cverts) (the-as (inline-array vector) sv-96))
+               (set! (-> (the-as curve-control s5-0) curve num-cverts) (the-as int (-> sv-16 elt-count)))
+               (let* ((sv-32 0)
+                      (v0-5 (res-lump-data arg2 sv-112 pointer :tag-ptr (the-as (pointer res-tag) (& sv-32))))
+                      )
+                 (when v0-5
+                   (set! (-> (the-as curve-control s5-0) curve knots) (the-as (pointer float) v0-5))
+                   (let ((v1-16 (the-as uint128 sv-32)))
+                     (.pcpyud v1-17 v1-16 r0-0)
+                     )
+                   (set! (-> (the-as curve-control s5-0) curve num-knots) (shr (* (the-as int v1-17) 2) 49))
+                   )
+                 )
+               (let* ((sv-48 0)
+                      (v0-6 (res-lump-data arg2 s4-0 pointer :tag-ptr (the-as (pointer res-tag) (& sv-48))))
+                      )
+                 (when v0-6
+                   (set! (-> (the-as curve-control s5-0) distmap) (the-as uint v0-6))
+                   ((method-of-object (the-as curve-control s5-0) path-control-method-30))
+                   )
+                 )
+               )
+              (else
+                (go process-drawable-art-error "memory")
+                )
+              )
+            )
+          (else
+            (when (not sv-64)
+              (set! s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+              (set! (-> (the-as curve-control s5-0) distmap) (the-as uint #f))
+              (cond
+                ((nonzero? (the-as curve-control s5-0))
+                 (logior! (-> (the-as curve-control s5-0) flags) (path-control-flag not-found))
+                 (set! (-> (the-as curve-control s5-0) process) (the-as process-drawable arg0))
+                 (set! (-> (the-as curve-control s5-0) name) arg1)
+                 (set! (-> (the-as curve-control s5-0) curve cverts) (the-as (inline-array vector) #f))
+                 (set! (-> (the-as curve-control s5-0) curve num-cverts) 0)
+                 0
+                 )
+                (else
+                  (go process-drawable-art-error "memory")
+                  )
+                )
+              )
+            )
+          )
+        )
+      (the-as curve-control s5-0)
+      )
+    )
+  )
