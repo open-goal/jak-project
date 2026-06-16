@@ -346,7 +346,8 @@ void extract_common(const ObjectFileDB& db,
   if (config.rip_levels) {
     auto file_path = file_util::get_jak_project_dir() / "decompiler_out" /
                      game_version_names[config.game_version] / "levels" / "common";
-    save_level_foreground_as_gltf(tfrag_level, art_group_data, file_path);
+    save_level_foreground_as_gltf(tfrag_level, art_group_data, file_path,
+                                  tex_db.animated_tex_output_to_anim_slot);
   }
 }
 
@@ -394,7 +395,8 @@ void extract_from_level(const ObjectFileDB& db,
     auto fore_file_path = file_util::get_jak_project_dir() / "decompiler_out" /
                           game_version_names[config.game_version] / "levels" /
                           level_data.level_name;
-    save_level_foreground_as_gltf(level_data, art_group_data, fore_file_path);
+    save_level_foreground_as_gltf(level_data, art_group_data, fore_file_path,
+                                  tex_db.animated_tex_output_to_anim_slot);
   }
   file_util::write_text_file(entities_folder / fmt::format("{}-actors.json", level_data.level_name),
                              extract_actors_to_json(bsp_header.actors));
