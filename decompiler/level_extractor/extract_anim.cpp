@@ -3,6 +3,7 @@
 #include "common_formats.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/ObjectFile/LinkedWord.h"
 #include "decompiler/util/goal_data_reader.h"
 
 #include "third-party/lzokay/lzokay.hpp"
@@ -257,6 +258,13 @@ void extract_animations(const ObjectFileData& ag_data,
         frames_ref.byte_offset += 4;
       }
     }
+    // extract blerc data if present
+    const char* blerc_field = version == GameVersion::Jak1 ? "blerc-data" : "blend-shape-anim";
+    if (get_word_kind_for_field(ref, blerc_field, dts) == LinkedWord::PTR) {
+      Ref blerc_data_ref = deref_label(get_field_ref(ref, blerc_field, dts));
+      ja.blend_shape_data = get_plain_data_bytes_up_to_label(blerc_data_ref);
+    }
+
     // some master art groups and model names do not match, this remaps the model name based on the
     // animation name prefix for these rare exceptions
     PerGameVersion<std::vector<std::string>> mdl_name_remap{
