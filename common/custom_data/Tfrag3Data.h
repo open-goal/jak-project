@@ -578,6 +578,7 @@ struct MercModifiableDrawGroup {
   std::vector<u8> fragment_mask;
   Blerc blerc;
   u32 expect_vidx_end = 0;
+  std::vector<u32> mod_to_global_vertex_idx;  // not serialized, used for glb export
 
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
