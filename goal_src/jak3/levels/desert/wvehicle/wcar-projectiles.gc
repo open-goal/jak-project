@@ -472,31 +472,18 @@
     (set! (-> v1-13 w) 1.0)
     (vector-copy! (-> this root scale) v1-13)
     )
-  (let ((s5-1 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
-    (set! (-> s5-1 tracked-obj) (process->handle this))
-    (set! (-> s5-1 appearance) *toad-grenade-trail*)
-    (set! (-> s5-1 max-num-crumbs) (the int (* 0.5 (the float (-> s5-1 appearance max-age)))))
-    (set! (-> s5-1 track-immediately?) #t)
-    (let* ((v1-26
-             (estimate-light-trail-mem-usage
-               (the-as uint (-> s5-1 max-num-crumbs))
-               (the-as uint (= (-> s5-1 appearance lie-mode) (lie-mode use-two-strips)))
-               )
-             )
-           (s4-1 (get-process *default-dead-pool* light-trail-tracker-projectile (+ v1-26 8192) 1))
-           )
-      (set! (-> this trail-tracker)
-            (ppointer->handle (when s4-1
-                                (let ((t9-6 (method-of-type process activate)))
-                                  (t9-6 s4-1 this "light-trail" (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process s4-1 light-trail-tracker-init-by-other s5-1)
-                                (-> s4-1 ppointer)
-                                )
-                              )
-            )
-      )
-    )
+  (set! (-> this trail-tracker)
+        (ppointer->handle (light-trail-tracker-spawn
+                            light-trail-tracker-projectile
+                            :to this
+                            :param-list ((tracked-obj (process->handle this))
+                             (appearance *toad-grenade-trail*)
+                             (max-num-crumbs (the int (* 0.5 (the float (-> *toad-grenade-trail* max-age)))))
+                             (track-immediately? #t)
+                             )
+                            )
+                          )
+        )
   0
   (none)
   )

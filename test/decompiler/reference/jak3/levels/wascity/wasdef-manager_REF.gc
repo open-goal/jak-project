@@ -2375,16 +2375,17 @@
   (set! *maker-num-alive* (+ *maker-num-alive* 1))
   (set! *maker-num-visible* (+ *maker-num-visible* 1))
   (if (-> self draw shadow)
-      (set! (-> self draw shadow-ctrl) (new
-                                         'process
-                                         'shadow-control
-                                         -81920.0
-                                         163840.0
-                                         573440.0
-                                         (the-as vector #f)
-                                         (shadow-flags shdf00 shdf04)
-                                         4096000.0
-                                         )
+      (set! (-> self draw shadow-ctrl)
+            (new
+              'process
+              'shadow-control
+              -81920.0
+              163840.0
+              573440.0
+              (the-as vector #f)
+              (shadow-flags shdf00 shdf04)
+              4096000.0
+              )
             )
       (set! (-> self draw shadow-ctrl) *enemy-dummy-shadow-control*)
       )
@@ -2471,31 +2472,18 @@
   (set! (-> self draw lod-set lod 0 dist) 14336000.0)
   (logclear! (-> self mask) (process-mask actor-pause))
   (logior! (-> self mask) (process-mask no-kill))
-  (let ((gp-1 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
-    (set! (-> gp-1 tracked-obj) (process->handle self))
-    (set! (-> gp-1 appearance) *maker-entry-trail*)
-    (set! (-> gp-1 max-num-crumbs) (the int (* 0.5 (the float (-> gp-1 appearance max-age)))))
-    (set! (-> gp-1 track-immediately?) #t)
-    (let* ((v1-104
-             (estimate-light-trail-mem-usage
-               (the-as uint (-> gp-1 max-num-crumbs))
-               (the-as uint (= (-> gp-1 appearance lie-mode) (lie-mode use-two-strips)))
-               )
-             )
-           (s5-1 (get-process *default-dead-pool* light-trail-tracker-projectile (+ v1-104 8192) 1))
-           )
-      (set! (-> self trail-handle)
-            (ppointer->handle (when s5-1
-                                (let ((t9-22 (method-of-type process activate)))
-                                  (t9-22 s5-1 self "light-trail" (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process s5-1 light-trail-tracker-init-by-other gp-1)
-                                (-> s5-1 ppointer)
-                                )
-                              )
-            )
-      )
-    )
+  (set! (-> self trail-handle)
+        (ppointer->handle (light-trail-tracker-spawn
+                            light-trail-tracker-projectile
+                            :to self
+                            :param-list ((tracked-obj (process->handle self))
+                             (appearance *maker-entry-trail*)
+                             (max-num-crumbs (the int (* 0.5 (the float (-> *maker-entry-trail* max-age)))))
+                             (track-immediately? #t)
+                             )
+                            )
+                          )
+        )
   (go-virtual flying)
   )
 
