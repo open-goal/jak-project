@@ -231,34 +231,21 @@
 ;; definition for method 17 of type water-control
 ;; WARN: Return type mismatch int vs none.
 (defmethod water-control-method-17 ((this water-control))
-  (when (and (not (handle->process (-> this ripple)))
-             (>= (+ (current-time) (seconds -0.1)) (-> this enter-water-time))
-             )
-    (let ((s5-0 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
-      (set! (-> s5-0 tracked-obj) (process->handle (-> this process)))
-      (set! (-> s5-0 appearance) *water-wake-trail*)
-      (set! (-> s5-0 max-num-crumbs) (the int (* 0.25 (the float (-> s5-0 appearance max-age)))))
-      (let* ((v1-18
-               (estimate-light-trail-mem-usage
-                 (the-as uint (-> s5-0 max-num-crumbs))
-                 (the-as uint (= (-> s5-0 appearance lie-mode) (lie-mode use-two-strips)))
-                 )
-               )
-             (s4-0 (get-process *default-dead-pool* light-trail-tracker-water (+ v1-18 8192) 1))
-             )
-        (set! (-> this ripple)
-              (ppointer->handle (when s4-0
-                                  (let ((t9-2 (method-of-type process activate)))
-                                    (t9-2 s4-0 (-> this process) "light-trail" (the-as pointer #x70004000))
-                                    )
-                                  (run-now-in-process s4-0 light-trail-tracker-init-by-other s5-0)
-                                  (-> s4-0 ppointer)
-                                  )
+  (if (and (not (handle->process (-> this ripple)))
+           (>= (+ (current-time) (seconds -0.1)) (-> this enter-water-time))
+           )
+      (set! (-> this ripple)
+            (ppointer->handle (light-trail-tracker-spawn
+                                light-trail-tracker-water
+                                :to (-> this process)
+                                :param-list ((tracked-obj (process->handle (-> this process)))
+                                 (appearance *water-wake-trail*)
+                                 (max-num-crumbs (the int (* 0.25 (the float (-> *water-wake-trail* max-age)))))
+                                 )
                                 )
-              )
-        )
+                              )
+            )
       )
-    )
   0
   (none)
   )
