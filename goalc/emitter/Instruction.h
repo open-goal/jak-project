@@ -85,6 +85,11 @@ constexpr Field Rm(u32 x) {
   return Field{(x & 31) << 16};
 }
 
+constexpr Field Imm4(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 4) - 1));
+  return Field{(x & 0b111111) << 11};
+}
+
 constexpr Field Imm6(u32 x) {
   ASSERT(x >= 0 && x <= (64 - 1));
   return Field{(x & 0b111111) << 10};
@@ -122,6 +127,16 @@ constexpr Field Imms(u32 x) {
 
 constexpr Field Immr(u32 x) {
   ASSERT(x >= 0 && x <= ((2 ^ 6) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 16};
+}
+
+constexpr Field Immh(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 4) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 19};
+}
+
+constexpr Field Immb(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 3) - 1));
   return Field{(static_cast<uint32_t>(x) & 0b111111) << 16};
 }
 

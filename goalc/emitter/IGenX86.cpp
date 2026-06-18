@@ -2170,6 +2170,7 @@ InstructionX86 pw_sll(Register dst, Register src, u8 imm) {
   instr.set(Imm(1, imm));
   return instr;
 }
+
 InstructionX86 ph_sll(Register dst, Register src, u8 imm) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
