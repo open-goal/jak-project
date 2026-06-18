@@ -1,6 +1,8 @@
 
 #include "IGenARM64.h"
 
+#include <tuple>
+
 #include "goalc/emitter/Instruction.h"
 #include "goalc/emitter/InstructionSet.h"
 #include "goalc/emitter/Register.h"
@@ -693,7 +695,7 @@ InstructionARM64 static_addr(Register dest, s64 offset) {
   return InstructionARM64(Base(0b01011000, 8), Imm19(offset / 4), Rt(dest.id()));
 }
 
-InstructionARM64 static_load_fp32(Register simd_dest, s64 offset) {
+InstructionARM64 static_load_f32(Register simd_dest, s64 offset) {
   ASSERT(simd_dest.is_gpr(instr_set));
   ASSERT_MSG(offset >= ARM64_LDR_MIN && offset <= ARM64_LDR_MAX,
              "PC Relative offset is too large for ARM64, fix it.");
@@ -704,7 +706,7 @@ InstructionARM64 static_load_fp32(Register simd_dest, s64 offset) {
 
 // TODO ARM - no direct store instructions, gotta be two and involve a register
 
-InstructionARM64 static_store_xmm32(Register xmm_value, s64 offset) {
+InstructionARM64 static_store_f32(Register xmm_value, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
@@ -743,7 +745,7 @@ InstructionARM64 push_gpr64(Register reg) {
   // But we can't do either of these at this level, this is an optimization that has to come from
   // higher in the stack.  Here we are concerned with just satisfying the need to push a GPR
   ASSERT(reg.is_gpr(instr_set));
-  return InstructionARM64(Base(0b1111100000000000000011, 22), Imm9(-16), Rn(ARM64_REG::SP),
+  return InstructionARM64(Base(0b1111100000000000000011, 22), Imm9s(-16), Rn(ARM64_REG::SP),
                           Rt(reg.id()));
 }
 
@@ -751,7 +753,7 @@ InstructionARM64 pop_gpr64(Register reg) {
   // ldr reg, [sp], #16
   // - https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_gen.html
   ASSERT(reg.is_gpr(instr_set));
-  return InstructionARM64(Base(0b1111100001000000000001, 22), Imm9(16), Rn(ARM64_REG::SP),
+  return InstructionARM64(Base(0b1111100001000000000001, 22), Imm9s(16), Rn(ARM64_REG::SP),
                           Rt(reg.id()));
 }
 
@@ -826,7 +828,7 @@ std::vector<std::tuple<u16, bool>> decompose_into_imm12_chunks(u64 imm) {
 InstructionARM64 add_gpr64_imm(Register reg, int64_t imm) {
   ASSERT(reg.is_gpr(instr_set));
   if (imm < 0) {
-    sub_gpr64_imm(reg, std::abs(imm));
+    return sub_gpr64_imm(reg, std::abs(imm));
   }
   // Check to see if we can represent this subtraction in a single instruction
   // if not, then we need to emit multiple partial instructions
@@ -852,7 +854,7 @@ InstructionARM64 add_gpr64_imm(Register reg, int64_t imm) {
 InstructionARM64 sub_gpr64_imm(Register reg, int64_t imm) {
   ASSERT(reg.is_gpr(instr_set));
   if (imm < 0) {
-    add_gpr64_imm(reg, std::abs(imm));
+    return add_gpr64_imm(reg, std::abs(imm));
   }
   // Check to see if we can represent this subtraction in a single instruction
   // if not, then we need to emit multiple partial instructions

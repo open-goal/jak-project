@@ -351,9 +351,9 @@ InstructionARM64 static_store(Register value, s64 offset, int size);
 
 InstructionARM64 static_addr(Register dst, s64 offset);
 
-InstructionARM64 static_load_fp32(Register simd_dest, s64 offset);
+InstructionARM64 static_load_f32(Register simd_dest, s64 offset);
 
-InstructionARM64 static_store_xmm32(Register xmm_value, s64 offset);
+InstructionARM64 static_store_f32(Register xmm_value, s64 offset);
 
 // TODO, special load/stores of 128 bit values.
 
@@ -609,12 +609,12 @@ InstructionARM64 min_f32_f32(Register dst, Register src);
 InstructionARM64 max_f32_f32(Register dst, Register src);
 
 /*!
- * Convert GPR int32 to XMM float (single precision)
+ * Convert GPR int32 to float (single precision)
  */
 InstructionARM64 int32_to_f32(Register dst, Register src);
 
 /*!
- * Convert XMM float to GPR int32(single precision) (truncate)
+ * Convert float to GPR int32(single precision) (truncate)
  */
 InstructionARM64 f32_to_int32(Register dst, Register src);
 

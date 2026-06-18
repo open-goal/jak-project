@@ -45,8 +45,15 @@ constexpr u32 Base(u32 value, u32 width) {
   return value << (32 - width);
 }
 
+// TODO - consider passing in the instruction name to make debugging easier when an assertion is
+// hit
+
 // TODO NOW - fix below
 constexpr u64 pow2(u64 n) {
+  return 1ull << n;
+}
+
+constexpr s64 pow2s(u64 n) {
   return 1ull << n;
 }
 
@@ -91,17 +98,17 @@ constexpr Field Imm4(u32 x) {
 }
 
 constexpr Field Imm6(u32 x) {
-  ASSERT(x >= 0 && x <= (64 - 1));
+  ASSERT(x >= 0 && x <= ((2 ^ 6)));
   return Field{(x & 0b111111) << 10};
 }
 
-constexpr Field Imm9(s32 x) {
-  ASSERT(x >= 0 && x <= (512 - 1));
+constexpr Field Imm9s(s32 x) {
+  ASSERT(x >= (pow2s(9 - 1) * -1) && x <= (pow2s(9 - 1) - 1));
   return Field{(static_cast<u32>(x) & 0b111111111) << 12};
 }
 
 constexpr Field Imm12(u32 x) {
-  ASSERT(x >= 0 && x <= (4096 - 1));
+  ASSERT(x >= 0 && x <= (pow2(12) - 1));
   return Field{(static_cast<u32>(x) & 0b111111111111) << 10};
 }
 

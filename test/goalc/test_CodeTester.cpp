@@ -150,10 +150,10 @@ TEST(CodeTester, simd_store_128_arm64) {
   CodeTester tester(emitter::InstructionSet::ARM64);
   tester.init_code_buffer(256);
 
-  tester.emit(IGen::store128_gpr64_simd128(tester.generator(), X2, Q3));
-  tester.emit(IGen::store128_gpr64_simd128(tester.generator(), X14, Q3));
-  tester.emit(IGen::store128_gpr64_simd128(tester.generator(), X2, Q14));
-  tester.emit(IGen::store128_gpr64_simd128(tester.generator(), X14, Q13));
+  tester.emit(IGen::store128_gpr64_simd128(tester.generator(), X2, V3));
+  tester.emit(IGen::store128_gpr64_simd128(tester.generator(), X14, V3));
+  tester.emit(IGen::store128_gpr64_simd128(tester.generator(), X2, V14));
+  tester.emit(IGen::store128_gpr64_simd128(tester.generator(), X14, V13));
   EXPECT_EQ(tester.dump_to_hex_string(), "43 00 80 3d c3 01 80 3d 4e 00 80 3d cd 01 80 3d");
 }
 
@@ -197,10 +197,10 @@ TEST(CodeTester, xmm_load_128_arm64) {
   CodeTester tester(emitter::InstructionSet::ARM64);
   tester.init_code_buffer(256);
 
-  tester.emit(IGen::load128_simd128_gpr64(tester.generator(), Q3, X1));
-  tester.emit(IGen::load128_simd128_gpr64(tester.generator(), Q3, X14));
-  tester.emit(IGen::load128_simd128_gpr64(tester.generator(), Q14, X1));
-  tester.emit(IGen::load128_simd128_gpr64(tester.generator(), Q13, X14));
+  tester.emit(IGen::load128_simd128_gpr64(tester.generator(), V3, X1));
+  tester.emit(IGen::load128_simd128_gpr64(tester.generator(), V3, X14));
+  tester.emit(IGen::load128_simd128_gpr64(tester.generator(), V14, X1));
+  tester.emit(IGen::load128_simd128_gpr64(tester.generator(), V13, X14));
   EXPECT_EQ(tester.dump_to_hex_string(), "23 00 c0 3d c3 01 c0 3d 2e 00 c0 3d cd 01 c0 3d");
 }
 
