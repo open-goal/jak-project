@@ -173,7 +173,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
             int count = controller_name_counts[controller_name]++;
             std::string display_name = controller_name;
             if (count > 0) {
-              display_name += " (" + std::to_string(count) + ")";
+              display_name = fmt::format("{} ({})", display_name, count);
             }
             auto is_controller_active =
                 Display::GetMainDisplay()->get_input_manager()->get_controller_index(port) == i;
