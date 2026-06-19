@@ -5,6 +5,7 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
+#include "989_plugins/plugin_strv.h"
 #include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/vag.h"
 #include "game/sce/iop.h"
@@ -15,11 +16,13 @@ List g_RequestedStreamsList;
 List g_NewStreamsList;
 List g_EEStreamsList;
 List g_EEPlayList;
+List g_PluginStreamsList;
 void jak3_overlord_init_globals_streamlist() {
   g_RequestedStreamsList = {};
   g_NewStreamsList = {};
   g_EEStreamsList = {};
   g_EEPlayList = {};
+  g_PluginStreamsList = {};
 }
 
 void InitVagStreamList(List* list, int size, const char* name) {
@@ -176,6 +179,7 @@ VagStreamData* InsertVagStreamInList(VagStreamData* user_stream, List* list) {
         free_elt->volume2 = user_stream->volume2;
         free_elt->maybe_volume_3 = user_stream->maybe_volume_3;
         free_elt->group = user_stream->group;
+        free_elt->pan = user_stream->pan;
         free_elt->unk1 = 0;
         if (pVVar12 == (VagStreamData*)0x0) {
           if (free_elt == pVVar10) {
@@ -316,13 +320,15 @@ code_r0x0000ffc4:
 }
 
 void StreamListThread() {
+  HandlePluginRequests();
+
   if (g_RequestedStreamsList.pending_data == 0) {
     WaitSema(g_RequestedStreamsList.sema);
     EmptyVagStreamList(&g_RequestedStreamsList);
     g_RequestedStreamsList.unk_flag = 0;
-    //    WaitSema(DAT_00015dd0);
-    //    MergeVagStreamLists((List*)&g_PluginStreamsList, &g_RequestedStreamsList);
-    //    SignalSema(DAT_00015dd0);
+    WaitSema(g_PluginStreamsList.sema);
+    MergeVagStreamLists(&g_PluginStreamsList, &g_RequestedStreamsList);
+    SignalSema(g_PluginStreamsList.sema);
     WaitSema(g_EEStreamsList.sema);
     MergeVagStreamLists(&g_EEStreamsList, &g_RequestedStreamsList);
     SignalSema(g_EEStreamsList.sema);

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "989_plugins/plugin_strv.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/sce/iop.h"
 
@@ -295,6 +296,7 @@ u32 StreamListThread() {
     do {
       SleepThread();
     } while (RequestedStreamsList.unk2_init0 != 0);
+    HandlePluginRequests();
     uVar8 = 0;
     WaitSema(RequestedStreamsList.sema);
     iVar1 = RequestedStreamsList.elt_count;

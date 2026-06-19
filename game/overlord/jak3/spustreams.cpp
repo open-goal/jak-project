@@ -922,7 +922,7 @@ void StopVagStream(ISO_VAGCommand* cmd) {
     PauseVAG(cmd);
     strncpy(vsd.name, cmd->name, 0x30);
     vsd.id = cmd->id;
-    // RemoveVagStreamFromList(&vsd, &g_PluginStreamsList);
+    RemoveVagStreamFromList(&vsd, &g_PluginStreamsList);
     RemoveVagStreamFromList(&vsd, &g_EEPlayList);
     //    local_20 = cmd->plugin_id;
     //    local_24 = cmd->id;
