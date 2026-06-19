@@ -1,6 +1,6 @@
-#include <cstring>
-
 #include "plugin.h"
+
+#include <cstring>
 
 #include "common/log/log.h"
 

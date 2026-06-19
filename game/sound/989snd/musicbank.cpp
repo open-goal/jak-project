@@ -8,13 +8,13 @@
 namespace snd {
 
 std::optional<std::unique_ptr<SoundHandler>> MusicBank::MakeHandler(VoiceManager& vm,
-                                                                   u32 sound_id,
-                                                                   s32 vol,
-                                                                   s32 pan,
-                                                                   s32 pm,
-                                                                   s32 pb,
-                                                                   s32 tick,
-                                                                   u32 owner) {
+                                                                    u32 sound_id,
+                                                                    s32 vol,
+                                                                    s32 pan,
+                                                                    s32 pm,
+                                                                    s32 pb,
+                                                                    s32 tick,
+                                                                    u32 owner) {
   auto& sound = Sounds[sound_id];
 
   // FIXME: global midi list
