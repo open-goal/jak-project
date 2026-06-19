@@ -13,9 +13,7 @@ namespace decompiler {
 bool allowable_base_type_for_symbol_to_string(const TypeSpec& ts);
 
 constexpr PerGameVersion<int> SYMBOL_TO_STRING_MEM_OFFSET_DECOMP = {
-    8167 * 8,
-    jak2::SYM_TO_STRING_OFFSET,
-    -99999,
+    8167 * 8, jak2::SYM_TO_STRING_OFFSET, -99999,
     -99999,  // not supported this way!
 };
 
