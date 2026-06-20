@@ -11,6 +11,7 @@
 #include "common/common_types.h"
 
 #include "goalc/emitter/Instruction.h"
+#include "goalc/emitter/InstructionSet.h"
 #include "goalc/emitter/Register.h"
 #ifdef OS_POSIX
 #include <sys/mman.h>

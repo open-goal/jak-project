@@ -204,6 +204,18 @@ TEST(CodeTester, xmm_load_128_arm64) {
   EXPECT_EQ(tester.dump_to_hex_string(), "23 00 c0 3d c3 01 c0 3d 2e 00 c0 3d cd 01 c0 3d");
 }
 
+void execute_tester(CodeTester& tester) {
+  if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+    tester.execute();
+#endif
+  } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+    tester.execute();
+#endif
+  }
+}
+
 // These tests actually execute the code, you cannot execute arm64 code on x86 and vise versa
 // so these tests have to be conditional based on the platform unfortunately.
 TEST(CodeTester, execute_push_pop_simd_x86) {
@@ -225,9 +237,7 @@ TEST(CodeTester, execute_push_pop_simd_x86) {
       "0f 6f 0c 24 48 83 c4 10 66 44 0f 6f 14 24 48 83 c4 10 66 44 0f 6f 1c 24 48 83 c4 10 66 44 "
       "0f 6f 24 24 48 83 c4 10 66 44 0f 6f 2c 24 48 83 c4 10 66 44 0f 6f 34 24 48 83 c4 10 66 44 "
       "0f 6f 3c 24 48 83 c4 10 48 83 c4 08 c3");
-#ifndef __aarch64__
-  tester.execute();
-#endif
+  execute_tester(tester);
 }
 
 TEST(CodeTester, execute_push_pop_simd_arm64) {
@@ -247,9 +257,7 @@ TEST(CodeTester, execute_push_pop_simd_arm64) {
       "ff 43 00 91 e7 03 c0 3d ff 43 00 91 e8 03 c0 3d ff 43 00 91 e9 03 c0 3d ff 43 00 91 ea 03 "
       "c0 3d ff 43 00 91 eb 03 c0 3d ff 43 00 91 ec 03 c0 3d ff 43 00 91 ed 03 c0 3d ff 43 00 91 "
       "ee 03 c0 3d ff 43 00 91 ef 03 c0 3d ff 43 00 91 c0 03 5f d6");
-#ifdef __aarch64__
-  tester.execute();
-#endif
+  execute_tester(tester);
 }
 
 TEST(CodeTester, execute_push_pop_all_the_things_x86) {
@@ -276,9 +284,7 @@ TEST(CodeTester, execute_push_pop_all_the_things_x86) {
             "04 24 48 83 c4 10 66 44 0f 6f 0c 24 48 83 c4 10 66 44 0f 6f 14 24 48 83 c4 10 66 44 "
             "0f 6f 1c 24 48 83 c4 10 66 44 0f 6f 24 24 48 83 c4 10 66 44 0f 6f 2c 24 48 83 c4 10 "
             "66 44 0f 6f 34 24 48 83 c4 10 66 44 0f 6f 3c 24 48 83 c4 10 48 83 c4 08 c3");
-#ifndef __aarch64__
-  tester.execute();
-#endif
+  execute_tester(tester);
 }
 
 TEST(CodeTester, execute_push_pop_all_the_things_arm64) {
@@ -310,9 +316,7 @@ TEST(CodeTester, execute_push_pop_all_the_things_arm64) {
       "ff 43 00 91 e6 03 c0 3d ff 43 00 91 e7 03 c0 3d ff 43 00 91 e8 03 c0 3d ff 43 00 91 e9 03 "
       "c0 3d ff 43 00 91 ea 03 c0 3d ff 43 00 91 eb 03 c0 3d ff 43 00 91 ec 03 c0 3d ff 43 00 91 "
       "ed 03 c0 3d ff 43 00 91 ee 03 c0 3d ff 43 00 91 ef 03 c0 3d ff 43 00 91 c0 03 5f d6");
-#ifdef __aarch64__
-  tester.execute();
-#endif
+  execute_tester(tester);
 }
 
 TEST(CodeTester, execute_return_x86) {
@@ -322,9 +326,7 @@ TEST(CodeTester, execute_return_x86) {
   tester.emit_return();
   EXPECT_EQ(tester.dump_to_hex_string(), "c3");
   // and execute it!
-#ifndef __aarch64__
-  tester.execute();
-#endif
+  execute_tester(tester);
 }
 
 TEST(CodeTester, execute_return_arm64) {
@@ -335,9 +337,7 @@ TEST(CodeTester, execute_return_arm64) {
   tester.emit(IGen::ret(tester.generator()));
   EXPECT_EQ(tester.dump_to_hex_string(), "00 04 00 91 c0 03 5f d6");
   // and execute it!
-#ifdef __aarch64__
-  tester.execute();
-#endif
+  execute_tester(tester);
 }
 
 TEST(CodeTester, execute_push_pop_gprs_x86) {
@@ -350,9 +350,7 @@ TEST(CodeTester, execute_push_pop_gprs_x86) {
   EXPECT_EQ(tester.dump_to_hex_string(),
             "50 51 52 53 54 55 56 57 41 50 41 51 41 52 41 53 41 54 41 55 41 56 41 57 41 5f 41 5e "
             "41 5d 41 5c 41 5b 41 5a 41 59 41 58 5f 5e 5d 5c 5b 5a 59 58 c3");
-#ifndef __aarch64__
-  tester.execute();
-#endif
+  execute_tester(tester);
 }
 
 TEST(CodeTester, execute_push_pop_gprs_arm64) {
@@ -372,7 +370,5 @@ TEST(CodeTester, execute_push_pop_gprs_arm64) {
             "f3 07 41 f8 f2 07 41 f8 f1 07 41 f8 f0 07 41 f8 ef 07 41 f8 ee 07 41 f8 ed 07 41 f8 "
             "ec 07 41 f8 eb 07 41 f8 ea 07 41 f8 e9 07 41 f8 e8 07 41 f8 e7 07 41 f8 e6 07 41 f8 "
             "e5 07 41 f8 e4 07 41 f8 e3 07 41 f8 e2 07 41 f8 e1 07 41 f8 e0 07 41 f8 c0 03 5f d6");
-#ifdef __aarch64__
-  tester.execute();
-#endif
+  execute_tester(tester);
 }

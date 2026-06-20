@@ -4,6 +4,82 @@
 
 using namespace emitter;
 
+void execute_ret_tester(CodeTester& tester, u64 val, u64 expected_return) {
+  if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+    auto result = tester.execute_ret<s64>(val, 0, 0, 0);
+    EXPECT_EQ(result, expected_return);
+#endif
+  } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+    auto result = tester.execute_ret<s64>(val, 0, 0, 0);
+    EXPECT_EQ(result, expected_return);
+#endif
+  }
+}
+
+void execute_tester(CodeTester& tester, u64 expected_return) {
+  if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+    auto result = tester.execute();
+    EXPECT_EQ(result, expected_return);
+#endif
+  } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+    auto result = tester.execute();
+    EXPECT_EQ(result, expected_return);
+#endif
+  }
+}
+
+void execute_tester(CodeTester& tester, u64 in0, u64 in1, u64 in2, u64 in3, u64 expected_return) {
+  if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+    auto result = tester.execute(in0, in1, in2, in3);
+    EXPECT_EQ(result, expected_return);
+#endif
+  } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+    auto result = tester.execute(in0, in1, in2, in3);
+    EXPECT_EQ(result, expected_return);
+#endif
+  }
+}
+
+bool execute_tester_no_cmp(CodeTester& tester, u64 in0, u64 in1, u64 in2, u64 in3) {
+  if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+    tester.execute(in0, in1, in2, in3);
+    return true;
+#endif
+  } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+    tester.execute(in0, in1, in2, in3);
+    return true;
+#endif
+  }
+  return false;
+}
+
+void execute_ret_tester(CodeTester& tester,
+                        u64 in0,
+                        u64 in1,
+                        u64 in2,
+                        u64 in3,
+                        float expected_return) {
+  if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+    auto result = tester.execute_ret<float>(in0, in1, in2, in3);
+    EXPECT_FLOAT_EQ(result, expected_return);
+#endif
+  } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+    auto result = tester.execute_ret<float>(in0, in1, in2, in3);
+    EXPECT_FLOAT_EQ(result, expected_return);
+#endif
+  }
+}
+
 TEST(EmitterIntegerMath, add_gpr64_imm8s) {
   CodeTester tester;
   tester.init_code_buffer(256);
@@ -34,8 +110,7 @@ TEST(EmitterIntegerMath, add_gpr64_imm8s) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        auto result = tester.execute_ret<s64>(val, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+        execute_ret_tester(tester, val, expected);
       }
     }
   }
@@ -75,8 +150,7 @@ TEST(EmitterIntegerMath, add_gpr64_imm32s) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        auto result = tester.execute_ret<s64>(val, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+        execute_ret_tester(tester, val, expected);
       }
     }
   }
@@ -116,8 +190,7 @@ TEST(EmitterIntegerMath, sub_gpr64_imm8s) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        auto result = tester.execute_ret<s64>(val, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+        execute_ret_tester(tester, val, expected);
       }
     }
   }
@@ -157,8 +230,7 @@ TEST(EmitterIntegerMath, sub_gpr64_imm32s) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        auto result = tester.execute_ret<s64>(val, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+        execute_ret_tester(tester, val, expected);
       }
     }
   }
@@ -192,8 +264,8 @@ TEST(EmitterIntegerMath, add_gpr64_gpr64) {
           tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
-          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, expected);
         }
       }
     }
@@ -224,8 +296,8 @@ TEST(EmitterIntegerMath, sub_gpr64_gpr64) {
           tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
-          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, expected);
         }
       }
     }
@@ -260,8 +332,8 @@ TEST(EmitterIntegerMath, mul_gpr32_gpr32) {
           tester.emit(IGen::movsx_r64_r32(tester.generator(), RAX, i));  // weird PS2 sign extend.
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
-          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, expected);
         }
       }
     }
@@ -292,8 +364,8 @@ TEST(EmitterIntegerMath, or_gpr64_gpr64) {
           tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
-          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, expected);
         }
       }
     }
@@ -324,8 +396,8 @@ TEST(EmitterIntegerMath, and_gpr64_gpr64) {
           tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
-          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, expected);
         }
       }
     }
@@ -356,8 +428,8 @@ TEST(EmitterIntegerMath, xor_gpr64_gpr64) {
           tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
-          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-          EXPECT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, expected);
         }
       }
     }
@@ -382,8 +454,8 @@ TEST(EmitterIntegerMath, not_gpr64) {
       tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
       tester.emit_pop_all_gprs(true);
       tester.emit_return();
-      auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-      EXPECT_EQ(result, expected);
+
+      execute_ret_tester(tester, 0, expected);
     }
   }
 }
@@ -410,8 +482,8 @@ TEST(EmitterIntegerMath, shl_gpr64_cl) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+
+        execute_ret_tester(tester, 0, expected);
       }
     }
   }
@@ -439,8 +511,8 @@ TEST(EmitterIntegerMath, shr_gpr64_cl) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+
+        execute_ret_tester(tester, 0, expected);
       }
     }
   }
@@ -468,8 +540,8 @@ TEST(EmitterIntegerMath, sar_gpr64_cl) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+
+        execute_ret_tester(tester, 0, expected);
       }
     }
   }
@@ -496,8 +568,8 @@ TEST(EmitterIntegerMath, shl_gpr64_u8) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+
+        execute_ret_tester(tester, 0, expected);
       }
     }
   }
@@ -524,8 +596,8 @@ TEST(EmitterIntegerMath, shr_gpr64_u8) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+
+        execute_ret_tester(tester, 0, expected);
       }
     }
   }
@@ -552,8 +624,8 @@ TEST(EmitterIntegerMath, sar_gpr64_u8) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        auto result = tester.execute_ret<s64>(0, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+
+        execute_ret_tester(tester, 0, expected);
       }
     }
   }
@@ -650,7 +722,8 @@ TEST(EmitterLoadsAndStores, load_constant_64_and_move_gpr_gpr_64) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, r2));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        EXPECT_EQ(tester.execute(), constant);
+
+        execute_tester(tester, constant);
       }
     }
   }
@@ -677,7 +750,8 @@ TEST(EmitterLoadsAndStores, load_constant_32_unsigned) {
       tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, r1));
       tester.emit_pop_all_gprs(true);
       tester.emit_return();
-      EXPECT_EQ(tester.execute(), constant);
+
+      execute_tester(tester, constant);
     }
   }
 }
@@ -701,7 +775,8 @@ TEST(EmitterLoadsAndStores, load_constant_32_signed) {
       tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, r1));
       tester.emit_pop_all_gprs(true);
       tester.emit_return();
-      EXPECT_EQ(tester.execute(), constant);
+
+      execute_tester(tester, constant);
     }
   }
 }
@@ -771,10 +846,10 @@ TEST(EmitterLoadsAndStores, load8s_gpr64_goal_ptr_gpr64) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 2, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 5, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 2, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 4, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 5, 0, 0, 0);
         iter++;
       }
     }
@@ -840,10 +915,10 @@ TEST(EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s8) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 3 + 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 2 + 3, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4 + 3, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 5 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 3 + 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 2 + 3, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 5 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -909,10 +984,10 @@ TEST(EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s32) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 3 + 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 2 + 3, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4 + 3, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 5 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 3 + 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 2 + 3, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 5 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -984,10 +1059,10 @@ TEST(EmitterLoadsAndStores, load8u_gpr64_goal_ptr_gpr64) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 2, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 5, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 2, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 4, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 5, 0, 0, 0);
         iter++;
       }
     }
@@ -1053,10 +1128,10 @@ TEST(EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s8) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 3 + 3, 0, 0)), 0xfe);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 2 + 3, 0, 0)), 0xfd);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4 + 3, 0, 0)), 0xff);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 5 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 3 + 3, 0, 0, 0xfe);
+        execute_tester(tester, (u64)memory, 2 + 3, 0, 0, 0xfd);
+        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, 0xff);
+        execute_tester(tester, (u64)memory, 5 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1122,10 +1197,10 @@ TEST(EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s32) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 3 + 3, 0, 0)), 0xfe);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 2 + 3, 0, 0)), 0xfd);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4 + 3, 0, 0)), 0xff);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 5 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 3 + 3, 0, 0, 0xfe);
+        execute_tester(tester, (u64)memory, 2 + 3, 0, 0, 0xfd);
+        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, 0xff);
+        execute_tester(tester, (u64)memory, 5 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1197,10 +1272,10 @@ TEST(EmitterLoadsAndStores, load16s_gpr64_goal_ptr_gpr64) {
         s16 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 6, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 10, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 6, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 4, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 8, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 10, 0, 0, 0);
         iter++;
       }
     }
@@ -1266,10 +1341,10 @@ TEST(EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s8) {
         u16 memory[8] = {0, 0, 0xfffd, 0xfffe, 0xffff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 6 + 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4 + 3, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8 + 3, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 10 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 6 + 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 10 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1335,10 +1410,10 @@ TEST(EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s32) {
         u16 memory[8] = {0, 0, 0xfffd, 0xfffe, 0xffff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 6 + 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4 + 3, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8 + 3, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 10 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 6 + 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 10 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1410,10 +1485,10 @@ TEST(EmitterLoadsAndStores, load16u_gpr64_goal_ptr_gpr64) {
         s16 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 6, 0, 0)), 0xfffe);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4, 0, 0)), 0xfffd);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8, 0, 0)), 0xffff);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 10, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 6, 0, 0, 0xfffe);
+        execute_tester(tester, (u64)memory, 4, 0, 0, 0xfffd);
+        execute_tester(tester, (u64)memory, 8, 0, 0, 0xffff);
+        execute_tester(tester, (u64)memory, 10, 0, 0, 0);
         iter++;
       }
     }
@@ -1479,10 +1554,10 @@ TEST(EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s8) {
         u16 memory[8] = {0, 0, 0xfffd, 0xfffe, 0xffff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 6 + 3, 0, 0)), 0xfffe);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4 + 3, 0, 0)), 0xfffd);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8 + 3, 0, 0)), 0xffff);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 10 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 6 + 3, 0, 0, 0xfffe);
+        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, 0xfffd);
+        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, 0xffff);
+        execute_tester(tester, (u64)memory, 10 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1548,10 +1623,10 @@ TEST(EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s32) {
         u16 memory[8] = {0, 0, 0xfffd, 0xfffe, 0xffff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 6 + 3, 0, 0)), 0xfffe);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 4 + 3, 0, 0)), 0xfffd);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8 + 3, 0, 0)), 0xffff);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 10 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 6 + 3, 0, 0, 0xfffe);
+        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, 0xfffd);
+        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, 0xffff);
+        execute_tester(tester, (u64)memory, 10 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1611,10 +1686,10 @@ TEST(EmitterLoadsAndStores, load32s_gpr64_goal_ptr_gpr64) {
         s32 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 12, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 20, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 12, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 8, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 16, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 20, 0, 0, 0);
         iter++;
       }
     }
@@ -1680,10 +1755,10 @@ TEST(EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s8) {
         u32 memory[8] = {0, 0, 0xfffffffd, 0xfffffffe, 0xffffffff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 12 + 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8 + 3, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16 + 3, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 20 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 12 + 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 20 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1749,10 +1824,10 @@ TEST(EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s32) {
         u32 memory[8] = {0, 0, 0xfffffffd, 0xfffffffe, 0xffffffff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 12 + 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8 + 3, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16 + 3, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 20 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 12 + 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 20 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1812,10 +1887,10 @@ TEST(EmitterLoadsAndStores, load32u_gpr64_goal_ptr_gpr64) {
         s32 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 12, 0, 0)), 0xfffffffe);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8, 0, 0)), 0xfffffffd);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16, 0, 0)), 0xffffffff);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 20, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 12, 0, 0, 0xfffffffe);
+        execute_tester(tester, (u64)memory, 8, 0, 0, 0xfffffffd);
+        execute_tester(tester, (u64)memory, 16, 0, 0, 0xffffffff);
+        execute_tester(tester, (u64)memory, 20, 0, 0, 0);
         iter++;
       }
     }
@@ -1881,10 +1956,10 @@ TEST(EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s8) {
         s32 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 12 + 3, 0, 0)), 0xfffffffe);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8 + 3, 0, 0)), 0xfffffffd);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16 + 3, 0, 0)), 0xffffffff);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 20 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 12 + 3, 0, 0, 0xfffffffe);
+        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, 0xfffffffd);
+        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, 0xffffffff);
+        execute_tester(tester, (u64)memory, 20 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -1950,10 +2025,10 @@ TEST(EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s32) {
         u32 memory[8] = {0, 0, 0xfffffffd, 0xfffffffe, 0xffffffff, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 12 + 3, 0, 0)), 0xfffffffe);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 8 + 3, 0, 0)), 0xfffffffd);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16 + 3, 0, 0)), 0xffffffff);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 20 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 12 + 3, 0, 0, 0xfffffffe);
+        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, 0xfffffffd);
+        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, 0xffffffff);
+        execute_tester(tester, (u64)memory, 20 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -2013,10 +2088,10 @@ TEST(EmitterLoadsAndStores, load64_gpr64_goal_ptr_gpr64) {
         s64 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 24, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 32, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 40, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 24, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 16, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 32, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 40, 0, 0, 0);
         iter++;
       }
     }
@@ -2082,10 +2157,10 @@ TEST(EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s8) {
         s64 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 24 + 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16 + 3, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 32 + 3, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 40 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 24 + 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 32 + 3, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 40 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -2151,10 +2226,10 @@ TEST(EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s32) {
         s64 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        EXPECT_EQ(s64(tester.execute((u64)memory, 24 + 3, 0, 0)), -2);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 16 + 3, 0, 0)), -3);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 32 + 3, 0, 0)), -1);
-        EXPECT_EQ(s64(tester.execute((u64)memory, 40 + 3, 0, 0)), 0);
+        execute_tester(tester, (u64)memory, 24 + 3, 0, 0, -2);
+        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, -3);
+        execute_tester(tester, (u64)memory, 32 + 3, 0, 0, -1);
+        execute_tester(tester, (u64)memory, 40 + 3, 0, 0, 0);
         iter++;
       }
     }
@@ -2208,10 +2283,13 @@ TEST(EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64) {
         s8 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 3, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], 7);
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 3, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], 7);
+          EXPECT_EQ(memory[4], 1);
+        }
         iter++;
       }
     }
@@ -2270,10 +2348,13 @@ TEST(EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64_plus_s8) {
         s8 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 6, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], 7);
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 6, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], 7);
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2333,10 +2414,13 @@ TEST(EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64_plus_s32) {
         s8 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 6, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], 7);
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 6, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], 7);
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2391,10 +2475,13 @@ TEST(EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64) {
         s16 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 6, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], s16(0xff07));
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 6, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], s16(0xff07));
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2454,10 +2541,13 @@ TEST(EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64_plus_s8) {
         s16 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 6 + 3, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], s16(0xff07));
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 6 + 3, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], s16(0xff07));
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2517,10 +2607,13 @@ TEST(EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64_plus_s32) {
         s16 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 6 + 3, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], s16(0xff07));
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 6 + 3, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], s16(0xff07));
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2575,10 +2668,13 @@ TEST(EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64) {
         s32 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 12, 0xffffffff12341234, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], 0x12341234);
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 12, 0xffffffff12341234, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], 0x12341234);
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2638,10 +2734,13 @@ TEST(EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64_plus_s8) {
         s32 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 12 + 3, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], s32(0xffffff07));
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 12 + 3, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], s32(0xffffff07));
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2701,10 +2800,13 @@ TEST(EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64_plus_s32) {
         s32 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 12 + 3, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], s32(0xffffff07));
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 12 + 3, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], s32(0xffffff07));
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2759,10 +2861,13 @@ TEST(EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64) {
         s64 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 24, 0xffffffff12341234, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], 0xffffffff12341234);
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 24, 0xffffffff12341234, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], 0xffffffff12341234);
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2822,10 +2927,13 @@ TEST(EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64_plus_s8) {
         s64 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 24 + 3, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], s64(0xffffffffffffff07));
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 24 + 3, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], s64(0xffffffffffffff07));
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -2885,10 +2993,13 @@ TEST(EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64_plus_s32) {
         s64 memory[8] = {0, 0, 3, -2, 1, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 24 + 3, 0xffffffffffffff07, 0);
-        EXPECT_EQ(memory[2], 3);
-        EXPECT_EQ(memory[3], s64(0xffffffffffffff07));
-        EXPECT_EQ(memory[4], 1);
+        const auto did_execute =
+            execute_tester_no_cmp(tester, (u64)memory, 24 + 3, 0xffffffffffffff07, 0);
+        if (did_execute) {
+          EXPECT_EQ(memory[2], 3);
+          EXPECT_EQ(memory[3], s64(0xffffffffffffff07));
+          EXPECT_EQ(memory[4], 1);
+        }
 
         iter++;
       }
@@ -3105,8 +3216,7 @@ TEST(EmitterLoadsAndStores, static_addr) {
     tester.emit_pop_all_gprs(true);
     tester.emit_return();
 
-    auto result = tester.execute();
-    EXPECT_EQ(result, (u64)(tester.data()) + 1);
+    execute_tester(tester, (u64)(tester.data()) + 1);
   }
 }
 
@@ -3156,10 +3266,10 @@ TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float), 0, 0), 3.45f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float), 0, 0), 1.23f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float), 0, 0), 5.67f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float), 0, 0), 0);
+        execute_ret_tester(tester, (u64)memory, 3 * sizeof(float), 0, 0, 3.45f);
+        execute_ret_tester(tester, (u64)memory, 2 * sizeof(float), 0, 0, 1.23f);
+        execute_ret_tester(tester, (u64)memory, 4 * sizeof(float), 0, 0, 5.67f);
+        execute_ret_tester(tester, (u64)memory, 5 * sizeof(float), 0, 0, 0);
 
         iter++;
       }
@@ -3218,10 +3328,10 @@ TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) + 3, 0, 0), 3.45f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) + 3, 0, 0), 1.23f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) + 3, 0, 0), 5.67f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) + 3, 0, 0), 0);
+        execute_ret_tester(tester, (u64)memory, 3 * sizeof(float) + 3, 0, 0, 3.45f);
+        execute_ret_tester(tester, (u64)memory, 2 * sizeof(float) + 3, 0, 0, 1.23f);
+        execute_ret_tester(tester, (u64)memory, 4 * sizeof(float) + 3, 0, 0, 5.67f);
+        execute_ret_tester(tester, (u64)memory, 5 * sizeof(float) + 3, 0, 0, 0);
 
         iter++;
       }
@@ -3283,14 +3393,10 @@ TEST(EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 3 * sizeof(float) - offset, 0, 0),
-                        3.45f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 2 * sizeof(float) - offset, 0, 0),
-                        1.23f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 4 * sizeof(float) - offset, 0, 0),
-                        5.67f);
-        EXPECT_FLOAT_EQ(tester.execute_ret<float>((u64)memory, 5 * sizeof(float) - offset, 0, 0),
-                        0);
+        execute_ret_tester(tester, (u64)memory, 3 * sizeof(float) - offset, 0, 0, 3.45f);
+        execute_ret_tester(tester, (u64)memory, 2 * sizeof(float) - offset, 0, 0, 1.23f);
+        execute_ret_tester(tester, (u64)memory, 4 * sizeof(float) - offset, 0, 0, 5.67f);
+        execute_ret_tester(tester, (u64)memory, 5 * sizeof(float) - offset, 0, 0, 0);
         iter++;
       }
     }
@@ -3360,7 +3466,7 @@ TEST(EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 12, as_u32(1.234f), 0);
+        execute_tester_no_cmp(tester, (u64)memory, 12, as_u32(1.234f), 0);
         EXPECT_FLOAT_EQ(memory[2], 1.23f);
         EXPECT_FLOAT_EQ(memory[3], 1.234f);
         EXPECT_FLOAT_EQ(memory[4], 5.67f);
@@ -3427,7 +3533,7 @@ TEST(EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 12 - offset, as_u32(1.234f), 0);
+        execute_tester_no_cmp(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
         EXPECT_FLOAT_EQ(memory[2], 1.23f);
         EXPECT_FLOAT_EQ(memory[3], 1.234f);
         EXPECT_FLOAT_EQ(memory[4], 5.67f);
@@ -3496,7 +3602,7 @@ TEST(EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
         // run!
-        tester.execute((u64)memory, 12 - offset, as_u32(1.234f), 0);
+        execute_tester_no_cmp(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
         EXPECT_FLOAT_EQ(memory[2], 1.23f);
         EXPECT_FLOAT_EQ(memory[3], 1.234f);
         EXPECT_FLOAT_EQ(memory[4], 5.67f);
@@ -3529,8 +3635,7 @@ TEST(EmitterXmm32, static_load_xmm32) {
     tester.write<s32>(loc_of_float - loc_of_load - load_instr.length(),
                       loc_of_load + load_instr.offset_of_disp());
 
-    auto result = tester.execute_ret<float>(0, 0, 0, 0);
-    EXPECT_FLOAT_EQ(result, 1.2345f);
+    execute_ret_tester(tester, 0, 0, 0, 0, 1.2345f);
   }
 }
 
@@ -3554,7 +3659,7 @@ TEST(EmitterXmm32, static_store_xmm32) {
 
     tester.write<s32>(loc_of_float - loc_of_store - store_instr.length(),
                       loc_of_store + store_instr.offset_of_disp());
-    tester.execute(as_u32(-44.567f), 0, 0, 0);
+    execute_tester_no_cmp(tester, as_u32(-44.567f), 0, 0, 0);
     EXPECT_FLOAT_EQ(-44.567f, tester.read<float>(loc_of_float));
   }
 }
@@ -3595,8 +3700,8 @@ TEST(EmitterXmm32, mul) {
           tester.emit_pop_all_gprs(true);
           tester.emit_pop_all_simd();
           tester.emit_return();
-          auto result = tester.execute_ret<float>(0, 0, 0, 0);
-          EXPECT_FLOAT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, 0, 0, 0, expected);
         }
       }
     }
@@ -3632,8 +3737,8 @@ TEST(EmitterXmm32, div) {
           tester.emit_pop_all_gprs(true);
           tester.emit_pop_all_simd();
           tester.emit_return();
-          auto result = tester.execute_ret<float>(0, 0, 0, 0);
-          EXPECT_FLOAT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, 0, 0, 0, expected);
         }
       }
     }
@@ -3668,8 +3773,8 @@ TEST(EmitterXmm32, add) {
           tester.emit_pop_all_gprs(true);
           tester.emit_pop_all_simd();
           tester.emit_return();
-          auto result = tester.execute_ret<float>(0, 0, 0, 0);
-          EXPECT_FLOAT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, 0, 0, 0, expected);
         }
       }
     }
@@ -3705,8 +3810,8 @@ TEST(EmitterXmm32, sub) {
           tester.emit_pop_all_gprs(true);
           tester.emit_pop_all_simd();
           tester.emit_return();
-          auto result = tester.execute_ret<float>(0, 0, 0, 0);
-          EXPECT_FLOAT_EQ(result, expected);
+
+          execute_ret_tester(tester, 0, 0, 0, 0, expected);
         }
       }
     }
@@ -3739,8 +3844,8 @@ TEST(EmitterXmm32, float_to_int) {
         tester.emit_pop_all_gprs(true);
         tester.emit_pop_all_simd();
         tester.emit_return();
-        auto result = tester.execute_ret<s32>(0, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+
+        execute_ret_tester(tester, 0, 0, 0, 0, expected);
       }
     }
   }
@@ -3768,8 +3873,8 @@ TEST(EmitterXmm32, int_to_float) {
         tester.emit_pop_all_gprs(true);
         tester.emit_pop_all_simd();
         tester.emit_return();
-        auto result = tester.execute_ret<float>(0, 0, 0, 0);
-        EXPECT_EQ(result, expected);
+
+        execute_ret_tester(tester, 0, 0, 0, 0, expected);
       }
     }
   }
