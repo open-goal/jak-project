@@ -4,7 +4,7 @@
 
 using namespace emitter;
 
-void execute_ret_tester(CodeTester& tester, u64 val, u64 expected_return) {
+void execute_ret_tester(CodeTester& tester, u64 val, s64 expected_return) {
   if (tester.generator().instr_set() == InstructionSet::ARM64) {
 #ifdef __aarch64__
     auto result = tester.execute_ret<s64>(val, 0, 0, 0);
@@ -547,7 +547,7 @@ TEST(EmitterIntegerMath, sar_gpr64_cl) {
   }
 }
 
-TEST(EmitterIntegerMath, shl_gpr64_u8) {
+TEST(EmitterIntegerMath, shl_gpr64_u8_new) {
   CodeTester tester;
   tester.init_code_buffer(256);
   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
@@ -568,8 +568,20 @@ TEST(EmitterIntegerMath, shl_gpr64_u8) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-
-        execute_ret_tester(tester, 0, expected);
+        // execute_ret_tester(tester, 0, expected);
+        // TODO - no idea why this can't be a function call, but it fails
+        // the below is a copy paste
+        if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+#endif
+        } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+#endif
+        }
       }
     }
   }
@@ -596,8 +608,20 @@ TEST(EmitterIntegerMath, shr_gpr64_u8) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-
-        execute_ret_tester(tester, 0, expected);
+        // execute_ret_tester(tester, 0, expected);
+        // TODO - no idea why this can't be a function call, but it fails
+        // the below is a copy paste
+        if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+#endif
+        } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+#endif
+        }
       }
     }
   }
@@ -624,8 +648,20 @@ TEST(EmitterIntegerMath, sar_gpr64_u8) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-
-        execute_ret_tester(tester, 0, expected);
+        // execute_ret_tester(tester, 0, expected);
+        // TODO - no idea why this can't be a function call, but it fails
+        // the below is a copy paste
+        if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+#endif
+        } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+          auto result = tester.execute_ret<s64>(0, 0, 0, 0);
+          EXPECT_EQ(result, expected);
+#endif
+        }
       }
     }
   }
@@ -3844,8 +3880,19 @@ TEST(EmitterXmm32, float_to_int) {
         tester.emit_pop_all_gprs(true);
         tester.emit_pop_all_simd();
         tester.emit_return();
-
-        execute_ret_tester(tester, 0, 0, 0, 0, expected);
+        // TODO - no idea why the function call doesn't work here
+        // execute_ret_tester(tester, 0, 0, 0, 0, expected);
+        if (tester.generator().instr_set() == InstructionSet::ARM64) {
+#ifdef __aarch64__
+          auto result = tester.execute_ret<s32>(0, 0, 0, 0);
+          EXPECT_FLOAT_EQ(result, expected);
+#endif
+        } else if (tester.generator().instr_set() == InstructionSet::X86) {
+#ifndef __aarch64__
+          auto result = tester.execute_ret<s32>(0, 0, 0, 0);
+          EXPECT_FLOAT_EQ(result, expected);
+#endif
+        }
       }
     }
   }
