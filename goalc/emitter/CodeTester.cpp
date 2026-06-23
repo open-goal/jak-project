@@ -11,6 +11,7 @@
 #include "common/common_types.h"
 
 #include "goalc/emitter/Instruction.h"
+#include "goalc/emitter/InstructionSet.h"
 #include "goalc/emitter/Register.h"
 #ifdef OS_POSIX
 #include <sys/mman.h>
@@ -125,7 +126,7 @@ void CodeTester::emit_push_all_simd() {
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
     for (int i = 0; i < 16; i++) {
       emit(IGen::sub_gpr64_imm8s(m_gen, SP, 16));
-      emit(IGen::store128_gpr64_simd128(m_gen, SP, Q0 + i));
+      emit(IGen::store128_gpr64_simd128(m_gen, SP, V0 + i));
     }
   } else {
     throw std::runtime_error("CodeTester::emit_push_all_simd unhandled instruction set");
@@ -144,7 +145,7 @@ void CodeTester::emit_pop_all_simd() {
     emit(IGen::add_gpr64_imm8s(m_gen, RSP, 8));
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
     for (int i = 0; i < 16; i++) {
-      emit(IGen::load128_simd128_gpr64(m_gen, Q0 + i, SP));
+      emit(IGen::load128_simd128_gpr64(m_gen, V0 + i, SP));
       emit(IGen::add_gpr64_imm8s(m_gen, SP, 16));
     }
   } else {

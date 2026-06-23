@@ -59,7 +59,7 @@ InstructionX86 mov_gpr64_s32(Register dst, int64_t val) {
   return instr;
 }
 
-InstructionX86 movd_gpr32_xmm32(Register dst, Register src) {
+InstructionX86 movd_gpr32_f32(Register dst, Register src) {
   ASSERT(dst.is_gpr(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0x66);
@@ -70,7 +70,7 @@ InstructionX86 movd_gpr32_xmm32(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 movd_xmm32_gpr32(Register dst, Register src) {
+InstructionX86 movd_f32_gpr32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_gpr(instr_set));
   InstructionX86 instr(0x66);
@@ -81,7 +81,7 @@ InstructionX86 movd_xmm32_gpr32(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 movq_gpr64_xmm64(Register dst, Register src) {
+InstructionX86 movq_gpr64_f64(Register dst, Register src) {
   ASSERT(dst.is_gpr(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0x66);
@@ -92,7 +92,7 @@ InstructionX86 movq_gpr64_xmm64(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 movq_xmm64_gpr64(Register dst, Register src) {
+InstructionX86 movq_f64_gpr64(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_gpr(instr_set));
   InstructionX86 instr(0x66);
@@ -103,7 +103,7 @@ InstructionX86 movq_xmm64_gpr64(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 mov_xmm32_xmm32(Register dst, Register src) {
+InstructionX86 mov_f32_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -1155,7 +1155,7 @@ InstructionX86 store128_xmm128_reg_offset(Register base, Register xmm_val, s64 o
   }
 }
 
-InstructionX86 load64_rip_s32(Register dest, s64 offset) {
+InstructionX86 load64_pcRel_s32(Register dest, s64 offset) {
   ASSERT(dest.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x8b);
@@ -1163,7 +1163,7 @@ InstructionX86 load64_rip_s32(Register dest, s64 offset) {
   return instr;
 }
 
-InstructionX86 load32s_rip_s32(Register dest, s64 offset) {
+InstructionX86 load32s_pcRel_s32(Register dest, s64 offset) {
   ASSERT(dest.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x63);
@@ -1171,7 +1171,7 @@ InstructionX86 load32s_rip_s32(Register dest, s64 offset) {
   return instr;
 }
 
-InstructionX86 load32u_rip_s32(Register dest, s64 offset) {
+InstructionX86 load32u_pcRel_s32(Register dest, s64 offset) {
   ASSERT(dest.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x8b);
@@ -1179,7 +1179,7 @@ InstructionX86 load32u_rip_s32(Register dest, s64 offset) {
   return instr;
 }
 
-InstructionX86 load16u_rip_s32(Register dest, s64 offset) {
+InstructionX86 load16u_pcRel_s32(Register dest, s64 offset) {
   ASSERT(dest.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0xf);
@@ -1188,7 +1188,7 @@ InstructionX86 load16u_rip_s32(Register dest, s64 offset) {
   return instr;
 }
 
-InstructionX86 load16s_rip_s32(Register dest, s64 offset) {
+InstructionX86 load16s_pcRel_s32(Register dest, s64 offset) {
   ASSERT(dest.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0xf);
@@ -1197,7 +1197,7 @@ InstructionX86 load16s_rip_s32(Register dest, s64 offset) {
   return instr;
 }
 
-InstructionX86 load8u_rip_s32(Register dest, s64 offset) {
+InstructionX86 load8u_pcRel_s32(Register dest, s64 offset) {
   ASSERT(dest.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0xf);
@@ -1206,7 +1206,7 @@ InstructionX86 load8u_rip_s32(Register dest, s64 offset) {
   return instr;
 }
 
-InstructionX86 load8s_rip_s32(Register dest, s64 offset) {
+InstructionX86 load8s_pcRel_s32(Register dest, s64 offset) {
   ASSERT(dest.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0xf);
@@ -1219,33 +1219,33 @@ InstructionX86 static_load(Register dest, s64 offset, int size, bool sign_extend
   switch (size) {
     case 1:
       if (sign_extend) {
-        return load8s_rip_s32(dest, offset);
+        return load8s_pcRel_s32(dest, offset);
       } else {
-        return load8u_rip_s32(dest, offset);
+        return load8u_pcRel_s32(dest, offset);
       }
       break;
     case 2:
       if (sign_extend) {
-        return load16s_rip_s32(dest, offset);
+        return load16s_pcRel_s32(dest, offset);
       } else {
-        return load16u_rip_s32(dest, offset);
+        return load16u_pcRel_s32(dest, offset);
       }
       break;
     case 4:
       if (sign_extend) {
-        return load32s_rip_s32(dest, offset);
+        return load32s_pcRel_s32(dest, offset);
       } else {
-        return load32u_rip_s32(dest, offset);
+        return load32u_pcRel_s32(dest, offset);
       }
       break;
     case 8:
-      return load64_rip_s32(dest, offset);
+      return load64_pcRel_s32(dest, offset);
     default:
       ASSERT(false);
   }
 }
 
-InstructionX86 store64_rip_s32(Register src, s64 offset) {
+InstructionX86 store64_pcRel_s32(Register src, s64 offset) {
   ASSERT(src.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
@@ -1254,7 +1254,7 @@ InstructionX86 store64_rip_s32(Register src, s64 offset) {
   return instr;
 }
 
-InstructionX86 store32_rip_s32(Register src, s64 offset) {
+InstructionX86 store32_pcRel_s32(Register src, s64 offset) {
   ASSERT(src.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
@@ -1263,7 +1263,7 @@ InstructionX86 store32_rip_s32(Register src, s64 offset) {
   return instr;
 }
 
-InstructionX86 store16_rip_s32(Register src, s64 offset) {
+InstructionX86 store16_pcRel_s32(Register src, s64 offset) {
   ASSERT(src.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
@@ -1274,7 +1274,7 @@ InstructionX86 store16_rip_s32(Register src, s64 offset) {
   return instr;
 }
 
-InstructionX86 store8_rip_s32(Register src, s64 offset) {
+InstructionX86 store8_pcRel_s32(Register src, s64 offset) {
   ASSERT(src.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
@@ -1289,13 +1289,13 @@ InstructionX86 store8_rip_s32(Register src, s64 offset) {
 InstructionX86 static_store(Register value, s64 offset, int size) {
   switch (size) {
     case 1:
-      return store8_rip_s32(value, offset);
+      return store8_pcRel_s32(value, offset);
     case 2:
-      return store16_rip_s32(value, offset);
+      return store16_pcRel_s32(value, offset);
     case 4:
-      return store32_rip_s32(value, offset);
+      return store32_pcRel_s32(value, offset);
     case 8:
-      return store64_rip_s32(value, offset);
+      return store64_pcRel_s32(value, offset);
     default:
       ASSERT(false);
   }
@@ -1309,7 +1309,7 @@ InstructionX86 static_addr(Register dst, s64 offset) {
   return instr;
 }
 
-InstructionX86 static_load_xmm32(Register simd_dest, s64 offset) {
+InstructionX86 static_load_f32(Register simd_dest, s64 offset) {
   ASSERT(simd_dest.is_xmm(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
 
@@ -1322,7 +1322,7 @@ InstructionX86 static_load_xmm32(Register simd_dest, s64 offset) {
   return instr;
 }
 
-InstructionX86 static_store_xmm32(Register xmm_value, s64 offset) {
+InstructionX86 static_store_f32(Register xmm_value, s64 offset) {
   ASSERT(xmm_value.is_xmm(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
 
@@ -1569,21 +1569,24 @@ InstructionX86 not_gpr64(Register reg) {
   return instr;
 }
 
-InstructionX86 shl_gpr64_cl(Register reg) {
+InstructionX86 shl_gpr64_reg(Register reg, Register _) {
+  // x86 is forced to use CL
   ASSERT(reg.is_gpr(instr_set));
   InstructionX86 instr(0xd3);
   instr.set_modrm_and_rex(4, reg.hw_id(instr_set), 3, true);
   return instr;
 }
 
-InstructionX86 shr_gpr64_cl(Register reg) {
+InstructionX86 shr_gpr64_reg(Register reg, Register _) {
+  // x86 is forced to use CL
   ASSERT(reg.is_gpr(instr_set));
   InstructionX86 instr(0xd3);
   instr.set_modrm_and_rex(5, reg.hw_id(instr_set), 3, true);
   return instr;
 }
 
-InstructionX86 sar_gpr64_cl(Register reg) {
+InstructionX86 sar_gpr64_reg(Register reg, Register _) {
+  // x86 is forced to use CL
   ASSERT(reg.is_gpr(instr_set));
   InstructionX86 instr(0xd3);
   instr.set_modrm_and_rex(7, reg.hw_id(instr_set), 3, true);
@@ -1614,83 +1617,83 @@ InstructionX86 sar_gpr64_u8(Register reg, uint8_t sa) {
   return instr;
 }
 
-InstructionX86 jmp_32() {
+InstructionX86 jmp_imm() {
   InstructionX86 instr(0xe9);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 je_32() {
+InstructionX86 je_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x84);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 jne_32() {
+InstructionX86 jne_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x85);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 jle_32() {
+InstructionX86 jle_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x8e);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 jge_32() {
+InstructionX86 jge_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x8d);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 jl_32() {
+InstructionX86 jl_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x8c);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 jg_32() {
+InstructionX86 jg_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x8f);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 jbe_32() {
+InstructionX86 jbe_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x86);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 jae_32() {
+InstructionX86 jae_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x83);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 jb_32() {
+InstructionX86 jb_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x82);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 ja_32() {
+InstructionX86 ja_imm() {
   InstructionX86 instr(0x0f);
   instr.set_op2(0x87);
   instr.set(Imm(4, 0));
   return instr;
 }
 
-InstructionX86 cmp_flt_flt(Register a, Register b) {
+InstructionX86 cmp_f32_f32(Register a, Register b) {
   ASSERT(a.is_xmm(instr_set));
   ASSERT(b.is_xmm(instr_set));
   InstructionX86 instr(0x0f);
@@ -1699,7 +1702,7 @@ InstructionX86 cmp_flt_flt(Register a, Register b) {
   return instr;
 }
 
-InstructionX86 sqrts_xmm(Register dst, Register src) {
+InstructionX86 sqrt_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -1710,7 +1713,7 @@ InstructionX86 sqrts_xmm(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 mulss_xmm_xmm(Register dst, Register src) {
+InstructionX86 mul_f32_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -1721,7 +1724,7 @@ InstructionX86 mulss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 divss_xmm_xmm(Register dst, Register src) {
+InstructionX86 div_f32_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -1732,7 +1735,7 @@ InstructionX86 divss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 subss_xmm_xmm(Register dst, Register src) {
+InstructionX86 sub_f32_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -1743,7 +1746,7 @@ InstructionX86 subss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 addss_xmm_xmm(Register dst, Register src) {
+InstructionX86 add_f32_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -1754,7 +1757,7 @@ InstructionX86 addss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 minss_xmm_xmm(Register dst, Register src) {
+InstructionX86 min_f32_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -1765,7 +1768,7 @@ InstructionX86 minss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 maxss_xmm_xmm(Register dst, Register src) {
+InstructionX86 max_f32_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -1776,7 +1779,7 @@ InstructionX86 maxss_xmm_xmm(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 int32_to_float(Register dst, Register src) {
+InstructionX86 int32_to_f32(Register dst, Register src) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_gpr(instr_set));
   InstructionX86 instr(0xf3);
@@ -1787,7 +1790,7 @@ InstructionX86 int32_to_float(Register dst, Register src) {
   return instr;
 }
 
-InstructionX86 float_to_int32(Register dst, Register src) {
+InstructionX86 f32_to_int32(Register dst, Register src) {
   ASSERT(dst.is_gpr(instr_set));
   ASSERT(src.is_xmm(instr_set));
   InstructionX86 instr(0xf3);
@@ -2167,6 +2170,7 @@ InstructionX86 pw_sll(Register dst, Register src, u8 imm) {
   instr.set(Imm(1, imm));
   return instr;
 }
+
 InstructionX86 ph_sll(Register dst, Register src, u8 imm) {
   ASSERT(dst.is_xmm(instr_set));
   ASSERT(src.is_xmm(instr_set));

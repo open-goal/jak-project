@@ -5,7 +5,8 @@
 #include "common/versions/versions.h"
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
-#include <fmt/chrono.h>
+
+#include "fmt/chrono.h"
 
 std::string get_current_time_and_date() {
   auto const now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
