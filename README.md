@@ -1,7 +1,7 @@
 <p align="center">
   <img width="500" height="100%" src="./docs/img/logo-text-colored-new.png">
 </p>
-
+ 
 <p align="center">
   <a href="https://opengoal.dev/docs/intro" rel="nofollow"><img src="https://img.shields.io/badge/Documentation-Here-informational" alt="Documentation Badge" style="max-width:100%;"></a>
   <a title="Crowdin" target="_blank" href="https://crowdin.com/project/opengoal"><img src="https://badges.crowdin.net/opengoal/localized.svg"></a>
