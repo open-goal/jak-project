@@ -561,7 +561,10 @@ goos::Object decomp_ref_to_inline_array_guess_size(
   auto elt_type_info = ts.lookup_type(array_elt_type);
   int elt_size = align(elt_type_info->get_size_in_memory(),
                        elt_type_info->get_inline_array_stride_alignment());
-  ASSERT(stride == elt_size);
+  ASSERT_MSG(stride == elt_size,
+             fmt::format("stride ({}) != elt_size ({}::{}) -- {}/{}", stride, elt_size,
+                         array_elt_type.base_type(), elt_type_info->get_size_in_memory(),
+                         elt_type_info->get_inline_array_stride_alignment()));
 
   // the input is the location of the data field.
   // we expect that to be a label:
@@ -1076,10 +1079,27 @@ const std::unordered_map<
               {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},
              {"sparticle-launch-group",
               {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
+             {"continue-point",
+              {{"want", ArrayFieldDecompMeta(TypeSpec("level-buffer-state-small"), 8)}}},
              {"vehicle-sound-info",
               {
                   {"engine-loop-array",
-                   ArrayFieldDecompMeta(TypeSpec("vehicle-sound-engine-loop-info"), 0x16)},
+                   ArrayFieldDecompMeta(TypeSpec("vehicle-sound-engine-loop-info"), 0x18)},
+              }},
+             {"vehicle-rider-info",
+              {
+                  {"attach-point-array", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+                  {"attach-node-array", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+              }},
+             {"vehicle-daxter-info",
+              {
+                  {"chassis-seats", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+                  {"trunk-seats", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+                  {"roof-seats", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+              }},
+             {"vehicle-hardpoint-info",
+              {
+                  {"local-pos-array", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
               }},
          }}};
 
