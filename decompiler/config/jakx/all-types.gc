@@ -8413,7 +8413,7 @@
     (level-group-method-19 () none) ;; 19 ;; (level-update (_type_) none)
     (level-group-method-20 () none) ;; 20 ;; (level-get-target-inside (_type_) level)
     (level-group-method-21 () none) ;; 21 ;; (init-level-system (_type_ symbol) none)
-    (level-group-method-22 () none) ;; 22 ;; (art-group-get-by-name (_type_ string (pointer level)) art-group)
+    (art-group-get-by-name (_type_ string (pointer level)) art-group)
     (level-group-method-23 () none) ;; 23 ;; (update-vis-volumes (_type_) none)
     (level-group-method-24 () none) ;; 24 ;; (level-group-method-24 (_type_) none)
     (level-group-method-25 () none) ;; 25 ;; (print-volume-sizes (_type_) none)
@@ -15642,7 +15642,7 @@
 ;; ---car-info-h:vehicle-type
 
 (define-extern *car-type-names* (array string))
-(define-extern type-from-vehicle-type (function vehicle-type traffic-vehicle-type))
+(define-extern type-from-vehicle-type (function vehicle-type type))
 (define-extern level-name-from-vehicle-type (function vehicle-type symbol))
 (define-extern car-type-from-vehicle-type (function int vehicle-type))
 (define-extern vehicle-type-from-car-type "does nothing, returns input" (function int int))
@@ -38796,7 +38796,7 @@
 ;; (define-extern find-ground-point function) ;; (function control-info vector float float vector)
 ;; (define-extern collide-shape-moving-angle-set! function) ;; (function collide-shape-moving vector vector none)
 ;; (define-extern cshape-reaction-update-state function) ;; (function control-info collide-query vector none)
-;; (define-extern cshape-reaction-default function) ;; (function control-info collide-query vector vector collide-status)
+(define-extern cshape-reaction-default (function control-info collide-query vector vector collide-status)) ;; 
 ;; (define-extern cshape-reaction-just-move function) ;; (function control-info collide-query vector collide-status)
 ;; (define-extern collide-shape-draw-debug-marks function) ;; (function none)
 ;; (define-extern *col-timer* object) ;; stopwatch
@@ -40846,7 +40846,6 @@
 ;; rigid-body-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype rigid-body-info (structure)
   ((max-time-step       float          :offset-assert 0)
    (mass                float          :offset-assert 4)
@@ -40870,25 +40869,38 @@
     (rigid-body-info-method-9 () none) ;; 9 ;; (rigid-body-info-method-9 (_type_) none)
     )
   )
-|#
 
-#|
+;; TODO jakx - copied from jak3, might be out of date
+(deftype rigid-body-object-extra-info (structure)
+  (
+   ;; (max-time-step      float   :offset-assert 0)
+   (gravity            meters  :offset-assert 0)
+  ;;  (idle-distance      meters  :offset-assert 4)
+   (attack-force-scale float   :offset-assert 4)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #x8
+  :flag-assert         #x900000008
+  )
+
 (deftype rigid-body-object-constants (structure)
   ((info              rigid-body-info :inline :offset-assert 0)
-   (max-time-step     float                   :offset-assert 0)
-   (mass              float                   :offset-assert 4)
-   (inv-mass          float                   :offset-assert 8)
-   (cm-joint-x        meters                  :offset-assert 32)
-   (cm-joint-y        meters                  :offset-assert 36)
-   (cm-joint-z        meters                  :offset-assert 40)
-   (linear-damping    float                   :offset-assert 12)
-   (angular-damping   float                   :offset-assert 16)
-   (bounce-factor     float                   :offset-assert 20)
-   (friction-factor   float                   :offset-assert 24)
-   (inertial-tensor-x meters                  :offset-assert 176)
-   (inertial-tensor-y meters                  :offset-assert 180)
-   (inertial-tensor-z meters                  :offset-assert 184)
-   (gravity           meters                  :offset-assert 188)
+   (max-time-step     float                   :offset  0)
+   (mass              float                   :offset 4)
+   (inv-mass          float                   :offset 8)
+   (cm-joint-x        meters                  :offset 32)
+   (cm-joint-y        meters                  :offset 36)
+   (cm-joint-z        meters                  :offset 40)
+   (linear-damping    float                   :offset 12)
+   (angular-damping   float                   :offset 16)
+   (bounce-factor     float                   :offset 20)
+   (friction-factor   float                   :offset 24)
+   (inertial-tensor-x meters                  :offset 176)
+   (inertial-tensor-y meters                  :offset 180)
+   (inertial-tensor-z meters                  :offset 184)
+  ;;  (extra              rigid-body-object-extra-info :inline :offset-assert 188)
+   (gravity           meters                  :offset 188)
    (name              symbol                  :offset-assert 196) ;; guessed by decompiler
    )
   :method-count-assert 10
@@ -40898,7 +40910,6 @@
     (rigid-body-object-constants-method-9 () none) ;; 9
     )
   )
-|#
 
 (deftype rigid-body-impact (structure)
   ((point    vector      :inline :offset-assert 0)
@@ -40910,12 +40921,85 @@
    (prim-id  uint32              :offset-assert 60)
    (surface  basic               :offset-assert 64)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
 
-#|
+;; +++rigid-body-h:rigid-body-flag
+(defenum rigid-body-flag
+  :bitfield #t
+  :type uint16
+  (display-marks 0)
+  (enable-physics 1)
+  (disable-queue 2)
+  (enable-penetrate-mode 3)
+  (debug-active 4)
+  (wall-normal-hack 5)
+  (sphere-normal-hack 6)
+  (debug 7)
+  (impact 8)
+  (stuck 9)
+  (temp-penetrate-mode 10)
+  (debug-target 11)
+  (vehicle-line-spheres-hack 12)
+  )
+;; ---rigid-body-h:rigid-body-flag
+
+;; +++rigid-body-h:rigid-body-object-flag
+(defenum rigid-body-object-flag
+  :bitfield #t
+  :type uint64
+  (enable-collision 0)
+  (disturbed 1)
+  (damaged 2)
+  (dead 3)
+  ;; the rest of these might no longer be relevant
+  (player-touching 4)
+  (player-edge-grabbing 5)
+  (player-standing-on 6)
+  (player-impulse-force 7)
+  (player-contact-force 8)
+  (persistent 9)
+  (in-air 10)
+  (on-ground 11)
+  (on-flight-level 12)
+  (riding 13)
+  (player-driving 14)
+  (waiting-for-player 15)
+  (ignition 16)
+  (turbo-boost 17)
+  (reverse-gear 18)
+  (slide 19)
+  (hard-turn 20)
+  (jump 21)
+  (jump-sound 22)
+  (ai-driving 23)
+  (traffic-managed 24)
+  (flight-level-transition 25)
+  (flight-level-transition-ending 26)
+  (camera-bike-mode 27)
+  (camera-rapid-track-mode 28)
+  (camera 29)
+  (alert 30)
+  (in-pursuit 31)
+  (target-in-sight 32)
+  (rammed-target 33)
+  (draw-marks 34)
+  (hack-edit-graph-mode 35)
+  (measure-control-parameters 36)
+  (lights-on 37)
+  (lights-update 38)
+  (lights-dead 39)
+  (no-hijack 40)
+  (player-grabbed 41)
+  (nav-spheres 42)
+  (idle-sound 43)
+  )
+;; ---rigid-body-h:rigid-body-object-flag
+
+(declare-type rigid-body-object basic)
 (deftype rigid-body-control (basic)
   ((flags              rigid-body-flag                                 :offset-assert 4)
    (debug-id           int8                                            :offset-assert 6)
@@ -40932,7 +41016,7 @@
    (friction-factor    float                                           :offset-assert 44)
    (position           vector                                  :inline :offset-assert 48)
    (rot                vector                                  :inline :offset-assert 64)
-   (rotation           quaternion                              :inline :offset-assert 64)
+   (rotation           quaternion                              :inline :offset 64)
    (lin-momentum       vector                                  :inline :offset-assert 80)
    (ang-momentum       vector                                  :inline :offset-assert 96)
    (force              vector                                  :inline :offset-assert 112)
@@ -40982,46 +41066,44 @@
     (rigid-body-control-method-40 () none) ;; 40
     )
   )
-|#
 
-#|
 (deftype rb-perf-data (structure)
   ((process           uint64     :offset-assert 0)
-   (times             UNKNOWN 32 :offset-assert 8)
-   (t-rb-all          uint32     :offset-assert 8)
-   (t-rb-callback     uint32     :offset-assert 12)
-   (t-rb-fc           uint32     :offset-assert 16)
-   (t-rb-move         uint32     :offset-assert 20)
-   (t-rb-physics      uint32     :offset-assert 24)
-   (t-vqp-all         uint32     :offset-assert 32)
-   (t-vqp-common      uint32     :offset-assert 36)
-   (t-vqp-ja-post     uint32     :offset-assert 40)
-   (t-vqp-parts       uint32     :offset-assert 44)
-   (t-vqp-post        uint32     :offset-assert 48)
-   (t-vqp-sections    uint32     :offset-assert 52)
-   (t-vqp-sound       uint32     :offset-assert 56)
-   (t-nav-part1       uint32     :offset-assert 60)
-   (t-nav-part2       uint32     :offset-assert 64)
-   (t-nav-part3       uint32     :offset-assert 68)
-   (t-nav-part4       uint32     :offset-assert 72)
-   (t-nav-part5       uint32     :offset-assert 76)
-   (t-nav-part6       uint32     :offset-assert 80)
-   (t-nav-part7       uint32     :offset-assert 84)
-   (t-nav-part8       uint32     :offset-assert 88)
-   (t-nav-part9       uint32     :offset-assert 92)
-   (t-nav-part10      uint32     :offset-assert 96)
-   (t-part-turbo      uint32     :offset-assert 116)
-   (t-part-exhaust    uint32     :offset-assert 100)
-   (t-part-smoke      uint32     :offset-assert 104)
-   (t-part-scrape     uint32     :offset-assert 108)
-   (t-part-wheels     uint32     :offset-assert 112)
-   (t-part-debris     uint32     :offset-assert 120)
-   (t-part-water      uint32     :offset-assert 124)
-   (t-part-forcefield uint32     :offset-assert 128)
-   (t-prim-trails     uint32     :offset-assert 132)
-   (begin-times       UNKNOWN 32 :offset-assert 136)
-   (begin-counts      UNKNOWN 32 :offset-assert 264)
-   (end-counts        UNKNOWN 32 :offset-assert 392)
+   (times             uint32  32 :offset-assert 8)
+   (t-rb-all          uint32     :offset 8)
+   (t-rb-callback     uint32     :offset 12)
+   (t-rb-fc           uint32     :offset 16)
+   (t-rb-move         uint32     :offset 20)
+   (t-rb-physics      uint32     :offset 24)
+   (t-vqp-all         uint32     :offset 32)
+   (t-vqp-common      uint32     :offset 36)
+   (t-vqp-ja-post     uint32     :offset 40)
+   (t-vqp-parts       uint32     :offset 44)
+   (t-vqp-post        uint32     :offset 48)
+   (t-vqp-sections    uint32     :offset 52)
+   (t-vqp-sound       uint32     :offset 56)
+   (t-nav-part1       uint32     :offset 60)
+   (t-nav-part2       uint32     :offset 64)
+   (t-nav-part3       uint32     :offset 68)
+   (t-nav-part4       uint32     :offset 72)
+   (t-nav-part5       uint32     :offset 76)
+   (t-nav-part6       uint32     :offset 80)
+   (t-nav-part7       uint32     :offset 84)
+   (t-nav-part8       uint32     :offset 88)
+   (t-nav-part9       uint32     :offset 92)
+   (t-nav-part10      uint32     :offset 96)
+   (t-part-turbo      uint32     :offset 116)
+   (t-part-exhaust    uint32     :offset 100)
+   (t-part-smoke      uint32     :offset 104)
+   (t-part-scrape     uint32     :offset 108)
+   (t-part-wheels     uint32     :offset 112)
+   (t-part-debris     uint32     :offset 120)
+   (t-part-water      uint32     :offset 124)
+   (t-part-forcefield uint32     :offset 128)
+   (t-prim-trails     uint32     :offset 132)
+   (begin-times       uint32  32 :offset-assert 136)
+   (begin-counts      uint32  32 :offset-assert 264)
+   (end-counts        uint32  32 :offset-assert 392)
    )
   :method-count-assert 12
   :size-assert         #x208
@@ -41032,16 +41114,15 @@
     (rb-perf-data-method-11 () none) ;; 11
     )
   )
-|#
 
-#|
 (deftype rigid-body-object (process-focusable)
-  ((info               rigid-body-object-constants  :offset-assert 256)
+  ((root               collide-shape-moving                :override)
+   (info               rigid-body-object-constants  :offset-assert 256)
    (flags              rigid-body-object-flag       :offset-assert 264)
    (max-time-step      float                        :offset-assert 272)
    (incoming-attack-id uint32                       :offset-assert 276)
-   (disturbed-time     time-frame                   :offset-assert 280) ;; guessed by decompiler
-   (perf               rb-perf-data                 :offset-assert 284)
+   (disturbed-time     uint32                   :offset-assert 280) ;; guessed by decompiler
+   (perf               rb-perf-data                 :offset 284)
    )
   :method-count-assert 89
   :size-assert         #x120
@@ -41054,8 +41135,8 @@
     (rigid-body-object-method-62 () none) ;; 62
     (rigid-body-object-method-63 () none) ;; 63
     (rigid-body-object-method-64 () none) ;; 64
-    (rigid-body-object-method-65 () none) ;; 65
-    (rigid-body-object-method-66 () none) ;; 66
+    (rigid-body-object-method-65 (_type_) none) ;; 65
+    (rigid-body-object-method-66 (_type_) none) ;; 66
     (rigid-body-object-method-67 () none) ;; 67
     (rigid-body-object-method-68 () none) ;; 68
     (rigid-body-object-method-69 () none) ;; 69
@@ -41080,12 +41161,10 @@
     (rigid-body-object-method-88 () none) ;; 88
     )
   )
-|#
 
-#|
 (deftype rigid-body-queue (structure)
   ((count   int8       :offset-assert 0)
-   (manager uint64     :offset-assert 8) ;; handle
+   (manager handle     :offset-assert 8) ;; handle
    (array   handle 128 :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 17
@@ -41102,9 +41181,7 @@
     (rigid-body-queue-method-16 () none) ;; 16 ;; (rigid-body-queue-method-16 (_type_) none)
     )
   )
-|#
 
-#|
 (deftype rb-debug-state-record (structure)
   ((flags           uint16             :offset-assert 0)
    (time-remaining  float              :offset-assert 4)
@@ -41116,11 +41193,13 @@
    (friction-factor float              :offset-assert 28)
    (position        vector     :inline :offset-assert 32)
    (rot             vector     :inline :offset-assert 48)
-   (rotation        quaternion :inline :offset-assert 48)
+   (rotation        quaternion :inline :offset 48)
    (lin-momentum    vector     :inline :offset-assert 64)
    (ang-momentum    vector     :inline :offset-assert 80)
    (force           vector     :inline :offset-assert 96)
+   (rb-debug-state-record-padding1 uint32 28)
    (torque          vector     :inline :offset-assert 224)
+   (rb-debug-state-record-padding2 uint32 28)
    )
   :method-count-assert 11
   :size-assert         #x160
@@ -41130,16 +41209,14 @@
     (rb-debug-state-record-method-10 () none) ;; 10
     )
   )
-|#
 
-#|
 (deftype rb-debugger (structure)
   ((user-mode      uint8            :offset-assert 0)
    (hook-control   uint8            :offset-assert 1)
    (flags          uint8            :offset-assert 2)
    (target-count   int8             :offset-assert 3)
-   (target-array   UNKNOWN 8        :offset-assert 8)
-   (pad0           UNKNOWN 256      :offset-assert 72)
+   (target-array   handle 8        :offset-assert 8)
+   (pad0           uint8   256      :offset-assert 72)
    (playback-index int32            :offset-assert 328)
    (recorder-index int32            :offset-assert 332)
    (begin-index    int32            :offset-assert 336)
@@ -41148,7 +41225,8 @@
    (buffer-len     int32            :offset-assert 348)
    (buffer-size    int32            :offset-assert 352)
    (total-size     int32            :offset-assert 356)
-   (buffer-start   UNKNOWN :dynamic :offset-assert 368)
+   (rb-debugger-pad1 int32 2)
+   (buffer-start   uint32  :inline :dynamic :offset-assert 368)
    )
   :method-count-assert 21
   :size-assert         #x170
@@ -41168,18 +41246,9 @@
     (rb-debugger-method-20 () none) ;; 20
     )
   )
-|#
 
-#|
-(deftype rigid-body-object-extra-info (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
-
-;; (define-extern get-penetrate-using-from-attack-event function) ;; (function process-drawable event-message-block penetrate)
+(define-extern get-penetrate-using-from-attack-event "Given an attack event to an enemy, return the penetrate that should be applied to the enemy"
+               (function process-drawable event-message-block penetrate))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-handler                 ;;
@@ -42560,7 +42629,6 @@
   )
 |#
 
-#|
 (deftype joint-exploder-static-joint-params (structure)
   ((joint-index        int16  :offset-assert 0)
    (parent-joint-index int16  :offset-assert 2)
@@ -42569,9 +42637,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype joint-exploder-static-params (basic)
   ((joints                 (array joint-exploder-static-joint-params)  :offset-assert 4) ;; guessed by decompiler
    (collide-spec           collide-spec                                :offset-assert 8) ;; guessed by decompiler
@@ -42583,7 +42649,6 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
 #|
 (deftype joint-exploder-joint (structure)
@@ -42679,7 +42744,6 @@
 ;; debris                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype debris-static-joint-params (structure)
   ((parent-joint-index int16   :offset-assert 0)
    (group              string  :offset-assert 4) ;; guessed by decompiler
@@ -42690,9 +42754,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype debris-static-params (basic)
   ((joints            (array debris-static-joint-params)  :offset-assert 4) ;; guessed by decompiler
    (collide-spec      collide-spec                        :offset-assert 8) ;; guessed by decompiler
@@ -42710,7 +42772,6 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
 #|
 (deftype debris (basic)
@@ -43523,10 +43584,28 @@
 ;; rigid-body-surface-h           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum rigid-body-surface-flag
+  :type uint8
+  :bitfield #t
+  (moving 0)
+  )
+
+(defenum surface-type
+  :type uint8
+  (stone 0)
+  (grass 1)
+  (dirt 2)
+  (sand 3)
+  (snow 4)
+  (water 5)
+  (wall 6)
+  (ice 7)
+  (none 8)
+  )
+
 (deftype rigid-body-surface (structure)
   ((flags            rigid-body-surface-flag   :offset-assert 0)
-   (surface-type     uint8                     :offset-assert 1)
+   (surface-type     surface-type                     :offset-assert 1)
    (friction         float                     :offset-assert 4)
    (bounce           float                     :offset-assert 8)
    (drag             float                     :offset-assert 12)
@@ -43535,32 +43614,30 @@
    (scrape-sound     uint16                    :offset-assert 24)
    (glance-sound     uint16                    :offset-assert 26)
    (impact-sound     uint16                    :offset-assert 28)
-   (tire-roll-mix    UNKNOWN                 6 :offset-assert 32)
-   (tire-roll-hum    float                     :offset-assert 32)
-   (tire-roll-dirt   float                     :offset-assert 36)
-   (tire-roll-sand   float                     :offset-assert 40)
-   (tire-roll-snow   float                     :offset-assert 44)
-   (tire-roll-grass  float                     :offset-assert 48)
-   (tire-roll-knobby float                     :offset-assert 52)
-   (tire-slide-mix   UNKNOWN                 2 :offset-assert 56)
-   (tire-slide-road  float                     :offset-assert 56)
-   (tire-slide-dirt  float                     :offset-assert 60)
+   (tire-roll-mix    float                 6 :offset-assert 32)
+   (tire-roll-hum    float                     :offset 32)
+   (tire-roll-dirt   float                     :offset 36)
+   (tire-roll-sand   float                     :offset 40)
+   (tire-roll-snow   float                     :offset 44)
+   (tire-roll-grass  float                     :offset 48)
+   (tire-roll-knobby float                     :offset 52)
+   (tire-slide-mix   float                 2 :offset-assert 56)
+   (tire-slide-road  float                     :offset 56)
+   (tire-slide-dirt  float                     :offset 60)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   ;; field rigid-body-surface-flag is likely a value type.
   )
-|#
 
-;; (define-extern *material-to-rb-material-table* object)
-;; (define-extern rigid-body-surface-type-from-material function)
+(define-extern *material-to-rb-material-table* (pointer int8))
+(define-extern rigid-body-surface-type-from-material (function int surface-type))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vehicle-handling-info (structure)
   ((brake-factor                float   :offset-assert 0)
    (turbo-boost-factor          float   :offset-assert 4)
@@ -43590,13 +43667,12 @@
    (ai-steering-factor          float   :offset-assert 100)
    (ai-throttle-factor          float   :offset-assert 104)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x6c
   :flag-assert         #x90000006c
   )
-|#
 
-#|
 (deftype vehicle-engine-info (structure)
   ((max-torque          float      :offset-assert 0)
    (inertia             float      :offset-assert 4)
@@ -43608,15 +43684,14 @@
    (max-rpm             float      :offset-assert 28)
    (peak-torque-rpm     float      :offset-assert 32)
    (powerband-width-rpm float      :offset-assert 36)
-   (torque-data         UNKNOWN 16 :offset-assert 40)
+   (torque-data         uint8   16 :offset-assert 40)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
 (deftype vehicle-transmission-info (structure)
   ((inertia           float   :offset-assert 0)
    (upshift-rpm       float   :offset-assert 4)
@@ -43625,17 +43700,29 @@
    (gear-ratio-array  float 8 :offset-assert 16) ;; guessed by decompiler
    (gear-count        int8    :offset-assert 48)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x31
   :flag-assert         #x900000031
   )
-|#
 
-#|
+;; +++vehicle-h:vehicle-wheel-flag
+(defenum vehicle-wheel-flag
+  :type uint64
+  :bitfield #t
+  (vwf0 0)
+  (vwf1 1)
+  (vwf2 2)
+  (vwf3 3)
+  (vwf4 4)
+  (vwf5 5)
+  )
+;; ---vehicle-h:vehicle-wheel-flag
+
 (deftype vehicle-wheel-info (structure)
   ((local-pos          vector                                                                   :inline :offset-assert 0)
-   (flags              uint64                                                                           :offset-assert 16) ;; vehicle-wheel-flag
-   (callback           (function rigid-body-object vehicle-wheel-state vehicle-wheel-info none)         :offset-assert 24) ;; guessed by decompiler
+   (flags              vehicle-wheel-flag                                                                           :offset-assert 16) ;; vehicle-wheel-flag
+   (callback           function         :offset-assert 24) ;; (function rigid-body-object vehicle-wheel-state vehicle-wheel-info none)
    (inertia            float                                                                            :offset-assert 28)
    (radius             float                                                                            :offset-assert 32)
    (susp-arm-length    float                                                                            :offset-assert 36)
@@ -43655,24 +43742,22 @@
    (width              float                                                                            :offset-assert 92)
    (settle-pos         float                                                                            :offset-assert 96)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-#|
 (deftype vehicle-physics-model-info (structure)
   ((front-wheel vehicle-wheel-info :inline :offset-assert 0)
    (rear-wheel  vehicle-wheel-info :inline :offset-assert 112)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xd4
   :flag-assert         #x9000000d4
   )
-|#
 
-#|
 (deftype vehicle-camera-info (structure)
   ((string-min-height meters         :offset-assert 0)
    (string-max-height meters         :offset-assert 4)
@@ -43682,19 +43767,18 @@
    (max-fov           float          :offset-assert 20)
    (head-offset       float          :offset-assert 24)
    (foot-offset       float          :offset-assert 28)
-   (look-pos-array    vector 4       :offset-assert 32) ;; guessed by decompiler
-   (look-front        vector :inline :offset-assert 32)
-   (look-left         vector :inline :offset-assert 48)
-   (look-right        vector :inline :offset-assert 64)
-   (look-rear         vector :inline :offset-assert 80)
+   (look-pos-array    vector 4       :inline :offset-assert 32) ;; guessed by decompiler
+   (look-front        vector :inline :offset 32)
+   (look-left         vector :inline :offset 48)
+   (look-right        vector :inline :offset 64)
+   (look-rear         vector :inline :offset 80)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-#|
 (deftype vehicle-sound-loop-info (structure)
   ((sound        uint16  :offset-assert 0) ;; sound-name
    (speed        float   :offset-assert 4)
@@ -43705,30 +43789,28 @@
    (min-pitch    float   :offset-assert 24)
    (max-pitch    float   :offset-assert 28)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype vehicle-sound-engine-loop-info (structure)
-  ((sound-array  UNKNOWN 3 :offset-assert 0)
-   (base-sound   uint16    :offset-assert 0)
-   (load-sound   uint16    :offset-assert 2)
-   (ai-sound     uint16    :offset-assert 4)
+  ((sound-array  uint16 3 :offset-assert 0)
+   (base-sound   uint16    :offset 0)
+   (load-sound   uint16    :offset 2)
+   (ai-sound     uint16    :offset 4)
    (original-rpm float     :offset-assert 8)
    (min-rpm      float     :offset-assert 12)
    (max-rpm      float     :offset-assert 16)
    (pitch-scale  float     :offset-assert 20)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype vehicle-sound-info (structure)
   ((water-sound            uint16                          :offset-assert 0) ;; sound-name
    (jump-sound             uint16                          :offset-assert 2) ;; sound-name
@@ -43738,25 +43820,24 @@
    (susp-speed-threshold   float                           :offset-assert 12)
    (rpm-scale              float                           :offset-assert 16)
    (engine-loop-count      int8                            :offset-assert 20)
-   (engine-loop-array      uint32                          :offset-assert 24)
-   (tire-roll-sounds       vehicle-sound-loop-info 6       :offset-assert 28) ;; guessed by decompiler
-   (tire-slide-sounds      vehicle-sound-loop-info 2       :offset-assert 220) ;; guessed by decompiler
-   (tire-roll-hum-sound    vehicle-sound-loop-info :inline :offset-assert 28)
-   (tire-roll-dirt-sound   vehicle-sound-loop-info :inline :offset-assert 60)
-   (tire-roll-sand-sound   vehicle-sound-loop-info :inline :offset-assert 92)
-   (tire-roll-snow-sound   vehicle-sound-loop-info :inline :offset-assert 124)
-   (tire-roll-grass-sound  vehicle-sound-loop-info :inline :offset-assert 156)
-   (tire-roll-knobby-sound vehicle-sound-loop-info :inline :offset-assert 188)
-   (tire-slide-road-sound  vehicle-sound-loop-info :inline :offset-assert 220)
-   (tire-slide-dirt-sound  vehicle-sound-loop-info :inline :offset-assert 252)
+   (engine-loop-array      (inline-array vehicle-sound-engine-loop-info)                          :offset-assert 24)
+   (tire-roll-sounds       vehicle-sound-loop-info 6       :inline :offset 28) ;; guessed by decompiler
+   (tire-slide-sounds      vehicle-sound-loop-info 2       :inline :offset-assert 220) ;; guessed by decompiler
+   (tire-roll-hum-sound    vehicle-sound-loop-info :inline :offset 28)
+   (tire-roll-dirt-sound   vehicle-sound-loop-info :inline :offset 60)
+   (tire-roll-sand-sound   vehicle-sound-loop-info :inline :offset 92)
+   (tire-roll-snow-sound   vehicle-sound-loop-info :inline :offset 124)
+   (tire-roll-grass-sound  vehicle-sound-loop-info :inline :offset 156)
+   (tire-roll-knobby-sound vehicle-sound-loop-info :inline :offset 188)
+   (tire-slide-road-sound  vehicle-sound-loop-info :inline :offset 220)
+   (tire-slide-dirt-sound  vehicle-sound-loop-info :inline :offset 252)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x11c
   :flag-assert         #x90000011c
   )
-|#
 
-#|
 (deftype vehicle-particle-info (structure)
   ((headlight-count       int8     :offset-assert 0)
    (taillight-count       int8     :offset-assert 1)
@@ -43764,20 +43845,19 @@
    (thruster-flame-width  meters   :offset-assert 4)
    (thruster-flame-length meters   :offset-assert 8)
    (thruster-local-pos    vector   :offset-assert 12) ;; guessed by decompiler
-   (exhaust-local-pos     vector 2 :offset-assert 16) ;; guessed by decompiler
-   (exhaust-local-dir     vector 2 :offset-assert 48) ;; guessed by decompiler
-   (smoke-local-pos       vector 2 :offset-assert 80) ;; guessed by decompiler
-   (smoke-local-vel       vector 2 :offset-assert 112) ;; guessed by decompiler
-   (headlight-local-pos   vector 3 :offset-assert 144) ;; guessed by decompiler
-   (taillight-local-pos   vector 2 :offset-assert 192) ;; guessed by decompiler
+   (exhaust-local-pos     vector 2 :inline :offset-assert 16) ;; guessed by decompiler
+   (exhaust-local-dir     vector 2 :inline :offset-assert 48) ;; guessed by decompiler
+   (smoke-local-pos       vector 2 :inline :offset-assert 80) ;; guessed by decompiler
+   (smoke-local-vel       vector 2 :inline :offset-assert 112) ;; guessed by decompiler
+   (headlight-local-pos   vector 3 :inline :offset-assert 144) ;; guessed by decompiler
+   (taillight-local-pos   vector 2 :inline :offset-assert 192) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xe0
   :flag-assert         #x9000000e0
   )
-|#
 
-#|
 (deftype vehicle-section-info (structure)
   ((rbody          rigid-body-object-constants         :offset-assert 0)
    (hinge-axis     vector                      :inline :offset-assert 16)
@@ -43790,13 +43870,12 @@
    (rattle-sound   uint16                              :offset-assert 128)
    (impact-sound   uint16                              :offset-assert 130)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x84
   :flag-assert         #x900000084
   )
-|#
 
-#|
 (deftype vehicle-damage-info (structure)
   ((inv-toughness-factor float                        :offset-assert 0)
    (hit-points           float                        :offset-assert 4)
@@ -43804,27 +43883,26 @@
    (hit-threshold        float                        :offset-assert 12)
    (impact-damage-factor float                        :offset-assert 16)
    (section-mask         uint32                       :offset-assert 20)
-   (section-array        vehicle-section-info 12      :offset-assert 32) ;; guessed by decompiler
-   (section-lf-fender    vehicle-section-info :inline :offset-assert 32)
-   (section-rf-fender    vehicle-section-info :inline :offset-assert 176)
-   (section-lr-fender    vehicle-section-info :inline :offset-assert 320)
-   (section-rr-fender    vehicle-section-info :inline :offset-assert 464)
-   (section-l-door       vehicle-section-info :inline :offset-assert 608)
-   (section-r-door       vehicle-section-info :inline :offset-assert 752)
-   (section-hood         vehicle-section-info :inline :offset-assert 1184)
-   (section-trunk        vehicle-section-info :inline :offset-assert 1328)
-   (section-f-bumper     vehicle-section-info :inline :offset-assert 896)
-   (section-r-bumper     vehicle-section-info :inline :offset-assert 1040)
-   (section-roof         vehicle-section-info :inline :offset-assert 1472)
-   (section-cockpit      vehicle-section-info :inline :offset-assert 1616)
+   (section-array        vehicle-section-info 12      :inline :offset-assert 32) ;; guessed by decompiler
+   (section-lf-fender    vehicle-section-info :inline :offset 32)
+   (section-rf-fender    vehicle-section-info :inline :offset 176)
+   (section-lr-fender    vehicle-section-info :inline :offset 320)
+   (section-rr-fender    vehicle-section-info :inline :offset 464)
+   (section-l-door       vehicle-section-info :inline :offset 608)
+   (section-r-door       vehicle-section-info :inline :offset 752)
+   (section-hood         vehicle-section-info :inline :offset 1184)
+   (section-trunk        vehicle-section-info :inline :offset 1328)
+   (section-f-bumper     vehicle-section-info :inline :offset 896)
+   (section-r-bumper     vehicle-section-info :inline :offset 1040)
+   (section-roof         vehicle-section-info :inline :offset 1472)
+   (section-cockpit      vehicle-section-info :inline :offset 1616)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x6e0
   :flag-assert         #x9000006e0
   )
-|#
 
-#|
 (deftype vehicle-setup-info (structure)
   ((settle-height       float  :offset-assert 0)
    (settle-rot-x        float  :offset-assert 4)
@@ -43836,14 +43914,14 @@
    (rp-node-count       int8   :offset-assert 25)
    (color-option-count  int8   :offset-assert 26)
    (color-option-select int8   :offset-assert 27)
+   (pad int32)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype vehicle-pilot-info (structure)
   ((player-turn-anim-bias float  :offset-assert 0)
    (player-turn-anim-min  float  :offset-assert 4)
@@ -43852,102 +43930,119 @@
    (pilot-y-accel-factor  float  :offset-assert 16)
    (pilot-z-accel-factor  float  :offset-assert 20)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
+;; +++vehicle-h:vehicle-seat-flag
+(defenum vehicle-seat-flag
+  :type uint8
+  :bitfield #t
+  (vsf0 0)
+  (vsf1 1)
+  (vsf2 2)
+  )
+;; ---vehicle-h:vehicle-seat-flag
+
 (deftype vehicle-seat-info (structure)
-  ((data     uint8  16      :offset-assert 0) ;; guessed by decompiler
-   (position vector :inline :offset-assert 0)
-   (pos-x    float          :offset-assert 0)
-   (pos-y    float          :offset-assert 4)
-   (pos-z    float          :offset-assert 8)
-   (angle    int16          :offset-assert 12)
-   (flags    uint8          :offset-assert 14) ;; vehicle-seat-flag
-   (mask     uint16         :offset-assert 14)
+  ((data     uint8  16      :offset-assert 0 :score -1) ;; guessed by decompiler
+   (position vector :inline :offset 0)
+   (pos-x    float          :offset 0)
+   (pos-y    float          :offset 4)
+   (pos-z    float          :offset 8)
+   (angle    int16          :offset 12)
+   (flags    vehicle-seat-flag          :offset 14) ;; vehicle-seat-flag
+   (mask     uint16         :offset 14)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vehicle-daxter-info (structure)
-  ((data               UNKNOWN 3 :offset-assert 0)
-   (counts             UNKNOWN 3 :offset-assert 12)
-   (chassis-seats      uint32    :offset-assert 0)
-   (trunk-seats        uint32    :offset-assert 4)
-   (roof-seats         uint32    :offset-assert 8)
-   (chassis-seat-count int8      :offset-assert 12)
-   (trunk-seat-count   int8      :offset-assert 13)
-   (roof-seat-count    int8      :offset-assert 14)
+  ((data               uint32 3 :offset-assert 0)
+   (counts             int8 3 :offset-assert 12)
+   (chassis-seats      uint32    :offset 0)
+   (trunk-seats        uint32    :offset 4)
+   (roof-seats         uint32    :offset 8)
+   (chassis-seat-count int8      :offset 12)
+   (trunk-seat-count   int8      :offset 13)
+   (roof-seat-count    int8      :offset 14)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-#|
 (deftype vehicle-rider-info (structure)
   ((seat-count         int8                                  :offset-assert 0)
    (attach-point-count int8                                  :offset-assert 1)
-   (seat-array         vehicle-seat-info                   2 :offset-assert 16) ;; guessed by decompiler
-   (rider-hand-offset  vector                              2 :offset-assert 48) ;; guessed by decompiler
-   (attach-point-array (inline-array vehicle-attach-point)   :offset-assert 80) ;; guessed by decompiler
+   (seat-array         vehicle-seat-info                   2 :inline :offset-assert 16) ;; guessed by decompiler
+   (rider-hand-offset  vector                              2 :inline :offset-assert 48) ;; guessed by decompiler
+   ;; TODO jakx - not sure yet, maybe hardpoint-info below?
+   (attach-point-array (inline-array object)   :offset-assert 80) ;; guessed by decompiler
    (attach-node-array  uint32                                :offset-assert 84)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
 (deftype vehicle-hardpoint-info (structure)
   ((local-pos-array    uint32          :offset-assert 0)
    (flag-attach        vector  :inline :offset-assert 16)
    (antenna-attach     vector  :inline :offset-assert 32)
-   (nodes              UNKNOWN 7       :offset-assert 48)
+   (nodes              int8 7       :offset-assert 48)
+   (left-gun           int8            :offset 48)
+   (right-gun          int8            :offset 49)
+   (mine-launcher      int8            :offset 50)
+   (trunk              int8            :offset 51)
+   (super-turbo-attach int8 3       :offset 52)
    (shield-anim        int16           :offset-assert 56)
-   (left-gun           int8            :offset-assert 48)
-   (right-gun          int8            :offset-assert 49)
-   (mine-launcher      int8            :offset-assert 50)
-   (trunk              int8            :offset-assert 51)
-   (super-turbo-attach UNKNOWN 3       :offset-assert 52)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x3a
   :flag-assert         #x90000003a
   )
-|#
 
-#|
 (deftype vehicle-explosion-info (joint-exploder-static-params)
   ((skel      skeleton-group  :offset-assert 32) ;; guessed by decompiler
    (skel-name string          :offset-assert 36) ;; guessed by decompiler
    (anim      int32           :offset-assert 40)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype vehicle-particle-common-info (structure)
-  ((headlight-glow-template sprite-glow-data         :offset-assert 36)
+  ((sp-system2d             sparticle-system :offset-assert 0) ;; added
+   (sp-system3d             sparticle-system :offset-assert 4) ;; added
+   (part-thruster           sparticle-launcher :offset-assert 8) ;; added
+   (part-thruster-x         sp-field-init-spec :offset-assert 12) ;; added
+   (part-spec2              sp-field-init-spec :offset-assert 16) ;; added
+   (part-quat               quaternion        :offset-assert 20) ;; added
+   (part-vel                vector            :offset-assert 24) ;; added
+   (pad uint32 2)
+   (headlight-glow-template sprite-glow-data         :offset-assert 36)
    (taillight-glow-template sprite-glow-data         :offset-assert 40)
    (thruster-glow-template  sprite-glow-data         :offset-assert 44)
+   (pad2 uint32 6)
    (thrust-tex-id           uint32                   :offset-assert 72)
    (dark-thrust-tex-id      uint32                   :offset-assert 76)
+   (pad3 uint32 9)
    (rgb                     rgbaf            :inline :offset-assert 128)
    (lights                  vu-lights                :offset-assert 144)
+   (pad4 uint32 2)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x9c
   :flag-assert         #xa0000009c
@@ -43955,21 +44050,18 @@
     (vehicle-particle-common-info-method-9 () none) ;; 9 ;; (init! (_type_) none)
     )
   )
-|#
 
-#|
 (deftype vehicle-shield-info (structure)
   ((inner          ellipsoid :inline :offset-assert 0)
    (offset         vector    :inline :offset-assert 16)
    (outer-multiple float             :offset-assert 32)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype rigid-body-vehicle-constants (rigid-body-object-constants)
   ((flags           uint32                               :offset-assert 200)
    (vehicle-type    uint8                                :offset-assert 204) ;; vehicle-type-u8
@@ -44001,9 +44093,7 @@
     (rigid-body-vehicle-constants-method-10 () none) ;; 10
     )
   )
-|#
 
-#|
 (deftype vehicle-section (structure)
   ((vel               vector               :inline :offset-assert 0)
    (info              vehicle-section-info         :offset-assert 16)
@@ -44036,79 +44126,148 @@
     (vehicle-section-method-19 () none) ;; 19
     )
   )
-|#
 
-#|
 (deftype vehicle-controls (structure)
-  ((dataf      UNKNOWN 5 :offset-assert 0)
-   (dataw      UNKNOWN 5 :offset-assert 0)
-   (steering   float     :offset-assert 0)
-   (throttle   float     :offset-assert 4)
-   (brake      float     :offset-assert 8)
-   (lean-z     float     :offset-assert 12)
-   (handbrake  float     :offset-assert 16)
+  ((dataf      float 5 :offset-assert 0)
+   (dataw      uint32 5 :offset 0)
+   (steering   float     :offset 0)
+   (throttle   float     :offset 4)
+   (brake      float     :offset 8)
+   (lean-z     float     :offset 12)
+   (handbrake  float     :offset 16)
    (flags      uint8     :offset-assert 20) ;; vehicle-controls-flag
    (prev-flags uint8     :offset-assert 21) ;; vehicle-controls-flag
    (pad0       uint8   2 :offset-assert 22) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype vehicle-particle (structure)
-  ((birth-accum UNKNOWN 2 :offset-assert 0)
+  ((birth-accum uint32 2 :offset-assert 0)
    (launcher    basic     :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
+;; +++vehicle-h:vehicle-flag
+(defenum vehicle-flag
+  :type uint64
+  :bitfield #t
+  (enable-collision 0)
+  (disturbed 1)
+  (damaged 2)
+  (dead 3)
+  (suppress-physics 4)
+  (in-air 5)
+  (on-ground 6)
+  (riding 7)
+  (player-grabbed 8)
+  (player-driving 9)
+  (player-owned 10)
+  (remote-control 11)
+  (ai-driving 12)
+  (ignition 13)
+  (nav-spheres 14)
+  (turbo-boost 15)
+  (reverse-gear 16)
+  (camera 17)
+  (camera-inside-view 18)
+  (camera-look-mode 19)
+  (sounds 20)
+  (particles 21)
+  (joints 22)
+  (lights-on 23)
+  (lights-update 24)
+  (lights-dead 25)
+  (overturned 26)
+  (ignore-damage 27)
+  (ignore-impulse 28)
+  (highspeed-collision 29)
+  (oil-slick 30)
+  (turbo-pad 31)
+  (fragile 32)
+  (fragile-death 33)
+  (ignore-powerups 34)
+  (turbo-toggle 35)
+  (start-boost-latch 36)
+  (start-boost 37)
+  (shield 38)
+  (respawn-invul 39)
+  (draw-marks 40)
+  (temp 41)
+  (dark-eco-boost-triggered 42)
+  (ai-off-nav-mesh 43)
+  (oversteer 44)
+  (ghost 45)
+  (wheel-fire 46)
+  (stuck 47)
+  (sinking 48)
+  (no-color-mod 49)
+  (suppress-look 50)
+  (disable-weapons 51)
+  (superhero 52)
+  )
+;; ---vehicle-h:vehicle-flag
+
+;; TODO - jakx more misaligned inline arrays?
 (deftype vehicle (rigid-body-object)
-  ((car-info                        car-info-full                               :offset-assert 284)
-   (flags                           vehicle-flag                                :offset-assert 260) ;; rigid-body-object-flag
-   (damage-matrix                   UNKNOWN                             2       :offset-assert 300)
-   (damage-direction                vector                              :inline :offset-assert 428)
-   (camera-pos                      vector                              :inline :offset-assert 444)
-   (control-hook                    (function vehicle vehicle-controls)         :offset-assert 468) ;; guessed by decompiler
-   (control-mask                    vehicle-controls                            :offset-assert 472)
-   (impact-callback                 basic                                       :offset-assert 476)
-   (controls                        vehicle-controls                    :inline :offset-assert 480)
-   (prev-controls                   vehicle-controls                    :inline :offset-assert 504)
-   (impact                          rigid-body-impact                   :inline :offset-assert 540)
-   (target-acceleration             vector                              :inline :offset-assert 620)
-   (impact-local-pos                vector                              :inline :offset-assert 636)
-   (lin-acceleration                vector                              :inline :offset-assert 652)
-   (max-impact-impulse              float                                       :offset-assert 668)
-   (sum-impact-impulse              float                                       :offset-assert 672)
-   (underside-y                     float                                       :offset-assert 676)
-   (side-x                          float                                       :offset-assert 680)
-   (health                          float                                       :offset-assert 684)
-   (damage-factor                   float                                       :offset-assert 688)
-   (speed-factor                    float                                       :offset-assert 696)
-   (behavior                        uint64                                      :offset-assert 724)
-   (cam-view                        int8                                        :offset-assert 732)
-   (cam-speed-interp                float                                       :offset-assert 740)
-   (camera-dist                     float                                       :offset-assert 744)
-   (impact-proc                     uint64                                      :offset-assert 764) ;; handle
-   (net-player                      uint64                                      :offset-assert 772)
-   (impact-time                     uint32                                      :offset-assert 784)
-   (prev-impact-time                uint32                                      :offset-assert 788)
-   (offscreen-time                  uint32                                      :offset-assert 804)
-   (physics-enabled-time            uint32                                      :offset-assert 820)
-   (water-height                    float                                       :offset-assert 852)
-   (pred                            net-predictor-sphcol                :inline :offset-assert 1804)
-   (next-reliable-send-time         int32                                       :offset-assert 2112)
-   (player-id                       int8                                        :offset-assert 2116)
-   (killed-by                       int8                                        :offset-assert 2117)
-   (killed-with                     int8                                        :offset-assert 2118)
-   (last-warp-time                  int32                                       :offset-assert 2128)
-   (last-sent-vehicle-control-flags uint8                                       :offset-assert 2132)
+  ((info rigid-body-vehicle-constants :override)
+   (car-info                        car-info-full                               :offset 284)
+   (v-flags                         vehicle-flag                                 :offset 264 :score 999) ;; rigid-body-object-flag
+   (pad1 uint32 2)
+   (damage-matrix                   matrix                              2       :inline :offset-assert 304)
+   (damage-direction                vector                              :inline :offset-assert 432)
+   (camera-pos                      vector                              :inline :offset-assert 448)
+   (pad2 uint32 2)
+   (control-hook                    (function vehicle vehicle-controls)         :offset-assert 472) ;; guessed by decompiler
+   (control-mask                    vehicle-controls                            :offset-assert 476)
+   (impact-callback                 basic                                       :offset-assert 480)
+   (controls                        vehicle-controls                    :inline :offset-assert 484)
+   (prev-controls                   vehicle-controls                    :inline :offset-assert 508)
+   (impact                          rigid-body-impact                   :inline :offset-assert 544)
+   (target-acceleration             vector                              :inline :offset-assert 624)
+   (impact-local-pos                vector                              :inline :offset-assert 640)
+   (lin-acceleration                vector                              :inline :offset-assert 656)
+   (max-impact-impulse              float                                       :offset-assert 672)
+   (sum-impact-impulse              float                                       :offset-assert 676)
+   (underside-y                     float                                       :offset-assert 680)
+   (side-x                          float                                       :offset-assert 684)
+   (health                          float                                       :offset-assert 688)
+   (damage-factor                   float                                       :offset-assert 692)
+   (pad3 uint32)
+   (speed-factor                    float                                       :offset-assert 700)
+   (pad4 uint32 6)
+   (behavior                        uint64                                      :offset-assert 728)
+   (cam-view                        int8                                        :offset-assert 736)
+   (pad5 uint32)
+   (cam-speed-interp                float                                       :offset-assert 744)
+   (camera-dist                     float                                       :offset-assert 748)
+   (pad6 uint32 3)
+   (impact-proc                     uint64                                      :offset-assert 768) ;; handle
+   (net-player                      uint64                                      :offset-assert 776)
+   (pad7 uint32)
+   (impact-time                     uint32                                      :offset-assert 788)
+   (prev-impact-time                uint32                                      :offset-assert 792)
+   (pad8 uint32 3)
+   (offscreen-time                  uint32                                      :offset-assert 808)
+   (pad9 uint32 3)
+   (physics-enabled-time            uint32                                      :offset-assert 824)
+   (pad10 uint32 7)
+   (water-height                    float                                       :offset-assert 856)
+   (pad11 uint32 236) ;; wtf is going on here
+   (pred                            net-predictor-sphcol                :inline :offset-assert 1808)
+   (next-reliable-send-time         int32                                       :offset-assert 2116)
+   (player-id                       int8                                        :offset-assert 2120)
+   (killed-by                       int8                                        :offset-assert 2121)
+   (killed-with                     int8                                        :offset-assert 2122)
+   (pad12 uint32 2)
+   (last-warp-time                  int32                                       :offset-assert 2132)
+   (last-sent-vehicle-control-flags uint8                                       :offset-assert 2136)
    )
   :method-count-assert 204
   :size-assert         #x859
@@ -44141,7 +44300,7 @@
     (vehicle-method-112 () none) ;; 112 ;; (copy-vehicle-controls! (_type_ vehicle-controls) none)
     (vehicle-method-113 () none) ;; 113 ;; (vehicle-method-113 (_type_ vector int int) none)
     (vehicle-method-114 () none) ;; 114 ;; (vehicle-method-114 (_type_ int) none)
-    (vehicle-method-115 () none) ;; 115 ;; (vehicle-method-115 (_type_) none)
+    (vehicle-method-115 (_type_) none) ;; 115 ;; (vehicle-method-115 (_type_) none)
     (vehicle-method-116 () none) ;; 116 ;; (vehicle-method-116 (_type_ symbol) none)
     (vehicle-method-117 () none) ;; 117 ;; (vehicle-method-117 (_type_) none)
     (vehicle-method-118 () none) ;; 118 ;; (vehicle-method-118 (_type_) none)
@@ -44232,9 +44391,7 @@
     (vehicle-method-203 () none) ;; 203
     )
   )
-|#
 
-#|
 (deftype vehicle-draw-thruster-params (structure)
   ((quat       quaternion :inline :offset-assert 0)
    (trans      vector     :inline :offset-assert 16)
@@ -44250,18 +44407,21 @@
   :size-assert         #x54
   :flag-assert         #x900000054
   )
-|#
 
-;; (deftype debug-vehicle-work (basic)
-;;   ()
-;;   :flag-assert #x900000080
-;;   )
+;; TODO jakx - copied from jak3
+(deftype debug-vehicle-work (basic)
+  ((impact-time  time-frame                :offset-assert 8)
+   (impact       rigid-body-impact :inline :offset-assert 16)
+   (prim-sphere1 sphere            :inline :offset-assert 96)
+   (prim-sphere2 sphere            :inline :offset-assert 112)
+   )
+  )
 
-;; (define-extern vehicle-init-remote function)
-;; (define-extern *msg-map-vehicle* array)
-;; (define-extern *net-process-class-info-vehicle* object)
-;; (define-extern vehicle-get-flag-attach-point function)
-;; (define-extern meters-per-sec->mph function) ;; (function float float)
+(define-extern vehicle-init-remote (function int none :behavior vehicle))
+(define-extern *msg-map-vehicle* (array symbol))
+(define-extern *net-process-class-info-vehicle* net-process-class-info)
+(define-extern vehicle-get-flag-attach-point (function vehicle vector))
+(define-extern meters-per-sec->mph (function float float)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-ai-tuning-h               ;;
@@ -44310,7 +44470,6 @@
 ;; race-line-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype race-line-slice-mapping (structure)
   ((valid-entries uint16  :offset-assert 0)
    (index-entries uint32  :offset-assert 4)
@@ -44319,9 +44478,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype race-line-query-info (structure)
   ((query-position      vector :inline :offset-assert 0)
    (nearest-position    vector :inline :offset-assert 16)
@@ -44333,15 +44490,13 @@
    (current-slice       int32          :offset-assert 88)
    (current-line        basic          :offset-assert 92)
    (total-angle-delta   float          :offset-assert 96)
-   (skip-gaps?          basic          :offset-assert 100)
+   (skip-gaps?          symbol          :offset-assert 100)
    )
   :method-count-assert 9
   :size-assert         #x68
   :flag-assert         #x900000068
   )
-|#
 
-#|
 (deftype race-line (structure)
   ((scale            vector :inline :offset-assert 0)
    (offset           vector :inline :offset-assert 16)
@@ -44369,14 +44524,12 @@
     (race-line-method-14 () none) ;; 14
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-h                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype racer-state (structure)
   ((position                vector    :inline :offset-assert 0)
    (start-position          vector    :inline :offset-assert 16)
@@ -44405,9 +44558,7 @@
     (racer-state-method-11 () none) ;; 11 ;; (end-lap (_type_ race-state) none)
     )
   )
-|#
 
-#|
 (deftype race-state (structure)
   ((start-sphere           sphere      :inline :offset-assert 0)
    (start-dir              vector      :inline :offset-assert 16)
@@ -44426,7 +44577,7 @@
    (race-ai-tuning         basic               :offset-assert 96)
    (race-ai-tuning-indices basic               :offset-assert 100)
    (longest-race-line-dist float               :offset-assert 104)
-   (racer-array            racer-state 10      :offset-assert 112) ;; guessed by decompiler
+   (racer-array            racer-state 10      :inline :offset-assert 112) ;; guessed by decompiler
    )
   :method-count-assert 12
   :size-assert         #x430
@@ -44437,37 +44588,33 @@
     (race-state-method-11 () none) ;; 11 ;; (update (_type_) none)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-mesh-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype race-mesh-hash-search (structure)
   ((best-dist             float                  :offset-assert 0)
    (debug-cells-searched  int32                  :offset-assert 4)
    (debug-slices-searched int32                  :offset-assert 8)
    (bounds                bounding-box4w :inline :offset-assert 16)
-   (cell-quads            vector         2       :offset-assert 48) ;; guessed by decompiler
-   (slice-quads           vector         4       :offset-assert 80) ;; guessed by decompiler
-   (cell-bits             vector16ub     2       :offset-assert 48) ;; guessed by decompiler
-   (slice-bits            vector16ub     2       :offset-assert 80) ;; guessed by decompiler
+   (cell-quads            vector         2       :inline :offset-assert 48) ;; guessed by decompiler
+   (slice-quads           vector         4       :inline :offset-assert 80) ;; guessed by decompiler
+   (cell-bits             vector16ub     2      :inline  :offset 48) ;; guessed by decompiler
+   (slice-bits            vector16ub     2       :inline :offset 80) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
-|#
 
-#|
 (deftype race-mesh-slice-query (structure)
   ((search-sphere sphere    :inline :offset-assert 0)
-   (slice-range   UNKNOWN   2       :offset-assert 16)
+   (slice-range   uint16   2       :offset-assert 16)
    (race-line     race-line         :offset-assert 20)
    (pt-on-slice   vector    :inline :offset-assert 32)
-   (slice-corners vector    4       :offset-assert 48) ;; guessed by decompiler
+   (slice-corners vector    4       :inline :offset-assert 48) ;; guessed by decompiler
    (lap-dist      float             :offset-assert 112)
    (slice-id      int16             :offset-assert 116)
    )
@@ -44475,33 +44622,27 @@
   :size-assert         #x76
   :flag-assert         #x900000076
   )
-|#
 
-#|
 (deftype race-mesh-edge (structure)
   ((left     vector :inline :offset-assert 0)
    (right    vector :inline :offset-assert 16)
-   (lap-dist float          :offset-assert 12)
+   (lap-dist float          :offset 12)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype race-mesh-slice (structure)
   ((edge-index-array uint16 2 :offset-assert 0) ;; guessed by decompiler
-   (start-edge       int16    :offset-assert 0)
-   (end-edge         int16    :offset-assert 2)
+   (start-edge       int16    :offset 0)
+   (end-edge         int16    :offset 2)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype race-mesh-hash-cell (structure)
   ((first-slice int16  :offset-assert 0)
    (slice-count uint8  :offset-assert 2)
@@ -44511,9 +44652,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype race-mesh-hash (structure)
   ((cells-wide  int8                                       :offset-assert 0)
    (cells-tall  int8                                       :offset-assert 1)
@@ -44526,9 +44665,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype race-mesh (basic)
   ((version         uint8                            :offset-assert 4)
    (flags           uint8                            :offset-assert 5) ;; race-mesh-flag
@@ -44560,36 +44697,33 @@
     (race-mesh-method-20 () none) ;; 20
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-control                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype race-control (structure)
   ((state       race-state   :offset-assert 0)
    (racer-state racer-state  :offset-assert 4)
    (mesh        race-mesh    :offset-assert 8) ;; guessed by decompiler
    (line        race-line    :offset-assert 12)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x10
   :flag-assert         #xa00000010
   (:methods
-    (race-control-method-9 () none) ;; 9 ;; (race-control-method-9 (_type_ int vector) none)
+    (race-control-method-9 (_type_ symbol race-state racer-state) none) ;; 9 ;; (race-control-method-9 (_type_ int vector) none)
     )
   )
-|#
 
-;; (define-extern output-race-mesh function)
+(define-extern output-race-mesh (function symbol none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wvehicle-weapons-h             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vehicle-weapon-slot (process-drawable)
   ((owning-vehicle uint64  :offset-assert 248)
    (ammunition     int8    :offset-assert 256)
@@ -44601,6 +44735,9 @@
   :method-count-assert 60
   :size-assert         #x105
   :flag-assert         #x3c00800105
+  (:state-methods
+    idle ;; 50
+    )
   (:methods
     (vehicle-weapon-slot-method-51 () none) ;; 51
     (vehicle-weapon-slot-method-52 () none) ;; 52
@@ -44612,13 +44749,8 @@
     (vehicle-weapon-slot-method-58 () none) ;; 58
     (vehicle-weapon-slot-method-59 () none) ;; 59
     )
-  (:state-methods
-    idle ;; 50
-    )
   )
-|#
 
-#|
 (deftype gunmount-drawable (process-drawable)
   ((mounted-on uint64  :offset-assert 248)
    (hardpoint  int8    :offset-assert 256)
@@ -44633,9 +44765,7 @@
     (gunmount-drawable-method-53 () none) ;; 53
     )
   )
-|#
 
-#|
 (deftype gunmount-generic-drawable (gunmount-drawable)
   ((config          uint8   :offset-assert 257)
    (flash           uint64  :offset-assert 264)
@@ -44650,9 +44780,7 @@
     (gunmount-generic-drawable-method-55 () none) ;; 55
     )
   )
-|#
 
-#|
 (deftype warning-hud-icon (basic)
   ((hsprite hud-sprite :inline :offset-assert 16)
    )
@@ -44660,9 +44788,7 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype rapid-fire-params (structure)
   ((rof                    uint16  :offset-assert 0)
    (shot-radius            float   :offset-assert 4)
@@ -44680,9 +44806,7 @@
   :flag-assert         #x90000001e
   ;; field impact-callback-params uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype rapid-fire-control (basic)
   ((owner          uint64                    :offset-assert 8)
    (params         rapid-fire-params         :offset-assert 16)
@@ -44703,9 +44827,7 @@
     (rapid-fire-control-method-12 () none) ;; 12
     )
   )
-|#
 
-#|
 (deftype rapid-fire-callback-gun-hitspang-params (structure)
   ((bits-part-id  uint32  :offset-assert 0)
    (dust-part-id  uint32  :offset-assert 4)
@@ -44715,9 +44837,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype vehicle-weapon-drone (process-focusable)
   ((owning-vehicle    uint64             :offset-assert 256)
    (owning-slot       uint64             :offset-assert 264)
@@ -44733,7 +44853,7 @@
    (last-gaze-time    uint64             :offset-assert 328)
    (pitch-bend        float              :offset-assert 336)
    (sweep-loop        uint32             :offset-assert 340)
-   (muzzle-flashes    UNKNOWN    4       :offset-assert 344)
+   (muzzle-flashes    uint64     4       :offset-assert 344)
    (next-target-poll  uint64             :offset-assert 376)
    (firecontrol       basic              :offset-assert 384)
    (blam              uint32             :offset-assert 388)
@@ -44752,9 +44872,7 @@
     (vehicle-weapon-drone-method-66 () none) ;; 66
     )
   )
-|#
 
-#|
 (deftype v-wpn-ptable-entry (structure)
   ((chance      uint16  :offset-assert 0)
    (weapon-type uint8   :offset-assert 2)
@@ -44764,9 +44882,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype v-wpn-ptable (structure)
   ((entries-count int8    :offset-assert 0)
    (total-chance  uint16  :offset-assert 2)
@@ -44776,9 +44892,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype v-wpn-ptable-quad (structure)
   ((base             v-wpn-ptable  :offset-assert 0)
    (last-lap         v-wpn-ptable  :offset-assert 4)
@@ -44790,22 +44904,23 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-;; v-wpn-net-info is already defined!
+(deftype v-wpn-net-info (structure)
+  ()
+  :method-count-assert 9
+  )
 
-;; (define-extern V_R_MINE1_ARMED? object)
+(define-extern V_R_MINE1_ARMED? symbol)
 ;; (define-extern weapon-mask->type function)
-;; (define-extern *weapon-suppression-table* object)
+(define-extern *weapon-suppression-table* (pointer (array symbol)))
 ;; (define-extern v-wpn-base-common-trans function)
 ;; (define-extern v-wpn-event-base function)
-;; (define-extern *cheat-defaultgun-in-race* object)
+(define-extern *cheat-defaultgun-in-race* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wvehicle-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wvehicle-sound-loop-state (structure)
   ((id    sound-id  :offset-assert 0) ;; guessed by decompiler
    (vol   float     :offset-assert 4)
@@ -44815,9 +44930,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype vehicle-wheel-state (structure)
   ((info             vehicle-wheel-info               :offset-assert 0)
    (flags            uint8                            :offset-assert 4)
@@ -44831,7 +44944,7 @@
    (ground-normal    vector                   :inline :offset-assert 96)
    (trans            vector                   :inline :offset-assert 112)
    (quat             quaternion               :inline :offset-assert 128)
-   (trail-pos        vector                   2       :offset-assert 144) ;; guessed by decompiler
+   (trail-pos        vector                   2       :inline :offset-assert 144) ;; guessed by decompiler
    (surface          rigid-body-surface               :offset-assert 176) ;; vehicle-wheel-surface
    (pos              float                            :offset-assert 180)
    (pos2             float                            :offset-assert 184)
@@ -44856,25 +44969,23 @@
    (tread-time       uint32                           :offset-assert 272)
    (tread-tracker    uint64                           :offset-assert 280) ;; handle
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x120
   :flag-assert         #x900000120
   )
-|#
 
-#|
 (deftype wvehicle-net-extra (structure)
   ((desired-steering  float  :offset-assert 0)
    (desired-throttle  float  :offset-assert 4)
    (desired-wheel-rev float  :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype wvehicle-ai-destination (structure)
   ((final-position vector       :inline :offset-assert 0)
    (position       vector       :inline :offset-assert 16)
@@ -44886,9 +44997,7 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype wvehicle-ai-state (structure)
   ((destination             wvehicle-ai-destination :inline :offset-assert 0)
    (nav-location            nav-location            :inline :offset-assert 64)
@@ -44907,9 +45016,7 @@
   :size-assert         #x85
   :flag-assert         #x900000085
   )
-|#
 
-#|
 (deftype wvehicle-engine-loop-state (structure)
   ((id    uint32  :offset-assert 0)
    (index int8    :offset-assert 4)
@@ -44918,19 +45025,15 @@
   :size-assert         #x5
   :flag-assert         #x900000005
   )
-|#
 
-#|
 (deftype wvehicle-engine-mix-state (structure)
-  ((loops UNKNOWN 2 :offset-assert 0)
+  ((loops wvehicle-engine-loop-state 2 :inline :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype v-wpn-turbo-lightning-info (structure)
   ((pt-start         vector :inline :offset-assert 0)
    (pt-end           vector :inline :offset-assert 16)
@@ -44942,24 +45045,21 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype wvehicle-weapon-sync-blob (structure)
-  ((data              UNKNOWN 4 :offset-assert 0)
-   (wpn-left-type     int8      :offset-assert 0)
-   (wpn-right-type    int8      :offset-assert 1)
-   (wpn-left-powerup  int8      :offset-assert 2)
-   (wpn-right-powerup int8      :offset-assert 3)
-   (blob              int32     :offset-assert 0)
+  ((data              int8 4 :offset-assert 0)
+   (wpn-left-type     int8      :offset 0)
+   (wpn-right-type    int8      :offset 1)
+   (wpn-left-powerup  int8      :offset 2)
+   (wpn-right-powerup int8      :offset 3)
+   (blob              int32     :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype wvehicle (vehicle)
   ((net-extra                      wvehicle-net-extra        :inline :offset-assert 2140)
    (antenna                        uint64                            :offset-assert 2152)
@@ -44996,7 +45096,7 @@
    (jump-control                   float                             :offset-assert 2436)
    (shortcut-speed-factor          float                             :offset-assert 2440)
    (path-deviation                 float                             :offset-assert 2444)
-   (turbo-supply                   float                             :offset-assert 704)
+   (turbo-supply                   float                             :offset 704)
    (turbo-ready                    float                             :offset-assert 2448)
    (slide-factor                   float                             :offset-assert 2452)
    (slide-time                     uint32                            :offset-assert 2456)
@@ -45005,14 +45105,14 @@
    (gear-select                    int8                              :offset-assert 2465)
    (next-gear-select               int8                              :offset-assert 2466)
    (shift-time                     uint32                            :offset-assert 2468)
-   (wheel                          vehicle-wheel-state       4       :offset-assert 2480) ;; guessed by decompiler
+   (wheel                          vehicle-wheel-state       4       :inline :offset-assert 2480) ;; guessed by decompiler
    (gravity-dir                    vector                    :inline :offset-assert 3632)
    (surface-velocity               vector                    :inline :offset-assert 3648)
-   (tire-roll-loop-state           wvehicle-sound-loop-state 6       :offset-assert 3664) ;; guessed by decompiler
-   (tire-slide-loop-state          wvehicle-sound-loop-state 2       :offset-assert 3760) ;; guessed by decompiler
-   (engine-mix-state-array         UNKNOWN                   2       :offset-assert 3792)
-   (min-load-engine-mix-state      wvehicle-engine-mix-state :inline :offset-assert 3792)
-   (max-load-engine-mix-state      wvehicle-engine-mix-state :inline :offset-assert 3824)
+   (tire-roll-loop-state           wvehicle-sound-loop-state 6       :inline :offset-assert 3664) ;; guessed by decompiler
+   (tire-slide-loop-state          wvehicle-sound-loop-state 2       :inline :offset-assert 3760) ;; guessed by decompiler
+   (engine-mix-state-array         wvehicle-engine-mix-state                   2   :inline    :offset-assert 3792)
+   (min-load-engine-mix-state      wvehicle-engine-mix-state :inline :offset 3792)
+   (max-load-engine-mix-state      wvehicle-engine-mix-state :inline :offset 3824)
    (damage-sound-id                sound-id                          :offset-assert 3856) ;; guessed by decompiler
    (water-sound-id                 sound-id                          :offset-assert 3860) ;; guessed by decompiler
    (wheel-fire-sound-id            uint32                            :offset-assert 3864)
@@ -45043,30 +45143,31 @@
    (turbo-pitch                    float                             :offset-assert 4100)
    (health-pickup-multiplier       float                             :offset-assert 4104)
    (jmod-steering-wheel            joint-mod-rotate-local    :inline :offset-assert 4112)
-   (jmod-frame                     UNKNOWN                   2       :offset-assert 4144)
-   (jmod-axles                     UNKNOWN                   4       :offset-assert 4272)
+   (jmod-frame                     joint-mod-set-local                   2       :inline :offset-assert 4144) ;; guess
+   (jmod-axles                     joint-mod-trans-rot-local                   4      :inline  :offset-assert 4272) ;; guess
    (water-sound-envelope           float                             :offset-assert 4464)
-   (wpn-current-target             uint64                            :offset-assert 4488)
-   (wpn-current-target-acquired    uint64                            :offset-assert 4496)
-   (wpn-left                       uint64                            :offset-assert 4504)
-   (wpn-right                      uint64                            :offset-assert 4512)
-   (wpn-shield                     uint64                            :offset-assert 4520)
-   (wpn-drone                      uint64                            :offset-assert 4528)
-   (wpn-oil                        uint64                            :offset-assert 4536)
-   (wpn-turbo                      uint64                            :offset-assert 4544)
-   (wpn-bulldog-gun                uint64                            :offset-assert 4552)
-   (wpn-drawables                  UNKNOWN                   2       :offset-assert 4560)
-   (wpn-drawable-left              uint64                            :offset-assert 4560)
-   (wpn-drawable-right             uint64                            :offset-assert 4568)
+   (pad13 uint32 5)
+   (wpn-current-target             handle                            :offset-assert 4488)
+   (wpn-current-target-acquired    handle                            :offset-assert 4496)
+   (wpn-left                       handle                            :offset-assert 4504)
+   (wpn-right                      handle                            :offset-assert 4512)
+   (wpn-shield                     handle                            :offset-assert 4520)
+   (wpn-drone                      handle                            :offset-assert 4528)
+   (wpn-oil                        handle                            :offset-assert 4536)
+   (wpn-turbo                      handle                            :offset-assert 4544)
+   (wpn-bulldog-gun                handle                            :offset-assert 4552)
+   (wpn-drawables                  handle                   2       :offset-assert 4560)
+   (wpn-drawable-left              handle                            :offset 4560)
+   (wpn-drawable-right             handle                            :offset 4568)
    (wpn-spin-done-left             int32                             :offset-assert 4576)
    (wpn-spin-done-right            int32                             :offset-assert 4580)
    (prev-wpn-sync                  wvehicle-weapon-sync-blob :inline :offset-assert 4584)
    (turbo-suppressor-particle      basic                             :offset-assert 4588)
    (dark-seeking-me                basic                             :offset-assert 4592)
    (dark-suck-sound-pending        int8                              :offset-assert 4596)
-   (vehicle-exhaust-subsampler     UNKNOWN                   2       :offset-assert 4600)
-   (wheel-launcher                 UNKNOWN                   4       :offset-assert 4608)
-   (wheel-fire-launcher            UNKNOWN                   4       :offset-assert 4624)
+   (vehicle-exhaust-subsampler     uint32                   2       :offset-assert 4600)
+   (wheel-launcher                 uint32                   4       :offset-assert 4608)
+   (wheel-fire-launcher            uint32                   4       :offset-assert 4624)
    (hack-armed-right               basic                             :offset-assert 4640)
    (hack-armed-left                basic                             :offset-assert 4644)
    (shake-amount                   float                             :offset-assert 4648)
@@ -45147,9 +45248,7 @@
     (wvehicle-method-271 () none) ;; 271
     )
   )
-|#
 
-#|
 (deftype vehicle-antenna-init-params (structure)
   ((pos     vector :inline :offset-assert 0)
    (tilt    float          :offset-assert 16)
@@ -45161,11 +45260,10 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern rpm->radians-per-sec function) ;; (function float degrees)
-;; (define-extern radians-per-sec->rpm function) ;; (function degrees float)
-;; (define-extern vehicle-shielded? function)
+(define-extern rpm->radians-per-sec (function float degrees)) ;; 
+(define-extern radians-per-sec->rpm (function degrees float)) ;; 
+(define-extern vehicle-shielded? (function wvehicle symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-player-h                   ;;
@@ -45299,7 +45397,7 @@
 
 ;; (define-extern net-player-init-remote function)
 ;; (define-extern *msg-map-net-player* array)
-;; (define-extern *net-process-class-info-net-player* object)
+;; (define-extern *net-process-class-info-net-player* net-process-class-info)
 ;; (define-extern *net-players* array)
 ;; (define-extern *active-net-player-count* object)
 ;; (define-extern *active-net-players* array)
@@ -45666,7 +45764,7 @@
 ;; (define-extern *powerup-dynamic-hash* object)
 ;; (define-extern net-powerup-init-remote function)
 ;; (define-extern *msg-map-net-powerup* array)
-;; (define-extern *net-process-class-info-net-powerup* object)
+;; (define-extern *net-process-class-info-net-powerup* net-process-class-info)
 ;; (define-extern powerup-draw-init-by-other function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45753,7 +45851,7 @@
 
 ;; (define-extern net-game-mgr-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr* array)
-;; (define-extern *net-process-class-info-net-game-mgr* object)
+;; (define-extern *net-process-class-info-net-game-mgr* net-process-class-info)
 ;; (define-extern *net-game-mgr* object)
 ;; (define-extern *should-update-stats* object)
 ;; (define-extern *stats-adjusted* object)
@@ -45833,10 +45931,10 @@
 
 ;; (define-extern net-player-race-init-remote function)
 ;; (define-extern *msg-map-net-player-race* array)
-;; (define-extern *net-process-class-info-net-player-race* object)
+;; (define-extern *net-process-class-info-net-player-race* net-process-class-info)
 ;; (define-extern net-game-mgr-race-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-race* array)
-;; (define-extern *net-process-class-info-net-game-mgr-race* object)
+;; (define-extern *net-process-class-info-net-game-mgr-race* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-game-modes-h               ;;
@@ -46115,55 +46213,55 @@
 
 ;; (define-extern net-player-deathmatch-init-remote function)
 ;; (define-extern *msg-map-net-player-deathmatch* array)
-;; (define-extern *net-process-class-info-net-player-deathmatch* object)
+;; (define-extern *net-process-class-info-net-player-deathmatch* net-process-class-info)
 ;; (define-extern net-game-mgr-deathmatch-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-deathmatch* array)
-;; (define-extern *net-process-class-info-net-game-mgr-deathmatch* object)
+;; (define-extern *net-process-class-info-net-game-mgr-deathmatch* net-process-class-info)
 ;; (define-extern net-player-assassin-init-remote function)
 ;; (define-extern *msg-map-net-player-assassin* array)
-;; (define-extern *net-process-class-info-net-player-assassin* object)
+;; (define-extern *net-process-class-info-net-player-assassin* net-process-class-info)
 ;; (define-extern net-game-mgr-assassin-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-assassin* array)
-;; (define-extern *net-process-class-info-net-game-mgr-assassin* object)
+;; (define-extern *net-process-class-info-net-game-mgr-assassin* net-process-class-info)
 ;; (define-extern net-player-deathrace-init-remote function)
 ;; (define-extern *msg-map-net-player-deathrace* array)
-;; (define-extern *net-process-class-info-net-player-deathrace* object)
+;; (define-extern *net-process-class-info-net-player-deathrace* net-process-class-info)
 ;; (define-extern net-game-mgr-deathrace-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-deathrace* array)
-;; (define-extern *net-process-class-info-net-game-mgr-deathrace* object)
+;; (define-extern *net-process-class-info-net-game-mgr-deathrace* net-process-class-info)
 ;; (define-extern net-game-mgr-football-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-football* array)
-;; (define-extern *net-process-class-info-net-game-mgr-football* object)
+;; (define-extern *net-process-class-info-net-game-mgr-football* net-process-class-info)
 ;; (define-extern net-player-football-init-remote function)
 ;; (define-extern *msg-map-net-player-football* array)
-;; (define-extern *net-process-class-info-net-player-football* object)
+;; (define-extern *net-process-class-info-net-player-football* net-process-class-info)
 ;; (define-extern powercell-dispenser-init-remote function)
 ;; (define-extern *msg-map-powercell-dispenser* array)
-;; (define-extern *net-process-class-info-powercell-dispenser* object)
+;; (define-extern *net-process-class-info-powercell-dispenser* net-process-class-info)
 ;; (define-extern powercell-dispenser-draw-init-remote function)
 ;; (define-extern *msg-map-powercell-dispenser-draw* array)
-;; (define-extern *net-process-class-info-powercell-dispenser-draw* object)
+;; (define-extern *net-process-class-info-powercell-dispenser-draw* net-process-class-info)
 ;; (define-extern powercell-footie-init-remote function)
 ;; (define-extern *msg-map-powercell-footie* array)
-;; (define-extern *net-process-class-info-powercell-footie* object)
+;; (define-extern *net-process-class-info-powercell-footie* net-process-class-info)
 ;; (define-extern net-player-artifact-init-remote function)
 ;; (define-extern *msg-map-net-player-artifact* array)
-;; (define-extern *net-process-class-info-net-player-artifact* object)
+;; (define-extern *net-process-class-info-net-player-artifact* net-process-class-info)
 ;; (define-extern net-game-mgr-artifact-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-artifact* array)
-;; (define-extern *net-process-class-info-net-game-mgr-artifact* object)
+;; (define-extern *net-process-class-info-net-game-mgr-artifact* net-process-class-info)
 ;; (define-extern net-player-beasthunt-init-remote function)
 ;; (define-extern *msg-map-net-player-beasthunt* array)
-;; (define-extern *net-process-class-info-net-player-beasthunt* object)
+;; (define-extern *net-process-class-info-net-player-beasthunt* net-process-class-info)
 ;; (define-extern net-game-mgr-beasthunt-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-beasthunt* array)
-;; (define-extern *net-process-class-info-net-game-mgr-beasthunt* object)
+;; (define-extern *net-process-class-info-net-game-mgr-beasthunt* net-process-class-info)
 ;; (define-extern net-player-collectable-init-remote function)
 ;; (define-extern *msg-map-net-player-collectable* array)
-;; (define-extern *net-process-class-info-net-player-collectable* object)
+;; (define-extern *net-process-class-info-net-player-collectable* net-process-class-info)
 ;; (define-extern net-game-mgr-collectable-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-collectable* array)
-;; (define-extern *net-process-class-info-net-game-mgr-collectable* object)
+;; (define-extern *net-process-class-info-net-game-mgr-collectable* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-game-modes2-h              ;;
@@ -46390,46 +46488,46 @@
 ;; (define-extern *ctf-blue-base* object)
 ;; (define-extern net-player-ctf-init-remote function)
 ;; (define-extern *msg-map-net-player-ctf* array)
-;; (define-extern *net-process-class-info-net-player-ctf* object)
+;; (define-extern *net-process-class-info-net-player-ctf* net-process-class-info)
 ;; (define-extern net-game-mgr-ctf-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-ctf* array)
-;; (define-extern *net-process-class-info-net-game-mgr-ctf* object)
+;; (define-extern *net-process-class-info-net-game-mgr-ctf* net-process-class-info)
 ;; (define-extern ctf-flag-init-remote function)
 ;; (define-extern *msg-map-ctf-flag* array)
-;; (define-extern *net-process-class-info-ctf-flag* object)
+;; (define-extern *net-process-class-info-ctf-flag* net-process-class-info)
 ;; (define-extern net-player-rushhour-init-remote function)
 ;; (define-extern *msg-map-net-player-rushhour* array)
-;; (define-extern *net-process-class-info-net-player-rushhour* object)
+;; (define-extern *net-process-class-info-net-player-rushhour* net-process-class-info)
 ;; (define-extern net-game-mgr-rushhour-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-rushhour* array)
-;; (define-extern *net-process-class-info-net-game-mgr-rushhour* object)
+;; (define-extern *net-process-class-info-net-game-mgr-rushhour* net-process-class-info)
 ;; (define-extern net-game-mgr-king-of-hill-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-king-of-hill* array)
-;; (define-extern *net-process-class-info-net-game-mgr-king-of-hill* object)
+;; (define-extern *net-process-class-info-net-game-mgr-king-of-hill* net-process-class-info)
 ;; (define-extern net-player-king-of-hill-init-remote function)
 ;; (define-extern *msg-map-net-player-king-of-hill* array)
-;; (define-extern *net-process-class-info-net-player-king-of-hill* object)
+;; (define-extern *net-process-class-info-net-player-king-of-hill* net-process-class-info)
 ;; (define-extern net-player-time-box-init-remote function)
 ;; (define-extern *msg-map-net-player-time-box* array)
-;; (define-extern *net-process-class-info-net-player-time-box* object)
+;; (define-extern *net-process-class-info-net-player-time-box* net-process-class-info)
 ;; (define-extern net-game-mgr-time-box-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-time-box* array)
-;; (define-extern *net-process-class-info-net-game-mgr-time-box* object)
+;; (define-extern *net-process-class-info-net-game-mgr-time-box* net-process-class-info)
 ;; (define-extern net-player-time-trial-init-remote function)
 ;; (define-extern *msg-map-net-player-time-trial* array)
-;; (define-extern *net-process-class-info-net-player-time-trial* object)
+;; (define-extern *net-process-class-info-net-player-time-trial* net-process-class-info)
 ;; (define-extern net-game-mgr-time-trial-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-time-trial* array)
-;; (define-extern *net-process-class-info-net-game-mgr-time-trial* object)
+;; (define-extern *net-process-class-info-net-game-mgr-time-trial* net-process-class-info)
 ;; (define-extern net-game-mgr-training-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-training* array)
-;; (define-extern *net-process-class-info-net-game-mgr-training* object)
+;; (define-extern *net-process-class-info-net-game-mgr-training* net-process-class-info)
 ;; (define-extern net-player-boss-battle-init-remote function)
 ;; (define-extern *msg-map-net-player-boss-battle* array)
-;; (define-extern *net-process-class-info-net-player-boss-battle* object)
+;; (define-extern *net-process-class-info-net-player-boss-battle* net-process-class-info)
 ;; (define-extern net-game-mgr-boss-battle-init-remote function)
 ;; (define-extern *msg-map-net-game-mgr-boss-battle* array)
-;; (define-extern *net-process-class-info-net-game-mgr-boss-battle* object)
+;; (define-extern *net-process-class-info-net-game-mgr-boss-battle* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-simple-destruct-h          ;;
@@ -46479,7 +46577,7 @@
 
 ;; (define-extern net-simple-destruct-mgr-init-remote function)
 ;; (define-extern *msg-map-net-simple-destruct-mgr* array)
-;; (define-extern *net-process-class-info-net-simple-destruct-mgr* object)
+;; (define-extern *net-process-class-info-net-simple-destruct-mgr* net-process-class-info)
 ;; (define-extern *net-simple-destruct-mgr* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46517,7 +46615,7 @@
 
 ;; (define-extern net-projectile-init-remote function)
 ;; (define-extern *msg-map-net-projectile* array)
-;; (define-extern *net-process-class-info-net-projectile* object)
+;; (define-extern *net-process-class-info-net-projectile* net-process-class-info)
 ;; (define-extern spawn-net-projectile function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46634,7 +46732,7 @@
 
 ;; (define-extern eco-mgr-init-remote function)
 ;; (define-extern *msg-map-eco-mgr* array)
-;; (define-extern *net-process-class-info-eco-mgr* object)
+;; (define-extern *net-process-class-info-eco-mgr* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; menu2-h                        ;;
@@ -49078,7 +49176,7 @@
 
 ;; (define-extern net-test-init-remote function)
 ;; (define-extern *msg-map-net-test* array)
-;; (define-extern *net-process-class-info-net-test* object)
+;; (define-extern *net-process-class-info-net-test* net-process-class-info)
 ;; (define-extern net-test-init-by-other function)
 ;; (define-extern spawn-local function)
 
@@ -50462,8 +50560,8 @@
 ;; wcar-skel-template             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *car-part-temp-string* string)
-;; (define-extern get-car-skel-part function)
+(define-extern *car-part-temp-string* string)
+(define-extern get-car-skel-part (function level string art-group art-group))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-util                   ;;
@@ -56787,7 +56885,7 @@
 
 ;; (define-extern v-toad-shot-init-remote function)
 ;; (define-extern *msg-map-v-toad-shot* array)
-;; (define-extern *net-process-class-info-v-toad-shot* object)
+;; (define-extern *net-process-class-info-v-toad-shot* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wvehicle-weapons-proj          ;;
@@ -56886,17 +56984,17 @@
 
 ;; (define-extern mine-a-init-remote function)
 ;; (define-extern *msg-map-mine-a* array)
-;; (define-extern *net-process-class-info-mine-a* object)
+;; (define-extern *net-process-class-info-mine-a* net-process-class-info)
 ;; (define-extern mine-a-init-by-other function)
 ;; (define-extern mine-b-init-remote function)
 ;; (define-extern *msg-map-mine-b* array)
-;; (define-extern *net-process-class-info-mine-b* object)
+;; (define-extern *net-process-class-info-mine-b* net-process-class-info)
 ;; (define-extern mine-b-common-trans function)
 ;; (define-extern *mine-b-hack* object)
 ;; (define-extern mine-b-init-by-other function)
 ;; (define-extern v-yellow-guided-missile-init-remote function)
 ;; (define-extern *msg-map-v-yellow-guided-missile* array)
-;; (define-extern *net-process-class-info-v-yellow-guided-missile* object)
+;; (define-extern *net-process-class-info-v-yellow-guided-missile* net-process-class-info)
 ;; (define-extern guided-missile-moving-event-handler function)
 ;; (define-extern guided-missile-base-trans function)
 ;; (define-extern v-yellow-defaultgun-hitspang-params object)
@@ -57292,7 +57390,7 @@
 ;; (define-extern v-wpn-yellow-default-gun-rapid-fire-control-params object)
 ;; (define-extern v-wpn-yellow-guided-missile-init-remote function)
 ;; (define-extern *msg-map-v-wpn-yellow-guided-missile* array)
-;; (define-extern *net-process-class-info-v-wpn-yellow-guided-missile* object)
+;; (define-extern *net-process-class-info-v-wpn-yellow-guided-missile* net-process-class-info)
 ;; (define-extern guided-missile-gen-proj-no-targ-helper function)
 ;; (define-extern guided-missile-gen-proj-targ-helper function)
 ;; (define-extern seismic-blaster-affects-player? function)
@@ -57343,7 +57441,7 @@
 
 ;; (define-extern red-sentry-bot-init-remote function)
 ;; (define-extern *msg-map-red-sentry-bot* array)
-;; (define-extern *net-process-class-info-red-sentry-bot* object)
+;; (define-extern *net-process-class-info-red-sentry-bot* net-process-class-info)
 ;; (define-extern v-wpn-sentrybot-rapid-fire-control-params object)
 ;; (define-extern sentrybot-poke-yaw! function)
 ;; (define-extern sentrybot-poke-pitch! function)
@@ -57500,23 +57598,23 @@
 ;; wcar                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *wcar-explosion-info* vehicle-explosion-info) ;; vehicle-explosion-info
-;; (define-extern *v-mongoose-constants* object)
-;; (define-extern *v-falcon-constants* object)
-;; (define-extern *v-wombat-constants* object)
-;; (define-extern *v-possum-constants* object)
-;; (define-extern *v-bobcat-constants* object)
-;; (define-extern *v-cougar-constants* object)
-;; (define-extern *v-wolf-constants* object)
-;; (define-extern *v-bear-constants* object)
-;; (define-extern *v-leopard-constants* object)
-;; (define-extern *v-panther-constants* object)
-;; (define-extern *v-tiger-constants* object)
-;; (define-extern *v-cheetah-constants* object)
-;; (define-extern *v-gila-constants* object)
-;; (define-extern *v-snake-constants* object) ;; rigid-body-vehicle-constants
-;; (define-extern *v-daxtermobile-constants* object)
-;; (define-extern *v-drone-constants* object)
+(define-extern *wcar-explosion-info* vehicle-explosion-info) ;; vehicle-explosion-info
+(define-extern *v-mongoose-constants* rigid-body-vehicle-constants)
+(define-extern *v-falcon-constants* rigid-body-vehicle-constants)
+(define-extern *v-wombat-constants* rigid-body-vehicle-constants)
+(define-extern *v-possum-constants* rigid-body-vehicle-constants)
+(define-extern *v-bobcat-constants* rigid-body-vehicle-constants)
+(define-extern *v-cougar-constants* rigid-body-vehicle-constants)
+(define-extern *v-wolf-constants* rigid-body-vehicle-constants)
+(define-extern *v-bear-constants* rigid-body-vehicle-constants)
+(define-extern *v-leopard-constants* rigid-body-vehicle-constants)
+(define-extern *v-panther-constants* rigid-body-vehicle-constants)
+(define-extern *v-tiger-constants* rigid-body-vehicle-constants)
+(define-extern *v-cheetah-constants* rigid-body-vehicle-constants)
+(define-extern *v-gila-constants* rigid-body-vehicle-constants)
+(define-extern *v-snake-constants* rigid-body-vehicle-constants) ;; 
+(define-extern *v-daxtermobile-constants* rigid-body-vehicle-constants)
+(define-extern *v-drone-constants* rigid-body-vehicle-constants)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-antenna                ;;
@@ -57582,226 +57680,194 @@
 ;; wcar-base                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wcar-base (wvehicle)
-  ((jmod-shock-tops UNKNOWN 4 :offset-assert 4672)
-   (jmod-shock-mids UNKNOWN 4 :offset-assert 4800)
+  ((jmod-shock-tops joint-mod-rotate-world 4 :inline :offset-assert 4672) ;; guess
+   (jmod-shock-mids joint-mod-set-local 4 :inline :offset-assert 4800) ;; guess
    )
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-mongoose                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-mongoose (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-falcon                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-falcon (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-wombat                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-wombat (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-possum                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-possum (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-bobcat                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-bobcat (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-cougar                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-cougar (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-wolf                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-wolf (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-bear                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-bear (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-leopard                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-leopard (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-panther                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-panther (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-tiger                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-tiger (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-cheetah                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-cheetah (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-gila                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-gila (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-snake                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-snake (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-daxtermobile              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-daxtermobile (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58025,10 +58091,10 @@
 
 ;; (define-extern artifact-init-remote function)
 ;; (define-extern *msg-map-artifact* array)
-;; (define-extern *net-process-class-info-artifact* object)
+;; (define-extern *net-process-class-info-artifact* net-process-class-info)
 ;; (define-extern artifact-draw-init-remote function)
 ;; (define-extern *msg-map-artifact-draw* array)
-;; (define-extern *net-process-class-info-artifact-draw* object)
+;; (define-extern *net-process-class-info-artifact-draw* net-process-class-info)
 ;; (define-extern get-artifact-position function)
 ;; (define-extern get-artifact-color function)
 
@@ -58241,7 +58307,7 @@
 ;; (define-extern *plow-enemy-info* object)
 ;; (define-extern plow-init-remote function)
 ;; (define-extern *msg-map-plow* array)
-;; (define-extern *net-process-class-info-plow* object)
+;; (define-extern *net-process-class-info-plow* net-process-class-info)
 ;; (define-extern *range-plowexplo-color* curve-color-fast)
 ;; (define-extern *range-plowexplo-alpha* curve2d-fast)
 ;; (define-extern *range-plowexplo-scale-x* curve2d-fast)
@@ -58347,7 +58413,7 @@
 
 ;; (define-extern raceline-weapon-init-remote function)
 ;; (define-extern *msg-map-raceline-weapon* array)
-;; (define-extern *net-process-class-info-raceline-weapon* object)
+;; (define-extern *net-process-class-info-raceline-weapon* net-process-class-info)
 ;; (define-extern raceline-weapon-init-by-other function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58497,29 +58563,29 @@
 
 ;; (define-extern chicken-drone-init-remote function)
 ;; (define-extern *msg-map-chicken-drone* array)
-;; (define-extern *net-process-class-info-chicken-drone* object)
+;; (define-extern *net-process-class-info-chicken-drone* net-process-class-info)
 ;; (define-extern v-wpn-chicken-drone-rapid-fire-control-params object)
 ;; (define-extern chicken-drone-spawn function)
 ;; (define-extern chicken-drone-local-space function)
 ;; (define-extern chicken-drone-2-init-remote function)
 ;; (define-extern *msg-map-chicken-drone-2* array)
-;; (define-extern *net-process-class-info-chicken-drone-2* object)
+;; (define-extern *net-process-class-info-chicken-drone-2* net-process-class-info)
 ;; (define-extern chicken-drone-2-spawn function)
 ;; (define-extern seeker-init-remote function)
 ;; (define-extern *msg-map-seeker* array)
-;; (define-extern *net-process-class-info-seeker* object)
+;; (define-extern *net-process-class-info-seeker* net-process-class-info)
 ;; (define-extern success-seeker-init-remote function)
 ;; (define-extern *msg-map-success-seeker* array)
-;; (define-extern *net-process-class-info-success-seeker* object)
+;; (define-extern *net-process-class-info-success-seeker* net-process-class-info)
 ;; (define-extern success-seeker-1-spawn function)
 ;; (define-extern success-seeker-local-space function)
 ;; (define-extern success-seeker-2-init-remote function)
 ;; (define-extern *msg-map-success-seeker-2* array)
-;; (define-extern *net-process-class-info-success-seeker-2* object)
+;; (define-extern *net-process-class-info-success-seeker-2* net-process-class-info)
 ;; (define-extern success-seeker-2-spawn function)
 ;; (define-extern turbodash-seeker-init-remote function)
 ;; (define-extern *msg-map-turbodash-seeker* array)
-;; (define-extern *net-process-class-info-turbodash-seeker* object)
+;; (define-extern *net-process-class-info-turbodash-seeker* net-process-class-info)
 ;; (define-extern turbodash-seeker-spawn function)
 ;; (define-extern fire-seeker function)
 ;; (define-extern fire-drone function)
@@ -58930,22 +58996,22 @@
 ;; (define-extern *time-freeze-long-debris-params* debris-static-params)
 ;; (define-extern time-freeze-short-draw-init-remote function)
 ;; (define-extern *msg-map-time-freeze-short-draw* array)
-;; (define-extern *net-process-class-info-time-freeze-short-draw* object)
+;; (define-extern *net-process-class-info-time-freeze-short-draw* net-process-class-info)
 ;; (define-extern time-freeze-short-init-remote function)
 ;; (define-extern *msg-map-time-freeze-short* array)
-;; (define-extern *net-process-class-info-time-freeze-short* object)
+;; (define-extern *net-process-class-info-time-freeze-short* net-process-class-info)
 ;; (define-extern time-freeze-long-draw-init-remote function)
 ;; (define-extern *msg-map-time-freeze-long-draw* array)
-;; (define-extern *net-process-class-info-time-freeze-long-draw* object)
+;; (define-extern *net-process-class-info-time-freeze-long-draw* net-process-class-info)
 ;; (define-extern time-freeze-long-init-remote function)
 ;; (define-extern *msg-map-time-freeze-long* array)
-;; (define-extern *net-process-class-info-time-freeze-long* object)
+;; (define-extern *net-process-class-info-time-freeze-long* net-process-class-info)
 ;; (define-extern time-freeze-med-draw-init-remote function)
 ;; (define-extern *msg-map-time-freeze-med-draw* array)
-;; (define-extern *net-process-class-info-time-freeze-med-draw* object)
+;; (define-extern *net-process-class-info-time-freeze-med-draw* net-process-class-info)
 ;; (define-extern time-freeze-med-init-remote function)
 ;; (define-extern *msg-map-time-freeze-med* array)
-;; (define-extern *net-process-class-info-time-freeze-med* object)
+;; (define-extern *net-process-class-info-time-freeze-med* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-time-trial                 ;;
@@ -59290,7 +59356,7 @@
 ;; (define-extern kill-vehicle-hud-training function)
 ;; (define-extern net-player-training-init-remote function)
 ;; (define-extern *msg-map-net-player-training* array)
-;; (define-extern *net-process-class-info-net-player-training* object)
+;; (define-extern *net-process-class-info-net-player-training* net-process-class-info)
 ;; (define-extern *training-info* object)
 ;; (define-extern training-wait-for-speech-end function)
 ;; (define-extern training-trans function)
@@ -59366,14 +59432,12 @@
 ;; wcar-drone                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-drone (wcar-base)
   ()
   :method-count-assert 272
   :size-assert         #x13c0
   :flag-assert         #x110133013c0
   )
-|#
 
 ;; (define-extern *v-drone-headlight-glow-template* object)
 
@@ -59578,10 +59642,10 @@
 ;; (define-extern restore-self function)
 ;; (define-extern coli-statue-init-remote function)
 ;; (define-extern *msg-map-coli-statue* array)
-;; (define-extern *net-process-class-info-coli-statue* object)
+;; (define-extern *net-process-class-info-coli-statue* net-process-class-info)
 ;; (define-extern coli-atlas-globe-init-remote function)
 ;; (define-extern *msg-map-coli-atlas-globe* array)
-;; (define-extern *net-process-class-info-coli-atlas-globe* object)
+;; (define-extern *net-process-class-info-coli-atlas-globe* net-process-class-info)
 ;; (define-extern *coli-atlas-ball-constants* object)
 ;; (define-extern atlas-base-fix function)
 ;; (define-extern atlas-collapse function)
@@ -59870,13 +59934,13 @@
 
 ;; (define-extern collectoid-draw-init-remote function)
 ;; (define-extern *msg-map-collectoid-draw* array)
-;; (define-extern *net-process-class-info-collectoid-draw* object)
+;; (define-extern *net-process-class-info-collectoid-draw* net-process-class-info)
 ;; (define-extern *steal-mode* object)
 ;; (define-extern drop-collectoids function)
 ;; (define-extern *collectoid-debris-params* debris-static-params)
 ;; (define-extern collectoid-init-remote function)
 ;; (define-extern *msg-map-collectoid* array)
-;; (define-extern *net-process-class-info-collectoid* object)
+;; (define-extern *net-process-class-info-collectoid* net-process-class-info)
 ;; (define-extern *desclct-pris-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60273,7 +60337,7 @@
 ;; (define-extern kras-pump-break-draw-init-by-other function)
 ;; (define-extern kras-pump-break-init-remote function)
 ;; (define-extern *msg-map-kras-pump-break* array)
-;; (define-extern *net-process-class-info-kras-pump-break* object)
+;; (define-extern *net-process-class-info-kras-pump-break* net-process-class-info)
 ;; (define-extern *kras-pump-debris-params* debris-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60921,7 +60985,7 @@
 ;; (define-extern jungle-stone-snake-head-draw-init-by-other function)
 ;; (define-extern jungle-stone-snake-head-init-remote function)
 ;; (define-extern *msg-map-jungle-stone-snake-head* array)
-;; (define-extern *net-process-class-info-jungle-stone-snake-head* object)
+;; (define-extern *net-process-class-info-jungle-stone-snake-head* net-process-class-info)
 ;; (define-extern *jungle-stone-snake-head-explode-params* joint-exploder-static-params)
 ;; (define-extern *jungle-tree-root-large-a-debris-params* debris-static-params)
 ;; (define-extern *jungle-tree-root-large-b-debris-params* debris-static-params)
@@ -61068,7 +61132,7 @@
 
 ;; (define-extern peak-snowball-init-remote function)
 ;; (define-extern *msg-map-peak-snowball* array)
-;; (define-extern *net-process-class-info-peak-snowball* object)
+;; (define-extern *net-process-class-info-peak-snowball* net-process-class-info)
 ;; (define-extern *snowball-constants* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
