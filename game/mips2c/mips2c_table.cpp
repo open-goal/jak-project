@@ -8,6 +8,7 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/jak3/kscheme.h"
+#include "game/kernel/jakx/kscheme.h"
 #include "game/runtime.h"
 
 extern "C" {
@@ -394,7 +395,11 @@ namespace shadow_add_single_tris { extern void link(); }
 namespace shadow_add_double_tris { extern void link(); }
 namespace shadow_execute { extern void link(); }
 namespace method_21_cloth_system { extern void link(); }
+}
 
+namespace jakx {
+namespace live_func_curve { extern void link(); }
+namespace birth_func_curve { extern void link(); }
 }
 // clang-format on
 
@@ -658,7 +663,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak3::shadow_add_single_tris::link, jak3::shadow_add_double_tris::link}},
      {"cloth", {jak3::method_21_cloth_system::link}}},
     /////////// JAK X
-    {}};
+    {
+        {"particle-curves", {jak3::live_func_curve::link, jak3::birth_func_curve::link}},
+    }};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
@@ -684,6 +691,11 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
       jump_to_asm = Ptr<u8>(::jak3::alloc_heap_object(
           s7.offset + jak3_symbols::FIX_SYM_GLOBAL_HEAP,
           ::jak3::u32_in_fixed_sym(jak3_symbols::FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
+      break;
+    case GameVersion::JakX:
+      jump_to_asm = Ptr<u8>(::jak3::alloc_heap_object(
+          s7.offset + jak3_symbols::FIX_SYM_GLOBAL_HEAP,
+          ::jakx::u32_in_fixed_sym(jakx_symbols::FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
       break;
     default:
       ASSERT(false);
