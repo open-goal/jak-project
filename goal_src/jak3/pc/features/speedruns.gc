@@ -185,6 +185,36 @@
          (set! (-> *game-info* secrets) (the-as game-secrets (-> *pc-settings* speedrunner-mode-hm-secrets)))
          (set! (-> *game-info* purchase-secrets) (the-as game-secrets (-> *pc-settings* speedrunner-mode-hm-secrets)))
          (set! (-> *game-info* features) HERO_MODE_FEATURES))))
+    (((speedrun-category act-2))
+      (start 'play (get-continue-by-name *game-info* (play-task (game-task sewer-met-hum) 'debug 'play)))
+      (set-master-mode 'game))
+    (((speedrun-category act-3))
+      (start 'play (get-continue-by-name *game-info* (play-task (game-task temple-defend) 'debug 'play)))
+      (set-master-mode 'game))
+    (((speedrun-category post-game))
+     (process-spawn-function process
+       (lambda :behavior process ()
+         (set! (-> *game-info* mode) 'debug)
+         (initialize! *game-info* 'game (the game-save #f) (the string #f) (the resetter-spec #f))
+         (set! (-> *game-info* mode) 'play)
+         (task-close! "city-win-introduction")
+         (start 'play (get-continue-by-name *game-info* "wascity-start"))
+         )))
+    (((speedrun-category post-game-heromode))
+     (process-spawn-function process
+       (lambda :behavior process ()
+         (set! (-> *game-info* mode) 'debug)
+         (initialize! *game-info* 'game (the game-save #f) (the string #f) (the resetter-spec #f))
+         (set! (-> *game-info* mode) 'play)
+         (logior! (-> *game-info* secrets) (game-secrets hero-mode))
+         (logior! (-> *game-info* purchase-secrets) (game-secrets hero-mode))
+         (task-close! "city-win-introduction")
+         (start 'play (get-continue-by-name *game-info* "wascity-start"))
+         (until (and *target* (!= (-> *target* next-state name) 'target-continue))
+           (suspend))
+         (set! (-> *game-info* secrets) (the-as game-secrets (-> *pc-settings* speedrunner-mode-hm-secrets)))
+         (set! (-> *game-info* purchase-secrets) (the-as game-secrets (-> *pc-settings* speedrunner-mode-hm-secrets)))
+         (set! (-> *game-info* features) HERO_MODE_FEATURES))))
     (((speedrun-category all-cheats-allowed))
      (process-spawn-function process
        (lambda :behavior process ()
@@ -215,8 +245,10 @@
   ;;   probably like the game to automatically set the appropriate ones for you
   ;; - If you are playing a category that forbids cheats, you wouldn't want your run invalidated because you forgot
   (case (-> this category)
-    (((speedrun-category newgame-normal) (speedrun-category newgame-heromode))
-     ;; disable any active cheats
+    (((speedrun-category newgame-normal) (speedrun-category newgame-heromode)
+      (speedrun-category act-2) (speedrun-category act-3)
+      (speedrun-category post-game) (speedrun-category post-game-heromode))
+     ;; disable any active PC cheats
      (set! (-> *pc-settings* cheats) (pc-cheats)))
     (((speedrun-category custom))
      (set! (-> *game-info* purchase-secrets) (-> *speedrun-info* active-custom-category secrets))
@@ -392,6 +424,42 @@
                       :is-toggled?
                       (lambda ()
                         (= (-> *speedrun-info* category) (speedrun-category newgame-heromode))))
+                 (new 'static
+                      'popup-menu-flag
+                      :label "Act 2"
+                      :on-confirm
+                      (lambda ()
+                        (set-category! *speedrun-info* (speedrun-category act-2)))
+                      :is-toggled?
+                      (lambda ()
+                        (= (-> *speedrun-info* category) (speedrun-category act-2))))
+                 (new 'static
+                      'popup-menu-flag
+                      :label "Act 3"
+                      :on-confirm
+                      (lambda ()
+                        (set-category! *speedrun-info* (speedrun-category act-3)))
+                      :is-toggled?
+                      (lambda ()
+                        (= (-> *speedrun-info* category) (speedrun-category act-3))))
+                 (new 'static
+                      'popup-menu-flag
+                      :label "Post-Game"
+                      :on-confirm
+                      (lambda ()
+                        (set-category! *speedrun-info* (speedrun-category post-game)))
+                      :is-toggled?
+                      (lambda ()
+                        (= (-> *speedrun-info* category) (speedrun-category post-game))))
+                 (new 'static
+                      'popup-menu-flag
+                      :label "Post-Game Hero Mode"
+                      :on-confirm
+                      (lambda ()
+                        (set-category! *speedrun-info* (speedrun-category post-game-heromode)))
+                      :is-toggled?
+                      (lambda ()
+                        (= (-> *speedrun-info* category) (speedrun-category post-game-heromode))))
                  (new 'static
                       'popup-menu-flag
                       :label "All Cheats Allowed"
