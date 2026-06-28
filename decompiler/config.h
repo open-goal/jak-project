@@ -106,6 +106,7 @@ struct Config {
 
   std::string obj_file_name_map_file;
   std::string all_types_file;
+  std::optional<std::string> docstrings_file;
 
   bool disassemble_code = false;
   bool dump_function_metadata = false;

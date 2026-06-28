@@ -7,9 +7,15 @@
 #include "common/log/log.h"
 #include "common/type_system/defenum.h"
 #include "common/type_system/deftype.h"
+#include "common/util/FileUtil.h"
+#include "common/util/json_util.h"
 #include "common/util/string_util.h"
 
 #include "decompiler/Disasm/Register.h"
+
+#include "fmt/format.h"
+
+#include <regex>
 
 namespace decompiler {
 DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) : m_version(version) {
@@ -163,6 +169,42 @@ TypeSpec DecompilerTypeSystem::parse_type_spec(const std::string& str) const {
   auto read = m_reader.read_from_string(str);
   auto data = cdr(read);
   return parse_typespec(&ts, car(data));
+}
+
+void DecompilerTypeSystem::load_docstrings_from_json(const std::string& file_path) {
+  const auto json_text = file_util::read_text_file(file_util::get_file_path({file_path}));
+  const auto docstrings_json = parse_commented_json(json_text, file_path);
+  const std::regex typed_method_key("^\\(method ([0-9]+) ([^)]+)\\)$");
+
+  auto add_method_docstring = [&](const std::string& type_name, int method_id,
+                                  const std::string& docstring) {
+    MethodInfo method_info;
+    if (!ts.try_lookup_method(type_name, method_id, &method_info)) {
+      throw std::runtime_error(
+          fmt::format("Method docstring entry refers to unknown method {}::{}", type_name,
+                      method_id));
+    }
+    method_docstring_overrides[type_name][method_id] = str_util::trim_newline_indents(docstring);
+  };
+
+  for (auto& kv : docstrings_json.items()) {
+    const auto& key = kv.key();
+    const auto& value = kv.value();
+    if (!value.is_array() || value.size() < 2 || !value.at(0).is_string() ||
+        !value.at(1).is_string()) {
+      throw std::runtime_error(
+          fmt::format("Invalid method/function docstring entry for {} in {}", key, file_path));
+    }
+
+    const auto& docstring = value.at(1).get_ref<const std::string&>();
+
+    std::smatch typed_match;
+    if (std::regex_match(key, typed_match, typed_method_key)) {
+      add_method_docstring(typed_match[2].str(), std::stoi(typed_match[1].str()), docstring);
+    } else {
+      symbol_metadata_map[key].docstring = str_util::trim_newline_indents(docstring);
+    }
+  }
 }
 
 std::string DecompilerTypeSystem::dump_symbol_types() {

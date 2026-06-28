@@ -129,6 +129,9 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
 
   lg::info("-Loading types...");
   dts.parse_type_defs({config.all_types_file});
+  if (config.docstrings_file) {
+    dts.load_docstrings_from_json(*config.docstrings_file);
+  }
 
   if (!obj_file_name_map_file.empty()) {
     lg::info("-Loading obj name map file...");

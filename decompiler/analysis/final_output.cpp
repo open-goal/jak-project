@@ -204,7 +204,14 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    if (method_info.docstring) {
+    const auto method_doc_override = dts.method_docstring_overrides.find(func.guessed_name.type_name);
+    if (method_doc_override != dts.method_docstring_overrides.end() &&
+        method_doc_override->second.find(func.guessed_name.method_id) !=
+            method_doc_override->second.end()) {
+      inline_body.insert(
+          inline_body.begin(),
+          pretty_print::new_string(method_doc_override->second.at(func.guessed_name.method_id)));
+    } else if (method_info.docstring) {
       inline_body.insert(inline_body.begin(),
                          pretty_print::new_string(method_info.docstring.value()));
     }

@@ -31,6 +31,8 @@ class DecompilerTypeSystem {
   // {state_name : {handler : doc}}
   std::unordered_map<std::string, std::unordered_map<std::string, DefinitionMetadata>>
       state_metadata;
+  // {type_name : {method_id : docstring}}
+  std::unordered_map<std::string, std::unordered_map<int, std::string>> method_docstring_overrides;
 
   std::unordered_map<std::string, u64> type_flags;
   std::unordered_map<std::string, std::string> type_parents;
@@ -60,6 +62,7 @@ class DecompilerTypeSystem {
                   const DefinitionMetadata& symbol_metadata);
   void parse_type_defs(const std::vector<std::string>& file_path);
   void parse_enum_defs(const std::vector<std::string>& file_path);
+  void load_docstrings_from_json(const std::string& file_path);
   TypeSpec parse_type_spec(const std::string& str) const;
   void add_type_flags(const std::string& name, u64 flags);
   void add_type_parent(const std::string& child, const std::string& parent);

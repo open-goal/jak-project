@@ -46,6 +46,9 @@ Config make_config_via_json(nlohmann::json& json) {
     config.expected_elf_name = json.at("expected_elf_name").get<std::string>();
   }
   config.all_types_file = json.at("all_types_file").get<std::string>();
+  if (json.contains("docstrings_file")) {
+    config.docstrings_file = json.at("docstrings_file").get<std::string>();
+  }
 
   auto inputs_json = read_json_file_from_config(json, "inputs_file");
   config.dgo_names = json.contains("dgo_names")
