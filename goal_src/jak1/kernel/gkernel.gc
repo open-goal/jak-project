@@ -1657,87 +1657,59 @@
     (set! (-> new-parent child) (-> this ppointer))
     this))
 
-(defun change-brother ((arg0 process-tree) (arg1 process-tree))
-  "Unused, and wrong.
-   It seems like this was written when processes store process-trees, not (pointer process-tree)."
-  (local-vars
-    (v1-4 (pointer process-tree))
-    (a1-1 symbol)
-    (a2-1 (pointer process-tree))
-    (a3-1 (pointer process-tree))
-    (t0-0 (pointer process-tree))
-    (t1-0 (pointer process-tree))
-    (t1-3 (pointer process-tree))
-    (t1-4 (pointer process-tree))
-    (t1-7 (pointer process-tree))
-    (t1-8 (pointer process-tree))
-    (t1-12 (pointer process-tree))
-    (t1-13 (pointer process-tree))
-    (t1-17 (pointer process-tree)))
-  (when (and arg0 (!= (-> arg0 brother) arg1) (!= arg0 arg1))
-    (set! a2-1 (-> arg0 parent))
-    (when a2-1
-      (set! t0-0 (-> a2-1 0 child))
-      (set! a3-1 '#f)
-      (set! v1-4 '#f)
-      (set! t1-0 t0-0)
-      (when (= (if t1-0 (-> t1-0 0 self)) arg0)
-        (set! a3-1 a2-1)
-        (set! t1-3 a3-1))
-      (set! t1-4 t0-0)
-      (when (= (if t1-4 (-> t1-4 0 self)) arg1)
-        (set! v1-4 a2-1)
-        (set! t1-7 v1-4))
-      (while (and (-> t0-0 0 brother) (or (not a3-1) (not v1-4)))
-        (set! t1-8 t0-0)
-        (when (= (-> (if t1-8 (-> t1-8 0 self)) brother) arg1)
-          (set! v1-4 t0-0)
-          (set! t1-12 v1-4))
-        (set! t1-13 t0-0)
-        (when (= (-> (if t1-13 (-> t1-13 0 self)) brother) arg0)
-          (set! a3-1 t0-0)
-          (set! t1-17 a3-1))
-        (set! t0-0 (-> t0-0 0 brother)))
-      (if (or (not a3-1) (not v1-4))
-        (return 0)
-        (if (= a3-1 a2-1)
-          (set! (-> a3-1 4) (the process-tree (-> arg0 brother))) ;; wrong
-          (set! (-> a3-1 3) (the process-tree (-> arg0 brother))) ;; wrong
-          ))
-      (cond
-        ((= v1-4 a2-1)
-         (set! (-> arg0 brother) (the (pointer process-tree) (-> v1-4 4))) ;; wrong
-         (set! (-> v1-4 4) (the process-tree (-> arg0 ppointer))) ;; wrong
-         )
-        (else
-         (set! (-> arg0 brother) (the (pointer process-tree) (-> v1-4 3)))
-         (set! (-> v1-4 3) (the process-tree (-> arg0 ppointer)))))))
-  (the-as process-tree arg0))
+(defun change-brother ((new-brother process-tree) (old-brother process-tree))
+  "Unused and wrong.
+   Seems like this assumes a process stores a `process-tree` reference directly, not `(poitner process-tree)`"
+  (when (and new-brother (!= (-> new-brother brother) old-brother) (!= new-brother old-brother))
+    (let ((parent (-> new-brother parent)))
+      (when parent
+        (let ((it (-> parent 0 child))
+              (new-bro-pred (the-as (pointer process-tree) #f))
+              (old-bro-pred (the-as (pointer process-tree) #f)))
+          (if (= (ppointer->process it) new-brother) (set! new-bro-pred parent))
+          (if (= (ppointer->process it) old-brother) (set! old-bro-pred parent))
+          (while (and (-> it 0 brother) (or (not new-bro-pred) (not old-bro-pred)))
+            (if (= (-> (ppointer->process it) brother) old-brother) (set! old-bro-pred it))
+            (if (= (-> (ppointer->process it) brother) new-brother) (set! new-bro-pred it))
+            (set! it (-> it 0 brother)))
+          (cond
+            ((or (not new-bro-pred) (not old-bro-pred)) (return 0))
+            ((= new-bro-pred parent) (set! (-> new-bro-pred 4) (the-as process-tree (-> new-brother brother))))
+            (else (set! (-> new-bro-pred 3) (the-as process-tree (-> new-brother brother)))))
+          (cond
+            ((= old-bro-pred parent)
+             (set! (-> new-brother brother) (the-as (pointer process-tree) (-> old-bro-pred 4)))
+             (set! (-> old-bro-pred 4) (the-as process-tree (-> new-brother ppointer))))
+            (else
+             (set! (-> new-brother brother) (the-as (pointer process-tree) (-> old-bro-pred 3)))
+             (set! (-> old-bro-pred 3) (the-as process-tree (-> new-brother ppointer)))))))))
+  new-brother)
 
-(defun change-to-last-brother ((arg0 process-tree))
-  (local-vars (v1-4 (pointer process-tree)) (v1-8 symbol) (a1-0 (pointer process-tree)) (a1-5 symbol) (a1-9 symbol))
-  (when (and (-> arg0 brother) (-> arg0 parent))
-    (set! a1-0 (-> arg0 parent))
-    (set! v1-4 (-> a1-0 0 child))
-    (cond
-      ((= (-> v1-4 0) arg0) (set! (-> a1-0 0 child) (-> arg0 brother)))
-      (else
-       (while (!= (-> v1-4 0 brother 0) arg0)
-         (nop!)
-         (nop!)
-         (nop!)
-         (nop!)
-         (set! v1-4 (-> v1-4 0 brother)))
-       (set! (-> v1-4 0 brother) (-> arg0 brother))))
-    (while (-> v1-4 0 brother)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (set! v1-4 (-> v1-4 0 brother)))
-    (set! (-> v1-4 0 brother) (-> arg0 ppointer))
-    (set! (-> arg0 brother) '#f))
-  arg0)
+
+(defun change-to-last-brother ((proc process-tree))
+  "Move this process to the last spot in its list of brothers"
+  (when (and (-> proc brother) (-> proc parent))
+    (let* ((parent (-> proc parent))
+           (it (-> parent 0 child)))
+      (cond
+        ((= (-> it 0) proc) (set! (-> parent 0 child) (-> proc brother)))
+        (else
+         (while (!= (-> it 0 brother 0) proc)
+           (nop!)
+           (nop!)
+           (nop!)
+           (nop!)
+           (set! it (-> it 0 brother)))
+         (set! (-> it 0 brother) (-> proc brother))))
+      (while (-> it 0 brother)
+        (nop!)
+        (nop!)
+        (nop!)
+        (nop!)
+        (set! it (-> it 0 brother)))
+      (set! (-> it 0 brother) (-> proc ppointer)))
+    (set! (-> proc brother) (the-as (pointer process-tree) #f)))
+  proc)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Process Control

@@ -579,7 +579,7 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
       lookup_name = remapped->second;
     }
 
-    if (m_vars_defined_in_let.find(lookup_name) != m_vars_defined_in_let.end()) {
+    if (m_vars_defined_in_let.find(x.reg_id) != m_vars_defined_in_let.end()) {
       continue;
     }
 
@@ -599,7 +599,7 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
   std::sort(spills.begin(), spills.end(),
             [](const StackSpillEntry& a, const StackSpillEntry& b) { return a.offset < b.offset; });
   for (auto& x : spills) {
-    if (m_vars_defined_in_let.find(x.name()) != m_vars_defined_in_let.end()) {
+    if (m_stack_slots_defined_in_let.find(x.offset) != m_stack_slots_defined_in_let.end()) {
       continue;
     }
     elts.push_back(pretty_print::build_list(x.name(), x.typespec.print()));

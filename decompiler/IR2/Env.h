@@ -229,7 +229,13 @@ class Env {
 
   void disable_def(const RegisterAccess& access, DecompWarnings& warnings);
 
-  void set_defined_in_let(const std::string& var) { m_vars_defined_in_let.insert(var); }
+  void set_defined_in_let(const RegisterAccess& var) {
+    if (is_stack_slot_access(var)) {
+      m_stack_slots_defined_in_let.insert(get_stack_slot_offset_from_access(var));
+    } else {
+      m_vars_defined_in_let.insert(get_program_var_id(var));
+    }
+  }
 
   void set_retype_map(const std::unordered_map<std::string, TypeSpec>& map) { m_var_retype = map; }
 
@@ -286,7 +292,8 @@ class Env {
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, TypeSpec> m_var_retype;
 
-  std::unordered_set<std::string> m_vars_defined_in_let;
+  std::unordered_set<RegId, RegId::hash> m_vars_defined_in_let;
+  std::unordered_set<int> m_stack_slots_defined_in_let;
   std::optional<TypeSpec> m_type_analysis_return_type;
 
   StackSpillMap m_stack_spill_map;

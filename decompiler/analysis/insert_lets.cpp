@@ -3968,15 +3968,15 @@ LetStats insert_lets(const Function& func,
 
   // Stored per variable.
   struct PerVarInfo {
-    std::string var_name;  // name used to uniquely identify
-    RegisterAccess access;
+    std::string var_name;
+    RegId var_id;
     std::unordered_set<FormElement*> elts_using_var;  // all FormElements using var
     Form* lca_form = nullptr;  // the lowest common form that contains all the above elts
     int start_idx = -1;        // in the above form, first FormElement using var's index
     int end_idx = -1;          // in the above form, 1 + last FormElement using var's index
   };
 
-  std::unordered_map<std::string, PerVarInfo> var_info;
+  std::unordered_map<RegId, PerVarInfo, RegId::hash> var_info;
 
   // Part 1, figure out which forms reference each var
   top_level_form->apply([&](FormElement* elt) {
@@ -4001,10 +4001,11 @@ LetStats insert_lets(const Function& func,
     // and add it.
     for (auto& access : reg_accesses) {
       if (register_can_hold_var(access.reg())) {
+        auto var_id = env.get_program_var_id(access);
         auto name = env.get_variable_name(access);
-        var_info[name].elts_using_var.insert(elt);
-        var_info[name].var_name = name;
-        var_info[name].access = access;
+        var_info[var_id].elts_using_var.insert(elt);
+        var_info[var_id].var_name = name;
+        var_info[var_id].var_id = var_id;
       }
     }
   });
@@ -4036,7 +4037,7 @@ LetStats insert_lets(const Function& func,
       bool uses = false;
       for (auto& ra : ras) {
         if ((ra.reg().get_kind() == Reg::FPR || ra.reg().get_kind() == Reg::GPR) &&
-            env.get_variable_name(ra) == kv.second.var_name) {
+            env.get_program_var_id(ra) == kv.second.var_id) {
           uses = true;
         }
       }
@@ -4073,7 +4074,6 @@ LetStats insert_lets(const Function& func,
     int start_elt = -1;  // this is the set!
     SetVarElement* set_form = nullptr;
     int end_elt = -1;
-    std::string name;
   };
 
   // stored per containing form.
@@ -4082,18 +4082,17 @@ LetStats insert_lets(const Function& func,
     auto first_form = info.lca_form->at(info.start_idx);
     auto first_form_as_set = dynamic_cast<SetVarElement*>(first_form);
     if (first_form_as_set && register_can_hold_var(first_form_as_set->dst().reg()) &&
-        env.get_variable_name(first_form_as_set->dst()) == env.get_variable_name(info.access) &&
+        env.get_program_var_id(first_form_as_set->dst()) == info.var_id &&
         !first_form_as_set->info().is_eliminated_coloring_move) {
       bool allowed = true;
+      auto dst_var_id = env.get_program_var_id(first_form_as_set->dst());
 
       RegAccessSet ras;
       first_form_as_set->src()->collect_vars(ras, true);
       for (auto ra : ras) {
-        if (ra.reg() == first_form_as_set->dst().reg()) {
-          if (env.get_variable_name(ra) == env.get_variable_name(first_form_as_set->dst())) {
-            allowed = false;
-            break;
-          }
+        if (env.get_program_var_id(ra) == dst_var_id) {
+          allowed = false;
+          break;
         }
       }
       // success!
@@ -4105,7 +4104,6 @@ LetStats insert_lets(const Function& func,
         li.start_elt = info.start_idx;
         li.end_elt = info.end_idx;
         li.set_form = first_form_as_set;
-        li.name = info.var_name;
         possible_insertions[li.form].push_back(li);
         stats.vars_in_lets++;
       }
@@ -4180,7 +4178,7 @@ LetStats insert_lets(const Function& func,
       auto casted_src = insert_cast_for_let(let_desc.set_form->dst(), let_desc.set_form->src_type(),
                                             let_desc.set_form->src(), pool, env);
       new_let->add_def(let_desc.set_form->dst(), casted_src);
-      env.set_defined_in_let(let_desc.name);
+      env.set_defined_in_let(let_desc.set_form->dst());
       lets.at(let_idx) = new_let;
     }
 
@@ -4252,12 +4250,12 @@ LetStats insert_lets(const Function& func,
           if (!as_let->is_star()) {
             RegAccessSet used;
             e.src->collect_vars(used, true);
-            std::unordered_set<std::string> used_by_name;
+            std::unordered_set<RegId, RegId::hash> used_vars;
             for (auto used_var : used) {
-              used_by_name.insert(env.get_variable_name(used_var));
+              used_vars.insert(env.get_program_var_id(used_var));
             }
             for (auto& old_entry : as_let->entries()) {
-              if (used_by_name.find(env.get_variable_name(old_entry.dest)) != used_by_name.end()) {
+              if (used_vars.find(env.get_program_var_id(old_entry.dest)) != used_vars.end()) {
                 as_let->make_let_star();
                 break;
               }
