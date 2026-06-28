@@ -28360,7 +28360,7 @@
 
 (define-extern *net-aux-msg-handlers* (pointer uint32))
 (define-extern *net-mgr-startup-status* symbol)
-(define-extern *net-mgr* symbol)
+(define-extern *net-mgr* net-mgr)
 (define-extern *net-error* int)
 (define-extern *medius-world-status* int)
 (define-extern *dme-initted* symbol)
@@ -45546,7 +45546,7 @@
 ;; (define-extern net-world-init-remote function)
 (define-extern *msg-map-net-world* (array symbol))
 (define-extern *net-process-class-info-net-world* net-process-class-info)
-;; (define-extern *net-world* object)
+(define-extern *net-world* net-world)
 ;; (define-extern *net-player-names* object)
 (define-extern *prebuilt-ai-vehicles* (array prebuilt-ai-vehicle))
 (define-extern *net-vehicles* (array net-vehicle))
@@ -45564,7 +45564,6 @@
 ;; net-logging-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype net-log-event-header (structure)
   ((length uint16  :offset-assert 0)
    (type   uint8   :offset-assert 2)
@@ -45576,16 +45575,14 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-;; (define-extern *net-log-tmp-header* object)
-;; (define-extern *comment-string* object)
+(define-extern *net-log-tmp-header* net-log-event-header)
+(define-extern *comment-string* string)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-powerup-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype net-powerup-motion-info (basic)
   ((motion-hook     basic          :offset-assert 4)
    (flight-end-time int32          :offset-assert 8)
@@ -45602,9 +45599,7 @@
     (net-powerup-motion-info-method-12 () none) ;; 12
     )
   )
-|#
 
-#|
 (deftype net-powerup-spawn-params (structure)
   ((tp            basic          :offset-assert 0)
    (pos           vector :inline :offset-assert 16)
@@ -45616,9 +45611,7 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype net-powerup (process-nettable)
   ((child-proc          uint64         :offset-assert 192)
    (die-or-respawn-time int32          :offset-assert 200)
@@ -45649,9 +45642,7 @@
     (net-powerup-method-55 () none) ;; 55
     )
   )
-|#
 
-#|
 (deftype powerup-draw (process-drawable)
   ((parent-proc uint64  :offset-assert 248)
    (glow-sound  basic   :offset-assert 256)
@@ -45670,14 +45661,13 @@
     (powerup-draw-method-56 () none) ;; 56
     )
   )
-|#
 
-;; (define-extern *powerup-static-hash* object)
-;; (define-extern *powerup-dynamic-hash* object)
-;; (define-extern net-powerup-init-remote function)
-;; (define-extern *msg-map-net-powerup* array)
-;; (define-extern *net-process-class-info-net-powerup* net-process-class-info)
-;; (define-extern powerup-draw-init-by-other function)
+(define-extern *powerup-static-hash* spatial-hash)
+(define-extern *powerup-dynamic-hash* spatial-hash)
+(define-extern net-powerup-init-remote (function process none :behavior net-powerup))
+(define-extern *msg-map-net-powerup* (array symbol))
+(define-extern *net-process-class-info-net-powerup* net-process-class-info)
+(define-extern powerup-draw-init-by-other (function vector vector object none :behavior powerup-draw))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-game-mgr-h                 ;;
@@ -46511,7 +46501,6 @@
 ;; net-projectile-h               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype net-projectile (projectile)
   ()
   :method-count-assert 75
@@ -46523,12 +46512,11 @@
     (net-projectile-method-74 () none) ;; 74
     )
   )
-|#
 
-;; (define-extern net-projectile-init-remote function)
-;; (define-extern *msg-map-net-projectile* array)
-;; (define-extern *net-process-class-info-net-projectile* net-process-class-info)
-;; (define-extern spawn-net-projectile function)
+(define-extern net-projectile-init-remote (function process none :behavior net-projectile))
+(define-extern *msg-map-net-projectile* (array symbol))
+(define-extern *net-process-class-info-net-projectile* net-process-class-info)
+(define-extern spawn-net-projectile (function type projectile-init-by-other-params process-tree dead-pool (pointer process)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-time-trial-h               ;;
@@ -46592,7 +46580,6 @@
 ;; net-eco-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype eco-perm (structure)
   ((time         int32   :offset-assert 0)
    (owner        int8    :offset-assert 4)
@@ -46603,9 +46590,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype eco (process-drawable)
   ()
   :method-count-assert 56
@@ -46620,9 +46605,7 @@
     (eco-method-55 () none) ;; 55
     )
   )
-|#
 
-#|
 (deftype eco-mgr (process-nettable)
   ()
   :method-count-assert 51
@@ -46640,56 +46623,48 @@
     (eco-mgr-method-50 () none) ;; 50
     )
   )
-|#
 
-;; (define-extern eco-mgr-init-remote function)
-;; (define-extern *msg-map-eco-mgr* array)
-;; (define-extern *net-process-class-info-eco-mgr* net-process-class-info)
+(define-extern eco-mgr-init-remote (function process none :behavior eco-mgr))
+(define-extern *msg-map-eco-mgr* (array symbol))
+(define-extern *net-process-class-info-eco-mgr* net-process-class-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; menu2-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype menu-string (hud-string)
-  ()
+  ((pad int32))
   :method-count-assert 10
   :size-assert         #x44
   :flag-assert         #xa00000044
   )
-|#
 
-#|
 (deftype menu-option-info (structure)
   ((display-name-id uint32  :offset-assert 0)
    (sym             basic   :offset-assert 4)
    (extra           basic   :offset-assert 8)
-   (extra-object    basic   :offset-assert 8)
-   (extra-int       int32   :offset-assert 8)
+   (extra-object    basic   :offset 8)
+   (extra-int       int32   :offset 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   ;; field extra uses ~A with a signed load. field extra-object uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype strings-extra-struct (structure)
-  ((text         UNKNOWN 128 :offset-assert 0)
+  ((text         uint8 128 :offset-assert 0)
    (extra        basic       :offset-assert 128)
-   (extra-object basic       :offset-assert 128)
-   (extra-int    int32       :offset-assert 128)
-   (extra-int16  UNKNOWN 2   :offset-assert 128)
+   (extra-object basic       :offset 128)
+   (extra-int    int32       :offset 128)
+   (extra-int16  int16 2   :offset 128)
    )
   :method-count-assert 9
   :size-assert         #x84
   :flag-assert         #x900000084
   ;; field extra uses ~A with a signed load. field extra-object uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype menu-selection-struct (structure)
   ((array-ptr       basic  :offset-assert 0)
    (selection-index int32  :offset-assert 4)
@@ -46699,9 +46674,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype animation-info (structure)
   ((enter-anim   int32          :offset-assert 0)
    (exit-anim    int32          :offset-assert 4)
@@ -46709,18 +46682,16 @@
    (anim-speed   float          :offset-assert 12)
    (enter-delay  uint32         :offset-assert 16)
    (3d-offset    vector :inline :offset-assert 32)
-   (3d-offset-x  float          :offset-assert 32)
-   (3d-offset-y  float          :offset-assert 36)
-   (3d-offset-z  float          :offset-assert 40)
-   (3d-offset-w  float          :offset-assert 44)
+   (3d-offset-x  float          :offset 32)
+   (3d-offset-y  float          :offset 36)
+   (3d-offset-z  float          :offset 40)
+   (3d-offset-w  float          :offset 44)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype base-menu-info (structure)
   ((menu-type     basic           :offset-assert 0)
    (children      basic           :offset-assert 4)
@@ -46743,9 +46714,7 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype base-menu (process-drawable)
   ((child-handles     basic                       :offset-assert 248)
    (info-ptr          base-menu-info              :offset-assert 252)
@@ -46787,18 +46756,14 @@
     (base-menu-method-64 () none) ;; 64
     )
   )
-|#
 
-#|
 (deftype jakx-logo-menu (base-menu)
   ()
   :method-count-assert 65
   :size-assert         #x218
   :flag-assert         #x4101900218
   )
-|#
 
-#|
 (deftype map-menu (base-menu)
   ()
   :method-count-assert 66
@@ -46808,9 +46773,7 @@
     (map-menu-method-65 () none) ;; 65
     )
   )
-|#
 
-#|
 (deftype selection-menu-manager (base-menu)
   ((selection-index      int32  :offset-assert 536)
    (prev-selection-index int32  :offset-assert 540)
@@ -46824,15 +46787,13 @@
     (selection-menu-manager-method-66 () none) ;; 66
     )
   )
-|#
 
-#|
 (deftype sprite-info (structure)
   ((offset            vector :inline :offset-assert 0)
-   (offset-x          float          :offset-assert 0)
-   (offset-y          float          :offset-assert 4)
-   (offset-z          float          :offset-assert 8)
-   (offset-w          float          :offset-assert 12)
+   (offset-x          float          :offset 0)
+   (offset-y          float          :offset 4)
+   (offset-z          float          :offset 8)
+   (offset-w          float          :offset 12)
    (pos-z             int32          :offset-assert 16)
    (tex-name          basic          :offset-assert 20)
    (tex-id            uint32         :offset-assert 24)
@@ -46847,9 +46808,7 @@
   :size-assert         #x29
   :flag-assert         #x900000029
   )
-|#
 
-#|
 (deftype transition-info (animation-info)
   ((enter-pos-x     float  :offset-assert 48)
    (enter-pos-y     float  :offset-assert 52)
@@ -46865,15 +46824,14 @@
    (scroll-offset-y int32  :offset-assert 92)
    (scroll-rate     float  :offset-assert 96)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-#|
 (deftype sprite-menu-info (base-menu-info)
-  ((trans-info   transition-info  :offset-assert 16)
+  ((trans-info   transition-info   :override)
    (sprites-info basic            :offset-assert 52)
    (color        uint32           :offset-assert 56)
    )
@@ -46881,21 +46839,15 @@
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
 (deftype hud-sprite-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
+  ((data             hud-sprite :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype sprite-menu (base-menu)
   ((sprites basic  :offset-assert 536)
    (alpha   float  :offset-assert 540)
@@ -46907,9 +46859,7 @@
     (sprite-menu-method-65 () none) ;; 65
     )
   )
-|#
 
-#|
 (deftype menu-prim-strip-client (prim-client)
   ((strip basic  :offset-assert 4)
    )
@@ -46920,9 +46870,7 @@
     (menu-prim-strip-client-method-10 () none) ;; 10
     )
   )
-|#
 
-#|
 (deftype prim-strip-menu (sprite-menu)
   ((p-client-array basic  :offset-assert 544)
    (colors         basic  :offset-assert 548)
@@ -46934,9 +46882,7 @@
     (prim-strip-menu-method-66 () none) ;; 66
     )
   )
-|#
 
-#|
 (deftype sprite-ptr-info (sprite-info)
   ((sprite-ptr basic  :offset-assert 44)
    )
@@ -46944,29 +46890,24 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype sprite-ptr-menu-info (sprite-menu-info)
   ()
   :method-count-assert 9
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
 (deftype sprite-ptr-menu (prim-strip-menu)
   ()
   :method-count-assert 67
   :size-assert         #x228
   :flag-assert         #x4301a00228
   )
-|#
 
-#|
 (deftype index-sprite-list-menu-info (sprite-menu-info)
-  ((index-list  basic  :offset-assert 68)
+  ((pad1 uint32 2)
+   (index-list  basic  :offset-assert 68)
    (horiz-list? basic  :offset-assert 72)
    (item-offset int32  :offset-assert 76)
    (color-array basic  :offset-assert 80)
@@ -46975,9 +46916,7 @@
   :size-assert         #x54
   :flag-assert         #x900000054
   )
-|#
 
-#|
 (deftype index-sprite-list-menu (prim-strip-menu)
   ((index-list basic  :offset-assert 552)
    )
@@ -46985,15 +46924,13 @@
   :size-assert         #x22c
   :flag-assert         #x4301a0022c
   )
-|#
 
-#|
 (deftype string-info (structure)
   ((offset                  vector :inline :offset-assert 0)
-   (offset-x                float          :offset-assert 0)
-   (offset-y                float          :offset-assert 4)
-   (offset-z                float          :offset-assert 8)
-   (offset-w                float          :offset-assert 12)
+   (offset-x                float          :offset 0)
+   (offset-y                float          :offset 4)
+   (offset-z                float          :offset 8)
+   (offset-w                float          :offset 12)
    (pos-z                   int32          :offset-assert 16)
    (id                      uint32         :offset-assert 20)
    (font-scale              float          :offset-assert 24)
@@ -47016,21 +46953,15 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype menu-string-array (inline-array-class)
-  ((length           int32            :offset-assert 4)
-   (allocated-length int32            :offset-assert 8)
-   (data             UNKNOWN :dynamic :offset-assert 16)
+  ((data             menu-string :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype string-menu-info (sprite-menu-info)
   ((strings-info basic  :offset-assert 60)
    (text-ids     basic  :offset-assert 64)
@@ -47039,9 +46970,7 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype string-menu (prim-strip-menu)
   ((strings  basic  :offset-assert 552)
    (text-ids basic  :offset-assert 556)
@@ -47054,18 +46983,14 @@
     (string-menu-method-68 () none) ;; 68
     )
   )
-|#
 
-#|
 (deftype options-bar-indicator (string-menu)
   ()
   :method-count-assert 69
   :size-assert         #x230
   :flag-assert         #x4501a00230
   )
-|#
 
-#|
 (deftype game-text-menu-info (string-menu-info)
   ((text-id uint32  :offset-assert 68)
    )
@@ -47073,9 +46998,7 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype game-text-menu (string-menu)
   ((text-id uint32  :offset-assert 560)
    )
@@ -47083,27 +47006,21 @@
   :size-assert         #x234
   :flag-assert         #x4501b00234
   )
-|#
 
-#|
 (deftype dynamic-string-menu (string-menu)
   ()
   :method-count-assert 69
   :size-assert         #x230
   :flag-assert         #x4501a00230
   )
-|#
 
-#|
 (deftype dynamic-driver-info (dynamic-string-menu)
   ()
   :method-count-assert 69
   :size-assert         #x230
   :flag-assert         #x4501a00230
   )
-|#
 
-#|
 (deftype dropdown-trans-info (transition-info)
   ((selected-offset vector  :offset-assert 100)
    )
@@ -47111,20 +47028,18 @@
   :size-assert         #x68
   :flag-assert         #x900000068
   )
-|#
 
-#|
 (deftype dropdown-item-info (string-menu-info)
-  ((trans-info                  dropdown-trans-info         :offset-assert 16)
+  ((trans-info                  dropdown-trans-info         :override)
    (selection-box-width         int32                       :offset-assert 68)
    (selection-box-height        int32                       :offset-assert 72)
    (selection-type              basic                       :offset-assert 76)
    (selection-extra             int32                       :offset-assert 80)
    (selection-box-offset        vector              :inline :offset-assert 96)
-   (selection-box-offset-x      float                       :offset-assert 96)
-   (selection-box-offset-y      float                       :offset-assert 100)
-   (selection-box-offset-z      float                       :offset-assert 104)
-   (selection-box-offset-w      float                       :offset-assert 108)
+   (selection-box-offset-x      float                       :offset 96)
+   (selection-box-offset-y      float                       :offset 100)
+   (selection-box-offset-z      float                       :offset 104)
+   (selection-box-offset-w      float                       :offset 108)
    (selection-box-color         uint32                      :offset-assert 112)
    (down-index-modifier         int8                        :offset-assert 116)
    (up-index-modifier           int8                        :offset-assert 117)
@@ -47137,9 +47052,7 @@
   :size-assert         #x7a
   :flag-assert         #x90000007a
   )
-|#
 
-#|
 (deftype dropdown-item (string-menu)
   ((selected           basic          :offset-assert 560)
    (p-client-selection basic          :offset-assert 564)
@@ -47154,9 +47067,7 @@
     (dropdown-item-method-69 () none) ;; 69
     )
   )
-|#
 
-#|
 (deftype item-list-selection-info (dropdown-item-info)
   ((menu-options-info-sym basic   :offset-assert 124)
    (add-string            uint32  :offset-assert 128)
@@ -47165,9 +47076,7 @@
   :size-assert         #x84
   :flag-assert         #x900000084
   )
-|#
 
-#|
 (deftype item-list-selection (dropdown-item)
   ((menu-options-info-ptr menu-selection-struct  :offset-assert 592)
    (selection-type        basic                  :offset-assert 596)
@@ -47177,27 +47086,21 @@
   :size-assert         #x25c
   :flag-assert         #x4601d0025c
   )
-|#
 
-#|
 (deftype item-list-driver-selection (item-list-selection)
   ()
   :method-count-assert 70
   :size-assert         #x25c
   :flag-assert         #x4601d0025c
   )
-|#
 
-#|
 (deftype item-num-selection-info (item-list-selection-info)
-  ()
+  ((pad1 uint32))
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
   )
-|#
 
-#|
 (deftype menu-num-info (structure)
   ((min         int32  :offset-assert 0)
    (max         int32  :offset-assert 4)
@@ -47208,9 +47111,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype item-num-selection (item-list-selection)
   ((num-selection int32   :offset-assert 604)
    (sound-id      uint32  :offset-assert 608)
@@ -47219,18 +47120,14 @@
   :size-assert         #x264
   :flag-assert         #x4601e00264
   )
-|#
 
-#|
 (deftype item-num-max-selection (item-num-selection)
-  ()
+  ((pad1 uint32))
   :method-count-assert 70
   :size-assert         #x268
   :flag-assert         #x4601e00268
   )
-|#
 
-#|
 (deftype games-list-selection (string-menu)
   ((selection-index int8  :offset-assert 560)
    )
@@ -47238,18 +47135,14 @@
   :size-assert         #x231
   :flag-assert         #x4501b00231
   )
-|#
 
-#|
 (deftype player-ct-string-menu (string-menu)
   ()
   :method-count-assert 69
   :size-assert         #x230
   :flag-assert         #x4501a00230
   )
-|#
 
-#|
 (deftype string-list-selection (dropdown-item)
   ((selection-index int8  :offset-assert 592)
    )
@@ -47257,9 +47150,7 @@
   :size-assert         #x251
   :flag-assert         #x4601d00251
   )
-|#
 
-#|
 (deftype basic-list-selection-info (string-menu-info)
   ((menu-options-info-sym basic  :offset-assert 68)
    )
@@ -47267,9 +47158,7 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype basic-list-selection (string-menu)
   ((menu-options-info-ptr basic  :offset-assert 560)
    (selection-index       int8   :offset-assert 564)
@@ -47278,9 +47167,7 @@
   :size-assert         #x235
   :flag-assert         #x4501b00235
   )
-|#
 
-#|
 (deftype big-text-menu-info (sprite-menu-info)
   ((string-info string-info  :offset-assert 60)
    (text        basic        :offset-assert 64)
@@ -47291,9 +47178,7 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype big-text-menu (sprite-menu)
   ((big-text    basic  :offset-assert 544)
    (vert-offset float  :offset-assert 548)
@@ -47307,9 +47192,8 @@
     (big-text-menu-method-66 () none) ;; 66
     )
   )
-|#
 
-;; (define-extern *jakx-logo-seen?* object)
+(define-extern *jakx-logo-seen?* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; menu2-lists                    ;;
@@ -49292,7 +49176,7 @@
 ;; net-projectile                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern net-projectile-init-by-other function)
+(define-extern net-projectile-init-by-other (function process none :behavior net-projectile))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; udp-layer                      ;;
@@ -56028,8 +55912,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern birth-func-set-pos-vel (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
-;; (define-extern birth-func-adopt-velocity-vehicle function)
-;; (define-extern sparticle-adopt-accel-vehicle function)
+(define-extern birth-func-adopt-velocity-vehicle (function sparticle-system sparticle-cpuinfo object object object none))
+(define-extern sparticle-adopt-accel-vehicle (function sparticle-system sparticle-cpuinfo vector))
 (define-extern *range-carexplo-dust-color* curve-color-fast)
 (define-extern *range-carexplo-dust-alpha* curve2d-fast)
 (define-extern *range-carexplo-dust-scale-x* curve2d-fast)
