@@ -400,6 +400,10 @@ namespace method_21_cloth_system { extern void link(); }
 namespace jakx {
 namespace live_func_curve { extern void link(); }
 namespace birth_func_curve { extern void link(); }
+namespace light_hash_get_bucket_index { extern void link(); }
+namespace add_light_sphere_to_light_group { extern void link(); }
+namespace light_hash_count_items { extern void link(); }
+namespace light_hash_add_items { extern void link(); }
 }
 // clang-format on
 
@@ -664,6 +668,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"cloth", {jak3::method_21_cloth_system::link}}},
     /////////// JAK X
     {
+        {"lights",
+         {jak3::light_hash_get_bucket_index::link, jak3::add_light_sphere_to_light_group::link,
+          jak3::light_hash_count_items::link, jak3::light_hash_add_items::link}},
         {"particle-curves", {jak3::live_func_curve::link, jak3::birth_func_curve::link}},
     }};
 

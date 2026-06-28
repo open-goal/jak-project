@@ -5372,30 +5372,59 @@
   :flag-assert #x900000008
   )
 
-;; (deftype gs-rgbaq (uint64)
-;;   ()
-;;   :flag-assert #x900000008
-;;   )
+(deftype gs-rgbaq (uint64)
+  "The GS's RGBAQ register sets the RGBA value of the vertex and the Q value of the normalized
+   texture coordinates."
+  ((r  uint8 :offset 0  :size 8)
+   (g  uint8 :offset 8  :size 8)
+   (b  uint8 :offset 16 :size 8)
+   (a  uint8 :offset 24 :size 8) ;; 0x80 --> 1.0
+   (q  float :offset 32 :size 32) ;; affects some LOD behavior apparently?
+   )
+  :flag-assert #x900000008
+  )
 
-;; (deftype gs-xyz (uint64)
-;;   ()
-;;   :flag-assert #x900000008
-;;   )
+(deftype gs-xyz (uint64)
+  ((x  uint16 :offset 0  :size 16) ;; Q4 fixed point
+   (y  uint16 :offset 16 :size 16) ;; Q4 fixed point
+   (z  uint32 :offset 32 :size 32)
+   )
+  :flag-assert #x900000008
+  )
 
-;; (deftype gs-uv (uint64)
-;;   ()
-;;   :flag-assert #x900000008
-;;   )
+(deftype gs-uv (uint64)
+  "The GS's UV register specifies the texel coordinate (UV) values of the vertex."
+  ((u  uint16 :offset 0  :size 16) ;; Q4 fixed point
+   (v  uint16 :offset 16 :size 16) ;; Q4 fixed point
+   )
+  :flag-assert #x900000008
+  )
 
-;; (deftype gs-st (uint64)
-;;   ()
-;;   :flag-assert #x900000008
-;;   )
+(deftype gs-uv2 (uint64)
+  "Hack - added for warp."
+  ((u  int16 :offset 0  :size 16) ;; Q4 fixed point
+   (v  int16 :offset 16 :size 16) ;; Q4 fixed point
+   )
+  :flag-assert #x900000008
+  )
 
-;; (deftype gs-xyzf (uint64)
-;;   ()
-;;   :flag-assert #x900000008
-;;   )
+(deftype gs-st (uint64)
+  "The GS's ST register sets the S and T values of the vertex texture coordinates.
+   The value Q is specified by the RGBAQ register."
+  ((s  float :offset 0  :size 32)
+   (t  float :offset 32 :size 32)
+   )
+  :flag-assert #x900000008
+  )
+
+(deftype gs-xyzf (uint64)
+  ((x  uint16 :offset 0  :size 16) ;; Q4 fixed point
+   (y  uint16 :offset 16 :size 16) ;; Q4 fixed point
+   (z  uint32 :offset 32 :size 24)
+   (f  uint8  :offset 56 :size 8) ;; fog coeff
+   )
+  :flag-assert #x900000008
+  )
 
 (deftype gs-adcmd (structure)
   ((word uint32 4  :offset-assert 0 :score -10)
@@ -16676,15 +16705,15 @@
 (define-extern get-real-current-time (function time-frame))
 (define-extern set-display "Allocate and initialize clocks for the display." (function display display))
 (define-extern allocate-dma-buffers "Allocate the main, debug, and calc dma buffers." (function display display))
-;; (define-extern draw-sprite2d-xy function) ;; (function dma-buffer int int int int rgba int none)
-;; (define-extern draw-sprite2d-xy-absolute function) ;; (function dma-buffer int int int int rgba int none)
-;; (define-extern draw-quad2d function) ;; (function dma-buffer draw-context none)
-;; (define-extern screen-gradient function) ;; (function dma-buffer rgba rgba rgba rgba none)
-;; (define-extern vif1-handler-debug function) ;; (function int none)
-;; (define-extern vif1-handler function) ;; (function none)
-;; (define-extern vblank-handler function) ;; (function int)
-;; (define-extern set-display-gs-state function) ;; (function dma-buffer int int int int int dma-buffer)
-;; (define-extern set-display-gs-state-offset function) ;; (function dma-buffer int int int int int int int dma-buffer)
+(define-extern draw-sprite2d-xy (function dma-buffer int int int int rgba int none)) ;; 
+(define-extern draw-sprite2d-xy-absolute (function dma-buffer int int int int rgba int none)) ;; 
+(define-extern draw-quad2d (function dma-buffer draw-context none)) ;; 
+(define-extern screen-gradient (function dma-buffer rgba rgba rgba rgba none)) ;; 
+(define-extern vif1-handler-debug (function int none)) ;; 
+(define-extern vif1-handler (function none)) ;; 
+(define-extern vblank-handler (function int)) ;; 
+(define-extern set-display-gs-state (function dma-buffer int int int int int dma-buffer)) ;; 
+(define-extern set-display-gs-state-offset (function dma-buffer int int int int int int int dma-buffer)) ;; 
 (define-extern reset-display-gs-state (function display dma-buffer display)) ;; 
 (define-extern *vu0-dma-list* dma-buffer) ;; 
 (define-extern *display* display) 
@@ -22719,6 +22748,7 @@
   ((character-encoding-type int32  :offset-assert 0)
    (language-type           int32  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -22738,6 +22768,7 @@
   ((n-version  uint32     :offset-assert 0)
    (sz-version int8 16 :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
@@ -22770,10 +22801,69 @@
   ;; field connection-handle uses ~A with a signed load.
   )
 
+;; +++scert-3-h:net-error
+(defenum net-error
+  :type int32
+  (net-error-none 0)
+  (net-error-not-connected 1)
+  (net-error-connection-lost 2)
+  (net-error-connection-failed 3)
+  (net-error-client-rejected 4)
+  (net-error-disconnect-failed 5)
+  (net-error-new-client 6)
+  (net-error-bad-session-master 7)
+  (net-error-bad-index 8)
+  (net-error-bad-data-stream-channel 9)
+  (net-error-bad-pointer 10)
+  (net-error-object-not-shared 11)
+  (net-error-bad-packet-received 12)
+  (net-error-send-failed 13)
+  (net-error-timed-out 14)
+  (net-error-bad-connection-index 15)
+  (net-error-bad-mode 16)
+  (net-error-dme-not-initialized 17)
+  (net-error-init-failed 18)
+  (net-error-no-free-object 19)
+  (net-error-open-data-stream-failed 20)
+  (net-error-client-not-valid 21)
+  (net-error-memory 22)
+  (net-error-invalid-arg 23)
+  (net-error-msg-error 24)
+  (net-error-too-many-pending-events 25)
+  (net-error-udpnot-enabled 26)
+  (net-error-update 27)
+  (net-error-game-is-full 28)
+  (net-error-host-game-failed 29)
+  (net-error-unknown 30)
+  (net-error-msg-too-large 31)
+  (net-error-security 32)
+  (net-error-not-implemented 33)
+  (net-error-bad-server-version 34)
+  (net-error-comm-error 35)
+  (net-error-buffer-error 36)
+  (net-error-udperror 37)
+  (net-error-set-defaults-not-called 38)
+  (net-error-sizeof-param-mismatch 39)
+  (net-error-deprecated 40)
+  (net-error-stream-media 41)
+  (net-error-stream-media-comm 42)
+  (net-error-mutex 43)
+  (net-error-server-error 44)
+  (net-error-hostname-error 45)
+  (net-error-lookup-error 46)
+  (net-error-timebase-error 47)
+  (net-error-token-not-enabled 48)
+  (net-error-token-error 49)
+  (net-error-bad-port 50)
+  (net-error-bad-connectivity-type 51)
+  (extra-net-error-code #xffffff)
+  )
+;; ---scert-3-h:net-error
+
 (deftype net-update-conn-errors (structure)
   ((sizeof-net-update-errors uint32    :offset-assert 0)
    (a-errors                 net-update-error 4 :inline :offset-assert 4)
-   (udperror                 int32     :offset-assert 36)
+   (udperror                 net-error     :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
@@ -22784,6 +22874,7 @@
   ((n-size int32  :offset-assert 0)
    (p-data basic  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -22973,6 +23064,7 @@
    (p-token-ownership-notify-callback-data basic  :offset-assert 4)
    (b-use-token                            int32  :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -23027,6 +23119,7 @@
    (n-bits-per-sample-out int32  :offset-assert 16)
    (n-sample-rate-out     int32  :offset-assert 20)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
@@ -23141,6 +23234,7 @@
    (pf-custom-video-play-callback       basic                                  :offset-assert 104)
    (p-custom-video-play-callback-data   basic                                  :offset-assert 108)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
@@ -23181,60 +23275,57 @@
   :flag-assert         #x90000009a
   )
 
-;; (deftype net-connect-in-params (structure)
-;;   ((b-default-set                            int32                           :offset-assert 0)
-;;    (max-clients                              int32                           :offset-assert 4)
-;;    (connection-info                          net-connection-info     :inline :offset-assert 8)
-;;    (pf-local-connect-callback                basic                           :offset-assert 164)
-;;    (p-local-connect-callback-data            basic                           :offset-assert 168)
-;;    (pf-local-disconnect-callback             basic                           :offset-assert 172)
-;;    (p-local-disconnect-callback-data         basic                           :offset-assert 176)
-;;    (pf-remote-client-connect-callback        basic                           :offset-assert 180)
-;;    (p-remote-client-connect-callback-data    basic                           :offset-assert 184)
-;;    (pf-remote-client-disconnect-callback     basic                           :offset-assert 188)
-;;    (p-remote-client-disconnect-callback-data basic                           :offset-assert 192)
-;;    (pf-peer-to-peer-host-change-callback     basic                           :offset-assert 196)
-;;    (p-host-change-callback-data              basic                           :offset-assert 200)
-;;    (pf-system-status-callback                basic                           :offset-assert 204)
-;;    (p-system-status-callback-data            basic                           :offset-assert 208)
-;;    (stream-media-params                      net-stream-media-params  :inline :offset-assert 212)
-;;    (user-specified                           int32                           :offset-assert 324)
-;;    (aux-udpbind-port                         int32                           :offset-assert 328)
-;;    (token-params                             net-token-params        :inline :offset-assert 332)
-;;    (b-use-time-base                          int32                           :offset-assert 344)
-;;    (send-buffer-size                         uint32                          :offset-assert 348)
-;;    (recv-buffer-size                         uint32                          :offset-assert 352)
-;;    )
-;;   :method-count-assert 9
-;;   :size-assert         #x164
-;;   :flag-assert         #x900000164
-;;   ;; field p-local-connect-callback-data uses ~A with a signed load. field p-local-disconnect-callback-data uses ~A with a signed load. field p-remote-client-connect-callback-data uses ~A with a signed load. field p-remote-client-disconnect-callback-data uses ~A with a signed load. field p-host-change-callback-data uses ~A with a signed load. field p-system-status-callback-data uses ~A with a signed load.
-;;   )
+(deftype net-connect-in-params (structure)
+  ((b-default-set                            int32                           :offset-assert 0)
+   (max-clients                              int32                           :offset-assert 4)
+   (connection-info                          net-connection-info     :inline :offset-assert 8)
+   (pf-local-connect-callback                basic                           :offset-assert 164)
+   (p-local-connect-callback-data            basic                           :offset-assert 168)
+   (pf-local-disconnect-callback             basic                           :offset-assert 172)
+   (p-local-disconnect-callback-data         basic                           :offset-assert 176)
+   (pf-remote-client-connect-callback        basic                           :offset-assert 180)
+   (p-remote-client-connect-callback-data    basic                           :offset-assert 184)
+   (pf-remote-client-disconnect-callback     basic                           :offset-assert 188)
+   (p-remote-client-disconnect-callback-data basic                           :offset-assert 192)
+   (pf-peer-to-peer-host-change-callback     basic                           :offset-assert 196)
+   (p-host-change-callback-data              basic                           :offset-assert 200)
+   (pf-system-status-callback                basic                           :offset-assert 204)
+   (p-system-status-callback-data            basic                           :offset-assert 208)
+   (stream-media-params                      net-stream-media-params  :inline :offset-assert 212)
+   (user-specified                           int32                           :offset-assert 324)
+   (aux-udpbind-port                         int32                           :offset-assert 328)
+   (token-params                             net-token-params        :inline :offset-assert 332)
+   (b-use-time-base                          int32                           :offset-assert 344)
+   (send-buffer-size                         uint32                          :offset-assert 348)
+   (recv-buffer-size                         uint32                          :offset-assert 352)
+   )
+  :method-count-assert 9
+  :size-assert         #x164
+  :flag-assert         #x900000164
+  ;; field p-local-connect-callback-data uses ~A with a signed load. field p-local-disconnect-callback-data uses ~A with a signed load. field p-remote-client-connect-callback-data uses ~A with a signed load. field p-remote-client-disconnect-callback-data uses ~A with a signed load. field p-host-change-callback-data uses ~A with a signed load. field p-system-status-callback-data uses ~A with a signed load.
+  )
 
-#|
 (deftype net-bit-mask (structure)
-  ((bitmask UNKNOWN 8 :offset-assert 0)
+  ((bitmask uint32 8 :offset-assert 0)
    (base-id int32     :offset-assert 32)
    (max-id  int32     :offset-assert 36)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype net-client-list (structure)
   ((target-client int32                :offset-assert 0)
    (client-mask   net-bit-mask :inline :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype net-send-message-in-params (structure)
   ((connection-handle basic                   :offset-assert 0)
    (transport-flags   int8                    :offset-assert 4)
@@ -23248,9 +23339,7 @@
   :flag-assert         #x900000040
   ;; field connection-handle uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-send-message-out-params (structure)
   ((error-code    int32                   :offset-assert 0)
    (queued-client net-client-list :inline :offset-assert 4)
@@ -23259,9 +23348,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype net-disconnect-params (structure)
   ((connection-handle            basic  :offset-assert 0)
    (reason                       int32  :offset-assert 4)
@@ -23273,21 +23360,18 @@
   :flag-assert         #x900000010
   ;; field connection-handle uses ~A with a signed load. field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-latency-metrics-info (structure)
   ((latency-min uint32  :offset-assert 0)
    (latency-max uint32  :offset-assert 4)
    (latency-avg uint32  :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype net-latency-metrics-data-args (structure)
   ((connection-handle    basic                            :offset-assert 0)
    (target-client-index  int32                            :offset-assert 4)
@@ -23300,14 +23384,12 @@
   :flag-assert         #x90000001c
   ;; field connection-handle uses ~A with a signed load. field p-user-data uses ~A with a signed load.
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-4-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype net-latency-metrics-params (structure)
   ((connection-handle           basic                   :offset-assert 0)
    (target-client-list          net-client-list :inline :offset-assert 4)
@@ -23319,9 +23401,7 @@
   :flag-assert         #x900000038
   ;; field connection-handle uses ~A with a signed load. field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-error-threshold-callback-data (structure)
   ((object-index       int32  :offset-assert 0)
    (field-index        int32  :offset-assert 4)
@@ -23335,9 +23415,7 @@
   :flag-assert         #x900000018
   ;; field p-current-data uses ~A with a signed load. field p-last-update-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-remote-client-event-data (structure)
   ((event-type        int32  :offset-assert 0)
    (connection-handle basic  :offset-assert 4)
@@ -23349,9 +23427,7 @@
   :flag-assert         #x900000010
   ;; field connection-handle uses ~A with a signed load. field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-object-filter-data (structure)
   ((client-list    net-client-list :inline :offset-assert 0)
    (object-index   int32                   :offset-assert 44)
@@ -23364,9 +23440,7 @@
   :flag-assert         #x900000060
   ;; field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-type-ownership-update-data (structure)
   ((connection-handle basic  :offset-assert 0)
    (client-index      int32  :offset-assert 4)
@@ -23379,9 +23453,7 @@
   :flag-assert         #x900000014
   ;; field connection-handle uses ~A with a signed load. field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-type-ownership-request-data (structure)
   ((connection-handle basic  :offset-assert 0)
    (client-index      int32  :offset-assert 4)
@@ -23393,9 +23465,7 @@
   :flag-assert         #x900000010
   ;; field connection-handle uses ~A with a signed load. field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-completion-data (structure)
   ((result      int32  :offset-assert 0)
    (p-user-data basic  :offset-assert 4)
@@ -23405,9 +23475,7 @@
   :flag-assert         #x900000008
   ;; field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-smchange-data (structure)
   ((connection-handle basic  :offset-assert 0)
    (smclient-index    int32  :offset-assert 4)
@@ -23418,13 +23486,11 @@
   :flag-assert         #x90000000c
   ;; field connection-handle uses ~A with a signed load. field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-join-in-params (structure)
   ((b-default-set                       int32      :offset-assert 0)
    (connection-handle                   basic      :offset-assert 4)
-   (sz-client-name                      UNKNOWN 12 :offset-assert 8)
+   (sz-client-name                      uint8   12 :offset-assert 8)
    (net-object-count                    int32      :offset-assert 20)
    (data-stream-count                   int32      :offset-assert 24)
    (session-master-status               int32      :offset-assert 28)
@@ -23444,9 +23510,7 @@
   :flag-assert         #x900000048
   ;; field connection-handle uses ~A with a signed load. field p-join-callback-data uses ~A with a signed load. field p-remote-client-event-callback-data uses ~A with a signed load. field p-smchange-callback-data uses ~A with a signed load. field p-ownership-update-callback-data uses ~A with a signed load. field p-ownership-request-callback-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-join-out-params (structure)
   ((b-is-set   int32  :offset-assert 0)
    (error-code int32  :offset-assert 4)
@@ -23455,20 +23519,17 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype anonymous-0 (structure)
   ((error-threshold-magnitude float  :offset-assert 0)
-   (pf-threshold-callback     basic  :offset-assert 0)
+   (pf-threshold-callback     basic  :offset 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype net-type-client (structure)
   ((connect-time            uint32     :offset-assert 0)
    (client-object-index     uint32     :offset-assert 4)
@@ -23476,15 +23537,13 @@
    (net-object-buffer-count int32      :offset-assert 12)
    (net-data-stream-start   uint32     :offset-assert 16)
    (net-data-stream-count   uint32     :offset-assert 20)
-   (name                    UNKNOWN 12 :offset-assert 24)
+   (name                    uint8   12 :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype net-type-data-stream (structure)
   ((status              uint8   :offset-assert 0)
    (circular-buffer     uint8   :offset-assert 1)
@@ -23507,9 +23566,7 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype net-type-short-vector2 (structure)
   ((x int16  :offset-assert 0)
    (y int16  :offset-assert 2)
@@ -23518,9 +23575,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype net-type-short-vector3 (structure)
   ((x int16  :offset-assert 0)
    (y int16  :offset-assert 2)
@@ -23530,9 +23585,7 @@
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype net-type-int-vector2 (structure)
   ((x int32  :offset-assert 0)
    (y int32  :offset-assert 4)
@@ -23541,9 +23594,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype net-type-int-vector3 (structure)
   ((x int32  :offset-assert 0)
    (y int32  :offset-assert 4)
@@ -23553,9 +23604,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype net-type-float-vector2 (structure)
   ((x float  :offset-assert 0)
    (y float  :offset-assert 4)
@@ -23564,9 +23613,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype net-type-float-vector3 (structure)
   ((x float  :offset-assert 0)
    (y float  :offset-assert 4)
@@ -23576,9 +23623,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype net-type-object (structure)
   ((structure-index                  uint8      :offset-assert 0)
    (filter-type                      uint8      :offset-assert 1)
@@ -23586,7 +23631,7 @@
    (latency-critical                 uint8      :offset-assert 3)
    (owner-client-index               int32      :offset-assert 4)
    (creator-client-index             int32      :offset-assert 8)
-   (name                             UNKNOWN 16 :offset-assert 12)
+   (name                             uint8   16 :offset-assert 12)
    (current-object-data              uint32     :offset-assert 28)
    (last-global-object-data-update   uint32     :offset-assert 32)
    (hi-field-change-set              uint32     :offset-assert 36)
@@ -23603,9 +23648,7 @@
   :flag-assert         #x900000044
   ;; field local-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-register-object-filter-in-params (structure)
   ((object-filter-call-back basic  :offset-assert 0)
    (p-user-data             basic  :offset-assert 4)
@@ -23615,9 +23658,7 @@
   :flag-assert         #x900000008
   ;; field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-register-object-filter-out-params (structure)
   ((object-filter-type int32  :offset-assert 0)
    (error-code         int32  :offset-assert 4)
@@ -23626,9 +23667,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype net-lanfind-exchange-callback-out-args (structure)
   ((b-respond-to-sender int32            :offset-assert 0)
    (details             net-data :inline :offset-assert 4)
@@ -23637,9 +23676,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype net-lanfind-in-params (structure)
   ((b-default-set        int32            :offset-assert 0)
    (session-type         int32            :offset-assert 4)
@@ -23654,9 +23691,7 @@
   :flag-assert         #x900000020
   ;; field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-stream-media-channel-info (structure)
   ((connection-handle basic   :offset-assert 0)
    (channel-num       uint32  :offset-assert 4)
@@ -23667,9 +23702,7 @@
   :flag-assert         #x90000000c
   ;; field connection-handle uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-stream-media-client-info (structure)
   ((connection-handle   basic   :offset-assert 0)
    (client-index        int32   :offset-assert 4)
@@ -23681,9 +23714,7 @@
   :flag-assert         #x900000010
   ;; field connection-handle uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype net-stream-media-channel-state-data (structure)
   ((b-can-record int32  :offset-assert 0)
    )
@@ -23691,9 +23722,7 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype net-stream-media-ignore-data (structure)
   ((b-defaults-set    int32  :offset-assert 0)
    (connection-handle basic  :offset-assert 4)
@@ -23705,114 +23734,171 @@
   :flag-assert         #x900000010
   ;; field connection-handle uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype medius-player-online-state (structure)
   ((connect-status        int32      :offset-assert 0)
    (medius-lobby-world-id int32      :offset-assert 4)
    (medius-game-world-id  int32      :offset-assert 8)
-   (lobby-name            UNKNOWN 64 :offset-assert 12)
-   (game-name             UNKNOWN 64 :offset-assert 76)
+   (lobby-name            uint8 64 :offset-assert 12)
+   (game-name             uint8 64 :offset-assert 76)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8c
   :flag-assert         #x90000008c
   )
-|#
 
-#|
 (deftype medius-account-delete-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
-   (master-password UNKNOWN 32 :offset-assert 38)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
+   (master-password uint8 32 :offset-assert 38)
    )
   :method-count-assert 9
   :size-assert         #x46
   :flag-assert         #x900000046
   )
-|#
 
-#|
 (deftype medius-account-get-idrequest (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
-   (session-key  UNKNOWN 17 :offset-assert 21)
-   (account-name UNKNOWN 32 :offset-assert 38)
+  ((message-id   uint8 21 :offset-assert 0)
+   (session-key  uint8 17 :offset-assert 21)
+   (account-name uint8 32 :offset-assert 38)
    )
   :method-count-assert 9
   :size-assert         #x46
   :flag-assert         #x900000046
   )
-|#
 
-#|
+;; +++scert-4-h:medius-status-code
+(defenum medius-status-code
+  :type int32
+  (medius-begin-session-failed -1000)
+  (medius-account-already-exists -999)
+  (medius-account-not-found -998)
+  (medius-account-logged-in -997)
+  (medius-end-session-failed -996)
+  (medius-login-failed -995)
+  (medius-registration-failed -994)
+  (medius-incorrect-login-step -993)
+  (medius-already-leader-of-clan -992)
+  (medius-wmerror -991)
+  (medius-not-clan-leader -990)
+  (medius-player-not-privileged -989)
+  (medius-dberror -988)
+  (medius-dmeerror -987)
+  (medius-exceeds-max-worlds -986)
+  (medius-request-denied -985)
+  (medius-set-game-list-filter-failed -984)
+  (medius-clear-game-list-filter-failed -983)
+  (medius-get-game-list-filter-failed -982)
+  (medius-num-filters-at-max -981)
+  (medius-filter-not-found -980)
+  (medius-invalid-request-msg -979)
+  (medius-invalid-password -978)
+  (medius-game-not-found -977)
+  (medius-channel-not-found -976)
+  (medius-game-name-exists -975)
+  (medius-channel-name-exists -974)
+  (medius-game-name-not-found -973)
+  (medius-player-banned -972)
+  (medius-clan-not-found -971)
+  (medius-clan-name-in-use -970)
+  (medius-session-key-invalid -969)
+  (medius-text-string-invalid -968)
+  (medius-filter-failed -967)
+  (medius-fail -966)
+  (medius-file-internal-access-error -965)
+  (medius-file-no-permissions -964)
+  (medius-file-does-not-exist -963)
+  (medius-file-already-exists -962)
+  (medius-file-invalid-filename -961)
+  (medius-file-quota-exceeded -960)
+  (medius-cache-failure -959)
+  (medius-data-already-exists -958)
+  (medius-data-does-not-exist -957)
+  (medius-max-exceeded -956)
+  (medius-key-error -955)
+  (medius-incompatible-app-id -954)
+  (medius-account-banned -953)
+  (medius-machine-banned -952)
+  (medius-leader-cannot-leave-clan -951)
+  (medius-feature-not-enabled -950)
+  (medius-dnassignature-logged-in -949)
+  (medius-world-is-full -948)
+  (medius-not-clan-member -947)
+  (medius-server-busy -946)
+  (medius-num-game-worlds-per-lobby-world-exceeded -945)
+  (medius-account-not-uccompliant -944)
+  (medius-password-not-uccompliant -943)
+
+  (medius-success 0)
+  (medius-no-result 1)
+  (medius-request-accepted 2)
+  (medius-world-created-size-reduced 3)
+  (medius-pass 4)
+
+  (extra-medius-callback-status #xffffff)
+)
+;; ---scert-4-h:medius-status-code
+
 (deftype medius-account-get-idresponse (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
+  ((message-id  uint8   21 :offset-assert 0)
    (account-id  int32      :offset-assert 24)
-   (status-code int32      :offset-assert 28)
+   (status-code medius-status-code      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype medius-account-get-profile-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
 (deftype medius-account-get-profile-response (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (status-code    int32      :offset-assert 24)
+  ((message-id     uint8 21 :offset-assert 0)
+   (status-code    medius-status-code      :offset-assert 24)
    (account-status int32      :offset-assert 28)
-   (account-name   UNKNOWN 32 :offset-assert 32)
+   (account-name   uint8 32 :offset-assert 32)
    (birthday-month int16      :offset-assert 64)
    (birthday-day   int16      :offset-assert 66)
    (birthday-year  int16      :offset-assert 68)
-   (first-name     UNKNOWN 32 :offset-assert 70)
-   (last-name      UNKNOWN 32 :offset-assert 102)
-   (middle-name    UNKNOWN 32 :offset-assert 134)
-   (address1       UNKNOWN 32 :offset-assert 166)
-   (address2       UNKNOWN 32 :offset-assert 198)
-   (address3       UNKNOWN 32 :offset-assert 230)
-   (city           UNKNOWN 32 :offset-assert 262)
-   (state          UNKNOWN 3  :offset-assert 294)
-   (province       UNKNOWN 32 :offset-assert 297)
-   (country        UNKNOWN 32 :offset-assert 329)
-   (postal-code    UNKNOWN 16 :offset-assert 361)
-   (email-address  UNKNOWN 80 :offset-assert 377)
+   (first-name     uint8   32 :offset-assert 70)
+   (last-name      uint8   32 :offset-assert 102)
+   (middle-name    uint8   32 :offset-assert 134)
+   (address1       uint8   32 :offset-assert 166)
+   (address2       uint8   32 :offset-assert 198)
+   (address3       uint8   32 :offset-assert 230)
+   (city           uint8   32 :offset-assert 262)
+   (state          uint8   3  :offset-assert 294)
+   (province       uint8   32 :offset-assert 297)
+   (country        uint8   32 :offset-assert 329)
+   (postal-code    uint8   16 :offset-assert 361)
+   (email-address  uint8   80 :offset-assert 377)
    )
   :method-count-assert 9
   :size-assert         #x1c9
   :flag-assert         #x9000001c9
   )
-|#
 
-#|
 (deftype medius-account-login-request (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
-   (session-key  UNKNOWN 17 :offset-assert 21)
-   (account-name UNKNOWN 32 :offset-assert 38)
-   (password     UNKNOWN 32 :offset-assert 70)
+  ((message-id   uint8 21 :offset-assert 0)
+   (session-key  uint8 17 :offset-assert 21)
+   (account-name uint8 32 :offset-assert 38)
+   (password     uint8 32 :offset-assert 70)
    )
   :method-count-assert 9
   :size-assert         #x66
   :flag-assert         #x900000066
   )
-|#
 
-#|
 (deftype medius-account-login-response (structure)
-  ((message-id      UNKNOWN             21      :offset-assert 0)
-   (status-code     int32                       :offset-assert 24)
+  ((message-id      uint8             21      :offset-assert 0)
+   (status-code     medius-status-code                       :offset-assert 24)
    (account-id      int32                       :offset-assert 28)
    (account-type    int32                       :offset-assert 32)
    (medius-world-id int32                       :offset-assert 36)
@@ -23822,136 +23908,116 @@
   :size-assert         #xc2
   :flag-assert         #x9000000c2
   )
-|#
 
-#|
 (deftype medius-account-logout-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
 (deftype medius-account-registration-request (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
-   (session-key  UNKNOWN 17 :offset-assert 21)
+  ((message-id   uint8 21 :offset-assert 0)
+   (session-key  uint8 17 :offset-assert 21)
    (account-type int32      :offset-assert 40)
-   (account-name UNKNOWN 32 :offset-assert 44)
-   (password     UNKNOWN 32 :offset-assert 76)
+   (account-name uint8 32 :offset-assert 44)
+   (password     uint8 32 :offset-assert 76)
    )
   :method-count-assert 9
   :size-assert         #x6c
   :flag-assert         #x90000006c
   )
-|#
 
-#|
 (deftype medius-account-registration-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    (account-id  int32      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype medius-account-update-password-request (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
-   (session-key  UNKNOWN 17 :offset-assert 21)
-   (old-password UNKNOWN 32 :offset-assert 38)
-   (new-password UNKNOWN 32 :offset-assert 70)
+  ((message-id   uint8 21 :offset-assert 0)
+   (session-key  uint8 17 :offset-assert 21)
+   (old-password uint8 32 :offset-assert 38)
+   (new-password uint8 32 :offset-assert 70)
    )
   :method-count-assert 9
   :size-assert         #x66
   :flag-assert         #x900000066
   )
-|#
 
-#|
 (deftype medius-account-update-profile-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (birthday-month int16      :offset-assert 38)
    (birthday-day   int16      :offset-assert 40)
    (birthday-year  int16      :offset-assert 42)
-   (first-name     UNKNOWN 32 :offset-assert 44)
-   (last-name      UNKNOWN 32 :offset-assert 76)
-   (middle-name    UNKNOWN 32 :offset-assert 108)
-   (address1       UNKNOWN 32 :offset-assert 140)
-   (address2       UNKNOWN 32 :offset-assert 172)
-   (address3       UNKNOWN 32 :offset-assert 204)
-   (city           UNKNOWN 32 :offset-assert 236)
-   (state          UNKNOWN 3  :offset-assert 268)
-   (province       UNKNOWN 32 :offset-assert 271)
-   (country        UNKNOWN 32 :offset-assert 303)
-   (postal-code    UNKNOWN 16 :offset-assert 335)
-   (email-address  UNKNOWN 80 :offset-assert 351)
+   (first-name     uint8 32 :offset-assert 44)
+   (last-name      uint8 32 :offset-assert 76)
+   (middle-name    uint8 32 :offset-assert 108)
+   (address1       uint8 32 :offset-assert 140)
+   (address2       uint8 32 :offset-assert 172)
+   (address3       uint8 32 :offset-assert 204)
+   (city           uint8 32 :offset-assert 236)
+   (state          uint8 3  :offset-assert 268)
+   (province       uint8 32 :offset-assert 271)
+   (country        uint8 32 :offset-assert 303)
+   (postal-code    uint8 16 :offset-assert 335)
+   (email-address  uint8 80 :offset-assert 351)
    )
   :method-count-assert 9
   :size-assert         #x1af
   :flag-assert         #x9000001af
   )
-|#
 
-#|
 (deftype medius-account-update-stats-request (structure)
-  ((message-id  UNKNOWN 21  :offset-assert 0)
-   (session-key UNKNOWN 17  :offset-assert 21)
-   (stats       UNKNOWN 256 :offset-assert 38)
+  ((message-id  uint8 21  :offset-assert 0)
+   (session-key uint8 17  :offset-assert 21)
+   (stats       uint8 256 :offset-assert 38)
    )
   :method-count-assert 9
   :size-assert         #x126
   :flag-assert         #x900000126
   )
-|#
 
-#|
 (deftype medius-add-player-to-clan-request (structure)
-  ((message-id        UNKNOWN 21  :offset-assert 0)
-   (session-key       UNKNOWN 17  :offset-assert 21)
+  ((message-id        uint8 21  :offset-assert 0)
+   (session-key       uint8 17  :offset-assert 21)
    (player-account-id int32       :offset-assert 40)
-   (welcome-message   UNKNOWN 200 :offset-assert 44)
+   (welcome-message   uint8 200 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #xf4
   :flag-assert         #x9000000f4
   )
-|#
 
-#|
 (deftype medius-add-player-to-clan-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype medius-add-to-buddy-list-confirmation-request0 (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (target-account-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype medius-add-to-buddy-list-confirmation-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (target-account-id int32      :offset-assert 40)
    (add-type          int32      :offset-assert 44)
    )
@@ -23959,69 +24025,59 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-5-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype medius-add-to-buddy-list-confirmation-response (structure)
-  ((message-id          UNKNOWN 21 :offset-assert 0)
-   (status-code         int32      :offset-assert 24)
+  ((message-id          uint8 21 :offset-assert 0)
+   (status-code         medius-status-code      :offset-assert 24)
    (target-account-id   int32      :offset-assert 28)
-   (target-account-name UNKNOWN 32 :offset-assert 32)
+   (target-account-name uint8 32 :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype medius-add-to-buddy-list-fwd-confirmation-request0 (structure)
-  ((message-id              UNKNOWN 21 :offset-assert 0)
+  ((message-id              uint8 21 :offset-assert 0)
    (originator-account-id   int32      :offset-assert 24)
-   (originator-account-name UNKNOWN 32 :offset-assert 28)
+   (originator-account-name uint8 32 :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
 (deftype medius-add-to-buddy-list-fwd-confirmation-request (structure)
-  ((message-id              UNKNOWN 21 :offset-assert 0)
+  ((message-id              uint8 21 :offset-assert 0)
    (originator-account-id   int32      :offset-assert 24)
-   (originator-account-name UNKNOWN 32 :offset-assert 28)
+   (originator-account-name uint8 32 :offset-assert 28)
    (add-type                int32      :offset-assert 60)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype medius-add-to-buddy-list-fwd-confirmation-response0 (structure)
-  ((message-id            UNKNOWN 21 :offset-assert 0)
-   (status-code           int32      :offset-assert 24)
-   (session-key           UNKNOWN 17 :offset-assert 28)
+  ((message-id            uint8 21 :offset-assert 0)
+   (status-code           medius-status-code      :offset-assert 24)
+   (session-key           uint8 17 :offset-assert 28)
    (originator-account-id int32      :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype medius-add-to-buddy-list-fwd-confirmation-response (structure)
-  ((message-id            UNKNOWN 21 :offset-assert 0)
-   (status-code           int32      :offset-assert 24)
-   (session-key           UNKNOWN 17 :offset-assert 28)
+  ((message-id            uint8 21 :offset-assert 0)
+   (status-code           medius-status-code      :offset-assert 24)
+   (session-key           uint8 17 :offset-assert 28)
    (originator-account-id int32      :offset-assert 48)
    (add-type              int32      :offset-assert 52)
    )
@@ -24029,71 +24085,59 @@
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
 (deftype medius-add-to-buddy-list-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (account-id  int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype medius-add-to-buddy-list-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype medius-add-to-ignore-list-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (ignore-account-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype medius-add-to-ignore-list-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype medius-anonymous-login-request (structure)
-  ((message-id            UNKNOWN 21  :offset-assert 0)
-   (session-key           UNKNOWN 17  :offset-assert 21)
-   (session-display-name  UNKNOWN 32  :offset-assert 38)
-   (session-display-stats UNKNOWN 256 :offset-assert 70)
+  ((message-id            uint8 21  :offset-assert 0)
+   (session-key           uint8 17  :offset-assert 21)
+   (session-display-name  uint8 32  :offset-assert 38)
+   (session-display-stats uint8 256 :offset-assert 70)
    )
   :method-count-assert 9
   :size-assert         #x146
   :flag-assert         #x900000146
   )
-|#
 
-#|
 (deftype medius-ban-player-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (ban-account-id  int32      :offset-assert 40)
    (ban-minutes     int32      :offset-assert 44)
    (medius-world-id int32      :offset-assert 48)
@@ -24103,36 +24147,30 @@
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
 (deftype medius-ban-player-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype medius-channel-info-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (medius-world-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype medius-channel-info-response (structure)
-  ((message-id          UNKNOWN 21 :offset-assert 0)
-   (status-code         int32      :offset-assert 24)
-   (lobby-name          UNKNOWN 64 :offset-assert 28)
+  ((message-id          uint8 21 :offset-assert 0)
+   (status-code         medius-status-code      :offset-assert 24)
+   (lobby-name          uint8 64 :offset-assert 28)
    (active-player-count int32      :offset-assert 92)
    (max-players         int32      :offset-assert 96)
    )
@@ -24140,11 +24178,9 @@
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-#|
 (deftype medius-channel-list-extra-info-request (structure)
-  ((message-id UNKNOWN 21 :offset-assert 0)
+  ((message-id uint8 21 :offset-assert 0)
    (page-id    uint16     :offset-assert 22)
    (page-size  uint16     :offset-assert 24)
    )
@@ -24152,30 +24188,26 @@
   :size-assert         #x1a
   :flag-assert         #x90000001a
   )
-|#
 
-#|
 (deftype medius-channel-list-extra-info-response0 (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (medius-world-id int32      :offset-assert 28)
    (player-count    uint16     :offset-assert 32)
    (max-players     uint16     :offset-assert 34)
    (security-level  int32      :offset-assert 36)
    (generic-field1  uint32     :offset-assert 40)
-   (lobby-name      UNKNOWN 64 :offset-assert 44)
+   (lobby-name      uint8 64 :offset-assert 44)
    (end-of-list     int8       :offset-assert 108)
    )
   :method-count-assert 9
   :size-assert         #x6d
   :flag-assert         #x90000006d
   )
-|#
 
-#|
 (deftype medius-channel-list-extra-info-response1 (structure)
-  ((message-id          UNKNOWN 21 :offset-assert 0)
-   (status-code         int32      :offset-assert 24)
+  ((message-id          uint8 21 :offset-assert 0)
+   (status-code         medius-status-code      :offset-assert 24)
    (medius-world-id     int32      :offset-assert 28)
    (player-count        uint16     :offset-assert 32)
    (max-players         uint16     :offset-assert 34)
@@ -24185,19 +24217,17 @@
    (generic-field3      uint32     :offset-assert 48)
    (generic-field4      uint32     :offset-assert 52)
    (generic-field-level int32      :offset-assert 56)
-   (lobby-name          UNKNOWN 64 :offset-assert 60)
+   (lobby-name          uint8 64 :offset-assert 60)
    (end-of-list         int8       :offset-assert 124)
    )
   :method-count-assert 9
   :size-assert         #x7d
   :flag-assert         #x90000007d
   )
-|#
 
-#|
 (deftype medius-channel-list-extra-info-response (structure)
-  ((message-id          UNKNOWN 21 :offset-assert 0)
-   (status-code         int32      :offset-assert 24)
+  ((message-id          uint8 21 :offset-assert 0)
+   (status-code         medius-status-code      :offset-assert 24)
    (medius-world-id     int32      :offset-assert 28)
    (player-count        uint16     :offset-assert 32)
    (max-players         uint16     :offset-assert 34)
@@ -24208,19 +24238,17 @@
    (generic-field3      uint32     :offset-assert 52)
    (generic-field4      uint32     :offset-assert 56)
    (generic-field-level int32      :offset-assert 60)
-   (lobby-name          UNKNOWN 64 :offset-assert 64)
+   (lobby-name          uint8 64 :offset-assert 64)
    (end-of-list         int8       :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x81
   :flag-assert         #x900000081
   )
-|#
 
-#|
 (deftype medius-channel-list-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (page-id     int16      :offset-assert 38)
    (page-size   int16      :offset-assert 40)
    )
@@ -24228,14 +24256,12 @@
   :size-assert         #x2a
   :flag-assert         #x90000002a
   )
-|#
 
-#|
 (deftype medius-channel-list-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (medius-world-id int32      :offset-assert 28)
-   (lobby-name      UNKNOWN 64 :offset-assert 32)
+   (lobby-name      uint8 64 :offset-assert 32)
    (player-count    int32      :offset-assert 96)
    (end-of-list     int8       :offset-assert 100)
    )
@@ -24243,90 +24269,76 @@
   :size-assert         #x65
   :flag-assert         #x900000065
   )
-|#
 
-#|
 (deftype medius-chat-fwd-message (structure)
-  ((message-id              UNKNOWN 21 :offset-assert 0)
+  ((message-id              uint8 21 :offset-assert 0)
    (originator-account-id   int32      :offset-assert 24)
-   (originator-account-name UNKNOWN 32 :offset-assert 28)
+   (originator-account-name uint8 32 :offset-assert 28)
    (message-type            int32      :offset-assert 60)
-   (message                 UNKNOWN 64 :offset-assert 64)
+   (message                 uint8 64 :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
 (deftype medius-chat-message (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (message-type      int32      :offset-assert 40)
    (target-account-id int32      :offset-assert 44)
-   (message           UNKNOWN 64 :offset-assert 48)
+   (message           uint8 64 :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype medius-binary-fwd-message (structure)
-  ((message-id            UNKNOWN 21  :offset-assert 0)
+  ((message-id            uint8 21  :offset-assert 0)
    (originator-account-id int32       :offset-assert 24)
    (message-type          int32       :offset-assert 28)
-   (message               UNKNOWN 400 :offset-assert 32)
+   (message               uint8 400 :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x1b0
   :flag-assert         #x9000001b0
   )
-|#
 
-#|
 (deftype medius-binary-message (structure)
-  ((message-id        UNKNOWN 21  :offset-assert 0)
-   (session-key       UNKNOWN 17  :offset-assert 21)
+  ((message-id        uint8 21  :offset-assert 0)
+   (session-key       uint8 17  :offset-assert 21)
    (message-type      int32       :offset-assert 40)
    (target-account-id int32       :offset-assert 44)
-   (message           UNKNOWN 400 :offset-assert 48)
+   (message           uint8 400 :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x1c0
   :flag-assert         #x9000001c0
   )
-|#
 
-#|
 (deftype medius-chat-toggle-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (chat-toggle int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype medius-chat-toggle-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype medius-check-my-clan-invitations-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (start       int32      :offset-assert 40)
    (page-size   int32      :offset-assert 44)
    )
@@ -24334,29 +24346,25 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype medius-check-my-clan-invitations-response (structure)
-  ((message-id          UNKNOWN 21  :offset-assert 0)
-   (status-code         int32       :offset-assert 24)
+  ((message-id          uint8 21  :offset-assert 0)
+   (status-code         medius-status-code       :offset-assert 24)
    (clan-invitation-id  int32       :offset-assert 28)
    (clan-id             int32       :offset-assert 32)
    (response-status     int32       :offset-assert 36)
-   (message             UNKNOWN 200 :offset-assert 40)
+   (message             uint8 200 :offset-assert 40)
    (leader-account-id   int32       :offset-assert 240)
-   (leader-account-name UNKNOWN 32  :offset-assert 244)
+   (leader-account-name uint8 32  :offset-assert 244)
    (end-of-list         int8        :offset-assert 276)
    )
   :method-count-assert 9
   :size-assert         #x115
   :flag-assert         #x900000115
   )
-|#
 
-#|
 (deftype medius-clan-ladder-list-request (structure)
-  ((message-id             UNKNOWN 21 :offset-assert 0)
+  ((message-id             uint8 21 :offset-assert 0)
    (clan-ladder-stat-index int32      :offset-assert 24)
    (sort-order             int32      :offset-assert 28)
    (start-position         uint32     :offset-assert 32)
@@ -24366,26 +24374,22 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype medius-clan-ladder-list-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (clan-id         int32      :offset-assert 24)
-   (clan-name       UNKNOWN 32 :offset-assert 28)
+   (clan-name       uint8 32 :offset-assert 28)
    (ladder-position uint32     :offset-assert 60)
-   (status-code     int32      :offset-assert 64)
+   (status-code     medius-status-code      :offset-assert 64)
    (end-of-list     int8       :offset-assert 68)
    )
   :method-count-assert 9
   :size-assert         #x45
   :flag-assert         #x900000045
   )
-|#
 
-#|
 (deftype medius-clan-ladder-position-request (structure)
-  ((message-id             UNKNOWN 21 :offset-assert 0)
+  ((message-id             uint8 21 :offset-assert 0)
    (clan-id                int32      :offset-assert 24)
    (clan-ladder-stat-index int32      :offset-assert 28)
    (sort-order             int32      :offset-assert 32)
@@ -24394,45 +24398,37 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype medius-clan-ladder-position-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (ladder-position uint32     :offset-assert 24)
    (total-rankings  uint32     :offset-assert 28)
-   (status-code     int32      :offset-assert 32)
+   (status-code     medius-status-code      :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype medius-clear-game-list-filter-request (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
-   (session-key  UNKNOWN 17 :offset-assert 21)
+  ((message-id   uint8 21 :offset-assert 0)
+   (session-key  uint8 17 :offset-assert 21)
    (filter-field int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype medius-clear-game-list-filter-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype medius-clear-stored-account-info-request (structure)
   ((device     int32  :offset-assert 0)
    (card-port  int32  :offset-assert 4)
@@ -24443,9 +24439,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype medius-clear-stored-account-info-response (structure)
   ((confirmation int32  :offset-assert 0)
    )
@@ -24453,70 +24447,60 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype medius-confirm-clan-team-challenge-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (clan-challenge-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype medius-confirm-clan-team-challenge-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype medius-create-channel-request0 (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
    (max-players    int32      :offset-assert 44)
-   (lobby-name     UNKNOWN 64 :offset-assert 48)
-   (lobby-password UNKNOWN 32 :offset-assert 112)
+   (lobby-name     uint8 64 :offset-assert 48)
+   (lobby-password uint8 32 :offset-assert 112)
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
-|#
 
-#|
 (deftype medius-create-channel-request1 (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
    (max-players    int32      :offset-assert 44)
-   (lobby-name     UNKNOWN 64 :offset-assert 48)
-   (lobby-password UNKNOWN 32 :offset-assert 112)
+   (lobby-name     uint8 64 :offset-assert 48)
+   (lobby-password uint8 32 :offset-assert 112)
    (generic-field1 uint32     :offset-assert 144)
    )
   :method-count-assert 9
   :size-assert         #x94
   :flag-assert         #x900000094
   )
-|#
 
-#|
 (deftype medius-create-channel-request (structure)
-  ((message-id          UNKNOWN 21 :offset-assert 0)
-   (session-key         UNKNOWN 17 :offset-assert 21)
+  ((message-id          uint8 21 :offset-assert 0)
+   (session-key         uint8 17 :offset-assert 21)
    (application-id      int32      :offset-assert 40)
    (max-players         int32      :offset-assert 44)
-   (lobby-name          UNKNOWN 64 :offset-assert 48)
-   (lobby-password      UNKNOWN 32 :offset-assert 112)
+   (lobby-name          uint8 64 :offset-assert 48)
+   (lobby-password      uint8 32 :offset-assert 112)
    (generic-field1      uint32     :offset-assert 144)
    (generic-field2      uint32     :offset-assert 148)
    (generic-field3      uint32     :offset-assert 152)
@@ -24527,32 +24511,28 @@
   :size-assert         #xa4
   :flag-assert         #x9000000a4
   )
-|#
 
-#|
 (deftype medius-create-channel-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (medius-world-id int32      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype medius-create-game-on-self-request (structure)
-  ((message-id            UNKNOWN          21      :offset-assert 0)
-   (session-key           UNKNOWN          17      :offset-assert 21)
+  ((message-id            uint8          21      :offset-assert 0)
+   (session-key           uint8          17      :offset-assert 21)
    (server-version        int32                    :offset-assert 40)
    (max-players-per-world int32                    :offset-assert 44)
    (application-id        int32                    :offset-assert 48)
    (min-players           int32                    :offset-assert 52)
    (max-players           int32                    :offset-assert 56)
    (game-level            int32                    :offset-assert 60)
-   (game-name             UNKNOWN          64      :offset-assert 64)
-   (game-password         UNKNOWN          32      :offset-assert 128)
+   (game-name             uint8          64      :offset-assert 64)
+   (game-password         uint8          32      :offset-assert 128)
    (player-skill-level    int32                    :offset-assert 160)
    (rules-set             int32                    :offset-assert 164)
    (generic-field1        int32                    :offset-assert 168)
@@ -24566,60 +24546,52 @@
   :size-assert         #xec
   :flag-assert         #x9000000ec
   )
-|#
 
-#|
 (deftype medius-create-game-on-self-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (medius-world-id int32      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype medius-create-clan-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
-   (clan-name      UNKNOWN 32 :offset-assert 44)
+   (clan-name      uint8 32 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
 (deftype medius-create-clan-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    (clan-id     int32      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-6-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype medius-create-game-request0 (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
-   (session-key        UNKNOWN 17 :offset-assert 21)
+  ((message-id         uint8 21 :offset-assert 0)
+   (session-key        uint8 17 :offset-assert 21)
    (application-id     int32      :offset-assert 40)
    (min-players        int32      :offset-assert 44)
    (max-players        int32      :offset-assert 48)
    (game-level         int32      :offset-assert 52)
-   (game-name          UNKNOWN 64 :offset-assert 56)
-   (game-password      UNKNOWN 32 :offset-assert 120)
+   (game-name          uint8 64 :offset-assert 56)
+   (game-password      uint8 32 :offset-assert 120)
    (player-skill-level int32      :offset-assert 152)
    (rules-set          int32      :offset-assert 156)
    (generic-field1     int32      :offset-assert 160)
@@ -24631,19 +24603,18 @@
   :size-assert         #xb0
   :flag-assert         #x9000000b0
   )
-|#
 
-#|
+
 (deftype medius-create-game-request (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
-   (session-key        UNKNOWN 17 :offset-assert 21)
+  ((message-id         uint8 21 :offset-assert 0)
+   (session-key        uint8 17 :offset-assert 21)
    (application-id     int32      :offset-assert 40)
    (min-players        int32      :offset-assert 44)
    (max-players        int32      :offset-assert 48)
    (game-level         int32      :offset-assert 52)
-   (game-name          UNKNOWN 64 :offset-assert 56)
-   (game-password      UNKNOWN 32 :offset-assert 120)
-   (spectator-password UNKNOWN 32 :offset-assert 152)
+   (game-name          uint8 64 :offset-assert 56)
+   (game-password      uint8 32 :offset-assert 120)
+   (spectator-password uint8 32 :offset-assert 152)
    (player-skill-level int32      :offset-assert 184)
    (rules-set          int32      :offset-assert 188)
    (generic-field1     int32      :offset-assert 192)
@@ -24656,159 +24627,159 @@
   :size-assert         #xd4
   :flag-assert         #x9000000d4
   )
-|#
 
-#|
+
+
 (deftype medius-create-game-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (medius-world-id int32      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-delete-clan-message-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (clan-message-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-delete-clan-message-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-disband-clan-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (clan-id     int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-disband-clan-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-dnas-signature-post (structure)
-  ((message-id            UNKNOWN 21 :offset-assert 0)
-   (session-key           UNKNOWN 17 :offset-assert 21)
+  ((message-id            uint8 21 :offset-assert 0)
+   (session-key           uint8 17 :offset-assert 21)
    (dnas-signature-type   int32      :offset-assert 40)
    (dnas-signature-length int8       :offset-assert 44)
-   (dnas-signature        UNKNOWN 32 :offset-assert 45)
+   (dnas-signature        uint8 32 :offset-assert 45)
    )
   :method-count-assert 9
   :size-assert         #x4d
   :flag-assert         #x90000004d
   )
-|#
 
-#|
+
+
 (deftype medius-end-game-report (structure)
-  ((session-key     UNKNOWN 17 :offset-assert 0)
+  ((session-key     uint8 17 :offset-assert 0)
    (medius-world-id int32      :offset-assert 20)
-   (winning-team    UNKNOWN 64 :offset-assert 24)
-   (winning-player  UNKNOWN 32 :offset-assert 88)
+   (winning-team    uint8 64 :offset-assert 24)
+   (winning-player  uint8 32 :offset-assert 88)
    (final-score     int32      :offset-assert 120)
    )
   :method-count-assert 9
   :size-assert         #x7c
   :flag-assert         #x90000007c
   )
-|#
 
-#|
+
+
 (deftype medius-error-message (structure)
   ((error-code    int32       :offset-assert 0)
-   (error-message UNKNOWN 256 :offset-assert 4)
+   (error-message uint8 256 :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x104
   :flag-assert         #x900000104
   )
-|#
 
-#|
+
+
 (deftype medius-find-player-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (search-type int32      :offset-assert 40)
    (id          int32      :offset-assert 44)
-   (name        UNKNOWN 32 :offset-assert 48)
+   (name        uint8 32 :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
+
+
 (deftype medius-find-player-response (structure)
-  ((message-id       UNKNOWN 21 :offset-assert 0)
-   (status-code      int32      :offset-assert 24)
+  ((message-id       uint8 21 :offset-assert 0)
+   (status-code      medius-status-code      :offset-assert 24)
    (application-id   int32      :offset-assert 28)
-   (application-name UNKNOWN 32 :offset-assert 32)
+   (application-name uint8 32 :offset-assert 32)
    (application-type int32      :offset-assert 64)
    (medius-world-id  int32      :offset-assert 68)
    (account-id       int32      :offset-assert 72)
-   (account-name     UNKNOWN 32 :offset-assert 76)
+   (account-name     uint8 32 :offset-assert 76)
    (end-of-list      int8       :offset-assert 108)
    )
   :method-count-assert 9
   :size-assert         #x6d
   :flag-assert         #x90000006d
   )
-|#
 
-#|
+
+
 (deftype medius-find-world-by-name-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
-   (name        UNKNOWN 64 :offset-assert 38)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
+   (name        uint8 64 :offset-assert 38)
    (world-type  int32      :offset-assert 104)
    )
   :method-count-assert 9
   :size-assert         #x6c
   :flag-assert         #x90000006c
   )
-|#
 
-#|
+
+
 (deftype medius-find-world-by-name-response (structure)
-  ((message-id       UNKNOWN 21 :offset-assert 0)
-   (status-code      int32      :offset-assert 24)
+  ((message-id       uint8 21 :offset-assert 0)
+   (status-code      medius-status-code      :offset-assert 24)
    (application-id   int32      :offset-assert 28)
-   (application-name UNKNOWN 32 :offset-assert 32)
+   (application-name uint8 32 :offset-assert 32)
    (application-type int32      :offset-assert 64)
    (medius-world-id  int32      :offset-assert 68)
-   (world-name       UNKNOWN 64 :offset-assert 72)
+   (world-name       uint8 64 :offset-assert 72)
    (world-status     int32      :offset-assert 136)
    (end-of-list      int8       :offset-assert 140)
    )
@@ -24816,32 +24787,32 @@
   :size-assert         #x8d
   :flag-assert         #x90000008d
   )
-|#
 
-#|
+
+
 (deftype medius-game-info-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (medius-world-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-game-info-response (structure)
-  ((message-id         UNKNOWN 21  :offset-assert 0)
-   (status-code        int32       :offset-assert 24)
+  ((message-id         uint8 21  :offset-assert 0)
+   (status-code        medius-status-code       :offset-assert 24)
    (application-id     int32       :offset-assert 28)
    (min-players        int32       :offset-assert 32)
    (max-players        int32       :offset-assert 36)
    (game-level         int32       :offset-assert 40)
    (player-skill-level int32       :offset-assert 44)
    (player-count       int32       :offset-assert 48)
-   (game-stats         UNKNOWN 256 :offset-assert 52)
-   (game-name          UNKNOWN 64  :offset-assert 308)
+   (game-stats         uint8 256 :offset-assert 52)
+   (game-name          uint8 64  :offset-assert 308)
    (rules-set          int32       :offset-assert 372)
    (generic-field1     int32       :offset-assert 376)
    (generic-field2     int32       :offset-assert 380)
@@ -24853,11 +24824,11 @@
   :size-assert         #x18c
   :flag-assert         #x90000018c
   )
-|#
 
-#|
+
+
 (deftype medius-game-list-extra-info-request (structure)
-  ((message-id UNKNOWN 21 :offset-assert 0)
+  ((message-id uint8 21 :offset-assert 0)
    (page-id    uint16     :offset-assert 22)
    (page-size  uint16     :offset-assert 24)
    )
@@ -24865,12 +24836,12 @@
   :size-assert         #x1a
   :flag-assert         #x90000001a
   )
-|#
 
-#|
+
+
 (deftype medius-game-list-extra-info-response (structure)
-  ((message-id         UNKNOWN 21  :offset-assert 0)
-   (status-code        int32       :offset-assert 24)
+  ((message-id         uint8 21  :offset-assert 0)
+   (status-code        medius-status-code       :offset-assert 24)
    (medius-world-id    int32       :offset-assert 28)
    (player-count       uint16      :offset-assert 32)
    (min-players        uint16      :offset-assert 34)
@@ -24884,20 +24855,20 @@
    (security-level     int32       :offset-assert 64)
    (world-status       int32       :offset-assert 68)
    (game-host-type     int32       :offset-assert 72)
-   (game-name          UNKNOWN 64  :offset-assert 76)
-   (game-stats         UNKNOWN 256 :offset-assert 140)
+   (game-name          uint8 64  :offset-assert 76)
+   (game-stats         uint8 256 :offset-assert 140)
    (end-of-list        int8        :offset-assert 396)
    )
   :method-count-assert 9
   :size-assert         #x18d
   :flag-assert         #x90000018d
   )
-|#
 
-#|
+
+
 (deftype medius-game-list-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
    (page-id        int16      :offset-assert 44)
    (page-size      int16      :offset-assert 46)
@@ -24906,14 +24877,14 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-game-list-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (medius-world-id int32      :offset-assert 28)
-   (game-name       UNKNOWN 64 :offset-assert 32)
+   (game-name       uint8 64 :offset-assert 32)
    (world-status    int32      :offset-assert 96)
    (game-host-type  int32      :offset-assert 100)
    (player-count    int32      :offset-assert 104)
@@ -24923,27 +24894,27 @@
   :size-assert         #x6d
   :flag-assert         #x90000006d
   )
-|#
 
-#|
+
+
 (deftype medius-game-world-player-list-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (medius-world-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-game-world-player-list-response (structure)
-  ((message-id       UNKNOWN 21  :offset-assert 0)
-   (status-code      int32       :offset-assert 24)
+  ((message-id       uint8 21  :offset-assert 0)
+   (status-code      medius-status-code       :offset-assert 24)
    (account-id       int32       :offset-assert 28)
-   (account-name     UNKNOWN 32  :offset-assert 32)
-   (stats            UNKNOWN 256 :offset-assert 64)
+   (account-name     uint8 32  :offset-assert 32)
+   (stats            uint8 256 :offset-assert 64)
    (connection-class int32       :offset-assert 320)
    (end-of-list      int8        :offset-assert 324)
    )
@@ -24951,24 +24922,24 @@
   :size-assert         #x145
   :flag-assert         #x900000145
   )
-|#
 
-#|
+
+
 (deftype medius-get-all-announcements-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-get-all-clan-messages-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (start       int32      :offset-assert 40)
    (page-size   int32      :offset-assert 44)
    )
@@ -24976,14 +24947,14 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-get-all-clan-messages-response (structure)
-  ((message-id      UNKNOWN 21  :offset-assert 0)
-   (status-code     int32       :offset-assert 24)
+  ((message-id      uint8 21  :offset-assert 0)
+   (status-code     medius-status-code       :offset-assert 24)
    (clan-message-id int32       :offset-assert 28)
-   (message         UNKNOWN 200 :offset-assert 32)
+   (message         uint8 200 :offset-assert 32)
    (status          int32       :offset-assert 232)
    (end-of-list     int8        :offset-assert 236)
    )
@@ -24991,50 +24962,50 @@
   :size-assert         #xed
   :flag-assert         #x9000000ed
   )
-|#
 
-#|
+
+
 (deftype medius-get-announcements-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-get-announcements-response (structure)
-  ((message-id      UNKNOWN 21   :offset-assert 0)
-   (status-code     int32        :offset-assert 24)
+  ((message-id      uint8 21   :offset-assert 0)
+   (status-code     medius-status-code        :offset-assert 24)
    (announcement-id int32        :offset-assert 28)
-   (announcement    UNKNOWN 1000 :offset-assert 32)
+   (announcement    uint8 1000 :offset-assert 32)
    (end-of-list     int8         :offset-assert 1032)
    )
   :method-count-assert 9
   :size-assert         #x409
   :flag-assert         #x900000409
   )
-|#
 
-#|
+
+
 (deftype medius-get-buddy-invitations-request (structure)
-  ((message-id UNKNOWN 21 :offset-assert 0)
+  ((message-id uint8 21 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x15
   :flag-assert         #x900000015
   )
-|#
 
-#|
+
+
 (deftype medius-get-buddy-invitations-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
-   (status-code  int32      :offset-assert 24)
+  ((message-id   uint8 21 :offset-assert 0)
+   (status-code  medius-status-code      :offset-assert 24)
    (account-id   int32      :offset-assert 28)
-   (account-name UNKNOWN 32 :offset-assert 32)
+   (account-name uint8 32 :offset-assert 32)
    (add-type     int32      :offset-assert 64)
    (end-of-list  int8       :offset-assert 68)
    )
@@ -25042,24 +25013,24 @@
   :size-assert         #x45
   :flag-assert         #x900000045
   )
-|#
 
-#|
+
+
 (deftype medius-get-buddy-list-extra-info-request (structure)
-  ((message-id UNKNOWN 21 :offset-assert 0)
+  ((message-id uint8 21 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x15
   :flag-assert         #x900000015
   )
-|#
 
-#|
+
+
 (deftype medius-get-buddy-list-extra-info-response (structure)
-  ((message-id   UNKNOWN                    21      :offset-assert 0)
-   (status-code  int32                              :offset-assert 24)
+  ((message-id   uint8                    21      :offset-assert 0)
+   (status-code  medius-status-code                              :offset-assert 24)
    (account-id   int32                              :offset-assert 28)
-   (account-name UNKNOWN                    32      :offset-assert 32)
+   (account-name uint8                    32      :offset-assert 32)
    (online-state medius-player-online-state :inline :offset-assert 64)
    (end-of-list  int8                               :offset-assert 204)
    )
@@ -25067,25 +25038,25 @@
   :size-assert         #xcd
   :flag-assert         #x9000000cd
   )
-|#
 
-#|
+
+
 (deftype medius-get-buddy-list-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
+
+
 (deftype medius-get-buddy-list-response (structure)
-  ((message-id    UNKNOWN 21 :offset-assert 0)
-   (status-code   int32      :offset-assert 24)
+  ((message-id    uint8 21 :offset-assert 0)
+   (status-code   medius-status-code      :offset-assert 24)
    (account-id    int32      :offset-assert 28)
-   (account-name  UNKNOWN 32 :offset-assert 32)
+   (account-name  uint8 32 :offset-assert 32)
    (player-status int32      :offset-assert 64)
    (end-of-list   int8       :offset-assert 68)
    )
@@ -25093,25 +25064,25 @@
   :size-assert         #x45
   :flag-assert         #x900000045
   )
-|#
 
-#|
+
+
 (deftype medius-get-ignore-list-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
+
+
 (deftype medius-get-ignore-list-response (structure)
-  ((message-id          UNKNOWN 21 :offset-assert 0)
-   (status-code         int32      :offset-assert 24)
+  ((message-id          uint8 21 :offset-assert 0)
+   (status-code         medius-status-code      :offset-assert 24)
    (ignore-account-id   int32      :offset-assert 28)
-   (ignore-account-name UNKNOWN 32 :offset-assert 32)
+   (ignore-account-name uint8 32 :offset-assert 32)
    (player-status       int32      :offset-assert 64)
    (end-of-list         int8       :offset-assert 68)
    )
@@ -25119,12 +25090,12 @@
   :size-assert         #x45
   :flag-assert         #x900000045
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-by-idrequest (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (account-id  int32      :offset-assert 40)
    (clan-id     int32      :offset-assert 44)
    )
@@ -25132,58 +25103,58 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-by-idresponse (structure)
-  ((message-id          UNKNOWN 21  :offset-assert 0)
+  ((message-id          uint8 21  :offset-assert 0)
    (status-code         int32       :offset-assert 24)
    (application-id      int32       :offset-assert 28)
-   (clan-name           UNKNOWN 32  :offset-assert 32)
+   (clan-name           uint8 32  :offset-assert 32)
    (leader-account-id   int32       :offset-assert 64)
-   (leader-account-name UNKNOWN 32  :offset-assert 68)
-   (stats               UNKNOWN 256 :offset-assert 100)
+   (leader-account-name uint8 32  :offset-assert 68)
+   (stats               uint8 256 :offset-assert 100)
    (status              int32       :offset-assert 356)
    )
   :method-count-assert 9
   :size-assert         #x168
   :flag-assert         #x900000168
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-by-name-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
-   (clan-name      UNKNOWN 32 :offset-assert 44)
+   (clan-name      uint8 32 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-by-name-response (structure)
-  ((message-id          UNKNOWN 21  :offset-assert 0)
-   (status-code         int32       :offset-assert 24)
+  ((message-id          uint8 21  :offset-assert 0)
+   (status-code         medius-status-code       :offset-assert 24)
    (clan-id             int32       :offset-assert 28)
    (leader-account-id   int32       :offset-assert 32)
-   (leader-account-name UNKNOWN 32  :offset-assert 36)
-   (stats               UNKNOWN 256 :offset-assert 68)
+   (leader-account-name uint8 32  :offset-assert 36)
+   (stats               uint8 256 :offset-assert 68)
    (status              int32       :offset-assert 324)
    )
   :method-count-assert 9
   :size-assert         #x148
   :flag-assert         #x900000148
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-invitations-sent-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (start       int32      :offset-assert 40)
    (page-size   int32      :offset-assert 44)
    )
@@ -25191,15 +25162,15 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-invitations-sent-response (structure)
-  ((message-id      UNKNOWN 21  :offset-assert 0)
-   (status-code     int32       :offset-assert 24)
+  ((message-id      uint8 21  :offset-assert 0)
+   (status-code     medius-status-code       :offset-assert 24)
    (account-id      int32       :offset-assert 28)
-   (account-name    UNKNOWN 32  :offset-assert 32)
-   (response-msg    UNKNOWN 200 :offset-assert 64)
+   (account-name    uint8 32  :offset-assert 32)
+   (response-msg    uint8 200 :offset-assert 64)
    (response-status int32       :offset-assert 264)
    (response-time   int32       :offset-assert 268)
    (end-of-list     int8        :offset-assert 272)
@@ -25208,11 +25179,11 @@
   :size-assert         #x111
   :flag-assert         #x900000111
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-member-list-extra-info-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
+  ((message-id        uint8 21 :offset-assert 0)
    (clan-id           int32      :offset-assert 24)
    (ladder-stat-index int32      :offset-assert 28)
    (sort-order        int32      :offset-assert 32)
@@ -25221,15 +25192,15 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-member-list-extra-info-response (structure)
-  ((message-id      UNKNOWN                    21      :offset-assert 0)
-   (status-code     int32                              :offset-assert 24)
+  ((message-id      uint8                    21      :offset-assert 0)
+   (status-code     medius-status-code                              :offset-assert 24)
    (account-id      int32                              :offset-assert 28)
-   (account-name    UNKNOWN                    32      :offset-assert 32)
-   (stats           UNKNOWN                    256     :offset-assert 64)
+   (account-name    uint8                    32      :offset-assert 32)
+   (stats           uint8                    256     :offset-assert 64)
    (online-state    medius-player-online-state :inline :offset-assert 320)
    (ladder-stat     int32                              :offset-assert 460)
    (ladder-position uint32                             :offset-assert 464)
@@ -25240,43 +25211,43 @@
   :size-assert         #x1d9
   :flag-assert         #x9000001d9
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-7-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype medius-get-clan-member-list-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (clan-id     int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-member-list-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
+  ((message-id   uint8 21 :offset-assert 0)
    (account-id   int32      :offset-assert 24)
-   (account-name UNKNOWN 32 :offset-assert 28)
-   (status-code  int32      :offset-assert 60)
+   (account-name uint8 32 :offset-assert 28)
+   (status-code  medius-status-code      :offset-assert 60)
    (end-of-list  int8       :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x41
   :flag-assert         #x900000041
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-team-challenge-history-request (structure)
-  ((message-id              UNKNOWN 21 :offset-assert 0)
-   (session-key             UNKNOWN 17 :offset-assert 21)
+  ((message-id              uint8 21 :offset-assert 0)
+   (session-key             uint8 17 :offset-assert 21)
    (clan-id                 int32      :offset-assert 40)
    (this-clan-is-challenger int32      :offset-assert 44)
    (start                   int32      :offset-assert 48)
@@ -25286,12 +25257,12 @@
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-team-challenge-history-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (against-clan-id int32      :offset-assert 28)
    (status          int32      :offset-assert 32)
    (end-of-list     int8       :offset-assert 36)
@@ -25300,12 +25271,12 @@
   :size-assert         #x25
   :flag-assert         #x900000025
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-team-challenges-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (clan-id         int32      :offset-assert 40)
    (start           int32      :offset-assert 44)
    (page-size       int32      :offset-assert 48)
@@ -25316,18 +25287,18 @@
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
+
+
 (deftype medius-get-clan-team-challenges-response (structure)
-  ((message-id         UNKNOWN 21  :offset-assert 0)
-   (status-code        int32       :offset-assert 24)
+  ((message-id         uint8 21  :offset-assert 0)
+   (status-code        medius-status-code       :offset-assert 24)
    (challenger-clan-id int32       :offset-assert 28)
    (against-clan-id    int32       :offset-assert 32)
    (status             int32       :offset-assert 36)
    (response-time      int32       :offset-assert 40)
-   (challenge-msg      UNKNOWN 200 :offset-assert 44)
-   (response-msg       UNKNOWN 200 :offset-assert 244)
+   (challenge-msg      uint8 200 :offset-assert 44)
+   (response-msg       uint8 200 :offset-assert 244)
    (end-of-list        int8        :offset-assert 444)
    (clan-challenge-id  int32       :offset-assert 448)
    )
@@ -25335,23 +25306,23 @@
   :size-assert         #x1c4
   :flag-assert         #x9000001c4
   )
-|#
 
-#|
+
+
 (deftype medius-get-game-list-filter-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
+
+
 (deftype medius-get-game-list-filter-response (structure)
-  ((message-id          UNKNOWN 21 :offset-assert 0)
-   (status-code         int32      :offset-assert 24)
+  ((message-id          uint8 21 :offset-assert 0)
+   (status-code         medius-status-code      :offset-assert 24)
    (filter-field        int32      :offset-assert 28)
    (comparison-operator int32      :offset-assert 32)
    (baseline-value      int32      :offset-assert 36)
@@ -25361,34 +25332,34 @@
   :size-assert         #x29
   :flag-assert         #x900000029
   )
-|#
 
-#|
+
+
 (deftype medius-get-ladder-stats-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
+  ((message-id  uint8 21 :offset-assert 0)
    (ladder-type int32      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-get-ladder-stats-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
-   (stats       UNKNOWN 15 :offset-assert 28)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
+   (stats       uint32 15 :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
+
+
 (deftype medius-get-ladder-stats-wide-request (structure)
-  ((message-id            UNKNOWN 21 :offset-assert 0)
+  ((message-id            uint8 21 :offset-assert 0)
    (account-id-or-clan-id int32      :offset-assert 24)
    (ladder-type           int32      :offset-assert 28)
    )
@@ -25396,64 +25367,64 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-get-ladder-stats-wide-response (structure)
-  ((message-id            UNKNOWN 21  :offset-assert 0)
-   (status-code           int32       :offset-assert 24)
+  ((message-id            uint8 21  :offset-assert 0)
+   (status-code           medius-status-code       :offset-assert 24)
    (account-id-or-clan-id int32       :offset-assert 28)
-   (stats                 UNKNOWN 100 :offset-assert 32)
+   (stats                 uint32 100 :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x1b0
   :flag-assert         #x9000001b0
   )
-|#
 
-#|
+
+
 (deftype medius-get-ladder-stats-wide-w-idarray-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (ids         UNKNOWN 50 :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (ids         uint32 50 :offset-assert 24)
    (ladder-type int32      :offset-assert 224)
    )
   :method-count-assert 9
   :size-assert         #xe4
   :flag-assert         #x9000000e4
   )
-|#
 
-#|
+
+
 (deftype medius-get-ladder-stats-wide-w-idarray-response (structure)
-  ((message-id            UNKNOWN 21  :offset-assert 0)
-   (status-code           int32       :offset-assert 24)
+  ((message-id            uint8 21  :offset-assert 0)
+   (status-code           medius-status-code       :offset-assert 24)
    (account-id-or-clan-id int32       :offset-assert 28)
-   (stats                 UNKNOWN 100 :offset-assert 32)
+   (stats                 uint32 100 :offset-assert 32)
    (end-of-list           int8        :offset-assert 432)
    )
   :method-count-assert 9
   :size-assert         #x1b1
   :flag-assert         #x9000001b1
   )
-|#
 
-#|
+
+
 (deftype medius-get-lobby-player-names-extra-info-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (medius-world-id int32      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-get-lobby-player-names-extra-info-response (structure)
-  ((message-id   UNKNOWN                    21      :offset-assert 0)
-   (status-code  int32                              :offset-assert 24)
+  ((message-id   uint8                    21      :offset-assert 0)
+   (status-code  medius-status-code                              :offset-assert 24)
    (account-id   int32                              :offset-assert 28)
-   (account-name UNKNOWN                    32      :offset-assert 32)
+   (account-name uint8                    32      :offset-assert 32)
    (online-state medius-player-online-state :inline :offset-assert 64)
    (end-of-list  int8                               :offset-assert 204)
    )
@@ -25461,63 +25432,63 @@
   :size-assert         #xcd
   :flag-assert         #x9000000cd
   )
-|#
 
-#|
+
+
 (deftype medius-get-lobby-player-names-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (medius-world-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-get-lobby-player-names-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
-   (status-code  int32      :offset-assert 24)
+  ((message-id   uint8 21 :offset-assert 0)
+   (status-code  medius-status-code      :offset-assert 24)
    (account-id   int32      :offset-assert 28)
-   (account-name UNKNOWN 32 :offset-assert 32)
+   (account-name uint8 32 :offset-assert 32)
    (end-of-list  int8       :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x41
   :flag-assert         #x900000041
   )
-|#
 
-#|
+
+
 (deftype medius-get-locations-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
+
+
 (deftype medius-get-locations-response (structure)
-  ((message-id    UNKNOWN 21 :offset-assert 0)
+  ((message-id    uint8 21 :offset-assert 0)
    (location-id   int32      :offset-assert 24)
-   (location-name UNKNOWN 64 :offset-assert 28)
-   (status-code   int32      :offset-assert 92)
+   (location-name uint8 64 :offset-assert 28)
+   (status-code   medius-status-code      :offset-assert 92)
    (end-of-list   int8       :offset-assert 96)
    )
   :method-count-assert 9
   :size-assert         #x61
   :flag-assert         #x900000061
   )
-|#
 
-#|
+
+
 (deftype medius-get-my-clan-messages-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (clan-id     int32      :offset-assert 40)
    (start       int32      :offset-assert 44)
    (page-size   int32      :offset-assert 48)
@@ -25526,26 +25497,26 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
+
+
 (deftype medius-get-my-clan-messages-response (structure)
-  ((message-id  UNKNOWN 21  :offset-assert 0)
-   (status-code int32       :offset-assert 24)
+  ((message-id  uint8 21  :offset-assert 0)
+   (status-code medius-status-code       :offset-assert 24)
    (clan-id     int32       :offset-assert 28)
-   (message     UNKNOWN 200 :offset-assert 32)
+   (message     uint8 200 :offset-assert 32)
    (end-of-list int8        :offset-assert 232)
    )
   :method-count-assert 9
   :size-assert         #xe9
   :flag-assert         #x9000000e9
   )
-|#
 
-#|
+
+
 (deftype medius-get-my-clans-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (start       int32      :offset-assert 40)
    (page-size   int32      :offset-assert 44)
    )
@@ -25553,18 +25524,18 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-get-my-clans-response (structure)
-  ((message-id          UNKNOWN 21  :offset-assert 0)
-   (status-code         int32       :offset-assert 24)
+  ((message-id          uint8 21  :offset-assert 0)
+   (status-code         medius-status-code       :offset-assert 24)
    (clan-id             int32       :offset-assert 28)
    (application-id      int32       :offset-assert 32)
-   (clan-name           UNKNOWN 32  :offset-assert 36)
+   (clan-name           uint8 32  :offset-assert 36)
    (leader-account-id   int32       :offset-assert 68)
-   (leader-account-name UNKNOWN 32  :offset-assert 72)
-   (stats               UNKNOWN 256 :offset-assert 104)
+   (leader-account-name uint8 32  :offset-assert 72)
+   (stats               uint8 256 :offset-assert 104)
    (status              int32       :offset-assert 360)
    (end-of-list         int8        :offset-assert 364)
    )
@@ -25572,57 +25543,57 @@
   :size-assert         #x16d
   :flag-assert         #x90000016d
   )
-|#
 
-#|
+
+
 (deftype medius-get-my-iprequest (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
+
+
 (deftype medius-get-my-ipresponse (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (ip          UNKNOWN 20 :offset-assert 21)
-   (status-code int32      :offset-assert 44)
+  ((message-id  uint8 21 :offset-assert 0)
+   (ip          uint8 20 :offset-assert 21)
+   (status-code medius-status-code      :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-get-policy-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (policy      int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-get-policy-response (structure)
-  ((message-id  UNKNOWN 21  :offset-assert 0)
-   (status-code int32       :offset-assert 24)
-   (policy      UNKNOWN 256 :offset-assert 28)
+  ((message-id  uint8 21  :offset-assert 0)
+   (status-code medius-status-code       :offset-assert 24)
+   (policy      uint8 256 :offset-assert 28)
    (end-of-text int8        :offset-assert 284)
    )
   :method-count-assert 9
   :size-assert         #x11d
   :flag-assert         #x90000011d
   )
-|#
 
-#|
+
+
 (deftype medius-get-stored-account-info-request (structure)
   ((device     int32  :offset-assert 0)
    (card-port  int32  :offset-assert 4)
@@ -25633,21 +25604,21 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
+
+
 (deftype medius-get-stored-account-info-response (structure)
   ((account-id       int32      :offset-assert 0)
-   (account-name     UNKNOWN 32 :offset-assert 4)
-   (account-password UNKNOWN 32 :offset-assert 36)
+   (account-name     uint8 32 :offset-assert 4)
+   (account-password uint8 32 :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
+
+
 (deftype medius-get-stored-account-list-request (structure)
   ((device    int32  :offset-assert 0)
    (card-port int32  :offset-assert 4)
@@ -25657,118 +25628,118 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
+
+
 (deftype medius-get-stored-account-list-response (structure)
-  ((account-list UNKNOWN 256 :offset-assert 0)
+  ((account-list uint8 256 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x100
   :flag-assert         #x900000100
   )
-|#
 
-#|
+
+
 (deftype medius-get-total-channels-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-get-total-channels-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
+  ((message-id  uint8 21 :offset-assert 0)
    (total       uint32     :offset-assert 24)
-   (status-code int32      :offset-assert 28)
+   (status-code medius-status-code      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-get-total-games-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-get-total-games-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
+  ((message-id  uint8 21 :offset-assert 0)
    (total       uint32     :offset-assert 24)
-   (status-code int32      :offset-assert 28)
+   (status-code medius-status-code      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-get-total-rankings-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
+  ((message-id  uint8 21 :offset-assert 0)
    (ladder-type int32      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-get-total-rankings-response (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (status-code    int32      :offset-assert 24)
+  ((message-id     uint8 21 :offset-assert 0)
+   (status-code    medius-status-code      :offset-assert 24)
    (total-rankings uint32     :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-get-total-users-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (application-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-get-total-users-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (total-in-system uint32     :offset-assert 24)
    (total-in-game   uint32     :offset-assert 28)
-   (status-code     int32      :offset-assert 32)
+   (status-code     medius-status-code      :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
+
+
 (deftype medius-get-world-security-level-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (medius-world-id int32      :offset-assert 40)
    (app-type        int32      :offset-assert 44)
    )
@@ -25776,12 +25747,12 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-get-world-security-level-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (medius-world-id int32      :offset-assert 28)
    (app-type        int32      :offset-assert 32)
    (security-level  int32      :offset-assert 36)
@@ -25790,23 +25761,23 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
+
+
 (deftype medius-initialize-storage-request (structure)
   ((device        int32      :offset-assert 0)
    (card-port     int32      :offset-assert 4)
    (card-slot     int32      :offset-assert 8)
-   (icon-location UNKNOWN 64 :offset-assert 12)
+   (icon-location uint8 64 :offset-assert 12)
    (sceterritory  int32      :offset-assert 76)
    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
+
+
 (deftype medius-initialize-storage-response (structure)
   ((confirmation int32  :offset-assert 0)
    )
@@ -25814,104 +25785,104 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
+
+
 (deftype medius-invite-player-to-clan-by-name-request (structure)
-  ((message-id     UNKNOWN 21  :offset-assert 0)
-   (account-name   UNKNOWN 32  :offset-assert 21)
-   (invite-message UNKNOWN 200 :offset-assert 53)
+  ((message-id     uint8 21  :offset-assert 0)
+   (account-name   uint8 32  :offset-assert 21)
+   (invite-message uint8 200 :offset-assert 53)
    )
   :method-count-assert 9
   :size-assert         #xfd
   :flag-assert         #x9000000fd
   )
-|#
 
-#|
+
+
 (deftype medius-invite-player-to-clan-request (structure)
-  ((message-id        UNKNOWN 21  :offset-assert 0)
-   (session-key       UNKNOWN 17  :offset-assert 21)
+  ((message-id        uint8 21  :offset-assert 0)
+   (session-key       uint8 17  :offset-assert 21)
    (player-account-id int32       :offset-assert 40)
-   (invite-message    UNKNOWN 200 :offset-assert 44)
+   (invite-message    uint8 200 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #xf4
   :flag-assert         #x9000000f4
   )
-|#
 
-#|
+
+
 (deftype medius-invite-player-to-clan-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-join-channel-fwd-request (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
-   (player-session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id         uint8 21 :offset-assert 0)
+   (player-session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
+
+
 (deftype medius-join-channel-fwd-response (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
-   (player-session-key UNKNOWN 17 :offset-assert 21)
-   (access-key         UNKNOWN 17 :offset-assert 38)
-   (status-code        int32      :offset-assert 56)
+  ((message-id         uint8 21 :offset-assert 0)
+   (player-session-key uint8 17 :offset-assert 21)
+   (access-key         uint8 17 :offset-assert 38)
+   (status-code        medius-status-code      :offset-assert 56)
    )
   :method-count-assert 9
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
+
+
 (deftype medius-join-channel-request (structure)
-  ((message-id             UNKNOWN 21 :offset-assert 0)
-   (session-key            UNKNOWN 17 :offset-assert 21)
+  ((message-id             uint8 21 :offset-assert 0)
+   (session-key            uint8 17 :offset-assert 21)
    (medius-world-id        int32      :offset-assert 40)
-   (lobby-channel-password UNKNOWN 32 :offset-assert 44)
+   (lobby-channel-password uint8 32 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
+
+
 (deftype medius-join-channel-response (structure)
-  ((message-id   UNKNOWN             21      :offset-assert 0)
-   (status-code  int32                       :offset-assert 24)
+  ((message-id   uint8             21      :offset-assert 0)
+   (status-code  medius-status-code                       :offset-assert 24)
    (connect-info net-connection-info :inline :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #xb6
   :flag-assert         #x9000000b6
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-8-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype medius-join-game-request0 (structure)
-  ((message-id      UNKNOWN          21      :offset-assert 0)
-   (session-key     UNKNOWN          17      :offset-assert 21)
+  ((message-id      uint8          21      :offset-assert 0)
+   (session-key     uint8          17      :offset-assert 21)
    (medius-world-id int32                    :offset-assert 40)
-   (game-password   UNKNOWN          32      :offset-assert 44)
+   (game-password   uint8          32      :offset-assert 44)
    (game-host-type  int32                    :offset-assert 76)
    (address-list    net-address-list :inline :offset-assert 80)
    )
@@ -25919,15 +25890,15 @@
   :size-assert         #x80
   :flag-assert         #x900000080
   )
-|#
 
-#|
+
+
 (deftype medius-join-game-request (structure)
-  ((message-id      UNKNOWN          21      :offset-assert 0)
-   (session-key     UNKNOWN          17      :offset-assert 21)
+  ((message-id      uint8          21      :offset-assert 0)
+   (session-key     uint8          17      :offset-assert 21)
    (medius-world-id int32                    :offset-assert 40)
    (join-type       int32                    :offset-assert 44)
-   (game-password   UNKNOWN          32      :offset-assert 48)
+   (game-password   uint8          32      :offset-assert 48)
    (game-host-type  int32                    :offset-assert 80)
    (pub-key         rsa-key          :inline :offset-assert 84)
    (address-list    net-address-list :inline :offset-assert 148)
@@ -25936,12 +25907,12 @@
   :size-assert         #xc4
   :flag-assert         #x9000000c4
   )
-|#
 
-#|
+
+
 (deftype medius-join-game-response (structure)
-  ((message-id     UNKNOWN             21      :offset-assert 0)
-   (status-code    int32                       :offset-assert 24)
+  ((message-id     uint8             21      :offset-assert 0)
+   (status-code    medius-status-code                       :offset-assert 24)
    (game-host-type int32                       :offset-assert 28)
    (connect-info   net-connection-info :inline :offset-assert 32)
    )
@@ -25949,11 +25920,11 @@
   :size-assert         #xba
   :flag-assert         #x9000000ba
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-list-extra-info-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
+  ((message-id        uint8 21 :offset-assert 0)
    (ladder-stat-index int32      :offset-assert 24)
    (sort-order        int32      :offset-assert 28)
    (start-position    uint32     :offset-assert 32)
@@ -25963,16 +25934,16 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-list-extra-info-response0 (structure)
-  ((message-id      UNKNOWN                    21      :offset-assert 0)
-   (status-code     int32                              :offset-assert 24)
+  ((message-id      uint8                    21      :offset-assert 0)
+   (status-code     medius-status-code                              :offset-assert 24)
    (ladder-position uint32                             :offset-assert 28)
    (account-id      int32                              :offset-assert 32)
-   (account-name    UNKNOWN                    32      :offset-assert 36)
-   (account-stats   UNKNOWN                    256     :offset-assert 68)
+   (account-name    uint8                    32      :offset-assert 36)
+   (account-stats   uint8                    256     :offset-assert 68)
    (online-state    medius-player-online-state :inline :offset-assert 324)
    (end-of-list     int8                               :offset-assert 464)
    )
@@ -25980,17 +25951,17 @@
   :size-assert         #x1d1
   :flag-assert         #x9000001d1
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-list-extra-info-response (structure)
-  ((message-id      UNKNOWN                    21      :offset-assert 0)
-   (status-code     int32                              :offset-assert 24)
+  ((message-id      uint8                    21      :offset-assert 0)
+   (status-code     medius-status-code                              :offset-assert 24)
    (ladder-position uint32                             :offset-assert 28)
    (ladder-stat     int32                              :offset-assert 32)
    (account-id      int32                              :offset-assert 36)
-   (account-name    UNKNOWN                    32      :offset-assert 40)
-   (account-stats   UNKNOWN                    256     :offset-assert 72)
+   (account-name    uint8                    32      :offset-assert 40)
+   (account-stats   uint8                    256     :offset-assert 72)
    (online-state    medius-player-online-state :inline :offset-assert 328)
    (end-of-list     int8                               :offset-assert 468)
    )
@@ -25998,12 +25969,12 @@
   :size-assert         #x1d5
   :flag-assert         #x9000001d5
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-list-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (session-key    UNKNOWN 17 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (session-key    uint8 17 :offset-assert 21)
    (start-byte     uint32     :offset-assert 40)
    (end-byte       uint32     :offset-assert 44)
    (sort-order     int32      :offset-assert 48)
@@ -26014,26 +25985,26 @@
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-list-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (account-id      int32      :offset-assert 24)
-   (account-name    UNKNOWN 32 :offset-assert 28)
+   (account-name    uint8 32 :offset-assert 28)
    (ladder-position uint32     :offset-assert 60)
-   (status-code     int32      :offset-assert 64)
+   (status-code     medius-status-code      :offset-assert 64)
    (end-of-list     int8       :offset-assert 68)
    )
   :method-count-assert 9
   :size-assert         #x45
   :flag-assert         #x900000045
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-position-extra-info-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
+  ((message-id        uint8 21 :offset-assert 0)
    (account-id        int32      :offset-assert 24)
    (ladder-stat-index int32      :offset-assert 28)
    (sort-order        int32      :offset-assert 32)
@@ -26042,12 +26013,12 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-position-extra-info-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (status-code     int32      :offset-assert 24)
+  ((message-id      uint8 21 :offset-assert 0)
+   (status-code     medius-status-code      :offset-assert 24)
    (ladder-position uint32     :offset-assert 28)
    (total-rankings  uint32     :offset-assert 32)
    )
@@ -26055,12 +26026,12 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-position-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (account-id  int32      :offset-assert 40)
    (start-byte  uint32     :offset-assert 44)
    (end-byte    uint32     :offset-assert 48)
@@ -26070,24 +26041,24 @@
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-position-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (ladder-position uint32     :offset-assert 24)
-   (status-code     int32      :offset-assert 28)
+   (status-code     medius-status-code      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-position-fast-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (account-id      int32      :offset-assert 40)
    (new-stats-score int32      :offset-assert 44)
    )
@@ -26095,40 +26066,40 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-ladder-position-fast-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (ladder-position uint32     :offset-assert 24)
-   (status-code     int32      :offset-assert 28)
+   (status-code     medius-status-code      :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-lobby-world-player-list-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
-   (session-key     UNKNOWN 17 :offset-assert 21)
+  ((message-id      uint8 21 :offset-assert 0)
+   (session-key     uint8 17 :offset-assert 21)
    (medius-world-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-lobby-world-player-list-response (structure)
-  ((message-id       UNKNOWN 21  :offset-assert 0)
-   (status-code      int32       :offset-assert 24)
+  ((message-id       uint8 21  :offset-assert 0)
+   (status-code      medius-status-code       :offset-assert 24)
    (player-status    int32       :offset-assert 28)
    (account-id       int32       :offset-assert 32)
-   (account-name     UNKNOWN 32  :offset-assert 36)
-   (stats            UNKNOWN 256 :offset-assert 68)
+   (account-name     uint8 32  :offset-assert 36)
+   (stats            uint8 256 :offset-assert 68)
    (connection-class int32       :offset-assert 324)
    (end-of-list      int8        :offset-assert 328)
    )
@@ -26136,108 +26107,108 @@
   :size-assert         #x149
   :flag-assert         #x900000149
   )
-|#
 
-#|
+
+
 (deftype medius-machine-signature-post (structure)
-  ((message-id        UNKNOWN 21  :offset-assert 0)
-   (session-key       UNKNOWN 17  :offset-assert 21)
-   (machine-signature UNKNOWN 128 :offset-assert 38)
+  ((message-id        uint8 21  :offset-assert 0)
+   (session-key       uint8 17  :offset-assert 21)
+   (machine-signature uint8 128 :offset-assert 38)
    )
   :method-count-assert 9
   :size-assert         #xa6
   :flag-assert         #x9000000a6
   )
-|#
 
-#|
+
+
 (deftype medius-modify-clan-message-request (structure)
-  ((message-id      UNKNOWN 21  :offset-assert 0)
-   (session-key     UNKNOWN 17  :offset-assert 21)
+  ((message-id      uint8 21  :offset-assert 0)
+   (session-key     uint8 17  :offset-assert 21)
    (clan-message-id int32       :offset-assert 40)
-   (new-message     UNKNOWN 200 :offset-assert 44)
+   (new-message     uint8 200 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #xf4
   :flag-assert         #x9000000f4
   )
-|#
 
-#|
+
+
 (deftype medius-modify-clan-message-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-pick-location-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (location-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-pick-location-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-player-info-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (account-id  int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-player-info-response (structure)
-  ((message-id       UNKNOWN 21  :offset-assert 0)
-   (status-code      int32       :offset-assert 24)
-   (account-name     UNKNOWN 32  :offset-assert 28)
+  ((message-id       uint8 21  :offset-assert 0)
+   (status-code      medius-status-code       :offset-assert 24)
+   (account-name     uint8 32  :offset-assert 28)
    (application-id   int32       :offset-assert 60)
    (player-status    int32       :offset-assert 64)
    (connection-class int32       :offset-assert 68)
-   (stats            UNKNOWN 256 :offset-assert 72)
+   (stats            uint8 256 :offset-assert 72)
    )
   :method-count-assert 9
   :size-assert         #x148
   :flag-assert         #x900000148
   )
-|#
 
-#|
+
+
 (deftype medius-player-report (structure)
-  ((session-key     UNKNOWN 17  :offset-assert 0)
+  ((session-key     uint8 17  :offset-assert 0)
    (medius-world-id int32       :offset-assert 20)
-   (stats           UNKNOWN 256 :offset-assert 24)
+   (stats           uint8 256 :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x118
   :flag-assert         #x900000118
   )
-|#
 
-#|
+
+
 (deftype medius-reassign-game-medius-world-id (structure)
   ((old-medius-world-id int32  :offset-assert 0)
    (new-medius-world-id int32  :offset-assert 4)
@@ -26246,58 +26217,58 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
+
+
 (deftype medius-remove-from-buddy-list-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    (account-id  int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-remove-from-buddy-list-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-remove-from-ignore-list-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (ignore-account-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-remove-from-ignore-list-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-remove-player-from-clan-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (player-account-id int32      :offset-assert 40)
    (clan-id           int32      :offset-assert 44)
    )
@@ -26305,211 +26276,211 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-remove-player-from-clan-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-request-clan-team-challenge-request (structure)
-  ((message-id  UNKNOWN 21  :offset-assert 0)
-   (session-key UNKNOWN 17  :offset-assert 21)
+  ((message-id  uint8 21  :offset-assert 0)
+   (session-key uint8 17  :offset-assert 21)
    (clan-id     int32       :offset-assert 40)
-   (message     UNKNOWN 200 :offset-assert 44)
+   (message     uint8 200 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #xf4
   :flag-assert         #x9000000f4
   )
-|#
 
-#|
+
+
 (deftype medius-request-clan-team-challenge-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-respond-to-clan-invitation-request (structure)
-  ((message-id         UNKNOWN 21  :offset-assert 0)
-   (session-key        UNKNOWN 17  :offset-assert 21)
+  ((message-id         uint8 21  :offset-assert 0)
+   (session-key        uint8 17  :offset-assert 21)
    (clan-invitation-id int32       :offset-assert 40)
    (response           int32       :offset-assert 44)
-   (message            UNKNOWN 200 :offset-assert 48)
+   (message            uint8 200 :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #xf8
   :flag-assert         #x9000000f8
   )
-|#
 
-#|
+
+
 (deftype medius-respond-to-clan-invitation-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-respond-to-clan-team-challenge-request (structure)
-  ((message-id        UNKNOWN 21  :offset-assert 0)
-   (session-key       UNKNOWN 17  :offset-assert 21)
+  ((message-id        uint8 21  :offset-assert 0)
+   (session-key       uint8 17  :offset-assert 21)
    (clan-challenge-id int32       :offset-assert 40)
    (challenge-status  int32       :offset-assert 44)
-   (message           UNKNOWN 200 :offset-assert 48)
+   (message           uint8 200 :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #xf8
   :flag-assert         #x9000000f8
   )
-|#
 
-#|
+
+
 (deftype medius-respond-to-clan-team-challenge-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-revoke-clan-invitation-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (player-account-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-revoke-clan-invitation-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-revoke-clan-team-challenge-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (session-key       UNKNOWN 17 :offset-assert 21)
+  ((message-id        uint8 21 :offset-assert 0)
+   (session-key       uint8 17 :offset-assert 21)
    (clan-challenge-id int32      :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+
+
 (deftype medius-revoke-clan-team-challenge-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-send-clan-message-request (structure)
-  ((message-id  UNKNOWN 21  :offset-assert 0)
-   (session-key UNKNOWN 17  :offset-assert 21)
-   (message     UNKNOWN 200 :offset-assert 38)
+  ((message-id  uint8 21  :offset-assert 0)
+   (session-key uint8 17  :offset-assert 21)
+   (message     uint8 200 :offset-assert 38)
    )
   :method-count-assert 9
   :size-assert         #xee
   :flag-assert         #x9000000ee
   )
-|#
 
-#|
+
+
 (deftype medius-send-clan-message-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-session-begin-request (structure)
-  ((message-id       UNKNOWN 21 :offset-assert 0)
+  ((message-id       uint8 21 :offset-assert 0)
    (connection-class int32      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-session-begin-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
-   (session-key UNKNOWN 17 :offset-assert 28)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
+   (session-key uint8 17 :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x2d
   :flag-assert         #x90000002d
   )
-|#
 
-#|
+
+
 (deftype medius-session-end-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
+
+
 (deftype medius-session-end-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-set-game-list-filter-request (structure)
-  ((message-id          UNKNOWN 21 :offset-assert 0)
-   (session-key         UNKNOWN 17 :offset-assert 21)
+  ((message-id          uint8 21 :offset-assert 0)
+   (session-key         uint8 17 :offset-assert 21)
    (filter-field        int32      :offset-assert 40)
    (comparison-operator int32      :offset-assert 44)
    (baseline-value      int32      :offset-assert 48)
@@ -26518,22 +26489,22 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
+
+
 (deftype medius-set-game-list-filter-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-set-lobby-world-filter-request (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
+  ((message-id        uint8 21 :offset-assert 0)
    (filter-mask1      uint32     :offset-assert 24)
    (filter-mask2      uint32     :offset-assert 28)
    (filter-mask3      uint32     :offset-assert 32)
@@ -26545,12 +26516,12 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-set-lobby-world-filter-response (structure)
-  ((message-id        UNKNOWN 21 :offset-assert 0)
-   (status-code       int32      :offset-assert 24)
+  ((message-id        uint8 21 :offset-assert 0)
+   (status-code       medius-status-code      :offset-assert 24)
    (filter-mask1      uint32     :offset-assert 28)
    (filter-mask2      uint32     :offset-assert 32)
    (filter-mask3      uint32     :offset-assert 36)
@@ -26562,17 +26533,17 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-9-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype medius-set-localization-params-request (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
-   (session-key        UNKNOWN 17 :offset-assert 21)
+  ((message-id         uint8 21 :offset-assert 0)
+   (session-key        uint8 17 :offset-assert 21)
    (character-encoding int32      :offset-assert 40)
    (language           int32      :offset-assert 44)
    )
@@ -26580,12 +26551,12 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-set-message-as-read-request (structure)
-  ((message-id       UNKNOWN 21 :offset-assert 0)
-   (session-key      UNKNOWN 17 :offset-assert 21)
+  ((message-id       uint8 21 :offset-assert 0)
+   (session-key      uint8 17 :offset-assert 21)
    (message-type     int32      :offset-assert 40)
    (message-idto-tag int32      :offset-assert 44)
    )
@@ -26593,24 +26564,24 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+
+
 (deftype medius-set-stored-account-info-request (structure)
   ((device           int32      :offset-assert 0)
    (card-port        int32      :offset-assert 4)
    (card-slot        int32      :offset-assert 8)
    (account-id       int32      :offset-assert 12)
-   (account-name     UNKNOWN 32 :offset-assert 16)
-   (account-password UNKNOWN 32 :offset-assert 48)
+   (account-name     uint8 32 :offset-assert 16)
+   (account-password uint8 32 :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
+
+
 (deftype medius-set-stored-account-info-response (structure)
   ((confirmation int32  :offset-assert 0)
    )
@@ -26618,98 +26589,98 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
+
+
 (deftype medius-status-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-text-filter-request (structure)
-  ((message-id       UNKNOWN 21 :offset-assert 0)
-   (session-key      UNKNOWN 17 :offset-assert 21)
+  ((message-id       uint8 21 :offset-assert 0)
+   (session-key      uint8 17 :offset-assert 21)
    (text-filter-type int32      :offset-assert 40)
-   (text             UNKNOWN 64 :offset-assert 44)
+   (text             uint8 64 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x6c
   :flag-assert         #x90000006c
   )
-|#
 
-#|
+
+
 (deftype medius-text-filter-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (text        UNKNOWN 64 :offset-assert 21)
-   (status-code int32      :offset-assert 88)
+  ((message-id  uint8 21 :offset-assert 0)
+   (text        uint8 64 :offset-assert 21)
+   (status-code medius-status-code      :offset-assert 88)
    )
   :method-count-assert 9
   :size-assert         #x5c
   :flag-assert         #x90000005c
   )
-|#
 
-#|
+
+
 (deftype medius-transfer-clan-leadership-request (structure)
-  ((message-id              UNKNOWN 21 :offset-assert 0)
-   (session-key             UNKNOWN 17 :offset-assert 21)
+  ((message-id              uint8 21 :offset-assert 0)
+   (session-key             uint8 17 :offset-assert 21)
    (new-leader-account-id   int32      :offset-assert 40)
-   (new-leader-account-name UNKNOWN 32 :offset-assert 44)
+   (new-leader-account-name uint8 32 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
+
+
 (deftype medius-transfer-clan-leadership-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-update-clan-stats-request (structure)
-  ((message-id  UNKNOWN 21  :offset-assert 0)
-   (session-key UNKNOWN 17  :offset-assert 21)
+  ((message-id  uint8 21  :offset-assert 0)
+   (session-key uint8 17  :offset-assert 21)
    (clan-id     int32       :offset-assert 40)
-   (stats       UNKNOWN 256 :offset-assert 44)
+   (stats       uint8 256 :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x12c
   :flag-assert         #x90000012c
   )
-|#
 
-#|
+
+
 (deftype medius-update-clan-stats-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-update-game-request (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
-   (session-key        UNKNOWN 17 :offset-assert 21)
+  ((message-id         uint8 21 :offset-assert 0)
+   (session-key        uint8 17 :offset-assert 21)
    (medius-world-id    int32      :offset-assert 40)
-   (game-name          UNKNOWN 64 :offset-assert 44)
+   (game-name          uint8 64 :offset-assert 44)
    (min-players        int16      :offset-assert 108)
    (max-players        int16      :offset-assert 110)
    (game-level         int16      :offset-assert 112)
@@ -26719,95 +26690,95 @@
   :size-assert         #x74
   :flag-assert         #x900000074
   )
-|#
 
-#|
+
+
 (deftype medius-update-game-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-update-ladder-stats-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
+  ((message-id  uint8 21 :offset-assert 0)
    (ladder-type int32      :offset-assert 24)
-   (stats       UNKNOWN 15 :offset-assert 28)
+   (stats       uint32 15 :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
+
+
 (deftype medius-update-ladder-stats-wide-request (structure)
-  ((message-id  UNKNOWN 21  :offset-assert 0)
+  ((message-id  uint8 21  :offset-assert 0)
    (ladder-type int32       :offset-assert 24)
-   (stats       UNKNOWN 100 :offset-assert 28)
+   (stats       uint32 100 :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x1ac
   :flag-assert         #x9000001ac
   )
-|#
 
-#|
+
+
 (deftype medius-update-clan-ladder-stats-wide-delta-request (structure)
-  ((message-id UNKNOWN 21  :offset-assert 0)
+  ((message-id uint8 21  :offset-assert 0)
    (clan-id    int32       :offset-assert 24)
-   (stats      UNKNOWN 100 :offset-assert 28)
+   (stats      uint32 100 :offset-assert 28)
    )
   :method-count-assert 9
   :size-assert         #x1ac
   :flag-assert         #x9000001ac
   )
-|#
 
-#|
+
+
 (deftype medius-update-user-state (structure)
-  ((session-key UNKNOWN 17 :offset-assert 0)
+  ((session-key uint8 17 :offset-assert 0)
    (user-action int32      :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
+
+
 (deftype medius-version-server-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (session-key UNKNOWN 17 :offset-assert 21)
+  ((message-id  uint8 21 :offset-assert 0)
+   (session-key uint8 17 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x26
   :flag-assert         #x900000026
   )
-|#
 
-#|
+
+
 (deftype medius-version-server-response (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
-   (version-server UNKNOWN 56 :offset-assert 21)
+  ((message-id     uint8 21 :offset-assert 0)
+   (version-server uint8 56 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x4d
   :flag-assert         #x90000004d
   )
-|#
 
-#|
+
+
 (deftype medius-world-report (structure)
-  ((session-key        UNKNOWN 17  :offset-assert 0)
+  ((session-key        uint8 17  :offset-assert 0)
    (medius-world-id    int32       :offset-assert 20)
    (player-count       int32       :offset-assert 24)
-   (game-name          UNKNOWN 64  :offset-assert 28)
-   (game-stats         UNKNOWN 256 :offset-assert 92)
+   (game-name          uint8 64  :offset-assert 28)
+   (game-stats         uint8 256 :offset-assert 92)
    (min-players        int32       :offset-assert 348)
    (max-players        int32       :offset-assert 352)
    (game-level         int32       :offset-assert 356)
@@ -26822,11 +26793,11 @@
   :size-assert         #x180
   :flag-assert         #x900000180
   )
-|#
 
-#|
+
+
 (deftype medius-get-universe-information-request (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
+  ((message-id         uint8 21 :offset-assert 0)
    (info-type          uint32     :offset-assert 24)
    (character-encoding int32      :offset-assert 28)
    (language           int32      :offset-assert 32)
@@ -26835,65 +26806,65 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
+
+
 (deftype medius-universe-news-response (structure)
-  ((message-id  UNKNOWN 21  :offset-assert 0)
-   (status-code int32       :offset-assert 24)
-   (news        UNKNOWN 256 :offset-assert 28)
+  ((message-id  uint8 21  :offset-assert 0)
+   (status-code medius-status-code       :offset-assert 24)
+   (news        uint8 256 :offset-assert 28)
    (end-of-text int8        :offset-assert 284)
    )
   :method-count-assert 9
   :size-assert         #x11d
   :flag-assert         #x90000011d
   )
-|#
 
-#|
+
+
 (deftype medius-universe-variable-information-response (structure)
-  ((message-id           UNKNOWN 21  :offset-assert 0)
-   (status-code          int32       :offset-assert 24)
+  ((message-id           uint8 21  :offset-assert 0)
+   (status-code          medius-status-code       :offset-assert 24)
    (info-filter          uint32      :offset-assert 28)
    (universe-id          uint32      :offset-assert 32)
-   (universe-name        UNKNOWN 128 :offset-assert 36)
-   (dns                  UNKNOWN 128 :offset-assert 164)
+   (universe-name        uint8 128 :offset-assert 36)
+   (dns                  uint8 128 :offset-assert 164)
    (port                 int32       :offset-assert 292)
-   (universe-description UNKNOWN 256 :offset-assert 296)
+   (universe-description uint8 256 :offset-assert 296)
    (status               int32       :offset-assert 552)
    (user-count           int32       :offset-assert 556)
    (max-users            int32       :offset-assert 560)
-   (universe-billing     UNKNOWN 8   :offset-assert 564)
-   (billing-system-name  UNKNOWN 128 :offset-assert 572)
-   (extended-info        UNKNOWN 128 :offset-assert 700)
-   (svo-url              UNKNOWN 128 :offset-assert 828)
+   (universe-billing     uint8 8   :offset-assert 564)
+   (billing-system-name  uint8 128 :offset-assert 572)
+   (extended-info        uint8 128 :offset-assert 700)
+   (svo-url              uint8 128 :offset-assert 828)
    (end-of-list          int8        :offset-assert 956)
    )
   :method-count-assert 9
   :size-assert         #x3bd
   :flag-assert         #x9000003bd
   )
-|#
 
-#|
+
+
 (deftype medius-universe-svo-urlresponse (structure)
-  ((message-id UNKNOWN 21  :offset-assert 0)
-   (url        UNKNOWN 128 :offset-assert 21)
+  ((message-id uint8 21  :offset-assert 0)
+   (url        uint8 128 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x95
   :flag-assert         #x900000095
   )
-|#
 
-#|
+
+
 (deftype medius-universe-status-list-response (structure)
-  ((message-id           UNKNOWN 21  :offset-assert 0)
-   (status-code          int32       :offset-assert 24)
-   (universe-name        UNKNOWN 128 :offset-assert 28)
-   (dns                  UNKNOWN 128 :offset-assert 156)
+  ((message-id           uint8 21  :offset-assert 0)
+   (status-code          medius-status-code       :offset-assert 24)
+   (universe-name        uint8 128 :offset-assert 28)
+   (dns                  uint8 128 :offset-assert 156)
    (port                 int32       :offset-assert 284)
-   (universe-description UNKNOWN 256 :offset-assert 288)
+   (universe-description uint8 256 :offset-assert 288)
    (status               int32       :offset-assert 544)
    (user-count           int32       :offset-assert 548)
    (max-users            int32       :offset-assert 552)
@@ -26903,11 +26874,11 @@
   :size-assert         #x22d
   :flag-assert         #x90000022d
   )
-|#
 
-#|
+
+
 (deftype medius-get-universe-extra-info-request (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
+  ((message-id         uint8 21 :offset-assert 0)
    (info-type          uint32     :offset-assert 24)
    (character-encoding int32      :offset-assert 28)
    (language           int32      :offset-assert 32)
@@ -26916,53 +26887,53 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
+
+
 (deftype medius-universe-status-list-extra-info-response (structure)
-  ((message-id           UNKNOWN 21  :offset-assert 0)
-   (status-code          int32       :offset-assert 24)
-   (universe-name        UNKNOWN 128 :offset-assert 28)
-   (dns                  UNKNOWN 128 :offset-assert 156)
+  ((message-id           uint8 21  :offset-assert 0)
+   (status-code          medius-status-code       :offset-assert 24)
+   (universe-name        uint8 128 :offset-assert 28)
+   (dns                  uint8 128 :offset-assert 156)
    (port                 int32       :offset-assert 284)
-   (universe-description UNKNOWN 256 :offset-assert 288)
+   (universe-description uint8 256 :offset-assert 288)
    (status               int32       :offset-assert 544)
    (user-count           int32       :offset-assert 548)
    (max-users            int32       :offset-assert 552)
-   (universe-billing     UNKNOWN 8   :offset-assert 556)
-   (billing-system-name  UNKNOWN 128 :offset-assert 564)
+   (universe-billing     uint8 8   :offset-assert 556)
+   (billing-system-name  uint8 128 :offset-assert 564)
    (end-of-list          int8        :offset-assert 692)
-   (extended-info        UNKNOWN 128 :offset-assert 693)
+   (extended-info        uint8 128 :offset-assert 693)
    )
   :method-count-assert 9
   :size-assert         #x335
   :flag-assert         #x900000335
   )
-|#
 
-#|
+
+
 (deftype medius-post-debug-info-request (structure)
-  ((message-id UNKNOWN 21  :offset-assert 0)
-   (message    UNKNOWN 200 :offset-assert 21)
+  ((message-id uint8 21  :offset-assert 0)
+   (message    uint8 200 :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #xdd
   :flag-assert         #x9000000dd
   )
-|#
 
-#|
+
+
 (deftype medius-post-debug-info-response (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
-   (status-code int32      :offset-assert 24)
+  ((message-id  uint8 21 :offset-assert 0)
+   (status-code medius-status-code      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-connect-in-params (structure)
   ((connect-info                         net-connection-info     :inline :offset-assert 0)
    (stream-media-params                  net-stream-media-params :inline :offset-assert 156)
@@ -26975,9 +26946,9 @@
   :size-assert         #x11c
   :flag-assert         #x90000011c
   )
-|#
 
-#|
+
+
 (deftype medius-connect-out-params (structure)
   ((connection-handle basic  :offset-assert 0)
    (error-code        int32  :offset-assert 4)
@@ -26987,9 +26958,9 @@
   :flag-assert         #x900000008
   ;; field connection-handle uses ~A with a signed load.
   )
-|#
 
-#|
+
+
 (deftype medius-disconnect-params (structure)
   ((connection-handle      basic  :offset-assert 0)
    (disconnect-reason      int32  :offset-assert 4)
@@ -27000,9 +26971,9 @@
   :flag-assert         #x90000000c
   ;; field connection-handle uses ~A with a signed load.
   )
-|#
 
-#|
+
+
 (deftype medius-initialize-in-params (structure)
   ((p-local-key-pair                                                 rsa-keypair  :offset-assert 0)
    (my-chat-fwd-message-callback                                     basic        :offset-assert 4)
@@ -27026,9 +26997,9 @@
   :flag-assert         #x900000040
   ;; field my-chat-fwd-message-callback-user-data uses ~A with a signed load. field my-binary-fwd-message-callback-user-data uses ~A with a signed load. field my-add-to-buddy-list-fwd-confirmation-request-callback-user-data uses ~A with a signed load. field my-error-message-callback-user-data uses ~A with a signed load. field my-reassign-game-medius-world-idcallback-user-data uses ~A with a signed load. field p-system-message-callback-data uses ~A with a signed load.
   )
-|#
 
-#|
+
+
 (deftype medius-initialize-out-params (structure)
   ((error-code int32  :offset-assert 0)
    )
@@ -27036,9 +27007,9 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
+
+
 (deftype medius-initialize-bare-in-params (structure)
   ((my-chat-fwd-message-callback                                     basic  :offset-assert 0)
    (my-chat-fwd-message-callback-user-data                           basic  :offset-assert 4)
@@ -27057,9 +27028,9 @@
   :flag-assert         #x90000002c
   ;; field my-chat-fwd-message-callback-user-data uses ~A with a signed load. field my-binary-fwd-message-callback-user-data uses ~A with a signed load. field my-add-to-buddy-list-fwd-confirmation-request-callback-user-data uses ~A with a signed load. field my-error-message-callback-user-data uses ~A with a signed load. field my-reassign-game-medius-world-idcallback-user-data uses ~A with a signed load.
   )
-|#
 
-#|
+
+
 (deftype medius-initialize-bare-out-params (structure)
   ((error-code int32  :offset-assert 0)
    )
@@ -27067,12 +27038,12 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
+
+
 (deftype medius-file (structure)
-  ((filename              UNKNOWN 128 :offset-assert 0)
-   (server-checksum       UNKNOWN 16  :offset-assert 128)
+  ((filename              uint8 128 :offset-assert 0)
+   (server-checksum       uint8 16  :offset-assert 128)
    (file-id               uint32      :offset-assert 144)
    (file-size             uint32      :offset-assert 148)
    (creation-time-stamp   uint32      :offset-assert 152)
@@ -27087,395 +27058,397 @@
   :size-assert         #xac
   :flag-assert         #x9000000ac
   )
-|#
 
-#|
+
+
 (deftype medius-file-attributes (structure)
-  ((description             UNKNOWN 256 :offset-assert 0)
+  ((description             uint8 256 :offset-assert 0)
    (last-changed-time-stamp uint32      :offset-assert 256)
    (last-changed-by-user-id uint32      :offset-assert 260)
    (number-accesses         uint32      :offset-assert 264)
    (streamable-flag         uint32      :offset-assert 268)
    (streaming-data-rate     uint32      :offset-assert 272)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x114
   :flag-assert         #x900000114
   )
-|#
 
-#|
+
+
 (deftype medius-file-meta-data (structure)
-  ((key   UNKNOWN 56  :offset-assert 0)
-   (value UNKNOWN 256 :offset-assert 56)
+  ((key   uint8 56  :offset-assert 0)
+   (value uint8 256 :offset-assert 56)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x138
   :flag-assert         #x900000138
   )
-|#
 
-#|
+
+
 (deftype medius-file-checksum (structure)
   ((puc-data uint32     :offset-assert 0)
    (ui-size  uint32     :offset-assert 4)
-   (checksum UNKNOWN 16 :offset-assert 8)
+   (checksum uint8 16 :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
+
+
 (deftype medius-file-create-request (structure)
   ((medius-file-to-create         medius-file            :inline :offset-assert 0)
    (medius-file-create-attributes medius-file-attributes :inline :offset-assert 172)
-   (message-id                    UNKNOWN                21      :offset-assert 448)
+   (message-id                    uint8                21      :offset-assert 448)
    )
   :method-count-assert 9
   :size-assert         #x1d5
   :flag-assert         #x9000001d5
   )
-|#
 
-#|
+
+
 (deftype medius-file-create-response (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (status-code      int32               :offset-assert 172)
-   (message-id       UNKNOWN     21      :offset-assert 176)
+   (status-code      medius-status-code               :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 176)
    )
   :method-count-assert 9
   :size-assert         #xc5
   :flag-assert         #x9000000c5
   )
-|#
 
-#|
+
+
 (deftype medius-file-upload-request (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
    (puc-data-start   uint32              :offset-assert 172)
    (ui-data-size     uint32              :offset-assert 176)
-   (message-id       UNKNOWN     21      :offset-assert 180)
+   (message-id       uint8     21      :offset-assert 180)
    )
   :method-count-assert 9
   :size-assert         #xc9
   :flag-assert         #x9000000c9
   )
-|#
 
-#|
+
+
 (deftype medius-file-upload-server-req (structure)
   ((i-req-start-byte-index int32      :offset-assert 0)
    (i-packet-number        int32      :offset-assert 4)
    (i-xfer-status          int32      :offset-assert 8)
-   (status-code            int32      :offset-assert 12)
-   (message-id             UNKNOWN 21 :offset-assert 16)
+   (status-code            medius-status-code      :offset-assert 12)
+   (message-id             uint8 21 :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x25
   :flag-assert         #x900000025
   )
-|#
 
-#|
+
+
 (deftype medius-file-upload-response (structure)
-  ((data               UNKNOWN 464 :offset-assert 0)
+  ((data               uint8 464 :offset-assert 0)
    (i-start-byte-index int32       :offset-assert 464)
    (i-data-size        int32       :offset-assert 468)
    (i-packet-number    int32       :offset-assert 472)
    (i-xfer-status      int32       :offset-assert 476)
-   (status-code        int32       :offset-assert 480)
-   (message-id         UNKNOWN 21  :offset-assert 484)
+   (status-code        medius-status-code       :offset-assert 480)
+   (message-id         uint8 21  :offset-assert 484)
    )
   :method-count-assert 9
   :size-assert         #x1f9
   :flag-assert         #x9000001f9
   )
-|#
 
-#|
+
+
 (deftype medius-file-close-request (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (message-id       UNKNOWN     21      :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 172)
    )
   :method-count-assert 9
   :size-assert         #xc1
   :flag-assert         #x9000000c1
   )
-|#
 
-#|
+
+
 (deftype medius-file-close-response (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (status-code      int32               :offset-assert 172)
-   (message-id       UNKNOWN     21      :offset-assert 176)
+   (status-code      medius-status-code               :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 176)
    )
   :method-count-assert 9
   :size-assert         #xc5
   :flag-assert         #x9000000c5
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-10-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype medius-file-download-request (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (message-id       UNKNOWN     21      :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 172)
    )
   :method-count-assert 9
   :size-assert         #xc1
   :flag-assert         #x9000000c1
   )
-|#
 
-#|
+
+
 (deftype medius-file-download-response (structure)
-  ((data               UNKNOWN 464 :offset-assert 0)
+  ((data               uint8 464 :offset-assert 0)
    (i-start-byte-index int32       :offset-assert 464)
    (i-data-size        int32       :offset-assert 468)
    (i-packet-number    int32       :offset-assert 472)
    (i-xfer-status      int32       :offset-assert 476)
-   (status-code        int32       :offset-assert 480)
-   (message-id         UNKNOWN 21  :offset-assert 484)
+   (status-code        medius-status-code       :offset-assert 480)
+   (message-id         uint8 21  :offset-assert 484)
    )
   :method-count-assert 9
   :size-assert         #x1f9
   :flag-assert         #x9000001f9
   )
-|#
 
-#|
+
+
 (deftype medius-file-download-stream-request (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (message-id       UNKNOWN     21      :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 172)
    )
   :method-count-assert 9
   :size-assert         #xc1
   :flag-assert         #x9000000c1
   )
-|#
 
-#|
+
+
 (deftype medius-file-download-stream-response (structure)
-  ((data               UNKNOWN 464 :offset-assert 0)
+  ((data               uint8 464 :offset-assert 0)
    (i-start-byte-index int32       :offset-assert 464)
    (i-data-size        int32       :offset-assert 468)
    (i-packet-number    int32       :offset-assert 472)
    (i-xfer-status      int32       :offset-assert 476)
-   (status-code        int32       :offset-assert 480)
-   (message-id         UNKNOWN 21  :offset-assert 484)
+   (status-code        medius-status-code       :offset-assert 480)
+   (message-id         uint8 21  :offset-assert 484)
    )
   :method-count-assert 9
   :size-assert         #x1f9
   :flag-assert         #x9000001f9
   )
-|#
 
-#|
+
+
 (deftype medius-file-delete-request (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (message-id       UNKNOWN     21      :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 172)
    )
   :method-count-assert 9
   :size-assert         #xc1
   :flag-assert         #x9000000c1
   )
-|#
 
-#|
+
+
 (deftype medius-file-delete-response (structure)
-  ((status-code int32      :offset-assert 0)
-   (message-id  UNKNOWN 21 :offset-assert 4)
+  ((status-code medius-status-code      :offset-assert 0)
+   (message-id  uint8 21 :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x19
   :flag-assert         #x900000019
   )
-|#
 
-#|
+
+
 (deftype medius-file-list-request (structure)
-  ((filename-begins-with  UNKNOWN 128 :offset-assert 0)
+  ((filename-begins-with  uint8 128 :offset-assert 0)
    (filesize-greater-than uint32      :offset-assert 128)
    (filesize-less-than    uint32      :offset-assert 132)
    (owned-by-id           uint32      :offset-assert 136)
    (newer-than-timestamp  uint32      :offset-assert 140)
    (starting-entry-number uint32      :offset-assert 144)
    (page-size             uint32      :offset-assert 148)
-   (message-id            UNKNOWN 21  :offset-assert 152)
+   (message-id            uint8 21  :offset-assert 152)
    )
   :method-count-assert 9
   :size-assert         #xad
   :flag-assert         #x9000000ad
   )
-|#
 
-#|
+
+
 (deftype medius-file-list-response (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (status-code      int32               :offset-assert 172)
-   (message-id       UNKNOWN     21      :offset-assert 176)
+   (status-code      medius-status-code               :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 176)
    (end-of-list      int8                :offset-assert 197)
    )
   :method-count-assert 9
   :size-assert         #xc6
   :flag-assert         #x9000000c6
   )
-|#
 
-#|
+
+
 (deftype medius-file-update-attributes-request (structure)
   ((medius-file-info               medius-file            :inline :offset-assert 0)
    (medius-file-updated-attributes medius-file-attributes :inline :offset-assert 172)
-   (message-id                     UNKNOWN                21      :offset-assert 448)
+   (message-id                     uint8                21      :offset-assert 448)
    )
   :method-count-assert 9
   :size-assert         #x1d5
   :flag-assert         #x9000001d5
   )
-|#
 
-#|
+
+
 (deftype medius-file-update-attributes-response (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (status-code      int32               :offset-assert 172)
-   (message-id       UNKNOWN     21      :offset-assert 176)
+   (status-code      medius-status-code               :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 176)
    )
   :method-count-assert 9
   :size-assert         #xc5
   :flag-assert         #x9000000c5
   )
-|#
 
-#|
+
+
 (deftype medius-file-get-attributes-request (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (message-id       UNKNOWN     21      :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 172)
    )
   :method-count-assert 9
   :size-assert         #xc1
   :flag-assert         #x9000000c1
   )
-|#
 
-#|
+
+
 (deftype medius-file-get-attributes-response (structure)
   ((medius-file-info                medius-file            :inline :offset-assert 0)
    (medius-file-attributes-response medius-file-attributes :inline :offset-assert 172)
-   (status-code                     int32                          :offset-assert 448)
-   (message-id                      UNKNOWN                21      :offset-assert 452)
+   (status-code                     medius-status-code                          :offset-assert 448)
+   (message-id                      uint8                21      :offset-assert 452)
    )
   :method-count-assert 9
   :size-assert         #x1d9
   :flag-assert         #x9000001d9
   )
-|#
 
-#|
+
+
 (deftype medius-file-update-meta-data-request (structure)
   ((medius-file-info        medius-file           :inline :offset-assert 0)
    (medius-update-meta-data medius-file-meta-data :inline :offset-assert 172)
-   (message-id              UNKNOWN               21      :offset-assert 484)
+   (message-id              uint8               21      :offset-assert 484)
    )
   :method-count-assert 9
   :size-assert         #x1f9
   :flag-assert         #x9000001f9
   )
-|#
 
-#|
+
+
 (deftype medius-file-update-meta-data-responset (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (status-code      int32               :offset-assert 172)
-   (message-id       UNKNOWN     21      :offset-assert 176)
+   (status-code      medius-status-code               :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 176)
    )
   :method-count-assert 9
   :size-assert         #xc5
   :flag-assert         #x9000000c5
   )
-|#
 
-#|
+
+
 (deftype medius-file-get-meta-data-request (structure)
   ((medius-file-info               medius-file           :inline :offset-assert 0)
    (medius-meta-data-requested-key medius-file-meta-data :inline :offset-assert 172)
-   (message-id                     UNKNOWN               21      :offset-assert 484)
+   (message-id                     uint8               21      :offset-assert 484)
    )
   :method-count-assert 9
   :size-assert         #x1f9
   :flag-assert         #x9000001f9
   )
-|#
 
-#|
+
+
 (deftype medius-file-get-meta-data-response (structure)
   ((medius-file-info          medius-file           :inline :offset-assert 0)
    (medius-meta-data-response medius-file-meta-data :inline :offset-assert 172)
-   (status-code               int32                         :offset-assert 484)
-   (message-id                UNKNOWN               21      :offset-assert 488)
+   (status-code               medius-status-code                         :offset-assert 484)
+   (message-id                uint8               21      :offset-assert 488)
    (end-of-list               int8                          :offset-assert 509)
    )
   :method-count-assert 9
   :size-assert         #x1fe
   :flag-assert         #x9000001fe
   )
-|#
 
-#|
+
+
 (deftype medius-file-search-by-meta-data-request (structure)
   ((medius-meta-data-requested-key medius-file-meta-data :inline :offset-assert 0)
-   (message-id                     UNKNOWN               21      :offset-assert 312)
+   (message-id                     uint8               21      :offset-assert 312)
    )
   :method-count-assert 9
   :size-assert         #x14d
   :flag-assert         #x90000014d
   )
-|#
 
-#|
+
+
 (deftype medius-file-search-by-meta-data-response (structure)
   ((medius-file-info          medius-file           :inline :offset-assert 0)
    (medius-meta-data-response medius-file-meta-data :inline :offset-assert 172)
-   (status-code               int32                         :offset-assert 484)
-   (message-id                UNKNOWN               21      :offset-assert 488)
+   (status-code               medius-status-code                         :offset-assert 484)
+   (message-id                uint8               21      :offset-assert 488)
    (end-of-list               int8                          :offset-assert 509)
    )
   :method-count-assert 9
   :size-assert         #x1fe
   :flag-assert         #x9000001fe
   )
-|#
 
-#|
+
+
 (deftype medius-file-cancel-operation-request (structure)
   ((medius-file-info medius-file :inline :offset-assert 0)
-   (message-id       UNKNOWN     21      :offset-assert 172)
+   (message-id       uint8     21      :offset-assert 172)
    )
   :method-count-assert 9
   :size-assert         #xc1
   :flag-assert         #x9000000c1
   )
-|#
 
-#|
+
+
 (deftype medius-file-cancel-operation-response (structure)
-  ((status-code int32      :offset-assert 0)
-   (message-id  UNKNOWN 21 :offset-assert 4)
+  ((status-code medius-status-code      :offset-assert 0)
+   (message-id  uint8 21 :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x19
   :flag-assert         #x900000019
   )
-|#
 
-#|
+
+
 (deftype medius-server-authentication-request (structure)
-  ((message-id   UNKNOWN          21      :offset-assert 0)
+  ((message-id   uint8          21      :offset-assert 0)
    (trust-level  int32                    :offset-assert 24)
    (address-list net-address-list :inline :offset-assert 28)
    )
@@ -27483,11 +27456,11 @@
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
+
+
 (deftype medius-server-authentication-response (structure)
-  ((message-id   UNKNOWN             21      :offset-assert 0)
+  ((message-id   uint8             21      :offset-assert 0)
    (confirmation int8                        :offset-assert 21)
    (connect-info net-connection-info :inline :offset-assert 24)
    )
@@ -27495,11 +27468,11 @@
   :size-assert         #xb2
   :flag-assert         #x9000000b2
   )
-|#
 
-#|
+
+
 (deftype medius-server-set-attributes-request (structure)
-  ((message-id            UNKNOWN     21      :offset-assert 0)
+  ((message-id            uint8     21      :offset-assert 0)
    (attributes            int32               :offset-assert 24)
    (listen-server-address net-address :inline :offset-assert 28)
    )
@@ -27507,25 +27480,25 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
+
+
 (deftype medius-server-set-attributes-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
+  ((message-id   uint8 21 :offset-assert 0)
    (confirmation int8       :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x16
   :flag-assert         #x900000016
   )
-|#
 
-#|
+
+
 (deftype medius-server-create-game-on-me-request (structure)
-  ((message-id         UNKNOWN          21      :offset-assert 0)
-   (game-name          UNKNOWN          64      :offset-assert 21)
-   (game-stats         UNKNOWN          256     :offset-assert 85)
-   (game-password      UNKNOWN          32      :offset-assert 341)
+  ((message-id         uint8          21      :offset-assert 0)
+   (game-name          uint8          64      :offset-assert 21)
+   (game-stats         uint8          256     :offset-assert 85)
+   (game-password      uint8          32      :offset-assert 341)
    (application-id     int32                    :offset-assert 376)
    (max-clients        int32                    :offset-assert 380)
    (min-clients        int32                    :offset-assert 384)
@@ -27544,11 +27517,11 @@
   :size-assert         #x1d8
   :flag-assert         #x9000001d8
   )
-|#
 
-#|
+
+
 (deftype medius-server-create-game-on-me-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (confirmation    int8       :offset-assert 21)
    (medius-world-id int32      :offset-assert 24)
    )
@@ -27556,11 +27529,11 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-server-create-game-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
+  ((message-id     uint8 21 :offset-assert 0)
    (application-id int32      :offset-assert 24)
    (max-clients    int32      :offset-assert 28)
    )
@@ -27568,11 +27541,11 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-server-create-game-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
+  ((message-id   uint8 21 :offset-assert 0)
    (confirmation int8       :offset-assert 21)
    (world-id     int32      :offset-assert 24)
    )
@@ -27580,11 +27553,11 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-server-create-game-with-attributes-request (structure)
-  ((message-id       UNKNOWN 21 :offset-assert 0)
+  ((message-id       uint8 21 :offset-assert 0)
    (application-id   int32      :offset-assert 24)
    (max-clients      int32      :offset-assert 28)
    (attributes       int32      :offset-assert 32)
@@ -27594,11 +27567,11 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
+
+
 (deftype medius-server-create-game-with-attributes-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
+  ((message-id   uint8 21 :offset-assert 0)
    (confirmation int8       :offset-assert 21)
    (world-id     int32      :offset-assert 24)
    )
@@ -27606,33 +27579,33 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-server-end-game-on-me-request (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (medius-world-id int32      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-server-end-game-on-me-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
+  ((message-id   uint8 21 :offset-assert 0)
    (confirmation int8       :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x16
   :flag-assert         #x900000016
   )
-|#
 
-#|
+
+
 (deftype medius-server-end-game-request (structure)
-  ((message-id  UNKNOWN 21 :offset-assert 0)
+  ((message-id  uint8 21 :offset-assert 0)
    (world-id    int32      :offset-assert 24)
    (brutal-flag int8       :offset-assert 28)
    )
@@ -27640,46 +27613,46 @@
   :size-assert         #x1d
   :flag-assert         #x90000001d
   )
-|#
 
-#|
+
+
 (deftype medius-server-end-game-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
+  ((message-id   uint8 21 :offset-assert 0)
    (confirmation int8       :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x16
   :flag-assert         #x900000016
   )
-|#
 
-#|
+
+
 (deftype medius-server-join-game-request (structure)
-  ((message-id   UNKNOWN             21      :offset-assert 0)
+  ((message-id   uint8             21      :offset-assert 0)
    (connect-info net-connection-info :inline :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #xb2
   :flag-assert         #x9000000b2
   )
-|#
 
-#|
+
+
 (deftype medius-server-join-game-response (structure)
-  ((message-id   UNKNOWN 21      :offset-assert 0)
+  ((message-id   uint8 21      :offset-assert 0)
    (confirmation int8            :offset-assert 21)
-   (access-key   UNKNOWN 17      :offset-assert 22)
+   (access-key   uint8 17      :offset-assert 22)
    (pub-key      rsa-key :inline :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x68
   :flag-assert         #x900000068
   )
-|#
 
-#|
+
+
 (deftype medius-server-move-game-world-on-me-request (structure)
-  ((message-id              UNKNOWN          21      :offset-assert 0)
+  ((message-id              uint8          21      :offset-assert 0)
    (current-medius-world-id int32                    :offset-assert 24)
    (new-game-world-id       int32                    :offset-assert 28)
    (address-list            net-address-list :inline :offset-assert 32)
@@ -27688,11 +27661,11 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
+
+
 (deftype medius-server-move-game-world-on-me-response (structure)
-  ((message-id      UNKNOWN 21 :offset-assert 0)
+  ((message-id      uint8 21 :offset-assert 0)
    (confirmation    int8       :offset-assert 21)
    (medius-world-id int32      :offset-assert 24)
    )
@@ -27700,11 +27673,11 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-server-report-type (structure)
-  ((session-key           UNKNOWN 17 :offset-assert 0)
+  ((session-key           uint8 17 :offset-assert 0)
    (max-worlds            int16      :offset-assert 18)
    (max-players-per-world int16      :offset-assert 20)
    (active-world-count    int16      :offset-assert 22)
@@ -27715,26 +27688,26 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype medius-server-session-begin-request (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
+  ((message-id     uint8 21 :offset-assert 0)
    (location-id    int32      :offset-assert 24)
    (application-id int32      :offset-assert 28)
    (server-type    int32      :offset-assert 32)
-   (server-version UNKNOWN 16 :offset-assert 36)
+   (server-version uint8 16 :offset-assert 36)
    (port           int32      :offset-assert 52)
    )
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
+
+
 (deftype medius-server-session-begin-response (structure)
-  ((message-id   UNKNOWN             21      :offset-assert 0)
+  ((message-id   uint8             21      :offset-assert 0)
    (confirmation int8                        :offset-assert 21)
    (connect-info net-connection-info :inline :offset-assert 24)
    )
@@ -27742,35 +27715,35 @@
   :size-assert         #xb2
   :flag-assert         #x9000000b2
   )
-|#
 
-#|
+
+
 (deftype medius-server-session-end-request (structure)
-  ((message-id UNKNOWN 21 :offset-assert 0)
+  ((message-id uint8 21 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x15
   :flag-assert         #x900000015
   )
-|#
 
-#|
+
+
 (deftype medius-server-session-end-response (structure)
-  ((message-id   UNKNOWN 21 :offset-assert 0)
+  ((message-id   uint8 21 :offset-assert 0)
    (confirmation int8       :offset-assert 21)
    )
   :method-count-assert 9
   :size-assert         #x16
   :flag-assert         #x900000016
   )
-|#
 
-#|
+
+
 (deftype medius-server-world-report-on-me (structure)
-  ((message-id         UNKNOWN 21  :offset-assert 0)
-   (game-name          UNKNOWN 64  :offset-assert 21)
-   (game-stats         UNKNOWN 256 :offset-assert 85)
-   (game-password      UNKNOWN 32  :offset-assert 341)
+  ((message-id         uint8 21  :offset-assert 0)
+   (game-name          uint8 64  :offset-assert 21)
+   (game-stats         uint8 256 :offset-assert 85)
+   (game-password      uint8 32  :offset-assert 341)
    (application-id     int32       :offset-assert 376)
    (max-clients        int32       :offset-assert 380)
    (min-clients        int32       :offset-assert 384)
@@ -27788,22 +27761,22 @@
   :size-assert         #x1a8
   :flag-assert         #x9000001a8
   )
-|#
 
-#|
+
+
 (deftype medius-server-world-status-request (structure)
-  ((message-id UNKNOWN 21 :offset-assert 0)
+  ((message-id uint8 21 :offset-assert 0)
    (world-id   int32      :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
+
+
 (deftype medius-server-world-status-response (structure)
-  ((message-id     UNKNOWN 21 :offset-assert 0)
+  ((message-id     uint8 21 :offset-assert 0)
    (application-id int32      :offset-assert 24)
    (max-clients    int32      :offset-assert 28)
    (active-clients int32      :offset-assert 32)
@@ -27813,12 +27786,12 @@
   :size-assert         #x25
   :flag-assert         #x900000025
   )
-|#
 
-#|
+
+
 (deftype medius-server-connect-games-request (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
-   (server-ip          UNKNOWN 20 :offset-assert 21)
+  ((message-id         uint8 21 :offset-assert 0)
+   (server-ip          uint8 20 :offset-assert 21)
    (server-port        int32      :offset-assert 44)
    (game-world-id      int32      :offset-assert 48)
    (spectator-world-id int32      :offset-assert 52)
@@ -27827,11 +27800,11 @@
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
+
+
 (deftype medius-server-connect-games-response (structure)
-  ((message-id         UNKNOWN 21 :offset-assert 0)
+  ((message-id         uint8 21 :offset-assert 0)
    (game-world-id      int32      :offset-assert 24)
    (spectator-world-id int32      :offset-assert 28)
    (confirmation       int8       :offset-assert 32)
@@ -27840,21 +27813,21 @@
   :size-assert         #x21
   :flag-assert         #x900000021
   )
-|#
 
-#|
+
+
 (deftype medius-server-connect-notification-type (structure)
   ((connect-event-type int32      :offset-assert 0)
    (medius-world-uid   uint32     :offset-assert 4)
-   (player-session-key UNKNOWN 17 :offset-assert 8)
+   (player-session-key uint8 17 :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x19
   :flag-assert         #x900000019
   )
-|#
 
-#|
+
+
 (deftype mgclconnect-in-params (structure)
   ((connection-info     net-connection-info :inline :offset-assert 0)
    (pf-connect-callback basic                       :offset-assert 156)
@@ -27863,9 +27836,9 @@
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
-|#
 
-#|
+
+
 (deftype mgclconnect-out-params (structure)
   ((error-code int32  :offset-assert 0)
    )
@@ -27873,9 +27846,9 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
+
+
 (deftype mgcldisconnect-params (structure)
   ((connection-handle      basic  :offset-assert 0)
    (disconnect-reason      int32  :offset-assert 4)
@@ -27886,14 +27859,14 @@
   :flag-assert         #x90000000c
   ;; field connection-handle uses ~A with a signed load.
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-11-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+
 (deftype mgclinitialize-in-params (structure)
   ((p-local-key-pair                                rsa-keypair  :offset-assert 0)
    (status                                          int32        :offset-assert 4)
@@ -27918,9 +27891,9 @@
   :flag-assert         #x900000044
   ;; field my-server-create-game-callback-user-data uses ~A with a signed load. field my-server-create-game-with-attributes-user-data uses ~A with a signed load. field my-server-join-game-callback-user-data uses ~A with a signed load. field my-server-end-game-callback-user-data uses ~A with a signed load. field my-server-world-status-callback-user-data uses ~A with a signed load. field my-server-connect-games-user-data uses ~A with a signed load.
   )
-|#
 
-#|
+
+
 (deftype mgclinitialize-out-params (structure)
   ((error-code int32  :offset-assert 0)
    )
@@ -27928,30 +27901,31 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
+
+
 (deftype net-lanpeer-desc (structure)
   ((dme-version      net-dme-version         :inline :offset-assert 0)
    (net-platform-id  int32                           :offset-assert 20)
    (application-id   int32                           :offset-assert 24)
    (peer-address     net-address             :inline :offset-assert 28)
    (localization     net-localization-params :inline :offset-assert 52)
-   (application-name UNKNOWN                 72      :offset-assert 60)
-   (user-name        UNKNOWN                 32      :offset-assert 132)
+   (application-name uint8                 72      :offset-assert 60)
+   (user-name        uint8                 32      :offset-assert 132)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xa4
   :flag-assert         #x9000000a4
   )
-|#
 
-#|
+
+
 (deftype net-initialize-in-params (structure)
   ((b-default-set                  int32                           :offset-assert 0)
    (localization                   net-localization-params :inline :offset-assert 4)
    (application-id                 int32                           :offset-assert 12)
-   (application-name               UNKNOWN                 72      :offset-assert 16)
+   (application-name               uint8                 72      :offset-assert 16)
    (p-local-key-pair               rsa-keypair                     :offset-assert 88)
    (p-application-key-pair         rsa-keypair                     :offset-assert 92)
    (connectivity-type              int32                           :offset-assert 96)
@@ -27966,9 +27940,9 @@
   :flag-assert         #x900000078
   ;; field p-system-message-callback-data uses ~A with a signed load.
   )
-|#
 
-#|
+
+
 (deftype net-host-peer-to-peer-in-params (structure)
   ((b-default-set                            int32                           :offset-assert 0)
    (pf-local-connect-callback                basic                           :offset-assert 4)
@@ -27995,9 +27969,9 @@
   :flag-assert         #x9000000c0
   ;; field p-local-connect-callback-data uses ~A with a signed load. field p-local-disconnect-callback-data uses ~A with a signed load. field p-remote-client-connect-callback-data uses ~A with a signed load. field p-remote-client-disconnect-callback-data uses ~A with a signed load. field p-system-status-callback-data uses ~A with a signed load.
   )
-|#
 
-#|
+
+
 (deftype net-resolve-addr-data (structure)
   ((b-is-set     int32                    :offset-assert 0)
    (error-code   int32                    :offset-assert 4)
@@ -28007,9 +27981,9 @@
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
+
+
 (deftype net-resolve-addr-in-params (structure)
   ((b-default-set            int32               :offset-assert 0)
    (pf-resolve-addr-callback basic               :offset-assert 4)
@@ -28019,9 +27993,9 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+
+
 (deftype net-incoming-client-in-params (structure)
   ((b-default-set         int32                    :offset-assert 0)
    (incoming-address-list net-address-list :inline :offset-assert 4)
@@ -28031,9 +28005,9 @@
   :size-assert         #x74
   :flag-assert         #x900000074
   )
-|#
 
-#|
+
+
 (deftype net-type-broadcast-schedule (structure)
   ((min-update-interval  uint32              :offset-assert 0)
    (error-threshold-type int32               :offset-assert 4)
@@ -28044,9 +28018,9 @@
   :size-assert         #xd
   :flag-assert         #x90000000d
   )
-|#
 
-#|
+
+
 (deftype net-type-field (structure)
   ((offset          int32                               :offset-assert 0)
    (element-size    int32                               :offset-assert 4)
@@ -28058,23 +28032,23 @@
   :size-assert         #x1d
   :flag-assert         #x90000001d
   )
-|#
 
-#|
+
+
 (deftype net-type-structure (structure)
   ((total-size         int32      :offset-assert 0)
    (field-count        int32      :offset-assert 4)
-   (name               UNKNOWN 32 :offset-assert 8)
-   (child-field-type   UNKNOWN 64 :offset-assert 40)
-   (child-field-offset UNKNOWN 64 :offset-assert 296)
+   (name               uint8 32 :offset-assert 8)
+   (child-field-type   uint32 64 :offset-assert 40)
+   (child-field-offset uint32 64 :offset-assert 296)
    )
   :method-count-assert 9
   :size-assert         #x228
   :flag-assert         #x900000228
   )
-|#
 
-#|
+
+
 (deftype net-lanfind-exchange-callback-in-args (structure)
   ((connection-handle basic                    :offset-assert 0)
    (session-type      int32                    :offset-assert 4)
@@ -28087,9 +28061,9 @@
   :flag-assert         #x9000000b8
   ;; field connection-handle uses ~A with a signed load. field p-user-data uses ~A with a signed load.
   )
-|#
 
-#|
+
+
 (deftype net-lanfind-callback-data-args (structure)
   ((n-num-clients     int16                    :offset-assert 0)
    (n-max-num-clients int16                    :offset-assert 2)
@@ -28103,14 +28077,14 @@
   :flag-assert         #x9000000b8
   ;; field p-user-data uses ~A with a signed load.
   )
-|#
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; scert-funcs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *scert-function-id* object)
+(define-extern *scert-function-id* int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mem-buffer-h                   ;;
@@ -34354,7 +34328,7 @@
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type process symbol) _type_)
     (actor-link-info-method-9 () none) ;; 9 ;; (get-matching-actor-type-mask (_type_ type) int)
-    (actor-link-info-method-10 () none) ;; 10 ;; (actor-count-before (_type_) int)
+    (actor-count-before (_type_) int)
     (actor-link-info-method-11 () none) ;; 11 ;; (link-to-next-and-prev-actor (_type_) actor-link-info)
     (actor-link-info-method-12 () none) ;; 12 ;; (get-next (_type_) entity-actor)
     (actor-link-info-method-13 () none) ;; 13 ;; (get-prev (_type_) entity-actor)
@@ -34374,11 +34348,11 @@
   )
 
 (define-extern entity-actor-lookup (function res-lump symbol int entity-actor)) ;; 
-;; (define-extern entity-actor-count function) ;; (function res-lump symbol int)
-;; (define-extern actor-link-subtask-complete-hook function) ;; (function entity-actor (pointer symbol) symbol)
-;; (define-extern actor-link-subtask-incomplete-count-hook function) ;; (function entity-actor (pointer uint64) symbol)
-;; (define-extern actor-link-dead-hook function) ;; (function entity-actor (pointer symbol) symbol)
-;; (define-extern alt-actor-list-subtask-incomplete-count function) ;; (function process-drawable int)
+(define-extern entity-actor-count (function res-lump symbol int)) ;; 
+(define-extern actor-link-subtask-complete-hook (function entity-actor (pointer symbol) symbol)) ;; 
+(define-extern actor-link-subtask-incomplete-count-hook (function entity-actor (pointer uint64) symbol)) ;; 
+(define-extern actor-link-dead-hook (function entity-actor (pointer symbol) symbol)) ;; 
+(define-extern alt-actor-list-subtask-incomplete-count (function process-drawable int)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-debug-h                    ;;
@@ -36642,7 +36616,7 @@
 ;; (define-extern foreground-init function) ;; (function none)
 ;; (define-extern texscroll-make-request function) ;; (function merc-effect none)
 ;; (define-extern texscroll-execute function) ;; (function none)
-;; (define-extern vu-lights<-light-group! function) ;; (function vu-lights light-group none)
+(define-extern vu-lights<-light-group! (function vu-lights light-group none)) ;; 
 ;; (define-extern foreground-add-mtx-calc function) ;; (function bone-calculation (inline-array pris-mtx) bone-calc-flags bone-calculation)
 ;; (define-extern foreground-wrapup function) ;; (function none)
 ;; (define-extern *default-shadow-settings* object) ;; shadow-settings
@@ -37169,7 +37143,7 @@
 ;; shrub-work                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *instance-shrub-work* object) ;; instance-shrub-work
+(define-extern *instance-shrub-work* instance-shrub-work) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tfrag-near                     ;;
@@ -41481,7 +41455,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern set-video-mode function) ;; (function symbol none)
-;; (define-extern get-video-mode function) ;; (function symbol)
+(define-extern get-video-mode (function symbol)) ;; 
 ;; (define-extern set-aspect-ratio function) ;; (function symbol none)
 ;; (define-extern get-aspect-ratio function) ;; (function symbol)
 ;; (define-extern set-progressive-scan function) ;; (function symbol none)
