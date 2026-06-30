@@ -66,7 +66,7 @@ size_t generate_u32_array(const std::vector<u32>& array, DataObjectGenerator& ge
   return result;
 }
 
-std::vector<u8> LevelFile::save_object_file() const {
+std::vector<u8> LevelFile::save_object_file() {
   DataObjectGenerator gen;
   gen.add_type_tag("bsp-header");
 
@@ -78,7 +78,6 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(info                   file-info                        :offset          4)
   auto file_info_slot = info.add_to_object_file(gen);
   gen.link_word_to_byte(1, file_info_slot);
-
   //(bsphere                vector :inline                   :offset-assert  16)
   //(all-visible-list       (pointer uint16)                 :offset-assert  32)
   //(visible-list-length    int32                            :offset-assert  36)
@@ -114,8 +113,12 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(light-hash             light-hash                       :offset-assert 176)
   //(nav-meshes             (array entity-nav-mesh)          :offset-assert 180)
   //(actor-groups           (array actor-group)              :offset-assert 184)
+  gen.link_word_to_byte(184 / 4, generate_actor_group_array(gen, actor_groups));
   //(region-trees           (array drawable-tree-region-prim) :offset-assert 188)
+  gen.link_word_to_byte(188 / 4,
+                        generate_drawable_tree_region_prim_array(gen, region_array, region_trees));
   //(region-array           region-array                     :offset-assert 192)
+  gen.link_word_to_byte(192 / 4, region_array.slot);
   //(collide-hash           collide-hash                     :offset-assert 196)
   gen.link_word_to_byte(196 / 4, add_to_object_file(collide_hash, gen));
   //(wind-array             uint32                           :offset        200)

@@ -166,11 +166,12 @@ void QueueVAGStream(VagStreamData* stream) {
     cmd.play_volume = 0x400;
     cmd.play_group = 2;
   } else {
-    ASSERT_NOT_REACHED();
     //    PluginVagAndVagWad(&cmd,stream);
-    //    cmd.play_volume = stream->maybe_volume2;
-    //    cmd.oog = stream->maybe_volume_3;
-    //    cmd.play_group = stream->group;
+    EEVagAndVagWad(&cmd, stream->name);
+    cmd.play_volume = stream->volume2;
+    cmd.oog = stream->maybe_volume_3;
+    cmd.play_group = stream->group;
+    cmd.dolby_pan_angle = stream->pan;
   }
   strncpy(cmd.name, stream->name, 0x30);
   cmd.id = stream->id;

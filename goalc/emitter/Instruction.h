@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <span>
 #include <variant>
 
 #include "common/common_types.h"
@@ -44,59 +45,180 @@ constexpr u32 Base(u32 value, u32 width) {
   return value << (32 - width);
 }
 
+// TODO - consider passing in the instruction name to make debugging easier when an assertion is
+// hit
+
+// TODO NOW - fix below
+constexpr u64 pow2(u64 n) {
+  return 1ull << n;
+}
+
+constexpr s64 pow2s(u64 n) {
+  return 1ull << n;
+}
+
+constexpr Field Hw(u32 x) {
+  ASSERT(x >= 0 && x <= (4 - 1));
+  return Field{(x & 4) << 21};
+}
+
+constexpr Field Sh(u32 x) {
+  ASSERT(x >= 0 && x <= (2 - 1));
+  return Field{(x & 1) << 22};
+}
+
+constexpr Field Shift(u32 x) {
+  ASSERT(x >= 0 && x <= (4 - 1));
+  return Field{(x & 2) << 22};
+}
+
 constexpr Field Rd(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
   return Field{(x & 31) << 0};
 }
 
 constexpr Field Rt(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
   return Field{(x & 31) << 0};
 }
 
 constexpr Field Rn(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
   return Field{(x & 31) << 5};
 }
 
 constexpr Field Rm(u32 x) {
+  ASSERT(x >= 0 && x <= (32 - 1));
   return Field{(x & 31) << 16};
 }
 
+constexpr Field Imm4(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 4) - 1));
+  return Field{(x & 0b111111) << 11};
+}
+
 constexpr Field Imm6(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 6)));
   return Field{(x & 0b111111) << 10};
 }
 
-constexpr Field Imm9(s32 x) {
-  return Field{(static_cast<uint32_t>(x) & 0b111111111) << 12};
+constexpr Field Imm9s(s32 x) {
+  ASSERT(x >= (pow2s(9 - 1) * -1) && x <= (pow2s(9 - 1) - 1));
+  return Field{(static_cast<u32>(x) & 0b111111111) << 12};
 }
 
 constexpr Field Imm12(u32 x) {
-  ASSERT(x >= 0 && x <= 4095);
-  return Field{(static_cast<uint32_t>(x) & 0b111111111111) << 10};
+  ASSERT(x >= 0 && x <= (pow2(12) - 1));
+  return Field{(static_cast<u32>(x) & 0b111111111111) << 10};
+}
+
+constexpr Field Imm16(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(16) - 1));
+  return Field{static_cast<u32>((x & (pow2(16) - 1)) << 16)};
+}
+
+constexpr Field Imm26(u32 x) {
+  ASSERT(x >= 0 && x <= (67108864 - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b11111111111111111111111111) << 0};
+}
+
+constexpr Field Imm19(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 19) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b1111111111111111111) << 5};
+}
+
+constexpr Field Imms(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 6) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 10};
+}
+
+constexpr Field Immr(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 6) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 16};
+}
+
+constexpr Field Immh(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 4) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 19};
+}
+
+constexpr Field Immb(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 3) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b111111) << 16};
+}
+
+constexpr Field Cond(u32 x) {
+  ASSERT(x >= 0 && x <= ((2 ^ 4) - 1));
+  return Field{(static_cast<uint32_t>(x) & 0b1111) << 0};
 }
 }  // namespace ARM64
 
 struct InstructionARM64 : InstructionImpl<InstructionARM64> {
-  // The ARM instruction stream is a sequence of word-aligned words. Each ARM instruction is a
-  // single 32-bit word in that stream.
-  // Info:
-  // - https://yurichev.com/mirrors/ARMv8-A_Architecture_Reference_Manual_(Issue_A.a).pdf
-  // - https://www.scs.stanford.edu/~zyedidia/arm64/
-  // - https://armconverter.com/?lock=arm64&code=STR+X0,+[SP,+%23-8]!
-  u32 encoding;
+  // The ARM instruction stream is a sequence of word-aligned words.
+  // Each ARM instruction is a single 32-bit word in that stream.
+  //
+  // Some x86 instructions are not possible to represent in ARM in a single instruction
+  // however, in order to not have to overhaul things at the IR level,
+  // it feels preferably to instead allow an instruction to emit multiple instructions if needed
+  //
+  // To do so, the instruction can optionally include multiple encodings
+  // all of which are emitted at once.
+  static constexpr int kMaxInstrs = 64;
+
+  u32 encodings[kMaxInstrs]{};
+  u8 count = 0;
 
   InstructionARM64() = delete;
+
+  // --- single instruction ---
   template <typename... Fs>
-  constexpr InstructionARM64(uint32_t base, Fs... fields) : encoding((base | ... | fields.bits)) {
-    static_assert((std::is_same_v<Fs, emitter::ARM64::Field> && ...),
-                  "All operands must be Field types");
+  constexpr InstructionARM64(uint32_t base, Fs... fields) {
+    static_assert((std::is_same_v<Fs, emitter::ARM64::Field> && ...));
+    encodings[0] = (base | ... | fields.bits);
+    count = 1;
+  }
+
+  // --- multi instruction (variadic) ---
+  template <typename... Instrs>
+  constexpr InstructionARM64(const Instrs&... instrs)
+    requires(std::is_same_v<Instrs, InstructionARM64> && ...)
+  {
+    u8 idx = 0;
+    auto append = [&](const InstructionARM64& i) {
+      for (uint8_t j = 0; j < i.count; ++j) {
+        encodings[idx++] = i.encodings[j];
+      }
+    };
+    (append(instrs), ...);
+    count = idx;
+  }
+
+  InstructionARM64(std::span<const InstructionARM64> instrs) {
+    u8 idx = 0;
+    for (const auto& i : instrs) {
+      for (uint8_t j = 0; j < i.count; ++j) {
+        encodings[idx++] = i.encodings[j];
+      }
+    }
+    count = idx;
   }
 
   uint8_t emit(uint8_t* buffer) const {
-    memcpy(buffer, &encoding, 4);
-    return 4;
+    if (count == 1 && encodings[0] == 0) {
+      return 0;
+    }
+    memcpy(buffer, encodings, count * 4);
+    return count * 4;
   }
 
-  uint8_t length() const { return 4; }
+  uint8_t length() const {
+    if (count == 1 && encodings[0] == 0) {
+      return 0;
+    }
+    return count * 4;
+  }
 
+  // TODO ARM - all placeholders, no idea if this is even relevant, if not, get rid of it all
   int get_imm_size() const { return 0; }
 
   int offset_of_imm() const { return 0; }

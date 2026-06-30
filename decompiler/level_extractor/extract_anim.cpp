@@ -3,6 +3,7 @@
 #include "common_formats.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/ObjectFile/LinkedWord.h"
 #include "decompiler/util/goal_data_reader.h"
 
 #include "third-party/lzokay/lzokay.hpp"
@@ -257,11 +258,50 @@ void extract_animations(const ObjectFileData& ag_data,
         frames_ref.byte_offset += 4;
       }
     }
-    // this should catch 99% of cases, but there could be mismatches between
-    // master art names and model names
-    out[master_art_name + "-lod0"].anims.push_back(ja);
-    // out[master_art_name + "-lod1"].anims.push_back(ja);
-    // out[master_art_name + "-lod2"].anims.push_back(ja);
+    // extract blerc data if present
+    const char* blerc_field = version == GameVersion::Jak1 ? "blerc-data" : "blend-shape-anim";
+    if (get_word_kind_for_field(ref, blerc_field, dts) == LinkedWord::PTR) {
+      Ref blerc_data_ref = deref_label(get_field_ref(ref, blerc_field, dts));
+      ja.blend_shape_data = get_plain_data_bytes_up_to_label(blerc_data_ref);
+    }
+
+    // some master art groups and model names do not match, this remaps the model name based on the
+    // animation name prefix for these rare exceptions
+    PerGameVersion<std::vector<std::string>> mdl_name_remap{
+        {},
+        {
+            "collectables-bomb-blast",
+            "collectables-health",
+            "collectables-gem",
+            "collectables-generic-blast",
+            "collectables-generic-ripples",
+            "collectables-skill",
+        },
+        {
+            "collectables-bomb-blast",
+            "collectables-health",
+            "collectables-gem",
+            "collectables-generic-blast",
+            "collectables-generic-ripples",
+            "collectables-skill",
+            "collectables-warp-time",
+        },
+        {},
+    };
+    auto lst = mdl_name_remap[version];
+    auto remap = std::ranges::find_if(lst.begin(), lst.end(), [&](const std::string& prefix) {
+      return ja.name.find(prefix) != std::string::npos;
+    });
+    if (remap != lst.end()) {
+      const auto& mdl_prefix = *remap;
+      out[mdl_prefix + "-lod0"].anims.push_back(ja);
+      // out[mdl_name + "-lod1"].anims.push_back(ja);
+      // out[mdl_name + "-lod2"].anims.push_back(ja);
+    } else {
+      out[master_art_name + "-lod0"].anims.push_back(ja);
+      // out[master_art_name + "-lod1"].anims.push_back(ja);
+      // out[master_art_name + "-lod2"].anims.push_back(ja);
+    }
   }
 }
 }  // namespace decompiler

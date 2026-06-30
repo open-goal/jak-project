@@ -963,31 +963,18 @@
   (set! (-> self draw light-index) (the-as uint 10))
   (logclear! (-> self mask) (process-mask actor-pause))
   (process-entity-status! self (entity-perm-status no-kill) #t)
-  (let ((gp-1 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
-    (set! (-> gp-1 tracked-obj) (process->handle self))
-    (set! (-> gp-1 appearance) *factory-fighter-trail*)
-    (set! (-> gp-1 max-num-crumbs) (the int (* 0.25 (the float (-> gp-1 appearance max-age)))))
-    (set! (-> gp-1 track-immediately?) #t)
-    (let* ((v1-38
-             (estimate-light-trail-mem-usage
-               (the-as uint (-> gp-1 max-num-crumbs))
-               (the-as uint (= (-> gp-1 appearance lie-mode) (lie-mode use-two-strips)))
-               )
-             )
-           (s5-1 (get-process *default-dead-pool* light-trail-tracker-vehicle (+ v1-38 8192) 1))
-           )
-      (set! (-> self light-trail)
-            (ppointer->handle (when s5-1
-                                (let ((t9-13 (method-of-type process activate)))
-                                  (t9-13 s5-1 self "light-trail" (the-as pointer #x70004000))
-                                  )
-                                (run-now-in-process s5-1 light-trail-tracker-init-by-other gp-1)
-                                (-> s5-1 ppointer)
-                                )
-                              )
-            )
-      )
-    )
+  (set! (-> self light-trail)
+        (ppointer->handle (light-trail-tracker-spawn
+                            light-trail-tracker-vehicle
+                            :to self
+                            :param-list ((tracked-obj (process->handle self))
+                             (appearance *factory-fighter-trail*)
+                             (max-num-crumbs (the int (* 0.25 (the float (-> *factory-fighter-trail* max-age)))))
+                             (track-immediately? #t)
+                             )
+                            )
+                          )
+        )
   (go-virtual idle)
   )
 

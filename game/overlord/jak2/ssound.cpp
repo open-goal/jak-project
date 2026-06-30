@@ -2,6 +2,7 @@
 
 #include "common/util/Assert.h"
 
+#include "989_plugins/plugin_strv.h"
 #include "game/overlord/common/srpc.h"
 #include "game/overlord/common/ssound.h"
 #include "game/overlord/jak2/spustreams.h"
@@ -80,7 +81,7 @@ void InitSound_overlord() {
     printf("IOP: ======================================================================\n");
     ASSERT_NOT_REACHED();
   }
-  // Init989Plugins(); TODO
+  Init989Plugins();
   // InitStreamLfoHandler(); TODO
   InitVagStreamList(&PluginStreamsList, 4, "plugin");
   InitVagStreamList(&EEStreamsList, 4, "ee");

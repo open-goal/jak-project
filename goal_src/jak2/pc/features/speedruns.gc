@@ -5,6 +5,8 @@
 
 (define-extern task-close! (function string symbol))
 
+(define-extern *pc-dead-pool* dead-pool)
+
 (define *speedrun-info* (new 'static 'speedrun-info))
 (set! (-> *speedrun-info* active-custom-category) (new 'static 'speedrun-custom-category))
 (set! (-> *speedrun-info* dump-custom-category) (new 'static 'speedrun-custom-category))
@@ -78,6 +80,40 @@
       (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
     (((speedrun-category newgame-heromode))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero"))
+    (((speedrun-category act-2))
+      (set! (-> *game-info* mode) 'debug)
+      (initialize! *game-info* 'game (the game-save #f) (the string #f))
+      (set! (-> *game-info* mode) 'play)
+      ;; unlock Dark Bomb
+      (task-close! "city-oracle-level0-training")
+      ;; finish Protect Site in Dead Town
+      (task-close! "ruins-enemy-resolution")
+      ;; start player in ruins back at start
+      (start 'play (get-continue-by-name *game-info* "ruins-start"))
+      (set-master-mode 'game)
+      )
+    (((speedrun-category act-3))
+      (set! (-> *game-info* mode) 'debug)
+      (initialize! *game-info* 'game (the game-save #f) (the string #f))
+      (set! (-> *game-info* mode) 'play)
+      ;; unlock Dark Bomb
+      (task-close! "city-oracle-level0-training")
+      ;; finish Defeat Baron in Mar's Tomb
+      (task-close! "tomb-boss-resolution")
+      ;; start player in tomb after Baron fight
+      (start 'play (get-continue-by-name *game-info* "tombboss-start"))
+      (set-master-mode 'game)
+      )
+    (((speedrun-category open-orbs-endgame))
+      (set! (-> *game-info* mode) 'debug)
+      (initialize! *game-info* 'game (the game-save #f) (the string #f))
+      (set! (-> *game-info* mode) 'play)
+      ;; start Break Barrier at Nest
+      (task-close! "nest-get-to-gun-introduction")
+      ;; start player at Nest
+      (start 'play (get-continue-by-name *game-info* "nest-start"))
+      (set-master-mode 'game)
+      )
     (((speedrun-category all-cheats-allowed))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
     (((speedrun-category custom))
@@ -106,8 +142,10 @@
   ;;   probably like the game to automatically set the appropriate ones for you
   ;; - If you are playing a category that forbids cheats, you wouldn't want your run invalidated because you forgot
   (case (-> this category)
-    (((speedrun-category newgame-normal) (speedrun-category newgame-heromode))
-      ;; disable any active cheats
+    (((speedrun-category newgame-normal) (speedrun-category newgame-heromode)
+      (speedrun-category act-2) (speedrun-category act-3)
+      (speedrun-category open-orbs-endgame))
+      ;; disable any active PC cheats
       (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)))
     (((speedrun-category custom))
       (set! (-> *game-info* secrets) (-> *speedrun-info* active-custom-category secrets))
@@ -265,9 +303,19 @@
           (new 'static 'popup-menu-flag :label "Hero mode"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category newgame-heromode)))
             :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-heromode))))
+          (new 'static 'popup-menu-flag :label "Act 2"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category act-2)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category act-2))))
+          (new 'static 'popup-menu-flag :label "Act 3"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category act-3)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category act-3))))
+          (new 'static 'popup-menu-flag :label "All Open Orbs (Endgame)"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category open-orbs-endgame)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category open-orbs-endgame))))
           (new 'static 'popup-menu-flag :label "All cheats allowed"
             :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
-            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))
+          ))
       (new 'static 'popup-menu-dynamic-submenu :label "Custom category select"
         :get-length (lambda () (pc-sr-mode-get-custom-category-amount))
         :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-custom-category-name index str-dest))
@@ -402,7 +450,7 @@
   ;; Ensure the speedrunner menu process is enabled or destroyed
   (when (and (-> *pc-settings* speedrunner-mode?)
              (not *speedrun-manager*))
-    (process-spawn speedrun-manager :init speedrun-manager-init #f :to *entity-pool*))
+    (process-spawn speedrun-manager :init speedrun-manager-init #f :from *pc-dead-pool* :to *pc-pool*))
   (when (and (not (-> *pc-settings* speedrunner-mode?))
              *speedrun-manager*)
     (deactivate (-> *speedrun-manager* 0)))

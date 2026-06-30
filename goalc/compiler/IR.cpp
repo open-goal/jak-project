@@ -121,7 +121,7 @@ void regset_common(emitter::ObjectGenerator* gen,
       gen->count_eliminated_move();
       gen->add_instr(IGen::null(*gen), irec);
     } else {
-      gen->add_instr(IGen::mov_xmm32_xmm32(*gen, dst_reg, src_reg), irec);
+      gen->add_instr(IGen::mov_f32_f32(*gen, dst_reg, src_reg), irec);
     }
   } else if (src_is_xmm128 && dst_is_xmm128) {
     if (src_reg == dst_reg) {
@@ -133,20 +133,20 @@ void regset_common(emitter::ObjectGenerator* gen,
     }
   } else if (src_class == RegClass::FLOAT && dst_class == RegClass::GPR_64) {
     // xmm 1x -> gpr
-    gen->add_instr(IGen::movd_gpr32_xmm32(*gen, dst_reg, src_reg), irec);
+    gen->add_instr(IGen::movd_gpr32_f32(*gen, dst_reg, src_reg), irec);
     // don't forget to sign extend
     gen->add_instr(IGen::movsx_r64_r32(*gen, dst_reg, dst_reg), irec);
   } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::FLOAT) {
     // gpr -> xmm 1x
-    gen->add_instr(IGen::movd_xmm32_gpr32(*gen, dst_reg, src_reg), irec);
+    gen->add_instr(IGen::movd_f32_gpr32(*gen, dst_reg, src_reg), irec);
   } else if (src_is_xmm128 && dst_class == RegClass::FLOAT) {
-    gen->add_instr(IGen::mov_xmm32_xmm32(*gen, dst_reg, src_reg), irec);
+    gen->add_instr(IGen::mov_f32_f32(*gen, dst_reg, src_reg), irec);
   } else if (src_class == RegClass::FLOAT && dst_is_xmm128) {
-    gen->add_instr(IGen::mov_xmm32_xmm32(*gen, dst_reg, src_reg), irec);
+    gen->add_instr(IGen::mov_f32_f32(*gen, dst_reg, src_reg), irec);
   } else if (src_class == RegClass::GPR_64 && dst_is_xmm128) {
-    gen->add_instr(IGen::movq_xmm64_gpr64(*gen, dst_reg, src_reg), irec);
+    gen->add_instr(IGen::movq_f64_gpr64(*gen, dst_reg, src_reg), irec);
   } else if (src_is_xmm128 && dst_class == RegClass::GPR_64) {
-    gen->add_instr(IGen::movq_gpr64_xmm64(*gen, dst_reg, src_reg), irec);
+    gen->add_instr(IGen::movq_gpr64_f64(*gen, dst_reg, src_reg), irec);
   } else {
     ASSERT(false);  // unhandled move.
   }
@@ -256,7 +256,7 @@ void IR_LoadSymbolPointer::do_codegen_x86(emitter::ObjectGenerator* gen,
   if (m_name == "#f") {
     static_assert(false_symbol_offset() == 0, "false symbol location");
     if (dest_reg.is_xmm(gen->instr_set())) {
-      gen->add_instr(IGen::movq_xmm64_gpr64(*gen, dest_reg, gRegInfo.get_st_reg()), irec);
+      gen->add_instr(IGen::movq_f64_gpr64(*gen, dest_reg, gRegInfo.get_st_reg()), irec);
     } else {
       gen->add_instr(IGen::mov_gpr64_gpr64(*gen, dest_reg, gRegInfo.get_st_reg()), irec);
     }
@@ -417,7 +417,8 @@ void IR_GotoLabel::do_codegen_x86(emitter::ObjectGenerator* gen,
                                   const AllocationResult& allocs,
                                   emitter::IR_Record irec) {
   (void)allocs;
-  auto instr = gen->add_instr(IGen::jmp_32(*gen), irec);
+  auto instr = gen->add_instr(IGen::jmp_imm(*gen), irec);
+  // TODO ARM - have to patch this differently, encoding for the immediate is different
   gen->link_instruction_jump(instr, gen->get_future_ir_record_in_same_func(irec, m_dest->idx));
 }
 
@@ -711,15 +712,21 @@ void IR_IntegerMath::do_codegen_x86(emitter::ObjectGenerator* gen,
       ASSERT(!m_arg);
       break;
     case IntegerMathKind::SHLV_64:
-      gen->add_instr(IGen::shl_gpr64_cl(*gen, get_reg(m_dest, allocs, irec)), irec);
+      // TODO ARM - register provided but unused on x86
+      gen->add_instr(IGen::shl_gpr64_reg(*gen, get_reg(m_dest, allocs, irec), 0), irec);
+      // TODO ARM - x86 forces you to use CL, which is dumb, but the register allocator
+      // has that logic baked in somewhere
+      // ARM has no such constraint, so we should be able to use any register for the shift amount
       ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SHRV_64:
-      gen->add_instr(IGen::shr_gpr64_cl(*gen, get_reg(m_dest, allocs, irec)), irec);
+      // TODO ARM - register provided but unused on x86
+      gen->add_instr(IGen::shr_gpr64_reg(*gen, get_reg(m_dest, allocs, irec), 0), irec);
       ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SARV_64:
-      gen->add_instr(IGen::sar_gpr64_cl(*gen, get_reg(m_dest, allocs, irec)), irec);
+      // TODO ARM - register provided but unused on x86
+      gen->add_instr(IGen::sar_gpr64_reg(*gen, get_reg(m_dest, allocs, irec), 0), irec);
       ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SHL_64:
@@ -823,37 +830,37 @@ void IR_FloatMath::do_codegen_x86(emitter::ObjectGenerator* gen,
   switch (m_kind) {
     case FloatMathKind::DIV_SS:
       gen->add_instr(
-          IGen::divss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          IGen::div_f32_f32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
           irec);
       break;
     case FloatMathKind::MUL_SS:
       gen->add_instr(
-          IGen::mulss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          IGen::mul_f32_f32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
           irec);
       break;
     case FloatMathKind::ADD_SS:
       gen->add_instr(
-          IGen::addss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          IGen::add_f32_f32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
           irec);
       break;
     case FloatMathKind::SUB_SS:
       gen->add_instr(
-          IGen::subss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          IGen::sub_f32_f32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
           irec);
       break;
     case FloatMathKind::MAX_SS:
       gen->add_instr(
-          IGen::maxss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          IGen::max_f32_f32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
           irec);
       break;
     case FloatMathKind::MIN_SS:
       gen->add_instr(
-          IGen::minss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          IGen::min_f32_f32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
           irec);
       break;
     case FloatMathKind::SQRT_SS:
       gen->add_instr(
-          IGen::sqrts_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::sqrt_f32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
       break;
     default:
       ASSERT(false);
@@ -895,7 +902,7 @@ void IR_StaticVarLoad::do_codegen_x86(emitter::ObjectGenerator* gen,
     ASSERT(load_info.requires_load == true);
 
     auto instr =
-        gen->add_instr(IGen::static_load_xmm32(*gen, get_reg(m_dest, allocs, irec), 0), irec);
+        gen->add_instr(IGen::static_load_f32(*gen, get_reg(m_dest, allocs, irec), 0), irec);
     gen->link_instruction_static(instr, m_src->rec, 0);
   } else if (m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT) {
     // we don't check the load info intentionally because we want to allow loading an entire
@@ -966,38 +973,38 @@ void IR_ConditionalBranch::do_codegen_x86(emitter::ObjectGenerator* gen,
   ASSERT(m_resolved);
   switch (condition.kind) {
     case ConditionKind::EQUAL:
-      jump_instr = IGen::je_32(*gen);
+      jump_instr = IGen::je_imm(*gen);
       break;
     case ConditionKind::NOT_EQUAL:
-      jump_instr = IGen::jne_32(*gen);
+      jump_instr = IGen::jne_imm(*gen);
       break;
     case ConditionKind::LEQ:
       if (condition.is_signed) {
-        jump_instr = IGen::jle_32(*gen);
+        jump_instr = IGen::jle_imm(*gen);
       } else {
-        jump_instr = IGen::jbe_32(*gen);
+        jump_instr = IGen::jbe_imm(*gen);
       }
       break;
     case ConditionKind::GEQ:
       if (condition.is_signed) {
-        jump_instr = IGen::jge_32(*gen);
+        jump_instr = IGen::jge_imm(*gen);
       } else {
-        jump_instr = IGen::jae_32(*gen);
+        jump_instr = IGen::jae_imm(*gen);
       }
       break;
 
     case ConditionKind::LT:
       if (condition.is_signed) {
-        jump_instr = IGen::jl_32(*gen);
+        jump_instr = IGen::jl_imm(*gen);
       } else {
-        jump_instr = IGen::jb_32(*gen);
+        jump_instr = IGen::jb_imm(*gen);
       }
       break;
     case ConditionKind::GT:
       if (condition.is_signed) {
-        jump_instr = IGen::jg_32(*gen);
+        jump_instr = IGen::jg_imm(*gen);
       } else {
-        jump_instr = IGen::ja_32(*gen);
+        jump_instr = IGen::ja_imm(*gen);
       }
       break;
     default:
@@ -1005,7 +1012,7 @@ void IR_ConditionalBranch::do_codegen_x86(emitter::ObjectGenerator* gen,
   }
 
   if (condition.is_float) {
-    gen->add_instr(IGen::cmp_flt_flt(*gen, get_reg(condition.a, allocs, irec),
+    gen->add_instr(IGen::cmp_f32_f32(*gen, get_reg(condition.a, allocs, irec),
                                      get_reg(condition.b, allocs, irec)),
                    irec);
   } else {
@@ -1210,8 +1217,7 @@ void IR_FloatToInt::do_codegen_x86(emitter::ObjectGenerator* gen,
                                    const AllocationResult& allocs,
                                    emitter::IR_Record irec) {
   gen->add_instr(
-      IGen::float_to_int32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
-      irec);
+      IGen::f32_to_int32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)), irec);
   gen->add_instr(
       IGen::movsx_r64_r32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_dest, allocs, irec)),
       irec);
@@ -1244,8 +1250,7 @@ void IR_IntToFloat::do_codegen_x86(emitter::ObjectGenerator* gen,
                                    const AllocationResult& allocs,
                                    emitter::IR_Record irec) {
   gen->add_instr(
-      IGen::int32_to_float(*gen, get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
-      irec);
+      IGen::int32_to_f32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)), irec);
 }
 
 void IR_IntToFloat::do_codegen_arm64(emitter::ObjectGenerator* gen,

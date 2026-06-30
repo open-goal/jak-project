@@ -1072,6 +1072,10 @@ const std::unordered_map<
          {
              {"lightning-probe-vars",
               {{"probe-dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
+             {"sparticle-launcher",
+              {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},
+             {"sparticle-launch-group",
+              {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

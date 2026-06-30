@@ -44,6 +44,7 @@
 
 (deftype villagec-lava (water-anim) ())
 
+
 (define ripple-for-villagec-lava
   (new 'static
        'ripple-wave-set
@@ -65,8 +66,8 @@
     (set! (-> this draw ripple) v1-2)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 waveform) ripple-for-villagec-lava))
-  (logclear! (-> this flags) (water-flags wt23))
-  (logior! (-> this flags) (water-flags wt25))
+  (logclear! (-> this flag) (water-flag part-water))
+  (logior! (-> this flag) (water-flag lava))
   (set! (-> this attack-event) 'lava)
   (none))
 
@@ -77,6 +78,7 @@
   (:state-methods (idle symbol)
    ride-up
    ride-down))
+
 
 (defskelgroup *gondola-sg*
   gondola
@@ -169,7 +171,7 @@
                        (v1-40 (entity-actor-lookup (-> self entity) 'alt-actor 1)))
                    (s3-2 (if v1-40 (-> v1-40 extra process)) s4-4)))
                (when (and (< (vector-vector-xz-distance s5-1 (-> *target* control trans)) 18432.0)
-                          (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                          (and (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                                          (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))))
                                (and (< (+ -40960.0 (-> s5-1 y)) (-> *target* control trans y))
                                     (begin
@@ -179,8 +181,8 @@
                                       (hud-hidden?))
                                     (can-grab-display? self))))
                  (let ((s5-2 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
-                   (let ((v1-59 s5-2)) (set! (-> v1-59 width) (the float 440)))
-                   (let ((v1-60 s5-2)) (set! (-> v1-60 height) (the float 80)))
+                   (set-width! s5-2 440)
+                   (set-height! s5-2 80)
                    (set! (-> s5-2 flags) (font-flags shadow kerning large))
                    (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) s5-2 #f 128 22))
                  (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
@@ -206,7 +208,7 @@
         (remove-setting! 'sound-flava)
         (send-event *target* 'blend-shape #f)
         (when *target*
-          (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
+          (vector<-cspace! (-> self old-target-pos trans) (-> *target* node-list data 3))
           (send-event *target* 'trans 'restore (-> self old-target-pos))
           (send-event *target* 'end-mode)
           (update-transforms! (-> self root))
@@ -242,7 +244,7 @@
         (remove-setting! 'sound-flava)
         (send-event *target* 'blend-shape #f)
         (when *target*
-          (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
+          (vector<-cspace! (-> self old-target-pos trans) (-> *target* node-list data 3))
           (send-event *target* 'trans 'restore (-> self old-target-pos))
           (send-event *target* 'end-mode)
           (update-transforms! (-> self root))
@@ -302,6 +304,7 @@
    idle
    (active handle symbol)))
 
+
 (defskelgroup *pistons-sg*
   pistons
   pistons-lod0-jg
@@ -351,6 +354,7 @@
 (deftype gondolacables (process-drawable) ()
   (:state-methods
    idle))
+
 
 (defskelgroup *gondolacables-sg*
   gondolacables

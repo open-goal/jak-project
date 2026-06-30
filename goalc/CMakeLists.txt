@@ -36,6 +36,8 @@ add_library(compiler
         build_level/common/Tfrag.cpp
         build_level/common/Tie.cpp
         build_level/jak1/ambient.cpp
+        build_level/jak2/Region.cpp
+        build_level/jak3/Region.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
         compiler/Val.cpp

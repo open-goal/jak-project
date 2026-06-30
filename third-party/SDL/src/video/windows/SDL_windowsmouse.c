@@ -148,9 +148,23 @@ static SDL_Cursor *WIN_CreateAnimatedCursorAndData(SDL_CursorFrameInfo *frames, 
     data->hot_y = hot_y;
     data->num_frames = frame_count;
     for (int i = 0; i < frame_count; ++i) {
-        data->frames[i].surface = frames[i].surface;
+        SDL_Surface *surface = frames[i].surface;
+        if (surface->flags & SDL_SURFACE_PREALLOCATED) {
+            surface = SDL_DuplicateSurface(surface);
+            if (!surface) {
+                while (i > 0) {
+                    --i;
+                    SDL_DestroySurface(data->frames[i].surface);
+                }
+                SDL_free(data);
+                SDL_free(cursor);
+                return NULL;
+            }
+        } else {
+            ++surface->refcount;
+        }
+        data->frames[i].surface = surface;
         data->frames[i].duration = frames[i].duration;
-        ++frames[i].surface->refcount;
     }
     cursor->internal = data;
     return cursor;

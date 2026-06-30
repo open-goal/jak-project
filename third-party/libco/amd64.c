@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-static thread_local long long co_active_buffer[64];
+static thread_local alignas(16) long long co_active_buffer[64];
 static thread_local cothread_t co_active_handle = 0;
 static void (*co_swap)(cothread_t, cothread_t) = 0;
 
@@ -20,7 +20,7 @@ static void (*co_swap)(cothread_t, cothread_t) = 0;
 #endif
 #ifdef _WIN32
   /* ABI: Win64 */
-  static const unsigned char co_swap_function[4096] = {
+  const unsigned char co_swap_function[4096] = {
     0x48, 0x89, 0x22,              /* mov [rdx],rsp           */
     0x48, 0x8b, 0x21,              /* mov rsp,[rcx]           */
     0x58,                          /* pop rax                 */
@@ -87,7 +87,7 @@ static void (*co_swap)(cothread_t, cothread_t) = 0;
   }
 #else
   /* ABI: SystemV */
-  static const unsigned char co_swap_function[4096] = {
+  const unsigned char co_swap_function[4096] = {
     0x48, 0x89, 0x26,        /* mov [rsi],rsp    */
     0x48, 0x8b, 0x27,        /* mov rsp,[rdi]    */
     0x58,                    /* pop rax          */

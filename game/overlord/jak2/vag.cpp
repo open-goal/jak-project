@@ -11,6 +11,7 @@
 #include "game/overlord/jak2/ssound.h"
 #include "game/overlord/jak2/streamlist.h"
 #include "game/sound/sdshim.h"
+#include "game/sound/sndshim.h"
 
 namespace jak2 {
 VagCmd VagCmds[N_VAG_CMDS];
@@ -406,21 +407,20 @@ void SetVAGVol(VagCmd* cmd, int /*param_2*/) {
   if (!cmd->sound_handler) {
     CalculateVAGVolumes(cmd, &lvol, &rvol);
   } else {
-    ASSERT_NOT_REACHED();
-    // TODO vag 989snd plugin
-    // SoundHandler* hnd = cmd->sound_handler;
-    // u32 vol =
-    //    0x3fff *
-    //    ((((cmd->vol_multiplier * MasterVolume[hnd->VolGroup]) >> 10) * hnd->Current_Vol) >> 10)
-    //    >> 10;
-    // lvol = (vol * gPanTable[(cmd->unk_176 + 90) % 360].left) >> 10;
-    // lvol = (vol * gPanTable[(cmd->unk_176 + 90) % 360].right) >> 10;
-    // if (lvol >= 0x4000) {
-    //  lvol = 0x3fff;
-    //}
-    // if (rvol >= 0x4000) {
-    //  rvol = 0x3fff;
-    //}
+    s32 group = snd_GetSoundGroup(cmd->id) & 0x1f;
+    u32 vol = 0x3fff * (u32)((cmd->vol_multiplier * MasterVolume[group]) >> 10);
+    s32 angle = (cmd->unk_176 + 90) % 360;
+    if (angle < 0) {
+      angle += 360;
+    }
+    lvol = (gPanTable[angle].left * (vol >> 10)) >> 10;
+    rvol = (gPanTable[angle].right * (vol >> 10)) >> 10;
+    if (lvol >= 0x4000) {
+      lvol = 0x3fff;
+    }
+    if (rvol >= 0x4000) {
+      rvol = 0x3fff;
+    }
   }
 
   // Originally used ProcBatch, buts this is easier to read.
@@ -764,8 +764,7 @@ void UnPauseVagStreams() {
 void SetAllVagsVol(int param_1) {
   if (param_1 >= 0) {
     for (auto& VagCmd : VagCmds) {
-      if (VagCmd.sound_handler /* && VagCmd.sound_handler->VolGroup == param_1 */) {
-        ASSERT_NOT_REACHED();
+      if (VagCmd.sound_handler && snd_GetSoundGroup(VagCmd.id) == param_1) {
         SetVAGVol(&VagCmd, 1);
       }
     }
