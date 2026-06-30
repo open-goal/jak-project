@@ -2,6 +2,7 @@
 
 #include "blocksound_handler.h"
 #include "lfo.h"
+#include "plugin.h"
 
 #include "common/log/log.h"
 
@@ -158,8 +159,8 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(BlockSoundHandler& handler) {
   s32 index = psp.sound_id;
 
   if (index >= 0) {
-    auto child_handler =
-        block.MakeHandler(handler.m_vm, index, vol, pan, params, handler.m_start_tick);
+    auto child_handler = block.MakeHandler(handler.m_vm, index, vol, pan, params,
+                                           handler.m_start_tick, handler.m_sound_handle);
     if (child_handler.has_value()) {
       handler.m_children.emplace_front(std::move(child_handler.value()));
     }
@@ -195,9 +196,9 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STOPCHILDSOUND(BlockSoundHandler& handler) {
 }
 
 s32 Grain::snd_SFX_GRAIN_TYPE_PLUGIN_MESSAGE(BlockSoundHandler& handler) {
-  // lg::warn("plugin message");
-  //  TODO probably used
-  return 0;
+  auto& pp = std::get<PluginParams>(data);
+  return HandlePluginMessage(pp.id, pp.index, handler.m_sound_handle, pp.data,
+                             handler.m_registers.data(), handler.m_cur_volume);
 }
 
 s32 Grain::snd_SFX_GRAIN_TYPE_BRANCH(BlockSoundHandler& handler) {

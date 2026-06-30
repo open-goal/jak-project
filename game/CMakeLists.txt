@@ -241,6 +241,7 @@ set(RUNTIME_SOURCE
         overlord/common/iso_api.cpp
         overlord/common/iso.cpp
         overlord/common/isocommon.cpp
+        overlord/common/989_plugins/plugin_strv.cpp
         overlord/common/overlord.cpp
         overlord/common/sbank.cpp
         overlord/common/soundcommon.cpp
@@ -265,6 +266,7 @@ set(RUNTIME_SOURCE
         overlord/jak2/list.cpp
         overlord/jak2/overlord.cpp
         overlord/jak2/pages.cpp
+        overlord/jak2/989_plugins/plugin_strv.cpp
         overlord/jak2/spustreams.cpp
         overlord/jak2/srpc.cpp
         overlord/jak2/ssound.cpp
@@ -295,6 +297,7 @@ set(RUNTIME_SOURCE
         overlord/jak3/sbank.cpp
         overlord/jak3/soundcommon.cpp
         overlord/jak3/streamlist.cpp
+        overlord/jak3/989_plugins/plugin_strv.cpp
         overlord/jakx/overlord.cpp
         overlord/jakx/pagemanager.cpp
         overlord/jakx/iso_cd.cpp

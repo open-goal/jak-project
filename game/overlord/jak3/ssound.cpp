@@ -4,6 +4,7 @@
 
 #include "common/util/Assert.h"
 
+#include "989_plugins/plugin_strv.h"
 #include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/overlord.h"
 #include "game/overlord/jak3/spustreams.h"
@@ -236,9 +237,9 @@ void InitSound() {
   g_EarTransSema = CreateSema(&param);
   ASSERT(g_EarTransSema >= 0);
 
-  // Init989Plugins();
+  Init989Plugins();
   // InitStreamLfoHandler();
-  // InitVagStreamList((List*)&g_PluginStreamsList, 4, s_plugin_00015918);
+  InitVagStreamList(&g_PluginStreamsList, 4, "plugin");
   InitVagStreamList(&g_EEStreamsList, 4, "ee");
   InitVagStreamList(&g_EEPlayList, 8, "play");
   InitVagStreamList(&g_RequestedStreamsList, 8, "streams");

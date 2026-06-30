@@ -14,6 +14,7 @@
 #include "game/overlord/jak3/streamlist.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
+#include "game/sound/sndshim.h"
 
 #define VOICE_BIT(voice) (1 << ((voice) >> 1))
 
@@ -518,10 +519,9 @@ void TerminateVAG(ISO_VAGCommand* in_cmd) {
   }
   if (not_music) {
     if (in_cmd->maybe_sound_handler != 0) {
+      RemoveVagStreamFromList(&vsd, &g_PluginStreamsList);
       // TODO LFO support
-      // RemoveVagStreamFromList(&vsd, &g_PluginStreamsList);
       // RemoveLfoStreamFromList(auStack64, &g_LfoStreamsList);
-      ASSERT_NOT_REACHED();
     }
     RemoveVagStreamFromList(&vsd, &g_EEPlayList);
   }
@@ -845,7 +845,23 @@ void CalculateVAGVolumes(ISO_VAGCommand* cmd, int* lvol, int* rvol) {
       }
       uVar7 = uVar7 << 4 | uVar7 >> 6;
     } else {
-      ASSERT_NOT_REACHED();
+      s32 group = snd_GetSoundGroup(cmd->id) & 0x1f;
+      u32 vol = 0x3fff * (u32)((cmd->play_volume * g_anMasterVolume[group]) >> 10);
+      s32 pan_angle = (cmd->dolby_pan_angle + 90) % 360;
+      if (pan_angle < 0) {
+        pan_angle += 360;
+      }
+      s32 l = (g_aPanTable[pan_angle].left * (s32)(vol >> 10)) >> 10;
+      s32 r = (g_aPanTable[pan_angle].right * (s32)(vol >> 10)) >> 10;
+      if (l >= 0x4000) {
+        l = 0x3fff;
+      }
+      if (r >= 0x4000) {
+        r = 0x3fff;
+      }
+      *lvol = l;
+      *rvol = r;
+      return;
     }
 
     if (iVar9 == 1) {
@@ -1024,9 +1040,7 @@ void SetAllVagsVol(int x) {
     }
   } else {
     for (int i = 0; i < 4; i++) {
-      if (g_aVagCmds[i].maybe_sound_handler) {
-        ASSERT_NOT_REACHED();
-        // there's more check before this...
+      if (g_aVagCmds[i].maybe_sound_handler && (snd_GetSoundGroup(g_aVagCmds[i].id) & 0x1f) == x) {
         SetVAGVol(&g_aVagCmds[i]);
       }
     }

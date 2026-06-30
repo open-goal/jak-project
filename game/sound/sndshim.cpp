@@ -288,6 +288,17 @@ void snd_SetSoundReg(s32 sound_handle, s32 which, u8 val) {
   }
 }
 
+s8 snd_GetSoundGroup(s32 sound_handle) {
+  if (player) {
+    return player->GetSoundGroup(sound_handle);
+  }
+  return 0;
+}
+
+void snd_RegisterPluginHandler(snd::PluginHandler handler) {
+  snd::RegisterPluginHandler(handler);
+}
+
 void snd_SetGlobalExcite(u8 value) {
   if (player) {
     player->SetGlobalExcite(value);
