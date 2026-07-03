@@ -19,6 +19,11 @@
 
 #include "goalc/emitter/InstructionSet.h"
 #include "goalc/emitter/ObjectGenerator.h"
+#ifdef OS_POSIX
+#include <sys/mman.h>
+#elif _WIN32
+#include "third-party/mman/mman.h"
+#endif
 
 namespace emitter {
 class CodeTester {
@@ -49,12 +54,29 @@ class CodeTester {
    */
   template <typename T>
   T execute_ret(u64 in0, u64 in1, u64 in2, u64 in3) {
+#if defined(__aarch64__)
+    // allegedly needed because ARM requires flushing after writing new instructions
+    // on x86 it does nothing
+    __builtin___clear_cache((char*)code_buffer, (char*)code_buffer + code_buffer_size);
+#endif
     // clang-format off
-    u64 result_u64 = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
+#if defined(__APPLE__) && defined(__aarch64__)
+  // TODO - we may need to switch to using pthread_jit_write_protect_np
+  // there may also be issues if multiple threasd are involved
+  // but this seems to work so keep it simple until something proves otherwise.
+  mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
+  u64 result_u64 = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
+  mprotect(code_buffer, code_buffer_capacity, PROT_WRITE | PROT_READ);
+  T result_T;
+  memcpy(&result_T, &result_u64, sizeof(T));
+  return result_T;
+#else
+  u64 result_u64 = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
+  T result_T;
+  memcpy(&result_T, &result_u64, sizeof(T));
+  return result_T;
+#endif
     // clang-format on
-    T result_T;
-    memcpy(&result_T, &result_u64, sizeof(T));
-    return result_T;
   }
 
   /*!
