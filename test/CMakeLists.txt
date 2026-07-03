@@ -9,7 +9,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_kernel_jak1.cpp
         ${CMAKE_CURRENT_LIST_DIR}/all_jak1_symbols.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_type_system.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/test_emitter.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/test_emitter_x86.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_emitter_avx.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_common_util.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_pretty_print.cpp

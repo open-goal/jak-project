@@ -127,6 +127,16 @@ constexpr Field Imm19(u32 x) {
   return Field{(static_cast<uint32_t>(x) & 0b1111111111111111111) << 5};
 }
 
+constexpr Field Immlo(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(2) - 1));
+  return Field{(static_cast<u32>(x) & 0b11) << 29};
+}
+
+constexpr Field Immhi(u32 x) {
+  ASSERT(x >= 0 && x <= (pow2(19) - 1));
+  return Field{(static_cast<u32>(x) & 0b1111111111111111111) << 5};
+}
+
 constexpr Field Imms(u32 x) {
   ASSERT(x >= 0 && x <= ((2 ^ 6) - 1));
   return Field{(static_cast<uint32_t>(x) & 0b111111) << 10};

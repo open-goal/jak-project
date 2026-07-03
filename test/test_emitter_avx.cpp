@@ -4,6 +4,8 @@
 
 using namespace emitter;
 
+// TODO - do an ARM64 version of this
+
 TEST(EmitterAVX, VF_NOP) {
   CodeTester tester;
   tester.init_code_buffer(1024);
