@@ -82,7 +82,7 @@ void QueueVAGStream(VagStrListNode* param_1) {
     iVar2 = 0;
     pbVar4 = local_20;
     do {
-      if (*pbVar4 - 0x61 < 0x1a) {
+      if ((u8)(*pbVar4 - 0x61) < 0x1a) {
         *pbVar4 = *pbVar4 - 0x20;
       }
       iVar2 = iVar2 + 1;

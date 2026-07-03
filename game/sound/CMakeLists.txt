@@ -6,6 +6,7 @@ set(SOUND_SOURCES
   989snd/musicbank.cpp
   989snd/sfxblock.cpp
   989snd/sfxgrain.cpp
+  989snd/plugin.cpp
   989snd/loader.cpp
   989snd/vagvoice.cpp
   989snd/lfo.cpp

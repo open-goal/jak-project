@@ -806,6 +806,42 @@ int make_weights_accessor(const std::vector<tfrag3::MercVertex>& vertices, tinyg
   return accessor_idx;
 }
 
+int make_normal_buffer_accessor(const std::vector<tfrag3::MercVertex>& vertices,
+                                tinygltf::Model& model) {
+  // first create a buffer:
+  int buffer_idx = (int)model.buffers.size();
+  auto& buffer = model.buffers.emplace_back();
+  buffer.data.resize(sizeof(float) * 3 * vertices.size());
+
+  // and fill it
+  u8* buffer_ptr = buffer.data.data();
+  for (const auto& vtx : vertices) {
+    auto tmp_vtx = vtx.normal_vec.normalized();
+    memcpy(buffer_ptr, tmp_vtx.data(), 3 * sizeof(float));
+    buffer_ptr += 3 * sizeof(float);
+  }
+
+  // create a view of this buffer
+  int buffer_view_idx = (int)model.bufferViews.size();
+  auto& buffer_view = model.bufferViews.emplace_back();
+  buffer_view.name = "NORMAL";
+  buffer_view.buffer = buffer_idx;
+  buffer_view.byteOffset = 0;
+  buffer_view.byteLength = buffer.data.size();
+  buffer_view.byteStride = 0;  // tightly packed
+  buffer_view.target = TINYGLTF_TARGET_ARRAY_BUFFER;
+
+  int accessor_idx = (int)model.accessors.size();
+  auto& accessor = model.accessors.emplace_back();
+  accessor.name = "NORMAL";
+  accessor.bufferView = buffer_view_idx;
+  accessor.byteOffset = 0;
+  accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+  accessor.count = vertices.size();
+  accessor.type = TINYGLTF_TYPE_VEC3;
+  return accessor_idx;
+}
+
 int make_bones_accessor(const std::vector<tfrag3::MercVertex>& vertices, tinygltf::Model& model) {
   // first create a buffer:
   int buffer_idx = (int)model.buffers.size();
@@ -1302,6 +1338,7 @@ void add_merc(const tfrag3::Level& level,
 
   auto joints_accessor = make_bones_accessor(mverts, model);
   auto weights_accessor = make_weights_accessor(mverts, model);
+  auto normal_buffer_accessor = make_normal_buffer_accessor(mverts, model);
 
   const auto& art = art_data.find(mmodel.name);
   int node_idx = (int)model.nodes.size();
@@ -1418,6 +1455,7 @@ void add_merc(const tfrag3::Level& level,
       prim.attributes["COLOR_0"] = colors;
       prim.attributes["JOINTS_0"] = joints_accessor;
       prim.attributes["WEIGHTS_0"] = weights_accessor;
+      prim.attributes["NORMAL"] = normal_buffer_accessor;
       prim.mode = TINYGLTF_MODE_TRIANGLES;
     }
   }

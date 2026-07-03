@@ -27,7 +27,8 @@ class BlockSoundHandler : public SoundHandler {
                     s32 sfx_pan,
                     SndPlayParams& params,
                     u32 sound_id,
-                    s32 start_tick);
+                    s32 start_tick,
+                    u32 owner);
 
   ~BlockSoundHandler() override;
   bool Tick() override;

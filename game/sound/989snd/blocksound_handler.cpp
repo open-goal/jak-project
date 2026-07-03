@@ -17,7 +17,8 @@ BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
                                      s32 sfx_pan,
                                      SndPlayParams& params,
                                      u32 sound_id,
-                                     s32 start_tick)
+                                     s32 start_tick,
+                                     u32 owner)
     : m_group(sfx.VolGroup),
       m_sfx(&sfx),
       m_orig_sfx(&sfx),
@@ -25,6 +26,8 @@ BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
       m_bank(bank),
       m_sound_id(sound_id),
       m_start_tick(start_tick) {
+  m_sound_handle = owner;
+
   s32 vol, pan, pitch_mod, pitch_bend;
   if (sfx_vol == -1) {
     sfx_vol = sfx.Vol;

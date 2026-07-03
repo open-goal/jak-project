@@ -1,4 +1,4 @@
-name: 🧪 Offline Tests
+name: Tests
 
 on:
   push:
@@ -18,9 +18,10 @@ concurrency:
 
 jobs:
   validate-author:
-    name: Verify Permissions
+    name: Verify Offline Test Permissions
     runs-on: self-hosted
-    if: github.repository == 'open-goal/jak-project'
+    if: github.repository == 'open-goal/jak-project' &&
+        (github.event_name != 'issue_comment' || github.event.issue.pull_request != null)
     timeout-minutes: 5
     outputs:
       trusted: ${{ steps.verify.outputs.trusted }}
@@ -77,14 +78,14 @@ jobs:
 
           rm -rf ./.tmp-ci
   offline-tests:
-    name: Run Tests
+    name: 🧪 Run Offline Tests
     needs: validate-author
     if: needs.validate-author.outputs.trusted == 'true' && github.repository == 'open-goal/jak-project'
     runs-on: self-hosted
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository }}
           ref: ${{ needs.validate-author.outputs.sha }}
