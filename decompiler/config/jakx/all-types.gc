@@ -8430,7 +8430,7 @@
   :size-assert         #x6d04
   :flag-assert         #x2200006d04
   (:methods
-    (level-group-method-9 () none) ;; 9 ;; (level-get (_type_ symbol) level)
+    (level-get (_type_ symbol) level)
     (level-group-method-10 () none) ;; 10 ;; (level-get-with-status (_type_ symbol) level)
     (level-group-method-11 () none) ;; 11 ;; (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level)
     (level-group-method-12 () none) ;; 12 ;; (level-get-for-use (_type_ symbol symbol) level)
@@ -16158,7 +16158,7 @@
 
 ;; (define-extern fog-corrector-setup function) ;; (function fog-corrector math-camera none)
 ;; (define-extern *math-camera-fog-correction* object) ;; fog-corrector
-;; (define-extern update-math-camera function) ;; (function math-camera symbol symbol float math-camera)
+(define-extern update-math-camera (function math-camera symbol symbol float math-camera)) ;; 
 ;; (define-extern math-cam-start-smoothing function) ;; (function float float quaternion)
 ;; (define-extern move-target-from-pad function) ;; (function transform int transform)
 ;; (define-extern transform-point-vector! function) ;; (function vector vector symbol)
@@ -16171,15 +16171,18 @@
 ;; view                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type target process-focusable)
+(declare-type camera-combiner process)
+
 (define-extern view-push-context (function int none))
 (define-extern view-pop-context (function none))
-;; (define-extern view-get-active-target function)
+(define-extern view-get-active-target (function target))
 ;; (define-extern view-get-target function)
 ;; (define-extern view-set-active-target function)
 ;; (define-extern view-get-active-camera function)
 ;; (define-extern view-get-camera function)
 ;; (define-extern view-set-active-camera function)
-;; (define-extern view-get-active-camera-combiner function)
+(define-extern view-get-active-camera-combiner (function camera-combiner))
 ;; (define-extern view-get-camera-combiner function)
 ;; (define-extern view-set-active-camera-combiner function)
 (define-extern view-get-active-math-camera (function math-camera))
@@ -16188,7 +16191,7 @@
 ;; (define-extern view-get-real-active function)
 ;; (define-extern view-get-active function)
 ;; (define-extern view-get-index function)
-;; (define-extern view-get-active-index function)
+(define-extern view-get-active-index (function int))
 ;; (define-extern view-get-real-active-index function)
 ;; (define-extern view-print function)
 
@@ -16672,6 +16675,7 @@
 
 (define-extern *palette-fade-controls* palette-fade-controls)
 (define-extern *time-of-day-context* time-of-day-context)
+(define-extern *time-of-day* (pointer time-of-day-proc)) ;; added
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; profile                        ;;
@@ -17342,8 +17346,8 @@
   :size-assert         #x2784
   :flag-assert         #x2500002784
   (:methods
-    (sky-work-method-9 () none) ;; 9 ;; (init-sun-data! (_type_ int float float float) none)
-    (sky-work-method-10 () none) ;; 10 ;; (init-orbit-settings! (_type_ int float float float float float float) none)
+    (init-sun-data! (_type_ int float float float) none)
+    (init-orbit-settings! (_type_ int float float float float float float) none)
     (sky-work-method-11 () none) ;; 11 ;; (update-colors-for-time (_type_ float) none)
     (sky-work-method-12 () none) ;; 12 ;; (update-time-and-speed (_type_ float float) none)
     (sky-work-method-13 () none) ;; 13 ;; (draw-erase (_type_ dma-buffer vector) none)
@@ -21194,7 +21198,7 @@
   )
 
 (deftype speech-info (structure)
-  ((list  basic   :offset-assert 0)
+  ((list  (array speech-info-item)   :offset-assert 0)
    (flags speech-info-flag  :offset-assert 8) ;; speech-info-flag
    )
   :method-count-assert 13
@@ -21305,7 +21309,7 @@
    (time            uint64                 :offset-assert 8)
    (current-request speech-request         :offset-assert 16)
    (requests        basic                  :offset-assert 20)
-   (speeches        speech-info-item             31 :offset-assert 24)
+   (speeches        speech-info             31 :offset-assert 24)
    )
   :method-count-assert 17
   :size-assert         #x94
@@ -35711,7 +35715,7 @@
 ;; (define-extern release-sound-handle function)
 ;; (define-extern get-sound-handle function)
 ;; (define-extern *sound-instances* object)
-;; (define-extern find-sound-instance function)
+(define-extern find-sound-instance (function object symbol sound-instance))
 ;; (define-extern remove-sound-instance-by-index function)
 ;; (define-extern remove-sound-instance-by-sound-id function)
 (define-extern make-sound-instance (function object int symbol sound-instance))
@@ -35741,7 +35745,7 @@
 ;; (define-extern sound-set-reverb function) ;; (function int float float uint int)
 ;; (define-extern sound-set-globals function)
 ;; (define-extern sound-pause function) ;; (function sound-id int)
-;; (define-extern sound-stop function) ;; (function sound-id int)
+(define-extern sound-stop (function sound-id symbol int)) ;; 
 ;; (define-extern sound-continue function) ;; (function sound-id int)
 ;; (define-extern sound-group-pause function) ;; (function sound-group int)
 ;; (define-extern sound-group-stop function) ;; (function sound-group int)
@@ -38144,16 +38148,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *sky-work* sky-work)
-;; (define-extern sky-base-polygons object) ;; (inline-array sky-vertex)
-;; (define-extern sky-roof-polygons object) ;; (inline-array sky-vertex)
-;; (define-extern *cloud-vert-array* object) ;; cloud-vert-array
-;; (define-extern *cloud-poly* object) ;; (inline-array sky-vertex)
-;; (define-extern init-cloud-vert-array function) ;; (function symbol)
-;; (define-extern *haze-vert-array* object) ;; haze-vert-array
-;; (define-extern *haze-poly* object) ;; (inline-array sky-vertex)
-;; (define-extern init-haze-vert-array function) ;; (function symbol)
-;; (define-extern sky-make-sun-data function) ;; (function sky-work int float none)
-;; (define-extern sky-make-moon-data function) ;; (function sky-work float none)
+(define-extern sky-base-polygons (inline-array sky-vertex)) ;; 
+(define-extern sky-roof-polygons (inline-array sky-vertex))
+(define-extern *cloud-vert-array* cloud-vert-array)
+(define-extern *cloud-poly* (inline-array sky-vertex))
+(define-extern init-cloud-vert-array (function symbol))
+(define-extern *haze-vert-array* haze-vert-array)
+(define-extern *haze-poly* (inline-array sky-vertex))
+(define-extern init-haze-vert-array (function symbol))
+(define-extern sky-make-sun-data (function sky-work int float none))
+(define-extern sky-make-moon-data (function sky-work float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sky-tng                        ;;
@@ -38653,30 +38657,29 @@
 ;; text                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype print-game-text-work (structure)
-  ((context          font-context :inline :offset-assert 4)
-   (xpos             float                :offset-assert 188)
-   (ypos             float                :offset-assert 192)
-   (y-spacing-scaled float                :offset-assert 196)
-   (space-size       float                :offset-assert 200)
-   (hyphen-size      float                :offset-assert 204)
-   (copy-test        basic                :offset-assert 208)
-   (dry-run          basic                :offset-assert 212)
-   (string-count     int32                :offset-assert 216)
-   (dest-count       int32                :offset-assert 220)
-   (last-space-count int32                :offset-assert 224)
-   (line-count       float                :offset-assert 228)
-   (word-count       int32                :offset-assert 232)
-   (line-word-count  int32                :offset-assert 236)
-   (ret              float                :offset-assert 240)
-   (dma-buf          basic                :offset-assert 244)
-   )
-  :method-count-assert 9
-  :size-assert         #xf4
-  :flag-assert         #x9000000f4
-  )
-|#
+;; (deftype print-game-text-work (structure)
+;;    (context          font-context :inline :offset-assert 4)
+;;    (xpos             float                :offset-assert 188)
+;;    (ypos             float                :offset-assert 192)
+;;    (y-spacing-scaled float                :offset-assert 196)
+;;    (space-size       float                :offset-assert 200)
+;;    (hyphen-size      float                :offset-assert 204)
+;;    (copy-test        basic                :offset-assert 208)
+;;    (dry-run          basic                :offset-assert 212)
+;;    (string-count     int32                :offset-assert 216)
+;;    (dest-count       int32                :offset-assert 220)
+;;    (last-space-count int32                :offset-assert 224)
+;;    (line-count       float                :offset-assert 228)
+;;    (word-count       int32                :offset-assert 232)
+;;    (line-word-count  int32                :offset-assert 236)
+;;    (ret              float                :offset-assert 240)
+;;    (dma-buf          basic                :offset-assert 244)
+;;    )
+;;   :allow-misaligned
+;;   :method-count-assert 9
+;;   :size-assert         #xf4
+;;   :flag-assert         #x9000000f4
+;;   )
 
 ;; game-text-info is already defined!
 
@@ -39047,11 +39050,11 @@
 ;; (define-extern cam-standard-event-handler function) ;; (function process int symbol event-message-block object :behavior camera-slave)
 ;; (define-extern cam-curve-pos function) ;; (function vector vector curve symbol vector :behavior camera-slave)
 ;; (define-extern cam-curve-setup function) ;; (function vector none :behavior camera-slave)
-;; (define-extern cam-calc-follow! function) ;; (function cam-rotation-tracker vector symbol vector)
+(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector)) ;; 
 ;; (define-extern mat-remove-z-rot function) ;; (function matrix vector matrix)
 ;; (define-extern slave-matrix-blend-2 function) ;; (function matrix cam-slave-options-u32 vector matrix matrix)
 ;; (define-extern vector-into-frustum-nosmooth! function) ;; (function matrix vector float vector)
-;; (define-extern slave-set-rotation! function) ;; (function cam-rotation-tracker vector cam-slave-options-u32 float symbol none)
+(define-extern slave-set-rotation! (function cam-rotation-tracker vector cam-slave-options-u32 float symbol none)) ;; 
 ;; (define-extern v-slrp2! function) ;; (function vector vector vector float vector float vector)
 ;; (define-extern v-slrp3! function) ;; (function vector vector vector vector float vector)
 
@@ -39098,28 +39101,28 @@
 ;; cam-combiner                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cam-helper-temp function) ;; (function (pointer camera-slave) (pointer camera-slave) float matrix :behavior camera-combiner)
-;; (define-extern cam-combiner-active state) ;; (state camera-combiner)
-;; (define-extern cam-combiner-init function) ;; (function none :behavior camera-combiner)
+(define-extern cam-helper-temp (function (pointer camera-slave) (pointer camera-slave) float matrix :behavior camera-combiner))
+(define-extern cam-combiner-active (state camera-combiner))
+(define-extern cam-combiner-init (function none :behavior camera-combiner))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-update                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern plane-from-points function) ;; (function (inline-array plane) vector vector vector int float)
-;; (define-extern set-point function) ;; (function vector float float float float)
-;; (define-extern update-view-planes function) ;; (function math-camera (inline-array plane) float matrix float)
-;; (define-extern *update-leaf-when-outside-bsp* object) ;; symbol
-;; (define-extern update-visible function) ;; (function math-camera symbol)
-;; (define-extern *save-camera-inv-rot* object) ;; matrix
-;; (define-extern move-camera-from-pad function) ;; (function math-camera math-camera)
-;; (define-extern external-cam-reset! function) ;; (function none)
-;; (define-extern *start-timer* object) ;; int
-;; (define-extern *timer-value* object) ;; int
-;; (define-extern *start-pos* object) ;; vector
-;; (define-extern update-camera function) ;; (function symbol)
-;; (define-extern move-level-by-name function) ;; (function symbol float float float vector)
-;; (define-extern execute-cam-post-hook-engine function) ;; (function int)
+(define-extern plane-from-points (function (inline-array plane) vector vector vector int float))
+(define-extern set-point (function vector float float float float))
+(define-extern update-view-planes (function math-camera (inline-array plane) float matrix float))
+(define-extern *update-leaf-when-outside-bsp* symbol)
+(define-extern update-visible (function math-camera symbol))
+(define-extern *save-camera-inv-rot* matrix)
+(define-extern move-camera-from-pad (function math-camera math-camera))
+(define-extern external-cam-reset! (function none))
+(define-extern *start-timer* int)
+(define-extern *timer-value* int)
+(define-extern *start-pos* vector)
+(define-extern update-camera (function symbol))
+(define-extern move-level-by-name (function symbol float float float vector))
+(define-extern execute-cam-post-hook-engine (function int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vol-h                          ;;
@@ -40029,7 +40032,7 @@
 ;; (define-extern *test-speech-info* object)
 ;; (define-extern speech-type->string function) ;; (function speech-type string)
 ;; (define-extern gui-status->string function) ;; (function gui-status string)
-;; (define-extern *speech-control* object) ;; speech-control
+(define-extern *speech-control* speech-control) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; region                         ;;
@@ -40701,7 +40704,7 @@
 
 ;; (define-extern *TARGET-bank* target-bank) ;; target-bank
 ;; (define-extern debounce-speed function) ;; (function float float vector vector float :behavior target)
-;; (define-extern target-pos function) ;; (function int vector)
+(define-extern target-pos (function int vector)) ;; 
 ;; (define-extern target-rot function) ;; (function quaternion)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42266,7 +42269,9 @@
 ;; progress                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *progress-process* object) ;; (pointer progress)
+;; TODO - irrelevant now?
+(declare-type progress process)
+(define-extern *progress-process* (pointer progress)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ocean-trans-tables             ;;
