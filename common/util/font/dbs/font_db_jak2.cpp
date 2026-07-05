@@ -65,7 +65,7 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
     {"A~Y~-21H~-5V'~Z", "Á"},
     {"A~Y~-26H~-8V'~Z", "<Á_V2>"},  // unfortunate...
     {"a~Y~-25H~-5V'~Z", "á"},
-    {"C~Y~-26H~-8V'~Z", "Ć"},
+    {"C~Y~-26H~-14V'~Z", "Ć"},
     {"E~Y~-23H~-9V'~Z", "É"},
     {"e~Y~-26H~-5V'~Z", "é"},
     {"I~Y~-19H~-8V'~Z", "Í"},
