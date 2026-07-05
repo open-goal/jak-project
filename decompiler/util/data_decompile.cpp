@@ -1073,6 +1073,9 @@ const std::unordered_map<
          }},
         {GameVersion::JakX,
          {
+             {"ocean-near-indices",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-near-index"), 32)}}},
+             {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},
              {"lightning-probe-vars",
               {{"probe-dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
              {"sparticle-launcher",
