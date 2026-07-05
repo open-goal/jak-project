@@ -74,7 +74,7 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
     {"o~Y~-26H~-4V'~Z", "ó"},
     {"U~Y~-25H~-8V'~Z", "Ú"},
     {"u~Y~-24H~-3V'~Z", "ú"},
-    {"Z~Y~-26H~-8V'~Z", "Ź"},
+    {"Z~Y~-26H~-14V'~Z", "Ź"},
     {"z~Y~-23H~-6V'~Z", "ź"},
     // czech specific
     {"Y~Y~-26H~-5V'~Z", "Ý"},
