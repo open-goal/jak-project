@@ -78,8 +78,9 @@ std::vector<InstructionARM64> construct_multiple_imm12_subs(int64_t imm, u32 reg
     instrs.emplace_back(InstructionARM64(Base(0b110100010, 9), Sh(_needs_shift ? 1 : 0),
                                          Imm12(_imm12), Rd(register_id), Rn(register_id)));
   }
+  return instrs;
 }
-
+  
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   MOVES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
