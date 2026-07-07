@@ -80,7 +80,7 @@ std::vector<InstructionARM64> construct_multiple_imm12_subs(int64_t imm, u32 reg
   }
   return instrs;
 }
-  
+
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   MOVES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
