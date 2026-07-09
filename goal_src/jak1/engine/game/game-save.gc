@@ -1166,15 +1166,14 @@
         (send-event (handle->process (-> self notify)) 'notify 'done 1 gp-0))
       (case (-> self mode)
         (('auto-save)
-         (when (= (-> *game-info* auto-save-count) 1)
+         ;; og:preserve-this Don't display the first auto-save warning prompt if speedrunning
+         (when (and (= (-> *game-info* auto-save-count) 1) (not (-> *pc-settings* speedrunner-mode?)))
            (set! (-> self event-hook) (-> (method-of-object self error) event))
            (set! (-> self state-time) (-> *display* real-frame-counter))
            (while (< (- (-> *display* real-frame-counter) (-> self state-time)) (seconds 0.2))
              (if (not (progress-allowed?)) (set! (-> self state-time) (-> *display* real-frame-counter)))
              (suspend))
-           ;; Don't display the auto-save warning prompt if speedrunning
-           (when (= (-> *pc-settings* speedrunner-mode?) #f)
-             (activate-progress *dproc* (progress-screen auto-save))))))))
+           (activate-progress *dproc* (progress-screen auto-save)))))))
 
 (defun auto-save-command ((arg0 symbol) (arg1 int) (arg2 int) (arg3 process-tree))
   (process-spawn auto-save arg0 arg3 arg1 arg2 :stack *kernel-dram-stack*)
