@@ -5,7 +5,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.4.4")
+project(SDL3 LANGUAGES C VERSION "3.4.10")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
@@ -1097,7 +1097,7 @@ if(SDL_LIBC)
   )
   if(WINDOWS)
     list(APPEND symbols_to_check
-      _copysign _fseeki64 _strrev _ui64toa _uitoa _ultoa _wcsdup
+      _copysign _fseeki64 _strrev _ui64toa _ultoa _wcsdup
     )
   else()
     list(APPEND symbols_to_check
@@ -1179,34 +1179,33 @@ if(SDL_LIBC)
     check_symbol_exists(posix_fallocate "fcntl.h" HAVE_POSIX_FALLOCATE)
     check_symbol_exists(posix_spawn_file_actions_addchdir "spawn.h" HAVE_POSIX_SPAWN_FILE_ACTIONS_ADDCHDIR)
     check_symbol_exists(posix_spawn_file_actions_addchdir_np "spawn.h" HAVE_POSIX_SPAWN_FILE_ACTIONS_ADDCHDIR_NP)
+  endif()
+  if(SDL_SYSTEM_ICONV)
+    check_c_source_compiles("
+      #define LIBICONV_PLUG 1 /* in case libiconv header is in include path */
+      #include <stddef.h>
+      #include <iconv.h>
+      int main(int argc, char **argv) {
+          return !iconv_open(NULL,NULL);
+      }" ICONV_IN_LIBC)
 
-    if(SDL_SYSTEM_ICONV)
-      check_c_source_compiles("
-        #define LIBICONV_PLUG 1 /* in case libiconv header is in include path */
-        #include <stddef.h>
-        #include <iconv.h>
-        int main(int argc, char **argv) {
-            return !iconv_open(NULL,NULL);
-        }" ICONV_IN_LIBC)
+    cmake_push_check_state()
+    list(APPEND CMAKE_REQUIRED_LIBRARIES iconv)
+    check_c_source_compiles("
+      #include <stddef.h>
+      #include <iconv.h>
+      int main(int argc, char **argv) {
+          return !iconv_open(NULL,NULL);
+      }" ICONV_IN_LIBICONV)
+    cmake_pop_check_state()
 
-      cmake_push_check_state()
-      list(APPEND CMAKE_REQUIRED_LIBRARIES iconv)
-      check_c_source_compiles("
-        #include <stddef.h>
-        #include <iconv.h>
-        int main(int argc, char **argv) {
-            return !iconv_open(NULL,NULL);
-        }" ICONV_IN_LIBICONV)
-      cmake_pop_check_state()
-
-      if(ICONV_IN_LIBC OR ICONV_IN_LIBICONV)
-        set(HAVE_ICONV 1)
-        set(HAVE_SYSTEM_ICONV TRUE)
-        if(ICONV_IN_LIBICONV AND (SDL_LIBICONV OR (NOT ICONV_IN_LIBC)))
-          sdl_link_dependency(iconv LIBS iconv)
-          set(SDL_USE_LIBICONV 1)
-          set(HAVE_LIBICONV TRUE)
-        endif()
+    if(ICONV_IN_LIBC OR ICONV_IN_LIBICONV)
+      set(HAVE_ICONV 1)
+      set(HAVE_SYSTEM_ICONV TRUE)
+      if(ICONV_IN_LIBICONV AND (SDL_LIBICONV OR (NOT ICONV_IN_LIBC)))
+        sdl_link_dependency(iconv LIBS iconv)
+        set(SDL_USE_LIBICONV 1)
+        set(HAVE_LIBICONV TRUE)
       endif()
     endif()
 
@@ -3235,6 +3234,7 @@ elseif(PS2)
       gskit
       dmakit
       ps2_drivers
+      atomic
   )
 elseif(N3DS)
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/main/n3ds/*.c")

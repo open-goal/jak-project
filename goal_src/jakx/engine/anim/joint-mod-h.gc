@@ -76,3 +76,55 @@
 
 ;; DECOMP BEGINS
 
+
+(deftype joint-mod (basic)
+  "Utility to modify a joint transform from code, rather than just getting it from animation.
+   This is used to make jak look toward an enemy, for example."
+  ((mode            joint-mod-mode           :offset-assert 4) ;; guessed by decompiler
+   (process         process-drawable         :offset-assert 8) ;; guessed by decompiler
+   (joint           cspace                   :offset-assert 12)
+   (target          vector           :inline :offset-assert 16)
+   (twist           vector           :inline :offset-assert 32)
+   (twist-max       vector           :inline :offset-assert 48)
+   (extra-twist     degrees                      :offset-assert 40 :overlay-at (-> twist z)) ;; degrees
+   (track-mode      track-mode               :offset-assert 44 :overlay-at (-> twist w))
+   (look-at-count   uint16                   :offset 46)
+   (twist-range-x   meters                   :offset 56)
+   (twist-range-y   meters                   :offset 60)
+   (twist-speed-x   float                    :offset-assert 64)
+   (twist-speed-y   float                    :offset-assert 68)
+   (trans           vector           :inline :offset-assert 80)
+   (smushy-old      float                    :offset 80)
+   (smushy-off      float                    :offset 84)
+   (smushyv         float                    :offset 88)
+   (quat            quaternion       :inline :offset-assert 96)
+   (scale           vector           :inline :offset-assert 112)
+   (notice-time     time-frame                   :offset-assert 128) ;; time-frame
+   (flex-blend      float                    :offset-assert 136)
+   (blend           float                    :offset-assert 140)
+   (old-blend       float                    :offset-assert 144)
+   (max-dist        meters                   :offset-assert 148)
+   (ignore-angle    degrees                      :offset-assert 152) ;; degrees
+   (up              uint8                    :offset-assert 156)
+   (nose            uint8                    :offset-assert 157)
+   (ear             uint8                    :offset-assert 158)
+   (base-joint      uint8                    :offset-assert 159)
+   (base-nose       uint8                    :offset-assert 160)
+   (shutting-down?  symbol                   :offset-assert 164) ;; guessed by decompiler
+   (parented-scale? symbol                   :offset-assert 168) ;; guessed by decompiler
+   )
+  :method-count-assert 16
+  :size-assert         #xac
+  :flag-assert         #x10000000ac
+  ;; field track-mode is likely a value type.
+  (:methods
+    (new (symbol type joint-mod-mode process-drawable int) _type_) ;; 0
+    (mode-set! "Set the type of joint-mod and install the right callback." (_type_ joint-mod-mode) none) ;; 9
+    (target-set! "Set the target position for look-at mode." (_type_ vector) none) ;; 10
+    (look-at! "Activate joint mod to look at the process." (_type_ vector symbol process) none) ;; 11
+    (reset-blend! "Set the blend to 0." (_type_) _type_) ;; 12
+    (twist-set! "Set twist x,y,z. A value of #f will skip the set." (_type_ float float float) vector) ;; 13
+    (trs-set! "Set translation, quaternion, scale. A value of #f will skip the set." (_type_ vector quaternion vector) none) ;; 14
+    (shut-down "Disable the joint mod, possibly blending out depending on the type" (_type_) none) ;; 15
+    )
+  )

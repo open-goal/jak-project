@@ -248,7 +248,7 @@ void GameController::process_event(const SDL_Event& event,
         }
       }
     }
-  } else if (SDL_EVENT_JOYSTICK_AXIS_MOTION && m_has_pressure_sensitive_buttons) {
+  } else if (event.type == SDL_EVENT_JOYSTICK_AXIS_MOTION && m_has_pressure_sensitive_buttons) {
     // handle changes in pressure on axii not mapped to the gamepad (ie. PS3 analog buttons)
     if (m_settings->enable_pressure_sensitivity &&
         pressure_axes_to_button.contains(event.jaxis.axis)) {

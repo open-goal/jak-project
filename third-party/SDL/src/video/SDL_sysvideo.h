@@ -375,7 +375,7 @@ struct SDL_VideoDevice
     void (*SetTextInputProperties)(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props);
 
     // Clipboard
-    const char **(*GetTextMimeTypes)(SDL_VideoDevice *_this, size_t *num_mime_types);
+    const char *const *(*GetTextMimeTypes)(SDL_VideoDevice *_this, size_t *num_mime_types);
     bool (*SetClipboardData)(SDL_VideoDevice *_this);
     void *(*GetClipboardData)(SDL_VideoDevice *_this, const char *mime_type, size_t *size);
     bool (*HasClipboardData)(SDL_VideoDevice *_this, const char *mime_type);

@@ -427,6 +427,10 @@ bool SDL_SetSurfacePalette(SDL_Surface *surface, SDL_Palette *palette)
         return SDL_InvalidParamError("surface");
     }
 
+    CHECK_PARAM(palette && !SDL_ISPIXELFORMAT_INDEXED(surface->format)) {
+        return SDL_SetError("Surface doesn't use a palette");
+    }
+
     CHECK_PARAM(palette && palette->ncolors > (1 << SDL_BITSPERPIXEL(surface->format))) {
         return SDL_SetError("Palette doesn't match surface format");
     }

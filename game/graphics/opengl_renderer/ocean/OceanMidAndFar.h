@@ -2,6 +2,7 @@
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/DirectRenderer.h"
+#include "game/graphics/opengl_renderer/ocean/OceanEnvmap.h"
 #include "game/graphics/opengl_renderer/ocean/OceanMid.h"
 #include "game/graphics/opengl_renderer/ocean/OceanTexture.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
@@ -29,14 +30,9 @@ class OceanMidAndFar : public BucketRenderer {
   void handle_ocean_mid(DmaFollower& dma,
                         SharedRenderState* render_state,
                         ScopedProfilerNode& prof);
-  void handle_ocean_89_jak2(DmaFollower& dma,
-                            SharedRenderState* render_state,
-                            ScopedProfilerNode& prof);
-  void handle_ocean_79_jak2(DmaFollower& dma,
-                            SharedRenderState* render_state,
-                            ScopedProfilerNode& prof);
 
   DirectRenderer m_direct;
+  OceanEnvmap m_envmap_renderer;
   OceanTexture m_texture_renderer;
   OceanMid m_mid_renderer;
 };

@@ -834,22 +834,37 @@ void gl_set_active_levels(const std::vector<std::string>& levels) {
   g_gfx_data->loader->set_active_levels(levels);
 }
 
+void gl_force_reload_all() {
+  g_gfx_data->loader->request_reload_all();
+}
+
+void gl_force_reload_level(const std::string& name) {
+  g_gfx_data->loader->request_reload_level(name);
+}
+
+void gl_force_reload_common() {
+  g_gfx_data->loader->request_reload_common();
+}
+
 void gl_set_pmode_alp(float val) {
   g_gfx_data->pmode_alp = val;
 }
 
 const GfxRendererModule gRendererOpenGL = {
-    gl_init,                // init
-    gl_make_display,        // make_display
-    gl_exit,                // exit
-    gl_vsync,               // vsync
-    gl_sync_path,           // sync_path
-    gl_send_chain,          // send_chain
-    gl_texture_upload_now,  // texture_upload_now
-    gl_texture_relocate,    // texture_relocate
-    gl_set_levels,          // set_levels
-    gl_set_active_levels,   // set_active_levels
-    gl_set_pmode_alp,       // set_pmode_alp
-    GfxPipeline::OpenGL,    // pipeline
-    "OpenGL 4.3"            // name
+    gl_init,                 // init
+    gl_make_display,         // make_display
+    gl_exit,                 // exit
+    gl_vsync,                // vsync
+    gl_sync_path,            // sync_path
+    gl_send_chain,           // send_chain
+    gl_texture_upload_now,   // texture_upload_now
+    gl_texture_relocate,     // texture_relocate
+    gl_set_levels,           // set_levels
+    gl_set_active_levels,    // set_active_levels
+    gl_force_reload_all,     // force_reload_all
+    gl_force_reload_level,   // force_reload_level
+    gl_force_reload_common,  // force_reload_common
+    gl_set_pmode_alp,        // set_pmode_alp
+    GfxPipeline::OpenGL,     // pipeline
+    "OpenGL 4.3"             // name
 };

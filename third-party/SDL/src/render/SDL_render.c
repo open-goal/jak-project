@@ -320,6 +320,12 @@ static bool FlushRenderCommands(SDL_Renderer *renderer)
 
     DebugLogRenderCommands(renderer->render_commands);
 
+#if DONT_DRAW_WHILE_HIDDEN
+    // Don't send commands to the GPU while we're hidden
+    if (renderer->hidden) {
+        result = true;
+    } else
+#endif
     result = renderer->RunCommandQueue(renderer, renderer->render_commands, renderer->vertex_data, renderer->vertex_data_used);
 
     // Move the whole render command queue to the unused pool so we can reuse them next time.
@@ -3581,13 +3587,6 @@ bool SDL_RenderPoints(SDL_Renderer *renderer, const SDL_FPoint *points, int coun
         return true;
     }
 
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
-
     const SDL_RenderViewState *view = renderer->view;
     if ((view->current_scale.x != 1.0f) || (view->current_scale.y != 1.0f)) {
         result = RenderPointsWithRects(renderer, points, count);
@@ -3788,13 +3787,6 @@ bool SDL_RenderLines(SDL_Renderer *renderer, const SDL_FPoint *points, int count
         return true;
     }
 
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
-
     SDL_RenderViewState *view = renderer->view;
     const bool islogical = (view->logical_presentation_mode != SDL_LOGICAL_PRESENTATION_DISABLED);
 
@@ -3968,13 +3960,6 @@ bool SDL_RenderRects(SDL_Renderer *renderer, const SDL_FRect *rects, int count)
         return true;
     }
 
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
-
     for (i = 0; i < count; ++i) {
         if (!SDL_RenderRect(renderer, &rects[i])) {
             return false;
@@ -4013,13 +3998,6 @@ bool SDL_RenderFillRects(SDL_Renderer *renderer, const SDL_FRect *rects, int cou
     if (count < 1) {
         return true;
     }
-
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
 
     frects = SDL_small_alloc(SDL_FRect, count, &isstack);
     if (!frects) {
@@ -4111,13 +4089,6 @@ bool SDL_RenderTexture(SDL_Renderer *renderer, SDL_Texture *texture, const SDL_F
         return SDL_SetError("Texture was not created with this renderer");
     }
 
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
-
     SDL_FRect real_srcrect;
     real_srcrect.x = 0.0f;
     real_srcrect.y = 0.0f;
@@ -4164,13 +4135,6 @@ bool SDL_RenderTextureAffine(SDL_Renderer *renderer, SDL_Texture *texture,
     if (!renderer->QueueCopyEx && !renderer->QueueGeometry) {
         return SDL_SetError("Renderer does not support RenderCopyEx");
     }
-
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
 
     real_srcrect.x = 0.0f;
     real_srcrect.y = 0.0f;
@@ -4291,13 +4255,6 @@ bool SDL_RenderTextureRotated(SDL_Renderer *renderer, SDL_Texture *texture,
     if (!renderer->QueueCopyEx && !renderer->QueueGeometry) {
         return SDL_SetError("Renderer does not support RenderCopyEx");
     }
-
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
 
     real_srcrect.x = 0.0f;
     real_srcrect.y = 0.0f;
@@ -4552,13 +4509,6 @@ bool SDL_RenderTextureTiled(SDL_Renderer *renderer, SDL_Texture *texture, const 
     CHECK_PARAM(scale <= 0.0f) {
         return SDL_InvalidParamError("scale");
     }
-
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
 
     real_srcrect.x = 0.0f;
     real_srcrect.y = 0.0f;
@@ -5338,13 +5288,6 @@ bool SDL_RenderGeometryRaw(SDL_Renderer *renderer,
     if (!renderer->QueueGeometry) {
         return SDL_Unsupported();
     }
-
-#if DONT_DRAW_WHILE_HIDDEN
-    // Don't draw while we're hidden
-    if (renderer->hidden) {
-        return true;
-    }
-#endif
 
     if (num_vertices < 3) {
         return true;

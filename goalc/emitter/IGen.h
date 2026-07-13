@@ -35,27 +35,27 @@ Instruction mov_gpr64_s32(const ObjectGenerator& gen, Register dst, int64_t val)
 /*!
  * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
  */
-Instruction movd_gpr32_xmm32(const ObjectGenerator& gen, Register dst, Register src);
+Instruction movd_gpr32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move 32-bits of gpr to 32-bits of xmm (no sign extension)
  */
-Instruction movd_xmm32_gpr32(const ObjectGenerator& gen, Register dst, Register src);
+Instruction movd_f32_gpr32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
  */
-Instruction movq_gpr64_xmm64(const ObjectGenerator& gen, Register dst, Register src);
+Instruction movq_gpr64_f64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
  */
-Instruction movq_xmm64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
+Instruction movq_f64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move 32-bits between xmm's
  */
-Instruction mov_xmm32_xmm32(const ObjectGenerator& gen, Register dst, Register src);
+Instruction mov_f32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 // todo - GPR64 -> XMM64 (zext)
 // todo - XMM -> GPR64
@@ -486,9 +486,9 @@ Instruction static_store(const ObjectGenerator& gen, Register value, s64 offset,
 
 Instruction static_addr(const ObjectGenerator& gen, Register dst, s64 offset);
 
-Instruction static_load_xmm32(const ObjectGenerator& gen, Register simd_dest, s64 offset);
+Instruction static_load_f32(const ObjectGenerator& gen, Register simd_dest, s64 offset);
 
-Instruction static_store_xmm32(const ObjectGenerator& gen, Register xmm_value, s64 offset);
+Instruction static_store_f32(const ObjectGenerator& gen, Register xmm_value, s64 offset);
 
 // TODO, special load/stores of 128 bit values.
 
@@ -618,19 +618,21 @@ Instruction not_gpr64(const ObjectGenerator& gen, Register reg);
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 /*!
- * Shift 64-bit gpr left by CL register
+ * Shift 64-bit gpr left by a shift amount in a register (ie. forced to be CL register on x86)
  */
-Instruction shl_gpr64_cl(const ObjectGenerator& gen, Register reg);
+Instruction shl_gpr64_reg(const ObjectGenerator& gen, Register reg, Register shift_reg);
 
 /*!
- * Shift 64-bit gpr right (logical) by CL register
+ * Shift 64-bit gpr right (logical) by a shift amount in a register (ie. forced to be CL register on
+ * x86)
  */
-Instruction shr_gpr64_cl(const ObjectGenerator& gen, Register reg);
+Instruction shr_gpr64_reg(const ObjectGenerator& gen, Register reg, Register shift_reg);
 
 /*!
- * Shift 64-bit gpr right (arithmetic) by CL register
+ * Shift 64-bit gpr right (arithmetic) a shift amount in a register (ie. forced to be CL register on
+ * x86)
  */
-Instruction sar_gpr64_cl(const ObjectGenerator& gen, Register reg);
+Instruction sar_gpr64_reg(const ObjectGenerator& gen, Register reg, Register shift_reg);
 
 /*!
  * Shift 64-ptr left (logical) by the constant shift amount "sa".
@@ -654,57 +656,57 @@ Instruction sar_gpr64_u8(const ObjectGenerator& gen, Register reg, uint8_t sa);
 /*!
  * Jump, 32-bit constant offset.  The offset is by default 0 and must be patched later.
  */
-Instruction jmp_32(const ObjectGenerator& gen);
+Instruction jmp_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump if equal.
  */
-Instruction je_32(const ObjectGenerator& gen);
+Instruction je_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump not equal.
  */
-Instruction jne_32(const ObjectGenerator& gen);
+Instruction jne_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump less than or equal.
  */
-Instruction jle_32(const ObjectGenerator& gen);
+Instruction jle_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump greater than or equal.
  */
-Instruction jge_32(const ObjectGenerator& gen);
+Instruction jge_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump less than
  */
-Instruction jl_32(const ObjectGenerator& gen);
+Instruction jl_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump greater than
  */
-Instruction jg_32(const ObjectGenerator& gen);
+Instruction jg_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump below or equal
  */
-Instruction jbe_32(const ObjectGenerator& gen);
+Instruction jbe_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump above or equal
  */
-Instruction jae_32(const ObjectGenerator& gen);
+Instruction jae_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump below
  */
-Instruction jb_32(const ObjectGenerator& gen);
+Instruction jb_imm(const ObjectGenerator& gen);
 
 /*!
  * Jump above
  */
-Instruction ja_32(const ObjectGenerator& gen);
+Instruction ja_imm(const ObjectGenerator& gen);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   FLOAT MATH
@@ -713,49 +715,49 @@ Instruction ja_32(const ObjectGenerator& gen);
 /*!
  * Compare two floats and set flag register for jump (ucomiss)
  */
-Instruction cmp_flt_flt(const ObjectGenerator& gen, Register a, Register b);
+Instruction cmp_f32_f32(const ObjectGenerator& gen, Register a, Register b);
 
-Instruction sqrts_xmm(const ObjectGenerator& gen, Register dst, Register src);
-
-/*!
- * Multiply two floats in xmm's
- */
-Instruction mulss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
+Instruction sqrt_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Divide two floats in xmm's
+ * Multiply two floats in f32's
  */
-Instruction divss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
+Instruction mul_f32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Subtract two floats in xmm's
+ * Divide two floats in f32's
  */
-Instruction subss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
+Instruction div_f32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Add two floats in xmm's
+ * Subtract two floats in f32's
  */
-Instruction addss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
+Instruction sub_f32_f32(const ObjectGenerator& gen, Register dst, Register src);
+
+/*!
+ * Add two floats in f32's
+ */
+Instruction add_f32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Floating point minimum.
  */
-Instruction minss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
+Instruction min_f32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Floating point maximum.
  */
-Instruction maxss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
+Instruction max_f32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Convert GPR int32 to XMM float (single precision)
+ * Convert GPR int32 to float (single precision)
  */
-Instruction int32_to_float(const ObjectGenerator& gen, Register dst, Register src);
+Instruction int32_to_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Convert XMM float to GPR int32(single precision) (truncate)
+ * Convert float to GPR int32(single precision) (truncate)
  */
-Instruction float_to_int32(const ObjectGenerator& gen, Register dst, Register src);
+Instruction f32_to_int32(const ObjectGenerator& gen, Register dst, Register src);
 
 Instruction nop(const ObjectGenerator& gen);
 

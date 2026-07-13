@@ -45,6 +45,9 @@ struct GfxRendererModule {
   std::function<void(u32, u32, u32)> texture_relocate;
   std::function<void(const std::vector<std::string>&)> set_levels;
   std::function<void(const std::vector<std::string>&)> set_active_levels;
+  std::function<void()> force_reload_all;
+  std::function<void(const std::string&)> force_reload_level;
+  std::function<void()> force_reload_common;
   std::function<void(float)> set_pmode_alp;
   GfxPipeline pipeline;
   const char* name;

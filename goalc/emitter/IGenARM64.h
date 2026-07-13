@@ -34,27 +34,27 @@ InstructionARM64 mov_gpr64_s32(Register dst, int64_t val);
 /*!
  * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
  */
-InstructionARM64 movd_gpr32_xmm32(Register dst, Register src);
+InstructionARM64 movd_gpr32_f32(Register dst, Register src);
 
 /*!
  * Move 32-bits of gpr to 32-bits of xmm (no sign extension)
  */
-InstructionARM64 movd_xmm32_gpr32(Register dst, Register src);
+InstructionARM64 movd_f32_gpr32(Register dst, Register src);
 
 /*!
  * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
  */
-InstructionARM64 movq_gpr64_xmm64(Register dst, Register src);
+InstructionARM64 movq_gpr64_f64(Register dst, Register src);
 
 /*!
  * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
  */
-InstructionARM64 movq_xmm64_gpr64(Register dst, Register src);
+InstructionARM64 movq_f64_gpr64(Register dst, Register src);
 
 /*!
  * Move 32-bits between xmm's
  */
-InstructionARM64 mov_xmm32_xmm32(Register dst, Register src);
+InstructionARM64 mov_f32_f32(Register dst, Register src);
 
 // todo - GPR64 -> XMM64 (zext)
 // todo - XMM -> GPR64
@@ -323,37 +323,37 @@ InstructionARM64 store128_xmm128_reg_offset(Register base, Register xmm_val, s64
 //   RIP loads and stores
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-InstructionARM64 load64_rip_s32(Register dest, s64 offset);
+InstructionARM64 load64_pcRel_s32(Register dest, s64 offset);
 
-InstructionARM64 load32s_rip_s32(Register dest, s64 offset);
+InstructionARM64 load32s_pcRel_s32(Register dest, s64 offset);
 
-InstructionARM64 load32u_rip_s32(Register dest, s64 offset);
+InstructionARM64 load32u_pcRel_s32(Register dest, s64 offset);
 
-InstructionARM64 load16u_rip_s32(Register dest, s64 offset);
+InstructionARM64 load16u_pcRel_s32(Register dest, s64 offset);
 
-InstructionARM64 load16s_rip_s32(Register dest, s64 offset);
+InstructionARM64 load16s_pcRel_s32(Register dest, s64 offset);
 
-InstructionARM64 load8u_rip_s32(Register dest, s64 offset);
+InstructionARM64 load8u_pcRel_s32(Register dest, s64 offset);
 
-InstructionARM64 load8s_rip_s32(Register dest, s64 offset);
+InstructionARM64 load8s_pcRel_s32(Register dest, s64 offset);
 
 InstructionARM64 static_load(Register dest, s64 offset, int size, bool sign_extend);
 
-InstructionARM64 store64_rip_s32(Register src, s64 offset);
+InstructionARM64 store64_pcRel_s32(Register src, s64 offset);
 
-InstructionARM64 store32_rip_s32(Register src, s64 offset);
+InstructionARM64 store32_pcRel_s32(Register src, s64 offset);
 
-InstructionARM64 store16_rip_s32(Register src, s64 offset);
+InstructionARM64 store16_pcRel_s32(Register src, s64 offset);
 
-InstructionARM64 store8_rip_s32(Register src, s64 offset);
+InstructionARM64 store8_pcRel_s32(Register src, s64 offset);
 
 InstructionARM64 static_store(Register value, s64 offset, int size);
 
 InstructionARM64 static_addr(Register dst, s64 offset);
 
-InstructionARM64 static_load_xmm32(Register simd_dest, s64 offset);
+InstructionARM64 static_load_f32(Register simd_dest, s64 offset);
 
-InstructionARM64 static_store_xmm32(Register xmm_value, s64 offset);
+InstructionARM64 static_store_f32(Register xmm_value, s64 offset);
 
 // TODO, special load/stores of 128 bit values.
 
@@ -477,19 +477,21 @@ InstructionARM64 not_gpr64(Register reg);
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 /*!
- * Shift 64-bit gpr left by CL register
+ * Shift 64-bit gpr left by a shift amount in a register (ie. forced to be CL register on x86)
  */
-InstructionARM64 shl_gpr64_cl(Register reg);
+InstructionARM64 shl_gpr64_reg(Register reg, Register shift_reg);
 
 /*!
- * Shift 64-bit gpr right (logical) by CL register
+ * Shift 64-bit gpr right (logical) by a shift amount in a register (ie. forced to be CL register on
+ * x86)
  */
-InstructionARM64 shr_gpr64_cl(Register reg);
+InstructionARM64 shr_gpr64_reg(Register reg, Register shift_reg);
 
 /*!
- * Shift 64-bit gpr right (arithmetic) by CL register
+ * Shift 64-bit gpr right (arithmetic) a shift amount in a register (ie. forced to be CL register on
+ * x86)
  */
-InstructionARM64 sar_gpr64_cl(Register reg);
+InstructionARM64 sar_gpr64_reg(Register reg, Register shift_reg);
 
 /*!
  * Shift 64-ptr left (logical) by the constant shift amount "sa".
@@ -513,57 +515,57 @@ InstructionARM64 sar_gpr64_u8(Register reg, uint8_t sa);
 /*!
  * Jump, 32-bit constant offset.  The offset is by default 0 and must be patched later.
  */
-InstructionARM64 jmp_32();
+InstructionARM64 jmp_imm();
 
 /*!
  * Jump if equal.
  */
-InstructionARM64 je_32();
+InstructionARM64 je_imm();
 
 /*!
  * Jump not equal.
  */
-InstructionARM64 jne_32();
+InstructionARM64 jne_imm();
 
 /*!
  * Jump less than or equal.
  */
-InstructionARM64 jle_32();
+InstructionARM64 jle_imm();
 
 /*!
  * Jump greater than or equal.
  */
-InstructionARM64 jge_32();
+InstructionARM64 jge_imm();
 
 /*!
  * Jump less than
  */
-InstructionARM64 jl_32();
+InstructionARM64 jl_imm();
 
 /*!
  * Jump greater than
  */
-InstructionARM64 jg_32();
+InstructionARM64 jg_imm();
 
 /*!
  * Jump below or equal
  */
-InstructionARM64 jbe_32();
+InstructionARM64 jbe_imm();
 
 /*!
  * Jump above or equal
  */
-InstructionARM64 jae_32();
+InstructionARM64 jae_imm();
 
 /*!
  * Jump below
  */
-InstructionARM64 jb_32();
+InstructionARM64 jb_imm();
 
 /*!
  * Jump above
  */
-InstructionARM64 ja_32();
+InstructionARM64 ja_imm();
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   FLOAT MATH
@@ -572,49 +574,49 @@ InstructionARM64 ja_32();
 /*!
  * Compare two floats and set flag register for jump (ucomiss)
  */
-InstructionARM64 cmp_flt_flt(Register a, Register b);
+InstructionARM64 cmp_f32_f32(Register a, Register b);
 
-InstructionARM64 sqrts_xmm(Register dst, Register src);
+InstructionARM64 sqrt_f32(Register dst, Register src);
 
 /*!
  * Multiply two floats in xmm's
  */
-InstructionARM64 mulss_xmm_xmm(Register dst, Register src);
+InstructionARM64 mul_f32_f32(Register dst, Register src);
 
 /*!
  * Divide two floats in xmm's
  */
-InstructionARM64 divss_xmm_xmm(Register dst, Register src);
+InstructionARM64 div_f32_f32(Register dst, Register src);
 
 /*!
  * Subtract two floats in xmm's
  */
-InstructionARM64 subss_xmm_xmm(Register dst, Register src);
+InstructionARM64 sub_f32_f32(Register dst, Register src);
 
 /*!
  * Add two floats in xmm's
  */
-InstructionARM64 addss_xmm_xmm(Register dst, Register src);
+InstructionARM64 add_f32_f32(Register dst, Register src);
 
 /*!
  * Floating point minimum.
  */
-InstructionARM64 minss_xmm_xmm(Register dst, Register src);
+InstructionARM64 min_f32_f32(Register dst, Register src);
 
 /*!
  * Floating point maximum.
  */
-InstructionARM64 maxss_xmm_xmm(Register dst, Register src);
+InstructionARM64 max_f32_f32(Register dst, Register src);
 
 /*!
- * Convert GPR int32 to XMM float (single precision)
+ * Convert GPR int32 to float (single precision)
  */
-InstructionARM64 int32_to_float(Register dst, Register src);
+InstructionARM64 int32_to_f32(Register dst, Register src);
 
 /*!
- * Convert XMM float to GPR int32(single precision) (truncate)
+ * Convert float to GPR int32(single precision) (truncate)
  */
-InstructionARM64 float_to_int32(Register dst, Register src);
+InstructionARM64 f32_to_int32(Register dst, Register src);
 
 InstructionARM64 nop();
 

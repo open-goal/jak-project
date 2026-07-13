@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -27,12 +28,19 @@ class Loader {
   std::vector<LevelData*> get_in_use_levels();
   void draw_debug_window();
   void debug_print_loaded_levels();
+  void request_reload_all() { m_want_reload = true; }
+  void request_reload_level(const std::string& name) { m_single_level_to_reload = name; }
+  void request_reload_common() { m_want_reload_common = true; }
 
  private:
   void loader_thread();
   bool upload_textures(Timer& timer, LevelData& data, TexturePool& texture_pool);
 
   const std::string* get_most_unloadable_level();
+  void unload_level_data(const std::string& name, LevelData& lev, TexturePool& tex_pool);
+  void do_reload(TexturePool& tex_pool);
+  void do_reload_common(TexturePool& tex_pool);
+  void do_reload_level(const std::string& name, TexturePool& tex_pool);
 
   // used by game and loader thread
   std::unordered_map<std::string, std::unique_ptr<LevelData>> m_initializing_tfrag3_levels;
@@ -46,6 +54,10 @@ class Loader {
   std::condition_variable m_loader_cv;
   std::condition_variable m_file_load_done_cv;
   bool m_want_shutdown = false;
+  std::atomic<bool> m_want_reload{false};
+  std::atomic<bool> m_want_reload_common{false};
+  std::string m_single_level_to_reload;
+  std::string m_selected_level_for_reload;
   uint64_t m_id = 0;
 
   // used only by game thread

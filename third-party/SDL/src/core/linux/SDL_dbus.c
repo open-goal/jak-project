@@ -22,6 +22,9 @@
 #include "SDL_dbus.h"
 #include "../../stdlib/SDL_vacopy.h"
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #ifdef SDL_USE_LIBDBUS
 // we never link directly to libdbus.
 #define SDL_DRIVER_DBUS_DYNAMIC "libdbus-1.so.3"
@@ -471,9 +474,118 @@ static bool SDL_DBus_AppendDictWithKeyValue(DBusMessageIter *iterInit, const cha
    return SDL_DBus_AppendDictWithKeysAndValues(iterInit, keys, values, 1);
 }
 
+bool SDL_DBus_OpenURI(const char *uri, const char *window_id, const char *activation_token)
+{
+    static const char *bus_name = "org.freedesktop.portal.Desktop";
+    static const char *path = "/org/freedesktop/portal/desktop";
+    static const char *interface = "org.freedesktop.portal.OpenURI";
+
+    if (!dbus.session_conn) {
+        /* We either lost connection to the session bus or were not able to
+         * load the D-Bus library at all.
+         */
+        return false;
+    }
+
+    DBusMessageIter iterInit;
+    DBusMessage *msg = NULL;
+    int fd = -1;
+    bool ret = false;
+    const bool has_file_scheme = SDL_strncasecmp(uri, "file:/", 6) == 0;
+
+    // The OpenURI method can't open 'file://' URIs or local paths, so OpenFile must be used instead.
+    if (has_file_scheme || !SDL_IsURI(uri)) {
+        char *decoded_path = NULL;
+
+        // Decode the path if it is a URI.
+        if (has_file_scheme) {
+            const size_t len = SDL_strlen(uri) + 1;
+            decoded_path = SDL_malloc(len);
+            if (!decoded_path) {
+                goto done;
+            }
+            if (SDL_URIToLocal(uri, decoded_path) < 0) {
+                SDL_free(decoded_path);
+                goto done;
+            }
+            uri = decoded_path;
+        }
+        fd = open(uri, O_RDWR | O_CLOEXEC);
+        SDL_free(decoded_path);
+        if (fd >= 0) {
+            msg = dbus.message_new_method_call(bus_name, path, interface, "OpenFile");
+        }
+    } else {
+        msg = dbus.message_new_method_call(bus_name, path, interface, "OpenURI");
+    }
+    if (!msg) {
+        goto done;
+    }
+
+    dbus.message_iter_init_append(msg, &iterInit);
+
+    if (!window_id) {
+        window_id = "";
+    }
+    if (!dbus.message_iter_append_basic(&iterInit, DBUS_TYPE_STRING, &window_id)) {
+        goto done;
+    }
+
+    if (fd >= 0) {
+        if (!dbus.message_iter_append_basic(&iterInit, DBUS_TYPE_UNIX_FD, &fd)) {
+            goto done;
+        }
+    } else {
+        if (!dbus.message_iter_append_basic(&iterInit, DBUS_TYPE_STRING, &uri)) {
+            goto done;
+        }
+    }
+
+    if (activation_token) {
+        if (!SDL_DBus_AppendDictWithKeyValue(&iterInit, "activation_token", activation_token)) {
+            goto done;
+        }
+    } else {
+        // The array must be in the parameter list, even if empty.
+        DBusMessageIter iterArray;
+        if (!dbus.message_iter_open_container(&iterInit, DBUS_TYPE_ARRAY, "{sv}", &iterArray)) {
+            goto done;
+        }
+        if (!dbus.message_iter_close_container(&iterInit, &iterArray)) {
+            goto done;
+        }
+    }
+
+    {
+        DBusMessage *reply = dbus.connection_send_with_reply_and_block(dbus.session_conn, msg, -1, NULL);
+        if (reply) {
+            ret = true;
+            dbus.message_unref(reply);
+        }
+    }
+
+done:
+    if (msg) {
+        dbus.message_unref(msg);
+    }
+
+    // The file descriptor is duplicated by D-Bus, so it can be closed on this end.
+    if (fd >= 0) {
+        close(fd);
+    }
+
+    return ret;
+}
+
 bool SDL_DBus_ScreensaverInhibit(bool inhibit)
 {
+    static bool interface_unavailable = false;
     const char *default_inhibit_reason = "Playing a game";
+
+    // If the interface was previously queried and is unavailable, return false.
+    if (interface_unavailable) {
+        return false;
+    }
 
     if ((inhibit && (screensaver_cookie != 0 || inhibit_handle)) || (!inhibit && (screensaver_cookie == 0 && !inhibit_handle))) {
         return true;
@@ -525,6 +637,8 @@ bool SDL_DBus_ScreensaverInhibit(bool inhibit)
             if (SDL_DBus_CallWithBasicReply(dbus.session_conn, &reply, msg, DBUS_TYPE_OBJECT_PATH, &reply_path)) {
                 inhibit_handle = SDL_strdup(reply_path);
                 result = true;
+            } else {
+                interface_unavailable = true;
             }
             SDL_DBus_FreeReply(&reply);
             dbus.message_unref(msg);
@@ -551,6 +665,7 @@ bool SDL_DBus_ScreensaverInhibit(bool inhibit)
             if (!SDL_DBus_CallMethod(NULL, bus_name, path, interface, "Inhibit",
                                      DBUS_TYPE_STRING, &app, DBUS_TYPE_STRING, &reason, DBUS_TYPE_INVALID,
                                      DBUS_TYPE_UINT32, &screensaver_cookie, DBUS_TYPE_INVALID)) {
+                interface_unavailable = true;
                 return false;
             }
             return (screensaver_cookie != 0);

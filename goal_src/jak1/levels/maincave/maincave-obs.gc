@@ -195,7 +195,7 @@
         (suspend)
         (ja-eval))
       (until (or (or (not *target*) (< 28672.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-                 (and (not (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                 (and (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                                 (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))))
                       (not (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-cam)))))
         (ja-no-eval :group! cavetrapdoor-idle-down-ja :num! (seek!) :frame-num 0.0)
@@ -206,7 +206,7 @@
       (ja-no-eval :group! cavetrapdoor-reset-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (when (and (and *target* (>= 28672.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-                   (or (and (logtest? (-> *target* control unknown-surface00 flags) (surface-flags jump))
+                   (or (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
                             (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf))))
                        (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-cam))))
           (while (not (ja-min? 0))
@@ -327,8 +327,8 @@
                   (collide-action))
              (let ((s4-0 (new 'stack 'attack-info)))
                (calc-shove-up (-> self root) s4-0 (-> self shove-up))
-               (if (or (= (-> *target* control unknown-surface00 mode) 'air)
-                       (>= (+ (current-time) (seconds -0.2)) (-> *target* control unknown-dword11))
+               (if (or (= (-> *target* control mod-surface mode) 'air)
+                       (>= (+ (current-time) (seconds -0.2)) (-> *target* control last-time-on-surface))
                        (< 0.75 (-> *target* control poly-normal y)))
                  (send-event proc
                              'attack-or-shove

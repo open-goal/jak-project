@@ -34,27 +34,27 @@ InstructionX86 mov_gpr64_s32(Register dst, int64_t val);
 /*!
  * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
  */
-InstructionX86 movd_gpr32_xmm32(Register dst, Register src);
+InstructionX86 movd_gpr32_f32(Register dst, Register src);
 
 /*!
  * Move 32-bits of gpr to 32-bits of xmm (no sign extension)
  */
-InstructionX86 movd_xmm32_gpr32(Register dst, Register src);
+InstructionX86 movd_f32_gpr32(Register dst, Register src);
 
 /*!
  * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
  */
-InstructionX86 movq_gpr64_xmm64(Register dst, Register src);
+InstructionX86 movq_gpr64_f64(Register dst, Register src);
 
 /*!
  * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
  */
-InstructionX86 movq_xmm64_gpr64(Register dst, Register src);
+InstructionX86 movq_f64_gpr64(Register dst, Register src);
 
 /*!
  * Move 32-bits between xmm's
  */
-InstructionX86 mov_xmm32_xmm32(Register dst, Register src);
+InstructionX86 mov_f32_f32(Register dst, Register src);
 
 // todo - GPR64 -> XMM64 (zext)
 // todo - XMM -> GPR64
@@ -323,37 +323,37 @@ InstructionX86 store128_xmm128_reg_offset(Register base, Register xmm_val, s64 o
 //   RIP loads and stores
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-InstructionX86 load64_rip_s32(Register dest, s64 offset);
+InstructionX86 load64_pcRel_s32(Register dest, s64 offset);
 
-InstructionX86 load32s_rip_s32(Register dest, s64 offset);
+InstructionX86 load32s_pcRel_s32(Register dest, s64 offset);
 
-InstructionX86 load32u_rip_s32(Register dest, s64 offset);
+InstructionX86 load32u_pcRel_s32(Register dest, s64 offset);
 
-InstructionX86 load16u_rip_s32(Register dest, s64 offset);
+InstructionX86 load16u_pcRel_s32(Register dest, s64 offset);
 
-InstructionX86 load16s_rip_s32(Register dest, s64 offset);
+InstructionX86 load16s_pcRel_s32(Register dest, s64 offset);
 
-InstructionX86 load8u_rip_s32(Register dest, s64 offset);
+InstructionX86 load8u_pcRel_s32(Register dest, s64 offset);
 
-InstructionX86 load8s_rip_s32(Register dest, s64 offset);
+InstructionX86 load8s_pcRel_s32(Register dest, s64 offset);
 
 InstructionX86 static_load(Register dest, s64 offset, int size, bool sign_extend);
 
-InstructionX86 store64_rip_s32(Register src, s64 offset);
+InstructionX86 store64_pcRel_s32(Register src, s64 offset);
 
-InstructionX86 store32_rip_s32(Register src, s64 offset);
+InstructionX86 store32_pcRel_s32(Register src, s64 offset);
 
-InstructionX86 store16_rip_s32(Register src, s64 offset);
+InstructionX86 store16_pcRel_s32(Register src, s64 offset);
 
-InstructionX86 store8_rip_s32(Register src, s64 offset);
+InstructionX86 store8_pcRel_s32(Register src, s64 offset);
 
 InstructionX86 static_store(Register value, s64 offset, int size);
 
 InstructionX86 static_addr(Register dst, s64 offset);
 
-InstructionX86 static_load_xmm32(Register simd_dest, s64 offset);
+InstructionX86 static_load_f32(Register simd_dest, s64 offset);
 
-InstructionX86 static_store_xmm32(Register xmm_value, s64 offset);
+InstructionX86 static_store_f32(Register xmm_value, s64 offset);
 
 // TODO, special load/stores of 128 bit values.
 
@@ -477,19 +477,21 @@ InstructionX86 not_gpr64(Register reg);
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 /*!
- * Shift 64-bit gpr left by CL register
+ * Shift 64-bit gpr left by a shift amount in a register (ie. forced to be CL register on x86)
  */
-InstructionX86 shl_gpr64_cl(Register reg);
+InstructionX86 shl_gpr64_reg(Register reg, Register shift_reg);
 
 /*!
- * Shift 64-bit gpr right (logical) by CL register
+ * Shift 64-bit gpr right (logical) by a shift amount in a register (ie. forced to be CL register on
+ * x86)
  */
-InstructionX86 shr_gpr64_cl(Register reg);
+InstructionX86 shr_gpr64_reg(Register reg, Register shift_reg);
 
 /*!
- * Shift 64-bit gpr right (arithmetic) by CL register
+ * Shift 64-bit gpr right (arithmetic) a shift amount in a register (ie. forced to be CL register on
+ * x86)
  */
-InstructionX86 sar_gpr64_cl(Register reg);
+InstructionX86 sar_gpr64_reg(Register reg, Register shift_reg);
 
 /*!
  * Shift 64-ptr left (logical) by the constant shift amount "sa".
@@ -513,57 +515,57 @@ InstructionX86 sar_gpr64_u8(Register reg, uint8_t sa);
 /*!
  * Jump, 32-bit constant offset.  The offset is by default 0 and must be patched later.
  */
-InstructionX86 jmp_32();
+InstructionX86 jmp_imm();
 
 /*!
  * Jump if equal.
  */
-InstructionX86 je_32();
+InstructionX86 je_imm();
 
 /*!
  * Jump not equal.
  */
-InstructionX86 jne_32();
+InstructionX86 jne_imm();
 
 /*!
  * Jump less than or equal.
  */
-InstructionX86 jle_32();
+InstructionX86 jle_imm();
 
 /*!
  * Jump greater than or equal.
  */
-InstructionX86 jge_32();
+InstructionX86 jge_imm();
 
 /*!
  * Jump less than
  */
-InstructionX86 jl_32();
+InstructionX86 jl_imm();
 
 /*!
  * Jump greater than
  */
-InstructionX86 jg_32();
+InstructionX86 jg_imm();
 
 /*!
  * Jump below or equal
  */
-InstructionX86 jbe_32();
+InstructionX86 jbe_imm();
 
 /*!
  * Jump above or equal
  */
-InstructionX86 jae_32();
+InstructionX86 jae_imm();
 
 /*!
  * Jump below
  */
-InstructionX86 jb_32();
+InstructionX86 jb_imm();
 
 /*!
  * Jump above
  */
-InstructionX86 ja_32();
+InstructionX86 ja_imm();
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   FLOAT MATH
@@ -572,49 +574,49 @@ InstructionX86 ja_32();
 /*!
  * Compare two floats and set flag register for jump (ucomiss)
  */
-InstructionX86 cmp_flt_flt(Register a, Register b);
+InstructionX86 cmp_f32_f32(Register a, Register b);
 
-InstructionX86 sqrts_xmm(Register dst, Register src);
-
-/*!
- * Multiply two floats in xmm's
- */
-InstructionX86 mulss_xmm_xmm(Register dst, Register src);
+InstructionX86 sqrt_f32(Register dst, Register src);
 
 /*!
- * Divide two floats in xmm's
+ * Multiply two floats in f32's
  */
-InstructionX86 divss_xmm_xmm(Register dst, Register src);
+InstructionX86 mul_f32_f32(Register dst, Register src);
 
 /*!
- * Subtract two floats in xmm's
+ * Divide two floats in f32's
  */
-InstructionX86 subss_xmm_xmm(Register dst, Register src);
+InstructionX86 div_f32_f32(Register dst, Register src);
 
 /*!
- * Add two floats in xmm's
+ * Subtract two floats in f32's
  */
-InstructionX86 addss_xmm_xmm(Register dst, Register src);
+InstructionX86 sub_f32_f32(Register dst, Register src);
+
+/*!
+ * Add two floats in f32's
+ */
+InstructionX86 add_f32_f32(Register dst, Register src);
 
 /*!
  * Floating point minimum.
  */
-InstructionX86 minss_xmm_xmm(Register dst, Register src);
+InstructionX86 min_f32_f32(Register dst, Register src);
 
 /*!
  * Floating point maximum.
  */
-InstructionX86 maxss_xmm_xmm(Register dst, Register src);
+InstructionX86 max_f32_f32(Register dst, Register src);
 
 /*!
  * Convert GPR int32 to XMM float (single precision)
  */
-InstructionX86 int32_to_float(Register dst, Register src);
+InstructionX86 int32_to_f32(Register dst, Register src);
 
 /*!
  * Convert XMM float to GPR int32(single precision) (truncate)
  */
-InstructionX86 float_to_int32(Register dst, Register src);
+InstructionX86 f32_to_int32(Register dst, Register src);
 
 InstructionX86 nop();
 

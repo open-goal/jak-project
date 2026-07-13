@@ -105,6 +105,7 @@ int Android_JNI_GetPowerInfo(int *plugged, int *charged, int *battery, int *seco
 // Joystick support
 void Android_JNI_PollInputDevices(void);
 void Android_JNI_JoystickSetLED(int device_id, int red, int green, int blue);
+void Android_JNI_JoystickSetSensorsEnabled(int device_id, bool enabled);
 
 // Haptic support
 void Android_JNI_PollHapticDevices(void);
@@ -151,6 +152,8 @@ int SDL_GetAndroidSDKVersion(void);
 
 bool SDL_IsAndroidTablet(void);
 bool SDL_IsAndroidTV(void);
+
+char *SDL_GetAndroidPackageName(void);  // this is a SDL_malloc'd string the caller will own.
 
 // File Dialogs
 bool Android_JNI_OpenFileDialog(SDL_DialogFileCallback callback, void *userdata,

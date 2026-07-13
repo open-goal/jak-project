@@ -1,0 +1,258 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type net-enemy-transition
+(deftype net-enemy-transition (structure)
+  ((timestamp  int32)
+   (name       basic)
+   (preempt    basic)
+   (data-len   int32)
+   (buf-data   uint8  64)
+   )
+  )
+
+;; definition for method 3 of type net-enemy-transition
+(defmethod inspect ((this net-enemy-transition))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'net-enemy-transition)
+  (format #t "~1Ttimestamp: ~D~%" (-> this timestamp))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tpreempt: ~A~%" (-> this preempt))
+  (format #t "~1Tdata-len: ~D~%" (-> this data-len))
+  (format #t "~1Tbuf-data[64] @ #x~X~%" (-> this buf-data))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *tmp-construct-transition*, type net-enemy-transition
+(define *tmp-construct-transition* (new 'static 'net-enemy-transition))
+
+;; definition of type net-enemy-anim-info
+(deftype net-enemy-anim-info (structure)
+  ((name         basic)
+   (anim-idx     int32)
+   (forward-vel  vector)
+   )
+  )
+
+;; definition for method 3 of type net-enemy-anim-info
+(defmethod inspect ((this net-enemy-anim-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'net-enemy-anim-info)
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tanim-idx: ~D~%" (-> this anim-idx))
+  (format #t "~1Tforward-vel: #<vector @ #x~X>~%" (-> this forward-vel))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type net-enemy-info
+(deftype net-enemy-info (structure)
+  ((flags                       uint64)
+   (inverse-mass                float)
+   (ragdoll-info                ragdoll-setup)
+   (max-health                  float)
+   (damage-scale                float)
+   (respawn-delay               int32)
+   (smooth-root-trans           float)
+   (smooth-root-quat            float)
+   (fatal-impact-impulse        float)
+   (min-fatal-impact-enemy-vel  float)
+   (time-before-evaporate       int32)
+   (time-before-respawn         int32)
+   (anim-info                   basic)
+   (kill-score                  int32)
+   (wound-score-scale           float)
+   (allow-vehicle-penetrate     basic)
+   (min-ground-offset           float)
+   (ground-probe-lod-dist       float)
+   (show-kill-score             int32)
+   )
+  )
+
+;; definition for method 3 of type net-enemy-info
+(defmethod inspect ((this net-enemy-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'net-enemy-info)
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tinverse-mass: ~f~%" (-> this inverse-mass))
+  (format #t "~1Tragdoll-info: #<ragdoll-setup @ #x~X>~%" (-> this ragdoll-info))
+  (format #t "~1Tmax-health: ~f~%" (-> this max-health))
+  (format #t "~1Tdamage-scale: ~f~%" (-> this damage-scale))
+  (format #t "~1Trespawn-delay: ~D~%" (-> this respawn-delay))
+  (format #t "~1Tsmooth-root-trans: ~f~%" (-> this smooth-root-trans))
+  (format #t "~1Tsmooth-root-quat: ~f~%" (-> this smooth-root-quat))
+  (format #t "~1Tfatal-impact-impulse: ~f~%" (-> this fatal-impact-impulse))
+  (format #t "~1Tmin-fatal-impact-enemy-vel: ~f~%" (-> this min-fatal-impact-enemy-vel))
+  (format #t "~1Ttime-before-evaporate: ~D~%" (-> this time-before-evaporate))
+  (format #t "~1Ttime-before-respawn: ~D~%" (-> this time-before-respawn))
+  (format #t "~1Tanim-info: ~A~%" (-> this anim-info))
+  (format #t "~1Tkill-score: ~D~%" (-> this kill-score))
+  (format #t "~1Twound-score-scale: ~f~%" (-> this wound-score-scale))
+  (format #t "~1Tallow-vehicle-penetrate: ~A~%" (-> this allow-vehicle-penetrate))
+  (format #t "~1Tmin-ground-offset: ~f~%" (-> this min-ground-offset))
+  (format #t "~1Tground-probe-lod-dist: ~f~%" (-> this ground-probe-lod-dist))
+  (format #t "~1Tshow-kill-score: ~D~%" (-> this show-kill-score))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type net-enemy
+(deftype net-enemy (process-focusable)
+  ((flags                   uint64)
+   (info                    net-enemy-info)
+   (ragdoll-proc            uint64)
+   (health                  float)
+   (local-damage            float)
+   (killed-by               int8)
+   (last-health-send-time   int32)
+   (net-anim                net-anim-control      :inline)
+   (minimap                 connection-minimap)
+   (transitions             net-enemy-transition  3 :inline)
+   (transition-ct           int32)
+   (last-attack-time        int32)
+   (vehicle-penetrate-time  int32)
+   (paths                   basic)
+   (pending-impulse-valid   basic)
+   (pending-impulse         rigid-body-impact     :inline)
+   (last-transition-time    int32)
+   (last-attack-id          int32)
+   (vel-for-ragdoll         vector                :inline)
+   (nav-poly                nav-poly)
+   (snap-flags              uint64)
+   (prev-pos                vector                :inline)
+   (forward-path-vector     vector                :inline)
+   (enemy-link              list-link             :inline)
+   )
+  (:methods
+    (net-enemy-method-59 () none)
+    (net-enemy-method-60 () none)
+    (net-enemy-method-61 () none)
+    (net-enemy-method-62 () none)
+    (net-enemy-method-63 () none)
+    (net-enemy-method-64 () none)
+    (net-enemy-method-65 () none)
+    (net-enemy-method-66 () none)
+    (net-enemy-method-67 () none)
+    (net-enemy-method-68 () none)
+    (net-enemy-method-69 () none)
+    (net-enemy-method-70 () none)
+    (net-enemy-method-71 () none)
+    (net-enemy-method-72 () none)
+    (net-enemy-method-73 () none)
+    (net-enemy-method-74 () none)
+    (net-enemy-method-75 () none)
+    (net-enemy-method-76 () none)
+    (net-enemy-method-77 () none)
+    (net-enemy-method-78 () none)
+    (net-enemy-method-79 () none)
+    (net-enemy-method-80 () none)
+    (net-enemy-method-81 () none)
+    (net-enemy-method-82 () none)
+    (net-enemy-method-83 () none)
+    (net-enemy-method-84 () none)
+    (net-enemy-method-85 () none)
+    (net-enemy-method-86 () none)
+    )
+  )
+
+;; definition for method 3 of type net-enemy
+(defmethod inspect ((this net-enemy))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (format #t "~2Tinfo: #<net-enemy-info @ #x~X>~%" (-> this info))
+  (format #t "~2Tragdoll-proc: ~D~%" (-> this ragdoll-proc))
+  (format #t "~2Thealth: ~f~%" (-> this health))
+  (format #t "~2Tlocal-damage: ~f~%" (-> this local-damage))
+  (format #t "~2Tkilled-by: ~D~%" (-> this killed-by))
+  (format #t "~2Tlast-health-send-time: ~D~%" (-> this last-health-send-time))
+  (format #t "~2Tnet-anim: #<net-anim-control @ #x~X>~%" (-> this net-anim))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> this minimap))
+  (format #t "~2Ttransitions[3] @ #x~X~%" (-> this transitions))
+  (format #t "~2Ttransition-ct: ~D~%" (-> this transition-ct))
+  (format #t "~2Tlast-attack-time: ~D~%" (-> this last-attack-time))
+  (format #t "~2Tvehicle-penetrate-time: ~D~%" (-> this vehicle-penetrate-time))
+  (format #t "~2Tpaths: ~A~%" (-> this paths))
+  (format #t "~2Tpending-impulse-valid: ~A~%" (-> this pending-impulse-valid))
+  (format #t "~2Tpending-impulse: #<rigid-body-impact @ #x~X>~%" (-> this pending-impulse))
+  (format #t "~2Tlast-transition-time: ~D~%" (-> this last-transition-time))
+  (format #t "~2Tlast-attack-id: ~D~%" (-> this last-attack-id))
+  (format #t "~2Tvel-for-ragdoll: #<vector @ #x~X>~%" (-> this vel-for-ragdoll))
+  (format #t "~2Tnav-poly: #<nav-poly @ #x~X>~%" (-> this nav-poly))
+  (format #t "~2Tsnap-flags: ~D~%" (-> this snap-flags))
+  (format #t "~2Tprev-pos: #<vector @ #x~X>~%" (-> this prev-pos))
+  (format #t "~2Tforward-path-vector: #<vector @ #x~X>~%" (-> this forward-path-vector))
+  (format #t "~2Tenemy-link: #<list-link @ #x~X>~%" (-> this enemy-link))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function net-enemy-init-remote
+;; WARN: Return type mismatch int vs none.
+(defbehavior net-enemy-init-remote process-focusable ((arg0 int))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self arg0)
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+;; definition for method 41 of type net-enemy
+(defmethod process-nettable-method-41 ((this net-enemy) (arg0 int))
+  (ppointer->process (process-spawn net-enemy :init net-enemy-init-remote arg0 :name "net-enemy"))
+  )
+
+;; definition for method 37 of type net-enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod process-nettable-method-37 ((this net-enemy) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'transition)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'damage)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+;; definition for symbol *msg-map-net-enemy*, type (array symbol)
+(define *msg-map-net-enemy* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+;; definition for symbol *net-process-class-info-net-enemy*, type net-process-class-info
+(define *net-process-class-info-net-enemy* (new 'static 'net-process-class-info))
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-enemy* msg-map) *msg-map-net-enemy*)
+
+;; failed to figure out what this is:
+(write-msg-map-rec net-enemy *net-process-class-info-net-enemy*)
+
+;; failed to figure out what this is:
+(set! (-> *net-process-class-info-net-enemy* owner-type) net-enemy)
+
+;; failed to figure out what this is:
+(net-process-class-register *net-process-class-info-net-enemy*)
+
+;; definition for method 40 of type net-enemy
+(defmethod process-nettable-method-40 ((this net-enemy))
+  *net-process-class-info-net-enemy*
+  )
+
+;; definition for symbol *net-enemy-list*, type linked-list
+(define *net-enemy-list* (new 'static 'linked-list))
+
+;; failed to figure out what this is:
+(clear! *net-enemy-list*)

@@ -364,10 +364,15 @@
                 (set! (-> obj battle-alive) alive-count))
               (update-display-status obj (-> obj want-skel) (-> obj battle-entity) 0 #t))))
          ((and (= 'debug *cheat-mode*) (= (-> obj battle-entity) (actor-by-name "flying-lurker-1")))
-          (let ((battle (the process-drawable battle)))
-            (if *target*
-              (set! (-> obj battle-alive) (the int (/ (vector-vector-distance (-> battle root trans) (target-pos 0)) METER_LENGTH))))
-            (update-display-status obj (-> obj want-skel) (-> obj battle-entity) 0 #t)))))
+          (when *target*
+            (let* ((lurker1 (the process-drawable battle))
+                   (dist1 (if lurker1 (vector-vector-distance (-> lurker1 root trans) (target-pos 0)) 0.0))
+                   (lurker2 (the process-drawable (process-by-ename "flying-lurker-2")))
+                   (dist2 (if lurker2 (vector-vector-distance (-> lurker2 root trans) (target-pos 0)) 0.0))
+                   (lurker3 (the process-drawable (process-by-ename "flying-lurker-3")))
+                   (dist3 (if lurker3 (vector-vector-distance (-> lurker3 root trans) (target-pos 0)) 0.0)))
+              (set! (-> obj battle-alive) (the int (/ (fmax dist1 dist2 dist3) METER_LENGTH)))))
+          (update-display-status obj (-> obj want-skel) (-> obj battle-entity) 0 #t))))
       (else
        ;; we have nothing. kill everything.
        (unless (and (= (-> obj last-battle) INVALID_HANDLE) (hidden? obj))

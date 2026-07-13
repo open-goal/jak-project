@@ -1529,6 +1529,7 @@ void create_modifiable_vertex_data(
               vtx_to_mod_vtx[vidx] = idx;
               // add the vertex
               effect.mod.vertices.push_back(out.vertices.at(vidx));
+              effect.mod.mod_to_global_vertex_idx.push_back(vidx);
               // look up where this one came from in the EE memory layout
               auto src = vtx_srcs.at(vidx - first_out_vertex);
               ASSERT(src.combined_lump4 < UINT16_MAX);

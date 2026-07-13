@@ -285,8 +285,8 @@
 ;; definition for function target-start-attack
 ;; INFO: Return type mismatch int vs none.
 (defbehavior target-start-attack target ()
-  (+! (-> self control unknown-dword50) 1)
-  (set! (-> self control unknown-dword51) 0)
+  (+! (-> self control target-attack-id) 1)
+  (set! (-> self control attack-count) 0)
   0
   (none)
   )
@@ -310,7 +310,7 @@
       (-> *TARGET-bank* root-offset)
       (-> *TARGET-bank* root-radius)
       )
-    (set! (-> self control unknown-symbol30) arg0)
+    (set! (-> self control danger-mode) arg0)
     (logclear! (-> self state-flags) (state-flags dangerous))
     (set! (-> s4-0 transform-index) -2)
     (set! (-> s4-0 prim-core collide-as) (collide-kind))
@@ -329,7 +329,7 @@
     (set! (-> gp-0 prim-core offense) (collide-offense no-offense))
     (case arg0
       (('harmless #f)
-       (set! (-> self control unknown-symbol30) #f)
+       (set! (-> self control danger-mode) #f)
        (target-collide-set! (-> self control unknown-symbol00) (-> self control unknown-float90))
        )
       (('spin 'spin-air)
@@ -410,7 +410,7 @@
              )
        (sphere<-vector+r! (the-as sphere (-> s5-0 local-sphere)) *null-vector* (-> *TARGET-bank* duck-spin-radius))
        (set! (-> s5-0 transform-index) 7)
-       (set! (-> self control unknown-symbol30) 'roll)
+       (set! (-> self control danger-mode) 'roll)
        )
       (('flip)
        (logior! (-> self state-flags) (state-flags dangerous))
@@ -432,7 +432,7 @@
              )
        (sphere<-vector+r! (the-as sphere (-> s5-0 local-sphere)) *null-vector* (-> *TARGET-bank* duck-spin-radius))
        (set! (-> s5-0 transform-index) 7)
-       (set! (-> self control unknown-symbol30) 'flip)
+       (set! (-> self control danger-mode) 'flip)
        )
       (('punch)
        (sphere<-vector+r!
@@ -504,7 +504,7 @@
          (-> *TARGET-bank* flop-radius)
          )
        (set! f30-0 1.0)
-       (set! (-> self control unknown-symbol30) 'flop)
+       (set! (-> self control danger-mode) 'flop)
        )
       (('flop-down)
        (logior! (-> self state-flags) (state-flags dangerous))
@@ -532,7 +532,7 @@
        (if (!= f30-0 1.0)
            (set! f30-0 2.1)
            )
-       (set! (-> self control unknown-symbol30) 'flop)
+       (set! (-> self control danger-mode) 'flop)
        )
       (('flut-attack)
        (sphere<-vector+r!
@@ -596,7 +596,7 @@
        (set! (-> gp-0 unknown-sphere-array00 2 transform-index) 7)
        )
       (('racer)
-       (set! (-> gp-0 unknown-vector11 y) 4096.0)
+       (set! (-> gp-0 draw-offset y) 4096.0)
        (sphere<-vector+r!
          (the-as sphere (-> gp-0 root-prim local-sphere))
          (new 'static 'vector :y 8192.0 :w 1.0)
@@ -622,7 +622,7 @@
       (('duck)
        (set! (-> self control unknown-float91) arg1)
        (let ((f30-0 (- 1.0 arg1)))
-         (set! (-> gp-0 unknown-vector11 y) 0.0)
+         (set! (-> gp-0 draw-offset y) 0.0)
          (sphere<-vector+r!
            (the-as sphere (-> gp-0 root-prim local-sphere))
            (-> *TARGET-bank* root-offset)
@@ -654,7 +654,7 @@
       (('tube)
        (set! (-> self control unknown-float91) arg1)
        (let ((f30-1 (- 1.0 arg1)))
-         (set! (-> gp-0 unknown-vector11 y) 0.0)
+         (set! (-> gp-0 draw-offset y) 0.0)
          (sphere<-vector+r!
            (the-as sphere (-> gp-0 root-prim local-sphere))
            (-> *TARGET-bank* root-offset)
@@ -688,7 +688,7 @@
        )
       (else
         (set! (-> self control unknown-float91) 0.0)
-        (set! (-> gp-0 unknown-vector11 y) 0.0)
+        (set! (-> gp-0 draw-offset y) 0.0)
         (sphere<-vector+r!
           (the-as sphere (-> gp-0 root-prim local-sphere))
           (-> *TARGET-bank* root-offset)
@@ -723,15 +723,15 @@
 
 ;; definition for method 27 of type control-info
 (defmethod get-quaternion ((this control-info))
-  (-> this unknown-quaternion00)
+  (-> this quat-for-control)
   )
 
 ;; definition for function target-align-vel-z-adjust
 (defbehavior target-align-vel-z-adjust target ((arg0 float))
-  (let ((f1-0 (-> self control unknown-float61)))
+  (let ((f1-0 (-> self control local-slope-z)))
     (* arg0 (if (< 0.0 f1-0)
-                (* (- 1.0 f1-0) (-> self control unknown-surface01 alignv))
-                (-> self control unknown-surface01 alignv)
+                (* (- 1.0 f1-0) (-> self control current-surface alignv))
+                (-> self control current-surface alignv)
                 )
        )
     )
@@ -745,8 +745,8 @@
     (set! (-> s2-0 quad) (-> arg2 quad))
     (set! (-> s2-0 z) (target-align-vel-z-adjust (-> s2-0 z)))
     (when (logtest? arg0 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
-      (let* ((s3-0 (-> this control unknown-matrix01))
-             (s0-0 (-> this control unknown-matrix00))
+      (let* ((s3-0 (-> this control c-R-w))
+             (s0-0 (-> this control w-R-c))
              (s1-0 (vector-matrix*! (new 'stack-no-clear 'vector) (-> this control dynam gravity) s0-0))
              (a1-3 (vector-matrix*! (new 'stack-no-clear 'vector) (-> this control transv) s0-0))
              )
@@ -782,7 +782,7 @@
     )
   (if (logtest? arg0 (align-opts adjust-quat))
       (quaternion-normalize!
-        (quaternion*! (-> this control unknown-quaternion00) (-> this control unknown-quaternion00) (-> arg1 quat))
+        (quaternion*! (-> this control quat-for-control) (-> this control quat-for-control) (-> arg1 quat))
         )
       )
   (the-as collide-shape (-> this control))
@@ -813,23 +813,23 @@
        (not (-> *setting-control* current movie))
        (not (-> *setting-control* current hint))
        (not (logtest? (-> self control status) (cshape-moving-flags t-act)))
-       (not (logtest? (-> self water flags) (water-flags wt09)))
+       (not (logtest? (-> self water flag) (water-flag touch-water)))
        )
   )
 
 ;; definition for function can-jump?
 (defbehavior can-jump? target ((arg0 symbol))
   (and (or (logtest? (-> self control status) (cshape-moving-flags onsurf))
-           (not (time-elapsed? (-> self control unknown-dword11) (-> *TARGET-bank* ground-timeout)))
+           (not (time-elapsed? (-> self control last-time-on-surface) (-> *TARGET-bank* ground-timeout)))
            (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
                 (< 0.866 (-> self control surface-angle))
                 )
            )
-       (and (not (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-jump)))
+       (and (not (logtest? (-> self control current-surface flags) (surface-flags prevent-jump)))
             (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
             (case arg0
               (('target-wheel-flip)
-               (>= 0.5 (-> self control unknown-float61))
+               (>= 0.5 (-> self control local-slope-z))
                )
               (else
                 #t
@@ -841,7 +841,7 @@
 
 ;; definition for function move-legs?
 (defbehavior move-legs? target ()
-  (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+  (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
   )
 
 ;; definition for function target-height-above-ground
@@ -853,7 +853,7 @@
 ;; INFO: Return type mismatch object vs none.
 (defbehavior fall-test target ()
   (when (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
-             (time-elapsed? (-> self control unknown-dword11) (-> *TARGET-bank* ground-timeout))
+             (time-elapsed? (-> self control last-time-on-surface) (-> *TARGET-bank* ground-timeout))
              (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
              (let ((v1-15 (ja-group)))
                (or (not (or (= v1-15 eichar-attack-punch-ja)
@@ -866,7 +866,7 @@
                )
              )
     (when (and (not (time-elapsed? (-> self control rider-time) (-> *TARGET-bank* ground-timeout)))
-               (logtest? (-> self control unknown-surface01 flags) (surface-flags moving-ground))
+               (logtest? (-> self control current-surface flags) (surface-flags moving-ground))
                )
       (+! (-> self control transv x) (-> self control rider-last-move x))
       (+! (-> self control transv z) (-> self control rider-last-move z))
@@ -880,7 +880,7 @@
 ;; INFO: Return type mismatch object vs none.
 (defbehavior slide-down-test target ()
   (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf csmf07)))
-           (time-elapsed? (-> self control unknown-dword11) (-> *TARGET-bank* ground-timeout))
+           (time-elapsed? (-> self control last-time-on-surface) (-> *TARGET-bank* ground-timeout))
            (logtest? (-> self control status) (cshape-moving-flags tsurf))
            (< 0.5 (-> self control surface-angle))
            )
@@ -905,7 +905,7 @@
        (or (not (logtest? (-> self control status) (cshape-moving-flags twall)))
            (>= 0.7 (-> self control touch-angle))
            )
-       (and (< (-> self control unknown-float61) 0.7)
+       (and (< (-> self control local-slope-z) 0.7)
             (not (logtest? (-> self state-flags) (state-flags prevent-duck)))
             )
        )
@@ -914,10 +914,10 @@
 ;; definition for function can-duck?
 (defbehavior can-duck? target ()
   (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
-       (>= (-> self control unknown-float60) 0.7)
-       (not (logtest? (-> self water flags) (water-flags wt11 wt12)))
+       (>= (-> self control ground-local-norm-dot-grav) 0.7)
+       (not (logtest? (-> self water flag) (water-flag swimming under-water)))
        (not (logtest? (-> self state-flags) (state-flags prevent-duck)))
-       (or (not (logtest? (-> self water flags) (water-flags wt10)))
+       (or (not (logtest? (-> self water flag) (water-flag wading)))
            (< (- (- (-> self control trans y) (- (-> self water base-height) (-> self water wade-height)))) 2457.6)
            )
        )
@@ -954,20 +954,21 @@
 ;; definition for function can-hands?
 (defbehavior can-hands? target ((arg0 symbol))
   (cond
-    ((or (not (cpad-pressed? (-> self control unknown-cpad-info00 number) square))
+    ((or (not (cpad-pressed? (-> self control cpad number) square))
          (or (and (logtest? (-> self state-flags) (state-flags prevent-attack))
                   (or (not (logtest? (-> self state-flags) (state-flags remove-prevents)))
                       (not (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0)))
                       )
                   )
-             (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf08))
+             (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump surf08))
              )
          )
      #f
      )
-    ((and (or (not arg0) (and (not (time-elapsed? (-> self control unknown-dword11) (-> *TARGET-bank* ground-timeout)))
-                              (< (-> self control unknown-float61) 0.7)
-                              )
+    ((and (or (not arg0)
+              (and (not (time-elapsed? (-> self control last-time-on-surface) (-> *TARGET-bank* ground-timeout)))
+                   (< (-> self control local-slope-z) 0.7)
+                   )
               )
           (time-elapsed?
             (if (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
@@ -990,11 +991,11 @@
 (defbehavior can-feet? target ()
   (cond
     ((or (logtest? (-> self state-flags) (state-flags prevent-attack))
-         (logtest? (-> self control unknown-surface01 flags) (surface-flags prevent-attacks-during-launch-jump surf09))
+         (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump surf09))
          )
      #f
      )
-    ((time-elapsed? (-> *TARGET-bank* attack-timeout) (-> self control unknown-dword33))
+    ((time-elapsed? (-> *TARGET-bank* attack-timeout) (-> self control last-attack-end-time))
      #t
      )
     (else
@@ -1008,7 +1009,7 @@
 ;; INFO: Used lq/sq
 (defbehavior vector-local+! target ((arg0 vector) (arg1 vector))
   (let ((s5-0 (new-stack-vector0)))
-    (vector-matrix*! s5-0 arg1 (-> self control unknown-matrix01))
+    (vector-matrix*! s5-0 arg1 (-> self control c-R-w))
     (vector+! arg0 arg0 s5-0)
     )
   )
@@ -1020,7 +1021,7 @@
         (gp-0 (new-stack-vector0))
         )
     (set-vector! a1-0 0.0 0.0 arg0 1.0)
-    (vector-matrix*! gp-0 a1-0 (-> self control unknown-matrix01))
+    (vector-matrix*! gp-0 a1-0 (-> self control c-R-w))
     (vector+! (-> self control transv) (-> self control transv) gp-0)
     )
   )
@@ -1029,10 +1030,10 @@
 ;; INFO: Used lq/sq
 (defbehavior set-forward-vel target ((arg0 float))
   (let ((gp-0 (new-stack-vector0)))
-    (vector-matrix*! gp-0 (-> self control transv) (-> self control unknown-matrix00))
+    (vector-matrix*! gp-0 (-> self control transv) (-> self control w-R-c))
     (set! (-> gp-0 z) arg0)
     (set! (-> gp-0 x) 0.0)
-    (vector-matrix*! (-> self control transv) gp-0 (-> self control unknown-matrix01))
+    (vector-matrix*! (-> self control transv) gp-0 (-> self control c-R-w))
     )
   )
 
@@ -1069,10 +1070,10 @@
 ;; INFO: Used lq/sq
 (defbehavior set-side-vel target ((arg0 float))
   (let ((gp-0 (new-stack-vector0)))
-    (vector-matrix*! gp-0 (-> self control transv) (-> self control unknown-matrix00))
+    (vector-matrix*! gp-0 (-> self control transv) (-> self control w-R-c))
     (set! (-> gp-0 x) arg0)
     (set! (-> gp-0 z) 0.0)
-    (vector-matrix*! (-> self control transv) gp-0 (-> self control unknown-matrix01))
+    (vector-matrix*! (-> self control transv) gp-0 (-> self control c-R-w))
     )
   )
 
@@ -1246,59 +1247,55 @@
 
 ;; definition for function target-cam-pos
 ;; INFO: Used lq/sq
-;; INFO: Return type mismatch object vs vector.
 (defun target-cam-pos ()
   (let ((gp-0 *target*))
-    (the-as
-      vector
-      (cond
-        ((not gp-0)
-         (camera-pos)
+    (cond
+      ((not gp-0)
+       (camera-pos)
+       )
+      ((logtest? (-> gp-0 state-flags) (state-flags use-alt-cam-pos))
+       (add-debug-sphere
+         *display-camera-marks*
+         (bucket-id debug-no-zbuf)
+         (-> gp-0 alt-cam-pos)
+         819.2
+         (new 'static 'rgba :r #xff :a #x80)
          )
-        ((logtest? (-> gp-0 state-flags) (state-flags use-alt-cam-pos))
+       (-> gp-0 alt-cam-pos)
+       )
+      ((logtest? (state-flags has-saved-position) (-> gp-0 state-flags))
+       (add-debug-sphere
+         *display-camera-marks*
+         (bucket-id debug-no-zbuf)
+         (-> gp-0 alt-cam-pos)
+         819.2
+         (new 'static 'rgba :r #xff :a #x80)
+         )
+       (-> gp-0 alt-cam-pos)
+       )
+      ((logtest? (state-flags falling-into-pool-of-bad) (-> gp-0 state-flags))
+       (let ((s5-0 (new 'static 'vector)))
+         (set! (-> s5-0 quad) (-> gp-0 control camera-pos quad))
+         (set! (-> s5-0 y) (fmax (-> s5-0 y) (-> gp-0 alt-cam-pos y)))
          (add-debug-sphere
            *display-camera-marks*
            (bucket-id debug-no-zbuf)
-           (-> gp-0 alt-cam-pos)
-           819.2
-           (new 'static 'rgba :r #xff :a #x80)
-           )
-         (-> gp-0 alt-cam-pos)
-         )
-        ((logtest? (state-flags has-saved-position) (-> gp-0 state-flags))
-         (add-debug-sphere
-           *display-camera-marks*
-           (bucket-id debug-no-zbuf)
-           (-> gp-0 alt-cam-pos)
-           819.2
-           (new 'static 'rgba :r #xff :a #x80)
-           )
-         (-> gp-0 alt-cam-pos)
-         )
-        ((logtest? (state-flags falling-into-pool-of-bad) (-> gp-0 state-flags))
-         (let ((s5-0 (the-as object (new 'static 'vector))))
-           (set! (-> (the-as vector s5-0) quad) (-> (&-> gp-0 control unknown-qword00) 0))
-           (set! (-> (the-as vector s5-0) y) (fmax (-> (the-as vector s5-0) y) (-> gp-0 alt-cam-pos y)))
-           (add-debug-sphere
-             *display-camera-marks*
-             (bucket-id debug-no-zbuf)
-             (the-as vector s5-0)
-             819.2
-             (new 'static 'rgba :r #xff :a #x80)
-             )
            s5-0
+           819.2
+           (new 'static 'rgba :r #xff :a #x80)
            )
+         s5-0
          )
-        (else
-          (add-debug-sphere
-            *display-camera-marks*
-            (bucket-id debug-no-zbuf)
-            (the-as vector (&-> gp-0 control unknown-qword00))
-            819.2
-            (new 'static 'rgba :r #xff :a #x80)
-            )
-          (&-> gp-0 control unknown-qword00)
+       )
+      (else
+        (add-debug-sphere
+          *display-camera-marks*
+          (bucket-id debug-no-zbuf)
+          (-> gp-0 control camera-pos)
+          819.2
+          (new 'static 'rgba :r #xff :a #x80)
           )
+        (-> gp-0 control camera-pos)
         )
       )
     )
@@ -1318,7 +1315,7 @@
 (defun target-rot ()
   (let ((v1-0 *target*))
     (if v1-0
-        (-> v1-0 control unknown-quaternion00)
+        (-> v1-0 control quat-for-control)
         *unity-quaternion*
         )
     )

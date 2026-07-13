@@ -84,6 +84,10 @@ void InitVideo() {
       {SCE_PORTUGUESE_LANGUAGE, "POR"}, {SCE_KOREAN_LANGUAGE, "KOR"},
   };
   auto lang = ee::sceScfGetLanguage();
+  if (!lang_to_splash_map.contains(lang)) {
+    lg::warn("InitVideo: no splash for lang {}, falling back to english...\n", lang);
+    lang = SCE_ENGLISH_LANGUAGE;
+  }
   auto filename = "SCREEN1." + lang_to_splash_map.at(lang);
   auto path = file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] /
               "iso" / filename;
@@ -490,6 +494,24 @@ void send_gfx_dma_chain(u32 /*bank*/, u32 chain) {
 void pc_texture_upload_now(u32 page, u32 mode) {
   if (Gfx::GetCurrentRenderer()) {
     Gfx::GetCurrentRenderer()->texture_upload_now(Ptr<u8>(page).c(), mode, s7.offset);
+  }
+}
+
+void pc_force_reload_all() {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->force_reload_all();
+  }
+}
+
+void pc_force_reload_level(u32 name) {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->force_reload_level(std::string(Ptr<String>(name).c()->data()));
+  }
+}
+
+void pc_force_reload_common() {
+  if (Gfx::GetCurrentRenderer()) {
+    Gfx::GetCurrentRenderer()->force_reload_common();
   }
 }
 
@@ -1101,6 +1123,9 @@ void init_common_pc_port_functions(
   // Called from the game thread at initialization. The game thread is the only one to touch the
   // mips2c function table (through the linker and ugh this function), so no locking is needed.
   make_func_symbol_func("__pc-get-mips2c", (void*)pc_get_mips2c);
+  make_func_symbol_func("__pc-force-reload-all-levels", (void*)pc_force_reload_all);
+  make_func_symbol_func("__pc-force-reload-level", (void*)pc_force_reload_level);
+  make_func_symbol_func("__pc-force-reload-common-level", (void*)pc_force_reload_common);
 
   // -- DISPLAY RELATED --
   // Returns the name of the display with the given id or #f if not found / empty

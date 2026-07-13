@@ -148,10 +148,10 @@ void TexturePool::refresh_links(GpuTexture& texture) {
 void TexturePool::unload_texture(PcTextureId tex_id, u64 gpu_id) {
   auto* tex = m_loaded_textures.lookup_existing(tex_id);
   ASSERT(tex);
-  if (tex->is_common) {
-    ASSERT(false);
-    return;
-  }
+  // if (tex->is_common) {
+  //   ASSERT(false);
+  //   return;
+  // }
   ASSERT_MSG(!tex->is_placeholder,
              fmt::format("trying to unload something that was already placholdered: {} {}\n",
                          get_debug_texture_name(tex_id), tex->gpu_textures.size()));

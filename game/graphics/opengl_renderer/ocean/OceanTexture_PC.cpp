@@ -584,13 +584,13 @@ void OceanTexture::run_L3_PC_jak2() {
   // iaddi vi01, vi01, -0x1     |  ftoi0.xyzw vf19, vf19          78
   vtx3.ftoi0(Mask::xyzw, vtx3);   loop_idx = loop_idx + -1;
   // sq.xyzw vf16, 1(vi06)      |  add.xyzw vf28, vf28, vf07      79
-  cout0.add(Mask::xyzw, cout0, m_texture_constants.cam_nrm);   sq_buffer(Mask::xyzw, vtx0, vu.dbuf_write + 1);
+  cout0.add(Mask::xyzw, cout0, m_texture_constants.constants);   sq_buffer(Mask::xyzw, vtx0, vu.dbuf_write + 1);
   // sq.xyzw vf17, 4(vi06)      |  add.xyzw vf29, vf29, vf07      80
-  cout1.add(Mask::xyzw, cout1, m_texture_constants.cam_nrm);   sq_buffer(Mask::xyzw, vtx1, vu.dbuf_write + 4);
+  cout1.add(Mask::xyzw, cout1, m_texture_constants.constants);   sq_buffer(Mask::xyzw, vtx1, vu.dbuf_write + 4);
   // sq.xyzw vf18, 7(vi06)      |  add.xyzw vf30, vf30, vf07      81
-  cout2.add(Mask::xyzw, cout2, m_texture_constants.cam_nrm);   sq_buffer(Mask::xyzw, vtx2, vu.dbuf_write + 7);
+  cout2.add(Mask::xyzw, cout2, m_texture_constants.constants);   sq_buffer(Mask::xyzw, vtx2, vu.dbuf_write + 7);
   // sq.xyzw vf19, 10(vi06)     |  add.xyzw vf31, vf31, vf07      82
-  cout3.add(Mask::xyzw, cout3, m_texture_constants.cam_nrm);   sq_buffer(Mask::xyzw, vtx3, vu.dbuf_write + 10);
+  cout3.add(Mask::xyzw, cout3, m_texture_constants.constants);   sq_buffer(Mask::xyzw, vtx3, vu.dbuf_write + 10);
   // lq.xyzw vf24, 1(vi05)      |  sub.zw vf28, vf01, vf00        83
   cout0.sub(Mask::zw, ones, vf00); lq_buffer(Mask::xyzw, nrm0, vu.in_ptr + 1);
   // lq.xyzw vf26, 5(vi05)      |  sub.zw vf29, vf01, vf00        84

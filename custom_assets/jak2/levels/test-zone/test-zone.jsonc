@@ -26,6 +26,9 @@
   // float types: float, meters (1 meter = 4096.0 units), degrees (65536.0 = 360°)
   // vector types: vector (normal floats), vector4m (meters), vector3m (meters with w set to 1.0), vector-vol (normal floats with w in meters), movie-pos (meters with w in degrees)
   // special types: symbol, type, string, eco-info, cell-info, buzzer-info, water-height
+  // by default, lumps will always use the default keyframe value of -1000000000.0 (DEFAULT_RES_TIME).
+  // most of the actor code will be using that value, but there are some exceptions (camera entities, water volumes, etc.)
+  // you can specify a different keyframe by suffixing the lump type with e.g. "@0.5", so for a float at keyframe 0.5, the type would be "float@0.5".
   //
   // examples:
   //
@@ -53,9 +56,12 @@
   // The base actor id for your custom level. If you have multiple levels, this should be unique!
   "base_id": 100,
 
+  // Base id for regions.
+  "base_region_id": 0,
+
   // All art groups you want to use in your custom level. Will add their models and corresponding textures to the FR3 file.
   // Commented out so that the release builds don't have to double-decompile the game
-  // "art_groups": ["yakow-ag"],
+  // "art_groups": ["yakow-ag", "water-anim-fortress-ag"],
 
   // If you have any custom models in the "custom_assets/jak2/models/custom_levels" folder that you want to use in your level, add them to this list.
   // Note: Like with art groups, these should also be added to your level's .gd file.
@@ -68,6 +74,177 @@
   // The format is ["tpage-name", "texture-name1", "texture-name2", ...].
   // If you want all textures from a tpage, you can just do ["tpage-name"].
   "textures": ["yak-medfur-end"], // for yakow texture fix
+
+  // Any regions you want to include in your custom level.
+  // Regions run scripts that do things like loading specific levels,
+  // playing ambient sounds, checking if a task is completed in order to e.g. open airlocks, play cutscenes, etc.
+  //
+  // They can have three scripts that run on different conditions:
+  // - A single time when entering the region's bounds (on-enter)
+  // - Once every frame while you are inside a region (on-inside)
+  // - A single time when exiting a region's bounds (on-exit)
+  // Scripts are Lisp pairs, e.g. (want-load 'ctysluma 'ctyindb 'ctywide).
+  // The list of commands that can be used is too exhaustive to show here and there is no proper documentation for this,
+  // but you can refer to https://github.com/open-goal/jak-project/blob/master/goal_src/jak2/engine/util/script.gc
+  // for more information or inspect other regions via the debug menu in-game for examples.
+  //
+  // There are two special cases for script forms: "entity-actor" and "actor-group".
+  // Region scripts can refer to entities or actor groups that are stored inside the level data,
+  // so forms that start with either of these will be changed during the level building process to insert a reference
+  // to the given object.
+  //
+  // Regions can either be spheres, planes or volumes.
+  // Spheres do not need anything special, just the trans and bsphere, but if you want a face or a volume,
+  // you need to additionally specify a "face" or a "volume" key.
+  // A "face" key contains the face normal and a list of points.
+  // A "volume" key contains a list of faces.
+  //
+  // There are different types of regions like ones that get triggered based on camera position, Jak's position, etc.
+  // Each type of region is stored in its own region tree, each of which has its own bsphere that all its regions must be encompassed within.
+  // The full list is as follows:
+  // target (Jak based), camera (camera based), data (?), water (water volumes), city_vis (?),
+  // sample (?), light (presumably for foreground lights), entity (?)
+  "region_trees": {
+    // camera regions are activated when the camera enters their bounds
+    "camera": {
+      // every region tree has its own bsphere. all of a tree's regions must be encompassed within this sphere.
+      "bsphere": [0, 0, 0, 50],
+      "regions": [
+        {
+          "id": 1,
+          "shape": "sphere", // can be "sphere", "face" or "volume"
+          "trans": [-17, 4, 30],
+          "bsphere": [-17, 4, 30, 5],
+          // "(actor-group 2)" will be replaced with an actual reference
+          // to the actor-group in the level data with id 2.
+          "on-enter": "(begin (print 'enter1) (send-event (actor-group 2) 'none))",
+          "on-inside": "(begin (sound-play-loop \"punch\") (sound-play-loop \"spin\"))",
+          "on-exit": "(print 'exit1)"
+        }
+      ]
+    },
+    // target regions are activated when Jak enters their bounds
+    "target": {
+      "bsphere": [0, 0, 0, 50],
+      "regions": [
+        {
+          "id": 2,
+          "shape": "face",
+          "on-enter": "(begin (print 'enter14) (send-event \"test-actor\" 'rot))",
+          "bsphere": [3.37, 6.2, 16.59, 7.0711],
+          "face": {
+            "normal": [-0.615662, 0.0, -0.788011, -15.147877],
+            "points": [
+              [-0.570054, 0, 19.668308],
+              [-0.570053, 11, 19.668308],
+              [7.310053, 0, 13.511692],
+              [7.310053, 11, 13.511692]
+            ]
+          }
+        }
+      ]
+    },
+    // water regions are used to define water volumes
+    "water": {
+      "bsphere": [0, 0, 0, 200],
+      "regions": [
+        {
+          "id": 3,
+          "shape": "sphere",
+          // "(entity-actor water-anim-test-zone-1)" will be replaced with an actual reference of the entity with that name.
+          "on-inside": "(water water-anim (entity-actor water-anim-test-zone-1) (swim wade))",
+          "trans": [5.0, 6.0, -66.0],
+          "bsphere": [5.0, 6.0, -66.0, 50.0]
+        },
+        {
+          "id": 4,
+          "shape": "volume",
+          "on-inside": "(water height 0.0 (swim wade))",
+          "bsphere": [5.1664, 9.4453, 51.2316, 25.2828],
+          "volume": {
+            "faces": [
+              {
+                "normal": [-1.0, 0.0, 0.0, 11.785238],
+                "points": [
+                  [-11.785238, -2.468076, 65.720734],
+                  [-11.785238, 21.358631, 65.720734],
+                  [-11.785238, -2.468076, 36.742477],
+                  [-11.785238, 21.358631, 36.742477]
+                ]
+              },
+              {
+                "normal": [0.0, 0.0, -1.0, -36.742475],
+                "points": [
+                  [-11.785238, -2.468076, 36.742477],
+                  [-11.785238, 21.358631, 36.742477],
+                  [22.118128, -2.468076, 36.742477],
+                  [22.118128, 21.358631, 36.742477]
+                ]
+              },
+              {
+                "normal": [1.0, 0.0, 0.0, 22.118128],
+                "points": [
+                  [22.118128, -2.468076, 36.742477],
+                  [22.118128, 21.358631, 36.742477],
+                  [22.118128, -2.468076, 65.720734],
+                  [22.118128, 21.358631, 65.720734]
+                ]
+              },
+              {
+                "normal": [0.0, 0.0, 1.0, 65.72073],
+                "points": [
+                  [22.118128, -2.468076, 65.720734],
+                  [22.118128, 21.358631, 65.720734],
+                  [-11.785238, -2.468076, 65.720734],
+                  [-11.785238, 21.358631, 65.720734]
+                ]
+              },
+              {
+                "normal": [0.0, -1.0, 0.0, 2.468076],
+                "points": [
+                  [-11.785238, -2.468076, 36.742477],
+                  [22.118128, -2.468076, 36.742477],
+                  [-11.785238, -2.468076, 65.720734],
+                  [22.118128, -2.468076, 65.720734]
+                ]
+              },
+              {
+                "normal": [0.0, 1.0, 0.0, 21.358631],
+                "points": [
+                  [22.118128, 21.358631, 36.742477],
+                  [-11.785238, 21.358631, 36.742477],
+                  [22.118128, 21.358631, 65.720734],
+                  [-11.785238, 21.358631, 65.720734]
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "data": {},
+    "city_vis": {},
+    "sample": {},
+    "light": {},
+    "entity": {}
+  },
+
+  // Actor groups you want to include in your level.
+  //
+  // Actor groups are arrays of entities, used for example in regions to send events to a list of actors
+  // or in "battles" as a list of enemies that need to be defeated before being able to progress.
+  // You can give them an id, this has no effect in-game, but it is used for region scripts so the level builder
+  // knows which actor group to insert.
+  "actor_groups": [
+    {
+      "id": 0,
+      "entities": ["test-crate", "test-eco", "test-yakow"]
+    },
+    {
+      "id": 2,
+      "entities": ["test-crate", "test-actor"]
+    }
+  ],
 
   "actors": [
     {
@@ -114,6 +291,24 @@
       "bsphere": [5.41, 3.5, 28.42, 10], // bounding sphere
       "lump": {
         "name": "test-actor"
+      }
+    },
+    {
+      "trans": [5, 6.778769493103027, -66],
+      "etype": "water-anim-test-zone",
+      "game_task": 0,
+      "quat": [0.0, 0.0, 0.0, 1.0],
+      "bsphere": [5, 6.778769493103027, -66, 50],
+      "lump": {
+        "look": ["int32", 21],
+        "name": "water-anim-test-zone-1",
+        "water-height": [
+          "water-height",
+          6.77869987487793,
+          0.5,
+          2.0,
+          "(water-flags can-swim can-wade)"
+        ]
       }
     }
   ]

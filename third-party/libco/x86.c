@@ -27,7 +27,7 @@ static void (fastcall *co_swap)(cothread_t, cothread_t) = 0;
   section(text)
 #endif
 /* ABI: fastcall */
-static const unsigned char co_swap_function[4096] = {
+const unsigned char co_swap_function[4096] = {
   0x89, 0x22,        /* mov [edx],esp    */
   0x8b, 0x21,        /* mov esp,[ecx]    */
   0x58,              /* pop eax          */

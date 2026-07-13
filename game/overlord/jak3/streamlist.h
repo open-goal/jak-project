@@ -11,6 +11,7 @@ extern List g_RequestedStreamsList;
 extern List g_NewStreamsList;
 extern List g_EEStreamsList;
 extern List g_EEPlayList;
+extern List g_PluginStreamsList;
 
 void QueueNewStreamsFromList(List* list);
 void RemoveVagStreamFromList(VagStreamData* entry, List* list);

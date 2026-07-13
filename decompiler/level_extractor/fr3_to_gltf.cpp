@@ -1,7 +1,6 @@
 #include "fr3_to_gltf.h"
 
 #include <algorithm>
-#include <unordered_map>
 
 #include "common/custom_data/Tfrag3Data.h"
 #include "common/math/Vector.h"
@@ -569,13 +568,13 @@ int add_material_for_tex(const tfrag3::Level& level,
                          std::unordered_map<int, int>& tex_image_map,
                          const DrawMode& draw_mode) {
   if (tex_idx < 0) {
-    // anim textures, just use default material
     return 0;
   }
   int mat_idx = (int)model.materials.size();
   auto& mat = model.materials.emplace_back();
   auto& tex = level.textures.at(tex_idx);
 
+  mat.name = tex.debug_name;
   mat.doubleSided = true;
   // the 2.0 here compensates for the ps2's weird blending where 0.5 behaves like 1.0
   mat.pbrMetallicRoughness.baseColorFactor = {2.0, 2.0, 2.0, 2.0};
@@ -807,6 +806,42 @@ int make_weights_accessor(const std::vector<tfrag3::MercVertex>& vertices, tinyg
   return accessor_idx;
 }
 
+int make_normal_buffer_accessor(const std::vector<tfrag3::MercVertex>& vertices,
+                                tinygltf::Model& model) {
+  // first create a buffer:
+  int buffer_idx = (int)model.buffers.size();
+  auto& buffer = model.buffers.emplace_back();
+  buffer.data.resize(sizeof(float) * 3 * vertices.size());
+
+  // and fill it
+  u8* buffer_ptr = buffer.data.data();
+  for (const auto& vtx : vertices) {
+    auto tmp_vtx = vtx.normal_vec.normalized();
+    memcpy(buffer_ptr, tmp_vtx.data(), 3 * sizeof(float));
+    buffer_ptr += 3 * sizeof(float);
+  }
+
+  // create a view of this buffer
+  int buffer_view_idx = (int)model.bufferViews.size();
+  auto& buffer_view = model.bufferViews.emplace_back();
+  buffer_view.name = "NORMAL";
+  buffer_view.buffer = buffer_idx;
+  buffer_view.byteOffset = 0;
+  buffer_view.byteLength = buffer.data.size();
+  buffer_view.byteStride = 0;  // tightly packed
+  buffer_view.target = TINYGLTF_TARGET_ARRAY_BUFFER;
+
+  int accessor_idx = (int)model.accessors.size();
+  auto& accessor = model.accessors.emplace_back();
+  accessor.name = "NORMAL";
+  accessor.bufferView = buffer_view_idx;
+  accessor.byteOffset = 0;
+  accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+  accessor.count = vertices.size();
+  accessor.type = TINYGLTF_TYPE_VEC3;
+  return accessor_idx;
+}
+
 int make_bones_accessor(const std::vector<tfrag3::MercVertex>& vertices, tinygltf::Model& model) {
   // first create a buffer:
   int buffer_idx = (int)model.buffers.size();
@@ -1029,6 +1064,7 @@ level_tools::UncompressedJointAnim decompress_anim(const level_tools::ArtJointAn
     }
   }
 
+  out.blend_shape_data = art_anim.blend_shape_data;
   return out;
 }
 
@@ -1111,7 +1147,9 @@ int make_anim_vec4_accessor(const std::vector<math::Vector4f>& values, tinygltf:
 
 void add_animation_to_gltf(const level_tools::UncompressedJointAnim& anim,
                            const tinygltf::Skin& skin,
-                           tinygltf::Model& model) {
+                           tinygltf::Model& model,
+                           int mesh_node_idx,
+                           int num_targets) {
   if (anim.frames == 0 || anim.joints.size() <= 2)
     return;
 
@@ -1148,13 +1186,145 @@ void add_animation_to_gltf(const level_tools::UncompressedJointAnim& anim,
     if ((int)joint.scale_frames.size() == anim.frames)
       add_channel(make_anim_vec3_accessor(joint.scale_frames, model), "scale");
   }
+
+  if (num_targets > 0 && !anim.blend_shape_data.empty() &&
+      (int)anim.blend_shape_data.size() >= anim.frames * num_targets) {
+    std::vector<float> weights(anim.frames * num_targets);
+    for (int fi = 0; fi < anim.frames; fi++) {
+      for (int ti = 0; ti < num_targets; ti++) {
+        u8 raw = anim.blend_shape_data[fi * num_targets + ti];
+        weights[fi * num_targets + ti] = (raw - 64.f) / 128.f;
+      }
+    }
+    int si = (int)gltf_anim.samplers.size();
+    auto& sampler = gltf_anim.samplers.emplace_back();
+    sampler.input = time_acc;
+    sampler.output = make_anim_float_accessor(weights, model);
+    sampler.interpolation = "LINEAR";
+    auto& channel = gltf_anim.channels.emplace_back();
+    channel.sampler = si;
+    channel.target_node = mesh_node_idx;
+    channel.target_path = "weights";
+  }
+}
+
+int make_vec3_float_accessor(const std::vector<float>& data, tinygltf::Model& model) {
+  int buffer_idx = (int)model.buffers.size();
+  auto& buffer = model.buffers.emplace_back();
+  buffer.data.resize(data.size() * sizeof(float));
+  memcpy(buffer.data.data(), data.data(), buffer.data.size());
+
+  int buffer_view_idx = (int)model.bufferViews.size();
+  auto& bv = model.bufferViews.emplace_back();
+  bv.buffer = buffer_idx;
+  bv.byteOffset = 0;
+  bv.byteLength = buffer.data.size();
+
+  int accessor_idx = (int)model.accessors.size();
+  auto& accessor = model.accessors.emplace_back();
+  accessor.bufferView = buffer_view_idx;
+  accessor.byteOffset = 0;
+  accessor.componentType = TINYGLTF_COMPONENT_TYPE_FLOAT;
+  accessor.count = data.size() / 3;
+  accessor.type = TINYGLTF_TYPE_VEC3;
+  return accessor_idx;
+}
+
+void add_blerc_targets(const tfrag3::Level& level,
+                       const tfrag3::MercModel& mmodel,
+                       tinygltf::Mesh& mesh,
+                       tinygltf::Model& model) {
+  // find max target index across all effects to know how many morph targets we need
+  u32 num_targets = 0;
+  for (const auto& effect : mmodel.effects) {
+    const auto& blerc = effect.mod.blerc;
+    if (blerc.int_data.empty()) {
+      continue;
+    }
+    bool skip_next = false;
+    for (u32 v : blerc.int_data) {
+      if (skip_next) {
+        skip_next = false;
+        continue;
+      }
+      if (v == tfrag3::Blerc::kTargetIdxTerminator) {
+        skip_next = true;
+      } else {
+        num_targets = std::max(num_targets, v + 1);
+      }
+    }
+  }
+  if (num_targets == 0) {
+    return;
+  }
+
+  const auto num_vtx = (u32)level.merc_data.vertices.size();
+  std::vector pos_deltas(num_targets, std::vector(num_vtx * 3, 0.f));
+  std::vector nrm_deltas(num_targets, std::vector(num_vtx * 3, 0.f));
+
+  for (const auto& effect : mmodel.effects) {
+    const auto& blerc = effect.mod.blerc;
+    if (blerc.int_data.empty() || effect.mod.mod_to_global_vertex_idx.empty()) {
+      continue;
+    }
+
+    size_t float_idx = 0;
+    size_t int_idx = 0;
+    while (int_idx < blerc.int_data.size()) {
+      float_idx++;  // skip base pos/nrm entry
+
+      // collect (target_idx, float_data_index) pairs for this vertex
+      struct TargetEntry {
+        u32 tgt_idx;
+        size_t float_offset;
+      };
+      std::vector<TargetEntry> vertex_targets;
+      while (blerc.int_data[int_idx] != tfrag3::Blerc::kTargetIdxTerminator) {
+        vertex_targets.push_back({blerc.int_data[int_idx++], float_idx++});
+      }
+      int_idx++;
+      u32 dest = blerc.int_data[int_idx++];
+
+      if (dest >= effect.mod.mod_to_global_vertex_idx.size()) {
+        continue;
+      }
+      u32 global_idx = effect.mod.mod_to_global_vertex_idx[dest];
+
+      for (const auto& te : vertex_targets) {
+        if (te.tgt_idx >= num_targets || te.float_offset >= blerc.float_data.size()) {
+          continue;
+        }
+        const auto& fd = blerc.float_data[te.float_offset];
+        pos_deltas[te.tgt_idx][global_idx * 3 + 0] = fd.v[0] * (8192.f / 4096.f);
+        pos_deltas[te.tgt_idx][global_idx * 3 + 1] = fd.v[1] * (8192.f / 4096.f);
+        pos_deltas[te.tgt_idx][global_idx * 3 + 2] = fd.v[2] * (8192.f / 4096.f);
+        nrm_deltas[te.tgt_idx][global_idx * 3 + 0] = fd.v[4] * 8192.f;
+        nrm_deltas[te.tgt_idx][global_idx * 3 + 1] = fd.v[5] * 8192.f;
+        nrm_deltas[te.tgt_idx][global_idx * 3 + 2] = fd.v[6] * 8192.f;
+      }
+    }
+  }
+
+  // build one accessor pair per morph target and attach to all primitives
+  std::vector<std::map<std::string, int>> morph_targets;
+  for (u32 t = 0; t < num_targets; t++) {
+    auto& target = morph_targets.emplace_back();
+    target["POSITION"] = make_vec3_float_accessor(pos_deltas[t], model);
+    target["NORMAL"] = make_vec3_float_accessor(nrm_deltas[t], model);
+  }
+
+  for (auto& prim : mesh.primitives) {
+    prim.targets = morph_targets;
+  }
+  mesh.weights.assign(num_targets, 0.0);
 }
 
 void add_merc(const tfrag3::Level& level,
               const std::map<std::string, level_tools::ArtData>& art_data,
               const tfrag3::MercModel& mmodel,
               tinygltf::Model& model,
-              std::unordered_map<int, int>& tex_image_map) {
+              std::unordered_map<int, int>& tex_image_map,
+              const std::unordered_map<int, int>& anim_slot_to_base_tex) {
   const auto& mverts = level.merc_data.vertices;
 
   // create position and uv buffers
@@ -1168,6 +1338,7 @@ void add_merc(const tfrag3::Level& level,
 
   auto joints_accessor = make_bones_accessor(mverts, model);
   auto weights_accessor = make_weights_accessor(mverts, model);
+  auto normal_buffer_accessor = make_normal_buffer_accessor(mverts, model);
 
   const auto& art = art_data.find(mmodel.name);
   int node_idx = (int)model.nodes.size();
@@ -1225,6 +1396,34 @@ void add_merc(const tfrag3::Level& level,
     }
     ASSERT(skin.skeleton + n_bones == (int)model.nodes.size());
     skin.inverseBindMatrices = make_inv_matrix_bind_poses(game_bones, model);
+
+    for (int i = 0; i < n_bones; i++) {
+      if (game_bones[i].parent_idx < 0) {
+        model.scenes.at(0).nodes.push_back(skin.skeleton + i);
+      }
+    }
+  }
+
+  u32 num_blend_targets = 0;
+  for (const auto& effect : mmodel.effects) {
+    bool skip_next = false;
+    for (u32 v : effect.mod.blerc.int_data) {
+      if (skip_next) {
+        skip_next = false;
+        continue;
+      }
+      if (v == tfrag3::Blerc::kTargetIdxTerminator) {
+        skip_next = true;
+      } else {
+        num_blend_targets = std::max(num_blend_targets, v + 1);
+      }
+    }
+  }
+
+  // when we have animated blend targets, blender adds an extra empty during import,
+  // rename it to not conflict with the actual model
+  if (num_blend_targets > 0) {
+    model.nodes[node_idx].name = mmodel.name + "_blerc";
   }
 
   if (art != art_data.end() && !art->second.anims.empty() && node.skin >= 0 &&
@@ -1232,7 +1431,7 @@ void add_merc(const tfrag3::Level& level,
     const auto& skin = model.skins[node.skin];
     for (const auto& ja : art->second.anims) {
       auto uncompressed = decompress_anim(ja);
-      add_animation_to_gltf(uncompressed, skin, model);
+      add_animation_to_gltf(uncompressed, skin, model, node_idx, (int)num_blend_targets);
     }
   }
 
@@ -1241,8 +1440,13 @@ void add_merc(const tfrag3::Level& level,
     for (size_t draw_idx = 0; draw_idx < effect.all_draws.size(); draw_idx++) {
       const auto& draw = effect.all_draws[draw_idx];
       auto& prim = mesh.primitives.emplace_back();
-      prim.material =
-          add_material_for_tex(level, model, draw.tree_tex_id, tex_image_map, draw.mode);
+      // resolve texture animation draws to their base texture
+      int tex_id = draw.tree_tex_id;
+      if (tex_id < 0) {
+        const auto it = anim_slot_to_base_tex.find(-(tex_id + 1));
+        tex_id = it != anim_slot_to_base_tex.end() ? it->second : draw.tree_tex_id;
+      }
+      prim.material = add_material_for_tex(level, model, tex_id, tex_image_map, draw.mode);
       prim.indices =
           make_index_buffer_accessor(model, draw_to_start[effect_idx][draw_idx],
                                      draw_to_count[effect_idx][draw_idx], index_buffer_view);
@@ -1251,9 +1455,12 @@ void add_merc(const tfrag3::Level& level,
       prim.attributes["COLOR_0"] = colors;
       prim.attributes["JOINTS_0"] = joints_accessor;
       prim.attributes["WEIGHTS_0"] = weights_accessor;
+      prim.attributes["NORMAL"] = normal_buffer_accessor;
       prim.mode = TINYGLTF_MODE_TRIANGLES;
     }
   }
+
+  add_blerc_targets(level, mmodel, mesh, model);
 }
 }  // namespace
 
@@ -1299,9 +1506,20 @@ void save_level_background_as_gltf(const tfrag3::Level& level, const fs::path& g
                             true);  // write binary
 }
 
-void save_level_foreground_as_gltf(const tfrag3::Level& level,
-                                   const std::map<std::string, level_tools::ArtData>& art_data,
-                                   const fs::path& glb_path) {
+void save_level_foreground_as_gltf(
+    const tfrag3::Level& level,
+    const std::map<std::string, level_tools::ArtData>& art_data,
+    const fs::path& glb_path,
+    const std::unordered_map<std::string, u32>& animated_tex_output_to_anim_slot) {
+  // map animated texture slots back to the base texture
+  std::unordered_map<int, int> anim_slot_to_base_tex;
+  for (int i = 0; i < (int)level.textures.size(); i++) {
+    const auto it = animated_tex_output_to_anim_slot.find(level.textures[i].debug_name);
+    if (it != animated_tex_output_to_anim_slot.end()) {
+      anim_slot_to_base_tex[(int)it->second] = i;
+    }
+  }
+
   for (size_t model_idx = 0; model_idx < level.merc_data.models.size(); model_idx++) {
     const auto& mmodel = level.merc_data.models[model_idx];
 
@@ -1321,7 +1539,7 @@ void save_level_foreground_as_gltf(const tfrag3::Level& level,
 
     std::unordered_map<int, int> tex_image_map;
 
-    add_merc(level, art_data, mmodel, model, tex_image_map);
+    add_merc(level, art_data, mmodel, model, tex_image_map, anim_slot_to_base_tex);
 
     model.asset.generator = "opengoal";
 

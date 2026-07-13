@@ -50,4 +50,19 @@ void add_ambients_from_json(const nlohmann::json& json,
                             std::vector<EntityAmbient>& ambient_list,
                             u32 base_aid,
                             decompiler::DecompilerTypeSystem& dts);
+
+struct EntityCamera {
+  ResLump res_lump;
+  u32 aid = 0;
+  math::Vector4f trans;
+  math::Vector4f quat;
+
+  size_t generate(DataObjectGenerator& gen) const;
+};
+
+size_t generate_cameras_array(DataObjectGenerator& gen, const std::vector<EntityCamera>& cameras);
+void add_cameras_from_json(const nlohmann::json& json,
+                           std::vector<EntityCamera>& camera_list,
+                           u32 base_aid,
+                           decompiler::DecompilerTypeSystem& dts);
 }  // namespace jak1

@@ -100,57 +100,110 @@ void TextureDB::add_index_texture(u32 tpage,
 }
 
 void TextureDB::merge_textures(const fs::path& base_path) {
-  for (auto& tex : textures) {
-    fs::path full_path = base_path / tpage_names.at(tex.second.page) / (tex.second.name + ".png");
-    if (fs::exists(full_path)) {
-      lg::info("Merging {}", full_path.string().c_str());
-      int w, h;
-      auto merge_data = stbi_load(full_path.string().c_str(), &w, &h, 0, 4);  // rgba channels
-      if (!merge_data) {
-        lg::warn("failed to load PNG file: {}", full_path.string().c_str());
-        continue;
-      } else if (w != tex.second.w || h != tex.second.h) {
-        lg::warn("merge texture does not match the same dimensions: {}, {} != {} || {} != {}",
-                 full_path.string().c_str(), w, tex.second.w, h, tex.second.h);
-        stbi_image_free(merge_data);
-        continue;
-      }
-      // Merge any non-transparent pixels into the existing texture
-      for (int i = 0; i < w * h * 4; i += 4) {
-        const auto merge_pixel_a = merge_data[i + 3];
-        if (merge_pixel_a != 0) {
-          u32 merge_pixel;
-          memcpy(&merge_pixel, &merge_data[i], sizeof(u32));
-          tex.second.rgba_bytes.at(i / 4) = merge_pixel;
-        }
-      }
-      stbi_image_free(merge_data);
-    }
-  }
+  merge_texture_dir = base_path;
 }
 
 void TextureDB::replace_textures(const fs::path& path) {
-  fs::path base_path(path);
-  for (auto& tex : textures) {
-    fs::path full_path = base_path / tpage_names.at(tex.second.page) / (tex.second.name + ".png");
-    if (!fs::exists(full_path)) {
-      full_path = base_path / "_all" / (tex.second.name + ".png");
-      if (!fs::exists(full_path))
-        continue;
-    }
-    lg::info("Replacing {}", tpage_names.at(tex.second.page) + "/" + (tex.second.name));
-    int w, h;
-    auto data = stbi_load(full_path.string().c_str(), &w, &h, 0, 4);  // rgba channels
-    if (!data) {
-      lg::warn("failed to load PNG file: {}", full_path.string().c_str());
-      continue;
-    }
-    tex.second.rgba_bytes.resize(w * h);
-    memcpy(tex.second.rgba_bytes.data(), data, w * h * 4);
-    tex.second.w = w;
-    tex.second.h = h;
-    stbi_image_free(data);
+  replace_texture_dir = path;
+}
+
+void TextureDB::merge_texture(u32 id, std::vector<u32>& rgba) const {
+  if (!merge_texture_dir) {
+    return;
   }
+
+  const auto& tex = textures.at(id);
+  fs::path full_path = *merge_texture_dir / tpage_names.at(tex.page) / (tex.name + ".png");
+
+  if (!fs::exists(full_path)) {
+    return;
+  }
+
+  lg::info("Merging {}", full_path.string().c_str());
+
+  int w, h;
+  auto merge_data = stbi_load(full_path.string().c_str(), &w, &h, 0, 4);
+
+  if (!merge_data) {
+    lg::warn("failed to load PNG file: {}", full_path.string().c_str());
+    return;
+  }
+
+  if (w != tex.w || h != tex.h) {
+    lg::warn("merge texture does not match the same dimensions: {}, {} != {} || {} != {}",
+             full_path.string().c_str(), w, tex.w, h, tex.h);
+    stbi_image_free(merge_data);
+    return;
+  }
+  // Merge any non-transparent pixels into the existing texture
+  for (int i = 0; i < w * h * 4; i += 4) {
+    const auto merge_pixel_a = merge_data[i + 3];
+    if (merge_pixel_a != 0) {
+      u32 merge_pixel;
+      memcpy(&merge_pixel, &merge_data[i], sizeof(u32));
+      rgba.at(i / 4) = merge_pixel;
+    }
+  }
+
+  stbi_image_free(merge_data);
+}
+
+std::optional<ResolvedTextureData> TextureDB::replace_texture(u32 id) const {
+  if (!replace_texture_dir) {
+    return std::nullopt;
+  }
+
+  const auto& tex = textures.at(id);
+  const auto& tpage_name = tpage_names.at(tex.page);
+
+  fs::path full_path = *replace_texture_dir / tpage_name / (tex.name + ".png");
+
+  if (!fs::exists(full_path)) {
+    full_path = *replace_texture_dir / "_all" / (tex.name + ".png");
+
+    if (!fs::exists(full_path)) {
+      return std::nullopt;
+    }
+  }
+
+  lg::info("Replacing {}", tpage_name + "/" + tex.name);
+
+  int w, h;
+  auto data = stbi_load(full_path.string().c_str(), &w, &h, 0, 4);
+
+  if (!data) {
+    lg::warn("failed to load PNG file: {}", full_path.string().c_str());
+    return std::nullopt;
+  }
+
+  ResolvedTextureData result;
+  result.w = static_cast<u16>(w);
+  result.h = static_cast<u16>(h);
+  result.rgba.resize(w * h);
+
+  memcpy(result.rgba.data(), data, w * h * 4);
+
+  stbi_image_free(data);
+
+  return result;
+}
+
+ResolvedTextureData TextureDB::resolve_texture(u32 id) const {
+  const auto& tex = textures.at(id);
+
+  ResolvedTextureData result{
+      .w = tex.w,
+      .h = tex.h,
+      .rgba = tex.rgba_bytes,
+  };
+
+  merge_texture(id, result.rgba);
+
+  if (auto replacement = replace_texture(id)) {
+    result = std::move(*replacement);
+  }
+
+  return result;
 }
 
 /*!

@@ -27,6 +27,7 @@ struct UncompressedJointAnim {
   std::vector<UncompressedSingleJointAnim> joints;
   float framerate = 30;
   int frames = 0;
+  std::vector<u8> blend_shape_data;
 };
 
 struct CompressedMatrixMetadata {
@@ -144,6 +145,7 @@ struct ArtJointAnim {
   float artist_step;
   s16 length;
   JointAnimCompressedControl frames;
+  std::vector<u8> blend_shape_data;
 };
 
 /*!

@@ -1792,6 +1792,16 @@ static inline Uint32 D3D12_INTERNAL_CalcSubresource(
     return mipLevel + (layer * numLevels);
 }
 
+static inline Uint32 D3D12_INTERNAL_CalcSubresourceWithPlane(
+    Uint32 mipLevel,
+    Uint32 layer,
+    Uint32 planeSlice,
+    Uint32 numLevels,
+    Uint32 arraySize)
+{
+    return mipLevel + (layer * numLevels) + (planeSlice * numLevels * arraySize);
+}
+
 static void D3D12_INTERNAL_ResourceBarrier(
     D3D12CommandBuffer *commandBuffer,
     D3D12_RESOURCE_STATES sourceState,
@@ -1848,6 +1858,27 @@ static void D3D12_INTERNAL_TextureSubresourceBarrier(
         textureSubresource->parent->resource,
         textureSubresource->index,
         needsUAVBarrier);
+
+    // D3D12 stores planar values on a separate subresource.
+    // Since depth-stencil is our only supported planar format,
+    // just force an extra transition if we're using a stencil format.
+    if (IsStencilFormat(textureSubresource->parent->container->header.info.format)) {
+        Uint32 planeSubresourceIndex = D3D12_INTERNAL_CalcSubresourceWithPlane(
+            textureSubresource->level,
+            textureSubresource->layer,
+            1,
+            textureSubresource->parent->container->header.info.num_levels,
+            textureSubresource->parent->container->header.info.layer_count_or_depth
+        );
+
+        D3D12_INTERNAL_ResourceBarrier(
+            commandBuffer,
+            sourceState,
+            destinationState,
+            textureSubresource->parent->resource,
+            planeSubresourceIndex,
+            needsUAVBarrier);
+    }
 }
 
 static D3D12_RESOURCE_STATES D3D12_INTERNAL_DefaultTextureResourceState(
@@ -9100,17 +9131,14 @@ static SDL_GPUDevice *D3D12_CreateDevice(bool debugMode, bool preferLowPower, SD
     if (SDL_HasProperty(props, SDL_PROP_GPU_DEVICE_CREATE_D3D12_AGILITY_SDK_PATH_STRING) && SDL_HasProperty(props, SDL_PROP_GPU_DEVICE_CREATE_D3D12_AGILITY_SDK_VERSION_NUMBER)) {
         int d3d12SDKVersion = SDL_GetNumberProperty(props, SDL_PROP_GPU_DEVICE_CREATE_D3D12_AGILITY_SDK_VERSION_NUMBER, 0);
         const char *d3d12SDKPath = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_CREATE_D3D12_AGILITY_SDK_PATH_STRING, ".\\D3D12\\");
+        ID3D12SDKConfiguration *sdk_config = NULL;
 
         pD3D12GetInterface = (PFN_D3D12_GET_INTERFACE)SDL_LoadFunction(
             renderer->d3d12_dll,
             D3D12_GET_INTERFACE_FUNC);
         if (pD3D12GetInterface == NULL) {
             SDL_LogWarn(SDL_LOG_CATEGORY_GPU, "Could not load D3D12GetInterface, custom D3D12 SDK will not load.");
-        }
-
-        ID3D12SDKConfiguration *sdk_config = NULL;
-
-        if (SUCCEEDED(pD3D12GetInterface(D3D_GUID(D3D_CLSID_ID3D12SDKConfiguration), D3D_GUID(D3D_IID_ID3D12SDKConfiguration), (void**) &sdk_config))) {
+        } else if (SUCCEEDED(pD3D12GetInterface(D3D_GUID(D3D_CLSID_ID3D12SDKConfiguration), D3D_GUID(D3D_IID_ID3D12SDKConfiguration), (void**) &sdk_config))) {
             ID3D12SDKConfiguration1 *sdk_config1 = NULL;
             if (SUCCEEDED(IUnknown_QueryInterface(sdk_config, &D3D_IID_ID3D12SDKConfiguration1, (void**) &sdk_config1))) {
                 if (SUCCEEDED(ID3D12SDKConfiguration1_CreateDeviceFactory(sdk_config1, d3d12SDKVersion, d3d12SDKPath, &D3D_IID_ID3D12DeviceFactory, (void**) &factory))) {
