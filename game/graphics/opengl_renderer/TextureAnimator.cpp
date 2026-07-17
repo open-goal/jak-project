@@ -1737,7 +1737,7 @@ void TextureAnimator::clear_stale_textures(u64 frame_idx) {
  */
 void TextureAnimator::handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem) {
   dprintf("[tex anim] upload clut 16 16\n");
-  ASSERT(tf.size_bytes == sizeof(TextureAnimPcUpload));
+  ASSERT(tf.size_bytes >= sizeof(TextureAnimPcUpload));
   auto* upload = (const TextureAnimPcUpload*)(tf.data);
   ASSERT(upload->width == 16);
   ASSERT(upload->height == 16);
@@ -1748,7 +1748,18 @@ void TextureAnimator::handle_upload_clut_16_16(const DmaTransfer& tf, const u8* 
   vram.data.resize(16 * 16 * 4);
   vram.tex_width = upload->width;
   vram.tex_height = upload->height;
-  memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
+  if (tf.size_bytes >= sizeof(TextureAnimPcUpload) + vram.data.size()) {
+    // the payload travels inline in the (double-buffered) dma buffer, right after the
+    // upload record. This is required for data the game rewrites every frame (the fog
+    // CLUT): reading it through the EE address races the game thread, which is
+    // concurrently writing the next frame's values, and caused one-frame fog/sky
+    // flickers.
+    memcpy(vram.data.data(), tf.data + sizeof(TextureAnimPcUpload), vram.data.size());
+  } else {
+    // legacy path: an EE address. Only safe for data that is stable while the frame
+    // renders (bigmap, blit-displays).
+    memcpy(vram.data.data(), ee_mem + upload->data, vram.data.size());
+  }
   if (m_tex_looking_for_clut) {
     m_tex_looking_for_clut->cbp = upload->dest;
     m_tex_looking_for_clut = nullptr;
