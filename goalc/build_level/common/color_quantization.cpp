@@ -17,13 +17,13 @@ namespace {
 using Color = math::Vector<u8, 32>;
 
 bool color_less_than(const Color& colorA, const Color& colorB) {
-  for (int channel = 0; channel < 31; ++channel) {
+  for (int channel = 0; channel < 32; ++channel) {
     if (const s32 sum = colorA[channel] - colorB[channel]; sum < 0)
       return true;
     else if (sum > 0)
       return false;
   }
-  return colorA[31] < colorB[31];
+  return false;
 }
 
 // An octree node.
@@ -44,14 +44,14 @@ struct Node {
   u32 final_idx = UINT32_MAX;
 };
 
-u8 child_index(Color& color, u8 depth) {
+u8 child_index(const Color& color, const u8 depth) {
   u8 r_bit = (color.x() >> (7 - depth)) & 1;
   u8 g_bit = (color.y() >> (7 - depth)) & 1;
   u8 b_bit = (color.z() >> (7 - depth)) & 1;
   return (r_bit) + (g_bit * 2) + (b_bit * 4);
 }
 
-std::tuple<u32, u32, u32> color_rgb(Color& color) {
+std::tuple<u32, u32, u32> color_rgb(const Color& color) {
   u32 r = 0;
   u32 g = 0;
   u32 b = 0;

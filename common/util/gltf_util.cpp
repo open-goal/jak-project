@@ -320,10 +320,9 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
           std::string value_name;
           if (slot.second.has_value()) {
             value_name = slot.first;
-          } else {  // If this time_of_day doesn't have a color, use the closest time_of_day with a
-                    // color.
-            for (int i = 1; !slot.second.has_value();
-                 ++i) {  // Guaranteed to end in 4 iterations or less
+          } else {  // If this time_of_day lacks a color, use color of closest time of day.
+            for (int i = 1; !slot.second.has_value(); ++i) {  // Takes at most 4 iterations.
+              //Look forward and backward for closest time of day color.
               int neg_index = (slot_index - i + 8) % 8;
               int pos_index = (slot_index + i + 8) % 8;
 
