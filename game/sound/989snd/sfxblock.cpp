@@ -14,15 +14,16 @@ std::optional<std::unique_ptr<SoundHandler>> SFXBlock::MakeHandler(VoiceManager&
                                                                    s32 vol,
                                                                    s32 pan,
                                                                    SndPlayParams& params,
-                                                                   s32 current_tick) {
+                                                                   s32 current_tick,
+                                                                   u32 owner) {
   auto& SFX = Sounds[sound_id];
 
   if (SFX.Grains.empty()) {
     return std::nullopt;
   }
 
-  auto handler =
-      std::make_unique<BlockSoundHandler>(*this, SFX, vm, vol, pan, params, sound_id, current_tick);
+  auto handler = std::make_unique<BlockSoundHandler>(*this, SFX, vm, vol, pan, params, sound_id,
+                                                     current_tick, owner);
   return handler;
 }
 

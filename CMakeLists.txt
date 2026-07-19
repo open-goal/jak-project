@@ -209,6 +209,9 @@ include_directories(SYSTEM third-party/inja)
 # Enable SSL Support, most URLs now-a-days use SSL!
 # TODO - probably integrate with ZSTD since we have it already
 set(CURL_USE_LIBSSH2 OFF)
+# another change in the macOS test runner environment that suddenly has broken
+# but this is another part of libcurl we probably don't need (multi-threading/parallelism)
+set(CURL_USE_LIBPSL OFF)
 set(CURL_ZLIB OFF)
 # suddenly became enabled on macOS atleast, only needed for unicode URLs
 # wasn't being properly statically linked

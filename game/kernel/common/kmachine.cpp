@@ -84,6 +84,10 @@ void InitVideo() {
       {SCE_PORTUGUESE_LANGUAGE, "POR"}, {SCE_KOREAN_LANGUAGE, "KOR"},
   };
   auto lang = ee::sceScfGetLanguage();
+  if (!lang_to_splash_map.contains(lang)) {
+    lg::warn("InitVideo: no splash for lang {}, falling back to english...\n", lang);
+    lang = SCE_ENGLISH_LANGUAGE;
+  }
   auto filename = "SCREEN1." + lang_to_splash_map.at(lang);
   auto path = file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] /
               "iso" / filename;

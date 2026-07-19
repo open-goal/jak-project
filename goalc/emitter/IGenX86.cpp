@@ -148,6 +148,7 @@ InstructionX86 load8s_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
                                                      Register addr1,
                                                      Register addr2,
                                                      s64 offset) {
+  // movsx r64, byte ptr [base + index + disp8]
   ASSERT(dst.is_gpr(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
@@ -1248,7 +1249,6 @@ InstructionX86 static_load(Register dest, s64 offset, int size, bool sign_extend
 InstructionX86 store64_pcRel_s32(Register src, s64 offset) {
   ASSERT(src.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
-  ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x89);
   instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(instr_set), offset, true);
   return instr;
@@ -1257,7 +1257,6 @@ InstructionX86 store64_pcRel_s32(Register src, s64 offset) {
 InstructionX86 store32_pcRel_s32(Register src, s64 offset) {
   ASSERT(src.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
-  ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x89);
   instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(instr_set), offset, false);
   return instr;
@@ -1265,7 +1264,6 @@ InstructionX86 store32_pcRel_s32(Register src, s64 offset) {
 
 InstructionX86 store16_pcRel_s32(Register src, s64 offset) {
   ASSERT(src.is_gpr(instr_set));
-  ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x66);
   instr.set_op2(0x89);
@@ -1277,7 +1275,6 @@ InstructionX86 store16_pcRel_s32(Register src, s64 offset) {
 InstructionX86 store8_pcRel_s32(Register src, s64 offset) {
   ASSERT(src.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
-  ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   InstructionX86 instr(0x88);
   instr.set_modrm_and_rex_for_rip_plus_s32(src.hw_id(instr_set), offset, false);
   if (src.id() > RBX) {
@@ -1286,6 +1283,8 @@ InstructionX86 store8_pcRel_s32(Register src, s64 offset) {
   return instr;
 }
 
+// NOTE - doesn't seem like our code even calls this, just implemented for completness (only the
+// store f32 is ever used, and only in tests...)
 InstructionX86 static_store(Register value, s64 offset, int size) {
   switch (size) {
     case 1:
