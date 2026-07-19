@@ -17,7 +17,7 @@
   (file-json 4 jak3 "common" '("game/assets/jak3/text/game_custom_text_it-IT.json"))
   ;; 5 is commentary
   (file-json 6 jak3 "common" '("game/assets/jak3/text/game_custom_text_ja-JP.json"))
-  (file-json 7 jak3 "common" '("game/assets/jak3/text/game_custom_text_ko-KO.json" "game/assets/jak3/text/game_base_text_ko-KO.json"))
+  (file-json 7 jak3 "common" '("game/assets/jak3/text/game_custom_text_ko-KR.json" "game/assets/jak3/text/game_base_text_ko-KO.json"))
   (file-json 8 jak3 "common" '("game/assets/jak3/text/game_custom_text_ru-RU.json" "game/assets/jak3/text/game_base_text_ru-RU.json"))
   (file-json 9 jak3 "common" '("game/assets/jak3/text/game_custom_text_pt-PT.json"))
   (file-json 10 jak3 "common" '("game/assets/jak3/text/game_custom_text_nl-NL.json"))
