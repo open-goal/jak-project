@@ -186,6 +186,24 @@ GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_in
           "subtitle_line_path");
       lang_lines = package.combined_lines;
     }
+    // Update any line metadata to `merge = false` if they've been defined
+    // otherwise, the lines get skipped
+    for (const auto [scene_name, scene_lines] : lang_lines.cutscenes) {
+      if (package.combined_meta.cutscenes.find(scene_name) !=
+          package.combined_meta.cutscenes.end()) {
+        for (int i = 0; i < package.combined_meta.cutscenes[scene_name].lines.size(); i++) {
+          package.combined_meta.cutscenes[scene_name].lines[i].merge = false;
+        }
+      }
+    }
+    for (const auto [scene_name, scene_lines] : lang_lines.other) {
+      if (package.combined_meta.other.find(scene_name) != package.combined_meta.other.end()) {
+        for (int i = 0; i < package.combined_meta.other[scene_name].lines.size(); i++) {
+          package.combined_meta.other[scene_name].lines[i].merge = false;
+        }
+      }
+    }
+
     for (const auto& [scene_name, scene_info] : lang_lines.cutscenes) {
       package.scenes_defined_in_lang.insert(scene_name);
     }
