@@ -26,10 +26,13 @@ else()
 endif()
 
 # For clangd
+# file(COPY), not configure_file(): configure_file registers its input as a
+# configure dependency, putting the ever-rewritten compile_commands.json into
+# the Ninja regen rule and causing an endless reconfigure loop.
 if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
-    configure_file(
+    file(COPY
         "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json"
-        "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
+        DESTINATION "${PROJECT_SOURCE_DIR}/build")
 endif()
 
 # NOTE - for SDL, i think SDL3 regressed this - https://github.com/libsdl-org/SDL/pull/6455
