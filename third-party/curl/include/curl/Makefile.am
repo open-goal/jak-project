@@ -25,7 +25,7 @@ pkginclude_HEADERS = \
   curl.h curlver.h easy.h mprintf.h stdcheaders.h multi.h \
   typecheck-gcc.h system.h urlapi.h options.h header.h websockets.h
 
-pkgincludedir= $(includedir)/curl
+pkgincludedir = $(includedir)/curl
 
 CHECKSRC = $(CS_$(V))
 CS_0 = @echo "  RUN     " $@;
@@ -35,7 +35,9 @@ CS_ = $(CS_0)
 checksrc:
 	$(CHECKSRC)@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(top_srcdir)/include/curl $(pkginclude_HEADERS)
 
-if CURLDEBUG
+if NOT_CURL_CI
+if DEBUGBUILD
 # for debug builds, we scan the sources on all regular make invokes
 all-local: checksrc
+endif
 endif

@@ -216,18 +216,24 @@ set(CURL_USE_LIBSSH2 OFF)
 # but this is another part of libcurl we probably don't need (multi-threading/parallelism)
 set(CURL_USE_LIBPSL OFF)
 set(CURL_ZLIB OFF)
+# these default to AUTO since curl 8.10 and would silently pick up system libs
+set(CURL_BROTLI OFF)
+set(CURL_ZSTD OFF)
+# curl's BUILD_EXAMPLES cache option (default ON) would otherwise leak into
+# discord-rpc's identically named option and break its examples add_subdirectory
+set(BUILD_EXAMPLES OFF)
 # suddenly became enabled on macOS atleast, only needed for unicode URLs
 # wasn't being properly statically linked
 set(USE_LIBIDN2 OFF)
 if(WIN32)
     set(CURL_USE_SCHANNEL ON) # native Windows SSL support
-elseif(APPLE)
-    set(CURL_USE_SECTRANSP ON) # native macOS SSL support
 else()
+    # curl 8.15 removed the native macOS backend (CURL_USE_SECTRANSP), so macOS
+    # uses OpenSSL like linux (Homebrew openssl@3, see the macOS build workflows)
     if(STATICALLY_LINK)
         set(OPENSSL_USE_STATIC_LIBS TRUE)
     endif()
-    set(CURL_USE_OPENSSL ON) # not native, but seems to be the best choice for linux
+    set(CURL_USE_OPENSSL ON)
 endif()
 include_directories(third-party/curl/include)
 if(STATICALLY_LINK)

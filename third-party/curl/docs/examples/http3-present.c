@@ -26,13 +26,16 @@
  * </DESC>
  */
 #include <stdio.h>
+
 #include <curl/curl.h>
 
 int main(void)
 {
   curl_version_info_data *ver;
 
-  curl_global_init(CURL_GLOBAL_ALL);
+  CURLcode result = curl_global_init(CURL_GLOBAL_ALL);
+  if(result != CURLE_OK)
+    return (int)result;
 
   ver = curl_version_info(CURLVERSION_NOW);
   if(ver->features & CURL_VERSION_HTTP2)

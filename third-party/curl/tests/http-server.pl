@@ -36,14 +36,11 @@ use File::Basename;
 use serverhelp qw(
     server_pidfilename
     server_logfilename
-    );
-
-use pathhelp qw(
-    exe_ext
+    server_exe
     );
 
 my $verbose = 0;     # set to 1 for debugging
-my $port = 8990;     # just a default
+my $port = 8990;     # a default
 my $unix_socket;     # location to place a listening Unix socket
 my $ipvnum = 4;      # default IP version of http server
 my $idnum = 1;       # default http server instance number
@@ -143,7 +140,7 @@ while(@ARGV) {
         $verbose = 1;
     }
     else {
-        print STDERR "\nWarning: http-server.pl unknown parameter: $ARGV[0]\n";
+        print STDERR "\nWarning: http-server.pl unknown parameter: '$ARGV[0]'\n";
     }
     shift @ARGV;
 }
@@ -187,8 +184,8 @@ if($ipvnum eq 'unix') {
 $flags .= "--srcdir \"$srcdir\"";
 
 if($verbose) {
-    print STDERR "RUN: server/sws".exe_ext('SRV')." $flags\n";
+    print STDERR "RUN: ".server_exe('sws')." $flags\n";
 }
 
 $| = 1;
-exec("exec server/sws".exe_ext('SRV')." $flags");
+exec("exec ".server_exe('sws')." $flags");

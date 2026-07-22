@@ -21,39 +21,42 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
-
+#include "unitcheck.h"
 #include "llist.h"
 
-static CURL *easy;
-
-static CURLcode unit_setup(void)
+static CURLcode t1605_setup(CURL **easy)
 {
-  CURLcode res = CURLE_OK;
+  CURLcode result = CURLE_OK;
 
   global_init(CURL_GLOBAL_ALL);
-  easy = curl_easy_init();
-  if(!easy) {
+  *easy = curl_easy_init();
+  if(!*easy) {
     curl_global_cleanup();
     return CURLE_OUT_OF_MEMORY;
   }
-  return res;
+  return result;
 }
 
-static void unit_stop(void)
+static void t1605_stop(CURL *easy)
 {
   curl_easy_cleanup(easy);
   curl_global_cleanup();
 }
 
-UNITTEST_START
+static CURLcode test_unit1605(const char *arg)
+{
+  CURL *easy;
+
+  UNITTEST_BEGIN(t1605_setup(&easy))
+
   int len;
   char *esc;
 
   esc = curl_easy_escape(easy, "", -1);
-  fail_unless(esc == NULL, "negative string length can't work");
+  fail_unless(!esc, "negative string length cannot work");
 
   esc = curl_easy_unescape(easy, "%41%41%41%41", -1, &len);
-  fail_unless(esc == NULL, "negative string length can't work");
+  fail_unless(!esc, "negative string length cannot work");
 
-UNITTEST_STOP
+  UNITTEST_END(t1605_stop(easy))
+}

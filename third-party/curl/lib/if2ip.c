@@ -21,7 +21,6 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
 #include "curl_setup.h"
 
 #ifdef HAVE_NETINET_IN_H
@@ -52,24 +51,20 @@
 #  include <inet.h>
 #endif
 
-#include "inet_ntop.h"
-#include "strcase.h"
+#include "curlx/inet_ntop.h"
 #include "if2ip.h"
-/* The last 3 #include files should be in this order */
-#include "curl_printf.h"
-#include "curl_memory.h"
-#include "memdebug.h"
 
 /* ------------------------------------------------------------------ */
 
-#ifdef ENABLE_IPV6
+#ifdef USE_IPV6
 /* Return the scope of the given address. */
 unsigned int Curl_ipv6_scope(const struct sockaddr *sa)
 {
   if(sa->sa_family == AF_INET6) {
-    const struct sockaddr_in6 * sa6 = (const struct sockaddr_in6 *)(void *) sa;
+    const struct sockaddr_in6 *sa6 =
+      (const struct sockaddr_in6 *)(const void *)sa;
     const unsigned char *b = sa6->sin6_addr.s6_addr;
-    unsigned short w = (unsigned short) ((b[0] << 8) | b[1]);
+    unsigned short w = (unsigned short)((b[0] << 8) | b[1]);
 
     if((b[0] & 0xFE) == 0xFC) /* Handle ULAs */
       return IPV6_SCOPE_UNIQUELOCAL;
@@ -92,36 +87,35 @@ unsigned int Curl_ipv6_scope(const struct sockaddr *sa)
 }
 #endif
 
-#ifndef CURL_DISABLE_BINDLOCAL
+#if !defined(CURL_DISABLE_BINDLOCAL) || !defined(CURL_DISABLE_FTP)
 
-#if defined(HAVE_GETIFADDRS)
+#ifdef HAVE_GETIFADDRS
 
 if2ip_result_t Curl_if2ip(int af,
-#ifdef ENABLE_IPV6
+#ifdef USE_IPV6
                           unsigned int remote_scope,
                           unsigned int local_scope_id,
 #endif
                           const char *interf,
-                          char *buf, int buf_size)
+                          char *buf, size_t buf_size)
 {
   struct ifaddrs *iface, *head;
   if2ip_result_t res = IF2IP_NOT_FOUND;
 
-#if defined(ENABLE_IPV6) && \
-    !defined(HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID)
-  (void) local_scope_id;
+#if defined(USE_IPV6) && !defined(HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID)
+  (void)local_scope_id;
 #endif
 
   if(getifaddrs(&head) >= 0) {
-    for(iface = head; iface != NULL; iface = iface->ifa_next) {
+    for(iface = head; iface; iface = iface->ifa_next) {
       if(iface->ifa_addr) {
         if(iface->ifa_addr->sa_family == af) {
-          if(strcasecompare(iface->ifa_name, interf)) {
+          if(curl_strequal(iface->ifa_name, interf)) {
             void *addr;
             const char *ip;
             char scope[12] = "";
             char ipstr[64];
-#ifdef ENABLE_IPV6
+#ifdef USE_IPV6
             if(af == AF_INET6) {
 #ifdef HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID
               unsigned int scopeid = 0;
@@ -142,7 +136,7 @@ if2ip_result_t Curl_if2ip(int af,
 #ifdef HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID
               /* Include the scope of this interface as part of the address */
               scopeid = ((struct sockaddr_in6 *)(void *)iface->ifa_addr)
-                            ->sin6_scope_id;
+                          ->sin6_scope_id;
 
               /* If given, scope id should match. */
               if(local_scope_id && scopeid != local_scope_id) {
@@ -153,7 +147,7 @@ if2ip_result_t Curl_if2ip(int af,
               }
 
               if(scopeid)
-                msnprintf(scope, sizeof(scope), "%%%u", scopeid);
+                curl_msnprintf(scope, sizeof(scope), "%%%u", scopeid);
 #endif
             }
             else
@@ -161,13 +155,13 @@ if2ip_result_t Curl_if2ip(int af,
               addr =
                 &((struct sockaddr_in *)(void *)iface->ifa_addr)->sin_addr;
             res = IF2IP_FOUND;
-            ip = Curl_inet_ntop(af, addr, ipstr, sizeof(ipstr));
-            msnprintf(buf, buf_size, "%s%s", ip, scope);
+            ip = curlx_inet_ntop(af, addr, ipstr, sizeof(ipstr));
+            curl_msnprintf(buf, buf_size, "%s%s", ip, scope);
             break;
           }
         }
         else if((res == IF2IP_NOT_FOUND) &&
-                strcasecompare(iface->ifa_name, interf)) {
+                curl_strequal(iface->ifa_name, interf)) {
           res = IF2IP_AF_NOT_SUPPORTED;
         }
       }
@@ -182,12 +176,12 @@ if2ip_result_t Curl_if2ip(int af,
 #elif defined(HAVE_IOCTL_SIOCGIFADDR)
 
 if2ip_result_t Curl_if2ip(int af,
-#ifdef ENABLE_IPV6
+#ifdef USE_IPV6
                           unsigned int remote_scope,
                           unsigned int local_scope_id,
 #endif
                           const char *interf,
-                          char *buf, int buf_size)
+                          char *buf, size_t buf_size)
 {
   struct ifreq req;
   struct in_addr in;
@@ -196,7 +190,7 @@ if2ip_result_t Curl_if2ip(int af,
   size_t len;
   const char *r;
 
-#ifdef ENABLE_IPV6
+#ifdef USE_IPV6
   (void)remote_scope;
   (void)local_scope_id;
 #endif
@@ -208,15 +202,23 @@ if2ip_result_t Curl_if2ip(int af,
   if(len >= sizeof(req.ifr_name))
     return IF2IP_NOT_FOUND;
 
-  dummy = socket(AF_INET, SOCK_STREAM, 0);
-  if(CURL_SOCKET_BAD == dummy)
+  dummy = CURL_SOCKET(AF_INET, SOCK_STREAM, 0);
+  if(dummy == CURL_SOCKET_BAD)
     return IF2IP_NOT_FOUND;
 
   memset(&req, 0, sizeof(req));
   memcpy(req.ifr_name, interf, len + 1);
   req.ifr_addr.sa_family = AF_INET;
 
+#if defined(CURL_HAVE_DIAG) && defined(_AIX)
+/* Suppress warning inside system headers */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshift-sign-overflow"
+#endif
   if(ioctl(dummy, SIOCGIFADDR, &req) < 0) {
+#if defined(CURL_HAVE_DIAG) && defined(_AIX)
+#pragma GCC diagnostic pop
+#endif
     sclose(dummy);
     /* With SIOCGIFADDR, we cannot tell the difference between an interface
        that does not exist and an interface that has no address of the
@@ -226,7 +228,7 @@ if2ip_result_t Curl_if2ip(int af,
 
   s = (struct sockaddr_in *)(void *)&req.ifr_addr;
   memcpy(&in, &s->sin_addr, sizeof(in));
-  r = Curl_inet_ntop(s->sin_family, &in, buf, buf_size);
+  r = curlx_inet_ntop(s->sin_family, &in, buf, buf_size);
 
   sclose(dummy);
   if(!r)
@@ -237,24 +239,24 @@ if2ip_result_t Curl_if2ip(int af,
 #else
 
 if2ip_result_t Curl_if2ip(int af,
-#ifdef ENABLE_IPV6
+#ifdef USE_IPV6
                           unsigned int remote_scope,
                           unsigned int local_scope_id,
 #endif
                           const char *interf,
-                          char *buf, int buf_size)
+                          char *buf, size_t buf_size)
 {
-    (void) af;
-#ifdef ENABLE_IPV6
-    (void) remote_scope;
-    (void) local_scope_id;
+  (void)af;
+#ifdef USE_IPV6
+  (void)remote_scope;
+  (void)local_scope_id;
 #endif
-    (void) interf;
-    (void) buf;
-    (void) buf_size;
-    return IF2IP_NOT_FOUND;
+  (void)interf;
+  (void)buf;
+  (void)buf_size;
+  return IF2IP_NOT_FOUND;
 }
 
 #endif
 
-#endif /* CURL_DISABLE_BINDLOCAL */
+#endif /* CURL_DISABLE_BINDLOCAL && CURL_DISABLE_FTP */

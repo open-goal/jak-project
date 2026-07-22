@@ -23,57 +23,33 @@
  ***************************************************************************/
 #include "tool_setup.h"
 
-#define ENABLE_CURLX_PRINTF
-/* use our own printf() functions */
-#include "curlx.h"
-
 #include "tool_cfgable.h"
 #include "tool_getparam.h"
-#include "tool_helpers.h"
-#include "tool_findfile.h"
 #include "tool_msgs.h"
-#include "tool_parsecfg.h"
-#include "dynbuf.h"
-#include "curl_base64.h"
 #include "tool_paramhlp.h"
 #include "tool_writeout_json.h"
 #include "var.h"
 
-#include "memdebug.h" /* keep this as LAST include */
-
 #define MAX_EXPAND_CONTENT 10000000
-
-static char *Memdup(const char *data, size_t len)
-{
-  char *p = malloc(len + 1);
-  if(!p)
-    return NULL;
-  if(len)
-    memcpy(p, data, len);
-  p[len] = 0;
-  return p;
-}
+#define MAX_VAR_LEN        128 /* max length of a name */
 
 /* free everything */
-void varcleanup(struct GlobalConfig *global)
+void varcleanup(void)
 {
-  struct var *list = global->variables;
+  struct tool_var *list = global->variables;
   while(list) {
-    struct var *t = list;
+    struct tool_var *t = list;
     list = list->next;
-    free((char *)t->content);
-    free((char *)t->name);
-    free(t);
+    curlx_free(CURL_UNCONST(t->content));
+    curlx_free(t);
   }
 }
 
-static const struct var *varcontent(struct GlobalConfig *global,
-                                    const char *name, size_t nlen)
+static const struct tool_var *varcontent(const char *name, size_t nlen)
 {
-  struct var *list = global->variables;
+  struct tool_var *list = global->variables;
   while(list) {
-    if((strlen(list->name) == nlen) &&
-       !strncmp(name, list->name, nlen)) {
+    if((strlen(list->name) == nlen) && !strncmp(name, list->name, nlen)) {
       return list;
     }
     list = list->next;
@@ -82,26 +58,27 @@ static const struct var *varcontent(struct GlobalConfig *global,
 }
 
 #define ENDOFFUNC(x) (((x) == '}') || ((x) == ':'))
-#define FUNCMATCH(ptr,name,len)                         \
-  (!strncmp(ptr, name, len) && ENDOFFUNC(ptr[len]))
+#define FUNCMATCH(ptr, name, len)                   \
+  (!strncmp(ptr, name, len) && ENDOFFUNC((ptr)[len]))
 
-#define FUNC_TRIM "trim"
-#define FUNC_TRIM_LEN (sizeof(FUNC_TRIM) - 1)
-#define FUNC_JSON "json"
-#define FUNC_JSON_LEN (sizeof(FUNC_JSON) - 1)
-#define FUNC_URL "url"
-#define FUNC_URL_LEN (sizeof(FUNC_URL) - 1)
-#define FUNC_B64 "b64"
-#define FUNC_B64_LEN (sizeof(FUNC_B64) - 1)
+#define FUNC_TRIM      "trim"
+#define FUNC_TRIM_LEN  (sizeof(FUNC_TRIM) - 1)
+#define FUNC_JSON      "json"
+#define FUNC_JSON_LEN  (sizeof(FUNC_JSON) - 1)
+#define FUNC_URL       "url"
+#define FUNC_URL_LEN   (sizeof(FUNC_URL) - 1)
+#define FUNC_B64       "b64"
+#define FUNC_B64_LEN   (sizeof(FUNC_B64) - 1)
+#define FUNC_64DEC     "64dec" /* base64 decode */
+#define FUNC_64DEC_LEN (sizeof(FUNC_64DEC) - 1)
 
-static ParameterError varfunc(struct GlobalConfig *global,
-                              char *c, /* content */
+static ParameterError varfunc(char *c, /* content */
                               size_t clen, /* content length */
-                              char *f, /* functions */
+                              const char *f, /* functions */
                               size_t flen, /* function string length */
-                              struct curlx_dynbuf *out)
+                              struct dynbuf *out)
 {
-  bool alloc = FALSE;
+  char *allocptr = NULL;
   ParameterError err = PARAM_OK;
   const char *finput = f;
 
@@ -110,7 +87,7 @@ static ParameterError varfunc(struct GlobalConfig *global,
     if(*f == '}')
       /* end of functions */
       break;
-    /* On entry, this is known to be a colon already.  In subsequent laps, it
+    /* On entry, this is known to be a colon already. In subsequent laps, it
        is also known to be a colon since that is part of the FUNCMATCH()
        checks */
     f++;
@@ -119,11 +96,11 @@ static ParameterError varfunc(struct GlobalConfig *global,
       f += FUNC_TRIM_LEN;
       if(clen) {
         /* skip leading white space, including CRLF */
-        while(*c && ISSPACE(*c)) {
+        while(ISSPACE(*c)) {
           c++;
           len--;
         }
-        while(len && ISSPACE(c[len-1]))
+        while(len && ISSPACE(c[len - 1]))
           len--;
       }
       /* put it in the output */
@@ -167,7 +144,7 @@ static ParameterError varfunc(struct GlobalConfig *global,
       if(clen) {
         char *enc;
         size_t elen;
-        CURLcode result = curlx_base64_encode(c, clen, &enc, &elen);
+        CURLcode result = curlx_base64_encode((uint8_t *)c, clen, &enc, &elen);
         if(result) {
           err = PARAM_NO_MEM;
           break;
@@ -176,48 +153,67 @@ static ParameterError varfunc(struct GlobalConfig *global,
         /* put it in the output */
         if(curlx_dyn_addn(out, enc, elen))
           err = PARAM_NO_MEM;
-        curl_free(enc);
+        curlx_free(enc);
+        if(err)
+          break;
+      }
+    }
+    else if(FUNCMATCH(f, FUNC_64DEC, FUNC_64DEC_LEN)) {
+      f += FUNC_64DEC_LEN;
+      curlx_dyn_reset(out);
+      if(clen) {
+        unsigned char *enc;
+        size_t elen;
+        CURLcode result = curlx_base64_decode(c, &enc, &elen);
+        /* put it in the output */
+        if(result) {
+          if(curlx_dyn_add(out, "[64dec-fail]"))
+            err = PARAM_NO_MEM;
+        }
+        else {
+          if(curlx_dyn_addn(out, enc, elen))
+            err = PARAM_NO_MEM;
+          curlx_free(enc);
+        }
         if(err)
           break;
       }
     }
     else {
       /* unsupported function */
-      errorf(global, "unknown variable function in '%.*s'",
-             (int)flen, finput);
+      errorf("unknown variable function in '%.*s'", (int)flen, finput);
       err = PARAM_EXPAND_ERROR;
       break;
     }
-    if(alloc)
-      free(c);
+    if(allocptr)
+      curlx_free(allocptr);
 
     clen = curlx_dyn_len(out);
-    c = Memdup(curlx_dyn_ptr(out), clen);
+    allocptr = c = curlx_memdup0(curlx_dyn_ptr(out), clen);
     if(!c) {
       err = PARAM_NO_MEM;
       break;
     }
-    alloc = TRUE;
   }
-  if(alloc)
-    free(c);
+  if(allocptr)
+    curlx_free(allocptr);
   if(err)
     curlx_dyn_free(out);
   return err;
 }
 
-ParameterError varexpand(struct GlobalConfig *global,
-                         const char *line, struct curlx_dynbuf *out,
-                         bool *replaced)
+ParameterError varexpand(const char *line, struct dynbuf *out, bool *replaced)
 {
   CURLcode result;
-  char *envp;
+  const char *envp;
   bool added = FALSE;
   const char *input = line;
   *replaced = FALSE;
   curlx_dyn_init(out, MAX_EXPAND_CONTENT);
   do {
     envp = strstr(line, "{{");
+    if(!envp)
+      break;
     if((envp > line) && envp[-1] == '\\') {
       /* preceding backslash, we want this verbatim */
 
@@ -232,17 +228,17 @@ ParameterError varexpand(struct GlobalConfig *global,
         return PARAM_NO_MEM;
       line = &envp[2];
     }
-    else if(envp) {
-      char name[128];
+    else {
+      char name[MAX_VAR_LEN];
       size_t nlen;
       size_t i;
-      char *funcp;
-      char *clp = strstr(envp, "}}");
+      const char *funcp;
+      const char *clp = strstr(envp, "}}");
       size_t prefix;
 
       if(!clp) {
         /* uneven braces */
-        warnf(global, "missing close '}}' in '%s'", input);
+        warnf("missing close '}}' in '%s'", input);
         break;
       }
 
@@ -256,7 +252,7 @@ ParameterError varexpand(struct GlobalConfig *global,
       else
         nlen = clp - envp;
       if(!nlen || (nlen >= sizeof(name))) {
-        warnf(global, "bad variable name length '%s'", input);
+        warnf("bad variable name length '%s'", input);
         /* insert the text as-is since this is not an env variable */
         result = curlx_dyn_addn(out, line, clp - line + prefix);
         if(result)
@@ -273,23 +269,22 @@ ParameterError varexpand(struct GlobalConfig *global,
         name[nlen] = 0;
 
         /* verify that the name looks sensible */
-        for(i = 0; (i < nlen) &&
-              (ISALNUM(name[i]) || (name[i] == '_')); i++);
+        for(i = 0; (i < nlen) && (ISALNUM(name[i]) || (name[i] == '_')); i++)
+          ;
         if(i != nlen) {
-          warnf(global, "bad variable name: %s", name);
+          warnf("bad variable name: %s", name);
           /* insert the text as-is since this is not an env variable */
-          result = curlx_dyn_addn(out, envp - prefix,
-                                  clp - envp + prefix + 2);
+          result = curlx_dyn_addn(out, envp - prefix, clp - envp + prefix + 2);
           if(result)
             return PARAM_NO_MEM;
         }
         else {
           char *value;
           size_t vlen = 0;
-          struct curlx_dynbuf buf;
-          const struct var *v = varcontent(global, name, nlen);
+          struct dynbuf buf;
+          const struct tool_var *v = varcontent(name, nlen);
           if(v) {
-            value = (char *)v->content;
+            value = (char *)CURL_UNCONST(v->content);
             vlen = v->clen;
           }
           else
@@ -299,8 +294,7 @@ ParameterError varexpand(struct GlobalConfig *global,
           if(funcp) {
             /* apply the list of functions on the value */
             size_t flen = clp - funcp;
-            ParameterError err = varfunc(global, value, vlen, funcp, flen,
-                                         &buf);
+            ParameterError err = varfunc(value, vlen, funcp, flen, &buf);
             if(err)
               return err;
             value = curlx_dyn_ptr(&buf);
@@ -310,9 +304,9 @@ ParameterError varexpand(struct GlobalConfig *global,
           if(value && vlen > 0) {
             /* A variable might contain null bytes. Such bytes cannot be shown
                using normal means, this is an error. */
-            char *nb = memchr(value, '\0', vlen);
+            const char *nb = memchr(value, '\0', vlen);
             if(nb) {
-              errorf(global, "variable contains null byte");
+              errorf("variable contains null byte");
               return PARAM_EXPAND_ERROR;
             }
           }
@@ -322,13 +316,12 @@ ParameterError varexpand(struct GlobalConfig *global,
           if(result)
             return PARAM_NO_MEM;
 
-          added = true;
+          added = TRUE;
         }
       }
       line = &clp[2];
     }
-
-  } while(envp);
+  } while(1);
   if(added && *line) {
     /* add the "suffix" as well */
     result = curlx_dyn_add(out, line);
@@ -342,47 +335,41 @@ ParameterError varexpand(struct GlobalConfig *global,
 }
 
 /*
- * Created in a way that is not revealing how variables is actually stored so
+ * Created in a way that is not revealing how variables are actually stored so
  * that we can improve this if we want better performance when managing many
  * at a later point.
  */
-static ParameterError addvariable(struct GlobalConfig *global,
-                                  const char *name,
+static ParameterError addvariable(const char *name,
                                   size_t nlen,
                                   const char *content,
                                   size_t clen,
                                   bool contalloc)
 {
-  struct var *p;
-  const struct var *check = varcontent(global, name, nlen);
+  struct tool_var *p;
+  const struct tool_var *check = varcontent(name, nlen);
+  DEBUGASSERT(nlen);
   if(check)
-    notef(global, "Overwriting variable '%s'", check->name);
+    notef("Overwriting variable '%s'", check->name);
 
-  p = calloc(sizeof(struct var), 1);
-  if(!p)
-    return PARAM_NO_MEM;
+  p = curlx_calloc(1, sizeof(struct tool_var) + nlen);
+  if(p) {
+    memcpy(p->name, name, nlen);
+    /* the null-termination byte is already present from above */
 
-  p->name = Memdup(name, nlen);
-  if(!p->name)
-    goto err;
+    p->content = contalloc ? content : curlx_memdup0(content, clen);
+    if(p->content) {
+      p->clen = clen;
 
-  p->content = contalloc ? content: Memdup(content, clen);
-  if(!p->content)
-    goto err;
-  p->clen = clen;
-
-  p->next = global->variables;
-  global->variables = p;
-  return PARAM_OK;
-err:
-  free((char *)p->content);
-  free((char *)p->name);
-  free(p);
+      p->next = global->variables;
+      global->variables = p;
+      return PARAM_OK;
+    }
+    curlx_free(p);
+  }
   return PARAM_NO_MEM;
 }
 
-ParameterError setvariable(struct GlobalConfig *global,
-                           const char *input)
+ParameterError setvariable(const char *input)
 {
   const char *name;
   size_t nlen;
@@ -393,6 +380,9 @@ ParameterError setvariable(struct GlobalConfig *global,
   ParameterError err = PARAM_OK;
   bool import = FALSE;
   char *ge = NULL;
+  char buf[MAX_VAR_LEN];
+  curl_off_t startoffset = 0;
+  curl_off_t endoffset = CURL_OFF_T_MAX;
 
   if(*input == '%') {
     import = TRUE;
@@ -402,15 +392,23 @@ ParameterError setvariable(struct GlobalConfig *global,
   while(*line && (ISALNUM(*line) || (*line == '_')))
     line++;
   nlen = line - name;
-  if(!nlen || (nlen > 128)) {
-    warnf(global, "Bad variable name length (%zd), skipping", nlen);
+  if(!nlen || (nlen >= MAX_VAR_LEN)) {
+    warnf("Bad variable name length (%zu), skipping", nlen);
     return PARAM_OK;
   }
   if(import) {
-    ge = curl_getenv(name);
+    /* this does not use curl_getenv() because we want "" support for blank
+       content */
+    if(*line) {
+      /* if there is a default action, we need to copy the name */
+      memcpy(buf, name, nlen);
+      buf[nlen] = 0;
+      name = buf;
+    }
+    ge = getenv(name);
     if(!*line && !ge) {
       /* no assign, no variable, fail */
-      errorf(global, "Variable '%s' import fail, not set", name);
+      errorf("Variable '%s' import fail, not set", name);
       return PARAM_EXPAND_ERROR;
     }
     else if(ge) {
@@ -419,6 +417,20 @@ ParameterError setvariable(struct GlobalConfig *global,
       clen = strlen(ge);
     }
   }
+  if(*line == '[' && ISDIGIT(line[1])) {
+    /* is there a byte range specified? [num-num] */
+    line++;
+    if(curlx_str_number(&line, &startoffset, CURL_OFF_T_MAX) ||
+       curlx_str_single(&line, '-'))
+      return PARAM_VAR_SYNTAX;
+    if(curlx_str_single(&line, ']')) {
+      if(curlx_str_number(&line, &endoffset, CURL_OFF_T_MAX) ||
+         curlx_str_single(&line, ']'))
+        return PARAM_VAR_SYNTAX;
+    }
+    if(startoffset > endoffset)
+      return PARAM_VAR_SYNTAX;
+  }
   if(content)
     ;
   else if(*line == '@') {
@@ -426,39 +438,55 @@ ParameterError setvariable(struct GlobalConfig *global,
     FILE *file;
     bool use_stdin;
     line++;
+
     use_stdin = !strcmp(line, "-");
     if(use_stdin)
       file = stdin;
     else {
-      file = fopen(line, "rb");
+      file = curlx_fopen(line, "rb");
       if(!file) {
-        errorf(global, "Failed to open %s", line);
-        return PARAM_READ_ERROR;
+        char errbuf[STRERROR_LEN];
+        errorf("Failed to open %s: %s", line,
+               curlx_strerror(errno, errbuf, sizeof(errbuf)));
+        err = PARAM_READ_ERROR;
       }
     }
-    err = file2memory(&content, &clen, file);
-    /* in case of out of memory, this should fail the entire operation */
-    contalloc = TRUE;
-    if(!use_stdin)
-      fclose(file);
+    if(!err) {
+      err = file2memory_range(&content, &clen, file, startoffset, endoffset);
+      /* in case of out of memory, this should fail the entire operation */
+      if(clen)
+        contalloc = TRUE;
+    }
+    if(!use_stdin && file)
+      curlx_fclose(file);
     if(err)
       return err;
   }
   else if(*line == '=') {
     line++;
-    /* this is the exact content */
-    content = (char *)line;
     clen = strlen(line);
+    /* this is the exact content */
+    content = (char *)CURL_UNCONST(line);
+    if(startoffset || (endoffset != CURL_OFF_T_MAX)) {
+      if(startoffset >= (curl_off_t)clen)
+        clen = 0;
+      else {
+        /* make the end offset no larger than the last byte */
+        if(endoffset >= (curl_off_t)clen)
+          endoffset = clen - 1;
+        clen = (size_t)(endoffset - startoffset) + 1;
+        content += startoffset;
+      }
+    }
   }
   else {
-    warnf(global, "Bad --variable syntax, skipping: %s", input);
+    warnf("Bad --variable syntax, skipping: %s", input);
     return PARAM_OK;
   }
-  err = addvariable(global, name, nlen, content, clen, contalloc);
+  err = addvariable(name, nlen, content, clen, contalloc);
   if(err) {
     if(contalloc)
-      free(content);
+      curlx_free(content);
   }
-  curl_free(ge);
   return err;
 }

@@ -21,57 +21,61 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
-#include <stdio.h>
-
-#include <curl/curl.h>
-
 /* <DESC>
  * Get a single file from an FTPS server.
  * </DESC>
  */
+#ifdef _MSC_VER
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS  /* for fopen() */
+#endif
+#endif
+
+#include <stdio.h>
+
+#include <curl/curl.h>
 
 struct FtpFile {
   const char *filename;
   FILE *stream;
 };
 
-static size_t my_fwrite(void *buffer, size_t size, size_t nmemb,
-                        void *stream)
+static size_t write_cb(char *buffer, size_t size, size_t nmemb, void *stream)
 {
   struct FtpFile *out = (struct FtpFile *)stream;
   if(!out->stream) {
     /* open file for writing */
     out->stream = fopen(out->filename, "wb");
     if(!out->stream)
-      return -1; /* failure, cannot open file to write */
+      return 0; /* failure, cannot open file to write */
   }
   return fwrite(buffer, size, nmemb, out->stream);
 }
 
-
 int main(void)
 {
   CURL *curl;
-  CURLcode res;
+  CURLcode result;
   struct FtpFile ftpfile = {
     "yourfile.bin", /* name to store the file as if successful */
     NULL
   };
 
-  curl_global_init(CURL_GLOBAL_DEFAULT);
+  result = curl_global_init(CURL_GLOBAL_ALL);
+  if(result != CURLE_OK)
+    return (int)result;
 
   curl = curl_easy_init();
   if(curl) {
     /*
      * You better replace the URL with one that works! Note that we use an
-     * FTP:// URL with standard explicit FTPS. You can also do FTPS:// URLs if
+     * ftp:// URL with standard explicit FTPS. You can also do ftps:// URLs if
      * you want to do the rarer kind of transfers: implicit.
      */
     curl_easy_setopt(curl, CURLOPT_URL,
                      "ftp://user@server/home/user/file.txt");
     /* Define our callback to get called when there is data to be written */
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, my_fwrite);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     /* Set a pointer to our struct to pass to the callback */
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ftpfile);
 
@@ -81,14 +85,14 @@ int main(void)
     /* Switch on full protocol/debug output */
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-    res = curl_easy_perform(curl);
+    result = curl_easy_perform(curl);
 
     /* always cleanup */
     curl_easy_cleanup(curl);
 
-    if(CURLE_OK != res) {
+    if(result != CURLE_OK) {
       /* we failed */
-      fprintf(stderr, "curl told us %d\n", res);
+      fprintf(stderr, "curl told us %d\n", (int)result);
     }
   }
 
@@ -97,5 +101,5 @@ int main(void)
 
   curl_global_cleanup();
 
-  return 0;
+  return (int)result;
 }
