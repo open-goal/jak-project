@@ -21,6 +21,8 @@ uniform vec4 light_ambient;
 uniform vec4 hvdf_offset;
 uniform vec4 fog_constants;
 
+uniform int prelit_enable;
+
 uniform mat4 perspective_matrix;
 
 // output
@@ -98,6 +100,13 @@ void main() {
   gl_Position = transformed;
 
 
-  vtx_color = rgba * light_color;
+  if (prelit_enable == 1) {
+    // translucent merc effects are prelit: the PS2 mercneric translucent pipeline skips
+    // lighting and submits the neutral chain color doubled (128 -> 255), so the GS sees
+    // white with the vertex alpha. GS dumps of the menu membrane show rgba (255,255,255,128).
+    vtx_color = vec4(1.0, 1.0, 1.0, rgba.a);
+  } else {
+    vtx_color = rgba * light_color;
+  }
   vtx_st = st_in;
 }
