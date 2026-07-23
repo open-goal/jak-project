@@ -338,6 +338,20 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
                                                  BucketId::GMERC2_LCOM_PRIS, m_generic2,
                                                  Generic2::Mode::PRIM);
 
+    // 456
+    // lcom-pris2 is used by hud models on the common level: the progress menu's hud-ring
+    // "Screen" membrane is a pris2-category effect and routes here in menu mode.
+    init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris2", BucketCategory::TEX,
+                                               BucketId::TEX_LCOM_PRIS2, m_texture_animator);
+    init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-pris2", BucketCategory::MERC,
+                                              BucketId::MERC_LCOM_PRIS2, m_merc2);
+    init_bucket_renderer<Generic2BucketRenderer>("gmerc-lcom-pris2", BucketCategory::GENERIC,
+                                                 BucketId::GMERC_LCOM_PRIS2, m_generic2,
+                                                 Generic2::Mode::NORMAL);
+    init_bucket_renderer<Generic2BucketRenderer>("gmerc2-lcom-pris2", BucketCategory::GENERIC,
+                                                 BucketId::GMERC2_LCOM_PRIS2, m_generic2,
+                                                 Generic2::Mode::PRIM);
+
     // 461
     init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-post", BucketCategory::TEX,
                                                BucketId::TEX_LCOM_SKY_POST, m_texture_animator);
