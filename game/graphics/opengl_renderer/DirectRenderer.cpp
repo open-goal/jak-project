@@ -537,9 +537,15 @@ void DirectRenderer::update_gl_test() {
     ASSERT(false);
   }
 
+  // ATST=NEVER fails the alpha test for every pixel, so AFAIL decides all writes.
+  // RGB_ONLY means "write only color, never depth or alpha": without this, invisible
+  // alpha-0 quads using the NEVER+RGB_ONLY idiom stamp depth and z-cull 3D drawn after
+  // them (jak3 progress menu backdrop boxes cutting a hole through the menu ring).
+  // FB_ONLY keeps its existing double-draw handling untouched.
   bool alpha_trick_to_disable = m_test_state.alpha_test_enable &&
                                 m_test_state.alpha_test == GsTest::AlphaTest::NEVER &&
-                                m_test_state.afail == GsTest::AlphaFail::FB_ONLY;
+                                (m_test_state.afail == GsTest::AlphaFail::FB_ONLY ||
+                                 m_test_state.afail == GsTest::AlphaFail::RGB_ONLY);
 
   if (m_test_state.afail == GsTest::AlphaFail::FB_ONLY ||
       m_test_state.afail == GsTest::AlphaFail::RGB_ONLY) {
