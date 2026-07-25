@@ -1223,6 +1223,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
   m_in_use_temp_textures.clear();  // reset temp texture allocator.
   m_force_to_gpu.clear();
   m_skip_tbps.clear();
+  m_current_frame_idx = frame_idx;
 
   // loop over DMA, and do the appropriate texture operations.
   // this will fill out m_textures, which is keyed on TBP.
@@ -1486,11 +1487,18 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
         entry.needs_pool_update = false;
         dprintf("create texture %d\n", tbp);
       }
-    } else {
+    } else if (entry.last_write_frame == m_current_frame_idx) {
       // ideal case: OpenGL texture modified in place, just have to simulate "upload".
+      // written this frame, so this is a real write claim and may evict another owner.
       auto p = scoped_prof("pool-move");
       texture_pool->move_existing_to_vram(entry.pool_gpu_tex, tbp);
       dprintf("no change %d\n", tbp);
+    } else {
+      // the game has stopped writing this entry: it may keep its slot, but must not evict a
+      // live upload at the same address (see the claim primitives note in TexturePool.h).
+      auto p = scoped_prof("pool-reassert");
+      texture_pool->reassert_in_vram(entry.pool_gpu_tex, tbp);
+      dprintf("reassert %d\n", tbp);
     }
   }
 
@@ -1744,6 +1752,7 @@ void TextureAnimator::handle_upload_clut_16_16(const DmaTransfer& tf, const u8* 
   dprintf("  dest is 0x%x\n", upload->dest);
   auto& vram = m_textures[upload->dest];
   vram.reset();
+  vram.last_write_frame = m_current_frame_idx;
   vram.kind = VramEntry::Kind::CLUT16_16_IN_PSM32;
   vram.data.resize(16 * 16 * 4);
   vram.tex_width = upload->width;
@@ -1766,6 +1775,7 @@ void TextureAnimator::handle_generic_upload(const DmaTransfer& tf, const u8* ee_
   dprintf(" dest is 0x%x\n", upload->dest);
   auto& vram = m_textures[upload->dest];
   vram.reset();
+  vram.last_write_frame = m_current_frame_idx;
 
   switch (upload->format) {
     case (int)GsTex0::PSM::PSMCT32:
@@ -1972,6 +1982,7 @@ void TextureAnimator::handle_draw(DmaFollower& dma, TexturePool& texture_pool) {
     // texture
     auto& dest_te = m_textures.at(m_current_dest_tbp);
     ASSERT(dest_te.kind == VramEntry::Kind::GPU);
+    dest_te.last_write_frame = m_current_frame_idx;
 
     // set up context to draw to this one
     FramebufferTexturePairContext ctxt(*dest_te.tex);
@@ -2347,6 +2358,7 @@ VramEntry* TextureAnimator::setup_vram_entry_for_gpu_texture(int w, int h, int t
   entry->tex_width = w;
   entry->tex_height = h;
   entry->dest_texture_address = tbp;
+  entry->last_write_frame = m_current_frame_idx;
   return entry;
 }
 

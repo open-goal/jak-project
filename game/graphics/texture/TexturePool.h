@@ -289,6 +289,14 @@ struct GoalTexturePage {
  *
  * (note that the above property is only true because we never make a VRAM slot invalid after
  *  it has been loaded once)
+ *
+ * Renderer-side slot claims go through two primitives:
+ * - move_existing_to_vram is a write claim: the texture's contents were just uploaded or
+ *   rendered at this address, so it evicts the current owner, like any VRAM write on PS2.
+ *   (handle_upload_now installs owners the same way for game texture-page uploads.)
+ * - reassert_in_vram is a residency claim: the texture was not rewritten, so it may keep a
+ *   slot it already owns, but never steals one. On PS2, stale VRAM contents lose to whoever
+ *   uploads over them, so a claim that is not backed by a write must not evict one that is.
  */
 class TexturePool {
  public:
@@ -343,6 +351,7 @@ class TexturePool {
     return m_textures;
   }
   void move_existing_to_vram(GpuTexture* tex, u32 slot_addr);
+  void reassert_in_vram(GpuTexture* tex, u32 slot_addr);
 
   std::mutex& mutex() { return m_mutex; }
   PcTextureId allocate_pc_port_texture(GameVersion version);
