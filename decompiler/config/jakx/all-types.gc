@@ -31270,8 +31270,10 @@
   :method-count-assert 21
   :size-assert         #x98
   :flag-assert         #x1500100098
+  (:state-methods
+    idle ;; 14
+    )
   (:methods
-    (ragdoll-proc-method-15 () none) ;; 14 ;; (idle () _type_ :state) 15 ;; (ragdoll-proc-method-15 (_type_ symbol vector symbol) none)
     (ragdoll-proc-method-16 () none) ;; 16 ;; (disable-for-duration (_type_ time-frame) none)
     (ragdoll-proc-method-17 () none) ;; 17 ;; (ragdoll-proc-method-17 (_type_ ragdoll-edit-info) none)
     (ragdoll-proc-method-18 () none) ;; 18 ;; (ragdoll-proc-method-18 (_type_ ragdoll-edit-info) none)
@@ -31502,7 +31504,7 @@
 ;; ---target-h:target-flags
 
 (deftype target (process-focusable)
-  ((control                 control-info                             :offset 188 :score 1) ;; guessed by decompiler
+  ((control                 collide-shape-moving                             :offset 188 :score 1) ;; guessed by decompiler
    (vehicle                 uint64                                                                            :offset-assert 256)
    (target-flags            target-flags                                                                      :offset 236) ;; guessed by decompiler
    (game                    game-info                                                                         :offset-assert 264) ;; guessed by decompiler
@@ -35892,7 +35894,7 @@
 ;; (define-extern cspace<-matrix-joint! function) ;; (function cspace matrix matrix)
 ;; (define-extern cspace<-parented-matrix-joint! function) ;; (function cspace matrix matrix)
 ;; (define-extern cspace<-parented-matrix-mirror! function) ;; (function cspace matrix matrix)
-;; (define-extern cspace<-parented-matrix-joint-flip-z! function) ;; (function cspace matrix matrix)
+(define-extern cspace<-parented-matrix-joint-flip-z! (function cspace matrix matrix)) ;; 
 ;; (define-extern cspace<-matrix-joint-flip-z! function) ;; (function cspace matrix none)
 (define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
 ;; (define-extern cspace<-parented-transformq-joint-flip-z! function) ;; (function cspace transformq none)
@@ -42054,7 +42056,7 @@
 ;; (define-extern find-water-1 function) ;; (function water-sphere water-info water-info symbol)
 ;; (define-extern find-water-2 function) ;; (function (inline-array water-sphere) int water-info water-info process-drawable water-info)
 ;; (define-extern find-water-simple function)
-;; (define-extern find-water-with-spheres function) ;; (function (inline-array water-sphere) int water-info object)
+(define-extern find-water-with-spheres (function (inline-array water-sphere) int water-info object)) ;; 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; water-flow                     ;;
@@ -45406,6 +45408,7 @@
    (stripe-color             uint32  :offset-assert 24)
    (skill-level              int32   :offset-assert 28)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
@@ -46578,16 +46581,16 @@
 ;; net-time-trial-h               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype timetrial-snapshot (structure)
   ((pos-x-lo  uint16    :offset-assert 0)
    (pos-y     uint16    :offset-assert 2)
    (pos-z-lo  uint16    :offset-assert 4)
    (pos-xz-hi uint8     :offset-assert 6)
-   (rot       UNKNOWN 3 :offset-assert 7)
+   (rot       uint8   3 :offset-assert 7)
    (flags     uint8     :offset-assert 10)
    (skip      uint8     :offset-assert 11)
    )
+  :pack-me
   :method-count-assert 13
   :size-assert         #xc
   :flag-assert         #xd0000000c
@@ -46598,9 +46601,7 @@
     (timetrial-snapshot-method-12 () none) ;; 12
     )
   )
-|#
 
-#|
 (deftype timetrial-recording (structure)
   ((crc           uint32                            :offset-assert 0)
    (total-snaps   uint32                            :offset-assert 4)
@@ -46608,11 +46609,11 @@
    (task-node     uint32                            :offset-assert 12)
    (acct-id       uint32                            :offset-assert 16)
    (player-info   net-world-staging-player :inline  :offset-assert 24)
-   (player-name   UNKNOWN                  32       :offset-assert 56)
+   (player-name   uint8                  32       :offset-assert 56)
    (cur-idx       int32                             :offset-assert 88)
    (start-pos     int32                             :offset-assert 92)
    (cur-snap-time int32                             :offset-assert 96)
-   (data          UNKNOWN                  :dynamic :offset-assert 100)
+   (data          timetrial-snapshot                  :dynamic :offset-assert 100)
    )
   :method-count-assert 14
   :size-assert         #x64
@@ -46621,16 +46622,15 @@
     (timetrial-recording-method-9 () none) ;; 9
     (timetrial-recording-method-10 () none) ;; 10
     (timetrial-recording-method-11 () none) ;; 11
-    (timetrial-recording-method-12 () none) ;; 12
+    (timetrial-recording-method-12 (_type_) int) ;; 12
     (timetrial-recording-method-13 () none) ;; 13
     )
   )
-|#
 
-;; (define-extern *ghosts-enabled* object)
-;; (define-extern *ghost-rec* object)
-;; (define-extern *ghost-upload-proc* object)
-;; (define-extern *ghost-download-proc* object)
+(define-extern *ghosts-enabled* symbol)
+(define-extern *ghost-rec* (inline-array timetrial-snapshot))
+(define-extern *ghost-upload-proc* object)
+(define-extern *ghost-download-proc* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; net-eco-h                      ;;
@@ -55998,30 +55998,30 @@
 ;; (define-extern spt-func-part-oil-emit-sparkle function)
 ;; (define-extern check-scorp-shell-level1 function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern check-scorp-shell-level2 function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern *curve-toad-linear-up-red* object) ;; curve2d-piecewise
-;; (define-extern *trail-color-curve-grenade-yellow* curve-color-fast)
-;; (define-extern *curve-grenade-linear-toad-trail* curve2d-fast) ;; curve2d-fast
-;; (define-extern *grenade-1-trail* object)
-;; (define-extern *trail-color-curve-grenade-purple* curve-color-fast)
-;; (define-extern *grenade-2-trail* object)
-;; (define-extern *curve-yellow-tracker-linear-up-red* object)
-;; (define-extern *trail-color-curve-yellow-tracker-grenade* curve-color-fast)
-;; (define-extern *trail-color-curve-red-mine* curve-color-fast)
-;; (define-extern *curve-yellow-tracker-linear-trail* curve2d-fast)
-;; (define-extern *yellow-tracking-rocket-trail* object)
-;; (define-extern *curve-missile-linear-up* curve2d-fast)
-;; (define-extern *trail-color-curve-car-missile* curve-color-fast)
-;; (define-extern *trail-color-curve-car-missile-II* curve-color-fast)
-;; (define-extern *curve-missile-trail-width* curve2d-fast)
-;; (define-extern *car-missile-trail* object)
-;; (define-extern *car-missile-trail-II* object)
-;; (define-extern *trail-color-curve-success-seeker* curve-color-fast)
-;; (define-extern *success-seeker-trail* object)
-;; (define-extern *curve-mine-width* object)
-;; (define-extern *trail-color-purple-mine* curve-color-fast)
-;; (define-extern *trail-color-red-mine* curve-color-fast)
-;; (define-extern *mine-trail-red* object)
-;; (define-extern *mine-trail-purple* object)
+(define-extern *curve-toad-linear-up-red* curve2d-piecewise) ;; 
+(define-extern *trail-color-curve-grenade-yellow* curve-color-fast)
+(define-extern *curve-grenade-linear-toad-trail* curve2d-fast) ;; curve2d-fast
+(define-extern *grenade-1-trail* curve-color-fast)
+(define-extern *trail-color-curve-grenade-purple* curve-color-fast)
+(define-extern *grenade-2-trail* curve-color-fast)
+(define-extern *curve-yellow-tracker-linear-up-red* curve2d-piecewise)
+(define-extern *trail-color-curve-yellow-tracker-grenade* curve-color-fast)
+(define-extern *trail-color-curve-red-mine* curve-color-fast)
+(define-extern *curve-yellow-tracker-linear-trail* curve2d-fast)
+(define-extern *yellow-tracking-rocket-trail* curve-color-fast)
+(define-extern *curve-missile-linear-up* curve2d-fast)
+(define-extern *trail-color-curve-car-missile* curve-color-fast)
+(define-extern *trail-color-curve-car-missile-II* curve-color-fast)
+(define-extern *curve-missile-trail-width* curve2d-fast)
+(define-extern *car-missile-trail* curve-color-fast)
+(define-extern *car-missile-trail-II* curve-color-fast)
+(define-extern *trail-color-curve-success-seeker* curve-color-fast)
+(define-extern *success-seeker-trail* curve-color-fast)
+(define-extern *curve-mine-width* curve2d-piecewise)
+(define-extern *trail-color-purple-mine* curve-color-fast)
+(define-extern *trail-color-red-mine* curve-color-fast)
+(define-extern *mine-trail-red* curve-color-fast)
+(define-extern *mine-trail-purple* curve-color-fast)
 ;; (define-extern shield-flash-part-callback function)
 ;; (define-extern *weapon-drone-glow-template* object)
 ;; (define-extern *weapon-drone-visor-template* object)
@@ -59005,11 +59005,11 @@
 ;; ragdoll                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern ragdoll-matrix-interp function) ;; (function matrix matrix matrix float matrix)
-;; (define-extern ragdoll-joint-callback function) ;; (function cspace transformq process-drawable ragdoll-proc none)
-;; (define-extern ragdoll-other-joint-callback function) ;; (function cspace transformq none :behavior ragdoll-proc)
-;; (define-extern ragdoll-reflect-matrix function) ;; (function matrix vector vector vector)
-;; (define-extern ragdoll-proc-init-by-other function) ;; (function ragdoll-setup object :behavior ragdoll-proc)
+(define-extern ragdoll-matrix-interp (function matrix matrix matrix float matrix))
+(define-extern ragdoll-joint-callback (function cspace transformq process-drawable ragdoll-proc none))
+(define-extern ragdoll-other-joint-callback (function cspace transformq none :behavior ragdoll-proc))
+(define-extern ragdoll-reflect-matrix (function matrix vector vector vector))
+(define-extern ragdoll-proc-init-by-other (function ragdoll-setup object :behavior ragdoll-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; raptor                         ;;
