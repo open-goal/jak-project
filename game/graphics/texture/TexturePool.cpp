@@ -109,6 +109,7 @@ void TexturePool::move_existing_to_vram(GpuTexture* tex, u32 slot_addr) {
     slot.source = tex;
     slot.gpu_texture = tex->gpu_textures.front().gl;
   }
+  slot.claim_frame = m_frame_stamp.load(std::memory_order_relaxed);
 }
 
 /*!
@@ -275,6 +276,7 @@ void TexturePool::handle_upload_now(const u8* tpage,
             slot.source = get_gpu_texture_for_slot(current_id, tex.dest[mip_idx]);
             ASSERT(slot.gpu_texture != (GLuint)-1);
           }
+          slot.claim_frame = m_frame_stamp.load(std::memory_order_relaxed);
         }
       }
     } else {
@@ -405,6 +407,8 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
   }
   if (ImGui::TreeNode(fmt::format("{}) {}", slot, name).c_str())) {
     ImGui::Text("P: %s sz: %d x %d", get_debug_texture_name(tex->tex_id).c_str(), tex->w, tex->h);
+    ImGui::Text("last write claim: frame %llu",
+                static_cast<unsigned long long>(m_textures[slot].claim_frame));
     if (!tex->is_placeholder) {
       ImGui::Image((ImTextureID)(intptr_t)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
     } else {

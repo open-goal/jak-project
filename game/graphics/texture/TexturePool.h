@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -189,6 +190,9 @@ struct GpuTexture {
 struct TextureVRAMReference {
   GLuint gpu_texture = -1;  // the OpenGL texture to use when rendering.
   GpuTexture* source = nullptr;
+  // debug bookkeeping: the frame of the most recent write claim that touched this slot.
+  // a stale owner shows up in the debug view as a claim many frames old.
+  u64 claim_frame = 0;
 };
 
 /*!
@@ -352,6 +356,9 @@ class TexturePool {
   }
   void move_existing_to_vram(GpuTexture* tex, u32 slot_addr);
   void reassert_in_vram(GpuTexture* tex, u32 slot_addr);
+  // frame stamp recorded on write claims, for the debug view. Set once per frame by the
+  // renderer; atomic because EE-thread uploads read it while the render thread advances it.
+  void set_frame_stamp(u64 frame) { m_frame_stamp.store(frame, std::memory_order_relaxed); }
 
   std::mutex& mutex() { return m_mutex; }
   PcTextureId allocate_pc_port_texture(GameVersion version);
@@ -365,6 +372,7 @@ class TexturePool {
 
   char m_regex_input[256] = "";
   std::array<TextureVRAMReference, 1024 * 1024 * 4 / 256> m_textures;
+  std::atomic<u64> m_frame_stamp{0};
   struct Mt4hhTexture {
     TextureVRAMReference ref;
     u32 slot;
