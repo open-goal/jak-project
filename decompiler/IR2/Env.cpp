@@ -562,6 +562,18 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
   std::vector<goos::Object> elts;
   elts.push_back(pretty_print::to_symbol("local-vars"));
   int count = 0;
+  std::unordered_map<std::string, std::string> emitted_local_types;
+
+  // A user may deliberately give an argument and its saved stack copy the same preferred name.
+  // Treat the argument as the existing lexical binding so the spill is not emitted as a second
+  // local with the same name.
+  for (int i = 0; i < nargs_to_ignore; i++) {
+    auto remapped = m_var_remap.find(get_reg_name(i));
+    if (remapped != m_var_remap.end() && func && i < func->type.arg_count() - 1) {
+      emitted_local_types.emplace(remapped->second, func->type.get_arg(i).print());
+    }
+  }
+
   for (auto& x : vars) {
     if (x.reg_id.reg.get_kind() == Reg::GPR && x.reg_id.reg.get_gpr() < Reg::A0 + nargs_to_ignore &&
         x.reg_id.reg.get_gpr() >= Reg::A0 && x.reg_id.id == 0) {
@@ -579,12 +591,27 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
       lookup_name = remapped->second;
     }
 
-    if (m_vars_defined_in_let.find(lookup_name) != m_vars_defined_in_let.end()) {
+    if (m_vars_defined_in_let.find(x.name()) != m_vars_defined_in_let.end() ||
+        m_vars_defined_in_let.find(lookup_name) != m_vars_defined_in_let.end()) {
+      continue;
+    }
+
+    auto type_name = x.type.typespec().print();
+    auto retype = m_var_retype.find(x.name());
+    if (retype != m_var_retype.end()) {
+      type_name = retype->second.print();
+    }
+    const auto [existing, inserted] = emitted_local_types.emplace(lookup_name, type_name);
+    if (!inserted) {
+      if (existing->second != type_name) {
+        lg::warn("Local variable {} has conflicting remapped types {} and {}", lookup_name,
+                 existing->second, type_name);
+      }
       continue;
     }
 
     count++;
-    elts.push_back(pretty_print::build_list(lookup_name, x.type.typespec().print()));
+    elts.push_back(pretty_print::build_list(lookup_name, type_name));
   }
 
   // sort in increasing offset.
@@ -602,7 +629,20 @@ FunctionVariableDefinitions Env::local_var_type_list(const Form* top_level_form,
     if (m_vars_defined_in_let.find(x.name()) != m_vars_defined_in_let.end()) {
       continue;
     }
-    elts.push_back(pretty_print::build_list(x.name(), x.typespec.print()));
+    auto type_name = x.typespec.print();
+    auto retype = m_var_retype.find(x.name());
+    if (retype != m_var_retype.end()) {
+      type_name = retype->second.print();
+    }
+    const auto [existing, inserted] = emitted_local_types.emplace(x.name(), type_name);
+    if (!inserted) {
+      if (existing->second != type_name) {
+        lg::warn("Local variable {} has conflicting remapped types {} and {}", x.name(),
+                 existing->second, type_name);
+      }
+      continue;
+    }
+    elts.push_back(pretty_print::build_list(x.name(), type_name));
     count++;
   }
 

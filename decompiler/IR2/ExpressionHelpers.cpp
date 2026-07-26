@@ -131,11 +131,13 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
     time = nullptr;
   }
 
-  // get the default value. It must be (the-as pointer #f)
+  // get the default value. The ordinary macro default can be omitted.
   Form* default_value = forms.at(4);
-  // but let's see if it's 0, because that's the default in the macro
-  if (default_value->to_string(env) != expcted_default) {
-    lg::error("fail data: bad default {}", default_value->to_string(env));
+  if (default_value->to_string(env) == expcted_default) {
+    default_value = nullptr;
+  } else if (kind != ResLumpMacroElement::Kind::STRUCT ||
+             env.version != GameVersion::Jak1) {
+    // Only Jak 1's res-lump-struct macro currently exposes a custom default.
     return nullptr;
   }
 
@@ -153,7 +155,7 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
   }
 
   return pool.alloc_element<ResLumpMacroElement>(kind, lump_object, property_name,
-                                                 nullptr,  // default, must be #f
+                                                 default_value,
                                                  tag_pointer, time, default_type);
 }
 }  // namespace

@@ -791,6 +791,11 @@ void ObjectFileDB::ir2_build_expressions(int seg, const Config& config, ObjectFi
         func.ir2.env.types_succeeded) {
       auto name = func.name();
       auto arg_config = config.function_arg_names.find(name);
+      if (arg_config == config.function_arg_names.end() &&
+          func.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+        arg_config = config.function_arg_names.find(
+            fmt::format("(anon-function * {})", func.guessed_name.object_name));
+      }
       auto var_config = config.function_var_overrides.find(name);
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func,
                                  arg_config != config.function_arg_names.end()

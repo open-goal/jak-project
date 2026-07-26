@@ -1555,6 +1555,7 @@ class StackSpillStoreElement : public FormElement {
   void push_to_stack(const Env& env, FormPool& pool, FormStack& stack) override;
   const std::optional<TypeSpec>& cast_type() const { return m_cast_type; }
   const RegisterAccess& access() const { return m_access; }
+  const SimpleAtom& value() const { return m_value; }
   int stack_offset() const { return m_stack_offset; }
 
  private:

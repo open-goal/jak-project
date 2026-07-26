@@ -124,7 +124,6 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
 
   // look for setting a var to zero.
   auto ra = in->entries().at(0).dest;
-  auto var = env.get_variable_name(ra);
   if (!is_constant_int(in->entries().at(0).src, 0)) {
     return nullptr;
   }
@@ -143,7 +142,7 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
   // check the lt operation:
   auto lt_var = mr.maps.regs.at(0);
   ASSERT(lt_var);
-  if (env.get_variable_name(*lt_var) != var) {
+  if (env.get_program_var_id(*lt_var) != env.get_program_var_id(ra)) {
     return nullptr;  // wrong variable checked
   }
 
@@ -161,7 +160,7 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
 
   auto inc_var = int_mr.maps.regs.at(0);
   ASSERT(inc_var);
-  if (env.get_variable_name(*inc_var) != var) {
+  if (env.get_program_var_id(*inc_var) != env.get_program_var_id(ra)) {
     return nullptr;  // wrong variable incremented
   }
 
@@ -630,8 +629,6 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
 
   // look for setting a var to the initial value.
   auto ra = in->entries().at(0).dest;
-  auto idx_var = env.get_variable_name(ra);
-
   // still have to check body for the increment and have to check that the lt operates on the right
   // thing.
   Matcher while_matcher = Matcher::while_loop(
@@ -646,7 +643,7 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
   // check the zero operation:
   auto lt_var = mr.maps.regs.at(0);
   ASSERT(lt_var);
-  if (env.get_variable_name(*lt_var) != idx_var) {
+  if (env.get_program_var_id(*lt_var) != env.get_program_var_id(ra)) {
     return nullptr;  // wrong variable checked
   }
 
@@ -664,7 +661,7 @@ FormElement* rewrite_as_countdown(LetElement* in, const Env& env, FormPool& pool
 
   auto inc_var = int_mr.maps.regs.at(0);
   ASSERT(inc_var);
-  if (env.get_variable_name(*inc_var) != idx_var) {
+  if (env.get_program_var_id(*inc_var) != env.get_program_var_id(ra)) {
     return nullptr;  // wrong variable incremented
   }
 
@@ -3912,6 +3909,79 @@ FormElement* rewrite_let_sequence(const std::vector<LetElement*>& in,
   return nullptr;
 }
 
+FormElement* rewrite_ja_play_sequence(FormElement* setup,
+                                      FormElement* wait,
+                                      const Env& env,
+                                      FormPool& pool) {
+  auto setup_call = dynamic_cast<GenericElement*>(setup);
+  if (!setup_call || !setup_call->op().is_func() ||
+      !setup_call->op().func()->to_form(env).is_symbol("ja-no-eval")) {
+    return nullptr;
+  }
+
+  auto wait_loop = dynamic_cast<UntilElement*>(wait);
+  if (!wait_loop || wait_loop->body->size() < 2) {
+    return nullptr;
+  }
+
+  auto find_keyword_arg = [&](const GenericElement* call, const std::string& keyword) -> Form* {
+    const auto& args = call->elts();
+    for (size_t i = 0; i + 1 < args.size(); i++) {
+      if (args.at(i)->to_form(env).is_symbol(keyword)) {
+        return args.at(i + 1);
+      }
+    }
+    return nullptr;
+  };
+
+  auto setup_num = find_keyword_arg(setup_call, ":num!");
+  if (!setup_num) {
+    return nullptr;
+  }
+
+  auto setup_chan = find_keyword_arg(setup_call, ":chan");
+  const auto setup_chan_text = setup_chan ? setup_chan->to_form(env).print() : "0";
+
+  if (wait_loop->condition->to_string(env) !=
+      fmt::format("(ja-done? {})", setup_chan_text)) {
+    return nullptr;
+  }
+
+  const auto& wait_body = wait_loop->body->elts();
+  auto suspend_op = dynamic_cast<AtomicOpElement*>(wait_body.at(wait_body.size() - 2));
+  if (!suspend_op || !suspend_op->op() || !dynamic_cast<SpecialOp*>(suspend_op->op()) ||
+      dynamic_cast<SpecialOp*>(suspend_op->op())->kind() != SpecialOp::Kind::SUSPEND) {
+    return nullptr;
+  }
+
+  auto advance_call = dynamic_cast<GenericElement*>(wait_body.back());
+  if (!advance_call || !advance_call->op().is_func() ||
+      !advance_call->op().func()->to_form(env).is_symbol("ja")) {
+    return nullptr;
+  }
+
+  auto advance_num = find_keyword_arg(advance_call, ":num!");
+  auto advance_chan = find_keyword_arg(advance_call, ":chan");
+  const auto advance_chan_text = advance_chan ? advance_chan->to_form(env).print() : "0";
+  if (!advance_num || advance_num->to_form(env).print() != setup_num->to_form(env).print() ||
+      advance_chan_text != setup_chan_text) {
+    return nullptr;
+  }
+
+  size_t expected_advance_args = advance_chan ? 4 : 2;
+  if (advance_call->elts().size() != expected_advance_args) {
+    return nullptr;
+  }
+
+  std::vector<Form*> macro_args = setup_call->elts();
+  for (size_t i = 0; i + 2 < wait_body.size(); i++) {
+    macro_args.push_back(pool.alloc_single_form(nullptr, wait_body.at(i)));
+  }
+
+  return pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("ja-play")), macro_args);
+}
+
 Form* insert_cast_for_let(RegisterAccess dst,
                           const TypeSpec& src_type,
                           Form* src,
@@ -3968,7 +4038,7 @@ LetStats insert_lets(const Function& func,
 
   // Stored per variable.
   struct PerVarInfo {
-    std::string var_name;  // name used to uniquely identify
+    std::string unique_name;  // displayed name used to join deliberately co-named SSA variables
     RegisterAccess access;
     std::unordered_set<FormElement*> elts_using_var;  // all FormElements using var
     Form* lca_form = nullptr;  // the lowest common form that contains all the above elts
@@ -4001,10 +4071,10 @@ LetStats insert_lets(const Function& func,
     // and add it.
     for (auto& access : reg_accesses) {
       if (register_can_hold_var(access.reg())) {
-        auto name = env.get_variable_name(access);
-        var_info[name].elts_using_var.insert(elt);
-        var_info[name].var_name = name;
-        var_info[name].access = access;
+        auto unique_name = env.get_variable_name(access);
+        var_info[unique_name].elts_using_var.insert(elt);
+        var_info[unique_name].unique_name = unique_name;
+        var_info[unique_name].access = access;
       }
     }
   });
@@ -4036,7 +4106,7 @@ LetStats insert_lets(const Function& func,
       bool uses = false;
       for (auto& ra : ras) {
         if ((ra.reg().get_kind() == Reg::FPR || ra.reg().get_kind() == Reg::GPR) &&
-            env.get_variable_name(ra) == kv.second.var_name) {
+            env.get_variable_name(ra) == kv.second.unique_name) {
           uses = true;
         }
       }
@@ -4082,7 +4152,8 @@ LetStats insert_lets(const Function& func,
     auto first_form = info.lca_form->at(info.start_idx);
     auto first_form_as_set = dynamic_cast<SetVarElement*>(first_form);
     if (first_form_as_set && register_can_hold_var(first_form_as_set->dst().reg()) &&
-        env.get_variable_name(first_form_as_set->dst()) == env.get_variable_name(info.access) &&
+        env.get_variable_name(first_form_as_set->dst()) ==
+            env.get_variable_name(info.access) &&
         !first_form_as_set->info().is_eliminated_coloring_move) {
       bool allowed = true;
 
@@ -4105,7 +4176,7 @@ LetStats insert_lets(const Function& func,
         li.start_elt = info.start_idx;
         li.end_elt = info.end_idx;
         li.set_form = first_form_as_set;
-        li.name = info.var_name;
+        li.name = info.unique_name;
         possible_insertions[li.form].push_back(li);
         stats.vars_in_lets++;
       }
@@ -4287,6 +4358,21 @@ LetStats insert_lets(const Function& func,
           form_elts.at(i) = rw;
           rw->parent_form = f;
         }
+      }
+    }
+  });
+
+  // Part 11: recover the animation-play convenience macro after individual JA setup/eval forms
+  // have been recognized.
+  top_level_form->apply_form([&](Form* f) {
+    auto& form_elts = f->elts();
+    for (size_t i = 0; i + 1 < form_elts.size(); ++i) {
+      auto rewritten = rewrite_ja_play_sequence(form_elts.at(i), form_elts.at(i + 1), env, pool);
+      if (rewritten) {
+        form_elts.erase(form_elts.begin() + i + 1);
+        form_elts.at(i) = rewritten;
+        rewritten->parent_form = f;
+        let_rewrite_stats.ja_play++;
       }
     }
   });

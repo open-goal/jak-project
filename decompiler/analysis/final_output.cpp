@@ -41,6 +41,15 @@ std::string fix_docstring_indent(const std::string& input) {
   return result;
 }
 
+void set_metadata_docstring(std::vector<goos::Object>* body, const std::string& docstring) {
+  auto replacement = pretty_print::new_string(docstring);
+  if (!body->empty() && body->front().is_string()) {
+    body->front() = replacement;
+  } else {
+    body->insert(body->begin(), replacement);
+  }
+}
+
 void append_body_to_function_definition(goos::Object* top_form,
                                         const std::vector<goos::Object>& inline_body,
                                         const FunctionVariableDefinitions& var_dec,
@@ -106,6 +115,7 @@ goos::Object final_output_lambda(const Function& func, GameVersion version) {
 goos::Object final_output_defstate_anonymous_behavior(const Function& func,
                                                       const DecompilerTypeSystem& dts) {
   std::vector<goos::Object> inline_body;
+  std::optional<std::string> metadata_docstring;
 
   // docstring if available - lookup the appropriate info
   const auto& type_name = func.guessed_name.type_name;
@@ -116,22 +126,23 @@ goos::Object final_output_defstate_anonymous_behavior(const Function& func,
     if (dts.virtual_state_metadata.count(type_name) != 0 &&
         dts.virtual_state_metadata.at(type_name).count(state_name) != 0 &&
         dts.virtual_state_metadata.at(type_name).at(state_name).count(handler_name) != 0) {
-      inline_body.insert(inline_body.begin(),
-                         pretty_print::new_string(dts.virtual_state_metadata.at(type_name)
-                                                      .at(state_name)
-                                                      .at(handler_name)
-                                                      .docstring.value()));
+      metadata_docstring = dts.virtual_state_metadata.at(type_name)
+                               .at(state_name)
+                               .at(handler_name)
+                               .docstring.value();
     }
   } else if (func.guessed_name.kind == FunctionName::FunctionKind::NV_STATE) {
     if (dts.state_metadata.count(state_name) != 0 &&
         dts.state_metadata.at(state_name).count(handler_name) != 0) {
-      inline_body.insert(inline_body.begin(),
-                         pretty_print::new_string(
-                             dts.state_metadata.at(state_name).at(handler_name).docstring.value()));
+      metadata_docstring =
+          dts.state_metadata.at(state_name).at(handler_name).docstring.value();
     }
   }
 
   func.ir2.top_form->inline_forms(inline_body, func.ir2.env);
+  if (metadata_docstring) {
+    set_metadata_docstring(&inline_body, *metadata_docstring);
+  }
   auto var_dec = func.ir2.env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1);
 
   auto result = pretty_print::build_list("behavior", get_arg_list_for_function(func, func.ir2.env));
@@ -183,7 +194,7 @@ std::string final_defun_out(const Function& func,
     if (dts.symbol_metadata_map.count(func.name()) != 0) {
       auto& meta = dts.symbol_metadata_map.at(func.name());
       if (meta.docstring) {
-        inline_body.insert(inline_body.begin(), pretty_print::new_string(meta.docstring.value()));
+        set_metadata_docstring(&inline_body, meta.docstring.value());
       }
     }
 
@@ -205,8 +216,7 @@ std::string final_defun_out(const Function& func,
     auto top_form = pretty_print::build_list(top);
 
     if (method_info.docstring) {
-      inline_body.insert(inline_body.begin(),
-                         pretty_print::new_string(method_info.docstring.value()));
+      set_metadata_docstring(&inline_body, method_info.docstring.value());
     }
     append_body_to_function_definition(&top_form, inline_body, var_dec, method_info.type,
                                        dts.version());

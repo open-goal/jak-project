@@ -2746,13 +2746,19 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     if (src_as_se) {
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
-        // this can happen late in the case of coloring moves which are also gpr -> fpr's
-        // so they don't get caught by SetVarOp::get_as_form's check.
-        if (env.op_id_is_eliminated_coloring_move(src_as_se->expr().get_arg(0).var().idx())) {
+        const auto src_var = src_as_se->expr().get_arg(0).var();
+        if (env.get_variable_name(m_dst) == env.get_variable_name(src_var) &&
+            env.get_variable_type(m_dst, true) == env.get_variable_type(src_var, true)) {
           m_var_info.is_eliminated_coloring_move = true;
         }
 
-        auto var = src_as_se->expr().get_arg(0).var();
+        // this can happen late in the case of coloring moves which are also gpr -> fpr's
+        // so they don't get caught by SetVarOp::get_as_form's check.
+        if (env.op_id_is_eliminated_coloring_move(src_var.idx())) {
+          m_var_info.is_eliminated_coloring_move = true;
+        }
+
+        auto var = src_var;
         bool is_consumed_reg_move = false;
         if (is_stack_slot_access(var)) {
           auto& use_def = env.get_use_def_info(var);
@@ -2793,7 +2799,12 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
       // stripped off by update_children_from_stack.
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
-        if (env.op_id_is_eliminated_coloring_move(src_as_se->expr().get_arg(0).var().idx())) {
+        const auto src_var = src_as_se->expr().get_arg(0).var();
+        if (env.get_variable_name(m_dst) == env.get_variable_name(src_var) &&
+            env.get_variable_type(m_dst, true) == env.get_variable_type(src_var, true)) {
+          m_var_info.is_eliminated_coloring_move = true;
+        }
+        if (env.op_id_is_eliminated_coloring_move(src_var.idx())) {
           m_var_info.is_eliminated_coloring_move = true;
         }
       }
