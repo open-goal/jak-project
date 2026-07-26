@@ -3,9 +3,11 @@
 
 #include <tuple>
 
+#include "goalc/emitter/IGen.h"
 #include "goalc/emitter/Instruction.h"
 #include "goalc/emitter/InstructionSet.h"
 #include "goalc/emitter/Register.h"
+#include <fmt/base.h>
 
 // https://armconverter.com/?code=ret
 // https://developer.arm.com/documentation/ddi0487/latest
@@ -37,6 +39,26 @@ std::tuple<bool, u16, bool> can_encode_single_imm12(u64 imm) {
     }
   }
   return {false, 0, false};
+}
+
+// TODO - imm12 decomposition produces way too many chunks for what will be common operations,
+// update the instructions that we can to instead use the movz/movk pattern
+//
+// Decompose a 64-bit immediate into 16-bit chunks suitable for movz/movk.
+// Returns {chunk, shift} pairs where shift is one of 0,16,32,48.
+std::vector<std::tuple<u16, u8>> decompose_into_imm16_chunks(u64 imm) {
+  std::vector<std::tuple<u16, u8>> result;
+  if (imm == 0) {
+    result.emplace_back(0, 0);
+    return result;
+  }
+  for (u8 shift = 0; shift <= 48; shift += 16) {
+    u16 chunk = static_cast<u16>((imm >> shift) & 0xFFFF);
+    if (chunk != 0 || result.empty()) {
+      result.emplace_back(chunk, shift / 16);
+    }
+  }
+  return result;
 }
 
 // Given a larger than u12 immediate, decompose it into multiple (shifted or not)
@@ -97,26 +119,19 @@ InstructionARM64 mov_gpr64_gpr64(Register dst, Register src) {
 InstructionARM64 mov_gpr64_u64(Register dst, uint64_t val) {
   // Cannot be done in a single instruction, must combine multiple MOVZ/MOVKs
   std::vector<InstructionARM64> instrs;
-  bool emitted_movz = false;
-  for (int i = 0; i < 4; i++) {
-    u16 chunk = (val >> (i * 16)) & 0xFFFF;
-    if (!emitted_movz && chunk != 0) {
+  auto imm_chunks = decompose_into_imm16_chunks(val);
+  for (const auto& [imm_chunk, shift] : imm_chunks) {
+    if (shift == 0) {
       // https://www.scs.stanford.edu/~zyedidia/arm64/movz.html
       // MOVZ <Xd>, #<imm>{, LSL #<shift>/16}
       instrs.emplace_back(
-          InstructionARM64(Base(0b110100101, 9), Hw(i), Imm16(chunk), Rd(dst.id())));
-      emitted_movz = true;
-    } else if (emitted_movz && chunk != 0) {
+          InstructionARM64(Base(0b110100101, 9), Hw(shift), Imm16(imm_chunk), Rd(dst.id())));
+    } else {
       // https://www.scs.stanford.edu/~zyedidia/arm64/movk.html
       // MOVK <Xd>, #<imm>{, LSL #<shift>/16}
       instrs.emplace_back(
-          InstructionARM64(Base(0b111100101, 9), Hw(i), Imm16(chunk), Rd(dst.id())));
+          InstructionARM64(Base(0b111100101, 9), Hw(shift), Imm16(imm_chunk), Rd(dst.id())));
     }
-  }
-  if (!emitted_movz) {
-    // https://www.scs.stanford.edu/~zyedidia/arm64/movz.html
-    // MOVZ <Xd>, #<imm>{, LSL #0}
-    instrs.emplace_back(InstructionARM64(Base(0b110100101, 9), Hw(0), Imm16(0), Rd(dst.id())));
   }
   return InstructionARM64(instrs);
 }
@@ -2042,7 +2057,7 @@ InstructionARM64 add_gpr64_imm(Register reg, int64_t imm) {
   if (imm < 0) {
     return sub_gpr64_imm(reg, std::abs(imm));
   }
-  // Check to see if we can represent this subtraction in a single instruction
+  // Check to see if we can represent this addition in a single instruction
   // if not, then we need to emit multiple partial instructions
   const auto [is_single_instr, imm12, needs_shift] = can_encode_single_imm12(imm);
   if (is_single_instr) {
@@ -2051,8 +2066,7 @@ InstructionARM64 add_gpr64_imm(Register reg, int64_t imm) {
     return InstructionARM64(Base(0b100100010, 9), Sh(needs_shift ? 1 : 0), Imm12(imm12),
                             Rd(reg.id()), Rn(reg.id()));
   } else {
-    std::vector<InstructionARM64> instrs = construct_multiple_imm12_adds(imm, reg.id());
-    return InstructionARM64(instrs);
+    return InstructionARM64(mov_gpr64_u64(X16, imm), add_gpr64_gpr64(reg, X16));
   }
 }
 
@@ -2070,8 +2084,7 @@ InstructionARM64 sub_gpr64_imm(Register reg, int64_t imm) {
     return InstructionARM64(Base(0b110100010, 9), Sh(needs_shift ? 1 : 0), Imm12(imm12),
                             Rd(reg.id()), Rn(reg.id()));
   } else {
-    std::vector<InstructionARM64> instrs = construct_multiple_imm12_subs(imm, reg.id());
-    return InstructionARM64(instrs);
+    return InstructionARM64(mov_gpr64_u64(X16, imm), sub_gpr64_gpr64(reg, X16));
   }
 }
 

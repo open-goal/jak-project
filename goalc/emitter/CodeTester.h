@@ -91,10 +91,56 @@ class CodeTester {
     return ret;
   }
 
+  int get_reg_count() {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      return 32;
+    } else {
+      return 16;
+    }
+  }
+
+  Register get_stack_reg() {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      return SP;
+    } else {
+      return RSP;
+    }
+  }
+
+  Register get_return_reg() {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      return X0;
+    } else {
+      return RAX;
+    }
+  }
+
   /*!
    * Should allow emitter tests which run code to do the right thing on windows.
    */
   Register get_c_abi_arg_reg(int i) {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      switch (i) {
+        case 0:
+          return X0;
+        case 1:
+          return X1;
+        case 2:
+          return X2;
+        case 3:
+          return X3;
+        case 4:
+          return X4;
+        case 5:
+          return X5;
+        case 6:
+          return X6;
+        case 7:
+          return X7;
+        default:
+          throw std::runtime_error("Invalid ARM64 arg register index");
+      }
+    }
     // TODO ARM64 - x86 specific
 #ifdef _WIN32
     switch (i) {
