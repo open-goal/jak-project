@@ -6,12 +6,13 @@
 
 ;; DECOMP BEGINS
 
-;; Animation alignment turns motion authored on the skeleton's alignment joint into movement of the
-;; owning process. Each update samples joint 1, decomposes its matrix, and measures translation,
-;; scale, and rotation relative to the previous sample. The delta is disabled when the animation
-;; changes or crosses a loop boundary, where subtracting unrelated samples would create a false
-;; jump. matrix and transform use index zero for the current sample and index one for the previous
-;; sample.
+;; Animation alignment turns motion authored on the skeleton's alignment joint
+;; into movement of the owning process. Each update samples the align joint and
+;; measures translation, scale, and rotation relative to the previous sample. 
+;; The delta is disabled when the animation changes or crosses a
+;; loop boundary, where subtracting the two samples would create a false jump.
+;; matrix and transform use index 0 for the current sample and index 1 for the
+;; previous sample.
 
 (defmethod compute-alignment! ((this align-control))
   "Sample the skeleton's alignment joint and return its translation, scale, and rotation change
@@ -36,8 +37,7 @@
                (go process-drawable-art-error "align joint-anim")
                (abandon-thread)
                0))))))
-    ;; A new clip has no matching previous sample. A looping controller also has a discontinuity
-    ;; when its frame change runs opposite its playback direction.
+    ;; Disable alignment on frame-group switching, looping, or starting a new animation.
     (let* ((root-channel (-> this process skel root-channel 0))
            (current-frame-group (-> root-channel frame-group))
            (current-frame (-> root-channel frame-num)))
@@ -52,45 +52,36 @@
       (set! (-> this frame-num) current-frame))
     ;; Shift the decomposed transform and source matrix into the previous-sample slots.
     (mem-copy! (the-as pointer (-> this transform 1)) (the-as pointer (-> this transform)) 48)
-    (quaternion-copy! (the-as quaternion (-> this transform 1 rot)) (-> this align quat))
+    (quaternion-copy! (-> this transform 1 quat) (-> this align quat))
     (set! (-> this transform 1 scale quad) (-> this align scale quad))
-    (let* ((previous-matrix-vectors (-> this matrix 1 vector))
-           (prior-matrix-samples (-> this matrix))
-           (current-matrix-row-0 (-> prior-matrix-samples 0 vector 0 quad))
-           (current-matrix-row-1 (-> prior-matrix-samples 0 vector 1 quad))
-           (current-matrix-row-2 (-> prior-matrix-samples 0 vector 2 quad))
-           (current-matrix-row-3 (-> prior-matrix-samples 0 vector 3 quad)))
-      (set! (-> previous-matrix-vectors 0 quad) current-matrix-row-0)
-      (set! (-> previous-matrix-vectors 1 quad) current-matrix-row-1)
-      (set! (-> previous-matrix-vectors 2 quad) current-matrix-row-2)
-      (set! (-> previous-matrix-vectors 3 quad) current-matrix-row-3))
+    (matrix-copy! (-> this matrix 1) (-> this matrix 0))
+
     ;; Evaluate the alignment joint, copy its bone matrix, and apply the process root scale to its
     ;; authored translation.
     (let ((alignment-joint (-> this process node-list data 1)))
+      ;; Interpolating the align transform between animations will introduce fake alignment motion due to
+      ;; any offset between the two animations, proportional to blend speed.
+      ;; This "no-push" evaluation mode is a clever solution. A single group of animations are still interpolated,
+      ;; but cross-fades between animations (fade in/fade out) are not.
+      ;; For example, if there's a mix of run-left and run-straight, we'll interpolate the alignment.
+      ;; But, if were to fade into a "jump" by doing a (push jump), (stack) on top of the run, 
+      ;; the "no-push" mode would make the jump animation override the run animation.
+      ;; this is only applied for the alignment matrix.
       (cspace<-matrix-no-push-joint! alignment-joint (-> this process skel))
-      (let* ((matrix-samples (-> this matrix))
-             (bone-matrix-vectors (-> alignment-joint bone transform))
-             (bone-matrix-row-0 (-> bone-matrix-vectors vector 0 quad))
-             (bone-matrix-row-1 (-> bone-matrix-vectors vector 1 quad))
-             (bone-matrix-row-2 (-> bone-matrix-vectors vector 2 quad))
-             (bone-matrix-row-3 (-> bone-matrix-vectors vector 3 quad)))
-        (set! (-> matrix-samples 0 vector 0 quad) bone-matrix-row-0)
-        (set! (-> matrix-samples 0 vector 1 quad) bone-matrix-row-1)
-        (set! (-> matrix-samples 0 vector 2 quad) bone-matrix-row-2)
-        (set! (-> matrix-samples 0 vector 3 quad) bone-matrix-row-3))
+      (matrix-copy! (-> this matrix 0) (-> alignment-joint bone transform))
       (vector*! (-> this transform 0 trans) (-> alignment-joint bone transform vector 3) (-> this process root scale)))
     ;; Decompose the current sample and measure it relative to the previous one. Removing the
     ;; per-axis scale before matrix->quaternion leaves a pure rotation matrix.
     (vector-! (-> this delta trans) (-> this transform 0 trans) (-> this transform 1 trans))
     (set-vector! (-> this align scale)
-                 (vector-length (the-as vector (-> this matrix)))
+                 (vector-length (-> this matrix 0 vector 0))
                  (vector-length (-> this matrix 0 vector 1))
                  (vector-length (-> this matrix 0 vector 2))
                  1.0)
     (vector-! (-> this delta scale) (-> this align scale) (-> this transform 1 scale))
     (let ((inverse-scale-matrix (matrix-inv-scale! (new 'stack-no-clear 'matrix) (-> this align scale))))
       (quaternion-normalize! (matrix->quaternion (-> this align quat) (matrix*! inverse-scale-matrix (-> this matrix 0) inverse-scale-matrix))))
-    (let ((inverse-previous-rotation (quaternion-inverse! (new 'stack-no-clear 'quaternion) (the-as quaternion (-> this transform 1 rot)))))
+    (let ((inverse-previous-rotation (quaternion-inverse! (new 'stack-no-clear 'quaternion) (-> this transform 1 quat))))
       (quaternion-normalize! (quaternion*! (-> this delta quat) inverse-previous-rotation (-> this align quat))))
     (-> this delta)))
 
@@ -130,7 +121,7 @@
         (vector-xz-normalize! velocity limited-speed))))
   this)
 
-(defmethod align-vel-and-quat-only! ((this align-control) (options align-opts) (desired-travel vector) (unused int) (y-scale float) (animation-speed-scale float))
+(defmethod align-for-travel! ((this align-control) (options align-opts) (desired-travel vector) (unused float) (y-scale float) (animation-speed-scale float))
   "Apply selected parts of the sampled root motion directly to the process root. The Y velocity
    uses y-scale. XZ follows desired-travel, with per-frame distance limited by both desired-travel's
    length and the animation delta's length times animation-speed-scale before conversion to speed. The
