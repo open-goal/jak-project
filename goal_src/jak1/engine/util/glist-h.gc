@@ -5,6 +5,26 @@
 
 ;; Very very weird linked list system.
 ;; TODO add examples because this is extremely confusing.
+;;
+;; It is the Amiga Exec list design - head, tail, tailpred, plus an element count
+;; - in which the header doubles as the two nodes that terminate the list, so
+;; insert and remove never need a special case for either end. Two glst-nodes
+;; overlay the header's words:
+;;
+;;   +0  head       node A, at +0: next = head, prev = tail
+;;   +4  tail       node B, at +4: next = tail, prev = tailpred
+;;   +8  tailpred
+;;  +12  numelem
+;;
+;; tail is permanently #f, so A has no prev and B has no next. A sits before the
+;; first element and B after the last, and neither is ever handed out as an
+;; element: walking forward from head stops when next is #f, meaning B has been
+;; reached (glst-end-of-list?), and walking back from tailpred stops when prev is
+;; #f, meaning A has been reached (glst-start-of-list?). glst-add-tail inserts
+;; before B and glst-add-head after A. An empty list is one whose tailpred still
+;; points at head, that is B.prev == A, which is what glst-empty? tests.
+;;
+;; glst-named-node adds a name, matching Exec's ln_Name.
 
 ;; DECOMP BEGINS
 
@@ -19,9 +39,9 @@
   ((privname string)))
 
 (deftype glst-list (structure)
-  ((head     glst-node)
-   (tail     glst-node)
-   (tailpred glst-node)
+  ((head     glst-node) ;; first element, or the terminator at +4 if empty
+   (tail     glst-node) ;; always #f: the forward and backward terminator
+   (tailpred glst-node) ;; last element, or the terminator at +0 if empty
    (numelem  int32))
   :allow-misaligned)
 
@@ -30,46 +50,46 @@
 ;; BEFORE the docstring, they end up being considered part of the body and the compiled output!
 ;; This amusing mistake is reproduced here.
 
-(defun glst-next ((arg0 glst-node))
+(defun glst-next ((node glst-node))
   (declare (inline))
   "return the next node in the list"
-  (-> arg0 next))
+  (-> node next))
 
-(defun glst-prev ((arg0 glst-node))
+(defun glst-prev ((node glst-node))
   (declare (inline))
   "return the previous node in the list"
-  (-> arg0 prev))
+  (-> node prev))
 
-(defun glst-head ((arg0 glst-list))
+(defun glst-head ((list glst-list))
   (declare (inline))
   "return the start of the list"
-  (-> arg0 head))
+  (-> list head))
 
-(defun glst-tail ((arg0 glst-list))
+(defun glst-tail ((list glst-list))
   (declare (inline))
   "return the tail of the list"
-  (-> arg0 tailpred))
+  (-> list tailpred))
 
-(defun glst-end-of-list? ((arg0 glst-node))
+(defun glst-end-of-list? ((node glst-node))
   (declare (inline))
   "is this node the end of the list. #t = end"
-  (not (-> arg0 next)))
+  (not (-> node next)))
 
-(defun glst-start-of-list? ((arg0 glst-node))
+(defun glst-start-of-list? ((node glst-node))
   (declare (inline))
   "is this node the start of the list. #t = start"
-  (not (-> arg0 prev)))
+  (not (-> node prev)))
 
-(defun glst-empty? ((arg0 glst-list))
+(defun glst-empty? ((list glst-list))
   (declare (inline))
   "is the list empty, #t = empty"
-  (= (-> arg0 tailpred) arg0))
+  (= (-> list tailpred) list))
 
-(defun glst-node-name ((arg0 glst-named-node))
-  "Return the name of the node"
-  (-> arg0 privname))
+(defun glst-node-name ((node glst-named-node))
+  "Return the name of the node. Unused; the callers read privname directly."
+  (-> node privname))
 
-(defun glst-set-name! ((arg0 glst-named-node) (arg1 string))
-  "Set the name of the node"
+(defun glst-set-name! ((node glst-named-node) (name string))
+  "Set the name of the node, and return it."
   (declare (inline))
-  (set! (-> arg0 privname) arg1))
+  (set! (-> node privname) name))

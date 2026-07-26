@@ -12,41 +12,109 @@
 
 ;; DECOMP BEGINS
 
-(defun sphere-cull ((arg0 vector))
-  #t
-  ;; todo
-  )
+;; A drawable is the common interface for renderer leaves, flat arrays, and the interior nodes of
+;; the draw trees. The base methods do no work so a tree traversal can dispatch without first
+;; identifying the concrete child type.
+;;
+;; Camera side-plane coefficients are transposed across four vectors: each vector supplies one
+;; coefficient for all four planes. VU0 therefore classifies a sphere or segment against every side
+;; plane in parallel. The guard planes enclose a wider volume and distinguish geometry that can be
+;; accepted directly from geometry that needs clipping.
 
-(defun guard-band-cull ((arg0 vector))
-  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf10 :class vf)
-         (vf20 :class vf)
-         (vf21 :class vf)
-         (vf22 :class vf)
-         (vf23 :class vf)
-         (vf9 :class vf))
-    (init-vf0-vector)
-    ;; og:preserve-this manually added
-    (let ((at-0 *math-camera*))
-      (.lvf vf20 (&-> at-0 guard-plane 0 quad))
-      (.lvf vf21 (&-> at-0 guard-plane 1 quad))
-      (.lvf vf22 (&-> at-0 guard-plane 2 quad))
-      (.lvf vf23 (&-> at-0 guard-plane 3 quad)))
-    (.lvf vf10 (&-> arg0 quad))
-    (.mul.x.vf acc vf20 vf10)
-    (.add.mul.y.vf acc vf21 vf10 acc)
-    (.add.mul.z.vf acc vf22 vf10 acc)
-    (.sub.mul.w.vf vf9 vf23 vf0 acc)
-    (.sub.w.vf vf9 vf9 vf10)
-    (.mov v1-0 vf9)
-    (.pcgtw v1-1 0 v1-0)
-    (.ppach v1-2 (the-as uint128 0) v1-1)
-    (nonzero? (the-as int v1-2))))
+(#when PC_PORT
+  (defun sphere-cull ((sphere vector))
+    "Test sphere against the four current view-frustum side planes. Return true unless the sphere
+     lies wholly outside any plane; the EE entry uses plane coefficients left in vf16-vf19 by its
+     caller."
+    ;; The PC renderers perform their own visibility rejection.
+    #t))
 
-(defun sphere-in-view-frustum? ((arg0 sphere))
-  (local-vars (r0-0 uint128) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
+;; Each caller loads vf16-vf19 with the transposed side-plane coefficients before entering the
+;; traversal. Each result lane is the signed center distance plus the sphere radius.
+(#unless PC_PORT
+  (defun sphere-cull ((sphere vector))
+    "Return true when the sphere intersects every current view-frustum half-space."
+    (local-vars (dist-bits uint128) (outside-bits uint128) (packed-outside uint128))
+    (rlet ((acc :reg acc)
+           (vu-zero :reg vf0)
+           (sphere-center-radius :reg vf10)
+           (plane-x :reg vf16)
+           (plane-y :reg vf17)
+           (plane-z :reg vf18)
+           (plane-offset :reg vf19)
+           (plane-distances :reg vf9))
+      (l.vf sphere-center-radius sphere)
+      (mul.x.vf acc plane-x sphere-center-radius)
+      (add.mul.y.vf acc plane-y sphere-center-radius acc)
+      (add.mul.z.vf acc plane-z sphere-center-radius acc)
+      (sub.mul.w.vf plane-distances plane-offset vu-zero acc)
+      (add.w.vf plane-distances plane-distances sphere-center-radius)
+      (m dist-bits plane-distances)
+      (pcgt.w outside-bits 0 dist-bits)
+      (ppach packed-outside 0 outside-bits)
+      (zero? (the-as int packed-outside)))))
+
+(#when PC_PORT
+  (defun guard-band-cull ((sphere vector))
+    "Return true when the sphere crosses an expanded guard-plane boundary and therefore needs
+     clipping."
+    (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf10 :class vf)
+           (vf20 :class vf)
+           (vf21 :class vf)
+           (vf22 :class vf)
+           (vf23 :class vf)
+           (vf9 :class vf))
+      (init-vf0-vector)
+      ;; og:preserve-this manually added
+      (let ((at-0 *math-camera*))
+        (.lvf vf20 (&-> at-0 guard-plane 0 quad))
+        (.lvf vf21 (&-> at-0 guard-plane 1 quad))
+        (.lvf vf22 (&-> at-0 guard-plane 2 quad))
+        (.lvf vf23 (&-> at-0 guard-plane 3 quad)))
+      (.lvf vf10 (&-> sphere quad))
+      (.mul.x.vf acc vf20 vf10)
+      (.add.mul.y.vf acc vf21 vf10 acc)
+      (.add.mul.z.vf acc vf22 vf10 acc)
+      (.sub.mul.w.vf vf9 vf23 vf0 acc)
+      (.sub.w.vf vf9 vf9 vf10)
+      (.mov v1-0 vf9)
+      (.pcgtw v1-1 0 v1-0)
+      (.ppach v1-2 (the-as uint128 0) v1-1)
+      (nonzero? (the-as int v1-2)))))
+
+;; dma-add-process-drawable leaves the transposed guard planes in vf20-vf23. Subtracting the radius
+;; identifies a sphere which is not wholly inside the expanded volume.
+(#unless PC_PORT
+  (defun guard-band-cull ((sphere vector))
+    "Return true when the sphere crosses an expanded guard-plane boundary and therefore needs
+     clipping."
+    (local-vars (dist-bits uint128) (outside-bits uint128) (packed-outside uint128))
+    (rlet ((acc :reg acc)
+           (vu-zero :reg vf0)
+           (sphere-center-radius :reg vf10)
+           (plane-x :reg vf20)
+           (plane-y :reg vf21)
+           (plane-z :reg vf22)
+           (plane-offset :reg vf23)
+           (plane-distances :reg vf9))
+      (l.vf sphere-center-radius sphere)
+      (mul.x.vf acc plane-x sphere-center-radius)
+      (add.mul.y.vf acc plane-y sphere-center-radius acc)
+      (add.mul.z.vf acc plane-z sphere-center-radius acc)
+      (sub.mul.w.vf plane-distances plane-offset vu-zero acc)
+      (sub.w.vf plane-distances plane-distances sphere-center-radius)
+      (m dist-bits plane-distances)
+      (pcgt.w outside-bits 0 dist-bits)
+      (ppach packed-outside 0 outside-bits)
+      (nonzero? (the-as int packed-outside)))))
+
+(defun sphere-in-view-frustum? ((sphere sphere))
+  "Return true unless sphere lies wholly outside one of *math-camera*'s four view-frustum side
+   planes."
+  (local-vars (distance-bits uint128) (outside-bits uint128) (packed-outside uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -56,25 +124,32 @@
          (vf5 :class vf)
          (vf6 :class vf))
     (init-vf0-vector)
-    (set! r0-0 (the uint128 0))
-    (let ((v1-0 *math-camera*))
-      (.lvf vf6 (&-> arg0 quad))
-      (.lvf vf1 (&-> v1-0 plane 0 quad))
-      (.lvf vf2 (&-> v1-0 plane 1 quad))
-      (.lvf vf3 (&-> v1-0 plane 2 quad))
-      (.lvf vf4 (&-> v1-0 plane 3 quad)))
+    (let ((view-camera *math-camera*))
+      (.lvf vf6 (&-> sphere quad))
+      (.lvf vf1 (&-> view-camera plane 0 quad))
+      (.lvf vf2 (&-> view-camera plane 1 quad))
+      (.lvf vf3 (&-> view-camera plane 2 quad))
+      (.lvf vf4 (&-> view-camera plane 3 quad)))
     (.mul.x.vf acc vf1 vf6)
     (.add.mul.y.vf acc vf2 vf6 acc)
     (.add.mul.z.vf acc vf3 vf6 acc)
     (.sub.mul.w.vf vf5 vf4 vf0 acc)
     (.add.w.vf vf5 vf5 vf6)
-    (.mov v1-1 vf5)
-    (.pcgtw v1-2 r0-0 v1-1)
-    (.ppach v1-3 r0-0 v1-2)
-    (zero? (the-as int v1-3))))
+    (.mov distance-bits vf5)
+    (.pcgtw outside-bits 0 distance-bits)
+    (.ppach packed-outside (the-as uint128 0) outside-bits)
+    (zero? (the-as int packed-outside))))
 
-(defun line-in-view-frustum? ((arg0 vector) (arg1 vector))
-  (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128) (a0-1 uint128) (a0-2 uint128) (a0-3 uint128))
+(defun line-in-view-frustum? ((start vector) (end vector))
+  "Conservatively test the segment from start to end against the four view-frustum side planes.
+   Return false only when both endpoints lie outside the same plane."
+  (local-vars
+    (start-distance-bits uint128)
+    (start-outside-bits uint128)
+    (start-outside-mask uint128)
+    (end-distance-bits uint128)
+    (end-outside-bits uint128)
+    (end-outside-mask uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf10 :class vf)
@@ -84,13 +159,13 @@
          (vf19 :class vf)
          (vf9 :class vf))
     (init-vf0-vector)
-    (let ((v1-0 *math-camera*))
-      (.lvf vf9 (&-> arg0 quad))
-      (.lvf vf10 (&-> arg1 quad))
-      (.lvf vf16 (&-> v1-0 plane 0 quad))
-      (.lvf vf17 (&-> v1-0 plane 1 quad))
-      (.lvf vf18 (&-> v1-0 plane 2 quad))
-      (.lvf vf19 (&-> v1-0 plane 3 quad)))
+    (let ((view-camera *math-camera*))
+      (.lvf vf9 (&-> start quad))
+      (.lvf vf10 (&-> end quad))
+      (.lvf vf16 (&-> view-camera plane 0 quad))
+      (.lvf vf17 (&-> view-camera plane 1 quad))
+      (.lvf vf18 (&-> view-camera plane 2 quad))
+      (.lvf vf19 (&-> view-camera plane 3 quad)))
     (.mul.x.vf acc vf16 vf9)
     (.add.mul.y.vf acc vf17 vf9 acc)
     (.add.mul.z.vf acc vf18 vf9 acc)
@@ -99,326 +174,321 @@
     (.add.mul.y.vf acc vf17 vf10 acc)
     (.add.mul.z.vf acc vf18 vf10 acc)
     (.sub.mul.w.vf vf10 vf19 vf0 acc)
-    (.mov v1-1 vf9)
-    (.pcgtw v1-2 0 v1-1)
-    (.ppach v1-3 (the-as uint128 0) v1-2)
-    (.mov a0-1 vf10)
-    (.pcgtw a0-2 0 a0-1)
-    (.ppach a0-3 (the-as uint128 0) a0-2)
-    (not (logtest? (the-as int v1-3) (the-as int a0-3)))))
+    (.mov start-distance-bits vf9)
+    (.pcgtw start-outside-bits 0 start-distance-bits)
+    (.ppach start-outside-mask (the-as uint128 0) start-outside-bits)
+    (.mov end-distance-bits vf10)
+    (.pcgtw end-outside-bits 0 end-distance-bits)
+    (.ppach end-outside-mask (the-as uint128 0) end-outside-bits)
+    (not (logtest? (the-as int start-outside-mask) (the-as int end-outside-mask)))))
 
-(defun vis-cull ((id int))
-  "Is this thing visible? By draw-node id."
-  ;; todo
-  #t
-  #|
-  (let* ((addr (scratchpad-ptr int8 :offset (+ #x3b80 (/ id 8)))) ;; address of the vis data
-         (vis-byte (-> addr 0)) ;; vis byte
-         (shift-amount (+ 56 (logand id 7)))
-         (shifted (shl vis-byte shift-amount))
-         )
-    (< shifted 0)
-    )
-  |#
-  )
+(#when PC_PORT
+  (defun vis-cull ((id int))
+    "Return the visibility bit for draw-node id from the current scratchpad visibility list."
+    ;; Error spheres are debug-only on PC, where the visibility list is not kept in scratchpad.
+    #t))
 
-(defun error-sphere ((arg0 drawable-error) (arg1 string))
+(#unless PC_PORT
+  (defun vis-cull ((id int))
+    "Return the visibility bit for draw-node id from the current scratchpad visibility list."
+    ;; Draw-node bits are stored most-significant-bit first within each signed byte.
+    (rlet ((scratch-base)
+           (byte-address)
+           (vis-byte)
+           (bit-index)
+           (shifted-byte))
+      (lui scratch-base #x7000)
+      (sra byte-address id 3)
+      (add byte-address byte-address scratch-base)
+      (l.b vis-byte byte-address #x38b0)
+      (and.i bit-index id 7)
+      (add.i bit-index bit-index 56)
+      (sll.v shifted-byte vis-byte bit-index)
+      (< shifted-byte 0))))
+
+(defun error-sphere ((item drawable-error) (name string))
+  "When artist error spheres are enabled and item passes visibility and frustum culling, draw its
+   red bounding sphere and label it with name."
   (when *artist-error-spheres*
-    (when (vis-cull (-> arg0 id))
-      (when (sphere-cull (-> arg0 bsphere))
-        (add-debug-sphere #t (bucket-id debug) (-> arg0 bsphere) (-> arg0 bsphere w) (new 'static 'rgba :r #x80 :a #x80))
-        (add-debug-text-3d #t (bucket-id debug-no-zbuf) arg1 (-> arg0 bsphere) (font-color white) (the-as vector2h #f)))))
+    (when (vis-cull (-> item id))
+      (when (sphere-cull (-> item bsphere))
+        (add-debug-sphere #t (bucket-id debug) (-> item bsphere) (-> item bsphere w) (new 'static 'rgba :r #x80 :a #x80))
+        (add-debug-text-3d #t (bucket-id debug-no-zbuf) name (-> item bsphere) (font-color white) (the-as vector2h #f)))))
   0
   (none))
 
 (defmethod login ((this drawable))
+  "Initialize a drawable after its linked data has been loaded."
   this)
 
-(defmethod draw ((this drawable) (arg0 drawable) (arg1 display-frame))
+(defmethod draw ((this drawable) (draw-data drawable) (frame display-frame))
+  "Submit this drawable's work for the current display frame."
   0
   (none))
 
-(defmethod collide-with-box ((this drawable) (arg0 int) (arg1 collide-list))
+(defmethod collide-with-box ((this drawable) (count int) (result collide-list))
+  "Traverse count contiguous siblings beginning at this and append collision
+   geometry intersecting the active collision box to result."
   0
   (none))
 
-(defmethod collide-y-probe ((this drawable) (arg0 int) (arg1 collide-list))
+(defmethod collide-y-probe ((this drawable) (count int) (result collide-list))
+  "Traverse count contiguous siblings beginning at this and append collision
+   geometry intersecting the active vertical probe to result."
   0
   (none))
 
-(defmethod collide-ray ((this drawable) (arg0 int) (arg1 collide-list))
+(defmethod collide-ray ((this drawable) (count int) (result collide-list))
+  "Traverse count contiguous siblings beginning at this and append collision geometry
+   intersecting the active swept-sphere ray to result."
   0
   (none))
 
-(defmethod collect-ambients ((this drawable) (arg0 sphere) (arg1 int) (arg2 ambient-list))
+(defmethod collect-ambients ((this drawable) (query-sphere sphere) (count int) (result ambient-list))
+  "Traverse count contiguous siblings beginning at this and append ambient
+   objects overlapping query-sphere to result."
   0
   (none))
 
 (defmethod collect-stats ((this drawable))
+  "Accumulate this drawable's renderer statistics."
   0
   (none))
 
-(defmethod debug-draw ((this drawable) (arg0 drawable) (arg1 display-frame))
+(defmethod debug-draw ((this drawable) (draw-data drawable) (frame display-frame))
+  "Submit debug geometry for this drawable."
   0
   (none))
 
-(defmethod draw ((this drawable-error) (arg0 drawable-error) (arg1 display-frame))
-  (error-sphere arg0 (-> arg0 name))
+(defmethod draw ((this drawable-error) (item drawable-error) (frame display-frame))
+  "Draw item's labeled error sphere for frame."
+  (error-sphere item (-> item name))
   (none))
 
-(defmethod unpack-vis ((this drawable) (arg0 (pointer int8)) (arg1 (pointer int8)))
-  arg1)
+(defmethod unpack-vis ((this drawable) (destination (pointer int8)) (source (pointer int8)))
+  "Decode this drawable's visibility bytes into destination and return the advanced source pointer."
+  source)
 
 (define *edit-instance* (the-as string #f))
 
 (when *debug-segment*
   (define *instance-mem-usage* (new 'debug 'memory-usage-block)))
 
-(defun-debug find-instance-by-name ((arg0 string))
-  (dotimes (s5-0 (-> *level* length))
-    (let ((v1-3 (-> *level* level s5-0)))
-      (when (= (-> v1-3 status) 'active)
-        (let ((s4-0 (-> v1-3 bsp drawable-trees)))
-          (dotimes (s3-0 (-> s4-0 length))
-            (let ((v1-7 (-> s4-0 trees s3-0)))
-              (case (-> v1-7 type)
+(defun-debug find-instance-by-name ((name string))
+  "Search every active level's shrub and TIE prototype arrays for name. Return the matching
+   prototype bucket, or false when no prototype matches."
+  (dotimes (level-index (-> *level* length))
+    (let ((active-level (-> *level* level level-index)))
+      (when (= (-> active-level status) 'active)
+        (let ((drawable-trees (-> active-level bsp drawable-trees)))
+          (dotimes (tree-index (-> drawable-trees length))
+            (let ((tree (-> drawable-trees trees tree-index)))
+              (case (-> tree type)
                 ((drawable-tree-instance-shrub)
-                 (let ((s2-0 (-> (the-as drawable-tree-instance-shrub v1-7) info prototype-inline-array-shrub)))
-                   (dotimes (s1-0 (-> s2-0 length))
-                     (if (string= arg0 (-> s2-0 data s1-0 name)) (return (-> s2-0 data s1-0))))))
+                 (let ((shrub-prototypes (-> (the-as drawable-tree-instance-shrub tree) info prototype-inline-array-shrub)))
+                   (dotimes (prototype-index (-> shrub-prototypes length))
+                     (if (string= name (-> shrub-prototypes data prototype-index name)) (return (-> shrub-prototypes data prototype-index))))))
                 ((drawable-tree-instance-tie)
-                 (let ((s2-1 (-> (the-as drawable-tree-instance-tie v1-7) prototypes prototype-array-tie)))
-                   (dotimes (s1-1 (-> s2-1 length))
-                     (if (string= arg0 (-> s2-1 array-data s1-1 name)) (return (-> s2-1 array-data s1-1)))))))))))))
+                 (let ((tie-prototypes (-> (the-as drawable-tree-instance-tie tree) prototypes prototype-array-tie)))
+                   (dotimes (prototype-index (-> tie-prototypes length))
+                     (if (string= name (-> tie-prototypes array-data prototype-index name))
+                       (return (-> tie-prototypes array-data prototype-index)))))))))))))
   (the-as prototype-bucket #f))
 
-(defun-debug find-instance-by-index ((arg0 type) (arg1 int) (arg2 bsp-header))
-  (dotimes (v1-0 (-> *level* length))
-    (let ((a3-3 (-> *level* level v1-0)))
-      (when (= (-> a3-3 status) 'active)
-        (let ((a3-4 (-> a3-3 bsp)))
-          (when (or (not arg2) (= a3-4 arg2))
-            (let ((a3-5 (-> a3-4 drawable-trees)))
-              (dotimes (t0-5 (-> a3-5 length))
-                (let ((t1-3 (-> a3-5 trees t0-5)))
-                  (case (-> t1-3 type)
+(defun-debug find-instance-by-index ((tree-type type) (prototype-index int) (bsp-filter bsp-header))
+  "Search active levels, optionally restricted to bsp-filter, for a shrub or TIE tree of tree-type
+   and return prototype-index from its prototype array. Return false when no tree matches;
+   prototype-index is not bounds checked."
+  (dotimes (level-index (-> *level* length))
+    (let ((active-level (-> *level* level level-index)))
+      (when (= (-> active-level status) 'active)
+        (let ((level-bsp (-> active-level bsp)))
+          (when (or (not bsp-filter) (= level-bsp bsp-filter))
+            (let ((drawable-trees (-> level-bsp drawable-trees)))
+              (dotimes (tree-index (-> drawable-trees length))
+                (let ((tree (-> drawable-trees trees tree-index)))
+                  (case (-> tree type)
                     ((drawable-tree-instance-shrub)
-                     (when (= arg0 (-> t1-3 type))
-                       (let ((v1-2 (-> (the-as drawable-tree-instance-shrub t1-3) info prototype-inline-array-shrub)))
-                         (return (-> v1-2 data arg1)))))
+                     (when (= tree-type (-> tree type))
+                       (let ((shrub-prototypes (-> (the-as drawable-tree-instance-shrub tree) info prototype-inline-array-shrub)))
+                         (return (-> shrub-prototypes data prototype-index)))))
                     ((drawable-tree-instance-tie)
-                     (when (= arg0 (-> t1-3 type))
-                       (let ((v1-5 (-> (the-as drawable-tree-instance-tie t1-3) prototypes prototype-array-tie)))
-                         (return (-> v1-5 array-data arg1))))))))))))))
+                     (when (= tree-type (-> tree type))
+                       (let ((tie-prototypes (-> (the-as drawable-tree-instance-tie tree) prototypes prototype-array-tie)))
+                         (return (-> tie-prototypes array-data prototype-index))))))))))))))
   (the-as prototype-bucket #f))
 
-(defun-debug prototype-bucket-type ((arg0 prototype-bucket))
-  (case (-> arg0 geometry 1 type)
+(defun-debug prototype-bucket-type ((prototype prototype-bucket))
+  "Classify prototype from the type of geometry slot 1, returning instance-shrubbery or
+   instance-tie."
+  (case (-> prototype geometry 1 type)
     ((prototype-shrubbery shrubbery) instance-shrubbery)
     ((prototype-tie prototype-tie tie-fragment) instance-tie)))
 
-(defun-debug prototype-bucket-recalc-fields ((arg0 prototype-bucket))
-  (case (prototype-bucket-type arg0)
-    ((instance-shrubbery) (set! (-> arg0 rdists x) (/ 1.0 (- (-> arg0 dists w) (-> arg0 dists x)))))
+(defun-debug prototype-bucket-recalc-fields ((prototype prototype-bucket))
+  "Recompute prototype's derived LOD distances after editing its near or far plane. TIE places the
+   mid plane one third of the way from near to far; shrub preserves its mid plane and uses the full
+   near-to-far span for rdists.x. Update the reciprocal band lengths, set the near stiffening distance
+   to half the near plane, and return prototype."
+  (case (prototype-bucket-type prototype)
+    ((instance-shrubbery) (set! (-> prototype rdists x) (/ 1.0 (- (-> prototype dists w) (-> prototype dists x)))))
     (else
-     (set! (-> arg0 dists z) (+ (-> arg0 dists x) (* 0.33333334 (- (-> arg0 dists w) (-> arg0 dists x)))))
-     (set! (-> arg0 rdists x) (/ 1.0 (- (-> arg0 dists z) (-> arg0 dists x))))))
-  (set! (-> arg0 rdists z) (/ 1.0 (- (-> arg0 dists w) (-> arg0 dists z))))
-  (set! (-> arg0 dists y) (/ (-> arg0 dists x) 2))
-  (set! (-> arg0 rdists y) (/ 1.0 (-> arg0 dists y)))
-  arg0)
+     (set! (-> prototype dists z)
+           (+ (-> prototype dists x) (* 0.33333334 (- (-> prototype dists w) (-> prototype dists x)))))
+     (set! (-> prototype rdists x) (/ 1.0 (- (-> prototype dists z) (-> prototype dists x))))))
+  (set! (-> prototype rdists z) (/ 1.0 (- (-> prototype dists w) (-> prototype dists z))))
+  (set! (-> prototype dists y) (/ (-> prototype dists x) 2))
+  (set! (-> prototype rdists y) (/ 1.0 (-> prototype dists y)))
+  prototype)
 
-#|
-(defun-debug draw-instance-info ((arg0 string))
-  (local-vars
-    (sv-16 int)
-    (sv-32 uint)
-    (sv-48 uint)
-    (sv-64 int)
-    (sv-80 int)
-    (sv-96 int)
-    (sv-112 int)
-    (sv-128 int)
-    (sv-144 int)
-    )
-  (when (and *display-instance-info* *edit-instance*)
-    (let ((s5-0 (find-instance-by-name *edit-instance*)))
-      (when s5-0
-        (let ((s2-0 (prototype-bucket-type s5-0)))
-          (let ((s4-0 0))
-            0
-            (cond
-              ((= s2-0 instance-shrubbery)
-               (set! s4-0 595)
-               )
-              ((= s2-0 instance-tie)
-               (reset! *instance-mem-usage*)
-               (dotimes (s4-1 4)
-                 (when (nonzero? (-> s5-0 geometry s4-1))
-                   (let* ((a0-4 (-> s5-0 geometry s4-1))
-                          (t9-3 (method-of-object a0-4 mem-usage))
-                          (a1-0 *instance-mem-usage*)
-                          (v1-16 s4-1)
-                          )
-                     (t9-3 a0-4 a1-0 (logior (cond
-                                               ((= v1-16 1)
-                                                4
-                                                )
-                                               ((= v1-16 2)
-                                                8
-                                                )
-                                               ((= v1-16 3)
-                                                16
-                                                )
-                                               (else
-                                                 0
-                                                 )
-                                               )
-                                             2
-                                             )
-                           )
-                     )
-                   )
-                 )
-               (set! s4-0 (+ (calculate-total *instance-mem-usage*) 580))
-               )
-              )
-            (mem-usage s5-0 (reset! *instance-mem-usage*) 0)
-            (let ((v1-26 (calculate-total *instance-mem-usage*)))
-              (format
-                arg0
-                "~%~A ~A b @ #x~X ~,,2fK/~,,2fK~%"
-                s2-0
-                (-> s5-0 name)
-                s5-0
-                (* 0.0009765625 (the float v1-26))
-                (* 0.0009765625 (the float s4-0))
-                )
-              )
-            )
-          (format arg0 "near: ~m  mid: ~m  far: ~m~%" (-> s5-0 dists x) (-> s5-0 dists z) (-> s5-0 dists w))
-          (let ((s3-1 0)
-                (s4-2 0)
-                )
-            (cond
-              ((= s2-0 instance-shrubbery)
-               (let ((f30-0 0.0))
-                 (format
-                   arg0
-                   "usage: vis: ~D  shurb: ~D  trans-shrub ~D  bill: ~D   in level: ~D~%"
-                   (-> s5-0 count 0)
-                   (-> s5-0 count 1)
-                   (-> s5-0 count 2)
-                   (-> s5-0 count 3)
-                   (-> s5-0 in-level)
-                   )
-                 (format arg0 "~%frag#     tris   dverts   strlen  tex~%")
-                 (let ((s1-1 (-> s5-0 geometry 1))
-                       (s2-1 (+ (-> s5-0 count 1) (-> s5-0 count 2)))
-                       )
-                   (dotimes (s0-0 (-> (the-as drawable-group s1-1) length))
-                     (set! sv-16 (shrub-num-tris (the-as shrubbery (+ (+ (* s0-0 32) 32) (the-as int s1-1)))))
-                     (set! sv-32 (-> (the-as prototype-shrubbery (+ (the-as uint s1-1) (* s0-0 32))) data 0 header data 2))
-                     (set! sv-48 (-> (the-as prototype-shrubbery (+ (the-as uint s1-1) (* s0-0 32))) data 0 header data 0))
-                     (format
-                       arg0
-                       "~5D     ~4D    ~5D   ~6f    ~D~%"
-                       s0-0
-                       sv-16
-                       sv-32
-                       (/ (* 2.0 (the float sv-16)) (the float (- sv-32 (the-as uint sv-16))))
-                       sv-48
-                       )
-                     (+! s3-1 sv-16)
-                     (+! s4-2 sv-32)
-                     (set! f30-0
-                           (+ 29.0
-                              (* 5.5 (the float (- sv-32 (the-as uint sv-16))))
-                              (* 22.0 (the float sv-48))
-                              (* 8.0 (the float sv-32))
-                              (* 53.0 (the float (/ (+ s2-1 9) (the-as uint 10))))
-                              (* (the float s2-1) (+ 15.0 (* 5.0 (the float sv-48)) (* 13.5 (the float sv-32))))
-                              f30-0
-                              )
-                           )
-                     )
-                   (format
-                     arg0
-                     "total     ~4D    ~5D   ~6f    ~D  speed: ~f~%"
-                     s3-1
-                     s4-2
-                     (/ (* 2.0 (the float s3-1)) (the float (- s4-2 s3-1)))
-                     (-> s5-0 utextures)
-                     (/ f30-0 (* (the float s2-1) (the float s3-1)))
-                     )
-                   )
-                 )
-               )
-              ((= s2-0 instance-tie)
-               (set! sv-144 0)
-               (let ((s1-2 0)
-                     (s0-1 0)
-                     (s2-2 0)
-                     )
-                 (format arg0 "~%level   visible  frags   tris   dverts   strlen  tex  ttris~%")
-                 (set! sv-64 1)
-                 (set! sv-80 3)
-                 (while (>= sv-80 sv-64)
-                   (let ((v1-65 (-> s5-0 geometry sv-64)))
-                     (set! sv-96 0)
-                     (set! sv-112 0)
-                     (set! sv-128 0)
-                     (dotimes (a0-23 (-> (the-as prototype-tie v1-65) length))
-                       (set! sv-96 (+ sv-96 (l.hu (+ (the-as uint v1-65) (* a0-23 64) 68))))
-                       (set! sv-112 (+ sv-112 (l.hu (+ (the-as uint v1-65) (* a0-23 64) 70))))
-                       (set! sv-128 (+ sv-128 (l.hu (+ (the-as uint v1-65) (* a0-23 64) 60))))
-                       )
-                     (set! sv-144 (+ sv-144 (-> s5-0 count sv-64)))
-                     (format arg0 "~5D  ~7D  ~5D   ~5D" sv-64 (-> s5-0 count sv-64) (-> (the-as prototype-tie v1-65) length) sv-96)
-                     )
-                   (format
-                     arg0
-                     "    ~5D   ~6f  ~3D  ~5D~%"
-                     sv-112
-                     (/ (* 2.0 (the float sv-96)) (the float (- sv-112 sv-96)))
-                     sv-128
-                     (* (the-as uint sv-96) (-> s5-0 count sv-64))
-                     )
-                   (+! s1-2 (* (the-as uint sv-96) (-> s5-0 count sv-64)))
-                   (+! s0-1 (* (the-as uint sv-112) (-> s5-0 count sv-64)))
-                   (+! s3-1 sv-96)
-                   (+! s4-2 sv-112)
-                   (+! s2-2 sv-128)
-                   (set! sv-64 (+ sv-64 1))
-                   )
-                 (let ((t9-18 format)
-                       (a0-39 arg0)
-                       (a1-22 "total  ~7D/~3D      ~5D")
-                       (a3-11 (-> s5-0 in-level))
-                       )
-                   (t9-18 a0-39 a1-22 sv-144 a3-11 s3-1)
-                   )
-                 (format
-                   arg0
-                   "    ~5D   ~6f  ~3D  ~5D~%"
-                   s4-2
-                   (/ (* 2.0 (the float s1-2)) (the float (- s0-1 s1-2)))
-                   s2-2
-                   s1-2
-                   )
-                 )
-               )
-              )
-            )
-          )
-        )
-      )
-    )
-  (none)
-  )
-|#
+(#unless PC_PORT
+  (defun-debug draw-instance-info ((output string))
+    "When instance statistics are enabled and *edit-instance* names a prototype, print its memory
+   use, LOD distances, instance counts, and per-geometry triangle, displayed-vertex, strip-length, and
+   texture statistics to output. Do nothing when the selection is absent."
+    (local-vars
+      (lod int)
+      (last-lod int)
+      (tie-triangle-count int)
+      (tie-displayed-vertex-count int)
+      (tie-texture-count int)
+      (visible-instance-count int))
+    (when (and *display-instance-info* *edit-instance*)
+      (let ((prototype (find-instance-by-name *edit-instance*)))
+        (when prototype
+          (let ((instance-type (prototype-bucket-type prototype)))
+            (let ((geometry-bytes 0))
+              0
+              (cond
+                ((= instance-type instance-shrubbery) (set! geometry-bytes 595))
+                ((= instance-type instance-tie)
+                 (reset! *instance-mem-usage*)
+                 (dotimes (s4-1 4)
+                   (when (nonzero? (-> prototype geometry s4-1))
+                     (let* ((a0-4 (-> prototype geometry s4-1))
+                            (t9-3 (method-of-object a0-4 mem-usage))
+                            (a1-0 *instance-mem-usage*)
+                            (v1-16 s4-1))
+                       (t9-3 a0-4
+                             a1-0
+                             (logior (cond
+                                       ((= v1-16 1) 4)
+                                       ((= v1-16 2) 8)
+                                       ((= v1-16 3) 16)
+                                       (else 0))
+                                     2)))))
+                 (set! geometry-bytes (+ (calculate-total *instance-mem-usage*) 580))))
+              (mem-usage prototype (reset! *instance-mem-usage*) 0)
+              (let ((prototype-bytes (calculate-total *instance-mem-usage*)))
+                (format output
+                        "~%~A ~A b @ #x~X ~,,2fK/~,,2fK~%"
+                        instance-type
+                        (-> prototype name)
+                        prototype
+                        (* 0.0009765625 (the float prototype-bytes))
+                        (* 0.0009765625 (the float geometry-bytes)))))
+            (format output "near: ~m  mid: ~m  far: ~m~%" (-> prototype dists x) (-> prototype dists z) (-> prototype dists w))
+            (let ((total-triangles 0)
+                  (total-displayed-vertices 0))
+              (cond
+                ((= instance-type instance-shrubbery)
+                 (let ((estimated-cost 0.0))
+                   (format output
+                           "usage: vis: ~D  shurb: ~D  trans-shrub ~D  bill: ~D   in level: ~D~%"
+                           (-> prototype count 0)
+                           (-> prototype count 1)
+                           (-> prototype count 2)
+                           (-> prototype count 3)
+                           (-> prototype in-level))
+                   (format output "~%frag#     tris   dverts   strlen  tex~%")
+                   (let ((shrub-geometry (-> prototype geometry 1))
+                         (shrub-instance-count (+ (-> prototype count 1) (-> prototype count 2))))
+                     (dotimes (fragment-index (-> (the-as drawable-group shrub-geometry) length))
+                       (let ((shrub-triangle-count (shrub-num-tris (the-as shrubbery (+ (+ (* fragment-index 32) 32) (the-as int shrub-geometry)))))
+                             (shrub-displayed-vertex-count (-> (the-as prototype-shrubbery (+ (the-as uint shrub-geometry) (* fragment-index 32))) data 0 header data 2))
+                             (shrub-texture-count (-> (the-as prototype-shrubbery (+ (the-as uint shrub-geometry) (* fragment-index 32))) data 0 header data 0)))
+                         (format output
+                                 "~5D     ~4D    ~5D   ~6f    ~D~%"
+                                 fragment-index
+                                 shrub-triangle-count
+                                 shrub-displayed-vertex-count
+                                 (/ (* 2.0 (the float shrub-triangle-count)) (the float (- shrub-displayed-vertex-count shrub-triangle-count)))
+                                 shrub-texture-count)
+                         (+! total-triangles shrub-triangle-count)
+                         (+! total-displayed-vertices shrub-displayed-vertex-count)
+                         (set! estimated-cost
+                               (+ 29.0
+                                  (* 5.5 (the float (- shrub-displayed-vertex-count shrub-triangle-count)))
+                                  (* 22.0 (the float shrub-texture-count))
+                                  (* 8.0 (the float shrub-displayed-vertex-count))
+                                  (* 53.0 (the float (/ (+ shrub-instance-count 9) (the-as uint 10))))
+                                  (* (the float shrub-instance-count)
+                                     (+ 15.0 (* 5.0 (the float shrub-texture-count)) (* 13.5 (the float shrub-displayed-vertex-count))))
+                                  estimated-cost))))
+                     (format output
+                             "total     ~4D    ~5D   ~6f    ~D  speed: ~f~%"
+                             total-triangles
+                             total-displayed-vertices
+                             (/ (* 2.0 (the float total-triangles)) (the float (- total-displayed-vertices total-triangles)))
+                             (-> prototype utextures)
+                             (/ estimated-cost (* (the float shrub-instance-count) (the float total-triangles)))))))
+                ((= instance-type instance-tie)
+                 (set! visible-instance-count 0)
+                 (let ((displayed-triangle-total 0)
+                       (displayed-vertex-total 0)
+                       (texture-total 0))
+                   (format output "~%level   visible  frags   tris   dverts   strlen  tex  ttris~%")
+                   (set! lod 1)
+                   (set! last-lod 3)
+                   (while (>= last-lod lod)
+                     (let ((tie-geometry (-> prototype geometry lod)))
+                       (set! tie-triangle-count 0)
+                       (set! tie-displayed-vertex-count 0)
+                       (set! tie-texture-count 0)
+                       (dotimes (fragment-index (-> (the-as prototype-tie tie-geometry) length))
+                         (+! tie-triangle-count (l.hu (+ (the-as uint tie-geometry) (* fragment-index 64) 68)))
+                         (+! tie-displayed-vertex-count (l.hu (+ (the-as uint tie-geometry) (* fragment-index 64) 70)))
+                         (+! tie-texture-count (l.hu (+ (the-as uint tie-geometry) (* fragment-index 64) 60))))
+                       (+! visible-instance-count (-> prototype count lod))
+                       (format output
+                               "~5D  ~7D  ~5D   ~5D"
+                               lod
+                               (-> prototype count lod)
+                               (-> (the-as prototype-tie tie-geometry) length)
+                               tie-triangle-count))
+                     (format output
+                             "    ~5D   ~6f  ~3D  ~5D~%"
+                             tie-displayed-vertex-count
+                             (/ (* 2.0 (the float tie-triangle-count)) (the float (- tie-displayed-vertex-count tie-triangle-count)))
+                             tie-texture-count
+                             (* (the-as uint tie-triangle-count) (-> prototype count lod)))
+                     (+! displayed-triangle-total (* (the-as uint tie-triangle-count) (-> prototype count lod)))
+                     (+! displayed-vertex-total (* (the-as uint tie-displayed-vertex-count) (-> prototype count lod)))
+                     (+! total-triangles tie-triangle-count)
+                     (+! total-displayed-vertices tie-displayed-vertex-count)
+                     (+! texture-total tie-texture-count)
+                     (+! lod 1))
+                   (format output "total  ~7D/~3D      ~5D" visible-instance-count (-> prototype in-level) total-triangles)
+                   (format output
+                           "    ~5D   ~6f  ~3D  ~5D~%"
+                           total-displayed-vertices
+                           (/ (* 2.0 (the float displayed-triangle-total)) (the float (- displayed-vertex-total displayed-triangle-total)))
+                           texture-total
+                           displayed-triangle-total)))))))))
+    (none)))
 
-(defun dma-add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
+;; The default dma-add-func for a process-drawable's draw-control (set in initialize-skeleton). Called
+;; once per actor during foreground drawing to: (1) frustum-cull the actor by its bounding sphere,
+;; (2) compute its lighting (sample the level's time-of-day light-group, blend between two lights across
+;; shadow boundaries, and fold in color-mult/color-emissive), (3) pick the LOD level by camera distance,
+;; (4) register which texture pages/levels the actor needs, and finally (5) call draw-bones to emit the
+;; merc skeletal-mesh DMA. Returns early (#f) whenever the actor is culled or too far for its max LOD.
+;; The lighting/clip/LOD math is all done in VU0 macro-ops on the scratchpad for speed.
+(defun dma-add-process-drawable ((actor process-drawable) (control draw-control) (flag symbol) (dma-buf dma-buffer))
+  "Cull actor by its bounding sphere, select and smoothly blend its time-of-day lighting and shadow
+   contribution, choose a distance LOD, register the required texture masks, set clipping and draw
+   status flags, and submit its bones to dma-buf. Queue a matrix refresh when changing to a
+   higher-detail skeleton. flag is the unused connection payload."
   (local-vars (v1-37 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -443,178 +513,179 @@
          (vf4 :class vf)
          (vf5 :class vf))
     (init-vf0-vector)
-    (let ((sv-16 arg0))
-      (logclear! (-> arg1 status) (draw-status was-drawn))
-      (when (not (logtest? (-> arg1 status) (draw-status hidden no-anim no-skeleton-update)))
-        ;; og:preserve-this scratchpad
-        (let ((s4-0 (-> (scratchpad-object terrain-context) work foreground joint-work temp-mtx vector 2))
-              (vu-lgt (the-as vu-lights (-> (scratchpad-object terrain-context) work foreground joint-work temp-mtx vector 3)))
-              (tod *time-of-day-context*))
-          (.lvf vf16 (&-> arg1 origin quad))
-          (.lvf vf17 (&-> arg1 bounds quad))
-          (.mul.x.vf.w vf16 vf16 vf0)
-          (.add.vf vf16 vf16 vf17)
-          (.svf (&-> s4-0 quad) vf16)
-          (.lvf vf28 (&-> arg1 color-mult quad))
-          (.lvf vf29 (&-> arg1 color-emissive quad))
-          (when (sphere-in-view-frustum? (the-as sphere s4-0))
-            (case (-> arg1 global-effect)
-              (((draw-effect title))
-               (when (not (-> tod title-updated))
-                 (set! (-> tod title-updated) #t)
-                 (let ((s0-0 (-> *math-camera* inv-camera-rot))
-                       (a1-1 (new 'stack-no-clear 'vector))
-                       (s1-0 (new 'stack-no-clear 'vector)))
-                   (set-vector! a1-1 0.612 0.5 -0.612 0.0)
-                   (set-vector! s1-0 -0.696 0.174 0.696 0.0)
-                   (vector-matrix*! (the-as vector (-> tod title-light-group)) a1-1 s0-0)
-                   (vector-matrix*! (-> tod title-light-group dir1 direction) s1-0 s0-0))
-                 (set-vector! (-> *time-of-day-context* current-shadow) 0.612 -0.5 -0.612 1.0))
-               (vu-lights<-light-group! vu-lgt (-> tod title-light-group)))
-              (else
-               (let ((interp (-> arg1 secondary-interp))
-                     (cur-interp (-> arg1 current-secondary-interp))
-                     (shadow-msk (-> arg1 shadow-mask))
-                     (lev-idx (-> arg1 level-index))
-                     (lgt (-> tod light-group (-> *target* draw light-index)))
-                     (cur-lgt (new 'stack-no-clear 'light-group)))
-                 (cond
-                   ((= (-> arg1 light-index) 255))
-                   ((= lev-idx 2) (set! lgt (-> tod light-group (-> arg1 light-index))))
-                   (else (set! lgt (-> tod moods lev-idx light-group (-> arg1 light-index)))))
-                 (when (not (or (= lev-idx 2) (zero? shadow-msk)))
-                   (let* ((lgt-msk-0 (-> tod light-masks-0 lev-idx))
-                          (lgt-msk-1 (-> tod light-masks-1 lev-idx))
-                          (lgt-interp (-> tod light-interp lev-idx))
-                          (a0-13 (logand lgt-msk-0 shadow-msk))
-                          (v1-18 (logand lgt-msk-1 shadow-msk)))
-                     (cond
-                       ((and (zero? a0-13) (zero? v1-18)))
-                       (else
-                        (set! interp
-                              (cond
-                                ((and (nonzero? a0-13) (nonzero? v1-18)) 1.0)
-                                ((zero? a0-13)
-                                 (quad-copy! (the-as pointer cur-lgt) (the-as pointer lgt) 12)
-                                 (set! lgt cur-lgt)
-                                 (set! (-> lgt dir1 levels x) 0.0)
-                                 lgt-interp)
-                                (else
-                                 (quad-copy! (the-as pointer cur-lgt) (the-as pointer lgt) 12)
-                                 (set! lgt cur-lgt)
-                                 (set! (-> lgt dir0 levels x) 0.0)
-                                 (- 1.0 lgt-interp))))))))
-                 (if *teleport* (set! cur-interp interp))
-                 (when (not (or (paused?) (= interp cur-interp)))
-                   (let ((f0-15 (- cur-interp interp)))
-                     (set! cur-interp
-                           (cond
-                             ((< (fabs f0-15) 0.2) interp)
-                             ((< f0-15 0.0) (+ 0.2 cur-interp))
-                             (else (+ -0.2 cur-interp)))))
-                   (set! (-> arg1 current-secondary-interp) cur-interp))
-                 (cond
-                   ((= cur-interp 0.0) (vu-lights<-light-group! vu-lgt lgt))
-                   (else
-                    (if (!= lgt cur-lgt) (quad-copy! (the-as pointer cur-lgt) (the-as pointer lgt) 12))
-                    (let ((f0-20 (- 1.0 cur-interp)))
-                      (set! (-> cur-lgt dir0 levels x) (* (-> cur-lgt dir0 levels x) f0-20))
-                      (set! (-> cur-lgt dir0 levels y) (* (-> cur-lgt dir0 levels y) f0-20))
-                      (set! (-> cur-lgt dir1 levels x) (* (-> cur-lgt dir1 levels x) f0-20))
-                      (set! (-> cur-lgt dir1 levels y) (* (-> cur-lgt dir1 levels y) f0-20))
-                      (set! (-> cur-lgt dir2 levels x) (* (-> cur-lgt dir2 levels x) f0-20))
-                      (set! (-> cur-lgt dir2 levels y) (* (-> cur-lgt dir2 levels y) f0-20)))
-                    (vu-lights<-light-group! vu-lgt cur-lgt))))
-               (.lvf vf2 (&-> vu-lgt color 0 quad))
-               (.lvf vf3 (&-> vu-lgt color 1 quad))
-               (.lvf vf4 (&-> vu-lgt color 2 quad))
-               (.lvf vf5 (&-> vu-lgt ambient quad))
-               (.mul.vf vf5 vf5 vf28)
-               (.mul.vf vf2 vf2 vf28)
-               (.mul.vf vf3 vf3 vf28)
-               (.mul.vf vf4 vf4 vf28)
-               (.add.vf vf5 vf5 vf29)
-               (.svf (&-> vu-lgt color 0 quad) vf2)
-               (.svf (&-> vu-lgt color 1 quad) vf3)
-               (.svf (&-> vu-lgt color 2 quad) vf4)
-               (.svf (&-> vu-lgt ambient quad) vf5)
-               (.mov v1-37 vf5)))
-            (if *display-lights* (add-debug-lights #t (bucket-id debug) (-> tod light-group 0 lights) (-> arg1 origin)))
-            (let ((at-0 *math-camera*))
-              (.lvf vf16 (&-> at-0 plane 0 quad))
-              (.lvf vf17 (&-> at-0 plane 1 quad))
-              (.lvf vf18 (&-> at-0 plane 2 quad))
-              (.lvf vf19 (&-> at-0 plane 3 quad))
-              (.lvf vf20 (&-> at-0 guard-plane 0 quad))
-              (.lvf vf21 (&-> at-0 guard-plane 1 quad))
-              (.lvf vf22 (&-> at-0 guard-plane 2 quad))
-              (.lvf vf23 (&-> at-0 guard-plane 3 quad))
-              (.lvf vf24 (&-> at-0 camera-rot vector 0 quad))
-              (.lvf vf25 (&-> at-0 camera-rot vector 1 quad))
-              (.lvf vf26 (&-> at-0 camera-rot vector 2 quad))
-              (.lvf vf27 (&-> at-0 camera-rot vector 3 quad)))
-            (let ((v1-42 (-> (scratchpad-object terrain-context) work foreground joint-work joint-stack data 1 vector 1)))
-              (.lvf vf15 (&-> s4-0 quad))
-              (.mul.w.vf acc vf27 vf0)
-              (.add.mul.x.vf acc vf24 vf15 acc)
-              (.add.mul.y.vf acc vf25 vf15 acc)
-              (.add.mul.z.vf.xyz vf15 vf26 vf15 acc)
-              (.mul.vf vf28 vf15 vf15)
-              (.max.w.vf vf29 vf0 vf0)
-              (.add.y.vf acc vf28 vf28)
-              (.add.mul.z.vf.x vf28 vf29 vf28 acc)
-              (.sqrt.vf Q vf28 :ftf #b0)
-              (.sub.w.vf.w vf28 vf0 vf15)
-              (.wait.vf)
-              (.add.vf.w vf15 vf28 Q)
-              (.svf (&-> v1-42 quad) vf15)
-              (when (< 0.0 (+ (-> v1-42 z) (-> arg1 bounds w)))
-                (let ((lod-to-use 0))
-                  (let ((cam-dist (-> v1-42 w)))
-                    (when (nonzero? (-> arg1 lod-set max-lod))
-                      (cond
-                        ((>= (-> arg1 force-lod) 0)
-                         (set! lod-to-use (-> arg1 force-lod))
-                         ;; og:preserve-this lod hacks
-                         (if (#if (not PC_PORT)
-                               (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) cam-dist)
-                               (and (-> *pc-settings* ps2-lod-dist?) (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) cam-dist)))
-                           (return #f)))
-                        (else
-                         (while (and (< lod-to-use (-> arg1 lod-set max-lod)) (< (-> arg1 lod-set lod lod-to-use dist) cam-dist))
-                           (+! lod-to-use 1)))))
-                    ;; og:preserve-this lod hacks!
-                    (with-pc
-                      (if (not (-> *pc-settings* ps2-lod-dist?))
-                        (set! lod-to-use (minmax (-> *pc-settings* lod-force-actor) 0 (-> arg1 lod-set max-lod)))))
-                    ;; og:preserve-this lod hacks
-                    (if (#if (not PC_PORT)
-                          (and (< (-> arg1 lod-set lod lod-to-use dist) cam-dist) (< (-> arg1 force-lod) 0))
-                          (and (-> *pc-settings* ps2-lod-dist?) (< (-> arg1 lod-set lod lod-to-use dist) cam-dist) (< (-> arg1 force-lod) 0)))
-                      (return #f))
-                    (let ((v1-64 (-> arg1 sink-group level))
-                          (a0-26 (+ (-> arg1 sink-group merc-sink foreground-texture-page) 6)))
-                      (when (#if (not PC_PORT)
-                              (not (logtest? (-> arg1 status) (draw-status do-not-check-distance)))
-                              (and (-> *pc-settings* ps2-lod-dist?) (not (logtest? (-> arg1 status) (draw-status do-not-check-distance)))))
-                        (if (< cam-dist (-> v1-64 closest-object a0-26)) (set! (-> v1-64 closest-object a0-26) cam-dist))
-                        (when (and (!= a0-26 6) (!= (-> arg1 level-index) 2))
-                          (let ((a1-45 (cond
-                                         ((< 102400.0 cam-dist) (-> arg1 mgeo header masks 0))
-                                         ((< 81920.0 cam-dist) (-> arg1 mgeo header masks 1))
-                                         (else (-> arg1 mgeo header masks 2)))))
-                            (logior! (-> v1-64 texture-mask a0-26) a1-45)))))
-                    (if (or (guard-band-cull s4-0) (< cam-dist (* 1.2 (-> *math-camera* d))))
-                      (logior! (-> arg1 status) (draw-status needs-clip))
-                      (logclear! (-> arg1 status) (draw-status needs-clip)))
-                    (logior! (-> arg1 status) (draw-status was-drawn))
-                    (if (logtest? (-> arg1 status) (draw-status skip-bones)) (return #f))
-                    (draw-bones arg1 arg3 cam-dist))
-                  (when (and (< lod-to-use (-> arg1 cur-lod)) (logtest? (-> arg1 status) (draw-status has-joint-channels)))
-                    ;; og:preserve-this added this check for PC port to prevent memory corruption
-                    (if (< (-> *matrix-engine* length) MATRIX_ENGINE_AMOUNT)
-                      (let ((v1-82 *matrix-engine*)) (set! (-> v1-82 (-> v1-82 length)) (process->handle sv-16)) (+! (-> v1-82 length) 1))))
-                  (lod-set! arg1 lod-to-use))))))))
+    (logclear! (-> control status) (draw-status was-drawn))
+    (when (not (logtest? (-> control status) (draw-status hidden no-anim no-skeleton-update)))
+      ;; og:preserve-this scratchpad
+      (let ((bounds-sphere (-> (scratchpad-object terrain-context) work foreground joint-work temp-mtx vector 2))
+            (scratch-lights (the-as vu-lights (-> (scratchpad-object terrain-context) work foreground joint-work temp-mtx vector 3)))
+            (time-of-day *time-of-day-context*))
+        (.lvf vf16 (&-> control origin quad))
+        (.lvf vf17 (&-> control bounds quad))
+        (.mul.x.vf.w vf16 vf16 vf0)
+        (.add.vf vf16 vf16 vf17)
+        (.svf (&-> bounds-sphere quad) vf16)
+        (.lvf vf28 (&-> control color-mult quad))
+        (.lvf vf29 (&-> control color-emissive quad))
+        (when (sphere-in-view-frustum? (the-as sphere bounds-sphere))
+          (case (-> control global-effect)
+            (((draw-effect title))
+             (when (not (-> time-of-day title-updated))
+               (set! (-> time-of-day title-updated) #t)
+               (let ((s0-0 (-> *math-camera* inv-camera-rot))
+                     (a1-1 (new 'stack-no-clear 'vector))
+                     (s1-0 (new 'stack-no-clear 'vector)))
+                 (set-vector! a1-1 0.612 0.5 -0.612 0.0)
+                 (set-vector! s1-0 -0.696 0.174 0.696 0.0)
+                 (vector-matrix*! (the-as vector (-> time-of-day title-light-group)) a1-1 s0-0)
+                 (vector-matrix*! (-> time-of-day title-light-group dir1 direction) s1-0 s0-0))
+               (set-vector! (-> *time-of-day-context* current-shadow) 0.612 -0.5 -0.612 1.0))
+             (vu-lights<-light-group! scratch-lights (-> time-of-day title-light-group)))
+            (else
+             (let ((target-light-interp (-> control secondary-interp))
+                   (current-light-interp (-> control current-secondary-interp))
+                   (shadow-mask (-> control shadow-mask))
+                   (light-level-index (-> control level-index))
+                   (selected-light (-> time-of-day light-group (-> *target* draw light-index)))
+                   (blended-light (new 'stack-no-clear 'light-group)))
+               (cond
+                 ((= (-> control light-index) 255))
+                 ((= light-level-index 2) (set! selected-light (-> time-of-day light-group (-> control light-index))))
+                 (else (set! selected-light (-> time-of-day moods light-level-index light-group (-> control light-index)))))
+               (when (not (or (= light-level-index 2) (zero? shadow-mask)))
+                 (let* ((shadow-mask-0 (-> time-of-day light-masks-0 light-level-index))
+                        (shadow-mask-1 (-> time-of-day light-masks-1 light-level-index))
+                        (shadow-interp (-> time-of-day light-interp light-level-index))
+                        (a0-13 (logand shadow-mask-0 shadow-mask))
+                        (v1-18 (logand shadow-mask-1 shadow-mask)))
+                   (cond
+                     ((and (zero? a0-13) (zero? v1-18)))
+                     (else
+                      (set! target-light-interp
+                            (cond
+                              ((and (nonzero? a0-13) (nonzero? v1-18)) 1.0)
+                              ((zero? a0-13)
+                               (quad-copy! (the-as pointer blended-light) (the-as pointer selected-light) 12)
+                               (set! selected-light blended-light)
+                               (set! (-> selected-light dir1 levels x) 0.0)
+                               shadow-interp)
+                              (else
+                               (quad-copy! (the-as pointer blended-light) (the-as pointer selected-light) 12)
+                               (set! selected-light blended-light)
+                               (set! (-> selected-light dir0 levels x) 0.0)
+                               (- 1.0 shadow-interp))))))))
+               (if *teleport* (set! current-light-interp target-light-interp))
+               (when (not (or (paused?) (= target-light-interp current-light-interp)))
+                 (let ((f0-15 (- current-light-interp target-light-interp)))
+                   (set! current-light-interp
+                         (cond
+                           ((< (fabs f0-15) 0.2) target-light-interp)
+                           ((< f0-15 0.0) (+ 0.2 current-light-interp))
+                           (else (+ -0.2 current-light-interp)))))
+                 (set! (-> control current-secondary-interp) current-light-interp))
+               (cond
+                 ((= current-light-interp 0.0) (vu-lights<-light-group! scratch-lights selected-light))
+                 (else
+                  (if (!= selected-light blended-light) (quad-copy! (the-as pointer blended-light) (the-as pointer selected-light) 12))
+                  (let ((f0-20 (- 1.0 current-light-interp)))
+                    (set! (-> blended-light dir0 levels x) (* (-> blended-light dir0 levels x) f0-20))
+                    (set! (-> blended-light dir0 levels y) (* (-> blended-light dir0 levels y) f0-20))
+                    (set! (-> blended-light dir1 levels x) (* (-> blended-light dir1 levels x) f0-20))
+                    (set! (-> blended-light dir1 levels y) (* (-> blended-light dir1 levels y) f0-20))
+                    (set! (-> blended-light dir2 levels x) (* (-> blended-light dir2 levels x) f0-20))
+                    (set! (-> blended-light dir2 levels y) (* (-> blended-light dir2 levels y) f0-20)))
+                  (vu-lights<-light-group! scratch-lights blended-light))))
+             (.lvf vf2 (&-> scratch-lights color 0 quad))
+             (.lvf vf3 (&-> scratch-lights color 1 quad))
+             (.lvf vf4 (&-> scratch-lights color 2 quad))
+             (.lvf vf5 (&-> scratch-lights ambient quad))
+             (.mul.vf vf5 vf5 vf28)
+             (.mul.vf vf2 vf2 vf28)
+             (.mul.vf vf3 vf3 vf28)
+             (.mul.vf vf4 vf4 vf28)
+             (.add.vf vf5 vf5 vf29)
+             (.svf (&-> scratch-lights color 0 quad) vf2)
+             (.svf (&-> scratch-lights color 1 quad) vf3)
+             (.svf (&-> scratch-lights color 2 quad) vf4)
+             (.svf (&-> scratch-lights ambient quad) vf5)
+             (.mov v1-37 vf5)))
+          (if *display-lights* (add-debug-lights #t (bucket-id debug) (-> time-of-day light-group 0 lights) (-> control origin)))
+          (let ((at-0 *math-camera*))
+            (.lvf vf16 (&-> at-0 plane 0 quad))
+            (.lvf vf17 (&-> at-0 plane 1 quad))
+            (.lvf vf18 (&-> at-0 plane 2 quad))
+            (.lvf vf19 (&-> at-0 plane 3 quad))
+            (.lvf vf20 (&-> at-0 guard-plane 0 quad))
+            (.lvf vf21 (&-> at-0 guard-plane 1 quad))
+            (.lvf vf22 (&-> at-0 guard-plane 2 quad))
+            (.lvf vf23 (&-> at-0 guard-plane 3 quad))
+            (.lvf vf24 (&-> at-0 camera-rot vector 0 quad))
+            (.lvf vf25 (&-> at-0 camera-rot vector 1 quad))
+            (.lvf vf26 (&-> at-0 camera-rot vector 2 quad))
+            (.lvf vf27 (&-> at-0 camera-rot vector 3 quad)))
+          (let ((camera-space-position (-> (scratchpad-object terrain-context) work foreground joint-work joint-stack data 1 vector 1)))
+            (.lvf vf15 (&-> bounds-sphere quad))
+            (.mul.w.vf acc vf27 vf0)
+            (.add.mul.x.vf acc vf24 vf15 acc)
+            (.add.mul.y.vf acc vf25 vf15 acc)
+            (.add.mul.z.vf.xyz vf15 vf26 vf15 acc)
+            (.mul.vf vf28 vf15 vf15)
+            (.max.w.vf vf29 vf0 vf0)
+            (.add.y.vf acc vf28 vf28)
+            (.add.mul.z.vf.x vf28 vf29 vf28 acc)
+            (.sqrt.vf Q vf28 :ftf #b0)
+            (.sub.w.vf.w vf28 vf0 vf15)
+            (.wait.vf)
+            (.add.vf.w vf15 vf28 Q)
+            (.svf (&-> camera-space-position quad) vf15)
+            (when (< 0.0 (+ (-> camera-space-position z) (-> control bounds w)))
+              (let ((lod-to-use 0))
+                (let ((camera-distance (-> camera-space-position w)))
+                  (when (nonzero? (-> control lod-set max-lod))
+                    (cond
+                      ((>= (-> control force-lod) 0)
+                       (set! lod-to-use (-> control force-lod))
+                       ;; og:preserve-this lod hacks
+                       (if (#if (not PC_PORT)
+                             (< (-> control lod-set lod (-> control lod-set max-lod) dist) camera-distance)
+                             (and (-> *pc-settings* ps2-lod-dist?) (< (-> control lod-set lod (-> control lod-set max-lod) dist) camera-distance)))
+                         (return #f)))
+                      (else
+                       (while (and (< lod-to-use (-> control lod-set max-lod)) (< (-> control lod-set lod lod-to-use dist) camera-distance))
+                         (+! lod-to-use 1)))))
+                  ;; og:preserve-this lod hacks!
+                  (with-pc
+                    (if (not (-> *pc-settings* ps2-lod-dist?))
+                      (set! lod-to-use (minmax (-> *pc-settings* lod-force-actor) 0 (-> control lod-set max-lod)))))
+                  ;; og:preserve-this lod hacks
+                  (if (#if (not PC_PORT)
+                        (and (< (-> control lod-set lod lod-to-use dist) camera-distance) (< (-> control force-lod) 0))
+                        (and (-> *pc-settings* ps2-lod-dist?)
+                             (< (-> control lod-set lod lod-to-use dist) camera-distance)
+                             (< (-> control force-lod) 0)))
+                    (return #f))
+                  (let ((v1-64 (-> control sink-group level))
+                        (a0-26 (+ (-> control sink-group merc-sink foreground-texture-page) 6)))
+                    (when (#if (not PC_PORT)
+                            (not (logtest? (-> control status) (draw-status do-not-check-distance)))
+                            (and (-> *pc-settings* ps2-lod-dist?) (not (logtest? (-> control status) (draw-status do-not-check-distance)))))
+                      (if (< camera-distance (-> v1-64 closest-object a0-26)) (set! (-> v1-64 closest-object a0-26) camera-distance))
+                      (when (and (!= a0-26 6) (!= (-> control level-index) 2))
+                        (let ((a1-45 (cond
+                                       ((< 102400.0 camera-distance) (-> control mgeo header masks 0))
+                                       ((< 81920.0 camera-distance) (-> control mgeo header masks 1))
+                                       (else (-> control mgeo header masks 2)))))
+                          (logior! (-> v1-64 texture-mask a0-26) a1-45)))))
+                  (if (or (guard-band-cull bounds-sphere) (< camera-distance (* 1.2 (-> *math-camera* d))))
+                    (logior! (-> control status) (draw-status needs-clip))
+                    (logclear! (-> control status) (draw-status needs-clip)))
+                  (logior! (-> control status) (draw-status was-drawn))
+                  (if (logtest? (-> control status) (draw-status skip-bones)) (return #f))
+                  (draw-bones control dma-buf camera-distance))
+                (when (and (< lod-to-use (-> control cur-lod)) (logtest? (-> control status) (draw-status has-joint-channels)))
+                  ;; og:preserve-this added this check for PC port to prevent memory corruption
+                  (if (< (-> *matrix-engine* length) MATRIX_ENGINE_AMOUNT)
+                    (let ((v1-82 *matrix-engine*)) (set! (-> v1-82 (-> v1-82 length)) (process->handle actor)) (+! (-> v1-82 length) 1))))
+                (lod-set! control lod-to-use)))))))
     0
     (none)))
 
@@ -634,28 +705,32 @@
 
 (set-vector! (-> *hud-lights* ambient) 0.5 0.5 0.5 1.0)
 
-(defun dma-add-process-drawable-hud ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
-  (logclear! (-> arg1 status) (draw-status was-drawn))
-  (when (not (logtest? (-> arg1 status) (draw-status hidden no-anim no-skeleton-update)))
-    (let ((v1-6 (the-as vu-lights (+ 64 (scratchpad-object int))))
-          (a0-3 *hud-lights*))
-      (set! (-> v1-6 direction 0 quad) (-> a0-3 direction 0 quad))
-      (set! (-> v1-6 direction 1 quad) (-> a0-3 direction 1 quad))
-      (set! (-> v1-6 direction 2 quad) (-> a0-3 direction 2 quad))
-      (set! (-> v1-6 color 0 quad) (-> a0-3 color 0 quad))
-      (set! (-> v1-6 color 1 quad) (-> a0-3 color 1 quad))
-      (set! (-> v1-6 color 2 quad) (-> a0-3 color 2 quad))
-      (set! (-> v1-6 ambient quad) (-> a0-3 ambient quad)))
-    (lod-set! arg1 0)
-    (logior! (-> arg1 status) (draw-status was-drawn))
-    (draw-bones-hud arg1 arg3))
+(defun dma-add-process-drawable-hud ((actor process-drawable) (control draw-control) (flag symbol) (dma-buf dma-buffer))
+  "Draw actor at LOD 0 with *hud-lights*. Skip hidden or disabled controls, copy the fixed lights to
+   foreground scratchpad, mark the actor drawn, and submit its HUD bones to dma-buf; flag is unused."
+  (logclear! (-> control status) (draw-status was-drawn))
+  (when (not (logtest? (-> control status) (draw-status hidden no-anim no-skeleton-update)))
+    (let ((scratch-lights (the-as vu-lights (+ 64 (scratchpad-object int))))
+          (hud-lights *hud-lights*))
+      (set! (-> scratch-lights direction 0 quad) (-> hud-lights direction 0 quad))
+      (set! (-> scratch-lights direction 1 quad) (-> hud-lights direction 1 quad))
+      (set! (-> scratch-lights direction 2 quad) (-> hud-lights direction 2 quad))
+      (set! (-> scratch-lights color 0 quad) (-> hud-lights color 0 quad))
+      (set! (-> scratch-lights color 1 quad) (-> hud-lights color 1 quad))
+      (set! (-> scratch-lights color 2 quad) (-> hud-lights color 2 quad))
+      (set! (-> scratch-lights ambient quad) (-> hud-lights ambient quad)))
+    (lod-set! control 0)
+    (logior! (-> control status) (draw-status was-drawn))
+    (draw-bones-hud control dma-buf))
   0
   (none))
 
 ;; og:preserve-this added
-(defun dma-add-process-drawable-hud-merc ((pd process-drawable) (dc draw-control) (arg2 symbol) (buf dma-buffer))
-  (logclear! (-> dc status) (draw-status was-drawn))
-  (when (not (logtest? (-> dc status) (draw-status hidden no-anim no-skeleton-update)))
+(defun dma-add-process-drawable-hud-merc ((actor process-drawable) (control draw-control) (flag symbol) (dma-buf dma-buffer))
+  "PC Merc variant of HUD submission: draw actor at LOD 0 with *hud-lights*, mark it drawn, and
+   submit HUD Merc bones to dma-buf unless its control is hidden or disabled; flag is unused."
+  (logclear! (-> control status) (draw-status was-drawn))
+  (when (not (logtest? (-> control status) (draw-status hidden no-anim no-skeleton-update)))
     (let ((vu-lights (scratchpad-object vu-lights :offset 64))
           (hud-lights *hud-lights*))
       (vector-copy! (-> vu-lights direction 0) (-> hud-lights direction 0))
@@ -665,66 +740,71 @@
       (vector-copy! (-> vu-lights color 1) (-> hud-lights color 1))
       (vector-copy! (-> vu-lights color 2) (-> hud-lights color 2))
       (vector-copy! (-> vu-lights ambient) (-> hud-lights ambient)))
-    (lod-set! dc 0)
-    (logior! (-> dc status) (draw-status was-drawn))
-    (draw-bones-hud-merc dc buf))
+    (lod-set! control 0)
+    (logior! (-> control status) (draw-status was-drawn))
+    (draw-bones-hud-merc control dma-buf))
   (none))
 
-(defun add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
-  ((-> arg1 dma-add-func) arg0 arg1 arg2 arg3)
+(defun add-process-drawable ((actor process-drawable) (control draw-control) (flag symbol) (dma-buf dma-buffer))
+  "Invoke control's configured DMA submission function for actor, forwarding flag and dma-buf."
+  ((-> control dma-add-func) actor control flag dma-buf)
   (none))
 
-(defun foreground-engine-execute ((arg0 engine) (arg1 display-frame) (arg2 int) (arg3 int))
-  (let ((s4-0 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+;; The sink address is the 96-byte level-group header, the selected 2608-byte level record, its
+;; foreground-sink-group at byte 176, and the selected 32-byte sink.
+(defun foreground-engine-execute ((draw-engine engine) (frame display-frame) (level-index int) (sink-index int))
+  "Execute one foreground draw engine for level-index and sink-index. Initialize bone DMA with the
+   selected level foreground sink, invoke the actor connections, finish the Merc stream, account Merc
+   and Generic DMA use, cue Generic Merc, and advance the shadow queue. frame is retained by the
+   draw-engine interface although this function uses the current display buffers."
+  (let ((merc-dma-start (-> *display* frames (-> *display* on-screen) frame global-buf base)))
     (if *debug-segment*
       (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
                  'draw
                  (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
-    (let ((a1-2 (+ (+ (* arg3 32) 272 (* 2608 arg2)) (the-as int *level*)))
-          (s2-1 (-> arg1 global-buf)))
-      ; (let ((v1-14 (-> s2-1 base)))
-      ;   (.sync.l)
-      ;   (.cache dxwbin v1-14 0)
-      ;   (.sync.l)
-      ;   (.cache dxwbin v1-14 1)
-      ;   )
-      ; (.sync.l)
+    (let ((sink-group (+ (+ (* sink-index 32) 272 (* 2608 level-index)) (the-as int *level*)))
+          (global-buf (-> frame global-buf)))
+      ;; Make the two indexed cache selections containing the packet head visible to DMA.
+      (#unless PC_PORT
+        (let ((cache-base (-> global-buf base))) (sync.l) (cache dxwbin cache-base 0) (sync.l) (cache dxwbin cache-base 1))
+        (sync.l))
       0
-      (bones-init s2-1 (the-as dma-foreground-sink-group a1-2))
-      (execute-connections arg0 s2-1))
+      (bones-init global-buf (the-as dma-foreground-sink-group sink-group))
+      (execute-connections draw-engine global-buf))
     (bones-wrapup)
     (if *debug-segment*
       (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
                  'draw
                  (new 'static 'rgba :r #xbe :g #x55 :b #x82 :a #x80)))
-    (let ((v1-24 *dma-mem-usage*))
-      (when (nonzero? v1-24)
-        (set! (-> v1-24 length) (max 36 (-> v1-24 length)))
-        (set! (-> v1-24 data 35 name) "pris-fragment")
-        (+! (-> v1-24 data 35 count) 1)
-        (+! (-> v1-24 data 35 used)
-            (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s4-0)))
-        (set! (-> v1-24 data 35 total) (-> v1-24 data 35 used)))))
-  ;; todo
+    (let ((dma-usage *dma-mem-usage*))
+      (when (nonzero? dma-usage)
+        (set! (-> dma-usage length) (max 36 (-> dma-usage length)))
+        (set! (-> dma-usage data 35 name) "pris-fragment")
+        (+! (-> dma-usage data 35 count) 1)
+        (+! (-> dma-usage data 35 used)
+            (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint merc-dma-start)))
+        (set! (-> dma-usage data 35 total) (-> dma-usage data 35 used)))))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
     (when (nonzero? (-> *merc-globals* first))
-      (let ((s4-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
-        (let ((a0-25 (-> (the-as (pointer uint32) (+ (the-as uint *level*) (* 2608 arg2) (* arg3 32))) 69)))
-          (generic-merc-add-to-cue (the-as generic-dma-foreground-sink a0-25)))
-        (let ((a0-26 *dma-mem-usage*))
-          (when (nonzero? a0-26)
-            (set! (-> a0-26 length) (max 87 (-> a0-26 length)))
-            (set! (-> a0-26 data 86 name) "pris-generic")
-            (+! (-> a0-26 data 86 count) 1)
-            (+! (-> a0-26 data 86 used)
-                (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s4-1)))
-            (set! (-> a0-26 data 86 total) (-> a0-26 data 86 used)))))))
+      (let ((generic-dma-start (-> *display* frames (-> *display* on-screen) frame global-buf base)))
+        (let ((generic-sink (-> (the-as (pointer uint32) (+ (the-as uint *level*) (* 2608 level-index) (* sink-index 32))) 69)))
+          (generic-merc-add-to-cue (the-as generic-dma-foreground-sink generic-sink)))
+        (let ((dma-usage *dma-mem-usage*))
+          (when (nonzero? dma-usage)
+            (set! (-> dma-usage length) (max 87 (-> dma-usage length)))
+            (set! (-> dma-usage data 86 name) "pris-generic")
+            (+! (-> dma-usage data 86 count) 1)
+            (+! (-> dma-usage data 86 used)
+                (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint generic-dma-start)))
+            (set! (-> dma-usage data 86 total) (-> dma-usage data 86 used)))))))
   (when #t
-    (let ((v1-41 *shadow-queue*)) (+! (-> v1-41 cur-run) 1)))
+    (let ((shadow-queue *shadow-queue*)) (+! (-> shadow-queue cur-run) 1)))
   0
   (none))
 
 (defun-debug main-debug-hook ()
+  "Execute debug-engine connections during gameplay; skip them while the master mode is menu or
+   progress."
   (when (not (or (= *master-mode* 'menu) (= *master-mode* 'progress)))
     (execute-connections *debug-engine* #f)
     ;; (draw-instance-info *stdcon*)
@@ -738,10 +818,10 @@
 (define *generic-effect-mode* 0)
 
 (defun real-main-draw-hook ()
-  "The main drawing function. This dispatches all renderers and is called directly from the display-loop
-  in main.gc"
+  "Build one frame's renderer DMA lists, dispatching the active background, foreground, shadow,
+   particle, sprite, HUD, and debug draw systems."
   (when *slow-frame-rate*
-    (dotimes (v1-2 50000000) ;; was 50000
+    (dotimes (delay-index (#if PC_PORT 50000000 #xc3500))
       (nop!)
       (nop!)
       (nop!)
@@ -755,12 +835,12 @@
   ;; reset and display dma memory stats.
   (when *debug-segment*
     (when (or *stats-memory* *stats-memory-short*)
-      (dotimes (gp-0 (-> *level* length))
-        (let ((s5-0 (-> *level* level gp-0)))
-          (if (= (-> s5-0 status) 'active) (print-mem-usage (compute-memory-usage s5-0 #f) s5-0 *stdcon*)))))
+      (dotimes (level-index (-> *level* length))
+        (let ((active-level (-> *level* level level-index)))
+          (if (= (-> active-level status) 'active) (print-mem-usage (compute-memory-usage active-level #f) active-level *stdcon*)))))
     (reset! *dma-mem-usage*))
-  ;; todo shrub matrix
-  ; (shrub-make-perspective-matrix (-> *math-camera* shrub-mat))
+  (#unless PC_PORT
+    (shrub-make-perspective-matrix (-> *math-camera* shrub-mat)))
   ;; initialize dma buckets that are generic sinks.
   ;; other renderers may output to these, so do them first.
   (generic-init-buffers)
@@ -773,23 +853,26 @@
   ;; level tfrag's upload if the level is running.
   (with-profiler "texture-upload"
     (when (logtest? *texture-enable-user* 1)
-      (dotimes (gp-1 (-> *level* length))
-        (let ((a1-2 (-> *level* level gp-1))) (if (= (-> a1-2 status) 'active) (add-tex-to-dma! *texture-pool* a1-2 0)))))
+      (dotimes (level-index (-> *level* length))
+        (let ((active-level (-> *level* level level-index)))
+          (if (= (-> active-level status) 'active) (add-tex-to-dma! *texture-pool* active-level 0)))))
     ;; level pris's upload if the level is running.
     (when (logtest? *texture-enable-user* 2)
-      (dotimes (gp-2 (-> *level* length))
-        (let ((a1-3 (-> *level* level gp-2))) (if (= (-> a1-3 status) 'active) (add-tex-to-dma! *texture-pool* a1-3 1)))))
+      (dotimes (level-index (-> *level* length))
+        (let ((active-level (-> *level* level level-index)))
+          (if (= (-> active-level status) 'active) (add-tex-to-dma! *texture-pool* active-level 1)))))
     ;; level shrubs upload if the level is loading.
     (when (logtest? *texture-enable-user* 4)
-      (dotimes (gp-3 (-> *level* length))
-        (let ((a1-4 (-> *level* level gp-3))) (if (= (-> a1-4 status) 'active) (add-tex-to-dma! *texture-pool* a1-4 2)))))
+      (dotimes (level-index (-> *level* length))
+        (let ((active-level (-> *level* level level-index)))
+          (if (= (-> active-level status) 'active) (add-tex-to-dma! *texture-pool* active-level 2)))))
     ;; alpha and common.
     (when (logtest? *texture-enable-user* 8)
       (let ((uploaded-common #f))
-        (dotimes (gp-4 (-> *level* length))
-          (let ((a1-5 (-> *level* level gp-4)))
-            (when (= (-> a1-5 status) 'active)
-              (add-tex-to-dma! *texture-pool* a1-5 3)
+        (dotimes (level-index (-> *level* length))
+          (let ((active-level (-> *level* level level-index)))
+            (when (= (-> active-level status) 'active)
+              (add-tex-to-dma! *texture-pool* active-level 3)
               (when (not uploaded-common)
                 (upload-one-common! *texture-pool* (-> *level* level0))
                 (set! uploaded-common #t)))))
@@ -798,8 +881,9 @@
           #t)))
     ;; water.
     (when (logtest? *texture-enable-user* 16)
-      (dotimes (gp-5 (-> *level* length))
-        (let ((a1-8 (-> *level* level gp-5))) (if (= (-> a1-8 status) 'active) (add-tex-to-dma! *texture-pool* a1-8 4))))))
+      (dotimes (level-index (-> *level* length))
+        (let ((active-level (-> *level* level level-index)))
+          (if (= (-> active-level status) 'active) (add-tex-to-dma! *texture-pool* active-level 4))))))
   ;;;;;;;;;;;;;
   ;; sky
   ;;;;;;;;;;;;;
@@ -837,17 +921,14 @@
   ;; update mood lighting, draw sky textures.
   (with-profiler "time-of-day"
     (update-time-of-day *time-of-day-context*))
-  ;; reset the closest object and desired texture masks for all levels.
-  ; (dotimes (v1-150 (-> *level* length))
-  ;   (let ((a0-59 (-> *level* level v1-150)))
-  ;     (when (= (-> a0-59 status) 'active)
-  ;       (dotimes (a1-38 9)
-  ;         (set! (-> a0-59 closest-object a1-38) 4095996000.0)
-  ;         (set! (-> a0-59 texture-mask a1-38) (the-as uint 0))
-  ;         )
-  ;       )
-  ;     )
-  ;   )
+  ;; Foreground drawing fills these with the nearest requested object and its texture pages.
+  (#unless PC_PORT
+    (dotimes (level-index (-> *level* length))
+      (let ((active-level (-> *level* level level-index)))
+        (when (= (-> active-level status) 'active)
+          (dotimes (sink-index 9)
+            (set! (-> active-level closest-object sink-index) 4095996000.0)
+            (set! (-> active-level texture-mask sink-index) (the-as uint 0)))))))
   (add-ee-profile-frame 'draw :r #x40 :b #x40 :a #x80)
   ;;;;;;; OCEAN
   (with-profiler "ocean"
@@ -874,8 +955,9 @@
     (end-perf-stat-collection)
     (when (not (paused?))
       (when *stats-poly*
-        (dotimes (gp-8 (-> *level* length))
-          (let ((v1-193 (-> *level* level gp-8))) (if (= (-> v1-193 status) 'active) (collect-stats (-> v1-193 bsp)))))
+        (dotimes (level-index (-> *level* length))
+          (let ((active-level (-> *level* level level-index)))
+            (if (= (-> active-level status) 'active) (collect-stats (-> active-level bsp)))))
         (print-terrain-stats))
       (if *display-perf-stats* (print-perf-stats)))
     (start-perf-stat-collection))
@@ -890,13 +972,13 @@
                                2
                                1))
   ;; handle extra processing for foreground
-  (let ((gp-9 (-> *display* frames (-> *display* on-screen) frame global-buf)))
+  (let ((foreground-buffer (-> *display* frames (-> *display* on-screen) frame global-buf)))
     (with-profiler "bones"
       (bones-mtx-calc-execute)) ;; skinning matrix calculation
     (with-profiler "gmerc"
-      (generic-merc-execute-all gp-9)) ;; mercneric conversion.
+      (generic-merc-execute-all foreground-buffer)) ;; mercneric conversion.
     (with-profiler "shadow"
-      (shadow-execute-all gp-9 *shadow-queue*))
+      (shadow-execute-all foreground-buffer *shadow-queue*))
     (with-profiler "eyes"
       (update-eyes)))
   ;; sprite draw
@@ -924,54 +1006,55 @@
   (none))
 
 (defun main-draw-hook ()
-  "Nice."
+  "Submit all renderer work for the current frame."
   (real-main-draw-hook)
   (none))
 
 (define *draw-hook* main-draw-hook)
 
-(defun debug-init-buffer ((arg0 bucket-id) (arg1 gs-zbuf) (arg2 gs-test))
-  "Initialize a bucket for debug draw with the given zbuf and test settings"
-  (let* ((t0-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (v1-3 (-> t0-0 base)))
-    (let* ((a3-3 t0-0)
-           (t1-0 (the-as object (-> a3-3 base))))
-      (set! (-> (the-as dma-packet t1-0) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet t1-0) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet t1-0) vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> a3-3 base) (&+ (the-as pointer t1-0) 16)))
-    (let* ((a3-4 t0-0)
-           (t1-2 (the-as object (-> a3-4 base))))
-      (set! (-> (the-as gs-gif-tag t1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
-      (set! (-> (the-as gs-gif-tag t1-2) regs) GIF_REGS_ALL_AD)
-      (set! (-> a3-4 base) (&+ (the-as pointer t1-2) 16)))
-    (let* ((a3-5 t0-0)
-           (t1-4 (-> a3-5 base)))
-      (set! (-> (the-as (pointer gs-zbuf) t1-4) 0) arg1)
-      (set! (-> (the-as (pointer gs-reg64) t1-4) 1) (gs-reg64 zbuf-1))
-      (set! (-> (the-as (pointer gs-test) t1-4) 2) arg2)
-      (set! (-> (the-as (pointer gs-reg64) t1-4) 3) (gs-reg64 test-1))
-      (set! (-> a3-5 base) (&+ t1-4 32)))
-    (let ((a3-6 (-> t0-0 base)))
-      (let ((a1-4 (the-as object (-> t0-0 base))))
-        (set! (-> (the-as dma-packet a1-4) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet a1-4) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet a1-4) vif1) (new 'static 'vif-tag))
-        (set! (-> t0-0 base) (&+ (the-as pointer a1-4) 16)))
+(defun debug-init-buffer ((debug-bucket bucket-id) (zbuf gs-zbuf) (test gs-test))
+  "Append a GIF packet that installs zbuf and test for debug draws in bucket."
+  ;; The packet sends three qwords through VIF DIRECT: an A+D GIF tag followed by ZBUF_1 and
+  ;; TEST_1 register writes. Its NEXT tail is inserted into the selected debug bucket so later
+  ;; debug geometry inherits these depth settings.
+  (let* ((global-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
+         (segment-start (-> global-buf base)))
+    (let ((packet-head (the-as object (-> global-buf base))))
+      (set! (-> (the-as dma-packet packet-head) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet packet-head) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet packet-head) vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> global-buf base) (&+ (the-as pointer packet-head) 16)))
+    (let ((gif-head (the-as object (-> global-buf base))))
+      (set! (-> (the-as gs-gif-tag gif-head) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
+      (set! (-> (the-as gs-gif-tag gif-head) regs) GIF_REGS_ALL_AD)
+      (set! (-> global-buf base) (&+ (the-as pointer gif-head) 16)))
+    (let ((register-data (-> global-buf base)))
+      (set! (-> (the-as (pointer gs-zbuf) register-data) 0) zbuf)
+      (set! (-> (the-as (pointer gs-reg64) register-data) 1) (gs-reg64 zbuf-1))
+      (set! (-> (the-as (pointer gs-test) register-data) 2) test)
+      (set! (-> (the-as (pointer gs-reg64) register-data) 3) (gs-reg64 test-1))
+      (set! (-> global-buf base) (&+ register-data 32)))
+    (let ((tail-tag (-> global-buf base)))
+      (let ((tail-packet (the-as object (-> global-buf base))))
+        (set! (-> (the-as dma-packet tail-packet) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> (the-as dma-packet tail-packet) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet tail-packet) vif1) (new 'static 'vif-tag))
+        (set! (-> global-buf base) (&+ (the-as pointer tail-packet) 16)))
       (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             arg0
-                             v1-3
-                             (the-as (pointer dma-tag) a3-6))))
+                             debug-bucket
+                             segment-start
+                             (the-as (pointer dma-tag) tail-tag))))
   (none))
 
 (define *screen-shot* #f)
 
 (defun display-frame-start ((disp display) (new-frame-idx int) (odd-even int))
-  "Set up a new frame. Call this before drawing anything.
-   new-frame-idx is the display frame that will be set up.
-   odd-even is the odd-even of the new frame"
-  ;; due to a HW bug in the PS2, you must set this.
-  ;;(set! (-> (the-as vif-bank #x10003c00) err me0) 1)
+  "Initialize display frame new-frame-idx for drawing field odd-even. Update timing and frame
+   counters, reset its DMA buffers and debug state, reserve ordered render buckets, initialize the
+   debug bucket, update the draw environment, and service the controllers."
+  ;; Mask the VIF1 error selected by ERR.me0; the hardware requires this workaround before a frame.
+  (#unless PC_PORT
+    (set! (-> (the-as vif-bank #x10003c00) err me0) 1))
   ;; figure out how fast we're going compared to the desired.
   ;; larger = slower than we should.
   ;; due to vsync, we should never go too fast.
@@ -1004,23 +1087,25 @@
     (set! (-> disp old-part-frame-counter) (-> disp part-frame-counter))
     (set! (-> disp old-actual-frame-counter) (-> disp actual-frame-counter))
     (set! (-> disp old-real-actual-frame-counter) (-> disp real-actual-frame-counter))
-    ;; get the increment in seconds unit.
-    (let ((scaled-seconds (* (the int time-ratio) (the int (-> disp time-factor)))))
+    ;; base, part, game, and real advance in 300-Hz time-frame ticks. integral counters advance by
+    ;; the number of vertical-sync intervals that elapsed, while actual counters advance once per
+    ;; rendered frame. The real counters continue while paused, and game also stops during movies.
+    (let ((scaled-ticks (* (the int time-ratio) (the int (-> disp time-factor)))))
       ;; tell the sparticle system
-      (set-particle-frame-time (min (seconds 0.04) scaled-seconds))
+      (set-particle-frame-time (min (seconds 0.04) scaled-ticks))
       ;; the "not real" frame counters only count when unpaused
       (when (not (paused?))
         ;; these count by scaled time
-        (+! (-> disp base-frame-counter) scaled-seconds)
-        (+! (-> disp part-frame-counter) scaled-seconds)
+        (+! (-> disp base-frame-counter) scaled-ticks)
+        (+! (-> disp part-frame-counter) scaled-ticks)
         ;; this counts actual frames, not seconds. Will count 2 frames if we lag
         (+! (-> disp integral-frame-counter) (the int time-ratio))
         ;; this counts actual frames, not doubling for lag. Will count 1 per frame drawn
         (+! (-> disp actual-frame-counter) 1)
         ;; game counter will count seconds that we're not in a movie
-        (if (not (movie?)) (+! (-> disp game-frame-counter) scaled-seconds)))
+        (if (not (movie?)) (+! (-> disp game-frame-counter) scaled-ticks)))
       ;; real counts like base, but increments when paused
-      (+! (-> disp real-frame-counter) scaled-seconds))
+      (+! (-> disp real-frame-counter) scaled-ticks))
     ;; actual frames, lag counts as 2x
     (+! (-> disp real-integral-frame-counter) (the int time-ratio)))
   ;; actual real frames (for real)
@@ -1035,43 +1120,45 @@
   (let ((new-frame (-> disp frames new-frame-idx frame)))
     ;; profile setup
     (when *debug-segment*
-      (dotimes (s2-0 2)
-        (reset (-> new-frame profile-bar s2-0))))
+      (dotimes (bar-index 2)
+        (reset (-> new-frame profile-bar bar-index))))
     ;; right now, the old frame is being rendered.
     ;; if we set *sync-dma*, we will wait here until it finishes rendering.
     (if *sync-dma* (sync-path 0 0))
     ;; reset the global dma buffer.
-    (let ((v1-56 (-> new-frame global-buf)))
-      (set! (-> v1-56 base) (-> v1-56 data))
-      (set! (-> v1-56 end) (&-> v1-56 data-buffer (-> v1-56 allocated-length))))
+    (let ((global-buf (-> new-frame global-buf)))
+      (set! (-> global-buf base) (-> global-buf data))
+      (set! (-> global-buf end) (&-> global-buf data-buffer (-> global-buf allocated-length))))
     ;; reset the debug dma buffer
     (when *debug-segment*
-      (let ((v1-59 (-> new-frame debug-buf)))
-        (set! (-> v1-59 base) (-> v1-59 data))
-        (set! (-> v1-59 end) (&-> v1-59 data-buffer (-> v1-59 allocated-length)))))
+      (let ((debug-buf (-> new-frame debug-buf)))
+        (set! (-> debug-buf base) (-> debug-buf data))
+        (set! (-> debug-buf end) (&-> debug-buf data-buffer (-> debug-buf allocated-length)))))
     ;; reset the calc buffer. This holds the buckets themselves and what is sent
     ;; to actually draw the frame.
-    (let ((v1-60 (-> new-frame calc-buf)))
-      (set! (-> v1-60 base) (-> v1-60 data))
-      (set! (-> v1-60 end) (&-> v1-60 data-buffer (-> v1-60 allocated-length))))
+    (let ((calc-buf (-> new-frame calc-buf)))
+      (set! (-> calc-buf base) (-> calc-buf data))
+      (set! (-> calc-buf end) (&-> calc-buf data-buffer (-> calc-buf allocated-length))))
     ;; the default buffer holds a DMA chain to fully reset the GS.
     ;; reinitialize it, just to be safe
     (default-buffer-init *default-regs-buffer*)
     ;; and add it to the very beginning of the calc buf
-    (let* ((v1-61 (-> new-frame calc-buf))
-           (a2-1 *default-regs-buffer*)
-           (a0-28 (the-as object (-> v1-61 base))))
-      (set! (-> (the-as dma-packet a0-28) dma) (new 'static 'dma-tag :id (dma-tag-id call) :addr (the-as int (-> a2-1 data))))
-      (set! (-> (the-as dma-packet a0-28) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a0-28) vif1) (new 'static 'vif-tag))
-      (set! (-> v1-61 base) (&+ (the-as pointer a0-28) 16)))
+    (let* ((calc-buf (-> new-frame calc-buf))
+           (default-regs *default-regs-buffer*)
+           (reset-call (the-as object (-> calc-buf base))))
+      (set! (-> (the-as dma-packet reset-call) dma)
+            (new 'static 'dma-tag :id (dma-tag-id call) :addr (the-as int (-> default-regs data))))
+      (set! (-> (the-as dma-packet reset-call) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet reset-call) vif1) (new 'static 'vif-tag))
+      (set! (-> calc-buf base) (&+ (the-as pointer reset-call) 16)))
     ;; could be used for debugging or something, but is set to nothing.
     (*pre-draw-hook* (-> new-frame calc-buf))
     ;; reset debugging stuff
     (when (not (paused?))
       (clear *stdcon1*)
       (debug-reset-buffers))
-    ;; add the buckets
+    ;; Reserve the ordered bucket heads at the front of calc-buf. Renderers may build their packets
+    ;; in any CPU order; inserting each packet into its bucket determines the GS draw order.
     (set! (-> new-frame bucket-group) (dma-buffer-add-buckets (-> new-frame calc-buf) BUCKET_COUNT)))
   ;; initialize the debug bucket
   (debug-init-buffer (bucket-id debug-no-zbuf)
@@ -1085,15 +1172,16 @@
   (none))
 
 (defun display-frame-finish ((disp display))
-  "End drawing. Call this after drawing everything.
-   Note that this does not start a DMA transfer, just finishes up the buffered data for
-   the frame."
+  "Finish the current frame's DMA lists, link its ordered render buckets, append the final DMA tag,
+   flush the cache, and return disp. This does not start the transfer."
   (let* ((this-frame (-> disp frames (-> disp on-screen) frame))
          (this-calc-buf (-> this-frame calc-buf)))
     ;; post draw stuff
     (tie-init-buffers this-calc-buf)
     (merc-vu1-init-buffers)
     (*post-draw-hook* (-> disp frames (-> disp on-screen) frame calc-buf))
+    ;; Close each bucket with the default GS-state reset and a NEXT tag, so state cannot leak from
+    ;; one rendering stage into the following stage.
     ;; iterate through all buckets and append a final GS state reset.
     (dotimes (bucket-idx BUCKET_COUNT)
       (let* ((this-global-buf (-> this-frame global-buf))
@@ -1123,6 +1211,9 @@
       (set! (-> (the-as dma-packet a0-10) vif0) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
       (set! (-> (the-as dma-packet a0-10) vif1) (new 'static 'vif-tag :irq #x1))
       (set! (-> v1-14 base) (&+ (the-as pointer a0-10) 16)))
+    ;; Each reserved head is a zero-length NEXT tag. An empty head jumps directly to the following
+    ;; bucket; a populated head enters its packet chain, whose tail returns to the following head.
+    ;; Patching the heads therefore makes the complete ordered frame one GIF DMA chain.
     ;; patch the buckets. Now sending the calc buf will send everything!
     (dma-buffer-patch-buckets (-> this-frame bucket-group) BUCKET_COUNT)
     ;; append the final END.
@@ -1149,7 +1240,8 @@
   disp)
 
 (defun determine-pause-mode ()
-  "Update pause system"
+  "Handle debug frame advance, pause input, controller-loss pause, and progress-screen
+   deactivation."
   ;; debug frame advance
   (when (and *debug-pause* (= *master-mode* 'pause))
     (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons start r2))
@@ -1181,14 +1273,8 @@
     `(set! *disasm-count* ,count)))
 
 (defun display-sync ((disp display))
-  "Switch frames! This assumes that you have called display-frame-finish on the current frame.
-   It will:
-    - wait for the current rendering frame to stop.
-    - do a vsync to get that frame on screen (possibly waiting up to 1 frame, if the prev frame
-                                              did not finish in time. This is why we drop to 30fps
-                                              as soon as we don't fit into 60 fps)
-    - start rendering the current frame
-    - initialize DMA buffers for the next frame drawing, advance to next frame"
+  "Wait for the previous render and vertical sync, apply pending video-mode changes, start the
+   current frame's DMA chain, update pause state, and initialize the next display frame."
   ;; wait for rendering to finish.
   (sync-path 0 0)
   ;; remember when.
@@ -1223,16 +1309,20 @@
     ;; begin rendering the next frame
     (let ((dma-buf-to-send (-> disp frames frame-idx frame calc-buf)))
       (when (nonzero? (dma-buffer-length dma-buf-to-send))
-        ;; was dma-send-chain originally.
         (#when PC_PORT
           (when (> *disasm-count* 0)
             (disasm-dma-list (the-as dma-packet (-> dma-buf-to-send data-buffer)) 'details #t #t -1)
             (-! *disasm-count* 1)))
-        (__send-gfx-dma-chain (the-as dma-bank-source #x10009000)
-                              (cond
-                                ;; some buffer for debugging, not used
-                                (*surrogate-dma-buffer* *surrogate-dma-buffer*)
-                                (else (-> dma-buf-to-send data-buffer))))))
+        (#if PC_PORT
+          (__send-gfx-dma-chain (the-as dma-bank-source #x10009000)
+                                (cond
+                                  ;; some buffer for debugging, not used
+                                  (*surrogate-dma-buffer* *surrogate-dma-buffer*)
+                                  (else (-> dma-buf-to-send data-buffer))))
+          (dma-buffer-send-chain (the-as dma-bank-source #x10009000)
+                                 (cond
+                                   (*surrogate-dma-buffer* *surrogate-dma-buffer*)
+                                   (else dma-buf-to-send))))))
     (determine-pause-mode)
     ;; update display frame
     (let ((next-frame (+ frame-idx 1)))
@@ -1251,29 +1341,31 @@
   )
 
 (defun-debug marks-cam-restore ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) 1672489.2)
-    (set! (-> a0-0 y) 60862.703)
-    (set! (-> a0-0 z) -13051605.0)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) -0.1783)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) 0.9839)
-    (set! (-> a1-0 vector 0 w) 0.0)
-    (set! (-> a1-0 vector 1 x) -0.0629)
-    (set! (-> a1-0 vector 1 y) 0.9979)
-    (set! (-> a1-0 vector 1 z) -0.0114)
-    (set! (-> a1-0 vector 1 w) 0.0)
-    (set! (-> a1-0 vector 2 x) -0.9819)
-    (set! (-> a1-0 vector 2 y) -0.064)
-    (set! (-> a1-0 vector 2 z) -0.178)
-    (set! (-> a1-0 vector 2 w) 0.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Restore Mark's saved Village3 camera pose and FOV, install its CPU, VU, and tfragment profiling
+   baselines, clear the saved statistic strings, and enable old-stat display."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) 1672489.2)
+    (set! (-> camera-position y) 60862.703)
+    (set! (-> camera-position z) -13051605.0)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) -0.1783)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) 0.9839)
+    (set! (-> camera-rotation vector 0 w) 0.0)
+    (set! (-> camera-rotation vector 1 x) -0.0629)
+    (set! (-> camera-rotation vector 1 y) 0.9979)
+    (set! (-> camera-rotation vector 1 z) -0.0114)
+    (set! (-> camera-rotation vector 1 w) 0.0)
+    (set! (-> camera-rotation vector 2 x) -0.9819)
+    (set! (-> camera-rotation vector 2 y) -0.064)
+    (set! (-> camera-rotation vector 2 z) -0.178)
+    (set! (-> camera-rotation vector 2 w) 0.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (send-event *camera* 'set-fov 17294.205)
   (clear *camera-old-level*)
   (format *camera-old-level* "village3")
@@ -1287,55 +1379,58 @@
   (none))
 
 (defun-debug eddie-cam-restore ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) -427963.66)
-    (set! (-> a0-0 y) 24967.182)
-    (set! (-> a0-0 z) 339465.53)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) -0.6026)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) 0.7979)
-    (set! (-> a1-0 vector 0 w) 0.0)
-    (set! (-> a1-0 vector 1 x) -0.1522)
-    (set! (-> a1-0 vector 1 y) 0.9816)
-    (set! (-> a1-0 vector 1 z) -0.1149)
-    (set! (-> a1-0 vector 1 w) 0.0)
-    (set! (-> a1-0 vector 2 x) -0.7833)
-    (set! (-> a1-0 vector 2 y) -0.1908)
-    (set! (-> a1-0 vector 2 z) -0.5915)
-    (set! (-> a1-0 vector 2 w) 0.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Restore Eddie's saved debug camera pose."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) -427963.66)
+    (set! (-> camera-position y) 24967.182)
+    (set! (-> camera-position z) 339465.53)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) -0.6026)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) 0.7979)
+    (set! (-> camera-rotation vector 0 w) 0.0)
+    (set! (-> camera-rotation vector 1 x) -0.1522)
+    (set! (-> camera-rotation vector 1 y) 0.9816)
+    (set! (-> camera-rotation vector 1 z) -0.1149)
+    (set! (-> camera-rotation vector 1 w) 0.0)
+    (set! (-> camera-rotation vector 2 x) -0.7833)
+    (set! (-> camera-rotation vector 2 y) -0.1908)
+    (set! (-> camera-rotation vector 2 z) -0.5915)
+    (set! (-> camera-rotation vector 2 w) 0.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (none))
 
 (defun-debug gregs-jungle-cam-restore ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) 1399233.0)
-    (set! (-> a0-0 y) 39027.11)
-    (set! (-> a0-0 z) -1485580.1)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) 0.9965)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) 0.0829)
-    (set! (-> a1-0 vector 0 w) 0.0)
-    (set! (-> a1-0 vector 1 x) -0.0021)
-    (set! (-> a1-0 vector 1 y) 0.9996)
-    (set! (-> a1-0 vector 1 z) 0.0253)
-    (set! (-> a1-0 vector 1 w) 0.0)
-    (set! (-> a1-0 vector 2 x) -0.0829)
-    (set! (-> a1-0 vector 2 y) -0.0254)
-    (set! (-> a1-0 vector 2 z) 0.9962)
-    (set! (-> a1-0 vector 2 w) 0.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Restore Greg's saved Jungle camera pose and FOV, install its CPU, VU, and tfragment profiling
+   baselines, and clear the saved statistic strings."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) 1399233.0)
+    (set! (-> camera-position y) 39027.11)
+    (set! (-> camera-position z) -1485580.1)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) 0.9965)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) 0.0829)
+    (set! (-> camera-rotation vector 0 w) 0.0)
+    (set! (-> camera-rotation vector 1 x) -0.0021)
+    (set! (-> camera-rotation vector 1 y) 0.9996)
+    (set! (-> camera-rotation vector 1 z) 0.0253)
+    (set! (-> camera-rotation vector 1 w) 0.0)
+    (set! (-> camera-rotation vector 2 x) -0.0829)
+    (set! (-> camera-rotation vector 2 y) -0.0254)
+    (set! (-> camera-rotation vector 2 z) 0.9962)
+    (set! (-> camera-rotation vector 2 w) 0.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (send-event *camera* 'set-fov 11650.845)
   (clear *camera-old-level*)
   (format *camera-old-level* "jungle")
@@ -1348,29 +1443,31 @@
   (none))
 
 (defun-debug gregs-village1-cam-restore ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) -511224.06)
-    (set! (-> a0-0 y) 157579.95)
-    (set! (-> a0-0 z) 764585.25)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) -0.9009)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) -0.4338)
-    (set! (-> a1-0 vector 0 w) 0.0)
-    (set! (-> a1-0 vector 1 x) 0.0984)
-    (set! (-> a1-0 vector 1 y) 0.9739)
-    (set! (-> a1-0 vector 1 z) -0.2043)
-    (set! (-> a1-0 vector 1 w) 0.0)
-    (set! (-> a1-0 vector 2 x) 0.4225)
-    (set! (-> a1-0 vector 2 y) -0.2268)
-    (set! (-> a1-0 vector 2 z) -0.8774)
-    (set! (-> a1-0 vector 2 w) 0.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Restore Greg's saved Village1 camera pose and FOV, install its CPU, VU, and tfragment profiling
+   baselines, and clear the saved statistic strings."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) -511224.06)
+    (set! (-> camera-position y) 157579.95)
+    (set! (-> camera-position z) 764585.25)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) -0.9009)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) -0.4338)
+    (set! (-> camera-rotation vector 0 w) 0.0)
+    (set! (-> camera-rotation vector 1 x) 0.0984)
+    (set! (-> camera-rotation vector 1 y) 0.9739)
+    (set! (-> camera-rotation vector 1 z) -0.2043)
+    (set! (-> camera-rotation vector 1 w) 0.0)
+    (set! (-> camera-rotation vector 2 x) 0.4225)
+    (set! (-> camera-rotation vector 2 y) -0.2268)
+    (set! (-> camera-rotation vector 2 z) -0.8774)
+    (set! (-> camera-rotation vector 2 w) 0.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (send-event *camera* 'set-fov 11650.845)
   (clear *camera-old-level*)
   (format *camera-old-level* "village1")
@@ -1383,29 +1480,31 @@
   (none))
 
 (defun-debug gregs-texture-cam-restore ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) 1103816.0)
-    (set! (-> a0-0 y) 96275.71)
-    (set! (-> a0-0 z) -632064.5)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) 0.4063)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) -0.9137)
-    (set! (-> a1-0 vector 0 w) 1.0)
-    (set! (-> a1-0 vector 1 x) 0.2824)
-    (set! (-> a1-0 vector 1 y) 0.951)
-    (set! (-> a1-0 vector 1 z) 0.1256)
-    (set! (-> a1-0 vector 1 w) 1.0)
-    (set! (-> a1-0 vector 2 x) 0.8689)
-    (set! (-> a1-0 vector 2 y) -0.3091)
-    (set! (-> a1-0 vector 2 z) 0.3864)
-    (set! (-> a1-0 vector 2 w) 1.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Restore Greg's saved Village1 texture-test camera pose and FOV, install its CPU, VU, and
+   tfragment profiling baselines, and clear the saved statistic strings."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) 1103816.0)
+    (set! (-> camera-position y) 96275.71)
+    (set! (-> camera-position z) -632064.5)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) 0.4063)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) -0.9137)
+    (set! (-> camera-rotation vector 0 w) 1.0)
+    (set! (-> camera-rotation vector 1 x) 0.2824)
+    (set! (-> camera-rotation vector 1 y) 0.951)
+    (set! (-> camera-rotation vector 1 z) 0.1256)
+    (set! (-> camera-rotation vector 1 w) 1.0)
+    (set! (-> camera-rotation vector 2 x) 0.8689)
+    (set! (-> camera-rotation vector 2 y) -0.3091)
+    (set! (-> camera-rotation vector 2 z) 0.3864)
+    (set! (-> camera-rotation vector 2 w) 1.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (send-event *camera* 'set-fov 11650.845)
   (clear *camera-old-level*)
   (format *camera-old-level* "village1")
@@ -1418,29 +1517,31 @@
   (none))
 
 (defun-debug gregs-texture2-cam-restore ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) 1954572.9)
-    (set! (-> a0-0 y) 135123.98)
-    (set! (-> a0-0 z) -1028725.44)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) 0.2535)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) 0.9673)
-    (set! (-> a1-0 vector 0 w) 1.0)
-    (set! (-> a1-0 vector 1 x) -0.1051)
-    (set! (-> a1-0 vector 1 y) 0.994)
-    (set! (-> a1-0 vector 1 z) 0.0275)
-    (set! (-> a1-0 vector 1 w) 1.0)
-    (set! (-> a1-0 vector 2 x) -0.9615)
-    (set! (-> a1-0 vector 2 y) -0.1087)
-    (set! (-> a1-0 vector 2 z) 0.252)
-    (set! (-> a1-0 vector 2 w) 1.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Restore Greg's saved second Village1 texture-test camera pose and FOV, install its CPU, VU, and
+   tfragment profiling baselines, and clear the saved statistic strings."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) 1954572.9)
+    (set! (-> camera-position y) 135123.98)
+    (set! (-> camera-position z) -1028725.44)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) 0.2535)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) 0.9673)
+    (set! (-> camera-rotation vector 0 w) 1.0)
+    (set! (-> camera-rotation vector 1 x) -0.1051)
+    (set! (-> camera-rotation vector 1 y) 0.994)
+    (set! (-> camera-rotation vector 1 z) 0.0275)
+    (set! (-> camera-rotation vector 1 w) 1.0)
+    (set! (-> camera-rotation vector 2 x) -0.9615)
+    (set! (-> camera-rotation vector 2 y) -0.1087)
+    (set! (-> camera-rotation vector 2 z) 0.252)
+    (set! (-> camera-rotation vector 2 w) 1.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (send-event *camera* 'set-fov 11650.845)
   (clear *camera-old-level*)
   (format *camera-old-level* "village1")
@@ -1453,53 +1554,55 @@
   (none))
 
 (defun-debug cave-cam-restore ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) -1449013.1)
-    (set! (-> a0-0 y) 15114.015)
-    (set! (-> a0-0 z) -1621305.5)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) -0.8223)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) -0.5689)
-    (set! (-> a1-0 vector 0 w) 0.0)
-    (set! (-> a1-0 vector 1 x) 0.0076)
-    (set! (-> a1-0 vector 1 y) 0.9999)
-    (set! (-> a1-0 vector 1 z) -0.0111)
-    (set! (-> a1-0 vector 1 w) 0.0)
-    (set! (-> a1-0 vector 2 x) 0.5689)
-    (set! (-> a1-0 vector 2 y) -0.0135)
-    (set! (-> a1-0 vector 2 z) -0.8222)
-    (set! (-> a1-0 vector 2 w) 0.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Restore the saved cave debug camera pose."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) -1449013.1)
+    (set! (-> camera-position y) 15114.015)
+    (set! (-> camera-position z) -1621305.5)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) -0.8223)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) -0.5689)
+    (set! (-> camera-rotation vector 0 w) 0.0)
+    (set! (-> camera-rotation vector 1 x) 0.0076)
+    (set! (-> camera-rotation vector 1 y) 0.9999)
+    (set! (-> camera-rotation vector 1 z) -0.0111)
+    (set! (-> camera-rotation vector 1 w) 0.0)
+    (set! (-> camera-rotation vector 2 x) 0.5689)
+    (set! (-> camera-rotation vector 2 y) -0.0135)
+    (set! (-> camera-rotation vector 2 z) -0.8222)
+    (set! (-> camera-rotation vector 2 w) 0.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (none))
 
 (defun-debug paals-cam-restore ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) -791260.7)
-    (set! (-> a0-0 y) 50858.62)
-    (set! (-> a0-0 z) -163715.47)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) -0.7816)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) -0.6236)
-    (set! (-> a1-0 vector 0 w) 0.0)
-    (set! (-> a1-0 vector 1 x) 0.0672)
-    (set! (-> a1-0 vector 1 y) 0.9941)
-    (set! (-> a1-0 vector 1 z) -0.0843)
-    (set! (-> a1-0 vector 1 w) 0.0)
-    (set! (-> a1-0 vector 2 x) 0.62)
-    (set! (-> a1-0 vector 2 y) -0.1079)
-    (set! (-> a1-0 vector 2 z) -0.7771)
-    (set! (-> a1-0 vector 2 w) 0.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Restore Paal's saved debug camera pose."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) -791260.7)
+    (set! (-> camera-position y) 50858.62)
+    (set! (-> camera-position z) -163715.47)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) -0.7816)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) -0.6236)
+    (set! (-> camera-rotation vector 0 w) 0.0)
+    (set! (-> camera-rotation vector 1 x) 0.0672)
+    (set! (-> camera-rotation vector 1 y) 0.9941)
+    (set! (-> camera-rotation vector 1 z) -0.0843)
+    (set! (-> camera-rotation vector 1 w) 0.0)
+    (set! (-> camera-rotation vector 2 x) 0.62)
+    (set! (-> camera-rotation vector 2 y) -0.1079)
+    (set! (-> camera-rotation vector 2 z) -0.7771)
+    (set! (-> camera-rotation vector 2 w) 0.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (none))

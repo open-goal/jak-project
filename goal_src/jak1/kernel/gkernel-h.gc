@@ -3,7 +3,7 @@
 (bundles "KERNEL.CGO")
 (require "kernel/gcommon.gc")
 
-;; Type definitions and constants for the GOAL Kernel. The GOAL kernel is dipatched
+;; Type definitions and constants for the GOAL Kernel. The GOAL kernel is dispatched
 ;; from C++ through the *kernel-dispatcher* and is responsible for:
 ;; - running all GOAL code
 ;; - handling creation, destruction, and compaction of GOAL processes
@@ -51,7 +51,7 @@
 (defconstant DPROCESS_STACK_SIZE #x8000)
 
 ;; the size of the execution stack, if not using the big DRAM stack.
-;; OpenGOAL NOTE: 7kB -> 24kB
+;; The PC port uses 24 KiB instead of the EE's 7 KiB.
 (defconstant PROCESS_STACK_SIZE (#if PC_PORT #x6000 #x1c00))
 
 ;; default size of stack to backup for a process
@@ -99,7 +99,7 @@
   (sidekick 14) ;; set on sidekick
   (crate 15) ;; set on all crates
   (collectable 16) ;; set on all collectables
-  (enemy 17) ;; set on all enemies (inclues stuff like seagulls)
+  (enemy 17) ;; set on all enemies (including things like seagulls)
   (camera 18) ;; set on all cameras
   (platform 19) ;; set on all platforms
   (ambient 20) ;; set on all ambients
@@ -190,13 +190,13 @@
 
 ;; A CPU thread is a thread which has some memory to save registers and a stack
 (deftype cpu-thread (thread)
-  (;; This is what GOAL did:
+  (;; EE register-save layout:
    ;; (rreg   uint64 8        :offset-assert 40)   ;; general purpose saved registers
    ;; (freg   float 6         :offset-assert 104)  ;; floating point registers
-   ;; OpenGOAL has only 5 saved registers but 8 fregs, so we swap a rreg for 2 fregs.
+   ;; The PC compiler saves fewer general registers and more floating-point registers.
    (rreg  uint64 7 :offset-assert 40)
    (freg  float 8)
-   ;; This is the same between GOAL and OpenGOAL
+   ;; Shared EE/PC layout:
    (stack uint8 :dynamic :offset-assert 128) ;; stack memory (dynamic array)
    )
   (:methods
@@ -239,7 +239,7 @@
 (deftype process (process-tree)
   ((pool             dead-pool) ;; the memory pool we came from, and should return to when we die
    (status           basic)
-   (pid              int32) ;; unqiue process ID
+   (pid              int32) ;; unique process ID
    (main-thread      cpu-thread) ;; our suspendable main thread
    (top-thread       thread) ;; currently running thread
    (entity           entity-actor) ;; if we are a process spawned by an entity-actor, our entity
@@ -293,7 +293,7 @@
   ((allocated-length   int32) ;; size of heap
    (compact-time       uint32) ;; unused...
    (compact-count-targ uint32) ;; number of compactions requested
-   (compact-count      uint32) ;; number of compactions perfomed
+   (compact-count      uint32) ;; number of compactions performed
    (fill-percent       float) ;; unused
    (first-gap          dead-pool-heap-rec) ;; the lowest process with a gap in the heap
    (first-shrink       dead-pool-heap-rec) ;; the lowest process that needs shrinking
@@ -331,10 +331,10 @@
 (deftype catch-frame (stack-frame)
   ((sp   int32 :offset 12) ;; where to reset the stack when throwing.
    (ra   int32 :offset 16) ;; where to jump when throwing
-   ;; In GOAL
+   ;; EE register-save layout:
    ;; (freg float 6 :offset-assert 20) ;; saved floating point registers from "catch" statement
    ;; (rreg uint128 8 :offset-assert 48) ;; saved GPRs from "catch" statement (ugh they are 128s)
-   ;; In OpenGOAL, we swap a rreg for 4 more fregs.
+   ;; The PC compiler saves one fewer GPR and four more floating-point registers.
    (freg float 10 :offset-assert 20) ;; only use 8
    (rreg uint128 7) ;; only use 5
    )
@@ -360,15 +360,9 @@
    (pid     int32 :offset 32)
    (u64     uint64 :offset 0)))
 
-(defmethod inspect ((this handle))
-  (format #t "[~8x] ~A~%" 'handle)
-  (format #t "~Tprocess: #x~x~%" (-> this process))
-  (format #t "~Tpid: ~D~%" (-> this pid))
-  this)
-
-(defmacro handle->process (handle)
+(defmacro handle->process (value)
   "Convert a handle to a process. If the process no longer exists, returns #f."
-  `(let ((the-handle (the-as handle ,handle)))
+  `(let ((the-handle (the-as handle ,value)))
     (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
       (let ((proc (-> (-> the-handle process))))
         (if (= (-> the-handle pid) (-> proc pid)) ;; make sure it's the same process
@@ -455,7 +449,7 @@
   `(set! ,mask (logior ,mask (process-mask ,@enum-value))))
 
 (defmacro process-mask-clear! (mask &rest enum-value)
-  ;; sets the given bits in the process mask (with or)
+  ;; clears the given bits in the process mask
   `(set! ,mask (logand ,mask (lognot (process-mask ,@enum-value)))))
 
 (defmacro suspend ()
@@ -506,10 +500,10 @@
 
 (defconstant INVALID_HANDLE (the handle #f))
 
-(defmacro handle->name (handle)
-  "get the name of a process using a handle. #f is the result if the handle was invalid."
+(defmacro handle->name (value)
+  "Get the name of a process using a handle. Returns #f if the handle is invalid."
   (with-gensyms (proc)
-    `(let ((,proc (handle->process ,handle))) (if ,proc (-> ,proc name)))))
+    `(let ((,proc (handle->process ,value))) (if ,proc (-> ,proc name)))))
 
 (defmacro with-children (bindings &rest body)
   "run body for each child. not recursive.
@@ -536,20 +530,20 @@
   "execute the body with sp bound to the current stack pointer (be careful!)"
   `(rlet ((sp :reg rsp :reset-here #t :type pointer)) ,@body))
 
-(defmacro scratchpad-object (type &key (offset 0))
+(defmacro scratchpad-object (object-type &key (offset 0))
   "Access an object on the scratchpad."
-  `(the-as ,type (&+ *fake-scratchpad-data* ,offset)))
+  `(the-as ,object-type (&+ *fake-scratchpad-data* ,offset)))
 
-(defmacro scratchpad-ptr (type &key (offset 0))
+(defmacro scratchpad-ptr (object-type &key (offset 0))
   "Create a pointer to an object on the scratchpad."
-  `(the-as (pointer ,type) (&+ *fake-scratchpad-data* ,offset)))
+  `(the-as (pointer ,object-type) (&+ *fake-scratchpad-data* ,offset)))
 
-;; Some assembly functions in GOAL are ported to C++, then accessed from GOAL using these mips2c macros.
-(defmacro def-mips2c (name type)
+;; The PC port exposes translated EE assembly routines through these mips2c macros.
+(defmacro def-mips2c (name value-type)
   "Define a mips2c object (typically a function)."
   `(begin
-    (define-extern ,name ,type)
-    (set! ,name (the-as ,type (__pc-get-mips2c ,(symbol->string name))))))
+    (define-extern ,name ,value-type)
+    (set! ,name (the-as ,value-type (__pc-get-mips2c ,(symbol->string name))))))
 
 (defmacro defmethod-mips2c (name method-id method-type)
   "Define a mips2c method."

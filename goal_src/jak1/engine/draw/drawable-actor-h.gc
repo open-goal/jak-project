@@ -5,25 +5,26 @@
 (require "engine/draw/drawable-tree-h.gc")
 (require "engine/draw/drawable-inline-array-h.gc")
 
-;; the actors are also stored in a drawable-tree, but they use almost none of the features of drawable.
-;; it's just a way to iterate over all actor data.
+;; Actors use the drawable containers as a compact, level-owned traversal index,
+;; but they do not participate in normal scene rendering through this tree.
 
 (declare-type entity-actor basic)
 
 ;; DECOMP BEGINS
 
-;; the actual drawable is just a reference to the actor itself.
+;; Each entry is only a reference to its actor; the actor owns the behavior and
+;; the remaining data.
 (deftype drawable-actor (drawable)
   ((actor entity-actor :offset 8)))
 
-;; the tree of drawable-actors
+;; Category marker for the actor tree in a level's drawable-tree-array.
 (deftype drawable-tree-actor (drawable-tree) ())
 
 (deftype drawable-inline-array-actor (drawable-inline-array)
   ((data drawable-actor 1 :inline)
    (pad  uint8 4)))
 
-(defmethod draw ((this drawable-tree-actor) (arg0 drawable-tree-actor) (arg1 display-frame))
-  "Do nothing, actor data is not drawn."
+(defmethod draw ((this drawable-tree-actor) (tree drawable-tree-actor) (frame display-frame))
+  "Do nothing; actor rendering is submitted by the live actor processes."
   0
   (none))

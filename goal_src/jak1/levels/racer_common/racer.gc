@@ -14,24 +14,25 @@
 (if (not (nmember "racerp" *kernel-packages*)) (set! *kernel-packages* (cons "racerp" *kernel-packages*)))
 
 (deftype racer (process-drawable)
-  ((root            collide-shape-moving :override)
+  "A placed racing-bike pickup, return point, and task-gated launcher."
+  ((root collide-shape-moving :override)
    (parent-override (pointer target) :overlay-at parent)
-   (extra-trans     vector :inline)
-   (condition       int32)
-   (cell            handle)
-   (path-data       path-control 2)
-   (path-target     curve-control :overlay-at (-> path-data 0))
-   (path-racer      path-control :overlay-at (-> path-data 1))
-   (auto-get-off    symbol)
-   (shadow-backup   shadow-geo))
+   (extra-trans vector :inline)
+   (condition int32)
+   (cell handle)
+   (path-data path-control 2)
+   (path-target curve-control :overlay-at (-> path-data 0))
+   (path-racer path-control :overlay-at (-> path-data 1))
+   (auto-get-off symbol)
+   (shadow-backup shadow-geo))
   (:state-methods
    wait-for-start
    idle
    (pickup (state collectable))
    wait-for-return))
 
-
 (defmethod relocate ((this racer) (offset int))
+  "Relocate the two stored path controllers, then relocate the drawable process."
   (countdown (v1-0 2)
     (if (-> this path-data v1-0) (&+! (-> this path-data v1-0) offset)))
   (the-as racer ((method-of-type process-drawable relocate) this offset)))
@@ -58,7 +59,7 @@
        :settings
        (new 'static
             'shadow-settings
-            :flags (shadow-flags disable-fade shdf03)
+            :flags (shadow-flags disable-fade scissor-top)
             :shadow-dir
             (new 'static 'vector :y -1.0 :w 614400.0)
             :bot-plane
@@ -251,7 +252,8 @@
         (racer-effect)
         (suspend))))
 
-(defmethod init-from-entity! ((this racer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this racer) (source-entity entity-actor))
+  "Build the pickup collision and art, load its condition and two paths, and select the active blocking plane."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -264,8 +266,8 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
-  (set-yaw-angle-clear-roll-pitch! (-> this root) (res-lump-float arg0 'rotoffset))
+  (process-drawable-from-entity! this source-entity)
+  (set-yaw-angle-clear-roll-pitch! (-> this root) (res-lump-float source-entity 'rotoffset))
   (initialize-skeleton this *racer-sg* '())
   (set! (-> this shadow-backup) (-> this draw shadow))
   (set! (-> this draw shadow-ctrl) *racer-shadow-control*)
@@ -273,7 +275,7 @@
     (set! (-> v1-23 0 param0) cspace<-transformq+trans!)
     (set! (-> v1-23 0 param1) (the-as basic (-> this root trans)))
     (set! (-> v1-23 0 param2) (the-as basic (-> this extra-trans))))
-  (set! (-> this condition) (res-lump-value arg0 'index int))
+  (set! (-> this condition) (res-lump-value source-entity 'index int))
   (set! (-> this fact) (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (set! (-> this part) (create-launch-control group-racer-trans-pad this))
   (dotimes (s5-1 2)

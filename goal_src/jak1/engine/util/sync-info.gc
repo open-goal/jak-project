@@ -7,171 +7,167 @@
 
 ;; DECOMP BEGINS
 
-(defmethod setup-params! ((this sync-info) (period uint) (phase float) (arg2 float) (arg3 float))
-  "Setup a sync-info.
-   period is the duration of the pattern.
-   phase is the offset relative to the global clock, specified as a fraction of period."
+(defmethod setup-params! ((this sync-info) (period uint) (phase float) (ease-out float) (ease-in float))
+  "Set the period in 300 Hz game-time ticks and the initial phase as a fraction of that period.
+   The base clock ignores ease-out and ease-in, which are retained for the shared subtype interface."
   (set! (-> this period) period)
   (let* ((period-float (the float period))
-         (value (* phase period-float)))
-    ;; this is like (fmod value period-float)
-    (set! (-> this offset) (- value (* (the float (the int (/ value period-float))) period-float))))
+         (phase-ticks (* phase period-float)))
+    ;; This is fmod for the phase values used here.
+    (set! (-> this offset) (- phase-ticks (* (the float (the int (/ phase-ticks period-float))) period-float))))
   0
   (none))
 
-(defmethod setup-params! ((this sync-info-eased) (period uint) (phase float) (out-param float) (in-param float))
-  "Setup a sync-info-eased. The out-param and in-param are related to the smoothing at the beginning/end.
-   it looks like the easing is cubic so the first derivative is continuous."
+(defmethod setup-params! ((this sync-info-eased) (period uint) (phase float) (ease-out float) (ease-in float))
+  "Set the period and initial phase, then build a normalized quadratic-linear-quadratic easing
+   curve for each leg of the mirrored phase. ease-out is the accelerating fraction at the start and
+   ease-in is the decelerating fraction at the end; both are clamped, and ease-out is shortened if
+   they overlap."
   (set! (-> this period) period)
-  ;; set the offset from the phase
   (let* ((period-float (the float period))
-         (value (* phase period-float)))
-    (set! (-> this offset) (- value (* (the float (the int (/ value period-float))) period-float))))
-  ;; saturate the params
-  (if (< out-param 0.0) (set! out-param 0.0))
-  (if (< 1.0 out-param) (set! out-param 1.0))
-  (if (< in-param 0.001) (set! in-param 0.001))
-  (if (< 1.0 in-param) (set! in-param 1.0))
-  (let ((total-easing-phase (+ out-param in-param)))
+         (phase-ticks (* phase period-float)))
+    (set! (-> this offset) (- phase-ticks (* (the float (the int (/ phase-ticks period-float))) period-float))))
+  (if (< ease-out 0.0) (set! ease-out 0.0))
+  (if (< 1.0 ease-out) (set! ease-out 1.0))
+  (if (< ease-in 0.001) (set! ease-in 0.001))
+  (if (< 1.0 ease-in) (set! ease-in 1.0))
+  (let ((total-easing-phase (+ ease-out ease-in)))
     (when (< 1.0 total-easing-phase)
       (set! total-easing-phase 1.0)
-      (set! out-param (- 1.0 in-param)))
+      (set! ease-out (- 1.0 ease-in)))
     (let* ((total-normal-phase (- 1.0 total-easing-phase))
-           (f0-10 out-param)
-           (f1-12 (+ out-param total-normal-phase))
-           (f2-5 (square f0-10))
-           (f3-3 (+ (* 2.0 f0-10 (- f1-12 f0-10)) f2-5))
-           (f4-3 (/ f0-10 (- 1.0 f1-12)))
-           (y-end (+ (* (- 1.0 f1-12) (- 1.0 f1-12) f4-3) f3-3)))
-      (set! (-> this tlo) f0-10)
-      (set! (-> this thi) f1-12)
-      (set! (-> this ylo) f2-5)
-      (set! (-> this m2) f4-3)
+           (tlo ease-out)
+           (thi (+ ease-out total-normal-phase))
+           (ylo (square tlo))
+           (y-at-thi (+ (* 2.0 tlo (- thi tlo)) ylo))
+           (m2 (/ tlo (- 1.0 thi)))
+           (y-end (+ (* (- 1.0 thi) (- 1.0 thi) m2) y-at-thi)))
+      (set! (-> this tlo) tlo)
+      (set! (-> this thi) thi)
+      (set! (-> this ylo) ylo)
+      (set! (-> this m2) m2)
       (set! (-> this yend) y-end)))
   0
   (none))
 
-(defmethod setup-params! ((this sync-info-paused) (period uint) (phase float) (out-param float) (in-param float))
-  "Setup a sync-info-paused.  The params are delays for the pause, specified in a fraction of period."
+(defmethod setup-params! ((this sync-info-paused) (period uint) (phase float) (pause-after-out float) (pause-after-in float))
+  "Set the period and initial phase plus endpoint pauses measured as fractions of the complete
+   cycle. pause-after-out holds the value at one and pause-after-in holds it at zero; both are clamped
+   and pause-after-in is shortened if the pauses would overlap."
   (set! (-> this period) period)
-  ;; set phase.
-  (let* ((f0-1 (the float period))
-         (f1-1 (* phase f0-1)))
-    (set! (-> this offset) (- f1-1 (* (the float (the int (/ f1-1 f0-1))) f0-1))))
-  ;; saturate params
+  (let* ((period-float (the float period))
+         (phase-ticks (* phase period-float)))
+    (set! (-> this offset) (- phase-ticks (* (the float (the int (/ phase-ticks period-float))) period-float))))
   (cond
-    ((< out-param 0.0) (set! out-param 0.0))
-    ((< 1.0 out-param) (set! out-param 1.0)))
+    ((< pause-after-out 0.0) (set! pause-after-out 0.0))
+    ((< 1.0 pause-after-out) (set! pause-after-out 1.0)))
   (cond
-    ((< in-param 0.0) (set! in-param 0.0))
-    ;; note: makes sure pauses don't overlap
-    ((< (- 1.0 out-param) in-param) (set! in-param (- 1.0 out-param))))
-  (set! (-> this pause-after-in) in-param)
-  (set! (-> this pause-after-out) out-param)
+    ((< pause-after-in 0.0) (set! pause-after-in 0.0))
+    ;; The two endpoint pauses may not overlap.
+    ((< (- 1.0 pause-after-out) pause-after-in) (set! pause-after-in (- 1.0 pause-after-out))))
+  (set! (-> this pause-after-in) pause-after-in)
+  (set! (-> this pause-after-out) pause-after-out)
   0
   (none))
 
-(defmethod load-params! ((this sync-info) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
-  "Load params from the res of a process, and set them up. If the res lookup fails, returns #f and uses
-   the specified defaults."
-  (let* ((sv-16 (new 'static 'res-tag))
-         (v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
+(defmethod load-params! ((this sync-info) (proc process) (default-period uint) (default-phase float) (default-ease-out float) (default-ease-in float))
+  "Load the sync resource from proc. Its first two floats are the period in seconds and initial
+   phase; the period is converted to 300 Hz game-time ticks. Return true when the resource exists,
+   otherwise install the supplied defaults and return false. The base clock ignores default-ease-out
+   and default-ease-in."
+  (local-vars (sync-tag res-tag))
+  (set! sync-tag (new 'static 'res-tag))
+  (let ((params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
     (cond
-      (v1-1
-       ;; res lookup succeeded, we should have two values: a period (not yet in seconds) and a phase.
+      (params
        (setup-params! this
-                      (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
-                      (-> (the-as (pointer float) v1-1) 1)
+                      (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                      (-> (the-as (pointer float) params) 1)
                       0.15
                       0.15)
        #t)
-      (else
-       ;; failed, set defaults
-       (setup-params! this default-period default-phase 0.15 0.15)
-       #f))))
+      (else (setup-params! this default-period default-phase 0.15 0.15) #f))))
 
-(defmethod load-params! ((this sync-info-eased) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
-  "Load settings from a res. Can load settings from just a sync-info and uses defaults.
-   If res lookup totally fails, will return #f and use all defaults."
-  (let* ((sv-16 (new 'static 'res-tag))
-         (v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
+(defmethod load-params! ((this sync-info-eased) (proc process) (default-period uint) (default-phase float) (default-ease-out float) (default-ease-in float))
+  "Load the sync resource from proc. Four floats supply period seconds, initial phase,
+   ease-out, and ease-in; a two-value resource uses the supplied easing defaults. Return true when the
+   resource exists, otherwise install every supplied default and return false."
+  (local-vars (sync-tag res-tag))
+  (set! sync-tag (new 'static 'res-tag))
+  (let ((params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
     (cond
-      (v1-1
-       ;; we may not get all the parameters
-       (if (>= (-> sv-16 elt-count) (the-as uint 4))
+      (params
+       (if (>= (-> sync-tag elt-count) (the-as uint 4))
          (setup-params! this
-                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
-                        (-> (the-as (pointer float) v1-1) 1)
-                        (-> (the-as (pointer float) v1-1) 2)
-                        (-> (the-as (pointer float) v1-1) 3))
+                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                        (-> (the-as (pointer float) params) 1)
+                        (-> (the-as (pointer float) params) 2)
+                        (-> (the-as (pointer float) params) 3))
          (setup-params! this
-                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
-                        (-> (the-as (pointer float) v1-1) 1)
-                        default-out
-                        default-in))
+                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                        (-> (the-as (pointer float) params) 1)
+                        default-ease-out
+                        default-ease-in))
        #t)
-      (else (setup-params! this default-period default-phase default-out default-in) #f))))
+      (else (setup-params! this default-period default-phase default-ease-out default-ease-in) #f))))
 
-(defmethod load-params! ((this sync-info-paused) (proc process) (default-period uint) (default-phase float) (default-out float) (default-in float))
-  "Load and setup a sync-info-paused."
-  (let* ((sv-16 (new 'static 'res-tag))
-         (v1-1 (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sv-16))))
+(defmethod load-params! ((this sync-info-paused) (proc process) (default-period uint) (default-phase float) (default-pause-after-out float) (default-pause-after-in float))
+  "Load the sync resource from proc. Four floats supply period seconds, initial phase,
+   pause-after-out, and pause-after-in; a two-value resource uses the supplied pause defaults. Return
+   true when the resource exists, otherwise install every supplied default and return false."
+  (local-vars (sync-tag res-tag))
+  (set! sync-tag (new 'static 'res-tag))
+  (let ((params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
     (cond
-      (v1-1
-       (if (>= (-> sv-16 elt-count) (the-as uint 4))
+      (params
+       (if (>= (-> sync-tag elt-count) (the-as uint 4))
          (setup-params! this
-                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
-                        (-> (the-as (pointer float) v1-1) 1)
-                        (-> (the-as (pointer float) v1-1) 2)
-                        (-> (the-as (pointer float) v1-1) 3))
+                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                        (-> (the-as (pointer float) params) 1)
+                        (-> (the-as (pointer float) params) 2)
+                        (-> (the-as (pointer float) params) 3))
          (setup-params! this
-                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) v1-1) 0))))
-                        (-> (the-as (pointer float) v1-1) 1)
-                        default-out
-                        default-in))
+                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                        (-> (the-as (pointer float) params) 1)
+                        default-pause-after-out
+                        default-pause-after-in))
        #t)
-      (else (setup-params! this default-period default-phase default-out default-in) #f))))
+      (else (setup-params! this default-period default-phase default-pause-after-out default-pause-after-in) #f))))
 
 (defmethod get-current-phase-no-mod ((this sync-info))
-  "Based on the current frame, get the current phase. Does not apply any modifications
-   like pauses or eases."
+  "Return the base clock's wrapped phase from 0 through 1 without applying a subtype's easing
+   or endpoint pauses."
   (let* ((period (-> this period))
          (period-float (the float period))
-         ;; now + offset
          (current-time (+ (the float (mod (the-as uint (current-time)) period)) (-> this offset))))
-    ;; compute wrapped phase from current-time
     (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float)))
 
 (defmethod get-phase-offset ((this sync-info))
-  "Get the offset, as a fraction of period"
+  "Return the stored tick offset as a fraction of the period."
   (/ (-> this offset) (the float (-> this period))))
 
-(defmethod sync-now! ((this sync-info) (user-time-offset float))
-  "Adjusts our offset so we are at phase user-phase-offset now"
+(defmethod sync-now! ((this sync-info) (phase-now float))
+  "Adjust the stored tick offset so the current normalized phase equals phase-now, then return
+   the wrapped offset."
   (let* ((period (-> this period))
          (period-float (the float period))
-         ;; in (0, 1)
-         (wrapped-user-offset (- user-time-offset (* (the float (the int (/ user-time-offset period-float))) period-float)))
-         ;; with the current offset, what is the time (0, period)?
+         ;; phase-now is normally in [0, 1], so this period-sized wrap leaves it unchanged.
+         (wrapped-phase-now (- phase-now (* (the float (the int (/ phase-now period-float))) period-float)))
          (current-time (+ (the float (mod (the-as uint (current-time)) period)) (-> this offset)))
-         ;; current period in (0, 1)
-         (current-time-wrapped (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float))
-         ;; a time
-         (combined-offset (+ (* (- wrapped-user-offset current-time-wrapped) period-float) period-float (-> this offset))))
-    ;; wrap it
-    (set! (-> this offset) (- combined-offset (* (the float (the int (/ combined-offset period-float))) period-float)))))
+         (current-phase (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float))
+         (new-offset (+ (* (- wrapped-phase-now current-phase) period-float) period-float (-> this offset))))
+    (set! (-> this offset) (- new-offset (* (the float (the int (/ new-offset period-float))) period-float)))))
 
 (defmethod get-current-phase ((this sync-info))
-  "Get the current phase."
+  "Return the current sawtooth phase from 0 through 1."
   (let* ((period (-> this period))
          (period-float (the float period))
          (current-time (+ (the float (mod (the-as uint (current-time)) period)) (-> this offset))))
-    ;; don't need to wrap this again.
     (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float)))
 
 (defmethod get-current-phase ((this sync-info-paused))
-  "Get the current phase.  this only uses the pause-after-out - use the mirrored version
-   for pauses on both ends"
+  "Return a zero-to-one sawtooth that reaches one early, then holds there for the configured
+   pause-after-out fraction of the cycle. This non-mirrored form does not use pause-after-in."
   (let* ((period (-> this period))
          (period-float (the float period))
          (max-phase 1.0)
@@ -180,135 +176,117 @@
           (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float))
              (* period-float (- 1.0 (-> this pause-after-out)))))))
 
-(defmethod get-current-value ((this sync-info) (max-val float))
-  "This is just get-current-phase multiplied by max-val"
+(defmethod get-current-value ((this sync-info) (max-value float))
+  "Return the current sawtooth phase multiplied by max-value."
   (let* ((period (-> this period))
          (period-float (the float period))
          (current-time (+ (the float (mod (the-as uint (current-time)) period)) (-> this offset))))
-    (* (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float) max-val)))
+    (* (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float) max-value)))
 
-(defmethod get-current-value ((this sync-info-paused) (arg0 float))
-  "This is just get-current-phase multiplied by max-val"
-  (* (get-current-phase this) arg0))
+(defmethod get-current-value ((this sync-info-paused) (max-value float))
+  "Return the paused non-mirrored phase multiplied by max-value."
+  (* (get-current-phase this) max-value))
 
 (defmethod get-current-phase-with-mirror ((this sync-info))
-  "Gets the phase that goes from 0 to 1 back to 0 every period."
+  "Return a triangular phase that moves from zero to one and back to zero during each period."
   (let* ((period (-> this period))
          (period-float (the float period))
-         (max-val 2.0)
+         (mirror-scale 2.0)
          (current-time (+ (the float (mod (the-as uint (current-time)) period)) (-> this offset)))
-         (phase-out-of-2 (* max-val (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float))))
-    (if (>= phase-out-of-2 1.0) (set! phase-out-of-2 (- 2.0 phase-out-of-2)))
-    phase-out-of-2))
+         (mirrored-phase (* mirror-scale (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float))))
+    (if (>= mirrored-phase 1.0) (set! mirrored-phase (- 2.0 mirrored-phase)))
+    mirrored-phase))
 
 (defmethod get-current-phase-with-mirror ((this sync-info-eased))
-  "Get the phase that goes from 0 to 1 back to 0 every period.
-   Note that sync-info-eased only does easing on this mirrored version."
+  "Return the mirrored zero-to-one-to-zero phase after applying the stored
+   quadratic-linear-quadratic easing curve independently to each leg."
   (let* ((period (-> this period))
          (period-float (the float period))
-         (max-val 2.0)
+         (mirror-scale 2.0)
          (current-time (+ (the float (mod (the-as uint (current-time)) period)) (-> this offset)))
-         (current-val (* max-val (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float)))
-         (in-mirror? #f))
-    ;; the input to the eased-phase calculation is un-mirrored, then mirrored after
-    (when (>= current-val 1.0)
-      (set! in-mirror? #t)
-      (set! current-val (+ -1.0 current-val)))
+         (leg-phase (* mirror-scale (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float)))
+         (returning? #f))
+    (when (>= leg-phase 1.0)
+      (set! returning? #t)
+      (set! leg-phase (+ -1.0 leg-phase)))
     (let* ((tlo (-> this tlo))
-           (eased-phase (/ (cond
-                             ((< current-val tlo)
-                              ;; quadratic ramp in
-                              (* current-val current-val))
-                             ((< current-val (-> this thi))
-                              ;; linear part
-                              (+ (* 2.0 tlo (- current-val tlo)) (-> this ylo)))
-                             (else
-                              (let ((f1-7 (- 1.0 current-val)))
-                                ;; quadratic ramp out
-                                (- (-> this yend) (* f1-7 f1-7 (-> this m2))))))
-                           (-> this yend))))
-      ;; flip again
-      (if in-mirror? (set! eased-phase (- 1.0 eased-phase)))
-      eased-phase)))
+           (phase (/ (cond
+                       ((< leg-phase tlo)
+                        ;; Accelerate quadratically from zero slope.
+                        (square leg-phase))
+                       ((< leg-phase (-> this thi))
+                        ;; Continue at the tangent reached at tlo.
+                        (+ (* 2.0 tlo (- leg-phase tlo)) (-> this ylo)))
+                       (else
+                        (let ((remaining-phase (- 1.0 leg-phase)))
+                          ;; Decelerate quadratically to zero slope at the endpoint.
+                          (- (-> this yend) (* (square remaining-phase) (-> this m2))))))
+                     (-> this yend))))
+      (if returning? (set! phase (- 1.0 phase)))
+      phase)))
 
 (defmethod get-current-phase-with-mirror ((this sync-info-paused))
-  "Get the phase that goes from 0 to 1 to 0 in one period."
-  (let* ((v1-0 (-> this period))
-         (f1-0 (the float v1-0))
-         ;; max val
-         (f0-1 2.0)
-         ;; current-time
-         (f2-2 (+ (the float (mod (the-as uint (current-time)) v1-0)) (-> this offset)))
-         ;; phase
-         (f0-2 (* f0-1 (/ (- f2-2 (* (the float (the int (/ f2-2 f1-0))) f1-0)) f1-0)))
-         ;; offset for pause
-         (f1-3 (- 1.0 (* 2.0 (-> this pause-after-in))))
-         (f2-7 (- 1.0 (* 2.0 (-> this pause-after-out)))))
-    (cond
-      ((>= f0-2 (+ 1.0 f1-3))
-       0.0 ;; before pause ends
-       )
-      ((< 1.0 f0-2)
-       ;; in mmoving part
-       (- 1.0 (/ (+ -1.0 f0-2) f1-3)))
-      ((>= f0-2 f2-7)
-       ;; after end pause
-       1.0)
-      (else
-       ;; in mmoving part
-       (/ f0-2 f2-7)))))
-
-(defmethod get-current-value-with-mirror ((this sync-info) (max-out-val float))
-  "Get the phase that goes from 0 to max-out-val to 0 in each period."
+  "Return a zero-to-one-to-zero phase whose moving legs are shortened to leave the configured
+   holds at one and zero."
   (let* ((period (-> this period))
          (period-float (the float period))
-         (max-val 2.0)
+         (mirror-scale 2.0)
          (current-time (+ (the float (mod (the-as uint (current-time)) period)) (-> this offset)))
-         (current-val (* max-val (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float))))
-    (if (>= current-val 1.0) (set! current-val (- 2.0 current-val)))
-    (* current-val max-out-val)))
+         (mirrored-phase (* mirror-scale (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float)))
+         (return-duration (- 1.0 (* 2.0 (-> this pause-after-in))))
+         (outward-duration (- 1.0 (* 2.0 (-> this pause-after-out)))))
+    (cond
+      ((>= mirrored-phase (+ 1.0 return-duration)) 0.0)
+      ((< 1.0 mirrored-phase) (- 1.0 (/ (+ -1.0 mirrored-phase) return-duration)))
+      ((>= mirrored-phase outward-duration) 1.0)
+      (else (/ mirrored-phase outward-duration)))))
 
-(defmethod get-current-value-with-mirror ((this sync-info-eased) (max-out-val float))
-  "Get phase that goes from 0 to max-out-val to 0 in each period"
-  (* (get-current-phase-with-mirror this) max-out-val))
+(defmethod get-current-value-with-mirror ((this sync-info) (max-value float))
+  "Return a triangular value that moves from zero to max-value and back to zero during each
+   period."
+  (let* ((period (-> this period))
+         (period-float (the float period))
+         (mirror-scale 2.0)
+         (current-time (+ (the float (mod (the-as uint (current-time)) period)) (-> this offset)))
+         (mirrored-phase (* mirror-scale (/ (- current-time (* (the float (the int (/ current-time period-float))) period-float)) period-float))))
+    (if (>= mirrored-phase 1.0) (set! mirrored-phase (- 2.0 mirrored-phase)))
+    (* mirrored-phase max-value)))
 
-(defmethod get-current-value-with-mirror ((this sync-info-paused) (max-out-val float))
-  "Get phase that goes from 0 to max-out-val to 0 in each period"
-  (* (get-current-phase-with-mirror this) max-out-val))
+(defmethod get-current-value-with-mirror ((this sync-info-eased) (max-value float))
+  "Return the eased mirrored phase multiplied by max-value."
+  (* (get-current-phase-with-mirror this) max-value))
 
-(defmethod set-params! ((this delayed-rand-float) (min-tim int) (max-time int) (max-times-two float))
-  "Float that changes randomly:
-   min-time: minimum time between changes
-   max-time: maximum time between changes
-   max-times-two: maximum range. result is centered around zero."
-  (set! (-> this min-time) min-tim)
-  (set! (-> this max-time) max-time)
-  (set! (-> this max-val) (/ max-times-two 2))
+(defmethod get-current-value-with-mirror ((this sync-info-paused) (max-value float))
+  "Return the paused mirrored phase multiplied by max-value."
+  (* (get-current-phase-with-mirror this) max-value))
+
+(defmethod set-params! ((this delayed-rand-float) (min-delay int) (max-delay int) (value-range float))
+  "Initialize the value to zero. Each later change waits a random number of game-time ticks
+   between min-delay and max-delay and chooses a value from the symmetric interval whose total width
+   is value-range."
+  (set! (-> this min-time) min-delay)
+  (set! (-> this max-time) max-delay)
+  (set! (-> this max-val) (/ value-range 2))
   (set! (-> this start-time) 0)
   (set! (-> this timer) 0)
   (set! (-> this value) 0.0)
   (-> this value))
 
 (defmethod update! ((this delayed-rand-float))
-  "Get the value."
+  "Choose a new delay and uniformly distributed value when the current delay expires, then
+   return the held value."
   (when (time-elapsed? (-> this start-time) (-> this timer))
-    ;; only update if enough time has passed.
     (set-time! (-> this start-time))
-    ;; come up with a random end time.
     (set! (-> this timer) (rand-vu-int-range (-> this min-time) (-> this max-time)))
-    ;; come up with a random value in (-max, max)
     (set! (-> this value) (rand-vu-float-range (- (-> this max-val)) (-> this max-val))))
   (-> this value))
 
-(defmethod set-params! ((this oscillating-float) (init-val float) (accel float) (max-vel float) (damping float))
-  "Setup an oscillating-float. It will head toward the target, but will overshoot and oscillate before
-   eventually reaching the target.
-   init-val: the initial value and target
-   max-vel: velocity limit
-   damping: this is 1 - damping really. 0 means don't move, 1 means oscillate forever.
-   accel: gain."
-  (set! (-> this value) init-val)
-  (set! (-> this target) init-val)
+(defmethod set-params! ((this oscillating-float) (initial-value float) (accel float) (max-vel float) (damping float))
+  "Initialize value and target to initial-value, clear velocity, and set the spring gain,
+   velocity limit, and retained damping fraction. A damping value of zero prevents movement, while
+   one applies no damping and permits continued oscillation."
+  (set! (-> this value) initial-value)
+  (set! (-> this target) initial-value)
   (set! (-> this vel) 0.0)
   (set! (-> this max-vel) max-vel)
   (set! (-> this damping) damping)
@@ -316,70 +294,54 @@
   (-> this value))
 
 (defmethod update! ((this oscillating-float) (target-offset float))
-  ;; first compute desired acceleration
-  (let ((acc (* (- (+ (-> this target) target-offset) (-> this value)) (* (-> this accel) (-> *display* time-adjust-ratio)))))
-    ;; integrate and update velocity
-    (+! (-> this vel) acc))
-  ;; limit velocity
+  "Advance the damped spring toward target plus target-offset. Acceleration is scaled by frame
+   time, velocity is clamped before damping, and the final integration is also frame-time scaled."
+  (let ((acceleration (* (- (+ (-> this target) target-offset) (-> this value)) (* (-> this accel) (-> *display* time-adjust-ratio)))))
+    (+! (-> this vel) acceleration))
   (set! (-> this vel) (fmin (-> this max-vel) (fmax (- (-> this max-vel)) (-> this vel))))
-  ;; apply damping
   (set! (-> this vel) (* (-> this vel) (-> this damping)))
-  ;; integrate and update position
   (+! (-> this value) (* (-> this vel) (-> *display* time-adjust-ratio)))
   (-> this value))
 
-(defmethod set-params! ((this bouncing-float) (init-val float) (max-val float) (min-val float) (elast float) (accel float) (max-vel float) (damping float))
-  "Float that bounces. It's an oscillating float, but you can add a floor/ceiling that has an
-   elastic collision.
-   init-val: intial value and target.
-   max-val: ceiling to bounce off of
-   min-val: floor to bounce off of
-   elast: elasticity
-   accel: gain
-   max-vel: maximum velocity, not in elastic part.
-   damping: damping for the non-elastic part."
-  (set-params! (-> this osc) init-val accel max-vel damping)
-  (set! (-> this max-value) max-val)
-  (set! (-> this min-value) min-val)
-  (set! (-> this elasticity) elast)
-  (set! (-> this state) 0)
+(defmethod set-params! ((this bouncing-float) (initial-value float) (max-value float) (min-value float) (elasticity float) (accel float) (max-vel float) (damping float))
+  "Initialize a damped spring constrained between min-value and max-value. elasticity controls
+   the fraction of outward velocity retained, with its direction reversed, when an endpoint is hit;
+   max-vel clamps the spring velocity before that collision response."
+  (set-params! (-> this osc) initial-value accel max-vel damping)
+  (set! (-> this max-value) max-value)
+  (set! (-> this min-value) min-value)
+  (set! (-> this elasticity) elasticity)
+  (set! (-> this state) (bouncing-float-state free))
   (-> this osc value))
 
-(defmethod update! ((this bouncing-float) (arg0 float))
-  ;; first, update the oscillator and assume we aren't in a bouncing part
-  (update! (-> this osc) arg0)
-  (set! (-> this state) 0)
+(defmethod update! ((this bouncing-float) (target-offset float))
+  "Advance the spring toward target plus target-offset, clamp any endpoint crossing, reflect
+   outward velocity by elasticity, record which endpoint was hit, and return the resulting value."
+  (update! (-> this osc) target-offset)
+  (set! (-> this state) (bouncing-float-state free))
   (when (>= (-> this osc value) (-> this max-value))
-    ;; boucing off of the ceiling. first, saturate to max-val
     (set! (-> this osc value) (-> this max-value))
-    (if (< 0.0 (-> this osc vel))
-      ;; then update our velocity for the elastic collision
-      (set! (-> this osc vel) (* (-> this osc vel) (- (-> this elasticity)))))
-    ;; and remember we did this, so at-min/at-max work
-    (set! (-> this state) 1))
-  ;; same for bouncing off of the floor
+    (if (< 0.0 (-> this osc vel)) (set! (-> this osc vel) (* (-> this osc vel) (- (-> this elasticity)))))
+    (set! (-> this state) (bouncing-float-state at-maximum)))
   (when (>= (-> this min-value) (-> this osc value))
     (set! (-> this osc value) (-> this min-value))
     (if (< (-> this osc vel) 0.0) (set! (-> this osc vel) (* (-> this osc vel) (- (-> this elasticity)))))
-    (set! (-> this state) -1))
+    (set! (-> this state) (bouncing-float-state at-minimum)))
   (-> this osc value))
 
 (defmethod at-min? ((this bouncing-float))
-  "Did the last update hit the minimum value?"
-  (= (-> this state) -1))
+  "Return true when the latest update hit the minimum endpoint."
+  (= (-> this state) (bouncing-float-state at-minimum)))
 
 (defmethod at-max? ((this bouncing-float))
-  "Did the last update hit the maximum value?"
-  (= (-> this state) 1))
+  "Return true when the latest update hit the maximum endpoint."
+  (= (-> this state) (bouncing-float-state at-maximum)))
 
-(defmethod set-params! ((this delayed-rand-vector) (min-time int) (max-time int) (xz-range float) (y-range float))
-  "Set up a delayed-rand-vector. This vector randomly changes at random times.
-   min-time: minimum time between changes
-   max-time: maximum time between changes
-   xz-range: xz results in (-range/2, range/2)
-   y-range: y results in (-range/2, range/2)"
-  (set! (-> this min-time) min-time)
-  (set! (-> this max-time) max-time)
+(defmethod set-params! ((this delayed-rand-vector) (min-delay int) (max-delay int) (xz-range float) (y-range float))
+  "Initialize the vector to zero. Each later change waits a random number of game-time ticks
+   between min-delay and max-delay; X and Z use the symmetric xz-range and Y uses y-range."
+  (set! (-> this min-time) min-delay)
+  (set! (-> this max-time) max-delay)
   (set! (-> this xz-max) (/ xz-range 2))
   (set! (-> this y-max) (/ y-range 2))
   (set! (-> this start-time) 0)
@@ -388,7 +350,8 @@
   (-> this value))
 
 (defmethod update-now! ((this delayed-rand-vector))
-  "update to a random value now"
+  "Choose a new delay and uniformly distributed X, Y, and Z components immediately, then return
+   the stored vector."
   (set-time! (-> this start-time))
   (set! (-> this timer) (rand-vu-int-range (-> this min-time) (-> this max-time)))
   (set! (-> this value x) (rand-vu-float-range (- (-> this xz-max)) (-> this xz-max)))
@@ -397,20 +360,23 @@
   (-> this value))
 
 (defmethod update-with-delay! ((this delayed-rand-vector))
-  "Update, if enough time has passed"
+  "Choose a new random vector if the current delay has expired; otherwise retain the previous
+   value."
   (if (time-elapsed? (-> this start-time) (-> this timer)) (update-now! this))
   (-> this value))
 
 (defmethod update-with-delay-or-reset! ((this delayed-rand-vector))
-  "Update, if enough time has passed. Otherwise reset to zero."
+  "Choose a new random vector if the current delay has expired; otherwise reset the stored
+   value to zero."
   (if (time-elapsed? (-> this start-time) (-> this timer)) (update-now! this) (vector-reset! (-> this value)))
   (-> this value))
 
-(defmethod set-params! ((this oscillating-vector) (init-val vector) (accel float) (max-vel float) (damping float))
-  "Works just like oscillating-float, but does a whole vector.
-   init-val can be #f to reset to 0."
+(defmethod set-params! ((this oscillating-vector) (initial-value vector) (accel float) (max-vel float) (damping float))
+  "Initialize value and target from initial-value, or reset both when it is false; clear
+   velocity and set the spring gain, speed limit, and retained damping fraction. A damping value of
+   zero prevents movement, while one applies no damping and permits continued oscillation."
   (cond
-    (init-val (set! (-> this value quad) (-> init-val quad)) (set! (-> this target quad) (-> init-val quad)))
+    (initial-value (set! (-> this value quad) (-> initial-value quad)) (set! (-> this target quad) (-> initial-value quad)))
     (else (vector-reset! (-> this value)) (vector-reset! (-> this target))))
   (vector-reset! (-> this vel))
   (set! (-> this max-vel) max-vel)
@@ -419,16 +385,19 @@
   (-> this value))
 
 (defmethod update! ((this oscillating-vector) (target-offset vector))
-  "target-offset can be #f, acts like 0"
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
+  "Advance the damped vector spring toward target plus an optional target-offset. Limit the
+   velocity by magnitude so its direction is preserved, then apply damping and frame-time integration."
+  (let ((acceleration (new 'stack-no-clear 'vector)))
     (cond
-      (target-offset (vector+! s5-0 (-> this target) target-offset) (vector-! s5-0 s5-0 (-> this value)))
-      (else (vector-! s5-0 (-> this target) (-> this value))))
-    (vector-float*! s5-0 s5-0 (* (-> this accel) (-> *display* time-adjust-ratio)))
-    (vector+! (-> this vel) (-> this vel) s5-0)
-    (let ((vel (vector-length (-> this vel))))
-      (if (< (-> this max-vel) vel) (vector-float*! (-> this vel) (-> this vel) (/ (-> this max-vel) vel))))
+      (target-offset
+       (vector+! acceleration (-> this target) target-offset)
+       (vector-! acceleration acceleration (-> this value)))
+      (else (vector-! acceleration (-> this target) (-> this value))))
+    (vector-float*! acceleration acceleration (* (-> this accel) (-> *display* time-adjust-ratio)))
+    (vector+! (-> this vel) (-> this vel) acceleration)
+    (let ((speed (vector-length (-> this vel))))
+      (if (< (-> this max-vel) speed) (vector-float*! (-> this vel) (-> this vel) (/ (-> this max-vel) speed))))
     (vector-float*! (-> this vel) (-> this vel) (-> this damping))
-    (vector-float*! s5-0 (-> this vel) (-> *display* time-adjust-ratio))
-    (vector+! (-> this value) (-> this value) s5-0))
+    (vector-float*! acceleration (-> this vel) (-> *display* time-adjust-ratio))
+    (vector+! (-> this value) (-> this value) acceleration))
   (-> this value))

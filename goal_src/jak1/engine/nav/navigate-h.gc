@@ -14,225 +14,241 @@
 (defenum nav-control-flags
   :bitfield #t
   :type uint32
-  (display-marks 0)
-  (navcf1 1) ;; TODO - nav-control::9
-  (navcf2 2) ;; TODO - nav-control::9
-  (navcf3 3) ;; TODO - nav-enemy::45 | nav-control::9
-  (navcf4 4) ;; TODO - nav-control::9
-  (navcf5 5) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
-  (navcf6 6) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
-  (navcf7 7) ;; TODO - nav-enemy::45 | ;; TODO - nav-control::9
-  (navcf8 8)
-  (navcf9 9) ;; TODO - nav-control::14 | 11
-  (navcf10 10) ;; TODO - nav-enemy::nav-enemy-patrol-post
-  (navcf11 11) ;; TODO - nav-control::28
-  (navcf12 12) ;; TODO - rolling-lightning-mole::(enter nav-enemy-chase fleeing-nav-enemy)
-  (navcf13 13)
-  (navcf17 17) ;; TODO - nav-control::11
-  (navcf18 18) ;; TODO - nav-control::11
-  (navcf19 19) ;; TODO - nav-control::11 | 17
-  (navcf20 20) ;; TODO - nav-mesh::28
-  (navcf21 21) ;; TODO - nav-control::19
-  )
+  (display-marks 0) ;; master debug-display enable
+  (display-bounds-sphere 1)
+  (display-vertices 2)
+  (display-polys 3)
+  (display-poly-ids 4)
+  (display-active-polys 5)
+  (display-travel 6)
+  (display-spheres 7)
+  (enable-sphere-avoidance 8) ;; rebuild the obstacle-sphere list each update
+  (current-poly-set 9) ;; set by set-current-poly! and cleared each update
+  (gradual-turn-to-target 10)
+  (avoid-player 11)
+  (stop-at-boundary 12)
+  (avoid-static-spheres 13)
+  (blocked 17)
+  (navcf18 18) ;; cleared each update
+  (reached-destination 19)
+  (point-inside-mesh 20)
+  (heading-aligned 21))
 
 ;; DECOMP BEGINS
 
 (deftype nav-poly (structure)
-  ((id       uint8)
-   (vertex   uint8 3)
+  "One navigation triangle. vertex indexes the mesh-local vertex array; adj-poly gives neighboring
+triangles with 255 as the boundary sentinel. pat bit zero marks a gap and the remaining defined
+bits select debug colors."
+  ((id uint8)
+   (vertex uint8 3)
    (adj-poly uint8 3)
-   (pat      uint8))
+   (pat uint8))
   :pack-me)
 
-(deftype nav-vertex (vector) ())
+(deftype nav-vertex (vector)
+  "One mesh-local navigation vertex."
+  ())
 
 (deftype nav-sphere (structure)
+  "A world-space obstacle sphere baked into the level navigation data."
   ((trans sphere :inline)))
 
 (deftype nav-ray (structure)
-  ((current-pos  vector :inline)
-   (dir          vector :inline)
-   (dest-pos     vector :inline)
+  "State for walking an XZ ray across adjacent triangles. The walk terminates on its destination,
+a mesh boundary, or a gap triangle, recording the last edge and distance traveled."
+  ((current-pos vector :inline)
+   (dir vector :inline)
+   (dest-pos vector :inline)
    (current-poly nav-poly)
-   (next-poly    nav-poly)
-   (len          meters)
-   (last-edge    int8)
-   (terminated   symbol)
+   (next-poly nav-poly)
+   (len meters)
+   (last-edge int8)
+   (terminated symbol)
    (reached-dest symbol)
    (hit-boundary symbol)
-   (hit-gap      symbol)))
+   (hit-gap symbol)))
 
 (deftype nav-route-portal (structure)
-  ((next-poly  nav-poly)
-   (vertex     nav-vertex 2)
+  "The shared edge to cross when leaving a triangle along a precomputed route. edge-index is -1
+when no intermediate portal is needed or no next edge is available."
+  ((next-poly nav-poly)
+   (vertex nav-vertex 2)
    (edge-index int8)))
 
 (deftype clip-travel-vector-to-mesh-return-info (structure)
-  ((found-boundary  symbol)
-   (intersection    vector :inline)
+  "Boundary and gap details produced while clipping travel to the navigation mesh. The previous
+and next edge fields are reserved and are not filled."
+  ((found-boundary symbol)
+   (intersection vector :inline)
    (boundary-normal vector :inline)
-   (prev-normal     vector :inline)
-   (next-normal     vector :inline)
-   (poly            nav-poly)
-   (gap-poly        nav-poly)
-   (edge            int32)
-   (vert-prev       vector :inline)
-   (vert-0          vector :inline)
-   (vert-1          vector :inline)
-   (vert-next       vector :inline)))
+   (prev-normal vector :inline)
+   (next-normal vector :inline)
+   (poly nav-poly)
+   (gap-poly nav-poly)
+   (edge int32)
+   (vert-prev vector :inline)
+   (vert-0 vector :inline)
+   (vert-1 vector :inline)
+   (vert-next vector :inline)))
 
 (deftype nav-node (structure)
-  ((center-x      float)
-   (center-y      float)
-   (center-z      float)
-   (type          uint16)
+  "One node in the navigation triangle BVH. An interior node stores byte offsets to two children;
+a leaf overlays those offsets with a count and stores up to eight triangle indices split around
+the scale-z field."
+  ((center-x float)
+   (center-y float)
+   (center-z float)
+   (type uint16)
    (parent-offset uint16)
-   (center        vector :inline :overlay-at center-x)
-   (radius-x      float)
-   (radius-y      float)
-   (radius-z      float)
-   (left-offset   uint16)
-   (right-offset  uint16)
-   (num-tris      uint32 :overlay-at left-offset)
-   (radius        vector :inline :overlay-at radius-x)
-   (scale-x       float)
-   (first-tris    uint8 4)
-   (scale-z       float)
-   (last-tris     uint8 4)
-   (scale         vector :inline :overlay-at scale-x)))
+   (center vector :inline :overlay-at center-x)
+   (radius-x float)
+   (radius-y float)
+   (radius-z float)
+   (left-offset uint16)
+   (right-offset uint16)
+   (num-tris uint32 :overlay-at left-offset)
+   (radius vector :inline :overlay-at radius-x)
+   (scale-x float)
+   (first-tris uint8 4)
+   (scale-z float)
+   (last-tris uint8 4)
+   (scale vector :inline :overlay-at scale-x)))
 
 (deftype nav-lookup-elem (structure)
-  ((vec         vector :inline)
-   (y-thresh    float :overlay-at (-> vec w))
-   (time        uint32)
+  "One entry in the four-slot, per-frame point-to-triangle lookup cache."
+  ((vec vector :inline)
+   (y-thresh float :overlay-at (-> vec w))
+   (time uint32)
    (node-offset uint32)
    (lookup-type uint8)
-   (poly-ind    uint8)
-   (dummy0      uint16)
-   (dummy       uint32)))
+   (poly-ind uint8)
+   (dummy0 uint16)
+   (dummy uint32)))
 
 (deftype nav-mesh (basic)
-  ((user-list           engine)
+  "A shared triangle navigation mesh with explicit adjacency, a triangle BVH, a four-entry lookup
+cache, static obstacle spheres, and a packed all-pairs next-edge routing table. Vertices and
+navigation calculations are mesh-local; origin converts between local and world space."
+  ((user-list engine) ;; all processes sharing this mesh
    (poly-lookup-history uint8 2)
-   (debug-time          uint8)
+   (debug-time uint8)
    (static-sphere-count uint8)
-   (static-sphere       (inline-array nav-sphere))
-   (bounds              sphere :inline)
-   (origin              vector :inline)
-   (cache               nav-lookup-elem 4 :inline)
-   (node-count          int32)
-   (nodes               (inline-array nav-node))
-   (vertex-count        int32)
-   (vertex              (inline-array nav-vertex))
-   (poly-count          int32)
-   (poly                (inline-array nav-poly))
-   (route               (inline-array vector4ub)))
+   (static-sphere (inline-array nav-sphere)) ;; baked world-space obstacles
+   (bounds sphere :inline) ;; world-space mesh bound
+   (origin vector :inline) ;; world origin of mesh-local coordinates
+   (cache nav-lookup-elem 4 :inline)
+   (node-count int32)
+   (nodes (inline-array nav-node)) ;; triangle BVH
+   (vertex-count int32)
+   (vertex (inline-array nav-vertex)) ;; mesh-local positions
+   (poly-count int32)
+   (poly (inline-array nav-poly)) ;; triangles with explicit adjacency
+   ;; Two bits per ordered triangle pair select the next portal edge. Three means there is no
+   ;; intermediate portal, so travel can aim directly at the destination.
+   (route (inline-array vector4ub)))
   (:methods
-   (tri-centroid-world (_type_ nav-poly vector) vector) ;; finds the centroid of the given triangle, in the "world" coordinate system.
-   (tri-centroid-local (_type_ nav-poly vector) vector) ;; finds the centroid of the given triangle, in the local nav-mesh coordinate system.
+   (tri-centroid-world (_type_ nav-poly vector) vector)
+   (tri-centroid-local (_type_ nav-poly vector) vector)
    (get-adj-poly (_type_ nav-poly nav-poly symbol) nav-poly)
-   (setup-portal (_type_ nav-poly nav-poly nav-route-portal) object) ;; sets up a portal between two polys.
+   (setup-portal (_type_ nav-poly nav-poly nav-route-portal) object)
    (initialize-mesh! (_type_) none)
-   (move-along-nav-ray! (_type_ nav-ray) none) ;; think this updates the current position in a nav-ray, and updates which triangle you're in.
-   ;; this takes in a point/direction/distance, and see what would happen if you tried to move this way.
-   ;; it returns the distance you can go before one of these happens:
-   ;; - you reach the destination
-   ;; - you hit a nav mesh boundary/gap
-   ;; - you cross 15 triangles.
+   (move-along-nav-ray! (_type_ nav-ray) none)
    (try-move-along-ray (_type_ nav-poly vector vector float) meters)
-   (nav-mesh-method-16 (_type_ vector nav-poly vector symbol float clip-travel-vector-to-mesh-return-info) none)
-   (update-route-table (_type_) none) ;; (initialization related)
-   (nav-mesh-method-18 (_type_ int vector int (pointer int8) int) none) ;; something to do with routes.
+   (clip-travel-vector-to-mesh (_type_ vector nav-poly vector symbol float clip-travel-vector-to-mesh-return-info) none)
+   (update-route-table (_type_) none)
+   (build-route-table-recursive (_type_ int vector int (pointer int8) int) none)
    (compute-bounding-box (_type_ vector vector) none)
-   (debug-draw-poly (_type_ nav-poly rgba) none) ;; TODO - is rgba a vector4w?
-   (point-in-poly? (_type_ nav-poly vector) symbol) ;; is the point inside of the triangle?
-   (find-opposite-vertices (_type_ nav-poly nav-poly) uint) ;; given two triangles that share an edge, get the indices of the two vertices that aren't part of the edge.
-   (nav-mesh-method-23 (_type_ nav-poly vector vector vector nav-route-portal) vector)
-   (closest-point-on-boundary (_type_ nav-poly vector vector) vector) ;; find the closest point on the perimeter of the triangle.
-   (project-point-into-tri-3d (_type_ nav-poly vector vector) none) ;; will move a 3D point in space to the surface of this nav-poly
-   ;; Looking from the top down, is the point inside the nav-poly?
-   ;; - if the point is inside the triangle, returns that point.
-   ;; - if the point is outside the triangle, move it to the closest point (will be on the edge)
+   (debug-draw-poly (_type_ nav-poly rgba) none)
+   (point-in-poly? (_type_ nav-poly vector) symbol)
+   ;; Despite the old name, this packs the two vertices that are part of the shared edge.
+   (find-opposite-vertices (_type_ nav-poly nav-poly) uint)
+   (clip-travel-to-poly (_type_ nav-poly vector vector vector nav-route-portal) vector)
+   (closest-point-on-boundary (_type_ nav-poly vector vector) vector)
+   (project-point-into-tri-3d (_type_ nav-poly vector vector) none)
    (project-point-into-tri-2d (_type_ nav-poly vector vector) vector)
-   ;; finds which triangle the given point is in.
-   ;; also has some caching stuff so if you look up the same point multiple times, it won't redo the work.
-   ;; I _think_ this is only an approximate check that may return #f even if you are inside.
-   ;; But, if it returns a poly, it will be right.
    (find-poly-fast (_type_ vector meters) nav-poly)
-   (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly) ;; The accurate version of find-poly (tries find-poly-fast first)
-   ;; checks to see if the triangle is in the mesh or not.
-   ;; not sure why it's separate from 27 (and such a different implementation). there might be some details I'm missing here.
+   (find-poly (_type_ vector meters (pointer nav-control-flags)) nav-poly)
    (is-in-mesh? (_type_ vector float meters) symbol)))
 
 (define-extern *default-nav-mesh* nav-mesh)
 
 (deftype check-vector-collision-with-nav-spheres-info (structure)
-  ((u         float)
+  "The nearest obstacle-sphere hit along a travel direction: ray parameter, world-space
+intersection, and outward normal."
+  ((u float)
    (intersect vector :inline)
-   (normal    vector :inline)))
+   (normal vector :inline)))
 
 (deftype nav-gap-info (structure)
+  "A landing point and first non-gap triangle found across a chain of gap triangles."
   ((dest vector :inline)
    (poly nav-poly)))
 
 (deftype nav-control (basic)
-  ((flags               nav-control-flags)
-   (process             basic)
-   (shape               collide-shape)
-   (mesh                nav-mesh)
-   (gap-event           basic)
-   (block-event         basic)
-   (current-poly        nav-poly)
-   (next-poly           nav-poly)
-   (target-poly         nav-poly)
-   (portal              nav-route-portal 2)
-   (nearest-y-threshold meters)
-   (event-temp          vector :inline)
-   (old-travel          vector :inline)
-   (blocked-travel      vector :inline)
-   (prev-pos            vector :inline)
-   (extra-nav-sphere    vector :inline)
-   (travel              vector :inline)
-   (target-pos          vector :inline)
-   (destination-pos     vector :inline)
-   (block-time          time-frame)
-   (block-count         float)
-   (user-poly           nav-poly)
-   (nav-cull-radius     float)
-   (num-spheres         int16)
-   (max-spheres         int16)
-   (sphere              sphere :inline :dynamic))
+  "Per-actor pathfinding and steering state. It tracks the current route, clips travel to the mesh,
+gathers obstacle spheres, and reports gap, blocked, and destination progress to its owner."
+  ((flags nav-control-flags)
+   (process basic) ;; owner receiving navigation events
+   (shape collide-shape) ;; position and navigation radius
+   (mesh nav-mesh)
+   (gap-event basic)
+   (block-event basic)
+   (current-poly nav-poly)
+   (next-poly nav-poly)
+   (target-poly nav-poly)
+   ;; These are the two nav-vertex pointers of the active portal edge, not portal records.
+   (portal nav-vertex 2)
+   (nearest-y-threshold meters) ;; vertical tolerance for triangle lookup
+   (event-temp vector :inline)
+   (old-travel vector :inline) ;; previous fallback direction
+   (blocked-travel vector :inline) ;; travel at the last avoidance deflection
+   (prev-pos vector :inline) ;; previous world-space body position
+   (extra-nav-sphere vector :inline) ;; reserved space exposed to other users
+   (travel vector :inline) ;; current mesh-local travel
+   (target-pos vector :inline) ;; steering target
+   (destination-pos vector :inline)
+   (block-time time-frame)
+   (block-count float)
+   (user-poly nav-poly)
+   (nav-cull-radius float) ;; obstacle collection radius
+   (num-spheres int16)
+   (max-spheres int16)
+   ;; Mesh-local avoidance spheres continue beyond the nominal type size.
+   (sphere sphere :inline :dynamic))
   (:methods
    (new (symbol type collide-shape int float) _type_)
    (debug-draw (_type_) none)
    (point-in-bounds? (_type_ vector) symbol)
-   (nav-control-method-11 (_type_ vector) vector)
-   (nav-control-method-12 (_type_ nav-gap-info) symbol)
-   (nav-control-method-13 (_type_ vector vector) vector)
+   (navigate! (_type_ vector) vector)
+   (find-gap-landing (_type_ nav-gap-info) symbol)
+   (compute-travel (_type_ vector vector) vector)
    (set-current-poly! (_type_ nav-poly) none)
    (set-target-pos! (_type_ vector) none)
-   (nav-control-method-16 (_type_ vector) nav-poly)
+   (find-poly-fast-from-world (_type_ vector) nav-poly)
    (project-onto-nav-mesh (_type_ vector vector) vector)
    (find-poly (_type_ vector) nav-poly)
-   (nav-control-method-19 (_type_ vector collide-shape-moving vector float) none)
+   (steer-toward-point (_type_ vector collide-shape-moving vector float) none)
    (project-point-into-tri-3d (_type_ nav-poly vector vector) vector)
-   (nav-control-method-21 (_type_ vector) nav-poly)
-   (nav-control-method-22 (_type_ vector float) symbol)
-   (nav-control-method-23 (_type_ vector check-vector-collision-with-nav-spheres-info) float)
-   (nav-control-method-24 (_type_ float clip-travel-vector-to-mesh-return-info) none)
+   (find-poly-fast-at (_type_ vector) nav-poly)
+   (point-on-mesh-below? (_type_ vector float) symbol)
+   (check-vector-collision-with-nav-spheres (_type_ vector check-vector-collision-with-nav-spheres-info) float)
+   (clip-travel-to-mesh (_type_ float clip-travel-vector-to-mesh-return-info) none)
    (is-in-mesh? (_type_ vector float) symbol)
-   (nav-control-method-26 (_type_) none)
-   (nav-control-method-27 (_type_) none)
-   (nav-control-method-28 (_type_ collide-kind) none)
+   (post-relocalize-hook (_type_) none)
+   (relocalize-in-mesh! (_type_) none)
+   (gather-nav-spheres! (_type_ collide-kind) none)
    (should-display? (_type_) symbol)
-   (nav-control-method-30 (_type_ vector vector vector) sphere)
+   (find-deepest-sphere-along-ray (_type_ vector vector vector) sphere)
    (intersect-ray-line-segment? (_type_ vector vector vector vector) symbol)
-   (nav-control-method-32 (_type_ vector vector vector vector float) symbol)
-   (nav-control-method-33 (_type_ vector vector vector vector float) symbol)
+   (avoid-spheres (_type_ vector vector vector vector float) symbol)
+   (avoid-spheres-and-detect-blocked (_type_ vector vector vector vector float) symbol)
    (nav-control-method-34 () none)
-   (nav-control-method-35 (_type_ vector vector vector vector float) none)))
+   (avoid-spheres-world (_type_ vector vector vector vector float) none)))
 
 (defbehavior nav-mesh-connect process ((proc process) (trans trsqv) (nav-cont nav-control))
+  "Find and initialize proc's navigation mesh, register the process
+   and optional navigation control as users, and return the shared mesh or the empty default mesh."
   ;; try to find an entity with a nav-mesh, first from the given process
   (let ((ent (-> proc entity)))
     (when (zero? (-> ent nav-mesh))
@@ -242,44 +258,34 @@
     (let ((entity-nav-mesh (-> ent nav-mesh)))
       (cond
         ((nonzero? entity-nav-mesh)
-         ;; we have a nav mesh mesh already
+         ;; We have a nav mesh already.
          (when (zero? (-> entity-nav-mesh user-list))
-           ;; but, no engine, maybe because this is the first time we're doing this for the level.
-           ;; this seems like a bit of a hack. We'd like to allocate the engine on a level heap.
-           ;; but I guess we can't assume that process-level-heap is set correctly here.
-           ;; so we grab the entity-links from the current pp's entity, and look at that level.
-           ;; I'm not sure why we do this on the current pp instead of the proc we were given...
+           ;; Use the current process's level heap because process-level-heap is not guaranteed to
+           ;; be established while navigation connections are built.
            (set! process-level-heap (-> self entity extra level heap))
-           ;; now construct the engine, looking up the size from the res-lump.
+           ;; Construct the user list with the resource-selected connection capacity.
            (set! (-> entity-nav-mesh user-list)
                  (new 'process-level-heap 'engine 'nav-engine (res-lump-value ent 'nav-max-users int :default (the-as uint128 32))))
-           ;; do some setup
            (initialize-mesh! entity-nav-mesh)
            (update-route-table entity-nav-mesh))
-         ;; in all cases, do the connection
-         ;; connect the nav-mesh engine:
-         (add-connection (-> entity-nav-mesh user-list)
-                         proc ;; to the given process
-                         nothing ;; no function
-                         ;; and some weird parameters.
-                         proc
-                         nav-cont
-                         trans))
+         ;; param1 is the user process, param2 its nav-control, and param3 its transform or shape.
+         (add-connection (-> entity-nav-mesh user-list) proc nothing proc nav-cont trans))
         (else
-         ;; we couldn't find a nav-mesh.  Set a bit.
-         (if (and nav-cont (-> proc entity)) (logior! (-> proc entity extra perm status) (entity-perm-status bit-1)))
-         ;; no nav-mesh, so give us a default-nav-mesh.
+         ;; Mark an actor setup error and use the empty default mesh.
+         (if (and nav-cont (-> proc entity)) (logior! (-> proc entity extra perm status) (entity-perm-status error)))
          (set! entity-nav-mesh *default-nav-mesh*)))
       entity-nav-mesh)))
 
 (defmethod new nav-control ((allocation symbol) (type-to-make type) (shape collide-shape) (sphere-count int) (nearest-y-threshold-default float))
+  "Allocate per-actor navigation state with capacity for sphere-count avoidance spheres,
+   connect it to shape's mesh, and load the nearest-Y threshold from the entity resource."
   (let ((this (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* sphere-count 16))))))
     (when (zero? this)
       (go process-drawable-art-error "memory")
       (set! this (the-as nav-control 0))
       (goto cfg-4))
     (set! (-> this max-spheres) sphere-count)
-    (set! (-> this flags) (nav-control-flags navcf8 navcf13))
+    (set! (-> this flags) (nav-control-flags enable-sphere-avoidance avoid-static-spheres))
     (set! (-> this mesh) (nav-mesh-connect (-> shape process) shape this))
     (let ((ent (-> shape process entity)))
       (set! (-> this nearest-y-threshold) (res-lump-float ent 'nearest-y-threshold :default nearest-y-threshold-default)))
@@ -292,24 +298,28 @@
     (set! (-> this user-poly) #f)
     (set! (-> this portal 0) #f)
     (set! (-> this portal 1) #f)
-    (set! (-> this nav-cull-radius) 40960.0)
+    (set! (-> this nav-cull-radius) 40960.0) ;; 10 meters
     (label cfg-4)
     (the-as nav-control this)))
 
 (defmethod should-display? ((this nav-control))
+  "Return whether global navigation-mark display and this control's display flag
+   are both enabled."
   (and *display-nav-marks* (logtest? (-> this flags) (nav-control-flags display-marks))))
 
-(defmethod point-in-bounds? ((this nav-control) (arg0 vector))
-  "Is the point in bounds?"
-  (let ((v1-1 (-> this mesh bounds)))
+(defmethod point-in-bounds? ((this nav-control) (point vector))
+  "Return whether point lies inside the navigation mesh's world-space bounding
+   sphere."
+  (let ((bounds (-> this mesh bounds)))
     ;; w is the sphere radius
-    (>= (-> v1-1 w) (vector-vector-distance arg0 v1-1))))
+    (>= (-> bounds w) (vector-vector-distance point bounds))))
 
-(defmethod set-target-pos! ((this nav-control) (arg0 vector))
-  (set! (-> this target-pos quad) (-> arg0 quad))
+(defmethod set-target-pos! ((this nav-control) (pos vector))
+  "Copy pos into the steering target position."
+  (set! (-> this target-pos quad) (-> pos quad))
   (none))
 
-(defun has-nav-mesh? ((arg0 entity-actor))
-  "Does the actor have a nav mesh? Either loaded an in the nav-mesh field, or in
-   the res-lump."
-  (the-as symbol (or (-> arg0 nav-mesh) (res-lump-struct arg0 'nav-mesh-actor structure))))
+(defun has-nav-mesh? ((ent entity-actor))
+  "Return whether the actor has loaded navigation data or a linked
+   nav-mesh actor resource."
+  (the-as symbol (or (-> ent nav-mesh) (res-lump-struct ent 'nav-mesh-actor structure))))

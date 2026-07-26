@@ -12,62 +12,74 @@
 
 (declare-type sidekick process-drawable)
 
+;; Jak and Daxter's process types and the core target entry points. Most movement and collision
+;; state lives in control-info, which occupies the process-drawable root slot.
+
 ;; DECOMP BEGINS
 
 (deftype target (process-drawable)
-  ((fact                fact-info-target :override)
+  ((fact                fact-info-target :override) ;; Health, eco, collectibles, and counters.
    (self-override       target :overlay-at self)
-   (control             control-info :overlay-at root)
+   (control             control-info :overlay-at root) ;; Movement and collision state.
    (skel2               basic)
-   (racer               racer-info)
+   (racer               racer-info) ;; A-Grav Zoomer state while riding.
    (game                game-info)
-   (neck                joint-mod)
-   (state-hook-time     time-frame)
-   (state-hook          (function none :behavior target))
-   (cam-user-mode       symbol)
-   (sidekick            (pointer sidekick))
-   (manipy              (pointer manipy))
-   (attack-info         attack-info :inline)
-   (attack-info-rec     attack-info :inline)
-   (anim-seed           uint64)
-   (alt-cam-pos         vector :inline)
-   (snowball            snowball-info)
-   (tube                tube-info)
-   (flut                flut-info)
-   (current-level       level)
+   (neck                joint-mod) ;; Head look-at control.
+   (state-hook-time     time-frame) ;; Installation time for the temporary state hook.
+   (state-hook          (function none :behavior target)) ;; Short-lived callback for buffered transitions.
+   (cam-user-mode       symbol) ;; normal or look-around.
+   (sidekick            (pointer sidekick)) ;; Daxter, or #f while he is hidden.
+   (manipy              (pointer manipy)) ;; Prop currently carried by Jak.
+   (attack-info         attack-info :inline) ;; Outgoing attack description.
+   (attack-info-rec     attack-info :inline) ;; Most recently received attack description.
+   (anim-seed           uint64) ;; Shared with Daxter to synchronize ambient animation.
+   (alt-cam-pos         vector :inline) ;; Camera focus override selected by state-flags.
+   (snowball            snowball-info) ;; Snowball-riding state.
+   (tube                tube-info) ;; Tube-riding state.
+   (flut                flut-info) ;; Flut Flut riding state.
+   (current-level       level) ;; Current level used for in-level time accounting.
    (saved-pos           transformq :inline)
    (saved-owner         uint64)
-   (alt-neck-pos        vector :inline)
-   (fp-hud              handle)
-   (no-load-wait        time-frame)
-   (no-look-around-wait time-frame)
-   (burn-proc           handle))
+   (alt-neck-pos        vector :inline) ;; Forced neck look-at point.
+   (fp-hud              handle) ;; First-person HUD used by look-around mode.
+   (no-load-wait        time-frame) ;; Do not enter target-load-wait before this time.
+   (no-look-around-wait time-frame) ;; Do not begin an idle look-around before this time.
+   (burn-proc           handle)) ;; Attached burn-damage effect.
   (:methods
    (find-edge-grabs! (_type_ collide-cache) object))
   (:states
+   ;; Attacks.
    target-attack
    (target-attack-air symbol)
    (target-attack-uppercut float float)
    (target-attack-uppercut-jump float float)
+   ;; Cutscenes, death, and miscellaneous modes.
    target-billy-game
    (target-clone-anim handle)
    (target-continue continue-point)
    (target-death symbol)
    target-demo
+   ;; Jumps.
    (target-double-jump float float)
    (target-duck-high-jump float float symbol)
    (target-duck-high-jump-jump float float symbol)
+   ;; Duck movement.
    target-duck-stance
    target-duck-walk
    (target-eco-powerup object float)
+   ;; Ledge grabs.
    target-edge-grab
    (target-edge-grab-jump float float)
    target-edge-grab-off
+   ;; Airborne movement.
    (target-falling symbol)
+   ;; Cutscenes and minigames.
    (target-final-door basic handle)
    (target-fishing handle)
+   ;; Ground-pound attack.
    (target-flop float float float)
    (target-flop-hit-ground symbol)
+   ;; Flut Flut.
    (target-flut-air-attack float)
    target-flut-air-attack-hit-ground
    (target-flut-clone-anim handle)
@@ -86,25 +98,33 @@
    target-flut-stance
    (target-flut-start handle)
    target-flut-walk
+   ;; Scripted hold used by dialogue and cutscenes.
    target-grab
+   ;; Jumping, damage, and landing.
    (target-high-jump float float basic)
    (target-hit symbol attack-info)
    (target-hit-ground symbol)
    (target-hit-ground-hard float)
+   ;; Ice movement.
    target-ice-stance
    target-ice-walk
+   ;; Jumps and launches.
    (target-jump float float surface)
    (target-jump-forward float float)
    (target-launch float symbol vector int)
+   ;; Idle and waiting.
    target-load-wait
    target-look-around
+   ;; Cutscene controls.
    (target-periscope handle)
    (target-play-anim string handle)
+   ;; Pole movement.
    (target-pole-cycle handle)
    (target-pole-flip-forward float float float)
    (target-pole-flip-forward-jump float float)
-   (target-pole-flip-up object object float)
+   (target-pole-flip-up float float float)
    (target-pole-flip-up-jump float float)
+   ;; A-Grav Zoomer.
    target-racing
    (target-racing-bounce float float symbol)
    (target-racing-clone-anim handle)
@@ -119,46 +139,57 @@
    (target-racing-jump float float symbol)
    (target-racing-smack float symbol)
    (target-racing-start handle)
+   ;; Attacks and steep-slope movement.
    target-running-attack
    target-slide-down
+   ;; Snowball riding.
    target-snowball
    (target-snowball-start handle)
+   ;; Standing and startup.
    target-stance
    target-stance-ambient
    target-stance-look-around
    target-startup
+   ;; Swimming.
    target-swim-down
    (target-swim-jump float float)
    (target-swim-jump-jump float float surface)
    target-swim-stance
    target-swim-up
    target-swim-walk
+   ;; Title-screen sequence.
    target-title
    target-title-play
    target-title-wait
+   ;; Tube riding.
    target-tube
    (target-tube-death symbol)
    (target-tube-hit symbol attack-info)
    (target-tube-jump float float)
    (target-tube-start handle)
+   ;; Ground movement.
    target-turn-around
    target-wade-stance
    target-wade-walk
    target-walk
+   ;; Warp gate.
    (target-warp-in vector vector)
    (target-warp-out vector vector)
+   ;; Roll attacks.
    target-wheel
    (target-wheel-flip float float)
+   ;; Yellow-eco attacks.
    target-yellow-blast
    target-yellow-jump-blast))
 
 (define-perm *target* target #f)
 
+;; Daxter clones Jak's animation while attached at the sidekick-root coordinate space.
 (deftype sidekick (process-drawable)
   ((parent-override  (pointer target) :overlay-at parent)
    (control          control-info :overlay-at root)
-   (anim-seed        uint64 :offset 192)
-   (shadow-in-movie? symbol))
+   (anim-seed        uint64 :offset 192) ;; Mirrors Jak's ambient-animation seed.
+   (shadow-in-movie? symbol)) ;; Permit Daxter's special shadow during movies.
   (:states
    sidekick-clone))
 
@@ -183,6 +214,7 @@
 (define-extern init-sidekick (function none :behavior sidekick))
 
 (define-extern racer-collision-reaction
-  (function control-info collide-shape-intersect vector vector cshape-moving-flags))
+  "Resolve a Zoomer collision and return the frame's collision status flags."
+  (function control-info collide-shape-intersect vector vector collide-status))
 
 (define-extern start-sequence-a (function none))

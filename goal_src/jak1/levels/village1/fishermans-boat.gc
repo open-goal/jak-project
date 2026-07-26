@@ -42,7 +42,6 @@
   ((local-pos vector :inline)
    (normal    vector :inline)))
 
-
 (deftype vehicle-path (structure)
   ((point-array vector 10 :inline)
    (point-count int32))
@@ -53,31 +52,36 @@
    (add-point! (_type_ float float float float) none)
    (debug-draw (_type_) symbol)))
 
-
 (defmethod get-point-count ((this vehicle-path))
+  "Return the number of points stored in this path."
   (-> this point-count))
 
-(defmethod nth-point ((this vehicle-path) (arg0 int) (arg1 vector))
-  (set! (-> arg1 quad) (-> this point-array arg0 quad))
-  arg1)
+(defmethod nth-point ((this vehicle-path) (index int) (result vector))
+  "Copy point index into result and return result."
+  (set! (-> result quad) (-> this point-array index quad))
+  result)
 
-(defmethod distance-to-next-point ((this vehicle-path) (arg0 int) (arg1 vector))
-  (let ((a2-1 (+ arg0 1)))
+(defmethod distance-to-next-point ((this vehicle-path) (index int) (result vector))
+  "Return in result the normalized horizontal direction from point index to the following wrapping
+   path point."
+  (let ((a2-1 (+ index 1)))
     (if (>= a2-1 (-> this point-count)) (set! a2-1 0))
-    (vector-! arg1 (-> this point-array a2-1) (-> this point-array arg0)))
-  (set! (-> arg1 y) 0.0)
-  (vector-normalize! arg1 1.0)
-  arg1)
+    (vector-! result (-> this point-array a2-1) (-> this point-array index)))
+  (set! (-> result y) 0.0)
+  (vector-normalize! result 1.0)
+  result)
 
-(defmethod add-point! ((this vehicle-path) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
+(defmethod add-point! ((this vehicle-path) (x float) (speed float) (z float) (heading float))
+  "Append one packed path point when the ten-point array has room."
   (let ((v1-0 (-> this point-count)))
     (when (< v1-0 10)
-      (set-vector! (-> this point-array v1-0) arg0 arg1 arg2 arg3)
+      (set-vector! (-> this point-array v1-0) x speed z heading)
       (+! (-> this point-count) 1)))
   0
   (none))
 
 (defmethod debug-draw ((this vehicle-path))
+  "Draw the path segments, stored velocity vectors, and point indices."
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'vector)))
@@ -200,23 +204,24 @@
    (sample-index           int32))
   (:methods
    (init! (_type_ vehicle-path (pointer float) (pointer float) int float) none)
-   (vehicle-controller-method-10 (_type_ vector float int) none)
-   (vehicle-controller-method-11 (_type_) none)
-   (vehicle-controller-method-12 (_type_ int vector) none)
+   (record-turning-sample! (_type_ vector float int) none)
+   (dump-tables (_type_) none)
+   (set-dest-point! (_type_ int vector) none)
    (move-to-next-point (_type_ vector) none)
-   (vehicle-controller-method-14 (_type_ vector vector) none)
-   (vehicle-controller-method-15 (_type_ collide-shape-moving) none)
-   (vehicle-controller-method-16 (_type_) none)))
-
+   (compute-target-point (_type_ vector vector) none)
+   (drive! (_type_ collide-shape-moving) none)
+   (debug-draw (_type_) none)))
 
 (defmethod relocate ((this vehicle-controller) (offset int))
+  "Relocate the path pointer stored in this embedded controller."
   (if (nonzero? (-> this path)) (&+! (-> this path) offset))
   (the-as vehicle-controller 0))
 
-(defmethod vehicle-controller-method-12 ((this vehicle-controller) (arg0 int) (arg1 vector))
-  (when (< arg0 (get-point-count (-> this path)))
-    (set! (-> this path-dest-index) arg0)
-    (nth-point (-> this path) arg0 (-> this path-dest-point))
+(defmethod set-dest-point! ((this vehicle-controller) (dest-index int) (cur-pos vector))
+  "Select a destination path point and construct its steering circle from the current position."
+  (when (< dest-index (get-point-count (-> this path)))
+    (set! (-> this path-dest-index) dest-index)
+    (nth-point (-> this path) dest-index (-> this path-dest-point))
     (let ((f30-0 (-> this path-dest-point y))
           (f28-0 (-> this path-dest-point w)))
       (set! (-> this path-dest-velocity x) (* f30-0 (cos f28-0)))
@@ -227,7 +232,7 @@
     (set! (-> this path-dest-point w) 1.0)
     (let ((s5-1 (new 'stack-no-clear 'vector)))
       (let ((s3-0 (new 'stack-no-clear 'vector)))
-        (vector-! s3-0 (-> this path-dest-point) arg1)
+        (vector-! s3-0 (-> this path-dest-point) cur-pos)
         (set! (-> s5-1 quad) (-> this path-dest-velocity quad))
         (set! (-> s5-1 x) (-> this path-dest-velocity z))
         (set! (-> s5-1 z) (- (-> this path-dest-velocity x)))
@@ -241,14 +246,16 @@
   0
   (none))
 
-(defmethod move-to-next-point ((this vehicle-controller) (arg0 vector))
+(defmethod move-to-next-point ((this vehicle-controller) (cur-pos vector))
+  "Advance to the next wrapping path point."
   (let ((s4-0 (+ (-> this path-dest-index) 1)))
     (if (>= s4-0 (get-point-count (-> this path))) (set! s4-0 0))
-    (vehicle-controller-method-12 this s4-0 arg0))
+    (set-dest-point! this s4-0 cur-pos))
   0
   (none))
 
-(defmethod vehicle-controller-method-14 ((this vehicle-controller) (arg0 vector) (arg1 vector))
+(defmethod compute-target-point ((this vehicle-controller) (arg0 vector) (arg1 vector))
+  "Compute the tangent steering target from from-pos to the selected destination circle."
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'vector)))
     (vector-! s5-0 (-> this dest-circle) arg0)
@@ -268,8 +275,9 @@
   0
   (none))
 
-(defmethod vehicle-controller-method-15 ((this vehicle-controller) (arg0 collide-shape-moving))
-  (vehicle-controller-method-14 this (-> arg0 trans) (-> this target-point))
+(defmethod drive! ((this vehicle-controller) (arg0 collide-shape-moving))
+  "Advance the path when needed and update automatic throttle and steering."
+  (compute-target-point this (-> arg0 trans) (-> this target-point))
   (let ((s3-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector)))
     (set! (-> s3-0 quad) (-> this path-dest-velocity quad))
@@ -292,7 +300,8 @@
   0
   (none))
 
-(defmethod vehicle-controller-method-11 ((this vehicle-controller))
+(defmethod dump-tables ((this vehicle-controller))
+  "Print the calibrated turning-radius and throttle tables as GOAL source."
   (format #t "(define *turning-radius-table* (new 'static 'inline-array 'float 0~%")
   (dotimes (s5-0 (-> this table-length))
     (format #t "					     (meters ~4,,2M)~%" (-> this turning-radius-table s5-0)))
@@ -306,7 +315,8 @@
   0
   (none))
 
-(defmethod vehicle-controller-method-10 ((this vehicle-controller) (arg0 vector) (arg1 float) (arg2 int))
+(defmethod record-turning-sample! ((this vehicle-controller) (arg0 vector) (arg1 float) (arg2 int))
+  "Measure one speed sample's turn radius and store its radius and throttle."
   (let ((s3-0 (new 'stack-no-clear 'vector)))
     (set! (-> s3-0 quad) (-> arg0 quad))
     (set! (-> s3-0 y) 0.0)
@@ -329,7 +339,8 @@
   0
   (none))
 
-(defmethod vehicle-controller-method-16 ((this vehicle-controller))
+(defmethod debug-draw ((this vehicle-controller))
+  "Draw the path, destination circle, and steering target."
   (debug-draw (-> this path))
   (add-debug-sphere #t
                     (bucket-id debug-no-zbuf)
@@ -341,6 +352,7 @@
   (none))
 
 (defmethod init! ((this vehicle-controller) (arg0 vehicle-path) (arg1 (pointer float)) (arg2 (pointer float)) (arg3 int) (arg4 float))
+  "Attach the path and calibration tables and initialize the steering-circle radius."
   (set! (-> this path) arg0)
   (set! (-> this turning-radius-table) arg1)
   (set! (-> this throttle-control-table) arg2)
@@ -389,7 +401,6 @@
    fishermans-boat-ride-to-misty
    fishermans-boat-ride-to-village1))
 
-
 (defskelgroup *fishermans-boat-sg*
   fishermans-boat
   fishermans-boat-lod0-jg
@@ -412,7 +423,8 @@
   ((evilsis-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 1))
 
-(defmethod rigid-body-platform-method-23 ((this fishermans-boat) (arg0 float))
+(defmethod accumulate-forces! ((this fishermans-boat) (arg0 float))
+  "Apply buoyancy, drag, stabilization, dock tether, and engine thrust for one physics tick."
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (s1-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -425,20 +437,20 @@
         (let ((sv-144 (-> this control-point-array data sv-128)))
           (vector-matrix*! s5-0 (-> sv-144 local-pos) s3-0)
           (set! (-> sv-144 world-pos quad) (-> s5-0 quad))
-          (rigid-body-method-17 (-> this rbody) s5-0 s1-0)
+          (velocity-at-point (-> this rbody) s5-0 s1-0)
           (set! (-> sv-144 velocity quad) (-> s1-0 quad))
           (set! (-> sv-144 world-pos w) (ocean-get-height s5-0))
           (let* ((f0-2 (- (-> sv-144 world-pos w) (-> s5-0 y)))
                  (f30-0 (fmin 1.0 (/ f0-2 (-> this info max-buoyancy-depth)))))
             (when (< 0.0 f0-2)
               (vector-float*! s4-0 *y-vector* (* 20.0 f0-2 (-> this rbody mass)))
-              (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
+              (apply-force-at-point! (-> this rbody) s5-0 s4-0)
               (vector-float*! s4-0 *y-vector* (* 1.6 f30-0 (fmax 0.0 (vector-dot s2-0 s1-0))))
-              (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
+              (apply-force-at-point! (-> this rbody) s5-0 s4-0)
               (vector-float*! s4-0 s1-0 (* -1.0 (-> this info drag-factor) f30-0))
-              (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
+              (apply-force-at-point! (-> this rbody) s5-0 s4-0)
               (vector-float*! s4-0 (-> s3-0 vector 0) (* -0.5 (vector-dot (-> s3-0 vector 0) s1-0)))
-              (rigid-body-method-13 (-> this rbody) s5-0 s4-0))))
+              (apply-force-at-point! (-> this rbody) s5-0 s4-0))))
         0
         (+! sv-128 1)))
     (let ((sv-160 0))
@@ -446,9 +458,9 @@
         (let ((sv-176 (-> this stabilizer-array sv-160 local-pos)))
           (vector-matrix*! s5-0 (the-as vector (&-> sv-176 x)) s3-0)
           (vector-rotate*! s0-0 (&+ sv-176 16) s3-0))
-        (rigid-body-method-17 (-> this rbody) s5-0 s1-0)
+        (velocity-at-point (-> this rbody) s5-0 s1-0)
         (vector-float*! s4-0 s0-0 (* -1.0 (vector-dot s0-0 s1-0)))
-        (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
+        (apply-force-at-point! (-> this rbody) s5-0 s4-0)
         0
         (+! sv-160 1)))
     (when (-> this anchored)
@@ -459,14 +471,14 @@
         (set! (-> s4-0 y) 0.0)
         (vector-float*! s4-0 s4-0 10.0)
         (if (< 81920.0 (vector-length s4-0)) (vector-normalize! s4-0 81920.0))
-        (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
+        (apply-force-at-point! (-> this rbody) s5-0 s4-0)
         (vector+*! s5-0 (-> s3-0 vector 3) s2-0 -24576.0)
         (vector+*! s1-1 (-> this dock-point) (-> this dest-dir) -24576.0)
         (vector-! s4-0 s1-1 s5-0))
       (set! (-> s4-0 y) 0.0)
       (vector-float*! s4-0 s4-0 10.0)
       (if (< 81920.0 (vector-length s4-0)) (vector-normalize! s4-0 81920.0))
-      (rigid-body-method-13 (-> this rbody) s5-0 s4-0))
+      (apply-force-at-point! (-> this rbody) s5-0 s4-0))
     (when (-> this ignition)
       (let ((s2-1 (new 'stack-no-clear 'vector)))
         (vector-matrix*! s5-0 (-> this engine-thrust-local-pos) s3-0)
@@ -474,9 +486,9 @@
         (vector-rotate*! s2-1 s2-1 s3-0)
         (vector-normalize! s2-1 1.0)
         (vector-float*! s4-0 s2-1 (-> this engine-thrust)))
-      (rigid-body-method-13 (-> this rbody) s5-0 s4-0)))
-  (rigid-body-platform-method-26 this)
-  (rigid-body-platform-method-25 this)
+      (apply-force-at-point! (-> this rbody) s5-0 s4-0)))
+  (apply-gravity! this)
+  (apply-player-force! this)
   0
   (none))
 
@@ -487,7 +499,7 @@
   (none))
 
 (defbehavior fishermans-boat-set-path-point fishermans-boat ((arg0 int))
-  (vehicle-controller-method-12 (-> self controller) arg0 (-> self root-overlay trans))
+  (set-dest-point! (-> self controller) arg0 (-> self root-overlay trans))
   (vector-normalize-copy! (-> self dest-dir) (-> self controller path-dest-velocity) 1.0)
   0
   (none))
@@ -516,7 +528,7 @@
    (:fade-a 0.7111111)
    (:friction 0.94)
    (:timer (seconds 2))
-   (:flags (bit2 bit3 left-multiply-quat))
+   (:flags (die-when-faded glow left-multiply-quat))
    (:next-time (seconds 0.3))
    (:next-launcher 119)
    (:rotate-y (degrees 0))))
@@ -573,7 +585,7 @@
   (when (and *target* (-> self ignition))
     (cond
       ((-> self auto-pilot)
-       (vehicle-controller-method-15 (-> self controller) (-> self root-overlay))
+       (drive! (-> self controller) (-> self root-overlay))
        (vector-normalize-copy! (-> self dest-dir) (-> self controller path-dest-velocity) 1.0))
       (else
        (when (not (-> self measure-parameters))
@@ -600,11 +612,11 @@
            (f3-0 1228800.0))
        (set! (-> self propeller spin-rate) (* f0-20 (+ f1-4 (* f2-1 (/ 1.0 f3-0) (-> self engine-thrust)))))))
     (else (seek! (-> self propeller spin-rate) 0.0 218.45334)))
-  (rigid-body-platform-method-28 self)
+  (simulate! self)
   (quaternion-copy! (-> self root-overlay quat) (-> self rbody rotation))
-  (rigid-body-method-18 (-> self rbody) (-> self root-overlay trans))
+  (get-origin-position (-> self rbody) (-> self root-overlay trans))
   (when (-> self debug-draw)
-    (vehicle-controller-method-16 (-> self controller))
+    (debug-draw (-> self controller))
     (add-debug-sphere #t
                       (bucket-id debug-no-zbuf)
                       (the-as vector (-> self boat-path))
@@ -914,22 +926,24 @@
               (fishermans-boat-set-throttle-by-speed f30-0)
               (suspend))
             (vector-z-quaternion! gp-0 (-> self root-overlay quat))
-            (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
+            (record-turning-sample! (-> self controller) gp-0 (-> self controller throttle) s5-0)
             (suspend-for (seconds 1)
               (fishermans-boat-set-throttle-by-speed f30-0)
               (suspend)))
           (vector-z-quaternion! gp-0 (-> self root-overlay quat))
-          (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
+          (record-turning-sample! (-> self controller) gp-0 (-> self controller throttle) s5-0)
           (+! s5-0 1)))
       (go fishermans-boat-player-control))
   :post fishermans-boat-post)
 
 (defmethod relocate ((this fishermans-boat) (offset int))
+  "Relocate the embedded controller and optional propeller modifier, then relocate the boat."
   (relocate (-> this controller) offset)
   (if (nonzero? (-> this propeller)) (&+! (-> this propeller) offset))
   (call-parent-method this offset))
 
-(defmethod rigid-body-platform-method-30 ((this fishermans-boat))
+(defmethod init-collision! ((this fishermans-boat))
+  "Create the boat's rider platform collision group and mesh."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -956,12 +970,14 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this fishermans-boat))
+(defmethod init-platform! ((this fishermans-boat))
+  "Initialize the boat skeleton, path, controller, physics points, stabilizers, engine, and docking
+   state."
   (initialize-skeleton this *fishermans-boat-sg* '())
   (logclear! (-> this mask) (process-mask actor-pause movie))
   (logior! (-> this skel status) (janim-status inited))
-  (process-entity-status! this (entity-perm-status bit-3) #t)
-  (process-entity-status! this (entity-perm-status bit-7) #t)
+  (process-entity-status! this (entity-perm-status no-kill) #t)
+  (process-entity-status! this (entity-perm-status force-birth) #t)
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (set! (-> this boat-path point-count) 0)
@@ -987,7 +1003,7 @@
   (set! (-> this root-overlay trans quad) (-> this dock-point quad))
   (set! (-> this root-overlay trans y) 0.0)
   (forward-up-nopitch->quaternion (-> this root-overlay quat) (-> this dest-dir) *up-vector*)
-  (rigid-body-platform-method-29 this *fishermans-boat-constants*)
+  (setup-from-constants! this *fishermans-boat-constants*)
   (let ((v1-39 (-> this control-point-array data)))
     (set! (-> v1-39 0 local-pos x) 0.0)
     (set! (-> v1-39 0 local-pos y) 0.0)
@@ -1040,21 +1056,22 @@
       (set! (-> this entity extra perm task) (game-task complete))))
   (none))
 
-(defmethod init-from-entity! ((this fishermans-boat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fishermans-boat) (source-entity entity-actor))
+  "Create the boat from its placed entity and enter the docked state for the current level."
   (stack-size-set! (-> this main-thread) 512)
   (logior! (-> this mask) (process-mask platform))
-  (rigid-body-platform-method-30 this)
-  (process-drawable-from-entity! this arg0)
-  (rigid-body-platform-method-31 this)
+  (init-collision! this)
+  (process-drawable-from-entity! this source-entity)
+  (init-platform! this)
   (if (= (-> *game-info* current-continue level) 'misty) (go fishermans-boat-docked-misty) (go fishermans-boat-docked-village))
   (none))
 
 (defbehavior fishermans-boat-reset-physics fishermans-boat ()
-  (rigid-body-method-22 (-> self rbody)
-                        (-> self root-overlay trans)
-                        (-> self root-overlay quat)
-                        (-> self info linear-damping)
-                        (-> self info angular-damping))
+  (reset! (-> self rbody)
+          (-> self root-overlay trans)
+          (-> self root-overlay quat)
+          (-> self info linear-damping)
+          (-> self info angular-damping))
   (vector-reset! (-> self player-force))
   (set! (-> self player-impulse) #f)
   (set! (-> self player-contact) #f)

@@ -44,17 +44,19 @@
         (suspend)
         (ja :num! (loop! 0.5)))))
 
-(defbehavior fuel-cell-init-as-spline-slider fuel-cell ((arg0 handle) (arg1 float) (arg2 float) (arg3 int))
+(defbehavior fuel-cell-init-as-spline-slider fuel-cell ((robber-handle handle) (progress float) (speed float) (pickup-amount int))
+  "Initialize a fuel cell to follow the robber's closed curve from progress at speed, then award the
+   supplied pickup amount when it slows to a stop."
   (initialize self)
   (set! (-> self fact pickup-type) (pickup-type fuel-cell))
-  (set! (-> self fact pickup-amount) (the float arg3))
+  (set! (-> self fact pickup-amount) (the float pickup-amount))
   (initialize-params self 0 1024.0)
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self actor-pause) #f)
-  (set! (-> self entity) (-> arg0 process 0 entity))
+  (set! (-> self entity) (-> robber-handle process 0 entity))
   (set! (-> self path) (new 'process 'curve-control self 'path -1000000000.0))
   (set! (-> self movie-pos-index) -1)
-  (go fuel-cell-spline-slider arg0 arg1 arg2)
+  (go fuel-cell-spline-slider robber-handle progress speed)
   (none))
 
 (deftype robber (process-drawable)
@@ -84,7 +86,6 @@
    robber-initial-notice
    robber-tired))
 
-
 (defskelgroup *robber-sg*
   robber
   robber-lod0-jg
@@ -93,11 +94,13 @@
   :bounds (static-spherem 0 0 0 4)
   :shadow robber-shadow-mg)
 
-(defbehavior robber-event-handler robber ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior robber-event-handler robber ((sender process) (argc int) (message symbol) (block event-message-block))
+  "Enter the robber's death state when it receives an attack event."
+  (case message
     (('attack) (go robber-die))))
 
 (defbehavior robber-task-complete? robber ()
+  "Mark this robber complete and return whether every linked robber has completed its subtask."
   (process-entity-status! self (entity-perm-status complete) #t)
   (when (or (-> self link prev) (-> self link next))
     (let ((sv-16 (the-as symbol #f)))
@@ -110,6 +113,8 @@
       sv-16)))
 
 (defbehavior robber-find-ground robber ()
+  "Probe for ground below the robber and set its desired hover offset when the surface is safely
+   separated from the water."
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self root trans quad))
     (let ((t2-0 (new 'stack-no-clear 'collide-tri-result)))
@@ -131,15 +136,17 @@
            #t)
           (else (set! (-> self y-offset-desired) 0.0) #f))))))
 
-(defbehavior robber-rotate robber ((arg0 target) (arg1 float))
+(defbehavior robber-rotate robber ((face-jak target) (max-angle float))
+  "Turn toward Jak or the active curve direction by at most max-angle and update the animation
+   blend from the signed turn."
   (let ((s5-0 (new 'stack-no-clear 'matrix))
         (gp-0 (new 'stack-no-clear 'vector)))
-    (path-control-method-14 (-> self path) (-> self tangent) (-> self curve-position))
+    (get-tangent-at-percent! (-> self path) (-> self tangent) (-> self curve-position))
     (cond
-      ((and arg0 *target*) (vector-! gp-0 (-> self root trans) (target-pos 0)) (vector-normalize! gp-0 1.0))
+      ((and face-jak *target*) (vector-! gp-0 (-> self root trans) (target-pos 0)) (vector-normalize! gp-0 1.0))
       ((< (-> self speed) 0.0) (vector-negate! gp-0 (-> self tangent)))
       (else (set! (-> gp-0 quad) (-> self tangent quad))))
-    (matrix-from-two-vectors-max-angle-partial! s5-0 (-> self facing) gp-0 arg1 0.25)
+    (matrix-from-two-vectors-max-angle-partial! s5-0 (-> self facing) gp-0 max-angle 0.25)
     (vector-matrix*! gp-0 (-> self facing) s5-0)
     (vector-normalize! gp-0 1.0)
     (forward-down->inv-matrix s5-0 gp-0 (new 'static 'vector :y -1.0))
@@ -151,6 +158,8 @@
     (let ((v0-10 (-> self facing))) (set! (-> v0-10 quad) (-> gp-0 quad)) v0-10)))
 
 (defbehavior robber-move robber ()
+  "Advance and wrap the robber's curve position, evaluate its new position, and ease its vertical
+   hover offset."
   (+! (-> self curve-position)
       (/ (the float (* (- (current-time) (-> *display* old-base-frame-counter)) (the int (-> self speed))))
          (path-distance (-> self path))))
@@ -175,20 +184,24 @@
        (set! (-> self y-vel) 0.0))))
   (set! (-> self root trans y) (+ (-> self root trans y) (-> self y-offset))))
 
-(defbehavior robber-calc-speed robber ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 symbol))
+(defbehavior robber-calc-speed robber ((near-distance float) (far-distance float) (near-speed float) (far-speed float) (flee-shortest-way symbol))
+  "Choose a signed curve speed from Jak's distance, interpolating between the near and far speeds
+   and optionally fleeing along the shorter direction."
   (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (target-pos 0))))
     (set! (-> gp-1 y) 0.0)
-    (let* ((f2-1 (/ (- (vector-length gp-1) arg0) (- arg1 arg0)))
+    (let* ((f2-1 (/ (- (vector-length gp-1) near-distance) (- far-distance near-distance)))
            (f0-4 (- 1.0 (fmax 0.0 (fmin 1.0 f2-1))))
-           (f0-5 (lerp arg3 arg2 f0-4))
+           (f0-5 (lerp far-speed near-speed f0-4))
            (f30-0 (/ f0-5 300)))
       (cond
-        ((or (not arg4) (< arg0 (vector-length gp-1))) (if (< (-> self speed) 0.0) (set! f30-0 (- f30-0))))
+        ((or (not flee-shortest-way) (< near-distance (vector-length gp-1)))
+         (if (< (-> self speed) 0.0) (set! f30-0 (- f30-0))))
         ((< (vector-dot gp-1 (-> self tangent)) 0.0) (set! f30-0 (- f30-0))))
       (set! (-> self speed) f30-0)
       f30-0)))
 
 (defbehavior robber-calc-anim-speed robber ()
+  "Map the robber's absolute curve speed to a clamped animation playback rate."
   (let* ((f0-1 (fabs (-> self speed)))
          (f0-2 (* 0.07324219 f0-1))
          (f0-3 (+ -15.0 f0-2))
@@ -199,21 +212,20 @@
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (let ((gp-0 (new 'stack-no-clear 'vector)))
-            (let ((a1-1 (new 'stack-no-clear 'vector))) (clmf-input gp-0 a1-1 1))
-            (format *stdcon* "rv ~f ~f ~f~%" (-> gp-0 x) (-> gp-0 y) (-> gp-0 z))
-            (vector-float*! gp-0 gp-0 4096.0)
-            (+! (-> self curve-position) (/ (-> gp-0 y) (path-distance (-> self path)))))
-          (cond
-            ((< 1.0 (-> self curve-position)) (+! (-> self curve-position) -1.0))
-            ((< (-> self curve-position) 0.0) (+! (-> self curve-position) 1.0)))
-          (eval-path-curve! (-> self path) (-> self root trans) (-> self curve-position) 'interp)
-          (robber-rotate (the-as target #f) 1820.4445)
-          (robber-find-ground)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group)
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (let ((gp-0 (new 'stack-no-clear 'vector)))
+                   (let ((a1-1 (new 'stack-no-clear 'vector))) (clmf-input gp-0 a1-1 1))
+                   (format *stdcon* "rv ~f ~f ~f~%" (-> gp-0 x) (-> gp-0 y) (-> gp-0 z))
+                   (vector-float*! gp-0 gp-0 4096.0)
+                   (+! (-> self curve-position) (/ (-> gp-0 y) (path-distance (-> self path)))))
+                 (cond
+                   ((< 1.0 (-> self curve-position)) (+! (-> self curve-position) -1.0))
+                   ((< (-> self curve-position) 0.0) (+! (-> self curve-position) 1.0)))
+                 (eval-path-curve! (-> self path) (-> self root trans) (-> self curve-position) 'interp)
+                 (robber-rotate (the-as target #f) 1820.4445)
+                 (robber-find-ground))))
   :post ja-post)
 
 (defstate robber-dead (robber)
@@ -257,13 +269,13 @@
                                         self
                                         (the-as fact-info #f)))))))
         (when gp-0
-          (ja-no-eval :group! robber-death-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (robber-calc-speed 4096.0 8192.0 122880.0 122880.0 #f)
-            (robber-move)
-            (robber-rotate (the-as target #f) 1820.4445)
-            (suspend)
-            (ja :num! (seek!)))))
+          (ja-play :group!
+                   robber-death-ja
+                   :num! (seek!)
+                   :frame-num 0.0
+                   (robber-calc-speed 4096.0 8192.0 122880.0 122880.0 #f)
+                   (robber-move)
+                   (robber-rotate (the-as target #f) 1820.4445))))
       (while (-> self child)
         (suspend))
       (go robber-dead))
@@ -316,13 +328,13 @@
         (suspend)
         (when (time-elapsed? (-> self last-ambient-time) (-> self time-to-next-ambient))
           (ja-channel-push! 1 (seconds 0.2))
-          (ja-no-eval :group! robber-ambient-look-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (robber-calc-speed 32768.0 122880.0 122060.8 20480.0 #f)
-            (robber-move)
-            (robber-rotate (the-as target #f) 1820.4445)
-            (suspend)
-            (ja :num! (seek!)))
+          (ja-play :group!
+                   robber-ambient-look-ja
+                   :num! (seek!)
+                   :frame-num 0.0
+                   (robber-calc-speed 32768.0 122880.0 122060.8 20480.0 #f)
+                   (robber-move)
+                   (robber-rotate (the-as target #f) 1820.4445))
           (set-time! (-> self last-ambient-time))
           (let* ((f30-0 300.0)
                  (f28-0 2.0)
@@ -363,13 +375,13 @@
         (suspend)
         (when (time-elapsed? (-> self last-ambient-time) (-> self time-to-next-ambient))
           (ja-channel-push! 1 (seconds 0.2))
-          (ja-no-eval :group! robber-ambient-look-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (robber-calc-speed 61440.0 122880.0 204800.0 16384.0 #t)
-            (robber-move)
-            (robber-rotate (the-as target #f) 1820.4445)
-            (suspend)
-            (ja :num! (seek!)))
+          (ja-play :group!
+                   robber-ambient-look-ja
+                   :num! (seek!)
+                   :frame-num 0.0
+                   (robber-calc-speed 61440.0 122880.0 204800.0 16384.0 #t)
+                   (robber-move)
+                   (robber-rotate (the-as target #f) 1820.4445))
           (set-time! (-> self last-ambient-time))
           (let* ((f30-0 300.0)
                  (f28-0 3.0)
@@ -395,10 +407,7 @@
     (behavior ()
       (ja-channel-push! 1 (seconds 0.2))
       (loop
-        (ja-no-eval :group! robber-idle-hover-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! robber-idle-hover-ja :num! (seek!) :frame-num 0.0)))
   :post transform-post)
 
 (defstate robber-initial-notice (robber)
@@ -412,7 +421,7 @@
         (go robber-flee)))
   :code
     (behavior ()
-      (path-control-method-14 (-> self path) (-> self tangent) (-> self curve-position))
+      (get-tangent-at-percent! (-> self path) (-> self tangent) (-> self curve-position))
       (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (target-pos 0)))
             (f0-1 6.826667))
         (set! (-> gp-1 y) 0.0)
@@ -420,12 +429,13 @@
         (set! (-> self speed) f0-1))
       (ja-channel-push! 1 (seconds 0.2))
       (loop
-        (ja-no-eval :group! robber-spots-ja :num! (seek! max 2.0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (robber-calc-speed 61440.0 122880.0 2048.0 2048.0 #t)
-          (robber-rotate (the-as target #f) 1820.4445)
-          (suspend)
-          (ja :num! (seek! max 2.0)))
+        (ja-play :group!
+                 robber-spots-ja
+                 :num!
+                 (seek! max 2.0)
+                 :frame-num 0.0
+                 (robber-calc-speed 61440.0 122880.0 2048.0 2048.0 #t)
+                 (robber-rotate (the-as target #f) 1820.4445))
         (go robber-flee)))
   :post transform-post)
 
@@ -443,13 +453,12 @@
     (behavior ()
       (ja-channel-push! 1 (seconds 0.2))
       (loop
-        (ja-no-eval :group! robber-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! robber-idle-ja :num! (seek!) :frame-num 0.0)))
   :post transform-post)
 
-(defmethod init-from-entity! ((this robber) (arg0 entity-actor))
+(defmethod init-from-entity! ((this robber) (source-entity entity-actor))
+  "Initialize the robber's collision, skeleton, closed curve, task link, hover height, and saved
+   challenge state."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -465,7 +474,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *robber-sg* '())
   (set! (-> this root pause-adjust-distance) 122880.0)
   (set! (-> this link) (new 'process 'actor-link-info this))
@@ -475,7 +484,7 @@
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (set! (-> this curve-position) (res-lump-float (-> this entity) 'initial-spline-pos))
   (eval-path-curve! (-> this path) (-> this root trans) (-> this curve-position) 'interp)
-  (path-control-method-14 (-> this path) (-> this tangent) (-> this curve-position))
+  (get-tangent-at-percent! (-> this path) (-> this tangent) (-> this curve-position))
   (set! (-> this facing quad) (-> this tangent quad))
   (let ((s4-1 (new 'stack-no-clear 'matrix)))
     (forward-down->inv-matrix s4-1 (-> this facing) (new 'static 'vector :y -1.0))
@@ -484,7 +493,7 @@
   (set! (-> this water-height) (res-lump-float (-> this entity) 'water-height))
   (robber-find-ground)
   (set! (-> this y-offset) (-> this y-offset-desired))
-  (let ((f0-14 (res-lump-float arg0 'timeout :default 10.0)))
+  (let ((f0-14 (res-lump-float source-entity 'timeout :default 10.0)))
     (set! (-> this timeout) (the-as time-frame (the int (* 300.0 f0-14)))))
   (set! (-> this last-ambient-time) 0)
   (set! (-> this time-to-next-ambient) 0)

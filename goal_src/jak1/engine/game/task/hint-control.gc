@@ -265,46 +265,56 @@
            (new 'static 'task-hint-control-group)
            (new 'static 'task-hint-control-group)))
 
-(defun find-hint-control-index ((arg0 text-id))
-  (let ((gp-0 -1))
-    (let ((v1-2 (length (-> *game-info* hint-control))))
-      (dotimes (a0-2 v1-2)
-        (when (= (-> *game-info* hint-control a0-2 id) arg0)
-          (set! gp-0 a0-2)
-          (set! a0-2 v1-2))))
-    gp-0))
+(defun find-hint-control-index ((hint-id text-id))
+  "Return the registered level-hint-control index for hint-id, or -1 when no policy is registered."
+  (let ((result-index -1))
+    (let ((hint-count (length (-> *game-info* hint-control))))
+      (dotimes (i hint-count)
+        (when (= (-> *game-info* hint-control i id) hint-id)
+          (set! result-index i)
+          (set! i hint-count))))
+    result-index))
 
-(defun start-hint-timer ((arg0 text-id))
-  (let ((v1-0 (find-hint-control-index arg0)))
-    (when (and (>= v1-0 0)
-               (zero? (-> *game-info* hint-control v1-0 start-time))
-               (!= (-> *game-info* hint-control v1-0 num-attempts-before-playing) 1))
-      (set-time! (-> *game-info* hint-control v1-0 start-time))
+(defun start-hint-timer ((hint-id text-id))
+  "Stamp start-time for a registered hint that requires more than one attempt, provided its timer
+   has not already been started."
+  (let ((hint-index (find-hint-control-index hint-id)))
+    (when (and (>= hint-index 0)
+               (zero? (-> *game-info* hint-control hint-index start-time))
+               (!= (-> *game-info* hint-control hint-index num-attempts-before-playing) 1))
+      (set-time! (-> *game-info* hint-control hint-index start-time))
       0))
   0
   (none))
 
-(defun increment-success-for-hint ((arg0 text-id))
-  (let ((gp-0 (find-hint-control-index arg0)))
-    (when (>= gp-0 0)
-      (seekl! (-> *game-info* hint-control gp-0 num-success) 127 1)
+(defun increment-success-for-hint ((hint-id text-id))
+  "Increment hint-id's successful-attempt counter, saturating at 127. Do nothing when the hint has
+   no registered control."
+  (let ((hint-index (find-hint-control-index hint-id)))
+    (when (>= hint-index 0)
+      (seekl! (-> *game-info* hint-control hint-index num-success) 127 1)
       0))
   0
   (none))
 
 ;; WARN: disable def twice: 139. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defun can-hint-be-played? ((arg0 text-id) (arg1 entity) (arg2 string))
-  (let ((v1-0 (not (str-is-playing?))))
-    (if (and v1-0 (nonzero? arg0)) (set! v1-0 (not (seen-text? *game-info* arg0))))
-    (when v1-0
+(defun can-hint-be-played? ((hint-id text-id) (speaker entity) (text string))
+  "Return whether hint-id may play now. Reject conflicting speech, a previously seen nonzero text,
+   an unready hint semaphore, the global hint cooldown, dialog or loading activity, and blackout time.
+   An unregistered hint then passes. A registered hint debounces distinct attempts, accumulates the
+   continuous-call delay used by single-attempt hints, enforces its delay and success cutoff, and
+   saturating-increments its attempt count when eligible. speaker and text are accepted but not used."
+  (let ((eligible? (not (str-is-playing?))))
+    (if (and eligible? (nonzero? hint-id)) (set! eligible? (not (seen-text? *game-info* hint-id))))
+    (when eligible?
       (when *hint-semaphore*
-        (set! v1-0 (appeared-for-long-enough? (the-as level-hint (ppointer->process *hint-semaphore*))))
+        (set! eligible? (appeared-for-long-enough? (the-as level-hint (ppointer->process *hint-semaphore*))))
         0)
-      (when (and v1-0 (not (time-elapsed? (-> *game-info* hint-play-time) (seconds 0.1))))
-        (set! v1-0 #f)
+      (when (and eligible? (not (time-elapsed? (-> *game-info* hint-play-time) (seconds 0.1))))
+        (set! eligible? #f)
         0)
-      (set! v1-0
-            (and v1-0
+      (set! eligible?
+            (and eligible?
                  (not (-> *setting-control* current talking))
                  (not (-> *setting-control* current spooling))
                  (not (-> *setting-control* current hint))
@@ -312,60 +322,65 @@
                  (>= (current-time) (-> *game-info* blackout-time))))
       0)
     (cond
-      (v1-0
-       (let ((v1-16 (find-hint-control-index arg0)))
+      (eligible?
+       (let ((hint-index (find-hint-control-index hint-id)))
          (cond
-           ((< v1-16 0) #t)
+           ((< hint-index 0) #t)
            (else
-            (let ((gp-1 (-> *game-info* hint-control v1-16))
-                  (a0-24 (- (current-time) (-> *game-info* hint-control v1-16 last-time-called)))
-                  (v1-21 #t))
-              (if (and (= (-> gp-1 num-attempts-before-playing) 1) (< a0-24 (seconds 0.1))) (+! (-> gp-1 start-time) a0-24))
+            (let ((hint-control (-> *game-info* hint-control hint-index))
+                  (time-since-last-call (- (current-time) (-> *game-info* hint-control hint-index last-time-called)))
+                  (delay-complete? #t))
+              (if (and (= (-> hint-control num-attempts-before-playing) 1) (< time-since-last-call (seconds 0.1)))
+                (+! (-> hint-control start-time) time-since-last-call))
               (cond
-                ((and (!= (-> gp-1 num-attempts-before-playing) 1)
-                      (nonzero? (-> gp-1 last-time-called))
-                      (not (time-elapsed? (-> gp-1 last-time-called) (seconds 0.5))))
-                 (set-time! (-> gp-1 last-time-called))
+                ((and (!= (-> hint-control num-attempts-before-playing) 1)
+                      (nonzero? (-> hint-control last-time-called))
+                      (not (time-elapsed? (-> hint-control last-time-called) (seconds 0.5))))
+                 (set-time! (-> hint-control last-time-called))
                  #f)
                 (else
-                 (set-time! (-> gp-1 last-time-called))
-                 (when (nonzero? (-> gp-1 delay-before-playing))
-                   (if (< (-> gp-1 start-time) (-> gp-1 delay-before-playing)) (set! v1-21 #f))
+                 (set-time! (-> hint-control last-time-called))
+                 (when (nonzero? (-> hint-control delay-before-playing))
+                   (if (< (-> hint-control start-time) (-> hint-control delay-before-playing)) (set! delay-complete? #f))
                    0)
                  (cond
-                   (v1-21
-                    (seekl! (-> gp-1 num-attempts) 127 1)
-                    (and (>= (-> gp-1 num-attempts) (-> gp-1 num-attempts-before-playing))
-                         (or (= (-> gp-1 num-success-before-killing) -1) (< (-> gp-1 num-success) (-> gp-1 num-success-before-killing)))))
+                   (delay-complete?
+                    (seekl! (-> hint-control num-attempts) 127 1)
+                    (and (>= (-> hint-control num-attempts) (-> hint-control num-attempts-before-playing))
+                         (or (= (-> hint-control num-success-before-killing) -1)
+                             (< (-> hint-control num-success) (-> hint-control num-success-before-killing)))))
                    (else #f)))))))))
       (else #f))))
 
 (defun reset-all-hint-controls ()
-  (let ((v1-2 (length (-> *game-info* hint-control))))
-    (dotimes (a0-1 v1-2)
-      (let ((a1-2 (-> *game-info* hint-control a0-1)))
-        (set! (-> a1-2 start-time) 0)
-        (set! (-> a1-2 last-time-called) 0)
-        (set! (-> a1-2 num-attempts) 0)
-        (set! (-> a1-2 num-success) 0))
+  "Clear the timing and attempt/success counters for every registered level hint."
+  (let ((hint-count (length (-> *game-info* hint-control))))
+    (dotimes (i hint-count)
+      (let ((hint-control (-> *game-info* hint-control i)))
+        (set! (-> hint-control start-time) 0)
+        (set! (-> hint-control last-time-called) 0)
+        (set! (-> hint-control num-attempts) 0)
+        (set! (-> hint-control num-success) 0))
       0))
   0
   (none))
 
 (defun update-task-hints ()
+  "For the current level's remapped task-hint group, advance unknown or need-hint tasks to
+   need-hint once their configured in-level delay has elapsed."
   (when *target*
-    (let ((a0-0 (+ (-> *target* current-level info index) -1))
-          (v1-7 (-> *game-info* task-hint-control)))
-      (when (and (>= a0-0 0) (< a0-0 (-> *level-task-data-remap* length)))
-        (let ((a0-3 (-> *level-task-data-remap* a0-0)))
-          (when (< a0-3 (-> v1-7 length))
-            (let ((gp-0 (-> v1-7 a0-3 tasks)))
-              (when (and (!= gp-0 0) (nonzero? (-> gp-0 length)))
-                (let ((s5-0 (-> *game-info* in-level-time a0-3)))
-                  (dotimes (s4-0 (-> gp-0 length))
-                    (case (get-task-status (-> gp-0 s4-0 task))
+    (let ((level-index (+ (-> *target* current-level info index) -1))
+          (task-hint-groups (-> *game-info* task-hint-control)))
+      (when (and (>= level-index 0) (< level-index (-> *level-task-data-remap* length)))
+        (let ((task-data-index (-> *level-task-data-remap* level-index)))
+          (when (< task-data-index (-> task-hint-groups length))
+            (let ((task-hints (-> task-hint-groups task-data-index tasks)))
+              (when (and (!= task-hints 0) (nonzero? (-> task-hints length)))
+                (let ((time-in-level (-> *game-info* in-level-time task-data-index)))
+                  (dotimes (i (-> task-hints length))
+                    (case (get-task-status (-> task-hints i task))
                       (((task-status need-hint) (task-status unknown))
-                       (if (< (the-as uint (-> gp-0 s4-0 delay)) (the-as uint s5-0))
-                         (close-specific-task! (-> gp-0 s4-0 task) (task-status need-hint))))))))))))))
+                       (if (< (the-as uint (-> task-hints i delay)) (the-as uint time-in-level))
+                         (close-specific-task! (-> task-hints i task) (task-status need-hint))))))))))))))
   0
   (none))

@@ -4,7 +4,7 @@
 (require "engine/math/vector-h.gc")
 
 ;; These "wind" types are used in the tie/shrub renderers to make things sway in the breeze.
-;; It generates vectors that are applied as shear to the instance matrices.
+;; The wind system generates vectors that are applied as shear to the instance matrices.
 
 ;; DECOMP BEGINS
 
@@ -12,6 +12,7 @@
   ((wind-pos vector2w :inline)
    (wind-vel vector2w :inline)))
 
+;; Cyclic gust-envelope samples stored in sixteenths.
 (define *wind-scales*
   (new 'static
        'boxed-array
@@ -50,6 +51,9 @@
        #x2
        #x10))
 
+;; wind-normal.w is the heading in 65536-units-per-turn rotation units, while its xz lanes hold the
+;; corresponding unit direction. Each wind-array slot holds that direction scaled by the matching
+;; wind-force entry; wind-time advances both the gust envelope and the 64-entry sample ring.
 (deftype wind-work (basic)
   ((wind-array  vector 64 :inline)
    (wind-normal vector :inline)
@@ -57,9 +61,8 @@
    (wind-force  float 64)
    (wind-time   uint32)))
 
-; This was likely originally defined inside `wind-h`
-; but the decompiler won't output it, so we have to manually define it
 (define-extern *wind-work* wind-work)
 
-(defun wind-get-hashed-index ((arg0 vector))
-  (logand (+ (the int (-> arg0 x)) (the int (-> arg0 z)) (-> *wind-work* wind-time)) 63))
+(defun wind-get-hashed-index ((position vector))
+  "Hash a world position and the current wind tick into the 64-sample wind ring."
+  (logand (+ (the int (-> position x)) (the int (-> position z)) (-> *wind-work* wind-time)) 63))

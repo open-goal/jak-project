@@ -15,13 +15,15 @@
 
 
 (defmethod relocate ((this assistant-levitator) (offset int))
-  (dotimes (v1-0 4)
-    (if (nonzero? (-> this particle v1-0)) (&+! (-> this particle v1-0) offset)))
+  "Relocate each live particle launch control along with the Assistant."
+  (dotimes (i 4)
+    (if (nonzero? (-> this particle i)) (&+! (-> this particle i) offset)))
   (the-as assistant-levitator ((method-of-type process-taskable relocate) this offset)))
 
 (defmethod deactivate ((this assistant-levitator))
-  (dotimes (s5-0 4)
-    (let ((a0-1 (-> this particle s5-0))) (if (nonzero? a0-1) (kill-and-free-particles a0-1))))
+  "Free the Assistant's particle launch controls before deactivating it."
+  (dotimes (i 4)
+    (let ((particles (-> this particle i))) (if (nonzero? particles) (kill-and-free-particles particles))))
   ((method-of-type process-taskable deactivate) this)
   (none))
 
@@ -42,18 +44,21 @@
   ((jaws-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 0.25))
 
-(defmethod process-taskable-method-52 ((this assistant-levitator))
-  (let ((v1-1 (-> this draw shadow-ctrl)))
-    (when v1-1
-      (let ((f0-0 (-> this root trans y)))
-        (let ((a0-2 v1-1)) (set! (-> a0-2 settings bot-plane w) (- (+ -409.6 f0-0))))
+(defmethod setup-shadow-settings! ((this assistant-levitator))
+  "Set the Assistant's shadow clip planes relative to its root Y position."
+  (let ((shadow-ctrl (-> this draw shadow-ctrl)))
+    (when shadow-ctrl
+      (let ((trans-y (-> this root trans y)))
+        (set! (-> shadow-ctrl settings bot-plane w) (- (+ -409.6 trans-y)))
         0
-        (let ((a0-4 v1-1)) (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))))
+        (set! (-> shadow-ctrl settings top-plane w) (- (+ 4096.0 trans-y))))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))))
+      (logclear! (-> shadow-ctrl settings flags) (shadow-flags scissor-top))))
   (none))
 
 (defmethod draw-npc-shadow ((this assistant-levitator))
+  "Enable and orient the Assistant's shadow only when its highest-detail mesh was drawn this
+   frame; disable it otherwise."
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
@@ -63,14 +68,16 @@
     (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
   (none))
 
-(defmethod play-anim! ((this assistant-bluehut) (arg0 symbol))
+(defmethod play-anim! ((this assistant-bluehut) (commit? symbol))
+  "Choose the Assistant's levitator introduction or current task reminder. When commit? is
+   true, advance task progress and coordinate the Blue Sage and Flut Flut."
   (set! (-> this talk-message) (text-id press-to-talk-to-assistant))
   (case (current-status (-> this tasks))
     (((task-status unknown) (task-status need-hint) (task-status need-introduction))
-     (if (not arg0) (set! (-> this will-talk) #t))
+     (if (not commit?) (set! (-> this will-talk) #t))
      (case (current-task (-> this tasks))
        (((game-task village2-levitator))
-        (when arg0
+        (when commit?
           (close-status! (-> this tasks) (task-status need-introduction))
           (send-event (-> this sage extra process) 'clone (process->handle this))
           (send-event (-> (entity-by-type flutflut-bluehut) extra process) 'clone (process->handle this)))
@@ -233,7 +240,7 @@
               (1145 joint "cameraB")
               (1241 joint "camera"))))
        (((game-task sunken-room))
-        (when arg0
+        (when commit?
           (let* ((s5-2 (-> this tasks))
                  (s4-0 (method-of-object s5-2 save-reminder)))
             (s4-0 s5-2 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1))
@@ -259,7 +266,7 @@
               (900 joint "cameraB")
               (1069 joint "camera"))))
        (((game-task rolling-robbers))
-        (when arg0
+        (when commit?
           (let* ((s5-5 (-> this tasks))
                  (s4-1 (method-of-object s5-5 save-reminder)))
             (s4-1 s5-5 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1))
@@ -272,7 +279,7 @@
              :command-list
              '((55 joint "cameraB") (145 joint "camera") (207 joint "cameraB") (363 joint "camera"))))
        (else
-        (when arg0
+        (when commit?
           (close-status! (-> this tasks) (task-status need-introduction))
           (send-event (-> (entity-by-type flutflut-bluehut) extra process) 'clone (process->handle this)))
         (new 'static
@@ -292,13 +299,13 @@
              ((zero? v1-92) (if (!= (get-task-status (game-task sunken-room)) (task-status need-reminder)) (set! s4-2 1)))
              ((= v1-92 1) (if (!= (get-task-status (game-task rolling-robbers)) (task-status need-reminder)) (set! s4-2 2)))
              (else (if (!= (get-task-status (game-task swamp-flutflut)) (task-status need-reminder)) (set! s4-2 0))))))
-       (if arg0 (save-reminder (-> this tasks) s4-2 2))
+       (if commit? (save-reminder (-> this tasks) s4-2 2))
        (cond
          ((zero? s4-2) (new 'static 'spool-anim :name "assistant-village2-reminder-1-room" :index 22 :parts 3 :command-list '()))
          ((= s4-2 1) (new 'static 'spool-anim :name "assistant-village2-reminder-1-robbers" :index 18 :parts 3 :command-list '()))
          (else (new 'static 'spool-anim :name "assistant-village2-reminder-1-flutflut" :index 20 :parts 3 :command-list '())))))
     (else
-     (if arg0
+     (if commit?
        (format 0
                "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
                (-> this name)
@@ -306,9 +313,12 @@
      (-> this draw art-group data 5))))
 
 (defmethod get-art-elem ((this assistant-bluehut))
+  "Return the Assistant's active root animation."
   (-> this draw art-group data 10))
 
 (defmethod play-reminder ((this assistant-bluehut))
+  "Return whether the Assistant wants to talk and the target is inside the Blue Hut approach
+   region."
   (cond
     ((and (-> this will-talk) *target*)
      (let* ((f30-1 (+ -1552384.0 (-> (target-pos 0) x)))
@@ -317,6 +327,7 @@
     (else #f)))
 
 (defmethod target-above-threshold? ((this assistant-bluehut))
+  "Coordinate with the Blue Sage and return which character should speak to the target."
   (when (not (play-reminder this))
     (set! (-> this im-talking) #f)
     (return #f))
@@ -338,12 +349,13 @@
         (else (return (-> this im-talking))))))
   (the-as symbol 0))
 
-(defmethod process-taskable-method-43 ((this assistant-bluehut))
+(defmethod try-play-ambient-chatter ((this assistant-bluehut))
+  "After the ambient cooldown and distance check pass, choose one of two welding lines."
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
-    (let ((f30-0 (rand-float-gen)))
+    (let ((roll (rand-float-gen)))
       (cond
         ((= (get-task-status (game-task village2-levitator)) (task-status invalid)) #f)
-        ((< 0.5 f30-0) (play-ambient (-> this ambient) "ASSTLP23" #f (-> this root trans)))
+        ((< 0.5 roll) (play-ambient (-> this ambient) "ASSTLP23" #f (-> this root trans)))
         (else (play-ambient (-> this ambient) "ASSTLP24" #f (-> this root trans)))))))
 
 (defstate idle (assistant-bluehut)
@@ -357,18 +369,12 @@
     (behavior ()
       (if (!= (ja-group) (get-art-elem self)) (ja-channel-push! 1 (seconds 0.05)))
       (loop
-        (ja-no-eval :group! (get-art-elem self) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))
+        (ja-play :group! (get-art-elem self) :num! (seek!) :frame-num 0.0)
         (let ((f0-9 (rand-float-gen)))
           (cond
             ((< f0-9 0.33333334)
-             (process-taskable-method-43 self)
-             (ja-no-eval :group! assistant-village2-idle-hut-look-right-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))
+             (try-play-ambient-chatter self)
+             (ja-play :group! assistant-village2-idle-hut-look-right-ja :num! (seek!) :frame-num 0.0)
              (let ((gp-1 (current-time)))
                (while (let ((s5-1 (current-time))
                             (f30-0 300.0)
@@ -376,41 +382,26 @@
                             (f26-0 0.17000002))
                         (< (- s5-1 (the-as time-frame (the int (* f30-0 (+ f28-0 (* f26-0 (rand-float-gen))))))) gp-1))
                  (suspend)))
-             (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek! 0.0))))
+             (ja-play :group! (ja-group) :num! (seek! 0.0) :frame-num max))
             ((< f0-9 0.6666667)
              (sound-play "welding-loop" :id (-> self sound-id) :position (the-as symbol (target-pos 0)))
-             (ja-no-eval :group! assistant-village2-idle-hut-start-welding-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))
+             (ja-play :group! assistant-village2-idle-hut-start-welding-ja :num! (seek!) :frame-num 0.0)
              (ja :group! assistant-village2-idle-hut-welding-ja)
              (let* ((f30-1 2.0)
                     (v1-113 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                     (v1-114 (the-as number (logior #x3f800000 v1-113))))
                (countdown (gp-3 (+ (the int (* f30-1 (+ -1.0 (the-as float v1-114)))) 4))
-                 (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-                 (until (ja-done? 0)
-                   (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP)))
-                   (suspend)
-                   (ja :num! (seek!)))
-                 (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
-                 (until (ja-done? 0)
-                   (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP)))
-                   (suspend)
-                   (ja :num! (seek! 0.0)))))
-             (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP)))
-               (suspend)
-               (ja :num! (seek!)))
+                 (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0
+                   (spawn (-> self part)
+                          (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP))))
+                 (ja-play :group! (ja-group) :num! (seek! 0.0) :frame-num max
+                   (spawn (-> self part)
+                          (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP))))))
+             (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0
+               (spawn (-> self part)
+                      (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-village2-lod0-jg torchTIP))))
              (sound-stop (-> self sound-id))
-             (ja-no-eval :group! assistant-village2-idle-hut-stop-welding-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))))))))
+             (ja-play :group! assistant-village2-idle-hut-stop-welding-ja :num! (seek!) :frame-num 0.0)))))))
 
 (defstate play-anim (assistant-bluehut)
   :virtual #t
@@ -426,9 +417,10 @@
       '()))
 
 (defmethod should-display? ((this assistant-bluehut))
+  "Return whether the Assistant should remain visible for the current levitator task progress."
   (cond
     ((not (closed? (-> this tasks) (game-task village2-levitator) (task-status unknown)))
-     (process-taskable-method-33 this)
+     (prefetch-play-anim! this)
      #f)
     ((or (= (get-task-status (game-task village2-levitator)) (task-status need-reward-speech)) (sages-kidnapped?)) #f)
     (else #t)))
@@ -453,7 +445,7 @@
    (:a 32.0 64.0)
    (:fade-a -6.4)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 1323
   :init-specs
@@ -473,7 +465,7 @@
    (:accel-y (meters -0.002))
    (:friction 0.93)
    (:timer (seconds 4))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:userdata 140288.0)
    (:func 'check-drop-level-assistant-bluehut)
    (:conerot-x (degrees 0) (degrees 180))
@@ -492,29 +484,33 @@
    (:fade-a -0.85333335)
    (:accel-y (meters -0.00016666666))
    (:timer (seconds 1))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:conerot-x (degrees 50.000004) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
-(defun check-drop-level-assistant-bluehut ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
-  (when (< (-> arg2 y) (-> arg1 user-float))
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (sp-kill-particle arg0 arg1)
+(defun check-drop-level-assistant-bluehut ((system sparticle-system) (particle sparticle-cpuinfo) (position vector))
+  "Remove a welding droplet below its stored water height and occasionally launch a splash and
+   sound."
+  (when (< (-> position y) (-> particle user-float))
+    (let ((splash-position (new 'stack-no-clear 'vector)))
+      (sp-kill-particle system particle)
       (if (< (rand-float-gen) 0.25) (sound-play "water-drop"))
-      (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
-      (launch-particles (-> *part-id-table* 1324) gp-0)))
+      (set-vector! splash-position (-> position x) (-> particle user-float) (-> position z) 1.0)
+      (launch-particles (-> *part-id-table* 1324) splash-position)))
   (none))
 
-(defmethod init-from-entity! ((this assistant-bluehut) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *assistant-village2-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this assistant-bluehut) (source-entity entity-actor))
+  "Initialize the Village 2 Assistant for the levitator task, connect the Blue Sage, and enter
+   the current taskable state."
+  (init-as-taskable! this source-entity *assistant-village2-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this part) (create-launch-control group-assistant-bluehut-torch this))
   (set! (-> this tasks) (get-task-control (game-task village2-levitator)))
   (set! (-> this jaws) (the-as handle #f))
-  (set! (-> this sage) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this sage) (entity-actor-lookup source-entity 'alt-actor 0))
   (set! (-> this im-talking) #t)
   (set! (-> this draw light-index) (the-as uint 1))
   (set! (-> this sound-id) (new-sound-id))
-  (process-taskable-method-42 this)
+  (goto-initial-state! this)
   (none))
 
 (defpartgroup group-levitator-blue-beam
@@ -523,27 +519,27 @@
   :bounds (static-bspherem -20 8 0 80)
   :parts
   ((sp-item 2673 :fade-after (meters 120) :falloff-to (meters 140) :binding 2670)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2671)
-   (sp-item 2670 :flags (bit1 start-dead launch-asap) :binding 2672)
-   (sp-item 2671 :flags (bit1 start-dead))
-   (sp-item 2672 :flags (bit1 start-dead))
-   (sp-item 2671 :flags (bit1 start-dead))
-   (sp-item 2672 :flags (bit1 start-dead))
-   (sp-item 2671 :flags (bit1 start-dead))
-   (sp-item 2672 :flags (bit1 start-dead))
-   (sp-item 2671 :flags (bit1 start-dead))
-   (sp-item 2672 :flags (bit1 start-dead))
-   (sp-item 2671 :flags (bit1 start-dead))
-   (sp-item 2672 :flags (bit1 start-dead))
-   (sp-item 2671 :flags (bit1 start-dead))
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2671)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2672)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2671)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2672)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2671)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2672)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2671)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2672)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2671)
+   (sp-item 2670 :flags (auto-rearm start-dead launch-asap) :binding 2672)
+   (sp-item 2671 :flags (auto-rearm start-dead))
+   (sp-item 2672 :flags (auto-rearm start-dead))
+   (sp-item 2671 :flags (auto-rearm start-dead))
+   (sp-item 2672 :flags (auto-rearm start-dead))
+   (sp-item 2671 :flags (auto-rearm start-dead))
+   (sp-item 2672 :flags (auto-rearm start-dead))
+   (sp-item 2671 :flags (auto-rearm start-dead))
+   (sp-item 2672 :flags (auto-rearm start-dead))
+   (sp-item 2671 :flags (auto-rearm start-dead))
+   (sp-item 2672 :flags (auto-rearm start-dead))
+   (sp-item 2671 :flags (auto-rearm start-dead))
    (sp-item 2674 :falloff-to (meters 400))
    (sp-item 2675)
    (sp-item 2676 :falloff-to (meters 300))
@@ -564,7 +560,7 @@
    (:a 128.0)
    (:fade-a -1.4)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.035))
    (:next-launcher 146)))
 
@@ -582,7 +578,7 @@
    (:a 128.0)
    (:fade-a -1.4)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.035))
    (:next-launcher 146)))
 
@@ -600,7 +596,7 @@
    (:scalevel-x (meters -0.0033333334))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 3))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 102))
    (:conerot-y (degrees -90))
    (:conerot-radius (meters 0) (meters 0.5))))
@@ -624,7 +620,7 @@
    (:vel-z (meters 0))
    (:accel-z (meters 0))
    (:timer (seconds 3))
-   (:flags (bit2 bit3 bit7 bit14))))
+   (:flags (die-when-faded glow orbit no-fog))))
 
 (defpart 2671
   :init-specs
@@ -640,7 +636,7 @@
    (:a 128.0)
    (:fade-a -1.4)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.035))
    (:next-launcher 146)))
 
@@ -658,7 +654,7 @@
    (:a 128.0)
    (:fade-a -1.4)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.035))
    (:next-launcher 146)))
 
@@ -676,7 +672,7 @@
    (:scalevel-x (meters 0.005))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 102))
    (:conerot-y (degrees -90))
    (:conerot-radius (meters -1.5) (meters 1.5))))
@@ -695,7 +691,7 @@
    (:scalevel-x (meters 0.0016666667))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 1.5))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 102))
    (:conerot-y (degrees -90))
    (:conerot-radius (meters 0) (meters 0.5))))
@@ -713,7 +709,7 @@
    (:a 128.0)
    (:fade-a -5.12)
    (:timer (seconds 0.067))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpartgroup group-levitator-blue-beam-impact
   :id 659
@@ -741,7 +737,7 @@
    (:accel-y (meters -0.00033333333) (meters -0.00033333333))
    (:friction 0.95)
    (:timer (seconds 0.2) (seconds 0.197))
-   (:flags (bit0 bit2 bit3 bit14))
+   (:flags (die-when-scale-0 die-when-faded glow no-fog))
    (:conerot-x (degrees 50.000004) (degrees 120))
    (:conerot-y (degrees 30) (degrees 120))
    (:conerot-radius (meters -0.5) (meters 0.5))))
@@ -759,7 +755,7 @@
    (:a 128.0)
    (:fade-a -5.12)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 0) (degrees 1440))
    (:conerot-y (degrees 0) (degrees 1440))
    (:conerot-radius (meters 0) (meters 0.5))))
@@ -777,7 +773,7 @@
    (:a 128.0)
    (:fade-a -5.12)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 0) (degrees 1440))
    (:conerot-y (degrees 0) (degrees 1440))
    (:conerot-radius (meters 0) (meters 0.5))))
@@ -789,42 +785,42 @@
   :bounds (static-bspherem 0 0 0 64)
   :parts
   ((sp-item 2751 :fade-after (meters 100) :falloff-to (meters 100) :binding 2750)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2797)
-   (sp-item 2750 :flags (bit1 start-dead launch-asap) :binding 2798)
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
-   (sp-item 2797 :flags (bit1 start-dead))
-   (sp-item 2798 :flags (bit1 start-dead))
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2797)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2798)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2797)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2798)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2797)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2798)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2797)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2798)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2797)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2798)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2797)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2798)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2797)
+   (sp-item 2750 :flags (auto-rearm start-dead launch-asap) :binding 2798)
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
+   (sp-item 2797 :flags (auto-rearm start-dead))
+   (sp-item 2798 :flags (auto-rearm start-dead))
    (sp-item 2678)))
 
 (defpart 2678
@@ -845,7 +841,7 @@
    (:rotvel-z (degrees -1.2) (degrees 2.4))
    (:fade-a -3.2)
    (:timer (seconds 0.135))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 2751
   :init-specs
@@ -859,7 +855,7 @@
    (:scalevel-x (meters -0.0033333334))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 3))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2750
   :init-specs
@@ -880,7 +876,7 @@
    (:vel-z (meters 0))
    (:accel-z (meters 0))
    (:timer (seconds 3))
-   (:flags (bit2 bit3 bit7 bit14))))
+   (:flags (die-when-faded glow orbit no-fog))))
 
 (defpart 2797
   :init-specs
@@ -896,7 +892,7 @@
    (:a 128.0)
    (:fade-a -1.4)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.035))
    (:next-launcher 146)))
 
@@ -914,7 +910,7 @@
    (:a 128.0)
    (:fade-a -1.4)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.035))
    (:next-launcher 146)))
 
@@ -943,7 +939,7 @@
    (:rotvel-z (degrees -1.2) (degrees 2.4))
    (:fade-a -3.2)
    (:timer (seconds 0.135))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defbehavior assistant-levitator-blue-glow assistant-levitator ()
   (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -991,11 +987,13 @@
     (spawn (-> self particle 1) gp-0))
   (none))
 
-(defmethod play-anim! ((this assistant-levitator) (arg0 symbol))
+(defmethod play-anim! ((this assistant-levitator) (commit? symbol))
+  "Return the levitator reward animation and, when commit? is true, close the task and start the
+   boulder's clone animation."
   (with-pp
     (case (current-status (-> this tasks))
       (((task-status need-reward-speech))
-       (when arg0
+       (when commit?
          (close-current! (-> this tasks))
          (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
            (set! (-> a1-1 from) pp)
@@ -1020,7 +1018,7 @@
              (639 joint "cameraB")
              (715 joint "camera"))))
       (else
-       (if arg0
+       (if commit?
          (format 0
                  "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
                  (-> this name)
@@ -1028,6 +1026,7 @@
        (-> this draw art-group data 5)))))
 
 (defmethod get-art-elem ((this assistant-levitator))
+  "Return the post-task or working animation for the levitator Assistant."
   (if (= (get-task-status (game-task village2-levitator)) (task-status invalid))
     (-> this draw art-group data 9)
     (-> this draw art-group data 5)))
@@ -1079,6 +1078,7 @@
         (level-hint-spawn (text-id village2-levitator-need-cells) "asstvb71" (the-as entity #f) *entity-pool* (game-task none)))))
 
 (defmethod target-above-threshold? ((this assistant-levitator))
+  "Return whether the levitator task is waiting for its reward speech."
   (= (get-task-status (game-task village2-levitator)) (task-status need-reward-speech)))
 
 (defstate idle (assistant-levitator)
@@ -1098,40 +1098,26 @@
       (loop
         (cond
           ((= (get-task-status (game-task village2-levitator)) (task-status invalid))
-           (ja-no-eval :group! assistant-village2-idle-after-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (assistant-levitator-blue-beam)
-             (suspend)
-             (ja :num! (seek!))))
+           (ja-play :group! assistant-village2-idle-after-ja :num! (seek!) :frame-num 0.0
+             (assistant-levitator-blue-beam)))
           (else
            (ja :group! assistant-village2-idle-a-ja)
            (let* ((f30-0 2.0)
                   (v1-31 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                   (v1-32 (the-as number (logior #x3f800000 v1-31))))
              (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-32)))) 3))
-               (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))))
-           (ja-no-eval :group! assistant-village2-idle-to-b-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+               (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
+           (ja-play :group! assistant-village2-idle-to-b-ja :num! (seek!) :frame-num 0.0)
            (ja :group! assistant-village2-idle-b-ja)
            (let* ((f30-1 2.0)
                   (v1-91 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                   (v1-92 (the-as number (logior #x3f800000 v1-91))))
              (countdown (gp-1 (+ (the int (* f30-1 (+ -1.0 (the-as float v1-92)))) 3))
-               (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))))
-           (ja-no-eval :group! assistant-village2-idle-to-a-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))))))
+               (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
+           (ja-play :group! assistant-village2-idle-to-a-ja :num! (seek!) :frame-num 0.0))))))
 
 (defmethod should-display? ((this assistant-levitator))
+  "Return whether the levitator Assistant should be shown for the current task status."
   (or (= (get-task-status (game-task village2-levitator)) (task-status need-reward-speech))
       (zero? (get-task-status (game-task village2-levitator)))))
 
@@ -1145,10 +1131,12 @@
         (update! (-> self sound))
         (suspend))))
 
-(defmethod init-from-entity! ((this assistant-levitator) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *assistant-village2-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this assistant-levitator) (source-entity entity-actor))
+  "Initialize the levitator Assistant, its boulder link, beam effects, sound, and starting
+   state."
+  (init-as-taskable! this source-entity *assistant-village2-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task village2-levitator)))
-  (set! (-> this boulder) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this boulder) (entity-actor-lookup source-entity 'alt-actor 0))
   (set! (-> this particle 0) (create-launch-control group-levitator-blue-beam this))
   (set! (-> this particle 1) (create-launch-control group-levitator-blue-beam-impact this))
   (set! (-> this particle 2) (create-launch-control group-levitator-on-big this))
@@ -1156,5 +1144,5 @@
   (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "lev-mach-idle" :fo-max 30) (-> this root trans)))
   (if (= (get-task-status (game-task village2-levitator)) (task-status invalid))
     (go just-particles)
-    (process-taskable-method-42 this))
+    (goto-initial-state! this))
   (none))

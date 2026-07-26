@@ -4,94 +4,79 @@
 (require "engine/level/bsp.gc")
 (require "engine/draw/draw-node-h.gc")
 
-;; The "drawable tree" represents a BVH for a specific render.
-;; Typically, levels will have ~10 drawable trees.  There will be a tree for
-;; tfrag, a tree for actors, a tree for tie,
-
-;; This file contains common functions for all drawable trees.
+;; A drawable tree is the bounding-volume hierarchy for one renderer. A level usually has about ten
+;; trees, including separate trees for terrain fragments, actors, and TIE instances. Each tree keeps
+;; one inline array per hierarchy depth; the final array holds the renderer's leaf drawables.
 
 ;; DECOMP BEGINS
 
-(defmethod draw ((this drawable-tree-array) (arg0 drawable-tree-array) (arg1 display-frame))
-  "Draw a drawable tree array. If the current level is set to special or special-vis, the draw is skipped."
-  (let ((v1-1 (-> (scratchpad-object terrain-context) bsp lev-index)))
-    (case (-> *level* level v1-1 display?)
+(defmethod draw ((this drawable-tree-array) (draw-data drawable-tree-array) (frame display-frame))
+  "Submit each tree with its corresponding tree in draw-data for frame, unless the current
+   level is hidden or uses the special or special-vis rendering path."
+  (let ((level-index (-> (scratchpad-object terrain-context) bsp lev-index)))
+    (case (-> *level* level level-index display?)
       (('special 'special-vis #f))
-      (else (dotimes (s3-0 (-> this length)) (draw (-> this trees s3-0) (-> arg0 trees s3-0) arg1)))))
+      (else (dotimes (i (-> this length)) (draw (-> this trees i) (-> draw-data trees i) frame)))))
   0
   (none))
 
 (defmethod collect-stats ((this drawable-tree-array))
-  (dotimes (s5-0 (-> this length))
-    (collect-stats (-> this trees s5-0)))
+  "Collect renderer statistics from every drawable tree."
+  (dotimes (i (-> this length))
+    (collect-stats (-> this trees i)))
   0
   (none))
 
-(defmethod debug-draw ((this drawable-tree-array) (arg0 drawable) (arg1 display-frame))
-  (dotimes (s3-0 (-> this length))
-    (debug-draw (-> this trees s3-0) (-> (the-as drawable-tree-array arg0) trees s3-0) arg1))
+(defmethod debug-draw ((this drawable-tree-array) (draw-data drawable) (frame display-frame))
+  "Submit debug geometry for every tree together with its corresponding draw-data tree."
+  (dotimes (i (-> this length))
+    (debug-draw (-> this trees i) (-> (the-as drawable-tree-array draw-data) trees i) frame))
   0
   (none))
 
-(defmethod unpack-vis ((this drawable-tree) (arg0 (pointer int8)) (arg1 (pointer int8)))
-  "Copy our visibility data from arg1 to arg0, unpacking it."
-  (local-vars (t5-1 int))
-  ;; grab the first array
-  (let* ((v1-0 (the-as drawable-inline-array-node (-> this data 0)))
-         ;; first elt in top array
-         (a3-1 (/ (-> v1-0 data 0 id) 8))
-         ;; number in first array (8 or fewer)
-         (t0-0 (-> v1-0 length))
-         ;; offset in destination
-         (v1-1 (&+ arg0 a3-1))
-         ;; number of bytes
-         (a3-3 (/ (+ t0-0 7) 8)))
-    ;; copy the data!
-    ;;(mem-print (the (pointer uint32) arg1) 10)
-    (dotimes (t0-1 a3-3)
-      (let ((t1-0 (-> arg1 0)))
-        ;;(format 0 "top-copy: #x~X~%" t1-0)
-        (set! arg1 (&-> arg1 1))
-        (set! (-> v1-1 0) t1-0))
-      (set! v1-1 (&-> v1-1 1))))
-  ;; now, the remaining arrays, excluding the final which isn't a draw node array.
-  (let ((v1-5 (+ (-> this length) -1)))
-    (when (nonzero? v1-5)
-      (dotimes (a3-5 v1-5)
-        ;; pointer to this array
-        (let* ((t0-4 (-> this data a3-5))
-               ;; pointer to next depth array
-               (t2-0 (-> this data (+ a3-5 1)))
-               ;; id of first in prev
-               (t1-5 (/ (-> (the-as drawable-inline-array-node t0-4) data 0 id) 8))
-               ;; id of first in next
-               (t2-2 (/ (-> (the-as drawable-inline-array-node t2-0) data 0 id) 8))
-               ;; number of nodes in this one
-               (t0-5 (-> (the-as drawable-inline-array-node t0-4) length))
-               ;; output for prev level
-               (t1-6 (&+ arg0 t1-5))
-               ;; output for next level
-               (t2-3 (&+ arg0 t2-2)))
+;; VIS data is sparse by hierarchy depth. The stream begins with the top-level masks. At each later
+;; depth it contains one byte of child bits for every visible parent and no byte for a hidden
+;; parent. Node ids select byte positions in the shared expanded destination bitset.
+(defmethod unpack-vis ((this drawable-tree) (destination (pointer int8)) (source (pointer int8)))
+  "Expand this tree's sparse hierarchical VIS stream into destination. Copy the top masks
+   directly, then consume one child-mask byte only for each visible parent at every lower depth.
+   Return the source position after the final consumed byte."
+  (local-vars (next-vis-byte int))
+  (let* ((top-array (the-as drawable-inline-array-node (-> this data 0)))
+         (top-byte-offset (/ (-> top-array data 0 id) 8))
+         (top-node-count (-> top-array length))
+         (destination-byte (&+ destination top-byte-offset))
+         (top-byte-count (/ (+ top-node-count 7) 8)))
+    (dotimes (i top-byte-count)
+      (let ((vis-byte (-> source 0))) (set! source (&-> source 1)) (set! (-> destination-byte 0) vis-byte))
+      (set! destination-byte (&-> destination-byte 1))))
+  ;; Every entry in data except the leaf array supplies the visibility of the next depth.
+  (let ((node-depth-count (+ (-> this length) -1)))
+    (when (nonzero? node-depth-count)
+      (dotimes (depth node-depth-count)
+        (let* ((parent-array (-> this data depth))
+               (child-array (-> this data (+ depth 1)))
+               (parent-byte-offset (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
+               (child-byte-offset (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
+               (parent-count (-> (the-as drawable-inline-array-node parent-array) length))
+               (parent-vis (&+ destination parent-byte-offset))
+               (child-vis (&+ destination child-byte-offset)))
           (while #t
-            ;; load the vis byte for the one in this array
-            (let ((t3-0 (-> t1-6 0)))
-              ;; inc vis ptr.
-              (set! t1-6 (&-> t1-6 1))
-              ;; vis mask bit. (init at highest)
-              (let ((t4-0 128))
+            (let ((parent-mask-byte (-> parent-vis 0)))
+              (set! parent-vis (&-> parent-vis 1))
+              (let ((parent-bit 128))
                 (label cfg-7)
-                ;; check if we're visible
-                (b! (zero? (logand t3-0 t4-0)) cfg-9 :delay (set! t5-1 (-> arg1 0)))
-                ;; we are visible. write 8 in the output
-                (set! arg1 (&-> arg1 1))
-                (set! (-> t2-3 0) t5-1)
+                ;; The delay-slot load is safe for a hidden parent because source advances only
+                ;; when its bit is set.
+                (b! (zero? (logand parent-mask-byte parent-bit)) cfg-9 :delay (set! next-vis-byte (-> source 0)))
+                (set! source (&-> source 1))
+                (set! (-> child-vis 0) next-vis-byte)
                 (label cfg-9)
-                (+! t0-5 -1)
-                ;; check if we've done all nodes
-                (b! (zero? t0-5) cfg-12 :delay (.sra t4-0 t4-0 1))
-                ;; check if we're done with this byte and inc output.
-                (b! (nonzero? t4-0) cfg-7 :delay (set! t2-3 (&-> t2-3 1)))))))
+                (+! parent-count -1)
+                (b! (zero? parent-count) cfg-12 :delay (.sra parent-bit parent-bit 1))
+                ;; The child slot advances for every parent, including the eighth bit.
+                (b! (nonzero? parent-bit) cfg-7 :delay (set! child-vis (&-> child-vis 1)))))))
         (label cfg-12)
         (nop!)
         0)))
-  arg1)
+  source)

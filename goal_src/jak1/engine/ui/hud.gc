@@ -5,40 +5,52 @@
 
 ;; DECOMP BEGINS
 
-(defmethod relocate ((this hud) (arg0 int))
-  (dotimes (v1-0 (-> this nb-of-particles))
-    (if (nonzero? (-> this particles v1-0 part)) (&+! (-> this particles v1-0 part) arg0)))
-  (the-as hud ((method-of-type process relocate) this arg0)))
+(defmethod relocate ((this hud) (offset int))
+  "Adjust every non-null particle launch-control pointer by offset, then relocate the complete HUD
+   process allocation with the base process method."
+  (dotimes (i (-> this nb-of-particles))
+    (if (nonzero? (-> this particles i part)) (&+! (-> this particles i part) offset)))
+  (the-as hud ((method-of-type process relocate) this offset)))
 
 (defmethod deactivate ((this hud))
-  (dotimes (v1-0 9)
-    (if (and (-> *hud-parts* parts v1-0) (= (ppointer->process (-> *hud-parts* parts v1-0)) this))
-      (set! (-> *hud-parts* parts v1-0) (the-as (pointer hud) #f))))
-  (dotimes (s5-0 (-> this nb-of-particles))
-    (kill-and-free-particles (-> this particles s5-0 part))
-    (set! (-> this particles s5-0 part matrix) -1))
+  "Remove every registry entry that points to this HUD, kill its particle launch controls,
+   release their sprite matrices, and deactivate the base process."
+  (dotimes (registry-index 9)
+    (if (and (-> *hud-parts* parts registry-index) (= (ppointer->process (-> *hud-parts* parts registry-index)) this))
+      (set! (-> *hud-parts* parts registry-index) (the-as (pointer hud) #f))))
+  (dotimes (particle-index (-> this nb-of-particles))
+    (kill-and-free-particles (-> this particles particle-index part))
+    (set! (-> this particles particle-index part matrix) -1))
   ((method-of-type process deactivate) this)
   (none))
 
 (defmethod draw-hud ((this hud))
+  "While visible and unpaused, spawn every configured particle except skip-particle once particle
+   zero has a nonzero screen position."
   (when (and (not (hidden? this)) (not (paused?)))
-    (dotimes (s5-0 (-> this nb-of-particles))
-      (when (!= s5-0 (-> this skip-particle))
+    (dotimes (i (-> this nb-of-particles))
+      (when (!= i (-> this skip-particle))
         (if (or (!= (-> this particles 0 pos x) 0.0) (!= (-> this particles 0 pos y) 0.0))
-          (spawn (-> this particles s5-0 part) *null-vector*)))))
+          (spawn (-> this particles i part) *null-vector*)))))
   0
   (none))
 
-(defmethod tally-value ((this hud) (arg0 int) (arg1 int))
-  (if (= arg0 (-> this target-value)) (set-time! (-> this last-target-equal-time)))
+(defmethod tally-value ((this hud) (new-value int) (new-value2 int))
+  "Update the primary and secondary values when the HUD is allowed on screen. When
+   increment-on-event is active and the primary value rises within 1.5 seconds of the last target
+   equality, advance the display by one every 0.1 seconds. Otherwise refresh the target and copy it
+   directly unless a noninitial HUD has been unequal for at least 1.5 seconds; the next matching
+   update resumes direct synchronization. Show this HUD and its linked friend after a visible
+   change. On PC, directional input also selects the collectable summary scope."
+  (if (= new-value (-> this target-value)) (set-time! (-> this last-target-equal-time)))
   (when (and (not *progress-process*)
              (and (!= (-> this last-hide-time) (current-time))
                   (not (movie?))
                   (time-elapsed? (-> *game-info* letterbox-time) (seconds 0.1))
                   (time-elapsed? (-> *game-info* blackout-time) (seconds 0.1))
                   (not (and *target* (logtest? (-> *target* state-flags) (state-flags grabbed))))))
-    (when (or (!= (-> this value) arg0)
-              (!= (-> this value2) arg1)
+    (when (or (!= (-> this value) new-value)
+              (!= (-> this value2) new-value2)
               (-> this force-on-screen)
               (or (and (cpad-hold? 0 l2) (not (-> this disable))) (and (not *cheat-mode*) (cpad-hold? 0 r2)) (-> this first-init)))
       ;; modified for pc port
@@ -48,7 +60,7 @@
         ((or (cpad-hold? 0 left) (cpad-hold? 0 right)) (set! *hud-collectable-view* (hud-collectable-view original))))
       (cond
         ((and (-> this increment-on-event)
-              (< (-> this value) arg0)
+              (< (-> this value) new-value)
               (not (-> this first-init))
               (not (time-elapsed? (-> this last-target-equal-time) (seconds 1.5))))
          (when (and (!= (-> this value) (-> this target-value)) (time-elapsed? (-> this last-increment-time) (seconds 0.1)))
@@ -57,10 +69,10 @@
            (set-time! (-> this last-increment-time))))
         (else
          (if (not (and (not (-> this first-init)) (time-elapsed? (-> this last-target-equal-time) (seconds 1.5))))
-           (set! (-> this value) arg0))
-         (set! (-> this target-value) arg0)
+           (set! (-> this value) new-value))
+         (set! (-> this target-value) new-value)
          (set-time! (-> this last-target-equal-time))))
-      (set! (-> this value2) arg1)
+      (set! (-> this value2) new-value2)
       (when (and (not (movie?)) (= *master-mode* 'game) (not (-> this first-init)) (not (-> this disable)))
         (if (>= (-> this friend) 0) (send-event (ppointer->process (-> *hud-parts* parts (-> this friend))) 'show))
         (go hud-arriving))
@@ -70,16 +82,18 @@
   (none))
 
 (defmethod draw-icons ((this hud))
-  (dotimes (v1-0 (-> this nb-of-icons))
-    (set-vector! (-> this icons v1-0 icon 0 root scale)
-                 (* (-> this icons v1-0 scale-x) (-> *video-parms* relative-x-scale))
-                 (* (-> this icons v1-0 scale-y) (-> *video-parms* relative-y-scale))
-                 (* (-> this icons v1-0 scale-x) (-> *video-parms* relative-x-scale))
+  "Apply the current video scales and slide offset to every manipy-backed icon's scale and screen
+   position."
+  (dotimes (i (-> this nb-of-icons))
+    (set-vector! (-> this icons i icon 0 root scale)
+                 (* (-> this icons i scale-x) (-> *video-parms* relative-x-scale))
+                 (* (-> this icons i scale-y) (-> *video-parms* relative-y-scale))
+                 (* (-> this icons i scale-x) (-> *video-parms* relative-x-scale))
                  1.0)
-    (set! (-> this icons v1-0 icon 0 root trans x)
-          (the float (+ (-> this icons v1-0 icon-x) -256 (* (-> this x-sgn) (-> this offset)))))
-    (set! (-> this icons v1-0 icon 0 root trans y)
-          (- (+ (the float (-> this icons v1-0 icon-y))
+    (set! (-> this icons i icon 0 root trans x)
+          (the float (+ (-> this icons i icon-x) -256 (* (-> this x-sgn) (-> this offset)))))
+    (set! (-> this icons i icon 0 root trans y)
+          (- (+ (the float (-> this icons i icon-y))
                 (* (the float (-> this y-sgn))
                    (the float (-> this offset))
                    (-> *video-parms* relative-y-scale)
@@ -90,14 +104,17 @@
   (none))
 
 (defmethod draw-particles ((this hud))
-  (dotimes (s5-0 (-> this nb-of-particles))
+  "Recompute each HUD particle's screen position from its initial position, slide offset, and
+   vertical offset, then update its allocated sprite HVDF. The PC path uses vertical scaling when
+   VIS is disabled so window-aspect positioning remains consistent."
+  (dotimes (i (-> this nb-of-particles))
     (when (!= (-> this skip-particle) -2)
-      (set! (-> this particles s5-0 pos x)
-            (+ -256.0 (the float (* (-> this x-sgn) (-> this offset))) (-> this particles s5-0 init-pos x)))
-      (set! (-> this particles s5-0 pos y)
+      (set! (-> this particles i pos x)
+            (+ -256.0 (the float (* (-> this x-sgn) (-> this offset))) (-> this particles i init-pos x)))
+      (set! (-> this particles i pos y)
             (* 0.5
                (- (* (-> *video-parms* relative-y-scale)
-                     (+ (-> this particles s5-0 init-pos y)
+                     (+ (-> this particles i init-pos y)
                         (the float (* (-> this y-sgn) (-> this offset)))
                         ;; og:preserve-this
                         (#if PC_PORT
@@ -106,67 +123,83 @@
                             (* (the float (-> this y-offset)) (-> *video-parms* relative-x-scale-reciprical)))
                           (* (the float (-> this y-offset)) (-> *video-parms* relative-x-scale-reciprical)))))
                   (the float (-> *video-parms* screen-sy)))))
-      (set! (-> this particles s5-0 pos z) (-> this particles s5-0 init-pos z)))
-    (if (> (-> this particles s5-0 part matrix) 0)
-      (set-vector! (sprite-get-user-hvdf (-> this particles s5-0 part matrix))
-                   (the float (+ (the int (-> this particles s5-0 pos x)) 2048))
-                   (the float (+ (the int (-> this particles s5-0 pos y)) 2048))
-                   (- (-> *math-camera* hvdf-off z) (* 1024.0 (-> this particles s5-0 pos z)))
+      (set! (-> this particles i pos z) (-> this particles i init-pos z)))
+    (if (> (-> this particles i part matrix) 0)
+      (set-vector! (sprite-get-user-hvdf (-> this particles i part matrix))
+                   (the float (+ (the int (-> this particles i pos x)) 2048))
+                   (the float (+ (the int (-> this particles i pos y)) 2048))
+                   (- (-> *math-camera* hvdf-off z) (* 1024.0 (-> this particles i pos z)))
                    (-> *math-camera* hvdf-off w))))
   0
   (none))
 
 (defmethod hud-update ((this hud))
+  "Update this HUD subtype's value and animation state. The base implementation does nothing."
   0
   (none))
 
-(defmethod init-particles! ((this hud) (arg0 int))
+(defmethod init-particles! ((this hud) (init-value int))
+  "Create this HUD subtype's icons and particle launch controls. init-value is normally zero;
+   hud-money-all interprets it as a requested level index. The base implementation does nothing."
   0
   (none))
 
 (defmethod get-icon-pos-x ((this hud))
+  "Return the screen X destination for a collectable flying into this HUD. The base implementation
+   returns zero."
   0)
 
 (defmethod get-icon-pos-y ((this hud))
+  "Return the screen Y destination for a collectable flying into this HUD. The base implementation
+   returns zero."
   0)
 
 (defmethod get-icon-scale-x ((this hud))
+  "Return the X scale for a collectable flying into this HUD. The base implementation returns zero."
   0.0)
 
 (defmethod get-icon-scale-y ((this hud))
+  "Return the Y scale for a collectable flying into this HUD. The base implementation returns zero."
   0.0)
 
-(defmethod set-pos-and-scale ((this hud) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud) (widescreen? symbol) (pal? symbol))
+  "Select this HUD subtype's positions and scales for widescreen and PAL display modes. The base
+   implementation does nothing."
   0
   (none))
 
 (defmethod hidden? ((this hud))
+  "Return whether this HUD's next state is hud-hidden."
   (= (-> this next-state name) 'hud-hidden))
 
+;; offset is the horizontal slide distance: 128 is hidden and zero is fully on screen. Arrival
+;; closes the gap at speed 15, hud-in holds for two seconds, and the normal exit opens it at speed
+;; 5; an explicit hide uses speed 10. Movies snap directly to hidden. Child icons receive draw
+;; events as the HUD enters and leaves, and sprite matrices exist only while it is visible.
 (defstate hud-hidden (hud)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-      (local-vars (v0-0 object))
+      (local-vars (result object))
       (case message
         (('show) (if (and (not *progress-process*) (!= (-> self last-hide-time) (current-time))) (go hud-arriving)))
-        (('hide) (set! v0-0 (current-time)) (set! (-> self last-hide-time) (the-as time-frame v0-0)) v0-0)
-        (('hide-quick) (set! v0-0 (current-time)) (set! (-> self last-hide-time) (the-as time-frame v0-0)) v0-0)
-        (('increment) (set! v0-0 (+ (-> self target-value) 1)) (set! (-> self target-value) (the-as int v0-0)) v0-0)
-        (('sync) (set! v0-0 #t) (set! (-> self first-init) (the-as symbol v0-0)) v0-0)
-        (('disable) (set! v0-0 #t) (set! (-> self disable) (the-as symbol v0-0)) v0-0)
+        (('hide) (set! result (current-time)) (set! (-> self last-hide-time) (the-as time-frame result)) result)
+        (('hide-quick) (set! result (current-time)) (set! (-> self last-hide-time) (the-as time-frame result)) result)
+        (('increment) (set! result (+ (-> self target-value) 1)) (set! (-> self target-value) (the-as int result)) result)
+        (('sync) (set! result #t) (set! (-> self first-init) (the-as symbol result)) result)
+        (('disable) (set! result #t) (set! (-> self disable) (the-as symbol result)) result)
         (('enable) (set! (-> self disable) #f) #f)))
   :enter
     (behavior ()
       (set! (-> self offset) 128)
       (draw-icons self)
       (draw-particles self)
-      (let ((gp-0 (-> self child)))
-        (while gp-0
-          (send-event (ppointer->process gp-0) 'draw #f)
-          (set! gp-0 (-> gp-0 0 brother))))
-      (dotimes (gp-1 (-> self nb-of-particles))
-        (kill-and-free-particles (-> self particles gp-1 part))
-        (set! (-> self particles gp-1 part matrix) -1)))
+      (let ((child (-> self child)))
+        (while child
+          (send-event (ppointer->process child) 'draw #f)
+          (set! child (-> child 0 brother))))
+      (dotimes (particle-index (-> self nb-of-particles))
+        (kill-and-free-particles (-> self particles particle-index part))
+        (set! (-> self particles particle-index part matrix) -1)))
   :exit
     (behavior ()
       (set! (-> self y-offset) (-> self next-y-offset)))
@@ -183,7 +216,7 @@
 (defstate hud-arriving (hud)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-      (local-vars (v0-3 object))
+      (local-vars (result object))
       (case message
         (('hide-quick)
          (set-time! (-> self last-hide-time))
@@ -195,18 +228,19 @@
          (go hud-hidden))
         (('hide) (set-time! (-> self last-hide-time)) (set! (-> self force-on-screen) #f) (go hud-leaving 10))
         (('show) (if (and (not *progress-process*) (!= (-> self last-hide-time) (current-time))) (go hud-arriving)))
-        (('increment) (set! v0-3 (+ (-> self target-value) 1)) (set! (-> self target-value) (the-as int v0-3)) v0-3)
-        (('sync) (set! v0-3 #t) (set! (-> self first-init) (the-as symbol v0-3)) v0-3)
-        (('disable) (set! v0-3 #t) (set! (-> self disable) (the-as symbol v0-3)) v0-3)
+        (('increment) (set! result (+ (-> self target-value) 1)) (set! (-> self target-value) (the-as int result)) result)
+        (('sync) (set! result #t) (set! (-> self first-init) (the-as symbol result)) result)
+        (('disable) (set! result #t) (set! (-> self disable) (the-as symbol result)) result)
         (('enable) (set! (-> self disable) #f) #f)))
   :enter
     (behavior ()
-      (let ((gp-0 (-> self child)))
-        (while gp-0
-          (send-event (ppointer->process gp-0) 'draw #t)
-          (set! gp-0 (-> gp-0 0 brother))))
-      (dotimes (gp-1 (-> self nb-of-particles))
-        (if (= (-> self particles gp-1 part matrix) -1) (set! (-> self particles gp-1 part matrix) (sprite-allocate-user-hvdf)))))
+      (let ((child (-> self child)))
+        (while child
+          (send-event (ppointer->process child) 'draw #t)
+          (set! child (-> child 0 brother))))
+      (dotimes (particle-index (-> self nb-of-particles))
+        (if (= (-> self particles particle-index part matrix) -1)
+          (set! (-> self particles particle-index part matrix) (sprite-allocate-user-hvdf)))))
   :code
     (behavior ()
       (loop
@@ -257,9 +291,9 @@
     (-> hud-arriving
         event)
   :code
-    (behavior ((arg0 int))
+    (behavior ((speed int))
       (loop
-        (if (not (paused?)) (seekl! (-> self offset) 128 (the int (* (the float arg0) (-> *display* time-adjust-ratio)))))
+        (if (not (paused?)) (seekl! (-> self offset) 128 (the int (* (the float speed) (-> *display* time-adjust-ratio)))))
         (draw-icons self)
         (when (movie?)
           (set-time! (-> self last-hide-time))
@@ -275,7 +309,9 @@
     (-> hud-arriving
         post))
 
-(defbehavior hud-init-by-other hud ((arg0 int))
+(defbehavior hud-init-by-other hud ((init-value int))
+  "Reset a newly spawned HUD's common counts, timers, flags, masks, and offsets; let its subtype
+   create icons and particles from init-value; draw the initial hidden layout; and enter hud-hidden."
   (set! (-> self nb-of-icons) 0)
   (set! (-> self nb-of-particles) 0)
   (set! (-> self max-nb-of-particles) 7)
@@ -293,49 +329,56 @@
   (set-time! (-> self last-hide-time))
   (logior! (-> self mask) (process-mask menu))
   (logclear! (-> self mask) (process-mask pause progress))
-  (init-particles! self arg0)
+  (init-particles! self init-value)
   (draw-icons self)
   (draw-particles self)
   (go hud-hidden)
   (none))
 
-(defun send-hud-increment-event ((arg0 hud))
-  (if (-> arg0 increment-on-event) (send-event arg0 'increment)))
+(defun send-hud-increment-event ((hud-element hud))
+  "Send increment to hud-element only when it is configured for event-driven tallying."
+  (if (-> hud-element increment-on-event) (send-event hud-element 'increment)))
 
+;; Fly a collected drawable to its HUD counter in exactly one unit of progress. Each frame adds
+;; move-rate * seconds-per-frame of the original destination delta, shortening the final step so
+;; the sum is exactly one. Keep the drawable's original scale adjusted for the current video mode,
+;; spin it during the flight, then notify event-driven counters and deactivate it.
 (defstate hud-collecting (process-drawable)
   :trans
     (behavior ()
       (case (-> self type)
         ((fuel-cell) (fuel-cell-animate))))
   :code
-    (behavior ((arg0 handle))
-      (let ((s5-0 (new 'stack-no-clear 'vector)))
-        (let ((s4-0 (handle->process arg0)))
-          (set! (-> s5-0 x) (- (the float (+ (get-icon-pos-x (the-as hud s4-0)) -256)) (-> self root trans x)))
-          (set! (-> s5-0 y)
-                (- (the float (- (get-icon-pos-y (the-as hud s4-0)) (-> *video-parms* screen-sy))) (-> self root trans y))))
-        (let ((f30-0 4.0)
-              (f26-0 0.0)
-              (f28-0 (-> self root scale x))
-              (f24-0 (-> self root scale y))
-              (f22-0 (-> self root scale z)))
+    (behavior ((hud-handle handle))
+      (let ((destination-delta (new 'stack-no-clear 'vector)))
+        (let ((hud-process (handle->process hud-handle)))
+          (set! (-> destination-delta x)
+                (- (the float (+ (get-icon-pos-x (the-as hud hud-process)) -256)) (-> self root trans x)))
+          (set! (-> destination-delta y)
+                (- (the float (- (get-icon-pos-y (the-as hud hud-process)) (-> *video-parms* screen-sy))) (-> self root trans y))))
+        (let ((move-rate 4.0)
+              (progress 0.0)
+              (start-scale-x (-> self root scale x))
+              (start-scale-y (-> self root scale y))
+              (start-scale-z (-> self root scale z)))
           (loop
-            (let ((f0-7 (* f30-0 (seconds-per-frame))))
-              (+! f26-0 f0-7)
-              (when (< 1.0 f26-0)
-                (let ((f0-8 (- f26-0 f0-7))) (set! f0-7 (- 1.0 f0-8)))
-                (set! f26-0 1.0))
-              (+! (-> self root trans x) (* f0-7 (-> s5-0 x)))
-              (+! (-> self root trans y) (* f0-7 (-> s5-0 y))))
+            (let ((step (* move-rate (seconds-per-frame))))
+              (+! progress step)
+              (when (< 1.0 progress)
+                (let ((previous-progress (- progress step))) (set! step (- 1.0 previous-progress)))
+                (set! progress 1.0))
+              (+! (-> self root trans x) (* step (-> destination-delta x)))
+              (+! (-> self root trans y) (* step (-> destination-delta y))))
             (set-vector! (-> self root scale)
-                         (* f28-0 (-> *video-parms* relative-x-scale))
-                         (* f24-0 (-> *video-parms* relative-y-scale) (-> *video-parms* relative-y-scale))
-                         (* f22-0 (-> *video-parms* relative-x-scale))
+                         (* start-scale-x (-> *video-parms* relative-x-scale))
+                         (* start-scale-y (-> *video-parms* relative-y-scale) (-> *video-parms* relative-y-scale))
+                         (* start-scale-z (-> *video-parms* relative-x-scale))
                          1.0)
-            (let ((a0-12 (-> self root)))
-              (set-yaw-angle-clear-roll-pitch! a0-12 (- (y-angle a0-12) (* 182.04445 (* 8.0 (-> *display* time-adjust-ratio))))))
+            (let ((root-transform (-> self root)))
+              (set-yaw-angle-clear-roll-pitch! root-transform
+                                               (- (y-angle root-transform) (* 182.04445 (* 8.0 (-> *display* time-adjust-ratio))))))
             (suspend)
-            (when (>= f26-0 1.0)
-              (send-hud-increment-event (the-as hud (handle->process arg0)))
+            (when (>= progress 1.0)
+              (send-hud-increment-event (the-as hud (handle->process hud-handle)))
               (deactivate self))))))
   :post ja-post)

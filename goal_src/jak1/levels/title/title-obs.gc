@@ -24,8 +24,8 @@
    hidden
    ndi))
 
-
 (defmethod relocate ((this logo) (offset int))
+  "Adjust the optional main-joint controller pointer, then relocate the drawable allocation."
   (if (nonzero? (-> this main-joint)) (&+! (-> this main-joint) offset))
   (the-as logo ((method-of-type process-drawable relocate) this offset)))
 
@@ -35,8 +35,8 @@
   (:state-methods
    idle))
 
-
 (defmethod relocate ((this logo-slave) (offset int))
+  "Adjust the optional main-joint controller pointer, then relocate the drawable allocation."
   (if (nonzero? (-> this main-joint)) (&+! (-> this main-joint) offset))
   (the-as logo-slave ((method-of-type process-drawable relocate) this offset)))
 
@@ -131,10 +131,12 @@
                     (-> self parent-process 0 main-joint scale)))
         (suspend))))
 
-(defbehavior logo-slave-init-by-other logo-slave ((arg0 entity-actor) (arg1 skeleton-group))
-  (set! (-> self entity) arg0)
+(defbehavior logo-slave-init-by-other logo-slave ((entity-record entity-actor) (skeleton-definition skeleton-group))
+  "Initialize a title-sequence drawable from the requested skeleton group, configure its shadow
+   and title effect, and attach optional joint control for the volume and blackout layers."
+  (set! (-> self entity) entity-record)
   (set! (-> self root) (new 'process 'trsqv))
-  (initialize-skeleton self arg1 '())
+  (initialize-skeleton self skeleton-definition '())
   (logior! (-> self skel status) (janim-status inited))
   (set! (-> self draw origin-joint-index) (the-as uint 3))
   (set! (-> self draw shadow-mask) (the-as uint 255))
@@ -326,7 +328,8 @@
       (let ((gp-0 *master-mode*)) (set! *master-mode* 'game) (clear-rec *art-control*) (set! *master-mode* gp-0))
       (loop
         (when (and (none-reserved? *art-control*) (not (paused?)))
-          (suspend-for (seconds 0.1) (set! *camera-look-through-other* 2))
+          (suspend-for (seconds 0.1)
+            (set! *camera-look-through-other* 2))
           (go-virtual idle))
         (set! *camera-look-through-other* 2)
         (suspend))))
@@ -414,13 +417,16 @@
   (behavior ()
     (ja-post)))
 
-(defbehavior logo-init-by-other logo ((arg0 entity-actor) (arg1 vector) (arg2 symbol))
+(defbehavior logo-init-by-other logo ((entity-record entity-actor) (position vector) (mode symbol))
+  "Initialize a title-sequence controller at position. mode selects the ordinary logo sequence or
+   the NDI intro, including its skeleton, lighting, streamed animation commands, linked drawables,
+   and initial state."
   (stack-size-set! (-> self main-thread) 512)
   (logclear! (-> self mask) (process-mask progress))
-  (set! (-> self entity) arg0)
+  (set! (-> self entity) entity-record)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg1 quad))
-  (case arg2
+  (set! (-> self root trans quad) (-> position quad))
+  (case mode
     (('logo)
      (set! (-> *time-of-day-context* title-light-group dir1 levels x) 0.0)
      (set! (-> *time-of-day-context* title-light-group ambi levels x) 0.444)
@@ -516,8 +522,8 @@
   (set! (-> self volumes) (the-as handle #f))
   (set! (-> self black) (the-as handle #f))
   (cond
-    ((= arg2 'logo) (go-virtual startup))
-    ((= arg2 'ndi) (go-virtual ndi)))
+    ((= mode 'logo) (go-virtual startup))
+    ((= mode 'ndi) (go-virtual ndi)))
   (none))
 
 (defstate target-title (target)
@@ -565,7 +571,8 @@
            (while (!= (file-status *art-control* "ndi-intro" 0) 'active)
              (set-blackout-frames (seconds 0.05))
              (suspend))
-           (suspend-for (seconds 0.25) (set-blackout-frames (seconds 0.05)))))
+           (suspend-for (seconds 0.25)
+             (set-blackout-frames (seconds 0.05)))))
         (label cfg-8)
         (let ((s5-2 (new 'stack-no-clear 'mc-slot-info)))
           (mc-get-slot-info 0 s5-2)
@@ -657,10 +664,10 @@
         (set-setting! 'allow-progress #f 0.0 0)
         (apply-settings *setting-control*))
       (when (and (< (mod (-> *display* real-frame-counter) 300) 270) (not *progress-process*))
-        (let ((gp-0 (new 'stack 'font-context *font-default-matrix* 80 170 0.0 (font-color default) (font-flags shadow kerning))))
-          (let ((v1-12 gp-0)) (set! (-> v1-12 width) (the float 352)))
-          (let ((v1-13 gp-0)) (set! (-> v1-13 height) (the float 40)))
-          (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
-          (print-game-text (lookup-text! *common-text* (text-id press-start) #f) gp-0 #f 128 22))))
+        (let ((font-context (new 'stack 'font-context *font-default-matrix* 80 170 0.0 (font-color default) (font-flags shadow kerning))))
+          (set-width! font-context 352)
+          (set-height! font-context 40)
+          (set! (-> font-context flags) (font-flags shadow kerning middle middle-vert large))
+          (print-game-text (lookup-text! *common-text* (text-id press-start) #f) font-context #f 128 22))))
   :code anim-loop
   :post target-no-move-post)

@@ -29,7 +29,7 @@
    (:fade-a -0.21333334)
    (:accel-y (meters -0.000033333334))
    (:timer (seconds 1))
-   (:flags (bit2 bit12))))
+   (:flags (die-when-faded use-time-of-day-color))))
 
 (defpart 664
   :init-specs
@@ -46,7 +46,7 @@
    (:fade-a -0.42666668)
    (:accel-y (meters -0.0016666667))
    (:timer (seconds 1))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 30) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0.2))))
@@ -56,7 +56,6 @@
   (:states
    lurkercrab-pushed))
 
-
 (defskelgroup *lurkercrab-sg*
   lurkercrab
   lurkercrab-lod0-jg
@@ -64,58 +63,73 @@
   ((lurkercrab-lod0-mg (meters 20)) (lurkercrab-lod1-mg (meters 40)) (lurkercrab-lod2-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 2.5))
 
-(defmethod touch-handler ((this lurkercrab) (arg0 process) (arg1 event-message-block))
-  (if (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf6))
+(defmethod touch-handler ((this lurkercrab) (other-process process) (block event-message-block))
+  "When the claw offense is enabled and an offensive primitive touches another process, send
+   the generic contact attack. Always apply shove-back, then resolve overlaps unless a contact
+   attack has already landed this frame."
+  (if (and (logtest? (-> this nav-enemy-flags) (nav-enemy-flags attack-enabled))
            ((method-of-type touching-shapes-entry prims-touching?)
-            (the-as touching-shapes-entry (-> arg1 param 0))
+            (the-as touching-shapes-entry (-> block param 0))
             (-> this collide-info)
             (the-as uint 1)))
-    (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic))
-  (send-shove-back (-> this collide-info) arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 0.7 6144.0 16384.0)
-  (if (not (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf8))) (do-push-aways! (-> this collide-info))))
+    (nav-enemy-send-attack other-process (the-as touching-shapes-entry (-> block param 0)) 'generic))
+  (send-shove-back (-> this collide-info)
+                   other-process
+                   (the-as touching-shapes-entry (-> block param 0))
+                   0.7
+                   6144.0
+                   16384.0)
+  (if (not (logtest? (-> this nav-enemy-flags) (nav-enemy-flags attack-landed))) (do-push-aways! (-> this collide-info))))
 
-(defmethod attack-handler ((this lurkercrab) (arg0 process) (arg1 event-message-block))
-  (let ((s5-0 (-> this incomming-attack-id)))
-    (set! (-> this incomming-attack-id) (the-as handle (-> arg1 param 2)))
-    (let ((v1-1 (-> arg1 param 1)))
+(defmethod attack-handler ((this lurkercrab) (sender process) (block event-message-block))
+  "Record the incoming attack handle. Flop, explosion, and dark-eco attacks always kill the
+   crab, and every attack kills while its shell is vulnerable. Otherwise enter the pushed
+   state, aiming a punch knockback along the target's facing or another hit away from the
+   target."
+  (let ((previous-attack-id (-> this incomming-attack-id)))
+    (set! (-> this incomming-attack-id) (the-as handle (-> block param 2)))
+    (let ((attack-type (-> block param 1)))
       (cond
-        ((or (= v1-1 'flop) (= v1-1 'explode) (= v1-1 'darkeco))
+        ((or (= attack-type 'flop) (= attack-type 'explode) (= attack-type 'darkeco))
          (logclear! (-> this mask) (process-mask actor-pause))
          (go (method-of-object this nav-enemy-die)))
-        ((= v1-1 'punch)
+        ((= attack-type 'punch)
          (cond
-           ((logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf5))
+           ((logtest? (-> this nav-enemy-flags) (nav-enemy-flags vulnerable))
             (logclear! (-> this mask) (process-mask actor-pause))
             (go (method-of-object this nav-enemy-die)))
            ((begin
-              (let ((s4-0 (new 'stack-no-clear 'vector)))
-                (let ((f30-0 (quaternion-xz-angle (target-rot))))
-                  (set-vector! s4-0 (* 24576.0 (sin f30-0)) 0.0 (* 24576.0 (cos f30-0)) 1.0))
-                (vector+! s4-0 (-> this collide-info trans) s4-0)
-                (set! (-> this nav target-pos quad) (-> s4-0 quad)))
+              (let ((punch-destination (new 'stack-no-clear 'vector)))
+                (let ((target-heading (quaternion-xz-angle (target-rot))))
+                  (set-vector! punch-destination (* 24576.0 (sin target-heading)) 0.0 (* 24576.0 (cos target-heading)) 1.0))
+                (vector+! punch-destination (-> this collide-info trans) punch-destination)
+                (set! (-> this nav target-pos quad) (-> punch-destination quad)))
               (go lurkercrab-pushed)
-              (= s5-0 (-> this incomming-attack-id)))
+              (= previous-attack-id (-> this incomming-attack-id)))
             'push)
            (else #t)))
-        ((logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf5))
+        ((logtest? (-> this nav-enemy-flags) (nav-enemy-flags vulnerable))
          (logclear! (-> this mask) (process-mask actor-pause))
          (go (method-of-object this nav-enemy-die)))
         ((begin
-           (let ((s4-1 (new 'stack-no-clear 'vector)))
-             (vector-! s4-1 (-> this collide-info trans) (target-pos 0))
-             (vector-normalize! s4-1 24576.0)
-             (vector+! s4-1 (-> this collide-info trans) s4-1)
-             (set! (-> this nav target-pos quad) (-> s4-1 quad)))
+           (let ((knockback-destination (new 'stack-no-clear 'vector)))
+             (vector-! knockback-destination (-> this collide-info trans) (target-pos 0))
+             (vector-normalize! knockback-destination 24576.0)
+             (vector+! knockback-destination (-> this collide-info trans) knockback-destination)
+             (set! (-> this nav target-pos quad) (-> knockback-destination quad)))
            (go lurkercrab-pushed)
-           (= s5-0 (-> this incomming-attack-id)))
+           (= previous-attack-id (-> this incomming-attack-id)))
          'push)
         (else #t)))))
 
 nav-enemy-default-event-handler
 
-(defmethod nav-enemy-method-37 ((this lurkercrab))
+(defmethod turn-toward-travel! ((this lurkercrab))
+  "While orient is true, steer toward target-pos after navigation reports the destination
+   reached and otherwise steer along the travel heading. While false, spin in place at two and
+   a half turns per second."
   (when (-> this orient)
-    (if (logtest? (nav-control-flags navcf19) (-> this nav flags))
+    (if (logtest? (nav-control-flags reached-destination) (-> this nav flags))
       (seek-to-point-toward-point! (-> this collide-info) (-> this nav target-pos) (-> this rotate-speed) (-> this turn-time))
       (seek-toward-heading-vec! (-> this collide-info) (-> this nav travel) (-> this rotate-speed) (-> this turn-time))))
   (if (not (-> this orient))
@@ -123,7 +137,9 @@ nav-enemy-default-event-handler
   0
   (none))
 
-(defmethod nav-enemy-method-38 ((this lurkercrab))
+(defmethod integrate-and-collide! ((this lurkercrab))
+  "Move by the current translation velocity and follow background ground within two metres,
+   without hovering or using either special ground probe."
   (integrate-for-enemy-with-move-to-ground! (-> this collide-info)
                                             (-> this collide-info transv)
                                             (collide-kind background)
@@ -134,6 +150,11 @@ nav-enemy-default-event-handler
   0
   (none))
 
+;; The crab keeps its shell closed while walking. On patrol it walks six cycles, may stop for an
+;; idle spell, then peeks out: the central body becomes vulnerable and the two claw spheres can
+;; attack for two animation passes before the shell closes again. A chase uses the same opening
+;; around the full snip attack. Flop, explosion, and dark-eco hits bypass the shell; another hit
+;; against a closed shell sets a slide target six metres away before the crab resumes the chase.
 (defstate nav-enemy-idle (lurkercrab)
   :virtual #t
   :event nav-enemy-default-event-handler
@@ -148,28 +169,25 @@ nav-enemy-default-event-handler
       (loop
         (ja :group! lurkercrab-idle-ja :num! (identity (ja-aframe 1.0 0)))
         (suspend-for (seconds 3))
-        (ja-no-eval :group! lurkercrab-idle-ja :num! (seek! (ja-aframe 19.0 0)) :frame-num (ja-aframe 1.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 19.0 0))))
+        (ja-play :group! lurkercrab-idle-ja :num! (seek! (ja-aframe 19.0 0)) :frame-num (ja-aframe 1.0 0))
         (ja :num-func num-func-identity :frame-num (ja-aframe 19.0 0))
         (suspend-for (seconds 1))
-        (ja-no-eval :group! lurkercrab-idle-ja :num! (seek! (ja-aframe 1.0 0)) :frame-num (ja-aframe 19.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 1.0 0)))))))
+        (ja-play :group! lurkercrab-idle-ja :num! (seek! (ja-aframe 1.0 0)) :frame-num (ja-aframe 19.0 0)))))
 
 (defbehavior lurkercrab-invulnerable lurkercrab ()
-  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf5))
-  (let ((v1-3 (find-prim-by-id (-> self collide-info) (the-as uint 2))))
-    (when v1-3
-      (let ((v0-1 4)) (set! (-> v1-3 prim-core offense) (the-as collide-offense v0-1)) v0-1))))
+  "Protect the crab from ordinary damage and restore indestructible offense on its central
+   collision primitive."
+  (logclear! (-> self nav-enemy-flags) (nav-enemy-flags vulnerable))
+  (let ((body-primitive (find-prim-by-id (-> self collide-info) (the-as uint 2))))
+    (when body-primitive
+      (let ((offense 4)) (set! (-> body-primitive prim-core offense) (the-as collide-offense offense)) offense))))
 
 (defbehavior lurkercrab-vulnerable lurkercrab ()
-  (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf5))
-  (let ((v1-3 (find-prim-by-id (-> self collide-info) (the-as uint 2))))
-    (when v1-3
-      (let ((v0-1 1)) (set! (-> v1-3 prim-core offense) (the-as collide-offense v0-1)) v0-1))))
+  "Expose the crab to damage and change its central collision primitive to normal attack offense."
+  (logior! (-> self nav-enemy-flags) (nav-enemy-flags vulnerable))
+  (let ((body-primitive (find-prim-by-id (-> self collide-info) (the-as uint 2))))
+    (when body-primitive
+      (let ((offense 1)) (set! (-> body-primitive prim-core offense) (the-as collide-offense offense)) offense))))
 
 (defstate nav-enemy-patrol (lurkercrab)
   :virtual #t
@@ -177,22 +195,15 @@ nav-enemy-default-event-handler
   :exit
     (behavior ()
       (lurkercrab-invulnerable)
-      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags attack-enabled))
       (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate)))
   :code
     (behavior ()
-      (when (ja-group? lurkercrab-idle-ja)
-        (ja-no-eval :group! lurkercrab-idle-to-walk-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!))))
+      (if (ja-group? lurkercrab-idle-ja) (ja-play :group! lurkercrab-idle-to-walk-ja :num! (seek!) :frame-num 0.0))
       (ja-channel-push! 1 (seconds 0.075))
       (loop
-        (dotimes (gp-0 6)
-          (ja-no-eval :group! lurkercrab-walk-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!))))
+        (dotimes (walk-cycle 6)
+          (ja-play :group! lurkercrab-walk-ja :num! (seek!) :frame-num 0.0))
         (when (nav-enemy-rnd-go-idle? 0.2)
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
@@ -202,27 +213,15 @@ nav-enemy-default-event-handler
             (ja :group! lurkercrab-idle-ja :num! (identity (ja-aframe 1.0 0)))
             (suspend-for (seconds 2)))
           (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
-          (ja-no-eval :group! lurkercrab-idle-to-walk-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!))))
-        (ja-no-eval :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 30.0 0)) :frame-num (ja-aframe 1.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 30.0 0))))
+          (ja-play :group! lurkercrab-idle-to-walk-ja :num! (seek!) :frame-num 0.0))
+        (ja-play :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 30.0 0)) :frame-num (ja-aframe 1.0 0))
         (lurkercrab-vulnerable)
-        (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
-        (dotimes (gp-5 2)
-          (ja-no-eval :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 30.0 0))
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek! (ja-aframe 60.0 0)))))
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags attack-enabled))
+        (dotimes (peek-cycle 2)
+          (ja-play :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 30.0 0)))
         (lurkercrab-invulnerable)
-        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
-        (ja-no-eval :group! lurkercrab-peek-to-walk-ja :num! (seek! (ja-aframe 90.0 0)) :frame-num (ja-aframe 60.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 90.0 0)))))))
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags attack-enabled))
+        (ja-play :group! lurkercrab-peek-to-walk-ja :num! (seek! (ja-aframe 90.0 0)) :frame-num (ja-aframe 60.0 0)))))
 
 (defstate nav-enemy-notice (lurkercrab)
   :virtual #t
@@ -237,7 +236,7 @@ nav-enemy-default-event-handler
   :exit
     (behavior ()
       (lurkercrab-invulnerable)
-      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6)))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags attack-enabled)))
   :trans
     (behavior ()
       (if (logtest? (-> *target* state-flags)
@@ -249,42 +248,18 @@ nav-enemy-default-event-handler
       (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
       (ja-channel-push! 1 (seconds 0.075))
       (loop
-        (ja-no-eval :group! lurkercrab-walk-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))
+        (ja-play :group! lurkercrab-walk-ja :num! (seek!) :frame-num 0.0)
         (lurkercrab-vulnerable)
-        (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
-        (ja-no-eval :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 30.0 0)) :frame-num (ja-aframe 1.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 30.0 0))))
-        (ja-no-eval :group! lurkercrab-snip-ja :num! (seek! (ja-aframe 120.0 0)) :frame-num (ja-aframe 30.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 120.0 0))))
-        (ja-no-eval :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 30.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 60.0 0))))
-        (ja-no-eval :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 30.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 60.0 0))))
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags attack-enabled))
+        (ja-play :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 30.0 0)) :frame-num (ja-aframe 1.0 0))
+        (ja-play :group! lurkercrab-snip-ja :num! (seek! (ja-aframe 120.0 0)) :frame-num (ja-aframe 30.0 0))
+        (ja-play :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 30.0 0))
+        (ja-play :group! lurkercrab-peek-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 30.0 0))
         (lurkercrab-invulnerable)
-        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf6))
-        (ja-no-eval :group! lurkercrab-peek-to-walk-ja :num! (seek! (ja-aframe 90.0 0)) :frame-num (ja-aframe 60.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 90.0 0))))
-        (ja-no-eval :group! lurkercrab-walk-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))
-        (ja-no-eval :group! lurkercrab-walk-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!))))))
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags attack-enabled))
+        (ja-play :group! lurkercrab-peek-to-walk-ja :num! (seek! (ja-aframe 90.0 0)) :frame-num (ja-aframe 60.0 0))
+        (ja-play :group! lurkercrab-walk-ja :num! (seek!) :frame-num 0.0)
+        (ja-play :group! lurkercrab-walk-ja :num! (seek!) :frame-num 0.0))))
 
 (defstate nav-enemy-stop-chase (lurkercrab)
   :virtual #t
@@ -323,18 +298,15 @@ nav-enemy-default-event-handler
       (set! (-> self momentum-speed) 57344.0)
       (set! (-> self target-speed) 0.0)
       (set! (-> self orient) #f)
-      (ja-no-eval :group! lurkercrab-kickback-ja :num! (seek! (ja-aframe 18.0 0) 0.75) :frame-num (ja-aframe 1.0 0))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 18.0 0) 0.75)))
+      (ja-play :group! lurkercrab-kickback-ja :num! (seek! (ja-aframe 18.0 0) 0.75) :frame-num (ja-aframe 1.0 0))
       (suspend-for (seconds 0.25))
       (suspend-for (seconds 0.1))
       (go-virtual nav-enemy-chase))
   :post
     (behavior ()
-      (let ((a0-0 (-> self part))
-            (a1-0 (-> self collide-info root-prim prim-core)))
-        (spawn a0-0 (-> a1-0 world-sphere)))
+      (let ((slide-particles (-> self part))
+            (root-primitive-core (-> self collide-info root-prim prim-core)))
+        (spawn slide-particles (-> root-primitive-core world-sphere)))
       (nav-enemy-travel-post)))
 
 (define *lurkercrab-nav-enemy-info*
@@ -390,47 +362,51 @@ nav-enemy-default-event-handler
        :debug-draw-neck #f
        :debug-draw-jump #f))
 
-(defmethod init-from-entity! ((this lurkercrab) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
-    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set-vector! (-> s3-0 local-sphere) 0.0 10240.0 0.0 12288.0)
-      (set-root-prim! s4-0 s3-0)
-      (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
-        (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-0 collide-with) (collide-kind target))
-        (set! (-> s2-0 prim-core action) (collide-action solid))
-        (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
-        (set-vector! (-> s2-0 local-sphere) 0.0 4915.2 0.0 4096.0)
-        (append-prim s3-0 s2-0))
-      (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
-        (set! (-> s2-1 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-1 collide-with) (collide-kind target))
-        (set! (-> s2-1 prim-core offense) (collide-offense normal-attack))
-        (set! (-> s2-1 transform-index) 16)
-        (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 1638.4)
-        (append-prim s3-0 s2-1))
-      (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
-        (set! (-> s2-2 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-2 collide-with) (collide-kind target))
-        (set! (-> s2-2 prim-core offense) (collide-offense normal-attack))
-        (set! (-> s2-2 transform-index) 21)
-        (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 1638.4)
-        (append-prim s3-0 s2-2)))
-    (set! (-> s4-0 nav-radius) 4096.0)
-    (backup-collide-with-as s4-0)
-    (set! (-> this collide-info) s4-0))
-  (process-drawable-from-entity! this arg0)
+(defmethod init-from-entity! ((this lurkercrab) (source-entity entity-actor))
+  "Build the crab's body and joint-mounted claw collision, drawable, skeleton, navigation
+   tuning, and slide particles. Begin invulnerable, stationary, and forced to the distant LOD
+   in the idle state."
+  (let ((root-shape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> root-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> root-shape reaction) default-collision-reaction)
+    (set! (-> root-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((primitive-group (new 'process 'collide-shape-prim-group root-shape (the-as uint 3) 0)))
+      (set! (-> primitive-group prim-core collide-as) (collide-kind enemy))
+      (set! (-> primitive-group collide-with) (collide-kind target))
+      (set! (-> primitive-group prim-core action) (collide-action solid))
+      (set-vector! (-> primitive-group local-sphere) 0.0 10240.0 0.0 12288.0)
+      (set-root-prim! root-shape primitive-group)
+      (let ((body-primitive (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 2))))
+        (set! (-> body-primitive prim-core collide-as) (collide-kind enemy))
+        (set! (-> body-primitive collide-with) (collide-kind target))
+        (set! (-> body-primitive prim-core action) (collide-action solid))
+        (set! (-> body-primitive prim-core offense) (collide-offense indestructible))
+        (set-vector! (-> body-primitive local-sphere) 0.0 4915.2 0.0 4096.0)
+        (append-prim primitive-group body-primitive))
+      (let ((joint-16-claw (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 1))))
+        (set! (-> joint-16-claw prim-core collide-as) (collide-kind enemy))
+        (set! (-> joint-16-claw collide-with) (collide-kind target))
+        (set! (-> joint-16-claw prim-core offense) (collide-offense normal-attack))
+        (set! (-> joint-16-claw transform-index) 16)
+        (set-vector! (-> joint-16-claw local-sphere) 0.0 0.0 0.0 1638.4)
+        (append-prim primitive-group joint-16-claw))
+      (let ((joint-21-claw (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 1))))
+        (set! (-> joint-21-claw prim-core collide-as) (collide-kind enemy))
+        (set! (-> joint-21-claw collide-with) (collide-kind target))
+        (set! (-> joint-21-claw prim-core offense) (collide-offense normal-attack))
+        (set! (-> joint-21-claw transform-index) 21)
+        (set-vector! (-> joint-21-claw local-sphere) 0.0 0.0 0.0 1638.4)
+        (append-prim primitive-group joint-21-claw)))
+    (set! (-> root-shape nav-radius) 4096.0)
+    (backup-collide-with-as root-shape)
+    (set! (-> this collide-info) root-shape))
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *lurkercrab-sg* '())
   (init-defaults! this *lurkercrab-nav-enemy-info*)
   (set! (-> this part) (create-launch-control group-lurkercrab-slide this))
   (set! (-> this orient) #t)
-  (logclear! (-> this nav-enemy-flags) (nav-enemy-flags navenmf5 navenmf6))
+  (logclear! (-> this nav-enemy-flags) (nav-enemy-flags vulnerable attack-enabled))
   (set! (-> this target-speed) 0.0)
   (set! (-> this momentum-speed) 0.0)
   (set! (-> this draw force-lod) 2)

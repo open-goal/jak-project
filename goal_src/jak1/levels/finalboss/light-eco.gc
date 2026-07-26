@@ -9,14 +9,15 @@
 ;; DECOMP BEGINS
 
 (deftype light-eco-child (process-drawable)
-  ((root               collide-shape :override)
-   (angle-bit          int32)
-   (ground-y           float)
+  "A collectible white-eco fragment launched from the larger eco source."
+  ((root collide-shape :override)
+   (angle-bit int32)
+   (ground-y float)
    (falling-start-time time-frame)
-   (last-update-time   time-frame)
-   (rot                vector :inline)
-   (rotv               vector :inline)
-   (traj               trajectory :inline))
+   (last-update-time time-frame)
+   (rot vector :inline)
+   (rotv vector :inline)
+   (traj trajectory :inline))
   (:methods
    (common-trans (_type_) none))
   (:states
@@ -26,13 +27,13 @@
    light-eco-child-hit-ground
    light-eco-child-idle))
 
-
 (deftype light-eco-mother (process-drawable)
-  ((player-got-eco?   symbol)
-   (angle-mask        int64)
-   (delay-til-spawn   int32)
-   (part2             sparticle-launch-control)
-   (last-update-time  time-frame)
+  "The large white-eco source that periodically launches collectible fragments around itself."
+  ((player-got-eco? symbol)
+   (angle-mask int64)
+   (delay-til-spawn int32)
+   (part2 sparticle-launch-control)
+   (last-update-time time-frame)
    (last-spawned-time time-frame))
   (:methods
    (spawn-child-eco (_type_) symbol)
@@ -41,7 +42,6 @@
    light-eco-mother-active
    light-eco-mother-appear
    light-eco-mother-discipate))
-
 
 (defskelgroup *light-eco-big-sg*
   light-eco
@@ -80,7 +80,7 @@
    (:scalevel-y (meters 0.009765625))
    (:fade-a 0.35555556)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.3))
    (:next-launcher 2899)))
 
@@ -103,7 +103,7 @@
    (:rotvel-z (degrees -0.15) (degrees 0.3))
    (:fade-a 0.32)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.25))
    (:next-launcher 232)))
 
@@ -127,7 +127,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 0.21333334)
    (:timer (seconds 2))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.8) (seconds 0.197))
    (:next-launcher 2901)))
 
@@ -150,7 +150,7 @@
    (:accel-y (meters -0.0016666667) (meters -0.00066666666))
    (:friction 0.9)
    (:timer (seconds 0.1) (seconds 0.497))
-   (:flags (bit0 bit2 bit3))
+   (:flags (die-when-scale-0 die-when-faded glow))
    (:userdata 1638400.0)
    (:func 'check-drop-level-lighteco-big-pops)
    (:next-time (seconds 0.15) (seconds 0.997))
@@ -162,13 +162,14 @@
 (defpart 2903
   :init-specs ((:userdata 2252800.0)))
 
-(defun check-drop-level-lighteco-big-pops ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
-  (when (< (-> arg2 y) (-> arg1 user-float))
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (sp-kill-particle arg0 arg1)
-      (set-vector! gp-0 (-> arg2 x) (-> arg2 y) (-> arg2 z) 1.0)
-      (launch-particles (-> *part-id-table* 2904) gp-0)
-      (launch-particles (-> *part-id-table* 2905) gp-0)))
+(defun check-drop-level-lighteco-big-pops ((system sparticle-system) (particle sparticle-cpuinfo) (position vector))
+  "Kill a falling large light-eco particle below its stored height and launch its impact effects."
+  (when (< (-> position y) (-> particle user-float))
+    (let ((impact-position (new 'stack-no-clear 'vector)))
+      (sp-kill-particle system particle)
+      (set-vector! impact-position (-> position x) (-> position y) (-> position z) 1.0)
+      (launch-particles (-> *part-id-table* 2904) impact-position)
+      (launch-particles (-> *part-id-table* 2905) impact-position)))
   (none))
 
 (defpart 2905
@@ -184,7 +185,7 @@
    (:a 16.0 32.0)
    (:fade-a -1.92)
    (:timer (seconds 0.067))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 2904
   :init-specs
@@ -200,7 +201,7 @@
    (:accel-y (meters -0.0016666667) (meters -0.00066666666))
    (:friction 0.85)
    (:timer (seconds 0.05) (seconds 0.397))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -236,7 +237,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 0.85333335)
    (:timer (seconds 1))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.4) (seconds 0.097))
    (:next-launcher 2908)))
 
@@ -259,7 +260,7 @@
    (:accel-y (meters -0.0016666667) (meters -0.00066666666))
    (:friction 0.5)
    (:timer (seconds 0.1) (seconds 0.497))
-   (:flags (bit0 bit2 bit3))
+   (:flags (die-when-scale-0 die-when-faded glow))
    (:userdata 1638400.0)
    (:func 'check-drop-level-lighteco-pops)
    (:next-time (seconds 0.15) (seconds 0.997))
@@ -270,13 +271,14 @@
 (defpart 2909
   :init-specs ((:userdata 2048000.0)))
 
-(defun check-drop-level-lighteco-pops ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
-  (when (< (-> arg2 y) (-> arg1 user-float))
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (sp-kill-particle arg0 arg1)
-      (set-vector! gp-0 (-> arg2 x) (-> arg2 y) (-> arg2 z) 1.0)
-      (launch-particles (-> *part-id-table* 2910) gp-0)
-      (launch-particles (-> *part-id-table* 2911) gp-0)))
+(defun check-drop-level-lighteco-pops ((system sparticle-system) (particle sparticle-cpuinfo) (position vector))
+  "Kill a falling light-eco particle below its stored height and launch its impact effects."
+  (when (< (-> position y) (-> particle user-float))
+    (let ((impact-position (new 'stack-no-clear 'vector)))
+      (sp-kill-particle system particle)
+      (set-vector! impact-position (-> position x) (-> position y) (-> position z) 1.0)
+      (launch-particles (-> *part-id-table* 2910) impact-position)
+      (launch-particles (-> *part-id-table* 2911) impact-position)))
   (none))
 
 (defpart 2911
@@ -292,7 +294,7 @@
    (:a 16.0 32.0)
    (:fade-a -1.92)
    (:timer (seconds 0.067))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 2910
   :init-specs
@@ -308,29 +310,31 @@
    (:accel-y (meters -0.0016666667) (meters -0.00066666666))
    (:friction 0.85)
    (:timer (seconds 0.05) (seconds 0.397))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))))
 
-(defbehavior light-eco-child-default-event-handler light-eco-child ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior light-eco-child-default-event-handler light-eco-child ((sender process) (event-id int) (event symbol) (message event-message-block))
+  "Let Jak collect the fragment, notify its source, and enter the grabbed state."
+  (case event
     (('touch 'attack)
-     (when (= (-> arg0 type) target)
+     (when (= (-> sender type) target)
        (send-event (ppointer->process (-> self parent)) 'trigger (-> self angle-bit))
        (go light-eco-child-grabbed)))))
 
 (defmethod common-trans ((this light-eco-child))
-  (let ((v1-1 (current-time)))
-    (when (!= v1-1 (-> this last-update-time))
-      (set! (-> this last-update-time) v1-1)
-      (let* ((s5-0 (new 'stack-no-clear 'vector))
-             (s4-0 (-> this rot))
-             (f30-0 (-> s4-0 w)))
-        (vector-v++! s4-0 (-> this rotv))
-        (set! (-> s4-0 w) (+ f30-0 (* (-> this rotv w) (seconds-per-frame))))
-        (set-vector! s5-0 (cos (-> s4-0 x)) (cos (-> s4-0 y)) (cos (-> s4-0 z)) 1.0)
-        (vector-normalize! s5-0 1.0)
-        (quaternion-vector-angle! (-> this root quat) s5-0 f30-0))
+  "Update the fragment's tumbling orientation and particle trail once per frame."
+  (let ((frame (current-time)))
+    (when (!= frame (-> this last-update-time))
+      (set! (-> this last-update-time) frame)
+      (let* ((spin-axis (new 'stack-no-clear 'vector))
+             (rotation (-> this rot))
+             (angle (-> rotation w)))
+        (vector-v++! rotation (-> this rotv))
+        (set! (-> rotation w) (+ angle (* (-> this rotv w) (seconds-per-frame))))
+        (set-vector! spin-axis (cos (-> rotation x)) (cos (-> rotation y)) (cos (-> rotation z)) 1.0)
+        (vector-normalize! spin-axis 1.0)
+        (quaternion-vector-angle! (-> this root quat) spin-axis angle))
       (spawn (-> this part) (-> this root trans))))
   (none))
 
@@ -416,10 +420,11 @@
       (suspend)
       0))
 
-(defbehavior light-eco-child-init-by-other light-eco-child ((arg0 entity-actor) (arg1 vector) (arg2 vector) (arg3 int))
-  (set! (-> self entity) arg0)
-  (set! (-> self angle-bit) arg3)
-  (set! (-> self ground-y) (-> arg2 y))
+(defbehavior light-eco-child-init-by-other light-eco-child ((source-entity entity-actor) (start vector) (destination vector) (angle-bit int))
+  "Initialize a fragment's collision, trajectory, tumble, particles, and occupied direction bit."
+  (set! (-> self entity) source-entity)
+  (set! (-> self angle-bit) angle-bit)
+  (set! (-> self ground-y) (-> destination y))
   (set! (-> self last-update-time) 0)
   (set-vector! (-> self rotv)
                (rand-vu-float-range 5898.24 9539.129)
@@ -431,25 +436,25 @@
                (rand-vu-float-range 0.0 65536.0)
                (rand-vu-float-range 0.0 65536.0)
                (rand-vu-float-range 0.0 65536.0))
-  (let ((s4-2 (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-2 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core offense) (collide-offense no-offense))
-      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 4096.0)
-      (set-root-prim! s4-2 s3-0))
-    (set! (-> s4-2 nav-radius) (* 0.75 (-> s4-2 root-prim local-sphere w)))
-    (backup-collide-with-as s4-2)
-    (set! (-> self root) s4-2))
-  (set! (-> self root trans quad) (-> arg1 quad))
+  (let ((collision (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
+    (let ((sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 0))))
+      (set! (-> sphere prim-core collide-as) (collide-kind wall-object))
+      (set! (-> sphere collide-with) (collide-kind target))
+      (set! (-> sphere prim-core offense) (collide-offense no-offense))
+      (set-vector! (-> sphere local-sphere) 0.0 0.0 0.0 4096.0)
+      (set-root-prim! collision sphere))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> self root) collision))
+  (set! (-> self root trans quad) (-> start quad))
   (set-vector! (-> self root scale) 2.0 2.0 2.0 1.0)
   (quaternion-identity! (-> self root quat))
-  (setup-from-to-height! (-> self traj) (-> self root trans) arg2 4096.0 -4.551111)
-  (let ((s4-3 (-> self root transv)))
-    (vector-! s4-3 arg2 arg1)
-    (set! (-> s4-3 y) 0.0)
-    (vector-normalize! s4-3 163840.0)
-    (set! (-> s4-3 y) -122880.0))
+  (setup-from-to-height! (-> self traj) (-> self root trans) destination 4096.0 -4.551111)
+  (let ((velocity (-> self root transv)))
+    (vector-! velocity destination start)
+    (set! (-> velocity y) 0.0)
+    (vector-normalize! velocity 163840.0)
+    (set! (-> velocity y) -122880.0))
   (logclear! (-> self mask) (process-mask actor-pause))
   (initialize-skeleton self *light-eco-small-sg* '())
   (ja-channel-set! 1)
@@ -461,17 +466,18 @@
   (none))
 
 (defmethod common-trans ((this light-eco-mother))
-  (let ((v1-1 (current-time)))
-    (when (!= v1-1 (-> this last-update-time))
-      (set! (-> this last-update-time) v1-1)
-      (let ((s5-0 (new 'stack-no-clear 'vector)))
-        (set-vector! s5-0
+  "Update the source's rotation, particles, sound, and delayed fragment spawning once per frame."
+  (let ((frame (current-time)))
+    (when (!= frame (-> this last-update-time))
+      (set! (-> this last-update-time) frame)
+      (let ((spin-axis (new 'stack-no-clear 'vector)))
+        (set-vector! spin-axis
                      (cos (* 25.700392 (the float (mod (current-time) 2550))))
                      (cos (* 24.59229 (the float (mod (current-time) 2664))))
                      (cos (* 26.121408 (the float (mod (current-time) 2508))))
                      1.0)
-        (vector-normalize! s5-0 1.0)
-        (quaternion-vector-angle! (-> this root quat) s5-0 (* 48.860058 (the float (mod (current-time) 1341)))))
+        (vector-normalize! spin-axis 1.0)
+        (quaternion-vector-angle! (-> this root quat) spin-axis (* 48.860058 (the float (mod (current-time) 1341)))))
       (cond
         ((and *target* (logtest? (-> *target* state-flags) (state-flags grabbed)))
          (set-time! (-> this last-spawned-time))
@@ -486,31 +492,33 @@
   (none))
 
 (defmethod spawn-child-eco ((this light-eco-mother))
-  (countdown (s3-0 4)
-    (let ((gp-0 (rand-vu-int-count 32)))
-      (when (not (logtest? (-> this angle-mask) (ash 1 gp-0)))
-        (let ((f28-0 (* 2048.0 (the float gp-0)))
-              (f30-0 (rand-vu-float-range 61440.0 88514.56))
-              (s4-0 (new 'stack-no-clear 'vector)))
-          (set-vector! s4-0 (* (sin f28-0) f30-0) 0.0 (* (cos f28-0) f30-0) 1.0)
-          (vector+! s4-0 s4-0 (-> this root trans))
-          (set! (-> s4-0 y) 1974272.0)
-          (when (or (not *target*) (>= (vector-vector-xz-distance s4-0 (target-pos 0)) 49152.0))
-            (logior! (-> this angle-mask) (ash 1 gp-0))
-            (process-spawn light-eco-child (-> this entity) (-> this root trans) s4-0 gp-0 :to this)
+  "Try four random unoccupied directions and launch one fragment away from Jak."
+  (countdown (attempts 4)
+    (let ((angle-index (rand-vu-int-count 32)))
+      (when (not (logtest? (-> this angle-mask) (ash 1 angle-index)))
+        (let ((angle (* 2048.0 (the float angle-index)))
+              (radius (rand-vu-float-range 61440.0 88514.56))
+              (spawn-position (new 'stack-no-clear 'vector)))
+          (set-vector! spawn-position (* (sin angle) radius) 0.0 (* (cos angle) radius) 1.0)
+          (vector+! spawn-position spawn-position (-> this root trans))
+          (set! (-> spawn-position y) 1974272.0)
+          (when (or (not *target*) (>= (vector-vector-xz-distance spawn-position (target-pos 0)) 49152.0))
+            (logior! (-> this angle-mask) (ash 1 angle-index))
+            (process-spawn light-eco-child (-> this entity) (-> this root trans) spawn-position angle-index :to this)
             (return #t))))))
   #f)
 
-(defbehavior light-eco-mother-default-event-handler light-eco-mother ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defbehavior light-eco-mother-default-event-handler light-eco-mother ((sender process) (event-id int) (event symbol) (message event-message-block))
+  "Release occupied directions, report the first collected white eco, or begin dissipating."
   (the-as int
-          (case arg2
+          (case event
             (('untrigger)
              (the-as int
-                     (when (= (-> arg0 type) light-eco-child)
-                       (let* ((a1-3 (-> arg3 param 0))
-                              (v0-0 (logxor (-> self angle-mask) (ash 1 a1-3))))
-                         (set! (-> self angle-mask) v0-0)
-                         v0-0))))
+                     (when (= (-> sender type) light-eco-child)
+                       (let* ((angle-bit (-> message param 0))
+                              (remaining-angle-mask (logxor (-> self angle-mask) (ash 1 angle-bit))))
+                         (set! (-> self angle-mask) remaining-angle-mask)
+                         remaining-angle-mask))))
             (('trigger)
              (the-as int
                      (when (not (-> self player-got-eco?))
@@ -566,23 +574,26 @@
   :post ja-post)
 
 (defmethod deactivate ((this light-eco-mother))
+  "Free the growing particle controller, then perform the inherited projectile cleanup."
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
   ((method-of-type projectile deactivate) (the-as projectile this))
   (none))
 
 (defmethod relocate ((this light-eco-mother) (offset int))
+  "Relocate the growing particle controller and inherited projectile state."
   (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
   (the-as light-eco-mother ((method-of-type projectile relocate) (the-as projectile this) offset)))
 
-(defbehavior light-eco-mother-init-by-other light-eco-mother ((arg0 entity-actor) (arg1 vector))
-  (set! (-> self entity) arg0)
+(defbehavior light-eco-mother-init-by-other light-eco-mother ((source-entity entity-actor) (position vector))
+  "Initialize the white-eco source, its skeleton, particles, sound, and reserved spawn directions."
+  (set! (-> self entity) source-entity)
   (set! (-> self last-update-time) 0)
   (set-time! (-> self last-spawned-time))
   (set! (-> self delay-til-spawn) 2400)
   (set! (-> self angle-mask) 0)
   (set! (-> self player-got-eco?) #f)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg1 quad))
+  (set! (-> self root trans quad) (-> position quad))
   (vector-reset! (-> self root scale))
   (quaternion-identity! (-> self root quat))
   (logclear! (-> self mask) (process-mask actor-pause))
@@ -595,9 +606,9 @@
   (set! (-> self sound)
         (new 'process 'ambient-sound (static-sound-spec "white-eco-lp" :fo-min 300 :fo-max 400) (-> self root trans)))
   (ja-post)
-  (let ((f0-4 0.0))
-    (countdown (v1-33 4)
-      (let ((a2-4 (the int (/ f0-4 (meters 0.5))))) (logior! (-> self angle-mask) (ash 1 a2-4)))
-      (set! f0-4 (+ 16384.0 f0-4))))
+  (let ((reserved-angle 0.0))
+    (countdown (i 4)
+      (let ((angle-index (the int (/ reserved-angle (meters 0.5))))) (logior! (-> self angle-mask) (ash 1 angle-index)))
+      (set! reserved-angle (+ 16384.0 reserved-angle))))
   (go light-eco-mother-appear)
   (none))

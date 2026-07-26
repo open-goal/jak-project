@@ -31,8 +31,13 @@
    (starting-pos           vector :inline)
    (target-pt              vector :inline))
   (:methods
-   (ice-cube-method-51 (_type_ vector vector) symbol :overlay-at nav-enemy-method-51)
-   (ice-cube-method-53 (_type_ vector vector) symbol :overlay-at nav-enemy-method-53))
+   (snap-point-to-ground (_type_ vector vector) symbol :overlay-at nav-enemy-method-51)
+   (valid-appear-point? (_type_ vector) symbol :overlay-at nav-enemy-method-52)
+   (pick-appear-point-and-facing (_type_ vector vector) symbol :overlay-at nav-enemy-method-53)
+   (pick-charge-target-point! (_type_ vector) symbol :overlay-at nav-enemy-method-54)
+   (set-spikes-retracted-collision! (_type_) none :overlay-at nav-enemy-method-57)
+   (set-spikes-extended-collision! (_type_) none :overlay-at nav-enemy-method-58)
+   (seek-heading-to-target? (_type_ symbol) symbol :overlay-at nav-enemy-method-60))
   (:states
    ice-cube-appear
    ice-cube-appear-land
@@ -45,7 +50,6 @@
    ice-cube-shatter
    ice-cube-tired
    ice-cube-trying-to-appear))
-
 
 (defskelgroup *ice-cube-sg*
   ice-cube
@@ -136,7 +140,7 @@
    (:accel-y (meters -0.0013333333))
    (:friction 0.99)
    (:timer (seconds 1.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 40))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -162,7 +166,7 @@
    (:accel-y (meters -0.0013333333))
    (:friction 0.99)
    (:timer (seconds 1.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 40))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -189,7 +193,7 @@
    (:rotvel-z (degrees -2.4) (degrees 3.4666667))
    (:accel-y (meters -0.0013333333))
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -219,7 +223,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.95)
    (:timer (seconds 1))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 60) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -242,7 +246,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.95)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 60) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -263,7 +267,7 @@
    (:fade-a -0.42666668)
    (:accel-y (meters -0.0013333333) (meters 0.00066666666))
    (:timer (seconds 1))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 30) (degrees 50.000004))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0.5))))
@@ -289,7 +293,7 @@
    (:accel-y (meters -0.000033333334))
    (:friction 0.99)
    (:timer (seconds 0.2) (seconds 0.297))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 140))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 1.5))))
@@ -315,7 +319,7 @@
    (:fade-a -0.28444445)
    (:friction 0.99)
    (:timer (seconds 1.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 120))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 1.5))))
@@ -341,12 +345,14 @@
    (:fade-a -0.35555556)
    (:friction 0.99)
    (:timer (seconds 0.6))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 120))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 1.5))))
 
 (defbehavior ice-cube-default-event-handler ice-cube ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Handle attacks and collision contacts, switching to the appropriate reaction state and tracking
+   whether the extended spikes struck the target."
   (case arg2
     (('attack)
      (cond
@@ -367,7 +373,7 @@
                         (send-event-function arg0 a1-3))))
                    (= (-> arg0 type) target))
           (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
-          (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags attack-landed))
           (level-hint-spawn (text-id snow-ice-cube-hint) "sksp0350" (the-as entity #f) *entity-pool* (game-task none))))
        (else (nav-enemy-set-hit-from-direction arg0) (go ice-cube-shatter))))
     (('touch)
@@ -385,7 +391,7 @@
                      (send-event-function arg0 a1-7))))
                 (= (-> arg0 type) target))
        (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
-       (let ((v0-3 (the-as object (logior (-> self nav-enemy-flags) (nav-enemy-flags navenmf8)))))
+       (let ((v0-3 (the-as object (logior (-> self nav-enemy-flags) (nav-enemy-flags attack-landed)))))
          (set! (-> self nav-enemy-flags) (the-as nav-enemy-flags v0-3))
          v0-3)))
     (('touched)
@@ -404,6 +410,8 @@
             (send-event-function arg0 a1-10))))))))
 
 (defmethod initialize-collision ((this ice-cube))
+  "Create the moving collision group with three body spheres and two joint-attached attack
+   spheres, then select the retracted-spike shape."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -456,11 +464,12 @@
   (set! (-> this cprims-type) (the-as uint 0))
   (set-root-prim-collide-with! (-> this collide-info) (collide-kind target))
   (set! (-> this collide-info event-self) 'touched)
-  (nav-enemy-method-57 this)
+  (set-spikes-retracted-collision! this)
   0
   (none))
 
-(defmethod nav-enemy-method-57 ((this ice-cube))
+(defmethod set-spikes-retracted-collision! ((this ice-cube))
+  "Select the smaller harmless collision spheres used while the spikes are retracted."
   (when (!= (-> this cprims-type) 1)
     (set! (-> this cprims-type) (the-as uint 1))
     (let ((v1-3 (-> this collide-info root-prim)))
@@ -469,7 +478,8 @@
       (set-vector! (-> (the-as collide-shape-prim-group v1-3) prims 4 local-sphere) 0.0 2048.0 0.0 4505.6)))
   (none))
 
-(defmethod nav-enemy-method-58 ((this ice-cube))
+(defmethod set-spikes-extended-collision! ((this ice-cube))
+  "Select the larger damaging collision spheres used while the spikes are extended."
   (when (!= (-> this cprims-type) 2)
     (set! (-> this cprims-type) (the-as uint 2))
     (let ((v1-3 (-> this collide-info root-prim)))
@@ -478,7 +488,8 @@
       (set-vector! (-> (the-as collide-shape-prim-group v1-3) prims 4 local-sphere) 0.0 2048.0 0.0 9420.8)))
   (none))
 
-(defmethod nav-enemy-method-48 ((this ice-cube))
+(defmethod post-init-setup! ((this ice-cube))
+  "Initialize the drawable, skeleton, navigation defaults, and neck-joint indices."
   (process-drawable-from-entity! this (-> this entity))
   (initialize-skeleton this *ice-cube-sg* '())
   (init-defaults! this *ice-cube-nav-enemy-info*)
@@ -489,6 +500,7 @@
   (none))
 
 (defmethod deactivate ((this ice-cube))
+  "Stop all four particle launchers, then deactivate the drawable."
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
   (if (nonzero? (-> this part3)) (kill-and-free-particles (-> this part3)))
   (if (nonzero? (-> this part4)) (kill-and-free-particles (-> this part4)))
@@ -496,71 +508,83 @@
   (none))
 
 (defmethod relocate ((this ice-cube) (offset int))
+  "Relocate the three additional particle-launch controls, then relocate the process through
+   the parent method."
   (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
   (if (nonzero? (-> this part3)) (&+! (-> this part3) offset))
   (if (nonzero? (-> this part4)) (&+! (-> this part4) offset))
   (call-parent-method this offset))
 
-(defmethod init-from-entity! ((this ice-cube) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ice-cube) (source-entity entity-actor))
+  "Create the particle launchers and collision, finish enemy setup, validate the path, and begin
+   searching for an appearance point."
   (set! (-> this part) (create-launch-control group-ice-cube-appear1 this))
   (set! (-> this part2) (create-launch-control group-ice-cube-appear2 this))
   (set! (-> this part3) (create-launch-control group-ice-cube-shatter this))
   (set! (-> this part4) (create-launch-control group-ice-cube-foot-puff this))
   (initialize-collision this)
-  (nav-enemy-method-48 this)
+  (post-init-setup! this)
   (let ((s4-0 (-> this path curve num-cverts)))
     (if (<= s4-0 0) (go process-drawable-art-error "no path"))
-    (let ((v1-21 (res-lump-value arg0 'mode uint128 :default (the-as uint128 -1))))
+    (let ((v1-21 (res-lump-value source-entity 'mode uint128 :default (the-as uint128 -1))))
       (if (and (>= (the-as int v1-21) 0) (< (the-as int v1-21) s4-0))
         (set! (-> this force-spawn-pt) (the-as int v1-21))
         (set! (-> this force-spawn-pt) -1))))
   (go ice-cube-trying-to-appear)
   (none))
 
-(defmethod nav-enemy-method-60 ((this ice-cube) (arg0 symbol))
-  (let ((gp-0 (new 'stack-no-clear 'vector)))
+(defmethod seek-heading-to-target? ((this ice-cube) (update-target? symbol))
+  "Optionally refresh target-pt from the player, turn toward it, and return whether the heading
+   error is within the facing threshold."
+  (let ((to-target (new 'stack-no-clear 'vector)))
     (when (-> this tracking-player?)
-      (if (and *target* arg0) (set! (-> this target-pt quad) (-> (target-pos 0) quad))))
-    (vector-! gp-0 (-> this target-pt) (-> this collide-info trans))
-    (seek-toward-heading-vec! (-> this collide-info) gp-0 524288.0 (seconds 0.1))
-    (let ((v0-5 (< (fabs (deg- (quaternion-y-angle (-> this collide-info quat)) (vector-y-angle gp-0))) 364.0889)))
+      (if (and *target* update-target?) (set! (-> this target-pt quad) (-> (target-pos 0) quad))))
+    (vector-! to-target (-> this target-pt) (-> this collide-info trans))
+    (seek-toward-heading-vec! (-> this collide-info) to-target 524288.0 (seconds 0.1))
+    (let ((facing-target? (< (fabs (deg- (quaternion-y-angle (-> this collide-info quat)) (vector-y-angle to-target))) 364.0889)))
       (b! #t cfg-10 :delay (nop!))
       (the-as none 0)
-      (set! v0-5 (the-as symbol #f))
+      (set! facing-target? (the-as symbol #f))
       (label cfg-10)
-      v0-5)))
+      facing-target?)))
 
-(defmethod ice-cube-method-51 ((this ice-cube) (arg0 vector) (arg1 vector))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (let* ((s4-0 (new 'stack-no-clear 'collide-tri-result))
-           (f0-0 40960.0)
-           (f30-0 (+ f0-0 40960.0)))
-      (set! (-> s5-0 quad) (-> arg0 quad))
-      (+! (-> s5-0 y) f0-0)
-      (let ((f0-2 (fill-and-probe-using-y-probe *collide-cache*
-                                                s5-0
-                                                f30-0
-                                                (collide-kind background)
-                                                (-> this collide-info process)
-                                                s4-0
-                                                (new 'static 'pat-surface :noentity #x1))))
+(defmethod snap-point-to-ground ((this ice-cube) (input-point vector) (output-point vector))
+  "Probe downward from input-point to background ground and store the ground point in output-point.
+   Return false for a miss or lava surface."
+  (let ((probe-point (new 'stack-no-clear 'vector)))
+    (let* ((probe-result (new 'stack-no-clear 'collide-tri-result))
+           (probe-offset 40960.0)
+           (probe-length (+ probe-offset 40960.0)))
+      (set! (-> probe-point quad) (-> input-point quad))
+      (+! (-> probe-point y) probe-offset)
+      (let ((hit-fraction (fill-and-probe-using-y-probe *collide-cache*
+                                                        probe-point
+                                                        probe-length
+                                                        (collide-kind background)
+                                                        (-> this collide-info process)
+                                                        probe-result
+                                                        (new 'static 'pat-surface :noentity #x1))))
         ;; og:preserve-this yes this is bugged
-        (if (or (< f0-2 0.0) (= (logand #b111000 (the-as int (-> s4-0 pat))) 8)) (return #f))
-        (set! (-> s5-0 y) (- (-> s5-0 y) (* f0-2 f30-0)))))
-    (set! (-> arg1 quad) (-> s5-0 quad)))
+        (if (or (< hit-fraction 0.0) (= (logand #b111000 (the-as int (-> probe-result pat))) 8)) (return #f))
+        (set! (-> probe-point y) (- (-> probe-point y) (* hit-fraction probe-length)))))
+    (set! (-> output-point quad) (-> probe-point quad)))
   #t)
 
-(defmethod nav-enemy-method-52 ((this ice-cube) (arg0 vector))
+(defmethod valid-appear-point? ((this ice-cube) (candidate-point vector))
+  "Return true when candidate-point is in the desired distance band, has an unobstructed jump path,
+   and is visible."
   (when *target*
-    (let ((f0-0 (vector-vector-xz-distance arg0 (target-pos 0))))
-      (when (and (>= f0-0 40960.0) (>= 81920.0 f0-0) (not (nav-enemy-method-50 this arg0)))
-        (let ((a0-4 (new 'stack-no-clear 'vector)))
-          (set! (-> a0-4 quad) (-> arg0 quad))
-          (set! (-> a0-4 w) (-> this collide-info root-prim local-sphere w))
-          (if (sphere-in-view-frustum? (the-as sphere a0-4)) (return #t))))))
+    (let ((target-distance (vector-vector-xz-distance candidate-point (target-pos 0))))
+      (when (and (>= target-distance 40960.0) (>= 81920.0 target-distance) (not (jump-dest-blocked? this candidate-point)))
+        (let ((bounds (new 'stack-no-clear 'vector)))
+          (set! (-> bounds quad) (-> candidate-point quad))
+          (set! (-> bounds w) (-> this collide-info root-prim local-sphere w))
+          (if (sphere-in-view-frustum? (the-as sphere bounds)) (return #t))))))
   #f)
 
-(defmethod ice-cube-method-53 ((this ice-cube) (arg0 vector) (arg1 vector))
+(defmethod pick-appear-point-and-facing ((this ice-cube) (output-position vector) (output-facing vector))
+  "Search the path for an acceptable appearance point, storing its grounded position and a
+   normalized facing direction toward the target."
   (local-vars (s1-0 int) (s2-0 int))
   (let ((s3-0 (-> this path curve num-cverts)))
     (if (<= s3-0 0) (return #f))
@@ -568,11 +592,11 @@
       ((>= (-> this force-spawn-pt) 0) (set! s1-0 (-> this force-spawn-pt)) (set! s2-0 1))
       (else (set! s1-0 (rand-vu-int-count s3-0)) (set! s2-0 s3-0)))
     (while (> s2-0 0)
-      (eval-path-curve-div! (-> this path) arg0 (the float s1-0) 'interp)
-      (when (nav-enemy-method-52 this arg0)
+      (eval-path-curve-div! (-> this path) output-position (the float s1-0) 'interp)
+      (when (valid-appear-point? this output-position)
         (let ((a1-3 (new 'stack-no-clear 'vector))
               (s3-1 (new 'stack-no-clear 'collide-tri-result)))
-          (set! (-> a1-3 quad) (-> arg0 quad))
+          (set! (-> a1-3 quad) (-> output-position quad))
           (+! (-> a1-3 y) 16384.0)
           (if (>= (fill-and-probe-using-line-sphere *collide-cache*
                                                     a1-3
@@ -583,13 +607,13 @@
                                                     s3-1
                                                     (new 'static 'pat-surface :noentity #x1))
                   0.0)
-            (set! (-> arg0 quad) (-> s3-1 intersect quad))))
+            (set! (-> output-position quad) (-> s3-1 intersect quad))))
         (cond
-          (*target* (vector-! arg1 (target-pos 0) arg0) (set! (-> arg1 y) 0.0))
+          (*target* (vector-! output-facing (target-pos 0) output-position) (set! (-> output-facing y) 0.0))
           (else
-           (set-vector! arg1 (rand-vu-float-range -4096.0 4096.0) 0.0 (rand-vu-float-range -4096.0 4096.0) 1.0)
-           (+! (-> arg1 x) 409.6)))
-        (vector-normalize! arg1 1.0)
+           (set-vector! output-facing (rand-vu-float-range -4096.0 4096.0) 0.0 (rand-vu-float-range -4096.0 4096.0) 1.0)
+           (+! (-> output-facing x) 409.6)))
+        (vector-normalize! output-facing 1.0)
         (return #t))
       (set! s1-0 (mod (+ s1-0 1) s3-0))
       (+! s2-0 -1)))
@@ -611,10 +635,10 @@
       (when (and *target* (>= 163840.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
         (let ((s5-0 (new 'stack-no-clear 'vector))
               (gp-0 (new 'stack-no-clear 'vector)))
-          (when (ice-cube-method-53 self s5-0 gp-0)
+          (when (pick-appear-point-and-facing self s5-0 gp-0)
             (set! (-> self collide-info trans quad) (-> s5-0 quad))
             (forward-up->quaternion (-> self collide-info quat) gp-0 *up-vector*)
-            (nav-enemy-method-57 self)
+            (set-spikes-retracted-collision! self)
             (go ice-cube-appear)))))
   :code
     (behavior ()
@@ -626,10 +650,10 @@
   :event ice-cube-default-event-handler
   :enter
     (behavior ()
-      (nav-enemy-method-57 self)
+      (set-spikes-retracted-collision! self)
       (set! (-> self ground-y) (-> self collide-info trans y))
       (spawn (-> self part) (-> self collide-info trans))
-      (set-current-poly! (-> self nav) (nav-control-method-16 (-> self nav) (-> self collide-info trans)))
+      (set-current-poly! (-> self nav) (find-poly-fast-from-world (-> self nav) (-> self collide-info trans)))
       (+! (-> self collide-info trans y) -12288.0)
       (set! (-> self collide-info transv quad) (-> *null-vector* quad))
       (set! (-> self collide-info transv y) (rand-vu-float-range 102400.0 114688.0)))
@@ -701,8 +725,8 @@
   :trans #f
   :code
     (behavior ()
-      (nav-enemy-method-57 self)
-      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
+      (set-spikes-retracted-collision! self)
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags noticed-before))
       (logclear! (-> self mask) (process-mask actor-pause))
       (go ice-cube-face-player))
   :post #f)
@@ -712,8 +736,8 @@
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
-      (nav-enemy-method-57 self)
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
+      (set-spikes-retracted-collision! self)
       (logclear! (-> self mask) (process-mask actor-pause))
       (if (or (not *target*)
               (logtest? (-> *target* state-flags)
@@ -742,7 +766,7 @@
         (+! (-> self collide-info transv y) (* -544768.0 (seconds-per-frame)))
         (let* ((v1-26 (>= 0.0 (-> self collide-info transv y)))
                (v1-27 (and v1-26 (logtest? (-> self collide-info status) (cshape-moving-flags onsurf)))))
-          (set! gp-0 (nav-enemy-method-60 self (not v1-27))))
+          (set! gp-0 (seek-heading-to-target? self (not v1-27))))
         (suspend)
         (ja :num! (seek!)))
       (loop
@@ -757,7 +781,7 @@
                                                     #f
                                                     #f)
           (+! (-> self collide-info transv y) (* -544768.0 (seconds-per-frame)))
-          (set! gp-0 (nav-enemy-method-60 self (not s5-0))))
+          (set! gp-0 (seek-heading-to-target? self (not s5-0))))
         (suspend))
       (label cfg-26)
       (let ((gp-1 (new 'stack-no-clear 'vector)))
@@ -778,7 +802,7 @@
     (behavior ()
       (set! (-> self draw force-lod) 0)
       (logclear! (-> self mask) (process-mask actor-pause))
-      (nav-enemy-method-57 self))
+      (set-spikes-retracted-collision! self))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
@@ -787,20 +811,22 @@
         (until (ja-done? 0)
           (when (and (not gp-0) (>= (ja-aframe-num 0) 8.0))
             (set! gp-0 #t)
-            (nav-enemy-method-58 self))
+            (set-spikes-extended-collision! self))
           (suspend)
           (ja :num! (seek!))))
       (go ice-cube-mean-turn-to-charge))
   :post nav-enemy-simple-post)
 
-(defmethod nav-enemy-method-54 ((this ice-cube) (arg0 vector))
+(defmethod pick-charge-target-point! ((this ice-cube) (unused-output vector))
+  "Search the path for a grounded point far enough from the ice cube, store it as target-pt, and
+   return whether one was found. The vector argument is unused."
   (let* ((s4-0 (-> this path curve num-cverts))
          (s2-0 (nav-enemy-rnd-int-count s4-0))
          (s5-0 (new 'stack-no-clear 'vector)))
     (dotimes (s3-0 s4-0)
       (eval-path-curve-div! (-> this path) s5-0 (the float s2-0) 'interp)
       (when (>= (vector-vector-xz-distance s5-0 (-> this collide-info trans)) 32768.0)
-        (when (ice-cube-method-51 this s5-0 s5-0)
+        (when (snap-point-to-ground this s5-0 s5-0)
           (set! (-> this target-pt quad) (-> s5-0 quad))
           (return #t)))
       (set! s2-0 (mod (+ s2-0 1) s4-0))))
@@ -811,8 +837,8 @@
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
-      (nav-enemy-method-58 self)
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
+      (set-spikes-extended-collision! self)
       (if (or (not *target*)
               (logtest? (-> *target* state-flags)
                         (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))
@@ -840,7 +866,7 @@
         (+! (-> self collide-info transv y) (* -544768.0 (seconds-per-frame)))
         (let* ((v1-26 (>= 0.0 (-> self collide-info transv y)))
                (v1-27 (and v1-26 (logtest? (-> self collide-info status) (cshape-moving-flags onsurf)))))
-          (set! gp-0 (nav-enemy-method-60 self (not v1-27))))
+          (set! gp-0 (seek-heading-to-target? self (not v1-27))))
         (suspend)
         (ja :num! (seek!)))
       (loop
@@ -855,7 +881,7 @@
                                                     #f
                                                     #f)
           (+! (-> self collide-info transv y) (* -544768.0 (seconds-per-frame)))
-          (set! gp-0 (nav-enemy-method-60 self (not s5-0))))
+          (set! gp-0 (seek-heading-to-target? self (not s5-0))))
         (suspend))
       (label cfg-26)
       (let ((gp-1 (new 'stack-no-clear 'vector)))
@@ -875,8 +901,8 @@
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (nav-enemy-method-58 self)
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+      (set-spikes-extended-collision! self)
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
       (set-time! (-> self next-skid-sound-time))
       (if (or (not *target*)
               (logtest? (-> *target* state-flags)
@@ -887,7 +913,7 @@
       (set! (-> self acceleration) (-> self nav-info run-acceleration))
       (set! (-> self rotate-speed) (-> self nav-info run-rotate-speed))
       (set! (-> self turn-time) (-> self nav-info run-turn-time))
-      (logclear! (-> self nav flags) (nav-control-flags navcf8))
+      (logclear! (-> self nav flags) (nav-control-flags enable-sphere-avoidance))
       (set-root-prim-collide-with! (-> self collide-info) (collide-kind cak-2 cak-3 target crate enemy))
       (set! (-> self track-target?) #t)
       (set! (-> self slow-down?) #f)
@@ -897,7 +923,7 @@
       (set! (-> self charge-angle) (quaternion-y-angle (-> self collide-info quat))))
   :exit
     (behavior ()
-      (logior! (-> self nav flags) (nav-control-flags navcf8))
+      (logior! (-> self nav flags) (nav-control-flags enable-sphere-avoidance))
       (set-root-prim-collide-with! (-> self collide-info) (collide-kind target)))
   :trans
     (behavior ()
@@ -928,8 +954,8 @@
             (set-vector! gp-2 0.0 0.0 (+ 15360.0 (fmax f30-0 f28-0)) 1.0)
             (vector-rotate-around-y! gp-2 gp-2 (-> self charge-angle))
             (vector+! gp-2 gp-2 (-> self starting-pos))
-            (nav-control-method-28 (-> self nav) (collide-kind wall-object ground-object))
-            (nav-control-method-11 (-> self nav) gp-2))))
+            (gather-nav-spheres! (-> self nav) (collide-kind wall-object ground-object))
+            (navigate! (-> self nav) gp-2))))
       (set! (-> self nav travel y) 0.0)
       (when (-> self slow-down?)
         (set! (-> self speed) (seek-with-smooth (-> self speed) 0.0 (* 81920.0 (seconds-per-frame)) 0.8 1638.4))
@@ -952,7 +978,7 @@
       (+! (-> self collide-info transv y) -36864.0)
       (quaternion-rotate-y-to-vector! (-> self collide-info quat)
                                       (-> self collide-info quat)
-                                      (the-as quaternion (-> self collide-info transv))
+                                      (-> self collide-info transv)
                                       (* 16384.0 (seconds-per-frame)))
       (integrate-for-enemy-with-move-to-ground! (-> self collide-info)
                                                 (-> self collide-info transv)
@@ -981,7 +1007,7 @@
   :event ice-cube-default-event-handler
   :code
     (behavior ()
-      (nav-enemy-method-58 self)
+      (set-spikes-extended-collision! self)
       (nav-enemy-neck-control-inactive)
       (go ice-cube-retract-spikes)))
 
@@ -989,7 +1015,7 @@
   :event ice-cube-default-event-handler
   :code
     (behavior ()
-      (nav-enemy-method-58 self)
+      (set-spikes-extended-collision! self)
       (nav-enemy-neck-control-inactive)
       (ja-channel-push! 1 (seconds 0.07))
       (let ((gp-0 #f))
@@ -997,7 +1023,7 @@
         (until (ja-done? 0)
           (when (and (not gp-0) (>= (ja-aframe-num 0) 3.0))
             (set! gp-0 #t)
-            (nav-enemy-method-57 self))
+            (set-spikes-retracted-collision! self))
           (suspend)
           (ja :num! (seek!))))
       (go ice-cube-tired))

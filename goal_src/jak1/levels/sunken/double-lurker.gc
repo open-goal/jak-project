@@ -22,7 +22,7 @@
    (buddy-handle        handle))
   (:methods
    (initialize-collision (_type_) collide-shape-moving :replace)
-   (double-lurker-method-53 (_type_ vector) symbol :overlay-at nav-enemy-method-53))
+   (find-buddy-spawn-point! (_type_ vector) symbol :overlay-at nav-enemy-method-53))
   (:states
    double-lurker-both-knocked-back
    double-lurker-break-apart
@@ -243,10 +243,7 @@
     (behavior ()
       (logclear! (-> self mask) (process-mask actor-pause))
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! double-lurker-top-on-shoulders-die-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!))))
+      (ja-play :group! double-lurker-top-on-shoulders-die-ja :num! (seek!) :frame-num 0.0))
   :post ja-post)
 
 (defstate double-lurker-top-knocked-down (double-lurker-top)
@@ -260,21 +257,21 @@
       (nav-enemy-method-51 self)
       (let ((v1-3 (-> self draw shadow-ctrl))) (logclear! (-> v1-3 settings flags) (shadow-flags disable-draw)))
       0
-      (logclear! (-> self collide-info nav-flags) (nav-flags navf0))
-      (logior! (-> self collide-info nav-flags) (nav-flags navf1))
+      (logclear! (-> self collide-info nav-flags) (nav-flags avoid-body))
+      (logior! (-> self collide-info nav-flags) (nav-flags avoid-extra-sphere))
       (set! (-> self nav extra-nav-sphere quad) (-> self fall-dest quad))
       (set! (-> self nav extra-nav-sphere w) 9011.2)
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (set! (-> gp-0 quad) (-> self collide-info trans quad))
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! double-lurker-top-both-break-apart-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (vector-lerp! (-> self collide-info trans) gp-0 (-> self fall-dest) (fmin 1.0 (/ (ja-frame-num 0) (ja-aframe 44.0 0))))
-          (suspend)
-          (ja :num! (seek!))))
-      (logior! (-> self collide-info nav-flags) (nav-flags navf0))
-      (logclear! (-> self collide-info nav-flags) (nav-flags navf1))
-      (nav-control-method-27 (-> self nav))
+        (ja-play :group!
+                 double-lurker-top-both-break-apart-ja
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (vector-lerp! (-> self collide-info trans) gp-0 (-> self fall-dest) (fmin 1.0 (/ (ja-frame-num 0) (ja-aframe 44.0 0))))))
+      (logior! (-> self collide-info nav-flags) (nav-flags avoid-body))
+      (logclear! (-> self collide-info nav-flags) (nav-flags avoid-extra-sphere))
+      (relocalize-in-mesh! (-> self nav))
       (go double-lurker-top-resume))
   :post transform-post)
 
@@ -313,12 +310,15 @@
       (let ((t9-0 (-> (method-of-type nav-enemy nav-enemy-die) enter))) (if t9-0 (t9-0)))))
 
 (defmethod nav-enemy-method-51 ((this double-lurker-top))
+  "Restore the upper lurker's collision and navigation participation after separation."
   (restore-collide-with-as (-> this collide-info))
-  (logior! (-> this collide-info nav-flags) (nav-flags navf0))
-  (nav-control-method-27 (-> this nav))
+  (logior! (-> this collide-info nav-flags) (nav-flags avoid-body))
+  (relocalize-in-mesh! (-> this nav))
   (none))
 
 (defmethod initialize-collision ((this double-lurker-top))
+  "Create the upper lurker's moving body, touch, and attack spheres, then disable contact until
+   it separates from the lower lurker."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -377,7 +377,8 @@
   (clear-collide-with-as (-> this collide-info))
   (none))
 
-(defmethod nav-enemy-method-48 ((this double-lurker-top))
+(defmethod post-init-setup! ((this double-lurker-top))
+  "Initialize the upper skeleton and navigation settings at its parent's transform."
   (initialize-skeleton this *double-lurker-top-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (init-defaults! this *double-lurker-top-nav-enemy-info*)
@@ -385,16 +386,18 @@
     (set! (-> this collide-info trans quad) (-> v1-5 0 collide-info trans quad))
     (set-vector! (-> this collide-info scale) 1.0 1.0 1.0 1.0)
     (quaternion-copy! (-> this collide-info quat) (-> v1-5 0 collide-info quat)))
-  (logclear! (-> this collide-info nav-flags) (nav-flags navf0))
+  (logclear! (-> this collide-info nav-flags) (nav-flags avoid-body))
   (none))
 
-(defbehavior double-lurker-top-init-by-other double-lurker-top ((arg0 entity) (arg1 double-lurker) (arg2 symbol) (arg3 vector))
+(defbehavior double-lurker-top-init-by-other double-lurker-top ((source-entity entity) (parent double-lurker) (on-shoulders? symbol) (spawn-position vector))
+  "Initialize the upper lurker either attached to its parent's shoulders or independently at the
+   supplied position."
   (initialize-collision self)
-  (set! (-> self entity) (-> arg1 entity))
-  (nav-enemy-method-48 self)
-  (set! (-> self collide-info trans quad) (-> arg3 quad))
+  (set! (-> self entity) (-> parent entity))
+  (post-init-setup! self)
+  (set! (-> self collide-info trans quad) (-> spawn-position quad))
   (cond
-    (arg2
+    (on-shoulders?
      (ja-channel-set! 1)
      (ja :group! double-lurker-top-both-idle-ja :num! min)
      (transform-post)
@@ -412,37 +415,46 @@
 
 ;; WARN: disable def twice: 80. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 120. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defbehavior double-lurker-default-event-handler double-lurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defbehavior double-lurker-default-event-handler double-lurker ((source-process process) (argc int) (message symbol) (block event-message-block))
+  "Handle ordinary touches and attacks, including knocking the pair apart or knocking only the
+   upper lurker from its buddy's shoulders."
   (local-vars (v0-0 object))
-  (case arg2
-    (('touch) (set-time! (-> self touch-time)) (touch-handler self arg0 arg3))
+  (case message
+    (('touch) (set-time! (-> self touch-time)) (touch-handler self source-process block))
     (('attack)
-     (when (= (-> arg0 type) target)
-       (nav-enemy-set-hit-from-direction arg0)
+     (when (= (-> source-process type) target)
+       (nav-enemy-set-hit-from-direction source-process)
        (cond
          ((-> self buddy-on-shoulders?)
-          (let ((s4-0 (new 'stack-no-clear 'vector)))
-            (vector-! s4-0 (target-pos 0) (-> self collide-info trans))
+          (let ((target-offset (new 'stack-no-clear 'vector)))
+            (vector-! target-offset (target-pos 0) (-> self collide-info trans))
             (cond
-              ((and (>= (-> s4-0 y) 8192.0)
-                    (>= 14563.556 (fabs (deg- (quaternion-y-angle (-> self collide-info quat)) (atan (-> s4-0 x) (-> s4-0 z))))))
-               (when (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-up (meters 3)) (shove-back (meters 2)))))
+              ((and (>= (-> target-offset y) 8192.0)
+                    (>= 14563.556
+                        (fabs (deg- (quaternion-y-angle (-> self collide-info quat)) (atan (-> target-offset x) (-> target-offset z))))))
+               (when (send-event source-process
+                                 'shove
+                                 (-> block param 0)
+                                 (static-attack-info ((shove-up (meters 3)) (shove-back (meters 2)))))
                  (increment-success-for-hint (text-id sunken-double-lurker-hint))
                  (go double-lurker-buddy-was-hit)
                  (return #f)
                  v0-0))
               (else
                (when (and ((method-of-type touching-shapes-entry prims-touching-action?)
-                           (the-as touching-shapes-entry (-> arg3 param 0))
-                           (-> (the-as target arg0) control)
+                           (the-as touching-shapes-entry (-> block param 0))
+                           (-> (the-as target source-process) control)
                            (collide-action solid)
                            (collide-action))
-                          (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-up (meters 3)) (shove-back (meters 2))))))
+                          (send-event source-process
+                                      'shove
+                                      (-> block param 0)
+                                      (static-attack-info ((shove-up (meters 3)) (shove-back (meters 2))))))
                  (level-hint-spawn (text-id sunken-double-lurker-hint) "sksp0127" (the-as entity #f) *entity-pool* (game-task none))
                  (go double-lurker-both-knocked-back)
                  (return #f)
                  v0-0)))))
-         (else (nav-enemy-set-hit-from-direction arg0) (attack-handler self arg0 arg3)))))))
+         (else (nav-enemy-set-hit-from-direction source-process) (attack-handler self source-process block)))))))
 
 (defstate double-lurker-show-anims (double-lurker)
   :trans
@@ -540,12 +552,12 @@
               (.mul.x.vf.xyz vf1 vf1 vf2)
               (.svf (&-> v1-7 quad) vf1))
             (let ((gp-0 #f))
-              (nav-control-method-28 (-> self nav) (the-as collide-kind -1))
+              (gather-nav-spheres! (-> self nav) (the-as collide-kind -1))
               (let ((a2-1 (new 'stack-no-clear 'check-vector-collision-with-nav-spheres-info)))
-                (if (>= (nav-control-method-23 (-> self nav) (-> self nav travel) a2-1) 0.0) (set! gp-0 #t)))
+                (if (>= (check-vector-collision-with-nav-spheres (-> self nav) (-> self nav travel) a2-1) 0.0) (set! gp-0 #t)))
               (when (not gp-0)
                 (let ((s5-0 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
-                  (nav-control-method-24 (-> self nav) (* 1.2 f30-0) s5-0)
+                  (clip-travel-to-mesh (-> self nav) (* 1.2 f30-0) s5-0)
                   (if (-> s5-0 found-boundary) (set! gp-0 #t))))
               (when gp-0
                 (set! (-> self knocked-back-speed) 0.0)
@@ -558,39 +570,37 @@
                                                   #t
                                                   (-> self nav-info hover-if-no-ground)
                                                   #f)
-        (nav-control-method-27 (-> self nav))))
+        (relocalize-in-mesh! (-> self nav))))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! double-lurker-both-take-hit-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! double-lurker-both-take-hit-ja :num! (seek!) :frame-num 0.0)
       (go double-lurker-resume))
   :post nav-enemy-simple-post)
 
-(defmethod nav-enemy-method-52 ((this double-lurker) (arg0 vector))
-  (nav-control-method-28 (-> this nav) (the-as collide-kind -1))
-  (let ((a1-2 (new 'stack-no-clear 'vector)))
-    (vector-float*! a1-2 (-> this hit-from-dir) 22937.602)
-    (vector+! a1-2 a1-2 (-> this collide-info trans))
-    (nav-control-method-13 (-> this nav) a1-2 (-> this hit-from-dir)))
+(defmethod nav-enemy-method-52 ((this double-lurker) (landing-point vector))
+  "Find a grounded landing point ahead of the hit direction for the upper lurker."
+  (gather-nav-spheres! (-> this nav) (the-as collide-kind -1))
+  (let ((landing-direction (new 'stack-no-clear 'vector)))
+    (vector-float*! landing-direction (-> this hit-from-dir) 22937.602)
+    (vector+! landing-direction landing-direction (-> this collide-info trans))
+    (compute-travel (-> this nav) landing-direction (-> this hit-from-dir)))
   (when (>= (vector-xz-length (-> this nav travel)) 18841.602)
-    (vector+! arg0 (-> this collide-info trans) (-> this nav travel))
-    (let ((a1-5 (new 'stack-no-clear 'vector))
-          (s4-0 (new 'stack-no-clear 'collide-tri-result)))
-      (set! (-> a1-5 quad) (-> arg0 quad))
-      (+! (-> a1-5 y) 8192.0)
+    (vector+! landing-point (-> this collide-info trans) (-> this nav travel))
+    (let ((probe-start (new 'stack-no-clear 'vector))
+          (probe-result (new 'stack-no-clear 'collide-tri-result)))
+      (set! (-> probe-start quad) (-> landing-point quad))
+      (+! (-> probe-start y) 8192.0)
       (when (>= (fill-and-probe-using-line-sphere *collide-cache*
-                                                  a1-5
+                                                  probe-start
                                                   (new 'static 'vector :y -40960.0 :w 1.0)
                                                   40.96
                                                   (collide-kind background)
                                                   this
-                                                  s4-0
+                                                  probe-result
                                                   (new 'static 'pat-surface :noentity #x1))
                 0.0)
-        (set! (-> arg0 y) (-> s4-0 intersect y))
+        (set! (-> landing-point y) (-> probe-result intersect y))
         (return #t))))
   #f)
 
@@ -613,10 +623,7 @@
   :event double-lurker-default-event-handler
   :code
     (behavior ()
-      (ja-no-eval :group! double-lurker-both-break-apart-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! double-lurker-both-break-apart-ja :num! (seek!) :frame-num 0.0)
       (go double-lurker-resume))
   :post nav-enemy-simple-post)
 
@@ -644,12 +651,12 @@
               (.mul.x.vf.xyz vf1 vf1 vf2)
               (.svf (&-> v1-7 quad) vf1))
             (let ((gp-0 #f))
-              (nav-control-method-28 (-> self nav) (the-as collide-kind -1))
+              (gather-nav-spheres! (-> self nav) (the-as collide-kind -1))
               (let ((a2-1 (new 'stack-no-clear 'check-vector-collision-with-nav-spheres-info)))
-                (if (>= (nav-control-method-23 (-> self nav) (-> self nav travel) a2-1) 0.0) (set! gp-0 #t)))
+                (if (>= (check-vector-collision-with-nav-spheres (-> self nav) (-> self nav travel) a2-1) 0.0) (set! gp-0 #t)))
               (when (not gp-0)
                 (let ((s5-0 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
-                  (nav-control-method-24 (-> self nav) (* 1.2 f30-0) s5-0)
+                  (clip-travel-to-mesh (-> self nav) (* 1.2 f30-0) s5-0)
                   (if (-> s5-0 found-boundary) (set! gp-0 #t))))
               (when gp-0
                 (set! (-> self knocked-back-speed) 0.0)
@@ -662,14 +669,11 @@
                                                   #t
                                                   (-> self nav-info hover-if-no-ground)
                                                   #f)
-        (nav-control-method-27 (-> self nav))))
+        (relocalize-in-mesh! (-> self nav))))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! double-lurker-bottom-take-hit-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! double-lurker-bottom-take-hit-ja :num! (seek!) :frame-num 0.0)
       (go double-lurker-resume))
   :post nav-enemy-simple-post)
 
@@ -681,16 +685,19 @@
       (until (not (-> self child))
         (suspend))))
 
-(defmethod double-lurker-method-53 ((this double-lurker) (arg0 vector))
-  (let* ((s3-0 (-> this path curve num-cverts))
-         (s4-0 (rand-vu-int-count s3-0)))
-    (while (nonzero? s3-0)
-      (+! s3-0 -1)
-      (eval-path-curve-div! (-> this path) arg0 (the float s4-0) 'interp)
-      (if (not (nav-enemy-method-50 this arg0)) (return #t))))
+(defmethod find-buddy-spawn-point! ((this double-lurker) (spawn-point vector))
+  "Search path vertices from a random starting index for an unblocked place to spawn the
+   already-separated upper lurker."
+  (let* ((remaining-vertices (-> this path curve num-cverts))
+         (vertex-index (rand-vu-int-count remaining-vertices)))
+    (while (nonzero? remaining-vertices)
+      (+! remaining-vertices -1)
+      (eval-path-curve-div! (-> this path) spawn-point (the float vertex-index) 'interp)
+      (if (not (jump-dest-blocked? this spawn-point)) (return #t))))
   #f)
 
 (defmethod initialize-collision ((this double-lurker))
+  "Create the combined lurker's moving body, touch, and joint-bound attack spheres."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -770,6 +777,8 @@
     s5-0))
 
 (defmethod nav-enemy-method-51 ((this double-lurker))
+  "Disable the combined body's upper collision primitives and convert the remaining
+   indestructible touch spheres after the two lurkers separate."
   (let ((v1-1 (-> this collide-info root-prim)))
     (let ((a0-1 0))
       (dotimes (a1-0 3)
@@ -786,7 +795,9 @@
           (set! (-> a1-3 prim-core offense) (collide-offense touch))))))
   (none))
 
-(defmethod nav-enemy-method-48 ((this double-lurker))
+(defmethod post-init-setup! ((this double-lurker))
+  "Initialize the lower skeleton, persistent state, navigation settings, and upper-lurker
+   child, placing a previously separated buddy at a valid path point."
   (set! (-> this buddy-handle) (the-as handle #f))
   (process-drawable-from-entity! this (-> this entity))
   (set! (-> this align) (new 'process 'align-control this))
@@ -809,24 +820,26 @@
   (set! (-> this neck ear) (the-as uint 0))
   (set-vector! (-> this neck twist-max) 12743.111 12743.111 0.0 1.0)
   (when (not (-> this buddy-dead?))
-    (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (let ((buddy-spawn-point (new 'stack-no-clear 'vector)))
       (when (not (-> this buddy-on-shoulders?))
-        (when (not (double-lurker-method-53 this s5-0))
+        (when (not (find-buddy-spawn-point! this buddy-spawn-point))
           (set! (-> this buddy-on-shoulders?) #t)
           (let ((v1-29 (-> this entity extra perm)))
             (logior! (-> v1-29 status) (entity-perm-status user-set-from-cstage))
             (set! (-> v1-29 user-int8 2) 0))
           0))
-      (if (-> this buddy-on-shoulders?) (set! (-> s5-0 quad) (-> this collide-info trans quad)))
+      (if (-> this buddy-on-shoulders?) (set! (-> buddy-spawn-point quad) (-> this collide-info trans quad)))
       (set! (-> this buddy-handle)
-            (ppointer->handle (process-spawn double-lurker-top (-> this entity) this (-> this buddy-on-shoulders?) s5-0 :to this)))))
+            (ppointer->handle (process-spawn double-lurker-top (-> this entity) this (-> this buddy-on-shoulders?) buddy-spawn-point :to this)))))
   (when (and (not (-> this dead?)) (not (-> this buddy-on-shoulders?)))
     (nav-enemy-method-51 this)
     (init-jm! this *double-lurker-nav-enemy-info*))
   (none))
 
-(defmethod init-from-entity! ((this double-lurker) (arg0 entity-actor))
+(defmethod init-from-entity! ((this double-lurker) (source-entity entity-actor))
+  "Create both halves from the entity's persistent separation and death state, then enter idle
+   or wait invisibly for the surviving child."
   (initialize-collision this)
-  (nav-enemy-method-48 this)
+  (post-init-setup! this)
   (if (-> this dead?) (go double-lurker-waiting-to-die) (go (method-of-object this nav-enemy-idle)))
   (none))

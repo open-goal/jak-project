@@ -29,13 +29,12 @@
    basebutton-up-idle)
   (:methods
    (reset! (_type_) float)
-   (basebutton-method-26 (_type_) none)
-   (basebutton-method-27 (_type_) collide-shape-moving)
+   (setup-skel-and-anim! (_type_) none)
+   (setup-collision! (_type_) collide-shape-moving)
    (arm-trigger-event! (_type_) symbol)
-   (basebutton-method-29 (_type_ symbol entity) none)
+   (notify-event! (_type_ symbol entity) none)
    (move-to-vec-or-quat! (_type_ vector quaternion) quaternion)
    (press! (_type_ symbol) int)))
-
 
 (defskelgroup *generic-button-sg*
   generic-button
@@ -44,10 +43,16 @@
   ((generic-button-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 3))
 
-(defmethod move-to-vec-or-quat! ((this basebutton) (arg0 vector) (arg1 quaternion))
+(defmethod move-to-vec-or-quat! ((this basebutton) (position vector) (rotation quaternion))
+  "Queue a new root transform for the next update. A false position or rotation retains that
+   component of the current root transform."
   (set! (-> this move-to?) #t)
-  (if arg0 (set! (-> this move-to-pos quad) (-> arg0 quad)) (set! (-> this move-to-pos quad) (-> this root trans quad)))
-  (if arg1 (quaternion-copy! (-> this move-to-quat) arg1) (quaternion-copy! (-> this move-to-quat) (-> this root quat))))
+  (if position
+    (set! (-> this move-to-pos quad) (-> position quad))
+    (set! (-> this move-to-pos quad) (-> this root trans quad)))
+  (if rotation
+    (quaternion-copy! (-> this move-to-quat) rotation)
+    (quaternion-copy! (-> this move-to-quat) (-> this root quat))))
 
 (defstate basebutton-startup (basebutton)
   :virtual #t
@@ -63,7 +68,7 @@
         (('attack)
          (case (-> block param 1)
            (('flop)
-            (basebutton-method-29 self (-> self event-going-down) (-> self notify-actor))
+            (notify-event! self (-> self event-going-down) (-> self notify-actor))
             (sound-play "silo-button")
             (go-virtual basebutton-going-down))))
         (('trigger) (sound-play "silo-button") (go-virtual basebutton-going-down))
@@ -96,11 +101,8 @@
   :trans rider-trans
   :code
     (behavior ()
-      (ja-no-eval :num! (seek! max (-> self anim-speed)))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! max (-> self anim-speed))))
-      (basebutton-method-29 self (-> self event-down) (-> self notify-actor))
+      (ja-play :num! (seek! max (-> self anim-speed)))
+      (notify-event! self (-> self event-down) (-> self notify-actor))
       (go-virtual basebutton-down-idle))
   :post
     (behavior ()
@@ -131,7 +133,7 @@
         (else
          (until (time-elapsed? (-> self state-time) (the int (* 300.0 (-> self timeout))))
            (suspend))
-         (basebutton-method-29 self (-> self event-going-up) (-> self notify-actor))
+         (notify-event! self (-> self event-going-up) (-> self notify-actor))
          (sound-play "silo-button")
          (go-virtual basebutton-going-up))))
   :post
@@ -155,11 +157,8 @@
   :trans rider-trans
   :code
     (behavior ()
-      (ja-no-eval :num! (seek! 0.0 (-> self anim-speed)))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! 0.0 (-> self anim-speed))))
-      (basebutton-method-29 self (-> self event-up) (-> self notify-actor))
+      (ja-play :num! (seek! 0.0 (-> self anim-speed)))
+      (notify-event! self (-> self event-up) (-> self notify-actor))
       (go-virtual basebutton-up-idle))
   :post
     (behavior ()
@@ -169,26 +168,32 @@
         (quaternion-copy! (-> self root quat) (-> self move-to-quat)))
       (rider-post)))
 
-(defmethod press! ((this basebutton) (arg0 symbol))
-  (set! (-> this down?) arg0)
+(defmethod press! ((this basebutton) (down? symbol))
+  "Set the pressed state. Placed buttons also mirror it into persistent entity completion;
+   dynamically spawned buttons do not."
+  (set! (-> this down?) down?)
   (cond
-    (arg0 (if (not (-> this spawned-by-other?)) (process-entity-status! this (entity-perm-status complete) #t)))
+    (down? (if (not (-> this spawned-by-other?)) (process-entity-status! this (entity-perm-status complete) #t)))
     (else (if (not (-> this spawned-by-other?)) (process-entity-status! this (entity-perm-status complete) #f)))))
 
-(defmethod basebutton-method-29 ((this basebutton) (arg0 symbol) (arg1 entity))
+(defmethod notify-event! ((this basebutton) (event symbol) (actor entity))
+  "Send event directly to actor when supplied; otherwise broadcast it to the button's linked
+   actors. A false event is ignored."
   (with-pp
-    (when arg0
+    (when event
       (cond
-        (arg1
-         (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> v1-0 from) pp)
-           (set! (-> v1-0 num-params) 0)
-           (set! (-> v1-0 message) arg0)
-           (let ((a1-1 arg1)) (send-event-function (if a1-1 (-> a1-1 extra process)) v1-0))))
-        (else (if (nonzero? (-> this link)) (send-to-all (-> this link) arg0)))))
+        (actor
+         (let ((event-block (new 'stack-no-clear 'event-message-block)))
+           (set! (-> event-block from) pp)
+           (set! (-> event-block num-params) 0)
+           (set! (-> event-block message) event)
+           (let ((recipient actor)) (send-event-function (if recipient (-> recipient extra process)) event-block))))
+        (else (if (nonzero? (-> this link)) (send-to-all (-> this link) event)))))
     (none)))
 
 (defmethod reset! ((this basebutton))
+  "Reset to an unpressed dynamic-button configuration with no notification target, timeout,
+   queued transform, or armed events. The animation speed is reset to 1."
   (set! (-> this down?) #f)
   (set! (-> this spawned-by-other?) #t)
   (set! (-> this move-to?) #f)
@@ -201,95 +206,121 @@
   (set! (-> this anim-speed) 1.0))
 
 (defmethod arm-trigger-event! ((this basebutton))
-  (let ((v0-0 'trigger)) (set! (-> this event-going-down) v0-0) v0-0))
+  "Arm trigger as the notification sent when the button begins moving down."
+  (let ((trigger-event 'trigger)) (set! (-> this event-going-down) trigger-event) trigger-event))
 
-(defmethod basebutton-method-26 ((this basebutton))
+(defmethod setup-skel-and-anim! ((this basebutton))
+  "Create the generic button skeleton and animation channel. Pose the channel at the last frame
+   when the button is already down, otherwise at frame zero, set animation speed to 2, and
+   update the skeleton transforms."
+  (local-vars (anim-channel joint-control-channel))
   (initialize-skeleton this *generic-button-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (ja-channel-set! 1)
   (cond
     ((-> this down?)
-     (let ((s5-0 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-0 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-0 frame-num) (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1)))))
+     (set! anim-channel (-> this skel root-channel 0))
+     (joint-control-channel-group-eval! anim-channel
+                                        (the-as art-joint-anim (-> this draw art-group data 2))
+                                        num-func-identity)
+     (set! (-> anim-channel frame-num)
+           (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1))))
     (else
-     (let ((s5-1 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-1 frame-num) 0.0))))
+     (set! anim-channel (-> this skel root-channel 0))
+     (joint-control-channel-group-eval! anim-channel
+                                        (the-as art-joint-anim (-> this draw art-group data 2))
+                                        num-func-identity)
+     (set! (-> anim-channel frame-num) 0.0)))
   (set! (-> this anim-speed) 2.0)
   (update-transforms! (-> this root))
   (ja-post)
   (none))
 
-(defmethod basebutton-method-27 ((this basebutton))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s5-0 s4-0)
-      (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-        (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
-        (set! (-> s3-0 collide-with) (collide-kind target))
-        (set! (-> s3-0 prim-core action) (collide-action solid rider-plat-sticky))
-        (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
-        (set! (-> s3-0 transform-index) 4)
-        (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
-        (append-prim s4-0 s3-0))
-      (let ((s3-1 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
-        (set! (-> s3-1 prim-core collide-as) (collide-kind ground-object))
-        (set! (-> s3-1 collide-with) (collide-kind target))
-        (set! (-> s3-1 prim-core action) (collide-action solid rider-plat-sticky))
-        (set! (-> s3-1 prim-core offense) (collide-offense indestructible))
-        (set! (-> s3-1 transform-index) 3)
-        (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 12288.0)
-        (append-prim s4-0 s3-1)))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    s5-0))
+(defmethod setup-collision! ((this basebutton))
+  "Create the moving collision shape with one rider, a three-metre primitive-group bound, and
+   two indestructible sticky mesh primitives attached to skeleton transforms 4 and 3."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision 1)
+    (let ((primitive-group (new 'process 'collide-shape-prim-group collision (the-as uint 2) 0)))
+      (set! (-> primitive-group prim-core collide-as) (collide-kind ground-object))
+      (set! (-> primitive-group collide-with) (collide-kind target))
+      (set! (-> primitive-group prim-core action) (collide-action solid rider-plat-sticky))
+      (set-vector! (-> primitive-group local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! collision primitive-group)
+      (let ((mesh-primitive (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+        (set! (-> mesh-primitive prim-core collide-as) (collide-kind ground-object))
+        (set! (-> mesh-primitive collide-with) (collide-kind target))
+        (set! (-> mesh-primitive prim-core action) (collide-action solid rider-plat-sticky))
+        (set! (-> mesh-primitive prim-core offense) (collide-offense indestructible))
+        (set! (-> mesh-primitive transform-index) 4)
+        (set-vector! (-> mesh-primitive local-sphere) 0.0 0.0 0.0 12288.0)
+        (append-prim primitive-group mesh-primitive))
+      (let ((second-mesh-primitive (new 'process 'collide-shape-prim-mesh collision (the-as uint 1) (the-as uint 0))))
+        (set! (-> second-mesh-primitive prim-core collide-as) (collide-kind ground-object))
+        (set! (-> second-mesh-primitive collide-with) (collide-kind target))
+        (set! (-> second-mesh-primitive prim-core action) (collide-action solid rider-plat-sticky))
+        (set! (-> second-mesh-primitive prim-core offense) (collide-offense indestructible))
+        (set! (-> second-mesh-primitive transform-index) 3)
+        (set-vector! (-> second-mesh-primitive local-sphere) 0.0 0.0 0.0 12288.0)
+        (append-prim primitive-group second-mesh-primitive)))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision)
+    collision))
 
-(defmethod init-from-entity! ((this basebutton) (arg0 entity-actor))
+(defmethod init-from-entity! ((this basebutton) (source-entity entity-actor))
+  "Initialize a placed button from its entity. Resolve button-id from extra-id or actor-link
+   order, create its drawable and collision data, restore its saved pressed state, read the
+   optional notification actor and timeout, connect it to navigation, pose its skeleton, and
+   enter the startup state."
   (reset! this)
   (set! (-> this spawned-by-other?) #f)
   (set! (-> this button-id) -1)
-  (let ((v1-4 (res-lump-value (-> this entity) 'extra-id uint128 :default (the-as uint128 -1))))
-    (if (>= (the-as int v1-4) 0) (set! (-> this button-id) (the-as int v1-4))))
-  (when (or (res-lump-struct arg0 'next-actor structure) (res-lump-struct arg0 'prev-actor structure))
+  (let ((raw-button-id (res-lump-value (-> this entity) 'extra-id uint128 :default (the-as uint128 -1))))
+    (if (>= (the-as int raw-button-id) 0) (set! (-> this button-id) (the-as int raw-button-id))))
+  (when (or (res-lump-struct source-entity 'next-actor structure) (res-lump-struct source-entity 'prev-actor structure))
     (set! (-> this link) (new 'process 'actor-link-info this))
     (if (< (-> this button-id) 0) (set! (-> this button-id) (actor-count-before (-> this link)))))
-  (basebutton-method-27 this)
-  (process-drawable-from-entity! this arg0)
-  (let ((v1-16 #f))
-    (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete))) (set! v1-16 #t))
-    (set! (-> this down?) v1-16))
-  (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> this timeout) (res-lump-float arg0 'timeout))
+  (setup-collision! this)
+  (process-drawable-from-entity! this source-entity)
+  (let ((initially-down? #f))
+    (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+      (set! initially-down? #t))
+    (set! (-> this down?) initially-down?))
+  (set! (-> this notify-actor) (entity-actor-lookup source-entity 'alt-actor 0))
+  (set! (-> this timeout) (res-lump-float source-entity 'timeout))
   (if (not (-> this spawned-by-other?)) (nav-mesh-connect this (-> this root) (the-as nav-control #f)))
   (arm-trigger-event! this)
-  (basebutton-method-26 this)
+  (setup-skel-and-anim! this)
   (go (method-of-object this basebutton-startup))
   (none))
 
-(defbehavior basebutton-init-by-other basebutton ((arg0 entity-actor) (arg1 vector) (arg2 quaternion) (arg3 entity-actor) (arg4 symbol) (arg5 float))
+(defbehavior basebutton-init-by-other basebutton ((source-entity entity-actor)
+              (position vector)
+              (rotation quaternion)
+              (notify-actor entity-actor)
+              (down? symbol)
+              (timeout float))
+  "Initialize a dynamically spawned button from the supplied transform and notification actor.
+   Unlike a placed button it has no entity completion or navigation state. Set its initial pressed
+   state and timeout, create the common drawable, collision, and skeleton data, and enter startup."
   (reset! self)
   (set! (-> self spawned-by-other?) #t)
   (set! (-> self button-id) -1)
-  (set! (-> self down?) arg4)
-  (set! (-> self notify-actor) arg3)
-  (set! (-> self timeout) arg5)
-  (if arg0 (set! (-> self entity) arg0))
-  (basebutton-method-27 self)
-  (set! (-> self root trans quad) (-> arg1 quad))
-  (quaternion-copy! (-> self root quat) arg2)
+  (set! (-> self down?) down?)
+  (set! (-> self notify-actor) notify-actor)
+  (set! (-> self timeout) timeout)
+  (if source-entity (set! (-> self entity) source-entity))
+  (setup-collision! self)
+  (set! (-> self root trans quad) (-> position quad))
+  (quaternion-copy! (-> self root quat) rotation)
   (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
   (arm-trigger-event! self)
-  (basebutton-method-26 self)
+  (setup-skel-and-anim! self)
   (go-virtual basebutton-startup)
   (none))
 
@@ -307,28 +338,29 @@
    (use int level)
    hidden))
 
-
+;; Freeze player input, hand the target both ends of the camera transition, and keep the old level
+;; resident until the target is hidden or the destination has finished loading.
 (defstate use (warp-gate)
   :virtual #t
   :trans
     (behavior ()
       (send-event *camera* 'joystick 0.0 0.0))
   :code
-    (behavior ((arg0 int) (arg1 level))
+    (behavior ((slot int) (destination-level level))
       (set-time! (-> self state-time))
-      (when (not arg1)
+      (when (not destination-level)
         (process-release? *target*)
         (go-virtual idle))
-      (let ((s4-0 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> s4-0 from) self)
-        (set! (-> s4-0 num-params) 3)
-        (set! (-> s4-0 message) 'change-state)
-        (set! (-> s4-0 param 0) (the-as uint target-warp-out))
-        (let ((v1-9 (new 'static 'vector)))
-          (set! (-> v1-9 quad) (-> self root trans quad))
-          (set! (-> s4-0 param 1) (the-as uint v1-9)))
-        (set! (-> s4-0 param 2) (the-as uint (target-pos 0)))
-        (send-event-function *target* s4-0))
+      (let ((event-block (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-block from) self)
+        (set! (-> event-block num-params) 3)
+        (set! (-> event-block message) 'change-state)
+        (set! (-> event-block param 0) (the-as uint target-warp-out))
+        (let ((gate-position (new 'static 'vector)))
+          (set! (-> gate-position quad) (-> self root trans quad))
+          (set! (-> event-block param 1) (the-as uint gate-position)))
+        (set! (-> event-block param 2) (the-as uint (target-pos 0)))
+        (send-event-function *target* event-block))
       ;; og:preserve-this
       ;; NOTE : added case for "training" here. in the original game, the training level does NOT come
       ;; with its own code for warp gates and buttons, and uses the villagep-obs imported from village1
@@ -343,12 +375,12 @@
          (while (and *target* (not (logtest? (-> *target* draw status) (draw-status hidden))))
            (suspend)))
         (else
-         (load-state-want-levels (-> self level) (-> arg1 load-name))
-         (while (or (not (member (level-status *level* (-> arg1 load-name)) '(loaded active)))
+         (load-state-want-levels (-> self level) (-> destination-level load-name))
+         (while (or (not (member (level-status *level* (-> destination-level load-name)) '(loaded active)))
                     (not (time-elapsed? (-> self state-time) (seconds 2))))
            (suspend))))
       (set-blackout-frames (seconds 0.05))
-      (start 'play (get-continue-by-name *game-info* (-> *warp-info* arg0)))
+      (start 'play (get-continue-by-name *game-info* (-> *warp-info* slot)))
       (logior! (-> self mask) (process-mask sleep))
       (suspend)
       0))
@@ -377,82 +409,88 @@
        :mode 'air
        :flags (surface-flags always-rotate-toward-transv)))
 
+;; Launch Jak through the gate while a fixed camera watches, then hand control to the warp effect.
 (defstate target-warp-out (target)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('death-end)
-         (let ((v0-0 (the-as object (logior (-> self draw status) (draw-status hidden)))))
-           (set! (-> self draw status) (the-as draw-status v0-0))
-           v0-0))
-        (else (target-generic-event-handler proc argc message block))))
+         (let ((new-draw-status (the-as object (logior (-> self draw status) (draw-status hidden)))))
+           (set! (-> self draw status) (the-as draw-status new-draw-status))
+           new-draw-status))
+        (else (target-generic-event-handler sender argc message block))))
   :enter
-    (behavior ((arg0 vector) (arg1 vector))
+    (behavior ((gate-position vector) (camera-position vector))
+      ;; Save both ends of the camera transition. The gate target is lowered one metre so the
+      ;; ballistic launch converges below its visible centre.
       (set-time! (-> self state-time))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (set! (-> self control mod-surface) *warp-jump-mods*)
-      (set! (-> self control unknown-vector102 quad) (-> arg0 quad))
-      (set! (-> self control unknown-vector103 quad) (-> arg1 quad))
-      (+! (-> self control unknown-vector102 y) -4096.0)
-      (set! (-> self control unknown-uint20) (the-as uint #f))
+      (set! (-> self control state-vector0 quad) (-> gate-position quad))
+      (set! (-> self control state-vector1 quad) (-> camera-position quad))
+      (+! (-> self control state-vector0 y) -4096.0)
+      (set! (-> self control state-var0) (the-as uint #f))
       (vector-reset! (-> self control transv))
       (logior! (-> self state-flags) (state-flags use-alt-cam-pos))
-      (set! (-> self alt-cam-pos quad) (-> arg1 quad)))
+      (set! (-> self alt-cam-pos quad) (-> camera-position quad)))
   :exit
     (behavior ()
       (logclear! (-> self state-flags) (state-flags use-alt-cam-pos)))
   :code
-    (behavior ((arg0 vector) (arg1 vector))
+    (behavior ((gate-position vector) (camera-position vector))
+      ;; Launch toward the gate with a vertical speed chosen from the height difference and gravity.
+      ;; Once Jak passes the gate (or spool animation begins), fade him out, damp horizontal speed,
+      ;; start the warp death effect once, and leave the animation looping until the transition ends.
       (send-event *camera* 'change-state cam-fixed 0)
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 16.0 0)) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 16.0 0))))
-      (vector-! (-> self control transv) (-> self control unknown-vector102) (-> self control trans))
+      (ja-play :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 16.0 0)) :frame-num 0.0)
+      (vector-! (-> self control transv) (-> self control state-vector0) (-> self control trans))
       (vector-xz-normalize! (-> self control transv) 32768.0)
-      (let ((gp-2 (new-stack-vector0)))
-        (let ((f0-6 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+      (let ((planar-velocity (new-stack-vector0)))
+        (let ((gravity-axis-speed (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
           0.0
-          (vector-! gp-2 (-> self control transv) (vector-float*! gp-2 (-> self control dynam gravity-normal) f0-6)))
-        (let* ((f0-7 (vector-length gp-2))
-               (f1-1 f0-7)
-               (f2-4 (- (sqrtf (* 2.0
-                                  (-> self control dynam gravity-length)
-                                  (vector-dot (-> self control dynam gravity-normal)
-                                              (vector-! (new 'stack-no-clear 'vector) (-> self control unknown-vector102) (-> self control trans)))))
-                        (* 0.008333334 (- (-> self control dynam gravity-length))))))
+          (vector-! planar-velocity
+                    (-> self control transv)
+                    (vector-float*! planar-velocity (-> self control dynam gravity-normal) gravity-axis-speed)))
+        (let* ((planar-speed (vector-length planar-velocity))
+               (normalization-speed planar-speed)
+               (launch-speed (- (sqrtf (* 2.0
+                                          (-> self control dynam gravity-length)
+                                          (vector-dot (-> self control dynam gravity-normal)
+                                                      (vector-! (new 'stack-no-clear 'vector) (-> self control state-vector0) (-> self control trans)))))
+                                (* 0.008333334 (- (-> self control dynam gravity-length))))))
           (vector+! (-> self control transv)
-                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-4)
-                    (vector-float*! gp-2 gp-2 (/ f0-7 f1-1)))))
+                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) launch-speed)
+                    (vector-float*! planar-velocity planar-velocity (/ planar-speed normalization-speed)))))
       (clear-collide-with-as (-> self control))
       (set-time! (-> self state-time))
       (set! (-> self trans-hook)
             (lambda :behavior target ()
-              (let ((gp-0 (new-stack-vector0))
-                    (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+              ;; Keep vertical speed from turning downward before the portal effect takes over,
+              ;; while retaining the current planar direction and magnitude.
+              (let ((planar-velocity (new-stack-vector0))
+                    (gravity-axis-speed (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
                 0.0
-                (vector-! gp-0 (-> self control transv) (vector-float*! gp-0 (-> self control dynam gravity-normal) f30-0))
-                (let* ((f0-3 (vector-length gp-0))
-                       (f1-0 f0-3))
-                  (if (< f30-0 0.0) (set! f30-0 8192.0))
+                (vector-! planar-velocity
+                          (-> self control transv)
+                          (vector-float*! planar-velocity (-> self control dynam gravity-normal) gravity-axis-speed))
+                (let* ((planar-speed (vector-length planar-velocity))
+                       (normalization-speed planar-speed))
+                  (if (< gravity-axis-speed 0.0) (set! gravity-axis-speed 8192.0))
                   (vector+! (-> self control transv)
-                            (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f30-0)
-                            (vector-float*! gp-0 gp-0 (/ f0-3 f1-0)))))
-              (let ((gp-2 (vector-! (new-stack-vector0) (-> self control unknown-vector102) (-> self control trans))))
-                (set! (-> gp-2 y) 0.0)
+                            (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) gravity-axis-speed)
+                            (vector-float*! planar-velocity planar-velocity (/ planar-speed normalization-speed)))))
+              (let ((to-gate (vector-! (new-stack-vector0) (-> self control state-vector0) (-> self control trans))))
+                (set! (-> to-gate y) 0.0)
                 (send-event *target* 'sidekick #f)
-                (when (and (or (< (vector-dot gp-2 (-> self control transv)) 0.0) (-> self control unknown-spoolanim00))
+                (when (and (or (< (vector-dot to-gate (-> self control transv)) 0.0) (-> self control state-spool-anim))
                            (time-elapsed? (-> self state-time) (seconds 0.05)))
                   (vector-seek! (-> self draw color-mult) (new 'static 'vector) (* 2.0 (seconds-per-frame)))
                   (set! (-> self control transv x) (* 0.95 (-> self control transv x)))
                   (set! (-> self control transv z) (* 0.95 (-> self control transv z)))
-                  (when (not (-> self control unknown-spoolanim00))
+                  (when (not (-> self control state-spool-anim))
                     (send-event self 'do-effect 'death-warp-out -1.0)
-                    (let ((v0-2 #t)) (set! (-> self control unknown-uint20) (the-as uint v0-2)) v0-2))))))
-      (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 40.0 0)) :frame-num (ja-aframe 16.0 0))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 40.0 0))))
+                    (let ((warp-started? #t)) (set! (-> self control state-var0) (the-as uint warp-started?)) warp-started?))))))
+      (ja-play :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 40.0 0)) :frame-num (ja-aframe 16.0 0))
       (anim-loop))
   :post target-no-stick-post)

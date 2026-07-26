@@ -7,9 +7,9 @@
 ;; GENERIC RENDERER
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; The generic renderer is the slow but general renderer.
-;; On the EE side, it supports effects like lighting, environment mapping,
-;; level of detail, and skeletal animation.
+;; The generic renderer is the slow but general renderer.  The EE expands compact
+;; model data into GSF vertices, applies lighting, environment mapping, level of
+;; detail, and skeletal animation, then streams the result through VU0 and VU1.
 
 ;; On the VU side, it has no effects, other than scissoring.
 
@@ -24,9 +24,73 @@
 ;; - shrub will use generic for scissoring
 ;; - tie will use generic for envmap
 
+;; Every renderer that hands work to generic converts it into the same expanded vertex format, feeds
+;; it to the same effect processors, and builds the same VIF/GIF packet.  The types below are that
+;; shared vocabulary; the per-renderer input formats live in generic-merc-h and generic-tie-h.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; VU1 program addresses
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Entry points of the generic VU1 program.  A converter selects one by patching the immediate of
+;; consts.mscal-tag; nothing else about the packet changes.
+;; The program opens with a dispatch table of two instruction pairs per entry - a branch and its delay
+;; pair - so an entry's address is twice its position in that table. Deriving them says so; a column of
+;; even numbers does not.
+(defmacro generic-vu1-entry (index)
+  `(* 2 ,index))
+
+(defconstant GENERIC-VU1-INIT (generic-vu1-entry 0))        ;; load the constant block, then fall into RESET
+(defconstant GENERIC-VU1-RESET (generic-vu1-entry 1))       ;; select the first buffers, relink the clip planes
+(defconstant GENERIC-VU1-DONE (generic-vu1-entry 2))        ;; finish without drawing
+(defconstant GENERIC-VU1-CLIPPED (generic-vu1-entry 3))     ;; transform, clip test, clip crossing triangles
+(defconstant GENERIC-VU1-DIRECT (generic-vu1-entry 4))      ;; transform and clip test, but reject rather than clip
+(defconstant GENERIC-VU1-FIXUP (generic-vu1-entry 5))       ;; fix up a packed stream, then join the reject path
+(defconstant GENERIC-VU1-SET-BUFFERS (generic-vu1-entry 6)) ;; adopt buffer addresses from the constant block
+
+;; VU1 data memory.  Three input banks are rotated because xgkick is asynchronous: the GIF is still
+;; reading one bank out while the EE uploads into the second and the VU transforms the third.  The
+;; two header buffers only hold the matrix, the GIF tag, and the fragment's adgif shaders, so they
+;; need no third copy.  The historical name "gifbuf" for those is a little misleading - GIF output is
+;; written into the input bank, ahead of each strip's vertices.
+;; The three input banks come first, then the two header buffers, then the constant block, all
+;; contiguous - so only the two sizes and the first two addresses are facts, and everything else follows.
+;; Writing it this way is self-checking: nothing can drift.
+(defconstant GENERIC-VU1-INBUF-FIRST 9)   ;; bank 0, past the nine quadwords reserved for strip 0
+(defconstant GENERIC-VU1-INBUF-STEP 279)  ;; one bank
+(defconstant GENERIC-VU1-INBUF-LAST (+ GENERIC-VU1-INBUF-FIRST (* 2 GENERIC-VU1-INBUF-STEP)))
+(defconstant GENERIC-VU1-HEADER-A 837)
+(defconstant GENERIC-VU1-HEADER-QWC 30)   ;; a header buffer: seven header quadwords plus its shaders
+;; Keep the folded value because static structure initializers require an immediate here.
+(defconstant GENERIC-VU1-HEADER-B 867)    ;; GENERIC-VU1-HEADER-A + GENERIC-VU1-HEADER-QWC
+(defconstant GENERIC-VU1-HEADER-FLIP (logxor GENERIC-VU1-HEADER-A GENERIC-VU1-HEADER-B))
+(defconstant GENERIC-VU1-CONSTANTS (+ GENERIC-VU1-HEADER-B GENERIC-VU1-HEADER-QWC))
+
+;; The two scratchpad output buffers, flipped after every packet. The value is not the buffer size:
+;; generic-effect-buffer puts the shared work area between the two halves so that both stay within a
+;; signed 16-bit displacement of the constants and lights every vertex needs, which makes the distance
+;; 3552 + 1056. generic-saves.xor-outbufs is the stored copy.
+(defconstant GENERIC-OUTBUF-FLIP
+  (logxor (offset-of generic-effect-buffer outbuf-0) (offset-of generic-effect-buffer outbuf-1)))
+
+;; The generic work area starts one quadword into the scratchpad page, so an address relative to the
+;; page register is sixteen more than the field's offset inside generic-work.  Assembly that keeps
+;; the page in a register uses this instead of a bare number.
+(defconstant GENERIC-WORK-BASE 16)
+
+(defmacro generic-work-offset (&rest path)
+  `(+ GENERIC-WORK-BASE (offset-of generic-work ,@path)))
+
 ;; DECOMP BEGINS
 
-;; gsf, what does it stand for?
+;; The 32-byte working vertex format shared by the generic EE and VU programs.
+;; "GSF" is retained as the format's original name; its expansion is not known.
+;; The overlays expose the two input layouts used by the pipeline: position,
+;; texture, normal, and color, or position plus delta texture/color data.
+;;
+;; The two readings of the second quadword are why the effect processors come in plain and "dproc"
+;; flavors.  A dproc fills dtex/dclr - the draw-point attribute lanes - where an ordinary processor
+;; would have left a normal and a color.
 (deftype gsf-vertex (structure)
   ((data uint32 8)
    (byte uint8 32 :overlay-at (-> data 0))
@@ -44,6 +108,9 @@
 (deftype gsf-vertex-array (structure)
   ((vtx gsf-vertex :dynamic)))
 
+;; The second attribute set, produced by the environment-map pass: one color and one coordinate pair
+;; per draw point, uploaded as its own VIF stream so the GS can lay a second blended pass over the
+;; same geometry.
 (deftype gsf-fx-vertex (structure)
   ((clr vector4ub :inline)
    (tex vector2uh :inline)))
@@ -51,6 +118,11 @@
 (deftype gsf-fx-vertex-array (structure)
   ((data gsf-fx-vertex :dynamic)))
 
+;; Header at the front of a GSF work buffer.  strip-table gives the vertex count
+;; for each strip; expanded distinguishes compact input from expanded work data.
+;;
+;; A "dp" is a draw point: one entry of the index/kick list, which is what actually gets drawn.  A
+;; vertex shared between two strips is counted once in num-vtxs and twice in num-dps.
 (deftype gsf-header (structure)
   ((num-strips  uint8)
    (expanded    uint8)
@@ -59,35 +131,50 @@
    (strip-table uint8 10)))
 
 (deftype gsf-ik (structure)
+  ;; An indexed vertex reference and whether it suppresses the strip kick.
+  ;; One per draw point; together they are the drawing order.
   ((index   uint8)
    (no-kick uint8)))
 
+;; Pointers installed at the front of a GSF buffer before the work area is built.  The converter lays
+;; the three arrays out back to back and publishes them here, so neither the effect processors nor
+;; the packet builders have to recompute the divisions.
 (deftype gsf-info (structure)
-  ((ptr-iks   uint32)
-   (ptr-verts uint32)
-   (ptr-fx    uint32)
+  ((ptr-iks   uint32) ;; gsf-ik, one per draw point
+   (ptr-verts uint32) ;; gsf-vertex, one per vertex
+   (ptr-fx    uint32) ;; gsf-fx-vertex, one per draw point; environment-map pass only
    (dummy2    uint32)))
 
 (deftype gsf-buffer (structure)
+  ;; The first 32 bytes overlay info and header; work-area occupies the remainder.
   ((data      uint8 8192)
    (info      gsf-info :inline :overlay-at (-> data 0))
    (header    gsf-header :inline :overlay-at (-> data 16))
    (work-area uint8 :dynamic :overlay-at (-> data 32))))
 
 (deftype generic-frag (structure)
+  ;; Inclusive/exclusive vertex range selected from a generic strip stream.
   ((start-pos uint16)
    (end-pos   uint16)))
 
 (deftype generic-strip (structure)
+  ;; Start position and vertex count of one reconstructed strip.
   ((pos uint16)
    (len uint16)))
 
+;; Where the environment-map pass parks the records it is working on.  It runs four vertices at a
+;; time through VU0 and has to keep the lanes VU0 does not touch alive across the call, so it saves
+;; the records themselves rather than reloading them from the vertex array.
 (deftype generic-envmap-saves (structure)
   ((index-mask vector4w :inline)
    (verts      uint128 12)
    (kicks      uint128 4)))
 
 (deftype generic-interp-job (structure)
+  ;; One packed morph/interpolation command consumed by the generic pipeline.
+  ;; num vertices starting at first are blended: morph-z weights each vertex's own attributes and
+  ;; morph-w the pair it is collapsing onto.  The two weights sum to 256 rather than to 1.0, and the
+  ;; packed-halfword multiply that applies them shifts the 256 back out afterwards.
   ((job-type uint16)
    (num      uint16)
    (first    uint16)
@@ -98,33 +185,41 @@
   :pack-me)
 
 (deftype generic-saves (structure)
-  ((ptr-dma           uint32)
-   (ptr-vtxs          uint32)
-   (ptr-clrs          uint32)
-   (ptr-texs          uint32)
-   (ptr-env-clrs      uint32)
+  ;; EE/VU scratch state saved across the generic renderer's staged transfers.
+  ;;
+  ;; This is the renderer's register file in memory.  The converters, the packet builders, and the
+  ;; effect processors are separate assembly functions sharing one scratchpad page, so they pass
+  ;; cursors to each other here instead of in registers.
+  ((ptr-dma           uint32)             ;; cursor in the packet being built
+   (ptr-vtxs          uint32)             ;; where the position stream will be unpacked from
+   (ptr-clrs          uint32)             ;; ... the color stream
+   (ptr-texs          uint32)             ;; ... the coordinate stream
+   (ptr-env-clrs      uint32)             ;; ... and the same two again for the envmap pass
    (ptr-env-texs      uint32)
-   (cur-outbuf        uint32)
+   (cur-outbuf        uint32)             ;; the scratchpad output buffer being filled
    (ptr-fx-buf        uint32)
-   (xor-outbufs       uint32)
-   (num-dps           uint32)
-   (qwc               uint32)
-   (gsf-buf           gsf-buffer)
-   (ptr-shaders       uint32)
-   (ptr-env-shader    uint32)
-   (is-envmap         uint32)
-   (basep             uint32)
-   (ptr-interp-job    generic-interp-job)
-   (gifbuf-adr        uint32)
-   (inbuf-adr         uint32)
+   (xor-outbufs       uint32)             ;; flips between the two output buffers
+   (num-dps           uint32)             ;; draw points in the packet being built
+   (qwc               uint32)             ;; quadwords to hand to the fromSPR channel
+   (gsf-buf           gsf-buffer)         ;; the expanded vertices, in main memory
+   (ptr-shaders       uint32)             ;; the fragment's adgif shaders
+   (ptr-env-shader    uint32)             ;; the environment map's adgif shader
+   (is-envmap         uint32)             ;; take the envmap GIF tag template instead of the base one
+   (basep             uint32)             ;; write cursor in the frame's DMA buffer
+   (ptr-interp-job    generic-interp-job) ;; zero when nothing in this packet needs blending
+   (gifbuf-adr        uint32)             ;; VU1 header buffer, alternating
+   (inbuf-adr         uint32)             ;; VU1 input bank, rotating through three
    (fade-val          uint32)
    (time-of-day-color rgba)
-   (to-vu0-waits      uint32)
+   (to-vu0-waits      uint32)             ;; busy polls, charged to the timing display
    (to-spr-waits      uint32)
    (from-spr-waits    uint32)
    (envmap            generic-envmap-saves :inline)))
 
 (deftype generic-gif-tag (structure)
+  ;; GIF tag template with separate fan/strip primitives and a strip count word.
+  ;; The clipper emits fans and the main path emits strips, so both PRIM words sit side by side; the
+  ;; tag is finished by patching NLOOP into num-strips.
   ((data       uint32 4)
    (qword      qword :inline :overlay-at (-> data 0))
    (fan-prim   uint32 :overlay-at (-> data 0))
@@ -133,6 +228,8 @@
    (num-strips uint32 :overlay-at (-> data 3))))
 
 (deftype ad-cmd (structure)
+  ;; One GIF A+D payload.  The overlays permit whole-qword copying or individual
+  ;; GS register/data construction without changing the packet representation.
   ((word uint32 4)
    (quad uint128 :overlay-at (-> word 0))
    (data uint64 :overlay-at (-> word 0))
@@ -144,38 +241,54 @@
    (w    uint32 :overlay-at (-> word 3))))
 
 (deftype generic-envmap-consts (structure)
+  ;; VU constants and packet templates used by the environment-map pass.
+  ;; consts is (1.0, 0, 0.5, 0.5): the reflection scale, and the bias that centers a reflected
+  ;; coordinate on the environment texture.  colors is the tint, rebuilt for each fragment from the
+  ;; fragment's own tint, its fade value, and the time of day.
   ((consts vector :inline)
    (strgif generic-gif-tag :inline)
    (colors vector4w :inline)
    (shader adgif-shader :inline)))
 
 (deftype generic-consts (structure)
+  ;; Packet templates, transform and lighting data shared by generic draw calls.
+  ;;
+  ;; Copied into scratchpad once per generic pass by generic-work-init.  Everything a packet builder
+  ;; emits comes from here, so building a packet is mostly quadword copies plus a few patched words:
+  ;; mscal-tag's immediate picks the VU1 entry, and the GIF tags get their NLOOP filled in.
   ((dma-header        dma-packet :inline)
    (vif-header        uint32 4)
    (dma-ref-vtxs      dma-packet :inline)
    (dma-cnt-call      dma-packet :inline)
-   (matrix            matrix :inline)
+   (matrix            matrix :inline) ;; the camera transform for this pass
    (base-strgif       generic-gif-tag :inline)
    (alpha-opaque      ad-cmd :inline)
    (alpha-translucent ad-cmd :inline)
    (ztest-normal      ad-cmd :inline)
    (ztest-opaque      ad-cmd :inline)
-   (adcmd-offsets     uint8 16)
+   (adcmd-offsets     uint8 16) ;; which of the four A+D commands each effect combination needs
    (adcmds            ad-cmd 4 :overlay-at alpha-opaque)
-   (stcycle-tag       uint32)
-   (unpack-vtx-tag    uint32)
-   (unpack-clr-tag    uint32)
-   (unpack-tex-tag    uint32)
-   (mscal-tag         uint32)
+   (stcycle-tag       uint32) ;; STCYCL CL=3 WL=1, which interleaves the three vertex streams
+   (unpack-vtx-tag    uint32) ;; UNPACK V3-32, float positions
+   (unpack-clr-tag    uint32) ;; UNPACK V4-8 unsigned, colors already in GS RGBAQ order
+   (unpack-tex-tag    uint32) ;; UNPACK V2-16, coordinates in 12.4
+   (mscal-tag         uint32) ;; MSCAL; the immediate is one of the GENERIC-VU1-* entry points
    (flush-tag         uint32)
    (reset-cycle-tag   uint32)
    (dummy0            uint32)
    (dma-tag-cnt       uint64)
    (envmap            generic-envmap-consts :inline)
-   (light-consts      vector :inline)
+   (light-consts      vector :inline) ;; (255.0, 8388608.0, 0, 0): the VU0 lighting clamp ceiling
    (texture-offset    uint16 8)))
 
 (deftype generic-storage (structure)
+  ;; A 256-byte scratch block used to overlay stage-specific generic work data.
+  ;; generic-tie-convert uses the first one as its register save area instead of the stack, so its
+  ;; prologue and epilogue cost scratchpad accesses rather than main-memory ones.
   ((data uint128 16)))
 
+;; Shared 8 KiB GSF workspace with a 1 KiB reserve, allocated on a 64-byte boundary.  The reserve is
+;; not decorative: several expansion loops round their counts up to a group of four or of sixteen and
+;; write past the nominal end of an array, relying on the array that follows being rewritten
+;; immediately afterwards.
 (define *gsf-buffer* (the-as gsf-buffer (kmalloc global 9216 (kmalloc-flags align-64) "malloc")))

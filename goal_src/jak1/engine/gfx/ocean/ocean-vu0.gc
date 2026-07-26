@@ -4,6 +4,19 @@
 (require "engine/gfx/ocean/ocean-h.gc")
 (require "kernel/gkernel-h.gc")
 (require "engine/math/vector-h.gc")
+
+;; Working set for the wave functions below and the VU0 program they drive.
+;;
+;; scales x and z convert the height difference between neighboring wave samples into the
+;; surface normal's tilt along that axis.  They are negative because a height field's normal is
+;; (-dh/dx, 1, -dh/dz), and their magnitude is a little smaller than one over the (meters 3)
+;; sample spacing, so the normals come out slightly flattened.  scales y is the ceiling the lit
+;; vertex color is clamped to.
+;;
+;; mask-hi and mask-lo select the high and low halfword of each packed word.
+;;
+;; lights is filled from the current time-of-day light group each frame, and wait-to-vu0 is the
+;; scratch word upload-vu0-program uses to wait for the microprogram transfer.
 (define *ocean-vu0-work*
   (new 'static
        'ocean-vu0-work
@@ -14,8 +27,22 @@
        :mask-lo
        (new 'static 'vector4w :x #xffff :y #xffff :z #xffff :w #xffff)))
 
+;; Build this frame's 32x32 height field from the 64-frame wave animation.  The argument is the
+;; phase in 1/32 frame steps: bits 5 and up choose the frame, wrapping modulo 64, and the low
+;; five bits give the weight toward the following frame.  The two weights are published in
+;; (-> *ocean-work* interp) x and y with a 1/3 amplitude scale folded into both.  The destination
+;; is the 4 KiB *ocean-heights* block.
 (def-mips2c ocean-interp-wave (function ocean-wave-info uint none)) ;; TODO mips2c
 
+;; VU0 microprogram ocean-generate-verts drives.  For each group of four wave samples it
+;; differences neighbors along x and along the next row to get the surface slopes, forms the
+;; normal, takes the three light dot products against the uploaded light directions, accumulates
+;; the light and ambient colors and clamps the result.  ocean-generate-verts uploads it once per
+;; call and then drives it with vcallms per group.
 (define ocean-vu0-block (new 'static 'vu-function :length #x0 :qlength #x0))
 
+;; Turn the height field into the 1024 pairs the near grid draws: one wave-displaced position
+;; followed by the vertex color the VU0 program computes from the surface normal and the lights.
+;; The three light colors and the ambient are scaled by *ocean-generate-verts-vector* before the
+;; upload, so the lighting the near grid sees is not the same as the rest of the scene's.
 (def-mips2c ocean-generate-verts (function (inline-array vector) ocean-wave-info none)) ;; TODO mips2c

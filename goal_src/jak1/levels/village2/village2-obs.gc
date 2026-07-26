@@ -19,6 +19,7 @@
   :bounds (static-spherem 0 0 0 10))
 
 (defmethod set-stack-size! ((this village2cam))
+  "Set the Village 2 cutscene camera's process stack to 512 bytes."
   (stack-size-set! (-> this main-thread) 512)
   (none))
 
@@ -28,16 +29,8 @@
     (behavior ()
       (let ((v1-0 (-> self seq)))
         (cond
-          ((zero? v1-0)
-           (ja-no-eval :group! village2cam-elevator-at-top-going-down-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))
-          ((= v1-0 1)
-           (ja-no-eval :group! village2cam-elevator-at-bottom-going-up-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))
+          ((zero? v1-0) (ja-play :group! village2cam-elevator-at-top-going-down-ja :num! (seek!) :frame-num 0.0))
+          ((= v1-0 1) (ja-play :group! village2cam-elevator-at-bottom-going-up-ja :num! (seek!) :frame-num 0.0))
           ((= v1-0 2)
            (pov-camera-play-and-reposition (the-as art-joint-anim village2cam-elevator-at-top-going-up-ja)
                                            (new 'static 'vector :x 2199552.0 :y 40960.0 :z -6676480.0)
@@ -116,15 +109,17 @@
       (case message
         (('die) (cleanup-for-death self) (deactivate self)))))
 
-(defmethod init-from-entity! ((this pontoon) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pontoon) (source-entity entity-actor))
+  "Initialize a pontoon's collision, drawable, buoyancy setup, and task gates, then select its
+   hidden, idle, or dead state."
   (logior! (-> this mask) (process-mask platform))
-  (rigid-body-platform-method-30 this)
-  (process-drawable-from-entity! this arg0)
-  (rigid-body-platform-method-31 this)
+  (init-collision! this)
+  (process-drawable-from-entity! this source-entity)
+  (init-platform! this)
   (set! (-> this water-anim) #f)
   (set! (-> this root-overlay pause-adjust-distance) -122880.0)
-  (set! (-> this task) (the-as uint (-> arg0 extra perm task)))
-  (set! (-> this alt-task) (res-lump-value arg0 'alt-task uint))
+  (set! (-> this task) (the-as uint (-> source-entity extra perm task)))
+  (set! (-> this alt-task) (res-lump-value source-entity 'alt-task uint))
   (cond
     ((and (nonzero? (-> this alt-task)) (task-closed? (the-as game-task (-> this alt-task)) (task-status need-resolution)))
      (go pontoon-die))
@@ -135,9 +130,11 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-23 ((this pontoon) (arg0 float))
-  (call-parent-method this arg0)
-  (rigid-body-platform-method-27 this (-> this anchor-point))
+(defmethod accumulate-forces! ((this pontoon) (time-step float))
+  "Accumulate the ordinary rigid-body platform forces, then pull the pontoon back toward its
+   anchor point."
+  (call-parent-method this time-step)
+  (apply-restoring-force! this (-> this anchor-point))
   0
   (none))
 
@@ -215,7 +212,8 @@
   :bounds (static-spherem 0 0 0 7)
   :longest-edge (meters 4))
 
-(defmethod rigid-body-platform-method-30 ((this pontoonfive))
+(defmethod init-collision! ((this pontoonfive))
+  "Create the five-meter pontoon's moving sticky collision sphere and rider slot."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -235,9 +233,11 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this pontoonfive))
+(defmethod init-platform! ((this pontoonfive))
+  "Initialize the five-meter pontoon's skeleton and physics constants, place its four buoyancy
+   control points, and connect it to navigation."
   (initialize-skeleton this *pontoonfive-sg* '())
-  (rigid-body-platform-method-29 this *pontoonfive-constants*)
+  (setup-from-constants! this *pontoonfive-constants*)
   (set! (-> this float-height-offset) 6144.0)
   (set! (-> this root-overlay nav-radius) 12288.0)
   (let ((v1-6 (-> this control-point-array data)))
@@ -265,7 +265,8 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-30 ((this pontoonten))
+(defmethod init-collision! ((this pontoonten))
+  "Create the ten-meter pontoon's moving sticky collision sphere and rider slot."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -285,9 +286,11 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this pontoonten))
+(defmethod init-platform! ((this pontoonten))
+  "Initialize the ten-meter pontoon's skeleton and physics constants, place its four buoyancy
+   control points, and connect it to navigation."
   (initialize-skeleton this *pontoonten-sg* '())
-  (rigid-body-platform-method-29 this *pontoonten-constants*)
+  (setup-from-constants! this *pontoonten-constants*)
   (set! (-> this float-height-offset) 6144.0)
   (set! (-> this root-overlay nav-radius) 20480.0)
   (let ((v1-6 (-> this control-point-array data)))
@@ -340,7 +343,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 3.2)
    (:timer (seconds 5))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.035) (seconds 0.097))
    (:next-launcher 2843)
    (:conerot-x (degrees 70) (degrees 20))
@@ -367,7 +370,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 3.2)
    (:timer (seconds 5))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.035) (seconds 0.097))
    (:next-launcher 2843)
    (:conerot-x (degrees 70) (degrees 20))
@@ -431,11 +434,12 @@
         (logior! (-> self mask) (process-mask sleep))
         (suspend))))
 
-(defmethod init-from-entity! ((this allpontoons) (arg0 entity-actor))
+(defmethod init-from-entity! ((this allpontoons) (source-entity entity-actor))
+  "Initialize the all-pontoons cutscene prop, attach its task and wake trail, and enter idle."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *allpontoons-sg* '())
-  (set! (-> this task) (the-as uint (-> arg0 extra perm task)))
+  (set! (-> this task) (the-as uint (-> source-entity extra perm task)))
   (set! (-> this part) (create-launch-control group-allpontoons-trail this))
   (go allpontoons-idle)
   (none))
@@ -458,6 +462,7 @@
   :longest-edge (meters 3.5))
 
 (defbehavior fireboulder-disable-blocking-collision fireboulder ()
+  "Disable the boulder's blocking primitive and tighten its root bounds for hovering."
   (let ((v1-1 (-> self root root-prim)))
     (dotimes (a0-0 (-> (the-as collide-shape-prim-group v1-1) num-prims))
       (let ((a1-2 (-> (the-as collide-shape-prim-group v1-1) prims a0-0)))
@@ -471,6 +476,7 @@
   (none))
 
 (defbehavior fireboulder-hover-stuff fireboulder ()
+  "Keep the hover particle tracker at the boulder center, creating it when necessary."
   (local-vars (v0-1 object))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (vector<-cspace! gp-0 (joint-node fireboulder-lod0-jg bouldercenter))
@@ -517,11 +523,10 @@
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 455.1111 (-> *display* time-adjust-ratio)))
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group)
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 455.1111 (-> *display* time-adjust-ratio))))))
   :post transform-post)
 
 (defstate fireboulder-be-clone (fireboulder)
@@ -556,30 +561,31 @@
     (behavior ()
       (transform-post)
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (cond
-            ((zero? (-> self task)))
-            ((handle->process (-> self tracker))
-             (set-time! (-> (the-as (pointer part-tracker) (-> self tracker process)) 0 start-time)))
-            (else
-             (set! (-> self tracker)
-                   (ppointer->handle (process-spawn part-tracker
-                                                    :init
-                                                    part-tracker-init
-                                                    group-village2-fireboulder
-                                                    -1
-                                                    #f
-                                                    #f
-                                                    #f
-                                                    (-> self root trans)
-                                                    :to
-                                                    *entity-pool*)))))
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group)
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (cond
+                   ((zero? (-> self task)))
+                   ((handle->process (-> self tracker))
+                    (set-time! (-> (the-as (pointer part-tracker) (-> self tracker process)) 0 start-time)))
+                   (else
+                    (set! (-> self tracker)
+                          (ppointer->handle (process-spawn part-tracker
+                                                           :init
+                                                           part-tracker-init
+                                                           group-village2-fireboulder
+                                                           -1
+                                                           #f
+                                                           #f
+                                                           #f
+                                                           (-> self root trans)
+                                                           :to
+                                                           *entity-pool*))))))))
   :post ja-post)
 
-(defmethod init-from-entity! ((this fireboulder) (arg0 entity-actor))
+(defmethod init-from-entity! ((this fireboulder) (source-entity entity-actor))
+  "Build the fire boulder's collision group, initialize its drawable and skeleton, configure the
+   hovering variant, and select its initial task state."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
@@ -607,7 +613,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (cond
     ((name= (-> this name) "fireboulder-6")
      (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 16384.0)
@@ -616,10 +622,10 @@
   (initialize-skeleton this *fireboulder-sg* '())
   (set! (-> this tracker) (the-as handle #f))
   (set-vector! (-> this draw color-emissive) 0.125 0.0625 0.0 0.0)
-  (set! (-> this task) (the-as uint (-> arg0 extra perm task)))
+  (set! (-> this task) (the-as uint (-> source-entity extra perm task)))
   (cond
     ((zero? (-> this task)) (go fireboulder-idle))
-    ((= (get-task-status (-> arg0 extra perm task)) (task-status invalid)) (go fireboulder-hover))
+    ((= (get-task-status (-> source-entity extra perm task)) (task-status invalid)) (go fireboulder-hover))
     (else (go fireboulder-idle)))
   (none))
 
@@ -639,15 +645,13 @@
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
-(defmethod init-from-entity! ((this ceilingflag) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ceilingflag) (source-entity entity-actor))
+  "Initialize the ceiling flag's drawable and skeleton and enter its idle animation."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *ceilingflag-sg* '())
   (go ceilingflag-idle)
   (none))
@@ -670,6 +674,7 @@
   :bounds (static-spherem 0 5 0 15))
 
 (defmethod skip-reminder? ((this exit-chamber-dummy))
+  "Return true once reminder stage two is active and Sunken Precursor City is not loaded."
   (case (get-reminder (get-task-control (game-task sunken-room)) 0)
     ((2) (let ((v1-4 (level-get *level* 'sunken))) (if (or (not v1-4) (!= (-> v1-4 status) 'active)) (return #t)))))
   #f)
@@ -709,10 +714,12 @@
       (go exit-chamber-dummy-wait-to-appear))
   :post ja-post)
 
-(defmethod init-from-entity! ((this exit-chamber-dummy) (arg0 entity-actor))
+(defmethod init-from-entity! ((this exit-chamber-dummy) (source-entity entity-actor))
+  "Initialize the exit-chamber marker above its authored position, prepare its animation, and wait
+   until the fuel cell may appear."
   (set! (-> this fcell-handle) (the-as handle #f))
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (+! (-> this root trans y) 24576.0)
   (set! (-> this orig-trans quad) (-> this root trans quad))
@@ -771,7 +778,7 @@
    (:fade-a -0.32)
    (:accel-y (meters -0.000006666667))
    (:timer (seconds 1))
-   (:flags (bit2 bit14))))
+   (:flags (die-when-faded no-fog))))
 
 (defpart 2319
   :init-specs
@@ -796,7 +803,7 @@
    (:fade-a -1.0666667)
    (:accel-y (meters -0.000006666667))
    (:timer (seconds 0.6))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpartgroup group-ogreboulder-hit-wall
   :id 551
@@ -820,7 +827,7 @@
    (:scalevel-y (meters 1.4))
    (:fade-a -3.2)
    (:timer (seconds 0.1))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpartgroup group-ogreboulder-splash
   :id 552
@@ -848,7 +855,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 3.2)
    (:timer (seconds 5))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.035) (seconds 0.097))
    (:next-launcher 2323)
    (:conerot-x (degrees 70) (degrees 20))
@@ -874,7 +881,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 3.2)
    (:timer (seconds 5))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.035) (seconds 0.097))
    (:next-launcher 2323)
    (:conerot-x (degrees 70) (degrees 20))
@@ -901,18 +908,20 @@
    (:accel-y (meters 0.0005) (meters 0.0005))
    (:friction 0.85)
    (:timer (seconds 2.2))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:conerot-x (degrees 0) (degrees 90))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 8))))
 
 (defbehavior ogreboss-village2-trans ogreboss-village2 ()
+  "Remove the ogre when the levitator task becomes invalid."
   (when (= (get-task-status (game-task village2-levitator)) (task-status invalid))
     (cleanup-for-death self)
     (deactivate self))
   (none))
 
 (defbehavior boulder1-trans fireboulder ()
+  "Trail the first boulder and launch its final splash."
   (spawn (-> self part) (-> self draw origin))
   (when (>= (ja-aframe-num 0) 82.0)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -925,6 +934,7 @@
   (none))
 
 (defbehavior boulder2-trans-2 fireboulder ()
+  "Launch the second boulder's final splash."
   (spawn (-> self part) (-> self draw origin))
   (when (>= (ja-aframe-num 0) 120.0)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -937,6 +947,7 @@
   (none))
 
 (defbehavior boulder2-trans fireboulder ()
+  "Trail the second boulder and launch its wall impact."
   (spawn (-> self part) (-> self draw origin))
   (when (>= (ja-aframe-num 0) 82.0)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -949,6 +960,7 @@
   (none))
 
 (defbehavior boulder3-trans-2 fireboulder ()
+  "Launch the third boulder's final splash."
   (spawn (-> self part) (-> self draw origin))
   (when (>= (ja-aframe-num 0) 131.0)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -961,6 +973,7 @@
   (none))
 
 (defbehavior boulder3-trans fireboulder ()
+  "Trail the third boulder and launch its wall impact."
   (spawn (-> self part) (-> self draw origin))
   (when (>= (ja-aframe-num 0) 80.0)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -973,6 +986,7 @@
   (none))
 
 (defbehavior boulder4-trans-3 fireboulder ()
+  "Launch the fourth boulder's final splash."
   (spawn (-> self part) (-> self draw origin))
   (when (>= (ja-aframe-num 0) 152.4)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -985,6 +999,7 @@
   (none))
 
 (defbehavior boulder4-trans-2 fireboulder ()
+  "Launch the fourth boulder's second wall impact."
   (spawn (-> self part) (-> self draw origin))
   (when (>= (ja-aframe-num 0) 116.0)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -997,6 +1012,7 @@
   (none))
 
 (defbehavior boulder4-trans fireboulder ()
+  "Trail the fourth boulder and launch its first wall impact."
   (spawn (-> self part) (-> self draw origin))
   (when (>= (ja-aframe-num 0) 74.0)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1024,10 +1040,7 @@
                   (lambda :behavior ogreboss-village2 ()
                     (let ((v0-0 (create-launch-control group-ogreboulder-trail self))) (set! (-> self part) v0-0) v0-0)))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! ogreboss-village2-pre-throw-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! ogreboss-village2-pre-throw-ja :num! (seek!) :frame-num 0.0)
       (let ((f0-9 (rand-float-gen)))
         (cond
           ((< 0.75 f0-9)
@@ -1043,10 +1056,7 @@
            (send-event (handle->process (-> self boulder)) 'art-joint-anim "fireboulder-boulder4" 0)
            (send-event (handle->process (-> self boulder)) 'trans-hook boulder4-trans))))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! ogreboss-village2-throw-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! ogreboss-village2-throw-ja :num! (seek!) :frame-num 0.0)
       (go ogreboss-village2-idle))
   :post ja-post)
 
@@ -1059,43 +1069,26 @@
         (let ((v1-0 (rand-vu-int-range 0 2)))
           (cond
             ((zero? v1-0)
-             (ja-no-eval :group! ogreboss-village2-idle-ja :num! (seek! (ja-aframe 140.0 0)) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek! (ja-aframe 140.0 0))))
+             (ja-play :group! ogreboss-village2-idle-ja :num! (seek! (ja-aframe 140.0 0)) :frame-num 0.0)
              (suspend-for (seconds 0.167))
-             (ja-no-eval :group! ogreboss-village2-idle-ja :num! (seek! (ja-aframe 168.0 0)) :frame-num (ja-aframe 140.0 0))
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek! (ja-aframe 168.0 0))))
+             (ja-play :group! ogreboss-village2-idle-ja :num! (seek! (ja-aframe 168.0 0)) :frame-num (ja-aframe 140.0 0))
              (suspend-for (seconds 0.167))
-             (ja-no-eval :group! ogreboss-village2-idle-ja :num! (seek!) :frame-num (ja-aframe 168.0 0))
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!))))
-            ((= v1-0 1)
-             (ja-no-eval :group! ogreboss-village2-idle-alt-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!))))
+             (ja-play :group! ogreboss-village2-idle-ja :num! (seek!) :frame-num (ja-aframe 168.0 0)))
+            ((= v1-0 1) (ja-play :group! ogreboss-village2-idle-alt-ja :num! (seek!) :frame-num 0.0))
             (else
              (dotimes (gp-7 4)
-               (ja-no-eval :group! ogreboss-village2-idle-bored-ja :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))))))
+               (ja-play :group! ogreboss-village2-idle-bored-ja :num! (seek!) :frame-num 0.0)))))
         (let ((f0-33 (rand-float-gen)))
           (cond
             ((< 0.6666667 f0-33)
              (ja-channel-push! 1 (seconds 0.2))
-             (ja-no-eval :group! ogreboss-village2-victory-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!))))
+             (ja-play :group! ogreboss-village2-victory-ja :num! (seek!) :frame-num 0.0))
             ((not (handle->process (-> self boulder))) (go ogreboss-village2-throw))))))
   :post ja-post)
 
-(defmethod init-from-entity! ((this ogreboss-village2) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ogreboss-village2) (source-entity entity-actor))
+  "Build the Village 2 ogre's collision, initialize and scale its skeleton, and enter its idle
+   boulder-throwing state."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -1113,7 +1106,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *ogreboss-village2-sg* '())
   (set-vector! (-> this root scale) 0.65 0.65 0.65 1.0)
   (transform-post)
@@ -1145,13 +1138,15 @@
             (new 'static 'ripple-wave :scale 3.0 :xdiv 5 :zdiv 3 :speed 3.0)
             (new 'static 'ripple-wave))))
 
-(defmethod water-vol-method-22 ((this villageb-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
-  (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> this draw ripple) v1-2)
+(defmethod setup-water! ((this villageb-water))
+  "Run the base water setup, then install Village 2's ripple waveform, fade distances, scale, and
+   blue-green color."
+  (let ((t9-0 (method-of-type water-anim setup-water!))) (t9-0 this))
+  (let ((ripple (new 'process 'ripple-control)))
+    (set! (-> this draw ripple) ripple)
     (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
-    (set! (-> v1-2 global-scale) 3072.0)
-    (set! (-> v1-2 close-fade-dist) 163840.0)
-    (set! (-> v1-2 far-fade-dist) 245760.0)
-    (set! (-> v1-2 waveform) ripple-for-villageb-water))
+    (set! (-> ripple global-scale) 3072.0)
+    (set! (-> ripple close-fade-dist) 163840.0)
+    (set! (-> ripple far-fade-dist) 245760.0)
+    (set! (-> ripple waveform) ripple-for-villageb-water))
   (none))

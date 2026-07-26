@@ -6,6 +6,7 @@
 ;; DECOMP BEGINS
 
 (deftype evilbro (process-taskable)
+  "Gol's taskable actor for the Misty Island closing cinematic."
   ((evilsis entity-actor)))
 
 (defskelgroup *evilbro-intro-sg*
@@ -16,15 +17,17 @@
   :bounds (static-spherem 0 0 0 4)
   :shadow evilbro-shadow-mg)
 
-(defmethod play-anim! ((this evilbro) (arg0 symbol))
+(defmethod play-anim! ((this evilbro) (commit? symbol))
+  "Select Gol's Misty Island cinematic; commit? advances the task and starts Maia's clone."
   (cond
-    (arg0
+    (commit?
      (close-specific-task! (game-task leaving-misty) (task-status need-introduction))
      (send-event (-> this evilsis extra process) 'clone (process->handle this)))
     (else (set! (-> this will-talk) #t)))
   (the-as basic (new 'static 'spool-anim :name "evilbro-misty-end" :index 5 :parts 9 :command-list '())))
 
 (defmethod get-art-elem ((this evilbro))
+  "Return Gol's active root animation art element."
   (-> this draw art-group data 3))
 
 (defstate play-anim (evilbro)
@@ -63,14 +66,17 @@
                    (< (- s5-1 (the-as time-frame (the int (* f30-1 (+ f28-1 (* f26-1 (rand-float-gen))))))) gp-3))
             (suspend))))))
 
-(defmethod init-from-entity! ((this evilbro) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this evilbro) (source-entity entity-actor))
+  "Initialize Gol's taskable actor and bind the alternate Maia actor."
+  (init-as-taskable! this source-entity *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task leaving-misty)))
-  (set! (-> this evilsis) (entity-actor-lookup arg0 'alt-actor 0))
-  (process-taskable-method-42 this)
+  (set! (-> this evilsis) (entity-actor-lookup source-entity 'alt-actor 0))
+  (goto-initial-state! this)
   (none))
 
-(deftype evilsis (process-taskable) ())
+(deftype evilsis (process-taskable)
+  "Maia's taskable actor for the Misty Island closing cinematic."
+  ())
 
 (defskelgroup *evilsis-intro-sg*
   evilsis
@@ -80,8 +86,9 @@
   :bounds (static-spherem 0 0 0 4)
   :shadow evilsis-shadow-mg)
 
-(defmethod play-anim! ((this evilsis) (arg0 symbol))
-  (if arg0
+(defmethod play-anim! ((this evilsis) (commit? symbol))
+  "Return Maia's current art element; committing is invalid because Gol drives this clone."
+  (if commit?
     (format 0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
             (-> this name)
@@ -89,6 +96,7 @@
   (the-as basic (get-art-elem this)))
 
 (defmethod get-art-elem ((this evilsis))
+  "Return Maia's active root animation art element."
   (-> this draw art-group data 3))
 
 (defstate idle (evilsis)
@@ -98,8 +106,9 @@
       (set! (-> self will-talk) #f)
       ((-> (method-of-type process-taskable idle) trans))))
 
-(defmethod init-from-entity! ((this evilsis) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this evilsis) (source-entity entity-actor))
+  "Initialize Maia's taskable actor for the leaving-Misty task."
+  (init-as-taskable! this source-entity *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task leaving-misty)))
-  (process-taskable-method-42 this)
+  (goto-initial-state! this)
   (none))

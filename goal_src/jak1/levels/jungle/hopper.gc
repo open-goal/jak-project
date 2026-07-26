@@ -6,7 +6,8 @@
 ;; DECOMP BEGINS
 
 (deftype hopper (nav-enemy)
-  ((jump-length  float)
+  "A jumping lurker that patrols and chases in discrete hops while keeping its shadow on the ground."
+  ((jump-length float)
    (shadow-min-y float)))
 
 (defskelgroup *hopper-sg*
@@ -21,33 +22,36 @@
 nav-enemy-default-event-handler
 
 (defmethod common-post ((this hopper))
-  (let ((v1-1 (-> this draw shadow-ctrl)))
-    (set! (-> v1-1 settings bot-plane w) (- (- (-> this shadow-min-y) (-> this collide-info trans y)))))
+  "Keep the shadow's bottom plane at the stored ground height, then run the inherited post."
+  (let ((shadow-control (-> this draw shadow-ctrl)))
+    (set! (-> shadow-control settings bot-plane w) (- (- (-> this shadow-min-y) (-> this collide-info trans y)))))
   0
   (call-parent-method this)
   0
   (none))
 
-(defbehavior hopper-find-ground hopper ((arg0 vector))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (let ((t1-0 (new 'stack-no-clear 'collide-tri-result))
-          (f30-0 61440.0))
-      (set! (-> s5-0 quad) (-> arg0 quad))
-      (+! (-> s5-0 y) 20480.0)
-      (let ((f0-2 (fill-and-probe-using-y-probe *collide-cache*
-                                                s5-0
-                                                f30-0
-                                                (collide-kind background)
-                                                self
-                                                t1-0
-                                                (new 'static 'pat-surface :noentity #x1))))
-        (if (< f0-2 0.0) (return (the-as object #f)))
-        (set! (-> s5-0 y) (- (-> s5-0 y) (* f0-2 f30-0)))))
-    (set! (-> arg0 quad) (-> s5-0 quad)))
+(defbehavior hopper-find-ground hopper ((point vector))
+  "Probe downward for background geometry and replace the point with the ground hit."
+  (let ((probe-point (new 'stack-no-clear 'vector)))
+    (let ((hit (new 'stack-no-clear 'collide-tri-result))
+          (probe-distance 61440.0))
+      (set! (-> probe-point quad) (-> point quad))
+      (+! (-> probe-point y) 20480.0)
+      (let ((hit-fraction (fill-and-probe-using-y-probe *collide-cache*
+                                                        probe-point
+                                                        probe-distance
+                                                        (collide-kind background)
+                                                        self
+                                                        hit
+                                                        (new 'static 'pat-surface :noentity #x1))))
+        (if (< hit-fraction 0.0) (return (the-as object #f)))
+        (set! (-> probe-point y) (- (-> probe-point y) (* hit-fraction probe-distance)))))
+    (set! (-> point quad) (-> probe-point quad)))
   0)
 
-(defbehavior hopper-jump-to hopper ((arg0 vector))
-  (set! (-> self jump-dest quad) (-> arg0 quad))
+(defbehavior hopper-jump-to hopper ((destination vector))
+  "Ground the destination, execute a custom jump, and keep the shadow floor below the arc."
+  (set! (-> self jump-dest quad) (-> destination quad))
   (hopper-find-ground (-> self jump-dest))
   (set! (-> self shadow-min-y)
         (+ (fmin (-> self collide-info trans y) (-> self jump-dest y)) (-> self nav-info shadow-min-y)))
@@ -72,7 +76,8 @@ nav-enemy-default-event-handler
   (none))
 
 (defbehavior hopper-do-jump hopper ()
-  (nav-control-method-11 (-> self nav) (-> self nav target-pos))
+  "Navigate toward the current target, clamp the hop distance, and jump."
+  (navigate! (-> self nav) (-> self nav target-pos))
   (if (< (-> self jump-length) (vector-length (-> self nav travel)))
     (vector-normalize! (-> self nav travel) (-> self jump-length)))
   (vector+! (-> self jump-dest) (-> self collide-info trans) (-> self nav travel))
@@ -88,14 +93,8 @@ nav-enemy-default-event-handler
       (ja-channel-push! 1 (seconds 0.075))
       (loop
         (dotimes (gp-0 3)
-          (ja-no-eval :group! hopper-idle-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!))))
-        (ja-no-eval :group! hopper-burp-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!))))))
+          (ja-play :group! hopper-idle-ja :num! (seek!) :frame-num 0.0))
+        (ja-play :group! hopper-burp-ja :num! (seek!) :frame-num 0.0))))
 
 (defstate nav-enemy-patrol (hopper)
   :virtual #t
@@ -113,17 +112,11 @@ nav-enemy-default-event-handler
         (cond
           ((ja-group? hopper-jump-long-ja)
            (ja-channel-push! 1 (seconds 0.067))
-           (ja-no-eval :group! hopper-jump-long-land-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+           (ja-play :group! hopper-jump-long-land-ja :num! (seek!) :frame-num 0.0)
            (ja-channel-push! 1 (seconds 0.1)))
           ((ja-group? hopper-jump-short-ja)
            (ja-channel-push! 1 (seconds 0.1))
-           (ja-no-eval :group! hopper-jump-short-land-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+           (ja-play :group! hopper-jump-short-land-ja :num! (seek!) :frame-num 0.0)
            (ja-channel-push! 1 (seconds 0.1)))
           (else (ja-channel-push! 1 (seconds 0.075))))
         (set-time! (-> self state-time))
@@ -131,9 +124,9 @@ nav-enemy-default-event-handler
         (until (time-elapsed? (-> self state-time) (seconds 0.5))
           (suspend)
           (ja :num! (loop!)))
-        (when (or (logtest? (nav-control-flags navcf19) (-> self nav flags)) (< 2.0 (-> self nav block-count)))
+        (when (or (logtest? (nav-control-flags reached-destination) (-> self nav flags)) (< 2.0 (-> self nav block-count)))
           (set! (-> self nav block-count) 0.0)
-          (logior! (-> self nav flags) (nav-control-flags navcf10))
+          (logior! (-> self nav flags) (nav-control-flags gradual-turn-to-target))
           (nav-enemy-get-new-patrol-point)
           (set! (-> self nav target-pos quad) (-> self nav destination-pos quad)))
         (hopper-do-jump)))
@@ -162,17 +155,11 @@ nav-enemy-default-event-handler
         (cond
           ((ja-group? hopper-jump-long-ja)
            (ja-channel-push! 1 (seconds 0.067))
-           (ja-no-eval :group! hopper-jump-long-land-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+           (ja-play :group! hopper-jump-long-land-ja :num! (seek!) :frame-num 0.0)
            (ja-channel-push! 1 (seconds 0.1)))
           ((ja-group? hopper-jump-short-ja)
            (ja-channel-push! 1 (seconds 0.1))
-           (ja-no-eval :group! hopper-jump-short-land-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+           (ja-play :group! hopper-jump-short-land-ja :num! (seek!) :frame-num 0.0)
            (ja-channel-push! 1 (seconds 0.1)))
           (else (ja-channel-push! 1 (seconds 0.075))))
         (set-time! (-> self state-time))
@@ -246,38 +233,41 @@ nav-enemy-default-event-handler
        :debug-draw-jump #t))
 
 (defmethod initialize-collision ((this hopper))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 10240.0)
-      (set-root-prim! s5-0 s4-0)
-      (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-        (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s3-0 collide-with) (collide-kind target))
-        (set! (-> s3-0 prim-core action) (collide-action solid))
-        (set! (-> s3-0 prim-core offense) (collide-offense touch))
-        (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 4096.0)
-        (append-prim s4-0 s3-0))
-      (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-        (set! (-> s3-1 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s3-1 collide-with) (collide-kind target))
-        (set! (-> s3-1 prim-core action) (collide-action solid))
-        (set! (-> s3-1 prim-core offense) (collide-offense touch))
-        (set-vector! (-> s3-1 local-sphere) 0.0 6963.2 0.0 4096.0)
-        (append-prim s4-0 s3-1)))
-    (set! (-> s5-0 nav-radius) 6144.0)
-    (backup-collide-with-as s5-0)
-    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-    (set! (-> this collide-info) s5-0))
+  "Create the hopper's moving collision shape and two touch spheres."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((body-group (new 'process 'collide-shape-prim-group collision (the-as uint 2) 0)))
+      (set! (-> body-group prim-core collide-as) (collide-kind enemy))
+      (set! (-> body-group collide-with) (collide-kind target))
+      (set! (-> body-group prim-core action) (collide-action solid))
+      (set-vector! (-> body-group local-sphere) 0.0 4096.0 0.0 10240.0)
+      (set-root-prim! collision body-group)
+      (let ((lower-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 3))))
+        (set! (-> lower-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> lower-sphere collide-with) (collide-kind target))
+        (set! (-> lower-sphere prim-core action) (collide-action solid))
+        (set! (-> lower-sphere prim-core offense) (collide-offense touch))
+        (set-vector! (-> lower-sphere local-sphere) 0.0 4096.0 0.0 4096.0)
+        (append-prim body-group lower-sphere))
+      (let ((upper-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 3))))
+        (set! (-> upper-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> upper-sphere collide-with) (collide-kind target))
+        (set! (-> upper-sphere prim-core action) (collide-action solid))
+        (set! (-> upper-sphere prim-core offense) (collide-offense touch))
+        (set-vector! (-> upper-sphere local-sphere) 0.0 6963.2 0.0 4096.0)
+        (append-prim body-group upper-sphere)))
+    (set! (-> collision nav-radius) 6144.0)
+    (backup-collide-with-as collision)
+    (set! (-> collision max-iteration-count) (the-as uint 2))
+    (set! (-> this collide-info) collision))
   0
   (none))
 
-(defmethod nav-enemy-method-48 ((this hopper))
+(defmethod post-init-setup! ((this hopper))
+  "Initialize the hopper skeleton, navigation tuning, and starting shadow floor."
   (initialize-skeleton this *hopper-sg* '())
   (init-defaults! this *hopper-nav-enemy-info*)
   (set! (-> this shadow-min-y) (+ (-> this collide-info trans y) (-> this nav-info shadow-min-y)))

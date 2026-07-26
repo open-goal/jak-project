@@ -18,7 +18,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;
 
 (defun lookup-level-info ((name symbol))
-  "Get the level-load-info of a level using its name. name can be the level name, the visname or the nickname. First match is returned."
+  "Return the first level-load-info whose canonical name, VIS name, or nickname matches name.
+   Return default-level when no entry matches."
   (let* ((rest *level-load-list*)
          (current-sym (the symbol (car rest))))
     (while (not (null? rest))
@@ -29,7 +30,7 @@
   default-level)
 
 (defmethod load-command-get-index ((this level-group) (name symbol) (cmd-idx int))
-  "Get the n-th load command for the given level."
+  "Return command-index from level-name's alternate load-command list."
   (let ((cmd-lst (-> (lookup-level-info name) alt-load-commands)))
     (while (nonzero? cmd-idx)
       (+! cmd-idx -1)
@@ -39,19 +40,19 @@
       (nop!))
     (the-as pair (car cmd-lst))))
 
-(defun remap-level-name ((level-info level-load-info))
-  "Get the canonical name for a level using its level-load-info"
-  (if (-> *level* vis?) (-> level-info visname) (-> level-info name)))
+(defun remap-level-name ((info level-load-info))
+  "Return info's VIS filename symbol when VIS mode is enabled, otherwise its canonical level
+   name."
+  (if (-> *level* vis?) (-> info visname) (-> info name)))
 
-(defmethod art-group-get-by-name ((this level) (arg0 string))
-  "Get the art group in the given level with the given name.
-   If it doesn't exist, #f."
+(defmethod art-group-get-by-name ((this level) (name string))
+  "Return this level's art group whose name matches name, or false."
   (countdown (i (-> this art-group art-group-array length))
-    (if (name= (-> this art-group art-group-array i name) arg0) (return (-> this art-group art-group-array i))))
+    (if (name= (-> this art-group art-group-array i name) name) (return (-> this art-group art-group-array i))))
   (the-as art-group #f))
 
 (defmethod bsp-name ((this level))
-  "Get the name of the bsp tree of the level"
+  "Return the loaded BSP name when available, otherwise return this level's requested name."
   (if (and (!= (-> this status) 'inactive) (-> this bsp) (nonzero? (-> this bsp name))) (-> this bsp name) (-> this name)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -64,11 +65,11 @@
 ;; The actual drawing is executed with (execute-connections *background-draw-engine* ...)
 ;; in drawable.gc
 
-(defun add-bsp-drawable ((arg0 bsp-header) (arg1 level) (arg2 symbol) (arg3 display-frame))
-  "Draw a level!"
+(defun add-bsp-drawable ((bsp-data bsp-header) (level-data level) (unused symbol) (display-frame-data display-frame))
+  "Draw a level BSP for the current display frame and optionally append its strip-line debug view."
   ;; do the draw
-  (draw arg0 arg0 arg3)
-  (if (nonzero? *display-strip-lines*) (debug-draw arg0 arg0 arg3))
+  (draw bsp-data bsp-data display-frame-data)
+  (if (nonzero? *display-strip-lines*) (debug-draw bsp-data bsp-data display-frame-data))
   (none))
 
 (defmethod print ((this level))
@@ -76,42 +77,42 @@
   (format #t "#<~A ~A ~S @ #x~X>" (-> this type) (-> this status) (-> this name) this)
   this)
 
-(defmethod relocate ((this bsp-header) (dest-heap kheap) (name (pointer uint8)))
-  "Handle a bsp file load."
+(defmethod relocate ((this bsp-header) (heap kheap) (name (pointer uint8)))
+  "Validate a newly linked BSP for the currently loading level, preserve the corrected title and
+   demo names, and connect the BSP and level to each other. Reject invalid types, versions, and
+   visibility lists longer than 2048 entries."
   ;; we expect that we'll have a loading-level set when we link/login a bsp-header
-  (let ((s5-0 (-> *level* loading-level)))
-    (if s5-0
+  (let ((loading-level (-> *level* loading-level)))
+    (if loading-level
       (cond
         (this
          (cond
            ((not (type-type? (-> this type) bsp-header))
-            (format 0 "ERROR: level ~A is not a bsp-header.~%" (-> s5-0 name))
+            (format 0 "ERROR: level ~A is not a bsp-header.~%" (-> loading-level name))
             (the-as bsp-header #f))
            ((not (file-info-correct-version? (-> this info) (file-kind level-bt) 0)) (the-as bsp-header #f))
            ((< 2048 (-> this visible-list-length))
             (format 0
                     "ERROR: level ~A visible-list-length ~d is greater than 2048 (16384 drawables).~%"
-                    (-> s5-0 name)
+                    (-> loading-level name)
                     (-> this visible-list-length))
             (the-as bsp-header #f))
            (else
             (load-dbg "bsp relocate: ~A~%" this)
             ;; everything is okay, link the bsp and level.
             ;; og:preserve-this fix bad filenames
-            (when (= (-> s5-0 name) 'title)
+            (when (= (-> loading-level name) 'title)
               (set! (-> this name) 'title))
-            (when (= (-> s5-0 name) 'demo)
+            (when (= (-> loading-level name) 'demo)
               (set! (-> this name) 'demo))
-            (set! (-> s5-0 bsp) this)
-            (set! (-> this level) s5-0)
+            (set! (-> loading-level bsp) this)
+            (set! (-> this level) loading-level)
             this)))
-        (else (format 0 "ERROR: level ~A is not a valid file.~%" (-> s5-0 name)) (the-as bsp-header #f)))))
+        (else (format 0 "ERROR: level ~A is not a valid file.~%" (-> loading-level name)) (the-as bsp-header #f)))))
   (none))
 
 (defmethod load-required-packages ((this level))
-  "Load required packages for the level. This is mostly useless, but might load common.
-   This will have no effect most of the time - common is often loaded at boot as part of
-   game.cgo."
+  "Load the common package requested by a non-debug BSP when its level package list is nonempty."
   (when (not (or (not (-> this bsp)) (= *kernel-boot-mode* 'debug-boot)))
     (if (not (null? (-> this info packages))) (load-package "common" global)))
   this)
@@ -121,78 +122,79 @@
 ;;;;;;;;;;;;;;
 
 (defmethod vis-clear ((this level))
-  "Clear the visibility info for when the level is loading."
+  "Clear this level's eight VIS descriptors and 2048-byte visibility bit string, then mark
+   visibility as loading."
   ;; clear vis-infos, so we can't try to look up a vis string.
-  (countdown (v1-0 8)
+  (countdown (i 8)
     (nop!) ;; the usual.
-    (set! (-> this vis-info v1-0) #f))
+    (set! (-> this vis-info i) #f))
   ;; set the vis string to all 0s.
-  (dotimes (v1-3 128)
-    (set! (deref int128 (-> this vis-bits) v1-3) (the-as int128 0)))
+  (dotimes (i 128)
+    (set! (deref int128 (-> this vis-bits) i) (the-as int128 0)))
   ;; this flag indicates we don't have vis data because loading is in progress
   (set! (-> this all-visible?) 'loading)
   0)
 
 (defmethod vis-load ((this level))
-  "Start the initial load of a VIS file to the IOP VIS buffer. After this is done, we can use
-   ramdisk-load to load chunks."
+  "Ensure this level's self VIS file owns an IOP ramdisk slot, evicting the other level's slot when
+   necessary, and return the assigned ramdisk ID."
   ;; check to see if we have a buffer for loaded vis data.
   (when (zero? (-> this vis-info (-> this vis-self-index) ramdisk))
     ;; nope, we have no vis data buffer, we need to set it up.
     ;; first, we should see if the other level has loaded vis. if so, kill it.
-    (let ((vis (-> this other vis-info (-> this other vis-self-index))))
-      (when (and vis (nonzero? (-> vis ramdisk)))
-        (set! (-> vis flags) (logand #xffffffffbfffffff (-> vis flags))) ;; clear waiting-for-load
-        (set! (-> vis ramdisk) 0)
+    (let ((other-vis (-> this other vis-info (-> this other vis-self-index))))
+      (when (and other-vis (nonzero? (-> other-vis ramdisk)))
+        (set! (-> other-vis flags) (logand #xffffffffbfffffff (-> other-vis flags))) ;; clear waiting-for-load
+        (set! (-> other-vis ramdisk) 0)
         0))
     ;; set up a ramdisk rpc (fill command, actually load the file from DVD to IOP buffer)
-    (let ((visname (make-file-name (file-kind vis) (the-as string (-> this nickname)) 0 #f))
-          (cmd (the-as ramdisk-rpc-fill (add-element *ramdisk-rpc*)))
-          (s5-0 (+ *current-ramdisk-id* 1)))
-      (set! *current-ramdisk-id* s5-0)
-      (set! (-> cmd filename) (string->sound-name visname))
-      (set! (-> cmd ee-id) s5-0)
-      (load-dbg "doing ramdisk vis load: ~A~%" visname)
+    (let ((vis-filename (make-file-name (file-kind vis) (the-as string (-> this nickname)) 0 #f))
+          (request (the-as ramdisk-rpc-fill (add-element *ramdisk-rpc*)))
+          (ramdisk-id (+ *current-ramdisk-id* 1)))
+      (set! *current-ramdisk-id* ramdisk-id)
+      (set! (-> request filename) (string->sound-name vis-filename))
+      (set! (-> request ee-id) ramdisk-id)
+      (load-dbg "doing ramdisk vis load: ~A~%" vis-filename)
       (call *ramdisk-rpc* RAMDISK_RPC_FILL_FNO (the-as pointer 0) (the-as uint 0))
       ;; remember which ramdisk id we are assigned
-      (set! (-> this vis-info (-> this vis-self-index) ramdisk) s5-0)))
+      (set! (-> this vis-info (-> this vis-self-index) ramdisk) ramdisk-id)))
   ;; return the ramdisk ID.
   (-> this vis-info (-> this vis-self-index) ramdisk))
 
 (defun load-vis-info ((vis-name symbol) (old-vis-name symbol))
-  "Load a new VIS file and dump the old one. The corresponding level must be active!"
+  "Start loading the self VIS file for the active level whose nickname matches vis-name, replacing
+   the old VIS file when required."
   (dotimes (i (-> *level* length))
-    (let ((lev (-> *level* level i)))
-      (when (= (-> lev status) 'active)
-        (when (= vis-name (-> lev nickname))
+    (let ((active-level (-> *level* level i)))
+      (when (= (-> active-level status) 'active)
+        (when (= vis-name (-> active-level nickname))
           (format 0 "Swapping in ~A VIS [dumping ~A]~%" vis-name old-vis-name)
-          (vis-load lev)))))
+          (vis-load active-level)))))
   0)
 
 (defmethod init-vis ((this level))
-  "Set up the vis info in a level from the vis info in the BSP."
+  "Attach the BSP's self and neighboring level-vis-info records, initialize their owners, output
+   buffers, packed flags, and ramdisk state, and enable visibility-aware actor-memory warnings."
   (when (not (or (= (-> this status) 'inactive) (not (-> this bsp))))
     ;; no vis loaded at first, mark as loading/invalid.
     (set! (-> this all-visible?) 'loading)
     ;; vis info 0 is always self.
-    (let ((s5-0 (-> this bsp vis-info 0)))
+    (let ((self-vis (-> this bsp vis-info 0)))
       ;; check that our vis info is valid.
       (cond
-        ((and s5-0 (nonzero? s5-0) (valid? s5-0 level-vis-info #f #f 0))
+        ((and self-vis (nonzero? self-vis) (valid? self-vis level-vis-info #f #f 0))
          ;; add to the level
-         (set! (-> this vis-info 0) s5-0)
+         (set! (-> this vis-info 0) self-vis)
          ;; don't have a string loaded yet
-         (set! (-> s5-0 current-vis-string) (the-as uint -1))
+         (set! (-> self-vis current-vis-string) (the-as uint -1))
          ;; link to bsp
-         (set! (-> s5-0 from-bsp) (-> this bsp))
+         (set! (-> self-vis from-bsp) (-> this bsp))
          ;; the current vis string (uncompressed). The level allocates/manages this.
-         (set! (-> s5-0 vis-bits) (-> this vis-bits))
-         ;; clear waiting-for-load, thirty-one
-         (set! (-> s5-0 flags) (logand (the-as uint #xffffffff3fffffff) (-> s5-0 flags)))
-         ;; set twenty-nine
-         (set! (-> s5-0 flags) (logior #x20000000 (-> s5-0 flags)))
-         (set! (-> s5-0 ramdisk) (the-as uint 0))
-         (set! (-> s5-0 string-block) (the-as uint #f))
+         (set! (-> self-vis vis-bits) (-> this vis-bits))
+         (logclear! (-> self-vis flags) (vis-info-flag waiting-for-iop-to-ee using-this-as-only-vis))
+         (logior! (-> self-vis flags) (vis-info-flag from-vis-file))
+         (set! (-> self-vis ramdisk) (the-as uint 0))
+         (set! (-> self-vis string-block) (the-as uint #f))
          ;; remember that we use the vis system. This will enable warnings in the kernel
          ;; if we run out of actor memory. Without vis, I guess this happens a lot.
          (set! *vis-boot* #t))
@@ -200,50 +202,54 @@
          ;; we don't have vis (but it's okay)
          (set! (-> this vis-info 0) #f))))
     ;; check for up to 6 neighbor level vis info.  The last one is always left as null.
-    (dotimes (s5-1 6)
-      (let* ((s3-0 (+ s5-1 1))
-             (s4-0 (-> this bsp vis-info s3-0)))
+    (dotimes (i 6)
+      (let* ((vis-index (+ i 1))
+             (neighbor-vis (-> this bsp vis-info vis-index)))
         (cond
-          ((and s4-0 (nonzero? s4-0) (valid? s4-0 level-vis-info #f #f 0))
-           (set! (-> this vis-info s3-0) s4-0)
-           (set! (-> s4-0 current-vis-string) (the-as uint -1))
-           (set! (-> s4-0 from-bsp) #f)
-           (set! (-> s4-0 vis-bits) (-> this vis-bits))
-           ;; clear 29, 30, 31
-           (set! (-> s4-0 flags) (logand (the-as uint #xffffffff1fffffff) (-> s4-0 flags)))
+          ((and neighbor-vis (nonzero? neighbor-vis) (valid? neighbor-vis level-vis-info #f #f 0))
+           (set! (-> this vis-info vis-index) neighbor-vis)
+           (set! (-> neighbor-vis current-vis-string) (the-as uint -1))
+           (set! (-> neighbor-vis from-bsp) #f)
+           (set! (-> neighbor-vis vis-bits) (-> this vis-bits))
+           (logclear! (-> neighbor-vis flags) (vis-info-flag from-vis-file waiting-for-iop-to-ee using-this-as-only-vis))
            (set! *vis-boot* #t))
-          (else (set! (-> this vis-info s3-0) #f))))))
+          (else (set! (-> this vis-info vis-index) #f))))))
   0)
 
 (defmethod level-get-for-use ((this level-group) (name symbol) (want-status symbol))
-  "Get a level in a playable form, loading it if necessary."
-  (local-vars (s5-1 level))
+  "Return a slot for name at want-status. Reuse a matching level when possible; otherwise dispose
+   of the safest slot, initialize its level-info and mood state, and begin loading."
+  (local-vars (selected-level level))
   ;; debug allocate levels if necessary
   (alloc-levels! this #f)
-  (let* ((level-info (lookup-level-info name))
-         (level-name (remap-level-name level-info)))
-    (awhen (level-get this level-name) (level-status-set! it want-status) (return it))
-    (let ((a0-7 (level-get-most-disposable this))) (set! s5-1 (if a0-7 (level-status-set! a0-7 'inactive) a0-7)))
+  (let* ((info (lookup-level-info name))
+         (load-name (remap-level-name info)))
+    (awhen (level-get this load-name)
+      (level-status-set! it want-status)
+      (return it))
+    (let ((disposable-level (level-get-most-disposable this)))
+      (set! selected-level (if disposable-level (level-status-set! disposable-level 'inactive) disposable-level)))
     ;; THIS WAS BUGGED IN THE ORIGINAL GAME!! Probably due to a fault in the original GOAL compiler and because they had
     ;; a local variable called "level", this branch here checks for the *TYPE* object called level instead of the
     ;; variable. Since the type will never be equal to #f when this code runs, this failsafe never runs, and the game will
     ;; proceed to corrupt the symbol table since it thinks #f is a level, which most definitely crashes the game
     ;; very quickly.
     ;; We are fixing it.
-    (when (not s5-1) ;;level)
+    (when (not selected-level) ;; level
       (format 0 "ERROR: could not find a slot to load ~A into.~%" name)
       (return (the-as level #f)))
-    (set! (-> s5-1 info) level-info)
-    (set! (-> s5-1 name) name)
-    (set! (-> s5-1 load-name) level-name))
-  (set! (-> s5-1 mood) (the mood-context (-> s5-1 info mood value)))
-  (set! (-> s5-1 mood-func) (the (function mood-context float int none) (-> s5-1 info mood-func value)))
-  (set! (-> s5-1 display?) #f)
-  (set! (-> s5-1 force-all-visible?) #f)
-  (set! (-> s5-1 force-inside?) #f)
-  (level-status-set! s5-1 'loading)
-  (level-status-set! s5-1 want-status)
-  s5-1)
+    (set! (-> selected-level info) info)
+    (set! (-> selected-level name) name)
+    (set! (-> selected-level load-name) load-name))
+  (set! (-> selected-level mood) (the mood-context (-> selected-level info mood value)))
+  (set! (-> selected-level mood-func)
+        (the (function mood-context float int none) (-> selected-level info mood-func value)))
+  (set! (-> selected-level display?) #f)
+  (set! (-> selected-level force-all-visible?) #f)
+  (set! (-> selected-level force-inside?) #f)
+  (level-status-set! selected-level 'loading)
+  (level-status-set! selected-level want-status)
+  selected-level)
 
 ;; level status:
 ;; - inactive: nothing loaded or loading.
@@ -258,13 +264,12 @@
 ;; - active: level is being drawn
 
 (defmethod level-status ((this level-group) (level-name symbol))
-  "Get the status of an existing level."
-  (let ((lev (level-get *level* level-name))) (if lev (-> lev status))))
+  "Return the status of the loaded level matching level-name, or false."
+  (let ((loaded-level (level-get *level* level-name))) (if loaded-level (-> loaded-level status))))
 
 (defmethod level-status-set! ((this level) (want-status symbol))
-  "Change the status of a level, performing any cleanup and prep work as necessary.
-   Only change loading statuses in order!
-   Returns the level."
+  "Move this level toward want-status through the legal load, login, birth, activation,
+   deactivation, and unload transitions. Loading states may only advance in order."
   (case want-status
     (('inactive)
      (case (-> this status))
@@ -303,9 +308,9 @@
                             (-> this bsp)
                             this
                             #f)
-            (dotimes (v1-40 9)
-              (set! (-> this closest-object v1-40) 0.0)
-              (set! (-> this texture-mask v1-40) (the-as uint 0)))
+            (dotimes (i 9)
+              (set! (-> this closest-object i) 0.0)
+              (set! (-> this texture-mask i) (the-as uint 0)))
             (set! (-> this level-distance) 0.0)
             (set! (-> this status) 'active)))))))
   this)
@@ -315,7 +320,8 @@
 (define *print-login* #t)
 
 (defmethod load-continue ((this level))
-  "Continue loading a level from where we left off last time."
+  "Advance this level's asynchronous DGO load, deferred texture relocation, linking, final
+   BSP-object load, or incremental login according to its current status."
   ;; see if we are still linking some file
   (when (-> this linking)
     ;; do some more linking
@@ -340,15 +346,15 @@
   (case (-> this status)
     (('loading)
      ;; we are still loading
-     (let* ((last-obj #f)
-            (a0-15 (dgo-load-get-next (& last-obj))))
-       (when a0-15
+     (let* ((last-object-name #f)
+            (loaded-object (dgo-load-get-next (& last-object-name))))
+       (when loaded-object
          ;; something has finished loading!
          (cond
-           ((not last-obj)
+           ((not last-object-name)
             ;; not the last object. start linking
             (cond
-              ((dgo-load-link (the-as dgo-header a0-15) (-> this heap) *print-login* #f)
+              ((dgo-load-link (the-as dgo-header loaded-object) (-> this heap) *print-login* #f)
                ;; linking finished (that was fast)
                (if (not (-> *texture-relocate-later* memcpy)) (dgo-load-continue (the pointer (align64 (-> this heap current))))))
               (else
@@ -363,9 +369,9 @@
      (level-update-after-load this *login-state*))
     (('loading-bt)
      ;; link the last object
-     (let ((a0-26 (the pointer (align64 (-> this heap current)))))
+     (let ((load-destination (the pointer (align64 (-> this heap current)))))
        (cond
-         ((dgo-load-link (the-as dgo-header a0-26) (-> this heap) *print-login* #t)
+         ((dgo-load-link (the-as dgo-header load-destination) (-> this heap) *print-login* #t)
           (level-status-set! this 'loading-done)
           ;; will start login.
           (level-status-set! this 'loaded))
@@ -373,7 +379,8 @@
   this)
 
 (defmethod load-begin ((this level))
-  "Start loading the level. Uses 2 megabyte heaps for loading each object."
+  "Reserve this level slot, clear its previous state, select the level texture allocator, build the
+   DGO filename, allocate two 2 MiB streaming buffers, and begin the asynchronous load."
   ;; set the level heap. level code logins called from linker may allocate here
   (set! loading-level (-> this heap))
   ;; relocate method of the bsp will look for this
@@ -398,18 +405,20 @@
   ;; reset temporary allocations on level heap
   (set! (-> this heap top) (-> this heap top-base))
   ;; allocate DGO loading buffers
-  (let ((s4-0 (kmalloc (-> this heap) (* 2 1024 1024) (kmalloc-flags align-64 top) "dgo-level-buf-2"))
-        (s5-2 (kmalloc (-> this heap) (* 2 1024 1024) (kmalloc-flags align-64 top) "dgo-level-buf-2")))
-    (load-dbg " DGO buffers at #x~X #x~X~%" s4-0 s5-2)
+  (let ((buffer-a (kmalloc (-> this heap) (* 2 1024 1024) (kmalloc-flags align-64 top) "dgo-level-buf-2"))
+        (buffer-b (kmalloc (-> this heap) (* 2 1024 1024) (kmalloc-flags align-64 top) "dgo-level-buf-2")))
+    (load-dbg " DGO buffers at #x~X #x~X~%" buffer-a buffer-b)
     ;; we expect to load code first, remember where the heap is now.
     (set! (-> this code-memory-start) (-> this heap current))
     (format 0 "-----------> begin load ~A [~S]~%" (-> this load-name) *temp-string*)
     ;; kick off the load!
-    (dgo-load-begin *temp-string* s5-2 s4-0 (the pointer (align64 (-> this heap current)))))
+    (dgo-load-begin *temp-string* buffer-b buffer-a (the pointer (align64 (-> this heap current)))))
   this)
 
 (defmethod login-begin ((this level))
-  "Start the login.  This is spread over multiple frames."
+  "Restore the default texture allocator, log in the BSP's texture pages and ADGIF shaders,
+   initialize the incremental login state, and enter login status. An absent BSP unloads the
+   level."
   ;; done with load, reset the texture page allocator
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
   (cond
@@ -418,9 +427,9 @@
      ;; login textures
      (login-level-textures *texture-pool* this (-> this bsp texture-page-count) (-> this bsp texture-ids))
      ;; login shaders
-     (let ((bsp (-> this bsp)))
-       (when (nonzero? (-> bsp adgifs))
-         (let ((adgifs (-> bsp adgifs))) (dotimes (i (-> adgifs length)) (adgif-shader-login-no-remap (-> adgifs data i))))))
+     (let ((bsp-data (-> this bsp)))
+       (when (nonzero? (-> bsp-data adgifs))
+         (let ((adgifs (-> bsp-data adgifs))) (dotimes (i (-> adgifs length)) (adgif-shader-login-no-remap (-> adgifs data i))))))
      ;; set the login state machine at the beginning.
      (set! (-> *login-state* state) -1)
      (set! (-> *login-state* pos) (the-as uint 0))
@@ -434,25 +443,27 @@
   this)
 
 (defun level-update-after-load ((loaded-level level) (level-login-state login-state))
-  "Run some small amount of logins.
-   This will time itself and stop after some time.
-   When it's done, it will set the status to loaded."
-  (local-vars (current-timer int) (v1-154 int) (initial-timer int) (sv-16 prototype-bucket-tie) (sv-32 int))
-  ;; there is some logic for not doing the whole login all at once...
-  ;; for now, we will somewhat ignore that.
+  "Advance a level's incremental login. Log in direct drawable trees and art groups, process queued
+   tfragment arrays and TIE prototypes in bounded batches, initialize actor navigation, then attach
+   visibility, load packages, publish subdivision distances, and mark the level loaded."
+  (local-vars
+    (current-timer int)
+    (final-timer int)
+    (initial-timer int)
+    (current-prototype prototype-bucket-tie)
+    (geometry-index int))
+  ;; The EE limits one call to 100,000 Count ticks so BSP login is spread over several frames.
+  ;; The PC has no equivalent Count register and finishes the same state machine in one call.
   (let ((level-drawable-trees (-> loaded-level bsp drawable-trees)))
-    ;;(.mfc0 initial-timer Count)
+    (#unless PC_PORT
+      (m initial-timer Count))
     (label cfg-1)
-    ;;(.mfc0 current-timer Count)
-    ;; this would quit the login function after some amount of time elapsed.
-    #|
-    (let ((elapsed-timer (- current-timer initial-timer)))
-      (when (< #x186a0 elapsed-timer)
-        (set! loaded-level loaded-level)
-        (goto cfg-78)
-        )
-      )
-    |#
+    (#unless PC_PORT
+      (m current-timer Count)
+      (let ((elapsed-timer (- current-timer initial-timer)))
+        (when (< #x186a0 elapsed-timer)
+          (set! loaded-level loaded-level)
+          (goto cfg-78))))
     (let ((current-login-pos (the-as int (-> level-login-state pos))))
       ;; Login state -1.
       ;; in this state, we log in drawables/art-groups that are in referenced in the bsp directly
@@ -466,16 +477,16 @@
             (cond
               ((= (-> current-drawable type) drawable-tree-tfrag)
                ;; tfrag!
-               (dotimes (idx-in-drawable (-> current-drawable length))
+               (dotimes (drawable-index (-> current-drawable length))
                  (cond
-                   ((= (-> current-drawable data idx-in-drawable type) drawable-inline-array-tfrag)
+                   ((= (-> current-drawable data drawable-index type) drawable-inline-array-tfrag)
                     ;; we got an array of drawables. instead of iterating/recursing, just add it to the back of the login list.
                     ;;(load-dbg " tfrag array case~%")
-                    (set! (-> level-login-state elt (-> level-login-state elts)) (-> current-drawable data idx-in-drawable))
+                    (set! (-> level-login-state elt (-> level-login-state elts)) (-> current-drawable data drawable-index))
                     (+! (-> level-login-state elts) 1))
                    (else
                     ;;(load-dbg " tfrag actual login case~%")
-                    (login (-> current-drawable data idx-in-drawable))))))
+                    (login (-> current-drawable data drawable-index))))))
               ((= (-> current-drawable type) drawable-tree-instance-tie)
                ;; tie! add the tree to the list.
                ;;(load-dbg " tie tree case~%")
@@ -487,9 +498,11 @@
           (+! (-> level-login-state pos) 1)
           (goto cfg-1))
         ;; this makes the art groups go at the end.
-        (let ((v1-39 (- (the-as uint current-login-pos) (the-as uint (-> level-drawable-trees length)))))
-          (when (< (the-as int v1-39) (-> loaded-level art-group art-group-array length))
-            (let ((s2-2 (-> loaded-level art-group art-group-array v1-39))) (login s2-2) (if (needs-link? s2-2) (link-art! s2-2)))
+        (let ((art-index (- (the-as uint current-login-pos) (the-as uint (-> level-drawable-trees length)))))
+          (when (< (the-as int art-index) (-> loaded-level art-group art-group-array length))
+            (let ((current-art-group (-> loaded-level art-group art-group-array art-index)))
+              (login current-art-group)
+              (if (needs-link? current-art-group) (link-art! current-art-group)))
             (+! (-> level-login-state pos) 1)
             (goto cfg-1)))
         ;; if we got here, we're done with state -1!
@@ -500,69 +513,69 @@
       ;; we log in children of the drawables from state -1.
       (when (< (-> level-login-state state) (the-as int (-> level-login-state elts)))
         ;; (load-dbg " login state 0~%")
-        (let ((s1-1 (-> level-login-state elt (-> level-login-state state))))
+        (let ((queued-drawable (-> level-login-state elt (-> level-login-state state))))
           (cond
-            ((= (-> s1-1 type) drawable-inline-array-tfrag)
-             ;; (load-dbg " login drawable-inline-array-tfrag: ~A~%" s1-1)
+            ((= (-> queued-drawable type) drawable-inline-array-tfrag)
+             ;; (load-dbg " login drawable-inline-array-tfrag: ~A~%" queued-drawable)
              (cond
-               ((< current-login-pos (-> (the-as drawable-inline-array-tfrag s1-1) length))
-                (dotimes (s0-0 200)
-                  (when (< current-login-pos (-> (the-as drawable-inline-array-tfrag s1-1) length))
-                    ;; (load-dbg " login from drawable-inline-array-tfrag: ~A~%" (-> (the-as drawable-inline-array-tfrag s1-1) data (the-as uint current-login-pos)))
-                    (login (-> (the-as drawable-inline-array-tfrag s1-1) data (the-as uint current-login-pos)))
+               ((< current-login-pos (-> (the-as drawable-inline-array-tfrag queued-drawable) length))
+                (dotimes (batch-index 200)
+                  (when (< current-login-pos (-> (the-as drawable-inline-array-tfrag queued-drawable) length))
+                    ;; (load-dbg " login from drawable-inline-array-tfrag: ~A~%" (-> (the-as drawable-inline-array-tfrag queued-drawable) data (the-as uint current-login-pos)))
+                    (login (-> (the-as drawable-inline-array-tfrag queued-drawable) data (the-as uint current-login-pos)))
                     (set! current-login-pos (the-as int (+ (the-as uint current-login-pos) 1)))))
                 (set! (-> level-login-state pos) (the-as uint current-login-pos)))
                (else
                 (set! (-> level-login-state pos) (the-as uint 0))
                 (set! current-login-pos (+ (-> level-login-state state) 1))
                 (set! (-> level-login-state state) current-login-pos))))
-            ((= (-> s1-1 type) drawable-tree-instance-tie)
-             ;;(load-dbg " login drawable-tree-instance-tie: ~A~%" s1-1)
-             (let ((s1-2 (-> (the-as drawable-tree-instance-tie s1-1) prototypes prototype-array-tie)))
-               (when (< current-login-pos (-> s1-2 length))
-                 (dotimes (s0-1 10)
-                   (when (< current-login-pos (-> s1-2 length))
-                     (set! sv-16 (-> s1-2 array-data (the-as uint current-login-pos)))
-                     (set! sv-32 0)
+            ((= (-> queued-drawable type) drawable-tree-instance-tie)
+             ;;(load-dbg " login drawable-tree-instance-tie: ~A~%" queued-drawable)
+             (let ((prototypes (-> (the-as drawable-tree-instance-tie queued-drawable) prototypes prototype-array-tie)))
+               (when (< current-login-pos (-> prototypes length))
+                 (dotimes (batch-index 10)
+                   (when (< current-login-pos (-> prototypes length))
+                     (set! current-prototype (-> prototypes array-data (the-as uint current-login-pos)))
+                     (set! geometry-index 0)
                      (#when PC_PORT
                        ;; if a TIE uses environment mapping, disable the fade out so it always renderers with
                        ;; the generic renderer. In the port, we just make envmapped things always envmap.
-                       (when (!= (-> sv-16 envmap-fade-far) 0.0)
-                         (*! (-> sv-16 envmap-fade-far) 10000.)))
-                     (while (< sv-32 4)
-                       (let ((a0-28 (-> sv-16 geometry sv-32)))
-                         ;;(load-dbg " login geom: ~A~%" a0-28)
-                         (if (nonzero? a0-28) (login a0-28)))
-                       (set! sv-32 (+ sv-32 1)))
+                       (when (!= (-> current-prototype envmap-fade-far) 0.0)
+                         (*! (-> current-prototype envmap-fade-far) 10000.)))
+                     (while (< geometry-index 4)
+                       (let ((tie-geometry (-> current-prototype geometry geometry-index)))
+                         ;;(load-dbg " login geom: ~A~%" tie-geometry)
+                         (if (nonzero? tie-geometry) (login tie-geometry)))
+                       (set! geometry-index (+ geometry-index 1)))
                      (set! current-login-pos (the-as int (+ (the-as uint current-login-pos) 1)))))
                  (set! (-> level-login-state pos) (the-as uint current-login-pos)))
-               (when (= (the-as uint current-login-pos) (-> s1-2 length))
-                 (dotimes (s2-3 (-> s1-2 length))
-                   (let ((s0-2 (-> s1-2 array-data s2-3 envmap-shader)))
-                     (when (nonzero? s0-2)
+               (when (= (the-as uint current-login-pos) (-> prototypes length))
+                 (dotimes (prototype-index (-> prototypes length))
+                   (let ((envmap-shader (-> prototypes array-data prototype-index envmap-shader)))
+                     (when (nonzero? envmap-shader)
                        ;;(load-dbg " login adgif shader for envmap~%")
-                       (adgif-shader-login-no-remap s0-2)
-                       (set! (-> s0-2 tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-                       (set! (-> s0-2 clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-                       (set! (-> s0-2 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
-                       (set! (-> s0-2 prims 1) (gs-reg64 tex0-1))
-                       (set! (-> s0-2 prims 3) (gs-reg64 tex1-1))
-                       (set! (-> s0-2 prims 5) (gs-reg64 miptbp1-1))
-                       (set! (-> s0-2 clamp-reg) (gs-reg64 clamp-1))
-                       (set! (-> s0-2 prims 9) (gs-reg64 alpha-1)))))
+                       (adgif-shader-login-no-remap envmap-shader)
+                       (set! (-> envmap-shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                       (set! (-> envmap-shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                       (set! (-> envmap-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
+                       (set! (-> envmap-shader prims 1) (gs-reg64 tex0-1))
+                       (set! (-> envmap-shader prims 3) (gs-reg64 tex1-1))
+                       (set! (-> envmap-shader prims 5) (gs-reg64 miptbp1-1))
+                       (set! (-> envmap-shader clamp-reg) (gs-reg64 clamp-1))
+                       (set! (-> envmap-shader prims 9) (gs-reg64 alpha-1)))))
                  (set! (-> level-login-state pos) (the-as uint 0))
                  (+! (-> level-login-state state) 1))))))
         (goto cfg-1))
       (when (= (-> level-login-state state) (-> level-login-state elts))
-        (let ((v1-115 (-> loaded-level bsp)))
+        (let ((bsp-data (-> loaded-level bsp)))
           (cond
-            ((or (zero? (-> v1-115 actors)) (= (the-as uint current-login-pos) (-> v1-115 actors length)))
+            ((or (zero? (-> bsp-data actors)) (= (the-as uint current-login-pos) (-> bsp-data actors length)))
              (set! (-> level-login-state pos) (the-as uint 0))
              (+! (-> level-login-state state) 1))
             (else
-             (let ((a0-36 (-> v1-115 actors data (the-as uint current-login-pos) actor)))
-               ;; (load-dbg "entity nav login: ~A~%" a0-36)
-               (entity-nav-login a0-36))
+             (let ((actor-data (-> bsp-data actors data (the-as uint current-login-pos) actor)))
+               ;; (load-dbg "entity nav login: ~A~%" actor-data)
+               (entity-nav-login actor-data))
              (+! (-> level-login-state pos) 1))))
         (goto cfg-1))
       (when (zero? (the-as uint current-login-pos))
@@ -572,15 +585,15 @@
   ;; done!
   (set! (-> loaded-level nickname) (-> loaded-level bsp nickname))
   (if (nonzero? (-> loaded-level bsp nodes)) (set! *time-of-day-effects* #t) (set! *time-of-day-effects* #f))
-  (let ((f0-0 (-> loaded-level bsp unk-data-4))
-        (f1-0 (-> loaded-level bsp unk-data-5)))
-    (when (and (= f0-0 0.0) (= f1-0 0.0))
-      (set! f0-0 122880.0)
-      (set! f1-0 286720.0))
-    (set! (-> *subdivide-settings* close (-> loaded-level index)) f0-0)
-    (set! (-> *subdivide-settings* far (-> loaded-level index)) f1-0)
-    (set! (-> *subdivide-settings* close 3) f0-0)
-    (set! (-> *subdivide-settings* far 3) f1-0))
+  (let ((close-distance (-> loaded-level bsp unk-data-4))
+        (far-distance (-> loaded-level bsp unk-data-5)))
+    (when (and (= close-distance 0.0) (= far-distance 0.0))
+      (set! close-distance 122880.0)
+      (set! far-distance 286720.0))
+    (set! (-> *subdivide-settings* close (-> loaded-level index)) close-distance)
+    (set! (-> *subdivide-settings* far (-> loaded-level index)) far-distance)
+    (set! (-> *subdivide-settings* close 3) close-distance)
+    (set! (-> *subdivide-settings* far 3) far-distance))
   (load-dbg "init-vis~%")
   (init-vis loaded-level)
   (load-dbg "package load~%")
@@ -589,14 +602,16 @@
   (set! loading-level global)
   (set! (-> *level* loading-level) (-> *level* level-default))
   (set! (-> *level* log-in-level-bsp) #f)
-  ; 0
-  ; (.mfc0 v1-154 Count)
-  ; (- v1-154 initial-timer)
+  (#unless PC_PORT
+    0
+    (m final-timer Count)
+    (- final-timer initial-timer))
   (label cfg-78)
   loaded-level)
 
 (defmethod birth ((this level))
-  "Birth a level to make it alive! It must be loaded."
+  "Birth a loaded BSP, restore its saved permanent entity state, mark the level alive, and notify
+   the camera and target."
   (case (-> this status)
     (('loaded)
      (protect (loading-level
@@ -616,7 +631,8 @@
   this)
 
 (defmethod deactivate ((this level))
-  "Kill the level. This won't remove it from memory."
+  "Save permanent entity state, remove this level from drawing, deactivate its entities and
+   particles, clear inside and visibility state, and leave its data loaded."
   (case (-> this status)
     (('active 'alive)
      (format 0 "----------- kill ~A (status ~A)~%" this (-> this status))
@@ -627,8 +643,7 @@
      ;;  it should be copied back out of game-info on birth to prevent "NG+ glitch"
      (let ((lev-ents (-> this entity)))
        (dotimes (idx (-> lev-ents length))
-         (let ((ent (-> lev-ents data idx entity)))
-           (update-perm! (-> ent extra perm) 'game (the-as entity-perm-status 1919)))))
+         (let ((ent (-> lev-ents data idx entity))) (update-perm! (-> ent extra perm) 'game (the-as entity-perm-status 1919)))))
      (send-event *camera* 'level-deactivate (-> this name))
      (send-event *target* 'level-deactivate (-> this name))
      ;; remove this BSP from the engine. This will stop us from being drawn.
@@ -646,23 +661,25 @@
      (set! (-> this status) 'loaded)
      (set! (-> this all-visible?) 'loading)
      ;; clear vis buffers
-     (dotimes (v1-19 128)
-       (set! (deref int128 (-> this vis-bits) v1-19) (the-as int128 0)))
-     (let ((v1-22 8))
-       (while (nonzero? v1-22)
-         (+! v1-22 -1)
-         (let ((a0-14 (-> this vis-info v1-22))) (if a0-14 (set! (-> a0-14 current-vis-string) (the-as uint -1))))))))
+     (dotimes (i 128)
+       (set! (deref int128 (-> this vis-bits) i) (the-as int128 0)))
+     (let ((i 8))
+       (while (nonzero? i)
+         (+! i -1)
+         (let ((vis-record (-> this vis-info i))) (if vis-record (set! (-> vis-record current-vis-string) (the-as uint -1))))))))
   (if (= (-> *level* log-in-level-bsp) (-> this bsp)) (set! (-> *level* log-in-level-bsp) #f))
   this)
 
 (defmethod unload! ((this level))
-  "Unloads the level. This does not free the heap. The level will be made inactive and ready to be loaded some other time."
+  "Deactivate this level, unlink its art, textures, particle groups, packages, and pending art
+   loads, reset its heap and visibility state, and make its slot inactive."
   (deactivate this)
   (when (!= (-> this status) 'inactive)
     ;; if we linked art group, unlink it.
     (when (or (= (-> this status) 'loaded) (= (-> this status) 'alive) (= (-> this status) 'active) (= (-> this status) 'login))
-      (dotimes (s5-0 (-> this art-group art-group-array length))
-        (let ((s4-0 (-> this art-group art-group-array s5-0))) (if (needs-link? s4-0) (unlink-art! s4-0)))))
+      (dotimes (art-index (-> this art-group art-group-array length))
+        (let ((current-art-group (-> this art-group art-group-array art-index)))
+          (if (needs-link? current-art-group) (unlink-art! current-art-group)))))
     ;; turn some things off
     (set! (-> this bsp) #f)
     (set! (-> this entity) #f)
@@ -671,33 +688,33 @@
     (set! (-> this art-group string-array length) 0)
     (set! (-> this art-group art-group-array length) 0)
     ;; unload texture pages
-    (countdown (s5-1 (-> this loaded-texture-page-count))
-      (dotimes (v1-27 32)
-        (when (= (-> this loaded-texture-page s5-1) (-> *texture-pool* common-page v1-27))
-          (set! (-> *texture-pool* common-page v1-27) (the-as texture-page 0))))
-      (unload! *texture-pool* (-> this loaded-texture-page s5-1)))
+    (countdown (texture-index (-> this loaded-texture-page-count))
+      (dotimes (common-index 32)
+        (when (= (-> this loaded-texture-page texture-index) (-> *texture-pool* common-page common-index))
+          (set! (-> *texture-pool* common-page common-index) (the-as texture-page 0))))
+      (unload! *texture-pool* (-> this loaded-texture-page texture-index)))
     (set! (-> this loaded-texture-page-count) 0)
     (unlink-textures-in-heap! *texture-page-dir* (-> this heap))
     ;; unload particle groups that were defined in the level data
     (unlink-part-group-by-heap (-> this heap))
     ;; if there are any in-progress art loads for this level, kill them.
-    (dotimes (s5-2 2)
-      (let ((v1-41 (-> *art-control* buffer s5-2 pending-load-file)))
-        (if (and (>= (the-as int v1-41) (the-as int (-> this heap base)))
-                 (< (the-as int v1-41) (the-as int (-> this heap top-base))))
-          (set-pending-file (-> *art-control* buffer s5-2) (the-as string #f) -1 (the-as handle #f) 100000000.0))))
+    (dotimes (buffer-index 2)
+      (let ((pending-file (-> *art-control* buffer buffer-index pending-load-file)))
+        (if (and (>= (the-as int pending-file) (the-as int (-> this heap base)))
+                 (< (the-as int pending-file) (the-as int (-> this heap top-base))))
+          (set-pending-file (-> *art-control* buffer buffer-index) (the-as string #f) -1 (the-as handle #f) 100000000.0))))
     ;; unload packages (doesn't really do anything.)
-    (let* ((s5-3 (-> this info packages))
-           (a0-29 (car s5-3)))
-      (while (not (null? s5-3))
-        (case (rtype-of a0-29)
-          ((symbol) (unload (symbol->string (the-as symbol a0-29))))
-          ((string) (unload (the-as string a0-29))))
-        (set! s5-3 (cdr s5-3))
-        (set! a0-29 (car s5-3))))
+    (let* ((packages (-> this info packages))
+           (package (car packages)))
+      (while (not (null? packages))
+        (case (rtype-of package)
+          ((symbol) (unload (symbol->string (the-as symbol package))))
+          ((string) (unload (the-as string package))))
+        (set! packages (cdr packages))
+        (set! package (car packages))))
     (vis-clear this)
     ;; reset the level heap!
-    (let ((v1-64 (-> this heap))) (set! (-> v1-64 current) (-> v1-64 base)))
+    (let ((level-heap (-> this heap))) (set! (-> level-heap current) (-> level-heap base)))
     (set! (-> this code-memory-start) (the-as pointer 0))
     (set! (-> this code-memory-end) (the-as pointer 0))
     (when (= (-> *level* loading-level) this)
@@ -709,8 +726,9 @@
 ;; method 27 level
 
 ;; method 10 level
-(defmethod is-object-visible? ((this level) (arg0 int))
-  "Is arg0 visible? Note that this will return #f if the visibility data is not loaded."
+(defmethod is-object-visible? ((this level) (drawable-index int))
+  "Return whether drawable-index's bit is set in this level's current visibility string. Return
+   false when the bit is clear; the PC actor visibility setting may bypass this test."
   ;; og:preserve-this pc port added option to show every actor regardless
   (with-pc
     (if (not (-> *pc-settings* ps2-actor-vis?)) (return #t)))
@@ -718,12 +736,12 @@
   (let* (;; lwu v1, 388(a0)
          (vis-data (-> this vis-bits))
          ;; sra a0, a1, 3
-         (byte-idx (sar arg0 3))
+         (byte-idx (sar drawable-index 3))
          ;; daddu v1, a0, v1
          ;; lb v1, 0(v1)
          (vis-byte (-> (the (pointer int8) vis-data) byte-idx))
          ;; andi a0, a1, 7
-         (bit-idx (logand arg0 #b111))
+         (bit-idx (logand drawable-index #b111))
          ;; addiu a0, a0, 56
          (shift-amount (+ bit-idx 56)) ;; 56 + 8 = 64, to set the sign bit
          ;; dsllv v1, v1, a0
@@ -732,94 +750,96 @@
     ;; slt v1, v1, r0    v1 = (csw < 0)
     ;; daddiu v0, s7, 8
     ;; movz v0, s7, v1   if (csw >= 0) result = false
-    ;;(format 0 "vis check ~D ~X ~X ~A~%" arg0 vis-byte check-sign-word (>= check-sign-word 0))
+    ;;(format 0 "vis check ~D ~X ~X ~A~%" drawable-index vis-byte check-sign-word (>= check-sign-word 0))
     (< check-sign-word 0)))
 
-(defmethod point-in-boxes? ((this level) (arg0 vector))
-  "Is this point in the list of level boxes?"
+(defmethod point-in-boxes? ((this level) (position vector))
+  "Return true when position lies inside one of this level's half-open BSP boxes. force-inside?
+   bypasses the geometric test."
   (cond
     ((or (not (-> this bsp)) (zero? (-> this bsp boxes)))
      ;; no boxes or no bsp
      #f)
     ((-> this force-inside?) #t)
     (else
-     (let* ((a0-1 (-> this bsp boxes))
-            (v1-5 (-> a0-1 data)))
-       (countdown (a0-2 (-> a0-1 length))
-         (if (and (>= (-> arg0 x) (-> v1-5 0 min x))
-                  (>= (-> arg0 y) (-> v1-5 0 min y))
-                  (>= (-> arg0 z) (-> v1-5 0 min z))
-                  (< (-> arg0 x) (-> v1-5 0 max x))
-                  (< (-> arg0 y) (-> v1-5 0 max y))
-                  (< (-> arg0 z) (-> v1-5 0 max z)))
+     (let* ((boxes (-> this bsp boxes))
+            (box-cursor (-> boxes data)))
+       (countdown (boxes-left (-> boxes length))
+         (if (and (>= (-> position x) (-> box-cursor 0 min x))
+                  (>= (-> position y) (-> box-cursor 0 min y))
+                  (>= (-> position z) (-> box-cursor 0 min z))
+                  (< (-> position x) (-> box-cursor 0 max x))
+                  (< (-> position y) (-> box-cursor 0 max y))
+                  (< (-> position z) (-> box-cursor 0 max z)))
            (return #t))
-         (set! v1-5 (the (inline-array box8s) (-> v1-5 1)))))
+         (set! box-cursor (the (inline-array box8s) (-> box-cursor 1)))))
      #f)))
 
-(defmethod debug-print-splitbox ((this level) (arg0 vector) (arg1 string))
-  "Print the current splitbox, if we're in one."
+(defmethod debug-print-splitbox ((this level) (position vector) (output string))
+  "Print the split-box identifier for every BSP box containing position."
   (cond
     ((or (not (-> this bsp)) (zero? (-> this bsp boxes)) (zero? (-> this bsp split-box-indices)))
      ;; do nothing!
      )
     (else
-     (let* ((s3-0 (-> this bsp boxes))
-            (s2-0 (-> s3-0 data)))
-       (dotimes (s1-0 (-> s3-0 length))
-         (if (and (>= (-> arg0 x) (-> s2-0 0 min x))
-                  (>= (-> arg0 y) (-> s2-0 0 min y))
-                  (>= (-> arg0 z) (-> s2-0 0 min z))
-                  (< (-> arg0 x) (-> s2-0 0 max x))
-                  (< (-> arg0 y) (-> s2-0 0 max y))
-                  (< (-> arg0 z) (-> s2-0 0 max z)))
-           (format arg1 "    splitbox-~D~%" (-> this bsp split-box-indices s1-0)))
-         (set! s2-0 (the (inline-array box8s) (-> s2-0 1)))))))
+     (let* ((boxes (-> this bsp boxes))
+            (box-cursor (-> boxes data)))
+       (dotimes (i (-> boxes length))
+         (if (and (>= (-> position x) (-> box-cursor 0 min x))
+                  (>= (-> position y) (-> box-cursor 0 min y))
+                  (>= (-> position z) (-> box-cursor 0 min z))
+                  (< (-> position x) (-> box-cursor 0 max x))
+                  (< (-> position y) (-> box-cursor 0 max y))
+                  (< (-> position z) (-> box-cursor 0 max z)))
+           (format output "    splitbox-~D~%" (-> this bsp split-box-indices i)))
+         (set! box-cursor (the (inline-array box8s) (-> box-cursor 1)))))))
   0
   (none))
 
-(defmethod mem-usage ((this level) (arg0 memory-usage-block) (arg1 int))
-  "Get the memory usage for a level."
+(defmethod mem-usage ((this level) (usage memory-usage-block) (flags int))
+  "Account for this active level's entity and ambient links, art, code, texture pages, visibility
+   records, and BSP data."
   (when (= (-> this status) 'active)
-    (set! (-> arg0 length) (max 65 (-> arg0 length)))
-    (set! (-> arg0 data 64 name) "entity-links")
-    (set! (-> arg0 data 64 count) (+ (-> arg0 data 64 count) (-> this entity length)))
-    (let ((v1-8 (asize-of (-> this entity))))
-      (set! (-> arg0 data 64 used) (+ (-> arg0 data 64 used) v1-8))
-      (set! (-> arg0 data 64 total) (+ (-> arg0 data 64 total) (logand -16 (+ v1-8 15)))))
-    (set! (-> arg0 length) (max 65 (-> arg0 length)))
-    (set! (-> arg0 data 64 name) "ambient-links")
-    (set! (-> arg0 data 64 count) (+ (-> arg0 data 64 count) (-> this ambient length)))
-    (let ((v1-18 (asize-of (-> this ambient))))
-      (set! (-> arg0 data 64 used) (+ (-> arg0 data 64 used) v1-18))
-      (set! (-> arg0 data 64 total) (+ (-> arg0 data 64 total) (logand -16 (+ v1-18 15)))))
-    (mem-usage (-> this art-group) arg0 arg1)
-    (set! (-> arg0 length) (max 64 (-> arg0 length)))
-    (set! (-> arg0 data 63 name) "level-code")
-    (set! (-> arg0 data 63 count) (+ (-> arg0 data 63 count) 1))
-    (let ((v1-30 (&- (-> this code-memory-end) (the-as uint (-> this code-memory-start)))))
-      (set! (-> arg0 data 63 used) (+ (-> arg0 data 63 used) v1-30))
-      (set! (-> arg0 data 63 total) (+ (-> arg0 data 63 total) (logand -16 (+ v1-30 15)))))
-    (countdown (s3-0 (-> this loaded-texture-page-count))
-      (mem-usage (-> this loaded-texture-page s3-0) arg0 arg1))
-    (countdown (s3-1 8)
-      (let ((s2-0 (-> this vis-info s3-1)))
-        (when s2-0
+    (set! (-> usage length) (max 65 (-> usage length)))
+    (set! (-> usage data 64 name) "entity-links")
+    (+! (-> usage data 64 count) (-> this entity length))
+    (let ((entity-bytes (asize-of (-> this entity))))
+      (+! (-> usage data 64 used) entity-bytes)
+      (+! (-> usage data 64 total) (logand -16 (+ entity-bytes 15))))
+    (set! (-> usage length) (max 65 (-> usage length)))
+    (set! (-> usage data 64 name) "ambient-links")
+    (+! (-> usage data 64 count) (-> this ambient length))
+    (let ((ambient-bytes (asize-of (-> this ambient))))
+      (+! (-> usage data 64 used) ambient-bytes)
+      (+! (-> usage data 64 total) (logand -16 (+ ambient-bytes 15))))
+    (mem-usage (-> this art-group) usage flags)
+    (set! (-> usage length) (max 64 (-> usage length)))
+    (set! (-> usage data 63 name) "level-code")
+    (+! (-> usage data 63 count) 1)
+    (let ((code-bytes (&- (-> this code-memory-end) (the-as uint (-> this code-memory-start)))))
+      (+! (-> usage data 63 used) code-bytes)
+      (+! (-> usage data 63 total) (logand -16 (+ code-bytes 15))))
+    (countdown (i (-> this loaded-texture-page-count))
+      (mem-usage (-> this loaded-texture-page i) usage flags))
+    (countdown (vis-index 8)
+      (let ((vis-record (-> this vis-info vis-index)))
+        (when vis-record
           (cond
-            ((zero? s3-1)
-             (set! (-> arg0 length) (max 60 (-> arg0 length)))
-             (set! (-> arg0 data 59 name) "bsp-leaf-vis-self")
-             (set! (-> arg0 data 59 count) (+ (-> arg0 data 59 count) 1))
-             (let ((v1-50 (asize-of s2-0)))
-               (set! (-> arg0 data 59 used) (+ (-> arg0 data 59 used) v1-50))
-               (set! (-> arg0 data 59 total) (+ (-> arg0 data 59 total) (logand -16 (+ v1-50 15))))))
+            ((zero? vis-index)
+             (set! (-> usage length) (max 60 (-> usage length)))
+             (set! (-> usage data 59 name) "bsp-leaf-vis-self")
+             (+! (-> usage data 59 count) 1)
+             (let ((vis-bytes (asize-of vis-record)))
+               (+! (-> usage data 59 used) vis-bytes)
+               (+! (-> usage data 59 total) (logand -16 (+ vis-bytes 15)))))
             (else
-             (set! (-> arg0 length) (max 61 (-> arg0 length)))
-             (set! (-> arg0 data 60 name) "bsp-leaf-vis-adj")
-             (set! (-> arg0 data 60 count) (+ (-> arg0 data 60 count) 1))
-             (let ((v1-61 (+ (asize-of s2-0) (the-as int (-> s2-0 allocated-length)))))
-               (set! (-> arg0 data 60 used) (+ (-> arg0 data 60 used) v1-61))
-               (set! (-> arg0 data 60 total) (+ (-> arg0 data 60 total) (logand -16 (+ v1-61 15))))))))))
-    (mem-usage (-> this bsp) arg0 arg1))
+             (set! (-> usage length) (max 61 (-> usage length)))
+             (set! (-> usage data 60 name) "bsp-leaf-vis-adj")
+             (+! (-> usage data 60 count) 1)
+             (let ((vis-bytes (+ (asize-of vis-record) (the-as int (-> vis-record allocated-length)))))
+               (+! (-> usage data 60 used) vis-bytes)
+               (+! (-> usage data 60 total) (logand -16 (+ vis-bytes 15)))))))))
+    (mem-usage (-> this bsp) usage flags))
   this)
 
 (#cond
@@ -832,7 +852,8 @@
    ))
 
 (defmethod alloc-levels! ((this level-group) (compact-level-heaps symbol))
-  "Allocate the level heaps and load the common packages for levels."
+  "Load the shared art packages and allocate three level heaps. compact-level-heaps selects the
+   smaller heap size and loads common explicitly."
   ;; only do stuff if levels are not allocated
   (when (zero? (-> *level* level0 heap base))
     ;; GAME.CGO is made up of ART.CGO and COMMON.CGO
@@ -854,139 +875,152 @@
   0)
 
 (defmethod level-get-with-status ((this level-group) (status symbol))
+  "Return the first level slot with status, or false."
   (dotimes (i (-> this length))
     (if (= (-> this level i status) status) (return (-> this level i))))
   (the-as level #f))
 
 (defmethod level-get-most-disposable ((this level-group))
-  "Get a level that's least likely to be in use right now. #f = all levels in use."
+  "Choose a slot for a new load. Prefer inactive, loading, or merely loaded slots; otherwise choose
+   the lowest-priority active level whose boxes do not contain the camera."
   ;; check inactive levels first
-  (dotimes (v1-0 (-> this length))
-    (case (-> this level v1-0 status)
-      (('inactive) (return (-> this level v1-0)))))
+  (dotimes (i (-> this length))
+    (case (-> this level i status)
+      (('inactive) (return (-> this level i)))))
   ;; check for any loading levels
-  (dotimes (v1-6 (-> this length))
-    (case (-> this level v1-6 status)
-      (('loading 'loading-bt) (return (-> this level v1-6)))))
+  (dotimes (i (-> this length))
+    (case (-> this level i status)
+      (('loading 'loading-bt) (return (-> this level i)))))
   ;; check for loaded, but not active, levels.
-  (dotimes (v1-12 (-> this length))
-    (let ((a1-18 (-> this level v1-12 status))) (if (= a1-18 'loaded) (return (-> this level v1-12)))))
+  (dotimes (i (-> this length))
+    (if (= (-> this level i status) 'loaded) (return (-> this level i))))
   ;; check active levels. pick one we're not in bounds of.
-  (let ((v0-0 (the-as level #f)))
-    (dotimes (v1-18 (-> this length))
-      (case (-> this level v1-18 status)
+  (let ((candidate (the-as level #f)))
+    (dotimes (i (-> this length))
+      (case (-> this level i status)
         (('active)
-         (if (and (not (-> this level v1-18 inside-boxes?))
-                  (or (not v0-0) (< (-> this level v1-18 info priority) (-> v0-0 info priority))))
-           (set! v0-0 (-> this level v1-18))))))
-    v0-0))
+         (if (and (not (-> this level i inside-boxes?))
+                  (or (not candidate) (< (-> this level i info priority) (-> candidate info priority))))
+           (set! candidate (-> this level i))))))
+    candidate))
 
 (defmethod level-get ((this level-group) (name symbol))
-  "Return the level data using its name, if it is available. Returns #f if none are found."
-  (dotimes (lev (-> this length))
-    (if (and (!= (-> this level lev status) 'inactive)
-             (or (= (-> this level lev name) name) (= (-> this level lev load-name) name)))
-      (return (-> this level lev))))
+  "Return the non-inactive level whose requested or remapped load name matches name, or false."
+  (dotimes (i (-> this length))
+    (if (and (!= (-> this level i status) 'inactive) (or (= (-> this level i name) name) (= (-> this level i load-name) name)))
+      (return (-> this level i))))
   (the level #f))
 
-(defmethod art-group-get-by-name ((this level-group) (arg0 string))
-  (countdown (i 3)
-    (let ((lev (-> this level i)))
-      (countdown (ii (-> lev art-group art-group-array length))
-        (if (name= (-> lev art-group art-group-array ii name) arg0) (return (-> lev art-group art-group-array ii))))))
+(defmethod art-group-get-by-name ((this level-group) (name string))
+  "Search all three level slots for an art group whose name matches name, or return false."
+  (countdown (level-index 3)
+    (let ((loaded-level (-> this level level-index)))
+      (countdown (art-index (-> loaded-level art-group art-group-array length))
+        (if (name= (-> loaded-level art-group art-group-array art-index name) name)
+          (return (-> loaded-level art-group art-group-array art-index))))))
   (the-as art-group #f))
 
 (defmethod activate-levels! ((this level-group))
-  "Try to activate all levels."
+  "Request active status for every allocated level slot."
   (dotimes (i (-> this length))
     (level-status-set! (-> this level i) 'active))
   0)
 
 (defmethod level-get-target-inside ((this level-group))
-  "Get the level target is in, or one it is close to.
-   The distance checks do not work."
-  (let ((target-trans (target-pos 0)))
-    (let ((current-level (-> *game-info* current-continue level)))
+  "Choose an active level for the target. Prefer the current continue's level, then the first
+   inside-box level, then the first remembered meta-inside level, and finally the first active
+   level. The distance accumulators are never updated, so they do not rank later candidates."
+  (let ((target-position (target-pos 0)))
+    (let ((continue-level-name (-> *game-info* current-continue level)))
       (dotimes (i (-> this length))
-        (let ((ilev (-> this level i))) (when (= (-> ilev status) 'active) (if (= (-> ilev name) current-level) (return ilev))))))
-    (let ((level-ret (the-as level #f)))
-      (let ((min-distance-to-level 0.0)) ;; uh-huh
+        (let ((active-level (-> this level i)))
+          (when (= (-> active-level status) 'active)
+            (if (= (-> active-level name) continue-level-name) (return active-level))))))
+    (let ((inside-level (the-as level #f)))
+      (let ((unused-distance-limit 0.0)) ;; This is never updated, so the first match wins.
         (dotimes (i (-> this length))
-          (let ((ilev (-> this level i)))
-            (when (= (-> ilev status) 'active)
-              (let ((distance-to-level (vector-vector-distance (-> ilev bsp bsphere) target-trans)))
-                (if (and (-> ilev inside-boxes?) (or (not level-ret) (< distance-to-level min-distance-to-level))) (set! level-ret ilev)))))))
-      (if level-ret (return level-ret))))
+          (let ((active-level (-> this level i)))
+            (when (= (-> active-level status) 'active)
+              (let ((distance (vector-vector-distance (-> active-level bsp bsphere) target-position)))
+                (if (and (-> active-level inside-boxes?) (or (not inside-level) (< distance unused-distance-limit)))
+                  (set! inside-level active-level)))))))
+      (if inside-level (return inside-level))))
   (dotimes (i (-> this length))
-    (let ((ilev (-> this level i))) (when (= (-> ilev status) 'active) (if (-> ilev meta-inside?) (return ilev)))))
-  (let ((level-ret (the-as level #f)))
-    (let ((min-distance-to-level 0.0)) ;; why?
+    (let ((active-level (-> this level i)))
+      (when (= (-> active-level status) 'active)
+        (if (-> active-level meta-inside?) (return active-level)))))
+  (let ((selected-level (the-as level #f)))
+    (let ((unused-distance-limit 0.0)) ;; This is never updated, so the first active level wins.
       (dotimes (i (-> this length))
-        (let ((ilev (-> this level i)))
-          (when (= (-> ilev status) 'active)
-            (if (or (not level-ret) (< (-> ilev level-distance) min-distance-to-level)) (set! level-ret ilev))))))
-    level-ret))
+        (let ((active-level (-> this level i)))
+          (when (= (-> active-level status) 'active)
+            (if (or (not selected-level) (< (-> active-level level-distance) unused-distance-limit)) (set! selected-level active-level))))))
+    selected-level))
 
 (defmethod load-commands-set! ((this level-group) (load-commands pair))
+  "Replace the level group's pending load-command list and return it."
   (set! (-> this load-commands) load-commands)
   load-commands)
 
-(defmethod mem-usage ((this level-group) (arg0 memory-usage-block) (arg1 int))
-  "Get the memory usage data for a level-group"
+(defmethod mem-usage ((this level-group) (usage memory-usage-block) (flags int))
+  "Account for every allocated level slot."
   ;; get memory usage of each level
   (dotimes (i (-> this length))
-    (mem-usage (-> this level i) arg0 arg1))
+    (mem-usage (-> this level i) usage flags))
   this)
 
 (defun bg ((level-name symbol))
-  "Begin game in a given level.
-   The level name can be the full name (village3), the nickname (vi3), or visname (village3-vis)
-   If the visname is used (and its a recognized level in level-info), it will use vis mode.
-   Otherwise, it will use the non-vis DGO name (like VILLAGE3.DGO) which will usually fail.
-   "
+  "Load and activate one level for the background/debug entry point. Accept its canonical name,
+   VIS name, or nickname; load its runtime packages, initialize load-state and continue state, and
+   synchronously advance loading when no display process exists."
   (set! *cheat-mode* (if *debug-segment* 'debug #f))
-  (let ((v1-2 (lookup-level-info level-name)))
+  (let ((info (lookup-level-info level-name)))
     (cond
-      ((= (-> v1-2 visname) level-name) (set! (-> *level* vis?) #t) (set! level-name (-> v1-2 name)))
+      ((= (-> info visname) level-name) (set! (-> *level* vis?) #t) (set! level-name (-> info name)))
       (else (set! (-> *level* vis?) #f) (set! (-> *kernel-context* low-memory-message) #f)))
-    (let* ((s5-0 (-> v1-2 run-packages))
-           (a0-8 (car s5-0)))
-      (while (not (null? s5-0))
-        (let ((v1-4 (rtype-of a0-8)))
+    (let* ((packages (-> info run-packages))
+           (package (car packages)))
+      (while (not (null? packages))
+        (let ((package-type (rtype-of package)))
           (cond
-            ((= v1-4 symbol) (load-package (symbol->string (the-as symbol a0-8)) global))
-            ((= v1-4 string) (load-package (the-as string a0-8) global))))
-        (set! s5-0 (cdr s5-0))
-        (set! a0-8 (car s5-0)))))
-  (let ((gp-1 (level-get-for-use *level* level-name 'active)))
-    (while (and gp-1 (or (= (-> gp-1 status) 'loading) (= (-> gp-1 status) 'loading-bt) (= (-> gp-1 status) 'login)) (not *dproc*))
-      (load-continue gp-1))
-    (vis-load gp-1)
-    (set! (-> *load-state* vis-nick) (if (-> *level* vis?) (-> gp-1 nickname) #f))
-    (set! (-> *load-state* want 0 name) (-> gp-1 name))
+            ((= package-type symbol) (load-package (symbol->string (the-as symbol package)) global))
+            ((= package-type string) (load-package (the-as string package) global))))
+        (set! packages (cdr packages))
+        (set! package (car packages)))))
+  (let ((loaded-level (level-get-for-use *level* level-name 'active)))
+    (while (and loaded-level
+                (or (= (-> loaded-level status) 'loading) (= (-> loaded-level status) 'loading-bt) (= (-> loaded-level status) 'login))
+                (not *dproc*))
+      (load-continue loaded-level))
+    (vis-load loaded-level)
+    (set! (-> *load-state* vis-nick) (if (-> *level* vis?) (-> loaded-level nickname) #f))
+    (set! (-> *load-state* want 0 name) (-> loaded-level name))
     (set! (-> *load-state* want 0 display?) 'display)
     (set! (-> *load-state* want 0 force-vis?) #f)
     (set! (-> *load-state* want 0 force-inside?) #f)
     (set! (-> *load-state* want 1 name) #f)
     (set! (-> *load-state* want 1 display?) #f)
     (set! (-> *load-state* want 1 force-inside?) #f)
-    (if (-> gp-1 info continues) (set-continue! *game-info* (the-as continue-point (car (-> gp-1 info continues))))))
+    (if (-> loaded-level info continues)
+      (set-continue! *game-info* (the-as continue-point (car (-> loaded-level info continues))))))
   (activate-levels! *level*)
   (set! *print-login* #f)
   0)
 
-(defun play ((use-vis symbol) (init-game symbol))
-  "The entry point to the actual game! This allocates the level heaps, loads some data, sets some default parameters and sets the startup level."
+(defun play ((vis-enabled symbol) (initialize-progress symbol))
+  "Initialize the normal game entry point: choose the startup level from the boot message, allocate
+   level heaps, reset presentation and load state, load and activate the startup level, start the
+   display process, and optionally initialize game progress."
   ;; temp
-  (format #t "(play :use-vis ~A :init-game ~A) has been called!~%" use-vis init-game)
-  (format 0 "(play :use-vis ~A :init-game ~A) has been called!~%" use-vis init-game)
+  (format #t "(play :use-vis ~A :init-game ~A) has been called!~%" vis-enabled initialize-progress)
+  (format 0 "(play :use-vis ~A :init-game ~A) has been called!~%" vis-enabled initialize-progress)
   (format 0 "*kernel-boot-message*: ~A~%" *kernel-boot-message*)
   ;;(kernel-shutdown)
   (let ((startup-level (case *kernel-boot-message*
                          (('play) (if *debug-segment* 'village1 'title))
                          (else 'demo))))
     (stop 'play)
-    (set! (-> *level* vis?) use-vis)
+    (set! (-> *level* vis?) vis-enabled)
     (set! (-> *level* want-level) #f)
     (set! (-> *level* border?) #t)
     (set! (-> *setting-control* default border-mode) #t)
@@ -1003,77 +1037,83 @@
     (set-blackout-frames 6)
     (unless *dproc*
       (reset! *load-state*)
-      (let ((s4-1 (level-get-for-use *level* startup-level 'active)))
+      (let ((startup-level-data (level-get-for-use *level* startup-level 'active)))
         (load-state-want-levels startup-level #f)
         (load-state-want-display-level startup-level 'display)
         (load-state-want-vis (-> (lookup-level-info startup-level) nickname))
-        (while (and s4-1 (or (= (-> s4-1 status) 'loading) (= (-> s4-1 status) 'loading-bt) (= (-> s4-1 status) 'login)))
+        (while (and startup-level-data
+                    (or (= (-> startup-level-data status) 'loading)
+                        (= (-> startup-level-data status) 'loading-bt)
+                        (= (-> startup-level-data status) 'login)))
           (set-blackout-frames 6)
-          (load-continue s4-1))))
+          (load-continue startup-level-data))))
     (set! *print-login* #f)
     (level-status-set! (level-get *level* startup-level) 'active))
   (load-dbg "Load complete. Level: ~A. Now starting display!~%" (-> *level* level0))
   (on #t)
   (load-dbg "Display started: ~A~%" *dproc*)
-  (when init-game
+  (when initialize-progress
     (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f)))
   0)
 
 (defun update-sound-banks ()
+  "Reconcile the two resident sound-bank slots with the distinct banks required by active levels.
+   Do nothing while the loader RPC is busy or a movie is active, report more than two requirements,
+   and perform at most one load or unload per call."
   (if (nonzero? (rpc-busy? RPC-SOUND-LOADER)) (return 0))
-  (let ((gp-0 #f)
-        (s5-0 #f))
-    (dotimes (s4-0 (-> *level* length))
-      (let ((v1-5 (-> *level* level s4-0)))
-        (when (= (-> v1-5 status) 'active)
-          (let* ((s3-0 (-> v1-5 info sound-banks))
-                 (t0-0 (the-as symbol (car s3-0))))
-            (while (not (null? s3-0))
+  (let ((required-bank-a #f)
+        (required-bank-b #f))
+    (dotimes (level-index (-> *level* length))
+      (let ((active-level (-> *level* level level-index)))
+        (when (= (-> active-level status) 'active)
+          (let* ((banks (-> active-level info sound-banks))
+                 (bank (the-as symbol (car banks))))
+            (while (not (null? banks))
               (cond
-                ((or (= gp-0 t0-0) (= s5-0 t0-0) (-> *setting-control* current movie)))
-                ((not gp-0) (set! gp-0 t0-0))
-                ((not s5-0) (set! s5-0 t0-0))
-                (else (format 0 "ERROR: Soundbanks ~A, ~A and ~A all required~%" gp-0 s5-0 t0-0)))
-              (set! s3-0 (cdr s3-0))
-              (set! t0-0 (the-as symbol (car s3-0))))))))
-    (when (and gp-0 (!= gp-0 *sound-bank-1*) (!= gp-0 *sound-bank-2*))
+                ((or (= required-bank-a bank) (= required-bank-b bank) (-> *setting-control* current movie)))
+                ((not required-bank-a) (set! required-bank-a bank))
+                ((not required-bank-b) (set! required-bank-b bank))
+                (else (format 0 "ERROR: Soundbanks ~A, ~A and ~A all required~%" required-bank-a required-bank-b bank)))
+              (set! banks (cdr banks))
+              (set! bank (the-as symbol (car banks))))))))
+    (when (and required-bank-a (!= required-bank-a *sound-bank-1*) (!= required-bank-a *sound-bank-2*))
       (when (not *sound-bank-1*)
-        (format 0 "Load soundbank ~A~%" gp-0)
-        (sound-bank-load (string->sound-name (symbol->string gp-0)))
-        (set! *sound-bank-1* gp-0)
+        (format 0 "Load soundbank ~A~%" required-bank-a)
+        (sound-bank-load (string->sound-name (symbol->string required-bank-a)))
+        (set! *sound-bank-1* required-bank-a)
         (return 0))
       (when (not *sound-bank-2*)
-        (format 0 "Load soundbank ~A~%" gp-0)
-        (sound-bank-load (string->sound-name (symbol->string gp-0)))
-        (set! *sound-bank-2* gp-0)
+        (format 0 "Load soundbank ~A~%" required-bank-a)
+        (sound-bank-load (string->sound-name (symbol->string required-bank-a)))
+        (set! *sound-bank-2* required-bank-a)
         (return 0))
-      (when (!= *sound-bank-1* s5-0)
+      (when (!= *sound-bank-1* required-bank-b)
         (format 0 "Unload soundbank ~A~%" *sound-bank-1*)
         (sound-bank-unload (string->sound-name (symbol->string *sound-bank-1*)))
         (set! *sound-bank-1* #f)
         (return 0))
-      (when (!= *sound-bank-2* s5-0)
+      (when (!= *sound-bank-2* required-bank-b)
         (format 0 "Unload soundbank ~A~%" *sound-bank-2*)
         (sound-bank-unload (string->sound-name (symbol->string *sound-bank-2*)))
         (set! *sound-bank-2* #f)
         (return 0)))
-    (when (and s5-0 (!= s5-0 *sound-bank-1*) (!= s5-0 *sound-bank-2*))
+    (when (and required-bank-b (!= required-bank-b *sound-bank-1*) (!= required-bank-b *sound-bank-2*))
       (when (not *sound-bank-1*)
-        (format 0 "Load soundbank ~A~%" s5-0)
-        (sound-bank-load (string->sound-name (symbol->string s5-0)))
-        (set! *sound-bank-1* s5-0)
+        (format 0 "Load soundbank ~A~%" required-bank-b)
+        (sound-bank-load (string->sound-name (symbol->string required-bank-b)))
+        (set! *sound-bank-1* required-bank-b)
         (return 0))
       (when (not *sound-bank-2*)
-        (format 0 "Load soundbank ~A~%" s5-0)
-        (sound-bank-load (string->sound-name (symbol->string s5-0)))
-        (set! *sound-bank-2* s5-0)
+        (format 0 "Load soundbank ~A~%" required-bank-b)
+        (sound-bank-load (string->sound-name (symbol->string required-bank-b)))
+        (set! *sound-bank-2* required-bank-b)
         (return 0))
-      (when (!= *sound-bank-1* gp-0)
+      (when (!= *sound-bank-1* required-bank-a)
         (format 0 "Unload soundbank ~A~%" *sound-bank-1*)
         (sound-bank-unload (string->sound-name (symbol->string *sound-bank-1*)))
         (set! *sound-bank-1* #f)
         (return 0))
-      (when (!= *sound-bank-2* gp-0)
+      (when (!= *sound-bank-2* required-bank-a)
         (format 0 "Unload soundbank ~A~%" *sound-bank-2*)
         (sound-bank-unload (string->sound-name (symbol->string *sound-bank-2*)))
         (set! *sound-bank-2* #f)
@@ -1081,111 +1121,130 @@
   0)
 
 (defmethod update! ((this load-state))
-  "Updates load requests."
+  "Advance requested level loading, display, forced-visibility, and forced-inside state. Discard
+   unrequested levels before starting another load, wait synchronously only when both ordinary
+   slots were empty and the requested display mode requires it, then switch the active VIS file
+   after entering the requested level's boxes."
   (update-sound-banks)
-  (let ((v1-0 #f))
-    (dotimes (s5-0 2)
-      (let ((s4-0 (-> *level* level s5-0)))
-        (when (!= (-> s4-0 status) 'inactive)
-          (let ((a0-6 #f))
-            (dotimes (a1-2 2)
-              (if (= (-> s4-0 name) (-> this want a1-2 name)) (set! a0-6 #t)))
-            (when (not a0-6)
-              (format 0 "Discarding level ~A~%" (-> s4-0 name))
-              (level-status-set! s4-0 'inactive)
-              (set! v1-0 #t)
+  (let ((discarded-level #f))
+    (dotimes (level-index 2)
+      (let ((loaded-level (-> *level* level level-index)))
+        (when (!= (-> loaded-level status) 'inactive)
+          (let ((requested #f))
+            (dotimes (request-index 2)
+              (if (= (-> loaded-level name) (-> this want request-index name)) (set! requested #t)))
+            (when (not requested)
+              (format 0 "Discarding level ~A~%" (-> loaded-level name))
+              (level-status-set! loaded-level 'inactive)
+              (set! discarded-level #t)
               (#when PC_PORT
                 (when *debug-segment*
                   (define-extern *entity* entity)
                   (set! *entity* (the entity #f)))))))))
-    (let ((s5-1 #f))
-      (if (and (= (-> *level* level0 status) 'inactive) (= (-> *level* level1 status) 'inactive)) (set! s5-1 #t))
-      (if v1-0 (return 0))
-      (let ((a0-20 #f)
-            (v1-5 #f))
+    (let ((ordinary-slots-empty #f))
+      (if (and (= (-> *level* level0 status) 'inactive) (= (-> *level* level1 status) 'inactive)) (set! ordinary-slots-empty #t))
+      (if discarded-level (return 0))
+      (let ((need-level0 #f)
+            (need-level1 #f))
         (when (-> this want 0 name)
-          (set! a0-20 #t)
-          (dotimes (a1-12 3)
-            (let ((a2-9 (-> *level* level a1-12)))
-              (if (and (!= (-> a2-9 status) 'inactive) (= (-> a2-9 name) (-> this want 0 name))) (set! a0-20 #f)))))
+          (set! need-level0 #t)
+          (dotimes (level-index 3)
+            (let ((loaded-level (-> *level* level level-index)))
+              (if (and (!= (-> loaded-level status) 'inactive) (= (-> loaded-level name) (-> this want 0 name))) (set! need-level0 #f)))))
         (when (-> this want 1 name)
-          (set! v1-5 #t)
-          (dotimes (a1-17 3)
-            (let ((a2-17 (-> *level* level a1-17)))
-              (if (and (!= (-> a2-17 status) 'inactive) (= (-> a2-17 name) (-> this want 1 name))) (set! v1-5 #f)))))
-        (let ((s4-1 -1))
+          (set! need-level1 #t)
+          (dotimes (level-index 3)
+            (let ((loaded-level (-> *level* level level-index)))
+              (if (and (!= (-> loaded-level status) 'inactive) (= (-> loaded-level name) (-> this want 1 name))) (set! need-level1 #f)))))
+        (let ((request-to-load -1))
           (cond
-            ((and a0-20 v1-5) (set! s4-1 0) (if (and (-> this want 1 display?) (not (-> this want 0 display?))) (set! s4-1 1)))
-            (a0-20 (set! s4-1 0))
-            (v1-5 (set! s4-1 1)))
-          (when (!= s4-1 -1)
-            (when (or s5-1 (not (check-busy *load-dgo-rpc*)))
-              (format 0 "Adding level ~A~%" (-> this want s4-1 name))
-              (let ((s3-0 (level-get-for-use *level* (the-as symbol (-> this want s4-1 name)) 'loaded)))
-                (when (and s5-1 (-> this want s4-1 display?))
+            ((and need-level0 need-level1)
+             (set! request-to-load 0)
+             (if (and (-> this want 1 display?) (not (-> this want 0 display?))) (set! request-to-load 1)))
+            (need-level0 (set! request-to-load 0))
+            (need-level1 (set! request-to-load 1)))
+          (when (!= request-to-load -1)
+            (when (or ordinary-slots-empty (not (check-busy *load-dgo-rpc*)))
+              (format 0 "Adding level ~A~%" (-> this want request-to-load name))
+              (let ((requested-level (level-get-for-use *level* (the-as symbol (-> this want request-to-load name)) 'loaded)))
+                (when (and ordinary-slots-empty (-> this want request-to-load display?))
                   (format 0 "Waiting for level to load~%")
-                  (while (or (= (-> s3-0 status) 'loading) (= (-> s3-0 status) 'loading-bt) (= (-> s3-0 status) 'login))
-                    (load-continue s3-0))))))))))
-  (dotimes (s5-2 2)
-    (when (-> this want s5-2 name)
-      (dotimes (s4-2 3)
-        (let ((s3-1 (-> *level* level s4-2)))
-          (when (!= (-> s3-1 status) 'inactive)
-            (when (= (-> s3-1 name) (-> this want s5-2 name))
-              (when (!= (-> s3-1 display?) (-> this want s5-2 display?))
+                  (while (or (= (-> requested-level status) 'loading)
+                             (= (-> requested-level status) 'loading-bt)
+                             (= (-> requested-level status) 'login))
+                    (load-continue requested-level))))))))))
+  (dotimes (request-index 2)
+    (when (-> this want request-index name)
+      (dotimes (level-index 3)
+        (let ((loaded-level (-> *level* level level-index)))
+          (when (!= (-> loaded-level status) 'inactive)
+            (when (= (-> loaded-level name) (-> this want request-index name))
+              (when (!= (-> loaded-level display?) (-> this want request-index display?))
                 (cond
-                  ((not (-> s3-1 display?))
+                  ((not (-> loaded-level display?))
                    (cond
-                     ((or (= (-> s3-1 status) 'loaded) (= (-> s3-1 status) 'active))
-                      (format 0 "Displaying level ~A [~A]~%" (-> this want s5-2 name) (-> this want s5-2 display?))
-                      (level-get-for-use *level* (-> s3-1 info name) 'active)
-                      (set! (-> s3-1 display?) (-> this want s5-2 display?)))
+                     ((or (= (-> loaded-level status) 'loaded) (= (-> loaded-level status) 'active))
+                      (format 0 "Displaying level ~A [~A]~%" (-> this want request-index name) (-> this want request-index display?))
+                      (level-get-for-use *level* (-> loaded-level info name) 'active)
+                      (set! (-> loaded-level display?) (-> this want request-index display?)))
                      (else
-                      (when (and (-> s3-1 info wait-for-load) (!= (-> this want s5-2 display?) 'display-no-wait))
+                      (when (and (-> loaded-level info wait-for-load) (!= (-> this want request-index display?) 'display-no-wait))
                         (send-event *target* 'loading))
-                      (if (= *cheat-mode* 'debug) (format *stdcon* "display on for ~A but level is loading~%" (-> this want s5-2 name))))))
+                      (if (= *cheat-mode* 'debug) (format *stdcon* "display on for ~A but level is loading~%" (-> this want request-index name))))))
                   (else
                    (cond
-                     ((not (-> this want s5-2 display?))
-                      (set! (-> s3-1 display?) #f)
-                      (format 0 "Turning level ~A off~%" (-> s3-1 name))
-                      (deactivate s3-1))
+                     ((not (-> this want request-index display?))
+                      (set! (-> loaded-level display?) #f)
+                      (format 0 "Turning level ~A off~%" (-> loaded-level name))
+                      (deactivate loaded-level))
                      (else
-                      (format 0 "Setting level ~A display command to ~A~%" (-> this want s5-2 name) (-> this want s5-2 display?))
-                      (set! (-> s3-1 display?) (-> this want s5-2 display?)))))))
-              (when (!= (-> s3-1 force-all-visible?) (-> this want s5-2 force-vis?))
-                (set! (-> s3-1 force-all-visible?) (-> this want s5-2 force-vis?))
-                (format 0 "Setting force-all-visible?[~A] to ~A~%" (-> this want s5-2 name) (-> this want s5-2 force-vis?)))
-              (when (!= (-> s3-1 force-inside?) (-> this want s5-2 force-inside?))
-                (set! (-> s3-1 force-inside?) (-> this want s5-2 force-inside?))
-                (format 0 "Setting force-inside?[~A] to ~A~%" (-> this want s5-2 name) (-> this want s5-2 force-inside?)))))))))
+                      (format 0
+                              "Setting level ~A display command to ~A~%"
+                              (-> this want request-index name)
+                              (-> this want request-index display?))
+                      (set! (-> loaded-level display?) (-> this want request-index display?)))))))
+              (when (!= (-> loaded-level force-all-visible?) (-> this want request-index force-vis?))
+                (set! (-> loaded-level force-all-visible?) (-> this want request-index force-vis?))
+                (format 0
+                        "Setting force-all-visible?[~A] to ~A~%"
+                        (-> this want request-index name)
+                        (-> this want request-index force-vis?)))
+              (when (!= (-> loaded-level force-inside?) (-> this want request-index force-inside?))
+                (set! (-> loaded-level force-inside?) (-> this want request-index force-inside?))
+                (format 0
+                        "Setting force-inside?[~A] to ~A~%"
+                        (-> this want request-index name)
+                        (-> this want request-index force-inside?)))))))))
   ;; load vis info.
   ;; The load-state's vis-nick is the level we want vis data for.
   ;; Note that we won't load vis until we are inside the level's boxes.
   ;; this will be the level that is currently being used.
-  (let ((s5-3 #f))
-    (dotimes (v1-121 (-> *level* length))
-      (let ((a0-55 (-> *level* level v1-121)))
-        (when (= (-> a0-55 status) 'active) ;; level is active
-          (if (nonzero? (-> a0-55 vis-info (-> a0-55 vis-self-index) ramdisk)) ;; and vis is set up.
-            (set! s5-3 (-> a0-55 nickname))))))
+  (let ((loaded-vis-nick #f))
+    (dotimes (level-index (-> *level* length))
+      (let ((active-level (-> *level* level level-index)))
+        (when (= (-> active-level status) 'active) ;; level is active
+          (if (nonzero? (-> active-level vis-info (-> active-level vis-self-index) ramdisk)) ;; and vis is set up.
+            (set! loaded-vis-nick (-> active-level nickname))))))
     ;; if we have the wrong vis
-    (when (and (!= s5-3 (-> this vis-nick)) (-> *level* vis?))
+    (when (and (!= loaded-vis-nick (-> this vis-nick)) (-> *level* vis?))
       ;; and we want a vis
       (when (-> this vis-nick)
         ;; find matching level and load vis
-        (dotimes (s4-3 (-> *level* length))
-          (let ((v1-133 (-> *level* level s4-3)))
-            (when (= (-> v1-133 status) 'active)
-              (if (and (= (-> v1-133 nickname) (-> this vis-nick))
-                       (-> v1-133 inside-boxes?) ;; note: only start if we are inside boxes.
+        (dotimes (level-index (-> *level* length))
+          (let ((active-level (-> *level* level level-index)))
+            (when (= (-> active-level status) 'active)
+              (if (and (= (-> active-level nickname) (-> this vis-nick))
+                       (-> active-level inside-boxes?) ;; note: only start if we are inside boxes.
                        )
-                (load-vis-info (-> this vis-nick) s5-3))))))))
+                (load-vis-info (-> this vis-nick) loaded-vis-nick))))))))
   0)
 
 ;; method 16 level-group (debug text stuff)
 
 (defmethod level-update ((this level-group))
+  "Advance settings, art and DGO loading, inside-box and checkpoint state, load-state requests,
+   neighboring VIS selection and ownership, and level debug displays for this frame. Publish both
+   displayed BSP names to the PC renderer."
   ;; this does nothing...
   (camera-pos)
   (new 'static 'boxed-array :type symbol :length 0 :allocated-length 2)
@@ -1195,83 +1254,86 @@
   (update *art-control* #t)
   (clear-rec *art-control*)
   ;; run level loading!
-  (dotimes (s5-0 2)
-    (load-continue (-> this level s5-0)))
+  (dotimes (load-slot 2)
+    (load-continue (-> this level load-slot)))
   ;; compute inside for each level
-  (dotimes (s5-1 (-> this length))
-    (let ((s4-0 (-> this level s5-1)))
-      (when (= (-> s4-0 status) 'active)
-        (set! (-> s4-0 inside-boxes?) (point-in-boxes? s4-0 (-> *math-camera* trans)))
-        (set! (-> s4-0 inside-sphere?) (>= (-> s4-0 bsp bsphere w) (-> s4-0 level-distance)))
+  (dotimes (level-index (-> this length))
+    (let ((active-level (-> this level level-index)))
+      (when (= (-> active-level status) 'active)
+        (set! (-> active-level inside-boxes?) (point-in-boxes? active-level (-> *math-camera* trans)))
+        (set! (-> active-level inside-sphere?) (>= (-> active-level bsp bsphere w) (-> active-level level-distance)))
         ;; being inside sets your meta-inside to #t. If you are outside, remember your old inside.
-        (if (-> s4-0 inside-boxes?) (set! (-> s4-0 meta-inside?) #t)))))
+        (if (-> active-level inside-boxes?) (set! (-> active-level meta-inside?) #t)))))
   ;; update load state machine (the level-border one)
   (update! *load-state*)
   ;; checkpoint assignment
-  (dotimes (s5-2 (-> this length))
-    (let ((s4-1 (-> this level s5-2)))
-      (when (= (-> s4-1 status) 'active)
+  (dotimes (level-index (-> this length))
+    (let ((active-level (-> this level level-index)))
+      (when (= (-> active-level status) 'active)
         ;; if you're outside here, and inside somewhere else, kick out of meta inside.
-        (if (and (-> s4-1 inside-boxes?) (not (-> s4-1 other inside-boxes?))) (set! (-> s4-1 other meta-inside?) #f))
+        (if (and (-> active-level inside-boxes?) (not (-> active-level other inside-boxes?)))
+          (set! (-> active-level other meta-inside?) #f))
         (when (and (null? (-> this load-commands))
-                   (= (-> s4-1 nickname) (-> *load-state* vis-nick))
-                   (!= (-> s4-1 name) (-> *game-info* current-continue level))
+                   (= (-> active-level nickname) (-> *load-state* vis-nick))
+                   (!= (-> active-level name) (-> *game-info* current-continue level))
                    (-> *level* border?))
-          (let ((s3-0 (the-as continue-point (car (-> s4-1 info continues)))))
-            (let* ((s2-0 (target-pos 0))
-                   (s4-2 (-> s4-1 info continues))
-                   (s1-0 (the-as continue-point (car s4-2))))
-              (while (not (null? s4-2))
-                (if (and (< (vector-vector-distance s2-0 (-> s1-0 trans)) (vector-vector-distance s2-0 (-> s3-0 trans)))
-                         (zero? (-> s1-0 flags)))
-                  (set! s3-0 s1-0))
-                (set! s4-2 (cdr s4-2))
-                (set! s1-0 (the-as continue-point (car s4-2)))))
-            (set-continue! *game-info* s3-0))))))
+          (let ((nearest-continue (the-as continue-point (car (-> active-level info continues)))))
+            (let* ((target-position (target-pos 0))
+                   (continues (-> active-level info continues))
+                   (candidate-continue (the-as continue-point (car continues))))
+              (while (not (null? continues))
+                (if (and (< (vector-vector-distance target-position (-> candidate-continue trans))
+                            (vector-vector-distance target-position (-> nearest-continue trans)))
+                         (zero? (-> candidate-continue flags)))
+                  (set! nearest-continue candidate-continue))
+                (set! continues (cdr continues))
+                (set! candidate-continue (the-as continue-point (car continues))))
+              (set-continue! *game-info* nearest-continue)))))))
   ;; determine vis info idx for each level
-  (dotimes (v1-67 (-> this length))
-    (let ((a0-26 (-> this level v1-67)))
-      (when (= (-> a0-26 status) 'active)
+  (dotimes (level-index (-> this length))
+    (let ((active-level (-> this level level-index)))
+      (when (= (-> active-level status) 'active)
         ;; self is always 0
-        (set! (-> a0-26 vis-self-index) 0)
+        (set! (-> active-level vis-self-index) 0)
         ;; neighbor level defaults to 7 (null placeholder)...
-        (set! (-> a0-26 vis-adj-index) 7)
+        (set! (-> active-level vis-adj-index) 7)
         ;; but if there's a second level that's active, search for a vis info for that level...
-        (when (= (-> a0-26 other status) 'active)
-          (dotimes (a1-10 8)
-            (if (and (-> a0-26 vis-info a1-10) (= (-> a0-26 vis-info a1-10 from-level) (-> a0-26 other load-name)))
+        (when (= (-> active-level other status) 'active)
+          (dotimes (vis-index 8)
+            (if (and (-> active-level vis-info vis-index)
+                     (= (-> active-level vis-info vis-index from-level) (-> active-level other load-name)))
               ;; and store it in the adj index.
-              (set! (-> a0-26 vis-adj-index) a1-10)))))))
+              (set! (-> active-level vis-adj-index) vis-index)))))))
   ;; display level vis info
   (when *display-level-border*
-    (dotimes (s5-3 (-> this length))
-      (let ((s4-3 (-> this level s5-3)))
-        (when (= (-> s4-3 status) 'active)
-          (let ((s3-1 (-> s4-3 bsp current-bsp-back-flags)))
-            (dotimes (s2-1 6)
-              (when (and (logtest? s3-1 3) (-> s4-3 vis-info (+ s2-1 1)))
-                (let ((v1-88 (lookup-level-info (-> s4-3 vis-info (+ s2-1 1) from-level))))
+    (dotimes (level-index (-> this length))
+      (let ((active-level (-> this level level-index)))
+        (when (= (-> active-level status) 'active)
+          (let ((border-flags (-> active-level bsp current-bsp-back-flags)))
+            (dotimes (neighbor-index 6)
+              (when (and (logtest? border-flags 3) (-> active-level vis-info (+ neighbor-index 1)))
+                (let ((neighbor-info (lookup-level-info (-> active-level vis-info (+ neighbor-index 1) from-level))))
                   (format *stdcon*
                           "  ~A -> ~A: load: ~A  display: ~A~%"
-                          (-> s4-3 name)
-                          (-> v1-88 name)
-                          (logtest? s3-1 1)
-                          (logtest? s3-1 2))))
-              (set! s3-1 (shr s3-1 2))))))))
+                          (-> active-level name)
+                          (-> neighbor-info name)
+                          (logtest? border-flags 1)
+                          (logtest? border-flags 2))))
+              (set! border-flags (shr border-flags 2))))))))
   ;; if we have vis for level A, but we aren't "in" it, display an error and
   ;; force us out of the other level.  Ideally the boxes and the load boundary system
   ;; will be consistent and there is no way to set a vis to a level that we aren't in.
   ;; (you can be "in" multiple levels at the same time, when crossing levels, it is expected
   ;;  that you are in both.)
-  (dotimes (s5-4 (-> this length))
-    (let ((s4-4 (-> this level s5-4)))
-      (when (= (-> s4-4 status) 'active)
-        (when (and (= (-> s4-4 nickname) (-> *load-state* vis-nick)) ;; vis for A
-                   (not (-> s4-4 inside-boxes?)) ;; but not in A
+  (dotimes (level-index (-> this length))
+    (let ((active-level (-> this level level-index)))
+      (when (= (-> active-level status) 'active)
+        (when (and (= (-> active-level nickname) (-> *load-state* vis-nick)) ;; vis for A
+                   (not (-> active-level inside-boxes?)) ;; but not in A
                    )
-          (if (and (= *cheat-mode* 'debug) (-> s4-4 other inside-boxes?))
-            (format *stdcon* "~3LForcing outside of ~A [bad split boxes]~%~0L" (-> s4-4 other name)))
-          (set! (-> s4-4 other inside-boxes?) #f)))))
+          (if (and (= *cheat-mode* 'debug) (-> active-level other inside-boxes?))
+            (format *stdcon* "~3LForcing outside of ~A [bad split boxes]~%~0L" (-> active-level other name)))
+          (set! (-> active-level other inside-boxes?) #f)))))
   ;; if we are outside of the boxes, we consider ourselves "outside of bsp"
   ;; if we are outside of both levels boxes, then we don't really know what to do
   ;; for vis, and we can display the classic "outside of bsp" error.
@@ -1282,34 +1344,36 @@
     (else
      ;; we are in at least one bsp.
      ;; now we need to link vis info to bsps.
-     (dotimes (v1-125 (-> this length))
-       (let ((a0-44 (-> this level v1-125)))
-         (when (= (-> a0-44 status) 'active)
+     (dotimes (level-index (-> this length))
+       (let ((active-level (-> this level level-index)))
+         (when (= (-> active-level status) 'active)
            ;; loop over vis infos
-           (dotimes (a1-17 8)
-             (let ((a2-18 (-> a0-44 vis-info a1-17)))
-               (when a2-18
+           (dotimes (vis-index 8)
+             (let ((vis-record (-> active-level vis-info vis-index)))
+               (when vis-record
                  ;; clear bit 31
-                 (set! (-> a2-18 flags) (logand (the-as uint #xffffffff7fffffff) (-> a2-18 flags)))
+                 (logclear! (-> vis-record flags) (vis-info-flag using-this-as-only-vis))
                  ;; link info to bsp
                  (cond
-                   ((= a1-17 (-> a0-44 vis-self-index)) (set! (-> a2-18 from-bsp) (-> a0-44 bsp)))
-                   ((= a1-17 (-> a0-44 vis-adj-index)) (set! (-> a2-18 from-bsp) (-> a0-44 other bsp)))
-                   (else (set! (-> a2-18 from-bsp) #f))))))
-           ;; now, handle setting bit 31 (maybe single vis mode?)
+                   ((= vis-index (-> active-level vis-self-index)) (set! (-> vis-record from-bsp) (-> active-level bsp)))
+                   ((= vis-index (-> active-level vis-adj-index)) (set! (-> vis-record from-bsp) (-> active-level other bsp)))
+                   (else (set! (-> vis-record from-bsp) #f))))))
+           ;; cam-update only consumes a VIS record with using-this-as-only-vis set. Select the
+           ;; self or adjacent record according to the display override and which split boxes
+           ;; contain the camera.
            (cond
              ;; special display self mode.
-             ((= (-> a0-44 display?) 'display-self)
-              (let ((a0-46 (-> a0-44 vis-info (-> a0-44 vis-self-index))))
-                (if a0-46 (set! (-> a0-46 flags) (the-as uint (logior (shl #x8000 16) (-> a0-46 flags)))))))
+             ((= (-> active-level display?) 'display-self)
+              (let ((self-vis (-> active-level vis-info (-> active-level vis-self-index))))
+                (if self-vis (logior! (-> self-vis flags) (vis-info-flag using-this-as-only-vis)))))
              ;; in this level, but not the other, only use vis for this.
-             ((and (-> a0-44 inside-boxes?) (not (-> a0-44 other inside-boxes?)))
-              (let ((a0-48 (-> a0-44 vis-info (-> a0-44 vis-self-index))))
-                (if a0-48 (set! (-> a0-48 flags) (the-as uint (logior (shl #x8000 16) (-> a0-48 flags)))))))
+             ((and (-> active-level inside-boxes?) (not (-> active-level other inside-boxes?)))
+              (let ((self-vis (-> active-level vis-info (-> active-level vis-self-index))))
+                (if self-vis (logior! (-> self-vis flags) (vis-info-flag using-this-as-only-vis)))))
              ;; only in other level, only use vis for other.
-             ((-> a0-44 other inside-boxes?)
-              (let ((a0-50 (-> a0-44 vis-info (-> a0-44 vis-adj-index))))
-                (if a0-50 (set! (-> a0-50 flags) (the-as uint (logior (shl #x8000 16) (-> a0-50 flags)))))))))))))
+             ((-> active-level other inside-boxes?)
+              (let ((adjacent-vis (-> active-level vis-info (-> active-level vis-adj-index))))
+                (if adjacent-vis (logior! (-> adjacent-vis flags) (vis-info-flag using-this-as-only-vis)))))))))))
   (when (or *display-level-border* *display-texture-download* *display-split-box-info*)
     (when *display-level-border*
       (format *stdcon*
@@ -1343,35 +1407,36 @@
       ;          )
       ;   )
       )
-    (dotimes (s5-5 (-> this length))
-      (let ((s4-5 (-> this level s5-5)))
-        (when (= (-> s4-5 status) 'active)
+    (dotimes (level-index (-> this length))
+      (let ((active-level (-> this level level-index)))
+        (when (= (-> active-level status) 'active)
           (format *stdcon*
                   "~A: ~S ~A~%"
-                  (-> s4-5 name)
-                  (if (point-in-boxes? s4-5 (-> *math-camera* trans)) "inside")
-                  (-> s4-5 display?))
+                  (-> active-level name)
+                  (if (point-in-boxes? active-level (-> *math-camera* trans)) "inside")
+                  (-> active-level display?))
           (when *display-texture-download*
-            (format *stdcon* "  tfrag: ~8,,0m     " (-> s4-5 closest-object 0))
-            (format *stdcon* "  shrub: ~8,,0m     " (-> s4-5 closest-object 2))
-            (format *stdcon* "  alpha: ~8,,0m  #x~8X~%" (-> s4-5 closest-object 3) (-> s4-5 texture-mask 8))
-            (format *stdcon* "    tie: ~8,,0m     " (-> s4-5 closest-object 5))
-            (format *stdcon* "  fg-tf: ~8,,0m     " (-> s4-5 closest-object 6))
-            (format *stdcon* "  fg-pr: ~8,,0m  #x~8X~%" (-> s4-5 closest-object 7) (-> s4-5 texture-mask 7))
+            (format *stdcon* "  tfrag: ~8,,0m     " (-> active-level closest-object 0))
+            (format *stdcon* "  shrub: ~8,,0m     " (-> active-level closest-object 2))
+            (format *stdcon* "  alpha: ~8,,0m  #x~8X~%" (-> active-level closest-object 3) (-> active-level texture-mask 8))
+            (format *stdcon* "    tie: ~8,,0m     " (-> active-level closest-object 5))
+            (format *stdcon* "  fg-tf: ~8,,0m     " (-> active-level closest-object 6))
+            (format *stdcon* "  fg-pr: ~8,,0m  #x~8X~%" (-> active-level closest-object 7) (-> active-level texture-mask 7))
             (format *stdcon*
                     "  tf: ~8D  pr: ~8D  sh: ~8D  al: ~8D  wa: ~8D~%~1K"
-                    (-> s4-5 upload-size 0)
-                    (-> s4-5 upload-size 1)
-                    (-> s4-5 upload-size 2)
-                    (-> s4-5 upload-size 3)
-                    (-> s4-5 upload-size 4)))
-          (if *display-split-box-info* (debug-print-splitbox s4-5 (-> *math-camera* trans) *stdcon*))))))
+                    (-> active-level upload-size 0)
+                    (-> active-level upload-size 1)
+                    (-> active-level upload-size 2)
+                    (-> active-level upload-size 3)
+                    (-> active-level upload-size 4)))
+          (if *display-split-box-info* (debug-print-splitbox active-level (-> *math-camera* trans) *stdcon*))))))
   ;; tell PC port about our levels
   (__pc-set-levels (if (symbol-member? (-> this level0 status) '(active alive loaded)) (symbol->string (bsp-name (-> this level0))) "none")
                    (if (symbol-member? (-> this level1 status) '(active alive loaded)) (symbol->string (bsp-name (-> this level1))) "none"))
   0)
 
 (defun-debug show-level ((level-name symbol))
+  "Keep the target's current level requested and add level-name as the displayed neighbor."
   (set! (-> *setting-control* default border-mode) #t)
   (load-state-want-levels (-> (level-get-target-inside *level*) name) level-name)
   (load-state-want-display-level level-name 'display)

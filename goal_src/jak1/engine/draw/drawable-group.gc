@@ -5,73 +5,88 @@
 
 ;; DECOMP BEGINS
 
-(defmethod new drawable-group ((allocation symbol) (type-to-make type) (arg0 int))
-  "Allocate a drawable-group with enough room for arg0 drawables"
-  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 4))))))
-    (set! (-> v0-0 length) arg0)
-    v0-0))
+(defmethod new drawable-group ((allocation symbol) (type-to-make type) (length int))
+  "Allocate a variable-sized drawable group with room for length child references."
+  (let ((result (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ length -1) 4))))))
+    (set! (-> result length) length)
+    result))
 
 (defmethod inspect ((this drawable-group))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tid: ~D~%" (-> this id))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
-  (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  (dotimes (i (-> this length))
+    (format #t "~T  [~D] ~A~%" i (-> this data i)))
   this)
 
 (defmethod print ((this drawable-group))
   (format #t "#<~A @ #x~X [~D]" (-> this type) this (-> this length))
-  (dotimes (s5-0 (-> this length))
-    (format #t " ~A" (-> this data s5-0)))
+  (dotimes (i (-> this length))
+    (format #t " ~A" (-> this data i)))
   (format #t ">")
   this)
 
 (defmethod length ((this drawable-group))
+  "Return the number of child drawable references in this group."
   (-> this length))
 
 (defmethod asize-of ((this drawable-group))
+  "Return the allocation size of this variable-length drawable group."
   (the-as int (+ (-> drawable-group size) (* (+ (-> this length) -1) 4))))
 
-(defmethod mem-usage ((this drawable-group) (arg0 memory-usage-block) (arg1 int))
-  (set! (-> arg0 length) (max 1 (-> arg0 length)))
-  (set! (-> arg0 data 0 name) "drawable-group")
-  (+! (-> arg0 data 0 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> arg0 data 0 used) v1-6) (+! (-> arg0 data 0 total) (logand -16 (+ v1-6 15))))
-  (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1))
+(defmethod mem-usage ((this drawable-group) (usage memory-usage-block) (flags int))
+  "Record this group's allocation in usage, then recursively collect memory use from every
+   child. flags is forwarded unchanged to each child."
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) "drawable-group")
+  (+! (-> usage data 0 count) 1)
+  (let ((allocated-size (asize-of this)))
+    (+! (-> usage data 0 used) allocated-size)
+    (+! (-> usage data 0 total) (logand -16 (+ allocated-size 15))))
+  (dotimes (i (-> this length))
+    (mem-usage (-> this data i) usage flags))
   this)
 
 (defmethod login ((this drawable-group))
-  (dotimes (s5-0 (-> this length))
-    (login (-> this data s5-0)))
+  "Initialize every child drawable after this group has been loaded."
+  (dotimes (i (-> this length))
+    (login (-> this data i)))
   this)
 
-(defmethod draw ((this drawable-group) (arg0 drawable-group) (arg1 display-frame))
+(defmethod draw ((this drawable-group) (draw-data drawable-group) (frame display-frame))
+  "When this group passes visibility and frustum culling, submit each child together with the
+   corresponding child in draw-data for frame."
   (when (vis-cull (-> this id))
     (when (sphere-cull (-> this bsphere))
-      (dotimes (s3-0 (-> this length))
-        (draw (-> this data s3-0) (-> arg0 data s3-0) arg1))))
+      (dotimes (i (-> this length))
+        (draw (-> this data i) (-> draw-data data i) frame))))
   0
   (none))
 
 (defmethod collect-stats ((this drawable-group))
+  "When this group passes visibility and frustum culling, collect renderer statistics from
+   every child."
   (when (vis-cull (-> this id))
     (when (sphere-cull (-> this bsphere))
-      (dotimes (s5-0 (-> this length))
-        (collect-stats (-> this data s5-0)))))
+      (dotimes (i (-> this length))
+        (collect-stats (-> this data i)))))
   0
   (none))
 
-(defmethod debug-draw ((this drawable-group) (arg0 drawable) (arg1 display-frame))
+(defmethod debug-draw ((this drawable-group) (draw-data drawable) (frame display-frame))
+  "When this group passes visibility and frustum culling, submit debug geometry for each child
+   and its corresponding draw-data child."
   (when (vis-cull (-> this id))
     (when (sphere-cull (-> this bsphere))
-      (dotimes (s3-0 (-> this length))
-        (debug-draw (-> this data s3-0) (-> (the-as drawable-group arg0) data s3-0) arg1))))
+      (dotimes (i (-> this length))
+        (debug-draw (-> this data i) (-> (the-as drawable-group draw-data) data i) frame))))
   0
   (none))
 
-(defmethod unpack-vis ((this drawable-group) (arg0 (pointer int8)) (arg1 (pointer int8)))
-  (dotimes (s4-0 (-> this length))
-    (set! arg1 (unpack-vis (-> this data s4-0) arg0 arg1)))
-  arg1)
+(defmethod unpack-vis ((this drawable-group) (destination (pointer int8)) (source (pointer int8)))
+  "Pass destination and the advancing visibility source through every child, then return the
+   source position after the final child."
+  (dotimes (i (-> this length))
+    (set! source (unpack-vis (-> this data i) destination source)))
+  source)

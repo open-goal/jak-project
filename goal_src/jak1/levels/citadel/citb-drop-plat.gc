@@ -41,17 +41,19 @@
   :bounds (static-spherem 0 0 0 3))
 
 (deftype drop-plat (process-drawable)
-  ((root       collide-shape-moving :override)
-   (spin-axis  vector :inline)
+  "A colored Citadel floor tile that rises into place, reports player contact to its controller,
+   and eventually tumbles into the pit."
+  ((root collide-shape-moving :override)
+   (spin-axis vector :inline)
    (spin-angle float)
    (spin-speed float)
-   (interp     float)
-   (duration   time-frame)
-   (delay      time-frame)
-   (color      int8))
+   (interp float)
+   (duration time-frame)
+   (delay time-frame)
+   (color int8))
   (:methods
-   (drop-plat-method-20 (_type_) none)
-   (drop-plat-method-21 (_type_) none))
+   (setup-collision! (_type_) none)
+   (init-skeleton-and-spin! (_type_) none))
   (:states
    drop-plat-die
    drop-plat-drop
@@ -59,10 +61,10 @@
    (drop-plat-rise draw-control)
    drop-plat-spawn))
 
-
 (defstate drop-plat-idle (drop-plat)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Begin falling on drop, or report this tile's color when Jak touches or attacks it."
       (case message
         (('drop) (logclear! (-> self mask) (process-mask actor-pause)) (go drop-plat-drop))
         (('touch 'attack)
@@ -71,6 +73,7 @@
          #f)))
   :code
     (behavior ()
+      "Keep the tile fixed in place until its configured lifetime expires."
       (suspend)
       (update-transforms! (-> self root))
       (set-time! (-> self state-time))
@@ -81,74 +84,83 @@
   :post ja-post)
 
 (defbehavior drop-plat-set-fade drop-plat ()
-  (let ((f0-1 (fmin 1.0
+  "Fade the tile through the last twenty metres before it reaches fifty metres below its
+   controller."
+  (let ((fade (fmin 1.0
                     (* 0.000012207031
                        (- (-> self root trans y) (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y)))))))
-    (set-vector! (-> self draw color-mult) f0-1 f0-1 f0-1 1.0))
+    (set-vector! (-> self draw color-mult) fade fade fade 1.0))
   0
   (none))
 
 (defstate drop-plat-spawn (drop-plat)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Die immediately when the controller drops this tile before it has risen."
       (case message
         (('drop) (go drop-plat-die))))
   :code
     (behavior ()
+      "Wait below the controller for the per-tile delay, then reveal the tile and begin rising."
       (set! (-> self root trans y) (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y)))
       (logior! (-> self draw status) (draw-status hidden))
       (ja-post)
       (set-time! (-> self state-time))
       (loop
         (when (time-elapsed? (-> self state-time) (-> self delay))
-          (let ((v1-14 (logclear (-> self draw status) (draw-status hidden)))
-                (a0-5 (-> self draw)))
-            (set! (-> a0-5 status) v1-14)
-            (go drop-plat-rise a0-5)))
+          (let ((visible-status (logclear (-> self draw status) (draw-status hidden)))
+                (draw-control (-> self draw)))
+            (set! (-> draw-control status) visible-status)
+            (go drop-plat-rise draw-control)))
         (suspend))))
 
 (defstate drop-plat-rise (drop-plat)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Begin falling immediately when the controller sends drop."
       (case message
         (('drop) (go drop-plat-drop))))
   :code
-    (behavior ((arg0 draw-control))
+    (behavior ((draw-control draw-control))
+      "Rise from fifty metres below the controller with an ease-out motion while slowing the
+       initial tumble."
       (set! (-> self interp) 1.0)
       (set-time! (-> self state-time))
       (set! (-> self spin-angle) 0.0)
       (set! (-> self root trans y) (+ -204800.0 (-> (the-as process-drawable (-> self parent 0)) root trans y)))
-      (let ((gp-0 (new 'stack-no-clear 'vector))
-            (s5-0 #f))
-        (set! (-> gp-0 quad) (-> self root trans quad))
-        (set! (-> gp-0 y) (-> (the-as process-drawable (-> self parent 0)) root trans y))
+      (let ((sound-position (new 'stack-no-clear 'vector))
+            (played-sound? #f))
+        (set! (-> sound-position quad) (-> self root trans quad))
+        (set! (-> sound-position y) (-> (the-as process-drawable (-> self parent 0)) root trans y))
         (loop
           (set! (-> self interp) (square (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (current-time) (-> self state-time))))))))
           (set! (-> self root trans y)
                 (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (* 204800.0 (-> self interp))))
-          (when (and (not s5-0) (< (-> self interp) 0.05))
-            (set! s5-0 #t)
-            (sound-play "bridge-piece-up" :position (the-as symbol gp-0)))
+          (when (and (not played-sound?) (< (-> self interp) 0.05))
+            (set! played-sound? #t)
+            (sound-play "bridge-piece-up" :position (the-as symbol sound-position)))
           (set! (-> self spin-angle) (* 10.0 (-> self spin-speed) (-> self interp)))
           (if (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root trans y)) (go drop-plat-idle))
           (suspend))))
   :post
     (behavior ()
-      (let ((gp-0 (new 'stack-no-clear 'quaternion)))
-        (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
-        (quaternion*! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0))
+      "Apply the tumble rotation, height fade, and drawable transform."
+      (let ((spin-rotation (new 'stack-no-clear 'quaternion)))
+        (quaternion-vector-angle! spin-rotation (-> self spin-axis) (-> self spin-angle))
+        (quaternion*! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat) spin-rotation))
       (drop-plat-set-fade)
       (transform-post)))
 
 (defstate drop-plat-drop (drop-plat)
   :code
     (behavior ()
+      "Wobble briefly when still seated, then tumble downward under gravity until out of view."
       (when (= (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root trans y))
         (set-time! (-> self state-time))
         (sound-play "bridge-piece-dn")
-        (let ((gp-1 (the int (* 300.0 (rand-vu-float-range 0.2 0.3)))))
-          (while (not (time-elapsed? (-> self state-time) gp-1))
-            (set! (-> self interp) (/ (the float (- (current-time) (-> self state-time))) (the float gp-1)))
+        (let ((wobble-duration (the int (* 300.0 (rand-vu-float-range 0.2 0.3)))))
+          (while (not (time-elapsed? (-> self state-time) wobble-duration))
+            (set! (-> self interp) (/ (the float (- (current-time) (-> self state-time))) (the float wobble-duration)))
             (set! (-> self spin-angle) (* 910.2222 (sin (* 196608.0 (-> self interp)))))
             (suspend))))
       (loop
@@ -160,38 +172,43 @@
         (suspend)))
   :post
     (behavior ()
-      (let ((gp-0 (new 'stack-no-clear 'quaternion)))
-        (quaternion-vector-angle! gp-0 (-> self spin-axis) (-> self spin-angle))
-        (quaternion*! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat) gp-0))
+      "Apply the tumble rotation, height fade, and drawable transform."
+      (let ((spin-rotation (new 'stack-no-clear 'quaternion)))
+        (quaternion-vector-angle! spin-rotation (-> self spin-axis) (-> self spin-angle))
+        (quaternion*! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat) spin-rotation))
       (drop-plat-set-fade)
       (transform-post)))
 
 (defstate drop-plat-die (drop-plat)
   :code
     (behavior ()
+      "Remove the tile and release its process resources."
       (cleanup-for-death self)))
 
-(defmethod drop-plat-method-20 ((this drop-plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this drop-plat))
+  "Create the tile's moving collision shape, sticky rider mesh, and navigation radius."
+  (let ((moving-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> moving-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> moving-shape reaction) default-collision-reaction)
+    (set! (-> moving-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders moving-shape 1)
+    (let ((platform-mesh (new 'process 'collide-shape-prim-mesh moving-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> platform-mesh prim-core collide-as) (collide-kind ground-object))
+      (set! (-> platform-mesh collide-with) (collide-kind target))
+      (set! (-> platform-mesh prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> platform-mesh prim-core offense) (collide-offense indestructible))
+      (set! (-> platform-mesh transform-index) 0)
+      (set-vector! (-> platform-mesh local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! moving-shape platform-mesh))
+    (set! (-> moving-shape nav-radius) (* 0.75 (-> moving-shape root-prim local-sphere w)))
+    (backup-collide-with-as moving-shape)
+    (set! (-> this root) moving-shape))
   0
   (none))
 
-(defmethod drop-plat-method-21 ((this drop-plat))
+(defmethod init-skeleton-and-spin! ((this drop-plat))
+  "Select the skeleton for this color and choose a random tumble axis and speed."
   (case (-> this color)
     ((1) (initialize-skeleton this *citb-drop-plat-red-sg* '()))
     ((2) (initialize-skeleton this *citb-drop-plat-green-sg* '()))
@@ -199,131 +216,140 @@
     ((4) (initialize-skeleton this *citb-drop-plat-yellow-sg* '()))
     (else (initialize-skeleton this *citb-drop-plat-sg* '())))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (let ((s3-0 (new 'stack-no-clear 'vector))
-        (s5-0 (new 'stack-no-clear 'vector))
-        (s4-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s3-0 x) (* 65536.0 (rand-vu)))
-    (set! (-> s3-0 y) (* 14563.556 (square (rand-vu-float-range -1.0 1.0))))
-    (vector-sincos! s5-0 s4-0 s3-0)
-    (set! (-> this spin-axis x) (* (-> s4-0 y) (-> s4-0 x)))
-    (set! (-> this spin-axis y) (-> s5-0 y))
-    (set! (-> this spin-axis z) (* (-> s4-0 y) (-> s5-0 x))))
+  (let ((angles (new 'stack-no-clear 'vector))
+        (sin-values (new 'stack-no-clear 'vector))
+        (cos-values (new 'stack-no-clear 'vector)))
+    (set! (-> angles x) (* 65536.0 (rand-vu)))
+    (set! (-> angles y) (* 14563.556 (square (rand-vu-float-range -1.0 1.0))))
+    (vector-sincos! sin-values cos-values angles)
+    (set! (-> this spin-axis x) (* (-> cos-values y) (-> cos-values x)))
+    (set! (-> this spin-axis y) (-> sin-values y))
+    (set! (-> this spin-axis z) (* (-> cos-values y) (-> sin-values x))))
   (set! (-> this spin-axis w) 1.0)
   (set! (-> this spin-angle) 0.0)
   (set! (-> this spin-speed) (* 8192.0 (+ 1.0 (rand-vu))))
   0
   (none))
 
-(defbehavior drop-plat-init-by-other drop-plat ((arg0 vector) (arg1 time-frame) (arg2 time-frame) (arg3 int))
-  (set! (-> self color) arg3)
-  (set! (-> self delay) arg1)
-  (set! (-> self duration) arg2)
-  (drop-plat-method-20 self)
-  (set! (-> self root trans quad) (-> arg0 quad))
+(defbehavior drop-plat-init-by-other drop-plat ((position vector) (delay time-frame) (duration time-frame) (color int))
+  "Initialize a child tile at position with its spawn delay, lifetime, and color."
+  (set! (-> self color) color)
+  (set! (-> self delay) delay)
+  (set! (-> self duration) duration)
+  (setup-collision! self)
+  (set! (-> self root trans quad) (-> position quad))
   (vector-identity! (-> self root scale))
   (quaternion-copy! (-> self root quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
-  (drop-plat-method-21 self)
+  (init-skeleton-and-spin! self)
   (go drop-plat-spawn)
   (none))
 
 (deftype handle-inline-array (inline-array-class)
+  "Inline storage for the controller's dynamically sized child-handle array."
   ((data handle :dynamic)))
-
 
 (set! (-> handle-inline-array heap-base) (the-as uint 8))
 
 (deftype citb-drop-plat (process-drawable)
-  ((x-count           int32)
-   (z-count           int32)
-   (child-count       int32)
-   (child-array       handle-inline-array)
+  "Controller for a rectangular grid of colored drop tiles."
+  ((x-count int32)
+   (z-count int32)
+   (child-count int32)
+   (child-array handle-inline-array)
    (child-color-array (pointer int8))
-   (x-dir             vector :inline)
-   (z-dir             vector :inline)
-   (origin            vector :inline)
-   (x-spacing         float)
-   (z-spacing         float)
-   (idle-distance     float)
-   (duration          time-frame)
-   (drop-time         time-frame))
+   (x-dir vector :inline)
+   (z-dir vector :inline)
+   (origin vector :inline)
+   (x-spacing float)
+   (z-spacing float)
+   (idle-distance float)
+   (duration time-frame)
+   (drop-time time-frame))
   (:states
    citb-drop-plat-active
    citb-drop-plat-idle))
 
-
 (defmethod relocate ((this citb-drop-plat) (offset int))
+  "Adjust the optional inline child-array pointer by offset, then relocate the base drawable
+   process."
   (if (nonzero? (-> this child-array)) (&+! (-> this child-array) offset))
   (the-as citb-drop-plat ((method-of-type process-drawable relocate) this offset)))
 
 (defbehavior citb-drop-plat-spawn-children citb-drop-plat ()
-  (local-vars (s0-0 int))
-  (let ((gp-0 (new 'stack-no-clear 'vector)))
+  "Spawn the colored tile grid one row at a time, beginning on the side nearest Jak."
+  (local-vars (color int))
+  (let ((position (new 'stack-no-clear 'vector)))
     6
     0
-    (let ((s5-0 0)
-          (s4-0 1))
+    (let ((row 0)
+          (row-step 1))
       (when (< 0.0 (vector-dot (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)) (-> self z-dir)))
-        (set! s5-0 (+ (-> self z-count) -1))
-        (set! s4-0 -1))
-      (dotimes (s3-2 (-> self z-count))
-        (dotimes (s2-0 (-> self x-count))
-          (let ((s1-0 (+ s2-0 (* s5-0 (-> self x-count)))))
-            (set! (-> gp-0 quad) (-> self origin quad))
-            (vector+*! gp-0 gp-0 (-> self x-dir) (* (-> self x-spacing) (the float s2-0)))
-            (vector+*! gp-0 gp-0 (-> self z-dir) (* (-> self z-spacing) (the float s5-0)))
-            (if (-> self child-color-array) (set! s0-0 (-> self child-color-array s1-0)) (set! s0-0 (rand-vu-int-range 0 5)))
-            (when (nonzero? s0-0)
-              (let ((sv-64 (the int (* 150.0 (rand-vu))))
-                    (sv-48 (get-process *default-dead-pool* drop-plat #x4000)))
-                (set! (-> self child-array data s1-0)
-                      (ppointer->handle (when sv-48
-                                          ((method-of-type drop-plat activate) (the-as drop-plat sv-48) self 'drop-plat (the-as pointer #x70004000))
+        (set! row (+ (-> self z-count) -1))
+        (set! row-step -1))
+      (dotimes (z-i (-> self z-count))
+        (dotimes (x-i (-> self x-count))
+          (let ((child-index (+ x-i (* row (-> self x-count)))))
+            (set! (-> position quad) (-> self origin quad))
+            (vector+*! position position (-> self x-dir) (* (-> self x-spacing) (the float x-i)))
+            (vector+*! position position (-> self z-dir) (* (-> self z-spacing) (the float row)))
+            (if (-> self child-color-array) (set! color (-> self child-color-array child-index)) (set! color (rand-vu-int-range 0 5)))
+            (when (nonzero? color)
+              (let ((spawn-delay (the int (* 150.0 (rand-vu))))
+                    (child (get-process *default-dead-pool* drop-plat #x4000)))
+                (set! (-> self child-array data child-index)
+                      (ppointer->handle (when child
+                                          ((method-of-type drop-plat activate) (the-as drop-plat child) self 'drop-plat (the-as pointer #x70004000))
                                           ((the-as (function process function vector int int int none) run-function-in-process)
-                                           sv-48
+                                           child
                                            drop-plat-init-by-other
-                                           gp-0
-                                           sv-64
+                                           position
+                                           spawn-delay
                                            (the-as int (-> self duration))
-                                           s0-0)
-                                          (-> sv-48 ppointer))))))))
+                                           color)
+                                          (-> child ppointer))))))))
         (suspend-for (seconds 0.12))
-        (+! s5-0 s4-0))))
+        (+! row row-step))))
   (set-time! (-> self drop-time))
   0
   (none))
 
 (defbehavior citb-drop-plat-drop-all-children citb-drop-plat ()
-  (dotimes (gp-0 (-> self child-count))
-    (send-event (handle->process (-> self child-array data gp-0)) 'drop)
-    (set! (-> self child-array data gp-0) (the-as handle #f)))
+  "Drop every live child tile and clear its stored handle."
+  (dotimes (i (-> self child-count))
+    (send-event (handle->process (-> self child-array data i)) 'drop)
+    (set! (-> self child-array data i) (the-as handle #f)))
   #f)
 
-(defbehavior citb-drop-plat-drop-children citb-drop-plat ((arg0 int))
+(defbehavior citb-drop-plat-drop-children citb-drop-plat ((color int))
+  "Drop all live child tiles whose color matches color. Color 6 leaves every tile in place."
   (cond
-    ((= arg0 6))
+    ((= color 6))
     (else
-     (dotimes (s5-0 (-> self child-count))
-       (let ((a0-3 (handle->process (-> self child-array data s5-0))))
-         (when (and a0-3 (!= (-> (the-as drop-plat a0-3) color) 6) (= arg0 (-> (the-as drop-plat a0-3) color)))
-           (send-event a0-3 'drop)
-           (set! (-> self child-array data s5-0) (the-as handle #f)))))))
+     (dotimes (i (-> self child-count))
+       (let ((child (handle->process (-> self child-array data i))))
+         (when (and child (!= (-> (the-as drop-plat child) color) 6) (= color (-> (the-as drop-plat child) color)))
+           (send-event child 'drop)
+           (set! (-> self child-array data i) (the-as handle #f)))))))
   0
   (none))
 
 (defstate citb-drop-plat-idle (citb-drop-plat)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Spawn a new tile grid when triggered."
       (case message
         (('trigger) (go citb-drop-plat-active))))
   :code
     (behavior ()
+      "Drop any remaining children and wait for activation."
       (citb-drop-plat-drop-all-children)
       (loop
         (suspend))))
 
 (defstate citb-drop-plat-active (citb-drop-plat)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Drop tiles matching the stepped color, or clear the grid when triggered."
       (case message
         (('player-stepped)
          (when (time-elapsed? (-> self drop-time) (seconds 0.2))
@@ -332,6 +358,7 @@
         (('trigger) (go citb-drop-plat-idle))))
   :code
     (behavior ()
+      "Run the tile grid until its lifetime expires, Jak leaves, or all children are gone."
       (set-time! (-> self state-time))
       (citb-drop-plat-spawn-children)
       (loop
@@ -342,30 +369,33 @@
           (go citb-drop-plat-idle))
         (suspend))))
 
-(defmethod init-from-entity! ((this citb-drop-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-drop-plat) (entity entity-actor))
+  "Build the tile-grid transform and child storage from entity resources, center the grid at
+   four-metre spacing, and enter its idle state."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
-  (let ((v1-2 (res-lump-data arg0 'count pointer)))
-    (when v1-2
-      (set! (-> this x-count) (-> (the-as (pointer int32) v1-2) 0))
-      (set! (-> this z-count) (-> (the-as (pointer int32) v1-2) 1))))
+  (process-drawable-from-entity! this entity)
+  (let ((count-data (res-lump-data entity 'count pointer)))
+    (when count-data
+      (set! (-> this x-count) (-> (the-as (pointer int32) count-data) 0))
+      (set! (-> this z-count) (-> (the-as (pointer int32) count-data) 1))))
   (set! (-> this child-count) (* (-> this x-count) (-> this z-count)))
-  (set! (-> this child-color-array) (res-lump-data arg0 'plat-type (pointer int8)))
+  (set! (-> this child-color-array) (res-lump-data entity 'plat-type (pointer int8)))
   (when (> (-> this child-count) 0)
     (set! (-> this child-array) (new 'process 'handle-inline-array (-> this child-count)))
-    (dotimes (v1-9 (-> this child-count))
-      (set! (-> this child-array data v1-9) (the-as handle #f))))
+    (dotimes (i (-> this child-count))
+      (set! (-> this child-array data i) (the-as handle #f))))
   (set! (-> this x-spacing) 16384.0)
   (set! (-> this z-spacing) 16384.0)
   (set! (-> this idle-distance) (+ 40960.0 (* 0.5 (the float (-> this z-count)) (-> this z-spacing))))
   (set! (-> this duration) (the-as time-frame (the int (* 300.0 (+ 2.0 (the float (-> this z-count)))))))
-  (let ((f0-7 (res-lump-float arg0 'rotoffset))) (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-7))
+  (let ((rotation-offset (res-lump-float entity 'rotoffset)))
+    (quaternion-rotate-y! (-> this root quat) (-> this root quat) rotation-offset))
   (vector-x-quaternion! (-> this x-dir) (-> this root quat))
   (vector-z-quaternion! (-> this z-dir) (-> this root quat))
   (set! (-> this origin quad) (-> this root trans quad))
-  (let ((f0-10 (* -0.5 (the float (+ (-> this x-count) -1)) (-> this x-spacing)))
-        (f30-0 (* -0.5 (the float (+ (-> this z-count) -1)) (-> this z-spacing))))
-    (vector+*! (-> this origin) (-> this origin) (-> this x-dir) f0-10)
-    (vector+*! (-> this origin) (-> this origin) (-> this z-dir) f30-0))
+  (let ((x-offset (* -0.5 (the float (+ (-> this x-count) -1)) (-> this x-spacing)))
+        (z-offset (* -0.5 (the float (+ (-> this z-count) -1)) (-> this z-spacing))))
+    (vector+*! (-> this origin) (-> this origin) (-> this x-dir) x-offset)
+    (vector+*! (-> this origin) (-> this origin) (-> this z-dir) z-offset))
   (go citb-drop-plat-idle)
   (none))

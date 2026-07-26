@@ -6,6 +6,12 @@
 (#when PC_PORT
   (define *part-tester-id* 105))
 
+;; Particle test harness. `start-part` spawns one part-tester, which spawns the
+;; particle group named below once per frame's worth of state change and draws a
+;; cross where it is spawning from. The group under test is chosen by editing the
+;; source (or, on PC, by setting *part-tester-id* from the debug menu), and the
+;; spawn position follows either the anim-tester, the player, or a named entity.
+
 ;; DECOMP BEGINS
 
 ;; this file is debug only
@@ -18,29 +24,35 @@
 
 (deftype part-tester (process)
   ((root      trsqv)
-   (part      sparticle-launch-control)
-   (old-group sparticle-launch-group))
+   (part      sparticle-launch-control) ;; launcher for the group under test
+   (old-group sparticle-launch-group)) ;; group the launcher was built for
   :heap-base #x100)
 
 (define-extern *part-tester* part-tester)
 
+;; Set from the listener to follow an entity by name; #f follows nothing.
 (define *part-tester-name* (the-as string #f))
 
 (defmethod deactivate ((this part-tester))
+  "Kill the particles this tester launched before the process goes away."
   (if (nonzero? (-> this part)) (kill-and-free-particles (-> this part)))
   ((method-of-type process deactivate) this)
   (none))
 
+;; Spawn the group under test every frame, rebuilding the launch control whenever
+;; the group changes.
 (defstate part-tester-idle (part-tester)
   :code
     (behavior ()
       (loop
-        (let ((gp-0 (entity-by-name *part-tester-name*)))
-          (when gp-0
-            (let ((s5-0 (-> gp-0 extra process)))
-              (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> (the-as process-drawable s5-0) root)))
-                (set! (-> self root trans quad) (-> (the-as process-drawable s5-0) root trans quad))
-                (set! (-> self root trans quad) (-> gp-0 extra trans quad))))))
+        ;; follow the named entity if there is one: its process if it has one with a
+        ;; collide-shape, otherwise the position the entity was placed at
+        (let ((ent (entity-by-name *part-tester-name*)))
+          (when ent
+            (let ((proc (-> ent extra process)))
+              (if (and proc (type-type? (-> proc type) process-drawable) (nonzero? (-> (the-as process-drawable proc) root)))
+                (set! (-> self root trans quad) (-> (the-as process-drawable proc) root trans quad))
+                (set! (-> self root trans quad) (-> ent extra trans quad))))))
         (add-debug-x #t
                      (bucket-id debug-no-zbuf)
                      (-> self root trans)
@@ -50,26 +62,33 @@
         ;; notes:
         ;;  - particles that use aux list won't work (warp parts)
         ;;  - some particles may have callbacks that won't work yet
-        (let ((gp-1 (-> *part-group-id-table* 105)))
+        (let ((group (-> *part-group-id-table* 105)))
           (#when PC_PORT
-            (if (nonzero? (-> *part-group-id-table* *part-tester-id*)) (set! gp-1 (-> *part-group-id-table* *part-tester-id*))))
-          (let ((s5-1 (-> self root trans)))
-            (when (!= gp-1 (-> self old-group))
+            (if (nonzero? (-> *part-group-id-table* *part-tester-id*)) (set! group (-> *part-group-id-table* *part-tester-id*))))
+          (let ((pos (-> self root trans)))
+            (when (!= group (-> self old-group))
+              ;; rewind the process heap over the old launch control instead of
+              ;; leaking one per group change
               (when (nonzero? (-> self part))
                 (kill-and-free-particles (-> self part))
                 (set! (-> self heap-cur) (&-> (-> self part) type)))
-              (set! (-> self part) (create-launch-control gp-1 self)))
+              (set! (-> self part) (create-launch-control group self)))
+            ;; a screen-space group is positioned in screen coordinates, so it gets
+            ;; the origin rather than the tester's position
             (if (nonzero? (-> self part))
               (spawn (-> self part)
                      (cond
-                       ((logtest? (-> gp-1 flags) (sp-group-flag screen-space)) *zero-vector*)
-                       (else (empty) s5-1)))))
-          (set! (-> self old-group) gp-1))
+                       ((logtest? (-> group flags) (sp-group-flag screen-space)) *zero-vector*)
+                       (else (empty) pos)))))
+          (set! (-> self old-group) group))
         (suspend))))
 
-(defbehavior part-tester-init-by-other process-drawable ((arg0 vector))
+(defbehavior part-tester-init-by-other process-drawable ((pos vector))
+  "Give the new tester a trsqv at pos and start it running. Declared on
+   process-drawable because part-tester's root sits where a process-drawable's
+   does, even though part-tester is a plain process."
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> pos quad))
   (set! *part-tester* (the-as part-tester (process->ppointer self)))
   (go part-tester-idle)
   (none))
@@ -77,6 +96,8 @@
 (define-perm *debug-part-dead-pool* dead-pool (new 'debug 'dead-pool 1 #x10000 '*debug-part-dead-pool*))
 
 (defun start-part ()
+  "Restart the particle tester at the anim-tester's position, or the player's if
+   the anim-tester is not running. Only one is ever alive."
   (kill-by-type part-tester *active-pool*)
   (process-spawn part-tester
                  (if *anim-tester* (-> *anim-tester* 0 root trans) (target-pos 0))

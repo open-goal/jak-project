@@ -69,83 +69,104 @@
 
 ;; DECOMP BEGINS
 
-;; this file is debug only
+;; Debug-only rolling histories used by the camera plot display. Each color and
+;; the time plot have an independent 400-sample ring.
 (declare-file (debug))
 
 (define *redline-table* (the-as (pointer float) (malloc 'debug 1600)))
 
 (define *redline-index* 0)
 
-(defun float-save-redline ((arg0 float))
-  (set! (-> *redline-table* *redline-index*) arg0)
+(defun float-save-redline ((value float))
+  "Append value to the 400-sample red debug plot, overwriting the oldest sample
+   when the ring wraps."
+  (set! (-> *redline-table* *redline-index*) value)
   (set! *redline-index* (+ *redline-index* 1))
   (when (>= *redline-index* 400)
     (set! *redline-index* 0)
     0)
   (none))
 
-(defun float-lookup-redline ((arg0 float))
-  (let ((a0-3 (mod (+ (the int arg0) -1 *redline-index*) 400))) (-> *redline-table* a0-3)))
+(defun float-lookup-redline ((position float))
+  "Read the red debug plot at position in its wrapped drawing order: zero is
+   newest and one starts at the oldest sample."
+  (let ((index (mod (+ (the int position) -1 *redline-index*) 400))) (-> *redline-table* index)))
 
 (define *blueline-table* (the-as (pointer float) (malloc 'debug 1600)))
 
 (define *blueline-index* 0)
 
-(defun float-save-blueline ((arg0 float))
-  (set! (-> *blueline-table* *blueline-index*) arg0)
+(defun float-save-blueline ((value float))
+  "Append value to the 400-sample blue debug plot, overwriting the oldest
+   sample when the ring wraps."
+  (set! (-> *blueline-table* *blueline-index*) value)
   (set! *blueline-index* (+ *blueline-index* 1))
   (when (>= *blueline-index* 400)
     (set! *blueline-index* 0)
     0)
   (none))
 
-(defun float-lookup-blueline ((arg0 float))
-  (let ((a0-3 (mod (+ (the int arg0) -1 *blueline-index*) 400))) (-> *blueline-table* a0-3)))
+(defun float-lookup-blueline ((position float))
+  "Read the blue debug plot at position in its wrapped drawing order: zero is
+   newest and one starts at the oldest sample."
+  (let ((index (mod (+ (the int position) -1 *blueline-index*) 400))) (-> *blueline-table* index)))
 
 (define *greenline-table* (the-as (pointer float) (malloc 'debug 1600)))
 
 (define *greenline-index* 0)
 
-(defun float-save-greenline ((arg0 float))
-  (set! (-> *greenline-table* *greenline-index*) arg0)
+(defun float-save-greenline ((value float))
+  "Append value to the 400-sample green debug plot, overwriting the oldest
+   sample when the ring wraps."
+  (set! (-> *greenline-table* *greenline-index*) value)
   (set! *greenline-index* (+ *greenline-index* 1))
   (when (>= *greenline-index* 400)
     (set! *greenline-index* 0)
     0)
   (none))
 
-(defun float-lookup-greenline ((arg0 float))
-  (let ((a0-3 (mod (+ (the int arg0) -1 *greenline-index*) 400))) (-> *greenline-table* a0-3)))
+(defun float-lookup-greenline ((position float))
+  "Read the green debug plot at position in its wrapped drawing order: zero is
+   newest and one starts at the oldest sample."
+  (let ((index (mod (+ (the int position) -1 *greenline-index*) 400))) (-> *greenline-table* index)))
 
 (define *yellowline-table* (the-as (pointer float) (malloc 'debug 1600)))
 
 (define *yellowline-index* 0)
 
-(defun float-save-yellowline ((arg0 float))
-  (set! (-> *yellowline-table* *yellowline-index*) arg0)
+(defun float-save-yellowline ((value float))
+  "Append value to the 400-sample yellow debug plot, overwriting the oldest
+   sample when the ring wraps."
+  (set! (-> *yellowline-table* *yellowline-index*) value)
   (set! *yellowline-index* (+ *yellowline-index* 1))
   (when (>= *yellowline-index* 400)
     (set! *yellowline-index* 0)
     0)
   (none))
 
-(defun float-lookup-yellowline ((arg0 float))
-  (let ((a0-3 (mod (+ (the int arg0) -1 *yellowline-index*) 400))) (-> *yellowline-table* a0-3)))
+(defun float-lookup-yellowline ((position float))
+  "Read the yellow debug plot at position in its wrapped drawing order: zero is
+   newest and one starts at the oldest sample."
+  (let ((index (mod (+ (the int position) -1 *yellowline-index*) 400))) (-> *yellowline-table* index)))
 
 (define *timeplot-table* (the-as (pointer float) (malloc 'debug 1600)))
 
 (define *timeplot-index* 0)
 
-(defun float-save-timeplot ((arg0 float))
-  (set! (-> *timeplot-table* *timeplot-index*) arg0)
+(defun float-save-timeplot ((value float))
+  "Append value to the 400-sample time debug plot, overwriting the oldest
+   sample when the ring wraps."
+  (set! (-> *timeplot-table* *timeplot-index*) value)
   (set! *timeplot-index* (+ *timeplot-index* 1))
   (when (>= *timeplot-index* 400)
     (set! *timeplot-index* 0)
     0)
   (none))
 
-(defun float-lookup-timeplot ((arg0 float))
-  (let ((a0-3 (mod (+ (the int arg0) -1 *timeplot-index*) 400))) (-> *timeplot-table* a0-3)))
+(defun float-lookup-timeplot ((position float))
+  "Read the time debug plot at position in its wrapped drawing order: zero is
+   newest and one starts at the oldest sample."
+  (let ((index (mod (+ (the int position) -1 *timeplot-index*) 400))) (-> *timeplot-table* index)))
 
 (define-perm *cam-layout* symbol #f)
 

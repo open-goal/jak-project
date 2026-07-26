@@ -8,38 +8,42 @@
 (defenum effect-control-flag
   :type uint32
   :bitfield #t
-  (event 0))
+  (event 0)) ;; Offer effects to the process as events before applying their built-in behavior.
 
 ;; DECOMP BEGINS
 
 (deftype effect-control (basic)
-  ((process          process-drawable)
+  ((process          process-drawable) ;; Process whose animation and effect positions are tracked.
    (flags            effect-control-flag)
+   ;; Previous animation position, used to find every effect tag crossed since the last update.
    (last-frame-group art-joint-anim)
    (last-frame-num   float)
-   (channel-offset   int32)
-   (res              res-lump)
-   (name             (pointer res-tag))
+   (channel-offset   int32) ;; Root animation channel to follow.
+   (res              res-lump) ;; Resource data for the current animation group.
+   (name             (pointer res-tag)) ;; First effect-name tag in res.
    (param            uint32))
   (:methods
    (new (symbol type process-drawable) _type_)
-   (effect-control-method-9 (_type_) none)
-   (effect-control-method-10 (_type_ symbol float int) object)
-   (effect-control-method-11 (_type_ symbol float int basic pat-surface) none)
-   (effect-control-method-12 (_type_ symbol float int basic sound-name) int)
+   (update-effects (_type_) none)
+   (do-effect (_type_ symbol float int) object)
+   (do-effect-for-surface (_type_ symbol float int basic pat-surface) none)
+   (play-effect-sound (_type_ symbol float int basic sound-name) int)
    (set-channel-offset! (_type_ int) none)
-   (effect-control-method-14 (_type_ float float float) none)))
+   (play-effects-from-res-lump (_type_ float float float) none)))
 
-(defmethod new effect-control ((allocation symbol) (type-to-make type) (arg0 process-drawable))
+(defmethod new effect-control ((allocation symbol) (type-to-make type) (drawable process-drawable))
+  "Create an effect controller for drawable when its art contains effect-name data;
+   return #f when the art has no such data."
   (cond
-    ((res-lump-struct (-> arg0 draw jgeo extra) 'effect-name structure)
-     (let ((v0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-       (set! (-> v0-1 process) arg0)
-       (set! (-> v0-1 last-frame-group) #f)
-       v0-1))
+    ((res-lump-struct (-> drawable draw jgeo extra) 'effect-name structure)
+     (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+       (set! (-> this process) drawable)
+       (set! (-> this last-frame-group) #f)
+       this))
     (else (the-as effect-control #f))))
 
-(defmethod set-channel-offset! ((this effect-control) (arg0 int))
-  (set! (-> this channel-offset) arg0)
+(defmethod set-channel-offset! ((this effect-control) (channel-offset int))
+  "Select the root animation channel whose effect tags are tracked."
+  (set! (-> this channel-offset) channel-offset)
   0
   (none))

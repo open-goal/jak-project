@@ -26,13 +26,12 @@
    plat-button-teleport-to-other-end)
   (:methods
    (can-activate? (_type_) symbol)
-   (plat-button-method-27 (_type_) none)
-   (plat-button-method-28 (_type_) collide-shape-moving)
-   (can-target-move? (_type_) none)
+   (pose-skeleton! (_type_) none)
+   (setup-collision! (_type_) collide-shape-moving)
+   (configure-movement! (_type_) none)
    (should-teleport? (_type_) symbol)
-   (plat-button-method-31 (_type_) none)
-   (plat-button-method-32 (_type_) none)))
-
+   (setup-skeleton! (_type_) none)
+   (go-initial-state! (_type_) none)))
 
 (defskelgroup *plat-button-sg*
   plat-button
@@ -42,15 +41,21 @@
   :bounds (static-spherem 0 -1 0 6.6))
 
 (defmethod should-teleport? ((this plat-button))
+  "Return true when the platform should swap directly to the opposite path endpoint. The base
+   platform never teleports; long-distance elevator subtypes override this."
   #f)
 
 (defmethod can-activate? ((this plat-button))
+  "Return true at path phase zero, or at phase one when bidirectional activation is enabled."
   (or (= (-> this path-pos) 0.0) (and (-> this bidirectional?) (= (-> this path-pos) 1.0))))
 
+;; The button is kept at the start or end of its press animation to show whether it can currently
+;; activate. Touching its button primitive starts the platform, optionally holding the player until
+;; the platform has moved far enough to carry them safely.
 (defstate plat-button-idle (plat-button)
   :virtual #t
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((source process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('touch)
          (when (can-activate? self)
@@ -62,31 +67,33 @@
              (go-virtual plat-button-pressed))))))
   :code
     (behavior ()
-      (let ((gp-0 (can-activate? self)))
-        (if gp-0 (ja-no-eval :num! (seek! 0.0)) (ja-no-eval :num! (seek!)))
+      (let ((was-activatable? (can-activate? self)))
+        (if was-activatable? (ja-no-eval :num! (seek! 0.0)) (ja-no-eval :num! (seek!)))
         (loop
           (if (should-teleport? self) (go-virtual plat-button-teleport-to-other-end))
-          (let ((s5-0 (can-activate? self)))
-            (when (!= s5-0 gp-0)
-              (set! gp-0 s5-0)
-              (if s5-0 (ja-no-eval :num! (seek! 0.0)) (ja-no-eval :num! (seek!))))
+          (let ((activatable? (can-activate? self)))
+            (when (!= activatable? was-activatable?)
+              (set! was-activatable? activatable?)
+              (if activatable? (ja-no-eval :num! (seek! 0.0)) (ja-no-eval :num! (seek!))))
             (when (not (ja-done? 0))
               (rider-trans)
-              (if s5-0 (ja :num! (seek! 0.0)) (ja :num! (seek!)))
+              (if activatable? (ja :num! (seek! 0.0)) (ja :num! (seek!)))
               (rider-post)))
           (suspend)))))
 
+;; Elevator subtypes use this to move an unseen platform to the endpoint nearest the camera without
+;; playing the travel sequence.
 (defstate plat-button-teleport-to-other-end (plat-button)
   :virtual #t
   :code
     (behavior ()
-      (let ((f0-0 1.0))
-        (if (>= (-> self path-pos) 0.5) (set! f0-0 0.0))
-        (set! (-> self path-pos) f0-0)
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (eval-path-curve! (-> self path) gp-0 f0-0 'interp)
-          (vector+! gp-0 gp-0 (-> self trans-off))
-          (move-to-point! (-> self root) gp-0)))
+      (let ((destination-phase 1.0))
+        (if (>= (-> self path-pos) 0.5) (set! destination-phase 0.0))
+        (set! (-> self path-pos) destination-phase)
+        (let ((destination-position (new 'stack-no-clear 'vector)))
+          (eval-path-curve! (-> self path) destination-position destination-phase 'interp)
+          (vector+! destination-position destination-position (-> self trans-off))
+          (move-to-point! (-> self root) destination-position)))
       (ja-post)
       (go-virtual plat-button-idle)))
 
@@ -95,22 +102,21 @@
   :trans rider-trans
   :code
     (behavior ()
-      (ja-no-eval :num! (seek!))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :num! (seek!))
       (set! (-> self go-back-if-lost-player?) #t)
       (process-entity-status! self (entity-perm-status complete) #t)
       (if (= (-> self path-pos) 0.0) (go-virtual plat-button-move-downward) (go-virtual plat-button-move-upward)))
   :post rider-post)
 
 (defbehavior plat-button-camera-on plat-button ()
-  (let ((v1-1 (res-lump-struct (-> self entity) 'camera-name structure)))
-    (if v1-1 (send-event *camera* 'change-to-entity-by-name v1-1)))
+  "When the entity supplies camera-name, ask the camera process to use that named entity camera."
+  (let ((camera-name (res-lump-struct (-> self entity) 'camera-name structure)))
+    (if camera-name (send-event *camera* 'change-to-entity-by-name camera-name)))
   0
   (none))
 
 (defbehavior plat-button-camera-off plat-button ()
+  "Return control from the platform's entity camera to the ordinary camera."
   (send-event *camera* 'clear-entity)
   0
   (none))
@@ -118,14 +124,14 @@
 (defstate plat-button-move-downward (plat-button)
   :virtual #t
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((source process) (argc int) (message symbol) (block event-message-block))
       (when (or (= message 'touch) (= message 'attack))
         (set-time! (-> self state-time))
         #f))
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (process-entity-status! self (entity-perm-status bit-3) #t)
+      (process-entity-status! self (entity-perm-status no-kill) #t)
       (plat-button-camera-on)
       (set-setting! 'allow-look-around #f 0.0 0))
   :exit
@@ -140,28 +146,30 @@
         (when (or (not *target*)
                   (and (time-elapsed? (-> self state-time) (seconds 4))
                        (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                                 (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))))))
+                                 (not (logtest? (-> *target* control status) (collide-status on-surface)))))))
           (set! (-> self go-back-if-lost-player?) #f)
           (go-virtual plat-button-move-upward)))
-      (let ((f0-4 (seek-with-smooth (-> self path-pos) 1.0 (* 0.1 (seconds-per-frame)) 0.25 0.001)))
-        (set! (-> self path-pos) f0-4)
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (eval-path-curve! (-> self path) gp-0 f0-4 'interp)
-          (vector+! gp-0 gp-0 (-> self trans-off))
-          (move-to-point! (-> self root) gp-0)))
+      (let ((next-phase (seek-with-smooth (-> self path-pos) 1.0 (* 0.1 (seconds-per-frame)) 0.25 0.001)))
+        (set! (-> self path-pos) next-phase)
+        (let ((next-position (new 'stack-no-clear 'vector)))
+          (eval-path-curve! (-> self path) next-position next-phase 'interp)
+          (vector+! next-position next-position (-> self trans-off))
+          (move-to-point! (-> self root) next-position)))
       (sound-play "elev-loop" :id (-> self sound-id))
-      (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-        (set! (-> gp-1 command) (sound-command set-param))
-        (set! (-> gp-1 id) (-> self sound-id))
-        (let ((a1-6 (-> self root trans)))
-          (let ((s5-0 self))
-            (when (= a1-6 #t)
-              (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 root)))
-                (set! a1-6 (-> s5-0 root trans))
-                (set! a1-6 (the-as vector #f)))))
-          (sound-trans-convert (-> gp-1 parms trans) a1-6))
-        (set! (-> gp-1 parms mask) (sound-mask trans))
-        (-> gp-1 id))
+      ;; The loop is restarted every frame, so update its emitter position through the same RPC
+      ;; buffer used by sound-trans-from-process.
+      (let ((position-update (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+        (set! (-> position-update command) (sound-command set-param))
+        (set! (-> position-update id) (-> self sound-id))
+        (let ((sound-position (-> self root trans)))
+          (let ((owner self))
+            (when (= sound-position #t)
+              (if (and owner (type-type? (-> owner type) process-drawable) (nonzero? (-> owner root)))
+                (set! sound-position (-> owner root trans))
+                (set! sound-position (the-as vector #f)))))
+          (sound-trans-convert (-> position-update parms trans) sound-position))
+        (set! (-> position-update parms mask) (sound-mask trans))
+        (-> position-update id))
       (if (and (-> self grab-player?) (< 0.2 (-> self path-pos))) (set! (-> self grab-player?) (not (process-release? *target*)))))
   :code anim-loop
   :post rider-post)
@@ -169,14 +177,14 @@
 (defstate plat-button-move-upward (plat-button)
   :virtual #t
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((source process) (argc int) (message symbol) (block event-message-block))
       (when (or (= message 'touch) (= message 'attack))
         (set-time! (-> self state-time))
         #f))
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (process-entity-status! self (entity-perm-status bit-3) #t)
+      (process-entity-status! self (entity-perm-status no-kill) #t)
       (plat-button-camera-on)
       (set-setting! 'allow-look-around #f 0.0 0))
   :exit
@@ -191,28 +199,30 @@
         (when (or (not *target*)
                   (and (time-elapsed? (-> self state-time) (seconds 4))
                        (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                                 (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))))))
+                                 (not (logtest? (-> *target* control status) (collide-status on-surface)))))))
           (set! (-> self go-back-if-lost-player?) #f)
           (go-virtual plat-button-move-downward)))
-      (let ((f0-4 (seek-with-smooth (-> self path-pos) 0.0 (* 0.1 (seconds-per-frame)) 0.25 0.001)))
-        (set! (-> self path-pos) f0-4)
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (eval-path-curve! (-> self path) gp-0 f0-4 'interp)
-          (vector+! gp-0 gp-0 (-> self trans-off))
-          (move-to-point! (-> self root) gp-0)))
+      (let ((next-phase (seek-with-smooth (-> self path-pos) 0.0 (* 0.1 (seconds-per-frame)) 0.25 0.001)))
+        (set! (-> self path-pos) next-phase)
+        (let ((next-position (new 'stack-no-clear 'vector)))
+          (eval-path-curve! (-> self path) next-position next-phase 'interp)
+          (vector+! next-position next-position (-> self trans-off))
+          (move-to-point! (-> self root) next-position)))
       (sound-play "elev-loop" :id (-> self sound-id))
-      (let ((gp-1 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-        (set! (-> gp-1 command) (sound-command set-param))
-        (set! (-> gp-1 id) (-> self sound-id))
-        (let ((a1-6 (-> self root trans)))
-          (let ((s5-0 self))
-            (when (= a1-6 #t)
-              (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 root)))
-                (set! a1-6 (-> s5-0 root trans))
-                (set! a1-6 (the-as vector #f)))))
-          (sound-trans-convert (-> gp-1 parms trans) a1-6))
-        (set! (-> gp-1 parms mask) (sound-mask trans))
-        (-> gp-1 id))
+      ;; The loop is restarted every frame, so update its emitter position through the same RPC
+      ;; buffer used by sound-trans-from-process.
+      (let ((position-update (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+        (set! (-> position-update command) (sound-command set-param))
+        (set! (-> position-update id) (-> self sound-id))
+        (let ((sound-position (-> self root trans)))
+          (let ((owner self))
+            (when (= sound-position #t)
+              (if (and owner (type-type? (-> owner type) process-drawable) (nonzero? (-> owner root)))
+                (set! sound-position (-> owner root trans))
+                (set! sound-position (the-as vector #f)))))
+          (sound-trans-convert (-> position-update parms trans) sound-position))
+        (set! (-> position-update parms mask) (sound-mask trans))
+        (-> position-update id))
       (if (and (-> self grab-player?) (< (-> self path-pos) 0.8)) (set! (-> self grab-player?) (not (process-release? *target*)))))
   :code anim-loop
   :post rider-post)
@@ -221,7 +231,7 @@
   :virtual #t
   :code
     (behavior ()
-      (if (-> self allow-auto-kill) (process-entity-status! self (entity-perm-status bit-3) #f))
+      (if (-> self allow-auto-kill) (process-entity-status! self (entity-perm-status no-kill) #f))
       (sound-stop (-> self sound-id))
       (sound-play "elev-land")
       (loop
@@ -229,100 +239,108 @@
           (go-virtual plat-button-idle))
         (suspend))))
 
-(defmethod plat-button-method-28 ((this plat-button))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 -4096.0 0.0 27033.6)
-      (set-root-prim! s5-0 s4-0)
-      (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 1))))
-        (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
-        (set! (-> s3-0 collide-with) (collide-kind target))
-        (set! (-> s3-0 prim-core action) (collide-action solid rider-plat-sticky))
-        (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
-        (set! (-> s3-0 transform-index) 4)
-        (set-vector! (-> s3-0 local-sphere) 0.0 -3072.0 0.0 7372.8)
-        (append-prim s4-0 s3-0))
-      (let ((s3-1 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 2))))
-        (set! (-> s3-1 prim-core collide-as) (collide-kind ground-object))
-        (set! (-> s3-1 collide-with) (collide-kind target))
-        (set! (-> s3-1 prim-core action) (collide-action solid rider-plat-sticky))
-        (set! (-> s3-1 prim-core offense) (collide-offense indestructible))
-        (set! (-> s3-1 transform-index) 3)
-        (set-vector! (-> s3-1 local-sphere) 0.0 -4096.0 0.0 27033.6)
-        (append-prim s4-0 s3-1)))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    s5-0))
+(defmethod setup-collision! ((this plat-button))
+  "Create the moving collision root, its two-primitive group, and two sticky indestructible
+   mesh primitives attached to skeleton transforms 4 and 3. Allocate one rider and install the
+   result as root."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision 1)
+    (let ((primitive-group (new 'process 'collide-shape-prim-group collision (the-as uint 2) 0)))
+      (set! (-> primitive-group prim-core collide-as) (collide-kind ground-object))
+      (set! (-> primitive-group collide-with) (collide-kind target))
+      (set! (-> primitive-group prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> primitive-group transform-index) 0)
+      (set-vector! (-> primitive-group local-sphere) 0.0 -4096.0 0.0 27033.6)
+      (set-root-prim! collision primitive-group)
+      (let ((button-mesh (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 1))))
+        (set! (-> button-mesh prim-core collide-as) (collide-kind ground-object))
+        (set! (-> button-mesh collide-with) (collide-kind target))
+        (set! (-> button-mesh prim-core action) (collide-action solid rider-plat-sticky))
+        (set! (-> button-mesh prim-core offense) (collide-offense indestructible))
+        (set! (-> button-mesh transform-index) 4)
+        (set-vector! (-> button-mesh local-sphere) 0.0 -3072.0 0.0 7372.8)
+        (append-prim primitive-group button-mesh))
+      (let ((platform-mesh (new 'process 'collide-shape-prim-mesh collision (the-as uint 1) (the-as uint 2))))
+        (set! (-> platform-mesh prim-core collide-as) (collide-kind ground-object))
+        (set! (-> platform-mesh collide-with) (collide-kind target))
+        (set! (-> platform-mesh prim-core action) (collide-action solid rider-plat-sticky))
+        (set! (-> platform-mesh prim-core offense) (collide-offense indestructible))
+        (set! (-> platform-mesh transform-index) 3)
+        (set-vector! (-> platform-mesh local-sphere) 0.0 -4096.0 0.0 27033.6)
+        (append-prim primitive-group platform-mesh)))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision)
+    collision))
 
-(defmethod can-target-move? ((this plat-button))
+(defmethod configure-movement! ((this plat-button))
+  "Configure subtype-specific path thresholds, player handling, lighting, and activation
+   state after the base path has been positioned. The base implementation does nothing."
   0
   (none))
 
-(defmethod plat-button-method-27 ((this plat-button))
+(defmethod pose-skeleton! ((this plat-button))
+  "Pose the button animation at its first frame when the platform can activate, or its final
+   frame otherwise, then post the pose and update collision transforms."
   (ja-channel-set! 1)
   (cond
     ((can-activate? this)
-     (let ((s5-0 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-0 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-0 frame-num) 0.0)))
+     (let ((start-channel (-> this skel root-channel 0)))
+       (joint-control-channel-group-eval! start-channel
+                                          (the-as art-joint-anim (-> this draw art-group data 2))
+                                          num-func-identity)
+       (set! (-> start-channel frame-num) 0.0)))
     (else
-     (let ((s5-1 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-1 frame-num) (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1))))))
+     (let ((end-channel (-> this skel root-channel 0)))
+       (joint-control-channel-group-eval! end-channel
+                                          (the-as art-joint-anim (-> this draw art-group data 2))
+                                          num-func-identity)
+       (set! (-> end-channel frame-num)
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1))))))
   (ja-post)
   (update-transforms! (-> this root))
   (none))
 
-(defmethod plat-button-method-31 ((this plat-button))
+(defmethod setup-skeleton! ((this plat-button))
+  "Initialize the standard platform-button skeleton. Art-specific subtypes override this hook."
   (initialize-skeleton this *plat-button-sg* '())
   0
   (none))
 
-(defmethod plat-button-method-32 ((this plat-button))
+(defmethod go-initial-state! ((this plat-button))
+  "Enter the ordinary platform-button idle state. Subtypes may choose a different saved state."
   (go (method-of-object this plat-button-idle))
   0
   (none))
 
-(defmethod init-from-entity! ((this plat-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this plat-button) (source-entity entity-actor))
+  "Read the translation offset and bidirectional option, create collision and drawable state,
+   set up the skeleton and path, place the platform at path phase zero, configure subtype
+   movement, pose the button, and enter the subtype's initial state."
   (set! (-> this go-back-if-lost-player?) #f)
   (set! (-> this grab-player?) #f)
   (set! (-> this should-grab-player?) #f)
-  (set! (-> this trans-off quad)
-        (-> (the-as vector
-                    ((method-of-type res-lump get-property-struct)
-                     arg0
-                     'trans-offset
-                     'interp
-                     -1000000000.0
-                     *null-vector*
-                     (the-as (pointer res-tag) #f)
-                     *res-static-buf*))
-            quad))
-  (set! (-> this bidirectional?) (nonzero? (res-lump-value arg0 'bidirectional uint128)))
-  (plat-button-method-28 this)
-  (process-drawable-from-entity! this arg0)
+  (set! (-> this trans-off quad) (-> (res-lump-struct source-entity 'trans-offset vector :default *null-vector*) quad))
+  (set! (-> this bidirectional?) (nonzero? (res-lump-value source-entity 'bidirectional uint128)))
+  (setup-collision! this)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
-  (plat-button-method-31 this)
+  (setup-skeleton! this)
   (logior! (-> this skel status) (janim-status inited))
   (set! (-> this spawn-pos quad) (-> this root trans quad))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (set! (-> this path-pos) 0.0)
-  (let ((s5-1 (-> this root trans)))
-    (eval-path-curve! (-> this path) s5-1 (-> this path-pos) 'interp)
-    (vector+! s5-1 s5-1 (-> this trans-off)))
+  (let ((platform-position (-> this root trans)))
+    (eval-path-curve! (-> this path) platform-position (-> this path-pos) 'interp)
+    (vector+! platform-position platform-position (-> this trans-off)))
   (set! (-> this sound-id) (new-sound-id))
   (set! (-> this allow-auto-kill) #t)
-  (can-target-move? this)
-  (plat-button-method-27 this)
-  (plat-button-method-32 this)
+  (configure-movement! this)
+  (pose-skeleton! this)
+  (go-initial-state! this)
   (none))

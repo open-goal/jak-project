@@ -10,45 +10,48 @@
 ;; Draw Node Collisions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; The collision stuff is a bit weird.
-;; The method takes an integer argument. For some types, you must provide a length and calling the method
-;; will automatically run on all the brothers of the node.  For other types, you don't have to provide a length.
+;; The collision interface takes an integer argument. Draw nodes use it as the number of contiguous
+;; siblings beginning at this node, while some leaf types do not need it.
 
-;; The output of the collision are stored in the collide-list that's passed through all the methods.
-;; For an unknown reason, the input to the collision query (the box we're colliding with) is not.
-;; It's stored in *collide-work*
+;; Collision results are appended to the collide-list passed through the methods. The active query
+;; itself, including the box or probe, is stored in *collide-work*.
 
-(defmethod collide-with-box ((this draw-node) (arg0 int) (arg1 collide-list))
-  "Find collisions with the box in the current collision query, add results to collide-list."
-  ;; loop over ourself and our brothers
-  (dotimes (s3-0 arg0)
-    (if (collide-cache-using-box-test (-> this bsphere)) ;; do we collide with the bounding sphere?
-      ;; if so, do the collision check with the geometry.
-      (collide-with-box (-> this child) (the-as int (-> this child-count)) arg1))
+(defmethod collide-with-box ((this draw-node) (count int) (result collide-list))
+  "For count contiguous draw nodes beginning at this, reject each bounding sphere outside the
+   active collision box and delegate surviving child spans to result."
+  (dotimes (i count)
+    (if (collide-cache-using-box-test (-> this bsphere))
+      (collide-with-box (-> this child) (the-as int (-> this child-count)) result))
     (&+! this 32))
   0
   (none))
 
-(defmethod collide-y-probe ((this draw-node) (arg0 int) (arg1 collide-list))
-  (dotimes (s3-0 arg0)
+(defmethod collide-y-probe ((this draw-node) (count int) (result collide-list))
+  "For count contiguous draw nodes beginning at this, reject each bounding sphere outside the
+   active vertical probe and delegate surviving child spans to result."
+  (dotimes (i count)
     (if (collide-cache-using-y-probe-test (-> this bsphere))
-      (collide-y-probe (-> this child) (the-as int (-> this child-count)) arg1))
+      (collide-y-probe (-> this child) (the-as int (-> this child-count)) result))
     (&+! this 32))
   0
   (none))
 
-(defmethod collide-ray ((this draw-node) (arg0 int) (arg1 collide-list))
-  (dotimes (s3-0 arg0)
+(defmethod collide-ray ((this draw-node) (count int) (result collide-list))
+  "For count contiguous draw nodes beginning at this, reject each bounding sphere outside the
+   active swept-sphere ray and delegate surviving child spans to result."
+  (dotimes (i count)
     (if (collide-cache-using-line-sphere-test (-> this bsphere))
-      (collide-ray (-> this child) (the-as int (-> this child-count)) arg1))
+      (collide-ray (-> this child) (the-as int (-> this child-count)) result))
     (&+! this 32))
   0
   (none))
 
-(defmethod collect-ambients ((this draw-node) (arg0 sphere) (arg1 int) (arg2 ambient-list))
-  (dotimes (s2-0 arg1)
-    (if (spheres-overlap? arg0 (the-as sphere (-> this bsphere)))
-      (collect-ambients (-> this child) arg0 (the-as int (-> this child-count)) arg2))
+(defmethod collect-ambients ((this draw-node) (query-sphere sphere) (count int) (result ambient-list))
+  "For count contiguous draw nodes beginning at this, delegate child spans whose bounding
+   spheres overlap query-sphere and append matching ambient objects to result."
+  (dotimes (i count)
+    (if (spheres-overlap? query-sphere (the-as sphere (-> this bsphere)))
+      (collect-ambients (-> this child) query-sphere (the-as int (-> this child-count)) result))
     (&+! this 32))
   0
   (none))
@@ -61,43 +64,54 @@
 ;; It lets you treat this array like a normal drawable (at least for collisions).
 
 (defmethod inspect ((this drawable-inline-array-node))
-  "Custom inspect for drawable-inline-array-node to print our nodes."
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
-  (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  (dotimes (i (-> this length))
+    (format #t "~T  [~D] ~A~%" i (-> this data i)))
   this)
 
-(defmethod mem-usage ((this drawable-inline-array-node) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of a drawable-inline-array-node. Only counts the nodes, doesn't count the node children."
-  (set! (-> arg0 length) (max 62 (-> arg0 length)))
-  (set! (-> arg0 data 61 name) "draw-node")
-  (+! (-> arg0 data 61 count) (-> this length))
-  (let ((v1-6 (asize-of this))) (+! (-> arg0 data 61 used) v1-6) (+! (-> arg0 data 61 total) (logand -16 (+ v1-6 15))))
+(defmethod mem-usage ((this drawable-inline-array-node) (usage memory-usage-block) (flags int))
+  "Account for this inline array's draw-node storage without counting memory owned by the
+   nodes' children."
+  (set! (-> usage length) (max 62 (-> usage length)))
+  (set! (-> usage data 61 name) "draw-node")
+  (+! (-> usage data 61 count) (-> this length))
+  (let ((byte-size (asize-of this)))
+    (+! (-> usage data 61 used) byte-size)
+    (+! (-> usage data 61 total) (logand -16 (+ byte-size 15))))
   this)
 
 (defmethod asize-of ((this drawable-inline-array-node))
+  "Return the drawable-inline-array-node header size plus storage for its active draw nodes."
   (the-as int (+ (-> drawable-inline-array-node size) (* (+ (-> this length) -1) 32))))
 
-(defmethod collide-with-box ((this drawable-inline-array-node) (arg0 int) (arg1 collide-list))
-  ;; call on the first in the array, then it will loop through all the brothers.
-  (collide-with-box (the-as drawable (-> this data)) (-> this length) arg1)
+(defmethod collide-with-box ((this drawable-inline-array-node) (count int) (result collide-list))
+  "Ignore count and forward the active collision-box query across every draw node in this
+   inline array, appending geometry to result."
+  ;; The draw-node method starts with the first element and walks the remaining siblings.
+  (collide-with-box (the-as drawable (-> this data)) (-> this length) result)
   0
   (none))
 
-(defmethod collide-y-probe ((this drawable-inline-array-node) (arg0 int) (arg1 collide-list))
-  (collide-y-probe (the-as drawable (-> this data)) (-> this length) arg1)
+(defmethod collide-y-probe ((this drawable-inline-array-node) (count int) (result collide-list))
+  "Ignore count and forward the active vertical-probe query across every draw node in this
+   inline array, appending geometry to result."
+  (collide-y-probe (the-as drawable (-> this data)) (-> this length) result)
   0
   (none))
 
-(defmethod collide-ray ((this drawable-inline-array-node) (arg0 int) (arg1 collide-list))
-  (collide-ray (the-as drawable (-> this data)) (-> this length) arg1)
+(defmethod collide-ray ((this drawable-inline-array-node) (count int) (result collide-list))
+  "Ignore count and forward the active swept-sphere ray query across every draw node in this
+   inline array, appending geometry to result."
+  (collide-ray (the-as drawable (-> this data)) (-> this length) result)
   0
   (none))
 
-(defmethod collect-ambients ((this drawable-inline-array-node) (arg0 sphere) (arg1 int) (arg2 ambient-list))
-  (collect-ambients (the-as drawable (-> this data)) arg0 (-> this length) arg2)
+(defmethod collect-ambients ((this drawable-inline-array-node) (query-sphere sphere) (count int) (result ambient-list))
+  "Ignore count and forward query-sphere across every draw node in this inline array,
+   appending matching ambient objects to result."
+  (collect-ambients (the-as drawable (-> this data)) query-sphere (-> this length) result)
   0
   (none))
 
@@ -105,5 +119,214 @@
 ;; DRAW NODE CULL
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; TODO: waiting on tfrag/tie stuff to worry about this.
-(define-extern draw-node-cull (function pointer pointer (inline-array draw-node) int none))
+;; input-vis contains one visibility bit for each node at the current BVH depth. output-vis contains
+;; one byte for each node, with the bits for that node's children. A node rejected by the preceding
+;; visibility test or by any of the four camera side planes has its entire child byte cleared;
+;; otherwise the byte is left unchanged for the next depth.
+;;
+;; Nodes are copied in groups of 32 to alternating 1 KiB scratchpad banks. While VU0 tests the
+;; current bank, the scratchpad DMA channel fetches the next visible bank. A zero 32-node input word
+;; skips the copy and clears the corresponding 32 output bytes directly.
+
+(#when PC_PORT
+  ;; The PC renderer performs this hierarchy culling itself.
+  (define-extern draw-node-cull (function (pointer uint8) (pointer uint8) (inline-array draw-node) int none)))
+
+(#unless PC_PORT
+  (defun draw-node-cull ((output-vis (pointer uint8)) (input-vis (pointer uint8)) (nodes (inline-array draw-node)) (node-count int))
+    "Filter one BVH depth's child-visibility bytes. input-vis supplies one visibility bit per node;
+     output-vis supplies the corresponding byte of up to eight child bits. Clear a byte when its
+     parent bit is absent or its draw-node bounding sphere is outside any of the four side planes.
+     Nodes are copied to alternating 32-node scratchpad banks while the previous bank is tested."
+    (declare (asm-func none))
+    ;; Register roles change at the initial DMA boundary. In the main loop, t1/t2 are the input and
+    ;; output cursors, t3 is the number of nodes left in the current bank, t4 ends its input bytes,
+    ;; t5 walks scratchpad nodes, t6 holds either the next input word or its current bit, and t7 is
+    ;; the pipelined sphere cursor. vf16-vf19 contain the four side-plane coefficients by component.
+    (max.w.vf vf1 vf0 vf0)
+    (l.w t1 input-vis)
+    (lui v1 #x1000)
+    (m! t2 *math-camera*)
+    (ori v1 v1 #xd400)
+    (lui t0 #x7000)
+    (l.vf vf16 t2 860)
+    (add.i nodes nodes -4)
+    (l.vf vf17 t2 876)
+    (ori t0 t0 1040)
+    (l.vf vf18 t2 892)
+    (nop!)
+    (l.vf vf19 t2 908)
+    (nop!)
+    ;; Find the first bank containing a node that survived the preceding visibility pass.
+    (label scan-first-input-word)
+    (b.nz t1 start-first-dma :delay (nop!))
+    (add.i input-vis input-vis 4)
+    (add.i nodes nodes 1024)
+    (add.i t2 r0 7)
+    (l.w t1 input-vis)
+    (label clear-first-empty-bank)
+    (s.w r0 output-vis)
+    (add.i node-count node-count -4)
+    (b.le node-count r0 done :delay (add.i output-vis output-vis 4))
+    (nop!)
+    (nop!)
+    (b.gt t2 r0 clear-first-empty-bank :delay (add.i t2 t2 -1))
+    (b scan-first-input-word :delay (nop!))
+    (label start-first-dma)
+    ;; Wait for any earlier scratchpad transfer, then fetch 32 draw nodes (64 quadwords). MADR is
+    ;; aligned four bytes before the GOAL basic pointer, so the node sphere lands at bank + 16.
+    (l.w t1 v1)
+    (nop!)
+    (nop!)
+    (nop!)
+    (and.i t1 t1 256)
+    (nop!)
+    (b.nz t1 start-first-dma :delay (nop!))
+    (s.w nodes v1 16)
+    (xor.i t1 t0 1024)
+    (s.w t1 v1 128)
+    (add.i t1 r0 64)
+    (s.w t1 v1 32)
+    (add.i t1 r0 256)
+    (s.w t1 v1)
+    (nop!)
+    (label process-bank)
+    (m t1 input-vis)
+    (m t2 output-vis)
+    (add.i input-vis input-vis 4)
+    (add.i output-vis output-vis 32)
+    (m t3 node-count)
+    (m t4 input-vis)
+    (add.i node-count node-count -32)
+    (xor.i t0 t0 1024)
+    (m t5 t0)
+    (nop!)
+    (b.gt node-count r0 examine-next-bank :delay (l.w t6 input-vis))
+    (b wait-for-current-bank :delay (nop!))
+    ;; A zero word represents 32 rejected nodes. Clear their child masks without fetching nodes.
+    (label advance-past-empty-bank)
+    (add.i input-vis input-vis 4)
+    (nop!)
+    (add.i t7 r0 7)
+    (l.w t6 input-vis)
+    (label clear-next-empty-bank)
+    (s.w r0 output-vis)
+    (add.i node-count node-count -4)
+    (b.le node-count r0 wait-for-current-bank :delay (add.i output-vis output-vis 4))
+    (nop!)
+    (nop!)
+    (b.gt t7 r0 clear-next-empty-bank :delay (add.i t7 t7 -1))
+    (label examine-next-bank)
+    (b.z t6 advance-past-empty-bank :delay (add.i nodes nodes 1024))
+    ;; Wait for the current copy before reusing the DMA channel. Poll CHCR slowly enough for the
+    ;; transfer to make useful progress between samples.
+    (label wait-to-prefetch)
+    (l.w t6 v1)
+    (nop!)
+    (nop!)
+    (nop!)
+    (and.i t6 t6 256)
+    (nop!)
+    (b.z t6 start-prefetch :delay (nop!))
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (b wait-to-prefetch :delay (nop!))
+    (label start-prefetch)
+    (s.w nodes v1 16)
+    (xor.i t6 t0 1024)
+    (s.w t6 v1 128)
+    (add.i t6 r0 64)
+    (s.w t6 v1 32)
+    (add.i t6 r0 256)
+    (b process-visibility-byte :delay (s.w t6 v1))
+    ;; The last bank has no following copy to overlap, but its current copy must still finish.
+    (label wait-for-current-bank)
+    (l.w t6 v1)
+    (nop!)
+    (nop!)
+    (nop!)
+    (and.i t6 t6 256)
+    (nop!)
+    (b.z t6 process-visibility-byte :delay (nop!))
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (nop!)
+    (b wait-for-current-bank :delay (nop!))
+    (label process-visibility-byte)
+    (l.vf vf2 t5 16)
+    (add.i t7 t5 32)
+    (l.b t5 t1)
+    (add.i t1 t1 1)
+    (b.nz t5 start-sphere-pipeline :delay (nop!))
+    (add.i t5 r0 1)
+    (nop!)
+    ;; Each input byte covers eight nodes, so two word stores clear all eight child-mask bytes.
+    (label clear-eight-child-masks)
+    (s.w r0 t2)
+    (add.i t3 t3 -4)
+    (b.le t3 r0 done :delay (add.i t2 t2 4))
+    (nop!)
+    (nop!)
+    (b.gt t5 r0 clear-eight-child-masks :delay (add.i t5 t5 -1))
+    (b next-visibility-byte :delay (add.i t5 t7 224))
+    (label start-sphere-pipeline)
+    (nop!)
+    ;; Each vf3 component is signed distance to one side plane, expanded by the sphere radius:
+    ;; plane-x * center.x + plane-y * center.y + plane-z * center.z + radius - plane-offset.
+    (mula.x.vf vf16 vf2)
+    (nop!)
+    (madda.y.vf vf17 vf2)
+    (add.i t6 r0 128)
+    (madda.z.vf vf18 vf2)
+    (madda.w.vf vf1 vf2)
+    (l.vf vf2 t7 16)
+    (add.i t7 t7 32)
+    (msub.w.vf vf3 vf19 vf0)
+    (label test-node)
+    (l.b t8 t2)
+    (and t9 t5 t6)
+    (srl t6 t6 1)
+    (mula.x.vf vf16 vf2)
+    ;; Clear for a node rejected by the input bit. The following vector work computes the next
+    ;; sphere while the packed comparison reduces all four current plane results.
+    (mov.z t8 r0 t9)
+    (madda.y.vf vf17 vf2)
+    (m t9 vf3)
+    (madda.z.vf vf18 vf2)
+    (add.i t2 t2 1)
+    (madda.w.vf vf1 vf2)
+    (l.vf vf2 t7 16)
+    (pcgt.w t9 r0 t9)
+    (mmi-nop!)
+    (ppach t9 r0 t9)
+    (movn t8 r0 t9)
+    (msub.w.vf vf3 vf19 vf0)
+    (s.b t8 t2 -1)
+    (add.i t3 t3 -1)
+    (b.le t3 r0 done :delay (add.i t7 t7 32))
+    (b.nz t6 test-node :delay (nop!))
+    (add.i t5 t7 -64)
+    (nop!)
+    (label next-visibility-byte)
+    (b.ne t1 t4 process-visibility-byte :delay (nop!))
+    (b.gt node-count r0 process-bank :delay (nop!))
+    (label done)
+    (m v0 r0)
+    (jr ra :delay (add sp sp r0))
+    (nop!)
+    (nop!)))

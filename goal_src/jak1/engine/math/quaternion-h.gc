@@ -5,9 +5,8 @@
 
 ;; DECOMP BEGINS
 
-;; general quaternion type used to represent an orientation in a way that's compact (4 floats),
-;; avoids singularities of euler angles, and reasonably efficient to transform.
-;; the w component is stored last.
+;; Quaternion orientation stored as vector part xyz followed by scalar part w.
+;; It is compact, avoids Euler-angle singularities, and composes efficiently.
 (deftype quaternion (structure)
   ((x    float)
    (y    float)
@@ -24,7 +23,6 @@
 (define-extern vector-y-angle (function vector float))
 
 (defmacro new-stack-quaternion0 ()
-  "Get a stack quaternion that's set to 0.
-   This is more efficient than (new 'stack 'quaternion) because
-   this doesn't call the constructor."
-  `(let ((q (new 'stack-no-clear 'quaternion))) (set! (-> q quad) (the-as uint128 0)) q))
+  "Allocate a zeroed quaternion on the stack without calling the constructor."
+  (with-gensyms (value)
+    `(let ((,value (new 'stack-no-clear 'quaternion))) (set! (-> ,value quad) (the-as uint128 0)) ,value)))

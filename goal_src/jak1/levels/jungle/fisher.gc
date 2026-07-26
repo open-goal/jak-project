@@ -10,11 +10,11 @@
 ;; DECOMP BEGINS
 
 (deftype fisher-bank (basic)
-  ((width      meters)
+  "Fishing-game dimensions and completion thresholds shared by the fisherman and fish."
+  ((width meters)
    (net-radius meters)
    (max-caught int32)
    (max-missed int32)))
-
 
 (define *FISHER-bank*
   (new 'static 'fisher-bank :width (meters 3.3) :net-radius (meters 0.7) :max-caught #xc8 :max-missed 20))
@@ -42,7 +42,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 0.53333336)
    (:timer (seconds 2))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.035) (seconds 0.177))
    (:next-launcher 829)))
 
@@ -64,7 +64,7 @@
    (:fade-a -0.42666668)
    (:accel-y (meters 0.00033333333))
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpartgroup group-normal-fish
   :id 178
@@ -89,7 +89,7 @@
    (:fade-a -0.42666668)
    (:accel-y (meters 0.00033333333))
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpartgroup group-fish-collect
   :id 179
@@ -110,7 +110,7 @@
    (:a 16.0)
    (:fade-a -1.6)
    (:timer (seconds 0.085))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 830
   :init-specs
@@ -129,7 +129,7 @@
    (:scalevel-y (meters 0.009765625))
    (:fade-a 1.2)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:func 'sparticle-track-root)
    (:next-time (seconds 0.035) (seconds 0.03))
    (:next-launcher 832)))
@@ -138,17 +138,17 @@
   :init-specs ((:fade-a -0.8)))
 
 (deftype fisher-params (structure)
-  ((timeout         time-frame)
-   (vel             float)
-   (swing-min       time-frame)
-   (swing-max       time-frame)
-   (period          time-frame)
-   (fish-vel        float)
-   (bad-percent     float)
-   (deadly-percent  float)
+  "Difficulty-specific timing, speed, and fish-type probabilities for the fishing game."
+  ((timeout time-frame)
+   (vel float)
+   (swing-min time-frame)
+   (swing-max time-frame)
+   (period time-frame)
+   (fish-vel float)
+   (bad-percent float)
+   (deadly-percent float)
    (powerup-percent float))
   :allow-misaligned)
-
 
 (define *fisher-params*
   (new 'static
@@ -671,46 +671,46 @@
             (new 'static 'fisher-params))))
 
 (deftype fisher (process-taskable)
-  ((paddle-end      vector 2 :inline)
-   (paddle-pos      vector :inline)
-   (paddle          float)
-   (paddle-vel      float)
-   (spawner         float)
-   (spawner-last    float)
-   (spawn-time      time-frame)
-   (turn-time       time-frame)
-   (swing-time      time-frame)
-   (block-time      time-frame)
-   (block           int32)
-   (caught          int32)
-   (missed          int32)
-   (difficulty      int32)
-   (start-time      time-frame)
+  "The Forbidden Jungle fisherman and fishing-minigame controller."
+  ((paddle-end vector 2 :inline)
+   (paddle-pos vector :inline)
+   (paddle float)
+   (paddle-vel float)
+   (spawner float)
+   (spawner-last float)
+   (spawn-time time-frame)
+   (turn-time time-frame)
+   (swing-time time-frame)
+   (block-time time-frame)
+   (block int32)
+   (caught int32)
+   (missed int32)
+   (difficulty int32)
+   (start-time time-frame)
    (ambient-big-one time-frame)
-   (ambient-steady  time-frame)
+   (ambient-steady time-frame)
    (ambient-sagging time-frame)
-   (ambient-almost  time-frame)
-   (cheat-temp      int32)
-   (hard            symbol)
-   (training        symbol)
-   (params          fisher-params :inline))
+   (ambient-almost time-frame)
+   (cheat-temp int32)
+   (hard symbol)
+   (training symbol)
+   (params fisher-params :inline))
   (:states
    fisher-done
    fisher-playing))
 
-
 (deftype fisher-fish (process-drawable)
-  ((dir    vector :inline)
+  "One fish moving along the fishing stream."
+  ((dir vector :inline)
    (offset float)
-   (pos    float)
-   (vel    float)
-   (mode   basic)
-   (size   meters))
+   (pos float)
+   (vel float)
+   (mode basic)
+   (size meters))
   (:states
    fisher-fish-caught
    fisher-fish-die
    fisher-fish-fall))
-
 
 (defskelgroup *catch-fisha-sg*
   catch-fisha
@@ -748,7 +748,8 @@
   :bounds (static-spherem 0 -6 0 14)
   :shadow fisher-shadow-mg)
 
-(defmethod process-taskable-method-52 ((this fisher))
+(defmethod setup-shadow-settings! ((this fisher))
+  "Set the fisherman's shadow-control bottom and top planes."
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((f0-0 (-> this root trans y)))
@@ -756,10 +757,11 @@
         0
         (let ((a0-4 v1-1)) (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))))
+      (logclear! (-> v1-1 settings flags) (shadow-flags scissor-top))))
   (none))
 
 (defmethod draw-npc-shadow ((this fisher))
+  "Update the fisherman's shadow when its highest-detail geometry was drawn, otherwise disable it."
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
@@ -785,7 +787,7 @@
 (defbehavior fisher-fish-move fisher-fish ()
   (+! (-> self pos) (* (-> self vel) (seconds-per-frame)))
   (eval-path-curve-div! (-> (the-as fisher (-> self parent 0)) path) (-> self root trans) (-> self pos) 'interp)
-  (path-control-method-12 (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos))
+  (get-tangent-at-vertex! (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos))
   (seek-toward-heading-vec! (-> self root) (-> self dir) 291271.12 (seconds 0.2))
   (let ((f30-1 (+ 16384.0 (y-angle (-> self root))))
         (gp-0 (new-stack-vector0)))
@@ -804,7 +806,7 @@
   :code
     (behavior ()
       (set-heading-vec! (-> self root)
-                        (path-control-method-12 (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos)))
+                        (get-tangent-at-vertex! (-> (the-as fisher (-> self parent 0)) path) (-> self dir) (-> self pos)))
       (loop
         (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -940,6 +942,7 @@
   (none))
 
 (defmethod play-anim! ((this fisher) (arg0 symbol))
+  "Select the fisherman's animation for the current fishing-task stage and apply progression changes when commit? is true."
   (if arg0 (set! (-> this training) #f))
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
@@ -999,11 +1002,13 @@
      (get-art-elem this))))
 
 (defmethod get-art-elem ((this fisher))
+  "Return the art element on the active root animation channel."
   (if (closed? (-> this tasks) (game-task jungle-fishgame) (task-status need-reminder))
     (-> this draw art-group data 7)
     (-> this draw art-group data 6)))
 
-(defmethod process-taskable-method-38 ((this fisher))
+(defmethod goto-post-anim-state! ((this fisher))
+  "Enter query or play-anim for the remaining fishing-task steps, otherwise use the inherited transition."
   (case (current-status (-> this tasks))
     (((task-status need-reminder-a) (task-status need-reminder)) (go (method-of-object this query)))
     (((task-status need-reward-speech)) (go (method-of-object this play-anim)))
@@ -1011,6 +1016,7 @@
   (none))
 
 (defmethod get-accept-anim ((this fisher) (arg0 symbol))
+  "Return the fishing-task accept animation, committing the accepted choice when requested."
   (when arg0
     (close-current! (-> this tasks))
     (aybabtu 2))
@@ -1023,6 +1029,7 @@
        '((0 send-event self emissive-on) (700 send-event self emissive-off))))
 
 (defmethod get-reject-anim ((this fisher) (arg0 symbol))
+  "Return the fishing-task reject animation."
   (new 'static 'spool-anim :name "fisher-reject" :index 11 :parts 2 :command-list '()))
 
 (defstate fisher-done (fisher)
@@ -1344,7 +1351,8 @@
       (set! (-> self cur-trans-hook) nothing))
     ((-> (method-of-type process-taskable play-anim) exit))))
 
-(defmethod process-taskable-method-43 ((this fisher))
+(defmethod try-play-ambient-chatter ((this fisher))
+  "Play fishing-specific reminder or ambient speech when its distance and cooldown permit."
   (cond
     ((closed? (-> this tasks) (game-task jungle-fishgame) (task-status need-reminder))
      (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 1) 122880.0 this)
@@ -1465,17 +1473,18 @@
           (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
             (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
             (until (ja-done? 0)
-              (process-taskable-method-43 self)
+              (try-play-ambient-chatter self)
               (suspend)
               (ja :num! (seek!)))))
         (when (ja-group? fisher-idle-more-often-ja)
           (ja-no-eval :group! fisher-idle-less-often-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
-            (process-taskable-method-43 self)
+            (try-play-ambient-chatter self)
             (suspend)
             (ja :num! (seek!)))))))
 
 (defmethod initialize-collision ((this fisher) (arg0 int) (arg1 vector))
+  "Build the fisherman's solid collision sphere at center-joint."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
@@ -1507,15 +1516,17 @@
   (none))
 
 (defmethod target-above-threshold? ((this fisher))
+  "Return true during the fishing task or while hard mode is enabled."
   (or (= (current-task (-> this tasks)) (game-task jungle-fishgame)) (-> this hard)))
 
-(defmethod init-from-entity! ((this fisher) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *fisher-sg* 3 49 (new 'static 'vector :w 4096.0) 33)
+(defmethod init-from-entity! ((this fisher) (source-entity entity-actor))
+  "Initialize the fisherman, fishing path and task state, difficulty, paddle geometry, and starting state."
+  (init-as-taskable! this source-entity *fisher-sg* 3 49 (new 'static 'vector :w 4096.0) 33)
   (set! (-> this tasks) (get-task-control (game-task jungle-fishgame)))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (let ((s5-0 (eval-path-curve-div! (-> this path) (-> this paddle-pos) 6.5 'interp))
-        (s4-0 (path-control-method-12 (-> this path) (new-stack-vector0) 6.5)))
+        (s4-0 (get-tangent-at-vertex! (-> this path) (new-stack-vector0) 6.5)))
     (+! (-> s5-0 y) 2457.6)
     (vector-normalize! (vector-rotate-y! s4-0 s4-0 16384.0) (-> *FISHER-bank* width))
     (vector-! (-> this paddle-end 0) s5-0 s4-0)
@@ -1525,7 +1536,7 @@
   (set! (-> this hard) #f)
   (set! (-> *FISHER-bank* max-caught) 200)
   (set! (-> this training) #f)
-  (process-taskable-method-42 this)
+  (goto-initial-state! this)
   (none))
 
 (defstate target-fishing (target)
@@ -1533,16 +1544,16 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (cond
         ((= message 'bounce)
-         (set-zero! (-> self control unknown-smush00))
-         (activate! (-> self control unknown-smush00) 1.0 120 210 0.3 1.0))
-        ((= message 'lose) (set! (-> self control unknown-uint20) (the-as uint message)) message)
+         (set-zero! (-> self control fishing-smush))
+         (activate! (-> self control fishing-smush) 1.0 120 210 0.3 1.0))
+        ((= message 'lose) (set! (-> self control state-var0) (the-as uint message)) message)
         (else ((-> target-grab event) proc argc message block))))
   :enter
     (behavior ((arg0 handle))
       (set! (-> self control mod-surface) *empty-mods*)
       (logior! (-> self state-flags) (state-flags invulnerable))
-      (set-zero! (-> self control unknown-smush00))
-      (set! (-> self control unknown-uint20) (the-as uint #f)))
+      (set-zero! (-> self control fishing-smush))
+      (set! (-> self control state-var0) (the-as uint #f)))
   :exit
     (behavior ()
       (logclear! (-> self state-flags) (state-flags invulnerable))
@@ -1591,7 +1602,7 @@
           (set! (-> v1-35 0 param2) (the-as basic (-> self control quat)))))
       (ja :group! eichar-fishing-ja :num! (identity (ja-aframe 15.0 0)))
       (let ((s5-2 (new 'stack-no-clear 'vector)))
-        (until (-> self control unknown-spoolanim00)
+        (until (-> self control state-spool-anim)
           (let ((v1-42 (handle->process arg0)))
             (when v1-42
               (ja :num!
@@ -1600,7 +1611,7 @@
                 (let ((s2-0 (new-stack-vector0))
                       (s4-0 (new-stack-vector0))
                       (s3-0 (quaternion-identity! (new-stack-quaternion0)))
-                      (f30-0 (update! (-> self control unknown-smush00))))
+                      (f30-0 (update! (-> self control fishing-smush))))
                   (quaternion-rotate-y! s3-0 s3-0 (* 5461.3335 f30-0))
                   (set-vector! s2-0 1.0 1.0 1.0 1.0)
                   (set-vector! s4-0 0.0 (* 2048.0 (-> s5-2 y)) (* 819.2 (-> s5-2 y)) 1.0)
@@ -1610,7 +1621,7 @@
                   (set! (-> s5-2 y) (-> s5-2 x))
                   (set! (-> s5-2 x) f30-0)))))
           (suspend)))
-      (case (-> self control unknown-spoolanim00)
+      (case (-> self control state-spool-anim)
         (('lose)
          (ja-channel-push! 1 (seconds 0.1))
          (ja-no-eval :group! eichar-fishing-lose-ja :num! (seek!) :frame-num 0.0)

@@ -10,10 +10,12 @@
 
 ;; DECOMP BEGINS
 
-;; the "ambient" system has a bunch of triggers for background sounds, hints, and similar events.
+;; Ambient entities are spatial triggers for background sounds, hints, points of
+;; interest, lighting, weather, and similar level effects.
 
-;; each ambient also has a simple drawable that just contains a reference to the entity.
-;; this is basically only used to collect the currently active ambients.
+;; Each ambient has a lightweight drawable containing only the entity reference.
+;; The scene hierarchy uses these wrappers to collect the ambients overlapping a
+;; query sphere; they are not submitted to the renderer.
 (deftype drawable-ambient (drawable)
   ((ambient entity-ambient :offset 8))
   (:methods
@@ -26,19 +28,19 @@
   ((data drawable-ambient 1 :inline)
    (pad  uint32)))
 
-(defmethod draw ((this drawable-tree-ambient) (arg0 drawable-tree-ambient) (arg1 display-frame))
-  "Do nothing - ambients are not drawn."
+(defmethod draw ((this drawable-tree-ambient) (tree drawable-tree-ambient) (frame display-frame))
+  "Do nothing; ambient drawables are spatial triggers, not rendered geometry."
   0
   (none))
 
-(defmethod unpack-vis ((this drawable-tree-ambient) (arg0 (pointer int8)) (arg1 (pointer int8)))
-  "Do nothing - ambients do not use vis."
-  arg1)
+(defmethod unpack-vis ((this drawable-tree-ambient) (destination (pointer int8)) (source (pointer int8)))
+  "Leave the visibility stream unchanged because ambient trees do not consume VIS data."
+  source)
 
-;; one of the more common ambients is a "level hint". This can be a few things:
-;; - on screen text (level names)
-;; - daxter audio (sidekick)
-;; - voicebox audio (also called sidekick in some places...)
+;; A level hint serializes the mutually exclusive hint presentation. Depending
+;; on mode it displays localized text, plays Daxter sidekick audio, plays a
+;; voicebox line, or runs an ambient/stinger sound at trans. The timing fields
+;; track active and interrupted time, while voicebox owns the current speaker.
 (deftype level-hint (process)
   ((text-id-to-display text-id)
    (sound-to-play      string)
@@ -58,11 +60,15 @@
    level-hint-normal
    (level-hint-sidekick string)))
 
-;; a list of ambients that are currently active.
+;; Fixed-capacity result buffer filled by collect-ambients. Items are references
+;; to drawable-ambient wrappers; num-items records the occupied prefix.
 (deftype ambient-list (structure)
   ((num-items int32)
    (items     drawable-ambient 2048)))
 
+;; Process pointer for the single active level hint, or #f when none owns the
+;; display/audio hint channel.
 (define-extern *hint-semaphore* (pointer level-hint))
 
+;; Start a spatial sound hint if the hint channel is free.
 (define-extern ambient-hint-spawn (function string vector process-tree symbol object))

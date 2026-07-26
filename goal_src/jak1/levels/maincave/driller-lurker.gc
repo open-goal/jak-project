@@ -33,14 +33,14 @@
    (hit-player-time         time-frame)
    (player-attack-id        uint64))
   (:methods
-   (driller-lurker-method-20 (_type_ symbol target) symbol)
+   (update-movement-and-drill! (_type_ symbol target) symbol)
    (driller-lurker-method-21 (_type_) none)
    (driller-lurker-method-22 (_type_) none)
-   (driller-lurker-method-23 (_type_) float)
-   (driller-lurker-method-24 (_type_) symbol)
-   (driller-lurker-method-25 (_type_) symbol)
-   (driller-lurker-method-26 (_type_) symbol)
-   (driller-lurker-method-27 (_type_) object))
+   (update-player-path-u (_type_) float)
+   (in-attack-range? (_type_) symbol)
+   (should-start-chase? (_type_) symbol)
+   (lost-player? (_type_) symbol)
+   (spawn-drill-debris (_type_) object))
   (:states
    driller-lurker-attack
    (driller-lurker-chase symbol)
@@ -50,7 +50,6 @@
    driller-lurker-jammed-standing
    driller-lurker-patrol
    driller-lurker-patrol-pause))
-
 
 (defskelgroup *driller-lurker-sg*
   driller-lurker
@@ -67,7 +66,7 @@
        :settings
        (new 'static
             'shadow-settings
-            :flags (shadow-flags shdf00 shdf03)
+            :flags (shadow-flags camera-cull scissor-top)
             :shadow-dir
             (new 'static 'vector :y -1.0 :w 614400.0)
             :bot-plane
@@ -108,7 +107,7 @@
    (:accel-y (meters 0.00066666666))
    (:friction 0.9)
    (:timer (seconds 0.7))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 0) (degrees 180))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -134,7 +133,7 @@
    (:accel-y (meters 0.00066666666))
    (:friction 0.9)
    (:timer (seconds 0.7))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 0) (degrees 180))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -157,7 +156,7 @@
    (:accel-y (meters -0.0033333334))
    (:friction 0.97)
    (:timer (seconds 1.5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:next-time (seconds 1.25))
    (:next-launcher 2078)
    (:conerot-x (degrees 0) (degrees 180))
@@ -185,24 +184,25 @@
    (:accel-y (meters -0.0033333334))
    (:friction 0.97)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:next-time (seconds 0.017))
    (:next-launcher 2078)
    (:conerot-x (degrees 0) (degrees 180))
    (:conerot-y (degrees 0) (degrees 360))))
 
-(defbehavior driller-lurker-default-event-handler driller-lurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defbehavior driller-lurker-default-event-handler driller-lurker ((source-process process) (argc int) (message symbol) (block event-message-block))
+  "Handle target contact and attacks, including drill damage and death transitions."
   (cond
-    ((= arg2 'attack)
+    ((= message 'attack)
      (cond
-       ((= (-> arg0 type) target)
-        (let ((v1-3 (-> arg3 param 2)))
+       ((= (-> source-process type) target)
+        (let ((v1-3 (-> block param 2)))
           (when (!= v1-3 (-> self player-attack-id))
             (set! (-> self player-attack-id) v1-3)
             (case (-> self mode)
               ((5)
                (let ((v1-5 *target*))
-                 (when (!= (-> arg3 param 1) 'flop)
+                 (when (!= (-> block param 1) 'flop)
                    (let ((f0-4 (atan (- (-> v1-5 control trans x) (-> self root-overeride trans x))
                                      (- (-> v1-5 control trans z) (-> self root-overeride trans z)))))
                      (quaternion-axis-angle! (-> self root-overeride quat) 0.0 1.0 0.0 f0-4))))
@@ -211,7 +211,7 @@
                (let ((s4-0 *target*)
                      (s2-0 #f)
                      (s3-0 #f))
-                 (let* ((s1-0 (the-as touching-shapes-entry (-> arg3 param 0)))
+                 (let* ((s1-0 (the-as touching-shapes-entry (-> block param 0)))
                         (s0-0 (-> s1-0 head)))
                    (while s0-0
                      (let ((sv-96 (get-touched-prim s0-0 (-> self root-overeride) s1-0)))
@@ -222,27 +222,34 @@
                      (set! s0-0 (-> s0-0 next))))
                  (cond
                    ((or s2-0 (not s3-0))
-                    (when (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3)))))
+                    (when (send-event source-process
+                                      'attack
+                                      (-> block param 0)
+                                      (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3)))))
                       (set! (-> self hit-player?) #t)
                       (set-time! (-> self hit-player-time))
                       (set-collide-offense (-> self root-overeride) 2 (collide-offense no-offense))
                       (let ((v1-39 (-> self mode))) (if (or (zero? v1-39) (= v1-39 1) (= v1-39 2)) (go driller-lurker-chase #t)))))
                    (s3-0
-                    (when (!= (-> arg3 param 1) 'flop)
+                    (when (!= (-> block param 1) 'flop)
                       (let ((f0-11 (atan (- (-> s4-0 control trans x) (-> self root-overeride trans x))
                                          (- (-> s4-0 control trans z) (-> self root-overeride trans z)))))
                         (quaternion-axis-angle! (-> self root-overeride quat) 0.0 1.0 0.0 f0-11)))
                     (go driller-lurker-die)))))))))
        (else (go driller-lurker-die))))
-    ((= arg2 'touch)
-     (when (= (-> arg0 type) target)
-       (when (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3)))))
+    ((= message 'touch)
+     (when (= (-> source-process type) target)
+       (when (send-event source-process
+                         'attack
+                         (-> block param 0)
+                         (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3)))))
          (set! (-> self hit-player?) #t)
          (set-time! (-> self hit-player-time))
          (set-collide-offense (-> self root-overeride) 2 (collide-offense no-offense))
          (let ((v1-62 (-> self mode))) (if (or (zero? v1-62) (= v1-62 1) (= v1-62 2)) (go driller-lurker-chase #t))))))))
 
-(defmethod driller-lurker-method-20 ((this driller-lurker) (arg0 symbol) (arg1 target))
+(defmethod update-movement-and-drill! ((this driller-lurker) (bounce-at-ends? symbol) (look-target target))
+  "Advance along the path, update body aim and drill spin, and manage drilling sound and target tracking."
   (let ((v1-1 (current-time)))
     (when (!= v1-1 (-> this last-update-time))
       (set! (-> this last-update-time) v1-1)
@@ -258,12 +265,15 @@
               ((< f0-6 0.0)
                (set! s4-0 #f)
                (cond
-                 (arg0 (set! f0-6 (- f0-6)) (set! (-> this path-dir) (- (-> this path-dir))) (set! (-> this path-speed) 0.0))
+                 (bounce-at-ends? (set! f0-6 (- f0-6)) (set! (-> this path-dir) (- (-> this path-dir))) (set! (-> this path-speed) 0.0))
                  (else (set! f0-6 0.0) (set! (-> this path-speed) 0.0))))
               ((< 1.0 f0-6)
                (set! s4-0 #f)
                (cond
-                 (arg0 (set! f0-6 (- 2.0 f0-6)) (set! (-> this path-dir) (- (-> this path-dir))) (set! (-> this path-speed) 0.0))
+                 (bounce-at-ends?
+                  (set! f0-6 (- 2.0 f0-6))
+                  (set! (-> this path-dir) (- (-> this path-dir)))
+                  (set! (-> this path-speed) 0.0))
                  (else (set! f0-6 1.0) (set! (-> this path-speed) 0.0)))))
             (set! (-> this path-u) f0-6)
             (let ((s3-1 (new 'stack-no-clear 'vector)))
@@ -285,7 +295,7 @@
                   (when (> f0-7 0.00001)
                     (set! (-> this path-units-per-meter) (* (/ (fabs f30-0) f0-7) (-> this path-units-per-meter))))))))))
       (let ((s4-1 (new 'stack-no-clear 'vector)))
-        (path-control-method-14 (-> this path) s4-1 (-> this path-u))
+        (get-tangent-at-percent! (-> this path) s4-1 (-> this path-u))
         (let ((f0-13 (atan (-> s4-1 x) (-> s4-1 z))))
           (if (< (-> this path-dir) 0.0) (set! f0-13 (+ 32768.0 f0-13)))
           (set! (-> this path-ry) f0-13)))
@@ -319,7 +329,7 @@
                       (f0-47 (lerp f28-1 f0-46 f30-2)))
                  (set! (-> this up-blend) (seek-with-smooth (-> this up-blend) f0-47 (* 8192.0 (seconds-per-frame)) 0.25 0.01)))))
             (else (set! (-> this up-blend) (seek-with-smooth (-> this up-blend) f28-1 (* 8192.0 (seconds-per-frame)) 0.125 0.01))))))
-      (when (and arg1 *target*)
+      (when (and look-target *target*)
         (set-target! (-> this neck) (target-pos 5))
         (if *target* (look-at-enemy! (-> *target* neck) (-> this root-overeride root-prim prim-core world-sphere) 'attacking this)))
       (let ((f30-3 (-> this drill-speed)))
@@ -359,20 +369,22 @@
     (set! (-> this hit-player?) #f)
     #f))
 
-(defmethod driller-lurker-method-23 ((this driller-lurker))
+(defmethod update-player-path-u ((this driller-lurker))
+  "Project Jak onto the lurker's path once per frame and return the cached path position."
   (let ((v1-1 (current-time)))
     (when (!= v1-1 (-> this last-player-path-u-time))
       (set! (-> this last-player-path-u-time) v1-1)
       (cond
         (*target*
          (let* ((s5-0 (-> this path))
-                (s4-0 (method-of-object s5-0 path-control-method-20)))
+                (s4-0 (method-of-object s5-0 get-closest-percent-to-target)))
            (target-pos 0)
            (set! (-> this player-path-u) (s4-0 s5-0))))
         (else (set! (-> this player-path-u) 0.0)))))
   (-> this player-path-u))
 
-(defmethod driller-lurker-method-25 ((this driller-lurker))
+(defmethod should-start-chase? ((this driller-lurker))
+  "Return whether Jak is within the detection height and range and roughly in front."
   (when *target*
     (let* ((s5-0 (target-pos 0))
            (f0-1 (- (-> s5-0 y) (-> this root-overeride trans y))))
@@ -385,7 +397,8 @@
                (if (>= 20024.889 (fabs (deg- f0-8 (-> this facing-ry)))) (return #t)))))))))
   #f)
 
-(defmethod driller-lurker-method-26 ((this driller-lurker))
+(defmethod lost-player? ((this driller-lurker))
+  "Return whether Jak has moved outside the chase height or distance limits."
   (when *target*
     (let* ((a1-0 (target-pos 0))
            (f0-1 (- (-> a1-0 y) (-> this root-overeride trans y))))
@@ -393,7 +406,8 @@
         (return #f))))
   #t)
 
-(defmethod driller-lurker-method-24 ((this driller-lurker))
+(defmethod in-attack-range? ((this driller-lurker))
+  "Return whether Jak is close enough in height, distance, or path position to attack."
   (when *target*
     (let* ((a1-0 (target-pos 0))
            (f0-1 (- (-> a1-0 y) (-> this root-overeride trans y))))
@@ -402,12 +416,13 @@
           (cond
             ((>= 17408.0 f0-2) (return #t))
             ((< f0-2 143360.0)
-             (let ((f0-3 (driller-lurker-method-23 this))
+             (let ((f0-3 (update-player-path-u this))
                    (f1-5 (-> this path-u)))
                (if (>= (/ (-> this path-units-per-meter) 10) (fabs (- f0-3 f1-5))) (return #t)))))))))
   #f)
 
-(defmethod driller-lurker-method-27 ((this driller-lurker))
+(defmethod spawn-drill-debris ((this driller-lurker))
+  "Spawn drilling debris just ahead of the drill-tip joint."
   (let ((a2-0 (-> this node-list data 25 bone transform))
         (s5-0 (new 'stack-no-clear 'vector)))
     (set-vector! s5-0 0.0 0.0 8192.0 1.0)
@@ -434,8 +449,8 @@
       (stop! (-> self sound2)))
   :trans
     (behavior ()
-      (if (driller-lurker-method-25 self) (go driller-lurker-chase #t))
-      (driller-lurker-method-20 self #t (the-as target #f)))
+      (if (should-start-chase? self) (go driller-lurker-chase #t))
+      (update-movement-and-drill! self #t (the-as target #f)))
   :code
     (behavior ()
       (update-trans! (-> self sound2) (-> self root-overeride trans))
@@ -447,7 +462,7 @@
             (ja-no-eval :group! driller-lurker-idle-drilling-ja :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
               (update! (-> self sound2))
-              (if (and (>= (ja-aframe-num 0) 7.0) (>= 13.0 (ja-aframe-num 0))) (driller-lurker-method-27 self))
+              (if (and (>= (ja-aframe-num 0) 7.0) (>= 13.0 (ja-aframe-num 0))) (spawn-drill-debris self))
               (suspend)
               (ja :num! (seek! max f30-0)))))
         (stop! (-> self sound2))
@@ -473,8 +488,8 @@
       (shut-down! (-> self neck)))
   :trans
     (behavior ()
-      (if (driller-lurker-method-25 self) (go driller-lurker-chase #t))
-      (driller-lurker-method-20 self #t (the-as target #f)))
+      (if (should-start-chase? self) (go driller-lurker-chase #t))
+      (update-movement-and-drill! self #t (the-as target #f)))
   :code
     (behavior ()
       (ja-channel-push! 2 (seconds 0.2))
@@ -501,8 +516,8 @@
       (shut-down! (-> self neck)))
   :trans
     (behavior ()
-      (if (driller-lurker-method-25 self) (go driller-lurker-chase #t))
-      (driller-lurker-method-20 self #t (the-as target #f)))
+      (if (should-start-chase? self) (go driller-lurker-chase #t))
+      (update-movement-and-drill! self #t (the-as target #f)))
   :code
     (behavior ()
       (set! (-> self timeout) (rand-vu-int-range 2 4))
@@ -538,18 +553,18 @@
       (set! (-> self targ-path-speed) 23552.0))
   :trans
     (behavior ()
-      (if (driller-lurker-method-24 self) (go driller-lurker-attack))
-      (if (driller-lurker-method-26 self) (go driller-lurker-patrol))
+      (if (in-attack-range? self) (go driller-lurker-attack))
+      (if (lost-player? self) (go driller-lurker-patrol))
       (if (time-elapsed? (-> self started-chasing-time) (seconds 3)) (go driller-lurker-jammed-standing))
       (let* ((gp-0 (-> self path))
-             (s5-0 (method-of-object gp-0 path-control-method-20)))
+             (s5-0 (method-of-object gp-0 get-closest-percent-to-target)))
         (target-pos 0)
         (let ((f0-1 (- (s5-0 gp-0) (-> self path-u))))
           (when (>= (fabs f0-1) (/ (-> self path-units-per-meter) 10))
             (cond
               ((< 0.0 f0-1) (when (< (-> self path-dir) 0.0) (set! (-> self path-dir) 1.0) (set! (-> self path-speed) 0.0)))
               (else (when (>= (-> self path-dir) 0.0) (set! (-> self path-dir) -1.0) (set! (-> self path-speed) 0.0)))))))
-      (driller-lurker-method-20 self #f (the-as target #t)))
+      (update-movement-and-drill! self #f (the-as target #t)))
   :code
     (behavior ((arg0 symbol))
       (ja-channel-push! 2 (seconds 0.2))
@@ -573,10 +588,10 @@
   :trans
     (behavior ()
       (cond
-        ((driller-lurker-method-24 self) (set-time! (-> self state-time)))
+        ((in-attack-range? self) (set-time! (-> self state-time)))
         (else (if (time-elapsed? (-> self state-time) (seconds 0.5)) (go driller-lurker-chase #f))))
       (if (time-elapsed? (-> self started-chasing-time) (seconds 3)) (go driller-lurker-jammed-standing))
-      (driller-lurker-method-20 self #f (the-as target #t)))
+      (update-movement-and-drill! self #f (the-as target #t)))
   :code
     (behavior ()
       (ja-channel-push! 2 (seconds 0.2))
@@ -599,7 +614,7 @@
       (shut-down! (-> self neck)))
   :trans
     (behavior ()
-      (driller-lurker-method-20 self #f (the-as target #f)))
+      (update-movement-and-drill! self #f (the-as target #f)))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.2))
@@ -632,17 +647,20 @@
   :post ja-post)
 
 (defmethod relocate ((this driller-lurker) (offset int))
+  "Relocate the neck, drill, and secondary sound controls before relocating the drawable."
   (if (nonzero? (-> this neck)) (&+! (-> this neck) offset))
   (if (nonzero? (-> this drill)) (&+! (-> this drill) offset))
   (if (nonzero? (-> this sound2)) (&+! (-> this sound2) offset))
   (call-parent-method this offset))
 
 (defmethod deactivate ((this driller-lurker))
+  "Stop the secondary drilling sound before deactivating the drawable."
   (if (nonzero? (-> this sound2)) (stop! (-> this sound2)))
   ((method-of-type process-drawable deactivate) this)
   (none))
 
-(defmethod init-from-entity! ((this driller-lurker) (arg0 entity-actor))
+(defmethod init-from-entity! ((this driller-lurker) (source-entity entity-actor))
+  "Initialize collision, path movement, joints, sounds, and the starting drilling state."
   (set! (-> this hit-player?) #f)
   (set! (-> this played-drill-sound?) #f)
   (set! (-> this hit-player-time) 0)
@@ -711,7 +729,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root-overeride) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *driller-lurker-sg* '())
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
@@ -730,7 +748,11 @@
   (set! (-> this targ-path-speed) 15360.0)
   (set! (-> this up-blend) 0.0)
   (let ((sv-16 (new 'static 'res-tag))))
-  (let ((v1-91 (res-lump-data arg0 'driller-lurker (pointer float) :tag-ptr (the-as (pointer res-tag) (new 'stack-no-clear 'vector)))))
+  (let ((v1-91 (res-lump-data source-entity
+                              'driller-lurker
+                              (pointer float)
+                              :tag-ptr
+                              (the-as (pointer res-tag) (new 'stack-no-clear 'vector)))))
     (when v1-91
       (set! (-> this path-u) (fmax 0.0 (fmin 1.0 (-> v1-91 0))))
       (if (< (-> v1-91 1) 0.0) (set! (-> this path-dir) -1.0))
@@ -742,7 +764,7 @@
             (set! (-> this facing-ry) f30-0))))))
   (eval-path-curve! (-> this path) (-> this root-overeride trans) (-> this path-u) 'interp)
   (let ((s5-1 (new 'stack-no-clear 'vector)))
-    (path-control-method-14 (-> this path) s5-1 (-> this path-u))
+    (get-tangent-at-percent! (-> this path) s5-1 (-> this path-u))
     (let ((f0-51 (atan (-> s5-1 x) (-> s5-1 z))))
       (if (< (-> this path-dir) 0.0) (set! f0-51 (+ 32768.0 f0-51)))
       (set! (-> this path-ry) f0-51)

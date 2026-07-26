@@ -5,33 +5,35 @@
 
 ;; DECOMP BEGINS
 
-;; this file contains types for the skeletal animation system.
-;; the "bones" are the actual matrix data consumed by the renderers.
-;; the "joints" describe how bones are connected.
-;; a "cspace" links together a bone, joint, and a way to control the joint (and bone)
+;; This file contains the model-space types for skeletal animation.
+;; Joints describe the authored hierarchy and bind pose. Bones hold the evaluated
+;; world-space matrices consumed by renderers. A cspace node joins those two
+;; views and supplies the callback used to evaluate one node.
 
 ;; There's three main container types:
 ;; - The cspace-array.  This contains references to the bones and the joints. (called node-list)
 ;; - The skeleton: This is an inline array of bones. (called skeleton)
 ;; - The joint-control (not in this file): this has the logic for running joint animations. (called skel)
 
-;; First, the joint. This type just describes how the skeleton is connected and the bind pose.
+;; Joint numbers index the authored joint table. Parent and bind-pose describe
+;; the hierarchy independently of any particular animated skeleton instance.
 (deftype joint (basic)
   ((name      string)
    (number    int32)
    (parent    joint)
    (bind-pose matrix :inline)))
 
-;; I believe this stores offsets, in bytes, of where there are stored
-;; (possibly in the scratchpad)
+;; Byte offsets of this bone's and its parent's 128-byte records in the
+;; scratchpad joint workspace. Frame tags cached results; dummy keeps the cache
+;; record quadword-sized.
 (deftype bone-cache (structure)
   ((bone-matrix   uint32)
    (parent-matrix uint32)
    (dummy         uint32)
    (frame         uint32)))
 
-;; The "bone" stores the final positions of the bodies.
-;; This is a world space transform.
+;; Evaluated world-space bone state. Position aliases the translation column of
+;; transform, so writers must not treat it as independent storage.
 (deftype bone (structure)
   ((transform matrix :inline)
    (position  vector :inline :overlay-at (-> transform vector 3))
@@ -44,12 +46,13 @@
 
 (set! (-> skeleton heap-base) (the-as uint 96))
 
-;; The "cspace" seems to be a system for linking bones and joints.
-;; The tree structure matches the tree of joints.
+;; A cspace-array is the runtime node tree. Each node points at its authored
+;; joint, evaluated bone, parent node, optional geometry, and evaluation callback.
+;; The runtime tree matches the authored joint hierarchy after two leading nodes.
 ;; For example: (-> *target* node-list data 14 parent joint) is the same as
 ;;              (-> *target* node-list data 14 joint parent)
-;; But, we appear to use bone indices here.
-;; So the joint index is always 1 less than the node index.
+;; Node indices are also bone indices, so ordinary joint indices are one less
+;; than their node indices.
 ;; By convention, node 0 is not a joint.
 ;;                node 1 is an "align" joint. It has parent #f, and is joint 0.
 ;;                node 2 is a "prejoint". It also has parent #f, and is joint 1.

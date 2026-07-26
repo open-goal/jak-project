@@ -180,20 +180,29 @@
 
 ;; DECOMP BEGINS
 
+;; Per-level totals used by the progress and save-file displays.
 (deftype count-info (structure)
-  ((money-count  int32)
-   (buzzer-count int32))
+  ((money-count  int32) ;; total precursor orbs
+   (buzzer-count int32)) ;; total scout flies
   :pack-me)
 
+;; Variable-length table of per-level collectible totals. The inline data continues beyond the
+;; nominal header size.
 (deftype game-count-info (basic)
   ((length int32)
    (data   count-info :inline :dynamic)))
 
+;; Text for one power-cell task. The first three task-name entries describe the task during its
+;; introduction/reminder, later-reminder, and reward/resolution phases. A completed task uses
+;; text-index-when-resolved to select the name that remains on the progress screen.
 (deftype task-info-data (basic)
   ((task-id                  game-task)
    (task-name                text-id 4)
    (text-index-when-resolved int32)))
 
+;; Progress-screen data for one level. text-group-index selects the level text bank, nb-of-tasks
+;; gives the used portion of the eight-entry task-info array, and buzzer-task-index identifies the
+;; scout-fly task or is -1 when the level has none.
 (deftype level-tasks-info (basic)
   ((level-name-id     text-id)
    (text-group-index  int32)
@@ -201,6 +210,8 @@
    (buzzer-task-index int32)
    (task-info         task-info-data 8)))
 
+;; One pause-menu choice. option-type determines how the three parameters and value-to-modify are
+;; interpreted: choices can edit a value, open another progress-screen, or act as a button.
 (deftype game-option (basic)
   ((option-type          game-option-type)
    (name                 text-id)
@@ -218,6 +229,8 @@
    (slider-show-decimal? symbol)
    (bind-info            bind-assignment-info :inline)))
 
+;; Owns the pause/progress menu state, transitions, save-card display data, and the HUD icons and
+;; particles used to draw each screen.
 (deftype progress (process)
   ((current-debug-string         int32)
    (current-debug-language       int32)

@@ -20,7 +20,6 @@
   (:methods
    (draw-ripple (_type_) symbol)))
 
-
 (define ripple-for-sunken-water
   (new 'static
        'ripple-wave-set
@@ -58,7 +57,7 @@
    (:scalevel-y (meters -0.001875))
    (:fade-a -3.2)
    (:timer (seconds 0.27))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.05))
    (:next-launcher 2022)))
 
@@ -66,12 +65,14 @@
   :init-specs ((:r 255.0) (:g 128.0 128.0) (:b 0.0) (:fade-a -1.28)))
 
 (defmethod draw-ripple ((this sunken-water))
+  "Request a sparse rotating set of ripple vertices and launch deadly-water particles at every
+   returned point."
   (set! (-> this draw ripple send-query) #t)
-  (let ((gp-0 (-> this draw ripple query)))
-    (let ((a0-1 (current-time))) (set! (-> gp-0 start-vertex) (logand (* 13 (logand a0-1 127)) 127)))
-    (set! (-> gp-0 vertex-skip) 128)
-    (dotimes (s5-0 (-> gp-0 vertex-count))
-      (launch-particles (-> *part-id-table* 1736) (-> gp-0 data s5-0))))
+  (let ((query (-> this draw ripple query)))
+    (let ((time (current-time))) (set! (-> query start-vertex) (logand (* 13 (logand time 127)) 127)))
+    (set! (-> query vertex-skip) 128)
+    (dotimes (i (-> query vertex-count))
+      (launch-particles (-> *part-id-table* 1736) (-> query data i))))
   #f)
 
 (defstate water-vol-idle (sunken-water)
@@ -125,34 +126,38 @@
            (set! (-> self playing-deadly-sound?) #t)))))
   :post ja-post)
 
-(defmethod water-vol-method-25 ((this sunken-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-25))) (t9-0 this))
+(defmethod setup-from-res! ((this sunken-water))
+  "Run animated-water resource setup, initialize safe and deadly colors, and configure whether
+   the deadly interval follows sync phase or a fixed resource setting."
+  (let ((t9-0 (method-of-type water-anim setup-from-res!))) (t9-0 this))
   (set! (-> this playing-deadly-sound?) #f)
   (set-vector! (-> this safe-color-mult) 0.125 0.225 0.22 0.5)
   (set-vector! (-> this safe-color-emissive) 0.0 0.0 0.0 1.0)
   (set-vector! (-> this deadly-color-mult) 0.125 0.225 0.22 0.5)
   (set-vector! (-> this deadly-color-emissive) 0.33 0.6 0.0 1.0)
-  (let ((s5-0 (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)))
-    (let ((f0-16 (res-lump-float (-> this entity) 'percent :default -1.0)))
-      (if (or (< f0-16 0.0) (< 1.0 f0-16))
-        (set! f0-16
+  (let ((use-sync? (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)))
+    (let ((deadly-percent (res-lump-float (-> this entity) 'percent :default -1.0)))
+      (if (or (< deadly-percent 0.0) (< 1.0 deadly-percent))
+        (set! deadly-percent
               (cond
-                (s5-0 0.5)
+                (use-sync? 0.5)
                 ((logtest? (water-flag deadly) (-> this flag)) 1.0)
                 (else 0.0))))
-      (when (and s5-0 (or (= f0-16 0.0) (= f0-16 1.0)))
-        (set! s5-0 #f)
-        (if (= f0-16 0.0) (logior! (-> this flag) (water-flag deadly)) (logclear! (-> this flag) (water-flag deadly))))
-      (set! (-> this use-sync?) s5-0)
-      (set! (-> this deadly-time) f0-16))
-    (when s5-0
+      (when (and use-sync? (or (= deadly-percent 0.0) (= deadly-percent 1.0)))
+        (set! use-sync? #f)
+        (if (= deadly-percent 0.0) (logior! (-> this flag) (water-flag deadly)) (logclear! (-> this flag) (water-flag deadly))))
+      (set! (-> this use-sync?) use-sync?)
+      (set! (-> this deadly-time) deadly-percent))
+    (when use-sync?
       (if (< (get-current-phase (-> this sync)) (-> this deadly-time))
         (set! (-> this flag) (the-as water-flag (logior (water-flag deadly) (-> this flag))))
         (set! (-> this flag) (the-as water-flag (logclear (-> this flag) (water-flag deadly)))))))
   (none))
 
-(defmethod water-vol-method-22 ((this sunken-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
+(defmethod setup-water! ((this sunken-water))
+  "Run animated-water setup, select the safe or deadly tint, disable the ordinary ambient
+   sound, and create the ripple controller and 100-vertex particle query."
+  (let ((t9-0 (method-of-type water-anim setup-water!))) (t9-0 this))
   (set! (-> this play-ambient-sound?) #f)
   (cond
     ((logtest? (water-flag deadly) (-> this flag))
@@ -163,11 +168,11 @@
      (set! (-> this draw color-mult quad) (-> this safe-color-mult quad))
      (set! (-> this draw color-emissive quad) (-> this safe-color-emissive quad))
      (set! (-> this deadly-fade) 0.0)))
-  (let ((s5-0 (new 'process 'ripple-control)))
-    (set! (-> this draw ripple) s5-0)
-    (set! (-> s5-0 global-scale) 3072.0)
-    (set! (-> s5-0 close-fade-dist) 163840.0)
-    (set! (-> s5-0 far-fade-dist) 245760.0)
-    (set! (-> s5-0 waveform) ripple-for-sunken-water)
-    (set! (-> s5-0 query) (new 'process 'ripple-merc-query 100)))
+  (let ((ripple (new 'process 'ripple-control)))
+    (set! (-> this draw ripple) ripple)
+    (set! (-> ripple global-scale) 3072.0)
+    (set! (-> ripple close-fade-dist) 163840.0)
+    (set! (-> ripple far-fade-dist) 245760.0)
+    (set! (-> ripple waveform) ripple-for-sunken-water)
+    (set! (-> ripple query) (new 'process 'ripple-merc-query 100)))
   (none))

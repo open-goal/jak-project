@@ -13,7 +13,6 @@
 (deftype maincavecam (pov-camera)
   ((seq uint64)))
 
-
 (defskelgroup *maincavecam-sg*
   maincavecam
   maincavecam-lod0-jg
@@ -22,6 +21,7 @@
   :bounds (static-spherem 0 0 0 10))
 
 (defmethod set-stack-size! ((this maincavecam))
+  "Let a camera subtype select its process stack size. The base method leaves it unchanged."
   (stack-size-set! (-> this main-thread) 512)
   (none))
 
@@ -48,7 +48,6 @@
 
 (deftype cave-water (water-anim) ())
 
-
 (define ripple-for-cave-water
   (new 'static
        'ripple-wave-set
@@ -65,8 +64,10 @@
             (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
             (new 'static 'ripple-wave))))
 
-(defmethod water-vol-method-22 ((this cave-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
+(defmethod setup-water! ((this cave-water))
+  "Validate the selected look, initialize its skeleton and animation at frame zero, create its
+   optional ambient sound at the drawable bounds center, and post the initial joint pose."
+  (let ((t9-0 (method-of-type water-anim setup-water!))) (t9-0 this))
   (let ((v1-2 (new 'process 'ripple-control)))
     (set! (-> this draw ripple) v1-2)
     (set! (-> v1-2 global-scale) 3072.0)
@@ -74,14 +75,14 @@
     (set! (-> v1-2 far-fade-dist) 245760.0)
     (set! (-> v1-2 waveform) ripple-for-cave-water))
   (case (-> this look)
-    ((37 14) (set-vector! (-> this draw color-mult) 0.2 0.1 0.3 0.75)))
+    (((water-look water-anim-darkcave-water-with-crystal) (water-look water-anim-maincave-water-with-crystal))
+     (set-vector! (-> this draw color-mult) 0.2 0.1 0.3 0.75)))
   (none))
 
 (deftype cavecrusher (process-drawable)
   ((root collide-shape :override))
   (:states
    cavecrusher-idle))
-
 
 (defskelgroup *cavecrusher-sg*
   cavecrusher
@@ -105,14 +106,12 @@
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! cavecrusher-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (update! (-> self sound))
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! cavecrusher-idle-ja :num! (seek!) :frame-num 0.0 (update! (-> self sound)))))
   :post ja-post)
 
-(defmethod init-from-entity! ((this cavecrusher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cavecrusher) (source-entity entity-actor))
+  "Build the crusher collision mesh, skeleton, animation channel, and ambient sound, then enter
+   its idle animation."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -125,7 +124,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *cavecrusher-sg* '())
   (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "crush-click" :fo-max 30) (-> this root trans)))
   (ja-channel-push! 1 0)
@@ -143,7 +142,6 @@
   (:state-methods
    idle
    trigger))
-
 
 (defskelgroup *cavetrapdoor-sg*
   cavetrapdoor
@@ -165,11 +163,7 @@
              (go-virtual trigger))))))
   :code
     (behavior ()
-      (ja-no-eval :group! cavetrapdoor-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (transform-post)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! cavetrapdoor-idle-ja :num! (seek!) :frame-num 0.0 (transform-post))
       (anim-loop)))
 
 (defstate trigger (cavetrapdoor)
@@ -180,15 +174,9 @@
         (set-time! (-> self state-time))
         (until (time-elapsed? (-> self state-time) (-> self delay-before-wiggle))
           (suspend)))
-      (ja-no-eval :group! cavetrapdoor-bob-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! cavetrapdoor-bob-ja :num! (seek!) :frame-num 0.0)
       (clear-collide-with-as (-> self root))
-      (ja-no-eval :group! cavetrapdoor-swing-ja :num! (seek! (ja-aframe 290.0 0)) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 290.0 0))))
+      (ja-play :group! cavetrapdoor-swing-ja :num! (seek! (ja-aframe 290.0 0)) :frame-num 0.0)
       (restore-collide-with-as (-> self root))
       (ja-no-eval :num! (seek!))
       (while (not (ja-done? 0))
@@ -196,29 +184,28 @@
         (ja-eval))
       (until (or (or (not *target*) (< 28672.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                  (and (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                                (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))))
+                                (not (logtest? (-> *target* control status) (collide-status on-surface)))))
                       (not (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-cam)))))
-        (ja-no-eval :group! cavetrapdoor-idle-down-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))
+        (ja-play :group! cavetrapdoor-idle-down-ja :num! (seek!) :frame-num 0.0)
         (label cfg-14))
-      (ja-no-eval :group! cavetrapdoor-reset-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (when (and (and *target* (>= 28672.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-                   (or (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                            (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf))))
-                       (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-cam))))
-          (while (not (ja-min? 0))
-            (suspend)
-            (ja :num! (seek! 0.0)))
-          (goto cfg-14))
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               cavetrapdoor-reset-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (when (and (and *target* (>= 28672.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+                          (or (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
+                                   (not (logtest? (-> *target* control status) (collide-status on-surface))))
+                              (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-cam))))
+                 (while (not (ja-min? 0))
+                   (suspend)
+                   (ja :num! (seek! 0.0)))
+                 (goto cfg-14)))
       (go-virtual idle))
   :post pusher-post)
 
-(defmethod init-from-entity! ((this cavetrapdoor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cavetrapdoor) (source-entity entity-actor))
+  "Build the moving trapdoor collision mesh and skeleton, set its authored delay and crystal
+   lighting, and enter the idle state."
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -236,7 +223,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *cavetrapdoor-sg* '())
   (ja-channel-push! 1 0)
   (let ((s4-1 (-> this skel root-channel 0)))
@@ -249,7 +236,7 @@
     (set-vector! s4-2 0.0 -8192.0 4096.0 1.0)
     (vector-rotate-around-y! s4-2 s4-2 f0-7)
     (set! (-> s4-2 w) 25600.0))
-  (set! (-> this delay-before-wiggle) (the int (* 300.0 (res-lump-float arg0 'delay))))
+  (set! (-> this delay-before-wiggle) (the int (* 300.0 (res-lump-float source-entity 'delay))))
   (create-connection! *cavecrystal-light-control*
                       this
                       (-> this entity)
@@ -271,7 +258,6 @@
   (:states
    caveflamepots-active))
 
-
 (defpart 704
   :init-specs
   ((:texture (bigpuff effects))
@@ -291,7 +277,7 @@
    (:fade-a -0.85333335)
    (:accel-y (meters -0.0006))
    (:timer (seconds 16.68))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 705
   :init-specs
@@ -312,7 +298,7 @@
    (:fade-a -0.85333335)
    (:accel-y (meters -0.0006))
    (:timer (seconds 16.68))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defstate caveflamepots-active (caveflamepots)
   :event
@@ -368,10 +354,12 @@
         (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
-(defmethod init-from-entity! ((this caveflamepots) (arg0 entity-actor))
+(defmethod init-from-entity! ((this caveflamepots) (source-entity entity-actor))
+  "Build the flame-pot collision primitives and launch points, load its authored timing and shove
+   settings, and enter the active state."
   (set! (-> this was-deadly?) #f)
   (set! (-> this should-play-sound?) #f)
-  (set! (-> this shove-up) (res-lump-float arg0 'shove :default 8192.0))
+  (set! (-> this shove-up) (res-lump-float source-entity 'shove :default 8192.0))
   (logclear! (-> this mask) (process-mask enemy))
   (logclear! (-> this mask) (process-mask attackable))
   (logior! (-> this mask) (process-mask actor-pause))
@@ -409,12 +397,12 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (let ((v1-42 (new 'process 'path-control this 'path 0.0)))
     (set! (-> this path) v1-42)
     (logior! (-> v1-42 flags) (path-control-flag display draw-line draw-point draw-text))
     (if (<= (-> v1-42 curve num-cverts) 0) (go process-drawable-art-error "no path")))
-  (let ((f0-23 (res-lump-float arg0 'rotoffset)))
+  (let ((f0-23 (res-lump-float source-entity 'rotoffset)))
     (if (!= f0-23 0.0) (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-23)))
   (let ((f30-0 (quaternion-y-angle (-> this root quat))))
     (let ((s4-1 (-> this launch-pos)))
@@ -436,17 +424,17 @@
   (update-transforms! (-> this root))
   (let* ((f30-1 300.0)
          (sv-16 (new 'static 'res-tag))
-         (v1-70 (res-lump-data arg0 'cycle-speed (pointer float) :tag-ptr (& sv-16))))
+         (v1-70 (res-lump-data source-entity 'cycle-speed (pointer float) :tag-ptr (& sv-16))))
     (set! (-> this cycle-speed)
           (the int (* f30-1 (if (and v1-70 (> (the-as int (-> sv-16 elt-count)) 0)) (-> v1-70 0) 4.0)))))
   (let* ((f30-2 (the float (-> this cycle-speed)))
          (sv-32 (new 'static 'res-tag))
-         (v1-74 (res-lump-data arg0 'cycle-speed (pointer float) :tag-ptr (& sv-32))))
+         (v1-74 (res-lump-data source-entity 'cycle-speed (pointer float) :tag-ptr (& sv-32))))
     (set! (-> this cycle-offset)
           (the-as uint (the int (* f30-2 (if (and v1-74 (< 1 (the-as int (-> sv-32 elt-count)))) (-> v1-74 1) 0.0))))))
   (let* ((f30-3 300.0)
          (sv-48 (new 'static 'res-tag))
-         (v1-77 (res-lump-data arg0 'cycle-speed (pointer float) :tag-ptr (& sv-48))))
+         (v1-77 (res-lump-data source-entity 'cycle-speed (pointer float) :tag-ptr (& sv-48))))
     (set! (-> this cycle-pause)
           (the int (* f30-3 (if (and v1-77 (< 2 (the-as int (-> sv-48 elt-count)))) (-> v1-77 2) 2.0)))))
   (go caveflamepots-active)
@@ -457,7 +445,6 @@
    (sync sync-info :inline))
   (:states
    cavespatula-idle))
-
 
 (defskelgroup *cavespatula-sg*
   cavespatula
@@ -487,7 +474,9 @@
         (suspend)))
   :post rider-post)
 
-(defmethod init-from-entity! ((this cavespatula) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cavespatula) (source-entity entity-actor))
+  "Build the rotating platform collision mesh, choose its level-specific skeleton, initialize its
+   animation phase and sound, and enter the idle state."
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -505,7 +494,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (set! (-> this sound)
         (new 'process 'ambient-sound (static-sound-spec "spatula" :fo-min 25 :fo-max 50) (-> this root trans)))
   (case (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name)
@@ -540,7 +529,6 @@
   (:states
    cavespatulatwo-idle))
 
-
 (defskelgroup *cavespatulatwo-sg*
   cavespatulatwo
   cavespatulatwo-lod0-jg
@@ -563,7 +551,9 @@
         (suspend)))
   :post rider-post)
 
-(defmethod init-from-entity! ((this cavespatulatwo) (arg0 entity-actor))
+(defmethod init-from-entity! ((this cavespatulatwo) (source-entity entity-actor))
+  "Build the second rotating platform's collision mesh, skeleton, animation phase, and sound, then
+   enter the idle state."
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -581,7 +571,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *cavespatulatwo-sg* '())
   (logclear! (-> this mask) (process-mask actor-pause))
   (logior! (-> this skel status) (janim-status inited))
@@ -608,15 +598,14 @@
    (anim                    int32 2)
    (wheel-ry-mat            matrix :inline :offset 272))
   (:methods
-   (caveelevator-method-20 (_type_) none)
-   (caveelevator-method-21 (_type_) float))
+   (update-bounce! (_type_) none)
+   (update-draw-bounds! (_type_) float))
   (:states
    caveelevator-cycle-active
    caveelevator-one-way-idle-end
    caveelevator-one-way-idle-start
    caveelevator-one-way-travel-to-end
    caveelevator-one-way-travel-to-start))
-
 
 (defskelgroup *caveelevator-sg*
   caveelevator
@@ -625,35 +614,38 @@
   ((caveelevator-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 4.25))
 
-(defun cavecrystal-light-control-caveelevator-callback ((arg0 (pointer cavecrystal)) (arg1 int) (arg2 float))
+(defun cavecrystal-light-control-caveelevator-callback ((elevator-pointer (pointer cavecrystal)) (joint-index int) (radius float))
+  "Apply crystal lighting sampled at an elevator joint or at its root."
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (let ((v1-1 (-> arg0 0 node-list)))
-      (if (and (>= arg1 0) (nonzero? v1-1))
-        (vector<-cspace! s5-0 (-> v1-1 data arg1))
-        (set! (-> s5-0 quad) (-> arg0 0 root trans quad))))
-    (set! (-> s5-0 w) arg2)
-    (let ((f0-1 (cavecrystal-light-control-method-10 *cavecrystal-light-control* s5-0))
+    (let ((v1-1 (-> elevator-pointer 0 node-list)))
+      (if (and (>= joint-index 0) (nonzero? v1-1))
+        (vector<-cspace! s5-0 (-> v1-1 data joint-index))
+        (set! (-> s5-0 quad) (-> elevator-pointer 0 root trans quad))))
+    (set! (-> s5-0 w) radius)
+    (let ((f0-1 (light-intensity-at *cavecrystal-light-control* s5-0))
           (a2-2 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
           (a1-5 (new 'static 'vector :x 0.3 :y 0.3 :z 0.3 :w 1.0)))
-      (vector-lerp! (-> arg0 0 draw color-mult) a1-5 a2-2 f0-1))))
+      (vector-lerp! (-> elevator-pointer 0 draw color-mult) a1-5 a2-2 f0-1))))
 
-(defmethod caveelevator-method-20 ((this caveelevator))
-  (let ((v1-1 (current-time)))
-    (when (!= v1-1 (-> this last-update-bounce-time))
-      (set! (-> this last-update-bounce-time) v1-1)
+(defmethod update-bounce! ((this caveelevator))
+  "Apply the smush bounce displacement once per frame."
+  (let ((now (current-time)))
+    (when (!= now (-> this last-update-bounce-time))
+      (set! (-> this last-update-bounce-time) now)
       (when (!= (-> this smush amp) 0.0)
-        (let ((s5-0 (new 'stack-no-clear 'vector)))
-          (set! (-> s5-0 quad) (-> this orig-trans quad))
-          (+! (-> s5-0 y) (* 819.2 (update! (-> this smush))))
-          (move-to-point! (-> this root) s5-0)))))
+        (let ((bounced-pos (new 'stack-no-clear 'vector)))
+          (set! (-> bounced-pos quad) (-> this orig-trans quad))
+          (+! (-> bounced-pos y) (* 819.2 (update! (-> this smush))))
+          (move-to-point! (-> this root) bounced-pos)))))
   (none))
 
-(defmethod caveelevator-method-21 ((this caveelevator))
-  (let ((s5-0 (new 'stack-no-clear 'vector))
-        (gp-0 (-> this draw bounds)))
-    (vector<-cspace! s5-0 (-> this node-list data 3))
-    (vector-! gp-0 s5-0 (-> this root trans))
-    (set! (-> gp-0 w) 17408.0)))
+(defmethod update-draw-bounds! ((this caveelevator))
+  "Center the drawable bounds on joint 3 relative to the platform root."
+  (let ((joint-pos (new 'stack-no-clear 'vector))
+        (bounds (-> this draw bounds)))
+    (vector<-cspace! joint-pos (-> this node-list data 3))
+    (vector-! bounds joint-pos (-> this root trans))
+    (set! (-> bounds w) 17408.0)))
 
 (defstate caveelevator-cycle-active (caveelevator)
   :event
@@ -669,7 +661,7 @@
   :trans
     (behavior ()
       (rider-trans)
-      (caveelevator-method-20 self))
+      (update-bounce! self))
   :code
     (behavior ()
       (loop
@@ -680,7 +672,7 @@
   :post
     (behavior ()
       (rider-post)
-      (caveelevator-method-21 self)))
+      (update-draw-bounds! self)))
 
 (defstate caveelevator-one-way-idle-start (caveelevator)
   :event
@@ -693,7 +685,7 @@
   :trans
     (behavior ()
       (rider-trans)
-      (caveelevator-method-20 self))
+      (update-bounce! self))
   :code
     (behavior ()
       (ja :group!
@@ -705,7 +697,7 @@
   :post
     (behavior ()
       (rider-post)
-      (caveelevator-method-21 self)))
+      (update-draw-bounds! self)))
 
 (defstate caveelevator-one-way-travel-to-end (caveelevator)
   :event
@@ -721,19 +713,16 @@
   :trans
     (behavior ()
       (rider-trans)
-      (caveelevator-method-20 self))
+      (update-bounce! self))
   :code
     (behavior ()
       (ja :group! (-> self draw art-group data (-> self anim 0)) :num! min)
-      (ja-no-eval :num! (seek!))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :num! (seek!))
       (go caveelevator-one-way-idle-end))
   :post
     (behavior ()
       (rider-post)
-      (caveelevator-method-21 self)))
+      (update-draw-bounds! self)))
 
 (defstate caveelevator-one-way-idle-end (caveelevator)
   :event
@@ -750,7 +739,7 @@
          (if (time-elapsed? (-> self state-time) (seconds 3)) (go caveelevator-one-way-travel-to-start)))
         (else (set-time! (-> self state-time))))
       (rider-trans)
-      (caveelevator-method-20 self))
+      (update-bounce! self))
   :code
     (behavior ()
       (ja :group! (-> self draw art-group data (-> self anim 0)) :num! max)
@@ -759,7 +748,7 @@
   :post
     (behavior ()
       (rider-post)
-      (caveelevator-method-21 self)))
+      (update-draw-bounds! self)))
 
 (defstate caveelevator-one-way-travel-to-start (caveelevator)
   :event
@@ -775,26 +764,24 @@
   :trans
     (behavior ()
       (rider-trans)
-      (caveelevator-method-20 self))
+      (update-bounce! self))
   :code
     (behavior ()
       (ja :group! (-> self draw art-group data (-> self anim 1)) :num! min)
-      (ja-no-eval :num! (seek!))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :num! (seek!))
       (go caveelevator-one-way-idle-start))
   :post
     (behavior ()
       (rider-post)
-      (caveelevator-method-21 self)))
+      (update-draw-bounds! self)))
 
-(defun caveelevator-joint-callback ((arg0 caveelevator))
-  (let* ((gp-0 arg0)
-         (f1-1 (- (-> arg0 node-list data 3 bone transform vector 3 y) (-> gp-0 orig-trans y)))
+(defun caveelevator-joint-callback ((elevator caveelevator))
+  "Rotate the two elevator wheel joints in opposite directions as the platform moves."
+  (let* ((gp-0 elevator)
+         (f1-1 (- (-> elevator node-list data 3 bone transform vector 3 y) (-> gp-0 orig-trans y)))
          (f30-0 (* 5.0929585 (- f1-1 (* (the float (the int (/ f1-1 12867.963))) 12867.963))))
-         (s3-0 (-> arg0 node-list data 5 bone transform))
-         (s4-0 (-> arg0 node-list data 4 bone transform))
+         (s3-0 (-> elevator node-list data 5 bone transform))
+         (s4-0 (-> elevator node-list data 4 bone transform))
          (s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 quad) (-> s3-0 vector 3 quad))
     (matrix-rotate-x! s3-0 f30-0)
@@ -807,7 +794,9 @@
   0
   (none))
 
-(defmethod init-from-entity! ((this caveelevator) (arg0 entity-actor))
+(defmethod init-from-entity! ((this caveelevator) (source-entity entity-actor))
+  "Build the elevator platform, skeleton, wheel callback, lighting, animation mode, and cycle
+   parameters, then enter the selected elevator state."
   (local-vars (v1-43 int))
   (set! (-> this prev-frame-num) 10000.0)
   (set! (-> this last-update-bounce-time) 0)
@@ -828,12 +817,12 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *caveelevator-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (set! (-> this skel postbind-function) caveelevator-joint-callback)
   (let* ((sv-16 (new 'static 'res-tag))
-         (v1-28 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
+         (v1-28 (res-lump-data source-entity 'trans-offset (pointer float) :tag-ptr (& sv-16))))
     (when v1-28
       (+! (-> this root trans x) (-> v1-28 0))
       (+! (-> this root trans y) (-> v1-28 1))
@@ -843,7 +832,7 @@
     (if (!= f0-13 0.0) (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-13)))
   (let ((f0-14 (quaternion-y-angle (-> this root quat)))) (matrix-rotate-y! (-> this wheel-ry-mat) f0-14))
   (set-zero! (-> this smush))
-  (let ((s5-1 (res-lump-value arg0 'mode uint128)))
+  (let ((s5-1 (res-lump-value source-entity 'mode uint128)))
     0
     (set! (-> this elev-type) (the-as int s5-1))
     (let ((v1-42 s5-1))

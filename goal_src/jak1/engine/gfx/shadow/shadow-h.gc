@@ -5,6 +5,9 @@
 
 ;; DECOMP BEGINS
 
+;; One circular projected shadow in the sprite renderer's three-quadword input format. Position and
+;; scale occupy the first quadword; qx/qy/qz encode the ground-normal rotation with quaternion w
+;; omitted, and flags select the shadow blend state.
 (deftype fake-shadow (structure)
   ((px    float)
    (py    float)
@@ -16,6 +19,8 @@
    (flags int32))
   :pack-me)
 
+;; Double-buffered list of at most 32 shadows. Gameplay fills the active buffer while sprite drawing
+;; consumes the previous one.
 (deftype fake-shadow-buffer (basic)
   ((num-shadows int32)
    (data        fake-shadow 32 :inline)))

@@ -7,7 +7,7 @@
 ;; DECOMP BEGINS
 
 (deftype sculptor (process-taskable)
-  ((muse handle)))
+  ((muse handle))) ;; displayed Muse manipulator
 
 (defskelgroup *sculptor-muse-sg*
   sculptor-muse
@@ -24,36 +24,48 @@
   :bounds (static-spherem 0 0 0 2.5)
   :shadow sculptor-shadow-mg)
 
-(defmethod process-taskable-method-52 ((this sculptor))
-  (let ((v1-1 (-> this draw shadow-ctrl)))
-    (when v1-1
-      (let ((f0-0 (-> this root trans y)))
-        (let ((a0-2 v1-1)) (set! (-> a0-2 settings bot-plane w) (- (+ -2048.0 f0-0))))
+(defmethod setup-shadow-settings! ((this sculptor))
+  "Set the Sculptor's shadow-control bottom and top plane W terms from his root Y position using
+   half-metre offsets."
+  (let ((shadow-state (-> this draw shadow-ctrl)))
+    (when shadow-state
+      (let ((root-y (-> this root trans y)))
+        (set! (-> shadow-state settings bot-plane w) (- (+ -2048.0 root-y)))
         0
-        (set! (-> v1-1 settings top-plane w) (- (+ 2048.0 f0-0))))
+        (set! (-> shadow-state settings top-plane w) (- (+ 2048.0 root-y))))
       0))
   (none))
 
 (defmethod draw-npc-shadow ((this sculptor))
+  "Update this character's shadow planes and sun direction when its highest-detail geometry was
+   drawn this frame; otherwise disable the shadow."
+  (local-vars (shadow-state shadow-control))
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
-     (let ((v1-9 (-> this draw shadow-ctrl))) (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw)))
+     (set! shadow-state (-> this draw shadow-ctrl))
+     (logclear! (-> shadow-state settings flags) (shadow-flags disable-draw))
      0
      (update-direction-from-time-of-day (-> this draw shadow-ctrl)))
-    (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
+    (else
+     (set! shadow-state (-> this draw shadow-ctrl))
+     (logior! (-> shadow-state settings flags) (shadow-flags disable-draw))
+     0))
   (none))
 
-(defbehavior muse-to-idle sculptor ((arg0 muse))
-  (if (not (handle->process (-> arg0 incomming-attack-id)))
-    (set! (-> arg0 incomming-attack-id)
-          (ppointer->handle (manipy-spawn (-> arg0 collide-info trans) (-> arg0 entity) *sculptor-muse-sg* #f :to arg0))))
-  (let ((v1-11 (handle->process (-> arg0 incomming-attack-id))))
-    (if v1-11 (set! (-> (the-as muse v1-11) draw light-index) (the-as uint 3))))
-  (send-event (handle->process (-> arg0 incomming-attack-id)) 'anim-mode 'loop)
-  (send-event (handle->process (-> arg0 incomming-attack-id)) 'art-joint-anim "idle" 0)
-  (send-event (handle->process (-> arg0 incomming-attack-id)) 'draw #t)
-  (send-event (handle->process (-> arg0 incomming-attack-id)) 'origin-joint-index 26))
+(defbehavior muse-to-idle sculptor ((owner muse))
+  "Ensure the displayed Muse manipulator exists, light it, show it with a looping idle animation,
+   and attach its origin to joint 26. owner is the Sculptor viewed as a Muse: sculptor.muse and
+   muse.incomming-attack-id intentionally share the handle slot at offset 384."
+  (if (not (handle->process (-> owner incomming-attack-id)))
+    (set! (-> owner incomming-attack-id)
+          (ppointer->handle (manipy-spawn (-> owner collide-info trans) (-> owner entity) *sculptor-muse-sg* #f :to owner))))
+  (let ((muse-process (handle->process (-> owner incomming-attack-id))))
+    (if muse-process (set! (-> (the-as muse muse-process) draw light-index) (the-as uint 3))))
+  (send-event (handle->process (-> owner incomming-attack-id)) 'anim-mode 'loop)
+  (send-event (handle->process (-> owner incomming-attack-id)) 'art-joint-anim "idle" 0)
+  (send-event (handle->process (-> owner incomming-attack-id)) 'draw #t)
+  (send-event (handle->process (-> owner incomming-attack-id)) 'origin-joint-index 26))
 
 (defstate give-cell (sculptor)
   :virtual #t
@@ -61,10 +73,13 @@
     (behavior ()
       (muse-to-idle (the-as muse self))))
 
-(defmethod play-anim! ((this sculptor) (arg0 symbol))
+(defmethod play-anim! ((this sculptor) (commit? symbol))
+  "Choose the Sculptor's conversation animation for the current Misty Muse task stage. When
+   commit? is true, apply the corresponding task transition and create the displayed Muse for
+   the resolution animation; false only selects or prefetches the animation."
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
-     (if arg0 (close-status! (-> this tasks) (task-status need-introduction)))
+     (if commit? (close-status! (-> this tasks) (task-status need-introduction)))
      (new 'static
           'spool-anim
           :name "sculptor-introduction"
@@ -92,13 +107,13 @@
      (set! (-> this skippable) #t)
      (new 'static 'spool-anim :name "sculptor-reminder-1" :index 17 :parts 2 :command-list '()))
     (((task-status need-reward-speech))
-     (when arg0
+     (when commit?
        (set! (-> this cell-for-task) (current-task (-> this tasks)))
        (close-current! (-> this tasks))
        (set! (-> this muse)
              (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *sculptor-muse-sg* #f :to this)))
-       (let ((v1-18 (handle->process (-> this muse))))
-         (if v1-18 (set! (-> (the-as muse v1-18) draw light-index) (the-as uint 3))))
+       (let ((muse-process (handle->process (-> this muse))))
+         (if muse-process (set! (-> (the-as muse muse-process) draw light-index) (the-as uint 3))))
        (send-event (handle->process (-> this muse)) 'center-joint 4)
        (send-event (handle->process (-> this muse)) 'anim-mode 'clone-anim))
      (new 'static
@@ -109,7 +124,7 @@
           :command-list
           '((51 joint "cameraB") (87 joint "camera"))))
     (else
-     (if arg0
+     (if commit?
        (format 0
                "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
                (-> this name)
@@ -117,22 +132,30 @@
      (-> this draw art-group data 4))))
 
 (defmethod get-art-elem ((this sculptor))
+  "Return art element 11 while the Muse task is invalid or awaiting resolution, otherwise
+   return the Sculptor's active root-channel art element."
   (case (current-status (-> this tasks))
     (((task-status invalid) (task-status need-resolution)) (-> this draw art-group data 11))
     (else (-> this draw art-group data 3))))
 
-(defmethod process-taskable-method-43 ((this sculptor))
+(defmethod try-play-ambient-chatter ((this sculptor))
+  "When the target is within thirty metres and the thirty-second cooldown has elapsed, choose
+   one of seven Sculptor idle lines with approximately equal probability."
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
-    (let ((f0-2 (rand-float-gen)))
+    (let ((choice (rand-float-gen)))
       (cond
-        ((< 0.85714287 f0-2) (play-ambient (-> this ambient) "SCU-LO01" #f (-> this root trans)))
-        ((< 0.71428573 f0-2) (play-ambient (-> this ambient) "SCU-AM05" #f (-> this root trans)))
-        ((< 0.5714286 f0-2) (play-ambient (-> this ambient) "SCU-AM06" #f (-> this root trans)))
-        ((< 0.42857143 f0-2) (play-ambient (-> this ambient) "SCU-AM03" #f (-> this root trans)))
-        ((< 0.2857143 f0-2) (play-ambient (-> this ambient) "SCU-AM04" #f (-> this root trans)))
-        ((< 0.14285715 f0-2) (play-ambient (-> this ambient) "SCU-AM01" #f (-> this root trans)))
+        ((< 0.85714287 choice) (play-ambient (-> this ambient) "SCU-LO01" #f (-> this root trans)))
+        ((< 0.71428573 choice) (play-ambient (-> this ambient) "SCU-AM05" #f (-> this root trans)))
+        ((< 0.5714286 choice) (play-ambient (-> this ambient) "SCU-AM06" #f (-> this root trans)))
+        ((< 0.42857143 choice) (play-ambient (-> this ambient) "SCU-AM03" #f (-> this root trans)))
+        ((< 0.2857143 choice) (play-ambient (-> this ambient) "SCU-AM04" #f (-> this root trans)))
+        ((< 0.14285715 choice) (play-ambient (-> this ambient) "SCU-AM01" #f (-> this root trans)))
         (else (play-ambient (-> this ambient) "SCU-AM02" #f (-> this root trans)))))))
 
+;; During the invalid and need-resolution task stages, alternate small and large sculpting passes:
+;; four to seven small strokes, a look at the work, and half the time another two to three large
+;; strokes. During other stages, four to seven idle cycles end with either a sigh or a three-part
+;; strike.
 (defstate idle (sculptor)
   :virtual #t
   :code
@@ -146,99 +169,44 @@
         (ja-eval))
       (case (current-status (-> self tasks))
         (((task-status invalid) (task-status need-resolution))
-         (ja-no-eval :group! sculptor-from-looking-ja :num! (seek!) :frame-num 0.0)
-         (until (ja-done? 0)
-           (suspend)
-           (ja :num! (seek!)))
+         (ja-play :group! sculptor-from-looking-ja :num! (seek!) :frame-num 0.0)
          (muse-to-idle (the-as muse self))))
       (loop
-        (let ((v1-43 (current-status (-> self tasks))))
+        (let ((task-stage (current-status (-> self tasks))))
           (cond
-            ((or (= v1-43 (task-status invalid)) (= v1-43 (task-status need-resolution)))
-             (ja-no-eval :group! sculptor-to-small-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))
-             (let* ((f30-0 4.0)
-                    (v1-68 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                    (v1-69 (the-as number (logior #x3f800000 v1-68))))
-               (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-69)))) 4))
-                 (ja-no-eval :group! sculptor-small-ja :num! (seek!) :frame-num 0.0)
-                 (until (ja-done? 0)
-                   (suspend)
-                   (ja :num! (seek!)))))
-             (let ((f30-1 (rand-float-gen)))
-               (ja-no-eval :group! sculptor-small-to-looking-ja :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))
-               (ja-no-eval :group! sculptor-looking-ja :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))
-               (ja-no-eval :group! sculptor-from-looking-ja :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))
-               (when (< f30-1 0.5)
-                 (ja-no-eval :group! sculptor-to-huge-ja :num! (seek!) :frame-num 0.0)
-                 (until (ja-done? 0)
-                   (suspend)
-                   (ja :num! (seek!)))
-                 (let* ((f30-2 2.0)
-                        (v1-190 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                        (v1-191 (the-as number (logior #x3f800000 v1-190))))
-                   (countdown (gp-2 (+ (the int (* f30-2 (+ -1.0 (the-as float v1-191)))) 2))
-                     (ja-no-eval :group! sculptor-huge-ja :num! (seek!) :frame-num 0.0)
-                     (until (ja-done? 0)
-                       (suspend)
-                       (ja :num! (seek!)))))
-                 (ja-no-eval :group! sculptor-huge-to-looking-ja :num! (seek!) :frame-num 0.0)
-                 (until (ja-done? 0)
-                   (suspend)
-                   (ja :num! (seek!)))
-                 (ja-no-eval :group! sculptor-looking-ja :num! (seek!) :frame-num 0.0)
-                 (until (ja-done? 0)
-                   (suspend)
-                   (ja :num! (seek!)))
-                 (ja-no-eval :group! sculptor-from-looking-ja :num! (seek!) :frame-num 0.0)
-                 (until (ja-done? 0)
-                   (suspend)
-                   (ja :num! (seek!))))))
+            ((or (= task-stage (task-status invalid)) (= task-stage (task-status need-resolution)))
+             (ja-play :group! sculptor-to-small-ja :num! (seek!) :frame-num 0.0)
+             (countdown (small-repeats-left (+ (the int (* 4.0 (rand-float-gen))) 4))
+               (ja-play :group! sculptor-small-ja :num! (seek!) :frame-num 0.0))
+             (let ((huge-roll (rand-float-gen)))
+               (ja-play :group! sculptor-small-to-looking-ja :num! (seek!) :frame-num 0.0)
+               (ja-play :group! sculptor-looking-ja :num! (seek!) :frame-num 0.0)
+               (ja-play :group! sculptor-from-looking-ja :num! (seek!) :frame-num 0.0)
+               (when (< huge-roll 0.5)
+                 (ja-play :group! sculptor-to-huge-ja :num! (seek!) :frame-num 0.0)
+                 (countdown (huge-repeats-left (+ (the int (* 2.0 (rand-float-gen))) 2))
+                   (ja-play :group! sculptor-huge-ja :num! (seek!) :frame-num 0.0))
+                 (ja-play :group! sculptor-huge-to-looking-ja :num! (seek!) :frame-num 0.0)
+                 (ja-play :group! sculptor-looking-ja :num! (seek!) :frame-num 0.0)
+                 (ja-play :group! sculptor-from-looking-ja :num! (seek!) :frame-num 0.0))))
             ((begin
-               (process-taskable-method-43 self)
-               (let* ((f30-3 4.0)
-                      (v1-287 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                      (v1-288 (the-as number (logior #x3f800000 v1-287))))
-                 (countdown (gp-3 (+ (the int (* f30-3 (+ -1.0 (the-as float v1-288)))) 4))
-                   (ja-no-eval :group! sculptor-idle-ja :num! (seek!) :frame-num 0.0)
-                   (until (ja-done? 0)
-                     (suspend)
-                     (ja :num! (seek!)))))
+               (try-play-ambient-chatter self)
+               (countdown (idle-repeats-left (+ (the int (* 4.0 (rand-float-gen))) 4))
+                 (ja-play :group! sculptor-idle-ja :num! (seek!) :frame-num 0.0))
                (< (rand-float-gen) 0.5))
-             (ja-no-eval :group! sculptor-sigh-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!))))
+             (ja-play :group! sculptor-sigh-ja :num! (seek!) :frame-num 0.0))
             (else
-             (ja-no-eval :group! sculptor-strikestart-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))
-             (ja-no-eval :group! sculptor-strikemiddle-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))
-             (ja-no-eval :group! sculptor-strikeend-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))))))))
+             (ja-play :group! sculptor-strikestart-ja :num! (seek!) :frame-num 0.0)
+             (ja-play :group! sculptor-strikemiddle-ja :num! (seek!) :frame-num 0.0)
+             (ja-play :group! sculptor-strikeend-ja :num! (seek!) :frame-num 0.0)))))))
 
-(defmethod init-from-entity! ((this sculptor) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *sculptor-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this sculptor) (source-entity entity-actor))
+  "Initialize the Sculptor for the Misty Muse task, clear his displayed-Muse handle, configure
+   his lighting and music flavor, and enter the taskable state selected by current progress."
+  (init-as-taskable! this source-entity *sculptor-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task misty-muse)))
   (set! (-> this muse) (the-as handle #f))
   (set! (-> this sound-flava) (music-flava sculptor))
   (set! (-> this draw light-index) (the-as uint 3))
-  (process-taskable-method-42 this)
+  (goto-initial-state! this)
   (none))

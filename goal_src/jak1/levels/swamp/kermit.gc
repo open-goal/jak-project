@@ -45,7 +45,7 @@
    (:vel-y (meters 0.016666668) (meters 0.016666668))
    (:fade-a -0.2)
    (:timer (seconds 1))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 1359
   :init-specs
@@ -63,7 +63,7 @@
    (:vel-y (meters 0.01) (meters 0.01))
    (:fade-a 0.0)
    (:timer (seconds 1))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 1356
   :init-specs
@@ -80,7 +80,7 @@
    (:a 128.0)
    (:fade-a -1.6)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.035))
    (:next-launcher 1364)))
 
@@ -99,7 +99,7 @@
    (:a 128.0)
    (:fade-a -1.6)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.035))
    (:next-launcher 1364)))
 
@@ -118,7 +118,7 @@
    (:a 128.0)
    (:fade-a -1.6)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.035))
    (:next-launcher 1364)))
 
@@ -139,7 +139,7 @@
    (:a 128.0)
    (:fade-a -1.6)
    (:timer (seconds 0.305))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.035))
    (:next-launcher 1364)))
 
@@ -160,7 +160,7 @@
    (:a 128.0)
    (:fade-a -1.6)
    (:timer (seconds 0.305))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.035))
    (:next-launcher 1364)))
 
@@ -181,7 +181,7 @@
    (:a 128.0)
    (:fade-a -1.6)
    (:timer (seconds 0.305))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.035))
    (:next-launcher 1364)))
 
@@ -210,7 +210,7 @@
    (:accel-y (meters -0.0026666666))
    (:friction 0.99)
    (:timer (seconds 0.25))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:userdata 0.0)
    (:conerot-x (degrees 20) (degrees 50.000004))
    (:conerot-y (degrees 0) (degrees 360))))
@@ -235,7 +235,7 @@
    (:b 128.0 64.0)
    (:a 128.0)
    (:timer (seconds 10))
-   (:flags (bit3))
+   (:flags (glow))
    (:func 'sparticle-track-root)
    (:next-time (seconds 0.017))
    (:next-launcher 1369)))
@@ -265,7 +265,7 @@
    (:vel-y (meters 0.053333335))
    (:vel-z (meters 0.002))
    (:timer (seconds 10))
-   (:flags (bit2 bit3 bit7))
+   (:flags (die-when-faded glow orbit))
    (:next-time (seconds 1))
    (:next-launcher 1370)))
 
@@ -287,7 +287,7 @@
    (:fade-g -0.16)
    (:fade-a -0.14222223)
    (:timer (seconds 5))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpartgroup group-kermit-pulse-impact
   :id 301
@@ -317,7 +317,7 @@
    (:fade-a -0.64)
    (:friction 0.96)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.1))
    (:next-launcher 1373)
    (:launchrot-x (degrees 0) (degrees 180))
@@ -351,7 +351,7 @@
    (:accel-y (meters -0.00066666666))
    (:friction 0.93)
    (:timer (seconds 0.3))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.1))
    (:next-launcher 1373)
    (:launchrot-x (degrees 0) (degrees 360))
@@ -371,66 +371,75 @@
   (:methods
    (new (symbol type kermit int function int int) _type_)))
 
-
 (defmethod relocate ((this joint-mod-tracker) (offset int))
+  "Adjust the tracked Kermit pointer after its process allocation moves."
   (&+! (-> this process) offset)
   this)
 
-(defun build-matrix-from-up-and-forward-axes! ((arg0 matrix) (arg1 vector) (arg2 int) (arg3 vector) (arg4 int))
+(defun build-matrix-from-up-and-forward-axes! ((out matrix) (up vector) (up-axis int) (forward vector) (forward-axis int))
+  "Build an orthonormal matrix whose selected axes follow the supplied up and forward vectors."
   (let ((s1-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector)))
-    (let ((s3-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg3 1.0)))
-      (vector-cross! s1-0 arg1 s3-0)
+    (let ((s3-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) forward 1.0)))
+      (vector-cross! s1-0 up s3-0)
       (vector-normalize! s1-0 1.0)
       (vector-cross! s5-0 s3-0 s1-0)
-      (if (!= (mod (+ arg2 1) 3) arg4) (vector-negate-in-place! s1-0))
-      (set! (-> arg0 vector 0 quad) (-> s1-0 quad))
-      (set! (-> arg0 vector 1 quad) (-> s1-0 quad))
-      (set! (-> arg0 vector 2 quad) (-> s1-0 quad))
-      (set! (-> arg0 vector arg4 quad) (-> s3-0 quad)))
-    (set! (-> arg0 vector arg2 quad) (-> s5-0 quad)))
-  (set! (-> arg0 vector 0 w) 0.0)
-  (set! (-> arg0 vector 1 w) 0.0)
-  (set! (-> arg0 vector 2 w) 0.0)
-  (set! (-> arg0 vector 3 quad) (-> *null-vector* quad))
-  arg0)
+      (if (!= (mod (+ up-axis 1) 3) forward-axis) (vector-negate-in-place! s1-0))
+      (set! (-> out vector 0 quad) (-> s1-0 quad))
+      (set! (-> out vector 1 quad) (-> s1-0 quad))
+      (set! (-> out vector 2 quad) (-> s1-0 quad))
+      (set! (-> out vector forward-axis quad) (-> s3-0 quad)))
+    (set! (-> out vector up-axis quad) (-> s5-0 quad)))
+  (set! (-> out vector 0 w) 0.0)
+  (set! (-> out vector 1 w) 0.0)
+  (set! (-> out vector 2 w) 0.0)
+  (set! (-> out vector 3 quad) (-> *null-vector* quad))
+  out)
 
-(defun joint-mod-tracker-callback ((arg0 cspace) (arg1 transformq))
-  (let ((s4-0 (the-as joint-mod-tracker (-> arg0 param1))))
+(defun joint-mod-tracker-callback ((joint-cspace cspace) (source-transform transformq))
+  "Aim and scale the tracked joint toward its current target."
+  (let ((s4-0 (the-as joint-mod-tracker (-> joint-cspace param1))))
     (cond
       ((-> s4-0 enable)
        (let ((t9-0 (-> s4-0 target-pos-func))) (if t9-0 (t9-0 (-> s4-0 target-pos))))
        (let ((s3-0 (-> s4-0 target-pos))
-             (s5-1 (vector-matrix*! (new 'stack-no-clear 'vector) (-> arg1 trans) (-> arg0 parent bone transform))))
+             (s5-1 (vector-matrix*! (new 'stack-no-clear 'vector) (-> source-transform trans) (-> joint-cspace parent bone transform))))
          (let* ((s2-1 (vector-! (new 'stack-no-clear 'vector) s3-0 s5-1))
                 (f30-0 (vector-length s2-1)))
-           (build-matrix-from-up-and-forward-axes! (-> arg0 bone transform)
+           (build-matrix-from-up-and-forward-axes! (-> joint-cspace bone transform)
                                                    *y-vector*
                                                    (-> s4-0 up-axis)
                                                    s2-1
                                                    (-> s4-0 forward-axis))
            (let ((f0-3 (fmin (* f30-0 (-> s4-0 inv-forward-scale-factor) (-> s4-0 forward-scale-control)) (-> s4-0 forward-scale-max)))
-                 (v1-10 (-> arg0 bone transform vector (-> s4-0 forward-axis))))
+                 (v1-10 (-> joint-cspace bone transform vector (-> s4-0 forward-axis))))
              (vector-float*! v1-10 v1-10 f0-3)
              (set! (-> v1-10 w) 0.0)))
-         (set! (-> arg0 bone transform vector 3 quad) (-> s5-1 quad)))
-       (set-vector! (-> arg0 bone scale) 1.0 1.0 1.0 1.0))
+         (set! (-> joint-cspace bone transform vector 3 quad) (-> s5-1 quad)))
+       (set-vector! (-> joint-cspace bone scale) 1.0 1.0 1.0 1.0))
       (else
-       (set! (-> arg1 scale data (-> s4-0 forward-axis)) (-> s4-0 forward-scale-control))
-       (cspace<-parented-transformq-joint! arg0 arg1))))
+       (set! (-> source-transform scale data (-> s4-0 forward-axis)) (-> s4-0 forward-scale-control))
+       (cspace<-parented-transformq-joint! joint-cspace source-transform))))
   (none))
 
-(defmethod new joint-mod-tracker ((allocation symbol) (type-to-make type) (arg0 kermit) (arg1 int) (arg2 function) (arg3 int) (arg4 int))
+(defmethod new joint-mod-tracker ((allocation symbol)
+            (type-to-make type)
+            (owner kermit)
+            (joint-index int)
+            (target-pos-func function)
+            (up-axis int)
+            (forward-axis int))
+  "Create a joint tracker for one skeleton joint and install its callback."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 process) arg0)
-    (set! (-> v0-0 target-pos-func) (the-as (function vector vector) arg2))
-    (set! (-> v0-0 up-axis) arg3)
-    (set! (-> v0-0 forward-axis) arg4)
+    (set! (-> v0-0 process) owner)
+    (set! (-> v0-0 target-pos-func) (the-as (function vector vector) target-pos-func))
+    (set! (-> v0-0 up-axis) up-axis)
+    (set! (-> v0-0 forward-axis) forward-axis)
     (set! (-> v0-0 inv-forward-scale-factor) 0.0)
     (set! (-> v0-0 forward-scale-control) 1.0)
     (set! (-> v0-0 forward-scale-max) 1.0)
     (set! (-> v0-0 enable) #t)
-    (let ((v1-5 (-> arg0 node-list data arg1)))
+    (let ((v1-5 (-> owner node-list data joint-index)))
       (set! (-> v1-5 param0) joint-mod-tracker-callback)
       (set! (-> v1-5 param1) v0-0))
     v0-0))
@@ -443,7 +452,6 @@
   (:states
    kermit-pulse-idle
    kermit-pulse-impact))
-
 
 (defstate kermit-pulse-idle (kermit-pulse)
   :event
@@ -491,10 +499,10 @@
                      *entity-pool*)
       (cleanup-for-death self)))
 
-(defbehavior kermit-pulse-init-by-other kermit-pulse ((arg0 vector) (arg1 entity-actor))
+(defbehavior kermit-pulse-init-by-other kermit-pulse ((position vector) (source-entity entity-actor))
   (logclear! (-> self mask) (process-mask enemy attackable))
   (logior! (-> self mask) (process-mask projectile))
-  (set! (-> self entity) arg1)
+  (set! (-> self entity) source-entity)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -509,7 +517,7 @@
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
     (set! (-> self root) s5-0))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root trans quad) (-> position quad))
   (set! (-> self root quat vec quad) (-> self parent-override 0 collide-info quat vec quad))
   (vector-identity! (-> self root scale))
   (vector-reset! (-> self root transv))
@@ -518,8 +526,9 @@
   (go kermit-pulse-idle)
   (none))
 
-(defun spawn-kermit-pulse ((arg0 kermit) (arg1 vector) (arg2 entity))
-  (process-spawn kermit-pulse arg1 arg2 :to arg0)
+(defun spawn-kermit-pulse ((owner kermit) (position vector) (source-entity entity))
+  "Spawn a tongue pulse at position as Kermit's child."
+  (process-spawn kermit-pulse position source-entity :to owner)
   0
   (none))
 
@@ -544,13 +553,14 @@
    kermit-retract-tongue
    kermit-tongue-stuck))
 
-
 (defmethod relocate ((this kermit) (offset int))
+  "Relocate the tongue tracker and charging-particle control before relocating the enemy."
   (if (nonzero? (-> this tongue-control)) (&+! (-> this tongue-control) offset))
   (if (nonzero? (-> this charging-part)) (&+! (-> this charging-part) offset))
   (the-as kermit ((method-of-type nav-enemy relocate) this offset)))
 
 (defmethod deactivate ((this kermit))
+  "Free the charging particles before deactivating Kermit."
   (if (nonzero? (-> this charging-part)) (kill-and-free-particles (-> this charging-part)))
   ((method-of-type nav-enemy deactivate) this)
   (none))
@@ -575,24 +585,29 @@
   0
   (none))
 
-(defun kermit-tongue-pos ((arg0 kermit))
-  (-> arg0 node-list data 24 bone transform vector 3))
+(defun kermit-tongue-pos ((owner kermit))
+  "Return Kermit's tongue-joint position."
+  (-> owner node-list data 24 bone transform vector 3))
 
-(defun kermit-get-head-dir-xz ((arg0 kermit) (arg1 vector))
-  (set! (-> arg1 quad) (-> arg0 node-list data 8 bone transform vector 2 quad))
-  (set! (-> arg1 y) 0.0)
-  (vector-xz-normalize! arg1 1.0))
+(defun kermit-get-head-dir-xz ((owner kermit) (out vector))
+  "Write Kermit's horizontal head direction to out."
+  (set! (-> out quad) (-> owner node-list data 8 bone transform vector 2 quad))
+  (set! (-> out y) 0.0)
+  (vector-xz-normalize! out 1.0))
 
-(defun kermit-get-head-dir ((arg0 kermit) (arg1 vector))
-  (set! (-> arg1 quad) (-> arg0 node-list data 8 bone transform vector 2 quad))
-  (vector-normalize! arg1 1.0))
+(defun kermit-get-head-dir ((owner kermit) (out vector))
+  "Write Kermit's head direction to out."
+  (set! (-> out quad) (-> owner node-list data 8 bone transform vector 2 quad))
+  (vector-normalize! out 1.0))
 
 (defun kermit-player-target-pos ()
+  "Return the player's tongue target position."
   (target-pos 26))
 
-(defun kermit-get-tongue-target-callback ((arg0 vector))
-  (set! (-> arg0 quad) (-> (kermit-player-target-pos) quad))
-  arg0)
+(defun kermit-get-tongue-target-callback ((out vector))
+  "Copy the player's tongue target into out."
+  (set! (-> out quad) (-> (kermit-player-target-pos) quad))
+  out)
 
 (defbehavior kermit-check-tongue-is-clear? kermit ()
   (let* ((gp-0 (kermit-tongue-pos self))
@@ -634,23 +649,23 @@
       v0-3)))
 
 (defbehavior kermit-short-hop kermit ()
-  (ja-no-eval :group! kermit-hop-ja :num! (seek!) :frame-num 0.0)
-  (until (ja-done? 0)
-    (let ((f0-4 (ja-aframe-num 0)))
-      (if (>= f0-4 4.0) (set! (-> self airborne) #t))
-      (if (>= f0-4 14.0) (set! (-> self airborne) #f)))
-    (suspend)
-    (ja :num! (seek!)))
+  (ja-play :group!
+           kermit-hop-ja
+           :num! (seek!)
+           :frame-num 0.0
+           (let ((f0-4 (ja-aframe-num 0)))
+             (if (>= f0-4 4.0) (set! (-> self airborne) #t))
+             (if (>= f0-4 14.0) (set! (-> self airborne) #f))))
   #f)
 
 (defbehavior kermit-long-hop kermit ()
-  (ja-no-eval :group! kermit-longhop-ja :num! (seek!) :frame-num 0.0)
-  (until (ja-done? 0)
-    (let ((f0-4 (ja-aframe-num 0)))
-      (if (>= f0-4 7.0) (set! (-> self airborne) #t))
-      (if (>= f0-4 29.0) (set! (-> self airborne) #f)))
-    (suspend)
-    (ja :num! (seek!)))
+  (ja-play :group!
+           kermit-longhop-ja
+           :num! (seek!)
+           :frame-num 0.0
+           (let ((f0-4 (ja-aframe-num 0)))
+             (if (>= f0-4 7.0) (set! (-> self airborne) #t))
+             (if (>= f0-4 29.0) (set! (-> self airborne) #f))))
   #f)
 
 (defbehavior kermit-hop kermit ((arg0 float))
@@ -665,7 +680,7 @@
 
 (defbehavior kermit-set-rotate-dir-to-nav-target kermit ()
   (cond
-    ((logtest? (nav-control-flags navcf19) (-> self nav flags))
+    ((logtest? (nav-control-flags reached-destination) (-> self nav flags))
      (vector-! (-> self rotate-dir) (-> self nav target-pos) (-> self collide-info trans)))
     (else (let ((v0-1 (-> self rotate-dir))) (set! (-> v0-1 quad) (-> self nav travel quad)) v0-1))))
 
@@ -675,6 +690,7 @@
 nav-enemy-default-event-handler
 
 (defmethod common-post ((this kermit))
+  "Run the standard enemy post-processing."
   (call-parent-method this)
   (when (-> this charged-up))
   0
@@ -687,7 +703,7 @@ nav-enemy-default-event-handler
 (defbehavior kermit-post kermit ()
   (cond
     ((-> self airborne)
-     (nav-control-method-11 (-> self nav) (-> self nav target-pos))
+     (navigate! (-> self nav) (-> self nav target-pos))
      (set! (-> self collide-info transv x) (-> self nav travel x))
      (set! (-> self collide-info transv y) 0.0)
      (set! (-> self collide-info transv z) (-> self nav travel z))
@@ -738,7 +754,7 @@ nav-enemy-default-event-handler
       (set-time! (-> self state-time))
       (set-mode! (-> self neck) (joint-mod-handler-mode flex-blend))
       (kermit-get-new-patrol-point)
-      (nav-control-method-11 (-> self nav) (-> self nav target-pos)))
+      (navigate! (-> self nav) (-> self nav target-pos)))
   :trans
     (behavior ()
       (if (and (or (not *target*)
@@ -747,14 +763,11 @@ nav-enemy-default-event-handler
         (go kermit-idle))
       (kermit-set-rotate-dir-to-nav-target)
       (if (and (not (-> self airborne)) (nav-enemy-test-point-in-nav-mesh? (target-pos 0))) (go kermit-notice))
-      (if (logtest? (nav-control-flags navcf19) (-> self nav flags)) (kermit-get-new-patrol-point)))
+      (if (logtest? (nav-control-flags reached-destination) (-> self nav flags)) (kermit-get-new-patrol-point)))
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! kermit-idle-ja :num! (seek! max 3.0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! max 3.0)))
+        (ja-play :group! kermit-idle-ja :num! (seek! max 3.0) :frame-num 0.0)
         (kermit-hop 20480.0)))
   :post kermit-post)
 
@@ -801,21 +814,19 @@ nav-enemy-default-event-handler
             (set! v1-2 (nav-enemy-test-point-in-nav-mesh? (-> self nav target-pos)))
             (+! s4-0 1)))
         (if (not v1-2) (kermit-set-nav-mesh-target (-> self collide-info trans))))
-      (nav-control-method-11 (-> self nav) (-> self nav target-pos)))
+      (navigate! (-> self nav) (-> self nav target-pos)))
   :trans
     (behavior ()
       (when (not (-> self airborne))
         (if (or (time-elapsed? (-> self state-time) (seconds 3))
-                (and (logtest? (nav-control-flags navcf19) (-> self nav flags)) (time-elapsed? (-> self state-time) (seconds 0.5))))
+                (and (logtest? (nav-control-flags reached-destination) (-> self nav flags))
+                     (time-elapsed? (-> self state-time) (seconds 0.5))))
           (go kermit-chase))))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.17))
       (dotimes (gp-0 3)
-        (ja-no-eval :group! kermit-idle-ja :num! (seek! max 4.0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! max 4.0))))
+        (ja-play :group! kermit-idle-ja :num! (seek! max 4.0) :frame-num 0.0))
       (loop
         (kermit-hop 81920.0)
         (nop!)))
@@ -828,7 +839,7 @@ nav-enemy-default-event-handler
       (set-time! (-> self state-time))
       (set-mode! (-> self neck) (joint-mod-handler-mode look-at))
       (kermit-set-nav-mesh-target (-> self collide-info trans))
-      (nav-control-method-11 (-> self nav) (-> self nav target-pos)))
+      (navigate! (-> self nav) (-> self nav target-pos)))
   :trans
     (behavior ()
       (kermit-set-nav-mesh-target (-> self collide-info trans))
@@ -849,10 +860,7 @@ nav-enemy-default-event-handler
     (behavior ()
       (ja-channel-push! 1 (seconds 0.17))
       (loop
-        (ja-no-eval :group! kermit-idle-ja :num! (seek! max 3.0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! max 3.0)))
+        (ja-play :group! kermit-idle-ja :num! (seek! max 3.0) :frame-num 0.0)
         (if (not (kermit-check-to-hit-player? 3640.889)) (kermit-hop 81920.0))))
   :post kermit-post)
 
@@ -866,18 +874,18 @@ nav-enemy-default-event-handler
       (let ((s5-0 #f)
             (gp-0 #f))
         (let ((f30-0 1.0))
-          (ja-no-eval :group! kermit-lash-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (set! (-> self tongue-control target-pos quad) (-> (kermit-player-target-pos) quad))
-            (when (and (not s5-0) (>= (ja-aframe-num 0) 14.0))
-              (set! s5-0 #t)
-              (set! gp-0 (kermit-check-to-hit-player? 3640.889))
-              (if (not gp-0) (set! f30-0 0.8)))
-            (when s5-0
-              (if (and (not gp-0) (= (-> self tongue-control forward-scale-control) f30-0)) (go kermit-retract-tongue))
-              (seek! (-> self tongue-control forward-scale-control) f30-0 0.25))
-            (suspend)
-            (ja :num! (seek!))))
+          (ja-play :group!
+                   kermit-lash-ja
+                   :num! (seek!)
+                   :frame-num 0.0
+                   (set! (-> self tongue-control target-pos quad) (-> (kermit-player-target-pos) quad))
+                   (when (and (not s5-0) (>= (ja-aframe-num 0) 14.0))
+                     (set! s5-0 #t)
+                     (set! gp-0 (kermit-check-to-hit-player? 3640.889))
+                     (if (not gp-0) (set! f30-0 0.8)))
+                   (when s5-0
+                     (if (and (not gp-0) (= (-> self tongue-control forward-scale-control) f30-0)) (go kermit-retract-tongue))
+                     (seek! (-> self tongue-control forward-scale-control) f30-0 0.25))))
         (cond
           (gp-0
            (level-hint-spawn (text-id swamp-kermit-tongue-hint) "sksp0143" (the-as entity #f) *entity-pool* (game-task none))
@@ -918,11 +926,11 @@ nav-enemy-default-event-handler
     (behavior ()
       (ja-channel-push! 1 (seconds 0.1))
       (loop
-        (ja-no-eval :group! kermit-turn-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (sound-play "kermit-stretch" :id (-> self sound-id) :position (the-as symbol (-> self collide-info trans)))
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group!
+                 kermit-turn-ja
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (sound-play "kermit-stretch" :id (-> self sound-id) :position (the-as symbol (-> self collide-info trans))))))
   :post
     (behavior ()
       (seek-to-point-toward-point! (-> self collide-info) (target-pos 0) (-> self rotate-speed) (seconds 0.05))
@@ -951,19 +959,16 @@ nav-enemy-default-event-handler
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! kermit-miss-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (if (>= (ja-aframe-num 0) 3.0) (seek! (-> self tongue-control forward-scale-control) 0.0 0.125))
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               kermit-miss-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (if (>= (ja-aframe-num 0) 3.0) (seek! (-> self tongue-control forward-scale-control) 0.0 0.125)))
       (set! (-> self tongue-control forward-scale-control) 0.0)
       (kermit-disable-tongue)
       (loop
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! kermit-idle-ja :num! (seek! max 4.0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! max 4.0)))
+        (ja-play :group! kermit-idle-ja :num! (seek! max 4.0) :frame-num 0.0)
         (kermit-hop 0.0)))
   :post kermit-post)
 
@@ -1020,7 +1025,9 @@ nav-enemy-default-event-handler
        :debug-draw-neck #f
        :debug-draw-jump #f))
 
-(defmethod init-from-entity! ((this kermit) (arg0 entity-actor))
+(defmethod init-from-entity! ((this kermit) (source-entity entity-actor))
+  "Initialize Kermit's collision, skeleton, navigation, tongue controller, and particles from the
+   entity."
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -1043,7 +1050,7 @@ nav-enemy-default-event-handler
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this collide-info) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *kermit-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (set! (-> this airborne) #f)

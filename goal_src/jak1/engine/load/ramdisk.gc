@@ -7,32 +7,47 @@
 ;; unlike most other loads, ramdisk actually uses the response buffer of the RPC
 ;; to send the data.
 
-(defconstant RAMDISK_RPC_FILL_FNO (the uint 1))
+(defenum ramdisk-rpc-function
+  :type uint32
+  :bitfield #f
+  (get-data 0)
+  (reset-and-load 1)
+  (bypass-load-file 4))
+
+(defconstant RAMDISK_RPC_FILL_FNO (the uint (ramdisk-rpc-function reset-and-load)))
 
 ;; DECOMP BEGINS
 
 ;; command to load something into the OVERLORD RAMDISK from the DVD
 ;; use with fno = 1
 (deftype ramdisk-rpc-fill (structure)
-  ((rsvd1    int32)
-   (ee-id    int32)
-   (rsvd2    int32 2)
+  "A reset-and-load request for the IOP RAM disk. It discards the previous contents, loads filename
+from DVD, and assigns the caller-provided ee-id to the cached file."
+  ((rsvd1 int32)
+   (ee-id int32)
+   (rsvd2 int32 2)
    (filename uint128)))
 
 ;; get data in ramdisk on EE.
 (deftype ramdisk-rpc-load (structure)
-  ((rsvd   int32)
-   (ee-id  int32)
+  "A request for a slice of a file cached in the IOP RAM disk. ee-id selects the file, offset and
+length select its bytes, and the RPC response copies those bytes into an EE destination supplied
+separately. length must not exceed 8192, and the caller must keep the requested range inside the
+file."
+  ((rsvd int32)
+   (ee-id int32)
    (offset uint32)
    (length uint32)))
 
 ;; load file directly to EE.
 ;; this seems very similar to some functionality in STR.
 (deftype ramdisk-rpc-load-to-ee (structure)
-  ((rsvd     int32)
-   (addr     int32)
-   (offset   int32)
-   (length   int32)
+  "A bypass-load request that copies filename directly from DVD to the EE address in addr without
+using the IOP RAM disk. length is the requested byte count; offset is not used by the handler."
+  ((rsvd int32)
+   (addr int32)
+   (offset int32)
+   (length int32)
    (filename uint128)))
 
 ;; allocate the ramdisk RPC buffer
@@ -40,17 +55,18 @@
 
 (define *current-ramdisk-id* 0)
 
-(defun ramdisk-load ((file-id int) (offset uint) (length uint) (buffer pointer))
-  "Helper to grab load from ramdisk to ee"
+(defun ramdisk-load ((file-id int) (offset uint) (length uint) (destination pointer))
+  "Begin copying length bytes at offset from the RAM-disk file identified
+   by file-id into destination. The transfer is asynchronous; return zero after submitting it."
   (let ((cmd (the-as ramdisk-rpc-load (add-element *ramdisk-rpc*))))
     (set! (-> cmd offset) offset)
     (set! (-> cmd ee-id) file-id)
     (set! (-> cmd length) length))
-  (call *ramdisk-rpc* (the-as uint 0) buffer length)
+  (call *ramdisk-rpc* (the-as uint (ramdisk-rpc-function get-data)) destination length)
   0)
 
 (defun ramdisk-sync ()
-  "Wait for ramdisk RPC to complete."
+  "Wait for the active RAM-disk RPC to finish."
   (sync *ramdisk-rpc* #t)
   0
   (none))

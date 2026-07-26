@@ -8,6 +8,12 @@
 (require "kernel/gstate.gc")
 (require "engine/collide/collide-shape-h.gc")
 
+;; The launcher side of the particle system: the *part-id-table*/*part-group-id-table* effect
+;; registries, field initialization from defpart init-specs (sp-init-fields!), the launch
+;; rotation/adgif setup helpers used by the launch code, the relaunch (multi-phase
+;; effect) path, and sparticle-launch-control (the per-process instance of an effect group,
+;; with its spawn scheduler). See sparticle-launcher-h.gc for the type/macro definitions.
+
 ;; og:preserve-this added macro
 ;; the rate was defaulted to DISPLAY_FPS_RATIO before, but sp-launch-particles-var checks
 ;; if the rate is not 1.0 and crashes the game.
@@ -16,10 +22,16 @@
 
 ;; decomp begins
 
+;; global particle clock, advanced by process-particles each frame by the tick count in
+;; *sp-frame-time* x (5/frame at 60fps, 6 at 50fps -- i.e. 300 ticks per second).
+;; All spawn scheduling (period/length/offset) is in these ticks.
 (define *particle-300hz-timer* 0)
 
+;; The decoded "misc fields" (misc-fields-start..end of sp-field-id) of a launcher, filled in by
+;; the launch kernel via sp-init-fields! before it births particles: texture/anim selection,
+;; birth-func, launch joint, particle count per birth, and sound to play.
 (deftype sparticle-birthinfo (structure)
-  ((sprite       uint32)
+  ((sprite       texture-id)
    (anim         int32)
    (anim-speed   float)
    (birth-func   basic)
@@ -30,18 +42,18 @@
    (data         uint32 1 :overlay-at sprite)))
 
 (defmethod inspect ((this sparticle-launcher))
-  "Print out a sparticle-laucher, including its fields"
+  "Print a particle launcher and its field initializers."
   (format #t "~X: sparticle-launcher~%" this)
-  (let ((s5-0 0))
-    (while (!= (-> this init-specs s5-0 field) (sp-field-id spt-end))
-      (let ((init-spec (-> this init-specs s5-0)))
+  (let ((i 0))
+    (while (!= (-> this init-specs i field) (sp-field-id spt-end))
+      (let ((init-spec (-> this init-specs i)))
         (format #t
                 "~T~S : ~F / #x~X / ~D~%"
                 (enum->string sp-field-id (-> init-spec field))
                 (-> init-spec initial-valuef)
                 (-> init-spec initial-valuef)
                 (-> init-spec initial-valuef)))
-      (+! s5-0 1)))
+      (+! i 1)))
   (the-as sparticle-launcher 0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,44 +72,44 @@
 ;; All the particle groups.
 (define *part-group-id-table* (new 'global 'boxed-array sparticle-launch-group 1024))
 
-(defun lookup-part-group-by-name ((arg0 string))
-  "Find a particle group with the given name. Checks all of them, not very efficient."
-  (let* ((s5-0 *part-group-id-table*)
-         (s4-0 (-> s5-0 length)))
-    (dotimes (s3-0 s4-0)
-      (let ((s2-0 (-> s5-0 s3-0))) (if (and (nonzero? s2-0) (string= arg0 (-> s2-0 name))) (return (the-as basic s2-0))))))
+(defun lookup-part-group-by-name ((name string))
+  "Return the first registered particle launch group whose name matches name, or false."
+  (let* ((table *part-group-id-table*)
+         (len (-> table length)))
+    (dotimes (i len)
+      (let ((group (-> table i))) (if (and (nonzero? group) (string= name (-> group name))) (return (the-as basic group))))))
   (the-as sparticle-launch-group #f))
 
-(defun lookup-part-group-pointer-by-name ((arg0 string))
-  "Get a (pointer sparticle-launch-group) for the given name.  Checks all of them, not very efficient."
-  (let* ((s4-0 *part-group-id-table*)
-         (s3-0 (-> s4-0 length)))
-    (dotimes (gp-0 s3-0)
-      (let ((v1-2 (-> s4-0 gp-0)))
-        (if (and (nonzero? v1-2) (string= arg0 (-> v1-2 name)))
+(defun lookup-part-group-pointer-by-name ((name string))
+  "Return the table slot containing the first particle launch group named name, or a null pointer."
+  (let* ((table *part-group-id-table*)
+         (len (-> table length)))
+    (dotimes (i len)
+      (let ((group (-> table i)))
+        (if (and (nonzero? group) (string= name (-> group name)))
           ;; og:preserve-this
-          ;;(return (&+ (-> s4-0 data) (* gp-0 4)))
-          (return (&-> s4-0 gp-0))))))
+          ;;(return (&+ (-> table data) (* i 4)))
+          (return (&-> table i))))))
   (the-as (pointer sparticle-launch-group) #f))
 
-(defun part-group-pointer? ((arg0 pointer))
-  "Is the given pointer a pointer that was returned by lookup-part-group-pointer-by-name?"
-  (let ((v1-0 *part-group-id-table*))
+(defun part-group-pointer? ((ptr pointer))
+  "Return true when ptr addresses a slot inside the particle-group registry."
+  (let ((table *part-group-id-table*))
     ;; og:preserve-this
     ;; just check if we are inside the array.
-    (and (>= (the-as int arg0) (the-as int (-> v1-0 data))) (< (the-as int arg0) (the-as int (&-> v1-0 1024))))))
+    (and (>= (the-as int ptr) (the-as int (-> table data))) (< (the-as int ptr) (the-as int (&-> table 1024))))))
 
-(defun unlink-part-group-by-heap ((arg0 kheap))
-  "Find all particle groups that are stored in the specified heap and set them to 0."
-  (let* ((v1-0 *part-group-id-table*)
-         (a2-0 (-> v1-0 length))
-         (a1-0 (-> arg0 base))
-         (a0-1 (-> arg0 top-base)))
-    (while (nonzero? a2-0)
-      (+! a2-0 -1)
-      (let ((a3-2 (-> v1-0 a2-0)))
-        (when (and (>= (the-as int a3-2) (the-as int a1-0)) (< (the-as int a3-2) (the-as int a0-1)))
-          (set! (-> v1-0 a2-0) (the-as sparticle-launch-group 0))
+(defun unlink-part-group-by-heap ((heap kheap))
+  "Clear every particle-group registry slot whose value lies inside heap's active address range."
+  (let* ((table *part-group-id-table*)
+         (i (-> table length))
+         (heap-start (-> heap base))
+         (heap-end (-> heap top-base)))
+    (while (nonzero? i)
+      (+! i -1)
+      (let ((group (-> table i)))
+        (when (and (>= (the-as int group) (the-as int heap-start)) (< (the-as int group) (the-as int heap-end)))
+          (set! (-> table i) (the-as sparticle-launch-group 0))
           0))))
   0)
 
@@ -106,50 +118,300 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; og:preserve-this this was rewritten from assembly
-(defun sp-init-fields! ((arg0 (pointer float))
-        (arg1 (inline-array sp-field-init-spec))
-        (arg2 sp-field-id)
-        (arg3 sp-field-id)
-        (write-missing-fields symbol))
-  (1+! arg2)
-  (let ((cur-spec arg1))
-    (while (< (-> cur-spec 0 field) arg2)
-      (&+! cur-spec 16))
-    (if (>= arg2 arg3) (return cur-spec))
-    (until (= arg2 arg3)
-      (cond
-        ((!= (-> cur-spec 0 field) arg2)
-         (if write-missing-fields (set! (-> arg0) 0.0))
-         ;; reduce by 16 because it will be incremented by 16 right after but we don't want to advance field
-         (&+! cur-spec -16))
-        ((= arg2 (sp-field-id spt-sound)) (set! (-> arg0) (-> cur-spec 0 initial-valuef)))
-        (else
-         (case (-> cur-spec 0 flags)
-           (((sp-flag float))
-            (if (= (-> cur-spec 0 random-range) 0)
-              (set! (-> arg0) (-> cur-spec 0 initial-valuef))
-              (set! (-> arg0)
-                    (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (* (rand-vu) (-> cur-spec 0 random-rangef)))))))
-           (((sp-flag float-int-rand))
-            (if (= (-> cur-spec 0 random-range) 0)
-              (set! (-> arg0) (-> cur-spec 0 initial-valuef))
-              (set! (-> arg0)
-                    (+ (-> cur-spec 0 initial-valuef)
-                       (* (-> cur-spec 0 random-multf) (the int (* (rand-vu) (1+ (-> cur-spec 0 random-range)))))))))
-           (((sp-flag copy-from-other)) (set! (-> arg0) (-> arg0 (-> cur-spec 0 initial-value))))
-           (((sp-flag symbol)) (set! (-> arg0) (the-as float (-> cur-spec 0 sym value))))
-           (((sp-flag launcher)) (set! (-> arg0) (the-as float (-> *part-id-table* (-> cur-spec 0 initial-value)))))
-           (((sp-flag object)) (set! (-> arg0) (the-as float (-> cur-spec 0 pntr))))
-           (else
-            (if (= (-> cur-spec 0 random-range) 0)
-              (set! (-> arg0) (-> cur-spec 0 initial-valuef))
-              (set! (-> arg0)
-                    (the-as float
-                            (+ (-> cur-spec 0 initial-value) (* (-> cur-spec 0 random-mult) (the int (* (rand-vu) (-> cur-spec 0 random-range))))))))))))
-      (1+! arg2)
-      (&+! arg0 4)
-      (&+! cur-spec 16))
-    cur-spec))
+(#when PC_PORT
+  ;; Walk a launcher's sorted init-spec list and write the initial value of every field in the
+  ;; half-open id range (field-id, end-field-id] to consecutive floats starting at dest. (field-id
+  ;; is pre-incremented below so the lower bound is exclusive of the "...-start" marker.) The init-specs are stored in
+  ;; ascending field order, 16 bytes each. For each field, the flags select how the value is computed
+  ;; (see sp-flag): plain value, value + random (rand-vu in [0,1) times random-range), copy from an
+  ;; earlier already-written field, symbol/launcher/object lookup, etc.
+  ;; write-missing-fields: when #t, fields not present in the spec list are zeroed; when #f they are
+  ;; left untouched (used by the relaunch path so existing values survive).
+  ;; Returns a pointer to the next unprocessed init-spec, so callers can chain ranges (e.g. sprite
+  ;; fields then cpu fields) through one continuous walk.
+  (defun sp-init-fields! ((dest (pointer float))
+          (specs (inline-array sp-field-init-spec))
+          (field-id sp-field-id)
+          (end-field-id sp-field-id)
+          (write-missing-fields symbol))
+    "Walk sorted 16-byte init specs and initialize consecutive fields in the half-open ID range
+   (field-id, end-field-id]. Missing fields are zeroed only when write-missing-fields is true. Return
+   the next unconsumed spec so callers can process adjacent field ranges without restarting."
+    (1+! field-id)
+    (let ((cur-spec specs))
+      (while (< (-> cur-spec 0 field) field-id)
+        (&+! cur-spec 16))
+      (if (>= field-id end-field-id) (return cur-spec))
+      (until (= field-id end-field-id)
+        (cond
+          ((!= (-> cur-spec 0 field) field-id)
+           (if write-missing-fields (set! (-> dest) 0.0))
+           ;; reduce by 16 because it will be incremented by 16 right after but we don't want to advance field
+           (&+! cur-spec -16))
+          ((= field-id (sp-field-id spt-sound)) (set! (-> dest) (-> cur-spec 0 initial-valuef)))
+          (else
+           (case (-> cur-spec 0 flags)
+             (((sp-flag float))
+              (if (= (-> cur-spec 0 random-range) 0)
+                (set! (-> dest) (-> cur-spec 0 initial-valuef))
+                (set! (-> dest)
+                      (+ (-> cur-spec 0 initial-valuef) (* (-> cur-spec 0 random-multf) (* (rand-vu) (-> cur-spec 0 random-rangef)))))))
+             (((sp-flag float-int-rand))
+              (if (= (-> cur-spec 0 random-range) 0)
+                (set! (-> dest) (-> cur-spec 0 initial-valuef))
+                (set! (-> dest)
+                      (+ (-> cur-spec 0 initial-valuef)
+                         (* (-> cur-spec 0 random-multf) (the int (* (rand-vu) (1+ (-> cur-spec 0 random-range)))))))))
+             (((sp-flag copy-from-other)) (set! (-> dest) (-> dest (-> cur-spec 0 initial-value))))
+             (((sp-flag symbol)) (set! (-> dest) (the-as float (-> cur-spec 0 sym value))))
+             (((sp-flag launcher)) (set! (-> dest) (the-as float (-> *part-id-table* (-> cur-spec 0 initial-value)))))
+             (((sp-flag object)) (set! (-> dest) (the-as float (-> cur-spec 0 pntr))))
+             (else
+              (if (= (-> cur-spec 0 random-range) 0)
+                (set! (-> dest) (-> cur-spec 0 initial-valuef))
+                (set! (-> dest)
+                      (the-as float
+                              (+ (-> cur-spec 0 initial-value) (* (-> cur-spec 0 random-mult) (the int (* (rand-vu) (-> cur-spec 0 random-range))))))))))))
+        (1+! field-id)
+        (&+! dest 4)
+        (&+! cur-spec 16))
+      cur-spec)))
+
+(#unless PC_PORT
+  ;; Each init spec is one 16-byte record:
+  ;;
+  ;;   +0  uint16 field ID        +2  uint16 sp-flag
+  ;;   +4  initial value          +8  random range
+  ;;   +12 random multiplier
+  ;;
+  ;; The last three words are interpreted as floats, integers, symbols, or pointers according to
+  ;; the flag. Specs are sorted by field ID, so adjacent field ranges can share one forward cursor.
+  ;; Float and integer-random forms advance the VU random register; copy and reference forms avoid
+  ;; that arithmetic and resolve their value directly.
+  (defun sp-init-fields! ((dest (pointer float))
+          (specs (inline-array sp-field-init-spec))
+          (field-id sp-field-id)
+          (end-field-id sp-field-id)
+          (write-missing-fields symbol))
+    "Initialize consecutive particle fields from the sorted init-spec stream, returning its next
+     unconsumed entry. Missing fields may be cleared for a new particle or retained for a relaunch."
+    (declare (asm-func (inline-array sp-field-init-spec)))
+    (rlet ((dest-reg :reg a0)
+           (field-reg :reg a2)
+           (end-field-reg :reg a3)
+           (write-missing-reg :reg t0)
+           (spec-reg :reg v0))
+      (label entry)
+      (m v1 dest-reg)
+      (m v1 field-reg)
+      (m v1 end-field-reg)
+      (m v1 write-missing-reg)
+      (nop!)
+      (add.i field-reg field-reg 1)
+      (m spec-reg a1)
+      ;; Init specs are sorted by field ID. Skip any earlier range that a previous call consumed.
+      (label scan-specs)
+      (l.h a1 spec-reg)
+      (nop!)
+      (sub a1 a1 field-reg)
+      (nop! :count 3)
+      (b.ltl a1 r0 scan-specs :delay (add.i spec-reg spec-reg 16))
+
+      (sub a1 field-reg end-field-reg)
+      (nop!)
+      (b.ge a1 r0 done :delay (nop!))
+
+      ;; vf2 receives one random value before dispatch. The selected field kind decides whether to
+      ;; use it as a float, quantize it, ignore it, or replace it with a pointer-like value.
+      (label field-loop)
+      (l.h a1 spec-reg)
+      (nop!)
+      (b.ne a1 field-reg missing-field :delay (vrget.xyzw vf1))
+      (sqrt.x Q vf1)
+      (l.h a1 spec-reg 2)
+      (vaddq.x vf2 vf0 Q)
+      (l.w t2 spec-reg 8)
+      (add.i v1 r0 7)
+      (b.eq field-reg v1 store-sound :delay (add.i t1 r0 1))
+      (b.eq a1 t1 store-float :delay (add.i t1 r0 2))
+      (b.eq a1 t1 store-quantized-float :delay (add.i t1 r0 3))
+      (b.eq a1 t1 copy-field :delay (add.i t1 r0 5))
+      (b.eq a1 t1 load-symbol :delay (add.i t1 r0 6))
+      (b.eq a1 t1 lookup-launcher :delay (add.i t1 r0 4))
+      (b.eq a1 t1 store-object :delay (nop!))
+      (b.z t2 store-integer :delay (nop!))
+
+      ;; Mix the square root of the current VU random value back into R, then use the next value in
+      ;; [0, 1). The common integer path truncates the scaled random term before adding the initial
+      ;; value.
+      (vrxorw vf2)
+      (l.w t1 spec-reg 12)
+      (vrnext.xyzw vf1)
+      (l.w t3 spec-reg 4)
+      (sub.w.vf vf1 vf1 vf0)
+      (nop!)
+      (m vf2 t2)
+      (nop!)
+      (itof.vf vf2 vf2)
+      (nop!)
+      (mul.vf vf1 vf1 vf2)
+      (nop!)
+      (ftoi.vf vf1 vf1)
+      (nop!)
+      (m t2 vf1)
+      (nop!)
+      (mult3 t2 t2 t1)
+      (nop!)
+      (add t2 t2 t3)
+      (add.i field-reg field-reg 1)
+      (s.w t2 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      ;; Integer fields use initial + trunc(random * range) * multiplier.
+      (label store-integer)
+      (l.w t3 spec-reg 4)
+      (add.i field-reg field-reg 1)
+      (s.w t3 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      (label store-sound)
+      (l.w t3 spec-reg 4)
+      (add.i field-reg field-reg 1)
+      (s.w t3 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      ;; Floating fields use initial + random * range * multiplier.
+      (label store-float)
+      (b.z t2 store-plain-float :delay (vrxorw vf2))
+      (vrnext.xyzw vf1)
+      (l.w t1 spec-reg 12)
+      (sub.w.vf vf1 vf1 vf0)
+      (l.w t3 spec-reg 4)
+      (m vf2 t2)
+      (nop!)
+      (mul.vf vf1 vf1 vf2)
+      (nop!)
+      (m vf2 t1)
+      (nop!)
+      (mul.vf vf1 vf1 vf2)
+      (nop!)
+      (m vf2 t3)
+      (nop!)
+      (add.vf vf1 vf1 vf2)
+      (nop!)
+      (m t2 vf1)
+      (add.i field-reg field-reg 1)
+      (s.w t2 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      (label store-plain-float)
+      (l.w t3 spec-reg 4)
+      (add.i field-reg field-reg 1)
+      (s.w t3 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      ;; This form chooses one of range+1 integer steps, then stores the scaled result as a float.
+      (label store-quantized-float)
+      (b.z t2 store-plain-float :delay (vrxorw vf2))
+      (vrnext.xyzw vf1)
+      (l.w t1 spec-reg 12)
+      (sub.w.vf vf1 vf1 vf0)
+      (add.i t2 t2 1)
+      (m vf2 t2)
+      (l.w t3 spec-reg 4)
+      (itof.vf vf2 vf2)
+      (nop!)
+      (mul.vf vf1 vf1 vf2)
+      (nop!)
+      (ftoi.vf vf1 vf1)
+      (nop!)
+      (itof.vf vf1 vf1)
+      (nop!)
+      (m vf2 t1)
+      (nop!)
+      (mul.vf vf1 vf1 vf2)
+      (nop!)
+      (m vf2 t3)
+      (nop!)
+      (add.vf vf1 vf1 vf2)
+      (nop!)
+      (m t2 vf1)
+      (add.i field-reg field-reg 1)
+      (s.w t2 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      ;; initial-value is a negative field offset, relative to the destination currently being written.
+      (label copy-field)
+      (l.w t1 spec-reg 4)
+      (nop!)
+      (sll t1 t1 2)
+      (nop!)
+      (add t1 t1 dest-reg)
+      (nop!)
+      (l.w t3 t1)
+      (add.i field-reg field-reg 1)
+      (s.w t3 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      (label load-symbol)
+      (l.w t1 spec-reg 4)
+      (nop!)
+      (l.w t3 t1)
+      (add.i field-reg field-reg 1)
+      (s.w t3 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      (label lookup-launcher)
+      (m! t1 *part-id-table*)
+      (nop!)
+      (l.w t3 spec-reg 4)
+      (nop!)
+      (sll t3 t3 2)
+      (add.i t1 t1 12)
+      (add t3 t3 t1)
+      (nop!)
+      (l.w t2 t3)
+      (add.i field-reg field-reg 1)
+      (s.w t2 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+
+      (label store-object)
+      (l.w t3 spec-reg 4)
+      (add.i field-reg field-reg 1)
+      (s.w t3 dest-reg)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (add.i spec-reg spec-reg 16))
+      (jr ra :delay (nop!))
+      ;; Missing fields are either cleared or left intact. The branch-likely keeps the store in the
+      ;; taken path, which is needed by relaunches that preserve unspecified fields.
+      (label missing-field)
+      (b.nel write-missing-reg s7 advance-field :delay (s.w r0 dest-reg))
+      (label advance-field)
+      (add.i field-reg field-reg 1)
+      (add.i dest-reg dest-reg 4)
+      (b.ne field-reg end-field-reg field-loop :delay (nop!))
+      (label done)
+      (jr ra :delay (nop!))
+      (jr ra :delay (add sp sp r0))
+      (nop! :count 3))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; launch queue
@@ -184,30 +446,31 @@
 ;; the particle system can modify the adgif shader as part of particle effects.
 ;; it also is responsible for setting up the adgif.
 
-(defun particle-setup-adgif ((arg0 adgif-shader) (arg1 texture-id))
-  "Set up the adgif for a particle and the given texture."
+(defun particle-setup-adgif ((shader adgif-shader) (tex-id texture-id))
+  "Initialize a particle shader from tex-id and install the particle renderer's GS register layout,
+   alpha blend, and depth-buffer settings."
   ;; grab the texture
-  (let ((a1-1 (lookup-texture-by-id arg1)))
+  (let ((tex (lookup-texture-by-id tex-id)))
     ;; set up some texture stuff
-    (set! (-> arg0 tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-    (set! (-> arg0 tex0 tfx) 0)
+    (set! (-> shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+    (set! (-> shader tex0 tfx) 0)
     ;; get the default adgif settings for this txture
-    (if a1-1 (adgif-shader<-texture! arg0 a1-1)))
+    (if tex (adgif-shader<-texture! shader tex)))
   ;; we'll use the usual tex0/tex1/miptbp1
-  (set! (-> arg0 prims 1) (gs-reg64 tex0-1))
-  (set! (-> arg0 prims 3) (gs-reg64 tex1-1))
-  (set! (-> arg0 prims 5) (gs-reg64 miptbp1-1))
-  ;; clamp will use something weird
-  (set! (-> arg0 clamp-reg) (gs-reg64 zbuf-1))
+  (set! (-> shader prims 1) (gs-reg64 tex0-1))
+  (set! (-> shader prims 3) (gs-reg64 tex1-1))
+  (set! (-> shader prims 5) (gs-reg64 miptbp1-1))
+  ;; The particle packet uses this slot for the depth-buffer register.
+  (set! (-> shader clamp-reg) (gs-reg64 zbuf-1))
   ;; this is sometimes "gs-miptbp" instead.
-  (set! (-> arg0 prims 9) (gs-reg64 alpha-1))
-  (set! (-> arg0 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+  (set! (-> shader prims 9) (gs-reg64 alpha-1))
+  (set! (-> shader alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
   ;; og:preserve-this clamp is actually zbuf for sparticles, not gs-clamp.
-  (set! (-> arg0 clamp) (the gs-clamp (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)))
+  (set! (-> shader clamp) (the gs-clamp (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)))
   0
   (none))
 
-;; this is where we'll store the actual adgifs
+;; last and lastgif remember the most recent hit. tidhash and spadgif hold the populated cache.
 (deftype particle-adgif-cache (basic)
   ((used    int32)
    (last    uint16)
@@ -215,151 +478,830 @@
    (tidhash uint16 80)
    (spadgif adgif-shader 80 :inline)))
 
-
 (define *particle-adgif-cache* (new 'global 'particle-adgif-cache))
 
 (set! (-> *particle-adgif-cache* used) 0)
 
-(def-mips2c particle-adgif (function adgif-shader texture-id none))
+;; Cache particle shaders by a folded 16-bit texture ID. Populated entries are searched linearly;
+;; the folded key is treated as the texture's identity, so particle texture IDs must not collide
+;; under this fold. A miss fills the next free entry, or builds directly into the output when all
+;; eighty entries are occupied.
+(#when PC_PORT
+  (def-mips2c particle-adgif (function adgif-shader texture-id none)))
+
+(#unless PC_PORT
+  ;; Cache layout:
+  ;;
+  ;;   +0   number of populated entries
+  ;;   +4   hash of the last texture
+  ;;   +8   shader for the last texture
+  ;;   +12  eighty uint16 texture hashes
+  ;;   +172 eighty 80-byte adgif shaders
+  ;;
+  ;; The last pair handles consecutive uses without a scan. On a general hit, the hash and shader
+  ;; cursors advance together. A miss fills the next pair of slots; after all eighty slots are used,
+  ;; the shader is built directly in the caller's output instead of evicting an entry.
+  (defun particle-adgif ((shader-out adgif-shader) (tex-id texture-id))
+    "Copy the particle shader for tex-id to shader-out, filling a free cache entry when possible."
+    (declare (asm-func none))
+    (rlet ((shader-out :reg a0)
+           (cache :reg t1)
+           (remaining :reg t2)
+           (hash-cursor :reg t3)
+           (shader-cursor :reg t4)
+           (texture-hash :reg a3)
+           (shader-qw0 :reg vf16)
+           (shader-qw1 :reg vf17)
+           (shader-qw2 :reg vf18)
+           (shader-qw3 :reg vf19)
+           (shader-qw4 :reg vf20))
+      (label entry)
+      (m v1 shader-out)
+      (m v1 a1)
+      (nop!)
+
+      ;; Fold the texture ID's upper fields into a compact key. The cache keeps the full expanded
+      ;; shader, so a hit needs only five quadword loads and stores.
+      (sra texture-hash a1 20)
+      (m! cache *particle-adgif-cache*)
+      (sra t0 a1 8)
+      (l.w remaining cache)
+      (xor texture-hash texture-hash t0)
+      (l.hu v1 cache 4)
+      (and.i texture-hash texture-hash #xffff)
+      (l.w shader-cursor cache 8)
+      (b.eq v1 texture-hash cache-hit :delay (add.i hash-cursor cache 12))
+      (b.z remaining cache-miss :delay (add.i shader-cursor cache 172))
+      ;; tidhash and spadgif advance in parallel. The folded 16-bit key avoids comparing or
+      ;; dereferencing texture objects during the common lookup path.
+      (label scan-cache)
+      (l.hu v1 hash-cursor)
+      (add.i hash-cursor hash-cursor 2)
+      (nop! :count 2)
+      (b.eq v1 texture-hash cache-hit :delay (add.i remaining remaining -1))
+      (b.nz remaining scan-cache :delay (add.i shader-cursor shader-cursor 80))
+
+      ;; Fill the next free slot until all eighty entries are used. Once full, initialize the
+      ;; caller's shader directly without changing the cache.
+      (label cache-miss)
+      (add.i sp sp -16)
+      (l.w v1 cache)
+      (add.i v1 v1 -80)
+      (s.w shader-out sp)
+      (b.z v1 uncached-miss :delay (add.i v1 v1 81))
+      (s.h texture-hash hash-cursor)
+      (nop!)
+      (s.w shader-cursor sp 4)
+      (m shader-out shader-cursor)
+      (m! t9 particle-setup-adgif)
+      (nop!)
+      (s.w ra sp 8)
+      (nop!)
+      (jalr ra t9 :delay (s.w v1 cache))
+      (l.w shader-out sp)
+      (nop!)
+      (l.w shader-cursor sp 4)
+      (nop!)
+      (l.w ra sp 8)
+      (add.i sp sp 16)
+
+      ;; A shader is five quadwords; copy it directly and make this entry the next fast-path hit.
+      (label cache-hit)
+      (l.vf shader-qw0 shader-cursor)
+      (l.vf shader-qw1 shader-cursor 16)
+      (l.vf shader-qw2 shader-cursor 32)
+      (l.vf shader-qw3 shader-cursor 48)
+      (l.vf shader-qw4 shader-cursor 64)
+      (s.vf shader-qw0 shader-out)
+      (s.vf shader-qw1 shader-out 16)
+      (s.vf shader-qw2 shader-out 32)
+      (s.vf shader-qw3 shader-out 48)
+      (s.vf shader-qw4 shader-out 64)
+      (s.w shader-cursor cache 8)
+      (s.h texture-hash cache 4)
+      (jr ra :delay (nop!))
+
+      ;; A full cache still uses particle-setup-adgif; only the destination changes.
+      (label uncached-miss)
+      (s.w shader-cursor sp 4)
+      (nop!)
+      (m! t9 particle-setup-adgif)
+      (nop!)
+      (s.w ra sp 8)
+      (nop!)
+      (jalr ra t9 :delay (nop!))
+      (l.w shader-cursor sp 4)
+      (nop!)
+      (l.w ra sp 8)
+      (add.i sp sp 16)
+      (jr ra :delay (nop!))
+      (jr ra :delay (add sp sp r0))
+      (nop! :count 2))))
 
 ;;;;;;;;;;;;;;;;;;;
 ;; launch
 ;;;;;;;;;;;;;;;;;;;
 
-(defun sp-queue-launch ((arg0 sparticle-system) (arg1 sparticle-launcher) (arg2 vector))
-  "Queue a launch from the given launcher, at the given position."
-  (let ((v1-0 *sp-launch-queue*))
+(defun sp-queue-launch ((sys sparticle-system) (launcher sparticle-launcher) (pos vector))
+  "Append a particle launch request while the launcher is busy, returning the new queue size. Print
+   an error and return zero when the fixed queue is full."
+  (let ((queue *sp-launch-queue*))
     ;; og:preserve-this constant
     ;; make sure we have room in the queue
-    (when (= (-> v1-0 in-use) SPARTICLE_QUEUE_SIZE)
+    (when (= (-> queue in-use) SPARTICLE_QUEUE_SIZE)
       (format 0 "ERROR: sp-launch-particles called during processing, and queue is full~%")
       (return 0))
     ;; make a new entry in the queue
-    (let ((a3-5 (-> v1-0 queue (-> v1-0 in-use))))
-      (set! (-> a3-5 sp-system) arg0)
-      (set! (-> a3-5 sp-launcher) arg1)
-      (set! (-> a3-5 pos quad) (-> arg2 quad)))
-    (let ((v0-1 (+ (-> v1-0 in-use) 1))) (set! (-> v1-0 in-use) v0-1) v0-1)))
+    (let ((entry (-> queue queue (-> queue in-use))))
+      (set! (-> entry sp-system) sys)
+      (set! (-> entry sp-launcher) launcher)
+      (set! (-> entry pos quad) (-> pos quad)))
+    (let ((new-count (+ (-> queue in-use) 1))) (set! (-> queue in-use) new-count) new-count)))
 
-(defun sp-adjust-launch ((arg0 sparticle-launchinfo) (arg1 sparticle-cpuinfo) (arg2 (inline-array sp-field-init-spec)))
-  "Adjust the fields based on the init-specs"
-  (let ((s5-0 (new 'stack-no-clear 'sparticle-launchinfo)))
-    (let ((s2-0 (new 'stack-no-clear 'matrix))
-          (s3-0 (new 'stack-no-clear 'vector)))
+(defun sp-adjust-launch ((launchinfo sparticle-launchinfo) (cpuinfo sparticle-cpuinfo) (init-specs (inline-array sp-field-init-spec)))
+  "Read a launcher's launch-field specs and apply its launch rotation, cone direction, and optional
+   Y rotation to the particle's position, velocity, acceleration, and stored cone orientation."
+  (let ((local-info (new 'stack-no-clear 'sparticle-launchinfo)))
+    (let ((rot-mat (new 'stack-no-clear 'matrix))
+          (cone-axis (new 'stack-no-clear 'vector)))
       ;; use the field-init-spec to create a totally new launchinfo.
-      (sp-init-fields! (the-as (pointer float) (-> s5-0 launchrot))
-                       arg2
+      (sp-init-fields! (the-as (pointer float) (-> local-info launchrot))
+                       init-specs
                        (sp-field-id launch-fields-start)
                        (sp-field-id launch-fields-end)
                        #t)
       ;; rotate vel to include the launchrot and conerot
-      (matrix-rotate-xyz! s2-0 (-> s5-0 launchrot))
-      (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s2-0)
-      (matrix-rotate-xyz! s2-0 (-> s5-0 conerot))
-      (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s2-0)
+      (matrix-rotate-xyz! rot-mat (-> local-info launchrot))
+      (vector3s-matrix*! (the-as vector3s (-> cpuinfo vel-sxvel)) (the-as vector3s (-> cpuinfo vel-sxvel)) rot-mat)
+      (matrix-rotate-xyz! rot-mat (-> local-info conerot))
+      (vector3s-matrix*! (the-as vector3s (-> cpuinfo vel-sxvel)) (the-as vector3s (-> cpuinfo vel-sxvel)) rot-mat)
       ;; cone axis (pre-rotation to local, y is default, but there's a flag for z)
-      (if (logtest? (sp-cpuinfo-flag launch-along-z) (-> arg1 flags))
-        (set-vector! s3-0 0.0 0.0 (-> s5-0 coneradius) 1.0)
-        (set-vector! s3-0 0.0 (-> s5-0 coneradius) 0.0 1.0))
+      (if (logtest? (sp-cpuinfo-flag launch-along-z) (-> cpuinfo flags))
+        (set-vector! cone-axis 0.0 0.0 (-> local-info coneradius) 1.0)
+        (set-vector! cone-axis 0.0 (-> local-info coneradius) 0.0 1.0))
       ;; rotate cone
-      (vector-matrix*! s3-0 s3-0 s2-0)
-      ;; add to the launch info (this is approximate, but who cares.)
-      (+! (-> arg0 launchrot x) (-> s3-0 x))
-      (+! (-> arg0 launchrot y) (-> s3-0 y))
-      (+! (-> arg0 launchrot z) (-> s3-0 z)))
+      (vector-matrix*! cone-axis cone-axis rot-mat)
+      ;; Add the rotated cone-radius offset to the launch position.
+      (+! (-> launchinfo launchrot x) (-> cone-axis x))
+      (+! (-> launchinfo launchrot y) (-> cone-axis y))
+      (+! (-> launchinfo launchrot z) (-> cone-axis z)))
     ;; if desired, apply addition y rotation.
-    (when (!= (-> s5-0 rotate-y) 0.0)
-      (let ((s3-1 (new 'stack-no-clear 'matrix)))
-        (matrix-rotate-y! s3-1 (-> s5-0 rotate-y))
-        (vector3s-rotate*! (the-as vector3s (-> arg0 launchrot)) (the-as vector3s (-> arg0 launchrot)) s3-1)
-        (vector3s-rotate*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s3-1)
+    (when (!= (-> local-info rotate-y) 0.0)
+      (let ((yrot-mat (new 'stack-no-clear 'matrix)))
+        (matrix-rotate-y! yrot-mat (-> local-info rotate-y))
+        (vector3s-rotate*! (the-as vector3s (-> launchinfo launchrot)) (the-as vector3s (-> launchinfo launchrot)) yrot-mat)
+        (vector3s-rotate*! (the-as vector3s (-> cpuinfo vel-sxvel)) (the-as vector3s (-> cpuinfo vel-sxvel)) yrot-mat)
         ;; optionally rotate acc.
-        (if (not (logtest? (sp-cpuinfo-flag use-global-acc) (-> arg1 flags)))
-          (vector3s-rotate*! (the-as vector3s (-> arg1 acc)) (the-as vector3s (-> arg1 acc)) s3-1)))
-      ;; optionally rotate the cone (it seems like this happens too late, but maybe it's okay.)
-      (if (logtest? (sp-cpuinfo-flag set-conerot) (-> arg1 flags)) (set! (-> arg0 conerot y) (+ 16384.0 (-> s5-0 rotate-y))))))
+        (if (not (logtest? (sp-cpuinfo-flag use-global-acc) (-> cpuinfo flags)))
+          (vector3s-rotate*! (the-as vector3s (-> cpuinfo acc)) (the-as vector3s (-> cpuinfo acc)) yrot-mat)))
+      ;; Keep the stored cone orientation aligned with the additional Y rotation when requested.
+      (if (logtest? (sp-cpuinfo-flag set-conerot) (-> cpuinfo flags))
+        (set! (-> launchinfo conerot y) (+ 16384.0 (-> local-info rotate-y))))))
   0
   (none))
 
-(defun sp-euler-convert ((arg0 sparticle-launchinfo) (arg1 sparticle-cpuinfo))
-  "Convert rotations from euler angles to quaternions."
+(defun sp-euler-convert ((launchinfo sparticle-launchinfo) (cpuinfo sparticle-cpuinfo))
+  "Convert the launch cone Euler angles to the xyz-only quaternion expected by 3D sprites, choosing
+   a positive implicit w, and convert 300 Hz angular velocity to a per-display-frame quaternion step."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf))
     (init-vf0-vector)
-    (let ((a1-1 (new 'stack-no-clear 'vector))
-          (s5-0 (new 'stack-no-clear 'quaternion)))
+    (let ((euler (new 'stack-no-clear 'vector))
+          (quat (new 'stack-no-clear 'quaternion)))
       ;; convert conerot to a quaternion
-      (set-vector! a1-1 (-> arg0 conerot x) (-> arg0 conerot y) (-> arg0 conerot z) 1.0)
-      (quaternion-zxy! s5-0 a1-1)
+      (set-vector! euler (-> launchinfo conerot x) (-> launchinfo conerot y) (-> launchinfo conerot z) 1.0)
+      (quaternion-zxy! quat euler)
       ;; flip the sign of w if needed. the sprite renderer _requires_ that w be positive
       ;; because it doesn't actually store w!
       ;; this code also preserves w.
       (cond
-        ((< (-> s5-0 w) 0.0)
-         (.lvf vf1 (&-> arg0 conerot quad))
-         (.lvf vf2 (&-> s5-0 vec quad))
+        ((< (-> quat w) 0.0)
+         (.lvf vf1 (&-> launchinfo conerot quad))
+         (.lvf vf2 (&-> quat vec quad))
          (.sub.vf.xyz vf1 vf0 vf2)
-         (.svf (&-> arg0 conerot quad) vf1))
+         (.svf (&-> launchinfo conerot quad) vf1))
         (else
-         (.lvf vf1 (&-> arg0 conerot quad))
-         (.lvf vf2 (&-> s5-0 vec quad))
+         (.lvf vf1 (&-> launchinfo conerot quad))
+         (.lvf vf2 (&-> quat vec quad))
          (.add.vf.xyz vf1 vf0 vf2)
-         (.svf (&-> arg0 conerot quad) vf1))))
-    ;; scale the rate of rot-syvel (it's multiplied by a rate already)
+         (.svf (&-> launchinfo conerot quad) vf1))))
+    ;; Convert the 300 Hz angular velocities to one display-frame step.
     (cond
       (*sp-60-hz*
-       (set! (-> arg1 rot-syvel x) (* 5.0 (-> arg1 rot-syvel x)))
-       (set! (-> arg1 rot-syvel y) (* 5.0 (-> arg1 rot-syvel y)))
-       (set! (-> arg1 rot-syvel z) (* 5.0 (-> arg1 rot-syvel z))))
+       (set! (-> cpuinfo rot-syvel x) (* 5.0 (-> cpuinfo rot-syvel x)))
+       (set! (-> cpuinfo rot-syvel y) (* 5.0 (-> cpuinfo rot-syvel y)))
+       (set! (-> cpuinfo rot-syvel z) (* 5.0 (-> cpuinfo rot-syvel z))))
       (else
-       (set! (-> arg1 rot-syvel x) (* 6.0 (-> arg1 rot-syvel x)))
-       (set! (-> arg1 rot-syvel y) (* 6.0 (-> arg1 rot-syvel y)))
-       (set! (-> arg1 rot-syvel z) (* 6.0 (-> arg1 rot-syvel z)))))
+       (set! (-> cpuinfo rot-syvel x) (* 6.0 (-> cpuinfo rot-syvel x)))
+       (set! (-> cpuinfo rot-syvel y) (* 6.0 (-> cpuinfo rot-syvel y)))
+       (set! (-> cpuinfo rot-syvel z) (* 6.0 (-> cpuinfo rot-syvel z)))))
     ;; this one gets stored in a separate rotvel3d.
-    (quaternion-zxy! (-> arg1 rotvel3d) (-> arg1 rot-syvel))
+    (quaternion-zxy! (-> cpuinfo rotvel3d) (-> cpuinfo rot-syvel))
     0
     (none)))
 
-(defun sp-rotate-system ((arg0 sparticle-launchinfo) (arg1 sparticle-cpuinfo) (arg2 transformq))
-  "Apply a rotation to the particle launching."
-  (let ((s5-0 (new 'stack-no-clear 'matrix)))
-    (let ((a1-1 (new 'stack-no-clear 'quaternion)))
+(defun sp-rotate-system ((launchinfo sparticle-launchinfo) (cpuinfo sparticle-cpuinfo) (rot transformq))
+  "Rotate a particle's launch offset, velocity, and local acceleration by the owning system's
+   xyz-only quaternion."
+  (let ((rot-mat (new 'stack-no-clear 'matrix)))
+    (let ((quat (new 'stack-no-clear 'quaternion)))
       ;; sparticle quaternions don't store w, so figure it out.
-      (let* ((v1-0 a1-1)
-             (a0-1 arg2)
-             (f0-0 (-> a0-1 quat x))
-             (f1-0 (-> a0-1 quat y))
-             (f3-0 (-> a0-1 quat z)))
-        (set! (-> v1-0 x) f0-0)
-        (set! (-> v1-0 y) f1-0)
-        (set! (-> v1-0 z) f3-0)
-        (set! (-> v1-0 w) (sqrtf (- (- (- 1.0 (square f3-0)) (square f1-0)) (square f0-0)))))
-      (quaternion->matrix s5-0 a1-1))
-    ;; rotate, preserving z as usual
-    (vector3s-rotate*! (the-as vector3s (-> arg0 launchrot)) (the-as vector3s (-> arg0 launchrot)) s5-0)
-    (vector3s-rotate*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
+      (let* ((dst-quat quat)
+             (src-rot rot)
+             (qx (-> src-rot quat x))
+             (qy (-> src-rot quat y))
+             (qz (-> src-rot quat z)))
+        (set! (-> dst-quat x) qx)
+        (set! (-> dst-quat y) qy)
+        (set! (-> dst-quat z) qz)
+        (set! (-> dst-quat w) (sqrtf (- (- (- 1.0 (square qz)) (square qy)) (square qx)))))
+      (quaternion->matrix rot-mat quat))
+    ;; Rotate xyz without disturbing the adjacent packed fourth component.
+    (vector3s-rotate*! (the-as vector3s (-> launchinfo launchrot)) (the-as vector3s (-> launchinfo launchrot)) rot-mat)
+    (vector3s-rotate*! (the-as vector3s (-> cpuinfo vel-sxvel)) (the-as vector3s (-> cpuinfo vel-sxvel)) rot-mat)
     ;; also rotate acc if we would have done it previously.
-    (if (not (logtest? (sp-cpuinfo-flag use-global-acc) (-> arg1 flags)))
-      (vector3s-rotate*! (the-as vector3s (-> arg1 acc)) (the-as vector3s (-> arg1 acc)) s5-0)))
+    (if (not (logtest? (sp-cpuinfo-flag use-global-acc) (-> cpuinfo flags)))
+      (vector3s-rotate*! (the-as vector3s (-> cpuinfo acc)) (the-as vector3s (-> cpuinfo acc)) rot-mat)))
   0
   (none))
 
-(def-mips2c sp-launch-particles-var
-  (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none))
+;; Decode the launcher's misc fields once, accumulate fractional births, then initialize each new
+;; particle's sprite and CPU fields. The launch path also applies group bindings, launch and system
+;; rotations, shader state, sound, level ownership, time-of-day color, and the optional birth
+;; callback before exposing the sprite to the update pass.
+(#when PC_PORT
+  (def-mips2c sp-launch-particles-var
+    (function sparticle-system sparticle-launcher vector sparticle-launch-state sparticle-launch-control float none)))
+
+(#unless PC_PORT
+  ;; The launcher decodes its definition into two stack records before entering the particle loop:
+  ;;
+  ;;   +96  sparticle-birthinfo
+  ;;          texture, animation, birth callback, count, and sound shared by this launch
+  ;;
+  ;;   +128 three sprite quadwords
+  ;;          position.xyz / scale-x
+  ;;          2D: flags / matrix mode / angle / scale-y
+  ;;          3D: quaternion.xyz / scale-y
+  ;;          color.rgba
+  ;;
+  ;; The first two sprite quadwords also have the sparticle-launchinfo layout while launch rotation
+  ;; is being applied: position is the launch offset and the second quadword holds its Euler angles.
+  ;; A 3D particle converts those angles to the renderer's xyz-only quaternion before publication.
+  ;; Keeping the packet in scratch until the end lets bindings, callbacks, level ownership, and
+  ;; time-of-day color finish without exposing a half-initialized sprite to the update pass.
+  ;;
+  ;; Birth counts use a floating accumulator, either on launch-state for an instanced group item or
+  ;; on the launcher itself. Each completed particle consumes one whole unit, leaving the fraction
+  ;; for the next call.
+  (defun sp-launch-particles-var ((sys sparticle-system)
+          (launcher sparticle-launcher)
+          (pos vector)
+          (launch-state sparticle-launch-state)
+          (launch-control sparticle-launch-control)
+          (rate float))
+    "Birth rate-scaled particles, initialize their renderer and simulation state, and attach them to
+     the optional launch control."
+    (declare (asm-func none) (allow-saved-regs))
+    (rlet ((system-reg :reg s3)
+           (launcher-reg :reg s4)
+           (launch-state-reg :reg s0)
+           (launch-control-reg :reg s1)
+           (cpuinfo-reg :reg s2)
+           (particle-flags :reg s5)
+           (is-3d :reg s6)
+           (origin-vf :reg vf30)
+           (max-color-vf :reg vf31))
+      (label entry)
+      (m v1 a0)
+      (m v1 a1)
+      (m v1 a2)
+      (m v1 a3)
+      (m v1 t0)
+      (m v1 t1)
+      (nop!)
+
+      ;; Save the persistent arguments and check whether this call can launch immediately.
+      (add.i sp sp -256)
+      (nop!)
+      (m! v1 *sp-launcher-enable*)
+      (s.w ra sp)
+      (b.eq v1 s7 finish-disabled :delay (s.q launch-state-reg sp 16))
+      (m! v1 *sp-launcher-lock*)
+      (s.q launch-control-reg sp 32)
+      (b.eq v1 s7 begin-launch :delay (s.q cpuinfo-reg sp 48))
+      (b.ne a3 s7 bad-nested-launch :delay (lui v1 #x3f80))
+      (b.ne t0 s7 bad-nested-launch :delay (nop!))
+      (b.ne t1 v1 bad-nested-launch :delay (nop!))
+      (m! t9 sp-queue-launch)
+      (nop!)
+      (jalr ra t9 :delay (nop!))
+      (l.w ra sp)
+      (nop!)
+
+      (label finish-disabled)
+      (jr ra :delay (add.i sp sp 256))
+
+      ;; Reentrant launches may only use the default state, control, and rate because the deferred
+      ;; queue stores only system, launcher, and position. Trap instead of silently discarding state.
+      (label bad-nested-launch)
+      (s.d r0 r0 2)
+      (nop!)
+
+      ;; Decode the misc range once. birthinfo holds the texture, animation, callback, count, and sound
+      ;; shared by all particles born in this call.
+      (label begin-launch)
+      (s.q system-reg sp 176)
+      (nop!)
+      (s.q launcher-reg sp 192)
+      (nop!)
+      (s.q particle-flags sp 208)
+      (nop!)
+      (s.q is-3d sp 224)
+      (nop!)
+      (l.vf origin-vf a2)
+      (m f1 t1)
+      (s.vf origin-vf sp 64)
+      (lui v1 #x437f)
+      (m system-reg a0)
+      (m max-color-vf v1)
+      (m launcher-reg a1)
+      (l.w is-3d system-reg 24) ;; sparticle-system.is-3d
+      (m launch-state-reg a3)
+      (m launch-control-reg t0)
+      (l.w a1 a1 8)
+      (add.i a0 sp 96)
+      (add.i a2 r0 (sp-field-id misc-fields-start))
+      (add.i a3 r0 (sp-field-id misc-fields-end))
+      (m! t9 sp-init-fields!)
+      (add.i t0 s7 8)
+      (jalr ra t9 :delay (nop!))
+      (s.w v0 sp 12)
+      (nop!)
+      (l.s f2 sp 116) ;; sparticle-birthinfo.num-to-birth
+      (nop!)
+
+      ;; Scale the launcher's requested count by rate, then add it to the selected accumulator.
+      (b.eq launch-state-reg s7 use-launcher-accum :delay (mul.s f1 f2 f1))
+      (l.s f2 launch-state-reg 24)
+      (nop!)
+      (add.s f2 f2 f1)
+      (nop!)
+      (s.s f2 launch-state-reg 24)
+      (nop!)
+      (cvt.w.s f2 f2)
+      (nop!)
+      (m v1 f2)
+      (nop!)
+      (b.z v1 finish :delay (nop!))
+      (b particle-loop :delay (nop!))
+
+      (label use-launcher-accum)
+      (nop!)
+      (l.s f2 launcher-reg)
+      (nop!)
+      (add.s f2 f2 f1)
+      (nop!)
+      (s.s f2 launcher-reg)
+      (nop!)
+      (cvt.w.s f2 f2)
+      (nop!)
+      (m v1 f2)
+      (nop!)
+      (b.z v1 finish :delay (nop!))
+
+      ;; The integer part of the accumulator is the number to birth now. Each successful iteration
+      ;; subtracts one, leaving the fractional remainder for the next call.
+      (label particle-loop)
+      (add.i a1 r0 0)
+      (m a2 s7)
+      (b.eq launch-control-reg s7 allocate-particle :delay (l.w v1 launch-control-reg 12))
+      (b.eq v1 s7 allocate-particle :delay (l.h v1 v1 6))
+      (and.i a0 v1 (sp-group-flag screen-space))
+      (add.i a3 r0 1)
+      (movn a1 a3 a0)
+      ;; Group flag bit 3 passes the item's launch-state to the allocator.
+      (and.i a0 v1 8)
+      (movn a2 launch-state-reg a0)
+      (nop!)
+
+      ;; Screen-space groups allocate from the alternate particle group. A binding can also supply the
+      ;; launch-state pointer used by sp-get-particle.
+      (label allocate-particle)
+      (m! t9 sp-get-particle)
+      (m a0 system-reg)
+      (jalr ra t9 :delay (nop!))
+      (b.eq v0 s7 finish :delay (m cpuinfo-reg v0))
+      (add.i a0 sp 128)
+      (l.w a1 sp 12)
+      (add.i a2 r0 (sp-field-id sprite-fields-start))
+      (add.i a3 r0 (sp-field-id sprite-fields-end))
+      (m! t9 sp-init-fields!)
+      (add.i t0 s7 8)
+      (jalr ra t9 :delay (nop!))
+      (add.i a0 cpuinfo-reg 12)
+      (m a1 v0)
+      (add.i a2 r0 (sp-field-id cpu-fields-start))
+      (add.i a3 r0 (sp-field-id cpu-fields-end))
+      (jalr ra t9 :delay (add.i t0 s7 8))
+      (s.w v0 sp 80)
+      (nop!)
+      (l.w particle-flags cpuinfo-reg 104) ;; sparticle-cpuinfo.flags
+      (nop!)
+
+      ;; The second sprite quadword has different meanings for 2D and 3D particles. Normalize the
+      ;; matrix selector and signed 16-bit angle only for the 2D layout.
+      (b.ne is-3d s7 clamp-color :delay (nop!))
+      (b.eq launch-control-reg s7 default-matrix-mode :delay (l.w v1 launch-control-reg 12))
+      (b.eq v1 s7 default-matrix-mode :delay (l.h v1 v1 6))
+      (and.i v1 v1 (sp-group-flag screen-space))
+      (m a0 particle-flags)
+      (b.z v1 default-matrix-mode :delay (l.w v1 launch-control-reg 28))
+      (and.i a0 a0 (sp-cpuinfo-flag aux-list))
+      (add.i a1 r0 1)
+      (movn v1 a1 a0)
+      (nop!)
+      (b normalize-matrix-mode :delay (s.w v1 sp 148))
+      (label default-matrix-mode)
+      (and.i v1 particle-flags (sp-cpuinfo-flag no-fog))
+      (nop!)
+      (sra v1 v1 14)
+      (nop!)
+      (s.w v1 sp 148)
+      (nop!)
+      ;; Screen-space controls supply their selected matrix mode, with auxiliary sprites forced to
+      ;; screen mode. Otherwise the no-fog convention selects screen instead of camera space.
+      ;; Truncate the packed rotation field to the signed 16-bit angle used by the renderer.
+      (label normalize-matrix-mode)
+      (l.s f2 sp 152)
+      (nop!)
+      (cvt.w.s f2 f2)
+      (nop!)
+      (m v1 f2)
+      (nop!)
+      (dsll32 v1 v1 16)
+      (nop!)
+      (sra32 v1 v1 16)
+      (nop!)
+      (m f2 v1)
+      (nop!)
+      (cvt.s.w f2 f2)
+      (nop!)
+      (s.s f2 sp 152)
+      (nop!)
+
+      (label clamp-color)
+      (and.i v1 particle-flags (sp-cpuinfo-flag aux-list))
+      (rlet ((particle-color :reg vf4))
+        (l.vf particle-color sp 160)
+        (b.nz v1 make-axis-rotation :delay (vminix.xyz particle-color particle-color max-color-vf))
+        (s.vf particle-color sp 160)
+        (nop!))
+
+      ;; Auxiliary-list particles retain their original RGB; ordinary particles clamp it to 255.
+      ;; For an orbiting particle, x selects a horizontal axis (cos x, 0, -sin x), y is the angle
+      ;; about that axis, and z becomes the orbit radius.
+      (label make-axis-rotation)
+      (b.eq launch-control-reg s7 bind-particle :delay (and.i v1 particle-flags (sp-cpuinfo-flag orbit)))
+      (b.z v1 bind-particle :delay (l.w a0 sp 128))
+      (m! t9 cos)
+      (nop!)
+      (jalr ra t9 :delay (nop!))
+      (m a1 v0)
+      (l.w a0 sp 128)
+      (m! t9 sin)
+      (nop!)
+      (jalr ra t9 :delay (nop!))
+      (ori v1 r0 #x8000)
+      (sll v1 v1 16)
+      (l.w a0 sp 136)
+      (xor a3 v0 v1)
+      (s.w a0 cpuinfo-reg 8)
+      (m a2 r0)
+      (l.w t0 sp 132)
+      (m! t9 quaternion-axis-angle!)
+      (add.i a0 cpuinfo-reg 80)
+      (jalr ra t9 :delay (nop!))
+      (l.w v1 launch-state-reg 16)
+      (nop!)
+      (l.w v1 v1)
+      (nop!)
+      (s.w v1 cpuinfo-reg 108)
+      (nop!)
+
+      (label bind-particle)
+      (s.w s7 cpuinfo-reg 136)
+      (nop!)
+      (b.eq launch-state-reg s7 apply-launch-fields :delay (l.w a0 launch-state-reg))
+      (l.w a1 a0 24)
+      (nop!)
+      (b.z a1 apply-launch-fields :delay (nop!))
+      (l.w a2 launch-control-reg)
+      (add.i a3 launch-control-reg 60)
+      ;; A launch-control binding records this particle in the first matching free state slot. The state
+      ;; then owns the CPU record and, for ordinary births, the allocated sprite.
+      (label scan-bindings)
+      (l.w v1 a3)
+      (add.i a2 a2 -1)
+      (l.w v1 v1)
+      (nop!)
+      (b.ne v1 a1 next-binding :delay (l.h v1 a3 4))
+      (and.i a0 v1 (sp-launch-state-flags launcher-active))
+      (ori v1 v1 (sp-launch-state-flags launcher-active))
+      (b.nz a0 next-binding :delay (nop!))
+      (s.h v1 a3 4)
+      (nop!)
+      (l.w v1 cpuinfo-reg)
+      (nop!)
+      (s.w v1 a3 8)
+      (m a0 s7)
+      (b.nel is-3d s7 install-binding :delay (l.w a0 cpuinfo-reg))
+
+      (label install-binding)
+      (s.w a0 a3 12)
+      (nop!)
+      (s.w cpuinfo-reg a3 16)
+      (nop!)
+      (s.w a3 cpuinfo-reg 136)
+      (nop!)
+      (b apply-launch-fields :delay (nop!))
+
+      (label next-binding)
+      (b.nz a2 scan-bindings :delay (add.i a3 a3 32))
+
+      ;; Launch-field specs follow the CPU range. Apply them only when that range is present, then fold
+      ;; in 3D Euler rotation and the owning launch-control transform.
+      (label apply-launch-fields)
+      (l.w a2 sp 80)
+      (add.i a0 sp 128)
+      (l.h v1 a2)
+      (m a1 cpuinfo-reg)
+      (m! t9 sp-adjust-launch)
+      (add.i v1 v1 -64)
+      (b.ge v1 r0 after-launch-adjust :delay (nop!))
+      (jalr ra t9 :delay (nop!))
+
+      (label after-launch-adjust)
+      (b.eq is-3d s7 after-euler-convert :delay (nop!))
+      (m! t9 sp-euler-convert)
+      (add.i a0 sp 128)
+      (jalr ra t9 :delay (m a1 cpuinfo-reg))
+
+      (label after-euler-convert)
+      (b.eq launch-state-reg s7 after-system-rotation :delay (l.w a2 launch-state-reg 12))
+      (b.eq a2 s7 after-system-rotation :delay (add.i a0 sp 128))
+      (b.z a2 after-system-rotation :delay (m a1 cpuinfo-reg))
+      (m! t9 sp-rotate-system)
+      (nop!)
+      (jalr ra t9 :delay (nop!))
+
+      ;; Offset the initialized position by the requested origin. The shader cache expands the compact
+      ;; texture ID into the five-quadword ADGIF used by the sprite renderer.
+      (label after-system-rotation)
+      (rlet ((launch-position :reg vf4))
+        (l.vf launch-position sp 128)
+        (nop!)
+        (add.vf.xyz launch-position launch-position origin-vf)
+        (l.w a0 cpuinfo-reg 4)
+        (l.w a1 sp 96)
+        (nop!)
+        (m! t9 particle-adgif)
+        (nop!)
+        (s.vf launch-position sp 128)
+        (nop!)
+        (jalr ra t9 :delay (nop!)))
+
+      ;; Override the texture's ALPHA register for erase-destination, subtractive, or additive
+      ;; blending, in that priority order. write-depth replaces the ZBUF setting.
+      (l.w a2 cpuinfo-reg 4)
+      (lui a3 256)
+      (l.w v1 a2 64)
+      (and.i a0 particle-flags (sp-cpuinfo-flag blend-erase-dest))
+      (add.i a1 r0 134)
+      (nop!)
+      (movn v1 a1 a0)
+      (and.i a0 particle-flags (sp-cpuinfo-flag subtract-blend))
+      (add.i a1 r0 66)
+      (nop!)
+      (movn v1 a1 a0)
+      (and.i a0 particle-flags (sp-cpuinfo-flag glow))
+      (add.i a1 r0 72)
+      (nop!)
+      (movn v1 a1 a0)
+      (and.i a0 particle-flags (sp-cpuinfo-flag write-depth))
+      (s.w v1 a2 64)
+      (ori a1 a3 448)
+      (b.nzl a0 after-blend-mode :delay (s.d a1 a2 48))
+
+      ;; The optional birth callback runs after all standard fields and transforms, so it can make
+      ;; effect-specific final changes to both the CPU record and the scratch sprite packet.
+      (label after-blend-mode)
+      (l.w t9 sp 108) ;; sparticle-birthinfo.birth-func
+      (m a1 cpuinfo-reg)
+      (m a0 system-reg)
+      (m t0 launch-state-reg)
+      (b.z t9 after-birth-callback :delay (add.i a2 sp 128))
+      (jalr ra t9 :delay (m a3 launcher-reg))
+
+      (label after-birth-callback)
+      (l.w a0 sp 120) ;; sparticle-birthinfo.sound
+      (nop!)
+      (l.s f2 launcher-reg 4)
+      (lui a1 #x3f80)
+      (b.z a0 after-sound :delay (nop!))
+      (l.s f3 a0 4)
+      (nop!)
+      (add.s f2 f2 f3)
+      (nop!)
+      (s.s f2 launcher-reg 4)
+      (m f3 a1)
+      (sub.s f2 f2 f3)
+      (nop!)
+      (m a1 f2)
+      (nop!)
+      (b.lt a1 r0 after-sound :delay (m! t9 new-sound-id))
+      (s.w a1 launcher-reg 4)
+      (nop!)
+      (jalr ra t9 :delay (nop!))
+      (l.w a0 sp 120)
+      (m a1 v0)
+      (m! t9 sound-play-by-spec)
+      (add.i a2 sp 64)
+      (jalr ra t9 :delay (nop!))
+
+      ;; Auxiliary-list particles use a separate update callback and minimum lifetime. Level ownership
+      ;; bits select the heap range that contains the launcher so relaunch pointers remain valid.
+      (label after-sound)
+      (add.i a0 r0 4)
+      (and.i v1 particle-flags (sp-cpuinfo-flag aux-list))
+      (b.z v1 after-aux-list :delay (sub a0 r0 a0))
+      (m! v1 add-to-sprite-aux-list)
+      (add.i a0 a0 -1)
+      (s.w v1 cpuinfo-reg 112)
+      (and particle-flags particle-flags a0)
+      (s.w r0 sp 172)
+      (nop!)
+      (s.w r0 cpuinfo-reg 60)
+      (nop!)
+      (l.w v1 sp 144)
+      (add.i a0 r0 3)
+      (max.w v1 v1 a0)
+      (add.i a0 r0 11)
+      (pminw v1 v1 a0)
+      (nop!)
+      (s.w v1 sp 144)
+      (nop!)
+
+      (label after-aux-list)
+      (m! a0 *level*)
+      (nop!)
+      ;; A statically defined launcher belongs to a level when its address lies between that
+      ;; level's heap base and top-base. Tag it so level unload can kill or relaunch it safely.
+      (l.w v1 a0 124) ;; level0.heap.base
+      (nop!)
+      (sub v1 launcher-reg v1)
+      (nop!)
+      (b.lt v1 r0 test-level1 :delay (nop!))
+      (l.w v1 a0 128) ;; level0.heap.top-base
+      (nop!)
+      (sub v1 launcher-reg v1)
+      (nop!)
+      (b.ge v1 r0 test-level1 :delay (nop!))
+      (b apply-time-of-day :delay (ori particle-flags particle-flags (sp-cpuinfo-flag level0)))
+
+      (label test-level1)
+      (l.w v1 a0 2732) ;; level1.heap.base
+      (nop!)
+      (sub v1 launcher-reg v1)
+      (nop!)
+      (b.lt v1 r0 apply-time-of-day :delay (nop!))
+      (l.w v1 a0 2736) ;; level1.heap.top-base
+      (nop!)
+      (sub v1 launcher-reg v1)
+      (nop!)
+      (b.ge v1 r0 apply-time-of-day :delay (nop!))
+      (ori particle-flags particle-flags (sp-cpuinfo-flag level1))
+      (nop!)
+
+      ;; Time-of-day-enabled particles outside the auxiliary list are tinted. Apply the same RGB
+      ;; scale to both the initial color and its fade vector.
+      (label apply-time-of-day)
+      (and.i v1 particle-flags (sp-cpuinfo-flag aux-list use-time-of-day-color))
+      (add.i a0 r0 (sp-cpuinfo-flag use-time-of-day-color))
+      (b.ne v1 a0 write-sprite :delay (m! a0 *time-of-day-context*))
+      (rlet ((time-color :reg vf4)
+             (particle-color :reg vf5)
+             (particle-fade :reg vf6))
+        (l.vf time-color a0 108)
+        (nop!)
+        (l.vf particle-color sp 160)
+        (nop!)
+        (l.vf particle-fade cpuinfo-reg 48)
+        (nop!)
+        (mul.vf.xyz particle-color particle-color time-color)
+        (nop!)
+        (mul.vf.xyz particle-fade particle-fade time-color)
+        (nop!)
+        (s.vf particle-color sp 160)
+        (nop!)
+        (s.vf particle-fade cpuinfo-reg 48)
+        (nop!))
+
+      ;; Publish the three sprite vectors last. Alpha starts at zero; cache-alpha retains the requested
+      ;; value until the update pass processes just-launched.
+      (label write-sprite)
+      (m v1 launch-control-reg)
+      (sub a0 launch-control-reg s7)
+      (mov.z v1 r0 a0)
+      (nop!)
+      (s.w v1 cpuinfo-reg 132)
+      (nop!)
+      (l.w v1 cpuinfo-reg)
+      (nop!)
+      (rlet ((sprite-position :reg vf4)
+             (sprite-orientation :reg vf5)
+             (sprite-color :reg vf6))
+        (l.vf sprite-position sp 128)
+        (nop!)
+        (l.vf sprite-orientation sp 144)
+        (nop!)
+        (l.vf sprite-color sp 160)
+        (nop!)
+        (s.vf sprite-position v1)
+        (nop!)
+        (s.vf sprite-orientation v1 16)
+        (nop!)
+        (sub.w.vf.w sprite-color vf0 vf0)
+        (nop!)
+        (s.vf sprite-color v1 32)
+        (nop!))
+      (ori particle-flags particle-flags (sp-cpuinfo-flag just-launched))
+      (l.w a0 sp 172)
+      (s.w particle-flags cpuinfo-reg 104)
+      (nop!)
+      (s.w a0 cpuinfo-reg 124)
+      (nop!)
+
+      ;; Consume one birth and continue while the selected accumulator still has a whole unit.
+      (b.eq launch-state-reg s7 decrement-launch-state :delay (lui v1 #x3f80))
+      (l.s f2 launch-state-reg 24)
+      (m f3 v1)
+      (sub.s f2 f2 f3)
+      (nop!)
+      (s.s f2 launch-state-reg 24)
+      (cvt.w.s f2 f2)
+      (m v1 f2)
+      (nop!)
+      (b.nz v1 particle-loop :delay (nop!))
+      (b finish :delay (nop!))
+
+      (label decrement-launch-state)
+      (l.s f2 launcher-reg)
+      (m f3 v1)
+      (sub.s f2 f2 f3)
+      (nop!)
+      (s.s f2 launcher-reg)
+      (cvt.w.s f2 f2)
+      (m v1 f2)
+      (nop!)
+      (b.nz v1 particle-loop :delay (nop!))
+
+      (label finish)
+      (l.w ra sp)
+      (nop!)
+      (l.q launch-state-reg sp 16)
+      (nop!)
+      (l.q launch-control-reg sp 32)
+      (nop!)
+      (l.q cpuinfo-reg sp 48)
+      (nop!)
+      (l.q system-reg sp 176)
+      (nop!)
+      (l.q launcher-reg sp 192)
+      (nop!)
+      (l.q particle-flags sp 208)
+      (nop!)
+      (l.q is-3d sp 224)
+      (nop!)
+      (jr ra :delay (add.i sp sp 256))
+      (jr ra :delay (add sp sp r0))
+      (nop! :count 2))))
 
 ;;;;;;;;;;;;;;;
 ;; enemy death
 ;;;;;;;;;;;;;;;
 
-;; for whatever reason the enemy death launch stuff is defined here.
-;; it doesn't use the adgif cache.
-;; but it's a nice example for how to set the
+;; Enemy-death particles share one shader instead of retaining a cache entry per texture.
 
 (define *death-adgif* (the-as adgif-shader #f))
 
 ;; WARN: Function sp-launch-particles-death has a return type of none, but the expression builder found a return statement.
-(defun sp-launch-particles-death ((arg0 sparticle-system) (arg1 sparticle-launcher) (arg2 vector))
+(defun sp-launch-particles-death ((sys sparticle-system) (launcher sparticle-launcher) (pos vector))
+  "Launch the enemy-death effect as one 2D particle,
+   runs the launcher's sprite+cpu init specs, applies time-of-day tint, points its adgif at the
+   shared *death-adgif* shader, and marks it just-launched. The particle is born invisible and the
+   update function restores its alpha. This path does not use launch-state or launch-control."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -370,203 +1312,241 @@
          (vf5 :class vf)
          (vf6 :class vf))
     (init-vf0-vector)
-    (.lvf vf30 (&-> arg2 quad))
-    (let ((v1-0 #x437f0000)) (.mov vf31 v1-0))
-    (let ((s5-0 (new 'stack-no-clear 'sprite-vec-data-2d))
+    ;; vf30 = launch position (pos). vf31 = 255.0 broadcast (#x437f0000 is the float 255.0),
+    ;; used below as the saturation ceiling for the 8-bit color components.
+    (.lvf vf30 (&-> pos quad))
+    (let ((max-color-bits #x437f0000)) (.mov vf31 max-color-bits))
+    (let ((sprite-tmp (new 'stack-no-clear 'sprite-vec-data-2d))
           ;; get a particle, from the particle system
           ;; this gets us a "cpuinfo", which is the state of a particle.
-          (gp-0 (sp-get-particle arg0 0 (the-as sparticle-launch-state #f))))
-      (if (not gp-0)
+          (cpuinfo (sp-get-particle sys 0 (the-as sparticle-launch-state #f))))
+      (if (not cpuinfo)
         ;; if it fails, give up.
         (return 0))
-      (let* ((a1-2 (-> arg1 init-specs 0))
+      (let* ((first-spec (-> launcher init-specs 0))
              ;; initialize the sprite fields. this is done to a temporary structure on the stack
              ;; the death particle effect has some special initialization stuff below that will
              ;; modify this data before setting the actual sprite data.
-             (a1-3 (sp-init-fields! (&-> s5-0 x)
-                                    (the-as (inline-array sp-field-init-spec) a1-2)
-                                    (sp-field-id sprite-fields-start)
-                                    (sp-field-id sprite-fields-end)
-                                    #t)))
+             (next-spec (sp-init-fields! (&-> sprite-tmp x)
+                                         (the-as (inline-array sp-field-init-spec) first-spec)
+                                         (sp-field-id sprite-fields-start)
+                                         (sp-field-id sprite-fields-end)
+                                         #t)))
         ;; initialize the cpu fields, this is the initial particle state.
-        (sp-init-fields! (&-> gp-0 omega)
-                         (the-as (inline-array sp-field-init-spec) a1-3)
+        (sp-init-fields! (&-> cpuinfo omega)
+                         (the-as (inline-array sp-field-init-spec) next-spec)
                          (sp-field-id cpu-fields-start)
                          (sp-field-id cpu-fields-end)
                          #t))
       ;; convert rotations
-      (set! (-> s5-0 matrix) 0)
-      (set! (-> s5-0 rot) (the float (sar (shl (the int (-> s5-0 rot)) 48) 48)))
+      (set! (-> sprite-tmp matrix) (sprite-matrix-mode camera))
+      (set! (-> sprite-tmp rot) (the float (sar (shl (the int (-> sprite-tmp rot)) 48) 48)))
       ;; convert color/position.
-      (.lvf vf4 (&-> s5-0 color quad))
-      (.lvf vf5 (&-> s5-0 x-y-z-sx quad))
+      (.lvf vf4 (&-> sprite-tmp color quad))
+      (.lvf vf5 (&-> sprite-tmp x-y-z-sx quad))
       (.min.x.vf.xyz vf4 vf4 vf31)
       (.add.vf.xyz vf5 vf5 vf30)
-      (.svf (&-> s5-0 color quad) vf4)
-      (.svf (&-> s5-0 x-y-z-sx quad) vf5)
+      (.svf (&-> sprite-tmp color quad) vf4)
+      (.svf (&-> sprite-tmp x-y-z-sx quad) vf5)
       (when (not *death-adgif*)
         ;; first time we get here, set up the adgif shader.
         (set! *death-adgif* (new 'static 'adgif-shader))
         (particle-adgif *death-adgif* (new 'static 'texture-id :index #x18 :page #x2))
         (set! (-> *death-adgif* alpha) (new 'static 'gs-alpha :b #x2 :d #x1)))
       ;; copy the death-adgif to the adgif of our particle
-      (let ((v1-14 (-> *death-adgif* quad 0 quad))) (set! (-> gp-0 adgif quad 0 quad) v1-14))
-      (let ((v1-16 (-> *death-adgif* quad 1 quad))) (set! (-> gp-0 adgif quad 1 quad) v1-16))
-      (let ((v1-18 (-> *death-adgif* quad 2 quad))) (set! (-> gp-0 adgif quad 2 quad) v1-18))
-      (let ((v1-20 (-> *death-adgif* quad 3 quad))) (set! (-> gp-0 adgif quad 3 quad) v1-20))
-      (let ((v1-22 (-> *death-adgif* quad 4 quad))) (set! (-> gp-0 adgif quad 4 quad) v1-22))
+      (let ((adgif-q0 (-> *death-adgif* quad 0 quad))) (set! (-> cpuinfo adgif quad 0 quad) adgif-q0))
+      (let ((adgif-q1 (-> *death-adgif* quad 1 quad))) (set! (-> cpuinfo adgif quad 1 quad) adgif-q1))
+      (let ((adgif-q2 (-> *death-adgif* quad 2 quad))) (set! (-> cpuinfo adgif quad 2 quad) adgif-q2))
+      (let ((adgif-q3 (-> *death-adgif* quad 3 quad))) (set! (-> cpuinfo adgif quad 3 quad) adgif-q3))
+      (let ((adgif-q4 (-> *death-adgif* quad 4 quad))) (set! (-> cpuinfo adgif quad 4 quad) adgif-q4))
       ;; set up some color stuff.
       (.lvf vf4 (&-> (-> *time-of-day-context* current-prt-color) quad))
-      (.lvf vf5 (&-> s5-0 color quad))
-      (.lvf vf6 (&-> gp-0 fade quad))
+      (.lvf vf5 (&-> sprite-tmp color quad))
+      (.lvf vf6 (&-> cpuinfo fade quad))
       (.mul.vf.xyz vf5 vf5 vf4)
       (.mul.vf.xyz vf6 vf6 vf4)
-      (.svf (&-> s5-0 color quad) vf5)
-      (.svf (&-> gp-0 fade quad) vf6)
+      (.svf (&-> sprite-tmp color quad) vf5)
+      (.svf (&-> cpuinfo fade quad) vf6)
       ;;
-      (set! (-> gp-0 key) (the-as sparticle-launch-control 0))
-      (set! (-> gp-0 binding) #f)
+      (set! (-> cpuinfo key) (the-as sparticle-launch-control 0))
+      (set! (-> cpuinfo binding) #f)
       ;; copy the sprite data
-      (let ((v1-26 (-> gp-0 sprite)))
-        (.lvf vf1 (&-> s5-0 x-y-z-sx quad))
-        (.lvf vf2 (&-> s5-0 flag-rot-sy quad))
-        (.lvf vf3 (&-> s5-0 color quad))
-        (.svf (&-> v1-26 x-y-z-sx quad) vf1)
-        (.svf (&-> v1-26 flag-rot-sy quad) vf2)
+      (let ((sprite-data (-> cpuinfo sprite)))
+        (.lvf vf1 (&-> sprite-tmp x-y-z-sx quad))
+        (.lvf vf2 (&-> sprite-tmp flag-rot-sy quad))
+        (.lvf vf3 (&-> sprite-tmp color quad))
+        (.svf (&-> sprite-data x-y-z-sx quad) vf1)
+        (.svf (&-> sprite-data flag-rot-sy quad) vf2)
         (.sub.w.vf.w vf3 vf0 vf0)
-        (.svf (&-> v1-26 color quad) vf3))
+        (.svf (&-> sprite-data color quad) vf3))
       ;; we're done!
-      (logior! (-> gp-0 flags) (sp-cpuinfo-flag ready-to-launch))
-      (set! (-> gp-0 cache-alpha) (-> s5-0 a))
-      ;; I'm not really sure how the particles get launched from here yet.
+      (logior! (-> cpuinfo flags) (sp-cpuinfo-flag just-launched))
+      (set! (-> cpuinfo cache-alpha) (-> sprite-tmp a))
+      ;; The particle is born invisible (its real alpha stashed in cache-alpha, sprite alpha 0).
+      ;; On the next process-particles pass, the per-block update function sees just-launched,
+      ;; restores the alpha from cache-alpha, and clears
+      ;; the bit -- that is all the flag does; it does NOT trigger the sp-relaunch functions.
       )
     0
     (none)))
 
 (defun sp-clear-queue ()
-  "Launch all particles in the queue."
-  (let ((gp-0 *sp-launch-queue*))
-    (when (> (-> gp-0 in-use) 0)
-      (dotimes (s5-0 (-> gp-0 in-use))
-        (let ((v1-4 (-> gp-0 queue s5-0)))
-          (launch-particles :system (-> v1-4 sp-system) (-> v1-4 sp-launcher) (-> v1-4 pos) :rate 1.0)))
-      (set! (-> gp-0 in-use) 0)
+  "Launch every deferred particle request and empty the launch queue."
+  (let ((queue *sp-launch-queue*))
+    (when (> (-> queue in-use) 0)
+      (dotimes (i (-> queue in-use))
+        (let ((entry (-> queue queue i)))
+          (launch-particles :system (-> entry sp-system) (-> entry sp-launcher) (-> entry pos) :rate 1.0)))
+      (set! (-> queue in-use) 0)
       0))
   0
   (none))
 
-(defun sp-relaunch-setup-fields ((arg0 object) (arg1 sparticle-launcher) (arg2 sparticle-cpuinfo) (arg3 sprite-vec-data-3d))
-  "Reset fields of an existing particle"
-  (let ((a1-1 (-> arg1 init-specs 0))
-        (s4-0 (logand (-> arg2 flags) (sp-cpuinfo-flag level0 level1))))
-    (set! (-> arg2 next-launcher) (the-as basic 0))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; relaunch / aging model
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Each particle carries two 300hz countdowns, decremented by the update kernel
+;; (sp-process-block-2d/3d): `timer` is the lifetime -- when it hits 0 the particle is
+;; freed -- and `next-time` is the relaunch timer. When next-time expires and the particle has a
+;; `next-launcher` set (and is not on the aux-list), the kernel calls sp-relaunch-particle-2d/3d
+;; with that launcher: the particle is NOT freed, its fields are re-initialized in place from the
+;; new launcher's init-specs (sp-relaunch-setup-fields, write-missing-fields=#f so unspecified
+;; fields keep their current values), and it keeps aging. Chaining next-launcher ids is how
+;; defparts express multi-phase effects (e.g. smoke that changes color and slows down).
+
+(defun sp-relaunch-setup-fields ((user object) (launcher sparticle-launcher) (cpuinfo sparticle-cpuinfo) (sprite sprite-vec-data-3d))
+  "Reset the sprite+cpu fields of an existing (live) particle from a launcher's init-specs.
+   Only fields the launcher specifies are overwritten; the level0/level1 flags are preserved."
+  (let ((first-spec (-> launcher init-specs 0))
+        (level-flags (logand (-> cpuinfo flags) (sp-cpuinfo-flag level0 level1))))
+    (set! (-> cpuinfo next-launcher) (the-as basic 0))
     (cond
-      ((and (logtest? (-> arg2 flags) (sp-cpuinfo-flag bit12)) (not (logtest? (-> arg2 flags) (sp-cpuinfo-flag aux-list))))
-       (let ((f20-0 (-> arg3 r-g-b-a x))
-             (f22-0 (-> arg3 r-g-b-a y))
-             (f24-0 (-> arg3 r-g-b-a z))
-             (f26-0 (-> arg2 fade x))
-             (f28-0 (-> arg2 fade y))
-             (f30-0 (-> arg2 fade z)))
-         (set! (-> arg3 r-g-b-a x) 99999.0)
-         (set! (-> arg3 r-g-b-a y) 99999.0)
-         (set! (-> arg3 r-g-b-a z) 99999.0)
-         (set! (-> arg2 fade x) 99999.0)
-         (set! (-> arg2 fade y) 99999.0)
-         (set! (-> arg2 fade z) 99999.0)
-         (let ((a1-2 (sp-init-fields! (&-> arg3 x-y-z-sx x)
-                                      (the-as (inline-array sp-field-init-spec) a1-1)
-                                      (sp-field-id sprite-fields-start)
-                                      (sp-field-id sprite-fields-end)
-                                      #f)))
-           (sp-init-fields! (&-> arg2 omega) a1-2 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f))
+      ;; use-time-of-day-color path: re-init the fields AND apply time-of-day tinting to the
+      ;; color/fade. Trick: pre-set color/fade to the sentinel 99999.0, re-run sp-init-fields! with
+      ;; write-missing-fields=#f so only fields the launcher actually specifies get overwritten.
+      ;; Afterwards, any component still == 99999.0 was not specified, so restore its saved value;
+      ;; otherwise multiply the freshly-written value by the current time-of-day particle color.
+      ((and (logtest? (-> cpuinfo flags) (sp-cpuinfo-flag use-time-of-day-color))
+            (not (logtest? (-> cpuinfo flags) (sp-cpuinfo-flag aux-list))))
+       (let ((saved-r (-> sprite r-g-b-a x))
+             (saved-g (-> sprite r-g-b-a y))
+             (saved-b (-> sprite r-g-b-a z))
+             (saved-fade-r (-> cpuinfo fade x))
+             (saved-fade-g (-> cpuinfo fade y))
+             (saved-fade-b (-> cpuinfo fade z)))
+         (set! (-> sprite r-g-b-a x) 99999.0)
+         (set! (-> sprite r-g-b-a y) 99999.0)
+         (set! (-> sprite r-g-b-a z) 99999.0)
+         (set! (-> cpuinfo fade x) 99999.0)
+         (set! (-> cpuinfo fade y) 99999.0)
+         (set! (-> cpuinfo fade z) 99999.0)
+         (let ((next-spec (sp-init-fields! (&-> sprite x-y-z-sx x)
+                                           (the-as (inline-array sp-field-init-spec) first-spec)
+                                           (sp-field-id sprite-fields-start)
+                                           (sp-field-id sprite-fields-end)
+                                           #f)))
+           (sp-init-fields! (&-> cpuinfo omega) next-spec (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f))
          ;; clear all flags except for the level.
-         (logior! (-> arg2 flags) s4-0)
-         (if (logtest? (-> arg2 flags) (sp-cpuinfo-flag level1)) (-> *level* level1) (-> *level* level0))
-         (let ((v1-16 (-> *time-of-day-context* current-prt-color)))
-           (if (= (-> arg3 r-g-b-a x) 99999.0)
-             (set! (-> arg3 r-g-b-a x) f20-0)
-             (set! (-> arg3 r-g-b-a x) (* (-> arg3 r-g-b-a x) (-> v1-16 x))))
-           (if (= (-> arg3 r-g-b-a y) 99999.0)
-             (set! (-> arg3 r-g-b-a y) f22-0)
-             (set! (-> arg3 r-g-b-a y) (* (-> arg3 r-g-b-a y) (-> v1-16 y))))
-           (if (= (-> arg3 r-g-b-a z) 99999.0)
-             (set! (-> arg3 r-g-b-a z) f24-0)
-             (set! (-> arg3 r-g-b-a z) (* (-> arg3 r-g-b-a z) (-> v1-16 z))))
-           (if (= (-> arg2 fade x) 99999.0) (set! (-> arg2 fade x) f26-0) (set! (-> arg2 fade x) (* (-> arg2 fade x) (-> v1-16 x))))
-           (if (= (-> arg2 fade y) 99999.0) (set! (-> arg2 fade y) f28-0) (set! (-> arg2 fade y) (* (-> arg2 fade y) (-> v1-16 y))))
-           (if (= (-> arg2 fade z) 99999.0) (set! (-> arg2 fade z) f30-0) (set! (-> arg2 fade z) (* (-> arg2 fade z) (-> v1-16 z)))))))
+         (logior! (-> cpuinfo flags) level-flags)
+         (if (logtest? (-> cpuinfo flags) (sp-cpuinfo-flag level1)) (-> *level* level1) (-> *level* level0))
+         (let ((tod-color (-> *time-of-day-context* current-prt-color)))
+           (if (= (-> sprite r-g-b-a x) 99999.0)
+             (set! (-> sprite r-g-b-a x) saved-r)
+             (set! (-> sprite r-g-b-a x) (* (-> sprite r-g-b-a x) (-> tod-color x))))
+           (if (= (-> sprite r-g-b-a y) 99999.0)
+             (set! (-> sprite r-g-b-a y) saved-g)
+             (set! (-> sprite r-g-b-a y) (* (-> sprite r-g-b-a y) (-> tod-color y))))
+           (if (= (-> sprite r-g-b-a z) 99999.0)
+             (set! (-> sprite r-g-b-a z) saved-b)
+             (set! (-> sprite r-g-b-a z) (* (-> sprite r-g-b-a z) (-> tod-color z))))
+           (if (= (-> cpuinfo fade x) 99999.0)
+             (set! (-> cpuinfo fade x) saved-fade-r)
+             (set! (-> cpuinfo fade x) (* (-> cpuinfo fade x) (-> tod-color x))))
+           (if (= (-> cpuinfo fade y) 99999.0)
+             (set! (-> cpuinfo fade y) saved-fade-g)
+             (set! (-> cpuinfo fade y) (* (-> cpuinfo fade y) (-> tod-color y))))
+           (if (= (-> cpuinfo fade z) 99999.0)
+             (set! (-> cpuinfo fade z) saved-fade-b)
+             (set! (-> cpuinfo fade z) (* (-> cpuinfo fade z) (-> tod-color z)))))))
       (else
-       (let ((a1-3 (sp-init-fields! (&-> arg3 x-y-z-sx x)
-                                    (the-as (inline-array sp-field-init-spec) a1-1)
-                                    (sp-field-id sprite-fields-start)
-                                    (sp-field-id sprite-fields-end)
-                                    #f)))
-         (sp-init-fields! (&-> arg2 omega) a1-3 (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f)))))
+       (let ((next-spec (sp-init-fields! (&-> sprite x-y-z-sx x)
+                                         (the-as (inline-array sp-field-init-spec) first-spec)
+                                         (sp-field-id sprite-fields-start)
+                                         (sp-field-id sprite-fields-end)
+                                         #f)))
+         (sp-init-fields! (&-> cpuinfo omega) next-spec (sp-field-id cpu-fields-start) (sp-field-id cpu-fields-end) #f)))))
   0
   0
   (none))
 
-(defun sp-relaunch-particle-2d ((arg0 object) (arg1 sparticle-launcher) (arg2 sparticle-cpuinfo) (arg3 sprite-vec-data-3d))
-  "relaunch a 2d particle"
-  (sp-relaunch-setup-fields arg0 arg1 arg2 arg3)
-  (when (logtest? (-> arg2 flags) (sp-cpuinfo-flag aux-list))
-    (set! (-> arg2 func) add-to-sprite-aux-list)
-    (set! (-> arg3 r-g-b-a w) 0.0)
-    (set! (-> arg2 fade w) 0.0)
-    (logclear! (-> arg2 flags) (sp-cpuinfo-flag bit2)))
+(defun sp-relaunch-particle-2d ((user object) (launcher sparticle-launcher) (cpuinfo sparticle-cpuinfo) (sprite sprite-vec-data-3d))
+  "Reinitialize a 2D particle, then route auxiliary-list particles back onto the
+   sprite aux list (their func is reset by the field re-init, so it must be re-installed)."
+  (sp-relaunch-setup-fields user launcher cpuinfo sprite)
+  (when (logtest? (-> cpuinfo flags) (sp-cpuinfo-flag aux-list))
+    (set! (-> cpuinfo func) add-to-sprite-aux-list)
+    ;; aux-list (distortion) particles are forced fully transparent, so clear die-when-faded
+    ;; (alpha == 0 would otherwise auto-kill them instantly).
+    (set! (-> sprite r-g-b-a w) 0.0)
+    (set! (-> cpuinfo fade w) 0.0)
+    (logclear! (-> cpuinfo flags) (sp-cpuinfo-flag die-when-faded)))
   0
   (none))
 
-(defun sp-relaunch-particle-3d ((arg0 object) (arg1 sparticle-launcher) (arg2 sparticle-cpuinfo) (arg3 sprite-vec-data-3d))
-  "relaunch a 3d particle"
+(defun sp-relaunch-particle-3d ((user object) (launcher sparticle-launcher) (cpuinfo sparticle-cpuinfo) (sprite sprite-vec-data-3d))
+  "Reinitialize a 3D particle, then rebuild its orientation. The old quaternion is
+   saved (w recovered as sqrt(1-x^2-y^2-z^2) since sprites don't store w), the re-init'd euler
+   rotation is converted with quaternion-zxy!, optionally composed with the old quat
+   (left/right-multiply-quat flags), and stored back with w forced non-negative. Also rescales
+   rot-syvel by the ticks-per-frame (5 at 60hz / 6 at 50hz) and rebuilds rotvel3d."
   ;; do all the 3d-specific stuff here, the general relaunch only does 2d fields.
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf))
     (init-vf0-vector)
-    (let ((s4-0 (new 'stack-no-clear 'quaternion)))
-      (let* ((v1-0 s4-0)
-             (a2-1 arg3)
-             (f0-0 (-> a2-1 qx-qy-qz-sy x))
-             (f1-0 (-> a2-1 qx-qy-qz-sy y))
-             (f3-0 (-> a2-1 qx-qy-qz-sy z)))
-        (set! (-> v1-0 x) f0-0)
-        (set! (-> v1-0 y) f1-0)
-        (set! (-> v1-0 z) f3-0)
-        (set! (-> v1-0 w) (sqrtf (- (- (- 1.0 (square f3-0)) (square f1-0)) (square f0-0)))))
-      (set! (-> arg3 qx-qy-qz-sy x) 0.0)
-      (set! (-> arg3 qx-qy-qz-sy y) 0.0)
-      (set! (-> arg3 qx-qy-qz-sy z) 0.0)
-      (sp-relaunch-setup-fields arg0 arg1 arg2 arg3)
-      (let ((a1-1 (new 'stack-no-clear 'vector))
-            (s3-0 (new 'stack-no-clear 'quaternion)))
-        (set-vector! a1-1 (-> arg3 qx-qy-qz-sy x) (-> arg3 qx-qy-qz-sy y) (-> arg3 qx-qy-qz-sy z) 1.0)
-        (quaternion-zxy! s3-0 a1-1)
+    (let ((parent-quat (new 'stack-no-clear 'quaternion)))
+      (let* ((dst-quat parent-quat)
+             (spr sprite)
+             (qx (-> spr qx-qy-qz-sy x))
+             (qy (-> spr qx-qy-qz-sy y))
+             (qz (-> spr qx-qy-qz-sy z)))
+        (set! (-> dst-quat x) qx)
+        (set! (-> dst-quat y) qy)
+        (set! (-> dst-quat z) qz)
+        (set! (-> dst-quat w) (sqrtf (- (- (- 1.0 (square qz)) (square qy)) (square qx)))))
+      (set! (-> sprite qx-qy-qz-sy x) 0.0)
+      (set! (-> sprite qx-qy-qz-sy y) 0.0)
+      (set! (-> sprite qx-qy-qz-sy z) 0.0)
+      (sp-relaunch-setup-fields user launcher cpuinfo sprite)
+      (let ((euler (new 'stack-no-clear 'vector))
+            (quat (new 'stack-no-clear 'quaternion)))
+        (set-vector! euler (-> sprite qx-qy-qz-sy x) (-> sprite qx-qy-qz-sy y) (-> sprite qx-qy-qz-sy z) 1.0)
+        (quaternion-zxy! quat euler)
         (cond
-          ((logtest? (sp-cpuinfo-flag left-multiply-quat) (-> arg2 flags)) (quaternion*! s3-0 s4-0 s3-0))
-          (else (if (logtest? (sp-cpuinfo-flag right-multiply-quat) (-> arg2 flags)) (quaternion*! s3-0 s3-0 s4-0))))
+          ((logtest? (sp-cpuinfo-flag left-multiply-quat) (-> cpuinfo flags)) (quaternion*! quat parent-quat quat))
+          (else (if (logtest? (sp-cpuinfo-flag right-multiply-quat) (-> cpuinfo flags)) (quaternion*! quat quat parent-quat))))
         (cond
-          ((< (-> s3-0 w) 0.0)
-           (.lvf vf1 (&-> arg3 qx-qy-qz-sy quad))
-           (.lvf vf2 (&-> s3-0 vec quad))
+          ((< (-> quat w) 0.0)
+           (.lvf vf1 (&-> sprite qx-qy-qz-sy quad))
+           (.lvf vf2 (&-> quat vec quad))
            (.sub.vf.xyz vf1 vf0 vf2)
-           (.svf (&-> arg3 qx-qy-qz-sy quad) vf1))
+           (.svf (&-> sprite qx-qy-qz-sy quad) vf1))
           (else
-           (.lvf vf1 (&-> arg3 qx-qy-qz-sy quad))
-           (.lvf vf2 (&-> s3-0 vec quad))
+           (.lvf vf1 (&-> sprite qx-qy-qz-sy quad))
+           (.lvf vf2 (&-> quat vec quad))
            (.add.vf.xyz vf1 vf0 vf2)
-           (.svf (&-> arg3 qx-qy-qz-sy quad) vf1)))))
+           (.svf (&-> sprite qx-qy-qz-sy quad) vf1)))))
     (cond
       (*sp-60-hz*
-       (set! (-> arg2 rot-syvel x) (* 5.0 (-> arg2 rot-syvel x)))
-       (set! (-> arg2 rot-syvel y) (* 5.0 (-> arg2 rot-syvel y)))
-       (set! (-> arg2 rot-syvel z) (* 5.0 (-> arg2 rot-syvel z))))
+       (set! (-> cpuinfo rot-syvel x) (* 5.0 (-> cpuinfo rot-syvel x)))
+       (set! (-> cpuinfo rot-syvel y) (* 5.0 (-> cpuinfo rot-syvel y)))
+       (set! (-> cpuinfo rot-syvel z) (* 5.0 (-> cpuinfo rot-syvel z))))
       (else
-       (set! (-> arg2 rot-syvel x) (* 6.0 (-> arg2 rot-syvel x)))
-       (set! (-> arg2 rot-syvel y) (* 6.0 (-> arg2 rot-syvel y)))
-       (set! (-> arg2 rot-syvel z) (* 6.0 (-> arg2 rot-syvel z)))))
-    (quaternion-zxy! (-> arg2 rotvel3d) (-> arg2 rot-syvel))
+       (set! (-> cpuinfo rot-syvel x) (* 6.0 (-> cpuinfo rot-syvel x)))
+       (set! (-> cpuinfo rot-syvel y) (* 6.0 (-> cpuinfo rot-syvel y)))
+       (set! (-> cpuinfo rot-syvel z) (* 6.0 (-> cpuinfo rot-syvel z)))))
+    (quaternion-zxy! (-> cpuinfo rotvel3d) (-> cpuinfo rot-syvel))
     0
     (none)))
 
@@ -578,65 +1558,66 @@
 ;; the launch-controls are always associated with a process. this allows the memory to be reclaimed once the
 ;; particles are despawned.
 
-(defmethod initialize ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
-  "start a particle effect."
-  (let ((s5-0 0))
+(defmethod initialize ((this sparticle-launch-control) (group sparticle-launch-group) (proc process))
+  "Initialize this control's timing and one launch-state for every valid launcher in group."
+  (let ((state-idx 0))
     ;; init
-    (set! (-> this group) arg0)
-    (set! (-> this proc) arg1)
+    (set! (-> this group) group)
+    (set! (-> this proc) proc)
     (set! (-> this local-clock) 0)
     (set! (-> this fade) 1.0)
     (set! (-> this matrix) 0)
     (set! (-> this last-spawn-frame) (the-as int (+ (-> *display* real-actual-frame-counter) (seconds -0.007))))
     (set! (-> this last-spawn-time) 0)
     ;; iterate through the effects in the group
-    (dotimes (s3-0 (-> arg0 length))
-      (let* ((a0-2 (-> arg0 launcher s3-0)) ;; the group-item (definition of the effect)
-             (a1-2 (-> *part-id-table* (-> a0-2 launcher))) ;; the actual effect for the group item
-             (v1-9 (-> this data s5-0)) ;; our state for this particular instance of this effect within the group.
+    (dotimes (i (-> group length))
+      (let* ((item (-> group launcher i)) ;; the group-item (definition of the effect)
+             (launcher (-> *part-id-table* (-> item launcher))) ;; the actual effect for the group item
+             (state (-> this data state-idx)) ;; our state for this particular instance of this effect within the group.
              )
-        (when (nonzero? a1-2)
-          (set! (-> v1-9 group-item) a0-2)
+        (when (nonzero? launcher)
+          (set! (-> state group-item) item)
           (cond
-            ((= (-> a1-2 type) sparticle-launcher)
+            ((= (-> launcher type) sparticle-launcher)
              ;; init state
-             (set! (-> v1-9 accum) 0.0)
-             (set! (-> v1-9 spawn-time) (the-as uint (+ *particle-300hz-timer* -30000)))
-             (set! (-> v1-9 offset) (-> a0-2 offset))
-             (set! (-> v1-9 randomize) (the-as uint 0))
+             (set! (-> state accum) 0.0)
+             (set! (-> state spawn-time) (the-as uint (+ *particle-300hz-timer* -30000)))
+             (set! (-> state offset) (-> item offset))
+             (set! (-> state randomize) (the-as uint 0))
              (cond
-               ((logtest? (-> a0-2 flags) (sp-group-item-flag start-dead))
+               ((logtest? (-> item flags) (sp-group-item-flag start-dead))
                 ;; if we aren't immediate
-                (logclear! (-> v1-9 flags) (sp-launch-state-flags launcher-active))
-                (set! (-> v1-9 origin) #f)
-                (set! (-> v1-9 sprite3d) #f)
-                (set! (-> v1-9 sprite) #f))
+                (logclear! (-> state flags) (sp-launch-state-flags launcher-active))
+                (set! (-> state origin) #f)
+                (set! (-> state sprite3d) #f)
+                (set! (-> state sprite) #f))
                (else
-                (logior! (-> v1-9 flags) (sp-launch-state-flags launcher-active))
+                (logior! (-> state flags) (sp-launch-state-flags launcher-active))
                 ;; set the position now.
-                (set! (-> v1-9 origin) (-> this center))
-                (set! (-> v1-9 sprite3d) #f)
-                (set! (-> v1-9 sprite) #f)))
-             (+! s5-0 1))
+                (set! (-> state origin) (-> this center))
+                (set! (-> state sprite3d) #f)
+                (set! (-> state sprite) #f)))
+             (+! state-idx 1))
             (else (format 0 "initialize called with non-particle-launcher~%"))))))
-    (set! (-> this length) s5-0))
+    (set! (-> this length) state-idx))
   0
   (none))
 
-(defmethod create-launch-control ((this sparticle-launch-group) (arg0 process))
-  "create a launch-control to hold the state of the particles. stored on the process heap."
-  (let ((gp-0 (the-as sparticle-launch-control (new 'process 'sparticle-launch-control (-> this length)))))
-    (when (zero? gp-0)
+(defmethod create-launch-control ((this sparticle-launch-group) (proc process))
+  "Allocate and initialize per-process launch state for every valid launcher in this group."
+  (let ((launch-control (the-as sparticle-launch-control (new 'process 'sparticle-launch-control (-> this length)))))
+    (when (zero? launch-control)
       (go process-drawable-art-error "memory")
       (return (the-as sparticle-launch-control 0)))
-    (initialize gp-0 this arg0)
-    gp-0))
+    (initialize launch-control this proc)
+    launch-control))
 
 (defmethod kill-and-free-particles ((this sparticle-launch-control))
-  "kill all the particles"
+  "Mark every item inactive, reset this control's timing, kill its particles, and release its
+   optional sprite transform."
   ;; clear the flag.
-  (countdown (v1-0 (-> this length))
-    (let ((a0-3 (-> this data v1-0))) (logclear! (-> a0-3 flags) (sp-launch-state-flags particles-active))))
+  (countdown (i (-> this length))
+    (let ((state (-> this data i))) (logclear! (-> state flags) (sp-launch-state-flags particles-active))))
   (set! (-> this local-clock) 0)
   (set! (-> this fade) 1.0)
   ;; kill the particles (let them go back to the sparticle system.)
@@ -647,142 +1628,165 @@
   (none))
 
 (defmethod kill-particles ((this sparticle-launch-control))
-  "kill the particles, but don't clear flags or free hvdfs."
+  "Kill particles belonging to this control without resetting item flags or releasing its optional
+   sprite transform."
   (kill-all-particles-with-key this)
   0
   (none))
 
-(defmethod is-visible? ((this sparticle-launch-control) (arg0 vector))
-  "Is the effect visible?. arg0 is the offset of the effect"
-  (let* ((v1-0 (-> this group))
-         (f0-0 (-> v1-0 bounds w)))
+(defmethod is-visible? ((this sparticle-launch-control) (offset vector))
+  "Return true when the group's bounds at offset intersect the view, or when bounds or an attached
+   matrix prevent useful sphere culling."
+  (let* ((group (-> this group))
+         (bounds-radius (-> group bounds w)))
     (cond
-      ((= f0-0 0.0) ;; visibility sphere has 0 size, just say yes always
+      ((= bounds-radius 0.0) ;; visibility sphere has 0 size, just say yes always
        #t)
-      ((nonzero? (-> this matrix)) ;; I guess if we have an extra matrix, we can't figure it out?
+      ((nonzero? (-> this matrix)) ;; The bounds cannot be tested here without applying the attached matrix.
        #t)
       (else
        ;; sphere with offset
-       (let ((gp-1 (vector+! (new 'stack-no-clear 'vector) arg0 (the-as vector (-> v1-0 bounds)))))
-         (set! (-> gp-1 w) f0-0)
+       (let ((vis-sphere (vector+! (new 'stack-no-clear 'vector) offset (the-as vector (-> group bounds)))))
+         (set! (-> vis-sphere w) bounds-radius)
          ;; debug draw sphere
          (if (and *display-actor-vis* (or (not *display-actor-anim*) (name= *display-actor-anim* (-> this proc name))))
-           (add-debug-sphere *display-actor-vis* (bucket-id debug) gp-1 (-> gp-1 w) (new 'static 'rgba :g #xff :a #x80)))
+           (add-debug-sphere *display-actor-vis* (bucket-id debug) vis-sphere (-> vis-sphere w) (new 'static 'rgba :g #xff :a #x80)))
          ;; og:preserve-this can we see it?
          (#if (not PC_PORT)
-           (sphere-in-view-frustum? (the-as sphere gp-1))
+           (sphere-in-view-frustum? (the-as sphere vis-sphere))
            (if (-> *pc-settings* ps2-parts?)
              ;; og:preserve-this pc port: launchers have larger bsphere if you have ps2 parts off
-             (sphere-in-view-frustum? (the-as sphere gp-1))
-             (sphere-in-view-frustum? (the-as sphere (begin (*! (-> gp-1 w) 8.0) gp-1))))))))))
+             (sphere-in-view-frustum? (the-as sphere vis-sphere))
+             (sphere-in-view-frustum? (the-as sphere (begin (*! (-> vis-sphere w) 8.0) vis-sphere))))))))))
 
-(defmethod spawn ((this sparticle-launch-control) (arg0 vector))
-  (set! (-> this center quad) (-> arg0 quad))
+(defmethod spawn ((this sparticle-launch-control) (pos vector))
+  "Per-frame entry point for a launch-control: emit particles for each active group-item as the
+   schedule dictates. pos is the world position to launch from.
+   Time is tracked in 300hz ticks: (now - last-time) is the number of ticks since the previous
+   frame (the base burst count). rate/burst-rate scale that count, reduced by distance falloff
+   (falloff-to) and clipped to the per-period launch window.
+   For periodic items (period != 0), [offset .. offset+length) within each period is the active
+   window; the periodic path computes how much of the elapsed interval overlapped that window. Items are
+   suppressed by hour-mask (time of day) and by fade-after (camera distance)."
+  (set! (-> this center quad) (-> pos quad))
   ;; og:preserve-this
   ;; check if we are visible (remove this check to force particles to be drawn.)
-  (if (not (or (is-visible? this arg0) (logtest? (-> this group flags) (sp-group-flag always-draw screen-space))))
+  (if (not (or (is-visible? this pos) (logtest? (-> this group flags) (sp-group-flag always-draw screen-space))))
     (return (the-as object 0)))
-  (let ((s4-0 *particle-300hz-timer*)
-        (s5-0 (-> this last-spawn-time)))
-    ;; weird stuff for frame counting
-    (let ((v1-8 (-> *display* real-actual-frame-counter)))
-      (if (!= v1-8 (+ (-> this last-spawn-frame) 1)) (set! s5-0 (- s4-0 (logand (the-as int (-> *sp-frame-time* x)) 255)))))
+  (let ((now *particle-300hz-timer*)
+        (last-time (-> this last-spawn-time)))
+    ;; Do not accumulate a large birth interval when this control was skipped for one or more frames.
+    (let ((frame-counter (-> *display* real-actual-frame-counter)))
+      (if (!= frame-counter (+ (-> this last-spawn-frame) 1))
+        (set! last-time (- now (logand (the-as int (-> *sp-frame-time* x)) 255)))))
     (set! (-> this last-spawn-frame) (the-as int (-> *display* real-actual-frame-counter)))
-    (set! (-> this last-spawn-time) s4-0)
+    (set! (-> this last-spawn-time) now)
     (when (logtest? (-> this group flags) (sp-group-flag use-local-clock))
-      (set! s5-0 (-> this local-clock))
+      (set! last-time (-> this local-clock))
       (+! (-> this local-clock) (logand (the-as int (-> *sp-frame-time* x)) 255))
-      (set! s4-0 (-> this local-clock)))
-    (let ((f30-0 (vector-vector-distance arg0 (math-camera-pos)))
+      (set! now (-> this local-clock)))
+    (let ((cam-dist (vector-vector-distance pos (math-camera-pos)))
           ;; hour mask
-          (s3-1 (ash 1 (if *time-of-day-proc* (-> *time-of-day-proc* 0 hour) 0))))
+          (hour-bit (ash 1 (if *time-of-day-proc* (-> *time-of-day-proc* 0 hour) 0))))
       (if (nonzero? (-> this matrix)) ;; if we have an additional matrix, say we're at the camera so we always draw.
-        (set! f30-0 0.0))
+        (set! cam-dist 0.0))
       ;; og:preserve-this if we have ps2 particles off, say we're at the camera
       (with-pc
-        (if (not (-> *pc-settings* ps2-parts?)) (set! f30-0 0.0)))
+        (if (not (-> *pc-settings* ps2-parts?)) (set! cam-dist 0.0)))
       ;; loop over particles in the group.
-      (let ((s2-1 (-> this length)))
+      (let ((item-idx (-> this length)))
         (while (begin
-                 (label cfg-79)
-                 (nonzero? s2-1))
-          (+! s2-1 -1)
-          (let* ((a3-0 (-> this data s2-1))
-                 (v1-29 (-> a3-0 group-item))
-                 (a1-4 (-> *part-id-table* (-> v1-29 launcher))))
-            (when (and a1-4 (nonzero? a1-4) (logtest? (-> a3-0 flags) (sp-launch-state-flags launcher-active)))
+                 (label item-loop)
+                 (nonzero? item-idx))
+          (+! item-idx -1)
+          (let* ((state (-> this data item-idx))
+                 (item (-> state group-item))
+                 (launcher (-> *part-id-table* (-> item launcher))))
+            (when (and launcher (nonzero? launcher) (logtest? (-> state flags) (sp-launch-state-flags launcher-active)))
               ;; we are active, and it is possible to launch.
-              (let ((f0-2 1.0))
-                (if (!= (-> v1-29 falloff-to) 0.0) (set! f0-2 (- 1.0 (/ f30-0 (-> v1-29 falloff-to)))))
+              ;; rate is the launch rate: 1.0, reduced linearly toward 0 as distance approaches falloff-to.
+              (let ((rate 1.0))
+                (if (!= (-> item falloff-to) 0.0) (set! rate (- 1.0 (/ cam-dist (-> item falloff-to)))))
                 ;; reject if bad type
-                (let ((a0-26 sparticle-launcher)) (b! (!= (-> a1-4 type) a0-26) cfg-78 :delay (nop!)))
+                (let ((launcher-type sparticle-launcher)) (b! (!= (-> launcher type) launcher-type) bad-launcher :delay (nop!)))
                 ;; og:preserve-this PAL patch here
-                ;; ??
-                (b! (zero? (logand (-> v1-29 flags) (sp-group-item-flag launch-asap bit6))) cfg-36 :delay (nop!))
-                (when (or (zero? (logand (-> a3-0 flags) (sp-launch-state-flags particles-active)))
-                          (logtest? (-> v1-29 flags) (sp-group-item-flag bit6)))
-                  ;; particles are not active, lets activate them.
-                  (set! (-> a3-0 spawn-time) (the-as uint s4-0))
-                  (logior! (-> a3-0 flags) (sp-launch-state-flags particles-active))
-                  (if (< 0.0 f0-2)
+                ;; If this is a one-shot item (launch-asap or relaunch-each-spawn), take the
+                ;; immediate-launch path just below; otherwise use the periodic scheduler.
+                (b! (zero? (logand (-> item flags) (sp-group-item-flag launch-asap relaunch-each-spawn))) periodic-path :delay (nop!))
+                (when (or (zero? (logand (-> state flags) (sp-launch-state-flags particles-active)))
+                          (logtest? (-> item flags) (sp-group-item-flag relaunch-each-spawn)))
+                  ;; particles are not active (or relaunch-each-spawn forces a burst every call):
+                  ;; launch one burst.
+                  (set! (-> state spawn-time) (the-as uint now))
+                  (logior! (-> state flags) (sp-launch-state-flags particles-active))
+                  (if (< 0.0 rate)
                     (launch-particles :system
-                                      (if (logtest? (-> v1-29 flags) (sp-group-item-flag is-3d)) *sp-particle-system-3d* *sp-particle-system-2d*)
-                                      a1-4
-                                      (-> a3-0 origin)
+                                      (if (logtest? (-> item flags) (sp-group-item-flag is-3d)) *sp-particle-system-3d* *sp-particle-system-2d*)
+                                      launcher
+                                      (-> state origin)
                                       :launch-state
-                                      a3-0
+                                      state
                                       :launch-control
                                       this
                                       :rate
-                                      f0-2)))
-                (b! #t cfg-77 :delay (nop!))
-                (label cfg-36)
+                                      rate)))
+                (b! #t next-item :delay (nop!))
+                (label periodic-path)
                 ;; reject if bad time of day
-                (when (logtest? s3-1 (-> v1-29 hour-mask))
+                (when (logtest? hour-bit (-> item hour-mask))
                   0
-                  (goto cfg-77))
-                (when (not (or (= (-> v1-29 fade-after) 0.0) (< f30-0 (-> v1-29 fade-after))))
+                  (goto next-item))
+                (when (not (or (= (-> item fade-after) 0.0) (< cam-dist (-> item fade-after))))
                   0
-                  (b! #t cfg-77 :delay (nop!))
-                  (set! v1-29 (the-as sparticle-group-item 0)))
-                (b! (nonzero? (-> v1-29 period)) cfg-50)
-                (let ((f0-4 (* 0.2 (the float (- s4-0 s5-0)) f0-2)))
-                  (b! #t cfg-72 :delay (nop!))
-                  (label cfg-50)
-                  (let ((a2-5 (mod (+ s5-0 (-> this data s2-1 offset)) (the-as int (-> v1-29 period))))
-                        (a0-56 (mod (the-as uint (+ s4-0 (-> this data s2-1 offset))) (-> v1-29 period)))
-                        (t0-2 (-> v1-29 length)))
-                    (set! f0-4
+                  (b! #t next-item :delay (nop!))
+                  (set! item (the-as sparticle-group-item 0)))
+                ;; period == 0 -> launch continuously: rate = 0.2 * elapsed_ticks (0.2 = 1/5 converts
+                ;; 300hz ticks to 60hz frame units, matching *sp-frame-time* z/w) scaled by distance.
+                (b! (nonzero? (-> item period)) compute-periodic-overlap)
+                (let ((burst-rate (* 0.2 (the float (- now last-time)) rate)))
+                  (b! #t emit-periodic :delay (nop!))
+                  ;; In the periodic case, last-phase is the phase of the previous spawn and
+                  ;; now-phase = phase of now. The four cases below compute how many of the elapsed
+                  ;; ticks fell inside the [0, length) emission window of the period.
+                  (label compute-periodic-overlap)
+                  (let ((last-phase (mod (+ last-time (-> this data item-idx offset)) (the-as int (-> item period))))
+                        (now-phase (mod (the-as uint (+ now (-> this data item-idx offset))) (-> item period)))
+                        (window-len (-> item length)))
+                    (set! burst-rate
                           (cond
-                            ((and (< a2-5 (the-as int t0-2)) (< a0-56 t0-2)) (* 0.2 (the float (- s4-0 s5-0)) f0-2))
-                            ((and (< a2-5 (the-as int t0-2)) (>= a0-56 t0-2)) (* 0.2 (the float (- t0-2 (the-as uint a2-5))) f0-2))
-                            ((and (>= a2-5 (the-as int t0-2)) (< a0-56 t0-2)) (* 0.2 (the float a0-56) f0-2))
+                            ((and (< last-phase (the-as int window-len)) (< now-phase window-len)) (* 0.2 (the float (- now last-time)) rate))
+                            ((and (< last-phase (the-as int window-len)) (>= now-phase window-len))
+                             (* 0.2 (the float (- window-len (the-as uint last-phase))) rate))
+                            ((and (>= last-phase (the-as int window-len)) (< now-phase window-len)) (* 0.2 (the float now-phase) rate))
                             (else
-                             (when (not (logtest? (-> v1-29 flags) (sp-group-item-flag bit1)))
+                             ;; both endpoints are outside the emission window: only auto-rearm
+                             ;; items may start a new cycle (and only once a full period has
+                             ;; elapsed since the last spawn); others go dormant.
+                             (when (not (logtest? (-> item flags) (sp-group-item-flag auto-rearm)))
                                0
-                               (goto cfg-77))
-                             (when (< (the-as uint (- s4-0 (the-as int (-> this data s2-1 spawn-time)))) (-> v1-29 period))
+                               (goto next-item))
+                             (when (< (the-as uint (- now (the-as int (-> this data item-idx spawn-time)))) (-> item period))
                                0
-                               (goto cfg-77))
-                             (set! (-> this data s2-1 offset) (- (-> v1-29 period) a0-56))
-                             (* 0.2 (the float (- s4-0 s5-0)) f0-2)))))
-                  (label cfg-72)
-                  (set! (-> a3-0 spawn-time) (the-as uint s4-0))
-                  (logior! (-> a3-0 flags) (sp-launch-state-flags particles-active))
-                  (if (< 0.0 f0-4)
+                               (goto next-item))
+                             (set! (-> this data item-idx offset) (- (-> item period) now-phase))
+                             (* 0.2 (the float (- now last-time)) rate)))))
+                  (label emit-periodic)
+                  (set! (-> state spawn-time) (the-as uint now))
+                  (logior! (-> state flags) (sp-launch-state-flags particles-active))
+                  (if (< 0.0 burst-rate)
                     (launch-particles :system
-                                      (if (logtest? (-> v1-29 flags) (sp-group-item-flag is-3d)) *sp-particle-system-3d* *sp-particle-system-2d*)
-                                      a1-4
-                                      (-> a3-0 origin)
+                                      (if (logtest? (-> item flags) (sp-group-item-flag is-3d)) *sp-particle-system-3d* *sp-particle-system-2d*)
+                                      launcher
+                                      (-> state origin)
                                       :launch-state
-                                      a3-0
+                                      state
                                       :launch-control
                                       this
                                       :rate
-                                      f0-4))))
-              (label cfg-77)
-              (b! #t cfg-79 :delay (nop!))
-              (label cfg-78)
+                                      burst-rate))))
+              (label next-item)
+              (b! #t item-loop :delay (nop!))
+              (label bad-launcher)
               (format 0 "spawn called for non-sparticle-launcher~%")))))))
   0)
 
@@ -792,21 +1796,21 @@
 
 ;; these are commonly used callbacks for making particles follow an object
 
-(defun sparticle-track-root ((arg0 object) (arg1 sparticle-cpuinfo) (arg2 vector))
-  "track the root of the process drawable"
-  (let ((v1-3 (-> (the-as process-drawable (-> arg1 key proc)) root trans)))
-    (set! (-> arg2 x) (-> v1-3 x))
-    (set! (-> arg2 y) (-> v1-3 y))
-    (set! (-> arg2 z) (-> v1-3 z)))
+(defun sparticle-track-root ((user object) (cpuinfo sparticle-cpuinfo) (out-pos vector))
+  "Write the tracked drawable's root translation to out-pos."
+  (let ((trans (-> (the-as process-drawable (-> cpuinfo key proc)) root trans)))
+    (set! (-> out-pos x) (-> trans x))
+    (set! (-> out-pos y) (-> trans y))
+    (set! (-> out-pos z) (-> trans z)))
   0
   (none))
 
-(defun sparticle-track-root-prim ((arg0 object) (arg1 sparticle-cpuinfo) (arg2 vector))
-  "track the root of the collision geometry (must use collide-shape for root)"
-  (let ((v1-4 (-> (the-as collide-shape (-> (the-as process-drawable (-> arg1 key proc)) root)) root-prim prim-core)))
-    (set! (-> arg2 x) (-> v1-4 world-sphere x))
-    (set! (-> arg2 y) (-> v1-4 world-sphere y))
-    (set! (-> arg2 z) (-> v1-4 world-sphere z)))
+(defun sparticle-track-root-prim ((user object) (cpuinfo sparticle-cpuinfo) (out-pos vector))
+  "Write the tracked drawable's root collision primitive center to out-pos."
+  (let ((prim-core (-> (the-as collide-shape (-> (the-as process-drawable (-> cpuinfo key proc)) root)) root-prim prim-core)))
+    (set! (-> out-pos x) (-> prim-core world-sphere x))
+    (set! (-> out-pos y) (-> prim-core world-sphere y))
+    (set! (-> out-pos z) (-> prim-core world-sphere z)))
   0
   (none))
 
@@ -814,113 +1818,128 @@
 ;; birth funcs
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defun birth-func-copy-rot-color ((arg0 sparticle-system)
-        (arg1 sparticle-cpuinfo)
-        (arg2 sprite-vec-data-3d)
-        (arg3 sparticle-launcher)
-        (arg4 sparticle-launch-state))
-  (local-vars (v1-4 float) (v1-5 float))
+(defun birth-func-copy-rot-color ((sys sparticle-system)
+        (cpuinfo sparticle-cpuinfo)
+        (sprite3d sprite-vec-data-3d)
+        (launcher sparticle-launcher)
+        (launch-state sparticle-launch-state))
+  "Birth callback: copy the launching object's (launch-state sprite) rotation and color onto the
+   new particle. The launcher's 3d quaternion only stores xyz (w is recomputed as
+   sqrt(1 - x^2 - y^2 - z^2) since the sprite renderer assumes w>=0), then it is spun about y by the
+   parent sprite's `rot` and re-stored (again forcing w>=0 by sign-flipping all components)."
+  (local-vars (dummy0 float) (dummy1 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf))
     (init-vf0-vector)
-    (let ((s5-0 (-> arg4 sprite)))
-      (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (let* ((v1-0 arg2)
-               (f0-0 (-> v1-0 qx-qy-qz-sy x))
-               (f1-0 (-> v1-0 qx-qy-qz-sy y))
-               (f3-0 (-> v1-0 qx-qy-qz-sy z)))
-          (set! (-> s4-0 x) f0-0)
-          (set! (-> s4-0 y) f1-0)
-          (set! (-> s4-0 z) f3-0)
-          (set! (-> s4-0 w) (sqrtf (- (- (- 1.0 (square f3-0)) (square f1-0)) (square f0-0)))))
-        (quaternion-rotate-y! (the-as quaternion s4-0) (the-as quaternion s4-0) (-> s5-0 sprite rot))
-        (let ((v1-3 arg2))
+    (let ((parent (-> launch-state sprite)))
+      (let ((quat (new 'stack-no-clear 'vector)))
+        (let* ((spr sprite3d)
+               (qx (-> spr qx-qy-qz-sy x))
+               (qy (-> spr qx-qy-qz-sy y))
+               (qz (-> spr qx-qy-qz-sy z)))
+          (set! (-> quat x) qx)
+          (set! (-> quat y) qy)
+          (set! (-> quat z) qz)
+          (set! (-> quat w) (sqrtf (- (- (- 1.0 (square qz)) (square qy)) (square qx)))))
+        (quaternion-rotate-y! (the-as quaternion quat) (the-as quaternion quat) (-> parent sprite rot))
+        (let ((spr-out sprite3d))
           (cond
-            ((< (-> s4-0 w) 0.0)
-             (.lvf vf1 (&-> v1-3 qx-qy-qz-sy quad))
-             (.lvf vf2 (&-> s4-0 quad))
+            ((< (-> quat w) 0.0)
+             (.lvf vf1 (&-> spr-out qx-qy-qz-sy quad))
+             (.lvf vf2 (&-> quat quad))
              (.sub.vf.xyz vf1 vf0 vf2)
-             (.svf (&-> v1-3 qx-qy-qz-sy quad) vf1)
-             (.mov v1-4 vf1))
+             (.svf (&-> spr-out qx-qy-qz-sy quad) vf1)
+             (.mov dummy0 vf1))
             (else
-             (.lvf vf1 (&-> v1-3 qx-qy-qz-sy quad))
-             (.lvf vf2 (&-> s4-0 quad))
+             (.lvf vf1 (&-> spr-out qx-qy-qz-sy quad))
+             (.lvf vf2 (&-> quat quad))
              (.add.vf.xyz vf1 vf0 vf2)
-             (.svf (&-> v1-3 qx-qy-qz-sy quad) vf1)
-             (.mov v1-5 vf1)))))
-      (set! (-> arg2 r-g-b-a x) (-> s5-0 sprite r))
-      (set! (-> arg2 r-g-b-a y) (-> s5-0 sprite g))
-      (set! (-> arg2 r-g-b-a z) (-> s5-0 sprite b)))
+             (.svf (&-> spr-out qx-qy-qz-sy quad) vf1)
+             (.mov dummy1 vf1)))))
+      (set! (-> sprite3d r-g-b-a x) (-> parent sprite r))
+      (set! (-> sprite3d r-g-b-a y) (-> parent sprite g))
+      (set! (-> sprite3d r-g-b-a z) (-> parent sprite b)))
     0
     (none)))
 
+;; flips between two mirrored conerot variants in birth-func-copy2-rot-color (incremented each call).
 (define *global-toggle* 0)
 
-(defun birth-func-copy2-rot-color ((arg0 sparticle-system)
-        (arg1 sparticle-cpuinfo)
-        (arg2 sprite-vec-data-3d)
-        (arg3 sparticle-launcher)
-        (arg4 sparticle-launch-state))
-  (local-vars (v1-15 float) (v1-16 float))
+(defun birth-func-copy2-rot-color ((sys sparticle-system)
+        (cpuinfo sparticle-cpuinfo)
+        (sprite3d sprite-vec-data-3d)
+        (launcher sparticle-launcher)
+        (launch-state sparticle-launch-state))
+  "Birth callback: like birth-func-copy-rot-color, but builds the rotation from euler angles
+   (y = the parent sprite's rot, z = +/-90deg offset by the parent's scale-x) instead of
+   composing quaternions. *global-toggle* alternates the sign of the z angle every call,
+   producing mirrored pairs of particles."
+  (local-vars (dummy0 float) (dummy1 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf))
     (init-vf0-vector)
-    (let ((s5-0 (-> arg4 sprite)))
-      (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (let* ((v1-0 arg2)
-               (f0-0 (-> v1-0 qx-qy-qz-sy x))
-               (f1-0 (-> v1-0 qx-qy-qz-sy y))
-               (f3-0 (-> v1-0 qx-qy-qz-sy z)))
-          (set! (-> s4-0 x) f0-0)
-          (set! (-> s4-0 y) f1-0)
-          (set! (-> s4-0 z) f3-0)
-          (set! (-> s4-0 w) (sqrtf (- (- (- 1.0 (square f3-0)) (square f1-0)) (square f0-0)))))
-        (let ((a1-1 (new-stack-vector0)))
-          (set! (-> a1-1 y) (-> s5-0 sprite rot))
-          (set! (-> a1-1 z)
+    (let ((parent (-> launch-state sprite)))
+      (let ((quat (new 'stack-no-clear 'vector)))
+        (let* ((spr sprite3d)
+               (qx (-> spr qx-qy-qz-sy x))
+               (qy (-> spr qx-qy-qz-sy y))
+               (qz (-> spr qx-qy-qz-sy z)))
+          (set! (-> quat x) qx)
+          (set! (-> quat y) qy)
+          (set! (-> quat z) qz)
+          (set! (-> quat w) (sqrtf (- (- (- 1.0 (square qz)) (square qy)) (square qx)))))
+        (let ((euler (new-stack-vector0)))
+          (set! (-> euler y) (-> parent sprite rot))
+          (set! (-> euler z)
                 (if (logtest? *global-toggle* 1)
-                  (the float (sar (shl (the int (- 16384.0 (-> s5-0 sprite sx))) 48) 48))
-                  (the float (sar (shl (the int (+ 16384.0 (-> s5-0 sprite sx))) 48) 48))))
-          (quaternion-zxy! (the-as quaternion s4-0) a1-1))
-        (let ((v1-14 arg2))
+                  (the float (sar (shl (the int (- 16384.0 (-> parent sprite sx))) 48) 48))
+                  (the float (sar (shl (the int (+ 16384.0 (-> parent sprite sx))) 48) 48))))
+          (quaternion-zxy! (the-as quaternion quat) euler))
+        (let ((spr-out sprite3d))
           (cond
-            ((< (-> s4-0 w) 0.0)
-             (.lvf vf1 (&-> v1-14 qx-qy-qz-sy quad))
-             (.lvf vf2 (&-> s4-0 quad))
+            ((< (-> quat w) 0.0)
+             (.lvf vf1 (&-> spr-out qx-qy-qz-sy quad))
+             (.lvf vf2 (&-> quat quad))
              (.sub.vf.xyz vf1 vf0 vf2)
-             (.svf (&-> v1-14 qx-qy-qz-sy quad) vf1)
-             (.mov v1-15 vf1))
+             (.svf (&-> spr-out qx-qy-qz-sy quad) vf1)
+             (.mov dummy0 vf1))
             (else
-             (.lvf vf1 (&-> v1-14 qx-qy-qz-sy quad))
-             (.lvf vf2 (&-> s4-0 quad))
+             (.lvf vf1 (&-> spr-out qx-qy-qz-sy quad))
+             (.lvf vf2 (&-> quat quad))
              (.add.vf.xyz vf1 vf0 vf2)
-             (.svf (&-> v1-14 qx-qy-qz-sy quad) vf1)
-             (.mov v1-16 vf1)))))
-      (set! (-> arg2 r-g-b-a x) (-> s5-0 sprite r))
-      (set! (-> arg2 r-g-b-a y) (-> s5-0 sprite g))
-      (set! (-> arg2 r-g-b-a z) (-> s5-0 sprite b)))
+             (.svf (&-> spr-out qx-qy-qz-sy quad) vf1)
+             (.mov dummy1 vf1)))))
+      (set! (-> sprite3d r-g-b-a x) (-> parent sprite r))
+      (set! (-> sprite3d r-g-b-a y) (-> parent sprite g))
+      (set! (-> sprite3d r-g-b-a z) (-> parent sprite b)))
     (set! *global-toggle* (+ *global-toggle* 1))
     0
     (none)))
 
-(defun birth-func-copy-omega-to-z ((arg0 sparticle-system)
-        (arg1 sparticle-cpuinfo)
-        (arg2 sprite-vec-data-3d)
-        (arg3 sparticle-launcher)
-        (arg4 sparticle-launch-state))
-  (set! (-> arg2 qx-qy-qz-sy z) (+ -16384.0 (-> arg1 omega)))
-  (set! (-> arg1 next-time) (-> arg4 sprite next-time))
-  (set! (-> arg2 x-y-z-sx w) (* 163.85638 (the float (-> arg4 sprite next-time))))
+(defun birth-func-copy-omega-to-z ((sys sparticle-system)
+        (cpuinfo sparticle-cpuinfo)
+        (sprite3d sprite-vec-data-3d)
+        (launcher sparticle-launcher)
+        (launch-state sparticle-launch-state))
+  "Birth callback: seed the new particle's z-rotation from omega and its initial scale from
+   the launch-state's next-time."
+  ;; -16384.0 is -90 degrees in the 65536-units-per-revolution fixed-point angle convention.
+  (set! (-> sprite3d qx-qy-qz-sy z) (+ -16384.0 (-> cpuinfo omega)))
+  (set! (-> cpuinfo next-time) (-> launch-state sprite next-time))
+  ;; Convert the parent's countdown to the scale value used by this effect.
+  (set! (-> sprite3d x-y-z-sx w) (* 163.85638 (the float (-> launch-state sprite next-time))))
   0
   (none))
 
-(defun birth-func-random-next-time ((arg0 sparticle-system)
-        (arg1 sparticle-cpuinfo)
-        (arg2 sprite-vec-data-3d)
-        (arg3 sparticle-launcher)
-        (arg4 sparticle-launch-state))
-  (set! (-> arg1 next-time) (the-as uint (the int (rand-vu-float-range 0.0 (-> arg1 user-float)))))
+(defun birth-func-random-next-time ((sys sparticle-system)
+        (cpuinfo sparticle-cpuinfo)
+        (sprite3d sprite-vec-data-3d)
+        (launcher sparticle-launcher)
+        (launch-state sparticle-launch-state))
+  "Birth callback: randomize the new particle's relaunch countdown (next-time) uniformly in
+   [0, user-float) ticks, de-synchronizing particles that share a launcher chain."
+  (set! (-> cpuinfo next-time) (the-as uint (the int (rand-vu-float-range 0.0 (-> cpuinfo user-float)))))
   0
   (none))

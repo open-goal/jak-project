@@ -22,51 +22,50 @@
   (prevent-jump)
   ;; target is launch jumping (from a blue eco pad)
   (prevent-attacks-during-launch-jump)
-  (surf08) ;; never set, prevents various attacks from being possible
-  (surf09) ;; another attack prevent
+  ;; never set by any shipped surface, but tested together with the launch-jump bit:
+  ;; blocks square/"hands" attacks, including the flop out of jump states
+  (prevent-hand-attack)
+  ;; never set by a shipped surface; blocks circle/"feet" spin attacks
+  (prevent-feet-attack)
   (allow-edge-grab) ;; if set, and jak is falling, turn on the ledge grab search.
   (jump) ;; set on all jumps, used to prevent "on-grounds" in places
   (attacking) ;; set on all attacks, but not actually used anywhere
   (ducking) ;; set on all ducks, but not actually used anywhere
-  (moving-ground) ;; unused, but would make sense if jak was on something moving
+  (moving-ground) ;; moving support that participates in jump and ground checks
   )
 
 ;; DECOMP BEGINS
 
-;; A "surface" contains parameters for how Jak will behave.
-;; It can be used for different in-game surfaces (ice is slippery, grass isn't)
-;; but is also used for most other changes to Jak's control
-;; For example, when jumping, there's a separate "surface" for jumping that makes
-;; Jak less responsive to changing directions.
-;; Surfaces have flags and parameters that can be combined with other surfaces
-
-;; The "surface" defines how jak moves on the ground. It includes things like how fast he can go,
-;; how slippery it is, and what functions should run when he hits it.
-;; Note that "surface" can apply to weird things, like riding the zoomer or swimming as well.
+;; A surface is the complete movement tuning profile for Jak. Physical ground
+;; materials such as stone or ice provide a base profile, while states such as
+;; jumping, attacking, riding, and swimming provide modifier profiles. Each frame
+;; surface-mult! multiplies their numeric parameters to build current-surface, so
+;; 1.0 in a modifier preserves the base value. Hooks, mode, and flags select the
+;; nonnumeric behavior.
 
 (deftype surface (basic)
   ((name              symbol)
-   (turnv             float)
-   (turnvv            float)
-   (tiltv             float)
+   (turnv             float) ;; maximum rate for turning the facing direction
+   (turnvv            float) ;; maximum rate for steering the target direction
+   (tiltv             float) ;; maximum rate for leaning toward the surface normal
    (tiltvv            float)
-   (transv-max        float)
-   (target-speed      float)
-   (seek0             float)
-   (seek90            float)
-   (seek180           float)
-   (fric              float)
-   (nonlin-fric-dist  float)
-   (slip-factor       float)
-   (slide-factor      float)
-   (slope-up-factor   float)
-   (slope-down-factor float)
+   (transv-max        float) ;; hard speed limit
+   (target-speed      float) ;; full-stick speed that acceleration seeks
+   (seek0             float) ;; acceleration with input aligned to motion
+   (seek90            float) ;; acceleration with input perpendicular to motion
+   (seek180           float) ;; braking/reversal with input opposing motion
+   (fric              float) ;; deceleration above the desired speed
+   (nonlin-fric-dist  float) ;; scale for stronger high-speed friction
+   (slip-factor       float) ;; scale applied to gravity-driven slipping
+   (slide-factor      float) ;; downhill tangent contribution while sliding
+   (slope-up-factor   float) ;; uphill speed scale
+   (slope-down-factor float) ;; downhill speed scale
    (slope-slip-angle  float)
    (impact-fric       float)
-   (bend-factor       float)
+   (bend-factor       float) ;; amount local up bends toward the ground normal
    (bend-speed        float)
    (alignv            float)
-   (slope-up-traction float)
+   (slope-up-traction float) ;; uphill grip; lower values permit more sliding
    (align-speed       float)
    (active-hook       (function none) :offset 128)
    (touch-hook        (function none))
@@ -79,14 +78,22 @@
    (dataw             uint32 2 :overlay-at mode)))
 
 ;; these calc-terminal functions are unused.
-(defun calc-terminal-vel ((arg0 float) (arg1 float) (arg2 float))
-  (- (* (/ (- (/ arg0 60) arg1) arg2) (- 1.0 arg2)) arg1))
+(defun calc-terminal-vel ((acceleration float) (constant-drag float) (drag-coefficient float))
+  "Compute the fixed-point velocity for the legacy linear drag equation from per-second
+   acceleration, constant drag, and the linear drag coefficient."
+  (- (* (/ (- (/ acceleration 60) constant-drag) drag-coefficient) (- 1.0 drag-coefficient)) constant-drag))
 
-(defun calc-terminal2-vel ((arg0 float) (arg1 float) (arg2 float) (arg3 float))
-  (let ((f0-4 (sqrtf (/ (- (/ arg0 60) arg1) arg2)))) (- f0-4 (+ arg1 (* arg2 (square f0-4))))))
+(defun calc-terminal2-vel ((acceleration float) (constant-drag float) (drag-coefficient float) (reserved float))
+  "Compute the fixed-point velocity for the legacy quadratic drag equation.
+   reserved is accepted by the original interface but is not used."
+  (let ((speed (sqrtf (/ (- (/ acceleration 60) constant-drag) drag-coefficient))))
+    (- speed (+ constant-drag (* drag-coefficient (square speed))))))
 
-(defun calc-terminal4-vel ((arg0 float) (arg1 float) (arg2 float))
-  (let ((f0-5 (sqrtf (sqrtf (/ (- (/ arg0 60) arg1) arg2))))) (- f0-5 (+ arg1 (* arg2 (* (square f0-5) f0-5 f0-5))))))
+(defun calc-terminal4-vel ((acceleration float) (constant-drag float) (drag-coefficient float))
+  "Compute the fixed-point velocity for the legacy fourth-power drag equation from
+   per-second acceleration, constant drag, and the drag coefficient."
+  (let ((speed (sqrtf (sqrtf (/ (- (/ acceleration 60) constant-drag) drag-coefficient)))))
+    (- speed (+ constant-drag (* drag-coefficient (* (square speed) speed speed))))))
 
 (defmethod print ((this surface))
   ;; seems this format string is wrong.
@@ -101,47 +108,52 @@
   this)
 
 (defun surface-interp! ((dst surface) (src0 surface) (src1 surface) (amount float))
-  "Create a surface between src0 and src1. For things like hooks/mode, src1 wins."
+  "Blend src0 toward src1 into dst.
+   Linearly interpolate all 30 numeric parameters. For each hook, prefer a nonempty src1
+   hook, then a nonempty src0 hook, then nothing. Copy mode and flags from src1."
   ;; iterate through surface data
-  (dotimes (v1-0 30)
+  (dotimes (i 30)
     ;; interpolate between the two
-    (set! (-> dst data v1-0) (+ (* (-> src1 data v1-0) amount) (* (-> src0 data v1-0) (- 1.0 amount)))))
+    (set! (-> dst data i) (+ (* (-> src1 data i) amount) (* (-> src0 data i) (- 1.0 amount)))))
   ;; iterate through hooks. Check src1, then src0 for a nonzero and non-nothing hook.
   ;; if there is no good hook, set it to nothing.
-  (dotimes (v1-3 4)
-    (set! (-> dst hook v1-3)
+  (dotimes (i 4)
+    (set! (-> dst hook i)
           (cond
-            ((and (nonzero? (-> src1 hook v1-3)) (!= (-> src1 hook v1-3) nothing)) (-> src1 hook v1-3))
-            ((and (nonzero? (-> src0 hook v1-3)) (!= (-> src0 hook v1-3) nothing)) (-> src0 hook v1-3))
+            ((and (nonzero? (-> src1 hook i)) (!= (-> src1 hook i) nothing)) (-> src1 hook i))
+            ((and (nonzero? (-> src0 hook i)) (!= (-> src0 hook i) nothing)) (-> src0 hook i))
             (else nothing))))
   ;; just use the dataw's from src1
-  (dotimes (v1-6 2)
-    (set! (-> dst dataw v1-6) (-> src1 dataw v1-6)))
+  (dotimes (i 2)
+    (set! (-> dst dataw i) (-> src1 dataw i)))
   dst)
 
 (defun surface-mult! ((dst surface) (src0 surface) (src1 surface))
-  "Multiply src0 by src1, and store the result in dst."
-  (dotimes (v1-0 30)
-    (set! (-> dst data v1-0) (* (-> src1 data v1-0) (-> src0 data v1-0))))
-  (dotimes (v1-3 4)
-    (set! (-> dst hook v1-3)
+  "Combine src0 and src1 into dst.
+   Multiply all 30 numeric parameters, select each hook from src1 then src0, copy mode from
+   src1, OR both flag sets, and call the selected mult-hook with pass 1."
+  (dotimes (i 30)
+    (set! (-> dst data i) (* (-> src1 data i) (-> src0 data i))))
+  (dotimes (i 4)
+    (set! (-> dst hook i)
           (cond
-            ((and (nonzero? (-> src1 hook v1-3)) (!= (-> src1 hook v1-3) nothing)) (-> src1 hook v1-3))
-            ((and (nonzero? (-> src0 hook v1-3)) (!= (-> src0 hook v1-3) nothing)) (-> src0 hook v1-3))
+            ((and (nonzero? (-> src1 hook i)) (!= (-> src1 hook i) nothing)) (-> src1 hook i))
+            ((and (nonzero? (-> src0 hook i)) (!= (-> src0 hook i) nothing)) (-> src0 hook i))
             (else nothing))))
-  (dotimes (v1-6 2)
-    (set! (-> dst dataw v1-6) (-> src1 dataw v1-6)))
-  ;; take the or of the flags, I guess
+  (dotimes (i 2)
+    (set! (-> dst dataw i) (-> src1 dataw i)))
+  ;; Combine the base and modifier flags after copying src1's mode.
   (set! (-> dst flags) (logior (-> src0 flags) (-> src1 flags)))
   ;; and call the mult-hook
   ((-> dst mult-hook) dst src0 src1 1)
   dst)
 
-(defun surface-clamp-speed ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
-  "When arg3 is 1, clamp speed of arg0 to the mins of arg0/arg1"
-  (when (= arg3 1)
-    (set! (-> arg0 transv-max) (fmin (-> arg0 transv-max) (-> arg1 transv-max)))
-    (set! (-> arg0 target-speed) (fmin (-> arg0 target-speed) (-> arg1 target-speed))))
+(defun surface-clamp-speed ((dst surface) (src0 surface) (src1 surface) (pass int))
+  "On pass 1, clamp dst's maximum and target speeds to the corresponding minima of dst
+   and src0. src1 is unused but retained for the mult-hook interface."
+  (when (= pass 1)
+    (set! (-> dst transv-max) (fmin (-> dst transv-max) (-> src0 transv-max)))
+    (set! (-> dst target-speed) (fmin (-> dst target-speed) (-> src0 target-speed))))
   (none))
 
 ;; The common surfaces:

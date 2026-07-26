@@ -5,163 +5,236 @@
 (require "engine/geometry/vol-h.gc")
 (require "engine/geometry/cylinder.gc")
 
+;; A plane-volume is a convex region given as a set of outward half-spaces: a point is inside when
+;; n . p <= d for every plane, with the plane's abc in xyz and its d in w. Nothing stores the volume's
+;; faces, edges or vertices, so init-vol! below recovers the edges from the planes alone when the
+;; debug display asks for them.
+;;
+;; A vol-control groups the volumes authored on one process. The positive ones union together and the
+;; cutout ones subtract, so a point counts as inside when some positive volume contains it and no
+;; cutout volume does.
+;;
+;; first-point and first-normal are (pointer vector) but stride four bytes per index, because an
+;; array of reference types is an array of pointers. So an index of 4 advances one vector and 8
+;; advances two, which is how debug-draw walks the point list in pairs.
+
 ;; DECOMP BEGINS
 
-(defun plane-volume-intersect-dist ((arg0 vector) (arg1 vector) (arg2 vector))
-  (let ((f0-1 (vector-dot arg1 arg0))
-        (f1-1 (vector-dot arg2 arg0)))
-    (if (< 0.00001 (fabs f1-1)) (/ (- (-> arg0 w) f0-1) f1-1) 409600000.0)))
+(defun plane-volume-intersect-dist ((plane-data vector) (origin vector) (direction vector))
+  "Return how many multiples of direction reach plane-data from origin, or (meters 100000) when
+   direction is within one part in a hundred thousand of parallel to the plane. plane-data is read as
+   ax + by + cz = d with d in w; its scale cancels, so the normal need not be unit as long as d
+   matches it. The result is a distance only when direction is unit, and it is signed, so a negative
+   value means the plane is behind origin."
+  (let ((origin-distance (vector-dot origin plane-data))
+        (direction-dot (vector-dot direction plane-data)))
+    (if (< 0.00001 (fabs direction-dot)) (/ (- (-> plane-data w) origin-distance) direction-dot) (meters 100000))))
 
-(defmethod init-vol! ((this plane-volume) (arg0 symbol) (arg1 vector-array) (arg2 vector-array))
-  (set! (-> this volume-type) arg0)
+(defmethod init-vol! ((this plane-volume) (volume-type symbol) (point-array vector-array) (normal-array vector-array))
+  "Recover this volume's edges from its planes and append them to point-array as endpoint pairs, plus
+   one face centroid and its plane to normal-array per face that produced any edges. volume-type is
+   recorded on the volume and later selects the debug color. The two arrays are appended to and their
+   length fields advanced, and the volume records where its own run starts and how long it is, so
+   several volumes can share one array. Returns #f, always.
+
+   Every plane's normal must be unit length and must point out of the volume, and the volume must
+   actually be closed; an open or inconsistently wound set of planes yields edges that go nowhere.
+   Overflowing either array prints an error and drops the remaining geometry rather than growing it."
+  ;; There is no topology to work from, so the edges are found by brute force: every ordered pair of
+  ;; distinct planes defines a line, and that line is an edge of the volume exactly where it survives
+  ;; clipping by all the other half-spaces. For planes i and j the line direction is the cross product
+  ;; of their normals, and a point on it is found by starting from a point on plane j and walking
+  ;; along the in-plane-j direction that heads toward plane i.
+  ;;
+  ;; The clipping walk keeps a start point and a signed span. The first clipping plane encountered
+  ;; moves the start onto itself and opens the span wide; later planes either pull the start forward
+  ;; again or shorten the span, depending on whether the step runs into or away from the plane
+  ;; already recorded. A start point that ends up more than a meter outside any other half-space is
+  ;; rejected, which is what discards the pairs of planes whose line misses the volume entirely.
+  ;;
+  ;; The pair loop runs both orders, so each edge is produced twice, once for each of the two faces
+  ;; that share it. That is deliberate: the second copy is what lets each face accumulate its own
+  ;; centroid from the endpoints lying on it.
+  (set! (-> this volume-type) volume-type)
   (set! (-> this point-count) 0)
-  (set! (-> this first-point) (the-as (pointer vector) (-> arg1 data (-> arg1 length))))
+  (set! (-> this first-point) (the-as (pointer vector) (-> point-array data (-> point-array length))))
   (set! (-> this normal-count) 0)
-  (set! (-> this first-normal) (the-as (pointer vector) (-> arg2 data (-> arg2 length))))
-  (dotimes (s3-0 (-> this num-planes))
-    (let ((sv-176 (new 'stack-no-clear 'vector)))
-      (set! (-> sv-176 quad) (the-as uint128 0))
-      (let ((sv-192 (new 'stack-no-clear 'vector)))
-        (set! (-> sv-192 quad) (the-as uint128 0))
-        (let ((sv-208 (new 'stack-no-clear 'vector)))
-          (set! (-> sv-208 quad) (the-as uint128 0))
-          (let ((sv-224 (new 'stack-no-clear 'vector)))
-            (set! (-> sv-224 quad) (the-as uint128 0))
+  (set! (-> this first-normal) (the-as (pointer vector) (-> normal-array data (-> normal-array length))))
+  (dotimes (plane-index (-> this num-planes))
+    (let ((plane-point (new 'stack-no-clear 'vector)))
+      (set! (-> plane-point quad) (the-as uint128 0))
+      (let ((edge-direction (new 'stack-no-clear 'vector)))
+        (set! (-> edge-direction quad) (the-as uint128 0))
+        (let ((toward-face (new 'stack-no-clear 'vector)))
+          (set! (-> toward-face quad) (the-as uint128 0))
+          (let ((edge-end (new 'stack-no-clear 'vector)))
+            (set! (-> edge-end quad) (the-as uint128 0))
             0.0
             0.0
             0.0
             (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-            (let ((s1-0 (new-stack-vector0))
-                  (s0-0 0)
-                  (s2-0 (-> this plane)))
-              (let ((sv-240 0))
-                (while (< sv-240 (-> this num-planes))
-                  (when (!= s3-0 sv-240)
-                    (vector-float*! sv-176 (the-as vector (-> s2-0 sv-240)) (-> s2-0 sv-240 w))
-                    (vector-cross! sv-192 (the-as vector (-> s2-0 sv-240)) (the-as vector (-> s2-0 s3-0)))
-                    (vector-normalize! sv-192 1.0)
-                    (vector-cross! sv-208 sv-192 (the-as vector (-> s2-0 sv-240)))
-                    (vector-normalize! sv-208 1.0)
-                    (let ((f0-4 (plane-volume-intersect-dist (-> s2-0 s3-0) sv-176 sv-208)))
-                      (when (!= f0-4 409600000.0)
-                        (vector+float*! sv-224 sv-176 sv-208 f0-4)
-                        (let ((sv-144 (new-stack-vector0))
-                              (sv-148 0.0)
-                              (sv-152 0))
-                          (let ((sv-160 (new-stack-vector0)))
-                            (set! (-> sv-144 quad) (-> sv-224 quad))
-                            (let ((sv-256 0))
-                              (while (< sv-256 (-> this num-planes))
-                                (when (and (!= sv-256 s3-0) (!= sv-256 sv-240))
-                                  (let ((f30-0 (plane-volume-intersect-dist (-> s2-0 sv-256) sv-144 sv-192)))
+            (let ((centroid-sum (new-stack-vector0))
+                  (endpoint-count 0)
+                  (planes (-> this plane)))
+              (let ((other-index 0))
+                (while (< other-index (-> this num-planes))
+                  (when (!= plane-index other-index)
+                    ;; A point on the other plane, then the line direction, then the in-plane
+                    ;; direction that leads from that point toward this face.
+                    (vector-float*! plane-point (the-as vector (-> planes other-index)) (-> planes other-index w))
+                    (vector-cross! edge-direction (the-as vector (-> planes other-index)) (the-as vector (-> planes plane-index)))
+                    (vector-normalize! edge-direction 1.0)
+                    (vector-cross! toward-face edge-direction (the-as vector (-> planes other-index)))
+                    (vector-normalize! toward-face 1.0)
+                    (let ((to-face-distance (plane-volume-intersect-dist (-> planes plane-index) plane-point toward-face)))
+                      (when (!= to-face-distance (meters 100000))
+                        (vector+float*! edge-end plane-point toward-face to-face-distance)
+                        (let ((edge-start (new-stack-vector0))
+                              (edge-span 0.0)
+                              (clip-count 0))
+                          (let ((clip-plane (new-stack-vector0)))
+                            (set! (-> edge-start quad) (-> edge-end quad))
+                            (let ((clip-index 0))
+                              (while (< clip-index (-> this num-planes))
+                                (when (and (!= clip-index plane-index) (!= clip-index other-index))
+                                  (let ((clip-distance (plane-volume-intersect-dist (-> planes clip-index) edge-start edge-direction)))
                                     (cond
-                                      ((= f30-0 409600000.0))
-                                      ((zero? sv-152)
-                                       (vector+float*! sv-144 sv-144 sv-192 f30-0)
-                                       (set! (-> sv-160 quad) (-> s2-0 sv-256 quad))
-                                       (set! sv-148 8192000.0)
-                                       (set! sv-152 1))
-                                      ((begin (vector-float*! sv-224 sv-192 f30-0) (>= (vector-dot sv-224 sv-160) 0.0)))
-                                      ((>= (vector-dot sv-224 (the-as vector (-> s2-0 sv-256))) 0.0)
-                                       (when (< (fabs f30-0) (fabs sv-148))
-                                         (set! sv-148 f30-0)
-                                         (+! sv-152 1)))
+                                      ;; Parallel to the line, so this plane cannot bound it.
+                                      ((= clip-distance (meters 100000)))
+                                      ((zero? clip-count)
+                                       (vector+float*! edge-start edge-start edge-direction clip-distance)
+                                       (set! (-> clip-plane quad) (-> planes clip-index quad))
+                                       (set! edge-span (meters 2000))
+                                       (set! clip-count 1))
+                                      ;; edge-end doubles as the step vector here. A step that agrees
+                                      ;; with the recorded clipping plane's normal, or with this
+                                      ;; plane's own, cannot be the one that closes the edge.
+                                      ((begin (vector-float*! edge-end edge-direction clip-distance) (>= (vector-dot edge-end clip-plane) 0.0)))
+                                      ((>= (vector-dot edge-end (the-as vector (-> planes clip-index))) 0.0)
+                                       (when (< (fabs clip-distance) (fabs edge-span))
+                                         (set! edge-span clip-distance)
+                                         (+! clip-count 1)))
                                       (else
-                                       (vector+float*! sv-144 sv-144 sv-192 f30-0)
-                                       (set! (-> sv-160 quad) (-> s2-0 sv-256 quad))
-                                       (+! sv-152 1)
-                                       (set! sv-148
+                                       (vector+float*! edge-start edge-start edge-direction clip-distance)
+                                       (set! (-> clip-plane quad) (-> planes clip-index quad))
+                                       (+! clip-count 1)
+                                       (set! edge-span
                                              (cond
-                                               ((< (fabs f30-0) (fabs sv-148)) (set! sv-148 (- sv-148 f30-0)) sv-148)
+                                               ((< (fabs clip-distance) (fabs edge-span)) (set! edge-span (- edge-span clip-distance)) edge-span)
                                                (else 0.0)))))))
-                                (+! sv-256 1))))
+                                (+! clip-index 1))))
                           (cond
-                            ((zero? sv-152))
-                            ((= sv-148 0.0))
+                            ((zero? clip-count))
+                            ((= edge-span 0.0))
                             (else
-                             (dotimes (v1-70 (-> this num-planes))
-                               (when (and (!= v1-70 s3-0) (!= v1-70 sv-240))
-                                 (if (< 4096.0 (- (vector-dot sv-144 (the-as vector (-> s2-0 v1-70))) (the-as float (-> s2-0 v1-70 w)))) (goto cfg-42))))
-                             (vector+float*! sv-224 sv-144 sv-192 sv-148)
+                             ;; Reject the pair unless the surviving start point is inside every other
+                             ;; half-space, allowing a meter of slack for the accumulated rounding.
+                             (dotimes (check-index (-> this num-planes))
+                               (when (and (!= check-index plane-index) (!= check-index other-index))
+                                 (if (< (meters 1)
+                                        (- (vector-dot edge-start (the-as vector (-> planes check-index))) (the-as float (-> planes check-index w))))
+                                   (goto next-plane))))
+                             (vector+float*! edge-end edge-start edge-direction edge-span)
                              (cond
-                               ((< (-> arg1 allocated-length) (+ (-> arg1 length) 2))
+                               ((< (-> point-array allocated-length) (+ (-> point-array length) 2))
                                 (format 0 "ERROR <AG>: vol-control #x~X out of volume points~%" this))
                                (else
-                                (set! (-> arg1 data (-> arg1 length) quad) (-> sv-144 quad))
-                                (set! (-> arg1 data (+ (-> arg1 length) 1) quad) (-> sv-224 quad))
-                                (+! (-> arg1 length) 2)
+                                (set! (-> point-array data (-> point-array length) quad) (-> edge-start quad))
+                                (set! (-> point-array data (+ (-> point-array length) 1) quad) (-> edge-end quad))
+                                (+! (-> point-array length) 2)
                                 (+! (-> this point-count) 2)))
-                             (vector+! s1-0 s1-0 sv-144)
-                             (vector+! s1-0 s1-0 sv-224)
-                             (+! s0-0 2)))))))
-                  (label cfg-42)
-                  (+! sv-240 1)))
-              (when (nonzero? s0-0)
-                (vector-float*! s1-0 s1-0 (/ 1.0 (the float s0-0)))
+                             (vector+! centroid-sum centroid-sum edge-start)
+                             (vector+! centroid-sum centroid-sum edge-end)
+                             (+! endpoint-count 2)))))))
+                  (label next-plane)
+                  (+! other-index 1)))
+              (when (nonzero? endpoint-count)
+                (vector-float*! centroid-sum centroid-sum (/ 1.0 (the float endpoint-count)))
                 (cond
-                  ((< (-> arg2 allocated-length) (+ (-> arg2 length) 2))
+                  ((< (-> normal-array allocated-length) (+ (-> normal-array length) 2))
                    (format 0 "ERROR <AG>: vol-control #x~X out of volume normals~%" this))
                   (else
-                   (set! (-> arg2 data (-> arg2 length) quad) (-> s1-0 quad))
-                   (set! (-> arg2 data (+ (-> arg2 length) 1) quad) (-> s2-0 s3-0 quad))
-                   (+! (-> arg2 length) 2)
+                   (set! (-> normal-array data (-> normal-array length) quad) (-> centroid-sum quad))
+                   (set! (-> normal-array data (+ (-> normal-array length) 1) quad) (-> planes plane-index quad))
+                   (+! (-> normal-array length) 2)
                    (set! (-> this normal-count) (+ (-> this normal-count) 2)))))))))))
   #f)
 
 (defmethod debug-draw ((this plane-volume))
-  (let* ((v1-0 (-> this volume-type))
-         (s5-0 (cond
-                 ((= v1-0 'vol) (the-as uint #x8000c000))
-                 ((= v1-0 'pvol) (the-as uint #x80808080))
-                 (else (the-as uint #x800000c0))))
-         (s4-0 (-> this first-point)))
-    (dotimes (s3-0 (/ (-> this point-count) 2))
+  "Draw the edge list init-vol! recovered for this volume, one line per consecutive pair of points.
+   The color comes from volume-type: green for vol, grey for pvol and red for anything else, all at
+   half alpha. Nothing is drawn when init-vol! has not run, since point-count is then zero."
+  (let* ((volume-type (-> this volume-type))
+         (line-color (cond
+                       ((= volume-type 'vol) (the-as uint #x8000c000))
+                       ((= volume-type 'pvol) (the-as uint #x80808080))
+                       (else (the-as uint #x800000c0))))
+         (point-cursor (-> this first-point)))
+    (dotimes (i (/ (-> this point-count) 2))
       (add-debug-line #t
                       (bucket-id debug-no-zbuf)
-                      (the-as vector s4-0)
-                      (the-as vector (&-> s4-0 4))
-                      (the-as rgba s5-0)
+                      (the-as vector point-cursor)
+                      (the-as vector (&-> point-cursor 4))
+                      (the-as rgba line-color)
                       #f
                       (the-as rgba -1))
-      (set! s4-0 (&-> s4-0 8))))
+      (set! point-cursor (&-> point-cursor 8))))
   0
   (none))
 
-(defmethod point-in-vol? ((this plane-volume) (arg0 vector) (arg1 float))
-  (dotimes (v1-0 (-> this num-planes))
-    (if (< arg1 (- (vector-dot arg0 (the-as vector (-> this plane v1-0))) (the-as float (-> this plane v1-0 w)))) (return #f)))
+(defmethod point-in-vol? ((this plane-volume) (point vector) (tolerance float))
+  "Return whether point is inside every one of this volume's half-spaces, with tolerance added to
+   each plane's distance. A positive tolerance grows the volume by that much along each plane normal,
+   which is not the same as growing it uniformly unless the normals are unit. point's w is ignored.
+   A volume with no planes reports true."
+  (dotimes (i (-> this num-planes))
+    (if (< tolerance (- (vector-dot point (the-as vector (-> this plane i))) (the-as float (-> this plane i w)))) (return #f)))
   #t)
 
 (defmethod init! ((this vol-control))
+  "Build the derived edge geometry the first time it is needed and draw every volume in this control.
+   Despite the name this runs each frame the debug display is on, and it does nothing at all unless
+   both the global volume-mark switch and this control's own display-marks and debug-alloc flags are
+   set. The point and normal arrays are allocated from the debug heap on first use, sized at ten
+   vectors per plane, and are charged to the owning process rather than to whoever is running.
+   Returns 0."
+  ;; Both the positive and the cutout volumes are initialized with 'vol, so the cutouts draw in the
+  ;; positive color rather than in one of their own.
   (with-pp
-    (let ((a0-1 this))
-      (when (and (and *display-vol-marks* (logtest? (-> a0-1 flags) 1)) (logtest? (-> this flags) 2))
+    (let ((control this))
+      (when (and (and *display-vol-marks* (logtest? (-> control flags) (vol-flags display-marks)))
+                 (logtest? (-> this flags) (vol-flags debug-alloc)))
         (when (zero? (-> this debug-point))
-          (let ((s5-0 pp))
+          (let ((saved-pp pp))
+            ;; Charge the debug allocation to the process that owns the volumes.
             (set! pp (-> this process))
-            (let ((s4-0 0))
-              (dotimes (v1-8 (-> this pos-vol-count))
-                (+! s4-0 (-> this pos-vol v1-8 num-planes)))
-              (dotimes (v1-11 (-> this neg-vol-count))
-                (+! s4-0 (-> this neg-vol v1-11 num-planes)))
-              (set! (-> this debug-point) (new 'debug 'vector-array (* 10 s4-0)))
-              (set! (-> this debug-normal) (new 'debug 'vector-array (* 10 s4-0))))
-            (set! pp s5-0))
+            (let ((plane-total 0))
+              (dotimes (positive-count-index (-> this pos-vol-count))
+                (+! plane-total (-> this pos-vol positive-count-index num-planes)))
+              (dotimes (cutout-count-index (-> this neg-vol-count))
+                (+! plane-total (-> this neg-vol cutout-count-index num-planes)))
+              (set! (-> this debug-point) (new 'debug 'vector-array (* 10 plane-total)))
+              (set! (-> this debug-normal) (new 'debug 'vector-array (* 10 plane-total))))
+            (set! pp saved-pp))
           (set! (-> this debug-point length) 0)
           (set! (-> this debug-normal length) 0)
-          (dotimes (s5-1 (-> this pos-vol-count))
-            (init-vol! (-> this pos-vol s5-1) 'vol (-> this debug-point) (-> this debug-normal)))
-          (dotimes (s5-2 (-> this neg-vol-count))
-            (init-vol! (-> this neg-vol s5-2) 'vol (-> this debug-point) (-> this debug-normal))))
-        (dotimes (s5-3 (-> this pos-vol-count))
-          (debug-draw (-> this pos-vol s5-3)))
-        (dotimes (s5-4 (-> this neg-vol-count))
-          (debug-draw (-> this neg-vol s5-4)))))
+          (dotimes (positive-init-index (-> this pos-vol-count))
+            (init-vol! (-> this pos-vol positive-init-index) 'vol (-> this debug-point) (-> this debug-normal)))
+          (dotimes (cutout-init-index (-> this neg-vol-count))
+            (init-vol! (-> this neg-vol cutout-init-index) 'vol (-> this debug-point) (-> this debug-normal))))
+        (dotimes (positive-draw-index (-> this pos-vol-count))
+          (debug-draw (-> this pos-vol positive-draw-index)))
+        (dotimes (cutout-draw-index (-> this neg-vol-count))
+          (debug-draw (-> this neg-vol cutout-draw-index)))))
     (the-as symbol 0)))
 
-(defmethod point-in-vol? ((this vol-control) (arg0 vector))
-  (dotimes (s4-0 (-> this neg-vol-count))
-    (if (point-in-vol? (-> this neg-vol s4-0) arg0 0.0) (return #f)))
-  (dotimes (s4-1 (-> this pos-vol-count))
-    (if (point-in-vol? (-> this pos-vol s4-1) arg0 0.0) (return #t)))
+(defmethod point-in-vol? ((this vol-control) (point vector))
+  "Return whether point is inside this control's authored region: inside at least one positive volume
+   and outside every cutout volume. Cutouts win, so a point inside both is outside. Tests use a zero
+   tolerance, which puts a point exactly on a face inside. A control with no positive volumes always
+   reports false."
+  (dotimes (cutout-index (-> this neg-vol-count))
+    (if (point-in-vol? (-> this neg-vol cutout-index) point 0.0) (return #f)))
+  (dotimes (positive-index (-> this pos-vol-count))
+    (if (point-in-vol? (-> this pos-vol positive-index) point 0.0) (return #t)))
   #f)

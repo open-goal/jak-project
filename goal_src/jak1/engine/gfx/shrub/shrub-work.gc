@@ -8,6 +8,30 @@
 
 ;; DECOMP BEGINS
 
+;; The static templates shrubbery.gc copies and patches while it builds the frame's shrub DMA chains.
+;;
+;; matrix-tmpl and count-tmpl are one twenty-position cycle over the two VU1 instance rings. mod-count
+;; is the position: 0 through 9 fill ring A's ten slots and 10 through 19 fill ring B's. Position k's
+;; matrix packet unpacks five quadwords to that ring's slot, and the count packet at a group boundary
+;; writes how many instances the ring holds.
+;;
+;; The DMA tag ids are the interesting part. Records are appended backwards -- each new tag's ADDR is
+;; patched to the record appended before it -- so the chain runs newest-first, and a next tag is all
+;; that is needed in the middle of a group. At the four group boundaries, positions 0, 9, 10 and 19,
+;; the tag is a cnt instead, so the chain flows on by adjacency into whatever the EE wrote
+;; immediately after it: the count packet when a ring has just filled, or an MSCALF that runs the
+;; draw entry when the next group opens. Read in DMA order, one prototype's chain is the current
+;; partial group followed by each earlier full group in reverse, each ending in its own MSCALF.
+;;
+;; mscalf-tmpl and mscalf-ret-tmpl are that MSCALF, in next and ret flavours. The chain is entered
+;; with a call, so the earliest group -- the last one the DMAC reaches -- has to return instead of
+;; jumping onward, and the builder picks the ret flavour when the bucket has no earlier group.
+;;
+;; The six near packets pair two matrix destinations with three packed-stream destinations, so the EE
+;; can rotate to a free packet while an earlier chain still names the last one. start-bank records
+;; which of the two model-init entries each ring position needs; entry 17 leaves the draw entry
+;; reading ring A and entry 21 leaves it reading ring B, which is why positions 1 through 10 want one
+;; and 0 and 11 through 19 want the other.
 (define *instance-shrub-work*
   (new 'static
        'instance-shrub-work
@@ -483,76 +507,99 @@
        :start-bank
        (new 'static 'array uint8 20 #x0 #x1 #x1 #x1 #x1 #x1 #x1 #x1 #x1 #x1 #x1 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0)))
 
-(set! (-> *instance-shrub-work* mscalf-tmpl vif0 imm) 103)
+;; Both flavours start the draw entry. Patched here rather than written into the static data because
+;; the entry address is a property of the microprogram, not of the packet.
+(set! (-> *instance-shrub-work* mscalf-tmpl vif0 imm) SHRUB-VU-ENTRY-DRAW)
 
-(set! (-> *instance-shrub-work* mscalf-ret-tmpl vif0 imm) 103)
+(set! (-> *instance-shrub-work* mscalf-ret-tmpl vif0 imm) SHRUB-VU-ENTRY-DRAW)
 
-(defun upload-generic-shrub ((arg0 dma-buffer) (arg1 generic-shrub-fragment) (arg2 int) (arg3 int))
-  (let* ((v1-0 arg0)
-         (t0-0 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet t0-0) dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet t0-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet t0-0) vif1)
-          (new 'static 'vif-tag :num #x6 :cmd (vif-cmd unpack-v4-32) :imm (shr (shl arg2 54) 54)))
-    (set! (-> v1-0 base) (&+ (the-as pointer t0-0) 16)))
-  (let* ((v1-1 (the-as matrix (-> arg0 base)))
-         (t3-0 (-> *math-camera* camera-temp))
-         (t0-3 (-> t3-0 vector 0 quad))
-         (t1-4 (-> t3-0 vector 1 quad))
-         (t2-4 (-> t3-0 vector 2 quad))
-         (t3-1 (-> t3-0 vector 3 quad)))
-    (set! (-> v1-1 vector 0 quad) t0-3)
-    (set! (-> v1-1 vector 1 quad) t1-4)
-    (set! (-> v1-1 vector 2 quad) t2-4)
-    (set! (-> v1-1 vector 3 quad) t3-1))
-  (&+! (-> arg0 base) 64)
-  (let* ((v1-4 arg0)
-         (t0-4 (the-as object (-> v1-4 base))))
-    (set! (-> (the-as vector4w-2 t0-4) vector 0 x) #x3f800000)
-    (set! (-> (the-as vector4w-2 t0-4) vector 0 y) #x3f800000)
-    (set! (-> (the-as vector4w-2 t0-4) vector 0 z) #x3f800000)
-    (set! (-> (the-as vector4w-2 t0-4) vector 0 w) 128)
-    (set! (-> (the-as vector4w-2 t0-4) vector 1 x) (the-as int (-> arg1 vtx-cnt)))
-    (set! (-> (the-as vector4w-2 t0-4) vector 1 y) 0)
-    (set! (-> (the-as vector4w-2 t0-4) vector 1 z) 0)
-    (set! (-> (the-as vector4w-2 t0-4) vector 1 w) 0)
-    (set! (-> v1-4 base) (&+ (the-as pointer t0-4) 32)))
-  (let* ((v1-5 arg0)
-         (t0-6 (the-as object (-> v1-5 base))))
-    (set! (-> (the-as dma-packet t0-6) dma)
-          (new 'static 'dma-tag :id (dma-tag-id ref) :addr (-> arg1 cnt) :qwc (-> arg1 cnt-qwc)))
-    (set! (-> (the-as dma-packet t0-6) vif0) (new 'static 'vif-tag))
-    (set! (-> (the-as dma-packet t0-6) vif1)
-          (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :imm (shr (shl (+ arg2 6) 54) 54) :num (-> arg1 cnt-qwc)))
-    (set! (-> v1-5 base) (&+ (the-as pointer t0-6) 16)))
-  (let* ((v1-6 arg0)
-         (a2-8 (the-as object (-> v1-6 base))))
-    (set! (-> (the-as dma-packet a2-8) dma)
-          (new 'static 'dma-tag :id (dma-tag-id ref) :addr (-> arg1 stq) :qwc (-> arg1 stq-qwc)))
-    (set! (-> (the-as dma-packet a2-8) vif0) (new 'static 'vif-tag :imm #x103 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a2-8) vif1)
-          (new 'static 'vif-tag :cmd (vif-cmd unpack-v2-16) :imm (shr (shl arg3 54) 54) :num (-> arg1 vtx-cnt)))
-    (set! (-> v1-6 base) (&+ (the-as pointer a2-8) 16)))
-  (let* ((v1-7 arg0)
-         (a2-10 (the-as object (-> v1-7 base))))
-    (set! (-> (the-as dma-packet a2-10) dma)
-          (new 'static 'dma-tag :id (dma-tag-id ref) :addr (-> arg1 col) :qwc (-> arg1 col-qwc)))
-    (set! (-> (the-as dma-packet a2-10) vif0) (new 'static 'vif-tag))
-    (set! (-> (the-as dma-packet a2-10) vif1)
-          (new 'static 'vif-tag :cmd (vif-cmd unpack-v3-8) :imm (shr (shl (+ arg3 1) 54) 54) :num (-> arg1 vtx-cnt)))
-    (set! (-> v1-7 base) (&+ (the-as pointer a2-10) 16)))
-  (let* ((v1-8 arg0)
-         (a2-12 (the-as object (-> v1-8 base))))
-    (set! (-> (the-as dma-packet a2-12) dma)
-          (new 'static 'dma-tag :id (dma-tag-id ref) :addr (-> arg1 vtx) :qwc (-> arg1 vtx-qwc)))
-    (set! (-> (the-as dma-packet a2-12) vif0) (new 'static 'vif-tag))
-    (set! (-> (the-as dma-packet a2-12) vif1)
-          (new 'static 'vif-tag :cmd (vif-cmd unpack-v3-16) :imm (shr (shl (+ arg3 2) 54) 54) :num (-> arg1 vtx-cnt)))
-    (set! (-> v1-8 base) (&+ (the-as pointer a2-12) 16)))
-  (let* ((v1-9 arg0)
-         (a1-7 (the-as object (-> v1-9 base))))
-    (set! (-> (the-as dma-packet a1-7) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a1-7) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a1-7) vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd mscal) :msk #x1))
-    (set! (-> v1-9 base) (&+ (the-as pointer a1-7) 16)))
-  arg0)
+(defun upload-generic-shrub ((dma-buf dma-buffer) (fragment generic-shrub-fragment) (matrix-vu-address int) (stream-vu-address int))
+  "Append a near-shrub VU1 upload to dma-buf. Unpack the camera matrix and two control quadwords at
+   matrix-vu-address, upload fragment's control records immediately after them, place its texture
+   coordinates, colors, and vertices at stream-vu-address and the next two addresses, then start
+   VU1 entry 10."
+  (let* ((dma-state dma-buf)
+         (matrix-packet (the-as object (-> dma-state base))))
+    (set! (-> (the-as dma-packet matrix-packet) dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet matrix-packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet matrix-packet) vif1)
+          (new 'static 'vif-tag :num #x6 :cmd (vif-cmd unpack-v4-32) :imm (shr (shl matrix-vu-address 54) 54)))
+    (set! (-> dma-state base) (&+ (the-as pointer matrix-packet) 16)))
+  (let* ((matrix-dst (the-as matrix (-> dma-buf base)))
+         (camera-temp (-> *math-camera* camera-temp))
+         (row-0 (-> camera-temp vector 0 quad))
+         (row-1 (-> camera-temp vector 1 quad))
+         (row-2 (-> camera-temp vector 2 quad))
+         (row-3 (-> camera-temp vector 3 quad)))
+    (set! (-> matrix-dst vector 0 quad) row-0)
+    (set! (-> matrix-dst vector 1 quad) row-1)
+    (set! (-> matrix-dst vector 2 quad) row-2)
+    (set! (-> matrix-dst vector 3 quad) row-3))
+  (&+! (-> dma-buf base) 64)
+  ;; Entry 10 expects the camera rows followed by (1, 1, 1, 128) and
+  ;; (vertex-count, 0, 0, 0).
+  (let* ((dma-state dma-buf)
+         (control-data (the-as object (-> dma-state base))))
+    (set! (-> (the-as vector4w-2 control-data) vector 0 x) #x3f800000)
+    (set! (-> (the-as vector4w-2 control-data) vector 0 y) #x3f800000)
+    (set! (-> (the-as vector4w-2 control-data) vector 0 z) #x3f800000)
+    (set! (-> (the-as vector4w-2 control-data) vector 0 w) 128)
+    (set! (-> (the-as vector4w-2 control-data) vector 1 x) (the-as int (-> fragment vtx-cnt)))
+    (set! (-> (the-as vector4w-2 control-data) vector 1 y) 0)
+    (set! (-> (the-as vector4w-2 control-data) vector 1 z) 0)
+    (set! (-> (the-as vector4w-2 control-data) vector 1 w) 0)
+    (set! (-> dma-state base) (&+ (the-as pointer control-data) 32)))
+  (let* ((dma-state dma-buf)
+         (control-packet (the-as object (-> dma-state base))))
+    (set! (-> (the-as dma-packet control-packet) dma)
+          (new 'static 'dma-tag :id (dma-tag-id ref) :addr (-> fragment cnt) :qwc (-> fragment cnt-qwc)))
+    (set! (-> (the-as dma-packet control-packet) vif0) (new 'static 'vif-tag))
+    (set! (-> (the-as dma-packet control-packet) vif1)
+          (new 'static
+               'vif-tag
+               :cmd (vif-cmd unpack-v4-32)
+               :imm
+               (shr (shl (+ matrix-vu-address 6) 54) 54)
+               :num (-> fragment cnt-qwc)))
+    (set! (-> dma-state base) (&+ (the-as pointer control-packet) 16)))
+  (let* ((dma-state dma-buf)
+         (stq-packet (the-as object (-> dma-state base))))
+    (set! (-> (the-as dma-packet stq-packet) dma)
+          (new 'static 'dma-tag :id (dma-tag-id ref) :addr (-> fragment stq) :qwc (-> fragment stq-qwc)))
+    (set! (-> (the-as dma-packet stq-packet) vif0) (new 'static 'vif-tag :imm #x103 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet stq-packet) vif1)
+          (new 'static 'vif-tag :cmd (vif-cmd unpack-v2-16) :imm (shr (shl stream-vu-address 54) 54) :num (-> fragment vtx-cnt)))
+    (set! (-> dma-state base) (&+ (the-as pointer stq-packet) 16)))
+  (let* ((dma-state dma-buf)
+         (color-packet (the-as object (-> dma-state base))))
+    (set! (-> (the-as dma-packet color-packet) dma)
+          (new 'static 'dma-tag :id (dma-tag-id ref) :addr (-> fragment col) :qwc (-> fragment col-qwc)))
+    (set! (-> (the-as dma-packet color-packet) vif0) (new 'static 'vif-tag))
+    (set! (-> (the-as dma-packet color-packet) vif1)
+          (new 'static
+               'vif-tag
+               :cmd (vif-cmd unpack-v3-8)
+               :imm
+               (shr (shl (+ stream-vu-address 1) 54) 54)
+               :num (-> fragment vtx-cnt)))
+    (set! (-> dma-state base) (&+ (the-as pointer color-packet) 16)))
+  (let* ((dma-state dma-buf)
+         (vertex-packet (the-as object (-> dma-state base))))
+    (set! (-> (the-as dma-packet vertex-packet) dma)
+          (new 'static 'dma-tag :id (dma-tag-id ref) :addr (-> fragment vtx) :qwc (-> fragment vtx-qwc)))
+    (set! (-> (the-as dma-packet vertex-packet) vif0) (new 'static 'vif-tag))
+    (set! (-> (the-as dma-packet vertex-packet) vif1)
+          (new 'static
+               'vif-tag
+               :cmd (vif-cmd unpack-v3-16)
+               :imm
+               (shr (shl (+ stream-vu-address 2) 54) 54)
+               :num (-> fragment vtx-cnt)))
+    (set! (-> dma-state base) (&+ (the-as pointer vertex-packet) 16)))
+  (let* ((dma-state dma-buf)
+         (run-packet (the-as object (-> dma-state base))))
+    (set! (-> (the-as dma-packet run-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet run-packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet run-packet) vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd mscal) :msk #x1))
+    (set! (-> dma-state base) (&+ (the-as pointer run-packet) 16)))
+  dma-buf)

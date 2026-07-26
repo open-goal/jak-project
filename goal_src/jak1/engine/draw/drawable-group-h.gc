@@ -3,20 +3,23 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/draw/drawable-h.gc")
 
-;; drawable-group is the base class for some drawable containers.
-;; it is itself a drawable, though it typically doesn't have an ID.
-;; it contains a dynamically sized array of drawables (in GOAL this means references to drawable objects).
-;; these are typically used for higher level organization - iterating through many drawable-groups is not efficient due to
-;; all the references.
-;; note that in general you shouldn't assume that calling "draw" on a group will actually call "draw" on all the members -
-;; different children classes may specialize these methods. (same goes for all the methods)
+;; Base class for reference-based drawable containers. A group is itself a
+;; drawable, though it normally has no visibility ID. The trailing data array
+;; contains child references; the declared first element is the start of
+;; variable-sized storage allocated by the constructor.
+;;
+;; Groups are intended for high-level organization rather than fine-grained
+;; traversal because each child access follows a reference. Subtypes may
+;; specialize any drawable operation, so calling draw on a group does not by
+;; itself guarantee that draw is dispatched to every child.
 
 ;; decomp begins
 
 (deftype drawable-group (drawable)
   ((length int16 :offset 6)
-   (data   drawable 1) ;; note that you get 1 drawable in the type, the rest run off the end.
-   )
+   ;; One element is declared in the type; the remaining child references run
+   ;; past the nominal end into the trailing storage allocated by the constructor.
+   (data   drawable 1))
   (:methods
    (new (symbol type int) _type_)))
 

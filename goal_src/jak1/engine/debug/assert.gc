@@ -6,44 +6,47 @@
 
 ;; TODO macros
 
-(defun __assert ((expr symbol) (msg string))
-  "Assert that expr is truthy, print assert information otherwise"
-  (when (not expr)
+(defun __assert ((exp symbol) (msg string))
+  "When exp is false, print msg and the source position captured by the assert macro. Return zero."
+  (when (not exp)
     (format #t "(ASSERT ~S) FAILED in " msg)
     (print-pos *__private-assert-info*))
   0)
 
-(defun __assert-min-max-range-float ((expr float) (minimum float) (maximum float) (msg-expr string) (msg-min string) (msg-max string))
-  "Assert that float expr is a larger value than minimum and smaller than maximum, print assert information otherwise"
-  (when (or (< expr minimum) (< maximum expr))
+(defun __assert-min-max-range-float ((exp float) (minimum float) (maximum float) (msg-exp string) (msg-min string) (msg-max string))
+  "When exp lies outside the inclusive floating-point range [minimum, maximum], print the source
+   expressions, their values, and the captured assert position. Return zero."
+  (when (or (< exp minimum) (< maximum exp))
     (format #t
             "(ASSERT_MIN_MAX_RANGE_FLOAT ~S ~S ~S) FAILED (values ~F ~F ~F) in "
-            msg-expr
+            msg-exp
             msg-min
             msg-max
-            expr
+            exp
             minimum
             maximum)
     (print-pos *__private-assert-info*))
   0)
 
-(defun __assert-min-max-range-int ((expr int) (minimum int) (maximum int) (msg-expr string) (msg-min string) (msg-max string))
-  "Assert that integer expr is a larger value than minimum and smaller than maximum, print assert information otherwise"
-  (when (or (< expr minimum) (< maximum expr))
+(defun __assert-min-max-range-int ((exp int) (minimum int) (maximum int) (msg-exp string) (msg-min string) (msg-max string))
+  "When exp lies outside the inclusive integer range [minimum, maximum], print the source
+   expressions, their values, and the captured assert position. Return zero."
+  (when (or (< exp minimum) (< maximum exp))
     (format #t
             "(ASSERT_MIN_MAX_RANGE_INT ~S ~S ~S) FAILED (values ~D ~D ~D) in "
-            msg-expr
+            msg-exp
             msg-min
             msg-max
-            expr
+            exp
             minimum
             maximum)
     (print-pos *__private-assert-info*))
   0)
 
-(defun __assert-zero-lim-range-int ((expr int) (maximum int) (msg-expr string) (msg-max string))
-  "Assert that integer expr is a larger value than zero and smaller than maximum, print assert information otherwise"
-  (when (or (< expr 0) (>= expr max))
-    (format #t "(ASSERT_ZERO_LIM_RANGE_INT ~S ~S) FAILED (values ~D ~D) in " msg-expr msg-max expr maximum)
+(defun __assert-zero-lim-range-int ((exp int) (maximum int) (msg-exp string) (msg-max string))
+  "When exp lies outside the half-open integer range [0, maximum), print the source expressions,
+   their values, and the captured assert position. Return zero."
+  (when (or (< exp 0) (>= exp maximum))
+    (format #t "(ASSERT_ZERO_LIM_RANGE_INT ~S ~S) FAILED (values ~D ~D) in " msg-exp msg-max exp maximum)
     (print-pos *__private-assert-info*))
   0)

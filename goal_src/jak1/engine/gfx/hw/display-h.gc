@@ -47,8 +47,7 @@
    (test1addr      gs-reg64)))
 
 (defun put-draw-env ((packet (pointer gif-tag)))
-  "Begin DMA transfer to the GIF/GS to send a draw env packet.
-   The length of the transfer is taken from the nloop field of the tag."
+  "Send the GIF packet beginning at packet as a direct GS draw-environment transfer."
   ;; this is a workaround for OpenGOAL not supporting 128-bitfield access yet.
   (#when PC_PORT
     (return #f))
@@ -70,7 +69,7 @@
    (new (symbol type) _type_)))
 
 (defmethod new display-frame ((allocation symbol) (type-to-make type))
-  "Allocate a new display frame"
+  "Allocate one renderer workspace and initialize its DMA buffers and optional debug profile bars."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this calc-buf) (the-as dma-buffer 0))
     (set! (-> this global-buf) (the-as dma-buffer 0))
@@ -90,9 +89,9 @@
    (frame        display-frame))
   :allow-misaligned)
 
-;; This tracks all of the display stuff in a single global
+;; This tracks all of the display stuff in a single global.
 (deftype display (basic)
-  ;; first, 3x environments. Not sure why we need 3.
+  ;; Three GS environments rotate through the video output.
   ((display-env0 display-env :inline)
    (display-env1 display-env :inline)
    (display-env2 display-env :inline)
@@ -107,8 +106,9 @@
    ;; frame indices
    (on-screen int32)
    (last-screen int32)
-   ;; not sure why we have 6, it seems like only the first 2 actually
-   ;; have valid display-frames in them.
+   ;; Six virtual slots combine the three GS environments with two renderer workspaces. Slot n uses
+   ;; environment (mod n 3), the environment from the preceding display as display-last, and
+   ;; workspace (mod n 2). Six entries allow both cycles to repeat without runtime remapping.
    (frames virtual-frame 6 :inline)
    (bg-clear-color rgba 4)
    ;; counters
@@ -145,12 +145,19 @@
 
 (define-extern set-display (function display int int int int int display))
 
-(defmethod new display ((allocation symbol) (type-to-make type) (psm int) (w int) (h int) (ztest int) (zpsm int))
+(defmethod new display ((allocation symbol)
+            (type-to-make type)
+            (color-format int)
+            (width int)
+            (height int)
+            (depth-test int)
+            (depth-format int))
+  "Allocate the display state, configure its framebuffer formats and dimensions, and bind the three
+   GS environments to two renderer workspaces over a six-slot cycle."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     ;; set the display size, texture format, zbuffer format, etc.
-    (set-display this psm w h ztest zpsm)
-    ;; set up frames. for the most part only the first 2 make sense, and
-    ;; the rest have repeats.
+    (set-display this color-format width height depth-test depth-format)
+    ;; Bind the six virtual slots to their three environments.
     (set! (-> this frames 0 display) (-> this display-env0))
     (set! (-> this frames 1 display) (-> this display-env1))
     (set! (-> this frames 2 display) (-> this display-env2))

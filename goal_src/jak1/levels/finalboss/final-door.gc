@@ -9,16 +9,18 @@
 
 ;; DECOMP BEGINS
 
-(deftype fin-door (process-hidden) ())
+(deftype fin-door (process-hidden)
+  "Hidden final-door controller."
+  ())
 
-
-(deftype final-door (process-drawable) ()
+(deftype final-door (process-drawable)
+  "Base for the paired final-boss doors."
+  ()
   (:state-methods
    idle)
   (:methods
-   (final-door-method-21 (_type_) none)
+   (setup-skeleton! (_type_) none)
    (open (symbol) _type_ :state)))
-
 
 (defskelgroup *power-left-sg*
   power-left
@@ -89,32 +91,36 @@
       (suspend)
       0))
 
-(defmethod init-from-entity! ((this final-door) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
-    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s3-0 transform-index) 3)
-      (set-vector! (-> s3-0 local-sphere) 0.0 45056.0 0.0 49152.0)
-      (set-root-prim! s4-0 s3-0))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
-  (final-door-method-21 this)
+(defmethod init-from-entity! ((this final-door) (source-entity entity-actor))
+  "Build the door collision mesh, bind its entity, initialize the subtype skeleton, and enter idle."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((door-mesh (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+      (set! (-> door-mesh prim-core collide-as) (collide-kind wall-object))
+      (set! (-> door-mesh collide-with) (collide-kind target))
+      (set! (-> door-mesh prim-core action) (collide-action solid))
+      (set! (-> door-mesh prim-core offense) (collide-offense indestructible))
+      (set! (-> door-mesh transform-index) 3)
+      (set-vector! (-> door-mesh local-sphere) 0.0 45056.0 0.0 49152.0)
+      (set-root-prim! collision door-mesh))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision))
+  (process-drawable-from-entity! this source-entity)
+  (setup-skeleton! this)
   (go (method-of-object this idle))
   (none))
 
-(deftype power-left (final-door) ())
+(deftype power-left (final-door)
+  "Left half of the paired final-boss door."
+  ())
 
-
-(deftype power-right (final-door) ())
-
+(deftype power-right (final-door)
+  "Right half of the paired final-boss door."
+  ())
 
 (defstate idle (power-left)
   :virtual #t
@@ -135,26 +141,28 @@
           (process-entity-status! self (entity-perm-status complete) #t))
         (suspend))))
 
-(defmethod final-door-method-21 ((this power-left))
+(defmethod setup-skeleton! ((this power-left))
+  "Initialize the door's subtype-specific skeleton."
   (initialize-skeleton this *power-left-sg* '())
   0
   (none))
 
-(defmethod final-door-method-21 ((this power-right))
+(defmethod setup-skeleton! ((this power-right))
+  "Initialize the door's subtype-specific skeleton."
   (initialize-skeleton this *power-right-sg* '())
   0
   (none))
 
 (deftype powercellalt (process-drawable)
-  ((root     collide-shape-moving :override)
+  "A temporary fuel-cell duplicate that jumps from Jak to a door skeleton joint."
+  ((root collide-shape-moving :override)
    (jump-pos vector :inline)
-   (base     vector :inline)
-   (index    int32))
+   (base vector :inline)
+   (index int32))
   (:methods
    (powercellalt-method-20 () none)
    (jump () _type_ :state)
    (idle () _type_ :state)))
-
 
 (defstate jump (powercellalt)
   :virtual #t
@@ -197,24 +205,26 @@
         (transform-post)
         (suspend))))
 
-(defbehavior powercellalt-init-by-other powercellalt ((arg0 entity-actor) (arg1 vector) (arg2 vector) (arg3 int))
-  (set! (-> self entity) arg0)
-  (let ((s3-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
-    (set! (-> s3-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s3-0 reaction) default-collision-reaction)
-    (set! (-> s3-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s2-0 (new 'process 'collide-shape-prim-sphere s3-0 (the-as uint 0))))
-      (set! (-> s2-0 prim-core collide-as) (collide-kind powerup))
-      (set! (-> s2-0 collide-with) (collide-kind target))
-      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4915.2)
-      (set-root-prim! s3-0 s2-0))
-    (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
-    (backup-collide-with-as s3-0)
-    (set! (-> self root) s3-0))
-  (set! (-> self root trans quad) (-> arg1 quad))
-  (set! (-> self jump-pos quad) (-> arg2 quad))
+(defbehavior powercellalt-init-by-other powercellalt ((source-entity entity-actor) (start-position vector) (jump-position vector) (joint-index int))
+  "Initialize a fuel-cell duplicate at its launch point and send it toward a door joint."
+  (set! (-> self entity) source-entity)
+  (let ((collision (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((pickup-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 0))))
+      (set! (-> pickup-sphere prim-core collide-as) (collide-kind powerup))
+      (set! (-> pickup-sphere collide-with) (collide-kind target))
+      (set-vector! (-> pickup-sphere local-sphere) 0.0 0.0 0.0 4915.2)
+      (set-root-prim! collision pickup-sphere))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> self root) collision))
+  (set! (-> self root trans quad) (-> start-position quad))
+  (set! (-> self jump-pos quad) (-> jump-position quad))
   (set-vector! (-> self root scale) 0.5 0.5 0.5 1.0)
-  (set! (-> self index) arg3)
+  (set! (-> self index) joint-index)
   (initialize-skeleton self *powercellalt-sg* '())
   (set! (-> self part) (create-launch-control group-fuel-cell-starburst self))
   enter-state

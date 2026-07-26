@@ -35,58 +35,66 @@
 
 ;; DECOMP BEGINS
 
-(defbehavior clone-anim-once process-drawable ((arg0 handle) (arg1 int) (arg2 symbol) (arg3 string))
+(defbehavior clone-anim-once process-drawable ((source-handle handle) (origin-joint-index int) (copy-transform? symbol) (prefix string))
+  "Copy and remap one animation pose from source-handle. Optionally copy its transform, update joint
+   math and effects, and place this drawable's origin at origin-joint-index when nonnegative."
   (logclear! (-> self skel status) (janim-status spool))
-  (let ((s5-0 (handle->process arg0)))
-    (if (the-as process-drawable s5-0) (joint-control-copy! (-> self skel) (-> (the-as process-drawable s5-0) skel)))
+  (let ((source (handle->process source-handle)))
+    (if (the-as process-drawable source) (joint-control-copy! (-> self skel) (-> (the-as process-drawable source) skel)))
     (cond
-      ((and (the-as process-drawable s5-0)
+      ((and (the-as process-drawable source)
             (joint-control-remap! (-> self skel)
                                   (-> self draw art-group)
-                                  (-> (the-as process-drawable s5-0) draw art-group)
+                                  (-> (the-as process-drawable source) draw art-group)
                                   '()
                                   0
-                                  arg3))
-       (when arg2
-         (let* ((s4-1 (-> self root))
-                (a0-7 (if (and (nonzero? s4-1) (type-type? (-> s4-1 type) collide-shape)) (the-as collide-shape s4-1))))
-           (if a0-7
-             (move-to-point! a0-7 (-> (the-as process-drawable s5-0) root trans))
-             (set! (-> self root trans quad) (-> (the-as process-drawable s5-0) root trans quad))))
-         (quaternion-copy! (-> self root quat) (-> (the-as process-drawable s5-0) root quat)))
-       (if (logtest? (-> (the-as process-drawable s5-0) skel status) (janim-status spool))
+                                  prefix))
+       (when copy-transform?
+         (let* ((root (-> self root))
+                (collision-root (if (and (nonzero? root) (type-type? (-> root type) collide-shape)) (the-as collide-shape root))))
+           (if collision-root
+             (move-to-point! collision-root (-> (the-as process-drawable source) root trans))
+             (set! (-> self root trans quad) (-> (the-as process-drawable source) root trans quad))))
+         (quaternion-copy! (-> self root quat) (-> (the-as process-drawable source) root quat)))
+       (if (logtest? (-> (the-as process-drawable source) skel status) (janim-status spool))
          (logior! (-> self skel status) (janim-status spool)))
        (logclear! (-> self draw status) (draw-status hidden no-anim))
        (if (not (-> self skel root-channel 0 frame-group)) (logior! (-> self draw status) (draw-status no-anim)))
-       (let* ((s5-1 self)
-              (v1-37 (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) manipy)) s5-1)))
-         (if (and manipy (not (-> (the-as manipy v1-37) draw?))) (logior! (-> self draw status) (draw-status no-anim))))
+       (let* ((drawable-self self)
+              (manipy-self (if (and (nonzero? drawable-self) (type-type? (-> drawable-self type) manipy)) drawable-self)))
+         (if (and manipy (not (-> (the-as manipy manipy-self) draw?))) (logior! (-> self draw status) (draw-status no-anim))))
        (do-joint-math! self)
-       (let ((a0-22 (-> self skel effect))) (if a0-22 (effect-control-method-9 a0-22)))
+       (let ((effects (-> self skel effect))) (if effects (update-effects effects)))
        (if (logtest? (-> self skel status) (janim-status blerc blerc-done)) (merc-blend-shape self))
        (if (logtest? (-> self skel status) (janim-status eye-done eye)) (merc-eye-anim self)))
       (else (logior! (-> self draw status) (draw-status hidden)) (ja-post))))
-  (if (>= arg1 0) (vector<-cspace! (-> self draw origin) (-> self node-list data arg1)))
+  (if (>= origin-joint-index 0) (vector<-cspace! (-> self draw origin) (-> self node-list data origin-joint-index)))
   0
   (none))
 
-(defbehavior clone-anim process-drawable ((arg0 handle) (arg1 int) (arg2 symbol) (arg3 string))
+(defbehavior clone-anim process-drawable ((source-handle handle) (origin-joint-index int) (unused-copy-transform? symbol) (prefix string))
+  "Copy a remapped animation pose from source-handle once per frame until the source process
+   disappears, then clear this drawable's spooling status."
   (ja-post)
-  (while (handle->process arg0)
-    (clone-anim-once arg0 arg1 #t arg3)
+  (while (handle->process source-handle)
+    (clone-anim-once source-handle origin-joint-index #t prefix)
     (suspend))
   (logclear! (-> self skel status) (janim-status spool))
   0
   (none))
 
+;; Offer the pole when Jak's hand midpoint is close enough, below the upper
+;; half of the grab volume, and his collision action permits an edge grab.
+;; Once occupied, wait for his control handle to release the pole before
+;; making it available again.
 (defstate swingpole-stance (swingpole)
   :code
     (behavior ()
       (loop
         (when (and *target*
-                   (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
+                   (< (vector-vector-distance (-> self root trans) (-> *target* control midpoint-of-hands)) (-> self range))
                    (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-possible))
-                   (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (/ (-> self range) 2))))
+                   (< (-> *target* control midpoint-of-hands y) (+ (-> self root trans y) (/ (-> self range) 2))))
           (if (send-event *target* 'pole-grab self) (go swingpole-active)))
         (suspend))))
 
@@ -94,18 +102,20 @@
   :code
     (behavior ()
       (suspend)
-      (while (and *target* (= (handle->process (-> *target* control unknown-handle10)) self))
+      (while (and *target* (= (handle->process (-> *target* control swingpole-handle)) self))
         (suspend))
       (suspend-for (seconds 0.5))
       (go swingpole-stance)))
 
-(defmethod init-from-entity! ((this swingpole) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swingpole) (source-entity entity-actor))
+  "Initialize the pole transform and horizontal facing from entity, install its grab range,
+   and begin waiting for a nearby edge-grab-capable target."
   "Copy defaults from the entity."
   (stack-size-set! (-> this main-thread) 128)
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this root) (new 'process 'trsq))
-  (set! (-> this root trans quad) (-> arg0 extra trans quad))
-  (quaternion-copy! (-> this root quat) (-> arg0 quat))
+  (set! (-> this root trans quad) (-> source-entity extra trans quad))
+  (quaternion-copy! (-> this root quat) (-> source-entity quat))
   (vector-identity! (-> this root scale))
   (vector-y-quaternion! (-> this dir) (-> this root quat))
   (set! (-> this dir y) 0.0)
@@ -119,7 +129,8 @@
   :virtual #t
   :code nothing)
 
-(defmethod init-from-entity! ((this process-hidden) (arg0 entity-actor))
+(defmethod init-from-entity! ((this process-hidden) (source-entity entity-actor))
+  "Mark the source entity dead and enter this hidden process's virtual die state."
   "Copy defaults from the entity."
   (process-entity-status! this (entity-perm-status dead) #t)
   (go (method-of-object this die))
@@ -127,46 +138,53 @@
 
 (deftype target-start (process-hidden) ())
 
-
 (deftype camera-start (process-hidden) ())
 
-
+;; Manipys are small script-controlled drawables. Events select animation and
+;; cloning modes, replace frame hooks, attach the drawable to another process,
+;; move or rotate it, and control visibility. Hook changes take effect in the
+;; transition phase; the code phase then evaluates animation and post hooks.
 (defstate manipy-idle (manipy)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-      (local-vars (v0-0 object))
+      (local-vars (result object))
       (case message
         (('attackable)
          (cond
            ((-> block param 0)
-            (set! v0-0 (logior (process-mask attackable) (-> self mask)))
-            (set! (-> self mask) (the-as process-mask v0-0)))
-           (else (set! v0-0 (logclear (-> self mask) (process-mask attackable))) (set! (-> self mask) (the-as process-mask v0-0))))
-         v0-0)
+            (set! result (logior (process-mask attackable) (-> self mask)))
+            (set! (-> self mask) (the-as process-mask result)))
+           (else
+            (set! result (logclear (-> self mask) (process-mask attackable)))
+            (set! (-> self mask) (the-as process-mask result))))
+         result)
         (('blend-shape)
          (cond
            ((-> block param 0)
-            (set! v0-0 (logior (-> self skel status) (janim-status blerc eye)))
-            (set! (-> self skel status) (the-as janim-status v0-0)))
+            (set! result (logior (-> self skel status) (janim-status blerc eye)))
+            (set! (-> self skel status) (the-as janim-status result)))
            (else
-            (set! v0-0 (logclear (-> self skel status) (janim-status blerc eye)))
-            (set! (-> self skel status) (the-as janim-status v0-0))))
-         v0-0)
+            (set! result (logclear (-> self skel status) (janim-status blerc eye)))
+            (set! (-> self skel status) (the-as janim-status result))))
+         result)
         (('shadow)
          (cond
-           ((-> block param 0) (set! v0-0 (-> self shadow-backup)) (set! (-> self draw shadow) (the-as shadow-geo v0-0)) v0-0)
+           ((-> block param 0)
+            (set! result (-> self shadow-backup))
+            (set! (-> self draw shadow) (the-as shadow-geo result))
+            result)
            (else (set! (-> self draw shadow) #f) #f)))
-        (('trans-hook) (set! v0-0 (-> block param 0)) (set! (-> self new-trans-hook) (the-as (function none) v0-0)) v0-0)
-        (('post-hook) (set! v0-0 (-> block param 0)) (set! (-> self new-post-hook) (the-as (function none) v0-0)) v0-0)
+        (('trans-hook) (set! result (-> block param 0)) (set! (-> self new-trans-hook) (the-as (function none) result)) result)
+        (('post-hook) (set! result (-> block param 0)) (set! (-> self new-post-hook) (the-as (function none) result)) result)
         (('eval) ((the-as (function manipy none) (-> block param 0)) self))
         (('become-hud-object) (convert-to-hud-object self (the-as hud (-> block param 0))))
-        (('event-hook) (set! v0-0 (-> block param 0)) (set! (-> self cur-event-hook) (the-as (function none) v0-0)) v0-0)
+        (('event-hook) (set! result (-> block param 0)) (set! (-> self cur-event-hook) (the-as (function none) result)) result)
         (('art-joint-anim)
          (set! (-> self new-joint-anim)
                (the-as art-joint-anim (lookup-art (-> self draw art-group) (the-as string (-> block param 0)) art-joint-anim)))
-         (set! v0-0 (-> block param 1))
-         (set! (-> self new-joint-anim-blend) (the-as uint v0-0))
-         v0-0)
+         (set! result (-> block param 1))
+         (set! (-> self new-joint-anim-blend) (the-as uint result))
+         result)
         (('anim-mode)
          (when (nonzero? (-> self skel))
            (set! (-> self anim-mode) (the-as symbol (-> block param 0)))
@@ -174,55 +192,55 @@
            (-> self anim-mode)))
         (('origin-joint-index 'center-joint)
          (set! (-> self draw origin-joint-index) (-> block param 0))
-         (set! v0-0 (-> block param 0))
-         (set! (-> self draw shadow-joint-index) (the-as uint v0-0))
-         v0-0)
+         (set! result (-> block param 0))
+         (set! (-> self draw shadow-joint-index) (the-as uint result))
+         result)
         (('max-vis-dist) (set! (-> self draw lod-set lod (-> self draw lod-set max-lod) dist) (the-as float (-> block param 0))))
         (('grab)
          (set! (-> self cur-grab-handle) (process->handle (the-as process (-> block param 0))))
-         (let ((v1-30 (handle->process (-> self cur-grab-handle))))
-           (when v1-30
-             (set! v0-0 (-> self old-grab-pos))
-             (set! (-> (the-as vector v0-0) quad) (-> (the-as process-drawable v1-30) root trans quad))
-             v0-0)))
+         (let ((grabbed-process (handle->process (-> self cur-grab-handle))))
+           (when grabbed-process
+             (set! result (-> self old-grab-pos))
+             (set! (-> (the-as vector result) quad) (-> (the-as process-drawable grabbed-process) root trans quad))
+             result)))
         (('target)
-         (set! v0-0 (process->handle (the-as process (-> block param 0))))
-         (set! (-> self cur-target-handle) (the-as handle v0-0))
-         v0-0)
+         (set! result (process->handle (the-as process (-> block param 0))))
+         (set! (-> self cur-target-handle) (the-as handle result))
+         result)
         (('trans)
          (cond
            ((type-type? (-> self root type) collide-shape)
             (move-to-point! (the-as collide-shape (-> self root)) (the-as vector (-> block param 0))))
            (else
-            (set! v0-0 (-> self root trans))
-            (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> block param 0)) quad))
-            v0-0)))
+            (set! result (-> self root trans))
+            (set! (-> (the-as vector result) quad) (-> (the-as vector (-> block param 0)) quad))
+            result)))
         (('rot)
-         (let ((s5-0 (new 'stack-no-clear 'matrix)))
-           (matrix-rotate-y! s5-0 (the-as float (-> block param 0)))
-           (matrix->quaternion (-> self root quat) s5-0)))
+         (let ((rotation-matrix (new 'stack-no-clear 'matrix)))
+           (matrix-rotate-y! rotation-matrix (the-as float (-> block param 0)))
+           (matrix->quaternion (-> self root quat) rotation-matrix)))
         (('rot-quat) (quaternion-copy! (-> self root quat) (the-as quaternion (-> block param 0))))
-        (('clone-copy-trans) (set! v0-0 (-> block param 0)) (set! (-> self clone-copy-trans) (the-as symbol v0-0)) v0-0)
+        (('clone-copy-trans) (set! result (-> block param 0)) (set! (-> self clone-copy-trans) (the-as symbol result)) result)
         (('release) (set! (-> self cur-grab-handle) (the-as handle #f)) #f)
         (('draw)
          (set! (-> self draw?) (the-as symbol (-> block param 0)))
          (cond
            ((-> block param 0)
-            (let ((v1-47 (logtest? (-> self draw status) (draw-status hidden))))
+            (let ((was-hidden? (logtest? (-> self draw status) (draw-status hidden))))
               (logclear! (-> self draw status) (draw-status hidden))
-              (when v1-47
+              (when was-hidden?
                 (cond
                   ((nonzero? (-> self skel))
-                   (let ((gp-1 (-> self skel status)))
+                   (let ((saved-skeleton-status (-> self skel status)))
                      (logior! (-> self skel status) (janim-status inited))
-                     (set! v0-0 (ja-post))
-                     (set! (-> self skel status) gp-1))
-                   v0-0)
+                     (set! result (ja-post))
+                     (set! (-> self skel status) saved-skeleton-status))
+                   result)
                   (else (ja-post))))))
            (else
-            (set! v0-0 (logior (-> self draw status) (draw-status hidden)))
-            (set! (-> self draw status) (the-as draw-status v0-0))
-            v0-0)))
+            (set! result (logior (-> self draw status) (draw-status hidden)))
+            (set! (-> self draw status) (the-as draw-status result))
+            result)))
         (('query)
          (case (-> block param 0)
            (('grab) (handle->process (-> self cur-grab-handle)))
@@ -230,9 +248,9 @@
             (case (-> self anim-mode)
               (('play1 'play) (>= (ja-frame-num 0) (the float (+ (-> (ja-group) data 0 length) -2))))))))
         (('set-frame-num)
-         (let ((v1-73 (-> self skel root-channel 0)))
-           (set! (-> v1-73 num-func) num-func-identity)
-           (set! (-> v1-73 frame-num) (the-as float (-> block param 0)))))
+         (let ((root-channel (-> self skel root-channel 0)))
+           (set! (-> root-channel num-func) num-func-identity)
+           (set! (-> root-channel frame-num) (the-as float (-> block param 0)))))
         (else (if (-> self cur-event-hook) ((-> self cur-event-hook))))))
   :trans
     (behavior ()
@@ -243,14 +261,16 @@
                  (and (!= (ja-group) (-> self new-joint-anim)) (!= (-> self anim-mode) 'clone-anim)))
         (ja-channel-push! 1 (the-as time-frame (-> self new-joint-anim-blend)))
         (ja :group! (-> self new-joint-anim) :num! min))
-      (let ((v1-20 (handle->process (-> self cur-grab-handle))))
-        (when v1-20
-          (let ((gp-1 (-> (the-as process-drawable v1-20) root trans)))
+      (let ((grabbed-process (handle->process (-> self cur-grab-handle))))
+        (when grabbed-process
+          (let ((grabbed-position (-> (the-as process-drawable grabbed-process) root trans)))
             (if (type-type? (-> self root type) collide-shape)
               (move-by-vector! (the-as collide-shape (-> self root))
-                               (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos)))
-              (vector+! (-> self root trans) (-> self root trans) (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))))
-            (set! (-> self old-grab-pos quad) (-> gp-1 quad)))))
+                               (vector-! (new 'stack-no-clear 'vector) grabbed-position (-> self old-grab-pos)))
+              (vector+! (-> self root trans)
+                        (-> self root trans)
+                        (vector-! (new 'stack-no-clear 'vector) grabbed-position (-> self old-grab-pos))))
+            (set! (-> self old-grab-pos quad) (-> grabbed-position quad)))))
       ((-> self cur-trans-hook)))
   :code
     (behavior ()
@@ -268,12 +288,12 @@
                :frame-num
                (-> (the-as process-drawable (ppointer->process (-> self parent))) skel root-channel 0 frame-num)))
           (('clone-parent)
-           (let ((gp-0 (ppointer->process (-> self parent))))
+           (let ((parent-drawable (ppointer->process (-> self parent))))
              (set! (-> self post-hook) #f)
-             (joint-control-copy! (-> self skel) (-> (the-as process-drawable gp-0) skel))
+             (joint-control-copy! (-> self skel) (-> (the-as process-drawable parent-drawable) skel))
              (joint-control-remap! (-> self skel)
                                    (-> self draw art-group)
-                                   (-> (the-as process-drawable gp-0) draw art-group)
+                                   (-> (the-as process-drawable parent-drawable) draw art-group)
                                    '()
                                    0
                                    ""))
@@ -288,36 +308,44 @@
           (('still))
           (('play1) (ja :num! (seek!)) (if (ja-done? 0) (deactivate self)))))))
 
-(defbehavior manipy-init manipy ((arg0 vector) (arg1 entity-actor) (arg2 skeleton-group) (arg3 vector))
+(defbehavior manipy-init manipy ((position vector) (source-entity entity-actor) (skel-group skeleton-group) (collision-option vector))
+  "Initialize a manipy drawable at position with skeleton. collision-option selects an ordinary
+   transform when false, a collectable collision sphere when it is a vector, or moving collision when
+   it is collide-shape-moving; then enter the event-driven animation state."
   ;; og:preserve-this increased from 128
   (stack-size-set! (-> self main-thread) 256)
   (logior! (-> self mask) (process-mask heap-shrunk))
-  (set! (-> self entity) arg1)
+  (set! (-> self entity) source-entity)
   (cond
-    ((= arg3 'collide-shape-moving)
-     (let ((s4-1 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
-       (set! (-> s4-1 dynam) (copy *standard-dynamics* 'process))
-       (set! (-> s4-1 reaction) default-collision-reaction)
-       (set! (-> s4-1 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-       (let ((s3-1 (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))))
-         (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 4096.0)
-         (set-root-prim! s4-1 s3-1))
-       (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
-       (backup-collide-with-as s4-1)
-       (set! (-> self root) s4-1)))
-    (arg3
-     (let ((s4-2 (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
-       (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-2 (the-as uint 0))))
-         (set! (-> s2-0 prim-core collide-as) (collide-kind powerup blue-eco-suck))
-         (set! (-> s2-0 collide-with) (collide-kind target))
-         (set-vector! (-> s2-0 local-sphere) (-> arg3 x) (-> arg3 y) (-> arg3 z) (-> arg3 w))
-         (set-root-prim! s4-2 s2-0))
-       (set! (-> s4-2 nav-radius) (* 0.75 (-> s4-2 root-prim local-sphere w)))
-       (backup-collide-with-as s4-2)
-       (set! (-> self root) s4-2)))
+    ((= collision-option 'collide-shape-moving)
+     (let ((moving-root (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
+       (set! (-> moving-root dynam) (copy *standard-dynamics* 'process))
+       (set! (-> moving-root reaction) default-collision-reaction)
+       (set! (-> moving-root no-reaction)
+             (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+       (let ((moving-sphere (new 'process 'collide-shape-prim-sphere moving-root (the-as uint 0))))
+         (set-vector! (-> moving-sphere local-sphere) 0.0 0.0 0.0 4096.0)
+         (set-root-prim! moving-root moving-sphere))
+       (set! (-> moving-root nav-radius) (* 0.75 (-> moving-root root-prim local-sphere w)))
+       (backup-collide-with-as moving-root)
+       (set! (-> self root) moving-root)))
+    (collision-option
+     (let ((collectable-root (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
+       (let ((collectable-sphere (new 'process 'collide-shape-prim-sphere collectable-root (the-as uint 0))))
+         (set! (-> collectable-sphere prim-core collide-as) (collide-kind powerup blue-eco-suck))
+         (set! (-> collectable-sphere collide-with) (collide-kind target))
+         (set-vector! (-> collectable-sphere local-sphere)
+                      (-> collision-option x)
+                      (-> collision-option y)
+                      (-> collision-option z)
+                      (-> collision-option w))
+         (set-root-prim! collectable-root collectable-sphere))
+       (set! (-> collectable-root nav-radius) (* 0.75 (-> collectable-root root-prim local-sphere w)))
+       (backup-collide-with-as collectable-root)
+       (set! (-> self root) collectable-root)))
     (else (set! (-> self root) (new 'process 'trsqv))))
-  (set! (-> self root trans quad) (-> arg0 quad))
-  (initialize-skeleton self arg2 '())
+  (set! (-> self root trans quad) (-> position quad))
+  (initialize-skeleton self skel-group '())
   (if (type-type? (-> self root type) collide-shape) (update-transforms! (the-as collide-shape (-> self root))))
   (set! (-> self shadow-backup) (-> self draw shadow))
   (set! (-> self new-trans-hook) nothing)
@@ -342,30 +370,41 @@
   (none))
 
 (defmethod deactivate ((this part-tracker))
+  "Kill this tracker's live particles before performing ordinary process deactivation."
   (if (nonzero? (-> this part)) (kill-and-free-particles (-> this part)))
   ((method-of-type process deactivate) this)
   (none))
 
 (defbehavior part-tracker-notify part-tracker ()
-  (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> gp-0 from) self)
-    (set! (-> gp-0 num-params) 1)
-    (set! (-> gp-0 message) 'notify)
-    (set! (-> gp-0 param 0) (the-as uint 'die))
-    (let ((s5-0 send-event-function)
-          (s4-0 (ppointer->process (-> self parent))))
-      (s5-0 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process)) s4-0) gp-0))))
+  "Send the parent process a notify event whose first parameter is die."
+  (let ((notification (new 'stack-no-clear 'event-message-block)))
+    (set! (-> notification from) self)
+    (set! (-> notification num-params) 1)
+    (set! (-> notification message) 'notify)
+    (set! (-> notification param 0) (the-as uint 'die))
+    (let ((send-event-fn send-event-function)
+          (parent-process (ppointer->process (-> self parent))))
+      (send-event-fn (if (and (nonzero? parent-process) (type-type? (-> parent-process type) process)) parent-process)
+                     notification))))
 
+;; Follow the target for the active duration and emit at the resulting
+;; position. The optional frame callback may adjust the launch control before
+;; each spawn. Afterward, keep invoking the linger callback through the
+;; particle group's linger interval, notify the parent, and stop.
 (defstate part-tracker-process (part-tracker)
   :code
     (behavior ()
       (set-time! (-> self start-time))
       (while (not (time-elapsed? (-> self start-time) (-> self duration)))
-        (let ((gp-0 (handle->process (-> self target))))
-          (when gp-0
-            (if (and gp-0 (type-type? (-> gp-0 type) process-drawable) (nonzero? (-> (the-as process-drawable gp-0) root)))
-              (vector+! (-> self root trans) (-> (the-as process-drawable gp-0) root trans) (-> self offset)))))
-        (let ((gp-1 (-> self root trans))) (if (-> self callback) ((-> self callback) self)) (spawn (-> self part) gp-1))
+        (let ((target-process (handle->process (-> self target))))
+          (when target-process
+            (if (and target-process
+                     (type-type? (-> target-process type) process-drawable)
+                     (nonzero? (-> (the-as process-drawable target-process) root)))
+              (vector+! (-> self root trans) (-> (the-as process-drawable target-process) root trans) (-> self offset)))))
+        (let ((emission-position (-> self root trans)))
+          (if (-> self callback) ((-> self callback) self))
+          (spawn (-> self part) emission-position))
         (suspend))
       (suspend-for (-> self linger-duration)
         (if (-> self linger-callback) ((-> self linger-callback) self)))
@@ -374,265 +413,303 @@
       (suspend)
       0))
 
-(defbehavior part-tracker-init part-tracker ((arg0 sparticle-launch-group)
-              (arg1 time-frame)
-              (arg2 (function part-tracker none))
-              (arg3 (pointer process-drawable))
-              (arg4 process)
-              (arg5 collide-prim-core))
+(defbehavior part-tracker-init part-tracker ((launch-group sparticle-launch-group)
+              (duration time-frame)
+              (frame-callback (function part-tracker none))
+              (userdata (pointer process-drawable))
+              (target-process process)
+              (origin collide-prim-core))
+  "Initialize a particle tracker at source-prim. Follow target for duration, or use the particle
+   group's duration when duration is not positive, invoking callback each frame when supplied."
   (stack-size-set! (-> self main-thread) 128)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg5 world-sphere quad))
-  (set! (-> self offset quad) (-> arg5 world-sphere quad))
-  (set! (-> self callback) (the-as (function part-tracker vector) arg2))
+  (set! (-> self root trans quad) (-> origin world-sphere quad))
+  (set! (-> self offset quad) (-> origin world-sphere quad))
+  (set! (-> self callback) (the-as (function part-tracker vector) frame-callback))
   (set! (-> self linger-callback) #f)
-  (set! (-> self userdata) (the-as uint arg3))
-  (set! (-> self target) (process->handle arg4))
-  (set! arg1
+  (set! (-> self userdata) (the-as uint userdata))
+  (set! (-> self target) (process->handle target-process))
+  (set! duration
         (cond
-          ((> arg1 0) (empty) arg1)
-          (else (the-as time-frame (-> arg0 duration)))))
-  (set! (-> self duration) (the-as time-frame arg1))
-  (set! (-> self linger-duration) (the-as time-frame (-> arg0 linger-duration)))
-  (set! (-> self part) (create-launch-control arg0 self))
+          ((> duration 0) (empty) duration)
+          (else (the-as time-frame (-> launch-group duration)))))
+  (set! (-> self duration) (the-as time-frame duration))
+  (set! (-> self linger-duration) (the-as time-frame (-> launch-group linger-duration)))
+  (set! (-> self part) (create-launch-control launch-group self))
   (go part-tracker-process)
   (none))
 
-;; ERROR: Failed load: (set! a0-1 (l.wu (+ a0-0 -4))) at op 11
-;; WARN: disable def twice: 68. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-;; WARN: disable def twice: 82. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-;; WARN: disable def twice: 96. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-;; WARN: disable def twice: 110. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defbehavior command-get-process camera-tracker ((arg0 object) (arg1 process))
+(defbehavior command-get-process camera-tracker ((process-spec object) (default-process process))
+  "Resolve selector to a process. Selectors may be processes, target, sidekick, parent, camera, a
+   named entity string, or a camera tracker's work, grab, look-at, pov, and anim handles. Return false
+   for a recognized handle that is no longer valid, or fallback for an unsupported selector."
   (the-as process
           (cond
-            ((null? arg0) (empty) arg1)
-            ((type-type? (rtype-of arg0) process) (the-as process arg0))
-            ((= arg0 'target) *target*)
-            ((= arg0 'sidekick) (when *target* (let ((v1-6 (-> *target* sidekick))) (if v1-6 (the-as process (-> v1-6 0 self))))))
-            ((= arg0 'parent) (let ((v1-9 (-> self parent))) (if v1-9 (the-as process (-> v1-9 0 self)))))
-            ((= arg0 'camera) *camera*)
-            ((type-type? (rtype-of arg0) string) (process-by-ename (the-as string arg0)))
+            ((null? process-spec) (empty) default-process)
+            ((type-type? (rtype-of process-spec) process) (the-as process process-spec))
+            ((= process-spec 'target) *target*)
+            ((= process-spec 'sidekick)
+             (when *target*
+               (let ((sidekick-pointer (-> *target* sidekick))) (if sidekick-pointer (the-as process (-> sidekick-pointer 0 self))))))
+            ((= process-spec 'parent)
+             (let ((parent-pointer (-> self parent))) (if parent-pointer (the-as process (-> parent-pointer 0 self)))))
+            ((= process-spec 'camera) *camera*)
+            ((type-type? (rtype-of process-spec) string) (process-by-ename (the-as string process-spec)))
             ((type-type? (-> self type) camera-tracker)
-             (let ((v1-13 self))
+             (let ((tracker self))
                (cond
-                 ((= arg0 'work) (handle->process (-> v1-13 work-process)))
-                 ((= arg0 'grab) (handle->process (-> v1-13 grab-target)))
-                 ((= arg0 'look-at) (handle->process (-> v1-13 look-at-target)))
-                 ((= arg0 'pov) (handle->process (-> v1-13 pov-target)))
-                 ((= arg0 'anim) (handle->process (-> v1-13 anim-process)))
-                 (else (empty) arg1))))
-            (else (empty) arg1))))
+                 ((= process-spec 'work) (handle->process (-> tracker work-process)))
+                 ((= process-spec 'grab) (handle->process (-> tracker grab-target)))
+                 ((= process-spec 'look-at) (handle->process (-> tracker look-at-target)))
+                 ((= process-spec 'pov) (handle->process (-> tracker pov-target)))
+                 ((= process-spec 'anim) (handle->process (-> tracker anim-process)))
+                 (else (empty) default-process))))
+            (else (empty) default-process))))
 
-(defun command-get-camera ((arg0 object) (arg1 state))
+(defun command-get-camera ((camera-spec object) (default-camera state))
+  "Resolve selector to a camera state or named camera entity, returning fallback for an unsupported
+   selector. The base, string, and fixed symbols select their standard camera states."
   (cond
-    ((null? arg0) arg1)
-    ((= arg0 'base) *camera-base-mode*)
-    ((= arg0 'string) cam-string)
-    ((= arg0 'fixed) cam-fixed)
-    ((type-type? (rtype-of arg0) symbol) (the-as state (-> (the-as symbol arg0) value)))
-    ((type-type? (rtype-of arg0) string) (the-as state arg0))
-    ((type-type? (rtype-of arg0) state) (the-as state arg0))
-    (else arg1)))
+    ((null? camera-spec) (empty) default-camera)
+    ((= camera-spec 'base) *camera-base-mode*)
+    ((= camera-spec 'string) cam-string)
+    ((= camera-spec 'fixed) cam-fixed)
+    ((type-type? (rtype-of camera-spec) symbol) (the-as state (-> (the-as symbol camera-spec) value)))
+    ((type-type? (rtype-of camera-spec) string) (the-as state camera-spec))
+    ((type-type? (rtype-of camera-spec) state) (the-as state camera-spec))
+    (else (empty) default-camera)))
 
-(defun command-get-trans ((arg0 object) (arg1 vector))
+(defun command-get-trans ((position-spec object) (default-position vector))
+  "Resolve a camera-script position. Accept null for fallback, the null and target symbols, or a
+   (process-selector joint-index) pair naming one joint's translation."
   (cond
-    ((null? arg0) (empty) arg1)
-    ((= arg0 'null) *null-vector*)
-    ((= arg0 'target) (target-pos 0))
-    ((pair? arg0)
-     (let ((s4-0 (command-get-process (car arg0) *target*))
-           (v1-4 (command-get-int (car (cdr arg0)) 0)))
+    ((null? position-spec) (empty) default-position)
+    ((= position-spec 'null) *null-vector*)
+    ((= position-spec 'target) (target-pos 0))
+    ((pair? position-spec)
+     (let ((target-process (command-get-process (car position-spec) *target*))
+           (joint-index (command-get-int (car (cdr position-spec)) 0)))
        (cond
-         (s4-0 (-> (the-as target s4-0) node-list data v1-4 bone transform vector 3))
-         (else (empty) arg1))))
-    (else (empty) arg1)))
+         (target-process (-> (the-as target target-process) node-list data joint-index bone transform vector 3))
+         (else (empty) default-position))))
+    (else (empty) default-position)))
 
-(defbehavior process-grab? camera-tracker ((arg0 process))
-  (let ((gp-0 (command-get-process arg0 *target*)))
+(defbehavior process-grab? camera-tracker ((target-spec process))
+  "Resolve target-process, remember it when called by a camera tracker, and ask it to enter grab
+   mode. Return the target's response, or false when it cannot be resolved."
+  (let ((target-process (command-get-process target-spec *target*)))
     (the-as symbol
-            (when gp-0
-              (if (type-type? (-> self type) camera-tracker) (set! (-> self grab-target) (process->handle gp-0)))
-              (send-event gp-0 'change-mode 'grab)))))
+            (when target-process
+              (if (type-type? (-> self type) camera-tracker) (set! (-> self grab-target) (process->handle target-process)))
+              (send-event target-process 'change-mode 'grab)))))
 
-(defbehavior process-release? process ((arg0 process))
-  (let ((gp-0 (command-get-process arg0 *target*)))
-    (the-as symbol (if (and gp-0 (send-event gp-0 'query 'mode) 'target-grab) (send-event gp-0 'end-mode) #t))))
+(defbehavior process-release? process ((target-spec process))
+  "Resolve target-process and query its current mode. If the query returns any truthy value, send
+   end-mode and return that response; otherwise return true."
+  (let ((target-process (command-get-process target-spec *target*)))
+    (the-as symbol
+            (if (and target-process (send-event target-process 'query 'mode) 'target-grab) (send-event target-process 'end-mode) #t))))
 
-(defun camera-change-to ((arg0 string) (arg1 int) (arg2 symbol))
-  (let ((gp-0 (command-get-camera arg0 *camera-base-mode*)))
+(defun camera-change-to ((camera-spec object) (transition-time int) (blend-from-fixed? symbol))
+  "Resolve camera-selector and change the master camera to the named entity or state, blending for
+   blend-time 300-Hz ticks. When fixed-blend? is true, request a fixed-source blend. Return false when
+   the selector cannot be resolved."
+  (let ((camera-selection (command-get-camera camera-spec *camera-base-mode*)))
     (cond
-      ((not gp-0) #f)
-      ((type-type? (rtype-of gp-0) string) (send-event *camera* 'change-to-entity-by-name gp-0) #t)
-      ((type-type? (rtype-of gp-0) state)
-       (send-event *camera* 'change-state gp-0 arg1)
-       (if arg2 (send-event *camera* 'blend-from-as-fixed))
+      ((not camera-selection) #f)
+      ((type-type? (rtype-of camera-selection) string) (send-event *camera* 'change-to-entity-by-name camera-selection) #t)
+      ((type-type? (rtype-of camera-selection) state)
+       (send-event *camera* 'change-state camera-selection transition-time)
+       (if blend-from-fixed? (send-event *camera* 'blend-from-as-fixed))
        #t))))
 
-(defbehavior camera-look-at camera-tracker ((arg0 pair) (arg1 uint))
-  (let ((gp-0 (command-get-process arg0 *target*)))
-    (when gp-0
-      (if (type-type? (-> self type) camera-tracker) (set! (-> self look-at-target) (process->handle gp-0)))
-      (send-event *camera* 'change-target gp-0 arg1))
-    gp-0))
+(defbehavior camera-look-at camera-tracker ((target-spec object) (joint-index uint))
+  "Resolve target-selector, remember it when called by a camera tracker, and make the master camera
+   look at its joint-index. Return the resolved process or false."
+  (let ((target-process (command-get-process target-spec *target*)))
+    (when target-process
+      (if (type-type? (-> self type) camera-tracker) (set! (-> self look-at-target) (process->handle target-process)))
+      (send-event *camera* 'change-target target-process joint-index))
+    target-process))
 
-(defun ja-anim-done? ((arg0 process))
+(defun ja-anim-done? ((target-spec process))
+  "Resolve target-process and return whether its current animation is finished. Manipys answer
+   through their query event; other drawables use channel zero's joint-animation state."
   (with-pp
-    (let ((gp-0 (command-get-process arg0 *target*)))
+    (let ((target-process (command-get-process target-spec *target*)))
       (the-as symbol
-              (when gp-0
+              (when target-process
                 (cond
-                  ((type-type? (-> gp-0 type) manipy) (send-event gp-0 'query 'done))
-                  ((type-type? (-> gp-0 type) process-drawable)
-                   (when (not (logtest? (-> (the-as process-drawable gp-0) skel status) (janim-status done)))
-                     (let ((s5-0 pp)) (set! pp gp-0) (let ((v0-1 (the-as object (ja-done? 0)))) (set! pp s5-0) v0-1))))))))))
+                  ((type-type? (-> target-process type) manipy) (send-event target-process 'query 'done))
+                  ((type-type? (-> target-process type) process-drawable)
+                   (when (not (logtest? (-> (the-as process-drawable target-process) skel status) (janim-status done)))
+                     (let ((saved-pp pp)) (set! pp target-process) (let ((done? (the-as object (ja-done? 0)))) (set! pp saved-pp) done?))))))))))
 
-(defbehavior camera-pov-from camera-tracker ((arg0 pair) (arg1 uint))
-  (let ((gp-0 (command-get-process arg0 *target*)))
-    (when gp-0
-      (if (type-type? (-> self type) camera-tracker) (set! (-> self pov-target) (process->handle gp-0)))
-      (when (= arg1 -10)
-        (set! arg1 (the-as uint 0))
-        (when (> (-> (the-as process-drawable gp-0) skel active-channels) 0)
-          (let ((v1-11 (lookup-art (-> (the-as process-drawable gp-0) draw jgeo) "camera" (the-as type #f))))
-            (if v1-11 (set! arg1 (the-as uint (+ (-> v1-11 number) 1)))))))
-      (send-event *camera* 'change-pov gp-0 arg1))
-    gp-0))
+(defbehavior camera-pov-from camera-tracker ((target-spec object) (joint-index int))
+  "Resolve target-selector and make the master camera use joint-index as its point of view. A joint
+   index of -10 selects the model's camera joint when present. Return the resolved process or false."
+  (let ((target-process (command-get-process target-spec *target*)))
+    (when target-process
+      (if (type-type? (-> self type) camera-tracker) (set! (-> self pov-target) (process->handle target-process)))
+      (when (= joint-index -10)
+        (set! joint-index 0)
+        (when (> (-> (the-as process-drawable target-process) skel active-channels) 0)
+          (let ((camera-joint (lookup-art (-> (the-as process-drawable target-process) draw jgeo) "camera" (the-as type #f))))
+            (if camera-joint (set! joint-index (+ (-> camera-joint number) 1))))))
+      (send-event *camera* 'change-pov target-process joint-index))
+    target-process))
 
-(defbehavior camera-anim camera-tracker ((arg0 symbol) (arg1 basic) (arg2 entity))
+(defbehavior camera-anim camera-tracker ((camera-skeleton skeleton-group) (animation-name string) (position vector))
+  "Spawn a one-shot manipy using skeleton at position, select animation, and remember its handle.
+   Return the new process pointer or false when no manipy is available."
   (set! (-> self anim-process) (the-as handle #f))
-  (let* ((s2-0 (get-process *default-dead-pool* manipy #x4000))
-         (gp-0 (when s2-0
-                 (let ((t9-1 (method-of-type manipy activate))) (t9-1 (the-as manipy s2-0) self 'manipy (the-as pointer #x70004000)))
-                 ((the-as (function process function object object object object object) run-function-in-process)
-                  s2-0
-                  manipy-init
-                  arg2
-                  #f
-                  arg0
-                  #f)
-                 (-> s2-0 ppointer))))
-    (when gp-0
-      (send-event (-> gp-0 0 self) 'anim-mode 'play1)
-      (send-event (-> gp-0 0 self) 'art-joint-anim arg1)
-      (set! (-> self anim-process) (ppointer->handle gp-0)))
-    gp-0))
+  (let* ((helper-process (get-process *default-dead-pool* manipy #x4000))
+         (helper-pointer (when helper-process
+                           (let ((activate-helper (method-of-type manipy activate)))
+                             (activate-helper (the-as manipy helper-process) self 'manipy (the-as pointer #x70004000)))
+                           ((the-as (function process function object object object object object) run-function-in-process)
+                            helper-process
+                            manipy-init
+                            position
+                            #f
+                            camera-skeleton
+                            #f)
+                           (-> helper-process ppointer))))
+    (when helper-pointer
+      (send-event (-> helper-pointer 0 self) 'anim-mode 'play1)
+      (send-event (-> helper-pointer 0 self) 'art-joint-anim animation-name)
+      (set! (-> self anim-process) (ppointer->handle helper-pointer)))
+    helper-pointer))
 
-;; ERROR: Failed load: (set! v1-42 (l.wu (+ a0-22 -4))) at op 159
-(defmethod eval ((this camera-tracker) (arg0 pair))
+(defmethod eval ((this camera-tracker) (command pair))
+  "Evaluate one (command-name . arguments) camera script command and return its command-specific
+   result. Commands can wait, loop, exchange events, grab and release actors, control drawing and
+   camera targets, and launch camera animation."
   (with-pp
-    (let ((gp-0 (the-as object #f)))
+    (let ((result (the-as object #f)))
       (cond
-        ((null? arg0))
-        ((pair? arg0)
-         (let ((a2-0 (car arg0))
-               (s4-0 (cdr arg0)))
-           (case a2-0
+        ((null? command))
+        ((pair? command)
+         (let ((command-name (car command))
+               (command-args (cdr command)))
+           (case command-name
              (('print)
-              (set! gp-0 (car s4-0))
-              (if (pair? gp-0) (set! gp-0 (eval this (the-as pair gp-0))))
-              (format #t "~A MESSAGE (~D): ~A~%" this (current-time) gp-0))
+              (set! result (car command-args))
+              (if (pair? result) (set! result (eval this (the-as pair result))))
+              (format #t "~A MESSAGE (~D): ~A~%" this (current-time) result))
              (('while)
-              (let ((s3-0 (car s4-0)))
-                (while (eval this (the-as pair s3-0))
-                  (let* ((s2-0 (cdr s4-0))
-                         (a1-3 (car s2-0)))
-                    (while (not (null? s2-0))
-                      (set! gp-0 (eval this (the-as pair a1-3)))
-                      (set! s2-0 (cdr s2-0))
-                      (set! a1-3 (car s2-0)))))))
+              (let ((while-condition (car command-args)))
+                (while (eval this (the-as pair while-condition))
+                  (let* ((while-body (cdr command-args))
+                         (while-command (car while-body)))
+                    (while (not (null? while-body))
+                      (set! result (eval this (the-as pair while-command)))
+                      (set! while-body (cdr while-body))
+                      (set! while-command (car while-body)))))))
              (('until)
-              (let ((s3-1 (car s4-0)))
-                (while (not (eval this (the-as pair s3-1)))
-                  (let* ((s2-1 (cdr s4-0))
-                         (a1-5 (car s2-1)))
-                    (while (not (null? s2-1))
-                      (set! gp-0 (eval this (the-as pair a1-5)))
-                      (set! s2-1 (cdr s2-1))
-                      (set! a1-5 (car s2-1)))))))
-             (('not) (set! gp-0 (not (eval this (the-as pair (car s4-0))))))
-             (('wait-for 'wait 'suspend) (let ((s5-1 (command-get-time (car s4-0) 1))) (suspend-for s5-1)))
-             (('message?) (when (= (-> this message) (car s4-0)) (set! gp-0 (-> this message)) (set! (-> this message) #f)))
+              (let ((until-condition (car command-args)))
+                (while (not (eval this (the-as pair until-condition)))
+                  (let* ((until-body (cdr command-args))
+                         (until-command (car until-body)))
+                    (while (not (null? until-body))
+                      (set! result (eval this (the-as pair until-command)))
+                      (set! until-body (cdr until-body))
+                      (set! until-command (car until-body)))))))
+             (('not) (set! result (not (eval this (the-as pair (car command-args))))))
+             (('wait-for 'wait 'suspend) (let ((wait-time (command-get-time (car command-args) 1))) (suspend-for wait-time)))
+             (('message?) (when (= (-> this message) (car command-args)) (set! result (-> this message)) (set! (-> this message) #f)))
              (('send-event)
-              (let ((s5-2 (command-get-process (car s4-0) *target*))
-                    (s3-2 (car (cdr s4-0)))
-                    (s4-2 (cdr (cdr s4-0))))
-                (when (and s5-2 (not (null? s3-2)))
-                  (let ((gp-1 (new 'stack-no-clear 'event-message-block)))
-                    (set! (-> gp-1 from) pp)
-                    (let ((a0-22 s4-2)) (set! (-> gp-1 num-params) ((method-of-type (rtype-of a0-22) length) a0-22)))
-                    (set! (-> gp-1 message) (the-as symbol s3-2))
-                    (set! (-> gp-1 param 0) (the-as uint (command-get-param (car s4-2) #f)))
-                    (set! (-> gp-1 param 1) (the-as uint (command-get-param (car (cdr s4-2)) #f)))
-                    (set! (-> gp-1 param 2) (the-as uint (command-get-param (car (cdr (cdr s4-2))) #f)))
-                    (set! gp-0 (send-event-function s5-2 gp-1))))))
+              (let ((recipient-process (command-get-process (car command-args) *target*))
+                    (event-name (car (cdr command-args)))
+                    (event-params (cdr (cdr command-args))))
+                (when (and recipient-process (not (null? event-name)))
+                  (let ((event-block (new 'stack-no-clear 'event-message-block)))
+                    (set! (-> event-block from) pp)
+                    ;; Camera scripts may supply at most three event parameters.
+                    (let ((params-to-count event-params))
+                      (set! (-> event-block num-params) ((method-of-type (rtype-of params-to-count) length) params-to-count)))
+                    (set! (-> event-block message) (the-as symbol event-name))
+                    (set! (-> event-block param 0) (the-as uint (command-get-param (car event-params) #f)))
+                    (set! (-> event-block param 1) (the-as uint (command-get-param (car (cdr event-params)) #f)))
+                    (set! (-> event-block param 2) (the-as uint (command-get-param (car (cdr (cdr event-params))) #f)))
+                    (set! result (send-event-function recipient-process event-block))))))
              (('eval)
-              (let ((s4-3 (car s4-0)))
-                (if (and s4-3 (type-type? (-> (the-as basic s4-3) type) function))
-                  (set! gp-0 ((the-as (function camera-tracker symbol) s4-3) this)))))
+              (let ((callback (car command-args)))
+                (if (and callback (type-type? (-> (the-as basic callback) type) function))
+                  (set! result ((the-as (function camera-tracker symbol) callback) this)))))
              (('work-set!)
-              (set! gp-0 (process->handle (eval this (the-as pair (car s4-0)))))
-              (set! (-> this work-process) (the-as handle gp-0)))
-             (('grab) (let ((a0-38 (command-get-process (car s4-0) *target*))) (set! gp-0 (process-grab? a0-38))))
-             (('release) (set! gp-0 (process-release? (handle->process (-> this grab-target)))))
-             (('alive?) (set! gp-0 (command-get-process (car s4-0) *target*)))
+              (set! result (process->handle (eval this (the-as pair (car command-args)))))
+              (set! (-> this work-process) (the-as handle result)))
+             (('grab)
+              (let ((grab-target (command-get-process (car command-args) *target*))) (set! result (process-grab? grab-target))))
+             (('release) (set! result (process-release? (handle->process (-> this grab-target)))))
+             (('alive?) (set! result (command-get-process (car command-args) *target*)))
              (('draw)
-              (set! gp-0 (command-get-process (car s4-0) *target*))
-              (when (the-as target gp-0)
-                (if (car (cdr s4-0))
-                  (logclear! (-> (the-as target gp-0) skel status) (janim-status drawn))
-                  (logior! (-> (the-as target gp-0) skel status) (janim-status drawn)))))
+              (set! result (command-get-process (car command-args) *target*))
+              (when (the-as target result)
+                (if (car (cdr command-args))
+                  (logclear! (-> (the-as target result) skel status) (janim-status drawn))
+                  (logior! (-> (the-as target result) skel status) (janim-status drawn)))))
              (('camera-change-to 'camera)
-              (set! gp-0 (camera-change-to (the-as string (car s4-0)) (command-get-time (car (cdr s4-0)) 0) #f)))
+              (set! result (camera-change-to (car command-args) (command-get-time (car (cdr command-args)) 0) #f)))
              (('intro-done?)
-              (let ((a1-25 (new 'stack-no-clear 'event-message-block)))
-                (set! (-> a1-25 from) pp)
-                (set! (-> a1-25 num-params) 0)
-                (set! (-> a1-25 message) 'intro-done?)
-                (set! gp-0 (send-event-function *camera* a1-25))))
+              (let ((camera-event-block (new 'stack-no-clear 'event-message-block)))
+                (set! (-> camera-event-block from) pp)
+                (set! (-> camera-event-block num-params) 0)
+                (set! (-> camera-event-block message) 'intro-done?)
+                (set! result (send-event-function *camera* camera-event-block))))
              (('camera-look-at 'look-at)
-              (set! gp-0 (camera-look-at (the-as pair (car s4-0)) (the-as uint (command-get-int (car (cdr s4-0)) 0)))))
-             (('pov) (set! gp-0 (camera-pov-from (the-as pair (car s4-0)) (the-as uint (command-get-int (car (cdr s4-0)) 0)))))
+              (set! result (camera-look-at (car command-args) (the-as uint (command-get-int (car (cdr command-args)) 0)))))
+             (('pov) (set! result (camera-pov-from (car command-args) (command-get-int (car (cdr command-args)) 0))))
              (('camera-anim)
-              (let ((s2-2 (car s4-0))
-                    (s3-3 (car (cdr s4-0)))
-                    (s4-4 (command-get-trans (car (cdr (cdr s4-0))) *null-vector*))
-                    (s1-0 string->symbol))
-                (format (clear *temp-string*) "*~S-sg*" s2-2)
-                (let ((s2-3 (-> (s1-0 *temp-string*) value)))
-                  (when (type-type? (rtype-of s2-3) skeleton-group)
+              (let ((art-name (car command-args))
+                    (animation-name (car (cdr command-args)))
+                    (position (command-get-trans (car (cdr (cdr command-args))) *null-vector*))
+                    (intern-symbol string->symbol))
+                (format (clear *temp-string*) "*~S-sg*" art-name)
+                (let ((camera-skeleton (-> (intern-symbol *temp-string*) value)))
+                  (when (type-type? (rtype-of camera-skeleton) skeleton-group)
                     (set! (-> this anim-process) (the-as handle #f))
-                    (let ((s1-1 (get-process *default-dead-pool* manipy #x4000)))
-                      (set! gp-0
-                            (when s1-1
-                              (let ((t9-35 (method-of-type manipy activate))) (t9-35 (the-as manipy s1-1) this 'manipy (the-as pointer #x70004000)))
-                              (run-now-in-process s1-1 manipy-init s4-4 #f s2-3 #f)
-                              (-> s1-1 ppointer))))
-                    (send-event (-> (the-as (pointer process) gp-0) 0 self) 'anim-mode 'play1)
-                    (send-event (-> (the-as (pointer process) gp-0) 0 self) 'art-joint-anim s3-3)
-                    (set! (-> this anim-process) (ppointer->handle (the-as (pointer process) gp-0)))))))
-             (else (format 0 "ERROR: camera-tracker does not know script line command ~A.~%" a2-0)))))
-        (else (format 0 "ERROR: camera-tracker requires a pair as a script line, not ~A.~%" arg0)))
-      (the-as process gp-0))))
+                    (let ((helper-process (get-process *default-dead-pool* manipy #x4000)))
+                      (set! result
+                            (when helper-process
+                              (let ((activate-helper (method-of-type manipy activate)))
+                                (activate-helper (the-as manipy helper-process) this 'manipy (the-as pointer #x70004000)))
+                              (run-now-in-process helper-process manipy-init position #f camera-skeleton #f)
+                              (-> helper-process ppointer))))
+                    (send-event (-> (the-as (pointer process) result) 0 self) 'anim-mode 'play1)
+                    (send-event (-> (the-as (pointer process) result) 0 self) 'art-joint-anim animation-name)
+                    (set! (-> this anim-process) (ppointer->handle (the-as (pointer process) result)))))))
+             (else (format 0 "ERROR: camera-tracker does not know script line command ~A.~%" command-name)))))
+        (else (format 0 "ERROR: camera-tracker requires a pair as a script line, not ~A.~%" command)))
+      (the-as process result))))
 
+;; Camera trackers run a list of camera commands, or a callback, with the
+;; ordinary movie process groups masked out. They also own the temporary
+;; handles created by look-at, point-of-view, grab, and camera-animation
+;; commands. A false border value adds the default border request; a supplied
+;; value leaves the caller's border setup alone.
 (defstate camera-tracker-process (camera-tracker)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-      (local-vars (v0-0 uint))
+      (local-vars (event-value uint))
       (case message
-        (('message) (set! v0-0 (-> block param 0)) (set! (-> self message) (the-as basic v0-0)) v0-0)
-        (('mask) (set! v0-0 (-> block param 0)) (set! (-> self mask-to-clear) (the-as process-mask v0-0)) v0-0)
-        (('border) (set! v0-0 (-> block param 0)) (set! (-> self border-value) (the-as basic v0-0)) v0-0)))
+        (('message) (set! event-value (-> block param 0)) (set! (-> self message) (the-as basic event-value)) event-value)
+        (('mask)
+         (set! event-value (-> block param 0))
+         (set! (-> self mask-to-clear) (the-as process-mask event-value))
+         event-value)
+        (('border) (set! event-value (-> block param 0)) (set! (-> self border-value) (the-as basic event-value)) event-value)))
   :enter
     (behavior ()
-      (if (-> self entity) (set-or-clear-status! (-> self entity) (entity-perm-status bit-3) #t))
+      (if (-> self entity) (set-or-clear-status! (-> self entity) (entity-perm-status no-kill) #t))
       (if (not (-> self border-value)) (add-setting! 'border-mode (-> self border-value) 0.0 0))
       (add-setting! 'process-mask 'set 0.0 (-> self mask-to-clear))
       (add-setting! 'movie (process->ppointer self) 0.0 0)
       (hide-hud-quick))
   :exit
     (behavior ()
-      (if (-> self entity) (set-or-clear-status! (-> self entity) (entity-perm-status bit-3) #f))
+      (if (-> self entity) (set-or-clear-status! (-> self entity) (entity-perm-status no-kill) #f))
       (send-event *camera* 'clear-entity))
   :code
     (behavior ()
@@ -649,8 +726,9 @@
       (suspend)
       0))
 
-;; ERROR: Failed load: (set! a0-3 (l.wu (+ a0-0 -4))) at op 42
-(defbehavior camera-tracker-init camera-tracker ((arg0 object))
+(defbehavior camera-tracker-init camera-tracker ((script-or-function object))
+  "Initialize a camera tracker from a command-list or a no-argument script function, inherit the
+   parent's entity, install movie settings and event handling, and begin evaluating the script."
   (stack-size-set! (-> self main-thread) 512)
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
   (set! (-> self mask-to-clear) (process-mask movie enemy platform projectile))
@@ -668,12 +746,15 @@
   (set! (-> self message) #f)
   (set! (-> self border-value) #f)
   (cond
-    ((pair? arg0) (set! (-> self script) (the-as pair arg0)) (set! (-> self script-line) (the-as pair arg0)))
-    ((type-type? (rtype-of arg0) function) (set! (-> self script-func) (the-as (function none) arg0)))
-    (else (format 0 "ERROR: camera-tracker requires a pair as a script, not ~A.~%" arg0)))
-  (let* ((gp-1 (ppointer->process (-> self parent)))
-         (v1-17 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) process)) gp-1)))
-    (if v1-17 (set! (-> self entity) (-> (the-as process v1-17) entity))))
+    ((pair? script-or-function)
+     (set! (-> self script) (the-as pair script-or-function))
+     (set! (-> self script-line) (the-as pair script-or-function)))
+    ((type-type? (rtype-of script-or-function) function)
+     (set! (-> self script-func) (the-as (function none) script-or-function)))
+    (else (format 0 "ERROR: camera-tracker requires a pair as a script, not ~A.~%" script-or-function)))
+  (let* ((parent-process (ppointer->process (-> self parent)))
+         (valid-parent-process (if (and (nonzero? parent-process) (type-type? (-> parent-process type) process)) parent-process)))
+    (if valid-parent-process (set! (-> self entity) (-> (the-as process valid-parent-process) entity))))
   (set! (-> self event-hook) (-> camera-tracker-process event))
   (go camera-tracker-process))
 
@@ -684,23 +765,27 @@
   (:states
    med-res-level-idle))
 
-
+;; Display this medium-resolution stand-in until its high-resolution level is
+;; active. Special display modes force it visible; Fire Canyon additionally
+;; hides the stand-in below its camera-height cutoff. Visible stand-ins keep
+;; their animation and optional ambient particle group alive.
 (defstate med-res-level-idle (med-res-level)
   :code
     (behavior ()
-      (local-vars (v1-37 float))
+      (local-vars (bounds-x float))
       (rlet ((vf0 :class vf)
              (vf16 :class vf)
              (vf17 :class vf))
         (init-vf0-vector)
         (loop
-          (let ((a0-1 (level-get *level* (-> self level)))
-                (v1-3 (-> *game-info* current-continue level)))
+          (let ((loaded-level (level-get *level* (-> self level)))
+                (continue-level (-> *game-info* current-continue level)))
             (cond
-              ((and a0-1 (or (= (-> a0-1 display?) 'special) (= (-> a0-1 display?) 'special-vis)))
+              ((and loaded-level (or (= (-> loaded-level display?) 'special) (= (-> loaded-level display?) 'special-vis)))
                (logclear! (-> self draw status) (draw-status hidden))
                (if (nonzero? (-> self skel)) (ja :num! (loop!))))
-              ((or (and a0-1 (= (-> a0-1 status) 'active)) (= v1-3 'firecanyon)) (logior! (-> self draw status) (draw-status hidden)))
+              ((or (and loaded-level (= (-> loaded-level status) 'active)) (= continue-level 'firecanyon))
+               (logior! (-> self draw status) (draw-status hidden)))
               ((and (= (-> self level) 'firecanyon) (< (-> (camera-pos) y) 327680.0))
                (logior! (-> self draw status) (draw-status hidden)))
               (else
@@ -708,14 +793,14 @@
                (if (nonzero? (-> self part)) (spawn (-> self part) (-> self root trans)))
                (if (nonzero? (-> self skel)) (ja :num! (loop!))))))
           (when (not (logtest? (-> self draw status) (draw-status hidden)))
-            (let ((v1-36 (-> self draw))
-                  (a0-18 (new 'stack-no-clear 'vector)))
-              (.lvf vf16 (&-> v1-36 origin quad))
-              (.lvf vf17 (&-> v1-36 bounds quad))
+            (let ((draw-control (-> self draw))
+                  (bounds-vector (new 'stack-no-clear 'vector)))
+              (.lvf vf16 (&-> draw-control origin quad))
+              (.lvf vf17 (&-> draw-control bounds quad))
               (.mul.x.vf.w vf16 vf16 vf0)
               (.add.vf vf16 vf16 vf17)
-              (.svf (&-> a0-18 quad) vf16))
-            (.mov v1-37 vf16))
+              (.svf (&-> bounds-vector quad) vf16))
+            (.mov bounds-x vf16))
           (suspend)
           ;; og:preserve-this
           (init-vf0-vector))))
@@ -723,44 +808,55 @@
 
 (define *lev-string* (new 'global 'string 64 (the-as string #f)))
 
-(defmethod init-from-entity! ((this med-res-level) (arg0 entity-actor))
+(defmethod init-from-entity! ((this med-res-level) (source-entity entity-actor))
+  "Initialize a medium-resolution level object from entity. Resolve an optional particle
+   group, construct the med-res-level skeleton name from its level and index properties, and make the
+   object persist across ordinary actor culling."
+  (local-vars (art-name-tag res-tag))
   (stack-size-set! (-> this main-thread) 128)
   "#f"
-  (let ((s4-0 (the-as (pointer sparticle-launch-group) #f)))
-    (let* ((sv-16 (new 'static 'res-tag))
-           (s3-0 (res-lump-data arg0 'art-name (pointer symbol) :tag-ptr (& sv-16)))
-           (s2-0 (-> s3-0 0)))
+  (let ((part-group-slot (the-as (pointer sparticle-launch-group) #f)))
+    (set! art-name-tag (new 'static 'res-tag))
+    (let* ((art-name-slot (res-lump-data source-entity 'art-name (pointer symbol) :tag-ptr (& art-name-tag)))
+           (art-name (-> art-name-slot 0)))
       (cond
-        ((not s3-0))
-        ((part-group-pointer? (the-as pointer s2-0)) (set! s4-0 (the-as (pointer sparticle-launch-group) (-> s3-0 0))))
-        ((= (-> s2-0 type) string)
-         (set! s4-0 (lookup-part-group-pointer-by-name (the-as string s2-0)))
-         (if s4-0 (set! (-> s3-0 0) (the-as symbol s4-0))))
-        ((= (-> s2-0 type) symbol)
-         (let ((a0-7 (symbol->string s2-0))) (set! s4-0 (lookup-part-group-pointer-by-name a0-7)))
-         (if s4-0 (set! (-> s3-0 0) (the-as symbol s4-0))))))
-    (when (the-as object s4-0)
-      (let ((a0-8 (-> s4-0 0)))
-        (if (and (nonzero? a0-8) (= (-> a0-8 type) sparticle-launch-group)) (set! (-> this part) (create-launch-control a0-8 this))))))
-  (process-entity-status! this (entity-perm-status bit-7) #t)
-  (let ((s4-1 (res-lump-struct (-> this entity) 'level structure))
-        (s3-1 (res-lump-value (-> this entity) 'index uint128)))
-    (when s4-1
-      (set! (-> this level) (the-as symbol s4-1))
-      (set! (-> this index) (the-as int s3-1))
+        ((not art-name-slot))
+        ((part-group-pointer? (the-as pointer art-name))
+         (set! part-group-slot (the-as (pointer sparticle-launch-group) (-> art-name-slot 0))))
+        ((= (-> art-name type) string)
+         (set! part-group-slot (lookup-part-group-pointer-by-name (the-as string art-name)))
+         (if part-group-slot (set! (-> art-name-slot 0) (the-as symbol part-group-slot))))
+        ((= (-> art-name type) symbol)
+         (let ((part-group-name (symbol->string art-name)))
+           (set! part-group-slot (lookup-part-group-pointer-by-name part-group-name)))
+         (if part-group-slot (set! (-> art-name-slot 0) (the-as symbol part-group-slot))))))
+    (when (the-as object part-group-slot)
+      (let ((part-group (-> part-group-slot 0)))
+        (if (and (nonzero? part-group) (= (-> part-group type) sparticle-launch-group))
+          (set! (-> this part) (create-launch-control part-group this))))))
+  (process-entity-status! this (entity-perm-status force-birth) #t)
+  (let ((level-name (res-lump-struct (-> this entity) 'level structure))
+        (model-index (res-lump-value (-> this entity) 'index uint128)))
+    (when level-name
+      (set! (-> this level) (the-as symbol level-name))
+      (set! (-> this index) (the-as int model-index))
       (set! (-> this root) (new 'process 'trsqv))
-      (process-drawable-from-entity! this arg0)
+      (process-drawable-from-entity! this source-entity)
       (logclear! (-> this mask) (process-mask actor-pause))
-      (format (clear *lev-string*) "med-res-~S~S" s4-1 (if (zero? s3-1) "" (* s3-1 8)))
+      (format (clear *lev-string*) "med-res-~S~S" level-name (if (zero? model-index) "" (* model-index 8)))
       (initialize-skeleton-by-name this *lev-string* '())
       (logior! (-> this draw status) (draw-status do-not-check-distance))
       (if (nonzero? (-> this draw)) (go med-res-level-idle))))
   (none))
 
 (defmethod is-visible? ((this part-spawner))
+  "Update the world-space visibility sphere and return whether it intersects the view frustum."
   (sphere<-vector+r! (-> this world-sphere) (-> this root trans) (-> this radius))
   (sphere-in-view-frustum? (-> this world-sphere)))
 
+;; Stop and start preserve the choice in the entity completion bit. A trans
+;; event moves the source; while enabled it emits its cached particle group and
+;; refreshes its positional ambient sound every frame.
 (defstate part-spawner-active (part-spawner)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -768,9 +864,9 @@
         (('stop) (process-entity-status! self (entity-perm-status complete) #t) (set! (-> self enable) #f) #t)
         (('start) (process-entity-status! self (entity-perm-status complete) #f) (set! (-> self enable) #t) #t)
         (('trans)
-         (let ((v0-1 (the-as object (-> (the-as vector (-> block param 0)) quad))))
-           (set! (-> self root trans quad) (the-as uint128 v0-1))
-           v0-1))))
+         (let ((position-quad (the-as object (-> (the-as vector (-> block param 0)) quad))))
+           (set! (-> self root trans quad) (the-as uint128 position-quad))
+           position-quad))))
   :code
     (behavior ()
       (loop
@@ -779,43 +875,47 @@
           (if (nonzero? (-> self sound)) (update! (-> self sound))))
         (suspend))))
 
-(defmethod init-from-entity! ((this part-spawner) (arg0 entity-actor))
+(defmethod init-from-entity! ((this part-spawner) (source-entity entity-actor))
+  "Initialize the particle source, ambient sound, and visibility radius. Resolve art-name from a
+   cached particle-group pointer, string, or symbol; the beach-grotto group uses a larger radius and
+   special state. The source entity's completion flag determines whether spawning begins enabled."
+  (local-vars (art-name-tag res-tag))
   (stack-size-set! (-> this main-thread) 128)
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this radius) 12288.0)
   (set! (-> this enable)
         (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))))
   (set! (-> this sound) (new 'process 'ambient-sound (-> this entity) (-> this root trans)))
-  (let ((s4-0 (the-as object "#f")))
-    (let ((s3-0 (the-as (pointer sparticle-launch-group) #f)))
-      (let* ((sv-16 (new 'static 'res-tag))
-             (s5-1 (res-lump-data arg0 'art-name (pointer (pointer sparticle-launch-group)) :tag-ptr (& sv-16)))
-             (s2-0 (-> s5-1 0)))
+  (let ((part-group-name (the-as object "#f")))
+    (let ((part-group-slot (the-as (pointer sparticle-launch-group) #f)))
+      (set! art-name-tag (new 'static 'res-tag))
+      (let* ((art-name-slot (res-lump-data source-entity 'art-name (pointer (pointer sparticle-launch-group)) :tag-ptr (& art-name-tag)))
+             (art-name (-> art-name-slot 0)))
         (cond
-          ((part-group-pointer? s2-0) (set! s3-0 (-> s5-1 0)))
-          ((= (-> s2-0 -1) string)
-           (when (string= (the-as string s2-0) "group-beach-grotto-1")
+          ((part-group-pointer? art-name) (set! part-group-slot (-> art-name-slot 0)))
+          ((= (-> art-name -1) string)
+           (when (string= (the-as string art-name) "group-beach-grotto-1")
              (set! (-> this radius) 61440.0)
              (go beach-part-grotto-1))
-           (set! s4-0 s2-0)
-           (set! s3-0 (lookup-part-group-pointer-by-name (the-as string s4-0)))
-           (if s3-0 (set! (-> s5-1 0) s3-0)))
-          ((= (-> s2-0 -1) symbol)
+           (set! part-group-name art-name)
+           (set! part-group-slot (lookup-part-group-pointer-by-name (the-as string part-group-name)))
+           (if part-group-slot (set! (-> art-name-slot 0) part-group-slot)))
+          ((= (-> art-name -1) symbol)
            ;; og:preserve-this
-           (set! s4-0 (symbol->string (the-as symbol s2-0)))
-           (set! s3-0 (lookup-part-group-pointer-by-name (the-as string s4-0)))
-           (if s3-0 (set! (-> s5-1 0) s3-0)))
-          (else (go process-drawable-art-error (the-as string s2-0)))))
-      (set! (-> this mode) s3-0)
-      (when s3-0
-        (let ((a0-19 (-> s3-0 0)))
-          (when (and (nonzero? a0-19) (= (-> a0-19 type) sparticle-launch-group))
-            (set! (-> this part) (create-launch-control a0-19 this))
+           (set! part-group-name (symbol->string (the-as symbol art-name)))
+           (set! part-group-slot (lookup-part-group-pointer-by-name (the-as string part-group-name)))
+           (if part-group-slot (set! (-> art-name-slot 0) part-group-slot)))
+          (else (go process-drawable-art-error (the-as string art-name)))))
+      (set! (-> this mode) part-group-slot)
+      (when part-group-slot
+        (let ((part-group (-> part-group-slot 0)))
+          (when (and (nonzero? part-group) (= (-> part-group type) sparticle-launch-group))
+            (set! (-> this part) (create-launch-control part-group this))
             (go part-spawner-active)))))
-    (go process-drawable-art-error (the-as string s4-0)))
+    (go process-drawable-art-error (the-as string part-group-name)))
   (none))
 
 (deftype launcher (process-drawable)
@@ -830,7 +930,6 @@
    launcher-active
    launcher-deactivated
    launcher-idle))
-
 
 (defpartgroup group-beach-launcher
   :id 37
@@ -877,7 +976,7 @@
    (:scalevel-x (meters -0.0025))
    (:scalevel-y (meters 0.24414062) (meters 0.48828125))
    (:timer (seconds 0.27))
-   (:flags (bit3))
+   (:flags (glow))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 47
@@ -896,7 +995,7 @@
    (:scalevel-x (meters -0.0025))
    (:scalevel-y (meters 0.048828125) (meters 0.09765625))
    (:timer (seconds 0.27))
-   (:flags (bit3))
+   (:flags (glow))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 48
@@ -919,7 +1018,7 @@
    (:accel-y (meters 0.0016666667))
    (:friction 0.996)
    (:timer (seconds 0.6) (seconds 0.397))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 49
@@ -942,7 +1041,7 @@
    (:accel-y (meters 0.0016666667))
    (:friction 0.996)
    (:timer (seconds 0.9))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.15))
    (:next-launcher 51)
    (:rotate-y (degrees 0) (degrees 360))))
@@ -975,7 +1074,7 @@
    (:scalevel-x (meters -0.0025))
    (:scalevel-y (meters 0.24414062) (meters 0.48828125))
    (:timer (seconds 0.27))
-   (:flags (bit3))
+   (:flags (glow))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 53
@@ -994,7 +1093,7 @@
    (:scalevel-x (meters -0.0025))
    (:scalevel-y (meters 0.048828125) (meters 0.09765625))
    (:timer (seconds 0.27))
-   (:flags (bit3))
+   (:flags (glow))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 54
@@ -1017,7 +1116,7 @@
    (:accel-y (meters 0.0016666667))
    (:friction 0.996)
    (:timer (seconds 0.9))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.15))
    (:next-launcher 51)
    (:rotate-y (degrees 0) (degrees 360))))
@@ -1051,24 +1150,30 @@
    (:accel-y (meters 0.0016666667))
    (:friction 0.996)
    (:timer (seconds 0.9))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.15))
    (:next-launcher 51)
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defbehavior cam-launcher-joystick camera-slave ()
+  "Orbit the short-fall launcher camera's position about its tracked target from horizontal
+   right-stick input."
   (when *camera-read-analog*
-    (let ((s5-0 (new-stack-matrix0))
-          (gp-0 (vector-reset! (new 'stack-no-clear 'vector))))
+    (let ((yaw-rotation (new-stack-matrix0))
+          (camera-offset (vector-reset! (new 'stack-no-clear 'vector))))
       ;; og:preserve-this changed for pc port
-      (let* ((f0-0 (analog-input-horizontal-third (the-as int (+ (-> *cpad-list* cpads 0 rightx) -128)) 0.0 48.0 110.0 -1.0))
-             (f1-1 (* -546.13336 f0-0))
-             (f0-2 (fmin 546.13336 (fmax -546.13336 f1-1))))
-        (matrix-axis-angle! s5-0 (-> *camera* local-down) f0-2))
-      (vector-! gp-0 (-> self trans) (-> *camera* tpos-curr))
-      (vector-matrix*! gp-0 gp-0 s5-0)
-      (vector+! (-> self trans) gp-0 (-> *camera* tpos-curr)))))
+      (let* ((stick-input (analog-input-horizontal-third (the-as int (+ (-> *cpad-list* cpads 0 rightx) -128)) 0.0 48.0 110.0 -1.0))
+             (unclamped-yaw (* -546.13336 stick-input))
+             (yaw-step (fmin 546.13336 (fmax -546.13336 unclamped-yaw))))
+        (matrix-axis-angle! yaw-rotation (-> *camera* local-down) yaw-step))
+      (vector-! camera-offset (-> self trans) (-> *camera* tpos-curr))
+      (vector-matrix*! camera-offset camera-offset yaw-rotation)
+      (vector+! (-> self trans) camera-offset (-> *camera* tpos-curr)))))
 
+;; The short launcher camera sits seven meters opposite local-down. Its forward
+;; direction is flattened about local-down, then pitched slightly toward the
+;; landing area. Hold that offset through the fall and blend back to the base
+;; camera once the target has been grounded for at least one second.
 (defstate cam-launcher-shortfall (camera-slave)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1078,13 +1183,13 @@
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (let ((level-forward (new 'stack-no-clear 'vector)))
           (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
-          (vector-flatten! gp-0 (-> self tracking inv-mat vector 2) (-> *camera* local-down))
-          (vector-normalize! gp-0 1.0)
-          (set! (-> self pivot-pt quad) (-> gp-0 quad))
-          (vector+float*! gp-0 gp-0 (-> *camera* local-down) 1000.0)
-          (vector-normalize-copy! (-> self tracking inv-mat vector 2) gp-0 1.0))
+          (vector-flatten! level-forward (-> self tracking inv-mat vector 2) (-> *camera* local-down))
+          (vector-normalize! level-forward 1.0)
+          (set! (-> self pivot-pt quad) (-> level-forward quad))
+          (vector+float*! level-forward level-forward (-> *camera* local-down) 1000.0)
+          (vector-normalize-copy! (-> self tracking inv-mat vector 2) level-forward 1.0))
         (vector-cross! (-> self tracking inv-mat vector 1)
                        (-> self tracking inv-mat vector 2)
                        (the-as vector (-> self tracking)))
@@ -1096,29 +1201,36 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (let ((gp-0 (current-time)))
+      (let ((start-time (current-time)))
         (loop
           (when (not (paused?))
             (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
             (send-event *camera* 'teleport)
-            (if (and (-> *camera* on-ground) (time-elapsed? gp-0 (seconds 1)))
+            (if (and (-> *camera* on-ground) (time-elapsed? start-time (seconds 1)))
               (send-event *camera* 'change-state *camera-base-mode* (seconds 0.5))))
           (suspend)))))
 
 ;; og:preserve-this
 ;; blue eco launcher cam (not used for enclosed launchers like in jungle temple)
 (defbehavior cam-launcher-long-joystick camera-slave ()
+  "Yaw the long-fall camera's one-meter horizontal view offset from right-stick input."
   (when *camera-read-analog*
-    (let ((gp-0 (new-stack-matrix0)))
+    (let ((yaw-rotation (new-stack-matrix0)))
       ;; og:preserve-this changed for pc port
-      (let* ((f0-0 (analog-input-horizontal-third (the-as int (+ (-> *cpad-list* cpads 0 rightx) -128)) 0.0 48.0 110.0 -1.0))
-             (f1-1 (* -546.13336 f0-0))
-             (f0-2 (fmin 546.13336 (fmax -546.13336 f1-1))))
+      (let* ((stick-input (analog-input-horizontal-third (the-as int (+ (-> *cpad-list* cpads 0 rightx) -128)) 0.0 48.0 110.0 -1.0))
+             (unclamped-yaw (* -546.13336 stick-input))
+             (yaw-step (fmin 546.13336 (fmax -546.13336 unclamped-yaw))))
         ;; og:preserve-this changed for high fps
-        (matrix-axis-angle! gp-0 (-> *camera* local-down) (* DISPLAY_FPS_RATIO f0-2)))
-      (vector-matrix*! (-> self view-flat) (-> self view-flat) gp-0))
+        (matrix-axis-angle! yaw-rotation (-> *camera* local-down) (* DISPLAY_FPS_RATIO yaw-step)))
+      (vector-matrix*! (-> self view-flat) (-> self view-flat) yaw-rotation))
     (vector-normalize! (-> self view-flat) 4096.0)))
 
+;; The long launcher camera follows the target from seven meters opposite
+;; local-down plus a one-meter horizontal view offset. Vertical speed decays
+;; each frame; small height errors are corrected without overshoot, while
+;; errors beyond five meters ease toward the excess and are capped at nine
+;; percent per frame. Lateral correction and target motion are applied
+;; separately so the view can orbit without disturbing vertical tracking.
 (defstate cam-launcher-longfall (camera-slave)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1143,33 +1255,34 @@
       (cam-launcher-long-joystick))
   :code
     (behavior ()
-      (let ((gp-0 (current-time)))
+      (let ((start-time (current-time)))
         (loop
           (when (not (paused?))
-            (let ((s4-0 (new 'stack-no-clear 'vector))
-                  (s5-0 (new 'stack-no-clear 'vector)))
+            (let ((target-offset (new 'stack-no-clear 'vector))
+                  (lateral-offset (new 'stack-no-clear 'vector)))
               0.0
               0.0
               0.0
               (send-event *camera* 'teleport)
-              (let* ((f0-4 (vector-dot (-> self velocity) (-> *camera* local-down)))
-                     (f30-0 (* 0.975 f0-4)))
-                (vector--float*! s4-0 (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
-                (vector-! s4-0 s4-0 (-> self trans))
-                (let ((f28-0 (vector-dot s4-0 (-> *camera* local-down))))
-                  (vector--float*! s5-0 s4-0 (-> *camera* local-down) f28-0)
+              (let* ((vertical-speed (vector-dot (-> self velocity) (-> *camera* local-down)))
+                     (next-vertical-speed (* 0.975 vertical-speed)))
+                (vector--float*! target-offset (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
+                (vector-! target-offset target-offset (-> self trans))
+                (let ((vertical-error (vector-dot target-offset (-> *camera* local-down))))
+                  (vector--float*! lateral-offset target-offset (-> *camera* local-down) vertical-error)
                   (cond
-                    ((< f28-0 f30-0) (set! f30-0 f28-0))
-                    ((< 20480.0 f28-0)
-                     (let ((f28-1 (+ -20480.0 f28-0)))
-                       (let ((f0-8 (lerp f30-0 f28-1 0.005))) (if (< f30-0 f0-8) (set! f30-0 f0-8)))
-                       (if (< (* 0.09 f28-1) f30-0) (set! f30-0 (* 0.09 f28-1)))))))
-                (vector+float*! (-> self velocity) s5-0 (-> *camera* local-down) f30-0)))
+                    ((< vertical-error next-vertical-speed) (set! next-vertical-speed vertical-error))
+                    ((< 20480.0 vertical-error)
+                     (let ((excess-error (+ -20480.0 vertical-error)))
+                       (let ((eased-speed (lerp next-vertical-speed excess-error 0.005)))
+                         (if (< next-vertical-speed eased-speed) (set! next-vertical-speed eased-speed)))
+                       (if (< (* 0.09 excess-error) next-vertical-speed) (set! next-vertical-speed (* 0.09 excess-error)))))))
+                (vector+float*! (-> self velocity) lateral-offset (-> *camera* local-down) next-vertical-speed)))
             (vector+! (-> self trans) (-> self trans) (-> self velocity))
             (set! (-> self trans x) (-> *camera* tpos-curr x))
             (set! (-> self trans z) (-> *camera* tpos-curr z))
             (vector+! (-> self trans) (-> self trans) (-> self view-flat))
-            (if (and (-> *camera* on-ground) (time-elapsed? gp-0 (seconds 1)))
+            (if (and (-> *camera* on-ground) (time-elapsed? start-time (seconds 1)))
               (send-event *camera* 'change-state *camera-base-mode* (seconds 0.5))))
           (vector-reset! (-> self tracking follow-off))
           (vector+! (-> self tracking follow-pt) (-> *camera* tpos-curr-adj) (-> self tracking follow-off))
@@ -1180,6 +1293,9 @@
           (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #f)
           (suspend)))))
 
+;; An idle launcher waits for a nearby target carrying blue eco. If the target
+;; is already in launch mode without eco, end that mode; at close range the
+;; sidekick may offer the launcher hint.
 (defstate launcher-idle (launcher)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1191,12 +1307,17 @@
       (when (and *target* (>= (-> self active-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
         (cond
           ((send-event *target* 'query 'powerup (pickup-type eco-blue)) (go launcher-active))
-          (else (let ((gp-0 'target-launch)) (if (= (send-event *target* 'query 'mode) gp-0) (send-event *target* 'end-mode)))))
+          (else
+           (let ((launch-mode 'target-launch)) (if (= (send-event *target* 'query 'mode) launch-mode) (send-event *target* 'end-mode)))))
         (if (and (and *target* (>= 32768.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
                  (not (send-event *target* 'query 'powerup (pickup-type eco-blue))))
           (level-hint-spawn (text-id sidekick-hint-launcher) "sksp0035" (the-as entity #f) *entity-pool* (game-task none)))))
   :code anim-loop)
 
+;; The active launcher keeps its plume and idle sound alive while blue eco and
+;; range conditions hold. Touch and attack events launch their sender
+;; immediately; proximity also keeps launching the main target during the
+;; first half second. Leaving the state fades the persistent sound.
 (defstate launcher-active (launcher)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1210,14 +1331,14 @@
          (update-transforms! (-> self root)))))
   :exit
     (behavior ()
-      (let ((v1-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-        (set! (-> v1-0 command) (sound-command set-param))
-        (set! (-> v1-0 id) (-> self sound-id))
-        (set! (-> v1-0 parms volume) -4)
-        (set! (-> v1-0 auto-time) 120)
-        (set! (-> v1-0 auto-from) 2)
-        (set! (-> v1-0 parms mask) (sound-mask volume time))
-        (-> v1-0 id)))
+      (let ((sound-command (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+        (set! (-> sound-command command) (sound-command set-param))
+        (set! (-> sound-command id) (-> self sound-id))
+        (set! (-> sound-command parms volume) -4)
+        (set! (-> sound-command auto-time) 120)
+        (set! (-> sound-command auto-from) 2)
+        (set! (-> sound-command parms mask) (sound-mask volume time))
+        (-> sound-command id)))
   :trans
     (behavior ()
       (if (or (or (not *target*)
@@ -1239,178 +1360,196 @@
 (defstate launcher-deactivated (launcher)
   :code anim-loop)
 
-(defmethod init-from-entity! ((this launcher) (arg0 entity-actor))
+;; The low byte of mode selects the fall camera: zero uses the short camera,
+;; one uses the long camera, and two leaves camera control unchanged.
+;; alt-vector.xyz is the destination and alt-vector.w is travel time in
+;; seconds, converted to the engine's 300-Hz clock.
+(defmethod init-from-entity! ((this launcher) (source-entity entity-actor))
+  "Build this launcher's collision sphere and drawable data, load its spring height, particle
+   group, camera mode, optional destination and seek time, then enter the idle state."
   (stack-size-set! (-> this main-thread) 128)
-  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s4-0 s3-0))
-    (set! (-> s4-0 nav-radius) 13926.4)
-    (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (let ((root-shape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((trigger-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 0))))
+      (set! (-> trigger-sphere prim-core collide-as) (collide-kind enemy))
+      (set! (-> trigger-sphere collide-with) (collide-kind target))
+      (set-vector! (-> trigger-sphere local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! root-shape trigger-sphere))
+    (set! (-> root-shape nav-radius) 13926.4)
+    (backup-collide-with-as root-shape)
+    (set! (-> this root) root-shape))
+  (process-drawable-from-entity! this source-entity)
   (update-transforms! (-> this root))
   (set! (-> this active-distance) 409600.0)
-  (set! (-> this spring-height) (res-lump-float arg0 'spring-height :default 163840.0))
-  (let ((s4-1 (res-lump-value arg0 'mode uint128)))
-    (let ((v1-18 (-> this entity extra level name)))
+  (set! (-> this spring-height) (res-lump-float source-entity 'spring-height :default 163840.0))
+  (let ((packed-mode (res-lump-value source-entity 'mode uint128)))
+    (let ((level-name (-> this entity extra level name)))
       (set! (-> this part)
             (create-launch-control (cond
-                                     ((= v1-18 'beach) group-beach-launcher)
-                                     ((= v1-18 'swamp) group-swamp-launcher)
+                                     ((= level-name 'beach) group-beach-launcher)
+                                     ((= level-name 'swamp) group-swamp-launcher)
                                      (else group-jungle-launcher))
                                    this)))
-    (let ((v1-24 (logand (the-as int s4-1) 255)))
+    (let ((camera-mode (logand (the-as int packed-mode) 255)))
       (cond
-        ((= (the-as uint v1-24) 1) (set! (-> this camera) cam-launcher-longfall))
-        ((= (the-as uint v1-24) 2) (set! (-> this camera) #f))
+        ((= (the-as uint camera-mode) 1) (set! (-> this camera) cam-launcher-longfall))
+        ((= (the-as uint camera-mode) 2) (set! (-> this camera) #f))
         (else (set! (-> this camera) cam-launcher-shortfall)))))
-  (let ((v1-29 (res-lump-struct arg0 'alt-vector vector)))
-    (when v1-29
-      (set-vector! (-> this dest) (-> v1-29 x) (-> v1-29 y) (-> v1-29 z) 1.0)
-      (set! (-> this seek-time) (the-as time-frame (the int (* 300.0 (-> v1-29 w)))))))
+  (let ((destination-spec (res-lump-struct source-entity 'alt-vector vector)))
+    (when destination-spec
+      (set-vector! (-> this dest) (-> destination-spec x) (-> destination-spec y) (-> destination-spec z) 1.0)
+      (set! (-> this seek-time) (the-as time-frame (the int (* 300.0 (-> destination-spec w)))))))
   (set! (-> this sound-id) (new-sound-id))
   (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (go launcher-idle)
   (none))
 
-(defbehavior launcher-init-by-other launcher ((arg0 vector) (arg1 float) (arg2 int) (arg3 float))
+(defbehavior launcher-init-by-other launcher ((position vector) (spring-height float) (packed-mode int) (active-distance float))
+  "Create a launcher at position with spring-height, packed camera mode, and active-distance,
+   selecting the level's particle group and any destination stored on its entity."
   (stack-size-set! (-> self main-thread) 128)
-  (let ((s2-0 (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
-    (let ((s1-0 (new 'process 'collide-shape-prim-sphere s2-0 (the-as uint 0))))
-      (set! (-> s1-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s1-0 collide-with) (collide-kind target))
-      (set-vector! (-> s1-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s2-0 s1-0))
-    (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
-    (backup-collide-with-as s2-0)
-    (set! (-> self root) s2-0))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (let ((root-shape (new 'process 'collide-shape self (collide-list-enum hit-by-player))))
+    (let ((trigger-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 0))))
+      (set! (-> trigger-sphere prim-core collide-as) (collide-kind enemy))
+      (set! (-> trigger-sphere collide-with) (collide-kind target))
+      (set-vector! (-> trigger-sphere local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! root-shape trigger-sphere))
+    (set! (-> root-shape nav-radius) (* 0.75 (-> root-shape root-prim local-sphere w)))
+    (backup-collide-with-as root-shape)
+    (set! (-> self root) root-shape))
+  (set! (-> self root trans quad) (-> position quad))
   (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
   (set-vector! (-> self root quat) 0.0 0.0 0.0 1.0)
   (update-transforms! (-> self root))
-  (set! (-> self spring-height) arg1)
-  (set! (-> self active-distance) arg3)
-  (let ((v1-23 (-> self entity extra level name)))
+  (set! (-> self spring-height) spring-height)
+  (set! (-> self active-distance) active-distance)
+  (let ((level-name (-> self entity extra level name)))
     (set! (-> self part)
           (create-launch-control (cond
-                                   ((= v1-23 'beach) group-beach-launcher)
-                                   ((= v1-23 'swamp) group-swamp-launcher)
+                                   ((= level-name 'beach) group-beach-launcher)
+                                   ((= level-name 'swamp) group-swamp-launcher)
                                    (else group-jungle-launcher))
                                  self)))
-  (case (logand arg2 255)
+  (case (logand packed-mode 255)
     ((1) (set! (-> self camera) cam-launcher-longfall))
     ((2) (set! (-> self camera) #f))
     (else (set! (-> self camera) cam-launcher-shortfall)))
-  (let ((v1-34 (res-lump-struct (-> self entity) 'alt-vector vector)))
-    (when v1-34
-      (set-vector! (-> self dest) (-> v1-34 x) (-> v1-34 y) (-> v1-34 z) 1.0)
-      (set! (-> self seek-time) (the-as time-frame (the int (* 300.0 (-> v1-34 w)))))))
+  (let ((destination-spec (res-lump-struct (-> self entity) 'alt-vector vector)))
+    (when destination-spec
+      (set-vector! (-> self dest) (-> destination-spec x) (-> destination-spec y) (-> destination-spec z) 1.0)
+      (set! (-> self seek-time) (the-as time-frame (the int (* 300.0 (-> destination-spec w)))))))
   (set! (-> self sound-id) (new-sound-id))
   (go launcher-idle)
   (none))
 
+;; Track optional moving collision geometry and test it against the touching
+;; list until run-function becomes false. Touches ignore the owner. Attack
+;; events retain or allocate attack IDs as appropriate; a configured ordinary
+;; event uses the owner as sender, and an unconfigured tracker forwards the
+;; original message block to its owner.
 (defstate touch-tracker-idle (touch-tracker)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-      (local-vars (v0-0 object))
+      (local-vars (value object))
       (case message
         (('touched)
-         (let ((v1-1 (ppointer->process (-> self parent))))
-           (when (!= v1-1 proc)
+         (let ((owner (ppointer->process (-> self parent))))
+           (when (!= owner proc)
              (cond
                ((= (-> self event) 'attack)
                 (cond
                   ((= (-> proc type) target)
+                   (send-event proc (-> self event) :from (the-as process owner) #f (static-attack-info ((mode (-> self event-mode))))))
+                  ((= (-> owner type) target)
                    (send-event proc
                                (-> self event)
-                               :from (the-as process v1-1)
-                               #f
-                               (static-attack-info ((mode (the-as symbol (-> self event-mode)))))))
-                  ((= (-> v1-1 type) target)
-                   (send-event proc
-                               (-> self event)
-                               :from (the-as process v1-1)
+                               :from (the-as process owner)
                                #f
                                (-> self event-mode)
                                (-> *target* control target-attack-id)
                                (-> *target* control attack-count)))
                   (else
-                   (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-                     (set! (-> a1-5 from) (the-as process v1-1))
-                     (set! (-> a1-5 num-params) 4)
-                     (set! (-> a1-5 message) (-> self event))
-                     (set! (-> a1-5 param 0) (the-as uint #f))
-                     (set! (-> a1-5 param 1) (the-as uint (-> self event-mode)))
-                     (let ((v1-19 (+ *global-attack-id* 1))) (set! *global-attack-id* v1-19) (set! (-> a1-5 param 2) (the-as uint v1-19)))
-                     (set! (-> a1-5 param 3) (the-as uint 0))
-                     (send-event-function proc a1-5)))))
-               ((-> self event) (send-event proc (-> self event) :from (the-as process v1-1)))
+                   (let ((attack-message (new 'stack-no-clear 'event-message-block)))
+                     (set! (-> attack-message from) (the-as process owner))
+                     (set! (-> attack-message num-params) 4)
+                     (set! (-> attack-message message) (-> self event))
+                     (set! (-> attack-message param 0) (the-as uint #f))
+                     (set! (-> attack-message param 1) (the-as uint (-> self event-mode)))
+                     (let ((attack-id (+ *global-attack-id* 1)))
+                       (set! *global-attack-id* attack-id)
+                       (set! (-> attack-message param 2) (the-as uint attack-id)))
+                     (set! (-> attack-message param 3) (the-as uint 0))
+                     (send-event-function proc attack-message)))))
+               ((-> self event) (send-event proc (-> self event) :from (the-as process owner)))
                (else
-                (let ((t0-5 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> t0-5 from) proc)
-                  (set! (-> t0-5 num-params) argc)
-                  (set! (-> t0-5 message) message)
-                  (set! (-> t0-5 param 0) (-> block param 0))
-                  (set! (-> t0-5 param 1) (-> block param 1))
-                  (set! (-> t0-5 param 2) (-> block param 2))
-                  (set! (-> t0-5 param 3) (-> block param 3))
-                  (set! (-> t0-5 param 4) (-> block param 4))
-                  (set! (-> t0-5 param 5) (-> block param 5))
-                  (set! (-> t0-5 param 6) (-> block param 6))
-                  (send-event-function v1-1 t0-5)))))))
+                (let ((forwarded-message (new 'stack-no-clear 'event-message-block)))
+                  (set! (-> forwarded-message from) proc)
+                  (set! (-> forwarded-message num-params) argc)
+                  (set! (-> forwarded-message message) message)
+                  (set! (-> forwarded-message param 0) (-> block param 0))
+                  (set! (-> forwarded-message param 1) (-> block param 1))
+                  (set! (-> forwarded-message param 2) (-> block param 2))
+                  (set! (-> forwarded-message param 3) (-> block param 3))
+                  (set! (-> forwarded-message param 4) (-> block param 4))
+                  (set! (-> forwarded-message param 5) (-> block param 5))
+                  (set! (-> forwarded-message param 6) (-> block param 6))
+                  (send-event-function owner forwarded-message)))))))
         (('target)
-         (set! v0-0 (process->handle (the-as process (-> block param 0))))
-         (set! (-> self target) (the-as handle v0-0))
-         v0-0)
+         (set! value (process->handle (the-as process (-> block param 0))))
+         (set! (-> self target) (the-as handle value))
+         value)
         (('event)
          (set! (-> self event) (the-as symbol (-> block param 0)))
-         (set! v0-0 (-> block param 1))
-         (set! (-> self event-mode) (the-as basic v0-0))
-         v0-0)
-        (('exit) (set! v0-0 (-> block param 0)) (set! (-> self run-function) (the-as (function object) v0-0)) v0-0)
+         (set! value (-> block param 1))
+         (set! (-> self event-mode) (the-as symbol value))
+         value)
+        (('exit) (set! value (-> block param 0)) (set! (-> self run-function) (the-as (function object) value)) value)
         (('eval) ((the-as (function touch-tracker none) (-> block param 0)) self))
-        (('function) (set! v0-0 (-> block param 0)) (set! (-> self callback) (the-as (function touch-tracker none) v0-0)) v0-0)))
+        (('function)
+         (set! value (-> block param 0))
+         (set! (-> self callback) (the-as (function touch-tracker none) value))
+         value)))
   :code
     (behavior ()
       (set-time! (-> self state-time))
       (while ((-> self run-function))
-        (let* ((gp-0 (handle->process (-> self target)))
-               (a0-4 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable)) gp-0)))
-          (when a0-4
-            (let* ((gp-1 (-> (the-as process-drawable a0-4) root))
-                   (a0-6 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) collide-shape)) gp-1)))
-              (if a0-6 (set! (-> self root trans quad) (-> (the-as collide-shape a0-6) root-prim prim-core world-sphere quad))))))
+        (let* ((target-process (handle->process (-> self target)))
+               (target-drawable (if (and (nonzero? target-process) (type-type? (-> target-process type) process-drawable)) target-process)))
+          (when target-drawable
+            (let* ((target-root (-> (the-as process-drawable target-drawable) root))
+                   (target-shape (if (and (nonzero? target-root) (type-type? (-> target-root type) collide-shape)) target-root)))
+              (if target-shape
+                (set! (-> self root trans quad) (-> (the-as collide-shape target-shape) root-prim prim-core world-sphere quad))))))
         (if (-> self callback) ((-> self callback) self))
         (update-transforms! (-> self root))
-        (let ((a1-3 (new 'stack-no-clear 'touching-shapes-entry)))
-          (set! (-> a1-3 cshape1) (the-as collide-shape 2))
-          (set! (-> a1-3 cshape2) (the-as collide-shape *touching-list*))
-          (find-overlapping-shapes (-> self root) (the-as overlaps-others-params a1-3)))
+        (let ((overlap-params (new 'stack-no-clear 'overlaps-others-params)))
+          (set! (-> overlap-params options) (overlaps-others-options accept-root-sphere-overlap))
+          (set! (-> overlap-params tlist) *touching-list*)
+          (find-overlapping-shapes (-> self root) overlap-params))
         (suspend))
       (clear-collide-with-as (-> self root))
       (suspend)
       0))
 
-(defbehavior touch-tracker-init touch-tracker ((arg0 vector) (arg1 float) (arg2 time-frame))
-  (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
-    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-      (set! (-> s2-0 prim-core collide-as) (collide-kind target enemy))
-      (set! (-> s2-0 collide-with) (collide-kind cak-1 cak-2 cak-3 powerup crate enemy wall-object ground-object))
-      (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
-      (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 arg1)
-      (set-root-prim! s4-0 s2-0))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> s4-0 event-self) 'touched)
-    (set! (-> self root) s4-0))
-  (set! (-> self root trans quad) (-> arg0 quad))
-  (set! (-> self duration) arg2)
+(defbehavior touch-tracker-init touch-tracker ((position vector) (radius float) (duration time-frame))
+  "Create a moving collision sphere at position with radius and keep it active for duration. Events
+   can later choose a target to follow, forwarded touch event, callback, and early-exit predicate."
+  (let ((tracker-shape (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
+    (set! (-> tracker-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> tracker-shape reaction) default-collision-reaction)
+    (set! (-> tracker-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((trigger-sphere (new 'process 'collide-shape-prim-sphere tracker-shape (the-as uint 0))))
+      (set! (-> trigger-sphere prim-core collide-as) (collide-kind target enemy))
+      (set! (-> trigger-sphere collide-with) (collide-kind cak-1 cak-2 cak-3 powerup crate enemy wall-object ground-object))
+      (set! (-> trigger-sphere prim-core offense) (collide-offense indestructible))
+      (set-vector! (-> trigger-sphere local-sphere) 0.0 0.0 0.0 radius)
+      (set-root-prim! tracker-shape trigger-sphere))
+    (set! (-> tracker-shape nav-radius) (* 0.75 (-> tracker-shape root-prim local-sphere w)))
+    (backup-collide-with-as tracker-shape)
+    (set! (-> tracker-shape event-self) 'touched)
+    (set! (-> self root) tracker-shape))
+  (set! (-> self root trans quad) (-> position quad))
+  (set! (-> self duration) duration)
   (set! (-> self target) (the-as handle #f))
   (set! (-> self event) #f)
   (set! (-> self callback) #f)
@@ -1421,48 +1560,58 @@
   (go touch-tracker-idle)
   (none))
 
-(defun process-drawable-random-point! ((arg0 process-drawable) (arg1 vector))
-  (let ((v1-1 (-> arg0 node-list length))
-        (s4-0 (-> arg0 root)))
+(defun process-drawable-random-point! ((drawable process-drawable) (result vector))
+  "Write a random point associated with drawable into result. When eligible joints exist, select
+   one from indices 3 through the final node and use its translation. Otherwise sample a random
+   direction and radius inside the drawable's collision sphere or root-centered draw bounds; this
+   fallback is neither a uniform surface nor a uniform-volume sample."
+  (let ((node-count (-> drawable node-list length))
+        (root (-> drawable root)))
     (cond
-      ((>= v1-1 7) (let ((v1-2 (rand-vu-int-range 3 (+ v1-1 -1)))) (vector<-cspace! arg1 (-> arg0 node-list data v1-2))))
-      ((and (nonzero? s4-0) (type-type? (-> s4-0 type) collide-shape))
-       (vector+! arg1
-                 (-> (the-as collide-shape s4-0) root-prim prim-core world-sphere)
-                 (rand-vu-sphere-point! arg1 (-> (the-as collide-shape s4-0) root-prim prim-core world-sphere w))))
-      (else (vector+! arg1 (-> arg0 root trans) (rand-vu-sphere-point! arg1 (-> arg0 draw bounds w))))))
-  arg1)
+      ((>= node-count 7)
+       (let ((node-index (rand-vu-int-range 3 (+ node-count -1))))
+         (vector<-cspace! result (-> drawable node-list data node-index))))
+      ((and (nonzero? root) (type-type? (-> root type) collide-shape))
+       (vector+! result
+                 (-> (the-as collide-shape root) root-prim prim-core world-sphere)
+                 (rand-vu-sphere-point! result (-> (the-as collide-shape root) root-prim prim-core world-sphere w))))
+      (else (vector+! result (-> drawable root trans) (rand-vu-sphere-point! result (-> drawable draw bounds w))))))
+  result)
 
-(defun process-drawable-pair-random-point! ((arg0 process-drawable) (arg1 process-drawable) (arg2 vector) (arg3 float))
-  (let ((s4-0 (new-stack-vector0))
-        (s3-0 (new-stack-vector0)))
-    (process-drawable-random-point! arg0 s4-0)
-    (process-drawable-random-point! arg1 s3-0)
-    (vector-lerp! arg2 s4-0 s3-0 arg3)))
+(defun process-drawable-pair-random-point! ((first process-drawable) (second process-drawable) (result vector) (amount float))
+  "Choose one random point on each drawable and interpolate between them by amount into result."
+  (let ((first-point (new-stack-vector0))
+        (second-point (new-stack-vector0)))
+    (process-drawable-random-point! first first-point)
+    (process-drawable-random-point! second second-point)
+    (vector-lerp! result first-point second-point amount)))
 
 (define *particle-quat* (new 'static 'quaternion :w 1.0))
 
-(defun birth-func-set-quat ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
-  (local-vars (a0-2 float) (a0-3 float))
+(defun birth-func-set-quat ((particle-system sparticle-system) (cpuinfo sparticle-cpuinfo) (launch-info sparticle-launchinfo))
+  "Install the shared beam orientation in this sprite's packed cone-rotation field. The sprite
+   format reconstructs a nonnegative quaternion w, so negate xyz when the shared quaternion lies in
+   the negative-w hemisphere; preserve the existing cone-rotation w."
+  (local-vars (negative-orientation-x float) (positive-orientation-x float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf))
     (init-vf0-vector)
-    (let ((a0-1 arg2)
-          (v1-0 *particle-quat*))
+    (let ((launch-info launch-info)
+          (beam-orientation *particle-quat*))
       (cond
-        ((< (-> v1-0 w) 0.0)
-         (.lvf vf1 (&-> a0-1 conerot quad))
-         (.lvf vf2 (&-> v1-0 vec quad))
+        ((< (-> beam-orientation w) 0.0)
+         (.lvf vf1 (&-> launch-info conerot quad))
+         (.lvf vf2 (&-> beam-orientation vec quad))
          (.sub.vf.xyz vf1 vf0 vf2)
-         (.svf (&-> a0-1 conerot quad) vf1)
-         (.mov a0-2 vf1))
+         (.svf (&-> launch-info conerot quad) vf1)
+         (.mov negative-orientation-x vf1))
         (else
-         (.lvf vf1 (&-> a0-1 conerot quad))
-         (.lvf vf2 (&-> v1-0 vec quad))
+         (.lvf vf1 (&-> launch-info conerot quad))
+         (.lvf vf2 (&-> beam-orientation vec quad))
          (.add.vf.xyz vf1 vf0 vf2)
-         (.svf (&-> a0-1 conerot quad) vf1)
-         (.mov a0-3 vf1))))
+         (.svf (&-> launch-info conerot quad) vf1)
+         (.mov positive-orientation-x vf1))))
     0
     (none)))
 
@@ -1478,21 +1627,24 @@
    (:b 128.0 32.0)
    (:a 128.0)
    (:timer (seconds 0.017))
-   (:flags (bit2 bit3 bit14 left-multiply-quat))))
+   (:flags (die-when-faded glow no-fog left-multiply-quat))))
 
-(defun draw-eco-beam ((arg0 vector) (arg1 vector))
-  (when (line-in-view-frustum? arg0 arg1)
-    (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
-          (gp-1 (new 'stack-no-clear 'vector))
-          (s4-0 (new 'stack-no-clear 'vector))
-          (s5-0 (new 'stack-no-clear 'quaternion)))
-      (vector+*! gp-1 arg0 s2-1 0.5)
-      (vector-normalize-copy! s4-0 s2-1 1.0)
-      (set! (-> *part-id-table* 2528 init-specs 4 initial-valuef) (vector-length s2-1))
-      (forward-up->quaternion s5-0 s4-0 *y-vector*)
-      (dotimes (s4-1 3)
-        (quaternion-rotate-local-z! s5-0 s5-0 10922.667)
-        (quaternion-copy! *particle-quat* s5-0)
-        (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2528) gp-1))))
+(defun draw-eco-beam ((start vector) (end vector))
+  "When the segment from start to end is visible, place a shield particle at its midpoint, scale
+   it to the beam length, and orient it along the segment. Launch three crossed planes, rolling the
+   orientation by 60 degrees between launches, to give the beam visible volume."
+  (when (line-in-view-frustum? start end)
+    (let ((displacement (vector-! (new 'stack-no-clear 'vector) end start))
+          (midpoint (new 'stack-no-clear 'vector))
+          (direction (new 'stack-no-clear 'vector))
+          (orientation (new 'stack-no-clear 'quaternion)))
+      (vector+*! midpoint start displacement 0.5)
+      (vector-normalize-copy! direction displacement 1.0)
+      (set! (-> *part-id-table* 2528 init-specs 4 initial-valuef) (vector-length displacement))
+      (forward-up->quaternion orientation direction *y-vector*)
+      (dotimes (i 3)
+        (quaternion-rotate-local-z! orientation orientation 10922.667)
+        (quaternion-copy! *particle-quat* orientation)
+        (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2528) midpoint))))
   0
   (none))

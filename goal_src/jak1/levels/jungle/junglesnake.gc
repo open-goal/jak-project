@@ -37,43 +37,44 @@
    (:rotvel-z (degrees -0.3) (degrees 0.6))
    (:accel-y (meters -0.0016666667) (meters -0.00016666666))
    (:timer (seconds 1.3))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:userdata 0.0)
    (:func 'check-water-level-drop)))
 
 (deftype junglesnake-twist-joint (structure)
-  ((joint-index   int32)
-   (ry            float)
+  "Per-joint yaw state and the permitted angular lag from the preceding body joint."
+  ((joint-index int32)
+   (ry float)
    (drag-delta-ry float))
   :allow-misaligned)
 
-
 (deftype junglesnake-tilt-joint (structure)
+  "A head joint affected by procedural tilt, optionally using the mirrored rotation."
   ((joint-index int32)
-   (flip-it     symbol))
+   (flip-it symbol))
   :allow-misaligned)
 
-
 (deftype junglesnake (process-drawable)
-  ((root              collide-shape :override)
-   (state-time2       time-frame)
-   (hit-player        symbol :offset 184)
-   (is-lethal?        symbol)
-   (refractory-delay  int32)
-   (ry                float)
-   (des-ry            float)
-   (tilt              float)
-   (des-tilt          float)
-   (track-player-ry   symbol)
+  "A stationary ambush snake whose body yaw and head tilt procedurally track Jak."
+  ((root collide-shape :override)
+   (state-time2 time-frame)
+   (hit-player symbol :offset 184)
+   (is-lethal? symbol)
+   (refractory-delay int32)
+   (ry float)
+   (des-ry float)
+   (tilt float)
+   (des-tilt float)
+   (track-player-ry symbol)
    (track-player-tilt symbol)
-   (twist-joints      junglesnake-twist-joint 24 :inline :offset 220)
-   (tilt-joints       junglesnake-tilt-joint 3 :inline :offset 604))
+   (twist-joints junglesnake-twist-joint 24 :inline :offset 220)
+   (tilt-joints junglesnake-tilt-joint 3 :inline :offset 604))
   (:methods
-   (junglesnake-method-20 (_type_) symbol)
-   (junglesnake-method-21 (_type_) symbol)
-   (junglesnake-method-22 (_type_ float) symbol)
-   (junglesnake-method-23 (_type_) none)
-   (junglesnake-method-24 (_type_) none))
+   (update-tracking-and-twist! (_type_) symbol)
+   (init-tilt-joints! (_type_) symbol)
+   (init-twist-joints! (_type_ float) symbol)
+   (enable-lethal! (_type_) none)
+   (disable-lethal! (_type_) none))
   (:states
    junglesnake-attack
    junglesnake-die
@@ -82,30 +83,31 @@
    junglesnake-tracking
    junglesnake-wake))
 
-
 ;; WARN: disable def twice: 39. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defbehavior junglesnake-default-event-handler junglesnake ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior junglesnake-default-event-handler junglesnake ((sender process) (argc int) (message symbol) (event event-message-block))
+  "Handle lethal head contact, ordinary shove contact, and incoming attacks."
+  (case message
     (('touch)
      (when (and *target*
                 ((method-of-type touching-shapes-entry prims-touching?)
-                 (the-as touching-shapes-entry (-> arg3 param 0))
+                 (the-as touching-shapes-entry (-> event param 0))
                  (the-as collide-shape-moving (-> self root))
                  (the-as uint 1)))
        (cond
          ((and (-> self is-lethal?)
                (not (logtest? (-> *target* state-flags)
                               (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))))
-          (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+          (when (send-event sender 'attack (-> event param 0) (new 'static 'attack-info))
             (let ((v0-1 (the-as object #t))) (set! (-> self hit-player) (the-as symbol v0-1)) v0-1)))
          (else
           (do-push-aways! (-> self root))
-          (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-back (meters 2)) (shove-up (meters 0.5)))))))))
+          (send-event sender 'shove (-> event param 0) (static-attack-info ((shove-back (meters 2)) (shove-up (meters 0.5)))))))))
     (('attack) (go junglesnake-die))))
 
 junglesnake-default-event-handler
 
-(defmethod junglesnake-method-20 ((this junglesnake))
+(defmethod update-tracking-and-twist! ((this junglesnake))
+  "Seek the snake's yaw toward Jak and propagate the turn down its body with joint lag."
   (when (and *target* (-> this track-player-ry))
     (let ((v1-3 (target-pos 0)))
       (set! (-> this des-ry) (atan (- (-> v1-3 x) (-> this root trans x)) (- (-> v1-3 z) (-> this root trans z))))))
@@ -126,26 +128,27 @@ junglesnake-default-event-handler
         (set! f30-1 (-> s4-0 ry)))))
   #f)
 
-(defun junglesnake-joint-callback ((arg0 junglesnake))
-  (let ((s5-0 arg0))
+(defun junglesnake-joint-callback ((snake junglesnake))
+  "Apply procedural body yaw and head tilt to the snake's bound joint transforms."
+  (let ((s5-0 snake))
     (let ((s4-0 (new 'stack-no-clear 'matrix))
           (s3-0 (new 'stack-no-clear 'matrix))
           (s2-0 (new 'stack-no-clear 'matrix)))
       (let ((s1-0 (new 'stack-no-clear 'vector)))
-        (set-vector! s1-0 (-> arg0 root trans x) (-> arg0 root trans y) (-> arg0 root trans z) 1.0)
+        (set-vector! s1-0 (-> snake root trans x) (-> snake root trans y) (-> snake root trans z) 1.0)
         (matrix-translate! s2-0 s1-0)
         (vector-negate! s1-0 s1-0)
         (matrix-translate! s3-0 s1-0))
       (dotimes (s1-1 24)
         (let ((s0-0 (-> s5-0 twist-joints s1-1)))
           (matrix-rotate-y! s4-0 (-> s0-0 ry))
-          (let ((s0-1 (-> arg0 node-list data (-> s0-0 joint-index) bone transform)))
+          (let ((s0-1 (-> snake node-list data (-> s0-0 joint-index) bone transform)))
             (matrix*! s0-1 s0-1 s3-0)
             (matrix*! s0-1 s0-1 s4-0)
             (matrix*! s0-1 s0-1 s2-0)))))
     (dotimes (s4-1 9)
-      (let ((s3-1 (-> arg0 node-list data (+ s4-1 11) bone transform)))
-        (let ((a0-14 (-> arg0 node-list data (+ s4-1 12) bone transform))
+      (let ((s3-1 (-> snake node-list data (+ s4-1 11) bone transform)))
+        (let ((a0-14 (-> snake node-list data (+ s4-1 12) bone transform))
               (a1-7 (new 'stack-no-clear 'vector)))
           (vector-! a1-7 (-> a0-14 vector 3) (-> s3-1 vector 3))
           (vector-normalize-copy! (-> s3-1 vector 1) a1-7 1.0))
@@ -154,7 +157,7 @@ junglesnake-default-event-handler
         (vector-normalize! (vector-cross! (-> s3-1 vector 0) (-> s3-1 vector 1) (-> s3-1 vector 2)) 1.0)))
     (cond
       ((and (-> s5-0 track-player-tilt) *target*)
-       (let ((s2-1 (-> arg0 node-list data 25 bone transform))
+       (let ((s2-1 (-> snake node-list data 25 bone transform))
              (s4-2 (new 'stack-no-clear 'vector)))
          (vector-normalize-copy! s4-2 (-> s2-1 vector 1) 1.0)
          (set! (-> s4-2 w) 1.0)
@@ -203,7 +206,7 @@ junglesnake-default-event-handler
         (set! (-> s3-5 vector 1 x) (- (-> s3-5 vector 1 x)))
         (dotimes (s2-2 3)
           (let* ((v1-50 (-> s5-0 tilt-joints s2-2))
-                 (a2-10 (-> arg0 node-list data (-> v1-50 joint-index) bone transform)))
+                 (a2-10 (-> snake node-list data (-> v1-50 joint-index) bone transform)))
             (if (-> v1-50 flip-it) (matrix*! a2-10 s3-5 a2-10) (matrix*! a2-10 s4-3 a2-10)))))))
   0
   (none))
@@ -242,7 +245,7 @@ junglesnake-default-event-handler
       0)
   :trans
     (behavior ()
-      (junglesnake-method-20 self)
+      (update-tracking-and-twist! self)
       (when *target*
         (if *target*
           (look-at-enemy! (-> *target* neck)
@@ -277,7 +280,7 @@ junglesnake-default-event-handler
           (if (or (>= (- (-> a0-8 y) (-> self root trans y)) 57344.0)
                   (>= (vector-vector-xz-distance a0-8 (-> self root trans)) 163840.0))
             (go junglesnake-give-up))))
-      (junglesnake-method-20 self)
+      (update-tracking-and-twist! self)
       (when *target*
         (if *target*
           (look-at-enemy! (-> *target* neck)
@@ -303,10 +306,10 @@ junglesnake-default-event-handler
       (set! (-> self hit-player) #f))
   :exit
     (behavior ()
-      (junglesnake-method-24 self))
+      (disable-lethal! self))
   :trans
     (behavior ()
-      (junglesnake-method-20 self)
+      (update-tracking-and-twist! self)
       (when *target*
         (if *target*
           (look-at-enemy! (-> *target* neck)
@@ -318,7 +321,7 @@ junglesnake-default-event-handler
       (set! (-> self track-player-ry) #t)
       (set! (-> self track-player-tilt) #t)
       (ja-channel-push! 2 (seconds 0.15))
-      (junglesnake-method-23 self)
+      (enable-lethal! self)
       (let ((f30-0 (lerp-scale 0.0 1.0 (vector-vector-distance (target-pos 0) (-> self root trans)) 0.0 24576.0)))
         (ja-no-eval :group! junglesnake-strike-close-ja :num! (seek! max 1.25) :frame-num 0.0)
         (ja-no-eval :chan 1 :group! junglesnake-strike-far-ja :num! (chan 0) :frame-interp f30-0 :frame-num 0.0)
@@ -332,8 +335,8 @@ junglesnake-default-event-handler
           (ja :chan 1 :num! (chan 0) :frame-interp f30-0)
           (let ((f0-12 (ja-aframe-num 0)))
             (cond
-              ((and (>= f0-12 22.0) (< f0-12 44.0)) (if (not (-> self is-lethal?)) (junglesnake-method-23 self)))
-              (else (if (-> self is-lethal?) (junglesnake-method-24 self)))))))
+              ((and (>= f0-12 22.0) (< f0-12 44.0)) (if (not (-> self is-lethal?)) (enable-lethal! self)))
+              (else (if (-> self is-lethal?) (disable-lethal! self)))))))
       (if (-> self hit-player)
         (set! (-> self refractory-delay) (rand-vu-int-range 300 600))
         (set! (-> self refractory-delay) (rand-vu-int-range 150 300)))
@@ -351,7 +354,7 @@ junglesnake-default-event-handler
       (set! (-> self des-tilt) (-> self tilt)))
   :trans
     (behavior ()
-      (junglesnake-method-20 self))
+      (update-tracking-and-twist! self))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.1))
@@ -390,19 +393,21 @@ junglesnake-default-event-handler
       (cleanup-for-death self))
   :post ja-post)
 
-(defmethod junglesnake-method-23 ((this junglesnake))
+(defmethod enable-lethal! ((this junglesnake))
+  "Enable the head attack by removing its solid collision response."
   (when (not (-> this is-lethal?))
     (set! (-> this is-lethal?) #t)
-    (let ((v1-5 (-> (the-as collide-shape-prim-group (-> this root root-prim)) prims 0)))
-      (logclear! (-> v1-5 prim-core action) (collide-action solid))))
+    (let ((head-prim (-> (the-as collide-shape-prim-group (-> this root root-prim)) prims 0)))
+      (logclear! (-> head-prim prim-core action) (collide-action solid))))
   0
   (none))
 
-(defmethod junglesnake-method-24 ((this junglesnake))
+(defmethod disable-lethal! ((this junglesnake))
+  "Disable the head attack, restore solid collision, and push overlapping actors away."
   (when (-> this is-lethal?)
     (set! (-> this is-lethal?) #f)
-    (let ((v1-4 (-> (the-as collide-shape-prim-group (-> this root root-prim)) prims 0)))
-      (logior! (-> v1-4 prim-core action) (collide-action solid)))
+    (let ((head-prim (-> (the-as collide-shape-prim-group (-> this root root-prim)) prims 0)))
+      (logior! (-> head-prim prim-core action) (collide-action solid)))
     (do-push-aways! (-> this root)))
   0
   (none))
@@ -441,25 +446,31 @@ junglesnake-default-event-handler
        0.0
        0.0))
 
-(defmethod junglesnake-method-22 ((this junglesnake) (arg0 float))
-  (let ((f0-0 0.0))
-    (dotimes (v1-0 24)
-      (let ((a2-2 (-> this twist-joints v1-0)))
-        (set! (-> a2-2 ry) arg0)
-        (set! (-> a2-2 joint-index) (- 26 v1-0))
-        (let ((f1-1 (-> *junglesnake-twist-max-deltas* v1-0))) (set! (-> a2-2 drag-delta-ry) (- f1-1 f0-0)) (set! f0-0 f1-1)))))
+(defmethod init-twist-joints! ((this junglesnake) (base-ry float))
+  "Initialize the 24 body joints with their skeleton indices, base yaw, and drag limits."
+  (let ((previous-limit 0.0))
+    (dotimes (i 24)
+      (let ((joint (-> this twist-joints i)))
+        (set! (-> joint ry) base-ry)
+        (set! (-> joint joint-index) (- 26 i))
+        (let ((limit (-> *junglesnake-twist-max-deltas* i)))
+          (set! (-> joint drag-delta-ry) (- limit previous-limit))
+          (set! previous-limit limit)))))
   #f)
 
-(defmethod junglesnake-method-21 ((this junglesnake))
-  (dotimes (v1-0 3)
-    (let ((a1-2 (-> this tilt-joints v1-0))) (set! (-> a1-2 joint-index) (+ v1-0 23)) (set! (-> a1-2 flip-it) #f)))
-  (let ((v1-3 (the-as object (&-> this stack 524)))) (set! (-> (the-as junglesnake-tilt-joint v1-3) flip-it) #t))
-  (let ((v1-4 (the-as object (&-> this stack 476)))
-        (v0-0 #t))
-    (set! (-> (the-as junglesnake-twist-joint v1-4) ry) (the-as float v0-0))
-    v0-0))
+(defmethod init-tilt-joints! ((this junglesnake))
+  "Initialize the three procedural head-tilt joints and their mirrored orientation."
+  (dotimes (i 3)
+    (let ((joint (-> this tilt-joints i))) (set! (-> joint joint-index) (+ i 23)) (set! (-> joint flip-it) #f)))
+  (let ((head-tilt-joint (the-as object (&-> this stack 524))))
+    (set! (-> (the-as junglesnake-tilt-joint head-tilt-joint) flip-it) #t))
+  (let ((head-twist-joint (the-as object (&-> this stack 476)))
+        (flag #t))
+    (set! (-> (the-as junglesnake-twist-joint head-twist-joint) ry) (the-as float flag))
+    flag))
 
-(defmethod init-from-entity! ((this junglesnake) (arg0 entity-actor))
+(defmethod init-from-entity! ((this junglesnake) (source-entity entity-actor))
+  "Build the snake's collision and skeleton, initialize procedural joints, and enter its hidden state."
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
@@ -543,7 +554,7 @@ junglesnake-default-event-handler
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *junglesnake-sg* '())
   (set! (-> this fact) (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (set! (-> this part) (create-launch-control group-junglesnake-dropping-down this))
@@ -555,8 +566,8 @@ junglesnake-default-event-handler
   (set! (-> this track-player-ry) #f)
   (set! (-> this track-player-tilt) #f)
   (quaternion-identity! (-> this root quat))
-  (junglesnake-method-22 this (-> this ry))
-  (junglesnake-method-21 this)
+  (init-twist-joints! this (-> this ry))
+  (init-tilt-joints! this)
   (logior! (-> this skel status) (janim-status inited))
   (go junglesnake-sleeping)
   (none))

@@ -4,6 +4,13 @@
 (require "engine/game/main-h.gc")
 (require "engine/game/game-h.gc")
 (require "kernel/gkernel-h.gc")
+
+;; A drawable's water-control tracks its position relative to the current water surface and drives
+;; wading, swimming, submersion, bobbing, splashes, ripples, and drips. A water-vol claims the
+;; control while the drawable is inside it and supplies the surface, depth thresholds, material
+;; behavior, and damage settings.
+
+;; Raw access to the shared flag word. Use the named water-flag overlay for individual bits.
 (defenum water-flags
   :bitfield #t
   :type uint32
@@ -40,37 +47,39 @@
   (wt30)
   (wt31))
 
+;; Configuration bits are supplied by the active volume. State bits from touch-water through
+;; head-under-water, plus spawn-drip and jump-out, are maintained by update-water-state!.
 (defenum water-flag
   :bitfield #t
   :type uint32
-  (water-marks)
-  (active)
-  (can-wade)
-  (can-swim)
-  (swim-ground)
-  (part-splash)
-  (part-drip)
-  (wt07)
-  (use-ocean)
-  (touch-water)
+  (water-marks) ;; include this control in the optional water debug display
+  (active) ;; owned by a water volume
+  (can-wade) ;; the volume supplies a usable wade depth
+  (can-swim) ;; the volume supplies a usable swim depth
+  (swim-ground) ;; keep shallow swimmers on the swim line when ground contact is available
+  (part-splash) ;; entry splash and surface spray
+  (part-drip) ;; body drips after leaving the water
+  (wt07) ;; enabled for the standard target and projectile controls; purpose unknown
+  (use-ocean) ;; sample the global ocean height
+  (touch-water) ;; the root is below the water line
   (wading)
   (swimming)
-  (under-water)
-  (head-under-water)
+  (under-water) ;; swimming below the swim line without bottom contact
+  (head-under-water) ;; the tracked top joint is below the surface
   (bouncing)
-  (spawn-drip)
-  (jump-out)
+  (spawn-drip) ;; a wet joint has been selected for the next drip
+  (jump-out) ;; suspend swim-ground and submersion handling while leaving the water
   (tar)
   (mud)
-  (deadly)
-  (use-ripple-offset)
-  (no-grab-sound)
-  (part-rings)
-  (part-water)
+  (deadly) ;; deliver the volume's attack while touching
+  (use-ripple-offset) ;; sample the surface from the volume's ripple renderer
+  (no-grab-sound) ;; grabbed actors enter jump-out handling
+  (part-rings) ;; surface ripple rings and bow wakes
+  (part-water) ;; master gate for ordinary water particles
   (dark-eco)
   (lava)
-  (wt26)
-  (wt27)
+  (wt26) ;; cleared when leaving a volume; purpose unknown
+  (wt27) ;; reserved
   (wt28)
   (wt29)
   (wt30)
@@ -78,91 +87,111 @@
 
 ;; DECOMP BEGINS
 
+;; Per-drawable water state. All heights are world-space Y values:
+;;   surface-height = base-height + real-ocean-offset
+;;   height         = base-height + ocean-offset + bob-offset + align-offset
+;; surface-height is the raw particle/ripple surface. height is the smoothed, animated line used
+;; for classification. Wading begins below height - wade-height and swimming begins below
+;; height - swim-height.
 (deftype water-control (basic)
-  ((flags             water-flags)
-   (process           process-drawable)
-   (joint-index       int32)
-   (top-y-offset      float)
+  ((flags             water-flag)
+   (process           process-drawable) ;; owner
+   (joint-index       int32) ;; top point used for head submersion
+   (top-y-offset      float) ;; added to the tracked joint
    (ripple-size       meters)
    (enter-water-time  time-frame)
    (wade-time         time-frame)
    (on-water-time     time-frame)
    (enter-swim-time   time-frame)
    (swim-time         time-frame)
-   (base-height       meters)
-   (wade-height       meters)
-   (swim-height       meters)
-   (surface-height    meters)
-   (bottom-height     meters)
-   (height            meters)
+   (base-height       meters) ;; resting surface supplied by the volume
+   (wade-height       meters) ;; depth from the water line to the wade threshold
+   (swim-height       meters) ;; depth from the water line to the swim threshold
+   (surface-height    meters) ;; raw surface used for particles
+   (bottom-height     meters) ;; volume floor depth
+   (height            meters) ;; effective classification surface
    (height-offset     float 4)
-   (real-ocean-offset meters :overlay-at (-> height-offset 0))
-   (ocean-offset      meters :overlay-at (-> height-offset 1))
+   (real-ocean-offset meters :overlay-at (-> height-offset 0)) ;; raw sampled offset
+   (ocean-offset      meters :overlay-at (-> height-offset 1)) ;; smoothed sampled offset
    (bob-offset        meters :overlay-at (-> height-offset 2))
    (align-offset      meters :overlay-at (-> height-offset 3))
-   (swim-depth        meters)
+   (swim-depth        meters) ;; feet below the swim line, clamped to zero
    (bob               smush-control :inline)
-   (volume            handle)
-   (bottom            vector 2 :inline)
-   (top               vector 2 :inline)
+   (volume            handle) ;; claiming water volume
+   (bottom            vector 2 :inline) ;; current and previous root positions
+   (top               vector 2 :inline) ;; current and previous tracked top points
    (enter-water-pos   vector :inline)
-   (drip-old-pos      vector :inline)
+   (drip-old-pos      vector :inline) ;; prior position of the selected wet joint
    (drip-joint-index  int32)
-   (drip-wetness      float)
+   (drip-wetness      float) ;; decays after leaving the water
    (drip-time         time-frame)
-   (drip-speed        float)
-   (drip-height       meters)
-   (drip-mult         float)
+   (drip-speed        float) ;; delay between drips
+   (drip-height       meters) ;; deepest joint height allowed to drip
+   (drip-mult         float) ;; drip timing scale
    (flag              water-flag :overlay-at flags))
   (:methods
-   (new (symbol type process int float float float) _type_)
-   (water-control-method-9 (_type_) none)
-   (water-control-method-10 (_type_) none)
+   (new (symbol type process-drawable int float float float) _type_)
+   (water-control-init-extra! (_type_) none)
+   (update-water-state! (_type_) none)
    (start-bobbing! (_type_ float int int) none)
    (distance-from-surface (_type_) float)
    (create-splash (_type_ float vector int vector) none)
    (display-water-marks? (_type_) symbol)
-   (water-control-method-15 (_type_) none)
-   (water-control-method-16 (_type_) none)))
-
+   (enter-water! (_type_) none)
+   (exit-water! (_type_) none)))
 
 (defmethod display-water-marks? ((this water-control))
+  "Return whether both global and per-control water debug marks are enabled."
   (and *display-water-marks* (logtest? (-> this flag) (water-flag water-marks))))
 
-(defmethod new water-control ((allocation symbol) (type-to-make type) (arg0 process) (arg1 int) (arg2 float) (arg3 float) (arg4 float))
-  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 process) (the-as process-drawable arg0))
-    (set! (-> v0-0 joint-index) arg1)
-    (set! (-> v0-0 wade-height) arg4)
-    (set! (-> v0-0 swim-height) arg3)
-    (set! (-> v0-0 bottom-height) 32768.0)
-    (set! (-> v0-0 ripple-size) 1638.4)
-    (set! (-> v0-0 volume) (the-as handle #f))
-    (set! (-> v0-0 drip-mult) 1.0)
-    (set! (-> v0-0 top-y-offset) arg2)
-    v0-0))
+(defmethod new water-control ((allocation symbol)
+            (type-to-make type)
+            (owner process-drawable)
+            (joint-index int)
+            (top-y-offset float)
+            (swim-height float)
+            (wade-height float))
+  "Allocate water state for owner. Track joint-index plus top-y-offset as its top point,
+   install the default swim and wade depths, and initialize an eight-meter bottom and 0.4-meter ripple
+   size."
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this process) owner)
+    (set! (-> this joint-index) joint-index)
+    (set! (-> this wade-height) wade-height)
+    (set! (-> this swim-height) swim-height)
+    (set! (-> this bottom-height) 32768.0)
+    (set! (-> this ripple-size) 1638.4)
+    (set! (-> this volume) (the-as handle #f))
+    (set! (-> this drip-mult) 1.0)
+    (set! (-> this top-y-offset) top-y-offset)
+    this))
 
 (defmethod distance-from-surface ((this water-control))
+  "Return the tracked top point's signed height above the effective water
+   surface; a negative result is submerged."
   (- (-> this top 0 y) (-> this height)))
 
+;; Invisible volume process which claims a drawable's water-control on entry and releases it on
+;; exit. Specialized water, mud, tar, lava, and dark-eco volumes extend its setup and update hooks.
 (deftype water-vol (process-drawable)
-  ((water-height  meters)
+  ((water-height  meters) ;; surface Y
    (wade-height   meters)
    (swim-height   meters)
    (bottom-height meters)
-   (attack-event  symbol)
-   (target        handle)
-   (flags         water-flags)
+   (attack-event  symbol) ;; damage event used by deadly volumes
+   (target        handle) ;; drawable currently claimed by this volume
+   (flags         water-flag)
    (flag          water-flag :overlay-at flags))
   (:state-methods
    water-vol-idle
    water-vol-startup)
   (:methods
-   (water-vol-method-22 (_type_) none)
+   (setup-water! (_type_) none)
    (reset-root! (_type_) none)
    (set-stack-size! (_type_) none)
-   (water-vol-method-25 (_type_) none)
+   (setup-from-res! (_type_) none)
    (update! (_type_) none)
    (on-exit-water (_type_) none)
-   (get-ripple-height (_type_ vector) float)
+   (get-ripple-height "Return the water surface height at point, including any ripple displacement
+supplied by the volume subtype." (_type_ vector) float)
    (init! (_type_) none)))

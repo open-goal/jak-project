@@ -5,7 +5,13 @@
 
 ;; DECOMP BEGINS
 
-;; "pris" refers to foreground drawing, with normals.
+;; One 128-byte foreground skinning record.  t-mtx transforms positions into camera space and
+;; n-mtx carries the inverse-transpose basis used for normals.  The eighth vector is available as
+;; per-matrix scale data without changing the eight-qword upload layout.
+;;
+;; Positions and normals need different matrices because a non-uniform scale or a shear does not
+;; preserve angles: transforming a normal by t-mtx would tilt it away from the surface.  Keeping both
+;; in one record means one upload per bone rather than two.
 (deftype pris-mtx (structure)
   ((data   float 32 :offset 0)
    (vector vector 8 :inline :overlay-at (-> data 0))
@@ -13,13 +19,24 @@
    (n-mtx  matrix3 :inline :overlay-at (-> data 16))
    (scale  vector :inline :overlay-at (-> vector 7))))
 
-;; ??
+;; Three skinning records for one joint: where it is, where its parent is, and the difference.  The
+;; blend-shape and interpolation passes want the difference without recomputing it per vertex.
 (deftype generic-pris-mtx-save (structure)
   ((loc-mtx pris-mtx :inline)
    (par-mtx pris-mtx :inline)
    (dif-mtx pris-mtx :inline)))
 
-;; VU1 constants for the generic renderer.
+;; The ten-qword constant block uploaded before generic VU1 drawing.  It contains fog parameters,
+;; GS A+D and triangle-strip GIF tags, camera projection and guard-band vectors, and packet
+;; sentinels used when the VU program emits or finishes a strip.
+;;
+;; The program loads all ten into vf01-vf07 plus scratch at entry GENERIC-VU1-INIT and never reloads
+;; them, so this block is uploaded once per bucket rather than once per packet.  guard is the
+;; guard-band scale: the clipper multiplies a triangle's clip flags by it first, and if all three
+;; vertices fall outside the same widened plane the triangle is rejected without being clipped at all.
+;; stores is scratch, not a constant - the program keeps its output cursor and its two buffer
+;; selectors there so a clipped draw can be resumed after the clipper has saved and restored the
+;; register file.
 (deftype generic-constants (structure)
   ((fog         vector :inline)
    (adgif       gs-gif-tag :inline)
@@ -31,5 +48,12 @@
    (adnop       qword :inline)
    (flush       qword :inline)
    (stores      qword :inline)))
+
+;; The block's field order is its upload order - it arrives as one ten-quadword V4-32 unpack - so a
+;; field's quadword index inside it is simply its byte offset over sixteen. The microprogram keeps the
+;; block's base in an integer register and addresses fields relative to that, so what it needs is the
+;; index rather than the absolute VU address; GENERIC-VU1-CONSTANTS is the base itself.
+(defmacro generic-const-qword (&rest path)
+  `(/ (offset-of generic-constants ,@path) 16))
 
 (defun-extern generic-init-buf dma-buffer int gs-zbuf none)

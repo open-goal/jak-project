@@ -7,6 +7,14 @@
 
 ;; DECOMP BEGINS
 
+(defenum sprite-matrix-mode
+  :type int32
+  (camera 0)
+  (screen 1))
+
+;; Three quadwords uploaded per 2D sprite. The first holds position and x scale, the second carries
+;; mode-specific flags or warp turns together with matrix, rotation, and y scale, and the third is
+;; floating-point color.
 (deftype sprite-vec-data-2d (structure)
   ((x-y-z-sx    vector :inline)
    (flag-rot-sy vector :inline)
@@ -18,7 +26,7 @@
    (sy          float :overlay-at (-> flag-rot-sy w))
    (rot         float :overlay-at (-> flag-rot-sy z))
    (flag        int32 :overlay-at (-> flag-rot-sy x))
-   (matrix      int32 :overlay-at (-> flag-rot-sy y))
+   (matrix      sprite-matrix-mode :overlay-at (-> flag-rot-sy y))
    (warp-turns  int32 :overlay-at (-> flag-rot-sy x))
    (r           float :overlay-at (-> r-g-b-a x))
    (g           float :overlay-at (-> r-g-b-a y))
@@ -29,6 +37,8 @@
    (data        uint128 1 :overlay-at (-> x-y-z-sx quad))
    (data64      uint64 6 :overlay-at (-> x-y-z-sx x))))
 
+;; Two fixed-capacity sprite groups. num-valid is the active prefix of each group. The allocation
+;; stores three vector quadwords followed by five adgif quadwords for every sprite.
 (deftype sprite-array-2d (basic)
   ((num-sprites int32 2)
    (num-valid   int32 2)
@@ -39,6 +49,9 @@
   (:methods
    (new (symbol type int int) _type_)))
 
+;; Three quadwords uploaded per 3D sprite. Quaternion xyz is negated when the input w is negative,
+;; selecting the equivalent quaternion with positive w so the omitted component can be reconstructed
+;; from sqrt(1 - x*x - y*y - z*z). The second quadword's w lane remains the y scale.
 (deftype sprite-vec-data-3d (structure)
   ((x-y-z-sx    vector :inline)
    (qx-qy-qz-sy vector :inline)
@@ -60,6 +73,7 @@
    (color       rgbaf :inline :overlay-at (-> r-g-b-a x))
    (data        uint128 1 :overlay-at (-> x-y-z-sx quad))))
 
+;; 3D sprites use the same two-group storage contract; the normal global array leaves group 1 empty.
 (deftype sprite-array-3d (basic)
   ((num-sprites int32 2)
    (num-valid   int32 2)

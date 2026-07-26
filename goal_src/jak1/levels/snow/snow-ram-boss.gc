@@ -19,7 +19,6 @@
    ram-boss-proj-growing
    ram-boss-proj-launch))
 
-
 (deftype ram-boss (nav-enemy)
   ((parent-override          (pointer ram) :overlay-at parent)
    (facing-y                 float)
@@ -37,9 +36,12 @@
    (local-throw-point        vector :inline)
    (shield-jmod              joint-mod-set-local))
   (:methods
-   (ram-boss-method-51 (_type_ vector) symbol :overlay-at nav-enemy-method-51)
-   (ram-boss-method-52 (_type_) symbol :overlay-at nav-enemy-method-52)
-   (ram-boss-method-57 (_type_ float) float :overlay-at nav-enemy-method-57))
+   (disarm-shield-collision! (_type_) symbol :overlay-at nav-enemy-method-53)
+   (get-throw-point! (_type_ vector) symbol :overlay-at nav-enemy-method-54)
+   (line-of-sight-to-target? (_type_) symbol :overlay-at nav-enemy-method-55)
+   (turn-needed-to-throw? (_type_ vector) symbol :overlay-at nav-enemy-method-51)
+   (enable-ground-combat-collision! (_type_) symbol :overlay-at nav-enemy-method-52)
+   (target-pitch-interp (_type_ float) float :overlay-at nav-enemy-method-57))
   (:states (ram-boss-already-down basic)
    ram-boss-forward-defend-block
    ram-boss-idle
@@ -52,7 +54,6 @@
    ram-boss-throw
    ram-boss-tracking
    ram-boss-up-defend-block))
-
 
 (defskelgroup *ram-boss-sg*
   ram-boss
@@ -187,7 +188,7 @@
    (:a 64.0 64.0)
    (:fade-a -6.4)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0.4))))
@@ -208,7 +209,7 @@
    (:fade-b 0.53333336)
    (:fade-a 1.0666667)
    (:timer (seconds 0.2))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 2))))
@@ -226,7 +227,7 @@
    (:a 64.0 64.0)
    (:fade-a -6.4)
    (:timer (seconds 0.035))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0.15))))
@@ -293,7 +294,7 @@
    (:scale-y :copy scale-x)
    (:a 0.0)
    (:timer (seconds 4))
-   (:flags (bit3))
+   (:flags (glow))
    (:func 'sparticle-track-root-prim)))
 
 (defpart 1908
@@ -313,7 +314,7 @@
    (:fade-g -1.0666667)
    (:fade-b -0.53333336)
    (:timer (seconds 0.5))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.27))
    (:next-launcher 1912)
    (:conerot-x (degrees 0) (degrees 360))
@@ -343,7 +344,7 @@
    (:accel-y (meters -0.00066666666))
    (:friction 0.97)
    (:timer (seconds 0.1) (seconds 0.397))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.2))
    (:next-launcher 1912)
    (:conerot-x (degrees 0) (degrees 360))
@@ -376,7 +377,7 @@
    (:accel-y (meters -0.00016666666))
    (:friction 0.97)
    (:timer (seconds 0.1) (seconds 0.397))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 0.4))))
@@ -399,7 +400,7 @@
    (:fade-a -0.30476192)
    (:accel-y (meters -0.00016666666) (meters 0.00016666666))
    (:timer (seconds 0.7))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.5))
    (:next-launcher 1912)
    (:rotate-y (degrees 0) (degrees 180))))
@@ -417,7 +418,7 @@
    (:a 96.0)
    (:fade-a -4.8)
    (:timer (seconds 0.05))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpartgroup group-ram-boss-proj-die
   :id 524
@@ -426,74 +427,90 @@
   :bounds (static-bspherem 0 0 0 8)
   :parts ((sp-item 1914)))
 
-(defmethod projectile-method-24 ((this ram-boss-proj))
+(defmethod update-projectile-effects! ((this ram-boss-proj))
+  "Spin the bolus, update its ground shadow, emit flight particles, and move its tracking sound
+   to the current projectile position."
   (with-pp
     (quaternion-rotate-local-x! (-> this root quat) (-> this root quat) (* 65718.05 (seconds-per-frame)))
     (quaternion-rotate-local-y! (-> this root quat) (-> this root quat) (* 32221.867 (seconds-per-frame)))
-    (let ((f0-9 (* 5120.0 (+ 0.9 (* 0.1 (cos (* 873.81335 (the float (mod (current-time) 75)))))))))
+    (let ((shadow-radius (* 5120.0 (+ 0.9 (* 0.1 (cos (* 873.81335 (the float (mod (current-time) 75)))))))))
       (find-ground-and-draw-shadow (-> this root trans)
                                    (the-as vector #f)
-                                   f0-9
+                                   shadow-radius
                                    (collide-kind background)
                                    (the-as process-drawable #f)
                                    0.0
                                    81920.0))
     (if (-> this launched?) (spawn (-> this part2) (-> this root root-prim prim-core world-sphere)))
-    (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-      (set! (-> s5-0 command) (sound-command set-param))
-      (set! (-> s5-0 id) (-> this sound-id))
-      (let ((a1-4 (-> this root trans)))
-        (let ((gp-1 pp))
-          (when (= a1-4 #t)
-            (if (and gp-1 (type-type? (-> gp-1 type) process-drawable) (nonzero? (-> (the-as process-drawable gp-1) root)))
-              (set! a1-4 (-> (the-as process-drawable gp-1) root trans))
-              (set! a1-4 (the-as vector #f)))))
-        (sound-trans-convert (-> s5-0 parms trans) a1-4))
-      (set! (-> s5-0 parms mask) (sound-mask trans))
-      (-> s5-0 id))
+    (let ((sound-param (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+      (set! (-> sound-param command) (sound-command set-param))
+      (set! (-> sound-param id) (-> this sound-id))
+      (let ((sound-position (-> this root trans)))
+        (let ((boss-process pp))
+          (when (= sound-position #t)
+            (if (and boss-process
+                     (type-type? (-> boss-process type) process-drawable)
+                     (nonzero? (-> (the-as process-drawable boss-process) root)))
+              (set! sound-position (-> (the-as process-drawable boss-process) root trans))
+              (set! sound-position (the-as vector #f)))))
+        (sound-trans-convert (-> sound-param parms trans) sound-position))
+      (set! (-> sound-param parms mask) (sound-mask trans))
+      (-> sound-param id))
     (none)))
 
-(defun snow-ram-proj-update-velocity ((arg0 ram-boss-proj))
-  (when (>= (vector-vector-distance (-> arg0 parent-override 0 collide-info trans) (-> arg0 target))
-            (vector-vector-distance (-> arg0 parent-override 0 collide-info trans) (-> arg0 root trans)))
-    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> arg0 target) (-> arg0 root trans)))
+(defun snow-ram-proj-update-velocity ((projectile ram-boss-proj))
+  "Update the bolus velocity by turning its facing direction toward its current homing target."
+  (when (>= (vector-vector-distance (-> projectile parent-override 0 collide-info trans) (-> projectile target))
+            (vector-vector-distance (-> projectile parent-override 0 collide-info trans) (-> projectile root trans)))
+    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> projectile target) (-> projectile root trans)))
           (s4-0 (new 'stack-no-clear 'vector))
-          (s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 root transv) 1.0)))
-      (if (logtest? (-> arg0 root status) (cshape-moving-flags tsurf)) (vector-flatten! s3-1 s3-1 (-> arg0 root local-normal)))
+          (s5-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> projectile root transv) 1.0)))
+      (if (logtest? (-> projectile root status) (collide-status touch-surface))
+        (vector-flatten! s3-1 s3-1 (-> projectile root local-normal)))
       (vector-normalize-copy! s4-0 s3-1 1.0)
       (let ((s3-2 (new 'stack-no-clear 'matrix)))
-        (matrix-from-two-vectors-max-angle-partial! s3-2 s5-0 s4-0 (* (-> arg0 max-turn) (seconds-per-frame)) (-> arg0 tween))
+        (matrix-from-two-vectors-max-angle-partial! s3-2
+                                                    s5-0
+                                                    s4-0
+                                                    (* (-> projectile max-turn) (seconds-per-frame))
+                                                    (-> projectile tween))
         (vector-matrix*! s5-0 s5-0 s3-2))
       (vector-normalize! s5-0 1.0)
-      (vector-float*! (-> arg0 root transv) s5-0 (-> arg0 max-speed))))
+      (vector-float*! (-> projectile root transv) s5-0 (-> projectile max-speed))))
   0
   (none))
 
-(defmethod projectile-method-25 ((this ram-boss-proj))
+(defmethod go-moving! ((this ram-boss-proj))
+  "Begin the bolus charge-up and launch sequence."
   (go ram-boss-proj-growing)
   0
   (none))
 
-(defmethod projectile-method-26 ((this ram-boss-proj))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) projectile-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind projectile))
-      (set! (-> s4-0 collide-with) (collide-kind background cak-2 cak-3 target crate enemy wall-object ground-object))
-      (set! (-> s4-0 prim-core offense) (collide-offense strong-attack))
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 1228.8)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-    (set! (-> s5-0 event-self) 'touched)
-    (set! (-> this root) s5-0))
+(defmethod init-projectile-collision! ((this ram-boss-proj))
+  "Create the bolus moving collision shape and damaging sphere."
+  (let ((collision-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision-shape reaction) projectile-collision-reaction)
+    (set! (-> collision-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((collision-prim (new 'process 'collide-shape-prim-sphere collision-shape (the-as uint 0))))
+      (set! (-> collision-prim prim-core collide-as) (collide-kind projectile))
+      (set! (-> collision-prim collide-with)
+            (collide-kind background cak-2 cak-3 target crate enemy wall-object ground-object))
+      (set! (-> collision-prim prim-core offense) (collide-offense strong-attack))
+      (set-vector! (-> collision-prim local-sphere) 0.0 0.0 0.0 1228.8)
+      (set-root-prim! collision-shape collision-prim))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (backup-collide-with-as collision-shape)
+    (set! (-> collision-shape max-iteration-count) (the-as uint 2))
+    (set! (-> collision-shape event-self) 'touched)
+    (set! (-> this root) collision-shape))
   0
   (none))
 
-(defmethod projectile-method-27 ((this ram-boss-proj))
+(defmethod init-projectile-settings! ((this ram-boss-proj))
+  "Configure the bolus particles, homing motion, attack mode, tracking sound, and charging state on
+   its owning boss."
   (set! (-> this charge-sound-id) (new 'static 'sound-id))
   (set! (-> this part) (create-launch-control group-ram-boss-proj-grow this))
   (set! (-> this part2) (create-launch-control group-ram-boss-proj-fly this))
@@ -507,33 +524,38 @@
   (set-time! (-> this launch-time))
   (set! (-> this timeout) (seconds 4))
   (set! (-> this sound-id) (sound-play "ramboss-track"))
-  (let ((v1-12 (-> this parent-override)))
-    (set! (-> v1-12 0 proj-stoked) #t)
-    (set! (-> v1-12 0 proj-status) (the-as uint 1)))
+  (let ((boss (-> this parent-override)))
+    (set! (-> boss 0 proj-stoked) #t)
+    (set! (-> boss 0 proj-status) (the-as uint 1)))
   (none))
 
 (defmethod deactivate ((this ram-boss-proj))
+  "Stop the bolus's secondary particles and charge sound before ordinary projectile deactivation."
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
   ((method-of-type projectile deactivate) this)
   (none))
 
 (defmethod relocate ((this ram-boss-proj) (offset int))
+  "Adjust the secondary particle-controller pointer before relocating the projectile."
   (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
   (the-as ram-boss-proj ((method-of-type projectile relocate) this offset)))
 
-(defmethod projectile-method-28 ((this ram-boss-proj))
+(defmethod update-target! ((this ram-boss-proj))
+  "Lead the target by the player's velocity and refresh the bolus target point unless the player is
+   invulnerable."
   (when (and *target*
              (not (logtest? (-> *target* state-flags)
                             (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))))
-    (let ((gp-0 (-> this target)))
-      (set! (-> gp-0 quad) (-> (target-pos 0) quad))
-      (+! (-> gp-0 y) 4915.2)
-      (let ((f0-2 (vector-vector-distance gp-0 (-> this root trans)))
-            (a2-0 (new 'stack-no-clear 'vector)))
-        (if (>= 0.0 f0-2) (set! f0-2 409.6))
-        (set! (-> a2-0 quad) (-> *target* control transv quad))
-        (set! (-> a2-0 y) 0.0)
-        (let ((f0-3 (/ f0-2 (* 40960.0 (seconds-per-frame))))) (vector+float*! gp-0 gp-0 a2-0 (* f0-3 (seconds-per-frame)))))))
+    (let ((target-point (-> this target)))
+      (set! (-> target-point quad) (-> (target-pos 0) quad))
+      (+! (-> target-point y) 4915.2)
+      (let ((distance (vector-vector-distance target-point (-> this root trans)))
+            (player-velocity (new 'stack-no-clear 'vector)))
+        (if (>= 0.0 distance) (set! distance 409.6))
+        (set! (-> player-velocity quad) (-> *target* control transv quad))
+        (set! (-> player-velocity y) 0.0)
+        (let ((lead-scale (/ distance (* 40960.0 (seconds-per-frame)))))
+          (vector+float*! target-point target-point player-velocity (* lead-scale (seconds-per-frame)))))))
   (none))
 
 (defstate ram-boss-proj-growing (ram-boss-proj)
@@ -556,7 +578,7 @@
             (set! (-> gp-1 0 proj-status) (the-as uint 0))
             (sound-stop (-> self charge-sound-id))
             (go-virtual projectile-dissipate))
-          (nav-enemy-method-54 (-> gp-1 0) (-> self root trans))
+          (get-throw-point! (-> gp-1 0) (-> self root trans))
           (update-transforms! (-> self root))
           (cond
             ((-> gp-1 0 proj-stoked)
@@ -652,7 +674,7 @@
    (:fade-a -1.5058824)
    (:friction 0.98)
    (:timer (seconds 0.27))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpartgroup group-ram-boss-foot-puff
@@ -681,7 +703,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.95)
    (:timer (seconds 1))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 60) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -704,7 +726,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.95)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 60) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -725,69 +747,71 @@
    (:fade-a -0.42666668)
    (:accel-y (meters -0.0013333333) (meters 0.00066666666))
    (:timer (seconds 1))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 30) (degrees 50.000004))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0.5))))
 
 ;; WARN: disable def twice: 194. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defbehavior ram-boss-on-ground-event-handler ram-boss ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defbehavior ram-boss-on-ground-event-handler ram-boss ((sender process) (argc int) (message symbol) (event-block event-message-block))
+  "Handle the boss's ground-combat attacks, contacts, shield hits, and death transition."
   (local-vars (v0-4 object))
-  (case arg2
+  (case message
     (('attack 'bonk 'roll)
      (cond
        ((-> self has-shield?)
         (cond
           ((send-event *target* 'query 'powerup (pickup-type eco-red))
-           (nav-enemy-set-hit-from-direction arg0)
-           (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 2)))))
+           (nav-enemy-set-hit-from-direction sender)
+           (send-event sender 'shove #f (static-attack-info ((shove-back (meters 2)))))
            (go ram-boss-lose-shield)
            (return #t)
            v0-4)
           ((begin
-             (if (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))) (do-push-aways! (-> self collide-info)))
+             (if (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags attack-landed))) (do-push-aways! (-> self collide-info)))
              (level-hint-spawn (text-id snow-ram-boss-red-eco-hint) "sksp0346" (the-as entity #f) *entity-pool* (game-task none))
              (>= (- (-> (target-pos 0) y) (-> self collide-info trans y)) 9420.8))
-           (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 4)) (shove-up (meters 2)))))
+           (send-event sender 'shove #f (static-attack-info ((shove-back (meters 4)) (shove-up (meters 2)))))
            (go ram-boss-up-defend-block)
            (return #t)
            v0-4)
           (else
-           (when (= arg2 'attack)
-             (send-event arg0 'shove #f (static-attack-info ((shove-back (meters 4)))))
+           (when (= message 'attack)
+             (send-event sender 'shove #f (static-attack-info ((shove-back (meters 4)))))
              (go ram-boss-forward-defend-block)
              (return #t)
              v0-4))))
        (else (go-virtual nav-enemy-die) (return #t) v0-4)))
     (('touch)
-     (if (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))) (do-push-aways! (-> self collide-info)))
+     (if (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags attack-landed))) (do-push-aways! (-> self collide-info)))
      (cond
        ((-> self has-shield?)
         (cond
           ((>= (- (-> (target-pos 0) y) (-> self collide-info trans y)) 9420.8)
-           (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-back (meters 4)) (shove-up (meters 2)))))
+           (send-event sender 'shove (-> event-block param 0) (static-attack-info ((shove-back (meters 4)) (shove-up (meters 2)))))
            (go ram-boss-up-defend-block)
            (return #t)
            v0-4)
           (else
-           (when (= arg2 'attack)
-             (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-back (meters 4)))))
+           (when (= message 'attack)
+             (send-event sender 'shove (-> event-block param 0) (static-attack-info ((shove-back (meters 4)))))
              (go ram-boss-forward-defend-block)
              (return #t)
              v0-4))))
        (else
-        (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg3 param 0)) 'generic) (go-virtual nav-enemy-victory)))))
+        (if (nav-enemy-send-attack sender (the-as touching-shapes-entry (-> event-block param 0)) 'generic)
+          (go-virtual nav-enemy-victory)))))
     (('notify)
-     (when (= (-> arg0 type) ram-boss-proj)
-       (let ((v1-66 arg0))
+     (when (= (-> sender type) ram-boss-proj)
+       (let ((v1-66 sender))
          (cond
-           ((= (-> arg3 param 0) 'attack)
-            (when (= (-> arg3 param 1) *target*)
+           ((= (-> event-block param 0) 'attack)
+            (when (= (-> event-block param 1) *target*)
               (set! (-> self frustration) 0)
               (go-virtual nav-enemy-victory)
               (return #t)
               v0-4))
-           ((= (-> arg3 param 0) 'die)
+           ((= (-> event-block param 0) 'die)
             (let* ((v1-73 (- (current-time) (-> (the-as ram-boss-proj v1-66) launch-time)))
                    (v1-74 (the-as int (- (seconds 4) v1-73))))
               (cond
@@ -800,16 +824,19 @@
               v0-4))))))))
 
 (defmethod deactivate ((this ram-boss))
+  "Stop the boss's secondary particles before ordinary enemy deactivation."
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
   ((method-of-type nav-enemy deactivate) this)
   (none))
 
 (defmethod relocate ((this ram-boss) (offset int))
+  "Adjust the secondary particle-controller pointer before relocating the enemy."
   (if (nonzero? (-> this shield-jmod)) (&+! (-> this shield-jmod) offset))
   (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
   (the-as ram-boss ((method-of-type nav-enemy relocate) this offset)))
 
 (defmethod initialize-collision ((this ram-boss))
+  "Create the boss's moving collision group with three body spheres and one shield sphere."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -853,36 +880,41 @@
   0
   (none))
 
-(defmethod ram-boss-method-52 ((this ram-boss))
-  (let ((v1-1 (the-as basic (-> this collide-info root-prim))))
-    (set-vector! (-> (the-as collide-shape-prim v1-1) local-sphere) 0.0 8192.0 0.0 13516.8)
-    (set-vector! (-> (the-as (array collide-shape-prim) v1-1) 16 local-sphere) 0.0 4096.0 0.0 4505.6)
-    (set-vector! (-> (the-as (array collide-shape-prim) v1-1) 17 local-sphere) 0.0 9830.4 0.0 4505.6)
-    (set-vector! (-> (the-as (array collide-shape-prim) v1-1) 18 local-sphere) 0.0 0.0 0.0 2048.0)
-    (let ((v1-2 (-> (the-as (array collide-shape-prim) v1-1) 19)))
-      (logior! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 collide-with) (collide-kind target))
-      (set! (-> v1-2 prim-core collide-as) (collide-kind enemy))
-      (let ((v0-0 (-> v1-2 local-sphere)))
-        (set! (-> v0-0 x) 0.0)
-        (set! (-> v0-0 y) 819.2)
-        (set! (-> v0-0 z) 4505.6)
-        (set! (-> v0-0 w) 8192.0)
-        (the-as symbol v0-0)))))
+(defmethod enable-ground-combat-collision! ((this ram-boss))
+  "Resize the body spheres and arm the shield sphere as a solid attacking surface for ground
+   combat."
+  (let ((root-group (the-as basic (-> this collide-info root-prim))))
+    (set-vector! (-> (the-as collide-shape-prim root-group) local-sphere) 0.0 8192.0 0.0 13516.8)
+    (set-vector! (-> (the-as (array collide-shape-prim) root-group) 16 local-sphere) 0.0 4096.0 0.0 4505.6)
+    (set-vector! (-> (the-as (array collide-shape-prim) root-group) 17 local-sphere) 0.0 9830.4 0.0 4505.6)
+    (set-vector! (-> (the-as (array collide-shape-prim) root-group) 18 local-sphere) 0.0 0.0 0.0 2048.0)
+    (let ((shield-prim (-> (the-as (array collide-shape-prim) root-group) 19)))
+      (logior! (-> shield-prim prim-core action) (collide-action solid))
+      (set! (-> shield-prim collide-with) (collide-kind target))
+      (set! (-> shield-prim prim-core collide-as) (collide-kind enemy))
+      (let ((shield-sphere (-> shield-prim local-sphere)))
+        (set! (-> shield-sphere x) 0.0)
+        (set! (-> shield-sphere y) 819.2)
+        (set! (-> shield-sphere z) 4505.6)
+        (set! (-> shield-sphere w) 8192.0)
+        (the-as symbol shield-sphere)))))
 
-(defmethod nav-enemy-method-53 ((this ram-boss))
-  (let ((v1-1 (the-as (array collide-shape-prim) (-> this collide-info root-prim))))
-    (let ((a0-1 (-> v1-1 16))) (set! (-> a0-1 prim-core offense) (collide-offense touch)))
-    (let ((a0-2 (-> v1-1 17))) (set! (-> a0-2 prim-core offense) (collide-offense touch)))
-    (let ((a0-3 (-> v1-1 18))) (set! (-> a0-3 prim-core offense) (collide-offense touch)))
-    (let ((v1-2 (-> v1-1 19)))
-      (logclear! (-> v1-2 prim-core action) (collide-action solid))
-      (set! (-> v1-2 collide-with) (collide-kind))
-      (set! (-> v1-2 prim-core collide-as) (collide-kind))
-      (set! (-> v1-2 prim-core offense) (collide-offense no-offense))))
+(defmethod disarm-shield-collision! ((this ram-boss))
+  "Make the body spheres touch-sensitive and disable the detached shield's collision."
+  (let ((prims (the-as (array collide-shape-prim) (-> this collide-info root-prim))))
+    (let ((body-prim-0 (-> prims 16))) (set! (-> body-prim-0 prim-core offense) (collide-offense touch)))
+    (let ((body-prim-1 (-> prims 17))) (set! (-> body-prim-1 prim-core offense) (collide-offense touch)))
+    (let ((body-prim-2 (-> prims 18))) (set! (-> body-prim-2 prim-core offense) (collide-offense touch)))
+    (let ((shield-prim (-> prims 19)))
+      (logclear! (-> shield-prim prim-core action) (collide-action solid))
+      (set! (-> shield-prim collide-with) (collide-kind))
+      (set! (-> shield-prim prim-core collide-as) (collide-kind))
+      (set! (-> shield-prim prim-core offense) (collide-offense no-offense))))
   (the-as symbol 0))
 
-(defmethod nav-enemy-method-48 ((this ram-boss))
+(defmethod post-init-setup! ((this ram-boss))
+  "Initialize the boss skeleton, navigation defaults, particles, shield joint modifier, and shield
+   and neck state."
   (initialize-skeleton this *ram-boss-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (init-defaults! this *ram-boss-nav-enemy-info*)
@@ -895,16 +927,17 @@
   (when (nonzero? (-> this entity extra perm user-int8 1))
     (set! (-> this has-shield?) #f)
     (init-jm! this *ram-boss-nav-enemy-info-no-shield*)
-    (let ((v1-23 (-> this shield-jmod)))
-      (set! (-> v1-23 enable) #t)
-      (set! (-> v1-23 transform scale quad) (the-as uint128 0))))
+    (let ((shield-mod (-> this shield-jmod)))
+      (set! (-> shield-mod enable) #t)
+      (set! (-> shield-mod transform scale quad) (the-as uint128 0))))
   (set! (-> this neck up) (the-as uint 1))
   (set! (-> this neck nose) (the-as uint 2))
   (set! (-> this neck ear) (the-as uint 0))
   0
   (none))
 
-(defbehavior ram-boss-init-by-other ram-boss ((arg0 basic) (arg1 nav-enemy) (arg2 symbol))
+(defbehavior ram-boss-init-by-other ram-boss ((unused basic) (parent nav-enemy) (has-shield? symbol))
+  "Initialize a ram boss spawned by a parent ram and select its shielded or unshielded setup."
   (set! (-> self dead?) #f)
   (set! (-> self proj-status) (the-as uint 0))
   (set! (-> self proj-stoked) #f)
@@ -913,77 +946,84 @@
   (set! (-> self frustration) 0)
   (set! (-> self nav-enemy-patrol-timeout) (seconds 1))
   (initialize-collision self)
-  (set! (-> self entity) (-> arg1 entity))
-  (nav-enemy-method-48 self)
-  (set! (-> self collide-info trans quad) (-> arg1 collide-info trans quad))
+  (set! (-> self entity) (-> parent entity))
+  (post-init-setup! self)
+  (set! (-> self collide-info trans quad) (-> parent collide-info trans quad))
   (set-vector! (-> self collide-info scale) 1.0 1.0 1.0 1.0)
   (let ((t9-2 quaternion-copy!)
         (a0-6 (-> self collide-info quat)))
-    (t9-2 a0-6 (-> arg1 collide-info quat))
+    (t9-2 a0-6 (-> parent collide-info quat))
     (cond
-      (arg2 (go ram-boss-already-down (the-as basic a0-6)))
-      (else (ja-post) (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1)) (go ram-boss-idle))))
+      (has-shield? (go ram-boss-already-down (the-as basic a0-6)))
+      (else (ja-post) (logior! (-> self nav-enemy-flags) (nav-enemy-flags noticed-before)) (go ram-boss-idle))))
   (none))
 
-(defmethod nav-enemy-method-54 ((this ram-boss) (arg0 vector))
-  (let ((a2-0 (-> this node-list data 18 bone transform)))
-    (set-vector! arg0 0.0 0.0 -2457.6 1.0)
-    (vector-matrix*! arg0 arg0 a2-0))
-  (the-as symbol (vector-float*! arg0 arg0 (/ 1.0 (-> arg0 w)))))
+(defmethod get-throw-point! ((this ram-boss) (output-point vector))
+  "Transform the local muzzle offset through joint 18 and store the bolus launch point."
+  (let ((joint-matrix (-> this node-list data 18 bone transform)))
+    (set-vector! output-point 0.0 0.0 -2457.6 1.0)
+    (vector-matrix*! output-point output-point joint-matrix))
+  (the-as symbol (vector-float*! output-point output-point (/ 1.0 (-> output-point w)))))
 
-(defmethod nav-enemy-method-55 ((this ram-boss))
+(defmethod line-of-sight-to-target? ((this ram-boss))
+  "Probe from the boss's eye to the player and return true when the path is clear."
   (if (not *target*) (return #f))
-  (let ((s5-0 (new 'stack-no-clear 'vector))
-        (s4-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> this collide-info trans quad))
-    (+! (-> s5-0 y) 8192.0)
-    (set! (-> s4-0 quad) (-> (target-pos 0) quad))
-    (+! (-> s4-0 y) 4915.2)
-    (vector-! s4-0 s4-0 s5-0)
-    (let* ((t2-0 (new 'stack-no-clear 'collide-tri-result))
-           (v0-0 (< (fill-and-probe-using-line-sphere *collide-cache*
-                                                      s5-0
-                                                      s4-0
-                                                      1228.8
-                                                      (collide-kind background cak-2 ground-object)
-                                                      this
-                                                      t2-0
-                                                      (new 'static 'pat-surface :noentity #x1))
-                    0.0)))
+  (let ((eye-position (new 'stack-no-clear 'vector))
+        (to-target (new 'stack-no-clear 'vector)))
+    (set! (-> eye-position quad) (-> this collide-info trans quad))
+    (+! (-> eye-position y) 8192.0)
+    (set! (-> to-target quad) (-> (target-pos 0) quad))
+    (+! (-> to-target y) 4915.2)
+    (vector-! to-target to-target eye-position)
+    (let* ((probe-result (new 'stack-no-clear 'collide-tri-result))
+           (clear? (< (fill-and-probe-using-line-sphere *collide-cache*
+                                                        eye-position
+                                                        to-target
+                                                        1228.8
+                                                        (collide-kind background cak-2 ground-object)
+                                                        this
+                                                        probe-result
+                                                        (new 'static 'pat-surface :noentity #x1))
+                      0.0)))
       (b! #t cfg-7 :delay (nop!))
       (the-as none 0)
-      (set! v0-0 (the-as symbol #f))
+      (set! clear? (the-as symbol #f))
       (label cfg-7)
-      v0-0)))
+      clear?)))
 
-(defmethod ram-boss-method-51 ((this ram-boss) (arg0 vector))
-  (let* ((f30-0 (quaternion-y-angle (-> this collide-info quat)))
-         (f0-2 (atan (-> arg0 x) (-> arg0 z)))
-         (f0-3 (deg- f30-0 f0-2)))
-    (when (< (fabs f0-3) 10922.667)
-      (if (< 1820.4445 f0-3) (vector-rotate-around-y! arg0 arg0 (+ -1820.4445 f0-3)))
+(defmethod turn-needed-to-throw? ((this ram-boss) (throw-direction vector))
+  "Return true while the boss must keep turning toward throw-direction. Once it is within about 60
+   degrees, nudge the direction toward the current facing and return false."
+  (let* ((facing-angle (quaternion-y-angle (-> this collide-info quat)))
+         (throw-angle (atan (-> throw-direction x) (-> throw-direction z)))
+         (angle-difference (deg- facing-angle throw-angle)))
+    (when (< (fabs angle-difference) 10922.667)
+      (if (< 1820.4445 angle-difference)
+        (vector-rotate-around-y! throw-direction throw-direction (+ -1820.4445 angle-difference)))
       (return #f)))
   #t)
 
-(defmethod set-jump-height-factor! ((this ram-boss) (arg0 int))
+(defmethod set-jump-height-factor! ((this ram-boss) (allow-projectile? int))
+  "Allow or suppress preparing a bolus throw while airborne. When allowed and the cooldown has
+   elapsed, create the charging projectile; otherwise keep the current projectile stoked."
   (cond
     ((zero? (-> this proj-status))
      (when (and *target* (time-elapsed? (-> this proj-last-thrown-time) (seconds 2)))
-       (when arg0
+       (when allow-projectile?
          (set! (-> this proj-stoked) #t)
-         (let ((s5-0 (new 'stack-no-clear 'vector)))
-           (set! (-> s5-0 quad) (the-as uint128 0))
-           (let ((v1-9 (process-spawn ram-boss-proj
-                                      :init
-                                      projectile-init-by-other
-                                      (-> this entity)
-                                      (-> this collide-info trans)
-                                      s5-0
-                                      0
-                                      (process->handle *target*)
-                                      :to
-                                      this)))
-             (set! (-> (the-as (pointer ram-boss-proj) v1-9) 0 notify-handle) (process->handle this)))))))
+         (let ((zero-velocity (new 'stack-no-clear 'vector)))
+           (set! (-> zero-velocity quad) (the-as uint128 0))
+           (let ((projectile-process (process-spawn ram-boss-proj
+                                                    :init
+                                                    projectile-init-by-other
+                                                    (-> this entity)
+                                                    (-> this collide-info trans)
+                                                    zero-velocity
+                                                    0
+                                                    (process->handle *target*)
+                                                    :to
+                                                    this)))
+             (set! (-> (the-as (pointer ram-boss-proj) projectile-process) 0 notify-handle) (process->handle this)))))))
     (else (set! (-> this proj-stoked) #t)))
   (none))
 
@@ -1009,7 +1049,7 @@
       0)
   :code
     (behavior ()
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
       (loop
         (clone-anim-once (ppointer->handle (-> self parent-override)) (the-as int (-> self draw origin-joint-index)) #t "")
         (let ((a0-4 (-> self parent-override 0 node-list data 9 bone transform)))
@@ -1030,8 +1070,8 @@
         (('touch 'attack) (nav-enemy-send-attack proc (the-as touching-shapes-entry (-> block param 0)) 'generic))))
   :enter
     (behavior ((arg0 basic))
-      (ram-boss-method-52 self)
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+      (enable-ground-combat-collision! self)
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
       (let ((s5-0 (new 'stack-no-clear 'vector))
             (gp-0 (-> self node-list data 0 bone transform)))
         (let ((s1-0 (new 'stack-no-clear 'matrix))
@@ -1058,18 +1098,18 @@
                                                 #f
                                                 #f
                                                 #f)
-      (if (logtest? (-> self collide-info status) (cshape-moving-flags onsurf)) (go ram-boss-jump-down-hit-ground)))
+      (if (logtest? (-> self collide-info status) (collide-status on-surface)) (go ram-boss-jump-down-hit-ground)))
   :code
     (behavior ((arg0 basic))
       (ja-channel-push! 1 (seconds 0.8))
-      (ja-no-eval :group! ram-boss-dismount-start-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (vector-! gp-0 (target-pos 0) (-> self collide-info trans))
-          (set! (-> gp-0 y) 0.0)
-          (seek-toward-heading-vec! (-> self collide-info) gp-0 182044.44 (seconds 0.01)))
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               ram-boss-dismount-start-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (let ((gp-0 (new 'stack-no-clear 'vector)))
+                 (vector-! gp-0 (target-pos 0) (-> self collide-info trans))
+                 (set! (-> gp-0 y) 0.0)
+                 (seek-toward-heading-vec! (-> self collide-info) gp-0 182044.44 (seconds 0.01))))
       (loop
         (suspend)))
   :post nav-enemy-simple-post)
@@ -1080,21 +1120,18 @@
         event)
   :code
     (behavior ()
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
       (activate! *camera-smush-control* 409.6 37 150 1.0 0.99)
-      (ja-no-eval :group! ram-boss-dismount-hit-ground-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
+      (ja-play :group! ram-boss-dismount-hit-ground-ja :num! (seek!) :frame-num 0.0)
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags noticed-before))
       (go ram-boss-nav-start))
   :post nav-enemy-simple-post)
 
 (defstate ram-boss-already-down (ram-boss)
   :code
     (behavior ((arg0 basic))
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
-      (ram-boss-method-52 self)
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
+      (enable-ground-combat-collision! self)
       (let ((a1-0 (new 'stack-no-clear 'vector))
             (a2-0 (-> self parent-override 0 node-list data 0 bone transform)))
         (set-vector! a1-0 0.0 -16384.0 -32768.0 1.0)
@@ -1109,7 +1146,7 @@
 (defstate ram-boss-nav-start (ram-boss)
   :code
     (behavior ()
-      (let ((a1-1 (nav-control-method-16 (-> self nav) (-> self collide-info trans))))
+      (let ((a1-1 (find-poly-fast-from-world (-> self nav) (-> self collide-info trans))))
         (when (not a1-1)
           (go process-drawable-art-error "not on nav mesh")
           (return #f))
@@ -1125,7 +1162,7 @@
           (cond
             ((>= 18432.0 f30-0) (go ram-boss-tracking))
             ((not (target-in-range? self 237568.0)) (go-virtual nav-enemy-patrol))
-            ((and (< f30-0 106496.0) (nav-enemy-method-55 self)) (go-virtual nav-enemy-attack))
+            ((and (< f30-0 106496.0) (line-of-sight-to-target? self)) (go-virtual nav-enemy-attack))
             ((< f30-0 237568.0) (go-virtual nav-enemy-chase))
             (else (go-virtual nav-enemy-patrol)))))
       (go-virtual nav-enemy-idle)))
@@ -1158,9 +1195,9 @@
         (if (>= 18432.0 f30-0) (go ram-boss-tracking))
         (when (time-elapsed? (-> self state-time) (-> self reaction-time))
           (if (not (target-in-range? self (-> self nav-info stop-chase-distance))) (go-virtual nav-enemy-patrol))
-          (if (and (>= 73728.0 f30-0) (nav-enemy-method-55 self)) (go-virtual nav-enemy-attack))))
+          (if (and (>= 73728.0 f30-0) (line-of-sight-to-target? self)) (go-virtual nav-enemy-attack))))
       (cond
-        ((logtest? (nav-control-flags navcf17) (-> self nav flags))
+        ((logtest? (nav-control-flags blocked) (-> self nav flags))
          (if (time-elapsed? (-> self free-time) (seconds 1)) (go-virtual nav-enemy-patrol)))
         (else (set-time! (-> self free-time))))
       0))
@@ -1173,17 +1210,19 @@
     (behavior ()
       (go ram-boss-tracking)))
 
-(defmethod ram-boss-method-57 ((this ram-boss) (arg0 float))
-  (let ((f0-0 0.0))
+(defmethod target-pitch-interp ((this ram-boss) (previous-interp float))
+  "Return a smoothed 0-to-1 blend between the forward and upward defense animations from the pitch
+   angle to the player."
+  (let ((pitch-factor 0.0))
     (when *target*
-      (let ((s3-0 (new 'stack-no-clear 'vector)))
-        (vector-! s3-0 (target-pos 0) (-> this collide-info trans))
-        (let ((f0-1 (vector-x-angle s3-0))) (set! f0-0 (* 0.000091552734 f0-1))))
+      (let ((to-target (new 'stack-no-clear 'vector)))
+        (vector-! to-target (target-pos 0) (-> this collide-info trans))
+        (let ((pitch-angle (vector-x-angle to-target))) (set! pitch-factor (* 0.000091552734 pitch-angle))))
       (cond
-        ((< f0-0 0.0) (set! f0-0 0.0))
-        ((< 1.0 f0-0) (set! f0-0 1.0)))
-      (if (>= arg0 0.0) (set! f0-0 (* 0.5 (+ f0-0 arg0)))))
-    f0-0))
+        ((< pitch-factor 0.0) (set! pitch-factor 0.0))
+        ((< 1.0 pitch-factor) (set! pitch-factor 1.0)))
+      (if (>= previous-interp 0.0) (set! pitch-factor (* 0.5 (+ pitch-factor previous-interp)))))
+    pitch-factor))
 
 (defstate ram-boss-tracking (ram-boss)
   :event ram-boss-on-ground-event-handler
@@ -1191,7 +1230,7 @@
     (behavior ()
       (set-time! (-> self state-time))
       (set! (-> self facing-y) (quaternion-y-angle (-> self collide-info quat)))
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2)))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile)))
   :trans
     (behavior ()
       (set-jump-height-factor! self (the-as int (time-elapsed? (-> self state-time) (seconds 0.75))))
@@ -1213,7 +1252,7 @@
         (cond
           ((>= f0-10 106496.0) (if (>= f0-10 237568.0) (go-virtual nav-enemy-patrol)) (go-virtual nav-enemy-chase))
           ((< 18432.0 f0-10)
-           (if (not (nav-enemy-method-55 self)) (go-virtual nav-enemy-chase))
+           (if (not (line-of-sight-to-target? self)) (go-virtual nav-enemy-chase))
            (when (>= (-> self frustration) 256)
              (set! (-> self frustration) 0)
              (set! (-> self nav-enemy-patrol-timeout) (rand-vu-int-range (seconds 2) (seconds 5)))
@@ -1224,18 +1263,18 @@
                  (time-elapsed? (-> self state-time) (seconds 0.2)))
         (let ((gp-2 (new 'stack-no-clear 'vector))
               (s5-2 (new 'stack-no-clear 'vector)))
-          (nav-enemy-method-54 self s5-2)
+          (get-throw-point! self s5-2)
           (set! (-> gp-2 quad) (-> (target-pos 0) quad))
           (+! (-> gp-2 y) 4915.2)
           (vector-! (-> self proj-launch-vec) gp-2 s5-2))
         (vector-normalize! (-> self proj-launch-vec) 1.0)
-        (if (not (ram-boss-method-51 self (-> self proj-launch-vec))) (go ram-boss-throw)))
+        (if (not (turn-needed-to-throw? self (-> self proj-launch-vec))) (go ram-boss-throw)))
       0)
   :code
     (behavior ()
       (let ((f30-0 -1.0))
         (loop
-          (set! f30-0 (ram-boss-method-57 self f30-0))
+          (set! f30-0 (target-pitch-interp self f30-0))
           (cond
             ((< 5461.3335 (-> self last-turn-speed))
              (cond
@@ -1266,7 +1305,7 @@
   :enter
     (behavior ()
       (set! (-> self frustration) 0)
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2)))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile)))
   :trans
     (behavior ()
       (set-jump-height-factor! self (the-as int #t))
@@ -1274,10 +1313,7 @@
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! ram-boss-forward-defend-block-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! ram-boss-forward-defend-block-ja :num! (seek!) :frame-num 0.0)
       (go ram-boss-tracking))
   :post nav-enemy-simple-post)
 
@@ -1285,7 +1321,7 @@
   :enter
     (behavior ()
       (set! (-> self frustration) 0)
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2)))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile)))
   :trans
     (behavior ()
       (set-jump-height-factor! self (the-as int #t))
@@ -1293,10 +1329,7 @@
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! ram-boss-up-defend-block-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! ram-boss-up-defend-block-ja :num! (seek!) :frame-num 0.0)
       (go ram-boss-tracking))
   :post nav-enemy-simple-post)
 
@@ -1315,13 +1348,7 @@
       (set! (-> self frustration) 0)
       (ja-channel-push! 1 (seconds 0.075))
       (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info victory-anim))
-                    :num! (seek! max f30-0)
-                    :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! max f30-0))))
+        (ja-play :group! (-> self draw art-group data (-> self nav-info victory-anim)) :num! (seek! max f30-0) :frame-num 0.0))
       (go-virtual nav-enemy-attack))
   :post nav-enemy-simple-post)
 
@@ -1336,7 +1363,7 @@
   :event ram-boss-on-ground-event-handler
   :enter
     (behavior ()
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
       (let ((gp-0 (-> self child))) (while gp-0 (send-event (ppointer->process gp-0) 'launch) (set! gp-0 (-> gp-0 0 brother))))
       (set-time! (-> self proj-last-thrown-time)))
   :trans
@@ -1346,26 +1373,18 @@
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
-      (cond
-        ((-> self has-shield?)
-         (ja-no-eval :group! ram-boss-throw-ja :num! (seek!) :frame-num 0.0)
-         (until (ja-done? 0)
-           (suspend)
-           (ja :num! (seek!))))
-        (else
-         (ja-no-eval :group! ram-boss-throw-no-shield-ja :num! (seek!) :frame-num 0.0)
-         (until (ja-done? 0)
-           (suspend)
-           (ja :num! (seek!)))))
+      (if (-> self has-shield?)
+        (ja-play :group! ram-boss-throw-ja :num! (seek!) :frame-num 0.0)
+        (ja-play :group! ram-boss-throw-no-shield-ja :num! (seek!) :frame-num 0.0))
       (go ram-boss-tracking))
   :post nav-enemy-simple-post)
 
 (defstate ram-boss-lose-shield (ram-boss)
   :enter
     (behavior ()
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
       (nav-enemy-neck-control-inactive)
-      (nav-enemy-method-53 self)
+      (disarm-shield-collision! self)
       (init-jm! self *ram-boss-nav-enemy-info-no-shield*))
   :exit
     (behavior ()
@@ -1382,18 +1401,18 @@
         (vector+! gp-0 (-> self collide-info trans) gp-0)
         (set! (-> self nav target-pos quad) (-> gp-0 quad)))
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! ram-boss-lose-shield-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (let ((gp-1 (new 'stack-no-clear 'vector)))
-          (vector<-cspace! gp-1 (joint-node ram-boss-lod0-jg shield))
-          (spawn (-> self part) gp-1))
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               ram-boss-lose-shield-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (let ((gp-1 (new 'stack-no-clear 'vector)))
+                 (vector<-cspace! gp-1 (joint-node ram-boss-lod0-jg shield))
+                 (spawn (-> self part) gp-1)))
       (go ram-boss-tracking))
   :post
     (behavior ()
       (compute-alignment! (-> self align))
-      (nav-control-method-11 (-> self nav) (-> self nav target-pos))
+      (navigate! (-> self nav) (-> self nav target-pos))
       (align-vel-and-quat-only! (-> self align)
                                 (align-opts adjust-xz-vel)
                                 (-> self nav travel)

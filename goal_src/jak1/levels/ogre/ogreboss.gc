@@ -68,7 +68,7 @@
        :settings
        (new 'static
             'shadow-settings
-            :flags (shadow-flags disable-fade shdf02 shdf03)
+            :flags (shadow-flags disable-fade world-space-planes scissor-top)
             :shadow-dir
             (new 'static 'vector :y -1.0 :w 614400.0)
             :bot-plane
@@ -82,7 +82,7 @@
        :settings
        (new 'static
             'shadow-settings
-            :flags (shadow-flags shdf02 shdf03)
+            :flags (shadow-flags world-space-planes scissor-top)
             :shadow-dir
             (new 'static 'vector :y -1.0 :w 614400.0)
             :bot-plane
@@ -105,7 +105,6 @@
    ogreboss-missile-idle
    ogreboss-missile-impact
    ogreboss-missile-seek))
-
 
 (defstate ogreboss-missile-idle (ogreboss-missile)
   :enter
@@ -167,12 +166,24 @@
       (quaternion*! (-> self root quat) (-> self root quat) (-> self tumble-quat))
       (transform-post)))
 
-(defun ogreboss-rock-explosion-effect ((arg0 basic))
+(defun ogreboss-rock-explosion-effect ((position basic))
+  "Play the rock explosion at position, emit its particles and camera impact, and return the handle
+   of a randomly rotated breaking-boulder prop."
   (with-pp
-    (sound-play "ogre-explode" :position (the-as symbol arg0))
-    (process-spawn part-tracker :init part-tracker-init group-ogreboss-missile-impact -1 #f #f #f arg0 :to *entity-pool*)
+    (sound-play "ogre-explode" :position (the-as symbol position))
+    (process-spawn part-tracker
+                   :init
+                   part-tracker-init
+                   group-ogreboss-missile-impact
+                   -1
+                   #f
+                   #f
+                   #f
+                   position
+                   :to
+                   *entity-pool*)
     (activate! *camera-smush-control* (the-as float 819.2) 37 600 (the-as float 1.0) (the-as float 0.995))
-    (let ((gp-2 (manipy-spawn arg0 (-> pp entity) *ogreboss-shoot-boulder-break-sg* #f :to pp)))
+    (let ((gp-2 (manipy-spawn position (-> pp entity) *ogreboss-shoot-boulder-break-sg* #f :to pp)))
       (quaternion-axis-angle! (-> (the-as manipy (-> gp-2 0)) root quat)
                               (the-as float 0.0)
                               (the-as float 1.0)
@@ -181,8 +192,9 @@
       (send-event (ppointer->process gp-2) 'anim-mode 'play1)
       (the-as handle (ppointer->handle gp-2)))))
 
-(defun ogreboss-missile-scale-explosion ((arg0 handle))
-  (let* ((gp-0 (handle->process arg0))
+(defun ogreboss-missile-scale-explosion ((explosion handle))
+  "Shrink the breaking-boulder prop toward zero scale once per frame."
+  (let* ((gp-0 (handle->process explosion))
          (f0-0 (-> (the-as process-drawable gp-0) root scale x))
          (f0-2 (seek f0-0 (the-as float 0.0) (seconds-per-frame))))
     (set-vector! (-> (the-as process-drawable gp-0) root scale) f0-2 f0-2 f0-2 1.0))
@@ -255,7 +267,7 @@
         (set! (-> v1-10 prim-core collide-as) (collide-kind enemy)))
       (update-transforms! (-> self root))
       (let ((a1-1 (new 'stack-no-clear 'overlaps-others-params)))
-        (set! (-> a1-1 options) (the-as uint 0))
+        (set! (-> a1-1 options) (overlaps-others-options))
         (set! (-> a1-1 tlist) *touching-list*)
         (find-overlapping-shapes (-> self root) a1-1))
       (suspend)
@@ -272,7 +284,6 @@
    (xz-speed     float)
    (blast-radius float)
    (pickup-type  pickup-type)))
-
 
 (defbehavior ogreboss-missile-init-by-other ogreboss-missile ((arg0 ogreboss-missile-init-data) (arg1 entity-actor))
   (set! (-> self entity) arg1)
@@ -339,7 +350,6 @@
    ogreboss-super-boulder-land
    ogreboss-super-boulder-roll
    ogreboss-super-boulder-throw))
-
 
 (defbehavior ogreboss-super-boulder-event-handler ogreboss-super-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -536,6 +546,8 @@
       0))
 
 (defmethod relocate ((this ogreboss-super-boulder) (offset int))
+  "Adjust the optional joint-modifier pointer when the process moves, then relocate the inherited
+   drawable state."
   (if (nonzero? (-> this joint)) (&+! (-> this joint) offset))
   (call-parent-method this offset))
 
@@ -596,7 +608,6 @@
    (boulder-type    int8))
   (:states
    ogreboss-bounce-boulder-idle))
-
 
 (defbehavior ogreboss-bounce-boulder-event-handler ogreboss-bounce-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -726,7 +737,6 @@
    ogreboss-stage3-throw
    ogreboss-wait-for-player))
 
-
 (defbehavior ogreboss-inc-try-count ogreboss ()
   (when (not (-> self try-counted))
     (set! (-> self try-counted) #t)
@@ -741,14 +751,17 @@
   (< (vector-vector-distance (-> self far-pos) (target-pos 0)) arg0))
 
 (defun ogreboss-set-stage1-camera ()
+  "Stage-one camera hook; this version does nothing."
   0
   (none))
 
 (defun ogreboss-set-stage2-camera ()
+  "Stage-two camera hook; this version does nothing."
   0
   (none))
 
 (defun ogreboss-reset-camera ()
+  "Camera reset hook; this version does nothing."
   0
   (none))
 
@@ -865,6 +878,7 @@
   :post ja-post)
 
 (defun ogreboss-debug-adjust-difficulty ()
+  "Difficulty-adjustment debug hook; this version does nothing."
   0
   (none))
 
@@ -1394,7 +1408,9 @@
   0
   (none))
 
-(defmethod init-from-entity! ((this ogreboss) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ogreboss) (source-entity entity-actor))
+  "Initialize the Ogre boss's collision, skeleton, arena targets, difficulty, placed geometry, and
+   saved encounter state."
   (logior! (-> this mask) (process-mask attackable))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 6) 0)))
@@ -1454,7 +1470,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *ogreboss-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 5))

@@ -11,23 +11,33 @@
 
 ;; definition for function update-wind
 ;; INFO: Return type mismatch int vs none.
-(defun update-wind ((arg0 wind-work) (arg1 (array uint8)))
-  (let* ((f0-1 (+ (-> arg0 wind-normal w) (rand-vu-float-range -1024.0 1024.0)))
-         (f30-1 (- f0-1 (* (the float (the int (/ f0-1 65536.0))) 65536.0))))
-    (set! (-> arg0 wind-normal w) f30-1)
-    (set! (-> arg0 wind-normal x) (cos f30-1))
-    (set! (-> arg0 wind-normal z) (sin f30-1)))
-  (set! (-> arg0 wind-time) (+ (-> arg0 wind-time) 1))
-  (let* ((s4-0 (logand (the int (* (-> *display* time-adjust-ratio) (-> arg0 wind-time))) 63)) ;; og:preserve-this changed for high fps
-         (f0-4 (rand-vu-float-range 0.0 100.0))
-         (v1-5 (/ (* (-> *display* time-adjust-ratio) (-> arg0 wind-time)) (the-as uint 120))) ;; og:preserve-this changed for high fps
-         (f1-6 (* 0.008333334
-                  (the float (mod (the uint (* (-> *display* time-adjust-ratio) (-> arg0 wind-time))) (the-as uint 120))) ;; og:preserve-this changed for high fps
-                  ))
-         (f2-4 (* 0.0625 (the float (-> arg1 (mod (the-as int v1-5) (-> arg1 length))))))
-         (f0-5 (* (+ (* (- (* 0.0625 (the float (-> arg1 (mod (the-as int (+ v1-5 1)) (-> arg1 length))))) f2-4) f1-6) f2-4) f0-4)))
-    (set! (-> *wind-work* wind-force s4-0) (* (-> *display* time-adjust-ratio) f0-5)) ;; changed for high fps
-    (vector-float*! (-> *wind-work* wind-array s4-0) (-> arg0 wind-normal) (* (-> *display* time-adjust-ratio) f0-5)) ;; changed for high fps
+(defun update-wind ((work wind-work) (gust-table (array uint8)))
+  "Advance the shared procedural wind. Random-walk the ground-plane heading, then linearly
+   interpolate the cyclic gust table over 120 effective ticks per entry and multiply that envelope
+   by a fresh random amplitude. Store the resulting scalar force and direction in the current slot
+   of the 64-sample ring. work must be *wind-work*, and gust-table must not be empty. The PC time
+   ratio adjusts gust/ring progression and output magnitude for custom frame rates."
+  ;; Keep the heading bounded by removing whole turns, then rebuild its xz unit direction.
+  (let* ((unwrapped-heading (+ (-> work wind-normal w) (rand-vu-float-range -1024.0 1024.0)))
+         (heading (- unwrapped-heading (* (the float (the int (/ unwrapped-heading 65536.0))) 65536.0))))
+    (set! (-> work wind-normal w) heading)
+    (set! (-> work wind-normal x) (cos heading))
+    (set! (-> work wind-normal z) (sin heading)))
+  (+! (-> work wind-time) 1)
+  (let* ((ring-index (logand (the int (* (-> *display* time-adjust-ratio) (-> work wind-time))) 63)) ;; og:preserve-this changed for high fps
+         (random-amplitude (rand-vu-float-range 0.0 100.0))
+         (gust-index (/ (* (-> *display* time-adjust-ratio) (-> work wind-time)) (the-as uint 120))) ;; og:preserve-this changed for high fps
+         (gust-interpolation (* 0.008333334
+                                (the float (mod (the uint (* (-> *display* time-adjust-ratio) (-> work wind-time))) (the-as uint 120))) ;; og:preserve-this changed for high fps
+                                ))
+         (gust-start (* 0.0625 (the float (-> gust-table (mod (the-as int gust-index) (-> gust-table length))))))
+         (force (* (+ (* (- (* 0.0625 (the float (-> gust-table (mod (the-as int (+ gust-index 1)) (-> gust-table length))))) gust-start)
+                         gust-interpolation)
+                      gust-start)
+                   random-amplitude)))
+    ;; Each byte is a gust-envelope sample in sixteenths; adjacent samples wrap cyclically.
+    (set! (-> *wind-work* wind-force ring-index) (* (-> *display* time-adjust-ratio) force)) ;; changed for high fps
+    (vector-float*! (-> *wind-work* wind-array ring-index) (-> work wind-normal) (* (-> *display* time-adjust-ratio) force)) ;; changed for high fps
     )
   0
   (none))

@@ -31,7 +31,7 @@
    (:a 0.0)
    (:vel-y (meters 0.0033333334) (meters 0.0033333334))
    (:timer (seconds 2))
-   (:flags (bit3))
+   (:flags (glow))
    (:conerot-z (degrees 0) (degrees 360))))
 
 (defpart 2823
@@ -54,7 +54,7 @@
    (:rotvel-z (degrees -0.3) 1 (degrees 0.6))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 2))
-   (:flags (bit2 bit3 bit7))))
+   (:flags (die-when-faded glow orbit))))
 
 (defpart 2824
   :init-specs
@@ -70,7 +70,7 @@
    (:scalevel-y :copy scalevel-x)
    (:accel-y (meters 0) (meters -0.000033333334))
    (:timer (seconds 0.1) (seconds 0.997))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.8))
    (:next-launcher 198)))
 
@@ -86,7 +86,7 @@
    (:b 0.0)
    (:a 128.0)
    (:timer (seconds 0.017))
-   (:flags (bit2 bit13 bit14))))
+   (:flags (die-when-faded run-while-paused no-fog))))
 
 (defpart 2826
   :init-specs
@@ -107,7 +107,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 0.21333334)
    (:timer (seconds 5))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.5) (seconds 0.497))
    (:next-launcher 2828)))
 
@@ -165,7 +165,7 @@
    (:scalevel-x (meters 0.14648438))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 0.27))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 2922
@@ -185,7 +185,7 @@
    (:scalevel-x (meters -0.0025))
    (:scalevel-y (meters 0.24414062) (meters 0.48828125))
    (:timer (seconds 0.27))
-   (:flags (bit3 bit14))
+   (:flags (glow no-fog))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 2923
@@ -204,7 +204,7 @@
    (:scalevel-x (meters -0.0025))
    (:scalevel-y (meters 0.048828125) (meters 0.09765625))
    (:timer (seconds 0.27))
-   (:flags (bit3 bit14))
+   (:flags (glow no-fog))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 2925
@@ -227,7 +227,7 @@
    (:accel-y (meters 0.0016666667))
    (:friction 0.996)
    (:timer (seconds 0.6) (seconds 0.397))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 2926
@@ -250,7 +250,7 @@
    (:accel-y (meters 0.0016666667))
    (:friction 0.996)
    (:timer (seconds 0.9))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.15))
    (:next-launcher 2928)
    (:rotate-y (degrees 0) (degrees 360))))
@@ -286,7 +286,7 @@
    (:fade-a 0.10666667)
    (:accel-y (meters 0) (meters 0.00033333333))
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.4) (seconds 0.097))
    (:next-launcher 2931)))
 
@@ -309,7 +309,7 @@
    (:accel-y (meters 0.0016666667) (meters 0.00066666666))
    (:friction 0.5)
    (:timer (seconds 0.1) (seconds 0.497))
-   (:flags (bit0 bit2 bit3 bit14))
+   (:flags (die-when-scale-0 die-when-faded glow no-fog))
    (:userdata 1638400.0)
    (:func 'check-drop-level-eichar-lighteco-pops)
    (:next-time (seconds 0.1) (seconds 0.997))
@@ -320,13 +320,14 @@
 (defpart 2932
   :init-specs ((:userdata 2048000.0)))
 
-(defun check-drop-level-eichar-lighteco-pops ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
-  (when (< (-> arg2 y) (-> arg1 user-float))
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (sp-kill-particle arg0 arg1)
-      (set-vector! gp-0 (-> arg2 x) (-> arg2 y) (-> arg2 z) 1.0)
-      (launch-particles (-> *part-id-table* 2933) gp-0 :rate 1.0)
-      (launch-particles (-> *part-id-table* 2934) gp-0 :rate 1.0)))
+(defun check-drop-level-eichar-lighteco-pops ((system sparticle-system) (particle sparticle-cpuinfo) (position vector))
+  "Kill a falling light-eco particle below its stored height and launch its two impact effects."
+  (when (< (-> position y) (-> particle user-float))
+    (let ((impact-position (new 'stack-no-clear 'vector)))
+      (sp-kill-particle system particle)
+      (set-vector! impact-position (-> position x) (-> position y) (-> position z) 1.0)
+      (launch-particles (-> *part-id-table* 2933) impact-position :rate 1.0)
+      (launch-particles (-> *part-id-table* 2934) impact-position :rate 1.0)))
   (none))
 
 (defpart 2934
@@ -342,7 +343,7 @@
    (:a 32.0 16.0)
    (:fade-a -1.92)
    (:timer (seconds 0.067))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2933
   :init-specs
@@ -358,7 +359,7 @@
    (:accel-y (meters 0.0016666667) (meters 0.00066666666))
    (:friction 0.85)
    (:timer (seconds 0.05) (seconds 0.397))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -389,7 +390,7 @@
    (:fade-a -0.42666668)
    (:accel-y (meters 0.0016666667))
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpartgroup group-target-white-eco-hand-shot
   :id 702
@@ -414,7 +415,7 @@
    (:scalevel-y (meters 0.42666668))
    (:fade-a -1.6)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2893
   :init-specs
@@ -434,7 +435,7 @@
    (:scalevel-x (meters 0.21333334))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpartgroup group-robotboss-joints
   :id 703
@@ -461,7 +462,7 @@
    (:a 32.0 64.0)
    (:fade-a -2.3272727)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2894
   :init-specs
@@ -484,7 +485,7 @@
    (:accel-y (meters 0.00033333333) (meters 0.00033333333))
    (:friction 0.9)
    (:timer (seconds 2.7))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.067) (seconds 0.297))
    (:next-launcher 2596)))
 
@@ -508,7 +509,7 @@
    (:accel-y (meters -0.0018333334) (meters -0.0018333334))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit0 bit2 bit14))
+   (:flags (die-when-scale-0 die-when-faded no-fog))
    (:next-time (seconds 0.3) (seconds 0.097))
    (:next-launcher 2595)
    (:conerot-x (degrees 0) (degrees 180))
@@ -564,7 +565,7 @@
    (:accel-y (meters -0.0038333333) (meters -0.017166667))
    (:friction 0.96 0.06)
    (:timer (seconds 3.5))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:conerot-x (degrees -120) (degrees 240))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 40))))
@@ -585,7 +586,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a -0.053333335)
    (:timer (seconds 3.5))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.14))
    (:next-launcher 2946)))
 
@@ -608,7 +609,7 @@
    (:scalevel-x (meters 0.33333334) (meters 0.6666667))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 1.7))
-   (:flags (bit2 bit3 bit12 bit14 left-multiply-quat))
+   (:flags (die-when-faded glow use-time-of-day-color no-fog left-multiply-quat))
    (:next-time (seconds 0.2) (seconds 0.497))
    (:next-launcher 2947)))
 
@@ -630,7 +631,7 @@
    (:accel-y (meters -0.0016666667) (meters -0.0016666667))
    (:friction 0.95)
    (:timer (seconds 1))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.1) (seconds 0.297))
    (:next-launcher 2948)
    (:conerot-x (degrees 0) (degrees 180))
@@ -655,7 +656,7 @@
    (:scalevel-y (meters 3.4133334))
    (:fade-a -0.64)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2940
   :init-specs
@@ -670,7 +671,7 @@
    (:a 128.0)
    (:fade-a -2.3272727)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2942
   :init-specs
@@ -692,7 +693,7 @@
    (:accel-y (meters 0.0013333333) (meters 0.0013333333))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 0) (degrees 1440))
    (:conerot-y (degrees 0) (degrees 1440))
    (:conerot-radius (meters 0) (meters 32))))
@@ -717,7 +718,7 @@
    (:accel-y (meters 0.0013333333) (meters 0.0013333333))
    (:friction 0.9)
    (:timer (seconds 3.5))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 0) (degrees 1440))
    (:conerot-y (degrees 0) (degrees 1440))
    (:conerot-radius (meters 0) (meters 32))))
@@ -747,7 +748,7 @@
    (:accel-y (meters -0.00066666666) (meters -0.0016666667))
    (:friction 0.94)
    (:timer (seconds 3.5))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.5) (seconds 0.997))
    (:next-launcher 2951)
    (:conerot-x (degrees 0) (degrees 60))
@@ -774,7 +775,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.94)
    (:timer (seconds 3.5))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.5) (seconds 0.997))
    (:next-launcher 2951)
    (:rotate-y (degrees 0) (degrees 360))))
@@ -809,7 +810,7 @@
    (:rotvel-y (degrees -0.1) (degrees 0.2))
    (:fade-a 0.16)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14 left-multiply-quat))
+   (:flags (die-when-faded glow no-fog left-multiply-quat))
    (:next-time (seconds 0.5))
    (:next-launcher 2959)
    (:rotate-y (degrees 40))))
@@ -833,7 +834,7 @@
    (:rotvel-y (degrees -0.1) (degrees 0.2))
    (:fade-a 0.16)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14 left-multiply-quat))
+   (:flags (die-when-faded glow no-fog left-multiply-quat))
    (:next-time (seconds 0.5))
    (:next-launcher 2959)
    (:rotate-y (degrees 40))))
@@ -855,7 +856,7 @@
    (:rotvel-y (degrees -0.1) (degrees 0.2))
    (:fade-a 0.16)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14 left-multiply-quat))
+   (:flags (die-when-faded glow no-fog left-multiply-quat))
    (:next-time (seconds 0.5))
    (:next-launcher 2959)
    (:rotate-y (degrees 40))))
@@ -878,7 +879,7 @@
    (:rotvel-z (degrees -0.1) (degrees 0.2))
    (:fade-a 0.21333334)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.25) (seconds 0.247))
    (:next-launcher 2959)
    (:rotate-y (degrees 40))))
@@ -901,7 +902,7 @@
    (:rotvel-z (degrees -0.1) (degrees 0.2))
    (:fade-a 0.21333334)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.25) (seconds 0.247))
    (:next-launcher 2959)
    (:rotate-y (degrees 40))))
@@ -921,7 +922,7 @@
    (:vel-y (meters -0.00066666666) (meters -0.0026666666))
    (:fade-a 0.85333335)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.25) (seconds 0.247))
    (:next-launcher 2960)
    (:rotate-y (degrees -135) (degrees 1440))))
@@ -944,7 +945,7 @@
    (:vel-y (meters -0.00066666666) (meters -0.0026666666))
    (:fade-a 0.85333335)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata -4096000.0)
    (:func 'check-drop-level-bigdoor-open-pops)
    (:next-time (seconds 0.25) (seconds 0.247))
@@ -954,13 +955,14 @@
 (defpart 2961
   :init-specs ((:userdata 4096000.0)))
 
-(defun check-drop-level-bigdoor-open-pops ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
-  (when (< (-> arg2 y) (-> arg1 user-float))
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (sp-kill-particle arg0 arg1)
-      (set-vector! gp-0 (-> arg2 x) (-> arg2 y) (-> arg2 z) 1.0)
-      (launch-particles (-> *part-id-table* 2962) gp-0 :rate 1.0)
-      (launch-particles (-> *part-id-table* 2963) gp-0 :rate 1.0)))
+(defun check-drop-level-bigdoor-open-pops ((system sparticle-system) (particle sparticle-cpuinfo) (position vector))
+  "Kill a falling big-door particle below its stored height and launch its two impact effects."
+  (when (< (-> position y) (-> particle user-float))
+    (let ((impact-position (new 'stack-no-clear 'vector)))
+      (sp-kill-particle system particle)
+      (set-vector! impact-position (-> position x) (-> position y) (-> position z) 1.0)
+      (launch-particles (-> *part-id-table* 2962) impact-position :rate 1.0)
+      (launch-particles (-> *part-id-table* 2963) impact-position :rate 1.0)))
   (none))
 
 (defpart 2963
@@ -976,7 +978,7 @@
    (:a 16.0 32.0)
    (:fade-a -1.92)
    (:timer (seconds 0.067))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 2962
   :init-specs
@@ -992,7 +994,7 @@
    (:accel-y (meters -0.0016666667) (meters -0.00066666666))
    (:friction 0.85)
    (:timer (seconds 0.3) (seconds 0.197))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -1014,4 +1016,4 @@
    (:b 255.0)
    (:a 128.0)
    (:timer (seconds 0.017))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))

@@ -5,510 +5,1957 @@
 (require "engine/gfx/tie/tie-h.gc")
 (require "engine/anim/joint.gc")
 
-;; TIE
-;;  tesselating fragment instance engine
-
-;; The TIE renderer is one of three main background renderers.
-;; TIE has the following features:
-;; - instanced rendering (you can draw the same thing multiple times!)
-;; - time of day lighting (believed to be slightly different in implementation than tfrag)
-
-;; Background elements that use the GENERIC render will store their data in tie-fragments.
-;; The exact procedure for GENERIC through TIE is unknown.
-;;  The functions are generic-tie-execute and generic-tie-convert
+;; TIE -- tessellating fragment instance engine
+;;
+;; TIE draws repeated background models. A prototype is authored once, chopped into fragments that
+;; fit in VU1 memory, and then placed all over the level by a stream of 64-byte instance records.
+;; Each fragment carries its own adgif shaders, packed points, strip packet templates, and a shared
+;; time-of-day color palette; each instance record carries a transform, a wind phase, a LOD morph
+;; weight, and the palette indices its vertices should use. Upload the fragment once, then let VU1
+;; chew through every instance that picked it. That is the whole trick, and it is why a level can
+;; afford several thousand crates and huts.
+;;
+;; The three interesting details, in the order you will meet them below:
+;;
+;;   * Level of detail is continuous, not stepped, and it is a tessellation rather than a swap. The
+;;     "tessellating" in the name is literal: a coarser geometry is the same surface with one level of
+;;     subdivision removed. A vertex that exists only at the finer level -- an interpolated point, or
+;;     "dvert" -- was created by splitting an edge, and it stores two vectors: where it was authored,
+;;     and the displacement that puts it back on the edge it split. It also stores the palette indices
+;;     of that edge's two endpoints. Given t = the instance's morph weight, rising from 0 at the near
+;;     edge of the LOD band to 1 at the far edge:
+;;
+;;         position = authored + t * displacement
+;;         color    = (1 - t) * own + t * (color(parent1) + color(parent2)) / 2
+;;
+;;     so at t = 1 the vertex has moved onto its parents' edge and taken that edge's shading, the
+;;     surface it belongs to *is* the coarser surface, and the triangles about to disappear are already
+;;     degenerate. Nothing pops. The reciprocal band lengths in the prototype's rdists are what make t
+;;     reach 1 precisely at the plane where the coarser geometry takes over.
+;;
+;;     Note which half of that is pinned by the hardware and which is data. The color blend is always
+;;     the plain average of the two parents -- the 0.5 is an immediate in the microprogram, not
+;;     something the exporter chooses. The displacement is authored, so nothing here forces the vertex
+;;     to land on the edge midpoint specifically; it is only the color that assumes it did. A collapse
+;;     to any other point on the edge would still be geometrically crack-free but would shade very
+;;     slightly wrong, so midpoint is the reading the two halves agree on.
+;;
+;;     T-junctions and cracks are avoided by a separate and much blunter decision: the LOD is chosen
+;;     per instance, not per fragment, so every fragment of a prototype is always at the same
+;;     subdivision level and shares the same t. Two fragments meeting along an edge therefore split
+;;     that edge the same number of times and move the shared vertices identically. There is no case
+;;     where one half of a mesh is finer than the other, so there is never a vertex sitting in the
+;;     middle of a neighbour's edge.
+;;   * Palette colors are unpacked with VIF's additive mode on top of a 2^23 ROW, which leaves each
+;;     color sitting in the low mantissa bits of an exactly representable float. Blending two of them
+;;     with weights that sum to 256 pushes the exponent up by eight and divides the result by 256 for
+;;     free -- see the morph pipeline. The same bias lets mtir pull VU addresses out of float lanes.
+;;   * TIE is a scatter. There is no intermediate vertex array and no index buffer: entry 6 installs the
+;;     shader and strip templates first -- GIF tags and vertex counts included -- and then each vertex is
+;;     transformed and written *straight into its own slot* in the finished packet, told which slot it
+;;     owns by an offset carried in its own data. Nothing walks a strip list afterwards to collect
+;;     vertices.
+;;
+;;     Worth knowing because TFRAG, the other background renderer, is the opposite: it transforms into an
+;;     intermediate array and then a separate pass walks an exported draw-point table, follows each entry
+;;     to a vertex, and copies it into the GIF buffer through a sequential cursor -- a gather. Almost
+;;     every structural difference between the two follows from that one choice, including why TFRAG can
+;;     redirect a strip by rewriting one record while TIE cannot, and why TIE needs three rotating output
+;;     banks where TFRAG needs two.
+;;
+;;     Three consequences here, and they explain most of what looks odd further down:
+;;
+;;     There is no index buffer, so a vertex used by two triangle strips needs a slot in each. The
+;;     exporter finds those and gives them a second offset; the renderer transforms once and stores the
+;;     identical triplet twice. A vertex cache decided at export time rather than looked up at run time.
+;;
+;;     Nothing can emit fewer vertices than the template expects, because that would mean patching a GIF
+;;     tag's count per fragment per frame. So every conditional below changes *what* goes into a slot,
+;;     never *whether* a slot is filled.
+;;
+;;     And there is no per-vertex branch in the steady state: the tails are handled by duplicating the
+;;     loop once per slot instead of testing, which is why the same twenty instructions appear as flush,
+;;     short, and dual-destination variants.
+;;   * GIF output rotates through three banks, not two, and the reason is entry 6 rather than entry 0.
+;;     Within one fragment the two banks named by gifbuf alternate per instance in the ordinary
+;;     double-buffered way: each entry-0 invocation rotates gifbuf, fills gifbuf.x, kicks it, and
+;;     stops, so the bank being filled is never the bank the GIF is draining. The third bank exists
+;;     because a *new* fragment has to install its shader and strip templates into both of the banks it
+;;     is about to use, and at that moment one of the previous fragment's two banks still has an
+;;     outstanding kick. Entry 6 therefore rotates in the bank that has been idle longest and leaves
+;;     the freshly kicked one alone. With two banks it would have to overwrite geometry the GIF had not
+;;     read yet.
+;;
+;; What lives where, since the data is spread across four levels of ownership and it matters which:
+;;
+;;   per level      the visibility string. One bit per instance, in BVH order, so a word of zeroes skips
+;;                  32 instances without a transfer.
+;;   per prototype  the geometry -- up to four alternative meshes, each cut into fragments -- and one
+;;                  time-of-day color palette in prototype-bucket-tie.tie-colors. Also the LOD
+;;                  distances, the wind stiffness, and the environment-map fade range.
+;;   per fragment   its adgif shaders, its packed point stream, its strip templates, and its slice of the
+;;                  prototype palette, named by color-index and color-count.
+;;   per instance   64 bytes: a packed transform, a bounding sphere, a wind index, and a pointer to its
+;;                  own stream of palette indices.
+;;
+;; The palette is the part worth being clear about. The colors themselves belong to the prototype and are
+;; expanded and uploaded once per prototype per frame, to VU 838, where all of its fragments and all of
+;; its instances read the same 128 entries. What each instance owns is not colors but *indices* into
+;; them -- one per vertex, packed four to a quadword for base points and one quadword per interpolated
+;; point, uploaded to VU 204 with the instance's transform. So two crates built from the same prototype
+;; share every color yet can be lit completely differently, one standing in sunlight and one in shadow,
+;; at the cost of one byte per vertex.
+;;
+;; That is also why the palette upload sits *outside* the fragment loop and the index upload *inside*
+;; the per-instance chain: the expensive thing happens once, the cheap thing happens thousands of times.
+;;
+;; GENERIC models can also be routed into the TIE packet path; see generic-tie-convert and
+;; generic-tie-execute.
 
 ;; DECOMP BEGINS
 
 ;;;;;;;;;;;;;;;;;
 ;; Basic Methods
 ;;;;;;;;;;;;;;;;;
-
-;; something is going wrong mem-usage (believed fixed)
-
+;; definition for method 9 of type tie-fragment
 (defmethod login ((this tie-fragment))
-  "Initialize the shaders for a tie-fragment"
-  ;; the gif data is just adgif shaders, each are 5 qw's
-  (let ((s5-0 (-> this gif-ref))
-        (s4-0 (/ (-> this tex-count) (the-as uint 5))))
-    (dotimes (s3-0 (the-as int s4-0))
-      ;; will modify the adgif-shaders in place to have the appropriate tbp.
-      (adgif-shader-login-no-remap (-> s5-0 s3-0))))
+  "Log in each five-quadword adgif shader referenced by this fragment."
+  (let ((shaders (-> this gif-ref))
+        (shader-count (/ (-> this tex-count) (the-as uint 5))))
+    (dotimes (i (the-as int shader-count))
+      (adgif-shader-login-no-remap (-> shaders i))))
   this)
 
+;; definition for method 3 of type drawable-inline-array-instance-tie
 (defmethod inspect ((this drawable-inline-array-instance-tie))
-  "Inspect an array of instances"
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
-  (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  (dotimes (i (-> this length))
+    (format #t "~T  [~D] ~A~%" i (-> this data i)))
   this)
 
+;; definition for method 5 of type drawable-inline-array-instance-tie
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of ((this drawable-inline-array-instance-tie))
-  "Compute the size in memory of an array of instances."
+  "Return the array header size plus storage for its active inline TIE instances."
   (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> this length) -1) 64))))
 
-#|
-;; for some reason, this showed up twice.
-(defmethod login ((this drawable-tree-instance-tie))
-this
-)
-|#
+;; definition for method 9 of type drawable-tree-instance-tie
+;; INFO: this function exists in multiple non-identical object files
+(#unless PC_PORT
+  (defmethod login ((this drawable-tree-instance-tie))
+    "Leave this TIE instance tree unchanged."
+    this))
 
+;; definition for method 9 of type drawable-tree-instance-tie
+;; INFO: this function exists in multiple non-identical object files
+;; INFO: Return type mismatch symbol vs drawable-tree-instance-tie.
 (defmethod login ((this drawable-tree-instance-tie))
-  "Login method for the tie instance tree."
-  ;; just log in all of the drawables.
-  (dotimes (s5-0 (-> this length))
-    (login (-> this data s5-0)))
+  "Log in every child drawable in this TIE instance tree."
+  (dotimes (i (-> this length))
+    (login (-> this data i)))
   (the-as drawable-tree-instance-tie #f))
 
+;; definition for method 3 of type prototype-tie
 (defmethod inspect ((this prototype-tie))
-  "Inspect the inline-array of tie"
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
-  ;; print each fragment
-  (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  (dotimes (i (-> this length))
+    (format #t "~T  [~D] ~A~%" i (-> this data i)))
   this)
 
+;; definition for method 9 of type prototype-tie
 (defmethod login ((this prototype-tie))
-  "Login each tie-fragment."
-  (dotimes (s5-0 (-> this length))
-    (login (-> this data s5-0)))
+  "Log in every inline TIE fragment."
+  (dotimes (i (-> this length))
+    (login (-> this data i)))
   this)
 
-(defmethod mem-usage ((this drawable-tree-instance-tie) (arg0 memory-usage-block) (arg1 int))
-  "Compute memory usage for a drawable tree of TIE instances"
-  (set! (-> arg0 length) (max 1 (-> arg0 length)))
-  (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
-  (+! (-> arg0 data 0 count) 1)
-  (let ((v1-7 32)) (+! (-> arg0 data 0 used) v1-7) (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15))))
-  ;; do our drawables
-  (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1))
-  ;; do our prototypes, but with a flag set!
-  (mem-usage (-> this prototypes prototype-array-tie) arg0 (logior arg1 1))
+;; definition for method 8 of type drawable-tree-instance-tie
+(defmethod mem-usage ((this drawable-tree-instance-tie) (usage memory-usage-block) (flags int))
+  "Account for the tree header, its child drawables, and its prototype array. The prototype
+   pass is marked so fragments are not charged as independent allocations a second time."
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
+  (+! (-> usage data 0 count) 1)
+  (let ((header-bytes 32))
+    (+! (-> usage data 0 used) header-bytes)
+    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (dotimes (i (-> this length))
+    (mem-usage (-> this data i) usage flags))
+  ;; Bit 0 marks the prototype walk. Bits 1 through 4 are passed through to select instance-color
+  ;; accounting and its geometry category.
+  (mem-usage (-> this prototypes prototype-array-tie) usage (logior flags 1))
   this)
 
-(defmethod mem-usage ((this tie-fragment) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of a TIE prototype."
-  (when (logtest? arg1 2)
-    ;; count for an instance of this prototype.
-    (let ((v1-3 (* (-> this color-count) 4))
-          ;; pick one of the instance color categories.
-          (a0-2 (cond
-                  ((logtest? arg1 4) 20)
-                  ((logtest? arg1 8) 21)
-                  (else 22))))
-      (+! (-> arg0 data a0-2 count) 1)
-      (+! (-> arg0 data a0-2 used) v1-3)
-      (+! (-> arg0 data a0-2 total) (logand -4 (+ v1-3 3))))
-    (set! (-> arg0 length) (max 23 (-> arg0 length)))
+;; definition for method 8 of type tie-fragment
+(defmethod mem-usage ((this tie-fragment) (usage memory-usage-block) (flags int))
+  "Account for this prototype's header and referenced shader, point, draw-point, generic, and
+   debug data. With the instance-color flag, account only for one instance's packed color table in
+   the geometry-selected color category."
+  (when (logtest? flags 2)
+    (let ((color-bytes (* (-> this color-count) 4))
+          (color-category (cond
+                            ((logtest? flags 4) 20)
+                            ((logtest? flags 8) 21)
+                            (else 22))))
+      (+! (-> usage data color-category count) 1)
+      (+! (-> usage data color-category used) color-bytes)
+      (+! (-> usage data color-category total) (logand -4 (+ color-bytes 3))))
+    (set! (-> usage length) (max 23 (-> usage length)))
     (set! this this)
     (goto cfg-13))
-  ;; not an instance, count the memory of the prototype.
-  (set! (-> arg0 length) (max 18 (-> arg0 length)))
-  (set! (-> arg0 data 9 name) "tie-fragment")
-  (set! (-> arg0 data 10 name) "tie-gif")
-  (set! (-> arg0 data 11 name) "tie-points")
-  (set! (-> arg0 data 12 name) "tie-colors")
-  (set! (-> arg0 data 14 name) "tie-debug")
-  (set! (-> arg0 data 13 name) "tie-draw-points")
-  (set! (-> arg0 data 17 name) "tie-generic")
-  (+! (-> arg0 data 9 count) 1)
-  (let ((v1-21 (asize-of this))) (+! (-> arg0 data 9 used) v1-21) (+! (-> arg0 data 9 total) (logand -16 (+ v1-21 15))))
-  (let ((v1-26 (* (-> this gif-count) 16)))
-    (+! (-> arg0 data 10 count) (-> this tex-count))
-    (+! (-> arg0 data 10 used) v1-26)
-    (+! (-> arg0 data 10 total) (logand -16 (+ v1-26 15))))
-  (let ((v1-31 (* (-> this vertex-count) 16)))
-    (+! (-> arg0 data 11 count) (-> this vertex-count))
-    (+! (-> arg0 data 11 used) v1-31)
-    (+! (-> arg0 data 11 total) (logand -16 (+ v1-31 15))))
-  (let ((v1-36 (* (-> this dp-qwc) 16)))
-    (+! (-> arg0 data 13 count) (* (-> this dp-qwc) 16))
-    (+! (-> arg0 data 13 used) v1-36)
-    (+! (-> arg0 data 13 total) (logand -16 (+ v1-36 15))))
-  (let ((v1-41 (* (-> this generic-count) 16)))
-    (+! (-> arg0 data 17 count) 1)
-    (+! (-> arg0 data 17 used) v1-41)
-    (+! (-> arg0 data 17 total) (logand -16 (+ v1-41 15))))
+  (set! (-> usage length) (max 18 (-> usage length)))
+  (set! (-> usage data 9 name) "tie-fragment")
+  (set! (-> usage data 10 name) "tie-gif")
+  (set! (-> usage data 11 name) "tie-points")
+  (set! (-> usage data 12 name) "tie-colors")
+  (set! (-> usage data 14 name) "tie-debug")
+  (set! (-> usage data 13 name) "tie-draw-points")
+  (set! (-> usage data 17 name) "tie-generic")
+  (+! (-> usage data 9 count) 1)
+  (let ((header-bytes (asize-of this)))
+    (+! (-> usage data 9 used) header-bytes)
+    (+! (-> usage data 9 total) (logand -16 (+ header-bytes 15))))
+  (let ((shader-bytes (* (-> this gif-count) 16)))
+    (+! (-> usage data 10 count) (-> this tex-count))
+    (+! (-> usage data 10 used) shader-bytes)
+    (+! (-> usage data 10 total) (logand -16 (+ shader-bytes 15))))
+  (let ((point-bytes (* (-> this vertex-count) 16)))
+    (+! (-> usage data 11 count) (-> this vertex-count))
+    (+! (-> usage data 11 used) point-bytes)
+    (+! (-> usage data 11 total) (logand -16 (+ point-bytes 15))))
+  (let ((draw-point-bytes (* (-> this dp-qwc) 16)))
+    (+! (-> usage data 13 count) (* (-> this dp-qwc) 16))
+    (+! (-> usage data 13 used) draw-point-bytes)
+    (+! (-> usage data 13 total) (logand -16 (+ draw-point-bytes 15))))
+  (let ((generic-bytes (* (-> this generic-count) 16)))
+    (+! (-> usage data 17 count) 1)
+    (+! (-> usage data 17 used) generic-bytes)
+    (+! (-> usage data 17 total) (logand -16 (+ generic-bytes 15))))
   (when (nonzero? (-> this debug-lines))
-    (dotimes (s4-0 (-> this debug-lines length))
-      (+! (-> arg0 data 14 count) (-> (the-as (pointer int32) (-> this debug-lines s4-0)) 0))
-      (let ((v1-52 (asize-of (the-as basic (-> this debug-lines s4-0)))))
-        (+! (-> arg0 data 12 used) v1-52)
-        (+! (-> arg0 data 12 total) (logand -16 (+ v1-52 15))))))
+    (dotimes (i (-> this debug-lines length))
+      (+! (-> usage data 14 count) (-> (the-as (pointer int32) (-> this debug-lines i)) 0))
+      (let ((debug-line-bytes (asize-of (the-as basic (-> this debug-lines i)))))
+        ;; TODO: the count is charged to tie-debug above, but the bytes are charged to tie-colors
+        ;; here. Verify which category the report intends.
+        (+! (-> usage data 12 used) debug-line-bytes)
+        (+! (-> usage data 12 total) (logand -16 (+ debug-line-bytes 15))))))
   (label cfg-13)
   this)
 
-(defmethod mem-usage ((this instance-tie) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of TIE instance."
-  (set! (-> arg0 length) (max 19 (-> arg0 length)))
-  (set! (-> arg0 data 18 name) "instance-tie")
-  (+! (-> arg0 data 18 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> arg0 data 18 used) v1-6) (+! (-> arg0 data 18 total) (logand -16 (+ v1-6 15))))
+;; definition for method 8 of type instance-tie
+(defmethod mem-usage ((this instance-tie) (usage memory-usage-block) (flags int))
+  "Account for this instance and, when it owns color overrides, ask each available geometry
+   prototype to account for the corresponding packed instance-color table."
+  (set! (-> usage length) (max 19 (-> usage length)))
+  (set! (-> usage data 18 name) "instance-tie")
+  (+! (-> usage data 18 count) 1)
+  (let ((instance-bytes (asize-of this)))
+    (+! (-> usage data 18 used) instance-bytes)
+    (+! (-> usage data 18 total) (logand -16 (+ instance-bytes 15))))
   (when (nonzero? (-> this error))
-    (set! (-> arg0 length) (max 24 (-> arg0 length)))
-    (set! (-> arg0 data 23 name) "instance-tie-colors*")
-    (set! (-> arg0 data 19 name) "instance-tie-colors0")
-    (set! (-> arg0 data 20 name) "instance-tie-colors1")
-    (set! (-> arg0 data 21 name) "instance-tie-colors2")
-    (set! (-> arg0 data 22 name) "instance-tie-colors3")
-    (+! (-> arg0 data 23 count) 1)
-    (let ((s3-0 (-> this bucket-ptr)))
-      ;; unused
-      (+ (-> arg0 data 19 used) (-> arg0 data 20 used) (-> arg0 data 21 used) (-> arg0 data 22 used))
-      ;; loop over all 4 possible geometries
-      (dotimes (s2-0 4)
-        (let ((a0-10 (-> s3-0 geometry-override s2-0)))
-          (when (nonzero? a0-10) ;; only if we actually have it.
-            (mem-usage a0-10
-                       arg0
-                       (logior (logior (cond ;; based on which geom we are, pick the right color bucket.
-                                         ((= s2-0 1) 4)
-                                         ((= s2-0 2) 8)
-                                         ((= s2-0 3) 16)
-                                         (else 0))
-                                       2 ;; set so we count it as an instance of a prototype.
-                                       )
-                               arg1)))))))
+    (set! (-> usage length) (max 24 (-> usage length)))
+    (set! (-> usage data 23 name) "instance-tie-colors*")
+    (set! (-> usage data 19 name) "instance-tie-colors0")
+    (set! (-> usage data 20 name) "instance-tie-colors1")
+    (set! (-> usage data 21 name) "instance-tie-colors2")
+    (set! (-> usage data 22 name) "instance-tie-colors3")
+    (+! (-> usage data 23 count) 1)
+    (let ((bucket (-> this bucket-ptr)))
+      ;; This subtotal is computed but not stored.
+      (+ (-> usage data 19 used) (-> usage data 20 used) (-> usage data 21 used) (-> usage data 22 used))
+      (dotimes (i 4)
+        (let ((geometry (-> bucket geometry-override i)))
+          (when (nonzero? geometry)
+            (let ((t9-1 (method-of-object geometry mem-usage))
+                  (a1-2 usage)
+                  (geometry-index i))
+              (t9-1 geometry
+                    a1-2
+                    (logior (logior (cond
+                                      ((= geometry-index 1) 4)
+                                      ((= geometry-index 2) 8)
+                                      ((= geometry-index 3) 16)
+                                      (else 0))
+                                    2)
+                            flags))))))))
   this)
 
-(defmethod mem-usage ((this drawable-inline-array-instance-tie) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of an entire array of instances"
-  (set! (-> arg0 length) (max 1 (-> arg0 length)))
-  (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
-  (+! (-> arg0 data 0 count) 1)
-  (let ((v1-7 32)) (+! (-> arg0 data 0 used) v1-7) (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15))))
-  ;; just call mem-usage on every element.
-  (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1))
+;; definition for method 8 of type drawable-inline-array-instance-tie
+(defmethod mem-usage ((this drawable-inline-array-instance-tie) (usage memory-usage-block) (flags int))
+  "Account for the inline-array header and every active TIE instance."
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
+  (+! (-> usage data 0 count) 1)
+  (let ((header-bytes 32))
+    (+! (-> usage data 0 used) header-bytes)
+    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (dotimes (i (-> this length))
+    (mem-usage (-> this data i) usage flags))
   this)
 
-(defmethod mem-usage ((this prototype-tie) (arg0 memory-usage-block) (arg1 int))
-  "Compute the memory usage of an entire array of prototypes."
-  (set! (-> arg0 length) (max 1 (-> arg0 length)))
-  (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
-  (+! (-> arg0 data 0 count) 1)
-  (let ((v1-7 32)) (+! (-> arg0 data 0 used) v1-7) (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15))))
-  ;; just call mem-usage on each.
-  (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1))
+;; definition for method 8 of type prototype-tie
+(defmethod mem-usage ((this prototype-tie) (usage memory-usage-block) (flags int))
+  "Account for the prototype-array header and every inline TIE fragment."
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
+  (+! (-> usage data 0 count) 1)
+  (let ((header-bytes 32))
+    (+! (-> usage data 0 used) header-bytes)
+    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (dotimes (i (-> this length))
+    (mem-usage (-> this data i) usage flags))
   this)
 
+;; definition for method 5 of type prototype-tie
+;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of ((this prototype-tie))
-  "Compute the size in memory of a prototype array"
-  ;; 64 bytes/fragment, minus 1 in the type.
+  "Return the prototype-array header size plus storage for its active inline fragments."
   (the-as int (+ (-> prototype-tie size) (* (+ (-> this length) -1) 64))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIE Renderer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; these constants are uploaded to the VU once per frame.
+;; The nine constant quadwords uploaded to VU1 966 through 974 once per frame. Six carry packet
+;; templates and the persistent buffer state installed by entry 8; the last three are the alpha-test
+;; packet and its two selectable TEST states. The overlays let the setup code write each quadword
+;; through whichever view is convenient -- GS types for the tags, vector for the float-biased
+;; addresses, qword for the integer bank addresses -- without a pile of casts.
 (deftype tie-consts (structure)
   ((data      uint32 24)
    (vector    vector 6 :inline :overlay-at (-> data 0))
    (quads     uint128 6 :overlay-at (-> data 0))
-   (adgif     gs-gif-tag :inline :overlay-at (-> data 0))
-   (strgif    gs-gif-tag :inline :overlay-at (-> data 4))
-   (extra     vector :inline :overlay-at (-> data 8))
-   (gifbufs   vector :inline :overlay-at (-> data 12))
-   (clrbufs   qword :inline :overlay-at (-> data 16))
-   (misc      qword :inline :overlay-at (-> data 20))
-   (atestgif  gs-gif-tag :inline :offset 96)
+   (adgif     gs-gif-tag :inline :overlay-at (-> data 0)) ;; five-register A+D tag for a shader
+   (strgif    gs-gif-tag :inline :overlay-at (-> data 4)) ;; ST/RGBAQ/XYZF2 tag for a triangle strip
+   (extra     vector :inline :overlay-at (-> data 8)) ;; x,z: sum of the three GIF addresses
+   (gifbufs   vector :inline :overlay-at (-> data 12)) ;; the two GIF banks this fragment owns
+   (clrbufs   qword :inline :overlay-at (-> data 16)) ;; the two instance-record input banks
+   (misc      qword :inline :overlay-at (-> data 20)) ;; x: wanted TEST state, y: installed state
+   (atestgif  gs-gif-tag :inline :offset 96) ;; one-register A+D tag, written ahead of the TEST value
    (atest     ad-cmd 2 :inline :offset 112)
-   (atest-tra ad-cmd :inline :overlay-at (-> atest 0))
-   (atest-def ad-cmd :inline :overlay-at (-> atest 1))))
+   (atest-tra ad-cmd :inline :overlay-at (-> atest 0)) ;; alpha-tested translucent pass
+   (atest-def ad-cmd :inline :overlay-at (-> atest 1)))) ;; ordinary opaque pass
 
-;; definition for symbol tie-vu1-block, type vu-function
-(define tie-vu1-block (new 'static 'vu-function :length 0 :qlength 0)) ;; was 0x3e1, 0x1f1
+;; How the two halves of TIE divide the work.
+;;
+;; EE, instance pass: cull each placement against the camera, pick near / ordinary / Generic and a
+;; level of detail, transform its rows, run the wind spring, and link a compact instance record onto
+;; the chosen prototype-and-LOD list.
+;;
+;; EE, prototype pass: visit only the lists that got something. Expand that prototype's time-of-day
+;; palette and emit the DMA/VIF chain that uploads one fragment -- shaders, strip templates, packed
+;; points -- followed by every instance record hanging off it. Two scratchpad palette banks and two
+;; scratchpad output banks alternate, so the EE builds the next packet while DMA is still returning
+;; the last one.
+;;
+;; VU1: entry 6 installs the fragment's templates, then entry 0 runs once per instance batch. It
+;; expands the packed points, transforms four vertices at a time, divides by w, looks each vertex's
+;; color out of the palette, and writes ST/RGBAQ/XYZF triplets straight into a GIF bank.
+;;
+;; VU1 memory map:
+;;
+;;     0 -  49   prototype point stream as uploaded (packed 16-bit)
+;;    50 - 197   expanded point stream; conversion works backwards into the space it consumes
+;;   198 - 241   instance input bank A (transform, morph, packet state, palette indices)
+;;   242 - 285   instance input bank B
+;;   286 - 469   GIF output bank 0
+;;   470 - 653   GIF output bank 1
+;;   654 - 837   GIF output bank 2
+;;   838 - 965   time-of-day color palette, 128 entries
+;;   966 - 974   tie-consts
+;;   976 - 977   the alpha-test packet assembled just before each kick
+;;
+;; VIF alternates the two 44-quadword instance banks so it can fill one while VU1 reads the other.
+;;
+;; The GIF output rotation, in full, because it is the least obvious part of the program.
+;;
+;; gifbuf holds two of the three bank addresses, duplicated as (A B A B) so that mr32 -- which rotates
+;; lanes by one -- swaps which of the two is in x while leaving the pair intact. Sequence per fragment:
+;;
+;;   entry 6   gifbuf.x <- extra.x - gifbuf.x - gifbuf.y, i.e. the third bank, the one this fragment's
+;;             predecessor did not touch last. Templates are installed into gifbuf.x and gifbuf.y,
+;;             which are now the two banks this fragment owns. mr32, then stop.
+;;   entry 0   mr32, fill gifbuf.x, kick gifbuf.x, mr32 clrbuf to flip the instance input bank, stop.
+;;             Once per instance, so successive instances of the same fragment alternate banks.
+;;
+;; Within a fragment that is plain double buffering: the bank being filled is never the bank the GIF is
+;; draining. The third bank is for the fragment boundary. Entry 6 has to write templates into *both*
+;; banks it will use, and at that moment the last instance of the previous fragment has an outstanding
+;; kick on one of the two banks it was using. Rotating in the longest-idle bank keeps entry 6 away from
+;; it. Two banks would not be enough; four would buy nothing.
+;;
+;; Deriving the third address by subtracting the two live ones from their sum costs two vector
+;; subtractions and no integer lookup, which is the only reason extra.x exists.
+;;
+;; Vertices are not assigned to a bank or a slot by their position in the stream. Each vertex carries
+;; its own destination offset in the w lane of its position quadword; add the current bank's biased
+;; address, mtir it out, and that is where the triplet goes. No output cursor, no ordering constraint
+;; between vertices -- which is exactly what lets the render loops keep four of them in flight.
+;;
+;; That addressing scheme is also how reuse works. The strip templates are prebuilt with a fixed slot
+;; per vertex per strip, so there is no index buffer and a vertex belonging to two strips has to appear
+;; in both. Such a vertex carries a second offset in the w lane of its ST quadword and the
+;; dual-destination loop variants store the identical ST, RGBAQ and XYZF2 triplet to both slots -- same
+;; texture coordinates, same time-of-day color, same screen position, transformed once. Anything else
+;; would show: a position difference opens a crack, and an ST or color difference draws a visible seam
+;; down the shared edge. Both offsets are inside the bank currently being filled.
+;;
+;; The four group-terminating addresses arrive as offsets relative to whichever bank the exporter had
+;; in mind, so kick-addr remembers the base they are currently expressed against and each instance
+;; rebases them by the difference. Entry 6 sets kick-addr to zero, which turns the first instance's
+;; rebase into a plain "make these absolute in the bank I am filling".
+;;
+;; Entry points: 0 render an instance stream, 2 finish and kick the current GIF bank, 4 empty (used
+;; purely to wait for the previous invocation), 6 install a fragment's templates, 8 initialize the
+;; persistent buffer registers and the alpha-test selector.
+
+;; Where the point-expansion loop picks up the packed stream. These two have no type behind them --
+;; the stream is untyped packed data -- so they stay plain constants.
+(defconstant TIE-VU-PROTOTYPE-POINT-0 50)
+
+(defconstant TIE-VU-PROTOTYPE-POINT-1 51)
+
+(defconstant TIE-VU-PALETTE-BASE 838)
+
+;; tie-consts is uploaded as one nine-quadword block, and its field order *is* its upload order, so the
+;; addresses are derived from the type rather than transcribed one per line. Change the type and every
+;; address in the program follows; there is nothing to keep in sync by hand.
+(defconstant TIE-VU-CONSTS 966)
+
+(defmacro tie-const (&rest path)
+  `(+ TIE-VU-CONSTS (/ (offset-of tie-consts ,@path) 16)))
+
+;; Two scratch quadwords past the end of tie-consts, where the alpha-test packet is assembled before it
+;; is kicked. Outside the type, so named directly.
+(defconstant TIE-VU-ATEST-PACKET 976)
+
+(defconstant TIE-VU-ATEST-DATA 977)
+
+;; One instance record is a tie-matrix -- six quadwords -- followed by one quadword of palette indices,
+;; and the render loops address it relative to clr-ptr. Same trick: take the quadword index from the
+;; type. The index stream continues past the end of the record, one quadword per four vertices, which is
+;; why the stride is one more than the last field.
+(defmacro tie-instance-qword (&rest path)
+  `(/ (offset-of tie-matrix ,@path) 16))
+
+(defconstant TIE-VU-INSTANCE-PALETTE-INDICES (+ (tie-instance-qword fog) 1))
+
+(defconstant TIE-VU-INSTANCE-STRIDE (+ TIE-VU-INSTANCE-PALETTE-INDICES 1))
+
+(#when PC_PORT
+  (define tie-vu1-block (new 'static 'vu-function :length 0 :qlength 0)))
+
+(#unless PC_PORT
+  (defvu1 tie-vu1-block
+          ;; Register aliases for the render pipelines. Sixteen integer and thirty-two vector registers
+          ;; have to cover template installation, point expansion, and both pipelines, so the setup
+          ;; entries borrow most of these for unrelated temporaries. Those entries are written with
+          ;; physical registers below; the names below mean what they say from render-basic-stream on.
+          ;;
+          ;; Vocabulary. A "bp" is a base point: an ordinary vertex, one input quadword plus its ST, one
+          ;; output slot. An "ip" is an interpolated point: it also carries the offset toward the
+          ;; midpoint of the edge it subdivides and the palette indices of that edge's two endpoints,
+          ;; so the morph weight can collapse it onto that edge. Each kind is split into two groups:
+          ;; group 1 is the vertices with a single output slot, group 2 the vertices shared by two
+          ;; triangle strips, which have to be written twice. skip-bp2 and skip-ips say whether the
+          ;; second and the interpolated groups exist at all, and the four target-*-ptr values are the
+          ;; output addresses at which each group ends.
+          (rlet ((itemp :reg vi01) ;; scratch: bank deltas, entry selectors, GIF addresses
+                 (point-ptr :reg vi02) ;; cursor into the uploaded prototype point stream
+                 (clr-ptr :reg vi03) ;; cursor into the instance records (matrix, morph, indices)
+                 (target-bp1-ptr :reg vi04) ;; output address that ends the first base-point group
+                 (skip-bp2 :reg vi05) ;; nonzero when this fragment has no second base-point group
+                 (target-bp2-ptr :reg vi06) ;; output address that ends the second base-point group
+                 (target-ip1-ptr :reg vi07) ;; output address that ends the first interp-point group
+                 (target-ip2-ptr :reg vi08) ;; output address that ends the second interp-point group
+                 (ind0 :reg vi09) ;; palette index for this vertex
+                 (ind1 :reg vi10) ;; first neighbour index, interp points only
+                 (ind2 :reg vi11) ;; second neighbour index, interp points only
+                 (dest-ptr :reg vi12) ;; GIF write cursor in the bank being filled
+                 (dest2-ptr :reg vi13) ;; GIF write cursor in the fragment's other bank
+                 (skip-ips :reg vi14) ;; zero when this fragment has interpolated points
+                 (kick-addr :reg vi15) ;; base of the bank most recently handed to the GIF
+                 (t-mtx0 :reg vf01) ;; instance transform, rows 0 through 3
+                 (t-mtx1 :reg vf02)
+                 (t-mtx2 :reg vf12)
+                 (t-mtx3 :reg vf13)
+                 (vtx-0 :reg vf05) ;; four packed input vertices in flight
+                 (vtx-1 :reg vf06)
+                 (vtx-2 :reg vf07)
+                 (vtx-3 :reg vf08)
+                 (pos-02 :reg vf09) ;; homogeneous positions for the even and odd halves of the group
+                 (pos-13 :reg vf10)
+                 (clr-0 :reg vf11) ;; the group's four time-of-day colors
+                 (clr-1 :reg vf03)
+                 (clr-2 :reg vf04)
+                 (clr-3 :reg vf14)
+                 (tex-0 :reg vf15) ;; the group's four ST coordinates
+                 (tex-1 :reg vf16)
+                 (tex-2 :reg vf17)
+                 (tex-3 :reg vf18)
+                 (res-02 :reg vf19) ;; screen-space XYZF results, even and odd halves
+                 (res-13 :reg vf20)
+                 (gifbuf :reg vf21) ;; biased addresses of the rotating GIF output banks
+                 (clrbuf :reg vf22) ;; alternating instance/color input-bank addresses
+                 (extra :reg vf23) ;; sum of the three GIF addresses, plus the saved output cursors
+                 (inds :reg vf24) ;; packed time-of-day palette indices for one vertex
+                 (morph :reg vf27) ;; per-instance LOD blend: x collapses geometry, zw blend colors
+                 (xyzofs :reg vf28) ;; interp point's second position, and the output base in w
+                 (clr1 :reg vf29) ;; first neighbour color, then their average
+                 (clr2 :reg vf30) ;; second neighbour color
+                 )
+            ;; Entry table. Each entry is one instruction pair holding a branch plus whatever setup fits in
+            ;; the slots; entry 8 has no branch at all and simply runs off the end of the table into #x009.
+            ;; The E bit at #x00c is what stops entry 8, and the store at #x00d runs in its delay pair, which
+            ;; is why the "previously installed TEST state" starts at -1 -- no state can match it, so the
+            ;; first fragment always sends one.
+            (vu-pair (b render-basic-stream) (nop)) ;; #x000
+            (vu-pair (mr32.xyzw gifbuf gifbuf) (nop)) ;; #x001
+            (vu-pair (b finish-current-gif-buffer) (nop)) ;; #x002
+            (vu-pair (nop) (nop)) ;; #x003
+            (vu-pair (b finish-vu-entry) (nop)) ;; #x004
+            (vu-pair (nop) (nop)) ;; #x005
+            (vu-pair (b initialize-fragment-templates) (nop)) ;; #x006
+            (vu-pair (iaddi point-ptr vi00 0x0) (subx.xz gifbuf extra gifbuf)) ;; #x007
+            (vu-pair (iaddi itemp vi00 0x1) (nop)) ;; #x008
+            (vu-pair (lq.xyzw gifbuf vi00 (tie-const gifbufs)) (nop)) ;; #x009
+            (vu-pair (lq.xz extra vi00 (tie-const extra)) (nop)) ;; #x00a
+            (vu-pair (lq.xyzw clrbuf vi00 (tie-const clrbufs)) (nop)) ;; #x00b
+            (vu-pair (isw.x vi00 vi00 (tie-const misc)) (nop :e)) ;; #x00c
+            (vu-pair (isw.y itemp vi00 (tie-const misc)) (nop)) ;; #x00d
+            ;; Entry 6. A fragment's GIF output is prebuilt: the adgif shader packets and the strip tags are
+            ;; laid down first, and the render loop only fills in the vertex triplets between them. Because
+            ;; the fragment splits its vertices across both of the banks it owns, every template has to be
+            ;; written into both. The destination offsets and repeat counts ride along in words of the
+            ;; uploaded packet data that the GIF ignores, so one stream describes the templates and where
+            ;; they go.
+            ;;
+            ;; Physical registers from here to setup-instance-render: vi04 is the running destination offset,
+            ;; vi05 and vi06 are the two bank base addresses, vi09 is the repeat count, and vf01 through
+            ;; vf07 are just quadwords in transit. None of them hold their render-loop meaning yet.
+            (label initialize-fragment-templates)
+            (vu-pair (lq.xyz vf01 vi00 (tie-const adgif)) (nop)) ;; #x00e
+            (vu-pair (ilwr.w vi04 point-ptr) (nop)) ;; #x00f
+            (vu-pair (ilw.w vi09 point-ptr 1) (nop)) ;; #x010
+            (vu-pair (mtir vi06 gifbuf.y) (nop)) ;; #x011
+            (vu-pair (lqi.xyzw vf02 point-ptr) (suby.xz gifbuf gifbuf gifbuf)) ;; #x012
+            (vu-pair (lqi.xyzw vf03 point-ptr) (nop)) ;; #x013
+            (vu-pair (lqi.xyzw vf04 point-ptr) (nop)) ;; #x014
+            (vu-pair (lqi.xyzw vf05 point-ptr) (nop)) ;; #x015
+            (vu-pair (mtir vi05 gifbuf.x) (nop)) ;; #x016
+            (vu-pair (lqi.xyzw vf06 point-ptr) (subw.w vf01 vf01 vf01)) ;; #x017
+            (label copy-adgif-templates)
+            (vu-pair (iadd vi03 vi04 vi05) (nop)) ;; #x018
+            (vu-pair (iadd vi04 vi04 vi06) (nop)) ;; #x019
+            (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x01a
+            (vu-pair (sqi.xyzw vf01 vi03) (nop)) ;; #x01b
+            (vu-pair (sqi.xyzw vf02 vi03) (nop)) ;; #x01c
+            (vu-pair (sqi.xyzw vf03 vi03) (nop)) ;; #x01d
+            (vu-pair (sqi.xyzw vf04 vi03) (nop)) ;; #x01e
+            (vu-pair (sqi.xyzw vf05 vi03) (nop)) ;; #x01f
+            (vu-pair (sqi.xyzw vf06 vi03) (nop)) ;; #x020
+            (vu-pair (sqi.xyzw vf01 vi04) (nop)) ;; #x021
+            (vu-pair (sqi.xyzw vf02 vi04) (nop)) ;; #x022
+            (vu-pair (sqi.xyzw vf03 vi04) (nop)) ;; #x023
+            (vu-pair (sqi.xyzw vf04 vi04) (nop)) ;; #x024
+            (vu-pair (sqi.xyzw vf05 vi04) (nop)) ;; #x025
+            (vu-pair (sqi.xyzw vf06 vi04) (nop)) ;; #x026
+            (vu-pair (ilwr.w vi04 point-ptr) (nop)) ;; #x027
+            (vu-pair (lqi.xyzw vf02 point-ptr) (nop)) ;; #x028
+            (vu-pair (lqi.xyzw vf03 point-ptr) (nop)) ;; #x029
+            (vu-pair (lqi.xyzw vf04 point-ptr) (nop)) ;; #x02a
+            (vu-pair (lqi.xyzw vf05 point-ptr) (nop)) ;; #x02b
+            (vu-pair (ibgtz vi09 copy-adgif-templates) (nop)) ;; #x02c
+            (vu-pair (lqi.xyzw vf06 point-ptr) (nop)) ;; #x02d
+            (vu-pair (mtir vi09 vf02.w) (nop)) ;; #x02e
+            (vu-pair (iaddi point-ptr point-ptr -0x2) (subw.w vf07 vf07 vf07)) ;; #x02f
+            (vu-pair (ilwr.x vi07 point-ptr) (nop)) ;; #x030
+            (vu-pair (ilwr.y vi08 point-ptr) (nop)) ;; #x031
+            (vu-pair (ilwr.z vi04 point-ptr) (nop)) ;; #x032
+            (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x033
+            (vu-pair (iaddi point-ptr point-ptr 0x1) (nop)) ;; #x034
+            (vu-pair (ibeq vi00 vi09 finish-template-copy) (nop)) ;; #x035
+            (vu-pair (lq.xyz vf07 vi08 (tie-const strgif)) (nop)) ;; #x036
+            (label copy-strip-templates)
+            (vu-pair (iadd vi03 vi04 vi05) (nop)) ;; #x037
+            (vu-pair (iadd vi04 vi04 vi06) (nop)) ;; #x038
+            (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x039
+            (vu-pair (sq.xyzw vf07 vi03 0) (nop)) ;; #x03a
+            (vu-pair (iswr.x vi07 vi03) (nop)) ;; #x03b
+            (vu-pair (sq.xyzw vf07 vi04 0) (nop)) ;; #x03c
+            (vu-pair (iswr.x vi07 vi04) (nop)) ;; #x03d
+            (vu-pair (ilwr.x vi07 point-ptr) (nop)) ;; #x03e
+            (vu-pair (ilwr.y vi08 point-ptr) (nop)) ;; #x03f
+            (vu-pair (ilwr.z vi04 point-ptr) (nop)) ;; #x040
+            (vu-pair (iaddi point-ptr point-ptr 0x1) (nop)) ;; #x041
+            (vu-pair (ibne vi00 vi09 copy-strip-templates) (nop)) ;; #x042
+            (vu-pair (lq.xyz vf07 vi08 (tie-const strgif)) (nop)) ;; #x043
+            (label finish-template-copy)
+            (vu-pair (iaddiu vi07 vi07 0x4000) (nop)) ;; #x044
+            (vu-pair (iaddiu vi07 vi07 0x4000) (nop)) ;; #x045
+            (vu-pair (iadd vi03 vi04 vi05) (nop)) ;; #x046
+            (vu-pair (iadd vi04 vi04 vi06) (nop)) ;; #x047
+            (vu-pair (sq.xyzw vf07 vi03 0) (nop)) ;; #x048
+            (vu-pair (iswr.x vi07 vi03) (nop)) ;; #x049
+            (vu-pair (sq.xyzw vf07 vi04 0) (nop)) ;; #x04a
+            (vu-pair (iswr.x vi07 vi04) (nop)) ;; #x04b
+            (vu-pair (mtir vi06 vf04.x) (nop)) ;; #x04c
+            (vu-pair (lq.xyzw vf05 vi00 TIE-VU-PROTOTYPE-POINT-0) (nop)) ;; #x04d
+            (vu-pair (lq.xyzw vf15 vi00 TIE-VU-PROTOTYPE-POINT-1) (nop)) ;; #x04e
+            (vu-pair (iaddiu vi05 vi00 (+ TIE-VU-PROTOTYPE-POINT-0 2)) (nop)) ;; #x04f
+            (vu-pair (nop) (nop)) ;; #x050
+            (vu-pair (iaddiu vi06 vi06 TIE-VU-PROTOTYPE-POINT-0) (itof0.xyzw vf05 vf05)) ;; #x051
+            (vu-pair (lqi.xyzw vf06 vi05) (itof12.xyz vf15 vf15)) ;; #x052
+            (vu-pair (lqi.xyzw vf16 vi05) (itof0.w vf15 vf15)) ;; #x053
+            (vu-pair (64.0) (nop :i)) ;; #x054
+            (vu-pair (ibeq vi06 vi05 prepare-instance-stream) (muli.xyz vf05 vf05 I)) ;; #x055
+            (vu-pair (mtir vi07 vf04.y) (itof0.xyzw vf06 vf06)) ;; #x056
+            ;; Expand the packed prototype points in place. Positions arrive as 20.12 fixed point and are
+            ;; scaled by 64 once converted; the quadword that travels with each position stays integer
+            ;; (palette selectors, the destination offset, and the strip counts). The loop reads forward and
+            ;; writes five and six quadwords behind itself, so the expanded stream grows into the space the
+            ;; packed stream has just vacated -- no second VU-memory allocation, and no copy at the end.
+            ;; Four positions are in flight at a time purely to keep the fixed-point converter busy.
+            (label convert-packed-control-points)
+            (vu-pair (lqi.xyzw vf07 vi05) (itof12.xyz vf16 vf16)) ;; #x057
+            (vu-pair (lqi.xyzw vf17 vi05) (itof0.w vf16 vf16)) ;; #x058
+            (vu-pair (sq.xyzw vf15 vi05 -5) (nop)) ;; #x059
+            (vu-pair (ibeq vi06 vi05 prepare-instance-stream) (muli.xyz vf06 vf06 I)) ;; #x05a
+            (vu-pair (sq.xyzw vf05 vi05 -6) (itof0.xyzw vf07 vf07)) ;; #x05b
+            (vu-pair (lqi.xyzw vf05 vi05) (itof12.xyz vf17 vf17)) ;; #x05c
+            (vu-pair (lqi.xyzw vf15 vi05) (itof0.w vf17 vf17)) ;; #x05d
+            (vu-pair (sq.xyzw vf16 vi05 -5) (nop)) ;; #x05e
+            (vu-pair (ibeq vi06 vi05 prepare-instance-stream) (muli.xyz vf07 vf07 I)) ;; #x05f
+            (vu-pair (sq.xyzw vf06 vi05 -6) (itof0.xyzw vf05 vf05)) ;; #x060
+            (vu-pair (lqi.xyzw vf06 vi05) (itof12.xyz vf15 vf15)) ;; #x061
+            (vu-pair (lqi.xyzw vf16 vi05) (itof0.w vf15 vf15)) ;; #x062
+            (vu-pair (sq.xyzw vf17 vi05 -5) (nop)) ;; #x063
+            (vu-pair (ibne vi06 vi05 convert-packed-control-points) (muli.xyz vf05 vf05 I)) ;; #x064
+            (vu-pair (sq.xyzw vf07 vi05 -6) (itof0.xyzw vf06 vf06)) ;; #x065
+            ;; Finish the indexed part of the point stream, then read the fragment's control words out of the
+            ;; last few quadwords: the four group-terminating output addresses and the two skip flags. The
+            ;; render loops compare the write cursor against those addresses rather than counting vertices,
+            ;; which is what makes the four-wide pipeline able to stop cleanly on any of its four slots.
+            (label prepare-instance-stream)
+            (vu-pair (lq.xyzw vf09 vi05 -4) (nop)) ;; #x066
+            (vu-pair (lq.xyzw vf05 vi05 -3) (nop)) ;; #x067
+            (vu-pair (lq.xyzw vf15 vi05 -2) (nop)) ;; #x068
+            (vu-pair (iadd vi07 vi07 vi05) (nop)) ;; #x069
+            (vu-pair (iaddi vi07 vi07 -0x4) (nop)) ;; #x06a
+            (vu-pair (iaddi vi05 vi05 -0x1) (nop)) ;; #x06b
+            (vu-pair (iaddi vi08 vi05 -0x3) (nop)) ;; #x06c
+            (vu-pair (ibeq vi07 vi05 setup-instance-render) (nop)) ;; #x06d
+            (vu-pair (nop) (itof0.xyzw vf09 vf09)) ;; #x06e
+            (vu-pair (lqi.xyzw vf10 vi05) (itof0.xyzw vf05 vf05)) ;; #x06f
+            (vu-pair (lqi.xyzw vf06 vi05) (itof0.w vf15 vf15)) ;; #x070
+            (vu-pair (lqi.xyzw vf16 vi05) (itof12.xyz vf15 vf15)) ;; #x071
+            (vu-pair (nop) (nop)) ;; #x072
+            (vu-pair (nop) (muli.xyz vf09 vf09 I)) ;; #x073
+            (vu-pair (ibeq vi07 vi05 setup-instance-render) (muli.xyz vf05 vf05 I)) ;; #x074
+            (vu-pair (nop) (itof0.xyzw vf10 vf10)) ;; #x075
+            (label convert-indexed-points)
+            (vu-pair (lqi.xyzw vf11 vi05) (itof0.xyzw vf06 vf06)) ;; #x076
+            (vu-pair (lqi.xyzw vf07 vi05) (itof0.w vf16 vf16)) ;; #x077
+            (vu-pair (lqi.xyzw vf17 vi05) (itof12.xyz vf16 vf16)) ;; #x078
+            (vu-pair (sqi.xyzw vf09 vi08) (nop)) ;; #x079
+            (vu-pair (sqi.xyzw vf05 vi08) (muli.xyz vf10 vf10 I)) ;; #x07a
+            (vu-pair (ibeq vi07 vi05 setup-instance-render) (muli.xyz vf06 vf06 I)) ;; #x07b
+            (vu-pair (sqi.xyzw vf15 vi08) (itof0.xyzw vf11 vf11)) ;; #x07c
+            (vu-pair (lqi.xyzw vf09 vi05) (itof0.xyzw vf07 vf07)) ;; #x07d
+            (vu-pair (lqi.xyzw vf05 vi05) (itof0.w vf17 vf17)) ;; #x07e
+            (vu-pair (lqi.xyzw vf15 vi05) (itof12.xyz vf17 vf17)) ;; #x07f
+            (vu-pair (sqi.xyzw vf10 vi08) (nop)) ;; #x080
+            (vu-pair (sqi.xyzw vf06 vi08) (muli.xyz vf11 vf11 I)) ;; #x081
+            (vu-pair (ibeq vi07 vi05 setup-instance-render) (muli.xyz vf07 vf07 I)) ;; #x082
+            (vu-pair (sqi.xyzw vf16 vi08) (itof0.xyzw vf09 vf09)) ;; #x083
+            (vu-pair (lqi.xyzw vf10 vi05) (itof0.xyzw vf05 vf05)) ;; #x084
+            (vu-pair (lqi.xyzw vf06 vi05) (itof0.w vf15 vf15)) ;; #x085
+            (vu-pair (lqi.xyzw vf16 vi05) (itof12.xyz vf15 vf15)) ;; #x086
+            (vu-pair (sqi.xyzw vf11 vi08) (nop)) ;; #x087
+            (vu-pair (sqi.xyzw vf07 vi08) (muli.xyz vf09 vf09 I)) ;; #x088
+            (vu-pair (ibne vi07 vi05 convert-indexed-points) (muli.xyz vf05 vf05 I)) ;; #x089
+            (vu-pair (sqi.xyzw vf17 vi08) (itof0.xyzw vf10 vf10)) ;; #x08a
+            ;; Hand the fragment's control words over to the render loop: the alpha-test selector, the two
+            ;; skip flags, the four group-terminating output addresses, the instance-record cursor, and the
+            ;; point cursor. From here down the register aliases mean what they say.
+            (label setup-instance-render)
+            (vu-pair (mtir itemp vf04.z) (nop)) ;; #x08b
+            (vu-pair (mtir skip-bp2 vf02.x) (nop)) ;; #x08c
+            (vu-pair (mtir skip-ips vf02.y) (nop)) ;; #x08d
+            (vu-pair (mtir target-bp1-ptr vf03.x) (nop)) ;; #x08e
+            (vu-pair (mtir target-bp2-ptr vf03.y) (nop)) ;; #x08f
+            (vu-pair (mtir target-ip1-ptr vf03.z) (nop)) ;; #x090
+            (vu-pair (mtir target-ip2-ptr vf03.w) (nop)) ;; #x091
+            (vu-pair (isw.x itemp vi00 (tie-const misc)) (nop)) ;; #x092
+            (vu-pair (iaddi kick-addr vi00 0x0) (nop)) ;; #x093
+            (vu-pair (mtir clr-ptr clrbuf.x) (nop)) ;; #x094
+            (vu-pair (iaddiu point-ptr vi00 TIE-VU-PROTOTYPE-POINT-0) (nop)) ;; #x095
+            (vu-pair (mr32.xyzw gifbuf gifbuf) (nop)) ;; #x096
+            (vu-pair (mfir.y extra vi00) (nop :e)) ;; #x097
+            (vu-pair (mfir.w extra vi00) (nop)) ;; #x098
+            ;; Entry 0, base-point path. Four vertices are in flight at once: transform by the instance rows,
+            ;; start the reciprocal of w for one while multiplying another, convert screen xyz to the GS's 12.4
+            ;; fixed point, look each vertex's color out of the shared palette through its packed index, and
+            ;; store the ST / RGBAQ / XYZF2 triplet into the slot the strip template left for it.
+            ;;
+            ;; Each vertex's own w carries its destination offset within the GIF bank -- add the bank's biased
+            ;; address, mtir it out, and that is where the triplet goes. No output cursor to advance and no
+            ;; ordering requirement, which is why the four slots can be software-pipelined this aggressively.
+            ;;
+            ;; The cost of that is the tail: a stream can run out in any of the four slots, so there is one
+            ;; flush variant per slot, then one "short" variant per slot for a stream that ends before the
+            ;; pipeline is even full, then a pair of dual-destination variants for the vertices that have to
+            ;; be written into both of the fragment's banks. It is a lot of nearly identical code, and it is
+            ;; all there to avoid a branch in the steady-state loop.
+            (label render-basic-stream)
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (nop)) ;; #x099
+            (vu-pair (lq.xyzw inds clr-ptr TIE-VU-INSTANCE-PALETTE-INDICES) (nop)) ;; #x09a
+            (vu-pair (lq.xyzw t-mtx3 clr-ptr (tie-instance-qword mat vector 3)) (nop)) ;; #x09b
+            (vu-pair (lq.xyzw t-mtx0 clr-ptr (tie-instance-qword mat vector 0)) (nop)) ;; #x09c
+            (vu-pair (lq.xyzw t-mtx1 clr-ptr (tie-instance-qword mat vector 1)) (nop)) ;; #x09d
+            (vu-pair (lq.xyzw t-mtx2 clr-ptr (tie-instance-qword mat vector 2)) (nop)) ;; #x09e
+            (vu-pair (mtir ind0 inds.x) (nop)) ;; #x09f
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0a0
+            (vu-pair (lq.xyzw morph clr-ptr (tie-instance-qword morph)) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x0a1
+            (vu-pair (ilw.x itemp clr-ptr (tie-instance-qword fog)) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x0a2
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x0a3
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (nop)) ;; #x0a4
+            (vu-pair (lq.xyzw res-02 clr-ptr (tie-instance-qword fog)) (nop)) ;; #x0a5
+            (vu-pair (iaddi clr-ptr clr-ptr TIE-VU-INSTANCE-STRIDE) (nop)) ;; #x0a6
+            (vu-pair (mtir ind0 inds.y) (addx.w res-13 res-02 vf00)) ;; #x0a7
+            (vu-pair (div Q vf00.w pos-02.w) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0a8
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x0a9
+            (vu-pair (mtir itemp gifbuf.x) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x0aa
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x0ab
+            (vu-pair (isub itemp itemp kick-addr) (ftoi4.w res-02 res-02)) ;; #x0ac
+            (vu-pair (iadd target-bp1-ptr target-bp1-ptr itemp) (ftoi4.w res-13 res-13)) ;; #x0ad
+            (vu-pair (iadd target-bp2-ptr target-bp2-ptr itemp) (nop)) ;; #x0ae
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (mul.xyz pos-02 pos-02 Q)) ;; #x0af
+            (vu-pair (div Q vf00.w pos-13.w) (mul.xyz tex-0 tex-0 Q)) ;; #x0b0
+            (vu-pair (mtir ind0 inds.z) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x0b1
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0b2
+            (vu-pair (iadd target-ip1-ptr target-ip1-ptr itemp) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x0b3
+            (vu-pair (iadd target-ip2-ptr target-ip2-ptr itemp) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x0b4
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (ftoi4.xyz res-02 pos-02)) ;; #x0b5
+            (vu-pair (ibeq target-bp1-ptr dest-ptr finalize-and-kick-gif) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x0b6
+            (vu-pair (iadd kick-addr kick-addr itemp) (nop)) ;; #x0b7
+            (label render-basic-pipeline)
+            (vu-pair (mtir dest-ptr vtx-0.w) (nop)) ;; #x0b8
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (mul.xyz pos-13 pos-13 Q)) ;; #x0b9
+            (vu-pair (div Q vf00.w pos-02.w) (mul.xyz tex-1 tex-1 Q)) ;; #x0ba
+            (vu-pair (mtir ind0 inds.w) (addx.w vtx-1 vtx-1 gifbuf)) ;; #x0bb
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0bc
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x0bd
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x0be
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (ftoi4.xyz res-13 pos-13)) ;; #x0bf
+            (vu-pair (ibeq target-bp1-ptr dest-ptr basic-flush-slot1) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x0c0
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x0c1
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x0c2
+            (vu-pair (mtir dest-ptr vtx-1.w) (nop)) ;; #x0c3
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (mul.xyz pos-02 pos-02 Q)) ;; #x0c4
+            (vu-pair (div Q vf00.w pos-13.w) (mul.xyz tex-2 tex-2 Q)) ;; #x0c5
+            (vu-pair (mtir ind0 inds.x) (addx.w vtx-2 vtx-2 gifbuf)) ;; #x0c6
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0c7
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x0c8
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x0c9
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (ftoi4.xyz res-02 pos-02)) ;; #x0ca
+            (vu-pair (ibeq target-bp1-ptr dest-ptr basic-flush-slot2) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x0cb
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x0cc
+            (vu-pair (mtir dest-ptr vtx-2.w) (nop)) ;; #x0cd
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (mul.xyz pos-13 pos-13 Q)) ;; #x0ce
+            (vu-pair (div Q vf00.w pos-02.w) (mul.xyz tex-3 tex-3 Q)) ;; #x0cf
+            (vu-pair (mtir ind0 inds.y) (addx.w vtx-3 vtx-3 gifbuf)) ;; #x0d0
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0d1
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x0d2
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x0d3
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (ftoi4.xyz res-13 pos-13)) ;; #x0d4
+            (vu-pair (ibeq target-bp1-ptr dest-ptr basic-flush-slot3) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x0d5
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x0d6
+            (vu-pair (mtir dest-ptr vtx-3.w) (nop)) ;; #x0d7
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (mul.xyz pos-02 pos-02 Q)) ;; #x0d8
+            (vu-pair (div Q vf00.w pos-13.w) (mul.xyz tex-0 tex-0 Q)) ;; #x0d9
+            (vu-pair (mtir ind0 inds.z) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x0da
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0db
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x0dc
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x0dd
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (ftoi4.xyz res-02 pos-02)) ;; #x0de
+            (vu-pair (ibne target-bp1-ptr dest-ptr render-basic-pipeline) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x0df
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x0e0
+            (vu-pair (mtir dest-ptr vtx-0.w) (nop)) ;; #x0e1
+            (vu-pair (ibne vi00 skip-bp2 basic-short-slot1) (mul.xyz pos-13 pos-13 Q)) ;; #x0e2
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (mul.xyz tex-1 tex-1 Q)) ;; #x0e3
+            (vu-pair (div Q vf00.w pos-02.w) (addx.w vtx-1 vtx-1 gifbuf)) ;; #x0e4
+            (vu-pair (mtir ind0 inds.w) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0e5
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x0e6
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (addx.w vtx-2 vtx-2 gifbuf)) ;; #x0e7
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x0e8
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x0e9
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (ftoi4.xyz res-13 pos-13)) ;; #x0ea
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x0eb
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (mul.xyz pos-02 pos-02 Q)) ;; #x0ec
+            (vu-pair (mtir dest-ptr vtx-1.w) (mul.xyz tex-2 tex-2 Q)) ;; #x0ed
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0ee
+            (vu-pair (mtir ind0 inds.x) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x0ef
+            (vu-pair (nop) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x0f0
+            (vu-pair (div Q vf00.w pos-13.w) (ftoi4.xyz res-02 pos-02)) ;; #x0f1
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x0f2
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (nop)) ;; #x0f3
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x0f4
+            (vu-pair (mtir dest-ptr vtx-2.w) (nop)) ;; #x0f5
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (addx.w vtx-3 vtx-3 gifbuf)) ;; #x0f6
+            (vu-pair (div Q vf00.w pos-02.w) (mul.xyz pos-13 pos-13 Q)) ;; #x0f7
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (mul.xyz tex-3 tex-3 Q)) ;; #x0f8
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (addx.w tex-3 tex-3 gifbuf)) ;; #x0f9
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x0fa
+            (vu-pair (b basic-dual-dest-slot0) (ftoi4.xyz res-13 pos-13)) ;; #x0fb
+            (vu-pair (mtir dest-ptr vtx-3.w) (nop)) ;; #x0fc
+            (label basic-flush-slot3)
+            (vu-pair (mtir dest-ptr vtx-3.w) (nop)) ;; #x0fd
+            (vu-pair (ibne vi00 skip-bp2 basic-short-slot0) (mul.xyz pos-02 pos-02 Q)) ;; #x0fe
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (mul.xyz tex-0 tex-0 Q)) ;; #x0ff
+            (vu-pair (div Q vf00.w pos-13.w) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x100
+            (vu-pair (mtir ind0 inds.z) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x101
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (nop)) ;; #x102
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x103
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x104
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (ftoi4.xyz res-02 pos-02)) ;; #x105
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x106
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (mul.xyz pos-13 pos-13 Q)) ;; #x107
+            (vu-pair (mtir dest-ptr vtx-0.w) (mul.xyz tex-1 tex-1 Q)) ;; #x108
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x109
+            (vu-pair (div Q vf00.w pos-02.w) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x10a
+            (vu-pair (mtir ind0 inds.w) (addx.w vtx-1 vtx-1 gifbuf)) ;; #x10b
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x10c
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x10d
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (ftoi4.xyz res-13 pos-13)) ;; #x10e
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x10f
+            (vu-pair (mtir dest-ptr vtx-1.w) (nop)) ;; #x110
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (addx.w vtx-2 vtx-2 gifbuf)) ;; #x111
+            (vu-pair (div Q vf00.w pos-13.w) (mul.xyz pos-02 pos-02 Q)) ;; #x112
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (mul.xyz tex-2 tex-2 Q)) ;; #x113
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (addx.w tex-2 tex-2 gifbuf)) ;; #x114
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x115
+            (vu-pair (b basic-dual-dest-slot3) (ftoi4.xyz res-02 pos-02)) ;; #x116
+            (vu-pair (mtir dest-ptr vtx-2.w) (nop)) ;; #x117
+            (label basic-flush-slot2)
+            (vu-pair (mtir dest-ptr vtx-2.w) (nop)) ;; #x118
+            (vu-pair (ibne vi00 skip-bp2 basic-short-slot3) (mul.xyz pos-13 pos-13 Q)) ;; #x119
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (mul.xyz tex-3 tex-3 Q)) ;; #x11a
+            (vu-pair (div Q vf00.w pos-02.w) (addx.w vtx-3 vtx-3 gifbuf)) ;; #x11b
+            (vu-pair (mtir ind0 inds.y) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x11c
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (nop)) ;; #x11d
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x11e
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x11f
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (ftoi4.xyz res-13 pos-13)) ;; #x120
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x121
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (mul.xyz pos-02 pos-02 Q)) ;; #x122
+            (vu-pair (mtir dest-ptr vtx-3.w) (mul.xyz tex-0 tex-0 Q)) ;; #x123
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x124
+            (vu-pair (div Q vf00.w pos-13.w) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x125
+            (vu-pair (mtir ind0 inds.z) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x126
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x127
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (ftoi4.xyz res-02 pos-02)) ;; #x128
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x129
+            (vu-pair (mtir dest-ptr vtx-0.w) (nop)) ;; #x12a
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (addx.w vtx-1 vtx-1 gifbuf)) ;; #x12b
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (mul.xyz pos-13 pos-13 Q)) ;; #x12c
+            (vu-pair (div Q vf00.w pos-02.w) (mul.xyz tex-1 tex-1 Q)) ;; #x12d
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (addx.w tex-1 tex-1 gifbuf)) ;; #x12e
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x12f
+            (vu-pair (b basic-dual-dest-slot2) (ftoi4.xyz res-13 pos-13)) ;; #x130
+            (vu-pair (mtir dest-ptr vtx-1.w) (nop)) ;; #x131
+            (label basic-flush-slot1)
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x132
+            (vu-pair (mtir dest-ptr vtx-1.w) (nop)) ;; #x133
+            (vu-pair (ibne vi00 skip-bp2 basic-short-slot2) (mul.xyz pos-02 pos-02 Q)) ;; #x134
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (mul.xyz tex-2 tex-2 Q)) ;; #x135
+            (vu-pair (div Q vf00.w pos-13.w) (addx.w vtx-2 vtx-2 gifbuf)) ;; #x136
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x137
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x138
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x139
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (ftoi4.xyz res-02 pos-02)) ;; #x13a
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x13b
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (addx.w vtx-3 vtx-3 gifbuf)) ;; #x13c
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (mul.xyz pos-13 pos-13 Q)) ;; #x13d
+            (vu-pair (mtir dest-ptr vtx-2.w) (mul.xyz tex-3 tex-3 Q)) ;; #x13e
+            (vu-pair (div Q vf00.w pos-02.w) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x13f
+            (vu-pair (mtir ind0 inds.y) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x140
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x141
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (ftoi4.xyz res-13 pos-13)) ;; #x142
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x143
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x144
+            (vu-pair (mtir dest-ptr vtx-3.w) (nop)) ;; #x145
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x146
+            (vu-pair (div Q vf00.w pos-13.w) (mul.xyz pos-02 pos-02 Q)) ;; #x147
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (mul.xyz tex-0 tex-0 Q)) ;; #x148
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (addx.w tex-0 tex-0 gifbuf)) ;; #x149
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x14a
+            (vu-pair (b basic-dual-dest-slot1) (ftoi4.xyz res-02 pos-02)) ;; #x14b
+            (vu-pair (mtir dest-ptr vtx-0.w) (nop)) ;; #x14c
+            ;; Base-point group 2: the vertices two triangle strips share. Everything is as above except that
+            ;; the finished triplet is stored twice, to dest-ptr and to dest2-ptr, the second slot coming
+            ;; from the w lane of the ST quadword. Runs until the write cursor reaches target-bp2-ptr.
+            ;;
+            ;; It is the same ST, the same RGBAQ and the same XYZF2 in both places -- one transform, two
+            ;; stores. Since the strip templates are prebuilt with a fixed slot per vertex there is no index
+            ;; buffer to express the sharing, so the exporter works out which vertices are reused and hands
+            ;; them a second slot: a vertex cache computed offline instead of looked up at run time.
+            ;; Duplicating the whole triplet rather than just the position matters, because two strips that
+            ;; disagreed about a shared vertex's texture coordinate or color would draw a seam along the
+            ;; edge just as visibly as a position mismatch would open a crack.
+            (label basic-dual-dest-slot0)
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (nop)) ;; #x14d
+            (vu-pair (mtir ind0 inds.y) (nop)) ;; #x14e
+            (vu-pair (mtir dest2-ptr tex-3.w) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x14f
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x150
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x151
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x152
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x153
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (mul.xyz pos-02 pos-02 Q)) ;; #x154
+            (vu-pair (sq.xyzw tex-3 dest2-ptr 0) (mul.xyz tex-0 tex-0 Q)) ;; #x155
+            (vu-pair (sq.xyzw clr-3 dest2-ptr 1) (addx.w tex-0 tex-0 gifbuf)) ;; #x156
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x157
+            (vu-pair (div Q vf00.w pos-13.w) (nop)) ;; #x158
+            (vu-pair (ibeq target-bp2-ptr dest-ptr basic-final-slot1) (ftoi4.xyz res-02 pos-02)) ;; #x159
+            (vu-pair (mtir dest-ptr vtx-0.w) (nop)) ;; #x15a
+            (label basic-dual-dest-slot1)
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (nop)) ;; #x15b
+            (vu-pair (mtir ind0 inds.z) (nop)) ;; #x15c
+            (vu-pair (mtir dest2-ptr tex-0.w) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x15d
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (addx.w vtx-1 vtx-1 gifbuf)) ;; #x15e
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x15f
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x160
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x161
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (mul.xyz pos-13 pos-13 Q)) ;; #x162
+            (vu-pair (sq.xyzw tex-0 dest2-ptr 0) (mul.xyz tex-1 tex-1 Q)) ;; #x163
+            (vu-pair (sq.xyzw clr-0 dest2-ptr 1) (addx.w tex-1 tex-1 gifbuf)) ;; #x164
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x165
+            (vu-pair (div Q vf00.w pos-02.w) (nop)) ;; #x166
+            (vu-pair (ibeq target-bp2-ptr dest-ptr basic-final-slot2) (ftoi4.xyz res-13 pos-13)) ;; #x167
+            (vu-pair (mtir dest-ptr vtx-1.w) (nop)) ;; #x168
+            (label basic-dual-dest-slot2)
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (nop)) ;; #x169
+            (vu-pair (mtir ind0 inds.w) (nop)) ;; #x16a
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x16b
+            (vu-pair (mtir dest2-ptr tex-1.w) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x16c
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (addx.w vtx-2 vtx-2 gifbuf)) ;; #x16d
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x16e
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x16f
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x170
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (mul.xyz pos-02 pos-02 Q)) ;; #x171
+            (vu-pair (sq.xyzw tex-1 dest2-ptr 0) (mul.xyz tex-2 tex-2 Q)) ;; #x172
+            (vu-pair (sq.xyzw clr-1 dest2-ptr 1) (addx.w tex-2 tex-2 gifbuf)) ;; #x173
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x174
+            (vu-pair (div Q vf00.w pos-13.w) (nop)) ;; #x175
+            (vu-pair (ibeq target-bp2-ptr dest-ptr basic-final-slot3) (ftoi4.xyz res-02 pos-02)) ;; #x176
+            (vu-pair (mtir dest-ptr vtx-2.w) (nop)) ;; #x177
+            (label basic-dual-dest-slot3)
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (nop)) ;; #x178
+            (vu-pair (mtir ind0 inds.x) (nop)) ;; #x179
+            (vu-pair (mtir dest2-ptr tex-2.w) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x17a
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (addx.w vtx-3 vtx-3 gifbuf)) ;; #x17b
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x17c
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x17d
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x17e
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (mul.xyz pos-13 pos-13 Q)) ;; #x17f
+            (vu-pair (sq.xyzw tex-2 dest2-ptr 0) (mul.xyz tex-3 tex-3 Q)) ;; #x180
+            (vu-pair (sq.xyzw clr-2 dest2-ptr 1) (addx.w tex-3 tex-3 gifbuf)) ;; #x181
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x182
+            (vu-pair (div Q vf00.w pos-02.w) (nop)) ;; #x183
+            (vu-pair (ibne target-bp2-ptr dest-ptr basic-dual-dest-slot0) (ftoi4.xyz res-13 pos-13)) ;; #x184
+            (vu-pair (mtir dest-ptr vtx-3.w) (nop)) ;; #x185
+            (vu-pair (nop) (nop)) ;; #x186
+            (vu-pair (nop) (nop)) ;; #x187
+            (vu-pair (mtir dest2-ptr tex-3.w) (nop)) ;; #x188
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x189
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (addx.w tex-0 tex-0 gifbuf)) ;; #x18a
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (mul.xyz pos-02 pos-02 Q)) ;; #x18b
+            (vu-pair (sq.xyzw tex-3 dest2-ptr 0) (mul.xyz tex-0 tex-0 Q)) ;; #x18c
+            (vu-pair (sq.xyzw clr-3 dest2-ptr 1) (nop)) ;; #x18d
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x18e
+            (vu-pair (mtir dest-ptr vtx-0.w) (ftoi4.xyz res-02 pos-02)) ;; #x18f
+            (vu-pair (mtir dest2-ptr tex-0.w) (nop)) ;; #x190
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (nop)) ;; #x191
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (nop)) ;; #x192
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x193
+            (vu-pair (sq.xyzw tex-0 dest2-ptr 0) (nop)) ;; #x194
+            (vu-pair (sq.xyzw clr-0 dest2-ptr 1) (nop)) ;; #x195
+            (vu-pair (ibeq vi00 skip-ips morph-pipeline-slot0) (nop)) ;; #x196
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x197
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x198
+            (vu-pair (nop) (nop)) ;; #x199
+            (label basic-final-slot1)
+            (vu-pair (nop) (nop)) ;; #x19a
+            (vu-pair (nop) (nop)) ;; #x19b
+            (vu-pair (mtir dest2-ptr tex-0.w) (nop)) ;; #x19c
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (addx.w vtx-1 vtx-1 gifbuf)) ;; #x19d
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (addx.w tex-1 tex-1 gifbuf)) ;; #x19e
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (mul.xyz pos-13 pos-13 Q)) ;; #x19f
+            (vu-pair (sq.xyzw tex-0 dest2-ptr 0) (mul.xyz tex-1 tex-1 Q)) ;; #x1a0
+            (vu-pair (sq.xyzw clr-0 dest2-ptr 1) (nop)) ;; #x1a1
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x1a2
+            (vu-pair (mtir dest-ptr vtx-1.w) (ftoi4.xyz res-13 pos-13)) ;; #x1a3
+            (vu-pair (mtir dest2-ptr tex-1.w) (nop)) ;; #x1a4
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (nop)) ;; #x1a5
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (nop)) ;; #x1a6
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x1a7
+            (vu-pair (sq.xyzw tex-1 dest2-ptr 0) (nop)) ;; #x1a8
+            (vu-pair (sq.xyzw clr-1 dest2-ptr 1) (nop)) ;; #x1a9
+            (vu-pair (ibeq vi00 skip-ips morph-pipeline-slot1) (nop)) ;; #x1aa
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x1ab
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x1ac
+            (vu-pair (nop) (nop)) ;; #x1ad
+            (label basic-final-slot2)
+            (vu-pair (nop) (nop)) ;; #x1ae
+            (vu-pair (nop) (nop)) ;; #x1af
+            (vu-pair (mtir dest2-ptr tex-1.w) (nop)) ;; #x1b0
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (addx.w vtx-2 vtx-2 gifbuf)) ;; #x1b1
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (addx.w tex-2 tex-2 gifbuf)) ;; #x1b2
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (mul.xyz pos-02 pos-02 Q)) ;; #x1b3
+            (vu-pair (sq.xyzw tex-1 dest2-ptr 0) (mul.xyz tex-2 tex-2 Q)) ;; #x1b4
+            (vu-pair (sq.xyzw clr-1 dest2-ptr 1) (nop)) ;; #x1b5
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x1b6
+            (vu-pair (mtir dest-ptr vtx-2.w) (ftoi4.xyz res-02 pos-02)) ;; #x1b7
+            (vu-pair (mtir dest2-ptr tex-2.w) (nop)) ;; #x1b8
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (nop)) ;; #x1b9
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (nop)) ;; #x1ba
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x1bb
+            (vu-pair (sq.xyzw tex-2 dest2-ptr 0) (nop)) ;; #x1bc
+            (vu-pair (sq.xyzw clr-2 dest2-ptr 1) (nop)) ;; #x1bd
+            (vu-pair (ibeq vi00 skip-ips morph-pipeline-slot2) (nop)) ;; #x1be
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x1bf
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x1c0
+            (vu-pair (nop) (nop)) ;; #x1c1
+            (label basic-final-slot3)
+            (vu-pair (nop) (nop)) ;; #x1c2
+            (vu-pair (nop) (nop)) ;; #x1c3
+            (vu-pair (mtir dest2-ptr tex-2.w) (nop)) ;; #x1c4
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (addx.w vtx-3 vtx-3 gifbuf)) ;; #x1c5
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (addx.w tex-3 tex-3 gifbuf)) ;; #x1c6
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (mul.xyz pos-13 pos-13 Q)) ;; #x1c7
+            (vu-pair (sq.xyzw tex-2 dest2-ptr 0) (mul.xyz tex-3 tex-3 Q)) ;; #x1c8
+            (vu-pair (sq.xyzw clr-2 dest2-ptr 1) (nop)) ;; #x1c9
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x1ca
+            (vu-pair (mtir dest-ptr vtx-3.w) (ftoi4.xyz res-13 pos-13)) ;; #x1cb
+            (vu-pair (mtir dest2-ptr tex-3.w) (nop)) ;; #x1cc
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (nop)) ;; #x1cd
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (nop)) ;; #x1ce
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x1cf
+            (vu-pair (sq.xyzw tex-3 dest2-ptr 0) (nop)) ;; #x1d0
+            (vu-pair (sq.xyzw clr-3 dest2-ptr 1) (nop)) ;; #x1d1
+            (vu-pair (ibeq vi00 skip-ips begin-morph-stream) (nop)) ;; #x1d2
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x1d3
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x1d4
+            (vu-pair (nop) (nop)) ;; #x1d5
+            ;; Tails for a stream that ends before the four-wide pipeline is even full. One per slot, again,
+            ;; and each one either falls into the interpolated-point stream or goes straight to the kick.
+            (label basic-short-slot2)
+            (vu-pair (div Q vf00.w pos-13.w) (addx.w vtx-2 vtx-2 gifbuf)) ;; #x1d6
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (addx.w vtx-3 vtx-3 gifbuf)) ;; #x1d7
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (nop)) ;; #x1d8
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x1d9
+            (vu-pair (iaddi point-ptr point-ptr -0x1) (ftoi4.xyz res-02 pos-02)) ;; #x1da
+            (vu-pair (nop) (nop)) ;; #x1db
+            (vu-pair (nop) (nop)) ;; #x1dc
+            (vu-pair (nop) (mul.xyz pos-13 pos-13 Q)) ;; #x1dd
+            (vu-pair (mtir dest-ptr vtx-2.w) (mul.xyz tex-3 tex-3 Q)) ;; #x1de
+            (vu-pair (mtir dest2-ptr vtx-3.w) (nop)) ;; #x1df
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (nop)) ;; #x1e0
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (nop)) ;; #x1e1
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (ftoi4.xyz res-13 pos-13)) ;; #x1e2
+            (vu-pair (sq.xyzw tex-3 dest2-ptr 0) (nop)) ;; #x1e3
+            (vu-pair (sq.xyzw clr-3 dest2-ptr 1) (nop)) ;; #x1e4
+            (vu-pair (ibeq vi00 skip-ips begin-morph-stream) (nop)) ;; #x1e5
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x1e6
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x1e7
+            (vu-pair (nop) (nop)) ;; #x1e8
+            (label basic-short-slot3)
+            (vu-pair (div Q vf00.w pos-02.w) (addx.w vtx-3 vtx-3 gifbuf)) ;; #x1e9
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x1ea
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (nop)) ;; #x1eb
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x1ec
+            (vu-pair (iaddi point-ptr point-ptr -0x1) (ftoi4.xyz res-13 pos-13)) ;; #x1ed
+            (vu-pair (nop) (nop)) ;; #x1ee
+            (vu-pair (nop) (nop)) ;; #x1ef
+            (vu-pair (nop) (mul.xyz pos-02 pos-02 Q)) ;; #x1f0
+            (vu-pair (mtir dest-ptr vtx-3.w) (mul.xyz tex-0 tex-0 Q)) ;; #x1f1
+            (vu-pair (mtir dest2-ptr vtx-0.w) (nop)) ;; #x1f2
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (nop)) ;; #x1f3
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (nop)) ;; #x1f4
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (ftoi4.xyz res-02 pos-02)) ;; #x1f5
+            (vu-pair (sq.xyzw tex-0 dest2-ptr 0) (nop)) ;; #x1f6
+            (vu-pair (sq.xyzw clr-0 dest2-ptr 1) (nop)) ;; #x1f7
+            (vu-pair (ibeq vi00 skip-ips morph-pipeline-slot0) (nop)) ;; #x1f8
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x1f9
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x1fa
+            (vu-pair (nop) (nop)) ;; #x1fb
+            (label basic-short-slot0)
+            (vu-pair (div Q vf00.w pos-13.w) (addx.w vtx-0 vtx-0 gifbuf)) ;; #x1fc
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (addx.w vtx-1 vtx-1 gifbuf)) ;; #x1fd
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (nop)) ;; #x1fe
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (nop)) ;; #x1ff
+            (vu-pair (iaddi point-ptr point-ptr -0x1) (ftoi4.xyz res-02 pos-02)) ;; #x200
+            (vu-pair (nop) (nop)) ;; #x201
+            (vu-pair (nop) (nop)) ;; #x202
+            (vu-pair (nop) (mul.xyz pos-13 pos-13 Q)) ;; #x203
+            (vu-pair (mtir dest-ptr vtx-0.w) (mul.xyz tex-1 tex-1 Q)) ;; #x204
+            (vu-pair (mtir dest2-ptr vtx-1.w) (nop)) ;; #x205
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (nop)) ;; #x206
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (nop)) ;; #x207
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (ftoi4.xyz res-13 pos-13)) ;; #x208
+            (vu-pair (sq.xyzw tex-1 dest2-ptr 0) (nop)) ;; #x209
+            (vu-pair (sq.xyzw clr-1 dest2-ptr 1) (nop)) ;; #x20a
+            (vu-pair (ibeq vi00 skip-ips morph-pipeline-slot1) (nop)) ;; #x20b
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x20c
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x20d
+            (vu-pair (nop) (nop)) ;; #x20e
+            (label basic-short-slot1)
+            (vu-pair (div Q vf00.w pos-02.w) (addx.w vtx-1 vtx-1 gifbuf)) ;; #x20f
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (addx.w vtx-2 vtx-2 gifbuf)) ;; #x210
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (nop)) ;; #x211
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (nop)) ;; #x212
+            (vu-pair (iaddi point-ptr point-ptr -0x1) (ftoi4.xyz res-13 pos-13)) ;; #x213
+            (vu-pair (nop) (nop)) ;; #x214
+            (vu-pair (nop) (nop)) ;; #x215
+            (vu-pair (nop) (mul.xyz pos-02 pos-02 Q)) ;; #x216
+            (vu-pair (mtir dest-ptr vtx-1.w) (mul.xyz tex-2 tex-2 Q)) ;; #x217
+            (vu-pair (mtir dest2-ptr vtx-2.w) (nop)) ;; #x218
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (nop)) ;; #x219
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (nop)) ;; #x21a
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (ftoi4.xyz res-02 pos-02)) ;; #x21b
+            (vu-pair (sq.xyzw tex-2 dest2-ptr 0) (nop)) ;; #x21c
+            (vu-pair (sq.xyzw clr-2 dest2-ptr 1) (nop)) ;; #x21d
+            (vu-pair (ibeq vi00 skip-ips morph-pipeline-slot2) (nop)) ;; #x21e
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x21f
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x220
+            (vu-pair (nop) (nop)) ;; #x221
+            ;; Entry 0, interpolated-point path. This is where TIE changes level of detail, and it does it by
+            ;; un-tessellating the mesh continuously rather than by swapping one for another.
+            ;;
+            ;; An ip is a vertex that only exists because an edge was split. Its record is three consecutive
+            ;; quadwords once VIF has unpacked the point stream as V4-16, against two for a base point,
+            ;; matching generic-tie-interp-point and generic-tie-base-point respectively:
+            ;;
+            ;;     +0   -> vtx-N     xyz: the displacement that puts this vertex back on the edge it
+            ;;                       subdivides.  w: its output slot.
+            ;;     +1   -> xyzofs    xyz: where it was actually authored.  w is not read.
+            ;;     +2   -> tex-N     ST, with the second output slot in w.
+            ;;
+            ;; Two instructions do the whole morph:
+            ;;
+            ;;     (mulx.xyz vtx-0 vtx-0 morph)     ;; the +0 quadword, scaled by the morph weight
+            ;;     (add.xyzw vtx-0 vtx-0 xyzofs)    ;; plus the +1 quadword, unscaled
+            ;;
+            ;; so position = authored + t * displacement with t = morph.x. t is zero at the near edge of
+            ;; the instance's LOD band and one at the far edge, so up close only the authored position
+            ;; contributes and by the far edge the vertex has slid onto its parents' edge -- exactly the
+            ;; surface the next-coarser geometry has, leaving the triangles about to vanish degenerate.
+            ;; (The coarsest geometry uses far-morph, whose x is 1, which is what fixes the direction:
+            ;; t = 1 is the collapsed end, not the detailed one.)
+            ;;
+            ;; xyzofs is the original name for this register, and it names the role rather than the
+            ;; contents: it is the register added to xyz. Its w lane really is an offset -- it carries the
+            ;; output bank's biased address into the same add -- but its xyz is a position.
+            ;;
+            ;; generic-tie-interp-point names these two vectors the other way round, with the plain x/y/z
+            ;; on the one this loop scales. Those are real names out of the game's type information, so
+            ;; they may simply be backwards, or that type may only ever have described the Generic
+            ;; converter's own copy of the geometry. There is no type for this stream to compare against.
+            ;;
+            ;; The color follows the same interpolation, and this is what gives away the parentage: inds
+            ;; carries three palette indices for an ip rather than one. clr-0 is the vertex's own color, and
+            ;; clr1 and clr2 are the two parents. The two parents are averaged first -- morph.y is forced to
+            ;; 0.5 right here for that one purpose -- and then
+            ;;
+            ;;     color = own * morph.z + average(parent1, parent2) * morph.w
+            ;;
+            ;; with morph.z starting at 256 and falling to 0 while morph.w does the reverse. At t = 1 the
+            ;; vertex carries exactly the shading of the edge it has collapsed onto, so the coarser mesh's
+            ;; interpolation across that edge is reproduced exactly.
+            ;;
+            ;; The 0.5 is an immediate in this program, not a value the exporter picks, so the color always
+            ;; lands on the plain average of the two parents. The position displacement is authored data and
+            ;; is under no such constraint -- so the shading assumes the collapse target is the edge
+            ;; midpoint even though nothing here enforces it.
+            ;;
+            ;; Those weights sum to 256 rather than 1.0, which looks wrong until you remember that a palette
+            ;; entry is a 2^23-biased float carrying its color in the low mantissa bits. Weights summing to
+            ;; 256 raise the exponent by eight, so the mantissa of the result already holds the weighted sum
+            ;; divided by 256 and the low byte of each lane is the blended channel. The GS reads only that
+            ;; byte out of RGBAQ, so the leftover exponent bits cost nothing. One multiply-add, no
+            ;; normalization, no unpack, no clamp.
+            ;;
+            ;; Note also that an ip burns a whole quadword of the index stream for its three indices while
+            ;; base points pack four per quadword. That is what tie-fragment.base-colors is counting.
+            ;;
+            ;; Same tail problem as the base-point path, same answer: a variant per slot.
+            (label begin-morph-stream)
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (nop)) ;; #x222
+            (vu-pair (0.5) (subw.w xyzofs vf00 vf00 :i)) ;; #x223
+            (vu-pair (lqi.xyz xyzofs point-ptr) (addi.y morph vf00 I)) ;; #x224
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (nop)) ;; #x225
+            (vu-pair (mtir ind0 inds.x) (nop)) ;; #x226
+            (vu-pair (mtir ind1 inds.y) (addx.w xyzofs xyzofs gifbuf)) ;; #x227
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-0 vtx-0 morph)) ;; #x228
+            (vu-pair (nop) (nop)) ;; #x229
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x22a
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-0 vtx-0 xyzofs)) ;; #x22b
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x22c
+            (vu-pair (nop) (nop)) ;; #x22d
+            (vu-pair (nop) (nop)) ;; #x22e
+            (vu-pair (nop) (mulay.xyzw ACC clr1 morph)) ;; #x22f
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x230
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x231
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x232
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x233
+            (vu-pair (nop) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x234
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x235
+            (vu-pair (mtir ind1 inds.y) (maddz.xyzw clr-0 clr-0 morph)) ;; #x236
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-1 vtx-1 morph)) ;; #x237
+            (vu-pair (nop) (nop)) ;; #x238
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x239
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-1 vtx-1 xyzofs)) ;; #x23a
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x23b
+            (vu-pair (div Q vf00.w pos-02.w) (nop)) ;; #x23c
+            (vu-pair (nop) (nop)) ;; #x23d
+            (vu-pair (nop) (mulay.xyzw ACC clr1 morph)) ;; #x23e
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x23f
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x240
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x241
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x242
+            (vu-pair (nop) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x243
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x244
+            (vu-pair (mtir ind1 inds.y) (mulx.xyz vtx-2 vtx-2 morph)) ;; #x245
+            (vu-pair (mtir ind2 inds.z) (maddz.xyzw clr-1 clr-1 morph)) ;; #x246
+            (vu-pair (nop) (mul.xyz res-02 pos-02 Q)) ;; #x247
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (mul.xyz tex-0 tex-0 Q)) ;; #x248
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-2 vtx-2 xyzofs)) ;; #x249
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x24a
+            (vu-pair (div Q vf00.w pos-13.w) (ftoi4.xyz res-02 res-02)) ;; #x24b
+            (vu-pair (nop) (nop)) ;; #x24c
+            (vu-pair (b morph-pipeline-slot3) (mulay.xyzw ACC clr1 morph)) ;; #x24d
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x24e
+            (label morph-pipeline-slot0)
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (nop)) ;; #x24f
+            (vu-pair (lqi.xyzw inds clr-ptr) (subw.w xyzofs vf00 vf00)) ;; #x250
+            (vu-pair (0.5) (nop :i)) ;; #x251
+            (vu-pair (lqi.xyz xyzofs point-ptr) (addi.y morph vf00 I)) ;; #x252
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (nop)) ;; #x253
+            (vu-pair (mtir ind0 inds.x) (addx.w xyzofs xyzofs gifbuf)) ;; #x254
+            (vu-pair (mtir ind1 inds.y) (nop)) ;; #x255
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-1 vtx-1 morph)) ;; #x256
+            (vu-pair (nop) (nop)) ;; #x257
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x258
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-1 vtx-1 xyzofs)) ;; #x259
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x25a
+            (vu-pair (nop) (nop)) ;; #x25b
+            (vu-pair (nop) (nop)) ;; #x25c
+            (vu-pair (nop) (mulay.xyzw ACC clr1 morph)) ;; #x25d
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x25e
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x25f
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x260
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x261
+            (vu-pair (nop) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x262
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x263
+            (vu-pair (mtir ind1 inds.y) (maddz.xyzw clr-1 clr-1 morph)) ;; #x264
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-2 vtx-2 morph)) ;; #x265
+            (vu-pair (nop) (nop)) ;; #x266
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x267
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-2 vtx-2 xyzofs)) ;; #x268
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x269
+            (vu-pair (div Q vf00.w pos-13.w) (nop)) ;; #x26a
+            (vu-pair (nop) (nop)) ;; #x26b
+            (vu-pair (nop) (mulay.xyzw ACC clr1 morph)) ;; #x26c
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x26d
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x26e
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x26f
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x270
+            (vu-pair (nop) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x271
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x272
+            (vu-pair (mtir ind1 inds.y) (mulx.xyz vtx-3 vtx-3 morph)) ;; #x273
+            (vu-pair (mtir ind2 inds.z) (maddz.xyzw clr-2 clr-2 morph)) ;; #x274
+            (vu-pair (nop) (mul.xyz res-13 pos-13 Q)) ;; #x275
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (mul.xyz tex-1 tex-1 Q)) ;; #x276
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-3 vtx-3 xyzofs)) ;; #x277
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x278
+            (vu-pair (div Q vf00.w pos-02.w) (ftoi4.xyz res-13 res-13)) ;; #x279
+            (vu-pair (nop) (nop)) ;; #x27a
+            (vu-pair (b morph-final-slot0) (mulay.xyzw ACC clr1 morph)) ;; #x27b
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x27c
+            (label morph-pipeline-slot1)
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (nop)) ;; #x27d
+            (vu-pair (lqi.xyzw inds clr-ptr) (subw.w xyzofs vf00 vf00)) ;; #x27e
+            (vu-pair (0.5) (nop :i)) ;; #x27f
+            (vu-pair (lqi.xyz xyzofs point-ptr) (addi.y morph vf00 I)) ;; #x280
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (nop)) ;; #x281
+            (vu-pair (mtir ind0 inds.x) (addx.w xyzofs xyzofs gifbuf)) ;; #x282
+            (vu-pair (mtir ind1 inds.y) (nop)) ;; #x283
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-2 vtx-2 morph)) ;; #x284
+            (vu-pair (nop) (nop)) ;; #x285
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x286
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-2 vtx-2 xyzofs)) ;; #x287
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x288
+            (vu-pair (nop) (nop)) ;; #x289
+            (vu-pair (nop) (nop)) ;; #x28a
+            (vu-pair (nop) (mulay.xyzw ACC clr1 morph)) ;; #x28b
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x28c
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x28d
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x28e
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x28f
+            (vu-pair (nop) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x290
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x291
+            (vu-pair (mtir ind1 inds.y) (maddz.xyzw clr-2 clr-2 morph)) ;; #x292
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-3 vtx-3 morph)) ;; #x293
+            (vu-pair (nop) (nop)) ;; #x294
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x295
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-3 vtx-3 xyzofs)) ;; #x296
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x297
+            (vu-pair (div Q vf00.w pos-02.w) (nop)) ;; #x298
+            (vu-pair (nop) (nop)) ;; #x299
+            (vu-pair (nop) (mulay.xyzw ACC clr1 morph)) ;; #x29a
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x29b
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x29c
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x29d
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x29e
+            (vu-pair (nop) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x29f
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x2a0
+            (vu-pair (mtir ind1 inds.y) (mulx.xyz vtx-0 vtx-0 morph)) ;; #x2a1
+            (vu-pair (mtir ind2 inds.z) (maddz.xyzw clr-3 clr-3 morph)) ;; #x2a2
+            (vu-pair (nop) (mul.xyz res-02 pos-02 Q)) ;; #x2a3
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (mul.xyz tex-2 tex-2 Q)) ;; #x2a4
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-0 vtx-0 xyzofs)) ;; #x2a5
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x2a6
+            (vu-pair (div Q vf00.w pos-13.w) (ftoi4.xyz res-02 res-02)) ;; #x2a7
+            (vu-pair (nop) (nop)) ;; #x2a8
+            (vu-pair (b morph-final-slot1) (mulay.xyzw ACC clr1 morph)) ;; #x2a9
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x2aa
+            (label morph-pipeline-slot2)
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (nop)) ;; #x2ab
+            (vu-pair (lqi.xyzw inds clr-ptr) (subw.w xyzofs vf00 vf00)) ;; #x2ac
+            (vu-pair (0.5) (nop :i)) ;; #x2ad
+            (vu-pair (lqi.xyz xyzofs point-ptr) (addi.y morph vf00 I)) ;; #x2ae
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (nop)) ;; #x2af
+            (vu-pair (mtir ind0 inds.x) (addx.w xyzofs xyzofs gifbuf)) ;; #x2b0
+            (vu-pair (mtir ind1 inds.y) (nop)) ;; #x2b1
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-3 vtx-3 morph)) ;; #x2b2
+            (vu-pair (nop) (nop)) ;; #x2b3
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x2b4
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-3 vtx-3 xyzofs)) ;; #x2b5
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x2b6
+            (vu-pair (nop) (nop)) ;; #x2b7
+            (vu-pair (nop) (nop)) ;; #x2b8
+            (vu-pair (nop) (mulay.xyzw ACC clr1 morph)) ;; #x2b9
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x2ba
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x2bb
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x2bc
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x2bd
+            (vu-pair (nop) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x2be
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x2bf
+            (vu-pair (mtir ind1 inds.y) (maddz.xyzw clr-3 clr-3 morph)) ;; #x2c0
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-0 vtx-0 morph)) ;; #x2c1
+            (vu-pair (nop) (nop)) ;; #x2c2
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x2c3
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-0 vtx-0 xyzofs)) ;; #x2c4
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x2c5
+            (vu-pair (div Q vf00.w pos-13.w) (nop)) ;; #x2c6
+            (vu-pair (nop) (nop)) ;; #x2c7
+            (vu-pair (nop) (mulay.xyzw ACC clr1 morph)) ;; #x2c8
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x2c9
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x2ca
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x2cb
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x2cc
+            (vu-pair (nop) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x2cd
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x2ce
+            (vu-pair (mtir ind1 inds.y) (mulx.xyz vtx-1 vtx-1 morph)) ;; #x2cf
+            (vu-pair (mtir ind2 inds.z) (maddz.xyzw clr-0 clr-0 morph)) ;; #x2d0
+            (vu-pair (nop) (mul.xyz res-13 pos-13 Q)) ;; #x2d1
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (mul.xyz tex-3 tex-3 Q)) ;; #x2d2
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (add.xyzw vtx-1 vtx-1 xyzofs)) ;; #x2d3
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x2d4
+            (vu-pair (div Q vf00.w pos-02.w) (ftoi4.xyz res-13 res-13)) ;; #x2d5
+            (vu-pair (nop) (nop)) ;; #x2d6
+            (vu-pair (b morph-final-slot2) (mulay.xyzw ACC clr1 morph)) ;; #x2d7
+            (vu-pair (lqi.xyzw inds clr-ptr) (maddy.xyzw clr1 clr2 morph)) ;; #x2d8
+            (label morph-pipeline-slot3)
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x2d9
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x2da
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x2db
+            (vu-pair (mtir dest-ptr vtx-0.w) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x2dc
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x2dd
+            (vu-pair (mtir ind1 inds.y) (maddz.xyzw clr-2 clr-2 morph)) ;; #x2de
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-3 vtx-3 morph)) ;; #x2df
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (mul.xyz res-13 pos-13 Q)) ;; #x2e0
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (mul.xyz tex-1 tex-1 Q)) ;; #x2e1
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (nop)) ;; #x2e2
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x2e3
+            (vu-pair (div Q vf00.w pos-02.w) (ftoi4.xyz res-13 res-13)) ;; #x2e4
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (add.xyzw vtx-3 vtx-3 xyzofs)) ;; #x2e5
+            (vu-pair (lqi.xyzw inds clr-ptr) (mulay.xyzw ACC clr1 morph)) ;; #x2e6
+            (vu-pair (ibeq target-ip1-ptr dest-ptr morph-short-slot0) (nop)) ;; #x2e7
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (maddy.xyzw clr1 clr2 morph)) ;; #x2e8
+            (label morph-final-slot0)
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x2e9
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x2ea
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x2eb
+            (vu-pair (mtir dest-ptr vtx-1.w) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x2ec
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x2ed
+            (vu-pair (mtir ind1 inds.y) (maddz.xyzw clr-3 clr-3 morph)) ;; #x2ee
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-0 vtx-0 morph)) ;; #x2ef
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (mul.xyz res-02 pos-02 Q)) ;; #x2f0
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (mul.xyz tex-2 tex-2 Q)) ;; #x2f1
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (nop)) ;; #x2f2
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x2f3
+            (vu-pair (div Q vf00.w pos-13.w) (ftoi4.xyz res-02 res-02)) ;; #x2f4
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (add.xyzw vtx-0 vtx-0 xyzofs)) ;; #x2f5
+            (vu-pair (lqi.xyzw inds clr-ptr) (mulay.xyzw ACC clr1 morph)) ;; #x2f6
+            (vu-pair (ibeq target-ip1-ptr dest-ptr morph-short-slot1) (nop)) ;; #x2f7
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (maddy.xyzw clr1 clr2 morph)) ;; #x2f8
+            (label morph-final-slot1)
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x2f9
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x2fa
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x2fb
+            (vu-pair (mtir dest-ptr vtx-2.w) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x2fc
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x2fd
+            (vu-pair (mtir ind1 inds.y) (maddz.xyzw clr-0 clr-0 morph)) ;; #x2fe
+            (vu-pair (mtir ind2 inds.z) (mulx.xyz vtx-1 vtx-1 morph)) ;; #x2ff
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (mul.xyz res-13 pos-13 Q)) ;; #x300
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (mul.xyz tex-3 tex-3 Q)) ;; #x301
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (nop)) ;; #x302
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x303
+            (vu-pair (div Q vf00.w pos-02.w) (ftoi4.xyz res-13 res-13)) ;; #x304
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (add.xyzw vtx-1 vtx-1 xyzofs)) ;; #x305
+            (vu-pair (lqi.xyzw inds clr-ptr) (mulay.xyzw ACC clr1 morph)) ;; #x306
+            (vu-pair (ibeq target-ip1-ptr dest-ptr morph-short-slot2) (nop)) ;; #x307
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (maddy.xyzw clr1 clr2 morph)) ;; #x308
+            (label morph-final-slot2)
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x309
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x30a
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x30b
+            (vu-pair (mtir dest-ptr vtx-3.w) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x30c
+            (vu-pair (mtir ind0 inds.x) (mulaw.xyzw ACC clr1 morph)) ;; #x30d
+            (vu-pair (mtir ind1 inds.y) (maddz.xyzw clr-1 clr-1 morph)) ;; #x30e
+            (vu-pair (mtir ind2 inds.z) (mul.xyz res-02 pos-02 Q)) ;; #x30f
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (mul.xyz tex-0 tex-0 Q)) ;; #x310
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (mulx.xyz vtx-2 vtx-2 morph)) ;; #x311
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (nop)) ;; #x312
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x313
+            (vu-pair (div Q vf00.w pos-13.w) (ftoi4.xyz res-02 res-02)) ;; #x314
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (add.xyzw vtx-2 vtx-2 xyzofs)) ;; #x315
+            (vu-pair (lqi.xyzw inds clr-ptr) (mulay.xyzw ACC clr1 morph)) ;; #x316
+            (vu-pair (ibne target-ip1-ptr dest-ptr morph-pipeline-slot3) (nop)) ;; #x317
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (maddy.xyzw clr1 clr2 morph)) ;; #x318
+            (vu-pair (mtir dest-ptr vtx-0.w) (addx.w tex-0 tex-0 gifbuf)) ;; #x319
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x31a
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x31b
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x31c
+            (vu-pair (mtir dest2-ptr tex-0.w) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x31d
+            (vu-pair (mtir ind0 inds.x) (mul.xyz tex-1 tex-1 Q)) ;; #x31e
+            (vu-pair (mtir ind1 inds.y) (mul.xyz pos-13 pos-13 Q)) ;; #x31f
+            (vu-pair (mtir ind2 inds.z) (nop)) ;; #x320
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (addx.w tex-2 tex-2 gifbuf)) ;; #x321
+            (vu-pair (div Q vf00.w pos-02.w) (mulx.xyz vtx-3 vtx-3 morph)) ;; #x322
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (ftoi4.xyz res-13 pos-13)) ;; #x323
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (mulaw.xyzw ACC clr1 morph)) ;; #x324
+            (vu-pair (sq.xyzw tex-0 dest2-ptr 0) (maddz.xyzw clr-2 clr-2 morph)) ;; #x325
+            (vu-pair (sq.xyzw clr-0 dest2-ptr 1) (add.xyzw vtx-3 vtx-3 xyzofs)) ;; #x326
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (addx.w tex-1 tex-1 gifbuf)) ;; #x327
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x328
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x329
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x32a
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x32b
+            (vu-pair (ibne target-ip2-ptr dest-ptr morph-loop) (nop)) ;; #x32c
+            (vu-pair (mtir dest-ptr vtx-1.w) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x32d
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x32e
+            (vu-pair (nop) (nop)) ;; #x32f
+            (label morph-short-slot0)
+            (vu-pair (mtir dest-ptr vtx-1.w) (addx.w tex-1 tex-1 gifbuf)) ;; #x330
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x331
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x332
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x333
+            (vu-pair (mtir dest2-ptr tex-1.w) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x334
+            (vu-pair (mtir ind0 inds.x) (mul.xyz tex-2 tex-2 Q)) ;; #x335
+            (vu-pair (mtir ind1 inds.y) (mul.xyz pos-02 pos-02 Q)) ;; #x336
+            (vu-pair (mtir ind2 inds.z) (nop)) ;; #x337
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (addx.w tex-3 tex-3 gifbuf)) ;; #x338
+            (vu-pair (div Q vf00.w pos-13.w) (mulx.xyz vtx-0 vtx-0 morph)) ;; #x339
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (ftoi4.xyz res-02 pos-02)) ;; #x33a
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (mulaw.xyzw ACC clr1 morph)) ;; #x33b
+            (vu-pair (sq.xyzw tex-1 dest2-ptr 0) (maddz.xyzw clr-3 clr-3 morph)) ;; #x33c
+            (vu-pair (sq.xyzw clr-1 dest2-ptr 1) (add.xyzw vtx-0 vtx-0 xyzofs)) ;; #x33d
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (addx.w tex-2 tex-2 gifbuf)) ;; #x33e
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x33f
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x340
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x341
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x342
+            (vu-pair (ibne target-ip2-ptr dest-ptr morph-loop-slot1) (nop)) ;; #x343
+            (vu-pair (mtir dest-ptr vtx-2.w) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x344
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x345
+            (vu-pair (nop) (nop)) ;; #x346
+            (label morph-short-slot1)
+            (vu-pair (mtir dest-ptr vtx-2.w) (addx.w tex-2 tex-2 gifbuf)) ;; #x347
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x348
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x349
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x34a
+            (vu-pair (mtir dest2-ptr tex-2.w) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x34b
+            (vu-pair (mtir ind0 inds.x) (mul.xyz tex-3 tex-3 Q)) ;; #x34c
+            (vu-pair (mtir ind1 inds.y) (mul.xyz pos-13 pos-13 Q)) ;; #x34d
+            (vu-pair (mtir ind2 inds.z) (nop)) ;; #x34e
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (addx.w tex-0 tex-0 gifbuf)) ;; #x34f
+            (vu-pair (div Q vf00.w pos-02.w) (mulx.xyz vtx-1 vtx-1 morph)) ;; #x350
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (ftoi4.xyz res-13 pos-13)) ;; #x351
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (mulaw.xyzw ACC clr1 morph)) ;; #x352
+            (vu-pair (sq.xyzw tex-2 dest2-ptr 0) (maddz.xyzw clr-0 clr-0 morph)) ;; #x353
+            (vu-pair (sq.xyzw clr-2 dest2-ptr 1) (add.xyzw vtx-1 vtx-1 xyzofs)) ;; #x354
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (addx.w tex-3 tex-3 gifbuf)) ;; #x355
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x356
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x357
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x358
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x359
+            (vu-pair (ibne target-ip2-ptr dest-ptr morph-loop-slot2) (nop)) ;; #x35a
+            (vu-pair (mtir dest-ptr vtx-3.w) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x35b
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x35c
+            (vu-pair (nop) (nop)) ;; #x35d
+            (label morph-short-slot2)
+            (vu-pair (mtir dest-ptr vtx-3.w) (addx.w tex-3 tex-3 gifbuf)) ;; #x35e
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x35f
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x360
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x361
+            (vu-pair (mtir dest2-ptr tex-3.w) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x362
+            (vu-pair (mtir ind0 inds.x) (mul.xyz tex-0 tex-0 Q)) ;; #x363
+            (vu-pair (mtir ind1 inds.y) (mul.xyz pos-02 pos-02 Q)) ;; #x364
+            (vu-pair (mtir ind2 inds.z) (nop)) ;; #x365
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (addx.w tex-1 tex-1 gifbuf)) ;; #x366
+            (vu-pair (div Q vf00.w pos-13.w) (mulx.xyz vtx-2 vtx-2 morph)) ;; #x367
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (ftoi4.xyz res-02 pos-02)) ;; #x368
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (mulaw.xyzw ACC clr1 morph)) ;; #x369
+            (vu-pair (sq.xyzw tex-3 dest2-ptr 0) (maddz.xyzw clr-1 clr-1 morph)) ;; #x36a
+            (vu-pair (sq.xyzw clr-3 dest2-ptr 1) (add.xyzw vtx-2 vtx-2 xyzofs)) ;; #x36b
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (addx.w tex-0 tex-0 gifbuf)) ;; #x36c
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x36d
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x36e
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x36f
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x370
+            (vu-pair (ibne target-ip2-ptr dest-ptr morph-loop-slot3) (nop)) ;; #x371
+            (vu-pair (mtir dest-ptr vtx-0.w) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x372
+            (vu-pair (b finalize-and-kick-gif) (nop)) ;; #x373
+            (vu-pair (nop) (nop)) ;; #x374
+            (label morph-loop)
+            (vu-pair (lqi.xyzw vtx-0 point-ptr) (madday.xyzw ACC t-mtx1 vtx-3)) ;; #x375
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddz.xyzw pos-13 t-mtx2 vtx-3)) ;; #x376
+            (vu-pair (lqi.xyzw tex-0 point-ptr) (mul.xyz tex-2 tex-2 Q)) ;; #x377
+            (vu-pair (mtir dest2-ptr tex-1.w) (mul.xyz pos-02 pos-02 Q)) ;; #x378
+            (vu-pair (mtir ind0 inds.x) (mulay.xyzw ACC clr1 morph)) ;; #x379
+            (vu-pair (mtir ind1 inds.y) (maddy.xyzw clr1 clr2 morph)) ;; #x37a
+            (vu-pair (mtir ind2 inds.z) (nop)) ;; #x37b
+            (vu-pair (sq.xyzw clr-1 dest-ptr 1) (ftoi4.xyz res-02 pos-02)) ;; #x37c
+            (vu-pair (div Q vf00.w pos-13.w) (mulx.xyz vtx-0 vtx-0 morph)) ;; #x37d
+            (vu-pair (sq.xyzw tex-1 dest-ptr 0) (addx.w tex-3 tex-3 gifbuf)) ;; #x37e
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (mulaw.xyzw ACC clr1 morph)) ;; #x37f
+            (vu-pair (sq.xyzw tex-1 dest2-ptr 0) (maddz.xyzw clr-3 clr-3 morph)) ;; #x380
+            (vu-pair (sq.xyzw clr-1 dest2-ptr 1) (add.xyzw vtx-0 vtx-0 xyzofs)) ;; #x381
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x382
+            (vu-pair (lq.xyzw clr-0 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x383
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x384
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x385
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x386
+            (vu-pair (ibeq target-ip2-ptr dest-ptr finalize-and-kick-gif) (nop)) ;; #x387
+            (vu-pair (mtir dest-ptr vtx-2.w) (maddax.xyzw ACC t-mtx0 vtx-0)) ;; #x388
+            (label morph-loop-slot1)
+            (vu-pair (lqi.xyzw vtx-1 point-ptr) (madday.xyzw ACC t-mtx1 vtx-0)) ;; #x389
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddz.xyzw pos-02 t-mtx2 vtx-0)) ;; #x38a
+            (vu-pair (lqi.xyzw tex-1 point-ptr) (mul.xyz tex-3 tex-3 Q)) ;; #x38b
+            (vu-pair (mtir dest2-ptr tex-2.w) (mul.xyz pos-13 pos-13 Q)) ;; #x38c
+            (vu-pair (mtir ind0 inds.x) (mulay.xyzw ACC clr1 morph)) ;; #x38d
+            (vu-pair (mtir ind1 inds.y) (maddy.xyzw clr1 clr2 morph)) ;; #x38e
+            (vu-pair (mtir ind2 inds.z) (nop)) ;; #x38f
+            (vu-pair (sq.xyzw clr-2 dest-ptr 1) (ftoi4.xyz res-13 pos-13)) ;; #x390
+            (vu-pair (div Q vf00.w pos-02.w) (mulx.xyz vtx-1 vtx-1 morph)) ;; #x391
+            (vu-pair (sq.xyzw tex-2 dest-ptr 0) (addx.w tex-0 tex-0 gifbuf)) ;; #x392
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (mulaw.xyzw ACC clr1 morph)) ;; #x393
+            (vu-pair (sq.xyzw tex-2 dest2-ptr 0) (maddz.xyzw clr-0 clr-0 morph)) ;; #x394
+            (vu-pair (sq.xyzw clr-2 dest2-ptr 1) (add.xyzw vtx-1 vtx-1 xyzofs)) ;; #x395
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x396
+            (vu-pair (lq.xyzw clr-1 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x397
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x398
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x399
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x39a
+            (vu-pair (ibeq target-ip2-ptr dest-ptr finalize-and-kick-gif) (nop)) ;; #x39b
+            (vu-pair (mtir dest-ptr vtx-3.w) (maddax.xyzw ACC t-mtx0 vtx-1)) ;; #x39c
+            (label morph-loop-slot2)
+            (vu-pair (lqi.xyzw vtx-2 point-ptr) (madday.xyzw ACC t-mtx1 vtx-1)) ;; #x39d
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddz.xyzw pos-13 t-mtx2 vtx-1)) ;; #x39e
+            (vu-pair (lqi.xyzw tex-2 point-ptr) (mul.xyz tex-0 tex-0 Q)) ;; #x39f
+            (vu-pair (mtir dest2-ptr tex-3.w) (mul.xyz pos-02 pos-02 Q)) ;; #x3a0
+            (vu-pair (mtir ind0 inds.x) (mulay.xyzw ACC clr1 morph)) ;; #x3a1
+            (vu-pair (mtir ind1 inds.y) (maddy.xyzw clr1 clr2 morph)) ;; #x3a2
+            (vu-pair (mtir ind2 inds.z) (nop)) ;; #x3a3
+            (vu-pair (sq.xyzw clr-3 dest-ptr 1) (ftoi4.xyz res-02 pos-02)) ;; #x3a4
+            (vu-pair (div Q vf00.w pos-13.w) (mulx.xyz vtx-2 vtx-2 morph)) ;; #x3a5
+            (vu-pair (sq.xyzw tex-3 dest-ptr 0) (addx.w tex-1 tex-1 gifbuf)) ;; #x3a6
+            (vu-pair (sq.xyzw res-13 dest-ptr 2) (mulaw.xyzw ACC clr1 morph)) ;; #x3a7
+            (vu-pair (sq.xyzw tex-3 dest2-ptr 0) (maddz.xyzw clr-1 clr-1 morph)) ;; #x3a8
+            (vu-pair (sq.xyzw clr-3 dest2-ptr 1) (add.xyzw vtx-2 vtx-2 xyzofs)) ;; #x3a9
+            (vu-pair (sq.xyzw res-13 dest2-ptr 2) (nop)) ;; #x3aa
+            (vu-pair (lq.xyzw clr-2 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x3ab
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x3ac
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x3ad
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x3ae
+            (vu-pair (ibeq target-ip2-ptr dest-ptr finalize-and-kick-gif) (nop)) ;; #x3af
+            (vu-pair (mtir dest-ptr vtx-0.w) (maddax.xyzw ACC t-mtx0 vtx-2)) ;; #x3b0
+            (label morph-loop-slot3)
+            (vu-pair (lqi.xyzw vtx-3 point-ptr) (madday.xyzw ACC t-mtx1 vtx-2)) ;; #x3b1
+            (vu-pair (lqi.xyz xyzofs point-ptr) (maddz.xyzw pos-02 t-mtx2 vtx-2)) ;; #x3b2
+            (vu-pair (lqi.xyzw tex-3 point-ptr) (mul.xyz tex-1 tex-1 Q)) ;; #x3b3
+            (vu-pair (mtir dest2-ptr tex-0.w) (mul.xyz pos-13 pos-13 Q)) ;; #x3b4
+            (vu-pair (mtir ind0 inds.x) (mulay.xyzw ACC clr1 morph)) ;; #x3b5
+            (vu-pair (mtir ind1 inds.y) (maddy.xyzw clr1 clr2 morph)) ;; #x3b6
+            (vu-pair (mtir ind2 inds.z) (nop)) ;; #x3b7
+            (vu-pair (sq.xyzw clr-0 dest-ptr 1) (ftoi4.xyz res-13 pos-13)) ;; #x3b8
+            (vu-pair (div Q vf00.w pos-02.w) (mulx.xyz vtx-3 vtx-3 morph)) ;; #x3b9
+            (vu-pair (sq.xyzw tex-0 dest-ptr 0) (addx.w tex-2 tex-2 gifbuf)) ;; #x3ba
+            (vu-pair (sq.xyzw res-02 dest-ptr 2) (mulaw.xyzw ACC clr1 morph)) ;; #x3bb
+            (vu-pair (sq.xyzw tex-0 dest2-ptr 0) (maddz.xyzw clr-2 clr-2 morph)) ;; #x3bc
+            (vu-pair (sq.xyzw clr-0 dest2-ptr 1) (add.xyzw vtx-3 vtx-3 xyzofs)) ;; #x3bd
+            (vu-pair (sq.xyzw res-02 dest2-ptr 2) (nop)) ;; #x3be
+            (vu-pair (lq.xyzw clr-3 ind0 TIE-VU-PALETTE-BASE) (nop)) ;; #x3bf
+            (vu-pair (lq.xyzw clr1 ind1 TIE-VU-PALETTE-BASE) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x3c0
+            (vu-pair (lq.xyzw clr2 ind2 TIE-VU-PALETTE-BASE) (nop)) ;; #x3c1
+            (vu-pair (lqi.xyzw inds clr-ptr) (nop)) ;; #x3c2
+            (vu-pair (ibne target-ip2-ptr dest-ptr morph-loop) (nop)) ;; #x3c3
+            (vu-pair (mtir dest-ptr vtx-1.w) (maddax.xyzw ACC t-mtx0 vtx-3)) ;; #x3c4
+            ;; Assemble the alpha-test packet, kick it, kick the finished output bank, then rotate: the two GIF
+            ;; addresses move on, the instance input bank flips, and the point cursor resets for the next
+            ;; batch. misc.x is the TEST state this fragment wants and misc.y is the one currently installed,
+            ;; so a run of fragments with the same state does not re-send it.
+            ;;
+            ;; Two kicks leave, not one. The fragment filled two banks, so the second is handed over as well,
+            ;; and the E bit on the first kick's pair is what ends this invocation of entry 0.
+            (label finalize-and-kick-gif)
+            (vu-pair (ilw.x itemp vi00 (tie-const misc)) (nop)) ;; #x3c5
+            (vu-pair (ilw.y dest-ptr vi00 (tie-const misc)) (nop)) ;; #x3c6
+            (vu-pair (lq.xyzw vtx-0 vi00 (tie-const atestgif)) (nop)) ;; #x3c7
+            (vu-pair (lq.xyzw vtx-1 vi00 (tie-const atest 0)) (nop)) ;; #x3c8
+            (vu-pair (lq.xyzw vtx-2 vi00 (tie-const atest 1)) (nop)) ;; #x3c9
+            (vu-pair (sq.xyzw vtx-0 vi00 TIE-VU-ATEST-PACKET) (nop)) ;; #x3ca
+            (vu-pair (ibne vi00 itemp kick-active-gif-buffers) (nop)) ;; #x3cb
+            (vu-pair (sq.xyzw vtx-2 vi00 TIE-VU-ATEST-DATA) (nop)) ;; #x3cc
+            (vu-pair (sq.xyzw vtx-1 vi00 TIE-VU-ATEST-DATA) (nop)) ;; #x3cd
+            (label kick-active-gif-buffers)
+            (vu-pair (iaddiu point-ptr vi00 TIE-VU-ATEST-PACKET) (nop)) ;; #x3ce
+            (vu-pair (isw.y itemp vi00 (tie-const misc)) (nop)) ;; #x3cf
+            (vu-pair (xgkick point-ptr) (nop)) ;; #x3d0
+            (vu-pair (mtir itemp gifbuf.x) (nop)) ;; #x3d1
+            (vu-pair (mtir dest-ptr extra.w) (nop)) ;; #x3d2
+            (vu-pair (mr32.xyzw clrbuf clrbuf) (nop)) ;; #x3d3
+            (vu-pair (iaddiu point-ptr vi00 TIE-VU-PROTOTYPE-POINT-0) (nop)) ;; #x3d4
+            (vu-pair (mfir.y extra vi00) (nop)) ;; #x3d5
+            (vu-pair (xgkick itemp) (nop :e)) ;; #x3d6
+            (vu-pair (mtir clr-ptr clrbuf.x) (nop)) ;; #x3d7
+            (label finish-current-gif-buffer)
+            (vu-pair (mtir itemp extra.y) (nop)) ;; #x3d8
+            (vu-pair (mtir dest-ptr extra.w) (nop)) ;; #x3d9
+            (vu-pair (mr32.xyzw clrbuf clrbuf) (nop)) ;; #x3da
+            (vu-pair (iaddiu point-ptr vi00 TIE-VU-PROTOTYPE-POINT-0) (nop)) ;; #x3db
+            (vu-pair (iadd itemp itemp kick-addr) (nop)) ;; #x3dc
+            (vu-pair (mfir.y extra dest-ptr) (nop :e)) ;; #x3dd
+            (vu-pair (mtir clr-ptr clrbuf.x) (nop)) ;; #x3de
+            (label finish-vu-entry)
+            (vu-pair (nop) (nop :e)) ;; #x3df
+            (vu-pair (nop) (nop)) ;; #x3e0
+            )))
 
 ;; definition for function tie-init-consts
 ;; INFO: Return type mismatch int vs none.
-(defun tie-init-consts ((arg0 tie-consts) (arg1 int))
-  "Initialize TIE constants. arg1 enables alpha blending"
-  ;; set the adgif shader tag (just 5x a+d's)
-  (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
-  (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  ;; based on the menu drawing mode, create the template tag for geometry.
+(defun tie-init-consts ((consts tie-consts) (alpha-blend int))
+  "Build the VU1 GIF templates, triple-buffer addresses, instance-data bank addresses, and alpha-test
+   states used by TIE. The three GIF output addresses are stored as 2^23-biased floats so VU1 can
+   recover their integer addresses with mtir, and their sum lets the program select the third bank by
+   subtracting the two current banks. alpha-blend controls the ABE bit in the geometry primitive."
+  (set! (-> consts adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+  (set! (-> consts adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
   (cond
-    ((zero? *subdivide-draw-mode*) ;; normal textured
-     (set! (-> arg0 strgif tag)
+    ((zero? *subdivide-draw-mode*)
+     (set! (-> consts strgif tag)
            (new 'static
                 'gif-tag64
                 :pre #x1
                 :nreg #x3
                 :prim
-                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1))))
-    ((= *subdivide-draw-mode* 3) ;; "hack". same as normal.
-     (set! (-> arg0 strgif tag)
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe alpha-blend))))
+    ((= *subdivide-draw-mode* 3)
+     (set! (-> consts strgif tag)
            (new 'static
                 'gif-tag64
                 :pre #x1
                 :nreg #x3
                 :prim
-                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1))))
-    ((= *subdivide-draw-mode* 1) ;; outline (wireframe). just switch to line-strip
-     (set! (-> arg0 strgif tag)
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe alpha-blend))))
+    ((= *subdivide-draw-mode* 1)
+     (set! (-> consts strgif tag)
            (new 'static
                 'gif-tag64
                 :pre #x1
                 :nreg #x3
                 :prim
-                (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe arg1))))
-    ((= *subdivide-draw-mode* 2) ;; gouraud - turn off tme.
-     (set! (-> arg0 strgif tag)
+                (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe alpha-blend))))
+    ((= *subdivide-draw-mode* 2)
+     (set! (-> consts strgif tag)
            (new 'static
                 'gif-tag64
                 :pre #x1
                 :nreg #x3
                 :prim
-                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe arg1)))))
-  ;; the main drawing tag: st, rgbaq, xyzf per vertex (same in all draws modes)
-  (set! (-> arg0 strgif regs)
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe alpha-blend)))))
+  (set! (-> consts strgif regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  ;; some magic constants
-  (let ((f1-0 8388894.0)
-        (f2-0 8389078.0)
-        (f0-0 8389262.0))
-    (set! (-> arg0 gifbufs x) f0-0)
-    (set! (-> arg0 gifbufs y) f2-0)
-    (set! (-> arg0 gifbufs z) f0-0)
-    (set! (-> arg0 gifbufs w) f2-0)
-    (set! (-> arg0 extra x) (+ f1-0 f2-0 f0-0))
-    (set! (-> arg0 extra y) 0.0)
-    (set! (-> arg0 extra z) (+ f1-0 f2-0 f0-0)))
-  (set! (-> arg0 clrbufs vector4w x) 198)
-  (set! (-> arg0 clrbufs vector4w y) 242)
-  (set! (-> arg0 clrbufs vector4w z) 198)
-  (set! (-> arg0 clrbufs vector4w w) 242)
-  ;; looks like tie can toggle on and off alpha testing during the draw
-  ;; tra = transparent, def = default?
-  (set! (-> arg0 atestgif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-  (set! (-> arg0 atestgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  (set! (-> arg0 atest-tra cmd) (gs-reg test-1))
-  (set! (-> arg0 atest-tra data)
+  ;; Encode VU addresses 286, 470, and 654 in the low mantissa bits of 2^23-based floats. VU1
+  ;; rotates the active pair by subtracting it from the sum of all three addresses.
+  (let ((gif-buffer-a 8388894.0)
+        (gif-buffer-b 8389078.0)
+        (gif-buffer-c 8389262.0))
+    (set! (-> consts gifbufs x) gif-buffer-c)
+    (set! (-> consts gifbufs y) gif-buffer-b)
+    (set! (-> consts gifbufs z) gif-buffer-c)
+    (set! (-> consts gifbufs w) gif-buffer-b)
+    (set! (-> consts extra x) (+ gif-buffer-a gif-buffer-b gif-buffer-c))
+    (set! (-> consts extra y) 0.0)
+    (set! (-> consts extra z) (+ gif-buffer-a gif-buffer-b gif-buffer-c)))
+  ;; The two instance input banks are 44 quadwords apart. Each begins with a matrix at 198 or 242;
+  ;; its corresponding instance color-index stream begins six quadwords later.
+  (set! (-> consts clrbufs vector4w x) 198)
+  (set! (-> consts clrbufs vector4w y) 242)
+  (set! (-> consts clrbufs vector4w z) 198)
+  (set! (-> consts clrbufs vector4w w) 242)
+  (set! (-> consts atestgif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+  (set! (-> consts atestgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  ;; The fragment selector chooses between an alpha-tested translucent pass and the normal state.
+  (set! (-> consts atest-tra cmd) (gs-reg test-1))
+  (set! (-> consts atest-tra data)
         (the uint
              (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))))
-  (set! (-> arg0 atest-def cmd) (gs-reg test-1))
-  (set! (-> arg0 atest-def data)
+  (set! (-> consts atest-def cmd) (gs-reg test-1))
+  (set! (-> consts atest-def data)
         (the uint (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal))))
-  ;; more magic constants
-  (set! (-> arg0 misc vector4w x) 0)
-  (set! (-> arg0 misc vector4w y) -1)
+  (set! (-> consts misc vector4w x) 0)
+  (set! (-> consts misc vector4w y) -1)
   (none))
 
-(defun tie-init-engine ((arg0 dma-buffer) (arg1 gs-test) (arg2 int))
-  "Set up tie initialization DMA in the given buffer. arg2 picks abe."
+;; definition for function tie-init-engine
+;; INFO: Return type mismatch int vs none.
+(defun tie-init-engine ((dma-buf dma-buffer) (test-state gs-test) (alpha-blend int))
+  "Append the TIE VU1 upload and initialization packets to dma-buf. This installs the requested GS
+   TEST state, uploads the constant block, initializes the microprogram, and configures VIF's ROW,
+   BASE/OFFSET, mode, and cycle state for the packed instance stream. alpha-blend controls the geometry
+   primitive's ABE bit."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
-    ;; add the tie code
-    (dma-buffer-add-vu-function arg0 tie-vu1-block 1)
-    ;; set up the given gs-test register
-    (let* ((v1-3 arg0)
-           (a0-2 (the-as object (-> v1-3 base))))
-      (set! (-> (the-as dma-packet a0-2) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet a0-2) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a0-2) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-3 base) (&+ (the-as pointer a0-2) 16)))
-    (let* ((v1-4 arg0)
-           (a0-4 (the-as object (-> v1-4 base))))
-      (set! (-> (the-as gs-gif-tag a0-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag a0-4) regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-4 base) (the-as pointer (&+ (the-as gs-gif-tag a0-4) 16))))
-    (let* ((v1-5 arg0)
-           (a0-6 (-> v1-5 base)))
-      (set! (-> (the-as (pointer gs-test) a0-6) 0) arg1)
-      (set! (-> (the-as (pointer gs-reg64) a0-6) 1) (gs-reg64 test-1))
-      (set! (-> v1-5 base) (&+ a0-6 16)))
-    ;; set up the tie constants
-    (let ((s4-1 9))
-      (let* ((v1-6 arg0)
-             (a0-8 (the-as object (-> v1-6 base))))
-        (set! (-> (the-as dma-packet a0-8) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s4-1))
-        (set! (-> (the-as dma-packet a0-8) vif0) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-        (set! (-> (the-as dma-packet a0-8) vif1) (new 'static 'vif-tag :imm #x3c6 :cmd (vif-cmd unpack-v4-32) :num s4-1))
-        (set! (-> v1-6 base) (&+ (the-as pointer a0-8) 16)))
-      (tie-init-consts (the-as tie-consts (-> arg0 base)) arg2)
-      (&+! (-> arg0 base) (* s4-1 16)))
-    ;; initialize the microprogram
-    (let* ((v1-9 arg0)
-           (a0-12 (the-as object (-> v1-9 base))))
-      (set! (-> (the-as dma-packet a0-12) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet a0-12) vif0) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1))
-      (set! (-> (the-as dma-packet a0-12) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-      (set! (-> v1-9 base) (&+ (the-as pointer a0-12) 16)))
-    ;; initialize the VIF's ROW register
-    (let* ((v1-10 arg0)
-           (a0-14 (the-as object (-> v1-10 base))))
-      (set! (-> (the-as dma-packet a0-14) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet a0-14) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a0-14) vif1) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
-      (set! (-> v1-10 base) (&+ (the-as pointer a0-14) 16)))
-    (let ((v1-11 (the-as object (-> arg0 base))))
-      ;; row contants
-      (set! (-> (the-as (inline-array vector4w) v1-11) 0 x) #x4b000000)
-      (set! (-> (the-as (inline-array vector4w) v1-11) 0 y) #x4b000000)
-      (set! (-> (the-as (inline-array vector4w) v1-11) 0 z) #x4b000000)
-      (set! (-> (the-as (inline-array vector4w) v1-11) 0 w) #x4b000000)
-      ;; setup VIF unpack and double buffering modes.
-      (set! (-> (the-as (pointer vif-tag) v1-11) 4) (new 'static 'vif-tag :cmd (vif-cmd base)))
-      (set! (-> (the-as (pointer vif-tag) v1-11) 5) (new 'static 'vif-tag :imm #x2c :cmd (vif-cmd offset)))
-      (set! (-> (the-as (pointer vif-tag) v1-11) 6) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-      (set! (-> (the-as (pointer vif-tag) v1-11) 7) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> arg0 base) (&+ (the-as pointer v1-11) 32)))
+    ;; Install the microprogram and set the caller-selected TEST state before any TIE packets.
+    (dma-buffer-add-vu-function dma-buf tie-vu1-block 1)
+    (let* ((v1-3 dma-buf)
+           (direct-packet (the-as dma-packet (-> v1-3 base))))
+      (set! (-> direct-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> direct-packet vif0) (new 'static 'vif-tag))
+      (set! (-> direct-packet vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> v1-3 base) (&+ (the-as pointer direct-packet) 16)))
+    (let* ((v1-4 dma-buf)
+           (direct-gif (the-as gs-gif-tag (-> v1-4 base))))
+      (set! (-> direct-gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+      (set! (-> direct-gif regs) GIF_REGS_ALL_AD)
+      (set! (-> v1-4 base) (the-as pointer (&+ direct-gif 16))))
+    (let* ((v1-5 dma-buf)
+           (test-data (-> v1-5 base)))
+      (set! (-> (the-as (pointer gs-test) test-data) 0) test-state)
+      (set! (-> (the-as (pointer gs-reg64) test-data) 1) (gs-reg64 test-1))
+      (set! (-> v1-5 base) (&+ test-data 16)))
+    ;; Upload tie-consts to VU address 966.
+    (let ((constant-qwc 9))
+      (let* ((v1-6 dma-buf)
+             (constant-packet (the-as dma-packet (-> v1-6 base))))
+        (set! (-> constant-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc constant-qwc))
+        (set! (-> constant-packet vif0) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+        (set! (-> constant-packet vif1) (new 'static 'vif-tag :imm #x3c6 :cmd (vif-cmd unpack-v4-32) :num constant-qwc))
+        (set! (-> v1-6 base) (&+ (the-as pointer constant-packet) 16)))
+      (tie-init-consts (the-as tie-consts (-> dma-buf base)) alpha-blend)
+      (&+! (-> dma-buf base) (* constant-qwc 16)))
+    ;; Entry 8 initializes the persistent GIF and instance-bank registers.
+    (let* ((v1-9 dma-buf)
+           (init-packet (the-as dma-packet (-> v1-9 base))))
+      (set! (-> init-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> init-packet vif0) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1))
+      (set! (-> init-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+      (set! (-> v1-9 base) (&+ (the-as pointer init-packet) 16)))
+    ;; #x4b000000 is 2^23. When an upload selects VIF's additive mode, adding a small packed
+    ;; integer places it in the mantissa of an exactly representable float; mtir can recover the
+    ;; low address or index bits without a separate integer conversion.
+    (let* ((v1-10 dma-buf)
+           (row-packet (the-as dma-packet (-> v1-10 base))))
+      (set! (-> row-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> row-packet vif0) (new 'static 'vif-tag))
+      (set! (-> row-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+      (set! (-> v1-10 base) (&+ (the-as pointer row-packet) 16)))
+    (let ((row-data (the-as (pointer uint32) (-> dma-buf base))))
+      (set! (-> (the-as (inline-array vector4w) row-data) 0 x) #x4b000000)
+      (set! (-> (the-as (inline-array vector4w) row-data) 0 y) #x4b000000)
+      (set! (-> (the-as (inline-array vector4w) row-data) 0 z) #x4b000000)
+      (set! (-> (the-as (inline-array vector4w) row-data) 0 w) #x4b000000)
+      (set! (-> (the-as (pointer vif-tag) row-data) 4) (new 'static 'vif-tag :cmd (vif-cmd base)))
+      (set! (-> (the-as (pointer vif-tag) row-data) 5) (new 'static 'vif-tag :imm #x2c :cmd (vif-cmd offset)))
+      (set! (-> (the-as (pointer vif-tag) row-data) 6) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+      (set! (-> (the-as (pointer vif-tag) row-data) 7) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> dma-buf base) (&+ (the-as pointer row-data) 32)))
     0)
   0
   (none))
 
-(defun tie-end-buffer ((arg0 dma-buffer))
-  "Add to dma buffer after drawing. This resets things to the usual state."
+;; definition for function tie-end-buffer
+;; INFO: Return type mismatch int vs none.
+(defun tie-end-buffer ((dma-buf dma-buffer))
+  "Append the TIE shutdown packets, restoring the normal GS TEST state and clearing the VIF mask,
+   mode, and ROW state changed by tie-init-engine."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
-    (let* ((v1-3 arg0)
-           (a1-0 (the-as object (-> v1-3 base))))
-      (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-3 base) (&+ (the-as pointer a1-0) 16)))
-    ;; restore the test register
-    (let* ((v1-4 arg0)
-           (a1-2 (the-as object (-> v1-4 base))))
-      (set! (-> (the-as gs-gif-tag a1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag a1-2) regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-4 base) (&+ (the-as pointer a1-2) 16)))
-    (let* ((v1-5 arg0)
-           (a1-4 (-> v1-5 base)))
-      (set! (-> (the-as (pointer gs-test) a1-4) 0)
+    ;; Restore the ordinary alpha/depth test used after TIE drawing.
+    (let* ((v1-3 dma-buf)
+           (direct-packet (the-as dma-packet (-> v1-3 base))))
+      (set! (-> direct-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> direct-packet vif0) (new 'static 'vif-tag))
+      (set! (-> direct-packet vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> v1-3 base) (&+ (the-as pointer direct-packet) 16)))
+    (let* ((v1-4 dma-buf)
+           (direct-gif (the-as gs-gif-tag (-> v1-4 base))))
+      (set! (-> direct-gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+      (set! (-> direct-gif regs) GIF_REGS_ALL_AD)
+      (set! (-> v1-4 base) (&+ (the-as pointer direct-gif) 16)))
+    (let* ((v1-5 dma-buf)
+           (test-data (-> v1-5 base)))
+      (set! (-> (the-as (pointer gs-test) test-data) 0)
             (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal)))
-      (set! (-> (the-as (pointer gs-reg64) a1-4) 1) (gs-reg64 test-1))
-      (set! (-> v1-5 base) (&+ a1-4 16)))
-    ;; restore the stmask register
-    (let* ((v1-6 arg0)
-           (a1-6 (the-as object (-> v1-6 base))))
-      (set! (-> (the-as dma-packet a1-6) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet a1-6) vif0) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
-      (set! (-> (the-as dma-packet a1-6) vif1) (new 'static 'vif-tag))
-      (set! (-> v1-6 base) (&+ (the-as pointer a1-6) 16)))
-    ;; this calls a TIE program that... does nothing?
-    (let* ((v1-7 arg0)
-           (a0-1 (-> v1-7 base)))
-      ;; run the nothing program
-      (set! (-> (the-as (pointer vif-tag) a0-1) 0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscalf) :msk #x1))
-      ;; reset VIF stuff we changed
-      (set! (-> (the-as (pointer vif-tag) a0-1) 1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-      (set! (-> (the-as (pointer vif-tag) a0-1) 2) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-      (set! (-> (the-as (pointer vif-tag) a0-1) 3) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
-      ;; actually row constants = 0
-      (set! (-> (the-as (pointer vif-tag) a0-1) 4) (new 'static 'vif-tag))
-      (set! (-> (the-as (pointer vif-tag) a0-1) 5) (new 'static 'vif-tag))
-      (set! (-> (the-as (pointer vif-tag) a0-1) 6) (new 'static 'vif-tag))
-      (set! (-> (the-as (pointer vif-tag) a0-1) 7) (new 'static 'vif-tag))
-      (set! (-> v1-7 base) (&+ a0-1 32)))
+      (set! (-> (the-as (pointer gs-reg64) test-data) 1) (gs-reg64 test-1))
+      (set! (-> v1-5 base) (&+ test-data 16)))
+    ;; Clear the VIF mask, run the empty entry 4 to finish the VU invocation, and restore the
+    ;; default mode and all-zero ROW register for the following renderer.
+    (let* ((v1-6 dma-buf)
+           (mask-packet (the-as dma-packet (-> v1-6 base))))
+      (set! (-> mask-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> mask-packet vif0) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
+      (set! (-> mask-packet vif1) (new 'static 'vif-tag))
+      (set! (-> v1-6 base) (&+ (the-as pointer mask-packet) 16)))
+    (let* ((v1-7 dma-buf)
+           (reset-data (the-as (pointer uint32) (-> v1-7 base))))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscalf) :msk #x1))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 2) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 3) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 4) (new 'static 'vif-tag))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 5) (new 'static 'vif-tag))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 6) (new 'static 'vif-tag))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 7) (new 'static 'vif-tag))
+      (set! (-> v1-7 base) (&+ (the-as pointer reset-data) 32)))
     0)
   0
   (none))
 
-;;;;;;;;;;;;;;;;
-;; debug print
-;;;;;;;;;;;;;;;;
+;; Register-name tables for the two dumps below. These are the names the program was written
+;; against, which makes them the best evidence we have for what each register is for -- but they have
+;; drifted. In the shipped microprogram the transform rows live in vf1, vf2, vf12 and vf13 while the
+;; four vertex colors live in vf11, vf3, vf4 and vf14, so the entries for 3, 4, 12 and 13 below name
+;; the wrong pair. The tables are original code and are left exactly as they are; the aliases in the
+;; microprogram follow the instructions instead.
 
-(defun-debug tie-int-reg ((arg0 int))
-  "Convert a VU1 int register ID to the name given to it in the TIE VU1 program"
-  (let ((v1-0 arg0))
+;; definition (debug) for function tie-int-reg
+(defun-debug tie-int-reg ((register-index int))
+  "Return the source name assigned to a TIE VU1 integer register."
+  (let ((i register-index))
     (cond
-      ((zero? v1-0) "zero")
-      ((= v1-0 1) "itemp")
-      ((= v1-0 2) "point-ptr")
-      ((= v1-0 3) "clr-ptr")
-      ((= v1-0 4) "target-bp1-ptr")
-      ((= v1-0 5) "skip-bp2")
-      ((= v1-0 6) "target-bp2-ptr")
-      ((= v1-0 7) "target-ip1-ptr")
-      ((= v1-0 8) "target-ip2-ptr")
-      ((= v1-0 9) "ind/ind0")
-      ((= v1-0 10) "    ind1")
-      ((= v1-0 11) "    ind2")
-      ((= v1-0 12) "dest-ptr")
-      ((= v1-0 13) "dest2-ptr")
-      ((= v1-0 14) "skip-ips")
-      ((= v1-0 15) "kick-addr"))))
+      ((zero? i) "zero")
+      ((= i 1) "itemp")
+      ((= i 2) "point-ptr")
+      ((= i 3) "clr-ptr")
+      ((= i 4) "target-bp1-ptr")
+      ((= i 5) "skip-bp2")
+      ((= i 6) "target-bp2-ptr")
+      ((= i 7) "target-ip1-ptr")
+      ((= i 8) "target-ip2-ptr")
+      ((= i 9) "ind/ind0")
+      ((= i 10) "    ind1")
+      ((= i 11) "    ind2")
+      ((= i 12) "dest-ptr")
+      ((= i 13) "dest2-ptr")
+      ((= i 14) "skip-ips")
+      ((= i 15) "kick-addr"))))
 
-(defun-debug tie-float-reg ((arg0 int))
-  "Convert a VU1 float register ID to the name given to it in the TIE VU1 program"
-  (let ((v1-0 arg0))
+;; definition (debug) for function tie-float-reg
+(defun-debug tie-float-reg ((register-index int))
+  "Return the source name assigned to a TIE VU1 floating-point register."
+  (let ((i register-index))
     (cond
-      ((zero? v1-0) "zero")
-      ((= v1-0 1) "t-mtx0")
-      ((= v1-0 2) "t-mtx1")
-      ((= v1-0 3) "t-mtx2")
-      ((= v1-0 4) "t-mtx3")
-      ((= v1-0 5) "vtx-0")
-      ((= v1-0 6) "vtx-1")
-      ((= v1-0 7) "vtx-2")
-      ((= v1-0 8) "vtx-3")
-      ((= v1-0 9) "pos-0/2")
-      ((= v1-0 10) "pos-1/3")
-      ((= v1-0 11) "clr-0")
-      ((= v1-0 12) "clr-1")
-      ((= v1-0 13) "clr-2")
-      ((= v1-0 14) "clr-3")
-      ((= v1-0 15) "tex-0")
-      ((= v1-0 16) "tex-1")
-      ((= v1-0 17) "tex-2")
-      ((= v1-0 18) "tex-3")
-      ((= v1-0 19) "res-0/2")
-      ((= v1-0 20) "res-1/3")
-      ((= v1-0 21) "gifbuf")
-      ((= v1-0 22) "clrbuf")
-      ((= v1-0 23) "extra")
-      ((= v1-0 24) "inds")
-      ((= v1-0 25) "--")
-      ((= v1-0 26) "--")
-      ((= v1-0 27) "morph")
-      ((= v1-0 28) "xyzofs")
-      ((= v1-0 29) "clr1")
-      ((= v1-0 30) "clr2")
-      ((= v1-0 31) "--"))))
+      ((zero? i) "zero")
+      ((= i 1) "t-mtx0")
+      ((= i 2) "t-mtx1")
+      ((= i 3) "t-mtx2")
+      ((= i 4) "t-mtx3")
+      ((= i 5) "vtx-0")
+      ((= i 6) "vtx-1")
+      ((= i 7) "vtx-2")
+      ((= i 8) "vtx-3")
+      ((= i 9) "pos-0/2")
+      ((= i 10) "pos-1/3")
+      ((= i 11) "clr-0")
+      ((= i 12) "clr-1")
+      ((= i 13) "clr-2")
+      ((= i 14) "clr-3")
+      ((= i 15) "tex-0")
+      ((= i 16) "tex-1")
+      ((= i 17) "tex-2")
+      ((= i 18) "tex-3")
+      ((= i 19) "res-0/2")
+      ((= i 20) "res-1/3")
+      ((= i 21) "gifbuf")
+      ((= i 22) "clrbuf")
+      ((= i 23) "extra")
+      ((= i 24) "inds")
+      ((= i 25) "--")
+      ((= i 26) "--")
+      ((= i 27) "morph")
+      ((= i 28) "xyzofs")
+      ((= i 29) "clr1")
+      ((= i 30) "clr2")
+      ((= i 31) "--"))))
 
-;; NOTE: these dump programs rely on a not-present function that stashes the register values
-;; at the top of the VU memory.
-
+;; definition (debug) for function tie-ints
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch symbol vs none.
 (defun-debug tie-ints ()
-  "Dump the VU1 integer registers to stdout."
-  (local-vars (sv-16 uint))
-  (let ((gp-0 (the-as (pointer uint32) (+ #x3fa0 #x1100c000))))
-    (dotimes (s5-0 16)
-      (if (< s5-0 10) (format 0 " "))
-      (let ((s4-0 format)
-            (s3-0 0)
-            (s2-0 "vi~d: ~6d #x~4,'0X ~s~%")
-            (s1-0 s5-0)
-            (s0-0 (-> gp-0 (* s5-0 4))))
-        (set! sv-16 (-> gp-0 (* s5-0 4)))
-        (let ((t1-0 (tie-int-reg s5-0))) (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 t1-0)))))
+  "Print the saved TIE VU1 integer-register values with their source names."
+  (let ((register-data (the-as (pointer uint32) (+ #x3fa0 #x1100c000))))
+    (dotimes (i 16)
+      (if (< i 10) (format 0 " "))
+      (format 0 "vi~d: ~6d #x~4,'0X ~s~%" i (-> register-data (* i 4)) (-> register-data (* i 4)) (tie-int-reg i))))
   (none))
 
+;; definition (debug) for function tie-floats
+;; INFO: Used lq/sq
+;; INFO: Return type mismatch symbol vs none.
 (defun-debug tie-floats ()
-  "Dump the VU1 float registers to stdout."
-  (local-vars (sv-16 uint) (sv-32 uint))
-  (let ((gp-0 (the-as (pointer uint32) (+ #x3da0 #x1100c000))))
-    (dotimes (s5-0 32)
-      (if (< s5-0 10) (format 0 " "))
+  "Print the saved TIE VU1 floating-point-register values, as words and floats, with their source
+   names."
+  (let ((register-data (the-as (pointer uint32) (+ #x3da0 #x1100c000))))
+    (dotimes (i 32)
+      (if (< i 10) (format 0 " "))
       (format 0
               "vf~d: #x~8,'0X #x~8,'0X #x~8,'0X #x~8,'0X "
-              s5-0
-              (-> gp-0 (* s5-0 4))
-              (-> gp-0 (+ (* s5-0 4) 1))
-              (-> gp-0 (+ (* s5-0 4) 2))
-              (-> gp-0 (+ (* s5-0 4) 3)))
-      (let ((s4-0 format)
-            (s3-0 0)
-            (s2-0 "~F ~F ~F ~F ~s~%")
-            (s1-0 (-> gp-0 (* s5-0 4)))
-            (s0-0 (-> gp-0 (+ (* s5-0 4) 1))))
-        (set! sv-16 (-> gp-0 (+ (* s5-0 4) 2)))
-        (set! sv-32 (-> gp-0 (+ (* s5-0 4) 3)))
-        (let ((t2-1 (tie-float-reg s5-0))) (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 sv-32 t2-1)))))
+              i
+              (-> register-data (* i 4))
+              (-> register-data (+ (* i 4) 1))
+              (-> register-data (+ (* i 4) 2))
+              (-> register-data (+ (* i 4) 3)))
+      (format 0
+              "~F ~F ~F ~F ~s~%"
+              (-> register-data (* i 4))
+              (-> register-data (+ (* i 4) 1))
+              (-> register-data (+ (* i 4) 2))
+              (-> register-data (+ (* i 4) 3))
+              (tie-float-reg i))))
   (none))

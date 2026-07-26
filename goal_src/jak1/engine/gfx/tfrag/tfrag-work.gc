@@ -7,6 +7,9 @@
 (require "kernel/gkernel.gc")
 
 ;; definition for symbol *tfrag-work*, type tfrag-work
+;; These packet templates are copied while assembling each visible fragment. The four REF templates
+;; select the base/common/detail streams; the CNT template expands packed per-frame colors into VU
+;; input. max-dist.z is the initial "no visible fragment" distance used by finish-background.
 (define *tfrag-work*
   (new 'static
        'tfrag-work
@@ -50,14 +53,19 @@
        :max-dist
        (new 'static 'vector :z 4095996000.0)))
 
-;; failed to figure out what this is:
+;; Four packed uint16 color indices are widened together and added lane-wise to this vector. Giving
+;; every lane the same scratchpad base produces four addresses for the packed-color gather. The
+;; lookup starts at scratchpad byte 6160, one quadword past the colors overlay's nominal start.
+;;
+;; Colors are the only part of a terrain patch that is not already sitting in the level file as a VIF
+;; chain, because they follow the time of day. The CNT template above unpacks them V4-8 on a 1/2 cycle
+;; so they land in the odd VU quadwords, which is exactly the space the vertex positions leave empty
+;; when they unpack on a 2/1 cycle - one vertex is a position quadword followed by its color quadword.
+;; tfragment.color-offset is where in that interleave the patch's colors start.
 (set! (-> *tfrag-work* color-ptr x) (+ 6160 (the-as int *fake-scratchpad-data*)))
 
-;; failed to figure out what this is:
 (set! (-> *tfrag-work* color-ptr y) (+ 6160 (the-as int *fake-scratchpad-data*)))
 
-;; failed to figure out what this is:
 (set! (-> *tfrag-work* color-ptr z) (+ 6160 (the-as int *fake-scratchpad-data*)))
 
-;; failed to figure out what this is:
 (set! (-> *tfrag-work* color-ptr w) (+ 6160 (the-as int *fake-scratchpad-data*)))

@@ -42,6 +42,7 @@
 
 ;; DECOMP BEGINS
 
+;; One manipy-backed HUD image with its screen position and nonuniform scale.
 (deftype hud-icon (basic)
   ((icon    (pointer manipy))
    (icon-y  int32)
@@ -50,12 +51,16 @@
    (scale-x float)
    (scale-y float)))
 
+;; One HUD particle effect and the positions used to animate it between frames.
 (deftype hud-particle (basic)
   ((part     sparticle-launch-control)
    (init-pos vector :inline)
    (pos      vector :inline)
    (prev-pos vector :inline)))
 
+;; Base process for a numeric HUD element. Subclasses supply the value source
+;; and appearance while this type manages arrival/hide states, value tallying,
+;; text and icon placement, and a small fixed set of particle effects.
 (deftype hud (process)
   ((value                  int32)
    (value2                 int32)
@@ -84,25 +89,47 @@
    (nb-of-particles        int32)
    (particles              hud-particle 7))
   (:methods
-   (hidden? (_type_) symbol)
-   (draw-hud (_type_) none)
-   (tally-value (_type_ int int) none)
-   (draw-icons (_type_) none)
-   (draw-particles (_type_) none)
-   (hud-update (_type_) none)
-   (init-particles! (_type_ int) none)
-   (get-icon-pos-x (_type_) int)
-   (get-icon-pos-y (_type_) int)
+   (relocate :override-doc "Adjust every non-null particle launch-control pointer by offset, then relocate the complete
+      HUD process allocation with the base process method.")
+   (deactivate :override-doc "Remove every registry entry that points to this HUD, kill its particle launch controls,
+      release their sprite matrices, and deactivate the base process.")
+   (hidden? "Return whether this HUD's next state is hud-hidden." (_type_) symbol)
+   (draw-hud "While visible and unpaused, spawn every configured particle except skip-particle once
+      particle zero has a nonzero screen position." (_type_) none)
+   (tally-value "Update the primary and secondary values when the HUD is allowed on screen. When
+      increment-on-event is active and the primary value rises within 1.5 seconds of the last
+      target equality, advance the display by one every 0.1 seconds. Otherwise refresh the target
+      and copy it directly unless a noninitial HUD has been unequal for at least 1.5 seconds; the
+      next matching update resumes direct synchronization. Show this HUD and its linked friend
+      after a visible change. On PC, directional input also selects the collectable summary scope." (_type_ int int) none)
+   (draw-icons "Apply the current video scales and slide offset to every manipy-backed icon's scale and
+      screen position." (_type_) none)
+   (draw-particles "Recompute each HUD particle's screen position from its initial position, slide offset, and
+      vertical offset, then update its allocated sprite HVDF. The PC path uses vertical scaling
+      when VIS is disabled so window-aspect positioning remains consistent." (_type_) none)
+   (hud-update "Update this HUD subtype's value and animation state. The base implementation does nothing." (_type_) none)
+   (init-particles! "Create this HUD subtype's icons and particle launch controls. init-value is normally zero;
+      hud-money-all interprets it as a requested level index. The base implementation does
+      nothing." (_type_ int) none)
+   (get-icon-pos-x "Return the screen X destination for a collectable flying into this HUD. The base
+      implementation returns zero." (_type_) int)
+   (get-icon-pos-y "Return the screen Y destination for a collectable flying into this HUD. The base
+      implementation returns zero." (_type_) int)
    (hud-method-23 (_type_) none)
-   (set-pos-and-scale (_type_ symbol symbol) none)
-   (get-icon-scale-x (_type_) float)
-   (get-icon-scale-y (_type_) float))
+   (set-pos-and-scale "Select this HUD subtype's positions and scales for widescreen and PAL display modes. The base
+      implementation does nothing." (_type_ symbol symbol) none)
+   (get-icon-scale-x "Return the X scale for a collectable flying into this HUD. The base implementation returns
+      zero." (_type_) float)
+   (get-icon-scale-y "Return the Y scale for a collectable flying into this HUD. The base implementation returns
+      zero." (_type_) float))
   (:states
    hud-arriving
    hud-hidden
    hud-in
    (hud-leaving int)))
 
+;; Registry of the nine HUD processes. Named fields provide typed access and
+;; parts overlays the same pointers for common indexed operations.
 (deftype hud-parts (structure)
   ((pickups    (pointer hud-pickups))
    (money      (pointer hud-money))

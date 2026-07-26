@@ -67,7 +67,7 @@
    (:scale-y :copy scale-x)
    (:a 0.0)
    (:timer (seconds 4))
-   (:flags (bit3))
+   (:flags (glow))
    (:func 'sparticle-track-root-prim)))
 
 (defpart 2479
@@ -87,7 +87,7 @@
    (:fade-g -1.0666667)
    (:fade-b 0.0)
    (:timer (seconds 0.5))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.27))
    (:next-launcher 2482)
    (:conerot-x (degrees 0) (degrees 360))
@@ -117,7 +117,7 @@
    (:accel-y (meters -0.00066666666))
    (:friction 0.97)
    (:timer (seconds 0.1) (seconds 0.397))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.2))
    (:next-launcher 2482)
    (:conerot-x (degrees 0) (degrees 360))
@@ -149,7 +149,7 @@
    (:accel-y (meters -0.00016666666))
    (:friction 0.85 0.05)
    (:timer (seconds 0.1) (seconds 0.397))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.3))
    (:next-launcher 2482)
    (:conerot-x (degrees 0) (degrees 360))
@@ -181,7 +181,7 @@
    (:accel-y (meters -0.00016666666))
    (:friction 0.85 0.05)
    (:timer (seconds 0.1) (seconds 0.397))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.3))
    (:next-launcher 2482)
    (:conerot-x (degrees 0) (degrees 360))
@@ -206,7 +206,7 @@
    (:fade-a -0.30476192)
    (:accel-y (meters -0.00016666666) (meters 0.00016666666))
    (:timer (seconds 0.7))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.2))
    (:next-launcher 2482)
    (:rotate-y (degrees 0) (degrees 180))))
@@ -224,7 +224,7 @@
    (:a 96.0)
    (:fade-a -4.8)
    (:timer (seconds 0.05))
-   (:flags (bit2))))
+   (:flags (die-when-faded))))
 
 (defpartgroup group-quicksandlurker-hide
   :id 201
@@ -273,6 +273,7 @@
    (sp-item 129 :flags (start-dead) :period (seconds 3) :length (seconds 0.4))))
 
 (deftype quicksandlurker-missile (process-drawable)
+  "A quicksand lurker's explosive projectile."
   ((root collide-shape-moving :override))
   (:states
    quicksandlurker-missile-idle
@@ -305,7 +306,7 @@
     (behavior ()
       (while (not (time-elapsed? (-> self state-time) (seconds 4)))
         (fill-cache-integrate-and-collide! (-> self root) (-> self root transv) (-> self root root-prim collide-with))
-        (if (or (logtest? (-> self root status) (cshape-moving-flags twall))
+        (if (or (logtest? (-> self root status) (collide-status touch-wall))
                 (< (vector-vector-distance (-> self root trans) (-> self root trans-old 0)) 40.96))
           (go quicksandlurker-missile-impact))
         (spawn (-> self part) (-> self root trans))
@@ -343,45 +344,50 @@
       (cleanup-for-death self)))
 
 (deftype quicksandlurker-missile-init-data (structure)
+  "Launch position and velocity passed to a new quicksand lurker missile."
   ((position vector)
    (velocity vector)))
 
 
-(defbehavior quicksandlurker-missile-init-by-other quicksandlurker-missile ((arg0 quicksandlurker-missile-init-data) (arg1 entity-actor))
-  (set! (-> self entity) arg1)
-  (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s4-0 collide-with) (collide-kind background cak-2 cak-3 target crate enemy wall-object ground-object))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 2867.2)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> s5-0 max-iteration-count) (the-as uint 1))
-    (set! (-> s5-0 event-self) 'touched)
-    (set! (-> self root) s5-0))
-  (set! (-> self root trans quad) (-> arg0 position quad))
+(defbehavior quicksandlurker-missile-init-by-other quicksandlurker-missile ((launch quicksandlurker-missile-init-data) (source-entity entity-actor))
+  "Create the missile's collision and particles, apply its launch state, and enter flight."
+  (set! (-> self entity) source-entity)
+  (let ((collision (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((primitive (new 'process 'collide-shape-prim-sphere collision (the-as uint 0))))
+      (set! (-> primitive prim-core collide-as) (collide-kind enemy))
+      (set! (-> primitive collide-with) (collide-kind background cak-2 cak-3 target crate enemy wall-object ground-object))
+      (set! (-> primitive prim-core action) (collide-action solid))
+      (set! (-> primitive prim-core offense) (collide-offense indestructible))
+      (set-vector! (-> primitive local-sphere) 0.0 0.0 0.0 2867.2)
+      (set-root-prim! collision primitive))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> collision max-iteration-count) (the-as uint 1))
+    (set! (-> collision event-self) 'touched)
+    (set! (-> self root) collision))
+  (set! (-> self root trans quad) (-> launch position quad))
   (set! (-> self root quat vec quad) (-> (the-as process-drawable (-> self parent 0)) root quat vec quad))
   (vector-identity! (-> self root scale))
-  (set! (-> self root transv quad) (-> arg0 velocity quad))
+  (set! (-> self root transv quad) (-> launch velocity quad))
   (set! (-> self part) (create-launch-control group-quicksandlurker-missile self))
   (go quicksandlurker-missile-idle)
   (none))
 
-(defun spawn-quicksandlurker-missile ((arg0 process) (arg1 vector) (arg2 vector) (arg3 entity-actor))
-  (let ((s5-0 (new 'stack-no-clear 'quicksandlurker-missile-init-data)))
-    (set! (-> s5-0 position) arg1)
-    (set! (-> s5-0 velocity) arg2)
-    (process-spawn quicksandlurker-missile s5-0 arg3 :to arg0))
+(defun spawn-quicksandlurker-missile ((parent process) (position vector) (velocity vector) (source-entity entity-actor))
+  "Spawn a missile under parent with the supplied position, velocity, and source entity."
+  (let ((launch (new 'stack-no-clear 'quicksandlurker-missile-init-data)))
+    (set! (-> launch position) position)
+    (set! (-> launch velocity) velocity)
+    (process-spawn quicksandlurker-missile launch source-entity :to parent))
   0
   (none))
 
 (deftype quicksandlurker (process-drawable)
+  "A Misty Island lurker that rises from the mud, tracks Jak, and spits explosive missiles."
   ((root              collide-shape :override)
    (original-position vector :inline)
    (y-offset          float)
@@ -409,48 +415,60 @@
   :bounds (static-spherem 0 0 0 5))
 
 (defbehavior orient-to-face-target quicksandlurker ()
+  "Turn toward Jak when a target is available."
   (if *target* (seek-to-point-toward-point! (-> self root) (-> *target* control trans) 65536.0 (seconds 0.2))))
 
-;; ERROR: function has no type analysis. Cannot decompile.
+(defun get-height-over-navmesh! ((nav nav-control) (height (pointer float)) (point vector))
+  "When point lies on the navigation mesh, store its height above the mesh's first vertex and
+   return true. This helper assumes a flat mesh."
+  (when (find-poly-fast-from-world nav point)
+    (let ((surface-height (+ (-> nav mesh origin y) (-> nav mesh vertex 0 y))))
+      (set! (-> height 0) (- (-> point y) surface-height)))
+    #t))
 
-(defun intersects-nav-mesh? ((arg0 nav-control) (arg1 vector))
-  (if (nav-control-method-16 arg0 arg1) #t))
+(defun intersects-nav-mesh? ((nav nav-control) (point vector))
+  "Return true when point lies on the navigation mesh."
+  (if (find-poly-fast-from-world nav point) #t))
 
-(defbehavior quicksandlurker-default-event-handler quicksandlurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior quicksandlurker-default-event-handler quicksandlurker ((sender process) (argc int) (message symbol) (event event-message-block))
+  "Die on attack and celebrate when a missile reports victory."
+  (case message
     (('attack) enter-state (go quicksandlurker-die))
     (('victory) (go quicksandlurker-victory))))
 
-(defun inc-angle ((arg0 (pointer float)) (arg1 float))
-  (+! (-> arg0 0) arg1)
-  (if (< 65536.0 (-> arg0 0)) (set! (-> arg0 0) (+ -65536.0 (-> arg0 0)))))
+(defun inc-angle ((angle (pointer float)) (step float))
+  "Advance an angle and wrap values above one revolution."
+  (+! (-> angle 0) step)
+  (if (< 65536.0 (-> angle 0)) (set! (-> angle 0) (+ -65536.0 (-> angle 0)))))
 
 (defbehavior quicksandlurker-post quicksandlurker ()
+  "Orbit and bob around the placed position, following the animated mud surface when available."
   (inc-angle (&-> self theta-angle) (* 9102.223 (seconds-per-frame)))
   (inc-angle (&-> self bob-angle) (* 14563.556 (seconds-per-frame)))
-  (let ((f28-0 (* (-> self radial-offset) (cos (-> self theta-angle))))
-        (f30-2 (* 0.0 (sin (-> self theta-angle)))))
-    (let ((f0-10 (* (-> self radial-offset) (sin (-> self theta-angle)))))
-      (set! (-> self root trans x) (+ (-> self original-position x) f28-0))
-      (set! (-> self root trans z) (+ (-> self original-position z) f0-10)))
-    (let* ((v1-4 (-> self mud-entity))
-           (a0-5 (if v1-4 (-> v1-4 extra process))))
-      (if a0-5
+  (let ((orbit-x (* (-> self radial-offset) (cos (-> self theta-angle))))
+        (bob-offset (* 0.0 (sin (-> self theta-angle)))))
+    (let ((orbit-z (* (-> self radial-offset) (sin (-> self theta-angle)))))
+      (set! (-> self root trans x) (+ (-> self original-position x) orbit-x))
+      (set! (-> self root trans z) (+ (-> self original-position z) orbit-z)))
+    (let* ((mud-entity (-> self mud-entity))
+           (mud (if mud-entity (-> mud-entity extra process))))
+      (if mud
         (set! (-> self root trans y)
-              (+ (get-ripple-height (the-as water-anim a0-5) (-> self root trans)) f30-2 (-> self y-offset)))
-        (set! (-> self root trans y) (+ (-> self original-position y) f30-2 (-> self y-offset))))))
+              (+ (get-ripple-height (the-as water-anim mud) (-> self root trans)) bob-offset (-> self y-offset)))
+        (set! (-> self root trans y) (+ (-> self original-position y) bob-offset (-> self y-offset))))))
   (transform-post)
   (none))
 
 (defbehavior quicksandlurker-check-hide-transition quicksandlurker ()
+  "Hide when Jak is too close, below the lurker, or outside the navigation mesh."
   (when *target*
     (if (and (and *target* (>= 20480.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
              (!= (-> *target* next-state name) 'target-flop))
       (go quicksandlurker-hide))
     0.0
-    (let ((a0-2 (-> self nav))
-          (a1-1 (-> *target* control trans)))
-      (when (if (nav-control-method-16 a0-2 a1-1) #t)
+    (let ((nav (-> self nav))
+          (target-position (-> *target* control trans)))
+      (when (if (find-poly-fast-from-world nav target-position) #t)
         (if (< (- (-> *target* control trans y) (-> self original-position y)) 0.0) (go quicksandlurker-hide)))))
   (none))
 
@@ -493,18 +511,12 @@
         (ja-channel-push! 1 (seconds 0.1))
         (loop
           (when (time-elapsed? (-> self state-time) gp-0)
-            (ja-no-eval :group! quicksandlurker-idle-ja :num! (seek!) :frame-num 0.0)
-            (until (ja-done? 0)
-              (suspend)
-              (ja :num! (seek!)))
+            (ja-play :group! quicksandlurker-idle-ja :num! (seek!) :frame-num 0.0)
             (set-time! (-> self state-time))
             (+! s4-0 1)
             (when (< s5-0 s4-0)
               (set! s4-0 0)
-              (ja-no-eval :group! quicksandlurker-yawn-ja :num! (seek!) :frame-num 0.0)
-              (until (ja-done? 0)
-                (suspend)
-                (ja :num! (seek!)))))
+              (ja-play :group! quicksandlurker-yawn-ja :num! (seek!) :frame-num 0.0)))
           (orient-to-face-target)
           (ja :group! quicksandlurker-idle-ja)
           (ja :num-func num-func-identity :frame-num 0.0)
@@ -515,10 +527,7 @@
   :event quicksandlurker-default-event-handler
   :code
     (behavior ()
-      (ja-no-eval :group! quicksandlurker-yawn-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! quicksandlurker-yawn-ja :num! (seek!) :frame-num 0.0)
       (go quicksandlurker-wait))
   :post quicksandlurker-post)
 
@@ -537,10 +546,7 @@
             (s4-0 0))
         (loop
           (when (time-elapsed? (-> self state-time) gp-0)
-            (ja-no-eval :group! quicksandlurker-idle-ja :num! (seek!) :frame-num 0.0)
-            (until (ja-done? 0)
-              (suspend)
-              (ja :num! (seek!)))
+            (ja-play :group! quicksandlurker-idle-ja :num! (seek!) :frame-num 0.0)
             (set-time! (-> self state-time))
             (+! s4-0 1)
             (when (>= s4-0 s5-0)
@@ -552,14 +558,16 @@
   :post quicksandlurker-post)
 
 (defbehavior quicksandlurker-spit quicksandlurker ()
-  (let ((gp-0 (new-stack-vector0)))
-    (let ((s5-0 (new-stack-vector0)))
-      (set! (-> gp-0 quad)
+  "Launch the charged missile toward Jak."
+  (let ((launch-position (new-stack-vector0)))
+    (let ((velocity (new-stack-vector0)))
+      (set! (-> launch-position quad)
             (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node quicksandlurker-lod0-jg jawEND)) quad))
-      (vector-! s5-0 (target-pos 5) gp-0)
-      (let ((f1-0 (vector-xz-length s5-0))) (set! (-> s5-0 y) (fmin (-> s5-0 y) (/ f1-0 2))))
-      (vector-normalize! s5-0 49152.0)
-      (spawn-quicksandlurker-missile self gp-0 s5-0 (-> self entity)))
+      (vector-! velocity (target-pos 5) launch-position)
+      (let ((horizontal-distance (vector-xz-length velocity)))
+        (set! (-> velocity y) (fmin (-> velocity y) (/ horizontal-distance 2))))
+      (vector-normalize! velocity 49152.0)
+      (spawn-quicksandlurker-missile self launch-position velocity (-> self entity)))
     (process-spawn part-tracker
                    :init
                    part-tracker-init
@@ -568,7 +576,7 @@
                    #f
                    #f
                    #f
-                   gp-0
+                   launch-position
                    :to
                    *entity-pool*)))
 
@@ -579,14 +587,14 @@
     (behavior ()
       (let ((gp-0 #f)
             (f30-0 51.0))
-        (ja-no-eval :group! quicksandlurker-spit-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (orient-to-face-target)
-          (when (and (not gp-0) (>= (ja-aframe-num 0) f30-0))
-            (set! gp-0 #t)
-            (quicksandlurker-spit))
-          (suspend)
-          (ja :num! (seek!))))
+        (ja-play :group!
+                 quicksandlurker-spit-ja
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (orient-to-face-target)
+                 (when (and (not gp-0) (>= (ja-aframe-num 0) f30-0))
+                   (set! gp-0 #t)
+                   (quicksandlurker-spit))))
       (go quicksandlurker-track))
   :post quicksandlurker-post)
 
@@ -596,17 +604,9 @@
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.2))
-      (cond
-        ((rand-vu-percent? 0.5)
-         (ja-no-eval :group! quicksandlurker-victory-ja :num! (seek!) :frame-num 0.0)
-         (until (ja-done? 0)
-           (suspend)
-           (ja :num! (seek!))))
-        (else
-         (ja-no-eval :group! quicksandlurker-victory2-ja :num! (seek!) :frame-num 0.0)
-         (until (ja-done? 0)
-           (suspend)
-           (ja :num! (seek!)))))
+      (if (rand-vu-percent? 0.5)
+        (ja-play :group! quicksandlurker-victory-ja :num! (seek!) :frame-num 0.0)
+        (ja-play :group! quicksandlurker-victory2-ja :num! (seek!) :frame-num 0.0))
       (go quicksandlurker-track))
   :post quicksandlurker-post)
 
@@ -624,17 +624,14 @@
       (let ((a0-0 (-> self nav))
             (a1-0 (-> *target* control trans)))
         (cond
-          ((or (if (nav-control-method-16 a0-0 a1-0) #t)
+          ((or (if (find-poly-fast-from-world a0-0 a1-0) #t)
                (and *target* (>= 16384.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))))
            (set-time! (-> self state-time)))
           (else (if (time-elapsed? (-> self state-time) (seconds 2)) (go quicksandlurker-popup))))))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! quicksandlurker-hide-ja :num! (seek! max 0.75) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! max 0.75)))
+      (ja-play :group! quicksandlurker-hide-ja :num! (seek! max 0.75) :frame-num 0.0)
       (process-spawn part-tracker
                      :init
                      part-tracker-init
@@ -667,11 +664,7 @@
                      (-> self root trans)
                      :to
                      *entity-pool*)
-      (ja-no-eval :group! quicksandlurker-popup-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (orient-to-face-target)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! quicksandlurker-popup-ja :num! (seek!) :frame-num 0.0 (orient-to-face-target))
       (go quicksandlurker-track))
   :post quicksandlurker-post)
 
@@ -681,47 +674,46 @@
     (behavior ()
       (logclear! (-> self mask) (process-mask actor-pause))
       (ja-channel-push! 1 (seconds 0.2))
-      (ja-no-eval :group! quicksandlurker-die-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! quicksandlurker-die-ja :num! (seek!) :frame-num 0.0)
       (cleanup-for-death self))
   :post quicksandlurker-post)
 
-(defmethod init-from-entity! ((this quicksandlurker) (arg0 entity-actor))
+(defmethod init-from-entity! ((this quicksandlurker) (source-entity entity-actor))
+  "Initialize the lurker's art, collision, mud-relative position, and navigation, then begin
+   hidden below the surface."
   (logior! (-> this mask) (process-mask enemy))
-  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 8192.0)
-      (set-root-prim! s4-0 s3-0)
-      (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-        (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-0 collide-with) (collide-kind target))
-        (set! (-> s2-0 prim-core action) (collide-action solid))
-        (set! (-> s2-0 prim-core offense) (collide-offense touch))
-        (set! (-> s2-0 transform-index) 3)
-        (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4096.0)
-        (append-prim s3-0 s2-0))
-      (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-        (set! (-> s2-1 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-1 collide-with) (collide-kind target))
-        (set! (-> s2-1 prim-core action) (collide-action solid))
-        (set! (-> s2-1 prim-core offense) (collide-offense touch))
-        (set! (-> s2-1 transform-index) 5)
-        (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 4096.0)
-        (append-prim s3-0 s2-1))
-      (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
-        (set! (-> s2-2 prim-core offense) (collide-offense normal-attack))
-        (set! (-> s2-2 transform-index) 5)
-        (set-vector! (-> s2-2 local-sphere) 0.0 -2048.0 0.0 5324.8)
-        (append-prim s3-0 s2-2)))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (let ((collision (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((body-group (new 'process 'collide-shape-prim-group collision (the-as uint 3) 0)))
+      (set! (-> body-group prim-core collide-as) (collide-kind enemy))
+      (set! (-> body-group collide-with) (collide-kind target))
+      (set! (-> body-group prim-core action) (collide-action solid))
+      (set-vector! (-> body-group local-sphere) 0.0 0.0 0.0 8192.0)
+      (set-root-prim! collision body-group)
+      (let ((lower-touch-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 0))))
+        (set! (-> lower-touch-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> lower-touch-sphere collide-with) (collide-kind target))
+        (set! (-> lower-touch-sphere prim-core action) (collide-action solid))
+        (set! (-> lower-touch-sphere prim-core offense) (collide-offense touch))
+        (set! (-> lower-touch-sphere transform-index) 3)
+        (set-vector! (-> lower-touch-sphere local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim body-group lower-touch-sphere))
+      (let ((upper-touch-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 0))))
+        (set! (-> upper-touch-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> upper-touch-sphere collide-with) (collide-kind target))
+        (set! (-> upper-touch-sphere prim-core action) (collide-action solid))
+        (set! (-> upper-touch-sphere prim-core offense) (collide-offense touch))
+        (set! (-> upper-touch-sphere transform-index) 5)
+        (set-vector! (-> upper-touch-sphere local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim body-group upper-touch-sphere))
+      (let ((attack-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 1))))
+        (set! (-> attack-sphere prim-core offense) (collide-offense normal-attack))
+        (set! (-> attack-sphere transform-index) 5)
+        (set-vector! (-> attack-sphere local-sphere) 0.0 -2048.0 0.0 5324.8)
+        (append-prim body-group attack-sphere)))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision))
+  (process-drawable-from-entity! this source-entity)
   (+! (-> this root trans y) -2048.0)
   (set! (-> this original-position quad) (-> this root trans quad))
   (set! (-> this theta-angle) (rand-vu-float-range 0.0 65536.0))
@@ -731,7 +723,8 @@
   (set-yaw-angle-clear-roll-pitch! (-> this root) (rand-vu-float-range 0.0 65536.0))
   (initialize-skeleton this *quicksandlurker-sg* '())
   (set! (-> this nav) (new 'process 'nav-control (-> this root) 16 40960.0))
-  (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
+  (logior! (-> this nav flags)
+           (nav-control-flags display-marks display-polys display-active-polys display-travel display-spheres))
   (set! (-> this fact) (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (set! (-> this mud-entity) (entity-actor-lookup (-> this entity) 'water-actor 0))
   (go quicksandlurker-idle)

@@ -6,13 +6,24 @@
 ;; The "generic merc" renderer converts merc data to be used by generic.
 ;; It is used for environment mapping and scissoring in the original game.
 
+;; Which fragments take this path is decided in bones.gc, not here: a fragment that failed the
+;; screen-edge test needs a clipper MERC's own microprogram does not have, and a fragment with an
+;; environment map needs a second attribute set it cannot produce. Either way the fragment is marked
+;; use-mercneric and arrives here instead, in the same compact form MERC would have received.
+
 ;; DECOMP BEGINS
 
+;; One bone's transform on its way to VU0, with the DMA tag that carried it sharing the first
+;; quadword. Eight quadwords whether or not all eight are used, because the converter stages them in
+;; fixed-size slots.
 (deftype merc-matrix (structure)
   ((quad   uint128 8)
    (vector vector 8 :inline :overlay-at (-> quad 0))
    (tag    uint64 :overlay-at (-> quad 0))))
 
+;; A DMA tag whose address and size words are read back as ordinary data: the converter walks the
+;; chain itself rather than letting the DMA controller follow it, so it needs the link in a form it
+;; can load.
 (deftype generic-merc-tag (dma-packet)
   ((next-ptr uint32 :overlay-at vif1)
    (size     uint32 :overlay-at vif0)))
@@ -23,9 +34,14 @@
    (header merc-ctrl-header :inline)
    (effect merc-effect :inline)))
 
+;; Same, plus room for a per-model environment-map shader. use-attached-shader in the control header
+;; selects between this copy and the shared one in generic-consts.
 (deftype generic-merc-ctrl-with-sfx (generic-merc-ctrl)
   ((sfx-data uint128 11)))
 
+;; One arriving block: the compact geometry, the bone matrices that go with it, the control record,
+;; and the environment shader. The converter alternates two of these so a transfer can be fetching
+;; the next block while the current one is expanded.
 (deftype generic-merc-input (structure)
   ((geo-tag     generic-merc-tag :inline)
    (geo-block   uint8 1296)
@@ -35,6 +51,10 @@
    (end-tag     generic-merc-tag :inline)
    (shader      adgif-shader :inline)))
 
+;; The expanded form, laid out so that the GSF info block at the front can point at the three arrays
+;; behind it without any arithmetic. inverse-table is the reverse mapping the skinning pass needs:
+;; MERC's compact vertices are grouped by how many bones they blend, so a vertex's position in the
+;; expanded array is not its position in the input.
 (deftype generic-merc-output (structure)
   ((info             gsf-info :inline)
    (header           gsf-header :inline)
@@ -43,6 +63,9 @@
    (inverse-table    uint8 256)
    (vertex-table     gsf-vertex 72 :inline)))
 
+;; Two of those plus the tables they share, sized to exactly 8192 bytes so the whole thing overlays
+;; the shared GSF buffer's data. It is called a d-cache because it lives in main memory and is worked
+;; through the data cache rather than in scratchpad, which is why generic-merc-execute-all flushes.
 (deftype generic-merc-dcache (structure)
   ((output-a    generic-merc-output :inline)
    (output-b    generic-merc-output :inline)
@@ -51,6 +74,13 @@
    (inv-safety  uint8 16)
    (effect-data uint8 1584)))
 
+;; The mercneric converter's control block, the counterpart of generic-tie-shadow: which buffers are
+;; current, how far it may write, and the addresses of the stages and processors it calls. They are
+;; cached as addresses because the converter runs without a usable symbol table.
+;;
+;; The three matrices are the transforms every fragment needs: the projection, the isometric form used
+;; where perspective is not wanted, and the inverse camera rotation the environment-map pass reflects
+;; through. hsr-xmult and hsr-ymult are the screen-extent scales high-speed-reject compares against.
 (deftype gm-shadow (structure)
   ((perspective                matrix :inline)
    (isometric                  matrix :inline)
@@ -77,6 +107,8 @@
    (hsr-xmult                  vector :inline)
    (hsr-ymult                  vector :inline)))
 
+;; The mercneric working set, overlaid on generic-input-buffer at offset zero. MERC and TIE never
+;; convert at the same time, so they share those 472 quadwords rather than each reserving their own.
 (deftype generic-merc-work (structure)
   ((input-a generic-merc-input :inline)
    (input-b generic-merc-input :inline)

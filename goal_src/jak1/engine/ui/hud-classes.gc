@@ -34,7 +34,7 @@
    (:g 128.0 128.0)
    (:a 0.0)
    (:timer (seconds -0.005))
-   (:flags (bit3 bit9))))
+   (:flags (glow write-depth))))
 
 (defpart 304
   :init-specs
@@ -54,7 +54,7 @@
    (:vel-z (meters 0))
    (:rotvel-z (degrees 0.2))
    (:timer (seconds -0.005))
-   (:flags (bit7 bit9))))
+   (:flags (orbit write-depth))))
 
 (defpart 305
   :init-specs
@@ -74,7 +74,7 @@
    (:vel-z (meters 0))
    (:rotvel-z (degrees -0.4) 1 (degrees 0.8))
    (:timer (seconds -0.005))
-   (:flags (bit3 bit7 bit9))))
+   (:flags (glow orbit write-depth))))
 
 (defpart 306
   :init-specs
@@ -92,7 +92,7 @@
    (:vel-y (meters 0))
    (:vel-z (meters 0))
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit7 bit9))))
+   (:flags (die-when-faded glow orbit write-depth))))
 
 (defpart 307
   :init-specs
@@ -109,7 +109,7 @@
    (:fade-r -2.125)
    (:accel-y (meters -0.00002))
    (:timer (seconds 0.1) (seconds 0.797))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:next-time (seconds 0.4))
    (:next-launcher 308)))
 
@@ -118,51 +118,53 @@
 
 (deftype hud-pickups (hud) ())
 
-
 (defmethod draw-hud ((this hud-pickups))
-  (let ((t9-0 (method-of-type hud draw-hud))) (t9-0 this))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (gp-0 (-> s5-0 base)))
-    (let ((s4-0 draw-string-xy))
+  "Draw the pickup particles, then print the displayed eco-pill count."
+  (let ((base-draw (method-of-type hud draw-hud))) (base-draw this))
+  (let* ((buf (-> *display* frames (-> *display* on-screen) frame global-buf))
+         (bucket-start (-> buf base)))
+    (let ((draw-text draw-string-xy))
       (format (clear *temp-string*) "~D" (-> this value))
-      (s4-0 *temp-string*
-            s5-0
-            (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)))
-            (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
-                  (the int (-> *video-parms* relative-y-scale)))
-               2)
-            (font-color green)
-            (font-flags shadow kerning large)))
-    (let ((a3-7 (-> s5-0 base)))
-      (let ((v1-8 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as (pointer int64) v1-8)) #x20000000)
-        (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-8) 16)))
+      (draw-text *temp-string*
+                 buf
+                 (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)))
+                 (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
+                       (the int (-> *video-parms* relative-y-scale)))
+                    2)
+                 (font-color green)
+                 (font-flags shadow kerning large)))
+    (let ((bucket-end (-> buf base)))
+      (let ((packet (the-as object (-> buf base))))
+        (set! (-> (the-as (pointer int64) packet)) #x20000000)
+        (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag))
+        (set! (-> buf base) (&+ (the-as pointer packet) 16)))
       (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
                              (bucket-id debug)
-                             gp-0
-                             (the-as (pointer dma-tag) a3-7))))
+                             bucket-start
+                             (the-as (pointer dma-tag) bucket-end))))
   0
   (none))
 
 (defmethod hud-update ((this hud-pickups))
+  "Tally the displayed pickup count toward Jak's current eco-pill count."
   (if *target* (tally-value this (the int (+ 0.5 (-> *target* fact eco-pill))) 0))
   0
   (none))
 
-(defmethod init-particles! ((this hud-pickups) (arg0 int))
+(defmethod init-particles! ((this hud-pickups) (init-value int))
+  "Create the pickup icon particle, allocate its sprite matrix, and position its count text."
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-0 (-> this nb-of-particles)))
-      (set! (-> this particles s5-0) (new 'static 'hud-particle))
-      (set! (-> this particles s5-0 part) (create-launch-control group-part-hud-pickup this))
-      (set! (-> this particles s5-0 init-pos x) 110.0)
-      (set! (-> this particles s5-0 init-pos y) 55.0)
-      (set! (-> this particles s5-0 init-pos z) 1.0)
-      (set! (-> this particles s5-0 part matrix) -1))
+    (let ((particle-index (-> this nb-of-particles)))
+      (set! (-> this particles particle-index) (new 'static 'hud-particle))
+      (set! (-> this particles particle-index part) (create-launch-control group-part-hud-pickup this))
+      (set! (-> this particles particle-index init-pos x) 110.0)
+      (set! (-> this particles particle-index init-pos y) 55.0)
+      (set! (-> this particles particle-index init-pos z) 1.0)
+      (set! (-> this particles particle-index part matrix) -1))
     (+! (-> this nb-of-particles) 1))
-  (dotimes (s5-1 (-> this nb-of-particles))
-    (if (= (-> this particles s5-1 part matrix) -1) (set! (-> this particles s5-1 part matrix) (sprite-allocate-user-hvdf))))
+  (dotimes (i (-> this nb-of-particles))
+    (if (= (-> this particles i part matrix) -1) (set! (-> this particles i part matrix) (sprite-allocate-user-hvdf))))
   (set! (-> this text-x) 118)
   (set! (-> this text-y) 45)
   (set! (-> this x-sgn) -1)
@@ -200,7 +202,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-health-01-func)))
 
 (defpart 310
@@ -214,7 +216,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-health-03-func)))
 
 (defpart 311
@@ -228,87 +230,104 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-health-02-func)))
 
 (deftype hud-health (hud)
   ((scale float)))
 
-
-(defun part-hud-health-01-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-0 (-> *hud-parts* health 0 scale))) (set! (-> arg2 vector 0 w) f0-0) (set! (-> arg2 vector 1 w) f0-0))
+(defun part-hud-health-01-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Set the first health cell's scale and fade it when Jak has less than one health. At exactly one
+   health, flash its color to warn that the next hit is fatal."
+  (let ((scale (-> *hud-parts* health 0 scale)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
   (cond
-    ((and *target* (< (-> *target* fact health) 1.0)) (set! (-> arg2 vector 2 w) 32.0))
+    ((and *target* (< (-> *target* fact health) 1.0)) (set! (-> matrix-out vector 2 w) 32.0))
     (else
-     (let ((f0-3 128.0))
+     (let ((brightness 128.0))
        ;; low health flashing
        ;; og:preserve-this modified to support high fps
        (when (and *target* (= (-> *target* fact health) 1.0))
          (let* ((scaled-frame-counter (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))))
-                (v1-16 (logand scaled-frame-counter 7)))
-           (set! f0-3
+                (flash-frame (logand scaled-frame-counter 7)))
+           (set! brightness
                  (if (not (logtest? scaled-frame-counter 8))
-                   (+ 128.0 (* 18.142857 (the float v1-16)))
-                   (- 255.0 (* 18.142857 (the float v1-16)))))))
-       (set! (-> arg2 vector 2 x) f0-3)
-       (set! (-> arg2 vector 2 y) f0-3)
-       (set! (-> arg2 vector 2 z) f0-3))
-     (set! (-> arg2 vector 2 w) 128.0)))
+                   (+ 128.0 (* 18.142857 (the float flash-frame)))
+                   (- 255.0 (* 18.142857 (the float flash-frame)))))))
+       (set! (-> matrix-out vector 2 x) brightness)
+       (set! (-> matrix-out vector 2 y) brightness)
+       (set! (-> matrix-out vector 2 z) brightness))
+     (set! (-> matrix-out vector 2 w) 128.0)))
   0
   (none))
 
-(defun part-hud-health-02-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-0 (-> *hud-parts* health 0 scale))) (set! (-> arg2 vector 0 w) f0-0) (set! (-> arg2 vector 1 w) f0-0))
-  (if (and *target* (< (-> *target* fact health) 2.0)) (set! (-> arg2 vector 2 w) 32.0) (set! (-> arg2 vector 2 w) 128.0))
+(defun part-hud-health-02-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Set the second health cell's scale and fade it when Jak has less than two health."
+  (let ((scale (-> *hud-parts* health 0 scale)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
+  (if (and *target* (< (-> *target* fact health) 2.0))
+    (set! (-> matrix-out vector 2 w) 32.0)
+    (set! (-> matrix-out vector 2 w) 128.0))
   0
   (none))
 
-(defun part-hud-health-03-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-0 (-> *hud-parts* health 0 scale))) (set! (-> arg2 vector 0 w) f0-0) (set! (-> arg2 vector 1 w) f0-0))
-  (if (and *target* (< (-> *target* fact health) 3.0)) (set! (-> arg2 vector 2 w) 32.0) (set! (-> arg2 vector 2 w) 128.0))
+(defun part-hud-health-03-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Set the third health cell's scale and fade it when Jak has less than three health."
+  (let ((scale (-> *hud-parts* health 0 scale)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
+  (if (and *target* (< (-> *target* fact health) 3.0))
+    (set! (-> matrix-out vector 2 w) 32.0)
+    (set! (-> matrix-out vector 2 w) 128.0))
   0
   (none))
 
 (defmethod draw-hud ((this hud-health))
+  "Draw the three health-cell particles."
   ((method-of-type hud draw-hud) this)
   0
   (none))
 
 (defmethod hud-update ((this hud-health))
+  "Tally the displayed health and the time of the most recent health pickup."
   (if *target* (tally-value this (the int (-> *target* fact health)) (the-as int (-> *target* fact health-pickup-time))))
   0
   (none))
 
-(defmethod init-particles! ((this hud-health) (arg0 int))
+(defmethod init-particles! ((this hud-health) (init-value int))
+  "Create and position the three health-cell particles and allocate their sprite matrices."
+  (local-vars (particle-index int))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-0 (-> this nb-of-particles)))
-      (set! (-> this particles s5-0) (new 'static 'hud-particle))
-      (set! (-> this particles s5-0 part) (create-launch-control group-part-hud-health-1 this))
-      (set! (-> this particles s5-0 init-pos x) 61.0)
-      (set! (-> this particles s5-0 init-pos y) 55.0)
-      (set! (-> this particles s5-0 init-pos z) 5.0)
-      (set! (-> this particles s5-0 part matrix) -1))
+    (set! particle-index (-> this nb-of-particles))
+    (set! (-> this particles particle-index) (new 'static 'hud-particle))
+    (set! (-> this particles particle-index part) (create-launch-control group-part-hud-health-1 this))
+    (set! (-> this particles particle-index init-pos x) 61.0)
+    (set! (-> this particles particle-index init-pos y) 55.0)
+    (set! (-> this particles particle-index init-pos z) 5.0)
+    (set! (-> this particles particle-index part matrix) -1)
     (+! (-> this nb-of-particles) 1))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-1 (-> this nb-of-particles)))
-      (set! (-> this particles s5-1) (new 'static 'hud-particle))
-      (set! (-> this particles s5-1 part) (create-launch-control group-part-hud-health-2 this))
-      (set! (-> this particles s5-1 init-pos x) 98.0)
-      (set! (-> this particles s5-1 init-pos y) 55.0)
-      (set! (-> this particles s5-1 init-pos z) 5.0)
-      (set! (-> this particles s5-1 part matrix) -1))
+    (set! particle-index (-> this nb-of-particles))
+    (set! (-> this particles particle-index) (new 'static 'hud-particle))
+    (set! (-> this particles particle-index part) (create-launch-control group-part-hud-health-2 this))
+    (set! (-> this particles particle-index init-pos x) 98.0)
+    (set! (-> this particles particle-index init-pos y) 55.0)
+    (set! (-> this particles particle-index init-pos z) 5.0)
+    (set! (-> this particles particle-index part matrix) -1)
     (+! (-> this nb-of-particles) 1))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-2 (-> this nb-of-particles)))
-      (set! (-> this particles s5-2) (new 'static 'hud-particle))
-      (set! (-> this particles s5-2 part) (create-launch-control group-part-hud-health-3 this))
-      (set! (-> this particles s5-2 init-pos x) 70.0)
-      (set! (-> this particles s5-2 init-pos y) 76.0)
-      (set! (-> this particles s5-2 init-pos z) 5.0)
-      (set! (-> this particles s5-2 part matrix) -1))
+    (set! particle-index (-> this nb-of-particles))
+    (set! (-> this particles particle-index) (new 'static 'hud-particle))
+    (set! (-> this particles particle-index part) (create-launch-control group-part-hud-health-3 this))
+    (set! (-> this particles particle-index init-pos x) 70.0)
+    (set! (-> this particles particle-index init-pos y) 76.0)
+    (set! (-> this particles particle-index init-pos z) 5.0)
+    (set! (-> this particles particle-index part matrix) -1)
     (+! (-> this nb-of-particles) 1))
-  (dotimes (s5-3 (-> this nb-of-particles))
-    (if (= (-> this particles s5-3 part matrix) -1) (set! (-> this particles s5-3 part matrix) (sprite-allocate-user-hvdf))))
+  (dotimes (i (-> this nb-of-particles))
+    (if (= (-> this particles i part matrix) -1) (set! (-> this particles i part matrix) (sprite-allocate-user-hvdf))))
   (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
   (set! (-> this x-sgn) -1)
   (set! (-> this y-sgn) -1)
@@ -316,9 +335,11 @@
   0
   (none))
 
-(defmethod set-pos-and-scale ((this hud-health) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-health) (widescreen? symbol) (pal? symbol))
+  "Select the health-cell positions and scale for widescreen and PAL output. The PC path
+   also adjusts horizontal placement when VIS is disabled."
   (cond
-    (arg0
+    (widescreen?
      (set! (-> this particles 0 init-pos x) 65.0)
      (set! (-> this particles 0 init-pos y) 55.0)
      (set! (-> this particles 1 init-pos x) 98.0)
@@ -361,7 +382,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))))
+   (:flags (die-when-faded write-depth))))
 
 (deftype hud-money-all (hud)
   ((x-scale     float)
@@ -371,61 +392,63 @@
    (level-index int32)
    (start-time  time-frame)))
 
-
 (defmethod draw-hud ((this hud-money-all))
-  (let ((t9-0 (method-of-type hud draw-hud))) (t9-0 this))
+  "Draw the all-orbs icon and count. When level-index is valid, also print that level's name."
+  (let ((base-draw (method-of-type hud draw-hud))) (base-draw this))
   0
-  (let ((s5-0 0))
+  (let ((line-y-offset 0))
     (when (>= (-> this level-index) 0)
-      (let ((s5-1 (new 'stack
-                       'font-context
-                       *font-default-matrix*
-                       (+ (* (-> this x-sgn) (-> this offset)) -60 (-> this text-x))
-                       (+ (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
-                                (the int (-> *video-parms* relative-y-scale)))
-                             2)
-                          -17)
-                       0.0
-                       (font-color red)
-                       (font-flags shadow kerning))))
-        (set-width! s5-1 228)
-        (set-height! s5-1 45)
-        (set-scale! s5-1 0.6)
-        (set! (-> s5-1 flags) (font-flags shadow kerning middle middle-vert large))
+      (let ((level-name-context (new 'stack
+                                     'font-context
+                                     *font-default-matrix*
+                                     (+ (* (-> this x-sgn) (-> this offset)) -60 (-> this text-x))
+                                     (+ (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
+                                              (the int (-> *video-parms* relative-y-scale)))
+                                           2)
+                                        -17)
+                                     0.0
+                                     (font-color red)
+                                     (font-flags shadow kerning))))
+        (set-width! level-name-context 228)
+        (set-height! level-name-context 45)
+        (set-scale! level-name-context 0.6)
+        (set! (-> level-name-context flags) (font-flags shadow kerning middle middle-vert large))
         (print-game-text (lookup-text! *common-text* (-> *level-task-data* (-> this level-index) level-name-id) #f)
-                         s5-1
+                         level-name-context
                          #f
                          128
                          18))
-      (set! s5-0 13))
-    (let* ((s1-0 50)
-           (s3-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-           (s4-1 (-> s3-0 base)))
-      (let ((s2-0 draw-string-xy))
+      (set! line-y-offset 13))
+    (let* ((text-x-offset 50)
+           (buf (-> *display* frames (-> *display* on-screen) frame global-buf))
+           (bucket-start (-> buf base)))
+      (let ((draw-text draw-string-xy))
         (format (clear *temp-string*) "~D/~D" (-> this total-orbs) (-> this total-orbs))
-        (s2-0 *temp-string*
-              s3-0
-              (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)) s1-0)
-              (+ (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
-                       (the int (-> *video-parms* relative-y-scale)))
-                    2)
-                 s5-0)
-              (font-color yellow)
-              (font-flags shadow kerning middle large)))
-      (let ((a3-12 (-> s3-0 base)))
-        (let ((v1-32 (the-as dma-packet (-> s3-0 base))))
-          (set! (-> v1-32 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-          (set! (-> v1-32 vif0) (new 'static 'vif-tag))
-          (set! (-> v1-32 vif1) (new 'static 'vif-tag))
-          (set! (-> s3-0 base) (&+ (the-as pointer v1-32) 16)))
+        (draw-text *temp-string*
+                   buf
+                   (+ (-> this text-x) (* (-> this x-sgn) (-> this offset)) text-x-offset)
+                   (+ (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
+                            (the int (-> *video-parms* relative-y-scale)))
+                         2)
+                      line-y-offset)
+                   (font-color yellow)
+                   (font-flags shadow kerning middle large)))
+      (let ((bucket-end (-> buf base)))
+        (let ((packet (the-as dma-packet (-> buf base))))
+          (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> packet vif0) (new 'static 'vif-tag))
+          (set! (-> packet vif1) (new 'static 'vif-tag))
+          (set! (-> buf base) (&+ (the-as pointer packet) 16)))
         (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
                                (bucket-id debug)
-                               s4-1
-                               (the-as (pointer dma-tag) a3-12)))))
+                               bucket-start
+                               (the-as (pointer dma-tag) bucket-end)))))
   0
   (none))
 
 (defmethod hud-update ((this hud-money-all))
+  "Rotate the orb icon and keep the summary visible for five seconds, then let it deactivate
+   after it finishes hiding."
   (when *target*
     (hide-bottom-hud)
     (when (!= *master-mode* 'pause)
@@ -433,76 +456,88 @@
         (set! (-> this icons 0 scale-x) (-> this x-scale))
         (set! (-> this icons 0 scale-y) (-> this y-scale))
         (set! (-> this icons 0 icon-y) (* (-> this y-pos) (the int (-> *video-parms* relative-y-scale))))
-        (let ((a0-6 (-> this icons 0 icon 0 root)))
-          (set-yaw-angle-clear-roll-pitch! a0-6 (- (y-angle a0-6) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))))))
+        (let ((root (-> this icons 0 icon 0 root)))
+          (set-yaw-angle-clear-roll-pitch! root (- (y-angle root) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))))))
     (if (>= (+ (current-time) (seconds -5)) (-> this start-time))
       (set! (-> this deactivate-when-hidden) #t)
       (tally-value this (the-as int (current-time)) 0)))
   0
   (none))
 
-(defmethod init-particles! ((this hud-money-all) (arg0 int))
+(defmethod init-particles! ((this hud-money-all) (level-index int))
+  "Create the all-orbs icon and particle, total the level-task orb counts, select the requested
+   level when appropriate, hide the lower HUD, and start the five-second display."
   (when (< (-> this nb-of-icons) 6)
-    (let ((s4-0 (-> this nb-of-icons)))
-      (set! (-> this icons s4-0) (new 'static 'hud-icon))
-      (let ((s3-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to this)))
-        (when s3-0
-          (set! (-> (the-as process-drawable (-> s3-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
-          (set-vector! (-> (the-as process-drawable (-> s3-0 0)) root trans) 0.0 0.0 0.0 1.0)
-          (set-vector! (-> (the-as process-drawable (-> s3-0 0)) root scale) 0.0095 -0.011 0.0095 1.0)
-          (if #f (send-event (ppointer->process s3-0) 'trans-hook #f)))
-        (set! (-> this icons s4-0 icon) (the-as (pointer manipy) s3-0))
-        (when s3-0
-          (logior! (-> s3-0 0 mask) (process-mask pause))
-          (logclear! (-> s3-0 0 mask) (process-mask menu progress))
-          (set! (-> (the-as process-drawable (-> s3-0 0)) root trans z) 1024.0)
-          (set! (-> this icons s4-0 icon-x) 170)
-          (set! (-> this icons s4-0 icon-y) 0)
-          (set! (-> this icons s4-0 icon-z) 0)
-          (set! (-> this icons s4-0 scale-x) 0.0095)
-          (set! (-> this icons s4-0 scale-y) -0.011))))
+    (let ((icon-index (-> this nb-of-icons)))
+      (set! (-> this icons icon-index) (new 'static 'hud-icon))
+      (let ((icon (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to this)))
+        (when icon
+          (set! (-> (the-as process-drawable (-> icon 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as process-drawable (-> icon 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as process-drawable (-> icon 0)) root scale) 0.0095 -0.011 0.0095 1.0)
+          (if #f (send-event (ppointer->process icon) 'trans-hook #f)))
+        (set! (-> this icons icon-index icon) (the-as (pointer manipy) icon))
+        (when icon
+          (logior! (-> icon 0 mask) (process-mask pause))
+          (logclear! (-> icon 0 mask) (process-mask menu progress))
+          (set! (-> (the-as process-drawable (-> icon 0)) root trans z) 1024.0)
+          (set! (-> this icons icon-index icon-x) 170)
+          (set! (-> this icons icon-index icon-y) 0)
+          (set! (-> this icons icon-index icon-z) 0)
+          (set! (-> this icons icon-index scale-x) 0.0095)
+          (set! (-> this icons icon-index scale-y) -0.011))))
     (+! (-> this nb-of-icons) 1))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s4-1 (-> this nb-of-particles)))
-      (set! (-> this particles s4-1) (new 'static 'hud-particle))
-      (set! (-> this particles s4-1 part) (create-launch-control group-part-hud-orb-all this))
-      (set! (-> this particles s4-1 init-pos x) 172.0)
-      (set! (-> this particles s4-1 init-pos y) 330.0)
-      (set! (-> this particles s4-1 init-pos z) 2.0)
-      (set! (-> this particles s4-1 part matrix) -1))
+    (let ((particle-index (-> this nb-of-particles)))
+      (set! (-> this particles particle-index) (new 'static 'hud-particle))
+      (set! (-> this particles particle-index part) (create-launch-control group-part-hud-orb-all this))
+      (set! (-> this particles particle-index init-pos x) 172.0)
+      (set! (-> this particles particle-index init-pos y) 330.0)
+      (set! (-> this particles particle-index init-pos z) 2.0)
+      (set! (-> this particles particle-index part matrix) -1))
     (+! (-> this nb-of-particles) 1))
   (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
-  (dotimes (s4-3 (-> this nb-of-particles))
-    (if (= (-> this particles s4-3 part matrix) -1) (set! (-> this particles s4-3 part matrix) (sprite-allocate-user-hvdf))))
+  (dotimes (i (-> this nb-of-particles))
+    (if (= (-> this particles i part matrix) -1) (set! (-> this particles i part matrix) (sprite-allocate-user-hvdf))))
   (set! (-> this text-x) 251)
   (set! (-> this text-y) 305)
   (set! (-> this x-sgn) 0)
   (set! (-> this y-sgn) 1)
   (hide-bottom-hud)
-  (let ((s4-4 0)
-        (s3-2 0)
-        (s2-2 0))
-    (dotimes (s1-0 (length *level-task-data*))
-      (let ((v1-83 (-> *level-task-data* s1-0)))
-        (when (!= v1-83 #f)
-          (when (or (= *kernel-boot-message* 'play) (= (-> v1-83 level-name-id) (text-id misty-level-name)))
-            (if (= s1-0 arg0) (set! s2-2 (the-as int (-> *game-info* money-per-level s1-0))))
-            (+! s3-2 (-> *game-info* money-per-level s1-0))
-            (+! s4-4 (-> (get-game-count s1-0) money-count))))))
+  (let ((collected-orb-count 0)
+        (available-orb-count 0)
+        (level-orb-count 0))
+    (dotimes (i (length *level-task-data*))
+      (let ((level-data (-> *level-task-data* i)))
+        (when (!= level-data #f)
+          (when (or (= *kernel-boot-message* 'play) (= (-> level-data level-name-id) (text-id misty-level-name)))
+            (if (= i level-index) (set! level-orb-count (the-as int (-> *game-info* money-per-level i))))
+            (+! available-orb-count (-> *game-info* money-per-level i))
+            (+! collected-orb-count (-> (get-game-count i) money-count))))))
     (cond
-      ((= s3-2 s4-4) (set! (-> this total-orbs) s4-4) (set! (-> this total-orbs) s4-4) (set! (-> this level-index) -1))
-      ((begin (set! (-> this total-orbs) s2-2) (< arg0 (length *level-task-data*))) (set! (-> this level-index) arg0))
+      ((= available-orb-count collected-orb-count)
+       (set! (-> this total-orbs) collected-orb-count)
+       (set! (-> this total-orbs) collected-orb-count)
+       (set! (-> this level-index) -1))
+      ((begin
+         (set! (-> this total-orbs) level-orb-count)
+         (< level-index (length *level-task-data*)))
+       (set! (-> this level-index) level-index))
       (else (set! (-> this level-index) -1))))
   (set-time! (-> this start-time))
   (sound-play "get-all-orbs")
   0
   (none))
 
-(defmethod set-pos-and-scale ((this hud-money-all) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-money-all) (widescreen? symbol) (pal? symbol))
+  "Select the all-orbs icon position and nonuniform scale for widescreen and PAL output."
   (cond
-    (arg0 (set! (-> this x-scale) 0.01845) (set! (-> this y-scale) -0.02175) (set! (-> this y-pos) (if arg1 374 373)))
+    (widescreen?
+     (set! (-> this x-scale) 0.01845)
+     (set! (-> this y-scale) -0.02175)
+     (set! (-> this y-pos) (if pal? 374 373)))
     (else (set! (-> this x-scale) 0.013499999) (set! (-> this y-scale) -0.01575) (set! (-> this y-pos) 361)))
-  (when arg1
+  (when pal?
     (set! (-> this x-scale) (* 1.02 (-> this x-scale)))
     (set! (-> this y-scale) (* 1.2 (-> this y-scale)))
     (set! (-> this y-pos) (the int (* 1.21 (the float (-> this y-pos))))))
@@ -526,7 +561,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))))
+   (:flags (die-when-faded write-depth))))
 
 (deftype hud-money (hud)
   ((x-scale float)
@@ -537,7 +572,9 @@
 (define-extern *game-counts* game-count-info)
 
 (defmethod draw-hud ((this hud-money))
-  (let ((t9-0 (method-of-type hud draw-hud))) (t9-0 this))
+  "Draw the orb HUD and its count. The PC collectable view can show the original unspent
+   count, the game-wide collected and available totals, or the current level's totals."
+  (let ((base-draw (method-of-type hud draw-hud))) (base-draw this))
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug))
     (let* ((string-x (+ (-> this text-x) (* (-> this x-sgn) (-> this offset))))
            (string-y (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
@@ -557,9 +594,9 @@
                                 (font-flags shadow kerning large)
                                 0.8))
         (((hud-collectable-view level-totals))
-         (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+         (let ((level-index (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
            ;; show orbs collected/total this level
-           (draw-string-xy-scaled (string-format "~D~%/~D" (-> *game-info* money-per-level lvl-idx) (-> *game-counts* data lvl-idx money-count))
+           (draw-string-xy-scaled (string-format "~D~%/~D" (-> *game-info* money-per-level level-index) (-> *game-counts* data level-index money-count))
                                   buf
                                   string-x
                                   (- string-y 5)
@@ -578,51 +615,53 @@
   (none))
 
 (defmethod hud-update ((this hud-money))
+  "Rotate the orb icon while unpaused and tally the displayed value toward Jak's money count."
   (when *target*
     (when (!= *master-mode* 'pause)
       (when (and (!= (-> this icons 0) 0) (-> this icons 0 icon))
         (set! (-> this icons 0 scale-x) (-> this x-scale))
         (set! (-> this icons 0 scale-y) (-> this y-scale))
         (set! (-> this icons 0 icon-y) (* (-> this y-pos) (the int (-> *video-parms* relative-y-scale))))
-        (let ((a0-6 (-> this icons 0 icon 0 root)))
-          (set-yaw-angle-clear-roll-pitch! a0-6 (- (y-angle a0-6) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))))))
+        (let ((root (-> this icons 0 icon 0 root)))
+          (set-yaw-angle-clear-roll-pitch! root (- (y-angle root) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))))))
     (tally-value this (the int (+ 0.5 (-> *target* game money))) 0))
   0
   (none))
 
-(defmethod init-particles! ((this hud-money) (arg0 int))
+(defmethod init-particles! ((this hud-money) (init-value int))
+  "Create the orb model and particle, allocate its sprite matrix, and position its count text."
   (when (< (-> this nb-of-icons) 6)
-    (let ((s5-0 (-> this nb-of-icons)))
-      (set! (-> this icons s5-0) (new 'static 'hud-icon))
-      (let ((s4-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to this)))
-        (when s4-0
-          (set! (-> (the-as process-drawable (-> s4-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
-          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root trans) 0.0 0.0 0.0 1.0)
-          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root scale) 0.0095 -0.011 0.0095 1.0)
-          (if #f (send-event (ppointer->process s4-0) 'trans-hook #f)))
-        (set! (-> this icons s5-0 icon) (the-as (pointer manipy) s4-0))
-        (when s4-0
-          (logior! (-> s4-0 0 mask) (process-mask pause))
-          (logclear! (-> s4-0 0 mask) (process-mask menu progress))
-          (set! (-> (the-as process-drawable (-> s4-0 0)) root trans z) 1024.0)
-          (set! (-> this icons s5-0 icon-x) 399)
-          (set! (-> this icons s5-0 icon-y) 79)
-          (set! (-> this icons s5-0 icon-z) 0)
-          (set! (-> this icons s5-0 scale-x) 0.0095)
-          (set! (-> this icons s5-0 scale-y) -0.011))))
+    (let ((icon-index (-> this nb-of-icons)))
+      (set! (-> this icons icon-index) (new 'static 'hud-icon))
+      (let ((icon (manipy-spawn (new 'static 'vector :w 1.0) #f *money-sg* #f :to this)))
+        (when icon
+          (set! (-> (the-as process-drawable (-> icon 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as process-drawable (-> icon 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as process-drawable (-> icon 0)) root scale) 0.0095 -0.011 0.0095 1.0)
+          (if #f (send-event (ppointer->process icon) 'trans-hook #f)))
+        (set! (-> this icons icon-index icon) (the-as (pointer manipy) icon))
+        (when icon
+          (logior! (-> icon 0 mask) (process-mask pause))
+          (logclear! (-> icon 0 mask) (process-mask menu progress))
+          (set! (-> (the-as process-drawable (-> icon 0)) root trans z) 1024.0)
+          (set! (-> this icons icon-index icon-x) 399)
+          (set! (-> this icons icon-index icon-y) 79)
+          (set! (-> this icons icon-index icon-z) 0)
+          (set! (-> this icons icon-index scale-x) 0.0095)
+          (set! (-> this icons icon-index scale-y) -0.011))))
     (+! (-> this nb-of-icons) 1))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-1 (-> this nb-of-particles)))
-      (set! (-> this particles s5-1) (new 'static 'hud-particle))
-      (set! (-> this particles s5-1 part) (create-launch-control group-part-hud-orb this))
-      (set! (-> this particles s5-1 init-pos x) 400.0)
-      (set! (-> this particles s5-1 init-pos y) 58.0)
-      (set! (-> this particles s5-1 init-pos z) 2.0)
-      (set! (-> this particles s5-1 part matrix) -1))
+    (let ((particle-index (-> this nb-of-particles)))
+      (set! (-> this particles particle-index) (new 'static 'hud-particle))
+      (set! (-> this particles particle-index part) (create-launch-control group-part-hud-orb this))
+      (set! (-> this particles particle-index init-pos x) 400.0)
+      (set! (-> this particles particle-index init-pos y) 58.0)
+      (set! (-> this particles particle-index init-pos z) 2.0)
+      (set! (-> this particles particle-index part matrix) -1))
     (+! (-> this nb-of-particles) 1))
   (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
-  (dotimes (s5-3 (-> this nb-of-particles))
-    (if (= (-> this particles s5-3 part matrix) -1) (set! (-> this particles s5-3 part matrix) (sprite-allocate-user-hvdf))))
+  (dotimes (i (-> this nb-of-particles))
+    (if (= (-> this particles i part matrix) -1) (set! (-> this particles i part matrix) (sprite-allocate-user-hvdf))))
   (set! (-> this text-x) 420)
   (set! (-> this text-y) 45)
   (set! (-> this x-sgn) 1)
@@ -631,27 +670,32 @@
   0
   (none))
 
-(defmethod set-pos-and-scale ((this hud-money) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-money) (widescreen? symbol) (pal? symbol))
+  "Select the orb icon position and nonuniform scale for widescreen and PAL output."
   (cond
-    (arg0 (set! (-> this x-scale) 0.0123) (set! (-> this y-scale) -0.0145) (set! (-> this y-pos) 86))
+    (widescreen? (set! (-> this x-scale) 0.0123) (set! (-> this y-scale) -0.0145) (set! (-> this y-pos) 86))
     (else (set! (-> this x-scale) 0.0095) (set! (-> this y-scale) -0.011) (set! (-> this y-pos) 79)))
-  (when arg1
+  (when pal?
     (set! (-> this x-scale) (* 1.1 (-> this x-scale)))
     (set! (-> this y-scale) (* 1.2 (-> this y-scale)))
-    (set! (-> this y-pos) (the int (* (the float (-> this y-pos)) (if arg0 0.95 0.9)))))
+    (set! (-> this y-pos) (the int (* (the float (-> this y-pos)) (if widescreen? 0.95 0.9)))))
   0
   (none))
 
 (defmethod get-icon-pos-x ((this hud-money))
+  "Return the orb icon's screen X position for collectable flight."
   (-> this icons 0 icon-x))
 
 (defmethod get-icon-pos-y ((this hud-money))
+  "Return the orb icon's screen Y position for collectable flight."
   (-> this icons 0 icon-y))
 
 (defmethod get-icon-scale-x ((this hud-money))
+  "Return the orb collectable's destination X scale."
   0.01)
 
 (defmethod get-icon-scale-y ((this hud-money))
+  "Return the orb collectable's destination Y scale."
   -0.011)
 
 (defskelgroup *fuelcell-naked-sg*
@@ -673,7 +717,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit9))
+   (:flags (write-depth))
    (:userdata 4.0)
    (:func 'fuel-cell-hud-orbit-callback)))
 
@@ -688,7 +732,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit9))
+   (:flags (write-depth))
    (:userdata 5.0)
    (:func 'fuel-cell-hud-orbit-callback)))
 
@@ -703,7 +747,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit9))
+   (:flags (write-depth))
    (:userdata 6.0)
    (:func 'fuel-cell-hud-orbit-callback)))
 
@@ -718,7 +762,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit9))
+   (:flags (write-depth))
    (:userdata 7.0)
    (:func 'fuel-cell-hud-orbit-callback)))
 
@@ -733,7 +777,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit9))
+   (:flags (write-depth))
    (:userdata 9.0)
    (:func 'fuel-cell-hud-orbit-callback)))
 
@@ -748,7 +792,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'fuel-cell-hud-center-callback)))
 
 (defpartgroup group-part-hud-power-cell-whole
@@ -788,7 +832,7 @@
    (:scalevel-y (meters 0.009765625))
    (:fade-a 0.35555556)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.3))
    (:next-launcher 232)))
 
@@ -809,7 +853,7 @@
    (:rotvel-z (degrees -0.15) (degrees 0.3))
    (:fade-a 0.32)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.25))
    (:next-launcher 232)))
 
@@ -827,7 +871,7 @@
    (:a 64.0)
    (:rotvel-z (degrees -0.4))
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:func 'fuel-cell-hud-starburst-3-callback)))
 
 (defpart 322
@@ -844,7 +888,7 @@
    (:a 64.0)
    (:rotvel-z (degrees 0.3))
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:func 'fuel-cell-hud-starburst-4-callback)))
 
 (deftype hud-fuel-cell (hud)
@@ -856,9 +900,10 @@
    (scale-center        float)
    (icon-pos-y          int32)))
 
-
 (defmethod draw-hud ((this hud-fuel-cell))
-  (let ((t9-0 (method-of-type hud draw-hud))) (t9-0 this))
+  "Draw the power-cell HUD and its count. The PC collectable view can show the original
+   game-wide count, game-wide collected and available totals, or current-level task totals."
+  (let ((base-draw (method-of-type hud draw-hud))) (base-draw this))
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug))
     (let* ((string-x (+ (-> this text-x) (* (-> this x-sgn) (-> this offset))))
            (string-y (/ (* (+ (-> this text-y) (* (-> this y-sgn) (-> this offset)) (-> this y-offset))
@@ -878,14 +923,14 @@
                                 (font-flags shadow kerning large)
                                 0.8))
         (((hud-collectable-view level-totals))
-         (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
+         (let ((level-index (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1)))
                (completed-task-count 0))
            ;; determine number of cells collected in this level
-           (dotimes (task-idx (-> *level-task-data* lvl-idx nb-of-tasks))
-             (if (= (get-task-status (-> *level-task-data* lvl-idx task-info task-idx task-id)) (task-status invalid))
+           (dotimes (i (-> *level-task-data* level-index nb-of-tasks))
+             (if (= (get-task-status (-> *level-task-data* level-index task-info i task-id)) (task-status invalid))
                (+! completed-task-count 1)))
            ;; show cells/total collected this level
-           (draw-string-xy-scaled (string-format "~D~%/~D" completed-task-count (-> *level-task-data* lvl-idx nb-of-tasks))
+           (draw-string-xy-scaled (string-format "~D~%/~D" completed-task-count (-> *level-task-data* level-index nb-of-tasks))
                                   buf
                                   string-x
                                   (- string-y 5)
@@ -903,87 +948,96 @@
   0
   (none))
 
-(defun fuel-cell-hud-orbit-callback ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((s3-0 (-> arg1 key proc))
-        (v1-1 (the int (-> arg1 user-float)))
-        (s5-0 (new 'stack-no-clear 'vector)))
-    (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! s5-0 (-> (the-as hud-fuel-cell s3-0) icons 0 icon 0 node-list data v1-1))
-      (vector<-cspace! s4-0 (-> (the-as hud-fuel-cell s3-0) icons 0 icon 0 node-list data 3))
-      (vector-! s5-0 s5-0 s4-0))
-    (set! (-> arg2 vector 0 x) (* 60.0 (-> s5-0 x)))
-    (set! (-> arg2 vector 0 y) (* 60.0 (-> s5-0 y)))
-    (set! (-> arg2 vector 0 z) (* 1024.0 (-> s5-0 z))))
+(defun fuel-cell-hud-orbit-callback ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Place an orbit particle at the model joint selected by its user value, relative to the
+   power-cell center joint."
+  (let ((hud-element (-> particle key proc))
+        (joint-index (the int (-> particle user-float)))
+        (joint-position (new 'stack-no-clear 'vector)))
+    (let ((center-position (new 'stack-no-clear 'vector)))
+      (vector<-cspace! joint-position (-> (the-as hud-fuel-cell hud-element) icons 0 icon 0 node-list data joint-index))
+      (vector<-cspace! center-position (-> (the-as hud-fuel-cell hud-element) icons 0 icon 0 node-list data 3))
+      (vector-! joint-position joint-position center-position))
+    (set! (-> matrix-out vector 0 x) (* 60.0 (-> joint-position x)))
+    (set! (-> matrix-out vector 0 y) (* 60.0 (-> joint-position y)))
+    (set! (-> matrix-out vector 0 z) (* 1024.0 (-> joint-position z))))
   0
   (none))
 
-(defun fuel-cell-hud-starburst-3-callback ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (set! (-> arg2 vector 0 w) (-> *hud-parts* fuel-cell 0 scale-starburst-3-x))
-  (set! (-> arg2 vector 1 w) (-> *hud-parts* fuel-cell 0 scale-starburst-3-y))
+(defun fuel-cell-hud-starburst-3-callback ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Apply the third power-cell starburst's display-dependent X and Y scales."
+  (set! (-> matrix-out vector 0 w) (-> *hud-parts* fuel-cell 0 scale-starburst-3-x))
+  (set! (-> matrix-out vector 1 w) (-> *hud-parts* fuel-cell 0 scale-starburst-3-y))
   0
   (none))
 
-(defun fuel-cell-hud-starburst-4-callback ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (set! (-> arg2 vector 0 w) (-> *hud-parts* fuel-cell 0 scale-starburst-4-x))
-  (set! (-> arg2 vector 1 w) (-> *hud-parts* fuel-cell 0 scale-starburst-4-y))
+(defun fuel-cell-hud-starburst-4-callback ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Apply the fourth power-cell starburst's display-dependent X and Y scales."
+  (set! (-> matrix-out vector 0 w) (-> *hud-parts* fuel-cell 0 scale-starburst-4-x))
+  (set! (-> matrix-out vector 1 w) (-> *hud-parts* fuel-cell 0 scale-starburst-4-y))
   0
   (none))
 
-(defun fuel-cell-hud-center-callback ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-0 (-> *hud-parts* fuel-cell 0 scale-icon))
-        (f1-0 (-> *hud-parts* fuel-cell 0 scale-center)))
-    (set-vector! (-> *hud-parts* fuel-cell 0 icons 0 icon 0 root scale) f0-0 f0-0 f0-0 1.0)
-    (set! (-> arg2 vector 0 w) f1-0)
-    (set! (-> arg2 vector 1 w) f1-0))
+(defun fuel-cell-hud-center-callback ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Apply the display-dependent scale to the power-cell model and its center particle."
+  (let ((icon-scale (-> *hud-parts* fuel-cell 0 scale-icon))
+        (center-scale (-> *hud-parts* fuel-cell 0 scale-center)))
+    (set-vector! (-> *hud-parts* fuel-cell 0 icons 0 icon 0 root scale) icon-scale icon-scale icon-scale 1.0)
+    (set! (-> matrix-out vector 0 w) center-scale)
+    (set! (-> matrix-out vector 1 w) center-scale))
   0
   (none))
 
 (defmethod hud-update ((this hud-fuel-cell))
+  "Rotate the power-cell model, tally Jak's fuel count, and anchor the surrounding particles
+   to the model's center joint."
   (when *target*
     (when (!= *master-mode* 'pause)
-      (let ((a0-2 (-> this icons 0 icon 0 root)))
-        (set-yaw-angle-clear-roll-pitch! a0-2 (+ (y-angle a0-2) (* 182.04445 (/ (-> *display* time-adjust-ratio) 2))))))
+      (let ((root (-> this icons 0 icon 0 root)))
+        (set-yaw-angle-clear-roll-pitch! root (+ (y-angle root) (* 182.04445 (/ (-> *display* time-adjust-ratio) 2))))))
     (set! (-> this icons 0 icon-y) (-> this icon-pos-y))
     (tally-value this (the int (+ 0.5 (-> *target* game fuel))) 0)
-    (let ((s5-1 (new 'stack-no-clear 'vector)))
-      (vector<-cspace! s5-1 (-> this icons 0 icon 0 node-list data 3))
-      (set! (-> this particles 0 pos x) (-> s5-1 x))
-      (set! (-> this particles 0 pos y) (/ (-> s5-1 y) 2))
-      (set! (-> this particles 0 pos z) (+ 2.0 (* 0.05 (+ -2048.0 (-> s5-1 z)))))))
+    (let ((center-position (new 'stack-no-clear 'vector)))
+      (vector<-cspace! center-position (-> this icons 0 icon 0 node-list data 3))
+      (set! (-> this particles 0 pos x) (-> center-position x))
+      (set! (-> this particles 0 pos y) (/ (-> center-position y) 2))
+      (set! (-> this particles 0 pos z) (+ 2.0 (* 0.05 (+ -2048.0 (-> center-position z)))))))
   0
   (none))
 
-(defmethod init-particles! ((this hud-fuel-cell) (arg0 int))
+(defmethod init-particles! ((this hud-fuel-cell) (init-value int))
+  "Create the power-cell model and surrounding particle group, allocate its sprite matrix,
+   and turn the model to face the camera."
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-0 (-> this nb-of-particles)))
-      (set! (-> this particles s5-0) (new 'static 'hud-particle))
-      (set! (-> this particles s5-0 part) (create-launch-control group-part-hud-power-cell-whole this))
-      (set! (-> this particles s5-0 init-pos x) 256.0)
-      (set! (-> this particles s5-0 init-pos y) 224.0)
-      (set! (-> this particles s5-0 init-pos z) 1.0)
-      (set! (-> this particles s5-0 part matrix) -1))
+    (let ((particle-index (-> this nb-of-particles)))
+      (set! (-> this particles particle-index) (new 'static 'hud-particle))
+      (set! (-> this particles particle-index part) (create-launch-control group-part-hud-power-cell-whole this))
+      (set! (-> this particles particle-index init-pos x) 256.0)
+      (set! (-> this particles particle-index init-pos y) 224.0)
+      (set! (-> this particles particle-index init-pos z) 1.0)
+      (set! (-> this particles particle-index part matrix) -1))
     (+! (-> this nb-of-particles) 1))
-  (dotimes (s5-1 (-> this nb-of-particles))
-    (if (= (-> this particles s5-1 part matrix) -1) (set! (-> this particles s5-1 part matrix) (sprite-allocate-user-hvdf))))
+  (dotimes (i (-> this nb-of-particles))
+    (if (= (-> this particles i part matrix) -1) (set! (-> this particles i part matrix) (sprite-allocate-user-hvdf))))
   (when (< (-> this nb-of-icons) 6)
-    (let ((s5-2 (-> this nb-of-icons)))
-      (set! (-> this icons s5-2) (new 'static 'hud-icon))
-      (let ((s4-0 (manipy-spawn (new 'static 'vector :w 1.0) #f *fuelcell-naked-sg* #f :to this)))
-        (when s4-0
-          (set! (-> (the-as process-drawable (-> s4-0 0)) draw dma-add-func) dma-add-process-drawable-hud)
-          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root trans) 0.0 0.0 0.0 1.0)
-          (set-vector! (-> (the-as process-drawable (-> s4-0 0)) root scale) 0.009 0.009 0.009 1.0)
-          (if #f (send-event (ppointer->process s4-0) 'trans-hook #f)))
-        (set! (-> this icons s5-2 icon) (the-as (pointer manipy) s4-0))
-        (when s4-0
-          (logior! (-> s4-0 0 mask) (process-mask pause))
-          (logclear! (-> s4-0 0 mask) (process-mask menu progress))
-          (set! (-> (the-as process-drawable (-> s4-0 0)) root trans z) 2048.0)
-          (set! (-> this icons s5-2 icon-x) 256)
-          (set! (-> this icons s5-2 icon-y) 62)
-          (set! (-> this icons s5-2 icon-z) 0)
-          (set! (-> this icons s5-2 scale-x) 0.009)
-          (set! (-> this icons s5-2 scale-y) 0.009))))
+    (let ((icon-index (-> this nb-of-icons)))
+      (set! (-> this icons icon-index) (new 'static 'hud-icon))
+      (let ((icon (manipy-spawn (new 'static 'vector :w 1.0) #f *fuelcell-naked-sg* #f :to this)))
+        (when icon
+          (set! (-> (the-as process-drawable (-> icon 0)) draw dma-add-func) dma-add-process-drawable-hud)
+          (set-vector! (-> (the-as process-drawable (-> icon 0)) root trans) 0.0 0.0 0.0 1.0)
+          (set-vector! (-> (the-as process-drawable (-> icon 0)) root scale) 0.009 0.009 0.009 1.0)
+          (if #f (send-event (ppointer->process icon) 'trans-hook #f)))
+        (set! (-> this icons icon-index icon) (the-as (pointer manipy) icon))
+        (when icon
+          (logior! (-> icon 0 mask) (process-mask pause))
+          (logclear! (-> icon 0 mask) (process-mask menu progress))
+          (set! (-> (the-as process-drawable (-> icon 0)) root trans z) 2048.0)
+          (set! (-> this icons icon-index icon-x) 256)
+          (set! (-> this icons icon-index icon-y) 62)
+          (set! (-> this icons icon-index icon-z) 0)
+          (set! (-> this icons icon-index scale-x) 0.009)
+          (set! (-> this icons icon-index scale-y) 0.009))))
     (+! (-> this nb-of-icons) 1))
   (set! (-> this text-x) 276)
   (set! (-> this text-y) 45)
@@ -992,15 +1046,16 @@
   (set! (-> this increment-on-event) #t)
   (set! (-> this skip-particle) -2)
   (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
-  (let ((s5-4 (new 'stack-no-clear 'quaternion)))
-    (quaternion-axis-angle! s5-4 0.0 1.0 0.0 16384.0)
-    (quaternion*! (-> this icons 0 icon 0 root quat) s5-4 (-> this icons 0 icon 0 root quat)))
+  (let ((turn-around (new 'stack-no-clear 'quaternion)))
+    (quaternion-axis-angle! turn-around 0.0 1.0 0.0 16384.0)
+    (quaternion*! (-> this icons 0 icon 0 root quat) turn-around (-> this icons 0 icon 0 root quat)))
   0
   (none))
 
-(defmethod set-pos-and-scale ((this hud-fuel-cell) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-fuel-cell) (widescreen? symbol) (pal? symbol))
+  "Select the power-cell model, center, and starburst scales for widescreen and PAL output."
   (cond
-    (arg0
+    (widescreen?
      (set! (-> this scale-starburst-3-x) 10240.0)
      (set! (-> this scale-starburst-3-y) 9420.8)
      (set! (-> this scale-starburst-4-x) 9420.8)
@@ -1016,7 +1071,7 @@
      (set! (-> this scale-icon) 0.009)
      (set! (-> this scale-center) 7372.8)
      (set! (-> this icon-pos-y) 62)))
-  (if arg1 (set! (-> this icon-pos-y) (the int (* (the float (-> this icon-pos-y)) (if arg0 1.1 1.14)))))
+  (if pal? (set! (-> this icon-pos-y) (the int (* (the float (-> this icon-pos-y)) (if widescreen? 1.1 1.14)))))
   0
   (none))
 
@@ -1037,7 +1092,7 @@
    (:b 128.0)
    (:a 0.0)
    (:timer (seconds -0.005))
-   (:flags (bit9))))
+   (:flags (write-depth))))
 
 (defpart 325
   :init-specs
@@ -1056,20 +1111,24 @@
    (:vel-x (meters 0.053333335))
    (:vel-z (meters 0))
    (:timer (seconds -0.005))
-   (:flags (bit2 bit7 bit9))
+   (:flags (die-when-faded orbit write-depth))
    (:func 'part-hud-buzzer-func)))
 
 (deftype hud-buzzers (hud)
   ((scale         float)
    (text-y-offset int32)))
 
-
-(defun part-hud-buzzer-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-0 (-> *hud-parts* buzzers 0 scale))) (set! (-> arg2 vector 0 w) f0-0) (set! (-> arg2 vector 1 w) f0-0))
+(defun part-hud-buzzer-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Apply the display-dependent scale to the scout-fly HUD particle."
+  (let ((scale (-> *hud-parts* buzzers 0 scale)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
   (none))
 
 (defmethod draw-hud ((this hud-buzzers))
-  (let ((t9-0 (method-of-type hud draw-hud))) (t9-0 this))
+  "Draw the scout-fly particle and count. The PC collectable view can show the original
+   current-level count, game-wide totals, or current-level totals."
+  (let ((base-draw (method-of-type hud draw-hud))) (base-draw this))
   (set! (-> this text-y) (+ (if (nonzero? (-> this next-y-offset)) (-> this text-y-offset) 0) 362))
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug))
     (let* ((string-x (+ (-> this text-x) (* (-> this x-sgn) (-> this offset))))
@@ -1090,12 +1149,12 @@
                                 (font-flags shadow kerning large)
                                 0.8))
         (((hud-collectable-view level-totals))
-         (let ((lvl-idx (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+         (let ((level-index (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
            ;; show flies collected/total this level
            (draw-string-xy-scaled (string-format " ~D~% /~D"
                                                  (buzzer-count *game-info*
-                                                               (-> *level-task-data* lvl-idx task-info (-> *level-task-data* lvl-idx buzzer-task-index) task-id))
-                                                 (-> *game-counts* data lvl-idx buzzer-count))
+                                                               (-> *level-task-data* level-index task-info (-> *level-task-data* level-index buzzer-task-index) task-id))
+                                                 (-> *game-counts* data level-index buzzer-count))
                                   buf
                                   string-x
                                   (- string-y 5)
@@ -1114,22 +1173,24 @@
   (none))
 
 (defmethod hud-update ((this hud-buzzers))
+  "Tally the displayed count toward Jak's current scout-fly count."
   (if *target* (tally-value this (the int (+ 0.5 (-> *target* fact buzzer))) 0))
   0
   (none))
 
-(defmethod init-particles! ((this hud-buzzers) (arg0 int))
+(defmethod init-particles! ((this hud-buzzers) (init-value int))
+  "Create the scout-fly particle, allocate its sprite matrix, and position its count text."
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-0 (-> this nb-of-particles)))
-      (set! (-> this particles s5-0) (new 'static 'hud-particle))
-      (set! (-> this particles s5-0 part) (create-launch-control group-part-hud-buzzer this))
-      (set! (-> this particles s5-0 init-pos x) 60.0)
-      (set! (-> this particles s5-0 init-pos y) 380.0)
-      (set! (-> this particles s5-0 init-pos z) 1.0)
-      (set! (-> this particles s5-0 part matrix) -1))
+    (let ((particle-index (-> this nb-of-particles)))
+      (set! (-> this particles particle-index) (new 'static 'hud-particle))
+      (set! (-> this particles particle-index part) (create-launch-control group-part-hud-buzzer this))
+      (set! (-> this particles particle-index init-pos x) 60.0)
+      (set! (-> this particles particle-index init-pos y) 380.0)
+      (set! (-> this particles particle-index init-pos z) 1.0)
+      (set! (-> this particles particle-index part matrix) -1))
     (+! (-> this nb-of-particles) 1))
-  (dotimes (s5-1 (-> this nb-of-particles))
-    (if (= (-> this particles s5-1 part matrix) -1) (set! (-> this particles s5-1 part matrix) (sprite-allocate-user-hvdf))))
+  (dotimes (i (-> this nb-of-particles))
+    (if (= (-> this particles i part matrix) -1) (set! (-> this particles i part matrix) (sprite-allocate-user-hvdf))))
   (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
   (set! (-> this text-x) 85)
   (set! (-> this text-y) 362)
@@ -1141,21 +1202,26 @@
   (none))
 
 (defmethod get-icon-pos-x ((this hud-buzzers))
+  "Return the scout-fly icon's screen X position for collectable flight."
   (-> this text-x))
 
 (defmethod get-icon-pos-y ((this hud-buzzers))
+  "Return the scout-fly icon's screen Y position for collectable flight."
   (+ (if (= (-> *setting-control* current video-mode) 'pal) (+ (-> this text-y) 120) (+ (-> this text-y) 50))
      (-> this next-y-offset)))
 
 (defmethod get-icon-scale-x ((this hud-buzzers))
+  "Return the scout-fly collectable's destination X scale."
   0.008)
 
 (defmethod get-icon-scale-y ((this hud-buzzers))
+  "Return the scout-fly collectable's destination Y scale."
   -0.008)
 
-(defmethod set-pos-and-scale ((this hud-buzzers) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-buzzers) (widescreen? symbol) (pal? symbol))
+  "Select the scout-fly particle scale and text offset for widescreen output."
   (cond
-    (arg0 (set! (-> this scale) 6553.6) (set! (-> this text-y-offset) -40))
+    (widescreen? (set! (-> this scale) 6553.6) (set! (-> this text-y-offset) -40))
     (else (set! (-> this scale) 7372.8) (set! (-> this text-y-offset) 0) 0))
   0
   (none))
@@ -1183,7 +1249,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-eco-timer-func)))
 
 (defpart 328
@@ -1197,7 +1263,7 @@
    (:b 63.0)
    (:a 64.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-eco-timer-backing-func)))
 
 (defpartgroup group-part-hud-timer-blue
@@ -1217,7 +1283,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-eco-timer-01-func)))
 
 (defpart 330
@@ -1231,7 +1297,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-eco-timer-02-func)))
 
 (defpart 331
@@ -1245,7 +1311,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-eco-timer-03-func)))
 
 (deftype hud-power (hud)
@@ -1253,101 +1319,119 @@
    (scale-backing float)
    (scale-blue    float)))
 
-
-(defun calculate-rotation-and-color-for-slice ((arg0 int) (arg1 float) (arg2 int) (arg3 int) (arg4 int) (arg5 matrix))
+(defun calculate-rotation-and-color-for-slice ((slice-index int) (fraction float) (red int) (green int) (blue int) (matrix-out matrix))
+  "Rotate one of the eco meter's three fill slices to match fraction and write its RGB color.
+   Empty slices are moved out of view; the last fifth of the meter flashes by alternating green."
   (cond
-    ((>= 0.0 arg1) (set! (-> arg5 vector 1 z) -16566.045))
+    ((>= 0.0 fraction) (set! (-> matrix-out vector 1 z) -16566.045))
     (else
-     (let ((v1-1 arg0))
+     (let ((slice slice-index))
        (cond
-         ((zero? v1-1)
-          (if (< 1.0 arg1)
-            (set! (-> arg5 vector 1 z) 910.2222)
-            (set! (-> arg5 vector 1 z) (* 182.04445 (+ 5.0 (* 263.0 (- 1.0 arg1)))))))
-         ((= v1-1 1)
-          (if (< 0.6666667 arg1)
-            (set! (-> arg5 vector 1 z) 17294.223)
-            (set! (-> arg5 vector 1 z) (* 182.04445 (+ 95.0 (* 173.0 (- 1.0 (* 1.5 arg1))))))))
-         ((= v1-1 2)
-          (if (< 0.33333334 arg1)
-            (set! (-> arg5 vector 1 z) 33678.223)
-            (set! (-> arg5 vector 1 z) (* 182.04445 (+ 185.0 (* 83.0 (- 1.0 (* 3.0 arg1))))))))))))
+         ((zero? slice)
+          (if (< 1.0 fraction)
+            (set! (-> matrix-out vector 1 z) 910.2222)
+            (set! (-> matrix-out vector 1 z) (* 182.04445 (+ 5.0 (* 263.0 (- 1.0 fraction)))))))
+         ((= slice 1)
+          (if (< 0.6666667 fraction)
+            (set! (-> matrix-out vector 1 z) 17294.223)
+            (set! (-> matrix-out vector 1 z) (* 182.04445 (+ 95.0 (* 173.0 (- 1.0 (* 1.5 fraction))))))))
+         ((= slice 2)
+          (if (< 0.33333334 fraction)
+            (set! (-> matrix-out vector 1 z) 33678.223)
+            (set! (-> matrix-out vector 1 z) (* 182.04445 (+ 185.0 (* 83.0 (- 1.0 (* 3.0 fraction))))))))))))
   ;; low eco flashing
   ;; og:preserve-this modified to support high fps
-  (if (and (< 0.0 arg1)
-           (and (< arg1 0.2) (zero? (logand (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 4))))
-    (set! arg3 (* arg3 2)))
-  (set! (-> arg5 vector 2 x) (the float arg2))
-  (set! (-> arg5 vector 2 y) (the float arg3))
-  (set! (-> arg5 vector 2 z) (the float arg4))
+  (if (and (< 0.0 fraction)
+           (and (< fraction 0.2) (zero? (logand (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 4))))
+    (set! green (* green 2)))
+  (set! (-> matrix-out vector 2 x) (the float red))
+  (set! (-> matrix-out vector 2 y) (the float green))
+  (set! (-> matrix-out vector 2 z) (the float blue))
   0
   (none))
 
-(defun part-hud-eco-timer-01-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-2 (/ (the float
-                      (the-as uint
-                              (- (-> *target* fact eco-timeout)
-                                 (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))))
-                 (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))))
-        (a2-1 0)
-        (a3-0 64)
-        (t0-0 128))
+(defun part-hud-eco-timer-01-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Color and rotate the first eco-meter fill slice for the active eco type and remaining time."
+  (let ((fraction (/ (the float
+                          (the-as uint
+                                  (- (-> *target* fact eco-timeout)
+                                     (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))))
+                     (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))))
+        (red 0)
+        (green 64)
+        (blue 128))
     (case (-> *target* fact eco-type)
-      (((pickup-type eco-yellow)) (set! a2-1 128) (set! a3-0 96) (set! t0-0 0))
-      (((pickup-type eco-red)) (set! a2-1 128) (set! a3-0 32) (set! t0-0 0))
-      (((pickup-type eco-green)) (set! a2-1 0) (set! a3-0 128) (set! t0-0 32)))
-    (calculate-rotation-and-color-for-slice 0 f0-2 a2-1 a3-0 t0-0 arg2))
-  (let ((f0-3 (-> *hud-parts* power 0 scale-blue))) (set! (-> arg2 vector 0 w) f0-3) (set! (-> arg2 vector 1 w) f0-3))
+      (((pickup-type eco-yellow)) (set! red 128) (set! green 96) (set! blue 0))
+      (((pickup-type eco-red)) (set! red 128) (set! green 32) (set! blue 0))
+      (((pickup-type eco-green)) (set! red 0) (set! green 128) (set! blue 32)))
+    (calculate-rotation-and-color-for-slice 0 fraction red green blue matrix-out))
+  (let ((scale (-> *hud-parts* power 0 scale-blue)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
   0
   (none))
 
-(defun part-hud-eco-timer-02-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-2 (/ (the float
-                      (the-as uint
-                              (- (-> *target* fact eco-timeout)
-                                 (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))))
-                 (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))))
-        (a2-1 0)
-        (a3-0 64)
-        (t0-0 128))
+(defun part-hud-eco-timer-02-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Color and rotate the second eco-meter fill slice for the active eco type and remaining time."
+  (let ((fraction (/ (the float
+                          (the-as uint
+                                  (- (-> *target* fact eco-timeout)
+                                     (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))))
+                     (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))))
+        (red 0)
+        (green 64)
+        (blue 128))
     (case (-> *target* fact eco-type)
-      (((pickup-type eco-yellow)) (set! a2-1 128) (set! a3-0 96) (set! t0-0 0))
-      (((pickup-type eco-red)) (set! a2-1 128) (set! a3-0 32) (set! t0-0 0))
-      (((pickup-type eco-green)) (set! a2-1 0) (set! a3-0 128) (set! t0-0 32)))
-    (calculate-rotation-and-color-for-slice 1 f0-2 a2-1 a3-0 t0-0 arg2))
-  (let ((f0-3 (-> *hud-parts* power 0 scale-blue))) (set! (-> arg2 vector 0 w) f0-3) (set! (-> arg2 vector 1 w) f0-3))
+      (((pickup-type eco-yellow)) (set! red 128) (set! green 96) (set! blue 0))
+      (((pickup-type eco-red)) (set! red 128) (set! green 32) (set! blue 0))
+      (((pickup-type eco-green)) (set! red 0) (set! green 128) (set! blue 32)))
+    (calculate-rotation-and-color-for-slice 1 fraction red green blue matrix-out))
+  (let ((scale (-> *hud-parts* power 0 scale-blue)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
   0
   (none))
 
-(defun part-hud-eco-timer-03-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-2 (/ (the float
-                      (the-as uint
-                              (- (-> *target* fact eco-timeout)
-                                 (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))))
-                 (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))))
-        (a2-1 0)
-        (a3-0 64)
-        (t0-0 128))
+(defun part-hud-eco-timer-03-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Color and rotate the third eco-meter fill slice for the active eco type and remaining time."
+  (let ((fraction (/ (the float
+                          (the-as uint
+                                  (- (-> *target* fact eco-timeout)
+                                     (the-as uint (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))))
+                     (the float (the-as uint (-> *FACT-bank* eco-full-timeout)))))
+        (red 0)
+        (green 64)
+        (blue 128))
     (case (-> *target* fact eco-type)
-      (((pickup-type eco-yellow)) (set! a2-1 128) (set! a3-0 96) (set! t0-0 0))
-      (((pickup-type eco-red)) (set! a2-1 128) (set! a3-0 32) (set! t0-0 0))
-      (((pickup-type eco-green)) (set! a2-1 0) (set! a3-0 128) (set! t0-0 32)))
-    (calculate-rotation-and-color-for-slice 2 f0-2 a2-1 a3-0 t0-0 arg2))
-  (let ((f0-3 (-> *hud-parts* power 0 scale-blue))) (set! (-> arg2 vector 0 w) f0-3) (set! (-> arg2 vector 1 w) f0-3))
+      (((pickup-type eco-yellow)) (set! red 128) (set! green 96) (set! blue 0))
+      (((pickup-type eco-red)) (set! red 128) (set! green 32) (set! blue 0))
+      (((pickup-type eco-green)) (set! red 0) (set! green 128) (set! blue 32)))
+    (calculate-rotation-and-color-for-slice 2 fraction red green blue matrix-out))
+  (let ((scale (-> *hud-parts* power 0 scale-blue)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
   0
   (none))
 
-(defun part-hud-eco-timer-backing-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-0 (-> *hud-parts* power 0 scale-backing))) (set! (-> arg2 vector 0 w) f0-0) (set! (-> arg2 vector 1 w) f0-0))
+(defun part-hud-eco-timer-backing-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Apply the display-dependent scale to the eco meter's backing particle."
+  (let ((scale (-> *hud-parts* power 0 scale-backing)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
   0
   (none))
 
-(defun part-hud-eco-timer-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((f0-0 (-> *hud-parts* power 0 scale-timer))) (set! (-> arg2 vector 0 w) f0-0) (set! (-> arg2 vector 1 w) f0-0))
+(defun part-hud-eco-timer-func ((system sparticle-system) (particle sparticle-cpuinfo) (matrix-out matrix))
+  "Apply the display-dependent scale to the eco meter's timer particle."
+  (let ((scale (-> *hud-parts* power 0 scale-timer)))
+    (set! (-> matrix-out vector 0 w) scale)
+    (set! (-> matrix-out vector 1 w) scale))
   0
   (none))
 
 (defmethod hud-update ((this hud-power))
+  "Tally the eco meter toward the remaining pickup time, clamped between zero and the active
+   eco timeout."
   (if *target*
     (tally-value this
                  (max 0
@@ -1359,45 +1443,53 @@
   0
   (none))
 
-(defmethod init-particles! ((this hud-power) (arg0 int))
+(defmethod init-particles! ((this hud-power) (init-value int))
+  "Create the eco meter's backing, three-slice fill, and timer particles and allocate their
+   sprite matrices."
+  (local-vars (particle-index int))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-0 (-> this nb-of-particles)))
-      (set! (-> this particles s5-0) (new 'static 'hud-particle))
-      (set! (-> this particles s5-0 part) (create-launch-control group-part-hud-eco-timer-backing this))
-      (set! (-> this particles s5-0 init-pos x) 435.0)
-      (set! (-> this particles s5-0 init-pos y) 370.0)
-      (set! (-> this particles s5-0 init-pos z) 10.0)
-      (set! (-> this particles s5-0 part matrix) -1))
+    (set! particle-index (-> this nb-of-particles))
+    (set! (-> this particles particle-index) (new 'static 'hud-particle))
+    (set! (-> this particles particle-index part) (create-launch-control group-part-hud-eco-timer-backing this))
+    (set! (-> this particles particle-index init-pos x) 435.0)
+    (set! (-> this particles particle-index init-pos y) 370.0)
+    (set! (-> this particles particle-index init-pos z) 10.0)
+    (set! (-> this particles particle-index part matrix) -1)
     (+! (-> this nb-of-particles) 1))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-1 (-> this nb-of-particles)))
-      (set! (-> this particles s5-1) (new 'static 'hud-particle))
-      (set! (-> this particles s5-1 part) (create-launch-control group-part-hud-timer-blue this))
-      (set! (-> this particles s5-1 init-pos x) 432.0)
-      (set! (-> this particles s5-1 init-pos y) 368.0)
-      (set! (-> this particles s5-1 init-pos z) 3.0)
-      (set! (-> this particles s5-1 part matrix) -1))
+    (set! particle-index (-> this nb-of-particles))
+    (set! (-> this particles particle-index) (new 'static 'hud-particle))
+    (set! (-> this particles particle-index part) (create-launch-control group-part-hud-timer-blue this))
+    (set! (-> this particles particle-index init-pos x) 432.0)
+    (set! (-> this particles particle-index init-pos y) 368.0)
+    (set! (-> this particles particle-index init-pos z) 3.0)
+    (set! (-> this particles particle-index part matrix) -1)
     (+! (-> this nb-of-particles) 1))
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
-    (let ((s5-2 (-> this nb-of-particles)))
-      (set! (-> this particles s5-2) (new 'static 'hud-particle))
-      (set! (-> this particles s5-2 part) (create-launch-control group-part-hud-eco-timer this))
-      (set! (-> this particles s5-2 init-pos x) 435.0)
-      (set! (-> this particles s5-2 init-pos y) 370.0)
-      (set! (-> this particles s5-2 init-pos z) 2.0)
-      (set! (-> this particles s5-2 part matrix) -1))
+    (set! particle-index (-> this nb-of-particles))
+    (set! (-> this particles particle-index) (new 'static 'hud-particle))
+    (set! (-> this particles particle-index part) (create-launch-control group-part-hud-eco-timer this))
+    (set! (-> this particles particle-index init-pos x) 435.0)
+    (set! (-> this particles particle-index init-pos y) 370.0)
+    (set! (-> this particles particle-index init-pos z) 2.0)
+    (set! (-> this particles particle-index part matrix) -1)
     (+! (-> this nb-of-particles) 1))
-  (dotimes (s5-3 (-> this nb-of-particles))
-    (if (= (-> this particles s5-3 part matrix) -1) (set! (-> this particles s5-3 part matrix) (sprite-allocate-user-hvdf))))
+  (dotimes (i (-> this nb-of-particles))
+    (if (= (-> this particles i part matrix) -1) (set! (-> this particles i part matrix) (sprite-allocate-user-hvdf))))
   (set-pos-and-scale this (= (get-aspect-ratio) 'aspect16x9) (= (get-video-mode) 'pal))
   (set! (-> this x-sgn) 1)
   (set! (-> this y-sgn) 1)
   0
   (none))
 
-(defmethod set-pos-and-scale ((this hud-power) (arg0 symbol) (arg1 symbol))
+(defmethod set-pos-and-scale ((this hud-power) (widescreen? symbol) (pal? symbol))
+  "Select the eco meter scales for widescreen output. The PC path also adjusts horizontal
+   placement when VIS is disabled."
   (cond
-    (arg0 (set! (-> this scale-blue) 7168.0) (set! (-> this scale-timer) 11468.8) (set! (-> this scale-backing) 8960.0))
+    (widescreen?
+     (set! (-> this scale-blue) 7168.0)
+     (set! (-> this scale-timer) 11468.8)
+     (set! (-> this scale-backing) 8960.0))
     (else (set! (-> this scale-blue) 8192.0) (set! (-> this scale-timer) 13107.2) (set! (-> this scale-backing) 10240.0)))
   ;; og:preserve-this
   (#when PC_PORT
@@ -1413,13 +1505,14 @@
   0
   (none))
 
-(defun activate-hud ((arg0 process))
-  (set! (-> *hud-parts* pickups) (process-spawn hud-pickups :init hud-init-by-other 0 :to arg0))
-  (set! (-> *hud-parts* money) (process-spawn hud-money :init hud-init-by-other 0 :to arg0))
-  (set! (-> *hud-parts* fuel-cell) (process-spawn hud-fuel-cell :init hud-init-by-other 0 :to arg0))
-  (set! (-> *hud-parts* health) (process-spawn hud-health :init hud-init-by-other 0 :to arg0))
-  (set! (-> *hud-parts* buzzers) (process-spawn hud-buzzers :init hud-init-by-other 0 :to arg0))
-  (set! (-> *hud-parts* power) (process-spawn hud-power :init hud-init-by-other 0 :to arg0))
+(defun activate-hud ((parent process))
+  "Create the six standard HUD processes under parent and clear the three optional HUD entries."
+  (set! (-> *hud-parts* pickups) (process-spawn hud-pickups :init hud-init-by-other 0 :to parent))
+  (set! (-> *hud-parts* money) (process-spawn hud-money :init hud-init-by-other 0 :to parent))
+  (set! (-> *hud-parts* fuel-cell) (process-spawn hud-fuel-cell :init hud-init-by-other 0 :to parent))
+  (set! (-> *hud-parts* health) (process-spawn hud-health :init hud-init-by-other 0 :to parent))
+  (set! (-> *hud-parts* buzzers) (process-spawn hud-buzzers :init hud-init-by-other 0 :to parent))
+  (set! (-> *hud-parts* power) (process-spawn hud-power :init hud-init-by-other 0 :to parent))
   (set! (-> *hud-parts* bike-speed) (the-as (pointer hud-bike-speed) #f))
   (set! (-> *hud-parts* bike-heat) (the-as (pointer hud-bike-heat) #f))
   (set! (-> *hud-parts* money-all) (the-as (pointer hud-money-all) #f))
@@ -1427,97 +1520,114 @@
   (none))
 
 (defun hide-hud ()
+  "Ask every active HUD entry to hide."
   (when *target*
-    (dotimes (gp-0 9)
-      (if (-> *hud-parts* parts gp-0) (send-event (ppointer->process (-> *hud-parts* parts gp-0)) 'hide))))
+    (dotimes (i 9)
+      (if (-> *hud-parts* parts i) (send-event (ppointer->process (-> *hud-parts* parts i)) 'hide))))
   0
   (none))
 
 (defun hide-bottom-hud ()
+  "Ask the buzzers, eco meter, bike speed, and bike heat HUD entries to hide."
   (when *target*
-    (dotimes (gp-0 4)
-      (if (-> *hud-parts* parts (+ gp-0 4)) (send-event (ppointer->process (-> *hud-parts* parts (+ gp-0 4))) 'hide))))
+    (dotimes (i 4)
+      (if (-> *hud-parts* parts (+ i 4)) (send-event (ppointer->process (-> *hud-parts* parts (+ i 4))) 'hide))))
   0
   (none))
 
-(defun disable-hud ((arg0 int))
+(defun disable-hud ((keep-visible int))
+  "Hide every HUD entry except keep-visible, then disable every other entry. The exception is
+   also hidden when its displayed value is zero."
   (when *target*
-    (dotimes (s5-0 9)
-      (when (-> *hud-parts* parts s5-0)
-        (if (or (!= (-> *hud-parts* parts s5-0) arg0) (zero? (-> (the-as (pointer hud) (-> *hud-parts* parts s5-0)) 0 value)))
-          (send-event (ppointer->process (-> *hud-parts* parts s5-0)) 'hide))
-        (if (!= (-> *hud-parts* parts s5-0) arg0) (send-event (ppointer->process (-> *hud-parts* parts s5-0)) 'disable)))))
+    (dotimes (i 9)
+      (when (-> *hud-parts* parts i)
+        (if (or (!= (-> *hud-parts* parts i) keep-visible) (zero? (-> (the-as (pointer hud) (-> *hud-parts* parts i)) 0 value)))
+          (send-event (ppointer->process (-> *hud-parts* parts i)) 'hide))
+        (if (!= (-> *hud-parts* parts i) keep-visible) (send-event (ppointer->process (-> *hud-parts* parts i)) 'disable)))))
   0
   (none))
 
 (defun enable-hud ()
+  "Enable every active HUD entry."
   (when *target*
-    (dotimes (gp-0 9)
-      (if (-> *hud-parts* parts gp-0) (send-event (ppointer->process (-> *hud-parts* parts gp-0)) 'enable))))
+    (dotimes (i 9)
+      (if (-> *hud-parts* parts i) (send-event (ppointer->process (-> *hud-parts* parts i)) 'enable))))
   0
   (none))
 
 (defun hide-hud-quick ()
+  "Immediately hide every active HUD entry."
   (when *target*
-    (dotimes (gp-0 9)
-      (if (-> *hud-parts* parts gp-0) (send-event (ppointer->process (-> *hud-parts* parts gp-0)) 'hide-quick))))
+    (dotimes (i 9)
+      (if (-> *hud-parts* parts i) (send-event (ppointer->process (-> *hud-parts* parts i)) 'hide-quick))))
   0
   (none))
 
 (defun show-hud ()
+  "Show every active HUD entry when gameplay is active and the progress screen is absent or hidden."
   (when (and *target* (or (not *progress-process*) (hidden? (-> *progress-process* 0))))
-    (dotimes (gp-0 9)
-      (if (-> *hud-parts* parts gp-0) (send-event (ppointer->process (-> *hud-parts* parts gp-0)) 'show))))
+    (dotimes (i 9)
+      (if (-> *hud-parts* parts i) (send-event (ppointer->process (-> *hud-parts* parts i)) 'show))))
   0
   (none))
 
-(defun set-hud-aspect-ratio ((arg0 symbol) (arg1 symbol))
-  (let ((gp-0 (= arg0 'aspect16x9))
-        (s5-0 (= arg1 'pal)))
+(defun set-hud-aspect-ratio ((aspect-ratio symbol) (video-mode symbol))
+  "Update every active HUD entry for the selected aspect ratio and video mode."
+  (let ((widescreen? (= aspect-ratio 'aspect16x9))
+        (pal? (= video-mode 'pal)))
     (when *target*
-      (dotimes (s4-0 9)
-        (if (-> *hud-parts* parts s4-0) (set-pos-and-scale (-> (the-as (pointer hud) (-> *hud-parts* parts s4-0)) 0) gp-0 s5-0)))))
+      (dotimes (i 9)
+        (if (-> *hud-parts* parts i) (set-pos-and-scale (-> (the-as (pointer hud) (-> *hud-parts* parts i)) 0) widescreen? pal?)))))
   0
   (none))
 
 (defun hud-hidden? ()
-  (local-vars (gp-0 symbol))
+  "Return true when every HUD entry is absent or hidden."
+  (local-vars (all-hidden? symbol))
   (cond
     (*target*
-     (set! gp-0 #t)
-     (dotimes (s5-0 9)
-       (when (-> *hud-parts* parts s5-0)
-         (if (not (hidden? (-> (the-as (pointer hud) (-> *hud-parts* parts s5-0)) 0))) (set! gp-0 #f)))))
-    (else (set! gp-0 #t)))
-  gp-0)
+     (set! all-hidden? #t)
+     (dotimes (i 9)
+       (when (-> *hud-parts* parts i)
+         (if (not (hidden? (-> (the-as (pointer hud) (-> *hud-parts* parts i)) 0))) (set! all-hidden? #f)))))
+    (else (set! all-hidden? #t)))
+  all-hidden?)
 
 (defun bottom-hud-hidden? ()
-  (local-vars (gp-0 symbol))
+  "Return true when the four lower HUD entries are absent or hidden."
+  (local-vars (all-hidden? symbol))
   (cond
     (*target*
-     (set! gp-0 #t)
-     (dotimes (s5-0 4)
-       (when (-> *hud-parts* parts (+ s5-0 4))
-         (if (not (hidden? (-> (the-as (pointer hud) (-> *hud-parts* parts (+ s5-0 4))) 0))) (set! gp-0 #f)))))
-    (else (set! gp-0 #t)))
-  gp-0)
+     (set! all-hidden? #t)
+     (dotimes (i 4)
+       (when (-> *hud-parts* parts (+ i 4))
+         (if (not (hidden? (-> (the-as (pointer hud) (-> *hud-parts* parts (+ i 4))) 0))) (set! all-hidden? #f)))))
+    (else (set! all-hidden? #t)))
+  all-hidden?)
 
-(defun activate-orb-all ((arg0 int))
+(defun activate-orb-all ((level-index int))
+  "Create the all-orbs summary HUD for level-index if it is not already active."
   (if (not (-> *hud-parts* money-all))
-    (set! (-> *hud-parts* money-all) (process-spawn hud-money-all :init hud-init-by-other arg0 :to *target*)))
+    (set! (-> *hud-parts* money-all) (process-spawn hud-money-all :init hud-init-by-other level-index :to *target*)))
   0)
 
-(defbehavior convert-to-hud-object process-drawable ((arg0 process-drawable) (arg1 hud))
-  (when arg1
-    (logclear! (-> arg0 mask) (process-mask actor-pause))
-    (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (transform-point-vector-scale! s4-0 (-> arg0 root trans))
-      (set! (-> arg0 root trans x) (+ -2048.0 (-> s4-0 x)))
-      (set! (-> arg0 root trans y) (* 2.0 (+ -2048.0 (-> s4-0 y)))))
-    (set! (-> arg0 root trans z) 9999999.0)
-    (set! (-> arg0 root trans w) 1.0)
-    (set-vector! (-> arg0 root scale) (get-icon-scale-x arg1) (get-icon-scale-y arg1) (get-icon-scale-x arg1) 1.0)
-    (set! (-> arg0 draw dma-add-func) dma-add-process-drawable-hud)
-    (go hud-collecting (process->handle arg1)))
+(defbehavior convert-to-hud-object process-drawable ((drawable process-drawable) (hud-element hud))
+  "Move this drawable from its projected world position into HUD coordinates, scale it for
+   hud-element, and send it toward that HUD as a collected object."
+  (when hud-element
+    (logclear! (-> drawable mask) (process-mask actor-pause))
+    (let ((screen-position (new 'stack-no-clear 'vector)))
+      (transform-point-vector-scale! screen-position (-> drawable root trans))
+      (set! (-> drawable root trans x) (+ -2048.0 (-> screen-position x)))
+      (set! (-> drawable root trans y) (* 2.0 (+ -2048.0 (-> screen-position y)))))
+    (set! (-> drawable root trans z) 9999999.0)
+    (set! (-> drawable root trans w) 1.0)
+    (set-vector! (-> drawable root scale)
+                 (get-icon-scale-x hud-element)
+                 (get-icon-scale-y hud-element)
+                 (get-icon-scale-x hud-element)
+                 1.0)
+    (set! (-> drawable draw dma-add-func) dma-add-process-drawable-hud)
+    (go hud-collecting (process->handle hud-element)))
   0
   (none))

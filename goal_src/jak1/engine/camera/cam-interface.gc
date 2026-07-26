@@ -9,18 +9,24 @@
 (require "engine/math/transformq-h.gc")
 
 ;; definition for function position-in-front-of-camera!
-(defun position-in-front-of-camera! ((arg0 vector) (arg1 float) (arg2 float))
-  (vector-float*! arg0 (-> *math-camera* inv-camera-rot vector 2) arg1)
-  (vector+float*! arg0 arg0 (-> *math-camera* inv-camera-rot vector 1) arg2)
-  (vector+! arg0 arg0 (-> *math-camera* trans))
-  arg0)
+(defun position-in-front-of-camera! ((out vector) (forward-distance float) (up-distance float))
+  "Place out at forward-distance along the camera's
+   forward axis and up-distance along its up axis, measured from the current camera translation."
+  (vector-float*! out (-> *math-camera* inv-camera-rot vector 2) forward-distance)
+  (vector+float*! out out (-> *math-camera* inv-camera-rot vector 1) up-distance)
+  (vector+! out out (-> *math-camera* trans))
+  out)
 
 ;; definition for function matrix-local->world
-(defun matrix-local->world ((arg0 symbol) (arg1 symbol))
-  (if arg0 (-> *math-camera* inv-camera-rot-smooth) (-> *math-camera* inv-camera-rot)))
+(defun matrix-local->world ((smooth? symbol) (unused-mode symbol))
+  "Return the camera local-to-world rotation. smooth? selects the
+   smoothed inverse-camera matrix; the second argument is retained for the shared interface but is
+   unused."
+  (if smooth? (-> *math-camera* inv-camera-rot-smooth) (-> *math-camera* inv-camera-rot)))
 
 ;; definition for function matrix-world->local
 (defun matrix-world->local ()
+  "Return the current world-to-camera rotation matrix."
   (-> *math-camera* camera-rot))
 
 (define-perm *camera-dummy-vector* vector (vector-reset! (new 'global 'vector)))
@@ -28,6 +34,9 @@
 ;; definition for function camera-pos
 ;; INFO: Return type mismatch object vs vector.
 (defun camera-pos ()
+  "Return the active camera position. Prefer the combiner output while a
+   camera transition is active, otherwise use the renderer camera, with a zero-vector fallback
+   before camera initialization."
   (the-as vector
           (cond
             (*camera-combiner* (-> *camera-combiner* stack))
@@ -36,22 +45,28 @@
 
 ;; definition for function math-camera-pos
 (defun math-camera-pos ()
+  "Return the renderer's current camera translation."
   (-> *math-camera* trans))
 
 ;; definition for function camera-angle
 (defun camera-angle ()
-  (let ((f0-0 (-> *math-camera* camera-rot data 0))
-        (f1-0 (-> *math-camera* camera-rot data 2)))
-    (atan f1-0 f0-0)))
+  "Return the camera's horizontal heading from the X and Z components of
+   the world-to-camera right axis."
+  (let ((right-x (-> *math-camera* camera-rot vector 0 x))
+        (right-z (-> *math-camera* camera-rot vector 0 z)))
+    (atan right-z right-x)))
 
 ;; definition for function camera-teleport-to-entity
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
-(defbehavior camera-teleport-to-entity process ((arg0 entity-actor))
-  (let ((gp-0 (new 'stack 'transformq)))
-    (set! (-> gp-0 trans quad) (-> (the-as transform (-> arg0 extra)) scale quad))
-    (quaternion-copy! (-> gp-0 quat) (-> arg0 quat))
-    (vector-identity! (-> gp-0 scale))
-    (send-event *camera* 'teleport-to-transformq gp-0))
+(defbehavior camera-teleport-to-entity process ((start-entity entity-actor))
+  "Build a unit-scale camera transform from start-entity's
+   orientation and the position stored in the scale vector of its extra transform, then send it to
+   the camera master as an immediate teleport."
+  (let ((teleport-transform (new 'stack 'transformq)))
+    (set! (-> teleport-transform trans quad) (-> (the-as transform (-> start-entity extra)) scale quad))
+    (quaternion-copy! (-> teleport-transform quat) (-> start-entity quat))
+    (vector-identity! (-> teleport-transform scale))
+    (send-event *camera* 'teleport-to-transformq teleport-transform))
   0
   (none))

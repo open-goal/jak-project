@@ -14,76 +14,81 @@
 
 ;; DECOMP BEGINS
 
-(defmethod process-taskable-method-52 ((this process-taskable))
-  (let ((v1-1 (-> this draw shadow-ctrl)))
-    (when v1-1
-      (let ((a0-1 v1-1)) (set! (-> a0-1 settings bot-plane w) (- -12288.0)))
+(defmethod setup-shadow-settings! ((this process-taskable))
+  "Set this character's shadow-control bottom and top plane W terms to 12288 and -4096."
+  (let ((shadow-ctrl (-> this draw shadow-ctrl)))
+    (when shadow-ctrl
+      (let ((shadow-ctrl-alias shadow-ctrl)) (set! (-> shadow-ctrl-alias settings bot-plane w) (- -12288.0)))
       0
-      (set! (-> v1-1 settings top-plane w) (- 4096.0))
+      (set! (-> shadow-ctrl settings top-plane w) (- 4096.0))
       0))
   (none))
 
-(defmethod init! ((this gui-query) (arg0 string) (arg1 int) (arg2 int) (arg3 int) (arg4 symbol) (arg5 string))
-  (set! (-> this x-position) arg1)
-  (set! (-> this y-position) arg2)
-  (set! (-> this message-space) arg3)
-  (set! (-> this only-allow-cancel) arg4)
-  (set! (-> this message) arg0)
+(defmethod init! ((this gui-query) (message string) (x-position int) (y-position int) (message-space int) (cancel-only? symbol) (cancel-message string))
+  "Initialize a prompt at x-position and y-position. message-space separates the question from
+   its response line; cancel-only? disables confirmation, and cancel-message labels that response."
+  (set! (-> this x-position) x-position)
+  (set! (-> this y-position) y-position)
+  (set! (-> this message-space) message-space)
+  (set! (-> this only-allow-cancel) cancel-only?)
+  (set! (-> this message) message)
   (set! (-> this decision) 'undecided)
-  (set! (-> this no-msg) arg5)
+  (set! (-> this no-msg) cancel-message)
   0
   (none))
 
 (defmethod get-response ((this gui-query))
+  "Suppress hints and the HUD while displaying this prompt. Consume X as yes when confirmation
+   is allowed or triangle as no, then return yes, no, or undecided."
   (kill-current-level-hint '() '(sidekick voicebox stinger) 'exit)
   (level-hint-surpress!)
   (hide-hud)
   (when (hud-hidden?)
     (when (-> this message)
-      (let ((a1-2 (new 'stack
-                       'font-context
-                       *font-default-matrix*
-                       (-> this x-position)
-                       (-> this y-position)
-                       0.0
-                       (font-color default)
-                       (font-flags shadow kerning))))
-        (set-width! a1-2 (- 512 (-> this x-position)))
-        (set-height! a1-2 40)
-        (set-scale! a1-2 0.9)
-        (set! (-> a1-2 flags) (font-flags shadow kerning middle-vert large))
-        (print-game-text (-> this message) a1-2 #f 128 22)))
+      (let ((message-font (new 'stack
+                               'font-context
+                               *font-default-matrix*
+                               (-> this x-position)
+                               (-> this y-position)
+                               0.0
+                               (font-color default)
+                               (font-flags shadow kerning))))
+        (set-width! message-font (- 512 (-> this x-position)))
+        (set-height! message-font 40)
+        (set-scale! message-font 0.9)
+        (set! (-> message-font flags) (font-flags shadow kerning middle-vert large))
+        (print-game-text (-> this message) message-font #f 128 22)))
     ;; og:preserve-this PAL patch here
     (cond
       ((-> this only-allow-cancel)
        (when (-> this no-msg)
          (clear *temp-string*)
          (format *temp-string* "; = ~S" (-> this no-msg))
-         (let ((a1-5 (new 'stack
-                          'font-context
-                          *font-default-matrix*
-                          (-> this x-position)
-                          (+ (-> this y-position) 5 (-> this message-space))
-                          0.0
-                          (font-color default)
-                          (font-flags shadow kerning))))
-           (let ((v1-15 a1-5)) (set! (-> v1-15 width) (the float 400)))
-           (let ((v1-16 a1-5)) (set! (-> v1-16 height) (the float 100)))
-           (set! (-> a1-5 flags) (font-flags shadow kerning large))
-           (print-game-text *temp-string* a1-5 #f 128 22))))
+         (let ((response-font (new 'stack
+                                   'font-context
+                                   *font-default-matrix*
+                                   (-> this x-position)
+                                   (+ (-> this y-position) 5 (-> this message-space))
+                                   0.0
+                                   (font-color default)
+                                   (font-flags shadow kerning))))
+           (let ((v1-15 response-font)) (set! (-> v1-15 width) (the float 400)))
+           (let ((v1-16 response-font)) (set! (-> v1-16 height) (the float 100)))
+           (set! (-> response-font flags) (font-flags shadow kerning large))
+           (print-game-text *temp-string* response-font #f 128 22))))
       (else
-       (let ((s5-0 (new 'stack
-                        'font-context
-                        *font-default-matrix*
-                        (-> this x-position)
-                        (+ (-> this y-position) 5 (-> this message-space))
-                        0.0
-                        (font-color default)
-                        (font-flags shadow kerning))))
-         (let ((v1-22 s5-0)) (set! (-> v1-22 width) (the float 400)))
-         (let ((v1-23 s5-0)) (set! (-> v1-23 height) (the float 100)))
-         (set! (-> s5-0 flags) (font-flags shadow kerning large))
-         (print-game-text (lookup-text! *common-text* (text-id confirm) #f) s5-0 #f 128 22))))
+       (let ((response-font (new 'stack
+                                 'font-context
+                                 *font-default-matrix*
+                                 (-> this x-position)
+                                 (+ (-> this y-position) 5 (-> this message-space))
+                                 0.0
+                                 (font-color default)
+                                 (font-flags shadow kerning))))
+         (let ((v1-22 response-font)) (set! (-> v1-22 width) (the float 400)))
+         (let ((v1-23 response-font)) (set! (-> v1-23 height) (the float 100)))
+         (set! (-> response-font flags) (font-flags shadow kerning large))
+         (print-game-text (lookup-text! *common-text* (text-id confirm) #f) response-font #f 128 22))))
     (cond
       ((!= (-> this decision) 'undecided))
       ((and (cpad-pressed? 0 x) (not (-> this only-allow-cancel)))
@@ -97,9 +102,13 @@
   (-> this decision))
 
 (defmethod relocate ((this process-taskable) (offset int))
+  "Adjust every optional drawable controller owned by this process, then relocate the process
+   allocation."
   (the-as process-taskable ((method-of-type process-drawable relocate) this offset)))
 
-(defmethod process-taskable-method-46 ((this process-taskable))
+(defmethod update-music-and-flava! ((this process-taskable))
+  "Enable the configured sound flavor and music while the target is within 102400 world units,
+   counting vertical separation fourfold, and remove each setting after the target leaves that range."
   (when (nonzero? (-> this sound-flava))
     (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root root-prim prim-core world-sphere))))
       (set! (-> s5-1 y) (* 4.0 (-> s5-1 y)))
@@ -111,10 +120,10 @@
            (set-setting! 'sound-flava #f 20.0 (-> this sound-flava))))
         ((-> this have-flava) (remove-setting! 'sound-flava) (set! (-> this have-flava) #f)))))
   (when (-> this music)
-    (let ((s5-3 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root root-prim prim-core world-sphere))))
-      (set! (-> s5-3 y) (* 4.0 (-> s5-3 y)))
+    (let ((to-target (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root root-prim prim-core world-sphere))))
+      (set! (-> to-target y) (* 4.0 (-> to-target y)))
       (cond
-        ((< (vector-length s5-3) 102400.0)
+        ((< (vector-length to-target) 102400.0)
          (when (not (-> this have-music))
            (set! (-> this have-music) #t)
            (set-setting! 'music (-> this music) 0.0 0)))
@@ -123,53 +132,71 @@
   (none))
 
 (defmethod get-art-elem ((this process-taskable))
+  "Return the art element on the active root animation channel."
   (the-as art-element (if (> (-> this skel active-channels) 0) (-> this skel root-channel 0 frame-group))))
 
-(defmethod play-anim! ((this process-taskable) (arg0 symbol))
+(defmethod play-anim! ((this process-taskable) (commit? symbol))
+  "Return this character's animation for the current task stage. commit? lets subtype
+   implementations apply progression changes when playback really begins; false only selects or
+   prefetches the animation."
   (the-as basic #f))
 
-(defmethod process-taskable-method-33 ((this process-taskable))
-  (let ((s5-0 (play-anim! this #f)))
-    (if (type-type? (-> s5-0 type) spool-anim) (spool-push *art-control* (-> (the-as spool-anim s5-0) name) 0 this -99.0)))
+(defmethod prefetch-play-anim! ((this process-taskable))
+  "Select the current play animation without committing progression and request it at streaming
+   priority -99 when it is spooled."
+  (let ((animation (play-anim! this #f)))
+    (if (type-type? (-> animation type) spool-anim)
+      (spool-push *art-control* (-> (the-as spool-anim animation) name) 0 this -99.0)))
   0
   (none))
 
 (defmethod close-anim-file! ((this process-taskable))
-  (let* ((gp-0 (play-anim! this #f))
-         (v1-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) spool-anim)) gp-0)))
-    (if v1-2 (file-status *art-control* (-> (the-as spool-anim v1-2) name) 0))))
+  "Return the streaming state of the current play animation's first part, or #f when it is not
+   a spooled animation."
+  (let* ((animation (play-anim! this #f))
+         (spooled-animation (if (and (nonzero? animation) (type-type? (-> animation type) spool-anim)) animation)))
+    (if spooled-animation (file-status *art-control* (-> (the-as spool-anim spooled-animation) name) 0))))
 
-(defmethod get-accept-anim ((this process-taskable) (arg0 symbol))
+(defmethod get-accept-anim ((this process-taskable) (commit? symbol))
+  "Return the task-accept animation. commit? lets subtype implementations apply the accepted
+   choice when playback begins."
   (the-as spool-anim #f))
 
 (defmethod push-accept-anim ((this process-taskable))
-  (let ((s5-0 (get-accept-anim this #f)))
-    (if (type-type? (-> s5-0 type) spool-anim) (spool-push *art-control* (-> s5-0 name) 0 this -99.0)))
+  "Select the task-accept animation without committing the choice and request it for streaming."
+  (let ((animation (get-accept-anim this #f)))
+    (if (type-type? (-> animation type) spool-anim) (spool-push *art-control* (-> animation name) 0 this -99.0)))
   0
   (none))
 
-(defmethod get-reject-anim ((this process-taskable) (arg0 symbol))
+(defmethod get-reject-anim ((this process-taskable) (commit? symbol))
+  "Return the task-reject animation. commit? lets subtype implementations apply the rejected
+   choice when playback begins."
   (the-as spool-anim #f))
 
 (defmethod push-reject-anim ((this process-taskable))
-  (let ((s5-0 (get-reject-anim this #f)))
-    (if (type-type? (-> s5-0 type) spool-anim) (spool-push *art-control* (-> s5-0 name) 0 this -99.0)))
+  "Select the task-reject animation without committing the choice and request it for streaming."
+  (let ((animation (get-reject-anim this #f)))
+    (if (type-type? (-> animation type) spool-anim) (spool-push *art-control* (-> animation name) 0 this -99.0)))
   0
   (none))
 
-(defmethod process-taskable-method-38 ((this process-taskable))
+(defmethod goto-post-anim-state! ((this process-taskable))
+  "Enter give-cell when the task owes a reward, otherwise enter release."
   (if (nonzero? (-> this cell-for-task)) (go (method-of-object this give-cell)))
   (go (method-of-object this release))
   (none))
 
 (defbehavior process-taskable-anim-loop process-taskable ()
+  "Blend to the character's current art element when needed, then loop it indefinitely and try
+   ambient chatter while the next state is idle."
   (when (!= (ja-group) (get-art-elem self))
     (ja-channel-push! 1 (seconds 0.2))
     (ja :group! (get-art-elem self)))
   (loop
     (suspend)
     (ja :num! (loop!))
-    (if (= (-> self next-state name) 'idle) (process-taskable-method-43 self)))
+    (if (= (-> self next-state name) 'idle) (try-play-ambient-chatter self)))
   (the-as none 0)
   (none))
 
@@ -180,7 +207,7 @@
       (when (process-release? *target*)
         (send-event *target* 'trans 'restore (-> self old-target-pos))
         (if (should-display? self) (go-virtual idle) (go-virtual hidden)))
-      (process-taskable-method-33 self)
+      (prefetch-play-anim! self)
       ((-> self cur-trans-hook)))
   :code process-taskable-anim-loop
   :post ja-post)
@@ -204,7 +231,7 @@
                  (-> self name)
                  (game-task->string (current-task (-> self tasks))))))
       (go-virtual release)
-      (process-taskable-method-33 self)
+      (prefetch-play-anim! self)
       ((-> self cur-trans-hook)))
   :code process-taskable-anim-loop
   :post ja-post)
@@ -229,6 +256,8 @@
   :post ja-post)
 
 (defbehavior process-taskable-play-anim-enter process-taskable ()
+  "Prepare task-animation playback: initialize the cancellation query, enable animation blending,
+   spawn the joint camera, clear reward and playback flags, and suppress ambient speech."
   (init! (-> self query) (the-as string #f) 40 150 25 #t (the-as string #f))
   (logior! (-> self skel status) (janim-status blerc))
   (set! (-> self camera) (ppointer->handle (process-spawn othercam self (-> self cam-joint-index) #f #t :to self)))
@@ -239,29 +268,36 @@
   #f)
 
 (defbehavior process-taskable-play-anim-exit process-taskable ()
+  "End task-animation playback by clearing blend state, stopping the joint camera, recording the
+   last-talk frame, and restoring the default shadow clipping planes."
   (logclear! (-> self skel status) (janim-status blerc))
-  (let ((a0-4 (handle->process (-> self camera)))) (if a0-4 (deactivate a0-4)))
+  (let ((camera-process (handle->process (-> self camera)))) (if camera-process (deactivate camera-process)))
   (set! (-> self last-talk) (-> *display* game-frame-counter))
-  (process-taskable-method-52 self)
+  (setup-shadow-settings! self)
   (none))
 
 (defbehavior process-taskable-play-anim-trans process-taskable ()
+  "Keep the other camera active, hold the letterbox transition, and update this character's shadow
+   during task-animation playback."
   (if (nonzero? *camera-look-through-other*) (set! *camera-look-through-other* 2))
   (set-letterbox-frames (seconds 0.017))
   (draw-npc-shadow self)
   (none))
 
-(defbehavior process-taskable-play-anim-code process-taskable ((arg0 art-joint-anim) (arg1 basic))
+(defbehavior process-taskable-play-anim-code process-taskable ((previous-animation art-joint-anim) (animation basic))
+  "Play animation for the current task interaction. Streamed animations coordinate target cloning,
+   movie audio levels, optional blending, and skip handling; resident joint animations seek to their
+   end while allowing debug cancellation. previous-animation supplies the blend source."
   (when (nonzero? (-> self cell-for-task))
     (if (name= (-> self state name) "play-anim")
       (set! (-> self cell-x)
             (ppointer->handle (process-spawn fuel-cell :init fuel-cell-init-as-clone (process->handle self) (-> self cell-for-task) :to self)))
       (format #t "ERROR<GMJ>: ~S ~S trying to give cell on release~%" (-> self name) (-> self state name))))
   (cond
-    ((and arg1 (type-type? (-> arg1 type) spool-anim))
+    ((and animation (type-type? (-> animation type) spool-anim))
      (when *target*
        (while (not (send-event *target* 'clone-anim self))
-         (spool-push *art-control* (-> (the-as spool-anim arg1) name) 0 self -99.0)
+         (spool-push *art-control* (-> (the-as spool-anim animation) name) 0 self -99.0)
          (format #t "WARNING: ~A stall on not cloning.~%" (-> self name))
          (suspend))
        (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
@@ -269,19 +305,19 @@
      (add-setting! 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
      (add-setting! 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
      (add-setting! 'ambient-volume 'rel (-> *setting-control* current ambient-volume-movie) 0)
-     (if (-> self blend-on-exit) (set! (-> self blend-on-exit) arg0))
+     (if (-> self blend-on-exit) (set! (-> self blend-on-exit) previous-animation))
      ;; og:preserve-this allow cutscene skipping on pc port
      ;; save a sort of timestamp just so we know if it took at least 1 frame
      (#when PC_PORT
        (define *play-anim-time* (current-time)))
      (if (#if PC_PORT (= (-> *pc-settings* skip-movies?) #t) (and *debug-segment* *cheat-mode*))
-       (ja-play-spooled-anim (the-as spool-anim arg1)
-                             arg0
+       (ja-play-spooled-anim (the-as spool-anim animation)
+                             previous-animation
                              (-> self blend-on-exit)
-                             (lambda ((arg0 process-taskable))
-                               (= (get-response (-> arg0 query)) 'no)))
-       (ja-play-spooled-anim (the-as spool-anim arg1)
-                             arg0
+                             (lambda ((taskable process-taskable))
+                               (= (get-response (-> taskable query)) 'no)))
+       (ja-play-spooled-anim (the-as spool-anim animation)
+                             previous-animation
                              (-> self blend-on-exit)
                              (the-as (function process-drawable symbol) false-func)))
      ;; og:preserve-this
@@ -292,27 +328,26 @@
      (remove-setting! 'ambient-volume)
      (send-event *target* 'blend-shape #f))
     (else
-     (when (not arg1)
+     (when (not animation)
        (format #t "ERROR<GMJ>: ~S ~S got #f from anim picker~%" (-> self name) (-> self state name))
-       (set! arg1 (ja-group)))
-     (when (not (type-type? (-> arg1 type) art-joint-anim))
+       (set! animation (ja-group)))
+     (when (not (type-type? (-> animation type) art-joint-anim))
        (format 0
                "ERROR<GMJ>: ~S ~S anim picker didn't return spool-anim or joint-art-anim (probably need to override it)~%"
                (-> self name)
                (-> self state name))
-       (set! arg1 (ja-group)))
-     (format #t "~S ~S anim ~S~%" (-> self name) (-> self state name) (-> (the-as art-joint-anim arg1) name))
+       (set! animation (ja-group)))
+     (format #t "~S ~S anim ~S~%" (-> self name) (-> self state name) (-> (the-as art-joint-anim animation) name))
      (ja-channel-push! 1 (seconds 0.2))
-     (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim arg1))
+     (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim animation))
      (when (< (ja-num-frames 0) 3)
        (suspend)
        (suspend)
        0)
-     (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-     (until (ja-done? 0)
-       (if (and *debug-segment* (= (get-response (-> self query)) 'no)) (ja :num-func num-func-identity :frame-num max))
-       (suspend)
-       (ja :num! (seek!)))
+     (ja-play :group! (ja-group)
+              :num! (seek!)
+              :frame-num 0.0
+              (if (and *debug-segment* (= (get-response (-> self query)) 'no)) (ja :num-func num-func-identity :frame-num max)))
      #f)))
 
 (defstate play-accept (process-taskable)
@@ -366,10 +401,10 @@
            (('no) (go-virtual play-reject)))
          (push-accept-anim self))
         (else
-         (let ((gp-0 (get-response (-> self query))))
+         (let ((response (get-response (-> self query))))
            (cond
-             ((and (= gp-0 'yes) (process-release? *target*)) (go-virtual enter-playing))
-             ((= gp-0 'no) (go-virtual play-reject))))))
+             ((and (= response 'yes) (process-release? *target*)) (go-virtual enter-playing))
+             ((= response 'no) (go-virtual play-reject))))))
       (push-reject-anim self)
       (set! *camera-look-through-other* 2)
       ((-> self cur-trans-hook)))
@@ -384,29 +419,32 @@
         (('shadow)
          (cond
            ((-> block param 0)
-            (let ((v0-0 (the-as object (-> self shadow-backup)))) (set! (-> self draw shadow) (the-as shadow-geo v0-0)) v0-0))
+            (let ((shadow (the-as object (-> self shadow-backup)))) (set! (-> self draw shadow) (the-as shadow-geo shadow)) shadow))
            (else (set! (-> self draw shadow) #f) #f)))
         (('shadow-min-max)
-         (let ((v1-5 (-> self draw shadow-ctrl)))
-           (let ((a0-4 v1-5)) (set! (-> a0-4 settings bot-plane w) (- (the-as float (-> block param 0)))))
+         (let ((shadow-ctrl (-> self draw shadow-ctrl)))
+           (let ((shadow-ctrl-alias shadow-ctrl))
+             (set! (-> shadow-ctrl-alias settings bot-plane w) (- (the-as float (-> block param 0)))))
            0
-           (set! (-> v1-5 settings top-plane w) (- (the-as float (-> block param 1)))))
+           (set! (-> shadow-ctrl settings top-plane w) (- (the-as float (-> block param 1)))))
          0)))
   :enter process-taskable-play-anim-enter
   :exit process-taskable-play-anim-exit
   :trans
     (behavior ()
       (process-taskable-play-anim-trans)
-      (let ((a3-0 (handle->process (-> self cell-x))))
-        (if a3-0 (spool-push *art-control* (-> self fuel-cell-anim name) 0 a3-0 -99.0)))
+      (let ((reward-cell (handle->process (-> self cell-x))))
+        (if reward-cell (spool-push *art-control* (-> self fuel-cell-anim name) 0 reward-cell -99.0)))
       ((-> self cur-trans-hook)))
   :code
     (behavior ()
       (process-taskable-play-anim-code (the-as art-joint-anim (get-art-elem self)) (play-anim! self #t))
-      (process-taskable-method-38 self))
+      (goto-post-anim-state! self))
   :post ja-post)
 
 (defbehavior process-taskable-clean-up-after-talking process-taskable ()
+  "Restore this character's visibility and animation initialization state, then remove the
+   conversation border and talking settings."
   (logclear! (-> self draw status) (draw-status hidden))
   (logclear! (-> self skel status) (janim-status inited))
   (remove-setting! 'border-mode)
@@ -414,32 +452,39 @@
   (none))
 
 (defmethod should-display? ((this process-taskable))
+  "Return whether this taskable character should be visible."
   #t)
 
-(defbehavior process-taskable-hide-handler process-taskable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
-    (('clone) (go-virtual be-clone (the-as handle (-> arg3 param 0))))
+(defbehavior process-taskable-hide-handler process-taskable ((proc process) (argc int) (message symbol) (block event-message-block))
+  "Handle clone, play-anim, and hidden-other messages while this character is hidden."
+  (case message
+    (('clone) (go-virtual be-clone (the-as handle (-> block param 0))))
     (('play-anim) (logclear! (-> self mask) (process-mask actor-pause)) (set! (-> self been-kicked) #t) (go-virtual idle))
     (('hidden-other) (go-virtual hidden-other))))
 
 (defbehavior process-taskable-hide-enter process-taskable ()
+  "Enter hidden mode by recording the state time, disabling shadow drawing, clearing conversation
+   settings and collision, selecting no animation channels, and finishing animation postprocessing."
   (set-time! (-> self state-time))
-  (let ((v1-3 (-> self draw shadow-ctrl))) (logior! (-> v1-3 settings flags) (shadow-flags disable-draw)))
+  (let ((shadow-ctrl (-> self draw shadow-ctrl))) (logior! (-> shadow-ctrl settings flags) (shadow-flags disable-draw)))
   0
   (process-taskable-clean-up-after-talking)
   (clear-collide-with-as (-> self root))
   (ja-channel-set! 0)
   (the-as int (ja-post)))
 
-(defbehavior process-taskable-hide-exit process-taskable ((arg0 symbol))
+(defbehavior process-taskable-hide-exit process-taskable ((staying-hidden? symbol))
+  "Leave no-kill disabled when remaining hidden. Otherwise restore animation, collision, no-kill,
+   and shadow drawing as the character becomes active."
   (cond
-    (arg0 (process-entity-status! self (entity-perm-status bit-3) #f))
+    (staying-hidden? (process-entity-status! self (entity-perm-status no-kill) #f))
     (else
      (ja-channel-set! 1)
      (ja :group! (get-art-elem self))
      (restore-collide-with-as (-> self root))
-     (process-entity-status! self (entity-perm-status bit-3) #t)
-     (let ((v1-7 (-> self draw shadow-ctrl))) (logclear! (-> v1-7 settings flags) (shadow-flags disable-draw)))
+     (process-entity-status! self (entity-perm-status no-kill) #t)
+     (let ((shadow-ctrl-alias (-> self draw shadow-ctrl)))
+       (logclear! (-> shadow-ctrl-alias settings flags) (shadow-flags disable-draw)))
      0))
   (none))
 
@@ -452,12 +497,14 @@
       (process-taskable-hide-exit (= (-> self next-state name) 'hidden)))
   :trans
     (behavior ()
-      (if (time-elapsed? (-> self state-time) (seconds 1)) (process-entity-status! self (entity-perm-status bit-3) #f))
+      (if (time-elapsed? (-> self state-time) (seconds 1)) (process-entity-status! self (entity-perm-status no-kill) #f))
       (if (or (-> self been-kicked) (should-display? self)) (go-virtual idle)))
   :code anim-loop)
 
 ;; WARN: disable def twice: 4. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod process-taskable-method-50 ((this process-taskable))
+(defmethod target-far-away? ((this process-taskable))
+  "Return whether the target is more than 245760 world units from this character. Without a
+   target, compare the camera against the collision sphere using the corresponding squared distance."
   (if *target*
     (or (not *target*) (< 245760.0 (vector-vector-distance (-> this root trans) (-> *target* control trans))))
     (< 60397978000.0 (vector-vector-distance-squared (-> this root root-prim prim-core world-sphere) (camera-pos)))))
@@ -471,10 +518,10 @@
       (process-taskable-hide-exit (= (-> self next-state name) 'hidden-other)))
   :trans
     (behavior ()
-      (if (time-elapsed? (-> self state-time) (seconds 1)) (process-entity-status! self (entity-perm-status bit-3) #f))
+      (if (time-elapsed? (-> self state-time) (seconds 1)) (process-entity-status! self (entity-perm-status no-kill) #f))
       (cond
         ((-> self been-kicked) (go-virtual idle))
-        ((process-taskable-method-50 self) (if (should-display? self) (go-virtual idle) (go-virtual hidden)))))
+        ((target-far-away? self) (if (should-display? self) (go-virtual idle) (go-virtual hidden)))))
   :code anim-loop)
 
 (defstate be-clone (process-taskable)
@@ -498,7 +545,7 @@
                  (the-as shadow-geo
                          (if (should-display? self) (the-as shadow-geo (go-virtual idle)) (the-as shadow-geo (go-virtual hidden))))))))
   :enter
-    (behavior ((arg0 handle))
+    (behavior ((source-handle handle))
       (logior! (-> self skel status) (janim-status blerc))
       (logclear! (-> self mask) (process-mask actor-pause))
       (set-vector! (-> self draw bounds) 0.0 (-> self draw-bounds-y-offset) 0.0 (-> self draw bounds w)))
@@ -506,19 +553,21 @@
     (behavior ()
       (logclear! (-> self skel status) (janim-status blerc spool))
       (logior! (-> self mask) (process-mask actor-pause))
-      (let ((v1-6 (-> self entity extra trans))) (if v1-6 (set! (-> self root trans quad) (-> v1-6 quad))))
+      (let ((entity-transform (-> self entity extra trans)))
+        (if entity-transform (set! (-> self root trans quad) (-> entity-transform quad))))
       (ja-channel-set! 0))
   :trans
     (behavior ()
       (draw-npc-shadow self)
       ((-> self cur-trans-hook)))
   :code
-    (behavior ((arg0 handle))
-      (clone-anim arg0 (-> self center-joint-index) #t "")
+    (behavior ((source-handle handle))
+      (clone-anim source-handle (-> self center-joint-index) #t "")
       (format #t "ERROR<GMJ>: handle invalid while ~S is cloning~%" (-> self name))
       (go-virtual hidden)))
 
 (defmethod target-above-threshold? ((this process-taskable))
+  "Return whether the target is above this character's interaction threshold."
   #t)
 
 (defstate idle (process-taskable)
@@ -547,12 +596,12 @@
     (behavior ()
       (cond
         ((or (= (-> self next-state name) 'dead-state) (= (-> self next-state name) 'idle))
-         (process-entity-status! self (entity-perm-status bit-3) #f))
+         (process-entity-status! self (entity-perm-status no-kill) #f))
         (else
          (kill-current-level-hint '() '() 'exit)
          (logior! (-> self skel status) (janim-status inited))
          (logclear! (-> self mask) (process-mask actor-pause))
-         (process-entity-status! self (entity-perm-status bit-3) #t)
+         (process-entity-status! self (entity-perm-status no-kill) #t)
          (set-setting! 'border-mode #f 0.0 0)
          (set-setting! 'talking (process->ppointer self) 0.0 0)
          (apply-settings *setting-control*))))
@@ -560,15 +609,15 @@
     (behavior ()
       (when (time-elapsed? (-> self state-time) (seconds 0.2))
         (logior! (-> self mask) (process-mask actor-pause))
-        (process-entity-status! self (entity-perm-status bit-3) #f))
+        (process-entity-status! self (entity-perm-status no-kill) #f))
       (cond
         ((not *target*))
         ((not (-> self will-talk))
          (if (>= (- (-> *display* game-frame-counter) (-> self last-talk)) (seconds 10)) (set! (-> self will-talk) #t)))
         ((begin
-           (process-taskable-method-46 self)
+           (update-music-and-flava! self)
            (and (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                          (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))))
+                          (not (logtest? (-> *target* control status) (collide-status on-surface)))))
                 (< (-> (target-pos 0) y) (+ 8192.0 (-> self root root-prim prim-core world-sphere y)))
                 ;; og:preserve-this
                 (less-than-hack (vector-vector-distance (target-pos 0) (the-as vector (-> self root root-prim prim-core))) 32768.0)
@@ -601,7 +650,7 @@
                   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
                   (send-event *target* 'trans 'save (-> self old-target-pos))
                   (go-virtual play-anim))))))))
-      (if (= (-> *level* loading-level) (-> *level* level-default)) (process-taskable-method-33 self))
+      (if (= (-> *level* loading-level) (-> *level* level-default)) (prefetch-play-anim! self))
       (draw-npc-shadow self)
       (when (and (-> self been-kicked)
                  (and (not *progress-process*) (process-grab? *target*) (not (handle->process (-> *game-info* other-camera-handle)))))
@@ -614,32 +663,41 @@
   (behavior ()
     (when *target*
       (when (!= (-> self neck-joint-index) -1)
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (vector<-cspace! gp-0 (-> self node-list data (-> self neck-joint-index)))
-          (if *target* (look-at-enemy! (-> *target* neck) gp-0 'nothing self)))))
+        (let ((neck-position (new 'stack-no-clear 'vector)))
+          (vector<-cspace! neck-position (-> self node-list data (-> self neck-joint-index)))
+          (if *target* (look-at-enemy! (-> *target* neck) neck-position 'nothing self)))))
     (transform-post)))
 
-(defmethod initialize-collision ((this process-taskable) (arg0 int) (arg1 vector))
-  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
-    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) arg0)
-      (set-vector! (-> s4-0 local-sphere) (-> arg1 x) (-> arg1 y) (-> arg1 z) (-> arg1 w))
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod initialize-collision ((this process-taskable) (center-joint int) (local-sphere vector))
+  "Build this character's solid, indestructible enemy collision sphere at center-joint. Set its
+   navigation radius to three quarters of the sphere radius, save its collision mask, and install it
+   as the drawable root."
+  (let ((collision (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((collision-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 0))))
+      (set! (-> collision-sphere prim-core collide-as) (collide-kind enemy))
+      (set! (-> collision-sphere collide-with) (collide-kind target))
+      (set! (-> collision-sphere prim-core action) (collide-action solid))
+      (set! (-> collision-sphere prim-core offense) (collide-offense indestructible))
+      (set! (-> collision-sphere transform-index) center-joint)
+      (set-vector! (-> collision-sphere local-sphere)
+                   (-> local-sphere x)
+                   (-> local-sphere y)
+                   (-> local-sphere z)
+                   (-> local-sphere w))
+      (set-root-prim! collision collision-sphere))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision))
   0
   (none))
 
-(defmethod process-taskable-method-40 ((this process-taskable) (arg0 object) (arg1 skeleton-group) (arg2 int) (arg3 int) (arg4 vector) (arg5 int))
+(defmethod init-as-taskable! ((this process-taskable) (actor object) (skel-group skeleton-group) (center-joint int) (cam-joint int) (local-sphere vector) (neck-joint int))
+  "Initialize collision, drawable and skeleton state, joint indices, interaction defaults,
+   ambient state, and shadow control for a taskable character."
   (stack-size-set! (-> this main-thread) 512)
-  (initialize-collision this arg2 arg4)
-  (process-drawable-from-entity! this (the-as entity-actor arg0))
-  (initialize-skeleton this arg1 '())
+  (initialize-collision this center-joint local-sphere)
+  (process-drawable-from-entity! this (the-as entity-actor actor))
+  (initialize-skeleton this skel-group '())
   (set! (-> this shadow-backup) (-> this draw shadow))
   (logior! (-> this skel status) (janim-status eye))
   ;; og:preserve-this
@@ -647,14 +705,14 @@
     (set! (-> this skel postbind-function) process-drawable-joint-callback-pc))
   (set! (-> this root pause-adjust-distance) -122880.0)
   (set! (-> this fuel-cell-anim) (fuel-cell-pick-anim this))
-  (set! (-> this draw origin-joint-index) (the-as uint arg2))
-  (set! (-> this draw shadow-joint-index) (the-as uint arg2))
-  (set! (-> this center-joint-index) arg2)
+  (set! (-> this draw origin-joint-index) (the-as uint center-joint))
+  (set! (-> this draw shadow-joint-index) (the-as uint center-joint))
+  (set! (-> this center-joint-index) center-joint)
   (set! (-> this draw-bounds-y-offset) (-> this draw bounds y))
   (set! (-> this have-flava) #f)
   (set! (-> this music) #f)
   (set! (-> this have-music) #f)
-  (set! (-> this cam-joint-index) arg3)
+  (set! (-> this cam-joint-index) cam-joint)
   (set! (-> this cell-x) (the-as handle #f))
   (set! (-> this cell-for-task) (game-task none))
   (set! (-> this camera) (the-as handle #f))
@@ -663,57 +721,71 @@
   (set! (-> this last-talk) 0)
   (set! (-> this bounce-away) #t)
   (set! (-> this been-kicked) #f)
-  (set! (-> this neck-joint-index) arg5)
+  (set! (-> this neck-joint-index) neck-joint)
   (set! (-> this cur-trans-hook) nothing)
   (ambient-control-method-9 (-> this ambient))
   (set! (-> this event-hook) (-> (method-of-object this idle) event))
   (set! (-> this draw shadow-ctrl) (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0))
-  (process-taskable-method-52 this)
+  (setup-shadow-settings! this)
   0
   (none))
 
-(defmethod process-taskable-method-42 ((this process-taskable))
+(defmethod goto-initial-state! ((this process-taskable))
+  "Enter hidden when the character should not display, give-cell when its current stage needs
+   resolution, and idle otherwise."
   (cond
     ((not (should-display? this)) (go (method-of-object this hidden)))
     ((= (current-status (-> this tasks)) (task-status need-resolution)) (go (method-of-object this give-cell)))
     (else (go (method-of-object this idle))))
   (none))
 
-(defmethod process-taskable-method-43 ((this process-taskable))
+(defmethod try-play-ambient-chatter ((this process-taskable))
+  "Try to play character-specific ambient speech. The base implementation does nothing."
   (the-as symbol 0))
 
 (defmethod ambient-control-method-9 ((this ambient-control))
+  "Restart the ambient-chatter cooldown at the current gameplay frame."
   (set! (-> this last-ambient-time) (-> *display* game-frame-counter))
   0
   (none))
 
-(defmethod ambient-control-method-10 ((this ambient-control) (arg0 vector) (arg1 time-frame) (arg2 float) (arg3 process-drawable))
-  (when (< (- (-> *display* game-frame-counter) (-> this last-ambient-time)) arg1)
-    (set! arg0 (the-as vector #f))
+(defmethod ambient-control-method-10 ((this ambient-control) (out-vector vector) (cooldown time-frame) (max-distance float) (speaker process-drawable))
+  "Fill out-vector with the displacement from the listener to speaker and return it only when
+   cooldown ticks have elapsed and the speaker is within max-distance. Return #f otherwise."
+  (when (< (- (-> *display* game-frame-counter) (-> this last-ambient-time)) cooldown)
+    (set! out-vector (the-as vector #f))
     (goto cfg-6))
-  (vector-for-ambient arg3 arg0)
-  (when (< arg2 (vector-length arg0))
-    (set! arg0 (the-as vector #f))
+  (vector-for-ambient speaker out-vector)
+  (when (< max-distance (vector-length out-vector))
+    (set! out-vector (the-as vector #f))
     (goto cfg-6))
   (label cfg-6)
-  arg0)
+  out-vector)
 
-(defmethod play-ambient ((this ambient-control) (arg0 string) (arg1 symbol) (arg2 vector))
-  (when (and (not (string= arg0 (-> this last-ambient)))
-             (or arg1 (can-hint-be-played? (text-id one) (the-as entity #f) (the-as string #f)))
+(defmethod play-ambient ((this ambient-control) (name string) (force? symbol) (position vector))
+  "Play name as positional ambient speech when it differs from the previous line, hint
+   conditions permit it, and the normal level is active. force bypasses the hint-availability test."
+  (when (and (not (string= name (-> this last-ambient)))
+             (or force? (can-hint-be-played? (text-id one) (the-as entity #f) (the-as string #f)))
              (= (-> *level* loading-level) (-> *level* level-default))
-             (ambient-hint-spawn arg0 arg2 *entity-pool* 'ambient))
+             (ambient-hint-spawn name position *entity-pool* 'ambient))
     (set! (-> this last-ambient-time) (-> *display* game-frame-counter))
-    (set! (-> this last-ambient) arg0)
+    (set! (-> this last-ambient) name)
     (return #t))
   #f)
 
-(defun vector-for-ambient ((arg0 process-drawable) (arg1 vector))
-  (if *target* (vector-! arg1 (target-pos 0) (-> arg0 root trans)) (vector-! arg1 (camera-pos) (-> arg0 root trans)))
-  arg1)
+(defun vector-for-ambient ((speaker process-drawable) (out-vector vector))
+  "Write the displacement from the target, or from the camera when no target exists, to speaker
+   into out-vector and return it."
+  (if *target*
+    (vector-! out-vector (target-pos 0) (-> speaker root trans))
+    (vector-! out-vector (camera-pos) (-> speaker root trans)))
+  out-vector)
 
-(defun othercam-calc ((arg0 float))
-  (set! (-> *camera-other-fov* data) (* 2.0 (atan (/ 14.941477 (* 20.3 arg0)) 1.0)))
+(defun othercam-calc ((joint-scale float))
+  "Set the other camera's field of view from the authored camera joint's uniform scale using
+   2 * atan(14.941477 / (20.3 * joint-scale)). Larger joint scales therefore narrow the view."
+  (set! (-> *camera-other-fov* data) (* 2.0 (atan (/ 14.941477 (* 20.3 joint-scale)) 1.0)))
   (none))
 
 (defstate othercam-running (othercam)
@@ -724,14 +796,14 @@
         (('die) (set! v0-0 #t) (set! (-> self die?) (the-as symbol v0-0)) v0-0)
         (('joint)
          (let ((t9-0 type-type?)
-               (v1-1 (-> block param 0)))
+               (joint-selector (-> block param 0)))
            (cond
-             ((t9-0 (rtype-of v1-1) string)
-              (let ((v1-8 (lookup-art (-> (the-as process-taskable (-> self hand process 0)) draw jgeo)
-                                      (the-as string (-> block param 0))
-                                      (the-as type #f))))
-                (when v1-8
-                  (set! v0-0 (+ (-> v1-8 number) 1))
+             ((t9-0 (rtype-of joint-selector) string)
+              (let ((joint-art (lookup-art (-> (the-as process-taskable (-> self hand process 0)) draw jgeo)
+                                           (the-as string (-> block param 0))
+                                           (the-as type #f))))
+                (when joint-art
+                  (set! v0-0 (+ (-> joint-art number) 1))
                   (set! (-> self cam-joint-index) (the-as int v0-0))
                   v0-0)))
              ((not (logtest? (-> block param 0) 7))
@@ -749,10 +821,10 @@
          (add-setting! 'movie (process->ppointer self) 0.0 0)
          (if (not (-> self border-value)) (add-setting! 'border-mode (-> self border-value) 0.0 0))))
       (set! (-> self had-valid-frame) #f)
-      (let ((gp-0 (-> self hand process 0)))
-        (vector<-cspace! (-> self old-pos) (-> (the-as process-taskable gp-0) node-list data (-> self cam-joint-index)))
-        (let ((v1-19 (-> (the-as process-taskable gp-0) node-list data (-> self cam-joint-index) bone transform)))
-          (vector-normalize-copy! (-> self old-mat-z) (-> v1-19 vector 2) -1.0)))
+      (let ((parent (-> self hand process 0)))
+        (vector<-cspace! (-> self old-pos) (-> (the-as process-taskable parent) node-list data (-> self cam-joint-index)))
+        (let ((joint-transform (-> (the-as process-taskable parent) node-list data (-> self cam-joint-index) bone transform)))
+          (vector-normalize-copy! (-> self old-mat-z) (-> joint-transform vector 2) -1.0)))
       (apply-settings *setting-control*))
   :exit
     (behavior ()
@@ -761,57 +833,60 @@
   :code
     (behavior ()
       (loop
-        (let ((s2-0 (-> self hand process 0)))
-          (when (not s2-0)
+        (let ((parent (-> self hand process 0)))
+          (when (not parent)
             (format #t "ERROR<GMJ>: othercam parent invalid~%")
             (deactivate self))
-          (set! (-> *camera-other-root* quad) (-> (the-as process-taskable s2-0) root trans quad))
-          (let ((s4-0 (-> (the-as process-taskable s2-0) node-list data (-> self cam-joint-index) bone transform))
-                (s3-0 (-> (the-as process-taskable s2-0) node-list data (-> self cam-joint-index) bone scale))
-                (gp-0 (new 'stack-no-clear 'vector))
-                (s5-0 (new 'stack-no-clear 'vector))
-                (s1-0 (or (!= (-> self spooling?) #t) (logtest? (-> (the-as process-taskable s2-0) skel status) (janim-status spool)))))
-            (vector<-cspace! s5-0 (-> (the-as process-taskable s2-0) node-list data (-> self cam-joint-index)))
-            (vector-normalize-copy! gp-0 (-> s4-0 vector 2) -1.0)
-            (when s1-0
+          (set! (-> *camera-other-root* quad) (-> (the-as process-taskable parent) root trans quad))
+          (let ((joint-transform (-> (the-as process-taskable parent) node-list data (-> self cam-joint-index) bone transform))
+                (joint-scale (-> (the-as process-taskable parent) node-list data (-> self cam-joint-index) bone scale))
+                (camera-forward (new 'stack-no-clear 'vector))
+                (camera-position (new 'stack-no-clear 'vector))
+                (frame-ready? (or (!= (-> self spooling?) #t) (logtest? (-> (the-as process-taskable parent) skel status) (janim-status spool)))))
+            (vector<-cspace! camera-position (-> (the-as process-taskable parent) node-list data (-> self cam-joint-index)))
+            (vector-normalize-copy! camera-forward (-> joint-transform vector 2) -1.0)
+            (when frame-ready?
               (when (not (-> self had-valid-frame))
                 (set! (-> self had-valid-frame) #t)
-                (set! (-> self old-pos quad) (-> s5-0 quad))
-                (set! (-> self old-mat-z quad) (-> gp-0 quad)))
+                (set! (-> self old-pos quad) (-> camera-position quad))
+                (set! (-> self old-mat-z quad) (-> camera-forward quad)))
               (when #t
-                (set! (-> *camera-other-trans* quad) (-> s5-0 quad))
-                (vector-normalize-copy! (-> *camera-other-matrix* vector 0) (-> s4-0 vector 0) -1.0)
+                (set! (-> *camera-other-trans* quad) (-> camera-position quad))
+                (vector-normalize-copy! (-> *camera-other-matrix* vector 0) (-> joint-transform vector 0) -1.0)
                 (set! (-> *camera-other-matrix* vector 0 w) 0.0)
-                (vector-normalize-copy! (-> *camera-other-matrix* vector 1) (-> s4-0 vector 1) 1.0)
+                (vector-normalize-copy! (-> *camera-other-matrix* vector 1) (-> joint-transform vector 1) 1.0)
                 (set! (-> *camera-other-matrix* vector 1 w) 0.0)
-                (vector-normalize-copy! (-> *camera-other-matrix* vector 2) (-> s4-0 vector 2) -1.0)
+                (vector-normalize-copy! (-> *camera-other-matrix* vector 2) (-> joint-transform vector 2) -1.0)
                 (set! (-> *camera-other-matrix* vector 2 w) 0.0)
                 (vector-reset! (-> *camera-other-matrix* vector 3))
-                (othercam-calc (-> s3-0 x)))
+                (othercam-calc (-> joint-scale x)))
               (set! *camera-look-through-other* 2)
-              (set! (-> self old-pos quad) (-> s5-0 quad))
-              (set! (-> self old-mat-z quad) (-> gp-0 quad)))))
+              (set! (-> self old-pos quad) (-> camera-position quad))
+              (set! (-> self old-mat-z quad) (-> camera-forward quad)))))
         (suspend)
-        (let ((a0-25 (-> self hand process 0)))
-          (when (or (-> self die?) (and (not (-> self survive-anim-end?)) (ja-anim-done? a0-25)))
-            (let ((gp-1 (current-time)))
-              (while (and (not (time-elapsed? gp-1 (seconds 60)))
+        (let ((parent (-> self hand process 0)))
+          (when (or (-> self die?) (and (not (-> self survive-anim-end?)) (ja-anim-done? parent)))
+            (let ((wait-start (current-time)))
+              (while (and (not (time-elapsed? wait-start (seconds 60)))
                           (or (and (-> self entity) (not (is-object-visible? (-> self entity extra level) (-> self entity extra vis-id))))
                               (< 81920.0 (vector-vector-distance (camera-pos) (-> *math-camera* trans)))))
                 (suspend)))
             (deactivate self))))))
 
-(defbehavior othercam-init-by-other othercam ((arg0 process-taskable) (arg1 symbol) (arg2 symbol) (arg3 symbol))
-  (set! (-> self spooling?) arg3)
+(defbehavior othercam-init-by-other othercam ((owner process-taskable) (cam-joint-index symbol) (survive-anim-end? symbol) (spooling-mode symbol))
+  "Attach this camera process to cam-joint-index on owner. Configure movie masking, whether the
+   camera survives the animation ending, and normal, spooling, or logo behavior before entering
+   othercam-running."
+  (set! (-> self spooling?) spooling-mode)
   (case (-> self spooling?)
     (('logo))
     (else (set! (-> *game-info* other-camera-handle) (process->handle self))))
-  (set! (-> self hand) (process->handle arg0))
-  (set! (-> self cam-joint-index) (the-as int arg1))
+  (set! (-> self hand) (process->handle owner))
+  (set! (-> self cam-joint-index) (the-as int cam-joint-index))
   (logclear! (-> self mask) (process-mask pause menu actor-pause))
   (set! (-> self border-value) #f)
   (set! (-> self die?) #f)
-  (set! (-> self survive-anim-end?) arg2)
+  (set! (-> self survive-anim-end?) survive-anim-end?)
   (set! (-> self mask-to-clear) (process-mask movie enemy platform projectile))
   (set! (-> self event-hook) (-> othercam-running event))
   (go othercam-running)
@@ -819,10 +894,14 @@
   (none))
 
 (defmethod draw-npc-shadow ((this process-taskable))
-  (let ((gp-0 (-> this draw shadow-ctrl)))
+  "Update this character's shadow planes and sun direction when its highest-detail geometry was
+   drawn this frame; otherwise disable the shadow."
+  (let ((shadow-ctrl (-> this draw shadow-ctrl)))
     (cond
       ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
-       (collide-to-find-planes gp-0 (-> this draw origin) -4096.0 4096.0 32768.0)
-       (update-direction-from-time-of-day gp-0))
-      (else (let ((v1-10 gp-0)) (logior! (-> v1-10 settings flags) (shadow-flags disable-draw))) 0)))
+       (collide-to-find-planes shadow-ctrl (-> this draw origin) -4096.0 4096.0 32768.0)
+       (update-direction-from-time-of-day shadow-ctrl))
+      (else
+       (let ((shadow-ctrl-alias shadow-ctrl)) (logior! (-> shadow-ctrl-alias settings flags) (shadow-flags disable-draw)))
+       0)))
   (none))

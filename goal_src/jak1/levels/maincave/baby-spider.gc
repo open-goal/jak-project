@@ -23,7 +23,6 @@
    (init! (_type_ symbol symbol symbol symbol int int symbol) none)
    (set-delay! (_type_ time-frame) none)))
 
-
 (deftype baby-spider (nav-enemy)
   ((die-if-not-visible?               symbol)
    (hack-move-above-ground?           symbol)
@@ -45,7 +44,6 @@
    baby-spider-die-fast
    baby-spider-hatching
    baby-spider-resume))
-
 
 (defskelgroup *baby-spider-sg*
   baby-spider
@@ -161,38 +159,44 @@
        :debug-draw-neck #f
        :debug-draw-jump #f))
 
-(defmethod init! ((this baby-spider-spawn-params) (arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 symbol) (arg4 int) (arg5 int) (arg6 symbol))
-  (set! (-> this hatched?) arg0)
-  (set! (-> this fast-start?) arg1)
-  (set! (-> this die-if-not-visible?) arg2)
-  (set! (-> this hack-move-above-ground?) arg3)
-  (set! (-> this pickup) arg4)
-  (set! (-> this pickup-amount) arg5)
-  (set! (-> this event-death) arg6)
+(defmethod init! ((this baby-spider-spawn-params) (hatched? symbol) (fast-start? symbol) (die-if-not-visible? symbol) (move-above-ground? symbol) (pickup-id int) (pickup-amount int) (death-event symbol))
+  "Set the spawn mode, visibility lifetime, pickup reward, and death event."
+  (set! (-> this hatched?) hatched?)
+  (set! (-> this fast-start?) fast-start?)
+  (set! (-> this die-if-not-visible?) die-if-not-visible?)
+  (set! (-> this hack-move-above-ground?) move-above-ground?)
+  (set! (-> this pickup) pickup-id)
+  (set! (-> this pickup-amount) pickup-amount)
+  (set! (-> this event-death) death-event)
   (set! (-> this delay-before-dying-if-not-visible) (seconds 2))
   (none))
 
-(defmethod set-delay! ((this baby-spider-spawn-params) (arg0 time-frame))
-  (set! (-> this delay-before-dying-if-not-visible) arg0)
+(defmethod set-delay! ((this baby-spider-spawn-params) (delay time-frame))
+  "Set how long an unseen spider may live before it dies."
+  (set! (-> this delay-before-dying-if-not-visible) delay)
   (none))
 
-(defmethod touch-handler ((this baby-spider) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this baby-spider) (other-process process) (block event-message-block))
+  "Attack a process touching the spider's offensive collision primitive."
   (when ((method-of-type touching-shapes-entry prims-touching?)
-         (the-as touching-shapes-entry (-> arg1 param 0))
+         (the-as touching-shapes-entry (-> block param 0))
          (-> this collide-info)
          (the-as uint 1))
-    (if (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg1 param 0)) 'generic)
+    (if (nav-enemy-send-attack other-process (the-as touching-shapes-entry (-> block param 0)) 'generic)
       (go (method-of-object this nav-enemy-victory)))))
 
-(defbehavior baby-spider-default-event-handler baby-spider ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior baby-spider-default-event-handler baby-spider ((source-process process) (argc int) (message symbol) (block event-message-block))
+  "Handle victory locally and delegate other events to the standard navigation-enemy handler."
+  (case message
     (('victory) (go-virtual nav-enemy-victory))
-    (else (nav-enemy-default-event-handler arg0 arg1 arg2 arg3))))
+    (else (nav-enemy-default-event-handler source-process argc message block))))
 
 baby-spider-default-event-handler
 
 (defmethod common-post ((this baby-spider))
-  (when (logtest? (-> this collide-info status) (cshape-moving-flags onsurf))
+  "Align the spider's up vector to the ground normal, update its orientation, and run the ordinary
+   enemy post step."
+  (when (logtest? (-> this collide-info status) (collide-status on-surface))
     (vector-deg-seek (-> this up-vector) (-> this up-vector) (-> this collide-info surface-normal) 910.2222)
     (vector-normalize! (-> this up-vector) 1.0))
   (forward-up-nopitch->quaternion (-> this collide-info quat)
@@ -201,7 +205,8 @@ baby-spider-default-event-handler
   (call-parent-method this)
   (none))
 
-(defmethod nav-enemy-method-38 ((this baby-spider))
+(defmethod integrate-and-collide! ((this baby-spider))
+  "Integrate the spider's velocity while following the background ground surface."
   (integrate-for-enemy-with-move-to-ground! (-> this collide-info)
                                             (-> this collide-info transv)
                                             (collide-kind background)
@@ -212,6 +217,7 @@ baby-spider-default-event-handler
   (none))
 
 (defmethod nav-enemy-method-51 ((this baby-spider))
+  "Randomize the chase wiggle period, amplitude, and speed."
   (let* ((f0-0 (rand-vu-float-range 0.0 1.0))
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
          (f2-2 f1-1)
@@ -222,19 +228,21 @@ baby-spider-default-event-handler
     (set! (-> this target-speed) (* 28672.0 f0-2)))
   (none))
 
-(defmethod nav-enemy-method-52 ((this baby-spider) (arg0 vector))
+(defmethod nav-enemy-method-52 ((this baby-spider) (target vector))
+  "Offset the navigation target sideways with the current chase wiggle."
   ;; og:preserve-this changed for high fps
   (+! (-> this wiggle-angle) (* DISPLAY_FPS_RATIO (-> this delta-wiggle-angle)))
   (if (< 65536.0 (-> this wiggle-angle)) (+! (-> this wiggle-angle) -65536.0))
   (let* ((v1-3 (-> this collide-info trans))
-         (a1-2 (vector-! (new 'stack-no-clear 'vector) v1-3 arg0))
+         (a1-2 (vector-! (new 'stack-no-clear 'vector) v1-3 target))
          (s2-0 (vector-rotate-around-y! (new 'stack-no-clear 'vector) a1-2 16384.0))
-         (v1-4 (vector+*! (new 'stack-no-clear 'vector) arg0 s2-0 (* (-> this wiggle-factor) (sin (-> this wiggle-angle)))))
+         (v1-4 (vector+*! (new 'stack-no-clear 'vector) target s2-0 (* (-> this wiggle-factor) (sin (-> this wiggle-angle)))))
          (v0-3 (-> this nav target-pos)))
     (set! (-> v0-3 quad) (-> v1-4 quad))
     (the-as symbol v0-3)))
 
 (defmethod nav-enemy-method-53 ((this baby-spider))
+  "Return true when an unseen spawned spider has exceeded its visibility lifetime."
   (cond
     ((logtest? (-> this draw status) (draw-status was-drawn)) (set-time! (-> this last-visible-time)) (return #f))
     (else
@@ -247,11 +255,11 @@ baby-spider-default-event-handler
   :code
     (behavior ()
       (ja-channel-push! 1 0)
-      (ja-no-eval :group! baby-spider-birth-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (if (nav-enemy-method-53 self) (go baby-spider-die-fast))
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               baby-spider-birth-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (if (nav-enemy-method-53 self) (go baby-spider-die-fast)))
       (go baby-spider-resume))
   :post nav-enemy-simple-post)
 
@@ -299,10 +307,7 @@ baby-spider-default-event-handler
     (behavior ()
       (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
         (loop
-          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim)) :num! (seek! max f30-0) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek! max f30-0)))))))
+          (ja-play :group! (-> self draw art-group data (-> self nav-info walk-anim)) :num! (seek! max f30-0) :frame-num 0.0)))))
 
 (defstate nav-enemy-notice (baby-spider)
   :virtual #t
@@ -315,11 +320,7 @@ baby-spider-default-event-handler
     (behavior ()
       (ja-no-eval :num! (loop!))
       (ja-channel-push! 1 (seconds 0.17))
-      (ja-no-eval :group! baby-spider-notice-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (ja-blend-eval)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! baby-spider-notice-ja :num! (seek!) :frame-num 0.0 (ja-blend-eval))
       (ja-no-eval :num! (seek!))
       (go-virtual nav-enemy-chase)))
 
@@ -376,10 +377,7 @@ baby-spider-default-event-handler
         (loop
           (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (ja-channel-push! 1 (seconds 0.1))
-          (ja-no-eval :group! baby-spider-celebrate-ja :num! (seek! max f30-0) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek! max f30-0)))
+          (ja-play :group! baby-spider-celebrate-ja :num! (seek! max f30-0) :frame-num 0.0)
           (ja-no-eval :num! (loop!))
           (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (let ((gp-0 (rand-vu-int-range 300 600)))
@@ -398,20 +396,17 @@ baby-spider-default-event-handler
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
-      (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
+      (ja-play :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
+      (logclear! (-> self nav flags) (nav-control-flags blocked reached-destination))
       (nav-enemy-get-new-patrol-point)
-      (ja-no-eval :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (seek-to-point-toward-point! (-> self collide-info)
-                                     (-> self nav destination-pos)
-                                     (-> self rotate-speed)
-                                     (-> self turn-time))
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               baby-spider-idle-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (seek-to-point-toward-point! (-> self collide-info)
+                                            (-> self nav destination-pos)
+                                            (-> self rotate-speed)
+                                            (-> self turn-time)))
       (go-virtual nav-enemy-patrol)))
 
 (defstate nav-enemy-attack (baby-spider)
@@ -424,10 +419,7 @@ baby-spider-default-event-handler
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! baby-spider-idle-ja :num! (seek!) :frame-num 0.0)
       (go-virtual nav-enemy-victory)))
 
 (defstate nav-enemy-victory (baby-spider)
@@ -459,6 +451,7 @@ baby-spider-default-event-handler
       (let ((v1-2 (-> self event-death))) (if v1-2 (send-event (ppointer->process (-> self parent)) v1-2)))))
 
 (defmethod initialize-collision ((this baby-spider))
+  "Create the spider's moving collision shape and offensive sphere."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -476,14 +469,15 @@ baby-spider-default-event-handler
   0
   (none))
 
-(defmethod nav-enemy-method-48 ((this baby-spider))
+(defmethod post-init-setup! ((this baby-spider))
+  "Initialize the skeleton, navigation parameters, shadow, scale, neck joints, and chase defaults."
   (set-time! (-> this last-visible-time))
   (initialize-skeleton this *baby-spider-sg* '())
   (if (= (-> this parent 0 type) cave-trap)
     (init-defaults! this *baby-spider-nav-enemy-info-for-cave-trap*)
     (init-defaults! this *baby-spider-nav-enemy-info*))
   (let ((v1-11 (-> this draw shadow-ctrl settings)))
-    (logclear! (-> v1-11 flags) (shadow-flags shdf03))
+    (logclear! (-> v1-11 flags) (shadow-flags scissor-top))
     (set! (-> v1-11 fade-dist) 98304.0))
   (vector-float*! (-> this collide-info scale) *identity-vector* 0.63)
   (set! (-> this neck up) (the-as uint 1))
@@ -498,21 +492,23 @@ baby-spider-default-event-handler
   0
   (none))
 
-(defbehavior baby-spider-init-by-other baby-spider ((arg0 baby-spider) (arg1 vector) (arg2 vector) (arg3 baby-spider-spawn-params))
-  (set! (-> self event-death) (-> arg3 event-death))
-  (set! (-> self die-if-not-visible?) (-> arg3 die-if-not-visible?))
-  (set! (-> self delay-before-dying-if-not-visible) (-> arg3 delay-before-dying-if-not-visible))
+(defbehavior baby-spider-init-by-other baby-spider ((source-spider baby-spider) (position vector) (heading vector) (spawn-params baby-spider-spawn-params))
+  "Initialize a spawned spider at the supplied position and heading using the given spawn
+   parameters."
+  (set! (-> self event-death) (-> spawn-params event-death))
+  (set! (-> self die-if-not-visible?) (-> spawn-params die-if-not-visible?))
+  (set! (-> self delay-before-dying-if-not-visible) (-> spawn-params delay-before-dying-if-not-visible))
   (initialize-collision self)
   (logior! (-> self mask) (process-mask actor-pause))
-  (set! (-> self collide-info trans quad) (-> arg1 quad))
-  (forward-up->quaternion (-> self collide-info quat) arg2 *up-vector*)
+  (set! (-> self collide-info trans quad) (-> position quad))
+  (forward-up->quaternion (-> self collide-info quat) heading *up-vector*)
   (vector-float*! (-> self collide-info scale) *identity-vector* 0.63)
-  (vector-float*! (-> self collide-info transv) arg2 8192.0)
+  (vector-float*! (-> self collide-info transv) heading 8192.0)
   (logior! (-> self mask) (process-mask enemy))
-  (set! (-> self entity) (-> arg0 entity))
-  (nav-enemy-method-48 self)
-  (set! (-> self enemy-info pickup-type) (the-as pickup-type (-> arg3 pickup)))
-  (set! (-> self enemy-info pickup-amount) (the float (-> arg3 pickup-amount)))
+  (set! (-> self entity) (-> source-spider entity))
+  (post-init-setup! self)
+  (set! (-> self enemy-info pickup-type) (the-as pickup-type (-> spawn-params pickup)))
+  (set! (-> self enemy-info pickup-amount) (the float (-> spawn-params pickup-amount)))
   (create-connection! *cavecrystal-light-control*
                       self
                       (-> self entity)
@@ -520,22 +516,25 @@ baby-spider-default-event-handler
                       -1
                       4096.0)
   (cond
-    ((-> arg3 hatched?) (go baby-spider-hatching))
-    ((-> arg3 fast-start?) (go baby-spider-resume))
+    ((-> spawn-params hatched?) (go baby-spider-hatching))
+    ((-> spawn-params fast-start?) (go baby-spider-resume))
     (else (go-virtual nav-enemy-idle)))
   (none))
 
-(defmethod init-from-entity! ((this baby-spider) (arg0 entity-actor))
+(defmethod init-from-entity! ((this baby-spider) (source-entity entity-actor))
+  "Create collision and drawable state from the entity, run subtype setup, and enter the idle
+   state."
   (set! (-> this die-if-not-visible?) #f)
   (set! (-> this delay-before-dying-if-not-visible) (seconds 2))
   (set! (-> this hack-move-above-ground?) #f)
   (set! (-> this event-death) #f)
   (initialize-collision this)
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logior! (-> this mask) (process-mask enemy))
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this nav) (new 'process 'nav-control (-> this collide-info) 24 40960.0))
-  (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
+  (logior! (-> this nav flags)
+           (nav-control-flags display-marks display-polys display-active-polys display-travel display-spheres))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (create-connection! *cavecrystal-light-control*
@@ -544,6 +543,6 @@ baby-spider-default-event-handler
                       (the-as (function object object object object object) cavecrystal-light-control-default-callback)
                       -1
                       4096.0)
-  (nav-enemy-method-48 this)
+  (post-init-setup! this)
   (go (method-of-object this nav-enemy-idle))
   (none))

@@ -29,6 +29,9 @@
 
 (define *generate-actor-vis-output* #f)
 
+;; Sixteen bytes of persistent per-entity state. The first eight bytes are available to each actor
+;; type, followed by lifecycle flags, task ownership, and the actor id. The quad overlay supports
+;; copying the complete record to and from save and level storage.
 (deftype entity-perm (structure)
   ((user-object object 2)
    (user-uint64 uint64 :overlay-at (-> user-object 0))
@@ -48,7 +51,8 @@
   (:methods
    (update-perm! (_type_ symbol entity-perm-status) _type_)))
 
-
+;; Runtime link between a static entity resource and its live process. Level lists use prev-link
+;; and next-link; trans and perm remain available while the process is absent.
 (deftype entity-links (structure)
   ((prev-link entity-links)
    (next-link entity-links)
@@ -64,19 +68,17 @@
   (:methods
    (birth? (_type_ vector) symbol)))
 
-
 (deftype entity-perm-array (inline-array-class)
   ((data entity-perm :inline :dynamic)))
-
 
 (set! (-> entity-perm-array heap-base) (the-as uint 16))
 
 (deftype entity-links-array (inline-array-class)
   ((data entity-links :inline :dynamic)))
 
-
 (set! (-> entity-links-array heap-base) (the-as uint 64))
 
+;; Base placed entity: resource data plus its world position and actor id.
 (deftype entity (res-lump)
   ((trans vector :inline)
    (aid   uint32))
@@ -90,6 +92,8 @@
 (deftype entity-camera (entity)
   ((quat quaternion :inline)))
 
+;; Type-specific ambient state. The first twelve bytes are a compact payload interpreted by the
+;; function in the final word.
 (deftype entity-ambient-data (structure)
   ((user-object object 3)
    (function    (function drawable-ambient vector none))
@@ -103,10 +107,8 @@
    (user-int8   int8 12 :overlay-at (-> user-object 0))
    (user-uint8  uint8 12 :overlay-at (-> user-object 0))))
 
-
 (deftype entity-ambient-data-array (inline-array-class)
   ((data entity-ambient-data :inline :dynamic)))
-
 
 (set! (-> entity-ambient-data-array heap-base) (the-as uint 16))
 
@@ -116,6 +118,8 @@
    (draw-debug (_type_) none)
    (birth-ambient! (_type_) none)))
 
+;; An entity that can own a live actor process, navigation mesh, visibility id, task, and
+;; orientation.
 (deftype entity-actor (entity)
   ((nav-mesh      nav-mesh)
    (etype         type)
@@ -129,6 +133,7 @@
    (debug-print (_type_ symbol type) none)
    (set-or-clear-status! (_type_ entity-perm-status symbol) none)))
 
+;; Actor creation table entry: process type, load dependencies, pool, and per-process heap size.
 (deftype entity-info (basic)
   ((ptype     type)
    (package   basic)
@@ -136,12 +141,14 @@
    (pool      basic)
    (heap-size int32)))
 
-;; NOTE - this is a strange pattern...this symbol isn't defined until a later file 'navigate'
-;; But this seems to be setting the symbol to nothing if it's not found, but of course, our compiler freaks out
+;; Navigation supplies this function later in the load order. Until then entity login has a harmless
+;; default.
 (define-extern entity-nav-login (function entity-actor none))
 
 (if (zero? entity-nav-login) (set! entity-nav-login (the-as (function entity-actor none) nothing)))
 
+;; Dynamic actor population limits. Processes pause outside pause-dist, eligible entities can be
+;; born inside birth-dist, and birth-max caps the lifecycle changes processed during one update.
 (deftype actor-bank (basic)
   ((pause-dist float)
    (birth-dist float)

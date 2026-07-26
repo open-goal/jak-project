@@ -6,33 +6,36 @@
 ;; DECOMP BEGINS
 
 (deftype snow-bunny (nav-enemy)
+  "Hopping Snowy Mountain enemy. It patrols between path vertices, notices Jak with a vertical
+leap, chases and retreats in ballistic hops, and either flees or lunges when a dangerous player is
+close and approaching."
   ((patrol-rand-distraction int32)
-   (base-hop-dist           float)
-   (halfway-dist            float)
-   (retreat-timeout         float)
-   (gnd-popup               float)
-   (jump-height-min         float)
-   (jump-height-factor      float)
-   (jump-anim-start-frame   float)
-   (defense                 uint64)
-   (retreat-timeout-time    time-frame)
-   (last-nondangerous-time  time-frame)
-   (patrol-hop-failed?      basic)
-   (should-retreat?         basic)
-   (got-jump-event?         symbol)
-   (using-jump-event?       basic)
-   (jump-anim               int8)
-   (notice-land-anim        int8)
-   (attack-anim             int8)
-   (final-dest              vector :inline)
-   (jump-event-dest         vector :inline))
+   (base-hop-dist float)
+   (halfway-dist float)
+   (retreat-timeout float)
+   (gnd-popup float)
+   (jump-height-min float)
+   (jump-height-factor float)
+   (jump-anim-start-frame float)
+   (defense uint64)
+   (retreat-timeout-time time-frame)
+   (last-nondangerous-time time-frame)
+   (patrol-hop-failed? basic)
+   (should-retreat? basic)
+   (got-jump-event? symbol)
+   (using-jump-event? basic)
+   (jump-anim int8)
+   (notice-land-anim int8)
+   (attack-anim int8)
+   (final-dest vector :inline)
+   (jump-event-dest vector :inline))
   (:methods
    (nav-enemy-method-51 (_type_ vector vector) symbol :replace)
    (nav-enemy-method-52 (_type_) symbol :replace)
    (nav-enemy-method-54 (_type_) symbol :replace)
    (nav-enemy-method-57 (_type_) symbol :replace)
    (nav-enemy-method-60 (_type_) none :replace)
-   (snow-bunny-method-76 (_type_ symbol) none)))
+   (set-shadow-airborne! (_type_ symbol) none)))
 
 (define-extern *snow-bunny* (pointer snow-bunny))
 
@@ -96,77 +99,87 @@
        :debug-draw-neck #f
        :debug-draw-jump #f))
 
-(defbehavior snow-bunny-default-event-handler snow-bunny ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
-    (('attack) (nav-enemy-set-hit-from-direction arg0) (go-virtual nav-enemy-die))
+(defbehavior snow-bunny-default-event-handler snow-bunny ((sender process) (argc int) (message symbol) (block event-message-block))
+  "Die on attack, counter a successful touch with an airborne attack, and record jump-event
+   destinations supplied by navigation."
+  (case message
+    (('attack) (nav-enemy-set-hit-from-direction sender) (go-virtual nav-enemy-die))
     (('touch)
-     (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
+     (when (send-event sender 'attack (-> block param 0) (new 'static 'attack-info))
        (set-time! (-> self touch-time))
        (set-collide-offense (-> self collide-info) 2 (collide-offense no-offense))
-       (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+       (logior! (-> self nav-enemy-flags) (nav-enemy-flags attack-landed))
        (go-virtual snow-bunny-attack)))
     (('jump)
-     (let ((v1-16 (the-as object (-> arg3 param 0))))
+     (let ((jump-destination (the-as object (-> block param 0))))
        (set! (-> self got-jump-event?) #t)
-       (let ((v0-1 (the-as object (-> self jump-event-dest))))
-         (set! (-> (the-as vector v0-1) quad) (-> (the-as vector v1-16) quad))
-         v0-1)))))
+       (let ((stored-destination (the-as object (-> self jump-event-dest))))
+         (set! (-> (the-as vector stored-destination) quad) (-> (the-as vector jump-destination) quad))
+         stored-destination)))))
 
-(defmethod snow-bunny-method-76 ((this snow-bunny) (arg0 symbol))
-  (let ((f0-0 -4096.0))
-    (if arg0 (set! f0-0 -20480.0))
-    (let ((v1-3 (-> this draw shadow-ctrl))) (set! (-> v1-3 settings bot-plane w) (- f0-0))))
+(defmethod set-shadow-airborne! ((this snow-bunny) (airborne? symbol))
+  "Use a five-metre shadow bottom plane while airborne and the ordinary one-metre plane while
+   grounded."
+  (let ((bottom-plane-y -4096.0))
+    (if airborne? (set! bottom-plane-y -20480.0))
+    (let ((shadow-control (-> this draw shadow-ctrl))) (set! (-> shadow-control settings bot-plane w) (- bottom-plane-y))))
   0
   (none))
 
 (defmethod initialize-collision ((this snow-bunny))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set-vector! (-> s4-0 local-sphere) 0.0 3686.4 0.0 5324.8)
-      (set-root-prim! s5-0 s4-0)
-      (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-        (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s3-0 collide-with) (collide-kind target))
-        (set! (-> s3-0 prim-core action) (collide-action solid))
-        (set! (-> s3-0 prim-core offense) (collide-offense touch))
-        (set-vector! (-> s3-0 local-sphere) 0.0 1638.4 0.0 1843.2)
-        (append-prim s4-0 s3-0))
-      (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-        (set! (-> s3-1 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s3-1 collide-with) (collide-kind target))
-        (set! (-> s3-1 prim-core action) (collide-action solid))
-        (set! (-> s3-1 prim-core offense) (collide-offense touch))
-        (set-vector! (-> s3-1 local-sphere) 0.0 4096.0 0.0 1843.2)
-        (append-prim s4-0 s3-1))
-      (let ((s3-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
-        (set! (-> s3-2 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s3-2 collide-with) (collide-kind target))
-        (set! (-> s3-2 prim-core offense) (collide-offense normal-attack))
-        (set! (-> s3-2 transform-index) 6)
-        (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 2457.6)
-        (append-prim s4-0 s3-2)))
-    (set! (-> s5-0 nav-radius) 2048.0)
-    (backup-collide-with-as s5-0)
-    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-    (set! (-> this collide-info) s5-0))
+  "Create a moving enemy shape with one body group, two touch spheres, and one joint-6 attack
+   sphere. Configure a half-metre navigation radius and retain two collision iterations."
+  (let ((moving-shape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> moving-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> moving-shape reaction) default-collision-reaction)
+    (set! (-> moving-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((body-group (new 'process 'collide-shape-prim-group moving-shape (the-as uint 3) 0)))
+      (set! (-> body-group prim-core collide-as) (collide-kind enemy))
+      (set! (-> body-group collide-with) (collide-kind target))
+      (set! (-> body-group prim-core action) (collide-action solid))
+      (set-vector! (-> body-group local-sphere) 0.0 3686.4 0.0 5324.8)
+      (set-root-prim! moving-shape body-group)
+      (let ((lower-touch-sphere (new 'process 'collide-shape-prim-sphere moving-shape (the-as uint 3))))
+        (set! (-> lower-touch-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> lower-touch-sphere collide-with) (collide-kind target))
+        (set! (-> lower-touch-sphere prim-core action) (collide-action solid))
+        (set! (-> lower-touch-sphere prim-core offense) (collide-offense touch))
+        (set-vector! (-> lower-touch-sphere local-sphere) 0.0 1638.4 0.0 1843.2)
+        (append-prim body-group lower-touch-sphere))
+      (let ((upper-touch-sphere (new 'process 'collide-shape-prim-sphere moving-shape (the-as uint 3))))
+        (set! (-> upper-touch-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> upper-touch-sphere collide-with) (collide-kind target))
+        (set! (-> upper-touch-sphere prim-core action) (collide-action solid))
+        (set! (-> upper-touch-sphere prim-core offense) (collide-offense touch))
+        (set-vector! (-> upper-touch-sphere local-sphere) 0.0 4096.0 0.0 1843.2)
+        (append-prim body-group upper-touch-sphere))
+      (let ((attack-sphere (new 'process 'collide-shape-prim-sphere moving-shape (the-as uint 1))))
+        (set! (-> attack-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> attack-sphere collide-with) (collide-kind target))
+        (set! (-> attack-sphere prim-core offense) (collide-offense normal-attack))
+        (set! (-> attack-sphere transform-index) 6)
+        (set-vector! (-> attack-sphere local-sphere) 0.0 0.0 0.0 2457.6)
+        (append-prim body-group attack-sphere)))
+    (set! (-> moving-shape nav-radius) 2048.0)
+    (backup-collide-with-as moving-shape)
+    (set! (-> moving-shape max-iteration-count) (the-as uint 2))
+    (set! (-> this collide-info) moving-shape))
   0
   (none))
 
 (defmethod nav-enemy-method-60 ((this snow-bunny))
+  "Initialize the Snow Bunny skeleton and use joint 3 as its drawable origin."
   (initialize-skeleton this *snow-bunny-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (none))
 
-(defmethod nav-enemy-method-48 ((this snow-bunny))
+(defmethod post-init-setup! ((this snow-bunny))
+  "Initialize skeleton and navigation tuning, select retreat or lunge defense from resource mode,
+   configure jump, neck, shadow and patrol defaults, and reset the danger timer."
   (nav-enemy-method-60 this)
   (init-defaults! this *snow-bunny-nav-enemy-info*)
-  (logclear! (-> this draw shadow-ctrl settings flags) (shadow-flags shdf03))
+  (logclear! (-> this draw shadow-ctrl settings flags) (shadow-flags scissor-top))
   (cond
     ((zero? (res-lump-value (-> this entity) 'mode uint128))
      (set! (-> this defense) (the-as uint 1))
@@ -185,45 +198,53 @@
   0
   (none))
 
-(defmethod init-from-entity! ((this snow-bunny) (arg0 entity-actor))
+(defmethod init-from-entity! ((this snow-bunny) (entity entity-actor))
+  "Initialize collision and drawable state from entity, apply Snow Bunny navigation defaults,
+   require a nonempty patrol path, publish the current bunny pointer, and enter its initial state."
   (initialize-collision this)
-  (process-drawable-from-entity! this arg0)
-  (nav-enemy-method-48 this)
+  (process-drawable-from-entity! this entity)
+  (post-init-setup! this)
   (if (<= (-> this path curve num-cverts) 0) (go process-drawable-art-error "no path"))
   (set! *snow-bunny* (the-as (pointer snow-bunny) (process->ppointer this)))
-  (nav-enemy-method-59 this)
+  (go-initial-state! this)
   (none))
 
 (defmethod nav-enemy-method-58 ((this snow-bunny))
+  "Refresh last-nondangerous-time whenever Jak is not in a dangerous state."
   (if (not (logtest? (-> *target* state-flags) (state-flags dangerous))) (set-time! (-> this last-nondangerous-time)))
   (none))
 
-(defbehavior snow-bunny-initialize-jump snow-bunny ((arg0 vector))
-  (nav-enemy-initialize-custom-jump arg0 #f (-> self jump-height-min) (-> self jump-height-factor) -307200.0)
+(defbehavior snow-bunny-initialize-jump snow-bunny ((destination vector))
+  "Solve a standing Snow Bunny jump to destination using the selected height tuning and fixed
+   downward acceleration."
+  (nav-enemy-initialize-custom-jump destination #f (-> self jump-height-min) (-> self jump-height-factor) -307200.0)
   (logclear! (-> self nav-enemy-flags) (nav-enemy-flags drop-jump))
   (logior! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
   0
   (none))
 
 (defbehavior snow-bunny-execute-jump snow-bunny ()
+  "Execute the configured Snow Bunny jump animation and solved ballistic motion."
   (nav-enemy-execute-custom-jump (-> self jump-anim) (-> self jump-anim-start-frame) 1.0)
   0
   (none))
 
-(defmethod set-jump-height-factor! ((this snow-bunny) (arg0 int))
-  (let ((v1-0 arg0))
+(defmethod set-jump-height-factor! ((this snow-bunny) (mode int))
+  "Select jump animation, minimum height, distance-height factor, and animation start frame for
+   patrol mode 0, chase mode 1, or retreat mode 2."
+  (let ((selected-mode mode))
     (cond
-      ((zero? v1-0)
+      ((zero? selected-mode)
        (set! (-> this jump-anim) 8)
        (set! (-> this jump-height-min) 4096.0)
        (set! (-> this jump-height-factor) 0.6)
        (set! (-> this jump-anim-start-frame) 4.0))
-      ((= v1-0 1)
+      ((= selected-mode 1)
        (set! (-> this jump-anim) 7)
        (set! (-> this jump-height-min) 4096.0)
        (set! (-> this jump-height-factor) 0.6)
        (set! (-> this jump-anim-start-frame) 11.0))
-      ((= v1-0 2)
+      ((= selected-mode 2)
        (set! (-> this jump-anim) 7)
        (set! (-> this jump-height-min) 4096.0)
        (set! (-> this jump-height-factor) 0.4)
@@ -231,20 +252,24 @@
   (none))
 
 (defmethod nav-enemy-method-57 ((this snow-bunny))
+  "Return true when Jak is dangerous, within eighteen metres, and has been approaching long enough
+   that his estimated arrival falls inside the bunny's 0.36-second defense window."
   (if (or (not *target*) (not (logtest? (-> *target* state-flags) (state-flags dangerous)))) (return #f))
-  (let ((f0-0 (vector-vector-xz-distance (target-pos 0) (-> this collide-info trans))))
-    (if (< 73728.0 f0-0) (return #f))
-    (let* ((f0-1 (- f0-0 (-> *TARGET-bank* spin-radius)))
-           (f0-2 (+ -2457.6 f0-1)))
-      (if (>= 40.96 f0-2) (set! f0-2 40.96))
-      (let ((v1-13 (the int (/ f0-2 (* (-> this nav-info run-travel-speed) (seconds-per-frame))))))
-        (if (<= (- (- (seconds 0.36) (- (current-time) (-> this last-nondangerous-time))) (the-as time-frame v1-13)) 0) (return #f)))))
+  (let ((xz-distance (vector-vector-xz-distance (target-pos 0) (-> this collide-info trans))))
+    (if (< 73728.0 xz-distance) (return #f))
+    (let* ((approach-distance (- xz-distance (-> *TARGET-bank* spin-radius)))
+           (adjusted-distance (+ -2457.6 approach-distance)))
+      (if (>= 40.96 adjusted-distance) (set! adjusted-distance 40.96))
+      (let ((frames-to-reach (the int (/ adjusted-distance (* (-> this nav-info run-travel-speed) (seconds-per-frame))))))
+        (if (<= (- (- (seconds 0.36) (- (current-time) (-> this last-nondangerous-time))) (the-as time-frame frames-to-reach)) 0)
+          (return #f)))))
   #t)
 
 (defstate snow-bunny-tune-spheres (snow-bunny)
   :virtual override
   :code
     (behavior ()
+      "Do no state work while collision spheres are being tuned."
       0)
   :post transform-post)
 
@@ -252,16 +277,18 @@
   :virtual #t
   :enter
     (behavior ()
-      (snow-bunny-method-76 self #f)
-      (let ((t9-1 (-> (method-of-type nav-enemy nav-enemy-idle) enter))) (if t9-1 (t9-1))))
+      "Restore the grounded shadow and run the ordinary enemy idle entry behavior."
+      (set-shadow-airborne! self #f)
+      (let ((parent-enter (-> (method-of-type nav-enemy nav-enemy-idle) enter))) (if parent-enter (parent-enter))))
   :code
     (behavior ()
+      "Loop the idle animation from a random frame at a random 0.75-to-1.25 playback speed."
       (ja-channel-push! 1 (seconds 0.1))
       (ja :group!
           (-> self draw art-group data (-> self nav-info idle-anim))
           :num!
           (identity (rand-vu-float-range 0.0 (the float (+ (-> (ja-group) data 0 length) -1)))))
-      (let ((f30-0 (nav-enemy-rnd-float-range 0.75 1.25))) (loop (suspend) (ja :num! (loop! f30-0))))))
+      (let ((animation-speed (nav-enemy-rnd-float-range 0.75 1.25))) (loop (suspend) (ja :num! (loop! animation-speed))))))
 
 (defstate nav-enemy-patrol (snow-bunny)
   :virtual #t
@@ -269,18 +296,21 @@
   :trans #f
   :code
     (behavior ()
+      "Resume in the distance-appropriate idle, patrol, or notice state."
       (go-virtual snow-bunny-nav-resume)))
 
 (defstate snow-bunny-nav-resume (snow-bunny)
   :virtual override
   :code
     (behavior ()
+      "Choose idle beyond the actor idle distance, patrol beyond notice distance, notice when Jak
+            is in range, and idle when there is no target."
       (cond
         (*target*
-         (let ((f0-0 (vector-vector-distance (target-pos 0) (-> self collide-info trans))))
+         (let ((target-distance (vector-vector-distance (target-pos 0) (-> self collide-info trans))))
            (cond
-             ((>= f0-0 (-> self enemy-info idle-distance)) (go-virtual nav-enemy-idle))
-             ((< (-> self nav-info notice-distance) f0-0) (go-virtual snow-bunny-patrol-idle))
+             ((>= target-distance (-> self enemy-info idle-distance)) (go-virtual nav-enemy-idle))
+             ((< (-> self nav-info notice-distance) target-distance) (go-virtual snow-bunny-patrol-idle))
              ((target-in-range? self (-> self nav-info notice-distance)) (go-virtual nav-enemy-notice))
              (else (go-virtual snow-bunny-patrol-idle)))))
         (else (go-virtual nav-enemy-idle)))))
@@ -290,14 +320,18 @@
   :event snow-bunny-default-event-handler
   :enter
     (behavior ()
+      "Restore the grounded shadow, clear hostility, enable turning, and start the short notice
+            poll timer."
       (set-time! (-> self state-time))
-      (snow-bunny-method-76 self #f)
-      (logior! (-> self nav flags) (nav-control-flags navcf19))
-      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+      (set-shadow-airborne! self #f)
+      (logior! (-> self nav flags) (nav-control-flags reached-destination))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
       (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
       (set! (-> self state-timeout) (seconds 0.1)))
   :trans
     (behavior ()
+      "Defend when required, otherwise poll for idle distance or noticing and refresh the danger
+            timer."
       (if (nav-enemy-method-57 self) (go-virtual snow-bunny-defend))
       (when (time-elapsed? (-> self state-time) (-> self state-timeout))
         (if (not *target*) (go-virtual nav-enemy-idle))
@@ -308,11 +342,13 @@
       (nav-enemy-method-58 self))
   :code
     (behavior ()
-      (let ((gp-0 (nav-enemy-rnd-int-count 3)))
-        (when (and (not (-> self patrol-hop-failed?)) (zero? gp-0))
+      "Wait in place with randomized idle animation and periodically choose a grounded patrol
+            vertex to begin hopping."
+      (let ((initial-wait-count (nav-enemy-rnd-int-count 3)))
+        (when (and (not (-> self patrol-hop-failed?)) (zero? initial-wait-count))
           (if (nav-enemy-method-53 self) (go-virtual snow-bunny-patrol-hop)))
         (set! (-> self patrol-hop-failed?) #f)
-        (let ((gp-2 (min gp-0 (nav-enemy-rnd-int-count 3))))
+        (let ((wait-count (min initial-wait-count (nav-enemy-rnd-int-count 3))))
           (ja-channel-push! 1 (seconds 0.1))
           (ja :group!
               (-> self draw art-group data (-> self nav-info idle-anim))
@@ -323,80 +359,86 @@
               (suspend)
               (ja :num! (loop!)))
             (cond
-              ((zero? gp-2) (if (nav-enemy-method-53 self) (go-virtual snow-bunny-patrol-hop)))
-              (else (+! gp-2 -1)))))))
+              ((zero? wait-count) (if (nav-enemy-method-53 self) (go-virtual snow-bunny-patrol-hop)))
+              (else (+! wait-count -1)))))))
   :post nav-enemy-simple-post)
 
-(defmethod nav-enemy-method-51 ((this snow-bunny) (arg0 vector) (arg1 vector))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (let* ((s4-0 (new 'stack-no-clear 'collide-tri-result))
-           (f0-0 (-> this gnd-popup))
-           (f30-0 (+ f0-0 40960.0)))
-      (set! (-> s5-0 quad) (-> arg0 quad))
-      (+! (-> s5-0 y) f0-0)
-      (let ((f0-2 (fill-and-probe-using-y-probe *collide-cache*
-                                                s5-0
-                                                f30-0
-                                                (collide-kind background)
-                                                (-> this collide-info process)
-                                                s4-0
-                                                (new 'static 'pat-surface :noentity #x1))))
+(defmethod nav-enemy-method-51 ((this snow-bunny) (in-point vector) (out-point vector))
+  "Probe background ground below in-point. Begin gnd-popup above the point, search 10 metres
+   farther down, reject a missing or unsuitable surface, and write the snapped point to out-point."
+  (let ((probe-position (new 'stack-no-clear 'vector)))
+    (let* ((triangle (new 'stack-no-clear 'collide-tri-result))
+           (ground-popup (-> this gnd-popup))
+           (probe-distance (+ ground-popup 40960.0)))
+      (set! (-> probe-position quad) (-> in-point quad))
+      (+! (-> probe-position y) ground-popup)
+      (let ((hit-fraction (fill-and-probe-using-y-probe *collide-cache*
+                                                        probe-position
+                                                        probe-distance
+                                                        (collide-kind background)
+                                                        (-> this collide-info process)
+                                                        triangle
+                                                        (new 'static 'pat-surface :noentity #x1))))
         ;; og:preserve-this yes this is bugged... again
-        (if (or (< f0-2 0.0) (= (logand #b111000 (the-as int (-> s4-0 pat))) 8)) (return #f))
-        (set! (-> s5-0 y) (- (-> s5-0 y) (* f0-2 f30-0)))))
-    (set! (-> arg1 quad) (-> s5-0 quad)))
+        (if (or (< hit-fraction 0.0) (= (logand #b111000 (the-as int (-> triangle pat))) 8)) (return #f))
+        (set! (-> probe-position y) (- (-> probe-position y) (* hit-fraction probe-distance)))))
+    (set! (-> out-point quad) (-> probe-position quad)))
   #t)
 
 (defmethod nav-enemy-method-53 ((this snow-bunny))
-  (let* ((s4-0 (-> this path curve num-cverts))
-         (s2-0 (nav-enemy-rnd-int-count s4-0))
-         (s5-0 (new 'stack-no-clear 'vector)))
-    (dotimes (s3-0 s4-0)
-      (eval-path-curve-div! (-> this path) s5-0 (the float s2-0) 'interp)
-      (let ((f30-0 (vector-vector-xz-distance s5-0 (-> this collide-info trans))))
-        (when (>= f30-0 6144.0)
-          (when (nav-enemy-method-51 this s5-0 s5-0)
-            (set! (-> this final-dest quad) (-> s5-0 quad))
-            (set! (-> this halfway-dist) (/ f30-0 2))
+  "Search the patrol path from a random vertex for a grounded point at least 1.5 metres away. Save
+   the destination, halfway distance, and a random 1.5-to-5.4-metre base hop."
+  (let* ((vertex-count (-> this path curve num-cverts))
+         (vertex-index (nav-enemy-rnd-int-count vertex-count))
+         (candidate (new 'stack-no-clear 'vector)))
+    (dotimes (i vertex-count)
+      (eval-path-curve-div! (-> this path) candidate (the float vertex-index) 'interp)
+      (let ((candidate-distance (vector-vector-xz-distance candidate (-> this collide-info trans))))
+        (when (>= candidate-distance 6144.0)
+          (when (nav-enemy-method-51 this candidate candidate)
+            (set! (-> this final-dest quad) (-> candidate quad))
+            (set! (-> this halfway-dist) (/ candidate-distance 2))
             (set! (-> this base-hop-dist) (rand-vu-float-range 6144.0 22118.4))
             (return #t))))
-      (set! s2-0 (mod (+ s2-0 1) s4-0))))
+      (set! vertex-index (mod (+ vertex-index 1) vertex-count))))
   #f)
 
 (defmethod nav-enemy-method-54 ((this snow-bunny))
+  "Choose and validate the next patrol hop toward final-dest. Scale hop length down near the
+   beginning and end of the trip, add a randomized lateral arc, and honor a navigation jump event."
   (set! (-> this using-jump-event?) #f)
-  (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> this final-dest) (-> this collide-info trans)))
-         (f30-0 (vector-length s5-1))
-         (f1-0 (-> this halfway-dist))
-         (f0-1 (- 1.0 (/ (fabs (- f30-0 f1-0)) (* 2.0 f1-0)))))
+  (let* ((to-destination (vector-! (new 'stack-no-clear 'vector) (-> this final-dest) (-> this collide-info trans)))
+         (distance-to-destination (vector-length to-destination))
+         (halfway-distance (-> this halfway-dist))
+         (hop-scale (- 1.0 (/ (fabs (- distance-to-destination halfway-distance)) (* 2.0 halfway-distance)))))
     (cond
-      ((< f0-1 0.3) (set! f0-1 0.3))
-      ((< 1.0 f0-1) (set! f0-1 1.0)))
-    (let ((f28-0 (* (-> this base-hop-dist) f0-1)))
+      ((< hop-scale 0.3) (set! hop-scale 0.3))
+      ((< 1.0 hop-scale) (set! hop-scale 1.0)))
+    (let ((hop-distance (* (-> this base-hop-dist) hop-scale)))
       (cond
-        ((>= (+ 4096.0 f28-0) f30-0) (set! (-> this nav target-pos quad) (-> this final-dest quad)))
+        ((>= (+ 4096.0 hop-distance) distance-to-destination) (set! (-> this nav target-pos quad) (-> this final-dest quad)))
         (else
-         (vector-rotate-around-y! s5-1 s5-1 16384.0)
-         (vector-normalize! s5-1 (- f30-0 f28-0))
-         (let ((s4-0 (new 'stack-no-clear 'vector)))
-           (vector+*! s4-0 (-> this final-dest) s5-1 (sin (rand-vu-float-range -16384.0 16384.0)))
-           (vector-! s5-1 s4-0 (-> this collide-info trans))
-           (when (< f28-0 (vector-length s5-1))
-             (vector-normalize! s5-1 f28-0)
-             (vector+! s4-0 (-> this collide-info trans) s5-1))
-           (set! (-> this nav target-pos quad) (-> s4-0 quad)))))))
+         (vector-rotate-around-y! to-destination to-destination 16384.0)
+         (vector-normalize! to-destination (- distance-to-destination hop-distance))
+         (let ((hop-position (new 'stack-no-clear 'vector)))
+           (vector+*! hop-position (-> this final-dest) to-destination (sin (rand-vu-float-range -16384.0 16384.0)))
+           (vector-! to-destination hop-position (-> this collide-info trans))
+           (when (< hop-distance (vector-length to-destination))
+             (vector-normalize! to-destination hop-distance)
+             (vector+! hop-position (-> this collide-info trans) to-destination))
+           (set! (-> this nav target-pos quad) (-> hop-position quad)))))))
   (set! (-> this got-jump-event?) #f)
-  (nav-control-method-11 (-> this nav) (-> this nav target-pos))
+  (navigate! (-> this nav) (-> this nav target-pos))
   (cond
     ((-> this got-jump-event?)
      (set! (-> this nav target-pos quad) (-> this jump-event-dest quad))
      (set! (-> this using-jump-event?) #t))
     (else
-     (let ((s5-2 (-> this nav travel)))
-       (if (< (vector-length s5-2) 0.01) (return #f))
-       (let ((a2-2 (-> this nav target-pos)))
-         (vector+! a2-2 (-> this collide-info trans) s5-2)
-         (if (not (nav-enemy-method-51 this a2-2 a2-2)) (return #f))))))
+     (let ((travel (-> this nav travel)))
+       (if (< (vector-length travel) 0.01) (return #f))
+       (let ((hop-target (-> this nav target-pos)))
+         (vector+! hop-target (-> this collide-info trans) travel)
+         (if (not (nav-enemy-method-51 this hop-target hop-target)) (return #f))))))
   #t)
 
 (defstate snow-bunny-patrol-hop (snow-bunny)
@@ -404,6 +446,8 @@
   :event snow-bunny-default-event-handler
   :enter
     (behavior ()
+      "Choose a patrol hop or return to idle, defend if needed, configure patrol jump motion, and
+            lower the airborne shadow plane."
       (set-time! (-> self state-time))
       (when (not (nav-enemy-method-54 self))
         (set! (-> self patrol-hop-failed?) #t)
@@ -411,21 +455,25 @@
       (if (nav-enemy-method-57 self) (go-virtual snow-bunny-defend))
       (set-jump-height-factor! self 0)
       (snow-bunny-initialize-jump (-> self nav target-pos))
-      (snow-bunny-method-76 self #t)
+      (set-shadow-airborne! self #t)
       (set! (-> self rotate-speed) 728177.75)
       (set! (-> self turn-time) (seconds 0.1)))
   :exit
     (behavior ()
+      "Re-enable ordinary rotation and travel and clear the temporary navigation flag."
       (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
-      (logclear! (-> self collide-info nav-flags) (nav-flags navf1)))
+      (logclear! (-> self collide-info nav-flags) (nav-flags avoid-extra-sphere)))
   :trans
     (behavior ()
+      "Refresh the danger timer."
       (nav-enemy-method-58 self))
   :code
     (behavior ()
+      "Execute the hop, accept a jump-event polygon, and either pause at the destination or continue
+            hopping."
       (snow-bunny-execute-jump)
       (if (-> self using-jump-event?)
-        (set-current-poly! (-> self nav) (nav-control-method-16 (-> self nav) (-> self collide-info trans))))
+        (set-current-poly! (-> self nav) (find-poly-fast-from-world (-> self nav) (-> self collide-info trans))))
       (if (or (zero? (nav-enemy-rnd-int-count (-> self patrol-rand-distraction)))
               (>= 40.96 (vector-vector-distance (-> self final-dest) (-> self collide-info trans))))
         (go-virtual snow-bunny-patrol-idle)
@@ -437,30 +485,32 @@
   :event snow-bunny-default-event-handler
   :enter
     (behavior ()
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
+      "Mark the bunny hostile, enable neck tracking, skip repeated notice reactions, lower the
+            airborne shadow plane, and launch upward at 25-to-32 metres per second."
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags hostile))
       (nav-enemy-neck-control-look-at)
-      (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf1)) (go-virtual nav-enemy-chase))
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
-      (snow-bunny-method-76 self #t)
+      (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags noticed-before)) (go-virtual nav-enemy-chase))
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags noticed-before))
+      (set-shadow-airborne! self #t)
       (set-vector! (-> self collide-info transv) 0.0 (nav-enemy-rnd-float-range 102400.0 131072.0) 0.0 1.0))
   :exit #f
   :trans
     (behavior ()
+      "Refresh the danger timer."
       (nav-enemy-method-58 self))
   :code
     (behavior ()
+      "Play the notice takeoff, fall under gravity while turning toward Jak, play the landing, and
+            begin chasing."
       (ja-channel-push! 1 (seconds 0.075))
-      (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info notice-anim))
-                    :num!
-                    (seek! (ja-aframe 8.0 0) f30-0)
-                    :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 8.0 0) f30-0)))
-        (until (logtest? (-> self collide-info status) (cshape-moving-flags onsurf))
-          (ja :num! (seek! max f30-0))
+      (let ((animation-speed (nav-enemy-rnd-float-range 0.8 1.2)))
+        (ja-play :group!
+                 (-> self draw art-group data (-> self nav-info notice-anim))
+                 :num!
+                 (seek! (ja-aframe 8.0 0) animation-speed)
+                 :frame-num 0.0)
+        (until (logtest? (-> self collide-info status) (collide-status on-surface))
+          (ja :num! (seek! max animation-speed))
           (+! (-> self collide-info transv y) (* -546119.7 (seconds-per-frame)))
           (integrate-for-enemy-with-move-to-ground! (-> self collide-info)
                                                     (-> self collide-info transv)
@@ -470,15 +520,15 @@
                                                     #f
                                                     #f)
           (when *target*
-            (let ((gp-2 (new 'stack-no-clear 'vector)))
-              (vector-! gp-2 (target-pos 0) (-> self collide-info trans))
-              (seek-toward-heading-vec! (-> self collide-info) gp-2 524288.0 (seconds 0.1))))
+            (let ((to-target (new 'stack-no-clear 'vector)))
+              (vector-! to-target (target-pos 0) (-> self collide-info trans))
+              (seek-toward-heading-vec! (-> self collide-info) to-target 524288.0 (seconds 0.1))))
           (suspend))
         (ja-channel-push! 1 (seconds 0.075))
-        (ja-no-eval :group! (-> self draw art-group data (-> self notice-land-anim)) :num! (seek! max f30-0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! max f30-0))))
+        (ja-play :group!
+                 (-> self draw art-group data (-> self notice-land-anim))
+                 :num! (seek! max animation-speed)
+                 :frame-num 0.0))
       (go-virtual nav-enemy-chase))
   :post nav-enemy-simple-post)
 
@@ -489,43 +539,46 @@
   :trans #f
   :code
     (behavior ()
+      "Begin the bunny's hopping chase."
       (go-virtual snow-bunny-chase-hop))
   :post #f)
 
 (defmethod nav-enemy-method-52 ((this snow-bunny))
+  "Choose and validate the next chase hop toward Jak. Use a random 4.4-to-5.4-metre hop, introduce
+   a lateral arc unless the destination is near, and honor a navigation jump event."
   (set! (-> this using-jump-event?) #f)
   (if (not *target*) (return #f))
-  (let ((s4-0 (-> this final-dest)))
-    (set! (-> s4-0 quad) (-> (target-pos 0) quad))
-    (if (not (nav-enemy-method-51 this s4-0 s4-0)) (return #f))
+  (let ((destination (-> this final-dest)))
+    (set! (-> destination quad) (-> (target-pos 0) quad))
+    (if (not (nav-enemy-method-51 this destination destination)) (return #f))
     (set! (-> this base-hop-dist) (rand-vu-float-range 18022.4 22118.4))
-    (let* ((s5-2 (vector-! (new 'stack-no-clear 'vector) s4-0 (-> this collide-info trans)))
-           (f28-0 (vector-length s5-2))
-           (f30-0 (-> this base-hop-dist)))
+    (let* ((to-destination (vector-! (new 'stack-no-clear 'vector) destination (-> this collide-info trans)))
+           (distance-to-destination (vector-length to-destination))
+           (hop-distance (-> this base-hop-dist)))
       (cond
-        ((>= (+ 4096.0 f30-0) f28-0) (set! (-> this nav target-pos quad) (-> s4-0 quad)))
+        ((>= (+ 4096.0 hop-distance) distance-to-destination) (set! (-> this nav target-pos quad) (-> destination quad)))
         (else
-         (vector-rotate-around-y! s5-2 s5-2 16384.0)
-         (vector-normalize! s5-2 (- f28-0 f30-0))
-         (let ((s3-0 (new 'stack-no-clear 'vector)))
-           (vector+*! s3-0 s4-0 s5-2 (sin (rand-vu-float-range -16384.0 16384.0)))
-           (vector-! s5-2 s3-0 (-> this collide-info trans))
-           (when (< f30-0 (vector-length s5-2))
-             (vector-normalize! s5-2 f30-0)
-             (vector+! s3-0 (-> this collide-info trans) s5-2))
-           (set! (-> this nav target-pos quad) (-> s3-0 quad)))))))
+         (vector-rotate-around-y! to-destination to-destination 16384.0)
+         (vector-normalize! to-destination (- distance-to-destination hop-distance))
+         (let ((hop-position (new 'stack-no-clear 'vector)))
+           (vector+*! hop-position destination to-destination (sin (rand-vu-float-range -16384.0 16384.0)))
+           (vector-! to-destination hop-position (-> this collide-info trans))
+           (when (< hop-distance (vector-length to-destination))
+             (vector-normalize! to-destination hop-distance)
+             (vector+! hop-position (-> this collide-info trans) to-destination))
+           (set! (-> this nav target-pos quad) (-> hop-position quad)))))))
   (set! (-> this got-jump-event?) #f)
-  (nav-control-method-11 (-> this nav) (-> this nav target-pos))
+  (navigate! (-> this nav) (-> this nav target-pos))
   (cond
     ((-> this got-jump-event?)
      (set! (-> this nav target-pos quad) (-> this jump-event-dest quad))
      (set! (-> this using-jump-event?) #t))
     (else
-     (let ((s5-3 (-> this nav travel)))
-       (if (< (vector-length s5-3) 0.01) (return #f))
-       (let ((a2-3 (-> this nav target-pos)))
-         (vector+! a2-3 (-> this collide-info trans) s5-3)
-         (if (not (nav-enemy-method-51 this a2-3 a2-3)) (return #f))))))
+     (let ((travel (-> this nav travel)))
+       (if (< (vector-length travel) 0.01) (return #f))
+       (let ((hop-target (-> this nav target-pos)))
+         (vector+! hop-target (-> this collide-info trans) travel)
+         (if (not (nav-enemy-method-51 this hop-target hop-target)) (return #f))))))
   #t)
 
 (defstate snow-bunny-chase-hop (snow-bunny)
@@ -533,32 +586,38 @@
   :event snow-bunny-default-event-handler
   :enter
     (behavior ()
+      "Validate Jak and chase range, defend if needed, choose a chase hop, configure its animation
+            and ballistic motion, and lower the airborne shadow plane."
       (set-time! (-> self state-time))
       (set! (-> self should-retreat?) #f)
       (if (or (not *target*) (logtest? (-> *target* state-flags) (state-flags do-not-notice))) (go-virtual nav-enemy-patrol))
       (if (not (target-in-range? self (-> self nav-info stop-chase-distance))) (go-virtual nav-enemy-patrol))
       (if (nav-enemy-method-57 self) (go-virtual snow-bunny-defend))
       (when (not (nav-enemy-method-52 self))
-        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1))
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags noticed-before))
         (go-virtual nav-enemy-notice))
       (set-jump-height-factor! self 1)
       (snow-bunny-initialize-jump (-> self nav target-pos))
-      (snow-bunny-method-76 self #t)
+      (set-shadow-airborne! self #t)
       (set! (-> self rotate-speed) 728177.75)
       (set! (-> self turn-time) (seconds 0.1)))
   :exit
     (behavior ()
+      "Re-enable ordinary rotation and travel and clear the temporary navigation flag."
       (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
-      (logclear! (-> self collide-info nav-flags) (nav-flags navf1)))
+      (logclear! (-> self collide-info nav-flags) (nav-flags avoid-extra-sphere)))
   :trans
     (behavior ()
+      "Remember a pending defense response and refresh the danger timer."
       (if (nav-enemy-method-57 self) (set! (-> self should-retreat?) #t))
       (nav-enemy-method-58 self))
   :code
     (behavior ()
+      "Execute the hop, accept a jump-event polygon, defend when requested, and choose the next
+            chase hop."
       (snow-bunny-execute-jump)
       (if (-> self using-jump-event?)
-        (set-current-poly! (-> self nav) (nav-control-method-16 (-> self nav) (-> self collide-info trans))))
+        (set-current-poly! (-> self nav) (find-poly-fast-from-world (-> self nav) (-> self collide-info trans))))
       (if (-> self should-retreat?) (go-virtual snow-bunny-defend))
       (go-virtual snow-bunny-chase-hop))
   :post nav-enemy-jump-post)
@@ -567,83 +626,90 @@
   :virtual override
   :code
     (behavior ()
+      "Enter retreat-hop for defensive mode 1 and lunge otherwise."
       (if (= (-> self defense) 1) (go-virtual snow-bunny-retreat-hop) (go-virtual snow-bunny-lunge))))
 
 (deftype snow-bunny-retreat-work (structure)
-  ((found-best        basic)
+  "Temporary selection state for comparing the bunny's two candidate retreat hops."
+  ((found-best basic)
    (using-jump-event? basic)
-   (best-travel-dist  float)
-   (best-dest         vector :inline)
-   (away-vec          vector :inline)))
-
+   (best-travel-dist float)
+   (best-dest vector :inline)
+   (away-vec vector :inline)))
 
 (defmethod nav-enemy-method-55 ((this snow-bunny))
+  "Try two retreat headings based on Jak's facing and the direction away from him. Prefer a
+   complete viable hop, otherwise keep the longest grounded partial hop."
   (set! (-> this using-jump-event?) #f)
   (if (not *target*) (return #f))
-  (let ((s5-0 (new 'stack-no-clear 'snow-bunny-retreat-work)))
-    (set! (-> s5-0 found-best) #f)
-    (let ((s4-0 (-> this nav))) (nav-control-method-27 s4-0) (nav-control-method-28 s4-0 (the-as collide-kind -1)))
-    (let ((s4-1 (target-pos 0)))
-      (vector-! (-> s5-0 away-vec) (-> this collide-info trans) s4-1)
-      (set! (-> s5-0 away-vec y) 0.0)
-      (vector-normalize! (-> s5-0 away-vec) 86016.0)
-      (let* ((s3-0 (quaternion-y-angle (-> *target* control quat)))
-             (a0-9 (atan (-> s5-0 away-vec x) (-> s5-0 away-vec z)))
-             (s3-1 (deg- a0-9 s3-0)))
-        (dotimes (s2-0 2)
+  (let ((work (new 'stack-no-clear 'snow-bunny-retreat-work)))
+    (set! (-> work found-best) #f)
+    (let ((nav-state (-> this nav)))
+      (relocalize-in-mesh! nav-state)
+      (gather-nav-spheres! nav-state (the-as collide-kind -1)))
+    (let ((target-position (target-pos 0)))
+      (vector-! (-> work away-vec) (-> this collide-info trans) target-position)
+      (set! (-> work away-vec y) 0.0)
+      (vector-normalize! (-> work away-vec) 86016.0)
+      (let* ((player-yaw (quaternion-y-angle (-> *target* control quat)))
+             (away-yaw (atan (-> work away-vec x) (-> work away-vec z)))
+             (relative-yaw (deg- away-yaw player-yaw)))
+        (dotimes (attempt 2)
           (cond
-            ((zero? s2-0)
-             (let ((f30-0 0.0))
-               (if (< (fabs s3-1) 16384.0) (set! f30-0 (if (>= s3-1 0.0) 4551.1113 -4551.1113)))
-               (let ((f0-7 (+ f30-0 (rand-vu-float-range -6371.5557 6371.5557)))
-                     (s1-0 (new 'stack-no-clear 'vector)))
-                 (vector-rotate-around-y! s1-0 (-> s5-0 away-vec) f0-7)
-                 (vector+! (-> this final-dest) s4-1 s1-0))))
-            ((= s2-0 1)
-             (let* ((f30-1 32768.0)
-                    (f0-10 (if (>= s3-1 0.0) (- f30-1 (rand-vu-float-range 10012.444 15473.777)) (+ f30-1 (rand-vu-float-range 10012.444 15473.777))))
-                    (s1-1 (new 'stack-no-clear 'vector)))
-               (vector-rotate-around-y! s1-1 (-> s5-0 away-vec) f0-10)
-               (vector+! (-> this final-dest) s4-1 s1-1))))
-          (let* ((s1-3 (vector-! (new 'stack-no-clear 'vector) (-> this final-dest) (-> this collide-info trans)))
-                 (f0-12 (vector-length s1-3)))
-            (let ((f1-4 (/ f0-12 (meters 21))))
+            ((zero? attempt)
+             (let ((yaw-bias 0.0))
+               (if (< (fabs relative-yaw) 16384.0) (set! yaw-bias (if (>= relative-yaw 0.0) 4551.1113 -4551.1113)))
+               (let ((yaw-offset (+ yaw-bias (rand-vu-float-range -6371.5557 6371.5557)))
+                     (offset (new 'stack-no-clear 'vector)))
+                 (vector-rotate-around-y! offset (-> work away-vec) yaw-offset)
+                 (vector+! (-> this final-dest) target-position offset))))
+            ((= attempt 1)
+             (let* ((opposite-yaw 32768.0)
+                    (yaw (if (>= relative-yaw 0.0)
+                           (- opposite-yaw (rand-vu-float-range 10012.444 15473.777))
+                           (+ opposite-yaw (rand-vu-float-range 10012.444 15473.777))))
+                    (opposite-offset (new 'stack-no-clear 'vector)))
+               (vector-rotate-around-y! opposite-offset (-> work away-vec) yaw)
+               (vector+! (-> this final-dest) target-position opposite-offset))))
+          (let* ((to-destination (vector-! (new 'stack-no-clear 'vector) (-> this final-dest) (-> this collide-info trans)))
+                 (distance-to-destination (vector-length to-destination)))
+            (let ((distance-scale (/ distance-to-destination (meters 21))))
               (cond
-                ((< 1.0 f1-4) (set! f1-4 1.0))
-                ((< f1-4 0.4) (set! f1-4 0.4)))
-              (set! (-> this base-hop-dist) (+ 16384.0 (* 20480.0 f1-4))))
-            (when (< (-> this base-hop-dist) f0-12)
-              (vector-normalize! s1-3 (-> this base-hop-dist))
-              (vector+! (-> this final-dest) (-> this collide-info trans) s1-3)))
+                ((< 1.0 distance-scale) (set! distance-scale 1.0))
+                ((< distance-scale 0.4) (set! distance-scale 0.4)))
+              (set! (-> this base-hop-dist) (+ 16384.0 (* 20480.0 distance-scale))))
+            (when (< (-> this base-hop-dist) distance-to-destination)
+              (vector-normalize! to-destination (-> this base-hop-dist))
+              (vector+! (-> this final-dest) (-> this collide-info trans) to-destination)))
           (set! (-> this nav target-pos quad) (-> this final-dest quad))
           (set! (-> this got-jump-event?) #f)
-          (nav-control-method-13 (-> this nav) (-> this nav target-pos) (-> this nav old-travel))
+          (compute-travel (-> this nav) (-> this nav target-pos) (-> this nav old-travel))
           (when (< (vector-xz-length (-> this nav travel)) 204.8)
-            (let ((s1-4 (new 'stack-no-clear 'nav-gap-info)))
-              (when (nav-control-method-12 (-> this nav) s1-4)
+            (let ((gap (new 'stack-no-clear 'nav-gap-info)))
+              (when (find-gap-landing (-> this nav) gap)
                 (set! (-> this got-jump-event?) #t)
-                (set! (-> this jump-event-dest quad) (-> s1-4 dest quad)))))
+                (set! (-> this jump-event-dest quad) (-> gap dest quad)))))
           (cond
             ((-> this got-jump-event?)
-             (when (zero? s2-0)
+             (when (zero? attempt)
                (set! (-> this nav target-pos quad) (-> this jump-event-dest quad))
                (set! (-> this using-jump-event?) #t)
                (return #t)))
             (else
-             (let* ((s0-0 (-> this nav travel))
-                    (f30-2 (vector-length s0-0)))
-               (when (>= f30-2 409.6)
-                 (let ((s1-5 (-> this nav target-pos)))
-                   (vector+! s1-5 (-> this collide-info trans) s0-0)
-                   (when (nav-enemy-method-51 this s1-5 s1-5)
-                     (if (>= f30-2 (+ -409.6 (-> this base-hop-dist))) (return #t))
-                     (when (or (not (-> s5-0 found-best)) (< (-> s5-0 best-travel-dist) f30-2))
-                       (set! (-> s5-0 found-best) #t)
-                       (set! (-> s5-0 best-travel-dist) f30-2)
-                       (set! (-> s5-0 best-dest quad) (-> s1-5 quad))))))))))))
-    (when (-> s5-0 found-best)
-      (set! (-> this nav target-pos quad) (-> s5-0 best-dest quad))
-      (vector-! (-> this nav travel) (-> s5-0 best-dest) (-> this collide-info trans))
+             (let* ((travel (-> this nav travel))
+                    (travel-distance (vector-length travel)))
+               (when (>= travel-distance 409.6)
+                 (let ((hop-target (-> this nav target-pos)))
+                   (vector+! hop-target (-> this collide-info trans) travel)
+                   (when (nav-enemy-method-51 this hop-target hop-target)
+                     (if (>= travel-distance (+ -409.6 (-> this base-hop-dist))) (return #t))
+                     (when (or (not (-> work found-best)) (< (-> work best-travel-dist) travel-distance))
+                       (set! (-> work found-best) #t)
+                       (set! (-> work best-travel-dist) travel-distance)
+                       (set! (-> work best-dest quad) (-> hop-target quad))))))))))))
+    (when (-> work found-best)
+      (set! (-> this nav target-pos quad) (-> work best-dest quad))
+      (vector-! (-> this nav travel) (-> work best-dest) (-> this collide-info trans))
       (return #t)))
   #f)
 
@@ -652,13 +718,15 @@
   :event snow-bunny-default-event-handler
   :enter
     (behavior ()
+      "Start or expire the mode-specific retreat timeout, choose a retreat hop or remain in place,
+            configure its ballistic motion, and lower the airborne shadow plane."
       (set-time! (-> self state-time))
       (if (not *target*) (go-virtual nav-enemy-patrol))
-      (let ((v1-8 (>= 73728.0 (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans)))))
-        (when (or (-> self should-retreat?) (and v1-8 (logtest? (-> *target* state-flags) (state-flags dangerous))))
+      (let ((target-close? (>= 73728.0 (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans)))))
+        (when (or (-> self should-retreat?) (and target-close? (logtest? (-> *target* state-flags) (state-flags dangerous))))
           (set! (-> self retreat-timeout-time) (+ (current-time) (the int (* 300.0 (-> self retreat-timeout)))))
           (set! (-> self should-retreat?) #f))
-        (when (or (>= (current-time) (-> self retreat-timeout-time)) (not v1-8))
+        (when (or (>= (current-time) (-> self retreat-timeout-time)) (not target-close?))
           (if (or (not *target*)
                   (logtest? (-> *target* state-flags) (state-flags do-not-notice))
                   (not (target-in-range? self (-> self nav-info stop-chase-distance))))
@@ -669,21 +737,24 @@
         (set! (-> self nav target-pos quad) (-> self collide-info trans quad)))
       (set-jump-height-factor! self 2)
       (snow-bunny-initialize-jump (-> self nav target-pos))
-      (snow-bunny-method-76 self #t)
+      (set-shadow-airborne! self #t)
       (set! (-> self rotate-speed) 728177.75)
       (set! (-> self turn-time) (seconds 0.1)))
   :exit
     (behavior ()
+      "Re-enable ordinary rotation and travel and clear the temporary navigation flag."
       (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
-      (logclear! (-> self collide-info nav-flags) (nav-flags navf1)))
+      (logclear! (-> self collide-info nav-flags) (nav-flags avoid-extra-sphere)))
   :trans
     (behavior ()
+      "Refresh the danger timer."
       (nav-enemy-method-58 self))
   :code
     (behavior ()
+      "Execute the retreat hop, accept a jump-event polygon, and choose the next retreat hop."
       (snow-bunny-execute-jump)
       (if (-> self using-jump-event?)
-        (set-current-poly! (-> self nav) (nav-control-method-16 (-> self nav) (-> self collide-info trans))))
+        (set-current-poly! (-> self nav) (find-poly-fast-from-world (-> self nav) (-> self collide-info trans))))
       (go-virtual snow-bunny-retreat-hop))
   :post nav-enemy-jump-post)
 
@@ -692,26 +763,27 @@
   :event snow-bunny-default-event-handler
   :enter
     (behavior ()
+      "Restore the grounded shadow."
       (set-time! (-> self state-time))
-      (snow-bunny-method-76 self #f))
+      (set-shadow-airborne! self #f))
   :trans
     (behavior ()
+      "Return to patrol without a target, chase beyond eighteen metres or when Jak stops being
+            dangerous, and retreat when a dangerous Jak is outside notice range."
       (if (not *target*) (go-virtual nav-enemy-patrol))
       (nav-enemy-method-58 self)
-      (let ((f0-0 (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans))))
-        (if (< 73728.0 f0-0) (go-virtual snow-bunny-chase-hop)))
+      (let ((target-distance (vector-vector-xz-distance (target-pos 0) (-> self collide-info trans))))
+        (if (< 73728.0 target-distance) (go-virtual snow-bunny-chase-hop)))
       (if (not (logtest? (-> *target* state-flags) (state-flags dangerous))) (go-virtual snow-bunny-chase-hop))
       (if (and (logtest? (-> *target* state-flags) (state-flags dangerous))
                (not (target-in-range? self (-> self nav-info notice-distance))))
         (go-virtual snow-bunny-retreat-hop)))
   :code
     (behavior ()
+      "Loop the grounded idle animation."
       (ja-channel-push! 1 (seconds 0.075))
       (loop
-        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek!) :frame-num 0.0)))
   :post nav-enemy-simple-post)
 
 (defstate snow-bunny-attack (snow-bunny)
@@ -719,15 +791,17 @@
   :event snow-bunny-default-event-handler
   :enter
     (behavior ()
+      "Clear translation velocity, lower the airborne shadow plane, and start the attack."
       (set-time! (-> self state-time))
       (set-vector! (-> self collide-info transv) 0.0 0.0 0.0 1.0)
-      (snow-bunny-method-76 self #t))
+      (set-shadow-airborne! self #t))
   :trans
     (behavior ()
+      "Face Jak while falling under gravity and move with ground collision."
       (when *target*
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (vector-! gp-0 (target-pos 0) (-> self collide-info trans))
-          (seek-toward-heading-vec! (-> self collide-info) gp-0 524288.0 (seconds 0.1))))
+        (let ((to-target (new 'stack-no-clear 'vector)))
+          (vector-! to-target (target-pos 0) (-> self collide-info trans))
+          (seek-toward-heading-vec! (-> self collide-info) to-target 524288.0 (seconds 0.1))))
       (+! (-> self collide-info transv y) (* -546119.7 (seconds-per-frame)))
       (integrate-for-enemy-with-move-to-ground! (-> self collide-info)
                                                 (-> self collide-info transv)
@@ -738,12 +812,10 @@
                                                 #f))
   :code
     (behavior ()
+      "Play the attack animation, wait to land, and retreat."
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group! (-> self draw art-group data (-> self attack-anim)) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
-      (until (logtest? (-> self collide-info status) (cshape-moving-flags onsurf))
+      (ja-play :group! (-> self draw art-group data (-> self attack-anim)) :num! (seek!) :frame-num 0.0)
+      (until (logtest? (-> self collide-info status) (collide-status on-surface))
         (suspend))
       (go-virtual snow-bunny-retreat-hop))
   :post nav-enemy-simple-post)

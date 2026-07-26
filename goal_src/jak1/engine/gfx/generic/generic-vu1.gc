@@ -2,60 +2,1393 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/math/vector-h.gc")
+(require "engine/gfx/generic/generic-h.gc")
 (require "engine/gfx/generic/generic-vu1-h.gc")
 (require "engine/gfx/vu1-user-h.gc")
 (require "engine/gfx/math-camera-h.gc")
 (require "engine/gfx/hw/gs.gc")
-(define generic-vu1-block (new 'static 'vu-function :length #x0 :qlength #x0))
+(#when PC_PORT
+  ;; The PC renderer consumes the Generic DMA packets directly and does not execute the VU1
+  ;; program, but the packet builder still needs this object while constructing the upload chain.
+  (define generic-vu1-block (new 'static 'vu-function :length #x0 :qlength #x0)))
 
-(defun generic-setup-constants ((arg0 generic-constants) (arg1 int))
-  (let ((a2-0 *math-camera*)) (set-vector! (-> arg0 fog) (-> a2-0 pfog0) (-> a2-0 fog-min) (-> a2-0 fog-max) 3071.0))
-  (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x7 :nreg #x1))
-  (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  (set! (-> arg0 giftag tag)
+;; Generic input occupies three 279-qword VIF input banks at 0, 279, and 558.  vi12 selects
+;; the active input bank.  The two 30-qword header buffers begin at 837 and 867, with vi13
+;; selecting the one currently in use; each holds the transform matrix, the strip GIF tag, two A+D
+;; quadwords, and the fragment's adgif shaders.  Camera, fog, GIF, and packet constants occupy
+;; qwords 897 through 906.  The remaining memory holds six clipping-plane records, linked edge
+;; lists, projected vertices, and the temporary GIF packet used when a strip crosses the view
+;; volume.
+;;
+;; There is no separate GIF output buffer.  The draw path transforms each vertex in place inside the
+;; input bank and then writes a nine-qword prologue - adgif tag, shader, the two A+D quadwords, and
+;; the strip GIF tag with its NLOOP filled in - into the bank immediately ahead of each strip's
+;; vertices, so one xgkick per fragment walks the whole thing.  This is why the uploaded stream
+;; carries three padding vertices at every strip boundary: they are the space the prologue occupies.
+;; Three input banks rather than two because that kick is asynchronous: the GIF is still reading one
+;; bank while the EE uploads into the second and this program transforms the third.
+;;
+;; Each input vertex carries texture coordinates, packed color, and position.  The draw paths
+;; transform positions with the uploaded matrix, divide by homogeneous w, apply the GS viewport
+;; scale and offset, clamp depth and fog, convert the result to GS fixed point, and emit
+;; ST/RGBAQ/XYZF2 triples.  Bit zero of S is not a coordinate: it carries the draw point's no-kick
+;; flag, and a vertex that has it gets 3071.0 added to w before ftoi4, which lands in bit 15 of the
+;; packed value as the GS ADC bit.  The full path records the VU clip flags and clips partially
+;; visible strips against all six homogeneous view planes.  New edge vertices interpolate texture,
+;; color, and position before projection so perspective correction remains valid.  A clipped triangle
+;; does not rejoin the strip - it is drawn as its own triangle fan with its own kick, and TEST_1 is
+;; restored afterwards.
+;;
+;; The entry table uses two instruction pairs per public entry:
+;;   0  load the permanent constants and initialize all renderer state
+;;   2  reset the output and clipping state without reloading constants
+;;   4  finish without drawing
+;;   6  transform and draw, running the polygon clipper on any triangle that crosses a plane
+;;   8  transform and draw, testing the same clip flags but only rejecting: a crossing vertex gets
+;;      3071.0 added to its w, which sets the GS ADC bit, and the strip carries on. Cheaper than
+;;      entry 6 by the whole clipper, and correct wherever a dropped triangle is acceptable.
+;;  10  rescale an already-packed position/color stream in place, then branch into entry 8's loop -
+;;      it does not have a draw path of its own
+;;  12  install the header-buffer and input-bank addresses uploaded at qword 906
+(#unless PC_PORT
+  (defvu1 generic-vu1-block
+    ;; Register aliases. These seven vector registers are loaded once by the init entry and are live for
+    ;; the whole program, and the four transform rows are reloaded per strip but always mean the same
+    ;; thing, so all eleven are named. The two buffer selectors and the vertex cursor are named for the
+    ;; same reason.
+    ;;
+    ;; Nothing else is. This is four largely independent programs sharing one instruction memory - the
+    ;; in-place fixup, the two transform pipelines, and the clipper - and they disagree about almost
+    ;; every remaining register. vi01 through vi09 are addresses, counts, kick comparands and clip flags
+    ;; in the transform loops and plane pointers, edge cursors and endpoint pointers in the clipper;
+    ;; vf12 through vf31 are four vertices in flight in one and clip-space endpoints, plane distances and
+    ;; GIF payloads in the other. One alias set would be wrong three quarters of the time, so those keep
+    ;; their physical names and each section says below what it is using them for.
+    (rlet ((fog-consts :reg vf01)     ;; x pfog0, y fog-min, z fog-max, w 3071.0 - the ADC bias
+           (adgif-tag :reg vf02)
+           (hvdf-offset :reg vf04)
+           (hmge-scale :reg vf05)
+           (invh-scale :reg vf06)
+           (guard :reg vf07)          ;; guard-band scale, applied before the clip test
+           (xform-row-0 :reg vf08)    ;; the four rows arrive per strip out of the header buffer
+           (xform-row-1 :reg vf09)
+           (xform-row-2 :reg vf10)
+           (xform-row-3 :reg vf11)
+           (header-buf :reg vi13)     ;; the header buffer this invocation reads its matrix and shaders from
+           (input-bank :reg vi12)     ;; the input bank it transforms in place
+           (transform-return :reg vi15) ;; where a clipped draw returns to in the transform loop
+           ;; Two registers that mean one thing in the transform loops and another in the clipper. Both
+           ;; names are given; each use site picks the one that is true where it stands.
+           (vertex-cursor :reg vi10)  ;; transform: three quadwords per vertex
+           (pending-depth :reg vi10)  ;; clipper: depth of the pending edge-list stack
+           (triangle-count :reg vi11) ;; transform: starts at -2, so it reaches zero on the third vertex
+           (clip-link :reg vi11))     ;; clipper: link register for the plane helpers and the interpolator
+    ;; Public entry table.
+    (vu-pair (b load-constants) (nop)) ;; #x000
+    (vu-pair (nop) (nop)) ;; #x001
+    (vu-pair (b reset-buffers-and-planes) (nop)) ;; #x002
+    (vu-pair (nop) (nop)) ;; #x003
+    (vu-pair (b program-done) (nop)) ;; #x004
+    (vu-pair (nop) (nop)) ;; #x005
+    (vu-pair (b clip-select-header) (nop)) ;; #x006
+    (vu-pair (nop) (nop)) ;; #x007
+    (vu-pair (b direct-select-header) (nop)) ;; #x008
+    (vu-pair (nop) (nop)) ;; #x009
+    (vu-pair (b fixup-rewrite-header) (nop)) ;; #x00a
+    (vu-pair (nop) (nop)) ;; #x00b
+    (vu-pair (b adopt-external-buffers) (nop)) ;; #x00c
+    (vu-pair (nop) (nop)) ;; #x00d
+    ;; Entry 10: normalize a packed input stream in place before joining the transform path.
+    (label fixup-rewrite-header)
+    (vu-pair (iaddiu vi02 vi00 0x381) (nop)) ;; #x00e
+    (vu-pair (lq.xyzw vf31 vi02 (generic-const-qword adnop)) (nop)) ;; #x00f
+    (vu-pair (isubiu vi02 header-buf 0x363) (addw.z vf22 vf00 vf00)) ;; #x010
+    (vu-pair (iaddiu header-buf header-buf 0x1e) (addw.z vf23 vf00 vf00)) ;; #x011
+    (vu-pair (ibne vi00 vi02 fixup-set-up-scan) (addw.z vf24 vf00 vf00)) ;; #x012
+    (vu-pair (lq.xyzw vf03 vi00 899) (addw.z vf25 vf00 vf00)) ;; #x013
+    (vu-pair (iaddiu header-buf vi00 0x345) (nop)) ;; #x014
+    (label fixup-set-up-scan)
+    (vu-pair (ilw.x vi01 header-buf 5) (nop)) ;; #x015
+    (vu-pair (iaddi vi07 input-bank 0xa) (nop)) ;; #x016
+    (vu-pair (iaddi vi05 vi01 -0x1) (nop)) ;; #x017
+    (vu-pair (lq.xyzw vf17 header-buf 4) (nop)) ;; #x018
+    (vu-pair (sq.xyzw vf31 header-buf 5) (nop)) ;; #x019
+    (vu-pair (sq.xyzw vf31 header-buf 6) (nop)) ;; #x01a
+    (vu-pair (0.0078125) (nop :i)) ;; #x01b
+    (vu-pair (move.xyzw vf13 vf17) (muli.xyz vf17 vf17 I)) ;; #x01c
+    (vu-pair (move.xyzw vf14 vf17) (nop)) ;; #x01d
+    (vu-pair (move.xyzw vf15 vf17) (nop)) ;; #x01e
+    (vu-pair (move.xyzw vf16 vf17) (nop)) ;; #x01f
+    (vu-pair (sq.xyzw vf03 header-buf 4) (nop)) ;; #x020
+    (vu-pair (isw.w vi01 header-buf 5) (nop)) ;; #x021
+    (vu-pair (isw.w vi00 header-buf 6) (nop)) ;; #x022
+    (label fixup-convert-four)
+    (vu-pair (lq.xyz vf13 vi07 0) (nop)) ;; #x023
+    (vu-pair (lq.xyz vf14 vi07 3) (nop)) ;; #x024
+    (vu-pair (lq.xyz vf15 vi07 6) (nop)) ;; #x025
+    (vu-pair (lq.xyz vf16 vi07 9) (nop)) ;; #x026
+    (vu-pair (iaddi vi07 vi07 0xc) (itof0.xyz vf13 vf13)) ;; #x027
+    (vu-pair (iaddi vi05 vi05 -0x4) (itof0.xyz vf14 vf14)) ;; #x028
+    (vu-pair (nop) (itof0.xyz vf15 vf15)) ;; #x029
+    (vu-pair (nop) (itof0.xyz vf16 vf16)) ;; #x02a
+    (vu-pair (nop) (mul.xyz vf13 vf13 vf17)) ;; #x02b
+    (vu-pair (nop) (mul.xyz vf14 vf14 vf17)) ;; #x02c
+    (vu-pair (nop) (mul.xyz vf15 vf15 vf17)) ;; #x02d
+    (vu-pair (nop) (mul.xyz vf16 vf16 vf17)) ;; #x02e
+    (vu-pair (lq.xyzw vf18 vi07 -11) (ftoi0.xyz vf13 vf13)) ;; #x02f
+    (vu-pair (lq.xyzw vf19 vi07 -8) (ftoi0.xyz vf14 vf14)) ;; #x030
+    (vu-pair (lq.xyzw vf20 vi07 -5) (ftoi0.xyz vf15 vf15)) ;; #x031
+    (vu-pair (lq.xyzw vf21 vi07 -2) (ftoi0.xyz vf16 vf16)) ;; #x032
+    (vu-pair (sq.xyzw vf13 vi07 -12) (itof0.xyzw vf18 vf18)) ;; #x033
+    (vu-pair (sq.xyzw vf14 vi07 -9) (itof0.xyzw vf19 vf19)) ;; #x034
+    (vu-pair (sq.xyzw vf15 vi07 -6) (itof0.xyzw vf20 vf20)) ;; #x035
+    (vu-pair (sq.xyzw vf16 vi07 -3) (itof0.xyzw vf21 vf21)) ;; #x036
+    (vu-pair (sq.xyzw vf18 vi07 -11) (nop)) ;; #x037
+    (vu-pair (sq.xyzw vf19 vi07 -8) (nop)) ;; #x038
+    (vu-pair (sq.xyzw vf20 vi07 -5) (nop)) ;; #x039
+    (vu-pair (ibgez vi05 fixup-convert-four) (nop)) ;; #x03a
+    (vu-pair (sq.xyzw vf21 vi07 -2) (nop)) ;; #x03b
+    (vu-pair (b direct-next-strip) (nop)) ;; #x03c
+    (vu-pair (nop) (nop)) ;; #x03d
+    ;; Entry 0 begins here.  Load the ten-qword constant block, then fall through to entry 2.
+    (label load-constants)
+    (vu-pair (iaddiu vi01 vi00 0x381) (nop)) ;; #x03e
+    (vu-pair (lq.xyzw fog-consts vi01 (generic-const-qword fog)) (nop)) ;; #x03f
+    (vu-pair (lq.xyzw adgif-tag vi01 (generic-const-qword adgif)) (nop)) ;; #x040
+    (vu-pair (lq.xyzw vf03 vi01 (generic-const-qword giftag)) (nop)) ;; #x041
+    (vu-pair (lq.xyzw hvdf-offset vi01 (generic-const-qword hvdf-offset)) (nop)) ;; #x042
+    (vu-pair (lq.xyzw hmge-scale vi01 (generic-const-qword hmge-scale)) (nop)) ;; #x043
+    (vu-pair (lq.xyzw invh-scale vi01 (generic-const-qword invh-scale)) (nop)) ;; #x044
+    (vu-pair (lq.xyzw guard vi01 (generic-const-qword guard)) (nop)) ;; #x045
+    ;; Entry 2: choose the first input bank and GIF buffer and initialize the six clip-plane records.
+    (label reset-buffers-and-planes)
+    (vu-pair (iaddiu header-buf vi00 0x363) (nop)) ;; #x046
+    (vu-pair (iaddi vi02 header-buf 0x5) (nop)) ;; #x047
+    (vu-pair (iaddi input-bank vi00 0x0) (nop)) ;; #x048
+    (vu-pair (isw.x vi02 vi01 (generic-const-qword stores)) (nop)) ;; #x049
+    (vu-pair (isw.y vi02 vi01 (generic-const-qword stores)) (nop)) ;; #x04a
+    (vu-pair (sq.xyzw vf00 vi00 907) (nop)) ;; #x04b
+    (vu-pair (sq.xyzw vf00 vi00 914) (nop)) ;; #x04c
+    (vu-pair (sq.xyzw vf00 vi00 921) (nop)) ;; #x04d
+    (vu-pair (sq.xyzw vf00 vi00 928) (nop)) ;; #x04e
+    (vu-pair (sq.xyzw vf00 vi00 935) (nop)) ;; #x04f
+    (vu-pair (sq.xyzw vf00 vi00 942) (nop)) ;; #x050
+    (vu-pair (iaddiu vi01 vi00 (vu-label negative-x-distance)) (nop)) ;; #x051
+    (vu-pair (isw.z vi01 vi00 907) (nop)) ;; #x052
+    (vu-pair (iaddiu vi01 vi00 (vu-label positive-x-distance)) (nop)) ;; #x053
+    (vu-pair (isw.z vi01 vi00 914) (nop)) ;; #x054
+    (vu-pair (iaddiu vi01 vi00 (vu-label negative-y-distance)) (nop)) ;; #x055
+    (vu-pair (isw.z vi01 vi00 921) (nop)) ;; #x056
+    (vu-pair (iaddiu vi01 vi00 (vu-label positive-y-distance)) (nop)) ;; #x057
+    (vu-pair (isw.z vi01 vi00 928) (nop)) ;; #x058
+    (vu-pair (iaddiu vi01 vi00 (vu-label negative-z-distance)) (nop)) ;; #x059
+    (vu-pair (isw.z vi01 vi00 935) (nop)) ;; #x05a
+    (vu-pair (iaddiu vi01 vi00 (vu-label positive-z-distance)) (nop :e)) ;; #x05b
+    (vu-pair (isw.z vi01 vi00 942) (nop)) ;; #x05c
+    ;; Entry 12: load the externally selected GIF-buffer and input-bank bases from qword 906.
+    (label adopt-external-buffers)
+    (vu-pair (iaddiu vi01 vi00 0x381) (nop)) ;; #x05d
+    (vu-pair (ilw.z header-buf vi01 (generic-const-qword stores)) (nop)) ;; #x05e
+    (vu-pair (ilw.w input-bank vi01 (generic-const-qword stores)) (nop)) ;; #x05f
+    (vu-pair (iaddi vi02 header-buf 0x6) (nop)) ;; #x060
+    (vu-pair (isw.x vi02 vi01 (generic-const-qword stores)) (nop :e)) ;; #x061
+    (vu-pair (isw.y vi02 vi01 (generic-const-qword stores)) (nop)) ;; #x062
+    (vu-pair (isubiu vi02 header-buf 0x363) (nop)) ;; #x063
+    (vu-pair (iaddiu header-buf header-buf 0x1e) (nop)) ;; #x064
+    (vu-pair (ibne vi00 vi02 external-buffers-installed) (nop)) ;; #x065
+    (vu-pair (isubiu vi01 vi01 0x100) (nop)) ;; #x066
+    (vu-pair (iaddiu header-buf vi00 0x345) (nop)) ;; #x067
+    (label external-buffers-installed)
+    (vu-pair (iaddi vi03 header-buf 0x7) (nop)) ;; #x068
+    (vu-pair (iaddi vi03 header-buf 0x7) (nop)) ;; #x069
+    (vu-pair (isw.x vi03 vi00 906) (nop)) ;; #x06a
+    (vu-pair (jr transform-return) (nop)) ;; #x06b
+    (vu-pair (isw.y vi03 vi00 906) (nop)) ;; #x06c
+    ;; Entry 8: transform and project a strip which can go directly to the GIF packet builder.
+    (label direct-select-header)
+    (vu-pair (isubiu vi02 header-buf 0x363) (addw.z vf22 vf00 vf00)) ;; #x06d
+    (vu-pair (iaddiu header-buf header-buf 0x1e) (addw.z vf23 vf00 vf00)) ;; #x06e
+    (vu-pair (ibne vi00 vi02 direct-begin-strip) (addw.z vf24 vf00 vf00)) ;; #x06f
+    (vu-pair (nop) (addw.z vf25 vf00 vf00)) ;; #x070
+    (vu-pair (iaddiu header-buf vi00 0x345) (nop)) ;; #x071
+    (label direct-begin-strip)
+    (vu-pair (iaddi vi03 header-buf 0x7) (nop)) ;; #x072
+    (vu-pair (ilw.w vi01 header-buf 5) (nop)) ;; #x073
+    (vu-pair (isw.x vi03 vi00 906) (nop)) ;; #x074
+    (vu-pair (iaddi vertex-cursor input-bank 0x9) (subw.w vf18 vf00 vf00)) ;; #x075
+    (vu-pair (lq.xyzw xform-row-0 header-buf 0) (subw.w vf19 vf00 vf00)) ;; #x076
+    (vu-pair (lq.xyzw xform-row-1 header-buf 1) (subw.w vf20 vf00 vf00)) ;; #x077
+    (vu-pair (lq.xyzw xform-row-2 header-buf 2) (subw.w vf21 vf00 vf00)) ;; #x078
+    (vu-pair (lq.xyzw xform-row-3 header-buf 3) (ftoi12.z vf22 vf22)) ;; #x079
+    (vu-pair (iadd vi02 vi01 vi01) (ftoi12.z vf23 vf23)) ;; #x07a
+    (vu-pair (iadd vi01 vi01 vi02) (sub.xyzw vf16 vf16 vf16)) ;; #x07b
+    (vu-pair (iaddi triangle-count vi00 -0x2) (sub.xyzw vf17 vf17 vf17)) ;; #x07c
+    (vu-pair (lq.xy vf22 vertex-cursor 0) (nop)) ;; #x07d
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (nop)) ;; #x07e
+    (vu-pair (mtir vi02 vf22.x) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x07f
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x080
+    (vu-pair (lq.xy vf23 vertex-cursor 0) (madday.xyzw ACC xform-row-1 vf16)) ;; #x081
+    (vu-pair (lq.xyz vf17 vertex-cursor 2) (nop)) ;; #x082
+    (vu-pair (iand vi06 vi02 triangle-count) (nop)) ;; #x083
+    (vu-pair (mfir.x vf22 vi06) (maddz.xyzw vf12 xform-row-2 vf16)) ;; #x084
+    (vu-pair (iadd vi14 vertex-cursor vi01) (ftoi12.z vf24 vf24)) ;; #x085
+    (vu-pair (isw.w input-bank vi00 906) (ftoi12.z vf25 vf25)) ;; #x086
+    (vu-pair (nop) (nop)) ;; #x087
+    (vu-pair (div Q fog-consts.x vf12.w) (itof12.xyz vf18 vf22)) ;; #x088
+    (vu-pair (mtir vi03 vf23.x) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x089
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddax.xyzw ACC xform-row-0 vf17)) ;; #x08a
+    (vu-pair (lq.xy vf24 vertex-cursor 0) (madday.xyzw ACC xform-row-1 vf17)) ;; #x08b
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (nop)) ;; #x08c
+    (vu-pair (iand vi07 vi03 triangle-count) (nop)) ;; #x08d
+    (vu-pair (mfir.x vf23 vi07) (maddz.xyzw vf13 xform-row-2 vf17)) ;; #x08e
+    (vu-pair (nop) (mul.xyz vf12 vf12 Q)) ;; #x08f
+    (vu-pair (nop) (mul.xyz vf18 vf18 Q)) ;; #x090
+    (vu-pair (nop) (nop)) ;; #x091
+    (vu-pair (div Q fog-consts.x vf13.w) (itof12.xyz vf19 vf23)) ;; #x092
+    (vu-pair (nop) (add.xyzw vf12 vf12 hvdf-offset)) ;; #x093
+    (vu-pair (mtir vi04 vf24.x) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x094
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x095
+    (vu-pair (lq.xy vf25 vertex-cursor 0) (madday.xyzw ACC xform-row-1 vf16)) ;; #x096
+    (vu-pair (lq.xyz vf17 vertex-cursor 2) (miniz.w vf12 vf12 fog-consts)) ;; #x097
+    (vu-pair (iand vi08 vi04 triangle-count) (nop)) ;; #x098
+    (vu-pair (mfir.x vf24 vi08) (maddz.xyzw vf14 xform-row-2 vf16)) ;; #x099
+    (vu-pair (nop) (mul.xyz vf13 vf13 Q)) ;; #x09a
+    (vu-pair (nop) (mul.xyz vf19 vf19 Q)) ;; #x09b
+    (vu-pair (iaddi vi14 vi14 0x9) (maxy.w vf12 vf12 fog-consts)) ;; #x09c
+    ;; Prime the four-deep pipeline. Four vertices are in flight at once - vf22 through vf25 hold their
+    ;; packed coordinates and vf12 through vf15 their clip-space positions - so the loop proper cannot
+    ;; start until four are loaded, four transforms are under way and the first divide has been issued.
+    (label direct-prime-divide)
+    (vu-pair (div Q fog-consts.x vf14.w) (itof12.xyz vf20 vf24)) ;; #x09d
+    (vu-pair (ibeq vi02 vi06 direct-prime-slot-0) (add.xyzw vf13 vf13 hvdf-offset)) ;; #x09e
+    (vu-pair (mtir vi05 vf25.x) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x09f
+    (vu-pair (nop) (addw.w vf12 vf12 fog-consts)) ;; #x0a0
+    (label direct-prime-slot-0)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddax.xyzw ACC xform-row-0 vf17)) ;; #x0a1
+    (vu-pair (lq.xy vf22 vertex-cursor 0) (madday.xyzw ACC xform-row-1 vf17)) ;; #x0a2
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (miniz.w vf13 vf13 fog-consts)) ;; #x0a3
+    (vu-pair (iand vi09 vi05 triangle-count) (ftoi4.xyzw vf12 vf12)) ;; #x0a4
+    (vu-pair (mfir.x vf25 vi09) (maddz.xyzw vf15 xform-row-2 vf17)) ;; #x0a5
+    (vu-pair (sq.xyzw vf18 vertex-cursor -12) (mul.xyz vf14 vf14 Q)) ;; #x0a6
+    (vu-pair (ibeq vi14 vertex-cursor direct-strip-complete) (mul.xyz vf20 vf20 Q)) ;; #x0a7
+    (vu-pair (sq.xyzw vf12 vertex-cursor -10) (maxy.w vf13 vf13 fog-consts)) ;; #x0a8
+    (vu-pair (div Q fog-consts.x vf15.w) (itof12.xyz vf21 vf25)) ;; #x0a9
+    (vu-pair (ibeq vi03 vi07 direct-prime-slot-1) (add.xyzw vf14 vf14 hvdf-offset)) ;; #x0aa
+    (vu-pair (mtir vi02 vf22.x) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x0ab
+    (vu-pair (nop) (addw.w vf13 vf13 fog-consts)) ;; #x0ac
+    (label direct-prime-slot-1)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x0ad
+    (vu-pair (lq.xy vf23 vertex-cursor 0) (madday.xyzw ACC xform-row-1 vf16)) ;; #x0ae
+    (vu-pair (lq.xyz vf17 vertex-cursor 2) (miniz.w vf14 vf14 fog-consts)) ;; #x0af
+    (vu-pair (iand vi06 vi02 triangle-count) (ftoi4.xyzw vf13 vf13)) ;; #x0b0
+    (vu-pair (mfir.x vf22 vi06) (maddz.xyzw vf12 xform-row-2 vf16)) ;; #x0b1
+    (vu-pair (sq.xyzw vf19 vertex-cursor -12) (mul.xyz vf15 vf15 Q)) ;; #x0b2
+    (vu-pair (ibeq vi14 vertex-cursor direct-strip-complete) (mul.xyz vf21 vf21 Q)) ;; #x0b3
+    (vu-pair (sq.xyzw vf13 vertex-cursor -10) (maxy.w vf14 vf14 fog-consts)) ;; #x0b4
+    (vu-pair (div Q fog-consts.x vf12.w) (itof12.xyz vf18 vf22)) ;; #x0b5
+    (vu-pair (ibeq vi04 vi08 direct-prime-slot-2) (add.xyzw vf15 vf15 hvdf-offset)) ;; #x0b6
+    (vu-pair (mtir vi03 vf23.x) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x0b7
+    (vu-pair (nop) (addw.w vf14 vf14 fog-consts)) ;; #x0b8
+    (label direct-prime-slot-2)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddax.xyzw ACC xform-row-0 vf17)) ;; #x0b9
+    (vu-pair (lq.xy vf24 vertex-cursor 0) (madday.xyzw ACC xform-row-1 vf17)) ;; #x0ba
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (miniz.w vf15 vf15 fog-consts)) ;; #x0bb
+    (vu-pair (iand vi07 vi03 triangle-count) (ftoi4.xyzw vf14 vf14)) ;; #x0bc
+    (vu-pair (mfir.x vf23 vi07) (maddz.xyzw vf13 xform-row-2 vf17)) ;; #x0bd
+    (vu-pair (sq.xyzw vf20 vertex-cursor -12) (mul.xyz vf12 vf12 Q)) ;; #x0be
+    (vu-pair (ibeq vi14 vertex-cursor direct-strip-complete) (mul.xyz vf18 vf18 Q)) ;; #x0bf
+    (vu-pair (sq.xyzw vf14 vertex-cursor -10) (maxy.w vf15 vf15 fog-consts)) ;; #x0c0
+    (vu-pair (div Q fog-consts.x vf13.w) (itof12.xyz vf19 vf23)) ;; #x0c1
+    (vu-pair (ibeq vi05 vi09 direct-prime-slot-3) (add.xyzw vf12 vf12 hvdf-offset)) ;; #x0c2
+    (vu-pair (mtir vi04 vf24.x) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x0c3
+    (vu-pair (nop) (addw.w vf15 vf15 fog-consts)) ;; #x0c4
+    (label direct-prime-slot-3)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x0c5
+    (vu-pair (lq.xy vf25 vertex-cursor 0) (madday.xyzw ACC xform-row-1 vf16)) ;; #x0c6
+    (vu-pair (lq.xyz vf17 vertex-cursor 2) (miniz.w vf12 vf12 fog-consts)) ;; #x0c7
+    (vu-pair (iand vi08 vi04 triangle-count) (ftoi4.xyzw vf15 vf15)) ;; #x0c8
+    (vu-pair (mfir.x vf24 vi08) (maddz.xyzw vf14 xform-row-2 vf16)) ;; #x0c9
+    (vu-pair (sq.xyzw vf21 vertex-cursor -12) (mul.xyz vf13 vf13 Q)) ;; #x0ca
+    (vu-pair (ibne vi14 vertex-cursor direct-prime-divide) (mul.xyz vf19 vf19 Q)) ;; #x0cb
+    (vu-pair (sq.xyzw vf15 vertex-cursor -10) (maxy.w vf12 vf12 fog-consts)) ;; #x0cc
+    (label direct-strip-complete)
+    (vu-pair (b copy-to-gif-buffer) (nop)) ;; #x0cd
+    (vu-pair (ilw.w input-bank vi00 906) (nop)) ;; #x0ce
+    (vu-pair (isubiu vi02 header-buf 0x363) (addw.z vf22 vf00 vf00)) ;; #x0cf
+    (vu-pair (iaddiu header-buf header-buf 0x1e) (addw.z vf23 vf00 vf00)) ;; #x0d0
+    (vu-pair (ibne vi00 vi02 direct-next-strip) (addw.z vf24 vf00 vf00)) ;; #x0d1
+    (vu-pair (nop) (addw.z vf25 vf00 vf00)) ;; #x0d2
+    (vu-pair (iaddiu header-buf vi00 0x345) (nop)) ;; #x0d3
+    (label direct-next-strip)
+    (vu-pair (iaddi vi03 header-buf 0x7) (nop)) ;; #x0d4
+    (vu-pair (ilw.w vi01 header-buf 5) (nop)) ;; #x0d5
+    (vu-pair (isw.x vi03 vi00 906) (nop)) ;; #x0d6
+    (vu-pair (iaddi vertex-cursor input-bank 0x9) (subw.w vf18 vf00 vf00)) ;; #x0d7
+    (vu-pair (lq.xyzw xform-row-0 header-buf 0) (subw.w vf19 vf00 vf00)) ;; #x0d8
+    (vu-pair (lq.xyzw xform-row-1 header-buf 1) (subw.w vf20 vf00 vf00)) ;; #x0d9
+    (vu-pair (lq.xyzw xform-row-2 header-buf 2) (subw.w vf21 vf00 vf00)) ;; #x0da
+    (vu-pair (lq.xyzw xform-row-3 header-buf 3) (ftoi12.z vf22 vf22)) ;; #x0db
+    (vu-pair (iadd vi02 vi01 vi01) (ftoi12.z vf23 vf23)) ;; #x0dc
+    (vu-pair (iadd vi01 vi01 vi02) (sub.xyzw vf16 vf16 vf16)) ;; #x0dd
+    (vu-pair (iaddi triangle-count vi00 -0x2) (nop)) ;; #x0de
+    (vu-pair (iadd vi14 vertex-cursor vi01) (ftoi12.z vf24 vf24)) ;; #x0df
+    (vu-pair (isw.w input-bank vi00 906) (ftoi12.z vf25 vf25)) ;; #x0e0
+    (vu-pair (iaddi vi14 vi14 0x9) (nop)) ;; #x0e1
+    (vu-pair (lq.xy vf22 vertex-cursor 0) (nop)) ;; #x0e2
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (nop)) ;; #x0e3
+    (vu-pair (nop) (nop)) ;; #x0e4
+    (vu-pair (nop) (nop)) ;; #x0e5
+    (vu-pair (nop) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x0e6
+    (vu-pair (mtir vi02 vf22.x) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x0e7
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (madday.xyzw ACC xform-row-1 vf16)) ;; #x0e8
+    (vu-pair (lq.xy vf23 vertex-cursor 0) (maddz.xyzw vf12 xform-row-2 vf16)) ;; #x0e9
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (nop)) ;; #x0ea
+    (vu-pair (iand vi06 vi02 triangle-count) (nop)) ;; #x0eb
+    (vu-pair (mfir.x vf22 vi06) (nop)) ;; #x0ec
+    (vu-pair (nop) (nop)) ;; #x0ed
+    (vu-pair (nop) (nop)) ;; #x0ee
+    (vu-pair (nop) (nop)) ;; #x0ef
+    (vu-pair (nop) (itof12.xyz vf18 vf22)) ;; #x0f0
+    (vu-pair (div Q fog-consts.x vf12.w) (mul.xyzw vf26 vf12 hmge-scale)) ;; #x0f1
+    (vu-pair (nop) (nop)) ;; #x0f2
+    (vu-pair (nop) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x0f3
+    (vu-pair (mtir vi03 vf23.x) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x0f4
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (madday.xyzw ACC xform-row-1 vf16)) ;; #x0f5
+    (vu-pair (lq.xy vf24 vertex-cursor 0) (maddz.xyzw vf13 xform-row-2 vf16)) ;; #x0f6
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (nop)) ;; #x0f7
+    (vu-pair (iand vi07 vi03 triangle-count) (nop)) ;; #x0f8
+    (vu-pair (mfir.x vf23 vi07) (mul.xyz vf12 vf12 Q)) ;; #x0f9
+    (vu-pair (fcset 0x0) (nop)) ;; #x0fa
+    (vu-pair (nop) (nop)) ;; #x0fb
+    (vu-pair (nop) (mul.xyz vf18 vf18 Q)) ;; #x0fc
+    (vu-pair (nop) (itof12.xyz vf19 vf23)) ;; #x0fd
+    (vu-pair (div Q fog-consts.x vf13.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x0fe
+    (vu-pair (nop) (add.xyzw vf12 vf12 hvdf-offset)) ;; #x0ff
+    (vu-pair (nop) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x100
+    (vu-pair (mtir vi04 vf24.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x101
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf14 xform-row-2 vf16)) ;; #x102
+    (vu-pair (lq.xy vf25 vertex-cursor 0) (miniz.w vf12 vf12 fog-consts)) ;; #x103
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf27 vf13 hmge-scale)) ;; #x104
+    (vu-pair (iand vi08 vi04 triangle-count) (nop)) ;; #x105
+    (vu-pair (mfir.x vf24 vi08) (mul.xyz vf13 vf13 Q)) ;; #x106
+    (vu-pair (nop) (maxy.w vf12 vf12 fog-consts)) ;; #x107
+    (vu-pair (nop) (clipw.xyz vf26 vf26)) ;; #x108
+    (vu-pair (nop) (mul.xyz vf19 vf19 Q)) ;; #x109
+    (vu-pair (ibeq vi02 vi06 direct-pipeline-fill-a) (itof12.xyz vf20 vf24)) ;; #x10a
+    (vu-pair (div Q fog-consts.x vf14.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x10b
+    (vu-pair (nop) (addw.w vf12 vf12 fog-consts)) ;; #x10c
+    (label direct-pipeline-fill-a)
+    (vu-pair (nop) (add.xyzw vf13 vf13 hvdf-offset)) ;; #x10d
+    (vu-pair (nop) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x10e
+    (vu-pair (mtir vi05 vf25.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x10f
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf15 xform-row-2 vf16)) ;; #x110
+    (vu-pair (lq.xy vf22 vertex-cursor 0) (miniz.w vf13 vf13 fog-consts)) ;; #x111
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf28 vf14 hmge-scale)) ;; #x112
+    (vu-pair (iand vi09 vi05 triangle-count) (ftoi4.xyzw vf12 vf12)) ;; #x113
+    (vu-pair (mfir.x vf25 vi09) (mul.xyz vf14 vf14 Q)) ;; #x114
+    (vu-pair (sq.xyzw vf18 vertex-cursor -12) (maxy.w vf13 vf13 fog-consts)) ;; #x115
+    (vu-pair (ibeq vi14 vertex-cursor direct-loop-done) (clipw.xyz vf27 vf27)) ;; #x116
+    (vu-pair (sq.xyzw vf12 vertex-cursor -10) (mul.xyz vf20 vf20 Q)) ;; #x117
+    (vu-pair (ibeq vi03 vi07 direct-pipeline-fill-b) (itof12.xyz vf21 vf25)) ;; #x118
+    (vu-pair (div Q fog-consts.x vf15.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x119
+    (vu-pair (nop) (addw.w vf13 vf13 fog-consts)) ;; #x11a
+    (label direct-pipeline-fill-b)
+    (vu-pair (nop) (add.xyzw vf14 vf14 hvdf-offset)) ;; #x11b
+    (vu-pair (nop) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x11c
+    (vu-pair (mtir vi02 vf22.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x11d
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf12 xform-row-2 vf16)) ;; #x11e
+    (vu-pair (lq.xy vf23 vertex-cursor 0) (miniz.w vf14 vf14 fog-consts)) ;; #x11f
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf29 vf15 hmge-scale)) ;; #x120
+    (vu-pair (iand vi06 vi02 triangle-count) (ftoi4.xyzw vf13 vf13)) ;; #x121
+    (vu-pair (mfir.x vf22 vi06) (mul.xyz vf15 vf15 Q)) ;; #x122
+    (vu-pair (sq.xyzw vf19 vertex-cursor -12) (maxy.w vf14 vf14 fog-consts)) ;; #x123
+    (vu-pair (ibeq vi14 vertex-cursor direct-loop-done) (clipw.xyz vf28 vf28)) ;; #x124
+    (vu-pair (sq.xyzw vf13 vertex-cursor -10) (mul.xyz vf21 vf21 Q)) ;; #x125
+    (label direct-check-strip-end)
+    (vu-pair (ibeq vi04 vi08 direct-test-vertex-0) (itof12.xyz vf18 vf22)) ;; #x126
+    (vu-pair (div Q fog-consts.x vf12.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x127
+    (vu-pair (nop) (addw.w vf14 vf14 fog-consts)) ;; #x128
+    ;; One vertex per test/emit pair, four pairs to a pass. fcand against the accumulated clip history
+    ;; asks whether this vertex is outside any plane; if it is, the reject block adds fog-consts.w
+    ;; (3071.0) to its w so that ftoi4 sets bit 15, which the GS reads as ADC, and the vertex is
+    ;; skipped without disturbing the strip. Then the emit block writes its ST, RGBAQ and XYZF2 back
+    ;; into the input bank in place.
+    (label direct-test-vertex-0)
+    (vu-pair (fcand vi01 0x3ffff) (add.xyzw vf15 vf15 hvdf-offset)) ;; #x129
+    (vu-pair (ibne vi00 vi01 direct-reject-vertex-0) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x12a
+    (vu-pair (mtir vi03 vf23.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x12b
+    (label direct-emit-vertex-0)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf13 xform-row-2 vf16)) ;; #x12c
+    (vu-pair (lq.xy vf24 vertex-cursor 0) (miniz.w vf15 vf15 fog-consts)) ;; #x12d
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf26 vf12 hmge-scale)) ;; #x12e
+    (vu-pair (iand vi07 vi03 triangle-count) (ftoi4.xyzw vf14 vf14)) ;; #x12f
+    (vu-pair (mfir.x vf23 vi07) (mul.xyz vf12 vf12 Q)) ;; #x130
+    (vu-pair (sq.xyzw vf20 vertex-cursor -12) (maxy.w vf15 vf15 fog-consts)) ;; #x131
+    (vu-pair (ibeq vi14 vertex-cursor direct-loop-done) (clipw.xyz vf29 vf29)) ;; #x132
+    (vu-pair (sq.xyzw vf14 vertex-cursor -10) (mul.xyz vf18 vf18 Q)) ;; #x133
+    (vu-pair (ibeq vi05 vi09 direct-test-vertex-1) (itof12.xyz vf19 vf23)) ;; #x134
+    (vu-pair (div Q fog-consts.x vf13.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x135
+    (vu-pair (nop) (addw.w vf15 vf15 fog-consts)) ;; #x136
+    (label direct-test-vertex-1)
+    (vu-pair (fcand vi01 0x3ffff) (add.xyzw vf12 vf12 hvdf-offset)) ;; #x137
+    (vu-pair (ibne vi00 vi01 direct-reject-vertex-1) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x138
+    (vu-pair (mtir vi04 vf24.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x139
+    (label direct-emit-vertex-1)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf14 xform-row-2 vf16)) ;; #x13a
+    (vu-pair (lq.xy vf25 vertex-cursor 0) (miniz.w vf12 vf12 fog-consts)) ;; #x13b
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf27 vf13 hmge-scale)) ;; #x13c
+    (vu-pair (iand vi08 vi04 triangle-count) (ftoi4.xyzw vf15 vf15)) ;; #x13d
+    (vu-pair (mfir.x vf24 vi08) (mul.xyz vf13 vf13 Q)) ;; #x13e
+    (vu-pair (sq.xyzw vf21 vertex-cursor -12) (maxy.w vf12 vf12 fog-consts)) ;; #x13f
+    (vu-pair (ibeq vi14 vertex-cursor direct-loop-done) (clipw.xyz vf26 vf26)) ;; #x140
+    (vu-pair (sq.xyzw vf15 vertex-cursor -10) (mul.xyz vf19 vf19 Q)) ;; #x141
+    (vu-pair (ibeq vi02 vi06 direct-test-vertex-2) (itof12.xyz vf20 vf24)) ;; #x142
+    (vu-pair (div Q fog-consts.x vf14.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x143
+    (vu-pair (nop) (addw.w vf12 vf12 fog-consts)) ;; #x144
+    (label direct-test-vertex-2)
+    (vu-pair (fcand vi01 0x3ffff) (add.xyzw vf13 vf13 hvdf-offset)) ;; #x145
+    (vu-pair (ibne vi00 vi01 direct-reject-vertex-2) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x146
+    (vu-pair (mtir vi05 vf25.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x147
+    (label direct-emit-vertex-2)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf15 xform-row-2 vf16)) ;; #x148
+    (vu-pair (lq.xy vf22 vertex-cursor 0) (miniz.w vf13 vf13 fog-consts)) ;; #x149
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf28 vf14 hmge-scale)) ;; #x14a
+    (vu-pair (iand vi09 vi05 triangle-count) (ftoi4.xyzw vf12 vf12)) ;; #x14b
+    (vu-pair (mfir.x vf25 vi09) (mul.xyz vf14 vf14 Q)) ;; #x14c
+    (vu-pair (sq.xyzw vf18 vertex-cursor -12) (maxy.w vf13 vf13 fog-consts)) ;; #x14d
+    (vu-pair (ibeq vi14 vertex-cursor direct-loop-done) (clipw.xyz vf27 vf27)) ;; #x14e
+    (vu-pair (sq.xyzw vf12 vertex-cursor -10) (mul.xyz vf20 vf20 Q)) ;; #x14f
+    (vu-pair (ibeq vi03 vi07 direct-test-vertex-3) (itof12.xyz vf21 vf25)) ;; #x150
+    (vu-pair (div Q fog-consts.x vf15.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x151
+    (vu-pair (nop) (addw.w vf13 vf13 fog-consts)) ;; #x152
+    (label direct-test-vertex-3)
+    (vu-pair (fcand vi01 0x3ffff) (add.xyzw vf14 vf14 hvdf-offset)) ;; #x153
+    (vu-pair (ibne vi00 vi01 direct-reject-vertex-3) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x154
+    (vu-pair (mtir vi02 vf22.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x155
+    (label direct-emit-vertex-3)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf12 xform-row-2 vf16)) ;; #x156
+    (vu-pair (lq.xy vf23 vertex-cursor 0) (miniz.w vf14 vf14 fog-consts)) ;; #x157
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf29 vf15 hmge-scale)) ;; #x158
+    (vu-pair (iand vi06 vi02 triangle-count) (ftoi4.xyzw vf13 vf13)) ;; #x159
+    (vu-pair (mfir.x vf22 vi06) (mul.xyz vf15 vf15 Q)) ;; #x15a
+    (vu-pair (sq.xyzw vf19 vertex-cursor -12) (maxy.w vf14 vf14 fog-consts)) ;; #x15b
+    (vu-pair (ibne vi14 vertex-cursor direct-check-strip-end) (clipw.xyz vf28 vf28)) ;; #x15c
+    (vu-pair (sq.xyzw vf13 vertex-cursor -10) (mul.xyz vf21 vf21 Q)) ;; #x15d
+    (label direct-loop-done)
+    (vu-pair (b copy-to-gif-buffer) (nop)) ;; #x15e
+    (vu-pair (ilw.w input-bank vi00 906) (nop)) ;; #x15f
+    (label direct-reject-vertex-2)
+    (vu-pair (b direct-emit-vertex-2) (addw.w vf12 vf12 fog-consts)) ;; #x160
+    (vu-pair (nop) (nop)) ;; #x161
+    (label direct-reject-vertex-3)
+    (vu-pair (b direct-emit-vertex-3) (addw.w vf13 vf13 fog-consts)) ;; #x162
+    (vu-pair (nop) (nop)) ;; #x163
+    (label direct-reject-vertex-0)
+    (vu-pair (b direct-emit-vertex-0) (addw.w vf14 vf14 fog-consts)) ;; #x164
+    (vu-pair (nop) (nop)) ;; #x165
+    (label direct-reject-vertex-1)
+    (vu-pair (b direct-emit-vertex-1) (addw.w vf15 vf15 fog-consts)) ;; #x166
+    (vu-pair (nop) (nop)) ;; #x167
+    ;; Entry 6: the general transform path.  Preserve clip-space positions and VU clip flags so
+    ;; strips crossing a view plane can be rebuilt by the polygon clipper below.
+    (label clip-select-header)
+    (vu-pair (isubiu vi02 header-buf 0x363) (addw.z vf22 vf00 vf00)) ;; #x168
+    (vu-pair (iaddiu header-buf header-buf 0x1e) (addw.z vf23 vf00 vf00)) ;; #x169
+    (vu-pair (ibne vi00 vi02 clip-begin-strip) (addw.z vf24 vf00 vf00)) ;; #x16a
+    (vu-pair (nop) (addw.z vf25 vf00 vf00)) ;; #x16b
+    (vu-pair (iaddiu header-buf vi00 0x345) (nop)) ;; #x16c
+    (label clip-begin-strip)
+    (vu-pair (iaddi vi03 header-buf 0x7) (nop)) ;; #x16d
+    (vu-pair (ilw.w vi01 header-buf 5) (nop)) ;; #x16e
+    (vu-pair (isw.x vi03 vi00 906) (nop)) ;; #x16f
+    (vu-pair (iaddi vertex-cursor input-bank 0x9) (subw.w vf18 vf00 vf00)) ;; #x170
+    (vu-pair (lq.xyzw xform-row-0 header-buf 0) (subw.w vf19 vf00 vf00)) ;; #x171
+    (vu-pair (lq.xyzw xform-row-1 header-buf 1) (subw.w vf20 vf00 vf00)) ;; #x172
+    (vu-pair (lq.xyzw xform-row-2 header-buf 2) (subw.w vf21 vf00 vf00)) ;; #x173
+    (vu-pair (lq.xyzw xform-row-3 header-buf 3) (ftoi12.z vf22 vf22)) ;; #x174
+    (vu-pair (iadd vi02 vi01 vi01) (ftoi12.z vf23 vf23)) ;; #x175
+    (vu-pair (iadd vi01 vi01 vi02) (sub.xyzw vf16 vf16 vf16)) ;; #x176
+    (vu-pair (iaddi triangle-count vi00 -0x2) (nop)) ;; #x177
+    (vu-pair (iadd vi14 vertex-cursor vi01) (ftoi12.z vf24 vf24)) ;; #x178
+    (vu-pair (isw.w input-bank vi00 906) (ftoi12.z vf25 vf25)) ;; #x179
+    (vu-pair (iaddi vi14 vi14 0x9) (nop)) ;; #x17a
+    (vu-pair (lq.xy vf22 vertex-cursor 0) (nop)) ;; #x17b
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (nop)) ;; #x17c
+    (vu-pair (nop) (nop)) ;; #x17d
+    (vu-pair (nop) (nop)) ;; #x17e
+    (vu-pair (nop) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x17f
+    (vu-pair (mtir vi02 vf22.x) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x180
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (madday.xyzw ACC xform-row-1 vf16)) ;; #x181
+    (vu-pair (lq.xy vf23 vertex-cursor 0) (maddz.xyzw vf12 xform-row-2 vf16)) ;; #x182
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (nop)) ;; #x183
+    (vu-pair (iand vi06 vi02 triangle-count) (nop)) ;; #x184
+    (vu-pair (mfir.x vf22 vi06) (nop)) ;; #x185
+    (vu-pair (nop) (nop)) ;; #x186
+    (vu-pair (nop) (nop)) ;; #x187
+    (vu-pair (nop) (nop)) ;; #x188
+    (vu-pair (nop) (itof12.xyz vf18 vf22)) ;; #x189
+    (vu-pair (div Q fog-consts.x vf12.w) (mul.xyzw vf26 vf12 hmge-scale)) ;; #x18a
+    (vu-pair (nop) (nop)) ;; #x18b
+    (vu-pair (nop) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x18c
+    (vu-pair (mtir vi03 vf23.x) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x18d
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (madday.xyzw ACC xform-row-1 vf16)) ;; #x18e
+    (vu-pair (lq.xy vf24 vertex-cursor 0) (maddz.xyzw vf13 xform-row-2 vf16)) ;; #x18f
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (nop)) ;; #x190
+    (vu-pair (iand vi07 vi03 triangle-count) (nop)) ;; #x191
+    (vu-pair (mfir.x vf23 vi07) (mul.xyz vf12 vf12 Q)) ;; #x192
+    (vu-pair (fcset 0x0) (nop)) ;; #x193
+    (vu-pair (nop) (nop)) ;; #x194
+    (vu-pair (nop) (mul.xyz vf18 vf18 Q)) ;; #x195
+    (vu-pair (nop) (itof12.xyz vf19 vf23)) ;; #x196
+    (vu-pair (div Q fog-consts.x vf13.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x197
+    (vu-pair (nop) (add.xyzw vf12 vf12 hvdf-offset)) ;; #x198
+    (vu-pair (nop) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x199
+    (vu-pair (mtir vi04 vf24.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x19a
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf14 xform-row-2 vf16)) ;; #x19b
+    (vu-pair (lq.xy vf25 vertex-cursor 0) (miniz.w vf12 vf12 fog-consts)) ;; #x19c
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf27 vf13 hmge-scale)) ;; #x19d
+    (vu-pair (iand vi08 vi04 triangle-count) (nop)) ;; #x19e
+    (vu-pair (mfir.x vf24 vi08) (mul.xyz vf13 vf13 Q)) ;; #x19f
+    (vu-pair (nop) (maxy.w vf12 vf12 fog-consts)) ;; #x1a0
+    (vu-pair (nop) (clipw.xyz vf26 vf26)) ;; #x1a1
+    (vu-pair (nop) (mul.xyz vf19 vf19 Q)) ;; #x1a2
+    (vu-pair (ibeq vi02 vi06 clip-pipeline-fill-a) (itof12.xyz vf20 vf24)) ;; #x1a3
+    (vu-pair (div Q fog-consts.x vf14.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x1a4
+    (vu-pair (nop) (addw.w vf12 vf12 fog-consts)) ;; #x1a5
+    (label clip-pipeline-fill-a)
+    (vu-pair (nop) (add.xyzw vf13 vf13 hvdf-offset)) ;; #x1a6
+    (vu-pair (nop) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x1a7
+    (vu-pair (mtir vi05 vf25.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x1a8
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf15 xform-row-2 vf16)) ;; #x1a9
+    (vu-pair (lq.xy vf22 vertex-cursor 0) (miniz.w vf13 vf13 fog-consts)) ;; #x1aa
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf28 vf14 hmge-scale)) ;; #x1ab
+    (vu-pair (iand vi09 vi05 triangle-count) (ftoi4.xyzw vf12 vf12)) ;; #x1ac
+    (vu-pair (mfir.x vf25 vi09) (mul.xyz vf14 vf14 Q)) ;; #x1ad
+    (vu-pair (sq.xyzw vf18 vertex-cursor -12) (maxy.w vf13 vf13 fog-consts)) ;; #x1ae
+    (vu-pair (ibeq vi14 vertex-cursor clip-loop-done) (clipw.xyz vf27 vf27)) ;; #x1af
+    (vu-pair (sq.xyzw vf12 vertex-cursor -10) (mul.xyz vf20 vf20 Q)) ;; #x1b0
+    (vu-pair (ibeq vi03 vi07 clip-pipeline-fill-b) (itof12.xyz vf21 vf25)) ;; #x1b1
+    (vu-pair (div Q fog-consts.x vf15.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x1b2
+    (vu-pair (nop) (addw.w vf13 vf13 fog-consts)) ;; #x1b3
+    (label clip-pipeline-fill-b)
+    (vu-pair (nop) (add.xyzw vf14 vf14 hvdf-offset)) ;; #x1b4
+    (vu-pair (nop) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x1b5
+    (vu-pair (mtir vi02 vf22.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x1b6
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf12 xform-row-2 vf16)) ;; #x1b7
+    (vu-pair (lq.xy vf23 vertex-cursor 0) (miniz.w vf14 vf14 fog-consts)) ;; #x1b8
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf29 vf15 hmge-scale)) ;; #x1b9
+    (vu-pair (iand vi06 vi02 triangle-count) (ftoi4.xyzw vf13 vf13)) ;; #x1ba
+    (vu-pair (mfir.x vf22 vi06) (mul.xyz vf15 vf15 Q)) ;; #x1bb
+    (vu-pair (sq.xyzw vf19 vertex-cursor -12) (maxy.w vf14 vf14 fog-consts)) ;; #x1bc
+    (vu-pair (ibeq vi14 vertex-cursor clip-loop-done) (clipw.xyz vf28 vf28)) ;; #x1bd
+    (vu-pair (sq.xyzw vf13 vertex-cursor -10) (mul.xyz vf21 vf21 Q)) ;; #x1be
+    (label clip-check-strip-end)
+    (vu-pair (ibeq vi04 vi08 clip-test-vertex-0) (itof12.xyz vf18 vf22)) ;; #x1bf
+    (vu-pair (div Q fog-consts.x vf12.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x1c0
+    (vu-pair (nop) (addw.w vf14 vf14 fog-consts)) ;; #x1c1
+    ;; The same four test/emit pairs as the direct path, except that a crossing vertex goes to its
+    ;; crossed block instead of a reject: that block checks whether three vertices have accumulated
+    ;; yet, and if they have, saves the triangle to 998-1000, saves the whole loop state into 1002-1008,
+    ;; calls the clipper, draws the surviving polygon as its own fan, restores the state and resumes.
+    ;; Four copies because which registers are live depends on which of the four slots crossed.
+    (label clip-test-vertex-0)
+    (vu-pair (fcand vi01 0x3ffff) (add.xyzw vf15 vf15 hvdf-offset)) ;; #x1c2
+    (vu-pair (ibne vi00 vi01 clip-vertex-0-crossed) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x1c3
+    (vu-pair (mtir vi03 vf23.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x1c4
+    (label clip-emit-vertex-0)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf13 xform-row-2 vf16)) ;; #x1c5
+    (vu-pair (lq.xy vf24 vertex-cursor 0) (miniz.w vf15 vf15 fog-consts)) ;; #x1c6
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf26 vf12 hmge-scale)) ;; #x1c7
+    (vu-pair (iand vi07 vi03 triangle-count) (ftoi4.xyzw vf14 vf14)) ;; #x1c8
+    (vu-pair (mfir.x vf23 vi07) (mul.xyz vf12 vf12 Q)) ;; #x1c9
+    (vu-pair (sq.xyzw vf20 vertex-cursor -12) (maxy.w vf15 vf15 fog-consts)) ;; #x1ca
+    (vu-pair (ibeq vi14 vertex-cursor clip-loop-done) (clipw.xyz vf29 vf29)) ;; #x1cb
+    (vu-pair (sq.xyzw vf14 vertex-cursor -10) (mul.xyz vf18 vf18 Q)) ;; #x1cc
+    (vu-pair (ibeq vi05 vi09 clip-test-vertex-1) (itof12.xyz vf19 vf23)) ;; #x1cd
+    (vu-pair (div Q fog-consts.x vf13.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x1ce
+    (vu-pair (nop) (addw.w vf15 vf15 fog-consts)) ;; #x1cf
+    (label clip-test-vertex-1)
+    (vu-pair (fcand vi01 0x3ffff) (add.xyzw vf12 vf12 hvdf-offset)) ;; #x1d0
+    (vu-pair (ibne vi00 vi01 clip-vertex-1-crossed) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x1d1
+    (vu-pair (mtir vi04 vf24.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x1d2
+    (label clip-emit-vertex-1)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf14 xform-row-2 vf16)) ;; #x1d3
+    (vu-pair (lq.xy vf25 vertex-cursor 0) (miniz.w vf12 vf12 fog-consts)) ;; #x1d4
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf27 vf13 hmge-scale)) ;; #x1d5
+    (vu-pair (iand vi08 vi04 triangle-count) (ftoi4.xyzw vf15 vf15)) ;; #x1d6
+    (vu-pair (mfir.x vf24 vi08) (mul.xyz vf13 vf13 Q)) ;; #x1d7
+    (vu-pair (sq.xyzw vf21 vertex-cursor -12) (maxy.w vf12 vf12 fog-consts)) ;; #x1d8
+    (vu-pair (ibeq vi14 vertex-cursor clip-loop-done) (clipw.xyz vf26 vf26)) ;; #x1d9
+    (vu-pair (sq.xyzw vf15 vertex-cursor -10) (mul.xyz vf19 vf19 Q)) ;; #x1da
+    (vu-pair (ibeq vi02 vi06 clip-test-vertex-2) (itof12.xyz vf20 vf24)) ;; #x1db
+    (vu-pair (div Q fog-consts.x vf14.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x1dc
+    (vu-pair (nop) (addw.w vf12 vf12 fog-consts)) ;; #x1dd
+    (label clip-test-vertex-2)
+    (vu-pair (fcand vi01 0x3ffff) (add.xyzw vf13 vf13 hvdf-offset)) ;; #x1de
+    (vu-pair (ibne vi00 vi01 clip-vertex-2-crossed) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x1df
+    (vu-pair (mtir vi05 vf25.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x1e0
+    (label clip-emit-vertex-2)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf15 xform-row-2 vf16)) ;; #x1e1
+    (vu-pair (lq.xy vf22 vertex-cursor 0) (miniz.w vf13 vf13 fog-consts)) ;; #x1e2
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf28 vf14 hmge-scale)) ;; #x1e3
+    (vu-pair (iand vi09 vi05 triangle-count) (ftoi4.xyzw vf12 vf12)) ;; #x1e4
+    (vu-pair (mfir.x vf25 vi09) (mul.xyz vf14 vf14 Q)) ;; #x1e5
+    (vu-pair (sq.xyzw vf18 vertex-cursor -12) (maxy.w vf13 vf13 fog-consts)) ;; #x1e6
+    (vu-pair (ibeq vi14 vertex-cursor clip-loop-done) (clipw.xyz vf27 vf27)) ;; #x1e7
+    (vu-pair (sq.xyzw vf12 vertex-cursor -10) (mul.xyz vf20 vf20 Q)) ;; #x1e8
+    (vu-pair (ibeq vi03 vi07 clip-test-vertex-3) (itof12.xyz vf21 vf25)) ;; #x1e9
+    (vu-pair (div Q fog-consts.x vf15.w) (mulaw.xyzw ACC xform-row-3 vf00)) ;; #x1ea
+    (vu-pair (nop) (addw.w vf13 vf13 fog-consts)) ;; #x1eb
+    (label clip-test-vertex-3)
+    (vu-pair (fcand vi01 0x3ffff) (add.xyzw vf14 vf14 hvdf-offset)) ;; #x1ec
+    (vu-pair (ibne vi00 vi01 clip-vertex-3-crossed) (maddax.xyzw ACC xform-row-0 vf16)) ;; #x1ed
+    (vu-pair (mtir vi02 vf22.x) (madday.xyzw ACC xform-row-1 vf16)) ;; #x1ee
+    (label clip-emit-vertex-3)
+    (vu-pair (iaddi vertex-cursor vertex-cursor 0x3) (maddz.xyzw vf12 xform-row-2 vf16)) ;; #x1ef
+    (vu-pair (lq.xy vf23 vertex-cursor 0) (miniz.w vf14 vf14 fog-consts)) ;; #x1f0
+    (vu-pair (lq.xyz vf16 vertex-cursor 2) (mul.xyzw vf29 vf15 hmge-scale)) ;; #x1f1
+    (vu-pair (iand vi06 vi02 triangle-count) (ftoi4.xyzw vf13 vf13)) ;; #x1f2
+    (vu-pair (mfir.x vf22 vi06) (mul.xyz vf15 vf15 Q)) ;; #x1f3
+    (vu-pair (sq.xyzw vf19 vertex-cursor -12) (maxy.w vf14 vf14 fog-consts)) ;; #x1f4
+    (vu-pair (ibne vi14 vertex-cursor clip-check-strip-end) (clipw.xyz vf28 vf28)) ;; #x1f5
+    (vu-pair (sq.xyzw vf13 vertex-cursor -10) (mul.xyz vf21 vf21 Q)) ;; #x1f6
+    (label clip-loop-done)
+    (vu-pair (b copy-to-gif-buffer) (nop)) ;; #x1f7
+    (vu-pair (ilw.w input-bank vi00 906) (nop)) ;; #x1f8
+    (label clip-vertex-2-crossed)
+    (vu-pair (ibne vi02 vi06 clip-emit-vertex-2) (nop)) ;; #x1f9
+    (vu-pair (sq.xyzw vf23 vi00 998) (addw.w vf12 vf12 fog-consts)) ;; #x1fa
+    (vu-pair (sq.xyzw vf24 vi00 999) (mul.xyzw vf23 vf28 guard)) ;; #x1fb
+    (vu-pair (sq.xyzw vf25 vi00 1000) (mul.xyzw vf24 vf29 guard)) ;; #x1fc
+    (vu-pair (isw.x vi01 vi00 1001) (mul.xyzw vf25 vf26 guard)) ;; #x1fd
+    (vu-pair (isw.y vi02 vi00 1001) (nop)) ;; #x1fe
+    (vu-pair (isw.z vi03 vi00 1001) (clipw.xyz vf23 vf23)) ;; #x1ff
+    (vu-pair (isw.w vi04 vi00 1001) (clipw.xyz vf24 vf24)) ;; #x200
+    (vu-pair (mfir.x vf31 vi05) (clipw.xyz vf25 vf25)) ;; #x201
+    (vu-pair (iaddiu vi04 vi00 0x3f) (nop)) ;; #x202
+    (vu-pair (fcget vi01) (nop)) ;; #x203
+    (vu-pair (fcget vi02) (nop)) ;; #x204
+    (vu-pair (fcget vi03) (nop)) ;; #x205
+    (vu-pair (iand vi01 vi01 vi04) (clipw.xyz vf28 vf28)) ;; #x206
+    (vu-pair (iand vi01 vi01 vi02) (clipw.xyz vf29 vf29)) ;; #x207
+    (vu-pair (iand vi01 vi01 vi03) (clipw.xyz vf26 vf26)) ;; #x208
+    (vu-pair (mfir.y vf31 vi06) (nop)) ;; #x209
+    (vu-pair (ibeq vi00 vi01 clip-vertex-2-save-state) (nop)) ;; #x20a
+    (vu-pair (mfir.z vf31 vi07) (nop)) ;; #x20b
+    (label clip-vertex-2-resume)
+    (vu-pair (div Q fog-consts.x vf14.w) (nop)) ;; #x20c
+    (vu-pair (lq.xyzw vf23 vi00 998) (nop)) ;; #x20d
+    (vu-pair (lq.xyzw vf24 vi00 999) (nop)) ;; #x20e
+    (vu-pair (lq.xyzw vf25 vi00 1000) (nop)) ;; #x20f
+    (vu-pair (ilw.x vi01 vi00 1001) (nop)) ;; #x210
+    (vu-pair (ilw.y vi02 vi00 1001) (nop)) ;; #x211
+    (vu-pair (ilw.z vi03 vi00 1001) (nop)) ;; #x212
+    (vu-pair (b clip-emit-vertex-2) (nop)) ;; #x213
+    (vu-pair (ilw.w vi04 vi00 1001) (nop)) ;; #x214
+    (label clip-vertex-2-save-state)
+    (vu-pair (mfir.w vf31 vi08) (nop)) ;; #x215
+    (vu-pair (mfir.x vf30 vi09) (nop)) ;; #x216
+    (vu-pair (mfir.y vf30 vertex-cursor) (nop)) ;; #x217
+    (vu-pair (mfir.z vf30 triangle-count) (nop)) ;; #x218
+    (vu-pair (mfir.w vf30 input-bank) (nop)) ;; #x219
+    (vu-pair (sq.xyzw vf12 vi00 1004) (nop)) ;; #x21a
+    (vu-pair (lq.xyzw vf12 vertex-cursor -15) (nop)) ;; #x21b
+    (vu-pair (sq.xyzw vf13 vi00 1005) (nop)) ;; #x21c
+    (vu-pair (lq.xyzw vf13 vertex-cursor -12) (nop)) ;; #x21d
+    (vu-pair (sq.xyzw vf14 vi00 1006) (nop)) ;; #x21e
+    (vu-pair (div Q vf00.w vf12.z) (nop)) ;; #x21f
+    (vu-pair (sq.xyzw vf31 vi00 1002) (nop)) ;; #x220
+    (vu-pair (sq.xyzw vf30 vi00 1003) (nop)) ;; #x221
+    (vu-pair (sq.xyzw vf15 vi00 1007) (nop)) ;; #x222
+    (vu-pair (sq.xyzw vf16 vi00 1008) (nop)) ;; #x223
+    (vu-pair (lq.xyzw vf03 header-buf 4) (nop)) ;; #x224
+    (vu-pair (lq.xyzw vf15 vertex-cursor -14) (sub.xw vf31 vf00 vf00)) ;; #x225
+    (vu-pair (div Q vf00.w vf13.z) (nop)) ;; #x226
+    (vu-pair (lq.xyzw vf16 vertex-cursor -11) (mul.xyz vf12 vf12 Q)) ;; #x227
+    (vu-pair (lq.xyzw vf17 vertex-cursor -8) (addx.y vf31 vf00 vf03)) ;; #x228
+    (vu-pair (nop) (itof0.xyzw vf15 vf15)) ;; #x229
+    (vu-pair (sq.xyzw vf28 vi00 989) (nop)) ;; #x22a
+    (vu-pair (sq.xyzw vf12 vi00 991) (itof0.xyzw vf16 vf16)) ;; #x22b
+    (vu-pair (sq.xyzw vf29 vi00 992) (itof0.xyzw vf17 vf17)) ;; #x22c
+    (vu-pair (div Q vf00.w vf18.z) (nop)) ;; #x22d
+    (vu-pair (nop) (mul.xyz vf13 vf13 Q)) ;; #x22e
+    (vu-pair (sq.xyzw vf26 vi00 995) (nop)) ;; #x22f
+    (vu-pair (move.z vf31 vf03) (nop)) ;; #x230
+    (vu-pair (sq.xyzw vf15 vi00 990) (nop)) ;; #x231
+    (vu-pair (sq.xyzw vf16 vi00 993) (nop)) ;; #x232
+    (vu-pair (sq.xyzw vf17 vi00 996) (nop)) ;; #x233
+    (vu-pair (sq.xyzw vf13 vi00 994) (nop)) ;; #x234
+    (vu-pair (sq.xyzw vf31 vi00 961) (mul.xyz vf14 vf18 Q)) ;; #x235
+    (vu-pair (nop) (nop)) ;; #x236
+    (vu-pair (nop) (nop)) ;; #x237
+    (vu-pair (bal transform-return clipper-reset-planes) (nop)) ;; #x238
+    (vu-pair (sq.xyzw vf14 vi00 997) (nop)) ;; #x239
+    (vu-pair (ibeq vi00 vi05 clip-vertex-2-restore-state) (nop)) ;; #x23a
+    (vu-pair (nop) (nop)) ;; #x23b
+    (vu-pair (bal transform-return draw-clipped-fan) (nop)) ;; #x23c
+    (vu-pair (nop) (nop)) ;; #x23d
+    (label clip-vertex-2-restore-state)
+    (vu-pair (ilw.x vi05 vi00 1002) (nop)) ;; #x23e
+    (vu-pair (ilw.y vi06 vi00 1002) (nop)) ;; #x23f
+    (vu-pair (ilw.z vi07 vi00 1002) (nop)) ;; #x240
+    (vu-pair (ilw.w vi08 vi00 1002) (nop)) ;; #x241
+    (vu-pair (ilw.x vi09 vi00 1003) (nop)) ;; #x242
+    (vu-pair (ilw.y vertex-cursor vi00 1003) (nop)) ;; #x243
+    (vu-pair (ilw.z triangle-count vi00 1003) (nop)) ;; #x244
+    (vu-pair (ilw.w input-bank vi00 1003) (nop)) ;; #x245
+    (vu-pair (lq.xyzw vf12 vi00 1004) (nop)) ;; #x246
+    (vu-pair (lq.xyzw vf13 vi00 1005) (nop)) ;; #x247
+    (vu-pair (lq.xyzw vf14 vi00 1006) (nop)) ;; #x248
+    (vu-pair (lq.xyzw vf15 vi00 1007) (nop)) ;; #x249
+    (vu-pair (b clip-vertex-2-resume) (nop)) ;; #x24a
+    (vu-pair (lq.xyzw vf16 vi00 1008) (nop)) ;; #x24b
+    (label clip-vertex-3-crossed)
+    (vu-pair (ibne vi03 vi07 clip-emit-vertex-3) (nop)) ;; #x24c
+    (vu-pair (sq.xyzw vf23 vi00 998) (addw.w vf13 vf13 fog-consts)) ;; #x24d
+    (vu-pair (sq.xyzw vf24 vi00 999) (mul.xyzw vf23 vf29 guard)) ;; #x24e
+    (vu-pair (sq.xyzw vf25 vi00 1000) (mul.xyzw vf24 vf26 guard)) ;; #x24f
+    (vu-pair (isw.x vi01 vi00 1001) (mul.xyzw vf25 vf27 guard)) ;; #x250
+    (vu-pair (isw.y vi02 vi00 1001) (nop)) ;; #x251
+    (vu-pair (isw.z vi03 vi00 1001) (clipw.xyz vf23 vf23)) ;; #x252
+    (vu-pair (isw.w vi04 vi00 1001) (clipw.xyz vf24 vf24)) ;; #x253
+    (vu-pair (mfir.x vf31 vi05) (clipw.xyz vf25 vf25)) ;; #x254
+    (vu-pair (iaddiu vi04 vi00 0x3f) (nop)) ;; #x255
+    (vu-pair (fcget vi01) (nop)) ;; #x256
+    (vu-pair (fcget vi02) (nop)) ;; #x257
+    (vu-pair (fcget vi03) (nop)) ;; #x258
+    (vu-pair (iand vi01 vi01 vi04) (clipw.xyz vf29 vf29)) ;; #x259
+    (vu-pair (iand vi01 vi01 vi02) (clipw.xyz vf26 vf26)) ;; #x25a
+    (vu-pair (iand vi01 vi01 vi03) (clipw.xyz vf27 vf27)) ;; #x25b
+    (vu-pair (mfir.y vf31 vi06) (nop)) ;; #x25c
+    (vu-pair (ibeq vi00 vi01 clip-vertex-3-save-state) (nop)) ;; #x25d
+    (vu-pair (mfir.z vf31 vi07) (nop)) ;; #x25e
+    (label clip-vertex-3-resume)
+    (vu-pair (div Q fog-consts.x vf15.w) (nop)) ;; #x25f
+    (vu-pair (lq.xyzw vf23 vi00 998) (nop)) ;; #x260
+    (vu-pair (lq.xyzw vf24 vi00 999) (nop)) ;; #x261
+    (vu-pair (lq.xyzw vf25 vi00 1000) (nop)) ;; #x262
+    (vu-pair (ilw.x vi01 vi00 1001) (nop)) ;; #x263
+    (vu-pair (ilw.y vi02 vi00 1001) (nop)) ;; #x264
+    (vu-pair (ilw.z vi03 vi00 1001) (nop)) ;; #x265
+    (vu-pair (b clip-emit-vertex-3) (nop)) ;; #x266
+    (vu-pair (ilw.w vi04 vi00 1001) (nop)) ;; #x267
+    (label clip-vertex-3-save-state)
+    (vu-pair (mfir.w vf31 vi08) (nop)) ;; #x268
+    (vu-pair (mfir.x vf30 vi09) (nop)) ;; #x269
+    (vu-pair (mfir.y vf30 vertex-cursor) (nop)) ;; #x26a
+    (vu-pair (mfir.z vf30 triangle-count) (nop)) ;; #x26b
+    (vu-pair (mfir.w vf30 input-bank) (nop)) ;; #x26c
+    (vu-pair (sq.xyzw vf12 vi00 1004) (nop)) ;; #x26d
+    (vu-pair (lq.xyzw vf12 vertex-cursor -15) (nop)) ;; #x26e
+    (vu-pair (sq.xyzw vf13 vi00 1005) (nop)) ;; #x26f
+    (vu-pair (lq.xyzw vf13 vertex-cursor -12) (nop)) ;; #x270
+    (vu-pair (sq.xyzw vf14 vi00 1006) (nop)) ;; #x271
+    (vu-pair (div Q vf00.w vf12.z) (nop)) ;; #x272
+    (vu-pair (sq.xyzw vf31 vi00 1002) (nop)) ;; #x273
+    (vu-pair (sq.xyzw vf30 vi00 1003) (nop)) ;; #x274
+    (vu-pair (sq.xyzw vf15 vi00 1007) (nop)) ;; #x275
+    (vu-pair (sq.xyzw vf16 vi00 1008) (nop)) ;; #x276
+    (vu-pair (lq.xyzw vf03 header-buf 4) (nop)) ;; #x277
+    (vu-pair (lq.xyzw vf15 vertex-cursor -14) (sub.xw vf31 vf00 vf00)) ;; #x278
+    (vu-pair (div Q vf00.w vf13.z) (nop)) ;; #x279
+    (vu-pair (lq.xyzw vf16 vertex-cursor -11) (mul.xyz vf12 vf12 Q)) ;; #x27a
+    (vu-pair (lq.xyzw vf17 vertex-cursor -8) (addx.y vf31 vf00 vf03)) ;; #x27b
+    (vu-pair (nop) (itof0.xyzw vf15 vf15)) ;; #x27c
+    (vu-pair (sq.xyzw vf29 vi00 989) (nop)) ;; #x27d
+    (vu-pair (sq.xyzw vf12 vi00 991) (itof0.xyzw vf16 vf16)) ;; #x27e
+    (vu-pair (sq.xyzw vf26 vi00 992) (itof0.xyzw vf17 vf17)) ;; #x27f
+    (vu-pair (div Q vf00.w vf19.z) (nop)) ;; #x280
+    (vu-pair (nop) (mul.xyz vf13 vf13 Q)) ;; #x281
+    (vu-pair (sq.xyzw vf27 vi00 995) (nop)) ;; #x282
+    (vu-pair (move.z vf31 vf03) (nop)) ;; #x283
+    (vu-pair (sq.xyzw vf15 vi00 990) (nop)) ;; #x284
+    (vu-pair (sq.xyzw vf16 vi00 993) (nop)) ;; #x285
+    (vu-pair (sq.xyzw vf17 vi00 996) (nop)) ;; #x286
+    (vu-pair (sq.xyzw vf13 vi00 994) (nop)) ;; #x287
+    (vu-pair (sq.xyzw vf31 vi00 961) (mul.xyz vf14 vf19 Q)) ;; #x288
+    (vu-pair (nop) (nop)) ;; #x289
+    (vu-pair (nop) (nop)) ;; #x28a
+    (vu-pair (bal transform-return clipper-reset-planes) (nop)) ;; #x28b
+    (vu-pair (sq.xyzw vf14 vi00 997) (nop)) ;; #x28c
+    (vu-pair (ibeq vi00 vi05 clip-vertex-3-restore-state) (nop)) ;; #x28d
+    (vu-pair (nop) (nop)) ;; #x28e
+    (vu-pair (bal transform-return draw-clipped-fan) (nop)) ;; #x28f
+    (vu-pair (nop) (nop)) ;; #x290
+    (label clip-vertex-3-restore-state)
+    (vu-pair (ilw.x vi05 vi00 1002) (nop)) ;; #x291
+    (vu-pair (ilw.y vi06 vi00 1002) (nop)) ;; #x292
+    (vu-pair (ilw.z vi07 vi00 1002) (nop)) ;; #x293
+    (vu-pair (ilw.w vi08 vi00 1002) (nop)) ;; #x294
+    (vu-pair (ilw.x vi09 vi00 1003) (nop)) ;; #x295
+    (vu-pair (ilw.y vertex-cursor vi00 1003) (nop)) ;; #x296
+    (vu-pair (ilw.z triangle-count vi00 1003) (nop)) ;; #x297
+    (vu-pair (ilw.w input-bank vi00 1003) (nop)) ;; #x298
+    (vu-pair (lq.xyzw vf12 vi00 1004) (nop)) ;; #x299
+    (vu-pair (lq.xyzw vf13 vi00 1005) (nop)) ;; #x29a
+    (vu-pair (lq.xyzw vf14 vi00 1006) (nop)) ;; #x29b
+    (vu-pair (lq.xyzw vf15 vi00 1007) (nop)) ;; #x29c
+    (vu-pair (b clip-vertex-3-resume) (nop)) ;; #x29d
+    (vu-pair (lq.xyzw vf16 vi00 1008) (nop)) ;; #x29e
+    (label clip-vertex-0-crossed)
+    (vu-pair (ibne vi04 vi08 clip-emit-vertex-0) (nop)) ;; #x29f
+    (vu-pair (sq.xyzw vf23 vi00 998) (addw.w vf14 vf14 fog-consts)) ;; #x2a0
+    (vu-pair (sq.xyzw vf24 vi00 999) (mul.xyzw vf23 vf26 guard)) ;; #x2a1
+    (vu-pair (sq.xyzw vf25 vi00 1000) (mul.xyzw vf24 vf27 guard)) ;; #x2a2
+    (vu-pair (isw.x vi01 vi00 1001) (mul.xyzw vf25 vf28 guard)) ;; #x2a3
+    (vu-pair (isw.y vi02 vi00 1001) (nop)) ;; #x2a4
+    (vu-pair (isw.z vi03 vi00 1001) (clipw.xyz vf23 vf23)) ;; #x2a5
+    (vu-pair (isw.w vi04 vi00 1001) (clipw.xyz vf24 vf24)) ;; #x2a6
+    (vu-pair (mfir.x vf31 vi05) (clipw.xyz vf25 vf25)) ;; #x2a7
+    (vu-pair (iaddiu vi04 vi00 0x3f) (nop)) ;; #x2a8
+    (vu-pair (fcget vi01) (nop)) ;; #x2a9
+    (vu-pair (fcget vi02) (nop)) ;; #x2aa
+    (vu-pair (fcget vi03) (nop)) ;; #x2ab
+    (vu-pair (iand vi01 vi01 vi04) (clipw.xyz vf26 vf26)) ;; #x2ac
+    (vu-pair (iand vi01 vi01 vi02) (clipw.xyz vf27 vf27)) ;; #x2ad
+    (vu-pair (iand vi01 vi01 vi03) (clipw.xyz vf28 vf28)) ;; #x2ae
+    (vu-pair (mfir.y vf31 vi06) (nop)) ;; #x2af
+    (vu-pair (ibeq vi00 vi01 clip-vertex-0-save-state) (nop)) ;; #x2b0
+    (vu-pair (mfir.z vf31 vi07) (nop)) ;; #x2b1
+    (label clip-vertex-0-resume)
+    (vu-pair (div Q fog-consts.x vf12.w) (nop)) ;; #x2b2
+    (vu-pair (lq.xyzw vf23 vi00 998) (nop)) ;; #x2b3
+    (vu-pair (lq.xyzw vf24 vi00 999) (nop)) ;; #x2b4
+    (vu-pair (lq.xyzw vf25 vi00 1000) (nop)) ;; #x2b5
+    (vu-pair (ilw.x vi01 vi00 1001) (nop)) ;; #x2b6
+    (vu-pair (ilw.y vi02 vi00 1001) (nop)) ;; #x2b7
+    (vu-pair (ilw.z vi03 vi00 1001) (nop)) ;; #x2b8
+    (vu-pair (b clip-emit-vertex-0) (nop)) ;; #x2b9
+    (vu-pair (ilw.w vi04 vi00 1001) (nop)) ;; #x2ba
+    (label clip-vertex-0-save-state)
+    (vu-pair (mfir.w vf31 vi08) (nop)) ;; #x2bb
+    (vu-pair (mfir.x vf30 vi09) (nop)) ;; #x2bc
+    (vu-pair (mfir.y vf30 vertex-cursor) (nop)) ;; #x2bd
+    (vu-pair (mfir.z vf30 triangle-count) (nop)) ;; #x2be
+    (vu-pair (mfir.w vf30 input-bank) (nop)) ;; #x2bf
+    (vu-pair (sq.xyzw vf12 vi00 1004) (nop)) ;; #x2c0
+    (vu-pair (lq.xyzw vf12 vertex-cursor -15) (nop)) ;; #x2c1
+    (vu-pair (sq.xyzw vf13 vi00 1005) (nop)) ;; #x2c2
+    (vu-pair (lq.xyzw vf13 vertex-cursor -12) (nop)) ;; #x2c3
+    (vu-pair (sq.xyzw vf14 vi00 1006) (nop)) ;; #x2c4
+    (vu-pair (div Q vf00.w vf12.z) (nop)) ;; #x2c5
+    (vu-pair (sq.xyzw vf31 vi00 1002) (nop)) ;; #x2c6
+    (vu-pair (sq.xyzw vf30 vi00 1003) (nop)) ;; #x2c7
+    (vu-pair (sq.xyzw vf15 vi00 1007) (nop)) ;; #x2c8
+    (vu-pair (sq.xyzw vf16 vi00 1008) (nop)) ;; #x2c9
+    (vu-pair (lq.xyzw vf03 header-buf 4) (nop)) ;; #x2ca
+    (vu-pair (lq.xyzw vf15 vertex-cursor -14) (sub.xw vf31 vf00 vf00)) ;; #x2cb
+    (vu-pair (div Q vf00.w vf13.z) (nop)) ;; #x2cc
+    (vu-pair (lq.xyzw vf16 vertex-cursor -11) (mul.xyz vf12 vf12 Q)) ;; #x2cd
+    (vu-pair (lq.xyzw vf17 vertex-cursor -8) (addx.y vf31 vf00 vf03)) ;; #x2ce
+    (vu-pair (nop) (itof0.xyzw vf15 vf15)) ;; #x2cf
+    (vu-pair (sq.xyzw vf26 vi00 989) (nop)) ;; #x2d0
+    (vu-pair (sq.xyzw vf12 vi00 991) (itof0.xyzw vf16 vf16)) ;; #x2d1
+    (vu-pair (sq.xyzw vf27 vi00 992) (itof0.xyzw vf17 vf17)) ;; #x2d2
+    (vu-pair (div Q vf00.w vf20.z) (nop)) ;; #x2d3
+    (vu-pair (nop) (mul.xyz vf13 vf13 Q)) ;; #x2d4
+    (vu-pair (sq.xyzw vf28 vi00 995) (nop)) ;; #x2d5
+    (vu-pair (move.z vf31 vf03) (nop)) ;; #x2d6
+    (vu-pair (sq.xyzw vf15 vi00 990) (nop)) ;; #x2d7
+    (vu-pair (sq.xyzw vf16 vi00 993) (nop)) ;; #x2d8
+    (vu-pair (sq.xyzw vf17 vi00 996) (nop)) ;; #x2d9
+    (vu-pair (sq.xyzw vf13 vi00 994) (nop)) ;; #x2da
+    (vu-pair (sq.xyzw vf31 vi00 961) (mul.xyz vf14 vf20 Q)) ;; #x2db
+    (vu-pair (nop) (nop)) ;; #x2dc
+    (vu-pair (nop) (nop)) ;; #x2dd
+    (vu-pair (bal transform-return clipper-reset-planes) (nop)) ;; #x2de
+    (vu-pair (sq.xyzw vf14 vi00 997) (nop)) ;; #x2df
+    (vu-pair (ibeq vi00 vi05 clip-vertex-0-restore-state) (nop)) ;; #x2e0
+    (vu-pair (nop) (nop)) ;; #x2e1
+    (vu-pair (bal transform-return draw-clipped-fan) (nop)) ;; #x2e2
+    (vu-pair (nop) (nop)) ;; #x2e3
+    (label clip-vertex-0-restore-state)
+    (vu-pair (ilw.x vi05 vi00 1002) (nop)) ;; #x2e4
+    (vu-pair (ilw.y vi06 vi00 1002) (nop)) ;; #x2e5
+    (vu-pair (ilw.z vi07 vi00 1002) (nop)) ;; #x2e6
+    (vu-pair (ilw.w vi08 vi00 1002) (nop)) ;; #x2e7
+    (vu-pair (ilw.x vi09 vi00 1003) (nop)) ;; #x2e8
+    (vu-pair (ilw.y vertex-cursor vi00 1003) (nop)) ;; #x2e9
+    (vu-pair (ilw.z triangle-count vi00 1003) (nop)) ;; #x2ea
+    (vu-pair (ilw.w input-bank vi00 1003) (nop)) ;; #x2eb
+    (vu-pair (lq.xyzw vf12 vi00 1004) (nop)) ;; #x2ec
+    (vu-pair (lq.xyzw vf13 vi00 1005) (nop)) ;; #x2ed
+    (vu-pair (lq.xyzw vf14 vi00 1006) (nop)) ;; #x2ee
+    (vu-pair (lq.xyzw vf15 vi00 1007) (nop)) ;; #x2ef
+    (vu-pair (b clip-vertex-0-resume) (nop)) ;; #x2f0
+    (vu-pair (lq.xyzw vf16 vi00 1008) (nop)) ;; #x2f1
+    (label clip-vertex-1-crossed)
+    (vu-pair (ibne vi05 vi09 clip-emit-vertex-1) (nop)) ;; #x2f2
+    (vu-pair (sq.xyzw vf23 vi00 998) (addw.w vf15 vf15 fog-consts)) ;; #x2f3
+    (vu-pair (sq.xyzw vf24 vi00 999) (mul.xyzw vf23 vf27 guard)) ;; #x2f4
+    (vu-pair (sq.xyzw vf25 vi00 1000) (mul.xyzw vf24 vf28 guard)) ;; #x2f5
+    (vu-pair (isw.x vi01 vi00 1001) (mul.xyzw vf25 vf29 guard)) ;; #x2f6
+    (vu-pair (isw.y vi02 vi00 1001) (nop)) ;; #x2f7
+    (vu-pair (isw.z vi03 vi00 1001) (clipw.xyz vf23 vf23)) ;; #x2f8
+    (vu-pair (isw.w vi04 vi00 1001) (clipw.xyz vf24 vf24)) ;; #x2f9
+    (vu-pair (mfir.x vf31 vi05) (clipw.xyz vf25 vf25)) ;; #x2fa
+    (vu-pair (iaddiu vi04 vi00 0x3f) (nop)) ;; #x2fb
+    (vu-pair (fcget vi01) (nop)) ;; #x2fc
+    (vu-pair (fcget vi02) (nop)) ;; #x2fd
+    (vu-pair (fcget vi03) (nop)) ;; #x2fe
+    (vu-pair (iand vi01 vi01 vi04) (clipw.xyz vf27 vf27)) ;; #x2ff
+    (vu-pair (iand vi01 vi01 vi02) (clipw.xyz vf28 vf28)) ;; #x300
+    (vu-pair (iand vi01 vi01 vi03) (clipw.xyz vf29 vf29)) ;; #x301
+    (vu-pair (mfir.y vf31 vi06) (nop)) ;; #x302
+    (vu-pair (ibeq vi00 vi01 clip-vertex-1-save-state) (nop)) ;; #x303
+    (vu-pair (mfir.z vf31 vi07) (nop)) ;; #x304
+    (label clip-vertex-1-resume)
+    (vu-pair (div Q fog-consts.x vf13.w) (nop)) ;; #x305
+    (vu-pair (lq.xyzw vf23 vi00 998) (nop)) ;; #x306
+    (vu-pair (lq.xyzw vf24 vi00 999) (nop)) ;; #x307
+    (vu-pair (lq.xyzw vf25 vi00 1000) (nop)) ;; #x308
+    (vu-pair (ilw.x vi01 vi00 1001) (nop)) ;; #x309
+    (vu-pair (ilw.y vi02 vi00 1001) (nop)) ;; #x30a
+    (vu-pair (ilw.z vi03 vi00 1001) (nop)) ;; #x30b
+    (vu-pair (b clip-emit-vertex-1) (nop)) ;; #x30c
+    (vu-pair (ilw.w vi04 vi00 1001) (nop)) ;; #x30d
+    (label clip-vertex-1-save-state)
+    (vu-pair (mfir.w vf31 vi08) (nop)) ;; #x30e
+    (vu-pair (mfir.x vf30 vi09) (nop)) ;; #x30f
+    (vu-pair (mfir.y vf30 vertex-cursor) (nop)) ;; #x310
+    (vu-pair (mfir.z vf30 triangle-count) (nop)) ;; #x311
+    (vu-pair (mfir.w vf30 input-bank) (nop)) ;; #x312
+    (vu-pair (sq.xyzw vf12 vi00 1004) (nop)) ;; #x313
+    (vu-pair (lq.xyzw vf12 vertex-cursor -15) (nop)) ;; #x314
+    (vu-pair (sq.xyzw vf13 vi00 1005) (nop)) ;; #x315
+    (vu-pair (lq.xyzw vf13 vertex-cursor -12) (nop)) ;; #x316
+    (vu-pair (sq.xyzw vf14 vi00 1006) (nop)) ;; #x317
+    (vu-pair (div Q vf00.w vf12.z) (nop)) ;; #x318
+    (vu-pair (sq.xyzw vf31 vi00 1002) (nop)) ;; #x319
+    (vu-pair (sq.xyzw vf30 vi00 1003) (nop)) ;; #x31a
+    (vu-pair (sq.xyzw vf15 vi00 1007) (nop)) ;; #x31b
+    (vu-pair (sq.xyzw vf16 vi00 1008) (nop)) ;; #x31c
+    (vu-pair (lq.xyzw vf03 header-buf 4) (nop)) ;; #x31d
+    (vu-pair (lq.xyzw vf15 vertex-cursor -14) (sub.xw vf31 vf00 vf00)) ;; #x31e
+    (vu-pair (div Q vf00.w vf13.z) (nop)) ;; #x31f
+    (vu-pair (lq.xyzw vf16 vertex-cursor -11) (mul.xyz vf12 vf12 Q)) ;; #x320
+    (vu-pair (lq.xyzw vf17 vertex-cursor -8) (addx.y vf31 vf00 vf03)) ;; #x321
+    (vu-pair (nop) (itof0.xyzw vf15 vf15)) ;; #x322
+    (vu-pair (sq.xyzw vf27 vi00 989) (nop)) ;; #x323
+    (vu-pair (sq.xyzw vf12 vi00 991) (itof0.xyzw vf16 vf16)) ;; #x324
+    (vu-pair (sq.xyzw vf28 vi00 992) (itof0.xyzw vf17 vf17)) ;; #x325
+    (vu-pair (div Q vf00.w vf21.z) (nop)) ;; #x326
+    (vu-pair (nop) (mul.xyz vf13 vf13 Q)) ;; #x327
+    (vu-pair (sq.xyzw vf29 vi00 995) (nop)) ;; #x328
+    (vu-pair (move.z vf31 vf03) (nop)) ;; #x329
+    (vu-pair (sq.xyzw vf15 vi00 990) (nop)) ;; #x32a
+    (vu-pair (sq.xyzw vf16 vi00 993) (nop)) ;; #x32b
+    (vu-pair (sq.xyzw vf17 vi00 996) (nop)) ;; #x32c
+    (vu-pair (sq.xyzw vf13 vi00 994) (nop)) ;; #x32d
+    (vu-pair (sq.xyzw vf31 vi00 961) (mul.xyz vf14 vf21 Q)) ;; #x32e
+    (vu-pair (nop) (nop)) ;; #x32f
+    (vu-pair (nop) (nop)) ;; #x330
+    (vu-pair (bal transform-return clipper-reset-planes) (nop)) ;; #x331
+    (vu-pair (sq.xyzw vf14 vi00 997) (nop)) ;; #x332
+    (vu-pair (ibeq vi00 vi05 clip-vertex-1-restore-state) (nop)) ;; #x333
+    (vu-pair (nop) (nop)) ;; #x334
+    (vu-pair (bal transform-return draw-clipped-fan) (nop)) ;; #x335
+    (vu-pair (nop) (nop)) ;; #x336
+    (label clip-vertex-1-restore-state)
+    (vu-pair (ilw.x vi05 vi00 1002) (nop)) ;; #x337
+    (vu-pair (ilw.y vi06 vi00 1002) (nop)) ;; #x338
+    (vu-pair (ilw.z vi07 vi00 1002) (nop)) ;; #x339
+    (vu-pair (ilw.w vi08 vi00 1002) (nop)) ;; #x33a
+    (vu-pair (ilw.x vi09 vi00 1003) (nop)) ;; #x33b
+    (vu-pair (ilw.y vertex-cursor vi00 1003) (nop)) ;; #x33c
+    (vu-pair (ilw.z triangle-count vi00 1003) (nop)) ;; #x33d
+    (vu-pair (ilw.w input-bank vi00 1003) (nop)) ;; #x33e
+    (vu-pair (lq.xyzw vf12 vi00 1004) (nop)) ;; #x33f
+    (vu-pair (lq.xyzw vf13 vi00 1005) (nop)) ;; #x340
+    (vu-pair (lq.xyzw vf14 vi00 1006) (nop)) ;; #x341
+    (vu-pair (lq.xyzw vf15 vi00 1007) (nop)) ;; #x342
+    (vu-pair (b clip-vertex-1-resume) (nop)) ;; #x343
+    (vu-pair (lq.xyzw vf16 vi00 1008) (nop)) ;; #x344
+    (label draw-clipped-fan)
+    (vu-pair (ilw.w vi01 header-buf 8) (nop)) ;; #x345
+    (vu-pair (ilw.y vi02 vi00 1003) (nop)) ;; #x346
+    (vu-pair (iaddi vi03 header-buf 0x7) (nop)) ;; #x347
+    (vu-pair (ibltz vi01 clipped-fan-emit) (nop)) ;; #x348
+    (vu-pair (ilw.w vi04 vi00 906) (nop)) ;; #x349
+    (vu-pair (iaddi vi02 vi02 -0xf) (nop)) ;; #x34a
+    (vu-pair (isub vi02 vi02 vi04) (nop)) ;; #x34b
+    (label clipped-fan-next-shader)
+    (vu-pair (ilw.w vi04 vi03 5) (nop)) ;; #x34c
+    (vu-pair (ilw.w vi01 vi03 6) (nop)) ;; #x34d
+    (vu-pair (nop) (nop)) ;; #x34e
+    (vu-pair (nop) (nop)) ;; #x34f
+    (vu-pair (isub vi04 vi02 vi04) (nop)) ;; #x350
+    (vu-pair (nop) (nop)) ;; #x351
+    (vu-pair (ibltz vi04 clipped-fan-emit) (nop)) ;; #x352
+    (vu-pair (nop) (nop)) ;; #x353
+    (vu-pair (ibgtz vi01 clipped-fan-next-shader) (nop)) ;; #x354
+    (vu-pair (iaddi vi03 vi03 0x5) (nop)) ;; #x355
+    (label clipped-fan-emit)
+    (vu-pair (iaddiu vi01 vi00 0x3b9) (nop)) ;; #x356
+    (vu-pair (lq.xyzw vf12 vi03 0) (nop)) ;; #x357
+    (vu-pair (lq.xyzw vf13 vi03 1) (nop)) ;; #x358
+    (vu-pair (lq.xyzw vf14 vi03 2) (nop)) ;; #x359
+    (vu-pair (lq.xyzw vf15 vi03 3) (nop)) ;; #x35a
+    (vu-pair (sq.xyzw adgif-tag vi01 0) (nop)) ;; #x35b
+    (vu-pair (sq.xyzw vf12 vi01 1) (nop)) ;; #x35c
+    (vu-pair (sq.xyzw vf13 vi01 2) (nop)) ;; #x35d
+    (vu-pair (sq.xyzw vf14 vi01 3) (nop)) ;; #x35e
+    (vu-pair (sq.xyzw vf15 vi01 4) (nop)) ;; #x35f
+    (vu-pair (lq.xyzw vf12 vi03 4) (nop)) ;; #x360
+    (vu-pair (lq.xyzw vf13 header-buf 5) (nop)) ;; #x361
+    (vu-pair (lq.xyzw vf14 header-buf 6) (nop)) ;; #x362
+    (vu-pair (sq.xyzw vf12 vi01 5) (nop)) ;; #x363
+    (vu-pair (sq.xyzw vf13 vi01 6) (nop)) ;; #x364
+    (vu-pair (sq.xyzw vf14 vi01 7) (nop)) ;; #x365
+    (vu-pair (xgkick vi01) (nop)) ;; #x366
+    (vu-pair (lq.xyzw vf12 vi00 905) (nop)) ;; #x367
+    (vu-pair (iaddiu vi01 vi00 0x3f3) (nop)) ;; #x368
+    (vu-pair (isubiu vi02 vi00 0x7fff) (nop)) ;; #x369
+    (vu-pair (sq.xyzw adgif-tag vi01 0) (nop)) ;; #x36a
+    (vu-pair (iswr.x vi02 vi01) (nop)) ;; #x36b
+    (vu-pair (sq.xyzw vf12 vi01 1) (nop)) ;; #x36c
+    (vu-pair (xgkick vi01) (nop)) ;; #x36d
+    ;; Rebuild the six plane records and seed the linked edge-list workspace.  Each record points at
+    ;; one of the +x, -x, +y, -y, +z, or -z distance helpers at #x40f through #x41a.
+    (label clipper-reset-planes)
+    (vu-pair (sq.xyzw vf00 vi00 907) (nop)) ;; #x36e
+    (vu-pair (sq.xyzw vf00 vi00 914) (nop)) ;; #x36f
+    (vu-pair (sq.xyzw vf00 vi00 921) (nop)) ;; #x370
+    (vu-pair (sq.xyzw vf00 vi00 928) (nop)) ;; #x371
+    (vu-pair (sq.xyzw vf00 vi00 935) (nop)) ;; #x372
+    (vu-pair (sq.xyzw vf00 vi00 942) (nop)) ;; #x373
+    (vu-pair (iaddiu vi01 vi00 (vu-label negative-x-distance)) (nop)) ;; #x374
+    (vu-pair (isw.z vi01 vi00 907) (nop)) ;; #x375
+    (vu-pair (iaddiu vi01 vi00 (vu-label positive-x-distance)) (nop)) ;; #x376
+    (vu-pair (isw.z vi01 vi00 914) (nop)) ;; #x377
+    (vu-pair (iaddiu vi01 vi00 (vu-label negative-y-distance)) (nop)) ;; #x378
+    (vu-pair (isw.z vi01 vi00 921) (nop)) ;; #x379
+    (vu-pair (iaddiu vi01 vi00 (vu-label positive-y-distance)) (nop)) ;; #x37a
+    (vu-pair (isw.z vi01 vi00 928) (nop)) ;; #x37b
+    (vu-pair (iaddiu vi01 vi00 (vu-label negative-z-distance)) (nop)) ;; #x37c
+    (vu-pair (isw.z vi01 vi00 935) (nop)) ;; #x37d
+    (vu-pair (iaddiu vi01 vi00 (vu-label positive-z-distance)) (nop)) ;; #x37e
+    (vu-pair (isw.z vi01 vi00 942) (nop)) ;; #x37f
+    (vu-pair (iaddiu vi03 vi00 0x3c2) (nop)) ;; #x380
+    (vu-pair (iaddiu vi04 vi00 0x3c1) (nop)) ;; #x381
+    (vu-pair (mfir.x vf31 transform-return) (nop)) ;; #x382
+    (vu-pair (iaddi vi05 vi00 0x0) (nop)) ;; #x383
+    (vu-pair (bal transform-return clipper-begin-plane) (nop)) ;; #x384
+    (vu-pair (iaddiu vi07 vi00 0x3dd) (nop)) ;; #x385
+    (vu-pair (bal transform-return clipper-begin-plane) (nop)) ;; #x386
+    (vu-pair (iaddiu vi07 vi00 0x3e0) (nop)) ;; #x387
+    (vu-pair (bal transform-return clipper-begin-plane) (nop)) ;; #x388
+    (vu-pair (iaddiu vi07 vi00 0x3e3) (nop)) ;; #x389
+    (vu-pair (b clipper-close-ring) (nop)) ;; #x38a
+    (vu-pair (nop) (nop)) ;; #x38b
+    ;; Clip one edge list against one plane.  vi06 selects the plane-distance helper, vi07 is the
+    ;; previous endpoint, vi08 is the current endpoint, and vi09 advances through seven-qword edge
+    ;; records.  Crossing edges call the interpolator at #x41b and splice the new endpoint into the
+    ;; list used by the next plane.
+    (label clipper-begin-plane)
+    (vu-pair (iaddiu vi09 vi00 0x38b) (nop)) ;; #x38c
+    (label clipper-restart-list)
+    (vu-pair (iaddi pending-depth vi00 0x0) (nop)) ;; #x38d
+    ;; One plane, one edge list. vi06 is the plane-distance helper, the two endpoints are measured with
+    ;; one call, and an edge whose endpoints straddle the plane is split at the interpolated crossing
+    ;; and the new endpoint spliced into the list the next plane will walk. Six planes, so the list is
+    ;; rewritten up to six times and can only grow.
+    (label clipper-next-edge)
+    (vu-pair (isubiu vi01 vi09 0x3b5) (nop)) ;; #x38e
+    (vu-pair (ilwr.y vi08 vi09) (nop)) ;; #x38f
+    (vu-pair (ibgez vi01 clipper-project-vertex) (nop)) ;; #x390
+    (vu-pair (ilwr.z vi06 vi09) (nop)) ;; #x391
+    (vu-pair (lq.xyzw vf24 vi07 0) (nop)) ;; #x392
+    (vu-pair (lq.xyzw vf23 vi08 0) (nop)) ;; #x393
+    (vu-pair (ibne vi00 vi08 clipper-measure-edge) (nop)) ;; #x394
+    (vu-pair (iswr.y vi07 vi09) (nop)) ;; #x395
+    (vu-pair (jalr clip-link vi06) (nop)) ;; #x396
+    (vu-pair (iswr.x vi07 vi09) (nop)) ;; #x397
+    (vu-pair (nop) (nop)) ;; #x398
+    (vu-pair (nop) (nop)) ;; #x399
+    (vu-pair (nop) (nop)) ;; #x39a
+    (vu-pair (fsand vi02 0x2) (nop)) ;; #x39b
+    (vu-pair (ibne vi00 vi02 clipper-pop-pending-list) (nop)) ;; #x39c
+    (vu-pair (nop) (nop)) ;; #x39d
+    (vu-pair (b clipper-next-edge) (nop)) ;; #x39e
+    (vu-pair (iaddi vi09 vi09 0x7) (nop)) ;; #x39f
+    (label clipper-measure-edge)
+    (vu-pair (jalr clip-link vi06) (nop)) ;; #x3a0
+    (vu-pair (lq.xyzw vf15 vi08 1) (nop)) ;; #x3a1
+    (vu-pair (lq.xyzw vf16 vi07 1) (nop)) ;; #x3a2
+    (vu-pair (lq.xyzw vf12 vi08 2) (nop)) ;; #x3a3
+    (vu-pair (fsand vi01 0x2) (nop)) ;; #x3a4
+    (vu-pair (fsand vi02 0x2) (subw.w vf31 vf30 vf31)) ;; #x3a5
+    (vu-pair (ibne vi00 vi01 clipper-splice-endpoint) (nop)) ;; #x3a6
+    (vu-pair (lq.xyzw vf13 vi07 2) (nop)) ;; #x3a7
+    (vu-pair (ibne vi00 vi02 clipper-split-edge) (nop)) ;; #x3a8
+    (vu-pair (div Q vf30.w vf31.w) (nop)) ;; #x3a9
+    (vu-pair (b clipper-next-edge) (nop)) ;; #x3aa
+    (vu-pair (iaddi vi09 vi09 0x7) (nop)) ;; #x3ab
+    (label clipper-split-edge)
+    (vu-pair (bal clip-link clipper-interpolate-crossing) (nop)) ;; #x3ac
+    (vu-pair (iaddi vi07 vi09 0x1) (nop)) ;; #x3ad
+    (vu-pair (sq.xyzw vf25 vi09 1) (nop)) ;; #x3ae
+    (vu-pair (sq.xyzw vf17 vi09 2) (nop)) ;; #x3af
+    (vu-pair (sq.xyzw vf14 vi09 3) (nop)) ;; #x3b0
+    (vu-pair (b clipper-next-edge) (nop)) ;; #x3b1
+    (vu-pair (iaddi vi09 vi09 0x7) (nop)) ;; #x3b2
+    (label clipper-splice-endpoint)
+    (vu-pair (ibne vi00 vi02 clipper-pop-pending-list) (nop)) ;; #x3b3
+    (vu-pair (div Q vf30.w vf31.w) (nop)) ;; #x3b4
+    (vu-pair (bal clip-link clipper-interpolate-crossing) (nop)) ;; #x3b5
+    (vu-pair (nop) (nop)) ;; #x3b6
+    (vu-pair (sq.xyzw vf25 vi09 4) (nop)) ;; #x3b7
+    (vu-pair (sq.xyzw vf17 vi09 5) (nop)) ;; #x3b8
+    (vu-pair (sq.xyzw vf14 vi09 6) (nop)) ;; #x3b9
+    (vu-pair (iaddi vi09 vi09 0x7) (nop)) ;; #x3ba
+    (vu-pair (isw.x vi09 pending-depth 949) (nop)) ;; #x3bb
+    (vu-pair (isw.y vi07 pending-depth 949) (nop)) ;; #x3bc
+    (vu-pair (iaddi pending-depth pending-depth 0x1) (nop)) ;; #x3bd
+    (vu-pair (b clipper-next-edge) (nop)) ;; #x3be
+    (vu-pair (iaddi vi07 vi09 -0x3) (nop)) ;; #x3bf
+    ;; Project a surviving clip-space vertex and append its color, STQ, and GS position to the
+    ;; temporary packet.
+    (label clipper-project-vertex)
+    (vu-pair (lq.xyzw vf23 vi07 0) (nop)) ;; #x3c0
+    (vu-pair (lq.xyzw vf15 vi07 1) (nop)) ;; #x3c1
+    (vu-pair (lq.xyzw vf12 vi07 2) (nop)) ;; #x3c2
+    (vu-pair (iaddi vi05 vi05 0x1) (nop)) ;; #x3c3
+    (vu-pair (nop) (nop)) ;; #x3c4
+    (vu-pair (div Q vf00.w vf23.w) (nop)) ;; #x3c5
+    (vu-pair (nop) (ftoi0.xyzw vf15 vf15)) ;; #x3c6
+    (vu-pair (nop) (mul.xyzw vf23 vf23 invh-scale)) ;; #x3c7
+    (vu-pair (iaddi vi03 vi03 0x3) (nop)) ;; #x3c8
+    (vu-pair (waitq) (nop)) ;; #x3c9
+    (vu-pair (sq.xyzw vf15 vi03 -2) (mul.xyz vf23 vf23 Q)) ;; #x3ca
+    (vu-pair (nop) (mul.xyz vf12 vf12 Q)) ;; #x3cb
+    (vu-pair (nop) (add.xyzw vf23 vf23 hvdf-offset)) ;; #x3cc
+    (vu-pair (nop) (maxy.w vf23 vf23 fog-consts)) ;; #x3cd
+    (vu-pair (nop) (miniz.w vf23 vf23 fog-consts)) ;; #x3ce
+    (vu-pair (nop) (ftoi4.xyzw vf23 vf23)) ;; #x3cf
+    (vu-pair (sq.xyzw vf12 vi03 -3) (nop)) ;; #x3d0
+    (vu-pair (sq.xyzw vf23 vi03 -1) (nop)) ;; #x3d1
+    (label clipper-pop-pending-list)
+    (vu-pair (iblez pending-depth clipper-plane-done) (nop)) ;; #x3d2
+    (vu-pair (nop) (nop)) ;; #x3d3
+    (vu-pair (ilw.x vi09 pending-depth 948) (nop)) ;; #x3d4
+    (vu-pair (ilw.y vi07 pending-depth 948) (nop)) ;; #x3d5
+    (vu-pair (b clipper-next-edge) (nop)) ;; #x3d6
+    (vu-pair (iaddi pending-depth pending-depth -0x1) (nop)) ;; #x3d7
+    (label clipper-plane-done)
+    (vu-pair (jr transform-return) (nop)) ;; #x3d8
+    (vu-pair (nop) (nop)) ;; #x3d9
+    ;; Close each edge ring.  If the closing edge crosses the active plane, insert its interpolated
+    ;; endpoint and run the newly split portion through the same plane before continuing.
+    (label clipper-close-ring)
+    (vu-pair (iaddiu vi09 vi00 0x38b) (nop)) ;; #x3da
+    (label clipper-close-next-ring)
+    (vu-pair (ilwr.x vi08 vi09) (nop)) ;; #x3db
+    (vu-pair (ilwr.y vi07 vi09) (nop)) ;; #x3dc
+    (vu-pair (ilwr.z vi06 vi09) (nop)) ;; #x3dd
+    (vu-pair (nop) (nop)) ;; #x3de
+    (vu-pair (ibeq vi00 vi08 clipper-clear-edge) (nop)) ;; #x3df
+    (vu-pair (lq.xyzw vf23 vi07 0) (nop)) ;; #x3e0
+    (vu-pair (ibeq vi07 vi08 clipper-clear-edge) (nop)) ;; #x3e1
+    (vu-pair (lq.xyzw vf24 vi08 0) (nop)) ;; #x3e2
+    (vu-pair (jalr clip-link vi06) (nop)) ;; #x3e3
+    (vu-pair (lq.xyzw vf15 vi07 1) (nop)) ;; #x3e4
+    (vu-pair (lq.xyzw vf16 vi08 1) (nop)) ;; #x3e5
+    (vu-pair (lq.xyzw vf12 vi07 2) (nop)) ;; #x3e6
+    (vu-pair (fsand vi01 0x2) (nop)) ;; #x3e7
+    (vu-pair (fsand vi02 0x2) (subw.w vf31 vf30 vf31)) ;; #x3e8
+    (vu-pair (ibeq vi02 vi01 clipper-clear-edge) (nop)) ;; #x3e9
+    (vu-pair (lq.xyzw vf13 vi08 2) (nop)) ;; #x3ea
+    (vu-pair (ibeq vi00 vi01 clipper-split-closing-edge) (nop)) ;; #x3eb
+    (vu-pair (div Q vf30.w vf31.w) (nop)) ;; #x3ec
+    (vu-pair (bal clip-link clipper-interpolate-crossing) (nop)) ;; #x3ed
+    (vu-pair (nop) (nop)) ;; #x3ee
+    (vu-pair (sq.xyzw vf25 vi09 4) (nop)) ;; #x3ef
+    (vu-pair (sq.xyzw vf17 vi09 5) (nop)) ;; #x3f0
+    (vu-pair (sq.xyzw vf14 vi09 6) (nop)) ;; #x3f1
+    (vu-pair (iaddi vi07 vi09 0x4) (nop)) ;; #x3f2
+    (vu-pair (ior input-bank vi09 vi00) (nop)) ;; #x3f3
+    (vu-pair (bal transform-return clipper-restart-list) (nop)) ;; #x3f4
+    (vu-pair (iaddi vi09 vi09 0x7) (nop)) ;; #x3f5
+    (vu-pair (b clipper-clear-edge) (nop)) ;; #x3f6
+    (vu-pair (ior vi09 input-bank vi00) (nop)) ;; #x3f7
+    (label clipper-split-closing-edge)
+    (vu-pair (bal clip-link clipper-interpolate-crossing) (nop)) ;; #x3f8
+    (vu-pair (nop) (nop)) ;; #x3f9
+    (vu-pair (sq.xyzw vf25 vi09 1) (nop)) ;; #x3fa
+    (vu-pair (sq.xyzw vf17 vi09 2) (nop)) ;; #x3fb
+    (vu-pair (sq.xyzw vf14 vi09 3) (nop)) ;; #x3fc
+    (vu-pair (iaddi vi07 vi09 0x1) (nop)) ;; #x3fd
+    (vu-pair (ior input-bank vi09 vi00) (nop)) ;; #x3fe
+    (vu-pair (bal transform-return clipper-restart-list) (nop)) ;; #x3ff
+    (vu-pair (iaddi vi09 vi09 0x7) (nop)) ;; #x400
+    (vu-pair (ior vi09 input-bank vi00) (nop)) ;; #x401
+    (label clipper-clear-edge)
+    (vu-pair (isubiu vi01 vi09 0x3ae) (nop)) ;; #x402
+    (vu-pair (iswr.x vi00 vi09) (nop)) ;; #x403
+    (vu-pair (iswr.y vi00 vi09) (nop)) ;; #x404
+    (vu-pair (ibltz vi01 clipper-close-next-ring) (nop)) ;; #x405
+    (vu-pair (iaddi vi09 vi09 0x7) (nop)) ;; #x406
+    (vu-pair (ibeq vi00 vi05 clipper-return) (nop)) ;; #x407
+    (vu-pair (mtir transform-return vf31.x) (nop)) ;; #x408
+    (vu-pair (iaddiu vi05 vi05 0x4000) (nop)) ;; #x409
+    (vu-pair (iaddiu vi05 vi05 0x4000) (nop)) ;; #x40a
+    (vu-pair (iswr.x vi05 vi04) (nop)) ;; #x40b
+    (label clipper-return)
+    (vu-pair (nop) (nop)) ;; #x40c
+    (vu-pair (jr transform-return) (nop)) ;; #x40d
+    (vu-pair (nop) (nop)) ;; #x40e
+    ;; Homogeneous plane distances, one two-pair subroutine per plane.  The paired result for the two
+    ;; edge endpoints is returned in vf30.w and vf31.w; its signs tell the caller whether the edge stays
+    ;; inside or crosses.  Each is w plus or minus one coordinate, so the names read off the boundary
+    ;; being measured: w + x is zero on x = -w and positive inside it.
+    ;;
+    ;; The six addresses are installed into the six plane records by the reset entry, which is what makes
+    ;; the clipper's plane loop a call through a record field rather than six special cases.
+    (label negative-x-distance)
+    (vu-pair (jr clip-link) (addx.w vf30 vf23 vf23)) ;; #x40f
+    (vu-pair (nop) (addx.w vf31 vf24 vf24)) ;; #x410
+    (label positive-x-distance)
+    (vu-pair (jr clip-link) (subx.w vf30 vf23 vf23)) ;; #x411
+    (vu-pair (nop) (subx.w vf31 vf24 vf24)) ;; #x412
+    (label negative-y-distance)
+    (vu-pair (jr clip-link) (addy.w vf30 vf23 vf23)) ;; #x413
+    (vu-pair (nop) (addy.w vf31 vf24 vf24)) ;; #x414
+    (label positive-y-distance)
+    (vu-pair (jr clip-link) (suby.w vf30 vf23 vf23)) ;; #x415
+    (vu-pair (nop) (suby.w vf31 vf24 vf24)) ;; #x416
+    (label negative-z-distance)
+    (vu-pair (jr clip-link) (addz.w vf30 vf23 vf23)) ;; #x417
+    (vu-pair (nop) (addz.w vf31 vf24 vf24)) ;; #x418
+    (label positive-z-distance)
+    (vu-pair (jr clip-link) (subz.w vf30 vf23 vf23)) ;; #x419
+    (vu-pair (nop) (subz.w vf31 vf24 vf24)) ;; #x41a
+    ;; Interpolate clip-space position, packed color, and STQ at the crossing fraction in Q.
+    (label clipper-interpolate-crossing)
+    (vu-pair (nop) (sub.xyzw vf25 vf24 vf23)) ;; #x41b
+    (vu-pair (nop) (sub.xyzw vf17 vf16 vf15)) ;; #x41c
+    (vu-pair (nop) (sub.xyzw vf14 vf13 vf12)) ;; #x41d
+    (vu-pair (waitq) (mul.xyzw vf25 vf25 Q)) ;; #x41e
+    (vu-pair (nop) (mul.xyzw vf17 vf17 Q)) ;; #x41f
+    (vu-pair (nop) (mul.xyzw vf14 vf14 Q)) ;; #x420
+    (vu-pair (nop) (add.xyzw vf25 vf23 vf25)) ;; #x421
+    (vu-pair (jr clip-link) (add.xyzw vf17 vf15 vf17)) ;; #x422
+    (vu-pair (nop) (add.xyzw vf14 vf12 vf14)) ;; #x423
+    ;; Copy the finished ST/RGBAQ/XYZF2 stream into the current GIF buffer, kick it, then advance
+    ;; vi12 to the next 279-qword input bank and wrap after the third bank.
+    ;; The strip is finished. Copy the ST/RGBAQ/XYZF2 run into the header buffer behind its adgif
+    ;; prologue, kick it, and advance to the next input bank - wrapping after the third, because the
+    ;; GIF is still reading the one before.
+    (label copy-to-gif-buffer)
+    (vu-pair (iaddi vi14 header-buf 0x7) (nop)) ;; #x424
+    (vu-pair (lq.xyzw vf03 header-buf 4) (nop)) ;; #x425
+    (vu-pair (ilw.w vi02 header-buf 6) (nop)) ;; #x426
+    (vu-pair (lq.xyzw vf21 header-buf 5) (nop)) ;; #x427
+    (vu-pair (lq.xyzw vf22 header-buf 6) (nop)) ;; #x428
+    (label copy-next-strip)
+    (vu-pair (ilwr.w vi03 vi14) (nop)) ;; #x429
+    (vu-pair (ilw.w vi04 vi14 1) (nop)) ;; #x42a
+    (vu-pair (lqi.xyzw vf16 vi14) (nop)) ;; #x42b
+    (vu-pair (lqi.xyzw vf17 vi14) (nop)) ;; #x42c
+    (vu-pair (lqi.xyzw vf18 vi14) (nop)) ;; #x42d
+    (vu-pair (lqi.xyzw vf19 vi14) (nop)) ;; #x42e
+    (vu-pair (lqi.xyzw vf20 vi14) (nop)) ;; #x42f
+    (vu-pair (iadd vi06 vi03 input-bank) (nop)) ;; #x430
+    (vu-pair (sqi.xyzw adgif-tag vi06) (nop)) ;; #x431
+    (vu-pair (sqi.xyzw vf16 vi06) (nop)) ;; #x432
+    (vu-pair (sqi.xyzw vf17 vi06) (nop)) ;; #x433
+    (vu-pair (sqi.xyzw vf18 vi06) (nop)) ;; #x434
+    (vu-pair (sqi.xyzw vf19 vi06) (nop)) ;; #x435
+    (vu-pair (sqi.xyzw vf20 vi06) (nop)) ;; #x436
+    (vu-pair (sqi.xyzw vf21 vi06) (nop)) ;; #x437
+    (vu-pair (sqi.xyzw vf22 vi06) (nop)) ;; #x438
+    (vu-pair (sqi.xyzw vf03 vi06) (nop)) ;; #x439
+    (vu-pair (ibgez vi04 copy-next-strip) (nop)) ;; #x43a
+    (vu-pair (isw.x vi04 vi06 -1) (nop)) ;; #x43b
+    (vu-pair (iadd vi02 input-bank vi02) (nop)) ;; #x43c
+    (vu-pair (nop) (nop)) ;; #x43d
+    (vu-pair (xgkick vi02) (nop)) ;; #x43e
+    (vu-pair (isubiu vi01 input-bank 0x22e) (nop)) ;; #x43f
+    (vu-pair (nop) (nop)) ;; #x440
+    (vu-pair (ibltz vi01 program-done) (nop)) ;; #x441
+    (vu-pair (iaddiu input-bank input-bank 0x117) (nop)) ;; #x442
+    (vu-pair (iaddi input-bank vi00 0x0) (nop)) ;; #x443
+    ;; Entry 4 and the common completion point.
+    (label program-done)
+    (vu-pair (nop) (nop :e)) ;; #x444
+    (vu-pair (nop) (nop)) ;; #x445
+    )))
+
+(defun generic-setup-constants ((constants generic-constants) (alpha-blend int))
+  "Fill the Generic VU1 constant block from the active camera and select alpha blending for its
+   triangle-strip GIF tag."
+  (let ((camera *math-camera*))
+    (set-vector!
+      (-> constants fog)
+      (-> camera pfog0)
+      (-> camera fog-min)
+      (-> camera fog-max)
+      3071.0))
+  (set! (-> constants adgif tag) (new 'static 'gif-tag64 :nloop #x7 :nreg #x1))
+  (set! (-> constants adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  (set! (-> constants giftag tag)
         (new 'static
              'gif-tag64
              :pre #x1
              :nreg #x3
              :prim
-             (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)))
-  (set! (-> arg0 giftag regs)
+             (new 'static
+                  'gs-prim
+                  :prim (gs-prim-type tri-strip)
+                  :iip #x1
+                  :tme #x1
+                  :fge #x1
+                  :abe alpha-blend)))
+  (set! (-> constants giftag regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (set! (-> arg0 hvdf-offset quad) (-> *math-camera* hvdf-off quad))
-  (set! (-> arg0 hmge-scale quad) (-> *math-camera* hmge-scale quad))
-  (set! (-> arg0 invh-scale quad) (-> *math-camera* inv-hmge-scale quad))
-  (set! (-> arg0 guard quad) (-> *math-camera* guard quad))
-  (set! (-> arg0 adnop dword 0) (the-as uint #x5026b))
-  (set! (-> arg0 adnop dword 1) (the-as uint 71))
-  (set! (-> arg0 flush dword 0) (the-as uint #x3f80000080808080))
-  (set! (-> arg0 flush dword 1) (the-as uint 1))
+  (set! (-> constants hvdf-offset quad) (-> *math-camera* hvdf-off quad))
+  (set! (-> constants hmge-scale quad) (-> *math-camera* hmge-scale quad))
+  (set! (-> constants invh-scale quad) (-> *math-camera* inv-hmge-scale quad))
+  (set! (-> constants guard quad) (-> *math-camera* guard quad))
+  (set! (-> constants adnop dword 0) (the-as uint #x5026b))
+  (set! (-> constants adnop dword 1) (the-as uint 71))
+  (set! (-> constants flush dword 0) (the-as uint #x3f80000080808080))
+  (set! (-> constants flush dword 1) (the-as uint 1))
   (none))
 
-(defun generic-add-constants ((arg0 dma-buffer) (arg1 int))
-  (let* ((a2-0 10)
-         (v1-0 arg0)
-         (a0-1 (the-as dma-packet (-> v1-0 base))))
-    (set! (-> a0-1 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
-    (set! (-> a0-1 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> a0-1 vif1) (new 'static 'vif-tag :imm #x381 :cmd (vif-cmd unpack-v4-32) :num a2-0))
-    (set! (-> v1-0 base) (the-as pointer (&+ a0-1 16))))
-  (generic-setup-constants (the-as generic-constants (-> arg0 base)) arg1)
-  (&+! (-> arg0 base) 160)
+(defun generic-add-constants ((dma-buf dma-buffer) (alpha-blend int))
+  "Append the ten-qword Generic camera, fog, GIF, guard-band, and packet constant block to dma-buf."
+  (let* ((qword-count 10)
+         (buffer dma-buf)
+         (packet (the-as dma-packet (-> buffer base))))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qword-count))
+    (set! (-> packet vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> packet vif1)
+          (new 'static
+               'vif-tag
+               :imm GENERIC-VU1-CONSTANTS
+               :cmd (vif-cmd unpack-v4-32)
+               :num qword-count))
+    (set! (-> buffer base) (the-as pointer (&+ packet 16))))
+  (generic-setup-constants (the-as generic-constants (-> dma-buf base)) alpha-blend)
+  (&+! (-> dma-buf base) 160)
   (none))
 
-(defun generic-init-buf ((arg0 dma-buffer) (arg1 int) (arg2 gs-zbuf))
+(defun generic-init-buf ((dma-buf dma-buffer) (alpha-blend int) (zbuf gs-zbuf))
+  "Upload and initialize the Generic VU1 renderer, set its GS alpha/depth state, upload the ten
+   qword camera and packet constant block, start entry zero, and reset VIF BASE, OFFSET, and ROW."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
-    (dma-buffer-add-vu-function arg0 generic-vu1-block 1)
-    (let* ((v1-3 arg0)
-           (a0-2 (the-as dma-packet (-> v1-3 base))))
-      (set! (-> a0-2 dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
-      (set! (-> a0-2 vif0) (new 'static 'vif-tag))
-      (set! (-> a0-2 vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-3 base) (the-as pointer (&+ a0-2 16))))
-    (let* ((v1-4 arg0)
-           (a0-4 (the-as gs-gif-tag (-> v1-4 base))))
-      (set! (-> a0-4 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
-      (set! (-> a0-4 regs)
+    (dma-buffer-add-vu-function dma-buf generic-vu1-block 1)
+    (let* ((buffer dma-buf)
+           (upload-packet (the-as dma-packet (-> buffer base))))
+      (set! (-> upload-packet dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+      (set! (-> upload-packet vif0) (new 'static 'vif-tag))
+      (set! (-> upload-packet vif1)
+            (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> buffer base) (the-as pointer (&+ upload-packet 16))))
+    (let* ((buffer dma-buf)
+           (direct-tag (the-as gs-gif-tag (-> buffer base))))
+      (set! (-> direct-tag tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
+      (set! (-> direct-tag regs)
             (new 'static
                  'gif-tag-regs
                  :regs0 (gif-reg-id a+d)
@@ -74,10 +1407,10 @@
                  :regs13 (gif-reg-id a+d)
                  :regs14 (gif-reg-id a+d)
                  :regs15 (gif-reg-id a+d)))
-      (set! (-> v1-4 base) (the-as pointer (&+ a0-4 16))))
-    (let* ((v1-5 arg0)
-           (a0-6 (-> v1-5 base)))
-      (set! (-> (the-as (pointer gs-test) a0-6) 0)
+      (set! (-> buffer base) (the-as pointer (&+ direct-tag 16))))
+    (let* ((buffer dma-buf)
+           (gs-registers (-> buffer base)))
+      (set! (-> (the-as (pointer gs-test) gs-registers) 0)
             (new 'static
                  'gs-test
                  :ate #x1
@@ -86,65 +1419,75 @@
                  :afail #x1
                  :zte #x1
                  :ztst (gs-ztest greater-equal)))
-      (set! (-> (the-as (pointer uint64) a0-6) 1) (the-as uint (gs-reg test-1)))
-      (set! (-> (the-as (pointer gs-zbuf) a0-6) 2) arg2)
-      (set! (-> (the-as (pointer uint64) a0-6) 3) (the-as uint (gs-reg zbuf-1)))
-      (set! (-> v1-5 base) (&+ a0-6 32)))
-    (generic-add-constants arg0 arg1)
-    (let* ((v1-6 arg0)
-           (a0-9 (the-as dma-packet (-> v1-6 base))))
-      (set! (-> a0-9 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> a0-9 vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
-      (set! (-> a0-9 vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-      (set! (-> v1-6 base) (the-as pointer (&+ a0-9 16))))
-    (let ((v1-7 (the-as (pointer int32) (-> arg0 base))))
-      (set! (-> (the-as (pointer vif-tag) v1-7) 0) (new 'static 'vif-tag :cmd (vif-cmd base)))
-      (set! (-> (the-as (pointer vif-tag) v1-7) 1) (new 'static 'vif-tag :cmd (vif-cmd offset)))
-      (set! (-> (the-as (pointer vif-tag) v1-7) 2) (new 'static 'vif-tag))
-      (set! (-> (the-as (pointer vif-tag) v1-7) 3) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
-      (set! (-> v1-7 4) 0)
-      (set! (-> v1-7 5) 0)
-      (set! (-> v1-7 6) 0)
-      (set! (-> v1-7 7) 0)
-      (set! (-> arg0 base) (&+ (the-as pointer v1-7) 32))))
+      (set! (-> (the-as (pointer uint64) gs-registers) 1) (the-as uint (gs-reg test-1)))
+      (set! (-> (the-as (pointer gs-zbuf) gs-registers) 2) zbuf)
+      (set! (-> (the-as (pointer uint64) gs-registers) 3) (the-as uint (gs-reg zbuf-1)))
+      (set! (-> buffer base) (&+ gs-registers 32)))
+    (generic-add-constants dma-buf alpha-blend)
+    ;; MSCALF with a zero immediate: entry GENERIC-VU1-INIT, which loads the constant block we just
+    ;; uploaded and then falls through into the reset entry.
+    (let* ((buffer dma-buf)
+           (start-packet (the-as dma-packet (-> buffer base))))
+      (set! (-> start-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> start-packet vif0)
+            (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
+      (set! (-> start-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+      (set! (-> buffer base) (the-as pointer (&+ start-packet 16))))
+    (let ((vif-state (the-as (pointer int32) (-> dma-buf base))))
+      (set! (-> (the-as (pointer vif-tag) vif-state) 0)
+            (new 'static 'vif-tag :cmd (vif-cmd base)))
+      (set! (-> (the-as (pointer vif-tag) vif-state) 1)
+            (new 'static 'vif-tag :cmd (vif-cmd offset)))
+      (set! (-> (the-as (pointer vif-tag) vif-state) 2) (new 'static 'vif-tag))
+      (set! (-> (the-as (pointer vif-tag) vif-state) 3)
+            (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+      (set! (-> vif-state 4) 0)
+      (set! (-> vif-state 5) 0)
+      (set! (-> vif-state 6) 0)
+      (set! (-> vif-state 7) 0)
+      (set! (-> dma-buf base) (&+ (the-as pointer vif-state) 32))))
   0
   (none))
 
 ;; unused
-;; (defun generic-reset-buffers ((arg0 dma-buffer) (arg1 int) (arg2 int))
-;;   (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
-;;     (let ((a3-0 (new 'static 'vector :x (the-as float #x345) :y (the-as float #x363)))
-;;           (v1-3 (new 'static 'vector :y (the-as float #x117) :z (the-as float #x22e)))
-;;           )
-;;       (let* ((t0-0 arg0)
-;;              (t1-0 (the-as object (-> t0-0 base)))
-;;              )
-;;         (set! (-> (the-as dma-packet t1-0) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-;;         (set! (-> (the-as dma-packet t1-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-;;         (set! (-> (the-as dma-packet t1-0) vif1)
-;;               (new 'static 'vif-tag :imm #x38a :num #x1 :cmd (vif-cmd unpack-v4-32))
-;;               )
-;;         (set! (-> t0-0 base) (the-as pointer (the-as dma-packet (&+ (the-as pointer t1-0) 16))))
-;;         )
-;;       (let ((t0-1 (-> arg0 base)))
-;;         (set! (-> (the-as (pointer int32) t0-1)) 0)
-;;         (s.w! (+ t0-1 4) 0)
-;;         (let ((a1-3 (-> a3-0 data arg1)))
-;;           (s.w! (+ t0-1 8) a1-3)
-;;           )
-;;         (let ((v1-5 (-> v1-3 data arg2)))
-;;           (s.w! (+ t0-1 12) v1-5)
-;;           )
-;;         (s.w! (+ t0-1 16) 0)
-;;         (s.w! (+ t0-1 20) 0)
-;;         (s.w! (+ t0-1 24) 0)
-;;         (let ((v1-6 #x1500000c))
-;;           (s.w! (+ t0-1 28) v1-6)
-;;           )
-;;         (set! (-> arg0 base) (&+ t0-1 32))
-;;         )
-;;       )
-;;     )
-;;   0
-;;   (none)
-;;   )
+(defun generic-reset-buffers ((dma-buf dma-buffer) (output-buffer int) (input-buffer int))
+  "Select one of the two VU1 header buffers and one of the three input-bank offsets, then call the
+   buffer-install entry to adopt them. This helper is unused by the shipped game."
+  ;; Normally the two rotations run themselves: the packet builder advances its copy of the cursors
+  ;; and the VU program advances its own, and the two stay in step because they start together. This
+  ;; is the override, for putting a sink back onto a known pair without re-uploading the program.
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
+    (let ((output-addresses (new 'static 'vector4w :x GENERIC-VU1-HEADER-A :y GENERIC-VU1-HEADER-B))
+          ;; bank offsets, not cursors: the packet builder's inbuf-adr is one of these plus
+          ;; GENERIC-VU1-INBUF-FIRST, because the first nine quadwords of a bank belong to strip 0.
+          (input-offsets (new 'static 'vector4w :y #x117 :z #x22e)))
+      (let* ((buffer dma-buf)
+             (packet (the-as dma-packet (-> buffer base))))
+        (set! (-> packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+        (set! (-> packet vif0)
+              (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+        (set! (-> packet vif1)
+              (new 'static
+                   'vif-tag
+                   :imm #x38a
+                   :num #x1
+                   :cmd (vif-cmd unpack-v4-32)))
+        (set! (-> buffer base)
+              (the-as pointer (the-as dma-packet (&+ (the-as pointer packet) 16)))))
+      (let ((control (the-as (pointer uint32) (-> dma-buf base))))
+        (set! (-> control 0) 0)
+        (set! (-> control 1) 0)
+        (let ((output-address (-> output-addresses data output-buffer)))
+          (set! (-> control 2) output-address))
+        (let ((input-offset (-> input-offsets data input-buffer)))
+          (set! (-> control 3) input-offset))
+        (set! (-> control 4) 0)
+        (set! (-> control 5) 0)
+        (set! (-> control 6) 0)
+        ;; The last word of the payload is read back as a VIF code: MSCALF with immediate
+        ;; GENERIC-VU1-SET-BUFFERS, so the unpack and the call are one packet.
+        (let ((mscalf-set-buffers (the-as uint #x1500000c)))
+          (set! (-> control 7) mscalf-set-buffers))
+        (set! (-> dma-buf base) (&+ (the-as pointer control) 32)))))
+  0
+  (none))

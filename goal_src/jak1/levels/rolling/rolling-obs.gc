@@ -11,9 +11,7 @@
 
 (deftype rolling-part (part-spawner) ())
 
-
 (deftype rollingcam (process-hidden) ())
-
 
 (defskelgroup *rollingcam-sg*
   rollingcam
@@ -26,19 +24,16 @@
   ((root      collide-shape-moving :override)
    (max-frame float)))
 
-
 (deftype pusher (pusher-base)
   ((sync sync-info-paused :inline)
    (cyl  cylinder :inline))
   (:states
    pusher-idle))
 
-
 (deftype gorge-pusher (pusher-base)
   ((min-frame float))
   (:states
    gorge-pusher-idle))
-
 
 (defskelgroup *pusher-sg*
   pusher
@@ -89,12 +84,14 @@
         (suspend)))
   :post rider-post)
 
-(defmethod init-from-entity! ((this pusher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pusher) (source-entity entity-actor))
+  "Create the pusher collision and skeleton, load its synchronized animation range, and build
+   the camera-to-player occlusion capsule."
   (pusher-base-init)
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *pusher-sg* '())
   (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)
-  (set! (-> this max-frame) (res-lump-float arg0 'max-frame :default (the float (ja-num-frames 0))))
+  (set! (-> this max-frame) (res-lump-float source-entity 'max-frame :default (the float (ja-num-frames 0))))
   (set! (-> this cyl origin quad) (-> this root trans quad))
   (vector-x-quaternion! (-> this cyl axis) (-> this root quat))
   (vector-negate! (-> this cyl axis) (-> this cyl axis))
@@ -114,13 +111,14 @@
         (suspend)))
   :post rider-post)
 
-(defmethod init-from-entity! ((this gorge-pusher) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gorge-pusher) (source-entity entity-actor))
+  "Create the gorge pusher and load its open and closed animation frames from the entity."
   (pusher-base-init)
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *pusher-sg* '())
-  (set! (-> this max-frame) (res-lump-float arg0 'max-frame :default 1.0))
+  (set! (-> this max-frame) (res-lump-float source-entity 'max-frame :default 1.0))
   (set! (-> this max-frame) (* (-> this max-frame) (the float (ja-num-frames 0))))
-  (set! (-> this min-frame) (res-lump-float arg0 'min-frame))
+  (set! (-> this min-frame) (res-lump-float source-entity 'min-frame))
   (set! (-> this min-frame) (* (-> this min-frame) (the float (ja-num-frames 0))))
   (cond
     ((task-closed? (game-task rolling-race) (task-status need-introduction))
@@ -144,7 +142,6 @@
    dark-plant-sprout
    dark-plant-startup))
 
-
 (defskelgroup *dark-plant-sg*
   dark-plant
   dark-plant-lod0-jg
@@ -152,31 +149,35 @@
   ((dark-plant-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 2.25 0 6))
 
-(defun dark-plant-check-target ((arg0 dark-plant))
+(defun dark-plant-check-target ((plant dark-plant))
+  "Return true when nearby Jak responds to a green-eco powerup query."
   (the-as symbol
           (and *target*
-               (and (< (vector-vector-distance (-> arg0 root trans) (target-pos 0)) 16384.0)
+               (and (< (vector-vector-distance (-> plant root trans) (target-pos 0)) 16384.0)
                     (send-event *target* 'query 'powerup (pickup-type eco-green))))))
 
-(defun dark-plant-randomize ((arg0 dark-plant))
-  (quaternion-axis-angle! (-> arg0 root quat) 0.0 1.0 0.0 (rand-vu-float-range 0.0 65536.0))
+(defun dark-plant-randomize ((plant dark-plant))
+  "Randomize a plant's yaw and small horizontal offset from its entity transform."
+  (quaternion-axis-angle! (-> plant root quat) 0.0 1.0 0.0 (rand-vu-float-range 0.0 65536.0))
   (let ((s5-1 (new 'stack-no-clear 'vector)))
     (set-vector! s5-1 (rand-vu-float-range -1024.0 1024.0) 0.0 (rand-vu-float-range -1024.0 1024.0) 1.0)
-    (vector+! (-> arg0 root trans) (-> arg0 entity extra trans) s5-1)))
+    (vector+! (-> plant root trans) (-> plant entity extra trans) s5-1)))
 
-(defun dark-plants-all-done ((arg0 dark-plant))
+(defun dark-plants-all-done ((plant dark-plant))
+  "Follow the linked plant chain and return true when every reachable plant is gone."
   (loop
-    (if (!= (-> arg0 state) dark-plant-gone) (return #f))
-    (if (zero? (-> arg0 num-alts)) (return #t))
-    (let ((v1-9 (-> arg0 alts 0 extra process)))
+    (if (!= (-> plant state) dark-plant-gone) (return #f))
+    (if (zero? (-> plant num-alts)) (return #t))
+    (let ((v1-9 (-> plant alts 0 extra process)))
       (if (not v1-9) (return #t))
-      (if (= v1-9 arg0) (return #t))
-      (set! arg0 (the-as dark-plant v1-9))))
+      (if (= v1-9 plant) (return #t))
+      (set! plant (the-as dark-plant v1-9))))
   (the-as symbol #f))
 
-(defun dark-plant-has-bad-neighbor ((arg0 dark-plant))
-  (dotimes (v1-0 (-> arg0 num-alts))
-    (let ((a1-4 (-> arg0 alts v1-0 extra process))) (if (and a1-4 (!= (-> a1-4 state) dark-plant-gone)) (return #t))))
+(defun dark-plant-has-bad-neighbor ((plant dark-plant))
+  "Return whether any linked plant process still exists outside the gone state."
+  (dotimes (v1-0 (-> plant num-alts))
+    (let ((a1-4 (-> plant alts v1-0 extra process))) (if (and a1-4 (!= (-> a1-4 state) dark-plant-gone)) (return #t))))
   #f)
 
 (defbehavior dark-plant-trans dark-plant ()
@@ -299,7 +300,7 @@
    (:fade-g -3.0)
    (:fade-a -2.4)
    (:timer (seconds 0.14))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 1764
   :init-specs
@@ -318,15 +319,17 @@
    (:accel-y (meters 0) (meters 0.0013333333))
    (:friction 0.95)
    (:timer (seconds 1))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 45))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 4.5))
    (:rotate-y (degrees -15) (degrees 30))))
 
-(defmethod init-from-entity! ((this dark-plant) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dark-plant) (source-entity entity-actor))
+  "Initialize the plant, particles, and up to four linked plants, then select its state from the
+   rolling-plants task."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *dark-plant-sg* '())
   (set! (-> this part) (create-launch-control group-dark-plant this))
   (set! (-> this num-alts) (min 4 (entity-actor-count (-> this entity) 'alt-actor)))
@@ -346,7 +349,6 @@
    happy-plant-init
    happy-plant-opened
    happy-plant-opening))
-
 
 (defskelgroup *happy-plant-sg*
   happy-plant
@@ -370,12 +372,12 @@
     (behavior ()
       (when *target*
         (logclear! (-> *target* mask) (process-mask sleep))
-        (process-entity-status! self (entity-perm-status bit-3) #f)
+        (process-entity-status! self (entity-perm-status no-kill) #f)
         (logior! (-> self mask) (process-mask actor-pause))))
   :code
     (behavior ()
       (close-specific-task! (game-task rolling-plants) (task-status need-reminder))
-      (process-entity-status! self (entity-perm-status bit-3) #t)
+      (process-entity-status! self (entity-perm-status no-kill) #t)
       (logclear! (-> self mask) (process-mask actor-pause))
       (while (and *target* (< (vector-vector-distance (-> self root trans) (target-pos 0)) 24576.0))
         (suspend))
@@ -431,7 +433,9 @@
           (ja :num! (seek!)))))
   :post ja-post)
 
-(defmethod init-from-entity! ((this happy-plant) (arg0 entity-actor))
+(defmethod init-from-entity! ((this happy-plant) (source-entity entity-actor))
+  "Create the plant collision and skeleton, link its dark-plant chain, and restore the opened or
+   unresolved task state."
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -444,7 +448,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *happy-plant-sg* '())
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (case (get-task-status (game-task rolling-plants))
@@ -469,51 +473,58 @@
   ((digit int8 5))
   :pack-me)
 
-
-(defun race-time-copy! ((arg0 race-time) (arg1 race-time))
+(defun race-time-copy! ((destination race-time) (source race-time))
+  "Copy all five display digits from source to destination."
   (dotimes (v1-0 5)
-    (set! (-> arg0 digit v1-0) (-> arg1 digit v1-0)))
+    (set! (-> destination digit v1-0) (-> source digit v1-0)))
   #f)
 
-(defun seconds->race-time ((arg0 race-time) (arg1 time-frame))
-  (let* ((v1-1 (max 0 (min #x2bf1d arg1)))
+(defun seconds->race-time ((result race-time) (time time-frame))
+  "Clamp a 300 Hz time value to 9:59.99 and split it into minute, second, tenth, and hundredth
+   display digits."
+  (let* ((v1-1 (max 0 (min #x2bf1d time)))
          (f0-1 (* 0.0033333334 (the float v1-1))))
-    (set! (-> arg0 digit 0) (the int (/ f0-1 60)))
-    (let ((f0-2 (- f0-1 (* 60.0 (the float (-> arg0 digit 0))))))
-      (set! (-> arg0 digit 1) (the int (/ f0-2 10)))
-      (let ((f0-3 (- f0-2 (* 10.0 (the float (-> arg0 digit 1))))))
-        (set! (-> arg0 digit 2) (the int f0-3))
-        (let ((f0-4 (- f0-3 (the float (-> arg0 digit 2)))))
-          (set! (-> arg0 digit 3) (the int (* 10.0 f0-4)))
-          (let ((f0-5 (- f0-4 (* 0.1 (the float (-> arg0 digit 3)))))) (set! (-> arg0 digit 4) (the int (* 100.0 f0-5))))))))
+    (set! (-> result digit 0) (the int (/ f0-1 60)))
+    (let ((f0-2 (- f0-1 (* 60.0 (the float (-> result digit 0))))))
+      (set! (-> result digit 1) (the int (/ f0-2 10)))
+      (let ((f0-3 (- f0-2 (* 10.0 (the float (-> result digit 1))))))
+        (set! (-> result digit 2) (the int f0-3))
+        (let ((f0-4 (- f0-3 (the float (-> result digit 2)))))
+          (set! (-> result digit 3) (the int (* 10.0 f0-4)))
+          (let ((f0-5 (- f0-4 (* 0.1 (the float (-> result digit 3)))))) (set! (-> result digit 4) (the int (* 100.0 f0-5))))))))
   (none))
 
-(defun race-time->seconds ((arg0 race-time))
-  (let ((f0-5 (+ (the float (* 60 (-> arg0 digit 0)))
-                 (the float (* 10 (-> arg0 digit 1)))
-                 (the float (-> arg0 digit 2))
-                 (* 0.1 (the float (-> arg0 digit 3)))
-                 (* 0.01 (the float (-> arg0 digit 4))))))
+(defun race-time->seconds ((time race-time))
+  "Convert the five display digits to a 300 Hz time value."
+  (let ((f0-5 (+ (the float (* 60 (-> time digit 0)))
+                 (the float (* 10 (-> time digit 1)))
+                 (the float (-> time digit 2))
+                 (* 0.1 (the float (-> time digit 3)))
+                 (* 0.01 (the float (-> time digit 4))))))
     (the int (* 300.0 f0-5))))
 
-(defun race-time-less-than ((arg0 race-time) (arg1 race-time))
+(defun race-time-less-than ((left race-time) (right race-time))
+  "Compare two race times lexicographically from minutes through hundredths."
   (dotimes (v1-0 5)
     (cond
-      ((< (-> arg0 digit v1-0) (-> arg1 digit v1-0)) (return #t))
-      ((< (-> arg1 digit v1-0) (-> arg0 digit v1-0)) (return #f))))
+      ((< (-> left digit v1-0) (-> right digit v1-0)) (return #t))
+      ((< (-> right digit v1-0) (-> left digit v1-0)) (return #f))))
   #f)
 
-(defun race-time-save ((arg0 race-time) (arg1 task-control))
+(defun race-time-save ((time race-time) (tasks task-control))
+  "Store the five race-time digits in task reminder slots."
   (dotimes (s4-0 5)
-    (save-reminder arg1 (-> arg0 digit s4-0) s4-0))
+    (save-reminder tasks (-> time digit s4-0) s4-0))
   #f)
 
-(defun race-time-read ((arg0 race-time) (arg1 task-control) (arg2 time-frame))
+(defun race-time-read ((result race-time) (tasks task-control) (fallback-time time-frame))
+  "Read five race-time digits from task reminders, using the fallback time when the saved value is
+   absent or below one hundredth of a second."
   (dotimes (s3-0 5)
-    (set! (-> arg0 digit s3-0) (get-reminder arg1 s3-0)))
+    (set! (-> result digit s3-0) (get-reminder tasks s3-0)))
   (let ((a1-3 (new 'stack 'race-time)))
     (set! (-> a1-3 digit 4) 1)
-    (if (race-time-less-than arg0 a1-3) (seconds->race-time arg0 arg2)))
+    (if (race-time-less-than result a1-3) (seconds->race-time result fallback-time)))
   (none))
 
 (defskelgroup *rolling-start-whole-sg*
@@ -535,7 +546,6 @@
    (broken-look lod-set :inline))
   (:states (rolling-start-break symbol)
    rolling-start-whole))
-
 
 (defstate rolling-start-break (rolling-start)
   :event
@@ -593,7 +603,6 @@
    (radius    float)
    (thickness float)))
 
-
 (defbehavior gorge-init gorge ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (forward-down->inv-matrix (-> self coord) arg1 (new 'static 'vector :y -1.0))
   (matrix-transpose! (-> self coord) (-> self coord))
@@ -619,35 +628,38 @@
    gorge-start-racing
    gorge-start-ready))
 
-
 (deftype gorge-finish (gorge)
   ((alt-actor entity-actor))
   (:states
    gorge-finish-idle))
 
-
 (deftype gorge-abort (gorge) ()
   (:states
    gorge-abort-idle))
 
-
-(defun gorge-behind ((arg0 gorge))
+(defun gorge-behind ((volume gorge))
+  "Return whether Jak is inside the radial bounds behind the gorge plane."
   (if (not *target*) (return #f))
   (let ((gp-0 (new-stack-vector0)))
-    (vector-matrix*! gp-0 (target-pos 0) (-> arg0 coord))
-    (and (< (fabs (-> gp-0 x)) (-> arg0 radius)) (< (-> gp-0 y) (-> arg0 radius)) (< 0.0 (-> gp-0 y)) (< (-> gp-0 z) 0.0))))
+    (vector-matrix*! gp-0 (target-pos 0) (-> volume coord))
+    (and (< (fabs (-> gp-0 x)) (-> volume radius))
+         (< (-> gp-0 y) (-> volume radius))
+         (< 0.0 (-> gp-0 y))
+         (< (-> gp-0 z) 0.0))))
 
-(defun gorge-in-front ((arg0 gorge))
+(defun gorge-in-front ((volume gorge))
+  "Return whether Jak is inside the bounded volume immediately in front of the gorge plane."
   (if (not *target*) (return #f))
   (let ((s5-0 (new-stack-vector0)))
-    (vector-matrix*! s5-0 (target-pos 0) (-> arg0 coord))
-    (and (< (fabs (-> s5-0 x)) (-> arg0 radius))
-         (< (-> s5-0 y) (-> arg0 radius))
+    (vector-matrix*! s5-0 (target-pos 0) (-> volume coord))
+    (and (< (fabs (-> s5-0 x)) (-> volume radius))
+         (< (-> s5-0 y) (-> volume radius))
          (< 0.0 (-> s5-0 y))
          (< 0.0 (-> s5-0 z))
-         (< (-> s5-0 z) (-> arg0 thickness)))))
+         (< (-> s5-0 z) (-> volume thickness)))))
 
 (defun gorge-trans ()
+  "Do nothing."
   (none))
 
 (defstate gorge-abort-idle (gorge-abort)
@@ -680,19 +692,20 @@
   (go gorge-finish-idle)
   (none))
 
-(defun race-time->string ((arg0 race-time))
+(defun race-time->string ((time race-time))
+  "Format a race time as S.TT or M:SS.TT."
   (cond
-    ((zero? (-> arg0 digit 0))
-     (format (clear *temp-string*) "~D~D.~D~D" (-> arg0 digit 1) (-> arg0 digit 2) (-> arg0 digit 3) (-> arg0 digit 4))
+    ((zero? (-> time digit 0))
+     (format (clear *temp-string*) "~D~D.~D~D" (-> time digit 1) (-> time digit 2) (-> time digit 3) (-> time digit 4))
      *temp-string*)
     (else
      (format (clear *temp-string*)
              "~D:~D~D.~D~D"
-             (-> arg0 digit 0)
-             (-> arg0 digit 1)
-             (-> arg0 digit 2)
-             (-> arg0 digit 3)
-             (-> arg0 digit 4))
+             (-> time digit 0)
+             (-> time digit 1)
+             (-> time digit 2)
+             (-> time digit 3)
+             (-> time digit 4))
      *temp-string*)))
 
 (defbehavior gorge-start-draw-time gorge-start ((arg0 symbol) (arg1 symbol))
@@ -883,11 +896,11 @@
   :enter
     (behavior ()
       (logior! (-> self mask) (process-mask actor-pause))
-      (process-entity-status! self (entity-perm-status bit-3) #f))
+      (process-entity-status! self (entity-perm-status no-kill) #f))
   :exit
     (behavior ()
       (logclear! (-> self mask) (process-mask actor-pause))
-      (process-entity-status! self (entity-perm-status bit-3) #t))
+      (process-entity-status! self (entity-perm-status no-kill) #t))
   :trans
     (behavior ()
       (gorge-start-launch-start-banner)
@@ -902,9 +915,10 @@
           (send-event (ppointer->process (-> *hud-parts* money)) 'enable))
         (if (gorge-in-front self) (go gorge-start-ready)))))
 
-(defmethod init-from-entity! ((this gorge-start) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gorge-start) (source-entity entity-actor))
+  "Initialize the rolling-course gorge race trigger from its placed entity."
   (set! (-> this root) (the-as collide-shape-moving (new 'process 'trsqv)))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (let ((a0-3 (new 'stack-no-clear 'vector)))
     (set! (-> a0-3 quad) (-> this root trans quad))
     (+! (-> a0-3 y) -8192.0)
@@ -917,7 +931,6 @@
   (none))
 
 (deftype rolling-water (water-anim) ())
-
 
 (define ripple-for-rolling-water
   (the-as object
@@ -936,8 +949,10 @@
                     (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
                     (new 'static 'ripple-wave)))))
 
-(defmethod water-vol-method-22 ((this rolling-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
+(defmethod setup-water! ((this rolling-water))
+  "Run the ordinary water setup, install the rolling-course ripple waveform and tint, and
+   disable water particles."
+  (let ((t9-0 (method-of-type water-anim setup-water!))) (t9-0 this))
   (let ((v1-2 (new 'process 'ripple-control)))
     (set! (-> this draw ripple) v1-2)
     (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)

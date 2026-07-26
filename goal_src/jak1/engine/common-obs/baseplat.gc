@@ -3,14 +3,16 @@
 (bundles "GAME.CGO")
 (require "engine/common-obs/generic-obs.gc")
 (require "engine/game/projectiles.gc")
+
+;; Actor-data flags read from the entity's flags res-lump. Only bits 0-3 are used.
 (defenum eco-door-flags
   :bitfield #t
   :type int32
-  (ecdf00)
-  (ecdf01)
+  (lock-until-complete)
+  (lock-when-complete)
   (auto-close)
   (one-way)
-  (ecdf04)
+  (ecdf04) ;; bits 4-31 unused
   (ecdf05)
   (ecdf06)
   (ecdf07)
@@ -47,22 +49,26 @@
    (basetrans vector :inline)
    (bouncing  symbol))
   (:methods
-   (baseplat-method-20 (_type_) none)
-   (baseplat-method-21 (_type_) none)
-   (baseplat-method-22 (_type_) none)
+   (spawn-part! (_type_) none)
+   (init-platform! (_type_) none)
+   (bounce! (_type_) none)
    (get-unlit-skel (_type_) skeleton-group)
-   (baseplat-method-24 (_type_) none)
-   (baseplat-method-25 (_type_) sparticle-launch-group)
-   (baseplat-method-26 (_type_) none)))
+   (setup-collision! (_type_) none)
+   (setup-part! (_type_) sparticle-launch-control)
+   (configure-options! (_type_) none)))
 
-(defmethod baseplat-method-21 ((this baseplat))
+(defmethod init-platform! ((this baseplat))
+  "Mark the skeleton initialized, save the collision root's current translation as the
+   platform's resting transform, and clear the bounce state."
   (logior! (-> this skel status) (janim-status inited))
   (set! (-> this basetrans quad) (-> this root trans quad))
   (set! (-> this bouncing) #f)
   0
   (none))
 
-(defmethod baseplat-method-22 ((this baseplat))
+(defmethod bounce! ((this baseplat))
+  "Start the platform's 150-tick vertical bounce with a 60-tick period, then wake both its
+   transform code and process logic."
   (activate! (-> this smush) -1.0 60 150 1.0 1.0)
   (set! (-> this bouncing) #t)
   (logclear! (-> this mask) (process-mask sleep))
@@ -71,6 +77,8 @@
   (none))
 
 (defbehavior plat-code baseplat ()
+  "Post the platform's initial transform twice, then sleep its process logic whenever no bounce is
+   active and wait while an active bounce is being transformed."
   (transform-post)
   (suspend)
   (transform-post)
@@ -85,32 +93,41 @@
   (none))
 
 (defbehavior plat-trans baseplat ()
+  "Apply rider motion, then move the collision root to the saved resting transform plus the current
+   smush waveform on Y. The unit-amplitude waveform is scaled to 0.2 metres; clear bouncing when
+   the waveform expires."
   (rider-trans)
   (cond
     ((-> self bouncing)
-     (let ((gp-0 (new 'stack-no-clear 'vector)))
-       (set! (-> gp-0 quad) (-> self basetrans quad))
-       (+! (-> gp-0 y) (* 819.2 (update! (-> self smush))))
-       (move-to-point! (-> self root) gp-0))
+     (let ((bounce-transform (new 'stack-no-clear 'vector)))
+       (set! (-> bounce-transform quad) (-> self basetrans quad))
+       (+! (-> bounce-transform y) (* 819.2 (update! (-> self smush))))
+       (move-to-point! (-> self root) bounce-transform))
      (if (not (!= (-> self smush amp) 0.0)) (set! (-> self bouncing) #f)))
     (else (move-to-point! (-> self root) (-> self basetrans))))
   (none))
 
 (defbehavior plat-post baseplat ()
-  (baseplat-method-20 self)
+  "Spawn the platform's configured particles, then run the common rider post step."
+  (spawn-part! self)
   (rider-post)
   (none))
 
-(defmethod baseplat-method-25 ((this baseplat))
-  (the-as sparticle-launch-group 0))
+(defmethod setup-part! ((this baseplat))
+  "Set up and return the subtype's per-process particle launch control. The base implementation
+   returns no control."
+  (the-as sparticle-launch-control 0))
 
-(defmethod baseplat-method-20 ((this baseplat))
+(defmethod spawn-part! ((this baseplat))
+  "Spawn this platform's configured particle group at the collision root's transform. Do
+   nothing when part is unset."
   (if (nonzero? (-> this part)) (spawn (-> this part) (-> this root trans)))
   (none))
 
-(defbehavior plat-event baseplat ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
-    (('bonk) (baseplat-method-22 self))))
+(defbehavior plat-event baseplat ((sender process) (argc int) (message symbol) (block event-message-block))
+  "Handle a bonk event by starting the platform bounce. Other events are ignored."
+  (case message
+    (('bonk) (bounce! self))))
 
 (deftype eco-door (process-drawable)
   ((root           collide-shape :override)
@@ -131,12 +148,15 @@
    door-open
    door-closing)
   (:methods
-   (eco-door-method-24 (_type_) none)
-   (eco-door-method-25 (_type_) none)
-   (eco-door-method-26 (_type_) none)))
+   (setup-collision! (_type_) none)
+   (setup-skel-and-params! (_type_) none)
+   (update-locked! (_type_) none)))
 
-(defbehavior eco-door-event-handler eco-door ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior eco-door-event-handler eco-door ((sender process) (argc int) (message symbol) (block event-message-block))
+  "Toggle the door's manual lock on a trigger event. Play the lock sound only while the door is
+   heading toward closed, and always play the unlock sound when unlocking. Other events are
+   ignored."
+  (case message
     (('trigger)
      (set! (-> self locked) (not (-> self locked)))
      (cond
@@ -146,6 +166,10 @@
 
 eco-door-event-handler
 
+;; out-dir is the door's outward-facing plane: xyz is its rotated local Z axis
+;; and w places the plane through root.trans. The one-way test opens from the
+;; back side, while auto-close waits until the player and camera are safely on
+;; the same side and the camera is more than four metres from the plane.
 (defstate door-closed (eco-door)
   :virtual #t
   :event eco-door-event-handler
@@ -157,7 +181,7 @@ eco-door-event-handler
       (ja-post)
       (loop
         (when (and *target* (>= (-> self open-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-          (eco-door-method-26 self)
+          (update-locked! self)
           (if (and (not (-> self locked))
                    (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
                        (send-event *target* 'query 'powerup (pickup-type eco-blue))
@@ -171,14 +195,14 @@ eco-door-event-handler
   :event eco-door-event-handler
   :code
     (behavior ()
-      (let ((gp-0 (and (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
-                       (send-event *target* 'query 'powerup (pickup-type eco-blue)))))
-        (if gp-0 (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans))))
+      (let ((using-blue-eco? (and (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
+                                  (send-event *target* 'query 'powerup (pickup-type eco-blue)))))
+        (if using-blue-eco? (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans))))
         (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
         (clear-collide-with-as (-> self root))
         (until (ja-done? 0)
           (ja :num! (seek! max (-> self speed)))
-          (if (and gp-0 (rand-vu-percent? 0.5)) (spawn-projectile-blue *target*))
+          (if (and using-blue-eco? (rand-vu-percent? 0.5)) (spawn-projectile-blue *target*))
           (suspend)))
       (go-virtual door-open))
   :post transform-post)
@@ -197,12 +221,13 @@ eco-door-event-handler
       (update-transforms! (-> self root))
       (ja-post)
       (loop
-        (let ((f30-0 (vector4-dot (-> self out-dir) (target-pos 0)))
-              (f28-0 (vector4-dot (-> self out-dir) (camera-pos))))
+        (let ((target-plane-distance (vector4-dot (-> self out-dir) (target-pos 0)))
+              (camera-plane-distance (vector4-dot (-> self out-dir) (camera-pos))))
           (when (and (-> self auto-close)
                      (or (not *target*)
                          (< (-> self close-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))))
-            (if (and (>= (* f30-0 f28-0) 0.0) (< 16384.0 (fabs f28-0))) (go-virtual door-closing))))
+            (if (and (>= (* target-plane-distance camera-plane-distance) 0.0) (< 16384.0 (fabs camera-plane-distance)))
+              (go-virtual door-closing))))
         (suspend))))
 
 (defstate door-closing (eco-door)
@@ -212,10 +237,11 @@ eco-door-event-handler
     (behavior ()
       (restore-collide-with-as (-> self root))
       (logclear! (-> self draw status) (draw-status hidden))
-      (let ((gp-0 (new 'stack 'overlaps-others-params)))
-        (set! (-> gp-0 options) (the-as uint 1))
-        (set! (-> gp-0 tlist) #f)
-        (while (find-overlapping-shapes (-> self root) gp-0)
+      (let ((overlap-params (new 'stack 'overlaps-others-params)))
+        (set! (-> overlap-params options) (overlaps-others-options solid-only))
+        (set! (-> overlap-params tlist) #f)
+        ;; Keep the restored solid collision still until its space is clear.
+        (while (find-overlapping-shapes (-> self root) overlap-params)
           (suspend)))
       (sound-play-by-name (-> self close-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
       (until (ja-done? 0)
@@ -225,53 +251,70 @@ eco-door-event-handler
       (go-virtual door-closed))
   :post transform-post)
 
-(defmethod eco-door-method-26 ((this eco-door))
+(defmethod update-locked! ((this eco-door))
+  "When a state actor is configured, set locked from its task completion state: use
+   lock-until-complete before completion and lock-when-complete afterward. Leave the current
+   value unchanged when there is no state actor."
   (when (-> this state-actor)
     (if (logtest? (-> this state-actor extra perm status) (entity-perm-status complete))
-      (set! (-> this locked) (logtest? (-> this flags) (eco-door-flags ecdf01)))
-      (set! (-> this locked) (logtest? (-> this flags) (eco-door-flags ecdf00)))))
+      (set! (-> this locked) (logtest? (-> this flags) (eco-door-flags lock-when-complete)))
+      (set! (-> this locked) (logtest? (-> this flags) (eco-door-flags lock-until-complete)))))
   0
   (none))
 
-(defmethod eco-door-method-24 ((this eco-door))
-  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 16384.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this eco-door))
+  "Build a solid, indestructible door collision shape with one mesh primitive, set its
+   navigation radius from that primitive, save its collision mask, and install it as root."
+  (let ((collision (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((primitive (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+      (set! (-> primitive prim-core collide-as) (collide-kind wall-object))
+      (set! (-> primitive collide-with) (collide-kind target))
+      (set! (-> primitive prim-core action) (collide-action solid))
+      (set! (-> primitive prim-core offense) (collide-offense indestructible))
+      (set! (-> primitive transform-index) 0)
+      (set-vector! (-> primitive local-sphere) 0.0 0.0 0.0 16384.0)
+      (set-root-prim! collision primitive))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision))
   0
   (none))
 
-(defmethod eco-door-method-25 ((this eco-door))
+(defmethod setup-skel-and-params! ((this eco-door))
+  "Initialize subtype-specific skeleton data and door parameters. The base implementation does
+   nothing."
   0
   (none))
 
-(defmethod init-from-entity! ((this eco-door) (arg0 entity-actor))
-  (eco-door-method-24 this)
-  (process-drawable-from-entity! this arg0)
-  (let ((f0-0 (res-lump-float (-> this entity) 'scale :default 1.0)))
-    (set-vector! (-> this root scale) f0-0 f0-0 f0-0 1.0))
+(defmethod init-from-entity! ((this eco-door) (entity entity-actor))
+  "Initialize a door from its entity.
+
+   Build the solid collision root, copy common drawable data, apply the scale res-lump, and
+   initialize the default eight-metre opening range, twelve-metre closing range, and 1.0
+   animation speed. Resolve the optional state-actor, read the door flags, derive the lock,
+   auto-close, and one-way settings, and build the outward
+   door plane from the root transform. The subtype hooks may then add its skeleton and replace
+   the default parameters. A persistent non-auto-closing door already marked complete starts
+   open; every other door starts closed."
+  (setup-collision! this)
+  (process-drawable-from-entity! this entity)
+  (let ((scale (res-lump-float (-> this entity) 'scale :default 1.0)))
+    (set-vector! (-> this root scale) scale scale scale 1.0))
   (set! (-> this open-distance) 32768.0)
   (set! (-> this close-distance) 49152.0)
   (set! (-> this speed) 1.0)
   (set! (-> this state-actor) #f)
-  (let ((v1-5 (entity-actor-lookup arg0 'state-actor 0))) (if v1-5 (set! (-> this state-actor) v1-5)))
+  (let ((state-actor (entity-actor-lookup entity 'state-actor 0)))
+    (if state-actor (set! (-> this state-actor) state-actor)))
   (set! (-> this locked) #f)
-  (set! (-> this flags) (res-lump-value arg0 'flags eco-door-flags))
-  (eco-door-method-26 this)
+  (set! (-> this flags) (res-lump-value entity 'flags eco-door-flags))
+  (update-locked! this)
   (set! (-> this auto-close) (logtest? (-> this flags) (eco-door-flags auto-close)))
   (set! (-> this one-way) (logtest? (-> this flags) (eco-door-flags one-way)))
   (vector-z-quaternion! (-> this out-dir) (-> this root quat))
   (set! (-> this out-dir w) (- (vector-dot (-> this out-dir) (-> this root trans))))
   (update-transforms! (-> this root))
-  (eco-door-method-25 this)
+  (setup-skel-and-params! this)
   (if (and (not (-> this auto-close))
            (-> this entity)
            (logtest? (-> this entity extra perm status) (entity-perm-status complete)))

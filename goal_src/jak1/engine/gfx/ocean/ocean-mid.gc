@@ -6,25 +6,175 @@
 (require "engine/debug/debug.gc")
 (require "engine/gfx/ocean/ocean-trans-tables.gc")
 
+;; The mid pass draws the opaque middle band of the sea: it begins where the fine near grid ends and
+;; runs out to the four far quads.  Its geometry is a flat 48-by-48 grid of 96-meter cells anchored at
+;; the ocean map's start-corner, so the grid covers 4608 meters on a side.  Nothing about the grid
+;; moves with the camera.  What changes per frame is which cells are drawn, which are handed to the
+;; denser passes, and which get a second environment-mapped pass.
+;;
+;; Addressing.  The grid is authored and culled in 6-by-6 blocks of 8-by-8 cells, 768 meters per
+;; block.  A block is named by (block-z, block-x) and by the linear index 6 * block-z + block-x used
+;; for every per-block array in ocean-work.  A cell is named by its grid coordinates (cell-z, cell-x)
+;; in 0..47: cell-z / 8 and cell-x / 8 give the block, cell-z & 7 selects one of the eight bytes of
+;; that block's mask, and cell-x & 7 selects the bit inside that byte.  Rows run along z and columns
+;; along x, and every mask in this file uses that byte-is-row, bit-is-column layout.  A set bit means
+;; "do not draw"; the microprogram skips the cell.
+;;
+;; Culling has three stages.  ocean-map carries one authored bounding sphere per block, so the first
+;; stage is a frustum test of the 36 spheres.  The second stage is authored too: ocean-mid-indices
+;; maps a block to the ocean-mid-mask whose set bits are the cells the artist wants suppressed, and a
+;; negative index means the block has no mid geometry at all.  The third stage is dynamic.  For a
+;; block whose bounding sphere comes within one cell diagonal of the camera, ocean-mid-check walks the
+;; three-by-three cell neighborhood around the camera and marks every cell with a corner inside one
+;; cell diagonal.  The transition and near passes will redraw those cells at much higher density, so
+;; the mid pass has to drop them.  By that point the block's mask is already sitting in the DMA
+;; buffer, so mid-mask-ptrs keeps the address of those eight bytes and draw-ocean-mid-seams ORs the
+;; extra bits straight into the built packet rather than rebuilding it.
+;;
+;; The bounding rectangle of the marked cells becomes mid-minx, mid-maxx, mid-minz and mid-maxz.  The
+;; transition pass and the seam pass below both walk that rectangle, and the seam pass stitches its
+;; border so the 96-meter cells meet the finer geometry without cracks or T-junctions.  The stitching
+;; vertices come from the weight tables in ocean-trans-tables: each quadword is a set of bilinear
+;; weights over the cell's four corners, so one microprogram entry point covers every edge and corner
+;; variant.
+;;
+;; Work split.  The EE only selects and assembles packets.  Once per frame it builds the
+;; ocean-mid-constants block -- camera transform, fog range, GIF tags, the two ADGIF shaders, the
+;; per-row index table and the four corner positions of a unit cell -- DMAs it to VU1 data address
+;; OCEAN-MID-VU-CONSTANTS and runs entry 0 to latch it.  Per visible block it DMAs one
+;; ocean-mid-upload and runs entry 46, or entry 73 for the extra environment pass.  VU1 transforms the
+;; corner lattice, applies fog and the environment term, builds GIF packets and kicks them; the GS
+;; rasterizes eight 18-vertex triangle strips per block, which is the 128 triangles and 144 vertices
+;; the pass reports to *terrain-stats*.  Entry 73 draws the same block twice, hence the doubled
+;; counts.
+;;
+;; VU1 data memory.  Addresses 0..117 and 118..235 are the two halves of a double-buffered input
+;; bank: VIF BASE is 0, OFFSET is 118, and every per-block unpack sets the address flag so it lands
+;; in the half VU1 is not reading.  The bank is exactly one ocean-mid-upload long.  733..768 holds the
+;; resident constants block.  Everything between belongs to the microprogram, including the
+;; ocean-mid-work scratch and its GIF output buffers.
+;;
+;; Packet formats.  ocean-mid-upload is the block packet.  It starts with the camera rotation, with
+;; the block origin in camera space substituted into its translation row, followed by that matrix
+;; times the perspective matrix.  Then 108 quadwords of vertex color and two mask quadwords.  The
+;; colors are nine rows of twelve corner samples copied straight out of ocean-colors; VIF widens each
+;; 8-bit RGBA sample into a full quadword and each of the eight mask bytes into a 32-bit lane.  Twelve
+;; columns is more than the nine corners a block needs, and it is why ocean-colors is 52 samples wide
+;; for a 49-corner grid: the last block starts at column 40 and reads twelve.
+;;
+;; ocean-mid-upload2 is the seam packet: the same two matrices, a vertex count, the unit-square
+;; texture coordinates, the cell's four corner colors widened to floats, and up to eighteen quadwords
+;; of corner weights.
+
+;; Grid geometry.
+(defconstant OCEAN-MID-CELL (meters 96))
+
+(defconstant OCEAN-MID-HALF-CELL (meters 48))
+
+(defconstant OCEAN-MID-BLOCK (meters 768))
+
+;; 1 / OCEAN-MID-CELL
+(defconstant OCEAN-MID-INV-CELL 0.0000025431316)
+
+;; 96 meters * sqrt 2, the diagonal of one cell
+(defconstant OCEAN-MID-CELL-DIAGONAL 556091.4)
+
+(defconstant OCEAN-MID-CELL-DIAGONAL-SQ 309237600000.0)
+
+;; circumradius of one cell, 67.88 meters
+(defconstant OCEAN-MID-CELL-RADIUS 278045.7)
+
+;; a block closer than this gets the environment pass as well
+(defconstant OCEAN-MID-ENV-DISTANCE (meters 192))
+
+(defconstant OCEAN-MID-BLOCK-DIM 6)
+
+(defconstant OCEAN-MID-BLOCK-COUNT 36)
+
+(defconstant OCEAN-MID-CELLS-PER-BLOCK 8)
+
+(defconstant OCEAN-MID-GRID-DIM 48)
+
+;; ocean-colors is a 52-wide grid of corner samples.  A block reads a nine-row patch starting at
+;; column 8 * block-x and row 8 * block-z, twelve columns at a time.
+(defconstant OCEAN-COLOR-ROW 52)
+
+(defconstant OCEAN-COLOR-ROW-BYTES (* 4 OCEAN-COLOR-ROW))
+
+(defconstant OCEAN-COLOR-BLOCK-ROW (* OCEAN-MID-CELLS-PER-BLOCK OCEAN-COLOR-ROW))
+
+(defconstant OCEAN-MID-COLOR-ROWS 9)
+
+(defconstant OCEAN-MID-COLOR-COLUMNS 12)
+
+;; VU1 data layout.  The double-buffered input bank is exactly one ocean-mid-upload; the constants
+;; block is resident above the microprogram's own buffers.
+(defconstant OCEAN-MID-VU-BANK-QWC 118)
+
+(defconstant OCEAN-MID-VU-CONSTANTS 733)
+
+(defconstant OCEAN-MID-CONSTANTS-QWC 36)
+
+;; rot and matrix, uploaded by ocean-mid-add-matrices
+(defconstant OCEAN-MID-MATRICES-QWC 8)
+
+;; count, four texture coordinates, four colors
+(defconstant OCEAN-MID-SEAM-HEADER-QWC 9)
+
+;; VU1 data address of one field of the resident constants block.
+(defmacro ocean-mid-vu-const (field)
+  `(+ OCEAN-MID-VU-CONSTANTS (/ (offset-of ocean-mid-constants ,field) 16)))
+
+;; Bank-relative VU1 address of one field of a block upload.
+(defmacro ocean-mid-upload-addr (field)
+  `(/ (offset-of ocean-mid-upload ,field) 16))
+
+;; Bank-relative VU1 address of one field of a seam upload.
+(defmacro ocean-mid-upload2-addr (field)
+  `(/ (offset-of ocean-mid-upload2 ,field) 16))
+
+;; VU1 entry points, in instruction-pair addresses.  Nothing on the EE side tells the two drain
+;; entries apart beyond where each one is called.
+(defconstant OCEAN-MID-VU-INIT 0) ;; latch the resident constants
+
+(defconstant OCEAN-MID-VU-END-PASS 41) ;; drain and close a pass
+
+(defconstant OCEAN-MID-VU-BEGIN-SEAM-PASS 43) ;; drain before the transition and seam uploads
+
+(defconstant OCEAN-MID-VU-BLOCK 46) ;; one 8x8 block, textured
+
+(defconstant OCEAN-MID-VU-BLOCK-ENV 73) ;; one 8x8 block, textured plus environment
+
+(defconstant OCEAN-MID-VU-STRIP 107) ;; weighted vertex list, triangle strip
+
+(defconstant OCEAN-MID-VU-FAN 275) ;; weighted vertex list, triangle fan
+
 ;; DECOMP BEGINS
 
+;; The microprogram for the mid, seam, and transition passes.
 (define ocean-mid-block (new 'static 'vu-function)) ;; :length #x497 :qlength #x24c
 
-(defun ocean-mid-setup-constants ((arg0 ocean-mid-constants))
-  "Generate the ocean VU1 renderer constants in-place."
+(defun ocean-mid-setup-constants ((dst ocean-mid-constants))
+  "Build the resident VU1 constants for the mid ocean in place at dst, which must be
+   OCEAN-MID-CONSTANTS-QWC quadwords of DMA buffer.  Copies this frame's camera transform, fog range
+   and sun environment color, then fills in the GIF tags and ADGIF shaders for the textured and
+   environment passes, the per-row index table, and the four corner positions of a unit cell.
+   *ocean-subdivide-draw-mode* selects the primitive: 0 is normal textured rendering, 1 draws a
+   wireframe and 2 draws untextured Gouraud shading."
   ;; the usual camera math
-  (let ((v1-0 *math-camera*))
-    (set! (-> arg0 hmge-scale quad) (-> v1-0 hmge-scale quad))
-    (set! (-> arg0 inv-hmge-scale quad) (-> v1-0 inv-hmge-scale quad))
-    (set! (-> arg0 hvdf-offset quad) (-> v1-0 hvdf-off quad))
-    (set-vector! (-> arg0 fog) (-> v1-0 pfog0) (-> v1-0 fog-min) (-> v1-0 fog-max) 3072.0))
-  ;; is this 393216 the size of a triangle? (96 meters)
-  (set-vector! (-> arg0 constants) 0.5 0.5 0.0 393216.0)
-  (set-vector! (-> arg0 constants2) 0.5 0.5 1.0 0.0)
-  (let ((v1-3 *ocean-subdivide-draw-mode*))
+  (let ((math-cam *math-camera*))
+    (set! (-> dst hmge-scale quad) (-> math-cam hmge-scale quad))
+    (set! (-> dst inv-hmge-scale quad) (-> math-cam inv-hmge-scale quad))
+    (set! (-> dst hvdf-offset quad) (-> math-cam hvdf-off quad))
+    (set-vector! (-> dst fog) (-> math-cam pfog0) (-> math-cam fog-min) (-> math-cam fog-max) 3072.0))
+  ;; xy scale and offset for the environment-map texture coordinates, and the cell size the
+  ;; microprogram steps the corner lattice by.
+  (set-vector! (-> dst constants) 0.5 0.5 0.0 OCEAN-MID-CELL)
+  (set-vector! (-> dst constants2) 0.5 0.5 1.0 0.0)
+  (let ((draw-mode *ocean-subdivide-draw-mode*))
     (cond
-      ((zero? v1-3)
-       (set! (-> arg0 drw-fan tag)
+      ((zero? draw-mode)
+       (set! (-> dst drw-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -33,8 +183,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1)
                   :nreg #x3)))
-      ((= v1-3 1)
-       (set! (-> arg0 drw-fan tag)
+      ((= draw-mode 1)
+       (set! (-> dst drw-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -43,8 +193,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1)
                   :nreg #x3)))
-      ((= v1-3 2)
-       (set! (-> arg0 drw-fan tag)
+      ((= draw-mode 2)
+       (set! (-> dst drw-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -53,12 +203,12 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1)
                   :nreg #x3)))))
-  (set! (-> arg0 drw-fan regs)
+  (set! (-> dst drw-fan regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (let ((v1-12 *ocean-subdivide-draw-mode*))
+  (let ((draw-mode *ocean-subdivide-draw-mode*))
     (cond
-      ((zero? v1-12)
-       (set! (-> arg0 env-fan tag)
+      ((zero? draw-mode)
+       (set! (-> dst env-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -67,8 +217,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-12 1)
-       (set! (-> arg0 env-fan tag)
+      ((= draw-mode 1)
+       (set! (-> dst env-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -77,8 +227,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-12 2)
-       (set! (-> arg0 env-fan tag)
+      ((= draw-mode 2)
+       (set! (-> dst env-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -87,32 +237,44 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :abe #x1)
                   :nreg #x3)))))
-  (set! (-> arg0 env-fan regs)
+  (set! (-> dst env-fan regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (set! (-> arg0 drw-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
-  (set! (-> arg0 drw-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  (let* ((a0-13 *ocean-base-page*)
-         (v1-23 *ocean-base-block*)
-         (s4-0 (* (+ a0-13 8) 32))
-         (s5-0 (* (+ a0-13 10) 32)))
-    (set! (-> arg0 drw-texture tex0) (new 'static 'gs-tex0 :tbw #x2 :tcc #x1 :th (log2 128) :tw (log2 128) :tbp0 v1-23))
-    (set! (-> arg0 drw-texture prims 1) (gs-reg64 tex0-1))
-    (set! (-> arg0 drw-texture tex1) (new 'static 'gs-tex1 :mxl #x6 :mmag #x1 :mmin #x5 :l #x1 :k #xeed))
-    (set! (-> arg0 drw-texture prims 3) (gs-reg64 tex1-1))
-    (set! (-> arg0 drw-texture miptbp1)
-          (new 'static 'gs-miptbp :tbw1 #x1 :tbw2 #x1 :tbw3 #x1 :tbp3 (+ s5-0 16) :tbp2 s5-0 :tbp1 s4-0))
-    (set! (-> arg0 drw-texture prims 5) (gs-reg64 miptbp1-1))
-    (set! (-> arg0 drw-texture clamp) (new 'static 'gs-clamp))
-    (set! (-> arg0 drw-texture clamp-reg) (gs-reg64 clamp-1))
-    (set! (-> arg0 drw-texture alpha)
-          (the-as gs-alpha
-                  (logior (logior (logior (the-as uint #x40000400004000) (shr (shl (+ s5-0 20) 50) 50)) (shr (shl (+ s5-0 21) 50) 30))
-                          (shr (shl (+ s5-0 22) 50) 10)))))
-  (set! (-> arg0 drw-texture prims 9) (gs-reg64 miptbp2-1))
-  (let ((v1-45 *ocean-subdivide-draw-mode*))
+  (set! (-> dst drw-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+  (set! (-> dst drw-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  ;; The ocean texture has six mip levels, one more than the five A+D slots of an adgif-shader can
+  ;; describe with a single MIPTBP1, so the shader's alpha slot carries MIPTBP2 instead of ALPHA and
+  ;; prims 9 selects that register.  Levels 1-3 sit in the two pages after the base page; levels 4-6
+  ;; are single blocks after them.
+  (let* ((tex-page *ocean-base-page*)
+         (tex-block *ocean-base-block*)
+         (mip1-block (* (+ tex-page 8) 32))
+         (mip2-block (* (+ tex-page 10) 32)))
+    (set! (-> dst drw-texture tex0) (new 'static 'gs-tex0 :tbw #x2 :tcc #x1 :th (log2 128) :tw (log2 128) :tbp0 tex-block))
+    (set! (-> dst drw-texture prims 1) (gs-reg64 tex0-1))
+    (set! (-> dst drw-texture tex1) (new 'static 'gs-tex1 :mxl #x6 :mmag #x1 :mmin #x5 :l #x1 :k #xeed))
+    (set! (-> dst drw-texture prims 3) (gs-reg64 tex1-1))
+    (set! (-> dst drw-texture miptbp1)
+          (new 'static 'gs-miptbp :tbw1 #x1 :tbw2 #x1 :tbw3 #x1 :tbp3 (+ mip2-block 16) :tbp2 mip2-block :tbp1 mip1-block))
+    (set! (-> dst drw-texture prims 5) (gs-reg64 miptbp1-1))
+    (set! (-> dst drw-texture clamp) (new 'static 'gs-clamp))
+    (set! (-> dst drw-texture clamp-reg) (gs-reg64 clamp-1))
+    (set! (-> dst drw-texture alpha-as-miptb2)
+          (new 'static
+               'gs-miptbp
+               :tbw1 #x1
+               :tbw2 #x1
+               :tbw3 #x1
+               :tbp1
+               (+ mip2-block 20)
+               :tbp2
+               (+ mip2-block 21)
+               :tbp3
+               (+ mip2-block 22))))
+  (set! (-> dst drw-texture prims 9) (gs-reg64 miptbp2-1))
+  (let ((draw-mode *ocean-subdivide-draw-mode*))
     (cond
-      ((zero? v1-45)
-       (set! (-> arg0 drw-strip-0 tag)
+      ((zero? draw-mode)
+       (set! (-> dst drw-strip-0 tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -120,8 +282,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
                   :nreg #x3)))
-      ((= v1-45 1)
-       (set! (-> arg0 drw-strip-0 tag)
+      ((= draw-mode 1)
+       (set! (-> dst drw-strip-0 tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -129,8 +291,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1)
                   :nreg #x3)))
-      ((= v1-45 2)
-       (set! (-> arg0 drw-strip-0 tag)
+      ((= draw-mode 2)
+       (set! (-> dst drw-strip-0 tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -138,12 +300,13 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1)
                   :nreg #x3)))))
-  (set! (-> arg0 drw-strip-0 regs)
+  (set! (-> dst drw-strip-0 regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (let ((v1-54 *ocean-subdivide-draw-mode*))
+  ;; drw-strip-1 is the same tag with eop set; only the last strip of a block uses it.
+  (let ((draw-mode *ocean-subdivide-draw-mode*))
     (cond
-      ((zero? v1-54)
-       (set! (-> arg0 drw-strip-1 tag)
+      ((zero? draw-mode)
+       (set! (-> dst drw-strip-1 tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -152,8 +315,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
                   :nreg #x3)))
-      ((= v1-54 1)
-       (set! (-> arg0 drw-strip-1 tag)
+      ((= draw-mode 1)
+       (set! (-> dst drw-strip-1 tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -162,8 +325,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1)
                   :nreg #x3)))
-      ((= v1-54 2)
-       (set! (-> arg0 drw-strip-1 tag)
+      ((= draw-mode 2)
+       (set! (-> dst drw-strip-1 tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -172,17 +335,17 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1)
                   :nreg #x3)))))
-  (set! (-> arg0 drw-strip-1 regs)
+  (set! (-> dst drw-strip-1 regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (set! (-> arg0 env-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
-  (set! (-> arg0 env-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  (let ((s5-1 (-> arg0 env-texture)))
-    (adgif-shader<-texture-simple! s5-1 (get-texture environment-ocean environment-generic))
-    (set! (-> s5-1 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1)))
-  (let ((v1-66 *ocean-subdivide-draw-mode*))
+  (set! (-> dst env-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+  (set! (-> dst env-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  (let ((env-shader (-> dst env-texture)))
+    (adgif-shader<-texture-simple! env-shader (get-texture environment-ocean environment-generic))
+    (set! (-> env-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1)))
+  (let ((draw-mode *ocean-subdivide-draw-mode*))
     (cond
-      ((zero? v1-66)
-       (set! (-> arg0 env-strip tag)
+      ((zero? draw-mode)
+       (set! (-> dst env-strip tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -191,8 +354,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-66 1)
-       (set! (-> arg0 env-strip tag)
+      ((= draw-mode 1)
+       (set! (-> dst env-strip tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -201,8 +364,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-66 2)
-       (set! (-> arg0 env-strip tag)
+      ((= draw-mode 2)
+       (set! (-> dst env-strip tag)
              (new 'static
                   'gif-tag64
                   :nloop #x12
@@ -211,561 +374,706 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1)
                   :nreg #x3)))))
-  (set! (-> arg0 env-strip regs)
+  (set! (-> dst env-strip regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (set! (-> arg0 env-color quad) (-> *time-of-day-context* current-sun env-color quad))
-  (set-vector! (-> arg0 index-table 0) 63 84 66 0)
-  (set-vector! (-> arg0 index-table 1) 54 72 57 0)
-  (set-vector! (-> arg0 index-table 2) 45 60 48 0)
-  (set-vector! (-> arg0 index-table 3) 36 48 39 0)
-  (set-vector! (-> arg0 index-table 4) 27 36 30 0)
-  (set-vector! (-> arg0 index-table 5) 18 24 21 0)
-  (set-vector! (-> arg0 index-table 6) 9 12 12 0)
-  (set-vector! (-> arg0 index-table 7) 0 0 3 0)
-  (set-vector! (-> arg0 pos0) 0.0 0.0 0.0 1.0)
-  (set-vector! (-> arg0 pos1) 393216.0 0.0 0.0 1.0)
-  (set-vector! (-> arg0 pos2) 0.0 0.0 393216.0 1.0)
-  (set-vector! (-> arg0 pos3) 393216.0 0.0 393216.0 1.0)
+  (set! (-> dst env-color quad) (-> *time-of-day-context* current-sun env-color quad))
+  ;; Per-row VU addresses for the eight strips of a block, ordered from the last row back to the
+  ;; first.  The middle lane steps by the twelve-quadword color row.
+  (set-vector! (-> dst index-table 0) 63 84 66 0)
+  (set-vector! (-> dst index-table 1) 54 72 57 0)
+  (set-vector! (-> dst index-table 2) 45 60 48 0)
+  (set-vector! (-> dst index-table 3) 36 48 39 0)
+  (set-vector! (-> dst index-table 4) 27 36 30 0)
+  (set-vector! (-> dst index-table 5) 18 24 21 0)
+  (set-vector! (-> dst index-table 6) 9 12 12 0)
+  (set-vector! (-> dst index-table 7) 0 0 3 0)
+  ;; The four corners of a unit cell, in the order the weight tables in ocean-trans-tables blend
+  ;; them.  ocean-seams-add-constants restores these after the transition pass replaces them.
+  (set-vector! (-> dst pos0) 0.0 0.0 0.0 1.0)
+  (set-vector! (-> dst pos1) OCEAN-MID-CELL 0.0 0.0 1.0)
+  (set-vector! (-> dst pos2) 0.0 0.0 OCEAN-MID-CELL 1.0)
+  (set-vector! (-> dst pos3) OCEAN-MID-CELL 0.0 OCEAN-MID-CELL 1.0)
   (none))
 
-(defun ocean-mid-add-constants ((arg0 dma-buffer))
-  "Generate DMA for loading ocean-mid constants to VU1 data memory."
-  (let* ((a1-0 36)
-         (v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-0))
-    (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x2dd :cmd (vif-cmd unpack-v4-32) :num a1-0))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+(defun ocean-mid-add-constants ((dma-buf dma-buffer))
+  "Append the DMA that loads the mid-ocean constants to VU1 data address OCEAN-MID-VU-CONSTANTS,
+   generating the block in place in the buffer.  Advances base past the block."
+  (let* ((qwc OCEAN-MID-CONSTANTS-QWC)
+         (buf dma-buf)
+         (packet (the-as object (-> buf base))))
+    (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+    (set! (-> (the-as dma-packet packet) vif0)
+          (new 'static 'vif-tag :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4) :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet packet) vif1)
+          (new 'static 'vif-tag :imm (new 'static 'vif-unpack-imm :addr OCEAN-MID-VU-CONSTANTS) :cmd (vif-cmd unpack-v4-32) :num qwc))
+    (set! (-> buf base) (&+ (the-as pointer packet) 16)))
   ;; generate the constants in place.
-  (ocean-mid-setup-constants (the-as ocean-mid-constants (-> arg0 base)))
-  (&+! (-> arg0 base) 576)
+  (ocean-mid-setup-constants (the-as ocean-mid-constants (-> dma-buf base)))
+  (&+! (-> dma-buf base) (* 16 OCEAN-MID-CONSTANTS-QWC))
   (none))
 
-(defun ocean-matrix*! ((arg0 matrix) (arg1 matrix) (arg2 matrix))
+(defun ocean-matrix*! ((dst matrix) (left matrix) (right matrix))
+  "Set dst to left * right and return dst.  All four result rows are computed before the first store,
+   so dst may alias either input."
   (rlet ((acc :class vf)
-         (vf1 :class vf)
-         (vf10 :class vf)
-         (vf11 :class vf)
-         (vf12 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         (vf8 :class vf)
-         (vf9 :class vf))
-    (.lvf vf1 (&-> arg1 vector 0 quad))
-    (.lvf vf5 (&-> arg2 vector 0 quad))
-    (.lvf vf6 (&-> arg2 vector 1 quad))
-    (.lvf vf7 (&-> arg2 vector 2 quad))
-    (.lvf vf8 (&-> arg2 vector 3 quad))
-    (.lvf vf2 (&-> arg1 vector 1 quad))
-    (.lvf vf3 (&-> arg1 vector 2 quad))
-    (.lvf vf4 (&-> arg1 vector 3 quad))
-    (.mul.x.vf acc vf5 vf1)
-    (.add.mul.y.vf acc vf6 vf1 acc)
-    (.add.mul.z.vf acc vf7 vf1 acc)
-    (.add.mul.w.vf vf9 vf8 vf1 acc)
-    (.mul.x.vf acc vf5 vf2)
-    (.add.mul.y.vf acc vf6 vf2 acc)
-    (.add.mul.z.vf acc vf7 vf2 acc)
-    (.add.mul.w.vf vf10 vf8 vf2 acc)
-    (.mul.x.vf acc vf5 vf3)
-    (.add.mul.y.vf acc vf6 vf3 acc)
-    (.add.mul.z.vf acc vf7 vf3 acc)
-    (.add.mul.w.vf vf11 vf8 vf3 acc)
-    (.mul.x.vf acc vf5 vf4)
-    (.add.mul.y.vf acc vf6 vf4 acc)
-    (.add.mul.z.vf acc vf7 vf4 acc)
-    (.add.mul.w.vf vf12 vf8 vf4 acc)
-    (.svf (&-> arg0 vector 0 quad) vf9)
-    (.svf (&-> arg0 vector 1 quad) vf10)
-    (.svf (&-> arg0 vector 2 quad) vf11)
-    (.svf (&-> arg0 vector 3 quad) vf12)
-    arg0))
+         (left-row-0 :class vf)
+         (out-row-1 :class vf)
+         (out-row-2 :class vf)
+         (out-row-3 :class vf)
+         (left-row-1 :class vf)
+         (left-row-2 :class vf)
+         (left-row-3 :class vf)
+         (right-row-0 :class vf)
+         (right-row-1 :class vf)
+         (right-row-2 :class vf)
+         (right-row-3 :class vf)
+         (out-row-0 :class vf))
+    (.lvf left-row-0 (&-> left vector 0 quad))
+    (.lvf right-row-0 (&-> right vector 0 quad))
+    (.lvf right-row-1 (&-> right vector 1 quad))
+    (.lvf right-row-2 (&-> right vector 2 quad))
+    (.lvf right-row-3 (&-> right vector 3 quad))
+    (.lvf left-row-1 (&-> left vector 1 quad))
+    (.lvf left-row-2 (&-> left vector 2 quad))
+    (.lvf left-row-3 (&-> left vector 3 quad))
+    (.mul.x.vf acc right-row-0 left-row-0)
+    (.add.mul.y.vf acc right-row-1 left-row-0 acc)
+    (.add.mul.z.vf acc right-row-2 left-row-0 acc)
+    (.add.mul.w.vf out-row-0 right-row-3 left-row-0 acc)
+    (.mul.x.vf acc right-row-0 left-row-1)
+    (.add.mul.y.vf acc right-row-1 left-row-1 acc)
+    (.add.mul.z.vf acc right-row-2 left-row-1 acc)
+    (.add.mul.w.vf out-row-1 right-row-3 left-row-1 acc)
+    (.mul.x.vf acc right-row-0 left-row-2)
+    (.add.mul.y.vf acc right-row-1 left-row-2 acc)
+    (.add.mul.z.vf acc right-row-2 left-row-2 acc)
+    (.add.mul.w.vf out-row-2 right-row-3 left-row-2 acc)
+    (.mul.x.vf acc right-row-0 left-row-3)
+    (.add.mul.y.vf acc right-row-1 left-row-3 acc)
+    (.add.mul.z.vf acc right-row-2 left-row-3 acc)
+    (.add.mul.w.vf out-row-3 right-row-3 left-row-3 acc)
+    (.svf (&-> dst vector 0 quad) out-row-0)
+    (.svf (&-> dst vector 1 quad) out-row-1)
+    (.svf (&-> dst vector 2 quad) out-row-2)
+    (.svf (&-> dst vector 3 quad) out-row-3)
+    dst))
 
-(defun ocean-vector-matrix*! ((arg0 vector) (arg1 vector) (arg2 matrix))
+(defun ocean-vector-matrix*! ((dst vector) (src vector) (mat matrix))
+  "Transform src by mat with an implied w of 1.0, so mat's translation row is added, and return dst.
+   src.w is ignored and dst.w receives the fourth column of the product."
   (rlet ((acc :class vf)
          (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf))
+         (mat-row-0 :class vf)
+         (mat-row-1 :class vf)
+         (mat-row-2 :class vf)
+         (mat-row-3 :class vf)
+         (point :class vf))
     (init-vf0-vector)
-    (.lvf vf1 (&-> arg2 vector 0 quad))
-    (.lvf vf2 (&-> arg2 vector 1 quad))
-    (.lvf vf3 (&-> arg2 vector 2 quad))
-    (.lvf vf4 (&-> arg2 vector 3 quad))
-    (.lvf vf5 (&-> arg1 quad))
-    (.mul.x.vf acc vf1 vf5)
-    (.add.mul.y.vf acc vf2 vf5 acc)
-    (.add.mul.z.vf acc vf3 vf5 acc)
-    (.add.mul.w.vf vf5 vf4 vf0 acc)
-    (.svf (&-> arg0 quad) vf5)
-    arg0))
+    (.lvf mat-row-0 (&-> mat vector 0 quad))
+    (.lvf mat-row-1 (&-> mat vector 1 quad))
+    (.lvf mat-row-2 (&-> mat vector 2 quad))
+    (.lvf mat-row-3 (&-> mat vector 3 quad))
+    (.lvf point (&-> src quad))
+    (.mul.x.vf acc mat-row-0 point)
+    (.add.mul.y.vf acc mat-row-1 point acc)
+    (.add.mul.z.vf acc mat-row-2 point acc)
+    (.add.mul.w.vf point mat-row-3 vf0 acc)
+    (.svf (&-> dst quad) point)
+    dst))
 
-(defun ocean-mid-add-matrices ((arg0 dma-buffer) (arg1 vector))
-  (let ((s5-0 (new-stack-vector0)))
+(defun ocean-mid-add-matrices ((dma-buf dma-buffer) (origin vector))
+  "Append the OCEAN-MID-MATRICES-QWC matrix quadwords that open a mid-ocean upload: the camera
+   rotation with origin transformed into camera space substituted into its translation row, then that
+   matrix times the perspective matrix.  origin is the world position of the block or cell corner the
+   geometry that follows is relative to.  Advances base past the matrices."
+  (let ((origin-cam (new-stack-vector0)))
     (-> *math-camera* camera-rot)
-    (let* ((a2-0 8)
-           (v1-2 arg0)
-           (a0-1 (the-as object (-> v1-2 base))))
-      (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
-      (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd unpack-v4-32) :num a2-0))
-      (set! (-> v1-2 base) (&+ (the-as pointer a0-1) 16)))
-    (let ((s4-0 (-> arg0 base)))
-      (let* ((v1-3 (the-as object s4-0))
-             (t0-2 (-> *math-camera* camera-rot))
-             (a0-4 (-> t0-2 vector 0 quad))
-             (a2-4 (-> t0-2 vector 1 quad))
-             (a3-4 (-> t0-2 vector 2 quad))
-             (t0-3 (-> t0-2 vector 3 quad)))
-        (set! (-> (the-as matrix v1-3) vector 0 quad) a0-4)
-        (set! (-> (the-as matrix v1-3) vector 1 quad) a2-4)
-        (set! (-> (the-as matrix v1-3) vector 2 quad) a3-4)
-        (set! (-> (the-as matrix v1-3) vector 3 quad) t0-3))
-      (let ((s3-0 (the-as object (&+ s4-0 48))))
-        (vector-matrix*! s5-0 arg1 (-> *math-camera* camera-rot))
-        (set! (-> (the-as vector s3-0) x) (-> s5-0 x))
-        (set! (-> (the-as vector s3-0) y) (-> s5-0 y))
-        (set! (-> (the-as vector s3-0) z) (-> s5-0 z)))
-      (let ((a0-6 (&+ (-> arg0 base) 64)))
-        (ocean-matrix*! (the-as matrix a0-6) (the-as matrix s4-0) (-> *math-camera* perspective)))))
-  (&+! (-> arg0 base) 128)
+    (let* ((qwc OCEAN-MID-MATRICES-QWC)
+           (buf dma-buf)
+           (packet (the-as object (-> buf base))))
+      (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+      (set! (-> (the-as dma-packet packet) vif0)
+            (new 'static 'vif-tag :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4) :cmd (vif-cmd stcycl)))
+      (set! (-> (the-as dma-packet packet) vif1)
+            (new 'static
+                 'vif-tag
+                 :imm
+                 (new 'static 'vif-unpack-imm :flg 1 :addr (ocean-mid-upload-addr rot))
+                 :cmd (vif-cmd unpack-v4-32)
+                 :num
+                 qwc))
+      (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+    (let ((rot-dst (-> dma-buf base)))
+      (let* ((rot-mat (the-as object rot-dst))
+             (cam-rot (-> *math-camera* camera-rot))
+             (row0 (-> cam-rot vector 0 quad))
+             (row1 (-> cam-rot vector 1 quad))
+             (row2 (-> cam-rot vector 2 quad))
+             (row3 (-> cam-rot vector 3 quad)))
+        (set! (-> (the-as matrix rot-mat) vector 0 quad) row0)
+        (set! (-> (the-as matrix rot-mat) vector 1 quad) row1)
+        (set! (-> (the-as matrix rot-mat) vector 2 quad) row2)
+        (set! (-> (the-as matrix rot-mat) vector 3 quad) row3))
+      ;; only xyz of the translation row is replaced; its w stays as the camera rotation had it.
+      (let ((rot-trans (the-as object (&+ rot-dst 48))))
+        (vector-matrix*! origin-cam origin (-> *math-camera* camera-rot))
+        (set! (-> (the-as vector rot-trans) x) (-> origin-cam x))
+        (set! (-> (the-as vector rot-trans) y) (-> origin-cam y))
+        (set! (-> (the-as vector rot-trans) z) (-> origin-cam z)))
+      (let ((mat-dst (&+ (-> dma-buf base) 64)))
+        (ocean-matrix*! (the-as matrix mat-dst) (the-as matrix rot-dst) (-> *math-camera* perspective)))))
+  (&+! (-> dma-buf base) (* 16 OCEAN-MID-MATRICES-QWC))
   (none))
 
-(defun ocean-mid-check ((arg0 pointer) (arg1 int) (arg2 int) (arg3 vector))
-  (local-vars (v0-0 symbol) (v1-10 float) (a3-2 float) (a3-6 float) (a3-10 float))
-  (rlet ((vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf))
-    (let ((v1-0 (new-stack-vector0))
-          (t0-1 (-> *math-camera* trans)))
+(defun ocean-mid-check ((camera-mask pointer) (cell-x int) (cell-z int) (block-origin vector))
+  "Mark cell (cell-x, cell-z) of one block in camera-mask when any of its four corners is within one
+   cell diagonal of the camera.  camera-mask is the eight-byte mid-camera-masks entry for that block;
+   cell-x and cell-z run 0..7 inside the block and select the bit and the byte.  block-origin is the
+   world position of the block's first corner.  The return value is not meaningful -- the fall-through
+   path leaves the return register unset -- so callers use this only for its effect on the mask."
+  (local-vars (v0-0 symbol) (dist-sq float))
+  (rlet ((delta :class vf)
+         (corner-pos :class vf)
+         (cam-pos :class vf))
+    (let ((corner (new-stack-vector0))
+          (cam-trans (-> *math-camera* trans)))
       1.0
-      (set! (-> v1-0 x) (+ (-> arg3 x) (* 393216.0 (the float arg1))))
-      (set! (-> v1-0 y) (-> arg3 y))
-      (set! (-> v1-0 z) (+ (-> arg3 z) (* 393216.0 (the float arg2))))
-      (let ((a3-1 v1-0)
-            (t1-0 t0-1))
-        (.lvf vf2 (&-> a3-1 quad))
-        (.lvf vf3 (&-> t1-0 quad)))
-      (.sub.vf vf1 vf3 vf2)
-      (.mul.vf vf1 vf1 vf1)
-      (.add.y.vf.x vf1 vf1 vf1)
-      (.add.z.vf.x vf1 vf1 vf1)
-      (.mov a3-2 vf1)
-      (when (< a3-2 309237600000.0)
-        (logior! (-> (the-as (pointer uint8) (+ arg2 (the-as int arg0)))) (ash 1 arg1))
+      (set! (-> corner x) (+ (-> block-origin x) (* OCEAN-MID-CELL (the float cell-x))))
+      (set! (-> corner y) (-> block-origin y))
+      (set! (-> corner z) (+ (-> block-origin z) (* OCEAN-MID-CELL (the float cell-z))))
+      ;; each of the four tests below is an inlined squared distance from a cell corner to the camera.
+      (let ((from corner)
+            (to cam-trans))
+        (.lvf corner-pos (&-> from quad))
+        (.lvf cam-pos (&-> to quad)))
+      (.sub.vf delta cam-pos corner-pos)
+      (.mul.vf delta delta delta)
+      (.add.y.vf.x delta delta delta)
+      (.add.z.vf.x delta delta delta)
+      (.mov dist-sq delta)
+      (when (< dist-sq OCEAN-MID-CELL-DIAGONAL-SQ)
+        (logior! (-> (the-as (pointer uint8) camera-mask) cell-z) (ash 1 cell-x))
         (return #f))
-      (+! (-> v1-0 x) 393216.0)
-      (let ((a3-5 v1-0)
-            (t1-1 t0-1))
-        (.lvf vf2 (&-> a3-5 quad))
-        (.lvf vf3 (&-> t1-1 quad)))
-      (.sub.vf vf1 vf3 vf2)
-      (.mul.vf vf1 vf1 vf1)
-      (.add.y.vf.x vf1 vf1 vf1)
-      (.add.z.vf.x vf1 vf1 vf1)
-      (.mov a3-6 vf1)
-      (when (< a3-6 309237600000.0)
-        (logior! (-> (the-as (pointer uint8) (+ arg2 (the-as int arg0)))) (ash 1 arg1))
+      (+! (-> corner x) OCEAN-MID-CELL)
+      (let ((from corner)
+            (to cam-trans))
+        (.lvf corner-pos (&-> from quad))
+        (.lvf cam-pos (&-> to quad)))
+      (.sub.vf delta cam-pos corner-pos)
+      (.mul.vf delta delta delta)
+      (.add.y.vf.x delta delta delta)
+      (.add.z.vf.x delta delta delta)
+      (.mov dist-sq delta)
+      (when (< dist-sq OCEAN-MID-CELL-DIAGONAL-SQ)
+        (logior! (-> (the-as (pointer uint8) camera-mask) cell-z) (ash 1 cell-x))
         (return #f))
-      (+! (-> v1-0 z) 393216.0)
-      (let ((a3-9 v1-0)
-            (t1-2 t0-1))
-        (.lvf vf2 (&-> a3-9 quad))
-        (.lvf vf3 (&-> t1-2 quad)))
-      (.sub.vf vf1 vf3 vf2)
-      (.mul.vf vf1 vf1 vf1)
-      (.add.y.vf.x vf1 vf1 vf1)
-      (.add.z.vf.x vf1 vf1 vf1)
-      (.mov a3-10 vf1)
-      (when (< a3-10 309237600000.0)
-        (logior! (-> (the-as (pointer uint8) (+ arg2 (the-as int arg0)))) (ash 1 arg1))
+      (+! (-> corner z) OCEAN-MID-CELL)
+      (let ((from corner)
+            (to cam-trans))
+        (.lvf corner-pos (&-> from quad))
+        (.lvf cam-pos (&-> to quad)))
+      (.sub.vf delta cam-pos corner-pos)
+      (.mul.vf delta delta delta)
+      (.add.y.vf.x delta delta delta)
+      (.add.z.vf.x delta delta delta)
+      (.mov dist-sq delta)
+      (when (< dist-sq OCEAN-MID-CELL-DIAGONAL-SQ)
+        (logior! (-> (the-as (pointer uint8) camera-mask) cell-z) (ash 1 cell-x))
         (return #f))
-      (+! (-> v1-0 x) -393216.0)
-      (.lvf vf2 (&-> v1-0 quad))
-      (.lvf vf3 (&-> t0-1 quad)))
-    (.sub.vf vf1 vf3 vf2)
-    (.mul.vf vf1 vf1 vf1)
-    (.add.y.vf.x vf1 vf1 vf1)
-    (.add.z.vf.x vf1 vf1 vf1)
-    (.mov v1-10 vf1)
-    (when (< v1-10 309237600000.0)
-      (logior! (-> (the-as (pointer uint8) (+ arg2 (the-as int arg0)))) (ash 1 arg1))
+      (+! (-> corner x) (- OCEAN-MID-CELL))
+      (.lvf corner-pos (&-> corner quad))
+      (.lvf cam-pos (&-> cam-trans quad)))
+    (.sub.vf delta cam-pos corner-pos)
+    (.mul.vf delta delta delta)
+    (.add.y.vf.x delta delta delta)
+    (.add.z.vf.x delta delta delta)
+    (.mov dist-sq delta)
+    (when (< dist-sq OCEAN-MID-CELL-DIAGONAL-SQ)
+      (logior! (-> (the-as (pointer uint8) camera-mask) cell-z) (ash 1 cell-x))
       (return #f)
       v0-0)))
 
-(defun ocean-mid-add-call ((arg0 dma-buffer) (arg1 int))
-  (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm arg1))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+(defun ocean-mid-add-call ((dma-buf dma-buffer) (entry int))
+  "Append a tag that resets the unpack write cycle and starts the microprogram at entry.  MSCALF
+   waits for a microprogram that is already running, so consecutive calls cannot overlap."
+  (let* ((buf dma-buf)
+         (packet (the-as object (-> buf base))))
+    (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet packet) vif0)
+          (new 'static 'vif-tag :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4) :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm entry))
+    (set! (-> buf base) (&+ (the-as pointer packet) 16)))
   (none))
 
-(defun ocean-mid-add-call-flush ((arg0 dma-buffer) (arg1 uint))
-  (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm arg1))
-    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+(defun ocean-mid-add-call-flush ((dma-buf dma-buffer) (entry uint))
+  "Append a tag that starts the microprogram at entry and then stalls VIF1 until the microprogram,
+   its transfers and every GIF path have drained.  Used to close a pass before another pass rewrites
+   the shared constants."
+  (let* ((buf dma-buf)
+         (packet (the-as object (-> buf base))))
+    (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm entry))
+    (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+    (set! (-> buf base) (&+ (the-as pointer packet) 16)))
   (none))
 
-(defun ocean-mid-add-upload ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 float))
-  (let ((gp-0 (new-stack-vector0)))
-    (let ((v1-1 (-> *ocean-map* start-corner)))
-      (set! (-> gp-0 x) (+ (-> v1-1 x) (* 3145728.0 (the float arg2))))
-      (set! (-> gp-0 y) (-> v1-1 y))
-      (set! (-> gp-0 z) (+ (-> v1-1 z) (* 3145728.0 (the float arg1)))))
-    (set! (-> gp-0 w) 1.0)
+(defun ocean-mid-add-upload ((dma-buf dma-buffer) (block-z int) (block-x int) (mask-index int) (block-index int) (camera-dist float))
+  "Append the upload for one 8x8 block of the mid grid: the two matrices, the nine-by-twelve patch of
+   corner colors, and the authored suppression mask.  block-z and block-x run 0..5, block-index is
+   6 * block-z + block-x, and mask-index selects the ocean-mid-mask the map authored for the block.
+   camera-dist is the distance from the camera to the block's bounding sphere surface; when it is
+   under one cell diagonal the three-by-three cells around the camera are additionally tested with
+   ocean-mid-check.  Records the address of the mask words in mid-mask-ptrs so draw-ocean-mid-seams
+   can OR the camera mask into this packet after it is built.  Advances base past the packet."
+  (let ((block-origin (new-stack-vector0)))
+    (let ((map-corner (-> *ocean-map* start-corner)))
+      (set! (-> block-origin x) (+ (-> map-corner x) (* OCEAN-MID-BLOCK (the float block-x))))
+      (set! (-> block-origin y) (-> map-corner y))
+      (set! (-> block-origin z) (+ (-> map-corner z) (* OCEAN-MID-BLOCK (the float block-z)))))
+    (set! (-> block-origin w) 1.0)
     ;; compute combined matrix
-    (ocean-mid-add-matrices arg0 gp-0)
+    (ocean-mid-add-matrices dma-buf block-origin)
     ;; upload color.
-    (let ((v1-4 (+ (the-as uint (-> *ocean-map* ocean-colors)) (* (+ (* 416 arg1) (* arg2 8)) 4))))
-      (dotimes (a0-6 9)
-        (let* ((a1-3 arg0)
-               (a2-1 (the-as object (-> a1-3 base))))
-          (set! (-> (the-as dma-packet a2-1) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id ref) :addr v1-4))
-          (set! (-> (the-as dma-packet a2-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-          (set! (-> (the-as dma-packet a2-1) vif1)
-                (new 'static 'vif-tag :num #xc :cmd (vif-cmd unpack-v4-8) :imm (logior (shr (shl (+ (* 12 a0-6) 8) 54) 54) #xc000)))
-          (set! (-> a1-3 base) (&+ (the-as pointer a2-1) 16)))
-        (+! v1-4 208)))
+    ;; Nine rows of twelve 8-bit RGBA corner samples, taken straight out of the authored color grid.
+    ;; VIF widens each sample to a whole quadword, so a row of twelve becomes twelve quadwords.
+    (let ((color-row (+ (the-as uint (-> *ocean-map* ocean-colors))
+                        (* (+ (* OCEAN-COLOR-BLOCK-ROW block-z) (* block-x OCEAN-MID-CELLS-PER-BLOCK)) 4))))
+      (dotimes (row OCEAN-MID-COLOR-ROWS)
+        (let* ((buf dma-buf)
+               (packet (the-as object (-> buf base))))
+          (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id ref) :addr color-row))
+          (set! (-> (the-as dma-packet packet) vif0)
+                (new 'static 'vif-tag :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4) :cmd (vif-cmd stcycl)))
+          (set! (-> (the-as dma-packet packet) vif1)
+                (new 'static
+                     'vif-tag
+                     :num #xc
+                     :cmd (vif-cmd unpack-v4-8)
+                     :imm
+                     (new 'static 'vif-unpack-imm :flg 1 :usn 1 :addr (+ (* OCEAN-MID-COLOR-COLUMNS row) (ocean-mid-upload-addr colors)))))
+          (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+        (+! color-row OCEAN-COLOR-ROW-BYTES)))
     ;; upload "mid masks".
     ;; these allow some zones to be skipped.
     ;; using 0 will draw, using 1 willl skip.
-    (let* ((a2-3 1)
-           (v1-7 arg0)
-           (a0-7 (the-as object (-> v1-7 base))))
-      (set! (-> (the-as dma-packet a0-7) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-3))
-      (set! (-> (the-as dma-packet a0-7) vif0) (new 'static 'vif-tag :imm #x204 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a0-7) vif1) (new 'static 'vif-tag :imm #xc074 :num #x2 :cmd (vif-cmd unpack-v4-8)))
-      (set! (-> v1-7 base) (&+ (the-as pointer a0-7) 16)))
-    (let ((v1-8 (-> arg0 base)))
-      (let ((a0-12 (-> *ocean-map* ocean-mid-masks data arg3)))
-        (set! (-> *ocean-work* mid-mask-ptrs arg4) (the-as (pointer int64) v1-8))
-        (set! (-> (the-as (pointer uint64) v1-8)) (-> a0-12 dword))
-        ;; (set! (-> (the-as (pointer uint64) v1-8)) #xffffffffffffffff)
+    ;; The eight mask bytes become eight 32-bit lanes across the two mask quadwords.
+    (let* ((qwc 1)
+           (buf dma-buf)
+           (packet (the-as object (-> buf base))))
+      (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+      (set! (-> (the-as dma-packet packet) vif0)
+            (new 'static 'vif-tag :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 2) :cmd (vif-cmd stcycl)))
+      (set! (-> (the-as dma-packet packet) vif1)
+            (new 'static
+                 'vif-tag
+                 :imm
+                 (new 'static 'vif-unpack-imm :flg 1 :usn 1 :addr (ocean-mid-upload-addr masks))
+                 :num #x2
+                 :cmd (vif-cmd unpack-v4-8)))
+      (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+    (let ((mask-dst (-> dma-buf base)))
+      (let ((mask (-> *ocean-map* ocean-mid-masks data mask-index)))
+        ;; keep the address of the live mask words so the seam pass can add the camera bits later.
+        (set! (-> *ocean-work* mid-mask-ptrs block-index) (the-as (pointer int64) mask-dst))
+        (set! (-> (the-as (pointer uint64) mask-dst)) (-> mask dword))
+        ;; (set! (-> (the-as (pointer uint64) mask-dst)) #xffffffffffffffff)
         )
-      (set! (-> (the-as (pointer uint64) v1-8) 1) (the-as uint 0)))
-    (&+! (-> arg0 base) 16)
+      (set! (-> (the-as (pointer uint64) mask-dst) 1) (the-as uint 0)))
+    (&+! (-> dma-buf base) 16)
     ;; when the camera is very close, we need to do additional checking.
     ;; I believe this checks which subtiles will be skipped by the renderer
     ;; and adds them to the camera masks.
-    (when (< arg5 556091.4)
-      (let* ((v1-12 (-> *math-camera* trans))
-             (s5-1 (&-> *ocean-work* mid-camera-masks arg4))
-             (s4-1 (+ (the int (* 0.0000025431316 (- (-> v1-12 x) (-> gp-0 x)))) -1))
-             (s3-1 (+ (the int (* 0.0000025431316 (- (-> v1-12 z) (-> gp-0 z)))) -1)))
-        (dotimes (s2-1 3)
-          (dotimes (s1-1 3)
-            (let ((a1-12 (+ s1-1 s4-1))
-                  (a2-7 (+ s2-1 s3-1)))
-              (if (and (>= a1-12 0) (>= a2-7 0) (< a1-12 8) (< a2-7 8)) (ocean-mid-check s5-1 a1-12 a2-7 gp-0))))))
+    (when (< camera-dist OCEAN-MID-CELL-DIAGONAL)
+      (let* ((cam-trans (-> *math-camera* trans))
+             (camera-mask (&-> *ocean-work* mid-camera-masks block-index))
+             (first-cell-x (+ (the int (* OCEAN-MID-INV-CELL (- (-> cam-trans x) (-> block-origin x)))) -1))
+             (first-cell-z (+ (the int (* OCEAN-MID-INV-CELL (- (-> cam-trans z) (-> block-origin z)))) -1)))
+        (dotimes (iz 3)
+          (dotimes (ix 3)
+            (let ((cell-x (+ ix first-cell-x))
+                  (cell-z (+ iz first-cell-z)))
+              (if (and (>= cell-x 0) (>= cell-z 0) (< cell-x OCEAN-MID-CELLS-PER-BLOCK) (< cell-z OCEAN-MID-CELLS-PER-BLOCK))
+                (ocean-mid-check camera-mask cell-x cell-z block-origin))))))
       #f)))
 
-(defun ocean-mid-camera-masks-bit? ((arg0 uint) (arg1 uint))
+(defun ocean-mid-camera-masks-bit? ((cell-z uint) (cell-x uint))
+  "True when cell (cell-z, cell-x) of the 48x48 grid is marked in mid-camera-masks, meaning the
+   transition and near passes will redraw it.  Coordinates outside the grid return #t so callers treat
+   everything beyond the grid as already handled."
   (cond
-    ((or (< (the-as int arg0) 0) (>= (the-as int arg0) 48) (< (the-as int arg1) 0) (>= (the-as int arg1) 48)) #t)
+    ((or (< (the-as int cell-z) 0)
+         (>= (the-as int cell-z) OCEAN-MID-GRID-DIM)
+         (< (the-as int cell-x) 0)
+         (>= (the-as int cell-x) OCEAN-MID-GRID-DIM))
+     #t)
     (else
-     (let* ((a3-0 (/ (the-as int arg0) 8))
-            (a2-3 (/ (the-as int arg1) 8))
-            (a0-1 (logand arg0 7))
-            (v1-1 (logand arg1 7))
-            (a1-3 (+ (* 6 a3-0) a2-3)))
-       (logtest? (-> (the-as (pointer uint8) (+ (+ a0-1 (* a1-3 8)) (the-as uint *ocean-work*))) 2300) (ash 1 v1-1))))))
+     (let* ((block-z (/ (the-as int cell-z) OCEAN-MID-CELLS-PER-BLOCK))
+            (block-x (/ (the-as int cell-x) OCEAN-MID-CELLS-PER-BLOCK))
+            (mask-row (logand cell-z 7))
+            (mask-bit (logand cell-x 7))
+            (block-index (+ (* OCEAN-MID-BLOCK-DIM block-z) block-x)))
+       (logtest? (-> (the-as (pointer uint8) (&-> *ocean-work* mid-camera-masks block-index)) mask-row) (ash 1 mask-bit))))))
 
-(defun ocean-mid-mask-ptrs-bit? ((arg0 uint) (arg1 uint))
+(defun ocean-mid-mask-ptrs-bit? ((cell-z uint) (cell-x uint))
+  "True when cell (cell-z, cell-x) is suppressed by the mask its block already uploaded this frame.
+   Coordinates outside the grid, and blocks that uploaded nothing, return #t."
   (cond
-    ((or (< (the-as int arg0) 0) (>= (the-as int arg0) 48) (< (the-as int arg1) 0) (>= (the-as int arg1) 48)) #t)
+    ((or (< (the-as int cell-z) 0)
+         (>= (the-as int cell-z) OCEAN-MID-GRID-DIM)
+         (< (the-as int cell-x) 0)
+         (>= (the-as int cell-x) OCEAN-MID-GRID-DIM))
+     #t)
     (else
-     (let* ((a3-0 (/ (the-as int arg0) 8))
-            (a2-3 (/ (the-as int arg1) 8))
-            (a0-1 (logand arg0 7))
-            (v1-1 (logand arg1 7))
-            (a1-3 (+ (* 6 a3-0) a2-3)))
-       (if (-> *ocean-work* mid-mask-ptrs a1-3)
-         (logtest? (-> (the-as (pointer uint8) (+ a0-1 (the-as uint (-> *ocean-work* mid-mask-ptrs a1-3)))) 0) (ash 1 v1-1))
+     (let* ((block-z (/ (the-as int cell-z) OCEAN-MID-CELLS-PER-BLOCK))
+            (block-x (/ (the-as int cell-x) OCEAN-MID-CELLS-PER-BLOCK))
+            (mask-row (logand cell-z 7))
+            (mask-bit (logand cell-x 7))
+            (block-index (+ (* OCEAN-MID-BLOCK-DIM block-z) block-x)))
+       (if (-> *ocean-work* mid-mask-ptrs block-index)
+         (logtest? (-> (the-as (pointer uint8) (-> *ocean-work* mid-mask-ptrs block-index)) mask-row) (ash 1 mask-bit))
          #t)))))
 
-(defun ocean-mid-camera-masks-set! ((arg0 uint) (arg1 uint))
+(defun ocean-mid-camera-masks-set! ((cell-z uint) (cell-x uint))
+  "Mark cell (cell-z, cell-x) in mid-camera-masks and return #t, or return #f when the cell is outside
+   the grid or its block's uploaded mask already suppresses it.  The uploaded mask is read through
+   mid-mask-ptrs without a null check, so the caller has to know the block uploaded one."
   (cond
-    ((or (< (the-as int arg0) 0) (>= (the-as int arg0) 48) (< (the-as int arg1) 0) (>= (the-as int arg1) 48)) #f)
+    ((or (< (the-as int cell-z) 0)
+         (>= (the-as int cell-z) OCEAN-MID-GRID-DIM)
+         (< (the-as int cell-x) 0)
+         (>= (the-as int cell-x) OCEAN-MID-GRID-DIM))
+     #f)
     (else
-     (let* ((a3-0 (/ (the-as int arg0) 8))
-            (a2-3 (/ (the-as int arg1) 8))
-            (v1-1 (logand arg0 7))
-            (a0-1 (logand arg1 7))
-            (a2-4 (+ (* 6 a3-0) a2-3))
-            (a1-5 (&-> *ocean-work* mid-camera-masks a2-4)))
+     (let* ((block-z (/ (the-as int cell-z) OCEAN-MID-CELLS-PER-BLOCK))
+            (block-x (/ (the-as int cell-x) OCEAN-MID-CELLS-PER-BLOCK))
+            (mask-row (logand cell-z 7))
+            (mask-bit (logand cell-x 7))
+            (block-index (+ (* OCEAN-MID-BLOCK-DIM block-z) block-x))
+            (camera-mask (&-> *ocean-work* mid-camera-masks block-index)))
        (cond
-         (a1-5
+         ;; camera-mask is the address of a fixed array element, so this arm is always taken.
+         (camera-mask
           (cond
-            ((logtest? (-> (the-as (pointer uint8) (+ v1-1 (the-as uint (-> *ocean-work* mid-mask-ptrs a2-4)))) 0) (ash 1 a0-1)) #f)
-            (else (logior! (-> (the-as (pointer uint8) (+ v1-1 (the-as uint a1-5))) 0) (ash 1 a0-1)) #t)))
+            ((logtest? (-> (the-as (pointer uint8) (-> *ocean-work* mid-mask-ptrs block-index)) mask-row) (ash 1 mask-bit)) #f)
+            (else (logior! (-> (the-as (pointer uint8) camera-mask) mask-row) (ash 1 mask-bit)) #t)))
          (else #f))))))
 
-(defun ocean-mid-add-upload-table ((arg0 dma-buffer) (arg1 uint) (arg2 uint) (arg3 (pointer float)) (arg4 int) (arg5 symbol))
+(defun ocean-mid-add-upload-table ((dma-buf dma-buffer) (cell-z uint) (cell-x uint) (weights (pointer float)) (vertex-count int) (fan? symbol))
+  "Append one stitching patch for cell (cell-z, cell-x) of the 48x48 grid and start the microprogram
+   on it.  weights is vertex-count quadwords of bilinear weights over the cell's four corners, from
+   the tables in ocean-trans-tables; fan? selects the triangle-fan entry point, otherwise the
+   triangle-strip entry point.  Does nothing when ocean-mid-camera-masks-set! rejects the cell, which
+   is also what keeps a cell from being stitched twice.  Besides the two matrices, the packet carries
+   the vertex count, the unit-square texture coordinates and the cell's four corner colors widened
+   from 8-bit RGBA to floats."
   (local-vars
-    (v1-8 float)
-    (a0-19 uint128)
-    (a0-20 uint128)
-    (a0-21 uint128)
-    (a1-14 uint128)
-    (a1-15 uint128)
-    (a1-16 uint128)
-    (a2-15 uint128)
-    (a3-11 uint128))
-  (rlet ((vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf))
-    (when (ocean-mid-camera-masks-set! arg1 arg2)
-      (let ((a1-2 (new-stack-vector0)))
-        (let ((v1-1 (-> *ocean-map* start-corner)))
-          (set! (-> a1-2 x) (+ (-> v1-1 x) (* 393216.0 (the float arg2))))
-          (set! (-> a1-2 y) (-> v1-1 y))
-          (set! (-> a1-2 z) (+ (-> v1-1 z) (* 393216.0 (the float arg1)))))
-        (set! (-> a1-2 w) 1.0)
+    (last-corner-readback float)
+    (corner0-halfs uint128)
+    (corner0-words uint128)
+    (corner2-words uint128)
+    (corner1-halfs uint128)
+    (corner1-words uint128)
+    (corner3-words uint128)
+    (corner2-halfs uint128)
+    (corner3-halfs uint128))
+  (rlet ((corner0-color :class vf)
+         (corner1-color :class vf)
+         (corner2-color :class vf)
+         (corner3-color :class vf))
+    (when (ocean-mid-camera-masks-set! cell-z cell-x)
+      (let ((cell-origin (new-stack-vector0)))
+        (let ((map-corner (-> *ocean-map* start-corner)))
+          (set! (-> cell-origin x) (+ (-> map-corner x) (* OCEAN-MID-CELL (the float cell-x))))
+          (set! (-> cell-origin y) (-> map-corner y))
+          (set! (-> cell-origin z) (+ (-> map-corner z) (* OCEAN-MID-CELL (the float cell-z)))))
+        (set! (-> cell-origin w) 1.0)
         ;; (format 0 "~`vector`P~%" (-> *ocean-map* start-corner))
-        (ocean-mid-add-matrices arg0 a1-2))
-      (let* ((a1-3 9)
-             (v1-3 arg0)
-             (a0-3 (the-as object (-> v1-3 base))))
-        (set! (-> (the-as dma-packet a0-3) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-3))
-        (set! (-> (the-as dma-packet a0-3) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-        (set! (-> (the-as dma-packet a0-3) vif1) (new 'static 'vif-tag :imm #x8008 :cmd (vif-cmd unpack-v4-32) :num a1-3))
-        (set! (-> v1-3 base) (&+ (the-as pointer a0-3) 16)))
-      (set-vector! (the-as vector4w (-> arg0 base)) arg4 0 0 0)
-      (&+! (-> arg0 base) 16)
-      (let ((v1-7 (the-as (pointer uint128) (-> arg0 base))))
-        (set! (-> v1-7 0) (-> *ocean-trans-st-table* 0 quad))
-        (set! (-> v1-7 1) (-> *ocean-trans-st-table* 1 quad))
-        (set! (-> v1-7 2) (-> *ocean-trans-st-table* 2 quad))
-        (set! (-> v1-7 3) (-> *ocean-trans-st-table* 3 quad))
-        (let ((a0-18 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* 52 (the-as int arg1)) arg2))))
-              (a1-13 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ arg2 1 (* 52 (the-as int arg1))))))
-              (a2-14 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* 52 (the-as int (+ arg1 1))) arg2))))
-              (a3-10 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ arg2 1 (* 52 (the-as int (+ arg1 1))))))))
-          (.pextlb a0-19 0 a0-18)
+        (ocean-mid-add-matrices dma-buf cell-origin))
+      (let* ((qwc OCEAN-MID-SEAM-HEADER-QWC)
+             (buf dma-buf)
+             (packet (the-as object (-> buf base))))
+        (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+        (set! (-> (the-as dma-packet packet) vif0)
+              (new 'static 'vif-tag :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4) :cmd (vif-cmd stcycl)))
+        (set! (-> (the-as dma-packet packet) vif1)
+              (new 'static
+                   'vif-tag
+                   :imm
+                   (new 'static 'vif-unpack-imm :flg 1 :addr (ocean-mid-upload2-addr count))
+                   :cmd (vif-cmd unpack-v4-32)
+                   :num
+                   qwc))
+        (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+      (set-vector! (the-as vector4w (-> dma-buf base)) vertex-count 0 0 0)
+      (&+! (-> dma-buf base) 16)
+      ;; The four corner colors are 8-bit RGBA in the map.  Two packed unpacks widen each of them to
+      ;; four 32-bit lanes and VU0 converts the lanes to floats.  Every line below pairs one
+      ;; multimedia operation with one coprocessor operation, so the empty slots belong to the
+      ;; schedule rather than being padding.
+      (let ((upload (the-as (pointer uint128) (-> dma-buf base))))
+        (set! (-> upload 0) (-> *ocean-trans-st-table* 0 quad))
+        (set! (-> upload 1) (-> *ocean-trans-st-table* 1 quad))
+        (set! (-> upload 2) (-> *ocean-trans-st-table* 2 quad))
+        (set! (-> upload 3) (-> *ocean-trans-st-table* 3 quad))
+        (let ((corner0-rgba (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* OCEAN-COLOR-ROW (the-as int cell-z)) cell-x))))
+              (corner1-rgba (the-as uint128 (-> *ocean-map* ocean-colors colors (+ cell-x 1 (* OCEAN-COLOR-ROW (the-as int cell-z))))))
+              (corner2-rgba (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* OCEAN-COLOR-ROW (the-as int (+ cell-z 1))) cell-x))))
+              (corner3-rgba (the-as uint128 (-> *ocean-map* ocean-colors colors (+ cell-x 1 (* OCEAN-COLOR-ROW (the-as int (+ cell-z 1))))))))
+          (.pextlb corner0-halfs 0 corner0-rgba)
           (nop!)
-          (.pextlb a1-14 0 a1-13)
+          (.pextlb corner1-halfs 0 corner1-rgba)
           (nop!)
-          (.pextlb a2-15 0 a2-14)
+          (.pextlb corner2-halfs 0 corner2-rgba)
           (nop!)
-          (.pextlb a3-11 0 a3-10))
+          (.pextlb corner3-halfs 0 corner3-rgba))
         (nop!)
-        (.pextlh a0-20 0 a0-19)
+        (.pextlh corner0-words 0 corner0-halfs)
         (nop!)
-        (.pextlh a1-15 0 a1-14)
-        (.mov vf1 a0-20)
-        (.pextlh a0-21 0 a2-15)
-        (.mov vf2 a1-15)
-        (.pextlh a1-16 0 a3-11)
-        (.mov vf3 a0-21)
+        (.pextlh corner1-words 0 corner1-halfs)
+        (.mov corner0-color corner0-words)
+        (.pextlh corner2-words 0 corner2-halfs)
+        (.mov corner1-color corner1-words)
+        (.pextlh corner3-words 0 corner3-halfs)
+        (.mov corner2-color corner2-words)
         (nop!)
-        (.mov vf4 a1-16)
-        (.itof.vf vf1 vf1)
+        (.mov corner3-color corner3-words)
+        (.itof.vf corner0-color corner0-color)
         (nop!)
-        (.itof.vf vf2 vf2)
+        (.itof.vf corner1-color corner1-color)
         (nop!)
-        (.itof.vf vf3 vf3)
+        (.itof.vf corner2-color corner2-color)
         (nop!)
-        (.itof.vf vf4 vf4)
+        (.itof.vf corner3-color corner3-color)
         (nop!)
         (nop!)
-        (.svf (&-> v1-7 4) vf1)
+        (.svf (&-> upload 4) corner0-color)
         (nop!)
-        (.svf (&-> v1-7 5) vf2)
+        (.svf (&-> upload 5) corner1-color)
         (nop!)
-        (.svf (&-> v1-7 6) vf3)
+        (.svf (&-> upload 6) corner2-color)
         (nop!)
-        (.svf (&-> v1-7 7) vf4))
-      (.mov v1-8 vf4)
-      (&+! (-> arg0 base) 128)
-      (let* ((v1-11 arg0)
-             (a0-22 (the-as object (-> v1-11 base))))
-        (set! (-> (the-as dma-packet a0-22) dma) (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int arg3) :qwc arg4))
-        (set! (-> (the-as dma-packet a0-22) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-        (set! (-> (the-as dma-packet a0-22) vif1) (new 'static 'vif-tag :imm #x8011 :cmd (vif-cmd unpack-v4-32) :num arg4))
-        (set! (-> v1-11 base) (&+ (the-as pointer a0-22) 16)))
-      (if arg5 (ocean-mid-add-call arg0 275) (ocean-mid-add-call arg0 107)))
+        (.svf (&-> upload 7) corner3-color))
+      ;; the last converted color is also read back into an EE register; the value is unused.
+      (.mov last-corner-readback corner3-color)
+      (&+! (-> dma-buf base) 128)
+      (let* ((buf dma-buf)
+             (packet (the-as object (-> buf base))))
+        (set! (-> (the-as dma-packet packet) dma)
+              (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int weights) :qwc vertex-count))
+        (set! (-> (the-as dma-packet packet) vif0)
+              (new 'static 'vif-tag :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4) :cmd (vif-cmd stcycl)))
+        (set! (-> (the-as dma-packet packet) vif1)
+              (new 'static
+                   'vif-tag
+                   :imm
+                   (new 'static 'vif-unpack-imm :flg 1 :addr (ocean-mid-upload2-addr verts))
+                   :cmd (vif-cmd unpack-v4-32)
+                   :num
+                   vertex-count))
+        (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+      (if fan? (ocean-mid-add-call dma-buf OCEAN-MID-VU-FAN) (ocean-mid-add-call dma-buf OCEAN-MID-VU-STRIP)))
     (none)))
 
-(defun ocean-mid-add-upload-top ((arg0 dma-buffer) (arg1 uint) (arg2 uint))
-  (let ((s2-0 (-> *ocean-work* mid-minx))
-        (s1-0 (-> *ocean-work* mid-maxx))
-        (s3-0 (ocean-mid-camera-masks-bit? arg1 arg2)))
+(defun ocean-mid-add-upload-top ((dma-buf dma-buffer) (cell-z uint) (cell-x uint))
+  "Stitch cell (cell-z, cell-x) on the first row of the region the camera masks cover.  When the cell
+   is itself masked the block pass will not draw it, so the cells above and beside it get an edge fan
+   facing in; otherwise the cell keeps its mid geometry and its own edges toward the region are
+   subdivided.  An edge is only subdivided when the neighbor across it exists, and a cell at mid-minx
+   or mid-maxx needs its side edge as well, so both together need a corner table."
+  (let ((min-x (-> *ocean-work* mid-minx))
+        (max-x (-> *ocean-work* mid-maxx))
+        (camera-cell? (ocean-mid-camera-masks-bit? cell-z cell-x)))
     (cond
-      ((ocean-mid-mask-ptrs-bit? arg1 arg2))
-      ((= arg2 s2-0)
+      ((ocean-mid-mask-ptrs-bit? cell-z cell-x))
+      ((= cell-x min-x)
        (cond
-         (s3-0
-          (ocean-mid-add-upload-table arg0 (+ arg1 -1) arg2 *ocean-down-table* 7 #t)
-          (ocean-mid-add-upload-table arg0 arg1 (+ arg2 -1) *ocean-right-table* 7 #t))
+         (camera-cell?
+          (ocean-mid-add-upload-table dma-buf (+ cell-z -1) cell-x *ocean-down-table* 7 #t)
+          (ocean-mid-add-upload-table dma-buf cell-z (+ cell-x -1) *ocean-right-table* 7 #t))
          (else
-          (let ((s3-1 (ocean-mid-mask-ptrs-bit? (+ arg1 1) arg2))
-                (v1-5 (ocean-mid-mask-ptrs-bit? arg1 (+ arg2 1))))
+          (let ((z-hidden? (ocean-mid-mask-ptrs-bit? (+ cell-z 1) cell-x))
+                (x-hidden? (ocean-mid-mask-ptrs-bit? cell-z (+ cell-x 1))))
             (cond
-              ((and s3-1 v1-5))
-              (s3-1 (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-right-table* 7 #t))
-              (v1-5 (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-down-table* 7 #t))
-              (else (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-down-right-table* 10 #f)))))))
-      ((= arg2 s1-0)
+              ((and z-hidden? x-hidden?))
+              (z-hidden? (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-right-table* 7 #t))
+              (x-hidden? (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-down-table* 7 #t))
+              (else (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-down-right-table* 10 #f)))))))
+      ((= cell-x max-x)
        (cond
-         (s3-0
-          (ocean-mid-add-upload-table arg0 (+ arg1 -1) arg2 *ocean-down-table* 7 #t)
-          (ocean-mid-add-upload-table arg0 arg1 (+ arg2 1) *ocean-left-table* 7 #t))
+         (camera-cell?
+          (ocean-mid-add-upload-table dma-buf (+ cell-z -1) cell-x *ocean-down-table* 7 #t)
+          (ocean-mid-add-upload-table dma-buf cell-z (+ cell-x 1) *ocean-left-table* 7 #t))
          (else
-          (let ((s3-2 (ocean-mid-mask-ptrs-bit? (+ arg1 1) arg2))
-                (v1-7 (ocean-mid-mask-ptrs-bit? arg1 (+ arg2 -1))))
+          (let ((z-hidden? (ocean-mid-mask-ptrs-bit? (+ cell-z 1) cell-x))
+                (x-hidden? (ocean-mid-mask-ptrs-bit? cell-z (+ cell-x -1))))
             (cond
-              ((and s3-2 v1-7))
-              (s3-2 (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-left-table* 7 #t))
-              (v1-7 (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-down-table* 7 #t))
-              (else (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-down-left-table* 10 #t)))))))
-      (s3-0 (ocean-mid-add-upload-table arg0 (+ arg1 -1) arg2 *ocean-down-table* 7 #t))))
+              ((and z-hidden? x-hidden?))
+              (z-hidden? (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-left-table* 7 #t))
+              (x-hidden? (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-down-table* 7 #t))
+              (else (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-down-left-table* 10 #t)))))))
+      (camera-cell? (ocean-mid-add-upload-table dma-buf (+ cell-z -1) cell-x *ocean-down-table* 7 #t))))
   (none))
 
-(defun ocean-mid-add-upload-middle ((arg0 dma-buffer) (arg1 uint) (arg2 uint))
-  (let ((s3-0 (-> *ocean-work* mid-minx))
-        (s2-0 (-> *ocean-work* mid-maxx))
-        (s1-0 (ocean-mid-camera-masks-bit? arg1 arg2)))
+(defun ocean-mid-add-upload-middle ((dma-buf dma-buffer) (cell-z uint) (cell-x uint))
+  "Stitch cell (cell-z, cell-x) on a row between the first and the last of the camera region.  Only
+   the left and right columns of the region need work here; the rows above and below are handled by
+   ocean-mid-add-upload-top and ocean-mid-add-upload-bottom."
+  (let ((min-x (-> *ocean-work* mid-minx))
+        (max-x (-> *ocean-work* mid-maxx))
+        (camera-cell? (ocean-mid-camera-masks-bit? cell-z cell-x)))
     (cond
-      ((ocean-mid-mask-ptrs-bit? arg1 arg2))
-      ((= arg2 s3-0)
+      ((ocean-mid-mask-ptrs-bit? cell-z cell-x))
+      ((= cell-x min-x)
        (cond
-         (s1-0 (ocean-mid-add-upload-table arg0 arg1 (+ arg2 -1) *ocean-right-table* 7 #t))
-         ((ocean-mid-mask-ptrs-bit? arg1 (+ arg2 1)))
-         (else (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-right-table* 7 #t))))
-      ((= arg2 s2-0)
+         (camera-cell? (ocean-mid-add-upload-table dma-buf cell-z (+ cell-x -1) *ocean-right-table* 7 #t))
+         ((ocean-mid-mask-ptrs-bit? cell-z (+ cell-x 1)))
+         (else (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-right-table* 7 #t))))
+      ((= cell-x max-x)
        (cond
-         (s1-0 (ocean-mid-add-upload-table arg0 arg1 (+ arg2 1) *ocean-left-table* 7 #t))
-         ((ocean-mid-mask-ptrs-bit? arg1 (+ arg2 -1)))
-         (else (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-left-table* 7 #t))))))
+         (camera-cell? (ocean-mid-add-upload-table dma-buf cell-z (+ cell-x 1) *ocean-left-table* 7 #t))
+         ((ocean-mid-mask-ptrs-bit? cell-z (+ cell-x -1)))
+         (else (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-left-table* 7 #t))))))
   (none))
 
-(defun ocean-mid-add-upload-bottom ((arg0 dma-buffer) (arg1 uint) (arg2 uint))
-  (let ((s2-0 (-> *ocean-work* mid-minx))
-        (s1-0 (-> *ocean-work* mid-maxx))
-        (s3-0 (ocean-mid-camera-masks-bit? arg1 arg2)))
+(defun ocean-mid-add-upload-bottom ((dma-buf dma-buffer) (cell-z uint) (cell-x uint))
+  "Stitch cell (cell-z, cell-x) on the last row of the camera region.  This is
+   ocean-mid-add-upload-top mirrored in z: the neighbor outside the region is at cell-z plus one here,
+   so the up tables replace the down tables."
+  (let ((min-x (-> *ocean-work* mid-minx))
+        (max-x (-> *ocean-work* mid-maxx))
+        (camera-cell? (ocean-mid-camera-masks-bit? cell-z cell-x)))
     (cond
-      ((ocean-mid-mask-ptrs-bit? arg1 arg2))
-      ((= arg2 s2-0)
+      ((ocean-mid-mask-ptrs-bit? cell-z cell-x))
+      ((= cell-x min-x)
        (cond
-         (s3-0
-          (ocean-mid-add-upload-table arg0 (+ arg1 1) arg2 *ocean-up-table* 7 #t)
-          (ocean-mid-add-upload-table arg0 arg1 (+ arg2 -1) *ocean-right-table* 7 #t))
+         (camera-cell?
+          (ocean-mid-add-upload-table dma-buf (+ cell-z 1) cell-x *ocean-up-table* 7 #t)
+          (ocean-mid-add-upload-table dma-buf cell-z (+ cell-x -1) *ocean-right-table* 7 #t))
          (else
-          (let ((s3-1 (ocean-mid-mask-ptrs-bit? (+ arg1 -1) arg2))
-                (v1-5 (ocean-mid-mask-ptrs-bit? arg1 (+ arg2 1))))
+          (let ((z-hidden? (ocean-mid-mask-ptrs-bit? (+ cell-z -1) cell-x))
+                (x-hidden? (ocean-mid-mask-ptrs-bit? cell-z (+ cell-x 1))))
             (cond
-              ((and s3-1 v1-5))
-              (s3-1 (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-right-table* 7 #t))
-              (v1-5 (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-up-table* 7 #t))
-              (else (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-up-right-table* 10 #t)))))))
-      ((= arg2 s1-0)
+              ((and z-hidden? x-hidden?))
+              (z-hidden? (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-right-table* 7 #t))
+              (x-hidden? (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-up-table* 7 #t))
+              (else (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-up-right-table* 10 #t)))))))
+      ((= cell-x max-x)
        (cond
-         (s3-0
-          (ocean-mid-add-upload-table arg0 (+ arg1 1) arg2 *ocean-up-table* 7 #t)
-          (ocean-mid-add-upload-table arg0 arg1 (+ arg2 1) *ocean-left-table* 7 #t))
+         (camera-cell?
+          (ocean-mid-add-upload-table dma-buf (+ cell-z 1) cell-x *ocean-up-table* 7 #t)
+          (ocean-mid-add-upload-table dma-buf cell-z (+ cell-x 1) *ocean-left-table* 7 #t))
          (else
-          (let ((s3-2 (ocean-mid-mask-ptrs-bit? (+ arg1 -1) arg2))
-                (v1-7 (ocean-mid-mask-ptrs-bit? arg1 (+ arg2 -1))))
+          (let ((z-hidden? (ocean-mid-mask-ptrs-bit? (+ cell-z -1) cell-x))
+                (x-hidden? (ocean-mid-mask-ptrs-bit? cell-z (+ cell-x -1))))
             (cond
-              ((and s3-2 v1-7))
-              (s3-2 (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-left-table* 7 #t))
-              (v1-7 (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-up-table* 7 #t))
-              (else (ocean-mid-add-upload-table arg0 arg1 arg2 *ocean-up-left-table* 10 #f)))))))
-      (s3-0 (ocean-mid-add-upload-table arg0 (+ arg1 1) arg2 *ocean-up-table* 7 #t))))
+              ((and z-hidden? x-hidden?))
+              (z-hidden? (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-left-table* 7 #t))
+              (x-hidden? (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-up-table* 7 #t))
+              (else (ocean-mid-add-upload-table dma-buf cell-z cell-x *ocean-up-left-table* 10 #f)))))))
+      (camera-cell? (ocean-mid-add-upload-table dma-buf (+ cell-z 1) cell-x *ocean-up-table* 7 #t))))
   (none))
 
-(defun ocean-seams-add-constants ((arg0 dma-buffer))
-  (let* ((a2-0 4)
-         (v1-0 arg0)
-         (a1-0 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
-    (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag :imm #x2fd :cmd (vif-cmd unpack-v4-32) :num a2-0))
-    (set! (-> v1-0 base) (&+ (the-as pointer a1-0) 16)))
-  (let ((v1-1 (-> arg0 base)))
-    (set-vector! (the-as vector (&+ v1-1 0)) 0.0 0.0 0.0 1.0)
-    (set-vector! (the-as vector (&+ v1-1 16)) 393216.0 0.0 0.0 1.0)
-    (set-vector! (the-as vector (&+ v1-1 32)) 0.0 0.0 393216.0 1.0)
-    (set-vector! (the-as vector (&+ v1-1 48)) 393216.0 0.0 393216.0 1.0))
-  (&+! (-> arg0 base) 64)
+(defun ocean-seams-add-constants ((dma-buf dma-buffer))
+  "Put the four unit-cell corner positions back into the resident constants block.  The transition
+   pass leaves 24-meter corners there, so the mid seam pass has to restore the 96-meter cell corners
+   before it uploads any weight table.  Advances base past the four quadwords."
+  (let* ((qwc 4)
+         (buf dma-buf)
+         (packet (the-as object (-> buf base))))
+    (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+    (set! (-> (the-as dma-packet packet) vif0)
+          (new 'static 'vif-tag :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4) :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet packet) vif1)
+          (new 'static
+               'vif-tag
+               :imm
+               (new 'static 'vif-unpack-imm :addr (ocean-mid-vu-const pos0))
+               :cmd (vif-cmd unpack-v4-32)
+               :num
+               qwc))
+    (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+  (let ((corners (-> dma-buf base)))
+    (set-vector! (the-as vector (&+ corners 0)) 0.0 0.0 0.0 1.0)
+    (set-vector! (the-as vector (&+ corners 16)) OCEAN-MID-CELL 0.0 0.0 1.0)
+    (set-vector! (the-as vector (&+ corners 32)) 0.0 0.0 OCEAN-MID-CELL 1.0)
+    (set-vector! (the-as vector (&+ corners 48)) OCEAN-MID-CELL 0.0 OCEAN-MID-CELL 1.0))
+  (&+! (-> dma-buf base) 64)
   (none))
 
-(defun sphere-cull-for-ocean ((arg0 vector))
-  "NOTE: added in PC port"
-  (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
+(defun sphere-cull-for-ocean ((bsphere vector))
+  "NOTE: added in PC port
+   Frustum-test one bounding sphere against the four camera side planes and return #t when any part of
+   it is inside.  The planes are stored transposed, so one four-lane multiply-add produces all four
+   signed distances at once and a packed compare collects their sign bits."
+  (local-vars (distances uint128) (negative-lanes uint128) (packed uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
-         (vf10 :class vf)
-         (vf16 :class vf)
-         (vf17 :class vf)
-         (vf18 :class vf)
-         (vf19 :class vf)
-         (vf9 :class vf))
+         (sphere-pos :class vf)
+         (plane-x :class vf)
+         (plane-y :class vf)
+         (plane-z :class vf)
+         (plane-dist :class vf)
+         (plane-distance :class vf))
     (init-vf0-vector)
-    (let ((v1-5 *math-camera*))
+    (let ((math-cam *math-camera*))
       ;; note: these are for sphere cull.
-      (.lvf vf16 (&-> v1-5 plane 0 quad))
-      (.lvf vf17 (&-> v1-5 plane 1 quad))
-      (.lvf vf18 (&-> v1-5 plane 2 quad))
-      (.lvf vf19 (&-> v1-5 plane 3 quad)))
-    (.lvf vf10 (&-> arg0 quad))
-    (.mul.x.vf acc vf16 vf10)
-    (.add.mul.y.vf acc vf17 vf10 acc)
-    (.add.mul.z.vf acc vf18 vf10 acc)
-    (.sub.mul.w.vf vf9 vf19 vf0 acc)
-    (.add.w.vf vf9 vf9 vf10)
-    (.mov v1-0 vf9)
-    (.pcgtw v1-1 0 v1-0)
-    (.ppach v1-2 (the-as uint128 0) v1-1)
-    (zero? (the-as int v1-2))))
+      (.lvf plane-x (&-> math-cam plane 0 quad))
+      (.lvf plane-y (&-> math-cam plane 1 quad))
+      (.lvf plane-z (&-> math-cam plane 2 quad))
+      (.lvf plane-dist (&-> math-cam plane 3 quad)))
+    (.lvf sphere-pos (&-> bsphere quad))
+    (.mul.x.vf acc plane-x sphere-pos)
+    (.add.mul.y.vf acc plane-y sphere-pos acc)
+    (.add.mul.z.vf acc plane-z sphere-pos acc)
+    (.sub.mul.w.vf plane-distance plane-dist vf0 acc)
+    (.add.w.vf plane-distance plane-distance sphere-pos)
+    (.mov distances plane-distance)
+    (.pcgtw negative-lanes 0 distances)
+    (.ppach packed (the-as uint128 0) negative-lanes)
+    (zero? (the-as int packed))))
 
 ;; definition for function draw-ocean-mid-seams
 ;; INFO: Return type mismatch symbol vs none.
-(defun draw-ocean-mid-seams ((arg0 dma-buffer))
-  (ocean-seams-add-constants arg0)
-  (let ((sv-32 (-> *ocean-work* mid-minx))
-        (sv-33 (-> *ocean-work* mid-maxx))
-        (sv-34 (-> *ocean-work* mid-minz))
-        (sv-35 (-> *ocean-work* mid-maxz))
-        (sv-36 (new 'stack 'sphere)))
-    (set! (-> sv-36 y) (-> *ocean-map* start-corner y))
-    (set! (-> sv-36 w) 278045.7)
-    (let ((s5-0 sv-34)
-          (s4-0 sv-35))
-      (while (>= s4-0 s5-0)
-        (let ((s3-0 sv-32)
-              (s2-0 sv-33))
-          (while (>= s2-0 s3-0)
-            (set! (-> sv-36 x) (+ 196608.0 (* 393216.0 (the float s3-0)) (-> *ocean-map* start-corner x)))
-            (set! (-> sv-36 z) (+ 196608.0 (* 393216.0 (the float s5-0)) (-> *ocean-map* start-corner z)))
+(defun draw-ocean-mid-seams ((dma-buf dma-buffer))
+  "Stitch the border of the region marked in mid-camera-masks so the 96-meter mid cells meet the finer
+   transition and near geometry without cracks, then fold the camera masks into the block packets that
+   were already built.  mid-minx, mid-maxx, mid-minz and mid-maxz bound the region, and each cell is
+   culled with its own 68-meter bounding sphere before any seam work."
+  (ocean-seams-add-constants dma-buf)
+  (let ((min-x (-> *ocean-work* mid-minx))
+        (max-x (-> *ocean-work* mid-maxx))
+        (min-z (-> *ocean-work* mid-minz))
+        (max-z (-> *ocean-work* mid-maxz))
+        (bsphere (new 'stack 'sphere)))
+    (set! (-> bsphere y) (-> *ocean-map* start-corner y))
+    (set! (-> bsphere w) OCEAN-MID-CELL-RADIUS)
+    (let ((cell-z min-z)
+          (last-z max-z))
+      (while (>= last-z cell-z)
+        (let ((cell-x min-x)
+              (last-x max-x))
+          (while (>= last-x cell-x)
+            (set! (-> bsphere x) (+ OCEAN-MID-HALF-CELL (* OCEAN-MID-CELL (the float cell-x)) (-> *ocean-map* start-corner x)))
+            (set! (-> bsphere z) (+ OCEAN-MID-HALF-CELL (* OCEAN-MID-CELL (the float cell-z)) (-> *ocean-map* start-corner z)))
             ;; og:preserve-this
-            (when (sphere-cull-for-ocean sv-36)
+            (when (sphere-cull-for-ocean bsphere)
               (cond
-                ((= s5-0 sv-34) (ocean-mid-add-upload-top arg0 s5-0 s3-0))
-                ((= s5-0 sv-35) (ocean-mid-add-upload-bottom arg0 s5-0 s3-0))
-                (else (ocean-mid-add-upload-middle arg0 s5-0 s3-0))))
-            (+! s3-0 1)))
-        (+! s5-0 1))))
-  (dotimes (v1-26 36)
-    (if (and (-> *ocean-work* mid-mask-ptrs v1-26) (nonzero? (-> *ocean-work* mid-camera-masks v1-26)))
-      (logior! (-> *ocean-work* mid-mask-ptrs v1-26 0) (-> *ocean-work* mid-camera-masks v1-26))))
+                ((= cell-z min-z) (ocean-mid-add-upload-top dma-buf cell-z cell-x))
+                ((= cell-z max-z) (ocean-mid-add-upload-bottom dma-buf cell-z cell-x))
+                (else (ocean-mid-add-upload-middle dma-buf cell-z cell-x))))
+            (+! cell-x 1)))
+        (+! cell-z 1))))
+  ;; The block packets are still in the buffer, so the camera masks can be added to the suppression
+  ;; masks they already carry instead of rebuilding anything.
+  (dotimes (block-index OCEAN-MID-BLOCK-COUNT)
+    (if (and (-> *ocean-work* mid-mask-ptrs block-index) (nonzero? (-> *ocean-work* mid-camera-masks block-index)))
+      (logior! (-> *ocean-work* mid-mask-ptrs block-index 0) (-> *ocean-work* mid-camera-masks block-index))))
   (none))
 
 ;; ADDED for PC Port
 (defun debug-draw-ocean-tile ((y int) (x int) (color0 rgba) (color1 rgba) (masks int))
+  "Draw the outline of one 768-meter mid-ocean tile plus a small filled corner triangle, and label it
+   with its coordinates, its linear index and its mask bits.  y is the tile's z index."
   ;;3145728.0
   (let* ((ps (-> *ocean-map* start-corner))
          (p0 (vector-copy! (new-stack-vector0) ps))
@@ -795,106 +1103,124 @@
     (format (clear *temp-string*) "o: ~d ~d ~d ~b" x y (+ (* 6 y) x) masks)
     (add-debug-text-3d #t (bucket-id debug-no-zbuf) *temp-string* p0 (font-color red) (the vector2h #f))))
 
-(defun draw-ocean-mid ((arg0 dma-buffer))
+(defun draw-ocean-mid ((dma-buf dma-buffer))
   "Main function to draw the 'mid' ocean
    The mid ocean is used to draw the non-transparent ocean parts.
    There is a large 6x6 grid of tiles.
-   Tiles that are closer to the camera have an environment mapping effect applied."
-  (rlet ((vf16 :class vf)
-         (vf17 :class vf)
-         (vf18 :class vf)
-         (vf19 :class vf)
-         (vf20 :class vf)
-         (vf21 :class vf)
-         (vf22 :class vf)
-         (vf23 :class vf))
+   Tiles that are closer to the camera have an environment mapping effect applied.
+   Each tile is an 8x8 patch of the 48x48 grid of 96-meter cells.  A tile whose bounding sphere comes
+   within OCEAN-MID-ENV-DISTANCE of the camera is drawn twice, once textured and once through the
+   environment map, which is why it reports twice the triangles.  A negative authored index means the
+   tile has no mid geometry.  When the camera is near the water surface this also runs the transition
+   and seam passes, which share this file's microprogram and constants."
+  (rlet ((plane-x :class vf)
+         (plane-y :class vf)
+         (plane-z :class vf)
+         (plane-dist :class vf)
+         (guard-x :class vf)
+         (guard-y :class vf)
+         (guard-z :class vf)
+         (guard-dist :class vf))
     ;; first, reset all masks to 0
-    (dotimes (v1-0 36)
-      (set! (-> *ocean-work* mid-mask-ptrs v1-0) (the-as (pointer int64) #f))
-      (set! (-> *ocean-work* mid-camera-masks v1-0) (the-as uint 0)))
+    (dotimes (block-index OCEAN-MID-BLOCK-COUNT)
+      (set! (-> *ocean-work* mid-mask-ptrs block-index) (the-as (pointer int64) #f))
+      (set! (-> *ocean-work* mid-camera-masks block-index) (the-as uint 0)))
     ;; upload VU1 program
-    (dma-buffer-add-vu-function arg0 ocean-mid-block 1)
+    (dma-buffer-add-vu-function dma-buf ocean-mid-block 1)
     ;; set up base+offset for the VU1 program uploads
-    (let* ((v1-3 arg0)
-           (a0-6 (the-as object (-> v1-3 base))))
-      (set! (-> (the-as dma-packet a0-6) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet a0-6) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
-      (set! (-> (the-as dma-packet a0-6) vif1) (new 'static 'vif-tag :imm #x76 :cmd (vif-cmd offset)))
-      (set! (-> v1-3 base) (&+ (the-as pointer a0-6) 16)))
+    (let* ((buf dma-buf)
+           (packet (the-as object (-> buf base))))
+      (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
+      (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag :imm OCEAN-MID-VU-BANK-QWC :cmd (vif-cmd offset)))
+      (set! (-> buf base) (&+ (the-as pointer packet) 16)))
     ;; upload ocean constants
-    (ocean-mid-add-constants arg0)
+    (ocean-mid-add-constants dma-buf)
     ;; run program to initialize VU1 renderer
-    (ocean-mid-add-call arg0 0)
+    (ocean-mid-add-call dma-buf OCEAN-MID-VU-INIT)
     ;; set up VF registers for sphere culling.
-    (let ((v1-5 *math-camera*))
-      (.lvf vf16 (&-> v1-5 plane 0 quad))
-      (.lvf vf17 (&-> v1-5 plane 1 quad))
-      (.lvf vf18 (&-> v1-5 plane 2 quad))
-      (.lvf vf19 (&-> v1-5 plane 3 quad))
-      (.lvf vf20 (&-> v1-5 guard-plane 0 quad))
-      (.lvf vf21 (&-> v1-5 guard-plane 1 quad))
-      (.lvf vf22 (&-> v1-5 guard-plane 2 quad))
-      (.lvf vf23 (&-> v1-5 guard-plane 3 quad)))
+    ;; The planes are stored transposed, one coefficient per register.  sphere-cull-for-ocean loads
+    ;; them itself, so these copies are not read again here.
+    (let ((math-cam *math-camera*))
+      (.lvf plane-x (&-> math-cam plane 0 quad))
+      (.lvf plane-y (&-> math-cam plane 1 quad))
+      (.lvf plane-z (&-> math-cam plane 2 quad))
+      (.lvf plane-dist (&-> math-cam plane 3 quad))
+      (.lvf guard-x (&-> math-cam guard-plane 0 quad))
+      (.lvf guard-y (&-> math-cam guard-plane 1 quad))
+      (.lvf guard-z (&-> math-cam guard-plane 2 quad))
+      (.lvf guard-dist (&-> math-cam guard-plane 3 quad)))
+    ;; zero the cull scratch vector.
     (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
     ;; draw tiles!
-    (let ((s5-0 (-> *math-camera* trans)))
-      (dotimes (s4-0 6) ;; x?
-        (dotimes (s3-0 6) ;; y?
-          (let* ((s2-0 (+ (* 6 s4-0) s3-0)) ;; tile index
-                 (s1-0 (-> *ocean-map* ocean-spheres spheres s2-0)) ;; vis sphere of ocean
-                 (s0-0 (-> (the-as (pointer int16) (+ (* s2-0 2) (the-as int (-> *ocean-map* ocean-mid-indices)))))))
-            ;; (format 0 "draw ocean tile: ~d x ~d = ~d index ~d~%" s4-0 s3-0 s2-0 s0-0)
-            ;; (debug-draw-ocean-tile s4-0 s3-0 (new 'static 'rgba :r #x80 :a #x80) (new 'static 'rgba :g #x80 :a #x80) s0-0)
+    (let ((cam-trans (-> *math-camera* trans)))
+      (dotimes (block-z OCEAN-MID-BLOCK-DIM)
+        (dotimes (block-x OCEAN-MID-BLOCK-DIM)
+          (let* ((block-index (+ (* OCEAN-MID-BLOCK-DIM block-z) block-x)) ;; tile index
+                 (bsphere (-> *ocean-map* ocean-spheres spheres block-index)) ;; vis sphere of ocean
+                 ;; the authored indices are signed; a negative one means the tile has no mid geometry.
+                 (mask-index (-> (the-as (pointer int16) (+ (* block-index 2) (the-as int (-> *ocean-map* ocean-mid-indices)))))))
+            ;; (format 0 "draw ocean tile: ~d x ~d = ~d index ~d~%" block-z block-x block-index mask-index)
+            ;; (debug-draw-ocean-tile block-z block-x (new 'static 'rgba :r #x80 :a #x80) (new 'static 'rgba :g #x80 :a #x80) mask-index)
             ;; og:preserve-this
-            (when (sphere-cull-for-ocean s1-0)
+            (when (sphere-cull-for-ocean bsphere)
               ;;(format 0 " vis!~%")
               (cond
-                ((< s0-0 0)
+                ((< mask-index 0)
                  ;; (format 0 " skip tile.~%")
                  )
-                ((let ((f30-0 (- (vector-vector-distance s1-0 s5-0) (-> s1-0 w))))
-                   (ocean-mid-add-upload arg0 s4-0 s3-0 s0-0 s2-0 f30-0)
-                   (< f30-0 786432.0)
+                ;; the upload happens either way; this test only picks the entry point.
+                ((let ((surface-dist (- (vector-vector-distance bsphere cam-trans) (-> bsphere w))))
+                   (ocean-mid-add-upload dma-buf block-z block-x mask-index block-index surface-dist)
+                   (< surface-dist OCEAN-MID-ENV-DISTANCE)
                    ;; HACK
                    ;; #t
                    )
                  ;; (format 0 " draw env map~%")
-                 (ocean-mid-add-call arg0 73)
+                 (ocean-mid-add-call dma-buf OCEAN-MID-VU-BLOCK-ENV)
                  (+! (-> *terrain-stats* ocean-mid fragments) 1)
                  (+! (-> *terrain-stats* ocean-mid tris) 256)
                  (+! (-> *terrain-stats* ocean-mid dverts) 288))
                 (else
-                 (ocean-mid-add-call arg0 46)
+                 (ocean-mid-add-call dma-buf OCEAN-MID-VU-BLOCK)
                  (+! (-> *terrain-stats* ocean-mid fragments) 1)
                  (+! (-> *terrain-stats* ocean-mid tris) 128)
                  (+! (-> *terrain-stats* ocean-mid dverts) 144))))))))
     ;; for now, skip seams.
     ;; when it's both on and cam is low
-    (when (not (or *ocean-near-off* (< 196608.0 (fabs (-> *math-camera* trans y)))))
-      (let ((a1-11 48)
-            (a2-2 0)
-            (v1-42 48)
-            (a0-25 0))
-        (dotimes (a3-1 6)
-          (dotimes (t0-1 6)
-            (let ((t1-6 (&-> *ocean-work* mid-camera-masks (+ (* 6 a3-1) t0-1))))
-              (when (nonzero? (-> t1-6 0))
-                (dotimes (t2-3 8)
-                  (let ((t3-1 (-> (the-as (pointer uint8) (+ t2-3 (the-as int t1-6))) 0)))
-                    (when (nonzero? t3-1)
-                      (let ((t4-2 (+ (* a3-1 8) t2-3))) (if (< t4-2 v1-42) (set! v1-42 t4-2)) (if (< a0-25 t4-2) (set! a0-25 t4-2)))
-                      (dotimes (t4-3 8)
-                        (when (logtest? t3-1 (ash 1 t4-3))
-                          (let ((t5-9 (+ (* t0-1 8) t4-3))) (if (< t5-9 a1-11) (set! a1-11 t5-9)) (if (< a2-2 t5-9) (set! a2-2 t5-9))))))))))))
-        (set! (-> *ocean-work* mid-minx) (the-as uint a1-11))
-        (set! (-> *ocean-work* mid-maxx) (the-as uint a2-2))
-        (set! (-> *ocean-work* mid-minz) (the-as uint v1-42))
-        (set! (-> *ocean-work* mid-maxz) (the-as uint a0-25))
-        (when (and (< a1-11 a2-2) (< v1-42 a0-25))
-          (ocean-mid-add-call-flush arg0 (the-as uint 41))
-          (ocean-mid-add-call-flush arg0 (the-as uint 43))
-          (draw-ocean-transition arg0)
-          (draw-ocean-mid-seams arg0))))
-    (ocean-mid-add-call-flush arg0 (the-as uint 41))
+    (when (not (or *ocean-near-off* (< (meters 48) (fabs (-> *math-camera* trans y)))))
+      ;; Collapse the per-block camera masks into the cell rectangle the transition and seam passes
+      ;; walk.  A mask byte is a cell row and a mask bit is a cell column, so the grid coordinates are
+      ;; 8 * block + byte and 8 * block + bit.
+      (let ((min-x OCEAN-MID-GRID-DIM)
+            (max-x 0)
+            (min-z OCEAN-MID-GRID-DIM)
+            (max-z 0))
+        (dotimes (block-z OCEAN-MID-BLOCK-DIM)
+          (dotimes (block-x OCEAN-MID-BLOCK-DIM)
+            (let ((camera-mask (&-> *ocean-work* mid-camera-masks (+ (* OCEAN-MID-BLOCK-DIM block-z) block-x))))
+              (when (nonzero? (-> camera-mask 0))
+                (dotimes (mask-row OCEAN-MID-CELLS-PER-BLOCK)
+                  (let ((row-bits (-> (the-as (pointer uint8) camera-mask) mask-row)))
+                    (when (nonzero? row-bits)
+                      (let ((cell-z (+ (* block-z OCEAN-MID-CELLS-PER-BLOCK) mask-row)))
+                        (if (< cell-z min-z) (set! min-z cell-z))
+                        (if (< max-z cell-z) (set! max-z cell-z)))
+                      (dotimes (mask-bit OCEAN-MID-CELLS-PER-BLOCK)
+                        (when (logtest? row-bits (ash 1 mask-bit))
+                          (let ((cell-x (+ (* block-x OCEAN-MID-CELLS-PER-BLOCK) mask-bit)))
+                            (if (< cell-x min-x) (set! min-x cell-x))
+                            (if (< max-x cell-x) (set! max-x cell-x))))))))))))
+        (set! (-> *ocean-work* mid-minx) (the-as uint min-x))
+        (set! (-> *ocean-work* mid-maxx) (the-as uint max-x))
+        (set! (-> *ocean-work* mid-minz) (the-as uint min-z))
+        (set! (-> *ocean-work* mid-maxz) (the-as uint max-z))
+        ;; a region only one cell wide or one cell deep is left to the block pass.
+        (when (and (< min-x max-x) (< min-z max-z))
+          (ocean-mid-add-call-flush dma-buf (the-as uint OCEAN-MID-VU-END-PASS))
+          (ocean-mid-add-call-flush dma-buf (the-as uint OCEAN-MID-VU-BEGIN-SEAM-PASS))
+          (draw-ocean-transition dma-buf)
+          (draw-ocean-mid-seams dma-buf))))
+    (ocean-mid-add-call-flush dma-buf (the-as uint OCEAN-MID-VU-END-PASS))
     0
     (none)))

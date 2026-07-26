@@ -17,14 +17,13 @@
    (unlit-color-mult      vector :inline)
    (unlit-color-emissive  vector :inline))
   (:methods
-   (dark-crystal-method-20 (_type_) none)
-   (dark-crystal-method-21 (_type_) symbol))
+   (damage-nearby-target! (_type_) none)
+   (record-crystal-destroyed! (_type_) symbol))
   (:states
    dark-crystal-activate
    dark-crystal-explode
    dark-crystal-idle
    dark-crystal-spawn-fuel-cell))
-
 
 (defskelgroup *dark-crystal-sg*
   dark-crystal
@@ -156,7 +155,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.94)
    (:timer (seconds 0.8))
-   (:flags (bit3))
+   (:flags (glow))
    (:conerot-x (degrees 0) (degrees 140))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -177,7 +176,7 @@
    (:accel-y (meters -0.00016666666) (meters -0.00016666666))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.1) (seconds 0.297))
    (:next-launcher 2158)
    (:conerot-x (degrees 0) (degrees 120))
@@ -202,7 +201,7 @@
    (:scalevel-y (meters 1.04))
    (:fade-a -1.6)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2154
   :init-specs
@@ -217,7 +216,7 @@
    (:a 128.0)
    (:fade-a -2.3272727)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2156
   :init-specs
@@ -239,7 +238,7 @@
    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
    (:friction 0.8)
    (:timer (seconds 1.7))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:conerot-x (degrees 0) (degrees 120))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 4))))
@@ -276,7 +275,7 @@
    (:accel-y (meters -0.00016666666) (meters -0.00016666666))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.1) (seconds 0.297))
    (:next-launcher 2158)
    (:conerot-x (degrees 0) (degrees 120))
@@ -300,7 +299,7 @@
    (:fade-g -2.1333334)
    (:fade-a -1.6)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2159
   :init-specs
@@ -316,7 +315,7 @@
    (:fade-g -2.0)
    (:fade-a -2.3272727)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2161
   :init-specs
@@ -341,7 +340,7 @@
    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
    (:friction 0.8)
    (:timer (seconds 1.7))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:conerot-x (degrees 0) (degrees 120))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 4))))
@@ -362,7 +361,7 @@
    (:vel-y (meters 0.013333334) (meters 0.006666667))
    (:fade-a 0.8)
    (:timer (seconds 40))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata 143360.0)
    (:func 'check-water-level-above-and-die)
    (:next-time (seconds 0.1) (seconds 0.097))
@@ -388,7 +387,7 @@
    (:vel-y (meters 0.013333334) (meters 0.006666667))
    (:fade-a 0.8)
    (:timer (seconds 40))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata 143360.0)
    (:func 'check-water-level-above-and-die)
    (:next-time (seconds 0.1) (seconds 0.097))
@@ -442,12 +441,12 @@
           (set-vector! (-> gp-0 fountain-rand-transv-hi) 40960.0 49152.0 40960.0 1.0))
         (process-spawn joint-exploder *dark-crystal-explode-sg* 5 gp-0 *dark-crystal-exploder-params* :to self))
       (activate! *camera-smush-control* 819.2 37 210 1.0 0.995)
-      (let ((gp-1 (dark-crystal-method-21 self)))
+      (let ((gp-1 (record-crystal-destroyed! self)))
         (suspend)
         (ja-channel-set! 0)
         (ja-post)
         (logior! (-> self draw status) (draw-status hidden))
-        (dark-crystal-method-20 self)
+        (damage-nearby-target! self)
         (if (-> self underwater?) (sound-play "water-explosion") (sound-play "crystal-explode"))
         (process-spawn part-tracker
                        :init
@@ -489,42 +488,47 @@
       (aybabtu 2)
       (cleanup-for-death self)))
 
-(defmethod dark-crystal-method-20 ((this dark-crystal))
+(defmethod damage-nearby-target! ((this dark-crystal))
+  "Damage Jak when he is within the explosion radius and no background surface blocks the blast."
   (when *target*
-    (let ((s5-0 (new 'stack-no-clear 'vector))
-          (s3-0 (new 'stack-no-clear 'vector))
-          (s4-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s5-0 quad) (-> this root trans quad))
-      (+! (-> s5-0 y) 6144.0)
-      (set! (-> s3-0 quad) (-> (target-pos 0) quad))
-      (+! (-> s3-0 y) 6144.0)
-      (when (>= (-> this explode-danger-radius) (vector-vector-distance s5-0 s3-0))
-        (vector-! s4-0 s3-0 s5-0)
-        (let ((t2-0 (new 'stack-no-clear 'collide-tri-result)))
+    (let ((blast-pos (new 'stack-no-clear 'vector))
+          (jak-pos (new 'stack-no-clear 'vector))
+          (to-target (new 'stack-no-clear 'vector)))
+      (set! (-> blast-pos quad) (-> this root trans quad))
+      (+! (-> blast-pos y) 6144.0)
+      (set! (-> jak-pos quad) (-> (target-pos 0) quad))
+      (+! (-> jak-pos y) 6144.0)
+      (when (>= (-> this explode-danger-radius) (vector-vector-distance blast-pos jak-pos))
+        (vector-! to-target jak-pos blast-pos)
+        (let ((hit (new 'stack-no-clear 'collide-tri-result)))
           (if (< (fill-and-probe-using-line-sphere *collide-cache*
-                                                   s5-0
-                                                   s4-0
+                                                   blast-pos
+                                                   to-target
                                                    819.2
                                                    (collide-kind background)
                                                    this
-                                                   t2-0
+                                                   hit
                                                    (new 'static 'pat-surface :noentity #x1))
                  0.0)
             (send-event *target* 'attack #f (new 'static 'attack-info)))))))
   (none))
 
-(defmethod dark-crystal-method-21 ((this dark-crystal))
-  (let ((s5-0 #f))
+(defmethod record-crystal-destroyed! ((this dark-crystal))
+  "Record this numbered crystal in the task reminder and return true when all five crystals have
+   been destroyed."
+  (let ((all-destroyed? #f))
     (when (nonzero? (-> this crystal-num))
-      (let* ((s4-0 (get-task-control (game-task cave-dark-crystals)))
-             (s3-0 (logior (get-reminder s4-0 3) (ash 1 (-> this crystal-num)))))
-        (save-reminder s4-0 s3-0 3)
-        (when (= s3-0 62)
-          (set! s5-0 #t)
+      (let* ((crystal-task (get-task-control (game-task cave-dark-crystals)))
+             (destroyed-mask (logior (get-reminder crystal-task 3) (ash 1 (-> this crystal-num)))))
+        (save-reminder crystal-task destroyed-mask 3)
+        (when (= destroyed-mask 62)
+          (set! all-destroyed? #t)
           (process-entity-status! this (entity-perm-status complete) #t))))
-    s5-0))
+    all-destroyed?))
 
-(defmethod init-from-entity! ((this dark-crystal) (arg0 entity-actor))
+(defmethod init-from-entity! ((this dark-crystal) (source-entity entity-actor))
+  "Build the crystal's collision mesh and skeleton, load its explosion settings, initialize its
+   colors and animation, and enter the appropriate state for its saved completion status."
   (set-vector! (-> this unlit-color-mult) 0.5 0.5 0.5 1.0)
   (set-vector! (-> this unlit-color-emissive) 0.0 0.0 0.0 0.0)
   (set-vector! (-> this lit-color-mult) 1.0 1.0 1.0 1.0)
@@ -542,19 +546,21 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *dark-crystal-sg* '())
   (logior! (-> this mask) (process-mask attackable))
   (set! (-> this draw color-mult quad) (-> this unlit-color-mult quad))
   (set! (-> this draw color-emissive quad) (-> this unlit-color-emissive quad))
-  (set! (-> this underwater?) (= (res-lump-value arg0 'mode uint128) 1))
-  (set! (-> this explode-danger-radius) (res-lump-float arg0 'extra-radius :default 28672.0))
-  (set! (-> this crystal-num) (res-lump-value arg0 'extra-id int))
+  (set! (-> this underwater?) (= (res-lump-value source-entity 'mode uint128) 1))
+  (set! (-> this explode-danger-radius) (res-lump-float source-entity 'extra-radius :default 28672.0))
+  (set! (-> this crystal-num) (res-lump-value source-entity 'extra-id int))
   (set-vector! (-> this root scale) 2.0 2.0 2.0 1.0)
   (ja-channel-push! 1 0)
-  (let ((s5-1 (-> this skel root-channel 0)))
-    (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-    (set! (-> s5-1 frame-num) 0.0))
+  (let ((anim-channel (-> this skel root-channel 0)))
+    (joint-control-channel-group-eval! anim-channel
+                                       (the-as art-joint-anim (-> this draw art-group data 2))
+                                       num-func-identity)
+    (set! (-> anim-channel frame-num) 0.0))
   (ja-post)
   (update-transforms! (-> this root))
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))

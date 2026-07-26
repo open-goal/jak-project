@@ -10,108 +10,115 @@
 
 (define-extern joint-control-reset! (function joint-control joint-control-channel none :behavior process-drawable))
 
-(defun cspace-by-name-no-fail ((arg0 process-drawable) (arg1 string))
-  "Get a cspace by name from the given process-drawable. If it fails, print an error and return the first one"
-  (let ((result (cspace-by-name arg0 arg1)))
+(defun cspace-by-name-no-fail ((drawable process-drawable) (name string))
+  "Return the named joint coordinate space, printing an error
+   and falling back to joint zero when the name is absent."
+  (let ((result (cspace-by-name drawable name)))
     (cond
       (result result)
-      (else (format 0 "no cspace (~A)~%" arg1) (-> arg0 node-list data 0)))))
+      (else (format 0 "no cspace (~A)~%" name) (-> drawable node-list data 0)))))
 
-(defun cspace-index-by-name-no-fail ((arg0 process-drawable) (arg1 string))
-  "Get the index of a cspace by name from the given process drawable. If it fails, print an error and return 0."
-  (let ((v0-0 (cspace-index-by-name arg0 arg1)))
+(defun cspace-index-by-name-no-fail ((drawable process-drawable) (name string))
+  "Return the named joint coordinate-space index,
+   printing an error and returning zero when the name is absent."
+  (let ((index (cspace-index-by-name drawable name)))
     (cond
-      ((< v0-0 0) (format 0 "no cspace[ndx] (~A)~%" arg1) 0)
-      (else v0-0))))
+      ((< index 0) (format 0 "no cspace[ndx] (~A)~%" name) 0)
+      (else index))))
 
 ;; The following functions can be applied to a joint-control-channel to change the frame number.
 ;; They return the resulting frame number as well.
 
-(defun num-func-none ((arg0 joint-control-channel) (arg1 float) (arg2 float))
-  "Don't change anything."
-  (-> arg0 frame-num))
+(defun num-func-none ((channel joint-control-channel) (unused0 float) (unused1 float))
+  "Return the channel's current frame without changing it."
+  (-> channel frame-num))
 
-(defun num-func-+! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
-  "Increment the frame number, taking into account the animation speed and current game rate."
-  (let ((f0-1 (+ (-> arg0 frame-num) (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))))
-    (set! (-> arg0 frame-num) f0-1)
-    f0-1))
+(defun num-func-+! ((channel joint-control-channel) (rate float) (unused float))
+  "Advance the frame by the given rate, animation speed, and display
+   time adjustment."
+  (set! (-> channel frame-num)
+        (+ (-> channel frame-num) (* rate (* (-> channel frame-group speed) (-> *display* time-adjust-ratio))))))
 
-(defun num-func--! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
-  "Decrement the frame number, taking into account the animation speed and current game rate."
-  (let ((f0-1 (- (-> arg0 frame-num) (* arg1 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))))
-    (set! (-> arg0 frame-num) f0-1)
-    f0-1))
+(defun num-func--! ((channel joint-control-channel) (rate float) (unused float))
+  "Move the frame backward by the given rate, animation speed, and display
+   time adjustment."
+  (set! (-> channel frame-num)
+        (- (-> channel frame-num) (* rate (* (-> channel frame-group speed) (-> *display* time-adjust-ratio))))))
 
-(defun num-func-loop! ((chan joint-control-channel) (inc float) (arg2 float))
-  "Like num-func-+!, but will wrap to 0 after going past the end."
-  ;; get the duration from the joint-animation-compressed.
-  (let* ((duration (the float (+ (-> chan frame-group data 0 length) -1)))
-         ;; increment (also add a full duration to it, I guess to avoid issues if inc is negative and we're near the start.)
-         (after-inc (+ (-> chan frame-num) duration (* inc (* (-> chan frame-group speed) (-> *display* time-adjust-ratio)))))
-         ;; wrap.
+(defun num-func-loop! ((channel joint-control-channel) (rate float) (unused float))
+  "Advance the frame and wrap it across the animation duration. Adding
+   one duration before the truncating quotient keeps modest backward steps near frame zero in range."
+  (let* ((duration (the float (+ (-> channel frame-group data 0 length) -1)))
+         ;; Bias the value positive before the truncating divide so a small backward step near
+         ;; frame zero wraps from the end instead of producing a negative remainder.
+         (after-inc (+ (-> channel frame-num) duration (* rate (* (-> channel frame-group speed) (-> *display* time-adjust-ratio)))))
          (wrapped (- after-inc (* (the float (the int (/ after-inc duration))) duration))))
-    (set! (-> chan frame-num) wrapped)
+    (set! (-> channel frame-num) wrapped)
     wrapped))
 
-(defun num-func-seek! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
-  "Seek toward arg1 by at most arg2 (taking into account speed etc)"
-  (let ((f0-3 (seek (-> arg0 frame-num) arg1 (* arg2 (* (-> arg0 frame-group speed) (-> *display* time-adjust-ratio))))))
+(defun num-func-seek! ((channel joint-control-channel) (target-frame float) (rate float))
+  "Move the frame toward the target by at most the given rate,
+   animation speed, and display time adjustment."
+  (let ((frame (seek (-> channel frame-num) target-frame (* rate (* (-> channel frame-group speed) (-> *display* time-adjust-ratio))))))
     ;; set it twice, just to make sure.
-    (set! (-> arg0 frame-num) f0-3)
-    (set! (-> arg0 frame-num) f0-3)
-    f0-3))
+    (set! (-> channel frame-num) frame)
+    (set! (-> channel frame-num) frame)
+    frame))
 
-(defun num-func-blend-in! ((arg0 joint-control-channel) (arg1 float) (arg2 float))
-  "Seek frame-interp toward 1. Once its there, do a joint-control-reset."
-  (let ((f30-0 (seek (-> arg0 frame-interp) 1.0 (* arg1 (-> *display* time-adjust-ratio)))))
-    (set! (-> arg0 frame-interp) f30-0)
-    (set! (-> arg0 frame-interp) f30-0)
-    (if (= f30-0 1.0) (joint-control-reset! (-> arg0 parent) arg0))
-    f30-0))
+(defun num-func-blend-in! ((channel joint-control-channel) (rate float) (unused float))
+  "Move the frame interpolation toward one by the given rate and
+   display time adjustment, resetting the channel when the blend completes."
+  (let ((blend (seek (-> channel frame-interp) 1.0 (* rate (-> *display* time-adjust-ratio)))))
+    (set! (-> channel frame-interp) blend)
+    (set! (-> channel frame-interp) blend)
+    (if (= blend 1.0) (joint-control-reset! (-> channel parent) channel))
+    blend))
 
-(defun num-func-chan ((arg0 joint-control-channel) (arg1 float) (arg2 float))
-  "Copies the frame number from the channel arg1."
-  ;; this is a super hack.
-  ;; we know that we're in an inline-array of joint-control-channels
-  ;; and the group-sub-index is our index in our array
-  ;; so we can compute the offset of the arg1-th index from this.
-  (let ((f0-2 (-> (the-as joint-control-channel
-                          (+ (the-as uint arg0)
-                             (the-as uint
-                                     ;; 48 * (difference in indices)
-                                     (* 48 (- (the int arg1) (-> arg0 group-sub-index))))))
-                  frame-num)))
-    (set! (-> arg0 frame-num) f0-2)
-    f0-2))
+(defun num-func-chan ((channel joint-control-channel) (source-channel float) (unused float))
+  "Copy the frame from another root channel selected by its channel
+   index."
+  ;; The root channels form an inline array, and group-sub-index is this channel's index in it.
+  ;; Step by the difference in 48-byte channel records to reach the requested sibling.
+  (let ((source-frame (-> (the-as joint-control-channel
+                                  (+ (the-as uint channel)
+                                     (the-as uint
+                                             ;; 48 * (difference in indices)
+                                             (* 48 (- (the int source-channel) (-> channel group-sub-index))))))
+                          frame-num)))
+    (set! (-> channel frame-num) source-frame)
+    source-frame))
 
-(defun num-func-identity ((arg0 joint-control-channel) (arg1 float) (arg2 float))
-  "seems to be the same thing as none."
-  (-> arg0 frame-num))
+(defun num-func-identity ((channel joint-control-channel) (unused0 float) (unused1 float))
+  "Return the current frame unchanged. This separate function symbol
+   lets callers hold an animation on an explicitly selected frame."
+  (-> channel frame-num))
 
+;; Persistent actor state carried between births. A try reset clears #x26f, a full game reset
+;; clears #x77f, and force-birth survives both.
 (defenum entity-perm-status
   :bitfield #t
   :type uint16
-  (bit-0 0)
-  (bit-1 1)
+  (birth-blocked 0) ;; permanently prevent this actor from being born
+  (error 1) ;; actor art or navigation setup failed
   (dead 2)
-  (bit-3 3)
-  (bit-4 4)
+  (no-kill 3) ;; do not distance- or visibility-cull the live process
+  (respawn-on-reload 4) ;; clear death and birth suppression when the level reloads
   (user-set-from-cstage 5)
   (complete 6)
-  (bit-7 7)
+  (force-birth 7) ;; birth even when the actor is offscreen
   (real-complete 8)
-  (bit-9 9)
-  (bit-10 10))
+  (suppress-birth 9) ;; temporarily keep the actor from being born
+  (suppress-birth-2 10)) ;; second birth-suppression bit
 
 (define-extern process-entity-status! (function process entity-perm-status symbol int))
 
 (defmacro ja-group (&key (chan 0))
-  "get the frame group for self. default channel is 0, the base channel. returns #f if no frame group."
+  "Return self's frame group on chan, or #f when the channel is inactive.
+   Channel zero is the base channel."
   `(if (> (-> self skel active-channels) ,chan) (-> self skel root-channel ,chan frame-group)))
 
 (defmacro ja-group? (group &key (chan 0))
-  "is self in this frame group on this channel? default is channel 0, which is the base channel."
+  "Return whether self's base channel is using group."
   `(= (ja-group) ,group))
 
 (defmacro ja (&key (chan 0) &key (group! #f) &key (num! #f) &key (param0 #f) &key (param1 #f) &key (num-func #f) &key (frame-num #f) &key (frame-interp #f) &key (dist #f) &key (eval? #t))
@@ -212,3 +219,21 @@
       :frame-num ,frame-num
       :frame-interp ,frame-interp
       :dist ,dist))
+
+(defmacro ja-play (&key (chan 0) &key (group! #f) &key (num! #f) &key (param0 #f) &key (param1 #f) &key (num-func #f) &key (frame-num #f) &key (frame-interp #f) &key (dist #f) &rest body)
+  "Set up an animation without evaluating it, then suspend and advance it until the selected
+   channel reaches its requested frame. body runs before each suspension."
+  `(begin
+    (ja-no-eval :chan ,chan
+                :group! ,group!
+                :num! ,num!
+                :param0 ,param0
+                :param1 ,param1
+                :num-func ,num-func
+                :frame-num ,frame-num
+                :frame-interp ,frame-interp
+                :dist ,dist)
+    (until (ja-done? ,chan)
+      ,@body
+      (suspend)
+      (ja :chan ,chan :num! ,num!))))

@@ -6,59 +6,67 @@
 ;; DECOMP BEGINS
 
 (deftype muse (nav-enemy)
-  ((root               collide-shape-moving :override)
+  "The Misty Island Muse, which flees around a closed path, sparkles continuously, and starts the
+   capture sequence when touched or attacked."
+  ((root collide-shape-moving :override)
    (current-path-index float)
-   (prev-path-index    float)
-   (dest-path-index    float)
-   (player-path-index  float)
-   (max-path-index     float)
-   (sprint-distance    float)
-   (dest-point         vector :inline)
-   (anim               spool-anim)
-   (victory-anim       spool-anim)
-   (old-target-pos     transformq :inline))
+   (prev-path-index float)
+   (dest-path-index float)
+   (player-path-index float)
+   (max-path-index float)
+   (sprint-distance float)
+   (dest-point vector :inline)
+   (anim spool-anim)
+   (victory-anim spool-anim)
+   (old-target-pos transformq :inline))
+  (:methods
+   (spawn-sparkle-particles! (_type_) none :overlay-at nav-enemy-method-51))
   (:states
    muse-caught
    muse-idle))
 
-
 (deftype point-on-path-segment-info (structure)
-  ((point               vector :inline)
-   (segment             vector 2 :inline)
-   (dir                 vector :inline)
-   (nearest-point       vector :inline)
-   (segment-length      float)
+  "Working values for projecting one point onto a finite path segment."
+  ((point vector :inline)
+   (segment vector 2 :inline)
+   (dir vector :inline)
+   (nearest-point vector :inline)
+   (segment-length float)
    (distance-to-segment float)
-   (parametric-index    float)))
+   (parametric-index float)))
 
-
-(defun analyze-point-on-path-segment ((arg0 point-on-path-segment-info))
-  (vector-! (-> arg0 dir) (-> arg0 segment 1) (the-as vector (-> arg0 segment)))
-  (vector-normalize! (-> arg0 dir) 1.0)
-  (set! (-> arg0 segment-length) (vector-vector-distance (the-as vector (-> arg0 segment)) (-> arg0 segment 1)))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (vector-! s5-0 (the-as vector (-> arg0 segment)) (-> arg0 point))
-    (vector+*! s5-0 s5-0 (-> arg0 dir) (- (vector-dot s5-0 (-> arg0 dir))))
-    (vector+! (-> arg0 nearest-point) (-> arg0 point) s5-0)
-    (set! (-> arg0 distance-to-segment) (vector-length s5-0))
-    (vector-! s5-0 (-> arg0 point) (the-as vector (-> arg0 segment)))
-    (set! (-> arg0 parametric-index) (/ (vector-dot (-> arg0 dir) s5-0) (-> arg0 segment-length))))
+(defun analyze-point-on-path-segment ((info point-on-path-segment-info))
+  "Project info.point onto its finite segment and store the direction, length, nearest point,
+   distance, and clamped 0-to-1 parameter."
+  (vector-! (-> info dir) (-> info segment 1) (-> info segment 0))
+  (vector-normalize! (-> info dir) 1.0)
+  (set! (-> info segment-length) (vector-vector-distance (-> info segment 0) (-> info segment 1)))
+  (let ((offset (new 'stack-no-clear 'vector)))
+    (vector-! offset (-> info segment 0) (-> info point))
+    (vector+*! offset offset (-> info dir) (- (vector-dot offset (-> info dir))))
+    (vector+! (-> info nearest-point) (-> info point) offset)
+    (set! (-> info distance-to-segment) (vector-length offset))
+    (vector-! offset (-> info point) (-> info segment 0))
+    (set! (-> info parametric-index) (/ (vector-dot (-> info dir) offset) (-> info segment-length))))
   (cond
-    ((< (-> arg0 parametric-index) 0.0)
-     (set! (-> arg0 parametric-index) 0.0)
-     (set! (-> arg0 nearest-point quad) (-> arg0 segment 0 quad))
-     (set! (-> arg0 distance-to-segment) (vector-vector-distance (-> arg0 nearest-point) (-> arg0 point))))
-    ((< 1.0 (-> arg0 parametric-index))
-     (set! (-> arg0 parametric-index) 1.0)
-     (set! (-> arg0 nearest-point quad) (-> arg0 segment 1 quad))
-     (set! (-> arg0 distance-to-segment) (vector-vector-distance (-> arg0 nearest-point) (-> arg0 point))))))
+    ((< (-> info parametric-index) 0.0)
+     (set! (-> info parametric-index) 0.0)
+     (set! (-> info nearest-point quad) (-> info segment 0 quad))
+     (set! (-> info distance-to-segment) (vector-vector-distance (-> info nearest-point) (-> info point))))
+    ((< 1.0 (-> info parametric-index))
+     (set! (-> info parametric-index) 1.0)
+     (set! (-> info nearest-point quad) (-> info segment 1 quad))
+     (set! (-> info distance-to-segment) (vector-vector-distance (-> info nearest-point) (-> info point))))))
 
-(defbehavior muse-get-path-point muse ((arg0 vector) (arg1 int))
-  (eval-path-curve-div! (-> self path) arg0 (the float arg1) 'interp)
+(defbehavior muse-get-path-point muse ((output vector) (index int))
+  "Evaluate the Muse path at index and write the result to output."
+  (eval-path-curve-div! (-> self path) output (the float index) 'interp)
   0
   (none))
 
 (defbehavior muse-check-dest-point muse ()
+  "Project Jak and the Muse onto the closed path and choose a destination several vertices farther
+   away from Jak."
   (let ((gp-0 (new 'stack-no-clear 'point-on-path-segment-info))
         (f26-0 4096000.0)
         (f30-0 0.0)
@@ -98,16 +106,20 @@
   0
   (none))
 
-(defmethod nav-enemy-method-51 ((this muse))
-  (dotimes (s5-0 2)
-    (let ((v1-2 (rand-vu-int-range 3 (+ (-> this node-list length) -1))))
-      (launch-particles (-> *part-id-table* 271) (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data v1-2)))))
+(defmethod spawn-sparkle-particles! ((this muse))
+  "Emit sparkle particles at two random body joints."
+  (dotimes (i 2)
+    (let ((node-index (rand-vu-int-range 3 (+ (-> this node-list length) -1))))
+      (launch-particles (-> *part-id-table* 271)
+                        (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data node-index)))))
   0
   (none))
 
 (defmethod common-post ((this muse))
+  "Keep the capture animation spooled, emit sparkle particles, then run the ordinary navigation
+   enemy post step."
   (spool-push *art-control* (-> this anim name) 0 this -99.0)
-  (nav-enemy-method-51 this)
+  (spawn-sparkle-particles! this)
   ((method-of-type nav-enemy common-post) this)
   (none))
 
@@ -119,10 +131,12 @@
   :bounds (static-spherem 0 2 0 3)
   :shadow muse-shadow-mg)
 
-(defmethod touch-handler ((this muse) (arg0 process) (arg1 event-message-block))
+(defmethod touch-handler ((this muse) (other process) (event event-message-block))
+  "Enter the caught state when another process touches the Muse."
   (go muse-caught))
 
-(defmethod attack-handler ((this muse) (arg0 process) (arg1 event-message-block))
+(defmethod attack-handler ((this muse) (other process) (event event-message-block))
+  "Enter the caught state when another process attacks the Muse."
   (go muse-caught))
 
 nav-enemy-default-event-handler
@@ -141,18 +155,14 @@ nav-enemy-default-event-handler
       (when (ja-group? muse-run-ja)
         (ja-channel-push! 1 (seconds 0.1))
         (ja-no-eval :num! (loop!))
-        (ja-no-eval :group! muse-run-to-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (ja-blend-eval)
-          (suspend)
-          (ja :num! (seek!))))
+        (ja-play :group! muse-run-to-idle-ja :num! (seek!) :frame-num 0.0 (ja-blend-eval)))
       (loop
-        (ja-no-eval :group! muse-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (spool-push *art-control* (-> self anim name) 0 self -99.0)
-          (nav-enemy-method-51 self)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group!
+                 muse-idle-ja
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (spool-push *art-control* (-> self anim name) 0 self -99.0)
+                 (spawn-sparkle-particles! self))))
   :post ja-post)
 
 (defstate nav-enemy-chase (muse)
@@ -179,11 +189,7 @@ nav-enemy-default-event-handler
         ((ja-group? muse-idle-ja)
          (ja-channel-push! 1 (seconds 0.1))
          (ja-no-eval :num! (loop!))
-         (ja-no-eval :group! muse-idle-to-run-ja :num! (seek!) :frame-num 0.0)
-         (until (ja-done? 0)
-           (ja-blend-eval)
-           (suspend)
-           (ja :num! (seek!))))
+         (ja-play :group! muse-idle-to-run-ja :num! (seek!) :frame-num 0.0 (ja-blend-eval)))
         (else (ja-channel-push! 1 (seconds 0.1))))
       (ja :group! muse-run-ja :num! min)
       (loop
@@ -192,12 +198,13 @@ nav-enemy-default-event-handler
   :post
     (behavior ()
       (set! (-> self nav destination-pos quad) (-> self dest-point quad))
-      (nav-control-method-19 (-> self nav)
-                             (-> self nav target-pos)
-                             (-> self collide-info)
-                             (-> self nav destination-pos)
-                             546133.3)
-      (if (logtest? (nav-control-flags navcf21) (-> self nav flags)) (logclear! (-> self nav flags) (nav-control-flags navcf10)))
+      (steer-toward-point (-> self nav)
+                          (-> self nav target-pos)
+                          (-> self collide-info)
+                          (-> self nav destination-pos)
+                          546133.3)
+      (if (logtest? (nav-control-flags heading-aligned) (-> self nav flags))
+        (logclear! (-> self nav flags) (nav-control-flags gradual-turn-to-target)))
       (nav-enemy-travel-post)))
 
 (defstate nav-enemy-jump (muse)
@@ -218,11 +225,7 @@ nav-enemy-default-event-handler
     (behavior ()
       (ja-no-eval :num! (seek!))
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group! muse-run-ja :num! (seek! max 0.8) :frame-num (ja-aframe 6.0 0))
-      (until (ja-done? 0)
-        (ja-blend-eval)
-        (suspend)
-        (ja :num! (seek! max 0.8)))
+      (ja-play :group! muse-run-ja :num! (seek! max 0.8) :frame-num (ja-aframe 6.0 0) (ja-blend-eval))
       (go-virtual nav-enemy-chase)))
 
 (defstate muse-caught (muse)
@@ -289,7 +292,7 @@ nav-enemy-default-event-handler
            (set-blackout-frames (seconds 0.1))))))
   :post
     (behavior ()
-      (nav-enemy-method-51 self)
+      (spawn-sparkle-particles! self)
       (level-hint-surpress!)
       (kill-current-level-hint '() '() 'exit)
       (ja-post)))
@@ -348,7 +351,9 @@ nav-enemy-default-event-handler
        :debug-draw-neck #f
        :debug-draw-jump #f))
 
-(defmethod init-from-entity! ((this muse) (arg0 entity-actor))
+(defmethod init-from-entity! ((this muse) (source-entity entity-actor))
+  "Create the Muse collision and drawable state, initialize its closed path, navigation, neck,
+   capture animation, and reward animation, then enter the idle state."
   (stack-size-set! (-> this main-thread) 512)
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
@@ -365,7 +370,7 @@ nav-enemy-default-event-handler
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this collide-info) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *muse-sg* '())
   (logclear! (-> this mask) (process-mask actor-pause))
   (init-defaults! this *muse-nav-enemy-info*)

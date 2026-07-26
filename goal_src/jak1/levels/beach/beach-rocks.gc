@@ -43,7 +43,7 @@
    (:accel-y (meters -0.0028333333) (meters -0.0021666666))
    (:friction 0.97)
    (:timer (seconds 5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 80) (degrees 200.00002))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 5))))
@@ -68,7 +68,7 @@
    (:accel-y (meters -0.00083333335) (meters -0.0021666666))
    (:friction 0.93)
    (:timer (seconds 5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 80) (degrees 200.00002))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 5))))
@@ -96,7 +96,7 @@
    (:accel-y (meters -0.0005) (meters -0.0018333334))
    (:friction 0.95)
    (:timer (seconds 5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 6))))
@@ -130,7 +130,7 @@
    (:accel-y (meters -0.0005) (meters -0.0018333334))
    (:friction 0.98)
    (:timer (seconds 5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 2))))
@@ -163,7 +163,7 @@
    (:fade-b -0.10666667)
    (:fade-a -3.2)
    (:timer (seconds 0.1))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2342
   :init-specs
@@ -185,7 +185,7 @@
    (:accel-y (meters -0.00083333335) (meters -0.0021666666))
    (:friction 0.95)
    (:timer (seconds 5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 5))))
@@ -213,7 +213,7 @@
    (:accel-y (meters -0.0005) (meters -0.0018333334))
    (:friction 0.85)
    (:timer (seconds 5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 0) (degrees 100.00001))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 2))))
@@ -225,14 +225,15 @@
    (part-falling sparticle-launch-control)
    (part-landing sparticle-launch-control)
    (prev-frame   float))
-  (:state-methods
-   idle
-   loading
-   falling
-   fallen))
-
+  (:methods
+   (idle () _type_ :state)
+   (loading () _type_ :state)
+   (falling () _type_ :state)
+   (fallen () _type_ :state)))
 
 (defmethod relocate ((this beach-rock) (offset int))
+  "Relocate the optional falling and landing particle controllers, then relocate the drawable
+   through the parent method."
   (if (nonzero? (-> this part-falling))
     (set! (-> this part-falling) (the-as sparticle-launch-control (+ (the-as int (-> this part-falling)) offset))))
   (if (nonzero? (-> this part-landing))
@@ -240,15 +241,21 @@
   (call-parent-method this offset))
 
 (defmethod deactivate ((this beach-rock))
+  "Stop and free both optional rock particle controllers, then deactivate the drawable through
+   the parent method."
   (if (nonzero? (-> this part-falling)) (kill-and-free-particles (-> this part-falling)))
   (if (nonzero? (-> this part-landing)) (kill-and-free-particles (-> this part-landing)))
   (call-parent-method this)
   (none))
 
+;; The avalanche stays asleep until a trigger event, while a loading event only preloads the
+;; four-part falling animation. Once triggered, wait until Jak can be grabbed by the movie camera,
+;; start a temporary camera and cloned fuel cell, play the spooled animation, commit the task, and
+;; wait for Jak's release before installing the settled rock.
 (defstate idle (beach-rock)
   :virtual #t
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('trigger) (set! (-> self trigger) #t) (go-virtual falling))
         (('loading) (go-virtual loading))))
@@ -272,42 +279,47 @@
         (spool-push *art-control* "lrocklrg-falling" 0 self -1.0)
         (suspend))))
 
+;; Particle timing follows the falling animation. Frames -50--158 launch the opening debris at the
+;; rock and again at a point offset 30 metres in X and 25 metres in Z. The right, left, small, and
+;; platform rocks trail dust over frames 169--202, 200--275, 240--270, and 270--333 respectively.
+;; Crossing frame 333 launches the platform landing burst exactly once; prev-frame protects the
+;; crossing when the transition callback is evaluated again.
 (defstate falling (beach-rock)
   :virtual #t
   :trans
     (behavior ()
       (set! (-> self draw bounds w) 819200.0)
-      (let ((f30-0 (ja-aframe-num 0)))
-        (when (and (< -50.0 f30-0) (< f30-0 158.0))
-          (let ((gp-0 (new 'stack-no-clear 'vector)))
-            (set! (-> gp-0 quad) (-> self root trans quad))
-            (spawn (-> self part) gp-0)
-            (+! (-> gp-0 x) 122880.0)
-            (+! (-> gp-0 z) 102400.0)
-            (spawn (-> self part) gp-0)))
-        (if (and (< 200.0 f30-0) (< f30-0 275.0))
+      (let ((anim-frame (ja-aframe-num 0)))
+        (when (and (< -50.0 anim-frame) (< anim-frame 158.0))
+          (let ((particle-pos (new 'stack-no-clear 'vector)))
+            (set! (-> particle-pos quad) (-> self root trans quad))
+            (spawn (-> self part) particle-pos)
+            (+! (-> particle-pos x) 122880.0)
+            (+! (-> particle-pos z) 102400.0)
+            (spawn (-> self part) particle-pos)))
+        (if (and (< 200.0 anim-frame) (< anim-frame 275.0))
           (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg Lrocklrg))))
-        (if (and (< 270.0 f30-0) (< f30-0 333.0))
+        (if (and (< 270.0 anim-frame) (< anim-frame 333.0))
           (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg platformrock))))
-        (if (and (< (-> self prev-frame) 333.0) (>= f30-0 333.0))
+        (if (and (< (-> self prev-frame) 333.0) (>= anim-frame 333.0))
           (spawn (-> self part-landing) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg platformrock))))
-        (if (and (< 169.0 f30-0) (< f30-0 202.0))
+        (if (and (< 169.0 anim-frame) (< anim-frame 202.0))
           (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg Rrocklrg))))
-        (if (and (< 240.0 f30-0) (< f30-0 270.0))
+        (if (and (< 240.0 anim-frame) (< anim-frame 270.0))
           (spawn (-> self part-falling) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node lrocklrg-lod0-jg smlrock))))
-        (set! (-> self prev-frame) f30-0)))
+        (set! (-> self prev-frame) anim-frame)))
   :code
     (behavior ()
-      (local-vars (v1-3 symbol) (v1-49 symbol))
-      (until v1-3
+      (local-vars (target-grabbed? symbol) (target-released? symbol))
+      (until target-grabbed?
         (spool-push *art-control* "lrocklrg-falling" 0 self -1.0)
         (suspend)
-        (set! v1-3 (or (not *target*) (process-grab? *target*))))
+        (set! target-grabbed? (or (not *target*) (process-grab? *target*))))
       (logclear! (-> self draw status) (draw-status hidden))
       (ja-channel-set! 1)
       (ja :group! lrocklrg-idle-ja :num! min)
-      (let ((gp-2 (ppointer->handle (process-spawn othercam self 7 #f #t :to self)))
-            (s5-1 (ppointer->handle (process-spawn fuel-cell :init fuel-cell-init-as-clone (process->handle self) (-> self entity extra perm task) :to self))))
+      (let ((camera-handle (ppointer->handle (process-spawn othercam self 7 #f #t :to self)))
+            (fuel-cell-handle (ppointer->handle (process-spawn fuel-cell :init fuel-cell-init-as-clone (process->handle self) (-> self entity extra perm task) :to self))))
         (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
         (set-time! (-> self movie-start))
         (spool-push *art-control* "lrocklrg-falling" 0 self -1.0)
@@ -317,12 +329,13 @@
                               (the-as (function process-drawable symbol) false-func))
         (process-entity-status! self (entity-perm-status complete) #t)
         (cond
-          ((handle->process gp-2) (deactivate (-> gp-2 process 0)))
+          ((handle->process camera-handle) (deactivate (-> camera-handle process 0)))
           (else))
-        (let ((a0-28 (handle->process s5-1))) (if a0-28 (send-event a0-28 'stop-cloning))))
-      (until v1-49
+        (let ((fuel-cell-process (handle->process fuel-cell-handle)))
+          (if fuel-cell-process (send-event fuel-cell-process 'stop-cloning))))
+      (until target-released?
         (suspend)
-        (set! v1-49 (or (not *target*) (process-release? *target*))))
+        (set! target-released? (or (not *target*) (process-release? *target*))))
       (set! (-> self draw bounds w) 20480.0)
       (go-virtual fallen))
   :post transform-post)
@@ -334,9 +347,9 @@
       (level-hint-spawn (text-id beach-seagulls-avalanche) "sksp0025" (the-as entity #f) *entity-pool* (game-task none))
       (ja :group! lrocklrg-fallen-ja)
       (compute-alignment! (-> self align))
-      (let ((v1-6 (first-transform (-> self align))))
+      (let ((alignment-transform (first-transform (-> self align))))
         (set! (-> self root trans quad) (-> self entity extra trans quad))
-        (+! (-> self root trans y) (-> v1-6 trans y)))
+        (+! (-> self root trans y) (-> alignment-transform trans y)))
       (suspend)
       (update-transforms! (-> self root))
       (logior! (-> self mask) (process-mask sleep))
@@ -344,7 +357,10 @@
       0)
   :post ja-post)
 
-(defmethod init-from-entity! ((this beach-rock) (arg0 entity-actor))
+(defmethod init-from-entity! ((this beach-rock) (source-entity entity-actor))
+  "Create link, alignment, and particle controls, then restore the avalanche from task state.
+   An invalid task starts fallen; need-resolution recreates its fuel cell before starting
+   fallen; every other status waits idle for the trigger."
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this align) (new 'process 'align-control this))
   (set! (-> this trigger) #f)
@@ -357,10 +373,10 @@
   (case (get-task-status (-> this entity extra perm task))
     (((task-status invalid)) (go (method-of-object this fallen)))
     (((task-status need-resolution))
-     (let ((s5-0 (new 'stack-no-clear 'vector)))
+     (let ((fuel-cell-pos (new 'stack-no-clear 'vector)))
        (ja-post)
-       (vector<-cspace! s5-0 (-> this node-list data 8))
-       (birth-pickup-at-point s5-0
+       (vector<-cspace! fuel-cell-pos (-> this node-list data 8))
+       (birth-pickup-at-point fuel-cell-pos
                               (pickup-type fuel-cell)
                               (the float (the-as int (-> this entity extra perm task)))
                               #f
@@ -372,25 +388,27 @@
 
 (deftype lrocklrg (beach-rock) ())
 
-
-(defmethod init-from-entity! ((this lrocklrg) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lrocklrg) (source-entity entity-actor))
+  "Create the large rock's joint-4 collision mesh, drawable, skeleton, and expanded behavior
+   stack, then run the base beach-rock task-state setup."
   (stack-size-set! (-> this main-thread) 512)
-  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind background))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s3-0 transform-index) 4)
-      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
-      (set-root-prim! s4-0 s3-0))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (let ((root-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> root-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> root-shape reaction) default-collision-reaction)
+    (set! (-> root-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((collision-mesh (new 'process 'collide-shape-prim-mesh root-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> collision-mesh prim-core collide-as) (collide-kind background))
+      (set! (-> collision-mesh collide-with) (collide-kind target))
+      (set! (-> collision-mesh prim-core action) (collide-action solid))
+      (set! (-> collision-mesh prim-core offense) (collide-offense indestructible))
+      (set! (-> collision-mesh transform-index) 4)
+      (set-vector! (-> collision-mesh local-sphere) 0.0 0.0 0.0 24576.0)
+      (set-root-prim! root-shape collision-mesh))
+    (set! (-> root-shape nav-radius) (* 0.75 (-> root-shape root-prim local-sphere w)))
+    (backup-collide-with-as root-shape)
+    (set! (-> this root) root-shape))
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *lrocklrg-sg* '())
-  ((method-of-type beach-rock init-from-entity!) this arg0)
+  ((method-of-type beach-rock init-from-entity!) this source-entity)
   (none))

@@ -4,20 +4,24 @@
 (require "engine/gfx/hw/display-h.gc")
 (require "engine/util/types-h.gc")
 
-;; A "smush-control" generates a damped sinusoidal floating point value.
-;;  - on each full period, the amplitude and period are changed (multiplied)
-;;  - there is a maximum duration.
-;;  - the amplitude is additionally linearly scaled to go to zero over the duration.
+;; A smush-control generates a temporary sinusoidal displacement for impacts,
+;; camera shake, platform bounce, and water bobbing. Its amplitude and period are
+;; multiplied by independent factors after each completed cycle, while a second
+;; linear envelope fades the result to zero over the fixed duration.
 
 ;; DECOMP BEGINS
 
 (deftype smush-control (structure)
   ((start-time  time-frame)
+   ;; Current cycle length and total lifetime in game-time ticks.
    (period      float)
    (duration    float)
+   ;; Current peak amplitude.
    (amp         float)
+   ;; Per-cycle amplitude and period multipliers.
    (damp-amp    float)
-   (damp-period float) ;; set a negative value here to flag as die on next update
+   (damp-period float)
+   ;; Elapsed time recorded at the last damping update.
    (ticks       float))
   :pack-me
   (:methods
@@ -29,11 +33,12 @@
    (die-on-next-update! (_type_) _type_)))
 
 (defmethod nonzero-amplitude? ((this smush-control))
-  "Return #t if amp is not zero, #f otherwise"
+  "Return true when the waveform is active."
   (declare (inline))
   (!= (-> this amp) 0.0))
 
 (defmethod set-zero! ((this smush-control))
+  "Deactivate the waveform, clear its parameters, and return the control."
   (set! (-> this period) 0.0)
   (set! (-> this duration) 0.0)
   (set! (-> this amp) 0.0)
@@ -43,55 +48,58 @@
   this)
 
 (defmethod update! ((this smush-control))
-  "Run the smush control and return the result. Updates the internal state."
+  "Apply the amplitude and period multipliers at elapsed period boundaries, then
+   sample the sine wave with its linear lifetime fade. Deactivate at the duration limit or a requested
+   period boundary."
   (cond
     ((nonzero-amplitude? this)
-     (let* ((time-since-start (the float (- (-> *display* base-frame-counter) (-> this start-time))))
-            ;; use float to int rounding to figure out offset into the current period.
-            (time-since-period-start (- time-since-start (* (the float (the int (/ time-since-start (-> this period)))) (-> this period)))))
-       ;; we completed a new period!
+     (let* ((time-since-start (the float (- (current-time) (-> this start-time))))
+            (current-period (-> this period))
+            ;; Truncate the cycle count to obtain elapsed time within this cycle.
+            (time-since-period-start (- time-since-start (* (the float (the int (/ time-since-start current-period))) current-period))))
        (when (>= (- time-since-start (-> this ticks)) (-> this period))
-         ;; once per period updates of amp/period
+         ;; Apply the per-cycle decay factors.
          (set! (-> this amp) (* (-> this amp) (-> this damp-amp)))
          (set! (-> this period) (* (-> this period) (-> this damp-period)))
          ;; store the ticks that we did this on
          (set! (-> this ticks) time-since-start)
-         ;; you can set damp-period to a negative number to indicate
-         ;; that it should die on the next update. Do that here.
+         ;; A negative period multiplier requests shutdown at this boundary.
          (if (< (-> this damp-period) 0.0) (set-zero! this)))
-       ;; absolute duraction check
+       ;; Enforce the absolute lifetime independently of the cycle decay.
        (if (>= time-since-start (-> this duration)) (set-zero! this))
-       ;; sine term multiplied by amplitude, and scaled by how much is left to go.
+       ;; Apply both the current peak amplitude and the lifetime fade.
        (* (sin (/ (* DEGREES_PER_ROT time-since-period-start) (-> this period)))
           (* (-> this amp) (/ (- (-> this duration) time-since-start) (-> this duration))))))
-    ;; amplitude = 0, die.
     (else 0.0)))
 
 (defmethod get-no-update ((this smush-control))
-  "Get the value, but don't update internal state"
+  "Sample the sine wave and its linear lifetime fade without applying period damping
+   or deactivating the control."
   (cond
     ((nonzero-amplitude? this)
-     (let* ((time-since-start (the float (- (-> *display* base-frame-counter) (-> this start-time))))
-            (time-since-period-start (- time-since-start (* (the float (the int (/ time-since-start (-> this period)))) (-> this period)))))
+     (let* ((time-since-start (the float (- (current-time) (-> this start-time))))
+            (current-period (-> this period))
+            (time-since-period-start (- time-since-start (* (the float (the int (/ time-since-start current-period))) current-period))))
        (* (sin (/ (* DEGREES_PER_ROT time-since-period-start) (-> this period)))
           (* (-> this amp) (/ (- (-> this duration) time-since-start) (-> this duration))))))
-    ;; amplitude = 0, die.
     (else 0.0)))
 
 (defmethod die-on-next-update! ((this smush-control))
-  "On the next call to update!, zero everything.
-   Calls to get-no-update will still work."
+  "Request deactivation when update! next crosses a period boundary. Samples
+   remain available until that boundary."
   (if (nonzero-amplitude? this) (set! (-> this damp-period) -1.0))
   this)
 
-(defmethod activate! ((this smush-control) (arg0 float) (arg1 int) (arg2 int) (arg3 float) (arg4 float))
-  "Activate the smush! This only activates if the ongoing smush is mostly done."
+(defmethod activate! ((this smush-control) (amplitude float) (period-ticks int) (duration-ticks int) (amplitude-scale float) (period-scale float))
+  "Start a waveform if the current output is within one fifth of its amplitude.
+   amplitude sets the initial peak; period-ticks and duration-ticks are game-time ticks;
+   amplitude-scale and period-scale multiply their values after each period."
   (when (>= (fabs (* 0.2 (-> this amp))) (fabs (get-no-update this)))
-    (set! (-> this amp) arg0)
-    (set! (-> this period) (the float arg1))
-    (set! (-> this duration) (the float arg2))
-    (set! (-> this damp-amp) arg3)
-    (set! (-> this damp-period) arg4)
+    (set! (-> this amp) amplitude)
+    (set! (-> this period) (the float period-ticks))
+    (set! (-> this duration) (the float duration-ticks))
+    (set! (-> this damp-amp) amplitude-scale)
+    (set! (-> this damp-period) period-scale)
     (set! (-> this ticks) 0.0)
     (set-time! (-> this start-time)))
   this)

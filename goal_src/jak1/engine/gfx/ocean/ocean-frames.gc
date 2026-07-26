@@ -7,6 +7,33 @@
 
 ;; DECOMP BEGINS
 
+;; The ocean's animated surface: 64 looping frames of a 32x32 height field.
+;;
+;; 16384 uint32 = 65536 bytes = 64 frames of 1024 bytes, and a frame is 32 rows of 32 signed
+;; bytes with x running fastest, matching the way ocean-get-height addresses the live field as
+;; [32 * z + x].  Four samples are packed per word, low byte first.  Every sample in the file
+;; lies between -32 and +31, so the authoring quantised the surface to six signed bits and left
+;; the top two unused.
+;;
+;; ocean-interp-wave, called once per frame from draw-ocean, turns two of these frames into the
+;; live field.  The phase argument selects frame (phase >> 5) & 63 and blends it toward frame
+;; (phase >> 5) + 1 & 63 by (phase & 31) / 32, so a frame lasts 32 phase steps and both indices
+;; wrap, which is why the animation loops without a seam.  Each blend weight is scaled by 0.333.
+;; A sample is widened into the top byte of a word by two interleaves against zero and converted
+;; with vitof15, which divides by 32768, so one quantisation step becomes 512 GOAL units and the
+;; blended output covers about +/- 5456 units, a third of a metre either side of the plane at the
+;; extremes.  The result is 1024 floats, 4096 bytes, at *ocean-heights*.
+;;
+;; Two things read the live field.  ocean-get-height bilinearly samples it for anything that
+;; floats or splashes, spacing the samples 12288 units apart (3 m) and wrapping modulo 32, so the
+;; surface tiles every 96 m, exactly one mid cell.  ocean-generate-verts runs the field through
+;; VU0 to produce the displaced vertices and lit normals the near pass draws.
+;;
+;; The data is consistent with that use.  The field tiles: the mean step across the wrap in x is
+;; 3.7 and in z 2.3, both smaller than the 10.0 and 5.1 seen between interior neighbours, so
+;; neither seam stands out.  It also loops in time, with frame 63 correlating to frame 0 as
+;; strongly as consecutive frames correlate to each other.  Steps across x are about twice those
+;; across z, so this is a directional swell that is choppier along x rather than isotropic noise.
 (define *ocean-wave-frames*
   (new 'static
        'array

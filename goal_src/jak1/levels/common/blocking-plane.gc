@@ -6,7 +6,9 @@
 
 ;; DECOMP BEGINS
 
-(deftype blocking-plane (process-drawable) ()
+(deftype blocking-plane (process-drawable)
+  "An invisible collision wall built across alternating segments of a path."
+  ()
   (:states
    blocking-plane-idle))
 
@@ -25,13 +27,13 @@
         (logior! (-> self mask) (process-mask sleep))
         (suspend))))
 
-(defbehavior blocking-plane-init-by-other blocking-plane ((arg0 curve-control) (arg1 int))
-  (if (or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found))) (deactivate self))
+(defbehavior blocking-plane-init-by-other blocking-plane ((path curve-control) (segment-index int))
+  (if (or (not path) (logtest? (-> path flags) (path-control-flag not-found))) (deactivate self))
   (let ((s5-0 (new 'static 'vector))
         (gp-0 (new 'static 'vector)))
     0.0
-    (eval-path-curve-div! arg0 s5-0 (the float arg1) 'exact)
-    (eval-path-curve-div! arg0 gp-0 (+ 1.0 (the float arg1)) 'exact)
+    (eval-path-curve-div! path s5-0 (the float segment-index) 'exact)
+    (eval-path-curve-div! path gp-0 (+ 1.0 (the float segment-index)) 'exact)
     (let ((f30-1 (* 0.5 (vector-vector-distance s5-0 gp-0)))
           (s4-1 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
       (let ((s3-1 (new 'process 'collide-shape-prim-mesh s4-1 (the-as uint 0) (the-as uint 0))))
@@ -62,19 +64,20 @@
   (go blocking-plane-idle)
   (none))
 
-(defbehavior blocking-plane-spawn process ((arg0 curve-control))
+(defbehavior blocking-plane-spawn process ((path curve-control))
   (cond
-    ((or (not arg0) (logtest? (-> arg0 flags) (path-control-flag not-found))))
+    ((or (not path) (logtest? (-> path flags) (path-control-flag not-found))))
     (else
-     (let ((s5-0 (the int (the float (+ (-> arg0 curve num-cverts) -1))))
+     (let ((s5-0 (the int (the float (+ (-> path curve num-cverts) -1))))
            (s4-0 0))
        (while (< s4-0 s5-0)
-         (process-spawn blocking-plane arg0 s4-0 :to self)
+         (process-spawn blocking-plane path s4-0 :to self)
          (+! s4-0 2)))))
   0
   (none))
 
 (defun blocking-plane-destroy ()
+  "Deactivate every blocking-plane child of the current process."
   (with-pp
     (let ((gp-0 (-> pp child)))
       (while gp-0
