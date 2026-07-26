@@ -14,34 +14,26 @@
 ;; this file is debug only
 (declare-file (debug))
 
-;; failed to figure out what this is:
 (when (or (not *camera-old-cpu*) (zero? *camera-old-cpu*))
   (set! *camera-old-cpu* 0)
   0)
 
-;; failed to figure out what this is:
 (when (or (not *camera-old-vu*) (zero? *camera-old-vu*))
   (set! *camera-old-vu* 0)
   0)
 
-;; failed to figure out what this is:
 (when (or (not *camera-old-tfrag-bytes*) (zero? *camera-old-tfrag-bytes*))
   (set! *camera-old-tfrag-bytes* 0)
   0)
 
-;; definition (perm) for symbol *camera-old-level*, type string
 (define-perm *camera-old-level* string (new 'global 'string 128 (the-as string #f)))
 
-;; definition (perm) for symbol *camera-old-stat-string-tfrag*, type string
 (define-perm *camera-old-stat-string-tfrag* string (new 'global 'string 128 (the-as string #f)))
 
-;; definition (perm) for symbol *camera-old-stat-string-tfrag-near*, type string
 (define-perm *camera-old-stat-string-tfrag-near* string (new 'global 'string 128 (the-as string #f)))
 
-;; definition (perm) for symbol *camera-old-stat-string-total*, type string
 (define-perm *camera-old-stat-string-total* string (new 'global 'string 128 (the-as string #f)))
 
-;; definition of type cam-dbg-scratch
 (deftype cam-dbg-scratch (structure)
   ((linevec4w      vector4w 2 :inline :offset-assert 0)
    (color          vector :inline :offset-assert 32)
@@ -63,7 +55,6 @@
   :size-assert #x1d0
   :flag-assert #x9000001d0)
 
-;; definition for method 3 of type cam-dbg-scratch
 (defmethod inspect ((obj cam-dbg-scratch))
   (format #t "[~8x] ~A~%" obj 'cam-dbg-scratch)
   (format #t "~Tlinevec4w[2] @ #x~X~%" (-> obj linevec4w))
@@ -84,8 +75,6 @@
   (format #t "~Tfov-horz: ~`vector`P~%" (-> obj fov-horz))
   obj)
 
-;; definition for function cam-slave-options->string
-;; INFO: Return type mismatch object vs string.
 (defun cam-slave-options->string ((options cam-slave-options) (output object))
   "Append the names of the enabled camera-slave option bits to output and
    return output as a string."
@@ -117,8 +106,6 @@
   (if (= (logand options (cam-slave-options BUTT_CAM)) (cam-slave-options BUTT_CAM)) (format output "BUTT_CAM "))
   (the-as string output))
 
-;; definition for function cam-index-options->string
-;; INFO: Return type mismatch object vs string.
 (defun cam-index-options->string ((options cam-index-options) (output object))
   "Append the historical labels for the enabled camera-index option bits to
    output. These strings are opposite the current SPHERICAL and RADIAL enum
@@ -127,7 +114,6 @@
   (if (= (logand options (cam-index-options RADIAL)) (cam-index-options RADIAL)) (format output "SPHERICAL "))
   (the-as string output))
 
-;; definition for function slave-los-state->string
 (defun slave-los-state->string ((los-state slave-los-state))
   "Return the debug name of a camera line-of-sight state, or *unknown* for an
    unrecognized value."
@@ -138,8 +124,6 @@
     (((slave-los-state none)) "none")
     (else "*unknown*")))
 
-;; definition for function cam-line-dma
-;; Used lq/sq
 (defun cam-line-dma ()
   "Append the current transformed debug-line endpoints and color to the
    no-depth-test debug DMA bucket."
@@ -199,7 +183,6 @@
                              packet-start
                              (the-as (pointer dma-tag) next-tag)))))
 
-;; definition for function camera-line2d
 (defun camera-line2d ((start vector4w) (end vector4w))
   "Draw a line between two screen-space points. Convert pixels to GS 12.4
    coordinates, invert Y, and place both endpoints at the far 24-bit depth."
@@ -211,9 +194,6 @@
   (set! (-> (scratchpad-object cam-dbg-scratch) linevec4w 1 z) #x7fffff)
   (cam-line-dma))
 
-;; definition for function camera-plot-float-func
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun camera-plot-float-func ((x-min float) (x-max float) (y-min float) (y-max float) (fn (function float float)) (color vector4w))
   "Plot fn over [x-min, x-max] in a 400 by 200 pixel debug graph. Map
    [y-min, y-max] to the plot height, draw the axes and border at screen offset
@@ -275,9 +255,6 @@
   0
   (none))
 
-;; definition for function camera-line-setup
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun camera-line-setup ((color vector4w))
   "Select the color for subsequent camera-line-draw calls and initialize the
    identity world-to-screen transform."
@@ -286,9 +263,6 @@
   0
   (none))
 
-;; definition for function camera-line-draw
-;; INFO: Return type mismatch int vs symbol.
-;; Used lq/sq
 (defun camera-line-draw ((start vector) (end vector))
   "Transform and draw one world-space line using the color selected by
    camera-line-setup. Reject either endpoint whose transformed depth is past
@@ -308,8 +282,6 @@
   (cam-line-dma)
   (the-as symbol 0))
 
-;; definition for function camera-line
-;; INFO: Return type mismatch int vs none.
 (defun camera-line ((start vector) (end vector) (color vector4w))
   "Draw one world-space line in color."
   (camera-line-setup color)
@@ -317,14 +289,12 @@
   0
   (none))
 
-;; definition for function camera-line-rel
 (defun camera-line-rel ((start vector) (offset vector) (color vector4w))
   "Draw a line from start to start plus offset."
   (vector+! (the-as vector (+ 112 (scratchpad-object int))) start offset)
   (camera-line start (the-as vector (+ 112 (scratchpad-object int))) color)
   (none))
 
-;; definition for function camera-line-rel-len
 (defun camera-line-rel-len ((start vector) (direction vector) (length float) (color vector4w))
   "Normalize direction to length and draw that displacement from start."
   (vector-normalize-copy! (the-as vector (+ 112 (scratchpad-object int))) direction length)
@@ -332,8 +302,6 @@
   (camera-line start (the-as vector (+ 112 (scratchpad-object int))) color)
   (none))
 
-;; definition for function camera-sphere
-;; INFO: Return type mismatch int vs none.
 (defun camera-sphere ((center vector) (radius float) (color vector))
   "Draw a sphere as a ten-by-ten latitude/longitude wireframe."
   (camera-line-setup (the-as vector4w color))
@@ -363,8 +331,6 @@
   0
   (none))
 
-;; definition for function camera-cross
-;; INFO: Return type mismatch none vs basic.
 (defun camera-cross ((axis-a vector) (axis-b vector) (center vector) (color vector4w) (half-length meters))
   "Draw three perpendicular diameter lines through center. The first axis is
    axis-a; the other two are formed by successive crosses with axis-b and
@@ -385,9 +351,6 @@
   (the-as basic
           (camera-line (the-as vector (+ 208 (scratchpad-object int))) (the-as vector (+ 224 (scratchpad-object int))) color)))
 
-;; definition for function camera-bounding-box-draw
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun camera-bounding-box-draw ((bounds bounding-box) (unused-options basic) (unused-color rgba))
   "Draw the twelve edges of bounds in the original fixed gray. The two
    trailing arguments are retained for compatibility but are not read."
@@ -419,7 +382,6 @@
   0
   (none))
 
-;; definition of type cam-debug-tri
 (deftype cam-debug-tri (structure)
   ((vertex    vector 3 :inline :offset-assert 0)
    (intersect vector :inline :offset-assert 48)
@@ -428,7 +390,6 @@
   :size-assert #x44
   :flag-assert #x900000044)
 
-;; definition for method 3 of type cam-debug-tri
 (defmethod inspect ((obj cam-debug-tri))
   (format #t "[~8x] ~A~%" obj 'cam-debug-tri)
   (format #t "~Tvertex[3] @ #x~X~%" (-> obj vertex))
@@ -436,20 +397,14 @@
   (format #t "~Tcolor: #<vector4w @ #x~X>~%" (-> obj color))
   obj)
 
-;; definition for symbol *cam-debug-los-tri-current*, type int
 (define *cam-debug-los-tri-current* 0)
 
-;; definition for symbol *cam-debug-los-tri*, type (inline-array cam-debug-tri)
 (define *cam-debug-los-tri* (the-as (inline-array cam-debug-tri) (malloc 'debug #x8fc0)))
 
-;; definition for symbol *cam-debug-coll-tri-current*, type int
 (define *cam-debug-coll-tri-current* 0)
 
-;; definition for symbol *cam-debug-coll-tri*, type (inline-array cam-debug-tri)
 (define *cam-debug-coll-tri* (the-as (inline-array cam-debug-tri) (malloc 'debug #x8fc0)))
 
-;; definition for function cam-debug-reset-coll-tri
-;; INFO: Return type mismatch int vs none.
 (defun cam-debug-reset-coll-tri ()
   "Clear the per-frame camera collision and line-of-sight triangle lists."
   (set! *cam-debug-los-tri-current* 0)
@@ -457,9 +412,6 @@
   0
   (none))
 
-;; definition for function cam-debug-add-los-tri
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun cam-debug-add-los-tri ((triangles (inline-array collide-cache-tri)) (intersection vector) (color vector))
   "Save the first collision-cache triangle, intersection, and color in the
    line-of-sight debug list. The list holds at most 460 entries."
@@ -477,9 +429,6 @@
   0
   (none))
 
-;; definition for function cam-debug-add-coll-tri
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun cam-debug-add-coll-tri ((triangle cam-debug-tri) (intersection vector) (color-data cam-debug-tri))
   "Copy a camera debug triangle with a new intersection and color into the
    collision debug list. The list holds at most 460 entries."
@@ -497,8 +446,6 @@
   0
   (none))
 
-;; definition for function cam-debug-draw-tris
-;; Used lq/sq
 (defun cam-debug-draw-tris ()
   "Draw the recorded camera line-of-sight and collision triangles selected by
    the corresponding display flags, with a cross at each intersection."
@@ -535,7 +482,6 @@
                     (meters 0.25)))
     #f))
 
-;; definition for function camera-fov-draw
 (defun camera-fov-draw ((direction-a-address int)
         (direction-b-address int)
         (origin vector)
@@ -559,9 +505,6 @@
   (camera-line-draw (the-as vector (+ 352 (scratchpad-object int))) (the-as vector (+ 368 (scratchpad-object int))))
   (camera-line-draw (the-as vector (+ 368 (scratchpad-object int))) (the-as vector (+ 384 (scratchpad-object int)))))
 
-;; definition for function camera-fov-frame
-;; INFO: Return type mismatch symbol vs none.
-;; Used lq/sq
 (defun camera-fov-frame ((inverse-rotation matrix)
         (origin vector)
         (half-fov float)
@@ -619,8 +562,6 @@
   (camera-fov-draw (+ 400 (scratchpad-object int)) (+ 416 (scratchpad-object int)) origin 4096.0 20480.0 color)
   (none))
 
-;; definition for method 11 of type tracking-spline
-;; INFO: Return type mismatch int vs none.
 (defmethod print-nth-point ((this tracking-spline) (point-index int))
   "Print one breadcrumb with markers for the used head, next-to-last point,
    and end point."

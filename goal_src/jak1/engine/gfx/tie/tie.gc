@@ -117,7 +117,6 @@
 ;;;;;;;;;;;;;;;;;
 ;; Basic Methods
 ;;;;;;;;;;;;;;;;;
-;; definition for method 9 of type tie-fragment
 (defmethod login ((this tie-fragment))
   "Log in each five-quadword adgif shader referenced by this fragment."
   (let ((shaders (-> this gif-ref))
@@ -126,7 +125,6 @@
       (adgif-shader-login-no-remap (-> shaders i))))
   this)
 
-;; definition for method 3 of type drawable-inline-array-instance-tie
 (defmethod inspect ((this drawable-inline-array-instance-tie))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
@@ -135,29 +133,23 @@
     (format #t "~T  [~D] ~A~%" i (-> this data i)))
   this)
 
-;; definition for method 5 of type drawable-inline-array-instance-tie
-;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of ((this drawable-inline-array-instance-tie))
   "Return the array header size plus storage for its active inline TIE instances."
   (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> this length) -1) 64))))
 
-;; definition for method 9 of type drawable-tree-instance-tie
 ;; INFO: this function exists in multiple non-identical object files
 (#unless PC_PORT
   (defmethod login ((this drawable-tree-instance-tie))
     "Leave this TIE instance tree unchanged."
     this))
 
-;; definition for method 9 of type drawable-tree-instance-tie
 ;; INFO: this function exists in multiple non-identical object files
-;; INFO: Return type mismatch symbol vs drawable-tree-instance-tie.
 (defmethod login ((this drawable-tree-instance-tie))
   "Log in every child drawable in this TIE instance tree."
   (dotimes (i (-> this length))
     (login (-> this data i)))
   (the-as drawable-tree-instance-tie #f))
 
-;; definition for method 3 of type prototype-tie
 (defmethod inspect ((this prototype-tie))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
@@ -166,14 +158,12 @@
     (format #t "~T  [~D] ~A~%" i (-> this data i)))
   this)
 
-;; definition for method 9 of type prototype-tie
 (defmethod login ((this prototype-tie))
   "Log in every inline TIE fragment."
   (dotimes (i (-> this length))
     (login (-> this data i)))
   this)
 
-;; definition for method 8 of type drawable-tree-instance-tie
 (defmethod mem-usage ((this drawable-tree-instance-tie) (usage memory-usage-block) (flags int))
   "Account for the tree header, its child drawables, and its prototype array. The prototype
    pass is marked so fragments are not charged as independent allocations a second time."
@@ -190,7 +180,6 @@
   (mem-usage (-> this prototypes prototype-array-tie) usage (logior flags 1))
   this)
 
-;; definition for method 8 of type tie-fragment
 (defmethod mem-usage ((this tie-fragment) (usage memory-usage-block) (flags int))
   "Account for this prototype's header and referenced shader, point, draw-point, generic, and
    debug data. With the instance-color flag, account only for one instance's packed color table in
@@ -246,7 +235,6 @@
   (label cfg-13)
   this)
 
-;; definition for method 8 of type instance-tie
 (defmethod mem-usage ((this instance-tie) (usage memory-usage-block) (flags int))
   "Account for this instance and, when it owns color overrides, ask each available geometry
    prototype to account for the corresponding packed instance-color table."
@@ -284,7 +272,6 @@
                             flags))))))))
   this)
 
-;; definition for method 8 of type drawable-inline-array-instance-tie
 (defmethod mem-usage ((this drawable-inline-array-instance-tie) (usage memory-usage-block) (flags int))
   "Account for the inline-array header and every active TIE instance."
   (set! (-> usage length) (max 1 (-> usage length)))
@@ -297,7 +284,6 @@
     (mem-usage (-> this data i) usage flags))
   this)
 
-;; definition for method 8 of type prototype-tie
 (defmethod mem-usage ((this prototype-tie) (usage memory-usage-block) (flags int))
   "Account for the prototype-array header and every inline TIE fragment."
   (set! (-> usage length) (max 1 (-> usage length)))
@@ -310,8 +296,6 @@
     (mem-usage (-> this data i) usage flags))
   this)
 
-;; definition for method 5 of type prototype-tie
-;; INFO: Return type mismatch uint vs int.
 (defmethod asize-of ((this prototype-tie))
   "Return the prototype-array header size plus storage for its active inline fragments."
   (the-as int (+ (-> prototype-tie size) (* (+ (-> this length) -1) 64))))
@@ -1668,8 +1652,6 @@
             (vu-pair (nop) (nop)) ;; #x3e0
             )))
 
-;; definition for function tie-init-consts
-;; INFO: Return type mismatch int vs none.
 (defun tie-init-consts ((consts tie-consts) (alpha-blend int))
   "Build the VU1 GIF templates, triple-buffer addresses, instance-data bank addresses, and alpha-test
    states used by TIE. The three GIF output addresses are stored as 2^23-biased floats so VU1 can
@@ -1744,8 +1726,6 @@
   (set! (-> consts misc vector4w y) -1)
   (none))
 
-;; definition for function tie-init-engine
-;; INFO: Return type mismatch int vs none.
 (defun tie-init-engine ((dma-buf dma-buffer) (test-state gs-test) (alpha-blend int))
   "Append the TIE VU1 upload and initialization packets to dma-buf. This installs the requested GS
    TEST state, uploads the constant block, initializes the microprogram, and configures VIF's ROW,
@@ -1810,8 +1790,6 @@
   0
   (none))
 
-;; definition for function tie-end-buffer
-;; INFO: Return type mismatch int vs none.
 (defun tie-end-buffer ((dma-buf dma-buffer))
   "Append the TIE shutdown packets, restoring the normal GS TEST state and clearing the VIF mask,
    mode, and ROW state changed by tie-init-engine."
@@ -1864,7 +1842,6 @@
 ;; the wrong pair. The tables are original code and are left exactly as they are; the aliases in the
 ;; microprogram follow the instructions instead.
 
-;; definition (debug) for function tie-int-reg
 (defun-debug tie-int-reg ((register-index int))
   "Return the source name assigned to a TIE VU1 integer register."
   (let ((i register-index))
@@ -1886,7 +1863,6 @@
       ((= i 14) "skip-ips")
       ((= i 15) "kick-addr"))))
 
-;; definition (debug) for function tie-float-reg
 (defun-debug tie-float-reg ((register-index int))
   "Return the source name assigned to a TIE VU1 floating-point register."
   (let ((i register-index))
@@ -1924,9 +1900,6 @@
       ((= i 30) "clr2")
       ((= i 31) "--"))))
 
-;; definition (debug) for function tie-ints
-;; INFO: Used lq/sq
-;; INFO: Return type mismatch symbol vs none.
 (defun-debug tie-ints ()
   "Print the saved TIE VU1 integer-register values with their source names."
   (let ((register-data (the-as (pointer uint32) (+ #x3fa0 #x1100c000))))
@@ -1935,9 +1908,6 @@
       (format 0 "vi~d: ~6d #x~4,'0X ~s~%" i (-> register-data (* i 4)) (-> register-data (* i 4)) (tie-int-reg i))))
   (none))
 
-;; definition (debug) for function tie-floats
-;; INFO: Used lq/sq
-;; INFO: Return type mismatch symbol vs none.
 (defun-debug tie-floats ()
   "Print the saved TIE VU1 floating-point-register values, as words and floats, with their source
    names."
