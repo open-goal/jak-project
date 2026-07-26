@@ -6,9 +6,12 @@
 
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <cstring>
+#include <functional>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <thread>
 #include <unordered_map>
@@ -60,6 +63,42 @@ struct BacktraceFrame {
   u64 rsp_at_rip = 0;
 };
 
+struct SourceLocation {
+  std::string filename;
+  int line = -1;
+  int column = -1;
+  std::string line_text;
+};
+
+struct ResolvedBreakpoint {
+  u32 goal_addr = 0;
+  int line = -1;
+  std::string function_name;
+  std::string object_name;
+  bool loaded = false;
+};
+
+struct SourceStackFrame {
+  std::string function_name;
+  std::string object_name;
+  u64 rip = 0;
+  u32 goal_rip = 0;
+  u64 rsp = 0;
+  std::optional<SourceLocation> source;
+};
+
+struct LiveVariable {
+  std::string name;
+  TypeSpec type;
+  bool is_parameter = false;
+
+  bool in_register = false;
+  int reg = -1;        //! emitter::Register id, when in_register
+  u32 stack_addr = 0;  //! GOAL address of the value, when spilled to the stack
+};
+
+enum class StepKind { OVER, INTO, OUT };
+
 class Debugger {
  public:
   explicit Debugger(listener::Listener* listener, const goos::Reader* reader, GameVersion version)
@@ -98,6 +137,7 @@ class Debugger {
   void add_addr_breakpoint(u32 addr);
   void remove_addr_breakpoint(u32 addr);
   void update_break_info(std::optional<std::string> dump_path);
+  bool refresh_break_state();
 
   InstructionPointerInfo get_rip_info(u64 x86_rip);
   DebugInfo& get_debug_info_for_object(const std::string& object_name);
@@ -106,7 +146,35 @@ class Debugger {
   std::string get_info_about_addr(u32 addr);
   Disassembly disassemble_at_rip(const InstructionPointerInfo& info);
 
-  std::vector<BacktraceFrame> get_backtrace(u64 rip, u64 rsp, std::optional<std::string> dump_path);
+  std::vector<BacktraceFrame> get_backtrace(u64 rip,
+                                            u64 rsp,
+                                            std::optional<std::string> dump_path,
+                                            bool quiet = false);
+  std::optional<SourceLocation> get_source_location(u32 goal_addr);
+  std::optional<std::string> get_type_name_of_basic(u32 goal_addr);
+  std::optional<std::string> get_symbol_name_for_value(u32 value) const;
+  std::optional<std::string> get_symbol_name_at_address(u32 goal_addr) const;
+
+  std::vector<ResolvedBreakpoint> resolve_source_breakpoint(const std::string& filename,
+                                                            int line,
+                                                            int max_line_slide = 50);
+
+  std::vector<SourceStackFrame> get_source_stack_frames(int max_frames = 128);
+  std::vector<LiveVariable> get_live_variables();
+
+  bool resume_from_break();
+
+  bool do_step(StepKind kind);
+
+  void set_stop_callback(std::function<void(xdbg::SignalInfo::Kind)> cb) {
+    std::lock_guard<std::mutex> lock(m_stop_callback_mutex);
+    m_stop_callback = std::move(cb);
+  }
+
+  u64 get_normalized_rip() const;
+  std::optional<u32> get_breakpoint_addr_at_stop() const;
+
+  void set_suppress_stop_reporting(bool suppress) { m_suppress_stop_reporting = suppress; }
 
   std::string disassemble_x86_with_symbols(int len, u64 base_addr) const;
 
@@ -178,6 +246,7 @@ class Debugger {
   void start_watcher();
   void stop_watcher();
   void watcher();
+  void reload_break_state();
   void update_continue_info();
   void handle_disappearance();
 
@@ -218,6 +287,20 @@ class Debugger {
   bool m_context_valid = false;
   bool m_running = true;
   bool m_attached = false;
+
+  std::atomic_bool m_suppress_stop_reporting{false};
+
+  std::mutex m_stop_callback_mutex;
+  std::function<void(xdbg::SignalInfo::Kind)> m_stop_callback;
+  void fire_stop_callback(xdbg::SignalInfo::Kind kind);
+  bool normalize_rip_after_break();
+  bool single_step_once();
+  bool run_to_addr(u32 goal_addr);
+  std::optional<u64> get_return_address_of_current_frame();
+  void place_breakpoints();
+  void remove_breakpoints();
+  std::optional<SourceLocation> source_location_for_function_offset(const FunctionDebugInfo& func,
+                                                                    u32 function_offset) const;
 
   InstructionPointerInfo m_break_info;
 

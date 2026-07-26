@@ -7,6 +7,7 @@
 
 #include "CodeGenerator.h"
 
+#include <algorithm>
 #include <stdexcept>
 #include <unordered_set>
 
@@ -18,6 +19,103 @@
 #include "fmt/format.h"
 
 using namespace emitter;
+
+namespace {
+
+void record_local_variables(const FunctionEnv* func, FunctionDebugInfo* debug) {
+  const auto& allocations = func->allocations();
+  if (!allocations.ok || allocations.ass_as_ranges.empty()) {
+    return;
+  }
+
+  // ireg id -> source name, parameters first, then anything bound in a lexical scope
+  std::unordered_map<int, std::pair<std::string, bool>> names;
+  for (const auto& [symbol, reg_val] : func->params) {
+    if (reg_val) {
+      names[reg_val->ireg().id] = {symbol.name_ptr, true};
+    }
+  }
+  for (const auto& env : func->child_envs()) {
+    auto* lexical = dynamic_cast<LexicalEnv*>(env.get());
+    if (!lexical) {
+      continue;
+    }
+    for (const auto& [symbol, reg_val] : lexical->vars) {
+      if (reg_val && names.find(reg_val->ireg().id) == names.end()) {
+        names[reg_val->ireg().id] = {symbol.name_ptr, false};
+      }
+    }
+  }
+
+  if (names.empty()) {
+    return;
+  }
+
+  const int instruction_count = int(func->code().size());
+
+  for (const auto& [ireg_id, name_info] : names) {
+    if (ireg_id < 0 || ireg_id >= int(allocations.ass_as_ranges.size()) ||
+        ireg_id >= int(func->reg_vals().size())) {
+      continue;
+    }
+    const auto& range = allocations.ass_as_ranges.at(ireg_id);
+
+    LocalVariableDebugInfo local;
+    local.name = name_info.first;
+    local.is_parameter = name_info.second;
+    local.type = func->reg_vals().at(ireg_id)->type();
+
+    for (int instr = 0; instr < instruction_count; instr++) {
+      if (!range.is_live_at_instr(instr)) {
+        continue;
+      }
+      const auto& assignment = range.get(instr);
+      if (!assignment.is_assigned()) {
+        continue;
+      }
+
+      VariableLocation here;
+      here.start_ir = instr;
+      here.end_ir = instr;
+      if (assignment.kind == Assignment::Kind::REGISTER) {
+        here.kind = VariableLocation::Kind::REGISTER;
+        here.reg = assignment.reg.id();
+      } else if (assignment.kind == Assignment::Kind::STACK) {
+        here.kind = VariableLocation::Kind::STACK;
+        // spilled variables sit at rsp + slot * 8, matching how the spill ops address them
+        here.stack_offset = allocations.get_slot_for_spill(assignment.stack_slot) * GPR_SIZE;
+      } else {
+        continue;
+      }
+
+      // extend the previous interval instead of starting a new one where nothing changed
+      if (!local.locations.empty()) {
+        auto& previous = local.locations.back();
+        if (previous.end_ir == instr - 1 && previous.kind == here.kind &&
+            previous.reg == here.reg && previous.stack_offset == here.stack_offset) {
+          previous.end_ir = instr;
+          continue;
+        }
+      }
+      local.locations.push_back(here);
+    }
+
+    if (!local.locations.empty()) {
+      debug->locals.push_back(std::move(local));
+    }
+  }
+
+  // parameters first, then alphabetically
+  std::sort(debug->locals.begin(), debug->locals.end(),
+            [](const LocalVariableDebugInfo& a, const LocalVariableDebugInfo& b) {
+              if (a.is_parameter != b.is_parameter) {
+                return a.is_parameter;
+              }
+              return a.name < b.name;
+            });
+}
+
+}  // namespace
 
 CodeGenerator::CodeGenerator(FileEnv* env,
                              DebugInfo* debug_info,
@@ -48,6 +146,7 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
     for (auto& x : f->code()) {
       rec.debug->ir_strings.push_back(x->print());
     }
+    record_local_variables(f.get(), rec.debug);
   }
 
   // next, add all static objects.
