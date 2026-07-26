@@ -18,17 +18,24 @@ bool execute_ret_equals(emitter::CodeTester& tester, u64 val, T expected, T& act
 }
 
 // clang-format off
-#define EXPECT_EXECUTE_EQ(tester, val, expected)                                  \
-  do {                                                                             \
-    decltype(expected) actual{};                                                    \
-    if (!execute_ret_equals(tester, val, expected, actual)) {             \
-      FAIL()                                                                       \
-          << "\033[1;31mExecute mismatch\033[0m"                                   \
-          << "\n  \033[33minput:    \033[0m" << val                                \
-          << "\n  \033[32mexpected: \033[0m" << expected                           \
+#define EXPECT_EXECUTE_EQ(tester, val, expected) \
+  EXPECT_EXECUTE_EQ_IMPL(tester, val, expected, "")
+
+#define EXPECT_EXECUTE_EQ_MSG(tester, val, expected, msg) \
+  EXPECT_EXECUTE_EQ_IMPL(tester, val, expected, msg)
+
+#define EXPECT_EXECUTE_EQ_IMPL(tester, val, expected, msg)                       \
+  do {                                                                           \
+    decltype(expected) actual{};                                                  \
+    if (!execute_ret_equals(tester, val, expected, actual)) {                     \
+      FAIL()                                                                      \
+          << "\033[1;31mExecute mismatch\033[0m"                                  \
+          << "\n  \033[33minput:    \033[0m" << val                               \
+          << "\n  \033[32mexpected: \033[0m" << expected                          \
           << "\n  \033[31mactual:   \033[0m" << actual                            \
-          << "\n\033[1;36mGenerated code:\033[0m\n"                             \
-          << tester.dump_to_hex_string(true) << "\n";                                          \
+          << "\n  \033[36mcontext:  \033[0m" << msg                               \
+          << "\n\033[1;36mGenerated code:\033[0m\n"                               \
+          << tester.dump_to_hex_string(true) << "\n";                             \
     }                                                                              \
   } while (0)
 // clang-format on

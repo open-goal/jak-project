@@ -2165,11 +2165,11 @@ InstructionARM64 or_gpr64_gpr64(Register dst, Register src) {
 }
 
 InstructionARM64 and_gpr64_gpr64(Register dst, Register src) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/add_addsub_shift.html
-  // ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+  // https://www.scs.stanford.edu/~zyedidia/arm64/and_log_shift.html
+  // AND <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
   ASSERT(dst.is_gpr(instr_set));
   ASSERT(src.is_gpr(instr_set));
-  return InstructionARM64(Base(0b10001011000, 11), Rd(dst.id()), Rn(dst.id()), Rm(src.id()));
+  return InstructionARM64(Base(0b10001010000, 11), Rd(dst.id()), Rn(dst.id()), Rm(src.id()));
 }
 
 InstructionARM64 xor_gpr64_gpr64(Register dst, Register src) {
