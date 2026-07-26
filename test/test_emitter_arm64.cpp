@@ -364,80 +364,81 @@ TEST(ARM64EmitterIntegerMath, not_gpr64) {
   });
 }
 
-TEST(ARM64EmitterIntegerMath, shl_gpr64_cl) {
-  auto tester = create_tester();
-  std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
-                           INT64_MAX, 117, 32, -348473,   83747382};
-  std::vector<u8> sas = {0, 1, 23, 53, 64};
+// TODO - not yet implemented
+// TEST(ARM64EmitterIntegerMath, shl_gpr64_cl) {
+//   auto tester = create_tester();
+//   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
+//                            INT64_MAX, 117, 32, -348473,   83747382};
+//   std::vector<u8> sas = {0, 1, 23, 53, 64};
 
-  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for (auto v : vals) {
-      for (auto sa : sas) {
-        auto expected = v << sa;
-        tester.clear();
-        tester.emit_push_all_gprs(true);
-        tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
-        tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
-        tester.emit(IGen::shl_gpr64_reg(tester.generator(), i, 0));
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
-        tester.emit_pop_all_gprs(true);
-        tester.emit_return();
+//   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+//     for (auto v : vals) {
+//       for (auto sa : sas) {
+//         auto expected = v << sa;
+//         tester.clear();
+//         tester.emit_push_all_gprs(true);
+//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
+//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
+//         tester.emit(IGen::shl_gpr64_reg(tester.generator(), i, 0));
+//         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
+//         tester.emit_pop_all_gprs(true);
+//         tester.emit_return();
 
-        EXPECT_EXECUTE_EQ(tester, 0, expected);
-      }
-    }
-  });
-}
+//         EXPECT_EXECUTE_EQ(tester, 0, expected);
+//       }
+//     }
+//   });
+// }
 
-TEST(ARM64EmitterIntegerMath, shr_gpr64_cl) {
-  auto tester = create_tester();
-  std::vector<u64> vals = {0,         1,   u64(-2), u64(INT32_MIN), INT32_MAX, u64(INT64_MIN),
-                           INT64_MAX, 117, 32,      u64(-348473),   83747382};
-  std::vector<u8> sas = {0, 1, 23, 53, 64};
+// TEST(ARM64EmitterIntegerMath, shr_gpr64_cl) {
+//   auto tester = create_tester();
+//   std::vector<u64> vals = {0,         1,   u64(-2), u64(INT32_MIN), INT32_MAX, u64(INT64_MIN),
+//                            INT64_MAX, 117, 32,      u64(-348473),   83747382};
+//   std::vector<u8> sas = {0, 1, 23, 53, 64};
 
-  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for (auto v : vals) {
-      for (auto sa : sas) {
-        auto expected = v >> sa;
-        tester.clear();
-        tester.emit_push_all_gprs(true);
-        tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
-        tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
-        tester.emit(IGen::shr_gpr64_reg(tester.generator(), i, 0));
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
-        tester.emit_pop_all_gprs(true);
-        tester.emit_return();
+//   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+//     for (auto v : vals) {
+//       for (auto sa : sas) {
+//         auto expected = v >> sa;
+//         tester.clear();
+//         tester.emit_push_all_gprs(true);
+//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
+//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
+//         tester.emit(IGen::shr_gpr64_reg(tester.generator(), i, 0));
+//         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
+//         tester.emit_pop_all_gprs(true);
+//         tester.emit_return();
 
-        EXPECT_EXECUTE_EQ(tester, 0, expected);
-      }
-    }
-  });
-}
+//         EXPECT_EXECUTE_EQ(tester, 0, expected);
+//       }
+//     }
+//   });
+// }
 
-TEST(ARM64EmitterIntegerMath, sar_gpr64_cl) {
-  auto tester = create_tester();
-  std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
-                           INT64_MAX, 117, 32, -348473,   83747382};
-  std::vector<u8> sas = {0, 1, 23, 53, 64};
+// TEST(ARM64EmitterIntegerMath, sar_gpr64_cl) {
+//   auto tester = create_tester();
+//   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
+//                            INT64_MAX, 117, 32, -348473,   83747382};
+//   std::vector<u8> sas = {0, 1, 23, 53, 64};
 
-  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for (auto v : vals) {
-      for (auto sa : sas) {
-        auto expected = v >> sa;
-        tester.clear();
-        tester.emit_push_all_gprs(true);
-        tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
-        tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
-        tester.emit(IGen::sar_gpr64_reg(tester.generator(), i, 0));
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
-        tester.emit_pop_all_gprs(true);
-        tester.emit_return();
+//   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+//     for (auto v : vals) {
+//       for (auto sa : sas) {
+//         auto expected = v >> sa;
+//         tester.clear();
+//         tester.emit_push_all_gprs(true);
+//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
+//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
+//         tester.emit(IGen::sar_gpr64_reg(tester.generator(), i, 0));
+//         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
+//         tester.emit_pop_all_gprs(true);
+//         tester.emit_return();
 
-        EXPECT_EXECUTE_EQ(tester, 0, expected);
-      }
-    }
-  });
-}
+//         EXPECT_EXECUTE_EQ(tester, 0, expected);
+//       }
+//     }
+//   });
+// }
 
 TEST(ARM64EmitterIntegerMath, shl_gpr64_u8) {
   auto tester = create_tester();

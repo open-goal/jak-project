@@ -24,6 +24,9 @@
 #include "CodeTester.h"
 #include "IGen.h"
 
+// TODO - cleanup this import...
+#include "third-party/capstone/include/capstone/capstone.h"
+
 namespace emitter {
 
 CodeTester::CodeTester() : m_info(RegisterInfo::make_register_info()), m_gen(GameVersion::Jak1) {}
@@ -50,6 +53,103 @@ std::string CodeTester::dump_to_hex_string(bool nospace) {
   // remove trailing space
   if (!nospace && !result.empty()) {
     result.pop_back();
+  }
+  return result;
+}
+
+static constexpr int kFirstSavedGpr = 1;
+
+static std::optional<size_t> match_push_gprs(const std::vector<CodeTester::DisasmLine>& lines,
+                                             int last_gpr,
+                                             size_t start) {
+  const int count = last_gpr - kFirstSavedGpr + 1;
+
+  if (start + count > lines.size()) {
+    return std::nullopt;
+  }
+
+  for (int i = 0; i < count; i++) {
+    int reg = kFirstSavedGpr + i;
+
+    std::string expected = "str\tx" + std::to_string(reg) + ", [sp, #-0x10]!";
+
+    if (lines[start + i].text != expected) {
+      return std::nullopt;
+    }
+  }
+
+  return static_cast<size_t>(count);
+}
+
+static std::optional<size_t> match_pop_gprs(const std::vector<CodeTester::DisasmLine>& lines,
+                                            int last_gpr,
+                                            size_t start) {
+  const int count = last_gpr - kFirstSavedGpr + 1;
+
+  if (start + count > lines.size()) {
+    return std::nullopt;
+  }
+
+  for (int i = 0; i < count; i++) {
+    int reg = last_gpr - i;
+
+    std::string expected = "ldr\tx" + std::to_string(reg) + ", [sp], #0x10";
+
+    if (lines[start + i].text != expected) {
+      return std::nullopt;
+    }
+  }
+
+  return static_cast<size_t>(count);
+}
+
+std::vector<CodeTester::DisasmLine> CodeTester::disassemble() {
+  std::vector<DisasmLine> result;
+
+  csh handle;
+  if (cs_open(CS_ARCH_AARCH64, CS_MODE_ARM, &handle) != CS_ERR_OK) {
+    return result;
+  }
+
+  cs_insn* insn = nullptr;
+  size_t count = cs_disasm(handle, code_buffer, code_buffer_size, 0, 0, &insn);
+
+  for (size_t i = 0; i < count; i++) {
+    DisasmLine line;
+    line.address = insn[i].address;
+
+    // Keep only the mnemonic + operands for pattern matching
+    line.text = std::string(insn[i].mnemonic) + "\t" + insn[i].op_str;
+
+    result.push_back(std::move(line));
+  }
+
+  cs_free(insn, count);
+  cs_close(&handle);
+
+  return result;
+}
+
+std::string CodeTester::dump_to_asm_string() {
+  auto lines = disassemble();
+  // x31 is SP/ZR, not a GPR. The last real GPR is one before it.
+  const int last_gpr = get_reg_count() - 2;
+  std::string result;
+  for (size_t i = 0; i < lines.size();) {
+    if (auto count = match_push_gprs(lines, last_gpr, i)) {
+      result += "\033[2m<push all GPRs>\033[0m\n";
+      i += *count;
+      continue;
+    }
+    if (auto count = match_pop_gprs(lines, last_gpr, i)) {
+      result += "\033[2m<pop all GPRs>\033[0m\n";
+      i += *count;
+      continue;
+    }
+    char buff[128];
+    snprintf(buff, sizeof(buff), "%08llx:\t%s\n", lines[i].address, lines[i].text.c_str());
+    result += buff;
+    i++;
   }
   return result;
 }

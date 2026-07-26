@@ -333,6 +333,25 @@ endif()
 
 build_third_party_lib(zydis Zydis)
 
+# Capstone (zydis replacement eventually)
+option(CAPSTONE_ARCHITECTURE_DEFAULT "Capstone: Disable all by default" OFF)
+option(CAPSTONE_X86_SUPPORT "Capstone: x86 support" ON)
+option(CAPSTONE_ARM_SUPPORT "Capstone: ARM support" ON)
+option(CAPSTONE_AARCH64_SUPPORT "Capstone: ARM64 support" ON)
+
+if(STATICALLY_LINK)
+    message(STATUS "Statically linking capstone")
+    option(CAPSTONE_BUILD_SHARED_LIBS "Capstone: Build shared library" OFF)
+    option(CAPSTONE_BUILD_STATIC_LIBS "Capstone: Build static library" ON)
+else()
+    message(STATUS "dynamically linking capstone")
+    option(CAPSTONE_BUILD_SHARED_LIBS "Capstone: Build shared library" ON)
+    option(CAPSTONE_BUILD_STATIC_LIBS "Capstone: Build static library" OFF)
+endif()
+
+include_directories(third-party/capstone/include)
+build_third_party_lib(capstone capstone)
+
 # windows memory management lib
 if(WIN32)
     build_third_party_lib(mman mman)

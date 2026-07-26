@@ -35,6 +35,8 @@ bool execute_ret_equals(emitter::CodeTester& tester, u64 val, T expected, T& act
           << "\n  \033[31mactual:   \033[0m" << actual                            \
           << "\n  \033[36mcontext:  \033[0m" << msg                               \
           << "\n\033[1;36mGenerated code:\033[0m\n"                               \
+          << tester.dump_to_asm_string()                             \
+          << "\n\033[1;36mInstruction encoding:\033[0m\n"                               \
           << tester.dump_to_hex_string(true) << "\n";                             \
     }                                                                              \
   } while (0)

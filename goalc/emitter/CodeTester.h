@@ -35,9 +35,16 @@ class CodeTester {
   ObjectGenerator m_gen;
 
  public:
+  struct DisasmLine {
+    uint64_t address;
+    std::string text;
+  };
+
   CodeTester();
   CodeTester(InstructionSet instruction_set);
   std::string dump_to_hex_string(bool nospace = false);
+  std::vector<DisasmLine> disassemble();
+  std::string dump_to_asm_string();
   ObjectGenerator generator() const { return m_gen; }
   void init_code_buffer(int capacity);
   void emit_push_all_gprs(bool exclude_rax = false);
