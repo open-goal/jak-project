@@ -7,3 +7,81 @@
 
 ;; DECOMP BEGINS
 
+(deftype eco-perm (structure)
+  ((time          int32)
+   (owner         int8)
+   (hit-by-local  int8)
+   (flags         uint64)
+   )
+  )
+
+
+(deftype eco (process-drawable)
+  ()
+  (:methods
+    (eco-method-50 () none)
+    (eco-method-51 () none)
+    (eco-method-52 () none)
+    (eco-method-53 () none)
+    (eco-method-54 () none)
+    (eco-method-55 () none)
+    )
+  )
+
+
+(deftype eco-mgr (process-nettable)
+  ()
+  (:methods
+    (eco-mgr-method-42 () none)
+    (eco-mgr-method-43 () none)
+    (eco-mgr-method-44 () none)
+    (eco-mgr-method-45 () none)
+    (eco-mgr-method-46 () none)
+    (eco-mgr-method-47 () none)
+    (eco-mgr-method-48 () none)
+    (eco-mgr-method-49 () none)
+    (eco-mgr-method-50 () none)
+    )
+  )
+
+
+(defbehavior eco-mgr-init-remote eco-mgr ((arg0 process))
+  (process-nettable-method-34 self -1 (new 'static 'rgba :r #xff :g #xff))
+  (process-nettable-method-35 self (the-as int arg0))
+  (process-nettable-method-36 self)
+  0
+  (none)
+  )
+
+(defmethod process-nettable-method-41 ((this eco-mgr) (arg0 int))
+  (ppointer->process (process-spawn eco-mgr :init eco-mgr-init-remote arg0 :name "eco-mgr"))
+  )
+
+(defmethod process-nettable-method-37 ((this eco-mgr) (arg0 net-process-class-info))
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'req-owner)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'set-owner)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'collected)
+  (+! (-> arg0 msg-count) 1)
+  (set! (-> arg0 msg-map (-> arg0 msg-count)) 'respawn)
+  (+! (-> arg0 msg-count) 1)
+  0
+  (none)
+  )
+
+(define *msg-map-eco-mgr* (new 'static 'boxed-array :type symbol :length 0 :allocated-length 64))
+
+(define *net-process-class-info-eco-mgr* (new 'static 'net-process-class-info))
+
+(set! (-> *net-process-class-info-eco-mgr* msg-map) *msg-map-eco-mgr*)
+
+(write-msg-map-rec eco-mgr *net-process-class-info-eco-mgr*)
+
+(set! (-> *net-process-class-info-eco-mgr* owner-type) eco-mgr)
+
+(net-process-class-register *net-process-class-info-eco-mgr*)
+
+(defmethod process-nettable-method-40 ((this eco-mgr))
+  *net-process-class-info-eco-mgr*
+  )
