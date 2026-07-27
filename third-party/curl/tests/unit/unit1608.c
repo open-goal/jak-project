@@ -21,48 +21,41 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
-
-#include "hostip.h"
+#include "unitcheck.h"
 
 #ifndef CURL_DISABLE_SHUFFLE_DNS
+#include "urldata.h"
+#include "curl_addrinfo.h"
 
-CURLcode Curl_shuffle_addr(struct Curl_easy *data,
-                           struct Curl_addrinfo **addr);
+static struct Curl_addrinfo addrs[8];
 
-#define NUM_ADDRS 8
-static struct Curl_addrinfo addrs[NUM_ADDRS];
-
-static CURLcode unit_setup(void)
+static CURLcode t1608_setup(void)
 {
-  int i;
-  for(i = 0; i < NUM_ADDRS - 1; i++) {
+  size_t i;
+  for(i = 0; i < CURL_ARRAYSIZE(addrs) - 1; i++) {
     addrs[i].ai_next = &addrs[i + 1];
   }
 
   return CURLE_OK;
 }
 
-static void unit_stop(void)
+static CURLcode test_unit1608(const char *arg)
 {
-  curl_global_cleanup();
-}
-
-UNITTEST_START
+  UNITTEST_BEGIN(t1608_setup())
 
   int i;
-  CURLcode code;
+  CURLcode result;
   struct Curl_addrinfo *addrhead = addrs;
 
   struct Curl_easy *easy = curl_easy_init();
   abort_unless(easy, "out of memory");
 
-  code = curl_easy_setopt(easy, CURLOPT_DNS_SHUFFLE_ADDRESSES, 1L);
-  abort_unless(code == CURLE_OK, "curl_easy_setopt failed");
+  result = curl_easy_setopt(easy, CURLOPT_DNS_SHUFFLE_ADDRESSES, 1L);
+  abort_unless(result == CURLE_OK, "curl_easy_setopt failed");
 
   /* Shuffle repeatedly and make sure that the list changes */
   for(i = 0; i < 10; i++) {
-    if(CURLE_OK != Curl_shuffle_addr(easy, &addrhead))
+    if(CURLE_OK != dns_shuffle_addr(easy, &addrhead))
       break;
     if(addrhead != addrs)
       break;
@@ -73,17 +66,15 @@ UNITTEST_START
 
   abort_unless(addrhead != addrs, "addresses are not being reordered");
 
-UNITTEST_STOP
+  UNITTEST_END(curl_global_cleanup())
+}
 
 #else
-static CURLcode unit_setup(void)
+
+static CURLcode test_unit1608(const char *arg)
 {
-  return CURLE_OK;
+  UNITTEST_BEGIN_SIMPLE
+  UNITTEST_END_SIMPLE
 }
-static void unit_stop(void)
-{
-}
-UNITTEST_START
-UNITTEST_STOP
 
 #endif

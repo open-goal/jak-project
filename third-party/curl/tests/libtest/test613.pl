@@ -22,12 +22,14 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
+use strict;
+use warnings;
+
 # Prepare a directory with known files and clean up afterwards
 use Time::Local;
 
-if ( $#ARGV < 1 )
-{
-    print "Usage: $0 prepare|postprocess dir [logfile]\n";
+if($#ARGV < 1) {
+    print "Usage: $0 prepare|postprocess directory [logfile]\n";
     exit 1;
 }
 
@@ -37,51 +39,72 @@ sub errout {
     exit 1;
 }
 
-if ($ARGV[0] eq "prepare")
-{
+if($ARGV[0] eq "prepare") {
     my $dirname = $ARGV[1];
-    mkdir $dirname || errout "$!";
+    mkdir $dirname or errout "$!";
     chdir $dirname;
 
     # Create the files in alphabetical order, to increase the chances
     # of receiving a consistent set of directory contents regardless
     # of whether the server alphabetizes the results or not.
-    mkdir "asubdir" || errout "$!";
+    mkdir "asubdir" or errout "$!";
     chmod 0777, "asubdir";
 
-    open(FILE, ">plainfile.txt") || errout "$!";
+    open(FILE, ">plainfile.txt") or errout "$!";
     binmode FILE;
     print FILE "Test file to support curl test suite\n";
     close(FILE);
     # The mtime is specifically chosen to be an even number so that it can be
-    # represented exactly on a FAT filesystem.
+    # represented exactly on a FAT file system.
     utime time, timegm(0,0,12,1,0,100), "plainfile.txt";
     chmod 0666, "plainfile.txt";
 
-    open(FILE, ">rofile.txt") || errout "$!";
+    open(FILE, ">emptyfile.txt") or errout "$!";
+    binmode FILE;
+    close(FILE);
+    # The mtime is specifically chosen to be an even number so that it can be
+    # represented exactly on a FAT file system.
+    utime time, timegm(0,0,12,1,0,100), "emptyfile.txt";
+    chmod 0666, "emptyfile.txt";
+
+    open(FILE, ">rofile.txt") or errout "$!";
     binmode FILE;
     print FILE "Read-only test file to support curl test suite\n";
     close(FILE);
     # The mtime is specifically chosen to be an even number so that it can be
-    # represented exactly on a FAT filesystem.
+    # represented exactly on a FAT file system.
     utime time, timegm(0,0,12,31,11,100), "rofile.txt";
     chmod 0444, "rofile.txt";
+    if($^O eq 'cygwin') {
+      system('chattr', ('+r', 'rofile.txt'));
+    }
 
     exit 0;
 }
-elsif ($ARGV[0] eq "postprocess")
-{
+elsif($ARGV[0] eq "postprocess") {
     my $dirname = $ARGV[1];
-    my $logfile = $ARGV[2];
 
     # Clean up the test directory
+    if($^O eq 'cygwin') {
+      system('chattr', ('-r', "$dirname/rofile.txt"));
+    }
+    chmod 0666, "$dirname/rofile.txt";
     unlink "$dirname/rofile.txt";
+    unlink "$dirname/emptyfile.txt";
     unlink "$dirname/plainfile.txt";
     rmdir "$dirname/asubdir";
 
-    rmdir $dirname || die "$!";
+    rmdir $dirname or die "$!";
 
-    if ($logfile) {
+    if($#ARGV >= 3) {  # Verify mtime if requested
+        my $checkfile = $ARGV[2];
+        my $expected_mtime = int($ARGV[3]);
+        my $mtime = (stat($checkfile))[9];
+        exit ($mtime != $expected_mtime);
+    }
+
+    my $logfile = $ARGV[2];
+    if($logfile && -s $logfile) {
         # Process the directory file to remove all information that
         # could be inconsistent from one test run to the next (e.g.
         # file date) or may be unsupported on some platforms (e.g.
@@ -97,42 +120,35 @@ elsif ($ARGV[0] eq "postprocess")
         # -r-?r-?r-?   12 U         U              47 Dec 31  2000 rofile.txt
 
         my @canondir;
-        open(IN, "<$logfile") || die "$!";
-        while (<IN>) {
+        open(IN, "<$logfile") or die "$!";
+        while(<IN>) {
             /^(.)(..).(..).(..).\s*(\S+)\s+\S+\s+\S+\s+(\S+)\s+(\S+\s+\S+\s+\S+)\s+(.*)$/;
-            if ($1 eq "d") {
+            if($1 eq "d") {
                 # Skip current and parent directory listing, because some SSH
                 # servers (eg. OpenSSH for Windows) are not listing those
-                if ($8 eq "." || $8 eq "..") {
+                if($8 eq "." || $8 eq "..") {
                     next;
                 }
                 # Erase all directory metadata except for the name, as it is not
-                # consistent for across all test systems and filesystems
+                # consistent for across all test systems and file systems
                 push @canondir, "d?????????    N U         U               N ???  N NN:NN $8\n";
-            } elsif ($1 eq "-") {
-                # Replace missing group and other permissions with user
-                # permissions (eg. on Windows) due to them being shown as *
-                my ($u, $g, $o) = ($2, $3, $4);
-                if($g eq "**") {
-                    $g = $u;
-                }
-                if($o eq "**") {
-                    $o = $u;
-                }
+            } elsif($1 eq "-") {
+                # Ignore group and other permissions, because these may vary on
+                # some systems (e.g. on Windows)
                 # Erase user and group names, as they are not consistent across
                 # all test systems
-                my $line = sprintf("%s%s?%s?%s?%5d U         U %15d %s %s\n", $1,$u,$g,$o,$5,$6,$7,$8);
+                my $line = sprintf("%s%s???????%5d U         U %15d %s %s\n", $1,$2,$5,$6,$7,$8);
                 push @canondir, $line;
             } else {
-                # Unexpected format; just pass it through and let the test fail
+                # Unexpected format; pass it through and let the test fail
                 push @canondir, $_;
             }
         }
         close(IN);
 
-        @canondir = sort {substr($a,57) cmp substr($b,57)} @canondir;
+        @canondir = sort {substr($a, 57) cmp substr($b, 57)} @canondir;
         my $newfile = $logfile . ".new";
-        open(OUT, ">$newfile") || die "$!";
+        open(OUT, ">$newfile") or die "$!";
         print OUT join('', @canondir);
         close(OUT);
 

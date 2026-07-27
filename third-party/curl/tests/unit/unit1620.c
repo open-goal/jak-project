@@ -21,73 +21,120 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "curlcheck.h"
-
+#include "unitcheck.h"
 #include "urldata.h"
 #include "url.h"
 
-#include "memdebug.h" /* LAST include file */
-
-static CURLcode unit_setup(void)
+static CURLcode t1620_setup(void)
 {
-  CURLcode res = CURLE_OK;
+  CURLcode result = CURLE_OK;
   global_init(CURL_GLOBAL_ALL);
-  return res;
+  return result;
 }
 
-static void unit_stop(void)
+static void t1620_parse(const char *input,
+                        const char *exp_username,
+                        const char *exp_password,
+                        const char *exp_options)
 {
-  curl_global_cleanup();
+  char *userstr = NULL;
+  char *passwdstr = NULL;
+  char *options = NULL;
+  CURLcode result = Curl_parse_login_details(input, strlen(input), &userstr,
+                                             &passwdstr, &options);
+  fail_unless(result == CURLE_OK, "Curl_parse_login_details() failed");
+
+  fail_unless(!!exp_username == !!userstr, "username expectation failed");
+  fail_unless(!!exp_password == !!passwdstr, "password expectation failed");
+  fail_unless(!!exp_options == !!options, "options expectation failed");
+
+  if(!unitfail) {
+    fail_unless(!userstr || !exp_username ||
+                !strcmp(userstr, exp_username),
+                "userstr should be equal to exp_username");
+    fail_unless(!passwdstr || !exp_password ||
+                !strcmp(passwdstr, exp_password),
+                "passwdstr should be equal to exp_password");
+    fail_unless(!options || !exp_options ||
+                !strcmp(options, exp_options),
+                "options should be equal to exp_options");
+  }
+
+  curlx_free(userstr);
+  curlx_free(passwdstr);
+  curlx_free(options);
 }
 
-UNITTEST_START
+static CURLcode test_unit1620(const char *arg)
 {
-  int rc;
+  UNITTEST_BEGIN(t1620_setup())
+
+  CURLcode result;
   struct Curl_easy *empty;
-  const char *hostname = "hostname";
+  struct Curl_easy *dupe = NULL;
   enum dupstring i;
+  bool connected = FALSE;
 
-  bool async = FALSE;
-  bool protocol_connect = FALSE;
-
-  rc = Curl_open(&empty);
-  if(rc)
+  result = Curl_open(&empty);
+  if(result)
     goto unit_test_abort;
-  fail_unless(rc == CURLE_OK, "Curl_open() failed");
+  fail_unless(result == CURLE_OK, "Curl_open() failed");
 
-  rc = Curl_connect(empty, &async, &protocol_connect);
-  fail_unless(rc == CURLE_URL_MALFORMAT,
+  result = Curl_connect(empty, &connected);
+  fail_unless(result == CURLE_URL_MALFORMAT,
               "Curl_connect() failed to return CURLE_URL_MALFORMAT");
 
   fail_unless(empty->magic == CURLEASY_MAGIC_NUMBER,
               "empty->magic should be equal to CURLEASY_MAGIC_NUMBER");
 
   /* double invoke to ensure no dependency on internal state */
-  rc = Curl_connect(empty, &async, &protocol_connect);
-  fail_unless(rc == CURLE_URL_MALFORMAT,
+  result = Curl_connect(empty, &connected);
+  fail_unless(result == CURLE_URL_MALFORMAT,
               "Curl_connect() failed to return CURLE_URL_MALFORMAT");
 
-  rc = Curl_init_userdefined(empty);
-  fail_unless(rc == CURLE_OK, "Curl_userdefined() failed");
+  result = Curl_init_do(empty, empty->conn);
+  fail_unless(result == CURLE_OK, "Curl_init_do() failed");
 
-  rc = Curl_init_do(empty, empty->conn);
-  fail_unless(rc == CURLE_OK, "Curl_init_do() failed");
+  result = curl_easy_setopt((CURL *)empty, CURLOPT_NOBODY, 1L);
+  fail_unless(result == CURLE_OK, "curl_easy_setopt(CURLOPT_NOBODY) failed");
 
-  rc = Curl_parse_login_details(
-                          hostname, strlen(hostname), NULL, NULL, NULL);
-  fail_unless(rc == CURLE_OK,
-              "Curl_parse_login_details() failed");
+  dupe = (struct Curl_easy *)curl_easy_duphandle((CURL *)empty);
+  if(!dupe)
+    Curl_close(&empty);
+  abort_unless(dupe, "curl_easy_duphandle() failed");
+
+  result = Curl_init_do(dupe, NULL);
+  fail_unless(result == CURLE_OK, "Curl_init_do() on duplicate failed");
+  fail_unless(dupe->req.no_body, "duplicate handle should keep no_body");
+  fail_unless(dupe->state.httpreq == HTTPREQ_HEAD,
+              "duplicate handle should use HTTPREQ_HEAD");
+
+  t1620_parse("hostname", "hostname", NULL, NULL);
+  t1620_parse("user:password", "user", "password", NULL);
+  t1620_parse("user:password;options", "user", "password", "options");
+  t1620_parse("user:password;options;more", "user", "password",
+              "options;more");
+  t1620_parse("", "", NULL, NULL);
+  t1620_parse(":", "", "", NULL);
+  t1620_parse(":;", "", "", NULL);
+  t1620_parse(":password", "", "password", NULL);
+  t1620_parse(":password;", "", "password", NULL);
+  t1620_parse(";options", "", NULL, "options");
+  t1620_parse("user;options", "user", NULL, "options");
+  t1620_parse("user:;options", "user", "", "options");
+  t1620_parse("user;options:password", "user", "password", "options");
+  t1620_parse("user;options:", "user", "", "options");
 
   Curl_freeset(empty);
   for(i = (enum dupstring)0; i < STRING_LAST; i++) {
-    fail_unless(empty->set.str[i] == NULL,
-                "Curl_free() did not set to NULL");
+    fail_unless(!empty->set.str[i], "Curl_free() did not set to NULL");
   }
 
-  Curl_free_request_state(empty);
+  result = Curl_close(&dupe);
+  fail_unless(result == CURLE_OK, "Curl_close() failed for duplicate");
 
-  rc = Curl_close(&empty);
-  fail_unless(rc == CURLE_OK, "Curl_close() failed");
+  result = Curl_close(&empty);
+  fail_unless(result == CURLE_OK, "Curl_close() failed");
 
+  UNITTEST_END(curl_global_cleanup())
 }
-UNITTEST_STOP
