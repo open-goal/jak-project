@@ -2,7 +2,7 @@
 #
 # zz50-xc-ovr.m4
 #
-# Copyright (C), Daniel Stenberg <daniel@haxx.se>
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>
 #
 # Permission to use, copy, modify, and distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -20,7 +20,7 @@
 #
 #---------------------------------------------------------------------------
 
-# serial 1
+dnl serial 1
 
 
 dnl The funny name of this file is intentional in order to make it
@@ -35,7 +35,7 @@ dnl -------------------------------------------------
 dnl This is done to prevent Libtool 1.5.X from doing
 dnl unnecessary C++, Fortran and Java tests when only
 dnl using C language and reduce resulting configure
-dnl script by nearly 300 Kb.
+dnl script by nearly 300 KB.
 
 m4_ifdef([AC_LIBTOOL_LANG_CXX_CONFIG],
   [m4_undefine([AC_LIBTOOL_LANG_CXX_CONFIG])])
@@ -52,8 +52,8 @@ m4_define([AC_LIBTOOL_LANG_GCJ_CONFIG],[:])
 
 dnl XC_OVR_ZZ50
 dnl -------------------------------------------------
-dnl Placing a call to this macro in configure.ac will
-dnl make macros in this file visible to other macros
+dnl Placing a call to this macro in configure.ac
+dnl makes macros in this file visible to other macros
 dnl used for same configure script, overriding those
 dnl provided elsewhere.
 
