@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/listener_common.h"
 #include "common/versions/versions.h"
 
 #include "third-party/json.hpp"
@@ -34,6 +35,8 @@ struct Config {
   // this is the default REPL configuration
   int nrepl_port = 8181;
   int temp_nrepl_port = -1;
+  int debug_port = -1;
+  int temp_debug_port = -1;
   std::string game_version_folder;
   int target_connect_attempts = 30;
   std::vector<std::string> asm_file_search_dirs = {};
@@ -56,6 +59,16 @@ struct Config {
       return temp_nrepl_port;
     }
     return nrepl_port;
+  }
+
+  int get_debug_port() {
+    if (temp_debug_port != -1) {
+      return temp_debug_port;
+    }
+    if (debug_port != -1) {
+      return debug_port;
+    }
+    return DEBUG_SERVER_PORT - 1 + (int)game_version;
   }
 };
 void to_json(json& j, const Config& obj);
