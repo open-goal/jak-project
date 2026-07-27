@@ -97,7 +97,7 @@ struct LiveVariable {
   u32 stack_addr = 0;  //! GOAL address of the value, when spilled to the stack
 };
 
-enum class StepKind { OVER, INTO, OUT };
+enum class StepKind { OVER, INTO, OUT_OF };
 
 class Debugger {
  public:

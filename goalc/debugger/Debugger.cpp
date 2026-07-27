@@ -1796,7 +1796,7 @@ bool Debugger::do_step(StepKind kind) {
   m_suppress_stop_reporting = true;
   bool ok = true;
 
-  if (kind == StepKind::OUT) {
+  if (kind == StepKind::OUT_OF) {
     auto ret = get_return_address_of_current_frame();
     if (ret && *ret > m_debug_context.base) {
       ok = run_to_addr(u32(*ret - m_debug_context.base));

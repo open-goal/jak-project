@@ -479,7 +479,7 @@ json DebugServer::cmd_step(const json& args) {
   if (kind_str == "in") {
     kind = StepKind::INTO;
   } else if (kind_str == "out") {
-    kind = StepKind::OUT;
+    kind = StepKind::OUT_OF;
   }
 
   clear_inspect_handles();
