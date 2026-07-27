@@ -281,9 +281,10 @@ void add_regions_from_json(const nlohmann::json& json,
                 ->car;
       }
       if (region_json.find("on-exit") != region_json.end()) {
-        region.on_exit = reader.read_from_string(region_json.at("on-exit").get<std::string>(), false)
-                             .as_pair()
-                             ->car;
+        region.on_exit =
+            reader.read_from_string(region_json.at("on-exit").get<std::string>(), false)
+                .as_pair()
+                ->car;
       }
       lg::print(region.print());
     } else {
