@@ -613,7 +613,7 @@ bool write_goal_memory(const u8* src_buffer,
                        const DebugContext& context,
                        const MemoryHandle& mem) {
   SIZE_T written;
-  HANDLE hProc = OpenProcess(PROCESS_VM_WRITE, FALSE, context.tid.pid);
+  HANDLE hProc = OpenProcess(PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, context.tid.pid);
 
   if (hProc == NULL) {
     win_print_last_error("OpenProcess write_goal_memory");
