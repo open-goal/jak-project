@@ -2223,7 +2223,7 @@ InstructionARM64 sar_gpr64_reg(Register reg, Register shift_reg) {
 InstructionARM64 shl_gpr64_u8(Register reg, uint8_t sa) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/lsl_ubfm.html
   // LSL <Xd>, <Xn>, #<shift>
-  ASSERT(sa < 63);
+  sa &= 63;
   ASSERT(reg.is_gpr(instr_set));
   return InstructionARM64(Base(0b1101001101, 10), Rd(reg.id()), Rn(reg.id()), Immr((64 - sa) & 63),
                           Imms(63 - sa));
@@ -2233,7 +2233,7 @@ InstructionARM64 shr_gpr64_u8(Register reg, uint8_t sa) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/lsr_ubfm.html
   // LSR <Xd>, <Xn>, #<shift>
   // sf	1	0	1	0	0	1	1	0	N
-  ASSERT(sa < 63);
+  sa &= 63;
   ASSERT(reg.is_gpr(instr_set));
   return InstructionARM64(Base(0b1101001101000000111111, 22), Rd(reg.id()), Rn(reg.id()), Immr(sa));
 }
@@ -2241,7 +2241,7 @@ InstructionARM64 shr_gpr64_u8(Register reg, uint8_t sa) {
 InstructionARM64 sar_gpr64_u8(Register reg, uint8_t sa) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/asr_sbfm.html
   // ASR <Xd>, <Xn>, #<shift>
-  ASSERT(sa < 63);
+  sa &= 63;
   ASSERT(reg.is_gpr(instr_set));
   return InstructionARM64(Base(0b1001001101000000111111, 22), Rd(reg.id()), Rn(reg.id()), Immr(sa));
 }
