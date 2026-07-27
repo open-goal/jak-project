@@ -5,8 +5,8 @@
 
 #include "common/cross_sockets/XSocket.h"
 #include "common/goal_constants.h"
-#include "common/util/math_util.h"
 #include "common/log/log.h"
+#include "common/util/math_util.h"
 #include "common/versions/versions.h"
 
 #include "goalc/compiler/Compiler.h"
