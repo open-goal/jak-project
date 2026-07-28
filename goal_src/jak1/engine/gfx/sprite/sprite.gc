@@ -190,8 +190,8 @@
 (defun sprite-setup-frame-data ((data sprite-frame-data) (tbp-offset int))
   "Build the VU1 sprite constants for this frame: GIF tags, texture state, sine and cosine
    coefficients, camera scales, unit-quad templates, perspective correction, color, and fog."
-  (set! (-> data hmge-scale quad) (-> *math-camera* hmge-scale quad))
-  (set! (-> data inv-hmge-scale quad) (-> *math-camera* inv-hmge-scale quad))
+  (vector-copy! (-> data hmge-scale) (-> *math-camera* hmge-scale))
+  (vector-copy! (-> data inv-hmge-scale) (-> *math-camera* inv-hmge-scale))
   (set! (-> data pfog0) (-> *math-camera* pfog0))
   (set! (-> data deg-to-rad) 0.000095873795)
   ;; the adgif-giftag sets GS registers according to the adgif shader using
@@ -336,12 +336,12 @@
   (set! (-> data sincos-67 w) -0.0013636408)
   (set! (-> data sincos-89 w) 0.000020170546)
   ;; math camera stuff
-  (set! (-> data basis-x quad) (the-as uint128 0))
+  (vector-zero! (-> data basis-x))
   (set! (-> data basis-x x) (- (-> *math-camera* perspective vector 0 x)))
   (with-pc
     (when (pc-cheats? (-> *pc-settings* cheats) mirror)
       (*! (-> data basis-x x) -1.0)))
-  (set! (-> data basis-y quad) (the-as uint128 0))
+  (vector-zero! (-> data basis-y))
   (set! (-> data basis-y y) (- (-> *math-camera* perspective vector 1 y)))
   (set! (-> data min-scale) (sqrtf (* (/ 1.0 (-> data basis-x x)) (/ 1.0 (-> data basis-y y)))))
   (set! (-> data inv-area) (/ 1.0 (* (-> data min-scale) (-> data min-scale))))
@@ -493,16 +493,7 @@
                                      (new 'static 'vif-unpack-imm :addr vu-address)))
        ;; sent the camera-temp matrix
        ;; these weren't done through the usual macros which is strange
-       (let* ((mtx (the-as matrix (-> dma-buff base)))
-              (camera-matrix (-> *math-camera* camera-temp))
-              (camera-row-0 (-> camera-matrix vector 0 quad))
-              (camera-row-1 (-> camera-matrix vector 1 quad))
-              (camera-row-2 (-> camera-matrix vector 2 quad))
-              (camera-row-3 (-> camera-matrix vector 3 quad)))
-         (set! (-> mtx vector 0 quad) camera-row-0)
-         (set! (-> mtx vector 1 quad) camera-row-1)
-         (set! (-> mtx vector 2 quad) camera-row-2)
-         (set! (-> mtx vector 3 quad) camera-row-3))
+       (matrix-copy! (the-as matrix (-> dma-buff base)) (-> *math-camera* camera-temp))
        (&+! (-> dma-buff base) 64)
        ;; The fifth quadword is the camera's homogeneous divide and fog offset.
        (let ((v1-1 (+ vu-address 4)))
@@ -544,7 +535,7 @@
        (&+! (-> dma-buff base) 64)
        (let ((v1-2 (+ vu-address 4)))
          (let ((screen-offset (the-as vector (-> dma-buff base))))
-           (set! (-> screen-offset quad) (-> *math-camera* hvdf-off quad))
+           (vector-copy! screen-offset (-> *math-camera* hvdf-off))
            (set! (-> screen-offset x) 2048.0)
            (set! (-> screen-offset y) 2048.0)
            (set! (-> screen-offset z) (-> *math-camera* hvdf-off z)))

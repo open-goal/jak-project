@@ -24,7 +24,7 @@
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (set! (-> self saved-pt quad) (-> self trans quad))
+        (vector-copy! (-> self saved-pt) (-> self trans))
         (set! (-> self blend-from-type) (the-as uint 1))
         (set! (-> self blend-to-type) (the-as uint 0))
         0))
@@ -33,7 +33,7 @@
       (loop
         (when (not (paused?))
           (let ((curve-forward (new 'stack-no-clear 'vector)))
-            (set! (-> self trans quad) (-> self saved-pt quad))
+            (vector-copy! (-> self trans) (-> self saved-pt))
             (cam-curve-pos (-> self trans) curve-forward (the-as curve #f) #f)
             (when (!= (-> curve-forward w) 0.0)
               (vector-normalize! curve-forward (the-as float 1.0))
@@ -92,16 +92,9 @@
         (when (not (paused?))
           (vector<-cspace! (-> self trans)
                            (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
-          (let* ((tracking (-> self tracking))
-                 (bone-transform (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
-                 (row-0 (-> bone-transform vector 0 quad))
-                 (row-1 (-> bone-transform vector 1 quad))
-                 (row-2 (-> bone-transform vector 2 quad))
-                 (row-3 (-> bone-transform vector 3 quad)))
-            (set! (-> tracking inv-mat vector 0 quad) row-0)
-            (set! (-> tracking inv-mat vector 1 quad) row-1)
-            (set! (-> tracking inv-mat vector 2 quad) row-2)
-            (set! (-> tracking inv-mat vector 3 quad) row-3))
+          (matrix-copy!
+            (-> self tracking inv-mat)
+            (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
           (vector-reset! (-> self tracking inv-mat vector 3)))
         (suspend))))
 
@@ -143,7 +136,7 @@
                       (cond
                         ((and (< (vector-vector-distance position previous-position) 40960.0)
                               (< (cos (the-as float 3640.889)) (vector-dot previous-forward forward)))
-                         (set! (-> self trans quad) (-> position quad))
+                         (vector-copy! (-> self trans) position)
                          (vector-negate! (the-as vector (-> self tracking)) (-> bone-transform vector 0))
                          (set! (-> self tracking inv-mat vector 1 quad) (-> bone-transform vector 1 quad))
                          (vector-negate! (-> self tracking inv-mat vector 2) (-> bone-transform vector 2))
@@ -153,8 +146,8 @@
                          (if first-valid-frame? (set! first-valid-frame? #f))
                          first-valid-frame?)
                         (else #t)))
-                (set! (-> previous-position quad) (-> position quad)))
-              (set! (-> previous-forward quad) (-> forward quad))))
+                (vector-copy! previous-position position))
+              (vector-copy! previous-forward forward)))
           (suspend)))))
 
 (defstate cam-pov-track (camera-slave)
@@ -463,7 +456,7 @@
          (vector-negate! (-> self saved-pt) (-> self spline-offset))
          (let ((spline-offset-data (res-lump-struct (-> self cam-entity) 'spline-offset structure :time (the-as float -1000000000.0))))
            (if spline-offset-data (vector+! (-> self spline-offset) (-> self spline-offset) (the-as vector spline-offset-data))))
-         (set! (-> self trans quad) (-> self saved-pt quad))
+         (vector-copy! (-> self trans) (-> self saved-pt))
          (cam-calc-follow! (-> self tracking) (-> self trans) #f)
          (set! (-> self spline-follow-dist) (cam-slave-get-float (-> self cam-entity) 'spline-follow-dist (the-as float 0.0)))
          (cond
@@ -503,7 +496,7 @@
         (when (not (paused?))
           (cam-calc-follow! (-> self tracking) (-> self trans) #t)
           (new 'stack 'curve)
-          (set! (-> self trans quad) (-> self saved-pt quad))
+          (vector-copy! (-> self trans) (-> self saved-pt))
           (cam-curve-pos (-> self trans) (the-as vector #f) (the-as curve #f) #t))
         (suspend))))
 
@@ -517,7 +510,7 @@
         (else (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
-      (if (not (-> self enter-has-run)) (set! (-> self saved-pt quad) (-> self trans quad))))
+      (if (not (-> self enter-has-run)) (vector-copy! (-> self saved-pt) (-> self trans))))
   :code
     (behavior ()
       (loop
@@ -558,16 +551,16 @@
             (vertical-speed (-> self velocity y)))
         (let ((horizontal-position (new 'stack-no-clear 'vector))
               (horizontal-velocity (new 'stack-no-clear 'vector)))
-          (set! (-> horizontal-position quad) (-> self trans quad))
+          (vector-copy! horizontal-position (-> self trans))
           (set! (-> horizontal-position y) 0.0)
-          (set! (-> horizontal-velocity quad) (-> self velocity quad))
+          (vector-copy! horizontal-velocity (-> self velocity))
           (set! (-> horizontal-velocity y) 0.0)
           (init! horizontal-seeker
                  horizontal-position
                  (the-as float 81.92)
                  (fmax 819.2 (vector-length horizontal-velocity))
                  (the-as float 0.75))
-          (set! (-> horizontal-seeker vel quad) (-> horizontal-velocity quad)))
+          (vector-copy! (-> horizontal-seeker vel) horizontal-velocity))
         (loop
           (when (not (paused?))
             (set! (-> horizontal-seeker target x) (-> (target-pos 0) x))
@@ -640,7 +633,7 @@
                              (* (fmin 1.0 (* approach-scale (-> *display* time-adjust-ratio))) (- (-> self max-angle-curr) angle))))
        (vector-matrix*! current-direction ideal-direction rotation))
       (else
-       (set! (-> current-direction quad) (-> ideal-direction quad))
+       (vector-copy! current-direction ideal-direction)
        (if (logtest? (-> self options) 2048) (set! (-> self max-angle-curr) angle)))))
   (vector-normalize! current-direction (-> self pivot-rad)))
 
@@ -669,7 +662,7 @@
 (defbehavior cam-circular-code camera-slave ()
   "Update the authored pivot, smoothly follow the target around it,
    constrain the camera to its orbit, and apply an optional position-driven focal pull."
-  (set! (-> self pivot-pt quad) (-> self saved-pt quad))
+  (vector-copy! (-> self pivot-pt) (-> self saved-pt))
   (cam-curve-pos (-> self pivot-pt) (the-as vector #f) (the-as curve #f) #f)
   (let ((target-from-pivot (new-stack-vector0)))
     (vector-! target-from-pivot (-> *camera* tpos-curr-adj) (-> self pivot-pt))
@@ -701,7 +694,7 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (('outro-done) (set! (-> self trans quad) (-> *camera-combiner* trans quad)) (cam-circular-position #f))
+        (('outro-done) (vector-copy! (-> self trans) (-> *camera-combiner* trans)) (cam-circular-position #f))
         (else (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
@@ -711,7 +704,7 @@
          (let ((authored-offset (new-stack-vector0)))
            (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
            (set! (-> self view-off-param) 1.0)
-           (set! (-> self circular-follow quad) (-> *camera* tpos-curr-adj quad))
+           (vector-copy! (-> self circular-follow) (-> *camera* tpos-curr-adj))
            (set! (-> self max-angle-offset) 0.0)
            (cond
              ((-> self cam-entity)
@@ -733,21 +726,21 @@
                        (lerp-clamp (-> self fov0) (-> self fov1) (point->parameter (-> self fov-index) (-> *camera* tpos-curr-adj)))))
                 (else (set! (-> self fov1) 0.0)))
               (cam-curve-setup (-> self saved-pt))
-              (set! (-> self pivot-pt quad) (-> self saved-pt quad))
+              (vector-copy! (-> self pivot-pt) (-> self saved-pt))
               (cam-curve-pos (-> self pivot-pt) (the-as vector #f) (the-as curve #f) #f))
              ((logtest? (-> self options) 128)
               (vector-! (-> self pivot-pt) (-> *camera* tpos-curr-adj) (-> self trans))
               (vector-flatten! (-> self pivot-pt) (-> self pivot-pt) (-> *camera* local-down))
               (set! (-> self pivot-rad) (vector-length (-> self pivot-pt)))
-              (set! (-> self pivot-pt quad) (-> self trans quad))
-              (set! (-> self saved-pt quad) (-> self pivot-pt quad)))
+              (vector-copy! (-> self pivot-pt) (-> self trans))
+              (vector-copy! (-> self saved-pt) (-> self pivot-pt)))
              (else
               (vector-! (-> self pivot-pt) (-> *camera* tpos-curr-adj) (-> self trans))
               (vector-float*! (-> self pivot-pt) (-> self pivot-pt) 0.5)
               (vector-flatten! (-> self pivot-pt) (-> self pivot-pt) (-> *camera* local-down))
               (set! (-> self pivot-rad) (vector-length (-> self pivot-pt)))
               (vector+! (-> self pivot-pt) (-> self trans) (-> self pivot-pt))
-              (set! (-> self saved-pt quad) (-> self pivot-pt quad)))))
+              (vector-copy! (-> self saved-pt) (-> self pivot-pt)))))
          (cam-circular-position #f)
          (set! (-> self blend-from-type) (the-as uint 2))
          (set! (-> self blend-to-type) (the-as uint 2))))
@@ -799,7 +792,7 @@
     (if (= (vector-normalize-ret-len! default-offset (- (+ 1024.0 (-> *CAMERA-bank* default-string-min-z)))) 0.0)
       (set! (-> default-offset z) (+ 1024.0 (-> *CAMERA-bank* default-string-min-z))))
     (vector--float*! default-offset default-offset (-> *camera* local-down) (-> *CAMERA-bank* default-string-min-y))
-    (set! (-> out-offset quad) (-> default-offset quad))
+    (vector-copy! out-offset default-offset)
     (loop
       (vector--float*! target-offset out-offset (-> *camera* local-down) (-> *camera* target-height))
       (if (< (fill-and-probe-using-line-sphere *collide-cache*
@@ -816,7 +809,7 @@
             (cond
               ((>= -32768.0 search-angle)
                (format #t "cam-string didn't find a spot~%")
-               (set! (-> out-offset quad) (-> default-offset quad))
+               (vector-copy! out-offset default-offset)
                (return #f)
                search-angle)
               ((< 0.0 search-angle) (- search-angle))
@@ -831,7 +824,7 @@
   (vector-flatten! (-> self view-flat) relative-offset (-> *camera* local-down))
   (set! (-> self min-z-override) (vector-length (-> self view-flat)))
   (vector+! (-> self desired-pos) relative-offset (-> *camera* tpos-curr-adj))
-  (set! (-> self string-trans quad) (-> self desired-pos quad))
+  (vector-copy! (-> self string-trans) (-> self desired-pos))
   (reset! (-> self position-spline) (-> self desired-pos))
   (vector-reset! (-> self velocity))
   (let ((options-without-jump (logand -4097 (-> self options))))
@@ -1247,14 +1240,14 @@
        (set! (-> self los-tgt-spline-pt) (-> *camera* target-spline used-point))
        (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
        (logior! (-> self options) 4096)
-       (set! (-> self good-point quad) (-> *camera* target-spline point (-> *camera* target-spline used-point) position quad))
-       (set! (-> self los-last-pos quad) (-> self good-point quad))
+       (vector-copy! (-> self good-point) (-> *camera* target-spline point (-> *camera* target-spline used-point) position))
+       (vector-copy! (-> self los-last-pos) (-> self good-point))
        (when *debug-segment*
          (let ((jump-displacement (new 'stack-no-clear 'vector)))
            (vector-! jump-displacement (-> self good-point) (-> self string-trans))
            (cam-collision-record-save (-> self string-trans) jump-displacement -3 'jump self)))
-       (set! (-> self desired-pos quad) (-> self good-point quad))
-       (set! (-> self string-trans quad) (-> self good-point quad))
+       (vector-copy! (-> self desired-pos) (-> self good-point))
+       (vector-copy! (-> self string-trans) (-> self good-point))
        (vector-! (-> self view-flat) (-> self string-trans) (-> *camera* tpos-curr-adj))
        (vector-flatten! (-> self view-flat) (-> self view-flat) (-> *camera* local-down))
        (vector-reset! (-> self velocity))
@@ -1269,7 +1262,7 @@
             (if *display-cam-los-debug* (format *stdcon* "good ~f~%" trail-hit-fraction))
             (set! (-> self los-tgt-spline-pt) (-> *camera* target-spline end-point))
             (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
-            (set! (-> self los-last-pos quad) (-> camera-position quad)))
+            (vector-copy! (-> self los-last-pos) camera-position))
            ((begin
               (if *display-cam-los-debug*
                 (format *stdcon*
@@ -1296,14 +1289,14 @@
             (set! (-> self los-tgt-spline-pt) (-> *camera* target-spline point trail-index next))
             (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
             (logior! (-> self options) 4096)
-            (set! (-> self good-point quad) (-> *camera* target-spline point trail-index position quad))
-            (set! (-> self los-last-pos quad) (-> self good-point quad))
+            (vector-copy! (-> self good-point) (-> *camera* target-spline point trail-index position))
+            (vector-copy! (-> self los-last-pos) (-> self good-point))
             (when *debug-segment*
               (let ((jump-displacement (new 'stack-no-clear 'vector)))
                 (vector-! jump-displacement (-> self good-point) (-> self string-trans))
                 (cam-collision-record-save (-> self string-trans) jump-displacement -3 'jump self)))
-            (set! (-> self desired-pos quad) (-> self good-point quad))
-            (set! (-> self string-trans quad) (-> self good-point quad))
+            (vector-copy! (-> self desired-pos) (-> self good-point))
+            (vector-copy! (-> self string-trans) (-> self good-point))
             (vector-! (-> self view-flat) (-> self string-trans) (-> *camera* tpos-curr-adj))
             (vector-flatten! (-> self view-flat) (-> self view-flat) (-> *camera* local-down))
             (vector-reset! (-> self velocity))
@@ -1313,7 +1306,7 @@
             (if *display-cam-los-debug* (format *stdcon* " ok~%"))
             (set! (-> self los-tgt-spline-pt) last-clear-index)
             (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
-            (set! (-> self los-last-pos quad) (-> camera-position quad)))
+            (vector-copy! (-> self los-last-pos) camera-position))
            (else
             (if *display-cam-los-debug*
               (format *stdcon*
@@ -1356,7 +1349,7 @@
                     (vector+! (-> self good-point)
                               (-> self good-point)
                               (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 (-> self los-tgt-spline-pt)))))
-                    (set! (-> self los-last-pos quad) (-> self good-point quad))
+                    (vector-copy! (-> self los-last-pos) (-> self good-point))
                     (when *display-cam-los-debug*
                       (format 0 "going because u(~f) > 0 frame ~D~%" recovery-fraction (current-time))
                       (format *stdcon* " going because u(~f) > 0 frame ~D~%" recovery-fraction (current-time)))
@@ -1721,7 +1714,7 @@
          (vector-! jump-displacement (-> self good-point) (-> self string-trans))
          (cam-collision-record-save (-> self string-trans) jump-displacement -2 'jump self)))
      (logand! (-> self options) -4097)
-     (set! (-> self desired-pos quad) (-> self good-point quad))
+     (vector-copy! (-> self desired-pos) (-> self good-point))
      (cam-string-move)
      (vector-! (-> self view-flat) (-> self string-trans) (-> *camera* tpos-curr-adj))
      (vector-flatten! (-> self view-flat) (-> self view-flat) (-> *camera* local-down))
@@ -1742,9 +1735,9 @@
   "Refresh the string camera's minimum and maximum offset vectors
    from the camera master unless the values are locked."
   (when (not (-> self string-val-locked))
-    (set! (-> self string-min-val quad) (-> *camera* string-min value quad))
+    (vector-copy! (-> self string-min-val) (-> *camera* string-min value))
     (let ((maximum-values (-> self string-max-val)))
-      (set! (-> maximum-values quad) (-> *camera* string-max value quad))
+      (vector-copy! maximum-values (-> *camera* string-max value))
       maximum-values)))
 
 ;; Main third-person camera.  view-flat is the horizontal target-to-camera string.  Each frame it
@@ -1768,8 +1761,8 @@
          (cond
            ((-> block param 0)
             (set! (-> self string-val-locked) #t)
-            (set! (-> self string-min-val quad) (-> (the-as vector (-> block param 0)) quad))
-            (set! (-> self string-max-val quad) (-> (the-as vector (-> block param 1)) quad))
+            (vector-copy! (-> self string-min-val) (the-as vector (-> block param 0)))
+            (vector-copy! (-> self string-max-val) (the-as vector (-> block param 1)))
             (set! (-> self string-max-val x) (fmax (-> self string-max-val x) (-> self string-min-val x)))
             (set! (-> self string-max-val y) (fmax (-> self string-max-val y) (-> self string-min-val y)))
             (set! (-> self string-max-val z) (fmax (-> self string-max-val z) (-> self string-min-val z))))
@@ -1823,7 +1816,7 @@
                          (-> *camera* local-down)
                          (+ (-> *camera* target-height) (-> self view-off y)))
         (vector+! (-> self desired-pos) (-> self desired-pos) (-> *camera* tpos-curr-adj))
-        (set! (-> self string-trans quad) (-> self desired-pos quad))
+        (vector-copy! (-> self string-trans) (-> self desired-pos))
         (vector-reset! (-> self velocity))
         (let ((probe-result (new 'stack-no-clear 'collide-tri-result))
               (target-head (new 'stack-no-clear 'vector))
@@ -1861,10 +1854,10 @@
                                     (-> *camera* local-down)
                                     (+ (-> *camera* target-height) (-> self view-off y)))
                    (vector+! (-> self desired-pos) (-> self desired-pos) (-> *camera* tpos-curr-adj))
-                   (set! (-> self string-trans quad) (-> self desired-pos quad))
+                   (vector-copy! (-> self string-trans) (-> self desired-pos))
                    (vector-reset! (-> self velocity))))))))
-        (set! (-> self trans quad) (-> self string-trans quad))
-        (set! (-> self los-last-pos quad) (-> self string-trans quad))
+        (vector-copy! (-> self trans) (-> self string-trans))
+        (vector-copy! (-> self los-last-pos) (-> self string-trans))
         (reset! (-> self position-spline) (-> self string-trans))
         (set! (-> self blend-from-type) (the-as uint 2))
         (set! (-> self blend-to-type) (the-as uint 2))))
@@ -1974,7 +1967,7 @@
         (vector-normalize! (-> self view-flat) (-> self view-off z))
         (vector--float*! (-> self desired-pos) (-> self view-flat) (-> *camera* local-down) (-> self view-off y))
         (vector+! (-> self desired-pos) (-> self desired-pos) (-> self tracking follow-pt))
-        (set! (-> self trans quad) (-> self desired-pos quad))
+        (vector-copy! (-> self trans) (-> self desired-pos))
         (vector-reset! (-> self velocity))
         (set! (-> self blend-from-type) (the-as uint 2))
         (set! (-> self blend-to-type) (the-as uint 2))
@@ -2139,7 +2132,7 @@
         (vector-normalize! (-> self view-flat) (-> self view-off z))
         (vector--float*! (-> self desired-pos) (-> self view-flat) (-> *camera* local-down) (-> self view-off y))
         (vector+! (-> self desired-pos) (-> self desired-pos) (-> *camera* tpos-curr-adj))
-        (set! (-> self trans quad) (-> self desired-pos quad))
+        (vector-copy! (-> self trans) (-> self desired-pos))
         (vector-reset! (-> self velocity))
         (set! (-> self blend-from-type) (the-as uint 0))
         (set! (-> self blend-to-type) (the-as uint 1))

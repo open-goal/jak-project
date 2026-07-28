@@ -114,7 +114,7 @@ close and approaching."
      (let ((jump-destination (the-as object (-> block param 0))))
        (set! (-> self got-jump-event?) #t)
        (let ((stored-destination (the-as object (-> self jump-event-dest))))
-         (set! (-> (the-as vector stored-destination) quad) (-> (the-as vector jump-destination) quad))
+         (vector-copy! (the-as vector stored-destination) (the-as vector jump-destination))
          stored-destination)))))
 
 (defmethod set-shadow-airborne! ((this snow-bunny) (airborne? symbol))
@@ -370,7 +370,7 @@ close and approaching."
     (let* ((triangle (new 'stack-no-clear 'collide-tri-result))
            (ground-popup (-> this gnd-popup))
            (probe-distance (+ ground-popup 40960.0)))
-      (set! (-> probe-position quad) (-> in-point quad))
+      (vector-copy! probe-position in-point)
       (+! (-> probe-position y) ground-popup)
       (let ((hit-fraction (fill-and-probe-using-y-probe *collide-cache*
                                                         probe-position
@@ -382,7 +382,7 @@ close and approaching."
         ;; og:preserve-this yes this is bugged... again
         (if (or (< hit-fraction 0.0) (= (logand #b111000 (the-as int (-> triangle pat))) 8)) (return #f))
         (set! (-> probe-position y) (- (-> probe-position y) (* hit-fraction probe-distance)))))
-    (set! (-> out-point quad) (-> probe-position quad)))
+    (vector-copy! out-point probe-position))
   #t)
 
 (defmethod nav-enemy-method-53 ((this snow-bunny))

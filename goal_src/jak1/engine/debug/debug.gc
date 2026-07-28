@@ -298,8 +298,8 @@
        (let ((line (get-debug-line)))
          (when line
            (set! (-> line bucket) bucket)
-           (set! (-> line v1 quad) (-> p0 quad))
-           (set! (-> line v2 quad) (-> p1 quad))
+           (vector-copy! (-> line v1) p0)
+           (vector-copy! (-> line v2) p1)
            (set! (-> line color) color)
            (set! (-> line color2) color2)
            (set! (-> line mode) mode))))
@@ -403,7 +403,7 @@
          (when buffered-text
            (set! (-> buffered-text flags) 0)
            (set! (-> buffered-text bucket) bucket)
-           (set! (-> buffered-text pos quad) (-> location quad))
+           (vector-copy! (-> buffered-text pos) location)
            (cond
              (offset (set! (-> buffered-text offset x) (-> offset x)) (set! (-> buffered-text offset y) (-> offset y)))
              (else (set! (-> buffered-text offset x) 0) (set! (-> buffered-text offset y) 0) 0))
@@ -653,20 +653,7 @@
   "Draw a 255-pixel background bar and a ten-pixel-high colored fill at screen position x,y. The
    fill width is 255 times fraction."
   (if (not enable-draw) (return #f))
-  (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (packet-start (-> dma-buff base)))
-    (draw-sprite2d-xy dma-buff x y 255 14 (new 'static 'rgba :a #x40))
-    (draw-sprite2d-xy dma-buff x (+ y 2) (the int (* 255.0 fraction)) 10 color)
-    (let ((packet-end (-> dma-buff base)))
-      (let ((packet (the-as dma-packet (-> dma-buff base))))
-        (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> packet vif0) (new 'static 'vif-tag))
-        (set! (-> packet vif1) (new 'static 'vif-tag))
-        (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             bucket
-                             packet-start
-                             (the-as (pointer dma-tag) packet-end))))
+  (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) bucket) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-sprite2d-xy dma-buff x y 255 14 (new 'static 'rgba :a #x40)) (draw-sprite2d-xy dma-buff x (+ y 2) (the int (* 255.0 fraction)) 10 color))
   #f)
 
 (defun-debug debug-pad-display ((pad cpad-info))
@@ -801,7 +788,7 @@
   (if (and draw-enabled (not (-> history points)))
     (set! (-> history points) (the-as (inline-array vector) (malloc 'debug (* (-> history num-points) 16)))))
   (when (-> history points)
-    (set! (-> history points (-> history h-first) quad) (-> position quad))
+    (vector-copy! (-> history points (-> history h-first)) position)
     (+! (-> history h-first) 1)
     (when (>= (-> history h-first) (-> history num-points))
       (set! (-> history h-first) 0)

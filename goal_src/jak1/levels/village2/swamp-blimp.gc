@@ -370,8 +370,8 @@
   "Initialize a damped vector oscillator at its target."
   (cond
     (initial-value
-     (set! (-> this target quad) (-> initial-value quad))
-     (set! (-> this value quad) (-> initial-value quad)))
+     (vector-copy! (-> this target) initial-value)
+     (vector-copy! (-> this value) initial-value))
     (else (vector-reset! (-> this target)) (vector-reset! (-> this value))))
   (vector-reset! (-> this vel))
   (set! (-> this accel) accel)
@@ -528,7 +528,7 @@
           (cam-slave-get-vector-with-offset (the-as entity-actor s5-1) *camera-other-trans* 'trans)
           (cam-slave-get-rot (the-as entity-actor s5-1) *camera-other-matrix*)
           (set! (-> *camera-other-fov* data) (cam-slave-get-fov s5-1)))
-        (set! (-> *camera-other-root* quad) (-> self root trans quad))
+        (vector-copy! *camera-other-root* (-> self root trans))
         (set-time! (-> self state-time))
         (until (time-elapsed? (-> self state-time) (seconds 0.6))
           (set! *camera-look-through-other* 2)
@@ -577,7 +577,7 @@
                 (cam-slave-get-vector-with-offset (the-as entity-actor gp-1) *camera-other-trans* 'trans)
                 (cam-slave-get-rot (the-as entity-actor gp-1) *camera-other-matrix*)
                 (set! (-> *camera-other-fov* data) (cam-slave-get-fov gp-1)))
-              (set! (-> *camera-other-root* quad) (-> self root trans quad))
+              (vector-copy! *camera-other-root* (-> self root trans))
               (set-time! (-> self state-time))
               (until (time-elapsed? (-> self state-time) (seconds 5))
                 (set! *camera-look-through-other* 2)
@@ -753,7 +753,7 @@
         (matrix->quaternion (-> self root quat) gp-0))
       (when (< (vector-vector-distance (-> self root trans) (camera-pos)) 204800.0)
         (let ((a2-1 (new 'static 'vector)))
-          (set! (-> a2-1 quad) (-> self root trans quad))
+          (vector-copy! a2-1 (-> self root trans))
           (set! (-> a2-1 y) 0.0)
           (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2017) a2-1))))
   :code
@@ -828,7 +828,7 @@
   (let ((a0-0 (new 'stack-no-clear 'vector)))
     (vector-! a0-0 (-> self other-pos) (-> self root trans))
     (vector-float*! a0-0 a0-0 0.5)
-    (set! (-> self draw bounds quad) (-> a0-0 quad))
+    (vector-copy! (-> self draw bounds) a0-0)
     (set! (-> self draw bounds w) (vector-length a0-0)))
   0
   (none))
@@ -897,7 +897,7 @@
           (ja-play :group! swamp-rope-swing-ja :num! (seek! max f30-3) :frame-num 0.0 (swamp-rope-break-code)))))
   :post
     (behavior ()
-      (set! (-> self other-pos quad) (-> self root trans quad))
+      (vector-copy! (-> self other-pos) (-> self root trans))
       (+! (-> self other-pos y) -245760.0)
       (swamp-rope-post)))
 
@@ -942,7 +942,7 @@
                (a0-4 (if v1-6 (-> v1-6 extra process))))
           (when a0-4
             (set! (-> (the-as swamp-rope a0-4) parent-rp) (the-as int (-> self frame value)))
-            (set! (-> (the-as swamp-rope a0-4) frame vector-overlay quad) (-> self root trans quad))))
+            (vector-copy! (-> (the-as swamp-rope a0-4) frame vector-overlay) (-> self root trans))))
         (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
         (suspend)))
   :post swamp-rope-post)
@@ -963,12 +963,12 @@
 
 (defbehavior swamp-rope-init-by-other swamp-rope ((origin vector) (other-entity entity-actor))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> origin quad))
+  (vector-copy! (-> self root trans) origin)
   (initialize-skeleton self *swamp-rope-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self other-entity) other-entity)
   (when (-> self other-entity)
-    (set! (-> self other-pos quad) (-> self other-entity extra trans quad))
+    (vector-copy! (-> self other-pos) (-> self other-entity extra trans))
     (let ((gp-1 (tetherrock-get-info (-> self other-entity))))
       (init! (-> self frame) 0.0 0.002 0.02 (-> gp-1 damping))
       (set! (-> self parent-rp) (-> gp-1 blimp-rp))
@@ -1138,7 +1138,7 @@
   (initialize-skeleton this *swamp-blimp-sg* '())
   (quaternion-copy! (-> this rot-at-init) (-> this root quat))
   (set! (-> this arm-timer) 0)
-  (set! (-> this trans-at-init quad) (-> this root trans quad))
+  (vector-copy! (-> this trans-at-init) (-> this root trans))
   (set! (-> this y-vel) 0.0)
   (set! (-> this y-offset) 0.0)
   (set! (-> this y-offset-target) 0.0)

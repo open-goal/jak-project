@@ -161,12 +161,12 @@
       (let ((origin-cap-fraction (ray-arbitrary-circle-intersect probe-origin probe-displacement (-> this origin) (-> this axis) (-> this radius))))
         (when (and (>= origin-cap-fraction 0.0) (or (< contact-fraction 0.0) (< origin-cap-fraction contact-fraction)))
           (set! contact-fraction origin-cap-fraction)
-          (set! (-> axis-point quad) (-> this origin quad))))
+          (vector-copy! axis-point (-> this origin))))
       (vector+float*! end-center (-> this origin) (-> this axis) (-> this length))
       (let ((end-cap-fraction (ray-arbitrary-circle-intersect probe-origin probe-displacement end-center (-> this axis) (-> this radius))))
         (when (and (>= end-cap-fraction 0.0) (or (< contact-fraction 0.0) (< end-cap-fraction contact-fraction)))
           (set! contact-fraction end-cap-fraction)
-          (set! (-> axis-point quad) (-> end-center quad))))
+          (vector-copy! axis-point end-center)))
       contact-fraction)))
 
 ;; debug draw for cylinder flat.
@@ -211,7 +211,7 @@
           (vector+! (-> vertices vert (+ i 1)) (-> this origin) radial)
           (vector+float*! (-> vertices vert (+ i 1)) (-> vertices vert (+ i 1)) axis-step (the float i))
           (+! i 1))
-        (set! (-> vertices vert 0 quad) (-> this origin quad))
+        (vector-copy! (-> vertices vert 0) (-> this origin))
         (vector+float*! (-> vertices vert 9) (-> this origin) (-> this axis) (-> this length))
         (dotimes (rotation-index 16)
           (dotimes (vertex-index 10)

@@ -36,6 +36,7 @@ add_library(common
         cross_sockets/XSocketServer.cpp
         custom_data/pack_helpers.cpp
         custom_data/TFrag3Data.cpp
+        demacro/demacro.cpp
         dma/dma_copy.cpp
         dma/dma.cpp
         dma/gs.cpp

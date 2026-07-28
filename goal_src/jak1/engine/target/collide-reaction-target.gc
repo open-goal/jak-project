@@ -14,7 +14,7 @@
   "Record surface-normal and its dot against gravity-normal as surface-angle, record the equivalent
    dot for the unadjusted polygon normal as poly-angle, and retain the largest head-on contact angle
    observed this frame. velocity supplies the direction opposite the contact normal for that test."
-  (set! (-> cshape surface-normal quad) (-> surface-normal quad))
+  (vector-copy! (-> cshape surface-normal) surface-normal)
   (set! (-> cshape surface-angle) (vector-dot surface-normal (-> cshape dynam gravity-normal)))
   (set! (-> cshape poly-angle) (vector-dot (-> cshape poly-normal) (-> cshape dynam gravity-normal)))
   (set! (-> cshape touch-angle)
@@ -117,7 +117,7 @@
             (vector-dot (-> control dynam gravity-normal)
                         (vector-! (new 'stack-no-clear 'vector) (-> intersection best-tri intersect) (-> probe-result intersect))))
       (set! (-> control low-coverage-probe1-pat) (the-as float (-> probe-result pat)))
-      (set! (-> control low-coverage-probe1-normal quad) (-> probe-result normal quad))
+      (vector-copy! (-> control low-coverage-probe1-normal) (-> probe-result normal))
       0))
   ;; Probe the near side. Start 0.2 m above and 0.2 m behind the contact, then sweep five meters
   ;; down and one meter farther inward. A nearby non-wall hit confirms that there is supporting
@@ -140,7 +140,7 @@
               0.0)
       (set! (-> control low-coverage-probe2-dist) (vector-vector-distance probe2-start (-> probe-result intersect)))
       (set! (-> control low-coverage-probe2-pat) (the-as uint (-> probe-result pat)))
-      (set! (-> control low-coverage-probe2-normal quad) (-> probe-result normal quad))
+      (vector-copy! (-> control low-coverage-probe2-normal) (-> probe-result normal))
       0))
   ;; A ledge needs a nonvertical edge, a large drop (or wall) beyond it, and a close standable
   ;; surface behind it. Distances scale with the intersecting primitive's sphere radius.
@@ -232,7 +232,7 @@
   (if (logtest? (-> control mod-surface flags) (surface-flags jump))
     (logior! reaction-flags (cshape-reaction-flags air-mode)))
   (let ((primitive-center (new 'stack-no-clear 'vector)))
-    (set! (-> primitive-center quad) (-> intersection best-from-prim prim-core world-sphere quad))
+    (vector-copy! primitive-center (-> intersection best-from-prim prim-core world-sphere))
     (vector-! contact-direction primitive-center (-> intersection best-tri intersect)))
   (vector-normalize! contact-direction 1.0)
   ;; Coverage is how directly the primitive center-to-contact direction agrees with the triangle
@@ -243,10 +243,10 @@
     (vector-flatten! contact-direction contact-direction (-> intersection best-tri normal))
     (vector-normalize! contact-direction 1.0))
   (if (< (-> control coverage) 0.9999) (logior! reaction-flags (cshape-reaction-flags low-coverage glancing)))
-  (set! (-> contact-normal quad) (-> contact-direction quad))
+  (vector-copy! contact-normal contact-direction)
   (if (= (-> intersection best-u) 0.0)
     (move-by-vector! control (vector-normalize-copy! (new-stack-vector0) contact-normal 3.0)))
-  (set! (-> control poly-normal quad) (-> intersection best-tri normal quad))
+  (vector-copy! (-> control poly-normal) (-> intersection best-tri normal))
   (collide-shape-moving-angle-set! control contact-normal (-> velocities vector 0))
   ;; poly-angle is a cosine against gravity: any negative value faces downward, while values below
   ;; -0.2 are strong ceiling contacts.
@@ -284,8 +284,8 @@
   (cond
     ((-> intersection best-to-prim)
      (logior! status (collide-status touch-actor))
-     (set! (-> control actor-contact-pt quad) (-> intersection best-tri intersect quad))
-     (set! (-> control actor-contact-normal quad) (-> control poly-normal quad))
+     (vector-copy! (-> control actor-contact-pt) (-> intersection best-tri intersect))
+     (vector-copy! (-> control actor-contact-normal) (-> control poly-normal))
      (set! (-> control actor-contact-handle) (process->handle (-> intersection best-to-prim cshape process))))
     ((= (-> control poly-pat material) (pat-material waterbottom)))
     (else (logior! status (collide-status touch-background))))
@@ -294,9 +294,9 @@
      (logior! reaction-flags (cshape-reaction-flags hit-wall))
      (logior! status (collide-status touch-wall))
      (set! (-> control cur-pat mode) 1)
-     (set! (-> control wall-contact-pt quad) (-> intersection best-tri intersect quad))
-     (set! (-> control wall-contact-poly-normal quad) (-> control poly-normal quad))
-     (set! (-> control wall-contact-normal quad) (-> contact-normal quad))
+     (vector-copy! (-> control wall-contact-pt) (-> intersection best-tri intersect))
+     (vector-copy! (-> control wall-contact-poly-normal) (-> control poly-normal))
+     (vector-copy! (-> control wall-contact-normal) contact-normal)
      (set! (-> control wall-pat) (-> intersection best-tri pat))
      ;; This read is intentionally dead. The disabled branch below is an old wall-bounce experiment;
      ;; normal wall response projects the incoming velocity onto the wall plane.
@@ -328,7 +328,7 @@
      ;; target from sinking into the surface.
      (logior! status (collide-status on-surface))
      (set! (-> control cur-pat mode) 0)
-     (if (= (-> intersection best-from-prim prim-id) 6) (set! (-> control local-normal quad) (-> contact-normal quad)))
+     (if (= (-> intersection best-from-prim prim-id) 6) (vector-copy! (-> control local-normal) contact-normal))
      (vector-reflect-flat! velocity-out (-> velocities vector 0) contact-normal)
      (vector+! velocity-out velocity-out contact-normal)
      (set! (-> control ground-touch-point w) 0.0)
@@ -337,13 +337,13 @@
      (when (not (or (logtest? reaction-flags (cshape-reaction-flags wall-by-pat wall-by-angle hit-wall low-coverage))
                     (nonzero? (-> control poly-pat event))))
        (logior! status (collide-status on-ground))
-       (set! (-> control ground-poly-normal quad) (-> control poly-normal quad))
-       (set! (-> control ground-contact-normal quad) (-> contact-normal quad))
+       (vector-copy! (-> control ground-poly-normal) (-> control poly-normal))
+       (vector-copy! (-> control ground-contact-normal) contact-normal)
        (set! (-> control ground-local-norm-dot-grav) (vector-dot contact-normal (-> control dynam gravity-normal)))
        (set-time! (-> control last-time-on-ground))
        (set! (-> control ground-pat) (-> control poly-pat))
-       (set! (-> control ground-touch-point quad) (-> intersection best-tri intersect quad))
-       (set! (-> control ground-contact-sphere-center quad) (-> intersection best-from-prim prim-core world-sphere quad))
+       (vector-copy! (-> control ground-touch-point) (-> intersection best-tri intersect))
+       (vector-copy! (-> control ground-contact-sphere-center) (-> intersection best-from-prim prim-core world-sphere))
        (logior! reaction-flags (cshape-reaction-flags on-ground))
        (if (= (-> control poly-pat material) (pat-material waterbottom)) (logior! status (collide-status on-water))))))
   (logior! (-> control status) status)

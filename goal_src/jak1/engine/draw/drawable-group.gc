@@ -35,15 +35,10 @@
   "Return the allocation size of this variable-length drawable group."
   (the-as int (+ (-> drawable-group size) (* (+ (-> this length) -1) 4))))
 
-(defmethod mem-usage ((this drawable-group) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-group) (usage memory-usage-block) (flags mem-usage-flags))
   "Record this group's allocation in usage, then recursively collect memory use from every
    child. flags is forwarded unchanged to each child."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) "drawable-group")
-  (+! (-> usage data 0 count) 1)
-  (let ((allocated-size (asize-of this)))
-    (+! (-> usage data 0 used) allocated-size)
-    (+! (-> usage data 0 total) (logand -16 (+ allocated-size 15))))
+  (mem-usage-add! usage drawable-group 1 (asize-of this))
   (dotimes (i (-> this length))
     (mem-usage (-> this data i) usage flags))
   this)

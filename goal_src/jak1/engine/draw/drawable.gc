@@ -371,14 +371,15 @@
                             (v1-16 s4-1))
                        (t9-3 a0-4
                              a1-0
-                             (logior (cond
-                                       ((= v1-16 1) 4)
-                                       ((= v1-16 2) 8)
-                                       ((= v1-16 3) 16)
-                                       (else 0))
-                                     2)))))
+                             (the-as mem-usage-flags
+                                     (logior (cond
+                                               ((= v1-16 1) 4)
+                                               ((= v1-16 2) 8)
+                                               ((= v1-16 3) 16)
+                                               (else 0))
+                                             2))))))
                  (set! geometry-bytes (+ (calculate-total *instance-mem-usage*) 580))))
-              (mem-usage prototype (reset! *instance-mem-usage*) 0)
+              (mem-usage prototype (reset! *instance-mem-usage*) (mem-usage-flags))
               (let ((prototype-bytes (calculate-total *instance-mem-usage*)))
                 (format output
                         "~%~A ~A b @ #x~X ~,,2fK/~,,2fK~%"
@@ -712,13 +713,13 @@
   (when (not (logtest? (-> control status) (draw-status hidden no-anim no-skeleton-update)))
     (let ((scratch-lights (the-as vu-lights (+ 64 (scratchpad-object int))))
           (hud-lights *hud-lights*))
-      (set! (-> scratch-lights direction 0 quad) (-> hud-lights direction 0 quad))
-      (set! (-> scratch-lights direction 1 quad) (-> hud-lights direction 1 quad))
-      (set! (-> scratch-lights direction 2 quad) (-> hud-lights direction 2 quad))
-      (set! (-> scratch-lights color 0 quad) (-> hud-lights color 0 quad))
-      (set! (-> scratch-lights color 1 quad) (-> hud-lights color 1 quad))
-      (set! (-> scratch-lights color 2 quad) (-> hud-lights color 2 quad))
-      (set! (-> scratch-lights ambient quad) (-> hud-lights ambient quad)))
+      (vector-copy! (-> scratch-lights direction 0) (-> hud-lights direction 0))
+      (vector-copy! (-> scratch-lights direction 1) (-> hud-lights direction 1))
+      (vector-copy! (-> scratch-lights direction 2) (-> hud-lights direction 2))
+      (vector-copy! (-> scratch-lights color 0) (-> hud-lights color 0))
+      (vector-copy! (-> scratch-lights color 1) (-> hud-lights color 1))
+      (vector-copy! (-> scratch-lights color 2) (-> hud-lights color 2))
+      (vector-copy! (-> scratch-lights ambient) (-> hud-lights ambient)))
     (lod-set! control 0)
     (logior! (-> control status) (draw-status was-drawn))
     (draw-bones-hud control dma-buf))
@@ -944,7 +945,7 @@
   ;; draw the background!
   (with-profiler "background"
     (init-background)
-    (execute-connections *background-draw-engine* (-> *display* frames (-> *display* on-screen) frame))
+    (execute-connections *background-draw-engine* (current-frame))
     ;; finish bg (most of the work is here)
     (reset! (-> *perf-stats* data 3))
     (finish-background)
@@ -964,11 +965,11 @@
   ;; draw the foreground engines.
   (with-profiler "foreground-engines"
     (foreground-engine-execute (-> *level* level-default foreground-draw-engine 0)
-                               (-> *display* frames (-> *display* on-screen) frame)
+                               (current-frame)
                                2
                                0)
     (foreground-engine-execute (-> *level* level-default foreground-draw-engine 1)
-                               (-> *display* frames (-> *display* on-screen) frame)
+                               (current-frame)
                                2
                                1))
   ;; handle extra processing for foreground
@@ -1017,33 +1018,19 @@
   ;; The packet sends three qwords through VIF DIRECT: an A+D GIF tag followed by ZBUF_1 and
   ;; TEST_1 register writes. Its NEXT tail is inserted into the selected debug bucket so later
   ;; debug geometry inherits these depth settings.
-  (let* ((global-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (segment-start (-> global-buf base)))
-    (let ((packet-head (the-as object (-> global-buf base))))
-      (set! (-> (the-as dma-packet packet-head) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet packet-head) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet packet-head) vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> global-buf base) (&+ (the-as pointer packet-head) 16)))
-    (let ((gif-head (the-as object (-> global-buf base))))
-      (set! (-> (the-as gs-gif-tag gif-head) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
-      (set! (-> (the-as gs-gif-tag gif-head) regs) GIF_REGS_ALL_AD)
-      (set! (-> global-buf base) (&+ (the-as pointer gif-head) 16)))
-    (let ((register-data (-> global-buf base)))
-      (set! (-> (the-as (pointer gs-zbuf) register-data) 0) zbuf)
-      (set! (-> (the-as (pointer gs-reg64) register-data) 1) (gs-reg64 zbuf-1))
-      (set! (-> (the-as (pointer gs-test) register-data) 2) test)
-      (set! (-> (the-as (pointer gs-reg64) register-data) 3) (gs-reg64 test-1))
-      (set! (-> global-buf base) (&+ register-data 32)))
-    (let ((tail-tag (-> global-buf base)))
-      (let ((tail-packet (the-as object (-> global-buf base))))
-        (set! (-> (the-as dma-packet tail-packet) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet tail-packet) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet tail-packet) vif1) (new 'static 'vif-tag))
-        (set! (-> global-buf base) (&+ (the-as pointer tail-packet) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             debug-bucket
-                             segment-start
-                             (the-as (pointer dma-tag) tail-tag))))
+  (with-dma-buffer-add-bucket ((global-buf (-> *display* frames (-> *display* on-screen) frame global-buf)) debug-bucket) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((packet-head (the-as object (-> global-buf base))))
+        (set! (-> (the-as dma-packet packet-head) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+        (set! (-> (the-as dma-packet packet-head) vif0) (new 'static 'vif-tag))
+        (set! (-> (the-as dma-packet packet-head) vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
+        (set! (-> global-buf base) (&+ (the-as pointer packet-head) 16))) (let ((gif-head (the-as object (-> global-buf base))))
+        (set! (-> (the-as gs-gif-tag gif-head) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
+        (set! (-> (the-as gs-gif-tag gif-head) regs) GIF_REGS_ALL_AD)
+        (set! (-> global-buf base) (&+ (the-as pointer gif-head) 16))) (let ((register-data (-> global-buf base)))
+        (set! (-> (the-as (pointer gs-zbuf) register-data) 0) zbuf)
+        (set! (-> (the-as (pointer gs-reg64) register-data) 1) (gs-reg64 zbuf-1))
+        (set! (-> (the-as (pointer gs-test) register-data) 2) test)
+        (set! (-> (the-as (pointer gs-reg64) register-data) 3) (gs-reg64 test-1))
+        (set! (-> global-buf base) (&+ register-data 32))))
   (none))
 
 (define *screen-shot* #f)
@@ -1184,26 +1171,14 @@
     ;; one rendering stage into the following stage.
     ;; iterate through all buckets and append a final GS state reset.
     (dotimes (bucket-idx BUCKET_COUNT)
-      (let* ((this-global-buf (-> this-frame global-buf))
-             (a2-0 (-> this-global-buf base)))
-        ;; clear GS state after the bucket
-        (let* ((a0-3 this-global-buf)
-               (t0-0 *default-regs-buffer*)
-               (a1-0 (the-as object (-> a0-3 base))))
-          (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :id (dma-tag-id call) :addr (the-as int (-> t0-0 data))))
-          (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag :irq #x1))
-          (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag))
-          (set! (-> a0-3 base) (&+ (the-as pointer a1-0) 16)))
-        (let ((a3-4 (-> this-global-buf base)))
-          (let ((a0-4 (the-as object (-> this-global-buf base))))
-            (set! (-> (the-as dma-packet a0-4) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> (the-as dma-packet a0-4) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet a0-4) vif1) (new 'static 'vif-tag))
-            (set! (-> this-global-buf base) (&+ (the-as pointer a0-4) 16)))
-          (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                 (the-as bucket-id bucket-idx)
-                                 a2-0
-                                 (the-as (pointer dma-tag) a3-4)))))
+      ;; clear GS state after the bucket
+      (with-dma-buffer-add-bucket ((this-global-buf (-> this-frame global-buf)) (the-as bucket-id bucket-idx)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let* ((a0-3 this-global-buf)
+                     (t0-0 *default-regs-buffer*)
+                     (a1-0 (the-as object (-> a0-3 base))))
+                (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :id (dma-tag-id call) :addr (the-as int (-> t0-0 data))))
+                (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag :irq #x1))
+                (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag))
+                (set! (-> a0-3 base) (&+ (the-as pointer a1-0) 16)))))
     ;; append a FLUSHE and IRQ to end the calc-buf
     (let* ((v1-14 this-calc-buf)
            (a0-10 (the-as object (-> v1-14 base))))

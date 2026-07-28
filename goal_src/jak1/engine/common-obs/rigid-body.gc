@@ -11,15 +11,15 @@
 
 (defmethod clear-force-torque! ((this rigid-body))
   "Clear the accumulated world-space force and torque for the next simulation step."
-  (set! (-> this force quad) (-> *null-vector* quad))
-  (set! (-> this torque quad) (-> *null-vector* quad))
+  (vector-copy! (-> this force) *null-vector*)
+  (vector-copy! (-> this torque) *null-vector*)
   0
   (none))
 
 (defmethod clear-momentum! ((this rigid-body))
   "Clear both linear and angular momentum."
-  (set! (-> this lin-momentum quad) (-> *null-vector* quad))
-  (set! (-> this ang-momentum quad) (-> *null-vector* quad))
+  (vector-copy! (-> this lin-momentum) *null-vector*)
+  (vector-copy! (-> this ang-momentum) *null-vector*)
   0
   (none))
 
@@ -43,8 +43,8 @@
   (set! (-> this lin-momentum-damping-factor) linear-damping)
   (set! (-> this ang-momentum-damping-factor) angular-damping)
   (update-matrix! this)
-  (set! (-> this lin-velocity quad) (-> *null-vector* quad))
-  (set! (-> this ang-velocity quad) (-> *null-vector* quad))
+  (vector-copy! (-> this lin-velocity) *null-vector*)
+  (vector-copy! (-> this ang-velocity) *null-vector*)
   (set! (-> this inv-i-world vector 0 quad) (the-as uint128 0))
   (set! (-> this inv-i-world vector 1 quad) (the-as uint128 0))
   (set! (-> this inv-i-world vector 2 quad) (the-as uint128 0))
@@ -367,10 +367,10 @@
   "Detect riders, sample player velocity, accumulate elapsed game time, and run fixed physics
    steps until less than half a step remains. Clear the per-frame contact marker afterward."
   (if (-> this info platform) (detect-riders! (-> this root-overlay)))
-  (set! (-> this player-velocity-prev quad) (-> this player-velocity quad))
+  (vector-copy! (-> this player-velocity-prev) (-> this player-velocity))
   (if *target*
-    (set! (-> this player-velocity quad) (-> *target* control transv quad))
-    (set! (-> this player-velocity quad) (-> *null-vector* quad)))
+    (vector-copy! (-> this player-velocity) (-> *target* control transv))
+    (vector-copy! (-> this player-velocity) *null-vector*))
   (+! (-> this sim-time-remaining) (* 0.0033333334 (the float (- (current-time) (-> *display* old-base-frame-counter)))))
   (let ((fixed-step (* DISPLAY_FPS_RATIO 0.016666668)) ;; og:preserve-this changed for high fps
         (simulation-time (* 0.0033333334 (the float (logand #xffffff (current-time))))))
@@ -394,7 +394,7 @@
               (bonk-drawable (if (and (nonzero? bonk-source) (type-type? (-> bonk-source type) process-drawable)) bonk-source)))
          (when bonk-drawable
            (set! (-> self player-impulse) #t)
-           (set! (-> self player-force-position quad) (-> (the-as process-drawable bonk-drawable) root trans quad))
+           (vector-copy! (-> self player-force-position) (-> (the-as process-drawable bonk-drawable) root trans))
            (let ((bonk-force (fmin (* 0.00012207031 (the-as float (-> block param 1)) (-> self info player-bonk-factor) (-> self info player-weight))
                                    (-> self info player-force-clamp))))
              (vector-float*! (-> self player-force) *y-vector* (- bonk-force)))))))
@@ -410,7 +410,7 @@
                      (flop-drawable (if (and (nonzero? flop-source) (type-type? (-> flop-source type) process-drawable)) flop-source)))
                 (when flop-drawable
                   (set! (-> self player-impulse) #t)
-                  (set! (-> self player-force-position quad) (-> (the-as process-drawable flop-drawable) root trans quad))
+                  (vector-copy! (-> self player-force-position) (-> (the-as process-drawable flop-drawable) root trans))
                   (let ((flop-force (fmin (* 16.0 (-> self info player-weight) (-> self info player-dive-factor)) (-> self info player-force-clamp))))
                     (vector-float*! (-> self player-force) *y-vector* (- flop-force)))))))
            ((= (-> block param 1) 'explode)
@@ -418,7 +418,7 @@
                    (explosion-drawable (if (and (nonzero? explosion-source) (type-type? (-> explosion-source type) process-drawable)) explosion-source)))
               (when explosion-drawable
                 (set! (-> self player-impulse) #t)
-                (set! (-> self player-force-position quad) (-> (the-as process-drawable explosion-drawable) root trans quad))
+                (vector-copy! (-> self player-force-position) (-> (the-as process-drawable explosion-drawable) root trans))
                 (vector-! (-> self player-force) (-> self rbody position) (-> (the-as process-drawable explosion-drawable) root trans))
                 (vector-normalize! (-> self player-force) (-> self info explosion-force)))))
            (else (the-as vector #f))))))
@@ -426,15 +426,15 @@
      (let ((impulse-source source))
        (when (if (and (nonzero? impulse-source) (type-type? (-> impulse-source type) process-drawable)) impulse-source)
          (set! (-> self player-impulse) #t)
-         (set! (-> self player-force-position quad) (-> self rbody position quad))
+         (vector-copy! (-> self player-force-position) (-> self rbody position))
          (let ((force-vector (-> self player-force)))
-           (set! (-> force-vector quad) (-> (the-as vector (-> block param 0)) quad))
+           (vector-copy! force-vector (the-as vector (-> block param 0)))
            force-vector))))
     (('edge-grabbed)
      (let ((edge-grab-data (-> block param 0)))
        (when (not (-> self player-impulse))
          (set! (-> self player-contact) #t)
-         (set! (-> self player-force-position quad) (-> (the-as vector (+ edge-grab-data 32)) quad))
+         (vector-copy! (-> self player-force-position) (the-as vector (+ edge-grab-data 32)))
          (vector-float*! (-> self player-force) *y-vector* (* -1.0 (-> self info player-weight))))))
     (('ridden)
      (let ((rider-handle-reference (the-as object (-> block param 0))))
@@ -443,8 +443,8 @@
            (when (and rider-process (= rider-process *target*) (!= (-> *target* control mod-surface mode) 'swim))
              (when (not (-> self player-impulse))
                (set! (-> self player-contact) #t)
-               (set! (-> self player-force-position quad) (-> (the-as process-drawable rider-process) root trans quad))
-               (set! (-> self player-force quad) (-> *null-vector* quad))
+               (vector-copy! (-> self player-force-position) (-> (the-as process-drawable rider-process) root trans))
+               (vector-copy! (-> self player-force) *null-vector*)
                (vector+*! (-> self player-force) (-> self player-force) *y-vector* (* -1.0 (-> self info player-weight)))))))))))
 
 (defbehavior rigid-body-platform-post rigid-body-platform ()
@@ -515,9 +515,9 @@
   (set! (-> this player-impulse) #f)
   (set! (-> this player-contact) #f)
   (set-time! (-> this player-bonk-timeout))
-  (set! (-> this player-force quad) (-> *null-vector* quad))
-  (set! (-> this player-velocity quad) (-> *null-vector* quad))
-  (set! (-> this player-velocity-prev quad) (-> *null-vector* quad))
+  (vector-copy! (-> this player-force) *null-vector*)
+  (vector-copy! (-> this player-velocity) *null-vector*)
+  (vector-copy! (-> this player-velocity-prev) *null-vector*)
   (set! (-> this water-anim) (the-as water-anim (entity-actor-lookup (-> this entity) 'water-actor 0)))
   0
   (none))

@@ -35,7 +35,7 @@ nav-enemy-default-event-handler
   (let ((probe-point (new 'stack-no-clear 'vector)))
     (let ((hit (new 'stack-no-clear 'collide-tri-result))
           (probe-distance 61440.0))
-      (set! (-> probe-point quad) (-> point quad))
+      (vector-copy! probe-point point)
       (+! (-> probe-point y) 20480.0)
       (let ((hit-fraction (fill-and-probe-using-y-probe *collide-cache*
                                                         probe-point
@@ -46,12 +46,12 @@ nav-enemy-default-event-handler
                                                         (new 'static 'pat-surface :noentity #x1))))
         (if (< hit-fraction 0.0) (return (the-as object #f)))
         (set! (-> probe-point y) (- (-> probe-point y) (* hit-fraction probe-distance)))))
-    (set! (-> point quad) (-> probe-point quad)))
+    (vector-copy! point probe-point))
   0)
 
 (defbehavior hopper-jump-to hopper ((destination vector))
   "Ground the destination, execute a custom jump, and keep the shadow floor below the arc."
-  (set! (-> self jump-dest quad) (-> destination quad))
+  (vector-copy! (-> self jump-dest) destination)
   (hopper-find-ground (-> self jump-dest))
   (set! (-> self shadow-min-y)
         (+ (fmin (-> self collide-info trans y) (-> self jump-dest y)) (-> self nav-info shadow-min-y)))

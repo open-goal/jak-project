@@ -164,31 +164,26 @@
     (login (-> this data i)))
   this)
 
-(defmethod mem-usage ((this drawable-tree-instance-tie) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-tree-instance-tie) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the tree header, its child drawables, and its prototype array. The prototype
    pass is marked so fragments are not charged as independent allocations a second time."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
-  (+! (-> usage data 0 count) 1)
-  (let ((header-bytes 32))
-    (+! (-> usage data 0 used) header-bytes)
-    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (mem-usage-add-symbol! usage drawable-group 1 32)
   (dotimes (i (-> this length))
     (mem-usage (-> this data i) usage flags))
   ;; Bit 0 marks the prototype walk. Bits 1 through 4 are passed through to select instance-color
   ;; accounting and its geometry category.
-  (mem-usage (-> this prototypes prototype-array-tie) usage (logior flags 1))
+  (mem-usage (-> this prototypes prototype-array-tie) usage (logior flags (mem-usage-flags prototype-data)))
   this)
 
-(defmethod mem-usage ((this tie-fragment) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this tie-fragment) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for this prototype's header and referenced shader, point, draw-point, generic, and
    debug data. With the instance-color flag, account only for one instance's packed color table in
    the geometry-selected color category."
-  (when (logtest? flags 2)
+  (when (logtest? flags (mem-usage-flags instance-colors))
     (let ((color-bytes (* (-> this color-count) 4))
           (color-category (cond
-                            ((logtest? flags 4) 20)
-                            ((logtest? flags 8) 21)
+                            ((logtest? flags (mem-usage-flags tie-geometry-1)) 20)
+                            ((logtest? flags (mem-usage-flags tie-geometry-2)) 21)
                             (else 22))))
       (+! (-> usage data color-category count) 1)
       (+! (-> usage data color-category used) color-bytes)
@@ -235,15 +230,10 @@
   (label cfg-13)
   this)
 
-(defmethod mem-usage ((this instance-tie) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this instance-tie) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for this instance and, when it owns color overrides, ask each available geometry
    prototype to account for the corresponding packed instance-color table."
-  (set! (-> usage length) (max 19 (-> usage length)))
-  (set! (-> usage data 18 name) "instance-tie")
-  (+! (-> usage data 18 count) 1)
-  (let ((instance-bytes (asize-of this)))
-    (+! (-> usage data 18 used) instance-bytes)
-    (+! (-> usage data 18 total) (logand -16 (+ instance-bytes 15))))
+  (mem-usage-add! usage instance-tie 1 (asize-of this))
   (when (nonzero? (-> this error))
     (set! (-> usage length) (max 24 (-> usage length)))
     (set! (-> usage data 23 name) "instance-tie-colors*")
@@ -263,35 +253,27 @@
                   (geometry-index i))
               (t9-1 geometry
                     a1-2
-                    (logior (logior (cond
-                                      ((= geometry-index 1) 4)
-                                      ((= geometry-index 2) 8)
-                                      ((= geometry-index 3) 16)
-                                      (else 0))
-                                    2)
-                            flags))))))))
+                    (the-as mem-usage-flags
+                            (logior (the-as mem-usage-flags
+                                            (logior (cond
+                                                      ((= geometry-index 1) 4)
+                                                      ((= geometry-index 2) 8)
+                                                      ((= geometry-index 3) 16)
+                                                      (else 0))
+                                                    2))
+                                    flags)))))))))
   this)
 
-(defmethod mem-usage ((this drawable-inline-array-instance-tie) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-inline-array-instance-tie) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the inline-array header and every active TIE instance."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
-  (+! (-> usage data 0 count) 1)
-  (let ((header-bytes 32))
-    (+! (-> usage data 0 used) header-bytes)
-    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (mem-usage-add-symbol! usage drawable-group 1 32)
   (dotimes (i (-> this length))
     (mem-usage (-> this data i) usage flags))
   this)
 
-(defmethod mem-usage ((this prototype-tie) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this prototype-tie) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the prototype-array header and every inline TIE fragment."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
-  (+! (-> usage data 0 count) 1)
-  (let ((header-bytes 32))
-    (+! (-> usage data 0 used) header-bytes)
-    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (mem-usage-add-symbol! usage drawable-group 1 32)
   (dotimes (i (-> this length))
     (mem-usage (-> this data i) usage flags))
   this)

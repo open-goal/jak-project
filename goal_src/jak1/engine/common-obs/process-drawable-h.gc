@@ -112,6 +112,64 @@
 
 (define-extern process-entity-status! (function process entity-perm-status symbol int))
 
+#|
+Joint-animation recipe for creatures
+------------------------------------
+
+The `ja` helpers operate on `self`'s joint controller.  A channel has an animation group, an
+internal frame, a frame interpolation value, and a frame-number function.  Channel zero is the
+ordinary whole-creature animation; use another channel only when the creature's skeleton and art
+were authored for a layered animation.
+
+Choose the animation with `:group!`, and choose how its frame changes with `:num!`:
+
+  (+! speed)             advance once without wrapping
+  (-! speed)             run backward
+  (loop! speed)          advance and wrap at the end
+  (seek! frame speed)    approach a frame and stop there
+  (identity frame)       hold an exact frame
+  (chan source-channel)  follow another channel's frame
+  min / max              hold the first / last frame
+
+The speed defaults to 1.0.  `seek!` also defaults its target to the animation's last internal
+frame, so `(seek!)` is the usual one-shot.  `ja-aframe` converts an artist's timeline frame to the
+internal frame used by `seek!`; use it for authored contacts, anticipation poses, and handoffs.
+
+`ja` applies the requested changes and, when `:num!` selects a frame rule, evaluates the channel
+immediately.  Direct field changes such as `:group!`, `:num-func`, and `:frame-num` can be combined
+to prepare a pose without advancing it.  `ja-no-eval` also suppresses the evaluation attached to
+`:num!`; that is useful immediately before pushing a blend, or when the caller needs to evaluate
+the old stack explicitly with `ja-blend-eval`.
+
+`ja-play` is the standard blocking one-shot: it installs the group and frame rule without an
+initial evaluation, then suspends once per frame and advances until a seek reaches its target.
+Forms in its body run before each suspension, which is where a creature should steer, align root
+motion, or evaluate the channels underneath a blend.
+
+For a clean transition, call `ja-channel-push!` before selecting the new group.  It keeps the old
+pose below a new root group and fades it out over the supplied time.  During a hand-authored
+transition, call `ja-blend-eval` while the new animation plays so the retained pose stays current.
+Use `ja-group?` to select animation-specific handoffs rather than restarting a generic pose.
+
+Typical creature loops are:
+
+  ;; A looping locomotion cycle.
+  (ja-channel-push! 1 (seconds 0.15))
+  (ja :group! creature-run-ja :num! min)
+  (loop
+    (suspend)
+    (ja :num! (loop! run-speed)))
+
+  ;; A one-shot action with steering while it plays.
+  (ja-channel-push! 1 (seconds 0.1))
+  (ja-play :group! creature-attack-ja :num! (seek!) :frame-num 0.0
+    (turn-toward-target! self))
+
+Keep `:frame-num 0.0` on a newly selected one-shot unless the action deliberately joins at a
+specific authored pose.  A polished creature should blend into new groups, use artist frames for
+visual beats, and make its locomotion speed explicit so motion and animation remain in step.
+|#
+
 (defmacro ja-group (&key (chan 0))
   "Return self's frame group on chan, or #f when the channel is inactive.
    Channel zero is the base channel."

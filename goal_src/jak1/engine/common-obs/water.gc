@@ -594,11 +594,11 @@
         ((begin
            ;; Track the root and selected top joint, retaining last frame's positions for surface
            ;; crossings.
-           (set! (-> this top 1 quad) (-> this top 0 quad))
+           (vector-copy! (-> this top 1) (-> this top 0))
            (vector<-cspace! (-> this top 0) (-> this process node-list data (-> this joint-index)))
            (+! (-> this top 0 y) (-> this top-y-offset))
-           (set! (-> this bottom 1 quad) (-> this bottom 0 quad))
-           (set! (-> this bottom 0 quad) (-> this process root trans quad))
+           (vector-copy! (-> this bottom 1) (-> this bottom 0))
+           (vector-copy! (-> this bottom 0) (-> this process root trans))
            (logclear! (-> this flag) (water-flag wading swimming under-water head-under-water bouncing))
            (set! (-> this bob-offset) (update! (-> this bob)))
            ;; Keep the raw sample for particles, but smooth the classification surface while the
@@ -619,7 +619,7 @@
                   (set! (-> this ocean-offset) (lerp (-> this ocean-offset) (-> this real-ocean-offset) 0.2)))
                 ;; TODO: ripple-position is prepared here but not consumed.
                 (let ((ripple-position (new 'stack-no-clear 'vector)))
-                  (set! (-> ripple-position quad) (-> this bottom 0 quad))
+                  (vector-copy! ripple-position (-> this bottom 0))
                   (set! (-> ripple-position y) ripple-height))))
              (else (set! (-> this real-ocean-offset) 0.0) (set! (-> this ocean-offset) 0.0)))
            (if (logtest? (-> (the-as collide-shape-moving (-> this process root)) root-prim prim-core action) (collide-action racer))
@@ -639,7 +639,7 @@
          (cond
            ((>= (-> this top 0 y) (-> this height))
             (let ((surface-position (new 'stack-no-clear 'vector)))
-              (set! (-> surface-position quad) (-> this bottom 0 quad))
+              (vector-copy! surface-position (-> this bottom 0))
               (vector-xz-length (-> this process root transv))
               (set! (-> surface-position y) (-> this surface-height))
               (when (and (logtest? (-> this process draw status) (draw-status was-drawn))
@@ -708,7 +708,7 @@
                         (logtest? (-> (the-as collide-shape-moving (-> this process root)) status) (collide-status touch-surface))
                         (not (logtest? (water-flag jump-out) (-> this flag))))
                    (let ((float-position (new 'stack-no-clear 'vector)))
-                     (set! (-> float-position quad) (-> this bottom 0 quad))
+                     (vector-copy! float-position (-> this bottom 0))
                      (set! (-> float-position y) (- (-> this height) (-> this swim-height)))
                      (let ((floating-shape (-> this process root)))
                        (when (and (not (logtest? (-> (the-as collide-shape-moving floating-shape) status) (collide-status touch-background)))
@@ -738,7 +738,7 @@
                       (and (< swim-line-y (-> this bottom 0 y)) (logtest? old-flags (water-flag under-water))))
              (logior! (-> this flag) (water-flag swimming))
              (let ((snap-position (new 'stack-no-clear 'vector)))
-               (set! (-> snap-position quad) (-> this bottom 0 quad))
+               (vector-copy! snap-position (-> this bottom 0))
                (let ((surfacing-shape (-> this process root)))
                  (set! (-> snap-position y) swim-line-y)
                  (when (not (logtest? (-> (the-as collide-shape-moving surfacing-shape) root-prim prim-core action) (collide-action racer)))
@@ -806,7 +806,7 @@
            (when (and (< (- (-> candidate-position y) (-> this process root trans y)) (-> this drip-height))
                       (< (-> this height) (-> candidate-position y)))
              (set! (-> this drip-joint-index) candidate-joint-index)
-             (set! (-> this drip-old-pos quad) (-> candidate-position quad))
+             (vector-copy! (-> this drip-old-pos) candidate-position)
              (logior! (-> this flag) (water-flag spawn-drip)))))))
     0
     (none)))

@@ -113,12 +113,12 @@
     (adgif-shader-login-no-remap (-> this shader i)))
   this)
 
-(defmethod mem-usage ((this tfragment) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this tfragment) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the fragment header, overlapping base/common/LOD DMA streams, colors, and debug
    data. With the color-only flag, record only the packed per-LOD colors; the separate-prototype-data
    flag excludes those colors from the ordinary total."
   ;; The color-only pass keeps its packed-color total in category 19.
-  (when (logtest? flags 2)
+  (when (logtest? flags (mem-usage-flags instance-colors))
     (+! (-> usage data 19 count) 1)
     (let ((color-bytes (+ (-> this num-base-colors) (-> this num-level0-colors) (-> this num-level1-colors))))
       (+! (-> usage data 19 used) color-bytes)
@@ -166,7 +166,7 @@
     ;; Packed time-of-day colors.
     (set! (-> usage data (+ category 5) name) "tfragment-color")
     (+! (-> usage data (+ category 5) count) 1)
-    (let ((packed-color-bytes (if (logtest? flags 1)
+    (let ((packed-color-bytes (if (logtest? flags (mem-usage-flags prototype-data))
                                 0
                                 (the-as int (* (+ (-> this num-base-colors) (-> this num-level0-colors) (-> this num-level1-colors)) 2)))))
       (+! (-> usage data (+ category 5) used) packed-color-bytes)
@@ -193,33 +193,18 @@
     (login (-> this data i)))
   this)
 
-(defmethod mem-usage ((this drawable-inline-array-tfrag) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-inline-array-tfrag) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the inline-array header and delegate to every terrain fragment."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
-  (+! (-> usage data 0 count) 1)
-  (let ((header-bytes 32))
-    (+! (-> usage data 0 used) header-bytes)
-    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (mem-usage-add-symbol! usage drawable-group 1 32)
   (dotimes (i (-> this length))
     (mem-usage (-> this data i) usage flags))
   this)
 
-(defmethod mem-usage ((this drawable-tree-tfrag) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-tree-tfrag) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the tree header, optional time-of-day palette, and every inline fragment array."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) "drawable-group")
-  (+! (-> usage data 0 count) 1)
-  (let ((header-bytes (asize-of this)))
-    (+! (-> usage data 0 used) header-bytes)
-    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (mem-usage-add! usage drawable-group 1 (asize-of this))
   (when (nonzero? (-> this time-of-day-pal))
-    (set! (-> usage length) (max 9 (-> usage length)))
-    (set! (-> usage data 8 name) "tfragment-pal")
-    (+! (-> usage data 8 count) 1)
-    (let ((palette-bytes (asize-of (-> this time-of-day-pal))))
-      (+! (-> usage data 8 used) palette-bytes)
-      (+! (-> usage data 8 total) (logand -16 (+ palette-bytes 15)))))
+    (mem-usage-add! usage tfragment-pal 1 (asize-of (-> this time-of-day-pal))))
   (dotimes (i (-> this length))
     (mem-usage (-> this arrays i) usage flags))
   this)
@@ -3035,10 +3020,10 @@
           (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
     (set! (-> data adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
     (set! (-> data adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-    (set! (-> data hvdf-offset quad) (-> camera hvdf-off quad))
-    (set! (-> data hmge-scale quad) (-> camera hmge-scale quad))
-    (set! (-> data invh-scale quad) (-> camera inv-hmge-scale quad))
-    (set! (-> data guard quad) (-> camera guard quad)))
+    (vector-copy! (-> data hvdf-offset) (-> camera hvdf-off))
+    (vector-copy! (-> data hmge-scale) (-> camera hmge-scale))
+    (vector-copy! (-> data invh-scale) (-> camera inv-hmge-scale))
+    (vector-copy! (-> data guard) (-> camera guard)))
   (set-tfrag-dists! (-> data dists))
   (none))
 

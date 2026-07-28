@@ -525,16 +525,7 @@
     (set! (-> (the-as dma-packet matrix-packet) vif1)
           (new 'static 'vif-tag :num #x6 :cmd (vif-cmd unpack-v4-32) :imm (shr (shl matrix-vu-address 54) 54)))
     (set! (-> dma-state base) (&+ (the-as pointer matrix-packet) 16)))
-  (let* ((matrix-dst (the-as matrix (-> dma-buf base)))
-         (camera-temp (-> *math-camera* camera-temp))
-         (row-0 (-> camera-temp vector 0 quad))
-         (row-1 (-> camera-temp vector 1 quad))
-         (row-2 (-> camera-temp vector 2 quad))
-         (row-3 (-> camera-temp vector 3 quad)))
-    (set! (-> matrix-dst vector 0 quad) row-0)
-    (set! (-> matrix-dst vector 1 quad) row-1)
-    (set! (-> matrix-dst vector 2 quad) row-2)
-    (set! (-> matrix-dst vector 3 quad) row-3))
+  (matrix-copy! (the-as matrix (-> dma-buf base)) (-> *math-camera* camera-temp))
   (&+! (-> dma-buf base) 64)
   ;; Entry 10 expects the camera rows followed by (1, 1, 1, 128) and
   ;; (vertex-count, 0, 0, 0).

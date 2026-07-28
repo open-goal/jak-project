@@ -662,7 +662,7 @@
   "Scale value.xyz to the requested length into out, copy zero vectors unchanged, and set out.w to 1."
   (let ((old-length (vector-length value)))
     (if (= old-length 0.0)
-      (set! (-> out quad) (-> value quad))
+      (vector-copy! out value)
       (let ((scale (/ target-length old-length)))
         (set! (-> out x) (* (-> value x) scale))
         (set! (-> out y) (* (-> value y) scale))
@@ -706,7 +706,7 @@
         (x (-> value x))
         (cosine (cos angle))
         (sine (sin angle)))
-    (set! (-> out quad) (-> value quad))
+    (vector-copy! out value)
     (set! (-> out z) (- (* z cosine) (* x sine)))
     (set! (-> out x) (+ (* z sine) (* x cosine))))
   out)
@@ -778,8 +778,8 @@
          (vf4 :class vf))
     (init-vf0-vector)
     (cond
-      ((>= 0.0 alpha) (set! (-> out quad) (-> a quad)))
-      ((>= alpha 1.0) (set! (-> out quad) (-> b quad)))
+      ((>= 0.0 alpha) (vector-copy! out a))
+      ((>= alpha 1.0) (vector-copy! out b))
       (else
        (let ((v1-2 out))
          (let ((f0-2 alpha)) (.lvf vf1 (&-> a quad)) (.lvf vf2 (&-> b quad)) (let ((a1-1 f0-2)) (.mov vf4 a1-1)))
@@ -812,8 +812,8 @@
          (vf3 :class vf)
          (vf4 :class vf))
     (cond
-      ((>= 0.0 alpha) (set! (-> out quad) (-> a quad)))
-      ((>= alpha 1.0) (set! (-> out quad) (-> b quad)))
+      ((>= 0.0 alpha) (vector-copy! out a))
+      ((>= alpha 1.0) (vector-copy! out b))
       (else
        (let ((v1-2 out))
          (let ((f0-2 alpha)) (.lvf vf1 (&-> a quad)) (.lvf vf2 (&-> b quad)) (let ((a1-1 f0-2)) (.mov vf4 a1-1)))
@@ -885,8 +885,8 @@
 (defun vector-deg-lerp-clamp! ((out vector) (minimum vector) (maximum vector) (amount float))
   "Apply clamped shortest-angle interpolation to three lanes and set out.w to 1."
   (cond
-    ((>= 0.0 amount) (set! (-> out quad) (-> minimum quad)))
-    ((>= amount 1.0) (set! (-> out quad) (-> maximum quad)))
+    ((>= 0.0 amount) (vector-copy! out minimum))
+    ((>= amount 1.0) (vector-copy! out maximum))
     (else
      (set! (-> out x) (deg-lerp-clamp (-> minimum x) (-> maximum x) amount))
      (set! (-> out y) (deg-lerp-clamp (-> minimum y) (-> maximum y) amount))
@@ -955,12 +955,12 @@
 
 (defun sphere<-vector! ((out sphere) (center vector))
   "Copy center.xyz into out while preserving its radius."
-  (let ((f0-0 (-> out w))) (set! (-> out quad) (-> center quad)) (set! (-> out w) f0-0))
+  (let ((f0-0 (-> out w))) (vector-copy! out center) (set! (-> out w) f0-0))
   out)
 
 (defun sphere<-vector+r! ((out sphere) (center vector) (radius float))
   "Copy center.xyz and radius into out."
-  (set! (-> out quad) (-> center quad))
+  (vector-copy! out center)
   (set! (-> out w) radius)
   out)
 

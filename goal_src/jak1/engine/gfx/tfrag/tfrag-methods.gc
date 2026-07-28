@@ -65,8 +65,8 @@
                    (child-array (-> tree arrays (+ depth-index 1)))
                    (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
                    (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
-                   (parent-visibility (&-> (the-as terrain-context #x70000000) work background vis-list parent-vis-byte-index))
-                   (child-visibility (&-> (the-as terrain-context #x70000000) work background vis-list child-vis-byte-index)))
+                   (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
+                   (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
               (draw-node-cull child-visibility
                               parent-visibility
                               (-> (the-as drawable-inline-array-node parent-array) data)
@@ -74,13 +74,13 @@
         (let* ((fragment-array (the-as drawable-inline-array-tfrag (-> tree arrays last-array-index)))
                (fragments (-> fragment-array data))
                (fragment-count (-> fragment-array length)))
-          (set! visibility-bits (&-> (the-as terrain-context #x70000000) work background vis-list (/ (-> fragments 0 id) 8)))
+          (set! visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments 0 id) 8)))
           (let ((dma-start (-> (current-frame) global-buf base)))
             ;; Far and near are two passes over the same fragment array into two buckets. Both open a
             ;; chain in the global buffer, end it with a next tag and hand the span to the bucket
             ;; system, which patches the chains together before the DMA goes out.
             (with-dma-buffer-add-bucket ((far-dma-buf (-> (current-frame) global-buf))
-                                         (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
+                                         (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
                                            (bucket-id tfrag-0)
                                            (bucket-id tfrag-1)))
               (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
@@ -97,7 +97,7 @@
                                  (-> *tfrag-work* wait-from-spr))
               (tfrag-end-buffer far-dma-buf))
             (with-dma-buffer-add-bucket ((near-dma-buf (-> (current-frame) global-buf))
-                                         (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
+                                         (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
                                            (bucket-id tfrag-near-0)
                                            (bucket-id tfrag-near-1)))
               (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
@@ -166,40 +166,22 @@
           (let ((s5-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
             ;; (format *stdcon* " #x~X~%" s5-1)
             ;; DMA for TFRAG
-            (let* ((s1-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                   (s2-0 (-> s1-0 base)))
-              ;; clear stats
-              (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-              (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-              ;; initialize dma buffer
-              (tfrag-init-buffer s1-0
-                                 (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
-                                 0
-                                 lev)
-              ;; do the draw!
-              (reset! (-> *perf-stats* data 5))
-              ;;(format 0 "DRAW: ~D~%" s3-0)
-              ;; (draw-inline-array-tfrag sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-0)
-              (read! (-> *perf-stats* data 5))
-              ;; update stats for the draw
-              (update-wait-stats (-> *perf-stats* data 5)
-                                 (the-as uint 0)
-                                 (-> *tfrag-work* wait-to-spr)
-                                 (-> *tfrag-work* wait-from-spr))
-              ;; finish dma buffer
-              (tfrag-end-buffer s1-0)
-              ;; close dma packet
-              (let ((a3-3 (-> s1-0 base)))
-                (let ((v1-38 (the-as object (-> s1-0 base))))
-                  (set! (-> (the-as dma-packet v1-38) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                  (set! (-> (the-as dma-packet v1-38) vif0) (new 'static 'vif-tag))
-                  (set! (-> (the-as dma-packet v1-38) vif1) (new 'static 'vif-tag))
-                  (set! (-> s1-0 base) (&+ (the-as pointer v1-38) 16)))
-                (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                       (the-as bucket-id
-                                               (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-0) (bucket-id tfrag-1)))
-                                       s2-0
-                                       (the-as (pointer dma-tag) a3-3))))
+            ;; clear stats
+            ;; initialize dma buffer
+            ;; do the draw!
+            ;;(format 0 "DRAW: ~D~%" s3-0)
+            ;; (draw-inline-array-tfrag sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-0)
+            ;; update stats for the draw
+            ;; finish dma buffer
+            ;; close dma packet
+            (with-dma-buffer-add-bucket ((s1-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (the-as bucket-id
+                                                           (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-0) (bucket-id tfrag-1)))) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0)) (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0)) (tfrag-init-buffer s1-0
+                                             (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
+                                             0
+                                             lev) (reset! (-> *perf-stats* data 5)) (read! (-> *perf-stats* data 5)) (update-wait-stats (-> *perf-stats* data 5)
+                                             (the-as uint 0)
+                                             (-> *tfrag-work* wait-to-spr)
+                                             (-> *tfrag-work* wait-from-spr)) (tfrag-end-buffer s1-0))
             ;; (format *stdcon* " #x~X~%" (-> *display* frames (-> *display* on-screen) frame global-buf base))
             ;; DMA for TFRAG NEAR
             ; (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
@@ -260,8 +242,8 @@
                    (child-array (-> tree arrays (+ depth-index 1)))
                    (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
                    (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
-                   (parent-visibility (&-> (the-as terrain-context #x70000000) work background vis-list parent-vis-byte-index))
-                   (child-visibility (&-> (the-as terrain-context #x70000000) work background vis-list child-vis-byte-index)))
+                   (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
+                   (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
               (draw-node-cull child-visibility
                               parent-visibility
                               (-> (the-as drawable-inline-array-node parent-array) data)
@@ -269,9 +251,9 @@
         (let* ((fragment-array (-> tree arrays last-array-index))
                (fragments (&+ fragment-array 32))
                (fragment-count (-> fragment-array length)))
-          (set! visibility-bits (&-> (the-as terrain-context #x70000000) work background vis-list (/ (-> fragments id) 8)))
+          (set! visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments id) 8)))
           (with-dma-buffer-add-bucket ((far-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
+                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
                                          (bucket-id tfrag-trans-0)
                                          (bucket-id tfrag-trans-1)))
             (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
@@ -295,7 +277,7 @@
             (read! (-> *perf-stats* data 5))
             (tfrag-end-buffer far-dma-buf))
           (with-dma-buffer-add-bucket ((near-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
+                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
                                          (bucket-id tfrag-trans-near-0)
                                          (bucket-id tfrag-trans-near-1)))
             (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
@@ -351,40 +333,22 @@
                (s5-1 (&+ v1-13 32))
                (s4-1 (-> v1-13 length)))
           (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
-          (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (s3-0 (-> s2-0 base)))
-            (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-            (tfrag-init-buffer s2-0
-                               (new 'static
-                                    'gs-test
-                                    :ate #x1
-                                    :atst (gs-atest greater-equal)
-                                    :aref #x7e
-                                    :afail #x1
-                                    :zte #x1
-                                    :ztst (gs-ztest greater-equal))
-                               1
-                               lev)
-            (reset! (-> *perf-stats* data 5))
-            ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-            (update-wait-stats (-> *perf-stats* data 5)
-                               (the-as uint 0)
-                               (-> *tfrag-work* wait-to-spr)
-                               (-> *tfrag-work* wait-from-spr))
-            (read! (-> *perf-stats* data 5))
-            (tfrag-end-buffer s2-0)
-            (let ((a3-3 (-> s2-0 base)))
-              (let ((v1-34 (the-as object (-> s2-0 base))))
-                (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
-                (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16)))
-              (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                     (the-as bucket-id
-                                             (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-trans-0) (bucket-id tfrag-trans-1)))
-                                     s3-0
-                                     (the-as (pointer dma-tag) a3-3))))
+          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
+          (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (the-as bucket-id
+                                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-trans-0) (bucket-id tfrag-trans-1)))) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0)) (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0)) (tfrag-init-buffer s2-0
+                                         (new 'static
+                                              'gs-test
+                                              :ate #x1
+                                              :atst (gs-atest greater-equal)
+                                              :aref #x7e
+                                              :afail #x1
+                                              :zte #x1
+                                              :ztst (gs-ztest greater-equal))
+                                         1
+                                         lev) (reset! (-> *perf-stats* data 5)) (update-wait-stats (-> *perf-stats* data 5)
+                                         (the-as uint 0)
+                                         (-> *tfrag-work* wait-to-spr)
+                                         (-> *tfrag-work* wait-from-spr)) (read! (-> *perf-stats* data 5)) (tfrag-end-buffer s2-0))
           #|
    TODO
        (let*
@@ -486,8 +450,8 @@
                    (child-array (-> tree arrays (+ depth-index 1)))
                    (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
                    (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
-                   (parent-visibility (&-> (the-as terrain-context #x70000000) work background vis-list parent-vis-byte-index))
-                   (child-visibility (&-> (the-as terrain-context #x70000000) work background vis-list child-vis-byte-index)))
+                   (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
+                   (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
               (draw-node-cull child-visibility
                               parent-visibility
                               (-> (the-as drawable-inline-array-node parent-array) data)
@@ -495,9 +459,9 @@
         (let* ((fragment-array (-> tree arrays last-array-index))
                (fragments (&+ fragment-array 32))
                (fragment-count (-> fragment-array length)))
-          (set! visibility-bits (&-> (the-as terrain-context #x70000000) work background vis-list (/ (-> fragments id) 8)))
+          (set! visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments id) 8)))
           (with-dma-buffer-add-bucket ((far-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
+                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
                                          (bucket-id tfrag-dirt-0)
                                          (bucket-id tfrag-dirt-1)))
             (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
@@ -512,7 +476,7 @@
             (read! (-> *perf-stats* data 5))
             (tfrag-end-buffer far-dma-buf))
           (with-dma-buffer-add-bucket ((near-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
+                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
                                          (bucket-id tfrag-dirt-near-0)
                                          (bucket-id tfrag-dirt-near-1)))
             (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
@@ -575,29 +539,11 @@
                (s5-1 (&+ v1-13 32))
                (s4-1 (-> v1-13 length)))
           (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
-          (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (s3-0 (-> s2-0 base)))
-            (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-            (tfrag-init-buffer s2-0 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)) 1 lev)
-            (reset! (-> *perf-stats* data 5))
-            ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-            (update-wait-stats (-> *perf-stats* data 5)
-                               (the-as uint 0)
-                               (-> *tfrag-work* wait-to-spr)
-                               (-> *tfrag-work* wait-from-spr))
-            (read! (-> *perf-stats* data 5))
-            (tfrag-end-buffer s2-0)
-            (let ((a3-3 (-> s2-0 base)))
-              (let ((v1-34 (the-as object (-> s2-0 base))))
-                (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
-                (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16)))
-              (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                     (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-dirt-0) (bucket-id tfrag-dirt-1))
-                                     s3-0
-                                     (the-as (pointer dma-tag) a3-3))))
+          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
+          (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-dirt-0) (bucket-id tfrag-dirt-1))) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0)) (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0)) (tfrag-init-buffer s2-0 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)) 1 lev) (reset! (-> *perf-stats* data 5)) (update-wait-stats (-> *perf-stats* data 5)
+                                         (the-as uint 0)
+                                         (-> *tfrag-work* wait-to-spr)
+                                         (-> *tfrag-work* wait-from-spr)) (read! (-> *perf-stats* data 5)) (tfrag-end-buffer s2-0))
           #|
        (let*
         ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
@@ -696,8 +642,8 @@
                    (child-array (-> tree arrays (+ depth-index 1)))
                    (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
                    (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
-                   (parent-visibility (&-> (the-as terrain-context #x70000000) work background vis-list parent-vis-byte-index))
-                   (child-visibility (&-> (the-as terrain-context #x70000000) work background vis-list child-vis-byte-index)))
+                   (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
+                   (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
               (draw-node-cull child-visibility
                               parent-visibility
                               (-> (the-as drawable-inline-array-node parent-array) data)
@@ -705,9 +651,9 @@
         (let* ((fragment-array (-> tree arrays last-array-index))
                (fragments (&+ fragment-array 32))
                (fragment-count (-> fragment-array length)))
-          (set! visibility-bits (&-> (the-as terrain-context #x70000000) work background vis-list (/ (-> fragments id) 8)))
+          (set! visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments id) 8)))
           (with-dma-buffer-add-bucket ((far-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
+                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
                                          (bucket-id tfrag-ice-0)
                                          (bucket-id tfrag-ice-1)))
             (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
@@ -724,7 +670,7 @@
             (read! (-> *perf-stats* data 5))
             (tfrag-end-buffer far-dma-buf))
           (with-dma-buffer-add-bucket ((near-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
+                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
                                          (bucket-id tfrag-ice-near-0)
                                          (bucket-id tfrag-ice-near-1)))
             (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
@@ -773,32 +719,14 @@
                (s5-1 (&+ v1-13 32))
                (s4-1 (-> v1-13 length)))
           (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
-          (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (s3-0 (-> s2-0 base)))
-            (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-            (tfrag-init-buffer s2-0
-                               (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
-                               1
-                               lev)
-            (reset! (-> *perf-stats* data 5))
-            ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-            (update-wait-stats (-> *perf-stats* data 5)
-                               (the-as uint 0)
-                               (-> *tfrag-work* wait-to-spr)
-                               (-> *tfrag-work* wait-from-spr))
-            (read! (-> *perf-stats* data 5))
-            (tfrag-end-buffer s2-0)
-            (let ((a3-3 (-> s2-0 base)))
-              (let ((v1-34 (the-as object (-> s2-0 base))))
-                (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
-                (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16)))
-              (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                     (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) 36 43))
-                                     s3-0
-                                     (the-as (pointer dma-tag) a3-3))))
+          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
+          (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) 36 43))) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0)) (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0)) (tfrag-init-buffer s2-0
+                                         (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+                                         1
+                                         lev) (reset! (-> *perf-stats* data 5)) (update-wait-stats (-> *perf-stats* data 5)
+                                         (the-as uint 0)
+                                         (-> *tfrag-work* wait-to-spr)
+                                         (-> *tfrag-work* wait-from-spr)) (read! (-> *perf-stats* data 5)) (tfrag-end-buffer s2-0))
           #|
        (let*
         ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))

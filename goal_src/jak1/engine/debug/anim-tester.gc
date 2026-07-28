@@ -231,24 +231,12 @@
         (if (< (-> *DISP_LIST-bank* MAX_LINES) (-> ctrl numlines)) (-> *DISP_LIST-bank* MAX_LINES) (-> ctrl numlines)))
   ;; result unused
   (if (> (-> ctrl lines-to-disp) 0) (-> ctrl lines-to-disp) 1)
-  (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (packet-start (-> dma-buff base)))
-    (draw-sprite2d-xy dma-buff
-                      (-> ctrl left)
-                      (-> ctrl top)
-                      (+ (* (-> ctrl charswide) (-> *DISP_LIST-bank* CHAR_WIDTH)) (* (-> *DISP_LIST-bank* BORDER_WIDTH) 2))
-                      (+ (* (+ (-> ctrl lines-to-disp) 1) (-> *DISP_LIST-bank* TV_SPACING)) (* (-> *DISP_LIST-bank* BORDER_WIDTH) 2))
-                      (new 'static 'rgba :a #x40))
-    (let ((packet-end (-> dma-buff base)))
-      (let ((packet (the-as dma-packet (-> dma-buff base))))
-        (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> packet vif0) (new 'static 'vif-tag))
-        (set! (-> packet vif1) (new 'static 'vif-tag))
-        (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             (bucket-id debug)
-                             packet-start
-                             (the-as (pointer dma-tag) packet-end))))
+  (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-sprite2d-xy dma-buff
+                        (-> ctrl left)
+                        (-> ctrl top)
+                        (+ (* (-> ctrl charswide) (-> *DISP_LIST-bank* CHAR_WIDTH)) (* (-> *DISP_LIST-bank* BORDER_WIDTH) 2))
+                        (+ (* (+ (-> ctrl lines-to-disp) 1) (-> *DISP_LIST-bank* TV_SPACING)) (* (-> *DISP_LIST-bank* BORDER_WIDTH) 2))
+                        (new 'static 'rgba :a #x40)))
   (set! (-> ctrl xpos) (+ (-> ctrl left) (-> *DISP_LIST-bank* BORDER_WIDTH)))
   (set! (-> ctrl ypos) (+ (-> ctrl top) (-> *DISP_LIST-bank* BORDER_HEIGHT)))
   ((-> ctrl listfunc) (list-control-cmd draw-title) ctrl)
@@ -312,24 +300,12 @@
        (+! (-> ctrl the-index) 1)
        (let ((node (-> ctrl the-node))) "return the next node in the list" (set! (-> ctrl the-node) (-> node next)))))
     (else
-     (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-            (packet-start (-> dma-buff base)))
-       (draw-string-xy "**NONE**"
-                       dma-buff
-                       (+ (-> ctrl left) (-> *DISP_LIST-bank* BORDER_WIDTH))
-                       (+ (-> ctrl top) (-> *DISP_LIST-bank* BORDER_HEIGHT) (-> *DISP_LIST-bank* TV_SPACING))
-                       (font-color menu)
-                       (font-flags shadow kerning))
-       (let ((packet-end (-> dma-buff base)))
-         (let ((packet (the-as dma-packet (-> dma-buff base))))
-           (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-           (set! (-> packet vif0) (new 'static 'vif-tag))
-           (set! (-> packet vif1) (new 'static 'vif-tag))
-           (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-         (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                (bucket-id debug)
-                                packet-start
-                                (the-as (pointer dma-tag) packet-end))))))
+     (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "**NONE**"
+                            dma-buff
+                            (+ (-> ctrl left) (-> *DISP_LIST-bank* BORDER_WIDTH))
+                            (+ (-> ctrl top) (-> *DISP_LIST-bank* BORDER_HEIGHT) (-> *DISP_LIST-bank* TV_SPACING))
+                            (font-color menu)
+                            (font-flags shadow kerning)))))
   (none))
 
 ;; Where each of the four lists sits, and how narrow it is allowed to get. X, Y
@@ -694,27 +670,15 @@
   ;; this function does not work
   (return (the pointer #f))
   (local-vars (fmt-func (function _varargs_ object)))
-  (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (packet-start (-> dma-buff base)))
-    (cond
-      ((= frame -1.0)
-       (let ((draw-adv draw-string-adv)) (format (clear *temp-string*) "~Smin" prefix) (draw-adv *temp-string* dma-buff ctx)))
-      ((= frame -2.0)
-       (let ((draw-adv draw-string-adv)) (format (clear *temp-string*) "~Smax" prefix) (draw-adv *temp-string* dma-buff ctx)))
-      (else
-       (let ((draw-adv draw-string-adv))
-         (format (clear *temp-string*) "~S~3,,0f" prefix (+ frame artist-base))
-         (draw-adv *temp-string* dma-buff ctx))))
-    (let ((packet-end (-> dma-buff base)))
-      (let ((packet (the-as dma-packet (-> dma-buff base))))
-        (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> packet vif0) (new 'static 'vif-tag))
-        (set! (-> packet vif1) (new 'static 'vif-tag))
-        (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             (bucket-id debug)
-                             packet-start
-                             (the-as (pointer dma-tag) packet-end)))))
+  (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (cond
+        ((= frame -1.0)
+         (let ((draw-adv draw-string-adv)) (format (clear *temp-string*) "~Smin" prefix) (draw-adv *temp-string* dma-buff ctx)))
+        ((= frame -2.0)
+         (let ((draw-adv draw-string-adv)) (format (clear *temp-string*) "~Smax" prefix) (draw-adv *temp-string* dma-buff ctx)))
+        (else
+         (let ((draw-adv draw-string-adv))
+           (format (clear *temp-string*) "~S~3,,0f" prefix (+ frame artist-base))
+           (draw-adv *temp-string* dma-buff ctx))))))
 
 (defbehavior anim-tester-standard-event-handler anim-tester ((proc process) (argc int) (message symbol) (block event-message-block))
   "Handle the debug menu's requests.
@@ -753,30 +717,18 @@
     (cond
       ;; (list-control-cmd draw-line)
       ((zero? op)
-       (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (packet-start (-> dma-buff base)))
-         (let ((draw-xy draw-string-xy))
-           (format (clear *temp-string*)
-                   "~S~S~S"
-                   (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
-                   (if (logtest? (-> obj flags) (anim-test-obj-flags edited)) "*" " ")
-                   (-> obj privname))
-           (draw-xy *temp-string*
-                    dma-buff
-                    (-> ctrl xpos)
-                    (-> ctrl ypos)
-                    (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
-                    (font-flags shadow kerning)))
-         (let ((packet-end (-> dma-buff base)))
-           (let ((packet (the-as dma-packet (-> dma-buff base))))
-             (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> packet vif0) (new 'static 'vif-tag))
-             (set! (-> packet vif1) (new 'static 'vif-tag))
-             (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  packet-start
-                                  (the-as (pointer dma-tag) packet-end)))))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                  (format (clear *temp-string*)
+                          "~S~S~S"
+                          (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
+                          (if (logtest? (-> obj flags) (anim-test-obj-flags edited)) "*" " ")
+                          (-> obj privname))
+                  (draw-xy *temp-string*
+                           dma-buff
+                           (-> ctrl xpos)
+                           (-> ctrl ypos)
+                           (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                           (font-flags shadow kerning)))))
       ((= op (list-control-cmd visible?)) (return #t))
       ((= op (list-control-cmd input))
        (cond
@@ -805,24 +757,12 @@
                  (else (-> *ANIM_TESTER-bank* OBJECT_LIST_MIN_WIDTH))))
          (set! (-> ctrl return-int) width)))
       ((= op (list-control-cmd draw-title))
-       (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (packet-start (-> dma-buff base)))
-         (draw-string-xy "----pick-object---"
-                         dma-buff
-                         (-> ctrl xpos)
-                         (-> ctrl ypos)
-                         (font-color menu)
-                         (font-flags shadow kerning))
-         (let ((packet-end (-> dma-buff base)))
-           (let ((packet (the-as dma-packet (-> dma-buff base))))
-             (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> packet vif0) (new 'static 'vif-tag))
-             (set! (-> packet vif1) (new 'static 'vif-tag))
-             (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  packet-start
-                                  (the-as (pointer dma-tag) packet-end)))))))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "----pick-object---"
+                                dma-buff
+                                (-> ctrl xpos)
+                                (-> ctrl ypos)
+                                (font-color menu)
+                                (font-flags shadow kerning))))))
   #f)
 
 (defun anim-test-anim-list-handler ((cmd list-control-cmd) (ctrl list-control))
@@ -836,26 +776,14 @@
     (cond
       ;; (list-control-cmd draw-line)
       ((zero? cmd)
-       (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (packet-start (-> dma-buff base)))
-         (let ((draw-xy draw-string-xy))
-           (format (clear *temp-string*) "~S~S" (if (= (-> ctrl the-index) (-> ctrl highlight-index)) "> " "  ") (-> seq privname))
-           (draw-xy *temp-string*
-                    dma-buff
-                    (-> ctrl xpos)
-                    (-> ctrl ypos)
-                    (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
-                    (font-flags shadow kerning)))
-         (let ((packet-end (-> dma-buff base)))
-           (let ((packet (the-as dma-packet (-> dma-buff base))))
-             (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> packet vif0) (new 'static 'vif-tag))
-             (set! (-> packet vif1) (new 'static 'vif-tag))
-             (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  packet-start
-                                  (the-as (pointer dma-tag) packet-end)))))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                  (format (clear *temp-string*) "~S~S" (if (= (-> ctrl the-index) (-> ctrl highlight-index)) "> " "  ") (-> seq privname))
+                  (draw-xy *temp-string*
+                           dma-buff
+                           (-> ctrl xpos)
+                           (-> ctrl ypos)
+                           (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                           (font-flags shadow kerning)))))
       ((= cmd (list-control-cmd visible?)) (return (not (logtest? (-> seq flags) (anim-test-seq-flags sequence)))))
       ((= cmd (list-control-cmd input))
        (cond
@@ -910,24 +838,12 @@
                  (else (-> *ANIM_TESTER-bank* ANIM_LIST_MIN_WIDTH))))
          (set! (-> ctrl return-int) width)))
       ((= cmd (list-control-cmd draw-title))
-       (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (packet-start (-> dma-buff base)))
-         (draw-string-xy "----pick-joint-anim----"
-                         dma-buff
-                         (-> ctrl xpos)
-                         (-> ctrl ypos)
-                         (font-color menu)
-                         (font-flags shadow kerning))
-         (let ((packet-end (-> dma-buff base)))
-           (let ((packet (the-as dma-packet (-> dma-buff base))))
-             (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> packet vif0) (new 'static 'vif-tag))
-             (set! (-> packet vif1) (new 'static 'vif-tag))
-             (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  packet-start
-                                  (the-as (pointer dma-tag) packet-end)))))))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "----pick-joint-anim----"
+                                dma-buff
+                                (-> ctrl xpos)
+                                (-> ctrl ypos)
+                                (font-color menu)
+                                (font-flags shadow kerning))))))
   #f)
 
 (defun anim-test-sequence-list-handler ((cmd list-control-cmd) (ctrl list-control))
@@ -939,30 +855,18 @@
     (cond
       ;; (list-control-cmd draw-line)
       ((zero? cmd)
-       (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (packet-start (-> dma-buff base)))
-         (let ((draw-xy draw-string-xy))
-           (format (clear *temp-string*)
-                   "~S~S~S"
-                   (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
-                   (if (logtest? (-> seq flags) (anim-test-seq-flags from-file)) "*" " ")
-                   (-> seq privname))
-           (draw-xy *temp-string*
-                    dma-buff
-                    (-> ctrl xpos)
-                    (-> ctrl ypos)
-                    (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
-                    (font-flags shadow kerning)))
-         (let ((packet-end (-> dma-buff base)))
-           (let ((packet (the-as dma-packet (-> dma-buff base))))
-             (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> packet vif0) (new 'static 'vif-tag))
-             (set! (-> packet vif1) (new 'static 'vif-tag))
-             (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  packet-start
-                                  (the-as (pointer dma-tag) packet-end)))))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                  (format (clear *temp-string*)
+                          "~S~S~S"
+                          (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
+                          (if (logtest? (-> seq flags) (anim-test-seq-flags from-file)) "*" " ")
+                          (-> seq privname))
+                  (draw-xy *temp-string*
+                           dma-buff
+                           (-> ctrl xpos)
+                           (-> ctrl ypos)
+                           (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                           (font-flags shadow kerning)))))
       ((= cmd (list-control-cmd visible?)) (return (logtest? (-> seq flags) (anim-test-seq-flags sequence))))
       ((= cmd (list-control-cmd input))
        (cond
@@ -1014,24 +918,12 @@
                  (else (-> *ANIM_TESTER-bank* PICK_LIST_MIN_WIDTH))))
          (set! (-> ctrl return-int) width)))
       ((= cmd (list-control-cmd draw-title))
-       (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (packet-start (-> dma-buff base)))
-         (draw-string-xy "----pick-sequence---"
-                         dma-buff
-                         (-> ctrl xpos)
-                         (-> ctrl ypos)
-                         (font-color menu)
-                         (font-flags shadow kerning))
-         (let ((packet-end (-> dma-buff base)))
-           (let ((packet (the-as dma-packet (-> dma-buff base))))
-             (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> packet vif0) (new 'static 'vif-tag))
-             (set! (-> packet vif1) (new 'static 'vif-tag))
-             (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  packet-start
-                                  (the-as (pointer dma-tag) packet-end)))))))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "----pick-sequence---"
+                                dma-buff
+                                (-> ctrl xpos)
+                                (-> ctrl ypos)
+                                (font-color menu)
+                                (font-flags shadow kerning))))))
   #f)
 
 ;; Where each editor column starts and how wide it is, in characters. The first
@@ -1165,86 +1057,60 @@
                                         (bucket-id debug)
                                         packet-start
                                         (the-as (pointer dma-tag) packet-end))))))
-         (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                (packet-start (-> dma-buff base)))
-           (let ((draw-xy draw-string-xy))
-             (let ((fmt format))
-               (fmt (clear *temp-string*)
-                    "~S~S~-27S"
-                    (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
-                    (if (= (-> ctrl the-index) (-> seq playing-item)) "*" " ")
-                    (-> item privname)))
-             (draw-xy *temp-string*
-                      dma-buff
-                      (-> ctrl xpos)
-                      (-> ctrl ypos)
-                      (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
-                      (font-flags shadow kerning)))
-           (let ((packet-end (-> dma-buff base)))
-             (let ((packet (the-as dma-packet (-> dma-buff base))))
-               (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-               (set! (-> packet vif0) (new 'static 'vif-tag))
-               (set! (-> packet vif1) (new 'static 'vif-tag))
-               (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-             (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                    (bucket-id debug)
-                                    packet-start
-                                    (the-as (pointer dma-tag) packet-end))))
+         (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                      (let ((fmt format))
+                        (fmt (clear *temp-string*)
+                             "~S~S~-27S"
+                             (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
+                             (if (= (-> ctrl the-index) (-> seq playing-item)) "*" " ")
+                             (-> item privname)))
+                      (draw-xy *temp-string*
+                               dma-buff
+                               (-> ctrl xpos)
+                               (-> ctrl ypos)
+                               (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                               (font-flags shadow kerning))))
          (when (not picking?)
-           (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                  (packet-start (-> dma-buff base)))
-             (when (not (logtest? (-> item flags) (anim-test-item-flags end)))
-               (set-origin! font-ctx
-                            (+ (-> ctrl xpos) (* (-> *ANIM_TESTER-bank* EDIT_STATS_X) (-> *DISP_LIST-bank* CHAR_WIDTH)))
-                            (-> ctrl ypos))
-               (cond
-                 ((and (< (-> item speed) 0) (< -100 (-> item speed)))
-                  (let ((draw-adv draw-string-adv))
-                    (let ((fmt format)
-                          (str (clear *temp-string*))
-                          (fmt-str "-0.~1d")
-                          (speed (abs (-> item speed))))
-                      (fmt str fmt-str (/ (mod speed 100) 10)))
-                    (draw-adv *temp-string* dma-buff font-ctx)))
-                 (else
-                  (let ((draw-adv draw-string-adv))
-                    (let ((fmt format)
-                          (str (clear *temp-string*))
-                          (fmt-str "~2d.~1d")
-                          (whole-speed (/ (-> item speed) 100))
-                          (speed (abs (-> item speed))))
-                      (fmt str fmt-str whole-speed (/ (mod speed 100) 10)))
-                    (draw-adv *temp-string* dma-buff font-ctx))))
-               (let ((draw-adv draw-string-adv))
-                 (format (clear *temp-string*) " ~4d" (-> item blend))
-                 (draw-adv *temp-string* dma-buff font-ctx))
-               (anim-tester-disp-frame-num " " (-> item first-frame) (-> item artist-base) font-ctx)
-               (anim-tester-disp-frame-num " " (-> item last-frame) (-> item artist-base) font-ctx)
-               (let ((draw-adv draw-string-adv))
-                 (format (clear *temp-string*)
-                         " ~S~S~S~S"
-                         (if (logtest? (-> item flags) (anim-test-item-flags wait-for-blend)) "B" "-")
-                         "-"
-                         "-"
-                         "-")
-                 (draw-adv *temp-string* dma-buff font-ctx)))
-             (let* ((field-left (-> anim-test-field-highlight-lw 9 left))
-                    (ctx font-ctx)
-                    (x (+ (-> ctrl xpos) (* field-left (-> *DISP_LIST-bank* CHAR_WIDTH))))
-                    (y (-> ctrl ypos)))
-               (set! (-> ctx origin x) (the float x))
-               (set! (-> ctx origin y) (the float y)))
-             (draw-string-adv "MID" dma-buff font-ctx)
-             (let ((packet-end (-> dma-buff base)))
-               (let ((packet (the-as dma-packet (-> dma-buff base))))
-                 (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                 (set! (-> packet vif0) (new 'static 'vif-tag))
-                 (set! (-> packet vif1) (new 'static 'vif-tag))
-                 (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-               (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                      (bucket-id debug)
-                                      packet-start
-                                      (the-as (pointer dma-tag) packet-end)))))))
+           (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (when (not (logtest? (-> item flags) (anim-test-item-flags end)))
+                          (set-origin! font-ctx
+                                       (+ (-> ctrl xpos) (* (-> *ANIM_TESTER-bank* EDIT_STATS_X) (-> *DISP_LIST-bank* CHAR_WIDTH)))
+                                       (-> ctrl ypos))
+                          (cond
+                            ((and (< (-> item speed) 0) (< -100 (-> item speed)))
+                             (let ((draw-adv draw-string-adv))
+                               (let ((fmt format)
+                                     (str (clear *temp-string*))
+                                     (fmt-str "-0.~1d")
+                                     (speed (abs (-> item speed))))
+                                 (fmt str fmt-str (/ (mod speed 100) 10)))
+                               (draw-adv *temp-string* dma-buff font-ctx)))
+                            (else
+                             (let ((draw-adv draw-string-adv))
+                               (let ((fmt format)
+                                     (str (clear *temp-string*))
+                                     (fmt-str "~2d.~1d")
+                                     (whole-speed (/ (-> item speed) 100))
+                                     (speed (abs (-> item speed))))
+                                 (fmt str fmt-str whole-speed (/ (mod speed 100) 10)))
+                               (draw-adv *temp-string* dma-buff font-ctx))))
+                          (let ((draw-adv draw-string-adv))
+                            (format (clear *temp-string*) " ~4d" (-> item blend))
+                            (draw-adv *temp-string* dma-buff font-ctx))
+                          (anim-tester-disp-frame-num " " (-> item first-frame) (-> item artist-base) font-ctx)
+                          (anim-tester-disp-frame-num " " (-> item last-frame) (-> item artist-base) font-ctx)
+                          (let ((draw-adv draw-string-adv))
+                            (format (clear *temp-string*)
+                                    " ~S~S~S~S"
+                                    (if (logtest? (-> item flags) (anim-test-item-flags wait-for-blend)) "B" "-")
+                                    "-"
+                                    "-"
+                                    "-")
+                            (draw-adv *temp-string* dma-buff font-ctx))) (let* ((field-left (-> anim-test-field-highlight-lw 9 left))
+                               (ctx font-ctx)
+                               (x (+ (-> ctrl xpos) (* field-left (-> *DISP_LIST-bank* CHAR_WIDTH))))
+                               (y (-> ctrl ypos)))
+                          (set! (-> ctx origin x) (the float x))
+                          (set! (-> ctx origin y) (the float y))) (draw-string-adv "MID" dma-buff font-ctx)))))
       ((= cmd (list-control-cmd visible?)) (return #t))
       ((= cmd (list-control-cmd input))
        (cond
@@ -1397,42 +1263,18 @@
                           0)))))))))))))
       ((= cmd (list-control-cmd measure)) (set! (-> ctrl return-int) (-> *ANIM_TESTER-bank* EDIT_LIST_MIN_WIDTH)))
       ((= cmd (list-control-cmd draw-title))
-       (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (packet-start (-> dma-buff base)))
-         (let ((draw-xy draw-string-xy))
-           (format (clear *temp-string*) "--Seq--(~-17S)--" (-> seq privname))
-           (draw-xy *temp-string* dma-buff (-> ctrl xpos) (-> ctrl ypos) (font-color menu) (font-flags shadow kerning)))
-         (let ((packet-end (-> dma-buff base)))
-           (let ((packet (the-as dma-packet (-> dma-buff base))))
-             (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> packet vif0) (new 'static 'vif-tag))
-             (set! (-> packet vif1) (new 'static 'vif-tag))
-             (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  packet-start
-                                  (the-as (pointer dma-tag) packet-end))))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                  (format (clear *temp-string*) "--Seq--(~-17S)--" (-> seq privname))
+                  (draw-xy *temp-string* dma-buff (-> ctrl xpos) (-> ctrl ypos) (font-color menu) (font-flags shadow kerning))))
        (cond
          (picking? (display-list-control (-> *anim-tester* 0 pick-con)))
          (else
-          (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                 (packet-start (-> dma-buff base)))
-            (draw-string-xy "-spd-blnd-1st-lst-flgs-mov-"
-                            dma-buff
-                            (+ (-> ctrl xpos) (* (-> *ANIM_TESTER-bank* EDIT_STATS_X) (-> *DISP_LIST-bank* CHAR_WIDTH)))
-                            (-> ctrl ypos)
-                            (font-color menu)
-                            (font-flags shadow kerning))
-            (let ((packet-end (-> dma-buff base)))
-              (let ((packet (the-as dma-packet (-> dma-buff base))))
-                (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> packet vif0) (new 'static 'vif-tag))
-                (set! (-> packet vif1) (new 'static 'vif-tag))
-                (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-              (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                     (bucket-id debug)
-                                     packet-start
-                                     (the-as (pointer dma-tag) packet-end)))))))))
+          (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "-spd-blnd-1st-lst-flgs-mov-"
+                                      dma-buff
+                                      (+ (-> ctrl xpos) (* (-> *ANIM_TESTER-bank* EDIT_STATS_X) (-> *DISP_LIST-bank* CHAR_WIDTH)))
+                                      (-> ctrl ypos)
+                                      (font-color menu)
+                                      (font-flags shadow kerning))))))))
   #f)
 
 (defbehavior anim-tester-interface anim-tester ()
@@ -1457,24 +1299,12 @@
             (set! (-> obj anim-index) (-> obj list-con current-index))
             (set! (-> obj anim-hindex) (-> obj list-con highlight-index)))
            (else
-            (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                   (packet-start (-> dma-buff base)))
-              (draw-string-xy "ERROR: current object not found"
-                              dma-buff
-                              (-> *ANIM_TESTER-bank* ANIM_LIST_X)
-                              (-> *ANIM_TESTER-bank* ANIM_LIST_Y)
-                              (font-color menu-func-bad)
-                              (font-flags shadow kerning))
-              (let ((packet-end (-> dma-buff base)))
-                (let ((packet (the-as dma-packet (-> dma-buff base))))
-                  (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                  (set! (-> packet vif0) (new 'static 'vif-tag))
-                  (set! (-> packet vif1) (new 'static 'vif-tag))
-                  (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-                (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                       (bucket-id debug)
-                                       packet-start
-                                       (the-as (pointer dma-tag) packet-end))))))))
+            (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "ERROR: current object not found"
+                                          dma-buff
+                                          (-> *ANIM_TESTER-bank* ANIM_LIST_X)
+                                          (-> *ANIM_TESTER-bank* ANIM_LIST_Y)
+                                          (font-color menu-func-bad)
+                                          (font-flags shadow kerning)))))))
       ((= mode (anim-tester-edit-mode pick-sequence))
        (let ((obj (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
          (cond
@@ -1486,24 +1316,12 @@
             (set! (-> obj seq-index) (-> obj list-con current-index))
             (set! (-> obj seq-hindex) (-> obj list-con highlight-index)))
            (else
-            (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                   (packet-start (-> dma-buff base)))
-              (draw-string-xy "ERROR: current object not found"
-                              dma-buff
-                              (-> *ANIM_TESTER-bank* ANIM_LIST_X)
-                              (-> *ANIM_TESTER-bank* ANIM_LIST_Y)
-                              (font-color menu-func-bad)
-                              (font-flags shadow kerning))
-              (let ((packet-end (-> dma-buff base)))
-                (let ((packet (the-as dma-packet (-> dma-buff base))))
-                  (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                  (set! (-> packet vif0) (new 'static 'vif-tag))
-                  (set! (-> packet vif1) (new 'static 'vif-tag))
-                  (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-                (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                       (bucket-id debug)
-                                       packet-start
-                                       (the-as (pointer dma-tag) packet-end))))))))
+            (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "ERROR: current object not found"
+                                          dma-buff
+                                          (-> *ANIM_TESTER-bank* ANIM_LIST_X)
+                                          (-> *ANIM_TESTER-bank* ANIM_LIST_Y)
+                                          (font-color menu-func-bad)
+                                          (font-flags shadow kerning)))))))
       ((= mode (anim-tester-edit-mode edit-sequence))
        (let ((obj (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
          (cond
@@ -1512,43 +1330,19 @@
               (cond
                 (seq (display-list-control (-> seq list-con)))
                 (else
-                 (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                        (packet-start (-> dma-buff base)))
-                   (draw-string-xy "ERROR: current sequence not found"
-                                   dma-buff
-                                   (-> *ANIM_TESTER-bank* EDIT_LIST_X)
-                                   (-> *ANIM_TESTER-bank* EDIT_LIST_Y)
-                                   (font-color menu-func-bad)
-                                   (font-flags shadow kerning))
-                   (let ((packet-end (-> dma-buff base)))
-                     (let ((packet (the-as dma-packet (-> dma-buff base))))
-                       (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                       (set! (-> packet vif0) (new 'static 'vif-tag))
-                       (set! (-> packet vif1) (new 'static 'vif-tag))
-                       (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-                     (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                            (bucket-id debug)
-                                            packet-start
-                                            (the-as (pointer dma-tag) packet-end))))))))
+                 (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "ERROR: current sequence not found"
+                                                    dma-buff
+                                                    (-> *ANIM_TESTER-bank* EDIT_LIST_X)
+                                                    (-> *ANIM_TESTER-bank* EDIT_LIST_Y)
+                                                    (font-color menu-func-bad)
+                                                    (font-flags shadow kerning)))))))
            (else
-            (let* ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                   (packet-start (-> dma-buff base)))
-              (draw-string-xy "ERROR: current object not found"
-                              dma-buff
-                              (-> *ANIM_TESTER-bank* EDIT_LIST_X)
-                              (-> *ANIM_TESTER-bank* EDIT_LIST_Y)
-                              (font-color menu-func-bad)
-                              (font-flags shadow kerning))
-              (let ((packet-end (-> dma-buff base)))
-                (let ((packet (the-as dma-packet (-> dma-buff base))))
-                  (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                  (set! (-> packet vif0) (new 'static 'vif-tag))
-                  (set! (-> packet vif1) (new 'static 'vif-tag))
-                  (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
-                (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                       (bucket-id debug)
-                                       packet-start
-                                       (the-as (pointer dma-tag) packet-end))))))))))
+            (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "ERROR: current object not found"
+                                          dma-buff
+                                          (-> *ANIM_TESTER-bank* EDIT_LIST_X)
+                                          (-> *ANIM_TESTER-bank* EDIT_LIST_Y)
+                                          (font-color menu-func-bad)
+                                          (font-flags shadow kerning)))))))))
   (set! (-> self old-mode) (-> self edit-mode))
   (none))
 

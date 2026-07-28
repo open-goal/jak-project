@@ -88,7 +88,7 @@
 (defstate snow-ball-shadow-idle (snow-ball-shadow)
   :trans
     (behavior ()
-      (set! (-> self root trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
+      (vector-copy! (-> self root trans) (-> (the-as process-drawable (-> self parent 0)) root trans))
       (update-direction-from-time-of-day (-> self draw shadow-ctrl))
       0)
   :code
@@ -102,7 +102,7 @@
   (stack-size-set! (-> self main-thread) 128)
   (logclear! (-> self mask) (process-mask actor-pause movie enemy platform projectile))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
+  (vector-copy! (-> self root trans) (-> (the-as process-drawable (-> self parent 0)) root trans))
   (quaternion-identity! (-> self root quat))
   (vector-identity! (-> self root scale))
   (initialize-skeleton self *snow-ball-shadow-sg* '())
@@ -123,7 +123,7 @@
   (let ((path-info (-> this path-info)))
     (set! (-> path-info hug-path?) #f)
     (let ((previous-path-position (new 'stack-no-clear 'vector)))
-      (set! (-> previous-path-position quad) (-> path-info path-pos quad))
+      (vector-copy! previous-path-position (-> path-info path-pos))
       (eval-path-curve! (-> this path) (-> path-info path-pos) (-> this path-u) 'interp)
       (let ((emerge-end (-> this path-coming-out-u)))
         (when (< (-> this path-u) emerge-end)
@@ -157,7 +157,7 @@
     (let ((f30-0 (+ f0-0 (* (-> self root transv y) (seconds-per-frame)))))
       (follow-path self)
       (let ((a1-0 (new 'stack-no-clear 'vector)))
-        (let ((a0-1 (-> self path-info))) (set! (-> a1-0 quad) (-> a0-1 path-pos quad)))
+        (let ((a0-1 (-> self path-info))) (vector-copy! a1-0 (-> a0-1 path-pos)))
         (+! (-> a1-0 y) 9216.0)
         (cond
           ((-> self path-info hug-path?) (move-to-point! (-> self root) a1-0) (set! (-> self root transv y) 0.0))

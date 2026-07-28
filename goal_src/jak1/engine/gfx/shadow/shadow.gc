@@ -142,7 +142,7 @@
    a caster over water keeps the reference point it already had, and it is placed at the bottom of
    the probe range when nothing was hit at all."
   (let ((probe-origin (new 'stack-no-clear 'vector)))
-    (set! (-> probe-origin quad) (-> pos quad))
+    (vector-copy! probe-origin pos)
     ;; a second stack vector is reserved here and never used
     (new 'stack-no-clear 'vector)
     (+! (-> probe-origin y) probe-y-offset)
@@ -164,7 +164,7 @@
                                     probe-length
                                     (the-as float 0)))
          (if (and ground-pos (!= (-> hit pat material) (pat-material waterbottom)))
-           (set! (-> ground-pos quad) (-> hit intersect quad))))
+           (vector-copy! ground-pos (-> hit intersect))))
         (else (if ground-pos (vector+float*! ground-pos pos (-> *standard-dynamics* gravity-normal) (- probe-length)))))))
   0
   (none))
@@ -179,7 +179,7 @@
            (!= (-> self control mod-surface mode) 'dive)
            (!= (-> self next-state name) 'target-flop)
            (not (logtest? (-> self draw status) (draw-status hidden no-anim skip-bones))))
-    (set! (-> self control shadow-pos quad) (-> self control trans quad))
+    (vector-copy! (-> self control shadow-pos) (-> self control trans))
     (find-ground-and-draw-shadow (-> self control trans)
                                  (-> self control shadow-pos)
                                  0.0

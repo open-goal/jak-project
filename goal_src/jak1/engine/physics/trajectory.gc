@@ -10,7 +10,7 @@
 (defmethod eval-position! ((this trajectory) (elapsed-time float) (result vector))
   "Evaluate position after elapsed-time game-time ticks into result. Vertical motion includes
    one half gravity times time squared; evaluation is not clamped to the solved flight duration."
-  (set! (-> result quad) (-> this initial-position quad))
+  (vector-copy! result (-> this initial-position))
   (+! (-> result x) (* elapsed-time (-> this initial-velocity x)))
   (+! (-> result y) (* elapsed-time (-> this initial-velocity y)))
   (+! (-> result z) (* elapsed-time (-> this initial-velocity z)))
@@ -20,7 +20,7 @@
 (defmethod eval-velocity! ((this trajectory) (elapsed-time float) (result vector))
   "Evaluate velocity after elapsed-time game-time ticks into result. Only the vertical
    component changes under gravity."
-  (set! (-> result quad) (-> this initial-velocity quad))
+  (vector-copy! result (-> this initial-velocity))
   (+! (-> result y) (* elapsed-time (-> this gravity)))
   result)
 
@@ -28,7 +28,7 @@
   "Solve the initial velocity that moves from start to destination in duration game-time ticks
    under constant vertical gravity. Store the supplied duration; callers must provide a positive,
    nonzero duration."
-  (set! (-> this initial-position quad) (-> start quad))
+  (vector-copy! (-> this initial-position) start)
   (set! (-> this gravity) gravity)
   (set! (-> this time) duration)
   (let ((xz-speed (/ (vector-vector-xz-distance destination start) duration)))
@@ -79,9 +79,9 @@
   (let ((previous-position (new 'stack-no-clear 'vector))
         (position (new 'stack-no-clear 'vector))
         (num-segments 10))
-    (set! (-> position quad) (-> this initial-position quad))
+    (vector-copy! position (-> this initial-position))
     (dotimes (i num-segments)
-      (set! (-> previous-position quad) (-> position quad))
+      (vector-copy! previous-position position)
       (let ((sample-time (* (-> this time) (/ (+ 1.0 (the float i)) (the float num-segments)))))
         (eval-position! this sample-time position))
       (add-debug-line #t

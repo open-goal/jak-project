@@ -127,61 +127,49 @@
 (defun cam-line-dma ()
   "Append the current transformed debug-line endpoints and color to the
    no-depth-test debug DMA bucket."
-  (let* ((debug-buffer (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (packet-start (-> debug-buffer base)))
-    (let ((cnt-tag (the-as object (-> debug-buffer base))))
-      (let* ((write-buffer debug-buffer)
-             (dma-header (the-as object (-> write-buffer base))))
-        (set! (-> (the-as dma-packet dma-header) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-        (set! (-> (the-as dma-packet dma-header) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet dma-header) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
-        (set! (-> write-buffer base) (&+ (the-as pointer dma-header) 16)))
-      (let* ((write-buffer debug-buffer)
-             (gif-header (the-as object (-> write-buffer base))))
-        (set! (-> (the-as gs-gif-tag gif-header) tag)
-              (new 'static
-                   'gif-tag64
-                   :nloop #x1
-                   :eop #x1
-                   :pre #x1
-                   :prim
-                   (new 'static 'gs-prim :prim (gs-prim-type line) :iip #x1 :abe #x1)
-                   :nreg #x4))
-        (set! (-> (the-as gs-gif-tag gif-header) regs)
-              (new 'static
-                   'gif-tag-regs
-                   :regs0 (gif-reg-id rgbaq)
-                   :regs1 (gif-reg-id xyzf2)
-                   :regs2 (gif-reg-id rgbaq)
-                   :regs3 (gif-reg-id xyzf2)))
-        (set! (-> write-buffer base) (&+ (the-as pointer gif-header) 16)))
-      (let* ((write-buffer debug-buffer)
-             (vertex-packet (-> write-buffer base)))
-        (set! (-> (the-as (pointer uint128) vertex-packet) 0) (-> (the-as vector (+ 32 (scratchpad-object int))) quad))
-        (set! (-> (the-as (pointer uint128) vertex-packet) 1)
-              (-> (the-as vector (-> (scratchpad-object cam-dbg-scratch) linevec4w)) quad))
-        (set! (-> write-buffer base) (&+ vertex-packet 32)))
-      (let* ((write-buffer debug-buffer)
-             (vertex-packet (-> write-buffer base)))
-        (set! (-> (the-as (pointer uint128) vertex-packet) 0) (-> (the-as vector (+ 32 (scratchpad-object int))) quad))
-        (set! (-> (the-as (pointer uint128) vertex-packet) 1) (-> (the-as vector (+ 16 (scratchpad-object int))) quad))
-        (set! (-> write-buffer base) (&+ vertex-packet 32)))
-      (let ((qwc (/ (the-as int (+ (- -16 (the-as int cnt-tag)) (the-as int (-> debug-buffer base)))) 16)))
-        (cond
-          ((nonzero? qwc)
-           (logior! (-> (the-as dma-packet cnt-tag) dma) (shr (shl qwc 48) 48))
-           (logior! (-> (the-as (pointer uint64) cnt-tag) 1) (shl (shr (shl qwc 48) 48) 32)))
-          (else (set! (-> debug-buffer base) (the-as (pointer uint64) cnt-tag))))))
-    (let ((next-tag (-> debug-buffer base)))
-      (let ((next-header (the-as object (-> debug-buffer base))))
-        (set! (-> (the-as dma-packet next-header) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet next-header) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet next-header) vif1) (new 'static 'vif-tag))
-        (set! (-> debug-buffer base) (&+ (the-as pointer next-header) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             (bucket-id debug-no-zbuf)
-                             packet-start
-                             (the-as (pointer dma-tag) next-tag)))))
+  (with-dma-buffer-add-bucket ((debug-buffer (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug-no-zbuf)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((cnt-tag (the-as object (-> debug-buffer base))))
+        (let* ((write-buffer debug-buffer)
+               (dma-header (the-as object (-> write-buffer base))))
+          (set! (-> (the-as dma-packet dma-header) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+          (set! (-> (the-as dma-packet dma-header) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet dma-header) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+          (set! (-> write-buffer base) (&+ (the-as pointer dma-header) 16)))
+        (let* ((write-buffer debug-buffer)
+               (gif-header (the-as object (-> write-buffer base))))
+          (set! (-> (the-as gs-gif-tag gif-header) tag)
+                (new 'static
+                     'gif-tag64
+                     :nloop #x1
+                     :eop #x1
+                     :pre #x1
+                     :prim
+                     (new 'static 'gs-prim :prim (gs-prim-type line) :iip #x1 :abe #x1)
+                     :nreg #x4))
+          (set! (-> (the-as gs-gif-tag gif-header) regs)
+                (new 'static
+                     'gif-tag-regs
+                     :regs0 (gif-reg-id rgbaq)
+                     :regs1 (gif-reg-id xyzf2)
+                     :regs2 (gif-reg-id rgbaq)
+                     :regs3 (gif-reg-id xyzf2)))
+          (set! (-> write-buffer base) (&+ (the-as pointer gif-header) 16)))
+        (let* ((write-buffer debug-buffer)
+               (vertex-packet (-> write-buffer base)))
+          (set! (-> (the-as (pointer uint128) vertex-packet) 0) (-> (the-as vector (+ 32 (scratchpad-object int))) quad))
+          (set! (-> (the-as (pointer uint128) vertex-packet) 1)
+                (-> (the-as vector (-> (scratchpad-object cam-dbg-scratch) linevec4w)) quad))
+          (set! (-> write-buffer base) (&+ vertex-packet 32)))
+        (let* ((write-buffer debug-buffer)
+               (vertex-packet (-> write-buffer base)))
+          (set! (-> (the-as (pointer uint128) vertex-packet) 0) (-> (the-as vector (+ 32 (scratchpad-object int))) quad))
+          (set! (-> (the-as (pointer uint128) vertex-packet) 1) (-> (the-as vector (+ 16 (scratchpad-object int))) quad))
+          (set! (-> write-buffer base) (&+ vertex-packet 32)))
+        (let ((qwc (/ (the-as int (+ (- -16 (the-as int cnt-tag)) (the-as int (-> debug-buffer base)))) 16)))
+          (cond
+            ((nonzero? qwc)
+             (logior! (-> (the-as dma-packet cnt-tag) dma) (shr (shl qwc 48) 48))
+             (logior! (-> (the-as (pointer uint64) cnt-tag) 1) (shl (shr (shl qwc 48) 48) 32)))
+            (else (set! (-> debug-buffer base) (the-as (pointer uint64) cnt-tag))))))))
 
 (defun camera-line2d ((start vector4w) (end vector4w))
   "Draw a line between two screen-space points. Convert pixels to GS 12.4
@@ -914,15 +902,15 @@
    camera-slave state needed to reproduce and inspect the probe."
   (when *record-cam-collide-history*
     (let ((record (the-as cam-collision-record (+ (+ (* 176 *cam-collision-record-last*) 12) (the-as int *cam-collision-record*)))))
-      (set! (-> record pos quad) (-> position quad))
-      (set! (-> record vel quad) (-> velocity quad))
-      (set! (-> record view-flat quad) (-> slave view-flat quad))
-      (set! (-> record desired-pos quad) (-> slave desired-pos quad))
-      (set! (-> record cam-tpos-cur quad) (-> *camera* tpos-curr-adj quad))
-      (set! (-> record cam-tpos-old quad) (-> *camera* tpos-old-adj quad))
-      (set! (-> record string-min-val quad) (-> slave string-min-val quad))
-      (set! (-> record string-max-val quad) (-> slave string-max-val quad))
-      (set! (-> record view-off quad) (-> slave view-off quad))
+      (vector-copy! (-> record pos) position)
+      (vector-copy! (-> record vel) velocity)
+      (vector-copy! (-> record view-flat) (-> slave view-flat))
+      (vector-copy! (-> record desired-pos) (-> slave desired-pos))
+      (vector-copy! (-> record cam-tpos-cur) (-> *camera* tpos-curr-adj))
+      (vector-copy! (-> record cam-tpos-old) (-> *camera* tpos-old-adj))
+      (vector-copy! (-> record string-min-val) (-> slave string-min-val))
+      (vector-copy! (-> record string-max-val) (-> slave string-max-val))
+      (vector-copy! (-> record view-off) (-> slave view-off))
       (set! (-> record frame) (the-as int (-> *display* base-frame-counter)))
       (set! (-> record iteration) iteration)
       (set! (-> record move-type) move-kind)
@@ -1061,16 +1049,8 @@
    to the fixed state. Return position."
   (when (and *camera* *camera-combiner*)
     (send-event *camera* 'change-state cam-free-floating 0)
-    (set! (-> *camera-combiner* trans quad) (-> position quad))
-    (let ((destination-rotation (-> *camera-combiner* inv-camera-rot))
-          (row-0 (-> inverse-rotation vector 0 quad))
-          (row-1 (-> inverse-rotation vector 1 quad))
-          (row-2 (-> inverse-rotation vector 2 quad))
-          (row-3 (-> inverse-rotation vector 3 quad)))
-      (set! (-> destination-rotation vector 0 quad) row-0)
-      (set! (-> destination-rotation vector 1 quad) row-1)
-      (set! (-> destination-rotation vector 2 quad) row-2)
-      (set! (-> destination-rotation vector 3 quad) row-3))
+    (vector-copy! (-> *camera-combiner* trans) position)
+    (matrix-copy! (-> *camera-combiner* inv-camera-rot) inverse-rotation)
     (send-event *camera* 'change-state cam-fixed 0))
   position)
 
@@ -1080,16 +1060,7 @@
   (vector-reset! (-> *math-camera* trans))
   (matrix-identity! (-> *math-camera* inv-camera-rot))
   (when *camera-combiner*
-    (let* ((destination-rotation (-> *math-camera* inv-camera-rot))
-           (source-rotation (-> *camera-combiner* inv-camera-rot))
-           (row-0 (-> source-rotation vector 0 quad))
-           (row-1 (-> source-rotation vector 1 quad))
-           (row-2 (-> source-rotation vector 2 quad))
-           (row-3 (-> source-rotation vector 3 quad)))
-      (set! (-> destination-rotation vector 0 quad) row-0)
-      (set! (-> destination-rotation vector 1 quad) row-1)
-      (set! (-> destination-rotation vector 2 quad) row-2)
-      (set! (-> destination-rotation vector 3 quad) row-3))
-    (set! (-> *math-camera* trans quad) (-> *camera-combiner* trans quad)))
+    (matrix-copy! (-> *math-camera* inv-camera-rot) (-> *camera-combiner* inv-camera-rot))
+    (vector-copy! (-> *math-camera* trans) (-> *camera-combiner* trans)))
   0
   (none))

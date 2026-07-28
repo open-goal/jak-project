@@ -795,14 +795,14 @@
     (set! (-> moving-shape event-self) 'touched)
     (set! (-> moving-shape max-iteration-count) (the-as uint 4))
     (set! (-> self root) moving-shape))
-  (set! (-> self root trans quad) (-> init-data pos quad))
+  (vector-copy! (-> self root trans) (-> init-data pos))
   (set-vector! (-> self root scale) 0.0 0.0 0.0 1.0)
   (set! (-> self muzzle-time) (-> init-data muzzle-time))
   (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (-> init-data rotate))
   (let ((tumble-per-frame (/ 655360.0 (the float (the int (* 300.0 (-> init-data flight-time)))))))
     (quaternion-axis-angle! (-> self tumble-quat) 1.0 0.0 0.0 tumble-per-frame))
   (initialize-skeleton self *mistycannon-missile-sg* '())
-  (set! (-> self root transv quad) (-> init-data vel quad))
+  (vector-copy! (-> self root transv) (-> init-data vel))
   (set! (-> self blast-radius) (-> init-data blast-radius))
   (set! (-> self water-height) (res-lump-float (-> self entity) 'water-height :default -4096000.0))
   (set! (-> self part) (create-launch-control group-beach-sack-fuse self))
@@ -1001,7 +1001,7 @@
   (let ((camera-position (new 'stack-no-clear 'vector)))
     (set-vector! camera-position 0.0 53248.0 -4096.0 1.0)
     (vector-matrix*! camera-position camera-position (-> cannon node-list data 3 bone transform))
-    (set! (-> cannon goggles quad) (-> camera-position quad)))
+    (vector-copy! (-> cannon goggles) camera-position))
   (set! (-> cannon postbindinfo-ok) #t)
   0
   (none))
@@ -1197,7 +1197,7 @@
             (let ((prompt-font (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
               (set-width! prompt-font 440)
               (set-height! prompt-font 80)
-              (set! (-> prompt-font flags) (font-flags shadow kerning large))
+              (set-flags! prompt-font (font-flags shadow kerning large))
               (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) prompt-font #f 128 22))
             (when (cpad-pressed? 0 circle)
               (loop
@@ -1221,7 +1221,7 @@
     (behavior ()
       (loop
         (let ((cannon-handle (-> self change-event-from)))
-          (set! (-> self trans quad) (-> (the-as mistycannon (-> cannon-handle 0)) goggles quad))
+          (vector-copy! (-> self trans) (-> (the-as mistycannon (-> cannon-handle 0)) goggles))
           (let ((rotate-camera! matrix-rotate-yx!)
                 (tracking (-> self tracking))
                 (yaw-tracker (-> (the-as mistycannon (-> cannon-handle 0)) rotate)))
@@ -1370,7 +1370,7 @@
   (set! (-> this center-point w) (res-lump-float source-entity 'center-radius))
   (cond
     ((= (-> this center-point w) 0.0)
-     (set! (-> this center-point quad) (-> this root trans quad))
+     (vector-copy! (-> this center-point) (-> this root trans))
      (set! (-> this center-point w) (-> this fact idle-distance)))
     (else
      (let* ((center-x-tag (new 'static 'res-tag))

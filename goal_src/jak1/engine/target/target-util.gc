@@ -556,7 +556,7 @@
    components are rebuilt from animation translation, per-axis scale, frame rate, and gravity; the
    rotation option postmultiplies and normalizes the root quaternion."
   (let ((velocity-scale (new 'stack-no-clear 'vector)))
-    (set! (-> velocity-scale quad) (-> scale quad))
+    (vector-copy! velocity-scale scale)
     (set! (-> velocity-scale z) (target-align-vel-z-adjust (-> velocity-scale z)))
     (when (logtest? options (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
       (let* ((control-to-world (-> this control c-R-w))
@@ -822,7 +822,7 @@
       (if (logtest? mask (attack-mask shove-up)) (set! (-> this shove-up) (-> incoming shove-up)))
       (if (logtest? mask (attack-mask invinc-time)) (set! (-> this invinc-time) (-> incoming invinc-time)))
       (if (logtest? mask (attack-mask rotate-to)) (set! (-> this rotate-to) (-> incoming rotate-to)))
-      (if (logtest? mask (attack-mask intersection)) (set! (-> this intersection quad) (-> incoming intersection quad)))
+      (if (logtest? mask (attack-mask intersection)) (vector-copy! (-> this intersection) (-> incoming intersection)))
       (cond
         ((not (logtest? mask (attack-mask vector)))
          ;; Derive knockback from the attacker toward the process being hit.
@@ -830,7 +830,7 @@
                 (attacker-process (handle->process (-> this attacker)))
                 (attacker-drawable (if (and (nonzero? attacker-process) (type-type? (-> attacker-process type) process-drawable)) attacker-process)))
            (when attacker-drawable
-             (set! (-> this trans quad) (-> (the-as process-drawable attacker-drawable) root trans quad))
+             (vector-copy! (-> this trans) (-> (the-as process-drawable attacker-drawable) root trans))
              (vector-! (-> this vector)
                        (-> (the-as process-drawable receiver-process) root trans)
                        (-> (the-as process-drawable attacker-drawable) root trans))
@@ -841,12 +841,12 @@
                 (supplied-attacker-drawable (if (and (nonzero? supplied-attacker-process) (type-type? (-> supplied-attacker-process type) process-drawable))
                                               supplied-attacker-process)))
            (if supplied-attacker-drawable
-             (set! (-> this trans quad) (-> (the-as process-drawable supplied-attacker-drawable) root trans quad))))
-         (set! (-> this vector quad) (-> incoming vector quad))
+             (vector-copy! (-> this trans) (-> (the-as process-drawable supplied-attacker-drawable) root trans))))
+         (vector-copy! (-> this vector) (-> incoming vector))
          (if (not (logtest? mask (attack-mask shove-back))) (set! (-> this shove-back) (vector-xz-length (-> this vector))))
          (if (not (logtest? mask (attack-mask shove-up))) (set! (-> this shove-up) (-> this vector y)))))
       (if (not (logtest? (-> this mask) (attack-mask dist))) (set! (-> this dist) (fabs (-> this shove-back))))
-      (if (logtest? mask (attack-mask trans)) (set! (-> this trans quad) (-> incoming trans quad))))
+      (if (logtest? mask (attack-mask trans)) (vector-copy! (-> this trans) (-> incoming trans))))
     (none)))
 
 (defbehavior ground-tween-initialize target ((info ground-tween-info)
@@ -924,7 +924,7 @@
        (-> target-process alt-cam-pos))
       ((logtest? (state-flags falling-into-pool-of-bad) (-> target-process state-flags))
        (let ((position (new 'static 'vector)))
-         (set! (-> position quad) (-> target-process control camera-pos quad))
+         (vector-copy! position (-> target-process control camera-pos))
          (set! (-> position y) (fmax (-> position y) (-> target-process alt-cam-pos y)))
          (add-debug-sphere *display-camera-marks* (bucket-id debug-no-zbuf) position 819.2 (new 'static 'rgba :r #xff :a #x80))
          position))

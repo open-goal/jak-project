@@ -463,7 +463,7 @@
         (suspend))
       ;; then hide Jak's model (no anim channels) and idle until the mode ends
       (ja-channel-set! 0)
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (loop
         (if (!= (-> self cam-user-mode) 'look-around) (go target-stance-look-around))
         (suspend)))
@@ -543,7 +543,7 @@
   :code
     (behavior ()
       (ja-channel-set! 0)
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (anim-loop))
   :post target-no-move-post)
 
@@ -657,7 +657,7 @@
   :post
     (behavior ()
       (if (logtest? (-> self control status) (collide-status on-surface))
-        (set! (-> self control transv quad) (the-as uint128 0)))
+        (vector-zero! (-> self control transv)))
       (target-no-stick-post)))
 
 ;; Hanging/swinging on a swingpole. The pole process (kept in swingpole-handle) pulls Jak
@@ -678,8 +678,8 @@
       (logior! (-> self control root-prim prim-core action) (collide-action swingpole-active))
       (target-collide-set! 'pole (the-as float 0.0))
       ;; save the incoming velocity in state-vector0 so :code can pick a mount anim from it
-      (set! (-> self control state-vector0 quad) (-> self control transv quad))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-copy! (-> self control state-vector0) (-> self control transv))
+      (vector-zero! (-> self control transv))
       (send-event *camera* 'ease-in)
       (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as int #f)))
   :exit
@@ -693,7 +693,7 @@
       (when (and (recently-pressed? x)
                  (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
                  (time-elapsed? (-> self state-time) (seconds 0.1)))
-        (set! (-> self control transv quad) (the-as uint128 0))
+        (vector-zero! (-> self control transv))
         (cond
           ;; past aframe 44 (back of the swing): let go backwards, dropping fast
           ((< 44.0 (ja-aframe-num 0))
@@ -853,8 +853,8 @@
       (set-time! (-> self control edge-grab-start-time))
       (logior! (-> self control root-prim prim-core action) (collide-action edgegrab-active edgegrab-cam))
       ;; save the incoming velocity in state-vector0 so :code can pick a swing anim from it
-      (set! (-> self control state-vector0 quad) (-> self control transv quad))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-copy! (-> self control state-vector0) (-> self control transv))
+      (vector-zero! (-> self control transv))
       (send-event *camera* 'ease-in))
   :exit
     (behavior ()
@@ -936,7 +936,7 @@
       (ja-channel-set! 1)
       (set-quaternion! (-> self control) (-> self control dir-targ))
       (logclear! (-> self control root-prim prim-core action) (collide-action edgegrab-active edgegrab-cam))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (let ((align-move (new 'stack-no-clear 'vector)))
         (ja-no-eval :group! eichar-edge-grab-to-jump-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -948,7 +948,7 @@
             (move-by-vector! (-> self control) align-move))
           (suspend)
           (ja :num! (seek!))))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (set! (-> self control time-of-last-clear-wall-in-jump) 0)
       (set-forward-vel (the-as float 16384.0)) ;; 4 m/s up over the lip
       (send-event *camera* 'damp-up)
@@ -977,7 +977,7 @@
             (move-by-vector! (-> self control) align-move))
           (suspend)
           (ja :num! (seek! (ja-aframe (the-as float 191.0) 0)))))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (logclear! (-> self control root-prim prim-core action) (collide-action edgegrab-active edgegrab-cam))
       ;; push away from the ledge at 10 m/s
       (vector-float*! (-> self control transv) (-> self control edge-grab-across-edge-dir) -40960.0)
@@ -1990,7 +1990,7 @@
   :enter
     (behavior ((clone-source handle))
       (set! (-> self control swingpole-handle) clone-source)
-      (set! (-> self control state-vector0 quad) (-> self control trans quad))
+      (vector-copy! (-> self control state-vector0) (-> self control trans))
       (set! (-> self control state-var0) (the-as uint #t))
       (quaternion-copy! (the-as quaternion (-> self control state-vector1)) (-> self control quat))
       (logior! (-> self state-flags) (state-flags grabbed))

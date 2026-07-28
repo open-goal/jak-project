@@ -262,7 +262,7 @@
       (set! (-> self nav extra-nav-sphere quad) (-> self fall-dest quad))
       (set! (-> self nav extra-nav-sphere w) 9011.2)
       (let ((gp-0 (new 'stack-no-clear 'vector)))
-        (set! (-> gp-0 quad) (-> self collide-info trans quad))
+        (vector-copy! gp-0 (-> self collide-info trans))
         (ja-channel-push! 1 (seconds 0.1))
         (ja-play :group!
                  double-lurker-top-both-break-apart-ja
@@ -383,7 +383,7 @@
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (init-defaults! this *double-lurker-top-nav-enemy-info*)
   (let ((v1-5 (-> this parent-process)))
-    (set! (-> this collide-info trans quad) (-> v1-5 0 collide-info trans quad))
+    (vector-copy! (-> this collide-info trans) (-> v1-5 0 collide-info trans))
     (set-vector! (-> this collide-info scale) 1.0 1.0 1.0 1.0)
     (quaternion-copy! (-> this collide-info quat) (-> v1-5 0 collide-info quat)))
   (logclear! (-> this collide-info nav-flags) (nav-flags avoid-body))
@@ -395,7 +395,7 @@
   (initialize-collision self)
   (set! (-> self entity) (-> parent entity))
   (post-init-setup! self)
-  (set! (-> self collide-info trans quad) (-> spawn-position quad))
+  (vector-copy! (-> self collide-info trans) spawn-position)
   (cond
     (on-shoulders?
      (ja-channel-set! 1)
@@ -589,7 +589,7 @@
     (vector+! landing-point (-> this collide-info trans) (-> this nav travel))
     (let ((probe-start (new 'stack-no-clear 'vector))
           (probe-result (new 'stack-no-clear 'collide-tri-result)))
-      (set! (-> probe-start quad) (-> landing-point quad))
+      (vector-copy! probe-start landing-point)
       (+! (-> probe-start y) 8192.0)
       (when (>= (fill-and-probe-using-line-sphere *collide-cache*
                                                   probe-start
@@ -828,7 +828,7 @@
             (logior! (-> v1-29 status) (entity-perm-status user-set-from-cstage))
             (set! (-> v1-29 user-int8 2) 0))
           0))
-      (if (-> this buddy-on-shoulders?) (set! (-> buddy-spawn-point quad) (-> this collide-info trans quad)))
+      (if (-> this buddy-on-shoulders?) (vector-copy! buddy-spawn-point (-> this collide-info trans)))
       (set! (-> this buddy-handle)
             (ppointer->handle (process-spawn double-lurker-top (-> this entity) this (-> this buddy-on-shoulders?) buddy-spawn-point :to this)))))
   (when (and (not (-> this dead?)) (not (-> this buddy-on-shoulders?)))

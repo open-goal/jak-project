@@ -163,9 +163,9 @@
    wireframe and 2 draws untextured Gouraud shading."
   ;; the usual camera math
   (let ((math-cam *math-camera*))
-    (set! (-> dst hmge-scale quad) (-> math-cam hmge-scale quad))
-    (set! (-> dst inv-hmge-scale quad) (-> math-cam inv-hmge-scale quad))
-    (set! (-> dst hvdf-offset quad) (-> math-cam hvdf-off quad))
+    (vector-copy! (-> dst hmge-scale) (-> math-cam hmge-scale))
+    (vector-copy! (-> dst inv-hmge-scale) (-> math-cam inv-hmge-scale))
+    (vector-copy! (-> dst hvdf-offset) (-> math-cam hvdf-off))
     (set-vector! (-> dst fog) (-> math-cam pfog0) (-> math-cam fog-min) (-> math-cam fog-max) 3072.0))
   ;; xy scale and offset for the environment-map texture coordinates, and the cell size the
   ;; microprogram steps the corner lattice by.
@@ -376,7 +376,7 @@
                   :nreg #x3)))))
   (set! (-> dst env-strip regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (set! (-> dst env-color quad) (-> *time-of-day-context* current-sun env-color quad))
+  (vector-copy! (-> dst env-color) (-> *time-of-day-context* current-sun env-color))
   ;; Per-row VU addresses for the eight strips of a block, ordered from the last row back to the
   ;; first.  The middle lane steps by the twelve-quadword color row.
   (set-vector! (-> dst index-table 0) 63 84 66 0)
@@ -504,16 +504,7 @@
                  qwc))
       (set! (-> buf base) (&+ (the-as pointer packet) 16)))
     (let ((rot-dst (-> dma-buf base)))
-      (let* ((rot-mat (the-as object rot-dst))
-             (cam-rot (-> *math-camera* camera-rot))
-             (row0 (-> cam-rot vector 0 quad))
-             (row1 (-> cam-rot vector 1 quad))
-             (row2 (-> cam-rot vector 2 quad))
-             (row3 (-> cam-rot vector 3 quad)))
-        (set! (-> (the-as matrix rot-mat) vector 0 quad) row0)
-        (set! (-> (the-as matrix rot-mat) vector 1 quad) row1)
-        (set! (-> (the-as matrix rot-mat) vector 2 quad) row2)
-        (set! (-> (the-as matrix rot-mat) vector 3 quad) row3))
+      (matrix-copy! (the-as matrix rot-dst) (-> *math-camera* camera-rot))
       ;; only xyz of the translation row is replaced; its w stays as the camera rotation had it.
       (let ((rot-trans (the-as object (&+ rot-dst 48))))
         (vector-matrix*! origin-cam origin (-> *math-camera* camera-rot))

@@ -1439,7 +1439,7 @@
                                     (font-flags shadow kerning))))
               (set-width! title-font 328)
               (set-height! title-font 45)
-              (set! (-> title-font flags) (font-flags shadow kerning middle middle-vert large))
+              (set-flags! title-font (font-flags shadow kerning middle middle-vert large))
               (print-game-text-scaled (lookup-text! *common-text* (-> level-tasks level-name-id) #f)
                                       title-opacity
                                       title-font
@@ -1532,36 +1532,24 @@
         (suspend)))
   :post
     (behavior ()
-      (let* ((header-buffer (-> *display* frames (-> *display* on-screen) frame global-buf))
-             (header-bucket-start (-> header-buffer base)))
-        (let ((draw-header draw-string-xy))
-          (let ((format-header format)
-                (header-text (clear *temp-string*))
-                (header-template "TEXT DEBUG: LANGUAGE ~S ID 0x~X")
-                (language (-> *setting-control* current language)))
-            (format-header header-text
-                           header-template
-                           (cond
-                             ((= language (language-enum uk-english)) "uk-english")
-                             ((= language (language-enum japanese)) "japanese")
-                             ((= language (language-enum italian)) "italian")
-                             ((= language (language-enum spanish)) "spanish")
-                             ((= language (language-enum german)) "german")
-                             ((= language (language-enum french)) "french")
-                             ((= language (language-enum english)) "english")
-                             (else "*unknown*"))
-                           (-> *common-text* data (-> self current-debug-string) id)))
-          (draw-header *temp-string* header-buffer 40 40 (font-color default) (font-flags shadow kerning)))
-        (let ((header-bucket-tail (-> header-buffer base)))
-          (let ((header-packet (the-as dma-packet (-> header-buffer base))))
-            (set! (-> header-packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> header-packet vif0) (new 'static 'vif-tag))
-            (set! (-> header-packet vif1) (new 'static 'vif-tag))
-            (set! (-> header-buffer base) (&+ (the-as pointer header-packet) 16)))
-          (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                 (bucket-id debug)
-                                 header-bucket-start
-                                 (the-as (pointer dma-tag) header-bucket-tail))))
+      (with-dma-buffer-add-bucket ((header-buffer (-> *display* frames (-> *display* on-screen) frame global-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-header draw-string-xy))
+                (let ((format-header format)
+                      (header-text (clear *temp-string*))
+                      (header-template "TEXT DEBUG: LANGUAGE ~S ID 0x~X")
+                      (language (-> *setting-control* current language)))
+                  (format-header header-text
+                                 header-template
+                                 (cond
+                                   ((= language (language-enum uk-english)) "uk-english")
+                                   ((= language (language-enum japanese)) "japanese")
+                                   ((= language (language-enum italian)) "italian")
+                                   ((= language (language-enum spanish)) "spanish")
+                                   ((= language (language-enum german)) "german")
+                                   ((= language (language-enum french)) "french")
+                                   ((= language (language-enum english)) "english")
+                                   (else "*unknown*"))
+                                 (-> *common-text* data (-> self current-debug-string) id)))
+                (draw-header *temp-string* header-buffer 40 40 (font-color default) (font-flags shadow kerning))))
       (let* ((string-help-buffer (-> *display* frames (-> *display* on-screen) frame global-buf))
              (string-help-bucket-start (-> string-help-buffer base)))
         (let ((draw-string-help draw-string-xy))

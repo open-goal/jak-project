@@ -3150,7 +3150,8 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
 }
 
 bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack& stack) {
-  if (env.func->name() == "(method 63 collide-shape-moving)") {
+  if (env.func->name() == "matrix-copy!" ||
+      env.func->name() == "(method 63 collide-shape-moving)") {
     return false;
   }
   auto matrix_entries =
@@ -3158,13 +3159,21 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
   if (matrix_entries) {
     // first, check the loads. they should be something like source = (-> MAT vec quad)
     // MAT should always be a variable
-    const char* names[] = {"rvec", "uvec", "fvec", "trans"};
-
     std::vector<RegisterAccess> load_src_ras, store_dest_ras, store_src_ras;
     for (int i = 0; i < 4; i++) {
-      auto deref_matcher =
-          Matcher::deref(Matcher::any_reg(0), false,
-                         {DerefTokenMatcher::string(names[i]), DerefTokenMatcher::string("quad")});
+      Matcher deref_matcher;
+      if (env.version == GameVersion::Jak1) {
+        deref_matcher = Matcher::deref(
+            Matcher::any_reg(0), false,
+            {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+             DerefTokenMatcher::string("quad")});
+      } else {
+        const char* names[] = {"rvec", "uvec", "fvec", "trans"};
+        deref_matcher =
+            Matcher::deref(Matcher::any_reg(0), false,
+                           {DerefTokenMatcher::string(names[i]),
+                            DerefTokenMatcher::string("quad")});
+      }
       auto mr = match(deref_matcher, matrix_entries->at(i).source, &env);
       if (!mr.matched) {
         return false;
@@ -3174,10 +3183,20 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
 
     // check the stores
     for (int i = 4; i < 8; i++) {
-      Matcher matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
-                                                    {DerefTokenMatcher::string(names[i - 4]),
-                                                     DerefTokenMatcher::string("quad")}),
-                                     Matcher::any_reg(1));
+      Matcher dst_matcher;
+      if (env.version == GameVersion::Jak1) {
+        dst_matcher = Matcher::deref(
+            Matcher::any_reg(0), false,
+            {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i - 4),
+             DerefTokenMatcher::string("quad")});
+      } else {
+        const char* names[] = {"rvec", "uvec", "fvec", "trans"};
+        dst_matcher =
+            Matcher::deref(Matcher::any_reg(0), false,
+                           {DerefTokenMatcher::string(names[i - 4]),
+                            DerefTokenMatcher::string("quad")});
+      }
+      Matcher matcher = Matcher::set(dst_matcher, Matcher::any_reg(1));
       auto mr = match(matcher, matrix_entries->at(i).elt, &env);
       if (!mr.matched) {
         return false;
@@ -3356,6 +3375,8 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
           }
         }
       } break;
+      case GameVersion::JakX:
+        return false;
     }
 
     // success!
@@ -3380,6 +3401,50 @@ bool is_deref_to_quad(DerefElement* deref) {
          deref->tokens().back().is_field_name("quad");
 }
 
+struct DerefContainerInfo {
+  TypeSpec type;
+  bool is_matrix_row = false;
+};
+
+std::optional<DerefContainerInfo> deref_container_info(DerefElement* deref, const Env& env) {
+  if (!is_deref_to_quad(deref)) {
+    return {};
+  }
+
+  auto base = deref->base()->try_as_element<SimpleExpressionElement>();
+  if (!base || base->expr().kind() != SimpleExpression::Kind::IDENTITY ||
+      !base->expr().get_arg(0).is_var()) {
+    return {};
+  }
+
+  TypeSpec current = env.get_variable_type(base->expr().get_arg(0).var(), true);
+  bool is_matrix_row = current == TypeSpec("matrix") || current == TypeSpec("matrix3");
+  for (size_t i = 0; i + 1 < deref->tokens().size(); ++i) {
+    const auto& token = deref->tokens().at(i);
+    if (token.kind() == DerefToken::Kind::FIELD_NAME) {
+      try {
+        current = env.dts->ts.lookup_field_info(current.base_type(), token.field_name()).type;
+      } catch (const std::exception&) {
+        return {};
+      }
+    } else if (token.kind() == DerefToken::Kind::INTEGER_CONSTANT ||
+               token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
+      if (!current.has_single_arg()) {
+        return {};
+      }
+      // get_single_arg() refers into current, so copy it before assignment destroys the argument
+      // storage.
+      const auto element_type = current.get_single_arg();
+      current = element_type;
+    } else {
+      return {};
+    }
+    is_matrix_row =
+        is_matrix_row || current == TypeSpec("matrix") || current == TypeSpec("matrix3");
+  }
+  return DerefContainerInfo{current, is_matrix_row};
+}
+
 Form* pop_last_deref_token(Form* form) {
   auto deref = form->try_as_element<DerefElement>();
   ASSERT(deref);
@@ -3392,9 +3457,7 @@ Form* pop_last_deref_token(Form* form) {
 }
 
 FormElement* try_to_rewrite_vector_copy(Form* dst,
-                                        const TypeSpec& dst_type,
                                         Form* src,
-                                        const TypeSpec& src_type,
                                         FormPool& pool,
                                         const Env& env) {
   if (env.func->name() == "vector-copy!") {
@@ -3402,16 +3465,6 @@ FormElement* try_to_rewrite_vector_copy(Form* dst,
   }
 
   if (dst && src) {
-    // check types
-    if (dst_type != TypeSpec("vector")) {
-      return nullptr;
-    }
-
-    // kinda sus - we really want to check the place where this was loaded...
-    if (src_type != TypeSpec("uint128")) {
-      return nullptr;
-    }
-
     auto* dst_deref = dst->try_as_element<DerefElement>();
     auto* src_deref = src->try_as_element<DerefElement>();
     if (!dst_deref) {
@@ -3422,11 +3475,17 @@ FormElement* try_to_rewrite_vector_copy(Form* dst,
       return nullptr;
     }
 
-    if (!is_deref_to_quad(dst_deref)) {
+    const auto dst_info = deref_container_info(dst_deref, env);
+    const auto src_info = deref_container_info(src_deref, env);
+    if (!dst_info || !src_info ||
+        !env.dts->ts.tc(TypeSpec("vector"), dst_info->type) ||
+        !env.dts->ts.tc(TypeSpec("vector"), src_info->type)) {
       return nullptr;
     }
 
-    if (!is_deref_to_quad(src_deref)) {
+    // A matrix row is represented by an inline vector, but folding its individual quadword copy
+    // would prevent the four-row matrix-copy! recognizer from seeing the complete operation.
+    if (dst_info->is_matrix_row || src_info->is_matrix_row) {
       return nullptr;
     }
 
@@ -3437,6 +3496,39 @@ FormElement* try_to_rewrite_vector_copy(Form* dst,
     return ret;
   }
   return nullptr;
+}
+
+FormElement* try_to_rewrite_vector_zero(Form* dst,
+                                        Form* value,
+                                        FormPool& pool,
+                                        const Env& env) {
+  if (env.func->name() == "vector-zero!") {
+    return nullptr;
+  }
+
+  auto dst_deref = dst ? dst->try_as_element<DerefElement>() : nullptr;
+  const auto dst_info = dst_deref ? deref_container_info(dst_deref, env) : std::nullopt;
+  if (!dst_info || !env.dts->ts.tc(TypeSpec("vector"), dst_info->type) ||
+      dst_info->is_matrix_row) {
+    return nullptr;
+  }
+  if (!match(Matcher::cast("uint128", Matcher::integer(0)), value, &env).matched) {
+    return nullptr;
+  }
+
+  return pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("vector-zero!")),
+      std::vector<Form*>{pop_last_deref_token(dst)});
+}
+
+bool is_pending_stack_vector_ctor(const FormStack& stack, RegisterAccess destination) {
+  auto entries = stack.try_getting_active_stack_entries({true});
+  if (!entries || !entries->front().destination ||
+      entries->front().destination->reg() != destination.reg()) {
+    return false;
+  }
+  auto stack_value = entries->front().source->try_as_element<StackStructureDefElement>();
+  return stack_value && stack_value->type() == TypeSpec("vector");
 }
 
 }  // namespace
@@ -3462,11 +3554,9 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
 
     FormElement* fr = nullptr;
 
-    // hack: for now only do this on Jak 3
-    if (size() == 16 && env.version == GameVersion::Jak3) {
-      fr = try_to_rewrite_vector_copy(
-          m_dst, env.get_variable_type(m_base_var, true), popped.at(0),
-          m_src_cast_type.value_or(env.get_variable_type(m_expr.var(), true)), pool, env);
+    if (size() == 16 &&
+        (env.version == GameVersion::Jak1 || env.version == GameVersion::Jak3)) {
+      fr = try_to_rewrite_vector_copy(m_dst, popped.at(0), pool, env);
     }
 
     if (!fr) {
@@ -3486,10 +3576,19 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     m_dst->try_as_element<DerefElement>()->inline_nested();
     auto val = pool.form<SimpleExpressionElement>(m_expr, m_my_idx);
     val->mark_popped();
-    auto fr = pool.alloc_element<SetFormFormElement>(
-        m_dst, make_optional_cast(m_src_cast_type, val, pool, env));
-    fr->mark_popped();
-    stack.push_form_element(fr, true);
+    auto typed_value = make_optional_cast(m_src_cast_type, val, pool, env);
+    FormElement* fr = nullptr;
+    if (size() == 16 && env.version == GameVersion::Jak1 &&
+        !is_pending_stack_vector_ctor(stack, m_base_var)) {
+      fr = try_to_rewrite_vector_zero(m_dst, typed_value, pool, env);
+    }
+    if (!fr) {
+      fr = pool.alloc_element<SetFormFormElement>(m_dst, typed_value);
+      fr->mark_popped();
+      stack.push_form_element(fr, true);
+    } else {
+      fr->push_to_stack(env, pool, stack);
+    }
   }
 
   if (!try_to_rewrite_matrix_inline_ctor(env, pool, stack)) {

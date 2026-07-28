@@ -102,7 +102,7 @@
               (set-width! prompt-context 440)
               (set-height! prompt-context 80)
               (set-scale! prompt-context 0.9)
-              (set! (-> prompt-context flags) (font-flags shadow kerning large))
+              (set-flags! prompt-context (font-flags shadow kerning large))
               (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) prompt-context #f 128 22))))
         (suspend))))
 
@@ -135,7 +135,7 @@
                               context
                               (the int (* 128.0 intensity))))
     (set! (-> context origin x) (- (-> context origin x) (the float signed-offset))))
-  (set! (-> context color) (font-color default))
+  (set-color! context (font-color default))
   context)
 
 ;; Hold Jak facing the gate while the destination carousel is open.  The centred entry commits
@@ -204,11 +204,11 @@
               (set-scale! menu-context 0.7)
               (set-width! menu-context 500)
               (set-height! menu-context 55)
-              (set! (-> menu-context flags) (font-flags shadow kerning middle middle-vert large))
+              (set-flags! menu-context (font-flags shadow kerning middle middle-vert large))
               (print-game-text (lookup-text! *common-text* (text-id warp-gate-use-dpad) #f) menu-context #f 128 22)
               (+! (-> menu-context origin y) 35.0)
               (set-height! menu-context 40)
-              (let ((blue-context menu-context)) (set! (-> blue-context color) (font-color progress-blue)))
+              (set-color! menu-context (font-color progress-blue))
               0
               (let* ((next-slot (get-next-slot-up self selected-slot))
                      (previous-slot (get-next-slot-down self selected-slot))
@@ -235,7 +235,7 @@
                    (let ((outgoing-next-distance (- 300 (+ scroll-distance 150))))
                      (print-level-name next-slot menu-context outgoing-next-distance (the-as int #t))))))
               (when (not scrolling?)
-                (let ((selected-context menu-context)) (set! (-> selected-context color) (font-color progress-yellow))))
+                (set-color! menu-context (font-color progress-yellow)))
               (print-level-name selected-slot menu-context scroll-distance (the-as int scrolling-left?))
               (+! (-> menu-context origin y) 20.0)
               (print-game-text (lookup-text! *common-text* (text-id press-to-warp) #f) menu-context #f 128 22)
@@ -252,7 +252,7 @@
    destinations only through the furthest unlocked village gate."
   (stack-size-set! (-> self main-thread) 512)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> position quad))
+  (vector-copy! (-> self root trans) position)
   (logior! (-> self mask) (process-mask actor-pause))
   (set! (-> self level) (-> self entity extra level name))
   (set! (-> self min-slot) 0)
@@ -678,7 +678,7 @@
    process pause with actors, and enter the hint-camera state."
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this root-override) (new 'process 'trsq))
-  (set! (-> this root-override trans quad) (-> source-entity extra trans quad))
+  (vector-copy! (-> this root-override trans) (-> source-entity extra trans))
   (quaternion-copy! (-> this root-override quat) (-> source-entity quat))
   (vector-identity! (-> this root-override scale))
   (set! (-> this range) (res-lump-float source-entity 'cam-notice-dist :default 81920.0))

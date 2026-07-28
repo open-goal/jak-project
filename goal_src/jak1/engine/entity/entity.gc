@@ -24,26 +24,16 @@
 ;; entity basic methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod mem-usage ((this drawable-actor) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-actor) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for this drawable wrapper and delegate to its entity actor in the entity category."
-  (set! (-> usage length) (max 44 (-> usage length)))
-  (set! (-> usage data 43 name) "entity")
-  (+! (-> usage data 43 count) 1)
-  (let ((allocation-size (asize-of this)))
-    (+! (-> usage data 43 used) allocation-size)
-    (+! (-> usage data 43 total) (logand -16 (+ allocation-size 15))))
+  (mem-usage-add! usage entity 1 (asize-of this))
   ;; Attribute the actor's resource lump and referenced data to the entity category.
-  (mem-usage (-> this actor) usage (logior flags 64))
+  (mem-usage (-> this actor) usage (logior flags (mem-usage-flags resource-entity)))
   (the-as drawable-actor 0))
 
-(defmethod mem-usage ((this drawable-inline-array-actor) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-inline-array-actor) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the drawable-group header and every active inline actor wrapper."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
-  (+! (-> usage data 0 count) 1)
-  (let ((header-size 32))
-    (+! (-> usage data 0 used) header-size)
-    (+! (-> usage data 0 total) (logand -16 (+ header-size 15))))
+  (mem-usage-add-symbol! usage drawable-group 1 32)
   (dotimes (i (-> this length))
     (mem-usage (-> this data i) usage flags))
   (the-as drawable-inline-array-actor 0))
@@ -962,7 +952,7 @@
   "Mark proc as actor-pausable and initialize its root translation, rotation, and unit scale from
    actor."
   (logior! (-> proc mask) (process-mask actor-pause))
-  (set! (-> proc root trans quad) (-> actor extra trans quad))
+  (vector-copy! (-> proc root trans) (-> actor extra trans))
   (quaternion-copy! (-> proc root quat) (-> actor quat))
   (vector-identity! (-> proc root scale))
   (none))

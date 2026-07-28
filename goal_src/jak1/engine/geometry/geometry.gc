@@ -568,8 +568,8 @@
    copies to's whole quad and so is discontinuous with the interior unless the two magnitudes
    already agree. dst may alias either input."
   (cond
-    ((>= 0.0 t) (set! (-> dst quad) (-> from quad)) dst)
-    ((>= t 1.0) (set! (-> dst quad) (-> to quad)) dst)
+    ((>= 0.0 t) (vector-copy! dst from) dst)
+    ((>= t 1.0) (vector-copy! dst to) dst)
     (else
      (let ((step (new-stack-matrix0)))
        (let ((from-unit (vector-normalize-copy! (new 'stack-no-clear 'vector) from 1.0))
@@ -584,8 +584,8 @@
    the endpoints. dst may alias any input."
   (local-vars (lerp-fn (function float float float float)))
   (cond
-    ((>= 0.0 t) (set! (-> dst quad) (-> from quad)))
-    ((>= t 1.0) (set! (-> dst quad) (-> to quad)))
+    ((>= 0.0 t) (vector-copy! dst from))
+    ((>= t 1.0) (vector-copy! dst to))
     (else
      (let* ((from-unit (vector-normalize-copy! (new 'stack-no-clear 'vector) from 1.0))
             (to-unit (vector-normalize-copy! (new 'stack-no-clear 'vector) to 1.0))
@@ -764,7 +764,7 @@
     (let ((first-distance (vector-segment-distance-point! point (-> triangle vector 1) (the-as vector (-> triangle vector)) dst))
           (second-point (new 'stack-no-clear 'vector)))
       (if (< (vector-segment-distance-point! point (-> triangle vector 1) (-> triangle vector 2) second-point) first-distance)
-        (set! (-> dst quad) (-> second-point quad))))
+        (vector-copy! dst second-point)))
     (goto closest-point-done)
     (label test-edge-20)
     (b! (nonzero? mask-minus-4) test-vertex-0 :delay (set! mask-minus-5 (the-as uint (+ mask-minus-4 -1))))
@@ -775,13 +775,13 @@
     (let ((first-distance (vector-segment-distance-point! point (the-as vector (-> triangle vector)) (-> triangle vector 1) dst))
           (second-point (new 'stack-no-clear 'vector)))
       (if (< (vector-segment-distance-point! point (the-as vector (-> triangle vector)) (-> triangle vector 2) second-point) first-distance)
-        (set! (-> dst quad) (-> second-point quad))))
+        (vector-copy! dst second-point)))
     (goto closest-point-done)
     (label vertex-2-region)
     (let ((first-distance (vector-segment-distance-point! point (-> triangle vector 2) (the-as vector (-> triangle vector)) dst))
           (second-point (new 'stack-no-clear 'vector)))
       (if (< (vector-segment-distance-point! point (-> triangle vector 2) (-> triangle vector 1) second-point) first-distance)
-        (set! (-> dst quad) (-> second-point quad))))
+        (vector-copy! dst second-point)))
     (label closest-point-done)
     0
     (none)))

@@ -128,7 +128,7 @@
                                                         (new 'static 'pat-surface :noentity #x1))))
             (cond
               ((>= f0-2 0.0) (vector+*! (-> self root trans) (-> self root trans) s5-0 f0-2) (go ogreboss-missile-impact))
-              (else (set! (-> self root trans quad) (-> gp-0 quad)) 0)))
+              (else (vector-copy! (-> self root trans) gp-0) 0)))
           (quaternion*! (-> self root quat) (-> self root quat) (-> self tumble-quat))
           (spawn (-> self part) (-> self root trans))
           (suspend)))
@@ -157,7 +157,7 @@
                                                         (new 'static 'pat-surface :noentity #x1))))
             (cond
               ((>= f0-2 0.0) (vector+*! (-> self root trans) (-> self root trans) s5-0 f0-2) (go ogreboss-missile-impact))
-              (else (set! (-> self root trans quad) (-> gp-0 quad)) 0)))
+              (else (vector-copy! (-> self root trans) gp-0) 0)))
           (spawn (-> self part) (-> self root trans))
           (suspend)))
       (cleanup-for-death self))
@@ -230,7 +230,7 @@
                        (s3-0 (new 'stack-no-clear 'vector))
                        (t2-0 (new 'stack-no-clear 'collide-tri-result)))
                    0.0
-                   (set! (-> s4-1 quad) (-> (the-as target t1-0) control trans quad))
+                   (vector-copy! s4-1 (-> (the-as target t1-0) control trans))
                    (+! (-> s4-1 y) 4096.0)
                    (set-vector! s3-0 0.0 (- 118784.0 (-> s4-1 y)) 0.0 1.0)
                    (let ((f30-0 (fill-and-probe-using-line-sphere *collide-cache*
@@ -302,9 +302,9 @@
     (backup-collide-with-as s5-0)
     (set! (-> s5-0 event-self) 'touched)
     (set! (-> self root) s5-0))
-  (set! (-> self root trans quad) (-> arg0 src quad))
-  (set! (-> self src-pos quad) (-> arg0 src quad))
-  (set! (-> self dest-pos quad) (-> arg0 dest quad))
+  (vector-copy! (-> self root trans) (-> arg0 src))
+  (vector-copy! (-> self src-pos) (-> arg0 src))
+  (vector-copy! (-> self dest-pos) (-> arg0 dest))
   (set! (-> self root quat vec quad) (-> self parent-override 0 root quat vec quad))
   (vector-identity! (-> self root scale))
   (initialize-skeleton self *ogreboss-shoot-boulder-sg* '())
@@ -428,7 +428,7 @@
   (none))
 
 (defbehavior ogreboss-super-boulder-play-hit-anim ogreboss-super-boulder ()
-  (set! (-> self src-pos quad) (-> self root trans quad))
+  (vector-copy! (-> self src-pos) (-> self root trans))
   (ja-no-eval :group! ogreboss-super-boulder-hit-ja :num! (seek!) :frame-num 0.0)
   (until (ja-done? 0)
     (seek! (-> self joint blend) (the-as float 0.0) (* 5.0 (seconds-per-frame)))
@@ -445,7 +445,7 @@
   :code
     (behavior ()
       (set! (-> self hit-boss) #f)
-      (set! (-> self src-pos quad) (-> self root trans quad))
+      (vector-copy! (-> self src-pos) (-> self root trans))
       (ja-no-eval :group! ogreboss-super-boulder-throw-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (seek! (-> self joint blend) (the-as float 0.0) (* 5.0 (seconds-per-frame)))
@@ -485,7 +485,7 @@
   :event ogreboss-super-boulder-event-handler
   :code
     (behavior ()
-      (set! (-> self root trans quad) (-> self orig-pos quad))
+      (vector-copy! (-> self root trans) (-> self orig-pos))
       (ogreboss-super-boulder-impact-effect)
       (set! (-> self joint enable) #f)
       (ja-no-eval :group! ogreboss-super-boulder-roll-ja :num! (seek! (ja-aframe (the-as float 100.0) 0)) :frame-num 0.0)
@@ -576,8 +576,8 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> self root) s4-0))
-  (set! (-> self orig-pos quad) (-> arg0 quad))
-  (set! (-> self root trans quad) (-> self parent-override 0 root trans quad))
+  (vector-copy! (-> self orig-pos) arg0)
+  (vector-copy! (-> self root trans) (-> self parent-override 0 root trans))
   (set! (-> self root quat vec quad) (-> self parent-override 0 root quat vec quad))
   (vector-identity! (-> self root scale))
   (initialize-skeleton self *ogreboss-super-boulder-sg* '())
@@ -675,10 +675,10 @@
     (backup-collide-with-as s5-0)
     (set! (-> self root) s5-0))
   (set! (-> self boulder-type) arg0)
-  (set! (-> self root trans quad) (-> self parent-override 0 root trans quad))
+  (vector-copy! (-> self root trans) (-> self parent-override 0 root trans))
   (set! (-> self root quat vec quad) (-> self parent-override 0 root quat vec quad))
   (vector-identity! (-> self root scale))
-  (set! (-> self src-pos quad) (-> self root trans quad))
+  (vector-copy! (-> self src-pos) (-> self root trans))
   (set! (-> self side-pos) 0.0)
   (set! (-> self dest-pos)
         (the-as float
@@ -915,8 +915,8 @@
            (let* ((a0-3 (-> self target-actor-array v1-10))
                   (a1-0 (if a0-3 (-> a0-3 extra process))))
              (if a1-0
-               (set! (-> s5-0 quad) (-> (the-as process-drawable a1-0) root trans quad))
-               (set! (-> s5-0 quad) (-> self root trans quad))))
+               (vector-copy! s5-0 (-> (the-as process-drawable a1-0) root trans))
+               (vector-copy! s5-0 (-> self root trans))))
            (vector+! s5-0 s5-0 (-> self target-offset-array v1-10))
            (set! (-> gp-0 blast-radius) (-> self target-blast-radius-array v1-10))))
         (else (vector+*! s5-0 (-> self root trans) *z-vector* (the-as float 409600.0))))
@@ -1006,7 +1006,7 @@
   (when (not (-> self at-near-spot))
     (ogreboss-submerge arg0 arg1)
     (set! (-> self at-near-spot) #t)
-    (set! (-> self root trans quad) (-> self near-pos quad))
+    (vector-copy! (-> self root trans) (-> self near-pos))
     (ogreboss-emerge arg1))
   0
   (none))
@@ -1015,7 +1015,7 @@
   (when (-> self at-near-spot)
     (ogreboss-submerge arg0 arg1)
     (set! (-> self at-near-spot) #f)
-    (set! (-> self root trans quad) (-> self far-pos quad))
+    (vector-copy! (-> self root trans) (-> self far-pos))
     (ogreboss-emerge arg1))
   0
   (none))
@@ -1128,7 +1128,7 @@
 
 (defbehavior ogreboss-update-super-boulder ogreboss ()
   (let ((a1-0 (handle->process (-> self boulder))))
-    (if a1-0 (set! (-> (the-as ogreboss-super-boulder a1-0) root trans quad) (-> self root trans quad))))
+    (if a1-0 (vector-copy! (-> (the-as ogreboss-super-boulder a1-0) root trans) (-> self root trans))))
   0
   (none))
 
@@ -1379,7 +1379,7 @@
         (let ((gp-1 (new 'stack-no-clear 'vector)))
           (let ((a0-9 (entity-actor-lookup (-> self entity) 'trigger-actor 2)))
             (if (not a0-9) (set! a0-9 (-> self entity)))
-            (set! (-> gp-1 quad) (-> a0-9 extra trans quad)))
+            (vector-copy! gp-1 (-> a0-9 extra trans)))
           (label cfg-6)
           (birth-pickup-at-point gp-1
                                  (pickup-type fuel-cell)
@@ -1490,12 +1490,12 @@
   (vector-z-quaternion! (-> this z-plane) (-> this root quat))
   (set! (-> this z-plane w) (- (vector-dot (-> this z-plane) (-> this root trans))))
   (vector-x-quaternion! (-> this side-dir) (-> this root quat))
-  (set! (-> this far-pos quad) (-> this root trans quad))
+  (vector-copy! (-> this far-pos) (-> this root trans))
   (let ((f0-38 1.0)) (set-vector! (-> this root scale) f0-38 f0-38 f0-38 1.0))
   (vector+*! (-> this near-pos) (-> this far-pos) (-> this z-plane) (the-as float 348160.0))
   (set! (-> this at-near-spot) #t)
   (set! (-> this try-counted) #f)
-  (set! (-> this root trans quad) (-> this near-pos quad))
+  (vector-copy! (-> this root trans) (-> this near-pos))
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
     (go ogreboss-dead)
     (go ogreboss-idle))

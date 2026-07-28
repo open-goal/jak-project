@@ -325,7 +325,7 @@
   (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *snow-eggtop-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (set! (-> this spawn-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this spawn-trans) (-> this root trans))
   (+! (-> this root trans y) -2662.4)
   (update-transforms! (-> this root))
   (set! (-> this part) (create-launch-control group-snow-yellow-eco-room-open this))
@@ -334,7 +334,7 @@
     ((task-complete? *game-info* (-> this entity extra perm task)) (go snow-eggtop-idle-down))
     (else
      (let ((a0-17 (new 'stack-no-clear 'vector)))
-       (set! (-> a0-17 quad) (-> this root trans quad))
+       (vector-copy! a0-17 (-> this root trans))
        (+! (-> a0-17 y) 3072.0)
        (birth-pickup-at-point a0-17
                               (pickup-type fuel-cell)
@@ -687,7 +687,7 @@
   :code
     (behavior ()
       (ja :group! snow-fort-gate-idle-ja :num! min)
-      (set! (-> self root trans quad) (-> self closed-trans quad))
+      (vector-copy! (-> self root trans) (-> self closed-trans))
       (transform-post)
       (suspend)
       (loop
@@ -707,17 +707,17 @@
       (let ((gp-0 #f))
         (loop
           (let ((a1-0 (new 'stack-no-clear 'vector)))
-            (set! (-> a1-0 quad) (-> self closed-trans quad))
+            (vector-copy! a1-0 (-> self closed-trans))
             (+! (-> a1-0 y) -12288.0)
             (+! (-> a1-0 z) -12288.0)
             (spawn (-> self part) a1-0))
           (let ((s5-0 (new 'stack-no-clear 'vector)))
-            (set! (-> s5-0 quad) (-> self root trans quad))
+            (vector-copy! s5-0 (-> self root trans))
             (let ((f30-0 (vector-vector-distance-squared s5-0 (-> self open-trans))))
               (when (and (not gp-0) (>= 1048576.0 f30-0))
                 (set! gp-0 #t)
                 (let ((a1-2 (new 'stack-no-clear 'vector)))
-                  (set! (-> a1-2 quad) (-> self open-trans quad))
+                  (vector-copy! a1-2 (-> self open-trans))
                   (+! (-> a1-2 y) -26624.0)
                   (+! (-> a1-2 z) -3072.0)
                   (spawn (-> self part2) a1-2)))
@@ -728,7 +728,7 @@
             (vector-seek-3d-smooth! s5-0 (-> self open-trans) (* 16384.0 (seconds-per-frame)) 0.9)
             (move-to-point! (-> self root) s5-0))
           (let ((a1-7 (new 'stack-no-clear 'vector)))
-            (set! (-> a1-7 quad) (-> self root trans quad))
+            (vector-copy! a1-7 (-> self root trans))
             (+! (-> a1-7 x) 20480.0)
             (+! (-> a1-7 y) 106496.0)
             (+! (-> a1-7 z) -32768.0)
@@ -741,7 +741,7 @@
   :code
     (behavior ()
       (ja :group! snow-fort-gate-idle-ja :num! min)
-      (set! (-> self root trans quad) (-> self open-trans quad))
+      (vector-copy! (-> self root trans) (-> self open-trans))
       (transform-post)
       (suspend)
       (transform-post)
@@ -782,8 +782,8 @@
   (set! (-> this part) (create-launch-control group-snow-fort-gate-coming-down this))
   (set! (-> this part2) (create-launch-control group-snow-fort-gate-hits-bottom this))
   (set! (-> this part3) (create-launch-control group-snow-fort-gate-snowdrops this))
-  (set! (-> this open-trans quad) (-> this root trans quad))
-  (set! (-> this closed-trans quad) (-> this open-trans quad))
+  (vector-copy! (-> this open-trans) (-> this root trans))
+  (vector-copy! (-> this closed-trans) (-> this open-trans))
   (+! (-> this open-trans y) -141312.0)
   (+! (-> this open-trans z) 32768.0)
   (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "lodge-door-mov" :fo-max 80) (-> this open-trans)))
@@ -793,10 +793,10 @@
     (set! (-> s5-1 frame-num) 0.0))
   (cond
     ((task-complete? *game-info* (game-task snow-ball))
-     (set! (-> this root trans quad) (-> this open-trans quad))
+     (vector-copy! (-> this root trans) (-> this open-trans))
      (transform-post)
      (go snow-fort-gate-idle-open))
-    (else (set! (-> this root trans quad) (-> this closed-trans quad)) (transform-post) (go snow-fort-gate-idle-closed)))
+    (else (vector-copy! (-> this root trans) (-> this closed-trans)) (transform-post) (go snow-fort-gate-idle-closed)))
   (none))
 
 (deftype snow-gears (process-drawable) ()
@@ -877,7 +877,7 @@
 (defmethod spawn-drip-particles ((this snow-gears))
   "Spawn the dripping-water particle group above the gears each frame while they are running."
   (let ((spawn-position (new 'stack-no-clear 'vector)))
-    (set! (-> spawn-position quad) (-> this root trans quad))
+    (vector-copy! spawn-position (-> this root trans))
     (+! (-> spawn-position y) 61440.0)
     (spawn (-> this part) spawn-position))
   (none))
@@ -1025,7 +1025,7 @@
         (loop
           (let ((s5-1 (new 'stack-no-clear 'vector))
                 (f0-1 (+ -1433.6 (-> self orig-trans y))))
-            (set! (-> s5-1 quad) (-> self root trans quad))
+            (vector-copy! s5-1 (-> self root trans))
             (cond
               ((= (-> s5-1 y) f0-1) (when (not gp-2) (set! gp-2 #t) (send-to-all (-> self link) 'notice)))
               (else
@@ -1039,7 +1039,7 @@
   :code
     (behavior ()
       (set! (-> self pressed?) #t)
-      (set! (-> self root trans quad) (-> self orig-trans quad))
+      (vector-copy! (-> self root trans) (-> self orig-trans))
       (+! (-> self root trans y) -1433.6)
       (transform-post)
       (loop
@@ -1076,12 +1076,12 @@
     (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     (set! (-> s5-1 frame-num) 0.0))
   (transform-post)
-  (set! (-> this orig-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this orig-trans) (-> this root trans))
   (let ((s5-2 (task-complete? *game-info* (game-task snow-ball))))
     (set! (-> this pressed?) s5-2)
     (when (not s5-2)
       (let ((a0-17 (new 'stack-no-clear 'vector)))
-        (set! (-> a0-17 quad) (-> this orig-trans quad))
+        (vector-copy! a0-17 (-> this orig-trans))
         (+! (-> a0-17 y) 12288.0)
         (set! (-> this fcell-handle)
               (ppointer->handle (birth-pickup-at-point a0-17
@@ -1299,7 +1299,7 @@
   :event snow-log-button-event-handler
   :code
     (behavior ()
-      (set! (-> self root trans quad) (-> self orig-trans quad))
+      (vector-copy! (-> self root trans) (-> self orig-trans))
       (+! (-> self root trans y) -1433.6)
       (transform-post)
       (loop
@@ -1333,7 +1333,7 @@
     (joint-control-channel-group-eval! s4-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
     (set! (-> s4-1 frame-num) 0.0))
   (transform-post)
-  (set! (-> this orig-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this orig-trans) (-> this root trans))
   (set! (-> this log) (entity-actor-lookup source-entity 'alt-actor 0))
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
     (go snow-log-button-idle-down)

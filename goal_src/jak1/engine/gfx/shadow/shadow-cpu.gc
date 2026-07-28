@@ -162,14 +162,9 @@
   "Return the complete packed shadow geometry size."
   (the-as int (-> this total-size)))
 
-(defmethod mem-usage ((this shadow-geo) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this shadow-geo) (usage memory-usage-block) (flags mem-usage-flags))
   "Charge this packed shadow geometry's used and 16-byte-aligned sizes to usage."
-  (set! (-> usage length) (max 108 (-> usage length)))
-  (set! (-> usage data 107 name) "shadow-geo")
-  (+! (-> usage data 107 count) 1)
-  (let ((byte-size (-> this total-size)))
-    (+! (-> usage data 107 used) byte-size)
-    (+! (-> usage data 107 total) (logand -16 (+ byte-size 15))))
+  (mem-usage-add! usage shadow-geo 1 (-> this total-size))
   this)
 
 (define *shadow-data*
@@ -2926,32 +2921,14 @@
           (if (nonzero? (-> queue run i first)) (set! has-shadow? #t)))
         (when has-shadow?
           (shadow-vu0-upload)
-          (let* ((global-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (chain-start (-> global-buf base)))
-            (shadow-vu1-init-buffer global-buf)
-            (flush-cache 0)
-            (let ((workspace (the-as shadow-dcache *gsf-buffer*)))
-              (set! (-> workspace stats num-single-tris) (the-as uint 0))
-              (set! (-> workspace stats num-double-tris) (the-as uint 0))
-              (set! (-> workspace stats num-single-edges) (the-as uint 0))
-              (set! (-> workspace stats num-double-edges) (the-as uint 0)))
-            0
-            (shadow-dma-init global-buf)
-            (dotimes (i (the-as int (-> queue cur-run)))
-              (let ((run (-> queue run i)))
-                (if (nonzero? (-> run first))
-                  (set! (-> global-buf base) (shadow-execute (the-as shadow-dma-packet (-> run first)) (-> global-buf base))))))
-            (shadow-dma-end global-buf)
-            (let ((chain-tail (-> global-buf base)))
-              (let ((next-tag (the-as object (-> global-buf base))))
-                (set! (-> (the-as dma-packet next-tag) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> (the-as dma-packet next-tag) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet next-tag) vif1) (new 'static 'vif-tag))
-                (set! (-> global-buf base) (&+ (the-as pointer next-tag) 16)))
-              (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                     (bucket-id shadow)
-                                     chain-start
-                                     (the-as (pointer dma-tag) chain-tail))))))
+          (with-dma-buffer-add-bucket ((global-buf (-> *display* frames (-> *display* on-screen) frame global-buf)) (bucket-id shadow)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (shadow-vu1-init-buffer global-buf) (flush-cache 0) (let ((workspace (the-as shadow-dcache *gsf-buffer*)))
+                        (set! (-> workspace stats num-single-tris) (the-as uint 0))
+                        (set! (-> workspace stats num-double-tris) (the-as uint 0))
+                        (set! (-> workspace stats num-single-edges) (the-as uint 0))
+                        (set! (-> workspace stats num-double-edges) (the-as uint 0))) 0 (shadow-dma-init global-buf) (dotimes (i (the-as int (-> queue cur-run)))
+                        (let ((run (-> queue run i)))
+                          (if (nonzero? (-> run first))
+                            (set! (-> global-buf base) (shadow-execute (the-as shadow-dma-packet (-> run first)) (-> global-buf base)))))) (shadow-dma-end global-buf))))
       (when #f
         (let ((workspace (the-as structure *gsf-buffer*)))
           (format *stdcon* "#single tris : ~4d~%" (-> (the-as shadow-dcache workspace) stats num-single-tris))
@@ -2982,7 +2959,7 @@
     (let ((hit (new 'stack-no-clear 'collide-tri-result))
           (ray-start (new 'stack-no-clear 'vector))
           (ray (new 'stack-no-clear 'vector)))
-      (set! (-> ray-start quad) (-> origin quad))
+      (vector-copy! ray-start origin)
       (set! (-> ray-start y) (+ 4096.0 (-> ray-start y)))
       (set-vector! ray 0.0 (- cast-length) 0.0 1.0)
       (cond

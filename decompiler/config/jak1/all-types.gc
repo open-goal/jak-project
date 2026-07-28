@@ -19576,10 +19576,15 @@ the original scratchpad decompressor remains available through the development s
 (define-extern mem-size
   "Collect value's memory categories using flags, optionally print the complete category table,
    and return the sum of aligned total bytes."
-  (function basic symbol int int))
+  (function basic symbol mem-usage-flags int))
 (define-extern jacc-mem-usage
   "Account for a compressed animation control block, its fixed data, and each compressed frame."
-  (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control))
+  (function
+    joint-anim-compressed-control
+    memory-usage-block
+    mem-usage-flags
+    joint-anim-compressed-control
+    ))
 (define-extern joint-anim-inspect-elt
   "Inspect the payload element selected by rounding index to an integer. Matrix and transformq
 animations have specialized displays; other animation payload types are left unchanged."
@@ -19722,7 +19727,7 @@ under label, then add those totals into the aggregate collision statistics."
 (define-extern mem-usage-bsp-tree
   "Recursively count the 32-byte internal nodes reachable from node in the BSP-node memory
 category. Nonpositive terminal children are not followed; header and flags are unused."
-  (function bsp-header bsp-node memory-usage-block int none))
+  (function bsp-header bsp-node memory-usage-block mem-usage-flags none))
 (define-extern bsp-camera-asm
   "Traverse the BSP for camera-position. At each split, select front when
 dot(camera-position, plane.xyz) - plane.w is nonnegative. Store the terminal leaf index and that
@@ -21384,7 +21389,7 @@ instance distance to the level."
 (define-extern mem-usage-shrub-walk
   "Recursively account for node storage and leaf instance-shrubbery records across node-count
    contiguous shrub BVH roots. flags is forwarded for the memory-usage traversal."
-  (function draw-node int memory-usage-block int draw-node))
+  (function draw-node int memory-usage-block mem-usage-flags draw-node))
 (define-extern shrub-make-perspective-matrix
   "Copy the current camera transform to out, divide its homogeneous coefficients by pfog0, and fold
    the horizontal, vertical, depth, and fog offsets into the first three components."

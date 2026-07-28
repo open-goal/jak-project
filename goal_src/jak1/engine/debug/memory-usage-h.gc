@@ -136,9 +136,9 @@
   (array 81)
   (sprite 82)
   (depth-cue 83)
-  (debug-dma 84)
-  (sky-dma 85)
-  (pris-generic)
+  (debug 84)
+  (sky 85)
+  (pris-generic 86)
   (4k-dead-pool 87)
   (8k-dead-pool 88)
   (16k-dead-pool 89)
@@ -166,4 +166,29 @@
 (defmacro mem-usage-id-int (kind)
   `(the int (mem-usage-id ,kind)))
 
-(defun-extern mem-size basic symbol int int)
+;; Record one aligned allocation in a named memory-usage category. This variant embeds the category
+;; name as a static string, matching the common form of the original macro.
+(defmacro mem-usage-add! (usage kind count size)
+  (with-gensyms (bytes)
+    `(begin
+      (set! (-> ,usage length) (max (+ 1 (mem-usage-id-int ,kind)) (-> ,usage length)))
+      (set! (-> ,usage data (mem-usage-id ,kind) name) ,(symbol->string kind))
+      (+! (-> ,usage data (mem-usage-id ,kind) count) ,count)
+      (let ((,bytes ,size))
+        (+! (-> ,usage data (mem-usage-id ,kind) used) ,bytes)
+        (+! (-> ,usage data (mem-usage-id ,kind) total) (align16 ,bytes))))))
+
+;; The drawable-container methods use the symbol's runtime string instead. Keep that distinct from
+;; the static-string variant above: the text is the same, but the original expression and resulting
+;; string object are not.
+(defmacro mem-usage-add-symbol! (usage kind count size)
+  (with-gensyms (bytes)
+    `(begin
+      (set! (-> ,usage length) (max (+ 1 (mem-usage-id-int ,kind)) (-> ,usage length)))
+      (set! (-> ,usage data (mem-usage-id ,kind) name) (symbol->string ',kind))
+      (+! (-> ,usage data (mem-usage-id ,kind) count) ,count)
+      (let ((,bytes ,size))
+        (+! (-> ,usage data (mem-usage-id ,kind) used) ,bytes)
+        (+! (-> ,usage data (mem-usage-id ,kind) total) (align16 ,bytes))))))
+
+(defun-extern mem-size basic symbol mem-usage-flags int)

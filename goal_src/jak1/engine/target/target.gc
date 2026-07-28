@@ -456,7 +456,7 @@
       (if (and (recently-pressed? circle) (can-feet?)) (go target-attack))
       (if (can-hands? #t) (go target-running-attack))
       (when (and (turn-around?) (time-elapsed? (-> self state-time) (seconds 0.3)))
-        (set! (-> self control transv quad) (-> self control transv-history (-> self control idx-of-fastest-xz-vel) quad))
+        (vector-copy! (-> self control transv) (-> self control transv-history (-> self control idx-of-fastest-xz-vel)))
         (set! (-> self control transv w) 1.0)
         (go target-turn-around))
       (slide-down-test)
@@ -766,7 +766,7 @@
         (vector+! vel
                   (vector-float*! vel (-> self control dynam gravity-normal) launch-speed)
                   (vector-float*! lateral-vel lateral-vel (/ lateral-speed new-lateral-speed))))))
-  (let ((start-pos (-> self control state-vector0))) (set! (-> start-pos quad) (-> self control trans quad)) start-pos))
+  (let ((start-pos (-> self control state-vector0))) (vector-copy! start-pos (-> self control trans)) start-pos))
 
 ;; The "hold X to jump higher" logic, run every frame of a rising jump. jump-held? is "is X still held".
 ;; hold-frac is jump time in 30ths of a second (0..1 over the first ~1s). While X is held and we're inside
@@ -816,7 +816,7 @@
     (let ((anim-offset (res-lump-struct (-> (ja-group) extra) 'collide-offset vector :time (ja-frame-num 0))))
       (cond
         (anim-offset (set! v0-2 (-> self control anim-collide-offset-local)) (set! (-> v0-2 quad) (-> anim-offset quad)))
-        (else (set! v0-2 (-> self control anim-collide-offset-local)) (set! (-> v0-2 quad) (the-as uint128 0)))))
+        (else (set! v0-2 (-> self control anim-collide-offset-local)) (vector-zero! v0-2))))
     v0-2))
 
 ;; Crouched and stationary (L1+R1 held). Shrinks the collision to the 'duck shape and sets
@@ -956,7 +956,7 @@
         (let ((height (-> self control launch-height))
               (camera-state (-> self control launch-camera-state))
               (dest (-> self control state-vector0)))
-          (set! (-> dest quad) (-> (the-as vector (-> self control launch-dest)) quad))
+          (vector-copy! dest (the-as vector (-> self control launch-dest)))
           (go target-launch (the-as float height) (the-as symbol camera-state) dest (-> self control launch-tracking-time))))
       (set-time! (-> self state-time))
       (sound-play "jump" :vol 70)
@@ -1070,7 +1070,7 @@
         (let ((height (-> self control launch-height))
               (camera-state (-> self control launch-camera-state))
               (dest (-> self control state-vector0)))
-          (set! (-> dest quad) (-> (the-as vector (-> self control launch-dest)) quad))
+          (vector-copy! dest (the-as vector (-> self control launch-dest)))
           (go target-launch (the-as float height) (the-as symbol camera-state) dest (-> self control launch-tracking-time))))
       (set-time! (-> self state-time))
       (init-var-jump min-height max-height #t #t (-> self control transv))
@@ -1122,7 +1122,7 @@
         (let ((height (-> self control launch-height))
               (camera-state (-> self control launch-camera-state))
               (dest (-> self control state-vector0)))
-          (set! (-> dest quad) (-> (the-as vector (-> self control launch-dest)) quad))
+          (vector-copy! dest (the-as vector (-> self control launch-dest)))
           (go target-launch (the-as float height) (the-as symbol camera-state) dest (-> self control launch-tracking-time))))
       (set! (-> self control state-var2) (the-as uint kind))
       (if (or (= kind 'duck) (= kind 'launch)) (go target-duck-high-jump min-height max-height (the-as symbol kind)))
@@ -1616,7 +1616,7 @@
                            (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-7)
                            (vector-float*! gp-2 gp-2 (/ f0-9 f1-11)))))))))
       (set! (-> self control dynam gravity-length) 122880.0)
-      (set! (-> self control last-trans-any-surf quad) (-> self control trans quad)))
+      (vector-copy! (-> self control last-trans-any-surf) (-> self control trans)))
   :exit
     (behavior ()
       (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
@@ -1827,7 +1827,7 @@
       (target-danger-set! 'harmless #f)
       (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
       (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
-      (set! (-> self control dynam gravity quad) (-> self control standard-dynamics gravity quad)))
+      (vector-copy! (-> self control dynam gravity) (-> self control standard-dynamics gravity)))
   :trans
     (behavior ()
       (delete-back-vel)
@@ -1884,7 +1884,7 @@
                         (the-as float 0.0)
                         (the-as float 40960.0))))
       (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
-      (set! (-> self control dynam gravity quad) (-> self control standard-dynamics gravity quad))
+      (vector-copy! (-> self control dynam gravity) (-> self control standard-dynamics gravity))
       (target-danger-set! 'flop-down #f)
       (ja :group! eichar-flop-down-loop-ja :num! min)
       (ja :chan 1 :group! eichar-moving-flop-down-loop-ja :num! min)

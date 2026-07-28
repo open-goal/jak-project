@@ -56,7 +56,7 @@
         (set-width! message-font (- 512 (-> this x-position)))
         (set-height! message-font 40)
         (set-scale! message-font 0.9)
-        (set! (-> message-font flags) (font-flags shadow kerning middle-vert large))
+        (set-flags! message-font (font-flags shadow kerning middle-vert large))
         (print-game-text (-> this message) message-font #f 128 22)))
     ;; og:preserve-this PAL patch here
     (cond
@@ -74,7 +74,7 @@
                                    (font-flags shadow kerning))))
            (let ((v1-15 response-font)) (set! (-> v1-15 width) (the float 400)))
            (let ((v1-16 response-font)) (set! (-> v1-16 height) (the float 100)))
-           (set! (-> response-font flags) (font-flags shadow kerning large))
+           (set-flags! response-font (font-flags shadow kerning large))
            (print-game-text *temp-string* response-font #f 128 22))))
       (else
        (let ((response-font (new 'stack
@@ -87,7 +87,7 @@
                                  (font-flags shadow kerning))))
          (let ((v1-22 response-font)) (set! (-> v1-22 width) (the float 400)))
          (let ((v1-23 response-font)) (set! (-> v1-23 height) (the float 100)))
-         (set! (-> response-font flags) (font-flags shadow kerning large))
+         (set-flags! response-font (font-flags shadow kerning large))
          (print-game-text (lookup-text! *common-text* (text-id confirm) #f) response-font #f 128 22))))
     (cond
       ((!= (-> this decision) 'undecided))
@@ -554,7 +554,7 @@
       (logclear! (-> self skel status) (janim-status blerc spool))
       (logior! (-> self mask) (process-mask actor-pause))
       (let ((entity-transform (-> self entity extra trans)))
-        (if entity-transform (set! (-> self root trans quad) (-> entity-transform quad))))
+        (if entity-transform (vector-copy! (-> self root trans) entity-transform)))
       (ja-channel-set! 0))
   :trans
     (behavior ()
@@ -643,7 +643,7 @@
                   (set-width! gp-1 440)
                   (set-height! gp-1 60)
                   (set-scale! gp-1 0.9)
-                  (set! (-> gp-1 flags) (font-flags shadow kerning middle-vert large))
+                  (set-flags! gp-1 (font-flags shadow kerning middle-vert large))
                   (print-game-text (lookup-text! *common-text* (-> self talk-message) #f) gp-1 #f 128 22))
                 (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
                   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons circle))
@@ -837,7 +837,7 @@
           (when (not parent)
             (format #t "ERROR<GMJ>: othercam parent invalid~%")
             (deactivate self))
-          (set! (-> *camera-other-root* quad) (-> (the-as process-taskable parent) root trans quad))
+          (vector-copy! *camera-other-root* (-> (the-as process-taskable parent) root trans))
           (let ((joint-transform (-> (the-as process-taskable parent) node-list data (-> self cam-joint-index) bone transform))
                 (joint-scale (-> (the-as process-taskable parent) node-list data (-> self cam-joint-index) bone scale))
                 (camera-forward (new 'stack-no-clear 'vector))
@@ -848,10 +848,10 @@
             (when frame-ready?
               (when (not (-> self had-valid-frame))
                 (set! (-> self had-valid-frame) #t)
-                (set! (-> self old-pos quad) (-> camera-position quad))
-                (set! (-> self old-mat-z quad) (-> camera-forward quad)))
+                (vector-copy! (-> self old-pos) camera-position)
+                (vector-copy! (-> self old-mat-z) camera-forward))
               (when #t
-                (set! (-> *camera-other-trans* quad) (-> camera-position quad))
+                (vector-copy! *camera-other-trans* camera-position)
                 (vector-normalize-copy! (-> *camera-other-matrix* vector 0) (-> joint-transform vector 0) -1.0)
                 (set! (-> *camera-other-matrix* vector 0 w) 0.0)
                 (vector-normalize-copy! (-> *camera-other-matrix* vector 1) (-> joint-transform vector 1) 1.0)
@@ -861,8 +861,8 @@
                 (vector-reset! (-> *camera-other-matrix* vector 3))
                 (othercam-calc (-> joint-scale x)))
               (set! *camera-look-through-other* 2)
-              (set! (-> self old-pos quad) (-> camera-position quad))
-              (set! (-> self old-mat-z quad) (-> camera-forward quad)))))
+              (vector-copy! (-> self old-pos) camera-position)
+              (vector-copy! (-> self old-mat-z) camera-forward))))
         (suspend)
         (let ((parent (-> self hand process 0)))
           (when (or (-> self die?) (and (not (-> self survive-anim-end?)) (ja-anim-done? parent)))

@@ -51,8 +51,8 @@
           (when ent
             (let ((proc (-> ent extra process)))
               (if (and proc (type-type? (-> proc type) process-drawable) (nonzero? (-> (the-as process-drawable proc) root)))
-                (set! (-> self root trans quad) (-> (the-as process-drawable proc) root trans quad))
-                (set! (-> self root trans quad) (-> ent extra trans quad))))))
+                (vector-copy! (-> self root trans) (-> (the-as process-drawable proc) root trans))
+                (vector-copy! (-> self root trans) (-> ent extra trans))))))
         (add-debug-x #t
                      (bucket-id debug-no-zbuf)
                      (-> self root trans)
@@ -88,7 +88,7 @@
    process-drawable because part-tester's root sits where a process-drawable's
    does, even though part-tester is a plain process."
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> pos quad))
+  (vector-copy! (-> self root trans) pos)
   (set! *part-tester* (the-as part-tester (process->ppointer self)))
   (go part-tester-idle)
   (none))

@@ -169,6 +169,17 @@
   "Return node's next link in an engine list."
   (-> node next0))
 
+;; Walk an engine's live connections in forward order. Cache next before running body so body may
+;; unlink the current connection without breaking the traversal.
+(defmacro iterate-engine-connections (bindings &rest body)
+  (with-gensyms (next)
+    `(let* ((,(car bindings) (-> ,(cadr bindings) alive-list next0))
+           (,next (-> ,(car bindings) next0)))
+      (while (!= ,(car bindings) (-> ,(cadr bindings) alive-list-end))
+        ,@body
+        (set! ,(car bindings) ,next)
+        (set! ,next (-> ,next next0))))))
+
 (defmethod new engine ((allocation symbol) (type-to-make type) (name basic) (capacity int))
   "Allocate a fixed-capacity engine and link every connection slot into its dead list."
   (local-vars (this engine) (i int) (last-interior-index int))
@@ -251,13 +262,8 @@
 
 (defmethod apply-to-connections ((this engine) (f (function connectable none)))
   "Apply f to every live connection in forward order, caching the next node so f may remove the current one."
-  (let* ((current (-> this alive-list next0))
-         ;; Save this before the callback in case it removes current.
-         (next (-> current next0)))
-    (while (!= current (-> this alive-list-end))
-      (f current)
-      (set! current next)
-      (set! next (-> next next0))))
+  ;; Save this before the callback in case it removes current.
+  (iterate-engine-connections (current this) (f current))
   0)
 
 (defmethod apply-to-connections-reverse ((this engine) (f (function connectable none)))
@@ -403,22 +409,14 @@
 
 (defmethod remove-by-param1 ((this engine) (p1-value object))
   "Move every live connection whose param1 equals value to the dead list."
-  (let* ((current (-> this alive-list next0))
-         (next (-> current next0)))
-    (while (!= current (-> this alive-list-end))
-      (if (= (-> (the-as connection current) param1) p1-value)
-        ((method-of-type connection move-to-dead) (the-as connection current)))
-      (set! current next)
-      (set! next (-> next next0))))
+  (iterate-engine-connections (current this)
+                              (if (= (-> (the-as connection current) param1) p1-value)
+                                ((method-of-type connection move-to-dead) (the-as connection current))))
   0)
 
 (defmethod remove-by-param2 ((this engine) (p2-value int))
   "Move every live connection whose param2 equals value to the dead list."
-  (let* ((current (-> this alive-list next0))
-         (next (-> current next0)))
-    (while (!= current (-> this alive-list-end))
-      (if (= (-> (the-as connection current) param2) p2-value)
-        ((method-of-type connection move-to-dead) (the-as connection current)))
-      (set! current next)
-      (set! next (-> next next0))))
+  (iterate-engine-connections (current this)
+                              (if (= (-> (the-as connection current) param2) p2-value)
+                                ((method-of-type connection move-to-dead) (the-as connection current))))
   0)

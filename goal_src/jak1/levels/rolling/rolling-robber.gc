@@ -17,8 +17,8 @@
       (hide-hud-quick)
       (set! *camera-look-through-other* 2)
       (set! (-> *camera-other-fov* data) 11650.845)
-      (set! (-> *camera-other-trans* quad) (-> *math-camera* trans quad))
-      (set! (-> *camera-other-root* quad) (-> *math-camera* trans quad))
+      (vector-copy! *camera-other-trans* (-> *math-camera* trans))
+      (vector-copy! *camera-other-root* (-> *math-camera* trans))
       (set-time! (-> self state-time))
       (loop
         (*! arg2 (- 1.0 (* 0.05 (-> *display* time-adjust-ratio)))) ;; og:preserve-this changed for high fps
@@ -32,7 +32,7 @@
         (eval-path-curve! (-> self path) (-> self root trans) arg1 'interp)
         (+! (-> self root trans y) 8192.0)
         (set! (-> self root trans y) (fmax 106496.0 (-> self root trans y)))
-        (set! (-> self base quad) (-> self root trans quad))
+        (vector-copy! (-> self base) (-> self root trans))
         (transform-post)
         (animate self)
         (let ((s4-0 (new 'stack-no-clear 'vector)))
@@ -116,7 +116,7 @@
   "Probe for ground below the robber and set its desired hover offset when the surface is safely
    separated from the water."
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (set! (-> gp-0 quad) (-> self root trans quad))
+    (vector-copy! gp-0 (-> self root trans))
     (let ((t2-0 (new 'stack-no-clear 'collide-tri-result)))
       (+! (-> gp-0 y) 8192.0)
       (let ((f0-2 (fill-and-probe-using-line-sphere *collide-cache*
@@ -128,7 +128,7 @@
                                                     t2-0
                                                     (new 'static 'pat-surface :noentity #x1)))
             (v1-5 (new 'stack-no-clear 'vector)))
-        (set! (-> v1-5 quad) (-> self root trans quad))
+        (vector-copy! v1-5 (-> self root trans))
         (set! (-> v1-5 y) (+ (-> gp-0 y) (* -81920.0 f0-2)))
         (cond
           ((and (>= f0-2 0.0) (< 204.8 (fabs (- (-> v1-5 y) (-> self water-height)))))
@@ -145,7 +145,7 @@
     (cond
       ((and face-jak *target*) (vector-! gp-0 (-> self root trans) (target-pos 0)) (vector-normalize! gp-0 1.0))
       ((< (-> self speed) 0.0) (vector-negate! gp-0 (-> self tangent)))
-      (else (set! (-> gp-0 quad) (-> self tangent quad))))
+      (else (vector-copy! gp-0 (-> self tangent))))
     (matrix-from-two-vectors-max-angle-partial! s5-0 (-> self facing) gp-0 max-angle 0.25)
     (vector-matrix*! gp-0 (-> self facing) s5-0)
     (vector-normalize! gp-0 1.0)
@@ -155,7 +155,7 @@
     (set! (-> self run-blend-interp) (* 0.0002746582 (-> self run-blend-interp)))
     (if (< (vector-dot (-> self facing) (-> s5-0 vector 0)) 0.0)
       (set! (-> self run-blend-interp) (- (-> self run-blend-interp))))
-    (let ((v0-10 (-> self facing))) (set! (-> v0-10 quad) (-> gp-0 quad)) v0-10)))
+    (let ((v0-10 (-> self facing))) (vector-copy! v0-10 gp-0) v0-10)))
 
 (defbehavior robber-move robber ()
   "Advance and wrap the robber's curve position, evaluate its new position, and ease its vertical
@@ -485,7 +485,7 @@
   (set! (-> this curve-position) (res-lump-float (-> this entity) 'initial-spline-pos))
   (eval-path-curve! (-> this path) (-> this root trans) (-> this curve-position) 'interp)
   (get-tangent-at-percent! (-> this path) (-> this tangent) (-> this curve-position))
-  (set! (-> this facing quad) (-> this tangent quad))
+  (vector-copy! (-> this facing) (-> this tangent))
   (let ((s4-1 (new 'stack-no-clear 'matrix)))
     (forward-down->inv-matrix s4-1 (-> this facing) (new 'static 'vector :y -1.0))
     (matrix->quaternion (-> this root quat) s4-1))

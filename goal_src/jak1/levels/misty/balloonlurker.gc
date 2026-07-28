@@ -336,7 +336,7 @@
   (let ((position (new 'stack-no-clear 'vector))
         (tangent (new 'stack-no-clear 'vector)))
     (eval-path-curve-div! (-> self path) position (the float index) 'interp)
-    (set! (-> self root-overlay trans quad) (-> position quad))
+    (vector-copy! (-> self root-overlay trans) position)
     (get-tangent-at-vertex! (-> self path) tangent (the float index))
     (set! (-> tangent y) 0.0)
     (vector-normalize! tangent 1.0)
@@ -362,7 +362,7 @@
   "Record the force needed to match Jak's velocity at his contact point."
   (when *target*
     (set! (-> self player-impulse) #t)
-    (set! (-> self player-force-position quad) (-> *target* control trans quad))
+    (vector-copy! (-> self player-force-position) (-> *target* control trans))
     (vector-! (-> self player-force) (-> self player-velocity) (-> *target* control transv))
     (vector-float*! (-> self player-force) (-> self player-force) (-> *BALLOONLURKER-bank* player-mass))))
 
@@ -533,7 +533,7 @@
        (update-transforms! (-> self root-overlay))
        (ja-post))
       (else
-       (set! (-> self draw origin quad) (-> self root-overlay trans quad))
+       (vector-copy! (-> self draw origin) (-> self root-overlay trans))
        (logior! (-> self draw status) (draw-status skip-bones)))))
   (none))
 
@@ -710,9 +710,9 @@
   (balloonlurker-pilot-method-20 self)
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self fact) (new 'process 'fact-info-enemy self (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
-  (set! (-> self root trans quad) (-> balloon root-overlay trans quad))
+  (vector-copy! (-> self root trans) (-> balloon root-overlay trans))
   (set! (-> self root quat vec quad) (-> balloon root-overlay quat vec quad))
-  (set! (-> self root scale quad) (-> balloon root-overlay scale quad))
+  (vector-copy! (-> self root scale) (-> balloon root-overlay scale))
   (balloonlurker-pilot-method-21 self)
   (go balloonlurker-pilot-idle)
   (none))
@@ -816,8 +816,8 @@
   (set! (-> this explosion-joint-index-bytes 1) 7)
   (set! (-> this engine-sound-id) (new 'static 'sound-id))
   (set! (-> this pedal-sound-id) (new 'static 'sound-id))
-  (set! (-> this player-force quad) (-> *null-vector* quad))
-  (set! (-> this player-velocity quad) (-> *null-vector* quad))
+  (vector-copy! (-> this player-force) *null-vector*)
+  (vector-copy! (-> this player-velocity) *null-vector*)
   0
   (none))
 

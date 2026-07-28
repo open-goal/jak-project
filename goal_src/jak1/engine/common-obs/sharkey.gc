@@ -125,7 +125,7 @@ nav-enemy-default-event-handler
     (let ((current-y (-> this collide-info trans y)))
       (when (or (and (< water-height current-y) (>= water-height (-> this last-y)))
                 (and (>= water-height current-y) (< water-height (-> this last-y))))
-        (set! (-> splash-position quad) (-> this collide-info trans quad))
+        (vector-copy! splash-position (-> this collide-info trans))
         (set! (-> splash-position y) water-height)
         (create-splash (-> this water) 1.0 splash-position 1 (-> this collide-info transv)))
       (set! (-> this last-y) current-y)))
@@ -143,13 +143,13 @@ nav-enemy-default-event-handler
 
 (defun sharkey-get-player-position ((destination vector))
   "Copy the player target point at joint slot 5 into destination."
-  (set! (-> destination quad) (-> (target-pos 5) quad))
+  (vector-copy! destination (target-pos 5))
   0
   (none))
 
 (defbehavior sharkey-reset-position sharkey ()
   "Restore the Sharkey's position from its entity transform."
-  (set! (-> self collide-info trans quad) (-> self entity extra trans quad))
+  (vector-copy! (-> self collide-info trans) (-> self entity extra trans))
   0
   (none))
 
@@ -163,21 +163,21 @@ nav-enemy-default-event-handler
         (desired-spawn-position (new 'stack-no-clear 'vector)))
     (let ((player-position (-> *target* control trans)))
       (let ((best-distance 4096000.0))
-        (set! (-> candidate-position quad) (-> self entity extra trans quad))
-        (set! (-> closest-path-position quad) (-> self collide-info trans quad))
+        (vector-copy! candidate-position (-> self entity extra trans))
+        (vector-copy! closest-path-position (-> self collide-info trans))
         (dotimes (i (-> self path curve num-cverts))
           (eval-path-curve-div! (-> self path) candidate-position (the float i) 'interp)
           (let ((candidate-distance (vector-vector-xz-distance player-position candidate-position)))
             (when (< candidate-distance best-distance)
               (set! best-distance candidate-distance)
-              (set! (-> closest-path-position quad) (-> candidate-position quad))))))
+              (vector-copy! closest-path-position candidate-position)))))
       (vector-! (-> self dir) player-position closest-path-position)
       (vector-normalize! (-> self dir) 1.0)
       (vector+*! desired-spawn-position player-position (-> self dir) (- (-> self spawn-distance))))
     (project-onto-nav-mesh (-> self nav) desired-spawn-position desired-spawn-position)
     (set! (-> desired-spawn-position y) (-> self y-min))
-    (set! (-> self spawn-point quad) (-> desired-spawn-position quad)))
-  (set! (-> self collide-info trans quad) (-> self spawn-point quad))
+    (vector-copy! (-> self spawn-point) desired-spawn-position))
+  (vector-copy! (-> self collide-info trans) (-> self spawn-point))
   (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
   (set! (-> self momentum-speed) 0.0))
 
@@ -284,7 +284,7 @@ nav-enemy-default-event-handler
         (current-time)
         (sound-play "bigshark-bite")
         (set-time! (-> self state-time))
-        (set! (-> attack-start-position quad) (-> self collide-info trans quad))
+        (vector-copy! attack-start-position (-> self collide-info trans))
         (ja-channel-push! 1 (seconds 0.1))
         (ja-play :group!
                  sharkey-chomp-ja
@@ -515,7 +515,7 @@ nav-enemy-default-event-handler
   (set! (-> this water flags) (water-flag active part-rings part-water))
   (set! (-> this water height) (res-lump-float (-> this entity) 'water-height))
   (set! (-> this water ripple-size) 20480.0)
-  (set! (-> this spawn-point quad) (-> this collide-info trans quad))
+  (vector-copy! (-> this spawn-point) (-> this collide-info trans))
   (set! (-> this collide-info nav-radius) 8192.0)
   (set! (-> this nav nearest-y-threshold) 4096000.0)
   (set! (-> this y-max) (- (-> this water height) (* 2048.0 (-> this scale))))

@@ -13,7 +13,7 @@
 ;; memory use
 ;;;;;;;;;;;;;;;
 
-(defun-recursive mem-usage-bsp-tree none ((header bsp-header) (node bsp-node) (mem-use memory-usage-block) (flags int))
+(defun-recursive mem-usage-bsp-tree none ((header bsp-header) (node bsp-node) (mem-use memory-usage-block) (flags mem-usage-flags))
   "Recursively count the 32-byte internal nodes reachable from node in the BSP-node memory
    category. Nonpositive terminal children are not followed; header and flags are unused."
   (cond
@@ -27,19 +27,14 @@
      (if (> (-> node back) 0) (mem-usage-bsp-tree header (the-as bsp-node (-> node back)) mem-use flags))))
   (none))
 
-(defmethod mem-usage ((this bsp-header) (mem-use memory-usage-block) (flags int))
+(defmethod mem-usage ((this bsp-header) (mem-use memory-usage-block) (flags mem-usage-flags))
   "Account for this header's owned level data and delegate memory accounting to its drawable
    trees and cameras."
   ;; start off by setting the current bsp
   (set! (-> mem-use work-bsp) this)
   ;; this seems slightly wrong, we count the file-info toward array.
   (when (nonzero? (-> this info))
-    (set! (-> mem-use length) (max 82 (-> mem-use length)))
-    (set! (-> mem-use data 81 name) "array")
-    (+! (-> mem-use data 81 count) 1)
-    (let ((file-info-bytes (asize-of (-> this info))))
-      (+! (-> mem-use data 81 used) file-info-bytes)
-      (+! (-> mem-use data 81 total) (logand -16 (+ file-info-bytes 15)))))
+    (mem-usage-add! mem-use array 1 (asize-of (-> this info))))
   ;; measure the drawable trees.
   (if (nonzero? (-> this drawable-trees)) (mem-usage (-> this drawable-trees) mem-use flags))
   ;; add stuff
@@ -48,75 +43,30 @@
   (set! (-> mem-use data 44 name) "camera")
   (set! (-> mem-use data 62 name) "pat")
   (set! (-> mem-use data 58 name) "bsp-node")
-  (set! (-> mem-use length) (max 57 (-> mem-use length)))
   ;; add the bsp-header itself
-  (set! (-> mem-use data 56 name) "bsp-main")
-  (+! (-> mem-use data 56 count) 1)
-  (let ((header-bytes 400))
-    (+! (-> mem-use data 56 used) header-bytes)
-    (+! (-> mem-use data 56 total) (logand -16 (+ header-bytes 15))))
+  (mem-usage-add! mem-use bsp-main 1 400)
   ;; add the visible list
-  (set! (-> mem-use length) (max 60 (-> mem-use length)))
-  (set! (-> mem-use data 59 name) "bsp-leaf-vis-self")
-  (+! (-> mem-use data 59 count) 1)
-  (let ((visibility-bytes (-> this visible-list-length)))
-    (+! (-> mem-use data 59 used) visibility-bytes)
-    (+! (-> mem-use data 59 total) (logand -16 (+ visibility-bytes 15))))
+  (mem-usage-add! mem-use bsp-leaf-vis-self 1 (-> this visible-list-length))
   ;; add the unk-data-0
-  (set! (-> mem-use length) (max 58 (-> mem-use length)))
-  (set! (-> mem-use data 57 name) "bsp-misc")
-  (+! (-> mem-use data 57 count) 1)
-  (let ((texture-remap-bytes (* (-> this texture-remap-table-len) 8)))
-    (+! (-> mem-use data 57 used) texture-remap-bytes)
-    (+! (-> mem-use data 57 total) (logand -16 (+ texture-remap-bytes 15))))
+  (mem-usage-add! mem-use bsp-misc 1 (* (-> this texture-remap-table-len) 8))
   ;; add the unk-data-1
-  (set! (-> mem-use length) (max 58 (-> mem-use length)))
-  (set! (-> mem-use data 57 name) "bsp-misc")
-  (+! (-> mem-use data 57 count) 1)
-  (let ((texture-id-bytes (* (-> this texture-page-count) 4)))
-    (+! (-> mem-use data 57 used) texture-id-bytes)
-    (+! (-> mem-use data 57 total) (logand -16 (+ texture-id-bytes 15))))
+  (mem-usage-add! mem-use bsp-misc 1 (* (-> this texture-page-count) 4))
   ;; add unk-zero-0
   (when (nonzero? (-> this unk-zero-0))
-    (set! (-> mem-use length) (max 58 (-> mem-use length)))
-    (set! (-> mem-use data 57 name) "bsp-misc")
-    (+! (-> mem-use data 57 count) 1)
-    (let ((unknown-array-bytes (asize-of (-> this unk-zero-0))))
-      (+! (-> mem-use data 57 used) unknown-array-bytes)
-      (+! (-> mem-use data 57 total) (logand -16 (+ unknown-array-bytes 15)))))
+    (mem-usage-add! mem-use bsp-misc 1 (asize-of (-> this unk-zero-0))))
   ;; add adgifs
   (when (nonzero? (-> this adgifs))
-    (set! (-> mem-use length) (max 58 (-> mem-use length)))
-    (set! (-> mem-use data 57 name) "bsp-misc")
-    (+! (-> mem-use data 57 count) 1)
-    (let ((adgif-bytes (asize-of (-> this adgifs))))
-      (+! (-> mem-use data 57 used) adgif-bytes)
-      (+! (-> mem-use data 57 total) (logand -16 (+ adgif-bytes 15)))))
+    (mem-usage-add! mem-use bsp-misc 1 (asize-of (-> this adgifs))))
   ;; add boxes
   (when (nonzero? (-> this boxes))
-    (set! (-> mem-use length) (max 58 (-> mem-use length)))
-    (set! (-> mem-use data 57 name) "bsp-misc")
-    (+! (-> mem-use data 57 count) 1)
-    (let ((box-bytes (asize-of (-> this boxes))))
-      (+! (-> mem-use data 57 used) box-bytes)
-      (+! (-> mem-use data 57 total) (logand -16 (+ box-bytes 15))))
+    (mem-usage-add! mem-use bsp-misc 1 (asize-of (-> this boxes)))
     ;; add box indices
     (when (nonzero? (-> this split-box-indices))
-      (set! (-> mem-use length) (max 58 (-> mem-use length)))
-      (set! (-> mem-use data 57 name) "bsp-misc")
-      (+! (-> mem-use data 57 count) 1)
-      (let ((split-box-index-bytes (* (-> this boxes length) 2)))
-        (+! (-> mem-use data 57 used) split-box-index-bytes)
-        (+! (-> mem-use data 57 total) (logand -16 (+ split-box-index-bytes 15))))))
+      (mem-usage-add! mem-use bsp-misc 1 (* (-> this boxes length) 2))))
   ;; add actor-birth-order
   (when (nonzero? (-> this actor-birth-order))
-    (set! (-> mem-use length) (max 58 (-> mem-use length)))
-    (set! (-> mem-use data 57 name) "bsp-misc")
-    (+! (-> mem-use data 57 count) 1)
     ;; add actors
-    (let ((actor-index-bytes (* (-> this actors length) 4)))
-      (+! (-> mem-use data 57 used) actor-index-bytes)
-      (+! (-> mem-use data 57 total) (logand -16 (+ actor-index-bytes 15)))))
+    (mem-usage-add! mem-use bsp-misc 1 (* (-> this actors length) 4)))
   ;; add pat
   (+! (-> mem-use data 62 count) (-> this pat-length))
   (let ((pat-bytes (* (-> this pat-length) 4)))
@@ -126,7 +76,7 @@
   (let ((cameras (-> this cameras)))
     (when (nonzero? cameras)
       (dotimes (i (-> cameras length))
-        (mem-usage (-> cameras i) mem-use (logior flags 256)))))
+        (mem-usage (-> cameras i) mem-use (logior flags (mem-usage-flags resource-camera))))))
   ;; add the tree itself
   (mem-usage-bsp-tree this (the-as bsp-node (-> this nodes)) mem-use flags)
   this)
@@ -220,7 +170,7 @@
                  (new 'static 'rgba :r #x80 :g #xc0 :a #x80))))
   ;; run the foreground system (0 check added)
   (when (nonzero? foreground-engine-execute)
-    (let ((frame (-> *display* frames (-> *display* on-screen) frame)))
+    (let ((frame (current-frame)))
       ;; 0
       (foreground-engine-execute (-> this level foreground-draw-engine 0)
                                  frame

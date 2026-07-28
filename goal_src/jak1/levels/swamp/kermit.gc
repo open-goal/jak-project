@@ -517,7 +517,7 @@
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
     (set! (-> self root) s5-0))
-  (set! (-> self root trans quad) (-> position quad))
+  (vector-copy! (-> self root trans) position)
   (set! (-> self root quat vec quad) (-> self parent-override 0 collide-info quat vec quad))
   (vector-identity! (-> self root scale))
   (vector-reset! (-> self root transv))
@@ -606,7 +606,7 @@
 
 (defun kermit-get-tongue-target-callback ((out vector))
   "Copy the player's tongue target into out."
-  (set! (-> out quad) (-> (kermit-player-target-pos) quad))
+  (vector-copy! out (kermit-player-target-pos))
   out)
 
 (defbehavior kermit-check-tongue-is-clear? kermit ()
@@ -719,7 +719,7 @@ nav-enemy-default-event-handler
                                                #f
                                                #f)
      (nav-enemy-common-post))
-    (else (set! (-> self collide-info transv quad) (-> *null-vector* quad)) (kermit-simple-post)))
+    (else (vector-copy! (-> self collide-info transv) *null-vector*) (kermit-simple-post)))
   (none))
 
 (defbehavior kermit-get-new-patrol-point kermit ()
@@ -846,7 +846,7 @@ nav-enemy-default-event-handler
       (kermit-set-rotate-dir-to-player)
       (if (nav-enemy-test-point-in-nav-mesh? (target-pos 0)) (set-time! (-> self state-time)))
       (kermit-tongue-pos self)
-      (let ((v1-5 (kermit-player-target-pos))) (set! (-> self tongue-control target-pos quad) (-> v1-5 quad)))
+      (let ((v1-5 (kermit-player-target-pos))) (vector-copy! (-> self tongue-control target-pos) v1-5))
       (when (not (-> self airborne))
         (if (or (not *target*)
                 (< (-> self enemy-info idle-distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
@@ -878,7 +878,7 @@ nav-enemy-default-event-handler
                    kermit-lash-ja
                    :num! (seek!)
                    :frame-num 0.0
-                   (set! (-> self tongue-control target-pos quad) (-> (kermit-player-target-pos) quad))
+                   (vector-copy! (-> self tongue-control target-pos) (kermit-player-target-pos))
                    (when (and (not s5-0) (>= (ja-aframe-num 0) 14.0))
                      (set! s5-0 #t)
                      (set! gp-0 (kermit-check-to-hit-player? 3640.889))

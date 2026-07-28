@@ -46,11 +46,11 @@
   0
   (none))
 
-(defmethod mem-usage ((this collide-fragment) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this collide-fragment) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the fragment and mesh headers, packed polygon stream and PAT indices, and packed
    vertex quadwords. Bit 0 of flags selects the prototype categories instead of the ordinary
    background-collision categories."
-  (let ((category (if (logtest? flags 1) (mem-usage-id collide-fragment-1) (mem-usage-id collide-fragment-0)))
+  (let ((category (if (logtest? flags (mem-usage-flags prototype-data)) (mem-usage-id collide-fragment-1) (mem-usage-id collide-fragment-0)))
         (mesh (-> this mesh)))
     (set! (-> usage data category name) (symbol->string 'collide-fragment))
     (+! (-> usage data category count) 1)
@@ -124,15 +124,10 @@
   0
   (none))
 
-(defmethod mem-usage ((this drawable-inline-array-collide-fragment) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-inline-array-collide-fragment) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the inline-array header and delegate memory accounting to every collision
    fragment."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
-  (+! (-> usage data 0 count) 1)
-  (let ((header-bytes 32))
-    (+! (-> usage data 0 used) header-bytes)
-    (+! (-> usage data 0 total) (logand -16 (+ header-bytes 15))))
+  (mem-usage-add-symbol! usage drawable-group 1 32)
   (dotimes (i (-> this length))
     (mem-usage (-> this data i) usage flags))
   this)

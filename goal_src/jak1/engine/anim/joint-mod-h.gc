@@ -170,9 +170,9 @@
 
 (defmethod set-trs! ((this joint-mod) (trans vector) (rot quaternion) (scale vector))
   "Replace any nonfalse translation, rotation, and scale override components."
-  (if trans (set! (-> this trans quad) (-> trans quad)))
+  (if trans (vector-copy! (-> this trans) trans))
   (if rot (quaternion-copy! (-> this quat) rot))
-  (if scale (set! (-> this scale quad) (-> scale quad)))
+  (if scale (vector-copy! (-> this scale) scale))
   0
   (none))
 
@@ -183,7 +183,7 @@
   ;; how far are we from the target?
   (let ((distance (vector-vector-distance (-> this process root trans) target-trans)))
     (set! (-> this shutting-down?) #f)
-    (set! (-> this target quad) (-> target-trans quad))
+    (vector-copy! (-> this target) target-trans)
     (if (< distance (-> this max-dist)) (set! (-> this blend) 1.0) (set! (-> this blend) 0.0)))
   0
   (none))
@@ -227,7 +227,7 @@
                    (or (< dist (vector-vector-distance (-> this process root trans) (-> this target))) (= option 'force)))
                (< dist (-> this max-dist)))
       (if (= (-> this mode) (joint-mod-handler-mode reset)) (set-mode! this (joint-mod-handler-mode look-at)))
-      (set! (-> this target quad) (-> target-trans quad))
+      (vector-copy! (-> this target) target-trans)
       (set! (-> this blend) 1.0)
       (set! (-> this shutting-down?) #f)))
   0
@@ -366,9 +366,9 @@
 (defun joint-mod-joint-set-handler ((node cspace) (local-transform transformq))
   "Replace the joint's local translation, rotation, and scale with the configured transform."
   (let ((s4-0 (the-as joint-mod (-> node param1))))
-    (set! (-> local-transform trans quad) (-> s4-0 trans quad))
+    (vector-copy! (-> local-transform trans) (-> s4-0 trans))
     (quaternion-copy! (-> local-transform quat) (-> s4-0 quat))
-    (set! (-> local-transform scale quad) (-> s4-0 scale quad)))
+    (vector-copy! (-> local-transform scale) (-> s4-0 scale)))
   (cspace<-parented-transformq-joint! node local-transform)
   0
   (none))
@@ -461,9 +461,9 @@
   (let ((v1-0 (the-as joint-mod-set-local (-> node param1))))
     (cond
       ((-> v1-0 enable)
-       (if (not (-> v1-0 set-translation)) (set! (-> v1-0 transform trans quad) (-> local-transform trans quad)))
+       (if (not (-> v1-0 set-translation)) (vector-copy! (-> v1-0 transform trans) (-> local-transform trans)))
        (if (not (-> v1-0 set-rotation)) (set! (-> v1-0 transform quat vec quad) (-> local-transform quat vec quad)))
-       (if (not (-> v1-0 set-scale)) (set! (-> v1-0 transform scale quad) (-> local-transform scale quad)))
+       (if (not (-> v1-0 set-scale)) (vector-copy! (-> v1-0 transform scale) (-> local-transform scale)))
        (cspace<-parented-transformq-joint! node (-> v1-0 transform)))
       (else (cspace<-parented-transformq-joint! node local-transform))))
   (none))

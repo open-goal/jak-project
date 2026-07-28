@@ -538,7 +538,7 @@
    error is within the facing threshold."
   (let ((to-target (new 'stack-no-clear 'vector)))
     (when (-> this tracking-player?)
-      (if (and *target* update-target?) (set! (-> this target-pt quad) (-> (target-pos 0) quad))))
+      (if (and *target* update-target?) (vector-copy! (-> this target-pt) (target-pos 0))))
     (vector-! to-target (-> this target-pt) (-> this collide-info trans))
     (seek-toward-heading-vec! (-> this collide-info) to-target 524288.0 (seconds 0.1))
     (let ((facing-target? (< (fabs (deg- (quaternion-y-angle (-> this collide-info quat)) (vector-y-angle to-target))) 364.0889)))
@@ -555,7 +555,7 @@
     (let* ((probe-result (new 'stack-no-clear 'collide-tri-result))
            (probe-offset 40960.0)
            (probe-length (+ probe-offset 40960.0)))
-      (set! (-> probe-point quad) (-> input-point quad))
+      (vector-copy! probe-point input-point)
       (+! (-> probe-point y) probe-offset)
       (let ((hit-fraction (fill-and-probe-using-y-probe *collide-cache*
                                                         probe-point
@@ -567,7 +567,7 @@
         ;; og:preserve-this yes this is bugged
         (if (or (< hit-fraction 0.0) (= (logand #b111000 (the-as int (-> probe-result pat))) 8)) (return #f))
         (set! (-> probe-point y) (- (-> probe-point y) (* hit-fraction probe-length)))))
-    (set! (-> output-point quad) (-> probe-point quad)))
+    (vector-copy! output-point probe-point))
   #t)
 
 (defmethod valid-appear-point? ((this ice-cube) (candidate-point vector))
@@ -577,7 +577,7 @@
     (let ((target-distance (vector-vector-xz-distance candidate-point (target-pos 0))))
       (when (and (>= target-distance 40960.0) (>= 81920.0 target-distance) (not (jump-dest-blocked? this candidate-point)))
         (let ((bounds (new 'stack-no-clear 'vector)))
-          (set! (-> bounds quad) (-> candidate-point quad))
+          (vector-copy! bounds candidate-point)
           (set! (-> bounds w) (-> this collide-info root-prim local-sphere w))
           (if (sphere-in-view-frustum? (the-as sphere bounds)) (return #t))))))
   #f)
@@ -596,7 +596,7 @@
       (when (valid-appear-point? this output-position)
         (let ((a1-3 (new 'stack-no-clear 'vector))
               (s3-1 (new 'stack-no-clear 'collide-tri-result)))
-          (set! (-> a1-3 quad) (-> output-position quad))
+          (vector-copy! a1-3 output-position)
           (+! (-> a1-3 y) 16384.0)
           (if (>= (fill-and-probe-using-line-sphere *collide-cache*
                                                     a1-3
@@ -607,7 +607,7 @@
                                                     s3-1
                                                     (new 'static 'pat-surface :noentity #x1))
                   0.0)
-            (set! (-> output-position quad) (-> s3-1 intersect quad))))
+            (vector-copy! output-position (-> s3-1 intersect))))
         (cond
           (*target* (vector-! output-facing (target-pos 0) output-position) (set! (-> output-facing y) 0.0))
           (else
@@ -636,7 +636,7 @@
         (let ((s5-0 (new 'stack-no-clear 'vector))
               (gp-0 (new 'stack-no-clear 'vector)))
           (when (pick-appear-point-and-facing self s5-0 gp-0)
-            (set! (-> self collide-info trans quad) (-> s5-0 quad))
+            (vector-copy! (-> self collide-info trans) s5-0)
             (forward-up->quaternion (-> self collide-info quat) gp-0 *up-vector*)
             (set-spikes-retracted-collision! self)
             (go ice-cube-appear)))))
@@ -655,13 +655,13 @@
       (spawn (-> self part) (-> self collide-info trans))
       (set-current-poly! (-> self nav) (find-poly-fast-from-world (-> self nav) (-> self collide-info trans)))
       (+! (-> self collide-info trans y) -12288.0)
-      (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+      (vector-copy! (-> self collide-info transv) *null-vector*)
       (set! (-> self collide-info transv y) (rand-vu-float-range 102400.0 114688.0)))
   :trans
     (behavior ()
       (when (and (< (-> self collide-info trans y) (-> self ground-y)) (< (-> self collide-info transv y) 0.0))
         (set! (-> self collide-info trans y) (-> self ground-y))
-        (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+        (vector-copy! (-> self collide-info transv) *null-vector*)
         (go ice-cube-appear-land))
       (let* ((s5-0 (-> self node-list))
              (a0-2 (-> s5-0 length))
@@ -745,7 +745,7 @@
               (not (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos))))
         (go-virtual nav-enemy-patrol))
       (set! (-> self tracking-player?) #t)
-      (set! (-> self target-pt quad) (-> (target-pos 0) quad))
+      (vector-copy! (-> self target-pt) (target-pos 0))
       (nav-enemy-neck-control-look-at)
       (set-vector! (-> self collide-info transv) 0.0 114688.0 0.0 1.0))
   :code
@@ -827,7 +827,7 @@
       (eval-path-curve-div! (-> this path) s5-0 (the float s2-0) 'interp)
       (when (>= (vector-vector-xz-distance s5-0 (-> this collide-info trans)) 32768.0)
         (when (snap-point-to-ground this s5-0 s5-0)
-          (set! (-> this target-pt quad) (-> s5-0 quad))
+          (vector-copy! (-> this target-pt) s5-0)
           (return #t)))
       (set! s2-0 (mod (+ s2-0 1) s4-0))))
   #f)
@@ -845,7 +845,7 @@
               (not (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos))))
         (go ice-cube-retract-spikes))
       (set! (-> self tracking-player?) #t)
-      (set! (-> self target-pt quad) (-> (target-pos 0) quad))
+      (vector-copy! (-> self target-pt) (target-pos 0))
       (nav-enemy-neck-control-look-at)
       (set-vector! (-> self collide-info transv) 0.0 114688.0 0.0 1.0))
   :code
@@ -919,7 +919,7 @@
       (set! (-> self slow-down?) #f)
       (set! (-> self speed) 81920.0)
       (set! (-> self prev-charge-angle-diff) 0.0)
-      (let ((a0-6 (-> self collide-info trans))) (set! (-> self starting-pos quad) (-> a0-6 quad)))
+      (let ((a0-6 (-> self collide-info trans))) (vector-copy! (-> self starting-pos) a0-6))
       (set! (-> self charge-angle) (quaternion-y-angle (-> self collide-info quat))))
   :exit
     (behavior ()
@@ -931,7 +931,7 @@
         (cond
           ((= (-> self speed) 0.0) (go ice-cube-mean-charge-done))
           (else (set! (-> self slow-down?) #t) (set! (-> self track-target?) #f) (set! (-> self tracking-player?) #f))))
-      (if (-> self tracking-player?) (set! (-> self target-pt quad) (-> (target-pos 0) quad)))
+      (if (-> self tracking-player?) (vector-copy! (-> self target-pt) (target-pos 0)))
       (let ((gp-1 (new 'stack-no-clear 'vector))
             (s5-0 (new 'stack-no-clear 'vector)))
         (vector-! gp-1 (-> self target-pt) (-> self starting-pos))
@@ -1071,7 +1071,7 @@
       (let ((gp-1 (new 'stack 'joint-exploder-tuning 1)))
         (set! (-> gp-1 duration) (seconds 3))
         (set! (-> gp-1 gravity) -327680.0)
-        (set! (-> gp-1 fountain-rand-transv-lo quad) (-> (target-pos 0) quad))
+        (vector-copy! (-> gp-1 fountain-rand-transv-lo) (target-pos 0))
         (process-spawn joint-exploder
                        *ice-cube-break-sg*
                        2

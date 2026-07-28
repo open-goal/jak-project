@@ -98,7 +98,7 @@
       (else
        (format #t "WARNING: method get-random-point called on a path-control object with no vertices.~%")
        (if pp (format #t "current process is ~A~%" (-> pp name)))
-       (set! (-> result quad) (-> *null-vector* quad))))
+       (vector-copy! result *null-vector*)))
     result))
 
 (defmethod eval-path-curve! ((this path-control) (result vector) (percent float) (mode symbol))
@@ -205,12 +205,12 @@
         (closest-distance 4096000000.0)
         (closest-progress 0.0))
     (let ((closest-point (new 'stack-no-clear 'vector)))
-      (set! (-> target-point quad) (-> (target-pos 0) quad))
+      (vector-copy! target-point (target-pos 0))
       (set! (-> target-point y) 0.0)
       (eval-path-curve-div! this segment-end 0.0 'interp)
       (set! (-> segment-end y) 0.0)
       (dotimes (i (+ (-> this curve num-cverts) -1))
-        (set! (-> segment-start quad) (-> segment-end quad))
+        (vector-copy! segment-start segment-end)
         (eval-path-curve-div! this segment-end (the float (+ i 1)) 'interp)
         (set! (-> segment-end y) 0.0)
         (let ((distance (vector-segment-distance-point! target-point segment-start segment-end closest-point)))

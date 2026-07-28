@@ -48,8 +48,8 @@
    component of the current root transform."
   (set! (-> this move-to?) #t)
   (if position
-    (set! (-> this move-to-pos quad) (-> position quad))
-    (set! (-> this move-to-pos quad) (-> this root trans quad)))
+    (vector-copy! (-> this move-to-pos) position)
+    (vector-copy! (-> this move-to-pos) (-> this root trans)))
   (if rotation
     (quaternion-copy! (-> this move-to-quat) rotation)
     (quaternion-copy! (-> this move-to-quat) (-> this root quat))))
@@ -84,7 +84,7 @@
     (behavior ()
       (when (-> self move-to?)
         (set! (-> self move-to?) #f)
-        (set! (-> self root trans quad) (-> self move-to-pos quad))
+        (vector-copy! (-> self root trans) (-> self move-to-pos))
         (quaternion-copy! (-> self root quat) (-> self move-to-quat))
         (rider-post))))
 
@@ -108,7 +108,7 @@
     (behavior ()
       (when (-> self move-to?)
         (set! (-> self move-to?) #f)
-        (set! (-> self root trans quad) (-> self move-to-pos quad))
+        (vector-copy! (-> self root trans) (-> self move-to-pos))
         (quaternion-copy! (-> self root quat) (-> self move-to-quat)))
       (rider-post)))
 
@@ -140,7 +140,7 @@
     (behavior ()
       (when (-> self move-to?)
         (set! (-> self move-to?) #f)
-        (set! (-> self root trans quad) (-> self move-to-pos quad))
+        (vector-copy! (-> self root trans) (-> self move-to-pos))
         (quaternion-copy! (-> self root quat) (-> self move-to-quat))
         (rider-post))))
 
@@ -164,7 +164,7 @@
     (behavior ()
       (when (-> self move-to?)
         (set! (-> self move-to?) #f)
-        (set! (-> self root trans quad) (-> self move-to-pos quad))
+        (vector-copy! (-> self root trans) (-> self move-to-pos))
         (quaternion-copy! (-> self root quat) (-> self move-to-quat)))
       (rider-post)))
 
@@ -316,7 +316,7 @@
   (set! (-> self timeout) timeout)
   (if source-entity (set! (-> self entity) source-entity))
   (setup-collision! self)
-  (set! (-> self root trans quad) (-> position quad))
+  (vector-copy! (-> self root trans) position)
   (quaternion-copy! (-> self root quat) rotation)
   (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
   (arm-trigger-event! self)
@@ -357,7 +357,7 @@
         (set! (-> event-block message) 'change-state)
         (set! (-> event-block param 0) (the-as uint target-warp-out))
         (let ((gate-position (new 'static 'vector)))
-          (set! (-> gate-position quad) (-> self root trans quad))
+          (vector-copy! gate-position (-> self root trans))
           (set! (-> event-block param 1) (the-as uint gate-position)))
         (set! (-> event-block param 2) (the-as uint (target-pos 0)))
         (send-event-function *target* event-block))
@@ -426,13 +426,13 @@
       (set-time! (-> self state-time))
       (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (set! (-> self control mod-surface) *warp-jump-mods*)
-      (set! (-> self control state-vector0 quad) (-> gate-position quad))
-      (set! (-> self control state-vector1 quad) (-> camera-position quad))
+      (vector-copy! (-> self control state-vector0) gate-position)
+      (vector-copy! (-> self control state-vector1) camera-position)
       (+! (-> self control state-vector0 y) -4096.0)
       (set! (-> self control state-var0) (the-as uint #f))
       (vector-reset! (-> self control transv))
       (logior! (-> self state-flags) (state-flags use-alt-cam-pos))
-      (set! (-> self alt-cam-pos quad) (-> camera-position quad)))
+      (vector-copy! (-> self alt-cam-pos) camera-position))
   :exit
     (behavior ()
       (logclear! (-> self state-flags) (state-flags use-alt-cam-pos)))

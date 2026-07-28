@@ -11,25 +11,15 @@
 
 ;; DECOMP BEGINS
 
-(defmethod mem-usage ((this drawable-ambient) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-ambient) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for this wrapper and its referenced ambient entity in the ambient memory category."
-  (set! (-> usage length) (max 50 (-> usage length)))
-  (set! (-> usage data 49 name) "ambient")
-  (+! (-> usage data 49 count) 1)
-  (let ((object-size (asize-of this)))
-    (+! (-> usage data 49 used) object-size)
-    (+! (-> usage data 49 total) (logand -16 (+ object-size 15))))
-  (mem-usage (-> this ambient) usage (logior flags 128))
+  (mem-usage-add! usage ambient 1 (asize-of this))
+  (mem-usage (-> this ambient) usage (logior flags (mem-usage-flags resource-ambient)))
   (the-as drawable-ambient 0))
 
-(defmethod mem-usage ((this drawable-inline-array-ambient) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-inline-array-ambient) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for this array header and each inline ambient wrapper it contains."
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
-  (+! (-> usage data 0 count) 1)
-  (let ((header-size 32))
-    (+! (-> usage data 0 used) header-size)
-    (+! (-> usage data 0 total) (logand -16 (+ header-size 15))))
+  (mem-usage-add-symbol! usage drawable-group 1 32)
   (dotimes (i (-> this length))
     (mem-usage (-> this data i) usage flags))
   (the-as drawable-inline-array-ambient 0))
@@ -242,7 +232,7 @@
     (let ((text-context (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
       (set-width! text-context 400)
       (set-height! text-context 96)
-      (set! (-> text-context flags) (font-flags shadow kerning middle large))
+      (set-flags! text-context (font-flags shadow kerning middle large))
       (print-game-text (lookup-text! *common-text* (-> this text-id-to-display) #f) text-context #f 128 22)))
   0
   (none))
@@ -428,7 +418,7 @@
           (let ((text-context (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
             (set-width! text-context 400)
             (set-height! text-context 96)
-            (set! (-> text-context flags) (font-flags shadow kerning middle))
+            (set-flags! text-context (font-flags shadow kerning middle))
             (let ((draw-text print-game-text))
               (format (clear *temp-string*) "~S~S" prefix suffix)
               (draw-text *temp-string* text-context #f 128 22)))))
@@ -476,7 +466,7 @@
            (let ((text-context (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
              (set-width! text-context 400)
              (set-height! text-context 96)
-             (set! (-> text-context flags) (font-flags shadow kerning middle large))
+             (set-flags! text-context (font-flags shadow kerning middle large))
              (print-game-text "AS: UNKNOWN ID" text-context #f 128 22))))
         ((!= resolved-text-id -1)
          (kill-current-level-hint '() '() 'exit)

@@ -5,6 +5,7 @@
 
 #include "ObjectFileDB.h"
 
+#include "common/demacro/demacro.h"
 #include "common/formatter/formatter.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
@@ -880,6 +881,10 @@ void ObjectFileDB::ir2_write_results(const fs::path& output_dir,
     file_util::write_text_file(file_name, file_text);
 
     auto unformatted_code = ir2_final_out(obj, imports, {});
+    if (!config.demacro_file.empty()) {
+      unformatted_code =
+          demacro::rewrite(unformatted_code, file_util::get_file_path({config.demacro_file})).source;
+    }
     auto final_name = output_dir / (obj.to_unique_name() + "_disasm.gc");
     if (config.format_code) {
       const auto formatted_code = formatter::format_code(unformatted_code);

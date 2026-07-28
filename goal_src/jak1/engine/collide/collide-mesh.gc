@@ -12,21 +12,11 @@
    array. The separately allocated vertex-data buffer is not part of this size."
   (the-as int (+ (-> collide-mesh size) (* (+ (-> this num-tris) -1) 8))))
 
-(defmethod mem-usage ((this collide-mesh) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this collide-mesh) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the mesh-and-triangle allocation and the separate sixteen-byte-per-vertex
    buffer as two allocations in the collide-mesh category."
-  (set! (-> usage length) (max 79 (-> usage length)))
-  (set! (-> usage data (mem-usage-id collide-mesh) name) "collide-mesh")
-  (+! (-> usage data (mem-usage-id collide-mesh) count) 1)
-  (let ((mesh-allocation-bytes (asize-of this)))
-    (+! (-> usage data (mem-usage-id collide-mesh) used) mesh-allocation-bytes)
-    (+! (-> usage data (mem-usage-id collide-mesh) total) (logand -16 (+ mesh-allocation-bytes 15))))
-  (set! (-> usage length) (max 79 (-> usage length)))
-  (set! (-> usage data (mem-usage-id collide-mesh) name) "collide-mesh")
-  (+! (-> usage data (mem-usage-id collide-mesh) count) 1)
-  (let ((vertex-buffer-bytes (* (-> this num-verts) 16)))
-    (+! (-> usage data (mem-usage-id collide-mesh) used) vertex-buffer-bytes)
-    (+! (-> usage data (mem-usage-id collide-mesh) total) (logand -16 (+ vertex-buffer-bytes 15))))
+  (mem-usage-add! usage collide-mesh 1 (asize-of this))
+  (mem-usage-add! usage collide-mesh 1 (* (-> this num-verts) 16))
   (the-as collide-mesh 0))
 
 (defmethod debug-draw-tris ((this collide-mesh) (draw-owner process-drawable) (joint-index int))

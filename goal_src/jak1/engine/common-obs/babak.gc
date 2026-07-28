@@ -24,9 +24,15 @@
   :code
     (behavior ()
       (cond
+        ;; Preserve the special handoff only when the hop is the animation currently driving Babak.
         ((ja-group? babak-give-up-hop-ja)
+         ;; Keep the end of the hop under the walk for 0.15 seconds, softening the change of gait.
          (ja-channel-push! 1 (seconds 0.15))
+         ;; Join the walk at artist frame 12 and seek through the remainder before normal patrol
+         ;; takes over.  `ja-aframe` keeps this join tied to the animator's timeline numbering.
          (ja-play :group! babak-walk-ja :num! (seek!) :frame-num (ja-aframe 12.0 0)))
+        ;; All other entries get a slightly gentler 0.2-second blend for the patrol animation
+        ;; selected by the shared nav-enemy state.
         (else (ja-channel-push! 1 (seconds 0.2))))
       ((the-as (function none) (-> (method-of-type nav-enemy nav-enemy-patrol) code)))))
 
@@ -37,20 +43,30 @@
       ;; Blend the landing pose into a fresh run cycle; otherwise start the run directly.
       (let ((animation-speed (nav-enemy-rnd-float-range 0.9 1.1)))
         (cond
+          ;; The landing has a deliberate run handoff; other incoming poses use the ordinary start.
           ((ja-group? babak-jump-land-ja)
+           ;; Finish configuring the landing seek without evaluating it again before it is stacked.
            (ja-no-eval :num! (seek!))
+           ;; Retain the landing beneath the new run for a short, responsive cross-fade.
            (ja-channel-push! 1 (seconds 0.17))
+           ;; Run once from frame zero to the end at this creature's chosen speed.  Evaluating the
+           ;; lower stack each tick lets the landing continue naturally while its influence fades.
            (ja-play :group!
                     (-> self draw art-group data (-> self nav-info run-anim))
                     :num! (seek! max animation-speed)
                     :frame-num 0.0
                     (ja-blend-eval)))
           (else
+           ;; Give an arbitrary incoming pose a little more time to blend into locomotion.
            (ja-channel-push! 1 (seconds 0.2))
+           ;; Select the run group first, without advancing it, so its opening pose is available.
            (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
+           ;; Hold that opening pose at frame zero until the chase loop begins advancing the run.
            (ja :num-func num-func-identity :frame-num 0.0)))
         (loop
           (suspend)
+          ;; Advance and wrap the established run every game tick, with a small per-Babak speed
+          ;; variation to keep a group of creatures from moving in mechanical lockstep.
           (ja :num! (loop! animation-speed))))))
 
 ;; Face the player, idle, and celebrate after a landed attack or occasional vulnerable opening.
@@ -62,24 +78,41 @@
       (let ((animation-speed (nav-enemy-rnd-float-range 0.8 1.2)))
         (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags attack-landed))
                   (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5)))
+          ;; Blend quickly into the celebratory gesture so a successful attack reads immediately.
           (ja-channel-push! 1 (seconds 0.1))
+          ;; Play from frame zero through artist frame 68, converting that authored beat to the
+          ;; internal timeline and stopping there rather than running into the clip's recovery.
           (ja-play :group! babak-win-ja :num! (seek! (ja-aframe 68.0 0) animation-speed) :frame-num 0.0))
         (loop
           (when (not (nav-enemy-facing-player? 2730.6667))
             (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+            ;; Leave the outgoing pose on a looping rule without evaluating it yet; it will remain
+            ;; alive underneath the turn while the blend is in progress.
             (ja-no-eval :num! (loop!))
+            ;; Stack one turn channel over the outgoing motion with a relaxed 0.2-second fade.
             (ja-channel-push! 1 (seconds 0.2))
+            ;; Install the turn animation without advancing it so the first pose can be held cleanly.
             (ja :group! babak-turn-ja)
+            ;; Pin the turn to frame zero until steering has entered the tighter facing tolerance.
             (ja :num-func num-func-identity :frame-num 0.0)
             (until (nav-enemy-facing-player? 1820.4445)
+              ;; Keep the pose below the turn current; otherwise the cross-fade would blend against
+              ;; a frozen outgoing frame.
               (ja-blend-eval)
               (suspend)
+              ;; Advance and wrap the turn at three-quarter speed while navigation rotates Babak.
               (ja :num! (loop! 0.75)))
             (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel)))
+          ;; Do not stack an identical idle over itself.  Any other pose gets a smooth 0.2-second
+          ;; transition before the idle is selected.
           (if (not (ja-group? babak-idle-ja)) (ja-channel-push! 1 (seconds 0.2)))
+          ;; Play one complete idle pass at the chosen personality speed, starting from frame zero.
           (ja-play :group! babak-idle-ja :num! (seek! max animation-speed) :frame-num 0.0)
           (when (nav-enemy-rnd-percent? 0.3)
+            ;; The optional flourish should snap into the rhythm, so use a brisk 0.1-second blend.
             (ja-channel-push! 1 (seconds 0.1))
+            ;; Repeat the same authored celebration beat, stopping at artist frame 68 before the
+            ;; stare loop returns to idle.
             (ja-play :group! babak-win-ja :num! (seek! (ja-aframe 68.0 0) animation-speed) :frame-num 0.0))))))
 
 (defstate nav-enemy-give-up (babak)
@@ -88,6 +121,7 @@
     (behavior ()
       (set! (-> self rotate-speed) 218453.33)
       (set! (-> self turn-time) (seconds 0.5))
+      ;; Establish one blended action channel for the optional gesture and the hop that follows it.
       (ja-channel-push! 1 (seconds 0.15))
       ;; Only play the give-up gesture when the player is within 70 degrees of Babak's facing.
       (let ((collision (-> self collide-info))
@@ -95,9 +129,12 @@
         (if (< (fabs (deg-diff (y-angle collision)
                                (vector-y-angle (vector-! (new 'stack-no-clear 'vector) player-position (-> collision trans)))))
                12743.111)
+          ;; Seek the give-up gesture from frame zero to its natural end as a complete one-shot.
           (ja-play :group! babak-give-up-ja :num! (seek!) :frame-num 0.0)))
       (logclear! (-> self nav flags) (nav-control-flags blocked reached-destination))
       (nav-enemy-get-new-patrol-point)
+      ;; Play the hop from beginning to end.  The body steers toward the new patrol point every
+      ;; frame, keeping the authored hop and the navigation turn visibly locked together.
       (ja-play :group!
                babak-give-up-hop-ja
                :num! (seek!)
@@ -113,8 +150,12 @@
   :virtual #t
   :code
     (behavior ()
+      ;; Put the outgoing jump on its final-frame seek without evaluating it before the blend.
       (ja-no-eval :num! (seek!))
+      ;; The landing needs a short blend so its contact remains sharp instead of looking slippery.
       (ja-channel-push! 1 (seconds 0.075))
+      ;; Play only the first 32 artist frames of the landing at half speed.  While waiting, update
+      ;; the jump below it so the blend has a live source pose all the way through the contact.
       (ja-play :group!
                (-> self draw art-group data (-> self nav-info jump-land-anim))
                :num!

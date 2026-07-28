@@ -93,7 +93,7 @@
                 (set-width! task-font 328)
                 (set-height! task-font 50)
                 (set-scale! task-font 0.7)
-                (set! (-> task-font flags) (font-flags shadow kerning middle middle-vert large))
+                (set-flags! task-font (font-flags shadow kerning middle middle-vert large))
                 (print-game-text-scaled (lookup-text! *common-text* (-> level-record task-info (-> this task-index) task-name selected-text-index) #f)
                                         opacity
                                         task-font
@@ -101,7 +101,7 @@
                 (when selected-task-complete?
                   (set! (-> task-font origin x) (the float (- (+ horizontal-offset 32) (-> this left-x-offset))))
                   (set! (-> task-font origin y) (the float (+ (/ vertical-offset 2) 175)))
-                  (let ((completion-font task-font)) (set! (-> completion-font color) (font-color progress-blue)))
+                  (set-color! task-font (font-color progress-blue))
                   (set-height! task-font 15)
                   (set-scale! task-font 0.5)
                   (print-game-text-scaled (lookup-text! *common-text* (text-id task-completed) #f)
@@ -141,7 +141,7 @@
                      (font-flags shadow kerning))))
       (set-width! font 328)
       (set-height! font 70)
-      (set! (-> font flags) (font-flags shadow kerning large))
+      (set-flags! font (font-flags shadow kerning large))
       (let ((print-level-count print-game-text-scaled))
         (format (clear *temp-string*)
                 "~D/~D"
@@ -151,7 +151,7 @@
       (set-width! font 428)
       (+! (-> font origin x) -220.0)
       (+! (-> font origin y) 40.0)
-      (set! (-> font flags) (font-flags shadow kerning middle large))
+      (set-flags! font (font-flags shadow kerning middle large))
       (print-game-text-scaled (lookup-text! *common-text* (text-id total-collected) #f)
                               (* 0.7 opacity)
                               font
@@ -193,14 +193,14 @@
                        (font-flags shadow kerning))))
         (set-width! font 328)
         (set-height! font 70)
-        (set! (-> font flags) (font-flags shadow kerning large))
+        (set-flags! font (font-flags shadow kerning large))
         (let ((print-level-count print-game-text-scaled))
           (format (clear *temp-string*) "~D/~D" level-count (-> *game-counts* data level-index buzzer-count))
           (print-level-count *temp-string* opacity font (the int (* 128.0 opacity))))
         (set-width! font 428)
         (+! (-> font origin x) -220.0)
         (+! (-> font origin y) 40.0)
-        (set! (-> font flags) (font-flags shadow kerning middle large))
+        (set-flags! font (font-flags shadow kerning middle large))
         (print-game-text-scaled (lookup-text! *common-text* (text-id total-collected) #f)
                                 (* 0.7 opacity)
                                 font
@@ -218,7 +218,7 @@
   (set-scale! font 0.55)
   (set-width! font 265)
   (set-height! font 55)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (let ((title-id (text-id memcard-not-formatted-title)))
     (case (-> this display-state)
       (((progress-screen memcard-no-space)) (set! title-id (text-id memcard-no-space)))
@@ -256,7 +256,7 @@
   (set-scale! font 0.55)
   (set-width! font 265)
   (set-height! font 55)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (let ((print-title print-game-text-scaled))
     (format (clear *temp-string*) (lookup-text! *common-text* (text-id memcard-not-formatted-title) #f) 1)
     (print-title *temp-string* (-> this transition-percentage-invert) font 128))
@@ -282,7 +282,7 @@
   "Draw the warning that the selected memory-card slot already contains save data and ask
    whether it should be overwritten."
   (set-scale! font 0.65)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (set! (-> font origin x) (the float (- 20 (-> this left-x-offset))))
   (set! (-> font origin y) 55.0)
   (set-width! font 365)
@@ -304,7 +304,7 @@
 (defmethod draw-memcard-no-data ((this progress) (font font-context))
   "Draw the notice that no save data exists and ask whether a new save should be created."
   (set-scale! font 0.65)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (set! (-> font origin x) (the float (- 20 (-> this left-x-offset))))
   (set! (-> font origin y) 40.0)
   (set-width! font 365)
@@ -326,7 +326,7 @@
   "Draw the blinking loading, saving, formatting, or creating status for the active
    memory-card operation, followed by the do-not-remove warning."
   (set-scale! font 1.0)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (set! (-> font origin x) (the float (- 20 (-> this left-x-offset))))
   (set! (-> font origin y) 35.0)
   (set-width! font 365)
@@ -339,7 +339,7 @@
         (((progress-screen memcard-creating)) (set! status-text-id (text-id creating-save-data))))
       (print-game-text-scaled (lookup-text! *common-text* status-text-id #f) (-> this transition-percentage-invert) font 128)))
   (set-scale! font 0.65)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (set! (-> font origin x) (the float (- 15 (-> this left-x-offset))))
   (set! (-> font origin y) 100.0)
   (set-width! font 370)
@@ -354,7 +354,7 @@
   "Ask the player to insert a memory card or go back. The Japanese missing-card case adds a
    separate not-inserted warning above the ordinary prompt."
   (set-scale! font 0.65)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (set! (-> font origin x) (the float (- 50 (-> this left-x-offset))))
   (set! (-> font origin y) 35.0)
   (set-width! font 310)
@@ -398,7 +398,7 @@
     (if (< opacity 0.0) (set! opacity 0.0))
     (let ((alpha (the int (* 128.0 opacity))))
       (set-scale! font 0.5)
-      (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+      (set-flags! font (font-flags shadow kerning middle middle-vert large))
       (set! (-> font origin x) (the float (- 102 (-> this left-x-offset))))
       (set! (-> font origin y) 5.0)
       (set-width! font 200)
@@ -416,8 +416,8 @@
             (particle-index 23))
         (dotimes (slot-index 4)
           (set! (-> font origin x) (the float (- 41 (-> this left-x-offset))))
-          (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
-          (let ((default-color-font font)) (set! (-> default-color-font color) (font-color default)))
+          (set-flags! font (font-flags shadow kerning middle middle-vert large))
+          (set-color! font (font-color default))
           (set-width! font 320)
           (cond
             ((and card-info (= (-> card-info formatted) 1) (= (-> card-info inited) 1) (= (-> card-info file slot-index present) 1))
@@ -433,7 +433,7 @@
                                 alpha
                                 22)
                (print-game-text "OLD SAVE GAME" font #f alpha 22))
-             (let ((card-color-font font)) (set! (-> card-color-font color) (font-color progress-memcard)))
+             (set-color! font (font-color progress-memcard))
              (cond
                ((or (>= (seconds 2) (- (-> *display* real-frame-counter) (-> this last-option-index-change)))
                     (or (< (mod (- (-> *display* real-frame-counter) (-> this last-option-index-change)) 1200) 600)
@@ -441,7 +441,7 @@
                         (-> this in-transition)))
                 (set-scale! font 0.5)
                 (+! (-> font origin y) 16.0)
-                (set! (-> font flags) (font-flags shadow kerning middle large))
+                (set-flags! font (font-flags shadow kerning middle large))
                 (set! (-> font origin x) (the float (- -73 (-> this left-x-offset))))
                 (set-width! font 350)
                 (let ((print-cell-count print-game-text))
@@ -457,7 +457,7 @@
                   (print-scout-fly-count *temp-string* font #f alpha 22))
                 (+! (-> font origin y) 1.0)
                 (set-scale! font 1.0)
-                (set! (-> font flags) (font-flags shadow kerning right large))
+                (set-flags! font (font-flags shadow kerning right large))
                 (set! (-> font origin x) (the float (- 352 (-> this left-x-offset))))
                 (let ((print-completion print-game-text))
                   (format (clear *temp-string*) "~D%" (the int (-> card-info file slot-index completion-percentage)))
@@ -466,8 +466,8 @@
                 (+! (-> font origin y) 9.0)
                 ;; og:preserve-this add 'middle' flag when custom-aspect to snap totals with counts
                 (if (-> *pc-settings* use-vis?)
-                  (set! (-> font flags) (font-flags shadow kerning large))
-                  (set! (-> font flags) (font-flags shadow kerning middle large)))
+                  (set-flags! font (font-flags shadow kerning large))
+                  (set-flags! font (font-flags shadow kerning middle large)))
                 ;; og:preserve-this when custom-aspect use same offsets from counts for totals
                 (set! (-> font origin x) (the float (- (if (-> *pc-settings* use-vis?) 85 -73) (-> this left-x-offset))))
                 (let ((print-cell-total print-game-text))
@@ -491,7 +491,7 @@
                 (+! (-> font origin y) 18.0)
                 (set! (-> font origin x) (the float (- 28 (-> this left-x-offset))))
                 (set-scale! font 0.8)
-                (set! (-> font flags) (font-flags shadow kerning middle large))
+                (set-flags! font (font-flags shadow kerning middle large))
                 (set-width! font 350)
                 ;; og:preserve-this pc port stuff here, added YMD
                 (case (scf-get-territory)
@@ -544,7 +544,7 @@
   "Draw the save error, card check, and autosave-disabled messages, followed by the continue
    prompt."
   (set-scale! font 0.6)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (set! (-> font origin x) (the float (- 70 (-> this left-x-offset))))
   (set! (-> font origin y) 5.0)
   (set-width! font 265)
@@ -588,7 +588,7 @@
   "Warn that the memory card was removed and autosave has been disabled, then draw the
    continue prompt."
   (set-scale! font 0.6)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (set! (-> font origin x) (the float (- 70 (-> this left-x-offset))))
   (set! (-> font origin y) 10.0)
   (set-width! font 265)
@@ -628,7 +628,7 @@
   (set-scale! font 0.7)
   (set-width! font 265)
   (set-height! font 55)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (let ((title-id (text-id error-loading)))
     (case (-> this display-state)
       (((progress-screen memcard-error-saving)) (set! title-id (text-id error-saving)))
@@ -662,7 +662,7 @@
   (set-scale! font 0.6)
   (set-width! font 330)
   (set-height! font 60)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (print-game-text-scaled (lookup-text! *common-text* (text-id autosave-warn-title) #f)
                           (-> this transition-percentage-invert)
                           font
@@ -697,7 +697,7 @@
   (set-scale! font 0.6)
   (set-width! font 300)
   (set-height! font 40)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (print-game-text-scaled (lookup-text! *common-text* (text-id screen-change-to-60hz) #f)
                           (-> this transition-percentage-invert)
                           font
@@ -733,7 +733,7 @@
   (set-scale! font 0.6)
   (set-width! font 300)
   (set-height! font 40)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (print-game-text-scaled (lookup-text! *common-text* (text-id no-disc-title) #f)
                           (-> this transition-percentage-invert)
                           font
@@ -764,7 +764,7 @@
   (set-scale! font 0.6)
   (set-width! font 300)
   (set-height! font 40)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (print-game-text-scaled (lookup-text! *common-text* (text-id bad-disc-title) #f)
                           (-> this transition-percentage-invert)
                           font
@@ -794,7 +794,7 @@
   (set-scale! font 0.6)
   (set-width! font 300)
   (set-height! font 40)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (print-game-text-scaled (lookup-text! *common-text* (text-id quit?) #f) (-> this transition-percentage-invert) font 128)
   0
   (none))
@@ -806,7 +806,7 @@
   (set-scale! font 0.6)
   (set-width! font 300)
   (set-height! font 50)
-  (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+  (set-flags! font (font-flags shadow kerning middle middle-vert large))
   (print-game-text-scaled (lookup-text! *common-text* (text-id screen-now-60hz) #f)
                           (-> this transition-percentage-invert)
                           font
@@ -883,7 +883,7 @@
                               font
                               (the int (* 128.0 opacity))))
     (set! (-> font origin x) (- (-> font origin x) (the float signed-offset))))
-  (set! (-> font color) (font-color default))
+  (set-color! font (font-color default))
   font)
 
 (defmethod draw-options ((this progress) (base-y int) (row-spacing int) (base-scale float))
@@ -899,7 +899,7 @@
             (font (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))))
         (set-width! font 350)
         (set-height! font 25)
-        (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+        (set-flags! font (font-flags shadow kerning middle middle-vert large))
         (dotimes (i (length options))
           (let ((option-text (the string #f))
                 (x-offset 27)
@@ -1054,42 +1054,28 @@
   (let ((hud-x (+ -409.0 (-> this particles 2 init-pos x) (* 0.8 (the float (-> this left-x-offset)))))
         (transition-offset (if (or (-> this stat-transition) (nonzero? (-> this level-transition))) 0 (-> this transition-offset))))
     (let ((opacity (if (or (-> this stat-transition) (nonzero? (-> this level-transition))) 1.0 (-> this transition-percentage-invert))))
-      (let* ((packet-buffer (-> *display* frames (-> *display* on-screen) frame global-buf))
-             (bucket-start (-> packet-buffer base)))
-        (let ((draw-money draw-string-xy))
-          (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* game money))))
-          (draw-money *temp-string*
-                      packet-buffer
-                      (the int (+ 428.0 (the float transition-offset) hud-x))
-                      (- 12 (the int (/ hud-x 6)))
-                      (font-color default)
-                      (font-flags shadow kerning large)))
-        (let ((draw-power-cells draw-string-xy))
-          (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* game fuel))))
-          (draw-power-cells *temp-string*
+      (with-dma-buffer-add-bucket ((packet-buffer (-> *display* frames (-> *display* on-screen) frame global-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-money draw-string-xy))
+                (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* game money))))
+                (draw-money *temp-string*
                             packet-buffer
-                            (the int (+ 456.0 (the float (adjust-pos transition-offset 50)) hud-x))
-                            (- 48 (the int (/ hud-x 8)))
+                            (the int (+ 428.0 (the float transition-offset) hud-x))
+                            (- 12 (the int (/ hud-x 6)))
                             (font-color default)
-                            (font-flags shadow kerning large)))
-        (let ((draw-scout-flies draw-string-xy))
-          (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* fact buzzer))))
-          (draw-scout-flies *temp-string*
-                            packet-buffer
-                            (the int (+ 469.0 (the float (adjust-pos transition-offset 100)) hud-x))
-                            89
-                            (font-color default)
-                            (font-flags shadow kerning large)))
-        (let ((bucket-tail (-> packet-buffer base)))
-          (let ((packet (the-as dma-packet (-> packet-buffer base))))
-            (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> packet vif0) (new 'static 'vif-tag))
-            (set! (-> packet vif1) (new 'static 'vif-tag))
-            (set! (-> packet-buffer base) (&+ (the-as pointer packet) 16)))
-          (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                 (bucket-id debug)
-                                 bucket-start
-                                 (the-as (pointer dma-tag) bucket-tail))))
+                            (font-flags shadow kerning large))) (let ((draw-power-cells draw-string-xy))
+                (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* game fuel))))
+                (draw-power-cells *temp-string*
+                                  packet-buffer
+                                  (the int (+ 456.0 (the float (adjust-pos transition-offset 50)) hud-x))
+                                  (- 48 (the int (/ hud-x 8)))
+                                  (font-color default)
+                                  (font-flags shadow kerning large))) (let ((draw-scout-flies draw-string-xy))
+                (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* fact buzzer))))
+                (draw-scout-flies *temp-string*
+                                  packet-buffer
+                                  (the int (+ 469.0 (the float (adjust-pos transition-offset 100)) hud-x))
+                                  89
+                                  (font-color default)
+                                  (font-flags shadow kerning large))))
       (let ((font (new 'stack
                        'font-context
                        *font-default-matrix*
@@ -1101,16 +1087,16 @@
         (set-width! font 100)
         (set-height! font 15)
         (set-scale! font 0.5)
-        (set! (-> font flags) (font-flags shadow kerning large))
+        (set-flags! font (font-flags shadow kerning large))
         (print-game-text (lookup-text! *common-text* (text-id options) #f) font #f 128 22)
         (set-width! font 160)
         (set-height! font 22)
         (set-scale! font 1.3)
-        (let ((percent-font font)) (set! (-> percent-font color) (font-color progress-percent)))
+        (set-color! font (font-color progress-percent))
         (set! (-> font origin x)
               (+ (- 435.0 (the float (if (< (-> *progress-process* 0 completion-percentage) 10.0) 93 80))) hud-x))
         (set! (-> font origin y) 180.0)
-        (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+        (set-flags! font (font-flags shadow kerning middle middle-vert large))
         (let ((print-percent print-game-text))
           (format (clear *temp-string*) "~2D%" (the int (-> *progress-process* 0 completion-percentage)))
           (print-percent *temp-string* font #f (the int (* 128.0 opacity)) 22))))
@@ -1143,24 +1129,12 @@
     (when *cheat-mode*
       (let ((autosave-text "AUTO SAVE OFF"))
         (if (-> *setting-control* current auto-save) (set! autosave-text "AUTO SAVE ON"))
-        (let* ((debug-packet-buffer (-> *display* frames (-> *display* on-screen) frame global-buf))
-               (debug-bucket-start (-> debug-packet-buffer base)))
-          (draw-string-xy autosave-text
-                          debug-packet-buffer
-                          (the int (+ 430.0 hud-x))
-                          200
-                          (font-color progress-memcard)
-                          (font-flags shadow kerning middle))
-          (let ((debug-bucket-tail (-> debug-packet-buffer base)))
-            (let ((debug-packet (the-as dma-packet (-> debug-packet-buffer base))))
-              (set! (-> debug-packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-              (set! (-> debug-packet vif0) (new 'static 'vif-tag))
-              (set! (-> debug-packet vif1) (new 'static 'vif-tag))
-              (set! (-> debug-packet-buffer base) (&+ (the-as pointer debug-packet) 16)))
-            (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                   (bucket-id debug)
-                                   debug-bucket-start
-                                   (the-as (pointer dma-tag) debug-bucket-tail))))))
+        (with-dma-buffer-add-bucket ((debug-packet-buffer (-> *display* frames (-> *display* on-screen) frame global-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy autosave-text
+                                  debug-packet-buffer
+                                  (the int (+ 430.0 hud-x))
+                                  200
+                                  (font-color progress-memcard)
+                                  (font-flags shadow kerning middle)))))
     (let ((small-orb-root (-> this icons 5 icon 0 root)))
       (set-yaw-angle-clear-roll-pitch! small-orb-root
                                        (- (y-angle small-orb-root) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))))

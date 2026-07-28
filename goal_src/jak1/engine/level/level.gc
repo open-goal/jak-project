@@ -796,16 +796,11 @@
   0
   (none))
 
-(defmethod mem-usage ((this level) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this level) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for this active level's entity and ambient links, art, code, texture pages, visibility
    records, and BSP data."
   (when (= (-> this status) 'active)
-    (set! (-> usage length) (max 65 (-> usage length)))
-    (set! (-> usage data 64 name) "entity-links")
-    (+! (-> usage data 64 count) (-> this entity length))
-    (let ((entity-bytes (asize-of (-> this entity))))
-      (+! (-> usage data 64 used) entity-bytes)
-      (+! (-> usage data 64 total) (logand -16 (+ entity-bytes 15))))
+    (mem-usage-add! usage entity-links (-> this entity length) (asize-of (-> this entity)))
     (set! (-> usage length) (max 65 (-> usage length)))
     (set! (-> usage data 64 name) "ambient-links")
     (+! (-> usage data 64 count) (-> this ambient length))
@@ -813,12 +808,7 @@
       (+! (-> usage data 64 used) ambient-bytes)
       (+! (-> usage data 64 total) (logand -16 (+ ambient-bytes 15))))
     (mem-usage (-> this art-group) usage flags)
-    (set! (-> usage length) (max 64 (-> usage length)))
-    (set! (-> usage data 63 name) "level-code")
-    (+! (-> usage data 63 count) 1)
-    (let ((code-bytes (&- (-> this code-memory-end) (the-as uint (-> this code-memory-start)))))
-      (+! (-> usage data 63 used) code-bytes)
-      (+! (-> usage data 63 total) (logand -16 (+ code-bytes 15))))
+    (mem-usage-add! usage level-code 1 (&- (-> this code-memory-end) (the-as uint (-> this code-memory-start))))
     (countdown (i (-> this loaded-texture-page-count))
       (mem-usage (-> this loaded-texture-page i) usage flags))
     (countdown (vis-index 8)
@@ -826,19 +816,9 @@
         (when vis-record
           (cond
             ((zero? vis-index)
-             (set! (-> usage length) (max 60 (-> usage length)))
-             (set! (-> usage data 59 name) "bsp-leaf-vis-self")
-             (+! (-> usage data 59 count) 1)
-             (let ((vis-bytes (asize-of vis-record)))
-               (+! (-> usage data 59 used) vis-bytes)
-               (+! (-> usage data 59 total) (logand -16 (+ vis-bytes 15)))))
+             (mem-usage-add! usage bsp-leaf-vis-self 1 (asize-of vis-record)))
             (else
-             (set! (-> usage length) (max 61 (-> usage length)))
-             (set! (-> usage data 60 name) "bsp-leaf-vis-adj")
-             (+! (-> usage data 60 count) 1)
-             (let ((vis-bytes (+ (asize-of vis-record) (the-as int (-> vis-record allocated-length)))))
-               (+! (-> usage data 60 used) vis-bytes)
-               (+! (-> usage data 60 total) (logand -16 (+ vis-bytes 15)))))))))
+             (mem-usage-add! usage bsp-leaf-vis-adj 1 (+ (asize-of vis-record) (the-as int (-> vis-record allocated-length)))))))))
     (mem-usage (-> this bsp) usage flags))
   this)
 
@@ -962,7 +942,7 @@
   (set! (-> this load-commands) load-commands)
   load-commands)
 
-(defmethod mem-usage ((this level-group) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this level-group) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for every allocated level slot."
   ;; get memory usage of each level
   (dotimes (i (-> this length))

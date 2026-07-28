@@ -71,15 +71,10 @@
     (format #t "~T  [~D] ~A~%" i (-> this data i)))
   this)
 
-(defmethod mem-usage ((this drawable-inline-array-node) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this drawable-inline-array-node) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for this inline array's draw-node storage without counting memory owned by the
    nodes' children."
-  (set! (-> usage length) (max 62 (-> usage length)))
-  (set! (-> usage data 61 name) "draw-node")
-  (+! (-> usage data 61 count) (-> this length))
-  (let ((byte-size (asize-of this)))
-    (+! (-> usage data 61 used) byte-size)
-    (+! (-> usage data 61 total) (logand -16 (+ byte-size 15))))
+  (mem-usage-add! usage draw-node (-> this length) (asize-of this))
   this)
 
 (defmethod asize-of ((this drawable-inline-array-node))

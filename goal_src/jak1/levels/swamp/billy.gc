@@ -68,7 +68,7 @@
 
 (defbehavior billy-snack-init-by-other billy-snack ((position vector))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> position quad))
+  (vector-copy! (-> self root trans) position)
   (initialize-skeleton self *farthy-snack-sg* '())
   (set! (-> self num-rats) 0)
   (go billy-snack-idle)
@@ -167,7 +167,7 @@
 
 (defbehavior billy-rat-init-by-other billy-rat ((game billy) (position vector) (destination vector))
   (set! (-> self billy) (the-as (pointer billy) (process->ppointer game)))
-  (set! (-> self destination quad) (-> destination quad))
+  (vector-copy! (-> self destination) destination)
   (set! (-> self dest-type) (the-as uint 1))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
     (vector-! s4-0 destination position)
@@ -570,7 +570,7 @@
                 (set! (-> self offending-rat) (process->handle gp-0))
                 (set! (-> gp-0 dest-type) (the-as uint 3))
                 (let ((v0-1 (the-as object (-> gp-0 destination))))
-                  (set! (-> (the-as vector v0-1) quad) (-> (the-as billy-snack (-> gp-0 snack process 0)) root trans quad))
+                  (vector-copy! (the-as vector v0-1) (-> (the-as billy-snack (-> gp-0 snack process 0)) root trans))
                   v0-1))
                ((or (= (-> gp-0 dest-type) 2) (= (-> gp-0 dest-type) 3) (<= (-> self num-snacks) 0))
                 (set! (-> gp-0 dest-type) (the-as uint 1))
@@ -597,7 +597,7 @@
                      (set! (-> gp-0 snack) (process->handle (the-as billy-snack s5-1)))
                      (+! (-> (the-as billy-snack s5-1) num-rats) 1)
                      (set! (-> gp-0 dest-type) (the-as uint 2))
-                     (set! (-> gp-0 destination quad) (-> (the-as billy-snack s5-1) root trans quad))
+                     (vector-copy! (-> gp-0 destination) (-> (the-as billy-snack s5-1) root trans))
                      (set! (-> gp-0 destination x) (+ 6799.36 (-> gp-0 destination x)))))))))))))
   :enter
     (behavior ()

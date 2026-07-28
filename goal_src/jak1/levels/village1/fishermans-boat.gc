@@ -58,7 +58,7 @@
 
 (defmethod nth-point ((this vehicle-path) (index int) (result vector))
   "Copy point index into result and return result."
-  (set! (-> result quad) (-> this point-array index quad))
+  (vector-copy! result (-> this point-array index))
   result)
 
 (defmethod distance-to-next-point ((this vehicle-path) (index int) (result vector))
@@ -89,8 +89,8 @@
     (set! (-> s5-0 w) 1.0)
     (dotimes (s2-0 (-> this point-count))
       (let ((v1-1 (mod (+ s2-0 1) (-> this point-count))))
-        (set! (-> s4-0 quad) (-> this point-array s2-0 quad))
-        (set! (-> s3-0 quad) (-> this point-array v1-1 quad)))
+        (vector-copy! s4-0 (-> this point-array s2-0))
+        (vector-copy! s3-0 (-> this point-array v1-1)))
       (let ((f30-0 (-> s4-0 y))
             (f28-0 (-> s4-0 w)))
         (set! (-> s5-0 x) (* f30-0 (cos f28-0)))
@@ -233,7 +233,7 @@
     (let ((s5-1 (new 'stack-no-clear 'vector)))
       (let ((s3-0 (new 'stack-no-clear 'vector)))
         (vector-! s3-0 (-> this path-dest-point) cur-pos)
-        (set! (-> s5-1 quad) (-> this path-dest-velocity quad))
+        (vector-copy! s5-1 (-> this path-dest-velocity))
         (set! (-> s5-1 x) (-> this path-dest-velocity z))
         (set! (-> s5-1 z) (- (-> this path-dest-velocity x)))
         (vector-xz-normalize! s5-1 1.0)
@@ -269,7 +269,7 @@
       (let* ((f0-9 (sqrtf (- (square f30-0) (square f28-0))))
              (f28-1 (/ (* f28-0 f0-9) f30-0)))
         (let ((f0-12 (/ (square f0-9) f30-0)))
-          (set! (-> arg1 quad) (-> arg0 quad))
+          (vector-copy! arg1 arg0)
           (vector+*! arg1 (-> this target-point) s5-0 f0-12))
         (vector+*! arg1 (-> this target-point) s3-0 f28-1))))
   0
@@ -280,7 +280,7 @@
   (compute-target-point this (-> arg0 trans) (-> this target-point))
   (let ((s3-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s3-0 quad) (-> this path-dest-velocity quad))
+    (vector-copy! s3-0 (-> this path-dest-velocity))
     (vector-xz-normalize! s3-0 1.0)
     (vector-! s4-0 (-> this path-dest-point) (-> arg0 trans))
     (let ((f30-0 (vector-dot s3-0 s4-0)))
@@ -318,7 +318,7 @@
 (defmethod record-turning-sample! ((this vehicle-controller) (arg0 vector) (arg1 float) (arg2 int))
   "Measure one speed sample's turn radius and store its radius and throttle."
   (let ((s3-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s3-0 quad) (-> arg0 quad))
+    (vector-copy! s3-0 arg0)
     (set! (-> s3-0 y) 0.0)
     (vector-xz-normalize! s3-0 1.0)
     (cond
@@ -335,7 +335,7 @@
       (else
        (set! (-> this sample-index) arg2)
        (set-time! (-> this sample-time))
-       (set! (-> this sample-dir quad) (-> s3-0 quad)))))
+       (vector-copy! (-> this sample-dir) s3-0))))
   0
   (none))
 
@@ -535,7 +535,7 @@
 
 (defbehavior fishermans-boat-wave fishermans-boat ((arg0 vector) (arg1 float) (arg2 float))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (set! (-> gp-0 quad) (-> arg0 quad))
+    (vector-copy! gp-0 arg0)
     (set! (-> gp-0 y) (ocean-get-height arg0))
     (set! (-> *part-id-table* 2896 init-specs 4 initial-valuef) (+ 24576.0 arg1))
     (set! (-> *part-id-table* 2896 init-specs 19 initial-valuef) (+ 49152.0 arg1))
@@ -646,7 +646,7 @@
         (let ((s5-1 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
           (set-width! s5-1 440)
           (set-height! s5-1 80)
-          (set! (-> s5-1 flags) (font-flags shadow kerning large))
+          (set-flags! s5-1 (font-flags shadow kerning large))
           (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) s5-1 #f 128 22))
         (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
           (set! (-> self waiting-for-player) #f)
@@ -1000,7 +1000,7 @@
   (if (= (-> *game-info* current-continue level) 'misty) (fishermans-boat-set-dock-point 4) (fishermans-boat-set-dock-point 0))
   (fishermans-boat-set-path-point (-> this dock-point-index))
   (fishermans-boat-next-path-point)
-  (set! (-> this root-overlay trans quad) (-> this dock-point quad))
+  (vector-copy! (-> this root-overlay trans) (-> this dock-point))
   (set! (-> this root-overlay trans y) 0.0)
   (forward-up-nopitch->quaternion (-> this root-overlay quat) (-> this dest-dir) *up-vector*)
   (setup-from-constants! this *fishermans-boat-constants*)
@@ -1083,7 +1083,7 @@
     (behavior ()
       (set! (-> self propeller enable) #f)
       (quaternion-identity! (-> self root-overlay quat))
-      (set! (-> self root-overlay trans quad) (-> self entity extra trans quad))
+      (vector-copy! (-> self root-overlay trans) (-> self entity extra trans))
       (set! (-> self player-riding) #f)
       (set! (-> self auto-pilot) #f)
       (when (send-event *target* 'clone-anim self)
@@ -1163,7 +1163,7 @@
       (set! (-> self evilbro) (the-as handle #f))
       (set! (-> self evilsis) (the-as handle #f))
       (quaternion-identity! (-> self root-overlay quat))
-      (set! (-> self root-overlay trans quad) (-> self entity extra trans quad))
+      (vector-copy! (-> self root-overlay trans) (-> self entity extra trans))
       (set! (-> self player-riding) #f)
       (set! (-> self auto-pilot) #f)
       (when (send-event *target* 'clone-anim self)

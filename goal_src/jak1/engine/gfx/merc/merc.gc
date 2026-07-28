@@ -118,7 +118,7 @@
     (inspect (-> this effect effect-index)))
   this)
 
-(defmethod mem-usage ((this merc-ctrl) (usage memory-usage-block) (flags int))
+(defmethod mem-usage ((this merc-ctrl) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for the base art data, packed fragment control and geometry, blend targets, and eye
    animation owned by this MERC asset."
   ;; do extra
@@ -135,11 +135,7 @@
                    (* (-> fctrl fp-qwc) 16)
                    (asize-of fctrl)))
           (set! fctrl (the-as merc-fragment-control (&+ (the-as pointer fctrl) (asize-of fctrl)))))))
-    (set! (-> usage length) (max 76 (-> usage length)))
-    (set! (-> usage data 75 name) "merc-ctrl")
-    (+! (-> usage data 75 count) 1)
-    (+! (-> usage data 75 used) ctrl-mem)
-    (+! (-> usage data 75 total) (logand -16 (+ ctrl-mem 15))))
+    (mem-usage-add! usage merc-ctrl 1 ctrl-mem))
   ;; do effect blend shapes
   (let ((effect-mem 0))
     (dotimes (effect-idx2 (the-as int (-> this header effect-count)))
@@ -153,20 +149,11 @@
               (set! effect-mem (the-as int (+ (-> this header blend-target-count) 2 size-through-target-data))))
             (set! bctrl (the-as merc-blend-ctrl (&+ (the-as pointer bctrl) (+ (-> this header blend-target-count) 2))))))))
     (when (nonzero? effect-mem)
-      (set! (-> usage length) (max 78 (-> usage length)))
-      (set! (-> usage data 77 name) "blend-shape")
-      (+! (-> usage data 77 count) 1)
-      (+! (-> usage data 77 used) effect-mem)
-      (+! (-> usage data 77 total) (logand -16 (+ effect-mem 15)))))
+      (mem-usage-add! usage blend-shape 1 effect-mem)))
   ;; do eyes.
   (when (nonzero? (-> this header eye-ctrl))
     (let ((eye-ctrl (-> this header eye-ctrl)))
-      (set! (-> usage length) (max 109 (-> usage length)))
-      (set! (-> usage data 108 name) "eye-anim")
-      (+! (-> usage data 108 count) 1)
-      (let ((eye-bytes (asize-of eye-ctrl)))
-        (+! (-> usage data 108 used) eye-bytes)
-        (+! (-> usage data 108 total) (logand -16 (+ eye-bytes 15))))))
+      (mem-usage-add! usage eye-anim 1 (asize-of eye-ctrl))))
   this)
 
 (defmethod login ((this merc-ctrl))
@@ -315,7 +302,7 @@
       (set! (-> low-memory tri-strip-gif word 3) (shr (make-u128 0 (shl #x303e4000 32)) 32))
       (set! (-> low-memory ad-gif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
       (set! (-> low-memory ad-gif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-      (set! (-> low-memory hvdf-offset quad) (-> *math-camera* hvdf-off quad))
+      (vector-copy! (-> low-memory hvdf-offset) (-> *math-camera* hvdf-off))
       (quad-copy! (-> low-memory perspective) (the-as pointer (-> *math-camera* perspective)) 4)
       (set-vector! (-> low-memory fog) (-> *math-camera* pfog0) (-> *math-camera* fog-min) (-> *math-camera* fog-max) 0.0))
     ;; Run the per-frame initialization entry after the constants arrive.
