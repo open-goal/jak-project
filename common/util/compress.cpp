@@ -40,7 +40,7 @@ std::vector<u8> decompress_zstd(const void* data, size_t size) {
   auto decomp_size = ZSTD_decompress(result.data(), decompressed_size,
                                      (const u8*)data + sizeof(size_t), compressed_size);
   if (ZSTD_isError(decomp_size)) {
-    ASSERT_MSG(false, fmt::format("ZSTD error: {}", ZSTD_getErrorName(compressed_size)));
+    ASSERT_MSG(false, fmt::format("ZSTD error: {}", ZSTD_getErrorName(decomp_size)));
   }
 
   ASSERT(decomp_size == decompressed_size);
