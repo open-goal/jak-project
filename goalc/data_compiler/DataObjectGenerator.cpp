@@ -116,7 +116,8 @@ void DataObjectGenerator::add_goos_obj(
       if (obj.type == goos::ObjectType::INTEGER || obj.type == goos::ObjectType::FLOAT) {
         link_word_to_byte(next_slot, current_offset_bytes() + 2);
       } else {
-        link_word_to_byte(add_word(0), current_offset_bytes() + 2);
+        auto cdr_slot = add_word(0);
+        link_word_to_byte(cdr_slot, current_offset_bytes() + 2);
       }
     }
   }
@@ -146,7 +147,8 @@ int DataObjectGenerator::add_pair(const goos::Object& obj,
             if (current.as_pair()->cdr.is_empty_list()) {
               add_empty_list();
             } else {
-              link_word_to_byte(add_word(0), current_offset_bytes() + 2);
+              auto cdr_slot = add_word(0);
+              link_word_to_byte(cdr_slot, current_offset_bytes() + 2);
             }
           } else {
             ASSERT_MSG(false, fmt::format("error in pair {}: for {}, entity-actor {} not found",
@@ -164,7 +166,8 @@ int DataObjectGenerator::add_pair(const goos::Object& obj,
             if (current.as_pair()->cdr.is_empty_list()) {
               add_empty_list();
             } else {
-              link_word_to_byte(add_word(0), current_offset_bytes() + 2);
+              auto cdr_slot = add_word(0);
+              link_word_to_byte(cdr_slot, current_offset_bytes() + 2);
             }
           } else {
             ASSERT_MSG(false, fmt::format("error in pair {}: for {}, got invalid id {}",
