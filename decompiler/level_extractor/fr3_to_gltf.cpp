@@ -846,18 +846,18 @@ int make_bones_accessor(const std::vector<tfrag3::MercVertex>& vertices, tinyglt
   // first create a buffer:
   int buffer_idx = (int)model.buffers.size();
   auto& buffer = model.buffers.emplace_back();
-  buffer.data.resize(sizeof(float) * 4 * vertices.size());
+  buffer.data.resize(4 * vertices.size());
 
   // and fill it
   u8* buffer_ptr = buffer.data.data();
   for (const auto& vtx : vertices) {
-    s32 indices[4];
+    u8 indices[4];
     for (int i = 0; i < 3; i++) {
       indices[i] = vtx.mats[i] ? vtx.mats[i] - 1 : 0;
     }
     indices[3] = 0;
-    memcpy(buffer_ptr, indices, 4 * sizeof(s32));
-    buffer_ptr += 4 * sizeof(s32);
+    memcpy(buffer_ptr, indices, 4);
+    buffer_ptr += 4;
   }
 
   // create a view of this buffer
@@ -873,7 +873,7 @@ int make_bones_accessor(const std::vector<tfrag3::MercVertex>& vertices, tinyglt
   auto& accessor = model.accessors.emplace_back();
   accessor.bufferView = buffer_view_idx;
   accessor.byteOffset = 0;
-  accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;  // blender doesn't support INT...
+  accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE;
   accessor.count = vertices.size();
   accessor.type = TINYGLTF_TYPE_VEC4;
   return accessor_idx;
