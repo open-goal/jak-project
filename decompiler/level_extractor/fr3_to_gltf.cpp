@@ -1462,6 +1462,29 @@ void add_merc(const tfrag3::Level& level,
 
   add_blerc_targets(level, mmodel, mesh, model);
 }
+
+void consolidate_buffers(tinygltf::Model& model) {
+  if (model.buffers.size() <= 1) {
+    return;
+  }
+
+  std::vector<size_t> buffer_start(model.buffers.size());
+  std::vector<u8> merged;
+  for (size_t i = 0; i < model.buffers.size(); i++) {
+    merged.resize((merged.size() + 3) & ~(size_t)3);
+    buffer_start[i] = merged.size();
+    const auto& data = model.buffers[i].data;
+    merged.insert(merged.end(), data.begin(), data.end());
+  }
+
+  for (auto& view : model.bufferViews) {
+    view.byteOffset += buffer_start.at(view.buffer);
+    view.buffer = 0;
+  }
+
+  model.buffers.clear();
+  model.buffers.emplace_back().data = std::move(merged);
+}
 }  // namespace
 
 /*!
@@ -1498,6 +1521,7 @@ void save_level_background_as_gltf(const tfrag3::Level& level, const fs::path& g
   }
 
   model.asset.generator = "opengoal";
+  consolidate_buffers(model);
   tinygltf::TinyGLTF gltf;
   gltf.WriteGltfSceneToFile(&model, glb_file.string(),
                             true,   // embedImages
@@ -1542,6 +1566,7 @@ void save_level_foreground_as_gltf(
     add_merc(level, art_data, mmodel, model, tex_image_map, anim_slot_to_base_tex);
 
     model.asset.generator = "opengoal";
+    consolidate_buffers(model);
 
     auto glb_file = glb_path / fmt::format("{}.glb", mmodel.name);
     file_util::create_dir_if_needed_for_file(glb_file);
