@@ -2496,11 +2496,10 @@ void handle_draw_for_strip(tfrag3::TieTree& tree,
   ASSERT(inst.vis_id < UINT16_MAX);
   vgroup.vis_idx_in_pc_bvh = inst.vis_id;  // associate with the instance for culling
 
-  // only bother with tie proto idx if we use it
-  if (tree.has_per_proto_visibility_toggle) {
-    ASSERT(proto_idx < UINT16_MAX);
-    vgroup.tie_proto_idx = proto_idx;
-  }
+  // jak 1 has no per-proto visibility toggle, but the gltf exporter still uses this to split the
+  // tree back up into one mesh per prototype
+  ASSERT(proto_idx < UINT16_MAX);
+  vgroup.tie_proto_idx = proto_idx;
 
   vgroup.num_inds = strip.verts.size() + 1;  // one for the primitive restart!
   vgroup.num_tris = strip.verts.size() - 2;
@@ -2560,9 +2559,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
   // loop over all prototypes
   for (size_t proto_idx = 0; proto_idx < protos.size(); proto_idx++) {
     const auto& proto = protos[proto_idx];
-    if (tree.has_per_proto_visibility_toggle) {
-      tree.proto_names.push_back(proto.name);
-    }
+    tree.proto_names.push_back(proto.name);
 
     TieCategoryInfo info;
     switch (version) {
