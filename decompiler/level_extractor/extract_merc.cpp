@@ -836,7 +836,8 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         process_draw_mode(*input_effect.extra_info.shader, false, false, false, false);
     result.envmap_mode.set_ab(true);
     u32 new_tex = remap_texture(input_effect.extra_info.shader->original_tex, map);
-    ASSERT(result.envmap_mode.get_tcc_enable());
+    // note: don't assert on the static tcc bit here; the game forces tcc=rgba when it
+    // links textures at login, so the pre-login value in the level data is meaningless.
     ASSERT(result.envmap_mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_DST_DST);
 
     // texture the texture page/texture index, and convert to a PC port texture ID
@@ -1001,9 +1002,9 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       bool fog = true;
       merc_state.merc_draw_mode.mode =
           process_draw_mode(shader, result.has_envmap, use_alpha_blend, depth_write, fog);
-      if (!merc_state.merc_draw_mode.mode.get_tcc_enable()) {
-        ASSERT(false);
-      }
+      // note: the static shader data may say tcc=rgb here, but at runtime the game forces
+      // tcc=rgba when it links textures (adgif-shader<-texture!), so PC merc always renders
+      // tcc=rgba. Translucent effects take vertex alpha via the prelit path in Merc2 instead.
       u32 new_tex = remap_texture(shader.original_tex, map);
 
       // texture the texture page/texture index, and convert to a PC port texture ID

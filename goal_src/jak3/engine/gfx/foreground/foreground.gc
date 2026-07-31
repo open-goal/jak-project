@@ -1635,6 +1635,7 @@
   (pc-blerc 2)
   (disable-envmap 3)
   (no-textures 4)
+  (prelit-valid 5) ;; set when prelit-mask is populated (jak 3 writes it, jak 1/2 don't)
   )
 
 (deftype pc-merc-flags (structure)
@@ -1642,6 +1643,7 @@
    (ignore-alpha-mask uint64)
    (effect-count uint8)
    (bit-flags pc-merc-bits)
+   (prelit-mask uint64 :offset 24)
    )
   )
 
@@ -1757,6 +1759,23 @@
               )
             (set! (-> flags enable-mask) enable-mask)
             (set! (-> flags ignore-alpha-mask) ignore-alpha-mask)
+            ;; translucent effects (effect-bits no-fade-out) take the generic renderer's
+            ;; translucent path on PS2 (mercneric-convert selects a separate pipeline
+            ;; config for them): vertex rgba passes through with no lighting. gameplay
+            ;; translucents render lit through VU1 merc, so this only applies in menu
+            ;; mode, the one mode that renders exclusively through generic on PS2.
+            ;; PC renders menus through merc, so flag the effects for the PC renderer.
+            (logior! (-> flags bit-flags) (pc-merc-bits prelit-valid))
+            (let ((prelit-mask 0))
+              (when (-> *blit-displays-work* screen-copied)
+                (dotimes (i (-> merc-ctrl header effect-count))
+                  (if (logtest? (-> merc-ctrl effect i effect-bits) (effect-bits no-fade-out))
+                      (logior! prelit-mask (ash 1 i))
+                      )
+                  )
+                )
+              (set! (-> flags prelit-mask) prelit-mask)
+              )
             )
           (&+! dma-buf (* 16 2))
           (+! qwc-total 2)
