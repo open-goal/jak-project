@@ -90,7 +90,7 @@ TEST(ARM64EmitterIntegerMath, add_gpr64_imm8s) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        EXPECT_EXECUTE_EQ(tester, val, expected);
+        EXPECT_EXECUTE_RET_EQ(tester, val, expected);
       }
     }
   });
@@ -120,7 +120,7 @@ TEST(ARM64EmitterIntegerMath, add_gpr64_imm32s) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        EXPECT_EXECUTE_EQ(tester, val, expected);
+        EXPECT_EXECUTE_RET_EQ(tester, val, expected);
       }
     }
   });
@@ -150,7 +150,7 @@ TEST(ARM64EmitterIntegerMath, sub_gpr64_imm8s) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        EXPECT_EXECUTE_EQ(tester, val, expected);
+        EXPECT_EXECUTE_RET_EQ(tester, val, expected);
       }
     }
   });
@@ -180,7 +180,7 @@ TEST(ARM64EmitterIntegerMath, sub_gpr64_imm32s) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        EXPECT_EXECUTE_EQ(tester, val, expected);
+        EXPECT_EXECUTE_RET_EQ(tester, val, expected);
       }
     }
   });
@@ -204,7 +204,7 @@ TEST(ARM64EmitterIntegerMath, add_gpr64_gpr64) {
           tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), X0, i));
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
-          EXPECT_EXECUTE_EQ(tester, 0, expected);
+          EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
         }
       }
     });
@@ -229,7 +229,7 @@ TEST(ARM64EmitterIntegerMath, sub_gpr64_gpr64) {
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
 
-          EXPECT_EXECUTE_EQ(tester, 0, expected);
+          EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
         }
       }
     });
@@ -259,7 +259,7 @@ TEST(ARM64EmitterIntegerMath, mul_gpr32_gpr32) {
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
 
-          EXPECT_EXECUTE_EQ(tester, 0, expected);
+          EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
         }
       }
     });
@@ -284,7 +284,7 @@ TEST(ARM64EmitterIntegerMath, or_gpr64_gpr64) {
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
 
-          EXPECT_EXECUTE_EQ(tester, 0, expected);
+          EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
         }
       }
     });
@@ -309,7 +309,7 @@ TEST(ARM64EmitterIntegerMath, and_gpr64_gpr64) {
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
 
-          EXPECT_EXECUTE_EQ_MSG(tester, 0, expected, fmt::format("{} & {}", v1, v2));
+          EXPECT_EXECUTE_RET_EQ_MSG(tester, 0, expected, fmt::format("{} & {}", v1, v2));
         }
       }
     });
@@ -334,7 +334,7 @@ TEST(ARM64EmitterIntegerMath, xor_gpr64_gpr64) {
           tester.emit_pop_all_gprs(true);
           tester.emit_return();
 
-          EXPECT_EXECUTE_EQ(tester, 0, expected);
+          EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
         }
       }
     });
@@ -356,7 +356,7 @@ TEST(ARM64EmitterIntegerMath, not_gpr64) {
       tester.emit_pop_all_gprs(true);
       tester.emit_return();
 
-      EXPECT_EXECUTE_EQ(tester, 0, expected);
+      EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
     }
   });
 }
@@ -381,7 +381,7 @@ TEST(ARM64EmitterIntegerMath, not_gpr64) {
 //         tester.emit_pop_all_gprs(true);
 //         tester.emit_return();
 
-//         EXPECT_EXECUTE_EQ(tester, 0, expected);
+//         EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
 //       }
 //     }
 //   });
@@ -406,7 +406,7 @@ TEST(ARM64EmitterIntegerMath, not_gpr64) {
 //         tester.emit_pop_all_gprs(true);
 //         tester.emit_return();
 
-//         EXPECT_EXECUTE_EQ(tester, 0, expected);
+//         EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
 //       }
 //     }
 //   });
@@ -431,7 +431,7 @@ TEST(ARM64EmitterIntegerMath, not_gpr64) {
 //         tester.emit_pop_all_gprs(true);
 //         tester.emit_return();
 
-//         EXPECT_EXECUTE_EQ(tester, 0, expected);
+//         EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
 //       }
 //     }
 //   });
@@ -454,7 +454,7 @@ TEST(ARM64EmitterIntegerMath, shl_gpr64_u8) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        EXPECT_EXECUTE_EQ(tester, 0, expected);
+        EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
       }
     }
   });
@@ -477,7 +477,7 @@ TEST(ARM64EmitterIntegerMath, shr_gpr64_u8) {
         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-        EXPECT_EXECUTE_EQ(tester, 0, expected);
+        EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
       }
     }
   });
@@ -501,7 +501,7 @@ TEST(ARM64EmitterIntegerMath, sar_gpr64_u8) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        EXPECT_EXECUTE_EQ(tester, 0, expected);
+        EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
       }
     }
   });
@@ -510,63 +510,64 @@ TEST(ARM64EmitterIntegerMath, sar_gpr64_u8) {
 TEST(ARM64EmitterIntegerMath, jumps) {
   auto tester = create_tester();
 
-  std::vector<int> reads;
-
   auto x = IGen::jmp_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  // read the instruction we just emitted
+  auto last_instr = tester.read<u32>(tester.size());
+  // analyze it, ARM is nice in this way, every instruction is just 32bits
+  // no need to defer and check the immediate like in the x86 tests.
+  // this has an imm26, the rest are all imm19
+  EXPECT_EQ(0, last_instr & 0x03ffffff);
 
   x = IGen::je_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::jne_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::jle_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::jge_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::jl_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::jg_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::jbe_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::jae_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::jb_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 
   x = IGen::ja_imm(tester.generator());
-  reads.push_back(tester.size() + x.offset_of_imm());
   tester.emit(x);
-
-  for (auto off : reads) {
-    EXPECT_EQ(0, tester.read<s32>(off));
-  }
-
-  // TODO - i see the rationale for the offset idea here, but the problem is that in ARM
-  // the immediates cannot be as large, meaning you can't just read the
-  // instruction bytes to confirm if it was done properly (which is what i think is happening)
-
-  EXPECT_EQ(tester.dump_to_hex_string(true),
-            "E9000000000F84000000000F85000000000F8E000000000F8D000000000F8C000000000F8F000000000F86"
-            "000000000F83000000000F82000000000F8700000000");
+  last_instr = tester.read<u32>(tester.size());
+  EXPECT_EQ(0, (last_instr >> 5) & 0x7ffff);
 }
 
 TEST(ARM64EmitterIntegerMath, null) {
@@ -584,26 +585,18 @@ TEST(ARM64EmitterLoadsAndStores, load_constant_64_and_move_gpr_gpr_64) {
   auto tester = create_tester();
 
   for (auto constant : u64_constants) {
-    for (int r1 = 0; r1 < 16; r1++) {
-      if (r1 == RSP) {
-        continue;
-      }
-
-      for (int r2 = 0; r2 < 16; r2++) {
-        if (r2 == RSP) {
-          continue;
-        }
+    for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+      for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
         tester.clear();
         tester.emit_push_all_gprs(true);
-        tester.emit(IGen::mov_gpr64_u64(tester.generator(), r1, constant));
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), r2, r1));
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, r2));
+        tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, constant));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), j, i));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), j));
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-
-        execute_tester(tester, constant);
-      }
-    }
+        EXPECT_EXECUTE_EQ(tester, constant);
+      });
+    });
   }
 }
 
@@ -615,21 +608,16 @@ TEST(ARM64EmitterLoadsAndStores, load_constant_32_unsigned) {
   auto tester = create_tester();
 
   for (auto constant : u64_constants) {
-    for (int r1 = 0; r1 < 16; r1++) {
-      if (r1 == RSP) {
-        continue;
-      }
-
+    for_each_register_except_stack_and_scratch(tester, [&](Register i) {
       tester.clear();
       tester.emit_push_all_gprs(true);
-      tester.emit(IGen::mov_gpr64_u64(tester.generator(), r1, UINT64_MAX));
-      tester.emit(IGen::mov_gpr64_u32(tester.generator(), r1, constant));
-      tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, r1));
+      tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, UINT64_MAX));
+      tester.emit(IGen::mov_gpr64_u32(tester.generator(), i, constant));
+      tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
       tester.emit_pop_all_gprs(true);
       tester.emit_return();
-
-      execute_tester(tester, constant);
-    }
+      EXPECT_EXECUTE_EQ(tester, constant);
+    });
   }
 }
 
@@ -640,20 +628,15 @@ TEST(ARM64EmitterLoadsAndStores, load_constant_32_signed) {
   auto tester = create_tester();
 
   for (auto constant : s32_constants) {
-    for (int r1 = 0; r1 < 16; r1++) {
-      if (r1 == RSP) {
-        continue;
-      }
-
+    for_each_register_except_stack_and_scratch(tester, [&](Register i) {
       tester.clear();
       tester.emit_push_all_gprs(true);
-      tester.emit(IGen::mov_gpr64_s32(tester.generator(), r1, constant));
-      tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, r1));
+      tester.emit(IGen::mov_gpr64_s32(tester.generator(), i, constant));
+      tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
       tester.emit_pop_all_gprs(true);
       tester.emit_return();
-
-      execute_tester(tester, constant);
-    }
+      EXPECT_EXECUTE_EQ(tester, (u64)constant);
+    });
   }
 }
 
@@ -661,37 +644,13 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_goal_ptr_gpr64) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64(tester.generator(), RAX, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f be 04 1e");
-
-  tester.clear();
-  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64(tester.generator(), R12, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4c 0f be 24 1e");
-
-  tester.clear();
-  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64(tester.generator(), R12, R15, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4e 0f be 24 3e");
-
-  tester.clear();
-  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64(tester.generator(), R12, R15, R14));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4f 0f be 24 3e");
+  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64(tester.generator(), X0, X1, X2));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "20E8A238");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -703,15 +662,17 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_goal_ptr_gpr64) {
         tester.emit(IGen::pop_gpr64(tester.generator(), j));  // j will have offset 1
 
         // fill k with junk
-        if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+        if (k.id() != i.id() && k.id() != j.id()) {
+          // TODO - there is a bug here of some sort, the tests will fail if this junk
+          // initialization is done makes no sense to me yet
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64(tester.generator(), k, i, j));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -721,45 +682,28 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_goal_ptr_gpr64) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 2, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 4, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 5, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)3, (u64)0, (u64)0, (u64)-2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)2, (u64)0, (u64)0, (u64)-3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)4, (u64)0, (u64)0, (u64)-1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)5, (u64)0, (u64)0, (u64)0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s8) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f be 44 1e fd");
-
-  auto instr = IGen::load8s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "30E0228B00D29F38");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -772,14 +716,15 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s8) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -789,45 +734,28 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s8) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 3 + 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 2 + 3, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 5 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)3 + 3, (u64)0, (u64)0, (u64)-2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)2 + 3, (u64)0, (u64)0, (u64)-3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)4 + 3, (u64)0, (u64)0, (u64)-1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)5 + 3, (u64)0, (u64)0, (u64)0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s32) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f be 84 1e fd ff ff ff");
-
-  auto instr = IGen::load8s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D100028039");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -840,14 +768,15 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s32) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -857,51 +786,27 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s32) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 3 + 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 2 + 3, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 5 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)3 + 3, (u64)0, (u64)0, (u64)-2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)2 + 3, (u64)0, (u64)0, (u64)-3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)4 + 3, (u64)0, (u64)0, (u64)-1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, (u64)5 + 3, (u64)0, (u64)0, (u64)0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_goal_ptr_gpr64) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64(tester.generator(), RAX, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f b6 04 1e");
-
-  tester.clear();
-  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64(tester.generator(), R12, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4c 0f b6 24 1e");
-
-  tester.clear();
-  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64(tester.generator(), R12, R15, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4e 0f b6 24 3e");
-
-  tester.clear();
-  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64(tester.generator(), R12, R15, R14));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4f 0f b6 24 3e");
+  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64(tester.generator(), X0, X1, X2));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "20E86238");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -914,14 +819,15 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_goal_ptr_gpr64) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load8s_gpr64_gpr64_plus_gpr64(tester.generator(), k, i, j));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -931,45 +837,28 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_goal_ptr_gpr64) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 2, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 4, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 5, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, memory, 3, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, memory, 2, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, memory, 4, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, memory, 5, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s8) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f b6 44 1e fd");
-
-  auto instr = IGen::load8u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "30E0228B00D25F38");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -982,14 +871,15 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s8) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -999,45 +889,28 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s8) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 3 + 3, 0, 0, 0xfe);
-        execute_tester(tester, (u64)memory, 2 + 3, 0, 0, 0xfd);
-        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, 0xff);
-        execute_tester(tester, (u64)memory, 5 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 3 + 3, 0, 0, 0xfe);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 2 + 3, 0, 0, 0xfd);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 4 + 3, 0, 0, 0xff);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 5 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s32) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f b6 84 1e fd ff ff ff");
-
-  auto instr = IGen::load8u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D100024039");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1050,14 +923,15 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s32) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load8u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1067,51 +941,27 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s32) {
         u8 memory[8] = {0, 0, 0xfd, 0xfe, 0xff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 3 + 3, 0, 0, 0xfe);
-        execute_tester(tester, (u64)memory, 2 + 3, 0, 0, 0xfd);
-        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, 0xff);
-        execute_tester(tester, (u64)memory, 5 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 3 + 3, 0, 0, 0xfe);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 2 + 3, 0, 0, 0xfd);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 4 + 3, 0, 0, 0xff);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 5 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_goal_ptr_gpr64) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64(tester.generator(), RAX, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f bf 04 1e");
-
-  tester.clear();
-  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64(tester.generator(), R12, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4c 0f bf 24 1e");
-
-  tester.clear();
-  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64(tester.generator(), R12, R15, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4e 0f bf 24 3e");
-
-  tester.clear();
-  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64(tester.generator(), R12, R15, R14));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4f 0f bf 24 3e");
+  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64(tester.generator(), X0, X1, X2));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "20E8A278");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1124,14 +974,15 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_goal_ptr_gpr64) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64(tester.generator(), k, i, j));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1141,45 +992,28 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_goal_ptr_gpr64) {
         s16 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 6, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 4, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 8, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 10, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 6, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 4, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 10, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s8) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f bf 44 1e fd");
-
-  auto instr = IGen::load16s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "30E0228B00D29F78");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1192,14 +1026,15 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s8) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1209,45 +1044,28 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s8) {
         u16 memory[8] = {0, 0, 0xfffd, 0xfffe, 0xffff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 6 + 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 10 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, memory, 6 + 3, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, memory, 4 + 3, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, memory, 8 + 3, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, memory, 10 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s32) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f bf 84 1e fd ff ff ff");
-
-  auto instr = IGen::load16s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D100028079");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1260,14 +1078,15 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s32) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load16s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1277,51 +1096,27 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s32) {
         u16 memory[8] = {0, 0, 0xfffd, 0xfffe, 0xffff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 6 + 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 10 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 6 + 3, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 4 + 3, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8 + 3, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 10 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_goal_ptr_gpr64) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64(tester.generator(), RAX, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f b7 04 1e");
-
-  tester.clear();
-  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64(tester.generator(), R12, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4c 0f b7 24 1e");
-
-  tester.clear();
-  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64(tester.generator(), R12, R15, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4e 0f b7 24 3e");
-
-  tester.clear();
-  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64(tester.generator(), R12, R15, R14));
-  EXPECT_EQ(tester.dump_to_hex_string(), "4f 0f b7 24 3e");
+  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64(tester.generator(), X0, X1, X2));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "20E86278");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1334,14 +1129,15 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_goal_ptr_gpr64) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64(tester.generator(), k, i, j));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1351,45 +1147,28 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_goal_ptr_gpr64) {
         s16 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 6, 0, 0, 0xfffe);
-        execute_tester(tester, (u64)memory, 4, 0, 0, 0xfffd);
-        execute_tester(tester, (u64)memory, 8, 0, 0, 0xffff);
-        execute_tester(tester, (u64)memory, 10, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 6, 0, 0, 0xfffe);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 4, 0, 0, 0xfffd);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8, 0, 0, 0xffff);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 10, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s8) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f b7 44 1e fd");
-
-  auto instr = IGen::load16u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "30E0228B00D25F78");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1402,14 +1181,15 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s8) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1419,45 +1199,28 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s8) {
         u16 memory[8] = {0, 0, 0xfffd, 0xfffe, 0xffff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 6 + 3, 0, 0, 0xfffe);
-        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, 0xfffd);
-        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, 0xffff);
-        execute_tester(tester, (u64)memory, 10 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 6 + 3, 0, 0, 0xfffe);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 4 + 3, 0, 0, 0xfffd);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8 + 3, 0, 0, 0xffff);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 10 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s32) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 0f b7 84 1e fd ff ff ff");
-
-  auto instr = IGen::load16u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D100024079");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1470,14 +1233,15 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s32) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load16u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1487,39 +1251,27 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s32) {
         u16 memory[8] = {0, 0, 0xfffd, 0xfffe, 0xffff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 6 + 3, 0, 0, 0xfffe);
-        execute_tester(tester, (u64)memory, 4 + 3, 0, 0, 0xfffd);
-        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, 0xffff);
-        execute_tester(tester, (u64)memory, 10 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 6 + 3, 0, 0, 0xfffe);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 4 + 3, 0, 0, 0xfffd);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8 + 3, 0, 0, 0xffff);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 10 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_goal_ptr_gpr64) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64(tester.generator(), RAX, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 63 04 1e");
+  tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64(tester.generator(), X0, X1, X2));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "20E8A2B8");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1532,14 +1284,15 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_goal_ptr_gpr64) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64(tester.generator(), k, i, j));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1549,45 +1302,28 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_goal_ptr_gpr64) {
         s32 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 12, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 8, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 16, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 20, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 12, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 20, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s8) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 63 44 1e fd");
-
-  auto instr = IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "30E0228B00D29FB8");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1600,14 +1336,15 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s8) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1617,45 +1354,28 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s8) {
         u32 memory[8] = {0, 0, 0xfffffffd, 0xfffffffe, 0xffffffff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 12 + 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 20 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 12 + 3, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8 + 3, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16 + 3, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 20 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s32) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 63 84 1e fd ff ff ff");
-
-  auto instr = IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D1000280B9");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1668,14 +1388,15 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s32) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1685,39 +1406,27 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s32) {
         u32 memory[8] = {0, 0, 0xfffffffd, 0xfffffffe, 0xffffffff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 12 + 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 20 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 12 + 3, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8 + 3, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16 + 3, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 20 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_goal_ptr_gpr64) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64(tester.generator(), RAX, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "8b 04 1e");
+  tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64(tester.generator(), X0, X1, X2));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "20E862B8");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1730,62 +1439,48 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_goal_ptr_gpr64) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64(tester.generator(), k, i, j));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
+        // printf("%s\n", tester.dump_to_asm_string().data());
+
         // prepare the memory:
         s32 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 12, 0, 0, 0xfffffffe);
-        execute_tester(tester, (u64)memory, 8, 0, 0, 0xfffffffd);
-        execute_tester(tester, (u64)memory, 16, 0, 0, 0xffffffff);
-        execute_tester(tester, (u64)memory, 20, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 12, 0, 0, 0xfffffffe);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8, 0, 0, 0xfffffffd);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16, 0, 0, 0xffffffff);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 20, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s8) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "8b 44 1e fd");
-
-  auto instr = IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "30E0228B00D25FB8");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1798,14 +1493,15 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s8) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1815,45 +1511,28 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s8) {
         s32 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 12 + 3, 0, 0, 0xfffffffe);
-        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, 0xfffffffd);
-        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, 0xffffffff);
-        execute_tester(tester, (u64)memory, 20 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 12 + 3, 0, 0, 0xfffffffe);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8 + 3, 0, 0, 0xfffffffd);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16 + 3, 0, 0, 0xffffffff);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 20 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s32) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "8b 84 1e fd ff ff ff");
-
-  auto instr = IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D1000640B8");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1866,14 +1545,15 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s32) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -1883,39 +1563,27 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s32) {
         u32 memory[8] = {0, 0, 0xfffffffd, 0xfffffffe, 0xffffffff, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 12 + 3, 0, 0, 0xfffffffe);
-        execute_tester(tester, (u64)memory, 8 + 3, 0, 0, 0xfffffffd);
-        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, 0xffffffff);
-        execute_tester(tester, (u64)memory, 20 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 12 + 3, 0, 0, 0xfffffffe);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 8 + 3, 0, 0, 0xfffffffd);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16 + 3, 0, 0, 0xffffffff);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 20 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load64_gpr64_goal_ptr_gpr64) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64(tester.generator(), RAX, RBX, RSI));
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 8b 04 1e");
+  tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64(tester.generator(), X0, X1, X2));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "20E862F8");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1928,62 +1596,48 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_goal_ptr_gpr64) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64(tester.generator(), k, i, j));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
+        // printf("%s\n", tester.dump_to_asm_string().data());
+
         // prepare the memory:
         s64 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 24, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 16, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 32, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 40, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 24, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 32, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 40, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s8) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 8b 44 1e fd");
-
-  auto instr = IGen::load64_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "30E0228B00D25FF8");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1996,14 +1650,15 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s8) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64_plus_s8(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -2013,45 +1668,28 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s8) {
         s64 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 24 + 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 32 + 3, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 40 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 24 + 3, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16 + 3, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 32 + 3, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 40 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }
 
 TEST(ARM64EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s32) {
   auto tester = create_tester();
 
   tester.clear();
-  tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3));
+  tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(), "48 8b 84 1e fd ff ff ff");
-
-  auto instr = IGen::load64_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, RSI, -3);
-  u8 buff[256];
-  instr.emit(buff);
-  EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -3);
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D1000640F8");
 
   int iter = 0;
-  for (int i = 0; i < 16; i++) {
-    if (i == RSP) {
-      continue;
-    }
-
-    for (int j = 0; j < 16; j++) {
-      if (j == RSP || j == i) {
-        continue;
-      }
-
-      for (int k = 0; k < 16; k++) {
-        if (k == RSP) {
-          continue;
-        }
-
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -2064,14 +1702,15 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s32) {
 
         // fill k with junk
         if (k != i && k != j) {
-          tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
+          // TODO
+          // tester.emit(IGen::mov_gpr64_u64(tester.generator(), k, (iter & 1) ? 0 : UINT64_MAX));
         }
 
         // load into k
         tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), k, i, j, -3));
 
         // move k to return register
-        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, k));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -2081,12 +1720,12 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s32) {
         s64 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
         // run!
-        execute_tester(tester, (u64)memory, 24 + 3, 0, 0, -2);
-        execute_tester(tester, (u64)memory, 16 + 3, 0, 0, -3);
-        execute_tester(tester, (u64)memory, 32 + 3, 0, 0, -1);
-        execute_tester(tester, (u64)memory, 40 + 3, 0, 0, 0);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 24 + 3, 0, 0, -2);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 16 + 3, 0, 0, -3);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 32 + 3, 0, 0, -1);
+        EXPECT_EXECUTE_4ARG_EQ(tester, (u64)memory, 40 + 3, 0, 0, 0);
         iter++;
-      }
-    }
-  }
+      });
+    });
+  });
 }

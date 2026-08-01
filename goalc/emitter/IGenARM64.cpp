@@ -394,6 +394,7 @@ InstructionARM64 load8u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
       // ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
       InstructionARM64(Base(0b10001011000, 11), Rd(X16), Imm6(0), Rn(addr1.id()), Rm(addr2.id())),
   };
+  // TODO - movk instead eventually
   if (offset < 0) {
     // we'll subtract instead
     offset = std::abs(offset);
@@ -406,8 +407,7 @@ InstructionARM64 load8u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
   // finally do the load
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldrb_imm.html
   // LDRB <Xt>, [<Xn|SP>], #<simm>
-  instrs.emplace_back(
-      InstructionARM64(Base(0b0011100101, 10), Imm12(offset), Rt(dst.id()), Rn(X16)));
+  instrs.emplace_back(InstructionARM64(Base(0b0011100101, 10), Imm12(0), Rt(dst.id()), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
@@ -622,8 +622,7 @@ InstructionARM64 load16u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
   // finally do the load
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldrh_imm.html
   // LDRH <Wt>, [<Xn|SP>{, #<pimm>}]
-  instrs.emplace_back(
-      InstructionARM64(Base(0b0111100101, 10), Imm12(offset), Rt(dst.id()), Rn(X16)));
+  instrs.emplace_back(InstructionARM64(Base(0b0111100101, 10), Imm12(0), Rt(dst.id()), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
@@ -773,7 +772,7 @@ InstructionARM64 store32_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
 
 InstructionARM64 load32u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_reg_gen.html
-  // 32-bit variant
+  // 32-bit variant, SXTX
   // LDR <Wt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
   ASSERT(dst.is_gpr(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
@@ -781,7 +780,7 @@ InstructionARM64 load32u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Re
   ASSERT(addr1 != addr2);
   ASSERT(addr1 != SP);
   ASSERT(addr2 != SP);
-  return InstructionARM64(Base(0b1011100001100000000010, 22), Rt(dst.id()), Rn(addr1.id()),
+  return InstructionARM64(Base(0b1011100001100000111010, 22), Rt(dst.id()), Rn(addr1.id()),
                           Rm(addr2.id()));
 }
 
@@ -844,7 +843,7 @@ InstructionARM64 load32u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
 
 InstructionARM64 load64_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_reg_gen.html
-  // 64 bit mode
+  // 64 bit mode, SXTX
   // LDR <Xt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
   ASSERT(dst.is_gpr(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
@@ -852,7 +851,7 @@ InstructionARM64 load64_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Reg
   ASSERT(addr1 != addr2);
   ASSERT(addr1 != SP);
   ASSERT(addr2 != SP);
-  return InstructionARM64(Base(0b1111100001100000000010, 22), Rt(dst.id()), Rn(addr1.id()),
+  return InstructionARM64(Base(0b1111100001100000111010, 22), Rt(dst.id()), Rn(addr1.id()),
                           Rm(addr2.id()));
 }
 

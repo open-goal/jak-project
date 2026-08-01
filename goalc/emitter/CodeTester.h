@@ -47,8 +47,8 @@ class CodeTester {
   std::string dump_to_asm_string();
   ObjectGenerator generator() const { return m_gen; }
   void init_code_buffer(int capacity);
-  void emit_push_all_gprs(bool exclude_rax = false);
-  void emit_pop_all_gprs(bool exclude_rax = false);
+  void emit_push_all_gprs(bool exclude_return_register = false);
+  void emit_pop_all_gprs(bool exclude_return_register = false);
   void emit_push_all_simd();
   void emit_pop_all_simd();
   void emit_return();
