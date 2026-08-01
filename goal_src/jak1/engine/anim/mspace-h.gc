@@ -12,28 +12,29 @@
 
 ;; There's three main container types:
 ;; - The cspace-array.  This contains references to the bones and the joints. (called node-list)
-;; - The skeleton: This is an inline array of bones. (called skeleton)
+;;   this is allocated at runtime, and there's one of these per-process (instance)
+;; - The skeleton: This is an inline array of bones. (called skeleton). Also runtime allocated
 ;; - The joint-control (not in this file): this has the logic for running joint animations. (called skel)
+;;   this is static, part of level data, and shared between all instances.
 
 ;; Joint numbers index the authored joint table. Parent and bind-pose describe
 ;; the hierarchy independently of any particular animated skeleton instance.
+;; Bind-pose is a property of how the mesh is stored, it's only needed to
+;; compute vertex positions of skinned meshes.
 (deftype joint (basic)
   ((name      string)
    (number    int32)
    (parent    joint)
    (bind-pose matrix :inline)))
 
-;; Byte offsets of this bone's and its parent's 128-byte records in the
-;; scratchpad joint workspace. Frame tags cached results; dummy keeps the cache
-;; record quadword-sized.
+;; Unused.
 (deftype bone-cache (structure)
   ((bone-matrix   uint32)
    (parent-matrix uint32)
    (dummy         uint32)
    (frame         uint32)))
 
-;; Evaluated world-space bone state. Position aliases the translation column of
-;; transform, so writers must not treat it as independent storage.
+;; Evaluated world-space bone state. The cache is unused.
 (deftype bone (structure)
   ((transform matrix :inline)
    (position  vector :inline :overlay-at (-> transform vector 3))

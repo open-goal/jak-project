@@ -8,66 +8,211 @@
 (require "engine/data/art-h.gc")
 (require "engine/anim/mspace-h.gc")
 (require "engine/game/game-h.gc")
+ 
+;; The "joint" system is used to play back animations.
+;; At a very high level, the process to animate a character:
+;;  - the gameplay code uses the `ja` macros to set up joint animations.
+;;  - the process-drawable system updates the animation metadata in joint-control. This is responsible for
+;;    producing an array of joint-control-channel. The channels are arranged into a blend tree, and each
+;;    channel has a frame number (possibly in between frames) and interpolation weight for the blend tree.
+;; - This file, joint.gc looks at those animations, frame numbers, blend weights, and tree structure, then
+;;   produces the relative transform between bones, called "joint transforms"
+;; - The process-drawable system uses the joint transforms to compute bone transforms.
+;; - The gameplay code and collision code use the bone transforms to determine world-space positions/rotations.
+;; - The "bones.gc" system builds rendering matrices for the foreground renderer
+;; - The merc, mercneric, and shadow renderers consume these matrices for their skinning calculations.
 
-;; a joint is just used to store the tree structure of a skeleton + bind pose.
-;; it's mostly used as a more user-friendly interface
+;; --- Joint, bone, and cspace ---
 
-;; The compressed animation format, since the four decompressors in this file all have to agree
-;; about it.
-;;
-;; art-joint-anim.frames is a joint-anim-compressed-control: one joint-anim-compressed-fixed
-;; holding everything that never changes, followed by num-frames joint-anim-compressed-frame
-;; records of frame-qwc quadwords each. Both kinds carry three cursors into their own data,
-;; offset-64, offset-32 and offset-16, and every value is read from whichever of the three
-;; streams matches its width. That is the point of the format: a value costs only what it needs
-;; and nothing is padded up to the widest type.
-;;
-;; The fixed block's header holds one 4-bit control per skeleton entry, packed eight to a uint32
-;; in control-bits, so 14 words cover 112 entries. Bit 0 is translation, bit 1 is quaternion and
-;; bit 2 is scale; a set bit means the value is in the per-frame stream and a clear bit means it
-;; is in the fixed stream. Bit 3 selects the wide translation form and only matters when
-;; translation is present. matrix-bits makes the same choice for the frame's two full matrices.
-;;
-;; The fixed pass therefore takes the clear bits and the frame pass takes the set bits, and both
-;; accumulate into the same output frame with a weight. Everything adds; nothing assigns.
-;;
-;; Units: wide translation is three floats, compact translation is three signed halfwords times
-;; four, quaternions are four signed Q15 halfwords, and scale is three signed Q12 halfwords. The
-;; Q12 and Q15 factors are the same numbers as SCALE_SCALE and QUAT_SCALE below. On the EE side
-;; the times-four appears as a 4.0 sitting in lanes y and z of the broadcast weight vector, which
-;; is easy to miss.
-;;
-;; A joint-anim-frame is two full matrices, align and prejoint, followed by one 48-byte transformq
-;; per remaining skeleton entry, so num-joints - 2 of them. Getting that count wrong is easy; see
-;; jak1-major-findings.md.
-;;
-;; Quaternion accumulation is not a slerp. Each contribution is dotted against what is already in
-;; the accumulator and negated when the dot is negative, so everything lands on one hemisphere,
-;; and the weighted sum is renormalized at the end. That is cheap and close enough for blend
-;; weights that sum to one.
+;; A "bone" is simply the world space transformation of a character's bone.
+;; These "bones" are eventually used to position collision geometry, and compute the skinning matrices for rendering.
+;; Note that bones matrices can include per-axis scaling too, to allow animated characters to appear squashed/stretched.
 
-;; Scratchpad byte offsets for the assembly decompressors. The scratchpad base register holds
-;; 0x70000000, which is a terrain-context, and joint-work is the foreground pass's overlay of its
-;; work area, so every offset the EE code uses is work plus the joint-work field.
+;; "joint" refers the parent-child relation of bones. Like a real skeleton, moving one bone will cause all the
+;; bones "below" it in the tree to move too.  The "joint transform" refers to the relative transformation between bones.
+;; The actual "joint" type is a node in this tree, and simply stores name/indexing information. (it also stores the mesh bind pose,
+;; but this is _not_ used at all by the joint system - only renderers! the bind-pose is a property of the meshes and how they are exported,
+;; not the actual skeleton/bone locations.
+
+;; "cspace" is a mysterious term. There is a cspace for each bone, and it tells the animation code how to
+;; compute the bone position, and the tells the runtime code where to find the bone (transformation) and joint (tree-structure).
+;; By default, the bone is controlled from the animation, in the normal way. It is possible to override this
+;; by providing your own callback. This might modify the animation (for example, scale something for big-head mode, mirror something)
+;; or completely override it (for example, adjust the transformation to move some disconnected part of a character, spin
+;; the propeller on a zoomer).
+;; The joint-mod system internally sets the cspace to apply modifications to a joint.
+
+;; the cspace stores a reference to the bone, and often times the game will just pass around the cspace in places
+;; where they just want the bone.
+
+;; Note on the cspace bone matrix: when extracting the translation, they use vector<-cspace!, which divides by the w,w component...
+;; I have no idea why this is done. It happens in all 3 games. It seems like this value is almost exactly 1 in all cases.
+
+;; ---- Compression and streaming ----
+;; Animations from cutscenes are streamed in chunks. This chunking happens a level above this file, and this file just
+;; sees short, several second long animations.
+
+;; Animations for jak (walking, jumping, etc) are not streamed since there would be too much latency to wait for the DVD drive.
+;; Some of these animations are wrapped in LZO compression. This requires decompressing the entire animation to access it.
+;; To avoid redoing the LZO compression on every frame, there is a LZO animation decompression cache. Ideally, the animation
+;; is decompressed once on the first frame its used, then remains in the cache while it's in use.
+
+;; Additionally, all animations have their own inner compression format. This format is designed for speed and ease of decompression,
+;; and is designed so you can seek to an arbitrary frame. The decompressor is stateless - if frame n + 1 is decompressed after frame n,
+;; there is no benefit or reused information.
+
+;; ---- Blending animations ----
+;; Multiple animations are played at the same time, using a tree structure. Each animation runs on a separate "channel".
+;; There are a few different ways this is specified in gameplay code. The most common way is simply using `ja-channel-push!` calls.
+
+;; The tree operates as a stack machine, consisting of push, blend, and stack operations.
+;; The "push" operation creates a new entry on the stack, consisting of an animation.
+;; The "blend" operation blends against the last thing on the stack.
+;; The "stack" operation adds together the last two things, with the given weight.
+
+;; Generally, stacking is used for time-varying fades, like blending out of a jump into a run.
+;; Blending within the same stack depth is used for animation combining, like combining a "run straight" and "run left".
+
+;; This is best observed with an example:
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH(C)
+;;   a = 0.5, b = 0.5
+;;   c = 1.0
+;; STACK(0.25)
+;;   a = 0.125, b = 0.125, c = 0.75
+
+;; ---- Stack1 and Push1 ----
+
+;; There are two strange operations: stack1 and push1.
+;; My current understanding is that this is simply an optimization.
+;; Basically, if the last two joint channels are a "push", then "stack", it is effectively blending "everything before these"
+;; with "this last pushed channel".
+
+;; In this case, the engine will set these to push1 and stack1. The "push1" behaves like a blend, and the stack1 is ignored.
+;; This has the same behavior, but two advantages: it is okay to completely ignore the stack1, and it reduces the stack depth by one.
+
+;; with our example
+
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH1(C, 0.25) ;; note: this needs the weight!
+;;   a = 0.125, b = 0.125, c = 0.75
+;; STACK1(0.25)   ;; does nothing, can be left out.
+;;   a = 0.125, b = 0.125, c = 0.75
+
+;; You might wonder: why both having push1/stack1? Couldn't the code doing animation just request a `blend`,
+;; and then we wouldn't have to special-case push1/stack1 here?
+;; The reason is probably the no-push feature below
+
+;; ---- no-push -----
+;; if "no-push" mode is active, then the stack machine acts like "pushing" just overwrites the top of the stack, and
+;; stacking does nothing
+
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH(C)
+;;   c = 1.0
+;; STACK(0.25)
+;;   c = 1.0
+
+;; however, the actual implementation is that pushes work as normal, and stacking always takes the most recent.
+
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH(C)
+;;   a = 0.5, b = 0.5
+;;   c = 1.0
+;; STACK(0.25) ;; the weight is ignored
+;;   c = 1.0
+
+;; and, in no-push mode, the push1/stack1 _don't_ act like a blend! and the implementation is so you can
+;; skip the stack1 entirely.
+
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH1(C, 0.25) ;; note: weight is ignored
+;;   c = 1.0
+;; STACK1(0.25)   ;; does nothing, can be left out.
+;;   c = 1.0
+
+;; (note: no-push mode is only supported by the matrix-from-control! function
+;;  which is used to implement cspace<-matrix-no-push-joint!, which grabs a single joint's matrix
+;;  for the aligner - more on this later.)
+
+;; --- The first three cspaces/bones ---
+;; (this is how it gets set up by default. individual actors can always override.)
+
+;; The first cspace is a special one without a joint. It is "root", and is simply a copy of the actors "root" position.
+;; This is what makes all animations relative to the actor's position. There's no joint for this.
+
+;; The second cspace is the "align" cspace. This joint is an animated matrix rather than a transformq.
+;; This is used to move the process drawable root. Why would you want to do that? It means the an animation actually moves
+;; the process, so if the animation is cancelled, the actor stays in the same spot. The aligner also populates the transv
+;; (velocity) based on the speed of the align, so you can use accurate velocities in physics/collision queries.
+
+;; The third cspace is the "prejoint" cspace. This is always the parent of all bones which are associated with meshes.
+;; So you can modify the prejoint to move the entire visible actor (without moving the process root trans).
+;; Like the second cpsace, it is an animated matrix rather than a transformq.
+
+;; ---- Inner decompression format ----
+
+;; The compressed format is relatively simple.
+;; There is a "fixed" data for an entire animation, and "frame data": one for each frame.
+;; Each data has some u64's, u32's, and u16's.
+
+;; For the two matrix joints, there is a bit which indicates if the matrix is varying. If so, the matrix is stored
+;; in the frame data (so there is a different matrix for each frame), and if not, it is stored in the fixed data (one
+;; matrix for the entire animation).
+
+;; For the transformq joints, there are 4-bits of "control" per joint, stored in the control-bits array (packed)
+;; the first bit indicates if the trans is varying, quat is varying, scale is varying, and the format of the trans.
+;; If the data is varying, it can be found in the frame data, otherwise it is in the fixed data.
+
+;; If the trans format bit is not set, the trans is stored as int16's. The x, y are stored in a single u32, and the z
+;; is stored in a single u16. (the reason for this is to avoid unaligned loads and ps2 instruction specific optimization)
+;; The trans should be multiplied by 4 to get meters.
+
+;; If the trans format bit is set, the trans is stored as floats. The x, y are stored in a single u64, and the z is
+;; stored in a single u32. There is no scaling or int/float conversion needed.
+
+;; The quaternion is stored as 4 int16's packed into a single u64. The value should be divided by 32768.
+;; Note that the decompressor handles "flipped" quaternions (all elements multiplied by -1) in interpolation so there should
+;; be no assumptions about the quaternion convention of animations (of both the compressed data, and the output of the decompressor)
+
+;; The scale is stored as 3 int16's. The x, y are stored in a single u32, and the z is stored in a single u16.
+;; The scale should be divided by 4096.
 (defmacro joint-spad-offset (&rest path)
   `(+ (offset-of terrain-context work) (offset-of joint-work ,@path)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; experimental new joint decompressor
+;; PC Port new joint decompressor: written in simple GOAL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define *use-new-decompressor* #t)
 
 ;; this was re-written in GOAL. Despite being not well optimized, it ends up being faster
-;; than the original.
+;; than MIPS2C decompressor.
 
-;; request to decompress data from an animation
+;; request to decompress data from a single animation
+;; at a given (partially fractional) frame index, and scaled by `amount` for blending.
 (deftype joint-decomp-request (structure)
   ((jacc         joint-anim-compressed-control)
    (frame        int)
    (frame-interp float)
    (amount       float)))
 
+;; stack frame containing weights for up to 24 channels.
 (deftype blend-tree-stack-frame (structure)
   ((weights float 24)
    (quads   vector 6 :inline :overlay-at weights)))
@@ -581,8 +726,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; The "art" class is a super-general parent class for all art.
-;; There's an "art-group" class, which typically contains all the animations
-;; geometry, and shadow info for a character.
+;; art objects are typically large static data embedded directly in GOAL object files
+;; They are likely generated by art tools, not the GOAL compiler.
 
 ;; The most general art class shouldn't really be used for anything.
 
@@ -613,7 +758,7 @@
 (defmethod login ((this art))
   "Prepare this art object's optional resource lump for use."
   ;; not sure why we have to do this, but if the res-lump isn't properly set up to point to the tags
-  ;; do it manually.
+  ;; do it manually. It seems like the linker could have done this??
   (if (and (-> this extra) (zero? (-> this extra tag)))
     (set! (-> this extra tag) (&+ (the-as (pointer res-tag) (-> this extra)) 28)))
   this)
@@ -621,6 +766,7 @@
 (defmethod mem-usage ((this art-mesh-anim) (usage memory-usage-block) (flags mem-usage-flags))
   "Account for this mesh animation, its resource lump, and every payload object."
   (mem-usage-add! usage art-mesh-anim 1 (asize-of this))
+  ;; setting the flag makes the res-lump's memory count toward joint-geo.
   (if (-> this extra) (mem-usage (-> this extra) usage (logior flags (mem-usage-flags resource-joint-geo))))
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this data s3-0) usage flags))
@@ -678,6 +824,7 @@
   (the-as symbol
           (and (-> this length)
                (type-type? (-> this data 0 type) art-joint-anim)
+               ;; master-art-group-name is the name of the art group this gets linked to.
                (!= (-> this name) (-> (the-as art-joint-anim (-> this data 0)) master-art-group-name)))))
 
 (defmethod lookup-art ((this art-group) (art-name string) (expected-type type))
@@ -731,7 +878,7 @@
   this)
 
 (defmethod relocate ((this art-group) (heap kheap) (name (pointer uint8)))
-  "Handle a loaded art-group."
+  "Handle a loaded art-group. Called by linker after the art-group is loaded."
   (let ((s4-0 (clear *temp-string*)))
     (string<-charp s4-0 name)
     (set! this
@@ -814,6 +961,9 @@
 ;; Joint Control!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; the confusing thing here is a "group" just refers to a "frame-group", which is
+;; really just an animation. It's not a group of channels, or a group of animations.
+
 (defun joint-control-channel-eval ((channel joint-control-channel))
   "Evaluate a channel with its current numeric callback and parameters, then record the evaluation
    time."
@@ -836,6 +986,8 @@
    A stack command records the callback but does not select or evaluate an animation."
   (set! (-> channel num-func) evaluate)
   (cond
+    ;; no animation for stack which blends the last two things on the stack
+    ;; whithout introducing a new animation.
     ((= (-> channel command) 'stack))
     (else
      (if animation-group (set! (-> channel frame-group) animation-group))
@@ -850,6 +1002,8 @@
    records only the callback."
   (set! (-> channel num-func) evaluate)
   (cond
+    ;; no animation for stack which blends the last two things on the stack
+    ;; whithout introducing a new animation.
     ((= (-> channel command) 'stack))
     (animation-group (set! (-> channel frame-group) animation-group)))
   0)
@@ -859,6 +1013,7 @@
    index, and retarget every copied channel's parent to the destination controller."
   (set! (-> destination blend-index) (-> source blend-index))
   (set! (-> destination active-channels) (-> source active-channels))
+  ;; set root-channel to point to the same index channel on destination.
   (set! (-> destination root-channel)
         (the-as (inline-array joint-control-channel)
                 (-> destination
@@ -1046,6 +1201,9 @@
               (-> (scratchpad-object terrain-context) work foreground joint-work flatten-array i))))
     0))
 
+;; The following functions are a non-optimized decompressor/blender for animation matrices, intended for when
+;; you only need the matrix and don't want to decompress all the joints.
+
 (defun matrix-from-joint-anim-frame ((compressed joint-anim-compressed-control) (matrix-index int) (frame-index int))
   "Return matrix-index zero or one from the fixed animation data or the selected frame, according
    to matrix-bits in the compressed header."
@@ -1097,34 +1255,48 @@
 (defun matrix-from-control! ((stack matrix-stack) (skeleton-joint joint) (control joint-control) (mode symbol))
   "Evaluate a joint controller's postfix channel commands for one of the two matrix joints. push
    adds a matrix to stack, blend combines a channel with the current matrix, and stack combines the
-   top two matrices. no-push handles the paired push1/stack form without growing the stack."
+   top two matrices. no-push is a mode that disables the common time-varying cross fade between animations,
+   and returns only data from the newest animation. (needed for align)"
   (set! (-> stack top) (the-as matrix (-> stack data)))
+  ;; we iterate over the whole tree and compute matrices for all animations,
+  ;; even if they end up being overwritten later in no-push mode.
   (dotimes (channel-index (-> control active-channels))
     (let* ((channel (-> control channel channel-index))
            (command (-> channel command))
            (matrix-size 64))
       (cond
         ((and (= mode 'no-push) (= command 'push1))
+         ;; push1/stack1 optimization: a final push-then-stack is treated as blend + no-op.
+         ;; in no-push mode, we make the last pushed animation override whatever older animations
+         ;; came before, so this overwrites the top of the stack.
          (matrix-from-control-channel! (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size)))
                                        skeleton-joint
                                        channel))
         ((and (= mode 'no-push) (= command 'stack))
+         ;; in no-push, we skip interolating and take the newer (later) animation
          (set! (-> stack top) (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size))))
          (matrix-copy! (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size))) (-> stack top)))
         ((= command 'push)
+         ;; push a new stack frame and place the animated matrix here
          (matrix-from-control-channel! (-> stack top) skeleton-joint channel)
          (set! (-> stack top) (the-as matrix (+ (the-as uint (-> stack top)) matrix-size))))
         ((or (= command 'blend) (= command 'push1))
+         ;; modify the current frame by blending
          (matrix-from-control-pair! (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size)))
                                     channel
                                     skeleton-joint))
         ((= command 'stack)
+         ;; pop two matrices, interpolate, and push the interpolated result
          (set! (-> stack top) (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size))))
          (let ((lower-matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size)))
                (upper-matrix (-> stack top))
                (interpolation (-> channel frame-interp)))
            (matrix-lerp! (the-as matrix lower-matrix) (the-as matrix lower-matrix) upper-matrix interpolation))))))
   (the-as matrix (-> stack data)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CSPACE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod reset-and-assign-geo! ((this cspace) (geometry basic))
   "Clear this coordinate-space node's hierarchy and controller state and assign its optional
