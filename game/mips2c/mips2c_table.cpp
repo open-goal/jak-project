@@ -8,6 +8,7 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak2/kscheme.h"
 #include "game/kernel/jak3/kscheme.h"
+#include "game/kernel/jakx/kscheme.h"
 #include "game/runtime.h"
 
 extern "C" {
@@ -394,7 +395,138 @@ namespace shadow_add_single_tris { extern void link(); }
 namespace shadow_add_double_tris { extern void link(); }
 namespace shadow_execute { extern void link(); }
 namespace method_21_cloth_system { extern void link(); }
+}
 
+namespace jakx {
+namespace light_hash_get_bucket_index { extern void link(); }
+namespace add_light_sphere_to_light_group { extern void link(); }
+namespace light_hash_count_items { extern void link(); }
+namespace light_hash_add_items { extern void link(); }
+namespace debug_line_clip { extern void link(); }
+namespace init_boundary_regs { extern void link(); }
+namespace draw_boundary_polygon { extern void link(); }
+namespace render_boundary_quad { extern void link(); }
+namespace render_boundary_tri { extern void link(); }
+// namespace set_sky_vf27 { extern void link(); }
+namespace generic_light_proc { extern void link(); }
+namespace generic_envmap_proc { extern void link(); }
+// namespace generic_prepare_dma_double { extern void link(); }
+namespace generic_prepare_dma_single { extern void link(); }
+namespace generic_warp_source_proc { extern void link(); }
+namespace generic_warp_dest_proc { extern void link(); }
+namespace generic_warp_dest { extern void link(); }
+namespace generic_warp_envmap_dest { extern void link(); }
+namespace generic_no_light_proc { extern void link(); }
+// namespace method_9_font_work { extern void link(); }
+// namespace draw_string_asm { extern void link(); }
+// namespace get_string_length { extern void link(); }
+namespace adgif_shader_texture_with_update { extern void link(); }
+namespace moving_sphere_triangle_intersect { extern void link(); }
+namespace collide_do_primitives { extern void link(); }
+// namespace cspace_parented_transformq_joint { extern void link(); }
+namespace foreground_check_longest_edge_asm { extern void link(); }
+namespace foreground_merc { extern void link(); }
+namespace foreground_generic_merc { extern void link(); }
+namespace live_func_curve { extern void link(); }
+namespace birth_func_curve { extern void link(); }
+namespace method_11_collide_hash { extern void link(); }
+namespace method_12_collide_hash { extern void link(); }
+namespace fill_bg_using_box_new { extern void link(); }
+namespace fill_bg_using_line_sphere_new { extern void link(); }
+namespace method_12_collide_mesh { extern void link(); }
+namespace method_14_collide_mesh { extern void link(); }
+// namespace method_15_collide_mesh { extern void link(); }
+namespace method_10_collide_shape_prim_mesh { extern void link(); }
+namespace method_10_collide_shape_prim_sphere { extern void link(); }
+namespace method_10_collide_shape_prim_group { extern void link(); }
+namespace method_11_collide_shape_prim_mesh { extern void link(); }
+namespace method_11_collide_shape_prim_sphere { extern void link(); }
+namespace method_11_collide_shape_prim_group { extern void link(); }
+namespace method_9_collide_cache_prim { extern void link(); }
+namespace method_10_collide_cache_prim { extern void link(); }
+namespace method_17_collide_cache { extern void link(); }
+namespace method_9_collide_puss_work { extern void link(); }
+namespace method_10_collide_puss_work { extern void link(); }
+namespace method_18_grid_hash { extern void link(); }
+namespace method_19_grid_hash { extern void link(); }
+namespace method_20_grid_hash { extern void link(); }
+namespace method_22_grid_hash { extern void link(); }
+namespace method_28_sphere_hash { extern void link(); }
+namespace method_32_sphere_hash { extern void link(); }
+namespace method_29_sphere_hash { extern void link(); }
+namespace method_30_sphere_hash { extern void link(); }
+namespace method_31_sphere_hash { extern void link(); }
+// namespace method_32_spatial_hash { extern void link(); }
+namespace method_38_spatial_hash { extern void link(); }
+namespace method_35_spatial_hash { extern void link(); }
+namespace method_36_spatial_hash { extern void link(); }
+namespace method_34_spatial_hash { extern void link(); }
+namespace sparticle_motion_blur { extern void link(); }
+namespace sp_launch_particles_var { extern void link(); }
+namespace particle_adgif { extern void link(); }
+namespace sp_init_fields { extern void link(); }
+namespace sp_process_block_2d { extern void link(); }
+namespace sp_process_block_3d { extern void link(); }
+namespace method_39_nav_state { extern void link(); }
+namespace method_21_nav_engine { extern void link(); }
+namespace method_20_nav_engine { extern void link(); }
+namespace method_18_nav_engine { extern void link(); }
+namespace method_17_nav_engine { extern void link(); }
+namespace nav_state_patch_pointers { extern void link(); }
+namespace nav_dma_send_from_spr_no_flush { extern void link(); }
+namespace nav_dma_send_to_spr_no_flush { extern void link(); }
+namespace blerc_execute { extern void link(); }
+namespace setup_blerc_chains_for_one_fragment { extern void link(); }
+namespace sparticle_motion_blur_dirt { extern void link(); }
+namespace foreground_draw_hud { extern void link(); }
+namespace ripple_matrix_scale { extern void link(); }
+namespace ripple_apply_wave_table { extern void link(); }
+namespace ripple_create_wave_table { extern void link(); }
+namespace ripple_execute_init { extern void link(); }
+namespace method_14_ocean { extern void link(); }
+// namespace method_15_ocean { extern void link(); }
+namespace method_16_ocean { extern void link(); }
+namespace init_ocean_far_regs { extern void link(); }
+namespace draw_large_polygon_ocean { extern void link(); }
+namespace render_ocean_quad { extern void link(); }
+namespace generic_merc_do_chain { extern void link(); }
+namespace generic_merc_execute_asm { extern void link(); }
+namespace generic_merc_death { extern void link(); }
+namespace generic_merc_query { extern void link(); }
+namespace generic_translucent { extern void link(); }
+namespace high_speed_reject { extern void link(); }
+namespace mercneric_convert { extern void link(); }
+namespace generic_merc_init_asm { extern void link(); }
+namespace set_tex_offset { extern void link(); }
+namespace draw_large_polygon { extern void link(); }
+namespace render_sky_quad { extern void link(); }
+namespace render_sky_tri { extern void link(); }
+namespace method_17_sky_work { extern void link(); }
+namespace method_18_sky_work { extern void link(); }
+namespace method_29_sky_work { extern void link(); }
+namespace method_30_sky_work { extern void link(); }
+namespace method_31_sky_work { extern void link(); }
+// namespace method_34_sky_work { extern void link(); }
+// namespace method_35_sky_work { extern void link(); }
+namespace method_32_sky_work { extern void link(); }
+// namespace set_sky_vf23_value { extern void link(); }
+namespace shadow_xform_verts { extern void link(); }
+namespace shadow_calc_dual_verts { extern void link(); }
+namespace shadow_scissor_edges { extern void link(); }
+namespace shadow_scissor_top { extern void link(); }
+namespace shadow_init_vars { extern void link(); }
+namespace shadow_find_facing_single_tris { extern void link(); }
+namespace shadow_find_facing_double_tris { extern void link(); }
+namespace shadow_find_single_edges { extern void link(); }
+namespace shadow_find_double_edges { extern void link(); }
+namespace shadow_add_verts { extern void link(); }
+namespace shadow_add_facing_single_tris { extern void link(); }
+namespace shadow_add_single_edges { extern void link(); }
+namespace shadow_add_double_edges { extern void link(); }
+namespace shadow_add_single_tris { extern void link(); }
+namespace shadow_add_double_tris { extern void link(); }
+namespace shadow_execute { extern void link(); }
+namespace method_21_cloth_system { extern void link(); }
 }
 // clang-format on
 
@@ -658,7 +790,110 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak3::shadow_add_single_tris::link, jak3::shadow_add_double_tris::link}},
      {"cloth", {jak3::method_21_cloth_system::link}}},
     /////////// JAK X
-    {}};
+    {{"lights",
+      {jakx::light_hash_get_bucket_index::link, jakx::add_light_sphere_to_light_group::link,
+       jakx::light_hash_count_items::link, jakx::light_hash_add_items::link}},
+     {"debug",
+      {
+          jakx::debug_line_clip::link, jakx::init_boundary_regs::link,
+          jakx::draw_boundary_polygon::link, jakx::render_boundary_quad::link,
+          //  jakx::render_boundary_tri::link, jakx::set_sky_vf27::link
+      }},
+     {"generic-effect",
+      {jakx::generic_light_proc::link, jakx::generic_envmap_proc::link,
+       //  jakx::generic_prepare_dma_double::link,
+       jakx::generic_prepare_dma_single::link, jakx::generic_warp_source_proc::link,
+       jakx::generic_warp_dest_proc::link, jakx::generic_warp_dest::link,
+       jakx::generic_warp_envmap_dest::link, jakx::generic_no_light_proc::link}},
+     //  {"font",
+     //   {jakx::method_9_font_work::link,
+     //     jakx::draw_string_asm::link,
+     //    jakx::get_string_length::link}},
+     {"texture", {jakx::adgif_shader_texture_with_update::link}},
+     {"collide-func",
+      {jakx::moving_sphere_triangle_intersect::link, jakx::collide_do_primitives::link}},
+     {"joint",
+      {
+          // jakx::cspace_parented_transformq_joint::link
+      }},
+     {"foreground",
+      {jakx::foreground_check_longest_edge_asm::link, jakx::foreground_generic_merc::link,
+       jakx::foreground_merc::link, jakx::foreground_draw_hud::link}},
+     {"particle-curves", {jakx::live_func_curve::link, jakx::birth_func_curve::link}},
+     {"collide-hash",
+      {jakx::method_11_collide_hash::link, jakx::method_12_collide_hash::link,
+       jakx::fill_bg_using_box_new::link, jakx::fill_bg_using_line_sphere_new::link}},
+     {"collide-mesh",
+      {jakx::method_12_collide_mesh::link, jakx::method_14_collide_mesh::link,
+       //  jakx::method_15_collide_mesh::link,
+       jakx::method_10_collide_shape_prim_mesh::link}},
+     {"collide-cache",
+      {jakx::method_10_collide_shape_prim_mesh::link,
+       jakx::method_10_collide_shape_prim_sphere::link,
+       jakx::method_10_collide_shape_prim_group::link,
+       jakx::method_11_collide_shape_prim_mesh::link,
+       jakx::method_11_collide_shape_prim_sphere::link,
+       jakx::method_11_collide_shape_prim_group::link, jakx::method_9_collide_cache_prim::link,
+       jakx::method_10_collide_cache_prim::link, jakx::method_17_collide_cache::link,
+       jakx::method_9_collide_puss_work::link, jakx::method_10_collide_puss_work::link}},
+     {"spatial-hash",
+      {jakx::method_18_grid_hash::link, jakx::method_19_grid_hash::link,
+       jakx::method_20_grid_hash::link, jakx::method_22_grid_hash::link,
+       jakx::method_28_sphere_hash::link, jakx::method_32_sphere_hash::link,
+       jakx::method_29_sphere_hash::link, jakx::method_30_sphere_hash::link,
+       jakx::method_31_sphere_hash::link,
+       //  jakx::method_32_spatial_hash::link,
+       jakx::method_38_spatial_hash::link, jakx::method_35_spatial_hash::link,
+       jakx::method_36_spatial_hash::link, jakx::method_34_spatial_hash::link}},
+     {"sparticle-launcher",
+      {jakx::sparticle_motion_blur::link, jakx::sp_launch_particles_var::link,
+       jakx::particle_adgif::link, jakx::sp_init_fields::link}},
+     {"sparticle", {jakx::sp_process_block_2d::link, jakx::sp_process_block_3d::link}},
+     {"nav-engine",
+      {jakx::method_21_nav_engine::link, jakx::method_20_nav_engine::link,
+       jakx::method_18_nav_engine::link, jakx::method_17_nav_engine::link,
+       jakx::nav_state_patch_pointers::link, jakx::nav_dma_send_from_spr_no_flush::link,
+       jakx::nav_dma_send_to_spr_no_flush::link}},
+     {"nav-control", {jakx::method_39_nav_state::link}},
+     {"merc-blend-shape",
+      {jakx::blerc_execute::link, jakx::setup_blerc_chains_for_one_fragment::link}},
+     {"wvehicle-part", {jakx::sparticle_motion_blur_dirt::link}},
+     {"ripple",
+      {jakx::ripple_matrix_scale::link, jakx::ripple_apply_wave_table::link,
+       jakx::ripple_create_wave_table::link, jakx::ripple_execute_init::link}},
+     {"ocean-vu0",
+      {jakx::method_14_ocean::link,
+       // jakx::method_15_ocean::link,
+       jakx::method_16_ocean::link}},
+     {"ocean",
+      {jakx::init_ocean_far_regs::link, jakx::draw_large_polygon_ocean::link,
+       jakx::render_ocean_quad::link}},
+     {"generic-merc",
+      {jakx::generic_merc_do_chain::link, jakx::generic_merc_execute_asm::link,
+       jakx::generic_merc_death::link, jakx::generic_merc_query::link,
+       jakx::generic_translucent::link, jakx::high_speed_reject::link,
+       jakx::mercneric_convert::link, jakx::generic_merc_init_asm::link}},
+     {"sky-tng",
+      {jakx::set_tex_offset::link, jakx::render_sky_quad::link, jakx::render_sky_tri::link,
+       jakx::method_17_sky_work::link, jakx::method_18_sky_work::link,
+       jakx::method_29_sky_work::link, jakx::method_30_sky_work::link,
+       jakx::method_31_sky_work::link,
+       //  jakx::method_34_sky_work::link,
+       //  jakx::method_35_sky_work::link,
+       jakx::method_32_sky_work::link,
+       //  jakx::set_sky_vf23_value::link,
+       jakx::draw_large_polygon::link}},
+     {"shadow-cpu",
+      {jakx::shadow_xform_verts::link, jakx::shadow_execute::link,
+       jakx::shadow_calc_dual_verts::link, jakx::shadow_scissor_edges::link,
+       jakx::shadow_scissor_top::link, jakx::shadow_init_vars::link,
+       jakx::shadow_find_facing_single_tris::link, jakx::shadow_find_facing_double_tris::link,
+       jakx::shadow_find_single_edges::link, jakx::shadow_find_double_edges::link,
+       jakx::shadow_add_verts::link, jakx::shadow_add_facing_single_tris::link,
+       jakx::shadow_add_single_edges::link, jakx::shadow_add_double_edges::link,
+       jakx::shadow_add_single_tris::link, jakx::shadow_add_double_tris::link}},
+     {"cloth", {jakx::method_21_cloth_system::link}}},
+};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
@@ -684,6 +919,11 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
       jump_to_asm = Ptr<u8>(::jak3::alloc_heap_object(
           s7.offset + jak3_symbols::FIX_SYM_GLOBAL_HEAP,
           ::jak3::u32_in_fixed_sym(jak3_symbols::FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
+      break;
+    case GameVersion::JakX:
+      jump_to_asm = Ptr<u8>(::jak3::alloc_heap_object(
+          s7.offset + jak3_symbols::FIX_SYM_GLOBAL_HEAP,
+          ::jakx::u32_in_fixed_sym(jakx_symbols::FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
       break;
     default:
       ASSERT(false);

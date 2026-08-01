@@ -1,0 +1,150 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type rigid-body-surface
+(deftype rigid-body-surface (structure)
+  ((flags             rigid-body-surface-flag)
+   (surface-type      surface-type)
+   (friction          float)
+   (bounce            float)
+   (drag              float)
+   (depth             float)
+   (damage            float)
+   (scrape-sound      uint16)
+   (glance-sound      uint16)
+   (impact-sound      uint16)
+   (tire-roll-mix     float  6)
+   (tire-roll-hum     float  :overlay-at (-> tire-roll-mix 0))
+   (tire-roll-dirt    float  :overlay-at (-> tire-roll-mix 1))
+   (tire-roll-sand    float  :overlay-at (-> tire-roll-mix 2))
+   (tire-roll-snow    float  :overlay-at (-> tire-roll-mix 3))
+   (tire-roll-grass   float  :overlay-at (-> tire-roll-mix 4))
+   (tire-roll-knobby  float  :overlay-at (-> tire-roll-mix 5))
+   (tire-slide-mix    float  2)
+   (tire-slide-road   float  :overlay-at (-> tire-slide-mix 0))
+   (tire-slide-dirt   float  :overlay-at (-> tire-slide-mix 1))
+   )
+  )
+
+;; definition for method 3 of type rigid-body-surface
+(defmethod inspect ((this rigid-body-surface))
+  (when (not this)
+    (set! this this)
+    (goto cfg-25)
+    )
+  (format #t "[~8x] ~A~%" this 'rigid-body-surface)
+  (format #t "~1Tflags: #x~X : (rigid-body-surface-flag " (-> this flags))
+  (let ((a0-3 (-> this flags)))
+    (if (= (logand a0-3 (rigid-body-surface-flag moving)) (rigid-body-surface-flag moving))
+        (format #t "moving ")
+        )
+    )
+  (format #t ")~%")
+  (let ((t9-4 format)
+        (a0-7 #t)
+        (a1-4 "~1Tsurface-type: #x~X : ~S~%")
+        (a2-2 (-> this surface-type))
+        (v1-5 (-> this surface-type))
+        )
+    (t9-4 a0-7 a1-4 a2-2 (cond
+                           ((= v1-5 (surface-type wall))
+                            "wall"
+                            )
+                           ((= v1-5 (surface-type grass))
+                            "grass"
+                            )
+                           ((= v1-5 (surface-type snow))
+                            "snow"
+                            )
+                           ((= v1-5 (surface-type stone))
+                            "stone"
+                            )
+                           ((= v1-5 (surface-type dirt))
+                            "dirt"
+                            )
+                           ((= v1-5 (surface-type water))
+                            "water"
+                            )
+                           ((= v1-5 (surface-type ice))
+                            "ice"
+                            )
+                           ((= v1-5 (surface-type none))
+                            "none"
+                            )
+                           ((= v1-5 (surface-type sand))
+                            "sand"
+                            )
+                           (else
+                             "*unknown*"
+                             )
+                           )
+          )
+    )
+  (format #t "~1Tfriction: ~f~%" (-> this friction))
+  (format #t "~1Tbounce: ~f~%" (-> this bounce))
+  (format #t "~1Tdrag: ~f~%" (-> this drag))
+  (format #t "~1Tdepth: ~f~%" (-> this depth))
+  (format #t "~1Tdamage: ~f~%" (-> this damage))
+  (format #t "~1Tscrape-sound: ~D~%" (-> this scrape-sound))
+  (format #t "~1Tglance-sound: ~D~%" (-> this glance-sound))
+  (format #t "~1Timpact-sound: ~D~%" (-> this impact-sound))
+  (format #t "~1Ttire-roll-mix[6] @ #x~X~%" (-> this tire-roll-mix))
+  (format #t "~1Ttire-roll-hum: ~f~%" (-> this tire-roll-hum))
+  (format #t "~1Ttire-roll-dirt: ~f~%" (-> this tire-roll-dirt))
+  (format #t "~1Ttire-roll-sand: ~f~%" (-> this tire-roll-sand))
+  (format #t "~1Ttire-roll-snow: ~f~%" (-> this tire-roll-snow))
+  (format #t "~1Ttire-roll-grass: ~f~%" (-> this tire-roll-grass))
+  (format #t "~1Ttire-roll-knobby: ~f~%" (-> this tire-roll-knobby))
+  (format #t "~1Ttire-slide-mix[2] @ #x~X~%" (-> this tire-slide-mix))
+  (format #t "~1Ttire-slide-road: ~f~%" (-> this tire-slide-road))
+  (format #t "~1Ttire-slide-dirt: ~f~%" (-> this tire-slide-dirt))
+  (label cfg-25)
+  this
+  )
+
+;; definition for symbol *material-to-rb-material-table*, type (pointer int8)
+(define *material-to-rb-material-table*
+  (new 'static 'array int8 34 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+  )
+
+;; failed to figure out what this is:
+(let ((v1-2 *material-to-rb-material-table*))
+  (dotimes (a0-2 34)
+    (set! (-> v1-2 a0-2) 7)
+    )
+  (set! (-> v1-2 0) 6)
+  (set! (-> v1-2 30) 6)
+  (set! (-> v1-2 23) 0)
+  (set! (-> v1-2 16) 0)
+  (set! (-> v1-2 6) 0)
+  (set! (-> v1-2 13) 0)
+  (set! (-> v1-2 14) 0)
+  (set! (-> v1-2 7) 1)
+  (set! (-> v1-2 15) 2)
+  (set! (-> v1-2 9) 4)
+  (set! (-> v1-2 5) 3)
+  (set! (-> v1-2 3) 3)
+  )
+
+;; failed to figure out what this is:
+0
+
+;; definition for function rigid-body-surface-type-from-material
+;; WARN: Return type mismatch int vs surface-type.
+(defun rigid-body-surface-type-from-material ((arg0 int))
+  (let ((v0-0 7))
+    (let ((v1-0 (logand arg0 63)))
+      (if (< v1-0 34)
+          (set! v0-0 (the-as int (-> (the-as (pointer uint8) (&+ *material-to-rb-material-table* v1-0)))))
+          )
+      )
+    (the-as surface-type v0-0)
+    )
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+
