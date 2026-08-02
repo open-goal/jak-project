@@ -151,7 +151,9 @@
       )
     (let ((s5-1 (-> arg1 tex))
           (v1-20 *display*)
-          (a0-26 144)
+          ;; og:preserve-this 144 in the original; grown by 1024 for the inline fog CLUT
+          ;; payload (see below).
+          (a0-26 1168)
           )
       (+! (-> v1-20 mem-reserve-size) a0-26)
       (the-as
@@ -188,15 +190,22 @@
 
             ;; PC port of clut upload
             ;;(upload-vram-data arg0 (the-as int (-> s5-1 clutdest)) (the-as pointer (-> s5-1 pad 1)) 16 16)
-            (pc-texture-anim-flag upload-clut-16-16 arg0 :qwc 1)
+            ;; og:preserve-this - this CLUT is rewritten by the EE every frame (the
+            ;; alpha loop above), so the payload must travel INLINE in the double
+            ;; buffered dma buffer. Passing only its address makes the render thread
+            ;; read memory that the next frame is concurrently rewriting, which caused
+            ;; one-frame fog/sky flickers. qwc = 1 record + 64 (16x16 CLUT, 1024 bytes).
+            (pc-texture-anim-flag upload-clut-16-16 arg0 :qwc 65)
             (let ((upload-record (the texture-anim-pc-upload (-> arg0 base))))
-              (set! (-> upload-record data) (the-as pointer (-> s5-1 pad 1))) ;; the clut16x16 object
+              (set! (-> upload-record data) (the-as pointer (-> s5-1 pad 1))) ;; unused in inline mode
               (set! (-> upload-record width) 16)
               (set! (-> upload-record height) 16)
               (set! (-> upload-record dest) (-> s5-1 clutdest))
               (set! (-> upload-record format) (gs-psm ct32))
               )
             (&+! (-> arg0 base) 16)
+            (mem-copy! (-> arg0 base) (the-as pointer (-> s5-1 pad 1)) 1024)
+            (&+! (-> arg0 base) 1024)
             (set! (-> *texture-pool* ids (shr (-> s5-1 clutdest) 6)) (the-as uint 0))
             ; (let* ((v1-29 arg0)
             ;        (a0-39 (-> v1-29 base))
