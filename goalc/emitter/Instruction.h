@@ -172,9 +172,9 @@ struct InstructionARM64 : InstructionImpl<InstructionARM64> {
   //
   // To do so, the instruction can optionally include multiple encodings
   // all of which are emitted at once.
-  static constexpr int kMaxInstrs = 64;
+  static constexpr int max_instrs = 64;
 
-  u32 encodings[kMaxInstrs]{};
+  u32 encodings[max_instrs]{};
   u8 count = 0;
 
   InstructionARM64() = delete;
@@ -194,7 +194,7 @@ struct InstructionARM64 : InstructionImpl<InstructionARM64> {
   {
     u8 idx = 0;
     auto append = [&](const InstructionARM64& i) {
-      ASSERT_MSG(idx + i.count <= kMaxInstrs, "Too many instructions in a multi-ARM64-instruction");
+      ASSERT_MSG(idx + i.count <= max_instrs, "Too many instructions in a multi-ARM64-instruction");
       for (uint8_t j = 0; j < i.count; ++j) {
         encodings[idx++] = i.encodings[j];
       }
@@ -206,7 +206,7 @@ struct InstructionARM64 : InstructionImpl<InstructionARM64> {
   InstructionARM64(std::span<const InstructionARM64> instrs) {
     u8 idx = 0;
     for (const auto& i : instrs) {
-      ASSERT_MSG(idx + i.count <= kMaxInstrs, "Too many instructions in a multi-ARM64-instruction");
+      ASSERT_MSG(idx + i.count <= max_instrs, "Too many instructions in a multi-ARM64-instruction");
       for (uint8_t j = 0; j < i.count; ++j) {
         encodings[idx++] = i.encodings[j];
       }

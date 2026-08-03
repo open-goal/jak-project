@@ -57,6 +57,13 @@ std::string CodeTester::dump_to_hex_string(bool nospace) {
   return result;
 }
 
+void CodeTester::print_hex_dump() {
+  printf("%s\n", dump_to_hex_string(true).data());
+}
+void CodeTester::print_asm_dump() {
+  printf("%s\n", dump_to_asm_string().data());
+}
+
 static constexpr int kFirstSavedGpr = 1;
 
 static std::optional<size_t> match_push_gprs(const std::vector<CodeTester::DisasmLine>& lines,

@@ -45,6 +45,8 @@ class CodeTester {
   std::string dump_to_hex_string(bool nospace = false);
   std::vector<DisasmLine> disassemble();
   std::string dump_to_asm_string();
+  void print_hex_dump();
+  void print_asm_dump();
   ObjectGenerator generator() const { return m_gen; }
   void init_code_buffer(int capacity);
   void emit_push_all_gprs(bool exclude_return_register = false);
@@ -188,6 +190,8 @@ class CodeTester {
    */
   int size() const { return code_buffer_size; }
   const u8* data() const { return code_buffer; }
+
+  uintptr_t code_address() const { return reinterpret_cast<uintptr_t>(code_buffer); }
 
   /*!
    * Write over existing data at the given offset.

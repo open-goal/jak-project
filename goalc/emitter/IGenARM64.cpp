@@ -3,6 +3,8 @@
 
 #include <tuple>
 
+#include "common/util/Assert.h"
+
 #include "goalc/emitter/IGen.h"
 #include "goalc/emitter/Instruction.h"
 #include "goalc/emitter/InstructionSet.h"
@@ -433,7 +435,7 @@ InstructionARM64 store16_gpr64_gpr64_plus_gpr64(Register addr1, Register addr2, 
   ASSERT(addr1 != addr2);
   ASSERT(addr1 != SP);
   ASSERT(addr2 != SP);
-  return InstructionARM64(Base(0b0111100000100000000010, 22), Rt(value.id()), Rn(addr1.id()),
+  return InstructionARM64(Base(0b0111100000100000111010, 22), Rt(value.id()), Rn(addr1.id()),
                           Rm(addr2.id()));
 }
 
@@ -1447,20 +1449,17 @@ InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register simd_dest,
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
+  // TODO - fix
   // first establish the base+index value in x16
   std::vector<InstructionARM64> instrs = {
       // https://www.scs.stanford.edu/~zyedidia/arm64/add_addsub_shift.html
       // ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
       InstructionARM64(Base(0b10001011000, 11), Rd(X16), Imm6(0), Rn(addr1.id()), Rm(addr2.id())),
   };
-  if (offset < 0) {
-    // we'll subtract instead
-    offset = std::abs(offset);
-    const auto sub_instrs = construct_multiple_imm12_subs(offset, X16);
-    instrs.insert(instrs.end(), sub_instrs.begin(), sub_instrs.end());
-  } else {
-    const auto add_instrs = construct_multiple_imm12_adds(offset, X16);
-    instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
+  // TODO - optimization, if its less than imm12 we can just do an add/sub
+  auto mov_instrs = mov_gpr64_u64(X16, offset);
+  for (const auto& instr : mov_instrs.encodings) {
+    instrs.push_back(InstructionARM64(instr));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_fpsimd.html
   // 32-bit variant
@@ -1957,13 +1956,18 @@ InstructionARM64 static_addr(Register dest, s64 offset) {
   ASSERT(dest.is_gpr(instr_set));
   ASSERT_MSG(offset != 0,
              "PC Relative offset isn't 0 at encoding time, actually encode it properly!");
-  // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_lit_gen.html
-  // LDR <Xt>, <label>
-  return InstructionARM64(Base(0b01011000, 8), Imm19(offset / 4), Rt(dest.id()));
+  ASSERT(offset >= -(1 << 20));
+  ASSERT(offset < (1 << 20));
+  u32 immlo = offset & 0x3;
+  u32 immhi = (offset >> 2) & 0x7ffff;
+  // https://www.scs.stanford.edu/~zyedidia/arm64/adr.html
+  // ADR <Xd>, <label>
+  return InstructionARM64(Base(0b00010000, 8), Rd(dest.id()), Immlo(immlo), Immhi(immhi));
 }
 
 InstructionARM64 static_load_f32(Register simd_dest, s64 offset) {
   ASSERT(simd_dest.is_128bit_simd(instr_set));
+  ASSERT_MSG(std::abs(offset) < 1000000, "LDR offset is greater than 1MB");
   ASSERT_MSG(offset != 0,
              "PC Relative offset isn't 0 at encoding time, actually encode it properly!");
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_lit_fpsimd.html
