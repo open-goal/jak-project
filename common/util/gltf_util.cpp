@@ -160,8 +160,7 @@ JointsAndWeights convert_per_vertex_data(const math::Vector4f& weights,
     if (src == discard_idx) {
       continue;
     }
-    // this +1 is to account for align not existing in the gltf.
-    ret.joints[dst] = joints[src] + 2;
+    ret.joints[dst] = joints[src] + 1;
     ret.weights[dst] = weights[src];
     sum += ret.weights[dst];
     dst++;

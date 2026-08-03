@@ -24,20 +24,15 @@
 #
 ###########################################################################
 #
-import pytest
-import json
 import logging
 import os
-import re
 import shutil
 import subprocess
-from datetime import timedelta, datetime
-from typing import List, Optional, Dict, Union
-from urllib.parse import urlparse
+from datetime import datetime
+from typing import Dict, Optional
 
 from . import ExecResult
 from .env import Env
-
 
 log = logging.getLogger(__name__)
 
@@ -45,10 +40,12 @@ log = logging.getLogger(__name__)
 class LocalClient:
 
     def __init__(self, name: str, env: Env, run_dir: Optional[str] = None,
-                 timeout: Optional[float] = None):
+                 timeout: Optional[float] = None,
+                 run_env: Optional[Dict[str,str]] = None):
         self.name = name
-        self.path = os.path.join(env.project_dir, f'tests/http/clients/{name}')
+        self.path = os.path.join(env.build_dir, 'tests/libtest/libtests')
         self.env = env
+        self._run_env = run_env
         self._timeout = timeout if timeout else env.test_timeout
         self._curl = os.environ['CURL'] if 'CURL' in os.environ else env.curl
         self._run_dir = run_dir if run_dir else os.path.join(env.gen_dir, name)
@@ -73,37 +70,43 @@ class LocalClient:
 
     def _rmf(self, path):
         if os.path.exists(path):
-            return os.remove(path)
+            os.remove(path)
 
     def _rmrf(self, path):
         if os.path.exists(path):
-            return shutil.rmtree(path)
+            shutil.rmtree(path)
 
     def _mkpath(self, path):
         if not os.path.exists(path):
-            return os.makedirs(path)
+            os.makedirs(path)
 
     def run(self, args):
         self._rmf(self._stdoutfile)
         self._rmf(self._stderrfile)
         start = datetime.now()
         exception = None
-        myargs = [self.path]
+        myargs = [self.path, self.name]
         myargs.extend(args)
+        run_env = None
+        if self._run_env:
+            run_env = self._run_env.copy()
+            for key in ['CURL_DEBUG']:
+                if key in os.environ and key not in run_env:
+                    run_env[key] = os.environ[key]
         try:
-            with open(self._stdoutfile, 'w') as cout:
-                with open(self._stderrfile, 'w') as cerr:
-                    p = subprocess.run(myargs, stderr=cerr, stdout=cout,
-                                       cwd=self._run_dir, shell=False,
-                                       input=None,
-                                       timeout=self._timeout)
-                    exitcode = p.returncode
+            with open(self._stdoutfile, 'w') as cout, open(self._stderrfile, 'w') as cerr:
+                p = subprocess.run(myargs, stderr=cerr, stdout=cout,
+                                   cwd=self._run_dir, shell=False,
+                                   input=None, env=run_env,
+                                   timeout=self._timeout)
+                exitcode = p.returncode
         except subprocess.TimeoutExpired:
             log.warning(f'Timeout after {self._timeout}s: {args}')
             exitcode = -1
             exception = 'TimeoutExpired'
-        coutput = open(self._stdoutfile).readlines()
-        cerrput = open(self._stderrfile).readlines()
+        with open(self._stdoutfile) as fout, open(self._stderrfile) as ferr:
+            coutput = fout.readlines()
+            cerrput = ferr.readlines()
         return ExecResult(args=myargs, exit_code=exitcode, exception=exception,
                           stdout=coutput, stderr=cerrput,
                           duration=datetime.now() - start)
@@ -111,8 +114,10 @@ class LocalClient:
     def dump_logs(self):
         lines = []
         lines.append('>>--stdout ----------------------------------------------\n')
-        lines.extend(open(self._stdoutfile).readlines())
+        with open(self._stdoutfile) as fd:
+            lines.extend(fd.readlines())
         lines.append('>>--stderr ----------------------------------------------\n')
-        lines.extend(open(self._stderrfile).readlines())
+        with open(self._stderrfile) as fd:
+            lines.extend(fd.readlines())
         lines.append('<<-------------------------------------------------------\n')
         return ''.join(lines)

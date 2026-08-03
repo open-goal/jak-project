@@ -7,6 +7,7 @@
 #include "Debugger.h"
 
 #include "common/goal_constants.h"
+#include "common/goos/Reader.h"
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/Assert.h"
@@ -63,6 +64,14 @@ bool Debugger::is_attached() const {
 bool Debugger::detach() {
   bool succ = true;
   if (is_valid() && m_attached) {
+    if (is_halted()) {
+      if (!m_regs_valid) {
+        m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
+      }
+      normalize_rip_after_break();
+      remove_breakpoints();
+      m_addr_breakpoints.clear();
+    }
 #ifdef __linux__
     if (!is_halted()) {
       succ = do_break();
@@ -226,11 +235,14 @@ InstructionPointerInfo Debugger::get_rip_info(u64 rip) {
 
 std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
                                                     u64 rsp,
-                                                    std::optional<std::string> dump_path) {
+                                                    std::optional<std::string> dump_path,
+                                                    bool quiet) {
   // TODO - it would probably be nice to decouple printing the backtrace from getting the backtrace
   // for now, build up a string and dump it at the end (if a path is provided)
   std::string backtrace_contents = "";
-  lg::print("Backtrace:\n");
+  if (!quiet) {
+    lg::print("Backtrace:\n");
+  }
   std::vector<BacktraceFrame> bt;
 
   bool null_pc = rip == m_debug_context.base;
@@ -239,7 +251,9 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
 
     u64 next_rip = 0;
     if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
-      lg::print("Failed to read return address off of the stack!\n");
+      if (!quiet) {
+        lg::print("Failed to read return address off of the stack!\n");
+      }
       return {};
     }
 
@@ -263,8 +277,10 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
       this_backtrace += fmt::format("{} from {}\n", frame.rip_info.function_name,
                                     frame.rip_info.func_debug->obj_name);
       // we're good!
-      auto disasm = disassemble_at_rip(frame.rip_info);
-      this_backtrace += fmt::format("{}\n", disasm.text);
+      if (!quiet) {
+        auto disasm = disassemble_at_rip(frame.rip_info);
+        this_backtrace += fmt::format("{}\n", disasm.text);
+      }
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
       u64 next_rip = 0;
@@ -353,7 +369,9 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
     backtrace_contents = this_backtrace + backtrace_contents;
   }
 
-  lg::print("{}\n", backtrace_contents);
+  if (!quiet) {
+    lg::print("{}\n", backtrace_contents);
+  }
   if (dump_path) {
     file_util::write_text_file(dump_path.value(), backtrace_contents);
   }
@@ -439,9 +457,7 @@ Disassembly Debugger::disassemble_at_rip(const InstructionPointerInfo& info) {
  * Read the registers, symbol table, and instructions near rip.
  * Print out some info about where we are.
  */
-void Debugger::update_break_info(std::optional<std::string> dump_path) {
-  // todo adjust rip if break instruction????
-
+void Debugger::reload_break_state() {
   m_memory_map = m_listener->build_memory_map();
   // lg::print("{}", m_memory_map.print());
   read_symbol_table();
@@ -450,7 +466,24 @@ void Debugger::update_break_info(std::optional<std::string> dump_path) {
   if (regs_valid()) {
     m_break_info = get_rip_info(m_regs_at_break.rip);
     update_continue_info();
+  }
+}
 
+bool Debugger::refresh_break_state() {
+  if (!(is_valid() && is_attached() && is_halted())) {
+    return false;
+  }
+  if (m_regs_valid) {
+    return true;
+  }
+  reload_break_state();
+  return m_regs_valid;
+}
+
+void Debugger::update_break_info(std::optional<std::string> dump_path) {
+  reload_break_state();
+
+  if (regs_valid()) {
     get_backtrace(m_regs_at_break.rip, m_regs_at_break.gprs[emitter::RSP], dump_path);
     auto dis = disassemble_at_rip(m_break_info);
     lg::print("{}\n", dis.text);
@@ -493,25 +526,7 @@ bool Debugger::do_continue() {
   }
   ASSERT(regs_valid());
 
-  if (!m_continue_info.valid) {
-    update_continue_info();
-  }
-  ASSERT(m_continue_info.valid);
-  m_regs_valid = false;
-
-  if (m_continue_info.subtract_1) {
-    m_regs_at_break.rip--;
-    auto result = xdbg::set_regs_now(m_debug_context.tid, m_regs_at_break);
-    ASSERT(result);
-  }
-
-  m_expecting_immeidate_break = false;
-  if (!xdbg::cont_now(m_debug_context.tid)) {
-    return false;
-  } else {
-    m_running = true;
-    return true;
-  }
+  return resume_from_break();
 }
 
 /*!
@@ -950,13 +965,17 @@ void Debugger::watcher() {
     if (xdbg::check_stopped(m_debug_context.tid, &signal_info)) {
       // the target stopped!
       m_continue_info.valid = false;
+      const bool quiet =
+          m_suppress_stop_reporting.load() && signal_info.kind == xdbg::SignalInfo::BREAK;
 
       switch (signal_info.kind) {
         case xdbg::SignalInfo::SEGFAULT:
           printf("Target has crashed with a SEGFAULT! Run (:di) to get more information.\n");
           break;
         case xdbg::SignalInfo::BREAK:
-          printf("Target has stopped. Run (:di) to get more information.\n");
+          if (!quiet) {
+            printf("Target has stopped. Run (:di) to get more information.\n");
+          }
           break;
         case xdbg::SignalInfo::MATH_EXCEPTION:
           printf("Target has crashed with a MATH_EXCEPTION! Run (:di) to get more information.\n");
@@ -993,6 +1012,11 @@ void Debugger::watcher() {
         m_watcher_queue.push({signal_info.kind});  // todo, more info?
       }
       m_watcher_cv.notify_one();
+
+      if (!quiet) {
+        // let the debug server (if available) tell its client we stopped
+        fire_stop_callback(signal_info.kind);
+      }
 
     } else {
       // the target didn't stop.
@@ -1055,6 +1079,11 @@ void Debugger::clear_signal_queue() {
 }
 
 void Debugger::add_addr_breakpoint(u32 addr) {
+  if (!is_halted()) {
+    lg::print("Cannot add a breakpoint unless the target is attached and halted.\n");
+    return;
+  }
+
   {
     std::unique_lock<std::mutex> lock(m_watcher_mutex);
     auto kv = m_addr_breakpoints.find(addr);
@@ -1083,6 +1112,11 @@ void Debugger::add_addr_breakpoint(u32 addr) {
 }
 
 void Debugger::remove_addr_breakpoint(u32 addr) {
+  if (!is_halted()) {
+    lg::print("Cannot remove a breakpoint unless the target is attached and halted.\n");
+    return;
+  }
+
   {
     std::unique_lock<std::mutex> lock(m_watcher_mutex);
     update_continue_info();
@@ -1223,4 +1257,655 @@ std::string Debugger::disassemble_x86_with_symbols(int len, u64 base_addr) const
   }
 
   return result;
+}
+
+namespace {
+// compare the compiler's relative path with an absolute one from the editor
+bool paths_match(const std::string& compiler_path, const std::string& query) {
+  auto normalize = [](const std::string& in) {
+    std::string out = in;
+    for (auto& c : out) {
+      if (c == '\\') {
+        c = '/';
+      }
+#ifdef _WIN32
+      c = (char)std::tolower((unsigned char)c);
+#endif
+    }
+    return out;
+  };
+
+  const std::string a = normalize(compiler_path);
+  const std::string b = normalize(query);
+  if (a == b) {
+    return true;
+  }
+  const std::string& longer = a.size() >= b.size() ? a : b;
+  const std::string& shorter = a.size() >= b.size() ? b : a;
+  if (shorter.empty() || longer.size() == shorter.size()) {
+    return false;
+  }
+  if (longer.compare(longer.size() - shorter.size(), shorter.size(), shorter) != 0) {
+    return false;
+  }
+  return longer[longer.size() - shorter.size() - 1] == '/';
+}
+}  // namespace
+
+void Debugger::fire_stop_callback(xdbg::SignalInfo::Kind kind) {
+  std::function<void(xdbg::SignalInfo::Kind)> cb;
+  {
+    std::lock_guard<std::mutex> lock(m_stop_callback_mutex);
+    cb = m_stop_callback;
+  }
+  if (cb) {
+    cb(kind);
+  }
+}
+
+u64 Debugger::get_normalized_rip() const {
+  const u64 rip = m_regs_at_break.rip;
+  if (!m_context_valid) {
+    return rip;
+  }
+  if (m_addr_breakpoints.find(u32(rip - m_debug_context.base - 1)) != m_addr_breakpoints.end()) {
+    return rip - 1;
+  }
+  return rip;
+}
+
+std::optional<u32> Debugger::get_breakpoint_addr_at_stop() const {
+  if (!m_context_valid || !m_regs_valid) {
+    return {};
+  }
+  const u32 addr = u32(m_regs_at_break.rip - m_debug_context.base - 1);
+  if (m_addr_breakpoints.find(addr) != m_addr_breakpoints.end()) {
+    return addr;
+  }
+  return {};
+}
+
+std::optional<SourceLocation> Debugger::source_location_for_function_offset(
+    const FunctionDebugInfo& func,
+    u32 function_offset) const {
+  if (!m_reader) {
+    return {};
+  }
+
+  // find the last instruction at or before this offset with src info
+  int best_ir = -1;
+  int best_offset = -1;
+  for (const auto& instr : func.instructions) {
+    if (instr.kind != InstructionInfo::Kind::IR || instr.offset < 0) {
+      continue;
+    }
+    if (u32(instr.offset) > function_offset) {
+      continue;
+    }
+    if (instr.offset >= best_offset) {
+      best_offset = instr.offset;
+      best_ir = instr.ir_idx;
+    }
+  }
+
+  if (best_ir < 0 || best_ir >= int(func.code_sources.size())) {
+    return {};
+  }
+  auto info = m_reader->db.try_get_short_info(func.code_sources.at(best_ir), false);
+  if (!info) {
+    return {};
+  }
+
+  SourceLocation loc;
+  loc.filename = info->filename;
+  loc.line = info->line_idx_to_display;
+  loc.column = info->pos_in_line;
+  loc.line_text = info->line_text;
+  return loc;
+}
+
+std::optional<std::string> Debugger::get_symbol_name_for_value(u32 value) const {
+  if (value == 0) {
+    return {};
+  }
+  for (const auto& [name, sym_value] : m_symbol_name_to_value_map) {
+    if (sym_value == value) {
+      return name;
+    }
+  }
+  return {};
+}
+
+std::optional<std::string> Debugger::get_symbol_name_at_address(u32 goal_addr) const {
+  if (!m_context_valid || goal_addr == 0) {
+    return {};
+  }
+
+  const s32 symbol_tag = m_version == GameVersion::Jak1 ? 0 : 1;
+  const s32 offset = s32(goal_addr) - s32(m_debug_context.s7) - symbol_tag;
+
+  auto kv = m_symbol_offset_to_name_map.find(offset);
+  if (kv != m_symbol_offset_to_name_map.end()) {
+    return kv->second;
+  }
+  return {};
+}
+
+std::optional<std::string> Debugger::get_type_name_of_basic(u32 goal_addr) {
+  if (!is_halted() || goal_addr < (u32)BASIC_OFFSET) {
+    return {};
+  }
+
+  u32 type_ptr = 0;
+  if (!read_memory_if_safe<u32>(&type_ptr, goal_addr - BASIC_OFFSET)) {
+    return {};
+  }
+  return get_symbol_name_for_value(type_ptr);
+}
+
+std::optional<SourceLocation> Debugger::get_source_location(u32 goal_addr) {
+  if (!m_context_valid) {
+    return {};
+  }
+  auto info = get_rip_info(goal_addr + m_debug_context.base);
+  if (!info.knows_function || !info.func_debug) {
+    return {};
+  }
+  return source_location_for_function_offset(*info.func_debug, info.function_offset);
+}
+
+std::vector<ResolvedBreakpoint> Debugger::resolve_source_breakpoint(const std::string& filename,
+                                                                    int line,
+                                                                    int max_line_slide) {
+  std::vector<ResolvedBreakpoint> result;
+  if (!m_reader || !m_listener) {
+    return result;
+  }
+
+  m_memory_map = m_listener->build_memory_map();
+
+  struct Candidate {
+    const FunctionDebugInfo* func = nullptr;
+    std::string func_name;
+    std::string obj_name;
+    int line = -1;
+    int offset = -1;
+  };
+  std::vector<Candidate> candidates;
+
+  for (auto& [obj_name, debug_info] : m_debug_info) {
+    for (const auto& [func_name, func] : debug_info.functions()) {
+      Candidate best;
+      for (const auto& instr : func.instructions) {
+        if (instr.kind != InstructionInfo::Kind::IR || instr.offset < 0) {
+          continue;
+        }
+        if (instr.ir_idx < 0 || instr.ir_idx >= int(func.code_sources.size())) {
+          continue;
+        }
+        auto info = m_reader->db.try_get_short_info(func.code_sources.at(instr.ir_idx), false);
+        if (!info || !paths_match(info->filename, filename)) {
+          continue;
+        }
+        const int instr_line = info->line_idx_to_display;
+        // a breakpoint on a blank line or a comment slides forward to the next line with code
+        if (instr_line < line || instr_line > line + max_line_slide) {
+          continue;
+        }
+        if (best.line == -1 || instr_line < best.line ||
+            (instr_line == best.line && instr.offset < best.offset)) {
+          best.func = &func;
+          best.func_name = func_name;
+          best.obj_name = func.obj_name.empty() ? obj_name : func.obj_name;
+          best.line = instr_line;
+          best.offset = instr.offset;
+        }
+      }
+      if (best.func) {
+        candidates.push_back(best);
+      }
+    }
+  }
+
+  if (candidates.empty()) {
+    return result;
+  }
+
+  int chosen_line = candidates.front().line;
+  for (const auto& c : candidates) {
+    chosen_line = std::min(chosen_line, c.line);
+  }
+
+  for (const auto& c : candidates) {
+    if (c.line != chosen_line) {
+      continue;
+    }
+    ResolvedBreakpoint bp;
+    bp.line = c.line;
+    bp.function_name = c.func_name;
+    bp.object_name = c.obj_name;
+
+    listener::MemoryMapEntry entry;
+    if (m_memory_map.lookup(c.obj_name, c.func->seg, &entry)) {
+      bp.goal_addr = entry.start_addr + c.func->offset_in_seg + c.offset;
+      bp.loaded = true;
+    }
+    result.push_back(bp);
+  }
+
+  return result;
+}
+
+std::vector<LiveVariable> Debugger::get_live_variables() {
+  std::vector<LiveVariable> result;
+  if (!(is_valid() && is_attached() && is_halted()) || !m_regs_valid) {
+    return result;
+  }
+
+  auto info = get_rip_info(get_normalized_rip());
+  if (!info.knows_function || !info.func_debug || info.func_debug->locals.empty()) {
+    return result;
+  }
+
+  int current_ir = -1;
+  int best_offset = -1;
+  for (const auto& instr : info.func_debug->instructions) {
+    if (instr.kind != InstructionInfo::Kind::IR || instr.offset < 0) {
+      continue;
+    }
+    if (u32(instr.offset) <= info.function_offset && instr.offset >= best_offset) {
+      best_offset = instr.offset;
+      current_ir = instr.ir_idx;
+    }
+  }
+  if (current_ir < 0) {
+    return result;
+  }
+
+  const u64 rsp = m_regs_at_break.gprs[emitter::RSP];
+
+  for (const auto& local : info.func_debug->locals) {
+    const auto* location = local.location_at(current_ir);
+    if (!location) {
+      continue;
+    }
+
+    LiveVariable var;
+    var.name = local.name;
+    var.type = local.type;
+    var.is_parameter = local.is_parameter;
+
+    if (location->kind == VariableLocation::Kind::REGISTER) {
+      var.in_register = true;
+      var.reg = location->reg;
+    } else {
+      const u64 addr = rsp + location->stack_offset;
+      if (addr <= m_debug_context.base) {
+        continue;
+      }
+      var.stack_addr = u32(addr - m_debug_context.base);
+    }
+
+    result.push_back(var);
+  }
+
+  return result;
+}
+
+std::vector<SourceStackFrame> Debugger::get_source_stack_frames(int max_frames) {
+  std::vector<SourceStackFrame> result;
+  if (!(is_valid() && is_attached() && is_halted()) || !m_regs_valid) {
+    return result;
+  }
+
+  auto bt = get_backtrace(get_normalized_rip(), m_regs_at_break.gprs[emitter::RSP], {}, true);
+
+  for (size_t i = 0; i < bt.size() && int(result.size()) < max_frames; i++) {
+    const auto& frame = bt.at(i);
+    SourceStackFrame out;
+    out.function_name =
+        frame.rip_info.knows_function ? frame.rip_info.function_name : "(unknown function)";
+    out.object_name = frame.rip_info.knows_object ? frame.rip_info.object_name : "";
+    out.rip = frame.rip_info.real_rip;
+    out.goal_rip = frame.rip_info.goal_rip;
+    out.rsp = frame.rsp_at_rip;
+
+    if (frame.rip_info.func_debug) {
+      u32 offset = frame.rip_info.function_offset;
+      if (i > 0 && offset > 0) {
+        offset--;
+      }
+      out.source = source_location_for_function_offset(*frame.rip_info.func_debug, offset);
+    }
+
+    result.push_back(out);
+  }
+
+  return result;
+}
+
+void Debugger::place_breakpoints() {
+  if (!is_halted()) {
+    return;
+  }
+  u8 int3 = 0xcc;
+  for (auto& [addr, bp] : m_addr_breakpoints) {
+    (void)bp;
+    write_memory(&int3, 1, addr);
+  }
+}
+
+void Debugger::remove_breakpoints() {
+  if (!is_halted()) {
+    return;
+  }
+  for (auto& [addr, bp] : m_addr_breakpoints) {
+    write_memory(&bp.old_data, 1, addr);
+  }
+}
+
+bool Debugger::normalize_rip_after_break() {
+  if (!m_regs_valid || !m_context_valid) {
+    return false;
+  }
+
+  const u64 rip_goal = m_regs_at_break.rip - m_debug_context.base;
+  if (rip_goal == 0) {
+    return true;
+  }
+  if (m_addr_breakpoints.find(u32(rip_goal - 1)) == m_addr_breakpoints.end()) {
+    return true;
+  }
+
+  m_regs_at_break.rip--;
+  if (!xdbg::set_regs_now(m_debug_context.tid, m_regs_at_break)) {
+    return false;
+  }
+  m_continue_info.valid = false;
+  update_continue_info();
+  return true;
+}
+
+bool Debugger::single_step_once() {
+  if (!(is_valid() && is_attached() && is_halted())) {
+    return false;
+  }
+
+  m_continue_info.valid = false;
+  m_regs_valid = false;
+  clear_signal_queue();
+
+  if (!xdbg::single_step_now(m_debug_context.tid)) {
+    return false;
+  }
+  m_running = true;
+
+  auto info = pop_signal();
+  m_running = false;
+  if (info.kind == xdbg::SignalInfo::DISAPPEARED) {
+    return false;
+  }
+
+  m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
+  return m_regs_valid;
+}
+
+bool Debugger::resume_from_break() {
+  if (!(is_valid() && is_attached() && is_halted())) {
+    return false;
+  }
+  if (!m_regs_valid) {
+    m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
+    if (!m_regs_valid) {
+      return false;
+    }
+  }
+  const u64 rip_goal = m_regs_at_break.rip - m_debug_context.base;
+  auto bp_it = m_addr_breakpoints.find(u32(rip_goal));
+  if (bp_it == m_addr_breakpoints.end() && rip_goal > 0) {
+    bp_it = m_addr_breakpoints.find(u32(rip_goal - 1));
+    if (bp_it != m_addr_breakpoints.end()) {
+      m_regs_at_break.rip--;
+      if (!xdbg::set_regs_now(m_debug_context.tid, m_regs_at_break)) {
+        return false;
+      }
+    }
+  }
+
+  if (bp_it != m_addr_breakpoints.end()) {
+    const auto bp = bp_it->second;
+    const bool was_suppressed = m_suppress_stop_reporting;
+    m_suppress_stop_reporting = true;
+
+    bool ok = write_memory(&bp.old_data, 1, bp.goal_addr) && single_step_once();
+    if (ok) {
+      u8 int3 = 0xcc;
+      ok = write_memory(&int3, 1, bp.goal_addr);
+    }
+
+    m_suppress_stop_reporting = was_suppressed;
+    if (!ok) {
+      return false;
+    }
+  }
+
+  m_continue_info.valid = false;
+  m_regs_valid = false;
+  m_expecting_immeidate_break = false;
+  clear_signal_queue();
+
+  if (!xdbg::cont_now(m_debug_context.tid)) {
+    return false;
+  }
+  m_running = true;
+  return true;
+}
+
+bool Debugger::run_to_addr(u32 goal_addr) {
+  if (!is_halted()) {
+    return false;
+  }
+
+  const bool already_a_user_bp = m_addr_breakpoints.find(goal_addr) != m_addr_breakpoints.end();
+  u8 saved_byte = 0;
+
+  if (!already_a_user_bp) {
+    if (!read_memory(&saved_byte, 1, goal_addr)) {
+      return false;
+    }
+    u8 int3 = 0xcc;
+    if (!write_memory(&int3, 1, goal_addr)) {
+      return false;
+    }
+  }
+
+  bool arrived = false;
+  if (resume_from_break()) {
+    auto info = pop_signal();
+    m_running = false;
+    if (info.kind != xdbg::SignalInfo::DISAPPEARED) {
+      m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
+      if (m_regs_valid) {
+        arrived = u32(m_regs_at_break.rip - m_debug_context.base - 1) == goal_addr;
+      }
+    }
+  }
+
+  if (is_halted()) {
+    bool rewound = false;
+    if (!already_a_user_bp) {
+      // take our temporary int3 back out
+      write_memory(&saved_byte, 1, goal_addr);
+      if (arrived && m_regs_valid) {
+        // it was never in m_addr_breakpoints, so rewind off it by hand
+        m_regs_at_break.rip--;
+        xdbg::set_regs_now(m_debug_context.tid, m_regs_at_break);
+        rewound = true;
+      }
+    }
+    if (!rewound) {
+      // we may have stopped on one of the user's breakpoints instead of ours
+      normalize_rip_after_break();
+    }
+  }
+
+  m_continue_info.valid = false;
+  return arrived;
+}
+
+std::optional<u64> Debugger::get_return_address_of_current_frame() {
+  if (!m_regs_valid) {
+    return {};
+  }
+  auto info = get_rip_info(get_normalized_rip());
+  if (!info.knows_function || !info.func_debug || !info.func_debug->stack_usage) {
+    return {};
+  }
+  const u64 rsp_at_call = m_regs_at_break.gprs[emitter::RSP] + *info.func_debug->stack_usage;
+  u64 ret = 0;
+  if (!read_memory_if_safe<u64>(&ret, rsp_at_call - m_debug_context.base)) {
+    return {};
+  }
+  return ret;
+}
+
+bool Debugger::do_step(StepKind kind) {
+  if (!(is_valid() && is_attached() && is_halted())) {
+    return false;
+  }
+  if (!m_regs_valid) {
+    m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
+    if (!m_regs_valid) {
+      return false;
+    }
+  }
+
+  m_memory_map = m_listener->build_memory_map();
+
+  const auto start_info = get_rip_info(get_normalized_rip());
+  const FunctionDebugInfo* start_func = start_info.func_debug;
+  const u64 start_rsp = m_regs_at_break.gprs[emitter::RSP];
+  int start_line = -1;
+  if (start_func) {
+    auto loc = source_location_for_function_offset(*start_func, start_info.function_offset);
+    if (loc) {
+      start_line = loc->line;
+    }
+  }
+
+  m_suppress_stop_reporting = true;
+  bool ok = true;
+
+  if (kind == StepKind::OUT_OF) {
+    auto ret = get_return_address_of_current_frame();
+    if (ret && *ret > m_debug_context.base) {
+      ok = run_to_addr(u32(*ret - m_debug_context.base));
+    } else {
+      ok = false;
+    }
+  } else {
+    if (!normalize_rip_after_break()) {
+      m_suppress_stop_reporting = false;
+      return false;
+    }
+    remove_breakpoints();
+
+    constexpr int MAX_STEPS = 500000;
+    int steps = 0;
+
+    while (steps++ < MAX_STEPS) {
+      if (!single_step_once()) {
+        ok = false;
+        break;
+      }
+
+      const u64 rip = m_regs_at_break.rip;
+      const u64 rsp = m_regs_at_break.gprs[emitter::RSP];
+      auto info = get_rip_info(rip);
+
+      const bool in_known_goal_code = info.in_goal_mem && info.knows_function && info.func_debug;
+
+      if (!in_known_goal_code) {
+        // not in goal code, get return address from the top of the stack and get back to it
+        u64 ret = 0;
+        if (rsp > m_debug_context.base &&
+            read_memory_if_safe<u64>(&ret, rsp - m_debug_context.base) &&
+            ret > m_debug_context.base) {
+          place_breakpoints();
+          const bool got_back = run_to_addr(u32(ret - m_debug_context.base));
+          remove_breakpoints();
+          if (!got_back) {
+            // we stopped for some other reason (breakpoint or crash), that stop wins
+            break;
+          }
+          continue;
+        }
+        // can't work out where we are or how to get back; stop here rather than run away
+        break;
+      }
+
+      if (info.func_debug != start_func) {
+        if (rsp < start_rsp) {
+          // we've called into something
+          if (kind == StepKind::INTO) {
+            // settle on the first instruction in the callee with source info (the prologue
+            // usually doesn't have any)
+            int settle = 0;
+            while (settle++ < 200) {
+              auto here = get_rip_info(m_regs_at_break.rip);
+              if (here.func_debug &&
+                  source_location_for_function_offset(*here.func_debug, here.function_offset)) {
+                break;
+              }
+              if (!single_step_once()) {
+                ok = false;
+                break;
+              }
+            }
+            break;
+          }
+
+          // stepping over, the return address is on top of the stack right after the call
+          u64 ret = 0;
+          if (rsp > m_debug_context.base &&
+              read_memory_if_safe<u64>(&ret, rsp - m_debug_context.base) &&
+              ret > m_debug_context.base) {
+            place_breakpoints();
+            const bool got_back = run_to_addr(u32(ret - m_debug_context.base));
+            remove_breakpoints();
+            if (!got_back) {
+              break;
+            }
+            continue;
+          }
+          break;
+        }
+
+        // we returned out of the function we started in, that's a completed step
+        break;
+      }
+
+      // same function, are we on a new source line yet?
+      auto loc = source_location_for_function_offset(*info.func_debug, info.function_offset);
+      if (loc && loc->line != start_line) {
+        break;
+      }
+    }
+
+    place_breakpoints();
+  }
+
+  m_suppress_stop_reporting = false;
+
+  // refresh what everything else reads after a stop
+  if (ok && is_halted()) {
+    m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
+    if (m_regs_valid) {
+      m_break_info = get_rip_info(get_normalized_rip());
+    }
+    m_continue_info.valid = false;
+    update_continue_info();
+  }
+
+  return ok;
 }

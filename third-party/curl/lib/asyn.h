@@ -23,15 +23,29 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-
 #include "curl_setup.h"
+
+#if defined(USE_HTTPSRR) && defined(USE_ARES)
+#include "httpsrr.h"
+#endif
+
+struct Curl_easy;
+struct Curl_dns_entry;
+struct Curl_resolv_async;
+struct Curl_multi;
+struct easy_pollset;
+
+#ifdef CURLRES_ASYNCH
+
 #include "curl_addrinfo.h"
 
-struct addrinfo;
 struct hostent;
-struct Curl_easy;
 struct connectdata;
-struct Curl_dns_entry;
+struct easy_pollset;
+
+#if defined(USE_RESOLV_ARES) && defined(USE_RESOLV_THREADED)
+#error cannot have both USE_RESOLV_ARES and USE_RESOLV_THREADED defined
+#endif
 
 /*
  * This header defines all functions in the internal asynch resolver interface.
@@ -41,111 +55,21 @@ struct Curl_dns_entry;
  */
 
 /*
- * Curl_resolver_global_init()
+ * Curl_async_global_init()
  *
  * Called from curl_global_init() to initialize global resolver environment.
  * Returning anything else than CURLE_OK fails curl_global_init().
  */
-int Curl_resolver_global_init(void);
+int Curl_async_global_init(void);
 
 /*
- * Curl_resolver_global_cleanup()
+ * Curl_async_global_cleanup()
  * Called from curl_global_cleanup() to destroy global resolver environment.
  */
-void Curl_resolver_global_cleanup(void);
+void Curl_async_global_cleanup(void);
 
 /*
- * Curl_resolver_init()
- * Called from curl_easy_init() -> Curl_open() to initialize resolver
- * URL-state specific environment ('resolver' member of the UrlState
- * structure).  Should fill the passed pointer by the initialized handler.
- * Returning anything else than CURLE_OK fails curl_easy_init() with the
- * correspondent code.
- */
-CURLcode Curl_resolver_init(struct Curl_easy *easy, void **resolver);
-
-/*
- * Curl_resolver_cleanup()
- * Called from curl_easy_cleanup() -> Curl_close() to cleanup resolver
- * URL-state specific environment ('resolver' member of the UrlState
- * structure).  Should destroy the handler and free all resources connected to
- * it.
- */
-void Curl_resolver_cleanup(void *resolver);
-
-/*
- * Curl_resolver_duphandle()
- * Called from curl_easy_duphandle() to duplicate resolver URL-state specific
- * environment ('resolver' member of the UrlState structure).  Should
- * duplicate the 'from' handle and pass the resulting handle to the 'to'
- * pointer.  Returning anything else than CURLE_OK causes failed
- * curl_easy_duphandle() call.
- */
-CURLcode Curl_resolver_duphandle(struct Curl_easy *easy, void **to,
-                                 void *from);
-
-/*
- * Curl_resolver_cancel().
- *
- * It is called from inside other functions to cancel currently performing
- * resolver request. Should also free any temporary resources allocated to
- * perform a request.  This never waits for resolver threads to complete.
- *
- * It is safe to call this when conn is in any state.
- */
-void Curl_resolver_cancel(struct Curl_easy *data);
-
-/*
- * Curl_resolver_kill().
- *
- * This acts like Curl_resolver_cancel() except it will block until any threads
- * associated with the resolver are complete.  This never blocks for resolvers
- * that do not use threads.  This is intended to be the "last chance" function
- * that cleans up an in-progress resolver completely (before its owner is about
- * to die).
- *
- * It is safe to call this when conn is in any state.
- */
-void Curl_resolver_kill(struct Curl_easy *data);
-
-/* Curl_resolver_getsock()
- *
- * This function is called from the multi_getsock() function.  'sock' is a
- * pointer to an array to hold the file descriptors, with 'numsock' being the
- * size of that array (in number of entries). This function is supposed to
- * return bitmask indicating what file descriptors (referring to array indexes
- * in the 'sock' array) to wait for, read/write.
- */
-int Curl_resolver_getsock(struct Curl_easy *data, curl_socket_t *sock);
-
-/*
- * Curl_resolver_is_resolved()
- *
- * Called repeatedly to check if a previous name resolve request has
- * completed. It should also make sure to time-out if the operation seems to
- * take too long.
- *
- * Returns normal CURLcode errors.
- */
-CURLcode Curl_resolver_is_resolved(struct Curl_easy *data,
-                                   struct Curl_dns_entry **dns);
-
-/*
- * Curl_resolver_wait_resolv()
- *
- * Waits for a resolve to finish. This function should be avoided since using
- * this risk getting the multi interface to "hang".
- *
- * If 'entry' is non-NULL, make it point to the resolved dns entry
- *
- * Returns CURLE_COULDNT_RESOLVE_HOST if the host was not resolved,
- * CURLE_OPERATION_TIMEDOUT if a time-out occurred, or other errors.
- */
-CURLcode Curl_resolver_wait_resolv(struct Curl_easy *data,
-                                   struct Curl_dns_entry **dnsentry);
-
-/*
- * Curl_resolver_getaddrinfo() - when using this resolver
+ * Curl_async_getaddrinfo() - when using this resolver
  *
  * Returns name information about the given hostname and port number. If
  * successful, the 'hostent' is returned and the fourth argument will point to
@@ -155,30 +79,199 @@ CURLcode Curl_resolver_wait_resolv(struct Curl_easy *data,
  * Each resolver backend must of course make sure to return data in the
  * correct format to comply with this.
  */
-struct Curl_addrinfo *Curl_resolver_getaddrinfo(struct Curl_easy *data,
-                                                const char *hostname,
-                                                int port,
-                                                int *waitp);
+CURLcode Curl_async_getaddrinfo(struct Curl_easy *data,
+                                struct Curl_resolv_async *async);
 
-#ifndef CURLRES_ASYNCH
-/* convert these functions if an asynch resolver isn't used */
-#define Curl_resolver_cancel(x) Curl_nop_stmt
-#define Curl_resolver_kill(x) Curl_nop_stmt
-#define Curl_resolver_is_resolved(x,y) CURLE_COULDNT_RESOLVE_HOST
-#define Curl_resolver_wait_resolv(x,y) CURLE_COULDNT_RESOLVE_HOST
-#define Curl_resolver_duphandle(x,y,z) CURLE_OK
-#define Curl_resolver_init(x,y) CURLE_OK
-#define Curl_resolver_global_init() CURLE_OK
-#define Curl_resolver_global_cleanup() Curl_nop_stmt
-#define Curl_resolver_cleanup(x) Curl_nop_stmt
+const struct Curl_addrinfo *Curl_async_get_ai(struct Curl_easy *data,
+                                              struct Curl_resolv_async *async,
+                                              int ai_family,
+                                              unsigned int index);
+
+#ifdef USE_HTTPSRR
+const struct Curl_https_rrinfo *Curl_async_get_https(
+  struct Curl_easy *data,
+  struct Curl_resolv_async *async);
+bool Curl_async_knows_https(struct Curl_easy *data,
+                            struct Curl_resolv_async *async);
+#endif /* USE_HTTPSRR */
+
+#ifdef USE_ARES
+/* common functions for c-ares and threaded resolver with HTTPSRR */
+#include <ares.h>
+
+CURLcode Curl_ares_pollset(struct Curl_easy *data,
+                           ares_channel channel,
+                           struct easy_pollset *ps);
+
+timediff_t Curl_ares_timeout_ms(struct Curl_easy *data,
+                                struct Curl_resolv_async *async,
+                                ares_channel channel);
+
+int Curl_ares_perform(ares_channel channel, timediff_t timeout_ms);
 #endif
 
-#ifdef CURLRES_ASYNCH
-#define Curl_resolver_asynch() 1
-#else
-#define Curl_resolver_asynch() 0
+#ifdef USE_RESOLV_ARES
+/* async resolving implementation using c-ares alone */
+struct async_ares_ctx {
+  ares_channel channel;
+  struct Curl_addrinfo *res_A;
+  struct Curl_addrinfo *res_AAAA;
+  int ares_status;               /* ARES_SUCCESS, ARES_ENOTFOUND, etc. */
+  CURLcode result;               /* CURLE_OK or error handling response */
+  struct curltime happy_eyeballs_dns_time; /* when this timer started, or 0 */
+#ifdef USE_HTTPSRR
+  struct Curl_https_rrinfo hinfo;
+#endif
+};
+
+void Curl_async_ares_shutdown(struct Curl_easy *data,
+                              struct Curl_resolv_async *async);
+void Curl_async_ares_destroy(struct Curl_easy *data,
+                             struct Curl_resolv_async *async);
+
+#endif /* USE_RESOLV_ARES */
+
+#ifdef USE_RESOLV_THREADED
+
+struct async_thrdd_item;
+
+/* Context for threaded resolver */
+struct async_thrdd_ctx {
+  struct async_thrdd_item *res_A; /* ipv4 result */
+  struct async_thrdd_item *res_AAAA; /* ipv6 result */
+#if defined(USE_HTTPSRR) && defined(USE_ARES)
+  struct {
+    ares_channel channel;
+    struct Curl_https_rrinfo hinfo;
+  } rr;
+#endif
+};
+
+void Curl_async_thrdd_shutdown(struct Curl_easy *data,
+                               struct Curl_resolv_async *async);
+void Curl_async_thrdd_destroy(struct Curl_easy *data,
+                              struct Curl_resolv_async *async);
+
+CURLcode Curl_async_thrdd_multi_init(struct Curl_multi *multi,
+                                     uint32_t min_threads,
+                                     uint32_t max_threads,
+                                     uint32_t idle_time_ms);
+void Curl_async_thrdd_multi_destroy(struct Curl_multi *multi, bool join);
+void Curl_async_thrdd_multi_process(struct Curl_multi *multi);
+
+CURLcode Curl_async_thrdd_multi_set_props(struct Curl_multi *multi,
+                                          uint32_t min_threads,
+                                          uint32_t max_threads,
+                                          uint32_t idle_time_ms);
+
+#endif /* USE_RESOLV_THREADED */
+
+#ifndef CURL_DISABLE_DOH
+struct doh_probes;
 #endif
 
+/*
+ * Curl_async_await()
+ *
+ * Waits for a resolve to finish. This function should be avoided since using
+ * this risk getting the multi interface to "hang".
+ *
+ * On return 'dns' is assigned the resolved dns (CURLE_OK or NULL otherwise.
+ *
+ * Returns CURLE_COULDNT_RESOLVE_HOST if the host was not resolved,
+ * CURLE_OPERATION_TIMEDOUT if a time-out occurred, or other errors.
+ */
+CURLcode Curl_async_await(struct Curl_easy *data, uint32_t resolv_id,
+                          struct Curl_dns_entry **pdns);
+
+/*
+ * Take the result of an async resolve operation.
+ * Returns CURLE_OK with `*pdns` != NULL, CURLE_AGAIN while still
+ * ongoing or an error code for a failed resolve.
+ */
+CURLcode Curl_async_take_result(struct Curl_easy *data,
+                                struct Curl_resolv_async *async,
+                                struct Curl_dns_entry **pdns);
+
+/* Curl_async_pollset()
+ *
+ * This function is called from the Curl_multi_pollset() function.  'sock' is a
+ * pointer to an array to hold the file descriptors, with 'numsock' being the
+ * size of that array (in number of entries). This function is supposed to
+ * return bitmask indicating what file descriptors (referring to array indexes
+ * in the 'sock' array) to wait for, read/write.
+ */
+CURLcode Curl_async_pollset(struct Curl_easy *data,
+                            struct Curl_resolv_async *async,
+                            struct easy_pollset *ps);
+
+#else /* CURLRES_ASYNCH */
+
+/* convert these functions if an asynch resolver is not used */
+#define Curl_async_global_init()        CURLE_OK
+#define Curl_async_global_cleanup()     Curl_nop_stmt
+#define Curl_async_get_ai(a, b, c, d)   NULL
+#define Curl_async_await(a, b, c)       CURLE_COULDNT_RESOLVE_HOST
+#define Curl_async_take_result(x, y, z) CURLE_COULDNT_RESOLVE_HOST
+#define Curl_async_pollset(x, y, z)     CURLE_OK
+#define Curl_async_get_https(x, y)      NULL
+#define Curl_async_knows_https(x, y)    TRUE
+#endif /* !CURLRES_ASYNCH */
+
+#if defined(CURLRES_ASYNCH) || !defined(CURL_DISABLE_DOH)
+#define USE_CURL_ASYNC
+#endif
+
+#ifdef USE_CURL_ASYNC
+
+struct Curl_resolv_async {
+  struct Curl_resolv_async *next;
+#ifdef USE_RESOLV_ARES
+  struct async_ares_ctx ares;
+#elif defined(USE_RESOLV_THREADED)
+  struct async_thrdd_ctx thrdd;
+#endif
+#ifndef CURL_DISABLE_DOH
+  struct doh_probes *doh; /* DoH specific data for this request */
+#endif
+  struct curltime start;
+  timediff_t interval_end;
+  timediff_t timeout_ms;
+  CURLcode result;
+  uint32_t poll_interval;
+  uint32_t id; /* unique id per easy handle of the resolve operation */
+  /* what is being resolved */
+  uint16_t port;
+  uint8_t dns_queries; /* what queries are being performed */
+  uint8_t dns_responses; /* what queries had responses so far. */
+  uint8_t transport;
+  uint8_t queries_ongoing;
+  BIT(is_ipaddr);
+  BIT(is_ipv4addr);
+  BIT(for_proxy);
+  BIT(done);
+  BIT(shutdown);
+  char hostname[1];
+};
+
+timediff_t Curl_async_timeleft_ms(struct Curl_easy *data,
+                                  struct Curl_resolv_async *async);
+
+/* Shut down the given async resolve. */
+void Curl_async_shutdown(struct Curl_easy *data,
+                         struct Curl_resolv_async *async);
+
+/* Frees the resources of the given async resolve and the struct itself. */
+void Curl_async_destroy(struct Curl_easy *data,
+                        struct Curl_resolv_async *async);
+
+CURLcode Curl_async_failed(struct Curl_easy *data,
+                           struct Curl_resolv_async *async,
+                           const char *detail);
+
+#else /* !USE_CURL_ASYNC */
+#define Curl_async_shutdown(x, y) Curl_nop_stmt
+#endif /* USE_CURL_ASYNC */
 
 /********** end of generic resolver interface functions *****************/
 #endif /* HEADER_CURL_ASYN_H */

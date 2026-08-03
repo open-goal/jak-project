@@ -22,7 +22,7 @@
  *
  ***************************************************************************/
 /* <DESC>
- * Shows HTTPS usage with client certs and optional ssl engine use.
+ * Shows HTTPS usage with client certs and optional SSL engine use.
  * </DESC>
  */
 #include <assert.h>
@@ -38,9 +38,9 @@
  * SSL backend has to be configured).
  *
  *  **** This example only works with libcurl 7.56.0 and later! ****
-*/
+ */
 
-int main(int argc, char **argv)
+int main(int argc, const char **argv)
 {
   const char *name = argc > 1 ? argv[1] : "openssl";
   CURLsslset result;
@@ -49,12 +49,12 @@ int main(int argc, char **argv)
     const curl_ssl_backend **list;
     int i;
 
-    result = curl_global_sslset((curl_sslbackend)-1, NULL, &list);
+    result = curl_global_sslset(CURLSSLBACKEND_NONE, NULL, &list);
     assert(result == CURLSSLSET_UNKNOWN_BACKEND);
 
     for(i = 0; list[i]; i++)
       printf("SSL backend #%d: '%s' (ID: %d)\n",
-             i, list[i]->name, list[i]->id);
+             i, list[i]->name, (int)list[i]->id);
 
     return 0;
   }
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     result = curl_global_sslset((curl_sslbackend)id, NULL, NULL);
   }
   else
-    result = curl_global_sslset((curl_sslbackend)-1, name, NULL);
+    result = curl_global_sslset(CURLSSLBACKEND_NONE, name, NULL);
 
   if(result == CURLSSLSET_UNKNOWN_BACKEND) {
     fprintf(stderr, "Unknown SSL backend id: %s\n", name);

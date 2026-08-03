@@ -301,6 +301,14 @@ bool cont_now(const ThreadID& tid) {
   return true;
 }
 
+bool single_step_now(const ThreadID& tid) {
+  if (ptrace(PTRACE_SINGLESTEP, tid.id, nullptr, nullptr) < 0) {
+    printf("[Debugger] Failed to PTRACE_SINGLESTEP %s\n", strerror(errno));
+    return false;
+  }
+  return true;
+}
+
 #elif _WIN32
 
 ThreadID::ThreadID(DWORD _pid, DWORD _tid) : pid(_pid), tid(_tid) {}
@@ -387,6 +395,41 @@ bool cont_now(const ThreadID& tid) {
     cv.notify_all();
   }
   return true;
+}
+
+/*!
+ * Execute a single instruction in the given thread, then stop again.
+ * Windows has no single-step request, so we set the x86 trap flag (EFLAGS.TF) and resume. The
+ * CPU raises a single-step exception after exactly one instruction. The flag is cleared by the
+ * CPU when the exception is delivered, so this does not need to be undone.
+ */
+bool single_step_now(const ThreadID& tid) {
+  CONTEXT context = {};
+  context.ContextFlags = CONTEXT_CONTROL;
+  HANDLE hThr = OpenThread(THREAD_GET_CONTEXT | THREAD_SET_CONTEXT, FALSE, tid.tid);
+
+  if (hThr == NULL) {
+    win_print_last_error("OpenThread single_step_now");
+    return false;
+  }
+
+  if (!GetThreadContext(hThr, &context)) {
+    win_print_last_error("GetThreadContext single_step_now");
+    CloseHandle(hThr);
+    return false;
+  }
+
+  context.EFlags |= 0x100;  // TF
+  context.ContextFlags = CONTEXT_CONTROL;
+
+  if (!SetThreadContext(hThr, &context)) {
+    win_print_last_error("SetThreadContext single_step_now");
+    CloseHandle(hThr);
+    return false;
+  }
+  CloseHandle(hThr);
+
+  return cont_now(tid);
 }
 
 DEBUG_EVENT debugEvent;
@@ -570,7 +613,7 @@ bool write_goal_memory(const u8* src_buffer,
                        const DebugContext& context,
                        const MemoryHandle& mem) {
   SIZE_T written;
-  HANDLE hProc = OpenProcess(PROCESS_VM_WRITE, FALSE, context.tid.pid);
+  HANDLE hProc = OpenProcess(PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, context.tid.pid);
 
   if (hProc == NULL) {
     win_print_last_error("OpenProcess write_goal_memory");
@@ -712,6 +755,9 @@ bool break_now(const ThreadID& tid) {
   return false;
 }
 bool cont_now(const ThreadID& tid) {
+  return false;
+}
+bool single_step_now(const ThreadID& tid) {
   return false;
 }
 bool open_memory(const ThreadID& tid, MemoryHandle* out) {

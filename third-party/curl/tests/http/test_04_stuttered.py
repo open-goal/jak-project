@@ -25,12 +25,10 @@
 ###########################################################################
 #
 import logging
-import os
-from typing import Tuple, List, Dict
+from typing import Dict, List, Tuple
+
 import pytest
-
-from testenv import Env, CurlClient
-
+from testenv import CurlClient, Env
 
 log = logging.getLogger(__name__)
 
@@ -39,42 +37,29 @@ log = logging.getLogger(__name__)
 @pytest.mark.skipif(condition=Env().ci_run, reason="not suitable for CI runs")
 class TestStuttered:
 
-    @pytest.fixture(autouse=True, scope='class')
-    def _class_scope(self, env, httpd, nghttpx):
-        if env.have_h3():
-            nghttpx.start_if_needed()
-        httpd.clear_extra_configs()
-        httpd.reload()
-
     # download 1 file, check that delayed response works in general
-    @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_04_01_download_1(self, env: Env, httpd, nghttpx, repeat,
-                              proto):
-        if proto == 'h3' and not env.have_h3():
-            pytest.skip("h3 not supported")
+    @pytest.mark.parametrize("proto", Env.http_protos())
+    def test_04_01_download_1(self, env: Env, httpd, nghttpx, proto):
         count = 1
         curl = CurlClient(env=env)
         urln = f'https://{env.authority_for(env.domain1, proto)}' \
-               f'/curltest/tweak?id=[0-{count - 1}]'\
-               '&chunks=100&chunk_size=100&chunk_delay=10ms'
+            f'/curltest/tweak?id=[0-{count - 1}]'\
+            '&chunks=100&chunk_size=100&chunk_delay=10ms'
         r = curl.http_download(urls=[urln], alpn_proto=proto)
         r.check_response(count=1, http_status=200)
 
     # download 50 files in 100 chunks a 100 bytes with 10ms delay between
     # prepend 100 file requests to warm up connection processing limits
     # (Apache2 increases # of parallel processed requests after successes)
-    @pytest.mark.parametrize("proto", ['h2', 'h3'])
-    def test_04_02_100_100_10(self, env: Env,
-                                httpd, nghttpx, repeat, proto):
-        if proto == 'h3' and not env.have_h3():
-            pytest.skip("h3 not supported")
+    @pytest.mark.parametrize("proto", Env.http_mplx_protos())
+    def test_04_02_100_100_10(self, env: Env, httpd, nghttpx, proto):
         count = 50
         warmups = 100
         curl = CurlClient(env=env)
         url1 = f'https://{env.authority_for(env.domain1, proto)}/data.json?[0-{warmups-1}]'
         urln = f'https://{env.authority_for(env.domain1, proto)}' \
-               f'/curltest/tweak?id=[0-{count-1}]'\
-               '&chunks=100&chunk_size=100&chunk_delay=10ms'
+            f'/curltest/tweak?id=[0-{count-1}]'\
+            '&chunks=100&chunk_size=100&chunk_delay=10ms'
         r = curl.http_download(urls=[url1, urln], alpn_proto=proto,
                                extra_args=['--parallel'])
         r.check_response(count=warmups+count, http_status=200)
@@ -86,17 +71,15 @@ class TestStuttered:
     # download 50 files in 1000 chunks a 10 bytes with 1ms delay between
     # prepend 100 file requests to warm up connection processing limits
     # (Apache2 increases # of parallel processed requests after successes)
-    @pytest.mark.parametrize("proto", ['h2', 'h3'])
-    def test_04_03_1000_10_1(self, env: Env, httpd, nghttpx, repeat, proto):
-        if proto == 'h3' and not env.have_h3():
-            pytest.skip("h3 not supported")
+    @pytest.mark.parametrize("proto", Env.http_mplx_protos())
+    def test_04_03_1000_10_1(self, env: Env, httpd, nghttpx, proto):
         count = 50
         warmups = 100
         curl = CurlClient(env=env)
         url1 = f'https://{env.authority_for(env.domain1, proto)}/data.json?[0-{warmups-1}]'
         urln = f'https://{env.authority_for(env.domain1, proto)}' \
-               f'/curltest/tweak?id=[0-{count - 1}]'\
-               '&chunks=1000&chunk_size=10&chunk_delay=100us'
+            f'/curltest/tweak?id=[0-{count - 1}]'\
+            '&chunks=1000&chunk_size=10&chunk_delay=100us'
         r = curl.http_download(urls=[url1, urln], alpn_proto=proto,
                                extra_args=['--parallel'])
         r.check_response(count=warmups+count, http_status=200)
@@ -108,17 +91,15 @@ class TestStuttered:
     # download 50 files in 10000 chunks a 1 byte with 10us delay between
     # prepend 100 file requests to warm up connection processing limits
     # (Apache2 increases # of parallel processed requests after successes)
-    @pytest.mark.parametrize("proto", ['h2', 'h3'])
-    def test_04_04_1000_10_1(self, env: Env, httpd, nghttpx, repeat, proto):
-        if proto == 'h3' and not env.have_h3():
-            pytest.skip("h3 not supported")
+    @pytest.mark.parametrize("proto", Env.http_mplx_protos())
+    def test_04_04_1000_10_1(self, env: Env, httpd, nghttpx, proto):
         count = 50
         warmups = 100
         curl = CurlClient(env=env)
         url1 = f'https://{env.authority_for(env.domain1, proto)}/data.json?[0-{warmups-1}]'
         urln = f'https://{env.authority_for(env.domain1, proto)}' \
-               f'/curltest/tweak?id=[0-{count - 1}]'\
-               '&chunks=10000&chunk_size=1&chunk_delay=50us'
+            f'/curltest/tweak?id=[0-{count - 1}]'\
+            '&chunks=10000&chunk_size=1&chunk_delay=50us'
         r = curl.http_download(urls=[url1, urln], alpn_proto=proto,
                                extra_args=['--parallel'])
         r.check_response(count=warmups+count, http_status=200)

@@ -176,20 +176,23 @@ std::optional<TextDb::ShortInfo> TextDb::get_short_info_for(const std::shared_pt
 }
 
 std::optional<TextDb::ShortInfo> TextDb::try_get_short_info(
-    const std::shared_ptr<goos::HeapObject>& heap_obj) const {
+    const std::shared_ptr<goos::HeapObject>& heap_obj,
+    bool shorten_filename) const {
   auto it = m_map.find(heap_obj);
   if (it != m_map.end()) {
     auto& frag = it->second.frag;
     // shorten the string
     std::string name = frag->get_description();
-    size_t start = 0;
-    for (size_t i = 0; i < name.size(); i++) {
-      if (name[i] == '/' || name[i] == '\\') {
-        start = i + 1;
+    if (shorten_filename) {
+      size_t start = 0;
+      for (size_t i = 0; i < name.size(); i++) {
+        if (name[i] == '/' || name[i] == '\\') {
+          start = i + 1;
+        }
       }
-    }
-    if (start < name.size()) {
-      name = name.substr(start);
+      if (start < name.size()) {
+        name = name.substr(start);
+      }
     }
 
     ShortInfo result;

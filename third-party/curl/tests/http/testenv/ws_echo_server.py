@@ -27,7 +27,6 @@
 import argparse
 import asyncio
 import logging
-from asyncio import IncompleteReadError
 
 from websockets import server
 from websockets.exceptions import ConnectionClosedError
@@ -38,6 +37,7 @@ async def echo(websocket):
         async for message in websocket:
             await websocket.send(message)
     except ConnectionClosedError:
+        # websocket connection closed by client
         pass
 
 
