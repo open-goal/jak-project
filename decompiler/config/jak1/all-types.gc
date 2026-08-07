@@ -17405,6 +17405,30 @@ its matching records and each allocation bitmap begins with every slot free."
 
 (defenum cam-slave-options
   :bitfield #t
+  :type uint32
+  (BUTT_CAM)
+  (SAME_SIDE)
+  (MOVE_SPHERICAL)
+  (ALLOW_Z_ROT)
+  (JUMP_PITCHES)
+  (COLLIDE)
+  (FIND_HIDDEN_TARGET)
+  (DRAG)
+  (PLAYER_MOVING_CAMERA)
+  (LINE_OF_SIGHT)
+  (MOVEMENT_BLOCKED)
+  (SHRINK_MAX_ANGLE)
+  (GOTO_GOOD_POINT)
+  (BLOCK_SHIFT_BUTTONS)
+  (BIKE_MODE)
+  (NO_ROTATE)
+  (STICKY_ANGLE)
+  (AIR_EXIT)
+  )
+
+(defenum cam-slave-options-i
+  :bitfield #t
+  :type int32
   (BUTT_CAM)
   (SAME_SIDE)
   (MOVE_SPHERICAL)
@@ -17438,6 +17462,25 @@ its matching records and each allocation bitmap begins with every slot free."
   (cw 1)
   (ccw 2)
   (between 3)
+  )
+
+(defenum cam-track-status
+   :type uint64
+   (use-slave-tracking 0)
+   (track-at-combiner 1)
+   (track-at-dst 2)
+   (track-at-src 3))
+
+(defenum cam-master-options
+  :type uint32
+  :bitfield #t
+  (ignore-regions 0)
+  (have-target 1)
+  (switch-only-on-ground 2)
+  (set-combiner-axis 3)
+  (flip-combiner 4)
+  (have-ease-to-pos 5)
+  (in-base-region 6)
   )
 
 ;; - Types
@@ -17641,8 +17684,8 @@ its matching records and each allocation bitmap begins with every slot free."
    (dist-from-dest    float                        :offset-assert 208)
    (flip-control-axis vector               :inline :offset-assert 224)
    (velocity          vector               :inline :offset-assert 240)
-   (tracking-status   uint64                       :offset-assert 256)
-   (tracking-options  int32                        :offset-assert 264)
+   (tracking-status   cam-track-status             :offset-assert 256)
+   (tracking-options  cam-slave-options-i         :offset-assert 264)
    (tracking          cam-rotation-tracker :inline :offset-assert 272)
    )
   :heap-base #x170
@@ -17675,7 +17718,7 @@ its matching records and each allocation bitmap begins with every slot free."
    (circular-follow               vector               :inline :offset-assert 2176)
    (max-angle-offset              float                        :offset-assert 2192)
    (max-angle-curr                float                        :offset-assert 2196)
-   (options                       uint32                       :offset-assert 2200)
+   (options                       cam-slave-options            :offset-assert 2200)
    (cam-entity                    entity                       :offset-assert 2204) ; not totally confirmed yet, could be entity-actor
    (velocity                      vector               :inline :offset-assert 2208)
    (desired-pos                   vector               :inline :offset-assert 2224)
@@ -17745,7 +17788,7 @@ its matching records and each allocation bitmap begins with every slot free."
 ;; active slaves, target transforms and tracking trail, and transition state;
 ;; the combiner produces the final rendered camera.
 (deftype camera-master (process)
-  ((master-options      uint32                    :offset-assert 112)
+  ((master-options      cam-master-options        :offset-assert 112)
    (num-slaves          int32                     :offset-assert 116)
    (slave               (pointer camera-slave)           2       :offset-assert 120)
    (slave-options       uint32                    :offset-assert 128)
@@ -24540,8 +24583,8 @@ optional bottom depth. Enable ordinary water particles after loading the data." 
  lead with a quartic transition." (function cam-rotation-tracker vector symbol vector))
 (define-extern slave-set-rotation! "Build tracker's inverse camera rotation from its follow point,
  optional point of interest and tilt; keep the target in frame, optionally blend toward the new
- orientation, and remove roll. options-bits is a raw cam-slave-options word carried in a float."
-  (function cam-rotation-tracker vector float float symbol none))
+ orientation, and remove roll."
+  (function cam-rotation-tracker vector cam-slave-options float symbol none))
 (define-extern camera-slave-debug (function camera-slave none))
 (define-extern camera-line-rel-len (function vector vector float vector4w none))
 (define-extern cam-slave-get-flags "Read property's base flag word, set bits from property-on,
@@ -30390,14 +30433,6 @@ from the entity name, then load the art group named by the entity type."))
   (textured 0)
   (outline 1)
   (gouraud 2)
-  )
-
-;; Known camera-master settings exposed on the debug menu.
-(defenum cam-master-options
-  :type uint64
-  :bitfield #t
-  (ignore-regions 0)
-  (switch-only-on-ground 2)
   )
 
 ;; - Functions

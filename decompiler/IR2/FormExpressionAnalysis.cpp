@@ -3149,6 +3149,110 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
   return false;
 }
 
+struct Jak1MatrixRowDeref {
+  RegisterAccess base;
+  std::vector<DerefToken> matrix_tokens;
+};
+
+std::optional<RegisterAccess> identity_var(Form* form) {
+  auto* elt = form ? form->try_as_element<SimpleExpressionElement>() : nullptr;
+  if (!elt || elt->expr().kind() != SimpleExpression::Kind::IDENTITY ||
+      !elt->expr().get_arg(0).is_var()) {
+    return {};
+  }
+  return elt->expr().get_arg(0).var();
+}
+
+std::optional<TypeSpec> deref_result_type(RegisterAccess base,
+                                          const std::vector<DerefToken>& tokens,
+                                          const Env& env) {
+  TypeSpec current = env.get_variable_type(base, true);
+  for (const auto& token : tokens) {
+    if (token.kind() == DerefToken::Kind::FIELD_NAME) {
+      try {
+        current = env.dts->ts.lookup_field_info(current.base_type(), token.field_name()).type;
+      } catch (const std::exception&) {
+        return {};
+      }
+    } else if (token.kind() == DerefToken::Kind::INTEGER_CONSTANT ||
+               token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
+      if (!current.has_single_arg()) {
+        return {};
+      }
+      // get_single_arg() refers into current, so copy it before assignment destroys the argument
+      // storage.
+      const auto element_type = current.get_single_arg();
+      current = element_type;
+    } else {
+      return {};
+    }
+  }
+  return current;
+}
+
+std::optional<Jak1MatrixRowDeref> match_jak1_matrix_row(Form* form, int row, const Env& env) {
+  auto* deref = form ? form->try_as_element<DerefElement>() : nullptr;
+  if (!deref || deref->is_addr_of() || deref->tokens().size() < 3) {
+    return {};
+  }
+
+  const auto suffix = deref->tokens().size() - 3;
+  if (!deref->tokens().at(suffix).is_field_name("vector") ||
+      !deref->tokens().at(suffix + 1).is_int(row) ||
+      !deref->tokens().at(suffix + 2).is_field_name("quad")) {
+    return {};
+  }
+
+  auto base = identity_var(deref->base());
+  if (!base) {
+    return {};
+  }
+  std::vector<DerefToken> matrix_tokens(deref->tokens().begin(), deref->tokens().begin() + suffix);
+  auto matrix_type = deref_result_type(*base, matrix_tokens, env);
+  if (!matrix_type || *matrix_type != TypeSpec("matrix")) {
+    return {};
+  }
+  return Jak1MatrixRowDeref{*base, std::move(matrix_tokens)};
+}
+
+bool same_deref_tokens(std::vector<DerefToken> lhs, std::vector<DerefToken> rhs, const Env& env) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (lhs.at(i).kind() != rhs.at(i).kind()) {
+      return false;
+    }
+    switch (lhs.at(i).kind()) {
+      case DerefToken::Kind::FIELD_NAME:
+        if (lhs.at(i).field_name() != rhs.at(i).field_name()) {
+          return false;
+        }
+        break;
+      case DerefToken::Kind::INTEGER_CONSTANT:
+        if (lhs.at(i).int_constant() != rhs.at(i).int_constant()) {
+          return false;
+        }
+        break;
+      case DerefToken::Kind::INTEGER_EXPRESSION:
+        if (lhs.at(i).expr()->to_string(env) != rhs.at(i).expr()->to_string(env)) {
+          return false;
+        }
+        break;
+      default:
+        return false;
+    }
+  }
+  return true;
+}
+
+Form* append_deref_tokens(Form* base, const std::vector<DerefToken>& tokens, FormPool& pool) {
+  if (tokens.empty()) {
+    return base;
+  }
+  return pool.form<DerefElement>(base, false, tokens);
+}
+
 bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack& stack) {
   if (env.func->name() == "matrix-copy!" ||
       env.func->name() == "(method 63 collide-shape-moving)") {
@@ -3160,49 +3264,58 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
     // first, check the loads. they should be something like source = (-> MAT vec quad)
     // MAT should always be a variable
     std::vector<RegisterAccess> load_src_ras, store_dest_ras, store_src_ras;
+    std::vector<DerefToken> src_matrix_tokens, dst_matrix_tokens;
     for (int i = 0; i < 4; i++) {
-      Matcher deref_matcher;
       if (env.version == GameVersion::Jak1) {
-        deref_matcher = Matcher::deref(
-            Matcher::any_reg(0), false,
-            {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
-             DerefTokenMatcher::string("quad")});
+        auto row = match_jak1_matrix_row(matrix_entries->at(i).source, i, env);
+        if (!row || (i && !same_deref_tokens(src_matrix_tokens, row->matrix_tokens, env))) {
+          return false;
+        }
+        load_src_ras.push_back(row->base);
+        if (!i) {
+          src_matrix_tokens = std::move(row->matrix_tokens);
+        }
       } else {
         const char* names[] = {"rvec", "uvec", "fvec", "trans"};
-        deref_matcher =
-            Matcher::deref(Matcher::any_reg(0), false,
-                           {DerefTokenMatcher::string(names[i]),
-                            DerefTokenMatcher::string("quad")});
+        auto deref_matcher = Matcher::deref(
+            Matcher::any_reg(0), false,
+            {DerefTokenMatcher::string(names[i]), DerefTokenMatcher::string("quad")});
+        auto mr = match(deref_matcher, matrix_entries->at(i).source, &env);
+        if (!mr.matched) {
+          return false;
+        }
+        load_src_ras.push_back(mr.maps.regs.at(0).value());
       }
-      auto mr = match(deref_matcher, matrix_entries->at(i).source, &env);
-      if (!mr.matched) {
-        return false;
-      }
-      load_src_ras.push_back(mr.maps.regs.at(0).value());
     }
 
     // check the stores
     for (int i = 4; i < 8; i++) {
-      Matcher dst_matcher;
       if (env.version == GameVersion::Jak1) {
-        dst_matcher = Matcher::deref(
-            Matcher::any_reg(0), false,
-            {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i - 4),
-             DerefTokenMatcher::string("quad")});
+        auto* set = dynamic_cast<SetFormFormElement*>(matrix_entries->at(i).elt);
+        auto row = set ? match_jak1_matrix_row(set->dst(), i - 4, env) : std::nullopt;
+        auto src = set ? identity_var(set->src()) : std::nullopt;
+        if (!row || !src ||
+            (i != 4 && !same_deref_tokens(dst_matrix_tokens, row->matrix_tokens, env))) {
+          return false;
+        }
+        store_dest_ras.push_back(row->base);
+        store_src_ras.push_back(*src);
+        if (i == 4) {
+          dst_matrix_tokens = std::move(row->matrix_tokens);
+        }
       } else {
         const char* names[] = {"rvec", "uvec", "fvec", "trans"};
-        dst_matcher =
-            Matcher::deref(Matcher::any_reg(0), false,
-                           {DerefTokenMatcher::string(names[i - 4]),
-                            DerefTokenMatcher::string("quad")});
+        auto dst_matcher = Matcher::deref(
+            Matcher::any_reg(0), false,
+            {DerefTokenMatcher::string(names[i - 4]), DerefTokenMatcher::string("quad")});
+        Matcher matcher = Matcher::set(dst_matcher, Matcher::any_reg(1));
+        auto mr = match(matcher, matrix_entries->at(i).elt, &env);
+        if (!mr.matched) {
+          return false;
+        }
+        store_dest_ras.push_back(mr.maps.regs.at(0).value());
+        store_src_ras.push_back(mr.maps.regs.at(1).value());
       }
-      Matcher matcher = Matcher::set(dst_matcher, Matcher::any_reg(1));
-      auto mr = match(matcher, matrix_entries->at(i).elt, &env);
-      if (!mr.matched) {
-        return false;
-      }
-      store_dest_ras.push_back(mr.maps.regs.at(0).value());
-      store_src_ras.push_back(mr.maps.regs.at(1).value());
     }
 
     // check loads are all loading from the same matrix
@@ -3226,13 +3339,15 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
       }
     }
 
-    // check types
-    if (env.get_variable_type(load_src_ras.at(0), true) != TypeSpec("matrix")) {
-      return false;
-    }
+    // For Jak 1, match_jak1_matrix_row checked the types after following the dereference prefix.
+    if (env.version != GameVersion::Jak1) {
+      if (env.get_variable_type(load_src_ras.at(0), true) != TypeSpec("matrix")) {
+        return false;
+      }
 
-    if (env.get_variable_type(store_dest_ras.at(0), true) != TypeSpec("matrix")) {
-      return false;
+      if (env.get_variable_type(store_dest_ras.at(0), true) != TypeSpec("matrix")) {
+        return false;
+      }
     }
 
     stack.pop(8);
@@ -3248,6 +3363,7 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
     } else {
       // lg::info(" popped src: {}", src_repopped->to_string(env));
     }
+    src_repopped = append_deref_tokens(src_repopped, src_matrix_tokens, pool);
 
     // src_repopped = matrix_entries->at(0).source;
     bool found = false;
@@ -3261,8 +3377,11 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
       // lg::info(" popped dst: {} {} {}", dst_repopped->to_string(env), ra.reg().to_string(),
       //          ra.mode() == AccessMode::WRITE);
     }
+    dst_repopped = append_deref_tokens(dst_repopped, dst_matrix_tokens, pool);
 
-    if (found) {
+    // If the matrix is a field of the popped value, the copy result is not the value of that
+    // containing object. Emit it as a standalone side-effecting form instead.
+    if (found && dst_matrix_tokens.empty()) {
       stack.push_value_to_reg(
           ra,
           pool.form<GenericElement>(
@@ -7094,7 +7213,19 @@ void TypeOfElement::update_from_stack(const Env& env,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects) {
   mark_popped();
-  value->update_children_from_stack(env, pool, stack, allow_side_effects);
+  // The CFG rewrite replaces several uses in the expanded runtime-type check with this single
+  // expression. The original register-use analysis therefore does not mark the input as consumed,
+  // even though rtype-of is now its last use. Supply the post-rewrite consumption explicitly so a
+  // one-use input can still be propagated into rtype-of.
+  auto value_var = identity_var(value);
+  if (value_var) {
+    value =
+        pop_to_forms({*value_var}, env, pool, stack, allow_side_effects, RegSet{value_var->reg()})
+            .at(0);
+    value->parent_element = this;
+  } else {
+    value->update_children_from_stack(env, pool, stack, allow_side_effects);
+  }
   result->push_back(this);
 }
 ////////////////////////

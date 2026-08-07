@@ -29,23 +29,23 @@
 
 ;; DECOMP BEGINS
 
-;; Animation alignment turns motion authored on the skeleton's alignment joint
-;; into movement of the owning process. Each update samples the align joint and
-;; measures translation, scale, and rotation relative to the previous sample. 
-;; The delta is disabled when the animation changes or crosses a
-;; loop boundary, where subtracting the two samples would create a false jump.
+;; Align-control moves a process through an animation.
+;; The "align" joint of the animation defines how the root of the process
+;; drawable should move.
+;; Each update samples the align joint and measures translation, scale, and
+;; rotation relative to the previous sample.
 ;; matrix and transform use index 0 for the current sample and index 1 for the
 ;; previous sample.
 
 (deftype align-control (basic)
   ((flags       align-flags)
    (process     process-drawable)
-   (frame-group art-joint-anim)      ;; animation sampled during the previous update
-   (frame-num   float)               ;; frame sampled during the previous update
-   (matrix      matrix 2 :inline)    ;; current and previous alignment-joint matrices
+   (frame-group art-joint-anim)       ;; animation sampled during the previous update
+   (frame-num   float)                ;; frame sampled during the previous update
+   (matrix      matrix 2 :inline)     ;; current and previous alignment-joint matrices
    (transform   transformq 2 :inline) ;; decomposed current and previous samples
-   (delta       transformq :inline)  ;; current sample relative to the previous sample
-   (last-speed  meters)              ;; last horizontal alignment speed
+   (delta       transformq :inline)   ;; current sample relative to the previous sample
+   (last-speed  meters)               ;; last horizontal alignment speed
    ;; Working transformq view of the current transform.
    (align       transformq :inline :overlay-at (-> transform 0 trans x)))
   (:methods

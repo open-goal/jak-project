@@ -6,11 +6,11 @@
 
 ;; DECOMP BEGINS
 
-;; Animation alignment turns motion authored on the skeleton's alignment joint
-;; into movement of the owning process. Each update samples the align joint and
-;; measures translation, scale, and rotation relative to the previous sample. 
-;; The delta is disabled when the animation changes or crosses a
-;; loop boundary, where subtracting the two samples would create a false jump.
+;; Align-control moves a process through an animation.
+;; The "align" joint of the animation defines how the root of the process
+;; drawable should move.
+;; Each update samples the align joint and measures translation, scale, and
+;; rotation relative to the previous sample.
 ;; matrix and transform use index 0 for the current sample and index 1 for the
 ;; previous sample.
 
@@ -20,38 +20,40 @@
    the first frame of a non-looping animation so the discontinuity is not mistaken for root motion."
   (local-vars (disable-alignment? symbol))
   (with-pp
-    ;; Stack commands do not play their own frame group. Every other active channel must reference
-    ;; joint animation data before the alignment joint can be evaluated safely.
+    ;; Verify the joint animations are correct before any evaluation.
     (let ((active-channel-count (-> this process skel active-channels)))
       (dotimes (channel-index active-channel-count)
         (let* ((channel (-> this process skel channel channel-index))
-               (channel-frame-group (-> channel frame-group))
-               (channel-command (-> channel command))
-               (stack-command 'stack)
-               (stack-command? (= channel-command stack-command)))
-          (cond
-            ((or stack-command? (begin (set! stack-command 'stack1) (= channel-command stack-command))))
+               (channel-frame-group (-> channel frame-group)))
+          ;; og:preserve-this
+          (case (-> channel command)
+            (('stack 'stack1)
+             ;; stack commands don't introduce a new frame-group.
+             )
             (else
-             (when (!= (-> channel-frame-group type) art-joint-anim)
-               ;; og:preserve-this
-               (go process-drawable-art-error "align joint-anim")
-               (abandon-thread)
-               0))))))
+              (when (!= (-> channel-frame-group type) art-joint-anim)
+                (go process-drawable-art-error "align joint-anim")
+                (abandon-thread)))))))
     ;; Disable alignment on frame-group switching, looping, or starting a new animation.
     (let* ((root-channel (-> this process skel root-channel 0))
            (current-frame-group (-> root-channel frame-group))
            (current-frame (-> root-channel frame-num)))
       (= (-> root-channel num-func) num-func-loop!)
       (cond
+        ;; switch frame-group
         ((or (not current-frame-group) (!= (-> this frame-group) current-frame-group)) (set! disable-alignment? #t))
+        ;; loop wrap
         ((= (-> root-channel num-func) num-func-loop!)
          (set! disable-alignment? (< (* (-> root-channel param 0) (- current-frame (-> this frame-num))) 0.0)))
+        ;; anim start
         (else (set! disable-alignment? (= current-frame 0.0))))
-      (if disable-alignment? (logior! (-> this flags) (align-flags disabled)) (logclear! (-> this flags) (align-flags disabled)))
+      (if disable-alignment?
+          (logior! (-> this flags) (align-flags disabled))
+          (logclear! (-> this flags) (align-flags disabled)))
       (set! (-> this frame-group) current-frame-group)
       (set! (-> this frame-num) current-frame))
     ;; Shift the decomposed transform and source matrix into the previous-sample slots.
-    (mem-copy! (the-as pointer (-> this transform 1)) (the-as pointer (-> this transform)) 48)
+    (mem-copy! (the-as pointer (-> this transform 1)) (the-as pointer (-> this transform 0)) 48)
     (quaternion-copy! (-> this transform 1 quat) (-> this align quat))
     (vector-copy! (-> this transform 1 scale) (-> this align scale))
     (matrix-copy! (-> this matrix 1) (-> this matrix 0))
@@ -64,7 +66,7 @@
       ;; This "no-push" evaluation mode is a clever solution. A single group of animations are still interpolated,
       ;; but cross-fades between animations (fade in/fade out) are not.
       ;; For example, if there's a mix of run-left and run-straight, we'll interpolate the alignment.
-      ;; But, if were to fade into a "jump" by doing a (push jump), (stack) on top of the run, 
+      ;; But, if were to fade into a "jump" by doing a (push jump), (stack) on top of the run,
       ;; the "no-push" mode would make the jump animation override the run animation.
       ;; this is only applied for the alignment matrix.
       (cspace<-matrix-no-push-joint! alignment-joint (-> this process skel))
