@@ -46,6 +46,9 @@ Config make_config_via_json(nlohmann::json& json) {
     config.expected_elf_name = json.at("expected_elf_name").get<std::string>();
   }
   config.all_types_file = json.at("all_types_file").get<std::string>();
+  if (json.contains("demacro_file")) {
+    config.demacro_file = json.at("demacro_file").get<std::string>();
+  }
 
   auto inputs_json = read_json_file_from_config(json, "inputs_file");
   config.dgo_names = json.contains("dgo_names")
@@ -187,6 +190,13 @@ Config make_config_via_json(nlohmann::json& json) {
               type_cast);
         }
       }
+    }
+  }
+
+  if (json.contains("scratchpad_types_file")) {
+    auto scratchpad_types_json = read_json_file_from_config(json, "scratchpad_types_file");
+    for (auto& kv : scratchpad_types_json.items()) {
+      config.scratchpad_types_by_object[kv.key()] = kv.value().get<std::string>();
     }
   }
 

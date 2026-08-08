@@ -1,0 +1,115 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; The framebuffer-distortion VU1 program. It draws the circular heat-shimmer and water-warp effects
+;; by sampling the frame that has already been rendered and re-drawing it, displaced, as a ring of
+;; textured triangles. The GS state is set up in sprite-init-distorter: the current framebuffer as
+;; the texture, depth writes off, and a source-over-destination blend.
+;;
+;; One input sprite is three quadwords, written by sprite-draw-distorters: the projected screen
+;; centre, the centre's framebuffer texture coordinate with the turn count in its w lane, and three
+;; warp scales taken from the particle's own RGB. Those three scales are what make the ring a warp
+;; rather than a copy: x is the radius of the inner ring, and it scales the sampling offset by the
+;; same amount, so the inside of the ring is undisplaced; y is the radius of the outer ring in screen
+;; space while z is the radius it samples from. Where y and z disagree, the image is stretched.
+;;
+;; The turn count, 3 through 11, is the ring's angular resolution. sprite-distorter-generate-tables
+;; precomputes a closed ring of unit directions for each count, with the screen direction and the
+;; matching framebuffer offset interleaved, and ientry maps a count to its first pair. The tables are
+;; rebuilt whenever the projection changes because both halves depend on it.
+;;
+;; Per segment the program takes two adjacent directions and emits five vertices: the two inner ring
+;; points, the two outer ones, and the centre. The strip is one primitive across the whole ring --
+;; NLOOP in the giftag is replaced with the turn count, so the GS reads turns groups of fifteen
+;; quadwords as a single continuous strip. Patching that loop count needs the value turns | EOP, and
+;; EOP is bit 15, which IADDIU cannot reach in one instruction because its immediate is fifteen bits;
+;; hence the two additions of 0x4000.
+;;
+;; Two 176-quadword output buffers alternate so one packet can be kicked while the next is built. A
+;; maximum-resolution ring is one tag plus eleven groups of fifteen, which is 166, so it fits.
+(#unless PC_PORT
+  (defvu1 sprite-distort-vu1-block
+  (rlet ((sprite-count :reg vi01) ;; sprites left in this batch
+         (gif-buf :reg vi02) ;; base of the output buffer being filled
+         (in-ptr :reg vi04) ;; cursor through the three-quadword input sprites
+         (gif-ptr :reg vi05) ;; write cursor inside that buffer
+         (dir-ptr :reg vi06) ;; cursor into the selected turn count's direction table
+         (turns :reg vi07) ;; segments left in this ring, and on entry the turn count itself
+         (patched-tag :reg vi08) ;; the giftag's first word with NLOOP set to the turn count
+         (giftag :reg vf01) ;; the five-vertex strip tag
+         (center-pos :reg vf02) ;; projected screen centre
+         (center-st :reg vf03) ;; its framebuffer texture coordinate
+         (warp-scales :reg vf04) ;; inner radius, outer radius, outer sampling radius
+         (neutral-color :reg vf05) ;; the constant 128 grey every vertex uses
+         (center-xyzf :reg vf14) ;; the centre position in GS fixed point
+         ;; vi03 holds the sum of the two buffer addresses for the two instructions that flip them.
+         ;; vf06 through vf13 are the eight ring corners of the segment being emitted: vf06 and vf08
+         ;; the inner positions, vf07 and vf09 their sampling coordinates, vf10 and vf12 the outer
+         ;; positions, vf11 and vf13 their sampling coordinates.
+         )
+    (vu-pair (lq.xyzw giftag vi00 (sprite-distort-const giftag)) (nop)) ;; #x000
+    (vu-pair (lq.xyzw neutral-color vi00 (sprite-distort-const color)) (nop)) ;; #x001
+    (vu-pair (ilw.x sprite-count vi00 SPRITE-DISTORT-VU-COUNT) (nop)) ;; #x002
+    (vu-pair (iaddiu in-ptr vi00 SPRITE-DISTORT-VU-INPUT) (nop)) ;; #x003
+    (vu-pair (iaddi gif-buf vi00 SPRITE-DISTORT-VU-GIF-BUFFER-0) (nop)) ;; #x004
+    (label distort-sprite-loop)
+    (vu-pair (ilw.w turns in-ptr 1) (nop)) ;; #x005
+    (vu-pair (ior gif-ptr gif-buf vi00) (nop)) ;; #x006
+    (vu-pair (ilw.x dir-ptr turns (- (sprite-distort-const ientry) 3)) (nop)) ;; #x007
+    (vu-pair (sqi.xyzw giftag gif-ptr) (nop)) ;; #x008
+    (vu-pair (iaddiu patched-tag turns 0x4000) (nop)) ;; #x009
+    (vu-pair (iaddiu patched-tag patched-tag 0x4000) (nop)) ;; #x00a
+    (vu-pair (isw.x patched-tag gif-ptr -1) (nop)) ;; #x00b
+    (vu-pair (lqi.xyzw center-pos in-ptr) (nop)) ;; #x00c
+    (vu-pair (lqi.xyzw center-st in-ptr) (nop)) ;; #x00d
+    (vu-pair (lqi.xyzw warp-scales in-ptr) (nop)) ;; #x00e
+    (vu-pair (nop) (ftoi4.xyzw center-xyzf center-pos)) ;; #x00f
+    (label distort-segment-loop)
+    (vu-pair (lqi.xyzw vf06 dir-ptr) (nop)) ;; #x010
+    (vu-pair (lqi.xyzw vf07 dir-ptr) (nop)) ;; #x011
+    (vu-pair (lq.xyzw vf08 dir-ptr 0) (nop)) ;; #x012
+    (vu-pair (lq.xyzw vf09 dir-ptr 1) (nop)) ;; #x013
+    (vu-pair (iaddi turns turns -0x1) (muly.xyzw vf10 vf06 warp-scales)) ;; #x014
+    (vu-pair (nop) (mulz.xyzw vf11 vf07 warp-scales)) ;; #x015
+    (vu-pair (nop) (muly.xyzw vf12 vf08 warp-scales)) ;; #x016
+    (vu-pair (nop) (mulz.xyzw vf13 vf09 warp-scales)) ;; #x017
+    (vu-pair (nop) (mulx.xyzw vf06 vf06 warp-scales)) ;; #x018
+    (vu-pair (nop) (mulx.xyzw vf07 vf07 warp-scales)) ;; #x019
+    (vu-pair (nop) (mulx.xyzw vf08 vf08 warp-scales)) ;; #x01a
+    (vu-pair (nop) (mulx.xyzw vf09 vf09 warp-scales)) ;; #x01b
+    (vu-pair (nop) (add.xyzw vf10 vf10 center-pos)) ;; #x01c
+    (vu-pair (nop) (add.xyzw vf11 vf11 center-st)) ;; #x01d
+    (vu-pair (nop) (add.xyzw vf12 vf12 center-pos)) ;; #x01e
+    (vu-pair (nop) (add.xyzw vf13 vf13 center-st)) ;; #x01f
+    (vu-pair (nop) (add.xyzw vf06 vf06 center-pos)) ;; #x020
+    (vu-pair (nop) (add.xyzw vf07 vf07 center-st)) ;; #x021
+    (vu-pair (nop) (add.xyzw vf08 vf08 center-pos)) ;; #x022
+    (vu-pair (nop) (add.xyzw vf09 vf09 center-st)) ;; #x023
+    (vu-pair (nop) (ftoi4.xyzw vf10 vf10)) ;; #x024
+    (vu-pair (nop) (ftoi4.xyzw vf12 vf12)) ;; #x025
+    (vu-pair (nop) (ftoi4.xyzw vf06 vf06)) ;; #x026
+    (vu-pair (nop) (ftoi4.xyzw vf08 vf08)) ;; #x027
+    (vu-pair (sqi.xyzw vf07 gif-ptr) (nop)) ;; #x028
+    (vu-pair (sqi.xyzw neutral-color gif-ptr) (nop)) ;; #x029
+    (vu-pair (sqi.xyzw vf06 gif-ptr) (nop)) ;; #x02a
+    (vu-pair (sqi.xyzw vf09 gif-ptr) (nop)) ;; #x02b
+    (vu-pair (sqi.xyzw neutral-color gif-ptr) (nop)) ;; #x02c
+    (vu-pair (sqi.xyzw vf08 gif-ptr) (nop)) ;; #x02d
+    (vu-pair (sqi.xyzw vf11 gif-ptr) (nop)) ;; #x02e
+    (vu-pair (sqi.xyzw neutral-color gif-ptr) (nop)) ;; #x02f
+    (vu-pair (sqi.xyzw vf10 gif-ptr) (nop)) ;; #x030
+    (vu-pair (sqi.xyzw vf13 gif-ptr) (nop)) ;; #x031
+    (vu-pair (sqi.xyzw neutral-color gif-ptr) (nop)) ;; #x032
+    (vu-pair (sqi.xyzw vf12 gif-ptr) (nop)) ;; #x033
+    (vu-pair (sqi.xyzw center-st gif-ptr) (nop)) ;; #x034
+    (vu-pair (sqi.xyzw neutral-color gif-ptr) (nop)) ;; #x035
+    (vu-pair (ibne vi00 turns distort-segment-loop) (nop)) ;; #x036
+    (vu-pair (sqi.xyzw center-xyzf gif-ptr) (nop)) ;; #x037
+    (vu-pair (xgkick gif-buf) (nop)) ;; #x038
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x039
+    (vu-pair (iaddiu vi03 vi00 (+ SPRITE-DISTORT-VU-GIF-BUFFER-0 SPRITE-DISTORT-VU-GIF-BUFFER-1)) (nop)) ;; #x03a
+    (vu-pair (ibne vi00 sprite-count distort-sprite-loop) (nop)) ;; #x03b
+    (vu-pair (isub gif-buf vi03 gif-buf) (nop)) ;; #x03c
+    (vu-pair (nop) (nop :e)) ;; #x03d
+    (vu-pair (nop) (nop)) ;; #x03e
+  )))

@@ -427,18 +427,23 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
           node.prev = parent;
           node.token = token;
           output->results.emplace_back(false, field_deref.type, node.to_vector());
-          continue;  // try more!
-        } else {
-          FieldReverseLookupInput next_input;
-          next_input.deref = input.deref;
-          next_input.offset = offset_into_field - expected_offset_into_field;
-          next_input.stride = input.stride;
-          next_input.base_type = field_deref.type;
-          ReverseLookupNode node;
-          node.prev = parent;
-          node.token = token;
-          try_reverse_lookup(next_input, ts, &node, output, max_count);
+          if ((int)output->results.size() >= max_count) {
+            return;
+          }
         }
+
+        // An exact match on an inline field can also be a match for something nested at offset
+        // zero. Keep searching so multi-lookup can offer both the field itself and paths such as
+        // an inline array's zeroth element.
+        FieldReverseLookupInput next_input;
+        next_input.deref = input.deref;
+        next_input.offset = offset_into_field - expected_offset_into_field;
+        next_input.stride = input.stride;
+        next_input.base_type = field_deref.type;
+        ReverseLookupNode node;
+        node.prev = parent;
+        node.token = token;
+        try_reverse_lookup(next_input, ts, &node, output, max_count);
       }
     }
   }
@@ -481,7 +486,10 @@ void try_reverse_lookup(const FieldReverseLookupInput& input,
  */
 FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
     const FieldReverseLookupInput& input) const {
-  // just use the multi-lookup set to 1 and grab the first result.
+  // Use multi-lookup to collect all interpretations. Unlike multi-lookup callers, this legacy
+  // interface has no expected result type with which to choose among zero-offset views. Preserve
+  // its original behavior by preferring an exact enclosing access over any candidate that merely
+  // extends it. Multi-lookup still exposes both paths to type-aware callers.
   auto multi_result = reverse_field_multi_lookup(input, 100);
 
   /*
@@ -500,7 +508,38 @@ FieldReverseLookupOutput TypeSystem::reverse_field_lookup(
 
   FieldReverseLookupOutput result;
   if (multi_result.success) {
-    result = multi_result.results.at(0);
+    auto selected = multi_result.results.begin();
+    for (auto candidate = multi_result.results.begin(); candidate != multi_result.results.end();
+         ++candidate) {
+      bool extends_exact_access = false;
+      for (const auto& possible_prefix : multi_result.results) {
+        if (possible_prefix.tokens.size() >= candidate->tokens.size()) {
+          continue;
+        }
+
+        bool is_prefix = true;
+        for (size_t i = 0; i < possible_prefix.tokens.size(); ++i) {
+          const auto& prefix_token = possible_prefix.tokens.at(i);
+          const auto& candidate_token = candidate->tokens.at(i);
+          if (prefix_token.kind != candidate_token.kind ||
+              prefix_token.name != candidate_token.name ||
+              prefix_token.idx != candidate_token.idx) {
+            is_prefix = false;
+            break;
+          }
+        }
+        if (is_prefix) {
+          extends_exact_access = true;
+          break;
+        }
+      }
+
+      if (!extends_exact_access) {
+        selected = candidate;
+        break;
+      }
+    }
+    result = *selected;
     result.success = true;
   } else {
     result.success = false;

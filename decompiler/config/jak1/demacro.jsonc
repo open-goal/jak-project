@@ -1,0 +1,531 @@
+{
+  // Patterns are matched against LISP forms after type analysis, expression construction, and
+  // let insertion have finished. A `$name` atom captures one form; repeated captures must match
+  // structurally. `$*name` captures zero or more forms within a list, which lets a rule tolerate
+  // unrelated bindings merged into a compiler-generated let.
+  //
+  // `match` and `rewrite` may be either one form string or an array of adjacent form strings.
+  // Rules are tried in file order. Keep rules conservative: this pass intentionally has no type
+  // information with which to disambiguate structurally identical operations.
+  "tables": {
+    // Mirrors memory-usage-h.gc. `next` is the one-past category index stored in
+    // memory-usage-block.length.
+    "mem-usage-id": [
+      {"value": "0", "next": "1", "symbol": "drawable-group"},
+      {"value": "1", "next": "2", "symbol": "tfragment"},
+      {"value": "2", "next": "3", "symbol": "tfragment-base"},
+      {"value": "3", "next": "4", "symbol": "tfragment-common"},
+      {"value": "4", "next": "5", "symbol": "tfragment-level0"},
+      {"value": "5", "next": "6", "symbol": "tfragment-level1"},
+      {"value": "6", "next": "7", "symbol": "tfragment-color"},
+      {"value": "7", "next": "8", "symbol": "tfragment-debug"},
+      {"value": "8", "next": "9", "symbol": "tfragment-pal"},
+      {"value": "9", "next": "10", "symbol": "tie-fragment"},
+      {"value": "10", "next": "11", "symbol": "tie-gif"},
+      {"value": "11", "next": "12", "symbol": "tie-points"},
+      {"value": "12", "next": "13", "symbol": "tie-colors"},
+      {"value": "13", "next": "14", "symbol": "tie-draw-points"},
+      {"value": "14", "next": "15", "symbol": "tie-debug"},
+      {"value": "15", "next": "16", "symbol": "tie-near"},
+      {"value": "16", "next": "17", "symbol": "tie-pal"},
+      {"value": "17", "next": "18", "symbol": "tie-generic"},
+      {"value": "18", "next": "19", "symbol": "instance-tie"},
+      {"value": "19", "next": "20", "symbol": "instance-tie-colors0"},
+      {"value": "20", "next": "21", "symbol": "instance-tie-colors1"},
+      {"value": "21", "next": "22", "symbol": "instance-tie-colors2"},
+      {"value": "22", "next": "23", "symbol": "instance-tie-colors3"},
+      {"value": "23", "next": "24", "symbol": "instance-tie-colors*"},
+      {"value": "24", "next": "25", "symbol": "prototype-bucket-shrub"},
+      {"value": "25", "next": "26", "symbol": "generic-shrub"},
+      {"value": "26", "next": "27", "symbol": "generic-shrub-data"},
+      {"value": "27", "next": "28", "symbol": "shrubbery"},
+      {"value": "28", "next": "29", "symbol": "shrubbery-object"},
+      {"value": "29", "next": "30", "symbol": "shrubbery-vertex"},
+      {"value": "30", "next": "31", "symbol": "shrubbery-color"},
+      {"value": "31", "next": "32", "symbol": "shrubbery-stq"},
+      {"value": "32", "next": "33", "symbol": "shrubbery-pal"},
+      {"value": "33", "next": "34", "symbol": "billboard"},
+      {"value": "34", "next": "35", "symbol": "instance-shrubbery"},
+      {"value": "35", "next": "36", "symbol": "pris-fragment"},
+      {"value": "43", "next": "44", "symbol": "entity"},
+      {"value": "44", "next": "45", "symbol": "camera"},
+      {"value": "45", "next": "46", "symbol": "nav-mesh"},
+      {"value": "48", "next": "49", "symbol": "res"},
+      {"value": "49", "next": "50", "symbol": "ambient"},
+      {"value": "50", "next": "51", "symbol": "collide-fragment-0"},
+      {"value": "51", "next": "52", "symbol": "collision-poly-0"},
+      {"value": "52", "next": "53", "symbol": "collision-vertex-0"},
+      {"value": "53", "next": "54", "symbol": "collide-fragment-1"},
+      {"value": "54", "next": "55", "symbol": "collision-poly-1"},
+      {"value": "55", "next": "56", "symbol": "collision-vertex-1"},
+      {"value": "56", "next": "57", "symbol": "bsp-main"},
+      {"value": "57", "next": "58", "symbol": "bsp-misc"},
+      {"value": "58", "next": "59", "symbol": "bsp-node"},
+      {"value": "59", "next": "60", "symbol": "bsp-leaf-vis-self"},
+      {"value": "60", "next": "61", "symbol": "bsp-leaf-vis-adj"},
+      {"value": "61", "next": "62", "symbol": "draw-node"},
+      {"value": "62", "next": "63", "symbol": "pat"},
+      {"value": "63", "next": "64", "symbol": "level-code"},
+      {"value": "64", "next": "65", "symbol": "entity-links"},
+      {"value": "65", "next": "66", "symbol": "joint"},
+      {"value": "66", "next": "67", "symbol": "joint-anim-compressed"},
+      {"value": "67", "next": "68", "symbol": "joint-anim-compressed-control"},
+      {"value": "68", "next": "69", "symbol": "joint-anim-fixed"},
+      {"value": "69", "next": "70", "symbol": "joint-anim-frame"},
+      {"value": "70", "next": "71", "symbol": "art-group"},
+      {"value": "71", "next": "72", "symbol": "art-mesh-anim"},
+      {"value": "72", "next": "73", "symbol": "art-mesh-geo"},
+      {"value": "73", "next": "74", "symbol": "art-joint-geo"},
+      {"value": "74", "next": "75", "symbol": "art-joint-anim"},
+      {"value": "75", "next": "76", "symbol": "merc-ctrl"},
+      {"value": "76", "next": "77", "symbol": "joint-anim-drawable"},
+      {"value": "77", "next": "78", "symbol": "blend-shape"},
+      {"value": "78", "next": "79", "symbol": "collide-mesh"},
+      {"value": "79", "next": "80", "symbol": "texture"},
+      {"value": "80", "next": "81", "symbol": "string"},
+      {"value": "81", "next": "82", "symbol": "array"},
+      {"value": "82", "next": "83", "symbol": "sprite"},
+      {"value": "83", "next": "84", "symbol": "depth-cue"},
+      {"value": "84", "next": "85", "symbol": "debug"},
+      {"value": "85", "next": "86", "symbol": "sky"},
+      {"value": "86", "next": "87", "symbol": "pris-generic"},
+      {"value": "87", "next": "88", "symbol": "4k-dead-pool"},
+      {"value": "88", "next": "89", "symbol": "8k-dead-pool"},
+      {"value": "89", "next": "90", "symbol": "16k-dead-pool"},
+      {"value": "90", "next": "91", "symbol": "nk-dead-pool"},
+      {"value": "91", "next": "92", "symbol": "target-dead-pool"},
+      {"value": "92", "next": "93", "symbol": "camera-dead-pool"},
+      {"value": "93", "next": "94", "symbol": "debug-dead-pool"},
+      {"value": "94", "next": "95", "symbol": "process-active"},
+      {"value": "95", "next": "96", "symbol": "heap-total"},
+      {"value": "96", "next": "97", "symbol": "heap-process"},
+      {"value": "97", "next": "98", "symbol": "heap-header"},
+      {"value": "98", "next": "99", "symbol": "heap-thread"},
+      {"value": "99", "next": "100", "symbol": "heap-root"},
+      {"value": "100", "next": "101", "symbol": "heap-draw-control"},
+      {"value": "101", "next": "102", "symbol": "heap-joint-control"},
+      {"value": "102", "next": "103", "symbol": "heap-cspace"},
+      {"value": "103", "next": "104", "symbol": "heap-bone"},
+      {"value": "104", "next": "105", "symbol": "heap-part"},
+      {"value": "105", "next": "106", "symbol": "heap-collide-prim"},
+      {"value": "106", "next": "107", "symbol": "heap-misc"},
+      {"value": "107", "next": "108", "symbol": "shadow-geo"},
+      {"value": "108", "next": "109", "symbol": "eye-anim"}
+    ],
+    "scratchpad-object-type": [
+      {"type": "terrain-context"},
+      {"type": "cam-dbg-scratch"},
+      {"type": "terrain-bsp"},
+      {"type": "collide-puss-work"},
+      {"type": "vector"},
+      {"type": "vector4w"},
+      {"type": "bone-memory"},
+      {"type": "joint"},
+      {"type": "bone"},
+      {"type": "vu-lights"},
+      {"type": "bone-regs"},
+      {"type": "matrix"},
+      {"type": "generic-tie-shadow"},
+      {"type": "generic-tie-calls"},
+      {"type": "collide-probe-stack"},
+      {"type": "ambient-list"},
+      {"type": "adgif-shader"},
+      {"type": "(inline-array ocean-vertex)"}
+    ],
+    "scratchpad-pointer-type": [
+      {"type": "rgba"},
+      {"type": "uint128"},
+      {"type": "process-drawable"}
+    ],
+    "gs-reg-list": [
+      {"count": "0", "fields": "", "regs": ""},
+      {"count": "1", "fields": ":regs0 (gif-reg-id $reg0)", "regs": "$reg0"},
+      {"count": "2", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1)", "regs": "$reg0 $reg1"},
+      {"count": "3", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2)", "regs": "$reg0 $reg1 $reg2"},
+      {"count": "4", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3)", "regs": "$reg0 $reg1 $reg2 $reg3"},
+      {"count": "5", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4"},
+      {"count": "6", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5"},
+      {"count": "7", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6"},
+      {"count": "8", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7"},
+      {"count": "9", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8"},
+      {"count": "10", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9"},
+      {"count": "11", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10"},
+      {"count": "12", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10) :regs11 (gif-reg-id $reg11)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10 $reg11"},
+      {"count": "13", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10) :regs11 (gif-reg-id $reg11) :regs12 (gif-reg-id $reg12)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10 $reg11 $reg12"},
+      {"count": "14", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10) :regs11 (gif-reg-id $reg11) :regs12 (gif-reg-id $reg12) :regs13 (gif-reg-id $reg13)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10 $reg11 $reg12 $reg13"},
+      {"count": "15", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10) :regs11 (gif-reg-id $reg11) :regs12 (gif-reg-id $reg12) :regs13 (gif-reg-id $reg13) :regs14 (gif-reg-id $reg14)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10 $reg11 $reg12 $reg13 $reg14"},
+      {"count": "16", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10) :regs11 (gif-reg-id $reg11) :regs12 (gif-reg-id $reg12) :regs13 (gif-reg-id $reg13) :regs14 (gif-reg-id $reg14) :regs15 (gif-reg-id $reg15)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10 $reg11 $reg12 $reg13 $reg14 $reg15"}
+    ]
+  },
+  "rules": [
+    {
+      "name": "current-frame",
+      "match": "(-> *display* frames (-> *display* on-screen) frame)",
+      "rewrite": "(current-frame)"
+    },
+    {
+      // Dereference expansion flattens accesses through current-frame into the same -> form.
+      // Preserve any fields after frame while recovering the macro at the head of the traversal.
+      "name": "current-frame-with-fields",
+      "match": "(-> *display* frames (-> *display* on-screen) frame $field $*remaining-fields)",
+      "rewrite": "(-> (current-frame) $field $*remaining-fields)"
+    },
+    {
+      // Let insertion can merge consecutive traversals which reuse the same node and cached-next
+      // locals. Peel off the first traversal and rebuild the remaining let; repeated rule passes
+      // then recover every traversal in the chain.
+      "name": "iterate-engine-connections-merged-let",
+      "capture_types": {"node": "connection"},
+      "match":
+        "(let (($node (-> $engine alive-list next0))) $engine (let (($next (-> $node next0))) (while (!= $node (-> $engine alive-list-end)) $*body (set! $node $next) $engine (set! $next (-> $next next0))) (set! $node (-> $next-engine alive-list next0)) $next-engine (set! $next (-> $node next0)) $*remaining))",
+      "rewrite": [
+        "(iterate-engine-connections ($node $engine) $*body)",
+        "(let (($node (-> $next-engine alive-list next0))) $next-engine (let (($next (-> $node next0))) $*remaining))"
+      ]
+    },
+    {
+      // Function-scoped locals produce assignments instead of let bindings around the traversal.
+      "name": "iterate-engine-connections-set-locals",
+      "capture_types": {"node": "connection"},
+      "match": [
+        "(set! $node (-> $engine alive-list next0))",
+        "$engine",
+        "(set! $next (-> $node next0))",
+        "(while (!= $node (-> $engine alive-list-end)) $*body (set! $node $next) $engine (set! $next (-> $next next0)))"
+      ],
+      "rewrite": "(iterate-engine-connections ($node $engine) $*body)"
+    },
+    {
+      // Constant engine globals sometimes survive as no-op forms around the cached-next traversal.
+      "name": "iterate-engine-connections-with-engine-forms",
+      "capture_types": {"node": "connection"},
+      "match":
+        "(let (($node (-> $engine alive-list next0))) $engine (let (($next (-> $node next0))) (while (!= $node (-> $engine alive-list-end)) $*body (set! $node $next) $engine (set! $next (-> $next next0)))))",
+      "rewrite": "(iterate-engine-connections ($node $engine) $*body)"
+    },
+    {
+      "name": "iterate-engine-connections-nested-let",
+      "capture_types": {"node": "connection"},
+      "match":
+        "(let (($node (-> $engine alive-list next0))) (let (($next (-> $node next0))) (while (!= $node (-> $engine alive-list-end)) $*body (set! $node $next) (set! $next (-> $next next0)))))",
+      "rewrite": "(iterate-engine-connections ($node $engine) $*body)"
+    },
+    {
+      "name": "iterate-engine-connections-let-star",
+      "capture_types": {"node": "connection"},
+      "match":
+        "(let* (($node (-> $engine alive-list next0)) ($next (-> $node next0))) (while (!= $node (-> $engine alive-list-end)) $*body (set! $node $next) (set! $next (-> $next next0))))",
+      "rewrite": "(iterate-engine-connections ($node $engine) $*body)"
+    },
+    {
+      // Preserve unrelated bindings which let insertion combined with the traversal's node local.
+      // Exact single-binding lets are handled above so this fallback never emits an empty let.
+      "name": "iterate-engine-connections-merged-bindings",
+      "capture_types": {"node": "connection"},
+      "match":
+        "(let ($*before ($node (-> $engine alive-list next0)) $*after) $engine (let (($next (-> $node next0))) (while (!= $node (-> $engine alive-list-end)) $*body (set! $node $next) $engine (set! $next (-> $next next0)))))",
+      "rewrite": "(let ($*before $*after) (iterate-engine-connections ($node $engine) $*body))"
+    },
+    {
+      // A nontrivial property-name expression forces the res-lump macro to cache both its method
+      // and owner before evaluating the name. Recover the macro after let insertion has reunited
+      // the setup and call.
+      "name": "res-lump-struct-computed-name-with-owner",
+      "match":
+        "(let ($*before ($getter (method-of-type res-lump get-property-struct)) ($owner $object)) (format (clear *res-key-string*) \"~S~S\" $name-part0 $name-part1) (let (($result (the-as $result-type ($getter $owner (string->symbol *res-key-string*) 'interp -1000000000.0 #f (the-as (pointer res-tag) #f) *res-static-buf*))) $*inner-after) $*body))",
+      "rewrite":
+        "(let ($*before ($result (res-lump-struct $object (string->symbol (format (clear *res-key-string*) \"~S~S\" $name-part0 $name-part1)) $result-type)) $*inner-after) $*body)"
+    },
+    {
+      // Same expansion when the owner expression is already safe to use at the lookup site.
+      "name": "res-lump-struct-computed-name",
+      "match":
+        "(let ($*before ($getter (method-of-type res-lump get-property-struct))) (format (clear *res-key-string*) \"~S~S\" $name-part0 $name-part1) (let (($result (the-as $result-type ($getter $object (string->symbol *res-key-string*) 'interp -1000000000.0 #f (the-as (pointer res-tag) #f) *res-static-buf*))) $*inner-after) $*body))",
+      "rewrite":
+        "(let ($*before ($result (res-lump-struct $object (string->symbol (format (clear *res-key-string*) \"~S~S\" $name-part0 $name-part1)) $result-type)) $*inner-after) $*body)"
+    },
+    {
+      "name": "with-dma-buffer-add-bucket",
+      "match":
+        "(let* (($buf $buffer) ($start (-> $buf base))) $*body (let (($edge (-> $buf base))) (let (($packet (the-as dma-packet (-> $buf base)))) (set! (-> $packet dma) (new 'static 'dma-tag :id (dma-tag-id next))) (set! (-> $packet vif0) (new 'static 'vif-tag)) (set! (-> $packet vif1) (new 'static 'vif-tag)) (set! (-> $buf base) (&+ (the-as pointer $packet) 16))) (dma-bucket-insert-tag $bucket-group $bucket-id $start (the-as (pointer dma-tag) $edge))))",
+      "rewrite":
+        "(with-dma-buffer-add-bucket (($buf $buffer) $bucket-id) :bucket-group $bucket-group $*body)"
+    },
+    {
+      "name": "with-dma-buffer-add-bucket-pointer-add-cast",
+      "match":
+        "(let* (($buf $buffer) ($start (-> $buf base))) $*body (let (($edge (-> $buf base))) (let (($packet (the-as dma-packet (-> $buf base)))) (set! (-> $packet dma) (new 'static 'dma-tag :id (dma-tag-id next))) (set! (-> $packet vif0) (new 'static 'vif-tag)) (set! (-> $packet vif1) (new 'static 'vif-tag)) (set! (-> $buf base) (the-as pointer (&+ $packet 16)))) (dma-bucket-insert-tag $bucket-group $bucket-id $start (the-as (pointer dma-tag) $edge))))",
+      "rewrite":
+        "(with-dma-buffer-add-bucket (($buf $buffer) $bucket-id) :bucket-group $bucket-group $*body)"
+    },
+    {
+      "name": "with-dma-buffer-add-bucket-object-packet",
+      "match":
+        "(let* (($buf $buffer) ($start (-> $buf base))) $*body (let (($edge (-> $buf base))) (let (($packet (the-as object (-> $buf base)))) (set! (-> (the-as dma-packet $packet) dma) (new 'static 'dma-tag :id (dma-tag-id next))) (set! (-> (the-as dma-packet $packet) vif0) (new 'static 'vif-tag)) (set! (-> (the-as dma-packet $packet) vif1) (new 'static 'vif-tag)) (set! (-> $buf base) (&+ (the-as pointer $packet) 16))) (dma-bucket-insert-tag $bucket-group $bucket-id $start (the-as (pointer dma-tag) $edge))))",
+      "rewrite":
+        "(with-dma-buffer-add-bucket (($buf $buffer) $bucket-id) :bucket-group $bucket-group $*body)"
+    },
+    {
+      // This is the macro's default bucket group, so spelling out the keyword adds no information.
+      "name": "with-dma-buffer-add-bucket-default-group",
+      "match":
+        "(with-dma-buffer-add-bucket (($buf $buffer) $bucket-id) :bucket-group (-> (current-frame) bucket-group) $*body)",
+      "rewrite":
+        "(with-dma-buffer-add-bucket (($buf $buffer) $bucket-id) $*body)"
+    },
+    {
+      "name": "dma-buffer-add-cnt-vif2-object-packet",
+      "match":
+        "(let* (($alias $buf) ($packet (the-as object (-> $alias base)))) (set! (-> (the-as dma-packet $packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt))) (set! (-> (the-as dma-packet $packet) vif0) $vif0) (set! (-> (the-as dma-packet $packet) vif1) $vif1) (set! (-> $alias base) (&+ (the-as pointer $packet) 16)))",
+      "rewrite":
+        "(dma-buffer-add-cnt-vif2 $buf 0 $vif0 $vif1)"
+    },
+    {
+      "name": "dma-buffer-add-cnt-vif2-typed-packet",
+      "match":
+        "(let* (($alias $buf) ($packet (the-as dma-packet (-> $alias base)))) (set! (-> $packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt))) (set! (-> $packet vif0) $vif0) (set! (-> $packet vif1) $vif1) (set! (-> $alias base) (&+ (the-as pointer $packet) 16)))",
+      "rewrite":
+        "(dma-buffer-add-cnt-vif2 $buf 0 $vif0 $vif1)"
+    },
+    {
+      "name": "dma-buffer-add-gif-tag-object-packet",
+      "match":
+        "(let* (($alias $buf) ($packet (the-as object (-> $alias base)))) (set! (-> (the-as gs-gif-tag $packet) tag) $tag) (set! (-> (the-as gs-gif-tag $packet) regs) $regs) (set! (-> $alias base) (&+ (the-as pointer $packet) 16)))",
+      "rewrite":
+        "(dma-buffer-add-gif-tag $buf $tag $regs)"
+    },
+    {
+      "name": "dma-buffer-add-gif-tag-typed-packet",
+      "match":
+        "(let* (($alias $buf) ($packet (the-as gs-gif-tag (-> $alias base)))) (set! (-> $packet tag) $tag) (set! (-> $packet regs) $regs) (set! (-> $alias base) (&+ (the-as pointer $packet) 16)))",
+      "rewrite":
+        "(dma-buffer-add-gif-tag $buf $tag $regs)"
+    },
+    {
+      "name": "dma-buffer-add-two-uint128",
+      "match":
+        "(let* (($alias $buf) ($data (-> $alias base))) (set! (-> (the-as (pointer uint128) $data) 0) $value0) (set! (-> (the-as (pointer uint128) $data) 1) $value1) (set! (-> $alias base) (&+ $data 32)))",
+      "rewrite":
+        "(dma-buffer-add-uint128 $buf $value0 $value1)"
+    },
+    {
+      // Four sequential eight-byte stores are the common expansion of dma-buffer-add-uint64.
+      // Their individual pointer types reflect the value types; the 32-byte advance fixes the width.
+      "name": "dma-buffer-add-four-uint64",
+      "match":
+        "(let* (($alias $buf) ($data (-> $alias base))) (set! (-> (the-as (pointer $type0) $data) 0) $value0) (set! (-> (the-as (pointer $type1) $data) 1) $value1) (set! (-> (the-as (pointer $type2) $data) 2) $value2) (set! (-> (the-as (pointer $type3) $data) 3) $value3) (set! (-> $alias base) (&+ $data 32)))",
+      "rewrite":
+        "(dma-buffer-add-uint64 $buf $value0 $value1 $value2 $value3)"
+    },
+    {
+      // Variant emitted when the saved tag pointer has only object-level type information.
+      "name": "with-cnt-vif-block-object-tag",
+      "match":
+        "(let (($start (the-as object (-> $buf base)))) (dma-buffer-add-cnt-vif2 $buf 0 (new 'static 'vif-tag) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1)) $*body (let (($qwc (/ (the-as int (+ (- -16 (the-as int $start)) (the-as int (-> $buf base)))) 16))) (cond ((nonzero? $qwc) (logior! (-> (the-as dma-packet $start) dma) (shr (shl $qwc 48) 48)) (logior! (-> (the-as (pointer uint64) $start) 1) (shl (shr (shl $qwc 48) 48) 32))) (else (set! (-> $buf base) (the-as (pointer uint64) $start))))))",
+      "rewrite":
+        "(with-cnt-vif-block ($buf) $*body)"
+    },
+    {
+      // Let insertion may merge the saved tag pointer into a caller's surrounding let*.
+      "name": "with-cnt-vif-block-merged-bindings",
+      "match":
+        "(let* ($*before ($start (the-as dma-packet (-> $buf base))) $*after) (dma-buffer-add-cnt-vif2 $buf 0 (new 'static 'vif-tag) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1)) $*body (let (($qwc (/ (the-as int (+ (- -16 (the-as int $start)) (the-as int (-> $buf base)))) 16))) (cond ((nonzero? $qwc) (logior! (-> (the-as (pointer dma-tag) $start) 0) (new 'static 'dma-tag :qwc $qwc)) (logior! (-> (the-as (pointer dma-tag) $start) 1) (shl (shr (shl $qwc 48) 48) 32))) (else (set! (-> $buf base) (the-as pointer $start))))) $*tail)",
+      "rewrite":
+        "(let* ($*before $*after) (with-cnt-vif-block ($buf) $*body) $*tail)"
+    },
+    {
+      // The font setters are methods rather than macros, but Jak 1 inlines them. The enum
+      // constructors make these two field stores structurally unambiguous without type data.
+      "name": "font-set-color-conditional-aliased",
+      "match":
+        "(let (($alias $font)) (set! (-> $alias color) (if $condition (font-color $*true-colors) (font-color $*false-colors))))",
+      "rewrite":
+        "(set-color! $font (if $condition (font-color $*true-colors) (font-color $*false-colors)))"
+    },
+    {
+      "name": "font-set-color-aliased",
+      "match":
+        "(let (($alias $font)) (set! (-> $alias color) (font-color $*colors)))",
+      "rewrite": "(set-color! $font (font-color $*colors))"
+    },
+    {
+      "name": "font-set-color",
+      "match": "(set! (-> $font color) (font-color $*colors))",
+      "rewrite": "(set-color! $font (font-color $*colors))"
+    },
+    {
+      "name": "font-set-flags-aliased",
+      "match":
+        "(let (($alias $font)) (set! (-> $alias flags) (font-flags $*flags)))",
+      "rewrite": "(set-flags! $font (font-flags $*flags))"
+    },
+    {
+      "name": "font-set-flags",
+      "match": "(set! (-> $font flags) (font-flags $*flags))",
+      "rewrite": "(set-flags! $font (font-flags $*flags))"
+    },
+    {
+      "name": "mem-usage-add-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data {{value}} name) \"{{symbol}}\")",
+        "(+! (-> $usage data {{value}} count) $count)",
+        "(let (($temp $bytes)) (+! (-> $usage data {{value}} used) $temp) (+! (-> $usage data {{value}} total) (logand -16 (+ $temp 15))))"
+      ],
+      "rewrite": "(mem-usage-add! $usage {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "mem-usage-add-enum-index-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data (mem-usage-id {{symbol}}) name) \"{{symbol}}\")",
+        "(+! (-> $usage data (mem-usage-id {{symbol}}) count) $count)",
+        "(let (($temp $bytes)) (+! (-> $usage data (mem-usage-id {{symbol}}) used) $temp) (+! (-> $usage data (mem-usage-id {{symbol}}) total) (logand -16 (+ $temp 15))))"
+      ],
+      "rewrite": "(mem-usage-add! $usage {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "mem-usage-add-runtime-name-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data {{value}} name) (symbol->string '{{symbol}}))",
+        "(+! (-> $usage data {{value}} count) $count)",
+        "(let (($temp $bytes)) (+! (-> $usage data {{value}} used) $temp) (+! (-> $usage data {{value}} total) (logand -16 (+ $temp 15))))"
+      ],
+      "rewrite": "(mem-usage-add-symbol! $usage {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "mem-usage-add-enum-index-runtime-name-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data (mem-usage-id {{symbol}}) name) (symbol->string '{{symbol}}))",
+        "(+! (-> $usage data (mem-usage-id {{symbol}}) count) $count)",
+        "(let (($temp $bytes)) (+! (-> $usage data (mem-usage-id {{symbol}}) used) $temp) (+! (-> $usage data (mem-usage-id {{symbol}}) total) (logand -16 (+ $temp 15))))"
+      ],
+      "rewrite": "(mem-usage-add-symbol! $usage {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "mem-usage-add-flattened-let-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data {{value}} name) \"{{symbol}}\")",
+        "(+! (-> $usage data {{value}} count) $count)",
+        "(+! (-> $usage data {{value}} used) $bytes)",
+        "(+! (-> $usage data {{value}} total) (logand -16 (+ $bytes 15)))"
+      ],
+      "rewrite": "(mem-usage-add! $usage {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "mem-usage-add-enum-index-flattened-let-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data (mem-usage-id {{symbol}}) name) \"{{symbol}}\")",
+        "(+! (-> $usage data (mem-usage-id {{symbol}}) count) $count)",
+        "(+! (-> $usage data (mem-usage-id {{symbol}}) used) $bytes)",
+        "(+! (-> $usage data (mem-usage-id {{symbol}}) total) (logand -16 (+ $bytes 15)))"
+      ],
+      "rewrite": "(mem-usage-add! $usage {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "mem-usage-add-runtime-name-flattened-let-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data {{value}} name) (symbol->string '{{symbol}}))",
+        "(+! (-> $usage data {{value}} count) $count)",
+        "(+! (-> $usage data {{value}} used) $bytes)",
+        "(+! (-> $usage data {{value}} total) (logand -16 (+ $bytes 15)))"
+      ],
+      "rewrite": "(mem-usage-add-symbol! $usage {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "mem-usage-add-enum-index-runtime-name-flattened-let-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data (mem-usage-id {{symbol}}) name) (symbol->string '{{symbol}}))",
+        "(+! (-> $usage data (mem-usage-id {{symbol}}) count) $count)",
+        "(+! (-> $usage data (mem-usage-id {{symbol}}) used) $bytes)",
+        "(+! (-> $usage data (mem-usage-id {{symbol}}) total) (logand -16 (+ $bytes 15)))"
+      ],
+      "rewrite": "(mem-usage-add-symbol! $usage {{symbol}} $count $bytes)"
+    },
+    {
+      // A zero increment is sometimes decompiled as a self-assignment instead of `(+! ... 0)`.
+      "name": "mem-usage-add-zero-count-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": [
+        "(set! (-> $usage length) (max {{next}} (-> $usage length)))",
+        "(set! (-> $usage data {{value}} name) \"{{symbol}}\")",
+        "(set! (-> $usage data {{value}} count) (-> $usage data {{value}} count))",
+        "(let (($temp $bytes)) (+! (-> $usage data {{value}} used) $temp) (+! (-> $usage data {{value}} total) (logand -16 (+ $temp 15))))"
+      ],
+      "rewrite": "(mem-usage-add! $usage {{symbol}} 0 $bytes)"
+    },
+    {
+      // These adjacent calls share the larger one-past length after decompilation.
+      "name": "mem-usage-add-generic-shrub-pair",
+      "match": [
+        "(set! (-> $usage length) (max 27 (-> $usage length)))",
+        "(set! (-> $usage data 25 name) \"generic-shrub\")",
+        "(+! (-> $usage data 25 count) $header-count)",
+        "(let (($header-temp $header-bytes)) (+! (-> $usage data 25 used) $header-temp) (+! (-> $usage data 25 total) (logand -16 (+ $header-temp 15))))",
+        "(set! (-> $usage data 26 name) \"generic-shrub-data\")",
+        "(+! (-> $usage data 26 count) $stream-count)",
+        "(let (($stream-temp $stream-bytes)) (+! (-> $usage data 26 used) $stream-temp) (+! (-> $usage data 26 total) (logand -16 (+ $stream-temp 15))))"
+      ],
+      "rewrite": [
+        "(mem-usage-add! $usage generic-shrub $header-count $header-bytes)",
+        "(mem-usage-add! $usage generic-shrub-data $stream-count $stream-bytes)"
+      ]
+    },
+    {
+      "name": "gs-reg-list-{{count}}",
+      "for_each": "gs-reg-list",
+      "match": "(new 'static 'gif-tag-regs {{fields}})",
+      "rewrite": "(gs-reg-list {{regs}})"
+    },
+    {
+      "name": "scratchpad-object-direct-{{type}}",
+      "for_each": "scratchpad-object-type",
+      "match": "(the-as {{type}} #x70000000)",
+      "rewrite": "(scratchpad-object {{type}})"
+    },
+    {
+      "name": "scratchpad-object-offset-{{type}}",
+      "for_each": "scratchpad-object-type",
+      "match": "(the-as {{type}} (+ $offset #x70000000))",
+      "rewrite": "(scratchpad-object {{type}} :offset $offset)"
+    },
+    {
+      "name": "scratchpad-object-reversed-offset-{{type}}",
+      "for_each": "scratchpad-object-type",
+      "match": "(the-as {{type}} (+ #x70000000 $offset))",
+      "rewrite": "(scratchpad-object {{type}} :offset $offset)"
+    },
+    {
+      "name": "scratchpad-pointer-direct-{{type}}",
+      "for_each": "scratchpad-pointer-type",
+      "match": "(the-as (pointer {{type}}) #x70000000)",
+      "rewrite": "(scratchpad-ptr {{type}})"
+    },
+    {
+      "name": "scratchpad-pointer-offset-{{type}}",
+      "for_each": "scratchpad-pointer-type",
+      "match": "(the-as (pointer {{type}}) (+ $offset #x70000000))",
+      "rewrite": "(scratchpad-ptr {{type}} :offset $offset)"
+    },
+    {
+      "name": "scratchpad-pointer-reversed-offset-{{type}}",
+      "for_each": "scratchpad-pointer-type",
+      "match": "(the-as (pointer {{type}}) (+ #x70000000 $offset))",
+      "rewrite": "(scratchpad-ptr {{type}} :offset $offset)"
+    }
+  ]
+}

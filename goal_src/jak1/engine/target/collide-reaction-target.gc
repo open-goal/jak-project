@@ -3,245 +3,367 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/collide/collide-shape.gc")
 
+;; Target collision response turns raw primitive intersections into the contact state used by
+;; movement: standable ground, walls and ceilings, actor contacts, seam slides, and ledge grabs.
+;; Low-coverage contacts receive two additional probes so an exposed lip can be distinguished from
+;; an ordinary triangle corner.
+
 ;; DECOMP BEGINS
 
-(defun collide-shape-moving-angle-set! ((arg0 collide-shape-moving) (arg1 vector) (arg2 vector))
-  (set! (-> arg0 surface-normal quad) (-> arg1 quad))
-  (set! (-> arg0 surface-angle) (vector-dot arg1 (-> arg0 dynam gravity-normal)))
-  (set! (-> arg0 poly-angle) (vector-dot (-> arg0 poly-normal) (-> arg0 dynam gravity-normal)))
-  (set! (-> arg0 touch-angle)
-        (fmax (-> arg0 touch-angle) (vector-dot arg1 (vector-normalize! (vector-negate! (new-stack-vector0) arg2) 1.0))))
+(defun collide-shape-moving-angle-set! ((cshape collide-shape-moving) (surface-normal vector) (velocity vector))
+  "Record surface-normal and its dot against gravity-normal as surface-angle, record the equivalent
+   dot for the unadjusted polygon normal as poly-angle, and retain the largest head-on contact angle
+   observed this frame. velocity supplies the direction opposite the contact normal for that test."
+  (vector-copy! (-> cshape surface-normal) surface-normal)
+  (set! (-> cshape surface-angle) (vector-dot surface-normal (-> cshape dynam gravity-normal)))
+  (set! (-> cshape poly-angle) (vector-dot (-> cshape poly-normal) (-> cshape dynam gravity-normal)))
+  (set! (-> cshape touch-angle)
+        (fmax (-> cshape touch-angle)
+              (vector-dot surface-normal (vector-normalize! (vector-negate! (new-stack-vector0) velocity) 1.0))))
   0
   (none))
 
-(defun target-collision-low-coverage ((arg0 control-info)
-        (arg1 collide-shape-intersect)
-        (arg2 vector)
-        (arg3 (pointer uint32))
-        (arg4 (pointer uint64))
-        (arg5 (pointer symbol)))
-  (let ((sv-16 arg2)
-        (sv-20 arg3)
-        (sv-24 arg4)
-        (sv-28 arg5)
-        (sv-32 (the-as cshape-reaction-flags (-> arg3 0)))
-        (sv-40 (the-as cshape-moving-flags (-> arg4 0)))
-        (sv-48 (-> arg5 0)))
-    (let ((sv-52 (-> arg0 low-coverage-tangent)))
-      (let ((sv-56 (vector-cross! (-> arg0 low-coverage-overhang-plane-normal) (-> arg0 poly-normal) sv-16)))
-        (vector-normalize! sv-56 1.0)
-        (if (>= (fabs (vector-dot (-> arg0 dynam gravity-normal) sv-56)) 0.866) (logior! sv-32 (cshape-reaction-flags csrf09)))
-        (vector-cross! sv-52 sv-16 sv-56))
-      (if (< 0.0 (vector-dot (-> arg0 dynam gravity-normal) sv-52)) (vector-negate! sv-52 sv-52))
-      (vector-normalize! sv-52 1.0)
-      (let ((sv-160 (vector-flatten! (-> arg0 low-coverage-tangent-xz) sv-52 (-> arg0 dynam gravity-normal)))
-            (sv-164 (new 'stack 'collide-tri-result)))
-        (vector-normalize! sv-160 1.0)
-        (if (< (vector-dot sv-160 sv-16) 0.0) (vector-negate! sv-160 sv-160))
-        (set! (-> arg0 low-coverage-slope-to-next1) 4095996000.0)
-        (set! (-> arg0 low-coverage-slope-to-next2) 4095996000.0)
-        (let ((sv-208 (vector+float*! (new 'stack-no-clear 'vector) (-> arg1 best-tri intersect) sv-160 2867.2))
-              (sv-212 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 dynam gravity-normal) -20480.0)))
-          (vector+float*! sv-212 sv-212 sv-160 4096.0)
-          (when (>= (probe-using-line-sphere *collide-cache*
-                                             sv-208
-                                             sv-212
-                                             409.6
-                                             (-> arg1 best-from-prim collide-with)
-                                             sv-164
-                                             (new 'static 'pat-surface :noentity #x1))
-                    0.0)
-            (set! (-> arg0 low-coverage-slope-to-next1)
-                  (vector-dot (-> arg0 dynam gravity-normal)
-                              (vector-! (new 'stack-no-clear 'vector) (-> arg1 best-tri intersect) (-> sv-164 intersect))))
-            (set! (-> arg0 unknown-float-coverage-1) (the-as float (-> sv-164 pat)))
-            (set! (-> arg0 unknown-vector-coverage-0 quad) (-> sv-164 normal quad))
-            0))
-        (let ((sv-272 (vector+float*! (new 'stack-no-clear 'vector) (-> arg1 best-tri intersect) (-> arg0 dynam gravity-normal) 819.2))
-              (sv-276 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg0 dynam gravity-normal) -20480.0)))
-          (vector+float*! sv-272 sv-272 sv-160 -819.2)
-          (vector+float*! sv-276 sv-276 sv-160 -4096.0)
-          (when (>= (probe-using-line-sphere *collide-cache*
-                                             sv-272
-                                             sv-276
-                                             409.6
-                                             (-> arg1 best-from-prim collide-with)
-                                             sv-164
-                                             (new 'static 'pat-surface :noentity #x1))
-                    0.0)
-            (set! (-> arg0 low-coverage-slope-to-next2) (vector-vector-distance sv-272 (-> sv-164 intersect)))
-            (set! (-> arg0 unknown-u32-coverage-0) (the-as uint (-> sv-164 pat)))
-            (set! (-> arg0 unknown-vector-coverage-1 quad) (-> sv-164 normal quad))
-            0)))
-      (when (and (not (logtest? sv-32 (cshape-reaction-flags csrf09)))
-                 (and (or (< (* 1.25 (-> arg1 best-from-prim local-sphere w)) (-> arg0 low-coverage-slope-to-next1))
-                          (= (shr (shl (the-as int (-> arg0 unknown-float-coverage-1)) 58) 61) 1))
-                      (and (< (-> arg0 low-coverage-slope-to-next2) (* 2.0 (-> arg1 best-from-prim local-sphere w)))
-                           (zero? (shr (shl (-> arg0 unknown-u32-coverage-0) 58) 61)))))
-        (logior! sv-32 (cshape-reaction-flags csrf07))
-        (set! (-> arg0 unknown-dword-coverage) (the-as int (current-time)))
-        (logior! sv-40 (cshape-moving-flags csmf07))
-        (set-time! (-> arg0 time-of-last-lc))
-        (let ((f30-0 (vector-dot sv-52 (-> arg0 turn-to-target)))
-              (f0-21 (if (logtest? sv-32 (cshape-reaction-flags csrf01)) (cos (- 16384.0 (acos (-> arg0 coverage)))) (-> arg0 coverage)))
-              (f1-11 (vector-dot (-> arg0 dynam gravity-normal)
-                                 (vector-! (new 'stack-no-clear 'vector) (-> arg0 trans) (-> arg1 best-tri intersect)))))
-          (if (or (not (logtest? sv-32 (cshape-reaction-flags csrf05))) (< 0.5 f0-21)) (set! sv-48 (the-as symbol #f)))
-          (when (and (or (and (< f0-21 0.95) (>= f30-0 0.0))
-                         (and (logtest? sv-32 (cshape-reaction-flags csrf05)) (< f0-21 0.3))
-                         (< f1-11 (/ (-> arg1 best-from-prim local-sphere w) -4)))
-                     (>= (vector-dot sv-52 sv-16) -0.000001))
-            (set! (-> arg0 surf) *edge-surface*)
-            (logior! sv-32 (cshape-reaction-flags csrf10))
-            (set! sv-48 (the-as symbol #f))
-            (when (logtest? sv-32 (cshape-reaction-flags csrf05))
-              (set! sv-48 #t)
-              (logior! sv-32 (cshape-reaction-flags csrf12)))))))
-    (if (< (-> arg0 surface-angle) 0.0) (set! sv-48 #t))
-    (when sv-48
-      (cond
-        ((and (or (= (-> arg0 poly-pat mode) (pat-mode ground))
-                  (and (logtest? sv-32 (cshape-reaction-flags csrf03))
-                       (>= (* 1.25 (-> arg1 best-from-prim local-sphere w)) (-> arg0 low-coverage-slope-to-next1))
-                       (zero? (shr (shl (the-as int (-> arg0 unknown-float-coverage-1)) 58) 61))
-                       (< 0.3 (fabs (-> arg0 surface-angle)))))
-              (not (logtest? sv-32 (cshape-reaction-flags csrf07))))
-         (logior! sv-32 (cshape-reaction-flags csrf06))
-         (logior! sv-40 (cshape-moving-flags csmf07))
-         (set-time! (-> arg0 time-of-last-lc))
-         (set! sv-48 (the-as symbol #f)))
-        (#t
-         (logior! sv-32 (cshape-reaction-flags csrf06))
-         (logior! sv-40 (cshape-moving-flags csmf07))
-         (set-time! (-> arg0 time-of-last-lc)))))
-    (set! (-> sv-24 0) (the-as uint sv-40))
-    (set! (-> sv-20 0) (the-as uint sv-32))
-    (set! (-> sv-28 0) sv-48))
+(defun poly-find-nearest-edge ((result edge-grab-info) (vertices (inline-array vector)) (point vector) (preferred-direction vector))
+  "Select one of vertices' three triangle edges. Minimize the distance from point; an exact tie
+   selects the edge whose direction has the largest absolute dot with preferred-direction. Copy the
+   selected endpoints into result.edge-vertex[0] and result.edge-vertex[1] and return result."
+  (local-vars (closest-point vector) (nearest-distance float) (nearest-index int) (best-alignment float))
+  (set! closest-point (new 'stack-no-clear 'vector))
+  (set! nearest-distance 4095996000.0)
+  (set! nearest-index -1)
+  (set! best-alignment 0.0)
+  (dotimes (i 3)
+    (let* ((edge-start (-> vertices i))
+           (edge-end (-> vertices (mod (+ i 1) 3)))
+           (distance (vector-line-distance-point! point edge-start edge-end closest-point))
+           (edge-direction (vector-! (new 'stack-no-clear 'vector) edge-end edge-start)))
+      0.0
+      (vector-normalize! edge-direction 1.0)
+      (let ((alignment (fabs (vector-dot preferred-direction edge-direction))))
+        (when (or (< distance nearest-distance) (and (= distance nearest-distance) (< best-alignment alignment)))
+          (set! nearest-distance distance)
+          (set! nearest-index i)
+          (set! best-alignment alignment)))))
+  (set! (-> result edge-vertex 0 quad) (-> vertices nearest-index quad))
+  (set! (-> result edge-vertex 1 quad) (-> vertices (mod (+ nearest-index 1) 3) quad))
+  result)
+
+(defun target-collision-low-coverage ((control control-info)
+        (intersection collide-shape-intersect)
+        (contact-normal vector)
+        (reaction-flags-out (pointer cshape-reaction-flags))
+        (status-out (pointer collide-status))
+        (is-wall-out (pointer symbol)))
+  "Classify a glancing contact whose primitive does not fully cover the triangle. Cross the polygon
+   and contact normals to find the edge direction, derive the direction across that edge, then probe
+   beyond and behind the lip to distinguish a grabbable ledge from a corner that should be released.
+   Update reaction-flags, status, and is-wall through their in/out pointers and cache the probe
+   geometry on control."
+  (local-vars
+    (normal vector)
+    (reaction-flags-result (pointer cshape-reaction-flags))
+    (status-result (pointer collide-status))
+    (is-wall-result (pointer symbol))
+    (reaction-flags cshape-reaction-flags)
+    (status collide-status)
+    (is-wall symbol)
+    (across-edge-direction vector)
+    (edge-direction vector)
+    (horizontal-across-edge vector)
+    (probe-result collide-tri-result)
+    (probe2-start vector))
+  (set! normal contact-normal)
+  (set! reaction-flags-result reaction-flags-out)
+  (set! status-result status-out)
+  (set! is-wall-result is-wall-out)
+  (set! reaction-flags (-> reaction-flags-out 0))
+  (set! status (-> status-out 0))
+  (set! is-wall (-> is-wall-out 0))
+  ;; The intersection of the polygon plane and contact plane gives the physical edge direction.
+  ;; Crossing that with the contact normal points across the lip; orient it downward and toward the
+  ;; push-out normal so the two probes agree about which side is beyond the edge.
+  (set! across-edge-direction (-> control low-coverage-across-edge-dir))
+  (set! edge-direction (vector-cross! (-> control low-coverage-edge-dir) (-> control poly-normal) normal))
+  (vector-normalize! edge-direction 1.0)
+  ;; Edges within 30 degrees of gravity are vertical seams, not horizontal ledges.
+  (if (>= (fabs (vector-dot (-> control dynam gravity-normal) edge-direction)) 0.866)
+    (logior! reaction-flags (cshape-reaction-flags vertical-edge)))
+  (vector-cross! across-edge-direction normal edge-direction)
+  (if (< 0.0 (vector-dot (-> control dynam gravity-normal) across-edge-direction))
+    (vector-negate! across-edge-direction across-edge-direction))
+  (vector-normalize! across-edge-direction 1.0)
+  (set! horizontal-across-edge
+        (vector-flatten! (-> control low-coverage-across-edge-xz) across-edge-direction (-> control dynam gravity-normal)))
+  (set! probe-result (new 'stack 'collide-tri-result))
+  (vector-normalize! horizontal-across-edge 1.0)
+  (if (< (vector-dot horizontal-across-edge normal) 0.0) (vector-negate! horizontal-across-edge horizontal-across-edge))
+  (set! (-> control low-coverage-probe1-drop) 4095996000.0)
+  (set! (-> control low-coverage-probe2-dist) 4095996000.0)
+  ;; Probe beyond the lip. Start 0.7 m across the edge and sweep a 0.1 m sphere five meters down
+  ;; while moving another meter outward. The along-gravity gap from the contact to the hit is the
+  ;; available drop beyond the edge.
+  (let ((probe1-start (vector+float*! (new 'stack-no-clear 'vector) (-> intersection best-tri intersect) horizontal-across-edge 2867.2))
+        (probe1-motion (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> control dynam gravity-normal) -20480.0)))
+    (vector+float*! probe1-motion probe1-motion horizontal-across-edge 4096.0)
+    (when (>= (probe-using-line-sphere *collide-cache*
+                                       probe1-start
+                                       probe1-motion
+                                       409.6
+                                       (-> intersection best-from-prim collide-with)
+                                       probe-result
+                                       (new 'static 'pat-surface :noentity #x1))
+              0.0)
+      (set! (-> control low-coverage-probe1-drop)
+            (vector-dot (-> control dynam gravity-normal)
+                        (vector-! (new 'stack-no-clear 'vector) (-> intersection best-tri intersect) (-> probe-result intersect))))
+      (set! (-> control low-coverage-probe1-pat) (the-as float (-> probe-result pat)))
+      (vector-copy! (-> control low-coverage-probe1-normal) (-> probe-result normal))
+      0))
+  ;; Probe the near side. Start 0.2 m above and 0.2 m behind the contact, then sweep five meters
+  ;; down and one meter farther inward. A nearby non-wall hit confirms that there is supporting
+  ;; geometry behind the lip.
+  (set! probe2-start
+        (vector+float*! (new 'stack-no-clear 'vector)
+                        (-> intersection best-tri intersect)
+                        (-> control dynam gravity-normal)
+                        819.2))
+  (let ((probe2-motion (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> control dynam gravity-normal) -20480.0)))
+    (vector+float*! probe2-start probe2-start horizontal-across-edge -819.2)
+    (vector+float*! probe2-motion probe2-motion horizontal-across-edge -4096.0)
+    (when (>= (probe-using-line-sphere *collide-cache*
+                                       probe2-start
+                                       probe2-motion
+                                       409.6
+                                       (-> intersection best-from-prim collide-with)
+                                       probe-result
+                                       (new 'static 'pat-surface :noentity #x1))
+              0.0)
+      (set! (-> control low-coverage-probe2-dist) (vector-vector-distance probe2-start (-> probe-result intersect)))
+      (set! (-> control low-coverage-probe2-pat) (the-as uint (-> probe-result pat)))
+      (vector-copy! (-> control low-coverage-probe2-normal) (-> probe-result normal))
+      0))
+  ;; A ledge needs a nonvertical edge, a large drop (or wall) beyond it, and a close standable
+  ;; surface behind it. Distances scale with the intersecting primitive's sphere radius.
+  (when (and (not (logtest? reaction-flags (cshape-reaction-flags vertical-edge)))
+             (and (or (< (* 1.25 (-> intersection best-from-prim local-sphere w)) (-> control low-coverage-probe1-drop))
+                      (= (shr (shl (the-as int (-> control low-coverage-probe1-pat)) 58) 61) 1))
+                  (and (< (-> control low-coverage-probe2-dist) (* 2.0 (-> intersection best-from-prim local-sphere w)))
+                       (zero? (shr (shl (-> control low-coverage-probe2-pat) 58) 61)))))
+    (logior! reaction-flags (cshape-reaction-flags ledge-candidate))
+    (set! (-> control time-of-last-lc-touch-edge) (the-as int (current-time)))
+    (logior! status (collide-status touch-edge))
+    (set-time! (-> control time-of-last-lc))
+    ;; Contacts already classified as walls measure coverage in the complementary angular frame so
+    ;; their threshold is comparable with floor-like contacts.
+    (let ((across-dot-input (vector-dot across-edge-direction (-> control turn-to-target)))
+          (effective-coverage (if (logtest? reaction-flags (cshape-reaction-flags wall-by-angle))
+                                (cos (- 16384.0 (acos (-> control coverage))))
+                                (-> control coverage)))
+          (height-above-contact (vector-dot (-> control dynam gravity-normal)
+                                            (vector-! (new 'stack-no-clear 'vector) (-> control trans) (-> intersection best-tri intersect)))))
+      (if (or (not (logtest? reaction-flags (cshape-reaction-flags air-mode))) (< 0.5 effective-coverage))
+        (set! is-wall (the-as symbol #f)))
+      ;; Arm the edge surface when the contact is sufficiently glancing, input points along the
+      ;; across-edge direction, or the target hangs below the lip. An airborne grab remains a wall
+      ;; contact while edge-grab-in-air is set; other accepted ledges cease ordinary wall response.
+      (when (and (or (and (< effective-coverage 0.95) (>= across-dot-input 0.0))
+                     (and (logtest? reaction-flags (cshape-reaction-flags air-mode)) (< effective-coverage 0.3))
+                     (< height-above-contact (/ (-> intersection best-from-prim local-sphere w) -4)))
+                 (>= (vector-dot across-edge-direction normal) -0.000001))
+        (set! (-> control surf) *edge-surface*)
+        (logior! reaction-flags (cshape-reaction-flags edge-grab-ledge))
+        (set! is-wall (the-as symbol #f))
+        (when (logtest? reaction-flags (cshape-reaction-flags air-mode))
+          (set! is-wall #t)
+          (logior! reaction-flags (cshape-reaction-flags edge-grab-in-air))))))
+  ;; Downward-facing contacts remain walls. Any other unresolved low-coverage wall becomes a
+  ;; no-grab edge; a ground-like lip with no ledge candidate is released as a standable contact.
+  (if (< (-> control surface-angle) 0.0) (set! is-wall #t))
+  (when is-wall
+    (cond
+      ((and (or (= (-> control poly-pat mode) (pat-mode ground))
+                (and (logtest? reaction-flags (cshape-reaction-flags low-coverage))
+                     (>= (* 1.25 (-> intersection best-from-prim local-sphere w)) (-> control low-coverage-probe1-drop))
+                     (zero? (shr (shl (the-as int (-> control low-coverage-probe1-pat)) 58) 61))
+                     (< 0.3 (fabs (-> control surface-angle)))))
+            (not (logtest? reaction-flags (cshape-reaction-flags ledge-candidate))))
+       (logior! reaction-flags (cshape-reaction-flags no-grab-edge))
+       (logior! status (collide-status touch-edge))
+       (set-time! (-> control time-of-last-lc))
+       (set! is-wall (the-as symbol #f)))
+      (#t
+       (logior! reaction-flags (cshape-reaction-flags no-grab-edge))
+       (logior! status (collide-status touch-edge))
+       (set-time! (-> control time-of-last-lc)))))
+  ;; Publish the accumulated decisions to the caller's stack locals.
+  (set! (-> status-result 0) status)
+  (set! (-> reaction-flags-result 0) reaction-flags)
+  (set! (-> is-wall-result 0) is-wall)
   (the-as uint 0))
 
-(defun target-collision-reaction ((arg0 control-info) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
-  (let ((sv-80 (new-stack-vector0))
-        (sv-84 (new-stack-vector0))
-        (v1-2 (new 'stack-no-clear 'matrix)))
-    (dotimes (a0-1 2)
-      (set! (-> v1-2 vector a0-1 quad) (the-as uint128 0)))
-    (let ((sv-88 v1-2)
-          (moving-flags (cshape-moving-flags)))
-      (let ((react-flags (cshape-reaction-flags)))
-        (set! (-> sv-88 vector 0 quad) (-> arg3 quad))
-        (set! (-> sv-88 vector 1 quad) (-> arg3 quad))
-        (let ((a1-3 (new 'stack-no-clear 'vector)))
-          (vector-float*! a1-3 (-> arg1 move-vec) (-> arg1 best-u))
-          (move-by-vector! arg0 a1-3))
-        (set-and-handle-pat! arg0 (-> arg1 best-tri pat))
-        (if (= (-> arg0 poly-pat mode) (pat-mode wall)) (logior! react-flags (cshape-reaction-flags csrf00)))
-        (if (logtest? (-> arg0 mod-surface flags) (surface-flags jump)) (logior! react-flags (cshape-reaction-flags csrf05)))
-        (let ((v1-23 (new 'stack-no-clear 'vector)))
-          (set! (-> v1-23 quad) (-> arg1 best-from-prim prim-core world-sphere quad))
-          (vector-! sv-80 v1-23 (-> arg1 best-tri intersect)))
-        (vector-normalize! sv-80 1.0)
-        (set! (-> arg0 coverage) (vector-dot sv-80 (-> arg1 best-tri normal)))
-        (when (< (-> arg0 coverage) 0.0)
-          (set! (-> arg0 coverage) 0.0)
-          (vector-flatten! sv-80 sv-80 (-> arg1 best-tri normal))
-          (vector-normalize! sv-80 1.0))
-        (if (< (-> arg0 coverage) 0.9999) (logior! react-flags (cshape-reaction-flags csrf03 csrf04)))
-        (set! (-> sv-84 quad) (-> sv-80 quad))
-        (if (= (-> arg1 best-u) 0.0) (move-by-vector! arg0 (vector-normalize-copy! (new-stack-vector0) sv-84 3.0)))
-        (set! (-> arg0 poly-normal quad) (-> arg1 best-tri normal quad))
-        (collide-shape-moving-angle-set! arg0 sv-84 (-> sv-88 vector 0))
-        (if (< (-> arg0 poly-angle) -0.2) (logior! moving-flags (cshape-moving-flags t-ceil)))
-        (if (< (-> arg0 poly-angle) 0.0) (logior! moving-flags (cshape-moving-flags t-ceil-sticky)))
-        (let ((sv-160 (< (fabs (-> arg0 surface-angle)) (-> *pat-mode-info* (-> arg0 cur-pat mode) wall-angle))))
-          (if (and sv-160 (and (= (-> arg0 mod-surface mode) 'dive) (< 0.2 (fabs (-> arg0 surface-angle)))))
-            (set! sv-160 (the-as symbol #f)))
-          (if sv-160 (logior! react-flags (cshape-reaction-flags csrf01)))
-          (if (logtest? react-flags (cshape-reaction-flags csrf03))
-            (target-collision-low-coverage arg0 arg1 sv-84 (& react-flags) (& moving-flags) (& sv-160)))
-          (when (not (logtest? (-> arg0 prev-status) (cshape-moving-flags onsurf)))
-            (set! (-> arg0 ground-impact-vel) (- (vector-dot (-> arg0 transv) (-> arg0 dynam gravity-normal))))
-            (logior! moving-flags (cshape-moving-flags impact-surf))
-            (when (not sv-160)
-              (let ((f30-0 (- 1.0 (-> arg0 surf impact-fric))))
-                (when (< f30-0 1.0)
-                  (let ((s3-1 (new-stack-vector0))
-                        (f28-0 (vector-dot (-> arg0 dynam gravity-normal) (-> sv-88 vector 0))))
-                    0.0
-                    (vector-! s3-1 (-> sv-88 vector 0) (vector-float*! s3-1 (-> arg0 dynam gravity-normal) f28-0))
-                    (let* ((f0-20 (vector-length s3-1))
-                           (f1-9 f0-20))
-                      (if (< f28-0 0.0) (set! f28-0 (* f28-0 f30-0)))
-                      (vector+! (-> sv-88 vector 0)
-                                (vector-float*! (-> sv-88 vector 0) (-> arg0 dynam gravity-normal) f28-0)
-                                (vector-float*! s3-1 s3-1 (/ f0-20 f1-9)))))))))
-          (logior! moving-flags (cshape-moving-flags tsurf))
-          (cond
-            ((-> arg1 best-to-prim)
-             (logior! moving-flags (cshape-moving-flags t-act))
-             (set! (-> arg0 actor-contact-pt quad) (-> arg1 best-tri intersect quad))
-             (set! (-> arg0 actor-contact-normal quad) (-> arg0 poly-normal quad))
-             (set! (-> arg0 actor-contact-handle) (process->handle (-> arg1 best-to-prim cshape process))))
-            ((= (-> arg0 poly-pat material) (pat-material waterbottom)))
-            (else (logior! moving-flags (cshape-moving-flags t-bckgnd))))
-          (cond
-            (sv-160
-             (logior! react-flags (cshape-reaction-flags csrf02))
-             (logior! moving-flags (cshape-moving-flags twall))
-             (set! (-> arg0 cur-pat mode) 1)
-             (set! (-> arg0 wall-contact-pt quad) (-> arg1 best-tri intersect quad))
-             (set! (-> arg0 wall-contact-poly-normal quad) (-> arg0 poly-normal quad))
-             (set! (-> arg0 wall-contact-normal quad) (-> sv-84 quad))
-             (set! (-> arg0 wall-pat) (-> arg1 best-tri pat))
-             (-> arg0 history-data (logand (+ (-> arg0 history-data-idx) 127) 127))
-             (cond
-               (#f
-                (sound-play "cursor-options")
-                (logior! react-flags (cshape-reaction-flags csrf13))
-                (vector-reflect-flat-above! arg2 (-> sv-88 vector 0) sv-84))
-               (else (vector-reflect-flat! arg2 (-> sv-88 vector 0) sv-84)))
-             (cond
-               ((not (and (>= (-> arg1 best-from-prim local-sphere w)
-                              (vector-dot (-> arg0 ground-poly-normal)
-                                          (vector-! (new 'stack-no-clear 'vector) (-> arg1 best-tri intersect) (-> arg0 ground-touch-point))))
-                          (and (< 0.0 (vector-dot (-> arg0 ground-poly-normal) arg2))
-                               (not (time-elapsed? (-> arg0 last-time-on-ground) (seconds 0.3)))
-                               (not (logtest? react-flags (cshape-reaction-flags csrf05)))))))
-               (else
-                (logior! react-flags (cshape-reaction-flags csrf08))
-                (logclear! react-flags (cshape-reaction-flags csrf06))
-                (let ((s3-4 (vector-cross! (new 'stack-no-clear 'vector) (-> arg0 poly-normal) (-> arg0 ground-poly-normal))))
-                  (vector-normalize! s3-4 1.0)
-                  (vector-float*! arg2 s3-4 (vector-dot (-> sv-88 vector 0) s3-4)))
-                (vector+! arg2 arg2 (-> arg0 poly-normal)))))
-            (else
-             (logior! moving-flags (cshape-moving-flags onsurf))
-             (set! (-> arg0 cur-pat mode) 0)
-             (if (= (-> arg1 best-from-prim prim-id) 6) (set! (-> arg0 local-normal quad) (-> sv-84 quad)))
-             (vector-reflect-flat! arg2 (-> sv-88 vector 0) sv-84)
-             (vector+! arg2 arg2 sv-84)
-             (set! (-> arg0 ground-touch-point w) 0.0)
-             (when (not (or (logtest? react-flags (cshape-reaction-flags csrf00 csrf01 csrf02 csrf03)) (nonzero? (-> arg0 poly-pat event))))
-               (logior! moving-flags (cshape-moving-flags onground))
-               (set! (-> arg0 ground-poly-normal quad) (-> arg0 poly-normal quad))
-               (set! (-> arg0 ground-contact-normal quad) (-> sv-84 quad))
-               (set! (-> arg0 ground-local-norm-dot-grav) (vector-dot sv-84 (-> arg0 dynam gravity-normal)))
-               (set-time! (-> arg0 last-time-on-ground))
-               (set! (-> arg0 ground-pat) (-> arg0 poly-pat))
-               (set! (-> arg0 ground-touch-point quad) (-> arg1 best-tri intersect quad))
-               (set! (-> arg0 ground-contact-sphere-center quad) (-> arg1 best-from-prim prim-core world-sphere quad))
-               (logior! react-flags (cshape-reaction-flags csrf11))
-               (if (= (-> arg0 poly-pat material) (pat-material waterbottom)) (logior! moving-flags (cshape-moving-flags on-water)))))))
-        (logior! (-> arg0 status) moving-flags)
-        (set! (-> arg0 reaction-flag) react-flags))
-      (update! (-> arg0 history-data (-> arg0 history-data-idx)) arg0 (-> arg1 best-tri intersect) (-> sv-88 vector 1) arg2)
-      (set! (-> arg0 history-data-idx) (logand (+ (-> arg0 history-data-idx) 1) 127))
-      moving-flags)))
+(defun target-collision-reaction ((control control-info) (intersection collide-shape-intersect) (velocity-out vector) (velocity-in vector))
+  "Resolve one target collision into an adjusted velocity and collide-status. Push control out of
+   penetration, classify wall, floor, ceiling, actor, background, and low-coverage edge contacts,
+   apply surface impact friction, update the contact records and 128-entry history ring, and preserve
+   a ground-wall seam slide rather than catching at the corner."
+  (local-vars
+    (contact-direction vector)
+    (contact-normal vector)
+    (velocities matrix)
+    (status collide-status)
+    (reaction-flags cshape-reaction-flags)
+    (is-wall symbol))
+  (set! contact-direction (new-stack-vector0))
+  (set! contact-normal (new-stack-vector0))
+  ;; Keep a working velocity and an untouched copy for the history record.
+  (let ((velocity-matrix (new 'stack-no-clear 'matrix)))
+    (dotimes (i 2)
+      (set! (-> velocity-matrix vector i quad) (the-as uint128 0)))
+    (set! velocities velocity-matrix))
+  (set! status (collide-status))
+  (set! reaction-flags (cshape-reaction-flags))
+  (set! (-> velocities vector 0 quad) (-> velocity-in quad))
+  (set! (-> velocities vector 1 quad) (-> velocity-in quad))
+  (let ((push-out (new 'stack-no-clear 'vector)))
+    (vector-float*! push-out (-> intersection move-vec) (-> intersection best-u))
+    (move-by-vector! control push-out))
+  (set-and-handle-pat! control (-> intersection best-tri pat))
+  (if (= (-> control poly-pat mode) (pat-mode wall)) (logior! reaction-flags (cshape-reaction-flags wall-by-pat)))
+  (if (logtest? (-> control mod-surface flags) (surface-flags jump))
+    (logior! reaction-flags (cshape-reaction-flags air-mode)))
+  (let ((primitive-center (new 'stack-no-clear 'vector)))
+    (vector-copy! primitive-center (-> intersection best-from-prim prim-core world-sphere))
+    (vector-! contact-direction primitive-center (-> intersection best-tri intersect)))
+  (vector-normalize! contact-direction 1.0)
+  ;; Coverage is how directly the primitive center-to-contact direction agrees with the triangle
+  ;; normal. Backside contacts are flattened onto the triangle before further classification.
+  (set! (-> control coverage) (vector-dot contact-direction (-> intersection best-tri normal)))
+  (when (< (-> control coverage) 0.0)
+    (set! (-> control coverage) 0.0)
+    (vector-flatten! contact-direction contact-direction (-> intersection best-tri normal))
+    (vector-normalize! contact-direction 1.0))
+  (if (< (-> control coverage) 0.9999) (logior! reaction-flags (cshape-reaction-flags low-coverage glancing)))
+  (vector-copy! contact-normal contact-direction)
+  (if (= (-> intersection best-u) 0.0)
+    (move-by-vector! control (vector-normalize-copy! (new-stack-vector0) contact-normal 3.0)))
+  (vector-copy! (-> control poly-normal) (-> intersection best-tri normal))
+  (collide-shape-moving-angle-set! control contact-normal (-> velocities vector 0))
+  ;; poly-angle is a cosine against gravity: any negative value faces downward, while values below
+  ;; -0.2 are strong ceiling contacts.
+  (if (< (-> control poly-angle) -0.2) (logior! status (collide-status touch-ceiling)))
+  (if (< (-> control poly-angle) 0.0) (logior! status (collide-status touch-ceiling-sticky)))
+  ;; Each pat mode supplies its standable-slope limit. Diving deliberately treats moderately steep
+  ;; surfaces as slopes so the target keeps sliding instead of stopping against them as walls.
+  (set! is-wall (< (fabs (-> control surface-angle)) (-> *pat-mode-info* (-> control cur-pat mode) wall-angle)))
+  (if (and is-wall (and (= (-> control mod-surface mode) 'dive) (< 0.2 (fabs (-> control surface-angle)))))
+    (set! is-wall (the-as symbol #f)))
+  (if is-wall (logior! reaction-flags (cshape-reaction-flags wall-by-angle)))
+  (if (logtest? reaction-flags (cshape-reaction-flags low-coverage))
+    (target-collision-low-coverage control intersection contact-normal (& reaction-flags) (& status) (& is-wall)))
+  ;; On the first contact after air time, record the downward impact speed. Impact friction damps
+  ;; only the component along gravity; the lateral component is reconstructed unchanged.
+  (when (not (logtest? (-> control prev-status) (collide-status on-surface)))
+    (set! (-> control ground-impact-vel) (- (vector-dot (-> control transv) (-> control dynam gravity-normal))))
+    (logior! status (collide-status impact-surface))
+    (when (not is-wall)
+      (let ((impact-retention (- 1.0 (-> control surf impact-fric))))
+        (when (< impact-retention 1.0)
+          (let ((lateral-velocity (new-stack-vector0))
+                (velocity-along-gravity (vector-dot (-> control dynam gravity-normal) (-> velocities vector 0))))
+            0.0
+            (vector-! lateral-velocity
+                      (-> velocities vector 0)
+                      (vector-float*! lateral-velocity (-> control dynam gravity-normal) velocity-along-gravity))
+            (let* ((lateral-speed (vector-length lateral-velocity))
+                   (lateral-speed-copy lateral-speed))
+              (if (< velocity-along-gravity 0.0) (set! velocity-along-gravity (* velocity-along-gravity impact-retention)))
+              (vector+! (-> velocities vector 0)
+                        (vector-float*! (-> velocities vector 0) (-> control dynam gravity-normal) velocity-along-gravity)
+                        (vector-float*! lateral-velocity lateral-velocity (/ lateral-speed lateral-speed-copy)))))))))
+  (logior! status (collide-status touch-surface))
+  (cond
+    ((-> intersection best-to-prim)
+     (logior! status (collide-status touch-actor))
+     (vector-copy! (-> control actor-contact-pt) (-> intersection best-tri intersect))
+     (vector-copy! (-> control actor-contact-normal) (-> control poly-normal))
+     (set! (-> control actor-contact-handle) (process->handle (-> intersection best-to-prim cshape process))))
+    ((= (-> control poly-pat material) (pat-material waterbottom)))
+    (else (logior! status (collide-status touch-background))))
+  (cond
+    (is-wall
+     (logior! reaction-flags (cshape-reaction-flags hit-wall))
+     (logior! status (collide-status touch-wall))
+     (set! (-> control cur-pat mode) 1)
+     (vector-copy! (-> control wall-contact-pt) (-> intersection best-tri intersect))
+     (vector-copy! (-> control wall-contact-poly-normal) (-> control poly-normal))
+     (vector-copy! (-> control wall-contact-normal) contact-normal)
+     (set! (-> control wall-pat) (-> intersection best-tri pat))
+     ;; This read is intentionally dead. The disabled branch below is an old wall-bounce experiment;
+     ;; normal wall response projects the incoming velocity onto the wall plane.
+     (-> control history-data (logand (+ (-> control history-data-idx) 127) 127))
+     (cond
+       (#f
+        (sound-play "cursor-options")
+        (logior! reaction-flags (cshape-reaction-flags wall-bounce))
+        (vector-reflect-flat-above! velocity-out (-> velocities vector 0) contact-normal))
+       (else (vector-reflect-flat! velocity-out (-> velocities vector 0) contact-normal)))
+     (cond
+       ((not (and (>= (-> intersection best-from-prim local-sphere w)
+                      (vector-dot (-> control ground-poly-normal)
+                                  (vector-! (new 'stack-no-clear 'vector) (-> intersection best-tri intersect) (-> control ground-touch-point))))
+                  (and (< 0.0 (vector-dot (-> control ground-poly-normal) velocity-out))
+                       (not (time-elapsed? (-> control last-time-on-ground) (seconds 0.3)))
+                       (not (logtest? reaction-flags (cshape-reaction-flags air-mode)))))))
+       (else
+        ;; A recent ground contact near this wall defines a seam. Preserve only velocity along the
+        ;; seam and add the wall normal, preventing the target from catching at floor-wall corners.
+        (logior! reaction-flags (cshape-reaction-flags corner-slide))
+        (logclear! reaction-flags (cshape-reaction-flags no-grab-edge))
+        (let ((seam-direction (vector-cross! (new 'stack-no-clear 'vector) (-> control poly-normal) (-> control ground-poly-normal))))
+          (vector-normalize! seam-direction 1.0)
+          (vector-float*! velocity-out seam-direction (vector-dot (-> velocities vector 0) seam-direction)))
+        (vector+! velocity-out velocity-out (-> control poly-normal)))))
+    (else
+     ;; Standable contacts slide along the floor plane and receive a normal offset that keeps the
+     ;; target from sinking into the surface.
+     (logior! status (collide-status on-surface))
+     (set! (-> control cur-pat mode) 0)
+     (if (= (-> intersection best-from-prim prim-id) 6) (vector-copy! (-> control local-normal) contact-normal))
+     (vector-reflect-flat! velocity-out (-> velocities vector 0) contact-normal)
+     (vector+! velocity-out velocity-out contact-normal)
+     (set! (-> control ground-touch-point w) 0.0)
+     ;; A clean ground contact has no wall/edge classification and no pat event. These records drive
+     ;; stance, animation, material effects, and water-bottom handling.
+     (when (not (or (logtest? reaction-flags (cshape-reaction-flags wall-by-pat wall-by-angle hit-wall low-coverage))
+                    (nonzero? (-> control poly-pat event))))
+       (logior! status (collide-status on-ground))
+       (vector-copy! (-> control ground-poly-normal) (-> control poly-normal))
+       (vector-copy! (-> control ground-contact-normal) contact-normal)
+       (set! (-> control ground-local-norm-dot-grav) (vector-dot contact-normal (-> control dynam gravity-normal)))
+       (set-time! (-> control last-time-on-ground))
+       (set! (-> control ground-pat) (-> control poly-pat))
+       (vector-copy! (-> control ground-touch-point) (-> intersection best-tri intersect))
+       (vector-copy! (-> control ground-contact-sphere-center) (-> intersection best-from-prim prim-core world-sphere))
+       (logior! reaction-flags (cshape-reaction-flags on-ground))
+       (if (= (-> control poly-pat material) (pat-material waterbottom)) (logior! status (collide-status on-water))))))
+  (logior! (-> control status) status)
+  (set! (-> control reaction-flag) reaction-flags)
+  ;; The history entry keeps the original input beside the final response for later movement tests.
+  (update! (-> control history-data (-> control history-data-idx))
+           control
+           (-> intersection best-tri intersect)
+           (-> velocities vector 1)
+           velocity-out)
+  (set! (-> control history-data-idx) (logand (+ (-> control history-data-idx) 1) 127))
+  status)
 
-(defun target-collision-no-reaction ((arg0 control-info) (arg1 collide-shape-intersect) (arg2 vector) (arg3 vector))
-  (if (= (-> arg0 mod-surface mode) 'air) (logior! (-> arg0 reaction-flag) (cshape-reaction-flags csrf05)))
-  (let ((s5-0 (-> arg0 history-data (-> arg0 history-data-idx))))
-    (update! s5-0 arg0 (-> arg0 trans) arg3 arg2)
-    (logior! (-> s5-0 status) (cshape-moving-flags csmf08)))
-  (set! (-> arg0 history-data-idx) (logand (+ (-> arg0 history-data-idx) 1) 127))
+(defun target-collision-no-reaction ((control control-info) (intersection collide-shape-intersect) (velocity-out vector) (velocity-in vector))
+  "Record a no-contact frame in control's history ring. Mark air-mode when the active modified
+   surface is air, write the supplied input and output velocities, and advance the ring index."
+  (if (= (-> control mod-surface mode) 'air) (logior! (-> control reaction-flag) (cshape-reaction-flags air-mode)))
+  (let ((history (-> control history-data (-> control history-data-idx))))
+    (update! history control (-> control trans) velocity-in velocity-out)
+    (logior! (-> history status) (collide-status no-touch)))
+  (set! (-> control history-data-idx) (logand (+ (-> control history-data-idx) 1) 127))
   0
   (none))

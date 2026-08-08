@@ -106,6 +106,7 @@ struct Config {
 
   std::string obj_file_name_map_file;
   std::string all_types_file;
+  std::string demacro_file;
 
   bool disassemble_code = false;
   bool dump_function_metadata = false;
@@ -166,6 +167,7 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<std::string, LabelConfigInfo>> label_types;
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
+  std::unordered_map<std::string, std::string> scratchpad_types_by_object;
   std::unordered_map<std::string, ObjectPatchInfo> object_patches;
 
   std::unordered_map<std::string, int> bad_format_strings;

@@ -15,14 +15,15 @@
    (x-axis vector :inline)
    (y-axis vector :inline))
   (:methods
-   (swamp-bat-idle-path-method-9 (_type_ vector float) vector)))
+   (eval-point! (_type_ vector float) vector)))
 
-(defmethod swamp-bat-idle-path-method-9 ((this swamp-bat-idle-path) (arg0 vector) (arg1 float))
-  (let ((f30-0 (* 65536.0 arg1)))
-    (set! (-> arg0 quad) (-> this origin quad))
-    (vector+*! arg0 arg0 (-> this x-axis) (cos f30-0))
-    (vector+*! arg0 arg0 (-> this y-axis) (sin f30-0)))
-  arg0)
+(defmethod eval-point! ((this swamp-bat-idle-path) (out-position vector) (path-param float))
+  "Write the point at path-param around this elliptical idle path to out-position."
+  (let ((angle (* 65536.0 path-param)))
+    (vector-copy! out-position (-> this origin))
+    (vector+*! out-position out-position (-> this x-axis) (cos angle))
+    (vector+*! out-position out-position (-> this y-axis) (sin angle)))
+  out-position)
 
 (deftype swamp-bat (process-drawable)
   ((root                collide-shape :override)
@@ -39,10 +40,11 @@
    swamp-bat-idle
    swamp-bat-launch-slaves))
 
-(defmethod relocate ((this swamp-bat) (arg0 int))
-  (dotimes (v1-0 2)
-    (if (nonzero? (-> this path-list v1-0)) (&+! (-> this path-list v1-0) arg0)))
-  (call-parent-method this arg0))
+(defmethod relocate ((this swamp-bat) (offset int))
+  "Relocate both path controls along with the swamp-bat controller."
+  (dotimes (i 2)
+    (if (nonzero? (-> this path-list i)) (&+! (-> this path-list i) offset)))
+  (call-parent-method this offset))
 
 (deftype swamp-bat-slave (process-drawable)
   ((root                collide-shape-moving :override)
@@ -58,7 +60,7 @@
    (path-select         int8)
    (launch-ready        symbol))
   (:methods
-   (swamp-bat-slave-method-20 (_type_) float))
+   (get-path-position (_type_) float))
   (:states (swamp-bat-slave-die handle)
    swamp-bat-slave-idle
    swamp-bat-slave-launch
@@ -79,7 +81,8 @@ swamp-bat-slave-event-handler
 (defbehavior swamp-bat-slave-post swamp-bat-slave ()
   (transform-post))
 
-(defmethod swamp-bat-slave-method-20 ((this swamp-bat-slave))
+(defmethod get-path-position ((this swamp-bat-slave))
+  "Return the current path position as synchronization phase times the path point count."
   (* (get-current-phase (-> this sync)) (-> this path-point-count)))
 
 (defbehavior swamp-bat-slave-path-post swamp-bat-slave ()
@@ -87,10 +90,10 @@ swamp-bat-slave-event-handler
         (s5-0 (new-stack-vector0))
         (gp-0 (new-stack-vector0))
         (s4-0 (new-stack-vector0))
-        (f30-0 (swamp-bat-slave-method-20 self))
+        (f30-0 (get-path-position self))
         (s3-0 (new 'static 'vector :y 1.0 :w 1.0)))
     (eval-path-curve-div! s2-0 s5-0 f30-0 'interp)
-    (path-control-method-12 s2-0 gp-0 f30-0)
+    (get-tangent-at-vertex! s2-0 gp-0 f30-0)
     (vector-cross! s4-0 gp-0 s3-0)
     (vector-normalize! s4-0 1.0)
     (let ((f0-4 (fmax (fmin (- (vector-dot (target-pos 0) s4-0) (vector-dot s5-0 s4-0)) (-> self strafe-envelope))
@@ -110,7 +113,7 @@ swamp-bat-slave-event-handler
 
 (defbehavior swamp-bat-slave-get-new-path swamp-bat-slave ()
   (set! (-> self path-select) (-> self parent-process 0 path-select))
-  (set! (-> self idle-path origin quad) (-> self parent-process 0 path-origin quad))
+  (vector-copy! (-> self idle-path origin) (-> self parent-process 0 path-origin))
   (let* ((f28-0 (-> self parent-process 0 idle-position-angle (-> self idle-position-index)))
          (f30-0 (cos f28-0))
          (f26-0 (sin f28-0))
@@ -137,10 +140,10 @@ swamp-bat-slave-event-handler
       (ja-channel-push! 1 (seconds 0.165))
       (ja :group! swamp-bat-idle-ja)
       (let ((s5-0 (new 'stack-no-clear 'vector)))
-        (set! (-> s5-0 quad) (-> self root trans quad))
+        (vector-copy! s5-0 (-> self root trans))
         (let ((s4-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat)))
               (gp-0 (new-stack-quaternion0)))
-          (let ((s2-0 (path-control-method-12 (-> self parent-process 0 path-list (-> self path-select)) (new 'stack-no-clear 'vector) 0.1)))
+          (let ((s2-0 (get-tangent-at-vertex! (-> self parent-process 0 path-list (-> self path-select)) (new 'stack-no-clear 'vector) 0.1)))
             0
             (let* ((f0-0 300.0)
                    (f1-0 32768.0)
@@ -161,7 +164,7 @@ swamp-bat-slave-event-handler
                 (suspend)
                 0)))
           (label cfg-10)
-          (set! (-> self root trans quad) (-> self idle-position quad))
+          (vector-copy! (-> self root trans) (-> self idle-position))
           (quaternion-copy! (-> self root quat) gp-0)))
       (set! (-> self launch-ready) #t)
       (logior! (-> self mask) (process-mask actor-pause))
@@ -169,7 +172,7 @@ swamp-bat-slave-event-handler
         (loop
           (let ((f26-0 (cos f30-2))
                 (f28-0 (sin f30-2)))
-            (set! (-> self root trans quad) (-> self idle-path origin quad))
+            (vector-copy! (-> self root trans) (-> self idle-path origin))
             (vector+*! (-> self root trans) (-> self root trans) (-> self idle-path x-axis) f26-0)
             (vector+*! (-> self root trans) (-> self root trans) (-> self idle-path y-axis) f28-0))
           (ja :num! (loop! (-> self idle-anim-speed)))
@@ -213,7 +216,7 @@ swamp-bat-slave-event-handler
       (ja-channel-push! 1 (seconds 0.1))
       (ja :group! swamp-bat-swoop-ja)
       (loop
-        (if (>= (swamp-bat-slave-method-20 self) 2.0) (go swamp-bat-slave-strafe))
+        (if (>= (get-path-position self) 2.0) (go swamp-bat-slave-strafe))
         (ja :num! (loop!))
         (suspend)))
   :post swamp-bat-slave-path-post)
@@ -226,7 +229,7 @@ swamp-bat-slave-event-handler
       (ja-channel-push! 1 (seconds 0.1))
       (ja :group! swamp-bat-strafe-ja)
       (loop
-        (if (>= (swamp-bat-slave-method-20 self) 6.0) (go swamp-bat-slave-return))
+        (if (>= (get-path-position self) 6.0) (go swamp-bat-slave-return))
         (ja :num! (loop!))
         (suspend)))
   :post swamp-bat-slave-path-post)
@@ -241,7 +244,7 @@ swamp-bat-slave-event-handler
       (let ((f30-0 (+ -1.0 (-> self path-point-count)))
             (gp-0 #t))
         (loop
-          (let ((f28-0 (swamp-bat-slave-method-20 self)))
+          (let ((f28-0 (get-path-position self)))
             (if (>= f28-0 f30-0) (go swamp-bat-slave-idle))
             (when (and gp-0 (>= f28-0 7.0) (< f28-0 8.0))
               (set! gp-0 #f)
@@ -293,7 +296,7 @@ swamp-bat-slave-event-handler
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> self root) s4-0))
-  (set! (-> self root trans quad) (-> arg0 root trans quad))
+  (vector-copy! (-> self root trans) (-> arg0 root trans))
   (set! (-> self root quat vec quad) (-> arg0 root quat vec quad))
   (vector-float*! (-> self root scale) *identity-vector* 2.0)
   (set! (-> self root pause-adjust-distance) 286720.0)
@@ -303,7 +306,7 @@ swamp-bat-slave-event-handler
   (set! (-> self strafe-envelope) 0.0)
   (set! (-> self idle-position-index) arg1)
   (swamp-bat-slave-get-new-path)
-  (set! (-> self root trans quad) (-> self idle-position quad))
+  (vector-copy! (-> self root trans) (-> self idle-position))
   (setup-params! (-> self sync) (the-as uint 1200) 0.0 0.15 0.15)
   (initialize-skeleton self *swamp-bat-slave-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
@@ -329,7 +332,7 @@ swamp-bat-slave-event-handler
     (set-pos *__private-assert-info* "swamp-bat" (the-as uint 538) (the-as uint 2))
     (__assert-zero-lim-range-int arg0 (-> self path-count) "path-index" "(-> self path-count)"))
   (let* ((s5-0 (-> self path-list arg0))
-         (gp-1 (path-control-method-12 s5-0 (-> self path-select-plane arg0) 5.0))
+         (gp-1 (get-tangent-at-vertex! s5-0 (-> self path-select-plane arg0) 5.0))
          (s5-1 (eval-path-curve-div! s5-0 (new 'stack-no-clear 'vector) 5.0 'interp)))
     (set! (-> gp-1 y) 0.0)
     (vector-normalize! gp-1 1.0)
@@ -404,7 +407,8 @@ swamp-bat-slave-event-handler
         (suspend)))
   :post #f)
 
-(defmethod init-from-entity! ((this swamp-bat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swamp-bat) (source-entity entity-actor))
+  "Initialize the swamp-bat controller, its two paths, enemy facts, and configured slave bats."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 0.0)
@@ -412,7 +416,7 @@ swamp-bat-slave-event-handler
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (logior! (-> this mask) (process-mask enemy))
   (set! (-> this vol) (new 'process 'vol-control this))
@@ -430,7 +434,7 @@ swamp-bat-slave-event-handler
     (swamp-bat-make-path-select-plane 1))
   (if (!= (-> this path-count) 2) (go process-drawable-art-error "need 2 paths"))
   (set! (-> this fact) (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
-  (let ((a1-10 (res-lump-value arg0 'num-lurkers uint128 :default (the-as uint128 6))))
+  (let ((a1-10 (res-lump-value source-entity 'num-lurkers uint128 :default (the-as uint128 6))))
     (set! (-> this slave-count) (max 2 (min 8 (the-as int a1-10)))))
   (swamp-bat-setup-new-path 0)
   (swamp-bat-update-path)

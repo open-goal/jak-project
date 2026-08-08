@@ -10,16 +10,17 @@
 (if (not (nmember "flutp" *kernel-packages*)) (set! *kernel-packages* (cons "flutp" *kernel-packages*)))
 
 (deftype flutflut (process-drawable)
-  ((root            collide-shape-moving :override)
+  "A placed Flut Flut mount, pickup point, and return point."
+  ((root collide-shape-moving :override)
    (parent-override (pointer target) :overlay-at parent)
-   (extra-trans     vector :inline)
-   (condition       int32)
-   (auto-get-off    symbol)
-   (cell            handle)
-   (path-data       path-control 2)
-   (path-target     path-control :overlay-at (-> path-data 0))
-   (path-flut       path-control :overlay-at (-> path-data 1))
-   (touch-time      time-frame))
+   (extra-trans vector :inline)
+   (condition int32)
+   (auto-get-off symbol)
+   (cell handle)
+   (path-data path-control 2)
+   (path-target path-control :overlay-at (-> path-data 0))
+   (path-flut path-control :overlay-at (-> path-data 1))
+   (touch-time time-frame))
   :pack-me
   (:state-methods
    wait-for-start
@@ -27,8 +28,8 @@
    (pickup (state flutflut))
    wait-for-return))
 
-
 (defmethod relocate ((this flutflut) (offset int))
+  "Relocate the two stored path controllers, then relocate the drawable process."
   (countdown (v1-0 2)
     (if (-> this path-data v1-0) (&+! (-> this path-data v1-0) offset)))
   (the-as flutflut ((method-of-type process-drawable relocate) this offset)))
@@ -39,7 +40,7 @@
        :settings
        (new 'static
             'shadow-settings
-            :flags (shadow-flags disable-fade shdf03)
+            :flags (shadow-flags disable-fade scissor-top)
             :shadow-dir
             (new 'static 'vector :y -1.0 :w 614400.0)
             :bot-plane
@@ -152,7 +153,7 @@
             (let ((gp-0 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
               (set-width! gp-0 440)
               (set-height! gp-0 80)
-              (set! (-> gp-0 flags) (font-flags shadow kerning large))
+              (set-flags! gp-0 (font-flags shadow kerning large))
               (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) gp-0 #f 128 22))
             (if (and (cpad-pressed? 0 circle) (send-event *target* 'change-mode 'flut self))
               (go-virtual pickup (method-of-object self wait-for-return)))))
@@ -213,7 +214,8 @@
         (flutflut-effect)
         (suspend))))
 
-(defmethod init-from-entity! ((this flutflut) (arg0 entity-actor))
+(defmethod init-from-entity! ((this flutflut) (source-entity entity-actor))
+  "Build Flut Flut's collision and art, load its condition and paths, and enter its waiting state."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -226,8 +228,8 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
-  (set-yaw-angle-clear-roll-pitch! (-> this root) (res-lump-float arg0 'rotoffset))
+  (process-drawable-from-entity! this source-entity)
+  (set-yaw-angle-clear-roll-pitch! (-> this root) (res-lump-float source-entity 'rotoffset))
   (initialize-skeleton this *flutflut-sg* '())
   (logior! (-> this skel status) (janim-status eye))
   (set! (-> this draw shadow-ctrl) *flutflut-shadow-control*)
@@ -239,7 +241,7 @@
     (let ((v1-27 (new 'process 'curve-control this 'path (the float (+ s4-2 1)))))
       (set! (-> this path-data s4-2) v1-27)
       (if v1-27 (logior! (-> v1-27 flags) (path-control-flag display draw-line draw-point draw-text)))))
-  (set! (-> this condition) (res-lump-value arg0 'index int))
+  (set! (-> this condition) (res-lump-value source-entity 'index int))
   (set! (-> this fact) (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (set! (-> this part) (create-launch-control group-flut-trans-pad this))
   (set! (-> this auto-get-off) #f)

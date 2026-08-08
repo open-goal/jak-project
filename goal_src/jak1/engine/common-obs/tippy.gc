@@ -15,40 +15,46 @@
    (1-damping  float))
   (:methods
    (reset! (_type_ process-drawable float float) none)
-   (tippy-method-10 (_type_ process-drawable vector) symbol)))
+   (update-tip! (_type_ process-drawable vector) symbol)))
 
-(defmethod reset! ((this tippy) (arg0 process-drawable) (arg1 float) (arg2 float))
+(defmethod reset! ((this tippy) (owner-proc process-drawable) (distance-ratio float) (damping float))
+  "Reset the tip controller from owner-proc's current root orientation. distance-ratio converts
+   horizontal distance to a tilt angle; damping is the per-update weight for new values."
   (set-vector! (-> this axis) 0.0 0.0 0.0 1.0)
   (set! (-> this angle) 0.0)
-  (quaternion-copy! (-> this orig) (-> arg0 root quat))
-  (set! (-> this dist-ratio) arg1)
-  (set! (-> this damping) arg2)
-  (set! (-> this 1-damping) (- 1.0 arg2))
+  (quaternion-copy! (-> this orig) (-> owner-proc root quat))
+  (set! (-> this dist-ratio) distance-ratio)
+  (set! (-> this damping) damping)
+  (set! (-> this 1-damping) (- 1.0 damping))
   0
   (none))
 
-(defmethod tippy-method-10 ((this tippy) (arg0 process-drawable) (arg1 vector))
-  (let ((s4-0 #t))
+(defmethod update-tip! ((this tippy) (owner-proc process-drawable) (target-position vector))
+  "Update owner-proc's tipped orientation. With a target, form the horizontal rotation axis
+   perpendicular to the target direction, scale target distance into an angle, and blend both
+   toward their new values. Without a target, decay the angle to zero and report false once it
+   falls below one degree. Always apply the resulting tip relative to the saved orientation."
+  (let ((active? #t))
     (cond
-      (arg1
-       (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (target-position
+       (let ((tilt-axis (new 'stack-no-clear 'vector)))
          0.0
-         (set! (-> s3-0 x) (- (-> arg1 z) (-> arg0 root trans z)))
-         (set! (-> s3-0 y) 0.0)
-         (set! (-> s3-0 z) (- (-> arg0 root trans x) (-> arg1 x)))
-         (let ((f0-6 (vector-length s3-0)))
-           (vector-float*! s3-0 s3-0 (/ 1.0 f0-6))
-           (let ((f30-0 (* f0-6 (-> this dist-ratio))))
-             (set! (-> this axis x) (+ (* (-> this 1-damping) (-> this axis x)) (* (-> this damping) (-> s3-0 x))))
+         (set! (-> tilt-axis x) (- (-> target-position z) (-> owner-proc root trans z)))
+         (set! (-> tilt-axis y) 0.0)
+         (set! (-> tilt-axis z) (- (-> owner-proc root trans x) (-> target-position x)))
+         (let ((target-distance (vector-length tilt-axis)))
+           (vector-float*! tilt-axis tilt-axis (/ 1.0 target-distance))
+           (let ((target-angle (* target-distance (-> this dist-ratio))))
+             (set! (-> this axis x) (+ (* (-> this 1-damping) (-> this axis x)) (* (-> this damping) (-> tilt-axis x))))
              (set! (-> this axis y) 0.0)
-             (set! (-> this axis z) (+ (* (-> this 1-damping) (-> this axis z)) (* (-> this damping) (-> s3-0 z))))
+             (set! (-> this axis z) (+ (* (-> this 1-damping) (-> this axis z)) (* (-> this damping) (-> tilt-axis z))))
              (vector-normalize! (-> this axis) 1.0)
-             (set! (-> this angle) (+ (* (-> this 1-damping) (-> this angle)) (* (-> this damping) f30-0)))))))
+             (set! (-> this angle) (+ (* (-> this 1-damping) (-> this angle)) (* (-> this damping) target-angle)))))))
       (else
        (set! (-> this angle) (* (-> this 1-damping) (-> this angle)))
        (when (< (-> this angle) 182.04445)
          (set! (-> this angle) 0.0)
-         (set! s4-0 #f))))
-    (quaternion-vector-angle! (-> arg0 root quat) (-> this axis) (-> this angle))
-    (quaternion*! (-> arg0 root quat) (-> arg0 root quat) (-> this orig))
-    s4-0))
+         (set! active? #f))))
+    (quaternion-vector-angle! (-> owner-proc root quat) (-> this axis) (-> this angle))
+    (quaternion*! (-> owner-proc root quat) (-> owner-proc root quat) (-> this orig))
+    active?))

@@ -184,6 +184,10 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
     case Kind::VARIABLE:
       return m_variable.to_form(env);
     case Kind::INTEGER_CONSTANT: {
+      if (m_int == 0x70000000 && env.scratchpad_type()) {
+        env.note_scratchpad_access();
+        return pretty_print::to_symbol("spad");
+      }
       if (m_display_int_as_float) {
         float f;
         s32 as_s32 = m_int;

@@ -9,6 +9,59 @@
 (require "engine/debug/memory-usage.gc")
 (require "engine/debug/menu.gc")
 
+;; This file is the content of the debug menu: the tree of pages and items, and the callbacks that
+;; read and write the setting behind each item. engine/debug/menu.gc owns the types, the rendering
+;; and the pad handling; nothing here draws.
+;;
+;; Two trees are built when the file loads. *debug-menu-context* is the full menu reached from the
+;; pause screen, *popup-menu-context* is the short list reached by holding L3 while paused.
+;; menu-respond-to-pause activates one of them and *menu-hook* runs both once per frame.
+;;
+;; Declaring a page
+;; ----------------
+;; A page is a debug-menu. Items are appended with debug-menu-append-item and the page is reached
+;; from its parent through a debug-menu-item-submenu. Most pages are written as a static template
+;; and expanded by debug-menu-make-from-template:
+;;
+;;   (menu "Stats"
+;;         (flag      "Poly" *stats-poly* dm-boolean-toggle-pick-func)
+;;         (function  "List Sounds" #f ,(lambda () (list-sounds)))
+;;         (float-var "Subdiv Close" close dm-subdiv-float 10 1 #t 1 200 1)
+;;         (menu "Ambient Marks" ...))
+;;
+;; Every entry is (kind label id callback . extra). The label is what the menu draws, the id is
+;; handed to the callback unchanged, and the callback is either a function or a symbol whose value
+;; is one. A page that is too large or too dynamic for a template is built by hand instead - the
+;; camera, shader, instance and task pages - and build-shader-list, build-instance-list and
+;; build-continue-menu fill pages whose contents are only known at run time.
+;;
+;; Numbers inside a template are boxed, so every value the template reader consumes arrives
+;; multiplied by 8 and is divided by 8 on the way out. The item id is not divided: a callback that
+;; wants the number the template author wrote has to divide by 8 itself, and the hand-built pages
+;; therefore pass ids already multiplied by 8 when they share such a callback. vu1-renderer-mask is
+;; defined in that shifted form on purpose - its first bit is 3 - so the render page can pass mask
+;; values straight through.
+;;
+;; The callback contract
+;; ---------------------
+;; flag item, (function object debug-menu-msg object)
+;;   Called with the item id and a message. press means the user selected the item, so toggle or
+;;   apply the setting; update and activate mean the menu is refreshing, so only read. The result
+;;   is stored in is-on and picks the item colour: #f off, #t on, and any other value - the task
+;;   pages return 'invalid - draws the item as unavailable. Flag items refresh every 23 frames.
+;;
+;; function item, (function object object)
+;;   Called with the item id on press only. The result is not stored; a true value flashes the item
+;;   blue and a false value flashes it red, so a callback that returns none picks a colour from
+;;   whatever was left in the result register.
+;;
+;; variable item, (function int debug-menu-msg X X X)
+;;   Called with the item id, a message, a proposed value, and the value the item is showing. On
+;;   press write the proposed value and return what was actually taken; on update ignore the
+;;   proposal and return the live value. When the setting it edits does not exist the callback
+;;   returns its fourth argument, which leaves the display alone. Integer and float items keep
+;;   their value in the same field, so a callback has to match the kind the item was set up with.
+
 ;; Forward declarations for stuff we haven't written yet:
 (define-extern *edit-instance* string)
 
@@ -23,204 +76,259 @@
 
 (define *dm-cam-mode-interpolation* 0)
 
-(defun dm-cam-mode-func ((arg0 (state camera-slave)) (arg1 debug-menu-msg))
-  (if (and (= arg1 (debug-menu-msg press)) arg0) (send-event *camera* 'change-state arg0 *dm-cam-mode-interpolation*))
-  (if *camera* (send-event *camera* 'query-state arg0) (not arg0)))
+(defun dm-cam-mode-func ((mode (state camera-slave)) (msg debug-menu-msg))
+  "Camera mode flag. On press, ask *camera* to enter the slave state mode, interpolating over
+   *dm-cam-mode-interpolation* frames. Reports whether that state is running. mode #f is the Off
+   entry: it changes nothing and reports true while no slave state is active."
+  (if (and (= msg (debug-menu-msg press)) mode) (send-event *camera* 'change-state mode *dm-cam-mode-interpolation*))
+  (if *camera* (send-event *camera* 'query-state mode) (not mode)))
 
-(defun dm-cam-settings-func ((arg0 int) (arg1 debug-menu-msg))
-  (when (and (= arg1 (debug-menu-msg press)) *camera*)
+(defun dm-cam-settings-func ((option int) (msg debug-menu-msg))
+  "Camera option flags. option indexes the Camera/Settings page and selects one cam-slave-options
+   bit, one of two camera-master option bits, or the free-camera reset. On press the selected bit
+   is toggled; the result reports it. master-options bit 0 stops the camera from following
+   regions and bit 2 restricts region changes to when the target is on the ground. option 6 is
+   the Reset Free entry, which is a function item and so arrives here without a message."
+  (when (and (= msg (debug-menu-msg press)) *camera*)
     (cond
-      ((zero? arg0) (send-event *camera* 'toggle-slave-option 1))
-      ((= arg0 13) (send-event *camera* 'toggle-slave-option 8192))
-      ((= arg0 1) (send-event *camera* 'toggle-slave-option 2))
-      ((= arg0 2) (send-event *camera* 'toggle-slave-option 4))
-      ((= arg0 3) (send-event *camera* 'toggle-slave-option 128))
-      ((= arg0 4) (send-event *camera* 'toggle-slave-option 8))
-      ((= arg0 7) (send-event *camera* 'toggle-slave-option 16))
-      ((= arg0 8) (send-event *camera* 'toggle-slave-option 64))
-      ((= arg0 6) (send-event *camera* 'reset-root))
-      ((= arg0 9) (logxor! (-> *camera* master-options) 1))
-      ((= arg0 10) (logxor! (-> *camera* master-options) 4))
-      ((= arg0 11) (send-event *camera* 'toggle-slave-option 32))
-      ((= arg0 12) (send-event *camera* 'toggle-slave-option 512))
-      ((= arg0 14) (send-event *camera* 'toggle-slave-option #x8000))
-      ((= arg0 15) (send-event *camera* 'toggle-slave-option #x10000))))
+      ((zero? option) (send-event *camera* 'toggle-slave-option (cam-slave-options BUTT_CAM)))
+      ((= option 13) (send-event *camera* 'toggle-slave-option (cam-slave-options BLOCK_SHIFT_BUTTONS)))
+      ((= option 1) (send-event *camera* 'toggle-slave-option (cam-slave-options SAME_SIDE)))
+      ((= option 2) (send-event *camera* 'toggle-slave-option (cam-slave-options MOVE_SPHERICAL)))
+      ((= option 3) (send-event *camera* 'toggle-slave-option (cam-slave-options DRAG)))
+      ((= option 4) (send-event *camera* 'toggle-slave-option (cam-slave-options ALLOW_Z_ROT)))
+      ((= option 7) (send-event *camera* 'toggle-slave-option (cam-slave-options JUMP_PITCHES)))
+      ((= option 8) (send-event *camera* 'toggle-slave-option (cam-slave-options FIND_HIDDEN_TARGET)))
+      ((= option 6) (send-event *camera* 'reset-root))
+      ((= option 9) (logxor! (-> *camera* master-options) 1))
+      ((= option 10) (logxor! (-> *camera* master-options) 4))
+      ((= option 11) (send-event *camera* 'toggle-slave-option (cam-slave-options COLLIDE)))
+      ((= option 12) (send-event *camera* 'toggle-slave-option (cam-slave-options LINE_OF_SIGHT)))
+      ((= option 14) (send-event *camera* 'toggle-slave-option (cam-slave-options NO_ROTATE)))
+      ((= option 15) (send-event *camera* 'toggle-slave-option (cam-slave-options STICKY_ANGLE)))))
   (cond
     (*camera*
      (cond
-       ((zero? arg0) (logtest? (-> *camera* slave-options) 1))
-       ((= arg0 13) (logtest? (-> *camera* slave-options) 8192))
-       ((= arg0 1) (logtest? (-> *camera* slave-options) 2))
-       ((= arg0 2) (logtest? (-> *camera* slave-options) 4))
-       ((= arg0 3) (logtest? (-> *camera* slave-options) 128))
-       ((= arg0 4) (logtest? (-> *camera* slave-options) 8))
-       ((= arg0 7) (logtest? (-> *camera* slave-options) 16))
-       ((= arg0 8) (logtest? (-> *camera* slave-options) 64))
-       ((= arg0 11) (logtest? (-> *camera* slave-options) 32))
-       ((= arg0 12) (logtest? (-> *camera* slave-options) 512))
-       ((= arg0 14) (logtest? (-> *camera* slave-options) #x8000))
-       ((= arg0 15) (logtest? #x10000 (-> *camera* slave-options)))
-       ((= arg0 9) (logtest? (-> *camera* master-options) 1))
-       ((= arg0 10) (logtest? (-> *camera* master-options) 4))
+       ((zero? option) (logtest? (-> *camera* slave-options) (cam-slave-options BUTT_CAM)))
+       ((= option 13) (logtest? (-> *camera* slave-options) (cam-slave-options BLOCK_SHIFT_BUTTONS)))
+       ((= option 1) (logtest? (-> *camera* slave-options) (cam-slave-options SAME_SIDE)))
+       ((= option 2) (logtest? (-> *camera* slave-options) (cam-slave-options MOVE_SPHERICAL)))
+       ((= option 3) (logtest? (-> *camera* slave-options) (cam-slave-options DRAG)))
+       ((= option 4) (logtest? (-> *camera* slave-options) (cam-slave-options ALLOW_Z_ROT)))
+       ((= option 7) (logtest? (-> *camera* slave-options) (cam-slave-options JUMP_PITCHES)))
+       ((= option 8) (logtest? (-> *camera* slave-options) (cam-slave-options FIND_HIDDEN_TARGET)))
+       ((= option 11) (logtest? (-> *camera* slave-options) (cam-slave-options COLLIDE)))
+       ((= option 12) (logtest? (-> *camera* slave-options) (cam-slave-options LINE_OF_SIGHT)))
+       ((= option 14) (logtest? (-> *camera* slave-options) (cam-slave-options NO_ROTATE)))
+       ((= option 15) (logtest? (cam-slave-options STICKY_ANGLE) (-> *camera* slave-options)))
+       ((= option 9) (logtest? (-> *camera* master-options) 1))
+       ((= option 10) (logtest? (-> *camera* master-options) 4))
        (else #f)))
     (else #f)))
 
-(defun dm-cam-settings-func-int ((arg0 int) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
-  (when (and (= arg1 (debug-menu-msg press)) *camera*)
-    (if (= (/ arg0 8) 5) (set! *dm-cam-mode-interpolation* arg2)))
+(defun dm-cam-settings-func-int ((id int) (msg debug-menu-msg) (value int) (fallback int))
+  "Interp Frms variable. Sets the number of frames the debug menu asks the camera to interpolate
+   over when changing mode. Only id 40 belongs to this item; anything else returns fallback."
+  (when (and (= msg (debug-menu-msg press)) *camera*)
+    (if (= (/ id 8) 5) (set! *dm-cam-mode-interpolation* value)))
   (cond
-    (*camera* (if (= (/ arg0 8) 5) *dm-cam-mode-interpolation* arg3))
-    (else arg3)))
+    (*camera* (if (= (/ id 8) 5) *dm-cam-mode-interpolation* fallback))
+    (else fallback)))
 
-(defun dm-cam-externalize ((arg0 symbol) (arg1 debug-menu-msg))
-  (when (= arg1 (debug-menu-msg press))
+(defun dm-cam-externalize ((mode symbol) (msg debug-menu-msg))
+  "External camera control. reset re-seats the external camera at the current view unless it is
+   locked, allow-z toggles the z-rotation option, and any other value selects that external mode,
+   deselecting it if it was already current. Reports whether mode is selected."
+  (when (= msg (debug-menu-msg press))
     (cond
-      ((= arg0 'reset) (if (!= *external-cam-mode* 'locked) (external-cam-reset!)))
-      ((= arg0 'allow-z) (set! *external-cam-options* (logxor *external-cam-options* (external-cam-option allow-z))))
-      ((= *external-cam-mode* arg0) (set! *external-cam-mode* #f))
-      (else (if (not *external-cam-mode*) (external-cam-reset!)) (set! *external-cam-mode* arg0))))
-  (if (= arg0 'allow-z) (logtest? *external-cam-options* (external-cam-option allow-z)) (= *external-cam-mode* arg0)))
+      ((= mode 'reset) (if (!= *external-cam-mode* 'locked) (external-cam-reset!)))
+      ((= mode 'allow-z) (set! *external-cam-options* (logxor *external-cam-options* (external-cam-option allow-z))))
+      ((= *external-cam-mode* mode) (set! *external-cam-mode* #f))
+      (else (if (not *external-cam-mode*) (external-cam-reset!)) (set! *external-cam-mode* mode))))
+  (if (= mode 'allow-z) (logtest? *external-cam-options* (external-cam-option allow-z)) (= *external-cam-mode* mode)))
 
-(defun dm-cam-render-float ((arg0 int) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
-  (when (= arg1 (debug-menu-msg press))
+(defun dm-cam-render-float ((id int) (msg debug-menu-msg) (value float) (fallback float))
+  "Field of view in degrees. id 0 writes *math-camera* and rebuilds its projection; id 8 asks
+   *camera* to change fov. Returns the live fov in degrees, or fallback when the object it edits
+   is missing."
+  (when (= msg (debug-menu-msg press))
     (cond
-      ((zero? (/ arg0 8))
+      ((zero? (/ id 8))
        (when *math-camera*
-         (set! (-> *math-camera* fov) (* 182.04445 arg2))
+         (set! (-> *math-camera* fov) (* 182.04445 value))
          (update-math-camera *math-camera* (-> *setting-control* current video-mode) (-> *setting-control* current aspect-ratio))))
-      ((= (/ arg0 8) 1) (if *camera* (send-event *camera* 'set-fov (* 182.04445 arg2))))))
+      ((= (/ id 8) 1) (if *camera* (send-event *camera* 'set-fov (* 182.04445 value))))))
   (cond
-    ((zero? (/ arg0 8))
+    ((zero? (/ id 8))
      (cond
        (*math-camera* (* 0.005493164 (-> *math-camera* fov)))
-       (else (empty) arg3)))
-    ((= (/ arg0 8) 1)
+       (else (empty) fallback)))
+    ((= (/ id 8) 1)
      (cond
-       (*camera* (let ((f30-0 0.005493164)) (* f30-0 (the-as float (send-event *camera* 'query-fov)))))
-       (else (empty) arg3)))
-    (else (empty) arg3)))
+       (*camera* (let ((units-to-degrees 0.005493164)) (* units-to-degrees (the-as float (send-event *camera* 'query-fov)))))
+       (else (empty) fallback)))
+    (else (empty) fallback)))
 
-(defun dm-subdiv-float ((arg0 symbol) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
-  (when (= arg1 (debug-menu-msg press))
-    (case arg0
-      (('close) (if (and *math-camera* *subdivide-settings*) (set! (-> *subdivide-settings* close 3) (* 4096.0 arg2))))
-      (('far) (if (and *math-camera* *subdivide-settings*) (set! (-> *subdivide-settings* far 3) (* 4096.0 arg2))))))
-  (case arg0
-    (('close) (if (and *math-camera* *subdivide-settings*) (/ (-> *subdivide-settings* close 3) METER_LENGTH) arg3))
-    (('far) (if (and *math-camera* *subdivide-settings*) (/ (-> *subdivide-settings* far 3) METER_LENGTH) arg3))
-    (else arg3)))
+(defun dm-subdiv-float ((setting symbol) (msg debug-menu-msg) (value float) (fallback float))
+  "Subdivision distance in meters. setting picks close or far, and the value goes into profile 3 of
+   *subdivide-settings*, which is the profile the artist menu overrides. Returns fallback when the
+   camera or settings are not loaded."
+  (when (= msg (debug-menu-msg press))
+    (case setting
+      (('close) (if (and *math-camera* *subdivide-settings*) (set! (-> *subdivide-settings* close 3) (meters value))))
+      (('far) (if (and *math-camera* *subdivide-settings*) (set! (-> *subdivide-settings* far 3) (meters value))))))
+  (case setting
+    (('close) (if (and *math-camera* *subdivide-settings*) (/ (-> *subdivide-settings* close 3) METER_LENGTH) fallback))
+    (('far) (if (and *math-camera* *subdivide-settings*) (/ (-> *subdivide-settings* far 3) METER_LENGTH) fallback))
+    (else fallback)))
 
-(defun dm-subdiv-int ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 int))
-  (when (= arg1 (debug-menu-msg press))
-    (case arg0
-      (('anim-speed) (if *anim-tester* (set! (-> *anim-tester* 0 speed) arg2)))))
-  (case arg0
-    (('anim-speed) (if *anim-tester* (-> *anim-tester* 0 speed) arg3))
-    (else arg3)))
+(defun dm-subdiv-int ((setting symbol) (msg debug-menu-msg) (value int) (fallback int))
+  "Anim Tester playback speed. setting is anim-speed; writes and reads the speed of the running
+   tester, or returns fallback when no tester is running."
+  (when (= msg (debug-menu-msg press))
+    (case setting
+      (('anim-speed) (if *anim-tester* (set! (-> *anim-tester* 0 speed) value)))))
+  (case setting
+    (('anim-speed) (if *anim-tester* (-> *anim-tester* 0 speed) fallback))
+    (else fallback)))
 
-(defun dm-setting-language ((arg0 int) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! (-> *setting-control* default language) (the-as language-enum (/ arg0 8))))
-  (= (-> *setting-control* default language) (/ arg0 8)))
+(defun dm-setting-language ((id int) (msg debug-menu-msg))
+  "Language flag. Writes the default language setting from id / 8 and reports whether it is the
+   current one."
+  (if (= msg (debug-menu-msg press)) (set! (-> *setting-control* default language) (the-as language-enum (/ id 8))))
+  (= (-> *setting-control* default language) (/ id 8)))
 
-(defun dm-current-continue ((arg0 string) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (start 'play (get-continue-by-name *game-info* arg0)))
-  (string= (-> (get-or-create-continue! *game-info*) name) arg0))
+(defun dm-current-continue ((continue-name string) (msg debug-menu-msg))
+  "Continue point flag. On press, restart the player at the named continue point. Reports whether
+   it is the continue point the game would resume from."
+  (if (= msg (debug-menu-msg press)) (start 'play (get-continue-by-name *game-info* continue-name)))
+  (string= (-> (get-or-create-continue! *game-info*) name) continue-name))
 
-(defun dm-subdiv-draw-func ((arg0 int) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *subdivide-draw-mode* (/ arg0 8)))
-  (= (/ arg0 8) *subdivide-draw-mode*))
+(defun dm-subdiv-draw-func ((id int) (msg debug-menu-msg))
+  "Terrain subdivision draw mode flag: 0 textured, 1 outline, 2 gouraud, 3 hack, from id / 8."
+  (if (= msg (debug-menu-msg press)) (set! *subdivide-draw-mode* (/ id 8)))
+  (= (/ id 8) *subdivide-draw-mode*))
 
-(defun dm-ocean-subdiv-draw-func ((arg0 int) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *ocean-subdivide-draw-mode* (/ arg0 8)))
-  (= (/ arg0 8) *ocean-subdivide-draw-mode*))
+(defun dm-ocean-subdiv-draw-func ((id int) (msg debug-menu-msg))
+  "Ocean subdivision draw mode flag: 0 textured, 1 outline, 2 gouraud, from id / 8."
+  (if (= msg (debug-menu-msg press)) (set! *ocean-subdivide-draw-mode* (/ id 8)))
+  (= (/ id 8) *ocean-subdivide-draw-mode*))
 
-(defun dm-time-of-day-func ((arg0 int) (arg1 debug-menu-msg))
-  (when (= arg1 (debug-menu-msg press))
-    (set! *time-of-day-mode* (/ arg0 8))
+(defun dm-time-of-day-func ((id int) (msg debug-menu-msg))
+  "Time of day flag. Modes 0 through 7 freeze the clock at a fixed hour; mode 8 starts it running
+   at the normal or fast rate. Reports whether id / 8 is the current mode."
+  (when (= msg (debug-menu-msg press))
+    (set! *time-of-day-mode* (/ id 8))
     (set! (-> *time-of-day-proc* 0 minute) 0)
     (cond
-      ((zero? (/ arg0 8)) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 7))
-      ((= (/ arg0 8) 1) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 9))
-      ((= (/ arg0 8) 2) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 12))
-      ((= (/ arg0 8) 3) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 15))
-      ((= (/ arg0 8) 4) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 18))
-      ((= (/ arg0 8) 5) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 19))
-      ((= (/ arg0 8) 6) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 23))
-      ((= (/ arg0 8) 7) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 4))
-      ((= (/ arg0 8) 8)
+      ((zero? (/ id 8)) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 7))
+      ((= (/ id 8) 1) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 9))
+      ((= (/ id 8) 2) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 12))
+      ((= (/ id 8) 3) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 15))
+      ((= (/ id 8) 4) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 18))
+      ((= (/ id 8) 5) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 19))
+      ((= (/ id 8) 6) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 23))
+      ((= (/ id 8) 7) (set! (-> *time-of-day-proc* 0 time-ratio) 0.0) (set! (-> *time-of-day-proc* 0 hour) 4))
+      ((= (/ id 8) 8)
        (if *time-of-day-fast* (set! (-> *time-of-day-proc* 0 time-ratio) 18000.0) (set! (-> *time-of-day-proc* 0 time-ratio) 300.0)))))
-  (= (/ arg0 8) *time-of-day-mode*))
+  (= (/ id 8) *time-of-day-mode*))
 
-(defun dm-time-of-day-func2 ((arg0 (pointer symbol)) (arg1 debug-menu-msg))
-  (when (= arg1 (debug-menu-msg press))
-    (set! (-> arg0 0) (not (-> arg0 0)))
+(defun dm-time-of-day-func2 ((setting (pointer symbol)) (msg debug-menu-msg))
+  "Fast clock flag. Toggles the boolean held by setting, then re-applies the normal or fast time
+   ratio if the clock is already running."
+  (when (= msg (debug-menu-msg press))
+    (set! (-> setting 0) (not (-> setting 0)))
     (when (!= (-> *time-of-day-proc* 0 time-ratio) 0.0)
       (if *time-of-day-fast* (set! (-> *time-of-day-proc* 0 time-ratio) 18000.0) (set! (-> *time-of-day-proc* 0 time-ratio) 300.0))))
-  (-> arg0 0))
+  (-> setting 0))
 
-(defun dm-boolean-toggle-pick-func ((arg0 (pointer symbol)) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! (-> arg0 0) (not (-> arg0 0))))
-  (-> arg0 0))
+(defun dm-boolean-toggle-pick-func ((setting (pointer symbol)) (msg debug-menu-msg))
+  "The flag callback behind most items in this file: toggle the boolean held by the symbol setting
+   on press, and report its value."
+  (if (= msg (debug-menu-msg press)) (set! (-> setting 0) (not (-> setting 0))))
+  (-> setting 0))
 
-(defun dm-time-of-day-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
-  (time-of-day-setup (= arg1 (debug-menu-msg press)))
+(defun dm-time-of-day-pick-func ((id symbol) (msg debug-menu-msg))
+  "Time of day flag that starts or stops the clock through time-of-day-setup. It returns nothing,
+   so the item's displayed state is whatever the call left in the result register."
+  (time-of-day-setup (= msg (debug-menu-msg press)))
   (none))
 
-(defun dm-actor-marks-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *display-actor-marks* arg0))
-  (= *display-actor-marks* arg0))
+(defun dm-actor-marks-pick-func ((mode symbol) (msg debug-menu-msg))
+  "*display-actor-marks* selector: #f, #t, full or process."
+  (if (= msg (debug-menu-msg press)) (set! *display-actor-marks* mode))
+  (= *display-actor-marks* mode))
 
-(defun dm-compact-actor-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *compact-actors* arg0))
-  (= *compact-actors* arg0))
+(defun dm-compact-actor-pick-func ((mode symbol) (msg debug-menu-msg))
+  "*compact-actors* selector: #f, #t or debug."
+  (if (= msg (debug-menu-msg press)) (set! *compact-actors* mode))
+  (= *compact-actors* mode))
 
-(defun dm-actor-vis-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *display-actor-vis* arg0))
-  (= *display-actor-vis* arg0))
+(defun dm-actor-vis-pick-func ((mode symbol) (msg debug-menu-msg))
+  "*display-actor-vis* selector: #f, box, sphere or #t."
+  (if (= msg (debug-menu-msg press)) (set! *display-actor-vis* mode))
+  (= *display-actor-vis* mode))
 
-(defun dm-game-mode-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! (-> *game-info* mode) arg0))
-  (= (-> *game-info* mode) arg0))
+(defun dm-game-mode-pick-func ((mode symbol) (msg debug-menu-msg))
+  "Game mode selector: play or debug."
+  (if (= msg (debug-menu-msg press)) (set! (-> *game-info* mode) mode))
+  (= (-> *game-info* mode) mode))
 
-(defun dm-vu1-user-toggle-pick-func ((arg0 vu1-renderer-mask) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *vu1-enable-user-menu* (logxor *vu1-enable-user-menu* (the-as uint arg0))))
-  (logtest? *vu1-enable-user-menu* arg0))
+(defun dm-vu1-user-toggle-pick-func ((mask vu1-renderer-mask) (msg debug-menu-msg))
+  "Toggle one renderer in *vu1-enable-user-menu*. vu1-renderer-mask starts at bit 3 so that the
+   boxed template values pass through unshifted."
+  (if (= msg (debug-menu-msg press)) (set! *vu1-enable-user-menu* (logxor *vu1-enable-user-menu* (the-as uint mask))))
+  (logtest? *vu1-enable-user-menu* mask))
 
-(defun dm-vu1-user-set-pick-func ((arg0 vu1-renderer-mask) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *vu1-enable-user-menu* arg0))
-  (= *vu1-enable-user-menu* arg0))
+(defun dm-vu1-user-set-pick-func ((mask vu1-renderer-mask) (msg debug-menu-msg))
+  "Replace *vu1-enable-user-menu* outright, for the all on and all off entries. all off keeps the
+   two unread high bits set."
+  (if (= msg (debug-menu-msg press)) (set! *vu1-enable-user-menu* mask))
+  (= *vu1-enable-user-menu* mask))
 
-(defun dm-texture-user-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *texture-enable-user-menu* (logxor *texture-enable-user-menu* arg0)))
-  (logtest? *texture-enable-user-menu* arg0))
+(defun dm-texture-user-toggle-pick-func ((mask int) (msg debug-menu-msg))
+  "Toggle one texture category in *texture-enable-user-menu*. The Render page passes boxed values
+   that are never divided by 8, so every entry reaches the bit three positions above the one its
+   label names."
+  (if (= msg (debug-menu-msg press)) (set! *texture-enable-user-menu* (logxor *texture-enable-user-menu* mask)))
+  (logtest? *texture-enable-user-menu* mask))
 
-(defun dm-texture-user-set-pick-func ((arg0 int) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *texture-enable-user-menu* arg0))
-  (= *texture-enable-user-menu* arg0))
+(defun dm-texture-user-set-pick-func ((mask int) (msg debug-menu-msg))
+  "Replace *texture-enable-user-menu* outright, for the all textures on and off entries. Shifted
+   the same way as dm-texture-user-toggle-pick-func, so all textures on leaves the tfrag, pris and
+   shrub bits clear."
+  (if (= msg (debug-menu-msg press)) (set! *texture-enable-user-menu* mask))
+  (= *texture-enable-user-menu* mask))
 
-(defun dm-strip-lines-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *display-strip-lines* (logxor *display-strip-lines* (/ arg0 8))))
-  (logtest? *display-strip-lines* (/ arg0 8)))
+(defun dm-strip-lines-toggle-pick-func ((id int) (msg debug-menu-msg))
+  "Toggle one *display-strip-lines* edge category, id / 8."
+  (if (= msg (debug-menu-msg press)) (set! *display-strip-lines* (logxor *display-strip-lines* (/ id 8))))
+  (logtest? *display-strip-lines* (/ id 8)))
 
-(defun dm-strip-lines-set-pick-func ((arg0 int) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (set! *display-strip-lines* (/ arg0 8)))
-  (= *display-strip-lines* (/ arg0 8)))
+(defun dm-strip-lines-set-pick-func ((id int) (msg debug-menu-msg))
+  "Set *display-strip-lines* to a whole preset, id / 8."
+  (if (= msg (debug-menu-msg press)) (set! *display-strip-lines* (/ id 8)))
+  (= *display-strip-lines* (/ id 8)))
 
-(defun dm-edit-instance-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
-  (let ((v1-0 (find-instance-by-name *edit-instance*)))
-    (when v1-0
-      (if (= arg1 (debug-menu-msg press)) (logxor! (-> v1-0 flags) (the-as uint arg0)))
-      (logtest? (-> v1-0 flags) arg0))))
+(defun dm-edit-instance-toggle-pick-func ((mask int) (msg debug-menu-msg))
+  "Toggle prototype flag bits on the instance named by *edit-instance*. Reports #f when no instance
+   is selected or the name is not loaded."
+  (let ((proto (find-instance-by-name *edit-instance*)))
+    (when proto
+      (if (= msg (debug-menu-msg press)) (logxor! (-> proto flags) (the-as uint mask)))
+      (logtest? (-> proto flags) mask))))
 
-(defun all-texture-tweak-adjust ((arg0 texture-page-dir) (arg1 float))
-  ;; (dotimes (s4-0 (-> arg0 length))
-  ;;   (let ((s3-0 (-> arg0 entries s4-0 page)))
-  ;;     (dotimes (s2-0 (min (-> s3-0 length) (-> arg0 entries s4-0 length)))
-  ;;       (when (-> arg0 entries s4-0 link)
-  ;;         (let ((v1-12 (+ (the-as uint (-> arg0 entries s4-0 link)) (* s2-0 4)))
-  ;;               (s1-0 (-> arg0 entries s4-0 page data s2-0))
+(defun all-texture-tweak-adjust ((dir texture-page-dir) (delta float))
+  "Shift the uv-dist of every texture in dir by delta and push the change into the adgif shaders
+   that reference them. The body is disabled, so the all tweak+ and all tweak- items do nothing."
+  ;; (dotimes (s4-0 (-> dir length))
+  ;;   (let ((s3-0 (-> dir entries s4-0 page)))
+  ;;     (dotimes (s2-0 (min (-> s3-0 length) (-> dir entries s4-0 length)))
+  ;;       (when (-> dir entries s4-0 link)
+  ;;         (let ((v1-12 (+ (the-as uint (-> dir entries s4-0 link)) (* s2-0 4)))
+  ;;               (s1-0 (-> dir entries s4-0 page data s2-0))
   ;;               )
-  ;;           (+! (-> s1-0 uv-dist) arg1)
+  ;;           (+! (-> s1-0 uv-dist) delta)
   ;;           (+ v1-12 0)
   ;;           (let ((s0-0 (the-as object (* (-> (dynamic-array-field-access v1-12 next PLACEHOLDER) shader) 16))))
   ;;             (while (nonzero? (the-as uint s0-0))
@@ -237,47 +345,56 @@
   0
   (none))
 
-(defun debug-menu-node<? ((arg0 debug-menu-node) (arg1 debug-menu-node))
-  (string<=? (-> arg0 name) (-> arg1 name)))
+(defun debug-menu-node<? ((left debug-menu-node) (right debug-menu-node))
+  "Order two menu nodes by name, for sorting a page's item list."
+  (string<=? (-> left name) (-> right name)))
 
-(defun dm-shader-pick-func ((arg0 texture-id) (arg1 debug-menu-msg))
-  (if (and (= arg1 (debug-menu-msg press))
+(defun dm-shader-pick-func ((tex-id texture-id) (msg debug-menu-msg))
+  "Select tex-id as *edit-shader* if its page is loaded and the texture has a shader link. Reports
+   whether it is the current selection."
+  (if (and (= msg (debug-menu-msg press))
            *texture-page-dir*
-           (-> *texture-page-dir* entries (-> arg0 page) page)
-           (-> *texture-page-dir* entries (-> arg0 page) link)
-           (nonzero? (-> *texture-page-dir* entries (-> arg0 page) link next (-> arg0 index))))
-    (set! *edit-shader* arg0))
-  (and (nonzero? *edit-shader*) (= arg0 *edit-shader*)))
+           (-> *texture-page-dir* entries (-> tex-id page) page)
+           (-> *texture-page-dir* entries (-> tex-id page) link)
+           (nonzero? (-> *texture-page-dir* entries (-> tex-id page) link next (-> tex-id index))))
+    (set! *edit-shader* tex-id))
+  (and (nonzero? *edit-shader*) (= tex-id *edit-shader*)))
 
 (define *shader-pick-menu* (the-as debug-menu #f))
 
 (defun build-shader-list ()
+  "Rebuild the Pick Shader page with one entry per loaded texture that has a shader link, sorted by
+   name. Each entry's id packs the texture index and page index into a texture-id."
   (debug-menu-remove-all-items *shader-pick-menu*)
   (when *texture-page-dir*
-    (dotimes (gp-0 (-> *texture-page-dir* length))
-      (let ((s5-0 (-> *texture-page-dir* entries gp-0 page))
-            (s4-0 (-> *texture-page-dir* entries gp-0 link)))
-        (when (and s5-0 s4-0)
-          (dotimes (s3-0 (-> s5-0 length))
-            (when (and (-> s5-0 data s3-0) (nonzero? (-> s4-0 next s3-0)))
-              (let ((a1-1 (new 'debug
+    (dotimes (page-index (-> *texture-page-dir* length))
+      (let ((page (-> *texture-page-dir* entries page-index page))
+            (page-link (-> *texture-page-dir* entries page-index link)))
+        (when (and page page-link)
+          (dotimes (tex-index (-> page length))
+            (when (and (-> page data tex-index) (nonzero? (-> page-link next tex-index)))
+              (let ((item (new 'debug
                                'debug-menu-item-flag
-                               (-> s5-0 data s3-0 name)
-                               (logior (shr (shl s3-0 52) 44) (shr (shl gp-0 52) 32))
+                               (-> page data tex-index name)
+                               (logior (shr (shl tex-index 52) 44) (shr (shl page-index 52) 32))
                                dm-shader-pick-func)))
-                (debug-menu-append-item *shader-pick-menu* a1-1))))))))
+                (debug-menu-append-item *shader-pick-menu* item))))))))
   (set! (-> *shader-pick-menu* items) (sort (-> *shader-pick-menu* items) debug-menu-node<?))
   (none))
 
-(defun dm-instance-pick-func ((arg0 string) (arg1 debug-menu-msg))
-  (when (= arg1 (debug-menu-msg press))
-    (if (find-instance-by-name arg0) (set! *edit-instance* arg0) (set! *edit-instance* #f)))
-  (and *edit-instance* (string= arg0 *edit-instance*)))
+(defun dm-instance-pick-func ((name string) (msg debug-menu-msg))
+  "Select the named instance prototype as *edit-instance*, clearing the selection when no loaded
+   level has that prototype."
+  (when (= msg (debug-menu-msg press))
+    (if (find-instance-by-name name) (set! *edit-instance* name) (set! *edit-instance* #f)))
+  (and *edit-instance* (string= name *edit-instance*)))
 
-(defun dm-enable-instance-func ((arg0 string) (arg1 debug-menu-msg))
-  (let ((v1-0 (find-instance-by-name arg0)))
+(defun dm-enable-instance-func ((name string) (msg debug-menu-msg))
+  "Visibility flag for one tie prototype. Toggles its invisible bit and reports the bit inverted,
+   so the item reads as enabled when the prototype draws."
+  (let ((proto (find-instance-by-name name)))
     (cond
-      (v1-0 (if (= arg1 (debug-menu-msg press)) (logxor! (-> v1-0 flags) 1)) (not (logtest? (-> v1-0 flags) 1)))
+      (proto (if (= msg (debug-menu-msg press)) (logxor! (-> proto flags) 1)) (not (logtest? (-> proto flags) 1)))
       (else #f))))
 
 (define *instance-shrub-menu* (the-as debug-menu #f))
@@ -286,48 +403,65 @@
 
 (define *enable-instance-tie-menu* (the-as debug-menu #f))
 
-(defun build-instance-list ((arg0 object))
+(defun build-instance-list ((id object))
+  "Rebuild the shrub and tie prototype pages from the prototypes of every active level, sorted by
+   name. Clears *display-instance-info* because the previous selection no longer applies."
   (debug-menu-remove-all-items *instance-shrub-menu*)
   (debug-menu-remove-all-items *instance-tie-menu*)
   (debug-menu-remove-all-items *enable-instance-tie-menu*)
   (set! *display-instance-info* #f)
-  (dotimes (gp-0 (-> *level* length))
-    (let ((v1-3 (-> *level* level gp-0)))
-      (when (= (-> v1-3 status) 'active)
-        (let ((s5-0 (-> v1-3 bsp drawable-trees)))
-          (dotimes (s4-0 (-> s5-0 length))
-            (let ((v1-7 (-> s5-0 trees s4-0)))
-              (case (-> v1-7 type)
+  (dotimes (level-index (-> *level* length))
+    (let ((active-level (-> *level* level level-index)))
+      (when (= (-> active-level status) 'active)
+        (let ((trees (-> active-level bsp drawable-trees)))
+          (dotimes (tree-index (-> trees length))
+            (let ((tree (-> trees trees tree-index)))
+              (case (-> tree type)
                 ((drawable-tree-instance-shrub)
-                 (let ((s3-0 (-> (the-as drawable-tree-instance-shrub v1-7) info prototype-inline-array-shrub)))
-                   (dotimes (s2-0 (-> s3-0 length))
+                 (let ((shrub-protos (-> (the-as drawable-tree-instance-shrub tree) info prototype-inline-array-shrub)))
+                   (dotimes (shrub-index (-> shrub-protos length))
                      ;; og:preserve-this
-                     (let ((a1-4 (new 'debug 'debug-menu-item-flag (-> s3-0 data s2-0 name) (-> s3-0 data s2-0 name) dm-instance-pick-func)))
-                       (debug-menu-append-item *instance-shrub-menu* a1-4)))))
+                     (let ((item (new 'debug
+                                      'debug-menu-item-flag
+                                      (-> shrub-protos data shrub-index name)
+                                      (-> shrub-protos data shrub-index name)
+                                      dm-instance-pick-func)))
+                       (debug-menu-append-item *instance-shrub-menu* item)))))
                 ((drawable-tree-instance-tie)
-                 (let ((s3-1 (-> (the-as drawable-tree-instance-tie v1-7) prototypes prototype-array-tie)))
-                   (dotimes (s2-1 (-> s3-1 length))
-                     (let ((a1-7 (new 'debug 'debug-menu-item-flag (-> s3-1 array-data s2-1 name) (-> s3-1 array-data s2-1 name) dm-instance-pick-func)))
-                       (debug-menu-append-item *instance-tie-menu* a1-7))
-                     (let ((a1-9 (new 'debug 'debug-menu-item-flag (-> s3-1 array-data s2-1 name) (-> s3-1 array-data s2-1 name) dm-enable-instance-func)))
-                       (set! (-> a1-9 is-on) #t)
-                       (debug-menu-append-item *enable-instance-tie-menu* a1-9))))))))))))
+                 (let ((tie-protos (-> (the-as drawable-tree-instance-tie tree) prototypes prototype-array-tie)))
+                   (dotimes (tie-index (-> tie-protos length))
+                     (let ((pick-item (new 'debug
+                                           'debug-menu-item-flag
+                                           (-> tie-protos array-data tie-index name)
+                                           (-> tie-protos array-data tie-index name)
+                                           dm-instance-pick-func)))
+                       (debug-menu-append-item *instance-tie-menu* pick-item))
+                     (let ((enable-item (new 'debug
+                                             'debug-menu-item-flag
+                                             (-> tie-protos array-data tie-index name)
+                                             (-> tie-protos array-data tie-index name)
+                                             dm-enable-instance-func)))
+                       (set! (-> enable-item is-on) #t)
+                       (debug-menu-append-item *enable-instance-tie-menu* enable-item))))))))))))
   (set! (-> *instance-shrub-menu* items)
         (sort (-> *instance-shrub-menu* items)
-              (lambda ((arg0 debug-menu) (arg1 debug-menu))
-                (string<=? (-> arg0 name) (-> arg1 name)))))
+              (lambda ((left debug-menu) (right debug-menu))
+                (string<=? (-> left name) (-> right name)))))
   (set! (-> *instance-tie-menu* items)
         (sort (-> *instance-tie-menu* items)
-              (lambda ((arg0 debug-menu) (arg1 debug-menu))
-                (string<=? (-> arg0 name) (-> arg1 name)))))
+              (lambda ((left debug-menu) (right debug-menu))
+                (string<=? (-> left name) (-> right name)))))
   (set! (-> *enable-instance-tie-menu* items)
         (sort (-> *enable-instance-tie-menu* items)
-              (lambda ((arg0 debug-menu) (arg1 debug-menu))
-                (string<=? (-> arg0 name) (-> arg1 name)))))
+              (lambda ((left debug-menu) (right debug-menu))
+                (string<=? (-> left name) (-> right name)))))
   0
   (none))
 
 (defun debug-create-cam-restore ()
+  "Print a cam-restore function to the listener that reproduces the current camera position,
+   orientation, fov and level, together with the profile times, tfrag memory total and polygon
+   statistics needed to compare a later frame against this one."
   (cond
     (*math-camera*
      (format #t "(defun-debug cam-restore ()~%")
@@ -354,28 +488,28 @@
      (format #t "  (set! (-> rot data 13) ~12F)~%" 0.0)
      (format #t "  (set! (-> rot data 14) ~12F)~%" 0.0)
      (format #t "  (set! (-> rot data 15) ~12F)~%" 1.0)
-     (let ((gp-0 (new 'stack-no-clear 'euler-angles)))
-       (matrix->eul gp-0 (-> *math-camera* inv-camera-rot) 21)
-       (format #t "  ;; euler angles (xyz order degrees) x ~R y ~R z ~R~%" (-> gp-0 x) (-> gp-0 y) (-> gp-0 z))
+     (let ((angles (new 'stack-no-clear 'euler-angles)))
+       (matrix->eul angles (-> *math-camera* inv-camera-rot) 21)
+       (format #t "  ;; euler angles (xyz order degrees) x ~R y ~R z ~R~%" (-> angles x) (-> angles y) (-> angles z))
        (format #t
                "  ;; MAYA euler angles (xyz order degrees) x ~R y ~R z ~R~%"
-               (-> gp-0 x)
-               (- 32768.0 (-> gp-0 y))
-               (-> gp-0 z)))
+               (-> angles x)
+               (- 32768.0 (-> angles y))
+               (-> angles z)))
      (format #t "  (debug-set-camera-pos-rot! pos rot)~%")
      (format #t "  (send-event *camera* 'set-fov (deg ~f))~%" (* 0.005493164 (-> *math-camera* fov)))
      (format #t "  (clear *camera-old-level*)~%")
      (format #t "  (format *camera-old-level* \"~A\")~%" (-> *level* level0 name))
-     (let ((t9-31 format)
-           (a0-31 #t)
-           (a1-31 "  (set! *camera-old-cpu* ~D)~%")
-           (v1-29 (-> *display* frames (-> *display* last-screen) frame profile-bar 0)))
-       (t9-31 a0-31 a1-31 (-> v1-29 data (+ (-> v1-29 profile-frame-count) -2) time-stamp)))
-     (let ((t9-32 format)
-           (a0-32 #t)
-           (a1-32 "  (set! *camera-old-vu*  ~D)~%")
-           (v1-34 (-> *display* frames (-> *display* last-screen) frame profile-bar 1)))
-       (t9-32 a0-32 a1-32 (-> v1-34 data (+ (-> v1-34 profile-frame-count) -2) time-stamp)))
+     (let ((format-fn format)
+           (format-dest #t)
+           (format-string "  (set! *camera-old-cpu* ~D)~%")
+           (cpu-bar (-> *display* frames (-> *display* last-screen) frame profile-bar 0)))
+       (format-fn format-dest format-string (-> cpu-bar data (+ (-> cpu-bar profile-frame-count) -2) time-stamp)))
+     (let ((format-fn format)
+           (format-dest #t)
+           (format-string "  (set! *camera-old-vu*  ~D)~%")
+           (vu-bar (-> *display* frames (-> *display* last-screen) frame profile-bar 1)))
+       (format-fn format-dest format-string (-> vu-bar data (+ (-> vu-bar profile-frame-count) -2) time-stamp)))
      (compute-memory-usage (-> *level* level0) #f)
      (format #t
              "   (set! *camera-old-tfrag-bytes* ~D)~%"
@@ -400,723 +534,762 @@
     (else (format #t "camera save failed~%")))
   (none))
 
-(defun debug-menu-make-camera-mode-menu ((arg0 debug-menu) (arg1 debug-menu))
-  (new 'debug 'debug-menu-item-submenu "Camera" arg0)
-  (let ((a1-3 (new 'debug 'debug-menu-item-submenu "Mode" arg1))) (debug-menu-append-item arg0 a1-3))
-  (let ((a1-5 (new 'debug 'debug-menu-item-flag "Off" #f dm-cam-mode-func))) (debug-menu-append-item arg1 a1-5))
-  (let ((a1-7 (new 'debug 'debug-menu-item-flag "Free-floating" cam-free-floating dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-7))
-  (let ((a1-9 (new 'debug 'debug-menu-item-flag "Fixed" cam-fixed dm-cam-mode-func))) (debug-menu-append-item arg1 a1-9))
-  (let ((a1-11 (new 'debug 'debug-menu-item-flag "Pov" cam-pov dm-cam-mode-func))) (debug-menu-append-item arg1 a1-11))
-  (let ((a1-13 (new 'debug 'debug-menu-item-flag "Pov180" cam-pov180 dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-13))
-  (let ((a1-15 (new 'debug 'debug-menu-item-flag "Billy" cam-billy dm-cam-mode-func))) (debug-menu-append-item arg1 a1-15))
-  (let ((a1-17 (new 'debug 'debug-menu-item-flag "Pov-track" cam-pov-track dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-17))
-  (let ((a1-19 (new 'debug 'debug-menu-item-flag "Decel" cam-decel dm-cam-mode-func))) (debug-menu-append-item arg1 a1-19))
-  (let ((a1-21 (new 'debug 'debug-menu-item-flag "Endless fall" cam-endlessfall dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-21))
-  (let ((a1-23 (new 'debug 'debug-menu-item-flag "Eye" cam-eye dm-cam-mode-func))) (debug-menu-append-item arg1 a1-23))
-  (let ((a1-25 (new 'debug 'debug-menu-item-flag "Stick" cam-stick dm-cam-mode-func))) (debug-menu-append-item arg1 a1-25))
-  (let ((a1-27 (new 'debug 'debug-menu-item-flag "String" cam-string dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-27))
-  (let ((a1-29 (new 'debug 'debug-menu-item-flag "Standoff" cam-standoff dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-29))
-  (let ((a1-31 (new 'debug 'debug-menu-item-flag "Circular" cam-circular dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-31))
-  (let ((a1-33 (new 'debug 'debug-menu-item-flag "Look At" cam-lookat dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-33))
-  (let ((a1-35 (new 'debug 'debug-menu-item-flag "Center of world" cam-point-watch dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-35))
-  (let ((a1-37 (new 'debug 'debug-menu-item-flag "Spline" cam-spline dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-37))
-  (let ((a1-39 (new 'debug 'debug-menu-item-flag "Bike" cam-bike dm-cam-mode-func))) (debug-menu-append-item arg1 a1-39))
-  (let ((a1-41 (new 'debug 'debug-menu-item-flag "Robotboss" cam-robotboss dm-cam-mode-func)))
-    (debug-menu-append-item arg1 a1-41))
-  (let ((a1-43 (new 'debug 'debug-menu-item-function "Reset Free" 6 (the-as (function object object) dm-cam-settings-func))))
-    (debug-menu-append-item arg1 a1-43))
+(defun debug-menu-make-camera-mode-menu ((menu debug-menu) (mode-menu debug-menu))
+  "Fill mode-menu with one entry per camera slave state and attach it to menu."
+  ;; the result of this one is thrown away; all it does is reparent menu, and a menu's parent is
+  ;; never read.
+  (new 'debug 'debug-menu-item-submenu "Camera" menu)
+  (let ((item (new 'debug 'debug-menu-item-submenu "Mode" mode-menu))) (debug-menu-append-item menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Off" #f dm-cam-mode-func))) (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Free-floating" cam-free-floating dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Fixed" cam-fixed dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Pov" cam-pov dm-cam-mode-func))) (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Pov180" cam-pov180 dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Billy" cam-billy dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Pov-track" cam-pov-track dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Decel" cam-decel dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Endless fall" cam-endlessfall dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Eye" cam-eye dm-cam-mode-func))) (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Stick" cam-stick dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "String" cam-string dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Standoff" cam-standoff dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Circular" cam-circular dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Look At" cam-lookat dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Center of world" cam-point-watch dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Spline" cam-spline dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Bike" cam-bike dm-cam-mode-func))) (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-flag "Robotboss" cam-robotboss dm-cam-mode-func)))
+    (debug-menu-append-item mode-menu item))
+  (let ((item (new 'debug 'debug-menu-item-function "Reset Free" 6 (the-as (function object object) dm-cam-settings-func))))
+    (debug-menu-append-item mode-menu item))
   (none))
 
-(defun debug-menu-make-camera-menu ((arg0 debug-menu-context))
-  (let* ((gp-0 (new 'debug 'debug-menu arg0 "Camera menu"))
-         (s5-0 (new 'debug 'debug-menu-item-submenu "Camera" gp-0)))
-    (let ((a1-3 (new 'debug 'debug-menu arg0 "Camera mode menu"))) (debug-menu-make-camera-mode-menu gp-0 a1-3))
-    (let ((s3-0 (new 'debug 'debug-menu arg0 "Camera externalize menu")))
-      (let ((a1-6 (new 'debug 'debug-menu-item-submenu "External" s3-0))) (debug-menu-append-item gp-0 a1-6))
-      (let ((a1-8 (new 'debug 'debug-menu-item-flag "CPad 0" 'pad-0 dm-cam-externalize))) (debug-menu-append-item s3-0 a1-8))
-      (let ((a1-10 (new 'debug 'debug-menu-item-flag "CPad 1" 'pad-1 dm-cam-externalize))) (debug-menu-append-item s3-0 a1-10))
-      (let ((a1-12 (new 'debug 'debug-menu-item-flag "Lock" 'locked dm-cam-externalize))) (debug-menu-append-item s3-0 a1-12))
-      (let ((a1-14 (new 'debug 'debug-menu-item-flag "Reset" 'reset dm-cam-externalize))) (debug-menu-append-item s3-0 a1-14))
-      (let ((a1-16 (new 'debug 'debug-menu-item-flag "Allow z rot" 'allow-z dm-cam-externalize)))
-        (debug-menu-append-item s3-0 a1-16))
-      (let ((s2-0 (new 'debug 'debug-menu-item-var "Fov" 0 80)))
-        (debug-menu-item-var-make-float s2-0
+(defun debug-menu-make-camera-menu ((context debug-menu-context))
+  "Build the Camera page and return the item that opens it."
+  (let* ((menu (new 'debug 'debug-menu context "Camera menu"))
+         (camera-item (new 'debug 'debug-menu-item-submenu "Camera" menu)))
+    (let ((mode-menu (new 'debug 'debug-menu context "Camera mode menu"))) (debug-menu-make-camera-mode-menu menu mode-menu))
+    (let ((external-menu (new 'debug 'debug-menu context "Camera externalize menu")))
+      (let ((item (new 'debug 'debug-menu-item-submenu "External" external-menu))) (debug-menu-append-item menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "CPad 0" 'pad-0 dm-cam-externalize)))
+        (debug-menu-append-item external-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "CPad 1" 'pad-1 dm-cam-externalize)))
+        (debug-menu-append-item external-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Lock" 'locked dm-cam-externalize)))
+        (debug-menu-append-item external-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Reset" 'reset dm-cam-externalize)))
+        (debug-menu-append-item external-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Allow z rot" 'allow-z dm-cam-externalize)))
+        (debug-menu-append-item external-menu item))
+      (let ((fov-item (new 'debug 'debug-menu-item-var "Fov" 0 80)))
+        (debug-menu-item-var-make-float fov-item
                                         dm-cam-render-float
                                         (the-as float 1.0)
                                         #t
                                         (the-as float 15.0)
                                         (the-as float 180.0)
                                         1)
-        (debug-menu-append-item s3-0 s2-0)))
-    (let ((s3-1 (new 'debug 'debug-menu arg0 "Camera collision menu")))
-      (let ((a1-22 (new 'debug 'debug-menu-item-submenu "Collision" s3-1))) (debug-menu-append-item gp-0 a1-22))
-      (let ((a1-24 (new 'debug 'debug-menu-item-flag "Record" '*record-cam-collide-history* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s3-1 a1-24))
-      (let ((a1-26 (new 'debug 'debug-menu-item-flag "Display" '*display-cam-collide-history* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s3-1 a1-26)))
-    (let ((s4-1 (new 'debug 'debug-menu arg0 "Camera settings menu")))
-      (let ((a1-29 (new 'debug 'debug-menu-item-submenu "Settings" s4-1))) (debug-menu-append-item gp-0 a1-29))
-      (let ((a1-31 (new 'debug 'debug-menu-item-flag "Butt cam" 0 dm-cam-settings-func))) (debug-menu-append-item s4-1 a1-31))
-      (let ((a1-33 (new 'debug 'debug-menu-item-flag "Block shift buttons" 13 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-33))
-      (let ((a1-35 (new 'debug 'debug-menu-item-flag "Same side" 1 dm-cam-settings-func))) (debug-menu-append-item s4-1 a1-35))
-      (let ((a1-37 (new 'debug 'debug-menu-item-flag "Move spherical" 2 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-37))
-      (let ((a1-39 (new 'debug 'debug-menu-item-flag "Drag" 3 dm-cam-settings-func))) (debug-menu-append-item s4-1 a1-39))
-      (let ((a1-41 (new 'debug 'debug-menu-item-flag "Allow Z rot" 4 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-41))
-      (let ((a1-43 (new 'debug 'debug-menu-item-flag "Pitch for jump" 7 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-43))
-      (let ((a1-45 (new 'debug 'debug-menu-item-flag "Find hidden target" 8 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-45))
-      (let ((a1-47 (new 'debug 'debug-menu-item-flag "Move along camera Z" '*cam-free-move-along-z* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-47))
-      (let ((a1-49 (new 'debug 'debug-menu-item-flag "Ignore regions" 9 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-49))
-      (let ((a1-51 (new 'debug 'debug-menu-item-flag "Switch only on ground" 10 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-51))
-      (let ((a1-53 (new 'debug 'debug-menu-item-flag "Collide" 11 dm-cam-settings-func))) (debug-menu-append-item s4-1 a1-53))
-      (let ((a1-55 (new 'debug 'debug-menu-item-flag "Line of Sight" 12 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-55))
-      (let ((a1-57 (new 'debug 'debug-menu-item-flag "No Rotate" 14 dm-cam-settings-func))) (debug-menu-append-item s4-1 a1-57))
-      (let ((a1-59 (new 'debug 'debug-menu-item-flag "Sticky Angle" 15 dm-cam-settings-func)))
-        (debug-menu-append-item s4-1 a1-59))
-      (let ((s3-2 (new 'debug 'debug-menu-item-var "Interp Frms" 40 80)))
-        (debug-menu-item-var-make-int s3-2 dm-cam-settings-func-int 1 #f 0 0 #f)
-        (debug-menu-append-item s4-1 s3-2))
-      (let ((s3-3 (new 'debug 'debug-menu-item-var "Fov" 8 80)))
-        (debug-menu-item-var-make-float s3-3
+        (debug-menu-append-item external-menu fov-item)))
+    (let ((collision-menu (new 'debug 'debug-menu context "Camera collision menu")))
+      (let ((item (new 'debug 'debug-menu-item-submenu "Collision" collision-menu))) (debug-menu-append-item menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Record" '*record-cam-collide-history* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item collision-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Display" '*display-cam-collide-history* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item collision-menu item)))
+    (let ((settings-menu (new 'debug 'debug-menu context "Camera settings menu")))
+      (let ((item (new 'debug 'debug-menu-item-submenu "Settings" settings-menu))) (debug-menu-append-item menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Butt cam" 0 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Block shift buttons" 13 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Same side" 1 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Move spherical" 2 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Drag" 3 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Allow Z rot" 4 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Pitch for jump" 7 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Find hidden target" 8 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Move along camera Z" '*cam-free-move-along-z* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Ignore regions" 9 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Switch only on ground" 10 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Collide" 11 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Line of Sight" 12 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "No Rotate" 14 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Sticky Angle" 15 dm-cam-settings-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((interp-item (new 'debug 'debug-menu-item-var "Interp Frms" 40 80)))
+        (debug-menu-item-var-make-int interp-item dm-cam-settings-func-int 1 #f 0 0 #f)
+        (debug-menu-append-item settings-menu interp-item))
+      (let ((fov-item (new 'debug 'debug-menu-item-var "Fov" 8 80)))
+        (debug-menu-item-var-make-float fov-item
                                         dm-cam-render-float
                                         (the-as float 1.0)
                                         #t
                                         (the-as float 15.0)
                                         (the-as float 180.0)
                                         1)
-        (debug-menu-append-item s4-1 s3-3))
-      (let ((a1-67 (new 'debug 'debug-menu-item-flag "no mip/lod correction" '*camera-no-mip-correction* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-67))
-      (let ((a1-69 (new 'debug 'debug-menu-item-flag "last attacker" '*display-camera-last-attacker* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-69))
-      (let ((a1-71 (new 'debug 'debug-menu-item-flag "old stats" '*display-camera-old-stats* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-71))
-      (let ((a1-73 (new 'debug 'debug-menu-item-flag "xyz axes" '*display-xyz-axes* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-73))
-      (let ((a1-75 (new 'debug 'debug-menu-item-flag "Master Marks" '*display-cam-master-marks* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-75))
-      (let ((a1-77 (new 'debug 'debug-menu-item-flag "Other Marks" '*display-cam-other* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-77))
-      (let ((a1-79 (new 'debug 'debug-menu-item-flag "los debug" '*display-cam-los-debug* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-79))
-      (let ((a1-81 (new 'debug 'debug-menu-item-flag "los info" '*display-cam-los-info* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-81))
-      (let ((a1-83 (new 'debug 'debug-menu-item-flag "los Marks" '*display-cam-los-marks* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-83))
-      (let ((a1-85 (new 'debug 'debug-menu-item-flag "coll Marks" '*display-cam-coll-marks* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-85))
-      (let ((a1-87 (new 'debug 'debug-menu-item-flag "Camera Marks" '*display-camera-marks* dm-boolean-toggle-pick-func)))
-        (debug-menu-append-item s4-1 a1-87)))
-    (let ((a1-89 (new 'debug
-                      'debug-menu-item-flag
-                      "Edit"
-                      '*cam-layout*
-                      (lambda ((arg0 symbol) (arg1 debug-menu-msg))
-                        (when (= arg1 (debug-menu-msg press))
-                          (if (-> arg0 value) (cam-layout-stop) (cam-layout-start)))
-                        (-> arg0 value)))))
-      (debug-menu-append-item gp-0 a1-89))
-    (let ((a1-91 (new 'debug 'debug-menu-item-function "Save Pos" #f (the-as (function object object) debug-create-cam-restore))))
-      (debug-menu-append-item gp-0 a1-91))
-    s5-0))
+        (debug-menu-append-item settings-menu fov-item))
+      (let ((item (new 'debug 'debug-menu-item-flag "no mip/lod correction" '*camera-no-mip-correction* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "last attacker" '*display-camera-last-attacker* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "old stats" '*display-camera-old-stats* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "xyz axes" '*display-xyz-axes* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Master Marks" '*display-cam-master-marks* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Other Marks" '*display-cam-other* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "los debug" '*display-cam-los-debug* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "los info" '*display-cam-los-info* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "los Marks" '*display-cam-los-marks* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "coll Marks" '*display-cam-coll-marks* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item))
+      (let ((item (new 'debug 'debug-menu-item-flag "Camera Marks" '*display-camera-marks* dm-boolean-toggle-pick-func)))
+        (debug-menu-append-item settings-menu item)))
+    (let ((item (new 'debug
+                     'debug-menu-item-flag
+                     "Edit"
+                     '*cam-layout*
+                     (lambda ((setting symbol) (msg debug-menu-msg))
+                       (when (= msg (debug-menu-msg press))
+                         (if (-> setting value) (cam-layout-stop) (cam-layout-start)))
+                       (-> setting value)))))
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-function "Save Pos" #f (the-as (function object object) debug-create-cam-restore))))
+      (debug-menu-append-item menu item))
+    camera-item))
 
-(defun debug-menu-make-shader-menu ((arg0 debug-menu-context))
-  (let* ((gp-0 (new 'debug 'debug-menu arg0 "Shader menu"))
-         (s5-0 (new 'debug 'debug-menu-item-submenu "Shader" gp-0)))
-    (let ((a3-3 (new 'debug 'debug-menu arg0 "Shader pick menu")))
-      (set! *shader-pick-menu* a3-3)
-      (let ((a1-4 (new 'debug 'debug-menu-item-submenu "Pick Shader" a3-3))) (debug-menu-append-item gp-0 a1-4)))
-    (let ((a1-6 (new 'debug 'debug-menu-item-function "Refresh" #f (the-as (function object object) build-shader-list))))
-      (debug-menu-append-item gp-0 a1-6))
-    (let ((s4-1 (new 'debug 'debug-menu-item-var "tweak" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-float s4-1
+(defun debug-menu-make-shader-menu ((context debug-menu-context))
+  "Build the Shader page and return the item that opens it. Every variable item on the page edits
+   the adgif shaders of the texture in *edit-shader*, so the page does nothing until one is
+   picked from Pick Shader."
+  (let* ((menu (new 'debug 'debug-menu context "Shader menu"))
+         (shader-item (new 'debug 'debug-menu-item-submenu "Shader" menu)))
+    (let ((pick-menu (new 'debug 'debug-menu context "Shader pick menu")))
+      (set! *shader-pick-menu* pick-menu)
+      (let ((item (new 'debug 'debug-menu-item-submenu "Pick Shader" pick-menu))) (debug-menu-append-item menu item)))
+    (let ((item (new 'debug 'debug-menu-item-function "Refresh" #f (the-as (function object object) build-shader-list))))
+      (debug-menu-append-item menu item))
+    (let ((tweak-item (new 'debug 'debug-menu-item-var "tweak" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-float tweak-item
                                       (the-as (function int debug-menu-msg float float float)
-                                              (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
-                                                (set! arg3
+                                              (lambda ((id symbol) (msg debug-menu-msg) (value float) (fallback float))
+                                                (set! fallback
                                                       (cond
                                                         (*texture-page-dir*
-                                                         (let* ((s4-0 (the-as texture-id (-> arg0 value)))
-                                                                (gp-0 (lookup-texture-by-id (the-as texture-id s4-0)))
-                                                                (v1-3 (-> *texture-page-dir* entries (-> s4-0 page) link)))
+                                                         (let* ((tex-id (the-as texture-id (-> id value)))
+                                                                (tex (lookup-texture-by-id (the-as texture-id tex-id)))
+                                                                (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                            (cond
-                                                             ((and gp-0 v1-3)
-                                                              (when (= arg1 (debug-menu-msg press))
-                                                                (set! (-> gp-0 uv-dist) arg2)
-                                                                (let ((s5-1 (the-as object (* (-> v1-3 next (-> s4-0 index) shader) 16))))
-                                                                  (while (nonzero? (the-as uint s5-1))
-                                                                    (adgif-shader-update! (the-as adgif-shader s5-1) gp-0)
-                                                                    (set! s5-1 (* (-> (the-as adgif-shader s5-1) next shader) 16)))))
-                                                              (-> gp-0 uv-dist))
-                                                             (else (empty) arg3))))
-                                                        (else (empty) arg3)))
+                                                             ((and tex page-link)
+                                                              (when (= msg (debug-menu-msg press))
+                                                                (set! (-> tex uv-dist) value)
+                                                                (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                                  (while (nonzero? (the-as uint shader-cursor))
+                                                                    (adgif-shader-update! (the-as adgif-shader shader-cursor) tex)
+                                                                    (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                              (-> tex uv-dist))
+                                                             (else (empty) fallback))))
+                                                        (else (empty) fallback)))
                                                 (none)))
                                       (the-as float 0.1)
                                       #t
                                       (the-as float 0.1)
                                       (the-as float 30.0)
                                       1)
-      (debug-menu-append-item gp-0 s4-1))
-    (let ((a1-11 (new 'debug
-                      'debug-menu-item-function
-                      "all tweak+"
-                      #f
-                      (lambda ((arg0 object))
-                        (all-texture-tweak-adjust *texture-page-dir* (the-as float 0.1))))))
-      (debug-menu-append-item gp-0 a1-11))
-    (let ((a1-13 (new 'debug
-                      'debug-menu-item-function
-                      "all tweak-"
-                      #f
-                      (lambda ((arg0 object))
-                        (all-texture-tweak-adjust *texture-page-dir* (the-as float -0.1))))))
-      (debug-menu-append-item gp-0 a1-13))
-    (let ((s4-2 (new 'debug 'debug-menu-item-var "l" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-2
+      (debug-menu-append-item menu tweak-item))
+    (let ((item (new 'debug
+                     'debug-menu-item-function
+                     "all tweak+"
+                     #f
+                     (lambda ((id object))
+                       (all-texture-tweak-adjust *texture-page-dir* (the-as float 0.1))))))
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug
+                     'debug-menu-item-function
+                     "all tweak-"
+                     #f
+                     (lambda ((id object))
+                       (all-texture-tweak-adjust *texture-page-dir* (the-as float -0.1))))))
+      (debug-menu-append-item menu item))
+    ;; The rest of the page edits one field of the adgif shader registers of the picked texture.
+    ;; Each item walks the page's shader link list for that texture, writes the field into every
+    ;; shader on it, and displays the value read back from the first one.
+    (let ((item (new 'debug 'debug-menu-item-var "l" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex1 l) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex1 l) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex1 l) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex1 l) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     3
                                     #f)
-      (debug-menu-append-item gp-0 s4-2))
-    (let ((s4-3 (new 'debug 'debug-menu-item-var "k" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-3
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "k" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex1 k) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex1 k) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex1 k) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex1 k) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     -2048
                                     2047
                                     #f)
-      (debug-menu-append-item gp-0 s4-3))
-    (let ((s4-4 (new 'debug 'debug-menu-item-var "mmin" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-4
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "mmin" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex1 mmin) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex1 mmin) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex1 mmin) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex1 mmin) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     5
                                     #t)
-      (debug-menu-append-item gp-0 s4-4))
-    (let ((s4-5 (new 'debug 'debug-menu-item-var "mmag" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-5
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "mmag" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex1 mmag) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex1 mmag) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex1 mmag) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex1 mmag) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     1
                                     #t)
-      (debug-menu-append-item gp-0 s4-5))
-    (let ((s4-6 (new 'debug 'debug-menu-item-var "lcm" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-6
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "lcm" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex1 lcm) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex1 lcm) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex1 lcm) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex1 lcm) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     1
                                     #t)
-      (debug-menu-append-item gp-0 s4-6))
-    (let ((s4-7 (new 'debug 'debug-menu-item-var "tfx" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-7
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "tfx" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex0 tfx) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex0 tfx) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex0 tfx) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex0 tfx) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     3
                                     #t)
-      (debug-menu-append-item gp-0 s4-7))
-    (let ((s4-8 (new 'debug 'debug-menu-item-var "tbp" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-8
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "tbp" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex0 tbp0) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex0 tbp0) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex0 tbp0) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex0 tbp0) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     #x4000
                                     #t)
-      (debug-menu-append-item gp-0 s4-8))
-    (let ((s4-9 (new 'debug 'debug-menu-item-var "tbw" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-9
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "tbw" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex0 tbw) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex0 tbw) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex0 tbw) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex0 tbw) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     15
                                     #t)
-      (debug-menu-append-item gp-0 s4-9))
-    (let ((s4-10 (new 'debug 'debug-menu-item-var "tw" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-10
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "tw" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex0 tw) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex0 tw) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex0 tw) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex0 tw) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     10
                                     #t)
-      (debug-menu-append-item gp-0 s4-10))
-    (let ((s4-11 (new 'debug 'debug-menu-item-var "th" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-11
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "th" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex0 th) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex0 th) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex0 th) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex0 th) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     10
                                     #t)
-      (debug-menu-append-item gp-0 s4-11))
-    (let ((s4-12 (new 'debug 'debug-menu-item-var "mxl" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-12
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "mxl" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) tex1 mxl) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) tex1 mxl) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) tex1 mxl) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) tex1 mxl) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     6
                                     #t)
-      (debug-menu-append-item gp-0 s4-12))
-    (let ((s4-13 (new 'debug 'debug-menu-item-var "wms" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-13
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "wms" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) clamp wms) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) clamp wms) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) clamp wms) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) clamp wms) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     3
                                     #t)
-      (debug-menu-append-item gp-0 s4-13))
-    (let ((s4-14 (new 'debug 'debug-menu-item-var "wmt" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-14
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "wmt" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) clamp wmt) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) clamp wmt) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) clamp wmt) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) clamp wmt) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     3
                                     #t)
-      (debug-menu-append-item gp-0 s4-14))
-    (let ((s4-15 (new 'debug 'debug-menu-item-var "minu" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-15
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "minu" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) clamp minu) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) clamp minu) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) clamp minu) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) clamp minu) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     511
                                     #t)
-      (debug-menu-append-item gp-0 s4-15))
-    (let ((s4-16 (new 'debug 'debug-menu-item-var "maxu" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-16
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "maxu" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) clamp maxu) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) clamp maxu) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) clamp maxu) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) clamp maxu) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     511
                                     #t)
-      (debug-menu-append-item gp-0 s4-16))
-    (let ((s4-17 (new 'debug 'debug-menu-item-var "minv" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-17
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "minv" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) clamp minv) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) clamp minv) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) clamp minv) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) clamp minv) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     511
                                     #t)
-      (debug-menu-append-item gp-0 s4-17))
-    (let ((s4-18 (new 'debug 'debug-menu-item-var "maxv" (the-as int '*edit-shader*) 80)))
-      (debug-menu-item-var-make-int s4-18
+      (debug-menu-append-item menu item))
+    (let ((item (new 'debug 'debug-menu-item-var "maxv" (the-as int '*edit-shader*) 80)))
+      (debug-menu-item-var-make-int item
                                     (the-as (function int debug-menu-msg int int int)
-                                            (lambda ((arg0 symbol) (arg1 debug-menu-msg) (arg2 int) (arg3 basic))
+                                            (lambda ((id symbol) (msg debug-menu-msg) (value int) (fallback basic))
                                               (cond
                                                 (*texture-page-dir*
-                                                 (let* ((v1-1 (the-as texture-id (-> arg0 value)))
-                                                        (a0-3 (-> *texture-page-dir* entries (-> v1-1 page) link)))
+                                                 (let* ((tex-id (the-as texture-id (-> id value)))
+                                                        (page-link (-> *texture-page-dir* entries (-> tex-id page) link)))
                                                    (cond
-                                                     (a0-3
-                                                      (when (= arg1 (debug-menu-msg press))
-                                                        (let ((a1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                          (while (nonzero? (the-as uint a1-8))
-                                                            (set! (-> (the-as adgif-shader a1-8) clamp maxv) arg2)
-                                                            (set! a1-8 (* (-> (the-as adgif-shader a1-8) next shader) 16)))))
-                                                      (let ((v1-8 (the-as object (* (-> a0-3 next (-> v1-1 index) shader) 16))))
-                                                        (if (nonzero? (the-as uint v1-8)) (-> (the-as adgif-shader v1-8) clamp maxv) arg3)))
-                                                     (else arg3))))
-                                                (else arg3))))
+                                                     (page-link
+                                                      (when (= msg (debug-menu-msg press))
+                                                        (let ((shader-cursor (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                          (while (nonzero? (the-as uint shader-cursor))
+                                                            (set! (-> (the-as adgif-shader shader-cursor) clamp maxv) value)
+                                                            (set! shader-cursor (* (-> (the-as adgif-shader shader-cursor) next shader) 16)))))
+                                                      (let ((first-shader (the-as object (* (-> page-link next (-> tex-id index) shader) 16))))
+                                                        (if (nonzero? (the-as uint first-shader)) (-> (the-as adgif-shader first-shader) clamp maxv) fallback)))
+                                                     (else fallback))))
+                                                (else fallback))))
                                     1
                                     #t
                                     0
                                     511
                                     #t)
-      (debug-menu-append-item gp-0 s4-18))
-    s5-0))
+      (debug-menu-append-item menu item))
+    shader-item))
 
-(defun debug-menu-make-instance-menu ((arg0 debug-menu-context))
-  (let* ((gp-0 (new 'debug 'debug-menu arg0 "Instance menu"))
-         (s5-0 (new 'debug 'debug-menu-item-submenu "Instance" gp-0)))
-    (let ((a3-3 (new 'debug 'debug-menu arg0 "Instance shrub menu")))
-      (set! *instance-shrub-menu* a3-3)
-      (let ((a1-4 (new 'debug 'debug-menu-item-submenu "Pick Shrub" a3-3))) (debug-menu-append-item gp-0 a1-4)))
-    (let ((a3-5 (new 'debug 'debug-menu arg0 "Instance tie menu")))
-      (set! *instance-tie-menu* a3-5)
-      (let ((a1-7 (new 'debug 'debug-menu-item-submenu "Pick Tie" a3-5))) (debug-menu-append-item gp-0 a1-7)))
-    (let ((a1-9 (new 'debug 'debug-menu-item-function "Refresh" #f build-instance-list))) (debug-menu-append-item gp-0 a1-9))
-    (let ((s3-0 (new 'debug 'debug-menu-item-var "near" (the-as int '*edit-instance*) 80)))
-      (debug-menu-item-var-make-float s3-0
+(defun debug-menu-make-instance-menu ((context debug-menu-context))
+  "Build the Instance page and return the item that opens it."
+  (let* ((menu (new 'debug 'debug-menu context "Instance menu"))
+         (instance-item (new 'debug 'debug-menu-item-submenu "Instance" menu)))
+    (let ((shrub-menu (new 'debug 'debug-menu context "Instance shrub menu")))
+      (set! *instance-shrub-menu* shrub-menu)
+      (let ((item (new 'debug 'debug-menu-item-submenu "Pick Shrub" shrub-menu))) (debug-menu-append-item menu item)))
+    (let ((tie-menu (new 'debug 'debug-menu context "Instance tie menu")))
+      (set! *instance-tie-menu* tie-menu)
+      (let ((item (new 'debug 'debug-menu-item-submenu "Pick Tie" tie-menu))) (debug-menu-append-item menu item)))
+    (let ((item (new 'debug 'debug-menu-item-function "Refresh" #f build-instance-list))) (debug-menu-append-item menu item))
+    (let ((near-item (new 'debug 'debug-menu-item-var "near" (the-as int '*edit-instance*) 80)))
+      (debug-menu-item-var-make-float near-item
                                       (the-as (function int debug-menu-msg float float float)
-                                              (lambda ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
-                                                (let ((gp-0 (find-instance-by-name (-> arg0 name))))
+                                              (lambda ((id debug-menu) (msg debug-menu-msg) (value float) (fallback float))
+                                                (let ((proto (find-instance-by-name (-> id name))))
                                                   (cond
-                                                    (gp-0
-                                                     (when (= arg1 (debug-menu-msg press))
-                                                       (set! (-> gp-0 dists x) (* 4096.0 arg2))
-                                                       (prototype-bucket-recalc-fields gp-0))
-                                                     (/ (-> gp-0 dists x) METER_LENGTH))
-                                                    (else (empty) arg3)))))
+                                                    (proto
+                                                     (when (= msg (debug-menu-msg press))
+                                                       (set! (-> proto dists x) (meters value))
+                                                       (prototype-bucket-recalc-fields proto))
+                                                     (/ (-> proto dists x) METER_LENGTH))
+                                                    (else (empty) fallback)))))
                                       (the-as float 1.0)
                                       #t
                                       (the-as float 10.0)
                                       (the-as float 250.0)
                                       1)
-      (debug-menu-append-item gp-0 s3-0))
-    (let ((s3-1 (new 'debug 'debug-menu-item-var "far" (the-as int '*edit-instance*) 80)))
-      (debug-menu-item-var-make-float s3-1
+      (debug-menu-append-item menu near-item))
+    (let ((far-item (new 'debug 'debug-menu-item-var "far" (the-as int '*edit-instance*) 80)))
+      (debug-menu-item-var-make-float far-item
                                       (the-as (function int debug-menu-msg float float float)
-                                              (lambda ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 float) (arg3 float))
-                                                (let ((gp-0 (find-instance-by-name (-> arg0 name))))
+                                              (lambda ((id debug-menu) (msg debug-menu-msg) (value float) (fallback float))
+                                                (let ((proto (find-instance-by-name (-> id name))))
                                                   (cond
-                                                    (gp-0
-                                                     (when (= arg1 (debug-menu-msg press))
-                                                       (set! (-> gp-0 dists w) (* 4096.0 arg2))
-                                                       (prototype-bucket-recalc-fields gp-0))
-                                                     (/ (-> gp-0 dists w) METER_LENGTH))
-                                                    (else (empty) arg3)))))
+                                                    (proto
+                                                     (when (= msg (debug-menu-msg press))
+                                                       (set! (-> proto dists w) (meters value))
+                                                       (prototype-bucket-recalc-fields proto))
+                                                     (/ (-> proto dists w) METER_LENGTH))
+                                                    (else (empty) fallback)))))
                                       (the-as float 1.0)
                                       #t
                                       (the-as float 10.0)
                                       (the-as float 250.0)
                                       1)
-      (debug-menu-append-item gp-0 s3-1))
-    (let ((a1-17 (new 'debug 'debug-menu-item-flag "invisible" 1 dm-edit-instance-toggle-pick-func)))
-      (debug-menu-append-item gp-0 a1-17))
-    (let ((a3-13 (new 'debug 'debug-menu arg0 "Enable Instance Tie Menu")))
-      (set! *enable-instance-tie-menu* a3-13)
-      (let ((a1-20 (new 'debug 'debug-menu-item-submenu "Enable Tie" a3-13))) (debug-menu-append-item gp-0 a1-20)))
-    (let ((a1-22 (new 'debug 'debug-menu-item-flag "Instance Info" '*display-instance-info* dm-boolean-toggle-pick-func)))
-      (debug-menu-append-item gp-0 a1-22))
-    s5-0))
+      (debug-menu-append-item menu far-item))
+    (let ((item (new 'debug 'debug-menu-item-flag "invisible" 1 dm-edit-instance-toggle-pick-func)))
+      (debug-menu-append-item menu item))
+    (let ((enable-menu (new 'debug 'debug-menu context "Enable Instance Tie Menu")))
+      (set! *enable-instance-tie-menu* enable-menu)
+      (let ((item (new 'debug 'debug-menu-item-submenu "Enable Tie" enable-menu))) (debug-menu-append-item menu item)))
+    (let ((item (new 'debug 'debug-menu-item-flag "Instance Info" '*display-instance-info* dm-boolean-toggle-pick-func)))
+      (debug-menu-append-item menu item))
+    instance-item))
 
-(defun dm-task-unknown ((arg0 int) (arg1 debug-menu-msg))
-  (let ((gp-0 (/ arg0 8)))
-    (if (not (task-exists? (the-as game-task gp-0) (task-status unknown))) (return 'invalid))
-    (if (= arg1 (debug-menu-msg press)) (close-specific-task! (the-as game-task gp-0) (task-status unknown)))
-    (task-closed? (the-as game-task gp-0) (task-status unknown))))
+;; One flag callback per task stage. All seven take the task from id / 8, report 'invalid for a
+;; task that has no such stage, and close the stage on press.
+(defun dm-task-unknown ((id int) (msg debug-menu-msg))
+  "Close the unknown stage of the task id / 8. Returns 'invalid when the task has no such stage,
+   which draws the entry as unavailable."
+  (let ((task (/ id 8)))
+    (if (not (task-exists? (the-as game-task task) (task-status unknown))) (return 'invalid))
+    (if (= msg (debug-menu-msg press)) (close-specific-task! (the-as game-task task) (task-status unknown)))
+    (task-closed? (the-as game-task task) (task-status unknown))))
 
-(defun dm-task-hint ((arg0 int) (arg1 debug-menu-msg))
-  (let ((gp-0 (/ arg0 8)))
-    (if (not (task-exists? (the-as game-task gp-0) (task-status need-hint))) (return 'invalid))
-    (if (= arg1 (debug-menu-msg press)) (close-specific-task! (the-as game-task gp-0) (task-status need-hint)))
-    (task-closed? (the-as game-task gp-0) (task-status need-hint))))
+(defun dm-task-hint ((id int) (msg debug-menu-msg))
+  "Close the need-hint stage of the task id / 8, or return 'invalid when it has none."
+  (let ((task (/ id 8)))
+    (if (not (task-exists? (the-as game-task task) (task-status need-hint))) (return 'invalid))
+    (if (= msg (debug-menu-msg press)) (close-specific-task! (the-as game-task task) (task-status need-hint)))
+    (task-closed? (the-as game-task task) (task-status need-hint))))
 
-(defun dm-task-introduction ((arg0 int) (arg1 debug-menu-msg))
-  (let ((gp-0 (/ arg0 8)))
-    (if (not (task-exists? (the-as game-task gp-0) (task-status need-introduction))) (return 'invalid))
-    (if (= arg1 (debug-menu-msg press)) (close-specific-task! (the-as game-task gp-0) (task-status need-introduction)))
-    (task-closed? (the-as game-task gp-0) (task-status need-introduction))))
+(defun dm-task-introduction ((id int) (msg debug-menu-msg))
+  "Close the need-introduction stage of the task id / 8, or return 'invalid when it has none."
+  (let ((task (/ id 8)))
+    (if (not (task-exists? (the-as game-task task) (task-status need-introduction))) (return 'invalid))
+    (if (= msg (debug-menu-msg press)) (close-specific-task! (the-as game-task task) (task-status need-introduction)))
+    (task-closed? (the-as game-task task) (task-status need-introduction))))
 
-(defun dm-task-reminder-a ((arg0 int) (arg1 debug-menu-msg))
-  (let ((gp-0 (/ arg0 8)))
-    (if (not (task-exists? (the-as game-task gp-0) (task-status need-reminder-a))) (return 'invalid))
-    (if (= arg1 (debug-menu-msg press)) (close-specific-task! (the-as game-task gp-0) (task-status need-reminder-a)))
-    (task-closed? (the-as game-task gp-0) (task-status need-reminder-a))))
+(defun dm-task-reminder-a ((id int) (msg debug-menu-msg))
+  "Close the need-reminder-a stage of the task id / 8, or return 'invalid when it has none."
+  (let ((task (/ id 8)))
+    (if (not (task-exists? (the-as game-task task) (task-status need-reminder-a))) (return 'invalid))
+    (if (= msg (debug-menu-msg press)) (close-specific-task! (the-as game-task task) (task-status need-reminder-a)))
+    (task-closed? (the-as game-task task) (task-status need-reminder-a))))
 
-(defun dm-task-reminder ((arg0 int) (arg1 debug-menu-msg))
-  (let ((gp-0 (/ arg0 8)))
-    (if (not (task-exists? (the-as game-task gp-0) (task-status need-reminder))) (return 'invalid))
-    (if (= arg1 (debug-menu-msg press)) (close-specific-task! (the-as game-task gp-0) (task-status need-reminder)))
-    (task-closed? (the-as game-task gp-0) (task-status need-reminder))))
+(defun dm-task-reminder ((id int) (msg debug-menu-msg))
+  "Close the need-reminder stage of the task id / 8, or return 'invalid when it has none."
+  (let ((task (/ id 8)))
+    (if (not (task-exists? (the-as game-task task) (task-status need-reminder))) (return 'invalid))
+    (if (= msg (debug-menu-msg press)) (close-specific-task! (the-as game-task task) (task-status need-reminder)))
+    (task-closed? (the-as game-task task) (task-status need-reminder))))
 
-(defun dm-task-reward-speech ((arg0 int) (arg1 debug-menu-msg))
-  (let ((gp-0 (/ arg0 8)))
-    (if (not (task-exists? (the-as game-task gp-0) (task-status need-reward-speech))) (return 'invalid))
-    (if (= arg1 (debug-menu-msg press)) (close-specific-task! (the-as game-task gp-0) (task-status need-reward-speech)))
-    (task-closed? (the-as game-task gp-0) (task-status need-reward-speech))))
+(defun dm-task-reward-speech ((id int) (msg debug-menu-msg))
+  "Close the need-reward-speech stage of the task id / 8, or return 'invalid when it has none."
+  (let ((task (/ id 8)))
+    (if (not (task-exists? (the-as game-task task) (task-status need-reward-speech))) (return 'invalid))
+    (if (= msg (debug-menu-msg press)) (close-specific-task! (the-as game-task task) (task-status need-reward-speech)))
+    (task-closed? (the-as game-task task) (task-status need-reward-speech))))
 
-(defun dm-task-resolution ((arg0 int) (arg1 debug-menu-msg))
-  (let ((gp-0 (/ arg0 8)))
-    (if (not (task-exists? (the-as game-task gp-0) (task-status need-resolution))) (return 'invalid))
-    (when (= arg1 (debug-menu-msg press))
-      (send-event *target* 'get-pickup 6 (the float gp-0))
-      (close-specific-task! (the-as game-task gp-0) (task-status need-resolution)))
-    (task-closed? (the-as game-task gp-0) (task-status need-resolution))))
+(defun dm-task-resolution ((id int) (msg debug-menu-msg))
+  "Give the player the fuel cell for the task id / 8 and close its need-resolution stage, or return
+   'invalid when it has none."
+  (let ((task (/ id 8)))
+    (if (not (task-exists? (the-as game-task task) (task-status need-resolution))) (return 'invalid))
+    (when (= msg (debug-menu-msg press))
+      (send-event *target* 'get-pickup (pickup-type fuel-cell) (the float task))
+      (close-specific-task! (the-as game-task task) (task-status need-resolution)))
+    (task-closed? (the-as game-task task) (task-status need-resolution))))
 
-(defun debug-menu-make-task-unknown-menu ((arg0 debug-menu) (arg1 debug-menu-context))
-  (debug-menu-append-item arg0
-                          (debug-menu-make-from-template arg1
+;; One page per task stage, each listing every task that has that stage. The task numbers in these
+;; templates have to be written out: a static list holds boxed numbers, not compile-time constants,
+;; so the game-task names survive only as the item labels.
+(defun debug-menu-make-task-unknown-menu ((menu debug-menu) (context debug-menu-context))
+  "Append the unknown page to menu, with one entry per task whose unknown stage can be closed."
+  (debug-menu-append-item menu
+                          (debug-menu-make-from-template context
                                                          '(menu "unknown"
                                                                #f
                                                                #f
@@ -1244,9 +1417,10 @@
                                                                #f)))
   (none))
 
-(defun debug-menu-make-task-need-hint-menu ((arg0 debug-menu) (arg1 debug-menu-context))
-  (debug-menu-append-item arg0
-                          (debug-menu-make-from-template arg1
+(defun debug-menu-make-task-need-hint-menu ((menu debug-menu) (context debug-menu-context))
+  "Append the need-hint page to menu."
+  (debug-menu-append-item menu
+                          (debug-menu-make-from-template context
                                                          '(menu "need-hint"
                                                                #f
                                                                #f
@@ -1374,9 +1548,10 @@
                                                                #f)))
   (none))
 
-(defun debug-menu-make-task-need-introduction-menu ((arg0 debug-menu) (arg1 debug-menu-context))
-  (debug-menu-append-item arg0
-                          (debug-menu-make-from-template arg1
+(defun debug-menu-make-task-need-introduction-menu ((menu debug-menu) (context debug-menu-context))
+  "Append the need-introduction page to menu."
+  (debug-menu-append-item menu
+                          (debug-menu-make-from-template context
                                                          '(menu "need-introduction"
                                                                #f
                                                                #f
@@ -1504,9 +1679,10 @@
                                                                #f)))
   (none))
 
-(defun debug-menu-make-task-need-reminder-a-menu ((arg0 debug-menu) (arg1 debug-menu-context))
-  (debug-menu-append-item arg0
-                          (debug-menu-make-from-template arg1
+(defun debug-menu-make-task-need-reminder-a-menu ((menu debug-menu) (context debug-menu-context))
+  "Append the need-reminder-a page to menu."
+  (debug-menu-append-item menu
+                          (debug-menu-make-from-template context
                                                          '(menu "need-reminder-a"
                                                                #f
                                                                #f
@@ -1634,9 +1810,10 @@
                                                                #f)))
   (none))
 
-(defun debug-menu-make-task-need-reminder-menu ((arg0 debug-menu) (arg1 debug-menu-context))
-  (debug-menu-append-item arg0
-                          (debug-menu-make-from-template arg1
+(defun debug-menu-make-task-need-reminder-menu ((menu debug-menu) (context debug-menu-context))
+  "Append the need-reminder page to menu."
+  (debug-menu-append-item menu
+                          (debug-menu-make-from-template context
                                                          '(menu "need-reminder"
                                                                #f
                                                                #f
@@ -1764,9 +1941,10 @@
                                                                #f)))
   (none))
 
-(defun debug-menu-make-task-need-reward-speech-menu ((arg0 debug-menu) (arg1 debug-menu-context))
-  (debug-menu-append-item arg0
-                          (debug-menu-make-from-template arg1
+(defun debug-menu-make-task-need-reward-speech-menu ((menu debug-menu) (context debug-menu-context))
+  "Append the need-reward-speech page to menu."
+  (debug-menu-append-item menu
+                          (debug-menu-make-from-template context
                                                          '(menu "need-reward-speech"
                                                                #f
                                                                #f
@@ -1894,9 +2072,10 @@
                                                                #f)))
   (none))
 
-(defun debug-menu-make-task-need-resolution-menu ((arg0 debug-menu) (arg1 debug-menu-context))
-  (debug-menu-append-item arg0
-                          (debug-menu-make-from-template arg1
+(defun debug-menu-make-task-need-resolution-menu ((menu debug-menu) (context debug-menu-context))
+  "Append the need-resolution page to menu. Closing a stage here also hands out the fuel cell."
+  (debug-menu-append-item menu
+                          (debug-menu-make-from-template context
                                                          '(menu "need-resolution"
                                                                #f
                                                                #f
@@ -2024,26 +2203,33 @@
                                                                #f)))
   (none))
 
-(defun dm-task-get-money ((arg0 int) (arg1 debug-menu-msg))
-  (if (= arg1 (debug-menu-msg press)) (send-event *target* 'get-pickup 5 (-> *GAME-bank* money-task-inc)))
+(defun dm-task-get-money ((id int) (msg debug-menu-msg))
+  "Give the player the money one task rewards, and report whether they already hold that much."
+  (if (= msg (debug-menu-msg press)) (send-event *target* 'get-pickup (pickup-type money) (-> *GAME-bank* money-task-inc)))
   (>= (the-as float (send-event *target* 'query 'pickup (pickup-type money))) (-> *GAME-bank* money-task-inc)))
 
-(defun dm-give-all-cells ((arg0 int) (arg1 debug-menu-msg))
-  (when (= arg1 (debug-menu-msg press))
-    (dotimes (gp-0 100)
-      (send-event *target* 'get-pickup 6 (the float (+ gp-0 2)))
-      (close-specific-task! (the-as game-task (+ gp-0 2)) (task-status need-resolution))))
-  (dotimes (gp-1 100)
-    (if (not (task-closed? (the-as game-task (+ gp-1 2)) (task-status need-resolution))) (return #f)))
+(defun dm-give-all-cells ((id int) (msg debug-menu-msg))
+  "Give the player every fuel cell and close the need-resolution stage of all 100 tasks. Reports
+   whether they are all closed already."
+  (when (= msg (debug-menu-msg press))
+    (dotimes (i 100)
+      (send-event *target* 'get-pickup (pickup-type fuel-cell) (the float (+ i 2)))
+      (close-specific-task! (the-as game-task (+ i 2)) (task-status need-resolution))))
+  (dotimes (i 100)
+    (if (not (task-closed? (the-as game-task (+ i 2)) (task-status need-resolution))) (return #f)))
   #t)
 
-(defun dm-give-cell ((arg0 game-task))
-  (send-event *target* 'get-pickup 6 (the float arg0))
-  (close-specific-task! arg0 (task-status need-resolution))
+(defun dm-give-cell ((task game-task))
+  "Give the player the fuel cell for task and close its need-resolution stage."
+  (send-event *target* 'get-pickup (pickup-type fuel-cell) (the float task))
+  (close-specific-task! task (task-status need-resolution))
   (none))
 
-(defun dm-levitator-ready ((arg0 int) (arg1 debug-menu-msg))
-  (when (= arg1 (debug-menu-msg press))
+(defun dm-levitator-ready ((id int) (msg debug-menu-msg))
+  "Set up the state the village2 levitator task expects: close its introduction and first reminder,
+   and hand out every cell up to sunken-sharks. Reports whether the task is waiting on its reward
+   speech."
+  (when (= msg (debug-menu-msg press))
     (close-specific-task! (game-task village2-levitator) (task-status need-introduction))
     (close-specific-task! (game-task village2-levitator) (task-status need-reminder-a))
     (dm-give-cell (game-task jungle-eggtop))
@@ -2094,8 +2280,10 @@
     (dm-give-cell (game-task sunken-sharks)))
   (= (get-task-status (game-task village2-levitator)) (task-status need-reward-speech)))
 
-(defun dm-lavabike-ready ((arg0 int) (arg1 debug-menu-msg))
-  (when (= arg1 (debug-menu-msg press))
+(defun dm-lavabike-ready ((id int) (msg debug-menu-msg))
+  "Hand out every cell up to village2-buzzer, which is what the lavatube start task requires.
+   Reports whether that task is waiting on its reward speech."
+  (when (= msg (debug-menu-msg press))
     (dm-give-cell (game-task jungle-eggtop))
     (dm-give-cell (game-task jungle-lurkerm))
     (dm-give-cell (game-task jungle-tower))
@@ -2173,68 +2361,76 @@
     (dm-give-cell (game-task village2-buzzer)))
   (= (get-task-status (game-task lavatube-start)) (task-status need-reward-speech)))
 
-(defun debug-menu-make-task-menu ((arg0 debug-menu-context))
-  (let* ((s5-0 (new 'debug 'debug-menu arg0 "Task menu"))
-         (s4-0 (new 'debug 'debug-menu-item-submenu "Task" s5-0)))
-    (debug-menu-append-item s5-0 (new 'debug 'debug-menu-item-flag "enough money" #f dm-task-get-money))
-    (debug-menu-append-item s5-0 (new 'debug 'debug-menu-item-flag "levitator ready" #f dm-levitator-ready))
-    (debug-menu-append-item s5-0 (new 'debug 'debug-menu-item-flag "lavabike ready" #f dm-lavabike-ready))
-    (debug-menu-append-item s5-0 (new 'debug 'debug-menu-item-flag "all cells" #f dm-give-all-cells))
-    (debug-menu-make-task-unknown-menu s5-0 arg0)
-    (debug-menu-make-task-need-hint-menu s5-0 arg0)
-    (debug-menu-make-task-need-introduction-menu s5-0 arg0)
-    (debug-menu-make-task-need-reminder-a-menu s5-0 arg0)
-    (debug-menu-make-task-need-reminder-menu s5-0 arg0)
-    (debug-menu-make-task-need-reward-speech-menu s5-0 arg0)
-    (debug-menu-make-task-need-resolution-menu s5-0 arg0)
-    s4-0))
+(defun debug-menu-make-task-menu ((context debug-menu-context))
+  "Build the Task page and return the item that opens it."
+  (let* ((menu (new 'debug 'debug-menu context "Task menu"))
+         (task-item (new 'debug 'debug-menu-item-submenu "Task" menu)))
+    (debug-menu-append-item menu (new 'debug 'debug-menu-item-flag "enough money" #f dm-task-get-money))
+    (debug-menu-append-item menu (new 'debug 'debug-menu-item-flag "levitator ready" #f dm-levitator-ready))
+    (debug-menu-append-item menu (new 'debug 'debug-menu-item-flag "lavabike ready" #f dm-lavabike-ready))
+    (debug-menu-append-item menu (new 'debug 'debug-menu-item-flag "all cells" #f dm-give-all-cells))
+    (debug-menu-make-task-unknown-menu menu context)
+    (debug-menu-make-task-need-hint-menu menu context)
+    (debug-menu-make-task-need-introduction-menu menu context)
+    (debug-menu-make-task-need-reminder-a-menu menu context)
+    (debug-menu-make-task-need-reminder-menu menu context)
+    (debug-menu-make-task-need-reward-speech-menu menu context)
+    (debug-menu-make-task-need-resolution-menu menu context)
+    task-item))
 
-(defun dm-anim-tester-flag-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-anim-tester-flag-func ((id symbol) (msg debug-menu-msg))
+  "Anim Tester flags. Toggles apply-align or show-joint-info on the running tester and reports the
+   bit, or reports #f when no tester is running."
   (when *anim-tester*
-    (case arg0
+    (case id
       (('at-apply-align)
-       (if (= arg1 (debug-menu-msg press)) (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5)))
-       (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt5))))
+       (if (= msg (debug-menu-msg press)) (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags at-apply-align)))
+       (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags at-apply-align))))
       (('at-show-joint-info)
-       (if (= arg1 (debug-menu-msg press)) (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4)))
-       (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt4))))))
+       (if (= msg (debug-menu-msg press)) (logxor! (-> *anim-tester* 0 flags) (anim-tester-flags at-show-joint-info)))
+       (return (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags at-show-joint-info))))))
   #f)
 
-(defun dm-anim-tester-func ((arg0 int) (arg1 debug-menu-msg))
+(defun dm-anim-tester-func ((id symbol) (msg debug-menu-msg))
+  "Anim Tester commands. Starts the tester if it is not running, then forwards a pick or save
+   request to it, or points the camera at it. The pick commands hide the debug menu so the tester
+   can use the pad."
   (if (not *anim-tester*) (anim-tester-start))
   (when *anim-tester*
     (cond
-      ((= arg0 'at-pick-object)
+      ((= id 'at-pick-object)
        (send-event (ppointer->process *anim-tester*) 'pick-object)
        (set! (-> *debug-menu-context* is-hidden) #t))
-      ((= arg0 'at-pick-joint-anim)
+      ((= id 'at-pick-joint-anim)
        (send-event (ppointer->process *anim-tester*) 'pick-joint-anim)
        (set! (-> *debug-menu-context* is-hidden) #t))
-      ((= arg0 'at-pick-sequence)
+      ((= id 'at-pick-sequence)
        (send-event (ppointer->process *anim-tester*) 'pick-sequence)
        (set! (-> *debug-menu-context* is-hidden) #t))
-      ((= arg0 'at-save-sequences) (send-event (ppointer->process *anim-tester*) 'save-sequences))
-      ((= arg0 'at-cam-stick) (set! *camera-orbit-target* *anim-tester*) (send-event *camera* 'change-state cam-orbit 0))
-      ((= arg0 'at-cam-free-floating) (send-event *camera* 'change-state cam-free-floating 0))))
+      ((= id 'at-save-sequences) (send-event (ppointer->process *anim-tester*) 'save-sequences))
+      ((= id 'at-cam-stick) (set! *camera-orbit-target* *anim-tester*) (send-event *camera* 'change-state cam-orbit 0))
+      ((= id 'at-cam-free-floating) (send-event *camera* 'change-state cam-free-floating 0))))
   (none))
 
-(defun build-continue-menu ((arg0 debug-menu) (arg1 game-info))
-  (let ((s5-0 *level-load-list*))
-    (while (not (null? s5-0))
-      (let ((s4-0 (-> (the-as level-load-info (-> (the-as symbol (car s5-0)) value)) continues)))
-        (while (not (null? s4-0))
-          (let* ((v1-2 (the-as level-load-info (car s4-0)))
-                 (a1-2 (new 'debug 'debug-menu-item-flag (the-as string (-> v1-2 name)) (-> v1-2 name) dm-current-continue)))
-            (debug-menu-append-item arg0 a1-2))
-          (set! s4-0 (cdr s4-0))))
-      (set! s5-0 (cdr s5-0))))
-  (the-as debug-menu-context arg0))
+(defun build-continue-menu ((menu debug-menu) (info game-info))
+  "Fill menu with one entry per continue point of every level in *level-load-list*. info is unused."
+  (let ((levels *level-load-list*))
+    (while (not (null? levels))
+      (let ((continues (-> (the-as level-load-info (-> (the-as symbol (car levels)) value)) continues)))
+        (while (not (null? continues))
+          (let* ((continue-info (the-as continue-point (car continues)))
+                 (item (new 'debug 'debug-menu-item-flag (-> continue-info name) (-> continue-info name) dm-current-continue)))
+            (debug-menu-append-item menu item))
+          (set! continues (cdr continues))))
+      (set! levels (cdr levels))))
+  menu)
 
-(defun debug-menu-context-make-default-menus ((arg0 debug-menu-context))
-  (let ((s5-0 (new 'debug 'debug-menu arg0 "Main menu")))
-    (debug-menu-context-set-root-menu arg0 s5-0)
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+(defun debug-menu-context-make-default-menus ((context debug-menu-context))
+  "Build the whole debug menu into context and install it as the root menu."
+  (let ((menu (new 'debug 'debug-menu context "Main menu")))
+    (debug-menu-context-set-root-menu context menu)
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Artist"
                                                                  (flag "Poly Stats" *stats-poly* dm-boolean-toggle-pick-func)
                                                                  (flag "Memory Stats" *stats-memory* dm-boolean-toggle-pick-func)
@@ -2264,8 +2460,8 @@
                                                                  (flag "Sprite Info" *display-sprite-info* dm-boolean-toggle-pick-func)
                                                                  (flag "Time of Day" #f dm-time-of-day-pick-func)
                                                                  (flag "Preload Anims" *preload-spool-anims* dm-boolean-toggle-pick-func))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Game"
                                                                  (function "New Game" #f ,(lambda () (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f)) (none)))
                                                                  (function "New Life" #f ,(lambda () (initialize! *game-info* 'die (the-as game-save #f) (the-as string #f)) (none)))
@@ -2280,8 +2476,8 @@
                                                                  (function "Load Game" #f ,(lambda () (auto-save-command 'restore 0 0 *default-pool*) (none)))
                                                                  (flag "Target"
                                                                        #f
-                                                                       ,(lambda ((arg0 int) (arg1 debug-menu-msg))
-                                                                         (when (= arg1 (debug-menu-msg press))
+                                                                       ,(lambda ((id int) (msg debug-menu-msg))
+                                                                         (when (= msg (debug-menu-msg press))
                                                                            (if *target* (stop 'debug) (start 'debug (get-or-create-continue! *game-info*))))
                                                                          *target*))
                                                                  (flag "Game Mode" play dm-game-mode-pick-func)
@@ -2290,9 +2486,9 @@
                                                                  (menu "Settings"
                                                                        (float-var "sfx-volume"
                                                                                   #f
-                                                                                  ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
-                                                                                    (if (= arg1 (debug-menu-msg press))
-                                                                                      (set! (-> *setting-control* default sfx-volume) arg2)
+                                                                                  ,(lambda ((id int) (msg debug-menu-msg) (value float))
+                                                                                    (if (= msg (debug-menu-msg press))
+                                                                                      (set! (-> *setting-control* default sfx-volume) value)
                                                                                       (-> *setting-control* default sfx-volume)))
                                                                                   2
                                                                                   1
@@ -2302,9 +2498,9 @@
                                                                                   0)
                                                                        (float-var "music-volume"
                                                                                   #f
-                                                                                  ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
-                                                                                    (if (= arg1 (debug-menu-msg press))
-                                                                                      (set! (-> *setting-control* default music-volume) arg2)
+                                                                                  ,(lambda ((id int) (msg debug-menu-msg) (value float))
+                                                                                    (if (= msg (debug-menu-msg press))
+                                                                                      (set! (-> *setting-control* default music-volume) value)
                                                                                       (-> *setting-control* default music-volume)))
                                                                                   2
                                                                                   1
@@ -2314,9 +2510,9 @@
                                                                                   0)
                                                                        (float-var "dialog-volume"
                                                                                   #f
-                                                                                  ,(lambda ((arg0 int) (arg1 debug-menu-msg) (arg2 float))
-                                                                                    (if (= arg1 (debug-menu-msg press))
-                                                                                      (set! (-> *setting-control* default dialog-volume) arg2)
+                                                                                  ,(lambda ((id int) (msg debug-menu-msg) (value float))
+                                                                                    (if (= msg (debug-menu-msg press))
+                                                                                      (set! (-> *setting-control* default dialog-volume) value)
                                                                                       (-> *setting-control* default dialog-volume)))
                                                                                   2
                                                                                   1
@@ -2334,25 +2530,26 @@
                                                                              (flag "uk-english" 6 dm-setting-language))
                                                                        (flag "play-hints "
                                                                              #f
-                                                                             ,(lambda ((arg0 int) (arg1 debug-menu-msg))
-                                                                               (if (= arg1 (debug-menu-msg press))
+                                                                             ,(lambda ((id int) (msg debug-menu-msg))
+                                                                               (if (= msg (debug-menu-msg press))
                                                                                  (set! (-> *setting-control* default play-hints) (not (-> *setting-control* default play-hints))))
                                                                                (-> *setting-control* default play-hints)))
                                                                        (flag "vibration"
                                                                              #f
-                                                                             ,(lambda ((arg0 int) (arg1 debug-menu-msg))
-                                                                               (if (= arg1 (debug-menu-msg press))
+                                                                             ,(lambda ((id int) (msg debug-menu-msg))
+                                                                               (if (= msg (debug-menu-msg press))
                                                                                  (set! (-> *setting-control* default vibration) (not (-> *setting-control* default vibration))))
                                                                                (-> *setting-control* default vibration)))
                                                                        (flag "border-mode"
                                                                              #f
-                                                                             ,(lambda ((arg0 int) (arg1 debug-menu-msg))
-                                                                               (if (= arg1 (debug-menu-msg press))
+                                                                             ,(lambda ((id int) (msg debug-menu-msg))
+                                                                               (if (= msg (debug-menu-msg press))
                                                                                  (set! (-> *setting-control* default border-mode) (not (-> *setting-control* default border-mode))))
                                                                                (-> *setting-control* default border-mode)))))))
-    (let ((a0-8 (debug-menu-find-from-template arg0 '("Game" "Continue")))) (build-continue-menu a0-8 *game-info*))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (let ((continue-menu (debug-menu-find-from-template context '("Game" "Continue"))))
+      (build-continue-menu continue-menu *game-info*))
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Stats"
                                                                  (flag "Poly" *stats-poly* dm-boolean-toggle-pick-func)
                                                                  (flag "Collide" *stats-collide* dm-boolean-toggle-pick-func)
@@ -2362,8 +2559,8 @@
                                                                  (flag "Dma test" *stats-dma-test* dm-boolean-toggle-pick-func)
                                                                  (flag "Blerc" *stats-blerc* dm-boolean-toggle-pick-func)
                                                                  (flag "Perf" *display-perf-stats* dm-boolean-toggle-pick-func))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Render"
                                                                  (flag "sky" 1 dm-vu1-user-toggle-pick-func)
                                                                  (flag "ocean" 2 dm-vu1-user-toggle-pick-func)
@@ -2392,8 +2589,8 @@
                                                                  (flag "all off" 196608 dm-vu1-user-set-pick-func)
                                                                  (flag "all textures on" #x1f dm-texture-user-set-pick-func)
                                                                  (flag "all textures off" 0 dm-texture-user-set-pick-func))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Collision"
                                                                  (flag "Collide Stats" *stats-collide* dm-boolean-toggle-pick-func)
                                                                  (flag "Collision Marks" *display-collision-marks* dm-boolean-toggle-pick-func)
@@ -2401,8 +2598,8 @@
                                                                  (flag "Render Collision" *display-render-collision* dm-boolean-toggle-pick-func)
                                                                  (flag "Hipri Collision Marks" *display-hipri-collision-marks* dm-boolean-toggle-pick-func)
                                                                  (flag "Edge Collision Marks" *display-edge-collision-marks* dm-boolean-toggle-pick-func))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Display"
                                                                  (flag "Profile" *display-profile* dm-boolean-toggle-pick-func)
                                                                  (flag "Ticks" *profile-ticks* dm-boolean-toggle-pick-func)
@@ -2469,8 +2666,8 @@
                                                                  (flag "Split Box Info" *display-split-box-info* dm-boolean-toggle-pick-func)
                                                                  (flag "Load boundaries" *display-load-boundaries* dm-boolean-toggle-pick-func)
                                                                  (flag "Memcard Info" *display-memcard-info* dm-boolean-toggle-pick-func))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Actor"
                                                                  (flag "Spawn Actors" *spawn-actors* dm-boolean-toggle-pick-func)
                                                                  (function "Reset Actors" #f ,(lambda () (reset-actors 'debug) (none)))
@@ -2499,8 +2696,8 @@
                                                                        (flag "sphere" sphere dm-actor-vis-pick-func)
                                                                        (flag "all" #t dm-actor-vis-pick-func))
                                                                  (flag "Actor Vis" *vis-actors* dm-boolean-toggle-pick-func))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Target"
                                                                  (flag "Target Stats" *stats-target* dm-boolean-toggle-pick-func)
                                                                  (function "Play" #f ,(lambda () (play #t #t)))
@@ -2508,16 +2705,16 @@
                                                                  (function "Stop" #f ,(lambda () (stop 'debug)))
                                                                  (flag "Invulnerable"
                                                                        #f
-                                                                       ,(lambda ((arg0 int) (arg1 debug-menu-msg))
-                                                                         (when (= arg1 (debug-menu-msg press))
+                                                                       ,(lambda ((id int) (msg debug-menu-msg))
+                                                                         (when (= msg (debug-menu-msg press))
                                                                            (if *target* (logxor! (-> *target* state-flags) (state-flags invulnerable))))
                                                                          (the-as symbol (and *target* (logtest? (-> *target* state-flags) (state-flags invulnerable))))))
                                                                  (function "Reset Trans"
                                                                            #f
                                                                            ,(lambda ()
                                                                              (when *target*
-                                                                               (position-in-front-of-camera! (target-pos 0) (the-as float 40960.0) (the-as float 4096.0))
-                                                                               (set! (-> *target* control transv quad) (the-as uint128 0))
+                                                                               (position-in-front-of-camera! (target-pos 0) (meters 10) (meters 1))
+                                                                               (vector-zero! (-> *target* control transv))
                                                                                (quaternion-identity! (-> *target* control quat))
                                                                                (quaternion-identity! (-> *target* control quat-for-control))
                                                                                (quaternion-identity! (-> *target* control dir-targ)))))
@@ -2525,8 +2722,8 @@
                                                                            #f
                                                                            ,(lambda ()
                                                                              (when *target*
-                                                                               (set-vector! (-> *target* control trans) 0.0 163840.0 0.0 1.0)
-                                                                               (set! (-> *target* control transv quad) (the-as uint128 0))
+                                                                               (set-vector! (-> *target* control trans) 0.0 (meters 40) 0.0 1.0)
+                                                                               (vector-zero! (-> *target* control transv))
                                                                                (quaternion-identity! (-> *target* control quat))
                                                                                (quaternion-identity! (-> *target* control quat-for-control))
                                                                                (quaternion-identity! (-> *target* control dir-targ)))))
@@ -2538,26 +2735,26 @@
                                                                  (function "Print Pos"
                                                                            #f
                                                                            ,(lambda ()
-                                                                             (let ((v1-0 (target-pos 0))) (format #t "~6,,2m ~6,,2m ~6,,2m~%" (-> v1-0 x) (-> v1-0 y) (-> v1-0 z)))
+                                                                             (let ((pos (target-pos 0))) (format #t "~6,,2m ~6,,2m ~6,,2m~%" (-> pos x) (-> pos y) (-> pos z)))
                                                                              0
                                                                              (none)))
                                                                  (function "Save Continue" #f ,(lambda () (if *target* (trsq->continue-point (-> *target* control))) (none))))))
-    (debug-menu-append-item s5-0 (debug-menu-make-camera-menu arg0))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu (debug-menu-make-camera-menu context))
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Subdiv"
                                                                  (flag "Textured" 0 dm-subdiv-draw-func)
                                                                  (flag "Outline" 1 dm-subdiv-draw-func)
                                                                  (flag "Gouraud" 2 dm-subdiv-draw-func)
                                                                  (flag "Hack" 3 dm-subdiv-draw-func))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Ocean Subdiv"
                                                                  (flag "Textured" 0 dm-ocean-subdiv-draw-func)
                                                                  (flag "Outline" 1 dm-ocean-subdiv-draw-func)
                                                                  (flag "Gouraud" 2 dm-ocean-subdiv-draw-func))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Time of day"
                                                                  (flag "7am  sunrise" 0 dm-time-of-day-func)
                                                                  (flag "9am  morning" 1 dm-time-of-day-func)
@@ -2570,8 +2767,8 @@
                                                                  (flag "on" 8 dm-time-of-day-func)
                                                                  (flag "Effects" *time-of-day-effects* dm-boolean-toggle-pick-func)
                                                                  (flag "Fast" *time-of-day-fast* dm-time-of-day-func2))))
-    (debug-menu-append-item s5-0
-                            (debug-menu-make-from-template arg0
+    (debug-menu-append-item menu
+                            (debug-menu-make-from-template context
                                                            '(menu "Sound"
                                                                  (flag "Effect Debug" *debug-effect-control* dm-boolean-toggle-pick-func)
                                                                  (flag "Amb Snd Marks" *display-ambient-sound-marks* dm-boolean-toggle-pick-func)
@@ -2579,37 +2776,38 @@
                                                                  (flag "Amb Spheres" *execute-ambients* dm-boolean-toggle-pick-func)
                                                                  (flag "Sound channels" *display-iop-info* dm-boolean-toggle-pick-func)
                                                                  (function "List Sounds" #f ,(lambda () (list-sounds))))))
-    (debug-menu-append-item s5-0 (debug-menu-make-shader-menu arg0))
-    (debug-menu-append-item s5-0 (debug-menu-make-instance-menu arg0))
-    (debug-menu-append-item s5-0 (debug-menu-make-task-menu arg0)))
-  arg0)
+    (debug-menu-append-item menu (debug-menu-make-shader-menu context))
+    (debug-menu-append-item menu (debug-menu-make-instance-menu context))
+    (debug-menu-append-item menu (debug-menu-make-task-menu context)))
+  context)
 
 (define *popup-menu-context* (new 'debug 'debug-menu-context))
 
-(defun popup-menu-context-make-default-menus ((arg0 debug-menu-context))
-  (debug-menu-make-from-template arg0
+(defun popup-menu-context-make-default-menus ((context debug-menu-context))
+  "Build the popup menu into context: the few entries reachable by holding L3 on the pause screen."
+  (debug-menu-make-from-template context
                                  '(main-menu "Popup"
                                             (flag "Cam 1" pad-1 dm-cam-externalize)
                                             (flag "Target"
                                                   #f
-                                                  ,(lambda ((arg0 int) (arg1 debug-menu-msg))
-                                                    (when (= arg1 (debug-menu-msg press))
+                                                  ,(lambda ((id int) (msg debug-menu-msg))
+                                                    (when (= msg (debug-menu-msg press))
                                                       (if *target* (stop 'debug) (start 'debug (get-or-create-continue! *game-info*))))
                                                     *target*))
                                             (flag "Game"
                                                   #f
-                                                  ,(lambda ((arg0 int) (arg1 debug-menu-msg))
-                                                    (when (= arg1 (debug-menu-msg press))
-                                                      (let ((v1-3 (-> *game-info* mode)))
+                                                  ,(lambda ((id int) (msg debug-menu-msg))
+                                                    (when (= msg (debug-menu-msg press))
+                                                      (let ((mode (-> *game-info* mode)))
                                                         (set! (-> *game-info* mode)
                                                               (cond
-                                                                ((= v1-3 'play) 'debug)
-                                                                ((= v1-3 'debug) 'play)
+                                                                ((= mode 'play) 'debug)
+                                                                ((= mode 'debug) 'play)
                                                                 (else (-> *game-info* mode))))))
                                                     (= (-> *game-info* mode) 'play)))
                                             (function "Clean"
                                                       #f
-                                                      ,(lambda ((arg0 int) (arg1 debug-menu-msg))
+                                                      ,(lambda ((id int) (msg debug-menu-msg))
                                                         (if (time-of-day-setup #f) (time-of-day-setup #t))
                                                         (set! *display-entity-errors* #f)
                                                         (set! *display-profile* #f)
@@ -2617,13 +2815,15 @@
                                                         #f))
                                             (flag "Stats" *stats-target* dm-boolean-toggle-pick-func)
                                             (function "Reset" #f ,(lambda () (reset-actors 'debug) (none)))))
-  arg0)
+  context)
 
 (debug-menu-context-make-default-menus *debug-menu-context*)
 
 (popup-menu-context-make-default-menus *popup-menu-context*)
 
 (defun menu-respond-to-pause ()
+  "Called while the pause screen is up. Activates the popup menu when L3 is held and the main menu
+   otherwise, and deactivates both once the game is no longer paused."
   (case *master-mode*
     (('menu)
      (if (cpad-hold? 0 l3)
@@ -2635,5 +2835,6 @@
   #f)
 
 (defun *menu-hook* ()
+  "Per-frame entry point for both debug menu contexts."
   (debug-menus-handler *debug-menu-context*)
   (debug-menus-handler *popup-menu-context*))

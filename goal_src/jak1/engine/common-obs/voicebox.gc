@@ -7,11 +7,15 @@
 
 ;; DECOMP BEGINS
 
+;; Camera companion for the animated speaker. It uses the ordinary cam-string controls and remains
+;; active only while the camera master is tracking a drawable target.
 (deftype camera-voicebox (camera-slave) ()
   (:states
    cam-voicebox))
 
-
+;; The speaker has its own drawable but is parented beneath camera-voicebox. blend is zero at the
+;; camera-side endpoint and one at Jak's backpack; seeker eases between those endpoints, and twist
+;; asks the camera child to choose a clear side.
 (deftype voicebox (process-drawable)
   ((parent-override (pointer camera-voicebox) :overlay-at parent)
    (base-trans      vector :inline)
@@ -24,7 +28,7 @@
    idle
    exit))
 
-
+;; Park the camera child here after the speaker has closed.
 (defstate empty-state (process)
   :code nothing)
 
@@ -36,42 +40,57 @@
   :bounds (static-spherem 0 0 0 4))
 
 (defbehavior voicebox-track voicebox ()
-  (let ((gp-0 (new 'stack-no-clear 'vector))
-        (s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> gp-0 quad) (-> self parent-override 0 trans quad))
-    (set! (-> s5-0 quad) (-> (target-pos 68) quad))
+  "Place the speaker along its blend path between the camera slave and the target's backpack, add a
+   slow vertical bob, face the target's mouth, steer the camera toward an unblocked side, and scale
+   the model from full size to zero as it enters the backpack."
+  (let ((camera-position (new 'stack-no-clear 'vector))
+        (target-position (new 'stack-no-clear 'vector)))
+    (vector-copy! camera-position (-> self parent-override 0 trans))
+    (vector-copy! target-position (target-pos (joint-node-index eichar-lod0-jg packStrapMid)))
     (when *target*
-      (let ((a2-0 (vector-z-quaternion! (new-stack-vector0) (-> *target* control quat-for-control))))
-        (vector+float*! s5-0 s5-0 a2-0 (* -16384.0 (- 1.0 (-> self blend))))))
-    (vector-lerp! (-> self root trans) gp-0 s5-0 (-> self blend)))
+      (let ((target-forward (vector-z-quaternion! (new-stack-vector0) (-> *target* control quat-for-control))))
+        ;; The offset vanishes at both endpoints: blend ignores the target position at zero, and the
+        ;; offset itself reaches zero at one. Between them it bows the flight path behind Jak.
+        (vector+float*! target-position target-position target-forward (* -16384.0 (- 1.0 (-> self blend))))))
+    (vector-lerp! (-> self root trans) camera-position target-position (-> self blend)))
+  ;; Bob by 0.4 meters on a 1200-tick cycle.
   (+! (-> self root trans y) (* 1638.4 (sin (* 54.613335 (the float (mod (current-time) 1200))))))
-  (let ((gp-1 (new 'stack-no-clear 'quaternion)))
-    (forward-up->quaternion gp-1
-                            (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 37) (-> self root trans)) 1.0)
+  (let ((facing (new 'stack-no-clear 'quaternion)))
+    (forward-up->quaternion facing
+                            (vector-normalize! (vector-! (new 'stack-no-clear 'vector)
+                                                        (target-pos (joint-node-index eichar-lod0-jg mouth))
+                                                        (-> self root trans))
+                                               1.0)
                             (new 'static 'vector :y 1.0 :w 1.0))
-    (rotate-toward-orientation! (-> self root) gp-1 65536.0 5461.3335))
+    (rotate-toward-orientation! (-> self root) facing 65536.0 5461.3335))
   (when *target*
-    (let* ((gp-2 (-> *target* control))
-           (s4-2 (-> self root trans))
-           (f0-8 (deg-diff (y-angle gp-2) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-2 (-> gp-2 trans))))))
-      (if (< 0.0 f0-8)
+    (let* ((target-control (-> *target* control))
+           (voicebox-position (-> self root trans))
+           (side-angle (deg-diff (y-angle target-control)
+                                 (vector-y-angle (vector-! (new 'stack-no-clear 'vector) voicebox-position (-> target-control trans))))))
+      (if (< 0.0 side-angle)
         (seek! (-> self twist) -0.4 (* 0.3 (seconds-per-frame)))
         (seek! (-> self twist) 0.4 (* 0.3 (seconds-per-frame)))))
-    (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-9 from) self)
-      (set! (-> a1-9 num-params) 0)
-      (set! (-> a1-9 message) 'blocked-side?)
-      (case (send-event-function (ppointer->process (-> self parent-override)) a1-9)
+    (let ((blocked-side-query (new 'stack-no-clear 'event-message-block)))
+      (set! (-> blocked-side-query from) self)
+      (set! (-> blocked-side-query num-params) 0)
+      (set! (-> blocked-side-query message) 'blocked-side?)
+      (case (send-event-function (ppointer->process (-> self parent-override)) blocked-side-query)
         ((1) (set! (-> self twist) 0.5))
         ((2) (set! (-> self twist) -0.5))
         ((3) (set! (-> self twist) 0.0))))
     (send-event (ppointer->process (-> self parent-override)) 'joystick (-> self twist) -1.0))
+  ;; Stay full-sized through most of the path, then shrink from one to zero while blend crosses
+  ;; 0.8..1.0 at the backpack.
   (set! (-> self root scale x) (lerp-scale 1.0 0.0 (-> self blend) 0.8 1.0))
   (set! (-> self root scale y) (-> self root scale x))
   (set! (-> self root scale z) (-> self root scale x))
   0
   (none))
 
+;; Open the speaker from the backpack endpoint to the camera endpoint. The camera child uses tighter
+;; distance settings while Jak is riding the racer, and the assistant music flavor remains requested
+;; until exit begins.
 (defstate enter (voicebox)
   :virtual #t
   :event
@@ -104,6 +123,7 @@
       (go-virtual idle))
   :post ja-post)
 
+;; Hold the camera-side endpoint and loop the speaker's idle animation.
 (defstate idle (voicebox)
   :virtual #t
   :event
@@ -117,6 +137,9 @@
         (ja :num! (loop!))))
   :post ja-post)
 
+;; Close the speaker back into the backpack and release the assistant music flavor. If the owning
+;; hint process has already disappeared, the close may finish immediately after a short grace period;
+;; the camera child is then parked in empty-state.
 (defstate exit (voicebox)
   :virtual #t
   :trans voicebox-track
@@ -138,16 +161,19 @@
       0)
   :post ja-post)
 
-(defbehavior voicebox-init-by-other voicebox ((arg0 vector) (arg1 handle))
+(defbehavior voicebox-init-by-other voicebox ((position vector) (hint handle))
+  "Create the root transform at position, remember the owning hint process handle, initialize the
+   speaker skeleton with blend at the target-side endpoint, and enter the appearance state."
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self hint) arg1)
-  (set! (-> self root trans quad) (-> arg0 quad))
-  (set! (-> self base-trans quad) (-> arg0 quad))
+  (set! (-> self hint) hint)
+  (vector-copy! (-> self root trans) position)
+  (vector-copy! (-> self base-trans) position)
   (initialize-skeleton self *voicebox-sg* '())
   (set! (-> self blend) 1.0)
   (go-virtual enter)
   (none))
 
+;; Reuse cam-string's controls and deactivate when drawable-target tracking is no longer active.
 (defstate cam-voicebox (camera-voicebox)
   :event
     (-> cam-string
@@ -162,7 +188,10 @@
     (-> cam-string
         code))
 
-(defun voicebox-spawn ((arg0 process) (arg1 vector))
+(defun voicebox-spawn ((owner process) (position vector))
+  "Spawn a camera-voicebox under owner and a voicebox drawable under that camera slave at position.
+   Pass the calling process's handle to the drawable so its exit can detect when the hint owner is
+   gone. Return the voicebox process pointer, or false if either allocation fails."
   (with-pp
-    (let ((s4-0 (process-spawn camera-voicebox :init cam-slave-init cam-voicebox #f :from *camera-dead-pool* :to arg0)))
-      (if s4-0 (process-spawn voicebox arg1 (process->handle pp) :to (ppointer->process s4-0))))))
+    (let ((camera-child (process-spawn camera-voicebox :init cam-slave-init cam-voicebox #f :from *camera-dead-pool* :to owner)))
+      (if camera-child (process-spawn voicebox position (process->handle pp) :to (ppointer->process camera-child))))))

@@ -7,7 +7,8 @@
 
 (deftype dark-eco-pool (water-anim) ())
 
-
+;; Each pool combines three traveling waves. xdiv and zdiv select direction and wavelength, speed
+;; advances phase, and normal-scale controls the strength of the generated lighting normals.
 (define ripple-for-misty-dark-eco-pool
   (new 'static
        'ripple-wave-set
@@ -88,8 +89,10 @@
             (new 'static 'ripple-wave :scale 0.75 :xdiv 5 :zdiv 3 :speed 2.0)
             (new 'static 'ripple-wave))))
 
-(defmethod water-vol-method-25 ((this dark-eco-pool))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-25))) (t9-0 this))
+(defmethod setup-from-res! ((this dark-eco-pool))
+  "Run animated-water resource setup, mark the volume as dark eco rather than ordinary
+   particle water, and read attack-event with dark-eco-pool as the default."
+  (let ((parent-setup (method-of-type water-anim setup-from-res!))) (parent-setup this))
   (logclear! (-> this flag) (water-flag part-water))
   (logior! (-> this flag) (water-flag dark-eco))
   (set! (-> this attack-event)
@@ -105,20 +108,29 @@
                  *res-static-buf*)))
   (none))
 
-(defmethod water-vol-method-22 ((this dark-eco-pool))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
-  (let ((gp-0 (new 'process 'ripple-control)))
-    (set! (-> this draw ripple) gp-0)
-    (set! (-> gp-0 global-scale) 3072.0)
-    (set! (-> gp-0 close-fade-dist) 163840.0)
-    (set! (-> gp-0 far-fade-dist) 245760.0)
-    (set! (-> gp-0 waveform) ripple-for-dark-eco-pool)
-    (set! (-> gp-0 query) (new 'process 'ripple-merc-query 100))
+(defmethod setup-water! ((this dark-eco-pool))
+  "Run animated-water setup, create a ripple controller and 100-vertex MERC query, and choose
+   the ripple waveform associated with the selected dark-eco pool."
+  (let ((parent-setup (method-of-type water-anim setup-water!))) (parent-setup this))
+  (let ((ripple-ctrl (new 'process 'ripple-control)))
+    (set! (-> this draw ripple) ripple-ctrl)
+    (set! (-> ripple-ctrl global-scale) 3072.0)
+    (set! (-> ripple-ctrl close-fade-dist) 163840.0)
+    (set! (-> ripple-ctrl far-fade-dist) 245760.0)
+    (set! (-> ripple-ctrl waveform) ripple-for-dark-eco-pool)
+    (set! (-> ripple-ctrl query) (new 'process 'ripple-merc-query 100))
     (case (-> this look)
-      ((32) (set! (-> gp-0 waveform) ripple-for-misty-dark-eco-pool))
-      ((15 16 17 18 19 20) (set! (-> gp-0 waveform) ripple-for-maincave-dark-eco-pool))
-      ((40) (set! (-> gp-0 waveform) ripple-for-sunken-dark-eco-helix-room))
-      ((41) (set! (-> gp-0 waveform) ripple-for-finalboss-dark-eco-pool))))
+      (((water-look water-anim-misty-dark-eco-pool)) (set! (-> ripple-ctrl waveform) ripple-for-misty-dark-eco-pool))
+      (((water-look water-anim-maincave-center-pool)
+        (water-look water-anim-maincave-lower-right-pool)
+        (water-look water-anim-maincave-mid-right-pool)
+        (water-look water-anim-maincave-lower-left-pool)
+        (water-look water-anim-maincave-mid-left-pool)
+        (water-look water-anim-robocave-main-pool))
+       (set! (-> ripple-ctrl waveform) ripple-for-maincave-dark-eco-pool))
+      (((water-look water-anim-sunken-dark-eco-helix-room))
+       (set! (-> ripple-ctrl waveform) ripple-for-sunken-dark-eco-helix-room))
+      (((water-look water-anim-finalboss-dark-eco-pool)) (set! (-> ripple-ctrl waveform) ripple-for-finalboss-dark-eco-pool))))
   (none))
 
 (defpartgroup group-dark-eco-nasty
@@ -142,7 +154,7 @@
    (:scalevel-y (meters -0.001875))
    (:fade-a -3.2)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.05))
    (:next-launcher 2021)))
 
@@ -189,7 +201,7 @@
    (:a 64.0)
    (:fade-a -1.8285716)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2057
   :init-specs
@@ -203,7 +215,7 @@
    (:accel-y (meters -0.00083333335))
    (:friction 0.94)
    (:timer (seconds 0.8))
-   (:flags (bit3))
+   (:flags (glow))
    (:conerot-x (degrees 0) (degrees 140))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -228,7 +240,7 @@
    (:fade-g -0.26666668)
    (:fade-a -0.19393939)
    (:timer (seconds 0.2) (seconds 0.597))
-   (:flags (bit2 bit3 bit7 bit14))))
+   (:flags (die-when-faded glow orbit no-fog))))
 
 (defpart 2053
   :init-specs
@@ -245,7 +257,7 @@
    (:fade-a -0.01904762)
    (:accel-y (meters -0.000100000005) (meters -0.00015))
    (:timer (seconds 0.1) (seconds 0.797))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.8))
    (:next-launcher 198)))
 
@@ -261,7 +273,7 @@
    (:accel-y (meters -0.00083333335))
    (:friction 0.94)
    (:timer (seconds 0.8))
-   (:flags (bit3))
+   (:flags (glow))
    (:conerot-x (degrees 0) (degrees 140))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -286,7 +298,7 @@
    (:fade-g -0.26666668)
    (:fade-a -0.19393939)
    (:timer (seconds 0.2) (seconds 0.597))
-   (:flags (bit2 bit3 bit7 bit14))))
+   (:flags (die-when-faded glow orbit no-fog))))
 
 (defpart 2055
   :init-specs
@@ -303,25 +315,28 @@
    (:fade-a -0.01904762)
    (:accel-y (meters -0.000100000005) (meters -0.00015))
    (:timer (seconds 0.1) (seconds 0.797))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.8))
    (:next-launcher 198)))
 
+;; Query a sparse set of rendered vertices for particle attachment, occasionally emit a surface
+;; effect at one of the returned positions, and pulse ripple displacement and normal strength.
 (defstate water-vol-idle (dark-eco-pool)
   :virtual #t
   :trans
     (behavior ()
-      (let ((t9-0 (-> (method-of-type water-anim water-vol-idle) trans))) (if t9-0 (t9-0)))
-      (let* ((gp-0 (-> self draw ripple))
-             (f0-1 (the float (logand (current-time) #xffff)))
-             (f30-0 (square (cos (* 5.0 f0-1)))))
-        (let ((s5-0 (-> self draw ripple query)))
+      (let ((parent-transition (-> (method-of-type water-anim water-vol-idle) trans)))
+        (if parent-transition (parent-transition)))
+      (let* ((ripple-ctrl (-> self draw ripple))
+             (time-phase (the float (logand (current-time) #xffff)))
+             (ripple-pulse (square (cos (* 5.0 time-phase)))))
+        (let ((ripple-query (-> self draw ripple query)))
           (set! (-> self draw ripple send-query) #t)
-          (set! (-> s5-0 start-vertex) (rand-vu-int-range 0 255))
-          (set! (-> s5-0 vertex-skip) 256)
+          (set! (-> ripple-query start-vertex) (rand-vu-int-range 0 255))
+          (set! (-> ripple-query vertex-skip) 256)
           (when (zero? (rand-vu-int-range 0 15))
-            (when (and (nonzero? (-> s5-0 vertex-count)) (< #x32000 (memory-free *nk-dead-pool*)))
-              (let ((s3-0 (rand-vu-int-range 0 (+ (-> s5-0 vertex-count) -1))))
+            (when (and (nonzero? (-> ripple-query vertex-count)) (< #x32000 (memory-free *nk-dead-pool*)))
+              (let ((vertex-index (rand-vu-int-range 0 (+ (-> ripple-query vertex-count) -1))))
                 (process-spawn part-tracker
                                :init
                                part-tracker-init
@@ -330,13 +345,13 @@
                                #f
                                #f
                                #f
-                               (-> s5-0 data s3-0)
+                               (-> ripple-query data vertex-index)
                                :to
                                *entity-pool*)))))
         (case (-> self look)
-          ((32)
-           (set! (-> gp-0 global-scale) (* 4096.0 (* 1.5 (+ 1.0 f30-0))))
-           (set! (-> gp-0 individual-normal-scale) (+ 0.5 (/ f30-0 2))))
+          (((water-look water-anim-misty-dark-eco-pool))
+           (set! (-> ripple-ctrl global-scale) (* 4096.0 (* 1.5 (+ 1.0 ripple-pulse))))
+           (set! (-> ripple-ctrl individual-normal-scale) (+ 0.5 (/ ripple-pulse 2))))
           (else
-           (set! (-> gp-0 global-scale) (* 4096.0 (* 3.0 (+ 1.0 f30-0))))
-           (set! (-> gp-0 individual-normal-scale) (+ 0.5 (/ f30-0 2))))))))
+           (set! (-> ripple-ctrl global-scale) (* 4096.0 (* 3.0 (+ 1.0 ripple-pulse))))
+           (set! (-> ripple-ctrl individual-normal-scale) (+ 0.5 (/ ripple-pulse 2))))))))

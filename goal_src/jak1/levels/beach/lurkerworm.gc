@@ -15,7 +15,7 @@
    (vulnerable   symbol)
    (part2        sparticle-launch-control))
   (:methods
-   (lurkerworm-method-20 (_type_) none)
+   (aim-at-target! (_type_) none)
    (particle-effect (_type_) none))
   (:states
    lurkerworm-die
@@ -26,13 +26,15 @@
    lurkerworm-spot
    lurkerworm-strike))
 
-
 (defmethod relocate ((this lurkerworm) (offset int))
+  "Relocate the optional sand-particle controller and body twister, then relocate the drawable
+   through the parent method."
   (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
   (if (nonzero? (-> this twister)) (&+! (-> this twister) offset))
   (the-as lurkerworm ((method-of-type process-drawable relocate) this offset)))
 
 (defmethod deactivate ((this lurkerworm))
+  "Stop and free the secondary sand-particle controller before deactivating the drawable."
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
   ((method-of-type process-drawable deactivate) this)
   (none))
@@ -82,7 +84,7 @@
    (:rotvel-z (degrees -0.15) (degrees 0.3))
    (:fade-a 0.21333334)
    (:timer (seconds 3))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:next-time (seconds 0.3) (seconds 0.197))
    (:next-launcher 660)
    (:rotate-y (degrees 0) (degrees 360))))
@@ -108,7 +110,7 @@
    (:fade-a 0.32)
    (:accel-y (meters -0.001))
    (:timer (seconds 1))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 659
@@ -129,7 +131,7 @@
    (:fade-a 0.42666668)
    (:accel-y (meters -0.001))
    (:timer (seconds 1))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 657
@@ -149,7 +151,7 @@
    (:rotvel-z (degrees -0.3) 1 (degrees 0.6))
    (:accel-y (meters -0.001))
    (:timer (seconds 1.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 661
@@ -170,63 +172,69 @@
    (:fade-a 0.21333334)
    (:accel-y (meters -0.00013333333))
    (:timer (seconds 2))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:next-time (seconds 0.5))
    (:next-launcher 662)))
 
 (defpart 662
   :init-specs ((:fade-a -0.10666667)))
 
-(defmethod lurkerworm-method-20 ((this lurkerworm))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (vector-! s5-0 (target-pos 0) (-> this root trans))
-    (set-target! (-> this twister) (atan (-> s5-0 x) (-> s5-0 z)))
-    (twister-method-11 (-> this twister))
-    (let* ((f0-5 (sqrtf (+ (* (-> s5-0 x) (-> s5-0 x)) (* (-> s5-0 z) (-> s5-0 z)))))
-           (f0-6 (atan (-> s5-0 y) f0-5)))
-      (seek! (-> this head-tilt) f0-6 (* 5461.3335 (seconds-per-frame)))))
+(defmethod aim-at-target! ((this lurkerworm))
+  "Turn the body twister toward the target and seek the head pitch toward it, clamped between
+   -30 and 45 degrees."
+  (let ((to-target (new 'stack-no-clear 'vector)))
+    (vector-! to-target (target-pos 0) (-> this root trans))
+    (set-target! (-> this twister) (atan (-> to-target x) (-> to-target z)))
+    (update-twist! (-> this twister))
+    (let* ((horizontal-distance (sqrtf (+ (* (-> to-target x) (-> to-target x)) (* (-> to-target z) (-> to-target z)))))
+           (target-pitch (atan (-> to-target y) horizontal-distance)))
+      (seek! (-> this head-tilt) target-pitch (* 5461.3335 (seconds-per-frame)))))
   (set! (-> this head-tilt) (fmin 8192.0 (fmax -5461.3335 (-> this head-tilt))))
   0
   (none))
 
-(defbehavior lurkerworm-prebind-function lurkerworm ((arg0 pointer) (arg1 int) (arg2 lurkerworm))
-  (let ((v1-0 arg2)
-        (s5-0 (new 'stack-no-clear 'quaternion))
-        (gp-0 (&+ arg0 432)))
-    (quaternion-axis-angle! s5-0 -1.0 0.0 0.0 (-> v1-0 head-tilt))
-    (quaternion*! (the-as quaternion gp-0) (the-as quaternion gp-0) s5-0))
+(defbehavior lurkerworm-prebind-function lurkerworm ((joint-transforms pointer) (joint-count int) (owner lurkerworm))
+  "Apply the current head pitch to the head joint quaternion before binding the skeleton."
+  (let ((head-rotation (new 'stack-no-clear 'quaternion))
+        (head-transform (&+ joint-transforms 432)))
+    (quaternion-axis-angle! head-rotation -1.0 0.0 0.0 (-> owner head-tilt))
+    (quaternion*! (the-as quaternion head-transform) (the-as quaternion head-transform) head-rotation))
   0
   (none))
 
-(defun lurkerworm-joint-callback ((arg0 lurkerworm))
-  (let ((a1-0 arg0)) (twister-method-12 (-> a1-0 twister) a1-0))
+(defun lurkerworm-joint-callback ((owner lurkerworm))
+  "Apply the body twister to the bound skeleton joints."
+  (apply-twist-to-bones! (-> owner twister) owner)
   0
   (none))
 
 (defmethod particle-effect ((this lurkerworm))
-  (let ((a2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 5))))
-    (launch-particles (-> *part-id-table* 661) a2-0))
-  (let ((a2-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 6))))
-    (launch-particles (-> *part-id-table* 661) a2-1))
-  (let ((a2-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 7))))
-    (launch-particles (-> *part-id-table* 661) a2-2))
-  (let ((a2-3 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 8))))
-    (launch-particles (-> *part-id-table* 661) a2-3))
+  "Launch sand puffs at body joints 5 through 8."
+  (let ((joint-5-pos (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 5))))
+    (launch-particles (-> *part-id-table* 661) joint-5-pos))
+  (let ((joint-6-pos (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 6))))
+    (launch-particles (-> *part-id-table* 661) joint-6-pos))
+  (let ((joint-7-pos (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 7))))
+    (launch-particles (-> *part-id-table* 661) joint-7-pos))
+  (let ((joint-8-pos (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 8))))
+    (launch-particles (-> *part-id-table* 661) joint-8-pos))
   0
   (none))
 
-(defbehavior lurkerworm-default-event-handler lurkerworm ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
-    (('attack) (-> arg3 param 1) (go lurkerworm-die))
+(defbehavior lurkerworm-default-event-handler lurkerworm ((sender process) (argc int) (message symbol) (block event-message-block))
+  "Die on attack. On a qualifying touch, send an attack back to the touching process."
+  (case message
+    (('attack) (-> block param 1) (go lurkerworm-die))
     (('touch)
      (if ((method-of-type touching-shapes-entry prims-touching?)
-          (the-as touching-shapes-entry (-> arg3 param 0))
+          (the-as touching-shapes-entry (-> block param 0))
           (-> self root)
           (the-as uint 1))
-       (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))))))
+       (send-event sender 'attack (-> block param 0) (new 'static 'attack-info))))))
 
 (defbehavior lurkerworm-default-post-behavior lurkerworm ()
-  (lurkerworm-method-20 self)
+  "Aim the worm at the target and run the standard transform post step."
+  (aim-at-target! self)
   (transform-post)
   0
   (none))
@@ -235,6 +243,10 @@ lurkerworm-default-event-handler
 
 lurkerworm-default-post-behavior
 
+;; A worm remains hidden until the target comes within twenty metres, spots the target, and rises.
+;; It then makes exactly three strikes. During each idle animation before a pending strike, proximity
+;; increases the per-frame chance of attacking early; reaching the end of the random 10--109 frame
+;; wait forces the strike. After the third strike, the next idle wait ends by sinking underground.
 (defstate lurkerworm-idle (lurkerworm)
   :event lurkerworm-default-event-handler
   :enter
@@ -278,12 +290,12 @@ lurkerworm-default-post-behavior
   :code
     (behavior ()
       (ja-channel-set! 1)
-      (ja-no-eval :group! lurkerworm-rise-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (spawn (-> self part) (-> self root trans))
-        (particle-effect self)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               lurkerworm-rise-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (spawn (-> self part) (-> self root trans))
+               (particle-effect self))
       (set! (-> self strike-count) 3)
       (go lurkerworm-rest))
   :post lurkerworm-default-post-behavior)
@@ -299,29 +311,29 @@ lurkerworm-default-post-behavior
       (set! (-> self vulnerable) #f))
   :code
     (behavior ()
-      (let* ((f30-0 10.0)
-             (f28-0 100.0)
-             (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-             (v1-2 (the-as number (logior #x3f800000 v1-1)))
-             (s5-0 (the int (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-2))))))
-             (gp-1 (nonzero? (-> self strike-count))))
-        (if gp-1 (+! (-> self strike-count) -1))
-        (ja-no-eval :group! lurkerworm-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (ja-blend-eval)
-          (particle-effect self)
-          (when gp-1
-            (let* ((f0-13 (- 1.0
-                             (* 0.00009765625
-                                (+ -16384.0 (if *target* (vector-vector-distance (-> self root trans) (-> *target* control trans)) 4096000.0)))))
-                   (f30-2 (/ f0-13 5)))
-              (if (< (rand-float-gen) f30-2) (go lurkerworm-strike))))
-          (+! s5-0 -1)
-          (when (zero? s5-0)
-            (if gp-1 (go lurkerworm-strike) (go lurkerworm-sink)))
-          (suspend)
-          (ja :num! (seek!)))
-        (if gp-1 (go lurkerworm-strike) (go lurkerworm-sink))))
+      (let* ((min-wait 10.0)
+             (random-wait-range 100.0)
+             (random-mantissa (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (random-bits (the-as number (logior #x3f800000 random-mantissa)))
+             (frames-left (the int (+ min-wait (* random-wait-range (+ -1.0 (the-as float random-bits))))))
+             (strikes-remaining? (nonzero? (-> self strike-count))))
+        (if strikes-remaining? (+! (-> self strike-count) -1))
+        (ja-play :group!
+                 lurkerworm-idle-ja
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (ja-blend-eval)
+                 (particle-effect self)
+                 (when strikes-remaining?
+                   (let* ((distance-factor (- 1.0
+                                              (* 0.00009765625
+                                                 (+ -16384.0 (if *target* (vector-vector-distance (-> self root trans) (-> *target* control trans)) 4096000.0)))))
+                          (strike-chance (/ distance-factor 5)))
+                     (if (< (rand-float-gen) strike-chance) (go lurkerworm-strike))))
+                 (+! frames-left -1)
+                 (when (zero? frames-left)
+                   (if strikes-remaining? (go lurkerworm-strike) (go lurkerworm-sink))))
+        (if strikes-remaining? (go lurkerworm-strike) (go lurkerworm-sink))))
   :post lurkerworm-default-post-behavior)
 
 (defstate lurkerworm-strike (lurkerworm)
@@ -330,12 +342,13 @@ lurkerworm-default-post-behavior
     (behavior ()
       (ja-no-eval :num! (loop!))
       (ja-channel-push! 1 (seconds 0.135))
-      (ja-no-eval :group! lurkerworm-chomp-ja :num! (seek! (ja-aframe 13.0 0)) :frame-num 0.0)
-      (until (ja-done? 0)
-        (ja-blend-eval)
-        (particle-effect self)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 13.0 0))))
+      (ja-play :group!
+               lurkerworm-chomp-ja
+               :num!
+               (seek! (ja-aframe 13.0 0))
+               :frame-num 0.0
+               (ja-blend-eval)
+               (particle-effect self))
       (ja-no-eval :num! (seek!))
       (ja-channel-push! 1 (seconds 0.135))
       (go lurkerworm-rest))
@@ -348,12 +361,12 @@ lurkerworm-default-post-behavior
       (set-time! (-> self state-time)))
   :code
     (behavior ()
-      (ja-no-eval :group! lurkerworm-sink-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (spawn (-> self part2) (-> self root trans))
-        (particle-effect self)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               lurkerworm-sink-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (spawn (-> self part2) (-> self root trans))
+               (particle-effect self))
       (go lurkerworm-idle))
   :post lurkerworm-default-post-behavior)
 
@@ -362,80 +375,80 @@ lurkerworm-default-post-behavior
   :code
     (behavior ()
       (logclear! (-> self mask) (process-mask actor-pause))
-      (let ((v1-3 (-> self root root-prim)))
-        (set! (-> v1-3 collide-with) (collide-kind))
-        (set! (-> v1-3 prim-core collide-as) (collide-kind)))
+      (let ((root-primitive (-> self root root-prim)))
+        (set! (-> root-primitive collide-with) (collide-kind))
+        (set! (-> root-primitive prim-core collide-as) (collide-kind)))
       0
-      (ja-no-eval :group! lurkerworm-die-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! lurkerworm-die-ja :num! (seek!) :frame-num 0.0)
       (cleanup-for-death self))
   :post lurkerworm-default-post-behavior)
 
-(defmethod init-from-entity! ((this lurkerworm) (arg0 entity-actor))
+(defmethod init-from-entity! ((this lurkerworm) (source-entity entity-actor))
+  "Initialize the Lurker Worm's body and attack collision spheres, skeleton, sand effects,
+   three-strike body twister, callbacks, navigation radius, and hidden idle state."
   (logior! (-> this mask) (process-mask enemy))
-  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
-    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 6) 0)))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set-vector! (-> s3-0 local-sphere) 0.0 10240.0 0.0 24576.0)
-      (set-root-prim! s4-0 s3-0)
-      (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-        (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-0 collide-with) (collide-kind target))
-        (set! (-> s2-0 prim-core action) (collide-action solid))
-        (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
-        (set! (-> s2-0 transform-index) 3)
-        (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4096.0)
-        (append-prim s3-0 s2-0))
-      (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-        (set! (-> s2-1 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-1 collide-with) (collide-kind target))
-        (set! (-> s2-1 prim-core action) (collide-action solid))
-        (set! (-> s2-1 prim-core offense) (collide-offense indestructible))
-        (set! (-> s2-1 transform-index) 5)
-        (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 4096.0)
-        (append-prim s3-0 s2-1))
-      (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-        (set! (-> s2-2 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-2 collide-with) (collide-kind target))
-        (set! (-> s2-2 prim-core action) (collide-action solid))
-        (set! (-> s2-2 prim-core offense) (collide-offense indestructible))
-        (set! (-> s2-2 transform-index) 6)
-        (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 4096.0)
-        (append-prim s3-0 s2-2))
-      (let ((s2-3 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-        (set! (-> s2-3 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-3 collide-with) (collide-kind target))
-        (set! (-> s2-3 prim-core action) (collide-action solid))
-        (set! (-> s2-3 prim-core offense) (collide-offense indestructible))
-        (set! (-> s2-3 transform-index) 7)
-        (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 4096.0)
-        (append-prim s3-0 s2-3))
-      (let ((s2-4 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
-        (set! (-> s2-4 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-4 collide-with) (collide-kind target))
-        (set! (-> s2-4 prim-core action) (collide-action solid))
-        (set! (-> s2-4 prim-core offense) (collide-offense indestructible))
-        (set! (-> s2-4 transform-index) 8)
-        (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 4096.0)
-        (append-prim s3-0 s2-4))
-      (let ((s2-5 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
-        (set! (-> s2-5 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-5 collide-with) (collide-kind target))
-        (set! (-> s2-5 prim-core offense) (collide-offense normal-attack))
-        (set! (-> s2-5 transform-index) 11)
-        (set-vector! (-> s2-5 local-sphere) 0.0 0.0 0.0 6144.0)
-        (append-prim s3-0 s2-5)))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (let ((root-shape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> root-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> root-shape reaction) default-collision-reaction)
+    (set! (-> root-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((primitive-group (new 'process 'collide-shape-prim-group root-shape (the-as uint 6) 0)))
+      (set! (-> primitive-group prim-core collide-as) (collide-kind enemy))
+      (set! (-> primitive-group collide-with) (collide-kind target))
+      (set! (-> primitive-group prim-core action) (collide-action solid))
+      (set-vector! (-> primitive-group local-sphere) 0.0 10240.0 0.0 24576.0)
+      (set-root-prim! root-shape primitive-group)
+      (let ((joint-3-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 0))))
+        (set! (-> joint-3-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> joint-3-sphere collide-with) (collide-kind target))
+        (set! (-> joint-3-sphere prim-core action) (collide-action solid))
+        (set! (-> joint-3-sphere prim-core offense) (collide-offense indestructible))
+        (set! (-> joint-3-sphere transform-index) 3)
+        (set-vector! (-> joint-3-sphere local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim primitive-group joint-3-sphere))
+      (let ((joint-5-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 0))))
+        (set! (-> joint-5-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> joint-5-sphere collide-with) (collide-kind target))
+        (set! (-> joint-5-sphere prim-core action) (collide-action solid))
+        (set! (-> joint-5-sphere prim-core offense) (collide-offense indestructible))
+        (set! (-> joint-5-sphere transform-index) 5)
+        (set-vector! (-> joint-5-sphere local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim primitive-group joint-5-sphere))
+      (let ((joint-6-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 0))))
+        (set! (-> joint-6-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> joint-6-sphere collide-with) (collide-kind target))
+        (set! (-> joint-6-sphere prim-core action) (collide-action solid))
+        (set! (-> joint-6-sphere prim-core offense) (collide-offense indestructible))
+        (set! (-> joint-6-sphere transform-index) 6)
+        (set-vector! (-> joint-6-sphere local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim primitive-group joint-6-sphere))
+      (let ((joint-7-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 0))))
+        (set! (-> joint-7-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> joint-7-sphere collide-with) (collide-kind target))
+        (set! (-> joint-7-sphere prim-core action) (collide-action solid))
+        (set! (-> joint-7-sphere prim-core offense) (collide-offense indestructible))
+        (set! (-> joint-7-sphere transform-index) 7)
+        (set-vector! (-> joint-7-sphere local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim primitive-group joint-7-sphere))
+      (let ((joint-8-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 0))))
+        (set! (-> joint-8-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> joint-8-sphere collide-with) (collide-kind target))
+        (set! (-> joint-8-sphere prim-core action) (collide-action solid))
+        (set! (-> joint-8-sphere prim-core offense) (collide-offense indestructible))
+        (set! (-> joint-8-sphere transform-index) 8)
+        (set-vector! (-> joint-8-sphere local-sphere) 0.0 0.0 0.0 4096.0)
+        (append-prim primitive-group joint-8-sphere))
+      (let ((bite-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 1))))
+        (set! (-> bite-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> bite-sphere collide-with) (collide-kind target))
+        (set! (-> bite-sphere prim-core offense) (collide-offense normal-attack))
+        (set! (-> bite-sphere transform-index) 11)
+        (set-vector! (-> bite-sphere local-sphere) 0.0 0.0 0.0 6144.0)
+        (append-prim primitive-group bite-sphere)))
+    (set! (-> root-shape nav-radius) (* 0.75 (-> root-shape root-prim local-sphere w)))
+    (backup-collide-with-as root-shape)
+    (set! (-> this root) root-shape))
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *lurkerworm-sg* '())
   (set! (-> this fact) (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (set! (-> this angle) 0.0)
@@ -443,7 +456,7 @@ lurkerworm-default-post-behavior
   (set! (-> this part) (create-launch-control group-beach-sandworm this))
   (set! (-> this part2) (create-launch-control group-beach-sandworm-norocks this))
   (set! (-> this twister) (new 'process 'twister 3 15 1092.2667 72.81778 0.25 0.001))
-  (twister-method-9 (-> this twister) 3 9 910.2222)
+  (set-max-dry-range! (-> this twister) 3 9 910.2222)
   (set! (-> this head-tilt) 0.0)
   (set! (-> this skel prebind-function) lurkerworm-prebind-function)
   (set! (-> this skel postbind-function) lurkerworm-joint-callback)

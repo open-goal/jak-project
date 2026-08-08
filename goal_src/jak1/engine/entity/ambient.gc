@@ -11,138 +11,157 @@
 
 ;; DECOMP BEGINS
 
-(defmethod mem-usage ((this drawable-ambient) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 50 (-> usage length)))
-  (set! (-> usage data 49 name) "ambient")
-  (+! (-> usage data 49 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 49 used) v1-6) (+! (-> usage data 49 total) (logand -16 (+ v1-6 15))))
-  (mem-usage (-> this ambient) usage (logior flags 128))
+(defmethod mem-usage ((this drawable-ambient) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for this wrapper and its referenced ambient entity in the ambient memory category."
+  (mem-usage-add! usage ambient 1 (asize-of this))
+  (mem-usage (-> this ambient) usage (logior flags (mem-usage-flags resource-ambient)))
   (the-as drawable-ambient 0))
 
-(defmethod mem-usage ((this drawable-inline-array-ambient) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 1 (-> usage length)))
-  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
-  (+! (-> usage data 0 count) 1)
-  (let ((v1-7 32)) (+! (-> usage data 0 used) v1-7) (+! (-> usage data 0 total) (logand -16 (+ v1-7 15))))
-  (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) usage flags))
+(defmethod mem-usage ((this drawable-inline-array-ambient) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for this array header and each inline ambient wrapper it contains."
+  (mem-usage-add-symbol! usage drawable-group 1 32)
+  (dotimes (i (-> this length))
+    (mem-usage (-> this data i) usage flags))
   (the-as drawable-inline-array-ambient 0))
 
 (define *hint-semaphore* (the-as (pointer level-hint) #f))
 
-(defun level-hint-process-cmd ((arg0 (pointer int32)) (arg1 int) (arg2 int))
-  (let ((v1-2 (-> arg0 arg1))
-        (gp-0 (+ arg1 1)))
+(defun level-hint-process-cmd ((commands (pointer int32)) (command-index int) (command-count int))
+  "Execute the hint command at command-index using the following word as its task ID. Return the
+   following command index, or -1 when a conditional command fails."
+  (let ((command (-> commands command-index))
+        (next-index (+ command-index 1)))
     (cond
-      ((< gp-0 arg2)
-       (let ((a0-2 (-> arg0 gp-0))
-             (a1-2 v1-2))
+      ((< next-index command-count)
+       (let ((task (-> commands next-index))
+             (selected-command command))
          (cond
-           ((zero? a1-2) (if (task-known? (the-as game-task a0-2)) (set! gp-0 -1)))
-           ((= a1-2 1) (if (not (task-known? (the-as game-task a0-2))) (set! gp-0 -1)))
-           ((= a1-2 2) (if (nonzero? (get-task-status (the-as game-task a0-2))) (set! gp-0 -1)))
-           ((= a1-2 3) (if (!= (get-task-status (the-as game-task a0-2)) (task-status need-introduction)) (set! gp-0 -1)))
-           ((= a1-2 4) (if (!= (get-task-status (the-as game-task a0-2)) (task-status need-reminder)) (set! gp-0 -1)))
-           ((= a1-2 5) (if (!= (get-task-status (the-as game-task a0-2)) (task-status need-reminder-a)) (set! gp-0 -1)))
-           ((= a1-2 13)
-            (let ((v1-15 (get-task-status (the-as game-task a0-2))))
-              (if (or (< (the-as int v1-15) 2) (< 4 (the-as int v1-15))) (set! gp-0 -1))))
-           ((= a1-2 6) (if (!= (get-task-status (the-as game-task a0-2)) (task-status need-reward-speech)) (set! gp-0 -1)))
-           ((= a1-2 7) (close-specific-task! (the-as game-task a0-2) (task-status need-hint)))
-           ((= a1-2 8) (close-specific-task! (the-as game-task a0-2) (task-status need-introduction)))
-           ((= a1-2 9) (close-specific-task! (the-as game-task a0-2) (task-status need-reminder)))
-           ((= a1-2 10) (close-specific-task! (the-as game-task a0-2) (task-status need-reminder-a)))
-           ((= a1-2 11) (close-specific-task! (the-as game-task a0-2) (task-status need-reward-speech)))
-           ((= a1-2 12) (close-specific-task! (the-as game-task a0-2) (task-status need-resolution)))
-           (else (format #t "Unknown hint command ~D~%" v1-2)))))
+           ((zero? selected-command) (if (task-known? (the-as game-task task)) (set! next-index -1)))
+           ((= selected-command 1) (if (not (task-known? (the-as game-task task))) (set! next-index -1)))
+           ((= selected-command 2) (if (nonzero? (get-task-status (the-as game-task task))) (set! next-index -1)))
+           ((= selected-command 3)
+            (if (!= (get-task-status (the-as game-task task)) (task-status need-introduction)) (set! next-index -1)))
+           ((= selected-command 4)
+            (if (!= (get-task-status (the-as game-task task)) (task-status need-reminder)) (set! next-index -1)))
+           ((= selected-command 5)
+            (if (!= (get-task-status (the-as game-task task)) (task-status need-reminder-a)) (set! next-index -1)))
+           ((= selected-command 13)
+            (let ((status (get-task-status (the-as game-task task))))
+              (if (or (< (the-as int status) 2) (< 4 (the-as int status))) (set! next-index -1))))
+           ((= selected-command 6)
+            (if (!= (get-task-status (the-as game-task task)) (task-status need-reward-speech)) (set! next-index -1)))
+           ((= selected-command 7) (close-specific-task! (the-as game-task task) (task-status need-hint)))
+           ((= selected-command 8) (close-specific-task! (the-as game-task task) (task-status need-introduction)))
+           ((= selected-command 9) (close-specific-task! (the-as game-task task) (task-status need-reminder)))
+           ((= selected-command 10) (close-specific-task! (the-as game-task task) (task-status need-reminder-a)))
+           ((= selected-command 11) (close-specific-task! (the-as game-task task) (task-status need-reward-speech)))
+           ((= selected-command 12) (close-specific-task! (the-as game-task task) (task-status need-resolution)))
+           (else (format #t "Unknown hint command ~D~%" command)))))
       (else
        (format #t
                "Missing task ID for hint command ~S~%"
                (cond
-                 ((= v1-2 13) "if-at-most-need-reminder-a")
-                 ((= v1-2 12) "close-need-resolution")
-                 ((= v1-2 11) "close-need-reward-speech")
-                 ((= v1-2 10) "close-need-reminder-a")
-                 ((= v1-2 9) "close-need-reminder")
-                 ((= v1-2 8) "close-need-introduction")
-                 ((= v1-2 7) "close-need-hint")
-                 ((= v1-2 6) "if-need-reward-speech")
-                 ((= v1-2 5) "if-need-reminder-a")
-                 ((= v1-2 4) "if-need-reminder")
-                 ((= v1-2 3) "if-need-introduction")
-                 ((= v1-2 2) "if-resolved")
-                 ((= v1-2 1) "if-known")
-                 ((zero? v1-2) "if-unknown")
+                 ((= command 13) "if-at-most-need-reminder-a")
+                 ((= command 12) "close-need-resolution")
+                 ((= command 11) "close-need-reward-speech")
+                 ((= command 10) "close-need-reminder-a")
+                 ((= command 9) "close-need-reminder")
+                 ((= command 8) "close-need-introduction")
+                 ((= command 7) "close-need-hint")
+                 ((= command 6) "if-need-reward-speech")
+                 ((= command 5) "if-need-reminder-a")
+                 ((= command 4) "if-need-reminder")
+                 ((= command 3) "if-need-introduction")
+                 ((= command 2) "if-resolved")
+                 ((= command 1) "if-known")
+                 ((zero? command) "if-unknown")
                  (else "*unknown*")))))
-    gp-0))
+    next-index))
 
-(defun level-hint-task-process ((arg0 entity) (arg1 uint128) (arg2 string))
-  (let ((gp-0 (res-lump-value arg0 'text-id int :default arg1))
-        (s5-0 0))
+(defun level-hint-task-process ((owner-entity entity) (default-text-id uint128) (text string))
+  "Resolve owner's text-id, check whether the hint may play, and execute its pairs of hint commands.
+   Return the resolved text ID when every command passes, or -1 when policy or a conditional command
+   rejects it."
+  (local-vars (commands-tag res-tag))
+  (let ((resolved-text-id (res-lump-value owner-entity 'text-id int :default default-text-id))
+        (command-index 0))
     (cond
-      ((can-hint-be-played? (the-as text-id gp-0) arg0 arg2)
-       (let* ((sv-16 (new 'static 'res-tag))
-              (s4-1 ((method-of-type res-lump get-property-data)
-                     arg0
-                     'cmds
-                     'exact
-                     -1000000000.0
-                     (the-as pointer #f)
-                     (& sv-16)
-                     *res-static-buf*)))
-         (when s4-1
-           (while (and (>= s5-0 0) (< s5-0 (the-as int (-> sv-16 elt-count))))
-             (set! s5-0 (level-hint-process-cmd (the-as (pointer int32) s4-1) s5-0 (the-as int (-> sv-16 elt-count))))
-             (if (>= s5-0 0) (set! s5-0 (+ s5-0 1))))))
+      ((can-hint-be-played? (the-as text-id resolved-text-id) owner-entity text)
+       (set! commands-tag (new 'static 'res-tag))
+       (let ((commands ((method-of-type res-lump get-property-data)
+                        owner-entity
+                        'cmds
+                        'exact
+                        -1000000000.0
+                        (the-as pointer #f)
+                        (& commands-tag)
+                        *res-static-buf*)))
+         (when commands
+           (while (and (>= command-index 0) (< command-index (the-as int (-> commands-tag elt-count))))
+             (set! command-index
+                   (level-hint-process-cmd (the-as (pointer int32) commands) command-index (the-as int (-> commands-tag elt-count))))
+             (if (>= command-index 0) (set! command-index (+ command-index 1))))))
        0)
-      (else (set! s5-0 -1)))
+      (else (set! command-index -1)))
     (cond
-      ((>= s5-0 0) (empty) gp-0)
+      ((>= command-index 0) (empty) resolved-text-id)
       (else -1))))
 
 (defun level-hint-surpress! ()
+  "Restart the global delay that prevents another level hint from playing."
   (set-time! (-> *game-info* hint-play-time))
   0
   (none))
 
-(defun can-grab-display? ((arg0 process))
-  (let ((v1-2 (handle->process (-> *game-info* display-text-handle))))
-    (when (and (or (not v1-2) (= v1-2 arg0) (time-elapsed? (-> *game-info* display-text-time) (seconds 0.1)))
+(defun can-grab-display? ((requester process))
+  "Let requester claim the shared hint display when it is free, already owned by requester, or
+   stale for one tenth of a second, provided normal gameplay can show text."
+  (let ((current-owner (handle->process (-> *game-info* display-text-handle))))
+    (when (and (or (not current-owner) (= current-owner requester) (time-elapsed? (-> *game-info* display-text-time) (seconds 0.1)))
                (and *target*
                     (!= (-> *target* next-state name) 'target-look-around)
                     (not (logtest? (-> *target* state-flags) (state-flags being-attacked dying)))
                     (= *master-mode* 'game)))
-      (set! (-> *game-info* display-text-handle) (process->handle arg0))
+      (set! (-> *game-info* display-text-handle) (process->handle requester))
       (set-time! (-> *game-info* display-text-time))
       #t)))
 
 (defun level-hint-displayed? ()
-  (let ((a0-0 (ppointer->process *hint-semaphore*)))
+  "Return true while the active text hint is in its normal display state and has not appeared for
+   five seconds."
+  (let* ((hint-pointer *hint-semaphore*)
+         (active-hint (the-as level-hint (if hint-pointer (the-as level-hint (-> hint-pointer 0 self))))))
     (the-as symbol
-            (and (the-as level-hint a0-0)
-                 (and (= (-> (the-as level-hint a0-0) next-state name) 'level-hint-normal)
-                      (not (appeared-for-long-enough? (the-as level-hint a0-0))))))))
+            (and active-hint
+                 (and (= (-> active-hint next-state name) 'level-hint-normal) (not (appeared-for-long-enough? active-hint)))))))
 
-(defun level-hint-spawn ((arg0 text-id) (arg1 string) (arg2 entity) (arg3 process-tree) (arg4 game-task))
-  (if (< (the-as uint 1) (the-as uint arg4)) (close-specific-task! arg4 (task-status need-hint)))
-  (let ((s3-1 (level-hint-task-process arg2 (the-as uint128 arg0) arg1)))
-    (when (!= s3-1 -1)
+(defun level-hint-spawn ((hint-text-id text-id) (stream-name string) (owner-entity entity) (parent-process-tree process-tree) (task game-task))
+  "Advance task to need-hint when supplied, apply owner's hint command list, replace the active
+   hint, and spawn a text hint under process-tree. Do nothing when policy or a command rejects it."
+  (if (< (the-as uint 1) (the-as uint task)) (close-specific-task! task (task-status need-hint)))
+  (let ((resolved-text-id (level-hint-task-process owner-entity (the-as uint128 hint-text-id) stream-name)))
+    (when (!= resolved-text-id -1)
       (kill-current-level-hint '() '() 'exit)
-      (process-spawn level-hint s3-1 arg1 arg2 :to arg3)))
+      (process-spawn level-hint resolved-text-id stream-name owner-entity :to parent-process-tree)))
   0
   (none))
 
-(defun ambient-hint-spawn ((arg0 string) (arg1 vector) (arg2 process-tree) (arg3 symbol))
-  (case arg3
+(defun ambient-hint-spawn ((stream-name string) (position vector) (parent-process-tree process-tree) (mode symbol))
+  "Spawn a positional ambient, camera, or stinger hint under process-tree when no hint is active.
+   Camera hints first dismiss the current hint."
+  (case mode
     (('camera) (kill-current-level-hint '() '() 'exit)))
-  (and (not *hint-semaphore*) (process-spawn level-hint :init ambient-hint-init-by-other arg0 arg1 arg3 :to arg2)))
+  (and (not *hint-semaphore*)
+       (process-spawn level-hint :init ambient-hint-init-by-other stream-name position mode :to parent-process-tree)))
 
-(defun kill-current-level-hint ((arg0 pair) (arg1 pair) (arg2 symbol))
+(defun kill-current-level-hint ((include-modes pair) (exclude-modes pair) (event-name symbol))
+  "Send event to the active level hint when its mode is present in include-modes, or when the
+   include list is empty, and is absent from exclude-modes."
   (when *hint-semaphore*
-    (let ((s4-0 (ppointer->process *hint-semaphore*)))
-      (if (and (or (null? arg0) (member (-> (the-as level-hint s4-0) mode) arg0))
-               (not (member (-> (the-as level-hint s4-0) mode) arg1)))
-        (send-event (the-as level-hint s4-0) arg2))))
+    (let ((active-hint (ppointer->process *hint-semaphore*)))
+      (if (and (or (null? include-modes) (member (-> (the-as level-hint active-hint) mode) include-modes))
+               (not (member (-> (the-as level-hint active-hint) mode) exclude-modes)))
+        (send-event (the-as level-hint active-hint) event-name))))
   0
   (none))
 
@@ -150,71 +169,80 @@
 (#when PC_PORT
   (define *level-hint-spool-name* (the string #f)))
 
-(defbehavior level-hint-init-by-other level-hint ((arg0 text-id) (arg1 string) (arg2 entity))
-  (mark-text-as-seen *game-info* arg0)
-  (set! (-> self text-id-to-display) arg0)
-  (set! (-> self sound-to-play) arg1)
+(defbehavior level-hint-init-by-other level-hint ((hint-text-id text-id) (default-stream-name string) (owner-entity entity))
+  "Initialize a resource-backed text hint, mark its text as seen, claim the hint semaphore, and
+   select text, sidekick speech, or voicebox playback from the owner's play-mode properties."
+  (mark-text-as-seen *game-info* hint-text-id)
+  (set! (-> self text-id-to-display) hint-text-id)
+  (set! (-> self sound-to-play) default-stream-name)
   (set! (-> self total-time) 0)
   (set! (-> self total-off-time) 0)
   (set-time! (-> self last-time))
   (set! *hint-semaphore* (the-as (pointer level-hint) (process->ppointer self)))
   (add-setting! 'hint (process->ppointer self) 0.0 0)
   (set! (-> self voicebox) (the-as handle #f))
-  (let ((s5-1 (res-lump-struct arg2 'play-mode structure))
-        (a0-6 (the-as string
-                      ((method-of-type res-lump get-property-struct)
-                       arg2
-                       'sound-name
-                       'interp
-                       -1000000000.0
-                       (-> self sound-to-play)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*))))
-    (if (and (not s5-1) a0-6)
-      (set! s5-1
-            (if (or (and (= (-> a0-6 data 0) 115) (= (-> a0-6 data 1) 97)) (and (= (-> a0-6 data 0) 97) (= (-> a0-6 data 1) 115)))
+  (let ((play-mode (res-lump-struct owner-entity 'play-mode structure))
+        (resolved-stream-name (the-as string
+                                      ((method-of-type res-lump get-property-struct)
+                                       owner-entity
+                                       'sound-name
+                                       'interp
+                                       -1000000000.0
+                                       (-> self sound-to-play)
+                                       (the-as (pointer res-tag) #f)
+                                       *res-static-buf*))))
+    (if (and (not play-mode) resolved-stream-name)
+      (set! play-mode
+            (if (or (and (= (-> resolved-stream-name data 0) 115) (= (-> resolved-stream-name data 1) 97))
+                    (and (= (-> resolved-stream-name data 0) 97) (= (-> resolved-stream-name data 1) 115)))
               'voicebox
               'sidekick)))
-    (set! (-> self mode) (the-as symbol s5-1))
-    (if (or (= s5-1 'sidekick) (= s5-1 'voicebox)) (go level-hint-sidekick a0-6)))
+    (set! (-> self mode) (the-as symbol play-mode))
+    (if (or (= play-mode 'sidekick) (= play-mode 'voicebox)) (go level-hint-sidekick resolved-stream-name)))
   (go level-hint-normal)
   0
   (none))
 
-(defbehavior ambient-hint-init-by-other level-hint ((arg0 string) (arg1 vector) (arg2 symbol))
-  (set! (-> self sound-to-play) arg0)
+(defbehavior ambient-hint-init-by-other level-hint ((stream-name string) (position vector) (mode symbol))
+  "Initialize a positional ambient, camera, or stinger sound hint, claim the hint semaphore, and
+   install cleanup for exit and death events."
+  (set! (-> self sound-to-play) stream-name)
   (set! (-> self total-time) 0)
   (set! (-> self total-off-time) 0)
   (set-time! (-> self last-time))
-  (set! (-> self trans) arg1)
+  (set! (-> self trans) position)
   (set! *hint-semaphore* (the-as (pointer level-hint) (process->ppointer self)))
   (add-setting! 'hint (process->ppointer self) 0.0 0)
-  (set! (-> self mode) arg2)
-  (if (or (= arg2 'camera) (= arg2 'ambient) (= arg2 'stinger)) (add-setting! 'ambient (process->ppointer self) 0.0 0))
+  (set! (-> self mode) mode)
+  (if (or (= mode 'camera) (= mode 'ambient) (= mode 'stinger)) (add-setting! 'ambient (process->ppointer self) 0.0 0))
   (apply-settings *setting-control*)
   (set! (-> self event-hook)
-        (lambda :behavior level-hint ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-          (case arg2
+        (lambda :behavior level-hint ((sender process) (unused-param int) (event-name symbol) (message event-message-block))
+          (case event-name
             (('die 'exit)
              (if (= (ppointer->process *hint-semaphore*) self) (set! *hint-semaphore* (the-as (pointer level-hint) #f)))
              (deactivate self)))))
-  (go level-hint-ambient-sound arg0)
+  (go level-hint-ambient-sound stream-name)
   0
   (none))
 
 (defmethod print-text ((this level-hint))
+  "Draw this hint's localized text in the bottom-center hint region."
   (when (!= *common-text* #f)
-    (let ((s5-0 (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
-      (set-width! s5-0 400)
-      (set-height! s5-0 96)
-      (set! (-> s5-0 flags) (font-flags shadow kerning middle large))
-      (print-game-text (lookup-text! *common-text* (-> this text-id-to-display) #f) s5-0 #f 128 22)))
+    (let ((text-context (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
+      (set-width! text-context 400)
+      (set-height! text-context 96)
+      (set-flags! text-context (font-flags shadow kerning middle large))
+      (print-game-text (lookup-text! *common-text* (-> this text-id-to-display) #f) text-context #f 128 22)))
   0
   (none))
 
 (defmethod appeared-for-long-enough? ((this level-hint))
+  "Return true after a non-sidekick hint has remained active for more than five seconds."
   (and (!= (-> this next-state name) 'level-hint-sidekick) (< (seconds 5) (-> this total-time))))
 
+;; Show a text hint for up to eight active seconds. Time spent behind menus, movies, or an occupied
+;; HUD is tracked separately so a hint that cannot regain the display eventually gives up.
 (defstate level-hint-normal (level-hint)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -248,6 +276,8 @@
            (set-time! (-> self last-time)))))
       (go level-hint-exit)))
 
+;; Play a streamed sidekick line, optionally creating its voicebox. The movie volume settings stay
+;; active until the stream ends, stalls for three seconds, or reaches the one-minute safety limit.
 (defstate level-hint-sidekick (level-hint)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -271,10 +301,10 @@
       (if (= (ppointer->process *hint-semaphore*) self) (set! *hint-semaphore* (the-as (pointer level-hint) #f)))
       (send-event (handle->process (-> self voicebox)) 'die))
   :code
-    (behavior ((arg0 string))
+    (behavior ((stream-name string))
       ;; og:preserve-this
       (#when PC_PORT
-        (set! *level-hint-spool-name* arg0))
+        (set! *level-hint-spool-name* stream-name))
       (when (and (-> *setting-control* current play-hints) (< 0.0 (-> *setting-control* current dialog-volume)))
         (case (-> self mode)
           (('voicebox) (if *target* (set! (-> self voicebox) (ppointer->handle (voicebox-spawn *target* (target-pos 0)))))))
@@ -282,32 +312,40 @@
           (suspend))
         (while (not *sound-player-enable*)
           (suspend))
-        (let ((s5-1 sound-play-by-name)
-              (s4-1 string->sound-name))
-          (format (clear *temp-string*) "spool-~S" arg0)
-          (let ((s5-2 (s5-1 (s4-1 *temp-string*) (new-sound-id) 1024 0 0 (sound-group sfx) #t)))
-            (set! (-> self sound-id) s5-2)
-            (let ((s4-3 (current-time))) (while (and (!= (current-str-id) s5-2) (not (time-elapsed? s4-3 (seconds 5)))) (suspend)))
+        (let ((play-sound sound-play-by-name)
+              (convert-sound-name string->sound-name))
+          (format (clear *temp-string*) "spool-~S" stream-name)
+          (let ((playing-sound-id (play-sound (convert-sound-name *temp-string*) (new-sound-id) 1024 0 0 (sound-group sfx) #t)))
+            (set! (-> self sound-id) playing-sound-id)
+            (let ((load-start-time (current-time)))
+              (while (and (!= (current-str-id) playing-sound-id) (not (time-elapsed? load-start-time (seconds 5))))
+                (suspend)))
             (cond
-              ((= (current-str-id) s5-2)
+              ((= (current-str-id) playing-sound-id)
                (add-setting! 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
                (add-setting! 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0)
                (add-setting! 'dialog-volume 'rel (-> *setting-control* current dialog-volume-hint) 0)
                ;; og:preserve-this PAL patch here
-               (let ((s5-1 -1)
-                     (s3-1 (current-time))
-                     (s4-4 (current-time)))
+               (let ((last-stream-position -1)
+                     (last-progress-time (current-time))
+                     (playback-start-time (current-time)))
                  (label cfg-27)
-                 (let ((v1-36 (current-str-pos s5-2)))
-                   (when (< s5-1 v1-36)
-                     (if (> v1-36 0) (set! s5-1 v1-36))
-                     (set! s3-1 (-> *display* base-frame-counter)))
-                   (when (not (and (or (< v1-36 0) (time-elapsed? s3-1 (seconds 3)) (time-elapsed? s4-4 (seconds 60))) *sound-player-enable*))
+                 (let ((stream-position (current-str-pos playing-sound-id)))
+                   (when (< last-stream-position stream-position)
+                     (if (> stream-position 0) (set! last-stream-position stream-position))
+                     (set! last-progress-time (-> *display* base-frame-counter)))
+                   (when (not (and (or (< stream-position 0)
+                                       (time-elapsed? last-progress-time (seconds 3))
+                                       (time-elapsed? playback-start-time (seconds 60)))
+                                   *sound-player-enable*))
                      (suspend)
                      (goto cfg-27)))))
-              (else (go level-hint-error "NO SOUND " arg0))))))
+              (else (go level-hint-error "NO SOUND " stream-name))))))
       (go level-hint-exit)))
 
+;; Play a positional ambient line or a global camera/stinger line. Camera and stinger playback
+;; temporarily use movie sound levels; the same progress and safety limits prevent a stuck stream
+;; from holding those settings indefinitely.
 (defstate level-hint-ambient-sound (level-hint)
   :event
     (-> level-hint-sidekick
@@ -319,23 +357,30 @@
       (remove-setting! 'sfx-volume)
       (if (= (ppointer->process *hint-semaphore*) self) (set! *hint-semaphore* (the-as (pointer level-hint) #f))))
   :code
-    (behavior ((arg0 string))
+    (behavior ((stream-name string))
       (while (not *sound-player-enable*)
         (suspend))
       (cond
         ((-> self trans)
-         (let ((s5-0 sound-play-by-name)
-               (s4-0 string->sound-name))
-           (format (clear *temp-string*) "spool-~S" arg0)
+         (let ((play-positional-sound sound-play-by-name)
+               (convert-positional-sound-name string->sound-name))
+           (format (clear *temp-string*) "spool-~S" stream-name)
            (set! (-> self sound-id)
-                 (s5-0 (s4-0 *temp-string*) (new-sound-id) 1024 1 0 (sound-group sfx) (the-as symbol (-> self trans))))))
+                 (play-positional-sound (convert-positional-sound-name *temp-string*)
+                                        (new-sound-id)
+                                        1024
+                                        1
+                                        0
+                                        (sound-group sfx)
+                                        (the-as symbol (-> self trans))))))
         (else
-         (let ((s5-1 sound-play-by-name)
-               (s4-2 string->sound-name))
-           (format (clear *temp-string*) "spool-~S" arg0)
-           (set! (-> self sound-id) (s5-1 (s4-2 *temp-string*) (new-sound-id) 1024 0 0 (sound-group sfx) #t)))))
-      (let ((s5-2 (current-time)))
-        (while (and (!= (current-str-id) (-> self sound-id)) (not (time-elapsed? s5-2 (seconds 5))))
+         (let ((play-global-sound sound-play-by-name)
+               (convert-global-sound-name string->sound-name))
+           (format (clear *temp-string*) "spool-~S" stream-name)
+           (set! (-> self sound-id)
+                 (play-global-sound (convert-global-sound-name *temp-string*) (new-sound-id) 1024 0 0 (sound-group sfx) #t)))))
+      (let ((load-start-time (current-time)))
+        (while (and (!= (current-str-id) (-> self sound-id)) (not (time-elapsed? load-start-time (seconds 5))))
           (suspend)))
       (cond
         ((= (current-str-id) (-> self sound-id))
@@ -343,293 +388,335 @@
            (add-setting! 'music-volume 'rel (-> *setting-control* current music-volume-movie) 0)
            (add-setting! 'sfx-volume 'rel (-> *setting-control* current sfx-volume-movie) 0))
          ;; og:preserve-this PAL patch here
-         (let ((gp-1 -1)
-               (s4-4 (-> *display* base-frame-counter))
-               (s5-4 (-> *display* base-frame-counter)))
+         (let ((last-stream-position -1)
+               (last-progress-frame (-> *display* base-frame-counter))
+               (playback-start-frame (-> *display* base-frame-counter)))
            (label cfg-19)
-           (let ((v1-24 (current-str-pos (-> self sound-id))))
-             (when (< gp-1 v1-24)
-               (if (> v1-24 0) (set! gp-1 v1-24))
-               (set! s4-4 (-> *display* base-frame-counter)))
-             (when (not (and (or (< v1-24 0)
-                                 (>= (- (-> *display* base-frame-counter) s4-4) (seconds 3))
-                                 (>= (- (-> *display* base-frame-counter) s5-4) (seconds 60)))
+           (let ((stream-position (current-str-pos (-> self sound-id))))
+             (when (< last-stream-position stream-position)
+               (if (> stream-position 0) (set! last-stream-position stream-position))
+               (set! last-progress-frame (-> *display* base-frame-counter)))
+             (when (not (and (or (< stream-position 0)
+                                 (>= (- (-> *display* base-frame-counter) last-progress-frame) (seconds 3))
+                                 (>= (- (-> *display* base-frame-counter) playback-start-frame) (seconds 60)))
                              *sound-player-enable*))
                (suspend)
                (goto cfg-19)))))
-        (else (go level-hint-error "NO SOUND " arg0)))
+        (else (go level-hint-error "NO SOUND " stream-name)))
       (go level-hint-exit)))
 
+;; Display an art/debug error for one second in the normal hint area.
 (defstate level-hint-error (level-hint)
   :event
     (-> level-hint-normal
         event)
   :code
-    (behavior ((arg0 string) (arg1 string))
+    (behavior ((prefix string) (suffix string))
       (remove-setting! 'hint)
       (suspend-for (seconds 1)
         (when (and *debug-segment* (not (paused?)) (not (str-is-playing?)) (bottom-hud-hidden?))
-          (let ((s3-0 (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
-            (set-width! s3-0 400)
-            (set-height! s3-0 96)
-            (set! (-> s3-0 flags) (font-flags shadow kerning middle))
-            (let ((s2-0 print-game-text)) (format (clear *temp-string*) "~S~S" arg0 arg1) (s2-0 *temp-string* s3-0 #f 128 22)))))
+          (let ((text-context (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
+            (set-width! text-context 400)
+            (set-height! text-context 96)
+            (set-flags! text-context (font-flags shadow kerning middle))
+            (let ((draw-text print-game-text))
+              (format (clear *temp-string*) "~S~S" prefix suffix)
+              (draw-text *temp-string* text-context #f 128 22)))))
       (go level-hint-exit)))
 
+;; Release the hint semaphore before the process is deactivated.
 (defstate level-hint-exit (level-hint)
   :code
     (behavior ()
       (if (= (ppointer->process *hint-semaphore*) self) (set! *hint-semaphore* (the-as (pointer level-hint) #f)))))
 
-(defun ambient-type-error ((arg0 drawable-ambient) (arg1 vector))
+(defun ambient-type-error ((ambient-drawable drawable-ambient) (query-position vector))
+  "Draw a red editor error label for an ambient whose properties could not select a valid effect."
   (when *display-entity-errors*
-    (let ((s2-0 (-> arg0 ambient)))
+    (let ((ambient-entity (-> ambient-drawable ambient)))
       (format (clear *temp-string*)
               "~2j~s art error for ~s ~s"
-              (res-lump-struct s2-0 'effect-name structure :time 0.0)
-              (res-lump-struct s2-0 'type structure)
-              (res-lump-struct s2-0 'name structure)))
+              (res-lump-struct ambient-entity 'effect-name structure :time 0.0)
+              (res-lump-struct ambient-entity 'type structure)
+              (res-lump-struct ambient-entity 'name structure)))
     *temp-string*
-    (add-debug-text-3d #t (bucket-id debug-no-zbuf) *temp-string* (-> arg0 bsphere) (font-color red) (the-as vector2h #f)))
+    (add-debug-text-3d #t
+                       (bucket-id debug-no-zbuf)
+                       *temp-string*
+                       (-> ambient-drawable bsphere)
+                       (font-color red)
+                       (the-as vector2h #f)))
   0
   (none))
 
-(defun ambient-type-poi ((arg0 drawable-ambient) (arg1 vector))
+(defun ambient-type-poi ((ambient-drawable drawable-ambient) (query-position vector))
+  "Perform the per-frame step for a point-of-interest ambient; this type needs no additional
+   action after it has been collected."
   0
   (none))
 
-(defun ambient-type-hint ((arg0 drawable-ambient) (arg1 vector))
+(defun ambient-type-hint ((ambient-drawable drawable-ambient) (query-position vector))
+  "Apply this ambient's hint policy and spawn its level hint, or display the missing-ID diagnostic
+   in debug builds."
   (with-pp
-    (let ((s5-0 (level-hint-task-process (-> arg0 ambient) (the-as uint128 0) (the-as string #f))))
+    (let ((resolved-text-id (level-hint-task-process (-> ambient-drawable ambient) (the-as uint128 0) (the-as string #f))))
       (cond
-        ((zero? s5-0)
+        ((zero? resolved-text-id)
          (when (and *debug-segment* (not (paused?)) (not (str-is-playing?)) (bottom-hud-hidden?))
-           (let ((a1-3 (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
-             (set-width! a1-3 400)
-             (set-height! a1-3 96)
-             (set! (-> a1-3 flags) (font-flags shadow kerning middle large))
-             (print-game-text "AS: UNKNOWN ID" a1-3 #f 128 22))))
-        ((!= s5-0 -1) (kill-current-level-hint '() '() 'exit) (process-spawn level-hint s5-0 #f (-> arg0 ambient) :to pp))))
+           (let ((text-context (new 'stack 'font-context *font-default-matrix* 56 160 0.0 (font-color default) (font-flags shadow kerning))))
+             (set-width! text-context 400)
+             (set-height! text-context 96)
+             (set-flags! text-context (font-flags shadow kerning middle large))
+             (print-game-text "AS: UNKNOWN ID" text-context #f 128 22))))
+        ((!= resolved-text-id -1)
+         (kill-current-level-hint '() '() 'exit)
+         (process-spawn level-hint resolved-text-id #f (-> ambient-drawable ambient) :to pp))))
     0
     (none)))
 
-(defun ambient-type-sound ((arg0 drawable-ambient) (arg1 vector))
-  (let* ((s5-0 (-> arg0 ambient))
-         (s4-0 (-> s5-0 ambient-data user-uint64 0)))
-    (when (>= (current-time) (the-as time-frame s4-0))
-      (let ((v1-5 (res-lump-data s5-0 'cycle-speed pointer)))
-        (set! (-> s5-0 ambient-data user-uint64 0)
+(defun ambient-type-sound ((ambient-drawable drawable-ambient) (query-position vector))
+  "At the ambient's randomized cycle interval, choose an effect-name variant and play it at the
+   ambient sphere with its effect parameters and a small random bend."
+  (local-vars (effect-sound-name string) (effect-param-tag res-tag))
+  (let* ((ambient-entity (-> ambient-drawable ambient))
+         (scheduled-time (-> ambient-entity ambient-data user-uint64 0)))
+    (when (>= (current-time) (the-as time-frame scheduled-time))
+      (let ((cycle-speed (res-lump-data ambient-entity 'cycle-speed pointer)))
+        (set! (-> ambient-entity ambient-data user-uint64 0)
               (the-as uint
                       (+ (current-time)
-                         (the int (* 300.0 (-> (the-as (pointer float) v1-5) 0)))
-                         (rand-vu-int-count (the int (* 300.0 (-> (the-as (pointer float) v1-5) 1))))))))
-      (when (< (the-as uint (- (current-time) (the-as int s4-0))) (the-as uint 300))
-        (let* ((f30-0 (the float (rand-vu-int-count (the-as int (-> s5-0 ambient-data user-float 2)))))
-               (sv-16 (symbol->string (res-lump-struct s5-0 'effect-name symbol :time f30-0)))
-               (s4-2 (new 'stack 'sound-spec)))
-          (set! (-> s4-2 sound-name) (string->sound-name sv-16))
-          (logior! (-> s4-2 mask) (sound-mask volume))
-          (set! (-> s4-2 volume) 1024)
-          (logior! (-> s4-2 mask) (sound-mask bend))
-          (set! (-> s4-2 bend) (the int (* 327.66998 (rand-vu-float-range -100.0 100.0))))
-          (let* ((sv-112 (new 'static 'res-tag))
-                 (a1-7 ((method-of-type res-lump get-property-data)
-                        s5-0
-                        'effect-param
-                        'exact
-                        f30-0
-                        (the-as pointer #f)
-                        (& sv-112)
-                        *res-static-buf*)))
-            (if a1-7 (effect-param->sound-spec s4-2 (the-as (pointer float) a1-7) (the-as int (-> sv-112 elt-count)))))
-          (when *debug-effect-control*
-            (format #t "(~5D) effect sound ~A ~S " (current-time) (res-lump-struct s5-0 'name structure) sv-16)
-            (format #t
-                    "volume: ~f  pitch-mod: ~f~%"
-                    (* 0.09765625 (the float (-> s4-2 volume)))
-                    (* 0.000656168 (the float (-> s4-2 pitch-mod)))))
-          (sound-play-by-spec s4-2 (new-sound-id) (-> arg0 bsphere))))))
+                         (the int (* 300.0 (-> (the-as (pointer float) cycle-speed) 0)))
+                         (rand-vu-int-count (the int (* 300.0 (-> (the-as (pointer float) cycle-speed) 1))))))))
+      (when (< (the-as uint (- (current-time) (the-as int scheduled-time))) (the-as uint 300))
+        (let ((effect-index (the float (rand-vu-int-count (the-as int (-> ambient-entity ambient-data user-float 2))))))
+          (set! effect-sound-name (symbol->string (res-lump-struct ambient-entity 'effect-name symbol :time effect-index)))
+          (let ((spec (new 'stack 'sound-spec)))
+            (set! (-> spec sound-name) (string->sound-name effect-sound-name))
+            (logior! (-> spec mask) (sound-mask volume))
+            (set! (-> spec volume) 1024)
+            (logior! (-> spec mask) (sound-mask bend))
+            (set! (-> spec bend) (the int (* 327.66998 (rand-vu-float-range -100.0 100.0))))
+            (set! effect-param-tag (new 'static 'res-tag))
+            (let ((effect-params ((method-of-type res-lump get-property-data)
+                                  ambient-entity
+                                  'effect-param
+                                  'exact
+                                  effect-index
+                                  (the-as pointer #f)
+                                  (& effect-param-tag)
+                                  *res-static-buf*)))
+              (if effect-params
+                (effect-param->sound-spec spec (the-as (pointer float) effect-params) (the-as int (-> effect-param-tag elt-count)))))
+            (when *debug-effect-control*
+              (format #t "(~5D) effect sound ~A ~S " (current-time) (res-lump-struct ambient-entity 'name structure) effect-sound-name)
+              (format #t
+                      "volume: ~f  pitch-mod: ~f~%"
+                      (* 0.09765625 (the float (-> spec volume)))
+                      (* 0.000656168 (the float (-> spec pitch-mod)))))
+            (sound-play-by-spec spec (new-sound-id) (-> ambient-drawable bsphere)))))))
   0
   (none))
 
-(defun ambient-type-sound-loop ((arg0 drawable-ambient) (arg1 vector))
-  (let* ((s5-0 (-> arg0 ambient))
-         (s2-0 (symbol->string (the-as symbol (-> s5-0 ambient-data user-float 2))))
-         (s3-0 (the-as object (-> s5-0 ambient-data user-float 1)))
-         (s4-0 (new 'stack 'sound-spec)))
-    (set! (-> s4-0 sound-name) (string->sound-name s2-0))
-    (logior! (-> s4-0 mask) (sound-mask volume))
-    (set! (-> s4-0 volume) 1024)
-    (when (the-as (pointer res-tag) s3-0)
-      (let ((t9-2 effect-param->sound-spec)
-            (a0-5 s4-0)
-            (v1-8 (-> arg0 ambient))
-            (a1-2 (-> (the-as (pointer res-tag) s3-0) 0)))
-        (t9-2 a0-5
-              (the-as (pointer float) (&+ (-> v1-8 data-base) (-> a1-2 data-offset)))
-              (the-as int (-> (the-as (pointer res-tag) s3-0) 0 elt-count)))))
-    (sound-play-by-spec s4-0 (the-as sound-id (-> s5-0 ambient-data user-float 0)) (-> arg0 bsphere)))
+(defun ambient-type-sound-loop ((ambient-drawable drawable-ambient) (query-position vector))
+  "Refresh the ambient's persistent looping sound at its sphere using the properties cached at
+   birth."
+  (let* ((ambient-entity (-> ambient-drawable ambient))
+         (effect-sound-name (symbol->string (the-as symbol (-> ambient-entity ambient-data user-float 2))))
+         (effect-param-tag (the-as object (-> ambient-entity ambient-data user-float 1)))
+         (spec (new 'stack 'sound-spec)))
+    (set! (-> spec sound-name) (string->sound-name effect-sound-name))
+    (logior! (-> spec mask) (sound-mask volume))
+    (set! (-> spec volume) 1024)
+    (when (the-as (pointer res-tag) effect-param-tag)
+      (let ((apply-effect-params effect-param->sound-spec)
+            (sound-spec-arg spec)
+            (effect-entity (-> ambient-drawable ambient))
+            (effect-param (-> (the-as (pointer res-tag) effect-param-tag) 0)))
+        (apply-effect-params sound-spec-arg
+                             (the-as (pointer float) (&+ (-> effect-entity data-base) (-> effect-param data-offset)))
+                             (the-as int (-> (the-as (pointer res-tag) effect-param-tag) 0 elt-count)))))
+    (sound-play-by-spec spec (the-as sound-id (-> ambient-entity ambient-data user-float 0)) (-> ambient-drawable bsphere)))
   0
   (none))
 
-(defun ambient-type-light ((arg0 drawable-ambient) (arg1 vector))
+(defun ambient-type-light ((ambient-drawable drawable-ambient) (query-position vector))
+  "Test query-position against this ambient's convex volumes. The light type has no additional
+   per-frame action after a containing volume is found."
   (when *target*
-    (let ((s4-0 (-> arg0 ambient))
-          (s5-0 #t))
-      (let ((s3-0 (-> ((method-of-type res-lump lookup-tag-idx) s4-0 'vol 'exact 0.0) lo)))
-        (when (>= (the-as int s3-0) 0)
-          (let ((s2-0 (the-as int s3-0))
-                (s1-0 (-> s4-0 tag s3-0)))
+    (let ((ambient-entity (-> ambient-drawable ambient))
+          (inside? #t))
+      (let ((first-volume-tag-index (-> ((method-of-type res-lump lookup-tag-idx) ambient-entity 'vol 'exact 0.0) lo)))
+        (when (>= (the-as int first-volume-tag-index) 0)
+          (let ((volume-tag-index (the-as int first-volume-tag-index))
+                (volume-tag (-> ambient-entity tag first-volume-tag-index)))
             0
-            (while (= (-> s1-0 name) (-> s4-0 tag s3-0 name))
-              (let ((v1-8 (the-as object (make-property-data s4-0 0.0 (the-as res-tag-pair s2-0) (the-as pointer #f)))))
-                (set! s5-0 #t)
-                (countdown (a0-6 (-> s1-0 elt-count))
-                  (when (< (-> arg1 w)
-                           (- (vector-dot arg1 (-> (the-as (inline-array vector) v1-8) a0-6)) (-> (the-as (inline-array vector) v1-8) a0-6 w)))
-                    (set! s5-0 #f)
+            (while (= (-> volume-tag name) (-> ambient-entity tag first-volume-tag-index name))
+              (let ((planes (the-as object (make-property-data ambient-entity 0.0 (the-as res-tag-pair volume-tag-index) (the-as pointer #f)))))
+                (set! inside? #t)
+                (countdown (i (-> volume-tag elt-count))
+                  (when (< (-> query-position w)
+                           (- (vector-dot query-position (-> (the-as (inline-array vector) planes) i))
+                              (-> (the-as (inline-array vector) planes) i w)))
+                    (set! inside? #f)
                     (goto cfg-9))))
               (label cfg-9)
-              (if s5-0 (goto cfg-15))
-              (+! s2-0 1)
-              (set! s1-0 (-> s4-0 tag s2-0))))))
+              (if inside? (goto cfg-15))
+              (+! volume-tag-index 1)
+              (set! volume-tag (-> ambient-entity tag volume-tag-index))))))
       (label cfg-15)
-      (when s5-0)))
+      (when inside?)))
   0
   (none))
 
-(defun ambient-type-dark ((arg0 drawable-ambient) (arg1 vector))
+(defun ambient-type-dark ((ambient-drawable drawable-ambient) (query-position vector))
+  "Set the target's secondary draw interpolation to full when query-position lies within any of
+   this ambient's convex volumes."
   (when *target*
-    (let ((s4-0 (-> arg0 ambient))
-          (s5-0 #t))
-      (let ((s3-0 (-> ((method-of-type res-lump lookup-tag-idx) s4-0 'vol 'exact 0.0) lo)))
-        (when (>= (the-as int s3-0) 0)
-          (let ((s2-0 (the-as int s3-0))
-                (s1-0 (-> s4-0 tag s3-0)))
+    (let ((ambient-entity (-> ambient-drawable ambient))
+          (inside? #t))
+      (let ((first-volume-tag-index (-> ((method-of-type res-lump lookup-tag-idx) ambient-entity 'vol 'exact 0.0) lo)))
+        (when (>= (the-as int first-volume-tag-index) 0)
+          (let ((volume-tag-index (the-as int first-volume-tag-index))
+                (volume-tag (-> ambient-entity tag first-volume-tag-index)))
             0
-            (while (= (-> s1-0 name) (-> s4-0 tag s3-0 name))
-              (let ((v1-8 (the-as object (make-property-data s4-0 0.0 (the-as res-tag-pair s2-0) (the-as pointer #f)))))
-                (set! s5-0 #t)
-                (countdown (a0-6 (-> s1-0 elt-count))
-                  (when (< (-> arg1 w)
-                           (- (vector-dot arg1 (-> (the-as (inline-array vector) v1-8) a0-6)) (-> (the-as (inline-array vector) v1-8) a0-6 w)))
-                    (set! s5-0 #f)
+            (while (= (-> volume-tag name) (-> ambient-entity tag first-volume-tag-index name))
+              (let ((planes (the-as object (make-property-data ambient-entity 0.0 (the-as res-tag-pair volume-tag-index) (the-as pointer #f)))))
+                (set! inside? #t)
+                (countdown (i (-> volume-tag elt-count))
+                  (when (< (-> query-position w)
+                           (- (vector-dot query-position (-> (the-as (inline-array vector) planes) i))
+                              (-> (the-as (inline-array vector) planes) i w)))
+                    (set! inside? #f)
                     (goto cfg-9))))
               (label cfg-9)
-              (if s5-0 (goto cfg-15))
-              (+! s2-0 1)
-              (set! s1-0 (-> s4-0 tag s2-0))))))
+              (if inside? (goto cfg-15))
+              (+! volume-tag-index 1)
+              (set! volume-tag (-> ambient-entity tag volume-tag-index))))))
       (label cfg-15)
-      (if s5-0 (set! (-> *target* draw secondary-interp) 1.0))))
+      (if inside? (set! (-> *target* draw secondary-interp) 1.0))))
   0
   (none))
 
-(defun ambient-type-weather-off ((arg0 drawable-ambient) (arg1 vector))
+(defun ambient-type-weather-off ((ambient-drawable drawable-ambient) (query-position vector))
+  "Disable weather when query-position lies within any of this ambient's convex volumes."
   (when *target*
-    (let ((s4-0 (-> arg0 ambient))
-          (s5-0 #t))
-      (let ((s3-0 (-> ((method-of-type res-lump lookup-tag-idx) s4-0 'vol 'exact 0.0) lo)))
-        (when (>= (the-as int s3-0) 0)
-          (let ((s2-0 (the-as int s3-0))
-                (s1-0 (-> s4-0 tag s3-0)))
+    (let ((ambient-entity (-> ambient-drawable ambient))
+          (inside? #t))
+      (let ((first-volume-tag-index (-> ((method-of-type res-lump lookup-tag-idx) ambient-entity 'vol 'exact 0.0) lo)))
+        (when (>= (the-as int first-volume-tag-index) 0)
+          (let ((volume-tag-index (the-as int first-volume-tag-index))
+                (volume-tag (-> ambient-entity tag first-volume-tag-index)))
             0
-            (while (= (-> s1-0 name) (-> s4-0 tag s3-0 name))
-              (let ((v1-8 (the-as object (make-property-data s4-0 0.0 (the-as res-tag-pair s2-0) (the-as pointer #f)))))
-                (set! s5-0 #t)
-                (countdown (a0-6 (-> s1-0 elt-count))
-                  (when (< (-> arg1 w)
-                           (- (vector-dot arg1 (-> (the-as (inline-array vector) v1-8) a0-6)) (-> (the-as (inline-array vector) v1-8) a0-6 w)))
-                    (set! s5-0 #f)
+            (while (= (-> volume-tag name) (-> ambient-entity tag first-volume-tag-index name))
+              (let ((planes (the-as object (make-property-data ambient-entity 0.0 (the-as res-tag-pair volume-tag-index) (the-as pointer #f)))))
+                (set! inside? #t)
+                (countdown (i (-> volume-tag elt-count))
+                  (when (< (-> query-position w)
+                           (- (vector-dot query-position (-> (the-as (inline-array vector) planes) i))
+                              (-> (the-as (inline-array vector) planes) i w)))
+                    (set! inside? #f)
                     (goto cfg-9))))
               (label cfg-9)
-              (if s5-0 (goto cfg-15))
-              (+! s2-0 1)
-              (set! s1-0 (-> s4-0 tag s2-0))))))
+              (if inside? (goto cfg-15))
+              (+! volume-tag-index 1)
+              (set! volume-tag (-> ambient-entity tag volume-tag-index))))))
       (label cfg-15)
-      (if s5-0 (set! *weather-off* #t))))
+      (if inside? (set! *weather-off* #t))))
   0
   (none))
 
-(defun ambient-type-ocean-off ((arg0 drawable-ambient) (arg1 vector))
+(defun ambient-type-ocean-off ((ambient-drawable drawable-ambient) (query-position vector))
+  "Disable the full ocean pass while this already-collected ambient is active."
   (set! *ocean-off* #t)
   0
   (none))
 
-(defun ambient-type-ocean-near-off ((arg0 drawable-ambient) (arg1 vector))
+(defun ambient-type-ocean-near-off ((ambient-drawable drawable-ambient) (query-position vector))
+  "Disable nearby ocean geometry while this already-collected ambient is active."
   (set! *ocean-near-off* #t)
   0
   (none))
 
-(defun ambient-type-music ((arg0 drawable-ambient) (arg1 vector))
-  (let ((gp-0 (-> arg0 ambient)))
-    (if (-> gp-0 ambient-data user-float 0)
-      (set! (-> *setting-control* default music) (the-as symbol (-> gp-0 ambient-data user-float 0))))
-    (when (nonzero? (-> gp-0 ambient-data user-float 1))
-      (let ((f0-0 (res-lump-float gp-0 'priority :default 10.0)))
-        (when (>= f0-0 (-> *setting-control* default sound-flava-priority))
+(defun ambient-type-music ((ambient-drawable drawable-ambient) (query-position vector))
+  "Apply this ambient's default music and, when its priority wins, its sound-flavor selection."
+  (let ((ambient-entity (-> ambient-drawable ambient)))
+    (if (-> ambient-entity ambient-data user-float 0)
+      (set! (-> *setting-control* default music) (the-as symbol (-> ambient-entity ambient-data user-float 0))))
+    (when (nonzero? (-> ambient-entity ambient-data user-float 1))
+      (let ((priority (res-lump-float ambient-entity 'priority :default 10.0)))
+        (when (>= priority (-> *setting-control* default sound-flava-priority))
           ;; og:preserve-this TODO this following form has been manually modified to work
-          (set! (-> *setting-control* default sound-flava) (the-as uint (-> gp-0 ambient-data user-int32 1)))
-          (set! (-> *setting-control* default sound-flava-priority) f0-0)))))
+          (set! (-> *setting-control* default sound-flava) (the-as uint (-> ambient-entity ambient-data user-int32 1)))
+          (set! (-> *setting-control* default sound-flava-priority) priority)))))
   0
   (none))
 
-(defmethod collect-ambients ((this drawable-ambient) (arg0 sphere) (arg1 int) (arg2 ambient-list))
-  (dotimes (s2-0 arg1)
-    (when (spheres-overlap? arg0 (the-as sphere (-> this bsphere)))
-      (set! (-> arg2 items (-> arg2 num-items)) this)
-      (+! (-> arg2 num-items) 1))
+(defmethod collect-ambients ((this drawable-ambient) (query-sphere sphere) (count int) (result ambient-list))
+  "Traverse count contiguous siblings beginning at this and append ambient
+   objects overlapping query-sphere to result."
+  (dotimes (i count)
+    (when (spheres-overlap? query-sphere (the-as sphere (-> this bsphere)))
+      (set! (-> result items (-> result num-items)) this)
+      (+! (-> result num-items) 1))
     (&+! this 32))
   0
   (none))
 
-(defmethod collect-ambients ((this drawable-inline-array-ambient) (arg0 sphere) (arg1 int) (arg2 ambient-list))
-  (collect-ambients (the-as drawable-ambient (-> this data)) arg0 (-> this length) arg2)
+(defmethod collect-ambients ((this drawable-inline-array-ambient) (query-sphere sphere) (count int) (result ambient-list))
+  "Traverse count contiguous siblings beginning at this and append ambient
+   objects overlapping query-sphere to result."
+  (collect-ambients (the-as drawable-ambient (-> this data)) query-sphere (-> this length) result)
   0
   (none))
 
-(defmethod collect-ambients ((this drawable-tree-ambient) (arg0 sphere) (arg1 int) (arg2 ambient-list))
-  (collect-ambients (-> this data 0) arg0 (-> this length) arg2)
+(defmethod collect-ambients ((this drawable-tree-ambient) (query-sphere sphere) (count int) (result ambient-list))
+  "Traverse count contiguous siblings beginning at this and append ambient
+   objects overlapping query-sphere to result."
+  (collect-ambients (-> this data 0) query-sphere (-> this length) result)
   0
   (none))
 
 (defmethod birth-ambient! ((this entity-ambient))
+  "Decode this entity's resource properties into the compact ambient-data payload and select
+   the function that applies its ambient effect."
   (set! (-> this ambient-data quad) (the-as uint128 0))
   (set! (-> this ambient-data function) ambient-type-error)
   (case (res-lump-struct this 'type structure)
     (('sound)
-     (let ((s5-0 (res-lump-struct this 'effect-name structure :time 0.0))
-           (a0-7 (res-lump-data this 'cycle-speed pointer)))
-       (when (and s5-0 a0-7)
+     (let ((effect-name (res-lump-struct this 'effect-name structure :time 0.0))
+           (cycle-speed (res-lump-data this 'cycle-speed pointer)))
+       (when (and effect-name cycle-speed)
          (cond
-           ((>= (-> (the-as (pointer float) a0-7)) 0.0)
+           ((>= (-> (the-as (pointer float) cycle-speed)) 0.0)
             (set! (-> this ambient-data function) ambient-type-sound)
             (set! (-> this ambient-data user-float 2) (the-as float 0))
-            (let ((s5-1 (-> ((method-of-type res-lump lookup-tag-idx) this 'effect-name 'exact 0.0) lo)))
-              (when (>= (the-as int s5-1) 0)
-                (let ((s4-0 (the-as int s5-1))
-                      (v1-14 (-> this tag s5-1)))
+            (let ((first-effect-tag-index (-> ((method-of-type res-lump lookup-tag-idx) this 'effect-name 'exact 0.0) lo)))
+              (when (>= (the-as int first-effect-tag-index) 0)
+                (let ((effect-tag-index (the-as int first-effect-tag-index))
+                      (effect-tag (-> this tag first-effect-tag-index)))
                   0
-                  (while (= (-> v1-14 name) (-> this tag s5-1 name))
-                    (make-property-data this 0.0 (the-as res-tag-pair s4-0) (the-as pointer #f))
+                  (while (= (-> effect-tag name) (-> this tag first-effect-tag-index name))
+                    (make-property-data this 0.0 (the-as res-tag-pair effect-tag-index) (the-as pointer #f))
                     (set! (-> this ambient-data user-float 2) (the-as float (+ (the-as int (-> this ambient-data user-float 2)) 1)))
-                    (+! s4-0 1)
-                    (set! v1-14 (-> this tag s4-0)))))))
+                    (+! effect-tag-index 1)
+                    (set! effect-tag (-> this tag effect-tag-index)))))))
            (else
             (set! (-> this ambient-data user-float 0) (the-as float (new-sound-id)))
-            (let ((v1-28 ((method-of-type res-lump lookup-tag-idx) this 'effect-param 'exact 0.0)))
+            (let ((effect-param-tag ((method-of-type res-lump lookup-tag-idx) this 'effect-param 'exact 0.0)))
               (set! (-> this ambient-data user-float 1)
-                    (the-as float (if (< (the-as int v1-28) 0) (the-as (pointer res-tag) #f) (&-> this tag (-> v1-28 lo))))))
-            (set! (-> this ambient-data user-float 2) (the-as float s5-0))
+                    (the-as float
+                            (if (< (the-as int effect-param-tag) 0) (the-as (pointer res-tag) #f) (&-> this tag (-> effect-param-tag lo))))))
+            (set! (-> this ambient-data user-float 2) (the-as float effect-name))
             (set! (-> this ambient-data function) ambient-type-sound-loop))))))
     (('poi)
-     (let ((s5-2 (res-lump-struct this 'effect-name structure :time 0.0)))
+     (let ((poi-effect-name (res-lump-struct this 'effect-name structure :time 0.0)))
        (when (res-lump-value this 'loc-name-id uint128)
-         (set! (-> this ambient-data user-float 2) (the-as float s5-2))
+         (set! (-> this ambient-data user-float 2) (the-as float poi-effect-name))
          (set! (-> this ambient-data function) ambient-type-poi))))
     (('hint)
-     (let ((s5-3 (res-lump-struct this 'effect-name structure :time 0.0)))
+     (let ((hint-effect-name (res-lump-struct this 'effect-name structure :time 0.0)))
        (when (res-lump-value this 'text-id uint128)
-         (set! (-> this ambient-data user-float 2) (the-as float s5-3))
+         (set! (-> this ambient-data user-float 2) (the-as float hint-effect-name))
          (set! (-> this ambient-data function) ambient-type-hint))))
     (('light)
      (set! (-> this ambient-data user-float 2) (res-lump-struct this 'effect-name float :time 0.0))
@@ -655,78 +742,83 @@
 
 (define *execute-ambients* #t)
 
-(defmethod execute-ambient ((this drawable-ambient) (arg0 vector))
-  ((-> this ambient ambient-data function) this arg0)
+(defmethod execute-ambient ((this drawable-ambient) (query-position vector))
+  "Invoke the referenced ambient entity's handler at query-position."
+  ((-> this ambient ambient-data function) this query-position)
   0
   (none))
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
-
 (defmethod draw-debug ((this entity-ambient))
-  (let ((gp-0 (-> this trans))
-        (s5-0 (res-lump-struct this 'type symbol))
-        (s3-0 #f))
+  "Draw this ambient's enabled editor marker, label, type, and resource-specific annotation."
+  (let ((position (-> this trans))
+        (ambient-type (res-lump-struct this 'type symbol))
+        (draw-marker? #f))
     (cond
-      ((= s5-0 'sound)
+      ((= ambient-type 'sound)
        (when *display-ambient-sound-marks*
          (add-debug-text-3d #t
                             (bucket-id debug-no-zbuf)
                             (symbol->string (res-lump-struct this 'effect-name symbol :time 0.0))
-                            gp-0
+                            position
                             (font-color white)
                             (new 'static 'vector2h :y 24))
-         (set! s3-0 #t)))
-      ((= s5-0 'hint)
+         (set! draw-marker? #t)))
+      ((= ambient-type 'hint)
        (when *display-ambient-hint-marks*
-         (let ((sv-16 (res-lump-value this 'text-id uint128))
-               (s3-2 add-debug-text-3d)
-               (s2-1 #t)
-               (s1-1 68))
-           (format (clear *temp-string*) "TEXT ID #x~X" sv-16)
-           (s3-2 s2-1 (the-as bucket-id s1-1) *temp-string* gp-0 (font-color white) (new 'static 'vector2h :y 24)))
-         (set! s3-0 #t)))
-      ((= s5-0 'poi)
+         (let ((hint-text-id (res-lump-value this 'text-id uint128))
+               (draw-text add-debug-text-3d)
+               (debug-enabled? #t)
+               (debug-bucket 68))
+           (format (clear *temp-string*) "TEXT ID #x~X" hint-text-id)
+           (draw-text debug-enabled?
+                      (the-as bucket-id debug-bucket)
+                      *temp-string*
+                      position
+                      (font-color white)
+                      (new 'static 'vector2h :y 24)))
+         (set! draw-marker? #t)))
+      ((= ambient-type 'poi)
        (when *display-ambient-poi-marks*
-         (let ((a1-7 (res-lump-value this 'loc-name-id uint128)))
-           (when (and (nonzero? a1-7) *common-text*)
+         (let ((location-text-id (res-lump-value this 'loc-name-id uint128)))
+           (when (and (nonzero? location-text-id) *common-text*)
              (add-debug-text-3d #t
                                 (bucket-id debug-no-zbuf)
-                                (lookup-text! *common-text* (the-as text-id a1-7) #f)
-                                gp-0
+                                (lookup-text! *common-text* (the-as text-id location-text-id) #f)
+                                position
                                 (font-color white)
                                 (new 'static 'vector2h :y 24))
-             (set! s3-0 #t)))))
-      ((= s5-0 'light) (if *display-ambient-light-marks* (set! s3-0 #t)))
-      ((= s5-0 'dark) (if *display-ambient-dark-marks* (set! s3-0 #t)))
-      ((= s5-0 'weather-off) (if *display-ambient-weather-off-marks* (set! s3-0 #t)))
-      ((= s5-0 'ocean-off) (if *display-ambient-ocean-off-marks* (set! s3-0 #t)))
-      ((= s5-0 'ocean-near-off) (if *display-ambient-ocean-near-off-marks* (set! s3-0 #t)))
-      ((= s5-0 'music) (if *display-ambient-music-marks* (set! s3-0 #t))))
-    (when s3-0
-      (let ((t9-10 add-debug-sphere)
-            (a0-11 #t)
-            (a1-9 67)
-            (a2-9 gp-0)
-            (a3-7 (-> gp-0 w))
-            (v1-53 s5-0))
-        (t9-10 a0-11
-               (the-as bucket-id a1-9)
-               a2-9
-               a3-7
-               (cond
-                 ((= v1-53 'sound) (new 'static 'rgba :r #xff :g #xff :a #x80))
-                 ((= v1-53 'poi) (new 'static 'rgba :g #x80 :b #xff :a #x80))
-                 (else (new 'static 'rgba :r #xff :a #x80)))))
+             (set! draw-marker? #t)))))
+      ((= ambient-type 'light) (if *display-ambient-light-marks* (set! draw-marker? #t)))
+      ((= ambient-type 'dark) (if *display-ambient-dark-marks* (set! draw-marker? #t)))
+      ((= ambient-type 'weather-off) (if *display-ambient-weather-off-marks* (set! draw-marker? #t)))
+      ((= ambient-type 'ocean-off) (if *display-ambient-ocean-off-marks* (set! draw-marker? #t)))
+      ((= ambient-type 'ocean-near-off) (if *display-ambient-ocean-near-off-marks* (set! draw-marker? #t)))
+      ((= ambient-type 'music) (if *display-ambient-music-marks* (set! draw-marker? #t))))
+    (when draw-marker?
+      (let ((draw-sphere add-debug-sphere)
+            (sphere-debug-enabled? #t)
+            (sphere-bucket 67)
+            (sphere-position position)
+            (sphere-radius (-> position w))
+            (marker-type ambient-type))
+        (draw-sphere sphere-debug-enabled?
+                     (the-as bucket-id sphere-bucket)
+                     sphere-position
+                     sphere-radius
+                     (cond
+                       ((= marker-type 'sound) (new 'static 'rgba :r #xff :g #xff :a #x80))
+                       ((= marker-type 'poi) (new 'static 'rgba :g #x80 :b #xff :a #x80))
+                       (else (new 'static 'rgba :r #xff :a #x80)))))
       (add-debug-text-3d #t
                          (bucket-id debug-no-zbuf)
                          (res-lump-struct this 'name string)
-                         gp-0
+                         position
                          (font-color white)
                          (new 'static 'vector2h :y 8))
       (add-debug-text-3d #t
                          (bucket-id debug-no-zbuf)
-                         (symbol->string s5-0)
-                         gp-0
+                         (symbol->string ambient-type)
+                         position
                          (font-color white)
                          (new 'static 'vector2h :y 16))))
   0

@@ -9,14 +9,14 @@
 ;; joint animation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; base type for all joint animations
-;; note that this refers to an animation for a single joint.
+;; Base class for joint animation data.  The derived types choose the representation; length is the
+;; number of animation samples.
 (deftype joint-anim (basic)
   ((name   string)
    (number int16)
    (length int16)))
 
-;; unused? joint-anims
+;; Legacy uncompressed channel formats.  Shipped joint animation uses the compressed format below.
 
 (deftype joint-anim-matrix (joint-anim)
   ((data matrix :inline :dynamic :offset 16)))
@@ -27,34 +27,44 @@
 (deftype joint-anim-drawable (joint-anim)
   ((data drawable :dynamic)))
 
-;; joint-anim-compressed is the only type of joint-anim actually used.
-;; the actual data isn't in here, this is just some metadata
-;; again, this refers to a single joint
+;; Metadata associated with the shared compressed frame storage.  The sample payload lives in
+;; joint-anim-compressed-control rather than inline in this record.
 (deftype joint-anim-compressed (joint-anim)
   ((data uint32 :dynamic)))
 
-;; a single "frame" in an animation, consists of matrices for each joint.
-;; unlike the previous types, this is for all of the joints involved in an animation.
+;; The decompressor's complete skeleton-frame accumulator.  The align and prejoint entries are full
+;; matrices; every remaining skeleton entry is a 48-byte translation/quaternion/scale value
+;; beginning at data.
 (deftype joint-anim-frame (structure)
   ((matrices matrix 2 :inline)
-   (data     matrix :inline :dynamic))
+   (data     transformq :inline :dynamic))
   (:methods
    (new (symbol type int) _type_)))
 
-(defmethod new joint-anim-frame ((allocation symbol) (type-to-make type) (arg0 int))
-  "Create a new joint-anim-frame with enough room for arg0 matrices"
-  (let ((v1-1 (max 0 (+ arg0 -2))))
+(defmethod new joint-anim-frame ((allocation symbol) (type-to-make type) (joint-count int))
+  "Allocate a joint-animation frame for joint-count skeleton entries."
+  (let ((extra-transform-count (max 0 (+ joint-count -2))))
     (the-as joint-anim-frame
-            (new-dynamic-structure allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 v1-1)))))))
+            (new-dynamic-structure allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 extra-transform-count)))))))
 
-;; compression header - has info used by decompression algorithm
+;; The low three control bits select translation, quaternion, and scale values that change per
+;; frame.  A clear bit selects the fixed stream instead.  The fourth bit selects the wider
+;; translation representation.  Each uint32 holds controls for eight joints, for 112 joints total.
+;; matrix-bits makes the same fixed/per-frame choice for the two full matrices.
+(defenum joint-anim-matrix-flags
+  :type uint32
+  :bitfield #t
+  (matrix-0-animated 0)
+  (matrix-1-animated 1))
+
 (deftype joint-anim-compressed-hdr (structure)
   ((control-bits uint32 14)
    (num-joints   uint32)
-   (matrix-bits  uint32)))
+   (matrix-bits  joint-anim-matrix-flags)))
 
-;; this has the data needed to initialize the decompressor - I believe this
-;; contains the starting poisition of the joints.
+;; Constant components shared by every frame.  The offsets split the payload into the streams read
+;; at 64-, 32-, and 16-bit widths; this lets each value use its compact representation without
+;; padding every sample to the widest type.
 (deftype joint-anim-compressed-fixed (structure)
   ((hdr       joint-anim-compressed-hdr :inline)
    (offset-64 uint32)
@@ -63,8 +73,8 @@
    (reserved  uint32)
    (data      vector 133 :inline)))
 
-;; these are the actual compressed data frames.
-;; dynamically sized, depends on the number of joints and the decompression.
+;; Components selected as animated by the header.  Each record has the same frame-qwc stride and
+;; uses the same three-stream layout as the fixed block.
 (deftype joint-anim-compressed-frame (structure)
   ((offset-64 uint32)
    (offset-32 uint32)
@@ -72,7 +82,8 @@
    (reserved  uint32)
    (data      vector 133 :inline)))
 
-;; table of frames
+;; One fixed block followed by num-frames variable blocks.  The qwc fields are the exact DMA and
+;; pointer strides; data has a nominal element only so the dynamic frame table has an address.
 (deftype joint-anim-compressed-control (structure)
   ((num-frames uint32)
    (fixed-qwc  uint32)
@@ -84,8 +95,8 @@
 ;; ART
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; "art" is an overly general parent class of all art data.
-;; it can be either a container of arts (art-group) or a single art (art-element)
+;; Common header for a complete art group and for each element stored inside it.  length is
+;; interpreted by the concrete art type, while extra carries the asset's resource properties.
 (declare-type res-lump basic)
 
 (deftype art (basic)
@@ -98,7 +109,7 @@
    (lookup-idx-of-art (_type_ string type) int)
    (needs-link? (_type_) symbol)))
 
-;; parent class of all single art things.
+;; Base record for one element in an art-group.
 (deftype art-element (art)
   ((pad uint8 12)))
 
@@ -106,7 +117,9 @@
 (deftype art-mesh-anim (art-element)
   ((data basic :dynamic)))
 
-;; joint animation.
+;; An animation asset.  artist-base and artist-step map a runtime frame number into the artist's
+;; source timeline.  A dependent group can name its master group and slot so streamed animation
+;; data is linked into the shared art group.  blerc-data holds per-frame blend-shape weights.
 (declare-type merc-eye-anim-block structure)
 
 (deftype art-joint-anim (art-element)
@@ -120,15 +133,14 @@
    (frames                 joint-anim-compressed-control :offset 44)
    (data                   joint-anim-compressed :dynamic)))
 
-;; a collection of arts.
-;; this is often stored as a -ag file in static level data.
+;; A collection of indexed art elements, normally stored as an -ag file in level data.
 (deftype art-group (art)
   ((info file-info :offset 4)
    (data art-element :dynamic :offset 32))
   (:methods
    (relocate (_type_ kheap (pointer uint8)) none :replace)
-   (link-art! (_type_) art-group)
-   (unlink-art! (_type_) int)))
+   (link-art! "Install this group's joint animations into resident master art groups." (_type_) art-group)
+   (unlink-art! "Remove this group's joint animations from resident master art groups." (_type_) int)))
 
 ;; unused
 (deftype art-mesh-geo (art-element)
@@ -138,8 +150,12 @@
 (deftype art-joint-geo (art-element)
   ((data joint :dynamic)))
 
-;; the "skeleton group" is defined in code and tells the engine
-;; how to actually use the art from the level data for this object.
+;; Static recipe for constructing a drawable from an art-group.  jgeo, janim, mgeo, and shadow are
+;; element indices in that group.  mgeo and lod-dist are parallel arrays; max-lod is their last
+;; valid index, so larger indices contain progressively less detailed geometry.  setup-lods! may
+;; replace the authored distances with lod-dist resource data attached to the joint geometry.
+;; bounds is the model-space culling sphere.  longest-edge controls the near-camera clipping choice
+;; for MERC geometry.
 (deftype skeleton-group (basic)
   ((art-group-name string)
    (jgeo           int32)
@@ -160,18 +176,18 @@
 ;; Draw Control
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; the draw-control has settings for drawing a foreground object.
+;; Per-object foreground drawing state shared by culling, animation, lighting, shadow, and MERC
+;; packet generation.
 
 (declare-type merc-ctrl basic)
 
-;; a merc level of detail
+;; One MERC geometry level and the camera-distance threshold at which it gives way to the next.
 (deftype lod-group (structure)
   ((geo  merc-ctrl)
    (dist meters))
   :pack-me)
 
-;; the 4 levels of detail. the max-lod is the index of the highest lod that's actually used.
-;; it is the lowest detail.
+;; Up to four levels ordered from most to least detailed.  max-lod is the last valid index.
 (deftype lod-set (structure)
   ((lod     lod-group 4 :inline)
    (max-lod int8))
@@ -179,22 +195,21 @@
   (:methods
    (setup-lods! (_type_ skeleton-group art-group entity) _type_)))
 
-;; the draw statuses are somewhat confusing, as some are set by the engine
-;; and some are set by the game object code.
+;; Some flags are requests from object code and others are results maintained by the drawing code.
 (defenum draw-status
   :type uint8
   :bitfield #t
-  (needs-clip 0) ;; set by engine, determines if object should be clipped
-  (hidden 1) ;; set by user, can disable drawing and animation codes
-  (no-anim 2) ;; set by engine, if there is no active joint animation
-  (was-drawn 3) ;; set by engine, if we were drawn (passed cull checks)
-  (no-skeleton-update 4) ;; set by engine, if our transforms are not valid
-  (skip-bones 5) ;; set by user, skips call to draw-bones but does everything else
-  (do-not-check-distance 6) ;; set by user, ignore in finding closest object for texture calcs
-  (has-joint-channels 7) ;; set by engine, if the object has joint channels.
+  (needs-clip 0) ;; the culling sphere may cross the guard band
+  (hidden 1) ;; suppress drawing and animation
+  (no-anim 2) ;; there is no active joint animation
+  (was-drawn 3) ;; the object passed the culling and distance tests
+  (no-skeleton-update 4) ;; the skeleton transforms are not current
+  (skip-bones 5) ;; perform culling and LOD selection but skip draw-bones
+  (do-not-check-distance 6) ;; omit this object from the closest-distance texture calculation
+  (has-joint-channels 7) ;; the object has animated joint channels
   )
 
-;; only title seems to be used?
+;; Only title is used, to select the title-screen lighting setup.
 (defenum draw-effect
   :type uint8
   (drweff0 0)
@@ -212,8 +227,11 @@
 
 (declare-type shadow-control basic)
 
-;; the actual draw-control - this is just a collection of references to all info
-;; needed to do drawing.
+;; Complete foreground drawing state.  force-lod is negative for automatic distance selection.
+;; secondary-interp requests suppression of the secondary directional lights; its current value
+;; moves toward the request over several frames.  shadow-mask selects which mood-transition shadow
+;; regions affect that suppression.  origin-joint-index and shadow-joint-index choose the skeleton
+;; nodes used for the object's position and projected shadow.
 (deftype draw-control (basic)
   ((status                   draw-status)
    (matrix-type              uint8)
@@ -262,11 +280,11 @@
    (lods-assign! (_type_ lod-set) none)))
 
 (defmethod get-skeleton-origin ((this draw-control))
-  "Get the origin of the skeleton. Must have up-to-date bones."
+  "Return the root bone position; the skeleton must already be current."
   (-> this skeleton bones 0 position))
 
-;; look up the index of an art element in an art group.
 (desfun art-elt-index (ag-name elt-name)
+  "Resolve an art element name to its generated group index, passing numeric indices through."
   (if (number? elt-name)
     elt-name
     (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
@@ -276,6 +294,7 @@
           (if (not (car elt-info)) -1 (cadr (cdr elt-info))))))))
 
 (defmacro joint-node-index (jg-name name)
+  "Resolve a generated joint name or numeric name to its joint-node index."
   (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
     (if (not (car jg-info))
       -1
@@ -283,10 +302,11 @@
         (if (not (car joint-node)) -1 (cadr (cdr joint-node)))))))
 
 (defmacro joint-node (jg name)
+  "Select one of self's generated joint nodes by name."
   `(-> self node-list data (joint-node-index ,jg ,name)))
 
 (defmacro defskelgroup (name art-name joint-geom joint-anim lods &key (shadow 0) &key bounds &key (longest-edge 0.0) &key (texture-level 0) &key (sort 0))
-  "define a new static skeleton group"
+  "Define a static skeleton-group and resolve its art element names to group indices."
   `(let ((skel (new 'static
                    'skeleton-group
                    :art-group-name ,(symbol->string art-name)
@@ -312,6 +332,7 @@
     (define ,name skel)))
 
 (defmacro def-actor (name &key (idle #f) &key (lods #f) &key (art (idle-ja)) &key (joints ()) &key (shadow 0) &key bounds &key (longest-edge 0.0) &key (texture-level 0) &key (sort 0))
+  "Declare an actor's generated art elements, joint names, and static skeleton-group."
   `(begin
     (def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-lod0-jg" name) 0)
     (def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-lod0-mg" name) 1)

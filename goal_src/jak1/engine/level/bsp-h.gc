@@ -3,29 +3,27 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/draw/drawable-h.gc")
 
-;; Each level has a bsp file. There is a bsp-header, and a list of bsp-nodes.
-;; The bsp-nodes make up a tree.  Each node has a plane and two child nodes.
-;; The bsp-header also contains (or references) all of the static level information.
-;; The file containing the bsp-header is called the "bt" and is loaded in a special
-;; way because that allows it to use all of the remaining level heap memory.
-;; This file is very large (>8 MB), and always the last file in a level DGO.
-;; The bsp file also contains all the drawable trees and lots of other level data,
-;; so the "bsp-header" name isn't very accurate.
-
-;; Typically, the "bsp" refers to the static level data, and the "level" to the runtime level info.
-
-;; In the game, all of these bsp-header files have -vis after their name
-;; I believe this means that this is a version of a level that has an associated vis file
-;; for precomputed visibility.
+;; Every level ends with a large "bt" file containing its bsp-header. Loading it last lets the
+;; static level data consume the rest of the level heap. The header owns or references the BSP,
+;; drawable trees, actors, cameras, collision properties, textures, and visibility data; it is much
+;; broader than its historical name suggests. The shipped files use the -vis suffix because they
+;; include precomputed visibility data.
+;;
+;; "BSP" generally means this static level data, while "level" means its runtime state.
 
 (declare-type entity-camera basic)
 
 ;; flags: 1 = load
 ;;        2 = display
+;; Each terminal BSP side stores six of these two-bit pairs, one per neighboring level.
 
 ;; DECOMP BEGINS
 
-;; a node in the bsp tree
+;; Each plane splits space into front and back children. Front is
+;; dot(position, plane.xyz) - plane.w >= 0. A positive child is another bsp-node pointer; a
+;; nonpositive value identifies a terminal side; visibility trees use negative values to encode
+;; their leaf indices. Each side also carries the packed load/display pairs used when the camera
+;; reaches that terminal side.
 (deftype bsp-node (structure)
   ((front       int32)
    (back        int32)
@@ -33,8 +31,7 @@
    (back-flags  uint32)
    (plane       vector :inline)))
 
-;; This is the object stored first in the level bt (-vis)
-;; It is also a drawable, and drawing it will draw the level.
+;; This drawable is stored first in the level bt file; drawing it draws the static level.
 (deftype bsp-header (drawable)
   ((info                    file-info :overlay-at id)
    (all-visible-list        (pointer uint16))
@@ -57,6 +54,7 @@
    (current-leaf-idx        uint16)
    (unk-data-2              uint16 9)
    (boxes                   box8s-array)
+   ;; Packed neighboring-level flags from the terminal BSP side containing the camera.
    (current-bsp-back-flags  uint32)
    (ambients                drawable-inline-array-ambient)
    (unk-data-4              float)
@@ -70,8 +68,7 @@
    (birth (_type_) none)
    (deactivate-entities (_type_) none)))
 
-;; seems to be unused?
-;; In practice, a normal bsp-header is a game-level.
+;; Minimal wrapper around a master BSP. Runtime levels normally use bsp-header directly.
 (deftype game-level (basic)
   ((master-bsp basic)))
 
@@ -85,29 +82,34 @@
    (yon-bottom-left     vector :inline)
    (yon-bottom-right    vector :inline)))
 
-(defun-debug-recursive inspect-bsp-tree none ((arg0 bsp-header) (arg1 bsp-node))
-  "Recursively print all nodes in a bsp tree. This makes a huge mess"
+(defun-debug-recursive inspect-bsp-tree none ((header bsp-header) (node bsp-node))
+  "Recursively print the BSP below node, indenting each level. Positive child values are followed
+   as node pointers; nonpositive children print a terminal divider."
   (cond
-    ((zero? arg1))
+    ((zero? node))
     (else
-     (format #t "_#x~X________________~%" arg1)
-     (inspect arg1)
-     (let ((s4-0 *print-column*))
+     (format #t "_#x~X________________~%" node)
+     (inspect node)
+     (let ((saved-column *print-column*))
        (set! *print-column* (+ *print-column* 64))
-       (if (> (-> arg1 front) 0)
-         (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 front)))
-         (format #t "_#x~X________________~%" arg1))
-       (if (> (-> arg1 back) 0) (inspect-bsp-tree arg0 (the-as bsp-node (-> arg1 back))) (format #t "_#x~X________________~%" arg1))
-       (set! *print-column* s4-0))))
+       (if (> (-> node front) 0)
+         (inspect-bsp-tree header (the-as bsp-node (-> node front)))
+         (format #t "_#x~X________________~%" node))
+       (if (> (-> node back) 0)
+         (inspect-bsp-tree header (the-as bsp-node (-> node back)))
+         (format #t "_#x~X________________~%" node))
+       (set! *print-column* saved-column))))
   (none))
 
-(defun-recursive map-bsp-tree none ((arg0 (function bsp-node none)) (arg1 bsp-header) (arg2 bsp-node))
-  "Recursively apply arg0 to all nodes in the bsp tree"
+(defun-recursive map-bsp-tree none ((visit (function bsp-node none)) (header bsp-header) (node bsp-node))
+  "Walk the BSP below node. Positive child values are pointers to another node; for each
+   nonpositive child, call visit on the node that owns that terminal side. A node with two
+   terminal children is therefore visited twice."
   (cond
-    ((zero? arg2))
+    ((zero? node))
     (else
-     (if (> (-> arg2 front) 0) (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 front))) (arg0 arg2))
-     (if (> (-> arg2 back) 0) (map-bsp-tree arg0 arg1 (the-as bsp-node (-> arg2 back))) (arg0 arg2))))
+     (if (> (-> node front) 0) (map-bsp-tree visit header (the-as bsp-node (-> node front))) (visit node))
+     (if (> (-> node back) 0) (map-bsp-tree visit header (the-as bsp-node (-> node back))) (visit node))))
   (none))
 
 (deftype cl-stat (structure)
@@ -131,5 +133,5 @@
 
 (defconstant VISIBLE_LIST_SCRATCHPAD #x38b0)
 
-;; TODO - for cam-update
+;; Update the header's current visibility leaf for a camera position.
 (define-extern bsp-camera-asm (function bsp-header vector none))

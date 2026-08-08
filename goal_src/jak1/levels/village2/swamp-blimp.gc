@@ -74,7 +74,7 @@
    (:accel-y (meters -0.00016666666) (meters -0.00016666666))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.1) (seconds 0.097))
    (:next-launcher 2069)
    (:conerot-x (degrees 0) (degrees 120))
@@ -99,7 +99,7 @@
    (:scalevel-y (meters 1.04))
    (:fade-a -1.6)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2065
   :init-specs
@@ -114,7 +114,7 @@
    (:a 128.0)
    (:fade-a -2.3272727)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2067
   :init-specs
@@ -136,7 +136,7 @@
    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
    (:friction 0.8)
    (:timer (seconds 1.7))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.14))
    (:next-launcher 2070)
    (:conerot-x (degrees 0) (degrees 120))
@@ -161,7 +161,7 @@
    (:scalevel-x (meters 0.016666668) (meters 0.01))
    (:scalevel-y :copy scalevel-x)
    (:timer (seconds 2))
-   (:flags (bit2 bit4 bit14))
+   (:flags (die-when-faded subtract-blend no-fog))
    (:next-time (seconds 0.5))
    (:next-launcher 109)))
 
@@ -187,7 +187,7 @@
    (:accel-y (meters -0.0026666666))
    (:friction 0.99)
    (:timer (seconds 0.5))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:userdata 0.0)
    (:conerot-x (degrees 20) (degrees 50.000004))
    (:conerot-y (degrees 0) (degrees 360))))
@@ -211,8 +211,9 @@
    (damping           float)))
 
 
-(defun tetherrock-get-info ((arg0 entity))
-  (case (-> arg0 extra perm task)
+(defun tetherrock-get-info ((entity entity))
+  "Return the camera, rope-joint, connection, and damping settings for a tether rock's task."
+  (case (-> entity extra perm task)
     (((game-task swamp-tether-1))
      (new 'static
           'tetherrock-info
@@ -264,16 +265,18 @@
    (update-timer! (_type_) none)))
 
 
-(defmethod init! ((this swamp-rope-rand-float) (arg0 int) (arg1 int) (arg2 float))
-  (set! (-> this min-time) arg0)
-  (set! (-> this max-time) arg1)
-  (set! (-> this max-val) (/ arg2 2))
+(defmethod init! ((this swamp-rope-rand-float) (min-time int) (max-time int) (max-value float))
+  "Initialize the random value's time range and symmetric value range."
+  (set! (-> this min-time) min-time)
+  (set! (-> this max-time) max-time)
+  (set! (-> this max-val) (/ max-value 2))
   (set! (-> this timer) 0)
   (set! (-> this value) 0.0)
   0
   (none))
 
 (defmethod update-timer! ((this swamp-rope-rand-float))
+  "Choose a new timer and random value when the current interval expires."
   (set! (-> this timer) (- (the-as time-frame (-> this timer)) (- (current-time) (-> *display* old-base-frame-counter))))
   (when (<= (-> this timer) 0)
     (set! (-> this timer) (rand-vu-int-range (-> this min-time) (-> this max-time)))
@@ -291,22 +294,25 @@
    (damping        float))
   (:methods
    (init! (_type_ float float float float) none)
-   (swamp-rope-oscillator-method-10 (_type_ float) none)))
+   (update! (_type_ float) none)))
 
 
-(defmethod init! ((this swamp-rope-oscillator) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
-  (set! (-> this target) arg0)
-  (set! (-> this value) arg0)
+(defmethod init! ((this swamp-rope-oscillator) (initial-value float) (accel float) (max-velocity float) (damping float))
+  "Initialize a damped scalar oscillator at its target."
+  (set! (-> this target) initial-value)
+  (set! (-> this value) initial-value)
   (set! (-> this vel) 0.0)
-  (set! (-> this accel) arg1)
-  (set! (-> this max-vel) arg2)
-  (set! (-> this damping) arg3)
+  (set! (-> this accel) accel)
+  (set! (-> this max-vel) max-velocity)
+  (set! (-> this damping) damping)
   0
   (none))
 
-(defmethod swamp-rope-oscillator-method-10 ((this swamp-rope-oscillator) (arg0 float))
-  (let ((f0-3 (* (- (+ (-> this target) arg0) (-> this value)) (* (-> this accel) (-> *display* time-adjust-ratio)))))
-    (+! (-> this vel) f0-3))
+(defmethod update! ((this swamp-rope-oscillator) (target-offset float))
+  "Advance the damped scalar oscillator toward target plus target-offset."
+  (let ((accel-delta
+         (* (- (+ (-> this target) target-offset) (-> this value)) (* (-> this accel) (-> *display* time-adjust-ratio)))))
+    (+! (-> this vel) accel-delta))
   (set! (-> this vel) (fmin (-> this max-vel) (fmax (- (-> this max-vel)) (-> this vel))))
   (set! (-> this vel) (* (-> this vel) (-> this damping)))
   (+! (-> this value) (* (-> this vel) (-> *display* time-adjust-ratio)))
@@ -325,17 +331,19 @@
    (update-timer! (_type_) none)))
 
 
-(defmethod init! ((this swamp-blimp-rand-vector) (arg0 int) (arg1 int) (arg2 float) (arg3 float))
-  (set! (-> this min-time) arg0)
-  (set! (-> this max-time) arg1)
-  (set! (-> this xz-max) (/ arg2 2))
-  (set! (-> this y-max) (/ arg3 2))
+(defmethod init! ((this swamp-blimp-rand-vector) (min-time int) (max-time int) (xz-range float) (y-range float))
+  "Initialize the random vector's time and component ranges."
+  (set! (-> this min-time) min-time)
+  (set! (-> this max-time) max-time)
+  (set! (-> this xz-max) (/ xz-range 2))
+  (set! (-> this y-max) (/ y-range 2))
   (set! (-> this timer) 0)
   (vector-reset! (-> this value))
   0
   (none))
 
 (defmethod update-timer! ((this swamp-blimp-rand-vector))
+  "Choose a new timer and random vector when the current interval expires."
   (set! (-> this timer) (- (the-as time-frame (-> this timer)) (- (current-time) (-> *display* old-base-frame-counter))))
   (when (<= (-> this timer) 0)
     (set! (-> this timer) (rand-vu-int-range (-> this min-time) (-> this max-time)))
@@ -355,32 +363,39 @@
   :pack-me
   (:methods
    (init! (_type_ vector float float float) none)
-   (swamp-blimp-oscillator-method-10 (_type_ vector) none)))
+   (update! (_type_ vector) none)))
 
 
-(defmethod init! ((this swamp-blimp-oscillator) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+(defmethod init! ((this swamp-blimp-oscillator) (initial-value vector) (accel float) (max-velocity float) (damping float))
+  "Initialize a damped vector oscillator at its target."
   (cond
-    (arg0 (set! (-> this target quad) (-> arg0 quad)) (set! (-> this value quad) (-> arg0 quad)))
+    (initial-value
+     (vector-copy! (-> this target) initial-value)
+     (vector-copy! (-> this value) initial-value))
     (else (vector-reset! (-> this target)) (vector-reset! (-> this value))))
   (vector-reset! (-> this vel))
-  (set! (-> this accel) arg1)
-  (set! (-> this max-vel) arg2)
-  (set! (-> this damping) arg3)
+  (set! (-> this accel) accel)
+  (set! (-> this max-vel) max-velocity)
+  (set! (-> this damping) damping)
   0
   (none))
 
-(defmethod swamp-blimp-oscillator-method-10 ((this swamp-blimp-oscillator) (arg0 vector))
-  (let ((gp-0 (new 'stack-no-clear 'vector)))
+(defmethod update! ((this swamp-blimp-oscillator) (target-offset vector))
+  "Advance the damped vector oscillator toward target plus target-offset."
+  (let ((delta (new 'stack-no-clear 'vector)))
     (cond
-      (arg0 (vector+! gp-0 (-> this target) arg0) (vector-! gp-0 gp-0 (-> this value)))
-      (else (vector-! gp-0 (-> this target) (-> this value))))
-    (vector-float*! gp-0 gp-0 (* (-> this accel) (-> *display* time-adjust-ratio)))
-    (vector+! (-> this vel) (-> this vel) gp-0)
-    (let ((f0-2 (vector-length (-> this vel))))
-      (if (< (-> this max-vel) f0-2) (vector-float*! (-> this vel) (-> this vel) (/ (-> this max-vel) f0-2))))
+      (target-offset
+       (vector+! delta (-> this target) target-offset)
+       (vector-! delta delta (-> this value)))
+      (else (vector-! delta (-> this target) (-> this value))))
+    (vector-float*! delta delta (* (-> this accel) (-> *display* time-adjust-ratio)))
+    (vector+! (-> this vel) (-> this vel) delta)
+    (let ((speed (vector-length (-> this vel))))
+      (if (< (-> this max-vel) speed)
+        (vector-float*! (-> this vel) (-> this vel) (/ (-> this max-vel) speed))))
     (vector-float*! (-> this vel) (-> this vel) (-> this damping))
-    (vector-float*! gp-0 (-> this vel) (-> *display* time-adjust-ratio))
-    (vector+! (-> this value) (-> this value) gp-0))
+    (vector-float*! delta (-> this vel) (-> *display* time-adjust-ratio))
+    (vector+! (-> this value) (-> this value) delta))
   0
   (none))
 
@@ -429,14 +444,15 @@
    (z-t             float)
    (rot-speed       float))
   (:methods
-   (swamp-rope-method-20 (_type_) basic))
+   (still-tethered? (_type_) basic))
   (:states
    swamp-rope-break
    swamp-rope-idle-arm
    swamp-rope-idle-rock))
 
 
-(defmethod swamp-rope-method-20 ((this swamp-rope))
+(defmethod still-tethered? ((this swamp-rope))
+  "Return whether the rope's other entity exists and its task still needs a reminder."
   (and (-> this other-entity) (not (task-closed? (-> this other-entity extra perm task) (task-status need-reminder)))))
 
 (deftype swamp-blimp (process-drawable)
@@ -463,6 +479,7 @@
 
 
 (defmethod relocate ((this swamp-blimp) (offset int))
+  "Relocate the blimp's saved initial position along with the drawable."
   (if (nonzero? (-> this gondola)) (&+! (-> this gondola) offset))
   (if (nonzero? (-> this bag)) (&+! (-> this bag) offset))
   (call-parent-method this offset))
@@ -508,10 +525,10 @@
             ((= s5-0 3) (ambient-hint-spawn "gamcam03" (the-as vector #f) *entity-pool* 'camera))
             ((= s5-0 4) (ambient-hint-spawn "gamcam06" (the-as vector #f) *entity-pool* 'camera))))
         (let ((s5-1 (entity-by-name (-> gp-0 rock-camera))))
-          (cam-slave-get-vector-with-offset (the-as entity-actor s5-1) *camera-other-trans* 'trans)
-          (cam-slave-get-rot (the-as entity-actor s5-1) *camera-other-matrix*)
+          (cam-slave-get-vector-with-offset (the-as entity-camera s5-1) *camera-other-trans* 'trans)
+          (cam-slave-get-rot (the-as entity-camera s5-1) *camera-other-matrix*)
           (set! (-> *camera-other-fov* data) (cam-slave-get-fov s5-1)))
-        (set! (-> *camera-other-root* quad) (-> self root trans quad))
+        (vector-copy! *camera-other-root* (-> self root trans))
         (set-time! (-> self state-time))
         (until (time-elapsed? (-> self state-time) (seconds 0.6))
           (set! *camera-look-through-other* 2)
@@ -557,10 +574,10 @@
               (suspend))
             (when (zero? s5-2)
               (let ((gp-1 (entity-by-name (-> gp-0 arm-camera))))
-                (cam-slave-get-vector-with-offset (the-as entity-actor gp-1) *camera-other-trans* 'trans)
-                (cam-slave-get-rot (the-as entity-actor gp-1) *camera-other-matrix*)
+                (cam-slave-get-vector-with-offset (the-as entity-camera gp-1) *camera-other-trans* 'trans)
+                (cam-slave-get-rot (the-as entity-camera gp-1) *camera-other-matrix*)
                 (set! (-> *camera-other-fov* data) (cam-slave-get-fov gp-1)))
-              (set! (-> *camera-other-root* quad) (-> self root trans quad))
+              (vector-copy! *camera-other-root* (-> self root trans))
               (set-time! (-> self state-time))
               (until (time-elapsed? (-> self state-time) (seconds 5))
                 (set! *camera-look-through-other* 2)
@@ -643,9 +660,11 @@
         (suspend)))
   :post transform-post)
 
-(defmethod init-from-entity! ((this swamp-tetherrock) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swamp-tetherrock) (source-entity entity-actor))
+  "Initialize a tether rock's collision, skeleton, pickup, blimp link, and task-dependent
+   starting state."
   (logior! (-> this mask) (process-mask attackable))
-  (process-entity-status! this (entity-perm-status bit-7) #t)
+  (process-entity-status! this (entity-perm-status force-birth) #t)
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -662,10 +681,10 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *swamp-tetherrock-sg* '())
   (set! (-> this fact) (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
-  (set! (-> this blimp) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this blimp) (entity-actor-lookup source-entity 'alt-actor 0))
   (set! (-> this tension) 0.0)
   (vector-reset! (-> this tension-pt))
   (quaternion-copy! (-> this rot-at-init) (-> this root quat))
@@ -708,11 +727,12 @@
         (suspend)))
   :post transform-post)
 
-(defun precursor-arm-slip ((arg0 float))
+(defun precursor-arm-slip ((progress float))
+  "Clamp progress to zero through one and apply a quadratic ease-out."
   (cond
-    ((>= arg0 1.0) 1.0)
-    ((>= 0.0 arg0) 0.0)
-    (else (- 1.0 (square (- 1.0 arg0))))))
+    ((>= progress 1.0) 1.0)
+    ((>= 0.0 progress) 0.0)
+    (else (- 1.0 (square (- 1.0 progress))))))
 
 (defstate precursor-arm-idle (precursor-arm)
   :event
@@ -733,7 +753,7 @@
         (matrix->quaternion (-> self root quat) gp-0))
       (when (< (vector-vector-distance (-> self root trans) (camera-pos)) 204800.0)
         (let ((a2-1 (new 'static 'vector)))
-          (set! (-> a2-1 quad) (-> self root trans quad))
+          (vector-copy! a2-1 (-> self root trans))
           (set! (-> a2-1 y) 0.0)
           (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2017) a2-1))))
   :code
@@ -771,7 +791,9 @@
         (suspend)))
   :post transform-post)
 
-(defmethod init-from-entity! ((this precursor-arm) (arg0 entity-actor))
+(defmethod init-from-entity! ((this precursor-arm) (source-entity entity-actor))
+  "Initialize a precursor arm's collision, skeleton, motion state, and task-dependent starting
+   state."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -784,7 +806,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *precursor-arm-sg* '())
   (set! (-> this rot-speed) 0.0)
   (set! (-> this rot-dist) 0.0)
@@ -794,7 +816,7 @@
   (set! (-> this y-offset) 0.0)
   (set! (-> this y-init) (-> this root trans y))
   (set! (-> this tension) 0.0)
-  (process-entity-status! this (entity-perm-status bit-7) #t)
+  (process-entity-status! this (entity-perm-status force-birth) #t)
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this event-hook) (-> precursor-arm-idle event))
   (if (= (get-task-status (-> this entity extra perm task)) (task-status invalid))
@@ -806,7 +828,7 @@
   (let ((a0-0 (new 'stack-no-clear 'vector)))
     (vector-! a0-0 (-> self other-pos) (-> self root trans))
     (vector-float*! a0-0 a0-0 0.5)
-    (set! (-> self draw bounds quad) (-> a0-0 quad))
+    (vector-copy! (-> self draw bounds) a0-0)
     (set! (-> self draw bounds w) (vector-length a0-0)))
   0
   (none))
@@ -872,21 +894,17 @@
                (v1-10 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                (v1-11 (the-as number (logior #x3f800000 v1-10)))
                (f30-3 (+ f30-2 (* f28-1 (+ -1.0 (the-as float v1-11))))))
-          (ja-no-eval :group! swamp-rope-swing-ja :num! (seek! max f30-3) :frame-num 0.0)
-          (until (ja-done? 0)
-            (swamp-rope-break-code)
-            (suspend)
-            (ja :num! (seek! max f30-3))))))
+          (ja-play :group! swamp-rope-swing-ja :num! (seek! max f30-3) :frame-num 0.0 (swamp-rope-break-code)))))
   :post
     (behavior ()
-      (set! (-> self other-pos quad) (-> self root trans quad))
+      (vector-copy! (-> self other-pos) (-> self root trans))
       (+! (-> self other-pos y) -245760.0)
       (swamp-rope-post)))
 
 (defbehavior swamp-rope-trans swamp-rope ()
   (vector<-cspace! (-> self root trans) (-> self parent-override 0 node-list data (-> self parent-rp)))
   (cond
-    ((not (swamp-rope-method-20 self))
+    ((not (still-tethered? self))
      (let ((gp-0 (new 'stack-no-clear 'matrix)))
        (quaternion->matrix gp-0 (-> self root quat))
        (set! (-> self base-vec quad) (-> gp-0 vector 1 quad)))
@@ -919,12 +937,12 @@
         (let* ((f0-1 (* 2000.0 (- (-> self old-scale) (-> self root scale y))))
                (f1-3 (+ 0.5 f0-1)))
           (set! (-> self frame target) (fmin 1.0 (fmax 0.0 f1-3))))
-        (swamp-rope-oscillator-method-10 (-> self frame) 0.0)
+        (update! (-> self frame) 0.0)
         (let* ((v1-6 (-> self other-entity))
                (a0-4 (if v1-6 (-> v1-6 extra process))))
           (when a0-4
             (set! (-> (the-as swamp-rope a0-4) parent-rp) (the-as int (-> self frame value)))
-            (set! (-> (the-as swamp-rope a0-4) frame vector-overlay quad) (-> self root trans quad))))
+            (vector-copy! (-> (the-as swamp-rope a0-4) frame vector-overlay) (-> self root trans))))
         (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
         (suspend)))
   :post swamp-rope-post)
@@ -938,19 +956,19 @@
         (let* ((a0-3 (-> self other-entity))
                (v1-3 (if a0-3 (-> a0-3 extra process))))
           (if v1-3 (set! (-> self frame target) (- 1.0 (-> (the-as swamp-rope v1-3) scale-t)))))
-        (swamp-rope-oscillator-method-10 (-> self frame) 0.0)
+        (update! (-> self frame) 0.0)
         (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
         (suspend)))
   :post swamp-rope-post)
 
-(defbehavior swamp-rope-init-by-other swamp-rope ((arg0 vector) (arg1 entity-actor))
+(defbehavior swamp-rope-init-by-other swamp-rope ((origin vector) (other-entity entity-actor))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) origin)
   (initialize-skeleton self *swamp-rope-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
-  (set! (-> self other-entity) arg1)
+  (set! (-> self other-entity) other-entity)
   (when (-> self other-entity)
-    (set! (-> self other-pos quad) (-> self other-entity extra trans quad))
+    (vector-copy! (-> self other-pos) (-> self other-entity extra trans))
     (let ((gp-1 (tetherrock-get-info (-> self other-entity))))
       (init! (-> self frame) 0.0 0.002 0.02 (-> gp-1 damping))
       (set! (-> self parent-rp) (-> gp-1 blimp-rp))
@@ -970,7 +988,7 @@
       (set! (-> self y-vel) 0.0)))
   (update-timer! (-> self scale-rand))
   (set! (-> self scale-oscillator target) (* 0.9 (-> self scale-oscillator target)))
-  (swamp-rope-oscillator-method-10 (-> self scale-oscillator) (-> self scale-rand value))
+  (update! (-> self scale-oscillator) (-> self scale-rand value))
   (let ((a3-0 (new 'stack-no-clear 'vector)))
     (set! (-> a3-0 y) (+ 1.0 (-> self scale-oscillator value)))
     (set! (-> a3-0 x) (sqrtf (/ 1.0 (-> a3-0 y))))
@@ -979,9 +997,9 @@
     (set-trs! (-> self bag) (the-as vector #f) (the-as quaternion #f) a3-0))
   (update-timer! (-> self main-tilt-rand))
   (update-timer! (-> self pos-rand))
-  (swamp-blimp-oscillator-method-10 (-> self main-tilt-oscillator) (-> self main-tilt-rand value))
-  (swamp-blimp-oscillator-method-10 (-> self gondola-tilt-oscillator) (the-as vector #f))
-  (swamp-blimp-oscillator-method-10 (-> self pos-oscillator) (-> self pos-rand value))
+  (update! (-> self main-tilt-oscillator) (-> self main-tilt-rand value))
+  (update! (-> self gondola-tilt-oscillator) (the-as vector #f))
+  (update! (-> self pos-oscillator) (-> self pos-rand value))
   (new 'stack-no-clear 'vector)
   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -1041,7 +1059,7 @@
               ((= s5-0 (-> *SWAMP_BLIMP-bank* arm-index))
                (vector+! (-> self pos-oscillator target) (-> self pos-oscillator target) (-> (the-as swamp-rope s4-0) other-pos))
                (vector-! (-> self pos-oscillator target) (-> self pos-oscillator target) (-> self root trans)))
-              ((swamp-rope-method-20 (the-as swamp-rope s4-0))
+              ((still-tethered? (the-as swamp-rope s4-0))
                (vector+! (-> self pos-oscillator target) (-> self pos-oscillator target) (-> (the-as swamp-rope s4-0) other-pos))
                (vector-! (-> self pos-oscillator target) (-> self pos-oscillator target) (-> self trans-at-init))
                (+! gp-0 1))
@@ -1097,7 +1115,9 @@
         (suspend)))
   :post transform-post)
 
-(defmethod init-from-entity! ((this swamp-blimp) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swamp-blimp) (source-entity entity-actor))
+  "Initialize the blimp's collision, skeleton, oscillators, rope links, joint modifiers, and
+   idle state."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -1114,11 +1134,11 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *swamp-blimp-sg* '())
   (quaternion-copy! (-> this rot-at-init) (-> this root quat))
   (set! (-> this arm-timer) 0)
-  (set! (-> this trans-at-init quad) (-> this root trans quad))
+  (vector-copy! (-> this trans-at-init) (-> this root trans))
   (set! (-> this y-vel) 0.0)
   (set! (-> this y-offset) 0.0)
   (set! (-> this y-offset-target) 0.0)
@@ -1141,14 +1161,15 @@
   (set! (-> this gondola) (new 'process 'joint-mod (joint-mod-handler-mode joint-set*) this 5))
   (set! (-> this bag) (new 'process 'joint-mod (joint-mod-handler-mode joint-set*) this 3))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (process-entity-status! this (entity-perm-status bit-7) #t)
+  (process-entity-status! this (entity-perm-status force-birth) #t)
   (swamp-blimp-setup)
   (go swamp-blimp-idle)
   (none))
 
-(defun-debug bustarock ((arg0 int))
+(defun-debug bustarock ((rock-number int))
+  "Send five yellow-eco attacks to the numbered swamp tether rock for debugging."
   (with-pp
-    (format (clear *temp-string*) "swamp-tetherrock-~D" arg0)
+    (format (clear *temp-string*) "swamp-tetherrock-~D" rock-number)
     (let ((gp-1 (entity-by-name *temp-string*)))
       (when gp-1
         (dotimes (s5-1 5)

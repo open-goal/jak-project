@@ -3,18 +3,20 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/gfx/hw/display-h.gc")
 
-;; This extremely confusing "connection system" allows the connection between
-;; "engines" and "processes".  Basically, a process can "register" itself with any number of "engines".
-;; The "engines" can then iterate through all the connected processes. If a process is destroyed, it will
-;; be removed from all engines.  It is okay to connect a process to multiple engines, or even to the same engine
-;; multiple times.
+;; The connection system lets a process register one or more entries with any
+;; number of engines. An engine can iterate or execute its registered entries,
+;; and destroying a process removes all of its entries from every engine. A
+;; process may connect to the same engine more than once.
 
 ;; Some example uses:
 ;; - a "foreground-engine" has connections to all foreground objects that need to be drawn on each frame.
 ;; - when a process wants to change a game setting, it opens a connection to the settings engine to request a change.
 ;;   when the process is killed (or it stops requesting the change), the setting change is reverted.
 
-;; A "connection" is really just a function that gets called when the engine runs, or a set of parameters that the engine can iterate through.
+;; A connection is either a callback that an engine executes or a set of
+;; parameters that an engine examines. For callback connections, param0 is the
+;; function and param1 through param3 plus the execute argument are its inputs.
+;; Some engines treat a callback result of 'dead as a request to disconnect.
 
 ;; DECOMP BEGINS
 
@@ -22,18 +24,17 @@
 ;; connectable
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; A connectable is the linked-list node part of a connection.
-;; The connections themselves are owned by the engine.
-
-;; the next0/prev0 references are used for how this belongs in the connectable list
-;; belonging to the _engine_. These terminate on special nodes stored in the engine:
-;; alive-list/alive-list-end for the active connections, and dead-list/dead-list-end
-;; for the inactive.
-
-;; the next1/prev1 references are used to build a linked list _per process_.
-;; the head of this list is the inline connectable in process and it ends with #f.
-;; This is a bit confusing at first, but these belong to two linked lists...
-;; These terminate on both ends with #f.
+;; A connectable is the intrusive-list portion of a connection. Each node belongs
+;; to two independent lists:
+;;
+;; - next0/prev0 link the slot into one of its engine's lists. Active slots lie
+;;   between alive-list and alive-list-end; unused slots lie between dead-list
+;;   and dead-list-end.
+;; - next1/prev1 link an active slot into its owner's process list. The inline
+;;   process connection-list is the head sentinel, and #f terminates the tail.
+;;
+;; Engines own a fixed-capacity inline array of connection slots. The alive and
+;; dead lists partition that array, so adding and removing entries never allocates.
 
 (deftype connectable (structure)
   ((next0 connectable)
@@ -45,10 +46,9 @@
 ;; connection
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; this is the actual data for the connection.
-;; it may be used in multiple ways, but the most common is to use param0 as a function
-;; it receives param1, param2, param3, and the engine as the arugmetns.
-;; in some cases, the return value is checked for 'dead.
+;; This is the payload stored after the two intrusive-list links. The parameters
+;; deliberately remain untyped enough to support both callback and data-only
+;; engines.
 
 (declare-type engine basic)
 
@@ -82,9 +82,9 @@
 ;; engine
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; an engine is a collection of connections.
-;; you can iterate over the connections, or run them.
-;; the engine is dynamically sized based on how many connections it can store.
+;; An engine is a fixed-capacity collection of connections. Its allocation is
+;; sized for the requested number of inline slots, which are recycled through
+;; the dead list.
 
 (deftype engine (basic)
   ((name             basic)
@@ -114,11 +114,11 @@
    (remove-by-param2 (engine int) int)
    (get-first-connectable (engine) connectable)
    (get-last-connectable (engine) connectable)
-   (unknown-1 (engine (pointer uint32)) uint)))
+   (get-next-connectable (engine connectable) connectable)))
 
-(defmethod belongs-to-process? ((this connection) (arg0 process))
-  "Does this connection belong to the given process?"
-  (= arg0 ((method-of-type connection get-process) this)))
+(defmethod belongs-to-process? ((this connection) (proc process))
+  "Check whether this live connection belongs to proc."
+  (= proc ((method-of-type connection get-process) this)))
 
 (defmethod print ((this connection))
   "Print a connection and its parameters"
@@ -132,57 +132,63 @@
   this)
 
 (defmethod get-engine ((this connection))
-  "Get the engine for this connection. This must be used on a live connection."
-  ;; back up, until we get to the node that's inline on the engine.
+  "Walk the live-list predecessors to recover the engine that owns this live connection."
+  ;; The first node with no predecessor is the engine's inline alive-list.
   (while (-> this prev0)
     (nop!)
     (nop!)
     (set! this (the connection (-> this prev0))))
-  ;; this is now alive-list field in an engine, so we can do an offset trick:
+  ;; Recover the containing engine from the alive-list field address.
   (the-as engine (&+ this -28)))
 
 (defmethod get-process ((this connection))
-  "Get the process for this connection"
-  ;; same trick as get-engine, but backs up using prev1 until we hit the process.
+  "Walk the process-list predecessors to recover the process that owns this live connection."
+  ;; The first node with no predecessor is the process's inline connection-list.
   (while (-> this prev1)
     (nop!)
     (nop!)
     (set! this (the connection (-> this prev1))))
-  ;; got to the root connection-list in the process.
+  ;; Recover the containing process from the connection-list field address.
   (the-as process (&+ this -92)))
 
-(defmethod belongs-to-engine? ((this connection) (arg0 engine))
-  "Check to see if this connection is located in the data section of the engine.
-   This works on dead or alive connections."
-  ;; we can be clever and just see if it has the right address.
-  (and (< (the-as int arg0) (the-as int this))
-       (< (the-as int this) (the-as int (-> arg0 data (-> arg0 allocated-length))))))
+(defmethod belongs-to-engine? ((this connection) (target-engine engine))
+  "Check whether this connection's address lies in engine's fixed-capacity data array."
+  ;; Address ownership is independent of whether the slot is alive or dead.
+  (and (< (the-as int target-engine) (the-as int this))
+       (< (the-as int this) (the-as int (-> target-engine data (-> target-engine allocated-length))))))
 
 (defmethod get-first-connectable ((this engine))
-  "Get the first connectable on the alive list.
-   This should be a valid connection."
+  "Return the first live node, or the exclusive end sentinel when the list is empty."
   (-> this alive-list next0))
 
 (defmethod get-last-connectable ((this engine))
-  "Get the last connectable on the alive list.
-   I think the returned connectable is invalid."
+  "Return the live list's exclusive end sentinel."
   (-> this alive-list-end))
 
-(defmethod unknown-1 ((this engine) (arg0 (pointer uint32)))
-  "Not clear what this does. Possibly get next."
-  (the-as uint32 (-> arg0 0)))
+(defmethod get-next-connectable ((this engine) (node connectable))
+  "Return node's next link in an engine list."
+  (-> node next0))
 
-(defmethod new engine ((allocation symbol) (type-to-make type) (name basic) (length int))
-  "Allocate a new engine with enough room for length connections."
-  (local-vars (this engine) (idx-to-link int) (end-idx int))
+;; Walk an engine's live connections in forward order. Cache next before running body so body may
+;; unlink the current connection without breaking the traversal.
+(defmacro iterate-engine-connections (bindings &rest body)
+  (with-gensyms (next)
+    `(let* ((,(car bindings) (the connection (-> ,(cadr bindings) alive-list next0)))
+           (,next (the connection (-> ,(car bindings) next0))))
+      (while (!= ,(car bindings) (-> ,(cadr bindings) alive-list-end))
+        ,@body
+        (set! ,(car bindings) ,next)
+        (set! ,next (the connection (-> ,next next0)))))))
+
+(defmethod new engine ((allocation symbol) (type-to-make type) (name basic) (capacity int))
+  "Allocate a fixed-capacity engine and link every connection slot into its dead list."
+  (local-vars (this engine) (i int) (last-interior-index int))
   (set! this
-        (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (the-as uint (shl (+ length -1) 5))))))
-  (set! (-> this allocated-length) length)
-  ;; in use
+        (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (the-as uint (shl (+ capacity -1) 5))))))
+  (set! (-> this allocated-length) capacity)
   (set! (-> this length) 0)
   (set! (-> this name) name)
-  ;; link the alive list first/last with next0/prev0
-  ;; alive-list <-> alive-list-end
+  ;; Start with an empty alive list.
   (set! (-> this alive-list next0) (-> this alive-list-end))
   (set! (-> this alive-list prev0) #f)
   (set! (-> this alive-list next1) #f)
@@ -191,33 +197,25 @@
   (set! (-> this alive-list-end prev0) (-> this alive-list))
   (set! (-> this alive-list-end next1) #f)
   (set! (-> this alive-list-end prev1) #f)
-  ;; link the dead list first/last with the stuff in data.
-  ;; dead-list <-> (-> data 0) ... dead-list-end
-  ;; dead-list to data[0]
+  ;; Link every data slot between the dead-list sentinels.
   (set! (-> this dead-list next0) (-> this data 0))
   (set! (-> this dead-list prev0) #f)
   (set! (-> this dead-list next1) #f)
   (set! (-> this dead-list prev1) #f)
-  ;; end to data[-1]
   (set! (-> this dead-list-end next0) #f)
-  (set! (-> this dead-list-end prev0) (-> this data (+ length -1)))
+  (set! (-> this dead-list-end prev0) (-> this data (+ capacity -1)))
   (set! (-> this dead-list-end next1) #f)
   (set! (-> this dead-list-end prev1) #f)
-  ;; data[0] to dead-list
   (set! (-> this data 0 prev0) (-> this dead-list))
-  ;; data[0] to data[1]
   (set! (-> this data 0 next0) (the connectable (&+ this 124)))
-  ;; loop over datas.
-  (set! idx-to-link 1)
-  (set! end-idx (+ length -2))
-  (while (>= end-idx idx-to-link)
-    (set! (-> this data idx-to-link prev0) (-> this data (+ idx-to-link -1)))
-    (set! (-> this data idx-to-link next0) (-> this data (+ idx-to-link 1)))
-    (+! idx-to-link 1))
-  ;; data[-1] to data[-2]
-  (set! (-> this data (+ length -1) prev0) (-> this data (+ length -2)))
-  ;; data[-1] to dead-list-end
-  (set! (-> this data (+ length -1) next0) (-> this dead-list-end))
+  (set! i 1)
+  (set! last-interior-index (+ capacity -2))
+  (while (>= last-interior-index i)
+    (set! (-> this data i prev0) (-> this data (+ i -1)))
+    (set! (-> this data i next0) (-> this data (+ i 1)))
+    (+! i 1))
+  (set! (-> this data (+ capacity -1) prev0) (-> this data (+ capacity -2)))
+  (set! (-> this data (+ capacity -1) next0) (-> this dead-list-end))
   this)
 
 (defmethod print ((this engine))
@@ -255,74 +253,69 @@
   this)
 
 (defmethod length ((this engine))
-  "Get the in-use length of an engine"
+  "Return the number of live connections."
   (-> this length))
 
 (defmethod asize-of ((this engine))
-  "Get the size in memory of an engine"
+  "Return this engine's allocation size, including its inline connection slots."
   (the-as int (+ (-> engine size) (the-as uint (shl (+ (-> this allocated-length) -1) 5)))))
 
 (defmethod apply-to-connections ((this engine) (f (function connectable none)))
-  "Apply f to all connections for the engine. It's okay to have f remove the connection."
-  (let* ((current (-> this alive-list next0))
-         ;; need to get this _before_ running f, in case we remove.
-         (next (-> current next0)))
-    (while (!= current (-> this alive-list-end))
-      (f current)
-      (set! current next)
-      (set! next (-> next next0))))
+  "Apply f to every live connection in forward order, caching the next node so f may remove the current one."
+  ;; Save this before the callback in case it removes current.
+  (iterate-engine-connections (current this) (f current))
   0)
 
 (defmethod apply-to-connections-reverse ((this engine) (f (function connectable none)))
-  "Apply f to all connections, reverse order.
-   Do not use f to remove yourself from the list."
+  "Apply f to every live connection in reverse order. f must not remove the current node."
   (let ((iter (-> this alive-list-end prev0)))
     (while (!= iter (-> this alive-list))
       (f iter)
       (set! iter (-> iter prev0))))
   0)
 
-(defmethod execute-connections ((this engine) (arg0 object))
-  "Run the engine!"
-  ;; remember when
+(defmethod execute-connections ((this engine) (execute-arg object))
+  "Stamp this engine with the current real frame and invoke every live connection in reverse order."
   (set! (-> this engine-time) (-> *display* real-frame-counter))
-  ;; go through the connection list, in reverse.
-  (let ((ct (the-as connection (-> this alive-list-end prev0))))
-    (while (!= ct (-> this alive-list))
-      ;; execute!
-      ((the-as (function int int int object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)
-      ;; advance to previous.
-      (set! ct (the-as connection (-> ct prev0)))))
+  (let ((current (the-as connection (-> this alive-list-end prev0))))
+    (while (!= current (-> this alive-list))
+      ((the-as (function int int int object object) (-> current param0))
+       (-> current param1)
+       (-> current param2)
+       (-> current param3)
+       execute-arg)
+      (set! current (the-as connection (-> current prev0)))))
   0)
 
-(defmethod execute-connections-and-move-to-dead ((this engine) (arg0 object))
-  "Run the engine! If any objects return 'dead, then remove them"
+(defmethod execute-connections-and-move-to-dead ((this engine) (execute-arg object))
+  "Invoke every live connection in reverse order and move connections returning dead to the dead list."
   (set! (-> this engine-time) (-> *display* real-frame-counter))
-  (let ((ct (the-as connection (-> this alive-list-end prev0))))
-    (while (!= ct (-> this alive-list))
-      ;; execute function
-      (let ((result ((the-as (function int int int object object) (-> ct param0)) (-> ct param1) (-> ct param2) (-> ct param3) arg0)))
-        ;; set the next one, _before_ removing
-        (set! ct (the-as connection (-> ct prev0)))
-        ;; remove if desired.
-        (if (= result 'dead) ((method-of-type connection move-to-dead) (the-as connection (-> ct next0)))))))
+  (let ((current (the-as connection (-> this alive-list-end prev0))))
+    (while (!= current (-> this alive-list))
+      (let ((result ((the-as (function int int int object object) (-> current param0))
+                     (-> current param1)
+                     (-> current param2)
+                     (-> current param3)
+                     execute-arg)))
+        ;; Advance first so the just-executed node can safely unlink itself.
+        (set! current (the-as connection (-> current prev0)))
+        (if (= result 'dead) ((method-of-type connection move-to-dead) (the-as connection (-> current next0)))))))
   0)
 
-(defmethod execute-connections-if-needed ((this engine) (arg0 object))
-  "Execute connections, but only if it hasn't been done on this frame."
+(defmethod execute-connections-if-needed ((this engine) (execute-arg object))
+  "Execute this engine only if it has not run during the current real frame."
   (when (!= (-> *display* real-frame-counter) (-> this engine-time))
-    (execute-connections this arg0)))
+    (execute-connections this execute-arg)))
 
 (defun connection-process-apply ((proc process) (func (function object none)))
-  "Apply a function to all connectables of a process."
+  "Apply func to every connection in proc's process-owned list."
   (when proc
-    ;; iterate with next1 to stay in the process list.
-    (let ((iter (-> proc connection-list next1))) (while iter (func iter) (set! iter (-> iter next1))))
+    (let ((current (-> proc connection-list next1))) (while current (func current) (set! current (-> current next1))))
     #f))
 
 (when *debug-segment*
   (defmethod inspect-all-connections ((this engine))
-    "inspect all of the connections."
+    "Inspect every live connection."
     (apply-to-connections this (the (function connection none) (method-of-type connection inspect)))
     this))
 
@@ -332,121 +325,98 @@
              (p1 object)
              (p2 object)
              (p3 object))
-  "Add a connection between this engine and a given process."
-  (local-vars (con connectable))
-  ;; grab a connection from the dead list
-  (set! con (-> this dead-list next0))
-  ;; when we have both a valid process and a valid connectable
-  (when (not (or (not proc) (= con (-> this dead-list-end))))
-    (let ((con (the connection con)))
-      ;; set the params of the connection
-      (set! (-> con param0) (the basic func))
-      (set! (-> con param1) (the int p1))
-      (set! (-> con param2) (the int p2))
-      (set! (-> con param3) (the int p3))
-      ;; splice us out of the dead list
-      (set! (-> this dead-list next0) (-> con next0))
-      (set! (-> con next0 prev0) (-> this dead-list))
-      ;; and into the live list
-      (set! (-> con next0) (-> this alive-list next0))
-      (set! (-> con next0 prev0) con)
-      (set! (-> con prev0) (-> this alive-list))
-      (set! (-> this alive-list next0) con)
-      ;; also splice into the process list
-      (set! (-> con next1) (-> proc connection-list next1))
-      (when (-> con next1)
-        (set! (-> con next1 prev1) con))
-      (set! (-> con prev1) (-> proc connection-list))
-      (set! (-> proc connection-list next1) con)
+  "Take one dead slot, initialize its parameters, and link it into both this engine and proc."
+  (local-vars (slot connectable))
+  (set! slot (-> this dead-list next0))
+  (when (not (or (not proc) (= slot (-> this dead-list-end))))
+    (let ((slot (the connection slot)))
+      (set! (-> slot param0) (the basic func))
+      (set! (-> slot param1) (the int p1))
+      (set! (-> slot param2) (the int p2))
+      (set! (-> slot param3) (the int p3))
+      ;; Move the slot from the dead list to the front of the alive list.
+      (set! (-> this dead-list next0) (-> slot next0))
+      (set! (-> slot next0 prev0) (-> this dead-list))
+      (set! (-> slot next0) (-> this alive-list next0))
+      (set! (-> slot next0 prev0) slot)
+      (set! (-> slot prev0) (-> this alive-list))
+      (set! (-> this alive-list next0) slot)
+      ;; Also prepend it to this process's connection list.
+      (set! (-> slot next1) (-> proc connection-list next1))
+      (when (-> slot next1)
+        (set! (-> slot next1 prev1) slot))
+      (set! (-> slot prev1) (-> proc connection-list))
+      (set! (-> proc connection-list next1) slot)
       (set! (-> this length) (+ (-> this length) 1))
-      con)))
+      slot)))
 
 (defmethod move-to-dead ((this connection))
-  "Move this connection from the alive list to the dead list"
-  (local-vars (v1-1 engine))
-  ;; get our engine
-  (set! v1-1 (get-engine this))
-  ;; splice us out of the engine list
+  "Unlink this live connection from its engine and process lists and return it to the engine's dead list."
+  (local-vars (owner-engine engine))
+  (set! owner-engine (get-engine this))
   (set! (-> this prev0 next0) (-> this next0))
   (set! (-> this next0 prev0) (-> this prev0))
-  ;; splice us out of the process list list
   (set! (-> this prev1 next1) (-> this next1))
-  ;; next can be #f for process list!
+  ;; The process list's tail is #f rather than an end sentinel.
   (if (-> this next1) (set! (-> this next1 prev1) (-> this prev1)))
-  ;; insert to the beginning of the deat list
-  (set! (-> this next0) (-> v1-1 dead-list next0))
+  (set! (-> this next0) (-> owner-engine dead-list next0))
   (set! (-> this next0 prev0) this)
-  (set! (-> this prev0) (-> v1-1 dead-list))
-  (set! (-> v1-1 dead-list next0) this)
-  ;; decrement the length.
-  (set! (-> v1-1 length) (+ (-> v1-1 length) -1))
+  (set! (-> this prev0) (-> owner-engine dead-list))
+  (set! (-> owner-engine dead-list next0) this)
+  (set! (-> owner-engine length) (+ (-> owner-engine length) -1))
   this)
 
-(defun process-disconnect ((arg0 process))
-  "Disconnect all connections for the given process."
-  (local-vars (v0-1 int) (gp-0 connectable))
-  (when arg0
-    ;; use 1 list for process
-    (set! gp-0 (-> arg0 connection-list next1))
-    (while gp-0
-      (move-to-dead (the-as connection gp-0))
-      (set! gp-0 (-> gp-0 next1))))
-  (set! v0-1 0))
-
-(defmethod remove-from-process ((this engine) (proc process))
-  "Remove all connections from process for this engine"
-  (local-vars (iter connection))
+(defun process-disconnect ((proc process))
+  "Move every connection owned by proc back to its engine's dead list."
   (when proc
-    (set! iter (the connection (-> proc connection-list next1)))
-    (while iter
-      ;; only delete ones for this engine.
-      (if (belongs-to-engine? iter this) (move-to-dead iter))
-      ;; through process list
-      (set! iter (the connection (-> iter next1)))))
+    (let ((current (-> proc connection-list next1)))
+      (while current
+        (move-to-dead (the-as connection current))
+        (set! current (-> current next1)))))
   0)
 
-(defmethod remove-matching ((this engine) (arg0 (function connection engine symbol)))
-  "call the given function on each connection and the engine.
-   if it returns truthy, move to dead that connection."
-  (local-vars (s3-0 connectable) (s4-0 connectable))
-  ;; tricky iteration because of deleting.
-  (set! s4-0 (-> this alive-list next0))
-  (set! s3-0 (-> s4-0 next0))
-  (while (!= s4-0 (-> this alive-list-end))
-    (if (arg0 (the-as connection s4-0) this) ((method-of-type connection move-to-dead) (the-as connection s4-0)))
-    (set! s4-0 s3-0)
-    (set! s3-0 (-> s3-0 next0)))
+(defmethod remove-from-process ((this engine) (proc process))
+  "Remove this engine's connections owned by proc."
+  (local-vars (current connection))
+  (when proc
+    (set! current (the connection (-> proc connection-list next1)))
+    (while current
+      (if (belongs-to-engine? current this) (move-to-dead current))
+      (set! current (the connection (-> current next1)))))
+  0)
+
+(defmethod remove-matching ((this engine) (predicate (function connection engine symbol)))
+  "Move every live connection for which predicate returns true to the dead list."
+  (local-vars (current connectable) (next connectable))
+  (set! current (-> this alive-list next0))
+  (set! next (-> current next0))
+  (while (!= current (-> this alive-list-end))
+    (if (predicate (the-as connection current) this) ((method-of-type connection move-to-dead) (the-as connection current)))
+    (set! current next)
+    (set! next (-> next next0)))
   0)
 
 (defmethod remove-all ((this engine))
-  "Remove all connections from an engine"
-  (local-vars (a0-1 connectable) (s5-0 connectable))
-  (set! a0-1 (-> this alive-list next0))
-  (set! s5-0 (-> a0-1 next0))
-  (while (!= a0-1 (-> this alive-list-end))
-    ((method-of-type connection move-to-dead) (the-as connection a0-1))
-    (set! a0-1 s5-0)
-    (set! s5-0 (-> s5-0 next0)))
+  "Move every live connection to the dead list."
+  (local-vars (current connectable) (next connectable))
+  (set! current (-> this alive-list next0))
+  (set! next (-> current next0))
+  (while (!= current (-> this alive-list-end))
+    ((method-of-type connection move-to-dead) (the-as connection current))
+    (set! current next)
+    (set! next (-> next next0)))
   0)
 
 (defmethod remove-by-param1 ((this engine) (p1-value object))
-  "Remove all connections with param1 matching arg0"
-  (let* ((current (-> this alive-list next0))
-         (next (-> current next0)))
-    (while (!= current (-> this alive-list-end))
-      (if (= (-> (the-as connection current) param1) p1-value)
-        ((method-of-type connection move-to-dead) (the-as connection current)))
-      (set! current next)
-      (set! next (-> next next0))))
+  "Move every live connection whose param1 equals value to the dead list."
+  (iterate-engine-connections (current this)
+                              (if (= (-> (the-as connection current) param1) p1-value)
+                                ((method-of-type connection move-to-dead) (the-as connection current))))
   0)
 
 (defmethod remove-by-param2 ((this engine) (p2-value int))
-  "Remove all connections with param2 matching p2-value"
-  (let* ((current (-> this alive-list next0))
-         (next (-> current next0)))
-    (while (!= current (-> this alive-list-end))
-      (if (= (-> (the-as connection current) param2) p2-value)
-        ((method-of-type connection move-to-dead) (the-as connection current)))
-      (set! current next)
-      (set! next (-> next next0))))
+  "Move every live connection whose param2 equals value to the dead list."
+  (iterate-engine-connections (current this)
+                              (if (= (-> (the-as connection current) param2) p2-value)
+                                ((method-of-type connection move-to-dead) (the-as connection current))))
   0)

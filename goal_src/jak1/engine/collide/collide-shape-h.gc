@@ -8,76 +8,36 @@
 (require "engine/game/game-h.gc")
 (require "engine/engine/connect.gc")
 
-;; What is collide-shape?
-;;  A collide shape is a group of collision geometry. Typically, each actor will have a single collide shape.
-;;  Each collide shape may contain a number of collide-shape-prim's.
-
-;; There are subclasses of collide-shape-prim for different types of collision primitives.
-;; The types are:
-;;  - mesh. A foreground collision mesh. This has a fixed max size, so something have multiple meshes.
-;;  - group. A list of other prims.
-;;  - sphere. A sphere.
-
-;; The non-sphere classes also store a bsphere that must contain all collision geometry.
+;; A collide-shape owns an actor's collision hierarchy. Its root primitive may be a sphere, a
+;; foreground mesh, or a group containing more primitives. Every nonsphere primitive carries a
+;; bounding sphere that encloses its descendants or mesh.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; New vs. Old Collide System
-;; There are, effectively, two systems for collision queries.
-
-;; Things that are shared:
-;; Both systems use "collide-shape".
-;; Both systems track foreground collision objects through the lists:
+;; Collision queries use two paths. Both paths use collide-shape and track foreground actors through:
 ;;  - collide-player-list
 ;;  - collide-hit-by-player-list
 ;;  - collide-usually-hit-by-player-list
-
-;; The "old" system:
-;;  - generally uses recursive traversals through the collide shape tree
-;;  - uses "collide-mesh-cache".
-;;  - can't collide with water or the background.
-
-;; The "new" system:
-;;  - is the only way to collide with the background/water
-;;  - uses "collide-cache"
-;;  - generally dumps stuff into the collide-cache, then uses collide-cache functions
-;;  - does not support a few of the weirder collision checks
-
-;; There is some duplicate implemenations because both the new and old system collide
-;; foreground meshes. The new system can just import foreground collision meshes
-;; into its collide cache.
+;;
+;; Direct shape queries recursively traverse foreground primitive trees and expand meshes through
+;; collide-mesh-cache. They support push-away, overlap, and rider tests but cannot query background
+;; geometry or water.
+;;
+;; General movement queries collect background, water, and foreground primitives into collide-cache,
+;; then resolve against that common representation. Foreground mesh handling is duplicated because
+;; this path imports expanded mesh triangles into the general cache.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Collision queries:
-
-;; Push Away.
-;; Some objects move on fixed paths (like platforms).  When these move forward, they should "push away"
-;; things they hit (generally, Jak).  Push Away only works between foreground objects and uses the old system.
-;; The do-push-aways! function should be called after moving a shape to push away things that you hit.
-;; Internally, this uses things called SPAT/should-push-away-test.
-;; The push-aways use the collide resolve system (described below) to actually push things aways
-;; (you can't push-away something through a wall, for example.)
-
-;; Collide Resolve. (made up name)
-;; Some objects (like Jak) do not move on fixed paths, and will be stopped by walls or other obstacles.
-;; This works on background and foreground objects, and uses the new system (it must, to handle background).
-;; The fill-cache-integrate-and-collide! function should be called, which will fill the collide cache
-;; and then do an iterative collision algorithm.
-;; This will call the reaction function. The default "default-collision-reaction" function is in collide-shape.gc
-;; will fill the touching list.
-
-;; Nav Enemy Collision (made up name)
-;; collide-shape-moving-method-58 and integrate-for-enemy-with-move-to-ground are nav-enemy specific.
-;; the details aren't super well understood yet. But they basically try to go forward if they aren't blocked.
-;; Uses find-overlapping-shapes as the detector. (old system)
-
-;; Move To Ground.
-;; move-to-ground. Does what it says. (new system)
-
-;; detect-riders
-;; for platforms, detect if somebody is on the platform. (on-platform-test)
-;; uses old system. Sends event adds to rider list.
+;; Fixed-path movers call do-push-aways! after moving. It uses direct foreground overlap tests to
+;; find penetrations, then uses the general resolver so a pushed actor cannot be moved through a
+;; wall. Independently moving actors call fill-cache-integrate-and-collide!, which fills the general
+;; cache and iteratively advances and resolves their requested displacement through reaction and
+;; no-reaction callbacks.
+;;
+;; Navigation enemies use direct overlap queries to integrate, revert when blocked, and optionally
+;; snap to ground. move-to-ground uses the general cache. Platforms use direct on-platform tests to
+;; identify riders, send rider events, and carry them with the platform.
 
 (declare-type touching-list structure)
 
@@ -89,9 +49,8 @@
 ;; Sticky Rider
 ;;;;;;;;;;;;;;;;;;;
 
-;; Rider: thing which rides on a moving thing. For example, Jak is a rider of the platforms.
-;; Sticky: when you hit the platform, your velocity immediately changes to match the thing.
-;;  like when Jak lands on a platform.
+;; A rider follows a moving platform. A sticky rider immediately adopts the platform's motion when
+;; contact begins, as when Jak lands on one.
 
 (deftype collide-sticky-rider (structure)
   ((rider-handle    handle)
@@ -101,9 +60,9 @@
   (:methods
    (set-rider! (_type_ handle) symbol)))
 
-(defmethod set-rider! ((this collide-sticky-rider) (arg0 handle))
-  "Set the rider and clear the primitive."
-  (set! (-> this rider-handle) arg0)
+(defmethod set-rider! ((this collide-sticky-rider) (rider handle))
+  "Assign the rider handle and clear the cached sticky primitive."
+  (set! (-> this rider-handle) rider)
   (set! (-> this sticky-prim) #f)
   #f)
 
@@ -119,7 +78,7 @@
    (reset! (_type_) int)))
 
 (defmethod reset! ((this collide-sticky-rider-group))
-  "Reset all active riders"
+  "Remove every active rider without releasing the allocated storage."
   (set! (-> this num-riders) 0)
   0)
 
@@ -157,7 +116,7 @@
    (reset! (_type_) none)))
 
 (defmethod reset! ((this collide-overlap-result))
-  "Reset the result."
+  "Reset the best distance and both primitive references."
   (set! (-> this best-dist) 0.0)
   (set! (-> this best-from-prim) #f)
   (set! (-> this best-to-prim) #f)
@@ -167,11 +126,16 @@
 ;; Touching System
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; I believe this overlaps-others-params is used to do checks like "is enemy in range of attack".
-;; but this isn't well understood yet
+;; Parameters for direct primitive-overlap queries, including optional touching-list output.
+
+(defenum overlaps-others-options
+  :bitfield #t
+  :type uint32
+  (solid-only 0) ;; require both leaf primitives to have the solid action
+  (accept-root-sphere-overlap 1)) ;; accept the root-sphere broad phase without testing leaves
 
 (deftype overlaps-others-params (structure)
-  ((options uint32)
+  ((options overlaps-others-options)
    (tlist   touching-list)))
 
 ;; The engine system is used to link collision checks with processes.
@@ -200,9 +164,9 @@
   :type uint64
   :bitfield #t
   (background 0)
-  (cak-1 1) ;; hit by player
-  (cak-2 2) ;; usually hit by player
-  (cak-3 3) ;; hit by others
+  (hit-by-player 1) ;; hit by player
+  (usually-hit-by-player 2) ;; usually hit by player
+  (hit-by-others 3) ;; hit by others
   (target 4) ;; target
   (water 5)
   (powerup 6)
@@ -286,10 +250,9 @@
   (racer-unused 16) ;; seems to relate to racer - never set, only cleared in one place?
   )
 
-;; this field is a bit confusing. you have to have a higher offense to win against an object.
-;; so a normal crate has an offense of 1, meaning you have to do _more_ than just touch it to go through it.
-;; a scout fly crate has 2, so you have to do _more_ than an normal attack.
-;; This system is _only_ for going through objects - there's more logic for deciding if you can break it.
+;; An attack passes through a primitive only when its offense is greater than the primitive's
+;; threshold. Destruction is decided separately, so this value controls traversal rather than
+;; whether the object can be broken.
 (defenum collide-offense
   :type int8
   (no-offense 0)
@@ -359,9 +322,8 @@
 ;; Specific Collision Implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; generally, these store enough information to tell if you're in collision or not,
-;; and if so, what the "pat" is. The meaning of "pat" is unknown, but it's a 32-bit
-;; packed data that tells you the material/mode.
+;; Primitive subtypes store the geometry needed for collision and the PAT surface properties
+;; reported for a contact.
 
 ;; sphere collision
 ;; the pat is stored directly here.
@@ -414,9 +376,9 @@
 (defenum nav-flags
   :bitfield #t
   :type uint8
-  (navf0 0)
-  (navf1 1)
-  (navf2 2)
+  (avoid-body 0) ;; expose this shape's body sphere to other actors' navigation
+  (avoid-extra-sphere 1) ;; also expose its reserved extra navigation sphere
+  (navf2 2) ;; bits 2-7 have no known use
   (navf3 3)
   (navf4 4)
   (navf5 5)
@@ -467,26 +429,26 @@
    (set-collide-offense (_type_ int collide-offense) none)
    (send-shove-back (_type_ process touching-shapes-entry float float float) none)))
 
-(defenum cshape-moving-flags
+(defenum collide-status
   :bitfield #t
   :type uint64
-  (onsurf)
-  (onground)
-  (tsurf)
-  (twall)
-  (t-ceil)
-  (t-act)
-  (csmf06)
-  (csmf07)
-  (csmf08)
-  (csmf09)
-  (on-water)
-  (impact-surf)
-  (t-bckgnd)
-  (csmf13)
-  (t-ceil-sticky)
-  (csmf15)
-  (csmf16)
+  (on-surface) ;; standing on any supporting surface
+  (on-ground) ;; clean standable-ground contact
+  (touch-surface) ;; touched any surface this frame
+  (touch-wall) ;; touched a surface classified as a wall
+  (touch-ceiling) ;; touched a strongly downward-facing surface
+  (touch-actor) ;; touched foreground actor collision
+  (on-special-surface) ;; reserved special-surface state
+  (touch-edge) ;; low-coverage edge contact
+  (no-touch) ;; no collision reaction ran this frame
+  (blocked) ;; collision bent the commanded velocity
+  (on-water) ;; standing on a waterbottom surface
+  (impact-surface) ;; first surface contact after being airborne
+  (touch-background) ;; touched background geometry
+  (stuck) ;; reserved stuck state
+  (touch-ceiling-sticky) ;; touched any downward-facing surface
+  (glance) ;; reserved glancing-contact state
+  (probe-hit) ;; reserved probe-hit state
   (csmf17)
   (csmf18)
   (csmf19)
@@ -501,23 +463,60 @@
   (csmf28)
   (csmf29))
 
+;; PC utilities built against the older collision interface still use these
+;; spellings. Keep their bit positions identical to collide-status.
+(#when PC_PORT
+  (defenum cshape-moving-flags
+    :bitfield #t
+    :type uint64
+    (onsurf)
+    (onground)
+    (tsurf)
+    (twall)
+    (t-ceil)
+    (t-act)
+    (csmf06)
+    (csmf07)
+    (csmf08)
+    (csmf09)
+    (on-water)
+    (impact-surf)
+    (t-bckgnd)
+    (csmf13)
+    (t-ceil-sticky)
+    (csmf15)
+    (csmf16)
+    (csmf17)
+    (csmf18)
+    (csmf19)
+    (csmf20)
+    (csmf21)
+    (csmf22)
+    (csmf23)
+    (csmf24)
+    (csmf25)
+    (csmf26)
+    (csmf27)
+    (csmf28)
+    (csmf29)))
+
 (defenum cshape-reaction-flags
   :bitfield #t
   :type uint32
-  (csrf00)
-  (csrf01)
-  (csrf02)
-  (csrf03)
-  (csrf04)
-  (csrf05)
-  (csrf06)
-  (csrf07)
-  (csrf08)
-  (csrf09)
-  (csrf10)
-  (csrf11)
-  (csrf12)
-  (csrf13)
+  (wall-by-pat) ;; surface PAT classifies the contact as a wall
+  (wall-by-angle) ;; surface is too steep to stand on
+  (hit-wall) ;; final classification applied the wall response
+  (low-coverage) ;; glancing contact that needs edge probing
+  (glancing) ;; companion marker set with low-coverage
+  (air-mode) ;; current movement surface is an air/jump mode
+  (no-grab-edge) ;; edge contact was dismissed without a grab
+  (ledge-candidate) ;; probes found a possible ledge lip
+  (corner-slide) ;; velocity redirected along a wall/ground seam
+  (vertical-edge) ;; contacted edge is too vertical to be a ledge
+  (edge-grab-ledge) ;; edge confirmed as a grabbable ledge
+  (on-ground) ;; contact resolved to standable ground
+  (edge-grab-in-air) ;; grabbable ledge found while in air mode
+  (wall-bounce) ;; optional bounce-off-wall response
   (csrf14)
   (csrf15)
   (csrf16)
@@ -545,11 +544,11 @@
    (poly-pat           pat-surface)
    (cur-pat            pat-surface)
    (ground-pat         pat-surface)
-   (status             cshape-moving-flags)
-   (old-status         cshape-moving-flags)
-   (prev-status        cshape-moving-flags)
+   (status             collide-status)
+   (old-status         collide-status)
+   (prev-status        collide-status)
    (reaction-flag      cshape-reaction-flags)
-   (reaction           (function collide-shape-moving collide-shape-intersect vector vector cshape-moving-flags))
+   (reaction           (function collide-shape-moving collide-shape-intersect vector vector collide-status))
    (no-reaction        (function collide-shape-moving collide-shape-intersect vector vector none))
    (local-normal       vector :inline)
    (surface-normal     vector :inline)
@@ -567,7 +566,7 @@
   (:methods
    (set-and-handle-pat! (_type_ pat-surface) none)
    (integrate-no-collide! (_type_ vector) none)
-   (collide-shape-moving-method-58 (_type_ vector) symbol)
+   (integrate-and-revert-if-blocked! (_type_ vector) symbol)
    (integrate-for-enemy-with-move-to-ground! (_type_ vector collide-kind float symbol symbol symbol) none)
    (move-to-ground (_type_ float float symbol collide-kind) symbol)
    (move-to-ground-point! (_type_ vector vector vector) none)
@@ -580,19 +579,21 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 (defmethod new collide-shape-prim ((allocation symbol) (type-to-make type) (cshape collide-shape) (prim-id uint) (size-bytes int))
-  (let ((v0-0 (object-new allocation type-to-make size-bytes)))
-    (set! (-> v0-0 cshape) cshape)
-    (set! (-> v0-0 prim-id) prim-id)
-    (set! (-> v0-0 prim-core action) (collide-action))
-    (set! (-> v0-0 prim-core collide-as) (collide-kind))
-    (set! (-> v0-0 collide-with) (collide-kind))
-    (set! (-> v0-0 transform-index) -2)
-    (set! (-> v0-0 prim-core offense) (collide-offense no-offense))
-    (set! (-> v0-0 prim-core prim-type) -2)
-    v0-0))
+  "Allocate a primitive base of size-bytes and initialize its owner, id, masks, transform,
+   offense, and type markers."
+  (let ((this (object-new allocation type-to-make size-bytes)))
+    (set! (-> this cshape) cshape)
+    (set! (-> this prim-id) prim-id)
+    (set! (-> this prim-core action) (collide-action))
+    (set! (-> this prim-core collide-as) (collide-kind))
+    (set! (-> this collide-with) (collide-kind))
+    (set! (-> this transform-index) -2)
+    (set! (-> this prim-core offense) (collide-offense no-offense))
+    (set! (-> this prim-core prim-type) -2)
+    this))
 
 (defmethod new collide-shape-prim-sphere ((allocation symbol) (type-to-make type) (cshape collide-shape) (prim-id uint))
-  "Allocate a new sphere primitive"
+  "Allocate an obstacle sphere primitive with no resolved transform."
   (let ((this (the collide-shape-prim-sphere
                    ((method-of-type collide-shape-prim new) allocation type-to-make cshape prim-id (size-of collide-shape-prim-sphere)))))
     (set! (-> this pat) (new 'static 'pat-surface :mode (pat-mode obstacle)))
@@ -600,7 +601,7 @@
     this))
 
 (defmethod new collide-shape-prim-mesh ((allocation symbol) (type-to-make type) (cshape collide-shape) (mesh-id uint) (prim-id uint))
-  "Allocate a new mesh primitive"
+  "Allocate a mesh primitive that selects mesh-id and begins with an invalid cache."
   (let ((this (the collide-shape-prim-mesh
                    ((method-of-type collide-shape-prim new) allocation type-to-make cshape prim-id (size-of collide-shape-prim-mesh)))))
     (set! (-> this mesh) #f)
@@ -609,38 +610,39 @@
     (set! (-> this prim-core prim-type) 1)
     (the-as collide-shape-prim-mesh this)))
 
-(defmethod new collide-shape-prim-group ((allocation symbol) (type-to-make type) (cshape collide-shape) (elt-count uint) (prim-id int))
-  "Allocate a group of primitives."
+(defmethod new collide-shape-prim-group ((allocation symbol) (type-to-make type) (cshape collide-shape) (element-count uint) (prim-id int))
+  "Allocate a group with capacity for element-count primitive pointers."
   (let ((this (the collide-shape-prim-group
                    ((method-of-type collide-shape-prim new)
                     allocation
                     type-to-make
                     cshape
                     (the uint prim-id)
-                    (the int (+ (-> type-to-make size) (* (+ elt-count -1) 4)))))))
-    (set! (-> this allocated-prims) (the int elt-count))
+                    (the int (+ (-> type-to-make size) (* (+ element-count -1) 4)))))))
+    (set! (-> this allocated-prims) (the int element-count))
     (set! (-> this num-prims) 0)
     (set! (-> this prim-core prim-type) 0)
-    (while (nonzero? elt-count)
-      (+! elt-count -1)
-      (set! (-> this prim elt-count) (the collide-shape-prim #f))
+    (while (nonzero? element-count)
+      (+! element-count -1)
+      (set! (-> this prims element-count) #f)
       (nop!))
     this))
 
 (defmethod length ((this collide-shape-prim-group))
-  "How many primitives are used?"
+  "Return the number of occupied primitive slots."
   (-> this num-prims))
 
 (defmethod asize-of ((this collide-shape-prim-group))
-  "How big is this in memory?"
+  "Return the header size plus storage for the allocated primitive capacity."
   (the-as int (+ (-> this type size) (* (+ (-> this allocated-prims) -1) 4))))
 
 (defmethod new collide-shape ((allocation symbol) (type-to-make type) (proc process-drawable) (collide-list-kind collide-list-enum))
-  "Allocate a new collide-shape and add to a collide-list"
+  "Allocate a collision shape, initialize its transform and query mask, and connect its
+   process to the selected foreground collision list."
   (let ((this (object-new allocation type-to-make (the int (-> type-to-make size)))))
     (set! (-> this process) proc)
     (set! (-> this max-iteration-count) 1)
-    (set! (-> this nav-flags) (nav-flags navf0))
+    (set! (-> this nav-flags) (nav-flags avoid-body))
     (set! (-> this event-self) #f)
     (set! (-> this event-other) #f)
     (set! (-> this riders) #f)
@@ -661,19 +663,21 @@
       (else (format 0 "Unsupported collide-list-enum in collide-shape constructor!~%")))
     this))
 
-(defmethod new collide-sticky-rider-group ((allocation symbol) (type-to-make type) (riders-amount int))
-  "Allocate a new collide-sticky-rider-group with space for riders-amount sticky riders."
+(defmethod new collide-sticky-rider-group ((allocation symbol) (type-to-make type) (rider-count int))
+  "Allocate storage for rider-count sticky riders."
   (let ((this (object-new allocation
                           type-to-make
-                          (the int (+ (-> type-to-make size) (the uint (* (1- riders-amount) (size-of collide-sticky-rider))))))))
-    (set! (-> this allocated-riders) riders-amount)
+                          (the int (+ (-> type-to-make size) (the uint (* (1- rider-count) (size-of collide-sticky-rider))))))))
+    (set! (-> this allocated-riders) rider-count)
     (set! (-> this num-riders) 0)
     this))
 
 (defmethod length ((this collide-sticky-rider-group))
+  "Return the number of active riders."
   (-> this num-riders))
 
 (defmethod asize-of ((this collide-sticky-rider-group))
+  "Return the header size plus storage for the allocated rider capacity."
   (the-as int (+ (-> this type size) (* (+ (-> this allocated-riders) -1) 32))))
 
 (define *collide-shape-prim-backgnd*

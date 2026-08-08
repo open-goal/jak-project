@@ -5,18 +5,72 @@
 (require "engine/math/vector-h.gc")
 (require "engine/math/math.gc")
 
-;; These tables contain information for particular oceans.
-;; All of the information is contained in *ocean-map-<name>*
-;; where <name> is one of
-;;  - village1
-;;  - village2
-;;  - sunken
-;; levels like beach/jungle/misty will use village1's ocean map.
+;; The authored per-placement data for the ocean: where the water is, which parts of it are
+;; hidden by land, what color it is, and how the three drawn resolutions divide it up.  A
+;; complete set is collected by *ocean-map-<name>* at the bottom of the file, for <name> in
+;; village1, village2 and sunken.  Levels including beach, jungle and misty use village1's
+;; ocean map; sunken is substituted at runtime when the camera drops below -409600.
+;;
+;; Nothing here is computed at load time, and none of it changes while a level is running.  The
+;; only field of ocean-map the engine writes is start-corner y, which draw-ocean moves to sink
+;; the water plane near the swamp marker and during movies.
 
 ;; og:ignore-from-loc
 
 ;; DECOMP BEGINS
 
+;; Grid layout, shared by all three placements.
+;;
+;; The water covers a 48x48 grid of 96 m mid cells (393216 units, 4096 units to the metre)
+;; starting at ocean-map start-corner, so 4608 m on a side.  Those cells are grouped into a 6x6
+;; grid of 768 m tiles of 8x8 cells for culling, and each mid cell subdivides again into 4x4
+;; near cells of 24 m, giving a 192x192 near grid.  z is the row and x the column throughout,
+;; and an index into a square table is row * width + column.
+;;
+;; Five kinds of table make up a placement.
+;;
+;;   ocean-spheres        36 world-space bounding spheres, one per 768 m tile, indexed
+;;                        6 * z-tile + x-tile.  Centres sit at the tile centre, half a tile in
+;;                        from start-corner, and every radius is 2224365.5, the tile's half
+;;                        diagonal.  draw-ocean-mid tests these before touching a tile.
+;;                        The centres carry y = 0 rather than start-corner y, which is harmless
+;;                        because the radius already covers the plane's whole travel.
+;;
+;;   ocean-colors         2548 rgba entries: a 49x49 grid of mid-cell corner colors padded to a
+;;                        row stride of 52 so a row is exactly 13 quadwords.  Addressed as
+;;                        colors[52 * z + x].  Columns 49 through 51 of every row are padding
+;;                        and are all zero.  Every real entry has a = 128, the GS unit alpha,
+;;                        and r, g and b stay well under 128; the mid, transition and near
+;;                        passes all read the four corners of a cell from here and interpolate
+;;                        them with the weights in ocean-trans-tables.gc.
+;;
+;;   ocean-mid-masks      a shared, deduplicated pool of eight-byte suppression records.  A set
+;;                        bit means do not draw.  Three consumers read the pool at three scales:
+;;                        the mid pass reads all 64 bits as the 8x8 mid cells of one 768 m tile,
+;;                        the near pass reads all 64 bits as the 8x8 quads of 3 m inside one
+;;                        24 m near cell, and the transition pass reads only bits 0 through 3 of
+;;                        bytes 0 through 3, as the 4x4 quads of 24 m inside one mid cell.  The
+;;                        same record can serve more than one of those roles, so bits one
+;;                        consumer ignores are often meaningful to another.  A transition mask
+;;                        byte of 255 means the strip has no water in it at all.
+;;
+;;   ocean-mid-indices    36 uint16, one per 768 m tile, selecting that tile's record in the
+;;                        pool.  #xffff reads as -1 and skips the tile entirely; 0 selects the
+;;                        all-zero record, meaning draw all 64 cells.
+;;
+;;   ocean-trans-indices  one parent/child pair per mid cell, 48 * 48 = 2304 of them.  parent
+;;                        selects the pool record holding the cell's four transition strip
+;;                        masks; child selects the ocean-near-index record for its 4x4 near
+;;                        cells.  A negative parent means the cell has no transition geometry
+;;                        and draw-ocean-transition leaves it to the mid pass.
+;;
+;;   ocean-near-indices   one record of 16 uint16 per transition cell, in the order
+;;                        4 * sub-z + sub-x, each selecting the pool record for that near cell's
+;;                        8x8 quads.  #xffff means the near cell has no water and the near pass
+;;                        skips it.
+
+;; Village 1's ocean also serves beach, jungle and misty.  start-corner is
+;; (-9437184, 0, -9437184), so the 6x6 tile centres run from -7864320 to +7864320 on both axes.
 (define *ocean-spheres-village1*
   (new 'static
        'ocean-spheres
@@ -62,6 +116,9 @@
             (new 'static 'sphere :x 4718592.0 :z 7864320.0 :w 2224365.5)
             (new 'static 'sphere :x 7864320.0 :z 7864320.0 :w 2224365.5))))
 
+;; 49x49 corner colors on a stride of 52.  Deep blue-green water: r reaches 40, g 87 and b 96
+;; against the unit alpha of 128, so the surface is dark and the specular and environment passes
+;; supply most of its brightness.
 (define *ocean-colors-village1*
   (new 'static
        'ocean-colors
@@ -2619,6 +2676,8 @@
             (new 'static 'rgba)
             (new 'static 'rgba))))
 
+;; 68 near-index records, matching the 68 distinct child values used by the transition table
+;; below.  Record 0 is all #xffff, which is what a cell with no near geometry selects.
 (define *ocean-near-indices-village1*
   (new 'static
        'ocean-near-indices
@@ -3258,6 +3317,11 @@
                  :data
                  (new 'static 'array uint16 16 #x0 #x0 #x0 #x0 #x119 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0)))))
 
+;; 2304 parent/child pairs, one per mid cell.  2002 of them have a parent, so most of this
+;; placement is open water reachable by the finer passes; the rest are inland or off the shelf and
+;; carry (-1, -1).  The parents draw on only 9 distinct pool records because a mid cell's
+;; shoreline, seen at 24 m resolution, is usually one of a few shapes; the children use all 68
+;; near-index records.
 (define *ocean-trans-indices-village1*
   (new 'static
        'ocean-trans-indices
@@ -5571,6 +5635,9 @@
             (new 'static 'ocean-trans-index)
             (new 'static 'ocean-trans-index))))
 
+;; Tile masks for the 6x6 culling grid.  Only the ten tiles along the top two rows carry water
+;; here: nine of them select records 312 through 320, which sit at the end of the pool, and the
+;; rest are 0 (fully open water) or #xffff (skipped).
 (define *ocean-mid-indices-village1*
   (new 'static
        'ocean-mid-indices
@@ -5616,6 +5683,10 @@
             #x0
             #x0)))
 
+;; The shared suppression pool: 322 eight-byte records.  Record 0 is all zero and is used
+;; wherever nothing needs hiding.  Records 0 through 282 are reached through the near-index
+;; table, 0 through 71 through the transition parents, and 312 through 320 through the tile
+;; index; records 283 through 311 and 321 are not referenced by this placement.
 (define *ocean-mid-masks-village1*
   (new 'static
        'ocean-mid-masks
@@ -5947,6 +6018,9 @@
             (new 'static 'ocean-mid-mask :dword #x103071f1f1f1f)
             (new 'static 'ocean-mid-mask))))
 
+;; Village 2 uses the same grid dimensions with a different world origin, palette, shoreline
+;; masks and transition topology.  start-corner is (-7892992, 0, -15958016), which is why the
+;; tile centres below are not symmetric about the origin.
 (define *ocean-spheres-village2*
   (new 'static
        'ocean-spheres
@@ -5992,6 +6066,8 @@
             (new 'static 'sphere :x 6262784.0 :z 1343488.0 :w 2224365.5)
             (new 'static 'sphere :x 9408512.0 :z 1343488.0 :w 2224365.5))))
 
+;; A lighter, greyer sea than village 1: r reaches 56 and g 97, so the rock pool water reads as
+;; less saturated.  Same 49x49 grid on a stride of 52.
 (define *ocean-colors-village2*
   (new 'static
        'ocean-colors
@@ -8549,6 +8625,7 @@
             (new 'static 'rgba)
             (new 'static 'rgba))))
 
+;; 23 near-index records for the 23 distinct child values used below.
 (define *ocean-near-indices-village2*
   (new 'static
        'ocean-near-indices
@@ -8723,6 +8800,8 @@
                  :data
                  (new 'static 'array uint16 16 #xffff #xffff #x0 #x0 #xffff #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0)))))
 
+;; 1593 of the 2304 mid cells have transition geometry, fewer than village 1 because more of
+;; this placement is enclosed by land.  17 distinct parents and 23 distinct children.
 (define *ocean-trans-indices-village2*
   (new 'static
        'ocean-trans-indices
@@ -11036,6 +11115,8 @@
             (new 'static 'ocean-trans-index)
             (new 'static 'ocean-trans-index))))
 
+;; Six of the 36 tiles carry authored shoreline masks, records 96 through 101 at the end of the
+;; pool; the others are open water or skipped.
 (define *ocean-mid-indices-village2*
   (new 'static
        'ocean-mid-indices
@@ -11081,6 +11162,8 @@
             #x0
             #x0)))
 
+;; 102 pool records, all of them referenced: 0 through 95 through the near-index and transition
+;; tables, 96 through 101 as the six tile masks.
 (define *ocean-mid-masks-village2*
   (new 'static
        'ocean-mid-masks
@@ -11192,19 +11275,37 @@
             (new 'static 'ocean-mid-mask :dword #x11ffffffffff)
             (new 'static 'ocean-mid-mask :dword #x70f1f3f7f7f3f))))
 
+;; The submerged view, used once the camera is below -409600.  It reuses village 2's spheres and
+;; colors but replaces the topology with the degenerate open-water case: everything is zero.
+;;
+;; A single near-index record of all #xffff, so the near pass never finds geometry to draw.
 (define *ocean-near-indices-sunken*
   (new 'static 'ocean-near-indices :data (new 'static 'inline-array ocean-near-index 1 (new 'static 'ocean-near-index))))
 
+;; All 2304 pairs are (0, 0).  Parent 0 is a non-negative index, so every mid cell in the window
+;; does get transition geometry, and it selects the all-zero mask record below, meaning all four
+;; strips of every cell are drawn with nothing suppressed.  Child 0 selects the empty near-index
+;; record above, so the near pass stays out of it.
 (define *ocean-trans-indices-sunken* (new 'static 'ocean-trans-indices))
 
+;; All 36 tiles select record 0, so the mid pass draws every one of their 64 cells.
 (define *ocean-mid-indices-sunken* (new 'static 'ocean-mid-indices))
 
+;; Two all-zero records; only record 0 is ever selected.
 (define *ocean-mid-masks-sunken*
   (new 'static
        'ocean-mid-masks
        :data
        (new 'static 'inline-array ocean-mid-mask 2 (new 'static 'ocean-mid-mask) (new 'static 'ocean-mid-mask))))
 
+;; Collect the independently allocated tables into the three selectable maps.  The pointer
+;; fields are filled in by set! rather than in the static object because each table is its own
+;; top-level definition; a static reference between two objects in the same file would need them
+;; laid out together.
+;;
+;; start-corner is the (-x, -z) corner of the whole 4608 m grid and its y is the water plane
+;; height, which draw-ocean overwrites each frame.  far-color is the flat color of the far quads
+;; beyond the mid grid, stored as floats in the 0..128 GS range rather than as an rgba.
 (define *ocean-map-village1*
   (new 'static
        'ocean-map
@@ -11225,6 +11326,7 @@
 
 (set! (-> *ocean-map-village1* ocean-near-indices) *ocean-near-indices-village1*)
 
+;; Village 2's placement, shared with the rock pool interiors that see the same water.
 (define *ocean-map-village2*
   (new 'static
        'ocean-map
@@ -11245,6 +11347,7 @@
 
 (set! (-> *ocean-map-village2* ocean-near-indices) *ocean-near-indices-village2*)
 
+;; The submerged variant: village 2's origin, spheres and colors with the open-water topology.
 (define *ocean-map-sunken*
   (new 'static
        'ocean-map

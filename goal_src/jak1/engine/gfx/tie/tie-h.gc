@@ -5,152 +5,212 @@
 (require "engine/draw/drawable-tree-h.gc")
 (require "engine/draw/drawable-inline-array-h.gc")
 
+;; TIE's data types. Three separate things live in here and it helps to keep them apart:
+;;
+;;   * the prototype side -- prototype-tie and tie-fragment -- geometry authored once and uploaded to
+;;     VU1 once per frame;
+;;   * the instance side -- instance-tie and its drawable arrays -- the BVH of placements;
+;;   * the two scratchpad work areas the EE packet builders run out of.
+;;
+;; A fragment holds only counts and references. The actual shaders, points, strip descriptions, and
+;; colors sit in separate blocks of level data that nothing in GOAL ever dereferences: they are DMA
+;; sources and VU1 input, and the only code that understands their layout is the microprogram in
+;; tie.gc and the packet builders in tie-methods.gc. A field with no GOAL reference is not therefore
+;; unused.
+;;
+;; Ownership of the color data is split and it is easy to get backwards. The palette -- the colors --
+;; belongs to the prototype, in prototype-bucket-tie.tie-colors, and is uploaded once per prototype per
+;; frame for every fragment and every instance to share. What an instance owns is instance-tie's
+;; color-indices: a stream of one-byte indices into that shared palette, one per vertex. So instances of
+;; the same prototype are identical in geometry and in available colors, and differ only in which entry
+;; each of their vertices picks -- which is what lets the same authored crate sit in sunlight and in
+;; shadow for one byte per vertex.
+
 ;; DECOMP BEGINS
 
-;; The TIE FRAGMENT is a record for a chunk of TIE DMA data.
-;; The actual data isn't stored in the tie-fragment - this just has some meta-data and a pointer
-;; to the actual data.
-;; Unlike with tfrag, tie-fragments aren't part of the draw-node tree - instead they are associated with a prototype.
+;; One chunk of a TIE prototype: as much geometry as fits in VU1 memory at once, plus everything
+;; needed to build its DMA chain. Every reference below points into a packed block of level data that
+;; is either DMA'd straight to VU1 or read by the palette expander; the counts are what the packet
+;; builder patches into its templates.
 (deftype tie-fragment (drawable)
-  ((gif-ref       (inline-array adgif-shader) :overlay-at id)
-   (point-ref     uint32 :offset 8)
-   (color-index   uint16 :offset 12)
-   (base-colors   uint8 :offset 14)
-   (tex-count     uint16)
-   (gif-count     uint16)
-   (vertex-count  uint16)
-   (color-count   uint16)
-   (num-tris      uint16)
-   (num-dverts    uint16)
-   (dp-ref        uint32)
-   (dp-qwc        uint32)
-   (generic-ref   uint32)
-   (generic-count uint32)
-   (debug-lines   (array vector-array))))
+  ((gif-ref       (inline-array adgif-shader) :overlay-at id) ;; adgif shaders, five quadwords each
+   (point-ref     uint32 :offset 8) ;; packed points, uploaded as V4-16 to VU address 50. Nothing in the
+                                    ;; source declares a type for this stream; the closest are
+                                    ;; generic-tie-base-point and generic-tie-interp-point, which are the
+                                    ;; Generic converter's view of its own copy of the geometry.
+   (color-index   uint16 :offset 12) ;; this fragment's first entry in the prototype color table
+   (base-colors   uint8 :offset 14) ;; palette entries used by base points; each interpolated point takes three
+   (tex-count     uint16) ;; five times the shader count; login divides it back down
+   (gif-count     uint16) ;; quadwords of shader data to upload
+   (vertex-count  uint16) ;; quadwords in the point stream
+   (color-count   uint16) ;; palette entries this fragment selects from the prototype table
+   (num-tris      uint16) ;; triangles, for the renderer statistics display
+   (num-dverts    uint16) ;; output vertex slots in this fragment's GIF packets -- base points and
+                          ;; interpolated points together, and a vertex shared by two strips counts once
+                          ;; per strip. collect-stats multiplies it by the instance count to get the
+                          ;; drawn-vertex total, so "d" is the destination slot each one occupies.
+   (dp-ref        uint32) ;; strip descriptions: GIF tag templates and their destination offsets
+   (dp-qwc        uint32) ;; quadwords of strip description
+   (generic-ref   uint32) ;; generic-tie-header and its compact stream, when this fragment has one
+   (generic-count uint32) ;; quadwords of Generic data
+   (debug-lines   (array vector-array)))) ;; authoring-time wireframe, absent from shipped levels
 
-;; This is a specialization of the shared instance type for a TIE.
-;; It is the child node type in the draw-node BVH tree.
+;; One placement of a prototype. Instances are the leaves of the TIE tree's BVH, so rejecting a draw
+;; node discards a whole subtree of them at once.
+;;
+;; The transform is a matrix4h: sixteen int16, 32 bytes. Its three rotation rows are 1.12 fixed point
+;; and its translation row steps in units of 64 world units, which is how a complete placement fits in
+;; 64 bytes including the bounding sphere. See the unpack at the top of
+;; draw-inline-array-instance-tie.
 (deftype instance-tie (instance)
-  ((color-indices uint32 :overlay-at error)
-   (bucket-ptr    prototype-bucket-tie :offset 12)
-   (max-scale     uint16 :overlay-at (-> origin data 3))
+  ((color-indices uint32 :overlay-at error) ;; per-instance palette indices, or zero to use the prototype's
+   (bucket-ptr    prototype-bucket-tie :offset 12) ;; the prototype this places
+   (max-scale     uint16 :overlay-at (-> origin data 3)) ;; largest row scale, used to inflate the bounds
    (flags         uint16 :overlay-at (-> origin data 7))))
 
-;; Wrapper class for lists of consecutive instances.
-;; This is equivalent to drawable-inline-array-tfrag of tfrag.
+;; Consecutive TIE instance leaves referenced by one draw node. The level's visibility string covers
+;; them in this order, one bit each, which is what lets the packet builder walk visibility and
+;; instance records in lockstep.
 (deftype drawable-inline-array-instance-tie (drawable-inline-array)
   ((data instance-tie 1 :inline)
    (pad  uint32)))
 
-;; Top-level drawable tree for TIE instances.
-;; this is also a drawable-group, so it has a data array containing drawables.
-;; based on the login methods it seems like the data field has all the drawables.
+;; Top-level TIE tree for one level. The drawable-group data holds the BVH; prototypes points at the
+;; bucket array shared with the level's shrub tree.
 (deftype drawable-tree-instance-tie (drawable-tree)
   ((prototypes proxy-prototype-array-tie :offset 8)))
 
-;; Wrapper class for lists of consecutive prototypes.
-;; It's not known if these are proper draw-node BVH trees.
-;; you could imagine it being for things with only one instance (like generic stuff?)
+;; The fragments making up one geometry of one prototype.
 (deftype prototype-tie (drawable-inline-array)
   ((data tie-fragment 1 :inline)
    (pad  uint32)))
 
-;; The actual matrix type we will upload to VU1 per instance.
+;; What VU1 receives per instance: transform, LOD morph weights, fog. Six quadwords, uploaded as
+;; V4-32 to VU address 198 or 242.
+;;
+;; The morph quadword is derived per instance from the camera distance and is
+;; (1 - f, unused, trunc(256 f), 256 - trunc(256 f)) where f falls from one to zero across the chosen
+;; geometry's LOD band. x scales each subdivision vertex's stored displacement, sliding it back onto the
+;; edge it split; the zw pair blends its color toward the average of that edge's two endpoints. y is
+;; unused here -- the microprogram overwrites it with its own 0.5 for that average.
+;;
+;; Because the weight is per instance rather than per fragment, every fragment of a prototype is always
+;; at the same subdivision level, which is what keeps shared edges crack-free. See the
+;; interpolated-point pipeline in tie.gc.
 (deftype tie-matrix (structure)
   ((mat   matrix :inline)
    (morph qword :inline)
    (fog   qword :inline)))
 
-;; Temps used in the instance drawing asm functions
+(defenum instance-tie-work-flag
+  :type uint32
+  :bitfield #t
+  (has-generic 1))
+
+;; Everything the instance packet builder needs that is not in the instance itself: camera constants,
+;; the DMA/VIF templates it patches per instance, cursors into the visibility string, and the stall
+;; counters. tie-work.gc initializes the fixed part; the draw code fills in the camera and cursor
+;; fields each frame and copies the whole thing into draw-local storage, since the builder writes to
+;; it and the shared original must survive.
 (deftype instance-tie-work (structure)
-  ((wind-const                  vector :inline)
-   (hmge-d                      vector :inline)
-   (hvdf-offset                 vector :inline)
+  ((wind-const                  vector :inline) ;; wind spring: damping, force scale, timestep, low clamp
+   (hmge-d                      vector :inline) ;; homogeneous depth range used by the near test
+   (hvdf-offset                 vector :inline) ;; screen-space offset from the camera
    (wind-force                  vector :inline)
-   (constant                    vector :inline)
-   (far-morph                   vector :inline)
-   (dist-test                   vector :inline)
-   (min-dist                    vector :inline)
-   (guard-plane                 plane 4 :inline)
-   (upload-color-0              dma-packet :inline)
-   (upload-color-1              dma-packet :inline)
-   (upload-color-2              dma-packet :inline)
-   (upload-color-ret            dma-packet :inline)
-   (upload-color-temp           dma-packet :inline)
-   (generic-color-0             dma-packet :inline)
+   (constant                    vector :inline) ;; 4096.0 and 128.0: the wind phase clamp
+   (far-morph                   vector :inline) ;; (1, 0, 0, 256): the fully collapsed morph quadword
+   (dist-test                   vector :inline) ;; this instance's two LOD threshold results
+   (min-dist                    vector :inline) ;; running nearest instance, for the statistics display
+   (guard-plane                 plane 4 :inline) ;; the guard volume that selects the near renderer
+   (upload-color-0              dma-packet :inline) ;; six V4-32 quadwords to VU 198: the instance record
+   (upload-color-1              dma-packet :inline) ;; packed V4-8 palette indices to VU 204
+   (upload-color-2              dma-packet :inline) ;; NEXT ending: start entry 0, continue the chain
+   (upload-color-ret            dma-packet :inline) ;; RET ending: start entry 0, return to the caller
+   (upload-color-temp           dma-packet :inline) ;; whichever of those two this instance needs
+   (generic-color-0             dma-packet :inline) ;; the same three, for the Generic path
    (generic-color-1             dma-packet :inline)
    (generic-color-end           dma-packet :inline)
-   (tie-near-perspective-matrix matrix :inline)
-   (wind-vectors                uint32)
+   (tie-near-perspective-matrix matrix :inline) ;; replaces the camera matrix on the near path
+   (wind-vectors                uint32) ;; the level's per-instance wind spring state array
    (test-id                     uint32)
    (test-id2                    uint32)
-   (dma-buffer                  basic)
-   (to-spr                      uint32)
-   (from-spr                    uint32)
-   (wind-work                   uint32)
-   (cur-vis-bits                uint32)
+   (dma-buffer                  basic) ;; caller's dma-buffer, so the builder can publish its cursor
+   (to-spr                      uint32) ;; SPR_TO_BANK, cached: the builder has no symbol table
+   (from-spr                    uint32) ;; SPR_FROM_BANK
+   (wind-work                   uint32) ;; *wind-work*, likewise
+   (cur-vis-bits                uint32) ;; visibility cursors saved across a scratchpad block boundary
    (end-vis-bits                uint32)
    (first-generic-prototype     uint32)
-   (refl-fade-fac               float)
+   (refl-fade-fac               float) ;; environment-map fade, applied by the Generic path
    (refl-fade-end               float)
-   (flags                       uint32)
-   (paused                      basic)
-   (wait-from-spr               uint32)
+   (flags                       instance-tie-work-flag)
+   (paused                      basic) ;; when set, apply the wind shear but do not integrate it
+   (wait-from-spr               uint32) ;; polls spent waiting on each channel, for the timing display
    (wait-to-spr                 uint32)))
 
-;; DMA storage for instance dma generation (mapped to scratchpad)
+;; The instance builder's scratchpad: two input banks of 32 instances, two 4 KiB output banks, and a
+;; copy of the work area after them.
+;;
+;; The whole record sits one quadword into the scratchpad, leaving the first quadword for control
+;; words. That is why every displacement in the packet builders is a field offset plus sixteen -- see
+;; spr-offset in tie-methods.gc.
 (deftype instance-tie-dma (structure)
-  ((banka instance-tie 32 :inline)
+  ((banka instance-tie 32 :inline) ;; exactly one visibility word's worth of instances
    (bankb instance-tie 32 :inline)
-   (outa  uint128 256)
+   (outa  uint128 256) ;; returned to main memory as soon as it fills
    (outb  uint128 256)
-   (work  instance-tie-work :dynamic)))
+   (work  instance-tie-work :dynamic))) ;; begins at 12 KiB, immediately after the fixed banks
 
-;; temps used in the prototype drawing
+;; The prototype builder's equivalent, shared by the ordinary, near, and Generic prototype passes.
+;; Each pass keeps its own pair of stall counters so the timing display can tell them apart.
 (deftype prototype-tie-work (structure)
-  ((upload-palette-0      dma-packet :inline)
-   (upload-palette-1      dma-packet :inline)
-   (upload-model-0        dma-packet :inline)
-   (upload-model-1        dma-packet :inline)
-   (upload-model-2        dma-packet :inline)
-   (upload-model-3        dma-packet :inline)
-   (upload-model-near-0   dma-packet :inline)
-   (upload-model-near-1   dma-packet :inline)
+  ((upload-palette-0      dma-packet :inline) ;; FLUSHA: VU1 must be finished with the old palette
+   (upload-palette-1      dma-packet :inline) ;; 128 expanded colors to VU 838
+   (upload-model-0        dma-packet :inline) ;; shaders and strip templates, V4-32 to VU 0
+   (upload-model-1        dma-packet :inline) ;; packed points, V4-8, plus MSCAL entry 4 to synchronize
+   (upload-model-2        dma-packet :inline) ;; point stream tail, V4-16 to VU 50
+   (upload-model-3        dma-packet :inline) ;; MSCAL entry 6, then CALL into the instance chain
+   (upload-model-near-0   dma-packet :inline) ;; the same sequence for the near path, which adds one
+   (upload-model-near-1   dma-packet :inline) ;; extra V4-8 stream at VU 30
    (upload-model-near-2   dma-packet :inline)
    (upload-model-near-3   dma-packet :inline)
    (upload-model-near-4   dma-packet :inline)
-   (generic-envmap-shader dma-packet :inline)
-   (generic-palette       dma-packet :inline)
+   (generic-envmap-shader dma-packet :inline) ;; and again for Generic, which emits a compact stream
+   (generic-palette       dma-packet :inline) ;; for generic-tie instead of driving VU1 directly
    (generic-model-0       dma-packet :inline)
    (generic-model-1       dma-packet :inline)
    (generic-model-2       dma-packet :inline)
    (generic-model-next    dma-packet :inline)
-   (clamp                 uint64)
-   (prototype-array       basic)
-   (generic-wait-from-spr uint32)
+   (clamp                 uint64) ;; packed halfword saturation limit for the palette expander
+   (prototype-array       basic) ;; saved cursor into the prototype array
+   (generic-wait-from-spr uint32) ;; stall counters, one pair per pass
    (generic-wait-to-spr   uint32)
    (wait-from-spr         uint32)
    (wait-to-spr           uint32)
    (near-wait-from-spr    uint32)
    (near-wait-to-spr      uint32)))
 
-;; DMA storage for prototype dma generation (mapped to scratchpad)
+;; The prototype builder's scratchpad: two 1 KiB palette banks, two 4 KiB output banks, and the
+;; per-prototype state its fragment loop works from. Like instance-tie-dma, this record starts one
+;; quadword into the scratchpad.
 (deftype prototype-tie-dma (structure)
-  ((colora          rgba 256)
+  ((colora          rgba 256) ;; a 1 KiB source chunk is 32 time-of-day entries; each becomes one word
    (colorb          rgba 256)
    (outa            uint128 256)
    (outb            uint128 256)
-   (length          uint32)
+   (length          uint32) ;; prototypes left to visit
    (dma-buffer      basic)
    (this-frag-count uint32)
-   (next            uint32 4 :offset 10256)
-   (geometry        uint32 4)
-   (frag-count      uint8 4)))
+   (next            uint32 4 :offset 10256) ;; the four geometries' instance-list heads, copied here
+   (geometry        uint32 4) ;; their prototype-tie pointers
+   (frag-count      uint8 4))) ;; and their fragment counts
 
 (define *instance-tie-work-copy* (the-as instance-tie-work #f))
 
 (define-extern *instance-tie-work* instance-tie-work)
 
+;; Build the near-renderer projection matrix from the supplied camera matrix.
 (define-extern tie-near-make-perspective-matrix (function matrix matrix))
 
+;; Cull and draw the TIE instance tree for one active level.
 (define-extern draw-drawable-tree-instance-tie (function drawable-tree-instance-tie level none))

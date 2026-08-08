@@ -6,6 +6,8 @@
 
 ;; DECOMP BEGINS
 
+;; Target animations with directional variants share the sidekick's simpler clips. Edge grabs and
+;; poles provide alternate clips for the animation remapper to select with the shared animation seed.
 (define *sidekick-remap*
   '(("run-to-stance-left" "run-to-stance")
    ("run-to-stance-loop-left" "run-to-stance-loop")
@@ -26,75 +28,86 @@
    ("edge-grab-stance1" "edge-grab-stance1" "edge-grab-stance1-alt")
    ("pole-cycle" "pole-cycle" "pole-cycle2")))
 
-(defun cspace<-cspace+quaternion! ((arg0 cspace) (arg1 cspace) (arg2 quaternion))
+(defun cspace<-cspace+quaternion! ((dst cspace) (src cspace) (orientation quaternion))
+  "Build dst's bone transform from orientation and src's homogeneous translation. The result has
+   unit scale, a translation divided by its source w, and a final translation w of one."
   (rlet ((Q :class vf)
          (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf))
+         (unit-scale :class vf)
+         (translation :class vf)
+         (basis-x :class vf)
+         (basis-y :class vf)
+         (basis-z :class vf))
     (init-vf0-vector)
-    (let ((s5-0 (-> arg0 bone transform)))
-      (quaternion->matrix s5-0 arg2)
-      (.lvf vf1 (&-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))
-      (.lvf vf2 (&-> (-> arg1 bone) transform vector 3 quad))
-      (.lvf vf3 (&-> s5-0 vector 0 quad))
-      (.lvf vf4 (&-> s5-0 vector 1 quad))
-      (.lvf vf5 (&-> s5-0 vector 2 quad))
-      (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
-      (.wait.vf)
-      (.mul.vf.xyz vf2 vf2 Q)
-      (.mov.vf.w vf2 vf0)
-      (.mul.x.vf vf3 vf3 vf1)
-      (.mul.y.vf vf4 vf4 vf1)
-      (.mul.z.vf vf5 vf5 vf1)
-      (.svf (&-> s5-0 vector 3 quad) vf2)
-      (.svf (&-> s5-0 vector 0 quad) vf3)
-      (.svf (&-> s5-0 vector 1 quad) vf4)
-      (.svf (&-> s5-0 vector 2 quad) vf5)
-      s5-0)))
+    (let ((transform (-> dst bone transform)))
+      (quaternion->matrix transform orientation)
+      (.lvf unit-scale (&-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))
+      (.lvf translation (&-> (-> src bone) transform vector 3 quad))
+      (.lvf basis-x (&-> transform vector 0 quad))
+      (.lvf basis-y (&-> transform vector 1 quad))
+      (.lvf basis-z (&-> transform vector 2 quad))
 
+      ;; Convert the source's homogeneous translation to an ordinary point. The basis keeps the
+      ;; general scale-by-axis construction, with unit scale for this attachment.
+      (.div.vf Q vf0 translation :fsf #b11 :ftf #b11)
+      (.wait.vf)
+      (.mul.vf.xyz translation translation Q)
+      (.mov.vf.w translation vf0)
+      (.mul.x.vf basis-x basis-x unit-scale)
+      (.mul.y.vf basis-y basis-y unit-scale)
+      (.mul.z.vf basis-z basis-z unit-scale)
+      (.svf (&-> transform vector 3 quad) translation)
+      (.svf (&-> transform vector 0 quad) basis-x)
+      (.svf (&-> transform vector 1 quad) basis-y)
+      (.svf (&-> transform vector 2 quad) basis-z)
+      transform)))
+
+;; Mirror the target's animation onto the sidekick skeleton. The matrix event switches the root
+;; callback between the target root, a full cspace copy, and the shoulder attachment; shadow and
+;; blend-shape events control the two corresponding render features. Each post copies pose,
+;; animation seed, visibility, colors, and interpolation from the target, remaps target animation
+;; names through *sidekick-remap*, evaluates the sidekick joints, and advances effects, blend shapes,
+;; and eye animation. The shadow is enabled only during a movie when shadow-in-movie? is set.
 (defstate sidekick-clone (sidekick)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-      (local-vars (v0-0 object))
+      (local-vars (result object))
       (case message
         (('matrix)
          (case (-> block param 0)
            (('play-anim)
-            (set! v0-0 (-> self node-list data))
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace+quaternion!)
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param1) (the-as basic (-> self parent-override 0 node-list data)))
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) (the-as basic (-> self parent-override 0 control quat))))
+            (set! result (-> self node-list data))
+            (set! (-> (the-as (inline-array cspace) result) 0 param0) cspace<-cspace+quaternion!)
+            (set! (-> (the-as (inline-array cspace) result) 0 param1) (the-as basic (-> self parent-override 0 node-list data)))
+            (set! (-> (the-as (inline-array cspace) result) 0 param2) (the-as basic (-> self parent-override 0 control quat))))
            (('copy-parent)
-            (set! v0-0 (-> self node-list data))
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace!)
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param1) (the-as basic (-> self parent-override 0 node-list data)))
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) #f))
+            (set! result (-> self node-list data))
+            (set! (-> (the-as (inline-array cspace) result) 0 param0) cspace<-cspace!)
+            (set! (-> (the-as (inline-array cspace) result) 0 param1) (the-as basic (-> self parent-override 0 node-list data)))
+            (set! (-> (the-as (inline-array cspace) result) 0 param2) #f))
            (else
-            (set! v0-0 (-> self node-list data))
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param0) cspace<-cspace+quaternion!)
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param1)
-                  (the-as basic (-> self parent-override 0 control unknown-cspace10 parent)))
-            (set! (-> (the-as (inline-array cspace) v0-0) 0 param2) (the-as basic (-> self parent-override 0 control quat)))))
-         v0-0)
-        (('shadow) (set! v0-0 (-> block param 0)) (set! (-> self shadow-in-movie?) (the-as symbol v0-0)) v0-0)
+            (set! result (-> self node-list data))
+            (set! (-> (the-as (inline-array cspace) result) 0 param0) cspace<-cspace+quaternion!)
+            (set! (-> (the-as (inline-array cspace) result) 0 param1)
+                  (the-as basic (-> self parent-override 0 control sidekick-root parent)))
+            (set! (-> (the-as (inline-array cspace) result) 0 param2) (the-as basic (-> self parent-override 0 control quat)))))
+         result)
+        (('shadow) (set! result (-> block param 0)) (set! (-> self shadow-in-movie?) (the-as symbol result)) result)
         (('blend-shape)
          (cond
            ((-> block param 0)
-            (set! v0-0 (logior (-> self skel status) (janim-status blerc)))
-            (set! (-> self skel status) (the-as janim-status v0-0)))
+            (set! result (logior (-> self skel status) (janim-status blerc)))
+            (set! (-> self skel status) (the-as janim-status result)))
            (else
-            (set! v0-0 (logclear (-> self skel status) (janim-status blerc)))
-            (set! (-> self skel status) (the-as janim-status v0-0))))
-         v0-0)))
+            (set! result (logclear (-> self skel status) (janim-status blerc)))
+            (set! (-> self skel status) (the-as janim-status result))))
+         result)))
   :code looping-code
   :post
     (behavior ()
-      (let ((v1-0 'process-drawable-art-error)
-            (a0-0 (-> self parent-override)))
-        (when (!= (-> (if a0-0 (-> a0-0 0 self-override)) next-state name) v1-0)
+      (let ((art-error-state 'process-drawable-art-error)
+            (parent (-> self parent-override)))
+        (when (!= (-> (if parent (-> parent 0 self-override)) next-state name) art-error-state)
           (quaternion-copy! (-> self root quat) (-> self parent-override 0 control quat))
           (set! (-> self anim-seed) (-> self parent-override 0 anim-seed))
           (set! (-> self draw status) (-> self parent-override 0 draw status))
@@ -105,11 +118,13 @@
                                 *sidekick-remap*
                                 (the-as int (-> self anim-seed))
                                 "")
-          (let ((v1-22 (-> self parent-override 0 draw color-mult quad))) (set! (-> self draw color-mult quad) v1-22))
-          (with-pc ;; duh!
+          (let ((color-mult (-> self parent-override 0 draw color-mult quad))) (set! (-> self draw color-mult quad) color-mult))
+          (with-pc
+            ;; Tint Daxter blue when the sidekick-blue cheat is enabled.
             (when (pc-cheats? (-> *pc-settings* cheats) sidekick-blue)
               (set! (-> self draw color-mult x) (set! (-> self draw color-mult y) 0.1))))
-          (let ((v1-26 (-> self parent-override 0 draw color-emissive quad))) (set! (-> self draw color-emissive quad) v1-26))
+          (let ((color-emissive (-> self parent-override 0 draw color-emissive quad)))
+            (set! (-> self draw color-emissive quad) color-emissive))
           (set! (-> self draw secondary-interp) (-> self parent-override 0 draw secondary-interp))
           (if *debug-segment*
             (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
@@ -124,7 +139,7 @@
         (debug-print-channels (-> self skel) (the-as symbol *stdcon*))
         (add-debug-sphere *display-sidekick-stats*
                           (bucket-id debug-no-zbuf)
-                          (-> self parent-override 0 control unknown-cspace10 parent bone transform vector 3)
+                          (-> self parent-override 0 control sidekick-root parent bone transform vector 3)
                           409.6
                           (new 'static 'rgba :g #xff :a #x80))
         (add-debug-sphere *display-sidekick-stats*
@@ -138,7 +153,7 @@
                           409.6
                           (new 'static 'rgba :r #xff :g #x80 :a #x80)))
       (set! (-> self draw shadow) (the-as shadow-geo (if (and (movie?) (-> self shadow-in-movie?)) sidekick-shadow-mg)))
-      (let ((a0-26 (-> self skel effect))) (if a0-26 (effect-control-method-9 a0-26)))
+      (let ((effects (-> self skel effect))) (if effects (update-effects effects)))
       (if (logtest? (-> self skel status) (janim-status blerc blerc-done)) (merc-blend-shape self))
       (if (logtest? (-> self skel status) (janim-status eye-done eye)) (merc-eye-anim self))))
 
@@ -154,6 +169,8 @@
   :sort 1)
 
 (defbehavior init-sidekick sidekick ()
+  "Initialize the sidekick drawable, skeleton, shadow, eye animation, and root-cspace callback,
+   repair any blend-shape state left in persistent PC render data, then enter sidekick-clone."
   (logior! (-> self mask) (process-mask sidekick))
   (set! (-> self root) (new 'process 'trsqv))
   (vector-identity! (-> self root scale))
@@ -164,18 +181,17 @@
   (set! (-> self draw shadow-ctrl) *target-shadow-control*)
   (logior! (-> self skel status) (janim-status eye))
   (#when PC_PORT
-    ;; daxter can be killed mid-blerc, leaving blerc modifications in the merc data.
-    ;; once sidekick is restarted, the blerc-done flag will be lost, so the modifications will
-    ;; to work around this, just set blerc-done on spawn. it will run blerc with 0's on the
-    ;; first frame when daxter is drawn, clearing blerc data.
+    ;; Blend-shape edits can remain in persistent MERC data when Daxter is destroyed mid-animation.
+    ;; Mark the blend complete so the first rendered frame reapplies zero weights and clears them.
     (logior! (-> self skel status) (janim-status blerc-done)))
-  (let ((v1-14 (-> self node-list data)))
-    (set! (-> v1-14 0 param0) cspace<-cspace+quaternion!)
-    (set! (-> v1-14 0 param1) (the-as basic (-> self parent-override 0 control unknown-cspace10 parent)))
-    (set! (-> v1-14 0 param2) (the-as basic (-> self parent-override 0 control quat))))
+  (let ((nodes (-> self node-list data)))
+    (set! (-> nodes 0 param0) cspace<-cspace+quaternion!)
+    (set! (-> nodes 0 param1) (the-as basic (-> self parent-override 0 control sidekick-root parent)))
+    (set! (-> nodes 0 param2) (the-as basic (-> self parent-override 0 control quat))))
   (set! (-> self shadow-in-movie?) #t)
   (go sidekick-clone)
   (none))
 
 (defun starts ()
+  "Ask the target event handler to activate the sidekick."
   (send-event *target* 'sidekick #t))

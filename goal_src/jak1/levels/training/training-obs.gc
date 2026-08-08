@@ -12,7 +12,6 @@
 
 (deftype training-water (water-anim) ())
 
-
 (define ripple-for-training-water
   (new 'static
        'ripple-wave-set
@@ -29,15 +28,16 @@
             (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
             (new 'static 'ripple-wave))))
 
-(defmethod water-vol-method-22 ((this training-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
-  (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> this draw ripple) v1-2)
+(defmethod setup-water! ((this training-water))
+  "Run the shared animated-water setup, then install the Training ripple controller and tint."
+  (let ((t9-0 (method-of-type water-anim setup-water!))) (t9-0 this))
+  (let ((ripple (new 'process 'ripple-control)))
+    (set! (-> this draw ripple) ripple)
     (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
-    (set! (-> v1-2 global-scale) 3072.0)
-    (set! (-> v1-2 close-fade-dist) 163840.0)
-    (set! (-> v1-2 far-fade-dist) 245760.0)
-    (set! (-> v1-2 waveform) ripple-for-training-water))
+    (set! (-> ripple global-scale) 3072.0)
+    (set! (-> ripple close-fade-dist) 163840.0)
+    (set! (-> ripple far-fade-dist) 245760.0)
+    (set! (-> ripple waveform) ripple-for-training-water))
   (none))
 
 (defskelgroup *training-cam-sg*
@@ -55,8 +55,8 @@
   (:state-methods
    idle))
 
-
 (defmethod relocate ((this training-cam) (offset int))
+  "Relocate the optional transform and then the process."
   (if (nonzero? (-> this root)) (&+! (-> this root) offset))
   (the-as training-cam ((method-of-type process relocate) this offset)))
 
@@ -78,7 +78,7 @@
               (suspend))
             (set-time! (-> self state-time))
             (process-grab? *target*)
-            (process-entity-status! self (entity-perm-status bit-3) #t)
+            (process-entity-status! self (entity-perm-status no-kill) #t)
             (until (not (or (-> *setting-control* current talking)
                             (or (-> *setting-control* current spooling) (-> *setting-control* current hint) (-> *setting-control* current ambient))))
               (set-setting! 'allow-progress #f 0.0 0)
@@ -128,7 +128,7 @@
                    (clear-text-seen! *game-info* (text-id training-double-jump))
                    (level-hint-spawn (text-id training-double-jump) "sagevb27" (the-as entity #f) *entity-pool* (game-task none))
                    (suspend-for (seconds 30))
-                   (process-entity-status! self (entity-perm-status bit-3) #f)
+                   (process-entity-status! self (entity-perm-status no-kill) #f)
                    (go-virtual idle)))))
             (while (-> self child)
               (suspend)))
@@ -137,38 +137,39 @@
                   (let ((a0-62 (-> a0-61 extra perm task))) (if a0-62 (= a0-62 (game-task none)))))
               (set! (-> self entity extra perm task) (game-task complete))))
           (process-entity-status! self (entity-perm-status dead) #t)
-          (process-entity-status! self (entity-perm-status bit-3) #f)
+          (process-entity-status! self (entity-perm-status no-kill) #f)
           (deactivate self))
         (suspend))))
 
-(defmethod init-from-entity! ((this training-cam) (arg0 entity-actor))
-  "Copy defaults from the entity."
+(defmethod init-from-entity! ((this training-cam) (source-entity entity-actor))
+  "Initialize the hint trigger position, range, and hint index from its placed entity."
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this root) (new 'process 'trsq))
-  (set! (-> this root trans quad) (-> arg0 extra trans quad))
-  (quaternion-copy! (-> this root quat) (-> arg0 quat))
+  (vector-copy! (-> this root trans) (-> source-entity extra trans))
+  (quaternion-copy! (-> this root quat) (-> source-entity quat))
   (vector-identity! (-> this root scale))
-  (set! (-> this range) (res-lump-float arg0 'cam-notice-dist :default 81920.0))
-  (set! (-> this index) (res-lump-value arg0 'index int))
+  (set! (-> this range) (res-lump-float source-entity 'cam-notice-dist :default 81920.0))
+  (set! (-> this index) (res-lump-value source-entity 'index int))
   (go (method-of-object this idle))
   (none))
 
 (deftype tra-pontoon (rigid-body-platform)
   ((anchor-point vector :inline)))
 
-
-(defmethod init-from-entity! ((this tra-pontoon) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tra-pontoon) (source-entity entity-actor))
+  "Create the pontoon from its placed entity and enter the rigid-body idle state."
   (logior! (-> this mask) (process-mask platform))
-  (rigid-body-platform-method-30 this)
-  (process-drawable-from-entity! this arg0)
-  (rigid-body-platform-method-31 this)
+  (init-collision! this)
+  (process-drawable-from-entity! this source-entity)
+  (init-platform! this)
   (go (method-of-object this rigid-body-platform-idle))
   0
   (none))
 
-(defmethod rigid-body-platform-method-23 ((this tra-pontoon) (arg0 float))
-  (call-parent-method this arg0)
-  (rigid-body-platform-method-27 this (-> this anchor-point))
+(defmethod accumulate-forces! ((this tra-pontoon) (simulation-time float))
+  "Apply the shared platform forces, then pull the pontoon toward its anchor."
+  (call-parent-method this simulation-time)
+  (apply-restoring-force! this (-> this anchor-point))
   0
   (none))
 
@@ -205,7 +206,8 @@
   ((pontoonfive-lod0-mg (meters 20)) (pontoonfive-lod1-mg (meters 40)) (pontoonfive-lod2-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 5))
 
-(defmethod rigid-body-platform-method-30 ((this tra-pontoon))
+(defmethod init-collision! ((this tra-pontoon))
+  "Create the pontoon's moving rider collision mesh."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -225,9 +227,10 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this tra-pontoon))
+(defmethod init-platform! ((this tra-pontoon))
+  "Initialize the pontoon skeleton, physics constants, buoyancy points, and anchor."
   (initialize-skeleton this *tra-pontoon-sg* '())
-  (rigid-body-platform-method-29 this *tra-pontoon-constants*)
+  (setup-from-constants! this *tra-pontoon-constants*)
   (set! (-> this float-height-offset) 6144.0)
   (set! (-> this root-overlay nav-radius) 20480.0)
   (let ((v1-6 (-> this control-point-array data)))
@@ -250,13 +253,12 @@
     (set! (-> v1-12 local-pos y) 0.0)
     (set! (-> v1-12 local-pos z) 12083.2)
     (set! (-> v1-12 local-pos w) 1.0))
-  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
+  (vector-copy! (-> this anchor-point) (-> this root-overlay trans))
   (nav-mesh-connect this (-> this root-overlay) (the-as nav-control #f))
   0
   (none))
 
 (deftype tra-iris-door (eco-door) ())
-
 
 (defskelgroup *tra-iris-door-sg*
   jng-iris-door
@@ -265,7 +267,8 @@
   ((jng-iris-door-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 8))
 
-(defmethod eco-door-method-24 ((this tra-iris-door))
+(defmethod setup-collision! ((this tra-iris-door))
+  "Create and install the iris door's solid collision mesh."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -281,7 +284,8 @@
   0
   (none))
 
-(defmethod eco-door-method-25 ((this tra-iris-door))
+(defmethod setup-skel-and-params! ((this tra-iris-door))
+  "Initialize the iris-door skeleton, transforms, and opening distances."
   (initialize-skeleton this *tra-iris-door-sg* '())
   (set! (-> this open-distance) 32768.0)
   (set! (-> this close-distance) 49152.0)
@@ -314,7 +318,7 @@
    (:accel-y (meters 0.00066666666))
    (:friction 0.9)
    (:timer (seconds 1.4))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:next-time (seconds 0.1) (seconds 0.197))
    (:next-launcher 2917)
    (:conerot-x (degrees 0) (degrees 360))
@@ -344,7 +348,7 @@
    (:scalevel-y (meters 0.009765625))
    (:fade-a 2.1333334)
    (:timer (seconds 0.1))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.05))
    (:next-launcher 2919)
    (:rotate-y (degrees 0))))
@@ -365,7 +369,7 @@
    (:b 196.0)
    (:a 48.0)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2915
   :init-specs
@@ -388,7 +392,7 @@
    (:accel-y (meters -0.0033333334))
    (:friction 0.97)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:next-time (seconds 0.25))
    (:next-launcher 2920)
    (:conerot-x (degrees 40) (degrees 30))
@@ -418,7 +422,7 @@
    (:accel-y (meters -0.0033333334))
    (:friction 0.97)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:next-time (seconds 0.25))
    (:next-launcher 2920)
    (:conerot-x (degrees 40) (degrees 30))
@@ -444,7 +448,6 @@
    idle
    (hit float vector symbol)))
 
-
 (deftype scarecrow-b (process-drawable)
   ((root                collide-shape :override)
    (incomming-attack-id uint64)
@@ -452,7 +455,6 @@
   (:state-methods
    idle
    (hit float vector symbol)))
-
 
 (defskelgroup *scarecrow-a-sg*
   scarecrow-a
@@ -518,10 +520,7 @@
     (behavior ()
       (ja-channel-push! 1 (seconds 0.12))
       (loop
-        (ja-no-eval :group! scarecrow-a-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! scarecrow-a-idle-ja :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
 (defstate hit (scarecrow-a)
@@ -529,29 +528,17 @@
   :code
     (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
       (when (not arg2)
-        (effect-control-method-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
+        (do-effect (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
         (ja-channel-push! 1 (seconds 0.07))
         (cond
-          ((< (fabs arg0) 8192.0)
-           (ja-no-eval :group! scarecrow-a-hit-front-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))
-          ((and (< 8192.0 arg0) (< arg0 24576.0))
-           (ja-no-eval :group! scarecrow-a-hit-left-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))
-          (else
-           (ja-no-eval :group! scarecrow-a-hit-right-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))))
+          ((< (fabs arg0) 8192.0) (ja-play :group! scarecrow-a-hit-front-ja :num! (seek!) :frame-num 0.0))
+          ((and (< 8192.0 arg0) (< arg0 24576.0)) (ja-play :group! scarecrow-a-hit-left-ja :num! (seek!) :frame-num 0.0))
+          (else (ja-play :group! scarecrow-a-hit-right-ja :num! (seek!) :frame-num 0.0)))
         (go-virtual idle))
       (clear-collide-with-as (-> self root))
-      (effect-control-method-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
-      (effect-control-method-10 (-> self skel effect) 'group-scarecrow-joint-explode 20.0 -1)
-      (effect-control-method-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
+      (do-effect (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
+      (do-effect (-> self skel effect) 'group-scarecrow-joint-explode 20.0 -1)
+      (do-effect (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
       (sound-play "break-dummy")
       (ja-channel-set! 0)
       (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
@@ -561,7 +548,7 @@
         (set! (-> s5-2 fountain-rand-transv-hi y) 81920.0)
         (set! (-> s5-2 fountain-rand-transv-hi z) 20480.0)
         (set! (-> s5-2 fountain-rand-transv-hi w) 49152.0)
-        (set! (-> s5-2 fountain-rand-transv-lo quad) (-> arg1 quad))
+        (vector-copy! (-> s5-2 fountain-rand-transv-lo) arg1)
         (process-spawn joint-exploder
                        *scarecrow-a-break-sg*
                        5
@@ -590,7 +577,8 @@
       (cleanup-for-death self))
   :post ja-post)
 
-(defmethod init-from-entity! ((this scarecrow-a) (arg0 entity-actor))
+(defmethod init-from-entity! ((this scarecrow-a) (source-entity entity-actor))
+  "Create the dummy collision, initialize its skeleton, and enter idle."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -615,7 +603,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *scarecrow-a-sg* '())
   (go (method-of-object this idle))
   (none))
@@ -643,10 +631,7 @@
     (behavior ()
       (ja-channel-push! 1 (seconds 0.12))
       (loop
-        (ja-no-eval :group! scarecrow-b-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! scarecrow-b-idle-ja :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
 (defstate hit (scarecrow-b)
@@ -654,29 +639,17 @@
   :code
     (behavior ((arg0 float) (arg1 vector) (arg2 symbol))
       (when (not arg2)
-        (effect-control-method-10 (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
+        (do-effect (-> self skel effect) 'group-scarecrow-hit 4.0 -1)
         (ja-channel-push! 1 (seconds 0.07))
         (cond
-          ((< (fabs arg0) 8192.0)
-           (ja-no-eval :group! scarecrow-b-hit-front-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))
-          ((and (< 8192.0 arg0) (< arg0 24576.0))
-           (ja-no-eval :group! scarecrow-b-hit-left-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))
-          (else
-           (ja-no-eval :group! scarecrow-b-hit-right-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))))
+          ((< (fabs arg0) 8192.0) (ja-play :group! scarecrow-b-hit-front-ja :num! (seek!) :frame-num 0.0))
+          ((and (< 8192.0 arg0) (< arg0 24576.0)) (ja-play :group! scarecrow-b-hit-left-ja :num! (seek!) :frame-num 0.0))
+          (else (ja-play :group! scarecrow-b-hit-right-ja :num! (seek!) :frame-num 0.0)))
         (go-virtual idle))
       (clear-collide-with-as (-> self root))
-      (effect-control-method-10 (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
-      (effect-control-method-10 (-> self skel effect) 'group-scarecrow-joint-explode 21.0 -1)
-      (effect-control-method-10 (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
+      (do-effect (-> self skel effect) 'group-scarecrow-joint-explode 12.0 -1)
+      (do-effect (-> self skel effect) 'group-scarecrow-joint-explode 21.0 -1)
+      (do-effect (-> self skel effect) 'group-scarecrow-explode 4.0 -1)
       (sound-play "break-dummy")
       (ja-channel-set! 0)
       (let ((s5-2 (new 'stack 'joint-exploder-tuning 1)))
@@ -685,7 +658,7 @@
         (set! (-> s5-2 fountain-rand-transv-hi y) 81920.0)
         (set! (-> s5-2 fountain-rand-transv-hi z) 40960.0)
         (set! (-> s5-2 fountain-rand-transv-hi w) 102400.0)
-        (set! (-> s5-2 fountain-rand-transv-lo quad) (-> arg1 quad))
+        (vector-copy! (-> s5-2 fountain-rand-transv-lo) arg1)
         (process-spawn joint-exploder
                        *scarecrow-b-break-sg*
                        5
@@ -718,7 +691,8 @@
       (cleanup-for-death self))
   :post ja-post)
 
-(defmethod init-from-entity! ((this scarecrow-b) (arg0 entity-actor))
+(defmethod init-from-entity! ((this scarecrow-b) (source-entity entity-actor))
+  "Create the dummy collision, initialize its skeleton, and enter idle."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -750,7 +724,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *scarecrow-b-sg* '())
   (go (method-of-object this idle))
   (none))

@@ -4,59 +4,109 @@
 (require "kernel-defs.gc")
 
 ;; NOTE - for water
+;; Bilinearly sample the wrapping 32x32 wave-height field at a world position.
 (define-extern ocean-get-height (function vector float))
 
+;; Advance the wave field and select the visible ocean regions for this frame.
 (define-extern update-ocean (function none))
 
+;; Submit the far, mid, transition, near, and texture passes for the infinite ocean.
 (define-extern draw-ocean (function none))
 
+;; Draw the screen-space ocean reflection/refraction texture.
 (define-extern draw-ocean-texture (function dma-buffer (inline-array vector) symbol none))
 
+;; Draw the crack-free strips joining the mid and near grids.
 (define-extern draw-ocean-transition (function dma-buffer none))
 
+;; Draw visible cells of the 48x48 mid-distance grid.
 (define-extern draw-ocean-mid (function dma-buffer none))
 
+;; Draw the fine grid surrounding the camera.
 (define-extern draw-ocean-near (function dma-buffer none))
 
-;; The "ocean" renderer is used to render the infinite water.
-;; It doesn't draw the rivers in FJ or the water near the farmer.
+;; The ocean renderer draws the apparently infinite sea as nested grids centered
+;; around the camera: large far quads, a culled 48x48 mid grid, transition strips,
+;; and a fine near grid displaced by the animated wave field.  It does not draw
+;; the river in Forbidden Jungle or the pond beside the farmer.
+
+;; Every table in an ocean-map is addressed through one subdivision of the map, so the sizes
+;; below are all consequences of these four steps:
+;;
+;;   coarse block   (meters 768)  6x6 blocks cover the map, one visibility sphere each
+;;   mid cell       (meters 96)   8x8 cells per block, 48x48 over the map
+;;   trans subcell  (meters 24)   4x4 subcells per mid cell
+;;   near cell      (meters 3)    8x8 near cells per subcell, so 32x32 per mid cell
+;;
+;; The wave field is 32x32 samples spaced (meters 3) apart, which makes its period exactly one
+;; mid cell: the near cells of a mid cell line up with the field one for one, and any world
+;; position folds into it with a mask instead of a modulo.  ocean-mid-mask is reused at two of
+;; these levels, once for the 8x8 mid cells under a coarse block and once for the 8x8 near
+;; cells under a transition subcell.
+;;
+;; The map therefore spans (meters 4608) on a side and is placed by start-corner.
+
+;; Value space of *ocean-facing*: which cardinal direction the camera looks along, taken from
+;; the dominant axis of its forward vector.  draw-ocean-far uses it to leave out the far strip
+;; on the opposite edge of the map, which is behind the camera.
+(defconstant OCEAN_FACING_Z_MIN 0)
+
+(defconstant OCEAN_FACING_Z_MAX 1)
+
+(defconstant OCEAN_FACING_X_MAX 2)
+
+(defconstant OCEAN_FACING_X_MIN 3)
 
 ;; DECOMP BEGINS
 
 (deftype ocean-corner (structure)
-  ((bsphere      sphere :inline)
+  ;; One visible corner region and the per-corner fade/color data used to blend it.
+  ((bsphere sphere :inline)
    (start-corner vector :inline)
-   (y-scales     vector :inline)
-   (alphas       vector :inline)
-   (colors       uint32 4)))
+   (y-scales vector :inline)
+   (alphas vector :inline)
+   (colors uint32 4)))
 
 (deftype ocean-wave-info (structure)
-  ((frequency  float)
-   (amplitude  float)
+  ;; A directional sinusoid.  kx, ky, and w are the precomputed spatial and time
+  ;; coefficients derived from frequency, angle, and wave-speed.
+  ((frequency float)
+   (amplitude float)
    (wave-speed float)
-   (angle      float)
-   (kx         float)
-   (ky         float)
-   (w          float)
-   (flags      int32)))
+   (angle float)
+   (kx float)
+   (ky float)
+   (w float)
+   (flags int32)))
 
 (deftype ocean-vertex (structure)
-  ((pos vector :inline)
-   (stq vector :inline)
-   (col vector :inline)))
+  ;; Input record for render-ocean-quad, four per quad, 48 bytes each.  pos w is the
+  ;; homogeneous weight of the camera matrix's translation row: 1.0 is an ordinary world
+  ;; position, and 0.0 places the vertex at infinity along its own direction, which is how the
+  ;; far quads reach the horizon.  stq z and w are always 1.0, and the far passes put whole
+  ;; texture repeat counts in s and t.
+  ((pos vector :inline) (stq vector :inline) (col vector :inline)))
 
 (deftype ocean-spheres (structure)
+  ;; Visibility sphere for each of the 6x6 coarse blocks, in row-major order.  The matching
+  ;; entry of ocean-mid-indices names the mask saying which of that block's 8x8 mid cells are
+  ;; water.
   ((spheres sphere 36 :inline)))
 
 (deftype ocean-colors (structure)
+  ;; Authored vertex color at every corner of the 48x48 mid grid: 49x49 useful entries with the
+  ;; row stride padded out to 52.  Consumers address it as (+ (* 52 row) column) and blend the
+  ;; four corners of a cell.
   ((colors rgba 2548)))
 
 (deftype ocean-mid-mask (structure)
-  ((mask  uint8 8)
+  ;; Eight rows of an 8x8 mid-cell block; a set bit suppresses that cell.
+  ((mask uint8 8)
    (dword uint64 :overlay-at (-> mask 0)))
   :pack-me)
 
 (deftype ocean-mid-indices (basic)
+  ;; Map the 6x6 coarse visibility spheres to their authored mid masks.
   ((data uint16 36)))
 
 (deftype ocean-mid-masks (basic)
@@ -64,19 +114,24 @@
   :pack-me)
 
 (deftype ocean-trans-mask (structure)
+  ;; Four rows of four transition subcells packed into one working word.
   ((mask uint8 4)
    (word uint64 :overlay-at (-> mask 0)))
   :pack-me)
 
 (deftype ocean-trans-index (structure)
+  ;; For each mid cell, select the parent mask and its corresponding near child.
+  ;; Negative entries indicate that the cell has no transition relationship.
   ((parent int16)
-   (child  int16))
+   (child int16))
   :pack-me)
 
 (deftype ocean-trans-indices (basic)
+  ;; One parent/child relation for every cell of the 48x48 mid grid.
   ((data ocean-trans-index 2304 :inline)))
 
 (deftype ocean-near-index (structure)
+  ;; Sixteen mask indices for the 4x4 near subcells of one transition region.
   ((data uint16 16)))
 
 (deftype ocean-near-indices (basic)
@@ -89,14 +144,18 @@
    (color3 vector :inline)))
 
 (deftype ocean-map (basic)
-  ((start-corner        vector :inline)
-   (far-color           vector :inline)
-   (ocean-spheres       ocean-spheres)
-   (ocean-colors        ocean-colors)
-   (ocean-mid-indices   ocean-mid-indices)
+  ;; Authored topology, visibility, and vertex-color data for one ocean placement.
+  ;; start-corner is the minimum corner of the 48x48 mid grid.  Its y is the surface height and
+  ;; is rewritten by draw-ocean every frame, so that component is live state rather than
+  ;; authored data.  far-color is the single flat color of the far skirt and its corners.
+  ((start-corner vector :inline)
+   (far-color vector :inline)
+   (ocean-spheres ocean-spheres)
+   (ocean-colors ocean-colors)
+   (ocean-mid-indices ocean-mid-indices)
    (ocean-trans-indices ocean-trans-indices)
-   (ocean-near-indices  ocean-near-indices)
-   (ocean-mid-masks     ocean-mid-masks)))
+   (ocean-near-indices ocean-near-indices)
+   (ocean-mid-masks ocean-mid-masks)))
 
 (deftype ocean-trans-strip (structure)
   ((verts uint128 10)))
@@ -108,12 +167,16 @@
   ((data uint8 1024)))
 
 (deftype ocean-wave-frames (structure)
+  ;; Sixty-four precomputed 1 KiB wave frames used by the animated height field.
   ((frame ocean-wave-data 64 :inline)))
 
+;; Per-frame CPU selection and mask state shared by the nested-grid passes.
 (deftype ocean-work (basic)
   ((deltas             vector :inline)
    (map-min            vector :inline)
    (map-max            vector :inline)
+   ;; x and y are this frame's blend weights for the current and next wave frame, written by
+   ;; ocean-interp-wave.
    (interp             vector :inline)
    (corner-array       ocean-corner 25 :inline)
    (corner-count       int32)
@@ -139,18 +202,29 @@
 
 (define *ocean-work* (new 'static 'ocean-work))
 
+;; Cardinal camera-facing quadrant used to choose the far-ocean edges.  Its four values are the
+;; OCEAN_FACING_* constants above.
 (define *ocean-facing* 0)
 
+;; Debug switches for the three passes: setting one suppresses that pass.  draw-ocean clears all
+;; three at the end of every unpaused frame, so they only hold for one frame at a time and a
+;; caller that wants a pass to stay off has to keep setting it.
 (define *ocean-off* #f)
 
 (define *ocean-mid-off* #f)
 
 (define *ocean-near-off* #f)
 
+;; This frame's live wave field: 32x32 floats, 4 KiB, carved out of the global DMA buffer by
+;; draw-ocean.  The declared type is inherited from the authoring side; no consumer reads it as
+;; an ocean-wave-info.  #f until draw-ocean has run this frame.
 (define *ocean-heights* (the-as ocean-wave-info #f))
 
+;; This frame's displaced near-grid geometry: 1024 position/normal pairs, 32 KiB, placed
+;; immediately after the wave field in the same buffer because DMA fetches both from there.
 (define *ocean-verts* (the-as (inline-array vector) #f))
 
+;; Scratch state shared with the VU0 wave generator.
 (deftype ocean-vu0-work (structure)
   ((scales      vector :inline)
    (mask-hi     vector4w :inline)
@@ -159,13 +233,14 @@
    (wait-to-vu0 uint32)))
 
 (deftype ocean-texture-constants (structure)
-  ((giftag    gs-gif-tag :inline)
-   (buffers   vector4w :inline)
-   (dests     vector4w :inline)
-   (start     vector :inline)
-   (offsets   vector :inline)
+  ;; VU constants for projecting the ocean into the intermediate texture.
+  ((giftag gs-gif-tag :inline)
+   (buffers vector4w :inline)
+   (dests vector4w :inline)
+   (start vector :inline)
+   (offsets vector :inline)
    (constants vector :inline)
-   (cam-nrm   vector :inline)))
+   (cam-nrm vector :inline)))
 
 (deftype ocean-texture-work (structure)
   ((sprite-tmpl  dma-gif-packet :inline)
@@ -178,33 +253,35 @@
    (pos vector :inline)))
 
 (deftype ocean-mid-constants (structure)
-  ((hmge-scale     vector :inline)
+  ;; VU1 transform, fog, material, strip, and indexing templates for the mid grid.
+  ((hmge-scale vector :inline)
    (inv-hmge-scale vector :inline)
-   (hvdf-offset    vector :inline)
-   (fog            vector :inline)
-   (constants      vector :inline)
-   (constants2     vector :inline)
-   (drw-fan        gs-gif-tag :inline)
-   (env-fan        gs-gif-tag :inline)
-   (drw-adgif      gs-gif-tag :inline)
-   (drw-texture    adgif-shader :inline)
-   (drw-strip-0    gs-gif-tag :inline)
-   (drw-strip-1    gs-gif-tag :inline)
-   (env-adgif      gs-gif-tag :inline)
-   (env-texture    adgif-shader :inline)
-   (env-strip      gs-gif-tag :inline)
-   (env-color      vector :inline)
-   (index-table    vector4w 8 :inline)
-   (pos0           vector :inline)
-   (pos1           vector :inline)
-   (pos2           vector :inline)
-   (pos3           vector :inline)))
+   (hvdf-offset vector :inline)
+   (fog vector :inline)
+   (constants vector :inline)
+   (constants2 vector :inline)
+   (drw-fan gs-gif-tag :inline)
+   (env-fan gs-gif-tag :inline)
+   (drw-adgif gs-gif-tag :inline)
+   (drw-texture adgif-shader :inline)
+   (drw-strip-0 gs-gif-tag :inline)
+   (drw-strip-1 gs-gif-tag :inline)
+   (env-adgif gs-gif-tag :inline)
+   (env-texture adgif-shader :inline)
+   (env-strip gs-gif-tag :inline)
+   (env-color vector :inline)
+   (index-table vector4w 8 :inline)
+   (pos0 vector :inline)
+   (pos1 vector :inline)
+   (pos2 vector :inline)
+   (pos3 vector :inline)))
 
 (deftype ocean-mid-upload (structure)
-  ((rot    matrix :inline)
+  ;; Per-batch mid-grid transform, vertex colors, and suppression masks.
+  ((rot matrix :inline)
    (matrix matrix :inline)
    (colors uint128 108)
-   (masks  uint128 2)))
+   (masks uint128 2)))
 
 (deftype ocean-mid-upload2 (structure)
   ((rot    matrix :inline)
@@ -230,39 +307,41 @@
    (indices uint128 16)))
 
 (deftype ocean-near-constants (structure)
-  ((hmge-scale     vector :inline)
+  ;; VU1 transform and packet templates for the near grid and its extra blend passes.
+  ((hmge-scale vector :inline)
    (inv-hmge-scale vector :inline)
-   (hvdf-offset    vector :inline)
-   (fog            vector :inline)
-   (constants      vector :inline)
-   (constants2     vector :inline)
-   (constants3     vector :inline)
-   (constants4     vector :inline)
-   (drw-fan        gs-gif-tag :inline)
-   (drw2-fan       gs-gif-tag :inline)
-   (env-fan        gs-gif-tag :inline)
-   (drw-adgif      gs-gif-tag :inline)
-   (drw-texture    adgif-shader :inline)
-   (drw-strip      gs-gif-tag :inline)
-   (env-adgif      gs-gif-tag :inline)
-   (env-texture    adgif-shader :inline)
-   (env-strip      gs-gif-tag :inline)
-   (env-color      vector :inline)
-   (drw2-adgif     gs-gif-tag :inline)
-   (drw2-tex0      qword :inline)
-   (drw2-frame     qword :inline)
-   (drw2-strip     gs-gif-tag :inline)
-   (drw3-adgif     gs-gif-tag :inline)
-   (drw3-frame     qword :inline)
-   (index-table    vector4w 4 :inline)))
+   (hvdf-offset vector :inline)
+   (fog vector :inline)
+   (constants vector :inline)
+   (constants2 vector :inline)
+   (constants3 vector :inline)
+   (constants4 vector :inline)
+   (drw-fan gs-gif-tag :inline)
+   (drw2-fan gs-gif-tag :inline)
+   (env-fan gs-gif-tag :inline)
+   (drw-adgif gs-gif-tag :inline)
+   (drw-texture adgif-shader :inline)
+   (drw-strip gs-gif-tag :inline)
+   (env-adgif gs-gif-tag :inline)
+   (env-texture adgif-shader :inline)
+   (env-strip gs-gif-tag :inline)
+   (env-color vector :inline)
+   (drw2-adgif gs-gif-tag :inline)
+   (drw2-tex0 qword :inline)
+   (drw2-frame qword :inline)
+   (drw2-strip gs-gif-tag :inline)
+   (drw3-adgif gs-gif-tag :inline)
+   (drw3-frame qword :inline)
+   (index-table vector4w 4 :inline)))
 
 (deftype ocean-near-upload (structure)
-  ((rot          matrix :inline)
-   (matrix       matrix :inline)
-   (masks        uint128 2)
+  ;; Per-batch near-grid transform, wave origin, masks, and bilinear corner colors.
+  ((rot matrix :inline)
+   (matrix matrix :inline)
+   (masks uint128 2)
    (start-height vector4w :inline)
-   (start-st     vector :inline)
-   (near-colors  ocean-near-colors :inline)))
+   (start-st vector :inline)
+   (near-colors ocean-near-colors :inline)))
 
 (deftype ocean-near-vertex (structure)
   ((stq vector :inline)
@@ -275,6 +354,8 @@
 
 (define-extern *ocean-trans-corner-table* (inline-array vector4w-2))
 
+;; Interpolate the active wave frame into a 32x32 height field.
 (define-extern ocean-interp-wave (function ocean-wave-info uint none))
 
+;; Generate the displaced wave vertices and normals used by the near grid.
 (define-extern ocean-generate-verts (function (inline-array vector) ocean-wave-info none))

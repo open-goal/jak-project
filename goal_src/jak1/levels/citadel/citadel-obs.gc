@@ -10,16 +10,18 @@
 ;; DECOMP BEGINS
 
 (deftype citb-arm-section (process-drawable)
-  ((sync           sync-info :inline)
+  "Shared motion and visibility control for the rotating arms around the Citadel robot. A signed
+   synchronization period chooses rotation direction; sections hide when their configured cull
+   direction points away from the camera, and rideable variants disable collision with them."
+  ((sync sync-info :inline)
    (cull-dir-local vector :inline)
-   (cull-dot       float)
-   (rot-scale      float)
-   (y-angle        float))
+   (cull-dot float)
+   (rot-scale float)
+   (y-angle float))
   (:methods
    (init-root! (_type_) none)
    (setup-new-process! (_type_) none)
    (idle () _type_ :state)))
-
 
 (defskelgroup *citb-arm-a-sg*
   citb-arm
@@ -73,55 +75,61 @@
   :virtual #t
   :code
     (behavior ()
-      (let ((gp-0 (new 'stack-no-clear 'vector))
-            (s5-0 (new 'stack-no-clear 'vector)))
+      (let ((cull-direction (new 'stack-no-clear 'vector))
+            (from-camera (new 'stack-no-clear 'vector)))
         (loop
           (cond
             ((< (- (-> (target-pos 0) y) (-> self root trans y)) -122880.0) (set! (-> self draw force-lod) 1))
             (else (set! (-> self draw force-lod) 0) 0))
           (set! (-> self y-angle) (* 65536.0 (get-current-phase (-> self sync)) (-> self rot-scale)))
           (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (-> self y-angle))
-          (vector-orient-by-quat! gp-0 (-> self cull-dir-local) (-> self root quat))
-          (vector-! s5-0 (-> self root trans) (camera-pos))
-          (set! (-> gp-0 y) 0.0)
-          (set! (-> s5-0 y) 0.0)
-          (vector-normalize! gp-0 1.0)
-          (vector-normalize! s5-0 1.0)
-          (if (>= (vector-dot gp-0 s5-0) (-> self cull-dot))
+          (vector-orient-by-quat! cull-direction (-> self cull-dir-local) (-> self root quat))
+          (vector-! from-camera (-> self root trans) (camera-pos))
+          (set! (-> cull-direction y) 0.0)
+          (set! (-> from-camera y) 0.0)
+          (vector-normalize! cull-direction 1.0)
+          (vector-normalize! from-camera 1.0)
+          (if (>= (vector-dot cull-direction from-camera) (-> self cull-dot))
             (logior! (-> self draw status) (draw-status hidden))
             (logclear! (-> self draw status) (draw-status hidden)))
           (suspend))))
   :post ja-post)
 
 (defmethod init-root! ((this citb-arm-section))
+  "Create the plain transform root used by non-rideable arm sections."
   (set! (-> this root) (new 'process 'trsqv))
   0
   (none))
 
 (defmethod setup-new-process! ((this citb-arm-section))
+  "Load synchronized rotation parameters, preserve the period magnitude while recording its
+   direction, initialize animation, and configure the arm's camera-facing visibility cone."
   (logclear! (-> this mask) (process-mask actor-pause))
   (load-params! (-> this sync) this (the-as uint 3000) 0.0 0.15 0.15)
   (cond
     ((> (-> this sync period) 0) (set! (-> this rot-scale) 1.0))
     (else
      (set! (-> this rot-scale) -1.0)
-     (let ((v1-6 (abs (the-as int (-> this sync period))))) (set! (-> this sync period) (the-as uint v1-6)))))
+     (let ((period-magnitude (abs (the-as int (-> this sync period)))))
+       (set! (-> this sync period) (the-as uint period-magnitude)))))
   (logior! (-> this skel status) (janim-status inited))
   (set-vector! (-> this cull-dir-local) 0.0 0.0 -1.0 1.0)
   (set! (-> this cull-dot) (cos 5461.3335))
   0
   (none))
 
-(defmethod init-from-entity! ((this citb-arm-section) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-arm-section) (source-entity entity-actor))
+  "Create the appropriate root, initialize the drawable from its entity, configure synchronized
+   rotation and visibility, and enter the subtype's idle state."
   (init-root! this)
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (setup-new-process! this)
   (go (method-of-object this idle))
   (none))
 
 (deftype citb-arm (citb-arm-section)
+  "Rideable Citadel arm section with a sticky mesh collision surface."
   ((root collide-shape-moving :override)))
-
 
 (defstate idle (citb-arm)
   :virtual #t
@@ -134,26 +142,30 @@
       (rider-post)))
 
 (defmethod init-root! ((this citb-arm))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 3)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 40960.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+  "Create the arm's indestructible sticky ride surface on skeleton transform 3, with a
+   ten-metre collision sphere and one rider slot."
+  (let ((moving-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
+    (set! (-> moving-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> moving-shape reaction) default-collision-reaction)
+    (set! (-> moving-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders moving-shape 1)
+    (let ((mesh-primitive (new 'process 'collide-shape-prim-mesh moving-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh-primitive prim-core collide-as) (collide-kind ground-object))
+      (set! (-> mesh-primitive collide-with) (collide-kind target))
+      (set! (-> mesh-primitive prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> mesh-primitive prim-core offense) (collide-offense indestructible))
+      (set! (-> mesh-primitive transform-index) 3)
+      (set-vector! (-> mesh-primitive local-sphere) 0.0 0.0 0.0 40960.0)
+      (set-root-prim! moving-shape mesh-primitive))
+    (set! (-> moving-shape nav-radius) (* 0.75 (-> moving-shape root-prim local-sphere w)))
+    (backup-collide-with-as moving-shape)
+    (set! (-> this root) moving-shape))
   0
   (none))
 
 (defmethod setup-new-process! ((this citb-arm))
+  "Apply the shared synchronized setup and use skeleton joint 4 as the drawable origin."
   (call-parent-method this)
   (set! (-> this draw origin-joint-index) (the-as uint 4))
   (set-vector! (-> this cull-dir-local) 0.0 0.0 -1.0 1.0)
@@ -161,10 +173,13 @@
   0
   (none))
 
-(deftype citb-arm-shoulder (citb-arm-section) ())
-
+(deftype citb-arm-shoulder (citb-arm-section)
+  "Non-rideable shoulder section for the Citadel robot arm assembly."
+  ())
 
 (defmethod setup-new-process! ((this citb-arm-shoulder))
+  "Apply the shared synchronized setup, use skeleton joint 4 as the drawable origin, and widen
+   the diagonal camera-facing cone used by the shoulder art."
   (call-parent-method this)
   (set! (-> this draw origin-joint-index) (the-as uint 4))
   (set-vector! (-> this cull-dir-local) 1.0 0.0 1.0 1.0)
@@ -172,25 +187,37 @@
   0
   (none))
 
-(deftype citb-arm-a (citb-arm) ())
+(deftype citb-arm-a (citb-arm)
+  "First rideable arm section, using the A skeleton and a collision centre 45 metres along
+   negative local Z."
+  ())
 
+(deftype citb-arm-b (citb-arm)
+  "Second rideable arm section, using the B skeleton and a collision centre 55 metres along
+   negative local Z."
+  ())
 
-(deftype citb-arm-b (citb-arm) ())
+(deftype citb-arm-c (citb-arm)
+  "Third rideable arm section, using the C skeleton and a collision centre 65 metres along
+   negative local Z."
+  ())
 
+(deftype citb-arm-d (citb-arm)
+  "Fourth rideable arm section, using the D skeleton and a collision centre 75 metres along
+   negative local Z."
+  ())
 
-(deftype citb-arm-c (citb-arm) ())
+(deftype citb-arm-shoulder-a (citb-arm-shoulder)
+  "First visual shoulder section of the Citadel robot arm."
+  ())
 
-
-(deftype citb-arm-d (citb-arm) ())
-
-
-(deftype citb-arm-shoulder-a (citb-arm-shoulder) ())
-
-
-(deftype citb-arm-shoulder-b (citb-arm-shoulder) ())
-
+(deftype citb-arm-shoulder-b (citb-arm-shoulder)
+  "Second visual shoulder section of the Citadel robot arm."
+  ())
 
 (defmethod setup-new-process! ((this citb-arm-a))
+  "Initialize the A skeleton, apply shared rideable-arm setup, and place the collision sphere
+   centre 45 metres along negative local Z."
   (initialize-skeleton this *citb-arm-a-sg* '())
   (call-parent-method this)
   (set! (-> this root root-prim local-sphere z) -184320.0)
@@ -198,6 +225,8 @@
   (none))
 
 (defmethod setup-new-process! ((this citb-arm-b))
+  "Initialize the B skeleton, apply shared rideable-arm setup, and place the collision sphere
+   centre 55 metres along negative local Z."
   (initialize-skeleton this *citb-arm-b-sg* '())
   (call-parent-method this)
   (set! (-> this root root-prim local-sphere z) -225280.0)
@@ -205,6 +234,8 @@
   (none))
 
 (defmethod setup-new-process! ((this citb-arm-c))
+  "Initialize the C skeleton, apply shared rideable-arm setup, and place the collision sphere
+   centre 65 metres along negative local Z."
   (initialize-skeleton this *citb-arm-c-sg* '())
   (call-parent-method this)
   (set! (-> this root root-prim local-sphere z) -266240.0)
@@ -212,6 +243,8 @@
   (none))
 
 (defmethod setup-new-process! ((this citb-arm-d))
+  "Initialize the D skeleton, apply shared rideable-arm setup, and place the collision sphere
+   centre 75 metres along negative local Z."
   (initialize-skeleton this *citb-arm-d-sg* '())
   (call-parent-method this)
   (set! (-> this root root-prim local-sphere z) -307200.0)
@@ -219,12 +252,14 @@
   (none))
 
 (defmethod setup-new-process! ((this citb-arm-shoulder-a))
+  "Initialize the first shoulder skeleton and apply shared shoulder motion and visibility."
   (initialize-skeleton this *citb-arm-shoulder-a-sg* '())
   (call-parent-method this)
   0
   (none))
 
 (defmethod setup-new-process! ((this citb-arm-shoulder-b))
+  "Initialize the second shoulder skeleton and apply shared shoulder motion and visibility."
   (initialize-skeleton this *citb-arm-shoulder-b-sg* '())
   (call-parent-method this)
   0
@@ -263,24 +298,27 @@
   :longest-edge (meters 8))
 
 (deftype citb-disc (process-drawable)
-  ((root      collide-shape-moving :override)
-   (sync      sync-info :inline)
+  "Base for the four synchronized rotating disc platforms. The sign of the configured period
+   selects rotation direction, while its magnitude sets the shared phase speed."
+  ((root collide-shape-moving :override)
+   (sync sync-info :inline)
    (rot-scale float))
   (:methods
    (init! (_type_) none)
-   (citb-disc-method-21 (_type_) none))
+   (init-skel! (_type_) none))
   (:states
    citb-disc-idle))
 
-
 (defstate citb-disc-idle (citb-disc)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Suppress target look-around for a quarter-second whenever the target touches the disc."
       (case message
-        (('touch) (send-event proc 'no-look-around (seconds 0.25)) #f)))
+        (('touch) (send-event sender 'no-look-around (seconds 0.25)) #f)))
   :trans rider-trans
   :code
     (behavior ()
+      "Rotate the platform from its synchronized phase and update its ambient sound."
       (loop
         (update! (-> self sound))
         (quaternion-axis-angle! (-> self root quat)
@@ -292,79 +330,96 @@
   :post rider-post)
 
 (defmethod init! ((this citb-disc))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky rider-plat))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 49152.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+  "Create an indestructible sticky mesh platform on skeleton transform 0 with one rider slot
+   and a twelve-metre collision sphere."
+  (let ((moving-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
+    (set! (-> moving-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> moving-shape reaction) default-collision-reaction)
+    (set! (-> moving-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders moving-shape 1)
+    (let ((mesh-primitive (new 'process 'collide-shape-prim-mesh moving-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh-primitive prim-core collide-as) (collide-kind ground-object))
+      (set! (-> mesh-primitive collide-with) (collide-kind target))
+      (set! (-> mesh-primitive prim-core action) (collide-action solid rider-plat-sticky rider-plat))
+      (set! (-> mesh-primitive prim-core offense) (collide-offense indestructible))
+      (set! (-> mesh-primitive transform-index) 0)
+      (set-vector! (-> mesh-primitive local-sphere) 0.0 0.0 0.0 49152.0)
+      (set-root-prim! moving-shape mesh-primitive))
+    (set! (-> moving-shape nav-radius) (* 0.75 (-> moving-shape root-prim local-sphere w)))
+    (backup-collide-with-as moving-shape)
+    (set! (-> this root) moving-shape))
   0
   (none))
 
-(defmethod citb-disc-method-21 ((this citb-disc))
+(defmethod init-skel! ((this citb-disc))
+  "Initialize the disc skeleton. The base definition is intentionally empty; each lettered
+   variant selects its own art group."
   0
   (none))
 
-(defmethod init-from-entity! ((this citb-disc) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-disc) (source-entity entity-actor))
+  "Create the ride collision, initialize the placed drawable and subtype skeleton, load the
+   synchronized rotation parameters, start the rotating-platform sound, and enter idle."
   (init! this)
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (load-params! (-> this sync) this (the-as uint 3000) 0.0 0.15 0.15)
   (cond
     ((> (-> this sync period) 0) (set! (-> this rot-scale) 1.0))
     (else
      (set! (-> this rot-scale) -1.0)
-     (let ((v1-8 (abs (the-as int (-> this sync period))))) (set! (-> this sync period) (the-as uint v1-8)))))
-  (citb-disc-method-21 this)
+     (let ((period-magnitude (abs (the-as int (-> this sync period)))))
+       (set! (-> this sync period) (the-as uint period-magnitude)))))
+  (init-skel! this)
   (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "rotate-plat" :fo-max 20) (-> this root trans)))
   (logior! (-> this skel status) (janim-status inited))
   (go citb-disc-idle)
   (none))
 
-(deftype citb-disc-a (citb-disc) ())
+(deftype citb-disc-a (citb-disc)
+  "Rotating disc variant using the A skeleton."
+  ())
 
+(deftype citb-disc-b (citb-disc)
+  "Rotating disc variant using the B skeleton."
+  ())
 
-(deftype citb-disc-b (citb-disc) ())
+(deftype citb-disc-c (citb-disc)
+  "Rotating disc variant using the C skeleton."
+  ())
 
+(deftype citb-disc-d (citb-disc)
+  "Rotating disc variant using the D skeleton."
+  ())
 
-(deftype citb-disc-c (citb-disc) ())
-
-
-(deftype citb-disc-d (citb-disc) ())
-
-
-(defmethod citb-disc-method-21 ((this citb-disc-a))
+(defmethod init-skel! ((this citb-disc-a))
+  "Initialize the A disc skeleton."
   (initialize-skeleton this *citb-disc-a-sg* '())
   0
   (none))
 
-(defmethod citb-disc-method-21 ((this citb-disc-b))
+(defmethod init-skel! ((this citb-disc-b))
+  "Initialize the B disc skeleton."
   (initialize-skeleton this *citb-disc-b-sg* '())
   0
   (none))
 
-(defmethod citb-disc-method-21 ((this citb-disc-c))
+(defmethod init-skel! ((this citb-disc-c))
+  "Initialize the C disc skeleton."
   (initialize-skeleton this *citb-disc-c-sg* '())
   0
   (none))
 
-(defmethod citb-disc-method-21 ((this citb-disc-d))
+(defmethod init-skel! ((this citb-disc-d))
+  "Initialize the D disc skeleton."
   (initialize-skeleton this *citb-disc-d-sg* '())
   0
   (none))
 
-(deftype citb-iris-door (eco-door) ())
-
+(deftype citb-iris-door (eco-door)
+  "Citadel iris door with a four-metre wall collision mesh and automatic distance-based closing."
+  ())
 
 (defskelgroup *citb-iris-door-sg*
   citb-iris-door
@@ -373,23 +428,27 @@
   ((citb-iris-door-lod0-mg (meters 20)) (citb-iris-door-lod1-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 8))
 
-(defmethod eco-door-method-24 ((this citb-iris-door))
-  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 16384.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this citb-iris-door))
+  "Create the indestructible wall mesh on skeleton transform 0 with a four-metre collision
+   sphere and install it as the door root."
+  (let ((collision-shape (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
+    (let ((mesh-primitive (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh-primitive prim-core collide-as) (collide-kind wall-object))
+      (set! (-> mesh-primitive collide-with) (collide-kind target))
+      (set! (-> mesh-primitive prim-core action) (collide-action solid))
+      (set! (-> mesh-primitive prim-core offense) (collide-offense indestructible))
+      (set! (-> mesh-primitive transform-index) 0)
+      (set-vector! (-> mesh-primitive local-sphere) 0.0 0.0 0.0 16384.0)
+      (set-root-prim! collision-shape mesh-primitive))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (backup-collide-with-as collision-shape)
+    (set! (-> this root) collision-shape))
   0
   (none))
 
-(defmethod eco-door-method-25 ((this citb-iris-door))
+(defmethod setup-skel-and-params! ((this citb-iris-door))
+  "Initialize the iris skeleton, open within eight metres, close beyond twelve metres, enable
+   automatic closing, and keep permanent entity state synchronized."
   (initialize-skeleton this *citb-iris-door-sg* '())
   (set! (-> this open-distance) 32768.0)
   (set! (-> this close-distance) 49152.0)
@@ -406,40 +465,52 @@
   ((citb-button-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 3))
 
-(deftype citb-button (basebutton) ())
+(deftype citb-button (basebutton)
+  "Citadel floor button with a three-metre mesh contact surface and a posed up or down skeleton."
+  ())
 
-
-(defmethod basebutton-method-27 ((this citb-button))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 3)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this citb-button))
+  "Create the button's indestructible moving mesh on skeleton transform 3 with a three-metre
+   collision sphere and install it as the root."
+  (let ((moving-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> moving-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> moving-shape reaction) default-collision-reaction)
+    (set! (-> moving-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((mesh-primitive (new 'process 'collide-shape-prim-mesh moving-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh-primitive prim-core collide-as) (collide-kind ground-object))
+      (set! (-> mesh-primitive collide-with) (collide-kind target))
+      (set! (-> mesh-primitive prim-core action) (collide-action solid))
+      (set! (-> mesh-primitive prim-core offense) (collide-offense indestructible))
+      (set! (-> mesh-primitive transform-index) 3)
+      (set-vector! (-> mesh-primitive local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! moving-shape mesh-primitive))
+    (set! (-> moving-shape nav-radius) (* 0.75 (-> moving-shape root-prim local-sphere w)))
+    (backup-collide-with-as moving-shape)
+    (set! (-> this root) moving-shape))
   (the-as collide-shape-moving 0))
 
-(defmethod basebutton-method-26 ((this citb-button))
+(defmethod setup-skel-and-anim! ((this citb-button))
+  "Initialize the button skeleton and pose its first animation channel at the final frame when
+   down or the first frame when up, then configure its speed and timeout."
+  (local-vars (anim-channel joint-control-channel))
   (initialize-skeleton this *citb-button-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (ja-channel-set! 1)
   (cond
     ((-> this down?)
-     (let ((s5-0 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-0 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-0 frame-num) (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1)))))
+     (set! anim-channel (-> this skel root-channel 0))
+     (joint-control-channel-group-eval! anim-channel
+                                        (the-as art-joint-anim (-> this draw art-group data 2))
+                                        num-func-identity)
+     (set! (-> anim-channel frame-num)
+           (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1))))
     (else
-     (let ((s5-1 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-1 frame-num) 0.0))))
+     (set! anim-channel (-> this skel root-channel 0))
+     (joint-control-channel-group-eval! anim-channel
+                                        (the-as art-joint-anim (-> this draw art-group data 2))
+                                        num-func-identity)
+     (set! (-> anim-channel frame-num) 0.0)))
   (set! (-> this anim-speed) 2.0)
   (set! (-> this timeout) 1.0)
   (update-transforms! (-> this root))
@@ -447,15 +518,16 @@
   (none))
 
 (deftype citb-launcher (plat)
+  "Citadel launch platform paired with a spring launcher child. While the platform follows a path,
+   it forwards its base transform to that launcher."
   ((launcher (pointer launcher))))
-
 
 (defstate plat-path-active (citb-launcher)
   :virtual #t
   :post
     (behavior ()
-      (let ((t9-0 (-> (method-of-type plat plat-path-active) post)))
-        (if t9-0 ((the-as (function none :behavior citb-launcher) t9-0))))
+      (let ((parent-post (-> (method-of-type plat plat-path-active) post)))
+        (if parent-post ((the-as (function none :behavior citb-launcher) parent-post))))
       (send-event (ppointer->process (-> self launcher)) 'trans (-> self basetrans))))
 
 (defskelgroup *citb-launcher-sg*
@@ -466,12 +538,15 @@
   :bounds (static-spherem 0 0 0 4))
 
 (defmethod get-unlit-skel ((this citb-launcher))
+  "Return the Citadel launcher platform skeleton."
   *citb-launcher-sg*)
 
-(defmethod baseplat-method-26 ((this citb-launcher))
-  (let ((f30-0 (res-lump-float (-> this entity) 'spring-height :default 163840.0))
-        (s5-0 (res-lump-value (-> this entity) 'mode uint128)))
-    (set! (-> this launcher) (process-spawn launcher (-> this root trans) f30-0 s5-0 81920.0 :to this)))
+(defmethod configure-options! ((this citb-launcher))
+  "Spawn the paired spring launcher from the resource spring-height and mode, narrow the
+   platform collision sphere to 4.5 metres, and keep it moving while actors are paused."
+  (let ((spring-height (res-lump-float (-> this entity) 'spring-height :default 163840.0))
+        (spring-mode (res-lump-value (-> this entity) 'mode uint128)))
+    (set! (-> this launcher) (process-spawn launcher (-> this root trans) spring-height spring-mode 81920.0 :to this)))
   (set! (-> this root root-prim local-sphere w) 18432.0)
   (logclear! (-> this mask) (process-mask actor-pause))
   0
@@ -549,16 +624,18 @@
   :longest-edge (meters 3))
 
 (deftype citb-robotboss (process-drawable)
-  ((root      collide-shape :override)
+  "The shielded robot shell surrounding the Citadel lift. Its visible body is assembled from eight
+   child manipulators; the parent owns the collision, looping shield particles, sound, and events."
+  ((root collide-shape :override)
    (shield-on symbol))
   (:states
    citb-robotboss-die
    citb-robotboss-idle))
 
-
 (defstate citb-robotboss-idle (citb-robotboss)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Handle shield control, death, and shield-contact shove events."
       (the-as symbol
               (cond
                 ((= message 'shield-off)
@@ -566,46 +643,48 @@
                  (if (-> self shield-on) (sound-play "robotcage-off"))
                  (set! (-> self shield-on) #f)
                  #f)
-                ((= message 'shield-on) (let ((v0-3 #t)) (set! (-> self shield-on) v0-3) v0-3))
+                ((= message 'shield-on) (let ((shield-enabled? #t)) (set! (-> self shield-on) shield-enabled?) shield-enabled?))
                 ((= message 'die) (cleanup-for-death self) (the-as symbol (deactivate self)))
                 ((or (= message 'touch) (= message 'attack))
                  (sound-play "shield-zap" :position (the-as symbol (target-pos 0)))
                  (the-as symbol
-                         (send-event proc 'shove (-> block param 0) (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))))))))
+                         (send-event sender 'shove (-> block param 0) (static-attack-info ((shove-up (meters 2)) (shove-back (meters 3))))))))))
   :code
     (behavior ()
-      (let ((gp-0 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-nose-sg* #f :to self)))
-        (send-event (ppointer->process gp-0) 'anim-mode 'loop)
-        (send-event (ppointer->process gp-0) 'art-joint-anim "citb-robotboss-nose-idle" 0)
-        (send-event (ppointer->process gp-0) 'draw #t))
-      (let ((gp-1 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-head-sg* #f :to self)))
-        (send-event (ppointer->process gp-1) 'anim-mode 'loop)
-        (send-event (ppointer->process gp-1) 'art-joint-anim "citb-robotboss-head-idle" 0)
-        (send-event (ppointer->process gp-1) 'draw #t))
-      (let ((gp-2 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-gun-sg* #f :to self)))
-        (send-event (ppointer->process gp-2) 'anim-mode 'loop)
-        (send-event (ppointer->process gp-2) 'art-joint-anim "citb-robotboss-gun-idle" 0)
-        (send-event (ppointer->process gp-2) 'draw #t))
-      (let ((gp-3 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-leftshoulder-sg* #f :to self)))
-        (send-event (ppointer->process gp-3) 'anim-mode 'loop)
-        (send-event (ppointer->process gp-3) 'art-joint-anim "citb-robotboss-leftshoulder-idle" 0)
-        (send-event (ppointer->process gp-3) 'draw #t))
-      (let ((gp-4 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-rightshoulder-sg* #f :to self)))
-        (send-event (ppointer->process gp-4) 'anim-mode 'loop)
-        (send-event (ppointer->process gp-4) 'art-joint-anim "citb-robotboss-rightshoulder-idle" 0)
-        (send-event (ppointer->process gp-4) 'draw #t))
-      (let ((gp-5 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-leftarm-sg* #f :to self)))
-        (send-event (ppointer->process gp-5) 'anim-mode 'loop)
-        (send-event (ppointer->process gp-5) 'art-joint-anim "citb-robotboss-leftarm-idle" 0)
-        (send-event (ppointer->process gp-5) 'draw #t))
-      (let ((gp-6 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-rightarm-sg* #f :to self)))
-        (send-event (ppointer->process gp-6) 'anim-mode 'loop)
-        (send-event (ppointer->process gp-6) 'art-joint-anim "citb-robotboss-rightarm-idle" 0)
-        (send-event (ppointer->process gp-6) 'draw #t))
-      (let ((gp-7 (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-belly-sg* #f :to self)))
-        (send-event (ppointer->process gp-7) 'anim-mode 'loop)
-        (send-event (ppointer->process gp-7) 'art-joint-anim "citb-robotboss-belly-idle" 0)
-        (send-event (ppointer->process gp-7) 'draw #t))
+      "Assemble and draw the eight robot sections, then maintain the shield effect while
+      enabled."
+      (let ((nose-part (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-nose-sg* #f :to self)))
+        (send-event (ppointer->process nose-part) 'anim-mode 'loop)
+        (send-event (ppointer->process nose-part) 'art-joint-anim "citb-robotboss-nose-idle" 0)
+        (send-event (ppointer->process nose-part) 'draw #t))
+      (let ((head-part (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-head-sg* #f :to self)))
+        (send-event (ppointer->process head-part) 'anim-mode 'loop)
+        (send-event (ppointer->process head-part) 'art-joint-anim "citb-robotboss-head-idle" 0)
+        (send-event (ppointer->process head-part) 'draw #t))
+      (let ((gun-part (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-gun-sg* #f :to self)))
+        (send-event (ppointer->process gun-part) 'anim-mode 'loop)
+        (send-event (ppointer->process gun-part) 'art-joint-anim "citb-robotboss-gun-idle" 0)
+        (send-event (ppointer->process gun-part) 'draw #t))
+      (let ((left-shoulder-part (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-leftshoulder-sg* #f :to self)))
+        (send-event (ppointer->process left-shoulder-part) 'anim-mode 'loop)
+        (send-event (ppointer->process left-shoulder-part) 'art-joint-anim "citb-robotboss-leftshoulder-idle" 0)
+        (send-event (ppointer->process left-shoulder-part) 'draw #t))
+      (let ((right-shoulder-part (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-rightshoulder-sg* #f :to self)))
+        (send-event (ppointer->process right-shoulder-part) 'anim-mode 'loop)
+        (send-event (ppointer->process right-shoulder-part) 'art-joint-anim "citb-robotboss-rightshoulder-idle" 0)
+        (send-event (ppointer->process right-shoulder-part) 'draw #t))
+      (let ((left-arm-part (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-leftarm-sg* #f :to self)))
+        (send-event (ppointer->process left-arm-part) 'anim-mode 'loop)
+        (send-event (ppointer->process left-arm-part) 'art-joint-anim "citb-robotboss-leftarm-idle" 0)
+        (send-event (ppointer->process left-arm-part) 'draw #t))
+      (let ((right-arm-part (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-rightarm-sg* #f :to self)))
+        (send-event (ppointer->process right-arm-part) 'anim-mode 'loop)
+        (send-event (ppointer->process right-arm-part) 'art-joint-anim "citb-robotboss-rightarm-idle" 0)
+        (send-event (ppointer->process right-arm-part) 'draw #t))
+      (let ((belly-part (manipy-spawn (-> self root trans) (-> self entity) *citb-robotboss-belly-sg* #f :to self)))
+        (send-event (ppointer->process belly-part) 'anim-mode 'loop)
+        (send-event (ppointer->process belly-part) 'art-joint-anim "citb-robotboss-belly-idle" 0)
+        (send-event (ppointer->process belly-part) 'draw #t))
       (update-transforms! (-> self root))
       (loop
         (when (-> self shield-on)
@@ -618,23 +697,26 @@
 (defstate citb-robotboss-die (citb-robotboss)
   :code
     (behavior ()
+      "Clean up the assembled robot and deactivate it."
       (cleanup-for-death self)
       (deactivate self)))
 
-(defmethod init-from-entity! ((this citb-robotboss) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid))
-      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s3-0 transform-index) 3)
-      (set-vector! (-> s3-0 local-sphere) 0.0 81920.0 0.0 143360.0)
-      (set-root-prim! s4-0 s3-0))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+(defmethod init-from-entity! ((this citb-robotboss) (source-entity entity-actor))
+  "Create the robot's indestructible shell collision, initialize its skeleton and shield
+   effects, and remove it when the associated task is invalid; otherwise enter idle."
+  (let ((collision-shape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((mesh-primitive (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh-primitive prim-core collide-as) (collide-kind ground-object))
+      (set! (-> mesh-primitive collide-with) (collide-kind target))
+      (set! (-> mesh-primitive prim-core action) (collide-action solid))
+      (set! (-> mesh-primitive prim-core offense) (collide-offense indestructible))
+      (set! (-> mesh-primitive transform-index) 3)
+      (set-vector! (-> mesh-primitive local-sphere) 0.0 81920.0 0.0 143360.0)
+      (set-root-prim! collision-shape mesh-primitive))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (backup-collide-with-as collision-shape)
+    (set! (-> this root) collision-shape))
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *citb-robotboss-sg* '())
   (set! (-> this part) (create-launch-control group-citb-robotboss-shield this))
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -653,72 +735,75 @@
   :bounds (static-spherem 0 0 0 4))
 
 (deftype citb-coil (process-drawable)
+  "Breakable Citadel power coil. It loops a live glow, records completion when triggered, plays its
+   break animation, then continually emits the powered-off effect from the dead coil."
   ((part-off sparticle-launch-control))
   (:states
    citb-coil-break
    citb-coil-broken
    citb-coil-idle))
 
-
 (defmethod relocate ((this citb-coil) (offset int))
+  "Relocate the powered-off particle controller when present, then relocate the drawable."
   (if (nonzero? (-> this part-off)) (&+! (-> this part-off) offset))
   (the-as citb-coil ((method-of-type process-drawable relocate) this offset)))
 
 (defmethod deactivate ((this citb-coil))
+  "Free powered-off particles when present, then deactivate the drawable."
   (if (nonzero? (-> this part-off)) (kill-and-free-particles (-> this part-off)))
   ((method-of-type process-drawable deactivate) this)
   (none))
 
 (defstate citb-coil-idle (citb-coil)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Begin breaking the coil when it receives a trigger."
       (case message
         (('trigger) (go citb-coil-break))))
   :code
     (behavior ()
+      "Loop the current live animation until a trigger begins the break."
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
   :post
     (behavior ()
+      "Emit the live coil glow and update its animation."
       (spawn (-> self part) (-> self root trans))
       (ja-post)))
 
 (defstate citb-coil-break (citb-coil)
   :code
     (behavior ()
+      "Persist completion, blend into the death animation, and enter the broken state."
       (process-entity-status! self (entity-perm-status complete) #t)
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! citb-coil-die-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! citb-coil-die-ja :num! (seek!) :frame-num 0.0)
       (go citb-coil-broken))
   :post ja-post)
 
 (defstate citb-coil-broken (citb-coil)
   :code
     (behavior ()
-      (ja-no-eval :group! citb-coil-dead-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      "Pose the dead coil, then continuously emit its powered-off particles."
+      (ja-play :group! citb-coil-dead-ja :num! (seek!) :frame-num 0.0)
       (loop
         (spawn (-> self part-off) (-> self root trans))
         (suspend)))
   :post ja-post)
 
-(defmethod init-from-entity! ((this citb-coil) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-coil) (source-entity entity-actor))
+  "Initialize the coil skeleton and live and powered-off particle controls, then enter the
+   broken or live state selected by the linked state actor's completion bit."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *citb-coil-sg* '())
   (set! (-> this part) (create-launch-control group-citb-coil-glow this))
   (set! (-> this part-off) (create-launch-control group-citb-coil-off this))
-  (let ((v1-9 (entity-actor-lookup (-> this entity) 'state-actor 0)))
-    (if (not v1-9) (set! v1-9 (-> this entity)))
-    (if (logtest? (-> v1-9 extra perm status) (entity-perm-status complete)) (go citb-coil-broken) (go citb-coil-idle)))
+  (let ((persistence-actor (entity-actor-lookup (-> this entity) 'state-actor 0)))
+    (if (not persistence-actor) (set! persistence-actor (-> this entity)))
+    (if (logtest? (-> persistence-actor extra perm status) (entity-perm-status complete))
+      (go citb-coil-broken)
+      (go citb-coil-idle)))
   (none))
 
 (defskelgroup *citb-hose-sg*
@@ -728,15 +813,17 @@
   ((citb-hose-lod0-mg (meters 20)) (citb-hose-lod1-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 10))
 
-(deftype citb-hose (process-drawable) ()
+(deftype citb-hose (process-drawable)
+  "Animated Citadel hose that can spit on a spawn event and permanently collapse on a trigger."
+  ()
   (:states
    citb-hose-die
    citb-hose-idle
    citb-hose-spawn))
 
-
-(defbehavior citb-hose-event-handler citb-hose ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior citb-hose-event-handler citb-hose ((sender process) (argc int) (message symbol) (block event-message-block))
+  "Send spawn events to the hose's spit state and trigger events to its permanent death state."
+  (case message
     (('spawn) (go citb-hose-spawn))
     (('trigger) (go citb-hose-die))))
 
@@ -744,22 +831,18 @@
   :event citb-hose-event-handler
   :code
     (behavior ()
+      "Loop the hose's idle animation while accepting spawn and trigger events."
       (loop
-        (ja-no-eval :group! citb-hose-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! citb-hose-idle-ja :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
 (defstate citb-hose-spawn (citb-hose)
   :event citb-hose-event-handler
   :code
     (behavior ()
+      "Blend into the hose spit animation once, then return to idle."
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! citb-hose-spit-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! citb-hose-spit-ja :num! (seek!) :frame-num 0.0)
       (go citb-hose-idle))
   :post ja-post)
 
@@ -767,26 +850,25 @@
   :event citb-hose-event-handler
   :code
     (behavior ()
+      "Persist completion, play the death animation, then remain in its final pose."
       (process-entity-status! self (entity-perm-status complete) #t)
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! citb-hose-die-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! citb-hose-die-ja :num! (seek!) :frame-num 0.0)
       (anim-loop))
   :post ja-post)
 
-(defmethod init-from-entity! ((this citb-hose) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-hose) (source-entity entity-actor))
+  "Initialize the hose transform and skeleton, then enter its dead or idle state according to
+   the linked state actor's persistent completion bit."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *citb-hose-sg* '())
-  (let ((v1-3 (entity-actor-lookup (-> this entity) 'state-actor 0)))
-    (if (not v1-3) (set! v1-3 (-> this entity)))
-    (if (logtest? (-> v1-3 extra perm status) (entity-perm-status complete)) (go citb-hose-die) (go citb-hose-idle)))
+  (let ((persistence-actor (entity-actor-lookup (-> this entity) 'state-actor 0)))
+    (if (not persistence-actor) (set! persistence-actor (-> this entity)))
+    (if (logtest? (-> persistence-actor extra perm status) (entity-perm-status complete)) (go citb-hose-die) (go citb-hose-idle)))
   (none))
 
 (deftype citb-chains (process-hidden) ())
-
 
 (defskelgroup *citb-generator-sg*
   citb-generator
@@ -803,72 +885,79 @@
   :bounds (static-spherem 0 0 0 2))
 
 (deftype citb-generator (process-drawable)
-  ((root            collide-shape :override)
-   (normal-look     lod-set :inline)
-   (broken-look     lod-set :inline)
-   (mushroom-pos    vector :inline)
-   (mushroom        symbol)
+  "Breakable Citadel generator. Four named generators carry an offset mushroom effect; every
+   generator owns intact and broken looks, particles, collision, hints, persistence, linked actor
+   activation, and an optional fuel-cell reward."
+  ((root collide-shape :override)
+   (normal-look lod-set :inline)
+   (broken-look lod-set :inline)
+   (mushroom-pos vector :inline)
+   (mushroom symbol)
    (birth-fuel-cell symbol)
-   (trigger-others  symbol)
-   (part-broken     sparticle-launch-control)
-   (part-mushroom   sparticle-launch-control))
+   (trigger-others symbol)
+   (part-broken sparticle-launch-control)
+   (part-mushroom sparticle-launch-control))
   (:methods
    (init! (_type_) none)
-   (citb-generator-method-21 (_type_) none))
+   (setup! (_type_) none))
   (:states
    citb-generator-break
    citb-generator-broken
    citb-generator-idle))
 
-
 (defmethod relocate ((this citb-generator) (offset int))
+  "Relocate both optional particle controllers, then relocate the drawable."
   (if (nonzero? (-> this part-broken)) (&+! (-> this part-broken) offset))
   (if (nonzero? (-> this part-mushroom)) (&+! (-> this part-mushroom) offset))
   (the-as citb-generator ((method-of-type process-drawable relocate) this offset)))
 
 (defmethod deactivate ((this citb-generator))
+  "Free particles from both optional controllers, then deactivate the drawable."
   (if (nonzero? (-> this part-broken)) (kill-and-free-particles (-> this part-broken)))
   (if (nonzero? (-> this part-mushroom)) (kill-and-free-particles (-> this part-mushroom)))
   ((method-of-type process-drawable deactivate) this)
   (none))
 
 (defbehavior citb-generator-trigger-others citb-generator ()
-  (let ((gp-0 (entity-actor-count (-> self entity) 'alt-actor)))
-    (dotimes (s5-0 gp-0)
-      (let ((s4-0 (entity-actor-lookup (-> self entity) 'alt-actor s5-0))
-            (a1-2 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-2 from) self)
-        (set! (-> a1-2 num-params) 0)
-        (set! (-> a1-2 message) 'trigger)
-        (let ((t9-2 send-event-function)
-              (v1-1 s4-0))
-          (when (not (t9-2 (if v1-1 (-> v1-1 extra process)) a1-2))
-            (entity-birth-no-kill s4-0)
+  "Trigger every alt-actor, wait half a second outside movie playback, then trigger every
+   trigger-actor. Birth a linked actor and retry its event when it is not already available."
+  (let ((alt-actor-count (entity-actor-count (-> self entity) 'alt-actor)))
+    (dotimes (alt-i alt-actor-count)
+      (let ((alt-actor (entity-actor-lookup (-> self entity) 'alt-actor alt-i))
+            (alt-event (new 'stack-no-clear 'event-message-block)))
+        (set! (-> alt-event from) self)
+        (set! (-> alt-event num-params) 0)
+        (set! (-> alt-event message) 'trigger)
+        (let ((send-alt-event send-event-function)
+              (alt-actor-for-send alt-actor))
+          (when (not (send-alt-event (if alt-actor-for-send (-> alt-actor-for-send extra process)) alt-event))
+            (entity-birth-no-kill alt-actor)
             (suspend)
-            (send-event (if s4-0 (-> s4-0 extra process)) 'trigger))))))
-  (let ((gp-1 (current-time)))
-    (while (not (time-elapsed? gp-1 (seconds 0.5)))
-      (if (movie?) (set! gp-1 (current-time)))
+            (send-event (if alt-actor (-> alt-actor extra process)) 'trigger))))))
+  (let ((delay-start (current-time)))
+    (while (not (time-elapsed? delay-start (seconds 0.5)))
+      (if (movie?) (set! delay-start (current-time)))
       (suspend)))
-  (let ((gp-2 (entity-actor-count (-> self entity) 'trigger-actor)))
-    (dotimes (s5-1 gp-2)
-      (let ((s4-1 (entity-actor-lookup (-> self entity) 'trigger-actor s5-1))
-            (a1-6 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-6 from) self)
-        (set! (-> a1-6 num-params) 0)
-        (set! (-> a1-6 message) 'trigger)
-        (let ((t9-8 send-event-function)
-              (v1-19 s4-1))
-          (when (not (t9-8 (if v1-19 (-> v1-19 extra process)) a1-6))
-            (entity-birth-no-kill s4-1)
+  (let ((trigger-actor-count (entity-actor-count (-> self entity) 'trigger-actor)))
+    (dotimes (trigger-i trigger-actor-count)
+      (let ((trigger-actor (entity-actor-lookup (-> self entity) 'trigger-actor trigger-i))
+            (trigger-event (new 'stack-no-clear 'event-message-block)))
+        (set! (-> trigger-event from) self)
+        (set! (-> trigger-event num-params) 0)
+        (set! (-> trigger-event message) 'trigger)
+        (let ((send-trigger-event send-event-function)
+              (trigger-actor-for-send trigger-actor))
+          (when (not (send-trigger-event (if trigger-actor-for-send (-> trigger-actor-for-send extra process)) trigger-event))
+            (entity-birth-no-kill trigger-actor)
             (suspend)
-            (send-event (if s4-1 (-> s4-1 extra process)) 'trigger))))))
+            (send-event (if trigger-actor (-> trigger-actor extra process)) 'trigger))))))
   0
   (none))
 
 (defstate citb-generator-idle (citb-generator)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Begin breaking on attack and acknowledge a trigger without changing state."
       (case message
         (('attack)
          (if (-> self mushroom)
@@ -878,9 +967,12 @@
         (('trigger) #t)))
   :exit
     (behavior ()
+      "Stop the intact generator's ambient sound."
       (stop! (-> self sound)))
   :code
     (behavior ()
+      "Maintain intact art, sound, particles, palette glow, and nearby hints until an attack
+      begins the break."
       (lods-assign! (-> self draw) (-> self normal-look))
       (update-transforms! (-> self root))
       (loop
@@ -898,19 +990,21 @@
 (defstate citb-generator-break (citb-generator)
   :code
     (behavior ()
-      (let ((gp-0 (entity-actor-count (-> self entity) 'open-actor)))
-        (dotimes (s5-0 gp-0)
-          (let ((s4-0 (entity-actor-lookup (-> self entity) 'open-actor s5-0))
-                (a1-2 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-2 from) self)
-            (set! (-> a1-2 num-params) 0)
-            (set! (-> a1-2 message) 'open)
-            (let ((t9-2 send-event-function)
-                  (v1-1 s4-0))
-              (when (not (t9-2 (if v1-1 (-> v1-1 extra process)) a1-2))
-                (entity-birth-no-kill s4-0)
+      "Open linked actors, persist completion, launch the destruction effect, and enter the
+      broken state."
+      (let ((open-actor-count (entity-actor-count (-> self entity) 'open-actor)))
+        (dotimes (open-i open-actor-count)
+          (let ((open-actor (entity-actor-lookup (-> self entity) 'open-actor open-i))
+                (open-event (new 'stack-no-clear 'event-message-block)))
+            (set! (-> open-event from) self)
+            (set! (-> open-event num-params) 0)
+            (set! (-> open-event message) 'open)
+            (let ((send-open-event send-event-function)
+                  (open-actor-for-send open-actor))
+              (when (not (send-open-event (if open-actor-for-send (-> open-actor-for-send extra process)) open-event))
+                (entity-birth-no-kill open-actor)
                 (suspend)
-                (send-event (if s4-0 (-> s4-0 extra process)) 'open))))))
+                (send-event (if open-actor (-> open-actor extra process)) 'open))))))
       (process-entity-status! self (entity-perm-status complete) #t)
       (process-spawn part-tracker
                      :init
@@ -934,6 +1028,8 @@
 (defstate citb-generator-broken (citb-generator)
   :code
     (behavior ()
+      "Switch to broken art, award and await an optional fuel cell, trigger the two linked actor
+      groups in sequence, and remain in the final pose."
       (lods-assign! (-> self draw) (-> self broken-look))
       (update-transforms! (-> self root))
       (cond
@@ -947,25 +1043,30 @@
       (anim-loop))
   :post
     (behavior ()
+      "Emit the broken generator particles and update its animation."
       (spawn (-> self part-broken) (-> self root trans))
       (ja-post)))
 
 (defmethod init! ((this citb-generator))
-  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
-    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 4096.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+  "Create an indestructible one-metre spherical attack target centred one metre above the
+   generator."
+  (let ((collision-shape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((sphere-primitive (new 'process 'collide-shape-prim-sphere collision-shape (the-as uint 0))))
+      (set! (-> sphere-primitive prim-core collide-as) (collide-kind ground-object))
+      (set! (-> sphere-primitive collide-with) (collide-kind target))
+      (set! (-> sphere-primitive prim-core action) (collide-action solid))
+      (set! (-> sphere-primitive prim-core offense) (collide-offense indestructible))
+      (set-vector! (-> sphere-primitive local-sphere) 0.0 4096.0 0.0 4096.0)
+      (set-root-prim! collision-shape sphere-primitive))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (backup-collide-with-as collision-shape)
+    (set! (-> this root) collision-shape))
   0
   (none))
 
-(defmethod citb-generator-method-21 ((this citb-generator))
+(defmethod setup! ((this citb-generator))
+  "Initialize intact and broken art, linked actors, fuel-cell eligibility, named mushroom
+   placement, all particle controllers, and the generator's ambient sound."
   (initialize-skeleton this *citb-generator-sg* '())
   (setup-lods! (-> this normal-look) *citb-generator-sg* (-> this draw art-group) (-> this entity))
   (setup-lods! (-> this broken-look) *citb-generator-broken-sg* (-> this draw art-group) (-> this entity))
@@ -973,16 +1074,16 @@
   (set! (-> this birth-fuel-cell) (< (the-as uint 1) (the-as uint (-> this entity extra perm task))))
   (set! (-> this trigger-others) #f)
   (set! (-> this mushroom-pos quad) (-> this root trans quad))
-  (let ((f30-0 0.0))
+  (let ((mushroom-angle 0.0))
     (cond
-      ((name= (-> this name) "citb-generator-1") (set! (-> this mushroom) #t) (set! f30-0 21845.334))
-      ((name= (-> this name) "citb-generator-2") (set! (-> this mushroom) #t) (set! f30-0 16384.0))
-      ((name= (-> this name) "citb-generator-3") (set! (-> this mushroom) #t) (set! f30-0 16384.0))
-      ((name= (-> this name) "citb-generator-4") (set! (-> this mushroom) #t) (set! f30-0 -5461.3335))
+      ((name= (-> this name) "citb-generator-1") (set! (-> this mushroom) #t) (set! mushroom-angle 21845.334))
+      ((name= (-> this name) "citb-generator-2") (set! (-> this mushroom) #t) (set! mushroom-angle 16384.0))
+      ((name= (-> this name) "citb-generator-3") (set! (-> this mushroom) #t) (set! mushroom-angle 16384.0))
+      ((name= (-> this name) "citb-generator-4") (set! (-> this mushroom) #t) (set! mushroom-angle -5461.3335))
       (else (set! (-> this mushroom) #f)))
     (when (-> this mushroom)
-      (+! (-> this mushroom-pos x) (* 19251.2 (sin f30-0)))
-      (+! (-> this mushroom-pos z) (* 19251.2 (cos f30-0)))))
+      (+! (-> this mushroom-pos x) (* 19251.2 (sin mushroom-angle)))
+      (+! (-> this mushroom-pos z) (* 19251.2 (cos mushroom-angle)))))
   (set! (-> this part) (create-launch-control group-citb-generator-on this))
   (set! (-> this part-broken) (create-launch-control group-citb-generator-off this))
   (set! (-> this part-mushroom) (create-launch-control group-citb-generator-mushroom-on this))
@@ -990,13 +1091,17 @@
   0
   (none))
 
-(defmethod init-from-entity! ((this citb-generator) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citb-generator) (source-entity entity-actor))
+  "Create collision, initialize the placed drawable and generator setup, then enter the broken
+   or intact state selected by the linked state actor's completion bit."
   (init! this)
-  (process-drawable-from-entity! this arg0)
-  (citb-generator-method-21 this)
-  (let ((v1-4 (entity-actor-lookup (-> this entity) 'state-actor 0)))
-    (if (not v1-4) (set! v1-4 (-> this entity)))
-    (if (logtest? (-> v1-4 extra perm status) (entity-perm-status complete)) (go citb-generator-broken) (go citb-generator-idle)))
+  (process-drawable-from-entity! this source-entity)
+  (setup! this)
+  (let ((persistence-actor (entity-actor-lookup (-> this entity) 'state-actor 0)))
+    (if (not persistence-actor) (set! persistence-actor (-> this entity)))
+    (if (logtest? (-> persistence-actor extra perm status) (entity-perm-status complete))
+      (go citb-generator-broken)
+      (go citb-generator-idle)))
   (none))
 
 (defskelgroup *citadelcam-sg*
@@ -1006,15 +1111,19 @@
   ((citadelcam-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 20))
 
-(deftype citadelcam (process-drawable) ()
+(deftype citadelcam (process-drawable)
+  "Controller for the Citadel staircase reveal. It waits for the blue, red, and yellow Sage tasks,
+   triggers the stair actors, plays the reveal camera, and presents the staircase hint."
+  ()
   (:states
    citadelcam-idle
    citadelcam-stair-plats))
 
-
 (defstate citadelcam-idle (citadelcam)
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
+      "Begin the staircase reveal when a trigger arrives after the blue, red, and yellow Sage
+      tasks are all complete."
       (case message
         (('trigger)
          (when (and (task-complete? *game-info* (game-task citadel-sage-blue))
@@ -1024,40 +1133,50 @@
            (go citadelcam-stair-plats)))))
   :code
     (behavior ()
+      "Remain actor-paused while waiting for the staircase trigger."
       (logior! (-> self mask) (process-mask actor-pause))
       (anim-loop)))
 
 (defstate citadelcam-stair-plats (citadelcam)
   :code
     (behavior ()
-      (let ((gp-0 (entity-actor-count (-> self entity) 'trigger-actor)))
-        (dotimes (s5-0 gp-0)
-          (let ((s4-0 (entity-actor-lookup (-> self entity) 'trigger-actor s5-0))
-                (a1-2 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-2 from) self)
-            (set! (-> a1-2 num-params) 0)
-            (set! (-> a1-2 message) 'trigger)
-            (let ((t9-2 send-event-function)
-                  (v1-1 s4-0))
-              (when (not (t9-2 (if v1-1 (-> v1-1 extra process)) a1-2))
-                (entity-birth-no-kill s4-0)
+      "Trigger every linked stair actor, wait for the staircase camera to finish, show the
+      platform hint, and return to the waiting state."
+      (let ((trigger-actor-count (entity-actor-count (-> self entity) 'trigger-actor)))
+        (dotimes (stair-i trigger-actor-count)
+          (let ((trigger-actor (entity-actor-lookup (-> self entity) 'trigger-actor stair-i))
+                (trigger-event (new 'stack-no-clear 'event-message-block)))
+            (set! (-> trigger-event from) self)
+            (set! (-> trigger-event num-params) 0)
+            (set! (-> trigger-event message) 'trigger)
+            (let ((send-trigger-event send-event-function)
+                  (trigger-actor-for-send trigger-actor))
+              (when (not (send-trigger-event (if trigger-actor-for-send (-> trigger-actor-for-send extra process)) trigger-event))
+                (entity-birth-no-kill trigger-actor)
                 (suspend)
-                (send-event (if s4-0 (-> s4-0 extra process)) 'trigger))))))
-      (let ((gp-2 (ppointer->handle (process-spawn pov-camera (-> self root trans) *citadelcam-sg* "citadelcam-stair-plats" 0 #f '() :to self))))
-        (while (handle->process (the-as handle gp-2))
+                (send-event (if trigger-actor (-> trigger-actor extra process)) 'trigger))))))
+      (let ((camera-handle (ppointer->handle (process-spawn pov-camera (-> self root trans) *citadelcam-sg* "citadelcam-stair-plats" 0 #f '() :to self))))
+        (while (handle->process (the-as handle camera-handle))
           (suspend)))
       (level-hint-spawn (text-id citadel-plat) "sksp0387" (the-as entity #f) *entity-pool* (game-task none))
       (go citadelcam-idle)))
 
-(defmethod init-from-entity! ((this citadelcam) (arg0 entity-actor))
+(defmethod init-from-entity! ((this citadelcam) (source-entity entity-actor))
+  "Initialize the placed transform, allow trigger handling while actor-pause is active, and
+   enter the waiting state."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (go citadelcam-idle)
   (none))
 
-(deftype citb-battlecontroller (battlecontroller) ())
-
+(deftype citb-battlecontroller (battlecontroller)
+  "Citadel enemy encounter variant with a thirty-five-metre activation radius and a bunny ambush
+   introduction camera."
+  ()
+  (:state-methods
+   battlecontroller-play-intro-camera
+   battlecontroller-die))
 
 (defstate battlecontroller-play-intro-camera (citb-battlecontroller)
   :virtual #t
@@ -1065,17 +1184,17 @@
     (behavior ()
       (level-hint-spawn (text-id citadel-battle) "sksp0383" (the-as entity #f) *entity-pool* (game-task none))
       (suspend)
-      (let ((gp-1 (ppointer->handle (process-spawn pov-camera
-                                                   (-> (entity-by-name "citadelcam-1") extra trans)
-                                                   *citadelcam-sg*
-                                                   "citadel-bunnies"
-                                                   0
-                                                   #f
-                                                   '()
-                                                   :to
-                                                   self))))
-        (send-event (handle->process (the-as handle gp-1)) 'mask 2048)
-        (while (handle->process (the-as handle gp-1))
+      (let ((camera-handle (ppointer->handle (process-spawn pov-camera
+                                                            (-> (entity-by-name "citadelcam-1") extra trans)
+                                                            *citadelcam-sg*
+                                                            "citadel-bunnies"
+                                                            0
+                                                            #f
+                                                            '()
+                                                            :to
+                                                            self))))
+        (send-event (handle->process (the-as handle camera-handle)) 'mask 2048)
+        (while (handle->process (the-as handle camera-handle))
           (logclear! (-> *target* state-flags) (state-flags invulnerable))
           (suspend)))
       (go-virtual battlecontroller-active)))
@@ -1087,7 +1206,8 @@
       (process-entity-status! self (entity-perm-status complete) #t)
       (call-parent-state-handler code)))
 
-(defmethod battlecontroller-method-27 ((this citb-battlecontroller))
+(defmethod setup-paths-and-params! ((this citb-battlecontroller))
+  "Apply the shared encounter resource setup and use a thirty-five-metre activation distance."
   (call-parent-method this)
   (set! (-> this activate-distance) 143360.0)
   0

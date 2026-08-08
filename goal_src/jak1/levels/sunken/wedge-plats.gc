@@ -28,11 +28,12 @@
               (the float (sar (shl (the int (- (-> self rotate-outer) (* (-> self rotspeed) (seconds-per-frame)))) 48) 48)))
         (suspend))))
 
-(defmethod init-from-entity! ((this wedge-plat-master) (arg0 entity-actor))
+(defmethod init-from-entity! ((this wedge-plat-master) (source-entity entity-actor))
+  "Initialize the shared center and counter-rotating inner and outer platform angles."
   (logior! (-> this mask) (process-mask platform))
-  (set! (-> this center quad) (-> arg0 extra trans quad))
+  (vector-copy! (-> this center) (-> source-entity extra trans))
   (+! (-> this center y) 819.2)
-  (set! (-> this rotspeed) (res-lump-float arg0 'rotspeed))
+  (set! (-> this rotspeed) (res-lump-float source-entity 'rotspeed))
   (set! (-> this rotate-inner) 0.0)
   (set! (-> this rotate-outer) 0.0)
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -44,7 +45,7 @@
    (distance float)
    (offset   float))
   (:methods
-   (wedge-plat-method-27 (_type_) symbol))
+   (update-tip-state? (_type_) symbol))
   (:states
    wedge-plat-idle
    wedge-plat-tip))
@@ -56,32 +57,34 @@
   ((wedge-plat-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 6))
 
-(defmethod wedge-plat-method-27 ((this wedge-plat))
-  (let* ((a0-1 (-> this master))
-         (v1-0 (if a0-1 (-> (the-as process-drawable (-> a0-1 ppointer)) brother))))
-    (when v1-0
-      (let ((s4-0 (&-> v1-0 27))
-            (f30-0 (-> this distance))
-            (f28-0 (the float (sar (shl (the int (+ (the-as float (-> v1-0 32)) (-> this offset))) 48) 48)))
-            (s5-0 #f))
-        (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48)))
-        (set! (-> this basetrans x) (+ (the-as float (-> s4-0 0)) (* f30-0 (cos f28-0))))
-        (set! (-> this basetrans y) (the-as float (-> s4-0 1)))
-        (set! (-> this basetrans z) (+ (the-as float (-> s4-0 2)) (* f30-0 (sin f28-0))))
-        (let ((f0-16 (cos f28-0))) (if (or (< 0.95 f0-16) (< f0-16 -0.95)) (set! s5-0 #t)))
-        s5-0))))
+(defmethod update-tip-state? ((this wedge-plat))
+  "Update the platform's orbit transform from the master angle and return whether it is at a
+   tipping orientation."
+  (let* ((master (-> this master))
+         (master-process (if master (-> (the-as process-drawable (-> master ppointer)) brother))))
+    (when master-process
+      (let ((center (&-> master-process 27))
+            (distance (-> this distance))
+            (angle (the float (sar (shl (the int (+ (the-as float (-> master-process 32)) (-> this offset))) 48) 48)))
+            (tipped? #f))
+        (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 (the float (sar (shl (the int (- 49152.0 angle)) 48) 48)))
+        (set! (-> this basetrans x) (+ (the-as float (-> center 0)) (* distance (cos angle))))
+        (set! (-> this basetrans y) (the-as float (-> center 1)))
+        (set! (-> this basetrans z) (+ (the-as float (-> center 2)) (* distance (sin angle))))
+        (let ((cos-angle (cos angle))) (if (or (< 0.95 cos-angle) (< cos-angle -0.95)) (set! tipped? #t)))
+        tipped?))))
 
 (defstate wedge-plat-idle (wedge-plat)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk) (baseplat-method-22 self))))
+        (('bonk) (bounce! self))))
   :trans plat-trans
   :code
     (behavior ()
       (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
       (loop
-        (if (wedge-plat-method-27 self) (go wedge-plat-tip))
+        (if (update-tip-state? self) (go wedge-plat-tip))
         (suspend)))
   :post plat-post)
 
@@ -89,35 +92,36 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk) (baseplat-method-22 self))
+        (('bonk) (bounce! self))
         (('touch) (send-event proc 'no-look-around (seconds 1.5)) #f)))
   :trans plat-trans
   :code
     (behavior ()
       (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 0.0 0))
       (until (ja-done? 0)
-        (wedge-plat-method-27 self)
+        (update-tip-state? self)
         (suspend)
         (ja :num! (seek! (ja-aframe 60.0 0))))
       (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 100.0 0)) :frame-num (ja-aframe 60.0 0))
       (until (ja-done? 0)
-        (wedge-plat-method-27 self)
+        (update-tip-state? self)
         (suspend)
         (ja :num! (seek! (ja-aframe 100.0 0))))
       (set-time! (-> self state-time))
       (until (time-elapsed? (-> self state-time) (seconds 1))
         (ja :num-func num-func-identity :frame-num (ja-aframe 100.0 0))
-        (wedge-plat-method-27 self)
+        (update-tip-state? self)
         (suspend))
       (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 153.0 0)) :frame-num (ja-aframe 100.0 0))
       (until (ja-done? 0)
-        (wedge-plat-method-27 self)
+        (update-tip-state? self)
         (suspend)
         (ja :num! (seek! (ja-aframe 153.0 0))))
       (go wedge-plat-idle))
   :post plat-post)
 
-(defmethod init-from-entity! ((this wedge-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this wedge-plat) (source-entity entity-actor))
+  "Initialize the inner wedge platform's collision, skeleton, master link, orbit offset, and radius."
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -135,14 +139,14 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *wedge-plat-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (update-transforms! (-> this root))
-  (baseplat-method-21 this)
-  (set! (-> this master) (the-as wedge-plat-master (entity-actor-lookup arg0 'alt-actor 0)))
-  (set! (-> this offset) (res-lump-float arg0 'rotoffset))
-  (set! (-> this distance) (res-lump-float arg0 'distance :default 36864.0))
+  (init-platform! this)
+  (set! (-> this master) (the-as wedge-plat-master (entity-actor-lookup source-entity 'alt-actor 0)))
+  (set! (-> this offset) (res-lump-float source-entity 'rotoffset))
+  (set! (-> this distance) (res-lump-float source-entity 'distance :default 36864.0))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go wedge-plat-idle)
   (none))
@@ -159,32 +163,34 @@
   ((wedge-plat-outer-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 8))
 
-(defmethod wedge-plat-method-27 ((this wedge-plat-outer))
-  (let* ((a0-1 (-> this master))
-         (v1-0 (if a0-1 (-> (the-as process-drawable (-> a0-1 ppointer)) brother))))
-    (when v1-0
-      (let ((s4-0 (&-> v1-0 27))
-            (f30-0 (-> this distance))
-            (f28-0 (the float (sar (shl (the int (+ (the-as float (-> v1-0 33)) (-> this offset))) 48) 48)))
-            (s5-0 #f))
-        (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48)))
-        (set! (-> this basetrans x) (+ (the-as float (-> s4-0 0)) (* f30-0 (cos f28-0))))
-        (set! (-> this basetrans y) (the-as float (-> s4-0 1)))
-        (set! (-> this basetrans z) (+ (the-as float (-> s4-0 2)) (* f30-0 (sin f28-0))))
-        (let ((f0-16 (sin f28-0))) (if (or (< 0.95 f0-16) (< f0-16 -0.95)) (set! s5-0 #t)))
-        s5-0))))
+(defmethod update-tip-state? ((this wedge-plat-outer))
+  "Update the platform's orbit transform from the master angle and return whether it is at a
+   tipping orientation."
+  (let* ((master (-> this master))
+         (master-process (if master (-> (the-as process-drawable (-> master ppointer)) brother))))
+    (when master-process
+      (let ((center (&-> master-process 27))
+            (distance (-> this distance))
+            (angle (the float (sar (shl (the int (+ (the-as float (-> master-process 33)) (-> this offset))) 48) 48)))
+            (tipped? #f))
+        (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 (the float (sar (shl (the int (- 49152.0 angle)) 48) 48)))
+        (set! (-> this basetrans x) (+ (the-as float (-> center 0)) (* distance (cos angle))))
+        (set! (-> this basetrans y) (the-as float (-> center 1)))
+        (set! (-> this basetrans z) (+ (the-as float (-> center 2)) (* distance (sin angle))))
+        (let ((sin-angle (sin angle))) (if (or (< 0.95 sin-angle) (< sin-angle -0.95)) (set! tipped? #t)))
+        tipped?))))
 
 (defstate wedge-plat-outer-idle (wedge-plat-outer)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk) (baseplat-method-22 self))))
+        (('bonk) (bounce! self))))
   :trans plat-trans
   :code
     (behavior ()
       (loop
         (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
-        (if (wedge-plat-method-27 self) (go wedge-plat-outer-tip))
+        (if (update-tip-state? self) (go wedge-plat-outer-tip))
         (suspend)))
   :post plat-post)
 
@@ -192,35 +198,37 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk) (baseplat-method-22 self))
+        (('bonk) (bounce! self))
         (('touch) (send-event proc 'no-look-around (seconds 1.5)))))
   :trans plat-trans
   :code
     (behavior ()
       (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 0.0 0))
       (until (ja-done? 0)
-        (wedge-plat-method-27 self)
+        (update-tip-state? self)
         (suspend)
         (ja :num! (seek! (ja-aframe 60.0 0))))
       (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 100.0 0)) :frame-num (ja-aframe 60.0 0))
       (until (ja-done? 0)
-        (wedge-plat-method-27 self)
+        (update-tip-state? self)
         (suspend)
         (ja :num! (seek! (ja-aframe 100.0 0))))
       (set-time! (-> self state-time))
       (until (time-elapsed? (-> self state-time) (seconds 1))
         (ja :num-func num-func-identity :frame-num (ja-aframe 100.0 0))
-        (wedge-plat-method-27 self)
+        (update-tip-state? self)
         (suspend))
       (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 153.0 0)) :frame-num (ja-aframe 100.0 0))
       (until (ja-done? 0)
-        (wedge-plat-method-27 self)
+        (update-tip-state? self)
         (suspend)
         (ja :num! (seek! (ja-aframe 153.0 0))))
       (go wedge-plat-outer-idle))
   :post plat-post)
 
-(defmethod init-from-entity! ((this wedge-plat-outer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this wedge-plat-outer) (source-entity entity-actor))
+  "Initialize the outer wedge platform's collision, skeleton, master link, orbit offset, and
+   radius."
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -238,14 +246,14 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *wedge-plat-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (update-transforms! (-> this root))
-  (baseplat-method-21 this)
-  (set! (-> this master) (the-as wedge-plat-master (entity-actor-lookup arg0 'alt-actor 0)))
-  (set! (-> this offset) (res-lump-float arg0 'rotoffset))
-  (set! (-> this distance) (res-lump-float arg0 'distance :default 69632.0))
+  (init-platform! this)
+  (set! (-> this master) (the-as wedge-plat-master (entity-actor-lookup source-entity 'alt-actor 0)))
+  (set! (-> this offset) (res-lump-float source-entity 'rotoffset))
+  (set! (-> this distance) (res-lump-float source-entity 'distance :default 69632.0))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go wedge-plat-outer-idle)
   (none))

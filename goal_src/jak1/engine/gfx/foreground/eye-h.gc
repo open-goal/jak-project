@@ -10,6 +10,9 @@
 
 ;; DECOMP BEGINS
 
+;; One eye's animation state, packed into two vectors so consecutive keyframes can be interpolated
+;; with two vector lerps. x and y steer the iris and pupil, lid controls eyelid closure, and the
+;; second vector holds the three independent sprite scales.
 (deftype eye (structure)
   ((data        vector 2 :inline)
    (x           float :overlay-at (-> data 0 x))
@@ -19,6 +22,9 @@
    (pupil-scale float :offset 20)
    (lid-scale   float :offset 24)))
 
+;; One live eye-rendering slot. process identifies its drawable, level selects the level texture
+;; bucket or the common eye bucket, shaders points at its iris material, and random-time and blink
+;; drive the automatic blink envelope applied to both animated eyes.
 (deftype eye-control (structure)
   ((process     handle)
    (random-time uint16)
@@ -28,9 +34,12 @@
    (left        eye :inline)
    (right       eye :inline)))
 
+;; Fixed pool indexed by the eye-slot stored in merc geometry.
 (deftype eye-control-array (basic)
   ((data eye-control 11 :inline)))
 
+;; Reusable DMA/GIF packet headers for the eye sprites and adgif state, followed by the ten-sample
+;; close-and-open blink envelope.
 (deftype eye-work (structure)
   ((sprite-tmpl  dma-gif-packet :inline)
    (sprite-tmpl2 dma-gif-packet :inline)
@@ -39,8 +48,8 @@
 
 (define *eye-control-array* (new 'static 'eye-control-array))
 
-(dotimes (v1-5 11)
-  (set! (-> *eye-control-array* data v1-5 process) (the-as handle #f))
-  (set! (-> *eye-control-array* data v1-5 shaders) (the-as (inline-array adgif-shader) #f))
-  (set! (-> *eye-control-array* data v1-5 random-time) (the-as uint 60))
-  (set! (-> *eye-control-array* data v1-5 blink) 0.0))
+(dotimes (i 11)
+  (set! (-> *eye-control-array* data i process) (the-as handle #f))
+  (set! (-> *eye-control-array* data i shaders) (the-as (inline-array adgif-shader) #f))
+  (set! (-> *eye-control-array* data i random-time) (the-as uint 60))
+  (set! (-> *eye-control-array* data i blink) 0.0))

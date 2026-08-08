@@ -47,7 +47,6 @@
    (sound-id          sound-id)
    (enable-patrol     basic)))
 
-
 (defskelgroup *sharkey-sg*
   sharkey
   sharkey-lod0-jg
@@ -56,102 +55,129 @@
   :bounds (static-spherem 0 0 0 6))
 
 (defmethod touch-handler ((this sharkey) (arg0 process) (arg1 event-message-block))
+  "Accept touch events without applying the ordinary nav-enemy contact attack."
   #t)
 
 (defmethod attack-handler ((this sharkey) (arg0 process) (arg1 event-message-block))
+  "Accept incoming attack events without damaging the Sharkey or starting a counterattack."
   #t)
 
 nav-enemy-default-event-handler
 
 (defmethod run-logic? ((this sharkey))
+  "Continue logic when actor pausing is disabled, the Sharkey is within its adjusted pause
+   distance, its skeleton is blending between channels, or its drawable requests skeleton
+   processing despite the normal update policy."
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> this collide-info pause-adjust-distance))
               (vector-vector-distance (-> this collide-info trans) (math-camera-pos)))
           (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
           (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-status no-skeleton-update))))))
 
-(defmethod nav-enemy-method-40 ((this sharkey))
-  (nav-control-method-11 (-> this nav) (-> this nav target-pos))
-  (let* ((f0-0 (vector-vector-xz-distance (-> this collide-info trans) (-> this nav target-pos)))
-         (f30-0 (/ (- (fmin (-> this y-max) (-> this nav target-pos y)) (-> this collide-info trans y)) f0-0)))
-    (set! (-> this nav travel y) (* 4.0 (vector-length (-> this nav travel)) f30-0)))
+(defmethod update-nav-target! ((this sharkey))
+  "Navigate toward target-pos, then add a vertical travel component toward the lesser of the
+   target height and y-max. Scale that climb or dive by four times the vertical-to-horizontal
+   displacement ratio so horizontal travel still controls the overall approach."
+  (navigate! (-> this nav) (-> this nav target-pos))
+  (let* ((horizontal-distance (vector-vector-xz-distance (-> this collide-info trans) (-> this nav target-pos)))
+         (climb-ratio (/ (- (fmin (-> this y-max) (-> this nav target-pos y)) (-> this collide-info trans y)) horizontal-distance)))
+    (set! (-> this nav travel y) (* 4.0 (vector-length (-> this nav travel)) climb-ratio)))
   0
   (none))
 
-(defmethod nav-enemy-method-37 ((this sharkey))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
+(defmethod turn-toward-travel! ((this sharkey))
+  "When the travel vector is longer than two metres, turn dir toward its normalized heading at
+   one revolution per second and rebuild the collision quaternion."
+  (let ((travel-direction (new 'stack-no-clear 'vector)))
     (when (< 8192.0 (vector-length (-> this nav travel)))
-      (vector-normalize-copy! s5-0 (-> this nav travel) 1.0)
-      (vector-deg-seek (-> this dir) (-> this dir) s5-0 (* 65536.0 (seconds-per-frame)))
+      (vector-normalize-copy! travel-direction (-> this nav travel) 1.0)
+      (vector-deg-seek (-> this dir) (-> this dir) travel-direction (* 65536.0 (seconds-per-frame)))
       (vector-normalize! (-> this dir) 1.0)
       (forward-up->quaternion (-> this collide-info quat) (-> this dir) *up-vector*)))
   0
   (none))
 
-(defmethod nav-enemy-method-41 ((this sharkey))
-  (let* ((f0-1 (- (-> this target-speed) (-> this momentum-speed)))
-         (f1-3 (fmin (* (-> this acceleration) (seconds-per-frame)) (fabs f0-1))))
-    (if (< f0-1 0.0) (set! (-> this momentum-speed) (- (-> this momentum-speed) f1-3)) (+! (-> this momentum-speed) f1-3)))
-  (let ((f0-9 (fmin (* (-> this speed-scale) (-> this momentum-speed))
-                    (* (vector-length (-> this nav travel)) (-> *display* frames-per-second)))))
-    (vector-normalize-copy! (-> this collide-info transv) (-> this nav travel) f0-9))
+(defmethod compute-travel-velocity! ((this sharkey))
+  "Ramp momentum-speed toward target-speed by at most acceleration per frame. Convert the
+   navigation travel vector to velocity, capped by both scaled momentum and the distance that
+   remains along the travel vector in one frame."
+  (let* ((speed-error (- (-> this target-speed) (-> this momentum-speed)))
+         (speed-step (fmin (* (-> this acceleration) (seconds-per-frame)) (fabs speed-error))))
+    (if (< speed-error 0.0)
+      (set! (-> this momentum-speed) (- (-> this momentum-speed) speed-step))
+      (+! (-> this momentum-speed) speed-step)))
+  (let ((travel-speed (fmin (* (-> this speed-scale) (-> this momentum-speed))
+                            (* (vector-length (-> this nav travel)) (-> *display* frames-per-second)))))
+    (vector-normalize-copy! (-> this collide-info transv) (-> this nav travel) travel-speed))
   0
   (none))
 
 (defmethod common-post ((this sharkey))
-  (let ((f30-0 (-> this water height))
-        (s5-0 (new 'stack-no-clear 'vector)))
-    (let* ((f3-0 (- -36864.0 (-> this collide-info trans y)))
-           (f0-2 (fmax 0.0 (fmin 1.0 (- 1.0 (/ f3-0 (meters 3)))))))
-      (set-vector! (-> this draw color-mult) f0-2 f0-2 f0-2 1.0))
-    (water-control-method-10 (-> this water))
-    (let ((f28-0 (-> this collide-info trans y)))
-      (when (or (and (< f30-0 f28-0) (>= f30-0 (-> this last-y))) (and (>= f30-0 f28-0) (< f30-0 (-> this last-y))))
-        (set! (-> s5-0 quad) (-> this collide-info trans quad))
-        (set! (-> s5-0 y) f30-0)
-        (create-splash (-> this water) 1.0 s5-0 1 (-> this collide-info transv)))
-      (set! (-> this last-y) f28-0)))
+  "Fade the Sharkey from white at nine metres below world zero to black at twelve metres below,
+   update its water control, and make a splash whenever its position crosses the water surface.
+   Save the new height for the next crossing test, then run the ordinary nav-enemy post work."
+  (let ((water-height (-> this water height))
+        (splash-position (new 'stack-no-clear 'vector)))
+    (let* ((depth-below-fade (- -36864.0 (-> this collide-info trans y)))
+           (color-scale (fmax 0.0 (fmin 1.0 (- 1.0 (/ depth-below-fade (meters 3)))))))
+      (set-vector! (-> this draw color-mult) color-scale color-scale color-scale 1.0))
+    (update-water-state! (-> this water))
+    (let ((current-y (-> this collide-info trans y)))
+      (when (or (and (< water-height current-y) (>= water-height (-> this last-y)))
+                (and (>= water-height current-y) (< water-height (-> this last-y))))
+        (vector-copy! splash-position (-> this collide-info trans))
+        (set! (-> splash-position y) water-height)
+        (create-splash (-> this water) 1.0 splash-position 1 (-> this collide-info transv)))
+      (set! (-> this last-y) current-y)))
   (call-parent-method this)
   0
   (none))
 
 (defbehavior sharkey-notice-player? sharkey ()
+  "Return true when the target is below the Sharkey's maximum swimming height, is not in racer
+   mode, and is close enough to this Sharkey's navigation mesh."
   (if *target*
     (and (< (- (-> *target* control trans y) (-> self y-max)) 0.0)
          (let ((gp-0 'racer)) (!= gp-0 (send-event *target* 'query 'mode)))
          (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos)))))
 
-(defun sharkey-get-player-position ((arg0 vector))
-  (set! (-> arg0 quad) (-> (target-pos 5) quad))
+(defun sharkey-get-player-position ((destination vector))
+  "Copy the player target point at joint slot 5 into destination."
+  (vector-copy! destination (target-pos 5))
   0
   (none))
 
 (defbehavior sharkey-reset-position sharkey ()
-  (set! (-> self collide-info trans quad) (-> self entity extra trans quad))
+  "Restore the Sharkey's position from its entity transform."
+  (vector-copy! (-> self collide-info trans) (-> self entity extra trans))
   0
   (none))
 
 (defbehavior sharkey-move-to-attack-position sharkey ()
-  (let ((s5-0 (new 'stack-no-clear 'vector))
-        (s3-0 (new 'stack-no-clear 'vector))
-        (gp-0 (new 'stack-no-clear 'vector)))
-    (let ((s4-0 (-> *target* control trans)))
-      (let ((f30-0 4096000.0))
-        (set! (-> s3-0 quad) (-> self entity extra trans quad))
-        (set! (-> s5-0 quad) (-> self collide-info trans quad))
-        (dotimes (s2-0 (-> self path curve num-cverts))
-          (eval-path-curve-div! (-> self path) s3-0 (the float s2-0) 'interp)
-          (let ((f0-2 (vector-vector-xz-distance s4-0 s3-0)))
-            (when (< f0-2 f30-0)
-              (set! f30-0 f0-2)
-              (set! (-> s5-0 quad) (-> s3-0 quad))))))
-      (vector-! (-> self dir) s4-0 s5-0)
+  "Sample each integer control-vertex parameter on the Sharkey's path and find the sample nearest
+   the player in XZ. Face from that path point toward the player, choose a point spawn-distance
+   behind the player, project it onto the navigation mesh, and save it at the hidden idle depth as
+   the new spawn point before teleporting there."
+  (let ((closest-path-position (new 'stack-no-clear 'vector))
+        (candidate-position (new 'stack-no-clear 'vector))
+        (desired-spawn-position (new 'stack-no-clear 'vector)))
+    (let ((player-position (-> *target* control trans)))
+      (let ((best-distance 4096000.0))
+        (vector-copy! candidate-position (-> self entity extra trans))
+        (vector-copy! closest-path-position (-> self collide-info trans))
+        (dotimes (i (-> self path curve num-cverts))
+          (eval-path-curve-div! (-> self path) candidate-position (the float i) 'interp)
+          (let ((candidate-distance (vector-vector-xz-distance player-position candidate-position)))
+            (when (< candidate-distance best-distance)
+              (set! best-distance candidate-distance)
+              (vector-copy! closest-path-position candidate-position)))))
+      (vector-! (-> self dir) player-position closest-path-position)
       (vector-normalize! (-> self dir) 1.0)
-      (vector+*! gp-0 s4-0 (-> self dir) (- (-> self spawn-distance))))
-    (project-onto-nav-mesh (-> self nav) gp-0 gp-0)
-    (set! (-> gp-0 y) (-> self y-min))
-    (set! (-> self spawn-point quad) (-> gp-0 quad)))
-  (set! (-> self collide-info trans quad) (-> self spawn-point quad))
+      (vector+*! desired-spawn-position player-position (-> self dir) (- (-> self spawn-distance))))
+    (project-onto-nav-mesh (-> self nav) desired-spawn-position desired-spawn-position)
+    (set! (-> desired-spawn-position y) (-> self y-min))
+    (vector-copy! (-> self spawn-point) desired-spawn-position))
+  (vector-copy! (-> self collide-info trans) (-> self spawn-point))
   (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
   (set! (-> self momentum-speed) 0.0))
 
@@ -161,7 +187,7 @@ nav-enemy-default-event-handler
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0)))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags notice-pending)))
   :exit
     (behavior ()
       (logclear! (-> self draw status) (draw-status hidden)))
@@ -175,18 +201,19 @@ nav-enemy-default-event-handler
                   (time-elapsed? (-> self state-time) (-> self state-timeout)))
            (go-virtual nav-enemy-patrol)))
         ((sharkey-notice-player?)
-         (when (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf0)))
-           (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))
+         (when (not (logtest? (-> self nav-enemy-flags) (nav-enemy-flags notice-pending)))
+           (logior! (-> self nav-enemy-flags) (nav-enemy-flags notice-pending))
            (set-time! (-> self notice-time)))
-         (let ((a0-4 (nav-control-method-16 (-> self nav) (-> *target* control trans))))
-           (when (or (and a0-4 (logtest? (-> a0-4 pat) 2))
+         (let ((target-poly (find-poly-fast-from-world (-> self nav) (-> *target* control trans))))
+           (when (or (and target-poly (logtest? (-> target-poly pat) 2))
                      (and (logtest? (-> self draw status) (draw-status hidden))
                           (time-elapsed? (-> self notice-time) (-> self reaction-time))))
              (sharkey-move-to-attack-position)
              (set! (-> self player-in-water) #t)
              (go-virtual nav-enemy-chase))))
         (else
-         (if (time-elapsed? (-> self notice-time) (seconds 10)) (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf0))))))
+         (if (time-elapsed? (-> self notice-time) (seconds 10))
+           (logclear! (-> self nav-enemy-flags) (nav-enemy-flags notice-pending))))))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
@@ -196,7 +223,7 @@ nav-enemy-default-event-handler
         (ja :num! (loop! (-> self anim-speed)))
         (seek! (-> self anim-speed) 1.0 0.05)
         (seek! (-> self collide-info trans y) (-> self y-min) (* (-> self y-speed) (seconds-per-frame)))
-        (water-control-method-10 (-> self water))
+        (update-water-state! (-> self water))
         (ja-post)
         (suspend))
       (logior! (-> self draw status) (draw-status hidden))
@@ -214,19 +241,16 @@ nav-enemy-default-event-handler
       (ja-channel-push! 1 (seconds 0.075))
       (set! (-> self nav target-pos quad) (-> self spawn-point quad))
       (loop
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info walk-anim))
-                    :num!
-                    (seek! max (-> self anim-speed))
-                    :frame-num 0.0)
-        (until (ja-done? 0)
-          (seek! (-> self anim-speed) 1.0 0.05)
-          (cond
-            ((-> self enable-patrol)
-             (seek! (-> self collide-info trans y) (-> self y-max) (* (-> self y-speed) (seconds-per-frame))))
-            (else (if (< (- (-> self collide-info trans y) (-> self y-min)) 409.6) (go-virtual nav-enemy-idle))))
-          (suspend)
-          (ja :num! (seek! max (-> self anim-speed))))))
+        (ja-play :group!
+                 (-> self draw art-group data (-> self nav-info walk-anim))
+                 :num!
+                 (seek! max (-> self anim-speed))
+                 :frame-num 0.0
+                 (seek! (-> self anim-speed) 1.0 0.05)
+                 (cond
+                   ((-> self enable-patrol)
+                    (seek! (-> self collide-info trans y) (-> self y-max) (* (-> self y-speed) (seconds-per-frame))))
+                   (else (if (< (- (-> self collide-info trans y) (-> self y-min)) 409.6) (go-virtual nav-enemy-idle)))))))
   :post
     (behavior ()
       (nav-enemy-travel-post)))
@@ -241,10 +265,12 @@ nav-enemy-default-event-handler
     (behavior ()
       (go-virtual nav-enemy-chase)))
 
-(defbehavior sharkey-follow-trajectory sharkey ((arg0 float))
-  (let ((gp-0 (-> self jump-trajectory)))
-    (eval-position! gp-0 arg0 (-> self collide-info trans))
-    (eval-velocity! gp-0 arg0 (-> self collide-info transv)))
+(defbehavior sharkey-follow-trajectory sharkey ((trajectory-time float))
+  "Evaluate the chomp trajectory at time into the Sharkey's position and velocity, then face along
+   the resulting velocity."
+  (let ((trajectory (-> self jump-trajectory)))
+    (eval-position! trajectory trajectory-time (-> self collide-info trans))
+    (eval-velocity! trajectory trajectory-time (-> self collide-info transv)))
   (vector-normalize-copy! (-> self dir) (-> self collide-info transv) 1.0)
   (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*))
 
@@ -253,49 +279,51 @@ nav-enemy-default-event-handler
   :event nav-enemy-default-event-handler
   :code
     (behavior ()
-      (let ((gp-0 (new 'stack-no-clear 'vector))
-            (s5-0 (new 'stack-no-clear 'vector)))
+      (let ((attack-start-position (new 'stack-no-clear 'vector))
+            (player-position (new 'stack-no-clear 'vector)))
         (current-time)
         (sound-play "bigshark-bite")
         (set-time! (-> self state-time))
-        (set! (-> gp-0 quad) (-> self collide-info trans quad))
+        (vector-copy! attack-start-position (-> self collide-info trans))
         (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! sharkey-chomp-ja :num! (seek! (ja-aframe 3.0 0) 2.0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (sharkey-get-player-position s5-0)
-          (setup-from-to-duration! (-> self jump-trajectory) gp-0 s5-0 3.0 -291.27112)
-          (set! (-> self attack-time) (ja-aframe-num 0))
-          (sharkey-follow-trajectory (-> self attack-time))
-          (suspend)
-          (ja :num! (seek! (ja-aframe 3.0 0) 2.0))))
+        (ja-play :group!
+                 sharkey-chomp-ja
+                 :num!
+                 (seek! (ja-aframe 3.0 0) 2.0)
+                 :frame-num 0.0
+                 (sharkey-get-player-position player-position)
+                 (setup-from-to-duration! (-> self jump-trajectory) attack-start-position player-position 3.0 -291.27112)
+                 (set! (-> self attack-time) (ja-aframe-num 0))
+                 (sharkey-follow-trajectory (-> self attack-time))))
       (when (send-event *target* 'attack-invinc #f (static-attack-info ((mode 'sharkey))))
         (logclear! (-> self mask) (process-mask enemy))
         (vector-float*! (-> self collide-info transv) (-> self collide-info transv) 8.0)
         (set-time! (-> self state-time))
-        (let ((f30-0 -409600.0)
-              (f28-0 (-> self collide-info transv y))
-              (f26-0 (-> self collide-info trans y)))
+        (let ((gravity -409600.0)
+              (vertical-speed (-> self collide-info transv y))
+              (vertical-position (-> self collide-info trans y)))
           (until (time-elapsed? (-> self state-time) (seconds 3))
-            (ja-no-eval :group! sharkey-chomp-ja :num! (seek!) :frame-num (ja-aframe 3.0 0))
-            (until (ja-done? 0)
-              (+! f28-0 (* f30-0 (seconds-per-frame)))
-              (+! f26-0 (* f28-0 (seconds-per-frame)))
-              (set! (-> self collide-info transv y) f28-0)
-              (when (< (-> self collide-info trans y) (-> self water height))
-                (set! f28-0 (* 0.9 f28-0))
-                (vector-float*! (-> self collide-info transv) (-> self collide-info transv) 0.9))
-              (vector-normalize-copy! (-> self dir) (-> self collide-info transv) 1.0)
-              (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
-              (integrate-for-enemy-with-move-to-ground! (-> self collide-info)
-                                                        (-> self collide-info transv)
-                                                        (collide-kind background)
-                                                        8192.0
-                                                        #t
-                                                        #f
-                                                        #f)
-              (set! (-> self collide-info trans y) f26-0)
-              (suspend)
-              (ja :num! (seek!)))))
+            (ja-play :group!
+                     sharkey-chomp-ja
+                     :num! (seek!)
+                     :frame-num
+                     (ja-aframe 3.0 0)
+                     (+! vertical-speed (* gravity (seconds-per-frame)))
+                     (+! vertical-position (* vertical-speed (seconds-per-frame)))
+                     (set! (-> self collide-info transv y) vertical-speed)
+                     (when (< (-> self collide-info trans y) (-> self water height))
+                       (set! vertical-speed (* 0.9 vertical-speed))
+                       (vector-float*! (-> self collide-info transv) (-> self collide-info transv) 0.9))
+                     (vector-normalize-copy! (-> self dir) (-> self collide-info transv) 1.0)
+                     (forward-up->quaternion (-> self collide-info quat) (-> self dir) *up-vector*)
+                     (integrate-for-enemy-with-move-to-ground! (-> self collide-info)
+                                                               (-> self collide-info transv)
+                                                               (collide-kind background)
+                                                               8192.0
+                                                               #t
+                                                               #f
+                                                               #f)
+                     (set! (-> self collide-info trans y) vertical-position))))
         (send-event *target* 'end-mode)
         (logior! (-> self mask) (process-mask enemy)))
       (sharkey-reset-position)
@@ -314,29 +342,29 @@ nav-enemy-default-event-handler
   :trans
     (behavior ()
       (if (not *target*) (go-virtual nav-enemy-patrol))
-      (let ((gp-0 (-> *target* control trans)))
-        (let ((s5-0 (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos)))
-              (s4-0 'racer)
-              (a1-0 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-0 from) self)
-          (set! (-> a1-0 num-params) 1)
-          (set! (-> a1-0 message) 'query)
-          (set! (-> a1-0 param 0) (the-as uint 'mode))
-          (if (or (= s4-0 (send-event-function *target* a1-0)) (not s5-0)) (go-virtual nav-enemy-patrol)))
-        (when (logtest? (-> *target* control status) (cshape-moving-flags onground))
-          (set! (-> self player-in-water) (logtest? (-> *target* control status) (cshape-moving-flags on-water)))
+      (let ((player-position (-> *target* control trans)))
+        (let ((target-near-nav? (nav-enemy-test-point-near-nav-mesh? (-> *target* control shadow-pos)))
+              (racer-mode 'racer)
+              (query-block (new 'stack-no-clear 'event-message-block)))
+          (set! (-> query-block from) self)
+          (set! (-> query-block num-params) 1)
+          (set! (-> query-block message) 'query)
+          (set! (-> query-block param 0) (the-as uint 'mode))
+          (if (or (= racer-mode (send-event-function *target* query-block)) (not target-near-nav?)) (go-virtual nav-enemy-patrol)))
+        (when (logtest? (-> *target* control status) (collide-status on-ground))
+          (set! (-> self player-in-water) (logtest? (-> *target* control status) (collide-status on-water)))
           (if (-> self player-in-water) (set-time! (-> self player-water-time))))
         (if (and *target* (>= 8192.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
           (go-virtual nav-enemy-attack))
         (cond
           ((-> self player-in-water)
            (set-time! (-> self free-time))
-           (if (and (< (fabs (- (-> gp-0 y) (-> self collide-info trans y))) 40960.0)
-                    (< (vector-vector-xz-distance gp-0 (-> self collide-info trans)) 24576.0))
+           (if (and (< (fabs (- (-> player-position y) (-> self collide-info trans y))) 40960.0)
+                    (< (vector-vector-xz-distance player-position (-> self collide-info trans)) 24576.0))
              (go-virtual nav-enemy-attack)))
           (else (if (time-elapsed? (-> self free-time) (seconds 3)) (go-virtual nav-enemy-patrol)))))
-      (let ((a0-10 (-> self nav target-poly)))
-        (if (and a0-10 (logtest? (-> a0-10 pat) 2))
+      (let ((target-poly (-> self nav target-poly)))
+        (if (and target-poly (logtest? (-> target-poly pat) 2))
           (set! (-> self target-speed) (* 2.0 (-> self chase-speed)))
           (set! (-> self target-speed) (-> self chase-speed)))))
   :code
@@ -345,23 +373,20 @@ nav-enemy-default-event-handler
       (ja-channel-push! 1 (seconds 0.17))
       (sound-play "bigshark-idle")
       (loop
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info run-anim))
-                    :num!
-                    (seek! max (-> self anim-speed))
-                    :frame-num 0.0)
-        (until (ja-done? 0)
-          (seek! (-> self anim-speed) 1.0 (* 3.0 (seconds-per-frame)))
-          (suspend)
-          (ja :num! (seek! max (-> self anim-speed))))))
+        (ja-play :group!
+                 (-> self draw art-group data (-> self nav-info run-anim))
+                 :num!
+                 (seek! max (-> self anim-speed))
+                 :frame-num 0.0
+                 (seek! (-> self anim-speed) 1.0 (* 3.0 (seconds-per-frame))))))
   :post
     (behavior ()
       (sharkey-get-player-position (-> self nav target-pos))
       (nav-enemy-travel-post)
-      (let* ((f3-0 (vector-vector-distance (-> self collide-info trans) (-> self nav target-pos)))
-             (f1-2 (fmax 0.0 (fmin 1.0 (- 1.0 (/ (+ -24576.0 f3-0) (+ -24576.0 (-> self spawn-distance)))))))
-             (f0-2 (+ 0.5 (* 1.5 f1-2))))
-        (sound-play "bigshark-alert" :id (-> self sound-id) :pitch f0-2 :position (the-as symbol (-> self collide-info trans))))))
+      (let* ((distance-to-player (vector-vector-distance (-> self collide-info trans) (-> self nav target-pos)))
+             (proximity (fmax 0.0 (fmin 1.0 (- 1.0 (/ (+ -24576.0 distance-to-player) (+ -24576.0 (-> self spawn-distance)))))))
+             (pitch (+ 0.5 (* 1.5 proximity))))
+        (sound-play "bigshark-alert" :id (-> self sound-id) :pitch pitch :position (the-as symbol (-> self collide-info trans))))))
 
 (defstate nav-enemy-stop-chase (sharkey)
   :virtual #t
@@ -370,16 +395,13 @@ nav-enemy-default-event-handler
     (behavior ()
       (ja-channel-push! 1 (seconds 0.17))
       (loop
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info walk-anim))
-                    :num!
-                    (seek! max (-> self anim-speed))
-                    :frame-num 0.0)
-        (until (ja-done? 0)
-          (seek! (-> self anim-speed) 1.0 0.05)
-          (seek! (-> self collide-info trans y) (-> self y-max) (* (-> self y-speed) (seconds-per-frame)))
-          (suspend)
-          (ja :num! (seek! max (-> self anim-speed)))))))
+        (ja-play :group!
+                 (-> self draw art-group data (-> self nav-info walk-anim))
+                 :num!
+                 (seek! max (-> self anim-speed))
+                 :frame-num 0.0
+                 (seek! (-> self anim-speed) 1.0 0.05)
+                 (seek! (-> self collide-info trans y) (-> self y-max) (* (-> self y-speed) (seconds-per-frame)))))))
 
 (defstate nav-enemy-stare (sharkey)
   :virtual #t
@@ -405,15 +427,12 @@ nav-enemy-default-event-handler
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
-      (dotimes (gp-0 3)
-        (ja-no-eval :group!
-                    (-> self draw art-group data (-> self nav-info victory-anim))
-                    :num!
-                    (seek! max (-> self anim-speed))
-                    :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! max (-> self anim-speed)))))
+      (dotimes (i 3)
+        (ja-play :group!
+                 (-> self draw art-group data (-> self nav-info victory-anim))
+                 :num!
+                 (seek! max (-> self anim-speed))
+                 :frame-num 0.0))
       (go-virtual nav-enemy-stare)))
 
 (define *sharkey-nav-enemy-info*
@@ -469,30 +488,34 @@ nav-enemy-default-event-handler
        :debug-draw-neck #f
        :debug-draw-jump #f))
 
-(defmethod init-from-entity! ((this sharkey) (arg0 entity-actor))
-  (set! (-> this scale) (res-lump-float arg0 'scale :default 1.0))
-  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 1))))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core offense) (collide-offense normal-attack))
-      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 (* 6144.0 (-> this scale)))
-      (set-root-prim! s4-0 s3-0))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> this collide-info) s4-0))
-  (process-drawable-from-entity! this arg0)
+(defmethod init-from-entity! ((this sharkey) (source-entity entity-actor))
+  "Create the Sharkey's scaled attack sphere, drawable, skeleton, navigation defaults, and
+   water controller. Read its water height and tuning resources, place it twelve metres below
+   its maximum swimming depth, disable actor pausing, and enter idle."
+  (set! (-> this scale) (res-lump-float source-entity 'scale :default 1.0))
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((attack-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 1))))
+      (set! (-> attack-sphere prim-core collide-as) (collide-kind enemy))
+      (set! (-> attack-sphere collide-with) (collide-kind target))
+      (set! (-> attack-sphere prim-core offense) (collide-offense normal-attack))
+      (set-vector! (-> attack-sphere local-sphere) 0.0 0.0 0.0 (* 6144.0 (-> this scale)))
+      (set-root-prim! collision attack-sphere))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this collide-info) collision))
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *sharkey-sg* '())
   (init-defaults! this *sharkey-nav-enemy-info*)
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this water) (new 'process 'water-control this 3 12288.0 8192.0 2048.0))
-  (set! (-> this water flag) (water-flag active part-rings part-water))
+  (set! (-> this water flags) (water-flag active part-rings part-water))
   (set! (-> this water height) (res-lump-float (-> this entity) 'water-height))
   (set! (-> this water ripple-size) 20480.0)
-  (set! (-> this spawn-point quad) (-> this collide-info trans quad))
+  (vector-copy! (-> this spawn-point) (-> this collide-info trans))
   (set! (-> this collide-info nav-radius) 8192.0)
   (set! (-> this nav nearest-y-threshold) 4096000.0)
   (set! (-> this y-max) (- (-> this water height) (* 2048.0 (-> this scale))))

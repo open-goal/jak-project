@@ -3,14 +3,15 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; TODO for mood
+;; The clock evaluates each active level's mood, blends the two level results,
+;; and exposes the resulting lighting state to the renderers.
 (declare-type time-of-day-proc process)
 
 (declare-type time-of-day-palette basic)
 
 (define-extern *time-of-day-proc* (pointer time-of-day-proc))
 
-(define-extern time-of-day-interp-colors (function (pointer rgba) uint mood-context none))
+(define-extern time-of-day-interp-colors (function (pointer rgba) time-of-day-palette mood-context none))
 
 (define-extern time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
 
@@ -18,25 +19,28 @@
 
 ;; DECOMP BEGINS
 
-;; control time of day palette from outside the time of day system
-;; (for example, the cave crystals and deadly water in LPC)
+;; A world-space request to modify one of the eight palette weights.  Several
+;; actors may submit the same slot; set-fade! keeps the nearest request by
+;; comparing actor-dist.  Level mood code uses trans for distance falloff.
 (deftype palette-fade-control (structure)
   ((trans      vector :inline)
    (fade       float)
    (actor-dist float)))
 
-;; group of 8 palette fade controls
+;; One externally controlled fade for each authored palette snapshot.
 (deftype palette-fade-controls (basic)
   ((control palette-fade-control 8 :inline))
   (:methods
    (reset! (_type_) symbol)
    (set-fade! (_type_ int float float vector) object)))
 
-;; the global palette fade control used by game objects to control time of day lighting effects
+;; Actor requests collected for the current mood update and reset afterward.
 (define-perm *palette-fade-controls* palette-fade-controls (new 'global 'palette-fade-controls))
 
-;; the time-of-day system runs a single process that just ticks time forward and controls
-;; star/sun/moon/green-sun particle launch.
+;; The calendar clock and celestial-particle owner.  frame is a remainder in
+;; 300ths of an in-game second; time-ratio controls how many of those units pass
+;; per update.  The post behavior maintains stars, the ordinary sun, and the
+;; green sun.  The moon fields are retained but unused.
 (deftype time-of-day-proc (process)
   ((year            int32)
    (month           int32)
@@ -59,15 +63,35 @@
   (:states
    time-of-day-tick))
 
-;; a color palette that can be interpolated based on the time of day.
-;; tie/tfrag/shrub all use these.
+;; Eight RGBA samples for each output color.  width is always 8, height is the
+;; number of output colors, pad is zero, and data[color*8+snapshot] is one
+;; packed RGBA value.  TIE, tfragment, and shrub data use the palette indices;
+;; time-of-day-interp-colors-scratch combines each color's eight samples with
+;; mood-context.itimes.
+;;
+;; Palette interpolation rounds height up to 32 colors.  Its final 1024-byte
+;; input DMA can therefore read as many as 31 colors beyond the nominal object,
+;; and it writes the same complete block to a generously sized work buffer.
+;; Resource storage after the object must remain accessible; consumers ignore
+;; the generated colors beyond height.
 (deftype time-of-day-palette (basic)
   ((width  int32)
    (height int32)
    (pad    int32)
    (data   int32 1)))
 
-;; all time of day state.
+;; Evaluated global presentation state.  moods points to the two loaded levels'
+;; mood contexts.  interp is the desired level blend derived from their
+;; distances; current-interp approaches it gradually so a boundary crossing
+;; does not pop.  active-count counts active levels that supply a sky.
+;;
+;; The current-* fields and light groups are the final blend consumed by
+;; rendering and particles.  target-interp blends the target's selected special
+;; light kit with its base kit.  For each loaded level, light-masks-0 and
+;; light-masks-1 identify the one or two authored light snapshots currently in
+;; use, and light-interp records their blend; drawables use these values with
+;; their shadow masks.  title-updated prevents the title light directions from
+;; being transformed into camera space more than once per frame.
 (deftype time-of-day-context (basic)
   ((active-count         uint32)
    (interp               float)
@@ -91,15 +115,20 @@
    (sun-fade             float)
    (title-updated        symbol)))
 
-;; dma memory layout for time of day palette interpolation
+;; Four one-kilobyte scratchpad banks for palette interpolation.  banka and
+;; bankb each hold 32 colors with eight input samples apiece.  The interpolator
+;; alternates them while DMA loads the next input page.  outa and outb each
+;; accumulate as many as 256 completed RGBA colors before DMA writes a batch.
 (deftype time-of-day-dma (structure)
   ((outa  uint32 256)
    (outb  uint32 256)
    (banka uint32 256)
    (bankb uint32 256)))
 
-;; weird, either 8 (running) or 4 (not running)
+;; Debug-menu time selection: 0-7 freeze at authored inspection times and 8
+;; runs the clock.  time-of-day-setup also writes 4 when it freezes at noon,
+;; even though menu entry 4 normally selects 18:00.
 (define *time-of-day-mode* 8)
 
-;; the global time of day context - this is used to access all mood and time of day data.
+;; Shared result used by the mood, sky, geometry, particle, and shadow systems.
 (define *time-of-day-context* (new 'static 'time-of-day-context))

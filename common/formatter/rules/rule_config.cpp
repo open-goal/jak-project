@@ -64,6 +64,16 @@ static FormFormattingConfig new_inlineable_flow_rule(int start_index,
           .has_constant_pairs = has_constant_pairs};
 }
 
+static FormFormattingConfig new_inlineable_body_rule(int body_start_index,
+                                                     int body_width_limit,
+                                                     int indentation_width) {
+  auto config = new_inlineable_flow_rule(body_start_index);
+  config.inline_body_width_limit = body_width_limit;
+  config.inline_body_start_index = body_start_index;
+  config.indentation_width = indentation_width;
+  return config;
+}
+
 static FormFormattingConfig new_defstate_rule(int start_index, bool has_constant_pairs = false) {
   FormFormattingConfig cfg = {
       .config_set = true,
@@ -201,11 +211,12 @@ static FormFormattingConfig new_defproc_rule(
   return cfg;
 }
 
-static FormFormattingConfig new_binding_rule(int form_head_width) {
+static FormFormattingConfig new_binding_rule(int form_head_width, bool force_body_newline = false) {
   FormFormattingConfig cfg;
   cfg.config_set = true;
   cfg.hang_forms = false;
   cfg.combine_first_two_lines = true;
+  cfg.prevent_inlining = force_body_newline;
   auto binding_list_config = std::make_shared<FormFormattingConfig>();
   binding_list_config->config_set = true;
   binding_list_config->hang_forms = false;
@@ -253,7 +264,8 @@ static FormFormattingConfig new_inline_binding_rule(int form_head_width) {
   return cfg;
 }
 
-static FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
+static FormFormattingConfig new_pair_rule(bool combine_first_two_expr,
+                                          std::optional<int> inline_body_width_limit = {}) {
   FormFormattingConfig cfg;
   cfg.config_set = true;
   cfg.hang_forms = false;
@@ -263,6 +275,7 @@ static FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
   pair_config->config_set = true;
   pair_config->hang_forms = false;
   pair_config->indentation_width = 1;
+  pair_config->inline_body_width_limit = inline_body_width_limit;
   cfg.default_index_config = pair_config;
   return cfg;
 }
@@ -272,10 +285,10 @@ static FormFormattingConfig new_top_level_inline_form(bool elide_new_line) {
 }
 
 const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
-    {"case", new_pair_rule(true)},
-    {"case-str", new_pair_rule(true)},
-    {"cond", new_pair_rule(false)},
-    {"#cond", new_pair_rule(false)},
+    {"case", new_pair_rule(true, 15)},
+    {"case-str", new_pair_rule(true, 15)},
+    {"cond", new_pair_rule(false, 15)},
+    {"#cond", new_pair_rule(false, 15)},
     {"in-package", new_top_level_inline_form(true)},
     {"bundles", new_top_level_inline_form(true)},
     {"require", new_top_level_inline_form(true)},
@@ -294,7 +307,7 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"defun-debug-recursive", new_flow_rule(4)},
     {"defun-debug", new_flow_rule(3)},
     {"defbehavior", new_flow_rule(4)},
-    {"if", new_inlineable_flow_rule(2)},
+    {"if", new_inlineable_body_rule(2, 15, 4)},
     {"aif", new_inlineable_flow_rule(2)},
     {"#if", new_inlineable_flow_rule(2)},
     {"define", new_permissive_flow_rule()},
@@ -318,10 +331,12 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"dotimes", new_flow_rule(2)},
     {"dolist", new_flow_rule(2)},
     {"process-spawn-function", new_flow_rule(2)},
-    {"let", new_binding_rule(4)},
+    {"iterate-engine-connections", new_flow_rule(2)},
+    {"let", new_binding_rule(4, true)},
     {"protect", new_binding_rule(4)},
-    {"let*", new_binding_rule(5)},
-    {"rlet", new_binding_rule(5)},
+    {"let*", new_binding_rule(5, true)},
+    {"slet", new_flow_rule(2)},
+    {"rlet", new_binding_rule(5, true)},
     {"mlet", new_binding_rule(5)},
     {"when", new_flow_rule(2)},
     {"awhen", new_flow_rule(2)},

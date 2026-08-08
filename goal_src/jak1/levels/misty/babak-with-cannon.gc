@@ -7,6 +7,9 @@
 
 ;; DECOMP BEGINS
 
+;; This Babak retreats to its linked cannon when Jak is too far away or well below it. Once mounted,
+;; it marks the cannon complete so the cannon aims and fires, and keeps its own transform attached to
+;; the cannon's main joint until Jak returns.
 (deftype babak-with-cannon (babak)
   ((cannon-ent entity)
    (distance   float))
@@ -14,7 +17,6 @@
    babak-with-cannon-jump-off-cannon
    babak-with-cannon-jump-onto-cannon
    babak-with-cannon-shooting))
-
 
 nav-enemy-default-event-handler
 
@@ -31,11 +33,7 @@ nav-enemy-default-event-handler
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (ja-post)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek!) :frame-num 0.0 (ja-post))
       (anim-loop))
   :post #f)
 
@@ -45,11 +43,11 @@ nav-enemy-default-event-handler
   :trans
     (behavior ()
       (when (time-elapsed? (-> self state-time) (seconds 0.1))
-        (let ((f30-0 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
+        (let ((target-height-offset (- (-> (target-pos 0) y) (-> self collide-info trans y))))
           (if (and (time-elapsed? (-> self state-time) (seconds 3))
                    (or (or (not *target*)
                            (< (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
-                       (< f30-0 -40960.0)))
+                       (< target-height-offset -40960.0)))
             (go babak-run-to-cannon)))
         (when (time-elapsed? (-> self state-time) (-> self state-timeout))
           (if (or (not *target*)
@@ -70,42 +68,47 @@ nav-enemy-default-event-handler
   :trans
     (behavior ()
       (if (nav-enemy-notice-player?) (go-virtual nav-enemy-chase))
-      (if (logtest? (nav-control-flags navcf19) (-> self nav flags)) (go babak-with-cannon-jump-onto-cannon)))
+      (if (logtest? (nav-control-flags reached-destination) (-> self nav flags)) (go babak-with-cannon-jump-onto-cannon)))
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
       (loop
-        (ja-no-eval :group! babak-charge-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! babak-charge-ja :num! (seek!) :frame-num 0.0)))
   :post
     (behavior ()
       (nav-enemy-travel-post)))
 
-(defun handle->process-safe ((arg0 handle))
-  (let ((v0-0 (the-as process #f))) (if (handle->process arg0) (set! v0-0 (-> arg0 process 0))) v0-0))
+(defun handle->process-safe ((process-handle handle))
+  "Resolve a handle and return its first process, or false when the handle no longer resolves."
+  (let ((resolved-process (the-as process #f)))
+    (if (handle->process process-handle) (set! resolved-process (-> process-handle process 0)))
+    resolved-process))
 
-(defun babak-with-cannon-compute-cannon-dir ((arg0 mistycannon) (arg1 vector))
-  (set! (-> arg1 quad) (-> arg0 node-list data 3 bone transform vector 2 quad))
-  arg1)
+(defun babak-with-cannon-compute-cannon-dir ((cannon mistycannon) (output vector))
+  "Copy the cannon main joint's forward vector to output."
+  (set! (-> output quad) (-> cannon node-list data 3 bone transform vector 2 quad))
+  output)
 
-(defun babak-with-cannon-compute-ride-point ((arg0 mistycannon) (arg1 vector))
-  (set! (-> arg1 quad) (-> arg0 root trans quad))
-  (let ((a1-4 (new 'static 'vector :y 18149.377 :z -17289.217 :w 1.0))
-        (a2-0 (-> arg0 node-list data 3 bone transform)))
-    (vector-matrix*! arg1 a1-4 a2-0))
-  arg1)
+(defun babak-with-cannon-compute-ride-point ((cannon mistycannon) (output vector))
+  "Transform Babak's fixed local riding offset by the cannon's main joint matrix and write the
+   resulting world position to output."
+  (vector-copy! output (-> cannon root trans))
+  (let ((ride-offset (new 'static 'vector :y 18149.377 :z -17289.217 :w 1.0))
+        (main-joint (-> cannon node-list data 3 bone transform)))
+    (vector-matrix*! output ride-offset main-joint))
+  output)
 
 (defbehavior babak-with-cannon-ride-cannon-post babak-with-cannon ()
-  (let* ((v1-0 (-> self cannon-ent))
-         (s5-0 (if v1-0 (-> v1-0 extra process)))
-         (gp-0 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable)) s5-0)))
-    (when gp-0
-      (let ((s5-1 (new 'stack-no-clear 'vector)))
-        (babak-with-cannon-compute-cannon-dir (the-as mistycannon gp-0) s5-1)
-        (forward-up->quaternion (-> self collide-info quat) s5-1 *y-vector*))
-      (babak-with-cannon-compute-ride-point (the-as mistycannon gp-0) (-> self collide-info trans))))
+  "When the linked cannon process is live, align Babak to its main-joint forward direction and
+   fixed riding point, then run the ordinary simple navigation-enemy post step."
+  (let* ((cannon-entity (-> self cannon-ent))
+         (cannon-handle (if cannon-entity (-> cannon-entity extra process)))
+         (cannon-process (if (and (nonzero? cannon-handle) (type-type? (-> cannon-handle type) process-drawable)) cannon-handle)))
+    (when cannon-process
+      (let ((cannon-direction (new 'stack-no-clear 'vector)))
+        (babak-with-cannon-compute-cannon-dir (the-as mistycannon cannon-process) cannon-direction)
+        (forward-up->quaternion (-> self collide-info quat) cannon-direction *y-vector*))
+      (babak-with-cannon-compute-ride-point (the-as mistycannon cannon-process) (-> self collide-info trans))))
   (nav-enemy-simple-post)
   (none))
 
@@ -121,37 +124,37 @@ nav-enemy-default-event-handler
       (set! (-> self turn-time) (-> self nav-info run-turn-time))
       (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
       (nav-enemy-neck-control-inactive)
-      (let* ((v1-7 (-> self cannon-ent))
-             (gp-0 (if v1-7 (-> v1-7 extra process)))
-             (a0-2 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable)) gp-0)))
+      (let* ((cannon-entity (-> self cannon-ent))
+             (cannon-handle (if cannon-entity (-> cannon-entity extra process)))
+             (cannon-process (if (and (nonzero? cannon-handle) (type-type? (-> cannon-handle type) process-drawable)) cannon-handle)))
         (cond
-          (a0-2
-           (babak-with-cannon-compute-ride-point (the-as mistycannon a0-2) (-> self event-param-point))
+          (cannon-process
+           (babak-with-cannon-compute-ride-point (the-as mistycannon cannon-process) (-> self event-param-point))
            (nav-enemy-initialize-jump (-> self event-param-point)))
-          (else (go-virtual nav-enemy-idle))))
-      (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
-        (ja-channel-push! 1 (seconds 0.2))
-        (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445))
-      (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-      (nav-enemy-execute-jump)
-      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
-      (let* ((v1-20 (-> self cannon-ent))
-             (gp-1 (if v1-20 (-> v1-20 extra process)))
-             (a0-9 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) process-drawable)) gp-1)))
-        (when a0-9
-          (let ((gp-2 (babak-with-cannon-compute-cannon-dir (the-as mistycannon a0-9) (new 'stack-no-clear 'vector))))
-            (when (not (nav-enemy-facing-direction? gp-2 1820.4445))
+          (else (go-virtual nav-enemy-idle)))
+        (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
+          (ja-channel-push! 1 (seconds 0.2))
+          (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445))
+        (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+        (nav-enemy-execute-jump)
+        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
+        (set! cannon-entity (-> self cannon-ent))
+        (set! cannon-handle (if cannon-entity (-> cannon-entity extra process)))
+        (set! cannon-process
+              (if (and (nonzero? cannon-handle) (type-type? (-> cannon-handle type) process-drawable)) cannon-handle))
+        (when cannon-process
+          (let ((cannon-direction (babak-with-cannon-compute-cannon-dir (the-as mistycannon cannon-process) (new 'stack-no-clear 'vector))))
+            (when (not (nav-enemy-facing-direction? cannon-direction 1820.4445))
               (ja-channel-push! 1 (seconds 0.2))
-              (nav-enemy-turn-to-face-dir gp-2 182.04445)
-              (forward-up->quaternion (-> self collide-info quat) gp-2 *y-vector*)))))
+              (nav-enemy-turn-to-face-dir cannon-direction 182.04445)
+              (forward-up->quaternion (-> self collide-info quat) cannon-direction *y-vector*)))))
       (ja-channel-push! 1 (seconds 0.1))
-      (ja-no-eval :group! babak-look-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! babak-look-ja :num! (seek!) :frame-num 0.0)
       (go babak-with-cannon-shooting))
   :post nav-enemy-jump-post)
 
+;; The entity position remains the Babak's landing point while cannon-ent names the moving cannon.
+;; Rebuild the navigation polygon after landing because the jump begins outside ordinary nav travel.
 (defstate babak-with-cannon-jump-off-cannon (babak-with-cannon)
   :event nav-enemy-jump-event-handler
   :exit
@@ -163,16 +166,14 @@ nav-enemy-default-event-handler
       (nav-enemy-initialize-jump (-> self entity extra trans))
       (nav-enemy-neck-control-look-at)
       (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate enable-travel))
-      (ja-no-eval :group! babak-look-ja :num! (seek! 0.0 2.0) :frame-num max)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! 0.0 2.0)))
+      (ja-play :group! babak-look-ja :num! (seek! 0.0 2.0) :frame-num max)
       (when (not (nav-enemy-facing-point? (-> self jump-dest) 5461.3335))
         (ja-channel-push! 1 (seconds 0.2))
         (nav-enemy-turn-to-face-point (-> self jump-dest) 1820.4445))
       (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
       (nav-enemy-execute-jump)
-      (let ((a1-6 (nav-control-method-16 (-> self nav) (-> self jump-dest)))) (set-current-poly! (-> self nav) a1-6))
+      (let ((landing-poly (find-poly-fast-from-world (-> self nav) (-> self jump-dest))))
+        (set-current-poly! (-> self nav) landing-poly))
       (go-virtual nav-enemy-jump-land))
   :post nav-enemy-jump-post)
 
@@ -181,16 +182,16 @@ nav-enemy-default-event-handler
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (let ((v1-2 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-        (if v1-2 (logior! (-> v1-2 extra perm status) (entity-perm-status complete)))))
+      (let ((cannon-entity (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+        (if cannon-entity (logior! (-> cannon-entity extra perm status) (entity-perm-status complete)))))
   :exit
     (behavior ()
-      (let ((v1-0 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-        (if v1-0 (logclear! (-> v1-0 extra perm status) (entity-perm-status complete)))))
+      (let ((cannon-entity (entity-actor-lookup (-> self entity) 'alt-actor 0)))
+        (if cannon-entity (logclear! (-> cannon-entity extra perm status) (entity-perm-status complete)))))
   :trans
     (behavior ()
-      (let ((f0-1 (- (-> (target-pos 0) y) (-> self collide-info trans y))))
-        (if (and (< -40960.0 f0-1)
+      (let ((target-height-offset (- (-> (target-pos 0) y) (-> self collide-info trans y))))
+        (if (and (< -40960.0 target-height-offset)
                  (and (and *target* (>= (-> self distance) (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
                       (time-elapsed? (-> self state-time) (seconds 3))))
           (go babak-with-cannon-jump-off-cannon))))
@@ -209,6 +210,8 @@ nav-enemy-default-event-handler
       (if (and *target* (= (-> *target* current-level name) 'misty)) (spool-push *art-control* "mistycam-cannon" 0 self -1.0))
       (call-parent-state-handler trans)))
 
+;; The first completion starts the level-specific cannon camera before dropping the power cell.
+;; Subsequent visits keep the ordinary task-complete behavior without replaying that camera.
 (defstate nav-enemy-fuel-cell (babak-with-cannon)
   :virtual #t
   :event process-drawable-fuel-cell-handler
@@ -234,17 +237,23 @@ nav-enemy-default-event-handler
       (cleanup-for-death self)))
 
 (defmethod common-post ((this babak-with-cannon))
+  "Keep the beach or Misty cannon camera art spooled while its level is active, then run the
+   ordinary navigation-enemy post step."
   (cond
     ((= (level-status *level* 'beach) 'active) (spool-push *art-control* "beachcam-cannon" 0 this -99.0))
     ((= (level-status *level* 'misty) 'active) (spool-push *art-control* "mistycam-cannon" 0 this -99.0)))
   ((method-of-type nav-enemy common-post) this)
   (none))
 
-(defmethod init-from-entity! ((this babak-with-cannon) (arg0 entity-actor))
+(defmethod init-from-entity! ((this babak-with-cannon) (source-entity entity-actor))
+  "Create Babak collision and drawable state, finish Babak-specific skeleton and navigation
+   setup, read the cannon-return distance and linked cannon entity, and disable actor pause.
+   Enter fuel-cell behavior only when this placed enemy is complete and configured to carry a
+   power cell; otherwise enter idle."
   (initialize-collision this)
-  (process-drawable-from-entity! this arg0)
-  (nav-enemy-method-48 this)
-  (set! (-> this distance) (res-lump-float arg0 'distance :default 163840.0))
+  (process-drawable-from-entity! this source-entity)
+  (post-init-setup! this)
+  (set! (-> this distance) (res-lump-float source-entity 'distance :default 163840.0))
   (set! (-> this cannon-ent) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (logclear! (-> this mask) (process-mask actor-pause))
   (if (or (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete))))

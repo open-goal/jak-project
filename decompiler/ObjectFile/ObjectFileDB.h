@@ -64,6 +64,7 @@ struct LetRewriteStats {
   int abs2 = 0;
   int unused = 0;
   int ja = 0;
+  int ja_play = 0;
   int case_no_else = 0;
   int case_with_else = 0;
   int set_vector = 0;
@@ -85,11 +86,11 @@ struct LetRewriteStats {
   int light_trail_tracker_spawn = 0;
 
   int total() const {
-    return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
-           set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
-           vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket + dma_buffer_add_gs_set +
-           launch_particles + call_parent_state_handler + suspend_for + font_method +
-           light_trail_tracker_spawn;
+    return dotimes + countdown + abs + abs2 + unused + ja + ja_play + case_no_else +
+           case_with_else + set_vector + set_vector2 + send_event + font_context_meth + proc_new +
+           attack_info + vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket +
+           dma_buffer_add_gs_set + launch_particles + call_parent_state_handler + suspend_for +
+           font_method + light_trail_tracker_spawn;
   }
 
   std::string print() const {
@@ -100,6 +101,7 @@ struct LetRewriteStats {
     out += fmt::format("  abs: {}\n", abs);
     out += fmt::format("  abs2: {}\n", abs2);
     out += fmt::format("  ja: {}\n", ja);
+    out += fmt::format("  ja-play: {}\n", ja_play);
     out += fmt::format("  set_vector: {}\n", set_vector);
     out += fmt::format("  set_vector2: {}\n", set_vector2);
     out += fmt::format("  set_vector3: {}\n", set_vector3);
@@ -130,6 +132,7 @@ struct LetRewriteStats {
     result.abs = abs + other.abs;
     result.abs2 = abs2 + other.abs2;
     result.ja = ja + other.ja;
+    result.ja_play = ja_play + other.ja_play;
     result.set_vector = set_vector + other.set_vector;
     result.set_vector2 = set_vector2 + other.set_vector2;
     result.case_no_else = case_no_else + other.case_no_else;
@@ -156,6 +159,7 @@ struct LetRewriteStats {
     abs += other.abs;
     abs2 += other.abs2;
     ja += other.ja;
+    ja_play += other.ja_play;
     set_vector += other.set_vector;
     set_vector2 += other.set_vector2;
     case_no_else += other.case_no_else;

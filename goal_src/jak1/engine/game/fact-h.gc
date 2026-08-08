@@ -7,8 +7,8 @@
 
 ;; DECOMP BEGINS
 
-;; The fact bank is a single static object containing health/eco parameters
-;; All game code should reference *FACT-bank* to determine these parameters
+;; The fact bank is the shared source for health, eco, pickup, and collection
+;; tuning used throughout the game.
 
 (deftype fact-bank (basic)
   ((eco-level-max        float)
@@ -58,8 +58,9 @@
   (buzzer)
   (eco-pill-random))
 
-(defun pickup-type->string ((arg0 pickup-type))
-  (enum->string pickup-type arg0))
+(defun pickup-type->string ((kind pickup-type))
+  "Return kind's pickup name, or *unknown* when its value is outside pickup-type."
+  (enum->string pickup-type kind))
 
 (defenum fact-options
   :bitfield #t
@@ -68,8 +69,11 @@
   (has-power-cell 1) ;; should spawn power cell on death
   (vent-valve 2)
   (wrap-phase 3) ;; phase should wrap from 1 to 0 instead of mirroring.
-  (fop4 4) ;; unused?
-  (fop5 5) ;; wait-for-cue after death? nothing sets this.
+  (fop4 4) ;; unused (no reads or writes)
+  ;; if set in an actor's options, a nav-enemy (babak checks it in
+  ;; go-initial-state!) spawns dormant in nav-enemy-wait-for-cue instead of idle;
+  ;; nothing in shipped actor data sets it.
+  (start-wait-for-cue 5)
   (instant-collect 6) ;; set on balloon lurker, puffer
   (skip-jump-anim 7) ;; skips fuel cell "jump" animation
   (can-collect 8)
@@ -86,11 +90,10 @@
   (eco-blocked 18)
   (respawn 19))
 
-;; Each individual enemy and pickup process will allocate a fact-info on its process heap.
-;; The constructor will read the res-lump stored in the entity to pick reasonable defaults.
-;; The settings may be different per object - for example some eco pickups may have different
-;; amounts or timings
-;; The fact-info class stores data that is common to all fact-infos.
+;; Each enemy, target, and pickup process allocates its fact-info on the process
+;; heap. The constructor reads eco-info, options, and timeout from the process's
+;; entity, so individual actors can override their pickup behavior. fact-info
+;; stores the fields shared by the target and enemy subclasses.
 (deftype fact-info (basic)
   ((process             process-drawable)
    (pickup-type         pickup-type)
@@ -138,14 +141,13 @@
 
 (declare-type process-drawable process)
 
-(defmethod new fact-info ((allocation symbol) (type-to-make type) (proc process-drawable) (pkup-type pickup-type) (pkup-amount float))
-  "Create information about a pickup.  This should be called from a process which is a pickup.  This will read settings from
-   the entity of the process automatically. Will attempt to read pickup-type and amount from the entity, but if this
-   fails will use the values in the arguments"
+(defmethod new fact-info ((allocation symbol) (type-to-make type) (owner process-drawable) (kind pickup-type) (amount float))
+  "Allocate fact information for owner, allowing its eco-info resource to override
+   kind and amount, then load its options and optional fade or respawn timeout."
   (local-vars (tag res-tag))
   ;; allocate.
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (let ((ent (the res-lump (-> proc entity))))
+    (let ((entity-lump (the res-lump (-> owner entity))))
       ;; confirm that we allocated successfully
       (when (zero? this)
         (go process-drawable-art-error "memory")
@@ -153,52 +155,56 @@
         (set! this (the-as fact-info 0))
         (goto cfg-10))
       ;; remember who we belong to
-      (set! (-> this process) proc)
+      (set! (-> this process) owner)
       ;; eco may override the pickup type and amount, so try to get this.
       (let* ((tag (new 'static 'res-tag))
-             (v1-6 (res-lump-data ent 'eco-info (pointer int32) :tag-ptr (& tag) :time 0.0)))
+             (eco-info (res-lump-data entity-lump 'eco-info (pointer int32) :tag-ptr (& tag) :time 0.0)))
         (cond
-          (v1-6
+          (eco-info
            ;; eco-info lookup succeeded,
-           (let ((a0-6 (-> tag elt-count)))
+           (let ((eco-info-count (-> tag elt-count)))
              ;; first thing is pickup type, it's always there
-             (set! (-> this pickup-type) (the-as pickup-type (-> v1-6 0)))
+             (set! (-> this pickup-type) (the-as pickup-type (-> eco-info 0)))
              ;; pickup amount is optional.
-             (set! pkup-amount (if (< (the-as uint 1) (the-as uint a0-6)) (the float (-> v1-6 1)) pkup-amount)))
-           (set! (-> this pickup-amount) pkup-amount))
+             (set! amount (if (< (the-as uint 1) (the-as uint eco-info-count)) (the float (-> eco-info 1)) amount)))
+           (set! (-> this pickup-amount) amount))
           (else
            ;; no eco-info, use stuff from args
-           (set! (-> this pickup-type) pkup-type)
-           (set! (-> this pickup-amount) pkup-amount))))
+           (set! (-> this pickup-type) kind)
+           (set! (-> this pickup-amount) amount))))
       ;; read the options
-      (set! (-> this options) (res-lump-value ent 'options fact-options))
+      (set! (-> this options) (res-lump-value entity-lump 'options fact-options))
       ;; read fade time, if we have fade or respawn
       (if (logtest? (fact-options fade respawn) (-> this options))
-        (set! (-> this fade-time) (the int (* 300.0 (res-lump-float ent 'timeout))))))
+        (set! (-> this fade-time) (the int (* 300.0 (res-lump-float entity-lump 'timeout))))))
     (label cfg-10)
     this))
 
-(defmethod pickup-collectable! ((this fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
+(defmethod pickup-collectable! ((this fact-info) (kind pickup-type) (amount float) (source-handle handle))
+  "Return zero without changing the pickup state; fact-info-target overrides this
+   hook to apply pickups."
   0.0)
 
-(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (proc process-drawable) (kind pickup-type) (amount float))
-  "Create information about an enemy. Possibly includes what the enemy will drop when it is killed?"
+(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (owner process-drawable) (kind pickup-type) (amount float))
+  "Allocate enemy fact information, initialize its common pickup fields, and load
+   its movement, notice, and camera-distance tuning from the owning entity."
   ;; base class ctor
-  (let ((this (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make proc kind amount))))
+  (let ((this (the-as fact-info-enemy ((method-of-type fact-info new) allocation type-to-make owner kind amount))))
     ;; read values from the process entity
-    (let ((entity (the res-lump (-> this process entity))))
-      (set! (-> this speed) (res-lump-float entity 'speed :default 1.0))
-      (set! (-> this idle-distance) (res-lump-float entity 'idle-distance :default 327680.0))
-      (set! (-> this notice-top) (res-lump-float entity 'notice-top :default 4096000.0))
-      (set! (-> this notice-bottom) (res-lump-float entity 'notice-bottom :default 4096000.0))
-      (set! (-> this cam-horz) (res-lump-float entity 'cam-horz))
-      (set! (-> this cam-vert) (res-lump-float entity 'cam-vert))
-      (set! (-> this cam-notice-dist) (res-lump-float entity 'cam-notice-dist :default -4096.0)))
+    (let ((entity-lump (the res-lump (-> this process entity))))
+      (set! (-> this speed) (res-lump-float entity-lump 'speed :default 1.0))
+      (set! (-> this idle-distance) (res-lump-float entity-lump 'idle-distance :default 327680.0))
+      (set! (-> this notice-top) (res-lump-float entity-lump 'notice-top :default 4096000.0))
+      (set! (-> this notice-bottom) (res-lump-float entity-lump 'notice-bottom :default 4096000.0))
+      (set! (-> this cam-horz) (res-lump-float entity-lump 'cam-horz))
+      (set! (-> this cam-vert) (res-lump-float entity-lump 'cam-vert))
+      (set! (-> this cam-notice-dist) (res-lump-float entity-lump 'cam-notice-dist :default -4096.0)))
     this))
 
-(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
-  "Create information about target. Not sure why this has stuff like pickup-type."
-  (let ((this (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (owner process-drawable) (kind pickup-type) (amount float))
+  "Allocate target fact information, initialize its common pickup fields, clear the
+   current eco source, and reset its health and pickup state."
+  (let ((this (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make owner kind amount))))
     (set! (-> this eco-source) (the-as handle #f))
     (reset! this #f)
     this))

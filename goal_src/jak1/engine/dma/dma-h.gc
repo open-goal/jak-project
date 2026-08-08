@@ -15,9 +15,8 @@
 ;;  - dma-buffer is memory management for the data to be sent
 ;;  - dma-bucket is organization of all the frame's DMA data in the correct order
 
-;; In OpenGOAL, "DMA" will be instant, meaning the game code will stop, wait until the
-;; DMA is finished, and then continue. As a result, there is no need for DMA synchronization.
-;; When this flag is set, all DMA syncs will be instantaneous.
+;; DMA submission is synchronous on PC, so the caller has no hardware transfer to wait for.
+;; When this flag is set, all DMA syncs complete immediately.
 (defglobalconstant INSTANT_DMA #t)
 
 ;; Some DMA sync functions return a count for how long it took.
@@ -34,6 +33,13 @@
    (tie uint8 :offset 7 :size 1) ;; tag interrupt
    (str uint8 :offset 8 :size 1) ;; start!
    (tag uint16 :offset 16)))
+
+;; Assembly cannot use the bitfield, so the two chcr values it writes and tests get names. STR reads
+;; as "still running" and writes as "go"; the chain-mode start value is what a builder stores to hand
+;; a channel a source chain: chain mode, transfer the tags, start.
+(defconstant DMA-CHCR-STR 256)
+
+(defconstant DMA-CHCR-START-CHAIN-TTE 324)
 
 (defmethod inspect ((obj dma-chcr))
   (format #t "~Tdir: ~D~%" (-> obj dir))
@@ -71,18 +77,54 @@
   ((sadr uint32 :offset 128) ;; spad address.
    ))
 
+;; Spin on a scratchpad channel and count busy polls for the renderer timing display. The three
+;; empty instructions after each load cover the EE load delay. This expands to eighteen
+;; instructions and one retry label.
+(defmacro dma-wait-counting-stalls! (status channel stall-count retry ready)
+  `(begin
+     (label ,retry)
+     (l.w ,status (-> ,channel chcr))
+     (nop! :count 3)
+     (and.i ,status ,status DMA-CHCR-STR)
+     (nop!)
+     (b.z ,status ,ready :delay (nop!))
+     (nop!)
+     (l.w ,status ,stall-count)
+     (nop! :count 3)
+     (add.i ,status ,status 1)
+     (nop!)
+     (s.w ,status ,stall-count)
+     (b ,retry :delay (nop!))))
+
+;; Hand a completed scratchpad output bank to fromSPR and continue filling the alternate bank.
+;; The quadword-count register temporarily carries the CHCR start bit. This expands to ten
+;; instructions and one flush label.
+(defmacro dma-return-output-bank! (bank flip cursor qwc dest-cursor channel flush)
+  `(begin
+     (label ,flush)
+     (s.w ,bank (-> ,channel sadr))
+     (xor.i ,bank ,bank ,flip)
+     (s.w ,dest-cursor (-> ,channel madr))
+     (sll ,cursor ,qwc 4)
+     (add ,dest-cursor ,dest-cursor ,cursor)
+     (m ,cursor ,bank)
+     (s.w ,qwc (-> ,channel qwc))
+     (add.i ,qwc r0 DMA-CHCR-STR)
+     (s.w ,qwc (-> ,channel chcr))
+     (add.i ,qwc r0 0)))
+
 ;; These addresses are the location of DMA banks for each channel.
-;; These do not exist in OpenGOAL.
-(defconstant VIF0_DMA_BANK (the dma-bank-vif (get-vm-ptr #x10008000)))
+;; These addresses name EE hardware registers and are not dereferenced on PC.
+(defconstant VIF0_DMA_BANK (the dma-bank-vif #x10008000))
 
-(defconstant VIF1_DMA_BANK (the dma-bank-vif (get-vm-ptr #x10009000)))
+(defconstant VIF1_DMA_BANK (the dma-bank-vif #x10009000))
 
-(defconstant GIF_DMA_BANK (the dma-bank (get-vm-ptr #x1000a000)))
+(defconstant GIF_DMA_BANK (the dma-bank #x1000a000))
 
 ;; ipuFrom, ipTop, sif0, sif1, sif2 believed unused.
-(defconstant SPR_FROM_BANK (the dma-bank-spr (get-vm-ptr #x1000d000)))
+(defconstant SPR_FROM_BANK (the dma-bank-spr #x1000d000))
 
-(defconstant SPR_TO_BANK (the dma-bank-spr (get-vm-ptr #x1000d400)))
+(defconstant SPR_TO_BANK (the dma-bank-spr #x1000d400))
 
 (defconstant VU0_DATA_MEM_MAP (the (pointer uint32) #x11004000))
 
@@ -123,14 +165,14 @@
 
 (defconstant DMA_CONTROL_BANK (the dma-bank-control (get-vm-ptr #x1000e000)))
 
-;; Seems to be unused. The vu-function type is used instead.
+;; Unused; executable VU programs use vu-function instead.
 (deftype vu-code-block (basic)
   ((name         basic)
    (code         uint32)
    (size         int32)
    (dest-address uint32)))
 
-;; ?? not sure what this is.
+;; Unused placeholder for a VU status value. No fields were needed.
 (deftype vu-stat (uint64) ())
 
 (defenum dma-tag-id
@@ -252,7 +294,7 @@
    (next  uint32 :offset 4) ;; this overlaps with the addr bit-field of the dma-tag
    ))
 
-;; guess - VIF_MASK register?
+;; Layout of the VIF MASK register: one two-bit selector for each vector component in four rows.
 (deftype vif-mask (uint32)
   ((m0  uint8 :offset 0 :size 2)
    (m1  uint8 :offset 2 :size 2)
@@ -323,8 +365,8 @@
   (unpack-v4-16 109)
   (unpack-v4-8 110)
   (unpack-v4-5 111)
-  (cmd-mask 239) ;; not sure what this is.
-  )
+  ;; Clear the masked-write bit from an UNPACK command, leaving its base command for decoding.
+  (cmd-mask 239))
 
 ;; this makes a copy of the above type, but uses a uint32.
 (defenum vif-cmd-32
@@ -349,59 +391,126 @@
   (format #t "~Tmsk: ~D~%" (-> obj msk))
   obj)
 
-;; NOTE: these functions are never called
-;;  so they are not really modified for x86-64
-;;  they were inline assembly originally
+;; These unused helpers were written as inline EE assembly. The empty instructions in the polling
+;; loops deliberately space accesses to the DMA registers: reading them continuously would consume
+;; the same main bus bandwidth as the transfer being awaited.
 
-(defun dma-sync-fast ((bank dma-bank))
-  "Wait for chcr str to go to 0, indicating DMA
-   is complete."
-  (declare (inline))
-  (#cond
-    (INSTANT_DMA
-     ;; nothing to do.
-     0)
-    (#t
-     (while (nonzero? (-> bank chcr str))
-       ;; they had a precise number of nops here.
-       ;; it turns out that spamming the DMA registers is not a good idea
-       ;; because it uses the main bus that the DMA is possibly also trying to use.
-       (nop!))))
-  (none))
+(#unless PC_PORT
+  (defun dma-sync-fast ((bank dma-bank))
+    "Wait for a DMA channel's start bit to clear. The EE polling loop deliberately leaves time
+     between register reads so it does not contend with the transfer for the main bus."
+    (declare (inline))
+    (rlet ((status))
+      ;; The leading empty instruction and the ten-instruction backoff are part of the original
+      ;; polling schedule.
+      (nop!)
+      (label poll)
+      (l.w status bank)
+      (nop!)
+      (nop!)
+      (nop!)
+      (logand! status #x100)
+      (nop!)
+      (b.z status done :delay (nop!))
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (nop!)
+      (b poll :delay (nop!))
+      (label done))
+    (none)))
 
-(defun dma-send-no-scratch ((bank dma-bank) (madr uint32) (qwc uint32))
-  "Begin a DMA transfer, directly to the bank.
-   Makes sure any ongoing transfer on the channel is done
-   Flushes the cache. Sets dir to 0, so I don't expect
-   this to be used for VIF1 transfers.
-   Madr should not be a scratchpad address.
-   This function is unused."
-  ((inline dma-sync-fast) bank)
-  (flush-cache 0)
-  (.sync.l)
-  (set! (-> bank madr) madr)
-  (set! (-> bank qwc) qwc)
-  (.sync.l)
-  ;; this seems wrong, they set everything to 0,
-  ;; including dir, which is the to-memory direction
-  (set! (-> bank chcr) (new 'static 'dma-chcr :str 1))
-  (none))
+(#when PC_PORT
+  (defun dma-sync-fast ((bank dma-bank))
+    "Wait for a DMA channel's start bit to clear. The PC submits DMA synchronously."
+    (declare (inline))
+    (#cond
+      (INSTANT_DMA 0)
+      (#t (while (nonzero? (-> bank chcr str)) (nop!))))
+    (none)))
 
-(defun dma-sync-with-count ((bank dma-bank) (count (pointer int32)))
-  "Wait for DMA to finish, incrementing count.
-   This doesn't seem like a very accurate way
-   to find out how long it takes...
-   This function is unused."
-  (#cond
-    (INSTANT_DMA (set! (-> count) INSTANT_DMA_COUNT) 0)
-    (#t
-     (when (nonzero? (-> bank chcr str))
-       (let ((x (-> count))) (while (nonzero? (-> bank chcr str)) (+! x 1) (set! (-> count) x))))
-     0)))
+(#unless PC_PORT
+  (defun dma-send-no-scratch ((bank dma-bank) (memory-address uint32) (quadword-count uint32))
+    "Wait for a DMA channel, flush the cache, and start a normal-mode transfer from main memory.
+     All channel-control fields except the start bit are cleared. This function is unused."
+    ((inline dma-sync-fast) bank)
+    (flush-cache 0)
+    (sync.l)
+    (rlet ((start #x100)) (s.w memory-address bank 16) (s.w quadword-count bank 32) (sync.l) (s.w start bank) (sync.l))
+    (none)))
 
-(defun dma-count-until-done ((bank dma-bank) (count (pointer int32)))
-  "Like the previous one, kinda.
-   This function is unused."
-  (#cond
-    (INSTANT_DMA (set! (-> count) INSTANT_DMA_COUNT) 0)
-    (#t (while (nonzero? (-> bank chcr str)) (set! (-> count) (+ 1 (-> count)))))))
+(#when PC_PORT
+  (defun dma-send-no-scratch ((bank dma-bank) (memory-address uint32) (quadword-count uint32))
+    "Wait for a DMA channel, flush the cache, and start a normal-mode transfer from main memory.
+     All channel-control fields except the start bit are cleared. This function is unused."
+    ((inline dma-sync-fast) bank)
+    (flush-cache 0)
+    (.sync.l)
+    (set! (-> bank madr) memory-address)
+    (set! (-> bank qwc) quadword-count)
+    (.sync.l)
+    (set! (-> bank chcr) (new 'static 'dma-chcr :str 1))
+    (none)))
+
+(#unless PC_PORT
+  (defun dma-sync-with-count ((bank dma-bank) (poll-count (pointer int32)))
+    "If a DMA channel is active, wait for it to finish and increment the caller's polling count
+     once per sample. This function is unused."
+    (rlet ((status)
+           (count))
+      (l.w status bank)
+      (logand! status #x100)
+      ;; The count load in the delay slot occurs even when the channel was already idle.
+      (b.z status done :delay (l.w count poll-count))
+      (label poll)
+      (l.w count poll-count)
+      (nop!)
+      (l.w status bank)
+      (nop!)
+      (logand! status #x100)
+      (+! count 1)
+      (b.nz status poll :delay (s.w count poll-count))
+      (label done))
+    0))
+
+(#when PC_PORT
+  (defun dma-sync-with-count ((bank dma-bank) (poll-count (pointer int32)))
+    "If a DMA channel is active, wait for it to finish and increment the caller's polling count
+     once per sample. This function is unused."
+    (#cond
+      (INSTANT_DMA (set! (-> poll-count) INSTANT_DMA_COUNT) 0)
+      (#t
+       (when (nonzero? (-> bank chcr str))
+         (let ((count (-> poll-count))) (while (nonzero? (-> bank chcr str)) (+! count 1) (set! (-> poll-count) count))))
+       0))))
+
+(#unless PC_PORT
+  (defun dma-count-until-done ((bank dma-bank) (poll-count (pointer int32)))
+    "Wait for a DMA channel to finish and increment the caller's polling count for every sample,
+     including the final inactive sample. This function is unused."
+    (rlet ((status)
+           (count))
+      (nop!)
+      (label poll)
+      (l.w count poll-count)
+      (nop!)
+      (l.w status bank)
+      (nop!)
+      (logand! status #x100)
+      (+! count 1)
+      (b.nz status poll :delay (s.w count poll-count)))
+    0))
+
+(#when PC_PORT
+  (defun dma-count-until-done ((bank dma-bank) (poll-count (pointer int32)))
+    "Wait for a DMA channel to finish and increment the caller's polling count for every sample,
+     including the final inactive sample. This function is unused."
+    (#cond
+      (INSTANT_DMA (set! (-> poll-count) INSTANT_DMA_COUNT) 0)
+      (#t (while (nonzero? (-> bank chcr str)) (set! (-> poll-count) (+ 1 (-> poll-count))))))))

@@ -7,14 +7,18 @@
 
 (define *merc-death-globals* (new 'global 'vector))
 
+;; Settings for the dissolving MERC death effect. During the effect, MERC samples vertices at
+;; vertex-skip intervals and launches effect particles from their transformed positions. Ordinary
+;; triangles remain visible for overlap elapsed ticks before the dissolve takes over completely.
 (deftype death-info (basic)
-  ((vertex-skip uint16)
-   (timer       uint8)
-   (overlap     uint8)
-   (effect      uint32)
-   (sound       symbol)))
+  ((vertex-skip uint16) ;; vertex sampling stride
+   (timer       uint8) ;; duration before time-factor scaling
+   (overlap     uint8) ;; initial triangle/particle overlap
+   (effect      uint32) ;; particle launcher id
+   (sound       symbol))) ;; optional death sound
 
 (defun birth-func-death-sparks ()
+  "No-op birth callback for death-spark particles."
   0
   (none))
 
@@ -44,7 +48,7 @@
    (:scalevel-y (meters 0.02))
    (:accel-y (meters -0.00066666666))
    (:timer (seconds 0.4))
-   (:flags (bit2 bit3 bit12))
+   (:flags (die-when-faded glow use-time-of-day-color))
    (:next-time (seconds 0.05) (seconds 0.197))
    (:next-launcher 42)))
 
@@ -54,9 +58,11 @@
 (defpart 43
   :init-specs ((:scalevel-x (meters 0)) (:fade-a -0.21333334) (:timer (seconds 0) (seconds 0.987))))
 
-(defun merc-death-spawn ((arg0 int) (arg1 vector) (arg2 vector))
-  (let ((v1-2 (-> *part-id-table* arg0)))
-    (if (and (nonzero? v1-2) (= (-> v1-2 type) sparticle-launcher))
-      (sp-launch-particles-death *sp-particle-system-2d* v1-2 arg1)))
+(defun merc-death-spawn ((effect-id int) (position vector) (surface-normal vector))
+  "Launch the death particle selected by effect-id at position when that part-table entry is a
+   particle launcher. surface-normal is reserved for the sampled MERC normal and is currently unused."
+  (let ((launcher (-> *part-id-table* effect-id)))
+    (if (and (nonzero? launcher) (= (-> launcher type) sparticle-launcher))
+      (sp-launch-particles-death *sp-particle-system-2d* launcher position)))
   0
   (none))

@@ -65,25 +65,34 @@
   (mz16 50)
   (mz16s 58))
 
-(defun psm-size ((arg0 gs-psm))
-  "Convert texture format to some type of size."
+(defun psm-size ((texture-format gs-psm))
+  "Return the GS storage scale for texture-format: 32 for 4-bit, 64 for 8-bit, 128 for 16-bit, and
+   256 otherwise."
   (cond
-    ((= arg0 (gs-psm mt8)) 64)
-    ((= arg0 (gs-psm mt4)) 32)
-    ((or (= arg0 (gs-psm ct16)) (= arg0 (gs-psm ct16s)) (= arg0 (gs-psm mz16)) (= arg0 (gs-psm mz16s))) 128)
+    ((= texture-format (gs-psm mt8)) 64)
+    ((= texture-format (gs-psm mt4)) 32)
+    ((or (= texture-format (gs-psm ct16))
+         (= texture-format (gs-psm ct16s))
+         (= texture-format (gs-psm mz16))
+         (= texture-format (gs-psm mz16s)))
+     128)
     (else 256)))
 
-(defun psm-page-height ((arg0 gs-psm))
-  "Convert texture format to some type of page height"
+(defun psm-page-height ((texture-format gs-psm))
+  "Return the GS page height in pixels for texture-format."
   (cond
-    ((= arg0 (gs-psm mt8)) 64)
-    ((= arg0 (gs-psm mt4)) 128)
-    ((or (= arg0 (gs-psm ct16)) (= arg0 (gs-psm ct16s)) (= arg0 (gs-psm mz16)) (= arg0 (gs-psm mz16s))) 64)
+    ((= texture-format (gs-psm mt8)) 64)
+    ((= texture-format (gs-psm mt4)) 128)
+    ((or (= texture-format (gs-psm ct16))
+         (= texture-format (gs-psm ct16s))
+         (= texture-format (gs-psm mz16))
+         (= texture-format (gs-psm mz16s)))
+     64)
     (else 32)))
 
-(defun psm->string ((arg0 gs-psm))
-  "Get the name of a texture format."
-  (enum->string gs-psm arg0))
+(defun psm->string ((texture-format gs-psm))
+  "Return the symbolic name of texture-format."
+  (enum->string gs-psm texture-format))
 
 (defenum gs-reg
   :type uint8
@@ -702,16 +711,15 @@
 ;; these regs are NOT the ones mapped in the EE memory, but other internal GS registers.
 (define *default-regs-buffer* (new 'global 'dma-buffer 1024))
 
-(defun default-buffer-init ((buff dma-buffer))
-  "Set some GS registers back to default values. Ends with a ret dma-tag.
-   This is intended to live in its own separate dma-buffer and not be added
-   to the global buffer.  Calling this will reset this dma-buffer."
+(defun default-buffer-init ((buffer dma-buffer))
+  "Reset buffer and fill it with a FLUSHA/DIRECT packet that restores the default GS drawing
+   registers, followed by a RET tag."
   ;; reset the buffer.
-  (let ((buff-ptr buff))
-    (set! (-> buff-ptr base) (-> buff-ptr data))
-    (set! (-> buff-ptr end) (&-> buff-ptr data-buffer (-> buff-ptr allocated-length))))
+  (let ((buffer-reset buffer))
+    (set! (-> buffer-reset base) (-> buffer-reset data))
+    (set! (-> buffer-reset end) (&-> buffer-reset data-buffer (-> buffer-reset allocated-length))))
   ;; set up a GIF transfer
-  (dma-buffer-add-gs-set-flusha buff
+  (dma-buffer-add-gs-set-flusha buffer
                                 (alpha-1 (new 'static 'gs-alpha :b 1 :d 1))
                                 (zbuf-1 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
                                 (test-1 (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal)))
@@ -722,7 +730,7 @@
                                 (texclut (new 'static 'gs-texclut :cbw 4))
                                 (fogcol *fog-color*))
   ;; return dma-tag.
-  (dma-buffer-add-ret buff)
+  (dma-buffer-add-ret buffer)
   (none))
 
 (default-buffer-init *default-regs-buffer*)
@@ -747,30 +755,31 @@
   (:methods
    (new (symbol type int) _type_)))
 
-(defmethod new gif-packet ((allocation symbol) (type-to-make type) (arg0 int))
-  "Make a new gif packet with enough room for arg0 64-bit args"
-  (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 8)))))
+(defmethod new gif-packet ((allocation symbol) (type-to-make type) (register-count int))
+  "Allocate a register-list GIF packet with capacity for register-count 64-bit values."
+  (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ register-count -1) 8)))))
 
-(defun open-gif-packet ((arg0 gif-packet))
-  "Initialize an existing gif-packet for 0 registers"
-  (set! (-> arg0 reg-count) 0)
-  (set! (-> arg0 gif-tag regs) (new 'static 'gif-tag-regs))
-  arg0)
+(defun open-gif-packet ((packet gif-packet))
+  "Reset packet to an empty register-list packet."
+  (set! (-> packet reg-count) 0)
+  (set! (-> packet gif-tag regs) (new 'static 'gif-tag-regs))
+  packet)
 
-(defun add-reg-gif-packet ((packet gif-packet) (reg-idx int) (reg-val int))
-  "Add a register to the packet"
+(defun add-reg-gif-packet ((packet gif-packet) (register-id int) (register-value int))
+  "Append one GS register identifier and 64-bit value to packet."
   (let ((tag (-> packet gif-tag)))
     ;; shift the register index into the right slot
-    (logior! (-> tag regs) (ash reg-idx (* (-> packet reg-count) 4))))
+    (logior! (-> tag regs) (ash register-id (* (-> packet reg-count) 4))))
   ;; set register value and increment count.
-  (set! (-> packet args (-> packet reg-count)) (the-as uint reg-val))
+  (set! (-> packet args (-> packet reg-count)) (the-as uint register-value))
   (+! (-> packet reg-count) 1)
   (none))
 
-(defun close-gif-packet ((arg0 gif-packet) (arg1 int))
-  (set! (-> arg0 gif-tag tag)
-        (new 'static 'gif-tag64 :nloop #x1 :flg (gif-flag reg-list) :eop arg1 :nreg (-> arg0 reg-count)))
-  arg0)
+(defun close-gif-packet ((packet gif-packet) (end-of-packet int))
+  "Finish packet's GIF tag with its accumulated register count and the requested end-of-packet bit."
+  (set! (-> packet gif-tag tag)
+        (new 'static 'gif-tag64 :nloop #x1 :flg (gif-flag reg-list) :eop end-of-packet :nreg (-> packet reg-count)))
+  packet)
 
 (deftype draw-context (basic)
   ((orgx   int32)
@@ -783,21 +792,22 @@
    (new (symbol type int int int int rgba) _type_)))
 
 (defmethod new draw-context ((allocation symbol) (type-to-make type) (org-x int) (org-y int) (width int) (height int) (color-0 rgba))
-  "Allocate and initialize a draw-context"
+  "Allocate a drawing context, scale its vertical origin and height for the video mode, and set its
+   initial color."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (let ((v1-3 (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
-          (a0-2 (the int (* (the float height) (-> *video-parms* relative-y-scale)))))
+    (let ((scaled-y (the int (* (the float org-y) (-> *video-parms* relative-y-scale))))
+          (scaled-height (the int (* (the float height) (-> *video-parms* relative-y-scale)))))
       (set! (-> this orgx) org-x)
-      (set! (-> this orgy) v1-3)
+      (set! (-> this orgy) scaled-y)
       (set! (-> this orgz) #xffffff)
       (set! (-> this width) width)
-      (set! (-> this height) a0-2))
+      (set! (-> this height) scaled-height))
     (set! (-> this color 0) color-0)
     this))
 
-(defun draw-context-set-xy ((ctxt draw-context) (x int) (y int))
-  "Set the origin of the draw context, scaling by relative-y-scale as needed."
-  (let ((v0-0 (the int (* (the float y) (-> *video-parms* relative-y-scale)))))
-    (set! (-> ctxt orgx) x)
-    (set! (-> ctxt orgy) v0-0))
+(defun draw-context-set-xy ((context draw-context) (x int) (y int))
+  "Set a drawing context's origin, scaling y for the current video mode."
+  (let ((scaled-y (the int (* (the float y) (-> *video-parms* relative-y-scale)))))
+    (set! (-> context orgx) x)
+    (set! (-> context orgy) scaled-y))
   (none))

@@ -4,31 +4,37 @@
 (require "engine/game/game-h.gc")
 (declare-type projectile process-drawable)
 
-(define-extern projectile-init-by-other (function entity-actor vector vector uint handle none :behavior projectile)) ;; 4th arg is `options`, 5th is `last-target`
+(define-extern projectile-init-by-other
+  "Initialize the projectile from source-entity, launch-position, initial-velocity, launch-context
+   option bits, and an optional last-target-handle. Create subtype collision and effects, seed the
+   sixteen-sample stall history, snapshot the parent transform, check initial overlaps for non-blue
+   projectiles, install the moving event hook, and enter the launch state."
+  (function entity-actor vector vector uint handle none :behavior projectile))
 
 ;; DECOMP BEGINS
 
 (deftype projectile (process-drawable)
-  ((root            collide-shape-moving :override)
-   (base-trans      vector :inline)
-   (target          vector :inline)
-   (target-base     vector :inline)
-   (parent-base     vector :inline)
-   (parent-quat     vector :inline)
-   (base-vector     vector :inline)
+  ((root            collide-shape-moving :override) ;; Moving sphere used for integration and hits.
+   (base-trans      vector :inline) ;; Launch position.
+   (target          vector :inline) ;; Current steering target.
+   (target-base     vector :inline) ;; Fallback target when homing loses its handle.
+   (parent-base     vector :inline) ;; Launch origin used for target selection.
+   (parent-quat     quaternion :inline) ;; Parent orientation at launch.
+   (base-vector     vector :inline) ;; Unit launch direction used by target searches.
    (timeout         time-frame)
    (options         uint64)
-   (last-target     handle)
-   (notify-handle   handle)
+   (last-target     handle) ;; Current homing target, when present.
+   (notify-handle   handle) ;; Process notified when the projectile attacks or dies.
    (max-speed       float)
    (max-turn        float)
+   ;; Sixteen recent per-step travel distances. Their sum detects a projectile stalled by collision.
    (old-dist        float 16)
    (old-dist-count  int32)
    (hits            int32)
    (max-hits        int32)
-   (tween           float)
-   (attack-mode     symbol)
-   (update-velocity (function projectile none))
+   (tween           float) ;; Steering blend toward the desired direction.
+   (attack-mode     symbol) ;; Attack mode sent to touched actors.
+   (update-velocity (function projectile none)) ;; Type-specific steering callback.
    (counter         int32)
    (target-count    int32)
    (sound-id        sound-id))
@@ -38,11 +44,20 @@
    projectile-impact
    projectile-moving)
   (:methods
-   (projectile-method-24 (_type_) none)
-   (projectile-method-25 (_type_) none)
-   (projectile-method-26 (_type_) none)
-   (projectile-method-27 (_type_) none)
-   (projectile-method-28 (_type_) none)))
+   (update-projectile-effects! "Update effects for this projectile type. The base spawns its
+particle trail; yellow also updates its shadow, transform, time-windowed trail, and tracking sound;
+blue randomly emits a blue-eco glow." (_type_) none)
+   (go-moving! "Enter the projectile's initial moving or launch state." (_type_) none)
+   (init-projectile-collision! "Create the moving collision sphere, contact callback, collision
+masks, navigation radius, and touched event. Yellow also collides with mother-spider; blue restricts
+the sphere to background collision." (_type_) none)
+   (init-projectile-settings! "Apply settings for this projectile type. Yellow configures homing,
+eco attack, launcher and trail particles, sounds, and level water planes; blue targets a random
+joint, uses blue-eco particles, and collides only with the background. The base implementation does
+nothing." (_type_) none)
+   (update-target! "Refresh this projectile type's homing target. Yellow selects a rated nearby
+attackable or follows the player collision sphere; blue follows its chosen drawable joint and
+impacts within one meter. The base implementation does nothing." (_type_) none)))
 
 (deftype projectile-yellow (projectile)
   ((mode  int32)

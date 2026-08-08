@@ -13,7 +13,7 @@
 ;; The "sparticle" code is the system that runs particles
 ;; Note that neither of these link particles to the process system. See part-tracker for that.
 
-;; The higheset level class here is sparticle-launch-control.
+;; The highest-level class here is sparticle-launch-control.
 ;; Each instance of a particle effect must have one of these.
 ;; For example, there would be one of these per eco-vent.
 ;; These store some state (a sparticle-launch-state) and a reference to a sparticle-launch-group
@@ -47,6 +47,9 @@
   (spt-anim 2)
   (spt-anim-speed 3)
   (spt-birth-func 4)
+  ;; Index of a joint on the tracked process's skeleton, or a reference point
+  ;; to launch from instead of the launch-control's origin. The launch code and
+  ;; part-tracker resolve the value.
   (spt-joint/refpoint 5)
   (spt-num 6)
   (spt-sound 7)
@@ -111,15 +114,18 @@
   (spt-scalevel 66)
   (spt-end 67))
 
+;; How sp-init-fields! interprets an sp-field-init-spec when initializing a
+;; field. Integer and floating-point fields store
+;; initial + random-mult * (rand * random-range), where rand-vu returns [0, 1).
 (defenum sp-flag
   :type uint16
-  (int 0) ;; int
-  (float 1) ;; float
-  (float-int-rand 2) ;; float with int rand
-  (copy-from-other 3) ;; copy
-  (object 4) ;; label
-  (symbol 5) ;; symbol
-  (launcher 6) ;; launcher from id
+  (int 0) ;; integer field; the random term is truncated to an integer
+  (float 1) ;; floating-point field
+  (float-int-rand 2) ;; float with an integer-quantized random term
+  (copy-from-other 3) ;; copy an earlier field at the negative offset in initial-value
+  (object 4) ;; raw object or label pointer, such as a sound-spec or :data payload
+  (symbol 5) ;; store the symbol's value
+  (launcher 6) ;; resolve initial-value as an index in *part-id-table*
   )
 
 (defenum sp-group-flag
@@ -156,15 +162,26 @@
    (soundaccum float)
    (init-specs (inline-array sp-field-init-spec))))
 
+;; Controls when and how one item in a launch-group spawns.
 (defenum sp-group-item-flag
   :bitfield #t
   :type uint16
-  (is-3d 0)
-  (bit1 1)
-  (start-dead 2)
-  (launch-asap 3)
-  (bit6 6))
+  (is-3d 0) ;; use the oriented 3D particle system rather than 2D billboards
+  ;; Periodic emitters re-arm each period rather than going dormant after one
+  ;; cycle. This is set by convention on most items, but only affects periodic
+  ;; items that do not use launch-asap.
+  (auto-rearm 1)
+  (start-dead 2) ;; begin inactive and wait for an explicit spawn
+  (launch-asap 3) ;; launch an immediate one-shot burst outside the period scheduler
+  (relaunch-each-spawn 6) ;; burst on every spawn call, even while particles remain active
+  )
 
+;; One launcher in a group, with its timing and visibility parameters. Timing
+;; uses 300 Hz ticks. period is the cycle length, with zero meaning continuous
+;; launch; length is the active window within a cycle; and offset changes the
+;; instance's phase. fade-after stops emission beyond that camera distance,
+;; while falloff-to is the distance where the linearly scaled emission rate
+;; reaches zero. hour-mask suppresses emission during selected in-game hours.
 (deftype sparticle-group-item (structure)
   ((launcher   uint32)
    (fade-after meters)
@@ -177,6 +194,7 @@
    (binding    uint32)))
 
 (defmacro sp-item (launcher &key (fade-after 0.0) &key (falloff-to 0.0) &key (flags ()) &key (period 0) &key (length 0) &key (offset 0) &key (hour-mask 0) &key (binding 0))
+  "Construct a launch-group item for launcher with its timing, distance, and binding options."
   `(new 'static
        'sparticle-group-item
        :launcher ,launcher
@@ -189,11 +207,12 @@
        :hour-mask ,hour-mask
        :binding ,binding))
 
+;; Per-instance state for one item in a launch-control.
 (defenum sp-launch-state-flags
   :bitfield #t
   :type uint16
-  (launcher-active 0) ;; active
-  (particles-active 1) ;; wants to launch
+  (launcher-active 0) ;; enabled and considered by spawn
+  (particles-active 1) ;; a launch occurred and particles exist or are still wanted
   (bit2 2))
 
 (declare-type sparticle-cpuinfo structure)
@@ -245,7 +264,7 @@
 (set! (-> sparticle-launch-control heap-base) (the-as uint 32))
 
 (defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds)
-  "define a new part group. defines a constant with the name of the group with the ID as its value"
+  "Install a named particle group at id with its launchers, lifetimes, flags, and bounds."
   `(begin
     ; (defconstant ,name ,id)
     (set! (-> *part-group-id-table* ,id)
@@ -261,15 +280,19 @@
                (new 'static 'inline-array sparticle-group-item ,(length parts) ,@parts)))))
 
 (defmacro get-part-group (id)
+  "Return the particle launch-group registered at id."
   `(-> *part-group-id-table* ,id))
 
 (desfun param-float? (p)
+  "Return true when p is a floating literal or a supported floating unit form."
   (or (float? p) (and (pair? p) (eq? 'meters (car p))) (and (pair? p) (eq? 'degrees (car p)))))
 
 (desfun param-int? (p)
+  "Return true when p is an integer literal or a seconds form."
   (or (integer? p) (and (pair? p) (eq? 'seconds (car p)))))
 
 (desfun param-symbol? (p)
+  "Return true when p is a quoted symbol form."
   (and (pair? p) (eq? 'quote (car p))))
 
 (seval
@@ -311,6 +334,8 @@
   (define *last-field-id* -1))
 
 (desfun process-init-spec (x)
+  "Validate and translate one defpart field initializer into an sp-field-init-spec.
+   Fields must appear in storage order so a later field may copy an earlier one."
   (let* ((head (symbol->string (car x)))
          (params (cdr x))
          (field-name (string->symbol (string-substr head 1 0)))
@@ -446,7 +471,7 @@
         (#t `(new 'static 'sp-field-init-spec :field (sp-field-id spt-end)))))))
 
 (defmacro defpart (id &key (init-specs ()))
-  "define a new sparticle-launcher"
+  "Build a particle launcher from init-specs and register it at id."
   (begin
     (set! *last-field-id* -1)
     `(set! (-> *part-id-table* ,id)

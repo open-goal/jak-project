@@ -114,6 +114,14 @@ target_link_libraries(decompiler
         stb_image
         tiny_gltf)
 
+add_executable(vu-disasm
+        vu_disasm_main.cpp)
+
+target_link_libraries(vu-disasm
+        decomp
+        common
+        fmt)
+
 
 add_executable(extractor
         extractor/main.cpp)

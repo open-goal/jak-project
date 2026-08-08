@@ -5,6 +5,27 @@
 (require "engine/geometry/vol-h.gc")
 (require "engine/camera/camera.gc")
 
+;; Camera-layout is the controller-driven camera authoring display. It selects live camera entities,
+;; edits their default-frame resource offsets, previews their control points and interpolation, and
+;; writes camera definitions for Maya. clm records describe the menus: ordinary items dispatch one
+;; action, while list items select a tracked value and provide actions for the active row.
+;;
+;; Volume previews use fixed debug buffers because they are rebuilt only when the selected camera
+;; changes. The source plane arrays remain authoritative; the derived points are only wireframe data
+;; for this editor.
+
+(declare-type clm basic)
+(define-extern *clm* clm)
+(define-extern *clm-edit* clm)
+(define-extern *clm-vol-attr* clm)
+(define-extern *clm-spline-attr* clm)
+(define-extern *clm-intro-attr* clm)
+(define-extern *clm-index-attr* clm)
+(define-extern *clm-focalpull-attr* clm)
+(define-extern *clm-select* clm)
+
+
+
 ;; DECOMP BEGINS
 
 ;; this file is debug only
@@ -106,177 +127,181 @@
    cam-layout-active))
 
 
-(defun cam-layout-print ((arg0 int) (arg1 int) (arg2 string))
-  (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (gp-0 (-> s5-0 base)))
-    (draw-string-xy arg2 s5-0 arg0 arg1 (font-color white) (font-flags shadow kerning))
-    (let ((a3-4 (-> s5-0 base)))
-      (let ((v1-4 (the-as object (-> s5-0 base))))
-        (set! (-> (the-as dma-packet v1-4) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-4) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-4) vif1) (new 'static 'vif-tag))
-        (set! (-> s5-0 base) (&+ (the-as pointer v1-4) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             (bucket-id debug)
-                             gp-0
-                             (the-as (pointer dma-tag) a3-4)))))
+(defun cam-layout-print ((x int) (y int) (text string))
+  "Draw debug text at screen coordinates x and y, terminate its DMA chain, and insert the result in
+   the current frame's debug bucket."
+  (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) debug-buf)) (bucket-id debug))
+    (draw-string-xy text dma-buf x y (font-color white) (font-flags shadow kerning))))
 
-(defun cam-layout-intersect-dist ((arg0 vector) (arg1 vector) (arg2 vector))
-  (let ((f0-1 (vector-dot arg1 arg0))
-        (f1-1 (vector-dot arg2 arg0)))
-    (the-as float (if (< 0.00001 (fabs f1-1)) (/ (- (-> arg0 w) f0-1) f1-1) 409600000.0))))
+(defun cam-layout-intersect-dist ((plane vector) (point vector) (direction vector))
+  "Return the signed distance along direction from point to plane, or a large sentinel when the
+   direction is nearly parallel to the plane."
+  (let ((point-dot (vector-dot point plane))
+        (direction-dot (vector-dot direction plane)))
+    (if (< 0.00001 (fabs direction-dot))
+        (/ (- (-> plane w) point-dot) direction-dot)
+        409600000.0)))
 
-(defbehavior cam-layout-entity-volume-info-create cam-layout ((arg0 entity-camera) (arg1 symbol))
-  (let ((s4-0 0))
+(defbehavior cam-layout-entity-volume-info-create cam-layout ((camera entity-camera) (volume-type symbol))
+  "Read consecutive plane arrays of volume-type from camera, reconstruct each convex volume's
+   clipped plane-intersection edges, and append its draw segments plus plane-centroid records to the
+   fixed camera-layout preview buffers. Return false at the first missing property or full buffer."
+  (let ((property-index 0))
     (loop
-      (let* ((sv-16 (new 'static 'res-tag))
-             (s3-0 (the-as (inline-array vector)
-                           ((method-of-type res-lump get-property-data)
-                            arg0
-                            arg1
-                            'exact
-                            (the float s4-0)
-                            (the-as pointer #f)
-                            (& sv-16)
-                            *res-static-buf*))))
+      (let* ((tag (new 'static 'res-tag))
+             (planes (res-lump-data-exact camera volume-type (inline-array vector) :tag-ptr (& tag) :time (the float property-index))))
         (cond
-          (s3-0
+          (planes
            (when (>= *volume-descriptor-current* 100)
              (format 0 "ERROR <GMJ>: camera editing out of volume descriptors~%")
              (return #f))
-           (let ((s2-0 (-> *volume-descriptor* pos-vol *volume-descriptor-current*)))
-             (set! (-> s2-0 volume-type) arg1)
-             (set! (-> s2-0 point-count) 0)
-             (set! (-> s2-0 first-point) (the-as (pointer vector) (-> *volume-point* data *volume-point-current*)))
-             (set! (-> s2-0 normal-count) 0)
-             (set! (-> s2-0 first-normal) (the-as (pointer vector) (-> *volume-normal* data *volume-normal-current*)))
+           (let ((descriptor (-> *volume-descriptor* pos-vol *volume-descriptor-current*)))
+             (set! (-> descriptor volume-type) volume-type)
+             (set! (-> descriptor point-count) 0)
+             (set! (-> descriptor first-point) (&-> *volume-point* data *volume-point-current*))
+             (set! (-> descriptor normal-count) 0)
+             (set! (-> descriptor first-normal) (&-> *volume-normal* data *volume-normal-current*))
              (set! *volume-descriptor-current* (+ *volume-descriptor-current* 1))
              (+! (-> self num-volumes) 1)
-             (dotimes (s1-0 (the-as int (-> sv-16 elt-count)))
-               (let ((sv-192 (new 'stack-no-clear 'vector)))
-                 (set! (-> sv-192 quad) (the-as uint128 0))
-                 (let ((sv-208 (new 'stack-no-clear 'vector)))
-                   (set! (-> sv-208 quad) (the-as uint128 0))
-                   (let ((sv-224 (new 'stack-no-clear 'vector)))
-                     (set! (-> sv-224 quad) (the-as uint128 0))
-                     (let ((sv-240 (new 'stack-no-clear 'vector)))
-                       (set! (-> sv-240 quad) (the-as uint128 0))
-                       0.0
-                       0.0
-                       0.0
-                       (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-                       (let ((s0-0 (new-stack-vector0))
-                             (sv-256 0))
-                         (let ((sv-272 0))
-                           (while (< sv-272 (the-as int (-> sv-16 elt-count)))
-                             (when (!= s1-0 sv-272)
-                               (vector-float*! sv-192 (-> s3-0 sv-272) (-> s3-0 sv-272 w))
-                               (vector-cross! sv-208 (-> s3-0 sv-272) (-> s3-0 s1-0))
-                               (vector-normalize! sv-208 (the-as float 1.0))
-                               (vector-cross! sv-224 sv-208 (-> s3-0 sv-272))
-                               (vector-normalize! sv-224 (the-as float 1.0))
-                               (let ((f0-6 (cam-layout-intersect-dist (-> s3-0 s1-0) sv-192 sv-224)))
-                                 (when (!= f0-6 409600000.0)
-                                   (vector+float*! sv-240 sv-192 sv-224 f0-6)
-                                   (let ((sv-160 (new-stack-vector0))
-                                         (sv-164 0.0)
-                                         (sv-168 0))
-                                     (let ((sv-176 (new-stack-vector0)))
-                                       (set! (-> sv-160 quad) (-> sv-240 quad))
-                                       (let ((sv-288 0))
-                                         (while (< sv-288 (the-as int (-> sv-16 elt-count)))
-                                           (when (and (!= sv-288 s1-0) (!= sv-288 sv-272))
-                                             (let ((f30-0 (cam-layout-intersect-dist (-> s3-0 sv-288) sv-160 sv-208)))
-                                               (cond
-                                                 ((= f30-0 409600000.0))
-                                                 ((zero? sv-168)
-                                                  (vector+float*! sv-160 sv-160 sv-208 f30-0)
-                                                  (set! (-> sv-176 quad) (-> s3-0 sv-288 quad))
-                                                  (set! sv-164 8192000.0)
-                                                  (set! sv-168 1))
-                                                 ((begin (vector-float*! sv-240 sv-208 f30-0) (>= (vector-dot sv-240 sv-176) 0.0)))
-                                                 ((>= (vector-dot sv-240 (-> s3-0 sv-288)) 0.0) (when (< (fabs f30-0) (fabs sv-164)) (set! sv-164 f30-0) (+! sv-168 1)))
-                                                 (else
-                                                  (vector+float*! sv-160 sv-160 sv-208 f30-0)
-                                                  (set! (-> sv-176 quad) (-> s3-0 sv-288 quad))
-                                                  (+! sv-168 1)
-                                                  (set! sv-164
-                                                        (cond
-                                                          ((< (fabs f30-0) (fabs sv-164)) (set! sv-164 (- sv-164 f30-0)) sv-164)
-                                                          (else 0.0)))))))
-                                           (+! sv-288 1))))
-                                     (cond
-                                       ((zero? sv-168))
-                                       ((= sv-164 0.0))
-                                       (else
-                                        (dotimes (v1-87 (the-as int (-> sv-16 elt-count)))
-                                          (when (and (!= v1-87 s1-0) (!= v1-87 sv-272))
-                                            (if (< 4096.0 (- (vector-dot sv-160 (-> s3-0 v1-87)) (-> s3-0 v1-87 w))) (goto cfg-47))))
-                                        (vector+float*! sv-240 sv-160 sv-208 sv-164)
-                                        (cond
-                                          ((>= *volume-point-current* 999) (format 0 "ERROR <GMJ>: camera editing out of volume points~%"))
-                                          (else
-                                           (set! (-> *volume-point* data *volume-point-current* quad) (-> sv-160 quad))
-                                           (set! (-> *volume-point* data (+ *volume-point-current* 1) quad) (-> sv-240 quad))
-                                           (set! *volume-point-current* (+ *volume-point-current* 2))
-                                           (+! (-> s2-0 point-count) 2)))
-                                        (vector+! s0-0 s0-0 sv-160)
-                                        (vector+! s0-0 s0-0 sv-240)
-                                        (+! sv-256 2)
-                                        sv-256))))))
-                             (label cfg-47)
-                             (+! sv-272 1)))
-                         (when (nonzero? sv-256)
-                           (vector-float*! s0-0 s0-0 (/ 1.0 (the float sv-256)))
-                           (cond
-                             ((>= *volume-normal-current* 599) (format 0 "ERROR <GMJ>: camera editing out of volume normals~%"))
-                             (else
-                              (set! (-> *volume-normal* data *volume-normal-current* quad) (-> s0-0 quad))
-                              (set! (-> *volume-normal* data (+ *volume-normal-current* 1) quad) (-> s3-0 s1-0 quad))
-                              (set! *volume-normal-current* (+ *volume-normal-current* 2))
-                              (set! (-> s2-0 normal-count) (+ (-> s2-0 normal-count) 2)))))))))))))
+             (dotimes (plane-index (the-as int (-> tag elt-count)))
+               (let ((point-on-plane (new-stack-vector0))
+                     (line-direction (new-stack-vector0))
+                     (in-plane-direction (new-stack-vector0))
+                     (candidate-point (new-stack-vector0)))
+                 0.0
+                 0.0
+                 0.0
+                 (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
+                 (let ((point-sum (new-stack-vector0))
+                       (points-added 0))
+                   (let ((other-plane-index 0))
+                     (while (< other-plane-index (the-as int (-> tag elt-count)))
+                       (when (!= plane-index other-plane-index)
+                         (vector-float*! point-on-plane (-> planes other-plane-index) (-> planes other-plane-index w))
+                         (vector-cross! line-direction (-> planes other-plane-index) (-> planes plane-index))
+                         (vector-normalize! line-direction 1.0)
+                         (vector-cross! in-plane-direction line-direction (-> planes other-plane-index))
+                         (vector-normalize! in-plane-direction 1.0)
+                         (let ((line-distance (cam-layout-intersect-dist (-> planes plane-index) point-on-plane in-plane-direction)))
+                           (when (!= line-distance 409600000.0)
+                             (vector+float*! candidate-point point-on-plane in-plane-direction line-distance)
+                             (let ((segment-start (new-stack-vector0))
+                                   (segment-distance 0.0)
+                                   (clip-count 0))
+                               (let ((clip-plane (new-stack-vector0)))
+                                 (set! (-> segment-start quad) (-> candidate-point quad))
+                                 (let ((clip-plane-index 0))
+                                   (while (< clip-plane-index (the-as int (-> tag elt-count)))
+                                     (when (and (!= clip-plane-index plane-index) (!= clip-plane-index other-plane-index))
+                                       (let ((clip-distance (cam-layout-intersect-dist (-> planes clip-plane-index) segment-start line-direction)))
+                                         (cond
+                                           ((= clip-distance 409600000.0))
+                                           ((zero? clip-count)
+                                            (vector+float*! segment-start segment-start line-direction clip-distance)
+                                            (set! (-> clip-plane quad) (-> planes clip-plane-index quad))
+                                            (set! segment-distance 8192000.0)
+                                            (set! clip-count 1))
+                                           ((begin (vector-float*! candidate-point line-direction clip-distance) (>= (vector-dot candidate-point clip-plane) 0.0)))
+                                           ((>= (vector-dot candidate-point (-> planes clip-plane-index)) 0.0)
+                                            (when (< (fabs clip-distance) (fabs segment-distance))
+                                              (set! segment-distance clip-distance)
+                                              (+! clip-count 1)))
+                                           (else
+                                            (vector+float*! segment-start segment-start line-direction clip-distance)
+                                            (set! (-> clip-plane quad) (-> planes clip-plane-index quad))
+                                            (+! clip-count 1)
+                                            (set! segment-distance (if (< (fabs clip-distance) (fabs segment-distance)) (- segment-distance clip-distance) 0.0))))))
+                                     (+! clip-plane-index 1))))
+                               (cond
+                                 ((zero? clip-count))
+                                 ((= segment-distance 0.0))
+                                 (else
+                                  (dotimes (test-plane-index (the-as int (-> tag elt-count)))
+                                    (when (and (!= test-plane-index plane-index) (!= test-plane-index other-plane-index))
+                                      (if (< 4096.0 (- (vector-dot segment-start (-> planes test-plane-index)) (-> planes test-plane-index w))) (goto cfg-47))))
+                                  (vector+float*! candidate-point segment-start line-direction segment-distance)
+                                  (cond
+                                    ((>= *volume-point-current* 999)
+                                     (format 0 "ERROR <GMJ>: camera editing out of volume points~%"))
+                                    (else
+                                     (set! (-> *volume-point* data *volume-point-current* quad) (-> segment-start quad))
+                                     (set! (-> *volume-point* data (+ *volume-point-current* 1) quad) (-> candidate-point quad))
+                                     (set! *volume-point-current* (+ *volume-point-current* 2))
+                                     (+! (-> descriptor point-count) 2)))
+                                  (vector+! point-sum point-sum segment-start)
+                                  (vector+! point-sum point-sum candidate-point)
+                                  (+! points-added 2)
+                                  points-added))))))
+                       (label cfg-47)
+                       (+! other-plane-index 1)))
+                   (when (nonzero? points-added)
+                     (vector-float*! point-sum point-sum (/ 1.0 (the float points-added)))
+                     (cond
+                       ((>= *volume-normal-current* 599)
+                        (format 0 "ERROR <GMJ>: camera editing out of volume normals~%"))
+                       (else
+                        (vector-copy! (-> *volume-normal* data *volume-normal-current*) point-sum)
+                        (vector-copy! (-> *volume-normal* data (+ *volume-normal-current* 1)) (-> planes plane-index))
+                        (set! *volume-normal-current* (+ *volume-normal-current* 2))
+                        (set! (-> descriptor normal-count) (+ (-> descriptor normal-count) 2))))))))))
           (else (return #f))))
-      (+! s4-0 1)))
+      (+! property-index 1)))
   (the-as symbol #f))
 
 (defbehavior cam-layout-entity-volume-info cam-layout ()
-  (dotimes (gp-0 (-> self num-volumes))
+  "Draw every reconstructed camera volume as green vol, gray pvol, or red cutoutvol wireframe,
+   blinking the selected volume."
+  (dotimes (volume-index (-> self num-volumes))
     (cond
-      ((and (= gp-0 (-> self cur-volume))
+      ((and (= volume-index (-> self cur-volume))
             (= *camera-layout-blink* 'volume)
             (not (logtest? (-> *display* real-actual-frame-counter) 8))))
       (else
-       (let ((s5-0 (-> *volume-descriptor* pos-vol gp-0)))
-         (let ((a0-7 (new 'static 'vector4w :w #x80)))
+       (let ((descriptor (-> *volume-descriptor* pos-vol volume-index)))
+         (let ((color (new 'static 'vector4w :w #x80)))
            (cond
-             ((= (-> s5-0 volume-type) 'vol) (set! (-> a0-7 x) 0) (set! (-> a0-7 y) 192) (set! (-> a0-7 z) 0) 0)
-             ((= (-> s5-0 volume-type) 'pvol) (set! (-> a0-7 x) 128) (set! (-> a0-7 y) 128) (set! (-> a0-7 z) 128))
-             ((= (-> s5-0 volume-type) 'cutoutvol) (set! (-> a0-7 x) 192) (set! (-> a0-7 y) 0) (set! (-> a0-7 z) 0) 0))
-           (camera-line-setup a0-7))
-         (let ((s4-0 (the-as object (-> s5-0 first-point))))
-           (dotimes (s3-0 (/ (-> s5-0 point-count) 2))
-             (camera-line-draw (the-as vector s4-0) (&+ (the-as vector s4-0) 16))
-             (set! s4-0 (&-> (the-as (inline-array plane-volume) s4-0) 1 first-point))))))))
+             ((= (-> descriptor volume-type) 'vol)
+              (set! (-> color x) 0)
+              (set! (-> color y) 192)
+              (set! (-> color z) 0)
+              0)
+             ((= (-> descriptor volume-type) 'pvol)
+              (set! (-> color x) 128)
+              (set! (-> color y) 128)
+              (set! (-> color z) 128))
+             ((= (-> descriptor volume-type) 'cutoutvol)
+              (set! (-> color x) 192)
+              (set! (-> color y) 0)
+              (set! (-> color z) 0)
+              0))
+           (camera-line-setup color))
+         (let ((segment (-> descriptor first-point)))
+           (dotimes (segment-index (/ (-> descriptor point-count) 2))
+             (camera-line-draw (-> segment 0) (-> segment 1))
+             (set! segment (&-> segment 2))))))))
   #f)
 
-(defun v-slrp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
-  (let ((s2-0 (new-stack-vector0))
-        (s1-0 (new-stack-vector0))
-        (s0-0 (new-stack-vector0)))
+(defun v-slrp! ((dst vector) (from vector) (to vector) (t float))
+  "Spherically interpolate between from and to at clamped fraction t and write dst. This form derives
+   the angle from asin of the normalized cross-product length and does not handle parallel or
+   antiparallel inputs."
+  (let ((from-unit (new-stack-vector0))
+        (to-unit (new-stack-vector0))
+        (cross (new-stack-vector0)))
     0.0
     0.0
     0.0
     0.0
     (cond
-      ((< 1.0 arg3) (set! arg3 (the-as float 1.0)))
-      ((< arg3 0.0) (set! arg3 (the-as float 0.0))))
-    (vector-normalize-copy! s2-0 arg1 (the-as float 1.0))
-    (vector-normalize-copy! s1-0 arg2 (the-as float 1.0))
-    (vector-cross! s0-0 s2-0 s1-0)
-    (let* ((f30-0 (vector-length s0-0))
-           (f28-0 (asin f30-0)))
-      (vector-float*! arg0 arg1 (/ (sin (* (- 1.0 arg3) f28-0)) f30-0))
-      (vector+float*! arg0 arg0 arg2 (/ (sin (* arg3 f28-0)) f30-0)))))
+      ((< 1.0 t) (set! t 1.0))
+      ((< t 0.0) (set! t 0.0)))
+    (vector-normalize-copy! from-unit from 1.0)
+    (vector-normalize-copy! to-unit to 1.0)
+    (vector-cross! cross from-unit to-unit)
+    (let* ((sin-angle (vector-length cross))
+           (angle (asin sin-angle)))
+      (vector-float*! dst from (/ (sin (* (- 1.0 t) angle)) sin-angle))
+      (vector+float*! dst dst to (/ (sin (* t angle)) sin-angle)))))
 
 (deftype interp-test-info (structure)
   ((from   vector :inline)
@@ -287,679 +312,688 @@
    (disp   string)))
 
 
-(defun interp-test ((arg0 (function vector vector vector float vector float none)) (arg1 interp-test-info))
-  (let ((s3-0 (new-stack-vector0))
-        (gp-0 (new-stack-vector0)))
-    (arg0 s3-0 (-> arg1 from) (-> arg1 to) (the-as float 0.0) (-> arg1 axis) (the-as float 65536.0))
-    (vector+! s3-0 s3-0 (-> arg1 origin))
-    (dotimes (s2-0 10)
-      (set! (-> gp-0 quad) (-> s3-0 quad))
-      (arg0 s3-0 (-> arg1 from) (-> arg1 to) (* 0.1 (+ 1.0 (the float s2-0))) (-> arg1 axis) (the-as float 65536.0))
-      (vector+! s3-0 s3-0 (-> arg1 origin))
-      (camera-line s3-0 gp-0 (-> arg1 color)))
-    (arg0 gp-0 (-> arg1 from) (-> arg1 to) (-> *CAM_LAYOUT-bank* debug-t) (-> arg1 axis) (the-as float 65536.0))
-    (format *stdcon* "~S  ~f~%" (-> arg1 disp) (vector-length gp-0))
-    (vector+! gp-0 gp-0 (-> arg1 origin))
-    (camera-line (-> arg1 origin) gp-0 (-> arg1 color))
-    (camera-cross (new 'static 'vector :y 1024.0) (new 'static 'vector :z 1024.0) gp-0 (-> arg1 color) (meters 1))))
+(defun interp-test ((interpolator (function vector vector vector float vector float none)) (info interp-test-info))
+  "Draw ten segments sampled from interpolator, then draw and print the current debug-t sample."
+  (let ((current (new-stack-vector0))
+        (previous (new-stack-vector0)))
+    (interpolator current (-> info from) (-> info to) 0.0 (-> info axis) 65536.0)
+    (vector+! current current (-> info origin))
+    (dotimes (i 10)
+      (vector-copy! previous current)
+      (interpolator current (-> info from) (-> info to) (* 0.1 (+ 1.0 (the float i))) (-> info axis) 65536.0)
+      (vector+! current current (-> info origin))
+      (camera-line current previous (-> info color)))
+    (interpolator previous (-> info from) (-> info to) (-> *CAM_LAYOUT-bank* debug-t) (-> info axis) 65536.0)
+    (format *stdcon* "~S  ~f~%" (-> info disp) (vector-length previous))
+    (vector+! previous previous (-> info origin))
+    (camera-line (-> info origin) previous (-> info color))
+    (camera-cross (new 'static 'vector :y 1024.0) (new 'static 'vector :z 1024.0) previous (-> info color) (meters 1)))
+  (none))
 
-(defun interp-test-deg ((arg0 (function vector vector vector vector float none)) (arg1 interp-test-info))
-  (let ((s3-0 (new-stack-vector0))
-        (gp-0 (new-stack-vector0)))
-    (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (the-as float 0.0))
-    (vector+! s3-0 s3-0 (-> arg1 origin))
-    (dotimes (s2-0 10)
-      (set! (-> gp-0 quad) (-> s3-0 quad))
-      (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (* 182.04445 (* 18.0 (+ 1.0 (the float s2-0)))))
-      (vector+! s3-0 s3-0 (-> arg1 origin))
-      (camera-line s3-0 gp-0 (-> arg1 color)))
-    (arg0 gp-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (* 182.04445 (* 180.0 (-> *CAM_LAYOUT-bank* debug-t))))
-    (format *stdcon* "~S  ~f~%" (-> arg1 disp) (vector-length gp-0))
-    (vector+! gp-0 gp-0 (-> arg1 origin))
-    (camera-line (-> arg1 origin) gp-0 (-> arg1 color))
-    (camera-cross (new 'static 'vector :y 1024.0) (new 'static 'vector :z 1024.0) gp-0 (-> arg1 color) (meters 1))))
+(defun interp-test-deg ((interpolator (function vector vector vector vector float none)) (info interp-test-info))
+  "Draw ten eighteen-degree samples from an angle-based interpolator, then draw and print the
+   current debug-t sample over 180 degrees."
+  (let ((current (new-stack-vector0))
+        (previous (new-stack-vector0)))
+    (interpolator current (-> info from) (-> info to) (-> info axis) 0.0)
+    (vector+! current current (-> info origin))
+    (dotimes (i 10)
+      (vector-copy! previous current)
+      (interpolator current (-> info from) (-> info to) (-> info axis) (* 182.04445 (* 18.0 (+ 1.0 (the float i)))))
+      (vector+! current current (-> info origin))
+      (camera-line current previous (-> info color)))
+    (interpolator previous
+                  (-> info from)
+                  (-> info to)
+                  (-> info axis)
+                  (* 182.04445 (* 180.0 (-> *CAM_LAYOUT-bank* debug-t))))
+    (format *stdcon* "~S  ~f~%" (-> info disp) (vector-length previous))
+    (vector+! previous previous (-> info origin))
+    (camera-line (-> info origin) previous (-> info color))
+    (camera-cross (new 'static 'vector :y 1024.0) (new 'static 'vector :z 1024.0) previous (-> info color) (meters 1)))
+  (none))
 
-(defun cam-layout-entity-info ((arg0 entity-actor))
-  (if (not arg0) (return #f))
-  (let ((s5-0 (new-stack-matrix0))
-        (s4-0 (new-stack-vector0)))
-    (when (and (cam-slave-get-vector-with-offset arg0 s4-0 'trans)
+;; WARN: rewrite_to_get_var got a none typed variable. Is there unreachable code? [OP: 2]
+(defun cam-layout-entity-info ((camera entity-camera))
+  "Draw the selected camera's frustum, pivot, alignment and interest points, camera and intro
+   splines, index points, and interpolation diagnostics. The selected item blinks off every eight
+   frames."
+  (if (not camera)
+      (return (the-as basic #f)))
+  (let ((camera-rotation (new-stack-matrix0))
+        (camera-position (new-stack-vector0)))
+    (when (and (cam-slave-get-vector-with-offset camera camera-position 'trans)
                (or (!= *camera-layout-blink* 'camera) (logtest? (-> *display* real-actual-frame-counter) 8)))
-      (cam-slave-get-rot arg0 s5-0)
-      (camera-fov-frame s5-0
-                        s4-0
-                        (* 0.5 (cam-slave-get-fov arg0))
-                        (the-as float 0.75)
-                        (the-as float 1.0)
+      (cam-slave-get-rot camera camera-rotation)
+      (camera-fov-frame camera-rotation
+                        camera-position
+                        (* 0.5 (cam-slave-get-fov camera))
+                        0.75
+                        1.0
                         (new 'static 'vector4w :z #xff :w #x80))))
-  (let ((s5-1 (new-stack-vector0)))
-    (if (and (cam-slave-get-vector-with-offset arg0 s5-1 'pivot)
-             (or (!= *camera-layout-blink* 'pivot) (logtest? (-> *display* real-actual-frame-counter) 8)))
-      (camera-cross (new 'static 'vector :y 1024.0)
-                    (new 'static 'vector :z 1024.0)
-                    s5-1
-                    (new 'static 'vector4w :x #x80 :w #x80)
-                    (meters 1))))
-  (let ((s5-2 (new-stack-vector0)))
-    (if (and (cam-slave-get-vector-with-offset arg0 s5-2 'align)
-             (or (!= *camera-layout-blink* 'align) (logtest? (-> *display* real-actual-frame-counter) 8)))
-      (camera-cross (new 'static 'vector :y 1024.0)
-                    (new 'static 'vector :z 1024.0)
-                    s5-2
-                    (new 'static 'vector4w :y #x80 :w #x80)
-                    (meters 1))))
-  (let ((s5-3 (new-stack-vector0)))
-    (if (and (cam-slave-get-vector-with-offset arg0 s5-3 'interesting)
-             (or (!= *camera-layout-blink* 'interesting) (logtest? (-> *display* real-actual-frame-counter) 8)))
-      (camera-cross (new 'static 'vector :y 1024.0)
-                    (new 'static 'vector :z 1024.0)
-                    s5-3
-                    (new 'static 'vector4w :x #x80 :z #x80 :w #x80)
-                    (meters 1))))
-  (let ((s3-1 (new 'stack 'curve))
-        (s2-0 (new-stack-vector0))
-        (s5-4 (new-stack-vector0))
-        (s4-1 (new-stack-vector0)))
-    (when (and (get-curve-data! arg0 s3-1 'campath 'campath-k (the-as float -1000000000.0))
+  (let ((pivot (new-stack-vector0)))
+    (if (and (cam-slave-get-vector-with-offset camera pivot 'pivot)
+               (or (!= *camera-layout-blink* 'pivot) (logtest? (-> *display* real-actual-frame-counter) 8)))
+        (camera-cross (new 'static 'vector :y 1024.0)
+                      (new 'static 'vector :z 1024.0)
+                      pivot
+                      (new 'static 'vector4w :x #x80 :w #x80)
+                      (meters 1))))
+  (let ((align (new-stack-vector0)))
+    (if (and (cam-slave-get-vector-with-offset camera align 'align)
+               (or (!= *camera-layout-blink* 'align) (logtest? (-> *display* real-actual-frame-counter) 8)))
+        (camera-cross (new 'static 'vector :y 1024.0)
+                      (new 'static 'vector :z 1024.0)
+                      align
+                      (new 'static 'vector4w :y #x80 :w #x80)
+                      (meters 1))))
+  (let ((interesting (new-stack-vector0)))
+    (if (and (cam-slave-get-vector-with-offset camera interesting 'interesting)
+               (or (!= *camera-layout-blink* 'interesting) (logtest? (-> *display* real-actual-frame-counter) 8)))
+        (camera-cross (new 'static 'vector :y 1024.0)
+                      (new 'static 'vector :z 1024.0)
+                      interesting
+                      (new 'static 'vector4w :x #x80 :z #x80 :w #x80)
+                      (meters 1))))
+  (let ((camera-curve (new 'stack 'curve))
+        (previous-point (new-stack-vector0))
+        (curve-point (new-stack-vector0))
+        (camera-curve-offset (new-stack-vector0)))
+    (when (and (get-curve-data! camera camera-curve 'campath 'campath-k -1000000000.0)
                (or (!= *camera-layout-blink* 'spline) (logtest? (-> *display* real-actual-frame-counter) 8)))
       (cond
-        ((cam-slave-get-vector-with-offset arg0 s4-1 'pivot)
-         (curve-get-pos! s5-4 (the-as float 0.0) s3-1)
-         (vector-! s4-1 s4-1 s5-4))
+        ((cam-slave-get-vector-with-offset camera camera-curve-offset 'pivot)
+         (curve-get-pos! curve-point 0.0 camera-curve)
+         (vector-! camera-curve-offset camera-curve-offset curve-point))
         (else
-         (set! (-> s4-1 quad)
-               (-> (the-as vector
-                           ((method-of-type res-lump get-property-struct)
-                            arg0
-                            'spline-offset
-                            'interp
-                            (the-as float -1000000000.0)
-                            s4-1
-                            (the-as (pointer res-tag) #f)
-                            *res-static-buf*))
-                   quad))))
-      (curve-get-pos! s5-4 (the-as float 0.0) s3-1)
-      (vector+! s5-4 s5-4 s4-1)
-      (dotimes (s1-1 8)
-        (set! (-> s2-0 quad) (-> s5-4 quad))
-        (curve-get-pos! s5-4 (* 0.125 (the float (+ s1-1 1))) s3-1)
-        (vector+! s5-4 s5-4 s4-1)
-        (camera-line s2-0 s5-4 (new 'static 'vector4w :x #xff :y #xff :w #x80)))
-      (curve-get-pos! s5-4 (-> *CAM_LAYOUT-bank* spline-t) s3-1)
-      (vector+! s5-4 s5-4 s4-1)
+         (set! (-> camera-curve-offset quad)
+               (-> (res-lump-struct camera 'spline-offset vector :default camera-curve-offset) quad))))
+      (curve-get-pos! curve-point 0.0 camera-curve)
+      (vector+! curve-point curve-point camera-curve-offset)
+      (dotimes (i 8)
+        (vector-copy! previous-point curve-point)
+        (curve-get-pos! curve-point (* 0.125 (the float (+ i 1))) camera-curve)
+        (vector+! curve-point curve-point camera-curve-offset)
+        (camera-line previous-point curve-point (new 'static 'vector4w :x #xff :y #xff :w #x80)))
+      (curve-get-pos! curve-point (-> *CAM_LAYOUT-bank* spline-t) camera-curve)
+      (vector+! curve-point curve-point camera-curve-offset)
       (camera-cross (new 'static 'vector :y 1024.0)
                     (new 'static 'vector :z 1024.0)
-                    s5-4
+                    curve-point
                     (new 'static 'vector4w :x #xff :y #xff :w #x80)
                     (meters 1))))
-  (let ((s3-2 (new 'stack 'curve))
-        (s2-1 (new-stack-vector0))
-        (s5-5 (new-stack-vector0))
-        (s4-2 (new-stack-vector0))
-        (s1-2 (new 'stack 'curve)))
-    (when (and (get-curve-data! arg0 s3-2 'intro 'intro-k (the-as float -1000000000.0))
+  (let ((intro-curve (new 'stack 'curve))
+        (previous-point (new-stack-vector0))
+        (curve-point (new-stack-vector0))
+        (intro-curve-offset (new-stack-vector0))
+        (camera-curve (new 'stack 'curve)))
+    (when (and (get-curve-data! camera intro-curve 'intro 'intro-k -1000000000.0)
                (or (!= *camera-layout-blink* 'intro) (logtest? (-> *display* real-actual-frame-counter) 8)))
       (cond
-        ((cam-slave-get-vector-with-offset arg0 s4-2 'pivot)
-         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
-         (vector-! s4-2 s4-2 s5-5))
-        ((get-curve-data! arg0 s1-2 'campath 'campath-k (the-as float -1000000000.0))
-         (curve-get-pos! s4-2 (the-as float 0.0) s1-2)
-         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
-         (vector-! s4-2 s4-2 s5-5))
-        ((cam-slave-get-vector-with-offset arg0 s4-2 'trans)
-         (curve-get-pos! s5-5 (the-as float 1.0) s3-2)
-         (vector-! s4-2 s4-2 s5-5)))
-      (curve-get-pos! s5-5 (the-as float 0.0) s3-2)
-      (vector+! s5-5 s5-5 s4-2)
-      (dotimes (s1-3 8)
-        (set! (-> s2-1 quad) (-> s5-5 quad))
-        (curve-get-pos! s5-5 (* 0.125 (the float (+ s1-3 1))) s3-2)
-        (vector+! s5-5 s5-5 s4-2)
-        (camera-line s2-1 s5-5 (new 'static 'vector4w :z #xff :w #x80)))
-      (curve-get-pos! s5-5 (-> *CAM_LAYOUT-bank* intro-t) s3-2)
-      (vector+! s5-5 s5-5 s4-2)
+        ((cam-slave-get-vector-with-offset camera intro-curve-offset 'pivot)
+         (curve-get-pos! curve-point 1.0 intro-curve)
+         (vector-! intro-curve-offset intro-curve-offset curve-point))
+        ((get-curve-data! camera camera-curve 'campath 'campath-k -1000000000.0)
+         (curve-get-pos! intro-curve-offset 0.0 camera-curve)
+         (curve-get-pos! curve-point 1.0 intro-curve)
+         (vector-! intro-curve-offset intro-curve-offset curve-point))
+        ((cam-slave-get-vector-with-offset camera intro-curve-offset 'trans)
+         (curve-get-pos! curve-point 1.0 intro-curve)
+         (vector-! intro-curve-offset intro-curve-offset curve-point)))
+      (curve-get-pos! curve-point 0.0 intro-curve)
+      (vector+! curve-point curve-point intro-curve-offset)
+      (dotimes (i 8)
+        (vector-copy! previous-point curve-point)
+        (curve-get-pos! curve-point (* 0.125 (the float (+ i 1))) intro-curve)
+        (vector+! curve-point curve-point intro-curve-offset)
+        (camera-line previous-point curve-point (new 'static 'vector4w :z #xff :w #x80)))
+      (curve-get-pos! curve-point (-> *CAM_LAYOUT-bank* intro-t) intro-curve)
+      (vector+! curve-point curve-point intro-curve-offset)
       (camera-cross (new 'static 'vector :y 1024.0)
                     (new 'static 'vector :z 1024.0)
-                    s5-5
+                    curve-point
                     (new 'static 'vector4w :z #xff :w #x80)
                     (meters 1))
-      (curve-get-pos! s5-5 (cam-slave-get-float arg0 'intro-exitValue (the-as float 0.0)) s3-2)
-      (vector+! s5-5 s5-5 s4-2)
+      (curve-get-pos! curve-point (cam-slave-get-float camera 'intro-exitValue 0.0) intro-curve)
+      (vector+! curve-point curve-point intro-curve-offset)
       (camera-cross (new 'static 'vector :y 1024.0)
                     (new 'static 'vector :z 1024.0)
-                    s5-5
+                    curve-point
                     (new 'static 'vector4w :z #xff :w #x80)
                     (meters 1))))
-  (let ((s2-3 (res-lump-data arg0 'campoints pointer :time (the-as float 1.0)))
-        (v1-95 (res-lump-struct arg0 'campoints-offset structure :time (the-as float -1000000000.0)))
-        (s4-3 (new 'stack-no-clear 'vector))
-        (s3-3 (new 'stack-no-clear 'vector))
-        (s5-6 (new 'static 'vector)))
-    (when (and s2-3 (or (!= *camera-layout-blink* 'index) (logtest? (-> *display* real-actual-frame-counter) 8)))
+  (let ((camera-points (res-lump-data camera 'campoints pointer :time 1.0))
+        (camera-points-offset (res-lump-struct camera 'campoints-offset structure))
+        (camera-point-a (new 'stack-no-clear 'vector))
+        (camera-point-b (new 'stack-no-clear 'vector))
+        (camera-point (new 'static 'vector)))
+    (when (and camera-points (or (!= *camera-layout-blink* 'index) (logtest? (-> *display* real-actual-frame-counter) 8)))
       (cond
-        (v1-95
-         (vector+! s4-3 (the-as vector (&+ s2-3 0)) (the-as vector v1-95))
-         (vector+! s3-3 (the-as vector (&+ s2-3 16)) (the-as vector v1-95)))
+        (camera-points-offset
+         (vector+! camera-point-a (the-as vector (&+ camera-points 0)) (the-as vector camera-points-offset))
+         (vector+! camera-point-b (the-as vector (&+ camera-points 16)) (the-as vector camera-points-offset)))
         (else
-         (set! (-> s4-3 quad) (-> (the-as (pointer uint128) (&+ s2-3 0))))
-         (set! (-> s3-3 quad) (-> (the-as (pointer uint128) (&+ s2-3 16))))))
-      (camera-line s4-3 s3-3 (new 'static 'vector4w :y #x80 :w #x80))
-      (vector-lerp-clamp! s5-6 s4-3 s3-3 (-> *CAM_LAYOUT-bank* spline-t))
+         (set! (-> camera-point-a quad) (-> (the-as (pointer uint128) (&+ camera-points 0))))
+         (set! (-> camera-point-b quad) (-> (the-as (pointer uint128) (&+ camera-points 16))))))
+      (camera-line camera-point-a camera-point-b (new 'static 'vector4w :y #x80 :w #x80))
+      (vector-lerp-clamp! camera-point camera-point-a camera-point-b (-> *CAM_LAYOUT-bank* spline-t))
       (camera-cross (new 'static 'vector :y 1024.0)
                     (new 'static 'vector :z 1024.0)
-                    s5-6
+                    camera-point
                     (new 'static 'vector4w :x #xff :y #xff :w #x80)
                     (meters 1))))
-  (let ((s4-4 (res-lump-data arg0 'focalpull pointer :time (the-as float 1.0)))
-        (s5-7 (new 'static 'vector)))
-    (when (and s4-4 (or (!= *camera-layout-blink* 'focalpull) (logtest? (-> *display* real-actual-frame-counter) 8)))
-      (camera-line (the-as vector (&+ s4-4 0)) (the-as vector (&+ s4-4 16)) (new 'static 'vector4w :y #xff :z #xff :w #x80))
-      (vector-lerp-clamp! s5-7 (the-as vector (&+ s4-4 0)) (the-as vector (&+ s4-4 16)) (-> *CAM_LAYOUT-bank* spline-t))
+  (let ((focal-pull-points (res-lump-data camera 'focalpull pointer :time 1.0))
+        (focal-pull-point (new 'static 'vector)))
+    (when (and focal-pull-points (or (!= *camera-layout-blink* 'focalpull) (logtest? (-> *display* real-actual-frame-counter) 8)))
+      (camera-line (the-as vector (&+ focal-pull-points 0))
+                   (the-as vector (&+ focal-pull-points 16))
+                   (new 'static 'vector4w :y #xff :z #xff :w #x80))
+      (vector-lerp-clamp! focal-pull-point
+                          (the-as vector (&+ focal-pull-points 0))
+                          (the-as vector (&+ focal-pull-points 16))
+                          (-> *CAM_LAYOUT-bank* spline-t))
       (camera-cross (new 'static 'vector :y 1024.0)
                     (new 'static 'vector :z 1024.0)
-                    s5-7
+                    focal-pull-point
                     (new 'static 'vector4w :y #xff :z #xff :w #x80)
                     (meters 1))))
-  (let ((s5-8 (new 'stack 'interp-test-info))
-        (s4-5 (new-stack-vector0)))
-    (when (and (cam-slave-get-vector-with-offset arg0 (-> s5-8 origin) 'pivot)
-               (cam-slave-get-vector-with-offset arg0 (-> s5-8 to) 'align)
-               (cam-slave-get-vector-with-offset arg0 (-> s5-8 from) 'trans))
-      (camera-line (-> s5-8 from) (-> s5-8 origin) (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
-      (camera-line (-> s5-8 to) (-> s5-8 origin) (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
-      (vector-! (-> s5-8 from) (-> s5-8 from) (-> s5-8 origin))
-      (vector-! (-> s5-8 to) (-> s5-8 to) (-> s5-8 origin))
-      (vector-cross! s4-5 (-> s5-8 from) (-> s5-8 to))
-      (vector-normalize! s4-5 (the-as float 8192.0))
-      (vector+! s4-5 s4-5 (-> s5-8 origin))
-      (camera-line (-> s5-8 origin) s4-5 (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
-      (when (not (paused?))
-        (+! (-> *CAM_LAYOUT-bank* debug-t) (-> *CAM_LAYOUT-bank* debug-step))
-        (if (< 1.0 (-> *CAM_LAYOUT-bank* debug-t)) (set! (-> *CAM_LAYOUT-bank* debug-t) 0.0)))
-      (set! (-> s5-8 axis) #f)
-      (set! (-> s5-8 disp) "li")
-      (set! (-> s5-8 color) (new 'static 'vector4w :x #xff :w #x80))
-      (interp-test (the-as (function vector vector vector float vector float none) vector-lerp!) s5-8)
-      (set! (-> s5-8 disp) "si")
-      (set! (-> s5-8 color) (new 'static 'vector4w :y #xff :w #x80))
-      (interp-test (the-as (function vector vector vector float vector float none) v-slrp!) s5-8)
-      (set! (-> s5-8 disp) "si2")
-      (set! (-> s5-8 color) (new 'static 'vector4w :z #xff :w #x80))
-      (interp-test (the-as (function vector vector vector float vector float none) v-slrp2!) s5-8)
-      (set! (-> s5-8 disp) "si3")
-      (set! (-> s5-8 color) (new 'static 'vector4w :x #xff :z #xff :w #x80))
-      (interp-test-deg (the-as (function vector vector vector vector float none) v-slrp3!) s5-8)
-      (set! (-> s5-8 axis) (-> *camera* local-down))
-      (set! (-> s5-8 disp) "si2d")
-      (set! (-> s5-8 color) (new 'static 'vector4w :y #xff :z #xff :w #x80))
-      (interp-test (the-as (function vector vector vector float vector float none) v-slrp2!) s5-8)
-      (set! (-> s5-8 disp) "si3d")
-      (set! (-> s5-8 color) (new 'static 'vector4w :x #xff :y #xff :w #x80))
-      (interp-test-deg (the-as (function vector vector vector vector float none) v-slrp3!) s5-8))))
+  (let ((test-info (new 'stack 'interp-test-info))
+        (test-axis (new-stack-vector0)))
+    (the-as basic
+            (when (and (cam-slave-get-vector-with-offset camera (-> test-info origin) 'pivot)
+                       (cam-slave-get-vector-with-offset camera (-> test-info to) 'align)
+                       (cam-slave-get-vector-with-offset camera (-> test-info from) 'trans))
+              (camera-line (-> test-info from) (-> test-info origin) (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
+              (camera-line (-> test-info to) (-> test-info origin) (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
+              (vector-! (-> test-info from) (-> test-info from) (-> test-info origin))
+              (vector-! (-> test-info to) (-> test-info to) (-> test-info origin))
+              (vector-cross! test-axis (-> test-info from) (-> test-info to))
+              (vector-normalize! test-axis (meters 2))
+              (vector+! test-axis test-axis (-> test-info origin))
+              (camera-line (-> test-info origin) test-axis (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80))
+              (when (not (paused?))
+                (+! (-> *CAM_LAYOUT-bank* debug-t) (-> *CAM_LAYOUT-bank* debug-step))
+                (if (< 1.0 (-> *CAM_LAYOUT-bank* debug-t))
+                    (set! (-> *CAM_LAYOUT-bank* debug-t) 0.0)))
+              (set! (-> test-info axis) #f)
+              (set! (-> test-info disp) "li")
+              (set! (-> test-info color) (new 'static 'vector4w :x #xff :w #x80))
+              (interp-test (the-as (function vector vector vector float vector float none) vector-lerp!) test-info)
+              (set! (-> test-info disp) "si")
+              (set! (-> test-info color) (new 'static 'vector4w :y #xff :w #x80))
+              (interp-test (the-as (function vector vector vector float vector float none) v-slrp!) test-info)
+              (set! (-> test-info disp) "si2")
+              (set! (-> test-info color) (new 'static 'vector4w :z #xff :w #x80))
+              (interp-test (the-as (function vector vector vector float vector float none) v-slrp2!) test-info)
+              (set! (-> test-info disp) "si3")
+              (set! (-> test-info color) (new 'static 'vector4w :x #xff :z #xff :w #x80))
+              (interp-test-deg (the-as (function vector vector vector vector float none) v-slrp3!) test-info)
+              (set! (-> test-info axis) (-> *camera* local-down))
+              (set! (-> test-info disp) "si2d")
+              (set! (-> test-info color) (new 'static 'vector4w :y #xff :z #xff :w #x80))
+              (interp-test (the-as (function vector vector vector float vector float none) v-slrp2!) test-info)
+              (set! (-> test-info disp) "si3d")
+              (set! (-> test-info color) (new 'static 'vector4w :x #xff :y #xff :w #x80))
+              (interp-test-deg (the-as (function vector vector vector vector float none) v-slrp3!) test-info)))))
 
 (defun clmf-button-test ()
+  "Display the button-test message, consume analog camera input, and report that no menu action was
+   completed so dispatch can continue."
   (cam-layout-print 16 *camera-layout-message-ypos* "button test")
   (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
   (set! *camera-read-analog* #f)
   #f)
 
 (defun clmf-bna ()
+  "Display that the selected button is not applicable and consume analog camera input."
   (cam-layout-print 16 *camera-layout-message-ypos* "button not applicable")
   (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
   (set! *camera-read-analog* #f)
   #t)
 
 (defun clmf-implement ()
+  "Display that the selected button is not implemented and consume analog camera input."
   (cam-layout-print 16 *camera-layout-message-ypos* "button not implemented yet")
   (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
   (set! *camera-read-analog* #f)
   #t)
 
-(defun clmf-input ((arg0 vector) (arg1 vector) (arg2 int))
-  (vector-reset! arg0)
-  (vector-reset! arg1)
+(defun clmf-input ((rotation-input vector) (translation-input vector) (pad-index int))
+  "Read one controller into rotation and camera-relative translation vectors. The right stick
+   pitches/yaws, L3 changes it to roll, the left stick moves horizontally, and L1/R1 move vertically."
+  (vector-reset! rotation-input)
+  (vector-reset! translation-input)
   (cond
-    ((cpad-hold? arg2 l3)
-     (set! (-> arg0 z)
-           (- (-> arg0 z)
-              (analog-input (the-as int (-> *cpad-list* cpads arg2 rightx))
-                            (the-as float 128.0)
-                            (the-as float 48.0)
-                            (the-as float 110.0)
-                            (the-as float 1.0)))))
+    ((cpad-hold? pad-index l3)
+     (set! (-> rotation-input z)
+           (- (-> rotation-input z) (analog-input (the-as int (-> *cpad-list* cpads pad-index rightx)) 128.0 48.0 110.0 1.0))))
     (else
-     (set! (-> arg0 y)
-           (- (-> arg0 y)
-              (analog-input (the-as int (-> *cpad-list* cpads arg2 rightx))
-                            (the-as float 128.0)
-                            (the-as float 48.0)
-                            (the-as float 110.0)
-                            (the-as float 1.0))))
-     (+! (-> arg0 x)
-         (analog-input (the-as int (-> *cpad-list* cpads arg2 righty))
-                       (the-as float 128.0)
-                       (the-as float 48.0)
-                       (the-as float 110.0)
-                       (the-as float 1.0)))
-     (set! (-> arg1 x)
-           (- (-> arg1 x)
-              (analog-input (the-as int (-> *cpad-list* cpads arg2 leftx))
-                            (the-as float 128.0)
-                            (the-as float 48.0)
-                            (the-as float 110.0)
-                            (the-as float 1.0))))
+     (set! (-> rotation-input y)
+           (- (-> rotation-input y) (analog-input (the-as int (-> *cpad-list* cpads pad-index rightx)) 128.0 48.0 110.0 1.0)))
+     (+! (-> rotation-input x) (analog-input (the-as int (-> *cpad-list* cpads pad-index righty)) 128.0 48.0 110.0 1.0))
+     (set! (-> translation-input x)
+           (- (-> translation-input x) (analog-input (the-as int (-> *cpad-list* cpads pad-index leftx)) 128.0 48.0 110.0 1.0)))
      (when *camera-read-buttons*
-       (if (cpad-hold? arg2 r1)
-         (set! (-> arg1 y)
+       (if (cpad-hold? pad-index r1)
+         (set! (-> translation-input y)
                (+ 0.5
-                  (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
+                  (analog-input (the-as int (-> *cpad-list* cpads pad-index abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
                                 (the-as float 0.0)
                                 (the-as float 32.0)
                                 (the-as float 230.0)
                                 (the-as float 0.5))
-                  (-> arg1 y)))))
+                  (-> translation-input y)))))
      (when *camera-read-buttons*
-       (if (cpad-hold? arg2 l1)
-         (set! (-> arg1 y)
-               (- (-> arg1 y)
+       (if (cpad-hold? pad-index l1)
+         (set! (-> translation-input y)
+               (- (-> translation-input y)
                   (+ 0.5
-                     (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
+                     (analog-input (the-as int (-> *cpad-list* cpads pad-index abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
                                    (the-as float 0.0)
                                    (the-as float 32.0)
                                    (the-as float 230.0)
                                    (the-as float 0.5)))))))
-     (set! (-> arg1 z)
-           (- (-> arg1 z)
-              (analog-input (the-as int (-> *cpad-list* cpads arg2 lefty))
-                            (the-as float 128.0)
-                            (the-as float 48.0)
-                            (the-as float 110.0)
-                            (the-as float 1.0))))))
-  (let ((s5-1 (new-stack-matrix0)))
-    (let ((a2-8 (new-stack-vector0)))
-      (set! (-> a2-8 y) -1.0)
-      (forward-down-nopitch->inv-matrix s5-1 (-> *math-camera* inv-camera-rot vector 2) a2-8))
-    (vector-matrix*! arg1 arg1 s5-1))
-  arg1)
+     (set! (-> translation-input z)
+           (- (-> translation-input z) (analog-input (the-as int (-> *cpad-list* cpads pad-index lefty)) 128.0 48.0 110.0 1.0)))))
+  (let ((camera-basis (new-stack-matrix0)))
+    (let ((world-down (new-stack-vector0)))
+      (set! (-> world-down y) -1.0)
+      (forward-down-nopitch->inv-matrix camera-basis (-> *math-camera* inv-camera-rot vector 2) world-down))
+    (vector-matrix*! translation-input translation-input camera-basis))
+  translation-input)
 
-(defbehavior clmf-pos-rot cam-layout ((arg0 symbol) (arg1 symbol))
-  (local-vars (s2-0 structure) (s3-1 structure))
+(defbehavior clmf-pos-rot cam-layout ((position-property symbol) (rotation-property symbol))
+  "Ensure the selected camera has the requested position and optional rotation offset resources,
+   then edit them from controller zero in camera-relative translation and world rotation."
+  (local-vars (rotation structure) (position structure))
   (cam-layout-print 16 *camera-layout-message-ypos* "x/z pos: left stick, down: l1, up: r1")
   (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
-  (when (and arg1 (nonzero? arg1))
+  (when (and rotation-property (nonzero? rotation-property))
     (cam-layout-print 16 *camera-layout-message-ypos* "x/y rot: right stick")
     (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
     (cam-layout-print 16 *camera-layout-message-ypos* "z rot: press left stick & move right")
     (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8)))
-  (let ((s5-0 (new-stack-vector0))
-        (s4-0 (new-stack-vector0)))
-    (set! s3-1
+  (let ((rotation-input (new-stack-vector0))
+        (translation-input (new-stack-vector0)))
+    (set! position
           (cond
-            ((or (zero? arg0) (not arg0)) #f)
+            ((or (zero? position-property) (not position-property)) #f)
             (else
-             (if (not (res-lump-struct (-> self cam-entity) arg0 structure :time (the-as float -1000000000.0)))
-               (add-data! (-> self cam-entity)
-                          (new 'static 'res-tag :name arg0 :key-frame -1000000000.0 :elt-count #x1 :inlined? #x1 :elt-type vector)
-                          (the-as pointer (new 'static 'vector))))
-             (set! s3-1 (res-lump-struct (-> self cam-entity) arg0 structure :time (the-as float -1000000000.0)))
-             (when (and (not s3-1) (logtest? (-> *display* real-actual-frame-counter) 8))
+             (if (not (res-lump-struct (-> self cam-entity) position-property structure))
+                 (add-data! (-> self cam-entity)
+                            (new 'static 'res-tag :name position-property :key-frame -1000000000.0 :elt-count #x1 :inlined? #x1 :elt-type vector)
+                            (the-as pointer (new 'static 'vector))))
+             (set! position (res-lump-struct (-> self cam-entity) position-property structure))
+             (when (and (not position) (logtest? (-> *display* real-actual-frame-counter) 8))
                (clear *temp-string*)
                (format *temp-string* "ERROR <GMJ>: can't add ~A" 'vector)
                (cam-layout-print 120 100 *temp-string*))
-             s3-1)))
-    (set! s2-0
+             position)))
+    (set! rotation
           (cond
-            ((or (zero? arg1) (not arg1)) #f)
+            ((or (zero? rotation-property) (not rotation-property)) #f)
             (else
-             (if (not (res-lump-struct (-> self cam-entity) arg1 structure :time (the-as float -1000000000.0)))
-               (add-data! (-> self cam-entity)
-                          (new 'static 'res-tag :name arg1 :key-frame -1000000000.0 :elt-count #x1 :inlined? #x1 :elt-type quaternion)
-                          (the-as pointer (quaternion-identity! (new 'static 'quaternion)))))
-             (set! s2-0 (res-lump-struct (-> self cam-entity) arg1 structure :time (the-as float -1000000000.0)))
-             (when (and (not s2-0) (logtest? (-> *display* real-actual-frame-counter) 8))
+             (if (not (res-lump-struct (-> self cam-entity) rotation-property structure))
+                 (add-data! (-> self cam-entity)
+                            (new 'static 'res-tag :name rotation-property :key-frame -1000000000.0 :elt-count #x1 :inlined? #x1 :elt-type quaternion)
+                            (the-as pointer (quaternion-identity! (new 'static 'quaternion)))))
+             (set! rotation (res-lump-struct (-> self cam-entity) rotation-property structure))
+             (when (and (not rotation) (logtest? (-> *display* real-actual-frame-counter) 8))
                (clear *temp-string*)
                (format *temp-string* "ERROR <GMJ>: can't add ~A" 'quaternion)
                (cam-layout-print 120 100 *temp-string*))
-             s2-0)))
-    (let ((s1-1 (new 'stack-no-clear 'matrix))
-          (sv-192 (new 'stack-no-clear 'matrix))
-          (s0-1 (new 'stack-no-clear 'vector)))
-      (if (not s3-1) (return #f))
-      (clmf-input s5-0 s4-0 0)
-      (vector+float*! (the-as vector s3-1) (the-as vector s3-1) s4-0 (the-as float 409.6))
+             rotation)))
+    (let ((incremental-rotation (new 'stack-no-clear 'matrix))
+          (camera-rotation (new 'stack-no-clear 'matrix))
+          (new-rotation (new 'stack-no-clear 'vector)))
+      (if (not position) (return #f))
+      (clmf-input rotation-input translation-input 0)
+      (vector+float*! (the-as vector position) (the-as vector position) translation-input (meters 0.1))
       (cond
-        ((not arg1) (the-as quaternion #f))
-        ((zero? arg1) (the-as quaternion #f))
+        ((not rotation-property)
+         (the-as quaternion #f))
+        ((zero? rotation-property)
+         (the-as quaternion #f))
         (else
-         (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) sv-192)
-         (vector-float*! s5-0 s5-0 100.0)
-         (matrix-rotate-x! s1-1 (- (-> s5-0 x)))
-         (matrix*! sv-192 s1-1 sv-192)
-         (matrix-rotate-y! s1-1 (-> s5-0 y))
-         (matrix*! sv-192 sv-192 s1-1)
-         (matrix-rotate-z! s1-1 (- (-> s5-0 z)))
-         (matrix*! sv-192 s1-1 sv-192)
-         (matrix->quaternion (the-as quaternion s0-1) sv-192)
-         (quaternion-inverse! (the-as quaternion s2-0) (-> self cam-entity quat))
-         (quaternion*! (the-as quaternion s2-0) (the-as quaternion s0-1) (the-as quaternion s2-0))
-         (quaternion-normalize! (the-as quaternion s2-0))))))
+         (cam-slave-get-rot (-> self cam-entity) camera-rotation)
+         (vector-float*! rotation-input rotation-input 100.0)
+         (matrix-rotate-x! incremental-rotation (- (-> rotation-input x)))
+         (matrix*! camera-rotation incremental-rotation camera-rotation)
+         (matrix-rotate-y! incremental-rotation (-> rotation-input y))
+         (matrix*! camera-rotation camera-rotation incremental-rotation)
+         (matrix-rotate-z! incremental-rotation (- (-> rotation-input z)))
+         (matrix*! camera-rotation incremental-rotation camera-rotation)
+         (matrix->quaternion (the-as quaternion new-rotation) camera-rotation)
+         (quaternion-inverse! (the-as quaternion rotation) (-> self cam-entity quat))
+         (quaternion*! (the-as quaternion rotation) (the-as quaternion new-rotation) (the-as quaternion rotation))
+         (quaternion-normalize! (the-as quaternion rotation))))))
   (set! *camera-read-analog* #f)
   #t)
 
-(defbehavior clmf-next-volume cam-layout ((arg0 int))
+(defbehavior clmf-next-volume cam-layout ((delta int))
+  "Advance the selected reconstructed volume by delta with wraparound."
   (if (zero? (-> self num-volumes)) (return #f))
-  (set! (-> self cur-volume) (mod (+ arg0 (-> self cur-volume)) (-> self num-volumes)))
+  (set! (-> self cur-volume) (mod (+ delta (-> self cur-volume)) (-> self num-volumes)))
   (while (< (-> self cur-volume) 0)
     (+! (-> self cur-volume) (-> self num-volumes)))
   #t)
 
 (defun clmf-next-vol-dpad ()
-  (local-vars (a0-1 int))
+  "Select the previous or next reconstructed volume from the d-pad and consume analog input."
+  (local-vars (delta int))
   (cam-layout-print 16 *camera-layout-message-ypos* "dpad selects volume")
   (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
   (cond
-    ((cpad-pressed? 0 down) (set! a0-1 1))
-    ((cpad-pressed? 0 right) (set! a0-1 1))
-    ((cpad-pressed? 0 up) (set! a0-1 -1))
-    ((cpad-pressed? 0 left) (set! a0-1 -1))
-    (else (set! a0-1 0)))
-  (clmf-next-volume a0-1)
+    ((cpad-pressed? 0 down) (set! delta 1))
+    ((cpad-pressed? 0 right) (set! delta 1))
+    ((cpad-pressed? 0 up) (set! delta -1))
+    ((cpad-pressed? 0 left) (set! delta -1))
+    (else (set! delta 0)))
+  (clmf-next-volume delta)
   (set! *camera-read-analog* #f)
   #t)
 
 (defun clmf-to-edit-cam ()
+  "Enter the general camera edit menu after validating the current volume selection."
   (clmf-next-volume 0)
   (set! *clm* *clm-edit*)
   #t)
 
 (define *last-cur-entity* -1)
 
-(defbehavior clmf-next-entity cam-layout ((arg0 int))
-  (let ((v1-0 (/ arg0 8)))
+(defbehavior clmf-next-entity cam-layout ((byte-step int))
+  "Advance the selected camera by byte-step divided by the eight-byte connection stride, wrapping
+   through the camera engine. Rebuild the selected camera's vol, pvol, and cutoutvol previews."
+  (let ((delta (/ byte-step 8)))
     (when (zero? (-> self num-entities))
       (set! (-> self cam-entity) #f)
       (return #f))
-    (if (= (- v1-0) (-> self num-entities)) (set! v1-0 -1))
-    (if (= v1-0 (-> self num-entities)) (set! v1-0 1))
-    (set! (-> self cur-entity) (mod (+ v1-0 (-> self cur-entity)) (-> self num-entities))))
+    (if (= (- delta) (-> self num-entities)) (set! delta -1))
+    (if (= delta (-> self num-entities)) (set! delta 1))
+    (set! (-> self cur-entity) (mod (+ delta (-> self cur-entity)) (-> self num-entities))))
   (while (< (-> self cur-entity) 0)
     (+! (-> self cur-entity) (-> self num-entities)))
   (set! *last-cur-entity* (-> self cur-entity))
-  (let ((v1-8 (-> self cur-entity))
-        (a0-13 (-> *camera-engine* alive-list next0)))
-    *camera-engine*
-    (let ((a1-3 (-> a0-13 next0)))
-      (while (!= a0-13 (-> *camera-engine* alive-list-end))
-        (let ((a0-14 (-> (the-as connection a0-13) param1)))
-          (cond
-            ((zero? v1-8)
-             (set! (-> self cam-entity) (the-as entity-camera a0-14))
-             (set! *volume-descriptor-current* 0)
-             (set! *volume-point-current* 0)
-             (set! *volume-normal-current* 0)
-             (set! (-> self num-volumes) 0)
-             (cam-layout-entity-volume-info-create (-> self cam-entity) 'vol)
-             (set! (-> self first-pvol) (-> self num-volumes))
-             (cam-layout-entity-volume-info-create (-> self cam-entity) 'pvol)
-             (set! (-> self first-cutoutvol) (-> self num-volumes))
-             (cam-layout-entity-volume-info-create (-> self cam-entity) 'cutoutvol)
-             (set! (-> *CAM_LAYOUT-bank* intro-step) (cam-slave-get-intro-step (-> self cam-entity)))
-             (return #f))
-            (else (+! v1-8 -1))))
-        (set! a0-13 a1-3)
-        *camera-engine*
-        (set! a1-3 (-> a1-3 next0)))))
+  (let ((entities-left (-> self cur-entity)))
+    (iterate-engine-connections (node *camera-engine*)
+      (let ((camera (-> node param1)))
+        (cond
+          ((zero? entities-left)
+           (set! (-> self cam-entity) (the-as entity-camera camera))
+           (set! *volume-descriptor-current* 0)
+           (set! *volume-point-current* 0)
+           (set! *volume-normal-current* 0)
+           (set! (-> self num-volumes) 0)
+           (cam-layout-entity-volume-info-create (-> self cam-entity) 'vol)
+           (set! (-> self first-pvol) (-> self num-volumes))
+           (cam-layout-entity-volume-info-create (-> self cam-entity) 'pvol)
+           (set! (-> self first-cutoutvol) (-> self num-volumes))
+           (cam-layout-entity-volume-info-create (-> self cam-entity) 'cutoutvol)
+           (set! (-> *CAM_LAYOUT-bank* intro-step) (cam-slave-get-intro-step (-> self cam-entity)))
+           (return #f))
+          (else
+           (+! entities-left -1))))))
   #t)
 
 (defbehavior clmf-to-vol-attr cam-layout ()
+  "Use the selected volume index as the resource key and enter the volume-attribute menu."
   (set! (-> self res-key) (the float (-> self cur-volume)))
   (set! *clm* *clm-vol-attr*)
   #t)
 
 (defun clmf-to-spline-attr ()
+  "Enter the camera-spline attribute menu."
   (set! *clm* *clm-spline-attr*)
   #t)
 
 (defun clmf-to-intro-attr ()
+  "Enter the intro-spline attribute menu."
   (set! *clm* *clm-intro-attr*)
   #t)
 
 (defun clmf-to-index-attr ()
+  "Enter the index-point attribute menu."
   (set! *clm* *clm-index-attr*)
   #t)
 
 (defun clmf-to-focalpull-attr ()
+  "Enter the focal-pull attribute menu."
   (set! *clm* *clm-focalpull-attr*)
   #t)
 
 (defbehavior clmf-to-edit cam-layout ()
+  "Reset the resource key to the default frame and return to the camera edit menu."
   (set! (-> self res-key) -1000000000.0)
   (set! *clm* *clm-edit*)
   #t)
 
 (defun clmf-to-select ()
+  "Stop blinking a camera component and return to the camera selection menu."
   (set! *camera-layout-blink* #f)
   (set! *clm* *clm-select*)
   #t)
 
 (defbehavior clmf-look-through cam-layout ()
+  "Copy the selected camera's field of view, position, and rotation into the alternate debug camera
+   and enable it for ten frames."
   (set! (-> *camera-other-fov* data) (cam-slave-get-fov (-> self cam-entity)))
-  (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) *camera-other-trans* 'trans)
-  (set! (-> *camera-other-root* quad) (-> *camera-other-trans* quad))
-  (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) *camera-other-matrix*)
+  (cam-slave-get-vector-with-offset (-> self cam-entity) *camera-other-trans* 'trans)
+  (vector-copy! *camera-other-root* *camera-other-trans*)
+  (cam-slave-get-rot (-> self cam-entity) *camera-other-matrix*)
   (set! *camera-look-through-other* 10)
   (set! *camera-read-analog* #f)
   #f)
 
-(defun fov->maya ((arg0 float))
-  (the-as float (if (= arg0 0.0) 0.0 (/ 12.700255 (tan (/ arg0 2))))))
+(defun fov->maya ((fov float))
+  "Convert a horizontal field-of-view angle to the Maya focal length used by the camera exporter.
+   Return zero for a zero field of view."
+  (if (= fov 0.0)
+      0.0
+      (/ 12.700255 (tan (/ fov 2)))))
 
-(defun cam-layout-save-cam-rot ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s3-0 (-> arg2 quat))
-        (s5-0 (res-lump-struct arg2 'rot-offset vector :time (the-as float -1000000000.0))))
-    (if arg0 (format #t "setup rot ~f ~f ~f ~f~%" (-> s3-0 x) (-> s3-0 y) (-> s3-0 z) (-> s3-0 w)))
-    (the-as string
-            (when s5-0
-              (if arg0 (format #t "rot offset ~f ~f ~f ~f~%" (-> s5-0 x) (-> s5-0 y) (-> s5-0 z) (-> s5-0 w)))
-              (format arg1
-                      "  tag rot-offset             ~f ~f ~f ~f // vector (quaternion)~%"
-                      (-> s5-0 x)
-                      (-> s5-0 y)
-                      (-> s5-0 z)
-                      (-> s5-0 w))))))
+(defun cam-layout-save-cam-rot ((print? symbol) (output string) (camera entity-actor))
+  "Write the camera's rot-offset quaternion when present, optionally printing the setup rotation
+   and offset."
+  (let ((setup-rotation (-> camera quat))
+        (rotation-offset (res-lump-struct camera 'rot-offset vector)))
+    (if print?
+        (format #t
+                "setup rot ~f ~f ~f ~f~%"
+                (-> setup-rotation x)
+                (-> setup-rotation y)
+                (-> setup-rotation z)
+                (-> setup-rotation w)))
+    (when rotation-offset
+      (if print?
+          (format #t
+                  "rot offset ~f ~f ~f ~f~%"
+                  (-> rotation-offset x)
+                  (-> rotation-offset y)
+                  (-> rotation-offset z)
+                  (-> rotation-offset w)))
+      (format output
+              "  tag rot-offset             ~f ~f ~f ~f // vector (quaternion)~%"
+              (-> rotation-offset x)
+              (-> rotation-offset y)
+              (-> rotation-offset z)
+              (-> rotation-offset w))))
+  (none))
 
-(defun cam-layout-save-cam-trans ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s1-0 (-> arg2 trans))
-        (s5-0 (method-of-type res-lump get-property-struct))
-        (s2-0 arg2))
-    (format (clear *res-key-string*) "~S~S" 'trans '-offset)
-    (let ((s5-1 (the-as vector
-                        (s5-0 s2-0
-                              (string->symbol *res-key-string*)
-                              'interp
-                              (the-as float -1000000000.0)
-                              #f
-                              (the-as (pointer res-tag) #f)
-                              *res-static-buf*))))
-      (let ((s2-1 (res-lump-struct arg2 'translation_info vector :time (the-as float -1000000000.0)))
-            (s3-1 (new-stack-vector0)))
-        (if arg0 (format #t "setup trans ~M ~M ~M (maya)~%" (-> s1-0 x) (-> s1-0 y) (-> s1-0 z)))
-        (set! (-> s3-1 quad) (-> s1-0 quad))
-        (when (the-as structure s5-1)
-          (if arg0 (format #t "offset ~M ~M ~M (added)~%" (-> s5-1 x) (-> s5-1 y) (-> s5-1 z)))
-          (vector+! s3-1 s3-1 s5-1))
-        (when s2-1
-          (if arg0 (format #t "level-trans ~M ~M ~M (subtracted)~%" (-> s2-1 x) (-> s2-1 y) (-> s2-1 z)))
-          (vector-! s3-1 s3-1 s2-1))
-        (set! s2-1 (the-as vector (or s5-1 s2-1)))
-        (set! arg0 (and (the-as symbol s2-1) arg0))
-        (if arg0 (format #t "final trans ~M ~M ~M (maya)~%" (-> s3-1 x) (-> s3-1 y) (-> s3-1 z))))
-      (the-as string
-              (if s5-1
-                (format arg1
-                        "  tag trans-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
-                        (-> s5-1 x)
-                        (-> s5-1 y)
-                        (-> s5-1 z)))))))
+(defun cam-layout-save-cam-trans ((print? symbol) (output string) (camera entity-actor))
+  "Write trans-offset when present. Diagnostic output also shows the setup translation, the added
+   offset, an optional subtracted translation_info level origin, and the resulting Maya position."
+  (let ((setup-translation (-> camera trans))
+        (translation-offset (res-lump-struct camera (string->symbol (format (clear *res-key-string*) "~S~S" 'trans '-offset)) vector)))
+    (let ((level-translation (res-lump-struct camera 'translation_info vector))
+          (final-translation (new-stack-vector0)))
+      (if print?
+          (format #t "setup trans ~M ~M ~M (maya)~%" (-> setup-translation x) (-> setup-translation y) (-> setup-translation z)))
+      (vector-copy! final-translation setup-translation)
+      (when (the-as structure translation-offset)
+        (if print?
+            (format #t "offset ~M ~M ~M (added)~%" (-> translation-offset x) (-> translation-offset y) (-> translation-offset z)))
+        (vector+! final-translation final-translation translation-offset))
+      (when level-translation
+        (if print?
+            (format #t
+                    "level-trans ~M ~M ~M (subtracted)~%"
+                    (-> level-translation x)
+                    (-> level-translation y)
+                    (-> level-translation z)))
+        (vector-! final-translation final-translation level-translation))
+      (set! level-translation (the-as vector (or translation-offset level-translation)))
+      (set! print? (and (the-as symbol level-translation) print?))
+      (if print?
+          (format #t "final trans ~M ~M ~M (maya)~%" (-> final-translation x) (-> final-translation y) (-> final-translation z))))
+    (if translation-offset
+        (format output
+                "  tag trans-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
+                (-> translation-offset x)
+                (-> translation-offset y)
+                (-> translation-offset z))))
+  (none))
 
-(defun cam-layout-save-pivot ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s2-0 (res-lump-struct arg2 'pivot vector :time (the-as float -1000000000.0)))
-        (s3-0 (method-of-type res-lump get-property-struct)))
-    (format (clear *res-key-string*) "~S~S" 'pivot '-offset)
-    (let ((s5-1 (the-as vector
-                        (s3-0 arg2
-                              (string->symbol *res-key-string*)
-                              'interp
-                              (the-as float -1000000000.0)
-                              #f
-                              (the-as (pointer res-tag) #f)
-                              *res-static-buf*)))
-          (s3-1 (new-stack-vector0)))
-      (the-as string
-              (when s2-0
-                (if s5-1 (vector+! s3-1 s2-0 s5-1) (set! (-> s3-1 quad) (-> s2-0 quad)))
-                (if arg0 (format #t "setup pivot ~M ~M ~M~%" (-> s2-0 x) (-> s2-0 y) (-> s2-0 z)))
-                (when s5-1
-                  (when arg0
-                    (format #t "offset ~M ~M ~M~%" (-> s5-1 x) (-> s5-1 y) (-> s5-1 z))
-                    (format #t "final pivot ~M ~M ~M~%" (-> s3-1 x) (-> s3-1 y) (-> s3-1 z)))
-                  (format arg1
-                          "  tag pivot-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
-                          (-> s5-1 x)
-                          (-> s5-1 y)
-                          (-> s5-1 z))))))))
+(defun cam-layout-save-pivot ((print? symbol) (output string) (camera entity-actor))
+  "Write pivot-offset when both the base pivot and its offset are present, optionally printing the
+   base, offset, and combined position."
+  (let ((base-position (res-lump-struct camera 'pivot vector))
+        (offset (res-lump-struct camera (string->symbol (format (clear *res-key-string*) "~S~S" 'pivot '-offset)) vector))
+        (final-position (new-stack-vector0)))
+    (when base-position
+      (if offset
+          (vector+! final-position base-position offset)
+          (vector-copy! final-position base-position))
+      (if print?
+          (format #t "setup pivot ~M ~M ~M~%" (-> base-position x) (-> base-position y) (-> base-position z)))
+      (when offset
+        (when print?
+          (format #t "offset ~M ~M ~M~%" (-> offset x) (-> offset y) (-> offset z))
+          (format #t "final pivot ~M ~M ~M~%" (-> final-position x) (-> final-position y) (-> final-position z)))
+        (format output
+                "  tag pivot-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
+                (-> offset x)
+                (-> offset y)
+                (-> offset z)))))
+  (none))
 
-(defun cam-layout-save-align ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s2-0 (res-lump-struct arg2 'align vector :time (the-as float -1000000000.0)))
-        (s3-0 (method-of-type res-lump get-property-struct)))
-    (format (clear *res-key-string*) "~S~S" 'align '-offset)
-    (let ((s5-1 (the-as vector
-                        (s3-0 arg2
-                              (string->symbol *res-key-string*)
-                              'interp
-                              (the-as float -1000000000.0)
-                              #f
-                              (the-as (pointer res-tag) #f)
-                              *res-static-buf*)))
-          (s3-1 (new-stack-vector0)))
-      (the-as string
-              (when s2-0
-                (if s5-1 (vector+! s3-1 s2-0 s5-1) (set! (-> s3-1 quad) (-> s2-0 quad)))
-                (if arg0 (format #t "setup align ~M ~M ~M~%" (-> s2-0 x) (-> s2-0 y) (-> s2-0 z)))
-                (when s5-1
-                  (when arg0
-                    (format #t "offset ~M ~M ~M~%" (-> s5-1 x) (-> s5-1 y) (-> s5-1 z))
-                    (format #t "final align ~M ~M ~M~%" (-> s3-1 x) (-> s3-1 y) (-> s3-1 z)))
-                  (format arg1
-                          "  tag align-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
-                          (-> s5-1 x)
-                          (-> s5-1 y)
-                          (-> s5-1 z))))))))
+(defun cam-layout-save-align ((print? symbol) (output string) (camera entity-actor))
+  "Write align-offset when both the base alignment point and its offset are present, optionally
+   printing the base, offset, and combined position."
+  (let ((base-position (res-lump-struct camera 'align vector))
+        (offset (res-lump-struct camera (string->symbol (format (clear *res-key-string*) "~S~S" 'align '-offset)) vector))
+        (final-position (new-stack-vector0)))
+    (when base-position
+      (if offset
+          (vector+! final-position base-position offset)
+          (vector-copy! final-position base-position))
+      (if print?
+          (format #t "setup align ~M ~M ~M~%" (-> base-position x) (-> base-position y) (-> base-position z)))
+      (when offset
+        (when print?
+          (format #t "offset ~M ~M ~M~%" (-> offset x) (-> offset y) (-> offset z))
+          (format #t "final align ~M ~M ~M~%" (-> final-position x) (-> final-position y) (-> final-position z)))
+        (format output
+                "  tag align-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
+                (-> offset x)
+                (-> offset y)
+                (-> offset z)))))
+  (none))
 
-(defun cam-layout-save-interesting ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s2-0 (res-lump-struct arg2 'interesting vector :time (the-as float -1000000000.0)))
-        (s3-0 (method-of-type res-lump get-property-struct)))
-    (format (clear *res-key-string*) "~S~S" 'interesting '-offset)
-    (let ((s5-1 (the-as vector
-                        (s3-0 arg2
-                              (string->symbol *res-key-string*)
-                              'interp
-                              (the-as float -1000000000.0)
-                              #f
-                              (the-as (pointer res-tag) #f)
-                              *res-static-buf*)))
-          (s3-1 (new-stack-vector0)))
-      (the-as string
-              (when s2-0
-                (if s5-1 (vector+! s3-1 s2-0 s5-1) (set! (-> s3-1 quad) (-> s2-0 quad)))
-                (if arg0 (format #t "setup interesting ~M ~M ~M~%" (-> s2-0 x) (-> s2-0 y) (-> s2-0 z)))
-                (when s5-1
-                  (when arg0
-                    (format #t "offset ~M ~M ~M~%" (-> s5-1 x) (-> s5-1 y) (-> s5-1 z))
-                    (format #t "final interesting ~M ~M ~M~%" (-> s3-1 x) (-> s3-1 y) (-> s3-1 z)))
-                  (format arg1
-                          "  tag interesting-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
-                          (-> s5-1 x)
-                          (-> s5-1 y)
-                          (-> s5-1 z))))))))
+(defun cam-layout-save-interesting ((print? symbol) (output string) (camera entity-actor))
+  "Write interesting-offset when both the base interest point and its offset are present,
+   optionally printing the base, offset, and combined position."
+  (let ((base-position (res-lump-struct camera 'interesting vector))
+        (offset (res-lump-struct camera (string->symbol (format (clear *res-key-string*) "~S~S" 'interesting '-offset)) vector))
+        (final-position (new-stack-vector0)))
+    (when base-position
+      (if offset
+          (vector+! final-position base-position offset)
+          (vector-copy! final-position base-position))
+      (if print?
+          (format #t "setup interesting ~M ~M ~M~%" (-> base-position x) (-> base-position y) (-> base-position z)))
+      (when offset
+        (when print?
+          (format #t "offset ~M ~M ~M~%" (-> offset x) (-> offset y) (-> offset z))
+          (format #t "final interesting ~M ~M ~M~%" (-> final-position x) (-> final-position y) (-> final-position z)))
+        (format output
+                "  tag interesting-offset           METERS(~M) METERS(~M) METERS(~M) 1.0 // vector~%"
+                (-> offset x)
+                (-> offset y)
+                (-> offset z)))))
+  (none))
 
-(defun cam-layout-save-fov ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'fov
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-fov ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero fov-offset in degrees and optionally print the base, offset, combined field of
+   view, and corresponding Maya focal length."
+  (let ((base-value (res-lump-float camera 'fov))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'fov '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
       (cond
-        ((= f30-0 0.0) (if arg0 (format #t "setup fov deg 0.0 (defaults to 64.0)~%")) (set! f30-0 11650.845))
-        (arg0 (format #t "setup fov deg ~R (~f in maya)~%" f30-0 (fov->maya f30-0))))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~R~%" f28-0)
-                  (format #t "final ~R (~f in maya) ~%" (+ f30-0 f28-0) (fov->maya (+ f30-0 f28-0))))
-                (format arg1 "  tag fov-offset             DEG(~R)                           // float~%" f28-0))))))
+        ((= base-value 0.0)
+         (if print?
+             (format #t "setup fov deg 0.0 (defaults to 64.0)~%"))
+         (set! base-value 11650.845))
+        (print?
+         (format #t "setup fov deg ~R (~f in maya)~%" base-value (fov->maya base-value))))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~R~%" offset)
+          (format #t "final ~R (~f in maya) ~%" (+ base-value offset) (fov->maya (+ base-value offset))))
+        (format output "  tag fov-offset             DEG(~R)                           // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-focalpull ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'focalPull
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-focalpull ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero focalPull-offset in meters and optionally print the base, offset, and combined
+   focal-pull distance."
+  (let ((base-value (res-lump-float camera 'focalPull))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'focalPull '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup focalPull deg ~R (~f in maya)~%" f30-0 (fov->maya f30-0)))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~R~%" f28-0)
-                  (format #t "final ~R (~f in maya) ~%" (+ f30-0 f28-0) (fov->maya (+ f30-0 f28-0))))
-                (format arg1 "  tag focalPull-offset       DEG(~R)                           // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup focalPull deg ~R (~f in maya)~%" base-value (fov->maya base-value)))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~R~%" offset)
+          (format #t "final ~R (~f in maya) ~%" (+ base-value offset) (fov->maya (+ base-value offset))))
+        (format output "  tag focalPull-offset       DEG(~R)                           // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-flags ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s4-0 (res-lump-value arg2 'flags uint128 :time (the-as float -1000000000.0)))
+(defun cam-layout-save-flags ((print? symbol) (output string) (camera entity-actor))
+  "Write nonzero camera flag-on and flag-off override masks, optionally printing the base and
+   effective masks."
+  (let ((s4-0 (res-lump-value camera 'flags uint128))
         (s5-0 (method-of-type res-lump get-property-value))
-        (s1-0 arg2))
+        (s1-0 camera))
     (format (clear *res-key-string*) "~S~S" 'flags '-on)
     (let ((s5-1 (s5-0 s1-0
                       (string->symbol *res-key-string*)
                       'interp
-                      (the-as float -1000000000.0)
+                      -1000000000.0
                       (the-as uint128 0)
                       (the-as (pointer res-tag) #f)
                       *res-static-buf*))
           (s1-1 (method-of-type res-lump get-property-value)))
       (format (clear *res-key-string*) "~S~S" 'flags '-off)
-      (let ((s3-1 (s1-1 arg2
+      (let ((s3-1 (s1-1 camera
                         (string->symbol *res-key-string*)
                         'interp
-                        (the-as float -1000000000.0)
+                        -1000000000.0
                         (the-as uint128 0)
                         (the-as (pointer res-tag) #f)
                         *res-static-buf*)))
-        (when arg0
+        (when print?
           (format #t "setup flags ")
           (cam-slave-options->string (the-as cam-slave-options s4-0) #t)
           (format #t "~%")
@@ -973,31 +1007,34 @@
             (format #t "final ")
             (cam-slave-options->string (the-as cam-slave-options s4-1) #t))
           (format #t "~%"))
-        (format arg1 "  tag flags-on               0x~X                              // int32~%" s5-1)
-        (the-as string (format arg1 "  tag flags-off              0x~X                              // int32~%" s3-1))))))
+        (format output "  tag flags-on               0x~X                              // int32~%" s5-1)
+        (format output "  tag flags-off              0x~X                              // int32~%" s3-1))))
+  (none))
 
-(defun cam-layout-save-focalpull-flags ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s4-0 (res-lump-value arg2 'focalpull-flags uint128 :time (the-as float -1000000000.0)))
+(defun cam-layout-save-focalpull-flags ((print? symbol) (output string) (camera entity-actor))
+  "Write nonzero focalpull-flags-on and focalpull-flags-off override masks, optionally printing the
+   base and effective masks."
+  (let ((s4-0 (res-lump-value camera 'focalpull-flags uint128))
         (s5-0 (method-of-type res-lump get-property-value))
-        (s1-0 arg2))
+        (s1-0 camera))
     (format (clear *res-key-string*) "~S~S" 'focalpull-flags '-on)
     (let ((s5-1 (s5-0 s1-0
                       (string->symbol *res-key-string*)
                       'interp
-                      (the-as float -1000000000.0)
+                      -1000000000.0
                       (the-as uint128 0)
                       (the-as (pointer res-tag) #f)
                       *res-static-buf*))
           (s1-1 (method-of-type res-lump get-property-value)))
       (format (clear *res-key-string*) "~S~S" 'focalpull-flags '-off)
-      (let ((s3-1 (s1-1 arg2
+      (let ((s3-1 (s1-1 camera
                         (string->symbol *res-key-string*)
                         'interp
-                        (the-as float -1000000000.0)
+                        -1000000000.0
                         (the-as uint128 0)
                         (the-as (pointer res-tag) #f)
                         *res-static-buf*)))
-        (when arg0
+        (when print?
           (format #t "setup focalpull-flags ")
           (cam-index-options->string (the-as cam-index-options s4-0) #t)
           (format #t "~%")
@@ -1011,31 +1048,34 @@
             (format #t "final ")
             (cam-index-options->string (the-as cam-index-options s4-1) #t))
           (format #t "~%"))
-        (format arg1 "  tag focalpull-flags-on               0x~X                              // int32~%" s5-1)
-        (the-as string (format arg1 "  tag focalpull-flags-off              0x~X                              // int32~%" s3-1))))))
+        (format output "  tag focalpull-flags-on               0x~X                              // int32~%" s5-1)
+        (format output "  tag focalpull-flags-off              0x~X                              // int32~%" s3-1))))
+  (none))
 
-(defun cam-layout-save-campoints-flags ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s4-0 (res-lump-value arg2 'campoints-flags uint128 :time (the-as float -1000000000.0)))
+(defun cam-layout-save-campoints-flags ((print? symbol) (output string) (camera entity-actor))
+  "Write nonzero campoints-flags-on and campoints-flags-off override masks, optionally printing the
+   base and effective masks."
+  (let ((s4-0 (res-lump-value camera 'campoints-flags uint128))
         (s5-0 (method-of-type res-lump get-property-value))
-        (s1-0 arg2))
+        (s1-0 camera))
     (format (clear *res-key-string*) "~S~S" 'campoints-flags '-on)
     (let ((s5-1 (s5-0 s1-0
                       (string->symbol *res-key-string*)
                       'interp
-                      (the-as float -1000000000.0)
+                      -1000000000.0
                       (the-as uint128 0)
                       (the-as (pointer res-tag) #f)
                       *res-static-buf*))
           (s1-1 (method-of-type res-lump get-property-value)))
       (format (clear *res-key-string*) "~S~S" 'campoints-flags '-off)
-      (let ((s3-1 (s1-1 arg2
+      (let ((s3-1 (s1-1 camera
                         (string->symbol *res-key-string*)
                         'interp
-                        (the-as float -1000000000.0)
+                        -1000000000.0
                         (the-as uint128 0)
                         (the-as (pointer res-tag) #f)
                         *res-static-buf*)))
-        (when arg0
+        (when print?
           (format #t "setup campoints-flags ")
           (cam-index-options->string (the-as cam-index-options s4-0) #t)
           (format #t "~%")
@@ -1049,383 +1089,340 @@
             (format #t "final ")
             (cam-index-options->string (the-as cam-index-options s4-1) #t))
           (format #t "~%"))
-        (format arg1 "  tag campoints-flags-on               0x~X                              // int32~%" s5-1)
-        (the-as string (format arg1 "  tag campoints-flags-off              0x~X                              // int32~%" s3-1))))))
+        (format output "  tag campoints-flags-on               0x~X                              // int32~%" s5-1)
+        (format output "  tag campoints-flags-off              0x~X                              // int32~%" s3-1))))
+  (none))
 
-(defun cam-layout-save-introsplinetime ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'intro-time
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-introsplinetime ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero intro-time-offset in seconds. Diagnostic output treats a zero base value as the
+   one-second default."
+  (let ((base-value (res-lump-float camera 'intro-time))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'intro-time '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
       (cond
-        ((= f30-0 0.0) (if arg0 (format #t "setup intro-time 0.0 (defaults to 1 sec)~%")) (set! f30-0 1.0))
-        (arg0 (format #t "setup intro-time ~f~%" f30-0)))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~f~%" f28-0)
-                  (format #t "final ~f~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag intro-time-offset      SECONDS(~f)                      // float~%" f28-0))))))
+        ((= base-value 0.0)
+         (if print?
+             (format #t "setup intro-time 0.0 (defaults to 1 sec)~%"))
+         (set! base-value 1.0))
+        (print?
+         (format #t "setup intro-time ~f~%" base-value)))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~f~%" offset)
+          (format #t "final ~f~%" (+ base-value offset)))
+        (format output "  tag intro-time-offset      SECONDS(~f)                      // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-introsplineexitval ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'intro-exitValue
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-introsplineexitval ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero intro-exitValue-offset. Diagnostic output notes that a zero base value uses the
+   default exit value of 0.5."
+  (let ((base-value (res-lump-float camera 'intro-exitValue))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'intro-exitValue '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (when arg0
-        (if (= f30-0 0.0) (format #t "setup intro-exitValue 0.0 (defaults to 0.5)~%") (format #t "setup intro-exitValue ~f~%" f30-0)))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~f~%" f28-0)
-                  (format #t "final ~f~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag intro-exitValue-offset ~f                               // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (when print?
+        (if (= base-value 0.0)
+            (format #t "setup intro-exitValue 0.0 (defaults to 0.5)~%")
+            (format #t "setup intro-exitValue ~f~%" base-value)))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~f~%" offset)
+          (format #t "final ~f~%" (+ base-value offset)))
+        (format output "  tag intro-exitValue-offset ~f                               // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-interptime ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'interpTime
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-interptime ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero interpTime-offset in seconds, optionally printing the base, offset, and combined
+   interpolation time."
+  (let ((base-value (res-lump-float camera 'interpTime))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'interpTime '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup interpTime ~f~%" f30-0))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~f~%" f28-0)
-                  (format #t "final ~f~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag interpTime-offset     SECONDS(~f)                      // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup interpTime ~f~%" base-value))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~f~%" offset)
+          (format #t "final ~f~%" (+ base-value offset)))
+        (format output "  tag interpTime-offset     SECONDS(~f)                      // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-splineoffset ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (the-as string
-          (when (and (not (res-lump-struct arg2 'pivot structure :time (the-as float -1000000000.0)))
-                     (res-lump-struct arg2 'spline-offset structure :time (the-as float -1000000000.0)))
-            (let ((s4-1 (res-lump-struct arg2 'spline-offset vector :time (the-as float -1000000000.0))))
-              (when s4-1
-                (if arg0 (format #t "spline offset ~M ~M ~M~%" (-> s4-1 x) (-> s4-1 y) (-> s4-1 z)))
-                (format arg1
-                        "  tag spline-offset          METERS(~M) METERS(~M) METERS(~M) 1.0  // vector~%"
-                        (-> s4-1 x)
-                        (-> s4-1 y)
-                        (-> s4-1 z)))))))
+(defun cam-layout-save-splineoffset ((print? symbol) (output string) (camera entity-actor))
+  "Write spline-offset when a camera has no pivot and carries an explicit spline offset."
+  (when (and (not (res-lump-struct camera 'pivot structure)) (res-lump-struct camera 'spline-offset structure))
+    (let ((offset (res-lump-struct camera 'spline-offset vector)))
+      (when offset
+        (if print?
+            (format #t "spline offset ~M ~M ~M~%" (-> offset x) (-> offset y) (-> offset z)))
+        (format output
+                "  tag spline-offset          METERS(~M) METERS(~M) METERS(~M) 1.0  // vector~%"
+                (-> offset x)
+                (-> offset y)
+                (-> offset z)))))
+  (none))
 
-(defun cam-layout-save-spline-follow-dist-offset ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (the-as string
-          (when (and (not (res-lump-struct arg2 'pivot structure :time (the-as float -1000000000.0)))
-                     ((method-of-type res-lump get-property-value-float)
-                      arg2
-                      'spline-follow-dist-offset
-                      'interp
-                      (the-as float -1000000000.0)
-                      (the-as float #f)
-                      (the-as (pointer res-tag) #f)
-                      *res-static-buf*))
-            (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                          arg2
-                          'spline-follow-dist-offset
-                          'interp
-                          (the-as float -1000000000.0)
-                          (the-as float 0.0)
-                          (the-as (pointer res-tag) #f)
-                          *res-static-buf*)))
-              (when (the int f30-0)
-                (if arg0 (format #t "spline follow dist offset ~M~%" f30-0))
-                (format arg1 "  tag spline-follow-dist-offset          METERS(~M)~%" f30-0))))))
+(defun cam-layout-save-spline-follow-dist-offset ((print? symbol) (output string) (camera entity-actor))
+  "Write spline-follow-dist-offset when a camera has no pivot and carries the distance offset."
+  (when (and (not (res-lump-struct camera 'pivot structure))
+             (res-lump-float camera 'spline-follow-dist-offset :default (the-as float #f)))
+    (let ((offset (res-lump-float camera 'spline-follow-dist-offset)))
+      (when (the int offset)
+        (if print?
+            (format #t "spline follow dist offset ~M~%" offset))
+        (format output "  tag spline-follow-dist-offset          METERS(~M)~%" offset))))
+  (none))
 
-(defun cam-layout-save-campointsoffset ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((s5-0 (res-lump-struct arg2 'campoints-offset vector :time (the-as float -1000000000.0))))
-    (the-as string
-            (when s5-0
-              (if arg0 (format #t "index offset ~M ~M ~M~%" (-> s5-0 x) (-> s5-0 y) (-> s5-0 z)))
-              (format arg1
-                      "  tag campoints-offset          METERS(~M) METERS(~M) METERS(~M) 1.0  // vector~%"
-                      (-> s5-0 x)
-                      (-> s5-0 y)
-                      (-> s5-0 z))))))
+(defun cam-layout-save-campointsoffset ((print? symbol) (output string) (camera entity-actor))
+  "Write campoints-offset when present, optionally printing the three meter components."
+  (let ((offset (res-lump-struct camera 'campoints-offset vector)))
+    (when offset
+      (if print?
+          (format #t "index offset ~M ~M ~M~%" (-> offset x) (-> offset y) (-> offset z)))
+      (format output
+              "  tag campoints-offset          METERS(~M) METERS(~M) METERS(~M) 1.0  // vector~%"
+              (-> offset x)
+              (-> offset y)
+              (-> offset z))))
+  (none))
 
-(defun cam-layout-save-tiltAdjust ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'tiltAdjust
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-tiltAdjust ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero tiltAdjust-offset in degrees, optionally printing the base, offset, and combined
+   adjustment."
+  (let ((base-value (res-lump-float camera 'tiltAdjust))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'tiltAdjust '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup tiltAdjust deg ~R~%" f30-0))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~R~%" f28-0)
-                  (format #t "final ~R~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag tiltAdjust-offset      DEG(~R)                           // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup tiltAdjust deg ~R~%" base-value))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~R~%" offset)
+          (format #t "final ~R~%" (+ base-value offset)))
+        (format output "  tag tiltAdjust-offset      DEG(~R)                           // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-stringMinLength ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'stringMinLength
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-stringMinLength ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero stringMinLength-offset in meters, optionally printing the base, offset, and
+   combined value."
+  (let ((base-value (res-lump-float camera 'stringMinLength))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'stringMinLength '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup stringMinLength ~M~%" f30-0))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~M~%" f28-0)
-                  (format #t "final ~M~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag stringMinLength-offset METERS(~M)                            // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup stringMinLength ~M~%" base-value))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~M~%" offset)
+          (format #t "final ~M~%" (+ base-value offset)))
+        (format output "  tag stringMinLength-offset METERS(~M)                            // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-stringMaxLength ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'stringMaxLength
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-stringMaxLength ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero stringMaxLength-offset in meters, optionally printing the base, offset, and
+   combined value."
+  (let ((base-value (res-lump-float camera 'stringMaxLength))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'stringMaxLength '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup stringMaxLength ~M~%" f30-0))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~M~%" f28-0)
-                  (format #t "final ~M~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag stringMaxLength-offset METERS(~M)                            // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup stringMaxLength ~M~%" base-value))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~M~%" offset)
+          (format #t "final ~M~%" (+ base-value offset)))
+        (format output "  tag stringMaxLength-offset METERS(~M)                            // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-stringMinHeight ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'stringMinHeight
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-stringMinHeight ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero stringMinHeight-offset in meters, optionally printing the base, offset, and
+   combined value."
+  (let ((base-value (res-lump-float camera 'stringMinHeight))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'stringMinHeight '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup stringMinHeight ~M~%" f30-0))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~M~%" f28-0)
-                  (format #t "final ~M~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag stringMinHeight-offset METERS(~M)                            // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup stringMinHeight ~M~%" base-value))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~M~%" offset)
+          (format #t "final ~M~%" (+ base-value offset)))
+        (format output "  tag stringMinHeight-offset METERS(~M)                            // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-stringMaxHeight ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'stringMaxHeight
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-stringMaxHeight ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero stringMaxHeight-offset in meters, optionally printing the base, offset, and
+   combined value."
+  (let ((base-value (res-lump-float camera 'stringMaxHeight))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'stringMaxHeight '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup stringMaxHeight ~M~%" f30-0))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~M~%" f28-0)
-                  (format #t "final ~M~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag stringMaxHeight-offset METERS(~M)                            // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup stringMaxHeight ~M~%" base-value))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~M~%" offset)
+          (format #t "final ~M~%" (+ base-value offset)))
+        (format output "  tag stringMaxHeight-offset METERS(~M)                            // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-stringCliffHeight ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'stringCliffHeight
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-stringCliffHeight ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero stringCliffHeight-offset in meters, optionally printing the base, offset, and
+   combined value."
+  (let ((base-value (res-lump-float camera 'stringCliffHeight))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'stringCliffHeight '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup stringCliffHeight ~M~%" f30-0))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~M~%" f28-0)
-                  (format #t "final ~M~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag stringCliffHeight-offset METERS(~M)                            // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup stringCliffHeight ~M~%" base-value))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~M~%" offset)
+          (format #t "final ~M~%" (+ base-value offset)))
+        (format output "  tag stringCliffHeight-offset METERS(~M)                            // float~%" offset))))
+  (none))
 
-(defun cam-layout-save-maxAngle ((arg0 symbol) (arg1 string) (arg2 entity-actor))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                arg2
-                'maxAngle
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (s3-0 (method-of-type res-lump get-property-value-float)))
+(defun cam-layout-save-maxAngle ((print? symbol) (output string) (camera entity-actor))
+  "Write a nonzero maxAngle-offset in degrees, optionally printing the base, offset, and combined
+   angle."
+  (let ((base-value (res-lump-float camera 'maxAngle))
+        (get-property-value-float (method-of-type res-lump get-property-value-float)))
     (format (clear *res-key-string*) "~S~S" 'maxAngle '-offset)
-    (let ((f28-0 (s3-0 arg2
-                       (string->symbol *res-key-string*)
-                       'interp
-                       (the-as float -1000000000.0)
-                       (the-as float 0.0)
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*)))
-      (if arg0 (format #t "setup maxAngle ~R~%" f30-0))
-      (the-as string
-              (when (!= f28-0 0.0)
-                (when arg0
-                  (format #t "offset ~R~%" f28-0)
-                  (format #t "final ~R~%" (+ f30-0 f28-0)))
-                (format arg1 "  tag maxAngle-offset DEG(~R)                            // float~%" f28-0))))))
+    (let ((offset (get-property-value-float camera
+                                            (string->symbol *res-key-string*)
+                                            'interp
+                                            -1000000000.0
+                                            0.0
+                                            (the-as (pointer res-tag) #f)
+                                            *res-static-buf*)))
+      (if print?
+          (format #t "setup maxAngle ~R~%" base-value))
+      (when (!= offset 0.0)
+        (when print?
+          (format #t "offset ~R~%" offset)
+          (format #t "final ~R~%" (+ base-value offset)))
+        (format output "  tag maxAngle-offset DEG(~R)                            // float~%" offset))))
+  (none))
 
-(defbehavior clmf-save-single cam-layout ((arg0 entity-camera) (arg1 symbol) (arg2 symbol))
+(defbehavior clmf-save-single cam-layout ((camera entity-camera) (print? symbol) (named-file? symbol))
+  "Write one camera definition and its editable offset tags. print? also describes effective values
+   on the console; named-file? chooses the camera's .cam path instead of the garbage preview file."
   (clear *temp-string*)
-  (if arg2
-    (format *temp-string* "dd_next/caminfo/~s.cam" (res-lump-struct arg0 'name structure :time (the-as float -1000000000.0)))
-    (format *temp-string* "dd_next/caminfo/garbage"))
-  (let ((s4-2 (new 'stack 'file-stream *temp-string* 'write)))
-    (if arg1
-      (format #t
-              "---------camera '~S'------------~%"
-              (res-lump-struct arg0 'name structure :time (the-as float -1000000000.0))))
-    (format s4-2 "#include /next/config_data/standard.m2d~%")
-    (format s4-2 "camera ~s {~%" (res-lump-struct arg0 'name structure :time (the-as float -1000000000.0)))
-    (cam-layout-save-cam-rot arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-cam-trans arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-pivot arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-align arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-interesting arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-fov arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-focalpull arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-flags arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-introsplinetime arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-introsplineexitval arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-interptime arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-splineoffset arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-spline-follow-dist-offset arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-campointsoffset arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-tiltAdjust arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-stringMinLength arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-stringMaxLength arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-stringMinHeight arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-stringMaxHeight arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-stringCliffHeight arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-maxAngle arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-campoints-flags arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (cam-layout-save-focalpull-flags arg1 (the-as string s4-2) (the-as entity-actor arg0))
-    (format s4-2 "}~%")
-    (file-stream-close s4-2)))
+  (if named-file?
+      (format *temp-string* "dd_next/caminfo/~s.cam" (res-lump-struct camera 'name structure))
+      (format *temp-string* "dd_next/caminfo/garbage"))
+  (let ((output (new 'stack 'file-stream *temp-string* 'write)))
+    (if print?
+        (format #t "---------camera '~S'------------~%" (res-lump-struct camera 'name structure)))
+    (format output "#include /next/config_data/standard.m2d~%")
+    (format output "camera ~s {~%" (res-lump-struct camera 'name structure))
+    (cam-layout-save-cam-rot print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-cam-trans print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-pivot print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-align print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-interesting print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-fov print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-focalpull print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-flags print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-introsplinetime print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-introsplineexitval print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-interptime print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-splineoffset print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-spline-follow-dist-offset print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-campointsoffset print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-tiltAdjust print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-stringMinLength print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-stringMaxLength print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-stringMinHeight print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-stringMaxHeight print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-stringCliffHeight print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-maxAngle print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-campoints-flags print? (the-as string output) (the-as entity-actor camera))
+    (cam-layout-save-focalpull-flags print? (the-as string output) (the-as entity-actor camera))
+    (format output "}~%")
+    (file-stream-close output)))
 
-(defbehavior clmf-save-one cam-layout ((arg0 symbol))
-  (let ((s5-1 (logtest? (the-as int arg0) 8))
-        (gp-1 (logtest? (the-as int arg0) 16)))
-    (if s5-1 (format #t "~%~%~%=================================~%"))
-    (clmf-save-single (-> self cam-entity) s5-1 gp-1)
-    (if s5-1 (format #t "===============================~%~%~%~%"))
-    (if gp-1
-      (format #t
-              "'~S' save completed~%"
-              (res-lump-struct (-> self cam-entity) 'name structure :time (the-as float -1000000000.0)))))
+(defbehavior clmf-save-one cam-layout ((options symbol))
+  "Save the selected camera. Options bit three prints diagnostics and bit four writes the named
+   camera file instead of the garbage preview file."
+  (let ((print? (logtest? (the-as int options) 8))
+        (named-file? (logtest? (the-as int options) 16)))
+    (if print?
+        (format #t "~%~%~%=================================~%"))
+    (clmf-save-single (-> self cam-entity) print? named-file?)
+    (if print?
+        (format #t "===============================~%~%~%~%"))
+    (if named-file?
+        (format #t "'~S' save completed~%" (res-lump-struct (-> self cam-entity) 'name structure))))
   #t)
 
-(defbehavior clmf-save-all cam-layout ((arg0 symbol))
-  (let ((s5-1 (logtest? (the-as int arg0) 8))
-        (gp-1 (logtest? (the-as int arg0) 16)))
-    (if s5-1 (format #t "~%~%~%=================================~%"))
-    (let ((v1-5 (-> *camera-engine* alive-list next0)))
-      *camera-engine*
-      (let ((s4-0 (-> v1-5 next0)))
-        (while (!= v1-5 (-> *camera-engine* alive-list-end))
-          (let ((a0-4 (-> (the-as connection v1-5) param1))) (clmf-save-single (the-as entity-camera a0-4) s5-1 gp-1))
-          (set! v1-5 s4-0)
-          *camera-engine*
-          (set! s4-0 (-> s4-0 next0)))))
-    (if s5-1 (format #t "===============================~%~%~%~%"))
-    (if gp-1 (format #t "camera save all completed~%")))
+(defbehavior clmf-save-all cam-layout ((options symbol))
+  "Save every live camera. Options bit three prints diagnostics and bit four writes named files."
+  (let ((print? (logtest? (the-as int options) 8))
+        (named-file? (logtest? (the-as int options) 16)))
+    (if print?
+        (format #t "~%~%~%=================================~%"))
+    (iterate-engine-connections (node *camera-engine*)
+      (let ((camera (-> node param1)))
+        (clmf-save-single (the-as entity-camera camera) print? named-file?)))
+    (if print?
+        (format #t "===============================~%~%~%~%"))
+    (if named-file?
+        (format #t "camera save all completed~%")))
   #t)
 
 (deftype clmf-cam-flag-toggle-info (structure)
@@ -1434,189 +1431,194 @@
    (force-off int32)))
 
 
-(defbehavior clmf-cam-flag-toggle cam-layout ((arg0 int) (arg1 int))
-  (let ((s4-0 (/ arg0 8))
-        (gp-0 (new 'stack 'clmf-cam-flag-toggle-info)))
-    (set! (-> gp-0 key) (-> self res-key))
+(defbehavior clmf-cam-flag-toggle cam-layout ((scaled-bit-mask int) (property int))
+  "Divide scaled-bit-mask by eight, then cycle that camera flag through forced off, forced on, and
+   inherited. Volume keys are translated into the corresponding vol, pvol, or cutoutvol property
+   array."
+  (let ((bit (/ scaled-bit-mask 8))
+        (info (new 'stack 'clmf-cam-flag-toggle-info)))
+    (set! (-> info key) (-> self res-key))
     (cond
-      ((and (= arg1 'vol-flags) (>= (-> self res-key) (the float (-> self first-cutoutvol))))
-       (set! (-> gp-0 key) (- (-> gp-0 key) (the float (-> self first-cutoutvol))))
-       (set! arg1 (the-as int 'cutoutvol-flags)))
-      ((and (= arg1 'vol-flags) (>= (-> self res-key) (the float (-> self first-pvol))))
-       (set! (-> gp-0 key) (- (-> gp-0 key) (the float (-> self first-pvol))))
-       (set! arg1 (the-as int 'pvol-flags))))
-    (let ((s3-0 (method-of-type res-lump get-property-value))
-          (s2-0 (-> self cam-entity)))
-      (format (clear *res-key-string*) "~S~S" (the-as object arg1) '-on)
-      (set! (-> gp-0 force-on)
+      ((and (= property 'vol-flags) (>= (-> self res-key) (the float (-> self first-cutoutvol))))
+       (set! (-> info key) (- (-> info key) (the float (-> self first-cutoutvol))))
+       (set! property (the-as int 'cutoutvol-flags)))
+      ((and (= property 'vol-flags) (>= (-> self res-key) (the float (-> self first-pvol))))
+       (set! (-> info key) (- (-> info key) (the float (-> self first-pvol))))
+       (set! property (the-as int 'pvol-flags))))
+    (let ((get-property-value (method-of-type res-lump get-property-value))
+          (on-property-owner (-> self cam-entity)))
+      (format (clear *res-key-string*) "~S~S" (the-as object property) '-on)
+      (set! (-> info force-on)
             (the-as int
-                    (s3-0 s2-0
-                          (string->symbol *res-key-string*)
-                          'exact
-                          (-> gp-0 key)
-                          (the-as uint128 0)
-                          (the-as (pointer res-tag) #f)
-                          *res-static-buf*))))
-    (let ((s3-1 (method-of-type res-lump get-property-value))
-          (s2-1 (-> self cam-entity)))
-      (format (clear *res-key-string*) "~S~S" (the-as object arg1) '-off)
-      (set! (-> gp-0 force-off)
+                    (get-property-value on-property-owner
+                                        (string->symbol *res-key-string*)
+                                        'exact
+                                        (-> info key)
+                                        (the-as uint128 0)
+                                        (the-as (pointer res-tag) #f)
+                                        *res-static-buf*))))
+    (let ((get-property-value (method-of-type res-lump get-property-value))
+          (off-property-owner (-> self cam-entity)))
+      (format (clear *res-key-string*) "~S~S" (the-as object property) '-off)
+      (set! (-> info force-off)
             (the-as int
-                    (s3-1 s2-1
-                          (string->symbol *res-key-string*)
-                          'exact
-                          (-> gp-0 key)
-                          (the-as uint128 0)
-                          (the-as (pointer res-tag) #f)
-                          *res-static-buf*))))
+                    (get-property-value off-property-owner
+                                        (string->symbol *res-key-string*)
+                                        'exact
+                                        (-> info key)
+                                        (the-as uint128 0)
+                                        (the-as (pointer res-tag) #f)
+                                        *res-static-buf*))))
     (cond
-      ((logtest? (-> gp-0 force-off) s4-0)
-       (logclear! (-> gp-0 force-off) s4-0)
-       (logior! (-> gp-0 force-on) s4-0)
+      ((logtest? (-> info force-off) bit)
+       (logclear! (-> info force-off) bit)
+       (logior! (-> info force-on) bit)
        (let* ((s4-1 (-> self cam-entity))
               (s3-2 (method-of-object s4-1 add-32bit-data!))
               (s2-2 (logior (shl #x10000 32) (shr (shl (the-as int int32) 32) 32)))
-              (s1-2 (shl (the-as int (-> gp-0 key)) 32)))
-         (format (clear *res-key-string*) "~S~S" (the-as object arg1) '-off)
+              (s1-2 (shl (the-as int (-> info key)) 32)))
+         (format (clear *res-key-string*) "~S~S" (the-as object property) '-off)
          (s3-2 s4-1
                (the-as res-tag (make-u128 s2-2 (logior s1-2 (shr (shl (the-as int (string->symbol *res-key-string*)) 32) 32))))
-               (-> gp-0 force-off)))
+               (-> info force-off)))
        (let* ((s4-2 (-> self cam-entity))
               (s3-3 (method-of-object s4-2 add-32bit-data!))
               (s2-3 (logior (shl #x10000 32) (shr (shl (the-as int int32) 32) 32)))
-              (s1-3 (shl (the-as int (-> gp-0 key)) 32)))
-         (format (clear *res-key-string*) "~S~S" (the-as object arg1) '-on)
+              (s1-3 (shl (the-as int (-> info key)) 32)))
+         (format (clear *res-key-string*) "~S~S" (the-as object property) '-on)
          (s3-3 s4-2
                (the-as res-tag (make-u128 s2-3 (logior s1-3 (shr (shl (the-as int (string->symbol *res-key-string*)) 32) 32))))
-               (-> gp-0 force-on))))
-      ((logtest? (-> gp-0 force-on) s4-0)
-       (logclear! (-> gp-0 force-on) s4-0)
+               (-> info force-on))))
+      ((logtest? (-> info force-on) bit)
+       (logclear! (-> info force-on) bit)
        (let* ((s4-3 (-> self cam-entity))
               (s3-4 (method-of-object s4-3 add-32bit-data!))
               (s2-4 (logior (shl #x10000 32) (shr (shl (the-as int int32) 32) 32)))
-              (s1-4 (shl (the-as int (-> gp-0 key)) 32)))
-         (format (clear *res-key-string*) "~S~S" (the-as object arg1) '-on)
+              (s1-4 (shl (the-as int (-> info key)) 32)))
+         (format (clear *res-key-string*) "~S~S" (the-as object property) '-on)
          (s3-4 s4-3
                (the-as res-tag (make-u128 s2-4 (logior s1-4 (shr (shl (the-as int (string->symbol *res-key-string*)) 32) 32))))
-               (-> gp-0 force-on))))
+               (-> info force-on))))
       (else
-       (logior! (-> gp-0 force-off) s4-0)
+       (logior! (-> info force-off) bit)
        (let* ((s4-4 (-> self cam-entity))
               (s3-5 (method-of-object s4-4 add-32bit-data!))
               (s2-5 (logior (shl #x10000 32) (shr (shl (the-as int int32) 32) 32)))
-              (s1-5 (shl (the-as int (-> gp-0 key)) 32)))
-         (format (clear *res-key-string*) "~S~S" (the-as object arg1) '-off)
+              (s1-5 (shl (the-as int (-> info key)) 32)))
+         (format (clear *res-key-string*) "~S~S" (the-as object property) '-off)
          (s3-5 s4-4
                (the-as res-tag (make-u128 s2-5 (logior s1-5 (shr (shl (the-as int (string->symbol *res-key-string*)) 32) 32))))
-               (-> gp-0 force-off))))))
+               (-> info force-off))))))
   #t)
 
-(defbehavior clmf-cam-flag cam-layout ((arg0 string) (arg1 uint) (arg2 uint))
-  (let ((s5-0 (/ (the-as int arg1) 8))
-        (f30-0 (-> self res-key)))
+(defbehavior clmf-cam-flag cam-layout ((text string) (scaled-bit-mask uint) (property uint))
+  "Divide scaled-bit-mask by eight and append that flag's effective state to text, distinguishing
+   explicit on/off overrides from the inherited Maya value."
+  (let ((bit (/ (the-as int scaled-bit-mask) 8))
+        (key (-> self res-key)))
     (cond
-      ((and (= arg2 'vol-flags) (>= (-> self res-key) (the float (-> self first-cutoutvol))))
-       (set! f30-0 (- f30-0 (the float (-> self first-cutoutvol))))
-       (set! arg2 (the-as uint 'cutoutvol-flags)))
-      ((and (= arg2 'vol-flags) (>= (-> self res-key) (the float (-> self first-pvol))))
-       (set! f30-0 (- f30-0 (the float (-> self first-pvol))))
-       (set! arg2 (the-as uint 'pvol-flags))))
-    (let ((s3-0 (method-of-type res-lump get-property-value))
-          (s2-0 (-> self cam-entity)))
-      (format (clear *res-key-string*) "~S~S" (the-as object arg2) '-off)
+      ((and (= property 'vol-flags) (>= (-> self res-key) (the float (-> self first-cutoutvol))))
+       (set! key (- key (the float (-> self first-cutoutvol))))
+       (set! property (the-as uint 'cutoutvol-flags)))
+      ((and (= property 'vol-flags) (>= (-> self res-key) (the float (-> self first-pvol))))
+       (set! key (- key (the float (-> self first-pvol))))
+       (set! property (the-as uint 'pvol-flags))))
+    (let ((get-property-value (method-of-type res-lump get-property-value))
+          (off-property-owner (-> self cam-entity)))
+      (format (clear *res-key-string*) "~S~S" (the-as object property) '-off)
       (cond
-        ((logtest? (s3-0 s2-0
-                         (string->symbol *res-key-string*)
-                         'exact
-                         f30-0
-                         (the-as uint128 0)
-                         (the-as (pointer res-tag) #f)
-                         *res-static-buf*)
-                   s5-0)
-         (format arg0 ": off"))
-        ((let ((s3-1 (method-of-type res-lump get-property-value))
-               (s2-1 (-> self cam-entity)))
-           (format (clear *res-key-string*) "~S~S" (the-as object arg2) '-on)
-           (logtest? (s3-1 s2-1
-                           (string->symbol *res-key-string*)
-                           'exact
-                           f30-0
-                           (the-as uint128 0)
-                           (the-as (pointer res-tag) #f)
-                           *res-static-buf*)
-                     s5-0))
-         (format arg0 ": on"))
+        ((logtest? (get-property-value off-property-owner
+                                       (string->symbol *res-key-string*)
+                                       'exact
+                                       key
+                                       (the-as uint128 0)
+                                       (the-as (pointer res-tag) #f)
+                                       *res-static-buf*)
+                   bit)
+         (format text ": off"))
+        ((let ((get-property-value (method-of-type res-lump get-property-value))
+               (on-property-owner (-> self cam-entity)))
+           (format (clear *res-key-string*) "~S~S" (the-as object property) '-on)
+           (logtest? (get-property-value on-property-owner
+                                         (string->symbol *res-key-string*)
+                                         'exact
+                                         key
+                                         (the-as uint128 0)
+                                         (the-as (pointer res-tag) #f)
+                                         *res-static-buf*)
+                     bit))
+         (format text ": on"))
         ((not (logtest? ((method-of-type res-lump get-property-value)
                          (-> self cam-entity)
-                         (the-as symbol arg2)
+                         (the-as symbol property)
                          'exact
-                         f30-0
+                         key
                          (the-as uint128 0)
                          (the-as (pointer res-tag) #f)
                          *res-static-buf*)
-                        s5-0))
-         (format arg0 ": off(maya)"))
-        (else (format arg0 ": on(maya)")))))
+                        bit))
+         (format text ": off(maya)"))
+        (else
+         (format text ": on(maya)")))))
   #t)
 
-(defbehavior clmf-cam-float-adjust cam-layout ((arg0 symbol) (arg1 (pointer float)))
+(defbehavior clmf-cam-float-adjust cam-layout ((property symbol) (scale-pointer (pointer float)))
+  "Adjust one float offset with the left stick and write it back as an exact default-frame resource
+   value. A zero scale parameter means unit scale."
   (cam-layout-print 16 *camera-layout-message-ypos* "left stick adjusts value")
   (set! *camera-layout-message-ypos* (+ *camera-layout-message-ypos* 8))
-  (let ((f30-0 ((method-of-type res-lump get-property-value-float)
-                (-> self cam-entity)
-                arg0
-                'interp
-                (the-as float -1000000000.0)
-                (the-as float 0.0)
-                (the-as (pointer res-tag) #f)
-                *res-static-buf*))
-        (f0-0 (-> arg1 0)))
-    (if (= f0-0 0.0) (set! f0-0 1.0))
-    (let ((f0-2 (+ f30-0
-                   (analog-input (the-as int (-> *cpad-list* cpads 0 leftx))
-                                 (the-as float 128.0)
-                                 (the-as float 48.0)
-                                 (the-as float 110.0)
-                                 f0-0))))
+  (let ((current-value (res-lump-float (-> self cam-entity) property))
+        (scale (-> scale-pointer 0)))
+    (if (= scale 0.0)
+        (set! scale 1.0))
+    (let ((new-value (+ current-value (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 scale))))
       (add-32bit-data! (-> self cam-entity)
-                       (new 'static 'res-tag :name arg0 :key-frame -1000000000.0 :elt-count #x1 :elt-type float)
-                       f0-2)))
+                       (new 'static 'res-tag :name property :key-frame -1000000000.0 :elt-count #x1 :elt-type float)
+                       new-value)))
   (set! *camera-read-analog* #f)
   #t)
 
-(defbehavior clmf-cam-meters cam-layout ((arg0 meters) (arg1 symbol))
-  (let ((f0-0 (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0)))) (format arg0 ": ~M" f0-0))
+(defbehavior clmf-cam-meters cam-layout ((text meters) (property symbol))
+  "Append a named camera float to text in meters."
+  (let ((value (cam-slave-get-float (-> self cam-entity) property 0.0)))
+    (format text ": ~M" value))
   #t)
 
-(defbehavior clmf-cam-fov cam-layout ((arg0 degrees) (arg1 symbol))
-  (format arg0 ": ~R" (cam-slave-get-fov (-> self cam-entity)))
+(defbehavior clmf-cam-fov cam-layout ((text degrees) (unused symbol))
+  "Append the selected camera's field of view to text in degrees."
+  (format text ": ~R" (cam-slave-get-fov (-> self cam-entity)))
   #t)
 
-(defbehavior clmf-cam-deg cam-layout ((arg0 degrees) (arg1 symbol))
-  (format arg0 ": ~R" (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0)))
+(defbehavior clmf-cam-deg cam-layout ((text degrees) (property symbol))
+  "Append a named camera float to text in degrees."
+  (format text ": ~R" (cam-slave-get-float (-> self cam-entity) property 0.0))
   #t)
 
-(defbehavior clmf-cam-intro-time cam-layout ((arg0 float) (arg1 symbol))
-  (let ((f30-0 (cam-slave-get-intro-step (-> self cam-entity))))
-    (format arg0 ": ~f" (/ 0.016666668 f30-0))
-    (set! (-> *CAM_LAYOUT-bank* intro-step) f30-0))
+(defbehavior clmf-cam-intro-time cam-layout ((text float) (unused symbol))
+  "Append the selected camera's intro duration to text and update the intro preview step."
+  (let ((intro-step (cam-slave-get-intro-step (-> self cam-entity))))
+    (format text ": ~f" (/ 0.016666668 intro-step))
+    (set! (-> *CAM_LAYOUT-bank* intro-step) intro-step))
   #t)
 
-(defbehavior clmf-cam-interp-time cam-layout ((arg0 float) (arg1 symbol))
-  (format arg0 ": ~f" (cam-slave-get-interp-time (-> self cam-entity)))
+(defbehavior clmf-cam-interp-time cam-layout ((text float) (unused symbol))
+  "Append the selected camera's interpolation time to text."
+  (format text ": ~f" (cam-slave-get-interp-time (-> self cam-entity)))
   #t)
 
-(defbehavior clmf-cam-float cam-layout ((arg0 float) (arg1 symbol))
-  (format arg0 ": ~f" (cam-slave-get-float (-> self cam-entity) arg1 (the-as float 0.0)))
+(defbehavior clmf-cam-float cam-layout ((text float) (property symbol))
+  "Append a named camera float to text."
+  (format text ": ~f" (cam-slave-get-float (-> self cam-entity) property 0.0))
   #t)
 
-(defbehavior clmf-cam-string cam-layout ((arg0 string) (arg1 symbol))
-  (format arg0 ":")
-  (let* ((sv-16 (new 'static 'res-tag))
-         (s5-1 (res-lump-data (-> self cam-entity) arg1 pointer :tag-ptr (& sv-16) :time (the-as float -1000000000.0))))
-    (when s5-1
-      (dotimes (s4-0 (the-as int (-> sv-16 elt-count)))
-        (format arg0 " ~S" (-> (the-as (pointer uint32) (&+ s5-1 (* s4-0 4))))))))
+(defbehavior clmf-cam-string cam-layout ((text string) (property symbol))
+  "Append every symbol in a named camera resource array to text."
+  (format text ":")
+  (let* ((tag (new 'static 'res-tag))
+         (values (res-lump-data (-> self cam-entity) property pointer :tag-ptr (& tag))))
+    (when values
+      (dotimes (i (the-as int (-> tag elt-count)))
+        (format text " ~S" (-> (the-as (pointer uint32) (&+ values (* i 4))))))))
   #t)
 
 (define *clm-focalpull-attr*
@@ -2565,108 +2567,124 @@
 
 (define *clm* *clm-select*)
 
-(defbehavior cam-layout-do-action cam-layout ((arg0 clm-item-action))
-  (let ((s5-0 (-> arg0 func value)))
+(defbehavior cam-layout-do-action cam-layout ((action clm-item-action))
+  "Apply one menu action when its entity requirement, edge/level button mode, and controller button
+   tests pass. An action either selects another clm menu or invokes its function."
+  (let ((target (-> action func value)))
     (cond
-      ((not s5-0) #f)
-      ((zero? s5-0) #f)
-      ((and (not (-> self cam-entity)) (logtest? (-> arg0 options) 2)) #f)
-      ((and (logtest? (-> arg0 options) 8) (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (-> arg0 button))) #f)
-      ((and (not (logtest? (-> arg0 options) 12))
-            (logtest? (-> arg0 options) 1)
-            (not (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (-> arg0 button))))
+      ((not target) #f)
+      ((zero? target) #f)
+      ((and (not (-> self cam-entity)) (logtest? (-> action options) 2)) #f)
+      ((and (logtest? (-> action options) 8) (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (-> action button))) #f)
+      ((and (not (logtest? (-> action options) 12))
+            (logtest? (-> action options) 1)
+            (not (logtest? (-> *cpad-list* cpads 0 button0-rel 0) (-> action button))))
        #f)
-      ((and (not (logtest? (-> arg0 options) 13)) (not (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (-> arg0 button))))
+      ((and (not (logtest? (-> action options) 13)) (not (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (-> action button))))
        #f)
-      ((type-type? (-> (the-as basic s5-0) type) clm) (set! *clm* (the-as clm s5-0)) #t)
-      ((type-type? (-> (the-as basic s5-0) type) function)
-       ((the-as (function object symbol symbol) s5-0) (-> arg0 parm0) (the-as symbol (-> arg0 parm1-basic)))))))
+      ((type-type? (-> (the-as basic target) type) clm)
+       (set! *clm* (the-as clm target))
+       #t)
+      ((type-type? (-> (the-as basic target) type) function)
+       ((the-as (function object symbol symbol) target) (-> action parm0) (the-as symbol (-> action parm1-basic)))))))
 
-(defbehavior cam-layout-function-call cam-layout ((arg0 symbol) (arg1 string) (arg2 int) (arg3 basic))
-  (let ((gp-0 (-> arg0 value)))
+(defbehavior cam-layout-function-call cam-layout ((function-symbol symbol) (text string) (param0 int) (param1 basic))
+  "Resolve a menu value-printer symbol and call it with the output string and its two parameters."
+  (let ((resolved-function (-> function-symbol value)))
     (cond
-      ((not gp-0))
-      ((zero? gp-0))
-      ((type-type? (-> (the-as basic gp-0) type) function) ((the-as (function string int basic none) gp-0) arg1 arg2 arg3))))
+      ((not resolved-function))
+      ((zero? resolved-function))
+      ((type-type? (-> (the-as basic resolved-function) type) function)
+       ((the-as (function string int basic none) resolved-function) text param0 param1))))
   #f)
 
-(defbehavior cam-layout-do-menu cam-layout ((arg0 clm))
+(defbehavior cam-layout-do-menu cam-layout ((menu clm))
+  "Draw the current camera-layout menu, update the spline preview phases, dispatch active item
+   actions from controller input, and move within list items with the d-pad."
   (set! *camera-layout-message-ypos* 30)
   (+! (-> *CAM_LAYOUT-bank* spline-t) (-> *CAM_LAYOUT-bank* spline-step))
-  (if (< 1.01 (-> *CAM_LAYOUT-bank* spline-t)) (set! (-> *CAM_LAYOUT-bank* spline-t) -0.09))
+  (if (< 1.01 (-> *CAM_LAYOUT-bank* spline-t))
+      (set! (-> *CAM_LAYOUT-bank* spline-t) -0.09))
   (+! (-> *CAM_LAYOUT-bank* intro-t) (-> *CAM_LAYOUT-bank* intro-step))
-  (if (< 1.01 (-> *CAM_LAYOUT-bank* intro-t)) (set! (-> *CAM_LAYOUT-bank* intro-t) -0.09))
-  (let ((s5-0 30))
-    (let ((s4-0 (cam-state-from-entity (-> self cam-entity))))
+  (if (< 1.01 (-> *CAM_LAYOUT-bank* intro-t))
+      (set! (-> *CAM_LAYOUT-bank* intro-t) -0.09))
+  (let ((camera-name-y 30))
+    (let ((camera-state (cam-state-from-entity (-> self cam-entity))))
       (set! *camera-read-analog* #t)
-      (let ((s3-0 (-> self cam-entity)))
+      (let ((camera (-> self cam-entity)))
         (clear *temp-string*)
-        (if s3-0 (format *temp-string* "\"~S\"~%" (res-lump-struct s3-0 'name structure :time (the-as float -1000000000.0)))))
-      (if (not s4-0) (format *temp-string* "no cameras in this level") (format *temp-string* "~S" (-> s4-0 name))))
-    (cam-layout-print 320 s5-0 *temp-string*)
-    (let ((s5-1 (+ s5-0 16)))
+        (if camera
+            (format *temp-string* "\"~S\"~%" (res-lump-struct camera 'name structure))))
+      (if (not camera-state)
+          (format *temp-string* "no cameras in this level")
+          (format *temp-string* "~S" (-> camera-state name))))
+    (cam-layout-print 320 camera-name-y *temp-string*)
+    (let ((title-y (+ camera-name-y 16)))
       (clear *temp-string*)
-      (format *temp-string* "~S~%" (-> arg0 title))
-      (cam-layout-print 320 s5-1 *temp-string*)
-      (let ((s4-1 (+ s5-1 8)))
-        (dotimes (s5-2 (-> arg0 items length))
+      (format *temp-string* "~S~%" (-> menu title))
+      (cam-layout-print 320 title-y *temp-string*)
+      (let ((item-y (+ title-y 8)))
+        (dotimes (item-index (-> menu items length))
           (cond
-            ((type-type? (-> arg0 items s5-2 type) clm-list)
+            ((type-type? (-> menu items item-index type) clm-list)
              (clear *temp-string*)
              (format *temp-string* "------------")
-             (cam-layout-print 320 s4-1 *temp-string*)
-             (let ((s4-2 (+ s4-1 8)))
-               (let ((s3-1 (the-as clm-list (-> arg0 items s5-2))))
-                 (dotimes (s2-1 (-> s3-1 items length))
+             (cam-layout-print 320 item-y *temp-string*)
+             (let ((list-y (+ item-y 8)))
+               (let ((list (the-as clm-list (-> menu items item-index))))
+                 (dotimes (list-item-index (-> list items length))
                    (clear *temp-string*)
-                   (format *temp-string* "~S~S" (if (= s2-1 (-> s3-1 cur-list-item)) "> " "  ") (-> s3-1 items s2-1 description))
-                   (cam-layout-function-call (-> s3-1 items s2-1 val-func)
+                   (format *temp-string*
+                           "~S~S"
+                           (if (= list-item-index (-> list cur-list-item)) "> " "  ")
+                           (-> list items list-item-index description))
+                   (cam-layout-function-call (-> list items list-item-index val-func)
                                              *temp-string*
-                                             (-> s3-1 items s2-1 val-parm0)
-                                             (-> s3-1 items s2-1 val-parm1-basic))
-                   (cam-layout-print 320 s4-2 *temp-string*)
-                   (+! s4-2 8)))
+                                             (-> list items list-item-index val-parm0)
+                                             (-> list items list-item-index val-parm1-basic))
+                   (cam-layout-print 320 list-y *temp-string*)
+                   (+! list-y 8)))
                (clear *temp-string*)
                (format *temp-string* "------------")
-               (cam-layout-print 320 s4-2 *temp-string*)
-               (set! s4-1 (+ s4-2 8))))
-            ((and (not (-> self cam-entity)) (logtest? (-> (the-as clm-item (-> arg0 items s5-2)) action options) 2)))
-            ((logtest? (-> (the-as clm-item (-> arg0 items s5-2)) action options) 4))
+               (cam-layout-print 320 list-y *temp-string*)
+               (set! item-y (+ list-y 8))))
+            ((and (not (-> self cam-entity)) (logtest? (-> (the-as clm-item (-> menu items item-index)) action options) 2)))
+            ((logtest? (-> (the-as clm-item (-> menu items item-index)) action options) 4))
             (else
-             (let ((s3-2 (-> arg0 items s5-2)))
+             (let ((item (-> menu items item-index)))
                (clear *temp-string*)
                (format *temp-string*
                        "~S: ~A~%"
-                       (-> (the-as clm-item s3-2) description)
-                       (if (logtest? (-> (the-as clm-item (-> arg0 items s5-2)) action options) 8)
-                         'default
-                         (-> (the-as clm-item s3-2) button-symbol))))
-             (cam-layout-print 320 s4-1 *temp-string*)
-             (+! s4-1 8)))))))
+                       (-> (the-as clm-item item) description)
+                       (if (logtest? (-> (the-as clm-item (-> menu items item-index)) action options) 8)
+                           'default
+                           (-> (the-as clm-item item) button-symbol))))
+             (cam-layout-print 320 item-y *temp-string*)
+             (+! item-y 8)))))))
   (if (= *master-mode* 'menu) (goto cfg-65))
-  (dotimes (s5-3 (-> arg0 items length))
+  (dotimes (item-index (-> menu items length))
     (cond
-      ((type-type? (-> arg0 items s5-3 type) clm-list)
-       (let ((s4-3 (-> arg0 items s5-3))
-             (s3-3 0))
-         (if (-> (the-as clm-list s4-3) tracker)
-           (set! (-> (the-as clm-list s4-3) tracker value)
-                 (-> (the-as clm-list s4-3) items (-> (the-as clm-list s4-3) cur-list-item) track-val)))
-         (dotimes (s2-2 (-> (the-as clm-list s4-3) items (-> (the-as clm-list s4-3) cur-list-item) actions length))
-           (if (cam-layout-do-action (-> (the-as clm-list s4-3) items (-> (the-as clm-list s4-3) cur-list-item) actions s2-2))
-             (goto cfg-65)))
+      ((type-type? (-> menu items item-index type) clm-list)
+       (let ((list (-> menu items item-index))
+             (delta 0))
+         (if (-> (the-as clm-list list) tracker)
+             (set! (-> (the-as clm-list list) tracker value)
+                   (-> (the-as clm-list list) items (-> (the-as clm-list list) cur-list-item) track-val)))
+         (dotimes (action-index (-> (the-as clm-list list) items (-> (the-as clm-list list) cur-list-item) actions length))
+           (if (cam-layout-do-action (-> (the-as clm-list list) items (-> (the-as clm-list list) cur-list-item) actions action-index))
+               (goto cfg-65)))
          (cond
-           ((cpad-pressed? 0 down) (set! s3-3 1))
-           ((cpad-pressed? 0 right) (set! s3-3 1))
-           ((cpad-pressed? 0 up) (set! s3-3 -1))
-           ((cpad-pressed? 0 left) (set! s3-3 -1)))
-         (when (nonzero? s3-3)
-           (set! (-> (the-as clm-list s4-3) cur-list-item)
-                 (mod (+ (-> (the-as clm-list s4-3) cur-list-item) s3-3) (-> (the-as clm-list s4-3) items length)))
-           (while (< (-> (the-as clm-list s4-3) cur-list-item) 0)
-             (+! (-> (the-as clm-list s4-3) cur-list-item) (-> (the-as clm-list s4-3) items length)))
+           ((cpad-pressed? 0 down) (set! delta 1))
+           ((cpad-pressed? 0 right) (set! delta 1))
+           ((cpad-pressed? 0 up) (set! delta -1))
+           ((cpad-pressed? 0 left) (set! delta -1)))
+         (when (nonzero? delta)
+           (set! (-> (the-as clm-list list) cur-list-item)
+                 (mod (+ (-> (the-as clm-list list) cur-list-item) delta) (-> (the-as clm-list list) items length)))
+           (while (< (-> (the-as clm-list list) cur-list-item) 0)
+             (+! (-> (the-as clm-list list) cur-list-item) (-> (the-as clm-list list) items length)))
            (goto cfg-65))))
-      ((cam-layout-do-action (-> (the-as clm-item (-> arg0 items s5-3)) action)) (goto cfg-65))))
+      ((cam-layout-do-action (-> (the-as clm-item (-> menu items item-index)) action)) (goto cfg-65))))
   (label cfg-65)
   (none))
 
@@ -2674,23 +2692,19 @@
   :code
     (behavior ()
       (loop
-        (cam-layout-entity-info (the-as entity-actor (-> self cam-entity)))
+        (cam-layout-entity-info (-> self cam-entity))
         (cam-layout-entity-volume-info)
         (cam-layout-do-menu *clm*)
         (suspend))))
 
 (defbehavior cam-layout-init cam-layout ()
+  "Count the live camera entities, restore the last selected camera, rebuild its volume previews,
+   and enter the active camera-layout state."
   (set! (-> self res-key) -1000000000.0)
   (set! (-> self num-entities) 0)
-  (let ((v1-2 (-> *camera-engine* alive-list next0)))
-    *camera-engine*
-    (let ((a0-2 (-> v1-2 next0)))
-      (while (!= v1-2 (-> *camera-engine* alive-list-end))
-        (-> (the-as connection v1-2) param1)
-        (+! (-> self num-entities) 1)
-        (set! v1-2 a0-2)
-        *camera-engine*
-        (set! a0-2 (-> a0-2 next0)))))
+  (iterate-engine-connections (node *camera-engine*)
+    (-> node param1)
+    (+! (-> self num-entities) 1))
   (set! (-> self cur-entity) *last-cur-entity*)
   (clmf-next-entity 0)
   (set! *clm* *clm-select*)
@@ -2698,22 +2712,32 @@
   (none))
 
 (defun cam-layout-stop ()
+  "Stop the camera-layout editor process and clear its active marker."
   (set! *cam-layout* #f)
   (kill-by-name 'cam-layout *active-pool*))
 
 (defun cam-layout-start ()
-  (let ((a0-1 (new 'global 'file-stream "dd_next/caminfo/garbage" 'read))) (file-stream-close a0-1))
+  "Start the camera-layout editor unless it is already active. The editor process remains live
+   during pause and menu modes."
+  (let ((a0-1 (new 'global 'file-stream "dd_next/caminfo/garbage" 'read)))
+    (file-stream-close a0-1))
   (cond
     ((not *cam-layout*)
      (let ((v1-4 (process-spawn-function cam-layout cam-layout-init :from *camera-dead-pool*)))
        (cond
-         (v1-4 (logclear! (-> v1-4 0 mask) (process-mask pause menu)) (set! *cam-layout* #t) (set! *camera-layout-blink* #f))
-         (else (format 0 "ERROR <GMJ>: no process available to start cam editing mode~%")))))
-    (else (format 0 "ERROR <GMJ>: cam editing mode already started~%")))
+         (v1-4
+          (logclear! (-> v1-4 0 mask) (process-mask pause menu))
+          (set! *cam-layout* #t)
+          (set! *camera-layout-blink* #f))
+         (else
+          (format 0 "ERROR <GMJ>: no process available to start cam editing mode~%")))))
+    (else
+     (format 0 "ERROR <GMJ>: cam editing mode already started~%")))
   *cam-layout*
   (none))
 
 (defun cam-layout-restart ()
+  "Stop and immediately restart the camera-layout editor."
   (cam-layout-stop)
   (cam-layout-start)
   (none))

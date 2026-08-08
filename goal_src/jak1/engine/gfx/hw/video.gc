@@ -5,15 +5,18 @@
 
 ;; DECOMP BEGINS
 
-(defun set-video-mode ((arg0 symbol))
-  (case arg0
+(defun set-video-mode ((mode symbol))
+  "Select NTSC, PAL, or the PC custom timing mode. Configure vertical display geometry, frame
+   timing, camera projection, shadows, pause and font placement, then notify the HUD and active
+   progress screen."
+  (case mode
     (('ntsc)
      (set! (-> *video-parms* screen-sy) 224)
      (set! (-> *setting-control* default screenx) 0)
      (set! (-> *setting-control* default screeny) 8)
      (set! (-> *video-parms* screen-pages-high) 7)
      (set! (-> *video-parms* relative-y-scale) 1.0)
-     (set! *ticks-per-frame* 9765) ;; 585900 total?
+     (set! *ticks-per-frame* 9765) ;; 585900 timer ticks per second at 60 Hz.
      (set! (-> *math-camera* isometric vector 1 y) 0.5)
      (set! (-> *math-camera* y-pix) 112.0)
      (set! (-> *math-camera* y-clip) 448.0)
@@ -24,7 +27,7 @@
      (set! (-> *setting-control* default screeny) 24)
      (set! (-> *video-parms* screen-pages-high) 8)
      (set! (-> *video-parms* relative-y-scale) 1.1428572)
-     (set! *ticks-per-frame* 11718)
+     (set! *ticks-per-frame* 11718) ;; 585900 timer ticks per second at 50 Hz.
      (set! (-> *math-camera* isometric vector 1 y) 0.4375)
      (set! (-> *math-camera* y-pix) 128.0)
      (set! (-> *math-camera* y-clip) 512.0)
@@ -53,25 +56,29 @@
   (set! (-> *video-parms* relative-y-scale-reciprical) 1.0)
   (set! *profile-y* (+ (-> *video-parms* screen-miny) 8))
   (set! (-> *video-parms* set-video-mode) #t)
-  (set-hud-aspect-ratio (get-aspect-ratio) arg0)
-  (if *progress-process* (adjust-ratios (-> *progress-process* 0) (get-aspect-ratio) arg0))
+  (set-hud-aspect-ratio (get-aspect-ratio) mode)
+  (if *progress-process* (adjust-ratios (-> *progress-process* 0) (get-aspect-ratio) mode))
   0
   (none))
 
 (defun get-video-mode ()
+  "Return the currently selected NTSC, PAL, or custom video mode."
   (-> *setting-control* current video-mode))
 
-(defun set-aspect-ratio ((arg0 symbol))
-  (case arg0
+(defun set-aspect-ratio ((aspect symbol))
+  "Select 4:3 or 16:9 display correction. Update the font matrix and notify the HUD and active
+   progress screen after changing the horizontal scale."
+  (case aspect
     (('aspect4x3) (set! (-> *video-parms* relative-x-scale) 1.0) (set! (-> *video-parms* relative-x-scale-reciprical) 1.0))
     (('aspect16x9)
      (set! (-> *video-parms* relative-x-scale) 0.75)
      (set! (-> *video-parms* relative-x-scale-reciprical) 1.3333334)))
   (set! (-> *font-default-matrix* vector 0 x) (-> *video-parms* relative-x-scale))
-  (set-hud-aspect-ratio arg0 (get-video-mode))
-  (if *progress-process* (adjust-ratios (-> *progress-process* 0) arg0 (get-video-mode)))
+  (set-hud-aspect-ratio aspect (get-video-mode))
+  (if *progress-process* (adjust-ratios (-> *progress-process* 0) aspect (get-video-mode)))
   0
   (none))
 
 (defun get-aspect-ratio ()
+  "Return the currently selected 4:3 or 16:9 aspect ratio."
   (-> *setting-control* current aspect-ratio))

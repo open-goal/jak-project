@@ -747,11 +747,33 @@ Val* Compiler::get_field_of_bitfield(const BitFieldType* type,
  * The result of this should give something that has enough information to read/write the original
  * location. Otherwise set! or & won't work.
  */
-Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest, Env* env) {
+Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_deref_impl(form, rest, env, false);
+}
+
+Val* Compiler::compile_addr_deref(const goos::Object& form, const goos::Object& rest, Env* env) {
+  return compile_deref_impl(form, rest, env, true);
+}
+
+Val* Compiler::compile_deref_impl(const goos::Object& form,
+                                  const goos::Object& _rest,
+                                  Env* env,
+                                  bool return_address) {
   auto fe = env->function_env();
   if (_rest.is_empty_list()) {
-    throw_compiler_error(form, "-> must get at least one argument");
+    throw_compiler_error(form, "{} must get at least one argument", return_address ? "&->" : "->");
   }
+
+  auto finish = [&](Val* value, bool inline_array_address = false) -> Val* {
+    if (!return_address || inline_array_address) {
+      return value;
+    }
+    if (auto* deref = dynamic_cast<MemoryDerefVal*>(value)) {
+      return deref->base;
+    }
+    throw_compiler_error(form, "Cannot take the address of {}.", value->print());
+    return nullptr;
+  };
 
   auto& first_arg = pair_car(_rest);
   auto rest = &pair_cdr(_rest);
@@ -773,7 +795,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
     } else {
       ASSERT(false);
     }
-    return result;
+    return finish(result);
   }
 
   // compound, is field access/nested access
@@ -850,16 +872,22 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
         throw_compiler_error(form, "Cannot dereference an inline-array with type {}",
                              result->type().print());
       }
+      const auto inline_array_type = result->type();
       auto di = m_ts.get_deref_info(result->type());
       ASSERT(di.can_deref);
+      const bool final_inline_array_address = return_address && rest->is_empty_list();
+      const auto& result_type = final_inline_array_address ? inline_array_type : di.result_type;
       if (has_constant_idx) {
-        result = fe->alloc_val<MemoryOffsetConstantVal>(di.result_type, result,
+        result = fe->alloc_val<MemoryOffsetConstantVal>(result_type, result,
                                                         di.stride * constant_index_value);
       } else {
         // todo - use shifts if possible?
         RegVal* offset = fe->make_gpr(TypeSpec("int"));
         compile_constant_product(form, offset, index_value, di.stride, env);
-        result = fe->alloc_val<MemoryOffsetVal>(di.result_type, result, offset);
+        result = fe->alloc_val<MemoryOffsetVal>(result_type, result, offset);
+      }
+      if (final_inline_array_address) {
+        return finish(result, true);
       }
     } else if (result->type().base_type() == "pointer") {
       if (!result->type().has_single_arg()) {
@@ -919,7 +947,7 @@ Val* Compiler::compile_deref(const goos::Object& form, const goos::Object& _rest
       throw_compiler_error(form, "Cannot access array of type {}.", result->type().print());
     }
   }
-  return result;
+  return finish(result);
 }
 
 TypeSpec coerce_to_stack_spill_type(const TypeSpec& in) {

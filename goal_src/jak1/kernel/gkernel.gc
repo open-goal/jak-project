@@ -60,6 +60,7 @@
 
 ;; Note - the actual relocation method of process is in relocate.gc.
 (defmethod relocate ((this object) (offset int))
+  "Return an object unchanged when its type has no relocation fixups."
   this)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -84,10 +85,6 @@
     (when pack
       (set! *kernel-packages* (delete! (car pack) *kernel-packages*)))
     *kernel-packages*))
-
-(define *test-vec4s* (new 'static 'vec4s :x 0. :y 0. :z 0. :w 0.))
-
-(inspect *test-vec4s*)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Kernel Globals
@@ -264,6 +261,7 @@
 ;; Each process-tree element has a process-mask which indicates what type of node it is.
 
 (defun-debug stream<-process-mask ((arg0 object) (arg1 process-mask))
+  "Append the symbolic names in a process mask to a stream."
   (bit-enum->string process-mask arg1 arg0)
   arg1)
 
@@ -385,6 +383,7 @@
   this)
 
 (defmethod asize-of ((this process))
+  "Return the process header and embedded stack allocation size."
   (the int (+ (-> process size) (-> this allocated-length))))
 
 (defmethod print ((this process))
@@ -423,9 +422,21 @@
   at the end of a normal function, so this should preserve rax.
   To make sure this happens, all ops should be asm ops and we should have no
   GOAL expressions."
-  (declare (asm-func none)
-           ;(print-asm)
-           )
+  (declare (asm-func none))
+  (#unless PC_PORT
+    (set! sp *kernel-sp*)
+    (l.l gp sp 8)
+    (l.l ra sp 16)
+    (l.l s8 sp 24)
+    (l.l s5 sp 40)
+    (l.l s4 sp 48)
+    (l.l s3 sp 56)
+    (l.l s2 sp 64)
+    (l.l s1 sp 72)
+    (l.l s0 sp 80)
+    (l.l cgp sp 88)
+    (l.l fp sp 96)
+    (add sp sp 128))
   (rlet ((sp :reg rsp :type uint)
          (off :reg r15 :type uint)
          (s0 :reg rbx :type uint)
@@ -451,9 +462,22 @@
 (defun return-from-thread-dead ()
   "Like return from thread, but we clean up our process with deactivate first.
   The return register is not preserved here, instead we return the value of deactivate"
-  (declare (asm-func none)
-           ;(print-asm)
-           )
+  (declare (asm-func none))
+  (#unless PC_PORT
+    (deactivate pp)
+    (set! sp *kernel-sp*)
+    (l.l gp sp 8)
+    (l.l ra sp 16)
+    (l.l s8 sp 24)
+    (l.l s5 sp 40)
+    (l.l s4 sp 48)
+    (l.l s3 sp 56)
+    (l.l s2 sp 64)
+    (l.l s1 sp 72)
+    (l.l s0 sp 80)
+    (l.l cgp sp 88)
+    (l.l fp sp 96)
+    (add sp sp 128))
   (rlet ((pp :reg r13 :type process)
          (sp :reg rsp :type uint)
          (off :reg r15 :type uint)
@@ -479,18 +503,19 @@
     (.ret)))
 
 (defmacro abandon-thread ()
-  ;; abandon this one too.
-  ;; NOTE - this is different from GOAL.
-  ;; GOAL installs this as the return address for this function and returns normally.
-  ;; but we don't because I don't have an easy way to find where to stick this.
-  ;; I can't see how this makes a difference, as all non-main threads seem
-  ;; temporary, but if this turns out to be false, we will need to change this.
-  `(rlet ((temp)
-         (off :reg r15 :type uint :reset-here #t))
-    (.mov temp return-from-thread) ;; could probably just call this...
-    (.add temp off)
-    (.push temp)
-    (.ret)))
+  "Abandon the current temporary thread and return to the kernel."
+  `(begin
+    (#unless PC_PORT
+      (abandon))
+    (#when PC_PORT
+      ;; The PC ABI keeps the return address on the stack, so install the
+      ;; equivalent trampoline explicitly.
+      (rlet ((temp)
+             (off :reg r15 :type uint :reset-here #t))
+        (.mov temp return-from-thread)
+        (.add temp off)
+        (.push temp)
+        (.ret)))))
 
 (defun reset-and-call ((this thread) (func function))
   "Make the given thread the top thread, reset the stack, and call the function.
@@ -499,6 +524,25 @@
   NOTE: this should only be done from the kernel, running on the
   kernel's stack."
   (declare (asm-func object))
+  (#unless PC_PORT
+    (set! pp (-> this process))
+    (set! (-> pp status) 'running)
+    (set! (-> pp top-thread) this)
+    (add sp sp -128)
+    (set! *kernel-sp* sp)
+    (s.l gp sp 8)
+    (s.l ra sp 16)
+    (s.l s8 sp 24)
+    (s.l s5 sp 40)
+    (s.l s4 sp 48)
+    (s.l s3 sp 56)
+    (s.l s2 sp 64)
+    (s.l s1 sp 72)
+    (s.l s0 sp 80)
+    (s.l cgp sp 88)
+    (s.l fp sp 96)
+    (set! sp (-> this stack-top))
+    (j (m fp func) :delay (m! ra return-from-thread)))
   (rlet ((pp :reg r13 :type process)
          (sp :reg rsp :type uint)
          (off :reg r15 :type uint)
@@ -543,6 +587,50 @@
 (defmethod thread-suspend ((unused cpu-thread))
   "Suspend the thread and return to the kernel."
   (declare (asm-func none))
+  (#unless PC_PORT
+    ;; The syscall enters with the CPU thread in pp and its resume pc in ra.
+    (rlet ((this :reg pp :type 'cpu-thread))
+      (set! (-> this pc) (the pointer ra))
+      (set! (-> this sp) (the pointer sp))
+      (set! (-> this rreg 0) s0)
+      (set! (-> this rreg 1) s1)
+      (set! (-> this rreg 2) s2)
+      (set! (-> this rreg 3) s3)
+      (set! (-> this rreg 4) s4)
+      (set! (-> this rreg 5) s5)
+      (set! (-> this rreg 6) cgp)
+      (set! (-> this rreg 7) gp)
+      (set! (-> this freg 0) (the float fs0))
+      (set! (-> this freg 1) (the float fs1))
+      (set! (-> this freg 2) (the float fs2))
+      (set! (-> this freg 3) (the float fs3))
+      (set! (-> this freg 4) (the float fs4))
+      (set! (-> this freg 5) (the float fs5))
+      (let ((proc (-> this process)))
+        (when (> (process-stack-used proc) (-> this stack-size))
+          ;; Increase the main thread's backup stack before it reaches here.
+          (break))
+        (set! (-> proc status) 'suspended)
+        (let ((cur (the (pointer uint128) (-> this stack-top)))
+              (save (&+ (the (pointer uint128) (-> this stack)) (-> this stack-size))))
+          (while (> (the int cur) (the int sp))
+            (&-! cur (size-of uint128))
+            (&-! save (size-of uint128))
+            (set! (-> save) (-> cur)))))
+      (set! pp 0))
+    (set! sp *kernel-sp*)
+    (l.l gp sp 8)
+    (l.l ra sp 16)
+    (l.l s8 sp 24)
+    (l.l s5 sp 40)
+    (l.l s4 sp 48)
+    (l.l s3 sp 56)
+    (l.l s2 sp 64)
+    (l.l s1 sp 72)
+    (l.l s0 sp 80)
+    (l.l cgp sp 88)
+    (l.l fp sp 96)
+    (add sp sp 128))
   ;; we begin this function with the thread object in pp.
   ;; not sure why we do this, maybe at one point suspending didn't clobber
   ;; temp registers?
@@ -637,9 +725,49 @@
   "Resume a suspended thread. Call this from the kernel only.
    This is also used to start a thread initialized with set-to-run.
    As a result of MIPS/x86 differences, there is a hack for this."
-  (declare (asm-func none)
-           ;;(print-asm)
-           )
+  (declare (asm-func none))
+  (#unless PC_PORT
+    (add sp sp -128)
+    (set! *kernel-sp* sp)
+    (s.l gp sp 8)
+    (s.l ra sp 16)
+    (s.l s8 sp 24)
+    (s.l s5 sp 40)
+    (s.l s4 sp 48)
+    (s.l s3 sp 56)
+    (s.l s2 sp 64)
+    (s.l s1 sp 72)
+    (s.l s0 sp 80)
+    (s.l cgp sp 88)
+    (s.l fp sp 96)
+    (rlet ((this :reg pp :type 'cpu-thread))
+      (set! this thread-to-resume)
+      (set! sp (-> this sp))
+      (let ((cur (the (pointer uint128) (-> this stack-top)))
+            (restore (&+ (the (pointer uint128) (-> this stack)) (-> this stack-size))))
+        (while (> (the int cur) (the int sp))
+          (&-! cur (size-of uint128))
+          (&-! restore (size-of uint128))
+          (set! (-> cur) (-> restore))))
+      (set! (-> (-> this process) top-thread) this)
+      (set! (-> (-> this process) status) 'running)
+      (set! fs0 (-> this freg 0))
+      (set! fs1 (-> this freg 1))
+      (set! fs2 (-> this freg 2))
+      (set! fs3 (-> this freg 3))
+      (set! fs4 (-> this freg 4))
+      (set! fs5 (-> this freg 5))
+      (set! s0 (-> this rreg 0))
+      (set! s1 (-> this rreg 1))
+      (set! s2 (-> this rreg 2))
+      (set! s3 (-> this rreg 3))
+      (set! s4 (-> this rreg 4))
+      (set! s5 (-> this rreg 5))
+      (set! cgp (-> this rreg 6))
+      (set! gp (-> this rreg 7))
+      (m! at (-> this pc))
+      ;; pp must become the process only after every thread field is read.
+      (j at :delay (m! pp (-> this process)))))
   (rlet ((this :reg r13 :type cpu-thread)
          (temp :reg rax :type uint)
          (off :reg r15 :type uint)
@@ -1444,11 +1572,45 @@
 (defmethod new catch-frame ((allocation symbol) (type-to-make type) (name symbol) (func function) (param-block (pointer uint64)))
   "Run func in a catch frame with the given 8 parameters.
   The return value is the result of the function.
-  The allocation must be an address.
-  Unlike the original, this only works on the first six parameters, but I think this doesn't matter."
+  The allocation must be an address."
   (declare (asm-func object)
-           (allow-saved-regs) ;; very dangerous!
-           )
+           (allow-saved-regs))
+  (#unless PC_PORT
+    (let ((this (the catch-frame (&+ allocation *gtype-basic-offset*))))
+      (set! (-> this type) type-to-make)
+      (set! (-> this name) name)
+      (set! (-> this ra) ra)
+      ;; The constructor's own frame is 16 bytes; catch resumes at its caller.
+      (set! (-> this sp) (+ sp 16))
+      (set! (-> this rreg 0) s0)
+      (set! (-> this rreg 1) s1)
+      (set! (-> this rreg 2) s2)
+      (set! (-> this rreg 3) s3)
+      (set! (-> this rreg 4) s4)
+      (set! (-> this rreg 5) s5)
+      (set! (-> this rreg 6) cgp)
+      (set! (-> this rreg 7) gp)
+      (set! (-> this freg 0) (the float fs0))
+      (set! (-> this freg 1) (the float fs1))
+      (set! (-> this freg 2) (the float fs2))
+      (set! (-> this freg 3) (the float fs3))
+      (set! (-> this freg 4) (the float fs4))
+      (set! (-> this freg 5) (the float fs5))
+      (set! (-> this next) (-> pp stack-frame-top))
+      (set! (-> pp stack-frame-top) this)
+      (let ((ret (func
+                   (-> param-block 0)
+                   (-> param-block 1)
+                   (-> param-block 2)
+                   (-> param-block 3)
+                   (-> param-block 4)
+                   (-> param-block 5)
+                   (-> param-block 6)
+                   (-> param-block 7))))
+        (set! (-> pp stack-frame-top) (-> pp stack-frame-top next))
+        (return ret))))
+  ;; The PC ABI has six register arguments, so this port path consumes the
+  ;; first six entries. No kernel caller supplies more than six.
   (rlet ((pp :reg r13 :type process)
          (temp :reg rax :type uint)
          (off :reg r15 :type uint)
@@ -1530,8 +1692,29 @@
 
 (defun throw-dispatch ((this catch-frame) value)
   "Throw the given value to the catch frame.
-  Only can throw a 64-bit value. The original could throw 128 bits."
+  Restores the saved execution context and resumes after the matching catch."
   (declare (asm-func none))
+  (#unless PC_PORT
+    (set! (-> pp stack-frame-top) (-> this next))
+    (set! fs0 (-> this freg 0))
+    (set! fs1 (-> this freg 1))
+    (set! fs2 (-> this freg 2))
+    (set! fs3 (-> this freg 3))
+    (set! fs4 (-> this freg 4))
+    (set! fs5 (-> this freg 5))
+    (set! s0 (-> this rreg 0))
+    (set! s1 (-> this rreg 1))
+    (set! s2 (-> this rreg 2))
+    (set! s3 (-> this rreg 3))
+    (set! s4 (-> this rreg 4))
+    (set! s5 (-> this rreg 5))
+    (set! cgp (-> this rreg 6))
+    (set! gp (-> this rreg 7))
+    (set! sp (-> this sp))
+    ;; Return values may occupy all 128 bits of r2.
+    (j (-> this ra) :delay (m.q r2 value)))
+  ;; The PC value register is 64 bits; the EE branch above preserves the
+  ;; original full-width return value.
   (rlet ((pp :reg r13 :type process)
          (temp :reg rax :type uint)
          (off :reg r15 :type uint)
@@ -1593,6 +1776,18 @@
 
 (defun throw ((name symbol) value)
   "Dynamic throw."
+  (#unless PC_PORT
+    ;; asm-func has no compiler-managed global pointer, so establish it from fp.
+    (m gp fp)
+    (do ((cur (-> pp stack-frame-top) (-> cur next)))
+        ((not cur))
+      (when (and (eq? (-> cur name) name) (type= cur catch-frame))
+        (throw-dispatch (the catch-frame cur) value))
+      (typecase cur
+        (protect-frame ((-> (the protect-frame cur) exit)))))
+    (msg-err "throw could not find tag ~A~%" name)
+    (break)
+    (return (none)))
   (rlet ((pp :reg r13 :type process))
     (let ((cur (-> pp stack-frame-top)))
       (while cur
@@ -1607,6 +1802,7 @@
   (break))
 
 (defmethod new protect-frame ((allocation symbol) (type-to-make type) (func (function object)))
+  "Push a cleanup function on the current process's dynamic frame chain."
   (let ((this (the protect-frame (&+ allocation *gtype-basic-offset*))))
     (set! (-> this type) type-to-make)
     (set! (-> this name) 'protect-frame)
@@ -1715,6 +1911,7 @@
   (the-as process-tree arg0))
 
 (defun change-to-last-brother ((arg0 process-tree))
+  "Move a node to the end of its parent's child list."
   (local-vars (v1-4 (pointer process-tree)) (v1-8 symbol) (a1-0 (pointer process-tree)) (a1-5 symbol) (a1-9 symbol))
   (when (and (-> arg0 brother) (-> arg0 parent))
     (set! a1-0 (-> arg0 parent))
@@ -1830,9 +2027,17 @@
    This stub remaps these saved registers to argument registers.
    It also creates a return trampoline to return-from-thread-dead, so if the main thread returns, the
    process is properly cleaned up by deactivate."
-  (declare (asm-func none)
-           ;;(print-asm)
-           )
+  (declare (asm-func none))
+  (#unless PC_PORT
+    (m r25 r28)
+    (m a0 s0)
+    (m a1 s1)
+    (m a2 s2)
+    (m a3 s3)
+    (m a4 s4)
+    (m! r31 return-from-thread-dead)
+    (j r25 :delay (m a5 s5))
+    (return (none)))
   (rlet ((s0 :reg rbx :type uint)
          (s1 :reg rbp :type uint)
          (s2 :reg r10 :type uint)
@@ -1865,14 +2070,25 @@
   Once the function returns, the process deactivates."
   (let ((proc (-> thread process)))
     (set! (-> proc status) 'waiting-to-run)
-    ;; we store arguments and the function to call in saved registers
-    (set! (-> thread rreg 0) (the uint func))
-    (set! (-> thread rreg 1) (the uint a0))
-    (set! (-> thread rreg 2) (the uint a1))
-    (set! (-> thread rreg 3) (the uint a2))
-    (set! (-> thread rreg 4) (the uint a3))
-    (set! (-> thread rreg 5) (the uint a4))
-    (set! (-> thread rreg 6) (the uint a5))
+    (#unless PC_PORT
+      ;; The EE restore path places these slots in s0-s5 and cgp.
+      (set! (-> thread rreg 0) a0)
+      (set! (-> thread rreg 1) a1)
+      (set! (-> thread rreg 2) a2)
+      (set! (-> thread rreg 3) a3)
+      (set! (-> thread rreg 4) a4)
+      (set! (-> thread rreg 5) a5)
+      (set! (-> thread rreg 6) func))
+    (#when PC_PORT
+      ;; The PC restore path has five saved registers and passes the final two
+      ;; argument values through its extra ABI registers.
+      (set! (-> thread rreg 0) (the uint func))
+      (set! (-> thread rreg 1) (the uint a0))
+      (set! (-> thread rreg 2) (the uint a1))
+      (set! (-> thread rreg 3) (the uint a2))
+      (set! (-> thread rreg 4) (the uint a3))
+      (set! (-> thread rreg 5) (the uint a4))
+      (set! (-> thread rreg 6) (the uint a5)))
     ;; and have the thread first call set-to-run-bootstrap, which will properly call
     ;; the function with the arguments and install a return trampoline for
     ;; deactivating and returning to the kernel on return.
@@ -1950,9 +2166,15 @@
       ((eq? this (-> *kernel-context* current-process))
        ;; go straight to dead.
        (set! (-> this status) 'dead)
-       ;; and return (with no deactivate)
-       ;; TODO: replace with abandon.
-       (let ((temp (the uint return-from-thread))) (rlet ((off :reg r15 :type uint)) (+! temp off) (.push temp) (.ret))))
+       ;; and return directly to the kernel without deactivating twice.
+       (#unless PC_PORT
+         (abandon))
+       (#when PC_PORT
+         (let ((temp (the uint return-from-thread)))
+           (rlet ((off :reg r15 :type uint))
+             (+! temp off)
+             (.push temp)
+             (.ret)))))
       ;; second case - we deactivated while initializing.
       ((eq? (-> this status) 'initialize)
        (set! (-> this status) 'dead)

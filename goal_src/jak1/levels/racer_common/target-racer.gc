@@ -193,10 +193,8 @@
     (set! f0-13
           (cond
             ((and (not (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0)))
-                  (cpad-hold? (-> self control unknown-cpad-info00 number) square))
-             (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) x)
-                      (not (-> self racer stick-lock))
-                      (not (-> self racer stick-off)))
+                  (cpad-hold? (-> self control cpad number) square))
+             (if (and (cpad-hold? (-> self control cpad number) x) (not (-> self racer stick-lock)) (not (-> self racer stick-off)))
                ;; og:preserve-this changed for high fps
                (* (- 1.0 (* 0.0125 DISPLAY_FPS_RATIO)) f0-13)
                (* (- 0.5 (* 0.00625 DISPLAY_FPS_RATIO)) (+ 1.0 f0-13))))
@@ -246,7 +244,7 @@
 
 (defbehavior racer-collision target ()
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (set! (-> gp-0 quad) (-> self control transv quad))
+    (vector-copy! gp-0 (-> self control transv))
     (let ((f30-0 0.8))
       (fill-cache-integrate-and-collide! (-> self control) (-> self control transv) (-> self control root-prim collide-with))
       (+! (-> self racer shock-offsetv) (* (- (-> gp-0 y) (-> self control transv y)) f30-0))
@@ -266,7 +264,7 @@
        (set! (-> self racer shock-offset) -8192.0)
        (set! (-> self racer shock-offsetv) 0.0)
        (process-spawn part-tracker :init part-tracker-init group-land-poof-stone -1 #f #f #f (-> self control trans) :to self)
-       (effect-control-method-10 (-> self skel effect) 'effect-land -1.0 -1)))
+       (do-effect (-> self skel effect) 'effect-land -1.0 -1)))
     (deg-diff (vector-y-angle gp-0) (vector-y-angle (-> self control transv)))
     (let ((f30-2 (vector-xz-length gp-0)))
       (when (and (logtest? (-> self control status) (cshape-moving-flags twall))
@@ -454,7 +452,7 @@
                           a2-7))))
   (when (and (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
              (cpad-pressed? (-> self control cpad number) circle square)
-             (time-elapsed? (-> self control unknown-dword82) (seconds 0.25))
+             (time-elapsed? (-> self control last-time-on-surface) (seconds 0.25))
              (not (logtest? (-> self state-flags) (state-flags being-attacked dying))))
     (let ((gp-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat)))
           (s5-4 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self manipy 0 node-list data 4))))
@@ -471,7 +469,7 @@
                      #f
                      :to
                      self))
-    (set-time! (-> self control unknown-dword82)))
+    (set-time! (-> self control last-time-on-surface)))
   (let ((f22-0 (-> *RACER-bank* hotcoals-heat-inc))
         (f24-0 (-> *RACER-bank* lava-heat-inc))
         (f28-2 (-> *RACER-bank* lava-air-heat-inc))
@@ -725,23 +723,23 @@
                (f28-1 (* f28-0
                          (cond
                            ((zero? v1-17)
-                            (- (fmax (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
+                            (- (fmax (analog-input (the-as int (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
                                                    0.0
                                                    32.0
                                                    255.0
                                                    1.0)
-                                     (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
+                                     (analog-input (the-as int (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
                                                    0.0
                                                    32.0
                                                    255.0
                                                    1.0))))
                            ((= v1-17 1)
-                            (fmax (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
+                            (fmax (analog-input (the-as int (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
                                                 0.0
                                                 32.0
                                                 255.0
                                                 1.0)
-                                  (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
+                                  (analog-input (the-as int (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
                                                 0.0
                                                 32.0
                                                 255.0

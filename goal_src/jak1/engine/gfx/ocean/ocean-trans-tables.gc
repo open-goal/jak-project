@@ -7,7 +7,49 @@
 
 ;; DECOMP BEGINS
 
-;; definition for symbol *ocean-left-table*, type (pointer float)
+;; Vertex weight tables for the ocean's level-of-detail seams.
+;;
+;; Every ocean pass builds a vertex as a weighted sum of the four corners of one cell.  The EE
+;; uploads those corners as positions, colors and texture coordinates -- ocean-seams-add-constants
+;; for a 96 m mid cell, ocean-trans-add-constants for a 24 m near cell -- and the VU program
+;; evaluates
+;;
+;;   value = w0 * corner(0,0) + w1 * corner(1,0) + w2 * corner(0,1) + w3 * corner(1,1)
+;;
+;; so one table entry is four floats (w0 w1 w2 w3) = ((1-u)(1-v), u(1-v), (1-u)v, uv) for a point
+;; at fraction u along the cell's x axis and v along its z axis.  All the weights here are exact
+;; binary fractions and every entry sums to 1.0.  Positions, colors and texture coordinates all
+;; come out of the same weights, so nothing in a vertex depends on which pass emitted it.
+;;
+;; A cell whose neighbour has been replaced by finer geometry cannot be drawn as a plain quad: the
+;; finer neighbour has vertices part way along the shared edge, which a quad would leave as
+;; T-junctions, and once the wave field moves the two sides independently the T-junctions open
+;; into cracks.  The stitch tables subdivide the coarse cell's shared edge at exactly the finer
+;; grid's vertex positions and retriangulate the whole cell through them.
+;;
+;; Two scales are needed, distinguished by the prefix:
+;;
+;;   *ocean-<dir>-table*        subdivides a 96 m mid cell edge into 4 steps of 24 m, matching the
+;;                              transition strips.  Consumed by ocean-mid-add-upload-top,
+;;                              -middle and -bottom.  7 vertices for an edge, 10 for a corner.
+;;   *ocean-trans-<dir>-table*  subdivides a 24 m near cell edge into 8 steps of 3 m, matching the
+;;                              near grid's vertex spacing.  Consumed by ocean-trans-add-upload.
+;;                              11 vertices for an edge, 18 for a corner.
+;;
+;; up and down name the -z and +z edges, left and right the -x and +x edges, and the four corner
+;; tables subdivide two adjacent edges at once.  The caller passes the vertex count to the VU as a
+;; quadword count, so each table's length is fixed by its name.  A table with n vertices covers the
+;; cell in n - 2 triangles, which is also the number of boundary vertices the retriangulation has
+;; to reach.
+;;
+;; Ordering matters as much as position.  The edge tables and the down-left and up-right corner
+;; tables are authored as a triangle fan: the first vertex is the apex, and the rest walk the cell
+;; boundary in one direction.  The up-left and down-right corner tables are authored as a triangle
+;; strip that zig-zags between the two subdivided edges, and their callers pass #f so the VU enters
+;; at its strip entry point rather than its fan entry point.
+
+;; Mid cell with its -x edge subdivided into four.  Fan from corner (1,0): then (1,1) and (0,1),
+;; then the left edge at v = 0.75, 0.5, 0.25 and corner (0,0).  7 vertices, 5 triangles.
 (define *ocean-left-table*
   (new 'static
        'array
@@ -42,7 +84,8 @@
        0.0
        0.0))
 
-;; definition for symbol *ocean-right-table*, type (pointer float)
+;; Mid cell with its +x edge subdivided into four.  Fan from corner (0,1): then (0,0) and (1,0),
+;; then the right edge at v = 0.25, 0.5, 0.75 and corner (1,1).
 (define *ocean-right-table*
   (new 'static
        'array
@@ -77,7 +120,8 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-up-table*, type (pointer float)
+;; Mid cell with its -z edge subdivided into four.  Fan from corner (0,1): then (1,1) and (1,0),
+;; then the top edge at u = 0.75, 0.5, 0.25 and corner (0,0).
 (define *ocean-up-table*
   (new 'static
        'array
@@ -112,7 +156,8 @@
        0.0
        0.0))
 
-;; definition for symbol *ocean-down-table*, type (pointer float)
+;; Mid cell with its +z edge subdivided into four.  Fan from corner (1,0): then (0,0) and (0,1),
+;; then the bottom edge at u = 0.25, 0.5, 0.75 and corner (1,1).
 (define *ocean-down-table*
   (new 'static
        'array
@@ -147,7 +192,9 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-down-left-table*, type (pointer float)
+;; Mid cell with both its +z and -x edges subdivided into four.  Fan from corner (1,0): the
+;; boundary runs from (0,0) down the left edge to (0,1) and then along the bottom edge to (1,1).
+;; 10 vertices, 8 triangles.
 (define *ocean-down-left-table*
   (new 'static
        'array
@@ -194,7 +241,10 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-down-right-table*, type (pointer float)
+;; Mid cell with both its +z and +x edges subdivided into four, authored as a triangle strip
+;; rather than a fan: (0,0), (0,1), (1,0), then alternating steps along the bottom and right
+;; edges toward (1,1).  ocean-mid-add-upload-top passes #f for this table so the VU uses its
+;; strip entry point.  10 vertices, 8 triangles.
 (define *ocean-down-right-table*
   (new 'static
        'array
@@ -241,7 +291,8 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-up-right-table*, type (pointer float)
+;; Mid cell with both its -z and +x edges subdivided into four.  Fan from corner (0,1): the
+;; boundary runs from (1,1) up the right edge to (1,0) and then along the top edge to (0,0).
 (define *ocean-up-right-table*
   (new 'static
        'array
@@ -288,7 +339,9 @@
        0.0
        0.0))
 
-;; definition for symbol *ocean-up-left-table*, type (pointer float)
+;; Mid cell with both its -z and -x edges subdivided into four, authored as a triangle strip:
+;; (1,1), (0,1), (1,0), then alternating steps along the left and top edges toward (0,0).
+;; ocean-mid-add-upload-bottom passes #f for this table so the VU uses its strip entry point.
 (define *ocean-up-left-table*
   (new 'static
        'array
@@ -335,7 +388,9 @@
        0.0
        0.0))
 
-;; definition for symbol *ocean-trans-left-table*, type (pointer float)
+;; Near cell with its -x edge subdivided into eight, so the eight inserted vertices land on the
+;; near grid's 3 m spacing.  Fan from corner (1,0): then (1,1) and (0,1), then the left edge at
+;; v = 0.875 down to 0.125 and corner (0,0).  11 vertices, 9 triangles.
 (define *ocean-trans-left-table*
   (new 'static
        'array
@@ -386,7 +441,8 @@
        0.0
        0.0))
 
-;; definition for symbol *ocean-trans-right-table*, type (pointer float)
+;; Near cell with its +x edge subdivided into eight.  Fan from corner (0,1): then (0,0) and (1,0),
+;; then the right edge at v = 0.125 up to 0.875 and corner (1,1).
 (define *ocean-trans-right-table*
   (new 'static
        'array
@@ -437,7 +493,8 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-trans-up-table*, type (pointer float)
+;; Near cell with its -z edge subdivided into eight.  Fan from corner (0,1): then (1,1) and (1,0),
+;; then the top edge at u = 0.875 down to 0.125 and corner (0,0).
 (define *ocean-trans-up-table*
   (new 'static
        'array
@@ -488,7 +545,8 @@
        0.0
        0.0))
 
-;; definition for symbol *ocean-trans-down-table*, type (pointer float)
+;; Near cell with its +z edge subdivided into eight.  Fan from corner (1,0): then (0,0) and (0,1),
+;; then the bottom edge at u = 0.125 up to 0.875 and corner (1,1).
 (define *ocean-trans-down-table*
   (new 'static
        'array
@@ -539,7 +597,9 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-trans-down-left-table*, type (pointer float)
+;; Near cell with both its +z and -x edges subdivided into eight.  Fan from corner (1,0): the
+;; boundary runs from (0,0) down the left edge to (0,1) and then along the bottom edge to (1,1).
+;; 18 vertices, 16 triangles.
 (define *ocean-trans-down-left-table*
   (new 'static
        'array
@@ -618,7 +678,10 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-trans-down-right-table*, type (pointer float)
+;; Near cell with both its +z and +x edges subdivided into eight, authored as a triangle strip:
+;; (0,0), (0,1), (1,0), then alternating steps along the bottom and right edges toward (1,1).
+;; ocean-trans-add-upload passes #f for this table so the VU uses its strip entry point.
+;; 18 vertices, 16 triangles.
 (define *ocean-trans-down-right-table*
   (new 'static
        'array
@@ -697,7 +760,8 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-trans-up-right-table*, type (pointer float)
+;; Near cell with both its -z and +x edges subdivided into eight.  Fan from corner (0,1): the
+;; boundary runs from (1,1) up the right edge to (1,0) and then along the top edge to (0,0).
 (define *ocean-trans-up-right-table*
   (new 'static
        'array
@@ -776,7 +840,9 @@
        0.0
        0.0))
 
-;; definition for symbol *ocean-trans-up-left-table*, type (pointer float)
+;; Near cell with both its -z and -x edges subdivided into eight, authored as a triangle strip:
+;; (1,1), (0,1), (1,0), then alternating steps along the left and top edges toward (0,0).
+;; ocean-trans-add-upload passes #f for this table so the VU uses its strip entry point.
 (define *ocean-trans-up-left-table*
   (new 'static
        'array
@@ -855,7 +921,18 @@
        0.0
        0.0))
 
-;; definition for symbol *ocean-trans-corner-table*, type (inline-array vector4w-2)
+;; Bilinear corner weights on a 5x5 grid of quarter steps: entry [5*v + u] for integer u and v
+;; from 0 through 4 holds ((1-u/4)(1-v/4), (u/4)(1-v/4), (1-u/4)(v/4), (u/4)(v/4)).  100 floats,
+;; that is 25 four-weight entries.
+;;
+;; This is how a quarter-cell inherits its parent cell's attributes.  ocean-trans-add-upload-table
+;; and ocean-near-add-upload pick the entry for one corner of a quarter-cell and its neighbours at
+;; +1 and +5, giving the four weight sets for that quarter-cell's own corners, then use them to
+;; blend the parent cell's four corner colors and texture coordinates.  A vertex shared by two
+;; quarter-cells is reached through the same entry from either side, so the two agree exactly.
+;;
+;; The declared type is wrong: the data is 25 plain vectors and both consumers reach it by
+;; quadword index through element zero.
 (define *ocean-trans-corner-table*
   (the-as (inline-array vector4w-2)
           (new 'static
@@ -963,7 +1040,18 @@
                0.0
                1.0)))
 
-;; definition for symbol *ocean-trans-strip-array*, type (pointer float)
+;; The transition layer's own geometry: one 96 m mid cell as 4x4 quads of 24 m, split into four
+;; ten-vertex triangle strips.  160 floats = 40 vertices = 4 strips of 10, laid out back to back
+;; so ocean-trans-add-upload-strip can DMA strip k straight from a 160-byte offset.
+;;
+;; Strip k covers the row v = k/4 to (k+1)/4 and alternates between those two rows while u steps
+;; 0, 0.25, 0.5, 0.75, 1: ten vertices, eight triangles, four quads.  Bits 0 through 3 of the
+;; strip's suppression mask clear those four quads, and the trans-temp-masks bits that
+;; draw-ocean-transition-seams merges into the mask use the same bit order.
+;;
+;; The weights are the quarter-step values of *ocean-trans-corner-table* rearranged into draw
+;; order, which is why a strip vertex and a seam patch's boundary vertex on the same grid point
+;; are bit-identical.
 (define *ocean-trans-strip-array*
   (new 'static
        'array
@@ -1130,7 +1218,11 @@
        0.0
        1.0))
 
-;; definition for symbol *ocean-trans-st-table*, type (inline-array vector)
+;; The four corners of the unit texture square, in the corner order the weight tables use: s and
+;; t in x and y, and q = 1.0 in z for the perspective divide.  Uploaded beside the four corner
+;; colors so a cell's texture coordinates interpolate exactly like its positions;
+;; ocean-trans-add-upload-table blends these down to a quarter-cell, while
+;; ocean-trans-add-upload-strip and ocean-mid-add-upload-table pass them through unchanged.
 (define *ocean-trans-st-table*
   (new 'static
        'inline-array

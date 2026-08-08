@@ -14,9 +14,11 @@
   ((flutflut-bluehut-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 3.25))
 
-(defmethod play-anim! ((this flutflut-bluehut) (arg0 symbol))
+(defmethod play-anim! ((this flutflut-bluehut) (commit? symbol))
+  "Return Flut Flut's idle animation; report an error when asked to commit unsupported task
+   speech."
   (current-status (-> this tasks))
-  (if arg0
+  (if commit?
     (format 0
             "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
             (-> this name)
@@ -24,9 +26,11 @@
   (the-as basic (get-art-elem this)))
 
 (defmethod get-art-elem ((this flutflut-bluehut))
+  "Return Flut Flut's idle animation."
   (-> this draw art-group data 2))
 
 (defmethod should-display? ((this flutflut-bluehut))
+  "Return whether the levitator introduction and beach Flut Flut resolution are complete."
   (and (closed? (-> this tasks) (game-task village2-levitator) (task-status need-introduction))
        (task-closed? (game-task beach-flutflut) (task-status need-resolution))))
 
@@ -45,37 +49,23 @@
                (v1-8 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                (v1-9 (the-as number (logior #x3f800000 v1-8))))
           (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-9)))) 1))
-            (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-            (until (ja-done? 0)
-              (suspend)
-              (ja :num! (seek!)))
+            (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)
             (let ((s5-0 (current-time))) (while (< (+ (current-time) (seconds -0.5)) s5-0) (suspend)))
-            (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
-            (until (ja-done? 0)
-              (suspend)
-              (ja :num! (seek! 0.0)))
+            (ja-play :group! (ja-group) :num! (seek! 0.0) :frame-num max)
             (let ((s5-1 (current-time))) (while (< (+ (current-time) (seconds -0.5)) s5-1) (suspend)))))
-        (ja-no-eval :group! flutflut-bluehut-idle-start-scratch-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))
+        (ja-play :group! flutflut-bluehut-idle-start-scratch-ja :num! (seek!) :frame-num 0.0)
         (ja :group! flutflut-bluehut-idle-scratch-ja)
         (let* ((f30-1 2.0)
                (v1-102 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                (v1-103 (the-as number (logior #x3f800000 v1-102))))
           (countdown (gp-1 (+ (the int (* f30-1 (+ -1.0 (the-as float v1-103)))) 6))
-            (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-            (until (ja-done? 0)
-              (suspend)
-              (ja :num! (seek!)))))
-        (ja-no-eval :group! flutflut-bluehut-idle-start-scratch-ja :num! (seek! 0.0) :frame-num max)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! 0.0))))))
+            (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
+        (ja-play :group! flutflut-bluehut-idle-start-scratch-ja :num! (seek! 0.0) :frame-num max))))
 
-(defmethod init-from-entity! ((this flutflut-bluehut) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *flutflut-bluehut-sg* 3 0 (new 'static 'vector :w 4096.0) 27)
+(defmethod init-from-entity! ((this flutflut-bluehut) (source-entity entity-actor))
+  "Initialize Flut Flut for the Village 2 levitator task and enter the current taskable state."
+  (init-as-taskable! this source-entity *flutflut-bluehut-sg* 3 0 (new 'static 'vector :w 4096.0) 27)
   (set! (-> this tasks) (get-task-control (game-task village2-levitator)))
   (set! (-> this draw light-index) (the-as uint 1))
-  (process-taskable-method-42 this)
+  (goto-initial-state! this)
   (none))

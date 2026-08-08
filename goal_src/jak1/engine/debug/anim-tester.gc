@@ -4,14 +4,21 @@
 (require "engine/util/glist-h.gc")
 (require "engine/anim/aligner.gc")
 
+;; The animation tester: an in-game browser for the animations of a loaded art
+;; group. `anim-tester-add-object` loads one art group and adds an entry for its
+;; mesh, holding every animation in that group. Any animation can be renamed into
+;; a "sequence" and then edited into a playlist of items - animation, speed, blend
+;; time, first and last frame - which the process plays end to end. Sequences are
+;; written back out as text .obinf files.
+;;
+;; The debug menu drives all of it through events (see default-menu.gc), and the
+;; four lists on screen are drawn by the generic list-control below, which calls
+;; back into a per-list handler function for measuring, drawing and pad input.
+
 ;; NOTES - removed one of the 2 inspects
 ;; - also fixed up a basic file-stream constructor on the stack
 
 (declare-type list-control structure)
-
-(define-extern anim-test-anim-list-handler (function int list-control symbol))
-
-(define-extern anim-test-edit-sequence-list-handler (function int list-control symbol))
 
 (declare-type anim-tester process-drawable)
 
@@ -20,48 +27,119 @@
 (defenum anim-tester-flags
   :bitfield #t
   :type int32
-  (fanimt0)
-  (fanimt1)
-  (fanimt2)
-  (fanimt3)
-  (fanimt4)
-  (fanimt5))
+  (anim-playing) ;; an animation is set up on the skeleton, so post it
+  (just-entered) ;; entered anim-tester-process this frame; skip the menu once
+  (return-to-menu) ;; a list closed itself; hand control back to the debug menu
+  (editing-field) ;; pad input belongs to the highlighted field, not the list
+  (at-show-joint-info) ;; "Show Joint Inf" menu flag
+  (at-apply-align) ;; "Apply Align" menu flag
+  )
+
+;; The command a list-control passes to its listfunc. display-list-control drives
+;; the whole list through these five calls.
+(defenum list-control-cmd
+  :type int32
+  (draw-line 0) ;; draw the current node at (xpos, ypos)
+  (visible? 1) ;; #t if the current node belongs in this list
+  (measure 2) ;; store the current node's width in characters in return-int
+  (draw-title 3) ;; draw the list title, and anything right of the list
+  (input 4) ;; consume this frame's pad input
+  )
+
+(define-extern anim-test-anim-list-handler (function list-control-cmd list-control symbol))
+
+(define-extern anim-test-edit-sequence-list-handler (function list-control-cmd list-control symbol))
+
+;; Which list the tester is showing. The names are the events that select them.
+(defenum anim-tester-edit-mode
+  :type int32
+  (none 0)
+  (pick-object 1)
+  (pick-joint-anim 2)
+  (pick-sequence 3)
+  (edit-sequence 4))
+
+(defenum anim-test-obj-flags
+  :bitfield #t
+  :type int32
+  (edited) ;; sequences were changed; save-sequences will write the file
+  (play-sequence) ;; play seq-index out of the sequence list, not anim-index
+  )
+
+(defenum anim-test-seq-flags
+  :bitfield #t
+  :type int32
+  (sequence) ;; a named sequence, not a plain animation from the art group
+  (anim-present) ;; the matching animation was found in the art group this scan
+  (from-file) ;; loaded from data/<object>.obinf, cleared when saved again
+  )
+
+(defenum anim-test-item-flags
+  :bitfield #t
+  :type int32
+  (end) ;; the "**END**" row that closes every sequence
+  (wait-for-blend) ;; hold the sequence until this item's blend has finished
+  (blank) ;; "--blank--" row inserted at the end; not saved, not played
+  )
+
+;; Columns of one sequence row, indexed by anim-tester's item-field. The three
+;; flag columns after blend-flag are drawn as "-" and skipped when moving left or
+;; right; the last three spell out the "MID" column header.
+(defenum anim-test-item-field
+  :type int64
+  (name 0)
+  (speed 1)
+  (blend 2)
+  (first-frame 3)
+  (last-frame 4)
+  (blend-flag 5)
+  (unused-flag-1 6)
+  (unused-flag-2 7)
+  (unused-flag-3 8)
+  (move 9)
+  (insert 10)
+  (delete 11))
 
 ;; DECOMP BEGINS
 
 ;; this file is debug only
 (declare-file (debug))
 
+;; One scrolling list of glst-nodes on screen. Everything specific to a list
+;; lives in its listfunc, which display-list-control calls once per node per
+;; command; the fields below are how the two halves talk to each other.
 (deftype list-control (structure)
-  ((listfunc            (function int list-control symbol))
-   (list-owner          uint32)
-   (top                 int32)
+  ((listfunc            (function list-control-cmd list-control symbol))
+   (list-owner          uint32) ;; whatever owns the list; the handler knows the type
+   (top                 int32) ;; panel position, in pixels
    (left                int32)
    (list                glst-list)
-   (the-node            glst-node)
-   (top-index           int32)
-   (the-index           int32)
-   (the-disp-line       int32)
-   (highlight-index     int32)
-   (current-index       int32)
-   (numlines            int32)
-   (lines-to-disp       int32)
-   (charswide           int32)
-   (highlight-disp-line int32)
+   (the-node            glst-node) ;; node the listfunc is being asked about
+   (top-index           int32) ;; index of the first node on screen
+   (the-index           int32) ;; index of the-node
+   (the-disp-line       int32) ;; screen line the-node would be drawn on
+   (highlight-index     int32) ;; index under the cursor
+   (current-index       int32) ;; index the handler last accepted with X
+   (numlines            int32) ;; visible nodes in the whole list
+   (lines-to-disp       int32) ;; visible nodes on screen, at most MAX_LINES
+   (charswide           int32) ;; width of the widest visible line, in characters
+   (highlight-disp-line int32) ;; screen line of the highlighted node
    (field-id            int32)
-   (xpos                int32)
+   (xpos                int32) ;; where the listfunc should draw, in pixels
    (ypos                int32)
-   (user-info           int32)
+   (user-info           int32) ;; per-list, set by whoever configured the control
    (user-info-u         uint32 :overlay-at user-info)
-   (return-int          int32))
+   (return-int          int32)) ;; the listfunc's answer to a measure command
   :allow-misaligned)
 
-
+;; Column of a sequence-editor row, in characters from the left of the panel.
 (deftype list-field (structure)
   ((left  int32)
    (width int32)))
 
-
+;; Layout constants shared by every list-control. Sizes are in pixels except
+;; MAX_LINES and BORDER_LINES, which are screen lines, and CHAR_WIDTH, which is
+;; how wide the code assumes one character of the debug font is.
 (deftype DISP_LIST-bank (basic)
   ((TV_SPACING    int32)
    (BORDER_WIDTH  int32)
@@ -70,11 +148,10 @@
    (CHAR_WIDTH    int32)
    (INC_DELAY     int32)
    (BORDER_LINES  int32)
-   (CXOFF         int32)
+   (CXOFF         int32) ;; the four offsets are left at zero
    (CYOFF         int32)
    (BXOFF         int32)
    (BYOFF         int32)))
-
 
 (define *DISP_LIST-bank*
   (new 'static
@@ -87,155 +164,156 @@
        :INC_DELAY 20
        :BORDER_LINES 3))
 
-(defun display-list-control ((arg0 list-control))
-  (when (< (-> arg0 current-index) 0)
-    (set! (-> arg0 current-index) 0)
+(defun display-list-control ((ctrl list-control))
+  "Draw one list and give it this frame's pad input.
+
+   Both indices are clamped into range first, then the list is walked with
+   (list-control-cmd visible?) so a handler can filter nodes out: if the
+   highlighted node is filtered out, the highlight moves to the first visible
+   node. The visible nodes are measured to size the panel, the panel and title
+   are drawn, and top-index is moved until the highlight sits at least
+   BORDER_LINES from either edge of the window. Finally up to MAX_LINES rows are
+   drawn, or \"**NONE**\" if nothing is visible.
+
+   the-node, the-index and the-disp-line are what a handler reads to find out
+   which node it is being asked about."
+  (when (< (-> ctrl current-index) 0)
+    (set! (-> ctrl current-index) 0)
     0)
-  (if (>= (-> arg0 current-index) (glst-num-elements (-> arg0 list))) (set! (-> arg0 current-index) -1))
-  (when (< (-> arg0 highlight-index) 0)
-    (set! (-> arg0 highlight-index) 0)
+  ;; -1 means nothing in this list is selected any more
+  (if (>= (-> ctrl current-index) (glst-num-elements (-> ctrl list))) (set! (-> ctrl current-index) -1))
+  (when (< (-> ctrl highlight-index) 0)
+    (set! (-> ctrl highlight-index) 0)
     0)
-  (if (>= (-> arg0 highlight-index) (glst-num-elements (-> arg0 list)))
-    (set! (-> arg0 highlight-index) (+ (glst-num-elements (-> arg0 list)) -1)))
-  (set! (-> arg0 the-index) (-> arg0 highlight-index))
-  (set! (-> arg0 the-node) (glst-get-node-by-index (-> arg0 list) (-> arg0 highlight-index)))
-  (when (not ((-> arg0 listfunc) 1 arg0))
-    (set! (-> arg0 the-index) 0)
-    (let ((v1-12 (-> arg0 list))) "return the start of the list" (set! (-> arg0 the-node) (-> v1-12 head)))
-    (while (let ((v1-22 (-> arg0 the-node))) "is this node the end of the list. #t = end" (not (not (-> v1-22 next))))
-      (when ((-> arg0 listfunc) 1 arg0)
-        (set! (-> arg0 highlight-index) (-> arg0 the-index))
+  (if (>= (-> ctrl highlight-index) (glst-num-elements (-> ctrl list)))
+    (set! (-> ctrl highlight-index) (+ (glst-num-elements (-> ctrl list)) -1)))
+  (set! (-> ctrl the-index) (-> ctrl highlight-index))
+  (set! (-> ctrl the-node) (glst-get-node-by-index (-> ctrl list) (-> ctrl highlight-index)))
+  ;; the highlighted node may be one the handler wants hidden. If so, highlight the
+  ;; first visible node instead, or fall back to 0 if the whole list is hidden.
+  (when (not ((-> ctrl listfunc) (list-control-cmd visible?) ctrl))
+    (set! (-> ctrl the-index) 0)
+    (let ((list (-> ctrl list))) "return the start of the list" (set! (-> ctrl the-node) (-> list head)))
+    (while (let ((node (-> ctrl the-node))) "is this node the end of the list. #t = end" (not (not (-> node next))))
+      (when ((-> ctrl listfunc) (list-control-cmd visible?) ctrl)
+        (set! (-> ctrl highlight-index) (-> ctrl the-index))
         (goto cfg-18))
-      (+! (-> arg0 the-index) 1)
-      (let ((v1-20 (-> arg0 the-node))) "return the next node in the list" (set! (-> arg0 the-node) (-> v1-20 next))))
-    (set! (-> arg0 highlight-index) 0)
+      (+! (-> ctrl the-index) 1)
+      (let ((node (-> ctrl the-node))) "return the next node in the list" (set! (-> ctrl the-node) (-> node next))))
+    (set! (-> ctrl highlight-index) 0)
     0)
   (label cfg-18)
-  (set! (-> arg0 the-index) (-> arg0 highlight-index))
-  (set! (-> arg0 the-node) (glst-get-node-by-index (-> arg0 list) (-> arg0 the-index)))
-  ((-> arg0 listfunc) 4 arg0)
-  (let ((s5-2 #f)
-        (s4-0 #f))
-    (set! (-> arg0 numlines) 0)
-    (set! (-> arg0 charswide) 0)
-    (set! (-> arg0 the-index) 0)
-    (set! (-> arg0 the-disp-line) 0)
-    (let ((v1-29 (-> arg0 list))) "return the start of the list" (set! (-> arg0 the-node) (-> v1-29 head)))
-    (while (let ((v1-52 (-> arg0 the-node))) "is this node the end of the list. #t = end" (not (not (-> v1-52 next))))
-      (when ((-> arg0 listfunc) 1 arg0)
-        (if (and (not s5-2) (>= (-> arg0 the-index) (-> arg0 top-index))) (set! s5-2 #t))
-        (when (and (not s4-0) (>= (-> arg0 the-index) (-> arg0 highlight-index)))
-          (set! s4-0 #t)
-          (set! (-> arg0 highlight-disp-line) (-> arg0 the-disp-line)))
-        ((-> arg0 listfunc) 2 arg0)
-        (if (< (-> arg0 charswide) (-> arg0 return-int)) (set! (-> arg0 charswide) (-> arg0 return-int)))
-        (if s5-2 (+! (-> arg0 the-disp-line) 1))
-        (+! (-> arg0 numlines) 1))
-      (+! (-> arg0 the-index) 1)
-      (let ((v1-50 (-> arg0 the-node))) "return the next node in the list" (set! (-> arg0 the-node) (-> v1-50 next)))))
-  (set! (-> arg0 lines-to-disp)
-        (if (< (-> *DISP_LIST-bank* MAX_LINES) (-> arg0 numlines)) (-> *DISP_LIST-bank* MAX_LINES) (-> arg0 numlines)))
-  (if (> (-> arg0 lines-to-disp) 0) (-> arg0 lines-to-disp) 1)
-  (let* ((s4-1 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (s5-3 (-> s4-1 base)))
-    (draw-sprite2d-xy s4-1
-                      (-> arg0 left)
-                      (-> arg0 top)
-                      (+ (* (-> arg0 charswide) (-> *DISP_LIST-bank* CHAR_WIDTH)) (* (-> *DISP_LIST-bank* BORDER_WIDTH) 2))
-                      (+ (* (+ (-> arg0 lines-to-disp) 1) (-> *DISP_LIST-bank* TV_SPACING)) (* (-> *DISP_LIST-bank* BORDER_WIDTH) 2))
-                      (new 'static 'rgba :a #x40))
-    (let ((a3-6 (-> s4-1 base)))
-      (let ((v1-72 (the-as object (-> s4-1 base))))
-        (set! (-> (the-as dma-packet v1-72) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-72) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-72) vif1) (new 'static 'vif-tag))
-        (set! (-> s4-1 base) (&+ (the-as pointer v1-72) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             (bucket-id debug)
-                             s5-3
-                             (the-as (pointer dma-tag) a3-6))))
-  (set! (-> arg0 xpos) (+ (-> arg0 left) (-> *DISP_LIST-bank* BORDER_WIDTH)))
-  (set! (-> arg0 ypos) (+ (-> arg0 top) (-> *DISP_LIST-bank* BORDER_HEIGHT)))
-  ((-> arg0 listfunc) 3 arg0)
+  (set! (-> ctrl the-index) (-> ctrl highlight-index))
+  (set! (-> ctrl the-node) (glst-get-node-by-index (-> ctrl list) (-> ctrl the-index)))
+  ((-> ctrl listfunc) (list-control-cmd input) ctrl)
+  ;; measure the list: count the visible nodes, find the widest one, and work out
+  ;; which screen line the highlight lands on with the current top-index
+  (let ((past-top? #f)
+        (found-highlight? #f))
+    (set! (-> ctrl numlines) 0)
+    (set! (-> ctrl charswide) 0)
+    (set! (-> ctrl the-index) 0)
+    (set! (-> ctrl the-disp-line) 0)
+    (let ((list (-> ctrl list))) "return the start of the list" (set! (-> ctrl the-node) (-> list head)))
+    (while (let ((node (-> ctrl the-node))) "is this node the end of the list. #t = end" (not (not (-> node next))))
+      (when ((-> ctrl listfunc) (list-control-cmd visible?) ctrl)
+        (if (and (not past-top?) (>= (-> ctrl the-index) (-> ctrl top-index))) (set! past-top? #t))
+        (when (and (not found-highlight?) (>= (-> ctrl the-index) (-> ctrl highlight-index)))
+          (set! found-highlight? #t)
+          (set! (-> ctrl highlight-disp-line) (-> ctrl the-disp-line)))
+        ((-> ctrl listfunc) (list-control-cmd measure) ctrl)
+        (if (< (-> ctrl charswide) (-> ctrl return-int)) (set! (-> ctrl charswide) (-> ctrl return-int)))
+        (if past-top? (+! (-> ctrl the-disp-line) 1))
+        (+! (-> ctrl numlines) 1))
+      (+! (-> ctrl the-index) 1)
+      (let ((node (-> ctrl the-node))) "return the next node in the list" (set! (-> ctrl the-node) (-> node next)))))
+  (set! (-> ctrl lines-to-disp)
+        (if (< (-> *DISP_LIST-bank* MAX_LINES) (-> ctrl numlines)) (-> *DISP_LIST-bank* MAX_LINES) (-> ctrl numlines)))
+  ;; result unused
+  (if (> (-> ctrl lines-to-disp) 0) (-> ctrl lines-to-disp) 1)
+  (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-sprite2d-xy dma-buff
+                        (-> ctrl left)
+                        (-> ctrl top)
+                        (+ (* (-> ctrl charswide) (-> *DISP_LIST-bank* CHAR_WIDTH)) (* (-> *DISP_LIST-bank* BORDER_WIDTH) 2))
+                        (+ (* (+ (-> ctrl lines-to-disp) 1) (-> *DISP_LIST-bank* TV_SPACING)) (* (-> *DISP_LIST-bank* BORDER_WIDTH) 2))
+                        (new 'static 'rgba :a #x40)))
+  (set! (-> ctrl xpos) (+ (-> ctrl left) (-> *DISP_LIST-bank* BORDER_WIDTH)))
+  (set! (-> ctrl ypos) (+ (-> ctrl top) (-> *DISP_LIST-bank* BORDER_HEIGHT)))
+  ((-> ctrl listfunc) (list-control-cmd draw-title) ctrl)
   (cond
-    ((> (-> arg0 lines-to-disp) 0)
+    ((> (-> ctrl lines-to-disp) 0)
      (cond
-       ((< (-> arg0 highlight-disp-line) (-> *DISP_LIST-bank* BORDER_LINES))
-        (let ((s5-4 (- (-> *DISP_LIST-bank* BORDER_LINES) (-> arg0 highlight-disp-line))))
-          (set! (-> arg0 the-node) (glst-get-node-by-index (-> arg0 list) (-> arg0 top-index)))
-          (set! (-> arg0 the-index) (-> arg0 top-index))
-          (let ((v1-88 (-> arg0 the-node)))
+       ;; the highlight is too close to the top of the window: walk top-index back
+       ;; over visible nodes until it is BORDER_LINES down, or the list runs out
+       ((< (-> ctrl highlight-disp-line) (-> *DISP_LIST-bank* BORDER_LINES))
+        (let ((lines-to-scroll (- (-> *DISP_LIST-bank* BORDER_LINES) (-> ctrl highlight-disp-line))))
+          (set! (-> ctrl the-node) (glst-get-node-by-index (-> ctrl list) (-> ctrl top-index)))
+          (set! (-> ctrl the-index) (-> ctrl top-index))
+          (let ((node (-> ctrl the-node)))
             "is this node the start of the list. #t = start"
-            (when (not (not (-> v1-88 prev)))
+            (when (not (not (-> node prev)))
               (loop
-                (let ((v1-92 (-> arg0 the-node)))
+                (let ((cur-node (-> ctrl the-node)))
                   "return the previous node in the list"
-                  (let ((v1-93 (-> v1-92 prev)))
-                    (let ((a0-41 v1-93)) "is this node the start of the list. #t = start" (if (not (-> a0-41 prev)) (goto cfg-61)))
-                    (set! (-> arg0 the-node) v1-93)))
-                (+! (-> arg0 the-index) -1)
-                (when ((-> arg0 listfunc) 1 arg0)
-                  (set! (-> arg0 top-index) (-> arg0 the-index))
-                  (+! s5-4 -1)
-                  (if (<= s5-4 0) (goto cfg-61)))))))
+                  (let ((prev-node (-> cur-node prev)))
+                    (let ((prev prev-node)) "is this node the start of the list. #t = start" (if (not (-> prev prev)) (goto cfg-61)))
+                    (set! (-> ctrl the-node) prev-node)))
+                (+! (-> ctrl the-index) -1)
+                (when ((-> ctrl listfunc) (list-control-cmd visible?) ctrl)
+                  (set! (-> ctrl top-index) (-> ctrl the-index))
+                  (+! lines-to-scroll -1)
+                  (if (<= lines-to-scroll 0) (goto cfg-61)))))))
         (label cfg-61))
-       ((>= (-> arg0 highlight-disp-line) (- (-> *DISP_LIST-bank* MAX_LINES) (-> *DISP_LIST-bank* BORDER_LINES)))
-        (let ((s5-5 (- (-> arg0 highlight-disp-line) (- (-> *DISP_LIST-bank* MAX_LINES) (-> *DISP_LIST-bank* BORDER_LINES)))))
-          (set! (-> arg0 the-node) (glst-get-node-by-index (-> arg0 list) (-> arg0 top-index)))
-          (set! (-> arg0 the-index) (-> arg0 top-index))
-          (let ((v1-107 (-> arg0 the-node)))
+       ;; and the same the other way, for the bottom of the window
+       ((>= (-> ctrl highlight-disp-line) (- (-> *DISP_LIST-bank* MAX_LINES) (-> *DISP_LIST-bank* BORDER_LINES)))
+        (let ((lines-to-scroll (- (-> ctrl highlight-disp-line) (- (-> *DISP_LIST-bank* MAX_LINES) (-> *DISP_LIST-bank* BORDER_LINES)))))
+          (set! (-> ctrl the-node) (glst-get-node-by-index (-> ctrl list) (-> ctrl top-index)))
+          (set! (-> ctrl the-index) (-> ctrl top-index))
+          (let ((node (-> ctrl the-node)))
             "is this node the end of the list. #t = end"
-            (when (not (not (-> v1-107 next)))
+            (when (not (not (-> node next)))
               (loop
-                (let ((v1-111 (-> arg0 the-node)))
+                (let ((cur-node (-> ctrl the-node)))
                   "return the next node in the list"
-                  (let ((v1-112 (-> v1-111 next)))
-                    (let ((a0-55 v1-112)) "is this node the end of the list. #t = end" (if (not (-> a0-55 next)) (goto cfg-77)))
-                    (set! (-> arg0 the-node) v1-112)))
-                (+! (-> arg0 the-index) 1)
-                (when ((-> arg0 listfunc) 1 arg0)
-                  (set! (-> arg0 top-index) (-> arg0 the-index))
-                  (+! s5-5 -1)
-                  (if (<= s5-5 0) (goto cfg-77)))))))))
+                  (let ((next-node (-> cur-node next)))
+                    (let ((next next-node)) "is this node the end of the list. #t = end" (if (not (-> next next)) (goto cfg-77)))
+                    (set! (-> ctrl the-node) next-node)))
+                (+! (-> ctrl the-index) 1)
+                (when ((-> ctrl listfunc) (list-control-cmd visible?) ctrl)
+                  (set! (-> ctrl top-index) (-> ctrl the-index))
+                  (+! lines-to-scroll -1)
+                  (if (<= lines-to-scroll 0) (goto cfg-77)))))))))
      (label cfg-77)
-     (set! (-> arg0 the-disp-line) 0)
-     (set! (-> arg0 the-index) (-> arg0 top-index))
-     (set! (-> arg0 the-node) (glst-get-node-by-index (-> arg0 list) (-> arg0 top-index)))
-     (while (let ((v1-135 (-> arg0 the-node)))
+     ;; draw from top-index until the window is full or the list ends
+     (set! (-> ctrl the-disp-line) 0)
+     (set! (-> ctrl the-index) (-> ctrl top-index))
+     (set! (-> ctrl the-node) (glst-get-node-by-index (-> ctrl list) (-> ctrl top-index)))
+     (while (let ((node (-> ctrl the-node)))
               "is this node the end of the list. #t = end"
-              (not (or (not (-> v1-135 next)) (>= (-> arg0 the-disp-line) (-> *DISP_LIST-bank* MAX_LINES)))))
-       (when ((-> arg0 listfunc) 1 arg0)
-         (set! (-> arg0 xpos) (+ (-> arg0 left) (-> *DISP_LIST-bank* BORDER_WIDTH)))
-         (set! (-> arg0 ypos)
-               (+ (-> arg0 top) (-> *DISP_LIST-bank* BORDER_HEIGHT) (* (+ (-> arg0 the-disp-line) 1) (-> *DISP_LIST-bank* TV_SPACING))))
-         ((-> arg0 listfunc) 0 arg0)
-         (+! (-> arg0 the-disp-line) 1))
-       (+! (-> arg0 the-index) 1)
-       (let ((v1-133 (-> arg0 the-node))) "return the next node in the list" (set! (-> arg0 the-node) (-> v1-133 next)))))
+              (not (or (not (-> node next)) (>= (-> ctrl the-disp-line) (-> *DISP_LIST-bank* MAX_LINES)))))
+       (when ((-> ctrl listfunc) (list-control-cmd visible?) ctrl)
+         (set! (-> ctrl xpos) (+ (-> ctrl left) (-> *DISP_LIST-bank* BORDER_WIDTH)))
+         (set! (-> ctrl ypos)
+               (+ (-> ctrl top) (-> *DISP_LIST-bank* BORDER_HEIGHT) (* (+ (-> ctrl the-disp-line) 1) (-> *DISP_LIST-bank* TV_SPACING))))
+         ((-> ctrl listfunc) (list-control-cmd draw-line) ctrl)
+         (+! (-> ctrl the-disp-line) 1))
+       (+! (-> ctrl the-index) 1)
+       (let ((node (-> ctrl the-node))) "return the next node in the list" (set! (-> ctrl the-node) (-> node next)))))
     (else
-     (let* ((s4-2 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-            (s5-6 (-> s4-2 base)))
-       (draw-string-xy "**NONE**"
-                       s4-2
-                       (+ (-> arg0 left) (-> *DISP_LIST-bank* BORDER_WIDTH))
-                       (+ (-> arg0 top) (-> *DISP_LIST-bank* BORDER_HEIGHT) (-> *DISP_LIST-bank* TV_SPACING))
-                       (font-color menu)
-                       (font-flags shadow kerning))
-       (let ((a3-12 (-> s4-2 base)))
-         (let ((v1-147 (the-as object (-> s4-2 base))))
-           (set! (-> (the-as dma-packet v1-147) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-           (set! (-> (the-as dma-packet v1-147) vif0) (new 'static 'vif-tag))
-           (set! (-> (the-as dma-packet v1-147) vif1) (new 'static 'vif-tag))
-           (set! (-> s4-2 base) (&+ (the-as pointer v1-147) 16)))
-         (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                (bucket-id debug)
-                                s5-6
-                                (the-as (pointer dma-tag) a3-12))))))
+     (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "**NONE**"
+                            dma-buff
+                            (+ (-> ctrl left) (-> *DISP_LIST-bank* BORDER_WIDTH))
+                            (+ (-> ctrl top) (-> *DISP_LIST-bank* BORDER_HEIGHT) (-> *DISP_LIST-bank* TV_SPACING))
+                            (font-color menu)
+                            (font-flags shadow kerning)))))
   (none))
 
+;; Where each of the four lists sits, and how narrow it is allowed to get. X, Y
+;; and EDIT_STATS_X/EDIT_PICK_X are pixels and characters respectively; the widths
+;; are in characters.
 (deftype anim-tester-bank (basic)
-  ((ANIM_SPEED            float)
-   (BLEND                 float)
+  ((ANIM_SPEED            float) ;; unused
+   (BLEND                 float) ;; unused
    (OBJECT_LIST_X         int32)
    (OBJECT_LIST_Y         int32)
    (OBJECT_LIST_MIN_WIDTH int32)
@@ -250,7 +328,6 @@
    (EDIT_STATS_X          int32)
    (EDIT_LIST_MIN_WIDTH   int32)
    (EDIT_PICK_X           int32)))
-
 
 (define *ANIM_TESTER-bank*
   (new 'static
@@ -272,262 +349,313 @@
        :EDIT_LIST_MIN_WIDTH 64
        :EDIT_PICK_X 30))
 
+;; The tester process itself. It draws one loaded mesh with one animation channel
+;; set, and owns the object list and the animation picker; the per-object and
+;; per-sequence lists live on the nodes they belong to.
 (deftype anim-tester (process-drawable)
   ((flags       anim-tester-flags)
-   (obj-list    glst-list :inline)
-   (current-obj string)
-   (speed       int32)
-   (list-con    list-control :inline)
-   (pick-con    list-control :inline)
-   (item-field  int64)
-   (inc-delay   int32)
-   (inc-timer   int32)
-   (edit-mode   int32)
-   (old-mode    int32)
-   (anim-speed  float)
-   (anim-gspeed float)
-   (anim-first  float)
-   (anim-last   float))
+   (obj-list    glst-list :inline) ;; every loaded art group, as anim-test-obj
+   (current-obj string) ;; name of the object being played
+   (speed       int32) ;; global playback speed, percent
+   (list-con    list-control :inline) ;; the object list
+   (pick-con    list-control :inline) ;; the animation picker inside the editor
+   (item-field  int64) ;; anim-test-item-field: editor column
+   (inc-delay   int32) ;; frames between steps while a value is held
+   (inc-timer   int32) ;; frames left before the next step
+   (edit-mode   anim-tester-edit-mode)
+   (old-mode    anim-tester-edit-mode) ;; edit-mode last frame; written, never read
+   (anim-speed  float) ;; frames per frame for the current row
+   (anim-gspeed float) ;; speed as a fraction, without the row's own
+   (anim-first  float) ;; frame limits for the current row, or the
+   (anim-last   float)) ;;   min/max sentinels
   (:states
    anim-tester-process))
 
-
-(defun anim-tester-num-print ((arg0 basic) (arg1 float))
+(defun anim-tester-num-print ((stream basic) (frame float))
+  "Print a frame number to stream for an .obinf file, spelling the two sentinels
+   as \"min\" (-1.0) and \"max\" (-2.0)."
   (cond
-    ((= arg1 -2.0) (format arg0 "max"))
-    ((= arg1 -1.0) (format arg0 "min"))
-    (else (format arg0 "~f" arg1)))
+    ((= frame -2.0) (format stream "max"))
+    ((= frame -1.0) (format stream "min"))
+    (else (format stream "~f" frame)))
   (none))
 
 (define-perm *anim-tester* (pointer anim-tester) #f)
 
+;; One mesh out of one art group, and everything the tester knows about its
+;; animations. privname is the mesh's name, which is what the object list shows.
 (deftype anim-test-obj (glst-named-node)
   ((obj-art-group art-group)
-   (seq-list      glst-list :inline)
-   (flags         int32)
+   (seq-list      glst-list :inline) ;; anim-test-sequence, one per animation
+   (flags         anim-test-obj-flags)
    (mesh-geo      merc-ctrl)
    (joint-geo     art-joint-geo)
-   (list-con      list-control :inline)
-   (parent        uint32)
-   (anim-index    int32)
-   (anim-hindex   int32)
-   (seq-index     int32)
+   (list-con      list-control :inline) ;; the animation list, and the sequence list
+   (parent        uint32) ;; see anim-test-obj-init; never read
+   (anim-index    int32) ;; selection and cursor kept across a close,
+   (anim-hindex   int32) ;;   for the animation list
+   (seq-index     int32) ;; and for the sequence list
    (seq-hindex    int32))
   (:methods
    (new (symbol type int string basic) _type_)))
 
-
-(defun anim-test-obj-init ((arg0 anim-test-obj) (arg1 list-control))
-  (set! (-> arg0 mesh-geo) #f)
-  (set! (-> arg0 joint-geo) #f)
-  (set! (-> arg0 list-con listfunc) anim-test-anim-list-handler)
-  (set! (-> arg0 list-con left) (-> *ANIM_TESTER-bank* ANIM_LIST_X))
-  (set! (-> arg0 list-con top) (-> *ANIM_TESTER-bank* ANIM_LIST_Y))
-  (set! (-> arg0 list-con list) (-> arg0 seq-list))
-  (set! (-> arg0 list-con list-owner) (the-as uint arg0))
-  (let ((v1-6 arg1)) (set! (-> arg0 parent) (the-as uint (if v1-6 (-> v1-6 the-node)))))
+(defun anim-test-obj-init ((obj anim-test-obj) (parent-ctrl list-control))
+  "Point obj's animation list at its own sequence list and place it on screen.
+   parent-ctrl is meant to supply the node that owns obj, but every caller passes
+   the anim-tester process itself, so parent ends up holding a word out of the
+   process header. Nothing reads it."
+  (set! (-> obj mesh-geo) #f)
+  (set! (-> obj joint-geo) #f)
+  (set! (-> obj list-con listfunc) anim-test-anim-list-handler)
+  (set! (-> obj list-con left) (-> *ANIM_TESTER-bank* ANIM_LIST_X))
+  (set! (-> obj list-con top) (-> *ANIM_TESTER-bank* ANIM_LIST_Y))
+  (set! (-> obj list-con list) (-> obj seq-list))
+  (set! (-> obj list-con list-owner) (the-as uint obj))
+  (let ((ctrl parent-ctrl)) (set! (-> obj parent) (the-as uint (if ctrl (-> ctrl the-node)))))
   (none))
 
-(defmethod new anim-test-obj ((allocation symbol) (type-to-make type) (arg0 int) (arg1 string) (arg2 basic))
-  (let ((t9-0 (method-of-type structure new))
-        (v1-1 type-to-make))
+(defmethod new anim-test-obj ((allocation symbol) (type-to-make type) (count int) (name string) (ag basic))
+  "Allocate a browser entry for the mesh named name in art group ag, with an
+   empty sequence list. count is ignored; every caller passes 1."
+  (let ((struct-new (method-of-type structure new))
+        (alloc-type type-to-make))
     (-> type-to-make size)
-    (let ((s4-0 (the-as anim-test-obj (t9-0 allocation v1-1))))
-      (set! (-> s4-0 obj-art-group) (the-as art-group arg2))
-      (set! (-> s4-0 privname) arg1)
-      (glst-init-list! (-> s4-0 seq-list))
-      s4-0)))
+    (let ((obj (the-as anim-test-obj (struct-new allocation alloc-type))))
+      (set! (-> obj obj-art-group) (the-as art-group ag))
+      (set! (-> obj privname) name)
+      (glst-init-list! (-> obj seq-list))
+      obj)))
 
+;; One entry of an object's animation list. Every animation in the art group gets
+;; one of these holding a single item; naming or editing it turns it into a
+;; sequence, which is a playlist of items played end to end.
+;;
+;; Note that parent lands exactly where list-con's user-info sits in an
+;; anim-test-obj, which is how the shared animation-list handler finds the object
+;; a picked animation belongs to.
 (deftype anim-test-sequence (glst-named-node)
-  ((item-list    glst-list :inline)
-   (playing-item int32)
-   (flags        int32)
-   (list-con     list-control :inline)
+  ((item-list    glst-list :inline) ;; anim-test-seq-item, ending in an **END** row
+   (playing-item int32) ;; index of the row being played
+   (flags        anim-test-seq-flags)
+   (list-con     list-control :inline) ;; the sequence editor
    (parent       anim-test-obj))
   (:methods
    (new (symbol type int string) _type_)))
 
-
-(defun anim-test-sequence-init ((arg0 anim-test-sequence) (arg1 anim-test-obj))
-  (set! (-> arg0 list-con listfunc) anim-test-edit-sequence-list-handler)
-  (set! (-> arg0 list-con left) (-> *ANIM_TESTER-bank* EDIT_LIST_X))
-  (set! (-> arg0 list-con top) (-> *ANIM_TESTER-bank* EDIT_LIST_Y))
-  (set! (-> arg0 list-con list) (-> arg0 item-list))
-  (set! (-> arg0 list-con list-owner) (the-as uint arg0))
-  (set! (-> arg0 parent) arg1)
+(defun anim-test-sequence-init ((seq anim-test-sequence) (obj anim-test-obj))
+  "Point seq's editor at its own item list, place it on screen and remember the
+   object it belongs to."
+  (set! (-> seq list-con listfunc) anim-test-edit-sequence-list-handler)
+  (set! (-> seq list-con left) (-> *ANIM_TESTER-bank* EDIT_LIST_X))
+  (set! (-> seq list-con top) (-> *ANIM_TESTER-bank* EDIT_LIST_Y))
+  (set! (-> seq list-con list) (-> seq item-list))
+  (set! (-> seq list-con list-owner) (the-as uint seq))
+  (set! (-> seq parent) obj)
   (none))
 
-(defmethod new anim-test-sequence ((allocation symbol) (type-to-make type) (arg0 int) (arg1 string))
-  (let ((t9-0 (method-of-type structure new))
-        (v1-1 type-to-make))
+(defmethod new anim-test-sequence ((allocation symbol) (type-to-make type) (count int) (name string))
+  "Allocate a sequence named name with an empty item list. count is ignored."
+  (let ((struct-new (method-of-type structure new))
+        (alloc-type type-to-make))
     (-> type-to-make size)
-    (let ((s5-0 (the-as anim-test-sequence (t9-0 allocation v1-1))))
-      (set! (-> s5-0 privname) arg1)
-      (glst-init-list! (-> s5-0 item-list))
-      s5-0)))
+    (let ((seq (the-as anim-test-sequence (struct-new allocation alloc-type))))
+      (set! (-> seq privname) name)
+      (glst-init-list! (-> seq item-list))
+      seq)))
 
+;; One row of a sequence: play animation privname, at speed, blending in over
+;; blend frames, from first-frame to last-frame.
 (deftype anim-test-seq-item (glst-named-node)
-  ((speed       int32)
-   (blend       int32)
-   (first-frame float)
+  ((speed       int32) ;; percent of the tester's speed; negative plays backwards
+   (blend       int32) ;; blend length in frames, before the global speed
+   (first-frame float) ;; -1.0 means min, -2.0 means max
    (last-frame  float)
-   (num-frames  float)
-   (artist-base float)
-   (flags       int32)
+   (num-frames  float) ;; length of the animation, refreshed from the art group
+   (artist-base float) ;; frame number the animator's first frame had
+   (flags       anim-test-item-flags)
    (parent      anim-test-sequence))
   (:methods
    (new (symbol type int string) _type_)))
 
-
-(defmethod new anim-test-seq-item ((allocation symbol) (type-to-make type) (arg0 int) (arg1 string))
-  (let ((t9-0 (method-of-type structure new))
-        (v1-1 type-to-make))
+(defmethod new anim-test-seq-item ((allocation symbol) (type-to-make type) (count int) (name string))
+  "Allocate a row that plays animation name at full speed with no blend, from
+   its first frame (min) to its last (max). count is ignored."
+  (let ((struct-new (method-of-type structure new))
+        (alloc-type type-to-make))
     (-> type-to-make size)
-    (let ((v0-0 (t9-0 allocation v1-1)))
-      (set! (-> (the-as anim-test-seq-item v0-0) privname) arg1)
-      (set! (-> (the-as anim-test-seq-item v0-0) speed) 100)
-      (set! (-> (the-as anim-test-seq-item v0-0) blend) 0)
-      (set! (-> (the-as anim-test-seq-item v0-0) first-frame) -1.0)
-      (set! (-> (the-as anim-test-seq-item v0-0) last-frame) -2.0)
-      (the-as anim-test-seq-item v0-0))))
+    (let ((item (the-as anim-test-seq-item (struct-new allocation alloc-type))))
+      (set! (-> item privname) name)
+      (set! (-> item speed) 100)
+      (set! (-> item blend) 0)
+      (set! (-> item first-frame) -1.0)
+      (set! (-> item last-frame) -2.0)
+      item)))
 
-(defun anim-test-seq-item-copy! ((arg0 anim-test-seq-item) (arg1 anim-test-seq-item))
-  (let ((v1-0 arg0)) (set! (-> v1-0 privname) (-> arg1 privname)))
-  (set! (-> arg0 speed) (-> arg1 speed))
-  (set! (-> arg0 blend) (-> arg1 blend))
-  (set! (-> arg0 first-frame) (-> arg1 first-frame))
-  (set! (-> arg0 last-frame) (-> arg1 last-frame))
-  (set! (-> arg0 num-frames) (-> arg1 num-frames))
-  (set! (-> arg0 artist-base) (-> arg1 artist-base))
-  (set! (-> arg0 flags) (-> arg1 flags))
-  (let ((v0-0 (-> arg1 parent))) (set! (-> arg0 parent) v0-0) v0-0))
+(defun anim-test-seq-item-copy! ((dst anim-test-seq-item) (src anim-test-seq-item))
+  "Copy src onto dst, name and owning sequence included. Returns src's sequence."
+  (let ((node dst)) (set! (-> node privname) (-> src privname)))
+  (set! (-> dst speed) (-> src speed))
+  (set! (-> dst blend) (-> src blend))
+  (set! (-> dst first-frame) (-> src first-frame))
+  (set! (-> dst last-frame) (-> src last-frame))
+  (set! (-> dst num-frames) (-> src num-frames))
+  (set! (-> dst artist-base) (-> src artist-base))
+  (set! (-> dst flags) (-> src flags))
+  (let ((parent-seq (-> src parent))) (set! (-> dst parent) parent-seq) parent-seq))
 
-
-(defun anim-test-obj-item-valid? ((arg0 anim-test-obj) (arg1 anim-test-seq-item))
-  (let ((v1-0 (-> arg0 seq-list)))
+(defun anim-test-obj-item-valid? ((obj anim-test-obj) (item anim-test-seq-item))
+  "Can item still be played? True when one of obj's sequences has the same name
+   and was found in the art group during the last scan. As a side effect item's
+   num-frames and artist-base are refreshed from that sequence's own first item,
+   so a row's frame limits follow a reloaded animation. Returns #f otherwise."
+  (let ((seq-list (-> obj seq-list)))
     "return the start of the list"
-    (let ((s5-0 (the-as anim-test-sequence (-> v1-0 head))))
-      (while (let ((v1-13 s5-0)) "is this node the end of the list. #t = end" (not (not (-> v1-13 next))))
-        (when (and (logtest? (-> s5-0 flags) 2) (name= (-> arg1 privname) (-> s5-0 privname)))
-          (let ((v1-7 (-> s5-0 item-list)))
+    (let ((cur-seq (the-as anim-test-sequence (-> seq-list head))))
+      (while (let ((sequence-node cur-seq)) "is this node the end of the list. #t = end" (not (not (-> sequence-node next))))
+        (when (and (logtest? (-> cur-seq flags) (anim-test-seq-flags anim-present)) (name= (-> item privname) (-> cur-seq privname)))
+          (let ((item-list (-> cur-seq item-list)))
             "return the start of the list"
-            (let* ((v1-8 (the-as anim-test-seq-item (-> v1-7 head)))
-                   (a0-4 v1-8))
+            (let* ((first-item (the-as anim-test-seq-item (-> item-list head)))
+                   (item-node first-item))
               "is this node the end of the list. #t = end"
-              (when (not (not (-> a0-4 next)))
-                (set! (-> arg1 num-frames) (-> v1-8 num-frames))
-                (set! (-> arg1 artist-base) (-> v1-8 artist-base)))))
+              (when (not (not (-> item-node next)))
+                (set! (-> item num-frames) (-> first-item num-frames))
+                (set! (-> item artist-base) (-> first-item artist-base)))))
           (return #t))
         "return the next node in the list"
-        (set! s5-0 (the-as anim-test-sequence (-> s5-0 next))))))
+        (set! cur-seq (the-as anim-test-sequence (-> cur-seq next))))))
   #f)
 
-(defun anim-test-obj-remove-invalid ((arg0 anim-test-obj))
-  (local-vars (v1-19 symbol))
-  (let ((v1-0 (-> arg0 seq-list)))
+(defun anim-test-obj-remove-invalid ((obj anim-test-obj))
+  "Throw away everything in obj that the art group no longer supports: rows whose
+   animation has gone, and then any sequence left holding nothing but its **END**
+   row. Clears anim-present on every surviving sequence so the next scan of the
+   art group can set it again. Always returns #f."
+  (local-vars (only-end-item? symbol))
+  (let ((seq-list (-> obj seq-list)))
     "return the start of the list"
-    (let ((s5-0 (-> v1-0 head)))
-      (while (let ((v1-25 (the-as anim-test-sequence s5-0)))
-               "is this node the end of the list. #t = end"
-               (not (not (-> v1-25 next))))
-        (let ((v1-1 (the-as anim-test-sequence s5-0)))
+    (let ((cur-seq (the-as anim-test-sequence (-> seq-list head))))
+      (while (let ((sequence-node cur-seq)) "is this node the end of the list. #t = end" (not (not (-> sequence-node next))))
+        (let ((cur-node cur-seq))
           "return the next node in the list"
-          (let ((s4-0 (-> v1-1 next)))
-            (when (not (logtest? (-> (the-as anim-test-sequence s5-0) flags) 2))
-              (let ((v1-5 (-> (the-as anim-test-sequence s5-0) item-list)))
+          (let ((next-seq (-> cur-node next)))
+            (when (not (logtest? (-> cur-seq flags) (anim-test-seq-flags anim-present)))
+              (let ((item-list (-> cur-seq item-list)))
                 "return the start of the list"
-                (let ((s3-0 (the-as anim-test-seq-item (-> v1-5 head))))
-                  (while (let ((v1-13 s3-0)) "is this node the end of the list. #t = end" (not (not (-> v1-13 next))))
-                    (let ((v1-6 s3-0))
+                (let ((cur-item (the-as anim-test-seq-item (-> item-list head))))
+                  (while (let ((item-node cur-item)) "is this node the end of the list. #t = end" (not (not (-> item-node next))))
+                    (let ((item-node cur-item))
                       "return the next node in the list"
-                      (let ((s2-0 (the-as anim-test-seq-item (-> v1-6 next))))
-                        (if (and (not (logtest? (-> s3-0 flags) 1)) (not (anim-test-obj-item-valid? arg0 s3-0)))
-                          (glst-remove (-> (the-as anim-test-sequence s5-0) item-list) s3-0))
-                        (set! s3-0 s2-0)))))))
-            (let ((v1-18 (-> (the-as anim-test-sequence s5-0) item-list)))
+                      (let ((next-item (the-as anim-test-seq-item (-> item-node next))))
+                        (if (and (not (logtest? (-> cur-item flags) (anim-test-item-flags end))) (not (anim-test-obj-item-valid? obj cur-item)))
+                          (glst-remove (-> cur-seq item-list) cur-item))
+                        (set! cur-item next-item)))))))
+            (let ((item-list (-> cur-seq item-list)))
               "is the list empty, #t = empty"
-              (if (or (= (-> v1-18 tailpred) v1-18)
-                      (and (= (glst-num-elements (-> (the-as anim-test-sequence s5-0) item-list)) 1)
+              (if (or (= (-> item-list tailpred) item-list)
+                      (and (= (glst-num-elements (-> cur-seq item-list)) 1)
                            (begin
-                             (let ((v1-21 #t)
-                                   (a0-13 (-> (the-as anim-test-sequence s5-0) item-list)))
+                             (let ((yes? #t)
+                                   (list (-> cur-seq item-list)))
                                "return the start of the list"
-                               (let ((a0-16 (the-as int (logand (-> (the-as anim-test-seq-item (-> a0-13 head)) flags) 1))))
-                                 (cmove-#f-zero v1-19 a0-16 v1-21)))
-                             v1-19)))
-                (glst-remove (-> arg0 seq-list) (the-as anim-test-sequence s5-0))))
-            (set! s5-0 (the-as anim-test-sequence s4-0)))))))
-  (let ((v1-30 (-> arg0 seq-list)))
+                               (let ((end-flag (the-as int (logand (-> (the-as anim-test-seq-item (-> list head)) flags) (anim-test-item-flags end)))))
+                                 (cmove-#f-zero only-end-item? end-flag yes?)))
+                             only-end-item?)))
+                (glst-remove (-> obj seq-list) cur-seq)))
+            (set! cur-seq (the-as anim-test-sequence next-seq)))))))
+  (let ((seq-list (-> obj seq-list)))
     "return the start of the list"
-    (let ((v1-31 (the-as anim-test-sequence (-> v1-30 head))))
-      (while (let ((a0-23 v1-31)) "is this node the end of the list. #t = end" (not (not (-> a0-23 next))))
-        (let ((a0-20 v1-31))
+    (let ((cur-seq (the-as anim-test-sequence (-> seq-list head))))
+      (while (let ((sequence-node cur-seq)) "is this node the end of the list. #t = end" (not (not (-> sequence-node next))))
+        (let ((sequence-node cur-seq))
           "return the next node in the list"
-          (let ((a0-21 (-> a0-20 next))) (logand! (-> v1-31 flags) -3) (set! v1-31 (the-as anim-test-sequence a0-21)))))))
+          (let ((next-node (-> sequence-node next)))
+            (logclear! (-> cur-seq flags) (anim-test-seq-flags anim-present))
+            (set! cur-seq (the-as anim-test-sequence next-node)))))))
   #f)
 
 (defbehavior anim-tester-real-post anim-tester ()
-  (when (logtest? (-> self flags) (anim-tester-flags fanimt0))
-    (if (logtest? (-> self flags) (anim-tester-flags fanimt5))
+  "Post the skeleton, but only while anim-playing is set: the state code clears
+   that flag whenever it could not set an animation up, and the joint state is
+   not safe to post then. Also moves the process by its own transv when
+   at-apply-align is on, and dumps the joint channels to the console when
+   at-show-joint-info is."
+  (when (logtest? (-> self flags) (anim-tester-flags anim-playing))
+    (if (logtest? (-> self flags) (anim-tester-flags at-apply-align))
       (vector-v+! (-> self root trans) (-> self root trans) (-> self root transv)))
     (ja-post)
-    (when (logtest? (-> self flags) (anim-tester-flags fanimt4))
+    (when (logtest? (-> self flags) (anim-tester-flags at-show-joint-info))
       (draw-joint-spheres self)
       (debug-print-channels (-> self skel) (the-as symbol *stdcon*))))
   (none))
 
 (defbehavior anim-tester-post anim-tester ()
+  "Post hook for anim-tester-process."
   (anim-tester-real-post)
   (none))
 
-(defbehavior anim-tester-update-anim-info anim-tester ((arg0 anim-test-seq-item))
-  (set! (-> self anim-first) (-> arg0 first-frame))
-  (set! (-> self anim-last) (-> arg0 last-frame))
+(defbehavior anim-tester-update-anim-info anim-tester ((item anim-test-seq-item))
+  "Recompute this frame's playback rate and frame limits from item. anim-gspeed
+   is the tester's own speed as a fraction, anim-speed folds in the row's
+   percentage on top of it. A negative rate plays the row backwards, which is
+   expressed by swapping first and last and then making both rates positive, so
+   the seek! in the state code always counts towards anim-last."
+  (set! (-> self anim-first) (-> item first-frame))
+  (set! (-> self anim-last) (-> item last-frame))
   (set! (-> self anim-gspeed) (* 0.01 (the float (-> self speed))))
-  (set! (-> self anim-speed) (* (/ (-> self anim-gspeed) 100) (the float (-> arg0 speed))))
+  (set! (-> self anim-speed) (* (/ (-> self anim-gspeed) 100) (the float (-> item speed))))
   (when (< (-> self anim-speed) 0.0)
-    (set! (-> self anim-first) (-> arg0 last-frame))
-    (set! (-> self anim-last) (-> arg0 first-frame)))
+    (set! (-> self anim-first) (-> item last-frame))
+    (set! (-> self anim-last) (-> item first-frame)))
   (set! (-> self anim-gspeed) (fabs (-> self anim-gspeed)))
   (set! (-> self anim-speed) (fabs (-> self anim-speed))))
 
 (defbehavior anim-tester-reset anim-tester ()
-  (let ((v1-0 (-> self obj-list)))
+  "Rebuild the draw and joint state for the current object.
+
+   The object is the one named by current-obj, or, if that name is not on the
+   list, whatever sits at list-con's current-index. Its skeleton and mesh become
+   a single LOD selected out to any distance, with a 10-metre bounding sphere so
+   it never culls, and a fresh joint animation channel set is posted once.
+   Complains to the console and leaves the old draw state alone if the object is
+   missing either its joint-geo or its mesh-geo."
+  (let ((obj-list (-> self obj-list)))
     "is the list empty, #t = empty"
     (cond
-      ((= (-> v1-0 tailpred) v1-0) (set! (-> self list-con current-index) 0) (set! (-> self current-obj) ""))
+      ((= (-> obj-list tailpred) obj-list) (set! (-> self list-con current-index) 0) (set! (-> self current-obj) ""))
       (else
-       (let ((v1-1 (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
+       (let ((obj (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
          ;; og:preserve-this added this if, sometimes the value is -1 which just crashes the game after here. nice work!
          (if (< (-> self list-con current-index) 0) (set! (-> self list-con current-index) 0))
-         (when (not v1-1)
+         (when (not obj)
            (if (>= (-> self list-con current-index) (glst-num-elements (-> self obj-list)))
              (set! (-> self list-con current-index) (+ (glst-num-elements (-> self obj-list)) -1)))
-           (set! v1-1 (the-as anim-test-obj (glst-get-node-by-index (-> self obj-list) (-> self list-con current-index))))
-           (set! (-> self current-obj) (-> v1-1 privname)))
+           (set! obj (the-as anim-test-obj (glst-get-node-by-index (-> self obj-list) (-> self list-con current-index))))
+           (set! (-> self current-obj) (-> obj privname)))
          (cond
-           ((or (not (-> v1-1 joint-geo)) (not (-> v1-1 mesh-geo)))
-            (format #t "what's this? ~A~%" (-> v1-1 privname))
+           ((or (not (-> obj joint-geo)) (not (-> obj mesh-geo)))
+            (format #t "what's this? ~A~%" (-> obj privname))
             (format #t "it's missing a joint-geo, or a mesh-geo or a mesh-anim~%"))
            (else
-            (let ((a0-15 (-> v1-1 joint-geo)))
-              (let ((a1-4 (-> v1-1 mesh-geo)))
-                (set! (-> self draw art-group) (-> v1-1 obj-art-group))
+            (let ((jgeo (-> obj joint-geo)))
+              (let ((mgeo (-> obj mesh-geo)))
+                (set! (-> self draw art-group) (-> obj obj-art-group))
                 (set! (-> self draw cur-lod) -1)
-                (set! (-> self draw jgeo) a0-15)
+                (set! (-> self draw jgeo) jgeo)
                 (set! (-> self draw sink-group) (-> *level* level-default pris-tex-foreground-sink-group))
-                (set! (-> self draw lod-set lod 0 geo) a1-4))
+                (set! (-> self draw lod-set lod 0 geo) mgeo))
               (set! (-> self draw lod-set lod 0 dist) 4095996000.0)
               (set! (-> self draw bounds w) 40960.0)
               (set! (-> self draw data-format) (the-as uint 1))
-              (let ((v1-16 (-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad))) (set! (-> self draw color-mult quad) v1-16))
-              (let ((v1-18 (-> (new 'static 'vector) quad))) (set! (-> self draw color-emissive quad) v1-18))
+              (let ((white-quad (-> (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0) quad)))
+                (set! (-> self draw color-mult quad) white-quad))
+              (let ((zero-quad (-> (new 'static 'vector) quad))) (set! (-> self draw color-emissive quad) zero-quad))
               (set! (-> self draw secondary-interp) 0.0)
               (set! (-> self draw shadow) #f)
               (set! (-> self draw shadow-ctrl) #f)
               (set! (-> self draw ripple) #f)
               (set! (-> self draw level-index) (the-as uint 2))
-              (set! (-> self node-list) (make-nodes-from-jg a0-15 *default-skel-template* 'debug)))
+              (set! (-> self node-list) (make-nodes-from-jg jgeo *default-skel-template* 'debug)))
             (set! (-> self skel effect) (new 'process 'effect-control self))
             (fill-skeleton-cache self)
             (lod-set! (-> self draw) 0)
@@ -535,324 +663,272 @@
             (ja-post)))))))
   (none))
 
-(defun anim-tester-disp-frame-num ((arg0 string) (arg1 float) (arg2 float) (arg3 font-context))
+(defun anim-tester-disp-frame-num ((prefix string) (frame float) (artist-base float) (ctx font-context))
+  "Draw one frame-number column: prefix, then either \"min\"/\"max\" for the two
+   sentinels or the frame number with artist-base added, so the number matches
+   what the animator saw. Disabled - it returns before drawing anything."
   ;; this function does not work
   (return (the pointer #f))
-  (local-vars (sv-16 (function _varargs_ object)))
-  (let* ((s3-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (gp-0 (-> s3-0 base)))
-    (cond
-      ((= arg1 -1.0)
-       (let ((s2-1 draw-string-adv)) (format (clear *temp-string*) "~Smin" arg0) (s2-1 *temp-string* s3-0 arg3)))
-      ((= arg1 -2.0)
-       (let ((s2-2 draw-string-adv)) (format (clear *temp-string*) "~Smax" arg0) (s2-2 *temp-string* s3-0 arg3)))
-      (else
-       (let ((s0-0 draw-string-adv))
-         (format (clear *temp-string*) "~S~3,,0f" arg0 (+ arg1 arg2))
-         (s0-0 *temp-string* s3-0 arg3))))
-    (let ((a3-2 (-> s3-0 base)))
-      (let ((v1-6 (the-as object (-> s3-0 base))))
-        (set! (-> (the-as dma-packet v1-6) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-6) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-6) vif1) (new 'static 'vif-tag))
-        (set! (-> s3-0 base) (&+ (the-as pointer v1-6) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             (bucket-id debug)
-                             gp-0
-                             (the-as (pointer dma-tag) a3-2)))))
+  (local-vars (fmt-func (function _varargs_ object)))
+  (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (cond
+        ((= frame -1.0)
+         (let ((draw-adv draw-string-adv)) (format (clear *temp-string*) "~Smin" prefix) (draw-adv *temp-string* dma-buff ctx)))
+        ((= frame -2.0)
+         (let ((draw-adv draw-string-adv)) (format (clear *temp-string*) "~Smax" prefix) (draw-adv *temp-string* dma-buff ctx)))
+        (else
+         (let ((draw-adv draw-string-adv))
+           (format (clear *temp-string*) "~S~3,,0f" prefix (+ frame artist-base))
+           (draw-adv *temp-string* dma-buff ctx))))))
 
-(defbehavior anim-tester-standard-event-handler anim-tester ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior anim-tester-standard-event-handler anim-tester ((proc process) (argc int) (message symbol) (block event-message-block))
+  "Handle the debug menu's requests.
+
+   'reset re-reads the current object and restarts playback, 'change-anim
+   restarts playback with whatever is selected now, the four pick/edit messages
+   open one of the lists and take the pad away from the camera, and
+   'save-sequences writes every object marked edited."
+  (case message
     (('reset)
      (process-disconnect self)
-     (logclear! (-> self flags) (anim-tester-flags fanimt0))
-     (when (!= (-> *anim-tester* 0 edit-mode) 1)
+     (logclear! (-> self flags) (anim-tester-flags anim-playing))
+     (when (!= (-> *anim-tester* 0 edit-mode) (anim-tester-edit-mode pick-object))
        (set! (-> *debug-menu-context* is-hidden) #f)
-       (set! (-> *anim-tester* 0 edit-mode) 0)
+       (set! (-> *anim-tester* 0 edit-mode) (anim-tester-edit-mode none))
        (set! *camera-read-buttons* #t))
      (anim-tester-reset)
      (go anim-tester-process))
     (('change-anim) (go anim-tester-process))
-    (('pick-object) (set! (-> self edit-mode) 1) (set! *camera-read-buttons* #f) #f)
-    (('pick-joint-anim) (set! (-> self edit-mode) 2) (set! *camera-read-buttons* #f) #f)
-    (('pick-sequence) (set! (-> self edit-mode) 3) (set! *camera-read-buttons* #f) #f)
-    (('edit-sequence) (set! (-> self edit-mode) 4) (set! *camera-read-buttons* #f) #f)
+    (('pick-object) (set! (-> self edit-mode) (anim-tester-edit-mode pick-object)) (set! *camera-read-buttons* #f) #f)
+    (('pick-joint-anim)
+     (set! (-> self edit-mode) (anim-tester-edit-mode pick-joint-anim))
+     (set! *camera-read-buttons* #f)
+     #f)
+    (('pick-sequence) (set! (-> self edit-mode) (anim-tester-edit-mode pick-sequence)) (set! *camera-read-buttons* #f) #f)
+    (('edit-sequence) (set! (-> self edit-mode) (anim-tester-edit-mode edit-sequence)) (set! *camera-read-buttons* #f) #f)
     (('save-sequences) (anim-tester-save-all-objects self))))
 
-(defun anim-test-obj-list-handler ((arg0 int) (arg1 list-control))
-  (let ((s5-0 (-> arg1 the-node))
-        (v1-0 arg0))
+(defun anim-test-obj-list-handler ((cmd list-control-cmd) (ctrl list-control))
+  "listfunc for the object list: one row per mesh added by anim-tester-add-object,
+   marked with a * while it has unsaved sequence edits. X selects the object and
+   re-enters the process on it, square closes the list. Always returns #f apart
+   from the visible? command, which accepts every node."
+  (let ((obj (the-as anim-test-obj (-> ctrl the-node)))
+        (op cmd))
     (cond
-      ((zero? v1-0)
-       (let* ((s3-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (s4-0 (-> s3-0 base)))
-         (let ((s2-0 draw-string-xy))
-           (format (clear *temp-string*)
-                   "~S~S~S"
-                   (if (= (-> arg1 the-index) (-> arg1 highlight-index)) ">" " ")
-                   (if (logtest? (-> (the-as anim-test-obj s5-0) flags) 1) "*" " ")
-                   (-> (the-as anim-test-obj s5-0) privname))
-           (s2-0 *temp-string*
-                 s3-0
-                 (-> arg1 xpos)
-                 (-> arg1 ypos)
-                 (if (= (-> arg1 the-index) (-> arg1 current-index)) (font-color menu-flag-on) (font-color menu))
-                 (font-flags shadow kerning)))
-         (let ((a3-2 (-> s3-0 base)))
-           (let ((v1-8 (the-as object (-> s3-0 base))))
-             (set! (-> (the-as dma-packet v1-8) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
-             (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
-             (set! (-> s3-0 base) (&+ (the-as pointer v1-8) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  s4-0
-                                  (the-as (pointer dma-tag) a3-2)))))
-      ((= v1-0 1) (return #t))
-      ((= v1-0 4)
+      ;; (list-control-cmd draw-line)
+      ((zero? op)
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                  (format (clear *temp-string*)
+                          "~S~S~S"
+                          (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
+                          (if (logtest? (-> obj flags) (anim-test-obj-flags edited)) "*" " ")
+                          (-> obj privname))
+                  (draw-xy *temp-string*
+                           dma-buff
+                           (-> ctrl xpos)
+                           (-> ctrl ypos)
+                           (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                           (font-flags shadow kerning)))))
+      ((= op (list-control-cmd visible?)) (return #t))
+      ((= op (list-control-cmd input))
        (cond
-         ((cpad-pressed? 0 up) (if (> (-> arg1 highlight-index) 0) (+! (-> arg1 highlight-index) -1)))
+         ((cpad-pressed? 0 up) (if (> (-> ctrl highlight-index) 0) (+! (-> ctrl highlight-index) -1)))
+         ;; this lets the highlight sit one past the end for a frame;
+         ;; display-list-control pulls it back next time round
          ((cpad-pressed? 0 down)
-          (if (< (-> arg1 highlight-index) (glst-num-elements (-> arg1 list))) (+! (-> arg1 highlight-index) 1)))
+          (if (< (-> ctrl highlight-index) (glst-num-elements (-> ctrl list))) (+! (-> ctrl highlight-index) 1)))
          ((cpad-pressed? 0 x)
-          (let ((v1-38 (the-as object (-> arg1 list-owner))))
-            (set! (-> arg1 current-index) (-> arg1 the-index))
-            (set! (-> (the-as anim-tester v1-38) current-obj) (-> (the-as anim-test-obj s5-0) privname)))
+          (let ((tester (the-as object (-> ctrl list-owner))))
+            (set! (-> ctrl current-index) (-> ctrl the-index))
+            (set! (-> (the-as anim-tester tester) current-obj) (-> obj privname)))
           (send-event (ppointer->process *anim-tester*) 'reset #f))
          ((cpad-pressed? 0 square)
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons square))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
           (set! (-> *debug-menu-context* is-hidden) #f)
-          (set! (-> *anim-tester* 0 edit-mode) 0)
+          (set! (-> *anim-tester* 0 edit-mode) (anim-tester-edit-mode none))
           (set! *camera-read-buttons* #t)
-          (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2)))))
-      ((= v1-0 2)
-       (let ((v1-64 (+ (length (-> (the-as anim-test-obj s5-0) privname)) 2)))
-         (set! v1-64
+          (logior! (-> *anim-tester* 0 flags) (anim-tester-flags return-to-menu)))))
+      ((= op (list-control-cmd measure))
+       (let ((width (+ (length (-> obj privname)) 2)))
+         (set! width
                (cond
-                 ((< (-> *ANIM_TESTER-bank* OBJECT_LIST_MIN_WIDTH) v1-64) (empty) v1-64)
+                 ((< (-> *ANIM_TESTER-bank* OBJECT_LIST_MIN_WIDTH) width) (empty) width)
                  (else (-> *ANIM_TESTER-bank* OBJECT_LIST_MIN_WIDTH))))
-         (set! (-> arg1 return-int) v1-64)))
-      ((= v1-0 3)
-       (let* ((s4-1 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (s5-2 (-> s4-1 base)))
-         (draw-string-xy "----pick-object---" s4-1 (-> arg1 xpos) (-> arg1 ypos) (font-color menu) (font-flags shadow kerning))
-         (let ((a3-4 (-> s4-1 base)))
-           (let ((v1-70 (the-as object (-> s4-1 base))))
-             (set! (-> (the-as dma-packet v1-70) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> (the-as dma-packet v1-70) vif0) (new 'static 'vif-tag))
-             (set! (-> (the-as dma-packet v1-70) vif1) (new 'static 'vif-tag))
-             (set! (-> s4-1 base) (&+ (the-as pointer v1-70) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  s5-2
-                                  (the-as (pointer dma-tag) a3-4)))))))
+         (set! (-> ctrl return-int) width)))
+      ((= op (list-control-cmd draw-title))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "----pick-object---"
+                                dma-buff
+                                (-> ctrl xpos)
+                                (-> ctrl ypos)
+                                (font-color menu)
+                                (font-flags shadow kerning))))))
   #f)
 
-(defun anim-test-anim-list-handler ((arg0 int) (arg1 list-control))
-  (let* ((s5-0 (the-as anim-test-obj (-> arg1 the-node)))
-         (v1-0 (the-as object (-> s5-0 list-con user-info-u))))
+(defun anim-test-anim-list-handler ((cmd list-control-cmd) (ctrl list-control))
+  "listfunc for the animation list: the entries of one object's sequence list that
+   are still plain animations rather than named sequences, so up and down have to
+   skip over the sequences. When the control's user-info is 1 this list is the
+   picker inside the sequence editor and only moves its highlight; otherwise X
+   selects the animation to play and clears the object's play-sequence flag."
+  (let* ((seq (the-as anim-test-sequence (-> ctrl the-node)))
+         (obj (-> seq parent)))
     (cond
-      ((zero? arg0)
-       (let* ((s3-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (s4-0 (-> s3-0 base)))
-         (let ((s2-0 draw-string-xy))
-           (format (clear *temp-string*)
-                   "~S~S"
-                   (if (= (-> arg1 the-index) (-> arg1 highlight-index)) "> " "  ")
-                   (-> s5-0 privname))
-           (s2-0 *temp-string*
-                 s3-0
-                 (-> arg1 xpos)
-                 (-> arg1 ypos)
-                 (if (= (-> arg1 the-index) (-> arg1 current-index)) (font-color menu-flag-on) (font-color menu))
-                 (font-flags shadow kerning)))
-         (let ((a3-2 (-> s3-0 base)))
-           (let ((v1-6 (the-as object (-> s3-0 base))))
-             (set! (-> (the-as dma-packet v1-6) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> (the-as dma-packet v1-6) vif0) (new 'static 'vif-tag))
-             (set! (-> (the-as dma-packet v1-6) vif1) (new 'static 'vif-tag))
-             (set! (-> s3-0 base) (&+ (the-as pointer v1-6) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  s4-0
-                                  (the-as (pointer dma-tag) a3-2)))))
-      ((= arg0 1) (return (not (logtest? (-> s5-0 flags) 1))))
-      ((= arg0 4)
+      ;; (list-control-cmd draw-line)
+      ((zero? cmd)
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                  (format (clear *temp-string*) "~S~S" (if (= (-> ctrl the-index) (-> ctrl highlight-index)) "> " "  ") (-> seq privname))
+                  (draw-xy *temp-string*
+                           dma-buff
+                           (-> ctrl xpos)
+                           (-> ctrl ypos)
+                           (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                           (font-flags shadow kerning)))))
+      ((= cmd (list-control-cmd visible?)) (return (not (logtest? (-> seq flags) (anim-test-seq-flags sequence)))))
+      ((= cmd (list-control-cmd input))
        (cond
          ((cpad-pressed? 0 up)
-          (let ((v1-15 (-> arg1 list)))
+          (let ((list (-> ctrl list)))
             "is the list empty, #t = empty"
-            (when (not (= (-> v1-15 tailpred) v1-15))
-              (let ((v1-17 (glst-get-node-by-index (-> arg1 list) (-> arg1 highlight-index))))
+            (when (not (= (-> list tailpred) list))
+              (let ((cur-node (the-as anim-test-sequence (glst-get-node-by-index (-> ctrl list) (-> ctrl highlight-index)))))
                 (loop
                   "return the previous node in the list"
-                  (set! v1-17 (-> (the-as anim-test-obj v1-17) prev))
-                  (let ((a0-23 (the-as anim-test-obj v1-17)))
-                    "is this node the start of the list. #t = start"
-                    (if (not (-> a0-23 prev)) (goto cfg-25)))
-                  (when (not (logtest? (-> (the-as anim-test-obj v1-17) flags) 1))
-                    (set! (-> arg1 highlight-index) (glst-get-node-index (-> arg1 list) (the-as anim-test-obj v1-17)))
+                  (set! cur-node (the-as anim-test-sequence (-> cur-node prev)))
+                  (let ((node cur-node)) "is this node the start of the list. #t = start" (if (not (-> node prev)) (goto cfg-25)))
+                  (when (not (logtest? (-> cur-node flags) (anim-test-seq-flags sequence)))
+                    (set! (-> ctrl highlight-index) (glst-get-node-index (-> ctrl list) cur-node))
                     (goto cfg-25))))))
           (label cfg-25))
          ((cpad-pressed? 0 down)
-          (let ((v1-21 (-> arg1 list)))
+          (let ((list (-> ctrl list)))
             "is the list empty, #t = empty"
-            (when (not (= (-> v1-21 tailpred) v1-21))
-              (let ((v1-23 (glst-get-node-by-index (-> arg1 list) (-> arg1 highlight-index))))
+            (when (not (= (-> list tailpred) list))
+              (let ((cur-node (the-as anim-test-sequence (glst-get-node-by-index (-> ctrl list) (-> ctrl highlight-index)))))
                 (loop
                   "return the next node in the list"
-                  (set! v1-23 (-> (the-as anim-test-obj v1-23) next))
-                  (let ((a0-40 (the-as anim-test-obj v1-23)))
-                    "is this node the end of the list. #t = end"
-                    (if (not (-> a0-40 next)) (goto cfg-39)))
-                  (when (not (logtest? (-> (the-as anim-test-obj v1-23) flags) 1))
-                    (set! (-> arg1 highlight-index) (glst-get-node-index (-> arg1 list) (the-as anim-test-obj v1-23)))
+                  (set! cur-node (the-as anim-test-sequence (-> cur-node next)))
+                  (let ((node cur-node)) "is this node the end of the list. #t = end" (if (not (-> node next)) (goto cfg-39)))
+                  (when (not (logtest? (-> cur-node flags) (anim-test-seq-flags sequence)))
+                    (set! (-> ctrl highlight-index) (glst-get-node-index (-> ctrl list) cur-node))
                     (goto cfg-39))))))
           (label cfg-39))
-         ((= (-> arg1 user-info) 1))
+         ;; a picker inside the sequence editor only moves its highlight
+         ((= (-> ctrl user-info) 1))
          (else
           (cond
             ((cpad-pressed? 0 x)
-             (set! (-> arg1 current-index) (-> arg1 the-index))
-             (set! (-> (the-as anim-test-obj v1-0) anim-index) (-> arg1 current-index))
-             (set! (-> (the-as anim-test-obj v1-0) anim-hindex) (-> arg1 highlight-index))
-             (logand! (-> (the-as anim-test-obj v1-0) flags) -3)
+             (set! (-> ctrl current-index) (-> ctrl the-index))
+             (set! (-> obj anim-index) (-> ctrl current-index))
+             (set! (-> obj anim-hindex) (-> ctrl highlight-index))
+             (logclear! (-> obj flags) (anim-test-obj-flags play-sequence))
              (send-event (ppointer->process *anim-tester*) 'change-anim #f))
             ((cpad-pressed? 0 square)
              (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons square))
              (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
              (set! (-> *debug-menu-context* is-hidden) #f)
-             (set! (-> *anim-tester* 0 edit-mode) 0)
+             (set! (-> *anim-tester* 0 edit-mode) (anim-tester-edit-mode none))
              (set! *camera-read-buttons* #t)
-             (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2)))))))
-      ((= arg0 2)
-       (let ((v1-55 (+ (length (-> s5-0 privname)) 2)))
-         (set! v1-55
+             (logior! (-> *anim-tester* 0 flags) (anim-tester-flags return-to-menu)))))))
+      ((= cmd (list-control-cmd measure))
+       (let ((width (+ (length (-> seq privname)) 2)))
+         (set! width
                (cond
-                 ((< (-> *ANIM_TESTER-bank* ANIM_LIST_MIN_WIDTH) v1-55) (empty) v1-55)
+                 ((< (-> *ANIM_TESTER-bank* ANIM_LIST_MIN_WIDTH) width) (empty) width)
                  (else (-> *ANIM_TESTER-bank* ANIM_LIST_MIN_WIDTH))))
-         (set! (-> arg1 return-int) v1-55)))
-      ((= arg0 3)
-       (let* ((s4-1 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (s5-1 (-> s4-1 base)))
-         (draw-string-xy "----pick-joint-anim----"
-                         s4-1
-                         (-> arg1 xpos)
-                         (-> arg1 ypos)
-                         (font-color menu)
-                         (font-flags shadow kerning))
-         (let ((a3-4 (-> s4-1 base)))
-           (let ((v1-62 (the-as object (-> s4-1 base))))
-             (set! (-> (the-as dma-packet v1-62) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> (the-as dma-packet v1-62) vif0) (new 'static 'vif-tag))
-             (set! (-> (the-as dma-packet v1-62) vif1) (new 'static 'vif-tag))
-             (set! (-> s4-1 base) (&+ (the-as pointer v1-62) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  s5-1
-                                  (the-as (pointer dma-tag) a3-4)))))))
+         (set! (-> ctrl return-int) width)))
+      ((= cmd (list-control-cmd draw-title))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "----pick-joint-anim----"
+                                dma-buff
+                                (-> ctrl xpos)
+                                (-> ctrl ypos)
+                                (font-color menu)
+                                (font-flags shadow kerning))))))
   #f)
 
-(defun anim-test-sequence-list-handler ((arg0 int) (arg1 list-control))
-  (let* ((s5-0 (the-as anim-test-sequence (-> arg1 the-node)))
-         (v1-0 (-> s5-0 parent)))
+(defun anim-test-sequence-list-handler ((cmd list-control-cmd) (ctrl list-control))
+  "listfunc for the sequence list: the named sequences of one object, so up and
+   down skip the plain animations. X opens the sequence editor on the highlighted
+   one and switches the object over to playing sequences."
+  (let* ((seq (the-as anim-test-sequence (-> ctrl the-node)))
+         (obj (-> seq parent)))
     (cond
-      ((zero? arg0)
-       (let* ((s3-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (s4-0 (-> s3-0 base)))
-         (let ((s2-0 draw-string-xy))
-           (format (clear *temp-string*)
-                   "~S~S~S"
-                   (if (= (-> arg1 the-index) (-> arg1 highlight-index)) ">" " ")
-                   (if (logtest? (-> s5-0 flags) 4) "*" " ")
-                   (-> s5-0 privname))
-           (s2-0 *temp-string*
-                 s3-0
-                 (-> arg1 xpos)
-                 (-> arg1 ypos)
-                 (if (= (-> arg1 the-index) (-> arg1 current-index)) (font-color menu-flag-on) (font-color menu))
-                 (font-flags shadow kerning)))
-         (let ((a3-2 (-> s3-0 base)))
-           (let ((v1-8 (the-as object (-> s3-0 base))))
-             (set! (-> (the-as dma-packet v1-8) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> (the-as dma-packet v1-8) vif0) (new 'static 'vif-tag))
-             (set! (-> (the-as dma-packet v1-8) vif1) (new 'static 'vif-tag))
-             (set! (-> s3-0 base) (&+ (the-as pointer v1-8) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  s4-0
-                                  (the-as (pointer dma-tag) a3-2)))))
-      ((= arg0 1) (return (logtest? (-> s5-0 flags) 1)))
-      ((= arg0 4)
+      ;; (list-control-cmd draw-line)
+      ((zero? cmd)
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                  (format (clear *temp-string*)
+                          "~S~S~S"
+                          (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
+                          (if (logtest? (-> seq flags) (anim-test-seq-flags from-file)) "*" " ")
+                          (-> seq privname))
+                  (draw-xy *temp-string*
+                           dma-buff
+                           (-> ctrl xpos)
+                           (-> ctrl ypos)
+                           (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                           (font-flags shadow kerning)))))
+      ((= cmd (list-control-cmd visible?)) (return (logtest? (-> seq flags) (anim-test-seq-flags sequence))))
+      ((= cmd (list-control-cmd input))
        (cond
          ((cpad-pressed? 0 up)
-          (let ((v1-17 (-> arg1 list)))
+          (let ((list (-> ctrl list)))
             "is the list empty, #t = empty"
-            (when (not (= (-> v1-17 tailpred) v1-17))
-              (let ((v1-19 (glst-get-node-by-index (-> arg1 list) (-> arg1 highlight-index))))
+            (when (not (= (-> list tailpred) list))
+              (let ((cur-node (the-as anim-test-sequence (glst-get-node-by-index (-> ctrl list) (-> ctrl highlight-index)))))
                 (loop
                   "return the previous node in the list"
-                  (set! v1-19 (-> (the-as anim-test-sequence v1-19) prev))
-                  (let ((a0-24 (the-as anim-test-sequence v1-19)))
-                    "is this node the start of the list. #t = start"
-                    (if (not (-> a0-24 prev)) (goto cfg-28)))
-                  (when (logtest? (-> (the-as anim-test-sequence v1-19) flags) 1)
-                    (set! (-> arg1 highlight-index) (glst-get-node-index (-> arg1 list) (the-as anim-test-sequence v1-19)))
+                  (set! cur-node (the-as anim-test-sequence (-> cur-node prev)))
+                  (let ((node cur-node)) "is this node the start of the list. #t = start" (if (not (-> node prev)) (goto cfg-28)))
+                  (when (logtest? (-> cur-node flags) (anim-test-seq-flags sequence))
+                    (set! (-> ctrl highlight-index) (glst-get-node-index (-> ctrl list) cur-node))
                     (goto cfg-28))))))
           (label cfg-28))
          ((cpad-pressed? 0 down)
-          (let ((v1-23 (-> arg1 list)))
+          (let ((list (-> ctrl list)))
             "is the list empty, #t = empty"
-            (when (not (= (-> v1-23 tailpred) v1-23))
-              (let ((v1-25 (glst-get-node-by-index (-> arg1 list) (-> arg1 highlight-index))))
+            (when (not (= (-> list tailpred) list))
+              (let ((cur-node (the-as anim-test-sequence (glst-get-node-by-index (-> ctrl list) (-> ctrl highlight-index)))))
                 (loop
                   "return the next node in the list"
-                  (set! v1-25 (-> (the-as anim-test-sequence v1-25) next))
-                  (let ((a0-42 (the-as anim-test-sequence v1-25)))
-                    "is this node the end of the list. #t = end"
-                    (if (not (-> a0-42 next)) (goto cfg-42)))
-                  (when (logtest? (-> (the-as anim-test-sequence v1-25) flags) 1)
-                    (set! (-> arg1 highlight-index) (glst-get-node-index (-> arg1 list) (the-as anim-test-sequence v1-25)))
+                  (set! cur-node (the-as anim-test-sequence (-> cur-node next)))
+                  (let ((node cur-node)) "is this node the end of the list. #t = end" (if (not (-> node next)) (goto cfg-42)))
+                  (when (logtest? (-> cur-node flags) (anim-test-seq-flags sequence))
+                    (set! (-> ctrl highlight-index) (glst-get-node-index (-> ctrl list) cur-node))
                     (goto cfg-42))))))
           (label cfg-42))
          ((cpad-pressed? 0 x)
-          (set! (-> arg1 current-index) (-> arg1 the-index))
-          (set! (-> v1-0 seq-index) (-> arg1 current-index))
-          (set! (-> v1-0 seq-hindex) (-> arg1 highlight-index))
-          (logior! (-> v1-0 flags) 2)
-          (set! (-> *anim-tester* 0 edit-mode) 4)
+          (set! (-> ctrl current-index) (-> ctrl the-index))
+          (set! (-> obj seq-index) (-> ctrl current-index))
+          (set! (-> obj seq-hindex) (-> ctrl highlight-index))
+          (logior! (-> obj flags) (anim-test-obj-flags play-sequence))
+          (set! (-> *anim-tester* 0 edit-mode) (anim-tester-edit-mode edit-sequence))
           (send-event (ppointer->process *anim-tester*) 'change-anim #f))
          ((cpad-pressed? 0 square)
           (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons square))
           (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
           (set! (-> *debug-menu-context* is-hidden) #f)
-          (set! (-> *anim-tester* 0 edit-mode) 0)
+          (set! (-> *anim-tester* 0 edit-mode) (anim-tester-edit-mode none))
           (set! *camera-read-buttons* #t)
-          (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2)))))
-      ((= arg0 2)
-       (let ((v1-57 (+ (length (-> s5-0 privname)) 2)))
-         (set! v1-57
+          (logior! (-> *anim-tester* 0 flags) (anim-tester-flags return-to-menu)))))
+      ((= cmd (list-control-cmd measure))
+       (let ((width (+ (length (-> seq privname)) 2)))
+         (set! width
                (cond
-                 ((< (-> *ANIM_TESTER-bank* PICK_LIST_MIN_WIDTH) v1-57) (empty) v1-57)
+                 ((< (-> *ANIM_TESTER-bank* PICK_LIST_MIN_WIDTH) width) (empty) width)
                  (else (-> *ANIM_TESTER-bank* PICK_LIST_MIN_WIDTH))))
-         (set! (-> arg1 return-int) v1-57)))
-      ((= arg0 3)
-       (let* ((s4-1 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (s5-1 (-> s4-1 base)))
-         (draw-string-xy "----pick-sequence---" s4-1 (-> arg1 xpos) (-> arg1 ypos) (font-color menu) (font-flags shadow kerning))
-         (let ((a3-4 (-> s4-1 base)))
-           (let ((v1-64 (the-as object (-> s4-1 base))))
-             (set! (-> (the-as dma-packet v1-64) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> (the-as dma-packet v1-64) vif0) (new 'static 'vif-tag))
-             (set! (-> (the-as dma-packet v1-64) vif1) (new 'static 'vif-tag))
-             (set! (-> s4-1 base) (&+ (the-as pointer v1-64) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  s5-1
-                                  (the-as (pointer dma-tag) a3-4)))))))
+         (set! (-> ctrl return-int) width)))
+      ((= cmd (list-control-cmd draw-title))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "----pick-sequence---"
+                                dma-buff
+                                (-> ctrl xpos)
+                                (-> ctrl ypos)
+                                (font-color menu)
+                                (font-flags shadow kerning))))))
   #f)
 
+;; Where each editor column starts and how wide it is, in characters. The first
+;; is the animation name, then speed, blend, first, last, the four flag letters
+;; and the three letters of "MID": move, insert, delete.
 (define anim-test-field-highlight-lw
   (new 'static
        'inline-array
@@ -871,272 +947,261 @@
        (new 'static 'list-field :left 54 :width 1)
        (new 'static 'list-field :left 55 :width 1)))
 
-(defun anim-tester-adjust-frame ((arg0 float) (arg1 float))
+(defun anim-tester-adjust-frame ((frame float) (num-frames float))
+  "Step a frame limit by one animation frame while the d-pad is held, and return
+   it. -1.0 means \"min\" and -2.0 means \"max\": stepping up from min gives frame
+   0 and stepping down from max gives the last real frame, while stepping past
+   either end saturates back onto the sentinel."
   (cond
     ((cpad-hold? 0 down)
      (cond
-       ((= arg0 -2.0) (set! arg0 (+ -1.0 arg1)))
-       ((!= arg0 -1.0) (set! arg0 (+ -1.0 arg0)) (if (< arg0 0.0) (set! arg0 (the-as float -1.0))))))
+       ((= frame -2.0) (set! frame (+ -1.0 num-frames)))
+       ((!= frame -1.0) (set! frame (+ -1.0 frame)) (if (< frame 0.0) (set! frame (the-as float -1.0))))))
     ((cpad-hold? 0 up)
      (cond
-       ((= arg0 -1.0) (set! arg0 (the-as float 0.0)))
-       ((!= arg0 -2.0) (set! arg0 (+ 1.0 arg0)) (if (>= arg0 arg1) (set! arg0 (the-as float -2.0)))))))
-  (the-as float arg0))
+       ((= frame -1.0) (set! frame (the-as float 0.0)))
+       ((!= frame -2.0) (set! frame (+ 1.0 frame)) (if (>= frame num-frames) (set! frame (the-as float -2.0)))))))
+  (the-as float frame))
 
-(defun anim-tester-pick-item-setup ((arg0 anim-test-seq-item) (arg1 anim-test-sequence))
-  (let ((gp-0 (-> arg1 parent)))
+(defun anim-tester-pick-item-setup ((item anim-test-seq-item) (seq anim-test-sequence))
+  "Open the animation picker to the right of the sequence editor, highlighting the
+   animation item currently plays. user-info 1 tells the shared animation handler
+   that this is a picker, and editing-field makes the editor hand it the pad."
+  (let ((obj (-> seq parent)))
     (set! (-> *anim-tester* 0 pick-con listfunc) anim-test-anim-list-handler)
     (set! (-> *anim-tester* 0 pick-con left)
           (+ (-> *ANIM_TESTER-bank* EDIT_LIST_X) (* (-> *ANIM_TESTER-bank* EDIT_PICK_X) (-> *DISP_LIST-bank* CHAR_WIDTH))))
     (set! (-> *anim-tester* 0 pick-con top) (-> *ANIM_TESTER-bank* EDIT_LIST_Y))
-    (set! (-> *anim-tester* 0 pick-con list) (-> gp-0 seq-list))
-    (set! (-> *anim-tester* 0 pick-con list-owner) (the-as uint gp-0))
+    (set! (-> *anim-tester* 0 pick-con list) (-> obj seq-list))
+    (set! (-> *anim-tester* 0 pick-con list-owner) (the-as uint obj))
     (set! (-> *anim-tester* 0 pick-con user-info) 1)
-    (let ((v1-10 (-> gp-0 seq-list)))
+    ;; walks the sequence list without doing anything with it
+    (let ((list (-> obj seq-list)))
       "return the start of the list"
-      (let ((v1-11 (-> v1-10 head)))
-        (while (let ((a1-16 v1-11)) "is this node the end of the list. #t = end" (not (not (-> a1-16 next))))
+      (let ((cur-node (-> list head)))
+        (while (let ((node cur-node)) "is this node the end of the list. #t = end" (not (not (-> node next))))
           "return the next node in the list"
-          (set! v1-11 (-> v1-11 next)))))
-    (let ((a1-20 (glst-find-node-by-name (-> gp-0 seq-list) (-> arg0 privname))))
-      (when a1-20
-        (set! (-> *anim-tester* 0 pick-con highlight-index) (glst-get-node-index (-> gp-0 seq-list) a1-20))
+          (set! cur-node (-> cur-node next)))))
+    (let ((match (glst-find-node-by-name (-> obj seq-list) (-> item privname))))
+      (when match
+        (set! (-> *anim-tester* 0 pick-con highlight-index) (glst-get-node-index (-> obj seq-list) match))
         (set! (-> *anim-tester* 0 pick-con current-index) (-> *anim-tester* 0 pick-con highlight-index)))))
-  (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
+  (logior! (-> *anim-tester* 0 flags) (anim-tester-flags editing-field))
   (none))
 
-(defun anim-test-seq-mark-as-edited ((arg0 anim-test-sequence))
-  (logior! (-> arg0 parent flags) 1)
-  (logior! (-> arg0 flags) 1)
+(defun anim-test-seq-mark-as-edited ((seq anim-test-sequence))
+  "Turn seq into a named sequence, if it was not one already, and mark its object
+   as needing a save."
+  (logior! (-> seq parent flags) (anim-test-obj-flags edited))
+  (logior! (-> seq flags) (anim-test-seq-flags sequence))
   (none))
 
-(defun anim-test-edit-seq-insert-item ((arg0 anim-test-seq-item) (arg1 anim-test-sequence))
-  (let ((s4-0 (new 'debug 'anim-test-seq-item 1 "")))
-    (anim-test-seq-item-copy! s4-0 arg0)
-    (when (logtest? (-> s4-0 flags) 1)
-      (logand! (-> s4-0 flags) -2)
-      (logior! (-> s4-0 flags) 4)
-      (let ((v1-8 s4-0)) (set! (-> v1-8 privname) "--blank--")))
-    (glst-insert-before (-> arg1 item-list) arg0 s4-0))
-  (anim-test-seq-mark-as-edited arg1)
+(defun anim-test-edit-seq-insert-item ((item anim-test-seq-item) (seq anim-test-sequence))
+  "Insert a copy of item immediately in front of it. Copying the **END** row
+   yields a \"--blank--\" placeholder instead, so inserting on the last row appends
+   an empty one to fill in."
+  (let ((new-item (new 'debug 'anim-test-seq-item 1 "")))
+    (anim-test-seq-item-copy! new-item item)
+    (when (logtest? (-> new-item flags) (anim-test-item-flags end))
+      (logclear! (-> new-item flags) (anim-test-item-flags end))
+      (logior! (-> new-item flags) (anim-test-item-flags blank))
+      (let ((node new-item)) (set! (-> node privname) "--blank--")))
+    (glst-insert-before (-> seq item-list) item new-item))
+  (anim-test-seq-mark-as-edited seq)
   (send-event (ppointer->process *anim-tester*) 'change-anim)
   (none))
 
-(defun anim-test-edit-sequence-list-handler ((arg0 int) (arg1 list-control))
-  (let ((gp-0 (-> arg1 the-node))
-        (s4-0 (the-as object (-> arg1 list-owner)))
-        (s2-0 (and (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3)) (zero? (-> *anim-tester* 0 item-field)))))
+(defun anim-test-edit-sequence-list-handler ((cmd list-control-cmd) (ctrl list-control))
+  "listfunc for the sequence editor: one row per item, with the columns of
+   anim-test-item-field and the header \"-spd-blnd-1st-lst-flgs-mov-\".
+
+   Left and right move item-field along the row, skipping the three unimplemented
+   flag columns, and the highlighted column is drawn with a blue box behind it.
+   X acts on that column: on the name it opens the animation picker, on a number
+   it sets editing-field so up and down adjust the value (accelerating while
+   held, via inc-delay), on the blend flag it toggles it, and on the last three
+   it moves, inserts or deletes the row. The **END** row only accepts an insert."
+  (let ((item (the-as anim-test-seq-item (-> ctrl the-node)))
+        (seq (the-as anim-test-sequence (-> ctrl list-owner)))
+        (picking? (and (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags editing-field)) (zero? (-> *anim-tester* 0 item-field)))))
     (cond
-      ((zero? arg0)
-       (let ((s3-0 (new 'stack
-                        'font-context
-                        *font-default-matrix*
-                        (-> arg1 xpos)
-                        (-> arg1 ypos)
-                        (the-as float 0.0)
-                        (if (= (-> arg1 the-index) (-> arg1 current-index)) (font-color menu-flag-on) (font-color menu))
-                        (font-flags shadow kerning))))
-         (when (not s2-0)
-           (when (= (-> arg1 the-index) (-> arg1 highlight-index))
-             (let* ((a1-2 (-> anim-test-field-highlight-lw (-> *anim-tester* 0 item-field) left))
-                    (v1-24 (-> anim-test-field-highlight-lw (-> *anim-tester* 0 item-field) width))
-                    (s0-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                    (s1-0 (-> s0-0 base)))
-               (draw-sprite2d-xy s0-0
-                                 (+ (* a1-2 (-> *DISP_LIST-bank* CHAR_WIDTH)) 2 (-> arg1 xpos))
-                                 (+ (-> arg1 ypos) -1)
-                                 (+ (* v1-24 (-> *DISP_LIST-bank* CHAR_WIDTH)) 4)
+      ;; (list-control-cmd draw-line)
+      ((zero? cmd)
+       (let ((font-ctx (new 'stack
+                            'font-context
+                            *font-default-matrix*
+                            (-> ctrl xpos)
+                            (-> ctrl ypos)
+                            (the-as float 0.0)
+                            (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                            (font-flags shadow kerning))))
+         (when (not picking?)
+           (when (= (-> ctrl the-index) (-> ctrl highlight-index))
+             (let* ((field-left (-> anim-test-field-highlight-lw (-> *anim-tester* 0 item-field) left))
+                    (field-width (-> anim-test-field-highlight-lw (-> *anim-tester* 0 item-field) width))
+                    (dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf))
+                    (packet-start (-> dma-buff base)))
+               (draw-sprite2d-xy dma-buff
+                                 (+ (* field-left (-> *DISP_LIST-bank* CHAR_WIDTH)) 2 (-> ctrl xpos))
+                                 (+ (-> ctrl ypos) -1)
+                                 (+ (* field-width (-> *DISP_LIST-bank* CHAR_WIDTH)) 4)
                                  (+ (-> *DISP_LIST-bank* TV_SPACING) 1)
                                  (new 'static 'rgba :r #xc0 :g #xc0 :a #xff))
-               (let ((a3-4 (-> s0-0 base)))
-                 (let ((v1-29 (the-as object (-> s0-0 base))))
-                   (set! (-> (the-as dma-packet v1-29) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                   (set! (-> (the-as dma-packet v1-29) vif0) (new 'static 'vif-tag))
-                   (set! (-> (the-as dma-packet v1-29) vif1) (new 'static 'vif-tag))
-                   (set! (-> s0-0 base) (&+ (the-as pointer v1-29) 16)))
+               (let ((packet-end (-> dma-buff base)))
+                 (let ((packet (the-as dma-packet (-> dma-buff base))))
+                   (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                   (set! (-> packet vif0) (new 'static 'vif-tag))
+                   (set! (-> packet vif1) (new 'static 'vif-tag))
+                   (set! (-> dma-buff base) (&+ (the-as pointer packet) 16)))
                  (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
                                         (bucket-id debug)
-                                        s1-0
-                                        (the-as (pointer dma-tag) a3-4))))))
-         (let* ((s0-1 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                (s1-1 (-> s0-1 base)))
-           (let ((sv-192 draw-string-xy))
-             (let ((sv-208 format))
-               (sv-208 (clear *temp-string*)
-                       "~S~S~-27S"
-                       (if (= (-> arg1 the-index) (-> arg1 highlight-index)) ">" " ")
-                       (if (= (-> arg1 the-index) (-> (the-as anim-test-sequence s4-0) playing-item)) "*" " ")
-                       (-> (the-as anim-test-seq-item gp-0) privname)))
-             (sv-192 *temp-string*
-                     s0-1
-                     (-> arg1 xpos)
-                     (-> arg1 ypos)
-                     (if (= (-> arg1 the-index) (-> arg1 current-index)) (font-color menu-flag-on) (font-color menu))
-                     (font-flags shadow kerning)))
-           (let ((a3-8 (-> s0-1 base)))
-             (let ((v1-44 (the-as object (-> s0-1 base))))
-               (set! (-> (the-as dma-packet v1-44) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-               (set! (-> (the-as dma-packet v1-44) vif0) (new 'static 'vif-tag))
-               (set! (-> (the-as dma-packet v1-44) vif1) (new 'static 'vif-tag))
-               (set! (-> s0-1 base) (&+ (the-as pointer v1-44) 16)))
-             (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                    (bucket-id debug)
-                                    s1-1
-                                    (the-as (pointer dma-tag) a3-8))))
-         (when (not s2-0)
-           (let* ((s2-2 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                  (s4-1 (the-as anim-test-sequence (-> s2-2 base))))
-             (when (not (logtest? (-> (the-as anim-test-seq-item gp-0) flags) 1))
-               (set-origin! s3-0
-                            (+ (-> arg1 xpos) (* (-> *ANIM_TESTER-bank* EDIT_STATS_X) (-> *DISP_LIST-bank* CHAR_WIDTH)))
-                            (-> arg1 ypos))
-               (cond
-                 ((and (< (-> (the-as anim-test-seq-item gp-0) speed) 0) (< -100 (-> (the-as anim-test-seq-item gp-0) speed)))
-                  (let ((s1-2 draw-string-adv))
-                    (let ((s0-2 format)
-                          (a0-33 (clear *temp-string*))
-                          (a1-14 "-0.~1d")
-                          (v1-61 (abs (-> (the-as anim-test-seq-item gp-0) speed))))
-                      (s0-2 a0-33 a1-14 (/ (mod v1-61 100) 10)))
-                    (s1-2 *temp-string* s2-2 s3-0)))
-                 (else
-                  (let ((s1-3 draw-string-adv))
-                    (let ((s0-3 format)
-                          (a0-36 (clear *temp-string*))
-                          (a1-16 "~2d.~1d")
-                          (a2-21 (/ (-> (the-as anim-test-seq-item gp-0) speed) 100))
-                          (v1-64 (abs (-> (the-as anim-test-seq-item gp-0) speed))))
-                      (s0-3 a0-36 a1-16 a2-21 (/ (mod v1-64 100) 10)))
-                    (s1-3 *temp-string* s2-2 s3-0))))
-               (let ((s1-4 draw-string-adv))
-                 (format (clear *temp-string*) " ~4d" (-> (the-as anim-test-seq-item gp-0) blend))
-                 (s1-4 *temp-string* s2-2 s3-0))
-               (anim-tester-disp-frame-num " "
-                                           (-> (the-as anim-test-seq-item gp-0) first-frame)
-                                           (-> (the-as anim-test-seq-item gp-0) artist-base)
-                                           s3-0)
-               (anim-tester-disp-frame-num " "
-                                           (-> (the-as anim-test-seq-item gp-0) last-frame)
-                                           (-> (the-as anim-test-seq-item gp-0) artist-base)
-                                           s3-0)
-               (let ((s1-5 draw-string-adv))
-                 (format (clear *temp-string*)
-                         " ~S~S~S~S"
-                         (if (logtest? (-> (the-as anim-test-seq-item gp-0) flags) 2) "B" "-")
-                         "-"
-                         "-"
-                         "-")
-                 (s1-5 *temp-string* s2-2 s3-0)))
-             (let* ((a1-24 (-> anim-test-field-highlight-lw 9 left))
-                    (v1-69 s3-0)
-                    (a1-26 (+ (-> arg1 xpos) (* a1-24 (-> *DISP_LIST-bank* CHAR_WIDTH))))
-                    (a0-47 (-> arg1 ypos)))
-               (set! (-> v1-69 origin x) (the float a1-26))
-               (set! (-> v1-69 origin y) (the float a0-47)))
-             (draw-string-adv "MID" s2-2 s3-0)
-             (let ((a3-15 (-> s2-2 base)))
-               (let ((v1-70 (the-as object (-> s2-2 base))))
-                 (set! (-> (the-as dma-packet v1-70) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                 (set! (-> (the-as dma-packet v1-70) vif0) (new 'static 'vif-tag))
-                 (set! (-> (the-as dma-packet v1-70) vif1) (new 'static 'vif-tag))
-                 (set! (-> s2-2 base) (&+ (the-as pointer v1-70) 16)))
-               (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                      (bucket-id debug)
-                                      (the-as pointer s4-1)
-                                      (the-as (pointer dma-tag) a3-15)))))))
-      ((= arg0 1) (return #t))
-      ((= arg0 4)
+                                        packet-start
+                                        (the-as (pointer dma-tag) packet-end))))))
+         (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                      (let ((fmt format))
+                        (fmt (clear *temp-string*)
+                             "~S~S~-27S"
+                             (if (= (-> ctrl the-index) (-> ctrl highlight-index)) ">" " ")
+                             (if (= (-> ctrl the-index) (-> seq playing-item)) "*" " ")
+                             (-> item privname)))
+                      (draw-xy *temp-string*
+                               dma-buff
+                               (-> ctrl xpos)
+                               (-> ctrl ypos)
+                               (if (= (-> ctrl the-index) (-> ctrl current-index)) (font-color menu-flag-on) (font-color menu))
+                               (font-flags shadow kerning))))
+         (when (not picking?)
+           (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (when (not (logtest? (-> item flags) (anim-test-item-flags end)))
+                          (set-origin! font-ctx
+                                       (+ (-> ctrl xpos) (* (-> *ANIM_TESTER-bank* EDIT_STATS_X) (-> *DISP_LIST-bank* CHAR_WIDTH)))
+                                       (-> ctrl ypos))
+                          (cond
+                            ((and (< (-> item speed) 0) (< -100 (-> item speed)))
+                             (let ((draw-adv draw-string-adv))
+                               (let ((fmt format)
+                                     (str (clear *temp-string*))
+                                     (fmt-str "-0.~1d")
+                                     (speed (abs (-> item speed))))
+                                 (fmt str fmt-str (/ (mod speed 100) 10)))
+                               (draw-adv *temp-string* dma-buff font-ctx)))
+                            (else
+                             (let ((draw-adv draw-string-adv))
+                               (let ((fmt format)
+                                     (str (clear *temp-string*))
+                                     (fmt-str "~2d.~1d")
+                                     (whole-speed (/ (-> item speed) 100))
+                                     (speed (abs (-> item speed))))
+                                 (fmt str fmt-str whole-speed (/ (mod speed 100) 10)))
+                               (draw-adv *temp-string* dma-buff font-ctx))))
+                          (let ((draw-adv draw-string-adv))
+                            (format (clear *temp-string*) " ~4d" (-> item blend))
+                            (draw-adv *temp-string* dma-buff font-ctx))
+                          (anim-tester-disp-frame-num " " (-> item first-frame) (-> item artist-base) font-ctx)
+                          (anim-tester-disp-frame-num " " (-> item last-frame) (-> item artist-base) font-ctx)
+                          (let ((draw-adv draw-string-adv))
+                            (format (clear *temp-string*)
+                                    " ~S~S~S~S"
+                                    (if (logtest? (-> item flags) (anim-test-item-flags wait-for-blend)) "B" "-")
+                                    "-"
+                                    "-"
+                                    "-")
+                            (draw-adv *temp-string* dma-buff font-ctx))) (let* ((field-left (-> anim-test-field-highlight-lw 9 left))
+                               (ctx font-ctx)
+                               (x (+ (-> ctrl xpos) (* field-left (-> *DISP_LIST-bank* CHAR_WIDTH))))
+                               (y (-> ctrl ypos)))
+                          (set! (-> ctx origin x) (the float x))
+                          (set! (-> ctx origin y) (the float y))) (draw-string-adv "MID" dma-buff font-ctx)))))
+      ((= cmd (list-control-cmd visible?)) (return #t))
+      ((= cmd (list-control-cmd input))
        (cond
-         ((logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
-          (let ((v1-88 (-> *anim-tester* 0 item-field)))
+         ((logtest? (-> *anim-tester* 0 flags) (anim-tester-flags editing-field))
+          (let ((field (-> *anim-tester* 0 item-field)))
             (cond
-              ((zero? v1-88)
+              ;; the name column
+              ((zero? field)
                (cond
                  ((cpad-pressed? 0 x)
-                  (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
-                  (let ((v0-24 (the-as anim-test-obj
-                                       (glst-get-node-by-index (-> *anim-tester* 0 pick-con list) (-> *anim-tester* 0 pick-con highlight-index)))))
-                    (when (and v0-24 (let ((v1-101 (&-> v0-24 obj-art-group))) "is the list empty, #t = empty" (not (= (-> v1-101 2) v1-101))))
-                      (let ((v1-103 (&-> v0-24 obj-art-group)))
+                  (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags editing-field))
+                  (let ((picked-seq (the-as anim-test-sequence
+                                            (glst-get-node-by-index (-> *anim-tester* 0 pick-con list) (-> *anim-tester* 0 pick-con highlight-index)))))
+                    (when (and picked-seq
+                               (let ((list (-> picked-seq item-list))) "is the list empty, #t = empty" (not (= (-> list tailpred) list))))
+                      (let ((list (-> picked-seq item-list)))
                         "return the start of the list"
-                        (let ((a1-30 (-> v1-103 0)))
-                          (anim-test-seq-item-copy! (the-as anim-test-seq-item gp-0) (the-as anim-test-seq-item a1-30))))
-                      (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0)))))
-                 ((cpad-pressed? 0 square) (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3)))))
-              ((= v1-88 9)
+                        (let ((first-item (-> list head))) (anim-test-seq-item-copy! item (the-as anim-test-seq-item first-item))))
+                      (anim-test-seq-mark-as-edited seq))))
+                 ((cpad-pressed? 0 square) (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags editing-field)))))
+              ((= field (anim-test-item-field move))
                (cond
-                 ((not (cpad-hold? 0 x)) (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3)))
+                 ((not (cpad-hold? 0 x)) (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags editing-field)))
                  ((cpad-pressed? 0 up)
-                  (let ((v1-124 (the-as anim-test-seq-item gp-0)))
+                  (let ((node item))
                     "return the previous node in the list"
-                    (let* ((s3-1 (-> v1-124 prev))
-                           (v1-125 s3-1))
+                    (let* ((prev-item (-> node prev))
+                           (prev-node prev-item))
                       "is this node the start of the list. #t = start"
-                      (when (not (not (-> v1-125 prev)))
-                        (glst-remove (-> (the-as anim-test-sequence s4-0) item-list) (the-as anim-test-seq-item gp-0))
-                        (glst-insert-before (-> (the-as anim-test-sequence s4-0) item-list) s3-1 (the-as anim-test-seq-item gp-0))
-                        (+! (-> arg1 current-index) -1)
-                        (+! (-> arg1 highlight-index) -1)
-                        (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0))
+                      (when (not (not (-> prev-node prev)))
+                        (glst-remove (-> seq item-list) item)
+                        (glst-insert-before (-> seq item-list) prev-item item)
+                        (+! (-> ctrl current-index) -1)
+                        (+! (-> ctrl highlight-index) -1)
+                        (anim-test-seq-mark-as-edited seq)
                         (send-event (ppointer->process *anim-tester*) 'change-anim)))))
                  ((cpad-pressed? 0 down)
-                  (let ((v1-142 (the-as anim-test-seq-item gp-0)))
+                  (let ((node item))
                     "return the next node in the list"
-                    (let* ((s3-2 (the-as anim-test-seq-item (-> v1-142 next)))
-                           (v1-143 s3-2))
+                    (let* ((next-item (the-as anim-test-seq-item (-> node next)))
+                           (next-node next-item))
                       "is this node the end of the list. #t = end"
-                      (when (and (not (not (-> v1-143 next))) (not (logtest? (-> s3-2 flags) 1)))
-                        (glst-remove (-> (the-as anim-test-sequence s4-0) item-list) (the-as anim-test-seq-item gp-0))
-                        (glst-insert-after (-> (the-as anim-test-sequence s4-0) item-list) s3-2 (the-as anim-test-seq-item gp-0))
-                        (+! (-> arg1 current-index) 1)
-                        (+! (-> arg1 highlight-index) 1)
-                        (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0))
+                      (when (and (not (not (-> next-node next))) (not (logtest? (-> next-item flags) (anim-test-item-flags end))))
+                        (glst-remove (-> seq item-list) item)
+                        (glst-insert-after (-> seq item-list) next-item item)
+                        (+! (-> ctrl current-index) 1)
+                        (+! (-> ctrl highlight-index) 1)
+                        (anim-test-seq-mark-as-edited seq)
                         (send-event (ppointer->process *anim-tester*) 'change-anim)))))))
-              ((or (= v1-88 1) (= v1-88 2) (= v1-88 3) (= v1-88 4))
+              ((or (= field (anim-test-item-field speed))
+                   (= field (anim-test-item-field blend))
+                   (= field (anim-test-item-field first-frame))
+                   (= field (anim-test-item-field last-frame)))
                (cond
-                 ((not (cpad-hold? 0 x)) (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3)))
+                 ((not (cpad-hold? 0 x)) (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags editing-field)))
                  ((begin
-                    (set! (-> arg1 current-index) (-> arg1 the-index))
+                    (set! (-> ctrl current-index) (-> ctrl the-index))
                     (<= (-> *anim-tester* 0 inc-timer) 0))
                   (if (> (-> *anim-tester* 0 inc-delay) 0) (+! (-> *anim-tester* 0 inc-delay) -1))
                   (set! (-> *anim-tester* 0 inc-timer) (-> *anim-tester* 0 inc-delay))
                   (case (-> *anim-tester* 0 item-field)
-                    ((1)
+                    (((anim-test-item-field speed))
                      (cond
                        ((cpad-hold? 0 down)
-                        (+! (-> (the-as anim-test-seq-item gp-0) speed) -10)
-                        (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0))
-                        (if (< (-> (the-as anim-test-seq-item gp-0) speed) -300) (set! (-> (the-as anim-test-seq-item gp-0) speed) -300)))
+                        (+! (-> item speed) -10)
+                        (anim-test-seq-mark-as-edited seq)
+                        (if (< (-> item speed) -300) (set! (-> item speed) -300)))
                        ((cpad-hold? 0 up)
-                        (+! (-> (the-as anim-test-seq-item gp-0) speed) 10)
-                        (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0))
-                        (if (< 1000 (-> (the-as anim-test-seq-item gp-0) speed)) (set! (-> (the-as anim-test-seq-item gp-0) speed) 1000)))))
-                    ((2)
+                        (+! (-> item speed) 10)
+                        (anim-test-seq-mark-as-edited seq)
+                        (if (< 1000 (-> item speed)) (set! (-> item speed) 1000)))))
+                    (((anim-test-item-field blend))
                      (cond
                        ((cpad-hold? 0 down)
-                        (+! (-> (the-as anim-test-seq-item gp-0) blend) -1)
-                        (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0))
-                        (when (< (-> (the-as anim-test-seq-item gp-0) blend) 0)
-                          (set! (-> (the-as anim-test-seq-item gp-0) blend) 0)
+                        (+! (-> item blend) -1)
+                        (anim-test-seq-mark-as-edited seq)
+                        (when (< (-> item blend) 0)
+                          (set! (-> item blend) 0)
                           0))
                        ((cpad-hold? 0 up)
-                        (+! (-> (the-as anim-test-seq-item gp-0) blend) 1)
-                        (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0))
-                        (if (< 9999 (-> (the-as anim-test-seq-item gp-0) blend)) (set! (-> (the-as anim-test-seq-item gp-0) blend) 9999)))))
-                    ((3)
-                     (let ((f30-0 (-> (the-as anim-test-seq-item gp-0) first-frame)))
-                       (set! (-> (the-as anim-test-seq-item gp-0) first-frame)
-                             (anim-tester-adjust-frame (-> (the-as anim-test-seq-item gp-0) first-frame)
-                                                       (-> (the-as anim-test-seq-item gp-0) num-frames)))
-                       (if (!= f30-0 (-> (the-as anim-test-seq-item gp-0) first-frame))
-                         (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0)))))
-                    ((4)
-                     (let ((f30-1 (-> (the-as anim-test-seq-item gp-0) last-frame)))
-                       (set! (-> (the-as anim-test-seq-item gp-0) last-frame)
-                             (anim-tester-adjust-frame (-> (the-as anim-test-seq-item gp-0) last-frame)
-                                                       (-> (the-as anim-test-seq-item gp-0) num-frames)))
-                       (if (!= f30-1 (-> (the-as anim-test-seq-item gp-0) last-frame))
-                         (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0)))))))
+                        (+! (-> item blend) 1)
+                        (anim-test-seq-mark-as-edited seq)
+                        (if (< 9999 (-> item blend)) (set! (-> item blend) 9999)))))
+                    (((anim-test-item-field first-frame))
+                     (let ((old-first (-> item first-frame)))
+                       (set! (-> item first-frame) (anim-tester-adjust-frame (-> item first-frame) (-> item num-frames)))
+                       (if (!= old-first (-> item first-frame)) (anim-test-seq-mark-as-edited seq))))
+                    (((anim-test-item-field last-frame))
+                     (let ((old-last (-> item last-frame)))
+                       (set! (-> item last-frame) (anim-tester-adjust-frame (-> item last-frame) (-> item num-frames)))
+                       (if (!= old-last (-> item last-frame)) (anim-test-seq-mark-as-edited seq))))))
                  (else (+! (-> *anim-tester* 0 inc-timer) -1)))
                (when (or (cpad-pressed? 0 down) (cpad-pressed? 0 up))
                  (set! (-> *anim-tester* 0 inc-delay) (-> *DISP_LIST-bank* INC_DELAY))
@@ -1144,302 +1209,243 @@
                  0)))))
          (else
           (cond
-            ((cpad-pressed? 0 up) (if (> (-> arg1 highlight-index) 0) (+! (-> arg1 highlight-index) -1)))
+            ((cpad-pressed? 0 up) (if (> (-> ctrl highlight-index) 0) (+! (-> ctrl highlight-index) -1)))
             ((cpad-pressed? 0 down)
-             (if (< (the-as int (the-as anim-test-seq-item (-> arg1 highlight-index))) (glst-num-elements (-> arg1 list)))
-               (+! (-> arg1 highlight-index) 1)))
+             (if (< (-> ctrl highlight-index) (glst-num-elements (-> ctrl list))) (+! (-> ctrl highlight-index) 1)))
             ((cpad-pressed? 0 left)
              (+! (-> *anim-tester* 0 item-field) -1)
-             (if (< (-> *anim-tester* 0 item-field) 0) (set! (-> *anim-tester* 0 item-field) 11))
-             (if (= (-> *anim-tester* 0 item-field) 8) (set! (-> *anim-tester* 0 item-field) 5)))
+             (if (< (-> *anim-tester* 0 item-field) 0) (set! (-> *anim-tester* 0 item-field) (the-as int (anim-test-item-field delete))))
+             (if (= (-> *anim-tester* 0 item-field) (anim-test-item-field unused-flag-3))
+               (set! (-> *anim-tester* 0 item-field) (the-as int (anim-test-item-field blend-flag)))))
             ((cpad-pressed? 0 right)
              (+! (-> *anim-tester* 0 item-field) 1)
              (when (>= (-> *anim-tester* 0 item-field) 12)
-               (set! (-> *anim-tester* 0 item-field) 0)
+               (set! (-> *anim-tester* 0 item-field) (the-as int (anim-test-item-field name)))
                0)
-             (if (= (-> *anim-tester* 0 item-field) 6) (set! (-> *anim-tester* 0 item-field) 9)))
+             (if (= (-> *anim-tester* 0 item-field) (anim-test-item-field unused-flag-1))
+               (set! (-> *anim-tester* 0 item-field) (the-as int (anim-test-item-field move)))))
             ((cpad-pressed? 0 square)
              (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons square))
              (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons square))
-             (set! (-> *anim-tester* 0 edit-mode) 3)
-             (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2)))
+             (set! (-> *anim-tester* 0 edit-mode) (anim-tester-edit-mode pick-sequence))
+             (logior! (-> *anim-tester* 0 flags) (anim-tester-flags return-to-menu)))
             ((cpad-pressed? 0 x)
              (cond
-               ((logtest? (-> (the-as anim-test-seq-item gp-0) flags) 1)
-                (let ((v1-318 (-> *anim-tester* 0 item-field)))
-                  (if (= v1-318 10) (anim-test-edit-seq-insert-item (the-as anim-test-seq-item gp-0) (the-as anim-test-sequence s4-0)))))
+               ((logtest? (-> item flags) (anim-test-item-flags end))
+                (let ((field (-> *anim-tester* 0 item-field)))
+                  (if (= field (anim-test-item-field insert)) (anim-test-edit-seq-insert-item item seq))))
                (else
-                (let ((v1-322 (-> *anim-tester* 0 item-field)))
+                (let ((field (-> *anim-tester* 0 item-field)))
                   (cond
-                    ((zero? v1-322) (anim-tester-pick-item-setup (the-as anim-test-seq-item gp-0) (the-as anim-test-sequence s4-0)))
-                    ((= v1-322 10) (anim-test-edit-seq-insert-item (the-as anim-test-seq-item gp-0) (the-as anim-test-sequence s4-0)))
-                    ((= v1-322 11)
-                     (when (not (logtest? (-> (the-as anim-test-seq-item gp-0) flags) 1))
-                       (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0))
-                       (glst-remove (-> (the-as anim-test-sequence s4-0) item-list) (the-as anim-test-seq-item gp-0)))
+                    ;; the name column: open the animation picker
+                    ((zero? field) (anim-tester-pick-item-setup item seq))
+                    ((= field (anim-test-item-field insert)) (anim-test-edit-seq-insert-item item seq))
+                    ((= field (anim-test-item-field delete))
+                     (when (not (logtest? (-> item flags) (anim-test-item-flags end)))
+                       (anim-test-seq-mark-as-edited seq)
+                       (glst-remove (-> seq item-list) item))
                      (send-event (ppointer->process *anim-tester*) 'change-anim))
                     (else
-                     (when (not (logtest? (-> (the-as anim-test-seq-item gp-0) flags) 4))
+                     (when (not (logtest? (-> item flags) (anim-test-item-flags blank)))
                        (case (-> *anim-tester* 0 item-field)
-                         ((5)
-                          (anim-test-seq-mark-as-edited (the-as anim-test-sequence s4-0))
-                          (let ((v1-331 (logxor (-> (the-as anim-test-seq-item gp-0) flags) 2)))
-                            (set! (-> (the-as anim-test-seq-item gp-0) flags) v1-331)
-                            v1-331))
-                         ((6) (the-as int #f))
-                         ((7) (the-as int #f))
-                         ((8) (the-as int #f))
+                         (((anim-test-item-field blend-flag))
+                          (anim-test-seq-mark-as-edited seq)
+                          (let ((new-flags (logxor (-> item flags) (anim-test-item-flags wait-for-blend))))
+                            (set! (-> item flags) new-flags)
+                            new-flags))
+                         (((anim-test-item-field unused-flag-1)) (the-as int #f))
+                         (((anim-test-item-field unused-flag-2)) (the-as int #f))
+                         (((anim-test-item-field unused-flag-3)) (the-as int #f))
                          (else
-                          (logior! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt3))
+                          (logior! (-> *anim-tester* 0 flags) (anim-tester-flags editing-field))
                           (set! (-> *anim-tester* 0 inc-delay) (-> *DISP_LIST-bank* INC_DELAY))
                           (set! (-> *anim-tester* 0 inc-timer) 0)
                           0)))))))))))))
-      ((= arg0 2) (set! (-> arg1 return-int) (-> *ANIM_TESTER-bank* EDIT_LIST_MIN_WIDTH)))
-      ((= arg0 3)
-       (let* ((s3-3 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-              (gp-2 (-> s3-3 base)))
-         (let ((s1-6 draw-string-xy))
-           (format (clear *temp-string*) "--Seq--(~-17S)--" (-> (the-as anim-test-sequence s4-0) privname))
-           (s1-6 *temp-string* s3-3 (-> arg1 xpos) (-> arg1 ypos) (font-color menu) (font-flags shadow kerning)))
-         (let ((a3-17 (-> s3-3 base)))
-           (let ((v1-355 (the-as object (-> s3-3 base))))
-             (set! (-> (the-as dma-packet v1-355) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-             (set! (-> (the-as dma-packet v1-355) vif0) (new 'static 'vif-tag))
-             (set! (-> (the-as dma-packet v1-355) vif1) (new 'static 'vif-tag))
-             (set! (-> s3-3 base) (&+ (the-as pointer v1-355) 16)))
-           (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                  (bucket-id debug)
-                                  gp-2
-                                  (the-as (pointer dma-tag) a3-17))))
+      ((= cmd (list-control-cmd measure)) (set! (-> ctrl return-int) (-> *ANIM_TESTER-bank* EDIT_LIST_MIN_WIDTH)))
+      ((= cmd (list-control-cmd draw-title))
+       (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((draw-xy draw-string-xy))
+                  (format (clear *temp-string*) "--Seq--(~-17S)--" (-> seq privname))
+                  (draw-xy *temp-string* dma-buff (-> ctrl xpos) (-> ctrl ypos) (font-color menu) (font-flags shadow kerning))))
        (cond
-         (s2-0 (display-list-control (-> *anim-tester* 0 pick-con)))
+         (picking? (display-list-control (-> *anim-tester* 0 pick-con)))
          (else
-          (let* ((s4-2 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                 (gp-3 (-> s4-2 base)))
-            (draw-string-xy "-spd-blnd-1st-lst-flgs-mov-"
-                            s4-2
-                            (+ (-> arg1 xpos) (* (-> *ANIM_TESTER-bank* EDIT_STATS_X) (-> *DISP_LIST-bank* CHAR_WIDTH)))
-                            (-> arg1 ypos)
-                            (font-color menu)
-                            (font-flags shadow kerning))
-            (let ((a3-21 (-> s4-2 base)))
-              (let ((v1-367 (the-as object (-> s4-2 base))))
-                (set! (-> (the-as dma-packet v1-367) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                (set! (-> (the-as dma-packet v1-367) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet v1-367) vif1) (new 'static 'vif-tag))
-                (set! (-> s4-2 base) (&+ (the-as pointer v1-367) 16)))
-              (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                     (bucket-id debug)
-                                     gp-3
-                                     (the-as (pointer dma-tag) a3-21)))))))))
+          (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "-spd-blnd-1st-lst-flgs-mov-"
+                                      dma-buff
+                                      (+ (-> ctrl xpos) (* (-> *ANIM_TESTER-bank* EDIT_STATS_X) (-> *DISP_LIST-bank* CHAR_WIDTH)))
+                                      (-> ctrl ypos)
+                                      (font-color menu)
+                                      (font-flags shadow kerning))))))))
   #f)
 
 (defbehavior anim-tester-interface anim-tester ()
-  (let ((v1-0 (-> self edit-mode)))
+  "Draw whichever list edit-mode selects, then remember it in old-mode. Prints an
+   error where the list would go if the object or sequence it needs is gone."
+  (let ((mode (-> self edit-mode)))
     (cond
-      ((zero? v1-0)
-       (when (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2))
-         (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags fanimt2))
+      ;; (anim-tester-edit-mode none)
+      ((zero? mode)
+       (when (logtest? (-> *anim-tester* 0 flags) (anim-tester-flags return-to-menu))
+         (logclear! (-> *anim-tester* 0 flags) (anim-tester-flags return-to-menu))
          (set-master-mode 'menu)))
-      ((= v1-0 1) (display-list-control (-> self list-con)))
-      ((= v1-0 2)
-       (let ((gp-0 (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
+      ((= mode (anim-tester-edit-mode pick-object)) (display-list-control (-> self list-con)))
+      ((= mode (anim-tester-edit-mode pick-joint-anim))
+       (let ((obj (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
          (cond
-           (gp-0
-            (set! (-> gp-0 list-con listfunc) anim-test-anim-list-handler)
-            (set! (-> gp-0 list-con current-index) (-> gp-0 anim-index))
-            (set! (-> gp-0 list-con highlight-index) (-> gp-0 anim-hindex))
-            (display-list-control (-> gp-0 list-con))
-            (set! (-> gp-0 anim-index) (-> gp-0 list-con current-index))
-            (set! (-> gp-0 anim-hindex) (-> gp-0 list-con highlight-index)))
+           (obj
+            (set! (-> obj list-con listfunc) anim-test-anim-list-handler)
+            (set! (-> obj list-con current-index) (-> obj anim-index))
+            (set! (-> obj list-con highlight-index) (-> obj anim-hindex))
+            (display-list-control (-> obj list-con))
+            (set! (-> obj anim-index) (-> obj list-con current-index))
+            (set! (-> obj anim-hindex) (-> obj list-con highlight-index)))
            (else
-            (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                   (gp-1 (-> s5-0 base)))
-              (draw-string-xy "ERROR: current object not found"
-                              s5-0
-                              (-> *ANIM_TESTER-bank* ANIM_LIST_X)
-                              (-> *ANIM_TESTER-bank* ANIM_LIST_Y)
-                              (font-color menu-func-bad)
-                              (font-flags shadow kerning))
-              (let ((a3-1 (-> s5-0 base)))
-                (let ((v1-20 (the-as object (-> s5-0 base))))
-                  (set! (-> (the-as dma-packet v1-20) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                  (set! (-> (the-as dma-packet v1-20) vif0) (new 'static 'vif-tag))
-                  (set! (-> (the-as dma-packet v1-20) vif1) (new 'static 'vif-tag))
-                  (set! (-> s5-0 base) (&+ (the-as pointer v1-20) 16)))
-                (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                       (bucket-id debug)
-                                       gp-1
-                                       (the-as (pointer dma-tag) a3-1))))))))
-      ((= v1-0 3)
-       (let ((gp-2 (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
+            (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "ERROR: current object not found"
+                                          dma-buff
+                                          (-> *ANIM_TESTER-bank* ANIM_LIST_X)
+                                          (-> *ANIM_TESTER-bank* ANIM_LIST_Y)
+                                          (font-color menu-func-bad)
+                                          (font-flags shadow kerning)))))))
+      ((= mode (anim-tester-edit-mode pick-sequence))
+       (let ((obj (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
          (cond
-           (gp-2
-            (set! (-> gp-2 list-con listfunc) anim-test-sequence-list-handler)
-            (set! (-> gp-2 list-con current-index) (-> gp-2 seq-index))
-            (set! (-> gp-2 list-con highlight-index) (-> gp-2 seq-hindex))
-            (display-list-control (-> gp-2 list-con))
-            (set! (-> gp-2 seq-index) (-> gp-2 list-con current-index))
-            (set! (-> gp-2 seq-hindex) (-> gp-2 list-con highlight-index)))
+           (obj
+            (set! (-> obj list-con listfunc) anim-test-sequence-list-handler)
+            (set! (-> obj list-con current-index) (-> obj seq-index))
+            (set! (-> obj list-con highlight-index) (-> obj seq-hindex))
+            (display-list-control (-> obj list-con))
+            (set! (-> obj seq-index) (-> obj list-con current-index))
+            (set! (-> obj seq-hindex) (-> obj list-con highlight-index)))
            (else
-            (let* ((s5-1 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                   (gp-3 (-> s5-1 base)))
-              (draw-string-xy "ERROR: current object not found"
-                              s5-1
-                              (-> *ANIM_TESTER-bank* ANIM_LIST_X)
-                              (-> *ANIM_TESTER-bank* ANIM_LIST_Y)
-                              (font-color menu-func-bad)
-                              (font-flags shadow kerning))
-              (let ((a3-3 (-> s5-1 base)))
-                (let ((v1-36 (the-as object (-> s5-1 base))))
-                  (set! (-> (the-as dma-packet v1-36) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                  (set! (-> (the-as dma-packet v1-36) vif0) (new 'static 'vif-tag))
-                  (set! (-> (the-as dma-packet v1-36) vif1) (new 'static 'vif-tag))
-                  (set! (-> s5-1 base) (&+ (the-as pointer v1-36) 16)))
-                (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                       (bucket-id debug)
-                                       gp-3
-                                       (the-as (pointer dma-tag) a3-3))))))))
-      ((= v1-0 4)
-       (let ((v1-43 (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
+            (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "ERROR: current object not found"
+                                          dma-buff
+                                          (-> *ANIM_TESTER-bank* ANIM_LIST_X)
+                                          (-> *ANIM_TESTER-bank* ANIM_LIST_Y)
+                                          (font-color menu-func-bad)
+                                          (font-flags shadow kerning)))))))
+      ((= mode (anim-tester-edit-mode edit-sequence))
+       (let ((obj (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))))
          (cond
-           (v1-43
-            (let ((v1-44 (the-as anim-test-sequence (glst-get-node-by-index (-> v1-43 seq-list) (-> v1-43 list-con current-index)))))
+           (obj
+            (let ((seq (the-as anim-test-sequence (glst-get-node-by-index (-> obj seq-list) (-> obj list-con current-index)))))
               (cond
-                (v1-44 (display-list-control (-> v1-44 list-con)))
+                (seq (display-list-control (-> seq list-con)))
                 (else
-                 (let* ((s5-2 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                        (gp-4 (-> s5-2 base)))
-                   (draw-string-xy "ERROR: current sequence not found"
-                                   s5-2
-                                   (-> *ANIM_TESTER-bank* EDIT_LIST_X)
-                                   (-> *ANIM_TESTER-bank* EDIT_LIST_Y)
-                                   (font-color menu-func-bad)
-                                   (font-flags shadow kerning))
-                   (let ((a3-5 (-> s5-2 base)))
-                     (let ((v1-51 (the-as object (-> s5-2 base))))
-                       (set! (-> (the-as dma-packet v1-51) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                       (set! (-> (the-as dma-packet v1-51) vif0) (new 'static 'vif-tag))
-                       (set! (-> (the-as dma-packet v1-51) vif1) (new 'static 'vif-tag))
-                       (set! (-> s5-2 base) (&+ (the-as pointer v1-51) 16)))
-                     (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                            (bucket-id debug)
-                                            gp-4
-                                            (the-as (pointer dma-tag) a3-5))))))))
+                 (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "ERROR: current sequence not found"
+                                                    dma-buff
+                                                    (-> *ANIM_TESTER-bank* EDIT_LIST_X)
+                                                    (-> *ANIM_TESTER-bank* EDIT_LIST_Y)
+                                                    (font-color menu-func-bad)
+                                                    (font-flags shadow kerning)))))))
            (else
-            (let* ((s5-3 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-                   (gp-5 (-> s5-3 base)))
-              (draw-string-xy "ERROR: current object not found"
-                              s5-3
-                              (-> *ANIM_TESTER-bank* EDIT_LIST_X)
-                              (-> *ANIM_TESTER-bank* EDIT_LIST_Y)
-                              (font-color menu-func-bad)
-                              (font-flags shadow kerning))
-              (let ((a3-7 (-> s5-3 base)))
-                (let ((v1-62 (the-as object (-> s5-3 base))))
-                  (set! (-> (the-as dma-packet v1-62) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                  (set! (-> (the-as dma-packet v1-62) vif0) (new 'static 'vif-tag))
-                  (set! (-> (the-as dma-packet v1-62) vif1) (new 'static 'vif-tag))
-                  (set! (-> s5-3 base) (&+ (the-as pointer v1-62) 16)))
-                (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                       (bucket-id debug)
-                                       gp-5
-                                       (the-as (pointer dma-tag) a3-7))))))))))
+            (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy "ERROR: current object not found"
+                                          dma-buff
+                                          (-> *ANIM_TESTER-bank* EDIT_LIST_X)
+                                          (-> *ANIM_TESTER-bank* EDIT_LIST_Y)
+                                          (font-color menu-func-bad)
+                                          (font-flags shadow kerning)))))))))
   (set! (-> self old-mode) (-> self edit-mode))
   (none))
 
-(defun anim-tester-get-playing-item ((arg0 anim-test-sequence))
-  (let ((v0-0 ((the-as (function glst-list int anim-test-seq-item) glst-get-node-by-index) (-> arg0 item-list) (-> arg0 playing-item))))
-    (let ((s5-0 v0-0)
-          (s4-0 (-> arg0 playing-item)))
-      (when (logtest? (-> v0-0 flags) 5)
+(defun anim-tester-get-playing-item ((seq anim-test-sequence))
+  "Return the row seq should play now, advancing playing-item past the **END** and
+   \"--blank--\" rows and wrapping at the end of the list. Gives up and returns the
+   unplayable row it started from if the whole list is unplayable."
+  (let ((item ((the-as (function glst-list int anim-test-seq-item) glst-get-node-by-index) (-> seq item-list) (-> seq playing-item))))
+    (let ((first-item item)
+          (index (-> seq playing-item)))
+      (when (logtest? (-> item flags) (anim-test-item-flags end blank))
         (loop
-          (+! s4-0 1)
-          (if (>= s4-0 (glst-num-elements (-> arg0 item-list))) (set! s4-0 0))
-          (set! v0-0 ((the-as (function glst-list int anim-test-seq-item) glst-get-node-by-index) (-> arg0 item-list) s4-0))
-          (when (or (= v0-0 s5-0) (not (logtest? (-> v0-0 flags) 5)))
-            (set! (-> arg0 playing-item) s4-0)
-            (return v0-0)))))
-    v0-0))
+          (+! index 1)
+          (if (>= index (glst-num-elements (-> seq item-list))) (set! index 0))
+          (set! item ((the-as (function glst-list int anim-test-seq-item) glst-get-node-by-index) (-> seq item-list) index))
+          (when (or (= item first-item) (not (logtest? (-> item flags) (anim-test-item-flags end blank))))
+            (set! (-> seq playing-item) index)
+            (return item)))))
+    item))
 
+;; Play the selected animation or sequence, over and over. Each pass round the
+;; loop re-reads the selection, because the lists can change it at any time, and
+;; complains to *stdcon* and waits a frame if there is nothing to play.
 (defstate anim-tester-process (anim-tester)
   :event anim-tester-standard-event-handler
   :enter
     (behavior ()
-      (logior! (-> self flags) (anim-tester-flags fanimt1)))
+      (logior! (-> self flags) (anim-tester-flags just-entered)))
   :trans
     (behavior ()
-      (if (and (not (logtest? (-> self flags) (anim-tester-flags fanimt1))) (= *master-mode* 'menu)) (anim-tester-interface))
-      (logclear! (-> self flags) (anim-tester-flags fanimt1))
+      (if (and (not (logtest? (-> self flags) (anim-tester-flags just-entered))) (= *master-mode* 'menu)) (anim-tester-interface))
+      (logclear! (-> self flags) (anim-tester-flags just-entered))
       (when (!= *master-mode* 'menu)
         (debug-print-channels (-> self skel) (the-as symbol *stdcon*))
         (add-debug-x #t (bucket-id debug-no-zbuf) (-> self root trans) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))))
   :code
     (behavior ()
-      (local-vars (s4-0 glst-node) (s5-1 anim-test-seq-item) (gp-2 anim-test-sequence))
+      ;; obj, seq and item are the object, sequence and row being played; the cond
+      ;; below picks them up one level at a time, so a failure at any level falls
+      ;; through to the message for that level.
+      (local-vars (obj anim-test-obj) (item anim-test-seq-item) (seq anim-test-sequence))
       (loop
-        (logclear! (-> self flags) (anim-tester-flags fanimt0))
-        (let ((v1-2 (-> self obj-list)))
+        (logclear! (-> self flags) (anim-tester-flags anim-playing))
+        (let ((obj-list (-> self obj-list)))
           "is the list empty, #t = empty"
           (cond
-            ((= (-> v1-2 tailpred) v1-2)
+            ((= (-> obj-list tailpred) obj-list)
              (format *stdcon* "anim-tester:no objects loaded~%")
              (set! (-> self list-con current-index) 0)
              (set! (-> self current-obj) "")
              (suspend)
              0)
             ((begin
-               (set! s4-0 (glst-find-node-by-name (-> self obj-list) (-> self current-obj)))
-               (when (not s4-0)
+               (set! obj (the-as anim-test-obj (glst-find-node-by-name (-> self obj-list) (-> self current-obj))))
+               (when (not obj)
                  (if (>= (-> self list-con current-index) (glst-num-elements (-> self obj-list)))
                    (set! (-> self list-con current-index) (+ (glst-num-elements (-> self obj-list)) -1)))
-                 (set! s4-0 (glst-get-node-by-index (-> self obj-list) (-> self list-con current-index)))
-                 (set! (-> self current-obj) (-> (the-as anim-test-obj s4-0) privname)))
-               (let ((v1-10 (the-as structure (-> (the-as anim-test-obj s4-0) seq-list))))
-                 "is the list empty, #t = empty"
-                 (= (-> (the-as anim-test-obj v1-10) privname) (the-as glst-list v1-10))))
+                 (set! obj (the-as anim-test-obj (glst-get-node-by-index (-> self obj-list) (-> self list-con current-index))))
+                 (set! (-> self current-obj) (-> obj privname)))
+               (let ((seq-list (-> obj seq-list))) "is the list empty, #t = empty" (= (-> seq-list tailpred) seq-list)))
              (format *stdcon* "anim-tester:no anims loaded~%")
              (format *stdcon* "displaying without anim not yet implement~%")
-             (logclear! (-> self flags) (anim-tester-flags fanimt0))
+             (logclear! (-> self flags) (anim-tester-flags anim-playing))
              (suspend)
              0)
             ((begin
-               (if (>= (-> (the-as anim-test-obj s4-0) list-con current-index)
-                       (glst-num-elements (-> (the-as anim-test-obj s4-0) seq-list)))
-                 (set! (-> (the-as anim-test-obj s4-0) list-con current-index)
-                       (+ (glst-num-elements (-> (the-as anim-test-obj s4-0) seq-list)) -1)))
-               (set! gp-2
+               (if (>= (-> obj list-con current-index) (glst-num-elements (-> obj seq-list)))
+                 (set! (-> obj list-con current-index) (+ (glst-num-elements (-> obj seq-list)) -1)))
+               (set! seq
                      (the-as anim-test-sequence
-                             (glst-get-node-by-index (-> (the-as anim-test-obj s4-0) seq-list)
-                                                     (if (logtest? (-> (the-as anim-test-obj s4-0) flags) 2)
-                                                       (-> (the-as anim-test-obj s4-0) seq-index)
-                                                       (-> (the-as anim-test-obj s4-0) anim-index)))))
-               (let ((v1-18 (-> gp-2 item-list))) "is the list empty, #t = empty" (= (-> v1-18 tailpred) v1-18)))
-             (format *stdcon* "anim-tester:no items in sequence ~A~%" (-> gp-2 privname))
+                             (glst-get-node-by-index (-> obj seq-list)
+                                                     (if (logtest? (-> obj flags) (anim-test-obj-flags play-sequence)) (-> obj seq-index) (-> obj anim-index)))))
+               (let ((item-list (-> seq item-list))) "is the list empty, #t = empty" (= (-> item-list tailpred) item-list)))
+             (format *stdcon* "anim-tester:no items in sequence ~A~%" (-> seq privname))
              (format *stdcon* "displaying without anim not yet implement~%")
              (suspend)
              0)
             ((begin
-               (when (>= (-> gp-2 playing-item) (glst-num-elements (-> gp-2 item-list)))
-                 (set! (-> gp-2 playing-item) 0)
+               (when (>= (-> seq playing-item) (glst-num-elements (-> seq item-list)))
+                 (set! (-> seq playing-item) 0)
                  0)
-               (set! s5-1 (anim-tester-get-playing-item gp-2))
-               s5-1)
-             (let ((s4-1 (the-as art-joint-anim (lookup-art (-> (the-as anim-test-obj s4-0) obj-art-group) (-> s5-1 privname) art-joint-anim))))
-               (anim-tester-update-anim-info s5-1)
+               (set! item (anim-tester-get-playing-item seq))
+               item)
+             (let ((anim (the-as art-joint-anim (lookup-art (-> obj obj-art-group) (-> item privname) art-joint-anim))))
+               (anim-tester-update-anim-info item)
                (cond
-                 (s4-1
-                  (logior! (-> self flags) (anim-tester-flags fanimt0))
-                  (if (nonzero? (-> s5-1 blend))
-                    (ja-channel-push! 1 (the-as time-frame (the int (* (the float (-> s5-1 blend)) (-> self anim-gspeed)))))
+                 (anim
+                  (logior! (-> self flags) (anim-tester-flags anim-playing))
+                  ;; a row with a blend length pushes a channel so the previous
+                  ;; animation blends out; the length scales with the global speed
+                  (if (nonzero? (-> item blend))
+                    (ja-channel-push! 1 (the-as time-frame (the int (* (the float (-> item blend)) (-> self anim-gspeed)))))
                     (ja-channel-set! 1))
                   (cond
-                    ((= (-> self anim-first) -1.0) (ja :group! s4-1 :num! min))
-                    ((= (-> self anim-first) -2.0) (ja :group! s4-1 :num! max))
-                    (else (ja :group! s4-1 :num! (identity (-> self anim-first)))))
-                  (when (nonzero? (-> s5-1 blend))
-                    (while (and (!= (-> self skel root-channel 0) (-> self skel channel)) (logtest? (-> s5-1 flags) 2))
-                      (when (logtest? (-> self flags) (anim-tester-flags fanimt5))
+                    ((= (-> self anim-first) -1.0) (ja :group! anim :num! min))
+                    ((= (-> self anim-first) -2.0) (ja :group! anim :num! max))
+                    (else (ja :group! anim :num! (identity (-> self anim-first)))))
+                  ;; wait-for-blend holds the sequence here until the pushed
+                  ;; channel has finished blending in
+                  (when (nonzero? (-> item blend))
+                    (while (and (!= (-> self skel root-channel 0) (-> self skel channel))
+                                (logtest? (-> item flags) (anim-test-item-flags wait-for-blend)))
+                      (when (logtest? (-> self flags) (anim-tester-flags at-apply-align))
                         (compute-alignment! (-> self align))
                         (align! (-> self align)
                                 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
@@ -1448,7 +1454,7 @@
                                 (the-as float 1.0)))
                       (suspend)))
                   (until (ja-done? 0)
-                    (when (logtest? (-> self flags) (anim-tester-flags fanimt5))
+                    (when (logtest? (-> self flags) (anim-tester-flags at-apply-align))
                       (compute-alignment! (-> self align))
                       (align! (-> self align)
                               (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
@@ -1456,21 +1462,27 @@
                               (the-as float 1.0)
                               (the-as float 1.0)))
                     (suspend)
-                    (anim-tester-update-anim-info s5-1)
-                    (let ((v1-73 (= (-> self anim-last) -2.0)))
+                    (anim-tester-update-anim-info item)
+                    ;; seek towards anim-last, which is either the end of the
+                    ;; animation, frame 0, or a real frame number
+                    (let ((to-max? (= (-> self anim-last) -2.0)))
                       (cond
-                        ((or v1-73 (>= (-> self anim-last) (-> self anim-first)))
+                        ((or to-max? (>= (-> self anim-last) (-> self anim-first)))
                          (if (= (-> self anim-last) -2.0)
                            (ja :num! (seek! max (-> self anim-speed)))
                            (ja :num! (seek! (-> self anim-last) (-> self anim-speed)))))
                         ((= (-> self anim-last) -1.0) (ja :num! (seek! 0.0 (-> self anim-speed))))
                         (else (ja :num! (seek! (-> self anim-last) (-> self anim-speed)))))))
-                  (+! (-> gp-2 playing-item) 1))
-                 (else (format *stdcon* "anim ~A not found~%" (-> s5-1 privname)) (suspend) 0))))
+                  (+! (-> seq playing-item) 1))
+                 (else (format *stdcon* "anim ~A not found~%" (-> item privname)) (suspend) 0))))
             (else (format *stdcon* "no anims~%") (suspend) 0)))))
   :post anim-tester-post)
 
 (defbehavior initialize-anim-tester anim-tester ()
+  "Set up the tester process: an empty object list, the object list control, a
+   24-channel joint control and an align control, and a position 10 metres in
+   front of the camera. Clears the menu process mask so the tester keeps running
+   while the debug menu is up."
   (glst-init-list! (-> self obj-list))
   (logclear! (-> self mask) (process-mask menu))
   (set! (-> self speed) 100)
@@ -1493,207 +1505,240 @@
   (go anim-tester-process)
   (none))
 
-(defun anim-tester-string-get-frame!! ((arg0 list-field) (arg1 string))
+(defun anim-tester-string-get-frame!! ((out list-field) (str string))
+  "Parse the next argument of str as a frame number into (-> out left), accepting
+   \"min\" and \"max\" in either case as the -1 and -2 sentinels. Returns #f, leaving
+   out alone, when str holds no argument."
   (cond
-    ((string-get-arg!! *temp-string* arg1)
+    ((string-get-arg!! *temp-string* str)
      (cond
-       ((or (string= *temp-string* "max") (string= *temp-string* "MAX")) (set! (-> arg0 left) -2))
-       ((or (string= *temp-string* "min") (string= *temp-string* "MIN")) (set! (-> arg0 left) -1))
-       (else (set! (-> arg0 left) (string->int *temp-string*))))
+       ((or (string= *temp-string* "max") (string= *temp-string* "MAX")) (set! (-> out left) -2))
+       ((or (string= *temp-string* "min") (string= *temp-string* "MIN")) (set! (-> out left) -1))
+       (else (set! (-> out left) (string->int *temp-string*))))
      #t)
     (else #f)))
 
-(defun anim-tester-load-object-seqs ((arg0 anim-tester) (arg1 string))
+(defun anim-tester-load-object-seqs ((tester anim-tester) (name string))
+  "Read data/<name>.obinf back into tester. Not implemented: it returns #f, so
+   from-file is never set and edited sequences do not survive a restart."
   #f)
 
-(defun anim-tester-save-object-seqs ((arg0 anim-test-obj))
-  (let ((gp-0 format)
-        (s4-0 0)
-        (s3-0 "saving object ~s to ~s~%")
-        (s2-0 (-> arg0 privname)))
-    (format (clear *temp-string*) "data/~s.obinf" (-> arg0 privname))
-    (gp-0 s4-0 s3-0 s2-0 *temp-string*))
+(defun anim-tester-save-object-seqs ((obj anim-test-obj))
+  "Write obj's sequences to data/<object>.obinf as text: one Anim or Sequence
+   block per entry of the sequence list, one Item line per row inside it, and the
+   whole thing wrapped in Object/EndObject. The **END** and \"--blank--\" rows are
+   skipped, and from-file is cleared on everything written."
+  (let ((fmt format)
+        (dest 0)
+        (fmt-str "saving object ~s to ~s~%")
+        (name (-> obj privname)))
+    (format (clear *temp-string*) "data/~s.obinf" (-> obj privname))
+    (fmt dest fmt-str name *temp-string*))
   ;; og:preserve-this hack
-  (let ((gp-2 (new 'stack 'file-stream (string-format "data/~s.obinf" (-> arg0 privname)) 'write)))
-    (format gp-2 "major-version 0~%")
-    (format gp-2 "minor-version 0~%")
-    (format gp-2 "Object \"~S\" ~d~%" (-> arg0 privname) 0)
-    (let ((v1-5 (-> arg0 seq-list)))
+  (let ((file (new 'stack 'file-stream (string-format "data/~s.obinf" (-> obj privname)) 'write)))
+    (format file "major-version 0~%")
+    (format file "minor-version 0~%")
+    (format file "Object \"~S\" ~d~%" (-> obj privname) 0)
+    (let ((seq-list (-> obj seq-list)))
       "return the start of the list"
-      (let ((s5-1 (-> v1-5 head)))
-        (while (let ((v1-30 (the-as anim-test-sequence s5-1)))
-                 "is this node the end of the list. #t = end"
-                 (not (not (-> v1-30 next))))
-          (logand! (-> (the-as anim-test-sequence s5-1) flags) -5)
-          (format gp-2
+      (let ((cur-seq (the-as anim-test-sequence (-> seq-list head))))
+        (while (let ((sequence-node cur-seq)) "is this node the end of the list. #t = end" (not (not (-> sequence-node next))))
+          (logclear! (-> cur-seq flags) (anim-test-seq-flags from-file))
+          (format file
                   "  ~S \"~S\" ~d~%"
-                  (if (logtest? (-> (the-as anim-test-sequence s5-1) flags) 1) "Sequence" "Anim")
-                  (-> (the-as anim-test-sequence s5-1) privname)
+                  (if (logtest? (-> cur-seq flags) (anim-test-seq-flags sequence)) "Sequence" "Anim")
+                  (-> cur-seq privname)
                   0)
-          (let ((v1-11 (-> (the-as anim-test-sequence s5-1) item-list)))
+          (let ((item-list (-> cur-seq item-list)))
             "return the start of the list"
-            (let ((s4-2 (the-as anim-test-seq-item (-> v1-11 head))))
-              (while (let ((v1-21 s4-2)) "is this node the end of the list. #t = end" (not (not (-> v1-21 next))))
-                (when (not (logtest? (-> s4-2 flags) 5))
-                  (format gp-2 "    Item \"~S\" ~d ~d " (-> s4-2 privname) (-> s4-2 speed) (-> s4-2 blend))
-                  (anim-tester-num-print gp-2 (-> s4-2 first-frame))
-                  (format gp-2 " ")
-                  (anim-tester-num-print gp-2 (-> s4-2 last-frame))
-                  (format gp-2 " ~S~%" (if (logtest? (-> s4-2 flags) 2) "B" "-")))
+            (let ((cur-item (the-as anim-test-seq-item (-> item-list head))))
+              (while (let ((item-node cur-item)) "is this node the end of the list. #t = end" (not (not (-> item-node next))))
+                (when (not (logtest? (-> cur-item flags) (anim-test-item-flags end blank)))
+                  (format file "    Item \"~S\" ~d ~d " (-> cur-item privname) (-> cur-item speed) (-> cur-item blend))
+                  (anim-tester-num-print file (-> cur-item first-frame))
+                  (format file " ")
+                  (anim-tester-num-print file (-> cur-item last-frame))
+                  (format file " ~S~%" (if (logtest? (-> cur-item flags) (anim-test-item-flags wait-for-blend)) "B" "-")))
                 "return the next node in the list"
-                (set! s4-2 (the-as anim-test-seq-item (-> s4-2 next))))))
-          (format gp-2 "  ~S~%" (if (logtest? (-> (the-as anim-test-sequence s5-1) flags) 1) "EndSequence" "EndAnim"))
+                (set! cur-item (the-as anim-test-seq-item (-> cur-item next))))))
+          (format file "  ~S~%" (if (logtest? (-> cur-seq flags) (anim-test-seq-flags sequence)) "EndSequence" "EndAnim"))
           "return the next node in the list"
-          (set! s5-1 (-> (the-as anim-test-sequence s5-1) next)))))
-    (format gp-2 "EndObject~%")
-    (file-stream-close gp-2)))
+          (set! cur-seq (the-as anim-test-sequence (-> cur-seq next))))))
+    (format file "EndObject~%")
+    (file-stream-close file)))
 
-(defun anim-tester-save-all-objects ((arg0 anim-tester))
-  (let ((v1-0 (-> arg0 obj-list)))
+(defun anim-tester-save-all-objects ((tester anim-tester))
+  "Write out every object marked edited and clear the flag. Always returns #f."
+  (let ((obj-list (-> tester obj-list)))
     "return the start of the list"
-    (let ((gp-0 (-> v1-0 head)))
-      (while (let ((v1-9 (the-as anim-test-obj gp-0))) "is this node the end of the list. #t = end" (not (not (-> v1-9 next))))
-        (when (logtest? (-> (the-as anim-test-obj gp-0) flags) 1)
-          (logand! (-> (the-as anim-test-obj gp-0) flags) -2)
-          (anim-tester-save-object-seqs (the-as anim-test-obj gp-0)))
+    (let ((cur-obj (the-as anim-test-obj (-> obj-list head))))
+      (while (let ((node cur-obj)) "is this node the end of the list. #t = end" (not (not (-> node next))))
+        (when (logtest? (-> cur-obj flags) (anim-test-obj-flags edited))
+          (logclear! (-> cur-obj flags) (anim-test-obj-flags edited))
+          (anim-tester-save-object-seqs cur-obj))
         "return the next node in the list"
-        (set! gp-0 (-> (the-as anim-test-obj gp-0) next)))))
+        (set! cur-obj (the-as anim-test-obj (-> cur-obj next))))))
   #f)
 
-(defun anim-tester-add-newobj ((arg0 anim-tester) (arg1 string) (arg2 art-group))
-  (let ((s2-0 (the-as anim-test-obj #f))
-        (s5-0 (the-as anim-test-obj #f)))
-    (let ((s1-0 (the-as art-element #f))
-          (s0-0 (the-as structure #f)))
-      (dotimes (s3-0 (-> arg2 length))
+(defun anim-tester-add-newobj ((tester anim-tester) (name string) (ag art-group))
+  "Add the contents of art group ag to the object list.
+
+   The group is scanned in order. Its first merc-ctrl becomes the object, named
+   after that element; its first art-joint-geo becomes the object's skeleton; and
+   every art-joint-anim becomes one of the object's sequences, holding a single
+   row whose length and artist-base come from the animation itself. One group
+   therefore yields one object, however many meshes it holds.
+
+   A sequence already on the list is kept and only marked anim-present, so
+   reloading a group preserves hand-built playlists; whatever is left unmarked
+   afterwards is dropped by anim-test-obj-remove-invalid. Selects the object and
+   restarts the tester on it. name is unused - the names come out of ag."
+  (let ((obj (the-as anim-test-obj #f))
+        (first-obj (the-as anim-test-obj #f)))
+    (let ((jgeo-elt (the-as art-element #f))
+          (found? (the-as structure #f)))
+      (dotimes (idx (-> ag length))
         (cond
-          ((and (= (-> arg2 data s3-0 type) merc-ctrl) (not s2-0))
-           (let ((sv-96 (-> arg2 data s3-0)))
-             (set! s0-0 (and s2-0 s0-0))
-             (if s0-0 (anim-test-obj-remove-invalid s2-0))
-             (anim-tester-load-object-seqs arg0 (-> sv-96 name))
-             (set! s2-0 (the-as anim-test-obj (glst-find-node-by-name (-> arg0 obj-list) (-> sv-96 name))))
-             (set! s0-0 (if s2-0 #t #f))
+          ((and (= (-> ag data idx type) merc-ctrl) (not obj))
+           (let ((mesh-elt (-> ag data idx)))
+             (set! found? (and obj found?))
+             (if found? (anim-test-obj-remove-invalid obj))
+             (anim-tester-load-object-seqs tester (-> mesh-elt name))
+             (set! obj (the-as anim-test-obj (glst-find-node-by-name (-> tester obj-list) (-> mesh-elt name))))
+             (set! found? (if obj #t #f))
              (cond
-               ((the-as symbol s0-0))
-               (else (set! s2-0 (new 'global 'anim-test-obj 1 (-> sv-96 name) arg2)) (glst-add-tail (-> arg0 obj-list) s2-0)))
-             (anim-test-obj-init s2-0 (the-as list-control arg0))
-             (set! (-> s2-0 obj-art-group) arg2)
-             (set! (-> s2-0 mesh-geo) (the-as merc-ctrl sv-96)))
-           (set! (-> s2-0 joint-geo) (the-as art-joint-geo s1-0))
-           (if (not s5-0) (set! s5-0 s2-0)))
-          ((= (-> arg2 data s3-0 type) art-joint-geo)
-           (if (and s2-0 (not (-> s2-0 joint-geo))) (set! (-> s2-0 joint-geo) (the-as art-joint-geo (-> arg2 data s3-0))))
-           (if (not s1-0) (set! s1-0 (-> arg2 data s3-0))))
-          ((= (-> arg2 data s3-0 type) art-joint-anim)
-           (when s2-0
-             (let* ((sv-112 (-> arg2 data s3-0))
-                    (sv-128 (the-as anim-test-obj (glst-find-node-by-name (-> s2-0 seq-list) (-> sv-112 name)))))
-               (when (not sv-128)
-                 (set! sv-128 (the-as anim-test-obj (new 'debug 'anim-test-sequence 1 (-> sv-112 name))))
-                 (glst-add-tail (-> s2-0 seq-list) sv-128)
-                 (anim-test-sequence-init (the-as anim-test-sequence sv-128) s2-0)
-                 (let ((a1-11 (new 'debug 'anim-test-seq-item 1 (-> sv-112 name))))
-                   (glst-add-tail (the-as glst-list (&-> sv-128 obj-art-group)) a1-11)))
-               (set! (-> sv-128 list-con user-info) (the-as int s2-0))
-               (set! (-> sv-128 flags) (logior (-> (the-as anim-test-sequence sv-128) flags) 2))
-               (let ((v1-48 (-> (the-as anim-test-sequence sv-128) item-list)))
+               ((the-as symbol found?))
+               (else (set! obj (new 'global 'anim-test-obj 1 (-> mesh-elt name) ag)) (glst-add-tail (-> tester obj-list) obj)))
+             (anim-test-obj-init obj (the-as list-control tester))
+             (set! (-> obj obj-art-group) ag)
+             (set! (-> obj mesh-geo) (the-as merc-ctrl mesh-elt)))
+           (set! (-> obj joint-geo) (the-as art-joint-geo jgeo-elt))
+           (if (not first-obj) (set! first-obj obj)))
+          ((= (-> ag data idx type) art-joint-geo)
+           (if (and obj (not (-> obj joint-geo))) (set! (-> obj joint-geo) (the-as art-joint-geo (-> ag data idx))))
+           (if (not jgeo-elt) (set! jgeo-elt (-> ag data idx))))
+          ((= (-> ag data idx type) art-joint-anim)
+           (when obj
+             (let* ((anim-elt (-> ag data idx))
+                    (seq (the-as anim-test-sequence (glst-find-node-by-name (-> obj seq-list) (-> anim-elt name)))))
+               (when (not seq)
+                 (set! seq (new 'debug 'anim-test-sequence 1 (-> anim-elt name)))
+                 (glst-add-tail (-> obj seq-list) seq)
+                 (anim-test-sequence-init seq obj)
+                 (let ((item (new 'debug 'anim-test-seq-item 1 (-> anim-elt name)))) (glst-add-tail (-> seq item-list) item)))
+               (set! (-> seq parent) obj)
+               (set! (-> seq flags) (logior (-> seq flags) (anim-test-seq-flags anim-present)))
+               (let ((item-list (-> seq item-list)))
                  "is the list empty, #t = empty"
-                 (when (not (= (-> v1-48 tailpred) v1-48))
-                   (let ((v1-51 (-> (the-as anim-test-sequence sv-128) item-list)))
+                 (when (not (= (-> item-list tailpred) item-list))
+                   (let ((list (-> seq item-list)))
                      "return the start of the list"
-                     (let ((v1-52 (-> v1-51 head)))
-                       (set! (-> (the-as anim-test-seq-item v1-52) num-frames) (the float (-> (the-as art-joint-anim sv-112) data 0 length)))
-                       (set! (-> (the-as anim-test-seq-item v1-52) artist-base) (-> (the-as art-joint-anim sv-112) artist-base))
-                       (set! (-> (the-as anim-test-seq-item v1-52) parent) (the-as anim-test-sequence sv-128))))
-                   sv-128)))))
+                     (let ((first-item (the-as anim-test-seq-item (-> list head))))
+                       (set! (-> first-item num-frames) (the float (-> (the-as art-joint-anim anim-elt) data 0 length)))
+                       (set! (-> first-item artist-base) (-> (the-as art-joint-anim anim-elt) artist-base))
+                       (set! (-> first-item parent) seq)))
+                   seq)))))
           (else))))
-    (if s2-0 (anim-test-obj-remove-invalid s2-0))
-    (when s5-0
-      (set! (-> arg0 current-obj) (-> s5-0 privname))
-      (set! (-> arg0 list-con current-index) (glst-get-node-index (-> arg0 obj-list) s5-0))))
-  (send-event arg0 'reset #f))
+    (if obj (anim-test-obj-remove-invalid obj))
+    (when first-obj
+      (set! (-> tester current-obj) (-> first-obj privname))
+      (set! (-> tester list-con current-index) (glst-get-node-index (-> tester obj-list) first-obj))))
+  (send-event tester 'reset #f))
 
 (defun anim-tester-stop ()
+  "Kill the tester process, if it is running."
   (when *anim-tester*
     (kill-by-name 'anim-tester *active-pool*)
     (set! *anim-tester* (the-as (pointer anim-tester) #f))
     #f))
 
 (defun anim-tester-start ()
+  "Restart the tester with an empty object list and point the orbit camera at it."
   (anim-tester-stop)
   (set! *anim-tester* (process-spawn anim-tester :init initialize-anim-tester :from *16k-dead-pool*))
   (set! *camera-orbit-target* *anim-tester*)
   (send-event *camera* 'change-state cam-orbit 0)
   #f)
 
-(defun anim-tester-add-object ((arg0 string))
-  (let ((s5-0 (load-to-heap-by-name (-> *level* level-default art-group) arg0 #t global 0)))
+(defun anim-tester-add-object ((name string))
+  "Load art group name into the global heap and add it to the tester, starting the
+   tester first if it is not running. Prints an error if the group is not found."
+  (let ((ag (load-to-heap-by-name (-> *level* level-default art-group) name #t global 0)))
     (cond
-      (s5-0
+      (ag
        (if (not *anim-tester*) (anim-tester-start))
-       (if *anim-tester* (anim-tester-add-newobj (the-as anim-tester (ppointer->process *anim-tester*)) arg0 s5-0)))
-      (else (format 0 "ERROR:no object (~A)n" arg0))))
+       (if *anim-tester* (anim-tester-add-newobj (the-as anim-tester (ppointer->process *anim-tester*)) name ag)))
+      (else (format 0 "ERROR:no object (~A)n" name))))
   (none))
 
-(defun anim-tester-set-name ((arg0 string))
+(defun anim-tester-set-name ((name string))
+  "Rename the selected sequence of the selected object to name. Refuses names that
+   another sequence of the same object already uses, and only works on a named
+   sequence, not on a plain animation."
   (cond
-    ((zero? (length arg0)) (format #t "ERROR: no name~%"))
+    ((zero? (length name)) (format #t "ERROR: no name~%"))
     ((and *anim-tester*
-          (let ((v1-6 (-> *anim-tester* 0 obj-list))) "is the list empty, #t = empty" (not (= (-> v1-6 tailpred) v1-6))))
-     (let ((s3-0 (the-as anim-test-obj (glst-find-node-by-name (-> *anim-tester* 0 obj-list) (-> *anim-tester* 0 current-obj)))))
+          (let ((obj-list (-> *anim-tester* 0 obj-list)))
+            "is the list empty, #t = empty"
+            (not (= (-> obj-list tailpred) obj-list))))
+     (let ((obj (the-as anim-test-obj (glst-find-node-by-name (-> *anim-tester* 0 obj-list) (-> *anim-tester* 0 current-obj)))))
        (cond
-         (s3-0
-          (let ((s5-0 (the-as anim-test-sequence (glst-get-node-by-index (-> s3-0 seq-list) (-> s3-0 list-con current-index)))))
+         (obj
+          (let ((seq (the-as anim-test-sequence (glst-get-node-by-index (-> obj seq-list) (-> obj list-con current-index)))))
             (cond
-              (s5-0
+              (seq
                (cond
-                 ((logtest? (-> s5-0 flags) 1)
-                  (let ((s4-0 (the-as object (-> s5-0 privname))))
-                    (let ((v1-14 s5-0)) (set! (-> v1-14 privname) ""))
+                 ((logtest? (-> seq flags) (anim-test-seq-flags sequence))
+                  (let ((old-name (the-as object (-> seq privname))))
+                    (let ((node seq)) (set! (-> node privname) ""))
                     (cond
-                      ((glst-find-node-by-name (-> s3-0 seq-list) arg0)
-                       (format #t "ERROR: another sequence is already using that name (~S)~%" arg0)
-                       (set! (-> s5-0 privname) (the-as string s4-0)))
-                      (else (set! s4-0 arg0) (set! (-> s5-0 privname) (the-as string s4-0))))
-                    s4-0))
+                      ((glst-find-node-by-name (-> obj seq-list) name)
+                       (format #t "ERROR: another sequence is already using that name (~S)~%" name)
+                       (set! (-> seq privname) (the-as string old-name)))
+                      (else (set! old-name name) (set! (-> seq privname) (the-as string old-name))))
+                    old-name))
                  (else (format #t "ERROR: no sequence selected~%"))))
               (else (format #t "ERROR: no sequence selected~%")))))
          (else (format #t "ERROR:no object selected~%")))))
     (else (format #t "ERROR:no object loaded~%"))))
 
-(defun anim-tester-add-sequence ((arg0 string))
+(defun anim-tester-add-sequence ((name string))
+  "Create an empty named sequence on the selected object and open the editor on
+   it. If the name is already taken the existing sequence is opened instead. A new
+   sequence starts with just its **END** row."
   (cond
-    ((zero? (length arg0)) (format #t "ERROR: no name~%"))
+    ((zero? (length name)) (format #t "ERROR: no name~%"))
     ((and *anim-tester*
-          (let ((v1-6 (-> *anim-tester* 0 obj-list))) "is the list empty, #t = empty" (not (= (-> v1-6 tailpred) v1-6))))
-     (let ((s5-0 (the-as anim-test-obj (glst-find-node-by-name (-> *anim-tester* 0 obj-list) (-> *anim-tester* 0 current-obj)))))
+          (let ((obj-list (-> *anim-tester* 0 obj-list)))
+            "is the list empty, #t = empty"
+            (not (= (-> obj-list tailpred) obj-list))))
+     (let ((obj (the-as anim-test-obj (glst-find-node-by-name (-> *anim-tester* 0 obj-list) (-> *anim-tester* 0 current-obj)))))
        (cond
-         (s5-0
-          (let ((s4-0 (glst-find-node-by-name (-> s5-0 seq-list) arg0)))
+         (obj
+          (let ((existing (glst-find-node-by-name (-> obj seq-list) name)))
             (cond
-              (s4-0
-               (format #t "ERROR: there is already a sequence with the name ~S~%" arg0)
-               (set! (-> s5-0 list-con current-index) (glst-get-node-index (-> s5-0 seq-list) s4-0))
+              (existing
+               (format #t "ERROR: there is already a sequence with the name ~S~%" name)
+               (set! (-> obj list-con current-index) (glst-get-node-index (-> obj seq-list) existing))
                (send-event (ppointer->process *anim-tester*) 'edit-sequence))
               (else
-               (let ((gp-1 (new 'global 'anim-test-sequence 1 arg0)))
-                 (glst-add-tail (-> s5-0 seq-list) gp-1)
-                 (set! (-> gp-1 list-con listfunc) anim-test-edit-sequence-list-handler)
-                 (set! (-> gp-1 list-con left) (-> *ANIM_TESTER-bank* EDIT_LIST_X))
-                 (set! (-> gp-1 list-con top) (-> *ANIM_TESTER-bank* EDIT_LIST_Y))
-                 (set! (-> gp-1 list-con list) (-> gp-1 item-list))
-                 (set! (-> gp-1 list-con list-owner) (the-as uint gp-1))
-                 (set! (-> gp-1 parent) s5-0)
-                 (anim-test-seq-mark-as-edited gp-1)
-                 (logior! (-> gp-1 flags) 1)
-                 (set! (-> s5-0 list-con current-index) (glst-get-node-index (-> s5-0 seq-list) gp-1))
-                 (set! (-> s5-0 seq-index) (-> s5-0 list-con current-index))
-                 (set! (-> s5-0 seq-hindex) (-> s5-0 list-con current-index))
-                 (let ((s5-1 (new 'debug 'anim-test-seq-item 1 "**END**")))
-                   (logior! (-> s5-1 flags) 1)
-                   (glst-add-tail (-> gp-1 item-list) s5-1)
-                   (set! (-> s5-1 parent) gp-1)))
+               (let ((seq (new 'global 'anim-test-sequence 1 name)))
+                 (glst-add-tail (-> obj seq-list) seq)
+                 (set! (-> seq list-con listfunc) anim-test-edit-sequence-list-handler)
+                 (set! (-> seq list-con left) (-> *ANIM_TESTER-bank* EDIT_LIST_X))
+                 (set! (-> seq list-con top) (-> *ANIM_TESTER-bank* EDIT_LIST_Y))
+                 (set! (-> seq list-con list) (-> seq item-list))
+                 (set! (-> seq list-con list-owner) (the-as uint seq))
+                 (set! (-> seq parent) obj)
+                 (anim-test-seq-mark-as-edited seq)
+                 (logior! (-> seq flags) (anim-test-seq-flags sequence))
+                 (set! (-> obj list-con current-index) (glst-get-node-index (-> obj seq-list) seq))
+                 (set! (-> obj seq-index) (-> obj list-con current-index))
+                 (set! (-> obj seq-hindex) (-> obj list-con current-index))
+                 (let ((end-item (new 'debug 'anim-test-seq-item 1 "**END**")))
+                   (logior! (-> end-item flags) (anim-test-item-flags end))
+                   (glst-add-tail (-> seq item-list) end-item)
+                   (set! (-> end-item parent) seq)))
                (send-event (ppointer->process *anim-tester*) 'edit-sequence)))))
          (else (format #t "ERROR:no object selected~%")))))
     (else (format #t "ERROR:no object loaded~%")))

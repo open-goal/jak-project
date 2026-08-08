@@ -30,8 +30,9 @@
    )
   (:methods
    (new (symbol type int level) _type_)
-   (load-to-heap-by-name (_type_ string symbol kheap int) art-group)
-   (set-loaded-art (_type_ art-group) art-group)))
+   (load-to-heap-by-name "Return the named art group, optionally reloading an existing entry, or append a successful
+     debug load." (_type_ string symbol kheap int) art-group)
+   (set-loaded-art "Replace the art group with the same name or append the supplied group to both parallel arrays." (_type_ art-group) art-group)))
 
 ;; specialization of load-dir where the data-array holds art-groups.
 (deftype load-dir-art-group (load-dir)
@@ -40,19 +41,19 @@
    (new (symbol type int level) _type_)))
 
 (defmethod new load-dir ((allocation symbol) (type-to-make type) (length int) (lev level))
-  "Allocate a new load-dir with room for length entries"
+  "Allocate a load directory and its parallel name and data arrays with capacity for length entries."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this lev) lev)
     ;; create the name array
     (set! (-> this string-array) (the-as (array string) ((method-of-type array new) allocation array string length)))
     (set! (-> this string-array length) 0)
     ;; create the data array
-    (set! (-> this data-array) (the-as (array art-group) ((method-of-type array new) allocation array basic length)))
+    (set! (-> this data-array) (the-as (array basic) ((method-of-type array new) allocation array basic length)))
     (set! (-> this data-array length) 0)
     this))
 
 (defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (length int) (lev level))
-  "Allocate a new load-dir with room for length art-groups"
+  "Allocate a load directory whose data array contains art groups."
   ;; call parent ctor.
   (let ((this ((method-of-type load-dir new) allocation type-to-make length lev)))
     ;; override the content type
@@ -92,16 +93,16 @@
    (art-group                  art-group))
   (:methods
    (new (symbol type int) _type_)
-   (set-pending-file (_type_ string int handle float) int)
-   (update (_type_) int)
-   (inactive? (_type_) symbol)
-   (file-status (_type_ string int) symbol)
-   (link-file (_type_ art-group) art-group)
-   (unlink-file (_type_ art-group) int)
-   (unlock! (_type_) symbol)))
+   (set-pending-file "Set the file part, owner, and priority to service on the next update." (_type_ string int handle float) int)
+   (update "Advance this buffer's request, STR transfer, link, activation, and unloading state." (_type_) int)
+   (inactive? "Return true unless this buffer currently has an active, linked art group." (_type_) symbol)
+   (file-status "Return this buffer's state for a requested file part, pending if queued, or #f if absent." (_type_ string int) symbol)
+   (link-file "Link an art group's joint animations and make it this buffer's active group." (_type_ art-group) art-group)
+   (unlink-file "Unlink an art group's joint animations and clear this buffer's active group." (_type_ art-group) int)
+   (unlock! "Clear the inter-buffer activation lock." (_type_) symbol)))
 
 (defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (idx int))
-  "Allocate a new external-art-buffer"
+  "Allocate an external art buffer in its initialized, empty state."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this index) idx)
     (set! (-> this load-file) #f)
@@ -118,7 +119,9 @@
     (set! (-> this other) #f)
     this))
 
-;; A spool-anim tracks the buffers holding chunks of a spooled animation.
+;; A spool-anim tracks the buffers holding chunks of a spooled animation. The first
+;; two payload words change meaning as a request advances: queued records use
+;; name/index, while records being serviced use those same words as buf1/buf2.
 (deftype spool-anim (basic)
   ((name         string :offset 16)
    (buf1         external-art-buffer :overlay-at name)
@@ -145,28 +148,29 @@
    (end-pad              uint32))
   (:methods
    (new (symbol type) _type_)
-   (update (_type_ symbol) int)
-   (clear-rec (_type_) int)
-   (spool-push (_type_ string int process float) int)
-   (file-status (_type_ string int) symbol)
-   (reserve-alloc (_type_) kheap)
-   (reserve-free (_type_ kheap) int)
-   (none-reserved? (_type_) symbol)
-   (try-preload-stream (_type_ string int process float) int)))
+   (update "Assign and advance the two buffers, then queue the best audio preload candidate." (_type_ symbol) int)
+   (clear-rec "Clear ranked streaming requests, retaining non-reservation requests outside game mode." (_type_) int)
+   (spool-push "Insert a request into the three-entry list when its priority is high enough." (_type_ string int process float) int)
+   (file-status "Return the first matching buffer state or #f." (_type_ string int) symbol)
+   (reserve-alloc "Request a buffer for general heap use and return its heap once active." (_type_) kheap)
+   (reserve-free "Release the reservation backed by the supplied heap." (_type_ kheap) int)
+   (none-reserved? "Return true when no general-use buffer reservation has been requested." (_type_) symbol)
+   (try-preload-stream "Replace the speculative audio preload candidate when this request has better priority." (_type_ string int process float) int)))
 
 (defmethod new external-art-control ((allocation symbol) (type-to-make type))
+  "Allocate the streaming controller, cross-link its two buffers, and initialize its request records."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     ;; allocate buffers.
-    (dotimes (buff-idx 2)
-      (set! (-> this buffer buff-idx) ((method-of-type external-art-buffer new) allocation external-art-buffer buff-idx)))
+    (dotimes (i 2)
+      (set! (-> this buffer i) ((method-of-type external-art-buffer new) allocation external-art-buffer i)))
     ;; point buffers to each other
     (set! (-> this buffer 0 other) (-> this buffer 1))
     (set! (-> this buffer 1 other) (-> this buffer 0))
     ;; set up recs
-    (dotimes (rec-idx 3)
-      (set! (-> this rec rec-idx name) #f)
-      (set! (-> this rec rec-idx priority) SPOOL_PRIORITY_LOWEST)
-      (set! (-> this rec rec-idx owner) (the-as handle #f)))
+    (dotimes (i 3)
+      (set! (-> this rec i name) #f)
+      (set! (-> this rec i priority) SPOOL_PRIORITY_LOWEST)
+      (set! (-> this rec i owner) (the-as handle #f)))
     ;; set up defaults.
     (set! (-> this spool-lock) (the-as handle #f))
     (set! (-> this reserve-buffer) #f)

@@ -3,11 +3,11 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel/gkernel-h.gc")
 
-;; This file contains types related to game text.
-;; Each game string is assigned an ID number.
-;; This ID is used to lookup the string for the currently selected language.
-;; These ID's are shared with short spoken audio clips (daxter hints)
-;; most (all?) of the daxter clips don't have text strings.
+;; Each game string has a language-independent text-id. A linked text object
+;; supplies the string for the selected language, so code and data refer to the
+;; same numeric ID in every localization. The IDs are also shared with short
+;; spoken clips such as Daxter hints; an audio ID does not necessarily have a
+;; corresponding displayed string.
 
 (defenum text-id
   :type uint32
@@ -801,13 +801,15 @@
 
 ;; DECOMP BEGINS
 
-;; an individual string.
+;; One sorted text-id/string record in a linked text object.
 (deftype game-text (structure)
   ((id   text-id)
    (text string))
   :pack-me)
 
-;; A table of all strings.
+;; A variable-sized table for one language and text group. data is sorted by id
+;; so lookup-text! can use a binary search. group-name identifies the source TXT
+;; object, and language-id is the language number embedded in that object.
 (deftype game-text-info (basic)
   ((length      int32)
    (language-id int32)
@@ -816,14 +818,14 @@
   (:methods
    (lookup-text! (_type_ text-id symbol) string)))
 
-;; all text is stored in the COMMON text files (one file per language).
-;; in theory, you could have multiple text files that are only loaded when needed, but they didn't do this.
+;; All shipped text is stored in the COMMON group, with one linked object per
+;; language. The format supports additional groups that can be loaded as needed.
 (define *text-group-names* (new 'static 'boxed-array :type string :length 1 "common"))
 
-;; The heap for storing text
+;; Heap containing the currently selected language's linked COMMON text object.
 (define *common-text-heap* (new 'global 'kheap))
 
-;; will store the COMMON text when it is loaded.
+;; Currently loaded COMMON text object.
 (define *common-text* (the-as game-text-info #f))
 
 ;; og:preserve-this
@@ -845,4 +847,5 @@
 
 ;; added
 (defun-debug text-id->string ((text text-id))
+  "Return the symbolic enum name for a text ID."
   (enum->string text-id text))

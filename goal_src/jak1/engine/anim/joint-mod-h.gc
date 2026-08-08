@@ -11,8 +11,10 @@
 (require "engine/anim/mspace-h.gc")
 (require "engine/game/game-h.gc")
 
-;; The joint-mod system allows an animated character to change in a way that's not described in
-;; an animation. For example, this is used to point Jak's head toward an attacking enemy.
+;; Joint mods alter a skeleton joint after animation evaluation. They provide
+;; target tracking, explicit local or world transforms, additive transforms,
+;; travel-driven wheel rotation, and continuous spinning without authoring each
+;; variation into an animation.
 
 (define-extern joint-mod-look-at-handler (function cspace transformq none))
 
@@ -40,9 +42,10 @@
 
 ;; DECOMP BEGINS
 
-;; The joint-mod itself represents a modification to a single joint.
-;; Although the mode is a bitfield, it appears that multiple kinds of mods cannot be
-;; activated at the same time.
+;; A joint-mod owns one cspace callback and its shared parameters. Although mode
+;; is represented as a bitfield, set-mode! installs exactly one callback at a
+;; time. Look-at modes turn selected bone axes toward a world target with distance,
+;; angular, and blend limits; set modes replace or compose a complete local TRS.
 (deftype joint-mod (basic)
   ((mode            joint-mod-handler-mode)
    (process         process-drawable)
@@ -58,10 +61,12 @@
    (blend           float)
    (max-dist        meters)
    (ignore-angle    degrees)
+   ;; Axis indices used for vertical, forward, and lateral directions.
    (up              uint8)
    (nose            uint8)
    (ear             uint8)
    (shutting-down?  symbol)
+   ;; Mode-specific alias used by joint-set* to discard inherited bone scale.
    (parented-scale? symbol :overlay-at max-dist))
   (:methods
    (new (symbol type joint-mod-handler-mode process-drawable int) _type_)
@@ -74,8 +79,7 @@
    (shut-down! (_type_) none)))
 
 (defun-debug joint-mod-debug-draw ((mod joint-mod))
-  "Draw a frame at the bone."
-  ;; I believe this draws a set of coordinate axes that represent the transformation matrix.
+  "Draw coordinate axes for the modified bone's world transform."
   (add-debug-matrix #t (bucket-id debug-no-zbuf) (-> mod joint bone transform))
   0
   (none))
@@ -165,9 +169,10 @@
   (-> this twist))
 
 (defmethod set-trs! ((this joint-mod) (trans vector) (rot quaternion) (scale vector))
-  (if trans (set! (-> this trans quad) (-> trans quad)))
+  "Replace any nonfalse translation, rotation, and scale override components."
+  (if trans (vector-copy! (-> this trans) trans))
   (if rot (quaternion-copy! (-> this quat) rot))
-  (if scale (set! (-> this scale quad) (-> scale quad)))
+  (if scale (vector-copy! (-> this scale) scale))
   0
   (none))
 
@@ -178,19 +183,20 @@
   ;; how far are we from the target?
   (let ((distance (vector-vector-distance (-> this process root trans) target-trans)))
     (set! (-> this shutting-down?) #f)
-    (set! (-> this target quad) (-> target-trans quad))
+    (vector-copy! (-> this target) target-trans)
     (if (< distance (-> this max-dist)) (set! (-> this blend) 1.0) (set! (-> this blend) 0.0)))
   0
   (none))
 
-;; this type is for storing what we tried to look at last.
+;; Camera clearance requested by enemies that Jak noticed while looking around.
+;; cam-master consumes the largest horizontal and vertical values collected in
+;; the frame, then resets them after adjusting its string limits.
 (deftype try-to-look-at-info (basic)
   ((who  handle)
    (horz float)
    (vert float)))
 
-;; this is the last thing we tried to look at.
-;; There's only one global instance of this, likely used by Jak looking at enemies.
+;; The handle is retained for the last-attacker debug display.
 (define last-try-to-look-at-data (new 'global 'try-to-look-at-info))
 
 (defmethod look-at-enemy! ((this joint-mod) (target-trans vector) (option symbol) (proc process))
@@ -210,9 +216,8 @@
                      (< (vector-vector-distance (-> this process root trans) (-> proc-drawable root trans)) (-> enemy-facts cam-notice-dist)))
             ;; success! we consider this a noticed and remember when
             (set-time! (-> this notice-time))
-            ;; and update the look at data
+            ;; Remember the attacker and request enough camera clearance for it.
             (set! (-> last-try-to-look-at-data who) (process->handle proc))
-            ;; not sure what these are yet.
             (if (< (-> last-try-to-look-at-data vert) (-> enemy-facts cam-vert))
               (set! (-> last-try-to-look-at-data vert) (-> enemy-facts cam-vert)))
             (if (< (-> last-try-to-look-at-data horz) (-> enemy-facts cam-horz))
@@ -222,14 +227,14 @@
                    (or (< dist (vector-vector-distance (-> this process root trans) (-> this target))) (= option 'force)))
                (< dist (-> this max-dist)))
       (if (= (-> this mode) (joint-mod-handler-mode reset)) (set-mode! this (joint-mod-handler-mode look-at)))
-      (set! (-> this target quad) (-> target-trans quad))
+      (vector-copy! (-> this target) target-trans)
       (set! (-> this blend) 1.0)
       (set! (-> this shutting-down?) #f)))
   0
   (none))
 
 (defun joint-mod-look-at-handler ((csp cspace) (xform transformq))
-  "Update bone transforms for look-at"
+  "Turn the joint toward its world-space target by seeking clamped yaw and pitch offsets around the configured local axes."
   (let ((gp-0 (the-as joint-mod (-> csp param1))))
     (cspace<-parented-transformq-joint! csp xform)
     (let ((sv-48 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> gp-0 process node-list data 0 bone transform vector 1) 1.0))
@@ -274,10 +279,11 @@
   0
   (none))
 
-(defun joint-mod-world-look-at-handler ((arg0 cspace) (arg1 transformq))
-  (let ((gp-0 (the-as joint-mod (-> arg0 param1))))
-    (let ((s5-0 (-> arg0 bone transform)))
-      (cspace<-parented-transformq-joint! arg0 arg1)
+(defun joint-mod-world-look-at-handler ((node cspace) (local-transform transformq))
+  "Turn the evaluated bone matrix toward the target in world space while respecting blend and angle limits."
+  (let ((gp-0 (the-as joint-mod (-> node param1))))
+    (let ((s5-0 (-> node bone transform)))
+      (cspace<-parented-transformq-joint! node local-transform)
       (let ((sv-48 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> gp-0 process node-list data 0 bone transform vector 1) 1.0))
             (sv-52 (vector-normalize! (-> s5-0 vector (-> gp-0 nose)) 1.0))
             (sv-56 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> gp-0 target) (-> s5-0 vector 3)) 1.0)))
@@ -322,8 +328,9 @@
   0
   (none))
 
-(defun joint-mod-rotate-handler ((arg0 cspace) (arg1 transformq))
-  (let ((s4-0 (the-as joint-mod (-> arg0 param1)))
+(defun joint-mod-rotate-handler ((node cspace) (local-transform transformq))
+  "Apply the configured twist around the selected local joint axes."
+  (let ((s4-0 (the-as joint-mod (-> node param1)))
         (s3-0 (new 'static
                    'inline-array
                    vector
@@ -337,41 +344,43 @@
                                          (-> v1-2 y)
                                          (-> v1-2 z)
                                          (* (-> s4-0 twist x) (-> s4-0 blend) (-> s4-0 flex-blend)))))
-      (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-2 (-> arg1 quat))))
+      (quaternion-normalize! (quaternion*! (-> local-transform quat) a1-2 (-> local-transform quat))))
     (let* ((v1-6 (-> s3-0 (-> s4-0 up)))
            (a1-4 (quaternion-axis-angle! (new 'stack-no-clear 'quaternion)
                                          (-> v1-6 x)
                                          (-> v1-6 y)
                                          (-> v1-6 z)
                                          (* (-> s4-0 twist y) (-> s4-0 blend) (-> s4-0 flex-blend)))))
-      (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-4 (-> arg1 quat))))
+      (quaternion-normalize! (quaternion*! (-> local-transform quat) a1-4 (-> local-transform quat))))
     (let* ((v1-10 (-> s3-0 (-> s4-0 nose)))
            (a1-6 (quaternion-axis-angle! (new 'stack-no-clear 'quaternion)
                                          (-> v1-10 x)
                                          (-> v1-10 y)
                                          (-> v1-10 z)
                                          (* (-> s4-0 twist z) (-> s4-0 blend) (-> s4-0 flex-blend)))))
-      (quaternion-normalize! (quaternion*! (-> arg1 quat) a1-6 (-> arg1 quat)))))
-  (cspace<-parented-transformq-joint! arg0 arg1)
+      (quaternion-normalize! (quaternion*! (-> local-transform quat) a1-6 (-> local-transform quat)))))
+  (cspace<-parented-transformq-joint! node local-transform)
   0
   (none))
 
-(defun joint-mod-joint-set-handler ((arg0 cspace) (arg1 transformq))
-  (let ((s4-0 (the-as joint-mod (-> arg0 param1))))
-    (set! (-> arg1 trans quad) (-> s4-0 trans quad))
-    (quaternion-copy! (-> arg1 quat) (-> s4-0 quat))
-    (set! (-> arg1 scale quad) (-> s4-0 scale quad)))
-  (cspace<-parented-transformq-joint! arg0 arg1)
+(defun joint-mod-joint-set-handler ((node cspace) (local-transform transformq))
+  "Replace the joint's local translation, rotation, and scale with the configured transform."
+  (let ((s4-0 (the-as joint-mod (-> node param1))))
+    (vector-copy! (-> local-transform trans) (-> s4-0 trans))
+    (quaternion-copy! (-> local-transform quat) (-> s4-0 quat))
+    (vector-copy! (-> local-transform scale) (-> s4-0 scale)))
+  (cspace<-parented-transformq-joint! node local-transform)
   0
   (none))
 
-(defun joint-mod-joint-set*-handler ((arg0 cspace) (arg1 transformq))
-  (let ((s5-0 (the-as joint-mod (-> arg0 param1))))
-    (vector+! (-> arg1 trans) (-> arg1 trans) (-> s5-0 trans))
-    (quaternion-normalize! (quaternion*! (-> arg1 quat) (-> arg1 quat) (-> s5-0 quat)))
-    (vector*! (-> arg1 scale) (-> arg1 scale) (-> s5-0 scale))
-    (cspace<-parented-transformq-joint! arg0 arg1)
-    (if (-> s5-0 max-dist) (set-vector! (-> arg0 bone scale) 1.0 1.0 1.0 1.0)))
+(defun joint-mod-joint-set*-handler ((node cspace) (local-transform transformq))
+  "Add the configured translation and multiply its rotation and scale into the animated local transform."
+  (let ((s5-0 (the-as joint-mod (-> node param1))))
+    (vector+! (-> local-transform trans) (-> local-transform trans) (-> s5-0 trans))
+    (quaternion-normalize! (quaternion*! (-> local-transform quat) (-> local-transform quat) (-> s5-0 quat)))
+    (vector*! (-> local-transform scale) (-> local-transform scale) (-> s5-0 scale))
+    (cspace<-parented-transformq-joint! node local-transform)
+    (if (-> s5-0 max-dist) (set-vector! (-> node bone scale) 1.0 1.0 1.0 1.0)))
   0
   (none))
 
@@ -387,7 +396,8 @@
        (new 'static 'vector :y -1.0 :w 1.0)
        (new 'static 'vector :z -1.0 :w 1.0)))
 
-;; These joint-mod types contain a bit of extra state required for special types of joint-mods
+;; Wheel mods convert forward travel into rotation, so wheels remain synchronized
+;; with the distance moved instead of advancing from elapsed time.
 (deftype joint-mod-wheel (basic)
   ((last-position vector :inline)
    (angle         float)
@@ -397,8 +407,9 @@
   (:methods
    (new (symbol type process-drawable int float int) _type_)))
 
-(defun joint-mod-wheel-callback ((arg0 cspace) (arg1 transformq))
-  (let ((s4-0 (the-as joint-mod-wheel (-> arg0 param1))))
+(defun joint-mod-wheel-callback ((node cspace) (local-transform transformq))
+  "Rotate a wheel joint according to the owning process's forward travel and wheel circumference."
+  (let ((s4-0 (the-as joint-mod-wheel (-> node param1))))
     (let ((v1-1 (-> s4-0 process root))
           (s1-0 (new-stack-vector0))
           (s3-0 (new-stack-vector0))
@@ -406,7 +417,7 @@
       0.0
       0.0
       (vector-z-quaternion! s2-0 (-> v1-1 quat))
-      (vector<-cspace! s1-0 arg0)
+      (vector<-cspace! s1-0 node)
       (vector-! s3-0 s1-0 (-> s4-0 last-position))
       (set! (-> s4-0 last-position quad) (-> s1-0 quad))
       (let* ((f0-3 (vector-dot s2-0 s3-0))
@@ -414,18 +425,24 @@
              (f2-1 (* 6.28318 (-> s4-0 wheel-radius)))
              (f0-4 (* f1-0 (/ 1.0 f2-1) f0-3)))
         (+! (-> s4-0 angle) f0-4)))
-    (quaternion-vector-angle! (-> arg1 quat) (-> *joint-axis-vectors* (-> s4-0 wheel-axis)) (-> s4-0 angle)))
-  (cspace<-parented-transformq-joint! arg0 arg1)
+    (quaternion-vector-angle! (-> local-transform quat) (-> *joint-axis-vectors* (-> s4-0 wheel-axis)) (-> s4-0 angle)))
+  (cspace<-parented-transformq-joint! node local-transform)
   (none))
 
-(defmethod new joint-mod-wheel ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 float) (arg3 int))
+(defmethod new joint-mod-wheel ((allocation symbol)
+            (type-to-make type)
+            (process process-drawable)
+            (joint-index int)
+            (wheel-radius float)
+            (wheel-axis int))
+  "Attach a wheel controller to one joint and derive its rotation from forward travel."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 process) arg0)
-    (set! (-> v0-0 wheel-radius) arg2)
-    (set! (-> v0-0 wheel-axis) arg3)
+    (set! (-> v0-0 process) process)
+    (set! (-> v0-0 wheel-radius) wheel-radius)
+    (set! (-> v0-0 wheel-axis) wheel-axis)
     (set! (-> v0-0 angle) 0.0)
     (set-vector! (-> v0-0 last-position) 0.0 0.0 0.0 1.0)
-    (let ((v1-5 (-> arg0 node-list data arg1)))
+    (let ((v1-5 (-> process node-list data joint-index)))
       (set! (-> v1-5 param0) joint-mod-wheel-callback)
       (set! (-> v1-5 param1) v0-0))
     v0-0))
@@ -439,27 +456,35 @@
   (:methods
    (new (symbol type process-drawable int symbol symbol symbol) _type_)))
 
-(defun joint-mod-set-local-callback ((arg0 cspace) (arg1 transformq))
-  (let ((v1-0 (the-as joint-mod-set-local (-> arg0 param1))))
+(defun joint-mod-set-local-callback ((node cspace) (local-transform transformq))
+  "Replace selected local transform channels and preserve the remaining animated channels."
+  (let ((v1-0 (the-as joint-mod-set-local (-> node param1))))
     (cond
       ((-> v1-0 enable)
-       (if (not (-> v1-0 set-translation)) (set! (-> v1-0 transform trans quad) (-> arg1 trans quad)))
-       (if (not (-> v1-0 set-rotation)) (set! (-> v1-0 transform quat vec quad) (-> arg1 quat vec quad)))
-       (if (not (-> v1-0 set-scale)) (set! (-> v1-0 transform scale quad) (-> arg1 scale quad)))
-       (cspace<-parented-transformq-joint! arg0 (-> v1-0 transform)))
-      (else (cspace<-parented-transformq-joint! arg0 arg1))))
+       (if (not (-> v1-0 set-translation)) (vector-copy! (-> v1-0 transform trans) (-> local-transform trans)))
+       (if (not (-> v1-0 set-rotation)) (set! (-> v1-0 transform quat vec quad) (-> local-transform quat vec quad)))
+       (if (not (-> v1-0 set-scale)) (vector-copy! (-> v1-0 transform scale) (-> local-transform scale)))
+       (cspace<-parented-transformq-joint! node (-> v1-0 transform)))
+      (else (cspace<-parented-transformq-joint! node local-transform))))
   (none))
 
-(defmethod new joint-mod-set-local ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 symbol) (arg4 symbol))
+(defmethod new joint-mod-set-local ((allocation symbol)
+            (type-to-make type)
+            (process process-drawable)
+            (joint-index int)
+            (set-translation symbol)
+            (set-rotation symbol)
+            (set-scale symbol))
+  "Attach a local-transform override and select which animated channels it replaces."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 set-translation) arg2)
-    (set! (-> v0-0 set-rotation) arg3)
-    (set! (-> v0-0 set-scale) arg4)
+    (set! (-> v0-0 set-translation) set-translation)
+    (set! (-> v0-0 set-rotation) set-rotation)
+    (set! (-> v0-0 set-scale) set-scale)
     (set! (-> v0-0 enable) #t)
     (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
     (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
     (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
-    (let ((v1-8 (-> arg0 node-list data arg1)))
+    (let ((v1-8 (-> process node-list data joint-index)))
       (set! (-> v1-8 param0) joint-mod-set-local-callback)
       (set! (-> v1-8 param1) v0-0))
     v0-0))
@@ -471,19 +496,23 @@
   (:methods
    (new (symbol type process-drawable int basic) _type_)))
 
-(defun joint-mod-set-world-callback ((arg0 cspace) (arg1 transformq))
-  (let ((v1-0 (the-as joint-mod-set-world (-> arg0 param1))))
-    (if (-> v1-0 enable) (cspace<-transformq! arg0 (-> v1-0 transform)) (cspace<-parented-transformq-joint! arg0 arg1)))
+(defun joint-mod-set-world-callback ((node cspace) (local-transform transformq))
+  "Use the configured world transform when enabled, otherwise evaluate the animated local transform."
+  (let ((v1-0 (the-as joint-mod-set-world (-> node param1))))
+    (if (-> v1-0 enable)
+      (cspace<-transformq! node (-> v1-0 transform))
+      (cspace<-parented-transformq-joint! node local-transform)))
   (none))
 
-(defmethod new joint-mod-set-world ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 basic))
+(defmethod new joint-mod-set-world ((allocation symbol) (type-to-make type) (process process-drawable) (joint-index int) (enable basic))
+  "Attach an optional absolute world-transform override to one joint."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 node-index) arg1)
-    (set! (-> v0-0 enable) arg2)
+    (set! (-> v0-0 node-index) joint-index)
+    (set! (-> v0-0 enable) enable)
     (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
     (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
     (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
-    (let ((v1-7 (-> arg0 node-list data arg1)))
+    (let ((v1-7 (-> process node-list data joint-index)))
       (set! (-> v1-7 param0) joint-mod-set-world-callback)
       (set! (-> v1-7 param1) v0-0))
     v0-0))
@@ -497,26 +526,28 @@
   (:methods
    (new (symbol type process-drawable int basic) _type_)))
 
-(defun joint-mod-blend-local-callback ((arg0 cspace) (arg1 transformq))
-  (let ((gp-0 (the-as joint-mod-blend-local (-> arg0 param1))))
+(defun joint-mod-blend-local-callback ((node cspace) (local-transform transformq))
+  "Blend the animated local transform toward the configured override when enabled."
+  (let ((gp-0 (the-as joint-mod-blend-local (-> node param1))))
     (cond
       ((-> gp-0 enable)
-       (vector-lerp! (-> gp-0 blend-transform trans) (-> arg1 trans) (-> gp-0 transform trans) (-> gp-0 blend))
-       (vector-lerp! (-> gp-0 blend-transform scale) (-> arg1 scale) (-> gp-0 transform scale) (-> gp-0 blend))
-       (quaternion-slerp! (-> gp-0 blend-transform quat) (-> arg1 quat) (-> gp-0 transform quat) (-> gp-0 blend))
-       (cspace<-parented-transformq-joint! arg0 (-> gp-0 blend-transform)))
-      (else (cspace<-parented-transformq-joint! arg0 arg1))))
+       (vector-lerp! (-> gp-0 blend-transform trans) (-> local-transform trans) (-> gp-0 transform trans) (-> gp-0 blend))
+       (vector-lerp! (-> gp-0 blend-transform scale) (-> local-transform scale) (-> gp-0 transform scale) (-> gp-0 blend))
+       (quaternion-slerp! (-> gp-0 blend-transform quat) (-> local-transform quat) (-> gp-0 transform quat) (-> gp-0 blend))
+       (cspace<-parented-transformq-joint! node (-> gp-0 blend-transform)))
+      (else (cspace<-parented-transformq-joint! node local-transform))))
   (none))
 
-(defmethod new joint-mod-blend-local ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 basic))
+(defmethod new joint-mod-blend-local ((allocation symbol) (type-to-make type) (process process-drawable) (joint-index int) (enable basic))
+  "Attach a local-transform override that blends with the animated joint transform."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 node-index) arg1)
-    (set! (-> v0-0 enable) arg2)
+    (set! (-> v0-0 node-index) joint-index)
+    (set! (-> v0-0 enable) enable)
     (set! (-> v0-0 blend) 0.0)
     (set! (-> v0-0 transform trans quad) (-> *null-vector* quad))
     (set! (-> v0-0 transform quat vec quad) (-> *null-vector* quad))
     (set! (-> v0-0 transform scale quad) (-> *identity-vector* quad))
-    (let ((v1-7 (-> arg0 node-list data arg1)))
+    (let ((v1-7 (-> process node-list data joint-index)))
       (set! (-> v1-7 param0) joint-mod-blend-local-callback)
       (set! (-> v1-7 param1) v0-0))
     v0-0))
@@ -529,24 +560,31 @@
   (:methods
    (new (symbol type process-drawable int vector float) _type_)))
 
-(defun joint-mod-spinner-callback ((arg0 cspace) (arg1 transformq))
-  (let ((gp-0 (the-as joint-mod-spinner (-> arg0 param1))))
+(defun joint-mod-spinner-callback ((node cspace) (local-transform transformq))
+  "Advance the spin angle and apply it to the joint's local rotation when enabled."
+  (let ((gp-0 (the-as joint-mod-spinner (-> node param1))))
     (when (-> gp-0 enable)
       (let ((f30-0 (+ (-> gp-0 angle) (* (-> gp-0 spin-rate) (seconds-per-frame)))))
         (if (< 32768.0 f30-0) (set! f30-0 (+ -65536.0 f30-0)))
         (if (< f30-0 -32768.0) (set! f30-0 (+ 65536.0 f30-0)))
-        (quaternion-vector-angle! (-> arg1 quat) (-> gp-0 spin-axis) f30-0)
+        (quaternion-vector-angle! (-> local-transform quat) (-> gp-0 spin-axis) f30-0)
         (set! (-> gp-0 angle) f30-0))))
-  (cspace<-parented-transformq-joint! arg0 arg1)
+  (cspace<-parented-transformq-joint! node local-transform)
   (none))
 
-(defmethod new joint-mod-spinner ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 vector) (arg3 float))
+(defmethod new joint-mod-spinner ((allocation symbol)
+            (type-to-make type)
+            (process process-drawable)
+            (joint-index int)
+            (spin-axis vector)
+            (spin-rate float))
+  "Attach a continuously rotating local transform to one joint."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 spin-axis quad) (-> arg2 quad))
-    (set! (-> v0-0 spin-rate) arg3)
+    (set! (-> v0-0 spin-axis quad) (-> spin-axis quad))
+    (set! (-> v0-0 spin-rate) spin-rate)
     (set! (-> v0-0 enable) #t)
     (set! (-> v0-0 angle) 0.0)
-    (let ((v1-6 (-> arg0 node-list data arg1)))
+    (let ((v1-6 (-> process node-list data joint-index)))
       (set! (-> v1-6 param0) joint-mod-spinner-callback)
       (set! (-> v1-6 param1) v0-0))
     v0-0))

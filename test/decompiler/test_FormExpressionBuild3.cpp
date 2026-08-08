@@ -29,7 +29,7 @@ TEST_F(FormRegressionTestJak1, VectorDegToVectorRad) {
   std::string type = "(function vector vector none)";
   std::string expected =
       "(defun test-function ((arg0 vector) (arg1 vector))\n"
-      "  (local-vars (v0-0 float) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))\n"
+      "  (local-vars (returned-lane-bits int) (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))\n"
       "  (rlet ((vf1 :class vf)\n"
       "         (vf2 :class vf)\n"
       "         )\n"
@@ -49,11 +49,13 @@ TEST_F(FormRegressionTestJak1, VectorDegToVectorRad) {
       "   (.itof.vf vf1 vf1)\n"
       "   (.mul.x.vf vf1 vf1 vf2)\n"
       "   (.svf (&-> arg0 quad) vf1)\n"
-      "   (.mov v0-0 vf1)\n"
+      "   (.mov returned-lane-bits vf1)\n"
       "   (none)\n"
       "   )\n"
       "  )";
-  test_final_function(func, type, expected);
+  test_final_function(
+      func, type, expected, false, {}, "",
+      R"({"vars": {"v0-0": ["returned-lane-bits", "int"]}})");
 }
 
 // weird short circuit thing

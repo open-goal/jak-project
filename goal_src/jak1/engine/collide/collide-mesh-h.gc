@@ -5,15 +5,17 @@
 
 ;; DECOMP BEGINS
 
-;; The collide-mesh system is used for _moving_ meshes, like a platform.
-;; It's not used for the full level (that's collide-frag-mesh)
+;; Foreground collision meshes belong to moving, jointed objects such as platforms. Their compact
+;; local-space vertices and triangles are transformed on demand for collision tests. Static level
+;; geometry uses collide-frag-mesh instead.
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; result
 ;;;;;;;;;;;;;;;;;;;;
 
-;; The triangle involved in collision
-;; Note: this is reused for the background collision system.
+;; The triangle and contact selected by a collision test. vertex holds the three world-space
+;; corners, intersect is the closest/contact point, normal faces away from the triangle, and pat
+;; identifies the surface. Background collision tests use the same result format.
 (deftype collide-tri-result (structure)
   ((vertex    vector 3 :inline)
    (intersect vector :inline)
@@ -24,9 +26,8 @@
 ;; static mesh data
 ;;;;;;;;;;;;;;;;;;;;
 
-;; A triangle, part of a foreground collision mesh.
-;; The vertex indices index into the collide-mesh vertex-data array.
-;; Due to using uint8's you only get 256 vertices.
+;; One eight-byte foreground-mesh triangle. The three byte indices address collide-mesh vertex-data,
+;; limiting a mesh to 256 vertices, and pat supplies its surface properties.
 (deftype collide-mesh-tri (structure)
   ((vertex-index uint8 3)
    (unused       uint8)
@@ -36,7 +37,9 @@
 ;; og:preserve-this
 (declare-type collide-mesh-cache-tri structure)
 
-;; A collision mesh. Note that's it's bound to a specific joint.
+;; A compact collision mesh bound to one model joint. vertex-data points to local-space positions
+;; padded through the next group of four because the transform passes always load four vectors at a
+;; time. The variable-length tris array follows the fixed header and indexes the logical positions.
 (deftype collide-mesh (basic)
   ((joint-id    int32)
    (num-tris    uint32)
@@ -49,18 +52,21 @@
    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
    (populate-cache! (_type_ collide-mesh-cache-tri matrix) none)
-   (collide-mesh-math-1 (_type_ object object) none)
-   (collide-mesh-math-2 (_type_ object object object) none)))
+   (transform-verts-1-matrix! (_type_ matrix (pointer uint8)) none)
+   (transform-verts-2-matrix! (_type_ matrix matrix (pointer uint8)) none)))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; cache
 ;;;;;;;;;;;;;;;;;;;;
 
-;; this is not the main collide cache, but instead a smaller cache for unpacking and
-;; transforming foreground meshes. It's not useful when filling/probing the real collide-cache,
-;; but is useful for repeated "loop through all the things that aren't me and see if I collide"
-;; If you do multiple collision queries against the same object, it will only have to transform the
-;; collision mesh once.
+;; A small linear cache for transformed foreground meshes. Each cached triangle is expanded to 96
+;; bytes, so repeated object-object tests can reuse world-space vertices, normals, and bounds instead
+;; of transforming the mesh for every query. This is separate from the general collide-cache used
+;; for background and mixed collision probes.
+;;
+;; id identifies the current cache generation. Every allocation owner keeps the id with its cached
+;; triangle pointer; clearing or wrapping the cache advances id, invalidating all of those pointers
+;; without walking their owners.
 
 ;; og:preserve-this
 (defconstant COLLIDE_MESH_CACHE_SIZE #xa000)
@@ -71,39 +77,47 @@
    (id        uint64)
    (data      uint8 40960 :offset 32))
   (:methods
-   (allocate! (_type_ int) int)
+   (allocate! (_type_ int) (pointer uint8))
    (is-id? (_type_ int) symbol)
    (next-id! (_type_) uint)))
 
-(defmethod next-id! ((obj collide-mesh-cache))
-  "Reset all used entries in the cache and increment the id.
-   If the id is zero, set it to 1"
-  ;;     ld v1, 12(a0)
-  (let ((v1 (-> obj id)))
-    ;;     sw r0, 0(a0)
-    (set! (-> obj used-size) 0)
-    ;;     daddiu v0, v1, 1
-    (let ((v0 (+ v1 1)))
-      ;;     beql v0, r0, L3
-      ;;     addiu v0, r0, 1 (only taken if v0 = 0)
-      (if (= v0 0) (set! v0 (the uint 1)))
-      ;; L3:
-      ;;     sd v0, 12(a0)
-      (set! (-> obj id) v0)
-      v0)))
+(#unless PC_PORT
+  (defmethod next-id! ((this collide-mesh-cache))
+    "Discard all cached blocks and advance to a nonzero generation id."
+    (declare (asm-func uint))
+    ;; Generation zero is reserved. The likely branch changes a wrapped increment to one without
+    ;; executing its delay instruction for the normal case.
+    (rlet ((this-reg :reg a0)
+           (current-id :reg v1)
+           (next-id :reg v0))
+      (l.d current-id this-reg 12)
+      (s.w r0 this-reg)
+      (add.i next-id current-id 1)
+      (b.eql next-id r0 generation-ready :delay (add.i next-id r0 1))
+      (label generation-ready)
+      (s.d next-id this-reg 12)
+      (jr ra :delay (add sp sp r0)))))
 
-(defmethod is-id? ((this collide-mesh-cache) (arg0 int))
-  "Is this our id?"
-  (= (-> this id) arg0))
+(#when PC_PORT
+  (defmethod next-id! ((this collide-mesh-cache))
+    "Discard all cached blocks and advance to a nonzero generation id."
+    (let ((current-id (-> this id)))
+      (set! (-> this used-size) 0)
+      (let ((next-id (+ current-id 1))) (if (= next-id 0) (set! next-id (the uint 1))) (set! (-> this id) next-id) next-id))))
 
-;; possibly this is stored in the data of the collide-mesh-cache
+(defmethod is-id? ((this collide-mesh-cache) (cache-id int))
+  "Return true when cache-id belongs to the current cache generation."
+  (= (-> this id) cache-id))
+
+;; Expanded cache entry: three world-space vertices, a unit normal, an integer-coordinate bounding
+;; box for fast rejection, and surface properties packed into the otherwise-unused normal.w lane.
 (deftype collide-mesh-cache-tri (structure)
   ((vertex vector 3 :inline)
    (normal vector :inline)
    (bbox4w bounding-box4w :inline)
    (pat    pat-surface :overlay-at (-> normal w))))
 
-;; only allocate if we don't have an existing one.
+;; Keep the cache storage permanent across reloads, but always start a new empty generation.
 (define-perm *collide-mesh-cache* collide-mesh-cache (new 'global 'collide-mesh-cache))
 
 ;; og:preserve-this

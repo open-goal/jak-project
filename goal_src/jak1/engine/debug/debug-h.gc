@@ -3,35 +3,41 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; TODO - for anim-tester
+;; Shared debug menu state used by tools such as anim-tester.
 (define-extern *debug-menu-context* debug-menu-context)
 
 (define-extern add-debug-matrix (function symbol bucket-id matrix matrix))
 
 (define-extern add-debug-text-sphere (function symbol bucket-id vector float string rgba symbol))
 
-;; TODO - for trajectory.gc
 (define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
 
 (defun-extern add-debug-sphere symbol bucket-id vector float rgba symbol)
 
 ;; DECOMP BEGINS
 
-;; circular buffer of positions to draw.
+;; A lazily allocated circular history of positions. history-draw-and-update
+;; writes the newest sample at h-first, advances and wraps that cursor, and draws
+;; adjacent stored samples without joining the end of the array back to its
+;; beginning.
 (deftype pos-history (structure)
   ((points     (inline-array vector))
    (num-points int32)
    (h-first    int32)
    (h-last     int32)))
 
-;; unused vertex type?
+;; Compact vertex snapshot used by the debug vertex statistics display. It keeps
+;; transformed coordinates, a packed normal, texture coordinates, and color in
+;; the same 32-byte record.
 (deftype debug-vertex (structure)
   ((trans  vector4w :inline)
    (normal vector3h :inline)
    (st     vector2h :inline)
    (color  uint32)))
 
-;; buffer of debug vertices (unused?)
+;; Debug geometry statistics and storage for up to 600 captured vertex records.
+;; The custom inspector in debug.gc prints the active records and their packed
+;; attributes.
 (deftype debug-vertex-stats (basic)
   ((length    int32)
    (pos-count int32)

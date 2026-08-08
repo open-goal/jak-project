@@ -17,159 +17,161 @@
   this)
 
 (defmethod get-quaternion ((this trsqv))
-  "Get the rotation as a quaternion."
+  "Return the transform's quaternion storage."
   (-> this quat))
 
-(defmethod set-quaternion! ((this trsqv) (arg0 quaternion))
-  "Set the rotation as a quaternion"
-  (quaternion-copy! (get-quaternion this) arg0))
+(defmethod set-quaternion! ((this trsqv) (rotation quaternion))
+  "Copy rotation into this transform."
+  (quaternion-copy! (get-quaternion this) rotation))
 
 (defmethod rot->dir-targ! ((this trsqv))
-  "Set the dir-targ to our current orientation"
+  "Copy the current rotation into dir-targ."
   (quaternion-copy! (-> this dir-targ) (get-quaternion this)))
 
 (defmethod y-angle ((this trsqv))
-  "Get our current y-angle (y is up, so yaw)"
+  "Return the current quaternion's yaw."
   (quaternion-y-angle (get-quaternion this)))
 
-(defmethod seek-toward-heading-vec! ((this trsqv) (dir vector) (vel float) (frame-count time-frame))
-  "Adjust the orientation to point along dir, only changing our yaw.
-  The vel is a maximum velocity limit.
-  The frame count is the time constant (first order).
-  There's some logic to avoid rapidly changing directions"
-  (let* ((yaw-error (deg-diff (quaternion-y-angle (-> this quat)) (vector-y-angle dir)))
-         ;; limit both on a max velocity, and a proportional to error term.
-         (yaw-limit (fmin (* vel (seconds-per-frame)) (/ (* 5.0 (fabs yaw-error)) (the float frame-count))))
-         ;; saturate the yaw error
+(defmethod seek-toward-heading-vec! ((this trsqv) (heading vector) (max-yaw-rate float) (response-time time-frame))
+  "Turn about world Y toward heading's XZ yaw. Clamp each frame's step by max-yaw-rate and
+   response-time. A fresh reversal requires one confirming frame unless no full turn has been accepted
+   for 0.2 seconds."
+  (let* ((yaw-error (deg-diff (quaternion-y-angle (-> this quat)) (vector-y-angle heading)))
+         ;; Limit the step by both the angular rate and a first-order response proportional to error.
+         (yaw-limit (fmin (* max-yaw-rate (seconds-per-frame)) (/ (* 5.0 (fabs yaw-error)) (the float response-time))))
          (saturated-yaw (fmax (fmin yaw-error yaw-limit) (- yaw-limit))))
     (let ((old-diff (-> this old-y-angle-diff)))
       (set! saturated-yaw
             (cond
-              ;; I have no idea what this crazy thing is.
-              ;; But it prevents changes in direction from happening too often.
+              ;; Continue a turn with the same sign. A reversal is accepted immediately only when
+              ;; no full step has been accepted for 0.2 seconds.
               ((or (= old-diff 0.0)
                    (and (< 0.0 saturated-yaw) (< 0.0 old-diff))
                    (or (and (< saturated-yaw 0.0) (< old-diff 0.0)) (time-elapsed? (-> this angle-change-time) (seconds 0.2))))
                (set-time! (-> this angle-change-time))
                saturated-yaw)
               (else
-               ;; not sure why this isn't 0.
+               ;; Retain the requested sign without visibly turning. If that sign persists it is
+               ;; accepted next frame; alternating signs remain suppressed until the timer expires.
+               ;; Zero would take the old-diff=0 path and defeat this one-frame confirmation.
                (* 0.000000001 saturated-yaw)))))
     (set! (-> this old-y-angle-diff) saturated-yaw)
-    (let ((quat (get-quaternion this))) (quaternion-rotate-y! quat quat saturated-yaw))))
+    (let ((rotation (get-quaternion this))) (quaternion-rotate-y! rotation rotation saturated-yaw))))
 
-(defmethod set-heading-vec! ((this trsqv) (arg0 vector))
-  "Makes us look in the arg0 direction immediately.  Pitch will be unchanged."
-  (let ((s3-0 (get-quaternion this)))
-    (forward-up-nopitch->quaternion s3-0
-                                    (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0) ;; forward is the given dir.
-                                    (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-0) ;; use the old up
+(defmethod set-heading-vec! ((this trsqv) (heading vector))
+  "Immediately turn toward heading within the plane perpendicular to the current up direction,
+   preserving that up direction."
+  (let ((rotation (get-quaternion this)))
+    (forward-up-nopitch->quaternion rotation
+                                    (vector-normalize-copy! (new 'stack-no-clear 'vector) heading 1.0) ;; forward is the given dir.
+                                    (vector-y-quaternion! (new 'stack-no-clear 'vector) rotation) ;; use the old up
                                     )))
 
-(defmethod seek-to-point-toward-point! ((this trsqv) (arg0 vector) (arg1 float) (arg2 time-frame))
-  "Seek toward pointing toward arg0 from our current location."
-  (seek-toward-heading-vec! this (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) arg1 arg2))
+(defmethod seek-to-point-toward-point! ((this trsqv) (target-point vector) (max-yaw-rate float) (response-time time-frame))
+  "Turn about world Y toward target-point from this position using max-yaw-rate and response-time."
+  (seek-toward-heading-vec! this
+                            (vector-! (new 'stack-no-clear 'vector) target-point (-> this trans))
+                            max-yaw-rate
+                            response-time))
 
-(defmethod point-toward-point! ((this trsqv) (arg0 vector))
-  "Immediately point toward arg0"
-  (let ((s3-0 (get-quaternion this)))
-    (forward-up-nopitch->quaternion s3-0
-                                    (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) 1.0)
-                                    (vector-y-quaternion! (new 'stack-no-clear 'vector) s3-0))))
+(defmethod point-toward-point! ((this trsqv) (target-point vector))
+  "Immediately turn toward target-point within the plane perpendicular to the current up
+   direction."
+  (let ((rotation (get-quaternion this)))
+    (forward-up-nopitch->quaternion rotation
+                                    (vector-normalize! (vector-! (new 'stack-no-clear 'vector) target-point (-> this trans)) 1.0)
+                                    (vector-y-quaternion! (new 'stack-no-clear 'vector) rotation))))
 
-(defmethod seek-toward-yaw-angle! ((this trsqv) (yaw float) (vel float) (frame-count time-frame))
-  "Seek toward the given yaw angle."
+(defmethod seek-toward-yaw-angle! ((this trsqv) (yaw float) (max-yaw-rate float) (response-time time-frame))
+  "Turn toward yaw using max-yaw-rate and response-time."
   (seek-toward-heading-vec! this
                             ;; make a vector that points toward +z (forward) rotated by the yaw.
                             (set-vector! (new 'stack-no-clear 'vector) (sin yaw) 0.0 (cos yaw) 1.0)
-                            vel
-                            frame-count))
+                            max-yaw-rate
+                            response-time))
 
 (defmethod set-yaw-angle-clear-roll-pitch! ((this trsqv) (yaw float))
-  "Immediately clear our roll and pitch and set yaw to the given angle"
+  "Set yaw immediately with a horizontal forward direction and world +Y up."
   (set-heading-vec-clear-roll-pitch! this (set-vector! (new 'stack-no-clear 'vector) (sin yaw) 0.0 (cos yaw) 1.0)))
 
-(defmethod set-roll-to-grav! ((this trsqv) (arg0 float))
-  "Set our roll so that our local down aligns with standard gravity"
-  (set-roll-to-grav-2! this arg0))
+(defmethod set-roll-to-grav! ((this trsqv) (roll-offset float))
+  "Align local up with standard world up while retaining forward, then apply roll-offset."
+  (set-roll-to-grav-2! this roll-offset))
 
-(defmethod set-roll-to-grav-2! ((this trsqv) (arg0 float))
-  "Set our roll so that our local down aligns with standard gravity"
-  (let* ((quat (get-quaternion this)) ;; our orientation
-         (grav (-> *standard-dynamics* gravity-normal)) ;; dir of gravity
-         (rot-mat (quaternion->matrix (new 'stack-no-clear 'matrix) quat)) ;; our orientation
-         )
-    (let ((dir-z (-> rot-mat vector 2))) ;; this is the direction of the z-axis.
-      ;; this projects world gravity into our local z plane (killing its pitch component),
-      ;; then updates the rotation matrix so that this is our y axis (up)
-      (vector-normalize! (vector-flatten! (-> rot-mat vector 1) grav dir-z) 1.0)
-      ;; fix up the rotation matrix x vector to make the matrix orthonormal again.
-      (vector-cross! (the-as vector (-> rot-mat vector)) (-> rot-mat vector 1) dir-z))
-    ;; add some additional roll offset
-    (let ((a1-5 (matrix-rotate-z! (new 'stack-no-clear 'matrix) arg0))) (matrix*! rot-mat a1-5 rot-mat))
-    ;; write it back.
-    (matrix->quaternion quat rot-mat)))
+(defmethod set-roll-to-grav-2! ((this trsqv) (roll-offset float))
+  "Align local up with standard world up projected perpendicular to forward, rebuild the right
+   axis, then apply roll-offset about local Z."
+  (let* ((rotation (get-quaternion this)) ;; our orientation
+         (world-up (-> *standard-dynamics* gravity-normal))
+         (rotation-matrix (quaternion->matrix (new 'stack-no-clear 'matrix) rotation)))
+    (let ((forward (-> rotation-matrix vector 2)))
+      ;; Remove the forward component from world up, then use the result as local up.
+      (vector-normalize! (vector-flatten! (-> rotation-matrix vector 1) world-up forward) 1.0)
+      ;; Rebuild local right so the three axes remain orthonormal.
+      (vector-cross! (the-as vector (-> rotation-matrix vector)) (-> rotation-matrix vector 1) forward))
+    (let ((roll-matrix (matrix-rotate-z! (new 'stack-no-clear 'matrix) roll-offset)))
+      (matrix*! rotation-matrix roll-matrix rotation-matrix))
+    (matrix->quaternion rotation rotation-matrix)))
 
 (defmethod roll-relative-to-gravity ((this trsqv))
-  "Get our roll, relative to 'down' from gravity"
-  (let* ((quat (get-quaternion this))
-         (dir-z (vector-z-quaternion! (new 'stack-no-clear 'vector) quat))
-         (dir-y (vector-y-quaternion! (new 'stack-no-clear 'vector) quat))
-         (dir-grav (-> *standard-dynamics* gravity-normal))
-         ;; project gravity to our z plane (kills pitch)
-         (grav-z-plane (vector-normalize! (vector-flatten! (new 'stack-no-clear 'vector) dir-grav dir-z) 1.0))
-         (grav-dot (vector-dot grav-z-plane dir-y)))
-    ;; normally we'd just do (acos (vector-dot grav-z-plane y))
-    ;; but this won't give us the correct sign if we're rolled negatively.
-    ;; this check below manually inverts the acos as needed.
-    (if (< (vector-dot (vector-cross! (new 'stack-no-clear 'vector) grav-z-plane dir-y) dir-z) 0.0)
-      (- (acos grav-dot))
-      (acos grav-dot))))
+  "Return signed roll relative to standard world up after projecting world up perpendicular to
+   the current forward axis."
+  (let* ((rotation (get-quaternion this))
+         (forward (vector-z-quaternion! (new 'stack-no-clear 'vector) rotation))
+         (up (vector-y-quaternion! (new 'stack-no-clear 'vector) rotation))
+         (world-up (-> *standard-dynamics* gravity-normal))
+         (projected-up (vector-normalize! (vector-flatten! (new 'stack-no-clear 'vector) world-up forward) 1.0))
+         (roll-cosine (vector-dot projected-up up)))
+    ;; acos supplies the magnitude; the cross product's direction supplies the sign around forward.
+    (if (< (vector-dot (vector-cross! (new 'stack-no-clear 'vector) projected-up up) forward) 0.0)
+      (- (acos roll-cosine))
+      (acos roll-cosine))))
 
 (defmethod rotate-toward-orientation! ((this trsqv) (target quaternion) (y-rate float) (z-rate float))
-  "Adjust our orientation toward target, subject to some rate limits.
-   I don't think this is a very robust function and probably doesn't work right in cases
-   where an axis flips by 180 degrees."
-  ;; the basic idea is that we apply two rotations:
-  ;; the first moves our y axis toward the desired's y axis, and the second moves
-  ;; out z axis. These are both rate limited.
-  (let ((quat (get-quaternion this)))
-    (let ((temp-quat (new 'stack-no-clear 'quaternion)))
+  "Rotate the current local Y axis toward target's Y axis at z-rate, then the resulting local Z
+   axis toward target's Z axis at y-rate. Each rate is converted to a per-frame maximum."
+  ;; The shortest-arc helper is singular for exactly opposite axes, so this is not robust across a
+  ;; 180-degree axis flip.
+  (let ((rotation (get-quaternion this)))
+    (let ((increment (new 'stack-no-clear 'quaternion)))
       (when (< 0.0 z-rate)
-        (quaternion-from-two-vectors-max-angle! temp-quat
-                                                (vector-y-quaternion! (new 'stack-no-clear 'vector) quat)
+        (quaternion-from-two-vectors-max-angle! increment
+                                                (vector-y-quaternion! (new 'stack-no-clear 'vector) rotation)
                                                 (vector-y-quaternion! (new 'stack-no-clear 'vector) target)
                                                 (* z-rate (seconds-per-frame)))
-        (quaternion-normalize! (quaternion*! quat temp-quat quat)))
+        (quaternion-normalize! (quaternion*! rotation increment rotation)))
       (when (< 0.0 y-rate)
-        (quaternion-from-two-vectors-max-angle! temp-quat
-                                                (vector-z-quaternion! (new 'stack-no-clear 'vector) quat)
+        (quaternion-from-two-vectors-max-angle! increment
+                                                (vector-z-quaternion! (new 'stack-no-clear 'vector) rotation)
                                                 (vector-z-quaternion! (new 'stack-no-clear 'vector) target)
                                                 (* y-rate (seconds-per-frame)))
-        (quaternion-normalize! (quaternion*! quat temp-quat quat))))
-    quat))
+        (quaternion-normalize! (quaternion*! rotation increment rotation))))
+    rotation))
 
-(defmethod set-heading-vec-clear-roll-pitch! ((this trsqv) (arg0 vector))
-  "Set our rotation to point along the given heading, with no roll or pitch."
+(defmethod set-heading-vec-clear-roll-pitch! ((this trsqv) (heading vector))
+  "Build an orientation from normalized heading and world +Y. This removes roll; a horizontal
+   heading also removes pitch."
   (forward-up->quaternion (get-quaternion this)
-                          (vector-normalize-copy! (new 'stack-no-clear 'vector) arg0 1.0)
+                          (vector-normalize-copy! (new 'stack-no-clear 'vector) heading 1.0)
                           (new 'static 'vector :y 1.0 :w 1.0)))
 
-(defmethod point-toward-point-clear-roll-pitch! ((this trsqv) (arg0 vector))
-  "Set our orientation to point toward arg0, clearing roll and pitch"
+(defmethod point-toward-point-clear-roll-pitch! ((this trsqv) (target-point vector))
+  "Build an orientation toward target-point using world +Y. This removes roll; a target at the
+   same height also removes pitch."
   (forward-up->quaternion (get-quaternion this)
-                          (vector-normalize! (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) 1.0)
+                          (vector-normalize! (vector-! (new 'stack-no-clear 'vector) target-point (-> this trans)) 1.0)
                           (new 'static 'vector :y 1.0 :w 1.0)))
 
-(defun transformq-copy! ((arg0 transformq) (arg1 transformq))
-  "Set arg0 = arg1"
-  (set! (-> arg0 trans quad) (-> arg1 trans quad))
-  (set! (-> arg0 rot quad) (-> arg1 rot quad))
-  (set! (-> arg0 scale quad) (-> arg1 scale quad))
-  arg0)
+(defun transformq-copy! ((dst transformq) (src transformq))
+  "Copy translation, quaternion rotation, and scale from src to dst."
+  (vector-copy! (-> dst trans) (-> src trans))
+  (vector-copy! (-> dst rot) (-> src rot))
+  (vector-copy! (-> dst scale) (-> src scale))
+  dst)
 
-(defun matrix<-transformq! ((arg0 matrix) (arg1 transformq))
-  "Convert to 4x4 affine transform."
+(defun matrix<-transformq! ((dst matrix) (src transformq))
+  "Convert src to an affine matrix, scaling its three rotation axes and forcing translation.w to
+   one."
   (local-vars (v1-1 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -178,28 +180,29 @@
          (vf4 :class vf)
          (vf5 :class vf))
     (init-vf0-vector)
-    (quaternion->matrix arg0 (-> arg1 quat))
+    (quaternion->matrix dst (-> src quat))
     (cond
-      (#f (set! (-> arg0 vector 3 quad) (-> arg1 trans quad)))
+      (#f (set! (-> dst vector 3 quad) (-> src trans quad)))
       (else
-       (.lvf vf1 (&-> arg1 scale quad))
-       (.lvf vf2 (&-> arg1 trans quad))
-       (.lvf vf3 (&-> arg0 vector 0 quad))
-       (.lvf vf4 (&-> arg0 vector 1 quad))
-       (.lvf vf5 (&-> arg0 vector 2 quad))
+       (.lvf vf1 (&-> src scale quad))
+       (.lvf vf2 (&-> src trans quad))
+       (.lvf vf3 (&-> dst vector 0 quad))
+       (.lvf vf4 (&-> dst vector 1 quad))
+       (.lvf vf5 (&-> dst vector 2 quad))
        (.mov.vf.w vf2 vf0)
        (.mul.x.vf vf3 vf3 vf1)
        (.mul.y.vf vf4 vf4 vf1)
        (.mul.z.vf vf5 vf5 vf1)
-       (.svf (&-> arg0 vector 3 quad) vf2)
-       (.svf (&-> arg0 vector 0 quad) vf3)
-       (.svf (&-> arg0 vector 1 quad) vf4)
-       (.svf (&-> arg0 vector 2 quad) vf5)
+       (.svf (&-> dst vector 3 quad) vf2)
+       (.svf (&-> dst vector 0 quad) vf3)
+       (.svf (&-> dst vector 1 quad) vf4)
+       (.svf (&-> dst vector 2 quad) vf5)
        (.mov v1-1 vf5)))
-    arg0))
+    dst))
 
-(defun matrix<-no-trans-transformq! ((arg0 matrix) (arg1 transformq))
-  "Create 4x4 affine transform with no translation."
+(defun matrix<-no-trans-transformq! ((dst matrix) (src transformq))
+  "Convert src rotation and scale to an affine matrix with zero translation and homogeneous w equal
+   to one."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -207,23 +210,24 @@
          (vf4 :class vf)
          (vf5 :class vf))
     (init-vf0-vector)
-    (quaternion->matrix arg0 (-> arg1 quat))
-    (.lvf vf1 (&-> arg1 scale quad))
-    (.lvf vf3 (&-> arg0 vector 0 quad))
-    (.lvf vf4 (&-> arg0 vector 1 quad))
-    (.lvf vf5 (&-> arg0 vector 2 quad))
+    (quaternion->matrix dst (-> src quat))
+    (.lvf vf1 (&-> src scale quad))
+    (.lvf vf3 (&-> dst vector 0 quad))
+    (.lvf vf4 (&-> dst vector 1 quad))
+    (.lvf vf5 (&-> dst vector 2 quad))
     (.mov.vf vf2 vf0)
     (.mul.x.vf vf3 vf3 vf1)
     (.mul.y.vf vf4 vf4 vf1)
     (.mul.z.vf vf5 vf5 vf1)
-    (.svf (&-> arg0 vector 3 quad) vf2)
-    (.svf (&-> arg0 vector 0 quad) vf3)
-    (.svf (&-> arg0 vector 1 quad) vf4)
-    (.svf (&-> arg0 vector 2 quad) vf5)
-    arg0))
+    (.svf (&-> dst vector 3 quad) vf2)
+    (.svf (&-> dst vector 0 quad) vf3)
+    (.svf (&-> dst vector 1 quad) vf4)
+    (.svf (&-> dst vector 2 quad) vf5)
+    dst))
 
-(defun matrix<-transformq+trans! ((arg0 matrix) (arg1 transformq) (arg2 vector))
-  "Convert to affine transform with an additional translation (in the local frame)."
+(defun matrix<-transformq+trans! ((dst matrix) (src transformq) (local-offset vector))
+  "Convert src to an affine matrix and add local-offset.xyz after scaling and rotating it into world
+   space. local-offset.w is ignored."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -233,13 +237,13 @@
          (vf5 :class vf)
          (vf6 :class vf))
     (init-vf0-vector)
-    (quaternion->matrix arg0 (-> arg1 quat))
-    (.lvf vf1 (&-> arg1 scale quad))
-    (.lvf vf2 (&-> arg1 trans quad))
-    (.lvf vf6 (&-> arg2 quad))
-    (.lvf vf3 (&-> arg0 vector 0 quad))
-    (.lvf vf4 (&-> arg0 vector 1 quad))
-    (.lvf vf5 (&-> arg0 vector 2 quad))
+    (quaternion->matrix dst (-> src quat))
+    (.lvf vf1 (&-> src scale quad))
+    (.lvf vf2 (&-> src trans quad))
+    (.lvf vf6 (&-> local-offset quad))
+    (.lvf vf3 (&-> dst vector 0 quad))
+    (.lvf vf4 (&-> dst vector 1 quad))
+    (.lvf vf5 (&-> dst vector 2 quad))
     (.mov.vf.w vf2 vf0)
     (.mul.x.vf vf3 vf3 vf1)
     (.mul.y.vf vf4 vf4 vf1)
@@ -248,14 +252,15 @@
     (.add.mul.y.vf acc vf4 vf6 acc)
     (.add.mul.z.vf acc vf5 vf6 acc)
     (.add.mul.w.vf.xyz vf2 vf2 vf0 acc)
-    (.svf (&-> arg0 vector 3 quad) vf2)
-    (.svf (&-> arg0 vector 0 quad) vf3)
-    (.svf (&-> arg0 vector 1 quad) vf4)
-    (.svf (&-> arg0 vector 2 quad) vf5)
-    arg0))
+    (.svf (&-> dst vector 3 quad) vf2)
+    (.svf (&-> dst vector 0 quad) vf3)
+    (.svf (&-> dst vector 1 quad) vf4)
+    (.svf (&-> dst vector 2 quad) vf5)
+    dst))
 
-(defun matrix<-transformq+world-trans! ((arg0 matrix) (arg1 transformq) (arg2 vector))
-  "Convert to affine transform with an additional translation in the world frame (not rotated)"
+(defun matrix<-transformq+world-trans! ((dst matrix) (src transformq) (world-offset vector))
+  "Convert src to an affine matrix and add world-offset.xyz directly to its world-space translation.
+   world-offset.w is ignored."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -264,26 +269,28 @@
          (vf5 :class vf)
          (vf6 :class vf))
     (init-vf0-vector)
-    (quaternion->matrix arg0 (-> arg1 quat))
-    (.lvf vf1 (&-> arg1 scale quad))
-    (.lvf vf2 (&-> arg1 trans quad))
-    (.lvf vf6 (&-> arg2 quad))
-    (.lvf vf3 (&-> arg0 vector 0 quad))
-    (.lvf vf4 (&-> arg0 vector 1 quad))
-    (.lvf vf5 (&-> arg0 vector 2 quad))
+    (quaternion->matrix dst (-> src quat))
+    (.lvf vf1 (&-> src scale quad))
+    (.lvf vf2 (&-> src trans quad))
+    (.lvf vf6 (&-> world-offset quad))
+    (.lvf vf3 (&-> dst vector 0 quad))
+    (.lvf vf4 (&-> dst vector 1 quad))
+    (.lvf vf5 (&-> dst vector 2 quad))
     (.mov.vf.w vf2 vf0)
     (.mul.x.vf vf3 vf3 vf1)
     (.mul.y.vf vf4 vf4 vf1)
     (.mul.z.vf vf5 vf5 vf1)
     (.add.vf.xyz vf2 vf2 vf6)
-    (.svf (&-> arg0 vector 3 quad) vf2)
-    (.svf (&-> arg0 vector 0 quad) vf3)
-    (.svf (&-> arg0 vector 1 quad) vf4)
-    (.svf (&-> arg0 vector 2 quad) vf5)
-    arg0))
+    (.svf (&-> dst vector 3 quad) vf2)
+    (.svf (&-> dst vector 0 quad) vf3)
+    (.svf (&-> dst vector 1 quad) vf4)
+    (.svf (&-> dst vector 2 quad) vf5)
+    dst))
 
-(defun matrix<-parented-transformq! ((arg0 matrix) (arg1 transformq) (arg2 vector))
-  "Unused. Seems like the parented thing means there's an inverse scale in arg2."
+(defun matrix<-parented-transformq! ((dst matrix) (src transformq) (parent-scale vector))
+  "Prepare src for composition with a nonuniformly scaled parent. Divide every scaled rotation-axis
+   component by the corresponding nonzero parent-scale component so the later parent multiplication
+   does not apply that scale again; copy translation unchanged."
   (local-vars (v1-1 float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -293,27 +300,27 @@
          (vf5 :class vf)
          (vf6 :class vf))
     (init-vf0-vector)
-    (quaternion->matrix arg0 (-> arg1 quat))
-    (let ((v1-0 (new 'stack-no-clear 'vector)))
-      (set! (-> v1-0 x) (/ 1.0 (-> arg2 x)))
-      (set! (-> v1-0 y) (/ 1.0 (-> arg2 y)))
-      (set! (-> v1-0 z) (/ 1.0 (-> arg2 z)))
-      (.lvf vf1 (&-> arg1 scale quad))
-      (.lvf vf2 (&-> arg1 trans quad))
+    (quaternion->matrix dst (-> src quat))
+    (let ((inverse-parent-scale (new 'stack-no-clear 'vector)))
+      (set! (-> inverse-parent-scale x) (/ 1.0 (-> parent-scale x)))
+      (set! (-> inverse-parent-scale y) (/ 1.0 (-> parent-scale y)))
+      (set! (-> inverse-parent-scale z) (/ 1.0 (-> parent-scale z)))
+      (.lvf vf1 (&-> src scale quad))
+      (.lvf vf2 (&-> src trans quad))
       (.mov.vf.w vf2 vf0)
-      (.lvf vf4 (&-> arg0 vector 0 quad))
-      (.lvf vf5 (&-> arg0 vector 1 quad))
-      (.lvf vf6 (&-> arg0 vector 2 quad))
+      (.lvf vf4 (&-> dst vector 0 quad))
+      (.lvf vf5 (&-> dst vector 1 quad))
+      (.lvf vf6 (&-> dst vector 2 quad))
       (.mul.x.vf vf4 vf4 vf1)
       (.mul.y.vf vf5 vf5 vf1)
       (.mul.z.vf vf6 vf6 vf1)
-      (.lvf vf3 (&-> v1-0 quad)))
+      (.lvf vf3 (&-> inverse-parent-scale quad)))
     (.mul.vf vf4 vf4 vf3)
     (.mul.vf vf5 vf5 vf3)
     (.mul.vf vf6 vf6 vf3)
-    (.svf (&-> arg0 vector 3 quad) vf2)
-    (.svf (&-> arg0 vector 0 quad) vf4)
-    (.svf (&-> arg0 vector 1 quad) vf5)
-    (.svf (&-> arg0 vector 2 quad) vf6)
+    (.svf (&-> dst vector 3 quad) vf2)
+    (.svf (&-> dst vector 0 quad) vf4)
+    (.svf (&-> dst vector 1 quad) vf5)
+    (.svf (&-> dst vector 2 quad) vf6)
     (.mov v1-1 vf6)
-    arg0))
+    dst))

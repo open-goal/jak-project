@@ -8,26 +8,211 @@
 (require "engine/data/art-h.gc")
 (require "engine/anim/mspace-h.gc")
 (require "engine/game/game-h.gc")
+ 
+;; The "joint" system is used to play back animations.
+;; At a very high level, the process to animate a character:
+;;  - the gameplay code uses the `ja` macros to set up joint animations.
+;;  - the process-drawable system updates the animation metadata in joint-control. This is responsible for
+;;    producing an array of joint-control-channel. The channels are arranged into a blend tree, and each
+;;    channel has a frame number (possibly in between frames) and interpolation weight for the blend tree.
+;; - This file, joint.gc looks at those animations, frame numbers, blend weights, and tree structure, then
+;;   produces the relative transform between bones, called "joint transforms"
+;; - The process-drawable system uses the joint transforms to compute bone transforms.
+;; - The gameplay code and collision code use the bone transforms to determine world-space positions/rotations.
+;; - The "bones.gc" system builds rendering matrices for the foreground renderer
+;; - The merc, mercneric, and shadow renderers consume these matrices for their skinning calculations.
 
-;; a joint is just used to store the tree structure of a skeleton + bind pose.
-;; it's mostly used as a more user-friendly interface
+;; --- Joint, bone, and cspace ---
+
+;; A "bone" is simply the world space transformation of a character's bone.
+;; These "bones" are eventually used to position collision geometry, and compute the skinning matrices for rendering.
+;; Note that bones matrices can include per-axis scaling too, to allow animated characters to appear squashed/stretched.
+
+;; "joint" refers the parent-child relation of bones. Like a real skeleton, moving one bone will cause all the
+;; bones "below" it in the tree to move too.  The "joint transform" refers to the relative transformation between bones.
+;; The actual "joint" type is a node in this tree, and simply stores name/indexing information. (it also stores the mesh bind pose,
+;; but this is _not_ used at all by the joint system - only renderers! the bind-pose is a property of the meshes and how they are exported,
+;; not the actual skeleton/bone locations.
+
+;; "cspace" is a mysterious term. There is a cspace for each bone, and it tells the animation code how to
+;; compute the bone position, and the tells the runtime code where to find the bone (transformation) and joint (tree-structure).
+;; By default, the bone is controlled from the animation, in the normal way. It is possible to override this
+;; by providing your own callback. This might modify the animation (for example, scale something for big-head mode, mirror something)
+;; or completely override it (for example, adjust the transformation to move some disconnected part of a character, spin
+;; the propeller on a zoomer).
+;; The joint-mod system internally sets the cspace to apply modifications to a joint.
+
+;; the cspace stores a reference to the bone, and often times the game will just pass around the cspace in places
+;; where they just want the bone.
+
+;; Note on the cspace bone matrix: when extracting the translation, they use vector<-cspace!, which divides by the w,w component...
+;; I have no idea why this is done. It happens in all 3 games. It seems like this value is almost exactly 1 in all cases.
+
+;; ---- Compression and streaming ----
+;; Animations from cutscenes are streamed in chunks. This chunking happens a level above this file, and this file just
+;; sees short, several second long animations.
+
+;; Animations for jak (walking, jumping, etc) are not streamed since there would be too much latency to wait for the DVD drive.
+;; Some of these animations are wrapped in LZO compression. This requires decompressing the entire animation to access it.
+;; To avoid redoing the LZO compression on every frame, there is a LZO animation decompression cache. Ideally, the animation
+;; is decompressed once on the first frame its used, then remains in the cache while it's in use.
+
+;; Additionally, all animations have their own inner compression format. This format is designed for speed and ease of decompression,
+;; and is designed so you can seek to an arbitrary frame. The decompressor is stateless - if frame n + 1 is decompressed after frame n,
+;; there is no benefit or reused information.
+
+;; ---- Blending animations ----
+;; Multiple animations are played at the same time, using a tree structure. Each animation runs on a separate "channel".
+;; There are a few different ways this is specified in gameplay code. The most common way is simply using `ja-channel-push!` calls.
+
+;; The tree operates as a stack machine, consisting of push, blend, and stack operations.
+;; The "push" operation creates a new entry on the stack, consisting of an animation.
+;; The "blend" operation blends against the last thing on the stack.
+;; The "stack" operation adds together the last two things, with the given weight.
+
+;; Generally, stacking is used for time-varying fades, like blending out of a jump into a run.
+;; Blending within the same stack depth is used for animation combining, like combining a "run straight" and "run left".
+
+;; This is best observed with an example:
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH(C)
+;;   a = 0.5, b = 0.5
+;;   c = 1.0
+;; STACK(0.25)
+;;   a = 0.125, b = 0.125, c = 0.75
+
+;; ---- Stack1 and Push1 ----
+
+;; There are two strange operations: stack1 and push1.
+;; My current understanding is that this is simply an optimization.
+;; Basically, if the last two joint channels are a "push", then "stack", it is effectively blending "everything before these"
+;; with "this last pushed channel".
+
+;; In this case, the engine will set these to push1 and stack1. The "push1" behaves like a blend, and the stack1 is ignored.
+;; This has the same behavior, but two advantages: it is okay to completely ignore the stack1, and it reduces the stack depth by one.
+
+;; with our example
+
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH1(C, 0.25) ;; note: this needs the weight!
+;;   a = 0.125, b = 0.125, c = 0.75
+;; STACK1(0.25)   ;; does nothing, can be left out.
+;;   a = 0.125, b = 0.125, c = 0.75
+
+;; You might wonder: why both having push1/stack1? Couldn't the code doing animation just request a `blend`,
+;; and then we wouldn't have to special-case push1/stack1 here?
+;; The reason is probably the no-push feature below
+
+;; ---- no-push -----
+;; if "no-push" mode is active, then the stack machine acts like "pushing" just overwrites the top of the stack, and
+;; stacking does nothing
+
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH(C)
+;;   c = 1.0
+;; STACK(0.25)
+;;   c = 1.0
+
+;; however, the actual implementation is that pushes work as normal, and stacking always takes the most recent.
+
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH(C)
+;;   a = 0.5, b = 0.5
+;;   c = 1.0
+;; STACK(0.25) ;; the weight is ignored
+;;   c = 1.0
+
+;; and, in no-push mode, the push1/stack1 _don't_ act like a blend! and the implementation is so you can
+;; skip the stack1 entirely.
+
+;; PUSH(A)
+;;   a = 1
+;; BLEND(B, 0.5)
+;;   a = 0.5, b = 0.5
+;; PUSH1(C, 0.25) ;; note: weight is ignored
+;;   c = 1.0
+;; STACK1(0.25)   ;; does nothing, can be left out.
+;;   c = 1.0
+
+;; (note: no-push mode is only supported by the matrix-from-control! function
+;;  which is used to implement cspace<-matrix-no-push-joint!, which grabs a single joint's matrix
+;;  for the aligner - more on this later.)
+
+;; --- The first three cspaces/bones ---
+;; (this is how it gets set up by default. individual actors can always override.)
+
+;; The first cspace is a special one without a joint. It is "root", and is simply a copy of the actors "root" position.
+;; This is what makes all animations relative to the actor's position. There's no joint for this.
+
+;; The second cspace is the "align" cspace. This joint is an animated matrix rather than a transformq.
+;; This is used to move the process drawable root. Why would you want to do that? It means the an animation actually moves
+;; the process, so if the animation is cancelled, the actor stays in the same spot. The aligner also populates the transv
+;; (velocity) based on the speed of the align, so you can use accurate velocities in physics/collision queries.
+
+;; The third cspace is the "prejoint" cspace. This is always the parent of all bones which are associated with meshes.
+;; So you can modify the prejoint to move the entire visible actor (without moving the process root trans).
+;; Like the second cpsace, it is an animated matrix rather than a transformq.
+
+;; ---- Inner decompression format ----
+
+;; The compressed format is relatively simple.
+;; There is a "fixed" data for an entire animation, and "frame data": one for each frame.
+;; Each data has some u64's, u32's, and u16's.
+
+;; For the two matrix joints, there is a bit which indicates if the matrix is varying. If so, the matrix is stored
+;; in the frame data (so there is a different matrix for each frame), and if not, it is stored in the fixed data (one
+;; matrix for the entire animation).
+
+;; For the transformq joints, there are 4-bits of "control" per joint, stored in the control-bits array (packed)
+;; the first bit indicates if the trans is varying, quat is varying, scale is varying, and the format of the trans.
+;; If the data is varying, it can be found in the frame data, otherwise it is in the fixed data.
+
+;; If the trans format bit is not set, the trans is stored as int16's. The x, y are stored in a single u32, and the z
+;; is stored in a single u16. (the reason for this is to avoid unaligned loads and ps2 instruction specific optimization)
+;; The trans should be multiplied by 4 to get meters.
+
+;; If the trans format bit is set, the trans is stored as floats. The x, y are stored in a single u64, and the z is
+;; stored in a single u32. There is no scaling or int/float conversion needed.
+
+;; The quaternion is stored as 4 int16's packed into a single u64. The value should be divided by 32768.
+;; Note that the decompressor handles "flipped" quaternions (all elements multiplied by -1) in interpolation so there should
+;; be no assumptions about the quaternion convention of animations (of both the compressed data, and the output of the decompressor)
+
+;; The scale is stored as 3 int16's. The x, y are stored in a single u32, and the z is stored in a single u16.
+;; The scale should be divided by 4096.
+(defmacro joint-spad-offset (&rest path)
+  `(+ (offset-of terrain-context work) (offset-of joint-work ,@path)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; experimental new joint decompressor
+;; PC Port new joint decompressor: written in simple GOAL
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define *use-new-decompressor* #t)
 
 ;; this was re-written in GOAL. Despite being not well optimized, it ends up being faster
-;; than the original.
+;; than MIPS2C decompressor.
 
-;; request to decompress data from an animation
+;; request to decompress data from a single animation
+;; at a given (partially fractional) frame index, and scaled by `amount` for blending.
 (deftype joint-decomp-request (structure)
   ((jacc         joint-anim-compressed-control)
    (frame        int)
    (frame-interp float)
    (amount       float)))
 
+;; stack frame containing weights for up to 24 channels.
 (deftype blend-tree-stack-frame (structure)
   ((weights float 24)
    (quads   vector 6 :inline :overlay-at weights)))
@@ -48,8 +233,9 @@
 (define *new-joint-decompressor-work* (new 'global 'new-joint-decompressor-work))
 
 (defun new-joint-decompressor ((dst joint-anim-frame) (num-joints int) (jc joint-control))
-  "Decompress a joint animation!"
-  ;; determine anim weights, write them out to the joint-control for other stuff to see.
+  "Evaluate the controller's blend tree and add its weighted compressed animations to dst.
+   A frame contains two leading matrices and num-joints minus two transformq records."
+  ;; Determine animation weights and write them to the joint-control for inspection.
   (eval-blend-tree! *new-joint-decompressor-work* jc)
   (output-blend-tree! *new-joint-decompressor-work* jc)
   ;; figure out which animations need decompression
@@ -61,7 +247,8 @@
   (none))
 
 (defmethod eval-blend-tree! ((this new-joint-decompressor-work) (jc joint-control))
-  "Evaluate weights of all channels, producing the final per-animation weights in the first stack-frame."
+  "Evaluate the controller's postfix channel commands. Each stack frame carries one weight per
+   active channel; the final per-animation weights are left in stack frame zero."
   (let ((num-channels (-> jc active-channels))
         (stack-top 0))
     (when (> num-channels 24)
@@ -126,14 +313,15 @@
   (none))
 
 (defmethod output-blend-tree! ((this new-joint-decompressor-work) (jc joint-control))
-  "Copy result of the blend tree evaluation into the joint-control."
+  "Copy the final blend weight for every active channel to inspector-amount."
   (let ((num-channels (-> jc active-channels)))
     (dotimes (chan-idx num-channels)
       (set! (-> jc channel chan-idx inspector-amount) (-> this blend-stack 0 weights chan-idx))))
   (none))
 
 (defmethod build-requests! ((this new-joint-decompressor-work) (jc joint-control))
-  "Use the anim weights computed by eval-blend-tree! to build decompression requests"
+  "Build requests for channels whose final blend weight is significant. Clamp a request at the
+   final animation frame and retain the fractional frame position for interpolation."
   (set! (-> this num-requests) 0)
   (let ((num-channels (-> jc active-channels)))
     (dotimes (chan-idx num-channels)
@@ -161,7 +349,7 @@
   (none))
 
 (defmethod init-frame! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
-  "Initialize an output frame by zeroing the data."
+  "Zero the two leading matrices and all following transformq accumulators in output-frame."
   (let ((num-qwc 8) ;; 2x matrix, each 4 qw
         (data (the (pointer uint128) output-frame)))
     (when (> num-joints 2) ;; we have transformq's
@@ -175,7 +363,7 @@
   (none))
 
 (defmethod process-requests! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
-  "Decompress all pending animation requests."
+  "Accumulate all pending animation requests into output-frame, then empty the request list."
   (dotimes (i (-> this num-requests))
     (process-request! this (-> this requests i) output-frame num-joints))
   (set! (-> this num-requests) 0)
@@ -192,11 +380,13 @@
 (defconstant SCALE_SCALE 0.000244140625)
 
 (defun add-scaled-matrix! ((dest matrix) (src matrix) (scale float))
+  "Add every component of src times scale to dest."
   (dotimes (i 16)
     (+! (-> dest data i) (* scale (-> src data i)))))
 
 (defun decomp-fixed ((output-frame joint-anim-frame) (num-joints int) (anim joint-anim-compressed-fixed) (amount float))
-  "Decompress the fixed part."
+  "Accumulate the components that remain fixed for every frame of anim. A clear control bit means
+   that translation, quaternion, or scale is present in the fixed streams."
   (let* ((mbits (-> anim hdr matrix-bits))
          (data (the pointer (&-> anim data 0 quad)))
          (data64 (the (pointer uint64) (&+ data (-> anim offset-64))))
@@ -204,16 +394,18 @@
          (data16 (the (pointer uint16) (&+ data (-> anim offset-16))))
          (ctrl-ptr (-> anim hdr control-bits)))
     ;; process matrix:
-    (when (zero? (logand mbits 1))
+    (when (zero? (logand mbits (joint-anim-matrix-flags matrix-0-animated)))
       ;; matrix comes from fixed data
       (add-scaled-matrix! (-> output-frame matrices 0) (the matrix data64) amount)
       (&+! data64 64))
-    (when (zero? (logand mbits 2))
+    (when (zero? (logand mbits (joint-anim-matrix-flags matrix-1-animated)))
       ;; matrix comes from fixed data
       (add-scaled-matrix! (-> output-frame matrices 1) (the matrix data64) amount)
       (&+! data64 64))
     ;; process tq's
-    (dotimes (tqi num-joints) ;; TODO - not sure if this is too many??
+    ;; The first two entries are full matrices. Only the remaining entries have transformq data;
+    ;; this matches the compressed header's num-joints and the EE clear/normalize loops.
+    (dotimes (tqi (- num-joints 2))
       (let* ((ctrl-idx (/ tqi 8))
              (ctrl-shift (* 4 (mod tqi 8)))
              (ctrl (logand #b1111 (sar (-> ctrl-ptr ctrl-idx) ctrl-shift)))
@@ -278,7 +470,8 @@
         (anim joint-anim-compressed-frame)
         (amount float)
         (hdr joint-anim-compressed-hdr))
-  "Decompress the fixed part."
+  "Accumulate the frame-varying components of anim. A set control bit means that translation,
+   quaternion, or scale is present in the frame streams."
   (let* ((mbits (-> hdr matrix-bits))
          (data (the pointer (-> anim data)))
          (data64 (the (pointer uint64) (&+ data (-> anim offset-64))))
@@ -286,16 +479,18 @@
          (data16 (the (pointer uint16) (&+ data (-> anim offset-16))))
          (ctrl-ptr (-> hdr control-bits)))
     ;; process matrix:
-    (when (nonzero? (logand mbits 1))
-      ;; matrix comes from fixed data
+    (when (nonzero? (logand mbits (joint-anim-matrix-flags matrix-0-animated)))
+      ;; matrix comes from this frame
       (add-scaled-matrix! (-> output-frame matrices 0) (the matrix data64) amount)
       (&+! data64 64))
-    (when (nonzero? (logand mbits 2))
-      ;; matrix comes from fixed data
+    (when (nonzero? (logand mbits (joint-anim-matrix-flags matrix-1-animated)))
+      ;; matrix comes from this frame
       (add-scaled-matrix! (-> output-frame matrices 1) (the matrix data64) amount)
       (&+! data64 64))
     ;; process tq's
-    (dotimes (tqi num-joints) ;; TODO - not sure if this is too many??
+    ;; The first two entries are full matrices. Only the remaining entries have transformq data;
+    ;; this matches the compressed header's num-joints and the EE clear/normalize loops.
+    (dotimes (tqi (- num-joints 2))
       (let* ((ctrl-idx (/ tqi 8))
              (ctrl-shift (* 4 (mod tqi 8)))
              (ctrl (logand #b1111 (sar (-> ctrl-ptr ctrl-idx) ctrl-shift)))
@@ -356,7 +551,8 @@
   (none))
 
 (defmethod process-request! ((this new-joint-decompressor-work) (request joint-decomp-request) (output-frame joint-anim-frame) (num-joints int))
-  "Decompress a single animation, adding to accumulator"
+  "Add one request's fixed data and weighted frame data to output-frame. A fractional frame adds
+   both neighboring frames with complementary weights."
   ;; first, the fixed part
   (decomp-fixed output-frame num-joints (-> request jacc fixed) (-> request amount))
   ;; base frame
@@ -377,6 +573,8 @@
   (none))
 
 (defmethod finalize-frame! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
+  "Set the homogeneous translation and scale components and normalize every accumulated
+   transform quaternion after the two leading matrices."
   (when (<= num-joints 2)
     (return #f))
   (dotimes (tqi (- num-joints 2))
@@ -396,11 +594,9 @@
   (format #t "#<~A ~S ~D @ #x~X>" (-> this type) (-> this name) (-> this number) this)
   this)
 
-(defmethod mem-usage ((this joint) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 66 (-> usage length)))
-  (set! (-> usage data 65 name) "joint")
-  (+! (-> usage data 65 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 65 used) v1-6) (+! (-> usage data 65 total) (logand -16 (+ v1-6 15))))
+(defmethod mem-usage ((this joint) (usage memory-usage-block) (flags mem-usage-flags))
+  "Add this skeleton joint descriptor to the joint memory-usage category."
+  (mem-usage-add! usage joint 1 (asize-of this))
   this)
 
 (defmethod print ((this joint-anim))
@@ -408,6 +604,7 @@
   this)
 
 (defmethod length ((this joint-anim))
+  "Return the number of payload elements in this animation object."
   (-> this length))
 
 (defmethod inspect ((this joint-anim-matrix))
@@ -418,6 +615,7 @@
   this)
 
 (defmethod asize-of ((this joint-anim-matrix))
+  "Return the header size plus one 64-byte matrix per payload element."
   (the-as int (+ (-> joint-anim-matrix size) (* (-> this length) 64))))
 
 (defmethod inspect ((this joint-anim-transformq))
@@ -430,106 +628,97 @@
   this)
 
 (defmethod asize-of ((this joint-anim-transformq))
+  "Return the header size plus one 48-byte transformq per payload element."
   (the-as int (+ (-> joint-anim-transformq size) (* 48 (-> this length)))))
 
 (defmethod asize-of ((this joint-anim-drawable))
+  "Return the header size plus one drawable pointer per payload element."
   (the-as int (+ (-> joint-anim-drawable size) (* (-> this length) 4))))
 
-(defun joint-anim-login ((arg0 joint-anim-drawable))
-  (dotimes (s5-0 (-> arg0 length))
-    (if (-> arg0 data s5-0) (login (-> arg0 data s5-0))))
-  arg0)
+(defun joint-anim-login ((animation joint-anim-drawable))
+  "Log in every populated drawable payload in an animation."
+  (dotimes (i (-> animation length))
+    (if (-> animation data i) (login (-> animation data i))))
+  animation)
 
-(defun joint-anim-inspect-elt ((arg0 joint-anim) (arg1 float))
-  "Inspect a single element in a joint anim. The float is rounded to an int."
-  (case (-> arg0 type)
+(defun joint-anim-inspect-elt ((animation joint-anim) (index float))
+  "Inspect the payload element selected by rounding index to an integer. Matrix and transformq
+   animations have specialized displays; other animation payload types are left unchanged."
+  (case (-> animation type)
     ((joint-anim-matrix)
-     ((method-of-type matrix inspect) (the-as matrix (-> (the-as joint-anim-matrix arg0) data (the int arg1) vector))))
-    ((joint-anim-transformq) (format #t "~`transform`P~%" (-> (the-as joint-anim-transformq arg0) data (the int arg1)))))
-  arg0)
+     ((method-of-type matrix inspect) (the-as matrix (-> (the-as joint-anim-matrix animation) data (the int index) vector))))
+    ((joint-anim-transformq)
+     (format #t "~`transform`P~%" (-> (the-as joint-anim-transformq animation) data (the int index)))))
+  animation)
 
-(defmethod mem-usage ((this joint-anim-drawable) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 77 (-> usage length)))
-  (set! (-> usage data 76 name) "joint-anim-drawable")
-  (+! (-> usage data 76 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 76 used) v1-6) (+! (-> usage data 76 total) (logand -16 (+ v1-6 15))))
+(defmethod mem-usage ((this joint-anim-drawable) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for this animation and recursively account for every drawable payload."
+  (mem-usage-add! usage joint-anim-drawable 1 (asize-of this))
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this data s3-0) usage flags))
   this)
 
-(defun jacc-mem-usage ((arg0 joint-anim-compressed-control) (arg1 memory-usage-block) (arg2 int))
-  (set! (-> arg1 length) (max 68 (-> arg1 length)))
-  (set! (-> arg1 data 67 name) "joint-anim-compressed-control")
-  (+! (-> arg1 data 67 count) 1)
-  (let ((v1-7 (+ (* (-> arg0 num-frames) 4) 16)))
-    (+! (-> arg1 data 67 used) v1-7)
-    (+! (-> arg1 data 67 total) (logand -16 (+ v1-7 15))))
-  (set! (-> arg1 length) (max 69 (-> arg1 length)))
-  (set! (-> arg1 data 68 name) "joint-anim-fixed")
-  (+! (-> arg1 data 68 count) 1)
-  (let ((v1-17 (+ (-> arg0 fixed-qwc) 16)))
-    (+! (-> arg1 data 68 used) v1-17)
-    (+! (-> arg1 data 68 total) (logand -16 (+ v1-17 15))))
-  (dotimes (v1-21 (the-as int (-> arg0 num-frames)))
-    (set! (-> arg1 length) (max 70 (-> arg1 length)))
-    (set! (-> arg1 data 69 name) "joint-anim-frame")
-    (+! (-> arg1 data 69 count) 1)
-    (let ((a2-15 (* (-> arg0 frame-qwc) 16)))
-      (+! (-> arg1 data 69 used) a2-15)
-      (+! (-> arg1 data 69 total) (logand -16 (+ a2-15 15)))))
-  arg0)
+(defun jacc-mem-usage ((compressed joint-anim-compressed-control) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for a compressed animation control block, its fixed data, and each compressed frame."
+  (mem-usage-add! usage joint-anim-compressed-control 1 (+ (* (-> compressed num-frames) 4) 16))
+  (mem-usage-add! usage joint-anim-fixed 1 (+ (-> compressed fixed-qwc) 16))
+  (dotimes (i (the-as int (-> compressed num-frames)))
+    (mem-usage-add! usage joint-anim-frame 1 (* (-> compressed frame-qwc) 16)))
+  compressed)
 
 (defmethod print ((this joint-control-channel))
   (format #t "#<joint-control-channel ~A ~A ~F @ #x~X>" (-> this command) (-> this frame-group) (-> this frame-num) this)
   this)
 
 (defmethod asize-of ((this joint-control))
+  "Return the controller header size plus storage for its allocated channel capacity."
   (the-as int (+ (-> this type size) (* 48 (-> this allocated-length)))))
 
-(defmethod new joint-control ((allocation symbol) (type-to-make type) (arg0 int))
-  "Create a new joint-control with enough room for the given number of channels"
-  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 arg0))))))
-    (set! (-> v0-0 allocated-length) arg0)
+(defmethod new joint-control ((allocation symbol) (type-to-make type) (channel-capacity int))
+  "Allocate a joint controller with capacity for channel-capacity channels and initialize their
+   parent links."
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 channel-capacity))))))
+    (set! (-> v0-0 allocated-length) channel-capacity)
     (set! (-> v0-0 active-channels) 0)
     (set! (-> v0-0 root-channel) (-> v0-0 channel))
     (set! (-> v0-0 generate-frame-function) create-interpolated-joint-animation-frame)
     (set! (-> v0-0 prebind-function) #f)
     (set! (-> v0-0 postbind-function) #f)
     (set! (-> v0-0 effect) #f)
-    (dotimes (v1-4 arg0)
+    (dotimes (v1-4 channel-capacity)
       (set! (-> v0-0 channel v1-4 parent) v0-0))
     (set! (-> v0-0 blend-index) -1)
     v0-0))
 
 (defmethod debug-print-frames ((this joint-control-channel))
-  "Print the current frame of each joint on this channel.
-   Note: this only appears to work for uncompressed joint animations."
-  (let ((s5-0 (-> this frame-group))
-        (f30-0 (-> this frame-num)))
-    (dotimes (s4-0 (length s5-0))
-      (format #t "joint ~A ~D " (-> s5-0 data s4-0 name) s4-0)
-      (joint-anim-inspect-elt (-> s5-0 data s4-0) f30-0)))
+  "Print the selected frame payload for every entry in this channel's animation group. This is
+   intended for uncompressed animation objects."
+  (let ((animation-group (-> this frame-group))
+        (frame (-> this frame-num)))
+    (dotimes (i (length animation-group))
+      (format #t "joint ~A ~D " (-> animation-group data i name) i)
+      (joint-anim-inspect-elt (-> animation-group data i) frame)))
   this)
 
-(defmethod debug-print-channels ((this joint-control) (arg0 symbol))
-  "Print each active channel to the given stream."
-  (dotimes (s4-0 (-> this active-channels))
-    (let* ((v1-6 (if (and (-> this channel s4-0 frame-group) (nonzero? (-> this channel s4-0 frame-group)))
-                   (-> this channel s4-0 frame-group))))
-      (format arg0
+(defmethod debug-print-channels ((this joint-control) (output symbol))
+  "Print the command, animation, artist-frame position, interpolation, and final weight of every
+   active channel."
+  (dotimes (i (-> this active-channels))
+    (let* ((v1-6 (if (and (-> this channel i frame-group) (nonzero? (-> this channel i frame-group))) (-> this channel i frame-group))))
+      (format output
               "ch:~2d ~C ~-35S f: ~6,,2f  ~4,,2f ~4,,2f%~%"
-              s4-0 ;; channel index
-              (case (-> this channel s4-0 command) ;; how we got added.
+              i ;; channel index
+              (case (-> this channel i command) ;; how we got added.
                 (('push) 80)
                 (('push1) 112)
                 (('blend) 66)
                 (('stack) 83)
                 (('stack1) 115))
               (if v1-6 (-> v1-6 name) "(none)") ;; name of anim (can be "none" in the real game)
-              (+ (* (-> this channel s4-0 frame-num) (if v1-6 (-> v1-6 artist-step) 1.0)) ;; frame number
+              (+ (* (-> this channel i frame-num) (if v1-6 (-> v1-6 artist-step) 1.0)) ;; frame number
                  (if v1-6 (-> v1-6 artist-base) 0.0))
-              (-> this channel s4-0 frame-interp)
-              (-> this channel s4-0 inspector-amount))))
+              (-> this channel i frame-interp)
+              (-> this channel i inspector-amount))))
   0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -537,8 +726,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; The "art" class is a super-general parent class for all art.
-;; There's an "art-group" class, which typically contains all the animations
-;; geometry, and shadow info for a character.
+;; art objects are typically large static data embedded directly in GOAL object files
+;; They are likely generated by art tools, not the GOAL compiler.
 
 ;; The most general art class shouldn't really be used for anything.
 
@@ -546,14 +735,16 @@
 ;; art-joint-anim: used for animations. Provides joint-anim-compressed and eye-anim.
 
 (defmethod needs-link? ((this art))
+  "Return true when this art must be linked into a resident master art group."
   #f)
 
-(defmethod lookup-art ((this art) (arg0 string) (arg1 type))
-  "Look-up an art with the given name and type."
+(defmethod lookup-art ((this art) (art-name string) (expected-type type))
+  "Return the named nested art of expected-type, or false when this object has no nested arts."
   (the-as joint #f))
 
-(defmethod lookup-idx-of-art ((this art) (arg0 string) (arg1 type))
-  "Look up the index of an art with the given name and type."
+(defmethod lookup-idx-of-art ((this art) (art-name string) (expected-type type))
+  "Return the index of the named nested art of expected-type, or false when this object has no
+   nested arts."
   (the-as int #f))
 
 (defmethod print ((this art))
@@ -561,50 +752,57 @@
   this)
 
 (defmethod length ((this art))
+  "Return the number of dynamic payload entries in this art object."
   (-> this length))
 
 (defmethod login ((this art))
+  "Prepare this art object's optional resource lump for use."
   ;; not sure why we have to do this, but if the res-lump isn't properly set up to point to the tags
-  ;; do it manually.
+  ;; do it manually. It seems like the linker could have done this??
   (if (and (-> this extra) (zero? (-> this extra tag)))
     (set! (-> this extra tag) (&+ (the-as (pointer res-tag) (-> this extra)) 28)))
   this)
 
-(defmethod mem-usage ((this art-mesh-anim) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 72 (-> usage length)))
-  (set! (-> usage data 71 name) "art-mesh-anim")
-  (+! (-> usage data 71 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 71 used) v1-6) (+! (-> usage data 71 total) (logand -16 (+ v1-6 15))))
-  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags 512)))
+(defmethod mem-usage ((this art-mesh-anim) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for this mesh animation, its resource lump, and every payload object."
+  (mem-usage-add! usage art-mesh-anim 1 (asize-of this))
+  ;; setting the flag makes the res-lump's memory count toward joint-geo.
+  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags (mem-usage-flags resource-joint-geo))))
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this data s3-0) usage flags))
   this)
 
-(defmethod mem-usage ((this art-joint-anim) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 75 (-> usage length)))
-  (set! (-> usage data 74 name) "art-joint-anim")
-  (+! (-> usage data 74 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 74 used) v1-6) (+! (-> usage data 74 total) (logand -16 (+ v1-6 15))))
-  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags 512)))
+(defmethod mem-usage ((this art-joint-anim) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for this animation group, compressed frame storage, eye animation data, and resource
+   lump."
+  (mem-usage-add! usage art-joint-anim 1 (asize-of this))
+  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags (mem-usage-flags resource-joint-geo))))
   (jacc-mem-usage (-> this frames) usage flags)
   (dotimes (s4-1 (-> this length))
-    (set! (-> usage length) (max 67 (-> usage length)))
-    (set! (-> usage data 66 name) "joint-anim-compressed")
-    (+! (-> usage data 66 count) 1)
-    (let ((v1-22 (asize-of (-> this data s4-1))))
-      (+! (-> usage data 66 used) v1-22)
-      (+! (-> usage data 66 total) (logand -16 (+ v1-22 15)))))
+    (mem-usage-add! usage joint-anim-compressed 1 (asize-of (-> this data s4-1))))
   (when (and (nonzero? (-> this eye-anim-data)) (-> this eye-anim-data))
-    (set! (-> usage length) (max 109 (-> usage length)))
-    (set! (-> usage data 108 name) "eye-anim")
-    (+! (-> usage data 108 count) 1)
-    (let ((v1-41 (* (* (+ (-> this eye-anim-data max-frame) 1) 2) 8)))
-      (+! (-> usage data 108 used) v1-41)
-      (+! (-> usage data 108 total) (logand -16 (+ v1-41 15)))))
+    (mem-usage-add! usage eye-anim 1 (* (* (+ (-> this eye-anim-data max-frame) 1) 2) 8)))
   this)
 
 (defmethod asize-of ((this art-joint-anim))
+  "Return the art header size plus one pointer-sized entry per compressed animation."
   (the-as int (+ (-> art size) (* (-> this length) 4))))
+
+(defmethod inspect ((this art-joint-anim))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Textra: ~A~%" (-> this extra))
+  (format #t "~Tspeed: ~F~%" (-> this speed))
+  (format #t "~Tartist-base: ~F~%" (-> this artist-base))
+  (format #t "~Tartist-step: ~F~%" (-> this artist-step))
+  (format #t "~Tmaster-art-group-name: ~A~%" (-> this master-art-group-name))
+  (format #t "~Tmaster-art-group-index: ~D~%" (-> this master-art-group-index))
+  (format #t "~Tframes: @ #x~X~%" (-> this frames))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
+  (dotimes (i (-> this length))
+    (format #t "~T  [~D] ~A~%" i (-> this data i)))
+  this)
 
 (defmethod inspect ((this art-group))
   "Print the arts in an art-group"
@@ -616,7 +814,7 @@
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   (dotimes (s5-0 (-> this length))
     (if (-> this data s5-0)
-      (format #t "~T  [~D] ~A  (~D bytes)~%" s5-0 (-> this data s5-0) (mem-size (-> this data s5-0) #f 0))
+      (format #t "~T  [~D] ~A  (~D bytes)~%" s5-0 (-> this data s5-0) (mem-size (-> this data s5-0) #f (mem-usage-flags)))
       (format #t "~T  [~D] ~A  (~D bytes)~%" s5-0 (-> this data s5-0) 0)))
   this)
 
@@ -626,42 +824,43 @@
   (the-as symbol
           (and (-> this length)
                (type-type? (-> this data 0 type) art-joint-anim)
+               ;; master-art-group-name is the name of the art group this gets linked to.
                (!= (-> this name) (-> (the-as art-joint-anim (-> this data 0)) master-art-group-name)))))
 
-(defmethod lookup-art ((this art-group) (arg0 string) (arg1 type))
+(defmethod lookup-art ((this art-group) (art-name string) (expected-type type))
   "Get the art with the given name and type. Set type to false if you don't care."
   (the-as joint
           (cond
-            (arg1
+            (expected-type
              (let ((s3-0 (+ (length (-> this name)) 1)))
                (dotimes (s2-0 (-> this length))
                  (if (and (-> this data s2-0) ;; entry is populated
-                          (= (-> this data s2-0 type) arg1) ;; type is right
-                          (or (name= arg0 (-> this data s2-0 name)) (string-charp= arg0 (&-> (-> this data s2-0 name) data s3-0))) ;; name is right. also seek past ag name, and try again.
+                          (= (-> this data s2-0 type) expected-type) ;; type is right
+                          (or (name= art-name (-> this data s2-0 name)) (string-charp= art-name (&-> (-> this data s2-0 name) data s3-0))) ;; name is right. also seek past ag name, and try again.
                           )
                    (return (the-as joint (-> this data s2-0))))))
              (the-as art-element #f))
             (else
              ;; no type (also no weird after ag name check)
              (dotimes (s4-1 (-> this length))
-               (if (and (-> this data s4-1) (name= arg0 (-> this data s4-1 name))) (return (the-as joint (-> this data s4-1)))))
+               (if (and (-> this data s4-1) (name= art-name (-> this data s4-1 name))) (return (the-as joint (-> this data s4-1)))))
              (the-as art-element #f)))))
 
-(defmethod lookup-idx-of-art ((this art-group) (arg0 string) (arg1 type))
+(defmethod lookup-idx-of-art ((this art-group) (art-name string) (expected-type type))
   "Get the index of the art with the given name and type. Set type to false if you don't care.
    Will return #f if the art is not found."
   (cond
-    (arg1
+    (expected-type
      (let ((s3-0 (+ (length (-> this name)) 1)))
        (dotimes (s2-0 (-> this length))
          (if (and (-> this data s2-0)
-                  (= (-> this data s2-0 type) arg1)
-                  (or (name= arg0 (-> this data s2-0 name)) (string-charp= arg0 (&-> (-> this data s2-0 name) data s3-0))))
+                  (= (-> this data s2-0 type) expected-type)
+                  (or (name= art-name (-> this data s2-0 name)) (string-charp= art-name (&-> (-> this data s2-0 name) data s3-0))))
            (return s2-0))))
      (the-as int #f))
     (else
      (dotimes (s4-1 (-> this length))
-       (if (and (-> this data s4-1) (name= arg0 (-> this data s4-1 name))) (return s4-1)))
+       (if (and (-> this data s4-1) (name= art-name (-> this data s4-1 name))) (return s4-1)))
      (the-as int #f))))
 
 (defmethod login ((this art-group))
@@ -670,18 +869,16 @@
     (if (-> this data s5-0) (set! (-> this data s5-0) (login (-> this data s5-0)))))
   this)
 
-(defmethod mem-usage ((this art-group) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 71 (-> usage length)))
-  (set! (-> usage data 70 name) "art-group")
-  (+! (-> usage data 70 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 70 used) v1-6) (+! (-> usage data 70 total) (logand -16 (+ v1-6 15))))
-  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags 512)))
+(defmethod mem-usage ((this art-group) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for this art group, its resource lump, and every populated art entry."
+  (mem-usage-add! usage art-group 1 (asize-of this))
+  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags (mem-usage-flags resource-joint-geo))))
   (dotimes (s3-0 (-> this length))
     (if (-> this data s3-0) (mem-usage (-> this data s3-0) usage flags)))
   this)
 
 (defmethod relocate ((this art-group) (heap kheap) (name (pointer uint8)))
-  "Handle a loaded art-group."
+  "Handle a loaded art-group. Called by linker after the art-group is loaded."
   (let ((s4-0 (clear *temp-string*)))
     (string<-charp s4-0 name)
     (set! this
@@ -699,51 +896,63 @@
   (none))
 
 (defmethod asize-of ((this art-mesh-geo))
+  "Return the art header size plus one pointer-sized mesh payload entry."
   (the-as int (+ (-> art size) (* (-> this length) 4))))
 
-(defmethod mem-usage ((this art-mesh-geo) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 73 (-> usage length)))
-  (set! (-> usage data 72 name) "art-mesh-geo")
-  (+! (-> usage data 72 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 72 used) v1-6) (+! (-> usage data 72 total) (logand -16 (+ v1-6 15))))
-  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags 512)))
+(defmethod mem-usage ((this art-mesh-geo) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for this mesh geometry, its resource lump, and every payload object."
+  (mem-usage-add! usage art-mesh-geo 1 (asize-of this))
+  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags (mem-usage-flags resource-joint-geo))))
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this data s3-0) usage flags))
   this)
 
+(defmethod login ((this art-mesh-geo))
+  "Log in every populated object referenced by each mesh payload."
+  (dotimes (i (-> this length))
+    (let* ((mesh-payload (-> this data i))
+           (object-count (-> (the (pointer int16) (&+ (the pointer mesh-payload) 6))))
+           (objects (the (pointer art) (&+ (the pointer mesh-payload) 8))))
+      (dotimes (j object-count)
+        (if (-> objects j) (login (-> objects j))))))
+  this)
+
 (defmethod login ((this art-joint-anim))
+  "Prepare this animation group's optional resource lump for use."
   (if (and (-> this extra) (zero? (-> this extra tag)))
     (set! (-> this extra tag) (&+ (the-as (pointer res-tag) (-> this extra)) 28)))
   this)
 
 (defmethod asize-of ((this art-joint-geo))
+  "Return the art header size plus one pointer-sized joint entry."
   (the-as int (+ (-> art size) (* (-> this length) 4))))
 
-(defmethod lookup-art ((this art-joint-geo) (arg0 string) (arg1 type))
+(defmethod lookup-art ((this art-joint-geo) (joint-name string) (expected-type type))
+  "Find a skeleton joint by name and optional exact type."
   (cond
-    (arg1
+    (expected-type
      (dotimes (s3-0 (-> this length))
-       (if (and (= (-> this data s3-0 type) arg1) (name= arg0 (-> this data s3-0 name))) (return (-> this data s3-0))))
+       (if (and (= (-> this data s3-0 type) expected-type) (name= joint-name (-> this data s3-0 name)))
+         (return (-> this data s3-0))))
      (the-as joint #f))
     (else
      (dotimes (s4-1 (-> this length))
-       (if (name= arg0 (-> this data s4-1 name)) (return (-> this data s4-1))))
+       (if (name= joint-name (-> this data s4-1 name)) (return (-> this data s4-1))))
      (the-as joint #f))))
 
-(defmethod lookup-idx-of-art ((this art-joint-geo) (arg0 string) (arg1 type))
+(defmethod lookup-idx-of-art ((this art-joint-geo) (joint-name string) (expected-type type))
+  "Return the index of a skeleton joint found by name and optional exact type, or false."
   (cond
-    (arg1
+    (expected-type
      (dotimes (s3-0 (-> this length))
-       (if (and (= (-> this data s3-0 type) arg1) (name= arg0 (-> this data s3-0 name))) (return s3-0)))
+       (if (and (= (-> this data s3-0 type) expected-type) (name= joint-name (-> this data s3-0 name))) (return s3-0)))
      (the-as int #f))
-    (else (dotimes (s4-1 (-> this length)) (if (name= arg0 (-> this data s4-1 name)) (return s4-1))) (the-as int #f))))
+    (else (dotimes (s4-1 (-> this length)) (if (name= joint-name (-> this data s4-1 name)) (return s4-1))) (the-as int #f))))
 
-(defmethod mem-usage ((this art-joint-geo) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 74 (-> usage length)))
-  (set! (-> usage data 73 name) "art-joint-geo")
-  (+! (-> usage data 73 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 73 used) v1-6) (+! (-> usage data 73 total) (logand -16 (+ v1-6 15))))
-  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags 512)))
+(defmethod mem-usage ((this art-joint-geo) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for this joint geometry, its resource lump, and every joint descriptor."
+  (mem-usage-add! usage art-joint-geo 1 (asize-of this))
+  (if (-> this extra) (mem-usage (-> this extra) usage (logior flags (mem-usage-flags resource-joint-geo))))
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this data s3-0) usage flags))
   this)
@@ -752,85 +961,114 @@
 ;; Joint Control!
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun joint-control-channel-eval ((arg0 joint-control-channel))
-  "Run the joint control num-func callback, remember the current time"
-  ((-> arg0 num-func) arg0 (-> arg0 param 0) (-> arg0 param 1))
-  (set! (-> arg0 eval-time) (the-as uint (current-time)))
+;; the confusing thing here is a "group" just refers to a "frame-group", which is
+;; really just an animation. It's not a group of channels, or a group of animations.
+
+(defun joint-control-channel-eval ((channel joint-control-channel))
+  "Evaluate a channel with its current numeric callback and parameters, then record the evaluation
+   time."
+  ((-> channel num-func) channel (-> channel param 0) (-> channel param 1))
+  (set! (-> channel eval-time) (the-as uint (current-time)))
   (none))
 
-(defun joint-control-channel-eval! ((arg0 joint-control-channel) (arg1 (function joint-control-channel float float float)))
-  "Set the joint control num-func, and evaluate it."
-  (set! (-> arg0 num-func) arg1)
-  (arg1 arg0 (-> arg0 param 0) (-> arg0 param 1))
-  (set! (-> arg0 eval-time) (the-as uint (current-time)))
+(defun joint-control-channel-eval! ((channel joint-control-channel) (evaluate (function joint-control-channel float float float)))
+  "Install a numeric callback, evaluate it with the channel parameters, and record the evaluation
+   time."
+  (set! (-> channel num-func) evaluate)
+  (evaluate channel (-> channel param 0) (-> channel param 1))
+  (set! (-> channel eval-time) (the-as uint (current-time)))
   (none))
 
-(defun joint-control-channel-group-eval! ((arg0 joint-control-channel) (arg1 art-joint-anim) (arg2 (function joint-control-channel float float float)))
-  "Set the joint control num-func, maybe update the anim, and maybe evaluate it."
-  (set! (-> arg0 num-func) arg2)
+(defun joint-control-channel-group-eval! ((channel joint-control-channel)
+        (animation-group art-joint-anim)
+        (evaluate (function joint-control-channel float float float)))
+  "Install a channel callback and optional animation group, then evaluate it and record the time.
+   A stack command records the callback but does not select or evaluate an animation."
+  (set! (-> channel num-func) evaluate)
   (cond
-    ((= (-> arg0 command) 'stack))
+    ;; no animation for stack which blends the last two things on the stack
+    ;; whithout introducing a new animation.
+    ((= (-> channel command) 'stack))
     (else
-     (if arg1 (set! (-> arg0 frame-group) arg1))
-     (arg2 arg0 (-> arg0 param 0) (-> arg0 param 1))
-     (set! (-> arg0 eval-time) (the-as uint (current-time)))))
+     (if animation-group (set! (-> channel frame-group) animation-group))
+     (evaluate channel (-> channel param 0) (-> channel param 1))
+     (set! (-> channel eval-time) (the-as uint (current-time)))))
   0)
 
-(defun joint-control-channel-group! ((arg0 joint-control-channel) (arg1 art-joint-anim) (arg2 (function joint-control-channel float float float)))
-  "Set the joint control num-func and maybe update the anim."
-  (set! (-> arg0 num-func) arg2)
+(defun joint-control-channel-group! ((channel joint-control-channel)
+        (animation-group art-joint-anim)
+        (evaluate (function joint-control-channel float float float)))
+  "Install a channel callback and optional animation group without evaluating it. A stack command
+   records only the callback."
+  (set! (-> channel num-func) evaluate)
   (cond
-    ((= (-> arg0 command) 'stack))
-    (arg1 (set! (-> arg0 frame-group) arg1)))
+    ;; no animation for stack which blends the last two things on the stack
+    ;; whithout introducing a new animation.
+    ((= (-> channel command) 'stack))
+    (animation-group (set! (-> channel frame-group) animation-group)))
   0)
 
-(defun joint-control-copy! ((arg0 joint-control) (arg1 joint-control))
-  "Copy one joint control to another."
-  ;; set fields
-  (set! (-> arg0 blend-index) (-> arg1 blend-index))
-  (set! (-> arg0 active-channels) (-> arg1 active-channels))
-  ;; figure out which slot the source is, and remember that we're a copy.
-  (set! (-> arg0 root-channel)
+(defun joint-control-copy! ((destination joint-control) (source joint-control))
+  "Copy the controller state and allocated channel records, preserve the selected root-channel
+   index, and retarget every copied channel's parent to the destination controller."
+  (set! (-> destination blend-index) (-> source blend-index))
+  (set! (-> destination active-channels) (-> source active-channels))
+  ;; set root-channel to point to the same index channel on destination.
+  (set! (-> destination root-channel)
         (the-as (inline-array joint-control-channel)
-                (-> arg0 channel (/ (&- (the-as pointer (-> arg1 root-channel)) (the-as uint (the-as pointer (-> arg1 channel)))) 48))))
-  ;; copy channels
-  (mem-copy! (the-as pointer (-> arg0 channel)) (the-as pointer (-> arg1 channel)) (* 48 (-> arg0 allocated-length)))
-  ;; set parents of channels to point to the dest.
-  (dotimes (v1-7 (-> arg0 allocated-length))
-    (set! (-> arg0 channel v1-7 parent) arg0))
-  arg0)
+                (-> destination
+                    channel
+                    (/ (&- (the-as pointer (-> source root-channel)) (the-as uint (the-as pointer (-> source channel)))) 48))))
+  (mem-copy! (the-as pointer (-> destination channel))
+             (the-as pointer (-> source channel))
+             (* 48 (-> destination allocated-length)))
+  (dotimes (i (-> destination allocated-length))
+    (set! (-> destination channel i parent) destination))
+  destination)
 
-;; ERROR: Failed load: (set! v1-29 (l.wu (+ a0-9 -4))) at op 75
-(defun joint-control-remap! ((arg0 joint-control) (arg1 art-group) (arg2 art-group) (arg3 pair) (arg4 int) (arg5 string))
-  (let ((sv-16 (+ (length (-> arg2 name)) 1))
-        (sv-24 #t))
-    (let ((sv-32 arg4)
-          (sv-40 2))
-      (while (and (< sv-40 (-> arg1 length)) (!= (-> arg1 data sv-40 type) art-joint-anim))
-        (+! sv-40 1))
-      (dotimes (s2-1 (-> arg0 active-channels))
-        (let ((sv-48 (-> arg0 channel s2-1)))
-          (when (-> sv-48 frame-group)
-            (format (clear *temp-string*) "~S~G" arg5 (&+ (-> sv-48 frame-group name data) sv-16))
-            (when (not (null? arg3))
-              (let ((sv-52 (nassoc *temp-string* arg3)))
-                (when sv-52
-                  (let* ((a0-9 sv-52)
-                         (sv-56 (mod sv-32 (+ ((method-of-type (rtype-of a0-9) length) a0-9) -1))))
-                    (format (clear *temp-string*) "~S" (ref sv-52 (+ sv-56 1)))))))
-            (let ((sv-64 (lookup-art arg1 *temp-string* art-joint-anim)))
+(defun joint-control-remap! ((control joint-control)
+        (new-art-group art-group)
+        (old-art-group art-group)
+        (renames pair)
+        (selection int)
+        (new-prefix string))
+  "Retarget every active animation channel from old-art-group to matching animations in
+   new-art-group. Build names with new-prefix, apply optional indexed aliases from renames, and fall
+   back to the first joint animation at frame zero when a match is absent. Return true only when every
+   channel was matched."
+  (let ((old-prefix-length (+ (length (-> old-art-group name)) 1))
+        (all-matched? #t))
+    (let ((alias-selection selection)
+          (fallback-index 2))
+      (while (and (< fallback-index (-> new-art-group length)) (!= (-> new-art-group data fallback-index type) art-joint-anim))
+        (+! fallback-index 1))
+      (dotimes (i (-> control active-channels))
+        (let ((channel (-> control channel i)))
+          (when (-> channel frame-group)
+            (format (clear *temp-string*) "~S~G" new-prefix (&+ (-> channel frame-group name data) old-prefix-length))
+            (when (not (null? renames))
+              (let ((aliases (nassoc *temp-string* renames)))
+                (when aliases
+                  (let* ((alias-list aliases)
+                         (alias-index (mod alias-selection (+ ((method-of-type (rtype-of alias-list) length) alias-list) -1))))
+                    (format (clear *temp-string*) "~S" (ref aliases (+ alias-index 1)))))))
+            (let ((replacement (lookup-art new-art-group *temp-string* art-joint-anim)))
               (cond
-                (sv-64 (set! (-> sv-48 frame-group) (the-as art-joint-anim sv-64)))
+                (replacement (set! (-> channel frame-group) (the-as art-joint-anim replacement)))
                 (else
-                 (set! (-> sv-48 frame-group) (the-as art-joint-anim (-> arg1 data sv-40)))
-                 (set! (-> sv-48 frame-num) 0.0)
-                 (set! sv-24 (the-as symbol #f)))))))))
-    sv-24))
+                 (set! (-> channel frame-group) (the-as art-joint-anim (-> new-art-group data fallback-index)))
+                 (set! (-> channel frame-num) 0.0)
+                 (set! all-matched? (the-as symbol #f)))))))))
+    all-matched?))
 
-(defun flatten-joint-control-to-spr ((arg0 joint-control))
-  "Take the current state of the given joint-control and upload it to the scratchpad
-   in the format that will be understood by the joint animation decompressor."
-  (rlet ((vf1 :class vf)
+(defun flatten-joint-control-to-spr ((control joint-control))
+  "Evaluate the controller's blend tree into 24 per-channel weights in spad, then fill in the
+   channel-upload-info list that the spad decompressor works from. A nonzero interp doubles
+   frame-qwc so the next frame comes across in the same DMA. The final weights are also copied to
+   inspector-amount for the debug display.
+   vf2 through vf14 keep physical names, because the blend and stack arms use them for unrelated
+   values."
+  (rlet ((weight-bcast :class vf)
          (vf10 :class vf)
          (vf11 :class vf)
          (vf12 :class vf)
@@ -844,594 +1082,2363 @@
          (vf7 :class vf)
          (vf8 :class vf)
          (vf9 :class vf))
-    (let ((nb-channels (-> arg0 active-channels)))
-      (let ((f0-0 1.0) ;; one
-            (v1-0 0) ;; offset in spad
-            (a1-0 (-> (scratchpad-object terrain-context) work foreground joint-work flattened)) ;; start of data.
-            )
-        ;; loop over active channels.
-        ;;
-        (dotimes (a0-1 nb-channels)
-          (let ((a2-3 (-> arg0 channel a0-1)))
-            (case (-> a2-3 command)
+    (let ((channel-count (-> control active-channels)))
+      (let ((one 1.0)
+            (weight-offset 0) ;; this channel's float within a stack frame, bumped by 4 per channel
+            (frame-top (-> (scratchpad-object terrain-context) work foreground joint-work flattened)))
+        ;; A postfix blend tree. push starts an animation on a new stack frame, blend and push1
+        ;; crossfade the top frame toward their channel, and stack combines and pops the top two.
+        ;; A stack frame is 24 weights, so six quads, and all six are scaled every time.
+        (dotimes (chan-idx channel-count)
+          (let ((chan (-> control channel chan-idx)))
+            (case (-> chan command)
               (('push)
-               ;; this adds a weight of 1 for this channel always.
-               ;; note that the quads store 1 - weight, so we store 0's here.
-               (let ((a2-4 (&+ (the-as pointer a1-0) v1-0)))
-                 (set! (-> a1-0 0 quad) (the-as uint128 0))
-                 (set! (-> a1-0 1 quad) (the-as uint128 0))
-                 (set! (-> a1-0 2 quad) (the-as uint128 0))
-                 (set! (-> a1-0 3 quad) (the-as uint128 0))
-                 (set! (-> a1-0 4 quad) (the-as uint128 0))
-                 (set! (-> a1-0 5 quad) (the-as uint128 0))
+               ;; Start with every channel at zero and this channel at one.
+               (let ((weight-slot (&+ (the-as pointer frame-top) weight-offset)))
+                 (set! (-> frame-top 0 quad) (the-as uint128 0))
+                 (set! (-> frame-top 1 quad) (the-as uint128 0))
+                 (set! (-> frame-top 2 quad) (the-as uint128 0))
+                 (set! (-> frame-top 3 quad) (the-as uint128 0))
+                 (set! (-> frame-top 4 quad) (the-as uint128 0))
+                 (set! (-> frame-top 5 quad) (the-as uint128 0))
                  ;; and this thing stores the normal weight.
-                 (set! (-> (the-as (pointer float) a2-4)) f0-0))
+                 (set! (-> (the-as (pointer float) weight-slot)) one))
                ;; advance.
-               (set! a1-0 (the-as (inline-array vector) (-> a1-0 6))))
+               (set! frame-top (the-as (inline-array vector) (-> frame-top 6))))
               (('blend 'push1)
-               (let ((f1-0 (-> a2-3 frame-interp)))
-                 (let ((a2-5 (- f0-0 f1-0))) (.mov vf1 a2-5))
-                 (let ((a1-1 (the-as (inline-array vector) (-> a1-0 -6))))
-                   (.lvf vf2 (&-> a1-1 0 quad))
-                   (let ((a2-6 (&+ (the-as pointer a1-1) v1-0)))
-                     (.lvf vf3 (&-> a1-1 1 quad))
-                     (.lvf vf4 (&-> a1-1 2 quad))
-                     (.lvf vf5 (&-> a1-1 3 quad))
-                     (.lvf vf6 (&-> a1-1 4 quad))
-                     (.lvf vf7 (&-> a1-1 5 quad))
-                     (.mul.x.vf vf2 vf2 vf1)
-                     (.mul.x.vf vf3 vf3 vf1)
-                     (.mul.x.vf vf4 vf4 vf1)
-                     (.mul.x.vf vf5 vf5 vf1)
-                     (.mul.x.vf vf6 vf6 vf1)
-                     (.mul.x.vf vf7 vf7 vf1)
-                     (.svf (&-> a1-1 0 quad) vf2)
-                     (.svf (&-> a1-1 1 quad) vf3)
-                     (.svf (&-> a1-1 2 quad) vf4)
-                     (.svf (&-> a1-1 3 quad) vf5)
-                     (.svf (&-> a1-1 4 quad) vf6)
-                     (.svf (&-> a1-1 5 quad) vf7)
-                     (set! (-> (the-as (pointer float) a2-6)) (+ (-> (the-as (pointer float) a2-6) 0) f1-0)))
-                   (set! a1-0 (the-as (inline-array vector) (-> a1-1 6))))))
+               (let ((new-weight (-> chan frame-interp)))
+                 (let ((old-weight (- one new-weight))) (.mov weight-bcast old-weight))
+                 (let ((sf (the-as (inline-array vector) (-> frame-top -6))))
+                   (.lvf vf2 (&-> sf 0 quad))
+                   (let ((sf-weight-slot (&+ (the-as pointer sf) weight-offset)))
+                     (.lvf vf3 (&-> sf 1 quad))
+                     (.lvf vf4 (&-> sf 2 quad))
+                     (.lvf vf5 (&-> sf 3 quad))
+                     (.lvf vf6 (&-> sf 4 quad))
+                     (.lvf vf7 (&-> sf 5 quad))
+                     (.mul.x.vf vf2 vf2 weight-bcast)
+                     (.mul.x.vf vf3 vf3 weight-bcast)
+                     (.mul.x.vf vf4 vf4 weight-bcast)
+                     (.mul.x.vf vf5 vf5 weight-bcast)
+                     (.mul.x.vf vf6 vf6 weight-bcast)
+                     (.mul.x.vf vf7 vf7 weight-bcast)
+                     (.svf (&-> sf 0 quad) vf2)
+                     (.svf (&-> sf 1 quad) vf3)
+                     (.svf (&-> sf 2 quad) vf4)
+                     (.svf (&-> sf 3 quad) vf5)
+                     (.svf (&-> sf 4 quad) vf6)
+                     (.svf (&-> sf 5 quad) vf7)
+                     (set! (-> (the-as (pointer float) sf-weight-slot)) (+ (-> (the-as (pointer float) sf-weight-slot) 0) new-weight)))
+                   (set! frame-top (the-as (inline-array vector) (-> sf 6))))))
               (('stack)
-               (let* ((f2-2 (-> a2-3 frame-interp))
-                      (f1-2 (- f0-0 f2-2))
-                      (a1-2 (the-as (inline-array vector) (-> a1-0 -12))))
-                 (let ((a2-7 f2-2)) (.mov vf1 a2-7))
-                 (let ((a2-8 f1-2)) (.mov vf2 a2-8))
-                 (.lvf vf3 (&-> a1-2 0 quad))
-                 (.lvf vf4 (&-> a1-2 1 quad))
-                 (.lvf vf5 (&-> a1-2 2 quad))
-                 (.lvf vf6 (&-> a1-2 3 quad))
-                 (.lvf vf7 (&-> a1-2 4 quad))
-                 (.lvf vf8 (&-> a1-2 5 quad))
+               (let* ((top-weight (-> chan frame-interp))
+                      (lower-weight (- one top-weight))
+                      (sf0 (the-as (inline-array vector) (-> frame-top -12))))
+                 (let ((top-w top-weight)) (.mov weight-bcast top-w))
+                 (let ((lower-w lower-weight)) (.mov vf2 lower-w))
+                 (.lvf vf3 (&-> sf0 0 quad))
+                 (.lvf vf4 (&-> sf0 1 quad))
+                 (.lvf vf5 (&-> sf0 2 quad))
+                 (.lvf vf6 (&-> sf0 3 quad))
+                 (.lvf vf7 (&-> sf0 4 quad))
+                 (.lvf vf8 (&-> sf0 5 quad))
                  (.mul.x.vf vf3 vf3 vf2)
                  (.mul.x.vf vf4 vf4 vf2)
                  (.mul.x.vf vf5 vf5 vf2)
                  (.mul.x.vf vf6 vf6 vf2)
                  (.mul.x.vf vf7 vf7 vf2)
                  (.mul.x.vf vf8 vf8 vf2)
-                 (.lvf vf9 (&-> a1-2 6 quad))
-                 (.lvf vf10 (&-> a1-2 7 quad))
-                 (.lvf vf11 (&-> a1-2 8 quad))
-                 (.lvf vf12 (&-> a1-2 9 quad))
-                 (.lvf vf13 (&-> a1-2 10 quad))
-                 (.lvf vf14 (&-> a1-2 11 quad))
-                 (.mul.x.vf vf9 vf9 vf1)
-                 (.mul.x.vf vf10 vf10 vf1)
-                 (.mul.x.vf vf11 vf11 vf1)
-                 (.mul.x.vf vf12 vf12 vf1)
-                 (.mul.x.vf vf13 vf13 vf1)
-                 (.mul.x.vf vf14 vf14 vf1)
+                 (.lvf vf9 (&-> sf0 6 quad))
+                 (.lvf vf10 (&-> sf0 7 quad))
+                 (.lvf vf11 (&-> sf0 8 quad))
+                 (.lvf vf12 (&-> sf0 9 quad))
+                 (.lvf vf13 (&-> sf0 10 quad))
+                 (.lvf vf14 (&-> sf0 11 quad))
+                 (.mul.x.vf vf9 vf9 weight-bcast)
+                 (.mul.x.vf vf10 vf10 weight-bcast)
+                 (.mul.x.vf vf11 vf11 weight-bcast)
+                 (.mul.x.vf vf12 vf12 weight-bcast)
+                 (.mul.x.vf vf13 vf13 weight-bcast)
+                 (.mul.x.vf vf14 vf14 weight-bcast)
                  (.add.vf vf3 vf3 vf9)
                  (.add.vf vf4 vf4 vf10)
                  (.add.vf vf5 vf5 vf11)
                  (.add.vf vf6 vf6 vf12)
                  (.add.vf vf7 vf7 vf13)
                  (.add.vf vf8 vf8 vf14)
-                 (.svf (&-> a1-2 0 quad) vf3)
-                 (.svf (&-> a1-2 1 quad) vf4)
-                 (.svf (&-> a1-2 2 quad) vf5)
-                 (.svf (&-> a1-2 3 quad) vf6)
-                 (.svf (&-> a1-2 4 quad) vf7)
-                 (.svf (&-> a1-2 5 quad) vf8)
-                 (set! a1-0 (the-as (inline-array vector) (-> a1-2 6)))))))
-          (+! v1-0 4)))
-      (let ((upl-idx 0))
-        (dotimes (ch nb-channels)
-          (when (< 0.001 (-> (scratchpad-object terrain-context) work foreground joint-work flatten-array ch))
-            (let* ((v1-9 (-> arg0 channel ch))
-                   (s2-0 (-> v1-9 frame-group frames))
-                   (f0-2 (-> v1-9 frame-num))
-                   (s1-0 (the int f0-2))
-                   (f30-0 (- f0-2 (the float s1-0))))
-              (let ((s0-0 (+ (-> s2-0 num-frames) -1)))
-                (if (not (-> v1-9 frame-group)) (format 0 "Channel ~D skel ~A frame-group is #f!!!~%" ch arg0))
-                (when (>= s1-0 (the-as int s0-0))
-                  (set! f30-0 0.0)
-                  (set! s1-0 (the-as int s0-0))))
-              (let ((v1-18 (-> (scratchpad-object terrain-context) work foreground joint-work uploads upl-idx)))
-                (set! (-> v1-18 fixed) (-> s2-0 fixed))
-                (set! (-> v1-18 fixed-qwc) (the-as int (-> s2-0 fixed-qwc)))
-                (set! (-> v1-18 frame) (-> s2-0 data s1-0))
-                (set! (-> v1-18 frame-qwc) (the-as int (if (= f30-0 0.0) (-> s2-0 frame-qwc) (* (-> s2-0 frame-qwc) 2))))
-                (set! (-> v1-18 amount) (-> (scratchpad-object terrain-context) work foreground joint-work flatten-array ch))
-                (set! (-> v1-18 interp) f30-0)))
-            (+! upl-idx 1)))
-        (set! (-> (scratchpad-object terrain-context) work foreground joint-work num-uploads) upl-idx))
-      (dotimes (v1-24 nb-channels)
-        (set! (-> arg0 channel v1-24 inspector-amount)
-              (-> (scratchpad-object terrain-context) work foreground joint-work flatten-array v1-24))))
+                 (.svf (&-> sf0 0 quad) vf3)
+                 (.svf (&-> sf0 1 quad) vf4)
+                 (.svf (&-> sf0 2 quad) vf5)
+                 (.svf (&-> sf0 3 quad) vf6)
+                 (.svf (&-> sf0 4 quad) vf7)
+                 (.svf (&-> sf0 5 quad) vf8)
+                 (set! frame-top (the-as (inline-array vector) (-> sf0 6)))))))
+          (+! weight-offset 4)))
+      (let ((upload-index 0))
+        (dotimes (channel-index channel-count)
+          (when (< 0.001 (-> (scratchpad-object terrain-context) work foreground joint-work flatten-array channel-index))
+            (let* ((chan (-> control channel channel-index))
+                   (jacc (-> chan frame-group frames))
+                   (frame-num (-> chan frame-num))
+                   (base-frame (the int frame-num))
+                   (frac-frame (- frame-num (the float base-frame))))
+              (let ((last-frame (+ (-> jacc num-frames) -1)))
+                (if (not (-> chan frame-group)) (format 0 "Channel ~D skel ~A frame-group is #f!!!~%" channel-index control))
+                (when (>= base-frame (the-as int last-frame))
+                  (set! frac-frame 0.0)
+                  (set! base-frame (the-as int last-frame))))
+              (let ((up (-> (scratchpad-object terrain-context) work foreground joint-work uploads upload-index)))
+                (set! (-> up fixed) (-> jacc fixed))
+                (set! (-> up fixed-qwc) (the-as int (-> jacc fixed-qwc)))
+                (set! (-> up frame) (-> jacc data base-frame))
+                (set! (-> up frame-qwc) (the-as int (if (= frac-frame 0.0) (-> jacc frame-qwc) (* (-> jacc frame-qwc) 2))))
+                (set! (-> up amount) (-> (scratchpad-object terrain-context) work foreground joint-work flatten-array channel-index))
+                (set! (-> up interp) frac-frame)))
+            (+! upload-index 1)))
+        (set! (-> (scratchpad-object terrain-context) work foreground joint-work num-uploads) upload-index))
+      (dotimes (i channel-count)
+        (set! (-> control channel i inspector-amount)
+              (-> (scratchpad-object terrain-context) work foreground joint-work flatten-array i))))
     0))
 
-(defun matrix-from-joint-anim-frame ((arg0 joint-anim-compressed-control) (arg1 int) (arg2 int))
-  (let ((v1-1 (the-as object (-> arg0 fixed data)))
-        (v0-0 (the-as object (-> arg0 data arg2 data))))
+;; The following functions are a non-optimized decompressor/blender for animation matrices, intended for when
+;; you only need the matrix and don't want to decompress all the joints.
+
+(defun matrix-from-joint-anim-frame ((compressed joint-anim-compressed-control) (matrix-index int) (frame-index int))
+  "Return matrix-index zero or one from the fixed animation data or the selected frame, according
+   to matrix-bits in the compressed header."
+  (let ((fixed-matrix (the-as object (-> compressed fixed data)))
+        (frame-matrix (the-as object (-> compressed data frame-index data))))
     (cond
-      ((not (logtest? (-> arg0 fixed hdr matrix-bits) 1))
-       (set! v1-1
+      ((not (logtest? (-> compressed fixed hdr matrix-bits) (joint-anim-matrix-flags matrix-0-animated)))
+       (set! fixed-matrix
              (cond
-               ((zero? arg1) (return (the-as matrix v1-1)) v1-1)
-               (else (-> (the-as (inline-array vector) v1-1) 4)))))
-      ((zero? arg1) (return (the-as matrix v0-0)))
-      (else (set! v0-0 (-> (the-as (inline-array vector) v0-0) 4))))
-    (if (not (logtest? (-> arg0 fixed hdr matrix-bits) 2)) (return (the-as matrix v1-1)))
-    (the-as matrix v0-0)))
+               ((zero? matrix-index) (return (the-as matrix fixed-matrix)) fixed-matrix)
+               (else (-> (the-as (inline-array vector) fixed-matrix) 4)))))
+      ((zero? matrix-index) (return (the-as matrix frame-matrix)))
+      (else (set! frame-matrix (-> (the-as (inline-array vector) frame-matrix) 4))))
+    (if (not (logtest? (-> compressed fixed hdr matrix-bits) (joint-anim-matrix-flags matrix-1-animated)))
+      (return (the-as matrix fixed-matrix)))
+    (the-as matrix frame-matrix)))
 
-(defun matrix-from-control-channel! ((arg0 matrix) (arg1 joint) (arg2 joint-control-channel))
-  (let ((s4-0 (-> arg2 frame-group))
-        (s5-0 (-> arg1 number)))
-    (if (>= s5-0 2) (format 0 "ERROR: Call to matrix-from-control-channel! on joint ~D~%" s5-0))
-    (let* ((f30-0 (fmax 0.0 (fmin (-> arg2 frame-num) (the float (+ (-> s4-0 data 0 length) -1)))))
-           (f0-1 f30-0))
+(defun matrix-from-control-channel! ((destination matrix) (skeleton-joint joint) (channel joint-control-channel))
+  "Write one matrix joint from a controller channel. Clamp its frame to the animation range, copy
+   an exact integral frame, or interpolate the two neighboring frames."
+  (let ((animation-group (-> channel frame-group))
+        (matrix-index (-> skeleton-joint number)))
+    (if (>= matrix-index 2) (format 0 "ERROR: Call to matrix-from-control-channel! on joint ~D~%" matrix-index))
+    (let* ((clamped-frame (fmax 0.0 (fmin (-> channel frame-num) (the float (+ (-> animation-group data 0 length) -1)))))
+           (frame-check clamped-frame))
       (cond
-        ((= (the float (the int f0-1)) f0-1)
-         (let* ((a2-3 (matrix-from-joint-anim-frame (-> s4-0 frames) s5-0 (the int f30-0)))
-                (v1-7 (-> a2-3 vector 0 quad))
-                (a0-3 (-> a2-3 vector 1 quad))
-                (a1-3 (-> a2-3 vector 2 quad))
-                (a2-4 (-> a2-3 vector 3 quad)))
-           (set! (-> arg0 vector 0 quad) v1-7)
-           (set! (-> arg0 vector 1 quad) a0-3)
-           (set! (-> arg0 vector 2 quad) a1-3)
-           (set! (-> arg0 vector 3 quad) a2-4))
-         arg0)
+        ((= (the float (the int frame-check)) frame-check)
+         (matrix-copy!
+           destination
+           (matrix-from-joint-anim-frame (-> animation-group frames) matrix-index (the int clamped-frame)))
+         destination)
         (else
-         (let ((s3-1 (matrix-from-joint-anim-frame (-> s4-0 frames) s5-0 (the int f30-0)))
-               (a2-7 (matrix-from-joint-anim-frame (-> s4-0 frames) s5-0 (+ (the int f30-0) 1)))
-               (f0-9 (- f30-0 (the float (the int f30-0)))))
-           (matrix-lerp! arg0 s3-1 a2-7 f0-9)))))))
+         (let ((first-matrix (matrix-from-joint-anim-frame (-> animation-group frames) matrix-index (the int clamped-frame)))
+               (next-matrix (matrix-from-joint-anim-frame (-> animation-group frames) matrix-index (+ (the int clamped-frame) 1)))
+               (interpolation (- clamped-frame (the float (the int clamped-frame)))))
+           (matrix-lerp! destination first-matrix next-matrix interpolation)))))))
 
-(defun matrix-from-control-pair! ((arg0 matrix) (arg1 matrix) (arg2 joint))
-  (let ((f30-0 (-> arg1 vector 0 z)))
+(defun matrix-from-control-pair! ((destination matrix) (channel joint-control-channel) (skeleton-joint joint))
+  "Blend the current matrix with the matrix selected by channel. Nonpositive interpolation keeps
+   the current matrix, interpolation at least one replaces it, and intermediate values lerp them."
+  (let ((interpolation (-> channel frame-interp)))
     (cond
-      ((>= 0.0 f30-0) (empty) arg0)
-      ((>= f30-0 1.0) (matrix-from-control-channel! arg0 arg2 (the-as joint-control-channel arg1)))
+      ((>= 0.0 interpolation) (empty) destination)
+      ((>= interpolation 1.0) (matrix-from-control-channel! destination skeleton-joint channel))
       (else
-       (let ((a2-3 (matrix-from-control-channel! (the-as matrix (-> (scratchpad-object terrain-context) work))
-                                                 arg2
-                                                 (the-as joint-control-channel arg1))))
-         (matrix-lerp! arg0 arg0 a2-3 f30-0))))))
+       (let ((selected-matrix (matrix-from-control-channel! (the-as matrix (-> (scratchpad-object terrain-context) work)) skeleton-joint channel)))
+         (matrix-lerp! destination destination selected-matrix interpolation))))))
 
-(defun matrix-from-control! ((arg0 matrix-stack) (arg1 joint) (arg2 joint-control) (arg3 symbol))
-  (set! (-> arg0 top) (the-as matrix (-> arg0 data)))
-  ;(set! arg3 'a)
-  (dotimes (s2-0 (-> arg2 active-channels))
-    (let* ((a2-1 (-> arg2 channel s2-0))
-           (v1-4 (-> a2-1 command))
-           (s1-0 64))
+(defun matrix-from-control! ((stack matrix-stack) (skeleton-joint joint) (control joint-control) (mode symbol))
+  "Evaluate a joint controller's postfix channel commands for one of the two matrix joints. push
+   adds a matrix to stack, blend combines a channel with the current matrix, and stack combines the
+   top two matrices. no-push is a mode that disables the common time-varying cross fade between animations,
+   and returns only data from the newest animation. (needed for align)"
+  (set! (-> stack top) (the-as matrix (-> stack data)))
+  ;; we iterate over the whole tree and compute matrices for all animations,
+  ;; even if they end up being overwritten later in no-push mode.
+  (dotimes (channel-index (-> control active-channels))
+    (let* ((channel (-> control channel channel-index))
+           (command (-> channel command))
+           (matrix-size 64))
       (cond
-        ((and (= arg3 'no-push) (= v1-4 'push1))
-         (matrix-from-control-channel! (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))) arg1 a2-1))
-        ((and (= arg3 'no-push) (= v1-4 'stack))
-         (set! (-> arg0 top) (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))))
-         (let* ((v1-10 (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))))
-                (a3-1 (-> arg0 top))
-                (a0-10 (-> a3-1 vector 0 quad))
-                (a1-4 (-> a3-1 vector 1 quad))
-                (a2-2 (-> a3-1 vector 2 quad))
-                (a3-2 (-> a3-1 vector 3 quad)))
-           (set! (-> v1-10 vector 0 quad) a0-10)
-           (set! (-> v1-10 vector 1 quad) a1-4)
-           (set! (-> v1-10 vector 2 quad) a2-2)
-           (set! (-> v1-10 vector 3 quad) a3-2)))
-        ((= v1-4 'push)
-         (matrix-from-control-channel! (-> arg0 top) arg1 a2-1)
-         (set! (-> arg0 top) (the-as matrix (+ (the-as uint (-> arg0 top)) s1-0)))
-         ;(return (-> arg0 data 0))
-         )
-        ((or (= v1-4 'blend) (= v1-4 'push1))
-         (matrix-from-control-pair! (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
-                                    (the-as matrix a2-1)
-                                    arg1))
-        ((= v1-4 'stack)
-         (set! (-> arg0 top) (the-as matrix (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0))))
-         (let ((a1-8 (&- (the-as pointer (-> arg0 top)) (the-as uint s1-0)))
-               (v1-19 (-> arg0 top))
-               (f0-0 (-> a2-1 frame-interp)))
-           (matrix-lerp! (the-as matrix a1-8) (the-as matrix a1-8) v1-19 f0-0))))))
-  (the-as matrix (-> arg0 data)))
+        ((and (= mode 'no-push) (= command 'push1))
+         ;; push1/stack1 optimization: a final push-then-stack is treated as blend + no-op.
+         ;; in no-push mode, we make the last pushed animation override whatever older animations
+         ;; came before, so this overwrites the top of the stack.
+         (matrix-from-control-channel! (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size)))
+                                       skeleton-joint
+                                       channel))
+        ((and (= mode 'no-push) (= command 'stack))
+         ;; in no-push, we skip interolating and take the newer (later) animation
+         (set! (-> stack top) (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size))))
+         (matrix-copy! (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size))) (-> stack top)))
+        ((= command 'push)
+         ;; push a new stack frame and place the animated matrix here
+         (matrix-from-control-channel! (-> stack top) skeleton-joint channel)
+         (set! (-> stack top) (the-as matrix (+ (the-as uint (-> stack top)) matrix-size))))
+        ((or (= command 'blend) (= command 'push1))
+         ;; modify the current frame by blending
+         (matrix-from-control-pair! (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size)))
+                                    channel
+                                    skeleton-joint))
+        ((= command 'stack)
+         ;; pop two matrices, interpolate, and push the interpolated result
+         (set! (-> stack top) (the-as matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size))))
+         (let ((lower-matrix (&- (the-as pointer (-> stack top)) (the-as uint matrix-size)))
+               (upper-matrix (-> stack top))
+               (interpolation (-> channel frame-interp)))
+           (matrix-lerp! (the-as matrix lower-matrix) (the-as matrix lower-matrix) upper-matrix interpolation))))))
+  (the-as matrix (-> stack data)))
 
-(defmethod reset-and-assign-geo! ((this cspace) (arg0 basic))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; CSPACE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmethod reset-and-assign-geo! ((this cspace) (geometry basic))
+  "Clear this coordinate-space node's hierarchy and controller state and assign its optional
+   geometry."
   (set! (-> this parent) #f)
   (set! (-> this joint) #f)
-  (set! (-> this geo) arg0)
+  (set! (-> this geo) geometry)
   (set! (-> this param0) #f)
   (set! (-> this param1) #f)
   (set! (-> this param2) #f)
   this)
 
-(defmethod new cspace ((allocation symbol) (type-to-make type) (arg0 basic))
-  (let ((t9-0 (method-of-type structure new))
-        (v1-1 type-to-make))
+(defmethod new cspace ((allocation symbol) (type-to-make type) (geometry basic))
+  "Allocate a coordinate-space node and initialize it with optional geometry."
+  (let ((structure-new (method-of-type structure new))
+        (requested-type type-to-make))
     (-> type-to-make size)
-    ((method-of-type cspace reset-and-assign-geo!) (the-as cspace (t9-0 allocation v1-1)) arg0)))
+    ((method-of-type cspace reset-and-assign-geo!) (the-as cspace (structure-new allocation requested-type)) geometry)))
 
-(defun cspace<-cspace! ((arg0 cspace) (arg1 cspace))
-  (let ((v0-0 (-> arg0 bone transform)))
-    (let* ((a2-0 (-> arg1 bone transform))
-           (v1-2 (-> a2-0 vector 0 quad))
-           (a0-1 (-> a2-0 vector 1 quad))
-           (a1-1 (-> a2-0 vector 2 quad))
-           (a2-1 (-> a2-0 vector 3 quad)))
-      (set! (-> v0-0 vector 0 quad) v1-2)
-      (set! (-> v0-0 vector 1 quad) a0-1)
-      (set! (-> v0-0 vector 2 quad) a1-1)
-      (set! (-> v0-0 vector 3 quad) a2-1))
-    v0-0))
+(defun cspace<-cspace! ((destination cspace) (source cspace))
+  "Copy source's bone transform into destination."
+  (let ((destination-matrix (-> destination bone transform)))
+    (matrix-copy! destination-matrix (-> source bone transform))
+    destination-matrix))
 
-(defun cspace<-rot-yxy! ((arg0 cspace) (arg1 transform))
-  (let ((s5-0 (-> arg0 bone transform)))
-    (matrix-rotate-yxy! s5-0 (-> arg1 rot))
-    (scale-matrix! s5-0 (-> arg1 scale) s5-0)))
+(defun cspace<-rot-yxy! ((destination cspace) (xform transform))
+  "Build destination's bone rotation from a Y-X-Y Euler transform and apply its scale."
+  (let ((destination-matrix (-> destination bone transform)))
+    (matrix-rotate-yxy! destination-matrix (-> xform rot))
+    (scale-matrix! destination-matrix (-> xform scale) destination-matrix)))
 
-(defun cspace<-transform-yxy! ((arg0 cspace) (arg1 transform))
-  (let ((s4-0 (-> arg0 bone transform))
-        (s5-0 (new 'stack-no-clear 'matrix))
-        (s3-0 (new 'stack-no-clear 'matrix)))
-    (matrix-identity! s4-0)
-    (matrix-translate! s4-0 (-> arg1 trans))
-    (matrix-rotate-yxy! s5-0 (-> arg1 rot))
-    (matrix*! s3-0 s5-0 s4-0)
-    (scale-matrix! s4-0 (-> arg1 scale) s3-0)))
+(defun cspace<-transform-yxy! ((destination cspace) (xform transform))
+  "Build destination's bone matrix from a Y-X-Y Euler transform, translation, and scale."
+  (let ((destination-matrix (-> destination bone transform))
+        (rotation-matrix (new 'stack-no-clear 'matrix))
+        (composed-matrix (new 'stack-no-clear 'matrix)))
+    (matrix-identity! destination-matrix)
+    (matrix-translate! destination-matrix (-> xform trans))
+    (matrix-rotate-yxy! rotation-matrix (-> xform rot))
+    (matrix*! composed-matrix rotation-matrix destination-matrix)
+    (scale-matrix! destination-matrix (-> xform scale) composed-matrix)))
 
-(defun cspace<-transformq! ((arg0 cspace) (arg1 transformq))
-  (matrix<-transformq! (-> arg0 bone transform) arg1))
+(defun cspace<-transformq! ((destination cspace) (xform transformq))
+  "Build destination's bone matrix from a quaternion transform."
+  (matrix<-transformq! (-> destination bone transform) xform))
 
-(defun cspace<-transformq+trans! ((arg0 cspace) (arg1 transformq) (arg2 vector))
-  (matrix<-transformq+trans! (-> arg0 bone transform) arg1 arg2))
+(defun cspace<-transformq+trans! ((destination cspace) (xform transformq) (translation vector))
+  "Build destination's bone matrix from a quaternion transform plus an added local translation."
+  (matrix<-transformq+trans! (-> destination bone transform) xform translation))
 
-(defun cspace<-transformq+world-trans! ((arg0 cspace) (arg1 transformq) (arg2 vector))
-  (matrix<-transformq+world-trans! (-> arg0 bone transform) arg1 arg2))
+(defun cspace<-transformq+world-trans! ((destination cspace) (xform transformq) (translation vector))
+  "Build destination's bone matrix from a quaternion transform plus an added world-space
+   translation."
+  (matrix<-transformq+world-trans! (-> destination bone transform) xform translation))
 
-(defun cspace-calc-total-matrix! ((arg0 cspace) (arg1 matrix))
-  (matrix*! arg1 (-> arg0 bone transform) (-> *math-camera* camera-temp)))
+(defun cspace-calc-total-matrix! ((space cspace) (destination matrix))
+  "Compose this coordinate space's bone transform with the camera temporary matrix."
+  (matrix*! destination (-> space bone transform) (-> *math-camera* camera-temp)))
 
-(defun cspace<-matrix-no-push-joint! ((arg0 cspace) (arg1 joint-control))
-  (let ((v1-2 (matrix-from-control! (-> (scratchpad-object terrain-context) work foreground joint-work joint-stack)
-                                    (-> arg0 joint)
-                                    arg1
-                                    'no-push))
-        (v0-1 (-> arg0 bone transform)))
-    (let ((a0-4 (-> v1-2 vector 0 quad))
-          (a1-2 (-> v1-2 vector 1 quad))
-          (a2-1 (-> v1-2 vector 2 quad))
-          (v1-3 (-> v1-2 vector 3 quad)))
-      (set! (-> v0-1 vector 0 quad) a0-4)
-      (set! (-> v0-1 vector 1 quad) a1-2)
-      (set! (-> v0-1 vector 2 quad) a2-1)
-      (set! (-> v0-1 vector 3 quad) v1-3))
-    v0-1))
+(defun cspace<-matrix-no-push-joint! ((space cspace) (control joint-control))
+  "Evaluate this coordinate space's matrix joint with no-push channel semantics and copy the
+   result into its bone transform."
+  (let ((input-matrix (matrix-from-control! (-> (scratchpad-object terrain-context) work foreground joint-work joint-stack)
+                                            (-> space joint)
+                                            control
+                                            'no-push))
+        (destination-matrix (-> space bone transform)))
+    (matrix-copy! destination-matrix input-matrix)
+    destination-matrix))
 
-(defun cspace<-matrix-joint! ((arg0 cspace) (arg1 matrix))
-  (let ((v0-0 (-> arg0 bone transform)))
-    (let* ((a2-0 arg1)
-           (v1-1 (-> a2-0 vector 0 quad))
-           (a0-1 (-> a2-0 vector 1 quad))
-           (a1-1 (-> a2-0 vector 2 quad))
-           (a2-1 (-> a2-0 vector 3 quad)))
-      (set! (-> v0-0 vector 0 quad) v1-1)
-      (set! (-> v0-0 vector 1 quad) a0-1)
-      (set! (-> v0-0 vector 2 quad) a1-1)
-      (set! (-> v0-0 vector 3 quad) a2-1))
-    v0-0))
+(defun cspace<-matrix-joint! ((space cspace) (input-matrix matrix))
+  "Copy a matrix joint directly into this coordinate space's bone transform."
+  (let ((destination-matrix (-> space bone transform)))
+    (matrix-copy! destination-matrix input-matrix)
+    destination-matrix))
 
-(defun cspace<-parented-matrix-joint! ((arg0 cspace) (arg1 matrix))
-  (matrix*! (-> arg0 bone transform) arg1 (-> arg0 parent bone transform)))
+(defun cspace<-parented-matrix-joint! ((space cspace) (input-matrix matrix))
+  "Compose a matrix joint with the parent coordinate space's bone transform."
+  (matrix*! (-> space bone transform) input-matrix (-> space parent bone transform)))
 
-;; tricky ones:
-;; cspace<-parented-transformq-joint!
-;;   -manually done, could also be mips2c if too slow
-;; clear-frame-accumulator
-;;  - clear 128 bytes + 48*s2 bytes.
-;;  - probably should be C++.
-;; normalize-frame-quaternions
-;;  - can mips2c
-;; decompress-fixed-data-to-accumulator
-;;  - pretty big, should mips2c (jump table)
-;; decompress-frame-data-to-accumulator
-;;  - pretty big, should mips2c (jump table)
-;; decompress-frame-data-pair-to-accumulator
-;;  - pretty big, should mips2c (jump table)
-;; make-joint-jump-tables
-;;  - gross
-;; calc-animation-from-spr
-;;  - would be nice as goal.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Scratchpad frame decoding
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; all run by create-interpolated-joint-animation-frame
+;; calc-animation-from-spr keeps the joint count and stream cursors in saved registers while the
+;; component functions run. The three decompression functions share that private register ABI and
+;; use computed entries within their assembly bodies, so they are not independent ordinary calls.
 
-(def-mips2c cspace<-parented-transformq-joint! (function cspace transformq none))
+(#when PC_PORT
+  (def-mips2c cspace<-parented-transformq-joint! (function cspace transformq none)))
 
-; (defun cspace<-parented-transformq-joint! ((arg0 cspace) (arg1 transformq))
-;   (nop!)
-;   ;; the ops in these funcs were scrambled for pipeline optimization. screw that.
-;   ;; f0 = 1.0
-;   ;; a3 = -> arg0 parent (used once)
-;   (rlet ((acc :class vf)
-;          (vf0 :class vf) ;; unit
-;          (vf5 :class vf) ;; quat
-;          (vf15 :class vf) ;; trans
-;          (vf6 :class vf) ;; temp
-;          (vf2 :class vf) ;; temp
-;          (vf3 :class vf) ;; temp
-;          (vf4 :class vf) ;; temp
+(#unless PC_PORT
+  (defun cspace<-parented-transformq-joint! ((space cspace) (xform transformq))
+    "Build a local matrix from xform, compensate for parent scale when present, and concatenate it
+   with the parent bone transform."
+    (rlet ((parent (-> space parent))
+           (parent-matrix (-> parent bone transform))
+           (bone (-> space bone))
+           (bone-matrix (-> bone transform))
+           (quat :reg vf5)
+           (double-quat :reg vf6)
+           (translation :reg vf15)
+           (joint-scale :reg vf1)
+           (row-x :reg vf2)
+           (row-y :reg vf3)
+           (row-z :reg vf4)
+           (parent-x :reg vf7)
+           (parent-y :reg vf8)
+           (parent-z :reg vf9)
+           (parent-t :reg vf10)
+           (world-x :reg vf11)
+           (world-y :reg vf12)
+           (world-z :reg vf13)
+           (world-t :reg vf14)
+           (reciprocal-parent-scale :reg vf16)
+           (packed-reciprocals :class i128)
+           (one-bits)
+           (reciprocal-x)
+           (reciprocal-y)
+           (reciprocal-z)
+           (parent-has-scale?))
+      (nop!)
+      (m! one-bits 1.0)
+      (l.vf quat xform 16)
+      (l.vf translation xform)
+      (l.vf joint-scale xform 32)
+      (l.vf parent-x parent-matrix)
+      (l.vf parent-y parent-matrix 16)
+      (l.vf parent-z parent-matrix 32)
+      (l.vf parent-t parent-matrix 48)
+      (add.vf double-quat quat quat)
+      ;; Expand the quaternion into three rotation rows. The outer products supply the cross terms;
+      ;; adding one to the diagonal completes the standard unit-quaternion matrix.
+      (add.w.vf.x row-x vf0 quat)
+      (add.z.vf.y row-x vf0 quat)
+      (sub.y.vf.z row-x vf0 quat)
+      (sub.w.vf.w row-x vf0 vf0)
+      (sub.z.vf.x row-y vf0 quat)
+      (add.w.vf.y row-y vf0 quat)
+      (add.x.vf.z row-y vf0 quat)
+      (sub.w.vf.w row-y vf0 vf0)
+      (add.y.vf.x row-z vf0 quat)
+      (sub.x.vf.y row-z vf0 quat)
+      (add.w.vf.z row-z vf0 quat)
+      (sub.w.vf.w row-z vf0 vf0)
+      (outer.product.a.vf acc double-quat row-x)
+      (outer.product.b.vf row-x row-x double-quat acc)
+      (outer.product.a.vf acc double-quat row-y)
+      (outer.product.b.vf row-y row-y double-quat acc)
+      (outer.product.a.vf acc double-quat row-z)
+      (outer.product.b.vf row-z row-z double-quat acc)
+      (add.w.vf.x row-x row-x vf0)
+      (add.w.vf.y row-y row-y vf0)
+      (add.w.vf.z row-z row-z vf0)
+      (mul.x.vf row-x row-x joint-scale)
+      (mul.y.vf row-y row-y joint-scale)
+      (mul.z.vf row-z row-z joint-scale)
+      (l.w parent-has-scale? parent-matrix 76)
+      (b.z parent-has-scale? compose :delay (div.s reciprocal-z 1.0 (-> parent-matrix data 18)))
+      ;; A scaled parent records that fact in scale.w. Divide its basis scale out before multiplying
+      ;; so the child's authored scale is not compounded a second time.
+      (div.s reciprocal-x 1.0 (-> parent-matrix data 16))
+      (div.s reciprocal-y 1.0 (-> parent-matrix data 17))
+      (m packed-reciprocals reciprocal-x)
+      (pextlw packed-reciprocals reciprocal-y packed-reciprocals)
+      (pcpyld packed-reciprocals reciprocal-z packed-reciprocals)
+      (m reciprocal-parent-scale packed-reciprocals)
+      (mul.vf row-x row-x reciprocal-parent-scale)
+      (mul.vf row-y row-y reciprocal-parent-scale)
+      (mul.vf row-z row-z reciprocal-parent-scale)
+      (label compose)
+      (mula.x.vf parent-x row-x)
+      (madda.y.vf parent-y row-x)
+      (madda.z.vf parent-z row-x)
+      (madd.w.vf world-x parent-t row-x)
+      (mula.x.vf parent-x row-y)
+      (madda.y.vf parent-y row-y)
+      (madda.z.vf parent-z row-y)
+      (madd.w.vf world-y parent-t row-y)
+      (mula.x.vf parent-x row-z)
+      (madda.y.vf parent-y row-z)
+      (madda.z.vf parent-z row-z)
+      (madd.w.vf world-z parent-t row-z)
+      (mula.x.vf parent-x translation)
+      (madda.y.vf parent-y translation)
+      (madda.z.vf parent-z translation)
+      (madd.w.vf world-t parent-t vf0)
+      (s.vf joint-scale bone 64)
+      (s.vf world-x bone-matrix)
+      (s.vf world-y bone-matrix 16)
+      (s.vf world-z bone-matrix 32)
+      (jr ra :delay (s.vf world-t bone-matrix 48)))))
 
-;          (vf1 :class vf) ;; temp
-;          (vf7 :class vf) ;; temp
-;          (vf8 :class vf) ;; temp
-;          (vf9 :class vf) ;; temp
-;          (vf10 :class vf) ;; temp
+(#unless PC_PORT
+  (defun clear-frame-accumulator ((destination (inline-array vector)))
+    "Zero the two matrices and every transformq after them. The joint count arrives in s2 from
+   calc-animation-from-spr, and the -2 accounts for those two matrices."
+    (rlet ((cursor destination)
+           (remaining :reg s2)
+           (zero :class i128))
+      (s.q zero cursor)
+      (-! remaining 2)
+      (s.q zero cursor 16)
+      (nop!)
+      (s.q zero cursor 32)
+      (nop!)
+      (s.q zero cursor 48)
+      (nop!)
+      (s.q zero cursor 64)
+      (nop!)
+      (s.q zero cursor 80)
+      (nop!)
+      (s.q zero cursor 96)
+      (nop!)
+      (s.q zero cursor 112)
+      (&+! cursor 128)
+      (label clear-transform)
+      (s.q zero cursor)
+      (-! remaining 1)
+      (s.q zero cursor 16)
+      (&+! cursor 48)
+      (nop!)
+      (nop!)
+      (b.nz remaining clear-transform :delay (s.q zero cursor -16))))
+  (defun normalize-frame-quaternions ((destination (inline-array vector)))
+    "Set trans.w and scale.w back to 1.0 and renormalize every accumulated quaternion. The joint
+   count is in s2, less the two matrices."
+    (rlet ((cursor (&+ destination 128))
+           (remaining :reg s2)
+           (translation :reg vf1)
+           (rotation :reg vf4)
+           (scale :reg vf7)
+           (squared :reg vf10))
+      (-! remaining 2)
+      (label normalize-transform)
+      (l.vf rotation cursor 16)
+      (l.vf translation cursor)
+      (l.vf scale cursor 32)
+      (mul.vf squared rotation rotation)
+      (move.w.vf translation vf0)
+      (move.w.vf scale vf0)
+      (mula.w.vf vf0 squared)
+      (madda.z.vf vf0 squared)
+      (madda.y.vf vf0 squared)
+      (madd.x.vf squared vf0 squared)
+      (s.vf translation cursor)
+      (s.vf scale cursor 32)
+      (&+! cursor 48)
+      (rsqrt.w.w Q vf0 squared)
+      (waitq)
+      (mulq.vf rotation rotation Q)
+      (-! remaining 1)
+      (b.nz remaining normalize-transform :delay (s.vf rotation cursor -32))))
+  (defun decompress-fixed-data-to-accumulator ()
+    "Add an animation's fixed components to the frame accumulator, weighted. The 64-byte header is
+   copied to spad first because the control nibbles are read many times, then either fixed matrix,
+   then one computed jump per transform record."
+    (declare (asm-func))
+    ;; The three decompressors share one private register ABI set up by calc-animation-from-spr,
+    ;; so these are pinned rather than allocated. frame walks the output accumulator, block is the
+    ;; compressed source in spad, weight is the blend amount, and hdr is the spad copy of the
+    ;; fixed block's header. stream64, stream32 and stream16 are the three read cursors.
+    ;; transforms-left counts down the post-matrix records, controls holds the current packed
+    ;; control word with nibbles-left nibbles still in it, and control-ptr walks the rest.
+    ;; vf1 through vf12 carry two names each: matrix rows in the header section, then translation,
+    ;; quaternion and scale in the per-transform paths. They are the same registers either way.
+    (rlet ((frame :reg a0)
+           (block :reg a1 :type joint-anim-compressed-fixed)
+           (weight :reg a2)
+           (hdr :reg t1 :type joint-anim-compressed-hdr)
+           (jump-table :reg t2)
+           (nibble :reg t3)
+           (stream64 :reg t4)
+           (stream32 :reg t5)
+           (stream16 :reg t6)
+           (hdr-qw-a :reg t4) ;; borrowed as quadword shuttles for the header copy
+           (hdr-qw-b :reg t5)
+           (transforms-left :reg s2)
+           (nibbles-left :reg s3)
+           (controls :reg s4)
+           (control-ptr :reg s5)
+           (data-base :reg v1)
+           (pack :reg s6)
+           (pack-hi :reg gp)
+           (pack2 :reg t8)
+           (pack2-hi :reg fp)
+           (xfer :reg t9)
+           (mtx-row0 :reg vf1)
+           (mtx-row1 :reg vf2)
+           (mtx-row2 :reg vf3)
+           (mtx-row3 :reg vf4)
+           (acc-row0 :reg vf9)
+           (acc-row1 :reg vf10)
+           (acc-row2 :reg vf11)
+           (acc-row3 :reg vf12)
+           (trans :reg vf1)
+           (trans-b :reg vf2)
+           (out-trans :reg vf3)
+           (quat :reg vf4)
+           (quat-b :reg vf5)
+           (out-quat :reg vf6)
+           (scale :reg vf7)
+           (scale-b :reg vf8)
+           (out-scale :reg vf9)
+           (dot :reg vf10)
+           (weight-vf :reg vf13)
+           (scales :reg vf14)
+           (zero-vf :reg vf15))
+      (label fixed-entry)
+      (l.q hdr-qw-a block)
+      (add.i sp sp -16)
+      (l.q hdr-qw-b block 16)
+      (nop!)
+      (s.q hdr-qw-a hdr)
+      (nop!)
+      (s.q hdr-qw-b hdr 16)
+      (nop!)
+      (l.q hdr-qw-a block 32)
+      (nop!)
+      (l.q hdr-qw-b block 48)
+      (nop!)
+      (s.q hdr-qw-a hdr 32)
+      (nop!)
+      (s.q hdr-qw-b hdr 48)
+      (nop!)
+      (s.q frame sp)
+      (nop!)
+      (m weight-vf weight)
+      (lui jump-table 28672) ;; spad base, 0x70000000
+      (l.w stream64 (-> block offset-64))
+      (add.i data-base block (offset-of joint-anim-compressed-fixed data))
+      (l.w stream32 (-> block offset-32))
+      (add control-ptr hdr r0)
+      (l.w stream16 (-> block offset-16))
+      (add stream64 stream64 data-base)
+      (mul.x.vf weight-vf scales weight-vf)
+      (add.i jump-table jump-table (joint-spad-offset fix-jmp-table))
+      (l.w transforms-left (-> hdr num-joints))
+      (add stream32 stream32 data-base)
+      (l.w controls (-> hdr matrix-bits))
+      (add stream16 stream16 data-base)
+      (add.i nibbles-left r0 8)
+      (add.i control-ptr control-ptr 4)
+      (and.i nibble controls 1)
+      (nop!)
+      (b.nz nibble fixed-second-matrix :delay (nop!))
+      (l.vf mtx-row0 stream64)
+      (l.vf mtx-row1 stream64 16)
+      (l.vf mtx-row2 stream64 32)
+      (l.vf mtx-row3 stream64 48)
+      (l.vf acc-row0 frame)
+      (add.i stream64 stream64 64)
+      (l.vf acc-row1 frame 16)
+      (nop!)
+      (l.vf acc-row2 frame 32)
+      (l.vf acc-row3 frame 48)
+      (mula.w.vf acc-row0 vf0)
+      (madd.x.vf acc-row0 mtx-row0 weight-vf)
+      (mula.w.vf acc-row1 vf0)
+      (madd.x.vf acc-row1 mtx-row1 weight-vf)
+      (mula.w.vf acc-row2 vf0)
+      (madd.x.vf acc-row2 mtx-row2 weight-vf)
+      (mula.w.vf acc-row3 vf0)
+      (madd.x.vf acc-row3 mtx-row3 weight-vf)
+      (s.vf acc-row0 frame)
+      (s.vf acc-row1 frame 16)
+      (s.vf acc-row2 frame 32)
+      (s.vf acc-row3 frame 48)
+      (label fixed-second-matrix)
+      (and.i nibble controls 2)
+      (add.i frame frame 64)
+      (b.nz nibble fixed-controls :delay (nop!))
+      (l.vf mtx-row0 stream64)
+      (l.vf mtx-row1 stream64 16)
+      (l.vf mtx-row2 stream64 32)
+      (l.vf mtx-row3 stream64 48)
+      (l.vf acc-row0 frame)
+      (add.i stream64 stream64 64)
+      (l.vf acc-row1 frame 16)
+      (nop!)
+      (l.vf acc-row2 frame 32)
+      (l.vf acc-row3 frame 48)
+      (mula.w.vf acc-row0 vf0)
+      (madd.x.vf acc-row0 mtx-row0 weight-vf)
+      (mula.w.vf acc-row1 vf0)
+      (madd.x.vf acc-row1 mtx-row1 weight-vf)
+      (mula.w.vf acc-row2 vf0)
+      (madd.x.vf acc-row2 mtx-row2 weight-vf)
+      (mula.w.vf acc-row3 vf0)
+      (madd.x.vf acc-row3 mtx-row3 weight-vf)
+      (s.vf acc-row0 frame)
+      (s.vf acc-row1 frame 16)
+      (s.vf acc-row2 frame 32)
+      (s.vf acc-row3 frame 48)
+      (label fixed-controls)
+      (l.w controls control-ptr -4)
+      (add.i frame frame 64)
+      (label fixed-dispatch)
+      (and.i nibble controls 15)
+      (sra controls controls 4)
+      (sll nibble nibble 2)
+      (add.i nibbles-left nibbles-left -1)
+      (add nibble nibble jump-table)
+      (add.i transforms-left transforms-left -1)
+      (l.w nibble nibble)
+      (nop!)
+      (nop!)
+      (nop!)
+      (jr nibble :delay (nop!))
+      (label fixed-next-transform)
+      (b.z transforms-left fixed-return :delay (add.i frame frame 48))
+      (b.nz nibbles-left fixed-dispatch :delay (nop!))
+      (l.w controls control-ptr)
+      (add.i control-ptr control-ptr 4)
+      (b fixed-dispatch :delay (add.i nibbles-left r0 8))
+      ;; control nibble 0: the clear bits, so these components come from the fixed streams
+      (label fixed-path-trans-quat-scale)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (itof.vf quat quat :fixed 15)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (mul.vf dot quat out-quat)
+      (m trans pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (itof.vf trans trans)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (m xfer dot)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 fixed-quaternion-ready-0 :delay (sub.vf quat zero-vf quat))
+      (label fixed-quaternion-ready-0)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (mula.w.vf out-trans vf0)
+      (madd.y.vf out-trans trans weight-vf)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 8: the clear bits, so these components come from the fixed streams
+      (label fixed-path-wide-trans-quat-scale)
+      (l.d xfer stream64 8)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d pack stream64 -8)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (itof.vf quat quat :fixed 15)
+      (pcpyld pack pack-hi pack)
+      (mul.vf dot quat out-quat)
+      (m trans pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (m xfer dot)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 fixed-quaternion-ready-1 :delay (sub.vf quat zero-vf quat))
+      (label fixed-quaternion-ready-1)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (mula.w.vf out-trans vf0)
+      (madd.x.vf out-trans trans weight-vf)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 1, 9: the clear bits, so these components come from the fixed streams
+      (label fixed-path-quat-scale)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (itof.vf quat quat :fixed 15)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (mul.vf dot quat out-quat)
+      (m scale pack2)
+      (mula.w.vf dot vf0)
+      (itof.vf scale scale :fixed 12)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 fixed-quaternion-ready-2 :delay (sub.vf quat zero-vf quat))
+      (label fixed-quaternion-ready-2)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 2: the clear bits, so these components come from the fixed streams
+      (label fixed-path-trans-scale)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (itof.vf trans trans)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (mula.w.vf out-trans vf0)
+      (madd.y.vf out-trans trans weight-vf)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-scale frame 32)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 10: the clear bits, so these components come from the fixed streams
+      (label fixed-path-wide-trans-scale)
+      (l.d pack stream64)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (pcpyld pack pack-hi pack)
+      (m trans pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (mula.w.vf out-trans vf0)
+      (madd.x.vf out-trans trans weight-vf)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-scale frame 32)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 3, 11: the clear bits, so these components come from the fixed streams
+      (label fixed-path-scale)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-scale frame 32)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 4: the clear bits, so these components come from the fixed streams
+      (label fixed-path-trans-quat)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (itof.vf quat quat :fixed 15)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (mul.vf dot quat out-quat)
+      (m trans pack)
+      (mula.w.vf dot vf0)
+      (itof.vf trans trans)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (mula.w.vf out-trans vf0)
+      (madd.y.vf out-trans trans weight-vf)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 fixed-quaternion-ready-3 :delay (sub.vf quat zero-vf quat))
+      (label fixed-quaternion-ready-3)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 12: the clear bits, so these components come from the fixed streams
+      (label fixed-path-wide-trans-quat)
+      (l.d xfer stream64 8)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d pack stream64 -8)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (itof.vf quat quat :fixed 15)
+      (pcpyld pack pack-hi pack)
+      (mul.vf dot quat out-quat)
+      (m trans pack)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (mula.w.vf out-trans vf0)
+      (madd.x.vf out-trans trans weight-vf)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 fixed-quaternion-ready-4 :delay (sub.vf quat zero-vf quat))
+      (label fixed-quaternion-ready-4)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 5, 13: the clear bits, so these components come from the fixed streams
+      (label fixed-path-quat)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (itof.vf quat quat :fixed 15)
+      (mul.vf dot quat out-quat)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 fixed-quaternion-ready-5 :delay (sub.vf quat zero-vf quat))
+      (label fixed-quaternion-ready-5)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (s.vf out-quat frame 16)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 6: the clear bits, so these components come from the fixed streams
+      (label fixed-path-trans)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans pack)
+      (itof.vf trans trans)
+      (mula.w.vf out-trans vf0)
+      (madd.y.vf out-trans trans weight-vf)
+      (s.vf out-trans frame)
+      (b fixed-next-transform :delay (nop!))
+      ;; control nibble 14: the clear bits, so these components come from the fixed streams
+      (label fixed-path-wide-trans)
+      (l.d pack stream64)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (pcpyld pack pack-hi pack)
+      (m trans pack)
+      (mula.w.vf out-trans vf0)
+      (madd.x.vf out-trans trans weight-vf)
+      (s.vf out-trans frame)
+      (b fixed-next-transform :delay (nop!))
+      (label fixed-return)
+      (l.q frame sp)
+      (nop!)
+      (jr ra :delay (add.i sp sp 16))
+      (jr ra :delay (add sp sp r0))
+      (nop!)
+      (nop!)
+      (nop!)))
+  (defun decompress-frame-data-to-accumulator ()
+    "Same as decompress-fixed-data-to-accumulator, but for one frame's animated components, so the
+   control-bit tests are inverted. The header is already in spad from the fixed pass."
+    (declare (asm-func))
+    ;; The three decompressors share one private register ABI set up by calc-animation-from-spr,
+    ;; so these are pinned rather than allocated. frame walks the output accumulator, block is the
+    ;; compressed source in spad, weight is the blend amount, and hdr is the spad copy of the
+    ;; fixed block's header. stream64, stream32 and stream16 are the three read cursors.
+    ;; transforms-left counts down the post-matrix records, controls holds the current packed
+    ;; control word with nibbles-left nibbles still in it, and control-ptr walks the rest.
+    ;; vf1 through vf12 carry two names each: matrix rows in the header section, then translation,
+    ;; quaternion and scale in the per-transform paths. They are the same registers either way.
+    (rlet ((frame :reg a0)
+           (block :reg a1 :type joint-anim-compressed-frame)
+           (weight :reg a2)
+           (hdr :reg t1 :type joint-anim-compressed-hdr)
+           (jump-table :reg t2)
+           (nibble :reg t3)
+           (stream64 :reg t4)
+           (stream32 :reg t5)
+           (stream16 :reg t6)
+           (transforms-left :reg s2)
+           (nibbles-left :reg s3)
+           (controls :reg s4)
+           (control-ptr :reg s5)
+           (data-base :reg v1)
+           (pack :reg s6)
+           (pack-hi :reg gp)
+           (pack2 :reg t8)
+           (pack2-hi :reg fp)
+           (xfer :reg t9)
+           (mtx-row0 :reg vf1)
+           (mtx-row1 :reg vf2)
+           (mtx-row2 :reg vf3)
+           (mtx-row3 :reg vf4)
+           (acc-row0 :reg vf9)
+           (acc-row1 :reg vf10)
+           (acc-row2 :reg vf11)
+           (acc-row3 :reg vf12)
+           (trans :reg vf1)
+           (trans-b :reg vf2)
+           (out-trans :reg vf3)
+           (quat :reg vf4)
+           (quat-b :reg vf5)
+           (out-quat :reg vf6)
+           (scale :reg vf7)
+           (scale-b :reg vf8)
+           (out-scale :reg vf9)
+           (dot :reg vf10)
+           (weight-vf :reg vf13)
+           (scales :reg vf14)
+           (zero-vf :reg vf15))
+      (label frame-entry)
+      (add.i sp sp -16)
+      (m weight-vf weight)
+      (s.q frame sp)
+      (lui jump-table 28672) ;; spad base, 0x70000000
+      (l.w stream64 (-> block offset-64))
+      (add.i data-base block (offset-of joint-anim-compressed-frame data))
+      (l.w stream32 (-> block offset-32))
+      (add control-ptr hdr r0)
+      (l.w stream16 (-> block offset-16))
+      (add stream64 stream64 data-base)
+      (mul.x.vf weight-vf scales weight-vf)
+      (add.i jump-table jump-table (joint-spad-offset frm-jmp-table))
+      (l.w transforms-left (-> hdr num-joints))
+      (add stream32 stream32 data-base)
+      (l.w controls (-> hdr matrix-bits))
+      (add stream16 stream16 data-base)
+      (add.i nibbles-left r0 8)
+      (add.i control-ptr control-ptr 4)
+      (and.i nibble controls 1)
+      (nop!)
+      (b.z nibble frame-second-matrix :delay (nop!))
+      (l.vf mtx-row0 stream64)
+      (l.vf mtx-row1 stream64 16)
+      (l.vf mtx-row2 stream64 32)
+      (l.vf mtx-row3 stream64 48)
+      (l.vf acc-row0 frame)
+      (add.i stream64 stream64 64)
+      (l.vf acc-row1 frame 16)
+      (nop!)
+      (l.vf acc-row2 frame 32)
+      (l.vf acc-row3 frame 48)
+      (mula.w.vf acc-row0 vf0)
+      (madd.x.vf acc-row0 mtx-row0 weight-vf)
+      (mula.w.vf acc-row1 vf0)
+      (madd.x.vf acc-row1 mtx-row1 weight-vf)
+      (mula.w.vf acc-row2 vf0)
+      (madd.x.vf acc-row2 mtx-row2 weight-vf)
+      (mula.w.vf acc-row3 vf0)
+      (madd.x.vf acc-row3 mtx-row3 weight-vf)
+      (s.vf acc-row0 frame)
+      (s.vf acc-row1 frame 16)
+      (s.vf acc-row2 frame 32)
+      (s.vf acc-row3 frame 48)
+      (label frame-second-matrix)
+      (and.i nibble controls 2)
+      (add.i frame frame 64)
+      (b.z nibble frame-controls :delay (nop!))
+      (l.vf mtx-row0 stream64)
+      (l.vf mtx-row1 stream64 16)
+      (l.vf mtx-row2 stream64 32)
+      (l.vf mtx-row3 stream64 48)
+      (l.vf acc-row0 frame)
+      (add.i stream64 stream64 64)
+      (l.vf acc-row1 frame 16)
+      (nop!)
+      (l.vf acc-row2 frame 32)
+      (l.vf acc-row3 frame 48)
+      (mula.w.vf acc-row0 vf0)
+      (madd.x.vf acc-row0 mtx-row0 weight-vf)
+      (mula.w.vf acc-row1 vf0)
+      (madd.x.vf acc-row1 mtx-row1 weight-vf)
+      (mula.w.vf acc-row2 vf0)
+      (madd.x.vf acc-row2 mtx-row2 weight-vf)
+      (mula.w.vf acc-row3 vf0)
+      (madd.x.vf acc-row3 mtx-row3 weight-vf)
+      (s.vf acc-row0 frame)
+      (s.vf acc-row1 frame 16)
+      (s.vf acc-row2 frame 32)
+      (s.vf acc-row3 frame 48)
+      (label frame-controls)
+      (l.w controls control-ptr -4)
+      (add.i frame frame 64)
+      (label frame-dispatch)
+      (and.i nibble controls 15)
+      (sra controls controls 4)
+      (sll nibble nibble 2)
+      (add.i nibbles-left nibbles-left -1)
+      (add nibble nibble jump-table)
+      (add.i transforms-left transforms-left -1)
+      (l.w nibble nibble)
+      (nop!)
+      (nop!)
+      (nop!)
+      (jr nibble :delay (nop!))
+      (label frame-next-transform)
+      (b.z transforms-left frame-return :delay (add.i frame frame 48))
+      (b.nz nibbles-left frame-dispatch :delay (nop!))
+      (l.w controls control-ptr)
+      (add.i control-ptr control-ptr 4)
+      (b frame-dispatch :delay (add.i nibbles-left r0 8))
+      ;; control nibble 1: the set bits, so these components come from this frame
+      (label frame-path-trans)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans pack)
+      (itof.vf trans trans)
+      (mula.w.vf out-trans vf0)
+      (madd.y.vf out-trans trans weight-vf)
+      (s.vf out-trans frame)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 9: the set bits, so these components come from this frame
+      (label frame-path-wide-trans)
+      (l.d pack stream64)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (pcpyld pack pack-hi pack)
+      (m trans pack)
+      (mula.w.vf out-trans vf0)
+      (madd.x.vf out-trans trans weight-vf)
+      (s.vf out-trans frame)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 2, 10: the set bits, so these components come from this frame
+      (label frame-path-quat)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (itof.vf quat quat :fixed 15)
+      (mul.vf dot quat out-quat)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 frame-quaternion-ready-0 :delay (sub.vf quat zero-vf quat))
+      (label frame-quaternion-ready-0)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (s.vf out-quat frame 16)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 3: the set bits, so these components come from this frame
+      (label frame-path-quat-trans)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (itof.vf quat quat :fixed 15)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (mul.vf dot quat out-quat)
+      (m trans pack)
+      (mula.w.vf dot vf0)
+      (itof.vf trans trans)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (mula.w.vf out-trans vf0)
+      (madd.y.vf out-trans trans weight-vf)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 frame-quaternion-ready-1 :delay (sub.vf quat zero-vf quat))
+      (label frame-quaternion-ready-1)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 11: the set bits, so these components come from this frame
+      (label frame-path-quat-wide-trans)
+      (l.d xfer stream64 8)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d pack stream64 -8)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (itof.vf quat quat :fixed 15)
+      (pcpyld pack pack-hi pack)
+      (mul.vf dot quat out-quat)
+      (m trans pack)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (mula.w.vf out-trans vf0)
+      (madd.x.vf out-trans trans weight-vf)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 frame-quaternion-ready-2 :delay (sub.vf quat zero-vf quat))
+      (label frame-quaternion-ready-2)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 4, 12: the set bits, so these components come from this frame
+      (label frame-path-scale)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-scale frame 32)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 5: the set bits, so these components come from this frame
+      (label frame-path-trans-scale)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (itof.vf trans trans)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (mula.w.vf out-trans vf0)
+      (madd.y.vf out-trans trans weight-vf)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-scale frame 32)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 13: the set bits, so these components come from this frame
+      (label frame-path-wide-trans-scale)
+      (l.d pack stream64)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (pcpyld pack pack-hi pack)
+      (m trans pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (mula.w.vf out-trans vf0)
+      (madd.x.vf out-trans trans weight-vf)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-scale frame 32)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 6, 14: the set bits, so these components come from this frame
+      (label frame-path-quat-scale)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (itof.vf quat quat :fixed 15)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (mul.vf dot quat out-quat)
+      (m scale pack2)
+      (mula.w.vf dot vf0)
+      (itof.vf scale scale :fixed 12)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 frame-quaternion-ready-3 :delay (sub.vf quat zero-vf quat))
+      (label frame-quaternion-ready-3)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 7: the set bits, so these components come from this frame
+      (label frame-path-quat-trans-scale)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (itof.vf quat quat :fixed 15)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (mul.vf dot quat out-quat)
+      (m trans pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (itof.vf trans trans)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (m xfer dot)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 frame-quaternion-ready-4 :delay (sub.vf quat zero-vf quat))
+      (label frame-quaternion-ready-4)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (mula.w.vf out-trans vf0)
+      (madd.y.vf out-trans trans weight-vf)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b frame-next-transform :delay (nop!))
+      ;; control nibble 15: the set bits, so these components come from this frame
+      (label frame-path-quat-wide-trans-scale)
+      (l.d xfer stream64 8)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d pack stream64 -8)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (itof.vf quat quat :fixed 15)
+      (pcpyld pack pack-hi pack)
+      (mul.vf dot quat out-quat)
+      (m trans pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (m xfer dot)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 frame-quaternion-ready-5 :delay (sub.vf quat zero-vf quat))
+      (label frame-quaternion-ready-5)
+      (itof.vf scale scale :fixed 12)
+      (mula.w.vf out-quat vf0)
+      (madd.x.vf out-quat quat weight-vf)
+      (mula.w.vf out-trans vf0)
+      (madd.x.vf out-trans trans weight-vf)
+      (mula.w.vf out-scale vf0)
+      (madd.x.vf out-scale scale weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b frame-next-transform :delay (nop!))
+      (label frame-return)
+      (l.q frame sp)
+      (nop!)
+      (jr ra :delay (add.i sp sp 16))
+      (jr ra :delay (add sp sp r0))
+      (nop!)
+      (nop!)
+      (nop!)))
+  (defun decompress-frame-data-pair-to-accumulator ()
+    "Decode two adjacent frames at once. Every present component is read from both, blended with
+   interp and 1 - interp, and added once. After the setup weight-vf carries both halves, x and w
+   holding the pair weights and y and z the compact-translation factor. Only the first frame's
+   quaternion is hemisphere-checked; the second rides along with it."
+    (declare (asm-func))
+    ;; The three decompressors share one private register ABI set up by calc-animation-from-spr,
+    ;; so these are pinned rather than allocated. frame walks the output accumulator, block is the
+    ;; compressed source in spad, weight is the blend amount, and hdr is the spad copy of the
+    ;; fixed block's header. stream64, stream32 and stream16 are the three read cursors.
+    ;; transforms-left counts down the post-matrix records, controls holds the current packed
+    ;; control word with nibbles-left nibbles still in it, and control-ptr walks the rest.
+    ;; vf1 through vf12 carry two names each: matrix rows in the header section, then translation,
+    ;; quaternion and scale in the per-transform paths. They are the same registers either way.
+    (rlet ((frame :reg a0)
+           (block :reg a1 :type joint-anim-compressed-frame)
+           (weight :reg a2)
+           (second-block :reg a3 :type joint-anim-compressed-frame)
+           (interp :reg t0)
+           (hdr :reg t1 :type joint-anim-compressed-hdr)
+           (jump-table :reg t2)
+           (nibble :reg t3)
+           (stream64 :reg t4)
+           (stream32 :reg t5)
+           (stream16 :reg t6)
+           (stream64-b :reg t7)
+           (stream32-b :reg s0)
+           (stream16-b :reg s1)
+           (transforms-left :reg s2)
+           (nibbles-left :reg s3)
+           (controls :reg s4)
+           (control-ptr :reg s5)
+           (data-base :reg v1)
+           (pack :reg s6)
+           (pack-hi :reg gp)
+           (pack2 :reg t8)
+           (pack2-hi :reg fp)
+           (xfer :reg t9)
+           (mtx-row0 :reg vf1)
+           (mtx-row1 :reg vf2)
+           (mtx-row2 :reg vf3)
+           (mtx-row3 :reg vf4)
+           (acc-row0 :reg vf9)
+           (acc-row1 :reg vf10)
+           (acc-row2 :reg vf11)
+           (acc-row3 :reg vf12)
+           (trans :reg vf1)
+           (trans-b :reg vf2)
+           (out-trans :reg vf3)
+           (quat :reg vf4)
+           (quat-b :reg vf5)
+           (out-quat :reg vf6)
+           (scale :reg vf7)
+           (scale-b :reg vf8)
+           (out-scale :reg vf9)
+           (dot :reg vf10)
+           (mtx2-row0 :reg vf5)
+           (mtx2-row1 :reg vf6)
+           (mtx2-row2 :reg vf7)
+           (mtx2-row3 :reg vf8)
+           (interp-vf :reg vf11)
+           (weight-vf :reg vf13)
+           (scales :reg vf14)
+           (zero-vf :reg vf15))
+      (label pair-entry)
+      (add.i sp sp -64)
+      (s.q frame sp)
+      (s.q stream64-b sp 16)
+      (s.q stream32-b sp 32)
+      (s.q stream16-b sp 48)
+      (m interp-vf interp)
+      (add second-block second-block block)
+      (m weight-vf weight)
+      (lui jump-table 28672) ;; spad base, 0x70000000
+      (l.w stream64 (-> block offset-64))
+      (add.i data-base block (offset-of joint-anim-compressed-frame data))
+      (l.w stream32 (-> block offset-32))
+      (add control-ptr hdr r0)
+      (l.w stream16 (-> block offset-16))
+      (add stream64 stream64 data-base)
+      (sub.x.vf.w interp-vf vf0 interp-vf)
+      (l.w stream64-b (-> second-block offset-64))
+      (mul.x.vf weight-vf scales weight-vf)
+      (add.i jump-table jump-table (joint-spad-offset pair-jmp-table))
+      (l.w transforms-left (-> hdr num-joints))
+      (add stream32 stream32 data-base)
+      (l.w controls (-> hdr matrix-bits))
+      (add stream16 stream16 data-base)
+      (add.i nibbles-left r0 8)
+      (add.i control-ptr control-ptr 4)
+      (mul.w.vf.xy weight-vf weight-vf interp-vf)
+      (l.w stream32-b (-> second-block offset-32))
+      (mul.x.vf.zw weight-vf weight-vf interp-vf)
+      (l.w stream16-b (-> second-block offset-16))
+      (nop!)
+      (add.i data-base second-block (offset-of joint-anim-compressed-frame data))
+      (add stream64-b stream64-b data-base)
+      (add stream32-b stream32-b data-base)
+      (add stream16-b stream16-b data-base)
+      (nop!)
+      (and.i nibble controls 1)
+      (nop!)
+      (b.z nibble pair-second-matrix :delay (nop!))
+      (l.vf mtx-row0 stream64)
+      (l.vf mtx-row1 stream64 16)
+      (l.vf mtx-row2 stream64 32)
+      (l.vf mtx-row3 stream64 48)
+      (l.vf mtx2-row0 stream64-b)
+      (l.vf mtx2-row1 stream64-b 16)
+      (l.vf mtx2-row2 stream64-b 32)
+      (l.vf mtx2-row3 stream64-b 48)
+      (l.vf acc-row0 frame)
+      (add.i stream64 stream64 64)
+      (l.vf acc-row1 frame 16)
+      (add.i stream64-b stream64-b 64)
+      (l.vf interp-vf frame 32)
+      (l.vf acc-row3 frame 48)
+      (mula.w.vf acc-row0 vf0)
+      (madda.x.vf mtx-row0 weight-vf)
+      (madd.w.vf acc-row0 mtx2-row0 weight-vf)
+      (mula.w.vf acc-row1 vf0)
+      (madda.x.vf mtx-row1 weight-vf)
+      (madd.w.vf acc-row1 mtx2-row1 weight-vf)
+      (mula.w.vf interp-vf vf0)
+      (madda.x.vf mtx-row2 weight-vf)
+      (madd.w.vf interp-vf mtx2-row2 weight-vf)
+      (mula.w.vf acc-row3 vf0)
+      (madda.x.vf mtx-row3 weight-vf)
+      (madd.w.vf acc-row3 mtx2-row3 weight-vf)
+      (s.vf acc-row0 frame)
+      (s.vf acc-row1 frame 16)
+      (s.vf interp-vf frame 32)
+      (s.vf acc-row3 frame 48)
+      (label pair-second-matrix)
+      (and.i nibble controls 2)
+      (add.i frame frame 64)
+      (b.z nibble pair-controls :delay (nop!))
+      (l.vf mtx-row0 stream64)
+      (l.vf mtx-row1 stream64 16)
+      (l.vf mtx-row2 stream64 32)
+      (l.vf mtx-row3 stream64 48)
+      (l.vf mtx2-row0 stream64-b)
+      (l.vf mtx2-row1 stream64-b 16)
+      (l.vf mtx2-row2 stream64-b 32)
+      (l.vf mtx2-row3 stream64-b 48)
+      (l.vf acc-row0 frame)
+      (add.i stream64 stream64 64)
+      (l.vf acc-row1 frame 16)
+      (add.i stream64-b stream64-b 64)
+      (l.vf interp-vf frame 32)
+      (l.vf acc-row3 frame 48)
+      (mula.w.vf acc-row0 vf0)
+      (madda.x.vf mtx-row0 weight-vf)
+      (madd.w.vf acc-row0 mtx2-row0 weight-vf)
+      (mula.w.vf acc-row1 vf0)
+      (madda.x.vf mtx-row1 weight-vf)
+      (madd.w.vf acc-row1 mtx2-row1 weight-vf)
+      (mula.w.vf interp-vf vf0)
+      (madda.x.vf mtx-row2 weight-vf)
+      (madd.w.vf interp-vf mtx2-row2 weight-vf)
+      (mula.w.vf acc-row3 vf0)
+      (madda.x.vf mtx-row3 weight-vf)
+      (madd.w.vf acc-row3 mtx2-row3 weight-vf)
+      (s.vf acc-row0 frame)
+      (s.vf acc-row1 frame 16)
+      (s.vf interp-vf frame 32)
+      (s.vf acc-row3 frame 48)
+      (label pair-controls)
+      (l.w controls control-ptr -4)
+      (add.i frame frame 64)
+      (label pair-dispatch)
+      (and.i nibble controls 15)
+      (sra controls controls 4)
+      (sll nibble nibble 2)
+      (add.i nibbles-left nibbles-left -1)
+      (add nibble nibble jump-table)
+      (add.i transforms-left transforms-left -1)
+      (l.w nibble nibble)
+      (nop!)
+      (nop!)
+      (nop!)
+      (jr nibble :delay (nop!))
+      (label pair-next-transform)
+      (b.z transforms-left pair-return :delay (add.i frame frame 48))
+      (b.nz nibbles-left pair-dispatch :delay (nop!))
+      (l.w controls control-ptr)
+      (add.i control-ptr control-ptr 4)
+      (b pair-dispatch :delay (add.i nibbles-left r0 8))
+      ;; control nibble 1: the set bits, decoded from both frames and blended
+      (label pair-path-trans)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans pack)
+      (l.w pack stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans-b pack)
+      (itof.vf trans trans)
+      (itof.vf trans-b trans-b)
+      (mula.w.vf out-trans vf0)
+      (madda.y.vf trans weight-vf)
+      (madd.z.vf out-trans trans-b weight-vf)
+      (s.vf out-trans frame)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 9: the set bits, decoded from both frames and blended
+      (label pair-path-wide-trans)
+      (l.d pack stream64)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (pcpyld pack pack-hi pack)
+      (m trans pack)
+      (l.d pack stream64-b)
+      (add.i stream64-b stream64-b 8)
+      (l.w pack-hi stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (pcpyld pack pack-hi pack)
+      (m trans-b pack)
+      (mula.w.vf out-trans vf0)
+      (madda.x.vf trans weight-vf)
+      (madd.w.vf out-trans trans-b weight-vf)
+      (s.vf out-trans frame)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 2, 10: the set bits, decoded from both frames and blended
+      (label pair-path-quat)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d xfer stream64-b)
+      (add.i stream64-b stream64-b 8)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat-b xfer)
+      (itof.vf quat quat :fixed 15)
+      (itof.vf quat-b quat-b :fixed 15)
+      (mula.x.vf quat weight-vf)
+      (madd.w.vf quat quat-b weight-vf)
+      (mul.vf dot quat out-quat)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (m xfer dot)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 pair-quaternion-ready-0 :delay (sub.vf quat zero-vf quat))
+      (label pair-quaternion-ready-0)
+      (add.vf out-quat out-quat quat)
+      (s.vf out-quat frame 16)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 3: the set bits, decoded from both frames and blended
+      (label pair-path-quat-trans)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d xfer stream64-b)
+      (add.i stream64-b stream64-b 8)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat-b xfer)
+      (itof.vf quat quat :fixed 15)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (itof.vf quat-b quat-b :fixed 15)
+      (l.vf out-trans frame)
+      (pextlw pack pack-hi pack)
+      (mula.x.vf quat weight-vf)
+      (madd.w.vf quat quat-b weight-vf)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans pack)
+      (mul.vf dot quat out-quat)
+      (l.w pack stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m xfer dot)
+      (m trans-b pack)
+      (itof.vf trans trans)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 pair-quaternion-ready-1 :delay (sub.vf quat zero-vf quat))
+      (label pair-quaternion-ready-1)
+      (itof.vf trans-b trans-b)
+      (add.vf out-quat out-quat quat)
+      (mula.w.vf out-trans vf0)
+      (madda.y.vf trans weight-vf)
+      (madd.z.vf out-trans trans-b weight-vf)
+      (s.vf out-quat frame 16)
+      (s.vf out-trans frame)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 11: the set bits, decoded from both frames and blended
+      (label pair-path-quat-wide-trans)
+      (l.d xfer stream64 8)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d xfer stream64-b 8)
+      (add.i stream64-b stream64-b 8)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat-b xfer)
+      (itof.vf quat quat :fixed 15)
+      (l.d pack stream64 -8)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (itof.vf quat-b quat-b :fixed 15)
+      (l.vf out-trans frame)
+      (pcpyld pack pack-hi pack)
+      (mula.x.vf quat weight-vf)
+      (madd.w.vf quat quat-b weight-vf)
+      (m trans pack)
+      (mul.vf dot quat out-quat)
+      (l.d pack stream64-b -8)
+      (add.i stream64-b stream64-b 8)
+      (l.w pack-hi stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (pcpyld pack pack-hi pack)
+      (m xfer dot)
+      (m trans-b pack)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 pair-quaternion-ready-2 :delay (sub.vf quat zero-vf quat))
+      (label pair-quaternion-ready-2)
+      (add.vf out-quat out-quat quat)
+      (mula.w.vf out-trans vf0)
+      (madda.x.vf trans weight-vf)
+      (madd.w.vf out-trans trans-b weight-vf)
+      (s.vf out-quat frame 16)
+      (s.vf out-trans frame)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 4, 12: the set bits, decoded from both frames and blended
+      (label pair-path-scale)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (l.w pack2 stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack2-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale-b pack2)
+      (itof.vf scale scale :fixed 12)
+      (itof.vf scale-b scale-b :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madda.x.vf scale weight-vf)
+      (madd.w.vf out-scale scale-b weight-vf)
+      (s.vf out-scale frame 32)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 5: the set bits, decoded from both frames and blended
+      (label pair-path-trans-scale)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-trans frame)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans pack)
+      (l.w pack stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack pack-hi pack)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans-b pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (itof.vf trans trans)
+      (itof.vf trans-b trans-b)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (mula.w.vf out-trans vf0)
+      (madda.y.vf trans weight-vf)
+      (madd.z.vf out-trans trans-b weight-vf)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (l.w pack2 stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack2-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale-b pack2)
+      (itof.vf scale scale :fixed 12)
+      (itof.vf scale-b scale-b :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madda.x.vf scale weight-vf)
+      (madd.w.vf out-scale scale-b weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-scale frame 32)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 13: the set bits, decoded from both frames and blended
+      (label pair-path-wide-trans-scale)
+      (l.d pack stream64)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (l.vf out-trans frame)
+      (pcpyld pack pack-hi pack)
+      (m trans pack)
+      (l.d pack stream64-b)
+      (add.i stream64-b stream64-b 8)
+      (l.w pack-hi stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (pcpyld pack pack-hi pack)
+      (m trans-b pack)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (mula.w.vf out-trans vf0)
+      (madda.x.vf trans weight-vf)
+      (madd.w.vf out-trans trans-b weight-vf)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (l.w pack2 stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack2-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale-b pack2)
+      (itof.vf scale scale :fixed 12)
+      (itof.vf scale-b scale-b :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madda.x.vf scale weight-vf)
+      (madd.w.vf out-scale scale-b weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-scale frame 32)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 6, 14: the set bits, decoded from both frames and blended
+      (label pair-path-quat-scale)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d xfer stream64-b)
+      (add.i stream64-b stream64-b 8)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat-b xfer)
+      (itof.vf quat quat :fixed 15)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (itof.vf quat-b quat-b :fixed 15)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (mula.x.vf quat weight-vf)
+      (madd.w.vf quat quat-b weight-vf)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (mul.vf dot quat out-quat)
+      (l.w pack2 stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack2-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack2 pack2-hi pack2)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale-b pack2)
+      (m xfer dot)
+      (itof.vf scale scale :fixed 12)
+      (itof.vf scale-b scale-b :fixed 12)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 pair-quaternion-ready-3 :delay (sub.vf quat zero-vf quat))
+      (label pair-quaternion-ready-3)
+      (mula.w.vf out-scale vf0)
+      (madda.x.vf scale weight-vf)
+      (madd.w.vf out-scale scale-b weight-vf)
+      (add.vf out-quat out-quat quat)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 7: the set bits, decoded from both frames and blended
+      (label pair-path-quat-trans-scale)
+      (l.d xfer stream64)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d xfer stream64-b)
+      (add.i stream64-b stream64-b 8)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat-b xfer)
+      (l.w pack stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack-hi stream16)
+      (add.i stream16 stream16 2)
+      (itof.vf quat quat :fixed 15)
+      (itof.vf quat-b quat-b :fixed 15)
+      (l.vf out-trans frame)
+      (pextlw pack pack-hi pack)
+      (mula.x.vf quat weight-vf)
+      (madd.w.vf quat quat-b weight-vf)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans pack)
+      (mul.vf dot quat out-quat)
+      (l.w pack stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack pack-hi pack)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (pextlh pack pack r0)
+      (sra.w pack pack 16)
+      (m trans-b pack)
+      (m xfer dot)
+      (itof.vf trans trans)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 pair-quaternion-ready-4 :delay (sub.vf quat zero-vf quat))
+      (label pair-quaternion-ready-4)
+      (itof.vf trans-b trans-b)
+      (mula.w.vf out-trans vf0)
+      (madda.y.vf trans weight-vf)
+      (madd.z.vf out-trans trans-b weight-vf)
+      (add.vf out-quat out-quat quat)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (l.w pack2 stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack2-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale-b pack2)
+      (itof.vf scale scale :fixed 12)
+      (itof.vf scale-b scale-b :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madda.x.vf scale weight-vf)
+      (madd.w.vf out-scale scale-b weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b pair-next-transform :delay (nop!))
+      ;; control nibble 15: the set bits, decoded from both frames and blended
+      (label pair-path-quat-wide-trans-scale)
+      (l.d xfer stream64 8)
+      (add.i stream64 stream64 8)
+      (l.vf out-quat frame 16)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat xfer)
+      (l.d xfer stream64-b 8)
+      (add.i stream64-b stream64-b 8)
+      (pextlh xfer xfer r0)
+      (sra.w xfer xfer 16)
+      (m quat-b xfer)
+      (l.d pack stream64 -8)
+      (add.i stream64 stream64 8)
+      (l.w pack-hi stream32)
+      (add.i stream32 stream32 4)
+      (itof.vf quat quat :fixed 15)
+      (itof.vf quat-b quat-b :fixed 15)
+      (l.vf out-trans frame)
+      (pcpyld pack pack-hi pack)
+      (mula.x.vf quat weight-vf)
+      (madd.w.vf quat quat-b weight-vf)
+      (m trans pack)
+      (mul.vf dot quat out-quat)
+      (l.d pack stream64-b -8)
+      (add.i stream64-b stream64-b 8)
+      (l.w pack-hi stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (pcpyld pack pack-hi pack)
+      (mula.w.vf dot vf0)
+      (madda.z.vf vf0 dot)
+      (madda.y.vf vf0 dot)
+      (madd.x.vf dot vf0 dot)
+      (m trans-b pack)
+      (m xfer dot)
+      (l.w pack2 stream32)
+      (add.i stream32 stream32 4)
+      (l.h pack2-hi stream16)
+      (add.i stream16 stream16 2)
+      (pcpyud xfer xfer r0)
+      (b.ltl xfer r0 pair-quaternion-ready-5 :delay (sub.vf quat zero-vf quat))
+      (label pair-quaternion-ready-5)
+      (mula.w.vf out-trans vf0)
+      (madda.x.vf trans weight-vf)
+      (madd.w.vf out-trans trans-b weight-vf)
+      (add.vf out-quat out-quat quat)
+      (l.vf out-scale frame 32)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale pack2)
+      (l.w pack2 stream32-b)
+      (add.i stream32-b stream32-b 4)
+      (l.h pack2-hi stream16-b)
+      (add.i stream16-b stream16-b 2)
+      (pextlw pack2 pack2-hi pack2)
+      (pextlh pack2 pack2 r0)
+      (sra.w pack2 pack2 16)
+      (m scale-b pack2)
+      (itof.vf scale scale :fixed 12)
+      (itof.vf scale-b scale-b :fixed 12)
+      (mula.w.vf out-scale vf0)
+      (madda.x.vf scale weight-vf)
+      (madd.w.vf out-scale scale-b weight-vf)
+      (s.vf out-trans frame)
+      (s.vf out-quat frame 16)
+      (s.vf out-scale frame 32)
+      (b pair-next-transform :delay (nop!))
+      (label pair-return)
+      (l.q frame sp)
+      (l.q stream64-b sp 16)
+      (l.q stream32-b sp 32)
+      (l.q stream16-b sp 48)
+      (jr ra :delay (add.i sp sp 64))
+      (jr ra :delay (add sp sp r0))
+      (nop!)
+      (nop!))))
 
-;          (vf11 :class vf) ;; temp
-;          (vf12 :class vf) ;; temp
-;          (vf13 :class vf) ;; temp
-;          (vf14 :class vf) ;; temp
-
-;          (vf16 :class vf) ;; temp
-;          (t1 :class vf)
-;          (t2 :class vf)
-;          (t3 :class vf)
-;          )
-;     (init-vf0-vector)
-;     (.lvf vf5 (-> arg1 quat))
-;     (.lvf vf15 (-> arg1 trans))
-;     (let ((t0 (-> arg0 parent bone))
-;           (a2 (-> arg0 bone))
-;           )
-;       (.add.vf vf6 vf5 vf5)
-;       ;; set vf2
-;       (.add.w.vf.x vf2 vf0 vf5)
-;       (.add.z.vf.y vf2 vf0 vf5)
-;       (.sub.y.vf.z vf2 vf0 vf5)
-;       (.sub.w.vf.w vf2 vf0 vf0)
-;       ;; set vf3
-;       (.sub.z.vf.x vf3 vf0 vf5)
-;       (.add.w.vf.y vf3 vf0 vf5)
-;       (.add.x.vf.z vf3 vf0 vf5)
-;       (.sub.w.vf.w vf3 vf0 vf0)
-;       ;; set vf4
-;       (.add.y.vf.x vf4 vf0 vf5)
-;       (.sub.x.vf.y vf4 vf0 vf5)
-;       (.add.w.vf.z vf4 vf0 vf5)
-;       (.sub.w.vf.w vf4 vf0 vf0)
-;       ;; outer prods
-;       (.outer.product.a.vf acc vf6 vf2)
-;       (.outer.product.b.vf vf2 vf2 vf6 acc)
-;       (.outer.product.a.vf acc vf6 vf3)
-;       (.outer.product.b.vf vf3 vf3 vf6 acc)
-;       (.outer.product.a.vf acc vf6 vf4)
-;       (.outer.product.b.vf vf4 vf4 vf6 acc)
-;       ;; add ones
-;       (.add.w.vf.x vf2 vf2 vf0)
-;       (.add.w.vf.y vf3 vf3 vf0)
-;       (.add.w.vf.z vf4 vf4 vf0)
-
-;       ;; things for cond blocks
-;       (.lvf vf7 (-> t0 transform vector 0))
-;       (.lvf vf8 (-> t0 transform vector 1))
-;       (.lvf vf9 (-> t0 transform vector 2))
-;       (.lvf vf10 (-> t0 transform vector 3))
-;       (.lvf vf1 (-> a2 scale))
-
-;       (cond
-;         ((zero? (-> t0 scale w))
-;          (.mul.x.vf vf2 vf2 vf1)
-;          (.mul.y.vf vf3 vf3 vf1)
-;          (.mul.z.vf vf4 vf4 vf1)
-
-;          ;; the same
-;          (.matrix*! acc (vf11 vf12 vf13 vf14) (vf2 vf3 vf4 (vf15 vf15 vf15 vf0)) (vf7 vf8 vf9 vf10))
-;          (.svf (-> a2 transform vector 0) vf11)
-;          (.svf (-> a2 transform vector 1) vf12)
-;          (.svf (-> a2 transform vector 2) vf13)
-;          (.svf (-> a2 transform vector 3) vf14)
-;          )
-;         (else
-;          (.mul.x.vf vf2 vf2 vf1)
-;          (.mul.y.vf vf3 vf3 vf1)
-;          (.mul.z.vf vf4 vf4 vf1)
-
-;          (.mov t1 (/ 1.0 (-> t0 scale x)))
-;          (.mov t2 (/ 1.0 (-> t0 scale y)))
-;          (.mov t3 (/ 1.0 (-> t0 scale z)))
-;          (.pextlw t1 t1 t2)
-;          (.pcpyld t1 t1 t3)
-;          (.mov vf16 t1)
-;          (.mul.vf vf2 vf2 vf16)
-;          (.mul.vf vf3 vf3 vf16)
-;          (.mul.vf vf4 vf4 vf16)
-
-;          ;; the same
-;          (.matrix*! acc (vf11 vf12 vf13 vf14) (vf2 vf3 vf4 (vf15 vf15 vf15 vf0)) (vf7 vf8 vf9 vf10))
-;          (.svf (-> a2 transform vector 0) vf11)
-;          (.svf (-> a2 transform vector 1) vf12)
-;          (.svf (-> a2 transform vector 2) vf13)
-;          (.svf (-> a2 transform vector 3) vf14)
-;          )
-;         )
-;       )
-;     )
-;   )
-
-; (defun clear-frame-accumulator ((arg0 (inline-array vector)))
-; ;; TODO
-;   (with-sp
-;     (.sub sp 16)
-;     (nop!)
-;     (nop!)
-;     (nop!)
-;     (nop!)
-;     (nop!)
-;     (nop!)
-;     (nop!)
-;     (nop!)
-;     (.add sp 16)
-;     )
-;   )
-
-(define-extern decompress-fixed-data-to-accumulator (function none))
-
-(define-extern decompress-frame-data-to-accumulator (function none))
-
-(define-extern decompress-frame-data-pair-to-accumulator (function none))
-
-;; ERROR: function was not converted to expressions. Cannot decompile.
-
-;; ERROR: function was not converted to expressions. Cannot decompile.
-
-;; ERROR: function was not converted to expressions. Cannot decompile.
+(#when PC_PORT
+  (define-extern decompress-fixed-data-to-accumulator (function none))
+  (define-extern decompress-frame-data-to-accumulator (function none))
+  (define-extern decompress-frame-data-pair-to-accumulator (function none)))
 
 (defun make-joint-jump-tables ()
-  #|
-    #x3ee6b6f9, // = 9 ^ 1055307504
-    #x3ee6b6ff, // = 15 ^ 1055307504
-    #x3ee6b6e2, // = 18 ^ 1055307504
-    #x3ee6b6e4, // = 20 ^ 1055307504
-    #x3ee6b6e5, // = 21 ^ 1055307504
-    #x3ee6b6eb, // = 27 ^ 1055307504
-    #x3ee6b6ee, // = 30 ^ 1055307504
-    #x3ee6b6f6, // = 6 ^ 1055307504
-    #x3ee6b6fc, // = 12 ^ 1055307504
-    #x3ee6b6ff, // = 15 ^ 1055307504
-    #x3ee6b6e3, // = 19 ^ 1055307504
-    #x3ee6b6e4, // = 20 ^ 1055307504
-    #x3ee6b6e8, // = 24 ^ 1055307504
-    #x3ee6b6eb, // = 27 ^ 1055307504
-    #x3ee6b6ef, // = 31 ^ 1055307504
-    #x3ee6b6f6, // = 6 ^ 1055307504
-  |#
+  "Install the 16 control-nibble destinations for each of the three decompressors, in spad.
+   Indexing on the whole nibble lets a transform with no scale skip the scale code entirely
+   instead of testing for it."
+  ;; The numbers are instruction offsets into each assembly function, so they only mean anything
+  ;; against that function's own instruction stream; the (label *-path-*) names in the
+  ;; decompressors sit at exactly these offsets. fix-jmp-table takes the clear bits, meaning the
+  ;; components present in the fixed streams:
+  ;;   0 -> trans-quat-scale       8 -> wide-trans-quat-scale
+  ;;   1 -> quat-scale             9 -> quat-scale       (bit 3 is meaningless with no trans)
+  ;;   2 -> trans-scale           10 -> wide-trans-scale
+  ;;   3 -> scale                 11 -> scale
+  ;;   4 -> trans-quat            12 -> wide-trans-quat
+  ;;   5 -> quat                  13 -> quat
+  ;;   6 -> trans                 14 -> wide-trans
+  ;;   7 -> nothing               15 -> nothing         (straight to fixed-next-transform)
+  ;; frm-jmp-table and pair-jmp-table take the set bits, so their tables are the same list read
+  ;; the other way round: 0 and 8 are the nothing case and 15 is all three with wide translation.
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 0)
-        (the-as (function none) (+ 0 #x3ee6b6f9)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 108 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 1)
-        (the-as (function none) (+ 0 #x3ee6b6ff)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 199 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 2)
-        (the-as (function none) (+ 0 #x3ee6b6e2)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 233 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 3)
-        (the-as (function none) (+ 0 #x3ee6b6e4)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 286 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 4)
-        (the-as (function none) (+ 0 #x3ee6b6e5)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 301 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 5)
-        (the-as (function none) (+ 0 #x3ee6b6eb)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 366 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 6)
-        (the-as (function none) (+ 0 #x3ee6b6ee)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 387 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 7)
-        (the-as (function none) (+ 0 #x3ee6b6f6)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 100 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 8)
-        (the-as (function none) (+ 0 #x3ee6b6fc)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 155 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 9)
-        (the-as (function none) (+ 0 #x3ee6b6ff)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 199 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 10)
-        (the-as (function none) (+ 0 #x3ee6b6e3)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 261 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 11)
-        (the-as (function none) (+ 0 #x3ee6b6e4)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 286 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 12)
-        (the-as (function none) (+ 0 #x3ee6b6e8)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 335 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 13)
-        (the-as (function none) (+ 0 #x3ee6b6eb)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 366 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 14)
-        (the-as (function none) (+ 0 #x3ee6b6ef)))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 402 4))))
   (set! (-> (scratchpad-object terrain-context) work foreground joint-work fix-jmp-table 15)
-        (the-as (function none) (+ 0 #x3ee6b6f6)))
-  (let ((arr (new 'static
-                  'array
-                  uint32
-                  16
-                  #x7b2191b ;; = 6 ^ 129112349
-                  #x7b21914 ;; = 9 ^ 129112349
-                  #x7b21916 ;; = 11 ^ 129112349
-                  #x7b21913 ;; = 14 ^ 129112349
-                  #x7b21909 ;; = 20 ^ 129112349
-                  #x7b21908 ;; = 21 ^ 129112349
-                  #x7b2190a ;; = 23 ^ 129112349
-                  #x7b21907 ;; = 26 ^ 129112349
-                  #x7b2191b ;; = 6 ^ 129112349
-                  #x7b21917 ;; = 10 ^ 129112349
-                  #x7b21916 ;; = 11 ^ 129112349
-                  #x7b2190c ;; = 17 ^ 129112349
-                  #x7b21909 ;; = 20 ^ 129112349
-                  #x7b2190b ;; = 22 ^ 129112349
-                  #x7b2190a ;; = 23 ^ 129112349
-                  #x7b21900 ;; = 29 ^ 129112349
-                  )))
-    (dotimes (i 16)
-      (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table i)
-            (the-as (function none) (-> arr i)))))
-  (let ((arr (new 'static
-                  'array
-                  uint32
-                  16
-                  #x4d7666df ;; = 6 ^ 1299605209
-                  #x4d7666d0 ;; = 9 ^ 1299605209
-                  #x4d7666d2 ;; = 11 ^ 1299605209
-                  #x4d7666d7 ;; = 14 ^ 1299605209
-                  #x4d7666cd ;; = 20 ^ 1299605209
-                  #x4d7666cc ;; = 21 ^ 1299605209
-                  #x4d7666ce ;; = 23 ^ 1299605209
-                  #x4d7666c3 ;; = 26 ^ 1299605209
-                  #x4d7666df ;; = 6 ^ 1299605209
-                  #x4d7666d3 ;; = 10 ^ 1299605209
-                  #x4d7666d2 ;; = 11 ^ 1299605209
-                  #x4d7666c8 ;; = 17 ^ 1299605209
-                  #x4d7666cd ;; = 20 ^ 1299605209
-                  #x4d7666cf ;; = 22 ^ 1299605209
-                  #x4d7666ce ;; = 23 ^ 1299605209
-                  #x4d7666c4 ;; = 29 ^ 1299605209
-                  )))
-    (dotimes (i 16)
-      (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table i)
-            (the-as (function none) (-> arr i)))))
+        (the-as (function none) (+ (the-as uint decompress-fixed-data-to-accumulator) (* 100 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 0)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 84 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 1)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 92 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 2)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 119 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 3)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 140 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 4)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 205 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 5)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 220 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 6)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 273 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 7)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 307 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 8)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 84 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 9)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 107 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 10)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 119 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 11)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 174 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 12)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 205 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 13)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 248 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 14)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 273 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table 15)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-to-accumulator) (* 354 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 0)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 117 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 1)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 125 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 2)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 169 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 3)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 197 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 4)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 293 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 5)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 318 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 6)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 408 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 7)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 459 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 8)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 117 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 9)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 150 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 10)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 169 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 11)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 248 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 12)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 293 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 13)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 366 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 14)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 408 4))))
+  (set! (-> (scratchpad-object terrain-context) work foreground joint-work pair-jmp-table 15)
+        (the-as (function none) (+ (the-as uint decompress-frame-data-pair-to-accumulator) (* 533 4))))
   0)
 
-; (defun calc-animation-from-spr ((arg0 (inline-array vector)) (arg1 int))
-;   (declare (asm-func object)
-;            (allow-saved-regs) ;; very dangerous!
-;            )
-;   (with-sp
-;     ;; useless possibly leftover reg move here
-;     (rlet (
-;            (s0 :reg rbx)
-;            (s1 :reg rbp)
-;            (s2 :reg r10)
-;            (s3 :reg r11)
-;            (s4 :reg r12)
-;            (s6 :reg r13)
-;            )
-;       ;(.sub sp -16)
+(#when PC_PORT
+  (def-mips2c calc-animation-from-spr (function (inline-array vector) int none)))
 
-;       (let ((joint-num arg1))
+(#unless PC_PORT
+  (defun calc-animation-from-spr ((destination (inline-array vector)) (joint-count int))
+    "Run the upload list that flatten-joint-control-to-spr left in spad: clear the frame, then DMA
+   and accumulate each animation's fixed and frame data, then renormalize. Every DMA is started one
+   step ahead of the code that consumes it."
+    (declare (asm-func object) (allow-saved-regs))
+    (rlet ((to-spr-channel :reg s0 :type dma-bank-spr)
+           (uploads-left :reg s1)
+           (saved-joint-count :reg s2)
+           (upload :reg t7)
+           (control-copy :reg t1)
+           (dma-address :reg t2)
+           (scratchpad-address :reg t3)
+           (quadword-count :reg t4)
+           (dma-control :reg v1)
+           (interpolation :reg t0)
+           (weight :reg a2)
+           (frame-data :reg a1)
+           (second-frame-offset :reg a3)
+           (zero :reg vf15)
+           (one :reg vf14))
+      (m! saved-joint-count joint-count)
+      (m! uploads-left (-> (scratchpad-object terrain-context) work foreground joint-work num-uploads))
+      (m! upload (-> (scratchpad-object terrain-context) work foreground joint-work uploads))
+      (m! control-copy (&+ (scratchpad-object terrain-context) (joint-spad-offset jacp-hdr)))
+      ;; SPR_TO_BANK. This moves main memory into spad, so it is the toSPR channel.
+      (m! to-spr-channel #x1000d400)
+      ;; one is the broadcast scale vector that the decompressors multiply the blend weight by.
+      ;; All four lanes start at 1, then two doublings of y and z leave (1, 4, 4, 1). The 4 is the
+      ;; compact translation's fixed-point factor, carried here rather than in the tables.
+      (m zero r0)
+      (b.z uploads-left animation-complete :delay (add.w.vf one zero vf0))
+      (label next-upload)
+      ;; Start the fixed block's DMA into spad and run clear-frame-accumulator underneath it. Both
+      ;; sync.l are needed, since the qwc and madr stores must be visible before str goes on.
+      (l.w dma-address upload)
+      (m! scratchpad-address (joint-spad-offset fixed-data))
+      (l.w quadword-count upload (offset-of channel-upload-info fixed-qwc))
+      (m! dma-control DMA-CHCR-STR)
+      (s.w dma-address (-> to-spr-channel madr))
+      (s.w scratchpad-address (-> to-spr-channel sadr))
+      (nop!)
+      (s.w quadword-count (-> to-spr-channel qwc))
+      (sync.l)
+      (s.w dma-control (-> to-spr-channel chcr))
+      (sync.l)
+      (add.yz.vf one one one)
+      (m! saved-joint-count joint-count)
+      (jalr ra clear-frame-accumulator :delay (add.yz.vf one one one))
+      (label wait-fixed)
+      (l.w dma-control (-> to-spr-channel chcr))
+      (nop!)
+      (and.i dma-control dma-control DMA-CHCR-STR)
+      (nop!)
+      (nop!)
+      (nop!)
+      (b.nz dma-control wait-fixed :delay (nop!))
+      ;; Queue the first frame, then work through the fixed block while that DMA runs.
+      (l.w dma-address upload (offset-of channel-upload-info frame))
+      (m! scratchpad-address (joint-spad-offset frame-data))
+      (l.w quadword-count upload (offset-of channel-upload-info frame-qwc))
+      (m! dma-control DMA-CHCR-STR)
+      (s.w dma-address (-> to-spr-channel madr))
+      (nop!)
+      (s.w scratchpad-address (-> to-spr-channel sadr))
+      (nop!)
+      (s.w quadword-count (-> to-spr-channel qwc))
+      (sync.l)
+      (s.w dma-control (-> to-spr-channel chcr))
+      (sync.l)
+      (l.w weight upload (offset-of channel-upload-info amount))
+      (m! frame-data (&+ (scratchpad-object terrain-context) (joint-spad-offset fixed-data)))
+      (-! uploads-left 1)
+      (jalr ra decompress-fixed-data-to-accumulator :delay (nop!))
+      (label wait-frame)
+      (l.w dma-control (-> to-spr-channel chcr))
+      (nop!)
+      (and.i dma-control dma-control DMA-CHCR-STR)
+      (nop!)
+      (nop!)
+      (nop!)
+      (b.nz dma-control wait-frame :delay (nop!))
+      ;; If requests remain, start the next one's fixed DMA before decoding this frame. Reading
+      ;; one channel-upload-info past this record is deliberate.
+      (b.z uploads-left frame-ready :delay (nop!))
+      (l.w dma-address upload (+ (type-size channel-upload-info) (offset-of channel-upload-info fixed)))
+      (m! scratchpad-address (joint-spad-offset fixed-data))
+      (l.w quadword-count upload (+ (type-size channel-upload-info) (offset-of channel-upload-info fixed-qwc)))
+      (m! dma-control DMA-CHCR-STR)
+      (s.w dma-address (-> to-spr-channel madr))
+      (nop!)
+      (s.w scratchpad-address (-> to-spr-channel sadr))
+      (nop!)
+      (s.w quadword-count (-> to-spr-channel qwc))
+      (sync.l)
+      (s.w dma-control (-> to-spr-channel chcr))
+      (sync.l)
+      (label frame-ready)
+      (l.w interpolation upload (offset-of channel-upload-info interp))
+      (m! frame-data (&+ (scratchpad-object terrain-context) (joint-spad-offset frame-data)))
+      (l.w weight upload (offset-of channel-upload-info amount))
+      ;; A nonzero interp means flatten-joint-control-to-spr doubled frame-qwc and brought the next
+      ;; frame across right behind this one, so the pair decoder gets the stride in bytes.
+      (b.z interpolation single-frame :delay (nop!))
+      (l.w second-frame-offset upload (offset-of channel-upload-info frame-qwc))
+      (sll second-frame-offset second-frame-offset 3)
+      (jalr ra decompress-frame-data-pair-to-accumulator :delay (nop!))
+      (b.nz uploads-left next-upload :delay (&+! upload (type-size channel-upload-info)))
+      (b normalize-result :delay (nop!))
+      (label single-frame)
+      (jalr ra decompress-frame-data-to-accumulator :delay (nop!))
+      (b.nz uploads-left next-upload :delay (&+! upload (type-size channel-upload-info)))
+      (label normalize-result)
+      (m! saved-joint-count joint-count)
+      (jalr ra normalize-frame-quaternions :delay (nop!))
+      (label animation-complete)
+      (jr ra :delay (nop!)))))
 
-;         )
-
-;       ;(.add sp 16)
-;       )
-;     )
-;   (.ret)
-;   )
-
-(def-mips2c calc-animation-from-spr (function (inline-array vector) int none))
-
-(defun create-interpolated-joint-animation-frame ((arg0 (inline-array vector)) (arg1 int) (arg2 process-drawable))
+(defun create-interpolated-joint-animation-frame ((destination (inline-array vector)) (joint-count int) (drawable process-drawable))
+  "Generate drawable's blended joint-animation frame. The GOAL decompressor is normally used; the
+   scratchpad decompressor remains available through the development switch."
   (cond
-    (*use-new-decompressor* (new-joint-decompressor (the joint-anim-frame arg0) arg1 (-> arg2 skel)))
-    (else (flatten-joint-control-to-spr (-> arg2 skel)) (make-joint-jump-tables) (calc-animation-from-spr arg0 arg1)))
+    (*use-new-decompressor* (new-joint-decompressor (the joint-anim-frame destination) joint-count (-> drawable skel)))
+    (else
+     (flatten-joint-control-to-spr (-> drawable skel))
+     (make-joint-jump-tables)
+     (calc-animation-from-spr destination joint-count)))
   0)

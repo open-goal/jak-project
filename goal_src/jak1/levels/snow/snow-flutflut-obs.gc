@@ -28,7 +28,6 @@
    flutflut-plat-hidden-idle
    flutflut-plat-hide))
 
-
 (deftype snow-button (process-drawable)
   ((root                  collide-shape-moving :override)
    (wiggled?              symbol)
@@ -41,7 +40,6 @@
    snow-button-activate
    snow-button-deactivate
    snow-button-up-idle))
-
 
 (defskelgroup *flutflut-plat-small-sg*
   flutflut-plat-small
@@ -113,7 +111,7 @@
    (:accel-y (meters -0.000033333334))
    (:friction 0.96)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:rotate-y (degrees 45))))
 
 (defpartgroup group-flutflut-plat-med
@@ -156,7 +154,7 @@
    (:accel-y (meters -0.000033333334))
    (:friction 0.96)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 90))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 1) (meters 3))))
@@ -203,7 +201,7 @@
    (:accel-y (meters -0.000033333334))
    (:friction 0.96)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:rotate-y (degrees 30))))
 
 (defstate snow-button-up-idle (snow-button)
@@ -217,7 +215,7 @@
                     (>= 10649.6 (vector-vector-xz-distance (-> self root trans) (target-pos 0))))
            (close-specific-task! (game-task snow-ball) (task-status need-hint))
            (logclear! (-> self mask) (process-mask actor-pause))
-           (process-entity-status! self (entity-perm-status bit-3) #t)
+           (process-entity-status! self (entity-perm-status no-kill) #t)
            (go snow-button-activate)))
         (('query) (return #f) v0-2)))
   :code
@@ -262,10 +260,7 @@
   :code
     (behavior ()
       (sound-play "prec-button1" :pitch -1)
-      (ja-no-eval :group! snow-button-going-down-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! snow-button-going-down-ja :num! (seek!) :frame-num 0.0)
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
       0)
@@ -280,7 +275,7 @@
   :exit
     (behavior ()
       (logior! (-> self mask) (process-mask actor-pause))
-      (process-entity-status! self (entity-perm-status bit-3) #f))
+      (process-entity-status! self (entity-perm-status no-kill) #f))
   :trans rider-trans
   :code
     (behavior ()
@@ -288,14 +283,13 @@
       (set-time! (-> self state-time))
       (until (time-elapsed? (-> self state-time) (seconds 0.6))
         (suspend))
-      (ja-no-eval :group! snow-button-going-up-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! snow-button-going-up-ja :num! (seek!) :frame-num 0.0)
       (go snow-button-up-idle))
   :post rider-post)
 
-(defmethod init-from-entity! ((this snow-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this snow-button) (source-entity entity-actor))
+  "Create the button collision and skeleton, load its timeout and previous-button link, and
+   begin the ordered fuel-cell button sequence."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -333,14 +327,14 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (set! (-> this link) (new 'process 'actor-link-info this))
   (initialize-skeleton this *snow-button-sg* '())
   (logior! (-> this skel status) (janim-status inited))
-  (set! (-> this timeout) (the-as time-frame (the int (* 300.0 (res-lump-float arg0 'timeout :default 10.0)))))
+  (set! (-> this timeout) (the-as time-frame (the int (* 300.0 (res-lump-float source-entity 'timeout :default 10.0)))))
   (set! (-> this delay-til-wiggle) (+ (-> this timeout) (seconds -0.4)))
-  (if (> (entity-actor-count arg0 'alt-actor) 0)
-    (set! (-> this prev-button) (entity-actor-lookup arg0 'alt-actor 0))
+  (if (> (entity-actor-count source-entity 'alt-actor) 0)
+    (set! (-> this prev-button) (entity-actor-lookup source-entity 'alt-actor 0))
     (set! (-> this prev-button) #f))
   ;; og:preserve-this PAL patch here
   (set! (-> this trying-for-fuel-cell?) (not (task-complete? *game-info* (game-task snow-ball))))
@@ -352,8 +346,10 @@
   (go snow-button-up-idle)
   (none))
 
-(defmethod baseplat-method-26 ((this flutflut-plat))
-  (let ((t9-0 (method-of-type plat baseplat-method-26))) (t9-0 this))
+(defmethod configure-options! ((this flutflut-plat))
+  "Apply the common flutflut-platform resource options, links, path state, appearance endpoints,
+   and rise and fall timings."
+  (let ((t9-0 (method-of-type plat configure-options!))) (t9-0 this))
   (if (zero? (-> this link)) (set! (-> this link) (new 'process 'actor-link-info this)))
   (set! (-> this sound-id) (new-sound-id))
   (set! (-> this plat-type) (res-lump-value (-> this entity) 'mode int))
@@ -373,8 +369,8 @@
                            (get-current-phase (-> this sync))
                            (get-current-phase-with-mirror (-> this sync)))
                          'interp))
-      (else (set! (-> this appear-trans-top quad) (-> this root trans quad))))
-    (set! (-> this appear-trans-bottom quad) (-> this appear-trans-top quad))
+      (else (vector-copy! (-> this appear-trans-top) (-> this root trans))))
+    (vector-copy! (-> this appear-trans-bottom) (-> this appear-trans-top))
     (+! (-> this appear-trans-bottom y) -286720.0)
     (quaternion-copy! (-> this appear-quat-top) (-> this root quat))
     (let ((v1-33 (res-lump-value (-> this entity) 'extra-id uint128)))
@@ -383,6 +379,8 @@
   (none))
 
 (defmethod get-lit-skel ((this flutflut-plat))
+  "Return true as a skeleton-group sentinel once this platform's task is complete, recording the
+   completion on the entity when necessary."
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
     (return (the-as skeleton-group #t)))
   (when (task-complete? *game-info* (-> this entity extra perm task))
@@ -406,7 +404,7 @@
         ((and (= (-> self plat-type) 1)
               (-> self entity)
               (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-         (set! (-> self basetrans quad) (-> self appear-trans-top quad))
+         (vector-copy! (-> self basetrans) (-> self appear-trans-top))
          (go elevator-idle-at-cave))
         ((or (= (-> self plat-type) 1) (= (-> self plat-type) 2))
          (let* ((v1-11 (-> self flutflut-button))
@@ -427,7 +425,7 @@
     (behavior ()
       (logior! (-> self draw status) (draw-status hidden))
       (clear-collide-with-as (-> self root))
-      (set! (-> self root trans quad) (-> self appear-trans-top quad))
+      (vector-copy! (-> self root trans) (-> self appear-trans-top))
       (transform-post)
       (logior! (-> self mask) (process-mask sleep-code))
       (suspend)
@@ -437,14 +435,14 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))))
+        (('bonk 'bounce) (bounce! self))))
   :enter
     (behavior ()
       (set-time! (-> self state-time))
       (logclear! (-> self mask) (process-mask actor-pause))
       (logclear! (-> self draw status) (draw-status hidden))
       (restore-collide-with-as (-> self root))
-      (set! (-> self basetrans quad) (-> self appear-trans-bottom quad))
+      (vector-copy! (-> self basetrans) (-> self appear-trans-bottom))
       (let ((s5-0 (new 'stack-no-clear 'vector))
             (gp-0 (new 'stack-no-clear 'quaternion)))
         (let ((f30-0 (rand-vu-float-range 0.0 65536.0))) (set-vector! s5-0 (cos f30-0) 0.0 (sin f30-0) 1.0))
@@ -464,7 +462,7 @@
         (quaternion-slerp! (-> self root quat) (-> self appear-quat-bottom) (-> self appear-quat-top) f30-0)
         (set-vector! (-> self draw color-mult) f30-0 f30-0 f30-0 1.0)
         (when (>= f30-0 1.0)
-          (baseplat-method-22 self)
+          (bounce! self)
           (rider-post)
           (cond
             ((= (-> self plat-type) 1)
@@ -476,7 +474,7 @@
                (sync-now! a0-9 (-> self sync-starting-val))
                (go-virtual plat-path-active (the-as plat a0-9))))
             (else (go-virtual plat-idle)))))
-      (baseplat-method-20 self))
+      (spawn-part! self))
   :code anim-loop
   :post rider-post)
 
@@ -485,7 +483,7 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))
+        (('bonk 'bounce) (bounce! self))
         (('untrigger) (go flutflut-plat-hide))))
   :enter
     (behavior ()
@@ -505,7 +503,7 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))
+        (('bonk 'bounce) (bounce! self))
         (('untrigger) (go flutflut-plat-hide))))
   :enter
     (behavior ((arg0 plat))
@@ -522,13 +520,13 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk) (baseplat-method-22 self))))
+        (('bonk) (bounce! self))))
   :enter
     (behavior ()
       (set-time! (-> self state-time))
       (logclear! (-> self mask) (process-mask actor-pause))
       (logclear! (-> self root root-prim prim-core action) (collide-action rider-plat-sticky))
-      (set! (-> self start-trans quad) (-> self root trans quad))
+      (vector-copy! (-> self start-trans) (-> self root trans))
       (let ((s5-0 (new 'stack-no-clear 'vector))
             (gp-0 (new 'stack-no-clear 'quaternion)))
         (let ((f30-0 (rand-vu-float-range 0.0 65536.0))) (set-vector! s5-0 (cos f30-0) 0.0 (sin f30-0) 1.0))
@@ -549,7 +547,7 @@
         (when (>= f30-0 1.0)
           (rider-post)
           (go flutflut-plat-hidden-idle)))
-      (baseplat-method-20 self))
+      (spawn-part! self))
   :code anim-loop
   :post rider-post)
 
@@ -557,10 +555,9 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk) (baseplat-method-22 self))
+        (('bonk) (bounce! self))
         (('bounce)
-         (if (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
-           (baseplat-method-22 self)))
+         (if (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))) (bounce! self)))
         (('ridden)
          (if (or (not *target*) (not (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))))
            (go elevator-travel-to-fort)))))
@@ -571,7 +568,7 @@
   :trans
     (behavior ()
       (plat-trans)
-      (baseplat-method-20 self))
+      (spawn-part! self))
   :code anim-loop
   :post plat-post)
 
@@ -579,17 +576,17 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))))
+        (('bonk 'bounce) (bounce! self))))
   :trans
     (behavior ()
       (when (= (-> self path-pos) 1.0)
-        (baseplat-method-22 self)
+        (bounce! self)
         (go elevator-idle-at-fort))
       ;; og:preserve-this PAL patch here
       (seek! (-> self path-pos) 1.0 (* 0.16 (seconds-per-frame)))
       (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
       (plat-trans)
-      (baseplat-method-20 self))
+      (spawn-part! self))
   :code anim-loop
   :post plat-post)
 
@@ -597,7 +594,7 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))))
+        (('bonk 'bounce) (bounce! self))))
   :enter
     (behavior ()
       (set! (-> self path-pos) 1.0)
@@ -610,7 +607,7 @@
                            (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf))))))
           (go elevator-travel-to-cave)))
       (plat-trans)
-      (baseplat-method-20 self))
+      (spawn-part! self))
   :code anim-loop
   :post plat-post)
 
@@ -618,133 +615,146 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))))
+        (('bonk 'bounce) (bounce! self))))
   :trans
     (behavior ()
       (when (= (-> self path-pos) 0.0)
-        (baseplat-method-22 self)
+        (bounce! self)
         (go elevator-idle-at-cave))
       ;; og:preserve-this PAL patch here
       (seek! (-> self path-pos) 0.0 (* 0.16 (seconds-per-frame)))
       (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
       (plat-trans)
-      (baseplat-method-20 self))
+      (spawn-part! self))
   :code anim-loop
   :post plat-post)
 
 (deftype flutflut-plat-small (flutflut-plat) ())
 
-
 (deftype flutflut-plat-med (flutflut-plat) ())
-
 
 (deftype flutflut-plat-large (flutflut-plat) ())
 
-
 (defmethod get-unlit-skel ((this flutflut-plat-small))
+  "Return the small flutflut platform skeleton."
   *flutflut-plat-small-sg*)
 
-(defmethod baseplat-method-25 ((this flutflut-plat-small))
+(defmethod setup-part! ((this flutflut-plat-small))
+  "Create and save the small platform's particle launch control."
   (let ((v0-0 (create-launch-control group-flutflut-plat-small this)))
     (set! (-> this part) v0-0)
-    (the-as sparticle-launch-group v0-0)))
+    (the-as sparticle-launch-control v0-0)))
 
-(defmethod baseplat-method-20 ((this flutflut-plat-small))
+(defmethod spawn-part! ((this flutflut-plat-small))
+  "Spawn the small platform's configured particles at its collision root when particles are enabled."
   (when (nonzero? (-> this part))
     (set! (-> *part-id-table* 2087 init-specs 12 initial-valuef) (-> this part-ry))
     (set! (-> *part-id-table* 2088 init-specs 17 initial-valuef) (-> this part-ry))
     (spawn (-> this part) (-> this root trans)))
   (none))
 
-(defmethod baseplat-method-26 ((this flutflut-plat-small))
-  (let ((t9-0 (method-of-type flutflut-plat baseplat-method-26))) (t9-0 this))
+(defmethod configure-options! ((this flutflut-plat-small))
+  "Configure the common platform options and derive the particle rotation from its orientation."
+  (let ((t9-0 (method-of-type flutflut-plat configure-options!))) (t9-0 this))
   (set! (-> this part-ry) (+ 16384.0 (quaternion-y-angle (-> this root quat))))
   (none))
 
-(defmethod baseplat-method-24 ((this flutflut-plat-small))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 -2048.0 0.0 16384.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this flutflut-plat-small))
+  "Create the small platform's moving, sticky collision mesh and allocate one rider slot."
+  (let ((collision-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision-shape reaction) default-collision-reaction)
+    (set! (-> collision-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision-shape 1)
+    (let ((root-prim (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> root-prim prim-core collide-as) (collide-kind ground-object))
+      (set! (-> root-prim collide-with) (collide-kind target))
+      (set! (-> root-prim prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> root-prim prim-core offense) (collide-offense indestructible))
+      (set! (-> root-prim transform-index) 0)
+      (set-vector! (-> root-prim local-sphere) 0.0 -2048.0 0.0 16384.0)
+      (set-root-prim! collision-shape root-prim))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (backup-collide-with-as collision-shape)
+    (set! (-> this root) collision-shape))
   0
   (none))
 
 (defmethod get-unlit-skel ((this flutflut-plat-med))
+  "Return the medium flutflut platform skeleton."
   *flutflut-plat-med-sg*)
 
-(defmethod baseplat-method-25 ((this flutflut-plat-med))
+(defmethod setup-part! ((this flutflut-plat-med))
+  "Create and save the medium platform's particle launch control."
   (let ((v0-0 (create-launch-control group-flutflut-plat-med this)))
     (set! (-> this part) v0-0)
-    (the-as sparticle-launch-group v0-0)))
+    (the-as sparticle-launch-control v0-0)))
 
-(defmethod baseplat-method-24 ((this flutflut-plat-med))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 -4096.0 0.0 27648.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this flutflut-plat-med))
+  "Create the medium platform's moving, sticky collision mesh and allocate one rider slot."
+  (let ((collision-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision-shape reaction) default-collision-reaction)
+    (set! (-> collision-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision-shape 1)
+    (let ((root-prim (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> root-prim prim-core collide-as) (collide-kind ground-object))
+      (set! (-> root-prim collide-with) (collide-kind target))
+      (set! (-> root-prim prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> root-prim prim-core offense) (collide-offense indestructible))
+      (set! (-> root-prim transform-index) 0)
+      (set-vector! (-> root-prim local-sphere) 0.0 -4096.0 0.0 27648.0)
+      (set-root-prim! collision-shape root-prim))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (backup-collide-with-as collision-shape)
+    (set! (-> this root) collision-shape))
   0
   (none))
 
 (defmethod get-unlit-skel ((this flutflut-plat-large))
+  "Return the large flutflut platform skeleton."
   *flutflut-plat-large-sg*)
 
-(defmethod baseplat-method-25 ((this flutflut-plat-large))
+(defmethod setup-part! ((this flutflut-plat-large))
+  "Create and save the large platform's particle launch control."
   (let ((v0-0 (create-launch-control group-flutflut-plat-large this)))
     (set! (-> this part) v0-0)
-    (the-as sparticle-launch-group v0-0)))
+    (the-as sparticle-launch-control v0-0)))
 
-(defmethod baseplat-method-20 ((this flutflut-plat-large))
+(defmethod spawn-part! ((this flutflut-plat-large))
+  "Spawn the large platform's configured particles at its collision root when particles are enabled."
   (when (nonzero? (-> this part))
     (set! (-> *part-id-table* 2091 init-specs 12 initial-valuef) (-> this part-ry))
     (set! (-> *part-id-table* 2092 init-specs 17 initial-valuef) (-> this part-ry))
     (spawn (-> this part) (-> this root trans)))
   (none))
 
-(defmethod baseplat-method-26 ((this flutflut-plat-large))
-  (let ((t9-0 (method-of-type flutflut-plat baseplat-method-26))) (t9-0 this))
+(defmethod configure-options! ((this flutflut-plat-large))
+  "Configure the common platform options and derive the particle rotation from its orientation."
+  (let ((t9-0 (method-of-type flutflut-plat configure-options!))) (t9-0 this))
   (set! (-> this part-ry) (+ 16384.0 (quaternion-y-angle (-> this root quat))))
   (none))
 
-(defmethod baseplat-method-24 ((this flutflut-plat-large))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 36864.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this flutflut-plat-large))
+  "Create the large platform's moving, sticky collision mesh and allocate one rider slot."
+  (let ((collision-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision-shape reaction) default-collision-reaction)
+    (set! (-> collision-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision-shape 1)
+    (let ((root-prim (new 'process 'collide-shape-prim-mesh collision-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> root-prim prim-core collide-as) (collide-kind ground-object))
+      (set! (-> root-prim collide-with) (collide-kind target))
+      (set! (-> root-prim prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> root-prim prim-core offense) (collide-offense indestructible))
+      (set! (-> root-prim transform-index) 0)
+      (set-vector! (-> root-prim local-sphere) 0.0 0.0 0.0 36864.0)
+      (set-root-prim! collision-shape root-prim))
+    (set! (-> collision-shape nav-radius) (* 0.75 (-> collision-shape root-prim local-sphere w)))
+    (backup-collide-with-as collision-shape)
+    (set! (-> this root) collision-shape))
   0
   (none))

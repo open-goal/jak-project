@@ -6,6 +6,9 @@
 
 ;; DECOMP BEGINS
 
+;; Terrain LOD distance configuration. Profiles 0 through 2 belong to loaded levels; profile 3 is
+;; the artist-menu override. update-subdivide-settings! expands the selected close/far range into
+;; five nonuniform world-distance thresholds and their camera-scaled equivalents.
 (deftype subdivide-settings (basic)
   ((dist   float 5)
    (meters float 5)
@@ -14,19 +17,24 @@
   (:methods
    (new (symbol type meters meters) _type_)))
 
-(defmethod new subdivide-settings ((allocation symbol) (type-to-make type) (arg0 meters) (arg1 meters))
-  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (dotimes (v1-2 3)
-      (set! (-> v0-0 close v1-2) arg0)
-      (set! (-> v0-0 far v1-2) arg1))
-    v0-0))
+(defmethod new subdivide-settings ((allocation symbol) (type-to-make type) (close-distance meters) (far-distance meters))
+  "Allocate subdivision settings and initialize the first three level profiles with
+   close-distance and far-distance. Profile 3 is the artist-menu override."
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (dotimes (i 3)
+      (set! (-> this close i) close-distance)
+      (set! (-> this far i) far-distance))
+    this))
 
+;; Four pairs of packed interpolation coefficients for subdivision programs.
 (deftype subdivide-dists (structure)
   ((data   uint32 32 :offset 0)
    (vector vector 8 :inline :overlay-at (-> data 0))
    (k0s    uint128 4 :overlay-at vector)
    (k1s    uint128 4 :overlay-at (-> data 16))))
 
+;; Packed GS vertex attributes. One gs-packed-gt is STQ, RGBA, and XYZ/W; gs-packed-gt4 holds a
+;; four-vertex primitive.
 (deftype gs-packed-rgba (structure)
   ((data  int32 4)
    (red   int32 :overlay-at (-> data 0))
@@ -57,10 +65,12 @@
 (deftype gs-packed-gt4 (structure)
   ((data gs-packed-gt 4 :inline)))
 
+;; Small header kept at the front of scratchpad memory while background drawing selects levels.
 (deftype terrain-bsp (structure)
   ((lev-index int32)
    (mood      basic)))
 
+;; Renderer counters accumulated for the terrain debug display.
 (deftype terrain-stats (structure)
   ((pris             tr-stat :inline)
    (tie-generic      tr-stat :inline)
@@ -79,6 +89,7 @@
    (ocean-near       tr-stat :inline)
    (total            tr-stat :inline)))
 
+;; Mutually exclusive scratchpad layouts used by the background renderers.
 (deftype dma-area (structure)
   ((draw-node-dma      draw-node-dma :inline :offset 0)
    (tfrag-dma          tfrag-dma :inline :offset 0)
@@ -89,10 +100,12 @@
    (decomp-work        decomp-work :inline :offset 0)
    (ocean-vertex       ocean-vertex 4 :inline :offset 0)))
 
+;; The background layout reserves renderer DMA workspace followed by the uploaded visibility bits.
 (deftype background-area (structure)
   ((dma-area dma-area :inline)
    (vis-list uint8 2048)))
 
+;; Foreground renderers reuse the same scratchpad region at different stages of the frame.
 (deftype foreground-area (structure)
   ((joint-work   joint-work :inline)
    (generic-work generic-work :inline :overlay-at (-> joint-work temp-mtx data 0))
@@ -102,11 +115,13 @@
 (deftype ambient-area (structure)
   ((ambient-list ambient-list :inline)))
 
+;; The scratchpad work region is shared by background, foreground, and ambient passes.
 (deftype work-area (structure)
   ((background background-area :inline)
    (foreground foreground-area :inline :offset 0)
    (ambient    ambient-area :inline :offset 0)))
 
+;; Complete scratchpad view: the active level header followed by the pass-specific work union.
 (deftype terrain-context (structure)
   ((bsp  terrain-bsp :inline)
    (work work-area :inline)))

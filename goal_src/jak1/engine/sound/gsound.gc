@@ -20,56 +20,66 @@
 (define *sound-loader-rpc*
   (new 'global 'rpc-buffer-pair (the uint (size-of sound-rpc-union)) (the-as uint 1) RPC-SOUND-LOADER))
 
-(defun sound-name= ((arg0 sound-name) (arg1 sound-name))
-  "Return #t if both are the same name"
+(defun sound-name= ((left-name sound-name) (right-name sound-name))
+  "Return whether both 64-bit halves of two packed sound names match."
   (declare (inline))
-  (and (= (-> arg0 lo) (-> arg1 lo)) (= (-> arg0 hi) (-> arg1 hi))))
+  (and (= (-> left-name lo) (-> right-name lo)) (= (-> left-name hi) (-> right-name hi))))
 
 (deftype sound-iop-info (basic)
-  ((frame       uint32 :offset 16)
-   (strpos      int32)
-   (str-id      sound-id)
+  "Per-vblank status copied from the IOP sound driver: stream position and ID, sound-memory
+availability, 48 voice states, disc status, and timing diagnostics. The IOP DMA writes #x110 bytes
+starting at frame, extending 12 bytes past the nominal type into the 16-byte allocator padding."
+  ((frame uint32 :offset 16)
+   (strpos int32)
+   (str-id sound-id)
    (str-id-sign int32 :overlay-at str-id)
-   (freemem     uint32)
-   (chinfo      uint8 48)
-   (freemem2    uint32)
-   (nocd        uint32)
-   (dirtycd     uint32)
-   (diskspeed   uint32 2)
-   (lastspeed   uint32)
-   (dupseg      int32)
-   (times       uint32 41)
-   (times-seq   uint32)))
+   (freemem uint32)
+   (chinfo uint8 48)
+   (freemem2 uint32)
+   (nocd uint32)
+   (dirtycd uint32)
+   (diskspeed uint32 2)
+   (lastspeed uint32)
+   (dupseg int32)
+   (times uint32 41)
+   (times-seq uint32)))
 
 (define *sound-iop-info* (new 'global 'sound-iop-info))
 
 (set! (-> *sound-iop-info* strpos) -1)
 
 (defun str-is-playing? ()
-  "Return #t if an audio stream is playing"
+  "Return whether the IOP reports an active streamed-audio position."
   (!= (-> *sound-iop-info* strpos) -1))
 
 (defun current-str-id ()
-  "Return id of the current stream"
+  "Return the IOP-reported streamed-audio sound ID."
   (the-as sound-id (-> *sound-iop-info* str-id-sign)))
 
-(defun current-str-pos ((str sound-id))
-  "Return position of the current stream. Return -1 if specified stream is not current"
-  (let ((ret -1)) (if (= str (-> *sound-iop-info* str-id)) (set! ret (-> *sound-iop-info* strpos))) ret))
+(defun current-str-pos ((id sound-id))
+  "Return the current streamed-audio position for id, or -1 when
+   another stream is active."
+  (let ((position -1)) (if (= id (-> *sound-iop-info* str-id)) (set! position (-> *sound-iop-info* strpos))) position))
 
 (defun is-cd-in? ()
+  "Return whether the IOP reports that a disc is present."
   (declare (inline))
   (zero? (-> *sound-iop-info* nocd)))
 
 (defmacro is-cd-good? ()
+  "Return whether the IOP reports that the disc is readable."
   `(zero? (-> *sound-iop-info* dirtycd)))
 
 (defun new-sound-id ()
+  "Allocate the next sound ID, reserving values below #x10000 even after
+   the counter wraps."
   (set! *current-sound-id* (the sound-id (1+ (the uint *current-sound-id*))))
   (if (< (the-as int *current-sound-id*) #x10000) (set! *current-sound-id* (the-as sound-id #x10000)))
   *current-sound-id*)
 
 (defun check-irx-version ()
+  "Register the per-vblank sound-status destination, print the IOP
+   sound driver's version, and crash unless it is version 2.0."
   (let ((cmd (the sound-rpc-get-irx-version (add-element *sound-loader-rpc*))))
     (set! (-> cmd command) (sound-command get-irx-version))
     (set! (-> cmd ee-addr) (&-> *sound-iop-info* frame))
@@ -92,6 +102,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun sound-bank-load ((name sound-name))
+  "Submit a sound-effect bank load and return a newly allocated sound
+   ID."
   (let ((id (new-sound-id)))
     (let ((cmd (the sound-rpc-load-bank (add-element *sound-loader-rpc*))))
       (set! (-> cmd command) (sound-command load-bank))
@@ -100,6 +112,7 @@
     id))
 
 (defun sound-bank-unload ((name sound-name))
+  "Submit a sound-effect bank unload."
   (let ((cmd (the sound-rpc-unload-bank (add-element *sound-loader-rpc*))))
     (set! (-> cmd command) (sound-command unload-bank))
     (set! (-> cmd bank-name) name))
@@ -107,6 +120,8 @@
   0)
 
 (defun sound-music-load ((name sound-name))
+  "Submit a music-bank load, replacing the current music bank on the
+   IOP."
   (let ((cmd (the sound-rpc-load-music (add-element *sound-loader-rpc*))))
     (set! (-> cmd command) (sound-command load-music))
     (set! (-> cmd bank-name) name))
@@ -114,6 +129,7 @@
   0)
 
 (defun sound-music-unload ()
+  "Submit a request to fade out and unload the current music bank."
   (let ((cmd (the sound-rpc-unload-music (add-element *sound-loader-rpc*))))
     (set! (-> cmd command) (sound-command unload-music)))
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
@@ -132,43 +148,51 @@
 (define *sound-bank-2* 'empty2)
 
 (defun sound-reload-info ()
+  "Submit a request to refresh the IOP sound-bank information."
   (let ((cmd (the sound-rpc-reload-info (add-element *sound-loader-rpc*))))
     (set! (-> cmd command) (sound-command reload-info)))
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   0)
 
-(defun set-language ((lang language-enum))
-  (kset-language lang)
+(defun set-language ((language language-enum))
+  "Set the kernel language and submit the same language to the IOP sound
+   loader."
+  (kset-language language)
   (let ((cmd (the sound-rpc-set-language (add-element *sound-loader-rpc*))))
     (set! (-> cmd command) (sound-command set-language))
-    (set! (-> cmd lang) (the-as uint lang)))
+    (set! (-> cmd lang) (the-as uint language)))
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   0)
 
 (defun list-sounds ()
+  "Ask the IOP sound driver to print its active sounds."
   (let ((cmd (the sound-rpc-list-sounds (add-element *sound-loader-rpc*))))
     (set! (-> cmd command) (sound-command list-sounds)))
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   0)
 
 (defun-debug sound-command->string ((cmd sound-command))
+  "Return the debug name of a sound command."
   (enum->string sound-command cmd))
 
 (defun sound-buffer-dump ()
-  (let ((elt-used (-> *sound-player-rpc* current elt-used))
-        (elt-size (-> *sound-player-rpc* current elt-size)))
-    (dotimes (i (the-as int elt-used))
-      (let* ((cmd (the sound-rpc-play (&+ (-> *sound-player-rpc* current base) (* elt-size (the-as uint i)))))
-             (a3-0 (sound-command->string (-> cmd command)))
+  "Print the commands currently queued in the EE sound-player
+   buffer, including the name of each play command."
+  (let ((command-count (-> *sound-player-rpc* current elt-used))
+        (command-size (-> *sound-player-rpc* current elt-size)))
+    (dotimes (i (the-as int command-count))
+      (let* ((cmd (the sound-rpc-play (&+ (-> *sound-player-rpc* current base) (* command-size (the-as uint i)))))
+             (command-name (sound-command->string (-> cmd command)))
              (command (-> cmd command)))
         (if (= command (sound-command play))
-          (format #t "~D ~A ~G~%" i a3-0 (&-> cmd name)) ;; og:preserve-this it's meant to point to the name i guess...
-          (format #t "~D ~A~%" i a3-0)))))
+          (format #t "~D ~A ~G~%" i command-name (&-> cmd name)) ;; og:preserve-this it's meant to point to the name i guess...
+          (format #t "~D ~A~%" i command-name)))))
   0)
 
 (define *sound-current-mirror* (sound-mirror-mode normal))
 
 (defun sound-set-mirror-mode ((mode sound-mirror-mode))
+  "Submit the PC mirror-mode extension when mode changes."
   (when (!= mode *sound-current-mirror*)
     (let ((cmd (the sound-rpc-set-mirror-mode (add-element *sound-loader-rpc*))))
       (set! (-> cmd command) (sound-command set-mirror))
@@ -183,12 +207,16 @@
 
 (define *sound-player-enable* #t)
 
-(defun swap-sound-buffers ((arg0 vector) (arg1 vector) (arg2 float))
+(defun swap-sound-buffers ((ear-position vector) (camera-position vector) (camera-angle float))
+  "Submit this frame's queued sound-player commands after appending
+   listener state when space permits. Disable new sound commands while the previous RPC remains busy,
+   and show the no-disc or bad-disc screen reported by the IOP."
   (cond
     ((check-busy *sound-player-rpc*) (set! *sound-player-enable* #f))
     (else
-     (let ((a0-2 (-> *sound-player-rpc* current)))
-       (if (< (-> a0-2 elt-used) (-> a0-2 elt-count)) (sound-set-ear-trans arg0 arg1 arg2)))
+     (let ((command-buffer (-> *sound-player-rpc* current)))
+       (if (< (-> command-buffer elt-used) (-> command-buffer elt-count))
+         (sound-set-ear-trans ear-position camera-position camera-angle)))
      (call *sound-player-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
      (set! *sound-player-enable* #t)))
   (cond
@@ -201,31 +229,40 @@
   0)
 
 (defun get-sound-buffer-entry ()
+  "Reserve and return the next command in the current sound
+   player RPC buffer."
   (add-element *sound-player-rpc*))
 
 (defun free-last-sound-buffer-entry ()
+  "Discard the most recently reserved sound-player command."
   (decrement-elt-used *sound-player-rpc*)
   0)
 
-(defun sound-basic-cb ((arg0 int) (arg1 (pointer int32)))
-  "This function is unused."
-  (set! (-> arg1 0) arg0)
+(defun sound-basic-cb ((value int) (result (pointer int32)))
+  "Store value in result."
+  (set! (-> result 0) value)
   (none))
 
 (defun sound-trans-convert ((dest vector3w) (src vector))
-  (let ((vec (if src src (ear-trans))))
-    (set! (-> dest x) (the int (* (1/ 16) (-> vec x))))
-    (set! (-> dest y) (the int (* (1/ 16) (-> vec y))))
-    (set! (-> dest z) (the int (* (1/ 16) (-> vec z)))))
+  "Store src divided by 16 and truncated to integer coordinates in
+   dest. A false src uses the current listener position."
+  (let ((position (if src src (ear-trans))))
+    (set! (-> dest x) (the int (* (1/ 16) (-> position x))))
+    (set! (-> dest y) (the int (* (1/ 16) (-> position y))))
+    (set! (-> dest z) (the int (* (1/ 16) (-> position z)))))
   0)
 
-(defun sound-angle-convert ((deg float))
-  (let ((ret (the int (* (/ 360.0 65536.0) (the float (sar (shl (the int deg) 48) 48))))))
-    (if (< ret 0) (+! ret 360))
-    (if (< 359 ret) (+! ret -360))
-    ret))
+(defun sound-angle-convert ((angle float))
+  "Interpret the low signed 16 bits of angle as one full turn,
+   convert them to integer degrees, and wrap the result into zero through 359."
+  (let ((degrees (the int (* (/ 360.0 65536.0) (the float (sar (shl (the int angle) 48) 48))))))
+    (if (< degrees 0) (+! degrees 360))
+    (if (< 359 degrees) (+! degrees -360))
+    degrees))
 
 (defun string->sound-name ((str string))
+  "Pack at most fifteen bytes of str into a zero-padded 16-byte
+   sound name."
   (let ((snd-name (new 'stack-no-clear 'qword)))
     (set! (-> snd-name quad) (the-as uint128 0))
     (let ((out-ptr (the-as (pointer uint8) snd-name))
@@ -237,27 +274,33 @@
     (the-as sound-name (-> snd-name quad))))
 
 (defun sound-set-volume ((group sound-group) (volume float))
+  "Queue a group master volume, converting percentage to the IOP's
+   0-to-1024 scale."
   (let ((cmd (the sound-rpc-set-master-volume (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-master-volume))
     (set! (-> cmd group) group)
     (set! (-> cmd volume) (the int (* 10.24 volume))))
   0)
 
-(defun sound-set-reverb ((arg0 int) (arg1 float) (arg2 float) (arg3 uint))
+(defun sound-set-reverb ((reverb int) (left float) (right float) (core uint))
+  "Queue reverb type and normalized left/right depths for the selected
+   SPU core mask."
   (let ((cmd (the-as sound-rpc-set-reverb (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-reverb))
-    (set! (-> cmd core) arg3)
-    (set! (-> cmd reverb) arg0)
-    (set! (-> cmd left) (the-as uint (the int (* 32767.0 arg1))))
-    (set! (-> cmd right) (the-as uint (the int (* 32767.0 arg2)))))
+    (set! (-> cmd core) core)
+    (set! (-> cmd reverb) reverb)
+    (set! (-> cmd left) (the-as uint (the int (* 32767.0 left))))
+    (set! (-> cmd right) (the-as uint (the int (* 32767.0 right)))))
   0)
 
-(defun sound-set-ear-trans ((ear-trans vector) (cam-trans vector) (cam-angle float))
+(defun sound-set-ear-trans ((ear-position vector) (camera-position vector) (camera-angle float))
+  "Queue the listener position, camera position, and camera angle
+   used by IOP spatialization."
   (let ((cmd (the sound-rpc-set-ear-trans (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-ear-trans))
-    (sound-trans-convert (-> cmd ear-trans) ear-trans)
-    (sound-trans-convert (-> cmd cam-trans) cam-trans)
-    (set! (-> cmd cam-angle) (sound-angle-convert cam-angle)))
+    (sound-trans-convert (-> cmd ear-trans) ear-position)
+    (sound-trans-convert (-> cmd cam-trans) camera-position)
+    (set! (-> cmd cam-angle) (sound-angle-convert camera-angle)))
   0)
 
 (defmacro sound-trans-from-process (cmd sound-trans)
@@ -268,7 +311,7 @@
         (if (and proc (type-type? (-> proc type) process-drawable) (nonzero? (-> proc root)))
           (set! ,sound-trans (-> proc root trans))
           (set! ,sound-trans (the vector #f)))))
-    (sound-trans-convert (-> ,cmd parms trans) ,sound-trans)))
+    (sound-trans-convert (-> ,cmd parms trans) (the-as vector ,sound-trans))))
 
 (defmacro sound-play (name &key (id (new-sound-id)) &key (vol 100.0) &key (pitch 0) &key (bend 0) &key (group sfx) &key (position #t))
   `(sound-play-by-name (static-sound-name ,name)
@@ -279,11 +322,13 @@
                       (sound-group ,group)
                       ,position))
 
-(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group sound-group) (trans symbol))
-  "Play a sound called name with the specified params"
+(defun sound-play-by-name ((name sound-name) (id sound-id) (vol int) (pitch int) (bend int) (group sound-group) (trans object))
+  "Queue name with the supplied sound ID, IOP-scale volume, pitch,
+   bend, and group, then return id. trans may be a position, #t for the current process drawable's
+   root, or #f for the listener."
   (local-vars (sv-16 sound-group))
   (set! sv-16 group)
-  (let ((sound-trans (the-as vector trans)))
+  (let ((sound-trans trans))
     (when *sound-player-enable*
       (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
         (set! (-> cmd command) (sound-command play))
@@ -297,8 +342,9 @@
         (sound-trans-from-process cmd sound-trans))))
   id)
 
-(defun sound-play-by-spec ((spec sound-spec) (id sound-id) (sound-trans vector))
-  "Play a sound from the given spec"
+(defun sound-play-by-spec ((spec sound-spec) (id sound-id) (sound-trans object))
+  "Queue playback using spec and return id. sound-trans is the sound
+   position; #t selects the current process drawable's root, and #f falls back to the listener."
   (when *sound-player-enable*
     (let ((cmd (the sound-rpc-play (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command play))
@@ -317,42 +363,50 @@
   id)
 
 (defun sound-pause ((id sound-id))
+  "Queue a pause command for sound ID."
   (let ((cmd (the sound-rpc-pause-sound (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command pause-sound))
     (set! (-> cmd id) id))
   0)
 
 (defun sound-stop ((id sound-id))
+  "Queue a stop command for sound ID."
   (let ((cmd (the sound-rpc-stop-sound (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command stop-sound))
     (set! (-> cmd id) id))
   0)
 
 (defun sound-continue ((id sound-id))
+  "Queue a continue command for sound ID."
   (let ((cmd (the sound-rpc-continue-sound (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command continue-sound))
     (set! (-> cmd id) id))
   0)
 
 (defun sound-group-pause ((group sound-group))
+  "Queue a pause command for every sound in group."
   (let ((cmd (the sound-rpc-pause-group (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command pause-group))
     (set! (-> cmd group) group))
   0)
 
 (defun sound-group-stop ((group sound-group))
+  "Queue a stop command for every sound in group."
   (let ((cmd (the sound-rpc-stop-group (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command stop-group))
     (set! (-> cmd group) group))
   0)
 
 (defun sound-group-continue ((group sound-group))
+  "Queue a continue command for every sound in group."
   (let ((cmd (the sound-rpc-continue-group (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command continue-group))
     (set! (-> cmd group) group))
   0)
 
 (defun sound-set-falloff-curve ((curve int) (falloff float) (ease float))
+  "Define one cubic distance-attenuation curve from normalized
+   falloff and ease parameters, converted to signed 12.12 fixed point."
   (let ((cmd (the sound-rpc-set-falloff-curve (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-falloff-curve))
     (set! (-> cmd curve) curve)
@@ -361,6 +415,8 @@
   0)
 
 (defun sound-set-sound-falloff ((name sound-name) (falloff-min int) (falloff-max int) (curve int))
+  "Assign a sound's near and far attenuation distances and
+   falloff-curve index in its loaded bank."
   (let ((cmd (the sound-rpc-set-sound-falloff (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-sound-falloff))
     (set! (-> cmd name) name)
@@ -370,19 +426,21 @@
   0)
 
 (defun sound-set-flava ((flava uint))
+  "Queue the current music variation number."
   (let ((cmd (the sound-rpc-set-flava (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-flava))
     (set! (-> cmd flava) flava))
   0)
 
-(defun sound-set-fps ((arg0 int))
+(defun sound-set-fps ((fps int))
+  "Queue the PC sound driver's frame rate."
   (let ((cmd (the-as sound-rpc-set-fps (get-sound-buffer-entry))))
     (set! (-> cmd command) (sound-command set-fps))
-    (set! (-> cmd fps) (the-as uint arg0)))
+    (set! (-> cmd fps) (the-as uint fps)))
   0)
 
 (defun sound-volume-off ()
-  "Set all sound volume to zero"
+  "Set the music, sound-effect, and ambient volume settings to zero."
   (set-setting! 'music-volume 'abs 0.0 0)
   (set-setting! 'sfx-volume 'abs 0.0 0)
   (set-setting! 'ambient-volume 'abs 0.0 0)
@@ -395,9 +453,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod new ambient-sound ((allocation symbol) (type-to-make type) (src basic) (sound-trans vector))
-  "Make a new ambient-sound. If failed, returns 0 and doesn't allocate anything.
-
-   src specifies the sound params source. This can be a string or symbol (the sound name), a sound-spec, or an entity-actor or entity-ambient (reads effect-name, cycle-speed and effect-param from the entity)."
+  "Create a positioned background sound from a name, sound-spec, or entity sound resource.
+   Entity cycle-speed supplies base and random delays in seconds, and effect-param supplies optional
+   playback parameters. Return zero when src does not identify a sound."
   (let ((spec (the sound-spec #f))
         (name (new 'static 'sound-name))
         (sound-times (the (pointer float) #f))
@@ -406,13 +464,13 @@
     (case (-> src type)
       ((entity-actor entity-ambient)
        (awhen (res-lump-struct-exact (the entity src) 'effect-name symbol)
-              (set! name (string->sound-name (symbol->string it)))
-              (set! sound-times (res-lump-data (the entity src) 'cycle-speed (pointer float)))
-              (set! spec *ambient-spec*)
-              (let ((tag (new 'static 'res-tag)))
-                (awhen (res-lump-data-exact (the entity src) 'effect-param sound-play-parms :tag-ptr (& tag))
-                       (set! params it)
-                       (set! param-count (the int (-> tag elt-count)))))))
+         (set! name (string->sound-name (symbol->string it)))
+         (set! sound-times (res-lump-data (the entity src) 'cycle-speed (pointer float)))
+         (set! spec *ambient-spec*)
+         (let ((tag (new 'static 'res-tag)))
+           (awhen (res-lump-data-exact (the entity src) 'effect-param sound-play-parms :tag-ptr (& tag))
+             (set! params it)
+             (set! param-count (the int (-> tag elt-count)))))))
       ((sound-spec) (set! spec (the sound-spec src)))
       ((symbol) (set! name (string->sound-name (symbol->string (the symbol src)))))
       ((string) (set! name (string->sound-name (the string src))))
@@ -444,7 +502,9 @@
 (define-extern *debug-effect-control* symbol)
 
 (defmethod update! ((this ambient-sound))
-  "Called once per frame to update the sound playback"
+  "Update continuous playback or start a scheduled one-shot when its timer expires.
+   Entity-backed sounds rebuild their shared specification and skip playback outside the far falloff
+   distance."
   (if (not *ambient-sound-class*) (return (the int #f)))
   (cond
     ((-> this spec)
@@ -502,12 +562,12 @@
   0)
 
 (defmethod stop! ((this ambient-sound))
-  "Halt playback of this ambient-sound"
+  "Queue a stop command for this background sound's current playback ID."
   (sound-stop (-> this playing-id))
   0)
 
 (defmethod update-trans! ((this ambient-sound) (sound-trans vector))
-  "Update the position of the thing playing the sound"
+  "Store a new position and queue a position update for the active sound."
   (set! (-> this trans quad) (-> sound-trans quad))
   (when (nonzero? (-> this playing-id))
     (let ((cmd (the sound-rpc-set-param (get-sound-buffer-entry))))
@@ -518,20 +578,21 @@
       (-> cmd id)))
   0)
 
-(defmethod update-vol! ((this ambient-sound) (arg0 int))
-  "Update the volume of the sound"
+(defmethod update-vol! ((this ambient-sound) (volume int))
+  "Store volume-percent and queue the corresponding 0-to-1024 volume for the active
+   sound."
   (when (nonzero? (-> this playing-id))
     (let ((cmd (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> cmd command) (sound-command set-param))
       (set! (-> cmd id) (-> this playing-id))
-      (set! (-> cmd parms volume) (the int (* 10.24 (the float arg0))))
+      (set! (-> cmd parms volume) (the int (* 10.24 (the float volume))))
       (set! (-> cmd parms mask) (sound-mask volume))
       (-> cmd id)))
-  (set! (-> this volume) (the int (* 10.24 (the float arg0))))
+  (set! (-> this volume) (the int (* 10.24 (the float volume))))
   0)
 
 (defmethod change-sound! ((this ambient-sound) (name sound-name))
-  "Change the sound being played"
+  "Stop playback and allocate a fresh sound ID when name changes."
   (when (not (sound-name= (-> this name) name))
     (stop! this)
     (set! (-> this playing-id) (new-sound-id))
@@ -543,7 +604,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun show-iop-info ((buf dma-buffer))
-  "Display sound channel status in the top left corner"
+  "Draw the active/inactive state of the IOP's 24 voices on each SPU
+   core."
   (dotimes (ch 24)
     (draw-string-xy (if (zero? (-> *sound-iop-info* chinfo ch)) "." "X")
                     buf
@@ -561,6 +623,8 @@
   0)
 
 (defun show-iop-memory ((buf dma-buffer))
+  "Draw live IOP free memory and the free-memory baseline recorded
+   after RAM-disk allocation, in bytes and KiB."
   (draw-string-xy (string-format "~8D [~4D]" (-> *sound-iop-info* freemem) (shr (-> *sound-iop-info* freemem) 10))
                   buf
                   32
@@ -586,14 +650,16 @@
 (defun-extern camera-pos vector)
 
 (defun ear-trans ()
-  "Return the trans for the game ear"
+  "Return the active listener position: math-camera during movies or
+   external-camera control, target position when a target exists, otherwise camera position."
   (cond
     ((or (movie?) *external-cam-mode*) (math-camera-pos))
     (*target* (target-pos 0))
     (else (camera-pos))))
 
 (defun-debug make-sqrt-table ()
-  "Write the C code for the ??? square root table"
+  "Print the 256-entry integer square-root table used by the IOP's
+   distance-attenuation calculation as C source."
   (format #t "static int sqrt_table[256] =~%{~%")
   (dotimes (i 256)
     (let* ((angle (sqrtf (* 16777216.0 (the float i))))
@@ -607,13 +673,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype flava-table-row (structure)
+  "The music variation number selected for each music-flava event in one music bank. Zero means the
+event has no alternate variation for this bank."
   ((music symbol)
    (flava uint8 50) ;; index is some flava event, value is music variation
    )
   :allow-misaligned)
 
 (deftype flava-table (basic)
-  ((row   flava-table-row 20 :inline)
+  "Up to twenty per-music variation maps; count is the number of initialized rows."
+  ((row flava-table-row 20 :inline)
    (count int32)))
 
 ;; make a new flava table with nothing defined
@@ -621,10 +690,11 @@
 
 (set! (-> *flava-table* count) 0)
 
-(defun flava-lookup ((music symbol) (n music-flava))
-  "Return the n'th flava for the specified music"
+(defun flava-lookup ((music symbol) (event music-flava))
+  "Return the music variation mapped to event for music, or zero when
+   the music or event has no mapping."
   (dotimes (i (-> *flava-table* count))
-    (if (= (-> *flava-table* row i music) music) (return (the-as int (-> *flava-table* row i flava n)))))
+    (if (= (-> *flava-table* row i music) music) (return (the-as int (-> *flava-table* row i flava event)))))
   0)
 
 (defmacro flava-table-add (name &rest flavas)
@@ -635,8 +705,8 @@
     ;; reset this music's flavas
     (dotimes (n 50)
       (set! (-> *flava-table* row (-> *flava-table* count) flava n) 0))
-    ;; increase the music count
-    ;; (this should probably be done after...)
+    ;; increase the music count. The setters below index the just-added row with (1- count),
+    ;; so the row written above is the one they fill in.
     (1+! (-> *flava-table* count))
     ;; set the flavas or whatever they're called
     ,@(apply (lambda (x)

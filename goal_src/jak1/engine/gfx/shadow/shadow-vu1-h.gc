@@ -3,5 +3,52 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; empty!
-(define-extern shadow-vu1-init-buffer (function dma-buffer none))
+;; VU1 data memory for the shadow renderer. The EE packet builders unpack straight into these
+;; addresses and the microprogram reads them off vi00, so both sides have to agree; that is why the
+;; map lives in the header rather than in either implementation.
+;;
+;;      0 ..    3   the camera's perspective matrix, one row per quadword
+;;      4 ..  173   the caster's skinned vertices
+;;    174 ..  343   their duals: the same vertices projected onto the ground plane
+;;    344 ..  599   an index list -- a count quadword, then one record per primitive
+;;    600 ..  855   a second index list, used for the silhouette edges
+;;    856 ..  867   GIF output buffer A
+;;    868 ..  879   GIF output buffer B
+;;    880 ..  892   shadow-vu1-constants
+;;    893 ..  934   the clipper's polygon records
+;;    935 ..  939   the clipper's edge stack
+;;    940 ..  943   the clipper's GIF tag block
+;;    944 ..        the clipper's output vertices
+;;   1000 .. 1011   the four clip-space vertices handed to the clipper
+;;   1022 .. 1023   the trailing packet that puts RGBAQ back
+;;
+;; The vertex and dual areas are the same size and adjacent, so one mesh can have at most 170
+;; vertices; each index list holds at most 255 records after its count quadword.
+(defconstant SHADOW-VU1-VERTS 4)
+(defconstant SHADOW-VU1-DUAL-VERTS 174)
+(defconstant SHADOW-VU1-TRI-LIST 344)
+(defconstant SHADOW-VU1-EDGE-LIST 600)
+(defconstant SHADOW-VU1-GIFBUF-A 856)
+(defconstant SHADOW-VU1-GIFBUF-B 868)
+
+;; A dual vertex sits exactly this far from its original, which is what lets the edge path address
+;; both ends of an extrusion with one index register.
+(defconstant SHADOW-VU1-DUAL-OFFSET (- SHADOW-VU1-DUAL-VERTS SHADOW-VU1-VERTS))
+
+;; The microprogram's entry points, as the MSCALF immediates the EE writes. Entry 10 initializes both
+;; GIF buffers and caches the projection constants; the three drawing entries each expect their index
+;; list to already be in VU memory.
+(defconstant SHADOW-VU1-ENTRY-INIT 10)
+(defconstant SHADOW-VU1-ENTRY-SINGLE-TRIS 2)
+(defconstant SHADOW-VU1-ENTRY-EDGES 4)
+(defconstant SHADOW-VU1-ENTRY-DOUBLE-TRIS 6)
+
+;; A vif-tag written as one word: command in the upper halfword, immediate in the lower. The index
+;; lists are unpacked as unsigned V4-8 -- bit 14 of the immediate is USN, and without it every vertex
+;; index above 127 would sign-extend into a huge VU address.
+(defconstant VIF-MSCALF-WORD #x1500)
+(defconstant VIF-UNPACK-USN #x4000)
+
+(define-extern shadow-vu1-init-buffer
+  "Append the shadow VU1 program, constants, camera matrix, and initialization call to a DMA buffer."
+  (function dma-buffer none))

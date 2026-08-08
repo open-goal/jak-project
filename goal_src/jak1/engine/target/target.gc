@@ -3,6 +3,14 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/target/target-handler.gc")
 
+;; Jak's core ground and air movement states: stance/walk (and the turn-around skid), duck
+;; stance/walk, the whole jump family (normal/forward/double/high/duck-high and the launcher-pad
+;; redirect), falling and landing (hit-ground), the melee attacks (spin kick, running punch,
+;; air spin, uppercut, flop/ground-pound), and the roll (wheel) plus roll-jump (wheel-flip).
+;; Actual movement physics/collision runs in target-post (target-util/logic-target); these states
+;; mostly pick surface mods (*walk-mods* etc.), seed velocities, drive animation, and decide
+;; state-to-state transitions from pad input.
+
 ;; note: changed for high fps
 
 ;; TODO - almost all of these are in target-handler or target2, temporary
@@ -25,13 +33,20 @@
 
 (define-extern target-shoved (function meters meters process (state object object target) object :behavior target))
 
-(define-extern target-send-attack (function process uint touching-shapes-entry int int symbol :behavior target))
+(define-extern target-send-attack (function process symbol touching-shapes-entry int int symbol :behavior target))
 
 (define-extern target-bonk-event-handler (function process int symbol event-message-block object :behavior target))
 
 ;; DECOMP BEGINS
 
-(defbehavior target-falling-anim target ((arg0 time-frame) (arg1 time-frame))
+;; Plays the falling animation, first transitioning cleanly out of whatever anim was active (edge-grab
+;; release, yellow-blast recovery, etc.), then looping eichar-jump-loop-ja until loop-timeout elapses
+;; (-1 = loop forever; states like target-jump call this as the tail of their :code and rely on the
+;; :trans to exit the state). blend-time is the channel blend used for the generic case.
+(defbehavior target-falling-anim target ((loop-timeout time-frame) (blend-time time-frame))
+  "Transition from the current edge-grab, blast, or ordinary animation into the falling loop. Play
+   the loop until loop-timeout elapses, or forever when it is negative, using blend-time for the
+   ordinary transition."
   (let ((v1-2 (ja-group)))
     (cond
       ((or (= v1-2 eichar-jump-loop-ja) (= v1-2 eichar-attack-uppercut-ja)))
@@ -53,25 +68,30 @@
          (ja :num! (seek!))
          (suspend)))
       (else
-       (ja-channel-push! 1 arg1)
+       (ja-channel-push! 1 blend-time)
        (ja :group! eichar-jump-loop-ja)
        (while (!= (-> self skel root-channel 0) (-> self skel channel))
          (suspend)))))
   (ja-no-eval :group! eichar-jump-loop-ja :num! (loop!) :frame-num 0.0)
-  (let ((s5-1 (current-time)))
-    (while (or (= arg0 -1) (not (time-elapsed? s5-1 arg0)))
+  (let ((loop-start-time (current-time)))
+    (while (or (= loop-timeout -1) (not (time-elapsed? loop-start-time loop-timeout)))
       (suspend)
       (ja :group! eichar-jump-loop-ja :num! (loop!))))
   #f)
 
+;; Per-frame (non-blocking, :trans-safe) version of the falling anim: pushes the fall loop if some
+;; other anim is playing, then switches to the landing anim once on-surface is set. Keep the early
+;; branch explicit so the fall and landing paths share the final return.
 (defbehavior target-falling-anim-trans target ()
+  "Non-blockingly maintain the falling loop and switch to the landing animation as soon as surface
+   contact is reported."
   (let ((v1-2 (ja-group))) (b! (or (= v1-2 eichar-jump-loop-ja) (= v1-2 eichar-jump-land-ja)) cfg-7 :delay (empty-form)))
   (ja-channel-push! 1 (seconds 0.33))
   (ja :group! eichar-jump-loop-ja)
   (b! #t cfg-23 :delay (nop!))
   (label cfg-7)
   (cond
-    ((and (logtest? (-> self control status) (cshape-moving-flags onsurf)) (not (ja-group? eichar-jump-land-ja)))
+    ((and (logtest? (-> self control status) (collide-status on-surface)) (not (ja-group? eichar-jump-land-ja)))
      (ja-channel-push! 1 (seconds 0.02))
      (ja :group! eichar-jump-land-ja))
     ((ja-group? eichar-jump-loop-ja) (ja :num! (loop!)))
@@ -80,66 +100,82 @@
   0
   (none))
 
-(defbehavior target-falling-trans target ((arg0 basic) (arg1 time-frame))
+;; Shared per-frame air-state transition logic (called from the :trans of jump/double-jump/high-jump/
+;; falling). Handles: air attack (circle), an eco-powerup jump escape, landing -> target-hit-ground the
+;; instant on-surface is set, the "stuck in the air" failsafe (if Jak moved less than stuck-distance over
+;; stuck-time he's force-landed), and the slide-down test. stuck-timeout is the stuck-window timeout.
+(defbehavior target-falling-trans target ((mode basic) (stuck-timeout time-frame))
+  "Handle shared airborne transitions: air attacks, eco-powerup jump escape, landing, a
+   distance-and-time failsafe for a target stuck in the air, and slide-down entry. A negative
+   stuck-timeout disables the failsafe."
   (if (and (cpad-pressed? (-> self control cpad number) circle) (can-feet?)) (go target-attack-air #f))
-  (when (= arg0 'target-eco-powerup)
+  (when (= mode 'target-eco-powerup)
     ;; og:preserve-this - High FPS Fix
     (if (and (recently-pressed? x)
-             (not (logtest? (-> self water flags) (water-flags wt09)))
+             (not (logtest? (-> self water flags) (water-flag touch-water)))
              (not (time-elapsed? (-> self state-time) (seconds 3)))
              (not (logtest? (-> self state-flags) (state-flags prevent-jump))))
       (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))))
-  (if (logtest? (-> self control status) (cshape-moving-flags onsurf)) (go target-hit-ground #f))
+  (if (logtest? (-> self control status) (collide-status on-surface)) (go target-hit-ground #f))
   (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
-                 (>= arg1 0)
-                 (time-elapsed? (-> self state-time) arg1)
+                 (>= stuck-timeout 0)
+                 (time-elapsed? (-> self state-time) stuck-timeout)
                  (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2))))
           #t)
-    (logior! (-> self control status) (cshape-moving-flags onsurf))
+    (logior! (-> self control status) (collide-status on-surface))
     (go target-hit-ground 'stuck))
   (if (!= (-> self state-time) (current-time)) (slide-down-test))
   0
   (none))
 
-(defbehavior target-hit-ground-anim target ((arg0 symbol))
+;; Plays the appropriate landing animation based on what anim was running when we touched down:
+;; flop landings (with the buffered flop-jump escape while the land anim plays), the normal jump
+;; landing, short landings for early-jump-frame touchdowns, the knockback get-up (which keeps
+;; pushing Jak 24576 = 6m/s away from the hit), etc. Skipped entirely when sliding fast on ice.
+;; mode is the landing kind ('swim slows the flop landing to 0.4x); returns when the anim is done.
+(defbehavior target-hit-ground-anim target ((mode symbol))
+  "Finish the animation active at touchdown. Select the standing or moving flop landing, ordinary
+   long or short jump landing, or knockback recovery; keep its required alignment or push until the
+   animation finishes. Fast ice slides skip landing animation, and swim slows a flop landing."
   (let ((v1-2 (ja-group)))
     (cond
       ((or (= v1-2 eichar-flop-down-ja)
            (= v1-2 eichar-flop-down-loop-ja)
            (= v1-2 eichar-moving-flop-down-ja)
            (= v1-2 eichar-moving-flop-down-loop-ja))
-       (let ((gp-0 (or (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) (< (-> self control ctrl-xz-vel) 61440.0)))
-             (f30-0 (the-as float (if (= arg0 'swim) 0.4 1.0))))
+       ;; in-place? picks the standing flop landing over the moving one (stick released or < 15m/s)
+       (let ((in-place? (or (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) (< (-> self control ctrl-xz-vel) 61440.0)))
+             (f30-0 (the-as float (if (= mode 'swim) 0.4 1.0))))
          (ja-channel-set! 1)
          (let ((s5-0 (-> self skel root-channel 0)))
-           (set! (-> s5-0 frame-group) (the-as art-joint-anim (if gp-0 eichar-flop-down-land-ja eichar-moving-flop-down-land-ja)))
+           (set! (-> s5-0 frame-group) (the-as art-joint-anim (if in-place? eichar-flop-down-land-ja eichar-moving-flop-down-land-ja)))
            (set! (-> s5-0 param 0)
                  (the float
-                      (+ (-> (the-as art-joint-anim (if gp-0 eichar-flop-down-land-ja eichar-moving-flop-down-land-ja)) data 0 length) -1)))
+                      (+ (-> (the-as art-joint-anim (if in-place? eichar-flop-down-land-ja eichar-moving-flop-down-land-ja)) data 0 length) -1)))
            (let ((f30-1 (seek f30-0 (the-as float 1.0) (* 0.5 (seconds-per-frame)))))
              (set! (-> s5-0 param 1) f30-1)
              (set! (-> s5-0 frame-num) 0.0)
              (joint-control-channel-group! s5-0
-                                           (the-as art-joint-anim (if gp-0 eichar-flop-down-land-ja eichar-moving-flop-down-land-ja))
+                                           (the-as art-joint-anim (if in-place? eichar-flop-down-land-ja eichar-moving-flop-down-land-ja))
                                            num-func-seek!)
              (until (ja-done? 0)
                (compute-alignment! (-> self align))
                (align! (-> self align)
-                       (if gp-0 (align-opts adjust-y-vel) (align-opts adjust-y-vel adjust-xz-vel))
+                       (if in-place? (align-opts adjust-y-vel) (align-opts adjust-y-vel adjust-xz-vel))
                        (the-as float 1.0)
                        (the-as float 1.0)
                        (the-as float 1.5))
                (when (and (>= 25.0 (ja-aframe-num 0))
                           (and (>= (ja-aframe-num 0) 21.0)
                                (= (-> self next-state name) 'target-flop-hit-ground)
-                               (!= (-> self control unknown-spoolanim00) 'stuck)))
+                               (!= (-> self control state-spool-anim) 'stuck)))
                  (set! (-> self event-hook) target-jump-event-handler)
                  (when (and (cpad-hold? (-> self control cpad number) x) (can-jump? #f))
                    (ja-channel-set! 0)
                    (go target-high-jump
                        (-> *TARGET-bank* flop-jump-height-min)
                        (-> *TARGET-bank* flop-jump-height-max)
-                       (if gp-0 'flop 'flop-forward))))
+                       (if in-place? 'flop 'flop-forward))))
                (suspend)
                (let ((s5-1 (-> self skel root-channel 0)))
                  (set! (-> s5-1 param 0) (the float (+ (-> s5-1 frame-group data 0 length) -1)))
@@ -147,6 +183,7 @@
                  (set! (-> s5-1 param 1) f30-1)
                  (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim #f) num-func-seek!))))))
        #f)
+      ;; sliding fast on ice (> 16384 = 4 m/s): skip the landing anim so the skate keeps going
       ((and (= (-> self control ground-pat material) (pat-material ice)) (< 16384.0 (-> self control ctrl-xz-vel))) #f)
       ((let ((v1-95 (ja-group)))
          (or (or (= v1-95 eichar-jump-loop-ja) (= v1-95 eichar-launch-jump-ja) (= v1-95 eichar-launch-jump-loop-ja))
@@ -208,6 +245,8 @@
        #f)
       ((ja-group? eichar-jump-land-ja) (ja-no-eval :num! (seek!)) (while (not (ja-done? 0)) (suspend) (ja-eval)) #f))))
 
+;; First state after the target process is created: waits two frames (so collision/camera have
+;; settled) and drops into target-stance.
 (defstate target-startup (target)
   :event target-standard-event-handler
   :code
@@ -217,6 +256,9 @@
       (go target-stance))
   :post target-no-move-post)
 
+;; Standing still. The :trans is effectively the ground-state input dispatcher: each frame it checks for
+;; wading/ice variants, stick movement (-> target-walk), duck (L1+R1), jump (X), attacks, then slide/fall
+;; tests. The :code is purely the idle/blend animation. Movement physics is handled by target-post.
 (defstate target-stance (target)
   :event target-standard-event-handler
   :enter
@@ -230,7 +272,7 @@
   :trans
     (behavior ()
       ((-> self state-hook))
-      (if (logtest? (-> self water flag) (water-flag wading)) (go target-wade-stance))
+      (if (logtest? (-> self water flags) (water-flag wading)) (go target-wade-stance))
       (when (= (-> self control ground-pat material) (pat-material ice))
         (set! (-> self control bend-target) 0.0)
         (remove-exit)
@@ -370,6 +412,13 @@
           (if (can-play-stance-amibent?) (go target-stance-ambient)))))
   :post target-post)
 
+;; Walking/running -- there is no separate "run" state. Speed is fully continuous: target-post drives
+;; ctrl-xz-vel from stick magnitude, and this state just blends the walk/run animations to match.
+;; COOL: f30-0 is the walk<->run anim blend, derived as (ctrl-xz-vel - 4m) / 20480 clamped 0..1, and is
+;; seeked smoothly so the legs ramp from walk to run cycles as you accelerate. Channels 1/2/4/5 are
+;; up/down and left/right lean variants blended by local-slope-z/x, so the run anim leans into hills and
+;; turns. The loop! playback rate (f0-92) is tied to ctrl-xz-vel / cycle-distance, so feet match ground
+;; speed and never "skate". The :trans handles the turn-around skid, duck, wheel, jump, and fall exits.
 (defstate target-walk (target)
   :event target-walk-event-handler
   :enter
@@ -389,7 +438,7 @@
         (go target-ice-walk))
       ;; og:preserve-this - High FPS Fix
       (if (and (recently-pressed? l1 r1)
-               (and (time-elapsed? (-> *TARGET-bank* wheel-timeout) (-> self control unknown-dword30))
+               (and (time-elapsed? (-> *TARGET-bank* wheel-timeout) (-> self control last-wheel-end-time))
                     (and (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) (can-wheel?))))
         (go target-wheel))
       (when (and (cpad-hold? (-> self control cpad number) l1 r1) (can-duck?))
@@ -407,7 +456,7 @@
       (if (and (recently-pressed? circle) (can-feet?)) (go target-attack))
       (if (can-hands? #t) (go target-running-attack))
       (when (and (turn-around?) (time-elapsed? (-> self state-time) (seconds 0.3)))
-        (set! (-> self control transv quad) (-> self control transv-history (-> self control idx-of-fastest-xz-vel) quad))
+        (vector-copy! (-> self control transv) (-> self control transv-history (-> self control idx-of-fastest-xz-vel)))
         (set! (-> self control transv w) 1.0)
         (go target-turn-around))
       (slide-down-test)
@@ -505,10 +554,10 @@
                 (until (ja-done? 0)
                   (suspend)
                   ;; This controls the slow walk animation that occurs after landing from a jump. > 60fps was broken here so I think should not be tied to seconds-per-frame
-                  ;; unknown-float01 is the magnitude of xz velocity
+                  ;; ctrl-xz-vel is the magnitude of xz velocity
                   (ja :num!
                       (seek! max
-                             (/ (* (fmax 20480.0 (-> self control unknown-float01))
+                             (/ (* (fmax 20480.0 (-> self control ctrl-xz-vel))
                                    (if (= (-> *setting-control* current video-mode) 'custom) 0.016666668 (-> *display* seconds-per-frame)))
                                 (/ (-> *TARGET-bank* run-up-cycle-dist) (-> *TARGET-bank* run-cycle-length))))))
                 (set! f28-0 30.0)
@@ -587,6 +636,11 @@
             (suspend)))))
   :post target-post)
 
+;; The hard-cut sprint reversal (entered from target-walk when turn-around? fires). On enter it snaps
+;; facing to the current velocity and uses *turn-around-mods* (fric 0.1 -> Jak keeps sliding while the
+;; skid animation plays). The :code spins dir-targ a full 180 (32768 = half turn), plays the turn anim
+;; while aligning the body to it, then on exit re-launches Jak forward at full run speed (40960 ~=10m/s)
+;; in the new direction. This is what makes the snappy "plant-and-go-the-other-way" sprint feel.
 (defstate target-turn-around (target)
   :event target-standard-event-handler
   :enter
@@ -609,7 +663,7 @@
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
       (if (and (cpad-pressed? (-> self control cpad number) circle) (can-feet?)) (go target-attack))
       (if (can-hands? #t) (go target-running-attack))
-      (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
+      (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
                (time-elapsed? (-> self control last-time-on-surface) (seconds 0.08)))
         (go target-falling #f))
       (slide-down-test))
@@ -632,6 +686,11 @@
       (go target-walk))
   :post target-no-stick-post)
 
+;; Sliding down a too-steep surface (entered via slide-down-test). Uses the airborne *jump-mods* so
+;; gravity does the work and the player keeps a little air-style steering; Jak just holds the crouch
+;; anim while sliding. Exits to target-duck-stance the moment he's back on standable ground (or is
+;; stuck against something). On exit it stamps last-slide-down-end-time, which gates re-entry
+;; elsewhere so slide->stand->slide doesn't oscillate every frame.
 (defstate target-slide-down (target)
   :event target-walk-event-handler
   :enter
@@ -639,12 +698,12 @@
       (set! (-> self control mod-surface) *jump-mods*))
   :exit
     (behavior ()
-      (set-time! (-> self control unknown-dword35)))
+      (set-time! (-> self control last-slide-down-end-time)))
   :trans
     (behavior ()
-      (when (or (logtest? (-> self control status) (cshape-moving-flags onsurf))
+      (when (or (logtest? (-> self control status) (collide-status on-surface))
                 (if (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance)) #t))
-        (logior! (-> self control status) (cshape-moving-flags onsurf))
+        (logior! (-> self control status) (collide-status on-surface))
         (go target-duck-stance)))
   :code
     (behavior ()
@@ -656,78 +715,116 @@
           (ja :num! (seek!)))))
   :post target-post)
 
-(defbehavior init-var-jump target ((arg0 float) (arg1 float) (arg2 vector) (arg3 vector) (arg4 vector))
-  (logclear! (-> self control status) (cshape-moving-flags t-ceil-sticky))
+;; Set up a VARIABLE-HEIGHT jump. min-height/max-height are the min and max jump apex heights in
+;; game units (4096.0 = 1 meter). The launch velocity is computed from the desired height via the
+;; ballistic identity v = sqrt(2*g*h) (the sqrtf(2 * gravity-length * min-height) below), minus a
+;; half-tick of gravity so the very first integration step lands cleanly. It seeds vel (transv) to
+;; exactly reach the MIN height; both heights are stashed (state-var0/state-var1 = min/max, the max
+;; via its int view did-move-to-pole-or-max-jump-height) for mod-var-jump to interpolate toward
+;; while X is held. adjust-heights? shrinks the stored heights by the jump collide-offset (used by
+;; the ordinary jump states); seed-vel? gates the velocity write. Also stores the jump start
+;; position in state-vector0 so the current rise can be measured later.
+;; COOL details:
+;;  - if Jak just left a moving platform (rider-time < 0.05s) the platform's upward motion is ADDED to
+;;    the jump height, and its horizontal motion is added to transv, so jumps off elevators feel right.
+;;  - delete-back-vel first scrubs any backward velocity so a jump always carries forward momentum.
+(defbehavior init-var-jump target ((min-height float) (max-height float) (seed-vel? symbol) (adjust-heights? symbol) (vel vector))
+  "Initialize a variable-height jump between min-height and max-height. Carry recent moving-platform
+   velocity, optionally reduce both heights by the animation collision offset, optionally replace
+   vel's vertical component with the ballistic launch speed, and remember the starting position."
+  (logclear! (-> self control status) (collide-status touch-ceiling-sticky))
   (delete-back-vel)
   (when (not (time-elapsed? (-> self control rider-time) (seconds 0.05)))
-    (let ((f0-1 (fmax 0.0 (fmin 28672.0 (* 0.5 (vector-dot (-> self control dynam gravity-normal) (-> self control rider-last-move)))))))
-      (set! arg0 (+ arg0 f0-1))
-      (set! arg1 (+ arg1 f0-1)))
+    ;; half the platform's upward speed, capped at 28672 = 7m, is added to both jump heights
+    (let ((rider-up-speed (fmax 0.0 (fmin 28672.0 (* 0.5 (vector-dot (-> self control dynam gravity-normal) (-> self control rider-last-move)))))))
+      (set! min-height (+ min-height rider-up-speed))
+      (set! max-height (+ max-height rider-up-speed)))
     (when (or (logtest? (-> self control current-surface flags) (surface-flags moving-ground))
               (= (-> self control poly-pat material) (pat-material rotate)))
       (+! (-> self control transv x) (-> self control rider-last-move x))
       (+! (-> self control transv z) (-> self control rider-last-move z))))
-  (set! (-> self control unknown-float123) 0.0)
-  (set! (-> self control unknown-float124) 0.0)
+  (set! (-> self control var-jump-hold-time) 0.0)
+  (set! (-> self control var-jump-last-hold-time) 0.0)
   (cond
-    (arg3
-     (set! (-> self control unknown-uint20) (the-as uint (- arg0 (+ -409.6 (-> *TARGET-bank* jump-collide-offset)))))
+    (adjust-heights?
+     (set! (-> self control state-var0) (the-as uint (- min-height (+ -409.6 (-> *TARGET-bank* jump-collide-offset)))))
      (set! (-> self control did-move-to-pole-or-max-jump-height)
-           (the-as int (- arg1 (-> *TARGET-bank* jump-collide-offset)))))
+           (the-as int (- max-height (-> *TARGET-bank* jump-collide-offset)))))
     (else
-     (set! (-> self control unknown-uint20) (the-as uint arg0))
-     (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as int arg1))))
-  (when arg2
-    (let ((s4-1 (new-stack-vector0)))
-      (let ((f0-16 (vector-dot (-> self control dynam gravity-normal) arg4)))
+     (set! (-> self control state-var0) (the-as uint min-height))
+     (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as int max-height))))
+  (when seed-vel?
+    ;; split vel into vertical + lateral parts, replace the vertical part with the launch speed
+    (let ((lateral-vel (new-stack-vector0)))
+      (let ((up-speed (vector-dot (-> self control dynam gravity-normal) vel)))
         0.0
-        (vector-! s4-1 arg4 (vector-float*! s4-1 (-> self control dynam gravity-normal) f0-16)))
-      (let* ((f0-17 (vector-length s4-1))
-             (f1-11 f0-17)
-             (f2-7 (- (sqrtf (* 2.0 (-> self control dynam gravity-length) arg0))
-                      (* 0.008333334 (- (-> self control dynam gravity-length))))))
-        (vector+! arg4
-                  (vector-float*! arg4 (-> self control dynam gravity-normal) f2-7)
-                  (vector-float*! s4-1 s4-1 (/ f0-17 f1-11))))))
-  (let ((v0-2 (-> self control unknown-vector102))) (set! (-> v0-2 quad) (-> self control trans quad)) v0-2))
+        (vector-! lateral-vel vel (vector-float*! lateral-vel (-> self control dynam gravity-normal) up-speed)))
+      (let* ((lateral-speed (vector-length lateral-vel))
+             (new-lateral-speed lateral-speed)
+             (launch-speed (- (sqrtf (* 2.0 (-> self control dynam gravity-length) min-height))
+                              (* 0.008333334 (- (-> self control dynam gravity-length))))))
+        (vector+! vel
+                  (vector-float*! vel (-> self control dynam gravity-normal) launch-speed)
+                  (vector-float*! lateral-vel lateral-vel (/ lateral-speed new-lateral-speed))))))
+  (let ((start-pos (-> self control state-vector0))) (vector-copy! start-pos (-> self control trans)) start-pos))
 
-(defbehavior mod-var-jump target ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 vector))
+;; The "hold X to jump higher" logic, run every frame of a rising jump. jump-held? is "is X still held".
+;; hold-frac is jump time in 30ths of a second (0..1 over the first ~1s). While X is held and we're inside
+;; that window, it lerps the target apex height from the MIN (state-var0, float bits) toward the MAX
+;; (state-var1) by hold-frac, recomputes the velocity needed to reach that height from the CURRENT
+;; height, and rewrites transv accordingly -- so releasing X early simply stops raising the target and
+;; Jak peaks lower. Once X is released or the window passes, var-jump-hold-time is set -1.0 to lock it.
+;; This is the classic variable-jump-height feel implemented as a live re-solve of the ballistic arc.
+;; update-vel? gates the re-solve; update-collide-offset? additionally samples the current jump anim's
+;; 'collide-offset track into anim-collide-offset-local (the anim can shrink/shift Jak's collision).
+(defbehavior mod-var-jump target ((update-vel? symbol) (update-collide-offset? symbol) (jump-held? symbol) (vel vector))
+  "Update a rising variable-height jump. While jump-held? remains true during the first second,
+   interpolate the desired apex from the stored minimum to maximum and solve the required vertical
+   velocity from the current rise. Optionally update velocity and the animation collision offset."
   (local-vars (v0-2 vector))
-  (let ((f30-0 (* 0.033333335 (the float (- (current-time) (-> self state-time))))))
+  (let ((hold-frac (* 0.033333335 (the float (- (current-time) (-> self state-time))))))
     (cond
-      ((or (< 1.0 f30-0) (< (-> self control unknown-float123) 0.0) (not arg2))
-       (set! (-> self control unknown-float123) -1.0))
+      ((or (< 1.0 hold-frac) (< (-> self control var-jump-hold-time) 0.0) (not jump-held?))
+       (set! (-> self control var-jump-hold-time) -1.0))
       (else
-       (set! (-> self control unknown-float123) f30-0)
-       (set! (-> self control unknown-float124) f30-0)
-       (when arg0
-         (let ((s3-1 (vector-! (new-stack-vector0) (-> self control trans) (-> self control unknown-vector102)))
-               (s4-0 (new-stack-vector0)))
-           (let ((f0-5 (vector-dot (-> self control dynam gravity-normal) arg3)))
+       (set! (-> self control var-jump-hold-time) hold-frac)
+       (set! (-> self control var-jump-last-hold-time) hold-frac)
+       (when update-vel?
+         ;; rise-so-far = displacement since the jump started (state-vector0 = jump start position)
+         (let ((rise-so-far (vector-! (new-stack-vector0) (-> self control trans) (-> self control state-vector0)))
+               (lateral-vel (new-stack-vector0)))
+           (let ((f0-5 (vector-dot (-> self control dynam gravity-normal) vel)))
              0.0
-             (vector-! s4-0 arg3 (vector-float*! s4-0 (-> self control dynam gravity-normal) f0-5)))
-           (let* ((f28-0 (vector-length s4-0))
-                  (f26-0 f28-0)
-                  (f0-13 (- (sqrtf (* 2.0
-                                      (-> self control dynam gravity-length)
-                                      (- (lerp-scale (the-as float (-> self control unknown-uint20))
-                                                     (the-as float (-> self control unknown-uint30))
-                                                     f30-0
-                                                     (the-as float 0.0)
-                                                     (the-as float 1.0))
-                                         (vector-dot (-> self control dynam gravity-normal) s3-1))))
-                            (* 0.008333334 (- (-> self control dynam gravity-length))))))
-             (vector+! arg3
-                       (vector-float*! arg3 (-> self control dynam gravity-normal) f0-13)
-                       (vector-float*! s4-0 s4-0 (/ f28-0 f26-0)))))))))
+             (vector-! lateral-vel vel (vector-float*! lateral-vel (-> self control dynam gravity-normal) f0-5)))
+           (let* ((lateral-speed (vector-length lateral-vel))
+                  (new-lateral-speed lateral-speed)
+                  ;; v = sqrt(2*g*(target-apex - current-rise)), minus a half tick of gravity
+                  (needed-up-speed (- (sqrtf (* 2.0
+                                                (-> self control dynam gravity-length)
+                                                (- (lerp-scale (the-as float (-> self control state-var0))
+                                                               (the-as float (-> self control state-var1))
+                                                               hold-frac
+                                                               (the-as float 0.0)
+                                                               (the-as float 1.0))
+                                                   (vector-dot (-> self control dynam gravity-normal) rise-so-far))))
+                                      (* 0.008333334 (- (-> self control dynam gravity-length))))))
+             (vector+! vel
+                       (vector-float*! vel (-> self control dynam gravity-normal) needed-up-speed)
+                       (vector-float*! lateral-vel lateral-vel (/ lateral-speed new-lateral-speed)))))))))
   0
-  (when (and arg1 (ja-group) (and (-> (ja-group) extra) #t))
-    (let ((v1-57 (res-lump-struct (-> (ja-group) extra) 'collide-offset vector :time (ja-frame-num 0))))
+  (when (and update-collide-offset? (ja-group) (and (-> (ja-group) extra) #t))
+    (let ((anim-offset (res-lump-struct (-> (ja-group) extra) 'collide-offset vector :time (ja-frame-num 0))))
       (cond
-        (v1-57 (set! v0-2 (-> self control unknown-vector13)) (set! (-> v0-2 quad) (-> v1-57 quad)))
-        (else (set! v0-2 (-> self control unknown-vector13)) (set! (-> v0-2 quad) (the-as uint128 0)))))
+        (anim-offset (set! v0-2 (-> self control anim-collide-offset-local)) (set! (-> v0-2 quad) (-> anim-offset quad)))
+        (else (set! v0-2 (-> self control anim-collide-offset-local)) (vector-zero! v0-2))))
     v0-2))
 
+;; Crouched and stationary (L1+R1 held). Shrinks the collision to the 'duck shape and sets
+;; bend-target 1.0 so the spine IK bends Jak down. Releasing the shoulder buttons stands back up
+;; only if can-exit-duck? (headroom above). From here: stick -> duck-walk, X with no stick ->
+;; the backflip (target-high-jump 'duck), X with stick -> normal jump, punch -> uppercut.
+;; The exit avoids target-state-hook-exit when moving between the closely-related stance/walk
+;; states so hooks placed by other systems survive the duck<->stand transitions.
 (defstate target-duck-stance (target)
   :event target-standard-event-handler
   :enter
@@ -755,7 +852,7 @@
       (if (move-legs?) (go target-duck-walk))
       ;; og:preserve-this - High FPS Fix
       (when (and (recently-pressed? x) (can-jump? #f))
-        (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+        (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
           (go target-high-jump (-> *TARGET-bank* duck-jump-height-min) (-> *TARGET-bank* duck-jump-height-max) 'duck)
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))))
       (if (and (can-hands? #t) (can-exit-duck?))
@@ -785,6 +882,11 @@
           (ja :num! (seek!)))))
   :post target-post)
 
+;; Crouch-walking. Same collision/bend setup and exits as target-duck-stance (shares its :exit).
+;; The duck-walk anim playback rate is scaled by ctrl-xz-vel / duck-walk-cycle-dist so the shuffle
+;; matches ground speed. Also auto-stands when wading water gets too deep (>= 2457.6 = 0.6m over
+;; the wade height). *duck-mods* is only (re)applied once the duck-walk anim has fully blended in,
+;; so a duck-roll entry keeps its roll surface until the roll anim is gone.
 (defstate target-duck-walk (target)
   :event target-standard-event-handler
   :enter
@@ -800,14 +902,14 @@
       ((-> self state-hook))
       (if (and (or (not (cpad-hold? (-> self control cpad number) l1 r1))
                    (logtest? (-> self state-flags) (state-flags prevent-duck))
-                   (and (logtest? (-> self water flag) (water-flag wading))
+                   (and (logtest? (-> self water flags) (water-flag wading))
                         (>= (- (- (-> self control trans y) (- (-> self water base-height) (-> self water wade-height)))) 2457.6)))
                (can-exit-duck?))
         (go target-walk))
       (if (not (move-legs?)) (go target-duck-stance))
       ;; og:preserve-this - High FPS Fix
       (when (and (recently-pressed? x) (can-jump? #f))
-        (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
+        (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
           (go target-high-jump (-> *TARGET-bank* duck-jump-height-min) (-> *TARGET-bank* duck-jump-height-max) 'duck)
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))))
       (if (and (can-hands? #t) (can-exit-duck?))
@@ -829,11 +931,21 @@
         (suspend)))
   :post target-post)
 
+;; The standard jump (min-height/max-height, mods = optional surface override, default *jump-mods*).
+;; On enter it seeds the ballistic velocity via init-var-jump and clears the on-surface flags. The :trans
+;; runs mod-var-jump every frame for variable height, watches for the DOUBLE JUMP window (press X again
+;; while vertical velocity is between ~ -15m/s and +3m/s) and the flop (square), plus the normal fall/land
+;; transitions. So the double-jump "buffer" is really just: you may double-jump any time you're in the
+;; jump state and not falling too fast. jump-forward-blend/var-jump-hold-time track forward-lean and
+;; held-jump anim blends.
+;; If the saved 'launch event (jump-kind == 'launch, from a launcher pad) is pending, the enter
+;; immediately redirects to target-launch using the saved launch-height/launch-camera-state/
+;; launch-dest/launch-tracking-time parameters instead of doing a normal jump.
 (defstate target-jump (target)
   :event target-jump-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float) (arg2 surface))
-      (when (= (-> self control unknown-symbol40) 'launch)
+    (behavior ((min-height float) (max-height float) (mods surface))
+      (when (= (-> self control jump-kind) 'launch)
         (level-hint-spawn (text-id sidekick-launcher1) "sksp009d" (the-as entity #f) *entity-pool* (game-task none))
         (level-hint-spawn (text-id sidekick-launcher2) "sksp009e" (the-as entity #f) *entity-pool* (game-task none))
         (case (-> (level-get-target-inside *level*) name)
@@ -841,35 +953,35 @@
            (level-hint-spawn (text-id citadel-launcher2) "sksp0393" (the-as entity #f) *entity-pool* (game-task none))
            (level-hint-spawn (text-id citadel-launcher) "sksp0388" (the-as entity #f) *entity-pool* (game-task none))))
         enter-state
-        (let ((a0-9 (-> self control unknown-dword60))
-              (a1-5 (-> self control unknown-dword61))
-              (a2-5 (-> self control unknown-vector102)))
-          (set! (-> a2-5 quad) (-> (the-as vector (-> self control unknown-dword62)) quad))
-          (go target-launch (the-as float a0-9) (the-as symbol a1-5) a2-5 (-> self control unknown-dword63))))
+        (let ((height (-> self control launch-height))
+              (camera-state (-> self control launch-camera-state))
+              (dest (-> self control state-vector0)))
+          (vector-copy! dest (the-as vector (-> self control launch-dest)))
+          (go target-launch (the-as float height) (the-as symbol camera-state) dest (-> self control launch-tracking-time))))
       (set-time! (-> self state-time))
       (sound-play "jump" :vol 70)
-      (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #t) (-> self control transv))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
-      (set! arg2
+      (init-var-jump min-height max-height #t #t (-> self control transv))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
+      (set! mods
             (cond
-              (arg2 (empty) arg2)
+              (mods (empty) mods)
               (else *jump-mods*)))
-      (set! (-> self control mod-surface) arg2)
-      (set! (-> self control unknown-float123)
+      (set! (-> self control mod-surface) mods)
+      (set! (-> self control var-jump-hold-time)
             (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control ctrl-xz-vel))))))
-      (set! (-> self control unknown-float122)
+      (set! (-> self control jump-forward-blend)
             (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))))
   :exit target-exit
   :trans
     (behavior ()
-      (set! (-> self control unknown-float123)
-            (fmax (-> self control unknown-float123)
-                  (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx x)))))) ;; og:preserve-this abutton indexing
+      (set! (-> self control var-jump-hold-time)
+            (fmax (-> self control var-jump-hold-time)
+                  (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx x)))))) ;; og:preserve-this abutton indexing
       (target-falling-trans #f (the-as time-frame (if (ja-group? eichar-jump-loop-ja) 15 -1)))
       (if (and (cpad-pressed? (-> self control cpad number) x)
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 12288.0)
                (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-                    (not (logtest? (-> self water flag) (water-flag touch-water)))
+                    (not (logtest? (-> self water flags) (water-flag touch-water)))
                     (not (logtest? (-> self state-flags) (state-flags prevent-jump)))))
         (go target-double-jump (-> *TARGET-bank* double-jump-height-min) (-> *TARGET-bank* double-jump-height-max)))
       (if (and (cpad-pressed? (-> self control cpad number) square)
@@ -877,56 +989,65 @@
                (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                     (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                     (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
-                    (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump surf08)))))
+                    (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump prevent-hand-attack)))))
         (go target-flop
             (the-as float 65502.96)
             (the-as float -163840.0)
             (the-as float (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) 0.0 68812.8))))
       (mod-var-jump #t #t (cpad-hold? (-> self control cpad number) x) (-> self control transv))
       (slide-down-test)
-      (seek! (-> self control unknown-float122)
+      (seek! (-> self control jump-forward-blend)
              (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
              (seconds-per-frame)))
   :code
-    (behavior ((arg0 float) (arg1 float) (arg2 surface))
+    (behavior ((min-height float) (max-height float) (mods surface))
       (ja-channel-push! 2 (seconds 0.05))
       (ja :group! eichar-jump-ja :num! min)
-      (ja :chan 1 :group! eichar-jump-forward-ja :num! (chan 0) :frame-interp (-> self control unknown-float122))
+      (ja :chan 1 :group! eichar-jump-forward-ja :num! (chan 0) :frame-interp (-> self control jump-forward-blend))
       (suspend)
       (ja :group! eichar-jump-ja :num! (+!))
-      (ja :chan 1 :group! eichar-jump-forward-ja :num! (chan 0) :frame-interp (-> self control unknown-float122))
+      (ja :chan 1 :group! eichar-jump-forward-ja :num! (chan 0) :frame-interp (-> self control jump-forward-blend))
       (suspend)
+      ;; play the takeoff anim so its apex pose (frame 20) lands on the ballistic apex: while rising,
+      ;; the playback rate is scaled by frames-remaining / time-to-apex (capped at 3x).
       (until (ja-done? 0)
-        (let ((f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-              (f0-8 (- 20.0 (ja-aframe-num 0)))
-              (gp-1 (-> self skel root-channel 0)))
-          (set! (-> gp-1 param 0) (the float (+ (-> gp-1 frame-group data 0 length) -1)))
-          (let ((v1-45 (and (< 0.0 f30-0) (< 0.0 f0-8))))
-            (set! (-> gp-1 param 1)
+        (let ((up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+              (frames-to-apex-pose (- 20.0 (ja-aframe-num 0)))
+              (channel (-> self skel root-channel 0)))
+          (set! (-> channel param 0) (the float (+ (-> channel frame-group data 0 length) -1)))
+          (let ((rising? (and (< 0.0 up-vel) (< 0.0 frames-to-apex-pose))))
+            (set! (-> channel param 1)
                   (the-as float
-                          (if v1-45 (fmin (fmin 3.0 f0-8) (/ (* 5.0 f0-8) (the float (time-to-apex f30-0 (the-as float -245760.0))))) 1.0))))
-          (joint-control-channel-group-eval! gp-1 (the-as art-joint-anim #f) num-func-seek!))
-        (ja :chan 1 :num! (chan 0) :frame-interp (-> self control unknown-float122))
+                          (if rising?
+                            (fmin (fmin 3.0 frames-to-apex-pose)
+                                  (/ (* 5.0 frames-to-apex-pose) (the float (time-to-apex up-vel (the-as float -245760.0)))))
+                            1.0))))
+          (joint-control-channel-group-eval! channel (the-as art-joint-anim #f) num-func-seek!))
+        (ja :chan 1 :num! (chan 0) :frame-interp (-> self control jump-forward-blend))
         (suspend))
       (target-falling-anim -1 (seconds 0.2)))
   :post target-post)
 
+;; A jump with guaranteed forward carry (*forward-jump-mods*), used for scripted/edge-assisted
+;; forward hops rather than the player's normal X jump. Reuses target-jump's enter (so launch
+;; redirect and var-jump setup still apply) and its :trans; the :code zeroes
+;; time-of-last-clear-wall-in-jump every frame of the takeoff so wall checks stay fresh.
 (defstate target-jump-forward (target)
   :event target-jump-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float))
-      ((-> target-jump enter) arg0 arg1 (the-as surface #f))
+    (behavior ((min-height float) (max-height float))
+      ((-> target-jump enter) min-height max-height (the-as surface #f))
       (set! (-> self control mod-surface) *forward-jump-mods*))
   :exit target-exit
   :trans
     (-> target-jump
         trans)
   :code
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (ja-channel-set! 1)
       (ja-no-eval :group! eichar-jump-ja :num! (seek!) :frame-num (ja-aframe (the-as float 3.0) 0))
       (until (ja-done? 0)
-        (set! (-> self control unknown-dword70) 0)
+        (set! (-> self control time-of-last-clear-wall-in-jump) 0)
         (suspend)
         (ja :num! (seek!)))
       (ja-no-eval :group! eichar-jump-loop-ja :num! (loop!) :frame-num 0.0)
@@ -935,20 +1056,25 @@
         (ja :group! eichar-jump-loop-ja :num! (loop!))))
   :post target-post)
 
+;; The double jump (reached from target-jump's :trans). Same machinery as target-jump -- another
+;; init-var-jump with the smaller double-jump heights (1m..2.5m) and *double-jump-mods* (slightly lower
+;; top speed). Because init-var-jump re-seeds the upward velocity from scratch, the second jump's height
+;; is independent of how far you'd already fallen -- it's a fresh ballistic arc, not an additive impulse.
 (defstate target-double-jump (target)
   :event target-jump-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float))
-      (when (= (-> self control unknown-symbol40) 'launch)
+    (behavior ((min-height float) (max-height float))
+      ;; a pending saved 'launch event overrides the double jump, same as target-jump's enter
+      (when (= (-> self control jump-kind) 'launch)
         enter-state
-        (let ((a0-3 (-> self control unknown-dword60))
-              (a1-1 (-> self control unknown-dword61))
-              (a2-0 (-> self control unknown-vector102)))
-          (set! (-> a2-0 quad) (-> (the-as vector (-> self control unknown-dword62)) quad))
-          (go target-launch (the-as float a0-3) (the-as symbol a1-1) a2-0 (-> self control unknown-dword63))))
+        (let ((height (-> self control launch-height))
+              (camera-state (-> self control launch-camera-state))
+              (dest (-> self control state-vector0)))
+          (vector-copy! dest (the-as vector (-> self control launch-dest)))
+          (go target-launch (the-as float height) (the-as symbol camera-state) dest (-> self control launch-tracking-time))))
       (set-time! (-> self state-time))
-      (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #t) (-> self control transv))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (init-var-jump min-height max-height #t #t (-> self control transv))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (set! (-> self control mod-surface) *double-jump-mods*))
   :exit target-exit
   :trans
@@ -959,52 +1085,57 @@
                (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                     (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                     (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
-                    (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump surf08)))))
+                    (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump prevent-hand-attack)))))
         (go target-flop
             (the-as float 33775.48)
             (the-as float -122880.0)
             (the-as float (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) 0.0 68812.8))))
       (if (!= (-> self state-time) (current-time))
         (mod-var-jump #t #t (cpad-hold? (-> self control cpad number) x) (-> self control transv)))
-      (seek! (-> self control unknown-float122)
+      (seek! (-> self control jump-forward-blend)
              (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
              (seconds-per-frame)))
   :code
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (ja-channel-push! 2 (seconds 0.05))
-      (effect-control-method-10 (-> self skel effect) 'jump-double (the-as float -1.0) -1)
+      (do-effect (-> self skel effect) 'jump-double (the-as float -1.0) -1)
       (ja-no-eval :group! eichar-jump-ja :num! (seek!) :frame-num (ja-aframe (the-as float 5.0) 0))
       (ja :chan 1 :group! eichar-jump-forward-ja :num! (chan 0))
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!))
-        (ja :chan 1 :num! (chan 0) :frame-interp (-> self control unknown-float122)))
+        (ja :chan 1 :num! (chan 0) :frame-interp (-> self control jump-forward-blend)))
       (target-falling-anim -1 (seconds 0.2)))
   :post target-post)
 
+;; The family of extra-high jumps, parameterized by kind: 'duck / 'launch divert to the wind-up
+;; state target-duck-high-jump (backflip / launcher pad), 'flip is the roll-jump, 'flop-forward is
+;; the moving flop-jump, and anything else is a plain high jump. Same var-jump machinery as
+;; target-jump but with high-jump surface mods, and the flop escape stays available in :trans.
 (defstate target-high-jump (target)
   :event target-jump-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float) (arg2 basic))
-      (when (and (= (-> self control unknown-symbol40) 'launch) (!= arg2 'launch))
+    (behavior ((min-height float) (max-height float) (kind basic))
+      ;; a pending saved 'launch event overrides this jump (unless we're already doing the launch)
+      (when (and (= (-> self control jump-kind) 'launch) (!= kind 'launch))
         enter-state
-        (let ((a0-3 (-> self control unknown-dword60))
-              (a1-1 (-> self control unknown-dword61))
-              (a2-1 (-> self control unknown-vector102)))
-          (set! (-> a2-1 quad) (-> (the-as vector (-> self control unknown-dword62)) quad))
-          (go target-launch (the-as float a0-3) (the-as symbol a1-1) a2-1 (-> self control unknown-dword63))))
-      (set! (-> self control unknown-uint31) (the-as uint arg2))
-      (if (or (= arg2 'duck) (= arg2 'launch)) (go target-duck-high-jump arg0 arg1 (the-as symbol arg2)))
+        (let ((height (-> self control launch-height))
+              (camera-state (-> self control launch-camera-state))
+              (dest (-> self control state-vector0)))
+          (vector-copy! dest (the-as vector (-> self control launch-dest)))
+          (go target-launch (the-as float height) (the-as symbol camera-state) dest (-> self control launch-tracking-time))))
+      (set! (-> self control state-var2) (the-as uint kind))
+      (if (or (= kind 'duck) (= kind 'launch)) (go target-duck-high-jump min-height max-height (the-as symbol kind)))
       (set-time! (-> self state-time))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (sound-play "jump" :pitch 0.3)
-      (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #t) (-> self control transv))
+      (init-var-jump min-height max-height #t #t (-> self control transv))
       (set! (-> self control mod-surface)
             (cond
-              ((= arg2 'flip) *flip-jump-mods*)
-              ((= arg2 'flop-forward) *forward-high-jump-mods*)
+              ((= kind 'flip) *flip-jump-mods*)
+              ((= kind 'flop-forward) *forward-high-jump-mods*)
               (else *high-jump-mods*)))
-      (set! (-> self control unknown-float122)
+      (set! (-> self control jump-forward-blend)
             (fmax 0.0 (fmin 0.5 (* 0.00008138021 (+ -409.6 (-> self control ctrl-xz-vel)))))))
   :exit target-exit
   :trans
@@ -1016,13 +1147,13 @@
                (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                     (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                     (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
-                    (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump surf08)))))
+                    (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump prevent-hand-attack)))))
         (go target-flop
             (the-as float 33775.48)
             (the-as float -122880.0)
             (the-as float (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) 0.0 68812.8))))
       (mod-var-jump #t #t (cpad-hold? (-> self control cpad number) x) (-> self control transv))
-      (seek! (-> self control unknown-float122)
+      (seek! (-> self control jump-forward-blend)
              (fmax 0.0 (fmin 1.0 (* 0.00012207031 (+ -2048.0 (-> self control ctrl-xz-vel)))))
              (seconds-per-frame)))
   :code
@@ -1030,36 +1161,41 @@
         code)
   :post target-post)
 
+;; The grounded WIND-UP for the backflip ('duck) and launcher-pad ('launch) jumps: plays the crouch
+;; anim up to its takeoff frame (aframe 16), then hands off to target-duck-high-jump-jump which does
+;; the actual leap. For 'launch it also starts the looping "launch-fire" sound and keeps its 3D
+;; position updated every frame while the wind-up plays.
 (defstate target-duck-high-jump (target)
   :event target-standard-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float) (arg2 symbol))
+    (behavior ((min-height float) (max-height float) (kind symbol))
       (set-time! (-> self state-time))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (set! (-> self control mod-surface) *turn-around-mods*))
   :exit target-exit
   :code
-    (behavior ((arg0 float) (arg1 float) (arg2 symbol))
+    (behavior ((min-height float) (max-height float) (kind symbol))
       (if (not (and (ja-group? eichar-duck-stance-ja) (= (-> self skel root-channel 0) (-> self skel channel))))
         (ja-channel-push! 1 (seconds 0.04)))
-      (case arg2
+      (case kind
         (('launch)
          ;; og:preserve-this PAL patch here
-         (set! (-> self control unknown-soundid01) (sound-play "launch-fire"))
+         (set! (-> self control launch-sound-id) (sound-play "launch-fire"))
          (ja-no-eval :group! eichar-launch-jump-ja :num! (seek! (ja-aframe (the-as float 16.0) 0)) :frame-num 0.0)
          (until (ja-done? 0)
-           (let ((s3-2 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-             (set! (-> s3-2 command) (sound-command set-param))
-             (set! (-> s3-2 id) (-> self control unknown-soundid01))
-             (let ((a1-5 (ear-trans)))
-               (let ((s2-1 self))
-                 (when (= a1-5 #t)
-                   (if (and s2-1 (type-type? (-> s2-1 type) process-drawable) (nonzero? (-> s2-1 control)))
-                     (set! a1-5 (-> s2-1 control trans))
-                     (set! a1-5 (the-as vector #f)))))
-               (sound-trans-convert (-> s3-2 parms trans) a1-5))
-             (set! (-> s3-2 parms mask) (sound-mask trans))
-             (-> s3-2 id))
+           ;; keep the looping launch-fire sound positioned on Jak while the wind-up plays
+           (let ((sound-param (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+             (set! (-> sound-param command) (sound-command set-param))
+             (set! (-> sound-param id) (-> self control launch-sound-id))
+             (let ((sound-pos (ear-trans)))
+               (let ((proc self))
+                 (when (= sound-pos #t)
+                   (if (and proc (type-type? (-> proc type) process-drawable) (nonzero? (-> proc control)))
+                     (set! sound-pos (-> proc control trans))
+                     (set! sound-pos (the-as vector #f)))))
+               (sound-trans-convert (-> sound-param parms trans) sound-pos))
+             (set! (-> sound-param parms mask) (sound-mask trans))
+             (-> sound-param id))
            (suspend)
            (ja :num! (seek! (ja-aframe (the-as float 16.0) 0)))))
         (else
@@ -1067,63 +1203,70 @@
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe (the-as float 16.0) 0))))))
-      (go target-duck-high-jump-jump arg0 arg1 arg2))
+      (go target-duck-high-jump-jump min-height max-height kind))
   :post target-post)
 
+;; The airborne half of the backflip / launcher jump (after target-duck-high-jump's wind-up).
+;; Reuses target-high-jump's :trans for var-jump/flop/landing logic; the launcher variant keeps the
+;; looping launch sound positioned and uses *launch-jump-mods* (no air control on a launcher arc).
 (defstate target-duck-high-jump-jump (target)
   :event target-jump-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float) (arg2 symbol))
+    (behavior ((min-height float) (max-height float) (kind symbol))
       (set-time! (-> self state-time))
       (sound-play "jump" :vol 80 :pitch -0.4)
-      (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #f) (-> self control transv))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (init-var-jump min-height max-height #t #f (-> self control transv))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (cond
-        ((= arg2 'launch) (set! (-> self neck flex-blend) 0.0) (set! (-> self control mod-surface) *launch-jump-mods*))
+        ((= kind 'launch) (set! (-> self neck flex-blend) 0.0) (set! (-> self control mod-surface) *launch-jump-mods*))
         (else (set! (-> self control mod-surface) *high-jump-mods*))))
   :exit target-exit
   ;; og:preserve-this PAL patch here
   :trans
   (behavior ()
     ((-> target-high-jump trans))
-    (case (-> self control unknown-int37)
+    (case (-> self control state-var2-int)
       (('launch)
-       (let ((gp-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-         (set! (-> gp-0 command) (sound-command set-param))
-         (set! (-> gp-0 id) (-> self control unknown-soundid01))
-         (let ((a1-0 (ear-trans)))
-           (let ((s5-0 self))
-             (when (= a1-0 #t)
-               (if (and s5-0 (type-type? (-> s5-0 type) process-drawable) (nonzero? (-> s5-0 control)))
-                 (set! a1-0 (-> s5-0 control trans))
-                 (set! a1-0 (the-as vector #f)))))
-           (sound-trans-convert (-> gp-0 parms trans) a1-0))
-         (set! (-> gp-0 parms mask) (sound-mask trans))
-         (-> gp-0 id)))))
+       (let ((sound-param (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+         (set! (-> sound-param command) (sound-command set-param))
+         (set! (-> sound-param id) (-> self control launch-sound-id))
+         (let ((sound-pos (ear-trans)))
+           (let ((proc self))
+             (when (= sound-pos #t)
+               (if (and proc (type-type? (-> proc type) process-drawable) (nonzero? (-> proc control)))
+                 (set! sound-pos (-> proc control trans))
+                 (set! sound-pos (the-as vector #f)))))
+           (sound-trans-convert (-> sound-param parms trans) sound-pos))
+         (set! (-> sound-param parms mask) (sound-mask trans))
+         (-> sound-param id)))))
   :code
-    (behavior ((arg0 float) (arg1 float) (arg2 symbol))
-      (let ((f30-0 (the-as float (if (= arg2 'launch) 110.0 35.0)))
-            (f28-0 1.0))
+    (behavior ((min-height float) (max-height float) (kind symbol))
+      ;; apex-aframe is the anim frame that should coincide with the ballistic apex; while rising the
+      ;; playback rate is scaled so we hit that frame right at the top of the arc (same trick as
+      ;; target-jump's :code).
+      (let ((apex-aframe (the-as float (if (= kind 'launch) 110.0 35.0)))
+            (anim-speed 1.0))
         (until (ja-done? 0)
-          (let* ((f24-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
-                 (f26-0 (- f30-0 (ja-aframe-num 0)))
-                 (f22-1 (fmin (fmin 3.0 f26-0) (/ (* 5.0 f26-0) (the float (time-to-apex f24-0 (the-as float -245760.0))))))
-                 (s5-0 (-> self skel root-channel 0)))
-            (set! (-> s5-0 param 0) (the float (+ (-> s5-0 frame-group data 0 length) -1)))
+          (let* ((up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+                 (frames-to-apex (- apex-aframe (ja-aframe-num 0)))
+                 (seek-speed (fmin (fmin 3.0 frames-to-apex)
+                                   (/ (* 5.0 frames-to-apex) (the float (time-to-apex up-vel (the-as float -245760.0))))))
+                 (channel (-> self skel root-channel 0)))
+            (set! (-> channel param 0) (the float (+ (-> channel frame-group data 0 length) -1)))
             (let ((v1-26 (cond
-                           ((and (< 0.0 f24-0) (< 0.0 f26-0))
-                            (if (= arg2 'launch) (set! f28-0 (lerp f28-0 (* 4.0 f22-1) (the-as float 0.25))))
-                            f22-1)
-                           (else f28-0))))
-              (set! (-> s5-0 param 1) v1-26))
-            (joint-control-channel-group-eval! s5-0 (the-as art-joint-anim #f) num-func-seek!))
+                           ((and (< 0.0 up-vel) (< 0.0 frames-to-apex))
+                            (if (= kind 'launch) (set! anim-speed (lerp anim-speed (* 4.0 seek-speed) (the-as float 0.25))))
+                            seek-speed)
+                           (else anim-speed))))
+              (set! (-> channel param 1) v1-26))
+            (joint-control-channel-group-eval! channel (the-as art-joint-anim #f) num-func-seek!))
           (suspend))
         (cond
-          ((= arg2 'launch)
-           (ja-no-eval :group! eichar-launch-jump-loop-ja :num! (loop! f28-0) :frame-num 0.0)
+          ((= kind 'launch)
+           (ja-no-eval :group! eichar-launch-jump-loop-ja :num! (loop! anim-speed) :frame-num 0.0)
            (loop
              (suspend)
-             (ja :group! eichar-launch-jump-loop-ja :num! (loop! f28-0))))
+             (ja :group! eichar-launch-jump-loop-ja :num! (loop! anim-speed))))
           (else
            (ja-no-eval :group! eichar-jump-loop-ja :num! (loop!) :frame-num 0.0)
            (loop
@@ -1132,40 +1275,52 @@
       (the-as none 0))
   :post target-post)
 
+;; Falling without having jumped (entered from fall-test, e.g. walking off a ledge after coyote time).
+;; Uses *jump-mods* for the same floaty air control as a jump. The :trans (target-falling-trans) watches
+;; for landing (-> target-hit-ground), an air attack, a late jump if eco-powered, and a "stuck" check
+;; that forces a landing if Jak has barely moved for a while (prevents getting wedged falling forever).
 (defstate target-falling (target)
   :event target-jump-event-handler
   :enter
-    (behavior ((arg0 symbol))
+    (behavior ((mode symbol))
       (set! (-> self control mod-surface) *jump-mods*)
-      (set! (-> self control unknown-uint20) (the-as uint arg0))
+      ;; the fall mode symbol is stashed in state-var0 (read back below through its symbol-typed
+      ;; view, state-spool-anim -- both names alias the same per-state scratch slot)
+      (set! (-> self control state-var0) (the-as uint mode))
       (set-time! (-> self state-time)))
   :trans
     (behavior ()
-      (target-falling-trans (-> self control unknown-spoolanim00)
-                            (the-as time-frame (if (= (-> self control unknown-spoolanim00) #f) 0 (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)))))
+      (target-falling-trans (-> self control state-spool-anim)
+                            (the-as time-frame (if (= (-> self control state-spool-anim) #f) 0 (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)))))
   :code
-    (behavior ((arg0 symbol))
+    (behavior ((mode symbol))
       (target-falling-anim -1 (seconds 0.33)))
   :post target-post)
 
+;; The landing state. On enter it measures fall distance/impact: a hard enough fall (> fall-far, 30m)
+;; diverts to target-hit-ground-hard, and a big ground-impact-vel kills forward speed (stumble) and
+;; triggers a camera/water bob scaled by impact. delete-back-vel scrubs backward momentum (unless on
+;; ice). COOL: the :trans allows an immediate jump on landing (X) -- effectively letting you bunny-hop
+;; through this transient state -- as well as duck, attacks, and resuming walk if the stick is held.
 (defstate target-hit-ground (target)
   :event target-walk-event-handler
   :enter
-    (behavior ((arg0 symbol))
+    (behavior ((mode symbol))
       (cond
-        ((= arg0 'stuck))
+        ((= mode 'stuck))
         ((let ((v1-4 (ja-group))) (or (= v1-4 eichar-launch-jump-ja) (= v1-4 eichar-launch-jump-loop-ja)))
-         (effect-control-method-10 (-> self skel effect) 'group-blue-hit-ground-effect (the-as float 0.0) -1)
+         (do-effect (-> self skel effect) 'group-blue-hit-ground-effect (the-as float 0.0) -1)
          (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.3)))
         (else
-         (let ((f0-1 (vector-dot (-> self control dynam gravity-normal)
-                                 (vector-! (new 'stack-no-clear 'vector) (-> self control last-trans-any-surf) (-> self control trans)))))
-           (if (and (< (-> *TARGET-bank* fall-far) f0-1) (not (logtest? (-> self control status) (cshape-moving-flags on-water))))
-             (go target-hit-ground-hard f0-1)))))
+         ;; fall-dist = drop from the last point we stood on a surface to here, along gravity
+         (let ((fall-dist (vector-dot (-> self control dynam gravity-normal)
+                                      (vector-! (new 'stack-no-clear 'vector) (-> self control last-trans-any-surf) (-> self control trans)))))
+           (if (and (< (-> *TARGET-bank* fall-far) fall-dist) (not (logtest? (-> self control status) (collide-status on-water))))
+             (go target-hit-ground-hard fall-dist)))))
       (cond
-        ((= arg0 'stuck))
+        ((= mode 'stuck))
         (else (target-land-effect)))
-      (set! (-> self control unknown-dword31) 0)
+      (set! (-> self control last-running-attack-end-time) 0)
       (set! (-> self control last-attack-end-time) 0)
       (if (>= (-> self control ground-impact-vel) (-> *TARGET-bank* fall-stumble-threshold)) (set-forward-vel (the-as float 0.0)))
       (if (!= (-> self control ground-pat material) (pat-material ice)) (delete-back-vel))
@@ -1185,18 +1340,22 @@
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
       (if (and (not (can-exit-duck?)) (can-duck?)) (go target-duck-stance))
       (when (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
-        (if (logtest? (-> self water flag) (water-flag wading)) (go target-wade-walk) (go target-walk)))
+        (if (logtest? (-> self water flags) (water-flag wading)) (go target-wade-walk) (go target-walk)))
       (if (and (or (cpad-hold? (-> self control cpad number) l1 r1) (not (can-exit-duck?))) (can-duck?)) (go target-duck-stance))
       (if (and (cpad-pressed? (-> self control cpad number) circle) (can-feet?)) (go target-attack))
       (if (can-hands? #t) (go target-running-attack))
       (fall-test)
       (slide-down-test))
   :code
-    (behavior ((arg0 symbol))
+    (behavior ((mode symbol))
       (target-hit-ground-anim #f)
       (go target-stance))
   :post target-post)
 
+;; The standing spin kick (circle on the ground). Marks Jak dangerous with the 'spin hitbox for the
+;; duration of the anim, buzzes the pad and spawns the red-eco effect when the spin is eco-charged,
+;; and allows an immediate jump cancel at any point during the swing. Damage delivery itself happens
+;; in target-dangerous-event-handler when something touches the danger sphere.
 (defstate target-attack (target)
   :event target-dangerous-event-handler
   :enter
@@ -1221,7 +1380,7 @@
                   :frame-num 0.0)
       (until (ja-done? 0)
         (when (and (= (-> self fact eco-type) (pickup-type eco-red)) (>= (-> self fact eco-level) 1.0))
-          (effect-control-method-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 74)
+          (do-effect (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 74)
           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
           (level-hint-spawn (text-id misty-eco-red-first-use) "sksp0072" (the-as entity #f) *entity-pool* (game-task none)))
         ;; og:preserve-this - High FPS Fix
@@ -1232,32 +1391,43 @@
       (go target-stance))
   :post target-post)
 
+;; The running punch (circle while moving, via can-hands?). Per-state scratch usage here:
+;; state-var0 = time the punch last landed a hit, state-var1 (via its int view
+;; did-move-to-pole-or-max-jump-height) = time of a kill/push hit or a surface smack (forward
+;; velocity is cut ~12 ticks after), and state-var2 = 1 once the punch has connected with an
+;; enemy/attackable -- which suppresses the smack-into-wall shove so killing a wall-adjacent enemy
+;; doesn't also bounce Jak off the wall. The :enter redirects to target-yellow-blast when carrying
+;; yellow eco or within the 1.5s last-fire-time window (chaining first-person shots into blasts).
+;; The punch can cancel into the uppercut (X) mid-swing, and the :code steers forward velocity from
+;; the animation align (align-xz-vel), scaled down by zx-vel-frac when the commanded velocity isn't
+;; being achieved (e.g. pushing into something).
 (defstate target-running-attack (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('touched)
          (cond
+           ;; 224 = mask of the danger-sphere prims; only touches on the attack hitbox count
            (((method-of-type touching-shapes-entry prims-touching?)
              (the-as touching-shapes-entry (-> block param 0))
              (-> self control)
              (the-as uint 224))
-            (let ((gp-1 (target-send-attack proc
-                                            (the-as uint (-> self control danger-mode))
-                                            (the-as touching-shapes-entry (-> block param 0))
-                                            (-> self control target-attack-id)
-                                            (-> self control attack-count))))
-              (when gp-1
-                (set! (-> self control unknown-uint20) (the-as uint (current-time)))
-                (let ((v1-9 (if (and (nonzero? proc) (type-type? (-> proc type) process-drawable)) proc)))
-                  (when v1-9
-                    (let* ((s5-1 (-> (the-as process-drawable v1-9) root))
-                           (v1-11 (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) collide-shape)) (the-as collide-shape s5-1))))
-                      (if (and v1-11
-                               (or (logtest? (-> v1-11 root-prim prim-core collide-as) (collide-kind enemy))
-                                   (logtest? (-> v1-11 root-prim prim-core action) (collide-action attackable))))
-                        (set! (-> self control unknown-uint31) (the-as uint 1))))))
-                (when (or (= gp-1 'die) (= gp-1 'push))
+            (let ((attack-result (target-send-attack proc
+                                                     (-> self control danger-mode)
+                                                     (the-as touching-shapes-entry (-> block param 0))
+                                                     (-> self control target-attack-id)
+                                                     (-> self control attack-count))))
+              (when attack-result
+                (set! (-> self control state-var0) (the-as uint (current-time)))
+                (let ((hit-proc (if (and (nonzero? proc) (type-type? (-> proc type) process-drawable)) proc)))
+                  (when hit-proc
+                    (let* ((hit-root (-> (the-as process-drawable hit-proc) root))
+                           (hit-cshape (if (and (nonzero? hit-root) (type-type? (-> hit-root type) collide-shape)) (the-as collide-shape hit-root))))
+                      (if (and hit-cshape
+                               (or (logtest? (-> hit-cshape root-prim prim-core collide-as) (collide-kind enemy))
+                                   (logtest? (-> hit-cshape root-prim prim-core action) (collide-action attackable))))
+                        (set! (-> self control state-var2) (the-as uint 1))))))
+                (when (or (= attack-result 'die) (= attack-result 'push))
                   (let ((v0-2 (the-as object (current-time))))
                     (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as int v0-2))
                     v0-2)))))
@@ -1266,12 +1436,12 @@
   :enter
     (behavior ()
       (if (or (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
-              (not (time-elapsed? (-> self control unknown-dword82) (seconds 1.5))))
+              (not (time-elapsed? (-> self control last-fire-time) (seconds 1.5))))
         (go target-yellow-blast))
       (set-time! (-> self state-time))
-      (set! (-> self control unknown-uint20) (the-as uint 0))
+      (set! (-> self control state-var0) (the-as uint 0))
       (set! (-> self control did-move-to-pole-or-max-jump-height) 0)
-      (set! (-> self control unknown-uint31) (the-as uint 0))
+      (set! (-> self control state-var2) (the-as uint 0))
       (set! (-> self control mod-surface) *run-attack-mods*)
       (set! (-> *run-attack-mods* turnv) 655360.0)
       (set! (-> *run-attack-mods* turnvv) 655360.0)
@@ -1285,30 +1455,34 @@
       (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
       (set! (-> *run-attack-mods* turnv) 0.0)
       (set! (-> *run-attack-mods* turnvv) 0.0)
-      (set-time! (-> self control unknown-dword31))
+      (set-time! (-> self control last-running-attack-end-time))
       (target-exit))
   :trans
     (behavior ()
       (when (!= (-> self state-time) (current-time))
+        ;; punching into a wall (or a steep slope, when not touching an actor): record the smack time
+        ;; in state-var1, clamp away any upward velocity, and shove Jak back -- UNLESS the punch
+        ;; landed a hit within the last 12 ticks (0.04s) or has already connected with an enemy
+        ;; (state-var2 == 1), so a successful hit never turns into a wall bonk.
         (if (and (or (smack-surface? #t)
-                     (and (>= (-> self control surface-slope-z) 0.7) (not (logtest? (-> self control status) (cshape-moving-flags t-act)))))
+                     (and (>= (-> self control surface-slope-z) 0.7) (not (logtest? (-> self control status) (collide-status touch-actor)))))
                  (begin
                    (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as int (current-time)))
                    (set! (-> self control bend-target) 0.0)
-                   (let ((gp-0 (new-stack-vector0))
-                         (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+                   (let ((lateral-vel (new-stack-vector0))
+                         (up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
                      0.0
-                     (vector-! gp-0 (-> self control transv) (vector-float*! gp-0 (-> self control dynam gravity-normal) f30-0))
-                     (let* ((f0-5 (vector-length gp-0))
-                            (f1-1 f0-5)
-                            (f2-1 (fmin 0.0 f30-0)))
+                     (vector-! lateral-vel (-> self control transv) (vector-float*! lateral-vel (-> self control dynam gravity-normal) up-vel))
+                     (let* ((lateral-speed (vector-length lateral-vel))
+                            (new-lateral-speed lateral-speed)
+                            (clamped-up-vel (fmin 0.0 up-vel)))
                        (vector+! (-> self control transv)
-                                 (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-1)
-                                 (vector-float*! gp-0 gp-0 (/ f0-5 f1-1)))))
+                                 (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) clamped-up-vel)
+                                 (vector-float*! lateral-vel lateral-vel (/ lateral-speed new-lateral-speed)))))
                    #t)
-                 (or (zero? (-> self control unknown-uint20))
-                     (>= (the-as uint (- (current-time) (the-as int (-> self control unknown-uint20)))) (the-as uint 12)))
-                 (!= (-> self control unknown-uint31) 1))
+                 (or (zero? (-> self control state-var0))
+                     (>= (the-as uint (- (current-time) (the-as int (-> self control state-var0)))) (the-as uint 12)))
+                 (!= (-> self control state-var2) 1))
           (target-shoved (-> *TARGET-bank* smack-surface-dist)
                          (-> *TARGET-bank* smack-surface-height)
                          (the-as process #f)
@@ -1320,60 +1494,65 @@
                       (not (logtest? (-> self state-flags) (state-flags prevent-jump prevent-attack)))
                       (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump)))))
           (go target-attack-uppercut (-> *TARGET-bank* attack-jump-height-min) (-> *TARGET-bank* attack-jump-height-max)))
-        (if (and (logtest? (-> self water flag) (water-flag touch-water)) (zero? (mod (- (current-time) (-> self state-time)) 21)))
+        (if (and (logtest? (-> self water flags) (water-flag touch-water)) (zero? (mod (- (current-time) (-> self state-time)) 21)))
           (create-splash (-> self water)
                          (the-as float 0.6)
                          (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg mouth))
                          0
                          (-> self control transv)))
         (when (and (= (-> self fact eco-type) (pickup-type eco-red)) (>= (-> self fact eco-level) 1.0))
-          (effect-control-method-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 23)
+          (do-effect (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 23)
           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
           (level-hint-spawn (text-id misty-eco-red-first-use) "sksp0072" (the-as entity #f) *entity-pool* (game-task none)))))
   :code
     (behavior ()
-      (if (logtest? (-> self water flag) (water-flag touch-water)) (sound-play "swim-stroke"))
+      (if (logtest? (-> self water flags) (water-flag touch-water)) (sound-play "swim-stroke"))
       (ja-channel-push! 1 (seconds 0.02))
       (ja :group! eichar-attack-punch-ja :num! min)
       (set! (-> self control dynam gravity-max) 368640.0)
       (set! (-> self control dynam gravity-length) 368640.0)
-      (let ((f28-0 0.0)
-            (f30-0 1.0)
-            (gp-2 0))
+      (let ((fwd-vel 0.0)
+            (vel-scale 1.0)
+            (frame-count 0))
         (until (ja-done? 0)
           (compute-alignment! (-> self align))
           (when (not (ja-min? 0))
             (cond
               ((and (>= (ja-aframe-num 0) 20.0)
-                    (and (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
+                    (and (and (not (logtest? (-> self control status) (collide-status on-surface)))
                               (time-elapsed? (-> self control last-time-on-surface) (-> *TARGET-bank* ground-timeout))
                               (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                               (let ((v1-39 (ja-group)))
                                 (or (not (or (= v1-39 eichar-attack-punch-ja) (= v1-39 eichar-attack-punch-end-ja) (= v1-39 eichar-attack-punch-alt-end-ja)))
                                     (< 4096.0 (target-height-above-ground)))))
-                         (>= (the-as uint (- (current-time) (the-as int (-> self control unknown-uint20)))) (the-as uint 12))))
+                         (>= (the-as uint (- (current-time) (the-as int (-> self control state-var0)))) (the-as uint 12))))
                (go target-falling #f))
-              ((and (nonzero? (-> self control unknown-uint30))
-                    (>= (the-as uint (- (current-time) (the-as int (-> self control unknown-uint30)))) (the-as uint 12)))
+              ;; ~12 ticks after a surface smack or a kill/push hit (state-var1), stop the lunge dead
+              ((and (nonzero? (-> self control state-var1))
+                    (>= (the-as uint (- (current-time) (the-as int (-> self control state-var1)))) (the-as uint 12)))
                (set-forward-vel (the-as float 0.0)))
               ((and (not (cpad-hold? (-> self control cpad number) square)) (time-elapsed? (-> self state-time) (seconds 0.05)))
                (if (= (-> self control ground-pat material) (pat-material ice))
                  (set-forward-vel (fmax 32768.0 (* 0.8 (-> self control ctrl-xz-vel))))
                  (set-forward-vel (* 0.8 (-> self control ctrl-xz-vel)))))
-              ((ja-done? 0) (set-forward-vel f28-0))
+              ((ja-done? 0) (set-forward-vel fwd-vel))
               (else
-               (set! f28-0 (* (target-align-vel-z-adjust (-> self align delta trans z)) (-> *display* frames-per-second) f30-0))
-               (set-forward-vel f28-0))))
-          (let ((s5-1 (new-stack-vector0)))
-            (vector-matrix*! s5-1 (-> self control transv) (-> self control w-R-c))
-            (set! (-> s5-1 y) 0.0)
-            (vector-matrix*! (-> self control unknown-vector120) s5-1 (-> self control c-R-w)))
+               ;; forward speed comes from the punch anim's align delta, decayed by vel-scale below
+               (set! fwd-vel (* (target-align-vel-z-adjust (-> self align delta trans z)) (-> *display* frames-per-second) vel-scale))
+               (set-forward-vel fwd-vel))))
+          ;; save the lateral (xz in the control frame) part of transv as align-xz-vel
+          (let ((local-vel (new-stack-vector0)))
+            (vector-matrix*! local-vel (-> self control transv) (-> self control w-R-c))
+            (set! (-> local-vel y) 0.0)
+            (vector-matrix*! (-> self control align-xz-vel) local-vel (-> self control c-R-w)))
           (suspend)
           (ja :num! (seek! max (-> self control current-surface align-speed)))
           (if (time-elapsed? (-> self state-time) (seconds 0.1)) (set! (-> *run-attack-mods* turnvv) 0.0))
-          (if (< 2 gp-2) (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float140)))))
-          (+! gp-2 1)))
-      (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
+          ;; after the first 3 frames, decay the anim-driven speed by how much of the commanded
+          ;; velocity was actually achieved (zx-vel-frac), so pushing into things bleeds the lunge
+          (if (< 2 frame-count) (set! vel-scale (* vel-scale (fmin 1.0 (-> self control zx-vel-frac)))))
+          (+! frame-count 1)))
+      (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
                (time-elapsed? (-> self control last-time-on-surface) (-> *TARGET-bank* ground-timeout))
                (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                (let ((v1-121 (ja-group)))
@@ -1383,6 +1562,13 @@
       (go target-stance))
   :post target-post)
 
+;; The mid-air spin kick (circle while airborne). mode is where it came from ('flop, 'uppercut, or
+;; #f for a plain air spin). On enter the vertical velocity is rewritten to give the spin its
+;; signature hang: if already falling (or from a flop) a fixed upward pop (33775.48 ~= 8.2m/s);
+;; if still rising, a re-solve that lifts Jak slightly above where his current arc would have
+;; peaked. Gravity is halved (122880) while spinning and eased back to normal by the :trans.
+;; The :code spins quat-for-control at 393216/s (= 6 revolutions per second) until near the
+;; ground, then plays the recovery anim and re-aligns to dir-targ.
 (defstate target-attack-air (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1391,15 +1577,15 @@
           (v0-0 (empty) v0-0)
           (else (target-dangerous-event-handler proc argc message block)))))
   :enter
-    (behavior ((arg0 symbol))
+    (behavior ((mode symbol))
       (set-time! (-> self state-time))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (target-start-attack)
       (target-danger-set! 'spin-air #f)
       (set! (-> self control mod-surface) *jump-attack-mods*)
       (let ((f0-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
         (cond
-          ((or (>= 0.0 f0-1) (= arg0 'flop))
+          ((or (>= 0.0 f0-1) (= mode 'flop))
            (let ((gp-1 (new-stack-vector0)))
              (let ((f0-3 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
                0.0
@@ -1430,7 +1616,7 @@
                            (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-7)
                            (vector-float*! gp-2 gp-2 (/ f0-9 f1-11)))))))))
       (set! (-> self control dynam gravity-length) 122880.0)
-      (set! (-> self control last-trans-any-surf quad) (-> self control trans quad)))
+      (vector-copy! (-> self control last-trans-any-surf) (-> self control trans)))
   :exit
     (behavior ()
       (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
@@ -1438,7 +1624,7 @@
       ((-> target-attack exit)))
   :trans
     (behavior ()
-      (when (logtest? (-> self control status) (cshape-moving-flags onsurf))
+      (when (logtest? (-> self control status) (collide-status on-surface))
         (set-quaternion! (-> self control) (-> self control dir-targ))
         (go target-hit-ground #f))
       (if (time-elapsed? (-> self state-time) (seconds 0.5))
@@ -1451,11 +1637,11 @@
         (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
         (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length)))
       (when (and (= (-> self fact eco-type) (pickup-type eco-red)) (>= (-> self fact eco-level) 1.0))
-        (effect-control-method-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 70)
+        (do-effect (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 70)
         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
         (level-hint-spawn (text-id misty-eco-red-first-use) "sksp0072" (the-as entity #f) *entity-pool* (game-task none))))
   :code
-    (behavior ((arg0 symbol))
+    (behavior ((mode symbol))
       (ja-channel-push! 1 (seconds 0.075))
       (ja-no-eval :group! eichar-attack-from-jump-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -1464,24 +1650,27 @@
         (suspend)
         (ja :num! (seek!)))
       (ja :group! eichar-attack-from-jump-loop-ja :num! min)
-      (let ((f30-0 393216.0))
-        (let ((f0-8 (target-height-above-ground))
-              (f1-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
-          (while (not (or (and (< (fabs (/ f0-8 (/ f1-1 300))) 150.0) (< f1-1 0.0)) (time-elapsed? (-> self state-time) (seconds 1.7))))
+      ;; spin-rate 393216.0/sec = 6 full revolutions per second (65536 rotation units = 360 degrees)
+      (let ((spin-rate 393216.0))
+        ;; keep spinning until we're falling and about 150 ticks (0.5s) from the ground, or 1.7s max
+        (let ((height-above-ground (target-height-above-ground))
+              (up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+          (while (not (or (and (< (fabs (/ height-above-ground (/ up-vel 300))) 150.0) (< up-vel 0.0))
+                          (time-elapsed? (-> self state-time) (seconds 1.7))))
             (quaternion-rotate-y! (-> self control quat-for-control)
                                   (-> self control quat-for-control)
-                                  (* f30-0 (seconds-per-frame)))
+                                  (* spin-rate (seconds-per-frame)))
             (suspend)
             (ja :num! (loop!))
-            (set! f0-8 (target-height-above-ground))
-            (set! f1-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
+            (set! height-above-ground (target-height-above-ground))
+            (set! up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
         (ja-no-eval :group! eichar-attack-from-jump-end-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (cond
             ((< (ja-aframe-num 0) 32.0)
              (quaternion-rotate-y! (-> self control quat-for-control)
                                    (-> self control quat-for-control)
-                                   (* f30-0 (seconds-per-frame))))
+                                   (* spin-rate (seconds-per-frame))))
             (else
              (let ((f0-22 (deg-diff (quaternion-y-angle (-> self control quat-for-control)) (quaternion-y-angle (-> self control dir-targ)))))
                (quaternion-rotate-y! (-> self control quat-for-control) (-> self control quat-for-control) (* 0.2 (fabs f0-22))))))
@@ -1490,52 +1679,61 @@
       (go target-falling #f))
   :post target-post)
 
+;; The grounded wind-up for the uppercut (punch while ducking, or X during a running punch).
+;; Plays the first frames of the uppercut anim (starting further in when coming from a duck), then
+;; hands off to target-attack-uppercut-jump which does the actual leap. min/max height are just
+;; passed through to that state's init-var-jump.
 (defstate target-attack-uppercut (target)
   :event target-dangerous-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (set-time! (-> self state-time))
       (target-start-attack)
       (target-danger-set! 'uppercut #f)
       (set! (-> self control mod-surface) *turn-around-mods*))
   :exit target-exit
   :code
-    (behavior ((arg0 float) (arg1 float))
-      (let ((s3-0 (ja-group? eichar-duck-stance-ja)))
+    (behavior ((min-height float) (max-height float))
+      (let ((from-duck? (ja-group? eichar-duck-stance-ja)))
         (ja-no-eval :group!
                     eichar-attack-uppercut-ja
                     :num!
                     (seek! (ja-aframe (the-as float 7.0) 0))
                     :frame-num
-                    (the-as float (if s3-0 (ja-aframe (the-as float 5.0) 0) 0.0))))
+                    (the-as float (if from-duck? (ja-aframe (the-as float 5.0) 0) 0.0))))
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! (ja-aframe (the-as float 7.0) 0))))
-      (go target-attack-uppercut-jump arg0 arg1))
+      (go target-attack-uppercut-jump min-height max-height))
   :post target-post)
 
+;; The airborne uppercut itself: a var-jump (min/max height from *TARGET-bank* attack-jump-height-*)
+;; with the 'uppercut danger hitbox active while rising. The danger flag is downgraded to 'harmless
+;; once falling faster than 8192 = 2m/s -- the move only hits on the way up. Can chain into the flop
+;; (square) or the air spin (circle, once past aframe 12). The :code drives movement from the anim
+;; align, switching from full alignment (opts 18) to quat-only (2) partway through the anim.
 (defstate target-attack-uppercut-jump (target)
   :event target-dangerous-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (if (and (= (-> self control ground-pat material) (pat-material ice)) (< 32768.0 (-> self control ctrl-xz-vel)))
         (set-forward-vel (the-as float 32768.0)))
       (set-time! (-> self state-time))
-      (init-var-jump arg0 arg1 (the-as vector #t) (the-as vector #f) (-> self control transv))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (init-var-jump min-height max-height #t #f (-> self control transv))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (set! (-> self control mod-surface) *uppercut-jump-mods*)
       (target-start-attack)
       (target-danger-set! 'uppercut #f))
   :exit target-exit
   :trans
     (behavior ()
-      (if (logtest? (-> self control status) (cshape-moving-flags onsurf)) (go target-hit-ground #f))
+      (if (logtest? (-> self control status) (collide-status on-surface)) (go target-hit-ground #f))
       (when (and (cpad-pressed? (-> self control cpad number) square)
                  (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 22118.4)
                  (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                       (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                       (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
-                      (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump surf08)))))
+                      (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump prevent-hand-attack)))))
         (set-quaternion! (-> self control) (-> self control dir-targ))
         (build-conversions (-> self control transv))
         (go target-flop
@@ -1549,29 +1747,39 @@
         (go target-attack-air 'uppercut))
       (mod-var-jump #t #t (cpad-hold? (-> self control cpad number) x) (-> self control transv))
       (when (and (= (-> self fact eco-type) (pickup-type eco-red)) (>= (-> self fact eco-level) 1.0))
-        (effect-control-method-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 23)
+        (do-effect (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 23)
         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1)))
       (if (and (= (-> self control danger-mode) 'uppercut)
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) -8192.0))
         (target-danger-set! 'harmless #f))
       (slide-down-test))
   :code
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (compute-alignment! (-> self align))
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! max 0.9))
         (compute-alignment! (-> self align))
-        (let* ((gp-0 (-> self align))
-               (s5-0 (method-of-object gp-0 align!))
-               (a1-2 (cond
+        ;; align opts vary by anim phase: full alignment (18) through aframe 30, reduced (2) through
+        ;; aframe 43 (also handing over to *double-jump-mods* for the descent), then none (0)
+        (let* ((align (-> self align))
+               (align-fn (method-of-object align align!))
+               (opts (cond
                        ((>= 30.0 (ja-aframe-num 0)) 18)
                        ((>= 43.0 (ja-aframe-num 0)) (set! (-> self control mod-surface) *double-jump-mods*) 2)
                        (else 0))))
-          (s5-0 gp-0 (the-as align-opts a1-2) (the-as float 1.0) (the-as float 0.95) (the-as float 1.0))))
+          (align-fn align (the-as align-opts opts) (the-as float 1.0) (the-as float 0.95) (the-as float 1.0))))
       (go target-falling #f))
   :post target-post)
 
+;; The ground-pound / belly flop (square in the air). The :enter gives a small upward pop
+;; (29491.2 ~= 7.2m/s) with heavy gravity, then the :code slams straight down at -368640 (-90m/s)
+;; once the wind-up anim finishes; the dive itself becomes the 'flop-down attack. args 0/1 are
+;; unused legacy jump heights -- only the third arg (forward speed flag) matters. A 'swim event
+;; while flopping converts to target-swim-down (deep water) or a swim flop landing. The :trans
+;; detects touchdown -- including a high-fps-fixed "stuck against invisible wall" case that counts
+;; as landing -- and triggers the red-eco ground shockwave (an expanding touch-tracker sphere) when
+;; eco-charged, then goes to target-flop-hit-ground.
 (defstate target-flop (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1581,7 +1789,7 @@
           ((let ((v1-0 message)) (= v1-0 'swim))
            (cond
              ((< 6144.0 (target-height-above-ground))
-              (effect-control-method-10 (-> self skel effect) 'swim-flop (the-as float -1.0) -1)
+              (do-effect (-> self skel effect) 'swim-flop (the-as float -1.0) -1)
               (let ((t9-3 enter-state))
                 (set! (-> self next-state) target-swim-down)
                 ((the-as (function object :behavior target) t9-3))))
@@ -1592,14 +1800,16 @@
                 ((the-as (function symbol object :behavior target) t9-4) a0-4)))))
           (else (target-dangerous-event-handler proc argc message block)))))
   :enter
-    (behavior ((arg0 float) (arg1 float) (arg2 float))
+    (behavior ((unused-min-height float) (unused-max-height float) (fwd-speed float))
       (if (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
         (go target-yellow-jump-blast))
-      (if (= arg2 0.0) (set-forward-vel arg2) (set-forward-vel (-> self control ctrl-xz-vel)))
+      ;; fwd-speed acts as a flag: 0.0 = in-place flop (kill forward vel), else keep current speed
+      (if (= fwd-speed 0.0) (set-forward-vel fwd-speed) (set-forward-vel (-> self control ctrl-xz-vel)))
       (set-time! (-> self state-time))
-      (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (set! (-> self control mod-surface) *flop-mods*)
-      (set! (-> self control unknown-uint20) (the-as uint 0))
+      ;; state-var0 is used as a frame counter here (incremented each frame of the dive loop)
+      (set! (-> self control state-var0) (the-as uint 0))
       (set! (-> self control dynam gravity-max) 245760.0)
       (set! (-> self control dynam gravity-length) 245760.0)
       (let ((gp-1 (new-stack-vector0)))
@@ -1617,25 +1827,25 @@
       (target-danger-set! 'harmless #f)
       (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
       (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
-      (set! (-> self control dynam gravity quad) (-> self control standard-dynamics gravity quad)))
+      (vector-copy! (-> self control dynam gravity) (-> self control standard-dynamics gravity)))
   :trans
     (behavior ()
       (delete-back-vel)
-      (let ((gp-1 (logtest? (-> self control status) (cshape-moving-flags onsurf))))
-        (when (and (not gp-1) (let ((v1-6 (ja-group))) (or (= v1-6 eichar-flop-down-loop-ja) (= v1-6 eichar-moving-flop-down-ja))))
+      (let ((landed (logtest? (-> self control status) (collide-status on-surface))))
+        (when (and (not landed) (let ((v1-6 (ja-group))) (or (= v1-6 eichar-flop-down-loop-ja) (= v1-6 eichar-moving-flop-down-ja))))
           ;; og:preserve-this changed for high fps. This fixes the invisible wall when flopping
           (when (and (or (< (target-move-dist (the time-frame (* (-> *display* time-adjust-ratio) (seconds 0.1))))
                             (* (-> *display* time-adjust-ratio) 1638.4))
-                         (and (logtest? (-> self control status) (cshape-moving-flags twall)) (< 0.7 (-> self control poly-angle))))
-                     (not (logtest? (-> self control status) (cshape-moving-flags t-act)))
-                     (>= (-> self control unknown-uint20) (the-as uint 2)))
+                         (and (logtest? (-> self control status) (collide-status touch-wall)) (< 0.7 (-> self control poly-angle))))
+                     (not (logtest? (-> self control status) (collide-status touch-actor)))
+                     (>= (-> self control state-var0) (the-as uint 2)))
             (set-time! (-> self control last-time-of-stuck))
-            (set! gp-1 'stuck)))
-        (when gp-1
-          (logior! (-> self control status) (cshape-moving-flags onsurf))
+            (set! landed 'stuck)))
+        (when landed
+          (logior! (-> self control status) (collide-status on-surface))
           (when (and (= (-> self fact eco-type) (pickup-type eco-red)) (>= (-> self fact eco-level) 1.0))
             (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.5))
-            (effect-control-method-10 (-> self skel effect) 'group-red-eco-strike-ground (ja-frame-num 0) 0)
+            (do-effect (-> self skel effect) 'group-red-eco-strike-ground (ja-frame-num 0) 0)
             (let ((s5-1 (process-spawn touch-tracker :init touch-tracker-init (-> self control trans) 4096.0 30 :to self)))
               (send-event (ppointer->process s5-1) 'event 'attack 'flop)
               (send-event (ppointer->process s5-1)
@@ -1647,9 +1857,9 @@
                                               )))
                               (set! (-> arg0 control root-prim local-sphere w) f0-3)
                               f0-3)))))
-          (go target-flop-hit-ground gp-1)))
+          (go target-flop-hit-ground landed)))
       (when (and (= (-> self fact eco-type) (pickup-type eco-red)) (>= (-> self fact eco-level) 1.0))
-        (effect-control-method-10 (-> self skel effect)
+        (do-effect (-> self skel effect)
                                   'group-red-eco-spinkick
                                   (ja-frame-num 0)
                                   (if (rand-vu-percent? (the-as float 0.5)) 23 17))
@@ -1658,7 +1868,7 @@
         (target-start-attack)
         (target-danger-set! 'flop #f)))
   :code
-    (behavior ((arg0 float) (arg1 float) (arg2 float))
+    (behavior ((unused-min-height float) (unused-max-height float) (fwd-speed float))
       (ja-channel-set! 2)
       (ja-no-eval :group! eichar-flop-down-ja :num! (seek!) :frame-num 0.0)
       (ja :chan 1 :group! eichar-moving-flop-down-ja :num! (chan 0) :frame-num 0.0)
@@ -1674,20 +1884,21 @@
                         (the-as float 0.0)
                         (the-as float 40960.0))))
       (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
-      (set! (-> self control dynam gravity quad) (-> self control standard-dynamics gravity quad))
+      (vector-copy! (-> self control dynam gravity) (-> self control standard-dynamics gravity))
       (target-danger-set! 'flop-down #f)
       (ja :group! eichar-flop-down-loop-ja :num! min)
       (ja :chan 1 :group! eichar-moving-flop-down-loop-ja :num! min)
-      (let ((f30-0 1.0))
+      ;; the slam: set the vertical component of both align-xz-vel and transv to -368640 (-90m/s)
+      (let ((vel-scale 1.0))
         (let ((gp-3 (new-stack-vector0)))
-          (let ((f0-18 (vector-dot (-> self control dynam gravity-normal) (-> self control unknown-vector120))))
+          (let ((f0-18 (vector-dot (-> self control dynam gravity-normal) (-> self control align-xz-vel))))
             0.0
-            (vector-! gp-3 (-> self control unknown-vector120) (vector-float*! gp-3 (-> self control dynam gravity-normal) f0-18)))
+            (vector-! gp-3 (-> self control align-xz-vel) (vector-float*! gp-3 (-> self control dynam gravity-normal) f0-18)))
           (let* ((f0-19 (vector-length gp-3))
                  (f1-1 f0-19)
                  (f2-0 -368640.0))
-            (vector+! (-> self control unknown-vector120)
-                      (vector-float*! (-> self control unknown-vector120) (-> self control dynam gravity-normal) f2-0)
+            (vector+! (-> self control align-xz-vel)
+                      (vector-float*! (-> self control align-xz-vel) (-> self control dynam gravity-normal) f2-0)
                       (vector-float*! gp-3 gp-3 (/ f0-19 f1-1)))))
         (let ((gp-4 (new-stack-vector0)))
           (let ((f0-22 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
@@ -1695,13 +1906,13 @@
             (vector-! gp-4 (-> self control transv) (vector-float*! gp-4 (-> self control dynam gravity-normal) f0-22)))
           (let* ((f0-23 (vector-length gp-4))
                  (f1-3 f0-23)
-                 (f2-2 (* -368640.0 f30-0)))
+                 (f2-2 (* -368640.0 vel-scale)))
             (vector+! (-> self control transv)
                       (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-2)
                       (vector-float*! gp-4 gp-4 (/ f0-23 f1-3)))))
         (suspend)
         (loop
-          (+! (-> self control unknown-uint20) 1)
+          (+! (-> self control state-var0) 1)
           (ja :num! (+!))
           (ja :chan 1
               :num!
@@ -1712,7 +1923,8 @@
                           (-> self control ctrl-xz-vel)
                           (the-as float 0.0)
                           (the-as float 40960.0)))
-          (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float140))))
+          (set! vel-scale (* vel-scale (fmin 1.0 (-> self control zx-vel-frac))))
+          ;; clamp lateral speed to the surface's transv-max while keeping the vertical slam speed
           (let ((gp-6 (new-stack-vector0))
                 (f28-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
             0.0
@@ -1728,6 +1940,11 @@
           (suspend))))
   :post target-post)
 
+;; Landing from the flop. mode is how we landed ('stuck, 'swim, or the plain on-surface #t); it is
+;; stashed in state-var0, and target-hit-ground-anim reads it back (via the state-spool-anim view)
+;; to allow the buffered flop-JUMP escape during the landing anim -- but not for 'stuck landings.
+;; Edge grabbing is disabled during the impact squash and re-enabled near the end of the land anim.
+;; Falls beyond fall-far (measured from the flop's highest point) divert to target-hit-ground-hard.
 (defstate target-flop-hit-ground (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1735,14 +1952,14 @@
         (('swim) #f)
         (else (target-standard-event-handler proc argc message block))))
   :enter
-    (behavior ((arg0 symbol))
-      (let ((f0-1 (vector-dot (-> self control dynam gravity-normal)
-                              (vector-! (new 'stack-no-clear 'vector) (-> self control highest-jump-mark) (-> self control trans)))))
-        (if (< (-> *TARGET-bank* fall-far) f0-1) (go target-hit-ground-hard f0-1)))
+    (behavior ((mode symbol))
+      (let ((fall-dist (vector-dot (-> self control dynam gravity-normal)
+                                   (vector-! (new 'stack-no-clear 'vector) (-> self control highest-jump-mark) (-> self control trans)))))
+        (if (< (-> *TARGET-bank* fall-far) fall-dist) (go target-hit-ground-hard fall-dist)))
       (target-land-effect)
       (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
       (set-time! (-> self state-time))
-      (set! (-> self control unknown-uint20) (the-as uint arg0))
+      (set! (-> self control state-var0) (the-as uint mode))
       (set-forward-vel (the-as float 0.0))
       (set! (-> self control mod-surface) *flop-land-mods*)
       (logclear! (-> *flop-land-mods* flags) (surface-flags allow-edge-grab))
@@ -1750,11 +1967,11 @@
   :exit target-exit
   :trans
     (behavior ()
-      (when (!= (-> self control unknown-spoolanim00) 'stuck)
+      (when (!= (-> self control state-spool-anim) 'stuck)
         (if (and (cpad-pressed? (-> self control cpad number) circle) (can-feet?)) (go target-attack-air 'flop)))
       (when (and (and (= (-> self fact eco-type) (pickup-type eco-red)) (>= (-> self fact eco-level) 1.0))
                  (not (time-elapsed? (-> self state-time) (seconds 0.25))))
-        (effect-control-method-10 (-> self skel effect)
+        (do-effect (-> self skel effect)
                                   'group-red-eco-spinkick
                                   (ja-frame-num 0)
                                   (if (rand-vu-percent? (the-as float 0.5)) 23 17))
@@ -1764,11 +1981,19 @@
           (logior! (-> *flop-land-mods* flags) (surface-flags allow-edge-grab))))
       (slide-down-test))
   :code
-    (behavior ((arg0 symbol))
-      (target-hit-ground-anim arg0)
+    (behavior ((mode symbol))
+      (target-hit-ground-anim mode)
       (go target-falling #f))
   :post target-post)
 
+;; The roll (L1/R1 while running). Rolls can be CHAINED: wheel-counter counts consecutive rolls and
+;; each one starts faster (wheel-speed-min + wheel-speed-inc * (count-1)); the counter resets (and
+;; last-wheel-end-time is stamped, enforcing the wheel-timeout cooldown in target-walk) only when
+;; the next state isn't another roll. state-var0/state-var1 are zeroed on entry and act as the same
+;; recent-hit guard on the wall shove as in target-running-attack. Rolling into a wall inside the
+;; first anim frames shoves Jak back; X pressed during the roll (buffered by wheel-jump-pre-window,
+;; or shortly after via a state-hook planted on the following state, within wheel-jump-post-window)
+;; goes to the roll-jump, target-wheel-flip -- the fastest move in the game.
 (defstate target-wheel (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1778,54 +2003,57 @@
     (behavior ()
       (set-time! (-> self state-time))
       (set! (-> self control mod-surface) *wheel-mods*)
-      (+! (-> self control unknown-int50) 1)
+      (+! (-> self control wheel-counter) 1)
       (rot->dir-targ! (-> self control))
       (set-forward-vel (+ (-> *TARGET-bank* wheel-speed-min)
-                          (* (-> *TARGET-bank* wheel-speed-inc) (the float (+ (-> self control unknown-int50) -1)))))
+                          (* (-> *TARGET-bank* wheel-speed-inc) (the float (+ (-> self control wheel-counter) -1)))))
       (if (or (< (fabs (-> self control local-slope-x)) 0.3) (< 0.3 (fabs (-> self control local-slope-z))))
         (set! (-> self control bend-target) 1.0))
-      (set! (-> self control unknown-uint20) (the-as uint 0))
+      (set! (-> self control state-var0) (the-as uint 0))
       (set! (-> self control did-move-to-pole-or-max-jump-height) 0)
       0)
   :exit
     (behavior ()
       (when (!= (-> self next-state name) 'target-wheel)
-        (set! (-> self control unknown-int50) 0)
-        (set-time! (-> self control unknown-dword30)))
+        (set! (-> self control wheel-counter) 0)
+        (set-time! (-> self control last-wheel-end-time)))
       (target-exit))
   :code
     (behavior ()
-      (let ((gp-0 0))
+      (let ((last-x-press-time 0))
         0
-        (let ((s5-0 0)
-              (f30-0 1.0))
+        (let ((smack-time 0)
+              (vel-scale 1.0))
           (ja-channel-push! 1 (seconds 0.04))
           (ja :group! eichar-duck-roll-ja :num! min)
           (until (ja-done? 0)
-            (if (cpad-pressed? (-> self control cpad number) x) (set! gp-0 (the-as int (current-time))))
+            ;; remember when X was pressed so the roll-jump can be buffered before the roll ends
+            (if (cpad-pressed? (-> self control cpad number) x) (set! last-x-press-time (the-as int (current-time))))
             (when (and (or (smack-surface? #f) (>= (-> self control surface-slope-z) 0.7))
-                       (>= (the-as uint (- (current-time) (the-as int (-> self control unknown-uint20)))) (the-as uint 3))
+                       (>= (the-as uint (- (current-time) (the-as int (-> self control state-var0)))) (the-as uint 3))
                        (time-elapsed? (-> self state-time) 1))
+              ;; only get shoved when the wall smack happens in the first frames of the roll
               (if (>= 6.0 (ja-aframe-num 0))
                 (target-shoved (-> *TARGET-bank* smack-surface-dist)
                                (-> *TARGET-bank* smack-surface-height)
                                (the-as process #f)
                                target-hit))
-              (if (zero? s5-0) (set! s5-0 (the-as int (current-time)))))
+              (if (zero? smack-time) (set! smack-time (the-as int (current-time)))))
             (if (cpad-pressed? (-> self control cpad number) square) (current-time))
             (compute-alignment! (-> self align))
             (cond
-              ((nonzero? s5-0))
+              ;; once we've smacked something, stop taking movement from the anim align
+              ((nonzero? smack-time))
               (else
-               (align! (-> self align) (align-opts adjust-xz-vel) (the-as float 1.0) (the-as float 1.0) f30-0)
-               (let ((s4-1 (new-stack-vector0)))
-                 (vector-matrix*! s4-1 (-> self control transv) (-> self control w-R-c))
-                 (set! (-> s4-1 y) 0.0)
-                 (vector-matrix*! (-> self control unknown-vector120) s4-1 (-> self control c-R-w)))))
+               (align! (-> self align) (align-opts adjust-xz-vel) (the-as float 1.0) (the-as float 1.0) vel-scale)
+               (let ((local-vel (new-stack-vector0)))
+                 (vector-matrix*! local-vel (-> self control transv) (-> self control w-R-c))
+                 (set! (-> local-vel y) 0.0)
+                 (vector-matrix*! (-> self control align-xz-vel) local-vel (-> self control c-R-w)))))
             (suspend)
             (ja :num! (seek!))
-            (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float140))))))
-        (if (and (or (not (time-elapsed? (the-as time-frame gp-0) (-> *TARGET-bank* wheel-jump-pre-window)))
+            (set! vel-scale (* vel-scale (fmin 1.0 (-> self control zx-vel-frac))))))
+        (if (and (or (not (time-elapsed? (the-as time-frame last-x-press-time) (-> *TARGET-bank* wheel-jump-pre-window)))
                      (cpad-pressed? (-> self control cpad number) x))
                  (can-jump? 'target-wheel-flip))
           (go target-wheel-flip (-> *TARGET-bank* wheel-flip-height) (-> *TARGET-bank* wheel-flip-dist))))
@@ -1843,10 +2071,17 @@
       (go target-duck-stance))
   :post target-post)
 
+;; The roll-jump (X during/just after a roll): a long, flat leap that is also a 'flip attack once
+;; past aframe 3. Unlike the ballistic jumps, its trajectory comes from the flip ANIMATION's align,
+;; rescaled so the authored motion covers exactly height/dist (the args, from *TARGET-bank*
+;; wheel-flip-height/dist, divided by the art's native wheel-flip-art-height/dist) -- with the
+;; horizontal part additionally decayed by zx-vel-frac so hitting things kills the carry. After the
+;; anim, lateral velocity bleeds 10%/frame until touchdown. Like the roll, it plants a short
+;; state-hook (0.1s) on the next state allowing an immediate buffered flip-jump on landing.
 (defstate target-wheel-flip (target)
   :event target-standard-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((height float) (dist float))
       (set! (-> self control mod-surface) *wheel-flip-mods*))
   :exit target-exit
   :trans
@@ -1862,50 +2097,54 @@
                (and (ja-group? eichar-jump-loop-ja) (= (-> self skel root-channel 0) (-> self skel channel))))
         (go target-attack-air #f)))
   :code
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((height float) (dist float))
       (ja-channel-push! 1 (seconds 0.04))
       (ja :group! eichar-wheel-flip-ja :num! min)
-      (let ((f30-0 1.0))
-        (until (or (ja-max? 0) (and (>= (ja-aframe-num 0) 4.0) (logtest? (-> self control status) (cshape-moving-flags onsurf))))
+      (let ((vel-scale 1.0))
+        (until (or (ja-max? 0) (and (>= (ja-aframe-num 0) 4.0) (logtest? (-> self control status) (collide-status on-surface))))
+          ;; from aframe 3 the flip becomes an attack
           (when (and (>= (ja-aframe-num 0) 3.0) (not (-> self control danger-mode)))
             (set! (-> self event-hook) target-dangerous-event-handler)
             (target-start-attack)
             (target-danger-set! 'flip #f))
           (compute-alignment! (-> self align))
+          ;; velocity comes straight from the anim align, rescaled from the art's native arc to the
+          ;; requested height/dist (vertical scaling stops once the anim has played out)
           (if (not (ja-max? 0))
             (align! (-> self align)
                     (align-opts adjust-y-vel adjust-xz-vel)
                     (the-as float 1.0)
-                    (/ arg0 (-> *TARGET-bank* wheel-flip-art-height))
-                    (* f30-0 (/ arg1 (-> *TARGET-bank* wheel-flip-art-dist))))
+                    (/ height (-> *TARGET-bank* wheel-flip-art-height))
+                    (* vel-scale (/ dist (-> *TARGET-bank* wheel-flip-art-dist))))
             (align! (-> self align)
                     (align-opts adjust-xz-vel)
                     (the-as float 1.0)
                     (the-as float 1.0)
-                    (* f30-0 (/ arg1 (-> *TARGET-bank* wheel-flip-art-dist)))))
-          (let ((s4-1 (new-stack-vector0)))
-            (vector-matrix*! s4-1 (-> self control transv) (-> self control w-R-c))
-            (set! (-> s4-1 y) 0.0)
-            (vector-matrix*! (-> self control unknown-vector120) s4-1 (-> self control c-R-w)))
+                    (* vel-scale (/ dist (-> *TARGET-bank* wheel-flip-art-dist)))))
+          (let ((local-vel (new-stack-vector0)))
+            (vector-matrix*! local-vel (-> self control transv) (-> self control w-R-c))
+            (set! (-> local-vel y) 0.0)
+            (vector-matrix*! (-> self control align-xz-vel) local-vel (-> self control c-R-w)))
           (suspend)
           (ja :num! (seek!))
-          (set! f30-0 (* f30-0 (fmin 1.0 (-> self control unknown-float140))))))
+          (set! vel-scale (* vel-scale (fmin 1.0 (-> self control zx-vel-frac))))))
       (set-time! (-> self state-time))
-      (while (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
+      ;; anim finished but still airborne: fall with the jump loop, bleeding lateral speed 10%/frame
+      (while (not (logtest? (-> self control status) (collide-status on-surface)))
         (when (time-elapsed? (-> self state-time) (seconds 0.01))
           (when (not (ja-group? eichar-jump-loop-ja))
             (ja-channel-push! 1 (seconds 0.1))
             (ja :group! eichar-jump-loop-ja :num! min)))
-        (let ((gp-2 (new-stack-vector0))
-              (f30-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+        (let ((lateral-vel (new-stack-vector0))
+              (up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
           0.0
-          (vector-! gp-2 (-> self control transv) (vector-float*! gp-2 (-> self control dynam gravity-normal) f30-1))
-          (let* ((f1-6 (vector-length gp-2))
+          (vector-! lateral-vel (-> self control transv) (vector-float*! lateral-vel (-> self control dynam gravity-normal) up-vel))
+          (let* ((f1-6 (vector-length lateral-vel))
                  (f0-21 f1-6)
                  (f1-7 (* 0.9 f1-6)))
             (vector+! (-> self control transv)
-                      (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f30-1)
-                      (vector-float*! gp-2 gp-2 (/ f1-7 f0-21)))))
+                      (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) up-vel)
+                      (vector-float*! lateral-vel lateral-vel (/ f1-7 f0-21)))))
         (suspend)
         (if (ja-group? eichar-jump-loop-ja) (ja :num! (loop!)) (ja :num-func num-func-identity :frame-num max)))
       (target-land-effect)

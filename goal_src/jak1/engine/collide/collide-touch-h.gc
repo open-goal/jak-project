@@ -7,37 +7,39 @@
 ;; Collide Touch
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; The collide-touch system is used to track collisions between collide shapes during collision resolution.
-;; As the collision is resolved, shapes are added and removed from the touching list.
-;; Once collision is done solving, you can send events or inspect what you touched!
+;; The collide-touch system tracks contacts found by the iterative collision solver. A collision
+;; query may find contacts farther along the proposed movement than the step eventually chosen;
+;; update-from-step-size removes those prospective contacts. The confirmed shape and primitive
+;; pairs remain available for event delivery and gameplay queries until the list is cleared.
 
 (defconstant TOUCHING_LIST_LENGTH 32)
 
 ;; DECOMP BEGINS
 
-;; A record of a primitive which is touching another, possibly including the triangle that is involved.
 (deftype touching-prim (structure)
-  ((cprim    collide-shape-prim)
+  "One primitive in a touching pair, with the intersected triangle when the primitive came from a mesh."
+  ((cprim collide-shape-prim)
    (has-tri? symbol)
-   (tri      collide-tri-result :inline)))
+   (tri collide-tri-result :inline)))
 
-;; A record of two primitives which are touching.
 (deftype touching-prims-entry (structure)
-  ((next       touching-prims-entry)
-   (prev       touching-prims-entry)
+  "One pair of touching primitives. A nonnegative u is the prospective collision-step fraction
+   needed to reach the contact; a negative u marks a contact that is already overlapping or confirmed."
+  ((next touching-prims-entry)
+   (prev touching-prims-entry)
    (allocated? symbol)
-   (u          float)
-   (prim1      touching-prim :inline)
-   (prim2      touching-prim :inline))
+   (u float)
+   (prim1 touching-prim :inline)
+   (prim2 touching-prim :inline))
   (:methods
-   (get-touched-prim (_type_ trsqv touching-shapes-entry) collide-shape-prim)
+   (get-touched-prim (_type_ collide-shape touching-shapes-entry) collide-shape-prim)
    (touching-prims-entry-method-10 () none)
    (get-middle-of-bsphere-overlap (_type_ vector) vector)
    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result)))
 
-;; A pool of up to 64 touching primitives. There is a linked list of freed entries.
 (deftype touching-prims-entry-pool (structure)
-  ((head  touching-prims-entry)
+  "A fixed pool of 64 touching-primitive pairs maintained as a doubly linked free list."
+  ((head touching-prims-entry)
    (nodes touching-prims-entry 64 :inline))
   (:methods
    (new (symbol type) _type_)
@@ -47,7 +49,7 @@
    (free-node (_type_ touching-prims-entry) touching-prims-entry)))
 
 (defmethod init-list! ((this touching-prims-entry-pool))
-  "Initialize all entries to be not allocated and in a linked list."
+  "Reset the fixed pool and link all 64 entries into the free list."
   (let ((prev (the-as touching-prims-entry #f)))
     (let ((current (the-as touching-prims-entry (-> this nodes))))
       (set! (-> this head) current)
@@ -62,11 +64,10 @@
   (none))
 
 (defmethod new touching-prims-entry-pool ((allocation symbol) (type-to-make type))
-  "Allocate and initialize a new touching-prims-entry-pool"
+  "Allocate a touching-primitive entry pool and initialize its free list."
   ;; og:preserve-this
-  ;; Note - the original code passed (-> type-to-make size) as an argument.
-  ;; however, the new method of structure doesn't have this argument.
-  ;; it uses the same value for the size so it doesn't really matter.
+  ;; PC_PORT: structure.new reads the allocation size from type-to-make, so omit the redundant
+  ;; size argument.
   (let ((this (the touching-prims-entry-pool
                    ((method-of-type structure new)
                     allocation
@@ -76,13 +77,12 @@
     (init-list! this)
     this))
 
-;; two collide shapes which are touching.
-;; This stores a list of primitive pairs which are touching.
 (deftype touching-shapes-entry (structure)
-  ((cshape1   collide-shape)
-   (cshape2   collide-shape)
+  "One pair of touching shapes and the linked list of primitive pairs responsible for the contact."
+  ((cshape1 collide-shape)
+   (cshape2 collide-shape)
    (resolve-u int8)
-   (head      touching-prims-entry))
+   (head touching-prims-entry))
   :allow-misaligned
   (:methods
    (touching-shapes-entry-method-9 (_type_) none)
@@ -95,11 +95,11 @@
    (get-head (_type_) touching-prims-entry)
    (get-next (_type_ touching-prims-entry) touching-prims-entry)))
 
-;; A list of (up to) TOUCHING_LIST_LENGTH pairs of colliding shapes
 (deftype touching-list (structure)
+  "The solver's touching shape pairs and their prospective or confirmed primitive contacts."
   ((num-touching-shapes int32)
-   (resolve-u           int8)
-   (touching-shapes     touching-shapes-entry TOUCHING_LIST_LENGTH :inline))
+   (resolve-u int8)
+   (touching-shapes touching-shapes-entry TOUCHING_LIST_LENGTH :inline))
   (:methods
    (new (symbol type) _type_)
    (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none)
@@ -110,7 +110,7 @@
    (free-all-prim-nodes (_type_) none)))
 
 (defmethod new touching-list ((allocation symbol) (type-to-make type))
-  "See note in touching-prims-entry-pool"
+  "Allocate an empty list of touching shape pairs."
   ;; og:preserve-this
   (let ((this (the touching-list
                    ((method-of-type structure new)
@@ -123,10 +123,12 @@
     this))
 
 (defmethod get-head ((this touching-shapes-entry))
+  "Return the first touching-primitive pair for this shape pair."
   (-> this head))
 
-(defmethod get-next ((this touching-shapes-entry) (arg0 touching-prims-entry))
-  (-> arg0 next))
+(defmethod get-next ((this touching-shapes-entry) (node touching-prims-entry))
+  "Return the touching-primitive pair after the given node."
+  (-> node next))
 
 ;; Allocate the global touching lists.
 ;; We have a pool of prim pairs that can be used in any shape pair

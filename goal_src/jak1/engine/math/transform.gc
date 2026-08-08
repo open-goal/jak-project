@@ -4,7 +4,7 @@
 (require "engine/math/matrix.gc")
 (require "engine/math/transform-h.gc")
 
-;; note: transformq and trsq is mostly used instead of transform.
+;; Quaternion-backed transformq and trsq are used more often than these Euler forms.
 
 ;; DECOMP BEGINS
 
@@ -16,7 +16,7 @@
   this)
 
 (defmethod new trs ((allocation symbol) (type-to-make type))
-  "Create a new trs and set it equal to identity."
+  "Allocate an identity trs."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this trans w) 1.0)
     (set! (-> this rot w) 1.0)
@@ -24,44 +24,38 @@
     this))
 
 (defun transform-matrix-calc! ((tf transform) (dst-mat matrix))
-  "Convert a transform to a matrix. This is not particularly efficient."
-  (let ((s4-0 (new-stack-matrix0))
-        (s3-0 (new-stack-matrix0)))
-    ;; start with identity
+  "Build dst-mat as S * Rz * Rx * Ry * T from tf. This routine favors simple composition over speed."
+  (let ((step-mat (new-stack-matrix0))
+        (accum-mat (new-stack-matrix0)))
     (matrix-identity! dst-mat)
-    ;; set translation (which also sets identity...)
     (matrix-translate! dst-mat (-> tf trans))
-    ;; rotate y axis (this is first, so yaw is "world aligned"
-    (matrix-rotate-y! s4-0 (-> tf rot y))
-    (matrix*! s3-0 s4-0 dst-mat)
-    ;; rotate x axis
-    (matrix-rotate-x! s4-0 (-> tf rot x))
-    (matrix*! dst-mat s4-0 s3-0)
-    ;; rotate z axis
-    (matrix-rotate-z! s4-0 (-> tf rot z))
-    (matrix*! s3-0 s4-0 dst-mat)
-    ;; apply scale
-    (matrix-scale! s4-0 (-> tf scale))
-    (matrix*! dst-mat s4-0 s3-0)))
+    ;; Y is multiplied nearest translation, keeping yaw world-aligned.
+    (matrix-rotate-y! step-mat (-> tf rot y))
+    (matrix*! accum-mat step-mat dst-mat)
+    (matrix-rotate-x! step-mat (-> tf rot x))
+    (matrix*! dst-mat step-mat accum-mat)
+    (matrix-rotate-z! step-mat (-> tf rot z))
+    (matrix*! accum-mat step-mat dst-mat)
+    (matrix-scale! step-mat (-> tf scale))
+    (matrix*! dst-mat step-mat accum-mat)))
 
 (defun transform-matrix-parent-calc! ((tf transform) (dst-mat matrix) (inv-scale vector))
-  "Convert a transform to a matrix, applying an inverse scaling."
-  (let ((s4-0 (new-stack-matrix0))
-        (s3-0 (new-stack-matrix0)))
-    (matrix-identity! s3-0)
-    (matrix-translate! s3-0 (-> tf trans))
-    (matrix-inv-scale! s4-0 inv-scale)
-    (matrix*! dst-mat s4-0 s3-0)
-    (matrix-rotate-y! s4-0 (-> tf rot y))
-    (matrix*! s3-0 s4-0 dst-mat)
-    (matrix-rotate-x! s4-0 (-> tf rot x))
-    (matrix*! dst-mat s4-0 s3-0)
-    (matrix-rotate-z! s4-0 (-> tf rot z))
-    (matrix*! s3-0 s4-0 dst-mat)
-    (matrix-scale! s4-0 (-> tf scale))
-    (matrix*! dst-mat s4-0 s3-0)))
+  "Build dst-mat as S * Rz * Rx * Ry * inverse-scale * T for parent-relative composition."
+  (let ((step-mat (new-stack-matrix0))
+        (accum-mat (new-stack-matrix0)))
+    (matrix-identity! accum-mat)
+    (matrix-translate! accum-mat (-> tf trans))
+    (matrix-inv-scale! step-mat inv-scale)
+    (matrix*! dst-mat step-mat accum-mat)
+    (matrix-rotate-y! step-mat (-> tf rot y))
+    (matrix*! accum-mat step-mat dst-mat)
+    (matrix-rotate-x! step-mat (-> tf rot x))
+    (matrix*! dst-mat step-mat accum-mat)
+    (matrix-rotate-z! step-mat (-> tf rot z))
+    (matrix*! accum-mat step-mat dst-mat)
+    (matrix-scale! step-mat (-> tf scale))
+    (matrix*! dst-mat step-mat accum-mat)))
 
 (defun trs-matrix-calc! ((tf trs) (dst-mat matrix))
-  "Convert a trs to a matrix"
-  ;; this relies on the fact that trs and transform both have the same memory layout.
+  "Build a matrix from a basic trs, which shares transform's trans/rot/scale layout."
   (transform-matrix-calc! (the-as transform (-> tf trans)) dst-mat))

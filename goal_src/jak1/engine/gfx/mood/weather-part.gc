@@ -99,7 +99,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a -0.8)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 22
   :init-specs
@@ -116,7 +116,7 @@
    (:fade-a -0.8)
    (:accel-y (meters -0.00066666666))
    (:timer (seconds 0.9))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.05))
    (:next-launcher 24)))
 
@@ -159,7 +159,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a -0.8)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 19
   :init-specs
@@ -176,7 +176,7 @@
    (:fade-a -0.8)
    (:accel-y (meters -0.00066666666))
    (:timer (seconds 0.9))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.05))
    (:next-launcher 26)))
 
@@ -220,7 +220,7 @@
    (:a 0.0)
    (:fade-a 0.42666668)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.2) (seconds 0.797))
    (:next-launcher 31)
    (:conerot-x (degrees -89) (degrees 178))
@@ -246,7 +246,7 @@
    (:a 0.0)
    (:fade-a 0.42666668)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.2) (seconds 0.797))
    (:next-launcher 31)
    (:conerot-x (degrees 30) (degrees 59))
@@ -266,7 +266,7 @@
    (:a 0.0)
    (:fade-a 0.42666668)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:next-time (seconds 0.2) (seconds 0.797))
    (:next-launcher 31)
    (:conerot-x (degrees 60) (degrees 29))
@@ -292,7 +292,7 @@
    (:rotvel-z (degrees -1.2) (degrees 2.4))
    (:fade-a 0.85333335)
    (:timer (seconds 5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:next-time (seconds 0.25) (seconds 0.247))
    (:next-launcher 35)
    (:rotate-y (degrees 0) (degrees 180))))
@@ -315,7 +315,7 @@
    (:rotvel-z (degrees -1.2) (degrees 2.4))
    (:fade-a 0.85333335)
    (:timer (seconds 5))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:next-time (seconds 0.25) (seconds 0.247))
    (:next-launcher 35)
    (:rotate-y (degrees 0) (degrees 360))))
@@ -326,14 +326,17 @@
 (defpart 36
   :init-specs ((:fade-a -0.85333335)))
 
-(defun update-snow ((arg0 target))
-  (let ((gp-0 (-> arg0 control trans)))
-    (let ((f0-0 (lerp-scale 0.0 1.0 (vector-length (-> arg0 control transv)) 2048.0 40960.0)))
-      (set! (-> *part-id-table* 34 init-specs 1 initial-valuef) (- 1.0 f0-0))
-      (set! (-> *part-id-table* 33 init-specs 1 initial-valuef) (* 4.0 f0-0)))
-    (set! (-> *part-id-table* 33 init-specs 19 initial-valuef) (+ 32768.0 (vector-y-angle (-> arg0 control transv))))
-    (launch-particles (-> *part-id-table* 34) gp-0)
-    (launch-particles (-> *part-id-table* 33) gp-0))
+(defun update-snow ((target target))
+  "Launch snow around target. As target speed rises from 2048 to 40960, crossfade from the
+   low-speed snow emitter to four fast flakes and turn the fast emitter a half-turn from the
+   target's horizontal velocity heading."
+  (let ((target-position (-> target control trans)))
+    (let ((speed-blend (lerp-scale 0.0 1.0 (vector-length (-> target control transv)) 2048.0 40960.0)))
+      (set! (-> *part-id-table* 34 init-specs 1 initial-valuef) (- 1.0 speed-blend))
+      (set! (-> *part-id-table* 33 init-specs 1 initial-valuef) (* 4.0 speed-blend)))
+    (set! (-> *part-id-table* 33 init-specs 19 initial-valuef) (+ 32768.0 (vector-y-angle (-> target control transv))))
+    (launch-particles (-> *part-id-table* 34) target-position)
+    (launch-particles (-> *part-id-table* 33) target-position))
   0
   (none))
 
@@ -351,7 +354,7 @@
    (:a 16.0 32.0)
    (:vel-y (meters -0.06666667) (meters -0.13333334))
    (:timer (seconds 0.8))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:userdata 0.0)
    (:func 'check-drop-level-rain)
    (:rotate-y (degrees 0) (degrees 360))))
@@ -370,7 +373,7 @@
    (:a 16.0 32.0)
    (:vel-y (meters -0.06666667) (meters -0.033333335))
    (:timer (seconds 0.8))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 39
@@ -387,7 +390,7 @@
    (:fade-a -0.85333335)
    (:accel-y (meters -0.00066666666))
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 25.000002) (degrees 40))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -407,45 +410,54 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a -0.4)
    (:timer (seconds 0.4))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:rotate-y (degrees 0) (degrees 360))))
 
-(defun check-drop-level-rain ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
-  (when (< (-> arg2 y) (-> arg1 user-float))
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (sp-kill-particle arg0 arg1)
-      (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
-      (launch-particles (-> *part-id-table* 39) gp-0 :rate 1.0)
-      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 40) gp-0 :rate 1.0)))
+(defun check-drop-level-rain ((system sparticle-system) (particle sparticle-cpuinfo) (particle-transform vector))
+  "Kill a rain particle after its position falls below particle's user-float impact height, then
+   launch a splash and expanding water ring at that height."
+  (when (< (-> particle-transform y) (-> particle user-float))
+    (let ((splash-position (new 'stack-no-clear 'vector)))
+      (sp-kill-particle system particle)
+      (set-vector! splash-position (-> particle-transform x) (-> particle user-float) (-> particle-transform z) 1.0)
+      (launch-particles (-> *part-id-table* 39) splash-position :rate 1.0)
+      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 40) splash-position :rate 1.0)))
   (none))
 
-(defun update-rain ((arg0 target))
-  (let ((a2-0 (new 'stack-no-clear 'vector)))
-    (set! (-> a2-0 x) (-> arg0 control transv x))
-    (set! (-> a2-0 y) 0.0)
-    (set! (-> a2-0 z) (-> arg0 control transv z))
-    (set! (-> a2-0 w) 1.0)
-    (let ((gp-0 (vector+float*! (new 'stack-no-clear 'vector) (-> arg0 control trans) a2-0 0.0)))
-      (let* ((s5-0 (matrix-local->world #f #f))
-             (f28-0 (lerp-scale 122.88 245.76 (fabs (-> s5-0 vector 2 y)) 0.0 0.7))
-             (f30-0 (lerp-scale 2048.0 245.76 (fabs (-> s5-0 vector 2 y)) 0.0 0.7)))
-        (let ((f26-0 (lerp-scale 0.0 0.1 (-> s5-0 vector 2 y) 0.3 0.7))
-              (f0-10 (lerp-scale 1.0 0.1 (-> s5-0 vector 2 y) 0.3 0.7)))
-          (if (< 0.0 f26-0) (send-event *camera* 'part-water-drip f26-0 f0-10)))
-        (set! (-> *part-id-table* 37 init-specs 4 initial-valuef) f28-0)
-        (set! (-> *part-id-table* 37 init-specs 4 random-rangef) f28-0)
-        (set! (-> *part-id-table* 38 init-specs 4 initial-valuef) f28-0)
-        (set! (-> *part-id-table* 38 init-specs 4 random-rangef) f28-0)
-        (set! (-> *part-id-table* 37 init-specs 5 initial-valuef) f30-0)
-        (set! (-> *part-id-table* 37 init-specs 5 random-rangef) f30-0)
-        (set! (-> *part-id-table* 38 init-specs 5 initial-valuef) f30-0)
-        (set! (-> *part-id-table* 38 init-specs 5 random-rangef) f30-0))
-      (launch-particles (-> *part-id-table* 37) gp-0)
-      (launch-particles (-> *part-id-table* 38) gp-0)))
+(defun update-rain ((target target))
+  "Launch rain around target and compensate each streak's width and height for camera pitch, making
+   long narrow streaks near a horizontal view and shorter wider streaks near a vertical view. A
+   sufficiently positive vertical camera-axis component also sends the camera a ten-second
+   screen-droplet effect with pitch-controlled amount and fall speed."
+  (let ((horizontal-velocity (new 'stack-no-clear 'vector)))
+    (set! (-> horizontal-velocity x) (-> target control transv x))
+    (set! (-> horizontal-velocity y) 0.0)
+    (set! (-> horizontal-velocity z) (-> target control transv z))
+    (set! (-> horizontal-velocity w) 1.0)
+    (let ((spawn-position (vector+float*! (new 'stack-no-clear 'vector) (-> target control trans) horizontal-velocity 0.0)))
+      (let* ((camera-local-to-world (matrix-local->world #f #f))
+             (drop-width (lerp-scale 122.88 245.76 (fabs (-> camera-local-to-world vector 2 y)) 0.0 0.7))
+             (drop-height (lerp-scale 2048.0 245.76 (fabs (-> camera-local-to-world vector 2 y)) 0.0 0.7)))
+        (let ((screen-drip-amount (lerp-scale 0.0 0.1 (-> camera-local-to-world vector 2 y) 0.3 0.7))
+              (screen-drip-speed (lerp-scale 1.0 0.1 (-> camera-local-to-world vector 2 y) 0.3 0.7)))
+          (if (< 0.0 screen-drip-amount) (send-event *camera* 'part-water-drip screen-drip-amount screen-drip-speed)))
+        (set! (-> *part-id-table* 37 init-specs 4 initial-valuef) drop-width)
+        (set! (-> *part-id-table* 37 init-specs 4 random-rangef) drop-width)
+        (set! (-> *part-id-table* 38 init-specs 4 initial-valuef) drop-width)
+        (set! (-> *part-id-table* 38 init-specs 4 random-rangef) drop-width)
+        (set! (-> *part-id-table* 37 init-specs 5 initial-valuef) drop-height)
+        (set! (-> *part-id-table* 37 init-specs 5 random-rangef) drop-height)
+        (set! (-> *part-id-table* 38 init-specs 5 initial-valuef) drop-height)
+        (set! (-> *part-id-table* 38 init-specs 5 random-rangef) drop-height))
+      (launch-particles (-> *part-id-table* 37) spawn-position)
+      (launch-particles (-> *part-id-table* 38) spawn-position)))
   0
   (none))
 
 (defbehavior cam-master-effect camera-master ()
+  "Drive the camera-space rain droplets for ten seconds after a part-water-drip event. Apply the
+   event's amount to both droplet sizes, scale their downward acceleration by its speed, and spawn
+   the camera's water-drip launch control."
   (when (< (+ (current-time) (seconds -10)) (-> self water-drip-time))
     (set! (-> *part-id-table* 21 init-specs 1 initial-valuef) (-> self water-drip-mult))
     (set! (-> *part-id-table* 18 init-specs 1 initial-valuef) (* 0.9 (-> self water-drip-mult)))
@@ -457,25 +469,30 @@
   0
   (none))
 
-(defun sparticle-track-sun ((arg0 int) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (-> arg1 key)
-  (let ((s5-0 (the int (-> arg1 user-float))))
-    (let* ((a1-1 (math-camera-pos))
-           (a2-1 (-> *sky-parms* upload-data sun (/ s5-0 4)))
-           (v1-3 (vector+float*! (new 'stack-no-clear 'vector) a1-1 (the-as vector a2-1) 4096.0)))
-      (set! (-> arg2 vector 0 x) (-> v1-3 x))
-      (set! (-> arg2 vector 0 y) (-> v1-3 y))
-      (set! (-> arg2 vector 0 z) (-> v1-3 z)))
-    (if (!= (-> arg2 vector 2 w) 0.0) (set! (-> arg2 vector 2 w) (* 128.0 (-> *time-of-day-context* sun-fade))))
+(defun sparticle-track-sun ((system sparticle-system) (particle sparticle-cpuinfo) (particle-data matrix))
+  "Place one sun sprite at the selected sky sun relative to the camera. particle's user-float
+   selects sun zero or one and its core or halo layer; normal-sun layers take the current
+   time-of-day sun color, with quarter-brightness halos, while green-sun layers retain their
+   authored colors. Scale nonzero alpha by the current sun fade."
+  (-> particle key)
+  (let ((layer-index (the int (-> particle user-float))))
+    (let* ((camera-position (math-camera-pos))
+           (sun-data (-> *sky-parms* upload-data sun (/ layer-index 4)))
+           (world-position (vector+float*! (new 'stack-no-clear 'vector) camera-position (-> sun-data pos) 4096.0)))
+      (set! (-> particle-data vector 0 x) (-> world-position x))
+      (set! (-> particle-data vector 0 y) (-> world-position y))
+      (set! (-> particle-data vector 0 z) (-> world-position z)))
+    (if (!= (-> particle-data vector 2 w) 0.0)
+      (set! (-> particle-data vector 2 w) (* 128.0 (-> *time-of-day-context* sun-fade))))
     (cond
-      ((zero? s5-0)
-       (set! (-> arg2 vector 2 x) (-> *time-of-day-context* current-sun sun-color x))
-       (set! (-> arg2 vector 2 y) (-> *time-of-day-context* current-sun sun-color y))
-       (set! (-> arg2 vector 2 z) (-> *time-of-day-context* current-sun sun-color z)))
-      ((or (= s5-0 1) (= s5-0 2))
-       (set! (-> arg2 vector 2 x) (/ (-> *time-of-day-context* current-sun sun-color x) 4))
-       (set! (-> arg2 vector 2 y) (/ (-> *time-of-day-context* current-sun sun-color y) 4))
-       (set! (-> arg2 vector 2 z) (/ (-> *time-of-day-context* current-sun sun-color z) 4)))))
+      ((zero? layer-index)
+       (set! (-> particle-data vector 2 x) (-> *time-of-day-context* current-sun sun-color x))
+       (set! (-> particle-data vector 2 y) (-> *time-of-day-context* current-sun sun-color y))
+       (set! (-> particle-data vector 2 z) (-> *time-of-day-context* current-sun sun-color z)))
+      ((or (= layer-index 1) (= layer-index 2))
+       (set! (-> particle-data vector 2 x) (/ (-> *time-of-day-context* current-sun sun-color x) 4))
+       (set! (-> particle-data vector 2 y) (/ (-> *time-of-day-context* current-sun sun-color y) 4))
+       (set! (-> particle-data vector 2 z) (/ (-> *time-of-day-context* current-sun sun-color z) 4)))))
   0
   (none))
 
@@ -496,7 +513,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit12 bit14))
+   (:flags (die-when-faded glow use-time-of-day-color no-fog))
    (:userdata 0.0)
    (:func 'sparticle-track-sun)))
 
@@ -513,7 +530,7 @@
    (:a 128.0)
    (:rotvel-z (degrees -0.05))
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata 1.0)
    (:func 'sparticle-track-sun)))
 
@@ -530,7 +547,7 @@
    (:a 128.0)
    (:rotvel-z (degrees 0.05))
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata 2.0)
    (:func 'sparticle-track-sun)))
 
@@ -551,7 +568,7 @@
    (:b 0.0)
    (:a 0.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata 4.0)
    (:func 'sparticle-track-sun)))
 
@@ -568,7 +585,7 @@
    (:a 128.0)
    (:rotvel-z (degrees -0.05))
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata 5.0)
    (:func 'sparticle-track-sun)))
 
@@ -585,6 +602,6 @@
    (:a 128.0)
    (:rotvel-z (degrees 0.05))
    (:timer (seconds -0.005))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata 6.0)
    (:func 'sparticle-track-sun)))

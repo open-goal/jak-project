@@ -127,7 +127,9 @@
           (suspend))))
   :post rider-post)
 
-(defmethod init-from-entity! ((this wall-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this wall-plat) (source-entity entity-actor))
+  "Initialize the wall platform's collision, skeleton, retracted and extended positions, and
+   optional synchronized motion."
   (set! (-> this extended-amount) 0.0)
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
@@ -146,13 +148,13 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *wall-plat-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (set! (-> this use-sync?) (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.2 0.2))
   (let ((f30-0 (quaternion-y-angle (-> this root quat)))
         (s4-1 (new 'stack-no-clear 'vector)))
-    (set-vector! s4-1 0.0 0.0 (+ 1638.4 (res-lump-float arg0 'tunemeters)) 1.0)
+    (set-vector! s4-1 0.0 0.0 (+ 1638.4 (res-lump-float source-entity 'tunemeters)) 1.0)
     (vector-rotate-around-y! s4-1 s4-1 f30-0)
     (vector+! (-> this out-trans) (-> this root trans) s4-1)
     (set-vector! s4-1 0.0 0.0 20480.0 1.0)

@@ -2,4 +2,376 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
-(define generic-vu0-block (new 'static 'vu-function :length #x0 :qlength #x0))
+
+;; Generic conversion calls this library at several entry points. Entry 0 lights four vertices,
+;; entry 48 calculates four environment-map coordinates, and entries 104 through 292 stage and
+;; transform packed TIE vertices in VU0 data memory.
+;;
+;; This is a library, not a pipeline: no main loop, eighteen independently callable entries, and no
+;; constants of its own beyond what the EE crosses in.  It is uploaded at program address zero, so a
+;; callms immediate is an index into the instruction pairs below.
+;;
+;; Both of the four-vertex entries run a group behind the caller, so the values the EE collects after a
+;; call belong to the group it submitted on the previous call.  The caller therefore stores results from
+;; before the loop body's own call, and the drain entries exist purely to publish the last group.  The
+;; two get there differently, though.  Entry 0 opens by copying vf17-vf20 into vf21-vf24 outright.  Entry
+;; 48 has no such copy: its last two pairs start the fourth vertex's arithmetic and the first thirteen
+;; pairs of the next call finish it, with vf05-vf08, vf29 and vf30 carrying the pipeline across the call
+;; boundary.  Two consequences of that for a caller - its first call's output is garbage, so it must call
+;; twice before reading anything, and no other VU0 entry may be used between two entry-48 calls.
+(defconstant GENERIC-VU0-LIGHT 0)   ;; light four vertices
+(defconstant GENERIC-VU0-ENVMAP 48) ;; four reflected environment-map coordinates
+
+;; The TIE conversion library.  Staging widens TIE's packed int16 positions, int8 normals, and packed
+;; coordinates into VU0 data memory; the transform entries then run the instance matrix over them four
+;; at a time.  The tail entries exist because the last group of four can straddle the boundary between
+;; a fragment's base points and its interpolated points.
+(defconstant GENERIC-VU0-TIE-SETUP 104)         ;; size and lay out the four staging arrays
+(defconstant GENERIC-VU0-TIE-NORMALS 114)       ;; stage four normals
+(defconstant GENERIC-VU0-TIE-BASE-POINTS 122)   ;; stage four base points
+(defconstant GENERIC-VU0-TIE-TAIL-1BP-1IP 134)  ;; stage one base point and one interpolated point
+(defconstant GENERIC-VU0-TIE-TAIL-2BP-1IP 145)  ;; stage two base points and one interpolated point
+(defconstant GENERIC-VU0-TIE-TAIL-3BP 157)      ;; stage three base points
+(defconstant GENERIC-VU0-TIE-INTERP-POINTS 168) ;; stage two interpolated points
+(defconstant GENERIC-VU0-TIE-BASE-START 178)    ;; begin transforming base points
+(defconstant GENERIC-VU0-TIE-BASE-XFORM 183)    ;; transform four base points
+(defconstant GENERIC-VU0-TIE-BASE-DRAIN 211)    ;; publish the last base-point group
+(defconstant GENERIC-VU0-TIE-MORPH-START 215)   ;; begin transforming interpolated points, collapsing
+(defconstant GENERIC-VU0-TIE-MORPH-XFORM 221)   ;; transform four, applying the LOD morph weight
+(defconstant GENERIC-VU0-TIE-MORPH-DRAIN 257)   ;; publish the last morphed group
+(defconstant GENERIC-VU0-TIE-INTERP-START 259)  ;; begin transforming interpolated points, not collapsing
+(defconstant GENERIC-VU0-TIE-INTERP-XFORM 264)  ;; transform four at their authored positions
+(defconstant GENERIC-VU0-TIE-INTERP-DRAIN 292)  ;; publish the last un-morphed group
+
+(#when PC_PORT
+  (define generic-vu0-block (new 'static 'vu-function :length #x0 :qlength #x0)))
+
+(#unless PC_PORT
+  (defvu0 generic-vu0-block
+          ;; 0: dot four normals in vf1-vf4 with the three light directions, add the ambient and
+          ;; directional colors, modulate the packed colors in vf5-vf8, and clamp the results.
+          (vu-pair (move.xyzw vf21 vf17) (mulax.xyzw ACC vf10 vf01)) ;; #x000
+          (vu-pair (move.xyzw vf22 vf18) (madday.xyzw ACC vf11 vf01)) ;; #x001
+          (vu-pair (move.xyzw vf23 vf19) (maddz.xyzw vf01 vf12 vf01)) ;; #x002
+          (vu-pair (move.xyzw vf24 vf20) (mulax.xyzw ACC vf10 vf02)) ;; #x003
+          (vu-pair (nop) (itof0.xyzw vf17 vf05)) ;; #x004
+          (vu-pair (nop) (itof0.xyzw vf18 vf06)) ;; #x005
+          (vu-pair (nop) (itof0.xyzw vf19 vf07)) ;; #x006
+          (vu-pair (nop) (itof0.xyzw vf20 vf08)) ;; #x007
+          (vu-pair (nop) (madday.xyzw ACC vf11 vf02)) ;; #x008
+          (vu-pair (nop) (maddz.xyzw vf02 vf12 vf02)) ;; #x009
+          (vu-pair (nop) (mulax.xyzw ACC vf10 vf03)) ;; #x00a
+          (vu-pair (nop) (madday.xyzw ACC vf11 vf03)) ;; #x00b
+          (vu-pair (nop) (maddz.xyzw vf03 vf12 vf03)) ;; #x00c
+          (vu-pair (nop) (mulax.xyzw ACC vf10 vf04)) ;; #x00d
+          (vu-pair (nop) (madday.xyzw ACC vf11 vf04)) ;; #x00e
+          (vu-pair (nop) (maddz.xyzw vf04 vf12 vf04)) ;; #x00f
+          (vu-pair (nop) (maxx.xyzw vf01 vf01 vf00)) ;; #x010
+          (vu-pair (nop) (maxx.xyzw vf02 vf02 vf00)) ;; #x011
+          (vu-pair (nop) (maxx.xyzw vf03 vf03 vf00)) ;; #x012
+          (vu-pair (nop) (maxx.xyzw vf04 vf04 vf00)) ;; #x013
+          (vu-pair (nop) (mulaw.xyzw ACC vf13 vf00)) ;; #x014
+          (vu-pair (nop) (maddax.xyzw ACC vf14 vf01)) ;; #x015
+          (vu-pair (nop) (madday.xyzw ACC vf15 vf01)) ;; #x016
+          (vu-pair (nop) (maddz.xyzw vf01 vf16 vf01)) ;; #x017
+          (vu-pair (nop) (mulaw.xyzw ACC vf13 vf00)) ;; #x018
+          (vu-pair (nop) (maddax.xyzw ACC vf14 vf02)) ;; #x019
+          (vu-pair (nop) (madday.xyzw ACC vf15 vf02)) ;; #x01a
+          (vu-pair (nop) (maddz.xyzw vf02 vf16 vf02)) ;; #x01b
+          (vu-pair (nop) (mulaw.xyzw ACC vf13 vf00)) ;; #x01c
+          (vu-pair (nop) (maddax.xyzw ACC vf14 vf03)) ;; #x01d
+          (vu-pair (nop) (madday.xyzw ACC vf15 vf03)) ;; #x01e
+          (vu-pair (nop) (maddz.xyzw vf03 vf16 vf03)) ;; #x01f
+          (vu-pair (nop) (mulaw.xyzw ACC vf13 vf00)) ;; #x020
+          (vu-pair (nop) (maddax.xyzw ACC vf14 vf04)) ;; #x021
+          (vu-pair (nop) (madday.xyzw ACC vf15 vf04)) ;; #x022
+          (vu-pair (nop) (maddz.xyzw vf04 vf16 vf04)) ;; #x023
+          (vu-pair (nop) (mul.xyzw vf17 vf17 vf01)) ;; #x024
+          (vu-pair (nop) (mul.xyzw vf18 vf18 vf02)) ;; #x025
+          (vu-pair (nop) (mul.xyzw vf19 vf19 vf03)) ;; #x026
+          (vu-pair (nop) (mul.xyzw vf20 vf20 vf04)) ;; #x027
+          (vu-pair (nop) (minix.xyzw vf17 vf17 vf09)) ;; #x028
+          (vu-pair (nop) (minix.xyzw vf18 vf18 vf09)) ;; #x029
+          (vu-pair (nop) (minix.xyzw vf19 vf19 vf09)) ;; #x02a
+          (vu-pair (nop) (minix.xyzw vf20 vf20 vf09)) ;; #x02b
+          (vu-pair (nop) (ftoi0.xyzw vf17 vf17)) ;; #x02c
+          (vu-pair (nop) (ftoi0.xyzw vf18 vf18)) ;; #x02d
+          (vu-pair (nop) (ftoi0.xyzw vf19 vf19 :e)) ;; #x02e
+          (vu-pair (nop) (ftoi0.xyzw vf20 vf20)) ;; #x02f
+          ;; 48: four environment-map coordinates.  Positions and normals arrive in camera space, so with
+          ;; p the position, n the normal and k the camera axis (0, 0, 1) this computes
+          ;;   m = n - k        (the subw.z below, against vf00.w = 1.0)
+          ;;   r = p + m * (m.p) / m.z
+          ;;   ST = 0.5 * r.xy / |r| + 0.5, then ftoi12
+          ;; r is the reflection of the eye vector in the plane perpendicular to m - the one that swaps
+          ;; the camera axis for the normal - and it is this cheap because a unit normal makes
+          ;; |m|^2 = -2 m.z exactly, so the factor a Householder reflection needs is already in m.z.
+          ;; Nothing here normalizes n; a non-unit normal gives the wrong direction, not just the wrong
+          ;; scale.  The one division is the EE's 1/(n.z - 1), crossed in as vf27.  On the optical axis
+          ;; the answer is n itself, so this is a normal-based sphere map rather than a mirror lookup.
+          ;; vf31 supplies the 0.5 scale in z and the 0.5 bias in w.
+          (vu-pair (nop) (mulx.xyzw vf13 vf09 vf31)) ;; #x030
+          (vu-pair (nop) (subw.z vf21 vf21 vf00)) ;; #x031
+          (vu-pair (nop) (addy.x vf29 vf29 vf29)) ;; #x032
+          (vu-pair (nop) (mulx.xyz vf08 vf08 vf30)) ;; #x033
+          (vu-pair (nop) (addw.xy vf05 vf05 vf31)) ;; #x034
+          (vu-pair (nop) (mul.xyz vf30 vf21 vf13)) ;; #x035
+          (vu-pair (nop) (addz.x vf29 vf29 vf29)) ;; #x036
+          (vu-pair (nop) (add.xyz vf08 vf08 vf16)) ;; #x037
+          (vu-pair (move.xyzw vf28 vf27) (ftoi12.xy vf17 vf05)) ;; #x038
+          (vu-pair (move.xyzw vf02 vf22) (addy.x vf30 vf30 vf30)) ;; #x039
+          (vu-pair (rsqrt Q vf31.z vf29.x) (mul.xyz vf06 vf06 Q)) ;; #x03a
+          (vu-pair (nop) (mul.xyz vf29 vf08 vf08)) ;; #x03b
+          (vu-pair (nop) (mulx.xyz vf01 vf21 vf28)) ;; #x03c
+          (vu-pair (nop) (addz.x vf30 vf30 vf30)) ;; #x03d
+          (vu-pair (nop) (mulx.xyzw vf14 vf10 vf31)) ;; #x03e
+          (vu-pair (nop) (subw.z vf02 vf02 vf00)) ;; #x03f
+          (vu-pair (nop) (addy.x vf29 vf29 vf29)) ;; #x040
+          (vu-pair (nop) (mulx.xyz vf01 vf01 vf30)) ;; #x041
+          (vu-pair (nop) (addw.xy vf06 vf06 vf31)) ;; #x042
+          (vu-pair (nop) (mul.xyz vf30 vf02 vf14)) ;; #x043
+          (vu-pair (nop) (addz.x vf29 vf29 vf29)) ;; #x044
+          (vu-pair (nop) (add.xyz vf01 vf01 vf13)) ;; #x045
+          (vu-pair (nop) (ftoi12.xy vf18 vf06)) ;; #x046
+          (vu-pair (nop) (addy.x vf30 vf30 vf30)) ;; #x047
+          (vu-pair (rsqrt Q vf31.z vf29.x) (mul.xyz vf07 vf07 Q)) ;; #x048
+          (vu-pair (move.xyzw vf03 vf23) (mul.xyz vf29 vf01 vf01)) ;; #x049
+          (vu-pair (nop) (muly.xyz vf02 vf02 vf28)) ;; #x04a
+          (vu-pair (nop) (addz.x vf30 vf30 vf30)) ;; #x04b
+          (vu-pair (nop) (mulx.xyzw vf15 vf11 vf31)) ;; #x04c
+          (vu-pair (nop) (subw.z vf03 vf03 vf00)) ;; #x04d
+          (vu-pair (nop) (addy.x vf29 vf29 vf29)) ;; #x04e
+          (vu-pair (nop) (mulx.xyz vf02 vf02 vf30)) ;; #x04f
+          (vu-pair (nop) (addw.xy vf07 vf07 vf31)) ;; #x050
+          (vu-pair (nop) (mul.xyz vf30 vf03 vf15)) ;; #x051
+          (vu-pair (nop) (addz.x vf29 vf29 vf29)) ;; #x052
+          (vu-pair (nop) (add.xyz vf02 vf02 vf14)) ;; #x053
+          (vu-pair (nop) (ftoi12.xy vf19 vf07)) ;; #x054
+          (vu-pair (nop) (addy.x vf30 vf30 vf30)) ;; #x055
+          (vu-pair (rsqrt Q vf31.z vf29.x) (mul.xyz vf08 vf08 Q)) ;; #x056
+          (vu-pair (move.xyzw vf04 vf24) (mul.xyz vf29 vf02 vf02)) ;; #x057
+          (vu-pair (nop) (mulz.xyz vf03 vf03 vf28)) ;; #x058
+          (vu-pair (nop) (addz.x vf30 vf30 vf30)) ;; #x059
+          (vu-pair (nop) (mulx.xyzw vf16 vf12 vf31)) ;; #x05a
+          (vu-pair (nop) (subw.z vf04 vf04 vf00)) ;; #x05b
+          (vu-pair (nop) (addy.x vf29 vf29 vf29)) ;; #x05c
+          (vu-pair (nop) (mulx.xyz vf03 vf03 vf30)) ;; #x05d
+          (vu-pair (nop) (addw.xy vf08 vf08 vf31)) ;; #x05e
+          (vu-pair (nop) (mul.xyz vf30 vf04 vf16)) ;; #x05f
+          (vu-pair (nop) (addz.x vf29 vf29 vf29)) ;; #x060
+          (vu-pair (nop) (add.xyz vf03 vf03 vf15)) ;; #x061
+          (vu-pair (nop) (ftoi12.xy vf20 vf08)) ;; #x062
+          (vu-pair (nop) (addy.x vf30 vf30 vf30)) ;; #x063
+          (vu-pair (rsqrt Q vf31.z vf29.x) (mul.xyz vf05 vf01 Q)) ;; #x064
+          (vu-pair (move.xyzw vf06 vf02) (mul.xyz vf29 vf03 vf03)) ;; #x065
+          (vu-pair (move.xyzw vf07 vf03) (mulw.xyz vf08 vf04 vf28 :e)) ;; #x066
+          (vu-pair (nop) (addz.x vf30 vf30 vf30)) ;; #x067
+          ;; 104: divide VU0 data memory into packed source, temporary, and transformed streams.
+          ;; vi8 and vi9 are the two vertex counts supplied by the TIE converter.
+          (vu-pair (iaddi vi02 vi00 0x0) (nop)) ;; #x068
+          (vu-pair (iadd vi03 vi02 vi08) (nop)) ;; #x069
+          (vu-pair (iaddiu vi03 vi03 0x10) (nop)) ;; #x06a
+          (vu-pair (iadd vi01 vi03 vi09) (nop)) ;; #x06b
+          (vu-pair (iadd vi01 vi01 vi09) (nop)) ;; #x06c
+          (vu-pair (iaddiu vi01 vi01 0x10) (nop)) ;; #x06d
+          (vu-pair (iaddi vi10 vi00 0x0) (nop)) ;; #x06e
+          (vu-pair (ior vi11 vi03 vi00) (nop)) ;; #x06f
+          (vu-pair (ior vi12 vi01 vi00) (nop :e)) ;; #x070
+          (vu-pair (iadd vi13 vi01 vi08) (nop)) ;; #x071
+          ;; 114: convert four packed fixed-12 values to floats and append them to the upper stream.
+          (vu-pair (nop) (itof12.xyzw vf09 vf05)) ;; #x072
+          (vu-pair (nop) (itof12.xyzw vf10 vf06)) ;; #x073
+          (vu-pair (nop) (itof12.xyzw vf11 vf07)) ;; #x074
+          (vu-pair (nop) (itof12.xyzw vf12 vf08)) ;; #x075
+          (vu-pair (sqi.xyzw vf09 vi01) (nop)) ;; #x076
+          (vu-pair (sqi.xyzw vf10 vi01) (nop)) ;; #x077
+          (vu-pair (sqi.xyzw vf11 vi01) (nop :e)) ;; #x078
+          (vu-pair (sqi.xyzw vf12 vi01) (nop)) ;; #x079
+          ;; 122: convert four packed positions to floats, carry their attribute words in W, and
+          ;; append all four records to the lower stream.
+          (vu-pair (mr32.w vf17 vf13) (itof0.xyz vf09 vf01)) ;; #x07a
+          (vu-pair (mr32.w vf18 vf14) (itof0.xyz vf10 vf02)) ;; #x07b
+          (vu-pair (mr32.w vf19 vf15) (itof0.xyz vf11 vf03)) ;; #x07c
+          (vu-pair (mr32.w vf20 vf16) (itof0.xyz vf12 vf04)) ;; #x07d
+          (vu-pair (move.w vf09 vf17) (nop)) ;; #x07e
+          (vu-pair (move.w vf10 vf18) (nop)) ;; #x07f
+          (vu-pair (move.w vf11 vf19) (nop)) ;; #x080
+          (vu-pair (move.w vf12 vf20) (nop)) ;; #x081
+          (vu-pair (sqi.xyzw vf09 vi02) (nop)) ;; #x082
+          (vu-pair (sqi.xyzw vf10 vi02) (nop)) ;; #x083
+          (vu-pair (sqi.xyzw vf11 vi02) (nop :e)) ;; #x084
+          (vu-pair (sqi.xyzw vf12 vi02) (nop)) ;; #x085
+          ;; 134, 145, and 157 handle partial four-record groups without reading beyond the packed
+          ;; input. Entry 168 converts pairs from the second input class. The split stores keep both
+          ;; data-memory streams dense.
+          (vu-pair (mr32.w vf17 vf13) (itof0.xyz vf09 vf01)) ;; #x086
+          (vu-pair (mr32.w vf18 vf14) (itof0.xyz vf10 vf02)) ;; #x087
+          (vu-pair (nop) (itof0.xyz vf11 vf03)) ;; #x088
+          (vu-pair (nop) (nop)) ;; #x089
+          (vu-pair (move.w vf09 vf17) (nop)) ;; #x08a
+          (vu-pair (move.w vf10 vf18) (nop)) ;; #x08b
+          (vu-pair (nop) (nop)) ;; #x08c
+          (vu-pair (iaddi vi03 vi03 0x2) (nop)) ;; #x08d
+          (vu-pair (sqi.xyzw vf09 vi02) (nop)) ;; #x08e
+          (vu-pair (sq.xyzw vf10 vi03 -2) (nop :e)) ;; #x08f
+          (vu-pair (sq.xyzw vf11 vi03 -1) (nop)) ;; #x090
+          (vu-pair (mr32.w vf17 vf13) (itof0.xyz vf09 vf01)) ;; #x091
+          (vu-pair (mr32.w vf18 vf14) (itof0.xyz vf10 vf02)) ;; #x092
+          (vu-pair (mr32.w vf19 vf15) (itof0.xyz vf11 vf03)) ;; #x093
+          (vu-pair (nop) (itof0.xyz vf12 vf04)) ;; #x094
+          (vu-pair (move.w vf09 vf17) (nop)) ;; #x095
+          (vu-pair (move.w vf10 vf18) (nop)) ;; #x096
+          (vu-pair (move.w vf11 vf19) (nop)) ;; #x097
+          (vu-pair (iaddi vi03 vi03 0x2) (nop)) ;; #x098
+          (vu-pair (sqi.xyzw vf09 vi02) (nop)) ;; #x099
+          (vu-pair (sqi.xyzw vf10 vi02) (nop)) ;; #x09a
+          (vu-pair (sq.xyzw vf11 vi03 -2) (nop :e)) ;; #x09b
+          (vu-pair (sq.xyzw vf12 vi03 -1) (nop)) ;; #x09c
+          (vu-pair (mr32.w vf17 vf13) (itof0.xyz vf09 vf01)) ;; #x09d
+          (vu-pair (mr32.w vf18 vf14) (itof0.xyz vf10 vf02)) ;; #x09e
+          (vu-pair (mr32.w vf19 vf15) (itof0.xyz vf11 vf03)) ;; #x09f
+          (vu-pair (nop) (nop)) ;; #x0a0
+          (vu-pair (move.w vf09 vf17) (nop)) ;; #x0a1
+          (vu-pair (move.w vf10 vf18) (nop)) ;; #x0a2
+          (vu-pair (move.w vf11 vf19) (nop)) ;; #x0a3
+          (vu-pair (nop) (nop)) ;; #x0a4
+          (vu-pair (sqi.xyzw vf09 vi02) (nop)) ;; #x0a5
+          (vu-pair (sqi.xyzw vf10 vi02) (nop :e)) ;; #x0a6
+          (vu-pair (sqi.xyzw vf11 vi02) (nop)) ;; #x0a7
+          (vu-pair (mr32.w vf17 vf13) (itof0.xyz vf09 vf01)) ;; #x0a8
+          (vu-pair (mr32.w vf19 vf14) (itof0.xyz vf10 vf02)) ;; #x0a9
+          (vu-pair (nop) (itof0.xyz vf11 vf03)) ;; #x0aa
+          (vu-pair (iaddi vi03 vi03 0x4) (itof0.xyz vf12 vf04)) ;; #x0ab
+          (vu-pair (move.w vf09 vf17) (nop)) ;; #x0ac
+          (vu-pair (move.w vf11 vf19) (nop)) ;; #x0ad
+          (vu-pair (sq.xyz vf10 vi03 -3) (nop)) ;; #x0ae
+          (vu-pair (sq.xyz vf12 vi03 -1) (nop)) ;; #x0af
+          (vu-pair (sq.xyzw vf09 vi03 -4) (nop :e)) ;; #x0b0
+          (vu-pair (sq.xyzw vf11 vi03 -2) (nop)) ;; #x0b1
+          ;; 178/183: transform four staged vertices by vf1-vf4 while reading the next source
+          ;; values. The W lanes retain packed per-vertex data for the EE-side output builder.
+          (vu-pair (ior vi02 vi10 vi00) (nop)) ;; #x0b2
+          (vu-pair (ior vi01 vi12 vi00) (nop)) ;; #x0b3
+          (vu-pair (lqi.xyzw vf05 vi02) (nop)) ;; #x0b4
+          (vu-pair (nop) (nop)) ;; #x0b5
+          (vu-pair (nop) (nop)) ;; #x0b6
+          (vu-pair (lqi.xyzw vf09 vi01) (mulaw.xyzw ACC vf04 vf00)) ;; #x0b7
+          (vu-pair (move.xyzw vf19 vf21) (maddax.xyzw ACC vf01 vf05)) ;; #x0b8
+          (vu-pair (move.xyzw vf16 vf22) (madday.xyzw ACC vf02 vf05)) ;; #x0b9
+          (vu-pair (move.xyzw vf20 vf23) (maddz.xyz vf13 vf03 vf05)) ;; #x0ba
+          (vu-pair (lqi.xyzw vf06 vi02) (mulax.xyzw ACC vf01 vf09)) ;; #x0bb
+          (vu-pair (move.xyzw vf15 vf24) (madday.xyzw ACC vf02 vf09)) ;; #x0bc
+          (vu-pair (nop) (maddz.xyzw vf17 vf03 vf09)) ;; #x0bd
+          (vu-pair (lqi.xyzw vf10 vi01) (mulaw.xyzw ACC vf04 vf00)) ;; #x0be
+          (vu-pair (move.w vf13 vf05) (maddax.xyzw ACC vf01 vf06)) ;; #x0bf
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf06)) ;; #x0c0
+          (vu-pair (nop) (maddz.xyz vf14 vf03 vf06)) ;; #x0c1
+          (vu-pair (lqi.xyzw vf07 vi02) (mulax.xyzw ACC vf01 vf10)) ;; #x0c2
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf10)) ;; #x0c3
+          (vu-pair (nop) (maddz.xyzw vf18 vf03 vf10)) ;; #x0c4
+          (vu-pair (lqi.xyzw vf11 vi01) (mulaw.xyzw ACC vf04 vf00)) ;; #x0c5
+          (vu-pair (move.w vf14 vf06) (maddax.xyzw ACC vf01 vf07)) ;; #x0c6
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf07)) ;; #x0c7
+          (vu-pair (nop) (maddz.xyz vf24 vf03 vf07)) ;; #x0c8
+          (vu-pair (lqi.xyzw vf08 vi02) (mulax.xyzw ACC vf01 vf11)) ;; #x0c9
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf11)) ;; #x0ca
+          (vu-pair (nop) (maddz.xyzw vf21 vf03 vf11)) ;; #x0cb
+          (vu-pair (lqi.xyzw vf12 vi01) (mulaw.xyzw ACC vf04 vf00)) ;; #x0cc
+          (vu-pair (move.w vf24 vf07) (maddax.xyzw ACC vf01 vf08)) ;; #x0cd
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf08)) ;; #x0ce
+          (vu-pair (nop) (maddz.xyz vf22 vf03 vf08)) ;; #x0cf
+          (vu-pair (lqi.xyzw vf05 vi02) (mulax.xyzw ACC vf01 vf12)) ;; #x0d0
+          (vu-pair (move.w vf22 vf08) (madday.xyzw ACC vf02 vf12 :e)) ;; #x0d1
+          (vu-pair (nop) (maddz.xyzw vf23 vf03 vf12)) ;; #x0d2
+          ;; 211: drain the final transform results after the four-vertex pipeline.
+          (vu-pair (move.xyzw vf19 vf21) (nop)) ;; #x0d3
+          (vu-pair (move.xyzw vf16 vf22) (nop)) ;; #x0d4
+          (vu-pair (move.xyzw vf20 vf23) (nop :e)) ;; #x0d5
+          (vu-pair (move.xyzw vf15 vf24) (nop)) ;; #x0d6
+          ;; 215/221: transform position and an accompanying offset vector for four records. The
+          ;; offset is scaled by vf29.x before translation and is used by the interpolated path.
+          (vu-pair (ior vi03 vi11 vi00) (nop)) ;; #x0d7
+          (vu-pair (ior vi01 vi13 vi00) (nop)) ;; #x0d8
+          (vu-pair (lqi.xyzw vf05 vi03) (nop)) ;; #x0d9
+          (vu-pair (lqi.xyzw vf25 vi03) (nop)) ;; #x0da
+          (vu-pair (lqi.xyzw vf09 vi01) (nop)) ;; #x0db
+          (vu-pair (nop) (nop)) ;; #x0dc
+          (vu-pair (move.xyzw vf16 vf21) (mulax.xyz ACC vf05 vf29)) ;; #x0dd
+          (vu-pair (nop) (maddw.xyz vf30 vf25 vf00)) ;; #x0de
+          (vu-pair (nop) (mulax.xyzw ACC vf01 vf09)) ;; #x0df
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf09)) ;; #x0e0
+          (vu-pair (move.w vf13 vf05) (maddz.xyz vf17 vf03 vf09)) ;; #x0e1
+          (vu-pair (lqi.xyzw vf06 vi03) (mulaw.xyzw ACC vf04 vf00)) ;; #x0e2
+          (vu-pair (lqi.xyzw vf26 vi03) (maddax.xyzw ACC vf01 vf30)) ;; #x0e3
+          (vu-pair (lqi.xyzw vf10 vi01) (madday.xyzw ACC vf02 vf30)) ;; #x0e4
+          (vu-pair (nop) (maddz.xyz vf13 vf03 vf30)) ;; #x0e5
+          (vu-pair (nop) (mulax.xyz ACC vf06 vf29)) ;; #x0e6
+          (vu-pair (nop) (maddw.xyz vf30 vf26 vf00)) ;; #x0e7
+          (vu-pair (nop) (mulax.xyzw ACC vf01 vf10)) ;; #x0e8
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf10)) ;; #x0e9
+          (vu-pair (move.w vf14 vf06) (maddz.xyz vf18 vf03 vf10)) ;; #x0ea
+          (vu-pair (lqi.xyzw vf07 vi03) (mulaw.xyzw ACC vf04 vf00)) ;; #x0eb
+          (vu-pair (lqi.xyzw vf27 vi03) (maddax.xyzw ACC vf01 vf30)) ;; #x0ec
+          (vu-pair (lqi.xyzw vf11 vi01) (madday.xyzw ACC vf02 vf30)) ;; #x0ed
+          (vu-pair (nop) (maddz.xyz vf14 vf03 vf30)) ;; #x0ee
+          (vu-pair (nop) (mulax.xyz ACC vf07 vf29)) ;; #x0ef
+          (vu-pair (nop) (maddw.xyz vf30 vf27 vf00)) ;; #x0f0
+          (vu-pair (nop) (mulax.xyzw ACC vf01 vf11)) ;; #x0f1
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf11)) ;; #x0f2
+          (vu-pair (move.w vf15 vf07) (maddz.xyz vf19 vf03 vf11)) ;; #x0f3
+          (vu-pair (lqi.xyzw vf08 vi03) (mulaw.xyzw ACC vf04 vf00)) ;; #x0f4
+          (vu-pair (lqi.xyzw vf28 vi03) (maddax.xyzw ACC vf01 vf30)) ;; #x0f5
+          (vu-pair (lqi.xyzw vf12 vi01) (madday.xyzw ACC vf02 vf30)) ;; #x0f6
+          (vu-pair (nop) (maddz.xyz vf15 vf03 vf30)) ;; #x0f7
+          (vu-pair (nop) (mulax.xyz ACC vf08 vf29)) ;; #x0f8
+          (vu-pair (nop) (maddw.xyz vf30 vf28 vf00)) ;; #x0f9
+          (vu-pair (nop) (mulax.xyzw ACC vf01 vf12)) ;; #x0fa
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf12)) ;; #x0fb
+          (vu-pair (move.w vf21 vf08) (maddz.xyz vf20 vf03 vf12)) ;; #x0fc
+          (vu-pair (lqi.xyzw vf05 vi03) (mulaw.xyzw ACC vf04 vf00)) ;; #x0fd
+          (vu-pair (lqi.xyzw vf25 vi03) (maddax.xyzw ACC vf01 vf30)) ;; #x0fe
+          (vu-pair (lqi.xyzw vf09 vi01) (madday.xyzw ACC vf02 vf30 :e)) ;; #x0ff
+          (vu-pair (nop) (maddz.xyz vf21 vf03 vf30)) ;; #x100
+          ;; 257: drain the last interpolated position.
+          (vu-pair (move.xyzw vf16 vf21) (nop :e)) ;; #x101
+          (vu-pair (nop) (nop)) ;; #x102
+          ;; 259/264: transform four records from the alternate stream whose W values are stored
+          ;; separately beside each XYZ vector.
+          (vu-pair (ior vi01 vi13 vi00) (nop)) ;; #x103
+          (vu-pair (lqi.xyzw vf09 vi01) (nop)) ;; #x104
+          (vu-pair (ior vi03 vi11 vi00) (nop)) ;; #x105
+          (vu-pair (lq.xyzw vf05 vi03 1) (nop)) ;; #x106
+          (vu-pair (iaddi vi03 vi03 0x2) (nop)) ;; #x107
+          (vu-pair (move.xyzw vf15 vf21) (mulax.xyzw ACC vf01 vf09)) ;; #x108
+          (vu-pair (move.xyzw vf20 vf22) (madday.xyzw ACC vf02 vf09)) ;; #x109
+          (vu-pair (lq.w vf13 vi03 -2) (maddz.xyz vf17 vf03 vf09)) ;; #x10a
+          (vu-pair (lqi.xyzw vf10 vi01) (mulaw.xyzw ACC vf04 vf00)) ;; #x10b
+          (vu-pair (move.xyzw vf16 vf23) (maddax.xyzw ACC vf01 vf05)) ;; #x10c
+          (vu-pair (lq.xyzw vf06 vi03 1) (madday.xyzw ACC vf02 vf05)) ;; #x10d
+          (vu-pair (iaddi vi03 vi03 0x2) (maddz.xyz vf13 vf03 vf05)) ;; #x10e
+          (vu-pair (nop) (mulax.xyzw ACC vf01 vf10)) ;; #x10f
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf10)) ;; #x110
+          (vu-pair (lq.w vf14 vi03 -2) (maddz.xyz vf18 vf03 vf10)) ;; #x111
+          (vu-pair (lqi.xyzw vf11 vi01) (mulaw.xyzw ACC vf04 vf00)) ;; #x112
+          (vu-pair (nop) (maddax.xyzw ACC vf01 vf06)) ;; #x113
+          (vu-pair (lq.xyzw vf07 vi03 1) (madday.xyzw ACC vf02 vf06)) ;; #x114
+          (vu-pair (iaddi vi03 vi03 0x2) (maddz.xyz vf14 vf03 vf06)) ;; #x115
+          (vu-pair (nop) (mulax.xyzw ACC vf01 vf11)) ;; #x116
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf11)) ;; #x117
+          (vu-pair (lq.w vf21 vi03 -2) (maddz.xyz vf19 vf03 vf11)) ;; #x118
+          (vu-pair (lqi.xyzw vf12 vi01) (mulaw.xyzw ACC vf04 vf00)) ;; #x119
+          (vu-pair (nop) (maddax.xyzw ACC vf01 vf07)) ;; #x11a
+          (vu-pair (lq.xyzw vf08 vi03 1) (madday.xyzw ACC vf02 vf07)) ;; #x11b
+          (vu-pair (iaddi vi03 vi03 0x2) (maddz.xyz vf21 vf03 vf07)) ;; #x11c
+          (vu-pair (nop) (mulax.xyzw ACC vf01 vf12)) ;; #x11d
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf12)) ;; #x11e
+          (vu-pair (lq.w vf23 vi03 -2) (maddz.xyz vf22 vf03 vf12)) ;; #x11f
+          (vu-pair (lqi.xyzw vf09 vi01) (mulaw.xyzw ACC vf04 vf00)) ;; #x120
+          (vu-pair (nop) (maddax.xyzw ACC vf01 vf08)) ;; #x121
+          (vu-pair (lq.xyzw vf05 vi03 1) (madday.xyzw ACC vf02 vf08 :e)) ;; #x122
+          (vu-pair (iaddi vi03 vi03 0x2) (maddz.xyz vf23 vf03 vf08)) ;; #x123
+          ;; 292: drain the final three outputs.
+          (vu-pair (move.xyzw vf15 vf21) (nop)) ;; #x124
+          (vu-pair (move.xyzw vf20 vf22) (nop :e)) ;; #x125
+          (vu-pair (move.xyzw vf16 vf23) (nop)) ;; #x126
+          ))

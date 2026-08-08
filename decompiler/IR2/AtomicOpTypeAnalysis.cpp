@@ -71,6 +71,9 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
     case Kind::VARIABLE:
       return input.get(var().reg());
     case Kind::INTEGER_CONSTANT:
+      if (m_int == 0x70000000 && env.scratchpad_type()) {
+        return TP_Type::make_from_ts(*env.scratchpad_type());
+      }
       return TP_Type::make_from_integer(m_int);
     case Kind::SYMBOL_PTR:
       if (m_string == "#f") {
@@ -993,6 +996,28 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
   IR2_RegOffset ro;
   if (get_as_reg_offset(m_src, &ro)) {
     auto& input_type = input.get(ro.reg);
+
+    // A static value label is often materialized in a register before it is loaded. Preserve the
+    // label's analyzed value type just as we do when the load contains the static address directly.
+    // In particular, GOAL returns float constants through GPRs with a signed word load; treating
+    // that as a generic pointer load loses the float type even though label analysis and form
+    // reconstruction both identify the value as a float.
+    if (input_type.kind == TP_Type::Kind::LABEL_ADDR && ro.offset == 0) {
+      const auto& hint = env.file->label_db->lookup(input_type.label_id());
+      if (!hint.known) {
+        throw std::runtime_error(
+            fmt::format("Label {} was unknown in AtomicOpTypeAnalysis (load).", hint.name));
+      }
+      if (!hint.is_value) {
+        throw std::runtime_error(
+            fmt::format("Label {} was loaded as a value but wasn't marked as one.", hint.name));
+      }
+      if (m_size == 4 && (m_kind == Kind::SIGNED || m_kind == Kind::FLOAT) &&
+          hint.result_type == TypeSpec("float")) {
+        return TP_Type::make_from_ts("float");
+      }
+    }
+
     if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD ||
          input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) &&
         ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {

@@ -7,21 +7,20 @@
 
 ;; DECOMP BEGINS
 
-;; The first type is the bucket.  There's one bucket per prototype which collects instances.
-;; Each prototype can have up to 4 geometries (level of details). Lower numbers are higher detail.
-;; During drawing, the engine will build linked lists of instance data.  Each instance will pick
-;; a geom, based on distance from the camera (or other settings) and will add itself to the list
-;; for that geom.
+;; Each prototype has one bucket that collects its instances.
+;; A prototype can have up to four geometries (levels of detail); lower indices are higher detail.
+;; During drawing, each instance selects a geometry based on camera distance and the bucket settings,
+;; then joins that geometry's linked list.
 (deftype prototype-bucket (basic)
   ((name          string)
    (flags         uint32)
    (in-level      uint16)
    (utextures     uint16)
-   (geometry      drawable 4) ;; the 4 levels of detail
-   (dists         vector :inline) ;; lod settings
-   (rdists        vector :inline) ;; lod settings
-   (next          uint32 4) ;; linked list of instances of each geom.
-   (count         uint16 4) ;; number of each instance with each geom.
+   (geometry      drawable 4) ;; four levels of detail
+   (dists         vector :inline) ;; LOD settings
+   (rdists        vector :inline) ;; LOD settings
+   (next          uint32 4) ;; instance-list head for each geometry
+   (count         uint16 4) ;; instance count for each geometry
    ;; overlays
    (near-plane    meters :overlay-at (-> dists x))
    (near-stiff    meters :overlay-at (-> dists y))
@@ -42,20 +41,20 @@
 ;; shrub
 ;;;;;;;;;;;;;;;
 
-;; specialization for shrub.  We keep the end of the linked list too.
+;; Shrub specialization, including the tail of each instance list.
 (deftype prototype-bucket-shrub (prototype-bucket)
   ((mod-count         uint16 4)
    (last              dma-packet 4)
    (count-clear-qword uint128 :overlay-at (-> count 0))
    (last-clear        uint128 :overlay-at (-> last 0))))
 
-;; array of all the prototypes in a shrub tree.
+;; All prototypes in a shrub tree.
 (deftype prototype-inline-array-shrub (drawable)
   ((length int16 :offset 6)
    (data   prototype-bucket-shrub 1 :inline :offset 32)
    (_pad   uint32)))
 
-;; shrub prototypes, plus a pointer to the level's wind data.
+;; Shrub prototypes plus a pointer to the level's wind data.
 (deftype prototype-array-shrub-info (basic)
   ((prototype-inline-array-shrub prototype-inline-array-shrub)
    (wind-vectors                 uint32)))
@@ -64,7 +63,7 @@
 ;; tie
 ;;;;;;;;;;;;;;;
 
-;; tie has a few special features:
+;; TIE has a few special features:
 ;; - ability to output to generic (and env map)
 ;; - per-proto colors
 ;; - instanced collision
@@ -73,7 +72,7 @@
 
 (declare-type prototype-tie drawable)
 
-;; prototype for a TIE
+;; Prototype for a TIE.
 (deftype prototype-bucket-tie (prototype-bucket)
   ((generic-count       uint16 4)
    (generic-next        uint32 4)
@@ -91,14 +90,14 @@
    (generic-count-clear uint128 :overlay-at (-> count 0))
    (geometry-override   prototype-tie 4 :overlay-at (-> geometry 0))))
 
-;; all tie prototypes in a tie tree. (note, not inline like shrub)
+;; All TIE prototypes in a TIE tree; unlike shrub, the elements are not inline.
 (deftype prototype-array-tie (array)
   ((array-data prototype-bucket-tie :dynamic :offset 16))
   (:methods
    (login (_type_) none)))
 
-;; all tie prototypes and pointer to level's wind data.
-;; in practice, they are shared with all tie/shrub trees in the level
+;; All TIE prototypes plus a pointer to the level's wind data.
+;; These are shared by the TIE and shrub trees in a level.
 (deftype proxy-prototype-array-tie (basic)
   ((prototype-array-tie prototype-array-tie)
    (wind-vectors        uint32)))
@@ -107,7 +106,7 @@
 ;; instance
 ;;;;;;;;;;;;
 
-;; note: more specific instances are available in tie/shrub files.
+;; More specific instance types are defined in the TIE and shrub files.
 
 (deftype instance (drawable)
   ((bucket-index   uint16 :offset 6)

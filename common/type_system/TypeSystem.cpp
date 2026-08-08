@@ -1151,6 +1151,21 @@ void TypeSystem::add_builtin_types(GameVersion version) {
   auto uint_type = add_builtin_value_type("uinteger", "uint", 8, false, false);
   uint_type->disallow_in_runtime();
 
+  // Jak 1's built-in mem-usage method takes these traversal/classification flags. The method is
+  // declared before any GOAL source is loaded, so its argument enum must also be a built-in type.
+  if (version == GameVersion::Jak1) {
+    const std::unordered_map<std::string, s64> mem_usage_flag_entries = {
+        {"prototype-data", 0},    {"instance-colors", 1},  {"tie-geometry-1", 2},
+        {"tie-geometry-2", 3},    {"tie-geometry-3", 4},   {"include-dead-pools", 5},
+        {"resource-entity", 6},   {"resource-ambient", 7}, {"resource-camera", 8},
+        {"resource-joint-geo", 9}};
+    auto* parent = get_type_of_type<ValueType>("uint32");
+    auto flags =
+        std::make_unique<EnumType>(parent, "mem-usage-flags", true, mem_usage_flag_entries);
+    flags->set_runtime_type(parent->get_runtime_name());
+    add_type("mem-usage-flags", std::move(flags));
+  }
+
   // Methods and Fields
   forward_declare_type_as("memory-usage-block", "basic");
 
@@ -1169,7 +1184,10 @@ void TypeSystem::add_builtin_types(GameVersion version) {
   declare_method(obj_type, "relocate", {}, false,
                  make_function_typespec({"_type_", "int"}, "_type_"), false);
   declare_method(obj_type, "mem-usage", {}, false,
-                 make_function_typespec({"_type_", "memory-usage-block", "int"}, "_type_"), false);
+                 make_function_typespec({"_type_", "memory-usage-block",
+                                         version == GameVersion::Jak1 ? "mem-usage-flags" : "int"},
+                                        "_type_"),
+                 false);
 
   // STRUCTURE
   // structure new doesn't support dynamic sizing, which is kinda weird - it grabs the size from

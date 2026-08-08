@@ -19,6 +19,7 @@ add_executable(goalc-test
         ${CMAKE_CURRENT_LIST_DIR}/test_math.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_zstd.cpp
         ${CMAKE_CURRENT_LIST_DIR}/test_zydis.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/common/test_demacro.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/FormRegressionTest.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_AtomicOpBuilder.cpp
         ${CMAKE_CURRENT_LIST_DIR}/decompiler/test_FormBeforeExpressions.cpp

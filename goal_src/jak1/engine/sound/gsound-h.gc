@@ -3,10 +3,8 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; Type definitions for sound.
-;; Sound is handled on the IOP, a separate processor.
-;; The EE sends commands using the IOP RPC system to the OVERLORD IOP driver telling it to load and play sounds.
-;; There is also some sort of per-frame status update, that is not included here.
+;; Sound is handled by OVERLORD on the IOP. The EE sends these RPC packets to load banks, play
+;; sounds, and update playback parameters. Per-frame status replies use a separate interface.
 
 ;; DECOMP BEGINS
 
@@ -28,17 +26,15 @@
 
 (deftype sound-bank-id (uint32) ())
 
-;; Sound names were sometimes packed into a uint128
-;; this is also used for dgo names sent to the IOP.
-;; fields added by us
+;; Sound and DGO names sent to the IOP occupy one 16-byte value. Named halves make constants and
+;; host-side access straightforward without changing the packet layout.
 (deftype sound-name (uint128)
   ((lo uint64 :offset 0 :size 64)
    (hi uint64 :offset 64 :size 64)))
 
 (defmacro static-sound-name (str)
-  "Convert a string constant to a static sound-name."
-  ;; all this is done at compile-time so we can come up with 2
-  ;; 64-bit constants to use
+  "Pack a string constant of at most 16 bytes into a static sound-name."
+  ;; Compute both halves at compile time so the packet contains two immediate 64-bit constants.
   (when (> (string-length str) 16)
     (error "static-sound-name got a string that is too long"))
   (let ((lo-val 0)
@@ -47,7 +43,7 @@
       (if (>= i 8) (+! hi-val (ash (string-ref str i) (* 8 (- i 8)))) (+! lo-val (ash (string-ref str i) (* 8 i)))))
     `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)))
 
-;; command types that can be sent to the IOP.
+;; Commands sent to the IOP sound driver.
 (defenum sound-command
   :type uint16
   (load-bank)
@@ -74,7 +70,7 @@
   (list-sounds)
   (unload-music)
   (set-fps)
-  ;; og:preserve-this mirror mode
+  ;; PC mirror-mode extension.
   (set-mirror 201))
 
 ;; flavors for music
@@ -148,8 +144,7 @@
   (normal)
   (mirrored))
 
-;; like should match the sound type in OVERLORD
-;; This is shared between all sound RPCs and acts like the header for the sound messages
+;; This header layout must match OVERLORD's sound command type.
 (deftype sound-rpc-cmd (structure)
   ((rsvd1   uint16)
    (command sound-command)))
@@ -250,11 +245,11 @@
 
 (deftype sound-rpc-unload-music (sound-rpc-cmd) ())
 
-;; og:preserve-this added for mirror mode
+;; PC mirror-mode extension.
 (deftype sound-rpc-set-mirror-mode (sound-rpc-cmd)
   ((mirror sound-mirror-mode)))
 
-;; union of all the possible sound commands.
+;; Fixed-size command buffer overlaid with every supported RPC packet.
 (deftype sound-rpc-union (structure)
   ((data              uint32 20)
    (load-bank         sound-rpc-load-bank :overlay-at (-> data 0))
@@ -280,7 +275,7 @@
    (shutdown          sound-rpc-shutdown :overlay-at (-> data 0))
    (list-sounds       sound-rpc-list-sounds :overlay-at (-> data 0))
    (unload-music      sound-rpc-unload-music :overlay-at (-> data 0))
-   ;; og:preserve-this mirror mode
+   ;; PC mirror-mode extension.
    (mirror-mode       sound-rpc-set-mirror-mode :overlay-at (-> data 0))))
 
 ;; GOAL-side sound specification.
@@ -302,10 +297,11 @@
    (auto-from       int32)))
 
 (defmacro sound-vol (vol)
-  "convert to sound volume units"
+  "Convert a percentage to the IOP sound driver's 0-to-1024 volume scale."
   (if (number? vol) (* 1 (/ (* vol 1024) 100)) `(the int (/ (* ,vol 1024) 100))))
 
 (defmacro static-sound-spec (name &key (num 1.0) &key (group 1) &key (volume #f) &key (pitch-mod 0) &key (fo-min 0) &key (fo-max 0) &key (mask ()))
+  "Build a static sound specification and infer mask bits from supplied parameters."
   (let ((snd-mask mask)
         (snd-volume 100.0))
     (when (nonzero? fo-max)
@@ -331,33 +327,40 @@
 ;; each sound command gets a unique ID.
 (define *current-sound-id* (the sound-id #x10000))
 
-;; a in-game background sound.
+;; An in-game background sound.
 (declare-type entity basic)
 
 (deftype ambient-sound (basic)
-  ((spec         sound-spec)
-   (playing-id   sound-id)
-   (trans        vector :inline)
-   (name         sound-name)
-   (play-time    time-frame)
-   (time-base    time-frame)
-   (time-random  time-frame)
-   (volume       int32)
-   (pitch        int32)
+  "A positioned background sound configured from a sound name, sound-spec, or entity resource. It
+can update one continuous sound or schedule repeated one-shots with a base and random delay."
+  ((spec sound-spec)
+   (playing-id sound-id)
+   (trans vector :inline)
+   (name sound-name)
+   (play-time time-frame)
+   (time-base time-frame)
+   (time-random time-frame)
+   (volume int32)
+   (pitch int32)
    (falloff-near int32)
-   (falloff-far  int32)
+   (falloff-far int32)
    (falloff-mode int32)
-   (params       (pointer float))
-   (param-count  int32)
-   (entity       entity)
-   (sound-count  int32))
+   (params (pointer float))
+   (param-count int32)
+   (entity entity)
+   (sound-count int32))
   (:methods
-   (new (symbol type basic vector) _type_)
-   (update! (_type_) int)
-   (change-sound! (_type_ sound-name) int)
-   (update-trans! (_type_ vector) int)
-   (update-vol! (_type_ int) int)
-   (stop! (_type_) int)))
+   (new "Create a positioned background sound from a name, sound-spec, or entity sound resource.
+Entity cycle-speed supplies base and random delays in seconds, and effect-param supplies optional
+playback parameters. Return zero when src does not identify a sound." (symbol type basic vector) _type_)
+   (update! "Update continuous playback or start a scheduled one-shot when its timer expires.
+Entity-backed sounds rebuild their shared specification and skip playback outside the far falloff
+distance." (_type_) int)
+   (change-sound! "Stop playback and allocate a fresh sound ID when name changes." (_type_ sound-name) int)
+   (update-trans! "Store a new position and queue a position update for the active sound." (_type_ vector) int)
+   (update-vol! "Store volume-percent and queue the corresponding 0-to-1024 volume for the active
+sound." (_type_ int) int)
+   (stop! "Queue a stop command for this background sound's current playback ID." (_type_) int)))
 
 ;; currently loaded sound effect banks.
 ;; there is an always-loaded common bank and two level-specific banks.
@@ -365,9 +368,9 @@
 
 (define *sound-bank-2* #f)
 
-;; added for PC port
+;; PC debug helper.
 (defun-debug music-flava->string ((f music-flava))
-  "print the name of a music-flava"
+  "Return the symbolic name of a music flavor."
   (enum->string music-flava f))
 
 (defun-extern string->sound-name string sound-name)

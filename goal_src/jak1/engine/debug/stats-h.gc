@@ -17,6 +17,16 @@
   ((merc      tr-stat :inline)
    (mercneric tr-stat :inline)))
 
+(defenum perf-counter-pair
+  :type uint32
+  :bitfield #f
+  (cycles-instructions 0)
+  (icache-dcache 1))
+
+;; One renderer bucket is sampled at a time. select chooses either cycles/instructions or
+;; instruction-cache/data-cache events, ctrl is the corresponding EE Perf register value, and
+;; accum0/accum1 collect the raw counter pair until the end-of-frame code assigns the named totals.
+;; The explicit wait totals account for stalls that the event counters do not describe directly.
 (deftype perf-stat (structure)
   ((frame-number   uint32)
    (count          uint32)
@@ -24,7 +34,7 @@
    (instructions   uint32)
    (icache         uint32)
    (dcache         uint32)
-   (select         uint32)
+   (select         perf-counter-pair)
    (ctrl           uint32)
    (accum0         uint32)
    (accum1         uint32)
@@ -42,60 +52,94 @@
 (deftype perf-stat-array (inline-array-class)
   ((data perf-stat :inline :dynamic)))
 
+;; perf-stat is exactly 52 bytes; inline arrays use that as their dynamic element stride.
 (set! (-> perf-stat-array heap-base) (the-as uint 52))
 
-(define *pc-perf-stat-counter* (the-as uint 0))
+(#unless PC_PORT
+  (defmethod reset! ((this perf-stat))
+    "Begin one performance-counter sample. The EE clears and enables both counters selected by
+     ctrl; the PC port records the current CPU clock because it exposes only elapsed cycles."
+    (declare (asm-func none))
+    (rlet ((this-reg :reg a0)
+           (control :reg v1)
+           (sample-count :reg a1)
+           (result :reg v0))
+      (l.wu control this-reg 28)
+      (l.wu sample-count this-reg 4)
+      (add.i sample-count sample-count 1)
+      (s.w sample-count this-reg 4)
+      (b.z control counters-disabled :delay (nop!))
+      ;; Stop both counters before clearing them. The two sync pairs keep the COP0 control write
+      ;; and the performance-counter writes from crossing before sampling is enabled again.
+      (m Perf r0)
+      (sync.l)
+      (sync.p)
+      (mtpc pcr0 r0)
+      (mtpc pcr1 r0)
+      (sync.l)
+      (sync.p)
+      (m Perf control)
+      (sync.l)
+      (sync.p)
+      (label counters-disabled)
+      (m result r0)
+      (jr ra :delay (add sp sp r0)))))
 
-(defmethod reset! ((this perf-stat))
-  "Perfomance counters are partially implemented, they just count cycles."
-  (+! (-> this count) 1)
-  (when (nonzero? (-> this ctrl))
-    (set! *pc-perf-stat-counter* (get-cpu-clock)))
-  #|
-  (let ((v1-0 (-> this ctrl)))
+(#when PC_PORT
+  (define *pc-perf-stat-counter* (the-as uint 0))
+  (defmethod reset! ((this perf-stat))
+    "Begin one performance-counter sample. The EE clears and enables both counters selected by
+     ctrl; the PC port records the current CPU clock because it exposes only elapsed cycles."
     (+! (-> this count) 1)
-    (b! (zero? v1-0) cfg-2 :delay (nop!))
-    (.mtc0 Perf 0)
-    (.sync.l)
-    (.sync.p)
-    (.mtpc pcr0 0)
-    (.mtpc pcr1 0)
-    (.sync.l)
-    (.sync.p)
-    (.mtc0 Perf v1-0)
-    )
-  (.sync.l)
-  (.sync.p)
-  (label cfg-2)
-  |#
-  0
-  (none))
+    (when (nonzero? (-> this ctrl))
+      (set! *pc-perf-stat-counter* (get-cpu-clock)))
+    0
+    (none)))
 
-(defmethod read! ((this perf-stat))
-  "Perfomance counters are partially implemented, they just count cycles."
-  (when (nonzero? (-> this ctrl))
-    (+! (-> this accum0) (- (get-cpu-clock) *pc-perf-stat-counter*))
-    (set! (-> this accum1) 0))
-  #|
-  (local-vars (v1-1 int) (v1-3 int))
-  (b! (zero? (-> this ctrl)) cfg-2 :delay (nop!))
-  (.mtc0 Perf 0)
-  (.sync.l)
-  (.sync.p)
-  (.mfpc v1-1 pcr0)
-  (+! (-> this accum0) v1-1)
-  (.mfpc v1-3 pcr1)
-  (+! (-> this accum1) v1-3)
-  (label cfg-2)
-  |#
-  0
-  (none))
+(#unless PC_PORT
+  (defmethod read! ((this perf-stat))
+    "Stop the active performance-counter sample and add its two counter values to accum0 and
+     accum1. The PC port adds elapsed CPU-clock ticks to accum0 and leaves accum1 at zero."
+    (declare (asm-func none))
+    (rlet ((this-reg :reg a0)
+           (counter :reg v1)
+           (accumulator :reg a1)
+           (result :reg v0))
+      (l.wu counter this-reg 28)
+      (b.z counter counters-disabled :delay (nop!))
+      ;; Freeze both counters before reading them, then accumulate the two selected events.
+      (m Perf r0)
+      (sync.l)
+      (sync.p)
+      (mfpc counter pcr0)
+      (l.wu accumulator this-reg 32)
+      (add counter accumulator counter)
+      (s.w counter this-reg 32)
+      (mfpc counter pcr1)
+      (l.wu accumulator this-reg 36)
+      (add counter accumulator counter)
+      (s.w counter this-reg 36)
+      (label counters-disabled)
+      (m result r0)
+      (jr ra :delay (add sp sp r0)))))
 
-(defmethod update-wait-stats ((this perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
+(#when PC_PORT
+  (defmethod read! ((this perf-stat))
+    "Stop the active performance-counter sample and add its two counter values to accum0 and
+     accum1. The PC port adds elapsed CPU-clock ticks to accum0 and leaves accum1 at zero."
+    (when (nonzero? (-> this ctrl))
+      (+! (-> this accum0) (- (get-cpu-clock) *pc-perf-stat-counter*))
+      (set! (-> this accum1) 0))
+    0
+    (none)))
+
+(defmethod update-wait-stats ((this perf-stat) (vu0-waits uint) (to-scratchpad-waits uint) (from-scratchpad-waits uint))
+  "Add the waits spent transferring data to VU0, to scratchpad, and from scratchpad while this
+   performance bucket is enabled."
   (when (nonzero? (-> this ctrl))
-    (+! (-> this to-vu0-waits) arg0)
-    (+! (-> this to-spr-waits) arg1)
-    (+! (-> this from-spr-waits) arg2))
+    (+! (-> this to-vu0-waits) vu0-waits)
+    (+! (-> this to-spr-waits) to-scratchpad-waits)
+    (+! (-> this from-spr-waits) from-scratchpad-waits))
   0
   (none))
 

@@ -3,20 +3,39 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; Generic tie converts tie data to generic and supports environment mapping.
+;; Generic TIE: the escape hatch for TIE geometry that needs more than VU1's fixed pipeline can give
+;; it, which in practice means environment mapping.
+;;
+;; A prototype flagged for Generic is not drawn by the TIE microprogram at all. The instance pass
+;; still culls it and picks its LOD, but instead of building VU1 packets the prototype pass emits a
+;; compact chain describing which fragments and which instances were selected. generic-tie-convert
+;; then walks that chain on the EE, expands the packed vertices back into full quadwords, and feeds
+;; them into GENERIC -- which has per-vertex normals, arbitrary effect processors, and no strip
+;; templates to work around.
+;;
+;; The vertex formats below are TIE's, not GENERIC's. TIE tessellates: a fragment's vertices are either
+;; "base points" (bp), which exist at every level of detail, or "interpolated points" (ip), which exist
+;; only because an edge was subdivided and which carry the offset needed to collapse them back onto
+;; that edge as the instance recedes. Both this converter and the VU1 microprogram in tie.gc work from
+;; the same per-fragment run-control block and the same vocabulary, so the names line up between them.
 
 ;; DECOMP BEGINS
 
+;; DMA template for one instance's contribution: its transform and morph state, then the palette
+;; indices its vertices use. Sent once per instance that selected an already-uploaded model.
 (deftype generic-tie-instance (structure)
   ((matrix-tag  dma-packet :inline)
-   (matrix-data vector 6 :inline)
+   (matrix-data vector 6 :inline) ;; the tie-matrix: four transform rows, morph, fog
    (index-tag   dma-packet :inline)
-   (indices     uint8 224)
+   (indices     uint8 224) ;; palette index per vertex
    (end-tag     dma-packet :inline)))
 
+;; DMA template for a fragment that has not been sent yet: everything generic-tie-instance carries,
+;; preceded by the expanded palette and the model itself. The converter alternates two of these so a
+;; chain transfer can be fetching the next block while the current one is expanded.
 (deftype generic-tie-input (structure)
   ((palette-tag dma-packet :inline)
-   (palette     rgba 128)
+   (palette     rgba 128) ;; already interpolated for the current time of day
    (model-tag   dma-packet :inline)
    (model       vector 146 :inline)
    (matrix-tag  dma-packet :inline)
@@ -25,44 +44,93 @@
    (indices     uint8 224)
    (end-tag     dma-packet :inline)))
 
+;; The per-fragment control block, unpacked as V8-4 immediately after the fragment's adgif shaders.
+;; Ordinary TIE's VU1 program reads exactly this and keeps each field in a named integer register --
+;; the skip flags and target addresses here are its skip-bp2, skip-ips, target-bp1-ptr and friends.
+;;
+;; The targets are output addresses, not counts: each one marks where the write cursor should be when
+;; that group of vertices is finished. Splitting on addresses rather than counts is what lets the
+;; four-wide pipeline stop cleanly part-way through a group of four.
 (deftype generic-tie-run-control (structure)
-  ((skip-bp2    uint8)
-   (skip-ips    uint8)
-   (gifbuf-skip uint8)
-   (strips      uint8)
-   (target-bp1  uint8)
-   (target-bp2  uint8)
-   (target-ip1  uint8)
+  ((skip-bp2    uint8) ;; nonzero: no base point of this fragment is shared between two strips
+   (skip-ips    uint8) ;; zero: this fragment has interpolated points
+   (gifbuf-skip uint8) ;; spacing between the fragment's two output banks
+   (strips      uint8) ;; drawing packets in this fragment
+   (target-bp1  uint8) ;; output address ending the base points that need one output slot
+   (target-bp2  uint8) ;; output address ending the base points written into two slots
+   (target-ip1  uint8) ;; the same split again, for interpolated points
    (target-ip2  uint8)
-   (target-bps  uint8)
-   (target-ips  uint8)
-   (is-generic  uint8)
+   (target-bps  uint8) ;; end of the packed base-point input stream
+   (target-ips  uint8) ;; end of the packed interpolated-point input stream
+   (is-generic  uint8) ;; ordinary TIE's VU1 reads this as its alpha-test state selector; the field name
+                       ;; is the original one and the two readings have not been reconciled
    (reserved    uint8)))
 
+;; A base point: eight int16 carrying a whole vertex. Positions are integers scaled after conversion, ST
+;; is fixed point, and d0 and d1 are the vertex's output slots -- which is how the render pipeline avoids
+;; keeping a write cursor at all.
+;;
+;; This describes the compact block tie-fragment.generic-ref points at, the converter's own copy of the
+;; geometry, which is separate data from the V4-16 point stream at point-ref that TIE's VU1 program
+;; unpacks. The two look like the same layout: sixteen bytes is exactly the two quadwords TIE expands a
+;; base point into, and d0 and d1 sit in the lanes TIE uses as output slots. But nothing in the source
+;; declares a type for TIE's stream, so that correspondence is observed rather than stated.
+;;
+;; The overlays exist because the converter moves these around by quadword and by doubleword rather than
+;; field by field.
 (deftype generic-tie-base-point (structure)
   ((x    int16)
    (y    int16)
    (z    int16)
-   (d0   int16)
+   (d0   int16) ;; destination offset for the position/color/coordinate triplet
    (vtx  uint64 :overlay-at x)
    (u    int16)
    (v    int16)
    (tex  uint32 :overlay-at u)
    (w    int16)
-   (d1   int16)
+   (d1   int16) ;; second output slot, for a vertex two triangle strips share. There is no index buffer,
+                ;; so the exporter finds the reused vertices and gives each one a slot in both strips;
+                ;; the renderer transforms it once and stores the same triplet twice.
    (data uint16 8 :overlay-at x)
    (quad uint128 :overlay-at x)))
 
 (deftype generic-tie-bps (structure)
   ((bp generic-tie-base-point 4 :inline)))
 
+;; An interpolated point: a vertex that exists only because an edge was subdivided. Twelve int16, which is
+;; three quadwords when unpacked -- matching the three the TIE render loop loads. It carries its
+;; authored position plus the displacement that puts it back on the edge it split, and the renderer
+;; scales the displacement by the instance's morph weight and adds it. At full collapse the surface is
+;; exactly the next-coarser tessellation, so the triangles that disappear are degenerate by then rather
+;; than popping. The color side of the same blend always uses a plain 50/50 average of the edge's two
+;; endpoints, so the intended collapse target is the edge midpoint -- though only the color is pinned
+;; there, the displacement being authored data.
+;;
+;; d0 is the output slot, the unused lane sits where the loop reads only xyz, and d1 is the second slot.
+;;
+;; Which of the two vectors is which is genuinely unsettled, and the names do not settle it. In TIE's own
+;; stream the first vector is demonstrably the displacement: the render loop scales it by the morph weight
+;; and adds the second, and the coarsest geometry uses far-morph, whose x is 1, alongside a fully averaged
+;; color -- so weight 1 is the collapsed end and weight 0, full detail, leaves only the second vector.
+;; Read against that, x/y/z and dx/dy/dz are the wrong way round.
+;;
+;; The Generic converter agrees about the operation and adds nothing about the naming. It stages the two
+;; vectors in declaration order into a VU0 pair, its transform computes first * morph.x + second, and it
+;; has a second entry -- taken once the weight reaches zero -- which reads only the second vector. So both
+;; consumers of this type treat the first vector as the one that is scaled; which end of the LOD band that
+;; corresponds to is a fact about the instance pass, not about either of them.
+;;
+;; These are real field names out of the game's own type information, not something reconstructed, so
+;; they stay exactly as they are. Either they are simply backwards -- which happens -- or this type was
+;; written for the Generic converter alone and its block orders the two vectors the other way. Nothing
+;; here decides between those, and there is no separate type for TIE's stream to compare against.
 (deftype generic-tie-interp-point (structure)
-  ((x      int16)
+  ((x      int16) ;; the vector that gets scaled by the morph weight
    (y      int16)
    (z      int16)
    (d0     int16)
    (vtx0   uint64 :overlay-at x)
-   (dx     int16)
+   (dx     int16) ;; ... and the one it is added to
    (dy     int16)
    (dz     int16)
    (unused int16)
@@ -78,46 +146,74 @@
 (deftype generic-tie-ips (structure)
   ((ip generic-tie-interp-point 2 :inline)))
 
+;; Prefix of a fragment's Generic block. The four table offsets are relative to the block itself, so
+;; the whole thing relocates with one pointer. effect selects which of the effect processors in
+;; generic-tie-calls runs over the expanded vertices.
+;;
+;; The draw-point tables are the interesting pair. GENERIC wants one gsf-ik per draw point - a vertex
+;; index and a byte saying whether that point suppresses the strip kick - and the exporter ships those
+;; as two separate arrays: the indices one byte each immediately after gsf-header, and the kick flags
+;; packed one bit each at kick-table-offset. generic-tie-decompress reunites them.
 (deftype generic-tie-header (structure)
-  ((effect              uint8)
+  ((effect              uint8) ;; envmap, interpolate, or no-light
    (interp-table-size   uint8)
    (num-bps             uint8)
    (num-ips             uint8)
-   (tint-color          uint32)
-   (index-table-offset  uint16)
-   (kick-table-offset   uint16)
-   (normal-table-offset uint16)
-   (interp-table-offset uint16)
+   (tint-color          uint32) ;; applied to the environment map for this fragment
+   (index-table-offset  uint16) ;; vertex index per draw point. No shipped code reads this field: the
+                                ;; converter reaches the same array as the end of gsf-header, so the two
+                                ;; are presumably equal. Unverified against level data.
+   (kick-table-offset   uint16) ;; one no-kick bit per draw point, packed
+   (normal-table-offset uint16) ;; one generic-tie-normal per vertex, base points then interpolated
+   (interp-table-offset uint16) ;; the blend data generic-interp-dproc reads
    (gsf-header          gsf-header :inline)))
 
+;; What the converter hands GENERIC per instance -- the same layout as tie-matrix, with morph as a
+;; vector because the effect processors read its lanes individually.
+;;
+;; morph is (collapse, unused, own-color-weight, pair-color-weight): x runs from 0 at the near edge of
+;; the LOD band to 1 at the far edge, and the two color weights sum to 256 while trading places. The
+;; quadword named fog carries two things the converter needs, neither of them fog. Its first word is the
+;; instance's environment-map fade, worked out from the prototype's reflection range and the instance's
+;; distance, which scales the environment tint. Its second word is the packed reject flags from the
+;; instance pass's near classification: nonzero means TIE would have handed this instance to the near
+;; renderer, whose microprogram clips, so the converter selects GENERIC's clipping VU1 entry instead of
+;; the direct one.
 (deftype generic-tie-matrix (structure)
   ((matrix matrix :inline)
    (morph  vector :inline)
    (fog    qword :inline)))
 
+;; One packed vertex normal. Four bytes, so a normal costs as much as a palette index.
 (deftype generic-tie-normal (structure)
   ((x     int8)
    (y     int8)
    (z     int8)
    (dummy int8)))
 
+;; The converter's cursor block: where it is in every one of the parallel streams that make up a
+;; fragment. Advancing a fragment means advancing all of these together, which is why they live in one
+;; structure rather than in registers.
 (deftype generic-tie-control (structure)
   ((ptr-palette   uint32)
    (ptr-shaders   uint32)
    (ptr-runctrl   generic-tie-run-control)
-   (ptr-verts     uint32)
+   (ptr-verts     uint32) ;; the packed base and interpolated points
    (ptr-generic   generic-tie-header)
-   (ptr-dps       uint32)
+   (ptr-dps       uint32) ;; drawing packets
    (ptr-kicks     uint32)
    (ptr-normals   uint32)
    (ptr-interp    uint32)
    (ptr-mtxs      generic-tie-matrix)
-   (ptr-cinds     uint32)
-   (next-instance uint32)
-   (next-model    uint32)
-   (next-is-model uint32)
+   (ptr-cinds     uint32) ;; per-vertex palette indices
+   (next-instance uint32) ;; head of the remaining instance chain for this fragment
+   (next-model    uint32) ;; head of the remaining fragment chain
+   (next-is-model uint32) ;; whether the next chain entry brings a new model or another instance
    (tie-type      uint32)))
 
+;; Per-frame counters for the Generic TIE statistics display. num-waits and the two quadword figures
+;; are the interesting ones: they say whether the converter is DMA bound and how close a single
+;; fragment came to overrunning its output.
 (deftype generic-tie-stats (structure)
   ((num-bps       uint32)
    (num-ips       uint32)
@@ -129,6 +225,8 @@
    (num-qwc       uint32)
    (max-qwc       uint32)))
 
+;; The effect processors the converter can dispatch to, cached as function addresses because the
+;; converter runs without a symbol table available. Their definitions live in generic-effect.
 (deftype generic-tie-calls (structure)
   ((generic-prepare-dma-double basic)
    (generic-envmap-dproc       basic)
@@ -136,18 +234,22 @@
    (generic-no-light-dproc     basic))
   :pack-me)
 
+;; State the converter keeps across fragments: which output buffer it is filling, how far it may
+;; write before it has to hand the buffer over, and the cached effect processors.
 (deftype generic-tie-shadow (structure)
   ((out-buf      gsf-buffer)
    (cur-buf      uint32)
    (tie-type     int32)
    (ptr-inst     uint32)
    (ptr-buf      uint32)
-   (inst-xor     int32)
+   (inst-xor     int32) ;; xor that flips between the two instance buffers
    (end-of-chain uint32)
    (write-limit  uint32)
    (calls        generic-tie-calls :inline))
   :pack-me)
 
+;; The converter's whole working set, allocated once. input-a and input-b are the two blocks it
+;; alternates: main-memory DMA fills one while the EE expands the other.
 (deftype generic-tie-work (structure)
   ((control     generic-tie-control :inline)
    (interp-job  generic-interp-job :inline)
@@ -157,4 +259,6 @@
    (inst-buf    generic-tie-instance :inline)
    (palette-buf rgba 128)))
 
-(define-extern generic-tie-execute (function generic-dma-foreground-sink dma-buffer basic none))
+(define-extern generic-tie-execute
+  "Convert a chain of TIE generic draws into the foreground GENERIC DMA stream."
+  (function generic-dma-foreground-sink dma-buffer basic none))

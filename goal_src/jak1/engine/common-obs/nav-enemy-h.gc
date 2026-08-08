@@ -4,34 +4,48 @@
 (require "engine/game/game-h.gc")
 (declare-type nav-enemy process-drawable)
 
-(define-extern nav-enemy-send-attack (function process touching-shapes-entry symbol object :behavior nav-enemy))
+;; Shared navigation and combat state for ground enemies. Concrete enemy types provide a tuning
+;; table and override the state or method slots needed for their individual movement and attacks.
 
-(define-extern nav-enemy-set-hit-from-direction (function process none :behavior nav-enemy))
+(define-extern nav-enemy-send-attack
+  "Send an attack with this enemy's shove settings. On a successful hit, disable further collision
+   offense, mark attack-landed, and return true."
+  (function process touching-shapes-entry symbol object :behavior nav-enemy))
 
-(define-extern nav-enemy-get-new-patrol-point (function int :behavior nav-enemy))
+(define-extern nav-enemy-set-hit-from-direction
+  "Record a horizontal unit vector from the attacking drawable toward this enemy, or zero when the
+   source is not drawable."
+  (function process none :behavior nav-enemy))
 
-(define-extern nav-enemy-test-point-near-nav-mesh? (function vector symbol :behavior nav-enemy))
+(define-extern nav-enemy-get-new-patrol-point
+  "Select a new patrol point through the enemy's overridable patrol-point method."
+  (function int :behavior nav-enemy))
+
+(define-extern nav-enemy-test-point-near-nav-mesh?
+  "Return true when a point is within notice-nav-radius of the navigation mesh and below the
+   enemy's upper notice limit."
+  (function vector symbol :behavior nav-enemy))
 
 (defenum nav-enemy-flags
   :bitfield #t
   :type uint32
-  (navenmf0 0)
-  (navenmf1 1)
-  (navenmf2 2)
-  (enable-rotate 3)
-  (enable-travel 4)
-  (navenmf5 5)
-  (navenmf6 6)
-  (navenmf7 7)
-  (navenmf8 8)
-  (standing-jump 9)
-  (drop-jump 10)
-  (navenmf11 11)
-  (navenmf12 12)
-  (navenmf13 13)
-  (navenmf14 14)
-  (navenmf15 15)
-  (navenmf16 16)
+  (notice-pending 0) ;; waiting for reaction-time before noticing
+  (noticed-before 1) ;; skip the notice animation on later encounters
+  (hostile 2) ;; engaged with the player
+  (enable-rotate 3) ;; run navigation movement and collision during the post
+  (enable-travel 4) ;; steer and translate toward the navigation target
+  (vulnerable 5) ;; player attacks can kill this enemy
+  (attack-enabled 6) ;; contact can attack the player
+  (face-target-point 7) ;; face target-pos instead of the travel heading
+  (attack-landed 8) ;; a contact attack connected
+  (standing-jump 9) ;; play the standing jump windup
+  (drop-jump 10) ;; use the short drop-jump arc
+  (waiting-for-cue 11) ;; wait for cue-jump-to-point
+  (use-notice-distance 12) ;; enforce the configured notice distance
+  (frustrated 13) ;; unable to close on the player
+  (neck-active 14) ;; neck joint modification is tracking the player
+  (misty-ambush-ground-probe 15) ;; use the ambush ground-height probe
+  (navenmf16 16) ;; bits 16 through 31 are unused
   (navenmf17 17)
   (navenmf18 18)
   (navenmf19 19)
@@ -50,6 +64,7 @@
 
 ;; DECOMP BEGINS
 
+;; Per-type animation, locomotion, notice, jump, shadow, and ground-collision tuning.
 (deftype nav-enemy-info (basic)
   ((idle-anim                 int32)
    (walk-anim                 int32)
@@ -103,6 +118,8 @@
    (debug-draw-neck           symbol)
    (debug-draw-jump           symbol)))
 
+;; Base process for an enemy that patrols a navigation mesh, notices and chases the player, attacks
+;; on contact, and performs ballistic jumps across navigation gaps.
 (deftype nav-enemy (process-drawable)
   ((collide-info        collide-shape-moving :overlay-at root)
    (enemy-info          fact-info-enemy :overlay-at fact)
@@ -149,20 +166,21 @@
    (nav-enemy-method-34 (_type_) none)
    (nav-enemy-wait-for-cue () _type_ :state)
    (nav-enemy-jump-to-point () _type_ :state)
-   (nav-enemy-method-37 (_type_) none)
-   (nav-enemy-method-38 (_type_) none)
+   (turn-toward-travel! (_type_) none)
+   (integrate-and-collide! (_type_) none)
    (common-post (_type_) none)
-   (nav-enemy-method-40 (_type_) none)
-   (nav-enemy-method-41 (_type_) none)
+   (update-nav-target! (_type_) none)
+   (compute-travel-velocity! (_type_) none)
    (new-patrol-point! (_type_) int)
    (attack-handler (_type_ process event-message-block) object)
    (touch-handler (_type_ process event-message-block) object)
    (init-defaults! (_type_ nav-enemy-info) none)
    (target-in-range? (_type_ float) basic)
    (initialize-collision (_type_) none)
-   (nav-enemy-method-48 (_type_) none)
+   (post-init-setup! (_type_) none)
    (init-jm! (_type_ nav-enemy-info) float)
-   (nav-enemy-method-50 (_type_ vector) symbol)
+   (jump-dest-blocked? (_type_ vector) symbol)
+   ;; Slots 51 through 58 and 60 are interpreted by individual subclasses.
    (nav-enemy-method-51 (_type_) none)
    (nav-enemy-method-52 (_type_ vector) symbol)
    (nav-enemy-method-53 (_type_) symbol)
@@ -171,7 +189,7 @@
    (set-jump-height-factor! (_type_ int) none)
    (nav-enemy-method-57 (_type_) none)
    (nav-enemy-method-58 (_type_) none)
-   (nav-enemy-method-59 (_type_) none)
+   (go-initial-state! (_type_) none)
    (nav-enemy-method-60 (_type_ symbol) symbol)
    (snow-bunny-attack () _type_ :state)
    (snow-bunny-chase-hop () _type_ :state)

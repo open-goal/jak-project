@@ -7,73 +7,89 @@
 
 ;; DECOMP BEGINS
 
-(defmethod eval-position! ((this trajectory) (time float) (result vector))
-  "Evaluate the position of the object at a give time"
-  (set! (-> result quad) (-> this initial-position quad))
-  (+! (-> result x) (* time (-> this initial-velocity x)))
-  (+! (-> result y) (* time (-> this initial-velocity y)))
-  (+! (-> result z) (* time (-> this initial-velocity z)))
-  (+! (-> result y) (* (/ time 2) time (-> this gravity)))
+(defmethod eval-position! ((this trajectory) (elapsed-time float) (result vector))
+  "Evaluate position after elapsed-time game-time ticks into result. Vertical motion includes
+   one half gravity times time squared; evaluation is not clamped to the solved flight duration."
+  (vector-copy! result (-> this initial-position))
+  (+! (-> result x) (* elapsed-time (-> this initial-velocity x)))
+  (+! (-> result y) (* elapsed-time (-> this initial-velocity y)))
+  (+! (-> result z) (* elapsed-time (-> this initial-velocity z)))
+  (+! (-> result y) (* (/ elapsed-time 2) elapsed-time (-> this gravity)))
   result)
 
-(defmethod eval-velocity! ((this trajectory) (time float) (result vector))
-  "Evaluate the velocity of the object at a given time"
-  (set! (-> result quad) (-> this initial-velocity quad))
-  (+! (-> result y) (* time (-> this gravity)))
+(defmethod eval-velocity! ((this trajectory) (elapsed-time float) (result vector))
+  "Evaluate velocity after elapsed-time game-time ticks into result. Only the vertical
+   component changes under gravity."
+  (vector-copy! result (-> this initial-velocity))
+  (+! (-> result y) (* elapsed-time (-> this gravity)))
   result)
 
-(defmethod setup-from-to-duration! ((this trajectory) (from vector) (to vector) (duration float) (grav float))
-  "Set up a trajectory that goes from->to in the given duration"
-  (set! (-> this initial-position quad) (-> from quad))
-  (set! (-> this gravity) grav)
+(defmethod setup-from-to-duration! ((this trajectory) (start vector) (destination vector) (duration float) (gravity float))
+  "Solve the initial velocity that moves from start to destination in duration game-time ticks
+   under constant vertical gravity. Store the supplied duration; callers must provide a positive,
+   nonzero duration."
+  (vector-copy! (-> this initial-position) start)
+  (set! (-> this gravity) gravity)
   (set! (-> this time) duration)
-  ;; the velocity we need in xz to make it in time
-  (let ((xz-vel (/ (vector-vector-xz-distance to from) duration)))
-    ;; our velocity will point along from -> to
-    (vector-! (-> this initial-velocity) to from)
-    ;; but have magnitude that we calculated above.
-    (vector-xz-normalize! (-> this initial-velocity) xz-vel))
-  ;; solve for the y velocity that makes us land at the right height.
-  (set! (-> this initial-velocity y) (- (/ (- (-> to y) (-> from y)) duration) (* (/ duration 2) (-> this gravity))))
+  (let ((xz-speed (/ (vector-vector-xz-distance destination start) duration)))
+    (vector-! (-> this initial-velocity) destination start)
+    (vector-xz-normalize! (-> this initial-velocity) xz-speed))
+  (set! (-> this initial-velocity y)
+        (- (/ (- (-> destination y) (-> start y)) duration) (* (/ duration 2) (-> this gravity))))
   0
   (none))
 
-(defmethod setup-from-to-xz-vel! ((this trajectory) (from vector) (to vector) (xz-vel float) (grav float))
-  "Set up a trajectory that goes from->to with the given velocity"
-  ;; just solve for the duration and use the previous
-  (let ((duration (/ (vector-vector-xz-distance to from) xz-vel))) (setup-from-to-duration! this from to duration grav))
+(defmethod setup-from-to-xz-vel! ((this trajectory) (start vector) (destination vector) (xz-speed float) (gravity float))
+  "Solve a trajectory from start to destination at the requested nonzero horizontal speed
+   under constant vertical gravity. Horizontal distance divided by xz-speed determines the duration."
+  (let ((duration (/ (vector-vector-xz-distance destination start) xz-speed)))
+    (setup-from-to-duration! this start destination duration gravity))
   0
   (none))
 
-(defmethod setup-from-to-y-vel! ((this trajectory) (from vector) (to vector) (y-vel float) (grav float))
-  (let ((f1-3 (- (square y-vel) (* 2.0 (- (-> from y) (-> to y)) grav)))
-        (f0-3 900.0))
-    (when (>= f1-3 0.0)
-      (let ((f0-4 (sqrtf f1-3))) (set! f0-3 (fmax (/ (- (- y-vel) f0-4) grav) (/ (+ (- y-vel) f0-4) grav)))))
-    (setup-from-to-duration! this from to f0-3 grav))
+(defmethod setup-from-to-y-vel! ((this trajectory) (start vector) (destination vector) (initial-y-velocity float) (gravity float))
+  "Solve a trajectory from start to destination with initial-y-velocity and constant vertical
+   gravity. Use the later real time at which the vertical equation reaches the destination; when no
+   real root exists, use a 900-tick fallback duration."
+  (let ((discriminant (- (square initial-y-velocity) (* 2.0 (- (-> start y) (-> destination y)) gravity)))
+        (duration 900.0))
+    (when (>= discriminant 0.0)
+      (let ((sqrt-discriminant (sqrtf discriminant)))
+        (set! duration
+              (fmax (/ (- (- initial-y-velocity) sqrt-discriminant) gravity) (/ (+ (- initial-y-velocity) sqrt-discriminant) gravity)))))
+    (setup-from-to-duration! this start destination duration gravity))
   0
   (none))
 
-(defmethod setup-from-to-height! ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
-  "Setup a trajectory that reaches a given height"
-  (let* ((f1-2 (+ arg2 (fmax (-> arg0 y) (-> arg1 y))))
-         (f1-5 (* 2.0 (- (-> arg0 y) f1-2) arg3))
-         (f0-3 4096.0))
-    (if (< 0.0 f1-5) (set! f0-3 (sqrtf f1-5)))
-    (setup-from-to-y-vel! this arg0 arg1 f0-3 arg3))
+(defmethod setup-from-to-height! ((this trajectory) (start vector) (destination vector) (apex-height float) (gravity float))
+  "Solve a trajectory from start to destination whose apex is apex-height above the higher
+   endpoint. Derive the required initial vertical velocity, using 4096 when that square-root input is
+   not positive, then solve the corresponding flight duration."
+  (let* ((apex-y (+ apex-height (fmax (-> start y) (-> destination y))))
+         (initial-y-speed-squared (* 2.0 (- (-> start y) apex-y) gravity))
+         (initial-y-velocity 4096.0))
+    (if (< 0.0 initial-y-speed-squared) (set! initial-y-velocity (sqrtf initial-y-speed-squared)))
+    (setup-from-to-y-vel! this start destination initial-y-velocity gravity))
   0
   (none))
 
 (defmethod debug-draw! ((this trajectory))
-  "Draw the trajectory"
-  (let ((prev-pos (new 'stack-no-clear 'vector))
-        (pos (new 'stack-no-clear 'vector))
+  "Draw the solved flight as ten translucent red line segments from time zero through the
+   stored duration, without depth testing."
+  (let ((previous-position (new 'stack-no-clear 'vector))
+        (position (new 'stack-no-clear 'vector))
         (num-segments 10))
-    (set! (-> pos quad) (-> this initial-position quad))
-    (dotimes (s2-0 num-segments)
-      (set! (-> prev-pos quad) (-> pos quad))
-      (let ((t-eval (* (-> this time) (/ (+ 1.0 (the float s2-0)) (the float num-segments)))))
-        (eval-position! this t-eval pos))
-      (add-debug-line #t (bucket-id debug-no-zbuf) prev-pos pos (new 'static 'rgba :r #xff :a #x80) #f (the-as rgba -1))))
+    (vector-copy! position (-> this initial-position))
+    (dotimes (i num-segments)
+      (vector-copy! previous-position position)
+      (let ((sample-time (* (-> this time) (/ (+ 1.0 (the float i)) (the float num-segments)))))
+        (eval-position! this sample-time position))
+      (add-debug-line #t
+                      (bucket-id debug-no-zbuf)
+                      previous-position
+                      position
+                      (new 'static 'rgba :r #xff :a #x80)
+                      #f
+                      (the-as rgba -1))))
   0
   (none))

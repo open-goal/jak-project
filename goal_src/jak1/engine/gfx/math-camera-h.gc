@@ -7,9 +7,10 @@
 ;; from the position of the in-game camera. It also computes some other common camera info.
 ;; See cam-update.gc for how the game camera updates the math-camera.
 
-;; It also contains some GIF stuff, but these seem to be wrong/unused.
-;; Some of the code here may be extremely old and unused, but this does compute the camera projection
-;; matrix used almost everywhere.
+;; It also carries four compact legacy visibility GIF template slots. The setup code initializes
+;; gifgr once and rewrites giftex three times; init-for-transform consumes the final giftex value.
+;; The projection, screen-space scale/offset, fog, and clipping state here is shared by
+;; nearly every renderer.
 
 ;; DECOMP BEGINS
 
@@ -20,21 +21,23 @@
    (fan   uint32)))
 
 (deftype cull-info (structure)
-  ((x-fact      float)
-   (y-fact      float)
-   (z-fact      float)
-   (cam-radius  float)
-   (cam-x       float)
-   (cam-y       float)
-   (xz-dir-ax   float)
-   (xz-dir-az   float)
-   (xz-dir-bx   float)
-   (xz-dir-bz   float)
+  ;; Precomputed camera-frustum factors and pairs of normalized boundary directions
+  ;; in the XZ and YZ planes.
+  ((x-fact float)
+   (y-fact float)
+   (z-fact float)
+   (cam-radius float)
+   (cam-x float)
+   (cam-y float)
+   (xz-dir-ax float)
+   (xz-dir-az float)
+   (xz-dir-bx float)
+   (xz-dir-bz float)
    (xz-cross-ab float)
-   (yz-dir-ay   float)
-   (yz-dir-az   float)
-   (yz-dir-by   float)
-   (yz-dir-bz   float)
+   (yz-dir-ay float)
+   (yz-dir-az float)
+   (yz-dir-by float)
+   (yz-dir-bz float)
    (yz-cross-ab float))
   :pack-me)
 
@@ -68,10 +71,9 @@
    (inv-camera-rot             matrix :inline)
    (inv-camera-rot-smooth      matrix :inline)
    (inv-camera-rot-smooth-from quaternion :inline)
-   ;; this camera-temp is the main matrix used for renderers.
-   ;; the camera code will set this.
-   ;; it's designed so the renderers can do a single matrix-vector multiply
-   ;; and then get fog, clipping, and final vertex position from the result.
+   ;; This is the combined view/projection matrix used by renderers. One matrix-vector
+   ;; multiply produces horizontal, vertical, depth, and fog lanes; the renderer then
+   ;; perspective-divides xyz and applies hmge-scale/hvdf-off.
    (camera-temp                matrix :inline)
    (prev-camera-temp           matrix :inline)
    (hmge-scale                 vector :inline)
