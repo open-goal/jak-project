@@ -1193,8 +1193,8 @@
         (vector-cross! (-> self tracking inv-mat vector 1)
                        (-> self tracking inv-mat vector 2)
                        (the-as vector (-> self tracking)))
-        (set! (-> self blend-from-type) (the-as uint 0))
-        (set! (-> self blend-to-type) (the-as uint 0))
+        (set! (-> self blend-from-type) (camera-blend-to-type direct))
+        (set! (-> self blend-to-type) (camera-blend-to-type direct))
         0))
   :trans
     (behavior ()
@@ -1245,10 +1245,10 @@
         (vector-normalize! (-> self view-flat) 4096.0)
         (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
         (vector+! (-> self trans) (-> self trans) (-> self view-flat))
-        (set! (-> self blend-from-type) (the-as uint 0))
-        (set! (-> self blend-to-type) (the-as uint 0))
+        (set! (-> self blend-from-type) (camera-blend-to-type direct))
+        (set! (-> self blend-to-type) (camera-blend-to-type direct))
         (cam-calc-follow! (-> self tracking) (-> self trans) #f)
-        (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #f)))
+        (slave-set-rotation! (-> self tracking) (-> self trans) (-> self options) (-> self fov) #f)))
   :trans
     (behavior ()
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating))
@@ -1290,7 +1290,7 @@
                            (-> self tracking follow-pt)
                            (-> *camera* local-down)
                            (-> *camera* target-height))
-          (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #f)
+          (slave-set-rotation! (-> self tracking) (-> self trans) (-> self options) (-> self fov) #f)
           (suspend)))))
 
 ;; An idle launcher waits for a nearby target carrying blue eco. If the target
@@ -1540,7 +1540,7 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((trigger-sphere (new 'process 'collide-shape-prim-sphere tracker-shape (the-as uint 0))))
       (set! (-> trigger-sphere prim-core collide-as) (collide-kind target enemy))
-      (set! (-> trigger-sphere collide-with) (collide-kind cak-1 cak-2 cak-3 powerup crate enemy wall-object ground-object))
+      (set! (-> trigger-sphere collide-with) (collide-kind hit-by-player usually-hit-by-player hit-by-others powerup crate enemy wall-object ground-object))
       (set! (-> trigger-sphere prim-core offense) (collide-offense indestructible))
       (set-vector! (-> trigger-sphere local-sphere) 0.0 0.0 0.0 radius)
       (set-root-prim! tracker-shape trigger-sphere))

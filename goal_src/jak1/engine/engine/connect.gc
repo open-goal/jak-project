@@ -173,12 +173,12 @@
 ;; unlink the current connection without breaking the traversal.
 (defmacro iterate-engine-connections (bindings &rest body)
   (with-gensyms (next)
-    `(let* ((,(car bindings) (-> ,(cadr bindings) alive-list next0))
-           (,next (-> ,(car bindings) next0)))
+    `(let* ((,(car bindings) (the connection (-> ,(cadr bindings) alive-list next0)))
+           (,next (the connection (-> ,(car bindings) next0))))
       (while (!= ,(car bindings) (-> ,(cadr bindings) alive-list-end))
         ,@body
         (set! ,(car bindings) ,next)
-        (set! ,next (-> ,next next0))))))
+        (set! ,next (the connection (-> ,next next0)))))))
 
 (defmethod new engine ((allocation symbol) (type-to-make type) (name basic) (capacity int))
   "Allocate a fixed-capacity engine and link every connection slot into its dead list."

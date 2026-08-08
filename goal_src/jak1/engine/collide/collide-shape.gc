@@ -1256,7 +1256,7 @@
              ;; no ground. if the hover flag is set, we just hover.
              (set! (-> this trans y) (-> this trans-old 0 y)))))))
     ;; if we need to collide with things.
-    (when (logtest? (-> this root-prim collide-with) (collide-kind cak-1 cak-2 cak-3 target))
+    (when (logtest? (-> this root-prim collide-with) (collide-kind hit-by-player usually-hit-by-player hit-by-others target))
       (let ((overlap-params (new 'stack-no-clear 'overlaps-others-params)))
         (set! (-> overlap-params options) (overlaps-others-options solid-only))
         (set! (-> overlap-params tlist) *touching-list*)
@@ -2038,7 +2038,7 @@
 (defmethod do-push-aways! ((this collide-shape))
   "This is the main function to call to respond"
   ;; One loop, written out four times, once for each foreground collide list this shape can reach: the
-  ;; player list first, then cak-1, cak-2 and cak-3. Only the list global and the label names differ.
+  ;; player list first, then cak-1, usually-hit-by-player and hit-by-others. Only the list global and the label names differ.
   ;; A single pass rejects on collide-as, skips this shape's own process, runs the exact overlap test,
   ;; and when the penetration is deeper than PUSH-AWAY-MIN-OVERLAP fills the collide cache around the
   ;; other shape and shoves it out with up to PUSH-AWAY-PASSES separating moves.
@@ -2130,9 +2130,9 @@
                                                       (set! (-> victim status) saved-status)))
                                                   (+! iterations-left -1)))
                                               (set! with-mask (-> this root-prim collide-with)))))))))
-      (when (logtest? with-mask (collide-kind cak-1 cak-2 cak-3))
-        ;; The same loop again for cak-1, cak-2 and cak-3.
-        (when (logtest? with-mask (collide-kind cak-1))
+      (when (logtest? with-mask (collide-kind hit-by-player usually-hit-by-player hit-by-others))
+        ;; The same loop again for cak-1, usually-hit-by-player and hit-by-others.
+        (when (logtest? with-mask (collide-kind hit-by-player))
           (iterate-engine-connections (node *collide-hit-by-player-list*)
                                       (let ((victim (the-as collide-shape-moving (-> (the-as connection node) param1))))
                                         (when (logtest? with-mask (-> victim root-prim prim-core collide-as))
@@ -2160,8 +2160,8 @@
                                                       (.add.x.vf.y dot-products dot-products dot-products)
                                                       (.add.z.vf.y dot-products dot-products dot-products)
                                                       (.mov normal-side-bits dot-products)
-                                                      (b! (< (the-as int normal-side-bits) 0) dir-ready-cak-1 :likely-delay (.sub.vf push-direction vf0 push-direction))
-                                                      (label dir-ready-cak-1)
+                                                      (b! (< (the-as int normal-side-bits) 0) dir-ready-hit-by-player :likely-delay (.sub.vf push-direction vf0 push-direction))
+                                                      (label dir-ready-hit-by-player)
                                                       (.svf (&-> push-vector quad) push-direction)
                                                       (vector-normalize! push-vector 1.0)
                                                       (vector-float*! push-vector push-vector (- (-> overlap-result best-dist)))
@@ -2177,7 +2177,7 @@
                                                         (set! (-> victim status) saved-status)))
                                                     (+! iterations-left -1)))
                                                 (set! with-mask (-> this root-prim collide-with)))))))))
-        (when (logtest? with-mask (collide-kind cak-2))
+        (when (logtest? with-mask (collide-kind usually-hit-by-player))
           (iterate-engine-connections (node *collide-usually-hit-by-player-list*)
                                       (let ((victim (the-as collide-shape-moving (-> (the-as connection node) param1))))
                                         (when (logtest? with-mask (-> victim root-prim prim-core collide-as))
@@ -2205,8 +2205,8 @@
                                                       (.add.x.vf.y dot-products dot-products dot-products)
                                                       (.add.z.vf.y dot-products dot-products dot-products)
                                                       (.mov normal-side-bits dot-products)
-                                                      (b! (< (the-as int normal-side-bits) 0) dir-ready-cak-2 :likely-delay (.sub.vf push-direction vf0 push-direction))
-                                                      (label dir-ready-cak-2)
+                                                      (b! (< (the-as int normal-side-bits) 0) dir-ready-usually-hit-by-player :likely-delay (.sub.vf push-direction vf0 push-direction))
+                                                      (label dir-ready-usually-hit-by-player)
                                                       (.svf (&-> push-vector quad) push-direction)
                                                       (vector-normalize! push-vector 1.0)
                                                       (vector-float*! push-vector push-vector (- (-> overlap-result best-dist)))
@@ -2222,7 +2222,7 @@
                                                         (set! (-> victim status) saved-status)))
                                                     (+! iterations-left -1)))
                                                 (set! with-mask (-> this root-prim collide-with)))))))))
-        (when (logtest? with-mask (collide-kind cak-3))
+        (when (logtest? with-mask (collide-kind hit-by-others))
           (iterate-engine-connections (node *collide-hit-by-others-list*)
                                       (let ((victim (the-as collide-shape-moving (-> (the-as connection node) param1))))
                                         (when (logtest? with-mask (-> victim root-prim prim-core collide-as))
@@ -2250,8 +2250,8 @@
                                                       (.add.x.vf.y dot-products dot-products dot-products)
                                                       (.add.z.vf.y dot-products dot-products dot-products)
                                                       (.mov normal-side-bits dot-products)
-                                                      (b! (< (the-as int normal-side-bits) 0) dir-ready-cak-3 :likely-delay (.sub.vf push-direction vf0 push-direction))
-                                                      (label dir-ready-cak-3)
+                                                      (b! (< (the-as int normal-side-bits) 0) dir-ready-hit-by-others :likely-delay (.sub.vf push-direction vf0 push-direction))
+                                                      (label dir-ready-hit-by-others)
                                                       (.svf (&-> push-vector quad) push-direction)
                                                       (vector-normalize! push-vector 1.0)
                                                       (vector-float*! push-vector push-vector (- (-> overlap-result best-dist)))
@@ -2354,9 +2354,9 @@
                                           (label next-player)
                                           0)))
           (label after-player-list)
-          (when (logtest? with-mask (collide-kind cak-1 cak-2 cak-3))
-            ;; The same loop again for cak-1, cak-2 and cak-3.
-            (when (logtest? with-mask (collide-kind cak-1))
+          (when (logtest? with-mask (collide-kind hit-by-player usually-hit-by-player hit-by-others))
+            ;; The same loop again for cak-1, usually-hit-by-player and hit-by-others.
+            (when (logtest? with-mask (collide-kind hit-by-player))
               (iterate-engine-connections (node *collide-hit-by-player-list*)
                                           (let* ((other-shape (the-as collide-shape-moving (-> (the-as connection node) param1)))
                                                  (other-root (-> other-shape root-prim)))
@@ -2375,13 +2375,13 @@
                                                 (let ((our-process (-> this process)))
                                                   (.mov sphere-separation-squared delta)
                                                   (let ((other-process (-> other-shape process)))
-                                                    (b! (< zero-distance sphere-separation-squared) next-cak-1 :delay (set! options (-> params options)))
+                                                    (b! (< zero-distance sphere-separation-squared) next-hit-by-player :delay (set! options (-> params options)))
                                                     (b! (= our-process other-process)
-                                                        next-cak-1
+                                                        next-hit-by-player
                                                         :delay
                                                         (set! root-overlap-option (logand options (overlaps-others-options accept-root-sphere-overlap)))))))
-                                              (b! (zero? root-overlap-option) leaf-test-cak-1 :delay (set! touching-list (-> params tlist)))
-                                              (b! (= touching-list #f) after-test-cak-1 :delay (set! direct-hit? #t))
+                                              (b! (zero? root-overlap-option) leaf-test-hit-by-player :delay (set! touching-list (-> params tlist)))
+                                              (b! (= touching-list #f) after-test-hit-by-player :delay (set! direct-hit? #t))
                                               (set! hit? direct-hit?)
                                               (add-touching-prims touching-list
                                                                   our-root
@@ -2389,16 +2389,16 @@
                                                                   -1.0
                                                                   (the-as collide-tri-result #f)
                                                                   (the-as collide-tri-result #f))
-                                              (b! #t after-test-cak-1 :delay #t)
-                                              (label leaf-test-cak-1)
+                                              (b! #t after-test-hit-by-player :delay #t)
+                                              (label leaf-test-hit-by-player)
                                               (set! hit? (overlaps-others-test our-root params other-root))
-                                              (label after-test-cak-1)
+                                              (label after-test-hit-by-player)
                                               (.lvf our-sphere (&-> our-root prim-core world-sphere quad))
-                                              (b! (= hit? #f) next-cak-1 :delay (set! with-mask (-> our-root collide-with)))
+                                              (b! (= hit? #f) next-hit-by-player :delay (set! with-mask (-> our-root collide-with)))
                                               (b! (= (-> params tlist) #f) finish :delay (set! found-any? 0))
-                                              (label next-cak-1)
+                                              (label next-hit-by-player)
                                               0))))
-            (when (logtest? with-mask (collide-kind cak-2))
+            (when (logtest? with-mask (collide-kind usually-hit-by-player))
               (iterate-engine-connections (node *collide-usually-hit-by-player-list*)
                                           (let* ((other-shape (the-as collide-shape-moving (-> (the-as connection node) param1)))
                                                  (other-root (-> other-shape root-prim)))
@@ -2417,13 +2417,13 @@
                                                 (let ((our-process (-> this process)))
                                                   (.mov sphere-separation-squared delta)
                                                   (let ((other-process (-> other-shape process)))
-                                                    (b! (< zero-distance sphere-separation-squared) next-cak-2 :delay (set! options (-> params options)))
+                                                    (b! (< zero-distance sphere-separation-squared) next-usually-hit-by-player :delay (set! options (-> params options)))
                                                     (b! (= our-process other-process)
-                                                        next-cak-2
+                                                        next-usually-hit-by-player
                                                         :delay
                                                         (set! root-overlap-option (logand options (overlaps-others-options accept-root-sphere-overlap)))))))
-                                              (b! (zero? root-overlap-option) leaf-test-cak-2 :delay (set! touching-list (-> params tlist)))
-                                              (b! (= touching-list #f) after-test-cak-2 :delay (set! direct-hit? #t))
+                                              (b! (zero? root-overlap-option) leaf-test-usually-hit-by-player :delay (set! touching-list (-> params tlist)))
+                                              (b! (= touching-list #f) after-test-usually-hit-by-player :delay (set! direct-hit? #t))
                                               (set! hit? direct-hit?)
                                               (add-touching-prims touching-list
                                                                   our-root
@@ -2431,16 +2431,16 @@
                                                                   -1.0
                                                                   (the-as collide-tri-result #f)
                                                                   (the-as collide-tri-result #f))
-                                              (b! #t after-test-cak-2 :delay #t)
-                                              (label leaf-test-cak-2)
+                                              (b! #t after-test-usually-hit-by-player :delay #t)
+                                              (label leaf-test-usually-hit-by-player)
                                               (set! hit? (overlaps-others-test our-root params other-root))
-                                              (label after-test-cak-2)
+                                              (label after-test-usually-hit-by-player)
                                               (.lvf our-sphere (&-> our-root prim-core world-sphere quad))
-                                              (b! (= hit? #f) next-cak-2 :delay (set! with-mask (-> our-root collide-with)))
+                                              (b! (= hit? #f) next-usually-hit-by-player :delay (set! with-mask (-> our-root collide-with)))
                                               (b! (= (-> params tlist) #f) finish :delay (set! found-any? 0))
-                                              (label next-cak-2)
+                                              (label next-usually-hit-by-player)
                                               0))))
-            (when (logtest? with-mask (collide-kind cak-3))
+            (when (logtest? with-mask (collide-kind hit-by-others))
               (iterate-engine-connections (node *collide-hit-by-others-list*)
                                           (let* ((other-shape (the-as collide-shape-moving (-> (the-as connection node) param1)))
                                                  (other-root (-> other-shape root-prim)))
@@ -2459,13 +2459,13 @@
                                                 (let ((our-process (-> this process)))
                                                   (.mov sphere-separation-squared delta)
                                                   (let ((other-process (-> other-shape process)))
-                                                    (b! (< zero-distance sphere-separation-squared) next-cak-3 :delay (set! options (-> params options)))
+                                                    (b! (< zero-distance sphere-separation-squared) next-hit-by-others :delay (set! options (-> params options)))
                                                     (b! (= our-process other-process)
-                                                        next-cak-3
+                                                        next-hit-by-others
                                                         :delay
                                                         (set! root-overlap-option (logand options (overlaps-others-options accept-root-sphere-overlap)))))))
-                                              (b! (zero? root-overlap-option) leaf-test-cak-3 :delay (set! touching-list (-> params tlist)))
-                                              (b! (= touching-list #f) after-test-cak-3 :delay (set! direct-hit? #t))
+                                              (b! (zero? root-overlap-option) leaf-test-hit-by-others :delay (set! touching-list (-> params tlist)))
+                                              (b! (= touching-list #f) after-test-hit-by-others :delay (set! direct-hit? #t))
                                               (set! hit? direct-hit?)
                                               (add-touching-prims touching-list
                                                                   our-root
@@ -2473,14 +2473,14 @@
                                                                   -1.0
                                                                   (the-as collide-tri-result #f)
                                                                   (the-as collide-tri-result #f))
-                                              (b! #t after-test-cak-3 :delay #t)
-                                              (label leaf-test-cak-3)
+                                              (b! #t after-test-hit-by-others :delay #t)
+                                              (label leaf-test-hit-by-others)
                                               (set! hit? (overlaps-others-test our-root params other-root))
-                                              (label after-test-cak-3)
+                                              (label after-test-hit-by-others)
                                               (.lvf our-sphere (&-> our-root prim-core world-sphere quad))
-                                              (b! (= hit? #f) next-cak-3 :delay (set! with-mask (-> our-root collide-with)))
+                                              (b! (= hit? #f) next-hit-by-others :delay (set! with-mask (-> our-root collide-with)))
                                               (b! (= (-> params tlist) #f) finish :delay (set! found-any? 0))
-                                              (label next-cak-3)
+                                              (label next-hit-by-others)
                                               0)))))))
       (label finish)
       (b! (= (the-as int found-any?) #f) done :delay (nop!))

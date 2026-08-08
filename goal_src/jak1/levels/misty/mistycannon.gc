@@ -731,7 +731,7 @@
       (let ((explosion-sphere (-> self root root-prim)))
         (set! (-> explosion-sphere local-sphere w) (-> self blast-radius))
         (set! (-> explosion-sphere prim-core world-sphere w) (-> self blast-radius))
-        (set! (-> explosion-sphere collide-with) (collide-kind cak-2 cak-3 target crate enemy wall-object))
+        (set! (-> explosion-sphere collide-with) (collide-kind usually-hit-by-player hit-by-others target crate enemy wall-object))
         (set! (-> explosion-sphere prim-core collide-as) (collide-kind enemy)))
       (update-transforms! (-> self root))
       (let ((overlap-params (new 'stack-no-clear 'overlaps-others-params)))
@@ -784,7 +784,7 @@
           (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((collision-sphere (new 'process 'collide-shape-prim-sphere moving-shape (the-as uint 0))))
       (set! (-> collision-sphere prim-core collide-as) (collide-kind enemy))
-      (set! (-> collision-sphere collide-with) (collide-kind background cak-2 cak-3 target crate enemy wall-object))
+      (set! (-> collision-sphere collide-with) (collide-kind background usually-hit-by-player hit-by-others target crate enemy wall-object))
       (set! (-> collision-sphere prim-core action) (collide-action solid))
       (set! (-> collision-sphere prim-core offense) (collide-offense touch))
       (set! (-> collision-sphere transform-index) 0)
@@ -1212,8 +1212,8 @@
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (set! (-> self blend-from-type) (the-as uint 1))
-        (set! (-> self blend-to-type) (the-as uint 1))))
+        (set! (-> self blend-from-type) (camera-blend-to-type slave-controlled))
+        (set! (-> self blend-to-type) (camera-blend-to-type slave-controlled))))
   :trans
     (behavior ()
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
