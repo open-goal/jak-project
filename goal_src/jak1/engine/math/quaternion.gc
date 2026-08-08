@@ -17,37 +17,33 @@
 
 (defun quaternion-axis-angle! ((dst quaternion) (x float) (y float) (z float) (angle float))
   "Construct a quaternion from an axis and angle. The axis should be normalized."
-  (let* ((half-angle (* 0.5 angle))
+  (let* ((half-angle (/ angle 2))
          (sin-half-angle (sin half-angle))
          (cos-half-angle (cos half-angle)))
-    (set! (-> dst x) (* x sin-half-angle))
-    (set! (-> dst y) (* y sin-half-angle))
-    (set! (-> dst z) (* z sin-half-angle))
-    (set! (-> dst w) cos-half-angle))
+    (set-vector! dst (* x sin-half-angle) (* y sin-half-angle) (* z sin-half-angle) cos-half-angle))
   dst)
 
 (defun quaternion-vector-angle! ((dst quaternion) (axis vector) (angle float))
   "Construct a quaternion from an axis and angle. The axis should be normalized."
-  (let* ((half-angle (* 0.5 angle))
+  (let* ((half-angle (/ angle 2))
          (sin-half-angle (sin half-angle))
          (cos-half-angle (cos half-angle)))
-    (set! (-> dst x) (* (-> axis x) sin-half-angle))
-    (set! (-> dst y) (* (-> axis y) sin-half-angle))
-    (set! (-> dst z) (* (-> axis z) sin-half-angle))
-    (set! (-> dst w) cos-half-angle))
+    (set-vector! dst
+                 (* (-> axis x) sin-half-angle)
+                 (* (-> axis y) sin-half-angle)
+                 (* (-> axis z) sin-half-angle)
+                 cos-half-angle))
   dst)
 
 (defun vector-angle<-quaternion! ((dst vector) (src quaternion))
   "Convert normalized src to an axis in dst.xyz and a radian angle in dst.w. Identity rotations make the axis normalization singular."
-  (let* ((f0-0 1.0)
-         (f1-0 1.0)
-         (f2-0 (-> src w))
-         (inverse-axis-length (/ f0-0 (sqrtf (- f1-0 (* f2-0 f2-0)))))
-         (angle-rad (* 2.0 (acos-rad (-> src w)))))
-    (set! (-> dst x) (* (-> src x) inverse-axis-length))
-    (set! (-> dst y) (* (-> src y) inverse-axis-length))
-    (set! (-> dst z) (* (-> src z) inverse-axis-length))
-    (set! (-> dst w) angle-rad))
+  (let ((inverse-axis-length (/ 1.0 (sqrtf (- 1.0 (square (-> src w))))))
+        (angle-rad (* 2.0 (acos-rad (-> src w)))))
+    (set-vector! dst
+                 (* (-> src x) inverse-axis-length)
+                 (* (-> src y) inverse-axis-length)
+                 (* (-> src z) inverse-axis-length)
+                 angle-rad))
   dst)
 
 (defun quaternion-zero! ((dst quaternion))
@@ -81,15 +77,12 @@
 
 (defun quaternion-copy! ((dst quaternion) (src quaternion))
   "Copy src to dst."
-  (set! (-> dst vec quad) (-> src vec quad))
+  (vector-copy! (-> dst vec) (-> src vec))
   dst)
 
 (defun quaternion-set! ((dst quaternion) (x float) (y float) (z float) (w float))
   "Set the four components of dst."
-  (set! (-> dst x) x)
-  (set! (-> dst y) y)
-  (set! (-> dst z) z)
-  (set! (-> dst w) w)
+  (set-vector! dst x y z w)
   dst)
 
 (defun quaternion+! ((dst quaternion) (a quaternion) (b quaternion))
@@ -149,11 +142,12 @@
 
 (defun quaternion-float/! ((dst quaternion) (src quaternion) (divisor float))
   "Divide every component of src by divisor into dst."
-  (let ((f0-1 (/ 1.0 divisor))) (quaternion-float*! dst src f0-1))
+  (let ((f0-1 (/ 1.0 divisor)))
+    (quaternion-float*! dst src f0-1))
   dst)
 
 (defun quaternion-norm2 ((q quaternion))
-  "Return the squared four-dimensional norm of q."
+  "Return the squared norm of q."
   (local-vars (v0-0 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -169,7 +163,7 @@
     v0-0))
 
 (defun quaternion-norm ((q quaternion))
-  "Return the four-dimensional norm of q."
+  "Return the norm of q."
   (local-vars (v1-1 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -372,7 +366,7 @@
     (cond
       ((< 0.0 trace)
        (let ((f0-4 (sqrtf (+ 1.0 trace))))
-         (set! (-> dst w) (* 0.5 f0-4))
+         (set! (-> dst w) (/ f0-4 2))
          (let ((f0-5 (/ 0.5 f0-4)))
            (set! (-> dst x) (* f0-5 (- (-> src-mat vector 1 z) (-> src-mat vector 2 y))))
            (set! (-> dst y) (* f0-5 (- (-> src-mat vector 2 x) (-> src-mat vector 0 z))))
@@ -394,8 +388,9 @@
                                            (+ (-> (the-as (pointer float) (+ (+ (* next-axis 4) (* next-axis 16)) (the-as int src-mat))))
                                               (-> (the-as (pointer float) (+ (+ (* previous-axis 4) (* previous-axis 16)) (the-as int src-mat))))))
                                         (-> (the-as (pointer float) (+ (+ (* largest-axis 4) (* largest-axis 16)) (the-as int src-mat))))))))
-           (set! (-> dst data largest-axis) (* 0.5 diagonal-root))
-           (if (!= diagonal-root 0.0) (set! diagonal-root (/ 0.5 diagonal-root)))
+           (set! (-> dst data largest-axis) (/ diagonal-root 2))
+           (if (!= diagonal-root 0.0)
+               (set! diagonal-root (/ 0.5 diagonal-root)))
            (set! (-> dst w)
                  (* (- (-> (the-as (pointer float) (+ (+ (* previous-axis 4) (* next-axis 16)) (the-as int src-mat))))
                        (-> (the-as (pointer float) (+ (+ (* next-axis 4) (* previous-axis 16)) (the-as int src-mat)))))
@@ -451,10 +446,7 @@
 
 (defun quaternion-vector-len ((q quaternion))
   "Assuming quaternion is normalized, get the length of the xyz part."
-  (let ((f0-0 1.0)
-        (f1-0 (-> q w)))
-    ;; sqrt(1 - w^2) = sqrt(x^2 + y^2 + z^2) = length
-    (sqrtf (- f0-0 (* f1-0 f1-0)))))
+  (sqrtf (- 1.0 (square (-> q w)))))
 
 (defun quaternion-log! ((dst quaternion) (src quaternion))
   "Store the vector part of the logarithm of unit src in dst.xyz. Unused in Jak 1."
@@ -473,12 +465,13 @@
 
 (defun quaternion-exp! ((dst quaternion) (src quaternion))
   "Exponentiate a pure-vector quaternion src into unit dst. Unused in Jak 1."
-  (let ((imaginary-length (vector-length (the-as vector src))))
+  (let ((imaginary-length (vector-length (-> src vec))))
     (cond
-      ((= imaginary-length 0.0) (set! (-> dst x) 0.0) (set! (-> dst y) 0.0) (set! (-> dst z) 0.0) (set! (-> dst w) 1.0))
+      ((= imaginary-length 0.0)
+       (set-vector! dst 0.0 0.0 0.0 1.0))
       (else
        (let ((sincos (new 'stack-no-clear 'vector)))
-         (sincos-rad! (the-as (pointer float) sincos) imaginary-length)
+         (sincos-rad! (&-> sincos x) imaginary-length)
          (let ((sin-over-length (/ (-> sincos x) imaginary-length)))
            (set! (-> dst x) (* (-> src x) sin-over-length))
            (set! (-> dst y) (* (-> src y) sin-over-length))
@@ -501,8 +494,10 @@
         (set! hemisphere-sign -1.0))
       (cond
         ((< (- 1.0 cos-angle) 0.0001)
-         (let ((a-weight (- 1.0 alpha))) (.mov vf1 a-weight))
-         (let ((b-weight (* alpha hemisphere-sign))) (.mov vf2 b-weight))
+         (let ((a-weight (- 1.0 alpha)))
+           (.mov vf1 a-weight))
+         (let ((b-weight (* alpha hemisphere-sign)))
+           (.mov vf2 b-weight))
          (.lvf vf3 (&-> a vec quad))
          (.lvf vf4 (&-> b vec quad))
          (.mul.x.vf acc vf3 vf1)
@@ -514,9 +509,7 @@
          ;; s=sqrt(1-c^2), (s-c)/(s+c)=tan(theta-pi/4); atan-series-rad
          ;; folds the pi/4 offset into its result. Dividing the two sine
          ;; weights by s gives the standard constant-angular-speed slerp.
-         (let* ((f1-4 1.0)
-                (f2-1 cos-angle)
-                (sin-angle (sqrtf (- f1-4 (* f2-1 f2-1))))
+         (let* ((sin-angle (sqrtf (- 1.0 (square cos-angle))))
                 (atan-argument (/ (- sin-angle cos-angle) (+ sin-angle cos-angle)))
                 (inverse-sin-angle (/ 1.0 sin-angle)))
            (let ((angle-rad (atan-series-rad atan-argument))
@@ -525,7 +518,8 @@
              (set! (-> blend-angles y) (* alpha angle-rad hemisphere-sign))
              (vector-sin-rad! blend-angles blend-angles)
              (.lvf vf1 (&-> blend-angles quad)))
-           (let ((v1-6 inverse-sin-angle)) (.mov vf2 v1-6)))
+           (let ((v1-6 inverse-sin-angle))
+             (.mov vf2 v1-6)))
          (.mul.x.vf vf1 vf1 vf2)
          (.lvf vf3 (&-> a vec quad))
          (.lvf vf4 (&-> b vec quad))
@@ -549,8 +543,10 @@
         ;; needed to choose the equivalent endpoint in the nearer hemisphere.
         (- cos-angle)
         (set! hemisphere-sign -1.0))
-      (let ((a-weight (- 1.0 alpha))) (.mov vf1 a-weight))
-      (let ((b-weight (* alpha hemisphere-sign))) (.mov vf2 b-weight)))
+      (let ((a-weight (- 1.0 alpha)))
+        (.mov vf1 a-weight))
+      (let ((b-weight (* alpha hemisphere-sign)))
+        (.mov vf2 b-weight)))
     (.lvf vf3 (&-> a vec quad))
     (.lvf vf4 (&-> b vec quad))
     (.mul.x.vf acc vf3 vf1)
@@ -628,7 +624,8 @@
 
 (defun quaternion-y-angle ((q quaternion))
   "Return the yaw of q's forward axis in rotation units."
-  (let ((forward (vector-z-quaternion! (new 'stack-no-clear 'vector) q))) (atan (-> forward x) (-> forward z))))
+  (let ((forward (vector-z-quaternion! (new 'stack-no-clear 'vector) q)))
+    (atan (-> forward x) (-> forward z))))
 
 (defun quaternion-vector-y-angle ((q quaternion) (direction vector))
   "Return the signed yaw error from q's forward axis to direction in the XZ plane."
@@ -675,13 +672,10 @@
   (let ((delta (new 'stack-no-clear 'quaternion)))
     (let ((normalize-xz-fn vector-xz-normalize!)
           (flat-direction (new 'stack-no-clear 'vector)))
-      (set! (-> flat-direction x) (-> direction x))
-      (set! (-> flat-direction y) 0.0)
-      (set! (-> flat-direction z) (-> direction z))
-      (set! (-> flat-direction w) 1.0)
+      (set-vector! flat-direction (-> direction x) 0.0 (-> direction z) 1.0)
       (let ((target-direction (normalize-xz-fn flat-direction 1.0)))
         (quaternion-from-two-vectors-max-angle! delta
-                                                (vector-z-quaternion! (new 'stack-no-clear 'vector) src)
+                                                (vector-z-quaternion! (-> (new 'stack-no-clear 'quaternion) vec) src)
                                                 target-direction
                                                 max-angle)))
     (quaternion-normalize! (quaternion*! dst delta src))))
@@ -714,7 +708,9 @@
     (let ((magnitude (quaternion-norm q)))
       (when (or (< 1.01 magnitude) (< magnitude 0.99))
         (format #t "WARNING: bad quaternion (magnitude ~F) process is " magnitude)
-        (if (and pp (type-type? (-> pp type) process-tree)) (format #t "~A~%" (-> pp name)) (format #t "#f~%"))))
+        (if (and pp (type-type? (-> pp type) process-tree))
+            (format #t "~A~%" (-> pp name))
+            (format #t "#f~%"))))
     0
     (none)))
 

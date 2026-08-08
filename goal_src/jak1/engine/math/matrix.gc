@@ -4,8 +4,6 @@
 (require "engine/math/vector-h.gc")
 (require "engine/math/matrix-h.gc")
 
-;; The PC implementation of the register-argument entry point delegates forward
-;; to the ordinary axis/sine/cosine routine defined later in this file.
 (defun-extern matrix-axis-sin-cos! matrix vector float float matrix)
 
 ;; This file implements the GOAL matrix library.
@@ -49,18 +47,6 @@
 ;; vector-matrix*!, vector-rotate*!, vector3s-matrix*! and vector3s-rotate*!. It must differ from
 ;; src in matrix-inverse-of-rot-trans!, matrix-3x3-inverse!, matrix-3x3-inverse-transpose! and
 ;; matrix-4x4-inverse-transpose!, all of which read src after they have started writing dst.
-
-;; matrix3 shares the layout, but only the upper 3x3 means anything. Nothing here writes its
-;; fourth column, so reading one back as a matrix finds garbage in every w.
-
-;; A few idioms recur. (.mul.x.vf acc a b) opens the VU0 accumulator, .add.mul.<lane>.vf keeps
-;; adding broadcast products, and the last one writes a register; one matrix row is four of those
-;; and never needs a temporary. (.mov gpr vf) and (.mov vf gpr) are bit moves between the
-;; register files rather than conversions, which is how an FPU float becomes a broadcast lane and
-;; how a lane's sign gets tested with an integer branch. pceqw, ppach, add one, branch on zero
-;; asks whether a group of lanes were all zero in a single test. (.xor.vf r r r) stands where the
-;; EE cleared a register by subtracting it from itself: subtraction preserves NaN, xor does not,
-;; and NaN lanes are very slow on the host.
 
 ;; DECOMP BEGINS
 
@@ -777,8 +763,6 @@
 (defun matrix-axis-sin-cos-vu! ((dst matrix) (axis vector) (sin-angle float) (cos-angle float))
   "Build an axis-angle rotation matrix from precomputed sine and cosine passed in EE registers."
   (#unless PC_PORT
-    ;; This entry point is the register-argument twin of matrix-axis-sin-cos!.
-    ;; Preserve the original schedule, including the VU pipeline spacing.
     (rlet ((dst-reg :reg a0)
            (axis-reg :reg a1)
            (sin-bits :reg a2)
@@ -887,7 +871,6 @@
       (nop!)
       (nop!)))
   (#when PC_PORT
-    ;; The special register calling convention is irrelevant on the host.
     (matrix-axis-sin-cos! dst axis sin-angle cos-angle))
   (none))
 

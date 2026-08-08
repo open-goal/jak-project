@@ -20,10 +20,6 @@
 
 (defglobalconstant PC_BIG_MEMORY (and PC_PORT BIG_MEMORY))
 
-;; redirects access to EE memory mapped registers through get-vm-ptr to valid addresses that
-;; are monitored in the runtime for debugging.
-(defglobalconstant USE_VM #f)
-
 ;; enables the with-profiler statements, which send profiling data from
 ;; GOAL code to the frame profiler in C++.
 (defglobalconstant PC_PROFILER_ENABLE #t)
@@ -43,9 +39,7 @@
 ;; GOAL boxed offsets use the lower three bits to indicate if they are
 ;; an integer (binteger), a pair, or a strucutre with type info (basic)
 (defconstant BINTEGER_OFFSET 0)
-
 (defconstant PAIR_OFFSET 2)
-
 (defconstant BASIC_OFFSET 4)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -55,12 +49,6 @@
 (defmacro symbol->string (sym)
   "Convert a symbol to a goal string."
   `(-> (the-as (pointer string) (+ SYM_TO_STRING_OFFSET (the-as int ,sym)))))
-
-(defmacro get-vm-ptr (ptr)
-  "Turn an EE register address into a valid PS2 VM address"
-  `(#cond
-    (USE_VM (vm-ptr ,ptr))
-    (#t ,ptr)))
 
 ;; DECOMP BEGINS
 
@@ -262,10 +250,12 @@
   (local-vars (current-method function))
   (let ((original-method (-> child-type method-table method-id)))
     (until (!= current-method original-method)
-      (if (= child-type object) (return nothing))
+      (if (= child-type object)
+          (return nothing))
       (set! child-type (-> child-type parent))
       (set! current-method (-> child-type method-table method-id))
-      (if (zero? current-method) (return nothing))))
+      (if (zero? current-method)
+          (return nothing))))
   current-method)
 
 (defmacro call-parent-method (&rest args)
@@ -308,7 +298,12 @@
 
 (defun last ((list object))
   "Return the last pair in a proper list."
-  (let ((iter list)) (while (not (null? (cdr iter))) (nop!) (nop!) (set! iter (cdr iter))) iter))
+  (let ((iter list))
+    (while (not (null? (cdr iter)))
+      (nop!)
+      (nop!)
+      (set! iter (cdr iter)))
+    iter))
 
 (defun member ((item object) (list object))
   "Return the list tail whose car is item, or false when item is absent."
@@ -343,7 +338,10 @@
 (defun nassoc ((item-name string) (alist object))
   "Return the named key-value pair from an association list. A key may be a single named object or a list of aliases."
   (while (not (or (null? alist)
-                  (let ((key (car (car alist)))) (if (pair? key) (nmember item-name key) (name= (the-as basic key) item-name)))))
+                  (let ((key (car (car alist))))
+                    (if (pair? key)
+                        (nmember item-name key)
+                        (name= (the-as basic key) item-name)))))
     (set! alist (cdr alist)))
   (if (not (null? alist)) (car alist)))
 
@@ -351,23 +349,24 @@
   "Return the named key-value pair from an association list. Keys may be alias lists, and a single else key acts as a fallback."
   (while (not (or (null? alist)
                   (let ((key (car (car alist))))
-                    (if (pair? key) (nmember item-name key) (or (name= (the-as basic key) item-name) (= key 'else))))))
+                    (if (pair? key)
+                        (nmember item-name key)
+                        (or (name= (the-as basic key) item-name) (= key 'else))))))
     (set! alist (cdr alist)))
   (if (not (null? alist)) (car alist)))
 
 (defun append! ((front object) (back object))
   "Destructively attach back to the final pair of front and return the combined list. If front is empty, return back directly."
   (cond
-    ((null? front)
-     ;; can't append to '(), just return back.
-     back)
+    ((null? front) back)
     (else
      (let ((iter front))
        (while (not (null? (cdr iter)))
          (nop!)
          (nop!)
          (set! iter (cdr iter)))
-       (if (not (null? iter)) (set! (cdr iter) back)))
+       (if (not (null? iter))
+           (set! (cdr iter) back)))
      front)))
 
 (defun delete! ((item object) (list object))
@@ -381,7 +380,8 @@
                (while (not (or (null? iter) (= (car iter) item)))
                  (set! iter-prev iter)
                  (set! iter (cdr iter)))
-               (if (not (null? iter)) (set! (cdr iter-prev) (cdr iter))))
+               (if (not (null? iter))
+                   (set! (cdr iter-prev) (cdr iter))))
              list))))
 
 (defun delete-car! ((item object) (list object))
@@ -394,13 +394,15 @@
        (while (not (or (null? iter) (= (car (car iter)) item)))
          (set! iter-prev iter)
          (set! iter (cdr iter)))
-       (if (not (null? iter)) (set! (cdr iter-prev) (cdr iter))))
+       (if (not (null? iter))
+           (set! (cdr iter-prev) (cdr iter))))
      list)))
 
 (defun insert-cons! ((entry object) (alist object))
   "Insert a key-value pair into an association list, replacing an existing entry. This allocates one pair on the global heap."
-  (let ((updated-list (delete-car! (car entry) alist))) (cons entry updated-list)))
-
+  (let ((updated-list (delete-car! (car entry) alist)))
+    (cons entry updated-list)))
+ 
 (defun sort ((list pair) (compare-func (function object object object)))
   "Destructively bubble-sort a list by swapping adjacent out-of-order cars until a pass makes no swaps. An integer comparator returns a positive value when the first item should follow the second, so (sort list -) is ascending. A boolean comparator must return exactly #t for an in-order pair; another truthy value can be mistaken for a positive integer."
   ;; the compare function can return a few possible things.
@@ -496,24 +498,46 @@
   (cond
     ((type-type? (-> this content-type) integer)
      (case (-> this content-type symbol)
-       (('int32) (dotimes (i (-> this length)) (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) this) i))))
-       (('uint32) (dotimes (i (-> this length)) (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint32) this) i))))
-       (('int64) (dotimes (i (-> this length)) (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int64) this) i))))
-       (('uint64) (dotimes (i (-> this length)) (format #t (if (zero? i) "#x~X" " #x~X") (-> (the-as (array uint64) this) i))))
-       (('int8) (dotimes (i (-> this length)) (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int8) this) i))))
-       (('uint8) (dotimes (i (-> this length)) (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint8) this) i))))
-       (('int16) (dotimes (i (-> this length)) (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int16) this) i))))
-       (('uint16) (dotimes (i (-> this length)) (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint16) this) i))))
+       (('int32)
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) this) i))))
+       (('uint32)
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint32) this) i))))
+       (('int64)
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int64) this) i))))
+       (('uint64)
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "#x~X" " #x~X") (-> (the-as (array uint64) this) i))))
+       (('int8)
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int8) this) i))))
+       (('uint8)
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint8) this) i))))
+       (('int16)
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int16) this) i))))
+       (('uint16)
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array uint16) this) i))))
        (('uint128 'int128)
         (dotimes (i (-> this length))
           (format #t (if (zero? i) "#x~X" " #x~X") (-> (the-as (array uint128) this) i))))
-       (else (dotimes (i (-> this length)) (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) this) i))))))
+       (else
+        (dotimes (i (-> this length))
+          (format #t (if (zero? i) "~D" " ~D") (-> (the-as (array int32) this) i))))))
     ((= (-> this content-type) float)
      (dotimes (i (-> this length))
-       (if (zero? i) (format #t "~f" (-> (the-as (array float) this) i)) (format #t " ~f" (-> (the-as (array float) this) i)))))
+       (if (zero? i)
+           (format #t "~f" (-> (the-as (array float) this) i))
+           (format #t " ~f" (-> (the-as (array float) this) i)))))
     (else
      (dotimes (i (-> this length))
-       (if (zero? i) (format #t "~A" (-> (the-as (array basic) this) i)) (format #t " ~A" (-> (the-as (array basic) this) i))))))
+       (if (zero? i)
+           (format #t "~A" (-> (the-as (array basic) this) i))
+           (format #t " ~A" (-> (the-as (array basic) this) i))))))
   (format #t ")")
   this)
 
@@ -526,20 +550,42 @@
   (cond
     ((type-type? (-> this content-type) integer)
      (case (-> this content-type symbol)
-       (('int32) (dotimes (i (-> this length)) (format #t "~T  [~D] ~D~%" i (-> (the-as (array int32) this) i))))
-       (('uint32) (dotimes (i (-> this length)) (format #t "~T  [~D] ~D~%" i (-> (the-as (array uint32) this) i))))
-       (('int64) (dotimes (i (-> this length)) (format #t "~T  [~D] ~D~%" i (-> (the-as (array int64) this) i))))
-       (('uint64) (dotimes (i (-> this length)) (format #t "~T  [~D] #x~X~%" i (-> (the-as (array uint64) this) i))))
-       (('int8) (dotimes (i (-> this length)) (format #t "~T  [~D] ~D~%" i (-> (the-as (array int8) this) i))))
-       (('uint8) (dotimes (i (-> this length)) (format #t "~T  [~D] ~D~%" i (-> (the-as (array int8) this) i))))
-       (('int16) (dotimes (i (-> this length)) (format #t "~T  [~D] ~D~%" i (-> (the-as (array int16) this) i))))
-       (('uint16) (dotimes (i (-> this length)) (format #t "~T  [~D] ~D~%" i (-> (the-as (array uint16) this) i))))
-       (('int128 'uint128) (dotimes (i (-> this length)) (format #t "~T  [~D] #x~X~%" i (-> (the-as (array uint128) this) i))))
-       (else (dotimes (i (-> this length)) (format #t "~T  [~D] ~D~%" i (-> (the-as (array int32) this) i))))))
+       (('int32)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] ~D~%" i (-> (the-as (array int32) this) i))))
+       (('uint32)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] ~D~%" i (-> (the-as (array uint32) this) i))))
+       (('int64)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] ~D~%" i (-> (the-as (array int64) this) i))))
+       (('uint64)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] #x~X~%" i (-> (the-as (array uint64) this) i))))
+       (('int8)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] ~D~%" i (-> (the-as (array int8) this) i))))
+       (('uint8)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] ~D~%" i (-> (the-as (array int8) this) i))))
+       (('int16)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] ~D~%" i (-> (the-as (array int16) this) i))))
+       (('uint16)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] ~D~%" i (-> (the-as (array uint16) this) i))))
+       (('int128 'uint128)
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] #x~X~%" i (-> (the-as (array uint128) this) i))))
+       (else
+        (dotimes (i (-> this length))
+          (format #t "~T  [~D] ~D~%" i (-> (the-as (array int32) this) i))))))
     ((= (-> this content-type) float)
      (dotimes (i (-> this length))
        (format #t "~T  [~D] ~f~%" i (-> (the-as (array float) this) i))))
-    (else (dotimes (i (-> this length)) (format #t "~T  [~D] ~A~%" i (-> (the-as (array basic) this) i)))))
+    (else
+     (dotimes (i (-> this length))
+       (format #t "~T  [~D] ~A~%" i (-> (the-as (array basic) this) i)))))
   this)
 
 (defmethod length ((this array))
@@ -547,11 +593,12 @@
   (-> this length))
 
 (defmethod asize-of ((this array))
-  "Get the size in memory of an array"
   (the-as int
           (+ (-> array size)
-             (* (-> this allocated-length) (if (type-type? (-> this content-type) number) (-> this content-type size) 4)))))
-
+             (* (-> this allocated-length)
+                (if (type-type? (-> this content-type) number)
+                    (the-as int (-> this content-type size))
+                    4)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; memory manipulation
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -589,7 +636,12 @@
 
 (defun mem-set32! ((dst pointer) (word-count int) (value int))
   "Fill word-count 32-bit words with value. The count precedes the fill value."
-  (let ((result dst)) (dotimes (i word-count) (set! (-> (the-as (pointer int32) dst)) value) (&+! dst 4) (nop!)) result))
+  (let ((result dst))
+    (dotimes (i word-count)
+      (set! (-> (the-as (pointer int32) dst)) value)
+      (&+! dst 4)
+      (nop!))
+    result))
 
 (defun mem-or! ((dst pointer) (src pointer) (byte-count int))
   "Bitwise-or byte-count bytes from src into dst."
@@ -696,7 +748,8 @@
 
 (defun printl ((object object))
   "Print a boxed object followed by a newline."
-  (let ((value object)) ((method-of-type (rtype-of value) print) value))
+  (let ((value object))
+    ((method-of-type (rtype-of value) print) value))
   (format #t "~%")
   object)
 
@@ -726,7 +779,9 @@
 (defun print-tree-bitmask ((bits int) (count int))
   "Print one indentation row for a process-tree diagram from the active-column bitmask."
   (dotimes (i count)
-    (if (zero? (logand bits 1)) (format #t "    ") (format #t "|   "))
+    (if (not (logtest? bits 1))
+        (format #t "    ")
+        (format #t "|   "))
     (set! bits (shr bits 1)))
   #f)
 
@@ -767,14 +822,16 @@
      (cond
        ((nonzero? (logand (the-as int this) 3))
         ;; alignment is bad!
-        (if name (format print-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" this name))
-        '#f)
+        (if name
+            (format print-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" this name))
+        #f)
        ((not in-goal-mem)
         ;; address isn't within the memory we expect.
-        (if name (format print-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" this name))
-        '#f)
+        (if name
+            (format print-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" this name))
+        #f)
        ;; otherwise, we're good!
-       (else '#t))) ;; end (not expected-type) check
+       (else #t))) ;; end (not expected-type) check
     ((and allow-false (not this))
      ;; we got a false, but its allowed!
      ;; note that we don't reject falses otherwise, as false is a perfectly valid symbol.

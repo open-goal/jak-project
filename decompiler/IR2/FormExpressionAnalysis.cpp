@@ -3823,6 +3823,7 @@ bool is_deref_to_quad(DerefElement* deref) {
 struct DerefContainerInfo {
   TypeSpec type;
   bool is_matrix_row = false;
+  bool is_quaternion_view = false;
 };
 
 std::optional<DerefContainerInfo> deref_container_info(DerefElement* deref, const Env& env) {
@@ -3855,9 +3856,12 @@ std::optional<DerefContainerInfo> deref_container_info(DerefElement* deref, cons
 
   TypeSpec current = *base_type;
   bool is_matrix_row = current == TypeSpec("matrix") || current == TypeSpec("matrix3");
+  bool is_quaternion_view = false;
   for (size_t i = 0; i + 1 < deref->tokens().size(); ++i) {
     const auto& token = deref->tokens().at(i);
     if (token.kind() == DerefToken::Kind::FIELD_NAME) {
+      is_quaternion_view =
+          is_quaternion_view || (current == TypeSpec("quaternion") && token.field_name() == "vec");
       try {
         current = env.dts->ts.lookup_field_info(current.base_type(), token.field_name()).type;
       } catch (const std::exception&) {
@@ -3878,7 +3882,7 @@ std::optional<DerefContainerInfo> deref_container_info(DerefElement* deref, cons
     is_matrix_row =
         is_matrix_row || current == TypeSpec("matrix") || current == TypeSpec("matrix3");
   }
-  return DerefContainerInfo{current, is_matrix_row};
+  return DerefContainerInfo{current, is_matrix_row, is_quaternion_view};
 }
 
 Form* pop_last_deref_token(Form* form) {
@@ -3947,7 +3951,8 @@ FormElement* try_to_rewrite_vector_zero(Form* dst, Form* value, FormPool& pool, 
 
   auto dst_deref = dst ? dst->try_as_element<DerefElement>() : nullptr;
   const auto dst_info = dst_deref ? deref_container_info(dst_deref, env) : std::nullopt;
-  if (!dst_info || !env.dts->ts.tc(TypeSpec("vector"), dst_info->type)) {
+  if (!dst_info || dst_info->is_quaternion_view ||
+      !env.dts->ts.tc(TypeSpec("vector"), dst_info->type)) {
     return nullptr;
   }
   if (!match(Matcher::cast("uint128", Matcher::integer(0)), value, &env).matched) {
