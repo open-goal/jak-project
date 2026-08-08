@@ -416,9 +416,9 @@
 ;; font-ctx : the font to draw the text with
 ;; invisible : will actually print the text if true, otherwise will not print
 ;; arg3: height of text if text is supposed to be large
-;; arg4: buffer used to draw?
+;; bucket_id: buffer used to draw?
 ;; Returns the height of the printed text.
-(defun print-game-text ((display_text string) (font-ctx font-context) (invisible symbol) (arg3 int) (arg4 bucket-id))
+(defun print-game-text ((display_text string) (font-ctx font-context) (invisible symbol) (large_font_size int) (bucket_id bucket-id))
   (local-vars
     (font_origin_x float)
     (font_origin_y float)
@@ -427,8 +427,8 @@
     (cur_ch_ptr (pointer uint8)) ;; Char pointer used to traverse chars of display_text
     (font_cur_position float)
     (font_origin_x_copy float)
-    (right_side float) ;; Right boundary of where there is to draw??
-    (bottom_side float) ;; Bottom boundary of where there is to draw??
+    (right_side float) ;; Right boundary of where there is to draw
+    (bottom_side float) ;; Bottom boundary of where there is to draw
     (whitespace_width float) ;; The width of a whitespace char using font-ctx
     (line_height float) ;; The height of a line printed with font-ctx
     (line_count int) ;; The number of lines printed so far
@@ -436,13 +436,13 @@
     (game-word-len int) ;;Appears to be the current length of game-text-word
     (game-line-len int) ;;Appears to be the current length of game-text-line
     (sv-96 int)
-    (next_ch uint)
-    (sv-108 symbol)
+    (next_ch uint) ;;The next character inside display_text
+    (word-break symbol) ;; True if and only if game-text-word is complete and should be put in game-text-line
     (sv-112 int)
     (game_text_word_width int)
     )
   (cond
-    ((< 0.1 (-> font-ctx scale)) ;; If font's scale is greater than 0.1
+    ((< 0.1 (-> font-ctx scale)) ;; Only print if font's scale is greater than 0.1
      ;;Storing font-ctx properties to restore them later.
      (set! font_origin_x (-> font-ctx origin x))
      (set! font_origin_y (-> font-ctx origin y))
@@ -465,9 +465,9 @@
      (set! bottom_side (+ (-> font-ctx origin y) (-> font-ctx height)))
      (set! whitespace_width (-> (get-string-length " " font-ctx) length))
 
-     ;;line_height is set to (arg3 as a float if font-ctx has its large flat set or 28.0) * font-ctx scale
+     ;;line_height is set to (large_font_size as a float if font-ctx has its large flat set or 28.0) * font-ctx scale
      (set! line_height (* (if (logtest? (-> font-ctx flags) (font-flags large))
-                (the float arg3)
+                (the float large_font_size)
                 28.0
                 )
             (-> font-ctx scale)
@@ -482,82 +482,83 @@
      (set! game-line-len 0)
      (set! sv-96 0)
      (set! next_ch (-> cur_ch_ptr 1)) ;;Following character in display_text
-     (set! sv-108 (the-as symbol #f)) ;;Set to false
+     (set! word-break (the-as symbol #f)) ;;Set to false
      (set! sv-112 0)
      (set! game_text_word_width 0)
      (set! (-> *game-text-line* data 0) (the-as uint 0))
      ;; font-ctx origin y <= bottom_side means there's space to draw
      (while (and (not (and (zero? cur_ch) (zero? game-word-len) (zero? game-line-len))) (>= bottom_side (-> font-ctx origin y)))
        (set! game_text_word_width 0)
-       (set! cur_ch_ptr (&-> cur_ch_ptr 1))
-       (set! next_ch (-> cur_ch_ptr 0))
-       (set! cur_ch_ptr (&-> cur_ch_ptr -1))
+        ;;  (set! cur_ch_ptr (&-> cur_ch_ptr 1))
+        ;;  (set! next_ch (-> cur_ch_ptr 0))
+        ;;  (set! cur_ch_ptr (&-> cur_ch_ptr -1))
+       (set! next_ch (-> cur_ch_ptr 1))
        (cond
           ;; 0 <= current character < 4
           ((and (> cur_ch 0) (< cur_ch (the-as uint 4)))
             ;; Copy current and next character from display text into game-text-word
-            (set! (-> *game-text-word* data game-word-len) cur_ch) ;; Write cur_ch into game-text-word
-            (set! game-word-len (+ game-word-len 1)) ;;Increment game-word-len
-            (set! (-> *game-text-word* data game-word-len) next_ch) ;; Write next_ch into game-text-word
-            (set! game-word-len (+ game-word-len 1))  ;;Increment game-word-len
-            (set! cur_ch_ptr (&-> cur_ch_ptr 1)) ;; Advance ptr by 1
+            (set! (-> *game-text-word* data game-word-len) cur_ch)
+            (set! game-word-len (+ game-word-len 1))
+            (set! (-> *game-text-word* data game-word-len) next_ch)
+            (set! game-word-len (+ game-word-len 1))
+            (set! cur_ch_ptr (&-> cur_ch_ptr 1)) ;; Increment pointer within display_text
           )
           ;; Current character is a space or forward slash, or it's a minus and previous was a tilde.
           ;; Might need to check that cur_ch_ptr - 1 is not out of bounds?
           ((or (= cur_ch #\\s) (= cur_ch #\/) (and (= cur_ch #\-) (!= (-> cur_ch_ptr -1) #\~)))
-            (set! (-> *game-text-word* data game-word-len) cur_ch)
+            (set! (-> *game-text-word* data game-word-len) cur_ch) ;;Write the character into the word
             (set! game-word-len (+ game-word-len 1))
-            (set! sv-108 #t) ;; Set to true
+            (set! word-break #t) ;; Should copy current game-text-word into game-text-line
           )
           ;; Current character is 0
           ((zero? cur_ch)  
-            (if (nonzero? game-word-len)
-                (set! sv-108 #t) ;; Set to true if game word len > 0
+            (if (nonzero? game-word-len) ;;If game-text-word not empty
+                (set! word-break #t) ;; Should copy current game-text-word into game-text-line
                 )
             (set! sv-112 (+ sv-112 1))
           )
           ;; Both current character and next are backslashes
           ((and (= cur_ch #\\) (= next_ch #\\))
-            (set! cur_ch_ptr (&-> cur_ch_ptr 1)) ;; Advance ptr by 1
+            (set! cur_ch_ptr (&-> cur_ch_ptr 1)) ;; Increment pointer within display_text
             (if (nonzero? game-word-len) 
-              (set! sv-108 #t) ;; Set to true if game word len > 0
+              (set! word-break #t) ;; Should copy current game-text-word into game-text-line
             )
             (set! sv-112 (+ sv-112 1))
           )
           ;; Current character and next are underscores
           ((and (= cur_ch #\_) (= next_ch #\_))
-          (set! cur_ch_ptr (&-> cur_ch_ptr 1)) ;; Advance ptr.
-          (set! (-> *game-text-word* data game-word-len) #\\s)
-          (set! game-word-len (+ game-word-len 1))
+            (set! cur_ch_ptr (&-> cur_ch_ptr 1)) ;; Increment pointer within display_text
+            (set! (-> *game-text-word* data game-word-len) #\\s) ;;Write a space into the word
+            (set! game-word-len (+ game-word-len 1))
           )
-          (else
+          (else ;;Write character into word and increment word length
            (set! (-> *game-text-word* data game-word-len) cur_ch)
            (set! game-word-len (+ game-word-len 1))
           )
          )
-       (when sv-108
-         (set! (-> *game-text-word* data game-word-len) (the-as uint 0))
-         (let ((f30-1 font_cur_position))
+       (when word-break
+         (set! (-> *game-text-word* data game-word-len) (the-as uint 0)) ;;Null terminate word
+         (let ((word_start font_cur_position))
            ;;Set game_text_word_width to the length of game-text-word using font-ctx
            (set! game_text_word_width (the int (-> (get-string-length *game-text-word* font-ctx) length)))
-           (let ((f0-27 (+ f30-1 (the float game_text_word_width))))
-             (if (= (-> *game-text-word* data (+ game-word-len -1)) #\\s)
-                 (set! f0-27 (- f0-27 whitespace_width))
+           (let ((word_end (+ word_start (the float game_text_word_width))))
+             (if (= (-> *game-text-word* data (+ game-word-len -1)) #\\s) ;; If last character is a space
+                 (set! word_end (- word_end whitespace_width)) 
                  )
              (cond
-               ((< right_side f0-27)
-                (set! (-> font-ctx max-x) (fmax (-> font-ctx max-x) font_cur_position))
-                (set! sv-112 (+ sv-112 1))
+                ((< right_side word_end) ;; If word would exceed right side of screen,
+                  (set! (-> font-ctx max-x) (fmax (-> font-ctx max-x) font_cur_position))
+                  (set! sv-112 (+ sv-112 1))
                 )
                (else
-                 ;;Copy game word into game line at position game-line-len
-                 (copy-charp<-charp (&-> *game-text-line* data game-line-len) (-> *game-text-word* data))
-                 (set! game-line-len (+ game-line-len game-word-len))
-                 (set! game-word-len 0)
-                 (set! font_cur_position (+ font_cur_position (the float game_text_word_width))) ;; Add the word width to font_cur_position
-                 (set! (-> font-ctx max-x) (fmax (-> font-ctx max-x) font_cur_position))
-                 (set! sv-108 (the-as symbol #f))
-                 )
+                  ;;Append game_word to the end of game_line
+                  (copy-charp<-charp (&-> *game-text-line* data game-line-len) (-> *game-text-word* data))
+                  (set! game-line-len (+ game-line-len game-word-len))
+                  (set! game-word-len 0)
+                  (set! font_cur_position (+ font_cur_position (the float game_text_word_width))) ;; Add the word width to font_cur_position
+                  (set! (-> font-ctx max-x) (fmax (-> font-ctx max-x) font_cur_position))
+                  (set! word-break (the-as symbol #f))
+                )
                )
              )
            )
@@ -565,18 +566,18 @@
        (while (> sv-112 0)
          ;; Store the position of the current line + line_height
          (let ((next_line_origin_y (+ (-> font-ctx origin y) line_height)))
-           (when (and (>= sv-96 (the-as int (-> font-ctx start-line))) #t)
+           (when (>= sv-96 (the-as int (-> font-ctx start-line)))
              (when (= (-> *game-text-line* data (+ game-line-len -1)) #\\s)
                (set! (-> *game-text-line* data (+ game-line-len -1)) (the-as uint 0))
                0
                )
               (if (nonzero? (-> *game-text-line* data 0))
-                (set! line_count (+ line_count 1))
+                (set! line_count (+ line_count 1)) ;; Increment num lines printed
               )
               ;;Actually print the text onscreen if the text is not meant to be invisible.
               (when (not invisible)
                (with-dma-buffer-add-bucket ((s2-1 (-> *display* frames (-> *display* on-screen) global-buf))
-                                            arg4
+                                            bucket_id
                                             )
                  (draw-string *game-text-line* s2-1 font-ctx)
                  )
@@ -590,12 +591,12 @@
          (set! game-line-len 0)
          (set! sv-112 (+ sv-112 -1))
          (set! font_cur_position font_origin_x_copy)
-         (when sv-108
+         (when word-break
            ;;Copy game-text-word to the end of game-text-line
            (copy-charp<-charp (&-> *game-text-line* data game-line-len) (-> *game-text-word* data))
            (set! game-line-len (+ game-line-len game-word-len))
            (set! game-word-len 0)
-           (set! sv-108 (the-as symbol #f)) ;; Reset 
+           (set! word-break (the-as symbol #f)) ;; Reset 
            (set! font_cur_position (+ font_cur_position (the float game_text_word_width))) ;; Add word width to current position
            )
          )
