@@ -59,10 +59,14 @@
     dst))
 
 (defun vector-reflect-flat! ((dst vector) (src vector) (plane-normal vector))
-  "Replace src's component normal to the plane with plane-normal.
-   This assumes unit inputs and expects src to point from the positive half-space toward the negative one."
-  ;; The result therefore has unit outward component regardless of how steeply src arrived, which
-  ;; is what makes it a slide response rather than a bounce. dst may be either input; dst.w is 1.0.
+  "Flatten src onto the plane, then add `plane-normal`.
+   This is a strange operation, since `src` is typically a velocity and is 1000's of times
+   larger than plane-normal. Removing the addition makes no obvious difference in collision.
+   My theory is that this is a slight optimization and very slightly pushes collision geometry
+   away from the triangle, preventing a future collision. Without this, rounding errors may
+   cause geometry to enter the triangle again and take another iteration.
+   The existance of vector-reflect-true-flat! (without this addition) acknowledges that this
+   version is somehow an adjust reflect-flat."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (source :class vf)
@@ -77,13 +81,13 @@
     (.outer.product.b.vf in-plane normal source acc)
     (.outer.product.a.vf acc normal in-plane)
     (.outer.product.b.vf in-plane in-plane normal acc)
-    (.add.vf.xyz in-plane in-plane normal) ;; add normal to that.
+    ;; add normal
+    (.add.vf.xyz in-plane in-plane normal)
     (.svf (&-> dst quad) in-plane)
     dst))
 
 (defun vector-reflect-true-flat! ((dst vector) (src vector) (plane-normal vector))
   "Project src onto the plane with unit normal plane-normal; equivalent to vector-flatten!."
-  ;; Instruction for instruction the same function as vector-flatten!
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (source :class vf)
@@ -104,7 +108,7 @@
   "Project src onto the plane with unit normal plane-normal, then lift the result off the plane by
    0.32 times its own length, capped at four meters. dst is used as scratch, so it must not alias
    plane-normal, though it may alias src."
-   ;; this may just have a bug, normal-component below is always 0.
+   ;; this may just have a bug, the normal-component is always 0.
    ;; in any case, this is a bit of a softer "bounce" than reflect.
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -123,19 +127,16 @@
     ;; dst is now the normal part of src
     (let* ((in-plane-length (vector-length dst)) ;; len of normal component
            (normal-component (vector-dot dst plane-normal)) ;; always zero?
-           ;; f1-3 = .02 * length of normal.  f1-2 is always zero here
            (lift (- (* 0.02 in-plane-length) normal-component)))
       ;; scale down and limit the normal component
       (vector+float*! dst dst plane-normal (fmin (meters 4) (* 16.0 lift))))))
 
 (defun vector-segment-distance-point! ((point vector) (segment-start vector) (segment-end vector) (closest-point vector))
   "Compute the distance from a point to the closest point on the line segment.
-   Writes that point to closest-point unless it is #f. The projected distance along
+   Write that point to closest-point unless it is #f. The projected distance along
    the segment is clamped before measuring the remaining perpendicular displacement.
    The return value is a true distance, not a squared one. closest-point may alias any input and
    receives w = 1.0. A zero-length segment divides by zero and makes both results unusable."
-  ;; closest-point is declared vector but #f is an accepted value and several callers pass it, so
-  ;; the check against #f below is a real branch rather than a leftover.
   (local-vars (perpendicular-distance float) (segment-length float) (along-raw float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -225,8 +226,7 @@
    scales the result by its squared norm. dst may alias src and keeps src's w."
   ;; Rather than call quaternion->matrix, this builds the three rotation rows directly out of the
   ;; quaternion's own lanes. Each row starts as a permutation of (w, z, -y) and friends, is crossed
-  ;; with 2q, and picks up the 1.0 on its diagonal from vf0's w. The result is the transpose of the
-  ;; textbook rotation matrix, which is what GOAL's row-vector product needs.
+  ;; with 2q, and picks up the 1.0 on its diagonal from vf0's w.
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (quat :class vf)
@@ -274,11 +274,7 @@
 ;; consistent and provide orthogonal forward/down, they do the same thing.
 
 (defun forward-down->inv-matrix ((dst matrix) (forward vector) (down vector))
-  "Build an inverse rotation matrix whose +z axis follows forward and -y points toward down.
-   Rows 0, 1 and 2 come out as the unit right, up and forward axes, row 3 is zero, and the w
-   column is (0, 0, 0, 1), so the result is a valid affine transform with no translation. forward
-   and down need not be unit or perpendicular, but they must not be parallel and neither may alias
-   dst; row 2 and row 0 are written before down and forward are read again."
+  "Build an inverse rotation matrix whose +z axis follows forward and -y points toward down."
   (vector-normalize-copy! (-> dst vector 2) forward 1.0)
   (vector-cross! (the-as vector (-> dst vector)) (-> dst vector 2) down)
   (vector-normalize! (the-as vector (-> dst vector)) 1.0)
@@ -292,17 +288,14 @@
   dst)
 
 (defun forward-down-nopitch->inv-matrix ((dst matrix) (forward vector) (down vector))
-  "Build an inverse rotation matrix from forward and down, taking pitch from down.
-   Same row layout and same restrictions as forward-down->inv-matrix. Row 1 is exactly -down
-   normalized, so the output's up axis is authoritative and its forward axis is whatever is left
-   perpendicular to it."
+  "Build an inverse rotation matrix from forward and down, taking pitch from down."
   (vector-normalize-copy! (-> dst vector 1) down 1.0)
   (vector-negate! (-> dst vector 1) (-> dst vector 1))
-  (vector-cross! (the-as vector (-> dst vector)) (-> dst vector 1) forward)
-  (vector-normalize! (the-as vector (-> dst vector)) 1.0)
-  (vector-cross! (-> dst vector 2) (the-as vector (-> dst vector)) (-> dst vector 1))
+  (vector-cross! (-> dst vector 0) (-> dst vector 1) forward)
+  (vector-normalize! (-> dst vector 0) 1.0)
+  (vector-cross! (-> dst vector 2) (-> dst vector 0) (-> dst vector 1))
   (vector-normalize! (-> dst vector 2) 1.0)
-  (set! (-> dst vector 3 quad) (the-as uint128 0))
+  (vector-zero! (-> dst vector 3))
   (set! (-> dst vector 0 w) 0.0)
   (set! (-> dst vector 1 w) 0.0)
   (set! (-> dst vector 2 w) 0.0)
@@ -310,29 +303,23 @@
   dst)
 
 (defun forward-up-nopitch->inv-matrix ((dst matrix) (forward vector) (up vector))
-  "Build an inverse rotation matrix from forward and up, taking pitch from up. up is negated into
-   a stack vector first, so up may alias nothing in dst but is not itself modified."
+  "Build an inverse rotation matrix from forward and up, taking pitch from up."
   (forward-down-nopitch->inv-matrix dst forward (vector-negate! (new-stack-vector0) up)))
 
 (defun forward-up-nopitch->quaternion ((dst quaternion) (forward vector) (up vector))
-  "Build a quaternion from forward and up, taking pitch from up. The intermediate matrix lives on
-   the stack, so dst may not overlap forward or up."
+  "Build a quaternion from forward and up, taking pitch from up."
   (matrix->quaternion dst (forward-up-nopitch->inv-matrix (new-stack-matrix0) forward up)))
 
 (defun forward-up->quaternion ((dst quaternion) (forward vector) (up vector))
-  "Build a quaternion from forward and up while retaining the pitch in forward. Parallel forward
-   and up leave the intermediate matrix degenerate and the quaternion meaningless."
+  "Build a quaternion from forward and up while retaining the pitch in forward."
   (matrix->quaternion dst
                       (forward-down->inv-matrix (new-stack-matrix0) forward (vector-negate! (new 'stack-no-clear 'vector) up))))
 
 (defun quaternion-from-two-vectors! ((dst quaternion) (from vector) (to vector))
   "Build the shortest-arc quaternion rotating unit vector from onto unit vector to.
    Parallel and antiparallel inputs are singular because the cross-product axis has zero length."
-  ;; from x to is the axis times sin(angle) and from . to is cos(angle), so the half-angle
-  ;; identities give the quaternion without ever forming the angle itself. Both inputs must be unit
-  ;; length: any other magnitude scales the sine and cosine by the same factor and the identities
-  ;; stop holding. dst may alias neither input, because the axis is built before dst is written but
-  ;; from and to are not read again afterwards.
+  ;; cross(from,to) is the axis times sin(angle) and dot(from, to) is cos(angle), so the half-angle
+  ;; identities give the quaternion without ever forming the angle itself.
   (let* ((axis (vector-cross! (new-stack-vector0) from to))
          (sin-angle (vector-length axis))
          (cos-angle (vector-dot from to)))
@@ -344,9 +331,7 @@
   dst)
 
 (defun quaternion-from-two-vectors-max-angle! ((dst quaternion) (from vector) (to vector) (max-angle float))
-  "Build the shortest-arc quaternion between two unit vectors, capped at max-angle rotation units.
-   The axis is unchanged by the cap; only the rotation amount is limited. Both inputs must be unit
-   length, and parallel or antiparallel inputs are singular."
+  "Build the shortest-arc quaternion between two unit vectors, capped at max-angle rotation units."
   (let* ((axis (vector-cross! (new-stack-vector0) from to))
          (sin-angle (vector-length axis))
          (cos-angle (vector-dot from to))
@@ -362,10 +347,8 @@
   dst)
 
 ;; Every matrix-from-two-vectors variant crosses to with from, not from with to. That is not a
-;; mistake and it is not a matter of taste. matrix-axis-sin-cos! writes the textbook column-vector
-;; Rodrigues matrix, while GOAL multiplies row vector by matrix, so applying the result rotates by
-;; the negative angle about the axis it was given. Passing to x from therefore turns from into to
-;; under vector-matrix*!. Reversing the cross here would silently rotate the wrong way.
+;; mistake. matrix-axis-sin-cos! writes the textbook column-vector
+;; Rodrigues matrix, while GOAL multiplies row vector by matrix, so we correct things for GOAL here.
 ;;
 ;; All four take unit inputs. from . to is the cosine directly, and the sine comes back from
 ;; sqrt(1 - cos^2), which is always nonnegative, so these build the shortest arc and never the long
@@ -373,74 +356,44 @@
 
 (defun matrix-from-two-vectors! ((dst matrix) (from vector) (to vector))
   "Build the shortest-arc rotation matrix between two unit vectors. dst is a full affine matrix
-   with zero translation. Parallel or antiparallel inputs leave the axis degenerate; an exactly
-   parallel pair reaches matrix-axis-sin-cos!'s zero-axis path and yields the identity."
+   with zero translation."
   (let* ((axis (vector-normalize! (vector-cross! (new-stack-vector0) to from) 1.0))
          (cos-angle (vector-dot from to))
-         (one 1.0)
-         (cos-angle-copy cos-angle)
-         (sin-angle (sqrtf (- one (* cos-angle-copy cos-angle-copy)))))
+         (sin-angle (sqrtf (- 1.0 (square cos-angle)))))
     (matrix-axis-sin-cos! dst axis sin-angle cos-angle)))
 
 (defun matrix-from-two-vectors-max-angle! ((dst matrix) (from vector) (to vector) (max-angle float))
-  "Build the shortest-arc rotation matrix between two unit vectors, capped at max-angle rotation
-   units. The cap compares cosines, so a max-angle outside zero to half a revolution does not
-   behave as a limit."
+  "Build the shortest-arc rotation between two unit vectors, capped at max-angle."
   (let ((axis (vector-normalize! (vector-cross! (new-stack-vector0) to from) 1.0))
         (cos-angle (vector-dot from to))
         (cos-max (cos max-angle)))
-    (cond
-      ((< cos-angle cos-max) (matrix-axis-sin-cos! dst axis (sin max-angle) cos-max))
-      (else
-       ;; todo looks bad because of inline (square x)
-       (let ((build-matrix matrix-axis-sin-cos!)
-             (out dst)
-             (axis-arg axis)
-             (one 1.0)
-             (cos-angle-copy cos-angle))
-         (build-matrix out axis-arg (sqrtf (- one (* cos-angle-copy cos-angle-copy))) cos-angle))))))
+    (if (< cos-angle cos-max)
+        (matrix-axis-sin-cos! dst axis (sin max-angle) cos-max)
+        (matrix-axis-sin-cos! dst axis (sqrtf (- 1.0 (square cos-angle))) cos-angle))))
 
-;;
 ;; note: these two interpolation functions may be equivalent to slerp.
 
 (defun matrix-from-two-vectors-max-angle-partial! ((dst matrix) (from vector) (to vector) (max-angle float) (fraction float))
-  "Build a fractional shortest-arc rotation, capped at max-angle.
-   The cosine of the requested angle is blended toward one by fraction before applying the cap."
-  ;; Interpolating the cosine is not interpolating the angle. A fraction of 0.5 lands on the angle
-  ;; whose cosine is halfway, which is short of the halfway angle, and the shortfall grows with the
-  ;; separation. matrix-from-two-vectors-partial-linear! below scales the angle instead.
+  "Build a fractional shortest-arc rotation capped at max-angle. This interpolates the cosine,
+   which doesn't linearly interpolate the rotation angle, but is faster."
   (let* ((axis (vector-normalize! (vector-cross! (new-stack-vector0) to from) 1.0))
          (cos-angle (vector-dot from to))
-         (cos-max (cos max-angle))
+         (max-cos (cos max-angle))
          (blended-cos (+ 1.0 (* (+ -1.0 cos-angle) fraction))))
-    (cond
-      ((< blended-cos cos-max) (matrix-axis-sin-cos! dst axis (sin max-angle) cos-max))
-      (else
-       ;; todo looks bad because of inline (square x)
-       (let ((build-matrix matrix-axis-sin-cos!)
-             (out dst)
-             (axis-arg axis)
-             (one 1.0)
-             (blended-cos-copy blended-cos))
-         (build-matrix out axis-arg (sqrtf (- one (* blended-cos-copy blended-cos-copy))) blended-cos))))))
+    (if (< blended-cos max-cos)
+        (matrix-axis-sin-cos! dst axis (sin max-angle) max-cos)
+        (matrix-axis-sin-cos! dst axis (sqrtf (- 1.0 (square blended-cos))) blended-cos))))
 
 (defun matrix-from-two-vectors-partial-linear! ((dst matrix) (from vector) (to vector) (fraction float))
-  "Build a fractional shortest-arc rotation by scaling the angle itself.
-   Nearly parallel or antiparallel inputs return identity because their cross-product axis is degenerate."
-  ;; The identity guard covers both singular ends, and it returns the identity for the antiparallel
-  ;; case too, which is a half revolution away rather than nothing. There is no axis to interpolate
-  ;; about there, so no answer would be better than another.
+  "Build a fractional shortest-arc rotation between two unit vectors by scaling the angle."
   (let ((axis (vector-normalize! (vector-cross! (new-stack-vector0) to from) 1.0))
         (cos-angle (vector-dot from to)))
     (cond
-      ((< 0.9999 (fabs cos-angle)) (matrix-identity! dst))
+      ((< 0.9999 (fabs cos-angle))
+       (matrix-identity! dst))
       (else
-       (let* ((cos-partial (cos (* fraction (acos cos-angle))))
-              (build-matrix matrix-axis-sin-cos!)
-              (out dst)
-              (one 1.0)
-              (cos-partial-copy cos-partial))
-         (build-matrix out axis (sqrtf (- one (* cos-partial-copy cos-partial-copy))) cos-partial))))))
+       (let ((blended-cos (cos (* fraction (acos cos-angle)))))
+         (matrix-axis-sin-cos! dst axis (sqrtf (- 1.0 (square blended-cos))) blended-cos))))))
 
 (defun matrix-remove-z-rot ((rotation matrix) (reference matrix))
   "Rotate rotation about its own third row so that its second row lines up with reference's first
@@ -497,7 +450,7 @@
 
 (defun quaternion-seek ((value quaternion) (from quaternion) (to quaternion) (unused-rate float) (max-angle float))
   "Rotate value toward to by at most max-angle, using only the forward axes of from and to.
-   unused-rate is ignored."
+   unused-rate is ignored. The implementation is a bit strange and doesn't handle roll."
   ;; Only the third row of each matrix is read, so any roll difference between from and to is
   ;; discarded and value keeps its own. value is both the accumulator and the output: the step is
   ;; post-multiplied onto whatever it already holds, which is not required to agree with from.
@@ -511,18 +464,14 @@
 
 (defun vector-deg-seek ((dst vector) (from vector) (to vector) (max-angle float))
   "Rotate from toward to by at most max-angle rotation units and write the result to dst. from and
-   to must be unit length, but from's own magnitude is what survives, since the rotation is applied
-   to from itself. dst may alias from and keeps from's w."
+   to must be unit length."
   (let ((step (new-stack-matrix0)))
     (matrix-from-two-vectors-max-angle! step from to max-angle)
     (vector-matrix*! dst from step)))
 
 (defun vector-deg-slerp ((dst vector) (from vector) (to vector) (t float))
   "Spherically interpolate from one vector direction to another by t, preserving from's magnitude.
-   The inputs are normalized internally, so they need not be unit. Only the direction is
-   interpolated; to's magnitude never appears in the result except at the t >= 1.0 endpoint, which
-   copies to's whole quad and so is discontinuous with the interior unless the two magnitudes
-   already agree. dst may alias either input."
+   The inputs are normalized internally."
   (cond
     ((>= 0.0 t) (vector-copy! dst from) dst)
     ((>= t 1.0) (vector-copy! dst to) dst)
@@ -536,32 +485,26 @@
 (defun vector-vector-deg-slerp! ((dst vector) (from vector) (to vector) (t float) (up vector))
   "Interpolate direction from from to to around a shared up vector while linearly blending
    magnitude. Both directions are turned into full orientations against up before the slerp, so up
-   must not be parallel to either one. dst.w is 1.0 in the interior but is copied from from or to at
-   the endpoints. dst may alias any input."
-  (local-vars (lerp-fn (function float float float float)))
+   must not be parallel to either one."
   (cond
-    ((>= 0.0 t) (vector-copy! dst from))
-    ((>= t 1.0) (vector-copy! dst to))
+    ((>= 0.0 t)
+     (vector-copy! dst from))
+    ((>= t 1.0)
+     (vector-copy! dst to))
     (else
      (let* ((from-unit (vector-normalize-copy! (new 'stack-no-clear 'vector) from 1.0))
             (to-unit (vector-normalize-copy! (new 'stack-no-clear 'vector) to 1.0))
             (from-rot (forward-up->quaternion (new 'stack-no-clear 'quaternion) from-unit up))
             (to-rot (forward-up->quaternion (new 'stack-no-clear 'quaternion) to-unit up))
-            (blended-rot (quaternion-slerp! (new 'stack-no-clear 'quaternion) from-rot to-rot t))
-            (scale-copy vector-normalize-copy!)
-            (out dst)
-            (direction (vector-z-quaternion! (new 'stack-no-clear 'vector) blended-rot)))
-       (set! lerp-fn lerp)
-       (let ((from-length (vector-length from))
-             (to-length (vector-length to)))
-         (scale-copy out direction (lerp-fn from-length to-length t))))))
+            (blended-rot (quaternion-slerp! (new 'stack-no-clear 'quaternion) from-rot to-rot t)))
+       (vector-normalize-copy! dst
+                               (vector-z-quaternion! (new 'stack-no-clear 'vector) blended-rot)
+                               (lerp (vector-length from) (vector-length to) t)))))
   dst)
 
 (defun normal-of-plane ((dst vector) (point-a vector) (point-b vector) (point-c vector))
   "Compute a unit normal for the plane through three points. The normal follows the right-hand rule
-   for the points taken in a, b, c order, so reversing any two arguments flips it. dst may alias any
-   input and receives w = 1.0. Collinear or coincident points divide by zero and produce garbage,
-   which is not detected."
+   for the points taken in a, b, c order, so reversing any two arguments flips it."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -594,7 +537,7 @@
 (defun vector-3pt-cross! ((dst vector) (origin vector) (point-a vector) (point-b vector))
   "Cross the displacements from origin to point-a and point-b without normalizing the result. The
    length is therefore twice the area of the triangle, which callers use as an area or winding test
-   as well as a normal direction. dst may alias any input and receives w = 1.0."
+   as well as a normal direction."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (base :class vf)
@@ -617,10 +560,7 @@
   "Write the closest point on triangle to point.
    The function projects onto the plane, then clamps to the nearest edge when the projection lies outside.
    triangle's first three rows are the vertices and its fourth is ignored. normal must be the
-   triangle's own unit normal: the inside test only needs its direction, but the in-plane projection
-   scales by its squared length, so a longer normal moves the answer. A normal facing the other way
-   makes all three edge tests report outside and the function returns a vertex instead of the
-   interior point. Nothing is returned; the answer is dst, whose w is 1.0. dst may alias point."
+   triangle's own unit normal"
   ;; The three edge tests are cross products of the two triangle edges leaving a shared vertex with
   ;; the vector to point, dotted against the normal. Each dot lands in lane y so that the wide
   ;; register move below carries it in the high word of a 64-bit value, where its sign bit is the
@@ -803,9 +743,7 @@
   "Construct another point in the plane through point with the supplied normal.
    Two coordinates are offset and the coordinate with the largest normal component is solved from the plane equation.
    The two free coordinates are offset by exactly one meter, so dst is a second plane point roughly
-   a meter and a half away rather than a direction. normal need not be unit, but no component may
-   dominate by so little that the division loses precision, and a zero normal divides by zero. dst
-   may alias point; its w is set to 1.0."
+   a meter and a half away rather than a direction. normal need not be unit."
   ;; Which coordinate to solve for is decided by magnitude so the division is by the largest
   ;; component available. Exact ties fall through to z.
   (let ((plane-offset (+ (+ (* (-> normal x) (-> point x)) (* (-> normal y) (-> point y))) (* (-> normal z) (-> point z)))))
@@ -828,257 +766,15 @@
          (set! (-> dst z) (/ (+ (- (- (* (-> normal x) (-> dst x))) (* (-> normal y) (-> dst y))) plane-offset) (-> normal z)))))))
   dst)
 
-(#unless PC_PORT
-  (defun circle-circle-xz-intersect ((circle-a sphere) (circle-b sphere) (intersection-a vector) (intersection-b vector))
-    "Intersect two circles in the xz plane.
-     Returns -1 for coincident centers, 0 for no real intersection, 1 for a tangent,
-     or 2 for two intersections, writing the available points to intersection-a and intersection-b.
-     Each sphere argument supplies x, z and w only; y is ignored. The outputs receive x and z, and
-     their y and w are left as they were. On a tangent both outputs get the same point, and on 0 or
-     -1 neither is written at all, so the return value must be checked before the points are used."
-    ;; Solve the radical-axis equation along the larger center delta so the division uses the
-    ;; better-conditioned coordinate. The accumulator sequences form the quadratic coefficients
-    ;; without rounding their intermediate sums back through general registers.
-    ;;
-    ;; Subtracting the two circle equations cancels the quadratic terms and leaves the radical axis,
-    ;; a straight line: dx*x + dz*z = K/2, where dx and dz are the center deltas and K is
-    ;; ar^2 + bx^2 + bz^2 - br^2 - ax^2 - az^2, built by the opening accumulator chain. Solving that
-    ;; for the coordinate with the larger delta and substituting into circle A gives an ordinary
-    ;; quadratic in the other coordinate. For the branch that divides by dx, the coefficients are
-    ;;   A = 1 + (dz/dx)^2
-    ;;   B = 2*(ax*dz/dx - (K/2)*dz/dx^2 - az)
-    ;;   C = (K/2)^2/dx^2 - K*ax/dx + ax^2 + az^2 - ar^2
-    ;; and the sign of B^2 - 4AC selects between two roots, one root and none. The other branch is
-    ;; the same expression with x and z exchanged. The two roots come out as the pair
-    ;; (sqrt(D) - B)/2A and -(sqrt(D) + B)/2A, and the remaining coordinate is recovered from the
-    ;; radical axis rather than from a second square root.
-    ;;
-    ;; Coincidence is decided on the raw bit patterns of the two deltas, so it is exact but not
-    ;; symmetric: a delta of -0.0 has a nonzero bit pattern and takes the ordinary path, where the
-    ;; division by it produces an infinity.
-    ;;
-    ;; work0 through work12 are f0 through f12. They alias the named registers above rather than
-    ;; being separate storage, so a-x and work3 are one register, half and delta-x-squared and
-    ;; work7 are another, and equation-right and dominance and work6 are a third. Each named value
-    ;; is dead by the time the workN spelling appears for it.
-    (rlet ((circle-a-reg :reg a0)
-           (circle-b-reg :reg a1)
-           (intersection-a-reg :reg a2)
-           (intersection-b-reg :reg a3)
-           (result :reg v0)
-           (bits :reg v1)
-           (a-x :reg f3)
-           (a-z :reg f4)
-           (a-radius :reg f5)
-           (b-x :reg f1)
-           (b-z :reg f0)
-           (b-radius :reg f2)
-           (equation-right :reg f6)
-           (half :reg f7)
-           (delta-x-squared :reg f7)
-           (delta-z-squared :reg f8)
-           (dominance :reg f6)
-           (work0 :reg f0)
-           (work1 :reg f1)
-           (work2 :reg f2)
-           (work3 :reg f3)
-           (work4 :reg f4)
-           (work5 :reg f5)
-           (work6 :reg f6)
-           (work7 :reg f7)
-           (work8 :reg f8)
-           (work9 :reg f9)
-           (work10 :reg f10)
-           (work11 :reg f11)
-           (work12 :reg f12))
-      (l.s a-x circle-a-reg)
-      (l.s a-z circle-a-reg 8)
-      (l.s a-radius circle-a-reg 12)
-      (l.s b-x circle-b-reg)
-      (l.s b-z circle-b-reg 8)
-      (l.s b-radius circle-b-reg 12)
-      (m! bits (the-as uint 0.5))
-      (mula.s a-radius a-radius)
-      (madda.s b-x b-x)
-      (madda.s b-z b-z)
-      (msuba.s b-radius b-radius)
-      (msuba.s a-x a-x)
-      (msub.s equation-right a-z a-z)
-      (m half bits)
-      (sub.s work1 b-x a-x)
-      (sub.s work2 b-z a-z)
-      (mul.s work0 equation-right half)
-      (m circle-a-reg work1)
-      (abs.s work6 work1)
-      (m bits work2)
-      (abs.s work8 work2)
-      (nop!)
-      (mul.s delta-x-squared work1 work1)
-      (nop!)
-      (sub.s dominance work6 work8)
-      (b.nz circle-a-reg circle-centers-differ :delay (mul.s delta-z-squared work2 work2))
-      (b.z bits circle-centers-coincident :delay (nop!))
-      (label circle-centers-differ)
-      (m bits dominance)
-      (nop!)
-      (b.lt bits 0 solve-with-z :delay (nop!))
-      ;; Substitute z = (equation-right / 2 - delta-z*x) / delta-x.
-      (m! bits (the-as uint 1.0))
-      (m work7 bits)
-      (add.s work6 work7 work7)
-      (div.s work1 work7 work1)
-      (mul.s work12 work6 work0)
-      (mul.s work10 work0 work2)
-      (mul.s work11 a-x work2)
-      (mul.s work9 work0 work0)
-      (mul.s work12 work12 a-x)
-      (mula.s a-x a-x)
-      (madda.s a-z a-z)
-      (msub.s work3 a-radius a-radius)
-      (mul.s work5 work12 work1)
-      (mul.s work12 work1 work1)
-      (mul.s work11 work11 work1)
-      (mul.s work10 work10 work12)
-      (mul.s work8 work8 work12)
-      (mul.s work9 work9 work12)
-      (sub.s work5 work3 work5)
-      (sub.s work10 work11 work10)
-      (add.s work3 work8 work7)
-      (sub.s work4 work10 a-z)
-      (add.s work5 work9 work5)
-      (mul.s work4 work4 work6)
-      (mul.s work5 work3 work5)
-      (add.s work6 work6 work6)
-      (mula.s work4 work4)
-      (msub.s work5 work6 work5)
-      (m bits work5)
-      (sqrt.s work5 work5)
-      (b.lt bits 0 circles-disjoint :delay (nop!))
-      (b.z bits circle-x-tangent :delay (nop!))
-      (m! bits (the-as uint 0.5))
-      (m work7 bits)
-      (m! work6 0.0)
-      (div.s work7 work7 work3)
-      (add.s work3 work5 work4)
-      (sub.s work4 work5 work4)
-      (sub.s work5 work6 work3)
-      (mul.s work3 work4 work7)
-      (mul.s work4 work5 work7)
-      (mul.s work5 work3 work2)
-      (mul.s work2 work4 work2)
-      (sub.s work5 work0 work5)
-      (sub.s work0 work0 work2)
-      (mul.s work2 work1 work5)
-      (mul.s work0 work1 work0)
-      (s.s work2 intersection-a-reg)
-      (s.s work3 intersection-a-reg 8)
-      (s.s work0 intersection-b-reg)
-      (b two-intersections :delay (s.s work4 intersection-b-reg 8))
-      (label circle-x-tangent)
-      (m! bits (the-as uint -2.0))
-      (m work5 bits)
-      (mul.s work3 work5 work3)
-      (div.s work3 work4 work3)
-      (mul.s work2 work3 work2)
-      (sub.s work0 work0 work2)
-      (mul.s work0 work0 work1)
-      (s.s work0 intersection-a-reg)
-      (s.s work3 intersection-a-reg 8)
-      (s.s work0 intersection-b-reg)
-      (b tangent-intersection :delay (s.s work3 intersection-b-reg 8))
-      (label solve-with-z)
-      ;; The same quadratic with x and z exchanged.
-      (m! bits (the-as uint 1.0))
-      (m work8 bits)
-      (add.s work6 work8 work8)
-      (div.s work2 work8 work2)
-      (mul.s work12 work6 work0)
-      (mul.s work10 work0 work1)
-      (mul.s work11 a-z work1)
-      (mul.s work9 work0 work0)
-      (mul.s work12 work12 a-z)
-      (mula.s a-z a-z)
-      (madda.s a-x a-x)
-      (msub.s work4 a-radius a-radius)
-      (mul.s work5 work12 work2)
-      (mul.s work12 work2 work2)
-      (mul.s work11 work11 work2)
-      (mul.s work10 work10 work12)
-      (mul.s work7 delta-x-squared work12)
-      (mul.s work9 work9 work12)
-      (sub.s work5 work4 work5)
-      (sub.s work10 work11 work10)
-      (add.s work4 work7 work8)
-      (sub.s work3 work10 a-x)
-      (add.s work5 work9 work5)
-      (mul.s work3 work3 work6)
-      (mul.s work5 work4 work5)
-      (add.s work6 work6 work6)
-      (mula.s work3 work3)
-      (msub.s work5 work6 work5)
-      (m bits work5)
-      (sqrt.s work5 work5)
-      (b.lt bits 0 circles-disjoint :delay (nop!))
-      (b.z bits circle-z-tangent :delay (nop!))
-      (m! bits (the-as uint 0.5))
-      (m work7 bits)
-      (m! work6 0.0)
-      (div.s work4 work7 work4)
-      (add.s work7 work5 work3)
-      (sub.s work3 work5 work3)
-      (sub.s work5 work6 work7)
-      (mul.s work3 work3 work4)
-      (mul.s work4 work5 work4)
-      (mul.s work5 work3 work1)
-      (mul.s work1 work4 work1)
-      (sub.s work5 work0 work5)
-      (sub.s work0 work0 work1)
-      (mul.s work1 work2 work5)
-      (mul.s work0 work2 work0)
-      (s.s work3 intersection-a-reg)
-      (s.s work1 intersection-a-reg 8)
-      (s.s work4 intersection-b-reg)
-      (b two-intersections :delay (s.s work0 intersection-b-reg 8))
-      (label circle-z-tangent)
-      (m! bits (the-as uint -2.0))
-      (m work5 bits)
-      (mul.s work4 work5 work4)
-      (div.s work3 work3 work4)
-      (mul.s work1 work3 work1)
-      (sub.s work0 work0 work1)
-      (mul.s work0 work0 work2)
-      (s.s work3 intersection-a-reg)
-      (s.s work0 intersection-a-reg 8)
-      (s.s work3 intersection-b-reg)
-      (b tangent-intersection :delay (s.s work0 intersection-b-reg 8))
-      (label circles-disjoint)
-      (b circle-intersection-done :delay (m! result 0))
-      (label tangent-intersection)
-      (b circle-intersection-done :delay (m! result 1))
-      (label two-intersections)
-      (b circle-intersection-done :delay (m! result 2))
-      (label circle-centers-coincident)
-      (b circle-intersection-done :delay (m! result -1))
-      (label circle-intersection-done)
-      (j ra :delay (m sp sp))
-      (nop!)
-      (nop!))))
 
-(#when PC_PORT
-  (defun circle-circle-xz-intersect ((circle-a sphere) (circle-b sphere) (intersection-a vector) (intersection-b vector))
-    "Intersect two circles in the xz plane. This build stops instead: nothing reachable calls it, so
-     it was never ported off the scalar FPU schedule. circle-test and vector-circle-tangent-new are
-     its only callers and both are diagnostic."
-    ;; The PC game does not call this diagnostic geometry function.
-    (format 0 "circle-circle-xz-intersect~%")
-    (crash!)
-    0))
+(defun circle-circle-xz-intersect ((circle-a sphere) (circle-b sphere) (intersection-a vector) (intersection-b vector))
+  "Intersect two circles in the xz plane. Unused and not ported."
+  (format 0 "circle-circle-xz-intersect~%")
+  (crash!)
+  0)
 
 (defun circle-test ()
   "Test the circle-circle-xz-intersect function."
-  ;; doesn't work because circle-circle-xz-intersect hasn't been ported.
-  ;; The two circles are a unit circle at the origin and a much larger one 100 units away in x,
-  ;; which overlap, so the expected result is 2 and two distinct points.
   (let ((circle-a (new 'stack 'sphere))
         (circle-b (new 'stack 'sphere))
         (intersection-a (new-stack-vector0))
@@ -1137,8 +833,7 @@
   "Write the two xz tangent points from an external point to a circle. circle's xz is the center and
    its w is the radius; y is ignored throughout. point must lie outside the circle: the arc cosine of
    radius over distance is not a number once the point is inside, the comparison below then fails,
-   and the function falls into the general case and writes nonsense. The two outputs receive x and z;
-   their w is never written, and their y is written only on the fallback path. Returns nothing."
+   and the function falls into the general case and writes nonsense."
   ;; The angle at the center between the direction to point and the direction to either contact point
   ;; is acos(radius / distance), so both contacts are the center-to-point direction turned by plus and
   ;; minus that angle and walked out one radius. The negated radius appears because the stored
@@ -1199,15 +894,7 @@
 ;; basis weights of several neighboring spans and generally changes both shape and speed, not just
 ;; the point where one polynomial begins. Applying the same affine transform to every knot preserves
 ;; the curve when u receives the same transform; this evaluator handles uniform scaling directly
-;; because first-knot is zero. Knot insertion can preserve shape only when its controls are adjusted
-;; too.
-;;
-;; A span could equivalently be evaluated with local-t =
-;;   (u - knot[span]) / (knot[span + 1] - knot[span])
-;; in [0, 1], using a cubic polynomial or Bézier segment built for that span. Its coefficients would
-;; still depend on the surrounding knot values, so this normalization alone does not make internal
-;; knot edits a pure timing change. curve-length merely estimates total distance; it does not
-;; reparameterize evaluation.
+;; because first-knot is zero.
 ;;
 ;; The fast span candidate is for zero-origin, unit-spaced knots:
 ;;   [0 0 0 0  1 2 3 ...  last last last last]
@@ -1215,483 +902,102 @@
 ;; zero entries before span 3. The candidate is checked against its actual knot bounds, so other
 ;; spacing falls back to binary search.
 
-(defun find-knot-span ((high-span int) (low-span int) (value float) (knots (inline-array vector)))
+(defun find-knot-span ((high-span int) (low-span int) (value float) (knots (pointer float)))
   "Find the knot span containing value, using an integer-derived fast candidate before binary search.
    The highest candidate span comes first and the lowest second, which is the reverse of the usual
    order; for a clamped cubic spline they are knot-count - 5 and 3. The returned span i means
    knots[i] <= value < knots[i + 1], except for value exactly at the top knot, which is reported as
-   the last span rather than as out of range. This is the same search curve-evaluate! performs
-   inline; nothing in the shipped game calls it. The knots argument is indexed as an array of floats
-   everywhere except the first comparison, which indexes it as an array of vectors and so reads a
-   knot sixteen bytes apart instead of four."
-  (local-vars (span int))
-  ;; if the knot after this, is exactly target value, return that.
-  (b! (= value (-> knots (+ high-span 1))) knot-span-done :delay (set! span high-span))
-  ;; Unit-spaced knots make int(value) + 3 the likely span; verify it before binary search.
-  (let ((value-int (the int value)))
-    (let* ((candidate-span (+ value-int 3))
-           ;;(t0-1 (+ (* a2-1 4) (the-as int knots)))
-           (candidate-knots (&-> knots 0 data candidate-span))
-           ;;(f1-2 (dynamic-array-field-access t0-1 PLACEHOLDER))
-           (candidate-low (-> candidate-knots 0))
-           (candidate-high (-> candidate-knots 1)))
-      (b! (> candidate-low value) binary-search)
-      (b! (>= value candidate-high) binary-search :delay (set! span candidate-span)))
-    ;; don't think this is hit normally.
-    (b! #t knot-span-done)
-    ;; loop setup
-    (label binary-search)
-    (let ((search-low low-span) ;; current
-          (search-high (+ high-span 1)) ;; next
-          )
-      ;; loop top
-      (label search-loop)
-      (let ((mid-span (/ (+ search-low search-high) 2)))
-        (let ((mid-knots (&-> knots 0 data mid-span)))
-          (b! (>= value (-> mid-knots 0)) check-upper)
-          (b! #t search-loop :delay (set! search-high mid-span))
-          (label check-upper)
-          (b! (< value (-> mid-knots 1)) span-found))
-        (b! #t search-loop :delay (set! search-low mid-span))
-        (label span-found)
-        (set! span mid-span)))
-    ;; Taken or not, both paths continue at knot-span-done; the branch only skips two no-ops.
-    (b! (= span value-int) knot-span-done))
-  (nop!)
-  (nop!)
-  (label knot-span-done)
-  span)
+   the last span rather than as out of range."
+  (let* ((top-knot (-> knots (+ high-span 1)))
+         (candidate-span (+ (the int value) 3))
+         (candidate-knots (&-> knots candidate-span)))
+    (cond
+      ;; The upper endpoint belongs to the final span despite its half-open interval.
+      ((= value top-knot)
+       high-span)
+      ;; Unit-spaced knots make int(value) + 3 the likely span. Accept it only when its
+      ;; actual knot interval contains value.
+      ((and (>= value (-> candidate-knots 0))
+            (< value (-> candidate-knots 1)))
+       candidate-span)
+      (else
+       ;; Maintain [search-low, search-high) around the result. This also advances across
+       ;; repeated knots, selecting the first nonempty span whose upper knot exceeds value.
+       (let ((search-low low-span)
+             (search-high (+ high-span 1)))
+         (while (> (- search-high search-low) 1)
+           (let ((mid-span (/ (+ search-low search-high) 2)))
+             (if (< value (-> knots mid-span))
+                 (set! search-high mid-span)
+                 (set! search-low mid-span))))
+         search-low)))))
 
-(#unless PC_PORT
-  (defun calculate-basis-functions-vector! ((dst vector) (span int) (value float) (knots (pointer float)))
-    "Compute the four nonzero cubic B-spline basis weights for value in span, writing them to dst's
-     x, y, z and w in that order. They apply to control points span - 3 through span and sum to one
-     when knots[span] <= value < knots[span + 1]. knots[span - 2] through knots[span + 3] are all
-     read, so span must be at least 3 and at most knot-count - 5. Any two of those six knots being
-     equal makes a denominator zero and divides by it."
-    ;; This is the cubic Cox-de Boor recurrence unrolled in the same scalar instruction order.
-    ;; left-j is value - knot[span+1-j], and right-j is knot[span+j] - value.
-    (rlet ((dst-reg :reg a0)
-           (span-reg :reg a1)
-           (value-bits :reg a2)
-           (knots-reg :reg a3)
-           (knot-offset)
-           (span-knot)
-           (one)
-           (u)
-           (left-1)
-           (left-2)
-           (left-3)
-           (right-1)
-           (right-2)
-           (right-3)
-           (denominator)
-           (degree-1-scale)
-           (degree-1-temp)
-           (degree-2-scale-0)
-           (degree-2-temp-0)
-           (degree-2-scale-1)
-           (degree-2-temp-1)
-           (degree-3-scale-0)
-           (degree-3-temp-0)
-           (degree-3-scale-1)
-           (degree-3-temp-1)
-           (degree-3-scale-2)
-           (degree-3-temp-2)
-           (saved)
-           (basis-0)
-           (basis-1)
-           (basis-2)
-           (basis-3))
-      (.sll knot-offset span-reg 2)
-      (m! one 1.0)
-      (m u value-bits)
-      (.addu span-knot knots-reg knot-offset)
-      ;; Degree zero begins with N[0] = 1. The two overwritten zero writes are retained
-      ;; before the reciprocal multiply can use it.
-      (m basis-0 one)
-      (m! left-1 0.0)
-      (m! left-1 0.0)
-      ;; Degree one.
-      (l.s left-1 span-knot)
-      (l.s right-1 span-knot 4)
-      (sub.s left-1 u left-1)
-      (sub.s right-1 right-1 u)
-      (add.s denominator right-1 left-1)
-      (div.s degree-1-scale one denominator)
-      ;; Load degree-two and degree-three distances early to match the FPU schedule.
-      (l.s left-2 span-knot -4)
-      (l.s right-2 span-knot 8)
-      (sub.s left-2 u left-2)
-      (add.s denominator right-1 left-2)
-      (l.s left-3 span-knot -8)
-      (l.s right-3 span-knot 12)
-      (div.s degree-2-scale-0 one denominator)
-      ;; Finish degree one.
-      (mul.s degree-1-temp basis-0 degree-1-scale)
-      (mul.s basis-0 right-1 degree-1-temp)
-      (mul.s basis-1 left-1 degree-1-temp)
-      ;; Degree two.
-      (sub.s right-2 right-2 u)
-      (mul.s degree-2-temp-0 basis-0 degree-2-scale-0)
-      (add.s denominator right-2 left-1)
-      (div.s degree-2-scale-1 one denominator)
-      (mul.s basis-0 right-1 degree-2-temp-0)
-      (mul.s saved left-2 degree-2-temp-0)
-      (mul.s degree-2-temp-1 basis-1 degree-2-scale-1)
-      (mul.s basis-1 right-2 degree-2-temp-1)
-      (add.s basis-1 basis-1 saved)
-      (mul.s basis-2 left-1 degree-2-temp-1)
-      ;; Degree three.
-      (sub.s left-3 u left-3)
-      (sub.s right-3 right-3 u)
-      (add.s denominator right-1 left-3)
-      (div.s degree-3-scale-0 one denominator)
-      (mul.s degree-3-temp-0 basis-0 degree-3-scale-0)
-      (mul.s basis-0 right-1 degree-3-temp-0)
-      (mul.s saved left-3 degree-3-temp-0)
-      (add.s denominator right-2 left-2)
-      (div.s degree-3-scale-1 one denominator)
-      (mul.s degree-3-temp-1 basis-1 degree-3-scale-1)
-      (mul.s basis-1 right-2 degree-3-temp-1)
-      (add.s basis-1 basis-1 saved)
-      (mul.s saved left-2 degree-3-temp-1)
-      (add.s denominator right-3 left-1)
-      (div.s degree-3-scale-2 one denominator)
-      (mul.s degree-3-temp-2 basis-2 degree-3-scale-2)
-      (mul.s basis-2 right-3 degree-3-temp-2)
-      (add.s basis-2 basis-2 saved)
-      (mul.s basis-3 left-1 degree-3-temp-2)
-      (s.s basis-0 dst-reg)
-      (s.s basis-1 dst-reg 4)
-      (s.s basis-2 dst-reg 8)
-      (s.s basis-3 dst-reg 12)
-      (m v0 dst-reg)
-      (j ra :delay (m sp sp))
-      (nop!)
-      (nop!)
-      (nop!))))
+(defun calculate-basis-functions-vector! ((dst vector) (span int) (value float) (knots (pointer float)))
+  "Compute the four nonzero cubic B-spline basis weights for value in span."
+  ;; Unrolled Cox-de Boor recurrence. left-N and right-N are the distances from value
+  ;; to the knots on either side of the selected span.
+  (let* ((span-knot (&-> knots span))
+         (left-1 (- value (-> span-knot 0)))
+         (left-2 (- value (-> span-knot -1)))
+         (left-3 (- value (-> span-knot -2)))
+         (right-1 (- (-> span-knot 1) value))
+         (right-2 (- (-> span-knot 2) value))
+         (right-3 (- (-> span-knot 3) value))
+         ;; Linear basis functions.
+         (linear-denominator (+ right-1 left-1))
+         (linear-0 (/ right-1 linear-denominator))
+         (linear-1 (/ left-1 linear-denominator))
+         ;; Quadratic basis functions.
+         (quadratic-0 (* right-1 (/ linear-0 (+ right-1 left-2))))
+         (quadratic-1 (+ (* left-2 (/ linear-0 (+ right-1 left-2)))
+                         (* right-2 (/ linear-1 (+ right-2 left-1)))))
+         (quadratic-2 (* left-1 (/ linear-1 (+ right-2 left-1))))
+         ;; Cubic basis functions.
+         (basis-0 (* right-1 (/ quadratic-0 (+ right-1 left-3))))
+         (basis-1 (+ (* left-3 (/ quadratic-0 (+ right-1 left-3)))
+                     (* right-2 (/ quadratic-1 (+ right-2 left-2)))))
+         (basis-2 (+ (* left-2 (/ quadratic-1 (+ right-2 left-2)))
+                     (* right-3 (/ quadratic-2 (+ right-3 left-1)))))
+         (basis-3 (* left-1 (/ quadratic-2 (+ right-3 left-1)))))
+    (set! (-> dst x) basis-0)
+    (set! (-> dst y) basis-1)
+    (set! (-> dst z) basis-2)
+    (set! (-> dst w) basis-3))
+  dst)
 
-(#when PC_PORT
-  (defun calculate-basis-functions-vector! ((dst vector) (span int) (value float) (knots (pointer float)))
-    "Compute the four nonzero cubic B-spline basis weights for value in span."
-    (local-vars (knot-offset int) (span-knot object))
-    ;; Keep the portable implementation separate from the EE instruction sequence.
-    ;; Same recurrence and same names as the EE definition above, with the divisions written where
-    ;; they are used rather than hoisted. left-N is value minus knots[span + 1 - N] and right-N is
-    ;; knots[span + N] minus value, so the function touches knots[span - 2] through knots[span + 3].
-    (set! knot-offset (* 4 span))
-    (let ((one-bits #x3f800000)
-          (u value))
-      (set! span-knot (&+ knots knot-offset))
-      (let* ((one (the-as float one-bits))
-             (basis-0-degree-0 one))
-        0.0
-        0.0
-        (let* ((left-1-knot (-> (the-as (pointer float) span-knot) 0))
-               (right-1-knot (-> (the-as (pointer float) span-knot) 1))
-               (left-1 (- u left-1-knot))
-               (right-1 (- right-1-knot u))
-               (degree-1-scale (/ one (+ right-1 left-1)))
-               (left-2-knot (-> (the-as (pointer float) span-knot) -1))
-               (right-2-knot (-> (the-as (pointer float) span-knot) 2))
-               (left-2 (- u left-2-knot))
-               (degree-2-denominator-0 (+ right-1 left-2))
-               (left-3-knot (-> (the-as (pointer float) span-knot) -2))
-               (right-3-knot (-> (the-as (pointer float) span-knot) 3))
-               (degree-2-scale-0 (/ one degree-2-denominator-0))
-               (degree-1-temp (* basis-0-degree-0 degree-1-scale))
-               (degree-1-basis-0 (* right-1 degree-1-temp))
-               (degree-1-basis-1 (* left-1 degree-1-temp))
-               (right-2 (- right-2-knot u))
-               (degree-2-temp-0 (* degree-1-basis-0 degree-2-scale-0))
-               (degree-2-scale-1 (/ one (+ right-2 left-1)))
-               (degree-2-basis-0 (* right-1 degree-2-temp-0))
-               (degree-2-saved (* left-2 degree-2-temp-0))
-               (degree-2-temp-1 (* degree-1-basis-1 degree-2-scale-1))
-               (degree-2-basis-1 (+ (* right-2 degree-2-temp-1) degree-2-saved))
-               (degree-2-basis-2 (* left-1 degree-2-temp-1))
-               (left-3 (- u left-3-knot))
-               (right-3 (- right-3-knot u))
-               (degree-3-temp-0 (* degree-2-basis-0 (/ one (+ right-1 left-3))))
-               (basis-0 (* right-1 degree-3-temp-0))
-               (degree-3-saved-0 (* left-3 degree-3-temp-0))
-               (degree-3-temp-1 (* degree-2-basis-1 (/ one (+ right-2 left-2))))
-               (basis-1 (+ (* right-2 degree-3-temp-1) degree-3-saved-0))
-               (degree-3-saved-1 (* left-2 degree-3-temp-1))
-               (degree-3-temp-2 (* degree-2-basis-2 (the-as float (/ one (+ right-3 left-1)))))
-               (basis-2 (+ (* right-3 degree-3-temp-2) degree-3-saved-1))
-               (basis-3 (* left-1 degree-3-temp-2)))
-          (set! (-> dst x) basis-0)
-          (set! (-> dst y) basis-1)
-          (set! (-> dst z) basis-2)
-          (set! (-> dst w) basis-3))))
-    dst))
-
-(#unless PC_PORT
-  (defun curve-evaluate! ((dst vector)
-          (input float)
-          (control-points (inline-array vector))
-          (control-point-count int)
-          (knots (pointer float))
-          (knot-count int))
-    "Evaluate a clamped cubic nonuniform B-spline at normalized input.
-     Requires at least four controls, knot-count = control-point-count + 4, nondecreasing knots,
-     and a zero first knot for normalized input. The selected span supplies four controls and their
-     Cox-de Boor weights; input is parameter progress, not guaranteed distance progress.
-     input is clamped to the knot domain, so values outside zero to one give the endpoints rather
-     than extrapolating. dst.w is 1.0, since only xyz accumulate the weighted controls, and dst may
-     not overlap the control points. control-point-count is accepted but never used."
-    ;; The span lookup first tries the integer part
-    ;; of u as a likely uniform-knot span, then falls back to binary search.
-    (rlet ((dst-reg :reg a0)
-           (input-bits :reg a1)
-           (controls-reg :reg a2)
-           (control-count-reg :reg a3)
-           (knots-reg :reg t0)
-           (knot-count-reg :reg t1)
-           (basis)
-           (span :reg s3)
-           (saved-controls :reg s5)
-           (saved-dst :reg gp)
-           (first-knot)
-           (last-knot)
-           (scaled-input)
-           (u)
-           (u-bits)
-           (last-index)
-           (last-offset)
-           (last-span)
-           (end-knot-offset)
-           (end-knot-address)
-           (end-knot)
-           (rounded-u-float)
-           (rounded-u)
-           (candidate-span)
-           (candidate-offset)
-           (candidate-address)
-           (candidate-low)
-           (candidate-high)
-           (low-span)
-           (high-span)
-           (mid-span)
-           (mid-offset)
-           (mid-address)
-           (mid-low)
-           (mid-high)
-           (basis-fn)
-           (first-control)
-           (control-offset)
-           (control-address)
-           (result :reg v0)
-           (curve-point-bits :reg v1)
-           (weights :class vf)
-           (control-0 :class vf)
-           (control-1 :class vf)
-           (control-2 :class vf)
-           (control-3 :class vf)
-           (curve-point :class vf)
-           (vf0 :class vf)
-           (acc :class vf))
-      (init-vf0-vector)
-      (m saved-dst dst-reg)
-      (m saved-controls controls-reg)
-      (m! basis (new 'static 'vector))
-      ;; The curve representation expects first-knot = 0, making this a normalized-domain map.
-      (l.s first-knot knots-reg)
-      (set! last-index (- knot-count-reg 1))
-      (.dsll last-offset last-index 2)
-      (.daddu end-knot-address knots-reg last-offset)
-      (l.s last-knot end-knot-address)
-      (m scaled-input input-bits)
-      (mul.s scaled-input scaled-input last-knot)
-      (m u-bits scaled-input)
-      (m scaled-input u-bits)
-      (min.s scaled-input scaled-input last-knot)
-      (max.s u scaled-input first-knot)
-      (m u-bits u)
-      (set! last-span (- knot-count-reg 5))
-      (set! low-span 3)
-      ;; The last endpoint belongs to the final span even though its upper bound is closed.
-      (set! end-knot-offset (* (+ last-span 1) 4))
-      (.daddu end-knot-address knots-reg end-knot-offset)
-      (l.s end-knot end-knot-address)
-      (c.eq.s u end-knot)
-      (b.fpt curve-basis-ready :delay (m span last-span))
-      ;; For [0 0 0 0 1 2 3 ...], u in [k, k+1) belongs to span int(u) + 3.
-      ;; Validate that candidate so fractional or nonuniform knots fall back to binary search.
-      (cvt.w.s rounded-u-float u)
-      (m rounded-u rounded-u-float)
-      (set! candidate-span (+ rounded-u 3))
-      (.dsll candidate-offset candidate-span 2)
-      (.daddu candidate-address knots-reg candidate-offset)
-      (l.s candidate-low candidate-address)
-      (l.s candidate-high candidate-address 4)
-      (c.le.s candidate-low u)
-      (b.fpf curve-span-binary-search :delay (nop!))
-      (c.lt.s u candidate-high)
-      (b.fpf curve-span-binary-search :delay (m span candidate-span))
-      (b curve-basis-ready :delay (nop!))
-      (label curve-span-binary-search)
-      (m low-span low-span)
-      (set! high-span (+ last-span 1))
-      (label curve-span-search-loop)
-      (set! mid-span (sar (+ low-span high-span) 1))
-      (.dsll mid-offset mid-span 2)
-      (.daddu mid-address knots-reg mid-offset)
-      (l.s mid-low mid-address)
-      (c.lt.s u mid-low)
-      (b.fpf curve-span-check-upper :delay (nop!))
-      (b curve-span-search-loop :delay (m high-span mid-span))
-      (label curve-span-check-upper)
-      (l.s mid-high mid-address 4)
-      (c.lt.s u mid-high)
-      (b.fpt curve-span-found :delay (nop!))
-      (b curve-span-search-loop :delay (m low-span mid-span))
-      (label curve-span-found)
-      (m span mid-span)
-      (b.eq span rounded-u curve-basis-ready :delay (nop!))
-      (nop!)
-      (nop!)
-      (label curve-basis-ready)
-      (m! basis-fn calculate-basis-functions-vector!)
-      (m a0 basis)
-      (m a1 span)
-      (m a2 u-bits)
-      (m a3 knots-reg)
-      (jalr ra basis-fn :delay (.sll v0 ra 0))
-      ;; Four basis weights select controls span-3 through span. The no-ops retain the
-      ;; VU load and multiply-accumulate order.
-      (.addiu first-control span -3)
-      (.lvf weights basis)
-      (.sll control-offset first-control 4)
-      (.add.x.vf.w curve-point vf0 vf0)
-      (.daddu control-address saved-controls control-offset)
-      (nop!)
-      (nop!)
-      (.lvf control-0 control-address)
-      (nop!)
-      (.lvf control-1 control-address 16)
-      (nop!)
-      (.lvf control-2 control-address 32)
-      (nop!)
-      (.lvf control-3 control-address 48)
-      (.mul.x.vf acc control-0 weights)
-      (nop!)
-      (.add.mul.y.vf.xyz acc control-1 weights acc)
-      (nop!)
-      (.add.mul.z.vf.xyz acc control-2 weights acc)
-      (nop!)
-      (.add.mul.w.vf.xyz curve-point control-3 weights acc)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (.svf saved-dst curve-point)
-      (m curve-point-bits curve-point)
-      (m result saved-dst)
-      (j ra :delay (m sp sp))
-      (nop!)
-      (nop!))))
-
-(#when PC_PORT
-  (defun curve-evaluate! ((dst vector)
-          (input float)
-          (control-points (inline-array vector))
-          (control-point-count int)
-          (knots (pointer float))
-          (knot-count int))
-    "Evaluate a clamped cubic nonuniform B-spline at normalized input. dst.w is 1.0, since only xyz
-     accumulate the weighted controls. control-point-count is accepted but never used; the span
-     bounds come from knot-count instead."
-    (local-vars (first-control int) (control-offset int) (curve-point-bits float) (span int))
-    ;; Keep the portable implementation independent from the EE implementation until it can be
-    ;; simplified and retested.
-    (rlet ((acc :class vf)
-           (vf0 :class vf)
-           (curve-point :class vf)
-           (control-0 :class vf)
-           (control-1 :class vf)
-           (control-2 :class vf)
-           (control-3 :class vf)
-           (weights :class vf))
-      (init-vf0-vector)
-      (let ((basis (new 'static 'vector)))
-        0
-        ;; lookup knot
-        (let* ((first-knot (-> knots 0))
-               (last-knot (-> (&-> knots (+ knot-count -1)) 0))
-               (u (fmax (fmin (* input last-knot) last-knot) first-knot)))
-          (let* ((last-span (+ knot-count -5))
-                 (first-span 3)
-                 (u-copy u)
-                 (knot-base knots)
-                 (u-value u-copy))
-            (b! (= u-value (-> (&-> knot-base (+ last-span 1)) 0)) basis-ready :delay (set! span last-span))
-            (let ((u-int (the int u-value)))
-              (let* ((candidate-span (+ u-int 3))
-                     (candidate-knots (&-> knot-base candidate-span))
-                     (candidate-low (-> candidate-knots 0))
-                     (candidate-high (-> candidate-knots 1)))
-                (b! (> candidate-low u-value) binary-search)
-                (b! (>= u-value candidate-high) binary-search :delay (set! span candidate-span)))
-              (b! #t basis-ready)
-              (label binary-search)
-              (let ((search-low first-span)
-                    (search-high (+ last-span 1)))
-                (label search-loop)
-                (let ((mid-span (/ (+ search-low search-high) 2)))
-                  (let ((mid-knots (&-> knot-base mid-span)))
-                    (b! (>= u-value (-> mid-knots 0)) check-upper)
-                    (b! #t search-loop :delay (set! search-high mid-span))
-                    (label check-upper)
-                    (b! (< u-value (-> mid-knots 1)) span-found))
-                  (b! #t search-loop :delay (set! search-low mid-span))
-                  (label span-found)
-                  (set! span mid-span)))
-              (b! (= span u-int) basis-ready)))
-          (nop!)
-          (nop!)
-          (label basis-ready)
-          ;; calculate coefficients for this knot's polynomial, store in basis
-          (calculate-basis-functions-vector! basis span u (the-as (pointer float) knots)))
-        (set! first-control (- span 3))
-        (.lvf weights basis))
-      ;; evaluate polynomial!
-      (set! control-offset (* first-control 16))
-      (.add.x.vf.w curve-point vf0 vf0)
-      (let ((control-address (+ control-offset (the-as int control-points))))
-        (nop!)
-        (nop!)
-        (.lvf control-0 (&-> (the-as (pointer int128) control-address)))
-        (nop!)
-        (.lvf control-1 (+ control-address 16))
-        (nop!)
-        (.lvf control-2 (+ control-address 32))
-        (nop!)
-        (.lvf control-3 (+ control-address 48)))
-      (.mul.x.vf acc control-0 weights)
-      (nop!)
-      (.add.mul.y.vf.xyz acc control-1 weights acc)
-      (nop!)
-      (.add.mul.z.vf.xyz acc control-2 weights acc)
-      (nop!)
-      (.add.mul.w.vf.xyz curve-point control-3 weights acc)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (nop!)
-      (.svf (&-> dst quad) curve-point)
-      (.mov curve-point-bits curve-point)
-      dst)))
+(defun curve-evaluate! ((dst vector)
+        (input float)
+        (control-points (inline-array vector))
+        (control-point-count int)
+        (knots (pointer float))
+        (knot-count int))
+  "Evaluate a clamped cubic nonuniform B-spline at normalized input."
+  (let* ((first-knot (-> knots 0))
+         (last-knot (-> knots (+ knot-count -1)))
+         (u (fmax (fmin (* input last-knot) last-knot) first-knot))
+         (last-span (+ knot-count -5))
+         (span (find-knot-span last-span 3 u knots))
+         (basis (new 'stack-no-clear 'vector))
+         (first-control (- span 3))
+         (control-0 (-> control-points first-control))
+         (control-1 (-> control-points (+ first-control 1)))
+         (control-2 (-> control-points (+ first-control 2)))
+         (control-3 (-> control-points (+ first-control 3))))
+    (calculate-basis-functions-vector! basis span u knots)
+    (set! (-> dst x) (+ (* (-> control-0 x) (-> basis x))
+                        (* (-> control-1 x) (-> basis y))
+                        (* (-> control-2 x) (-> basis z))
+                        (* (-> control-3 x) (-> basis w))))
+    (set! (-> dst y) (+ (* (-> control-0 y) (-> basis x))
+                        (* (-> control-1 y) (-> basis y))
+                        (* (-> control-2 y) (-> basis z))
+                        (* (-> control-3 y) (-> basis w))))
+    (set! (-> dst z) (+ (* (-> control-0 z) (-> basis x))
+                        (* (-> control-1 z) (-> basis y))
+                        (* (-> control-2 z) (-> basis z))
+                        (* (-> control-3 z) (-> basis w))))
+    (set! (-> dst w) 1.0))
+  dst)
 
 (defun curve-get-pos! ((dst vector) (input float) (curve-data curve))
   "Evaluate curve-data at normalized input and write its position to dst. dst.w becomes 1.0. The
@@ -1792,9 +1098,6 @@
               (set! center (fmin 1.0 (fmax 0.0 next-center)))))
           (+ (if (< low-distance-squared high-distance-squared) low-input high-input) (/ padding curve-total-length)))))))
 
-(defun vector-plane-distance ((point vector) (plane-data plane) (normal vector))
-  "Return the signed distance from point to plane-data along normal. Despite the plane type, only
-   plane-data's xyz is read and it is read as a point lying on the plane; the d in w is ignored and
-   the plane's orientation comes entirely from the separate normal argument. normal must be unit, or
-   the result is scaled by its length. Positive means point is on the side the normal points toward."
-  (vector-dot (vector-! (new 'stack-no-clear 'vector) point (the-as vector (&-> plane-data x))) normal))
+(defun vector-plane-distance ((point vector) (plane-pt vector) (normal vector))
+  "Return the signed distance from point to plane-data along normal."
+  (vector-dot (vector-! (new 'stack-no-clear 'vector) point plane-pt) normal))
