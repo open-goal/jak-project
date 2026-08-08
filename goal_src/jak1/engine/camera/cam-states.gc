@@ -20,13 +20,14 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
         (vector-copy! (-> self saved-pt) (-> self trans))
-        (set! (-> self blend-from-type) (the-as uint 1))
-        (set! (-> self blend-to-type) (the-as uint 0))
+        (set! (-> self blend-from-type) (camera-blend-to-type slave-controlled))
+        (set! (-> self blend-to-type) (camera-blend-to-type direct))
         0))
   :code
     (behavior ()
@@ -36,7 +37,7 @@
             (vector-copy! (-> self trans) (-> self saved-pt))
             (cam-curve-pos (-> self trans) curve-forward (the-as curve #f) #f)
             (when (!= (-> curve-forward w) 0.0)
-              (vector-normalize! curve-forward (the-as float 1.0))
+              (vector-normalize! curve-forward 1.0)
               (forward-down->inv-matrix (-> self tracking inv-mat) curve-forward (-> *camera* local-down)))))
         (suspend))))
 
@@ -45,21 +46,23 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (cond
         ((-> self enter-has-run))
         ((-> self cam-entity)
-         (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) (-> self trans) 'trans)
-         (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) (-> self tracking inv-mat))
+         (cam-slave-get-vector-with-offset (-> self cam-entity) (-> self trans) 'trans)
+         (cam-slave-get-rot (-> self cam-entity) (-> self tracking inv-mat))
          (set! (-> self fov) (cam-slave-get-fov (-> self cam-entity)))
          (cam-curve-setup (-> self trans))
          ((-> cam-fixed enter)))
-        (else (format #t "ERROR <GMJ>: cam-fixed-read-entity enter without entity~%")))
+        (else
+         (format #t "ERROR <GMJ>: cam-fixed-read-entity enter without entity~%")))
       (let ((point-of-interest (new 'stack-no-clear 'vector)))
-        (if (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) point-of-interest 'interesting)
-          (send-event *camera* 'point-of-interest point-of-interest)))
+        (if (cam-slave-get-vector-with-offset (-> self cam-entity) point-of-interest 'interesting)
+            (send-event *camera* 'point-of-interest point-of-interest)))
       (go cam-fixed))
   :code
     (behavior ()
@@ -75,16 +78,17 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (set! (-> self blend-from-type) (the-as uint 1))
-        (set! (-> self blend-to-type) (the-as uint 1))))
+        (set! (-> self blend-from-type) (camera-blend-to-type slave-controlled))
+        (set! (-> self blend-to-type) (camera-blend-to-type slave-controlled))))
   :trans
     (behavior ()
       (when (not (handle->process (-> *camera* pov-handle)))
-        (set! (-> self blend-from-type) (the-as uint 0))
+        (set! (-> self blend-from-type) (camera-blend-to-type direct))
         (cam-slave-go cam-fixed)))
   :code
     (behavior ()
@@ -92,9 +96,8 @@
         (when (not (paused?))
           (vector<-cspace! (-> self trans)
                            (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
-          (matrix-copy!
-            (-> self tracking inv-mat)
-            (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
+          (matrix-copy! (-> self tracking inv-mat)
+                        (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
           (vector-reset! (-> self tracking inv-mat vector 3)))
         (suspend))))
 
@@ -103,16 +106,17 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (set! (-> self blend-from-type) (the-as uint 1))
-        (set! (-> self blend-to-type) (the-as uint 1))))
+        (set! (-> self blend-from-type) (camera-blend-to-type slave-controlled))
+        (set! (-> self blend-to-type) (camera-blend-to-type slave-controlled))))
   :trans
     (behavior ()
       (when (not (handle->process (-> *camera* pov-handle)))
-        (set! (-> self blend-from-type) (the-as uint 0))
+        (set! (-> self blend-from-type) (camera-blend-to-type direct))
         (cam-slave-go cam-fixed)))
   :code
     (behavior ()
@@ -122,7 +126,7 @@
         (vector<-cspace! previous-position
                          (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
         (let ((initial-transform (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform)))
-          (vector-normalize-copy! previous-forward (-> initial-transform vector 2) (the-as float 1.0)))
+          (vector-normalize-copy! previous-forward (-> initial-transform vector 2) 1.0))
         (loop
           (when (not (paused?))
             (let ((bone-transform (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
@@ -131,19 +135,20 @@
               (let ((position (new 'stack-no-clear 'vector)))
                 (vector<-cspace! position
                                  (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
-                (vector-normalize-copy! forward (-> bone-transform vector 2) (the-as float 1.0))
+                (vector-normalize-copy! forward (-> bone-transform vector 2) 1.0)
                 (set! first-valid-frame?
                       (cond
                         ((and (< (vector-vector-distance position previous-position) 40960.0)
-                              (< (cos (the-as float 3640.889)) (vector-dot previous-forward forward)))
+                              (< (cos (degrees 20)) (vector-dot previous-forward forward)))
                          (vector-copy! (-> self trans) position)
-                         (vector-negate! (the-as vector (-> self tracking)) (-> bone-transform vector 0))
+                         (vector-negate! (-> self tracking inv-mat vector 0) (-> bone-transform vector 0))
                          (set! (-> self tracking inv-mat vector 1 quad) (-> bone-transform vector 1 quad))
                          (vector-negate! (-> self tracking inv-mat vector 2) (-> bone-transform vector 2))
-                         (set! (-> self fov) (* 2.0 (atan (/ 12.700255 (* 20.3 (-> bone-scale x))) (the-as float 1.0))))
-                         (vector-float*! (the-as vector (-> self tracking)) (the-as vector (-> self tracking)) (/ 1.0 (-> bone-scale x)))
+                         (set! (-> self fov) (* 2.0 (atan (/ 12.700255 (* 20.3 (-> bone-scale x))) 1.0)))
+                         (vector-float*! (-> self tracking inv-mat vector 0) (-> self tracking inv-mat vector 0) (/ 1.0 (-> bone-scale x)))
                          (vector-reset! (-> self tracking inv-mat vector 3))
-                         (if first-valid-frame? (set! first-valid-frame? #f))
+                         (if first-valid-frame?
+                             (set! first-valid-frame? #f))
                          first-valid-frame?)
                         (else #t)))
                 (vector-copy! previous-position position))
@@ -155,29 +160,30 @@
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (set! (-> self blend-from-type) (the-as uint 2))
-        (set! (-> self blend-to-type) (the-as uint 2)))
+        (set! (-> self blend-from-type) (camera-blend-to-type combiner-tracked))
+        (set! (-> self blend-to-type) (camera-blend-to-type combiner-tracked)))
       (let ((point-of-interest (new 'stack-no-clear 'vector)))
-        (if (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) point-of-interest 'interesting)
-          (send-event *camera* 'point-of-interest point-of-interest))))
+        (if (cam-slave-get-vector-with-offset (-> self cam-entity) point-of-interest 'interesting)
+            (send-event *camera* 'point-of-interest point-of-interest))))
   :trans
     (behavior ()
-      (if (or (not (handle->process (-> *camera* pov-handle))) (not (logtest? (-> *camera* master-options) 2)))
-        (cam-slave-go cam-free-floating)))
+      (if (or (not (handle->process (-> *camera* pov-handle)))
+                (not (logtest? (-> *camera* master-options) (cam-master-options have-target))))
+          (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
       (loop
         (if (not (paused?))
-          (vector<-cspace! (-> self trans)
-                           (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone))))
+            (vector<-cspace! (-> self trans)
+                             (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone))))
         (suspend))))
 
 (defbehavior cam-standoff-calc-trans camera-slave ()
   "Place the camera at its standoff offset from the current
    target position and return the resulting translation."
   (if (-> self tracking no-follow)
-    (vector+! (-> self trans) (-> *camera* tpos-curr-adj) (-> self pivot-pt))
-    (vector+! (-> self trans) (-> self tracking follow-pt) (-> self pivot-pt))))
+      (vector+! (-> self trans) (-> *camera* tpos-curr-adj) (-> self pivot-pt))
+      (vector+! (-> self trans) (-> self tracking follow-pt) (-> self pivot-pt))))
 
 ;; Keep a fixed authored offset from the follow point.  The no-follow option anchors the offset to
 ;; the raw target position, while #x8000 also keeps the authored orientation fixed.
@@ -185,26 +191,32 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('set-standoff-dist) (vector-normalize! (-> self pivot-pt) (the-as float (-> block param 0))) (cam-standoff-calc-trans))
+        (('set-standoff-dist)
+         (vector-normalize! (-> self pivot-pt) (the-as float (-> block param 0)))
+         (cam-standoff-calc-trans))
         (('set-standoff-height)
          (vector-flatten! (-> self pivot-pt) (-> self pivot-pt) (-> *camera* local-down))
          (vector--float*! (-> self pivot-pt) (-> self pivot-pt) (-> *camera* local-down) (the-as float (-> block param 0)))
          (cam-standoff-calc-trans))
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
         (vector-! (-> self pivot-pt) (-> self trans) (-> *camera* tpos-curr-adj))
         (cond
-          ((logtest? (-> self options) #x8000)
-           (set! (-> self blend-from-type) (the-as uint 0))
-           (set! (-> self blend-to-type) (the-as uint 0))
+          ((logtest? (-> self options) (cam-slave-options NO_ROTATE))
+           (set! (-> self blend-from-type) (camera-blend-to-type direct))
+           (set! (-> self blend-to-type) (camera-blend-to-type direct))
            0)
-          (else (set! (-> self blend-from-type) (the-as uint 2)) (set! (-> self blend-to-type) (the-as uint 2)))))
+          (else
+           (set! (-> self blend-from-type) (camera-blend-to-type combiner-tracked))
+           (set! (-> self blend-to-type) (camera-blend-to-type combiner-tracked)))))
       (cam-calc-follow! (-> self tracking) (-> self trans) #f))
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
       (loop
@@ -222,21 +234,22 @@
         ((-> self cam-entity)
          (let ((authored-position (new-stack-vector0))
                (authored-align (new-stack-vector0)))
-           (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) authored-position 'trans)
-           (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) authored-align 'align)
+           (cam-slave-get-vector-with-offset (-> self cam-entity) authored-position 'trans)
+           (cam-slave-get-vector-with-offset (-> self cam-entity) authored-align 'align)
            (vector-! (-> self pivot-pt) authored-position authored-align))
          (vector+! (-> self trans) (-> *camera* tpos-curr-adj) (-> self pivot-pt))
          (set! (-> self fov) (cam-slave-get-fov (-> self cam-entity)))
          (logior! (-> self options) (cam-slave-get-flags (-> self cam-entity) 'flags))
-         (if (logtest? (-> self options) #x8000)
-           (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) (-> self tracking inv-mat))
-           (set! (-> self tracking tilt-adjust target)
-                 (cam-slave-get-float (-> self cam-entity) 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust))))
+         (if (logtest? (-> self options) (cam-slave-options NO_ROTATE))
+             (cam-slave-get-rot (-> self cam-entity) (-> self tracking inv-mat))
+             (set! (-> self tracking tilt-adjust target)
+                   (cam-slave-get-float (-> self cam-entity) 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust))))
          ((-> cam-standoff enter)))
-        (else (format #t "ERROR <GMJ>: cam-standoff-read-entity enter without entity~%")))
+        (else
+         (format #t "ERROR <GMJ>: cam-standoff-read-entity enter without entity~%")))
       (let ((point-of-interest (new 'stack-no-clear 'vector)))
-        (if (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) point-of-interest 'interesting)
-          (send-event *camera* 'point-of-interest point-of-interest)))
+        (if (cam-slave-get-vector-with-offset (-> self cam-entity) point-of-interest 'interesting)
+            (send-event *camera* 'point-of-interest point-of-interest)))
       (go cam-standoff))
   :code
     (behavior ()
@@ -260,25 +273,27 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
         (let ((camera-offset (vector-float*! (new-stack-vector0) (-> *camera* local-down) (+ 1024.0 (-> *camera* target-height)))))
           (vector-! (-> self trans) (-> *camera* tpos-curr) camera-offset))
-        (set! (-> self blend-from-type) (the-as uint 0))
-        (set! (-> self blend-to-type) (the-as uint 0))
+        (set! (-> self blend-from-type) (camera-blend-to-type direct))
+        (set! (-> self blend-to-type) (camera-blend-to-type direct))
         0)
       (set! (-> self fov) 11650.845))
   :exit
     (behavior ()
       (if (and *target*
-               (logtest? (-> *camera* master-options) 2)
-               (logtest? (-> *target* state-flags) (state-flags first-person-mode)))
-        (send-event *target* 'end-mode)))
+                 (logtest? (-> *camera* master-options) (cam-master-options have-target))
+                 (logtest? (-> *target* state-flags) (state-flags first-person-mode)))
+          (send-event *target* 'end-mode)))
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (go cam-free-floating)))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (go cam-free-floating)))
   :code
     (behavior ()
       (let ((last-input-time (current-time)))
@@ -314,21 +329,22 @@
                 ((< (-> rotation-step y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
                  (set! (-> rotation-step y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))))) ;; og:preserve-this changed for high fps
               (cond
-                ((and (= (-> rotation-step x) 0.0) (= (-> rotation-step y) 0.0)) (set! last-input-time (current-time)))
+                ((and (= (-> rotation-step x) 0.0) (= (-> rotation-step y) 0.0))
+                 (set! last-input-time (current-time)))
                 (else
                  (let ((input-ramp (min 10 (max 1 (- (current-time) last-input-time)))))
                    (vector-float*! rotation-step rotation-step (* 0.1 (the float input-ramp))))))
               (matrix-axis-angle! rotation (-> *camera* local-down) (-> rotation-step y))
               (matrix*! (-> self tracking inv-mat) (-> self tracking inv-mat) rotation)
-              (when (not (logtest? (-> self options) 8))
+              (when (not (logtest? (-> self options) (cam-slave-options ALLOW_Z_ROT)))
                 (if (< (vector-dot (-> self tracking inv-mat vector 1) (-> *camera* local-down)) 0.0)
-                  (forward-down->inv-matrix (-> self tracking inv-mat) (-> self tracking inv-mat vector 2) (-> *camera* local-down))
-                  (forward-down->inv-matrix (-> self tracking inv-mat)
-                                            (-> self tracking inv-mat vector 2)
-                                            (vector-negate! (new-stack-vector0) (-> *camera* local-down)))))
-              (matrix-axis-angle! rotation (the-as vector (-> self tracking)) (- (-> rotation-step x)))
+                    (forward-down->inv-matrix (-> self tracking inv-mat) (-> self tracking inv-mat vector 2) (-> *camera* local-down))
+                    (forward-down->inv-matrix (-> self tracking inv-mat)
+                                              (-> self tracking inv-mat vector 2)
+                                              (vector-negate! (new-stack-vector0) (-> *camera* local-down)))))
+              (matrix-axis-angle! rotation (-> self tracking inv-mat vector 0) (- (-> rotation-step x)))
               (matrix*! (-> self tracking inv-mat) (-> self tracking inv-mat) rotation))
-            (when (not (logtest? (-> self options) 8))
+            (when (not (logtest? (-> self options) (cam-slave-options ALLOW_Z_ROT)))
               (let ((vertical-forward-component (vector-dot (-> *camera* local-down) (-> self tracking inv-mat vector 2))))
                 (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
                 (when (< (sin (-> *CAM_EYE-bank* max-degrees)) (fabs vertical-forward-component))
@@ -338,17 +354,17 @@
                                    vertical-forward-component)
                   (vector-normalize! (-> self tracking inv-mat vector 2) (cos (-> *CAM_EYE-bank* max-degrees)))
                   (if (< vertical-forward-component 0.0)
-                    (vector--float*! (-> self tracking inv-mat vector 2)
-                                     (-> self tracking inv-mat vector 2)
-                                     (-> *camera* local-down)
-                                     (sin (-> *CAM_EYE-bank* max-degrees)))
-                    (vector+float*! (-> self tracking inv-mat vector 2)
-                                    (-> self tracking inv-mat vector 2)
-                                    (-> *camera* local-down)
-                                    (sin (-> *CAM_EYE-bank* max-degrees))))
+                      (vector--float*! (-> self tracking inv-mat vector 2)
+                                       (-> self tracking inv-mat vector 2)
+                                       (-> *camera* local-down)
+                                       (sin (-> *CAM_EYE-bank* max-degrees)))
+                      (vector+float*! (-> self tracking inv-mat vector 2)
+                                      (-> self tracking inv-mat vector 2)
+                                      (-> *camera* local-down)
+                                      (sin (-> *CAM_EYE-bank* max-degrees))))
                   (vector-cross! (-> self tracking inv-mat vector 1)
                                  (-> self tracking inv-mat vector 2)
-                                 (the-as vector (-> self tracking)))
+                                 (-> self tracking inv-mat vector 0))
                   (set! (-> self tracking inv-mat vector 1 w) 0.0)))))
           (let ((camera-offset (vector-float*! (new-stack-vector0) (-> *camera* local-down) (+ 1024.0 (-> *camera* target-height)))))
             (vector-! (-> self trans) (-> *camera* tpos-curr) camera-offset))
@@ -358,6 +374,7 @@
   ((rot-speed    float)
    (tilt-degrees float)))
 
+
 (define *CAM_BILLY-bank* (new 'static 'cam-billy-bank :rot-speed 364.0889 :tilt-degrees -1820.4445))
 
 (defstate cam-billy (camera-slave)
@@ -365,23 +382,25 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
         (let ((camera-offset (vector-float*! (new-stack-vector0) (-> *camera* local-down) (-> *camera* target-height))))
           (vector-! (-> self trans) (-> *camera* tpos-curr) camera-offset))
-        (set! (-> self blend-from-type) (the-as uint 0))
-        (set! (-> self blend-to-type) (the-as uint 0))
+        (set! (-> self blend-from-type) (camera-blend-to-type direct))
+        (set! (-> self blend-to-type) (camera-blend-to-type direct))
         0)
       (set! (-> self fov) 9830.4)
-      (matrix-rotate-y! (-> self tracking inv-mat) (the-as float -32768.0)))
+      (matrix-rotate-y! (-> self tracking inv-mat) -32768.0))
   :exit
     (behavior ()
       '())
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (go cam-free-floating)))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (go cam-free-floating)))
   :code
     (behavior ()
       (loop
@@ -402,18 +421,19 @@
                 (set! (-> yaw-step y)
                       (- (-> yaw-step y) (* (- horizontal-input) (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed))))))) ;; og:preserve-this changed for high fps
             (cond
-              ((< (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)) (-> yaw-step y)) ;; og:preserve-this changed for high fps
-               (set! (-> yaw-step y) (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)))) ;; og:preserve-this changed for high fps
-              ((< (-> yaw-step y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)))) ;; og:preserve-this changed for high fps
-               (set! (-> yaw-step y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)))))) ;; og:preserve-this changed for high fps
-            (set! (-> limit-forward x) (sin (the-as float 37319.11)))
-            (set! (-> limit-forward z) (cos (the-as float 37319.11)))
+              ((< (-> *CAM_BILLY-bank* rot-speed) (-> yaw-step y))
+               (set! (-> yaw-step y) (-> *CAM_BILLY-bank* rot-speed)))
+              ((< (-> yaw-step y) (- (-> *CAM_BILLY-bank* rot-speed)))
+               (set! (-> yaw-step y) (- (-> *CAM_BILLY-bank* rot-speed)))))
+            (set! (-> limit-forward x) (sin 37319.11))
+            (set! (-> limit-forward z) (cos 37319.11))
             (set! (-> limit-side x) (-> limit-forward z))
             (set! (-> limit-side z) (- (-> limit-forward x)))
             (vector-flatten! flat-forward (-> self tracking inv-mat vector 2) (-> *camera* local-down))
-            (vector-normalize! flat-forward (the-as float 1.0))
+            (vector-normalize! flat-forward 1.0)
             (let ((yaw-from-limit (acos (vector-dot (-> self tracking inv-mat vector 2) limit-forward))))
-              (if (< (vector-dot (-> self tracking inv-mat vector 2) limit-side) 0.0) (set! yaw-from-limit (- yaw-from-limit)))
+              (if (< (vector-dot (-> self tracking inv-mat vector 2) limit-side) 0.0)
+                  (set! yaw-from-limit (- yaw-from-limit)))
               (let ((clamped-yaw-step (cond
                                         ((and (< 0.0 yaw-from-limit) (< 0.0 (-> yaw-step y)))
                                          (fmin (-> yaw-step y) (fmax 0.0 (* 0.5 (- 10922.667 yaw-from-limit)))))
@@ -425,11 +445,11 @@
           (set! (-> self tracking inv-mat vector 2 y) 0.0)
           (vector-normalize! (-> self tracking inv-mat vector 2) (cos (-> *CAM_BILLY-bank* tilt-degrees)))
           (set! (-> self tracking inv-mat vector 2 y) (sin (-> *CAM_BILLY-bank* tilt-degrees)))
-          (vector-cross! (the-as vector (-> self tracking)) (-> self tracking inv-mat vector 2) (-> *camera* local-down))
-          (vector-normalize! (the-as vector (-> self tracking)) (the-as float 1.0))
+          (vector-cross! (-> self tracking inv-mat vector 0) (-> self tracking inv-mat vector 2) (-> *camera* local-down))
+          (vector-normalize! (-> self tracking inv-mat vector 0) 1.0)
           (vector-cross! (-> self tracking inv-mat vector 1)
                          (-> self tracking inv-mat vector 2)
-                         (the-as vector (-> self tracking))))
+                         (-> self tracking inv-mat vector 0)))
         (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) (-> *camera* target-height))
         (suspend))))
 
@@ -447,49 +467,50 @@
          (let ((authored-position (new-stack-vector0)))
            (set! (-> self fov) (cam-slave-get-fov (-> self cam-entity)))
            (logior! (-> self options) (cam-slave-get-flags (-> self cam-entity) 'flags))
-           (if (logtest? (-> self options) #x8000)
-             (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) (-> self tracking inv-mat))
-             (set! (-> self tracking tilt-adjust target)
-                   (cam-slave-get-float (-> self cam-entity) 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust))))
-           (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) authored-position 'trans)
+           (if (logtest? (-> self options) (cam-slave-options NO_ROTATE))
+               (cam-slave-get-rot (-> self cam-entity) (-> self tracking inv-mat))
+               (set! (-> self tracking tilt-adjust target)
+                     (cam-slave-get-float (-> self cam-entity) 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust))))
+           (cam-slave-get-vector-with-offset (-> self cam-entity) authored-position 'trans)
            (cam-curve-setup authored-position))
          (vector-negate! (-> self saved-pt) (-> self spline-offset))
-         (let ((spline-offset-data (res-lump-struct (-> self cam-entity) 'spline-offset structure :time (the-as float -1000000000.0))))
-           (if spline-offset-data (vector+! (-> self spline-offset) (-> self spline-offset) (the-as vector spline-offset-data))))
+         (let ((spline-offset-data (res-lump-struct (-> self cam-entity) 'spline-offset structure)))
+           (if spline-offset-data
+               (vector+! (-> self spline-offset) (-> self spline-offset) (the-as vector spline-offset-data))))
          (vector-copy! (-> self trans) (-> self saved-pt))
          (cam-calc-follow! (-> self tracking) (-> self trans) #f)
-         (set! (-> self spline-follow-dist) (cam-slave-get-float (-> self cam-entity) 'spline-follow-dist (the-as float 0.0)))
+         (set! (-> self spline-follow-dist) (cam-slave-get-float (-> self cam-entity) 'spline-follow-dist 0.0))
          (cond
            ((< 0.0 (-> self spline-follow-dist))
             (let ((curve-start (new 'stack-no-clear 'vector))
                   (curve-end (new 'stack-no-clear 'vector)))
-              (curve-get-pos! curve-start (the-as float 0.0) (-> self spline-curve))
-              (curve-get-pos! curve-end (the-as float 1.0) (-> self spline-curve))
+              (curve-get-pos! curve-start 0.0 (-> self spline-curve))
+              (curve-get-pos! curve-end 1.0 (-> self spline-curve))
               (if (< (vector-vector-distance-squared curve-start (-> self tracking follow-pt))
-                     (vector-vector-distance-squared curve-end (-> self tracking follow-pt)))
-                (set! (-> self spline-follow-dist) (- (-> self spline-follow-dist)))))
+                       (vector-vector-distance-squared curve-end (-> self tracking follow-pt)))
+                  (set! (-> self spline-follow-dist) (- (-> self spline-follow-dist)))))
             (set! (-> self spline-tt)
-                  (curve-closest-point (-> self spline-curve)
-                                       (-> self tracking follow-pt)
-                                       (the-as float 0.5)
-                                       (the-as float -4096.0)
-                                       10
-                                       (-> self spline-follow-dist))))
-           (else (set! (-> self spline-follow-dist) 0.0)))
+                  (curve-closest-point (-> self spline-curve) (-> self tracking follow-pt) 0.5 -4096.0 10 (-> self spline-follow-dist))))
+           (else
+            (set! (-> self spline-follow-dist) 0.0)))
          (cam-curve-pos (-> self trans) (the-as vector #f) (the-as curve #f) #t)
          (cond
-           ((logtest? (-> self options) #x8000)
-            (set! (-> self blend-from-type) (the-as uint 0))
-            (set! (-> self blend-to-type) (the-as uint 0))
+           ((logtest? (-> self options) (cam-slave-options NO_ROTATE))
+            (set! (-> self blend-from-type) (camera-blend-to-type direct))
+            (set! (-> self blend-to-type) (camera-blend-to-type direct))
             0)
-           (else (set! (-> self blend-from-type) (the-as uint 2)) (set! (-> self blend-to-type) (the-as uint 2)))))
-        (else (format #t "ERROR <GMJ>: cam-spline enter without entity~%")))
+           (else
+            (set! (-> self blend-from-type) (camera-blend-to-type combiner-tracked))
+            (set! (-> self blend-to-type) (camera-blend-to-type combiner-tracked)))))
+        (else
+         (format #t "ERROR <GMJ>: cam-spline enter without entity~%")))
       (let ((point-of-interest (new 'stack-no-clear 'vector)))
-        (if (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) point-of-interest 'interesting)
-          (send-event *camera* 'point-of-interest point-of-interest))))
+        (if (cam-slave-get-vector-with-offset (-> self cam-entity) point-of-interest 'interesting)
+            (send-event *camera* 'point-of-interest point-of-interest))))
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
       (loop
@@ -507,10 +528,12 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
-      (if (not (-> self enter-has-run)) (vector-copy! (-> self saved-pt) (-> self trans))))
+      (if (not (-> self enter-has-run))
+          (vector-copy! (-> self saved-pt) (-> self trans))))
   :code
     (behavior ()
       (loop
@@ -529,7 +552,8 @@
                  (set! (-> *camera* outro-t-step) 0.0)
                  (vector+! (-> self velocity) (-> self velocity) next-outro-position)
                  (send-event *camera* 'outro-done))
-                (else (vector+! (-> self trans) (-> self trans) next-outro-position)))))
+                (else
+                 (vector+! (-> self trans) (-> self trans) next-outro-position)))))
           (vector-float*! (-> self velocity) (-> self velocity) 0.9)
           (vector+! (-> self trans) (-> self trans) (-> self velocity)))
         (suspend))))
@@ -539,12 +563,13 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (set! (-> self blend-from-type) (the-as uint 2))
-        (set! (-> self blend-to-type) (the-as uint 2))))
+        (set! (-> self blend-from-type) (camera-blend-to-type combiner-tracked))
+        (set! (-> self blend-to-type) (camera-blend-to-type combiner-tracked))))
   :code
     (behavior ()
       (let ((horizontal-seeker (new 'stack-no-clear 'cam-vector-seeker))
@@ -555,11 +580,7 @@
           (set! (-> horizontal-position y) 0.0)
           (vector-copy! horizontal-velocity (-> self velocity))
           (set! (-> horizontal-velocity y) 0.0)
-          (init! horizontal-seeker
-                 horizontal-position
-                 (the-as float 81.92)
-                 (fmax 819.2 (vector-length horizontal-velocity))
-                 (the-as float 0.75))
+          (init! horizontal-seeker horizontal-position 81.92 (fmax 819.2 (vector-length horizontal-velocity)) 0.75)
           (vector-copy! (-> horizontal-seeker vel) horizontal-velocity))
         (loop
           (when (not (paused?))
@@ -568,7 +589,8 @@
             (update! horizontal-seeker (the-as vector #f))
             (when (< 819.2 (-> horizontal-seeker max-vel))
               (set! (-> horizontal-seeker max-vel) (* 0.9 (-> horizontal-seeker max-vel)))
-              (if (< (-> horizontal-seeker max-vel) 819.2) (set! (-> horizontal-seeker max-vel) 819.2)))
+              (if (< (-> horizontal-seeker max-vel) 819.2)
+                  (set! (-> horizontal-seeker max-vel) 819.2)))
             (set! vertical-speed (* 0.9 vertical-speed))
             (+! (-> self trans y) vertical-speed)
             (set! (-> self trans x) (-> horizontal-seeker value x))
@@ -579,8 +601,8 @@
   "Constrain current-direction to the orbit radius
    and permitted angle from ideal-direction. Apply optional analog orbit input and approach the
    boundary by approach-scale without overshooting."
-  (let* ((current-length (vector-normalize-ret-len! current-direction (the-as float 1.0)))
-         (ideal-length (vector-normalize-ret-len! ideal-direction (the-as float 1.0)))
+  (let* ((current-length (vector-normalize-ret-len! current-direction 1.0))
+         (ideal-length (vector-normalize-ret-len! ideal-direction 1.0))
          (direction-dot (vector-dot current-direction ideal-direction))
          (angle (acos direction-dot))
          (rotation (new 'stack-no-clear 'matrix)))
@@ -600,21 +622,29 @@
             (input-rotation (new-stack-matrix0)))
         (let ((side-cross (new 'stack-no-clear 'vector)))
           0.0
-          (if (< (-> self pivot-rad) current-length) (set! horizontal-input (- horizontal-input)))
+          (if (< (-> self pivot-rad) current-length)
+              (set! horizontal-input (- horizontal-input)))
           (vector-cross! side-cross ideal-direction current-direction)
           (let ((side (vector-dot side-cross (-> *camera* local-down))))
-            (if (< vertical-input 0.0) (set! vertical-input (fmax vertical-input (* -0.15 angle))))
-            (if (< side 0.0) (set! vertical-input (- vertical-input)))
+            (if (< vertical-input 0.0)
+                (set! vertical-input (fmax vertical-input (* -0.15 angle))))
+            (if (< side 0.0)
+                (set! vertical-input (- vertical-input)))
             (let* ((requested-orbit (+ horizontal-input vertical-input))
                    (orbit-step (fmin (* 8192.0 (seconds-per-frame)) (fmax (* -8192.0 (seconds-per-frame)) requested-orbit))))
               (cond
-                ((and (< 0.0 orbit-step) (< 0.0 side) (< (-> self max-angle-curr) angle)) (set! orbit-step 0.0))
-                ((and (< 0.0 orbit-step) (< 0.0 side)) (set! orbit-step (fmin orbit-step (* 0.15 (- (-> self max-angle-curr) angle)))))
-                ((and (< orbit-step 0.0) (< side 0.0) (< (-> self max-angle-curr) angle)) (set! orbit-step 0.0))
-                ((and (< orbit-step 0.0) (< side 0.0)) (set! orbit-step (fmax orbit-step (* 0.15 (- angle (-> self max-angle-curr)))))))
+                ((and (< 0.0 orbit-step) (< 0.0 side) (< (-> self max-angle-curr) angle))
+                 (set! orbit-step 0.0))
+                ((and (< 0.0 orbit-step) (< 0.0 side))
+                 (set! orbit-step (fmin orbit-step (* 0.15 (- (-> self max-angle-curr) angle)))))
+                ((and (< orbit-step 0.0) (< side 0.0) (< (-> self max-angle-curr) angle))
+                 (set! orbit-step 0.0))
+                ((and (< orbit-step 0.0) (< side 0.0))
+                 (set! orbit-step (fmax orbit-step (* 0.15 (- angle (-> self max-angle-curr)))))))
               (matrix-axis-angle! input-rotation (-> *camera* local-down) orbit-step))))
         (vector-matrix*! ideal-direction ideal-direction input-rotation))
-      (let ((updated-dot (vector-dot current-direction ideal-direction))) (set! angle (acos updated-dot))))
+      (let ((updated-dot (vector-dot current-direction ideal-direction)))
+        (set! angle (acos updated-dot))))
     (cond
       ((< (-> self max-angle-curr) angle)
        (matrix-from-two-vectors-max-angle! rotation
@@ -622,19 +652,20 @@
                                            current-direction
                                            (* (fmin 1.0 (* approach-scale (-> *display* time-adjust-ratio))) (- angle (-> self max-angle-curr))))
        (vector-matrix*! current-direction ideal-direction rotation))
-      ((and (logtest? (-> self options) 2)
+      ((and (logtest? (-> self options) (cam-slave-options SAME_SIDE))
             (or (and (>= ideal-length (+ -8192.0 current-length)) (>= current-length (+ -8192.0 (-> self pivot-rad))))
                 (and (>= (+ 8192.0 current-length) ideal-length) (>= (+ 8192.0 (-> self pivot-rad)) current-length))))
        (let ((rotation-axis (new 'stack-no-clear 'vector)))
          (vector-cross! rotation-axis ideal-direction current-direction)
-         (vector-normalize! rotation-axis (the-as float 1.0))
+         (vector-normalize! rotation-axis 1.0)
          (matrix-axis-angle! rotation
                              rotation-axis
                              (* (fmin 1.0 (* approach-scale (-> *display* time-adjust-ratio))) (- (-> self max-angle-curr) angle))))
        (vector-matrix*! current-direction ideal-direction rotation))
       (else
        (vector-copy! current-direction ideal-direction)
-       (if (logtest? (-> self options) 2048) (set! (-> self max-angle-curr) angle)))))
+       (if (logtest? (-> self options) (cam-slave-options SHRINK_MAX_ANGLE))
+           (set! (-> self max-angle-curr) angle)))))
   (vector-normalize! current-direction (-> self pivot-rad)))
 
 (defbehavior cam-circular-position camera-slave ((approach-slowly? symbol))
@@ -642,21 +673,24 @@
    true, move gently toward the angular limit; otherwise establish the orbit immediately."
   (let ((orbit-direction (new 'stack-no-clear 'vector)))
     (let ((current-direction (new 'stack-no-clear 'vector)))
-      (if (logtest? (-> self options) 130)
-        (vector-! orbit-direction (-> self circular-follow) (-> self pivot-pt))
-        (vector-! orbit-direction (-> self pivot-pt) (-> self circular-follow)))
+      (if (logtest? (-> self options) (cam-slave-options SAME_SIDE DRAG))
+          (vector-! orbit-direction (-> self circular-follow) (-> self pivot-pt))
+          (vector-! orbit-direction (-> self pivot-pt) (-> self circular-follow)))
       (vector-! current-direction (-> self trans) (-> self pivot-pt))
-      (when (not (logtest? (-> self options) 4))
+      (when (not (logtest? (-> self options) (cam-slave-options MOVE_SPHERICAL)))
         (vector-flatten! orbit-direction orbit-direction (-> *camera* local-down))
         (vector-flatten! current-direction current-direction (-> *camera* local-down)))
       (cond
-        ((logtest? (-> self options) 128)
+        ((logtest? (-> self options) (cam-slave-options DRAG))
          (let ((radius-error (- (vector-length orbit-direction) (-> self pivot-rad))))
-           (if (>= 0.0 radius-error) (vector-reset! orbit-direction) (vector-normalize! orbit-direction radius-error))))
+           (if (>= 0.0 radius-error)
+               (vector-reset! orbit-direction)
+               (vector-normalize! orbit-direction radius-error))))
         ((not approach-slowly?)
          (set! (-> self max-angle-curr) (-> self max-angle-offset))
-         (cam-circular-position-into-max-angle orbit-direction current-direction (the-as float 1.0)))
-        (else (cam-circular-position-into-max-angle orbit-direction current-direction (the-as float 0.05)))))
+         (cam-circular-position-into-max-angle orbit-direction current-direction 1.0))
+        (else
+         (cam-circular-position-into-max-angle orbit-direction current-direction 0.05))))
     (vector+! (-> self trans) orbit-direction (-> self pivot-pt))))
 
 (defbehavior cam-circular-code camera-slave ()
@@ -667,24 +701,24 @@
   (let ((target-from-pivot (new-stack-vector0)))
     (vector-! target-from-pivot (-> *camera* tpos-curr-adj) (-> self pivot-pt))
     (vector-! (-> self circular-follow) (-> self circular-follow) (-> self pivot-pt))
-    (if (logtest? (-> self options) 4)
-      (v-slrp3! (-> self circular-follow)
-                (-> self circular-follow)
-                target-from-pivot
-                (the-as vector #f)
-                (* 182.04445 (-> *display* time-adjust-ratio)))
-      (v-slrp3! (-> self circular-follow)
-                (-> self circular-follow)
-                target-from-pivot
-                (-> *camera* local-down)
-                (* 182.04445 (-> *display* time-adjust-ratio)))))
+    (if (logtest? (-> self options) (cam-slave-options MOVE_SPHERICAL))
+        (v-slrp3! (-> self circular-follow)
+                  (-> self circular-follow)
+                  target-from-pivot
+                  (the-as vector #f)
+                  (* 182.04445 (-> *display* time-adjust-ratio)))
+        (v-slrp3! (-> self circular-follow)
+                  (-> self circular-follow)
+                  target-from-pivot
+                  (-> *camera* local-down)
+                  (* 182.04445 (-> *display* time-adjust-ratio)))))
   (vector+! (-> self circular-follow) (-> self circular-follow) (-> self pivot-pt))
   (cam-circular-position #t)
   (if (!= (-> self fov1) 0.0)
-    (set! (-> self fov)
-          (lerp-clamp (-> self fov0)
-                      (-> self fov1)
-                      (parameter-ease-sin-clamp (point->parameter (-> self fov-index) (-> *camera* tpos-curr-adj)))))))
+      (set! (-> self fov)
+            (lerp-clamp (-> self fov0)
+                        (-> self fov1)
+                        (parameter-ease-sin-clamp (point->parameter (-> self fov-index) (-> *camera* tpos-curr-adj)))))))
 
 ;; Orbit an authored or derived pivot while staying within max-angle-curr of the target-relative
 ;; direction.  The pivot may itself move on a curve, and focalPull can drive FOV from target
@@ -694,8 +728,11 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (('outro-done) (vector-copy! (-> self trans) (-> *camera-combiner* trans)) (cam-circular-position #f))
-        (else (cam-standard-event-handler proc argc message block))))
+        (('outro-done)
+         (vector-copy! (-> self trans) (-> *camera-combiner* trans))
+         (cam-circular-position #f))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (cond
@@ -708,27 +745,29 @@
            (set! (-> self max-angle-offset) 0.0)
            (cond
              ((-> self cam-entity)
-              (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) (-> self saved-pt) 'pivot)
-              (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) authored-offset 'trans)
+              (cam-slave-get-vector-with-offset (-> self cam-entity) (-> self saved-pt) 'pivot)
+              (cam-slave-get-vector-with-offset (-> self cam-entity) authored-offset 'trans)
               (set! (-> self pivot-rad) (vector-length (vector-! authored-offset authored-offset (-> self saved-pt))))
               (logior! (-> self options) (cam-slave-get-flags (-> self cam-entity) 'flags))
               (set! (-> self fov) (cam-slave-get-fov (-> self cam-entity)))
               (set! (-> self tracking tilt-adjust target)
                     (cam-slave-get-float (-> self cam-entity) 'tiltAdjust (-> *CAMERA-bank* default-tilt-adjust)))
-              (set! (-> self max-angle-offset) (cam-slave-get-float (-> self cam-entity) 'maxAngle (the-as float 0.0)))
-              (if (< (-> self max-angle-offset) 0.0) (set! (-> self max-angle-offset) 0.0))
-              (set! (-> self fov1) (cam-slave-get-float (-> self cam-entity) 'focalPull (the-as float 0.0)))
+              (set! (-> self max-angle-offset) (cam-slave-get-float (-> self cam-entity) 'maxAngle 0.0))
+              (if (< (-> self max-angle-offset) 0.0)
+                  (set! (-> self max-angle-offset) 0.0))
+              (set! (-> self fov1) (cam-slave-get-float (-> self cam-entity) 'focalPull 0.0))
               (cond
                 ((and (!= (-> self fov1) 0.0)
                       (setup-from-entity! (-> self fov-index) 'focalpull (-> self cam-entity) (-> self saved-pt) (the-as curve #f)))
                  (set! (-> self fov0) (-> self fov))
                  (set! (-> self fov)
                        (lerp-clamp (-> self fov0) (-> self fov1) (point->parameter (-> self fov-index) (-> *camera* tpos-curr-adj)))))
-                (else (set! (-> self fov1) 0.0)))
+                (else
+                 (set! (-> self fov1) 0.0)))
               (cam-curve-setup (-> self saved-pt))
               (vector-copy! (-> self pivot-pt) (-> self saved-pt))
               (cam-curve-pos (-> self pivot-pt) (the-as vector #f) (the-as curve #f) #f))
-             ((logtest? (-> self options) 128)
+             ((logtest? (-> self options) (cam-slave-options DRAG))
               (vector-! (-> self pivot-pt) (-> *camera* tpos-curr-adj) (-> self trans))
               (vector-flatten! (-> self pivot-pt) (-> self pivot-pt) (-> *camera* local-down))
               (set! (-> self pivot-rad) (vector-length (-> self pivot-pt)))
@@ -742,18 +781,20 @@
               (vector+! (-> self pivot-pt) (-> self trans) (-> self pivot-pt))
               (vector-copy! (-> self saved-pt) (-> self pivot-pt)))))
          (cam-circular-position #f)
-         (set! (-> self blend-from-type) (the-as uint 2))
-         (set! (-> self blend-to-type) (the-as uint 2))))
+         (set! (-> self blend-from-type) (camera-blend-to-type combiner-tracked))
+         (set! (-> self blend-to-type) (camera-blend-to-type combiner-tracked))))
       (let ((point-of-interest (new 'stack-no-clear 'vector)))
-        (if (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) point-of-interest 'interesting)
-          (send-event *camera* 'point-of-interest point-of-interest))))
+        (if (cam-slave-get-vector-with-offset (-> self cam-entity) point-of-interest 'interesting)
+            (send-event *camera* 'point-of-interest point-of-interest))))
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
       (loop
-        (if (not (paused?)) (cam-circular-code))
+        (if (not (paused?))
+            (cam-circular-code))
         (suspend))))
 
 (defstate cam-lookat (camera-slave)
@@ -761,11 +802,12 @@
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (set! (-> self blend-from-type) (the-as uint 2))
-        (set! (-> self blend-to-type) (the-as uint 2))))
+        (set! (-> self blend-from-type) (camera-blend-to-type combiner-tracked))
+        (set! (-> self blend-to-type) (camera-blend-to-type combiner-tracked))))
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
       (loop
@@ -777,6 +819,7 @@
 
 ;; The live camera uses a one-meter sphere to find occluders and room to slide.  Breadcrumb
 ;; visibility uses the tighter half-meter sphere, allowing a recovery point closer to geometry.
+
 (define *CAM_STRING-bank* (new 'static 'cam-string-bank :los-coll-rad (meters 1) :los-coll-rad2 (meters 0.5)))
 
 (defun cam-string-find-position-rel! ((out-offset vector))
@@ -790,21 +833,21 @@
         (rotation (new 'stack-no-clear 'matrix)))
     (vector-flatten! default-offset (-> *camera-combiner* inv-camera-rot vector 2) (-> *camera* local-down))
     (if (= (vector-normalize-ret-len! default-offset (- (+ 1024.0 (-> *CAMERA-bank* default-string-min-z)))) 0.0)
-      (set! (-> default-offset z) (+ 1024.0 (-> *CAMERA-bank* default-string-min-z))))
+        (set! (-> default-offset z) (+ 1024.0 (-> *CAMERA-bank* default-string-min-z))))
     (vector--float*! default-offset default-offset (-> *camera* local-down) (-> *CAMERA-bank* default-string-min-y))
     (vector-copy! out-offset default-offset)
     (loop
       (vector--float*! target-offset out-offset (-> *camera* local-down) (-> *camera* target-height))
       (if (< (fill-and-probe-using-line-sphere *collide-cache*
-                                               (-> *camera* tpos-curr-adj)
-                                               out-offset
-                                               (the-as float 409.6)
-                                               (collide-kind background cak-3 wall-object ground-object cak-14)
-                                               (the-as process #f)
-                                               probe-result
-                                               (new 'static 'pat-surface :nocamera #x1))
-             0.0)
-        (return #t))
+                                                 (-> *camera* tpos-curr-adj)
+                                                 out-offset
+                                                 (meters 0.1)
+                                                 (collide-kind background hit-by-others wall-object ground-object cak-14)
+                                                 (the-as process #f)
+                                                 probe-result
+                                                 (new 'static 'pat-surface :nocamera #x1))
+               0.0)
+          (return #t))
       (set! search-angle
             (cond
               ((>= -32768.0 search-angle)
@@ -812,8 +855,10 @@
                (vector-copy! out-offset default-offset)
                (return #f)
                search-angle)
-              ((< 0.0 search-angle) (- search-angle))
-              (else (- 5461.3335 search-angle))))
+              ((< 0.0 search-angle)
+               (- search-angle))
+              (else
+               (- 5461.3335 search-angle))))
       (matrix-axis-angle! rotation (-> *camera* local-down) search-angle)
       (vector-matrix*! out-offset default-offset rotation)))
   (the-as symbol #f))
@@ -827,13 +872,12 @@
   (vector-copy! (-> self string-trans) (-> self desired-pos))
   (reset! (-> self position-spline) (-> self desired-pos))
   (vector-reset! (-> self velocity))
-  (let ((options-without-jump (logand -4097 (-> self options))))
-    (set! (-> self options) options-without-jump)
-    (the-as int options-without-jump)))
+  (logclear! (-> self options) (cam-slave-options GOTO_GOOD_POINT))
+  (none))
 
 (defun string-push-help ()
   "Return the string camera's fixed 0.1-meter collision push."
-  (the-as float 409.6))
+  409.6)
 
 (defun-debug cam-draw-collide-cache ((cache collide-cache))
   "Draw every cached collision triangle without depth testing."
@@ -842,11 +886,11 @@
       (let ((color #x40000080))
         (add-debug-flat-triangle #t
                                  (bucket-id debug-no-zbuf)
-                                 (the-as vector (-> triangles 0))
+                                 (-> triangles 0 vertex 0)
                                  (-> triangles 0 vertex 1)
                                  (-> triangles 0 vertex 2)
                                  (the-as rgba color)))
-      (set! triangles (the-as (inline-array collide-cache-tri) (-> triangles 1)))))
+      (set! triangles (&-> triangles 1))))
   0
   (none))
 
@@ -866,6 +910,7 @@
    (lat-dist  float)
    (vert-dist float)))
 
+
 (deftype collide-los-dist-info (structure)
   ((min-par float)
    (max-par float)
@@ -876,6 +921,7 @@
    (min-vn  float)
    (max-vn  float)
    (count   int32)))
+
 
 (defun dist-info-init ((info collide-los-dist-info))
   "Mark an obstruction extent summary empty and reset its sample count."
@@ -895,17 +941,25 @@
    lateral, and signed-side vertical coordinates."
   (cond
     ((dist-info-valid? info)
-     (if (< (-> point x) (-> info min-par)) (set! (-> info min-par) (-> point x)))
-     (if (< (-> info max-par) (-> point x)) (set! (-> info max-par) (-> point x)))
-     (if (< (-> point y) (-> info min-lat)) (set! (-> info min-lat) (-> point y)))
-     (if (< (-> info max-lat) (-> point y)) (set! (-> info max-lat) (-> point y)))
+     (if (< (-> point x) (-> info min-par))
+         (set! (-> info min-par) (-> point x)))
+     (if (< (-> info max-par) (-> point x))
+         (set! (-> info max-par) (-> point x)))
+     (if (< (-> point y) (-> info min-lat))
+         (set! (-> info min-lat) (-> point y)))
+     (if (< (-> info max-lat) (-> point y))
+         (set! (-> info max-lat) (-> point y)))
      (cond
        ((< (-> point y) 0.0)
-        (if (< (-> point z) (-> info min-vn)) (set! (-> info min-vn) (-> point z)))
-        (if (< (-> info max-vn) (-> point z)) (set! (-> info max-vn) (-> point z))))
+        (if (< (-> point z) (-> info min-vn))
+            (set! (-> info min-vn) (-> point z)))
+        (if (< (-> info max-vn) (-> point z))
+            (set! (-> info max-vn) (-> point z))))
        (else
-        (if (< (-> point z) (-> info min-vp)) (set! (-> info min-vp) (-> point z)))
-        (if (< (-> info max-vp) (-> point z)) (set! (-> info max-vp) (-> point z))))))
+        (if (< (-> point z) (-> info min-vp))
+            (set! (-> info min-vp) (-> point z)))
+        (if (< (-> info max-vp) (-> point z))
+            (set! (-> info max-vp) (-> point z))))))
     (else
      (set! (-> info min-par) (-> point x))
      (set! (-> info max-par) (-> point x))
@@ -916,8 +970,12 @@
      (set! (-> info min-vn) 0.0)
      (set! (-> info max-vn) 0.0)
      (cond
-       ((< (-> point y) 0.0) (set! (-> info min-vn) (-> point z)) (set! (-> info max-vn) (-> point z)))
-       (else (set! (-> info min-vp) (-> point z)) (set! (-> info max-vp) (-> point z))))))
+       ((< (-> point y) 0.0)
+        (set! (-> info min-vn) (-> point z))
+        (set! (-> info max-vn) (-> point z)))
+       (else
+        (set! (-> info min-vp) (-> point z))
+        (set! (-> info max-vp) (-> point z))))))
   (+! (-> info count) 1)
   (none))
 
@@ -940,7 +998,8 @@
              (-> info max-vp)
              (-> info min-vn)
              (-> info max-vn)))
-    (else (format *stdcon* "~S invalid~%" label))))
+    (else
+     (format *stdcon* "~S invalid~%" label))))
 
 (deftype collide-los-result (structure)
   ((lateral       vector :inline)
@@ -959,67 +1018,63 @@
   "Project one blocking triangle and its contact point into the sightline
    frame, classify it as clockwise, counter-clockwise, or straddling the line, and append its extents
    to the corresponding result bucket."
-  (local-vars
-    (saved-flat-length float)
-    (saved-hit-position vector)
-    (point-delta vector)
-    (side-cross vector)
-    (lateral-delta vector)
-    (i int))
   (with-pp
-    (set! saved-flat-length flat-sightline-length)
-    (let ((result obstruction-result))
-      (set! saved-hit-position hit-position)
-      (let ((saved-tight-hit tight-hit-fraction))
-        (set! point-delta (new 'stack-no-clear 'vector))
-        (set! side-cross (new 'stack-no-clear 'vector))
-        (let ((projected-points (new 'stack-no-clear 'matrix)))
-          (set! lateral-delta (new 'stack-no-clear 'vector))
-          (let ((previous-side 0.0)
-                (straddles? #f))
-            (set! i 0)
-            (while (< i 4)
-              (cond
-                ((= i 3)
-                 (vector-! point-delta saved-hit-position (the-as vector (&-> pp stack 368)))
-                 (set! (-> projected-points vector i z) 0.0))
-                (else
-                 (vector-! point-delta saved-hit-position (-> triangle 0 vertex i))
-                 (set! (-> projected-points vector i z) (vector-dot point-delta (-> *camera* local-down)))
-                 (vector-! point-delta (-> triangle 0 vertex i) (the-as vector (&-> pp stack 368)))))
-              (vector-flatten! point-delta point-delta (-> *camera* local-down))
-              (vector-cross! side-cross point-delta flat-sightline-direction)
-              (let ((side (vector-dot side-cross (-> *camera* local-down))))
-                (cond
-                  ((< (* side previous-side) 0.0) (set! straddles? #t))
-                  ((!= side 0.0) (set! previous-side side)))
-                (set! (-> projected-points vector i x) (vector-dot point-delta flat-sightline-direction))
-                (cond
-                  ((= i 3)
-                   (vector-! lateral-delta saved-hit-position (the-as vector (&-> pp stack 368)))
-                   (vector-flatten! lateral-delta lateral-delta sightline-direction))
-                  (else (vector--float*! lateral-delta point-delta flat-sightline-direction (-> projected-points vector i x))))
-                (if (< side 0.0)
-                  (set! (-> projected-points vector i y) (- (vector-length lateral-delta)))
-                  (set! (-> projected-points vector i y) (vector-length lateral-delta))))
-              (set! (-> projected-points vector i x) (- saved-flat-length (-> projected-points vector i x)))
-              (+! i 1))
+    (let ((saved-flat-length flat-sightline-length)
+          (result obstruction-result)
+          (saved-hit-position hit-position)
+          (saved-tight-hit tight-hit-fraction)
+          (point-delta (new 'stack-no-clear 'vector))
+          (side-cross (new 'stack-no-clear 'vector))
+          (projected-points (new 'stack-no-clear 'matrix))
+          (lateral-delta (new 'stack-no-clear 'vector))
+          (previous-side 0.0)
+          (straddles? #f))
+      (let ((i 0))
+        (while (< i 4)
+          (cond
+            ((= i 3)
+             (vector-! point-delta saved-hit-position (the-as vector (&-> pp stack 368)))
+             (set! (-> projected-points vector i z) 0.0))
+            (else
+             (vector-! point-delta saved-hit-position (-> triangle 0 vertex i))
+             (set! (-> projected-points vector i z) (vector-dot point-delta (-> *camera* local-down)))
+             (vector-! point-delta (-> triangle 0 vertex i) (the-as vector (&-> pp stack 368)))))
+          (vector-flatten! point-delta point-delta (-> *camera* local-down))
+          (vector-cross! side-cross point-delta flat-sightline-direction)
+          (let ((side (vector-dot side-cross (-> *camera* local-down))))
             (cond
-              ((and straddles? (!= saved-tight-hit -100000000.0))
-               (dotimes (i 4)
-                 (dist-info-append (-> result straddle) (the-as vector (+ (the-as uint projected-points) (* i 16)))))
-               #f)
-              ((< (-> projected-points vector 3 y) 0.0)
-               (dotimes (i 4)
-                 (when (>= (-> projected-points vector 3 y) (-> projected-points vector i y))
-                   (set! (-> projected-points vector i y) (- (-> projected-points vector i y)))
-                   (dist-info-append (-> result ccw) (the-as vector (+ (the-as uint projected-points) (* i 16))))))
-               #f)
+              ((< (* side previous-side) 0.0)
+               (set! straddles? #t))
+              ((!= side 0.0)
+               (set! previous-side side)))
+            (set! (-> projected-points vector i x) (vector-dot point-delta flat-sightline-direction))
+            (cond
+              ((= i 3)
+               (vector-! lateral-delta saved-hit-position (the-as vector (&-> pp stack 368)))
+               (vector-flatten! lateral-delta lateral-delta sightline-direction))
               (else
-               (dotimes (i 4)
-                 (if (>= (-> projected-points vector i y) (-> projected-points vector 3 y))
-                   (dist-info-append (-> result cw) (the-as vector (+ (the-as uint projected-points) (* i 16))))))
-               #f))))))))
+               (vector--float*! lateral-delta point-delta flat-sightline-direction (-> projected-points vector i x))))
+            (if (< side 0.0)
+                (set! (-> projected-points vector i y) (- (vector-length lateral-delta)))
+                (set! (-> projected-points vector i y) (vector-length lateral-delta))))
+          (set! (-> projected-points vector i x) (- saved-flat-length (-> projected-points vector i x)))
+          (+! i 1)))
+      (cond
+        ((and straddles? (!= saved-tight-hit -100000000.0))
+         (dotimes (i 4)
+           (dist-info-append (-> result straddle) (the-as vector (+ (the-as uint projected-points) (* i 16)))))
+         #f)
+        ((< (-> projected-points vector 3 y) 0.0)
+         (dotimes (i 4)
+           (when (>= (-> projected-points vector 3 y) (-> projected-points vector i y))
+             (set! (-> projected-points vector i y) (- (-> projected-points vector i y)))
+             (dist-info-append (-> result ccw) (the-as vector (+ (the-as uint projected-points) (* i 16))))))
+         #f)
+        (else
+         (dotimes (i 4)
+           (if (>= (-> projected-points vector i y) (-> projected-points vector 3 y))
+               (dist-info-append (-> result cw) (the-as vector (+ (the-as uint projected-points) (* i 16))))))
+         #f)))))
 
 (defun cam-los-spline-collide ((trail-point vector) (camera-position vector) (surface-filter pat-surface))
   "Sphere-cast from a target breadcrumb toward the camera with
@@ -1034,7 +1089,7 @@
                             trail-point
                             displacement
                             (-> *CAM_STRING-bank* los-coll-rad2)
-                            (collide-kind background cak-3 wall-object ground-object cak-14)
+                            (collide-kind background hit-by-others wall-object ground-object cak-14)
                             (the-as process-drawable #f)
                             surface-filter)
     (let* ((segment-length (vector-length displacement))
@@ -1056,9 +1111,11 @@
                                                               normal)))
           (cond
             ((or (< hit-fraction 0.0) (< maximum-hit-fraction hit-fraction)))
-            ((< hit-fraction earliest-hit) (set! earliest-hit hit-fraction))))
-        (set! triangles (the-as (inline-array collide-cache-tri) (-> triangles 1)))))
-    (if (= earliest-hit 2.0) (set! earliest-hit -1.0))
+            ((< hit-fraction earliest-hit)
+             (set! earliest-hit hit-fraction))))
+        (set! triangles (&-> triangles 1))))
+    (if (= earliest-hit 2.0)
+        (set! earliest-hit -1.0))
     earliest-hit))
 
 (defbehavior cam-los-setup-lateral camera-slave ((obstruction-result collide-los-result) (lateral-move vector) (sightline vector))
@@ -1070,15 +1127,17 @@
      (let ((clockwise-edge (-> obstruction-result straddle min-lat))
            (counterclockwise-edge (-> obstruction-result straddle max-lat)))
        (if (dist-info-valid? (-> obstruction-result cw))
-         (set! counterclockwise-edge (fmax counterclockwise-edge (-> obstruction-result cw max-lat))))
+           (set! counterclockwise-edge (fmax counterclockwise-edge (-> obstruction-result cw max-lat))))
        (if (dist-info-valid? (-> obstruction-result ccw))
-         (set! clockwise-edge (fmin clockwise-edge (- (-> obstruction-result ccw max-lat)))))
+           (set! clockwise-edge (fmin clockwise-edge (- (-> obstruction-result ccw max-lat)))))
        (cond
          ((= (-> self los-state) (slave-los-state ccw))
-          (if *display-cam-los-debug* (format *stdcon* "straddle stick ccw~%"))
+          (if *display-cam-los-debug*
+              (format *stdcon* "straddle stick ccw~%"))
           (vector-normalize! lateral-move (+ counterclockwise-edge (-> *CAM_STRING-bank* los-coll-rad))))
          ((= (-> self los-state) (slave-los-state cw))
-          (if *display-cam-los-debug* (format *stdcon* "straddle stick cw~%"))
+          (if *display-cam-los-debug*
+              (format *stdcon* "straddle stick cw~%"))
           (vector-normalize! lateral-move (- clockwise-edge (-> *CAM_STRING-bank* los-coll-rad))))
          ((and (or (< 0.01 (-> obstruction-result straddle max-vp))
                    (and (dist-info-valid? (-> obstruction-result ccw)) (< 0.01 (-> obstruction-result ccw max-vp))))
@@ -1087,8 +1146,10 @@
                (and (dist-info-valid? (-> obstruction-result cw))
                     (or (< (-> obstruction-result cw max-vp) 0.01) (< -0.01 (-> obstruction-result cw min-vp)))))
           (when (not (dist-info-valid? (-> obstruction-result ccw))))
-          (if (not (dist-info-valid? (-> obstruction-result cw))) (format #t "s diag ccw invalid cw~%"))
-          (if *display-cam-los-debug* (format *stdcon* "straddle diagonal ccw~%"))
+          (if (not (dist-info-valid? (-> obstruction-result cw)))
+              (format #t "s diag ccw invalid cw~%"))
+          (if *display-cam-los-debug*
+              (format *stdcon* "straddle diagonal ccw~%"))
           (set! (-> self los-state) (slave-los-state ccw))
           (vector-normalize! lateral-move (+ counterclockwise-edge (-> *CAM_STRING-bank* los-coll-rad))))
          ((and (or (< 0.01 (-> obstruction-result straddle max-vn))
@@ -1097,17 +1158,21 @@
                    (and (dist-info-valid? (-> obstruction-result cw)) (< (-> obstruction-result cw min-vp) -0.01)))
                (and (dist-info-valid? (-> obstruction-result ccw))
                     (or (< (-> obstruction-result ccw max-vp) 0.01) (< -0.01 (-> obstruction-result ccw min-vp)))))
-          (if (not (dist-info-valid? (-> obstruction-result ccw))) (format #t "s diag cw invalid ccw~%"))
+          (if (not (dist-info-valid? (-> obstruction-result ccw)))
+              (format #t "s diag cw invalid ccw~%"))
           (when (not (dist-info-valid? (-> obstruction-result cw))))
-          (if *display-cam-los-debug* (format *stdcon* "straddle diagonal cw~%"))
+          (if *display-cam-los-debug*
+              (format *stdcon* "straddle diagonal cw~%"))
           (set! (-> self los-state) (slave-los-state cw))
           (vector-normalize! lateral-move (- clockwise-edge (-> *CAM_STRING-bank* los-coll-rad))))
          ((< counterclockwise-edge (- clockwise-edge))
-          (if *display-cam-los-debug* (format *stdcon* "straddle ccw~%"))
+          (if *display-cam-los-debug*
+              (format *stdcon* "straddle ccw~%"))
           (set! (-> self los-state) (slave-los-state ccw))
           (vector-normalize! lateral-move (+ counterclockwise-edge (-> *CAM_STRING-bank* los-coll-rad))))
          (else
-          (if *display-cam-los-debug* (format *stdcon* "straddle cw~%"))
+          (if *display-cam-los-debug*
+              (format *stdcon* "straddle cw~%"))
           (set! (-> self los-state) (slave-los-state cw))
           (vector-normalize! lateral-move (- clockwise-edge (-> *CAM_STRING-bank* los-coll-rad)))))))
     ((and (dist-info-valid? (-> obstruction-result cw))
@@ -1115,7 +1180,8 @@
           (< 0.01 (-> obstruction-result ccw max-vp))
           (< (-> obstruction-result ccw min-vp) -0.01)
           (or (< (-> obstruction-result cw max-vp) 0.01) (< -0.01 (-> obstruction-result cw min-vp))))
-     (if *display-cam-los-debug* (format *stdcon* "diagonal ccw~%"))
+     (if *display-cam-los-debug*
+         (format *stdcon* "diagonal ccw~%"))
      (set! (-> self los-state) (slave-los-state ccw))
      (vector-normalize! lateral-move (- (-> *CAM_STRING-bank* los-coll-rad) (-> obstruction-result ccw min-lat))))
     ((and (dist-info-valid? (-> obstruction-result cw))
@@ -1123,68 +1189,80 @@
           (< 0.01 (-> obstruction-result cw max-vp))
           (< (-> obstruction-result cw min-vp) -0.01)
           (or (< (-> obstruction-result ccw max-vp) 0.01) (< -0.01 (-> obstruction-result ccw min-vp))))
-     (if *display-cam-los-debug* (format *stdcon* "diagonal cw~%"))
+     (if *display-cam-los-debug*
+         (format *stdcon* "diagonal cw~%"))
      (set! (-> self los-state) (slave-los-state cw))
      (vector-normalize! lateral-move (- (-> obstruction-result cw min-lat) (-> *CAM_STRING-bank* los-coll-rad))))
     ((and (dist-info-valid? (-> obstruction-result cw)) (dist-info-valid? (-> obstruction-result ccw)))
      (set! (-> self los-state) (slave-los-state between))
-     (vector-normalize! lateral-move (the-as float 0.0001)))
+     (vector-normalize! lateral-move 0.0001))
     ((dist-info-valid? (-> obstruction-result cw))
-     (if *display-cam-los-debug* (format *stdcon* "regular cw~%"))
+     (if *display-cam-los-debug*
+         (format *stdcon* "regular cw~%"))
      (set! (-> self los-state) (slave-los-state cw))
      (vector-normalize! lateral-move (- (-> obstruction-result cw min-lat) (-> *CAM_STRING-bank* los-coll-rad))))
     ((dist-info-valid? (-> obstruction-result ccw))
-     (if *display-cam-los-debug* (format *stdcon* "regular ccw~%"))
+     (if *display-cam-los-debug*
+         (format *stdcon* "regular ccw~%"))
      (set! (-> self los-state) (slave-los-state ccw))
      (vector-normalize! lateral-move (- (-> *CAM_STRING-bank* los-coll-rad) (-> obstruction-result ccw min-lat))))
-    (else (set! (-> self los-state) (slave-los-state none)) (vector-reset! lateral-move)))
+    (else
+     (set! (-> self los-state) (slave-los-state none))
+     (vector-reset! lateral-move)))
   (cond
-    ((= (vector-length lateral-move) 0.0) (set! (-> obstruction-result lateral-valid) #f) #f)
+    ((= (vector-length lateral-move) 0.0)
+     (set! (-> obstruction-result lateral-valid) #f)
+     #f)
     (else
      (vector-! (-> obstruction-result lateral) lateral-move sightline)
-     (vector-normalize! (-> obstruction-result lateral) (the-as float 1.0))
-     (let ((lateral-valid #t)) (set! (-> obstruction-result lateral-valid) lateral-valid) lateral-valid))))
+     (vector-normalize! (-> obstruction-result lateral) 1.0)
+     (let ((lateral-valid #t))
+       (set! (-> obstruction-result lateral-valid) lateral-valid)
+       lateral-valid))))
 
 (defbehavior cam-los-collide camera-slave ((camera-position vector) (sightline vector) (obstruction-result collide-los-result) (surface-filter pat-surface))
   "Classify geometry blocking the camera-to-target sightline, choose a
    lateral escape, and search the target breadcrumb trail for a recoverable clear view when direct
    sliding is insufficient."
-  (local-vars (last-clear-index int) (trail-index int) (normal-dot float) (hit-normal vector) (hit-position vector))
+  (local-vars (last-clear-index int) (trail-index int) (normal-dot float))
   (dist-info-init (-> obstruction-result cw))
   (dist-info-init (-> obstruction-result ccw))
   (dist-info-init (-> obstruction-result straddle))
   (let ((flat-sightline (new 'stack-no-clear 'vector))
         (sightline-direction (new 'stack-no-clear 'vector)))
-    (vector-normalize-copy! sightline-direction sightline (the-as float 1.0))
+    (vector-normalize-copy! sightline-direction sightline 1.0)
     (vector-flatten! flat-sightline sightline (-> *camera* local-down))
     (let ((cache *collide-cache*)
           (sightline-length (vector-length sightline))
-          (flat-sightline-length (vector-normalize-ret-len! flat-sightline (the-as float 1.0))))
+          (flat-sightline-length (vector-normalize-ret-len! flat-sightline 1.0)))
       (fill-using-line-sphere cache
                               camera-position
                               sightline
                               (-> *CAM_STRING-bank* los-coll-rad)
-                              (collide-kind background cak-3 wall-object ground-object cak-14)
+                              (collide-kind background hit-by-others wall-object ground-object cak-14)
                               (the-as process-drawable #f)
                               surface-filter)
       (let ((triangles (-> cache tris))
             (near-threshold (/ 2048.0 sightline-length))
             (far-threshold (/ (+ -8192.0 sightline-length) sightline-length)))
-        (if (< far-threshold 0.0) (set! far-threshold 0.0))
-        (if (< 1.0 near-threshold) (set! near-threshold 1.0))
+        (if (< far-threshold 0.0)
+            (set! far-threshold 0.0))
+        (if (< 1.0 near-threshold)
+            (set! near-threshold 1.0))
         (countdown (i (-> cache num-tris))
-          (set! hit-position (new 'stack-no-clear 'vector))
-          (set! hit-normal (new 'stack-no-clear 'vector))
-          (let ((hit-fraction (moving-sphere-triangle-intersect camera-position
-                                                                sightline
-                                                                (-> *CAM_STRING-bank* los-coll-rad)
-                                                                (-> triangles 0)
-                                                                hit-position
-                                                                hit-normal)))
+          (let* ((hit-position (new 'stack-no-clear 'vector))
+                 (hit-normal (new 'stack-no-clear 'vector))
+                 (hit-fraction (moving-sphere-triangle-intersect camera-position
+                                                                 sightline
+                                                                 (-> *CAM_STRING-bank* los-coll-rad)
+                                                                 (-> triangles 0)
+                                                                 hit-position
+                                                                 hit-normal)))
             (cond
               ((or (< hit-fraction 0.0) (< 1.0 hit-fraction)))
               ((let ((zero 0.0))
-                 (let* ((sightline-copy sightline)) (set! normal-dot (vector-dot sightline-copy hit-normal)))
+                 (let* ((sightline-copy sightline))
+                   (set! normal-dot (vector-dot sightline-copy hit-normal)))
                  (< zero normal-dot))
                (when (< near-threshold hit-fraction)
                  (let* ((tight-normal (new 'stack-no-clear 'vector))
@@ -1204,10 +1282,12 @@
                                tight-hit-fraction)
                    (when *debug-segment*
                      (if (= tight-hit-fraction -100000000.0)
-                       (cam-debug-add-los-tri triangles hit-position (new 'static 'vector :x (the-as float #x80) :w (the-as float #x80)))
-                       (cam-debug-add-los-tri triangles
-                                              hit-position
-                                              (new 'static 'vector :x (the-as float #x80) :y (the-as float #x80) :w (the-as float #x80))))))))
+                         (cam-debug-add-los-tri triangles
+                                                hit-position
+                                                (the-as vector4w (new 'static 'vector :x (the-as float #x80) :w (the-as float #x80))))
+                         (cam-debug-add-los-tri triangles
+                                                hit-position
+                                                (the-as vector4w (new 'static 'vector :x (the-as float #x80) :y (the-as float #x80) :w (the-as float #x80)))))))))
               ((< hit-fraction far-threshold)
                (let* ((tight-normal (new 'stack-no-clear 'vector))
                       (tight-position (new 'stack-no-clear 'vector))
@@ -1226,9 +1306,13 @@
                              tight-hit-fraction)
                  (when *debug-segment*
                    (if (= tight-hit-fraction -100000000.0)
-                     (cam-debug-add-los-tri triangles hit-position (new 'static 'vector :y (the-as float #x80) :w (the-as float #x80)))
-                     (cam-debug-add-los-tri triangles hit-position (new 'static 'vector :z (the-as float #x80) :w (the-as float #x80)))))))))
-          (set! triangles (the-as (inline-array collide-cache-tri) (-> triangles 1)))))))
+                       (cam-debug-add-los-tri triangles
+                                              hit-position
+                                              (the-as vector4w (new 'static 'vector :y (the-as float #x80) :w (the-as float #x80))))
+                       (cam-debug-add-los-tri triangles
+                                              hit-position
+                                              (the-as vector4w (new 'static 'vector :z (the-as float #x80) :w (the-as float #x80))))))))))
+          (set! triangles (&-> triangles 1))))))
   (let ((lateral-move (new 'stack-no-clear 'vector)))
     0.0
     (vector-cross! lateral-move sightline (-> *camera* local-down))
@@ -1239,7 +1323,7 @@
          (format 0 "emergency point jump~%"))
        (set! (-> self los-tgt-spline-pt) (-> *camera* target-spline used-point))
        (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
-       (logior! (-> self options) 4096)
+       (logior! (-> self options) (cam-slave-options GOTO_GOOD_POINT))
        (vector-copy! (-> self good-point) (-> *camera* target-spline point (-> *camera* target-spline used-point) position))
        (vector-copy! (-> self los-last-pos) (-> self good-point))
        (when *debug-segment*
@@ -1252,30 +1336,32 @@
        (vector-flatten! (-> self view-flat) (-> self view-flat) (-> *camera* local-down))
        (vector-reset! (-> self velocity))
        (let ((view-length (vector-length (-> self view-flat))))
-         (if (< view-length (-> self min-z-override)) (set! (-> self min-z-override) view-length))))
+         (if (< view-length (-> self min-z-override))
+             (set! (-> self min-z-override) view-length))))
       (else
-       (let ((trail-hit-fraction (cam-los-spline-collide (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 (-> *camera* target-spline end-point))))
+       (let ((trail-hit-fraction (cam-los-spline-collide (-> *camera* target-spline point (-> *camera* target-spline end-point) position)
                                                          camera-position
                                                          (new 'static 'pat-surface :nocamera #x1 :nolineofsight #x1))))
          (cond
            ((< trail-hit-fraction 0.0)
-            (if *display-cam-los-debug* (format *stdcon* "good ~f~%" trail-hit-fraction))
+            (if *display-cam-los-debug*
+                (format *stdcon* "good ~f~%" trail-hit-fraction))
             (set! (-> self los-tgt-spline-pt) (-> *camera* target-spline end-point))
             (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
             (vector-copy! (-> self los-last-pos) camera-position))
            ((begin
               (if *display-cam-los-debug*
-                (format *stdcon*
-                        "looking vel ~M u ~f pt ~D"
-                        (vector-length (-> self velocity))
-                        trail-hit-fraction
-                        (-> self los-tgt-spline-pt)))
+                  (format *stdcon*
+                          "looking vel ~M u ~f pt ~D"
+                          (vector-length (-> self velocity))
+                          trail-hit-fraction
+                          (-> self los-tgt-spline-pt)))
               (set! trail-index (-> self los-tgt-spline-pt))
               (set! last-clear-index -134250495)
               (while (and (!= trail-index -134250495)
                           (begin
                             (set! trail-hit-fraction
-                                  (cam-los-spline-collide (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 trail-index)))
+                                  (cam-los-spline-collide (-> *camera* target-spline point trail-index position)
                                                           camera-position
                                                           (new 'static 'pat-surface :nocamera #x1 :nolineofsight #x1)))
                             (< trail-hit-fraction 0.0)))
@@ -1288,7 +1374,7 @@
               (format *stdcon* " at used point~%"))
             (set! (-> self los-tgt-spline-pt) (-> *camera* target-spline point trail-index next))
             (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
-            (logior! (-> self options) 4096)
+            (logior! (-> self options) (cam-slave-options GOTO_GOOD_POINT))
             (vector-copy! (-> self good-point) (-> *camera* target-spline point trail-index position))
             (vector-copy! (-> self los-last-pos) (-> self good-point))
             (when *debug-segment*
@@ -1301,36 +1387,39 @@
             (vector-flatten! (-> self view-flat) (-> self view-flat) (-> *camera* local-down))
             (vector-reset! (-> self velocity))
             (let ((view-length (vector-length (-> self view-flat))))
-              (if (< view-length (-> self min-z-override)) (set! (-> self min-z-override) view-length))))
+              (if (< view-length (-> self min-z-override))
+                  (set! (-> self min-z-override) view-length))))
            ((!= last-clear-index -134250495)
-            (if *display-cam-los-debug* (format *stdcon* " ok~%"))
+            (if *display-cam-los-debug*
+                (format *stdcon* " ok~%"))
             (set! (-> self los-tgt-spline-pt) last-clear-index)
             (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
             (vector-copy! (-> self los-last-pos) camera-position))
            (else
             (if *display-cam-los-debug*
-              (format *stdcon*
-                      "~%failed u ~f cur ~D seen ~D tgt-pt ~D~%"
-                      trail-hit-fraction
-                      trail-index
-                      last-clear-index
-                      (-> self los-tgt-spline-pt)))
+                (format *stdcon*
+                        "~%failed u ~f cur ~D seen ~D tgt-pt ~D~%"
+                        trail-hit-fraction
+                        trail-index
+                        last-clear-index
+                        (-> self los-tgt-spline-pt)))
             (let ((trail-segment (new 'stack-no-clear 'vector)))
               0.0
-              (vector-! trail-segment
-                        (-> self los-last-pos)
-                        (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 (-> self los-tgt-spline-pt)))))
+              (vector-! trail-segment (-> self los-last-pos) (-> *camera* target-spline point (-> self los-tgt-spline-pt) position))
               (let ((trail-segment-length (vector-length trail-segment)))
-                (if (= trail-segment-length 0.0) (set! trail-segment-length 0.4096))
+                (if (= trail-segment-length 0.0)
+                    (set! trail-segment-length 0.4096))
                 (let ((recovery-fraction (cond
                                            ((and (= (-> self string-vel-dir) 6) (< (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity))))
                                             (fmin 1.0 (+ 0.001 trail-hit-fraction)))
-                                           ((= (-> self string-vel-dir) 6) (fmin 0.9999 trail-hit-fraction))
-                                           (else (fmax 0.001 (+ -0.001 trail-hit-fraction))))))
+                                           ((= (-> self string-vel-dir) 6)
+                                            (fmin 0.9999 trail-hit-fraction))
+                                           (else
+                                            (fmax 0.001 (+ -0.001 trail-hit-fraction))))))
                   (let ((target-to-trail (new 'stack-no-clear 'vector)))
                     (vector-! target-to-trail
                               (-> *camera* tpos-curr-adj)
-                              (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 (-> self los-tgt-spline-pt)))))
+                              (-> *camera* target-spline point (-> self los-tgt-spline-pt) position))
                     (vector-flatten! target-to-trail target-to-trail (-> *camera* local-down))
                     (cond
                       ((and (< (fabs (- (-> self desired-pos y) (-> self trans y))) 8192.0)
@@ -1344,34 +1433,41 @@
                     (vector-! trail-segment (-> *camera* tpos-curr) (-> *camera* tpos-old))
                     (vector-! (-> self good-point)
                               (-> self los-last-pos)
-                              (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 (-> self los-tgt-spline-pt)))))
+                              (-> *camera* target-spline point (-> self los-tgt-spline-pt) position))
                     (vector-float*! (-> self good-point) (-> self good-point) recovery-fraction)
                     (vector+! (-> self good-point)
                               (-> self good-point)
-                              (the-as vector (+ (the-as uint (-> *camera* target-spline)) (* 48 (-> self los-tgt-spline-pt)))))
+                              (-> *camera* target-spline point (-> self los-tgt-spline-pt) position))
                     (vector-copy! (-> self los-last-pos) (-> self good-point))
                     (when *display-cam-los-debug*
                       (format 0 "going because u(~f) > 0 frame ~D~%" recovery-fraction (current-time))
                       (format *stdcon* " going because u(~f) > 0 frame ~D~%" recovery-fraction (current-time)))
-                    (logior! (-> self options) 4096))))))))))
+                    (logior! (-> self options) (cam-slave-options GOTO_GOOD_POINT)))))))))))
     (if *display-cam-los-debug*
-      (format *stdcon* "los-last ~M ~M ~M~%" (-> self los-last-pos x) (-> self los-last-pos y) (-> self los-last-pos z)))
+        (format *stdcon* "los-last ~M ~M ~M~%" (-> self los-last-pos x) (-> self los-last-pos y) (-> self los-last-pos z)))
     (cam-los-setup-lateral obstruction-result lateral-move sightline))
   (cond
-    ((not (logtest? (-> self options) 1024)))
+    ((not (logtest? (-> self options) (cam-slave-options MOVEMENT_BLOCKED))))
     ((= (-> self string-vel-dir) 5))
     ((and (= (-> self string-vel-dir) 2) (= (-> self los-state) (slave-los-state cw))))
     ((and (= (-> self string-vel-dir) 1) (= (-> self los-state) (slave-los-state ccw)))))
   (when *display-cam-los-debug*
     (format *stdcon* "state ~S" (slave-los-state->string (-> self los-state)))
     (cond
-      ((zero? (-> self string-vel-dir)) (format *stdcon* " vzero"))
-      ((= (-> self string-vel-dir) 2) (format *stdcon* " vcw"))
-      ((= (-> self string-vel-dir) 1) (format *stdcon* " vccw"))
-      ((= (-> self string-vel-dir) 3) (format *stdcon* " up"))
-      ((= (-> self string-vel-dir) 4) (format *stdcon* " down"))
-      ((= (-> self string-vel-dir) 6) (format *stdcon* " long"))
-      ((= (-> self string-vel-dir) 5) (format *stdcon* " short")))
+      ((zero? (-> self string-vel-dir))
+       (format *stdcon* " vzero"))
+      ((= (-> self string-vel-dir) 2)
+       (format *stdcon* " vcw"))
+      ((= (-> self string-vel-dir) 1)
+       (format *stdcon* " vccw"))
+      ((= (-> self string-vel-dir) 3)
+       (format *stdcon* " up"))
+      ((= (-> self string-vel-dir) 4)
+       (format *stdcon* " down"))
+      ((= (-> self string-vel-dir) 6)
+       (format *stdcon* " long"))
+      ((= (-> self string-vel-dir) 5)
+       (format *stdcon* " short")))
     (format *stdcon* "~%"))
   (when *display-cam-los-info*
     (dist-info-print (-> obstruction-result cw) "cw   ")
@@ -1384,15 +1480,15 @@
    enforce its current length limits, and adjust field of view and distance for the long-string mode."
   (let ((previous-length (vector-length (-> self view-flat))))
     (cond
-      ((logtest? #x10000 (-> self options))
+      ((logtest? (cam-slave-options STICKY_ANGLE) (-> self options))
        (let ((lateral-target-motion (new 'stack-no-clear 'vector)))
          (let ((string-side (new 'stack-no-clear 'vector)))
            (vector-cross! string-side (-> self view-flat) (-> *camera* local-down))
-           (vector-normalize! string-side (the-as float 1.0))
+           (vector-normalize! string-side 1.0)
            (vector-! lateral-target-motion (-> *camera* tpos-curr-adj) (-> *camera* tpos-old-adj))
            (vector-flatten! lateral-target-motion lateral-target-motion string-side))
          (if (< (vector-dot lateral-target-motion (-> self view-flat)) 0.0)
-           (vector-! (-> self view-flat) (-> self view-flat) lateral-target-motion))))
+             (vector-! (-> self view-flat) (-> self view-flat) lateral-target-motion))))
       (else
        (let ((target-motion (new 'stack-no-clear 'vector)))
          (vector-! target-motion (-> *camera* tpos-curr-adj) (-> *camera* tpos-old-adj))
@@ -1403,20 +1499,19 @@
            (maximum-length (-> self view-off z))
            (minimum-length (fmin pushed-length (-> self min-z-override))))
       (cond
-        ((logtest? (-> self options) #x4000)
+        ((logtest? (-> self options) (cam-slave-options BIKE_MODE))
          (let ((target-motion (new-stack-vector0)))
            0.0
            (vector-! target-motion (-> *camera* tpos-curr-adj) (-> *camera* tpos-old-adj))
            (let ((target-speed (vector-length target-motion)))
-             (set! minimum-length
-                   (lerp-clamp (the-as float 28672.0)
-                               (the-as float 32768.0)
-                               (parameter-ease-sin-clamp (* 0.00081380206 (+ -409.6 target-speed)))))))
+             (set! minimum-length (lerp-clamp 28672.0 32768.0 (parameter-ease-sin-clamp (* 0.00081380206 (+ -409.6 target-speed)))))))
          (set! maximum-length minimum-length)
          (+! (-> self fov) (fmax -91.022224 (fmin 91.022224 (* 0.1 (- 17294.223 (-> self fov)))))))
-        (else (+! (-> self fov) (fmax -182.04445 (fmin 182.04445 (* 0.1 (- 11650.845 (-> self fov))))))))
+        (else
+         (+! (-> self fov) (fmax -182.04445 (fmin 182.04445 (* 0.1 (- 11650.845 (-> self fov))))))))
       (cond
-        ((< current-length minimum-length) (vector-normalize! (-> self view-flat) minimum-length))
+        ((< current-length minimum-length)
+         (vector-normalize! (-> self view-flat) minimum-length))
         ((and (< previous-length current-length)
               (or (= (-> self los-state) (slave-los-state ccw)) (= (-> self los-state) (slave-los-state cw))))
          (vector-normalize! (-> self view-flat) previous-length))
@@ -1424,7 +1519,9 @@
          (vector-normalize! (-> self view-flat) maximum-length)
          (set! (-> self min-z-override) maximum-length)
          maximum-length)
-        (else (set! (-> self min-z-override) current-length) current-length)))))
+        (else
+         (set! (-> self min-z-override) current-length)
+         current-length)))))
 
 (defbehavior cam-string-line-of-sight camera-slave ()
   "Run the line-of-sight solver and rotate the horizontal
@@ -1444,26 +1541,23 @@
           (let ((target-motion (new 'stack-no-clear 'vector)))
             (vector-! target-motion (-> *camera* tpos-curr) (-> *camera* tpos-old))
             (if (and (< (-> self string-min-val z) string-length)
-                     (< (-> *CAMERA-bank* min-detectable-velocity) (vector-length target-motion)))
-              (set! string-length (+ -204.8 string-length)))))
+                       (< (-> *CAMERA-bank* min-detectable-velocity) (vector-length target-motion)))
+                (set! string-length (+ -204.8 string-length)))))
         (if (< string-length (fmin (-> self string-min-val z) (-> self min-z-override)))
-          (set! string-length (fmin (-> self string-min-val z) (-> self min-z-override))))
-        (if (< string-length (-> self min-z-override)) (set! (-> self min-z-override) string-length))
+            (set! string-length (fmin (-> self string-min-val z) (-> self min-z-override))))
+        (if (< string-length (-> self min-z-override))
+            (set! (-> self min-z-override) string-length))
         (let ((escape-direction (new 'stack-no-clear 'vector))
               (current-direction (new 'stack-no-clear 'vector))
               (rotation (new 'stack-no-clear 'matrix)))
           0.0
           (vector-flatten! escape-direction (-> obstruction-result lateral) (-> *camera* local-down))
-          (vector-normalize! escape-direction (the-as float 1.0))
-          (vector-normalize-copy! current-direction (-> self view-flat) (the-as float 1.0))
-          (let ((maximum-angle (lerp-clamp (the-as float 418.7022)
-                                           (the-as float 364.0889)
+          (vector-normalize! escape-direction 1.0)
+          (vector-normalize-copy! current-direction (-> self view-flat) 1.0)
+          (let ((maximum-angle (lerp-clamp 418.7022
+                                           364.0889
                                            (/ (- string-length (-> self string-min-val z)) (- (-> self string-max-val z) (-> self string-min-val z))))))
-            (matrix-from-two-vectors-max-angle-partial! rotation
-                                                        current-direction
-                                                        escape-direction
-                                                        maximum-angle
-                                                        (the-as float 0.5)))
+            (matrix-from-two-vectors-max-angle-partial! rotation current-direction escape-direction maximum-angle 0.5))
           (vector-matrix*! (-> self view-flat) (-> self view-flat) rotation))
         (vector-normalize! (-> self view-flat) string-length)))))
 
@@ -1480,15 +1574,17 @@
 (defbehavior cam-string-joystick camera-slave ()
   "Apply manual string length and orbit input. Couple height to
    distance, respect the current line-of-sight side, and otherwise recenter toward target facing."
-  (logand! (-> self options) -257)
-  (let ((distance-input (cam-dist-analog-input (the-as int (-> *cpad-list* cpads 0 righty)) (the-as float 0.05)))
+  (logclear! (-> self options) (cam-slave-options PLAYER_MOVING_CAMERA))
+  (let ((distance-input (cam-dist-analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 0.05))
         (distance-parameter (/ (- (vector-length (-> self view-flat)) (-> self string-min-val z))
                                (- (-> self string-max-val z) (-> self string-min-val z))))
         (saved-view-parameter (-> self view-off-param)))
-    (if (-> self have-phony-joystick) (set! distance-input (/ (-> self phony-joystick-y) 20)))
+    (if (-> self have-phony-joystick)
+        (set! distance-input (/ (-> self phony-joystick-y) 20)))
     (if (and (-> *camera* being-attacked) (not (time-elapsed? (-> *camera* attack-start) (seconds 0.25))))
-      (set! distance-input 0.05))
-    (if (!= distance-input 0.0) (logior! (-> self options) 256))
+        (set! distance-input 0.05))
+    (if (!= distance-input 0.0)
+        (logior! (-> self options) (cam-slave-options PLAYER_MOVING_CAMERA)))
     (let ((clamped-distance-parameter (fmin 1.0 distance-parameter)))
       (let ((height-parameter clamped-distance-parameter))
         (when (< clamped-distance-parameter 0.0)
@@ -1504,7 +1600,7 @@
             (set! (-> self view-off y) (fmin (-> *camera* stringCliffHeight) (fmax camera-height (-> self view-off y)))))))
       (let ((nonnegative-distance-parameter (fmax 0.0 clamped-distance-parameter)))
         (cond
-          ((logtest? (-> self options) #x4000))
+          ((logtest? (-> self options) (cam-slave-options BIKE_MODE)))
           ((not *camera-read-analog*))
           ((and (>= 0.0 distance-input) (>= 0.0 nonnegative-distance-parameter)))
           ((and (>= distance-input 0.0) (>= nonnegative-distance-parameter 1.0)))
@@ -1524,19 +1620,17 @@
           ((< distance-input 0.0)
            (set! (-> self view-off-param) (+ nonnegative-distance-parameter (* distance-input (-> *display* time-adjust-ratio))))))))
     (if (= distance-input 0.0)
-      (set! (-> self view-off z) (-> self string-max-val z))
-      (set! (-> self view-off z) (lerp (-> self string-min-val z) (-> self string-max-val z) (-> self view-off-param))))
-    (if (-> *camera* being-attacked) (set! (-> self view-off-param) saved-view-parameter)))
+        (set! (-> self view-off z) (-> self string-max-val z))
+        (set! (-> self view-off z) (lerp (-> self string-min-val z) (-> self string-max-val z) (-> self view-off-param))))
+    (if (-> *camera* being-attacked)
+        (set! (-> self view-off-param) saved-view-parameter)))
   (when *camera-read-analog*
-    (let ((orbit-input (analog-input (the-as int (-> *cpad-list* cpads 0 rightx))
-                                     (the-as float 128.0)
-                                     (the-as float 32.0)
-                                     (the-as float 110.0)
-                                     (* 21845.334 (seconds-per-frame))))
+    (let ((orbit-input (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame))))
           (rotation (new-stack-matrix0))
           (current-direction (new-stack-vector0))
           (target-backward (new-stack-vector0)))
-      (if (-> self have-phony-joystick) (set! orbit-input (* 21845.334 (-> self phony-joystick-x) (seconds-per-frame))))
+      (if (-> self have-phony-joystick)
+          (set! orbit-input (* 21845.334 (-> self phony-joystick-x) (seconds-per-frame))))
       (cond
         ((and (= (-> self los-state) (slave-los-state ccw)) (< 0.0 orbit-input))
          (let ((current-distance (fmax (-> self string-min-val z) (fmin (-> self string-max-val z) (vector-length (-> self view-flat))))))
@@ -1546,23 +1640,23 @@
            (set! orbit-input (* -21845.334 (+ 0.1 (/ (-> self string-min-val z) current-distance)) (seconds-per-frame))))))
       (cond
         ((!= orbit-input 0.0)
-         (logior! (-> self options) 256)
+         (logior! (-> self options) (cam-slave-options PLAYER_MOVING_CAMERA))
          (matrix-axis-angle! rotation (-> *camera* local-down) orbit-input)
          (vector-matrix*! (-> self view-flat) (-> self view-flat) rotation))
-        ((logtest? (-> self options) 1)
-         (vector-normalize-copy! current-direction (-> self view-flat) (the-as float 1.0))
+        ((logtest? (-> self options) (cam-slave-options BUTT_CAM))
+         (vector-normalize-copy! current-direction (-> self view-flat) 1.0)
          (vector-flatten! target-backward (-> *camera* tgt-rot-mat vector 2) (-> *camera* local-down))
-         (vector-normalize! target-backward (the-as float -1.0))
+         (vector-normalize! target-backward -1.0)
          (matrix-from-two-vectors-max-angle-partial! rotation
                                                      current-direction
                                                      target-backward
                                                      (* 10922.667 (seconds-per-frame))
-                                                     (the-as float 0.05))
+                                                     0.05)
          (vector-matrix*! (-> self view-flat) (-> self view-flat) rotation)))
-      (when (logtest? (-> self options) #x4000)
-        (vector-normalize-copy! current-direction (-> self view-flat) (the-as float 1.0))
+      (when (logtest? (-> self options) (cam-slave-options BIKE_MODE))
+        (vector-normalize-copy! current-direction (-> self view-flat) 1.0)
         (vector-flatten! target-backward (-> *camera* tgt-rot-mat vector 2) (-> *camera* local-down))
-        (vector-normalize! target-backward (the-as float -1.0))
+        (vector-normalize! target-backward -1.0)
         (let ((facing-angle (acos (vector-dot target-backward current-direction))))
           (when (and (< 8192.0 facing-angle) (< facing-angle 32585.955))
             (matrix-from-two-vectors-max-angle! rotation
@@ -1583,20 +1677,24 @@
       ((< (fill-and-probe-using-line-sphere *collide-cache*
                                             (-> self string-trans)
                                             sightline
-                                            (the-as float 40.96)
-                                            (collide-kind background cak-3 wall-object ground-object cak-14)
+                                            (meters 0.01)
+                                            (collide-kind background hit-by-others wall-object ground-object cak-14)
                                             (the-as process #f)
                                             probe-result
                                             (new 'static 'pat-surface :nocamera #x1))
           0.0)
        (set! (-> self time-dist-too-far) (the-as uint 0))
        0)
-      ((< (-> self time-dist-too-far) (the-as uint 600)) (+! (-> self time-dist-too-far) 1))
+      ((< (-> self time-dist-too-far) (the-as uint 600))
+       (+! (-> self time-dist-too-far) 1))
       ((cam-string-find-position-rel! clear-offset)
        (cam-string-set-position-rel! clear-offset)
        (set! (-> self time-dist-too-far) (the-as uint 0))
        0)
-      (else (format 0 "camera position search failed~%") (set! (-> self time-dist-too-far) (the-as uint 0)) 0)))
+      (else
+       (format 0 "camera position search failed~%")
+       (set! (-> self time-dist-too-far) (the-as uint 0))
+       0)))
   (none))
 
 (defbehavior cam-string-move camera-slave ()
@@ -1604,31 +1702,34 @@
    sphere-cast collision slides. Classify the requested motion for line-of-sight steering and shorten
    the string when geometry blocks the move."
   (vector-! (-> self velocity) (-> self desired-pos) (-> self string-trans))
-  (if *display-cam-los-debug* (format *stdcon* "vel ~M~%" (vector-length (-> self velocity))))
+  (if *display-cam-los-debug*
+      (format *stdcon* "vel ~M~%" (vector-length (-> self velocity))))
   (let ((motion-direction (new 'stack-no-clear 'vector))
         (string-direction (new 'stack-no-clear 'vector))
         (motion-cross (new 'stack-no-clear 'vector))
         (target-motion (new 'stack-no-clear 'vector)))
     (vector-! target-motion (-> *camera* tpos-curr-adj) (-> *camera* tpos-old-adj))
-    (vector+float*! motion-direction (-> self velocity) target-motion (the-as float 0.5))
-    (vector-normalize! motion-direction (the-as float 1.0))
-    (vector-normalize-copy! string-direction (-> self view-flat) (the-as float 1.0))
+    (vector+float*! motion-direction (-> self velocity) target-motion 0.5)
+    (vector-normalize! motion-direction 1.0)
+    (vector-normalize-copy! string-direction (-> self view-flat) 1.0)
     (vector-cross! motion-cross string-direction motion-direction)
     (cond
       ((and (< (vector-length (-> self velocity)) (-> *CAMERA-bank* min-detectable-velocity))
             (< (vector-length target-motion) (-> *CAMERA-bank* min-detectable-velocity)))
        (set! (-> self string-vel-dir) (the-as uint 0))
        0)
-      ((< (cos (the-as float 5461.3335)) (vector-dot (-> *camera* local-down) motion-direction))
+      ((< (cos (degrees 30)) (vector-dot (-> *camera* local-down) motion-direction))
        (set! (-> self string-vel-dir) (the-as uint 4)))
-      ((< (vector-dot (-> *camera* local-down) motion-direction) (- (cos (the-as float 5461.3335))))
+      ((< (vector-dot (-> *camera* local-down) motion-direction) (- (cos (degrees 30))))
        (set! (-> self string-vel-dir) (the-as uint 3)))
-      ((< (cos (the-as float 5461.3335)) (vector-dot string-direction motion-direction))
+      ((< (cos (degrees 30)) (vector-dot string-direction motion-direction))
        (set! (-> self string-vel-dir) (the-as uint 6)))
-      ((< (vector-dot string-direction motion-direction) (- (cos (the-as float 5461.3335))))
+      ((< (vector-dot string-direction motion-direction) (- (cos (degrees 30))))
        (set! (-> self string-vel-dir) (the-as uint 5)))
-      ((< (vector-dot (-> *camera* local-down) motion-cross) 0.0) (set! (-> self string-vel-dir) (the-as uint 1)))
-      (else (set! (-> self string-vel-dir) (the-as uint 2)))))
+      ((< (vector-dot (-> *camera* local-down) motion-cross) 0.0)
+       (set! (-> self string-vel-dir) (the-as uint 1)))
+      (else
+       (set! (-> self string-vel-dir) (the-as uint 2)))))
   0.0
   (let ((remaining-fraction 1.0)
         (step (new-stack-vector0))
@@ -1637,46 +1738,51 @@
           (surface-normal (new 'stack-no-clear 'vector)))
       (when *debug-segment*
         (if (>= (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity)))
-          (cam-collision-record-save (-> self string-trans) (-> self velocity) -1 'no-hit self)))
+            (cam-collision-record-save (-> self string-trans) (-> self velocity) -1 'no-hit self)))
       (while (and (< 0.01 remaining-fraction)
                   (and (< (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity))) (< collision-count 4)))
         (vector-float*! step (-> self velocity) remaining-fraction)
-        (if *debug-segment* (cam-collision-record-save (-> self string-trans) step collision-count 'normal self))
-        (let ((hit-fraction (if (logtest? (-> self options) 32)
-                              (fill-and-probe-using-line-sphere *collide-cache*
-                                                                (-> self string-trans)
-                                                                step
-                                                                (-> *CAMERA-bank* collide-move-rad)
-                                                                (collide-kind background cak-3 wall-object ground-object cak-14)
-                                                                (the-as process #f)
-                                                                probe-result
-                                                                (new 'static 'pat-surface :nocamera #x1))
-                              -100000000.0)))
+        (if *debug-segment*
+            (cam-collision-record-save (-> self string-trans) step collision-count 'normal self))
+        (let ((hit-fraction (if (logtest? (-> self options) (cam-slave-options COLLIDE))
+                                (fill-and-probe-using-line-sphere *collide-cache*
+                                                                  (-> self string-trans)
+                                                                  step
+                                                                  (-> *CAMERA-bank* collide-move-rad)
+                                                                  (collide-kind background hit-by-others wall-object ground-object cak-14)
+                                                                  (the-as process #f)
+                                                                  probe-result
+                                                                  (new 'static 'pat-surface :nocamera #x1))
+                                -100000000.0)))
           (if *display-cam-los-debug*
-            (format *stdcon*
-                    "vp ~f vr ~f r ~f ta ~f~%"
-                    (vector-length step)
-                    remaining-fraction
-                    (/ (vector-length step) remaining-fraction)
-                    hit-fraction))
+              (format *stdcon*
+                      "vp ~f vr ~f r ~f ta ~f~%"
+                      (vector-length step)
+                      remaining-fraction
+                      (/ (vector-length step) remaining-fraction)
+                      hit-fraction))
           (cond
             ((>= hit-fraction 0.0)
              (let* ((backoff-fraction (fmax 0.01 (/ 40.96 (vector-length step))))
                     (advance-fraction (fmax 0.0 (- hit-fraction backoff-fraction))))
                (vector+float*! (-> self string-trans) (-> self string-trans) step advance-fraction))
              (vector-! surface-normal (-> self string-trans) (-> probe-result intersect))
-             (vector-normalize! surface-normal (the-as float 1.0))
+             (vector-normalize! surface-normal 1.0)
              (vector-flatten! (-> self velocity) (-> self velocity) surface-normal)
              (set! remaining-fraction (- remaining-fraction (* remaining-fraction hit-fraction)))
              (+! collision-count 1))
-            (else (vector+! (-> self string-trans) (-> self string-trans) step) (set! remaining-fraction 0.0))))))
+            (else
+             (vector+! (-> self string-trans) (-> self string-trans) step)
+             (set! remaining-fraction 0.0))))))
     (cond
       ((zero? collision-count)
-       (logand! (-> self options) -1025)
-       (if *display-cam-los-debug* (format *stdcon* "not blocked~%")))
+       (logclear! (-> self options) (cam-slave-options MOVEMENT_BLOCKED))
+       (if *display-cam-los-debug*
+           (format *stdcon* "not blocked~%")))
       (else
-       (logior! (-> self options) 1024)
-       (if *display-cam-los-debug* (format *stdcon* "blocked ~D ~f~%" collision-count remaining-fraction))
+       (logior! (-> self options) (cam-slave-options MOVEMENT_BLOCKED))
+       (if *display-cam-los-debug*
+           (format *stdcon* "blocked ~D ~f~%" collision-count remaining-fraction))
        (let ((camera-from-target (new-stack-vector0))
              (old-string-length (vector-length (-> self view-flat))))
          (vector-! camera-from-target (-> self string-trans) (-> *camera* tpos-curr-adj))
@@ -1687,7 +1793,8 @@
               (vector-normalize-copy! (-> self view-flat) camera-from-target blocked-string-length)
               (set! (-> self min-z-override) blocked-string-length)
               blocked-string-length)
-             (else (vector-normalize-copy! (-> self view-flat) camera-from-target old-string-length))))))))
+             (else
+              (vector-normalize-copy! (-> self view-flat) camera-from-target old-string-length))))))))
   (when *display-cam-los-debug*
     (let ((remaining-motion (new-stack-vector0)))
       (vector-! remaining-motion (-> self desired-pos) (-> self string-trans))
@@ -1696,40 +1803,48 @@
 (defbehavior cam-string-code camera-slave ()
   "Run the string camera's follow, line-of-sight, joystick, hidden
    target, collision movement, and final position-spline smoothing stages for one frame."
-  (if *debug-segment* (cam-debug-reset-coll-tri))
+  (if *debug-segment*
+      (cam-debug-reset-coll-tri))
   (cam-string-follow)
-  (if (logtest? (-> self options) 512) (cam-string-line-of-sight))
-  (if (not (paused?)) (cam-string-joystick))
+  (if (logtest? (-> self options) (cam-slave-options LINE_OF_SIGHT))
+      (cam-string-line-of-sight))
+  (if (not (paused?))
+      (cam-string-joystick))
   (let ((camera-offset (new-stack-vector0)))
     (vector--float*! camera-offset
                      (-> self view-flat)
                      (-> *camera* local-down)
                      (+ (-> *camera* target-height) (-> self view-off y)))
     (vector+! (-> self desired-pos) (-> *camera* tpos-curr-adj) camera-offset))
-  (if (logtest? (-> self options) 64) (cam-string-find-hidden))
+  (if (logtest? (-> self options) (cam-slave-options FIND_HIDDEN_TARGET))
+      (cam-string-find-hidden))
   (cond
-    ((logtest? (-> self options) 4096)
+    ((logtest? (-> self options) (cam-slave-options GOTO_GOOD_POINT))
      (when *debug-segment*
        (let ((jump-displacement (new 'stack-no-clear 'vector)))
          (vector-! jump-displacement (-> self good-point) (-> self string-trans))
          (cam-collision-record-save (-> self string-trans) jump-displacement -2 'jump self)))
-     (logand! (-> self options) -4097)
+     (logclear! (-> self options) (cam-slave-options GOTO_GOOD_POINT))
      (vector-copy! (-> self desired-pos) (-> self good-point))
      (cam-string-move)
      (vector-! (-> self view-flat) (-> self string-trans) (-> *camera* tpos-curr-adj))
      (vector-flatten! (-> self view-flat) (-> self view-flat) (-> *camera* local-down))
      (let ((jump-string-length (vector-length (-> self view-flat))))
-       (if (< jump-string-length (-> self min-z-override)) (set! (-> self min-z-override) jump-string-length))))
-    (else (cam-string-move)))
-  (add-point! (-> self position-spline) (-> self string-trans) (the-as float 0.04096) (the-as float 4096.0) #t)
+       (if (< jump-string-length (-> self min-z-override))
+           (set! (-> self min-z-override) jump-string-length))))
+    (else
+     (cam-string-move)))
+  (add-point! (-> self position-spline) (-> self string-trans) (meters 0.00001) (meters 1) #t)
   (cond
-    ((and (logtest? (-> self options) #x4000) (logtest? (-> self options) 256))
-     (follow-update! (-> self position-spline) (-> self trans) (the-as float 102.4) (the-as float 4096.0)))
-    ((logtest? (-> self options) #x4000)
-     (follow-update! (-> self position-spline) (-> self trans) (the-as float 40.96) (the-as float 4096.0)))
-    ((logtest? (-> self options) 256)
-     (follow-update! (-> self position-spline) (-> self trans) (the-as float 102.4) (the-as float 2457.6)))
-    (else (follow-update! (-> self position-spline) (-> self trans) (the-as float 20.48) (the-as float 2457.6)))))
+    ((and (logtest? (-> self options) (cam-slave-options BIKE_MODE))
+          (logtest? (-> self options) (cam-slave-options PLAYER_MOVING_CAMERA)))
+     (follow-update! (-> self position-spline) (-> self trans) (meters 0.025) (meters 1)))
+    ((logtest? (-> self options) (cam-slave-options BIKE_MODE))
+     (follow-update! (-> self position-spline) (-> self trans) (meters 0.01) (meters 1)))
+    ((logtest? (-> self options) (cam-slave-options PLAYER_MOVING_CAMERA))
+     (follow-update! (-> self position-spline) (-> self trans) (meters 0.025) (meters 0.6)))
+    (else
+     (follow-update! (-> self position-spline) (-> self trans) (meters 0.005) (meters 0.6)))))
 
 (defbehavior set-string-parms camera-slave ()
   "Refresh the string camera's minimum and maximum offset vectors
@@ -1756,19 +1871,25 @@
         (('joystick)
          (set! (-> self phony-joystick-x) (the-as float (-> block param 0)))
          (set! (-> self phony-joystick-y) (the-as float (-> block param 1)))
-         (let ((enabled (the-as object #t))) (set! (-> self have-phony-joystick) (the-as symbol enabled)) enabled))
+         (let ((enabled (the-as object #t)))
+           (set! (-> self have-phony-joystick) (the-as symbol enabled))
+           enabled))
         (('set-dist)
          (cond
            ((-> block param 0)
             (set! (-> self string-val-locked) #t)
-            (vector-copy! (-> self string-min-val) (the-as vector (-> block param 0)))
-            (vector-copy! (-> self string-max-val) (the-as vector (-> block param 1)))
+            (set! (-> self string-min-val quad) (-> (the-as vector (-> block param 0)) quad))
+            (set! (-> self string-max-val quad) (-> (the-as vector (-> block param 1)) quad))
             (set! (-> self string-max-val x) (fmax (-> self string-max-val x) (-> self string-min-val x)))
             (set! (-> self string-max-val y) (fmax (-> self string-max-val y) (-> self string-min-val y)))
             (set! (-> self string-max-val z) (fmax (-> self string-max-val z) (-> self string-min-val z))))
-           (else (set! (-> self string-val-locked) #f) #f)))
-        (('blocked-side?) (-> self los-state))
-        (else (cam-standard-event-handler proc argc message block))))
+           (else
+            (set! (-> self string-val-locked) #f)
+            #f)))
+        (('blocked-side?)
+         (-> self los-state))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
@@ -1779,7 +1900,8 @@
         (set! (-> self los-tgt-spline-pt) (-> *camera* target-spline end-point))
         (set! (-> self los-tgt-spline-pt-incarnation) (-> *camera* target-spline point (-> self los-tgt-spline-pt) incarnation))
         (set! (-> self min-z-override) (-> self string-max-val z))
-        (if (!= (-> *camera* outro-t-step) 0.0) (set! (-> self min-z-override) (-> self string-min-val z)))
+        (if (!= (-> *camera* outro-t-step) 0.0)
+            (set! (-> self min-z-override) (-> self string-min-val z)))
         (let ((initial-offset (new-stack-vector0)))
           0.0
           (set! (-> self view-off-param) (-> *camera* view-off-param-save))
@@ -1801,12 +1923,16 @@
             (let ((minimum-string-length (fmin (-> *camera* string-push-z) (-> self min-z-override)))
                   (maximum-string-length (-> self view-off z)))
               (cond
-                ((< initial-string-length minimum-string-length) (set! initial-string-length minimum-string-length))
-                ((< maximum-string-length initial-string-length) (set! initial-string-length maximum-string-length))))
+                ((< initial-string-length minimum-string-length)
+                 (set! initial-string-length minimum-string-length))
+                ((< maximum-string-length initial-string-length)
+                 (set! initial-string-length maximum-string-length))))
             (vector-normalize! (-> self view-flat) initial-string-length)
             (let ((distance-parameter (/ (- initial-string-length (-> self string-min-val z)) (- (-> self string-max-val z) (-> self string-min-val z)))))
-              (if (< 1.0 distance-parameter) (set! distance-parameter 1.0))
-              (if (< distance-parameter 0.0) (set! distance-parameter 0.0))
+              (if (< 1.0 distance-parameter)
+                  (set! distance-parameter 1.0))
+              (if (< distance-parameter 0.0)
+                  (set! distance-parameter 0.0))
               (let ((minimum-height (-> self string-min-val y))
                     (maximum-height (-> self string-max-val y)))
                 (set! (-> self view-off y) (lerp minimum-height maximum-height distance-parameter)))
@@ -1827,7 +1953,7 @@
                                                                 target-head
                                                                 camera-offset
                                                                 (-> *CAMERA-bank* collide-move-rad)
-                                                                (collide-kind background cak-3 wall-object ground-object cak-14)
+                                                                (collide-kind background hit-by-others wall-object ground-object cak-14)
                                                                 (the-as process #f)
                                                                 probe-result
                                                                 (new 'static 'pat-surface :nocamera #x1 :nolineofsight #x1))))
@@ -1841,10 +1967,13 @@
                      (cam-string-find-position-rel! clear-offset)
                      (cam-string-set-position-rel! clear-offset)))
                   (else
-                   (if (< clear-string-length (-> self min-z-override)) (set! (-> self min-z-override) clear-string-length))
+                   (if (< clear-string-length (-> self min-z-override))
+                       (set! (-> self min-z-override) clear-string-length))
                    (let ((distance-parameter (/ (- clear-string-length (-> self string-min-val z)) (- (-> self string-max-val z) (-> self string-min-val z)))))
-                     (if (< 1.0 distance-parameter) (set! distance-parameter 1.0))
-                     (if (< distance-parameter 0.0) (set! distance-parameter 0.0))
+                     (if (< 1.0 distance-parameter)
+                         (set! distance-parameter 1.0))
+                     (if (< distance-parameter 0.0)
+                         (set! distance-parameter 0.0))
                      (let ((minimum-height (-> self string-min-val y))
                            (maximum-height (-> self string-max-val y)))
                        (set! (-> self view-off y) (lerp minimum-height maximum-height distance-parameter)))
@@ -1859,11 +1988,12 @@
         (vector-copy! (-> self trans) (-> self string-trans))
         (vector-copy! (-> self los-last-pos) (-> self string-trans))
         (reset! (-> self position-spline) (-> self string-trans))
-        (set! (-> self blend-from-type) (the-as uint 2))
-        (set! (-> self blend-to-type) (the-as uint 2))))
+        (set! (-> self blend-from-type) (camera-blend-to-type combiner-tracked))
+        (set! (-> self blend-to-type) (camera-blend-to-type combiner-tracked))))
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
       (loop
@@ -1879,6 +2009,7 @@
    (min-z meters)
    (max-y meters)
    (min-y meters)))
+
 
 (define *CAM_STICK-bank*
   (new 'static 'cam-stick-bank :max-z (meters 30) :min-z (meters 5) :max-y (meters 15) :min-y (meters 2)))
@@ -1899,7 +2030,8 @@
     (vector-! spring-step (-> self desired-pos) (-> self trans))
     (vector-float*! spring-step spring-step 0.2)
     (vector-! acceleration spring-step (-> self velocity))
-    (if (< 409.6 (vector-length acceleration)) (vector-normalize! acceleration (the-as float 409.6)))
+    (if (< 409.6 (vector-length acceleration))
+        (vector-normalize! acceleration (meters 0.1)))
     (vector+! (-> self velocity) (-> self velocity) acceleration))
   0.0
   (let ((remaining-fraction 1.0)
@@ -1912,24 +2044,26 @@
                   (and (< (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity))) (> iterations-left 0)))
         (+! iterations-left -1)
         (vector-float*! step (-> self velocity) remaining-fraction)
-        (let ((hit-fraction (if (logtest? (-> self options) 32)
-                              (fill-and-probe-using-line-sphere *collide-cache*
-                                                                (-> self trans)
-                                                                step
-                                                                (-> *CAMERA-bank* collide-move-rad)
-                                                                (collide-kind background cak-3 wall-object ground-object cak-14)
-                                                                (the-as process #f)
-                                                                probe-result
-                                                                (new 'static 'pat-surface :nocamera #x1))
-                              -100000000.0)))
+        (let ((hit-fraction (if (logtest? (-> self options) (cam-slave-options COLLIDE))
+                                (fill-and-probe-using-line-sphere *collide-cache*
+                                                                  (-> self trans)
+                                                                  step
+                                                                  (-> *CAMERA-bank* collide-move-rad)
+                                                                  (collide-kind background hit-by-others wall-object ground-object cak-14)
+                                                                  (the-as process #f)
+                                                                  probe-result
+                                                                  (new 'static 'pat-surface :nocamera #x1))
+                                -100000000.0)))
           (cond
             ((>= hit-fraction 0.0)
              (vector+float*! (-> self trans) (-> self trans) step hit-fraction)
-             (set! (-> surface-normal quad) (-> probe-result normal quad))
+             (vector-copy! surface-normal (-> probe-result normal))
              (vector-flatten! (-> self velocity) (-> self velocity) surface-normal)
              (set! remaining-fraction (- remaining-fraction (* remaining-fraction hit-fraction)))
              (set! blocked? 1))
-            (else (vector+! (-> self trans) (-> self trans) step) (set! remaining-fraction 0.0))))))
+            (else
+             (vector+! (-> self trans) (-> self trans) step)
+             (set! remaining-fraction 0.0))))))
     (when (nonzero? blocked?)
       0
       (let ((camera-from-target (new-stack-vector0)))
@@ -1939,14 +2073,16 @@
         (let ((blocked-distance-parameter (/ (- (vector-length camera-from-target) (-> *CAM_STICK-bank* min-z))
                                              (- (-> *CAM_STICK-bank* max-z) (-> *CAM_STICK-bank* min-z)))))
           (cond
-            ((< blocked-distance-parameter 0.0) (set! blocked-distance-parameter 0.0))
-            ((< 1.0 blocked-distance-parameter) (set! blocked-distance-parameter 1.0)))
+            ((< blocked-distance-parameter 0.0)
+             (set! blocked-distance-parameter 0.0))
+            ((< 1.0 blocked-distance-parameter)
+             (set! blocked-distance-parameter 1.0)))
           (cond
             ((< (- blocked-distance-parameter (-> self view-off-param)) -0.001)
              (set! (-> self view-off-param) blocked-distance-parameter))
             ((< 0.001 (- blocked-distance-parameter (-> self view-off-param)))
              (vector-normalize-copy! (-> self view-flat) camera-from-target (-> self view-off z))))))))
-  (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #t)
+  (slave-set-rotation! (-> self tracking) (-> self trans) (-> self options) (-> self fov) #t)
   (none))
 
 ;; Direct orbit camera used by debug and vehicle controls.  The stick selects distance, height, and
@@ -1969,12 +2105,13 @@
         (vector+! (-> self desired-pos) (-> self desired-pos) (-> self tracking follow-pt))
         (vector-copy! (-> self trans) (-> self desired-pos))
         (vector-reset! (-> self velocity))
-        (set! (-> self blend-from-type) (the-as uint 2))
-        (set! (-> self blend-to-type) (the-as uint 2))
-        (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #f)))
+        (set! (-> self blend-from-type) (camera-blend-to-type combiner-tracked))
+        (set! (-> self blend-to-type) (camera-blend-to-type combiner-tracked))
+        (slave-set-rotation! (-> self tracking) (-> self trans) (-> self options) (-> self fov) #f)))
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (cam-slave-go cam-free-floating))
       (when (not (paused?))
         (when *camera-read-analog*
           (let ((distance-input (analog-input-vertical-third ;; og:preserve-this changed for pc port
@@ -1988,7 +2125,8 @@
                (+! (-> self view-off-param) (* 0.05 (- 1.0 (-> self view-off-param)))))
               ((< distance-input (* 0.05 (- (-> self view-off-param))))
                (+! (-> self view-off-param) (* 0.05 (- (-> self view-off-param)))))
-              (else (+! (-> self view-off-param) distance-input)))))
+              (else
+               (+! (-> self view-off-param) distance-input)))))
         (set! (-> self view-off y) (lerp (-> *CAM_STICK-bank* min-y) (-> *CAM_STICK-bank* max-y) (-> self view-off-param)))
         (set! (-> self view-off z) (lerp (-> *CAM_STICK-bank* min-z) (-> *CAM_STICK-bank* max-z) (-> self view-off-param)))
         (when *camera-read-analog*
@@ -2006,24 +2144,25 @@
               ((!= orbit-input 0.0)
                (matrix-axis-angle! rotation (-> *camera* local-down) orbit-input)
                (vector-matrix*! (-> self view-flat) (-> self view-flat) rotation))
-              ((logtest? (-> self options) 1)
+              ((logtest? (-> self options) (cam-slave-options BUTT_CAM))
                (set-vector! current-direction 0.0 0.0 1.0 1.0)
-               (vector-normalize-copy! current-direction (-> self view-flat) (the-as float 1.0))
+               (vector-normalize-copy! current-direction (-> self view-flat) 1.0)
                (set! (-> target-backward quad) (-> *camera* tgt-rot-mat vector 2 quad))
                (vector-flatten! target-backward target-backward (-> *camera* local-down))
                (vector-negate! target-backward target-backward)
-               (set! (-> desired-direction quad) (-> current-direction quad))
-               (vector-normalize-copy! desired-direction target-backward (the-as float 1.0))
+               (vector-copy! desired-direction current-direction)
+               (vector-normalize-copy! desired-direction target-backward 1.0)
                (matrix-from-two-vectors-max-angle-partial! rotation
                                                            current-direction
                                                            desired-direction
                                                            (* 10922.667 (seconds-per-frame))
-                                                           (the-as float 0.05))
+                                                           0.05)
                (vector-matrix*! (-> self view-flat) (-> self view-flat) rotation)))))))
   :code
     (behavior ()
       (loop
-        (if (not (paused?)) (cam-stick-code))
+        (if (not (paused?))
+            (cam-stick-code))
         (suspend))))
 
 (deftype cam-bike-bank (basic)
@@ -2031,6 +2170,7 @@
    (min-z meters)
    (max-y meters)
    (min-y meters)))
+
 
 (define *CAM_BIKE-bank*
   (new 'static 'cam-bike-bank :max-z (meters 6) :min-z (meters 10) :max-y (meters 3) :min-y (meters 5)))
@@ -2052,10 +2192,10 @@
   (let ((steering-rotation (new-stack-matrix0)))
     (let ((current-direction (new-stack-vector0))
           (target-backward (new-stack-vector0)))
-      (vector-normalize-copy! current-direction (-> self view-flat) (the-as float 1.0))
+      (vector-normalize-copy! current-direction (-> self view-flat) 1.0)
       (vector-flatten! target-backward (-> *camera* tgt-rot-mat vector 2) (-> *camera* local-down))
-      (vector-normalize! target-backward (the-as float -1.0))
-      (matrix-from-two-vectors-partial-linear! steering-rotation current-direction target-backward (the-as float 0.2)))
+      (vector-normalize! target-backward -1.0)
+      (matrix-from-two-vectors-partial-linear! steering-rotation current-direction target-backward 0.2))
     (vector-matrix*! (-> self view-flat) (-> self view-flat) steering-rotation))
   (let ((camera-offset (new-stack-vector0)))
     0.0
@@ -2080,7 +2220,8 @@
     (vector-! spring-step (-> self desired-pos) (-> self trans))
     (vector-float*! spring-step spring-step 0.2)
     (vector-! acceleration spring-step (-> self velocity))
-    (if (< 409.6 (vector-length acceleration)) (vector-normalize! acceleration (the-as float 409.6)))
+    (if (< 409.6 (vector-length acceleration))
+        (vector-normalize! acceleration (meters 0.1)))
     (vector+! (-> self velocity) (-> self velocity) acceleration))
   0.0
   (let ((remaining-fraction 1.0)
@@ -2091,16 +2232,16 @@
                 (and (< (-> *CAMERA-bank* min-detectable-velocity) (vector-length (-> self velocity))) (> iterations-left 0)))
       (+! iterations-left -1)
       (vector-float*! step (-> self velocity) remaining-fraction)
-      (let ((hit-fraction (if (logtest? (-> self options) 32)
-                            (fill-and-probe-using-line-sphere *collide-cache*
-                                                              (-> self trans)
-                                                              step
-                                                              (the-as float 4096.0)
-                                                              (collide-kind background cak-3 wall-object ground-object cak-14)
-                                                              (the-as process #f)
-                                                              probe-result
-                                                              (new 'static 'pat-surface :nocamera #x1))
-                            -100000000.0)))
+      (let ((hit-fraction (if (logtest? (-> self options) (cam-slave-options COLLIDE))
+                              (fill-and-probe-using-line-sphere *collide-cache*
+                                                                (-> self trans)
+                                                                step
+                                                                (meters 1)
+                                                                (collide-kind background hit-by-others wall-object ground-object cak-14)
+                                                                (the-as process #f)
+                                                                probe-result
+                                                                (new 'static 'pat-surface :nocamera #x1))
+                              -100000000.0)))
         (cond
           ((>= hit-fraction 0.0)
            (vector+float*! (-> self trans) (-> self trans) step hit-fraction)
@@ -2110,9 +2251,11 @@
              (vector-! camera-from-target (-> self trans) (-> *camera* tpos-curr-adj))
              (vector-flatten! camera-from-target camera-from-target (-> *camera* local-down))
              (vector-normalize-copy! (-> self view-flat) camera-from-target (-> self view-off z))))
-          (else (vector+! (-> self trans) (-> self trans) step) (set! remaining-fraction 0.0))))))
+          (else
+           (vector+! (-> self trans) (-> self trans) step)
+           (set! remaining-fraction 0.0))))))
   (cam-calc-bike-follow! (-> self tracking) (-> self trans) #t)
-  (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #t)
+  (slave-set-rotation! (-> self tracking) (-> self trans) (-> self options) (-> self fov) #t)
   (none))
 
 ;; High-speed follow camera.  Target speed expands both distance and height, facing steers the
@@ -2134,13 +2277,14 @@
         (vector+! (-> self desired-pos) (-> self desired-pos) (-> *camera* tpos-curr-adj))
         (vector-copy! (-> self trans) (-> self desired-pos))
         (vector-reset! (-> self velocity))
-        (set! (-> self blend-from-type) (the-as uint 0))
-        (set! (-> self blend-to-type) (the-as uint 1))
+        (set! (-> self blend-from-type) (camera-blend-to-type direct))
+        (set! (-> self blend-to-type) (camera-blend-to-type slave-controlled))
         (cam-calc-bike-follow! (-> self tracking) (-> self trans) #f)
-        (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #f)))
+        (slave-set-rotation! (-> self tracking) (-> self trans) (-> self options) (-> self fov) #f)))
   :trans
     (behavior ()
-      (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
+      (if (not (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+          (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
       (loop

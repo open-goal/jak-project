@@ -36,10 +36,7 @@
 
 (defun set-point ((point vector) (x float) (y float) (z float))
   "Set point's xyz coordinates and set w to one."
-  (set! (-> point x) x)
-  (set! (-> point y) y)
-  (set! (-> point z) z)
-  (set! (-> point w) 1.0)
+  (set-vector! point x y z 1.0)
   (none))
 
 (defun update-view-planes ((camera math-camera) (planes (inline-array plane)) (scale float))
@@ -78,8 +75,7 @@
             (far-bottom-left-ray (new-stack-vector0))
             (far-bottom-right-ray (new-stack-vector0)))
         (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-        (let ((camera-position (new 'stack-no-clear 'vector)))
-          (set! (-> camera-position quad) (the-as uint128 0))
+        (let ((camera-position (new-stack-vector0)))
           (set! (-> camera-position quad) (-> camera inv-camera-rot vector 3 quad))
           (vector-! far-top-left-ray (-> frustum yon-top-left) camera-position)
           (vector-! far-top-right-ray (-> frustum yon-top-right) camera-position)
@@ -136,22 +132,26 @@
                         (set! use-adjacent? (logtest? (vis-info-flag using-this-as-only-vis) (-> adjacent-vis flags)))
                         (if (< (-> adjacent-vis length) (-> adjacent-vis from-bsp current-leaf-idx)) (set! use-adjacent? #f)))
                       use-self?))
-                  (if (!= (-> active-level all-visible?) 'loading) (set! (-> active-level all-visible?) #f))
+                  (if (!= (-> active-level all-visible?) 'loading)
+                      (set! (-> active-level all-visible?) #f))
                   (when (update-vis! active-level self-vis (-> self-vis ramdisk) (-> self-vis string-block))
                     ;; A successful update makes every other cached string stale.
                     (countdown (i 8)
                       (let ((vis-info (-> active-level vis-info i)))
                         (when vis-info
-                          (if (!= vis-info self-vis) (set! (-> vis-info current-vis-string) (the-as uint -1))))))
+                          (if (!= vis-info self-vis)
+                              (set! (-> vis-info current-vis-string) (the-as uint -1))))))
                     (set! (-> active-level all-visible?) #f)))
                  (use-adjacent?
-                  (if (!= (-> active-level all-visible?) 'loading) (set! (-> active-level all-visible?) #f))
+                  (if (!= (-> active-level all-visible?) 'loading)
+                      (set! (-> active-level all-visible?) #f))
                   (when (update-vis! active-level adjacent-vis (-> adjacent-vis ramdisk) (-> adjacent-vis string-block))
                     ;; The adjacent string follows the same cache rules.
                     (countdown (i 8)
                       (let ((vis-info (-> active-level vis-info i)))
                         (when vis-info
-                          (if (!= vis-info adjacent-vis) (set! (-> vis-info current-vis-string) (the-as uint -1))))))
+                          (if (!= vis-info adjacent-vis)
+                              (set! (-> vis-info current-vis-string) (the-as uint -1))))))
                     (set! (-> active-level all-visible?) #f)))
                  ;; Keep the old visibility bits while the next string loads
                  ;; during play, avoiding an all-visible flash between strings.
@@ -176,14 +176,18 @@
         (controller-index 0))
     (cond
       ((= mode 'locked) (set! mode #f))
-      ((= mode 'pad-1) (set! controller-index 1))
-      ((not *camera-combiner*) (set! mode 'pad-0)))
+      ((= mode 'pad-1)
+       (set! controller-index 1))
+      ((not *camera-combiner*)
+       (set! mode 'pad-0)))
     (when mode
       ;; Gravity supplies the camera's down direction.  Passing #f for up
       ;; allows a fully free orientation, including roll.
       (let ((up (vector-negate-in-place! (vector-normalize-copy! (new-stack-vector0) (-> *standard-dynamics* gravity) 1.0))))
-        (if (= (vector-length up) 0.0) (set! (-> up y) -1.0))
-        (if (logtest? *external-cam-options* (external-cam-option allow-z)) (set! up (the-as vector #f)))
+        (if (= (vector-length up) 0.0)
+            (set! (-> up y) -1.0))
+        (if (logtest? *external-cam-options* (external-cam-option allow-z))
+            (set! up (the-as vector #f)))
         (cam-free-floating-move *save-camera-inv-rot* (-> camera trans) up controller-index))))
   (matrix-copy! (-> *math-camera* inv-camera-rot) *save-camera-inv-rot*)
   camera)
@@ -242,7 +246,8 @@
               (-> *target* control trans z))
       (format #t "Dist = ~F~%" (* 0.00024414062 (vector-vector-xz-distance (-> *target* control trans) *start-pos*)))
       (set! *start-timer* (the-as int #f)))
-    (if (< 179 *timer-value*) (format *stdcon* "~%~%Time = ~D~%" *timer-value*))
+    (if (< 179 *timer-value*)
+        (format *stdcon* "~%~%Time = ~D~%" *timer-value*))
     (set! *timer-value* (+ *timer-value* 1)))
   (when (not *start-timer*)
     (set! *timer-value* 0)
@@ -272,13 +277,14 @@
   (update! *camera-smush-control*)
   (cond
     ((or (= *master-mode* 'pause) (= *master-mode* 'progress) *progress-process*))
-    ((>= *camera-look-through-other* 2) (set! *camera-look-through-other* 1))
-    ((and (= *camera-look-through-other* 1) (!= *master-mode* 'menu)) (set! *camera-look-through-other* 0) 0))
-  ;; Priority is external control, the alternate/debug camera, the gameplay
-  ;; combiner, then the controller fallback.  Alternate and gameplay poses
-  ;; also refresh the saved external orientation to avoid a jump on entry.
+    ((>= *camera-look-through-other* 2)
+     (set! *camera-look-through-other* 1))
+    ((and (= *camera-look-through-other* 1) (!= *master-mode* 'menu))
+     (set! *camera-look-through-other* 0)
+     0))
   (cond
-    (*external-cam-mode* (move-camera-from-pad *math-camera*))
+    (*external-cam-mode*
+     (move-camera-from-pad *math-camera*))
     ((nonzero? *camera-look-through-other*)
      (set! (-> *math-camera* fov) (-> *camera-other-fov* data))
      (vector-copy! (-> *math-camera* trans) *camera-other-trans*)
@@ -297,14 +303,15 @@
   ;; reduce the mip factor so zoomed views do not choose overly coarse mips;
   ;; wider views are capped at one.
   (cond
-    (*camera-no-mip-correction* (set! (-> *math-camera* fov-correction-factor) 1.0))
+    (*camera-no-mip-correction*
+     (set! (-> *math-camera* fov-correction-factor) 1.0))
     (else
      (let ((mip-fov (fmin 11650.845 (-> *math-camera* fov))))
        (set! (-> *math-camera* fov-correction-factor) (* 0.00008583069 mip-fov)))))
   ;; Blend from the saved orientation toward the current pose while smooth-t
   ;; decays.  Once complete, keep an exact copy of the current orientation.
   (if (< 0.0 (-> *math-camera* smooth-t))
-    (set! (-> *math-camera* smooth-t) (- (-> *math-camera* smooth-t) (-> *math-camera* smooth-step))))
+      (set! (-> *math-camera* smooth-t) (- (-> *math-camera* smooth-t) (-> *math-camera* smooth-step))))
   (cond
     ((< 0.0 (-> *math-camera* smooth-t))
      (let ((smooth-rotation (new-stack-quaternion0)))
@@ -317,11 +324,9 @@
     (else
      (matrix-copy! (-> *math-camera* inv-camera-rot-smooth) (-> *math-camera* inv-camera-rot))))
   (if (and (!= *master-mode* 'menu) *display-camera-info*)
-    (format *stdcon* "cam pos ~M ~M ~M~%" (-> *math-camera* trans x) (-> *math-camera* trans y) (-> *math-camera* trans z)))
-  ;; Preserve the old view-projection before rebuilding it.  A reset instead
-  ;; copies the new matrix afterward, suppressing one frame of camera motion.
-  (when (zero? (-> *math-camera* reset))
-    (matrix-copy! (-> *math-camera* prev-camera-temp) (-> *math-camera* camera-temp)))
+      (format *stdcon* "cam pos ~M ~M ~M~%" (-> *math-camera* trans x) (-> *math-camera* trans y) (-> *math-camera* trans z)))
+  (if (zero? (-> *math-camera* reset))
+      (matrix-copy! (-> *math-camera* prev-camera-temp) (-> *math-camera* camera-temp)))
   (let ((view-projection (-> *math-camera* camera-temp))
         (view-matrix (-> *math-camera* camera-rot))
         (inverse-view-matrix (-> *math-camera* inv-camera-rot))
@@ -329,10 +334,11 @@
     ;; Rigid inverse translation is -C transformed by the transposed
     ;; orientation.  The inverse view keeps C directly in its fourth row.
     (let ((negative-camera-position (new-stack-vector0)))
-      (set! (-> negative-camera-position x) (- (-> camera-position x)))
-      (set! (-> negative-camera-position y) (- (-> camera-position y)))
-      (set! (-> negative-camera-position z) (- (-> camera-position z)))
-      (set! (-> negative-camera-position w) 1.0)
+      (set-vector! negative-camera-position
+                   (- (-> camera-position x))
+                   (- (-> camera-position y))
+                   (- (-> camera-position z))
+                   1.0)
       (vector-matrix*! negative-camera-position negative-camera-position view-matrix)
       (set! (-> view-matrix vector 3 quad) (-> negative-camera-position quad)))
     (matrix*! view-projection view-matrix (-> *math-camera* perspective))
@@ -350,7 +356,7 @@
       (set! (-> *instance-tie-work* hmge-d y) fog-max)
       (set! (-> *instance-tie-work* hmge-d z) (* 32.0 near-distance))
       (set! (-> *instance-tie-work* hmge-d w) (* near-distance (-> *math-camera* hmge-scale w)))
-      (let ((hvdf-offset (-> *math-camera* hvdf-off quad))) (set! (-> *instance-tie-work* hvdf-offset quad) hvdf-offset))
+      (vector-copy! (-> *instance-tie-work* hvdf-offset) (-> *math-camera* hvdf-off))
       (set! (-> *instance-shrub-work* hmge-d x) fog-min)
       (set! (-> *instance-shrub-work* hmge-d y) fog-max)
       (set! (-> *instance-shrub-work* hmge-d z) (* 3.0 near-distance))
@@ -362,9 +368,7 @@
     (set! (-> *instance-shrub-work* billboard-const z) fog-min)
     (set! (-> *instance-shrub-work* billboard-const w) fog-max))
   (set! (-> *instance-shrub-work* constants w) (the-as float (-> *math-camera* vis-gifs 0 fog0)))
-  (let ((hvdf-offset (-> *math-camera* hvdf-off quad))) (set! (-> *instance-shrub-work* hvdf-offset quad) hvdf-offset))
-  ;; The ordinary side planes cull the view frustum.  The four-times-wider
-  ;; guard planes give TIE and shrub generation room around the visible area.
+  (vector-copy! (-> *instance-shrub-work* hvdf-offset) (-> *math-camera* hvdf-off))
   (update-view-planes *math-camera* (-> *math-camera* plane) 1.0)
   (update-view-planes *math-camera* (-> *math-camera* guard-plane) 4.0)
   (vector-copy! (-> *instance-shrub-work* guard-plane 0) (-> *math-camera* guard-plane 0))
@@ -376,5 +380,6 @@
   (vector-copy! (-> *instance-tie-work* guard-plane 2) (-> *math-camera* guard-plane 2))
   (vector-copy! (-> *instance-tie-work* guard-plane 3) (-> *math-camera* guard-plane 3))
   (update-visible *math-camera*)
-  (if (not (paused?)) (update-wind *wind-work* *wind-scales*))
+  (if (not (paused?))
+      (update-wind *wind-work* *wind-scales*))
   #f)

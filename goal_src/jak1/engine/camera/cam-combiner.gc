@@ -4,7 +4,6 @@
 (require "engine/gfx/hw/display.gc")
 (require "engine/camera/camera.gc")
 
-;; DECOMP BEGINS
 
 ;; Blend the active camera slaves into the single transform used for rendering.
 ;; The complexity here is around camera orientation. Orientations are interpolated
@@ -25,10 +24,12 @@
 ;;  (copy-tracking (source camera-slave))
 ;;     Adopt source's tracking controls together with its current follow state and rotation,
 ;;     avoiding a discontinuity when an already tracking slave is handed to the combiner.
+
+;; DECOMP BEGINS
+
 (defstate cam-combiner-active (camera-combiner)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-      (local-vars (source-slave camera-slave))
       (case message
         (('point-of-interest)
          (cond
@@ -36,7 +37,9 @@
             (set! (-> self tracking use-point-of-interest) #t)
             (set! (-> self tracking point-of-interest quad) (-> (the-as vector (-> block param 0)) quad))
             (set! (-> self tracking point-of-interest-blend target) 1.0))
-           (else (set! (-> self tracking use-point-of-interest) #f) (set! (-> self tracking point-of-interest-blend target) 0.0))))
+           (else
+            (set! (-> self tracking use-point-of-interest) #f)
+            (set! (-> self tracking point-of-interest-blend target) 0.0))))
         (('set-interpolation)
          (set! (-> self interp-val) 0.0)
          (set! (-> self interp-step) (/ 5.0 (the float (-> block param 0)))))
@@ -48,7 +51,9 @@
                                 (the-as cam-slave-options (-> self tracking-options))
                                 (-> self fov)
                                 #f)))
-        (('stop-tracking) (set! (-> self tracking-status) (cam-track-status use-slave-tracking)) 0)
+        (('stop-tracking)
+         (set! (-> self tracking-status) (cam-track-status use-slave-tracking))
+         0)
         (('start-tracking)
          (cond
            ((< argc 1)
@@ -59,21 +64,21 @@
             (format 0 "ERROR <GMJ>: invalid type '~A' to *camera-combiner* start-tracking~%" (rtype-of (-> block param 0))))
            ((= (-> self tracking-status) (cam-track-status use-slave-tracking))
             (set! (-> self tracking-status) (cam-track-status track-at-combiner))
-            (set! source-slave (the-as camera-slave (-> block param 0)))
-            (set! (-> self tracking-options) (the-as cam-slave-options-i (-> source-slave options)))
-            (set! (-> self tracking no-follow) (-> source-slave tracking no-follow))
-            (copy-cam-float-seeker (-> self tracking tilt-adjust) (-> source-slave tracking tilt-adjust))
-            (copy-cam-float-seeker (-> self tracking underwater-blend) (-> source-slave tracking underwater-blend))
-            (set! (-> self tracking use-point-of-interest) (-> source-slave tracking use-point-of-interest))
-            (vector-copy! (-> self tracking point-of-interest) (-> source-slave tracking point-of-interest))
-            (copy-cam-float-seeker (-> self tracking point-of-interest-blend) (-> source-slave tracking point-of-interest-blend))
-            (let ((source-position (-> source-slave trans)))
-              (cam-calc-follow! (-> self tracking) source-position #f)
-              (slave-set-rotation! (-> self tracking)
-                                   source-position
-                                   (the-as cam-slave-options (-> self tracking-options))
-                                   (-> self fov)
-                                   #f)))))
+            (let ((source-slave (the-as camera-slave (-> block param 0))))
+              (set! (-> self tracking-options) (the-as cam-slave-options-i (-> source-slave options)))
+              (set! (-> self tracking no-follow) (-> source-slave tracking no-follow))
+              (copy-cam-float-seeker (-> self tracking tilt-adjust) (-> source-slave tracking tilt-adjust))
+              (copy-cam-float-seeker (-> self tracking underwater-blend) (-> source-slave tracking underwater-blend))
+              (set! (-> self tracking use-point-of-interest) (-> source-slave tracking use-point-of-interest))
+              (vector-copy! (-> self tracking point-of-interest) (-> source-slave tracking point-of-interest))
+              (copy-cam-float-seeker (-> self tracking point-of-interest-blend) (-> source-slave tracking point-of-interest-blend))
+              (let ((source-position (-> source-slave trans)))
+                (cam-calc-follow! (-> self tracking) source-position #f)
+                (slave-set-rotation! (-> self tracking)
+                                     source-position
+                                     (the-as cam-slave-options (-> self tracking-options))
+                                     (-> self fov)
+                                     #f))))))
         (('copy-tracking)
          (cond
            ((< argc 1)
@@ -85,17 +90,17 @@
            ((nonzero? (-> self tracking-status)) #f)
            (else
             (set! (-> self tracking-status) (cam-track-status track-at-combiner))
-            (set! source-slave (the-as camera-slave (-> block param 0)))
-            (set! (-> self tracking-options) (the-as cam-slave-options-i (-> source-slave options)))
-            (set! (-> self tracking no-follow) (-> source-slave tracking no-follow))
-            (copy-cam-float-seeker (-> self tracking tilt-adjust) (-> source-slave tracking tilt-adjust))
-            (copy-cam-float-seeker (-> self tracking underwater-blend) (-> source-slave tracking underwater-blend))
-            (vector-copy! (-> self tracking follow-off) (-> source-slave tracking follow-off))
-            (vector-copy! (-> self tracking follow-pt) (-> source-slave tracking follow-pt))
-            (matrix-copy! (-> self tracking inv-mat) (-> source-slave tracking inv-mat))
-            (set! (-> self tracking use-point-of-interest) (-> source-slave tracking use-point-of-interest))
-            (vector-copy! (-> self tracking point-of-interest) (-> source-slave tracking point-of-interest))
-            (copy-cam-float-seeker (-> self tracking point-of-interest-blend) (-> source-slave tracking point-of-interest-blend)))))))
+            (let ((source-slave (the-as camera-slave (-> block param 0))))
+              (set! (-> self tracking-options) (the-as cam-slave-options-i (-> source-slave options)))
+              (set! (-> self tracking no-follow) (-> source-slave tracking no-follow))
+              (copy-cam-float-seeker (-> self tracking tilt-adjust) (-> source-slave tracking tilt-adjust))
+              (copy-cam-float-seeker (-> self tracking underwater-blend) (-> source-slave tracking underwater-blend))
+              (vector-copy! (-> self tracking follow-off) (-> source-slave tracking follow-off))
+              (vector-copy! (-> self tracking follow-pt) (-> source-slave tracking follow-pt))
+              (matrix-copy! (-> self tracking inv-mat) (-> source-slave tracking inv-mat))
+              (set! (-> self tracking use-point-of-interest) (-> source-slave tracking use-point-of-interest))
+              (vector-copy! (-> self tracking point-of-interest) (-> source-slave tracking point-of-interest))
+              (copy-cam-float-seeker (-> self tracking point-of-interest-blend) (-> source-slave tracking point-of-interest-blend))))))))
   :code
     (behavior ()
       (local-vars (output-matrix matrix))
@@ -119,176 +124,148 @@
                 (previous-position (new-stack-vector0)))
             (vector-copy! previous-position (-> self trans))
             (if source-slave
-              (set! output-matrix
-                    (cond
-                      (destination-slave
-                       ;; Position and FOV can be interpolated directly. Rotation is blended as
-                       ;; an axis-angle below so that the resulting camera basis stays orthonormal.
-                       (vector-lerp-clamp! (-> self trans) (-> source-slave 0 trans) (-> destination-slave 0 trans) blend)
-                       (set! (-> self fov) (lerp-clamp (-> source-slave 0 fov) (-> destination-slave 0 fov) blend))
-                       (set! (-> self dist-from-src) (vector-vector-distance (-> self trans) (-> source-slave 0 trans)))
-                       (set! (-> self dist-from-dest) (vector-vector-distance (-> self trans) (-> destination-slave 0 trans)))
-                       (set! output-matrix
-                             (cond
-                               ((= (-> self tracking-status) (cam-track-status track-at-combiner))
-                                (cam-calc-follow! (-> self tracking) (-> self trans) #t)
-                                (slave-set-rotation! (-> self tracking)
-                                                     (-> self trans)
-                                                     (the-as cam-slave-options (-> self tracking-options))
-                                                     (-> self fov)
-                                                     #t)
-                                (matrix-copy! (-> self inv-camera-rot) (-> self tracking inv-mat)))
-                               (else
-                                (let ((source-tracker (-> source-slave 0 tracking))
-                                      (source-position (-> source-slave 0 trans))
-                                      (destination-tracker (-> destination-slave 0 tracking))
-                                      (destination-position (-> destination-slave 0 trans)))
-                                  (cond
-                                    ((= (-> self tracking-status) (cam-track-status track-at-src))
-                                     (cam-calc-follow! (-> self tracking) source-position #t)
-                                     (slave-set-rotation! (-> self tracking)
-                                                          source-position
-                                                          (the-as cam-slave-options (-> self tracking-options))
-                                                          (-> self fov)
-                                                          #t)
-                                     (set! source-tracker (-> self tracking))
-                                     (set! source-position (-> self trans)))
-                                    ((= (-> self tracking-status) (cam-track-status track-at-dst))
-                                     (cam-calc-follow! (-> self tracking) destination-position #t)
-                                     (slave-set-rotation! (-> self tracking)
-                                                          destination-position
-                                                          (the-as cam-slave-options (-> self tracking-options))
-                                                          (-> self fov)
-                                     #t)
-                                     (set! destination-tracker (-> self tracking))
-                                     (set! destination-position (-> self trans))))
-                                  ;; Corresponding rows of two rotation bases differ in directions
-                                  ;; perpendicular to their shared axis of rotation. Cross the two
-                                  ;; strongest row deltas, omitting the row which changed least, to
-                                  ;; recover a stable rotation axis.
-                                  (let ((rotation-work (new 'stack-no-clear 'matrix)))
-                                    (dotimes (i 3)
-                                      (set! (-> rotation-work vector i quad) (the-as uint128 0)))
-                                    0.0
-                                    0.0
-                                    0.0
-                                    (let ((rotation-axis (new-stack-vector0)))
+                (set! output-matrix
+                      (cond
+                        (destination-slave
+                         (vector-lerp-clamp! (-> self trans) (-> source-slave 0 trans) (-> destination-slave 0 trans) blend)
+                         (set! (-> self fov) (lerp-clamp (-> source-slave 0 fov) (-> destination-slave 0 fov) blend))
+                         (set! (-> self dist-from-src) (vector-vector-distance (-> self trans) (-> source-slave 0 trans)))
+                         (set! (-> self dist-from-dest) (vector-vector-distance (-> self trans) (-> destination-slave 0 trans)))
+                         (set! output-matrix
+                               (cond
+                                 ((= (-> self tracking-status) (cam-track-status track-at-combiner))
+                                  (cam-calc-follow! (-> self tracking) (-> self trans) #t)
+                                  (slave-set-rotation! (-> self tracking)
+                                                       (-> self trans)
+                                                       (the-as cam-slave-options (-> self tracking-options))
+                                                       (-> self fov)
+                                                       #t)
+                                  (matrix-copy! (-> self inv-camera-rot) (-> self tracking inv-mat)))
+                                 (else
+                                  (let ((source-tracker (-> source-slave 0 tracking))
+                                        (source-position (-> source-slave 0 trans))
+                                        (destination-tracker (-> destination-slave 0 tracking))
+                                        (destination-position (-> destination-slave 0 trans)))
+                                    (cond
+                                      ((= (-> self tracking-status) (cam-track-status track-at-src))
+                                       (cam-calc-follow! (-> self tracking) source-position #t)
+                                       (slave-set-rotation! (-> self tracking)
+                                                            source-position
+                                                            (the-as cam-slave-options (-> self tracking-options))
+                                                            (-> self fov)
+                                                            #t)
+                                       (set! source-tracker (-> self tracking))
+                                       (set! source-position (-> self trans)))
+                                      ((= (-> self tracking-status) (cam-track-status track-at-dst))
+                                       (cam-calc-follow! (-> self tracking) destination-position #t)
+                                       (slave-set-rotation! (-> self tracking)
+                                                            destination-position
+                                                            (the-as cam-slave-options (-> self tracking-options))
+                                                            (-> self fov)
+                                                            #t)
+                                       (set! destination-tracker (-> self tracking))
+                                       (set! destination-position (-> self trans))))
+                                    (let ((rotation-work (new 'stack-no-clear 'matrix)))
+                                      (dotimes (i 3)
+                                        (set! (-> rotation-work vector i quad) (the-as uint128 0)))
                                       0.0
-                                      (let ((rotation-matrix (new-stack-matrix0)))
-                                        (vector-! (-> rotation-work vector 0)
-                                                  (the-as vector (-> source-tracker inv-mat))
-                                                  (the-as vector (-> destination-tracker inv-mat)))
-                                        (vector-! (-> rotation-work vector 1) (-> source-tracker inv-mat vector 1) (-> destination-tracker inv-mat vector 1))
-                                        (vector-! (-> rotation-work vector 2) (-> source-tracker inv-mat vector 2) (-> destination-tracker inv-mat vector 2))
-                                        (let ((row-0-delta (vector-length (-> rotation-work vector 0)))
-                                              (row-1-delta (vector-length (-> rotation-work vector 1)))
-                                              (row-2-delta (vector-length (-> rotation-work vector 2))))
-                                          (cond
-                                            ((and (< row-0-delta row-1-delta) (< row-0-delta row-2-delta))
-                                             (vector-cross! rotation-axis (-> rotation-work vector 1) (-> rotation-work vector 2)))
-                                            ((and (< row-1-delta row-0-delta) (< row-1-delta row-2-delta))
-                                             (vector-cross! rotation-axis (-> rotation-work vector 0) (-> rotation-work vector 2)))
-                                            (else (vector-cross! rotation-axis (-> rotation-work vector 0) (-> rotation-work vector 1)))))
-                                        (vector-normalize! rotation-axis 1.0)
-                                        ;; Choose the source basis row least parallel to the axis,
-                                        ;; then project that row and its destination counterpart into
-                                        ;; the plane normal to the axis. Their planar angle is the
-                                        ;; amount of rotation separating the two camera bases.
-                                        (let ((row-0-axis-dot (fabs (vector-dot (the-as vector (-> source-tracker inv-mat)) rotation-axis)))
-                                              (row-1-axis-dot (fabs (vector-dot (-> source-tracker inv-mat vector 1) rotation-axis)))
-                                              (row-2-axis-dot (fabs (vector-dot (-> source-tracker inv-mat vector 2) rotation-axis))))
-                                          (cond
-                                            ((and (< row-0-axis-dot row-1-axis-dot) (< row-0-axis-dot row-2-axis-dot))
-                                             (vector-flatten! (-> rotation-work vector 0) (the-as vector (-> source-tracker inv-mat)) rotation-axis)
-                                             (vector-flatten! (-> rotation-work vector 1) (the-as vector (-> destination-tracker inv-mat)) rotation-axis))
-                                            ((< row-1-axis-dot row-2-axis-dot)
-                                             (vector-flatten! (-> rotation-work vector 0) (-> source-tracker inv-mat vector 1) rotation-axis)
-                                             (vector-flatten! (-> rotation-work vector 1) (-> destination-tracker inv-mat vector 1) rotation-axis))
-                                            (else
-                                             (vector-flatten! (-> rotation-work vector 0) (-> source-tracker inv-mat vector 2) rotation-axis)
-                                             (vector-flatten! (-> rotation-work vector 1) (-> destination-tracker inv-mat vector 2) rotation-axis))))
-                                        (vector-normalize! (-> rotation-work vector 0) 1.0)
-                                        (vector-normalize! (-> rotation-work vector 1) 1.0)
-                                        (vector-cross! (-> rotation-work vector 2) (-> rotation-work vector 0) (-> rotation-work vector 1))
-                                        ;; Orient the otherwise sign-ambiguous axis to agree with the
-                                        ;; direction from the projected source row to destination row.
-                                        (if (< (vector-dot (-> rotation-work vector 2) rotation-axis) 0.0) (vector-negate! rotation-axis rotation-axis))
-                                        (let ((rotation-angle (acos (vector-dot (-> rotation-work vector 0) (-> rotation-work vector 1)))))
-                                          (cond
-                                            ;; A newly activated slave starts a new arc decision, so
-                                            ;; discard both the one-shot marker and the previous flip.
-                                            ((logtest? (-> *camera* master-options) (cam-master-options set-combiner-axis))
-                                             (logclear! (-> *camera* master-options) (cam-master-options set-combiner-axis flip-combiner))
-                                             ;; Compare the target and destination directions in the
-                                             ;; local horizontal plane. The final test has no body in
-                                             ;; this version and therefore has no observable effect.
-                                             (when (and (< 8192.0 rotation-angle) (logtest? (-> *camera* master-options) (cam-master-options have-target)))
-                                               (vector-! (-> rotation-work vector 0) (-> *camera* tpos-curr) source-position)
-                                               (vector-! (-> rotation-work vector 1) destination-position source-position)
-                                               (vector-flatten! (-> rotation-work vector 0) (-> rotation-work vector 0) (-> *camera* local-down))
-                                               (vector-flatten! (-> rotation-work vector 1) (-> rotation-work vector 1) (-> *camera* local-down))
-                                               (when (and (< 4096.0 (vector-normalize-ret-len! (-> rotation-work vector 0) 1.0))
-                                                          (< 4096.0 (vector-normalize-ret-len! (-> rotation-work vector 1) 1.0)))
-                                                 (vector-cross! (-> rotation-work vector 2) (-> rotation-work vector 1) (-> rotation-work vector 0))
-                                                 (when (< (vector-dot (-> rotation-work vector 2) rotation-axis) -0.01)))))
-                                            ;; For rotations over 90 degrees, keep the chosen axis
-                                            ;; continuous across frames by switching to the equivalent
-                                            ;; complementary axis-angle representation when necessary.
-                                            ((and (< 16384.0 rotation-angle) (< (vector-dot (-> self flip-control-axis) rotation-axis) 0.0))
-                                             (logxor! (-> *camera* master-options) (cam-master-options flip-combiner))))
-                                          (vector-copy! (-> self flip-control-axis) rotation-axis)
-                                          (when (logtest? (-> *camera* master-options) (cam-master-options flip-combiner))
-                                            (set! rotation-angle (- 65536.0 rotation-angle))
-                                            (vector-negate! rotation-axis rotation-axis))
-                                          ;; Rotate backward from the destination basis by the portion
-                                          ;; still separating it from the source: the full angle at
-                                          ;; blend 0 and no correction at blend 1.
-                                          (let ((remaining-angle (* rotation-angle (- 1.0 blend))))
-                                            (matrix-axis-sin-cos! rotation-matrix rotation-axis (sin remaining-angle) (cos remaining-angle))))
-                                        (matrix*! (-> self inv-camera-rot) (-> destination-tracker inv-mat) rotation-matrix)))))
-                                output-matrix)))
-                       ;; Do not advance the blend while the outgoing slave is still reaching its
-                       ;; authored exit point or while the game is paused.
-                       (cond
-                         ((and (< 0.0 (-> *camera* outro-t-step)) (< (-> *camera* outro-t) (-> *camera* outro-exit-value))))
-                         ((and (< (-> *camera* outro-t-step) 0.0) (< (-> *camera* outro-exit-value) (-> *camera* outro-t))))
-                         ((paused?))
-                         (else (+! (-> self interp-val) (* (-> self interp-step) (-> *display* time-adjust-ratio)))))
-                       ;; Once the blend reaches its destination, retire the outgoing slave and
-                       ;; promote the destination into slot 0.
-                       (when (>= (-> self interp-val) 1.0)
-                         (deactivate (-> *camera* slave 0 0))
-                         (set! (-> *camera* slave 0) (-> *camera* slave 1))
-                         (set! (-> *camera* slave 1) (the-as (pointer camera-slave) #f))
-                         (+! (-> *camera* num-slaves) -1))
-                       output-matrix)
-                      (else
-                       (set! (-> self dist-from-src) 409600.0)
-                       (set! (-> self dist-from-dest) 0.0)
-                       (vector-copy! (-> self trans) (-> source-slave 0 trans))
-                       (set! (-> self fov) (-> source-slave 0 fov))
-                       ;; Resolve the endpoint-only tracking modes after a transition has left just
-                       ;; one slave: destination tracking becomes steady combiner tracking, while
-                       ;; source tracking ends with the retired source.
-                       (cond
-                         ((= (-> self tracking-status) (cam-track-status track-at-dst))
-                          (set! (-> self tracking-status) (cam-track-status track-at-combiner)))
-                         ((= (-> self tracking-status) (cam-track-status track-at-src))
-                          (set! (-> self tracking-status) (cam-track-status use-slave-tracking))
-                          0))
-                       (cond
-                         ((= (-> self tracking-status) (cam-track-status track-at-combiner))
-                          (cam-calc-follow! (-> self tracking) (-> self trans) #t)
-                          (slave-set-rotation! (-> self tracking)
-                                               (-> self trans)
-                                               (the-as cam-slave-options (-> self tracking-options))
-                                               (-> self fov)
-                                               #t)
-                          (matrix-copy! (-> self inv-camera-rot) (-> self tracking inv-mat)))
-                         (else (matrix-copy! (-> self inv-camera-rot) (-> source-slave 0 tracking inv-mat))))))))
+                                      0.0
+                                      0.0
+                                      (let ((rotation-axis (new-stack-vector0)))
+                                        0.0
+                                        (let ((rotation-matrix (new-stack-matrix0)))
+                                          (vector-! (-> rotation-work vector 0) (-> source-tracker inv-mat vector 0) (-> destination-tracker inv-mat vector 0))
+                                          (vector-! (-> rotation-work vector 1) (-> source-tracker inv-mat vector 1) (-> destination-tracker inv-mat vector 1))
+                                          (vector-! (-> rotation-work vector 2) (-> source-tracker inv-mat vector 2) (-> destination-tracker inv-mat vector 2))
+                                          (let ((row-0-delta (vector-length (-> rotation-work vector 0)))
+                                                (row-1-delta (vector-length (-> rotation-work vector 1)))
+                                                (row-2-delta (vector-length (-> rotation-work vector 2))))
+                                            (cond
+                                              ((and (< row-0-delta row-1-delta) (< row-0-delta row-2-delta))
+                                               (vector-cross! rotation-axis (-> rotation-work vector 1) (-> rotation-work vector 2)))
+                                              ((and (< row-1-delta row-0-delta) (< row-1-delta row-2-delta))
+                                               (vector-cross! rotation-axis (-> rotation-work vector 0) (-> rotation-work vector 2)))
+                                              (else
+                                               (vector-cross! rotation-axis (-> rotation-work vector 0) (-> rotation-work vector 1)))))
+                                          (vector-normalize! rotation-axis 1.0)
+                                          (let ((row-0-axis-dot (fabs (vector-dot (-> source-tracker inv-mat vector 0) rotation-axis)))
+                                                (row-1-axis-dot (fabs (vector-dot (-> source-tracker inv-mat vector 1) rotation-axis)))
+                                                (row-2-axis-dot (fabs (vector-dot (-> source-tracker inv-mat vector 2) rotation-axis))))
+                                            (cond
+                                              ((and (< row-0-axis-dot row-1-axis-dot) (< row-0-axis-dot row-2-axis-dot))
+                                               (vector-flatten! (-> rotation-work vector 0) (-> source-tracker inv-mat vector 0) rotation-axis)
+                                               (vector-flatten! (-> rotation-work vector 1) (-> destination-tracker inv-mat vector 0) rotation-axis))
+                                              ((< row-1-axis-dot row-2-axis-dot)
+                                               (vector-flatten! (-> rotation-work vector 0) (-> source-tracker inv-mat vector 1) rotation-axis)
+                                               (vector-flatten! (-> rotation-work vector 1) (-> destination-tracker inv-mat vector 1) rotation-axis))
+                                              (else
+                                               (vector-flatten! (-> rotation-work vector 0) (-> source-tracker inv-mat vector 2) rotation-axis)
+                                               (vector-flatten! (-> rotation-work vector 1) (-> destination-tracker inv-mat vector 2) rotation-axis))))
+                                          (vector-normalize! (-> rotation-work vector 0) 1.0)
+                                          (vector-normalize! (-> rotation-work vector 1) 1.0)
+                                          (vector-cross! (-> rotation-work vector 2) (-> rotation-work vector 0) (-> rotation-work vector 1))
+                                          (if (< (vector-dot (-> rotation-work vector 2) rotation-axis) 0.0)
+                                              (vector-negate! rotation-axis rotation-axis))
+                                          (let ((rotation-angle (acos (vector-dot (-> rotation-work vector 0) (-> rotation-work vector 1)))))
+                                            (cond
+                                              ((logtest? (-> *camera* master-options) (cam-master-options set-combiner-axis))
+                                               (logclear! (-> *camera* master-options) (cam-master-options set-combiner-axis flip-combiner))
+                                               (when (and (< 8192.0 rotation-angle) (logtest? (-> *camera* master-options) (cam-master-options have-target)))
+                                                 (vector-! (-> rotation-work vector 0) (-> *camera* tpos-curr) source-position)
+                                                 (vector-! (-> rotation-work vector 1) destination-position source-position)
+                                                 (vector-flatten! (-> rotation-work vector 0) (-> rotation-work vector 0) (-> *camera* local-down))
+                                                 (vector-flatten! (-> rotation-work vector 1) (-> rotation-work vector 1) (-> *camera* local-down))
+                                                 (when (and (< 4096.0 (vector-normalize-ret-len! (-> rotation-work vector 0) 1.0))
+                                                            (< 4096.0 (vector-normalize-ret-len! (-> rotation-work vector 1) 1.0)))
+                                                   (vector-cross! (-> rotation-work vector 2) (-> rotation-work vector 1) (-> rotation-work vector 0))
+                                                   (when (< (vector-dot (-> rotation-work vector 2) rotation-axis) -0.01)))))
+                                              ((and (< 16384.0 rotation-angle) (< (vector-dot (-> self flip-control-axis) rotation-axis) 0.0))
+                                               (logxor! (-> *camera* master-options) (cam-master-options flip-combiner))))
+                                            (vector-copy! (-> self flip-control-axis) rotation-axis)
+                                            (when (logtest? (-> *camera* master-options) (cam-master-options flip-combiner))
+                                              (set! rotation-angle (- 65536.0 rotation-angle))
+                                              (vector-negate! rotation-axis rotation-axis))
+                                            (let ((remaining-angle (* rotation-angle (- 1.0 blend))))
+                                              (matrix-axis-sin-cos! rotation-matrix rotation-axis (sin remaining-angle) (cos remaining-angle))))
+                                          (matrix*! (-> self inv-camera-rot) (-> destination-tracker inv-mat) rotation-matrix)))))
+                                  output-matrix)))
+                         (cond
+                           ((and (< 0.0 (-> *camera* outro-t-step)) (< (-> *camera* outro-t) (-> *camera* outro-exit-value))))
+                           ((and (< (-> *camera* outro-t-step) 0.0) (< (-> *camera* outro-exit-value) (-> *camera* outro-t))))
+                           ((paused?))
+                           (else
+                            (+! (-> self interp-val) (* (-> self interp-step) (-> *display* time-adjust-ratio)))))
+                         (when (>= (-> self interp-val) 1.0)
+                           (deactivate (-> *camera* slave 0 0))
+                           (set! (-> *camera* slave 0) (-> *camera* slave 1))
+                           (set! (-> *camera* slave 1) (the-as (pointer camera-slave) #f))
+                           (+! (-> *camera* num-slaves) -1))
+                         output-matrix)
+                        (else
+                         (set! (-> self dist-from-src) 409600.0)
+                         (set! (-> self dist-from-dest) 0.0)
+                         (vector-copy! (-> self trans) (-> source-slave 0 trans))
+                         (set! (-> self fov) (-> source-slave 0 fov))
+                         (cond
+                           ((= (-> self tracking-status) (cam-track-status track-at-dst))
+                            (set! (-> self tracking-status) (cam-track-status track-at-combiner)))
+                           ((= (-> self tracking-status) (cam-track-status track-at-src))
+                            (set! (-> self tracking-status) (cam-track-status use-slave-tracking))
+                            0))
+                         (cond
+                           ((= (-> self tracking-status) (cam-track-status track-at-combiner))
+                            (cam-calc-follow! (-> self tracking) (-> self trans) #t)
+                            (slave-set-rotation! (-> self tracking)
+                                                 (-> self trans)
+                                                 (the-as cam-slave-options (-> self tracking-options))
+                                                 (-> self fov)
+                                                 #t)
+                            (matrix-copy! (-> self inv-camera-rot) (-> self tracking inv-mat)))
+                           (else
+                            (matrix-copy! (-> self inv-camera-rot) (-> source-slave 0 tracking inv-mat))))))))
             (vector-! (-> self velocity) (-> self trans) previous-position)))
         (if (and *dproc* *debug-segment*)
-          (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0) 'camera (new 'static 'rgba :b #xff :a #x80)))
+            (add-frame (-> (current-frame) profile-bar 0) 'camera (new 'static 'rgba :b #xff :a #x80)))
         (suspend))))
 
 (defbehavior cam-combiner-init camera-combiner ()
@@ -298,7 +275,9 @@
   (set! *camera-combiner* self)
   (vector-reset! (-> self trans))
   (matrix-identity! (-> self inv-camera-rot))
-  (if *math-camera* (set! (-> self fov) (-> *math-camera* fov)) (set! (-> self fov) 11650.845))
+  (if *math-camera*
+      (set! (-> self fov) (-> *math-camera* fov))
+      (set! (-> self fov) 11650.845))
   (set! (-> self interp-val) 0.0)
   (set! (-> self interp-step) 0.125)
   (set! (-> self tracking-status) (cam-track-status use-slave-tracking))

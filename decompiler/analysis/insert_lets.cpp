@@ -185,40 +185,6 @@ FormElement* rewrite_as_dotimes(LetElement* in, const Env& env, FormPool& pool) 
   return rewrite_as_dotimes(entry.dest, loop, env, pool);
 }
 
-bool program_var_is_confined_to(const Form* top_level_form,
-                                const RegId& var,
-                                FormElement* init,
-                                FormElement* loop,
-                                const Env& env) {
-  RegAccessSet all_accesses;
-  top_level_form->collect_vars(all_accesses, true);
-
-  RegAccessSet confined_accesses;
-  init->collect_vars(confined_accesses, true);
-  loop->collect_vars(confined_accesses, true);
-
-  for (const auto& access : all_accesses) {
-    if (env.get_program_var_id(access) == var && !confined_accesses.count(access)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool program_var_shares_name(const Form* top_level_form,
-                             const RegId& var,
-                             const std::string& name,
-                             const Env& env) {
-  RegAccessSet all_accesses;
-  top_level_form->collect_vars(all_accesses, true);
-  for (const auto& access : all_accesses) {
-    if (env.get_program_var_id(access) != var && env.get_variable_name(access) == name) {
-      return true;
-    }
-  }
-  return false;
-}
-
 std::tuple<MatchResult, Form*, bool> rewrite_shelled_return_form(
     const Matcher& matcher,
     FormElement* in,
@@ -4245,47 +4211,9 @@ LetStats insert_lets(const Function& func,
   //    }
   LetStats stats;
 
-  // A deliberately reused display name can cause otherwise independent program variables to be
-  // grouped together by let insertion. Recognize the unshelled expansion before inserting lets
-  // when the counter's complete lifetime is confined to the adjacent set!/while pair. Doing this
-  // here keeps a following co-named loop from being pulled into the first counter's let body, while
-  // preserving the existing behavior for co-named variables in every other situation.
-  top_level_form->apply_form([&](Form* f) {
-    auto& elts = f->elts();
-    for (size_t i = 0; i + 1 < elts.size();) {
-      auto* init = dynamic_cast<SetVarElement*>(elts.at(i));
-      if (!init || !register_can_hold_var(init->dst().reg()) ||
-          init->info().is_eliminated_coloring_move || !is_constant_int(init->src(), 0)) {
-        i++;
-        continue;
-      }
-
-      const auto var = env.get_program_var_id(init->dst());
-      const auto name = env.get_variable_name(init->dst());
-      if (!program_var_shares_name(top_level_form, var, name, env) ||
-          !program_var_is_confined_to(top_level_form, var, init, elts.at(i + 1), env)) {
-        i++;
-        continue;
-      }
-
-      auto* dotimes = rewrite_as_dotimes(init->dst(), elts.at(i + 1), env, pool);
-      if (!dotimes) {
-        i++;
-        continue;
-      }
-
-      dotimes->parent_form = f;
-      elts.at(i) = dotimes;
-      elts.erase(elts.begin() + i + 1);
-      env.set_defined_in_let(name);
-      let_rewrite_stats.dotimes++;
-      i++;
-    }
-  });
-
   // Stored per variable.
   struct PerVarInfo {
-    std::string unique_name;  // displayed name used to join deliberately co-named SSA variables
+    std::string display_name;
     RegisterAccess access;
     std::unordered_set<FormElement*> elts_using_var;  // all FormElements using var
     Form* lca_form = nullptr;  // the lowest common form that contains all the above elts
@@ -4293,7 +4221,7 @@ LetStats insert_lets(const Function& func,
     int end_idx = -1;          // in the above form, 1 + last FormElement using var's index
   };
 
-  std::unordered_map<std::string, PerVarInfo> var_info;
+  std::unordered_map<RegId, PerVarInfo, RegId::hash> var_info;
 
   // Part 1, figure out which forms reference each var
   top_level_form->apply([&](FormElement* elt) {
@@ -4318,10 +4246,10 @@ LetStats insert_lets(const Function& func,
     // and add it.
     for (auto& access : reg_accesses) {
       if (register_can_hold_var(access.reg())) {
-        auto unique_name = env.get_variable_name(access);
-        var_info[unique_name].elts_using_var.insert(elt);
-        var_info[unique_name].unique_name = unique_name;
-        var_info[unique_name].access = access;
+        const auto var = env.get_program_var_id(access);
+        var_info[var].elts_using_var.insert(elt);
+        var_info[var].display_name = env.get_variable_name(access);
+        var_info[var].access = access;
       }
     }
   });
@@ -4336,7 +4264,7 @@ LetStats insert_lets(const Function& func,
       lca = lca_form(lca, fe->parent_form, env);
     }
     ASSERT(lca);
-    var_info[kv.first].lca_form = lca;
+    kv.second.lca_form = lca;
   }
 
   // Part 3, find the minimum range of FormElement's within the lca form that contain
@@ -4353,7 +4281,7 @@ LetStats insert_lets(const Function& func,
       bool uses = false;
       for (auto& ra : ras) {
         if ((ra.reg().get_kind() == Reg::FPR || ra.reg().get_kind() == Reg::GPR) &&
-            env.get_variable_name(ra) == kv.second.unique_name) {
+            env.get_program_var_id(ra) == kv.first) {
           uses = true;
         }
       }
@@ -4399,7 +4327,7 @@ LetStats insert_lets(const Function& func,
     auto first_form = info.lca_form->at(info.start_idx);
     auto first_form_as_set = dynamic_cast<SetVarElement*>(first_form);
     if (first_form_as_set && register_can_hold_var(first_form_as_set->dst().reg()) &&
-        env.get_variable_name(first_form_as_set->dst()) == env.get_variable_name(info.access) &&
+        env.get_program_var_id(first_form_as_set->dst()) == env.get_program_var_id(info.access) &&
         !first_form_as_set->info().is_eliminated_coloring_move) {
       bool allowed = true;
 
@@ -4422,12 +4350,12 @@ LetStats insert_lets(const Function& func,
         li.start_elt = info.start_idx;
         li.end_elt = info.end_idx;
         li.set_form = first_form_as_set;
-        li.name = info.unique_name;
+        li.name = info.display_name;
         possible_insertions[li.form].push_back(li);
         stats.vars_in_lets++;
       }
     } else {
-      // lg::print("fail for {} : {}\n", info.var_name, first_form->to_string(env));
+      // lg::print("fail for {} : {}\n", info.display_name, first_form->to_string(env));
     }
   }
 

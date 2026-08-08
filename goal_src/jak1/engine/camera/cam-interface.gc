@@ -8,6 +8,8 @@
 (require "engine/entity/entity-h.gc")
 (require "engine/math/transformq-h.gc")
 
+;; DECOMP BEGINS
+
 (defun position-in-front-of-camera! ((out vector) (forward-distance float) (up-distance float))
   "Place out at forward-distance along the camera's
    forward axis and up-distance along its up axis, measured from the current camera translation."
@@ -20,7 +22,9 @@
   "Return the camera local-to-world rotation. smooth? selects the
    smoothed inverse-camera matrix; the second argument is retained for the shared interface but is
    unused."
-  (if smooth? (-> *math-camera* inv-camera-rot-smooth) (-> *math-camera* inv-camera-rot)))
+  (if smooth?
+      (-> *math-camera* inv-camera-rot-smooth)
+      (-> *math-camera* inv-camera-rot)))
 
 (defun matrix-world->local ()
   "Return the current world-to-camera rotation matrix."
@@ -32,11 +36,13 @@
   "Return the active camera position. Prefer the combiner output while a
    camera transition is active, otherwise use the renderer camera, with a zero-vector fallback
    before camera initialization."
-  (the-as vector
-          (cond
-            (*camera-combiner* (-> *camera-combiner* stack))
-            (*math-camera* (-> *math-camera* trans))
-            (else *camera-dummy-vector*))))
+  (cond
+    (*camera-combiner*
+     (-> *camera-combiner* trans))
+    (*math-camera*
+     (-> *math-camera* trans))
+    (else
+     *camera-dummy-vector*)))
 
 (defun math-camera-pos ()
   "Return the renderer's current camera translation."
@@ -50,11 +56,9 @@
     (atan right-z right-x)))
 
 (defbehavior camera-teleport-to-entity process ((start-entity entity-actor))
-  "Build a unit-scale camera transform from start-entity's
-   orientation and the position stored in the scale vector of its extra transform, then send it to
-   the camera master as an immediate teleport."
+  "Teleport the camera to the entity position."
   (let ((teleport-transform (new 'stack 'transformq)))
-    (vector-copy! (-> teleport-transform trans) (-> (the-as transform (-> start-entity extra)) scale))
+    (vector-copy! (-> teleport-transform trans) (-> start-entity extra trans))
     (quaternion-copy! (-> teleport-transform quat) (-> start-entity quat))
     (vector-identity! (-> teleport-transform scale))
     (send-event *camera* 'teleport-to-transformq teleport-transform))

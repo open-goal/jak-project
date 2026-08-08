@@ -737,6 +737,7 @@ void Env::rebuild_stack_slot_use_def_info() {
 
   int next_var_id = 1;
   for (int offset : offsets) {
+    const int first_var_id = next_var_id;
     std::vector<bool> reads_before_write(block_count, false);
     std::vector<bool> writes(block_count, false);
 
@@ -784,6 +785,7 @@ void Env::rebuild_stack_slot_use_def_info() {
 
     std::vector<int> phi_var(block_count, -1);
     std::vector<std::vector<int>> phi_sources(block_count);
+    std::vector<int> access_ops;
     for (int block_id = 0; block_id < block_count; block_id++) {
       if (live_in.at(block_id)) {
         phi_var.at(block_id) = next_var_id++;
@@ -801,6 +803,7 @@ void Env::rebuild_stack_slot_use_def_info() {
           }
           ASSERT(current_var != -1);
           m_stack_slot_var_by_op[op_id] = current_var;
+          access_ops.push_back(op_id);
           auto& info = m_stack_slot_use_def_info[RegId(Register(Reg::GPR, Reg::SP), current_var)];
           info.uses.push_back({op_id, block_id, AccessMode::READ, false});
           info.ssa_vars.insert(current_var);
@@ -810,6 +813,7 @@ void Env::rebuild_stack_slot_use_def_info() {
           }
           current_var = next_var_id++;
           m_stack_slot_var_by_op[op_id] = current_var;
+          access_ops.push_back(op_id);
           auto& info = m_stack_slot_use_def_info[RegId(Register(Reg::GPR, Reg::SP), current_var)];
           info.defs.push_back({op_id, block_id, AccessMode::WRITE, false});
           info.ssa_vars.insert(current_var);
@@ -838,6 +842,57 @@ void Env::rebuild_stack_slot_use_def_info() {
         auto& info = m_stack_slot_use_def_info[RegId(Register(Reg::GPR, Reg::SP), src_var)];
         info.uses.push_back({first_op, block_id, AccessMode::READ, false});
       }
+    }
+
+    // Match register variable analysis by merging every live stack-slot phi with its incoming
+    // definitions. Without this, a conditional store and the loads after its control-flow join
+    // receive different program-variable IDs even though they are one mutable source variable.
+    std::vector<int> parent(next_var_id - first_var_id);
+    for (int i = 0; i < (int)parent.size(); i++) {
+      parent.at(i) = first_var_id + i;
+    }
+    auto find_root = [&](int var) {
+      int root = var;
+      while (parent.at(root - first_var_id) != root) {
+        root = parent.at(root - first_var_id);
+      }
+      while (parent.at(var - first_var_id) != var) {
+        const int next = parent.at(var - first_var_id);
+        parent.at(var - first_var_id) = root;
+        var = next;
+      }
+      return root;
+    };
+    for (int block_id = 0; block_id < block_count; block_id++) {
+      if (phi_var.at(block_id) == -1) {
+        continue;
+      }
+      const int phi_root = find_root(phi_var.at(block_id));
+      for (int src_var : phi_sources.at(block_id)) {
+        parent.at(find_root(src_var) - first_var_id) = phi_root;
+      }
+    }
+
+    std::unordered_map<int, UseDefInfo> merged_info;
+    for (int var = first_var_id; var < next_var_id; var++) {
+      const int root = find_root(var);
+      auto& merged = merged_info[root];
+      merged.ssa_vars.insert(var);
+
+      const RegId old_id(Register(Reg::GPR, Reg::SP), var);
+      auto old = m_stack_slot_use_def_info.find(old_id);
+      if (old != m_stack_slot_use_def_info.end()) {
+        merged.defs.insert(merged.defs.end(), old->second.defs.begin(), old->second.defs.end());
+        merged.uses.insert(merged.uses.end(), old->second.uses.begin(), old->second.uses.end());
+        merged.ssa_vars.insert(old->second.ssa_vars.begin(), old->second.ssa_vars.end());
+        m_stack_slot_use_def_info.erase(old);
+      }
+    }
+    for (auto& [root, info] : merged_info) {
+      m_stack_slot_use_def_info.emplace(RegId(Register(Reg::GPR, Reg::SP), root), std::move(info));
+    }
+    for (int op_id : access_ops) {
+      m_stack_slot_var_by_op.at(op_id) = find_root(m_stack_slot_var_by_op.at(op_id));
     }
   }
 }

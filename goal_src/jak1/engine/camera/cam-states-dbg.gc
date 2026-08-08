@@ -22,13 +22,14 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
         (set! (-> self pivot-rad) 40960.0)
-        (set! (-> self blend-from-type) (the-as uint 1))
-        (set! (-> self blend-to-type) (the-as uint 1))))
+        (set! (-> self blend-from-type) (camera-blend-to-type slave-controlled))
+        (set! (-> self blend-to-type) (camera-blend-to-type slave-controlled))))
   :code
     (behavior ()
       (loop
@@ -52,13 +53,14 @@
                  (+! (-> translation-delta z) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) left-y-input)))))
             (let ((forward (new-stack-vector0)))
               (let ((rotation-matrix (new-stack-matrix0)))
-                (matrix-axis-angle! rotation-matrix (the-as vector (-> self tracking)) (- (-> rotation-delta x)))
+                (matrix-axis-angle! rotation-matrix (-> self tracking inv-mat vector 0) (- (-> rotation-delta x)))
                 (vector-matrix*! forward (-> self tracking inv-mat vector 2) rotation-matrix)
                 (matrix-axis-angle! rotation-matrix (-> *camera* local-down) (- (-> rotation-delta y)))
                 (vector-matrix*! forward forward rotation-matrix))
               (forward-down->inv-matrix (-> self tracking inv-mat) forward (-> *camera* local-down)))
             (set! (-> self pivot-rad) (- (-> self pivot-rad) (-> translation-delta z)))
-            (if (< (-> self pivot-rad) 4096.0) (set! (-> self pivot-rad) 4096.0))
+            (if (< (-> self pivot-rad) 4096.0)
+                (set! (-> self pivot-rad) 4096.0))
             (set-vector! translation-delta 0.0 0.0 (- (-> self pivot-rad)) 1.0)
             (vector-matrix*! (-> self trans) translation-delta (-> self tracking inv-mat))))
         (suspend)
@@ -276,8 +278,10 @@
    Preserve the chosen up direction while yawing when one is supplied; otherwise allow unrestricted
    yaw. Pitch and roll are then applied in camera-local axes before the local translation is rotated
    into world space. Return false when the controller is invalid or menus own the camera."
-  (if (logtest? (-> *cpad-list* cpads controller-index valid) 128) (return (the-as vector #f)))
-  (if (= *master-mode* 'menu) (return (the-as vector #f)))
+  (if (logtest? (-> *cpad-list* cpads controller-index valid) 128)
+      (return (the-as vector #f)))
+  (if (= *master-mode* 'menu)
+      (return (the-as vector #f)))
   (let ((move-info (new 'stack 'camera-free-floating-move-info)))
     (cam-free-floating-input (-> move-info rv) (-> move-info tv) (not up) controller-index)
     (cond
@@ -309,18 +313,20 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (set! (-> self blend-from-type) (the-as uint 1))
-        (set! (-> self blend-to-type) (the-as uint 1))
+        (set! (-> self blend-from-type) (camera-blend-to-type slave-controlled))
+        (set! (-> self blend-to-type) (camera-blend-to-type slave-controlled))
         (send-event *camera-combiner* 'stop-tracking)))
   :code
     (behavior ()
       (loop
         (let ((up (-> *camera* local-down)))
-          (if (logtest? (-> self options) 8) (set! up (the-as vector #f)))
+          (if (logtest? (-> self options) (cam-slave-options ALLOW_Z_ROT))
+              (set! up (the-as vector #f)))
           (cam-free-floating-move (-> self tracking inv-mat) (-> self trans) up (the-as int (-> *CAMERA-bank* joypad))))
         (suspend))))
 
@@ -331,11 +337,13 @@
    (orbit-off   vector :inline)
    (radius-lerp float)))
 
+
 (deftype CAM_ORBIT-bank (basic)
   ((RADIUS_MAX        float)
    (RADIUS_MIN        float)
    (TARGET_OFF_ADJUST float)
    (ORBIT_OFF_ADJUST  float)))
+
 
 (define *CAM_ORBIT-bank*
   (new 'static 'CAM_ORBIT-bank :RADIUS_MAX 61440.0 :RADIUS_MIN 409.6 :TARGET_OFF_ADJUST 81.92 :ORBIT_OFF_ADJUST 81.92))
@@ -359,23 +367,26 @@
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('teleport) #f)
-        (else (cam-standard-event-handler proc argc message block))))
+        (else
+         (cam-standard-event-handler proc argc message block))))
   :enter
     (behavior ()
       (when (not (-> self enter-has-run))
-        (if (not *camera-orbit-target*) (cam-slave-go cam-free-floating))
+        (if (not *camera-orbit-target*)
+            (cam-slave-go cam-free-floating))
         (let ((target-to-camera (new-stack-vector0)))
           (vector-! target-to-camera (-> self trans) (-> *camera-orbit-target* 0 root trans))
           (set! (-> *camera-orbit-info* rot) (atan (-> target-to-camera x) (-> target-to-camera z))))
-        (set! (-> self blend-from-type) (the-as uint 1))
-        (set! (-> self blend-to-type) (the-as uint 1))))
+        (set! (-> self blend-from-type) (camera-blend-to-type slave-controlled))
+        (set! (-> self blend-to-type) (camera-blend-to-type slave-controlled))))
   :exit
     (behavior ()
       '())
   :code
     (behavior ()
       (loop
-        (if (not *camera-orbit-target*) (cam-slave-go cam-free-floating))
+        (if (not *camera-orbit-target*)
+            (cam-slave-go cam-free-floating))
         (when *camera-read-analog*
           (let ((zoom-input (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
             (cond
@@ -383,20 +394,23 @@
                (+! (-> *camera-orbit-info* radius-lerp) (* 0.05 (- 1.0 (-> *camera-orbit-info* radius-lerp)))))
               ((< zoom-input (* 0.05 (- (-> *camera-orbit-info* radius-lerp))))
                (+! (-> *camera-orbit-info* radius-lerp) (* 0.05 (- (-> *camera-orbit-info* radius-lerp)))))
-              (else (+! (-> *camera-orbit-info* radius-lerp) zoom-input))))
+              (else
+               (+! (-> *camera-orbit-info* radius-lerp) zoom-input))))
           (set! (-> *camera-orbit-info* radius)
                 (lerp (-> *CAM_ORBIT-bank* RADIUS_MIN) (-> *CAM_ORBIT-bank* RADIUS_MAX) (-> *camera-orbit-info* radius-lerp))))
         (cond
           ((cpad-hold? 0 l2)
            (if (cpad-hold? 0 l1)
-             (set! (-> *camera-orbit-info* target-off y)
-                   (- (-> *camera-orbit-info* target-off y) (-> *CAM_ORBIT-bank* TARGET_OFF_ADJUST))))
-           (if (cpad-hold? 0 r1) (+! (-> *camera-orbit-info* target-off y) (-> *CAM_ORBIT-bank* TARGET_OFF_ADJUST))))
+               (set! (-> *camera-orbit-info* target-off y)
+                     (- (-> *camera-orbit-info* target-off y) (-> *CAM_ORBIT-bank* TARGET_OFF_ADJUST))))
+           (if (cpad-hold? 0 r1)
+               (+! (-> *camera-orbit-info* target-off y) (-> *CAM_ORBIT-bank* TARGET_OFF_ADJUST))))
           (else
            (if (cpad-hold? 0 l1)
-             (set! (-> *camera-orbit-info* orbit-off y)
-                   (- (-> *camera-orbit-info* orbit-off y) (-> *CAM_ORBIT-bank* ORBIT_OFF_ADJUST))))
-           (if (cpad-hold? 0 r1) (+! (-> *camera-orbit-info* orbit-off y) (-> *CAM_ORBIT-bank* ORBIT_OFF_ADJUST)))))
+               (set! (-> *camera-orbit-info* orbit-off y)
+                     (- (-> *camera-orbit-info* orbit-off y) (-> *CAM_ORBIT-bank* ORBIT_OFF_ADJUST))))
+           (if (cpad-hold? 0 r1)
+               (+! (-> *camera-orbit-info* orbit-off y) (-> *CAM_ORBIT-bank* ORBIT_OFF_ADJUST)))))
         (when *camera-read-analog*
           (let ((orbit-input (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))))
             (set! (-> *camera-orbit-info* rot) (the float (sar (shl (the int (+ (-> *camera-orbit-info* rot) orbit-input)) 48) 48)))))

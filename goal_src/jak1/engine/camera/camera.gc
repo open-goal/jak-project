@@ -16,15 +16,18 @@
 
 (define *cam-res-string* (new 'global 'string 64 (the-as string #f)))
 
-(defun cam-slave-get-vector-with-offset ((source-actor entity-actor) (out vector) (prop-name symbol))
+(defun cam-slave-get-vector-with-offset ((source-actor entity-camera) (out vector) (prop-name symbol))
   "Read property from actor, using its live
    translation or rotation for the matching property names, add an optional property-offset vector,
    and write out. Return true when a value was available."
   (local-vars (base-value structure))
   (cond
-    ((= prop-name 'trans) (set! base-value (-> source-actor trans)))
-    ((= prop-name 'rot) (set! base-value (-> source-actor quat)))
-    (else (set! base-value (res-lump-struct source-actor prop-name structure))))
+    ((= prop-name 'trans)
+     (set! base-value (-> source-actor trans)))
+    ((= prop-name 'rot)
+     (set! base-value (-> source-actor quat)))
+    (else
+     (set! base-value (res-lump-struct source-actor prop-name structure))))
   (let ((struct-getter (method-of-type res-lump get-property-struct)))
     (format (clear *res-key-string*) "~S~S" prop-name '-offset)
     (let ((offset-value (struct-getter source-actor
@@ -35,8 +38,12 @@
                                        (the-as (pointer res-tag) #f)
                                        *res-static-buf*)))
       (cond
-        ((and base-value offset-value) (vector+! out (the-as vector base-value) (the-as vector offset-value)) #t)
-        ((the-as vector base-value) (vector-copy! out (the-as vector base-value)) #t)
+        ((and base-value offset-value)
+         (vector+! out (the-as vector base-value) (the-as vector offset-value))
+         #t)
+        ((the-as vector base-value)
+         (set! (-> out quad) (-> (the-as vector base-value) quad))
+         #t)
         (else #f)))))
 
 (defun cam-slave-get-flags ((source-entity entity) (prop-name symbol))
@@ -62,7 +69,7 @@
                                        (the-as uint128 0)
                                        (the-as (pointer res-tag) #f)
                                        *res-static-buf*)))
-        (logclear (logior base-flags set-flags) clear-flags)))))
+        (the-as cam-slave-options (logclear (logior base-flags set-flags) clear-flags))))))
 
 (defun cam-slave-get-float ((source-entity entity) (prop-name symbol) (default-value float))
   "Read property from entity with default-value, add the
@@ -92,7 +99,9 @@
                                     0.0
                                     (the-as (pointer res-tag) #f)
                                     *res-static-buf*)))
-      (if (= base-fov 0.0) (+ 11650.845 fov-offset) (+ base-fov fov-offset)))))
+      (if (= base-fov 0.0)
+          (+ 11650.845 fov-offset)
+          (+ base-fov fov-offset)))))
 
 (defun cam-slave-get-intro-step ((source-entity entity))
   "Read intro-time plus intro-time-offset and return the
@@ -108,7 +117,9 @@
                                      0.0
                                      (the-as (pointer res-tag) #f)
                                      *res-static-buf*))))
-      (if (>= 0.0 duration) 0.004166667 (/ 0.016666668 duration)))))
+      (if (>= 0.0 duration)
+          0.004166667
+          (/ 0.016666668 duration)))))
 
 (defun cam-slave-get-interp-time ((source-entity entity))
   "Read interpTime plus interpTime-offset from entity and
@@ -124,12 +135,12 @@
                                      0.0
                                      (the-as (pointer res-tag) #f)
                                      *res-static-buf*))))
-      (if (>= 0.001 duration) (set! duration 0.0))
+      (if (>= 0.001 duration)
+          (set! duration 0.0))
       duration)))
 
-(defun cam-slave-get-rot ((source-actor entity-actor) (out-matrix matrix))
-  "Convert actor's rotation to out-matrix after composing an optional
-   rot-offset quaternion."
+(defun cam-slave-get-rot ((source-actor entity-camera) (out-matrix matrix))
+  "Get the rotation of the entity, including optional rotation offset."
   (let ((struct-getter (method-of-type res-lump get-property-struct))
         (source-copy source-actor))
     (format (clear *res-key-string*) "~S~S" 'rot '-offset)
@@ -146,7 +157,8 @@
            (quaternion*! combined-rotation (the-as quaternion rotation-offset) (-> source-actor quat))
            (quaternion-normalize! combined-rotation)
            (quaternion->matrix out-matrix combined-rotation)))
-        (else (quaternion->matrix out-matrix (-> source-actor quat))))))
+        (else
+         (quaternion->matrix out-matrix (-> source-actor quat))))))
   out-matrix)
 
 (defun cam-state-from-entity ((source-entity entity))
@@ -156,12 +168,16 @@
   (let ((camera-path (new 'stack 'curve)))
     (the-as state
             (cond
-              ((not source-entity) (the-as (state camera-slave) #f))
+              ((not source-entity)
+               (the-as (state camera-slave) #f))
               ((res-lump-struct source-entity 'pivot structure) cam-circular)
-              ((res-lump-struct source-entity 'align structure) cam-standoff-read-entity)
+              ((res-lump-struct source-entity 'align structure)
+               cam-standoff-read-entity)
               ((get-curve-data! source-entity camera-path 'campath 'campath-k -1000000000.0) cam-spline)
-              ((< 0.0 (cam-slave-get-float source-entity 'stringMaxLength 0.0)) *camera-base-mode*)
-              (else cam-fixed-read-entity)))))
+              ((< 0.0 (cam-slave-get-float source-entity 'stringMaxLength 0.0))
+               *camera-base-mode*)
+              (else
+               cam-fixed-read-entity)))))
 
 (defun parameter-ease-none ((value object))
   "Return value unchanged."
@@ -181,8 +197,10 @@
     ((>= t 1.0) 1.0)
     ((>= 0.0 t) 0.0)
     ((>= 0.25 t) (/ t 2))
-    ((>= t 0.75) (- 1.0 (* 0.5 (- 1.0 t))))
-    (else (+ 0.125 (* 1.5 (+ -0.25 t))))))
+    ((>= t 0.75)
+     (- 1.0 (* 0.5 (- 1.0 t))))
+    (else
+     (+ 0.125 (* 1.5 (+ -0.25 t))))))
 
 (defun parameter-ease-sqrt-clamp ((t float))
   "Clamp t to 0..1 and apply the symmetric square-root
@@ -190,8 +208,10 @@
   (cond
     ((>= t 1.0) 1.0)
     ((>= 0.0 t) 0.0)
-    ((>= 0.5 t) (* 0.5 (- 1.0 (sqrtf (- 1.0 (* 2.0 t))))))
-    (else (* 0.5 (+ 1.0 (sqrtf (+ -1.0 (* 2.0 t))))))))
+    ((>= 0.5 t)
+     (* 0.5 (- 1.0 (sqrtf (- 1.0 (* 2.0 t))))))
+    (else
+     (* 0.5 (+ 1.0 (sqrtf (+ -1.0 (* 2.0 t))))))))
 
 (defun fourth-power ((x float))
   "Return x to the fourth power."
@@ -207,8 +227,10 @@
   (cond
     ((>= t 1.0) 1.0)
     ((>= 0.0 t) 0.0)
-    ((>= 0.5 t) (* 0.5 (square (* 2.0 t))))
-    (else (- 1.0 (* 0.5 (square (* 2.0 (- 1.0 t))))))))
+    ((>= 0.5 t)
+     (* 0.5 (square (* 2.0 t))))
+    (else
+     (- 1.0 (* 0.5 (square (* 2.0 (- 1.0 t))))))))
 
 (defun parameter-ease-sin-clamp ((t float))
   "Clamp t to 0..1 and apply a half-cosine ease with zero
@@ -216,7 +238,8 @@
   (cond
     ((>= t 1.0) 1.0)
     ((>= 0.0 t) 0.0)
-    (else (+ 0.5 (* 0.5 (sin (* 182.04445 (+ -90.0 (* 180.0 t)))))))))
+    (else
+     (+ 0.5 (* 0.5 (sin (* 182.04445 (+ -90.0 (* 180.0 t)))))))))
 
 (defmethod setup-from-entity! ((this cam-index) (prop-name symbol) (source-entity entity) (cam-pos vector) (fallback-curve curve))
   "Read the two endpoint vectors from entity data or
@@ -314,7 +337,11 @@
   (set! (-> this sample-len) 0.0)
   (set! (-> this used-count) 1)
   (vector-copy! (-> this old-position) start-pos)
-  (let ((i 1)) (while (!= i 31) (set! (-> this point i next) (+ i 1)) (+! i 1)) (set! (-> this point i next) -134250495))
+  (let ((i 1))
+    (while (!= i 31)
+      (set! (-> this point i next) (+ i 1))
+      (+! i 1))
+    (set! (-> this point i next) -134250495))
   0
   (none))
 
@@ -350,7 +377,8 @@
     (set! (-> this partial-point) (-> sampler partial-pt))
     (when (= (-> this next-to-last-point) cur-pt)
       (set! (-> this summed-len) (-> this point cur-pt tp-length))
-      (if (= (-> sampler cur-pt) (-> this end-point)) (set! (-> this partial-point) 0.99999)))
+      (if (= (-> sampler cur-pt) (-> this end-point))
+          (set! (-> this partial-point) 0.99999)))
     (when (!= (-> sampler cur-pt) cur-pt)
       (while (and (!= (-> this point cur-pt next) (-> sampler cur-pt)) (!= (-> this point cur-pt next) (-> this next-to-last-point)))
         (set! (-> this summed-len) (- (-> this summed-len) (-> this point cur-pt tp-length)))
@@ -364,7 +392,9 @@
       (set! (-> this free-point) (-> this used-point))
       (set! (-> this used-point) (-> sampler cur-pt))
       (cond
-        ((= (-> sampler cur-pt) (-> this end-point)) (set! (-> this partial-point) 0.0) (set! (-> this summed-len) 0.0))
+        ((= (-> sampler cur-pt) (-> this end-point))
+         (set! (-> this partial-point) 0.0)
+         (set! (-> this summed-len) 0.0))
         ((= (-> sampler cur-pt) (-> this next-to-last-point))
          (set! (-> this summed-len) (-> this point (-> this next-to-last-point) tp-length))))))
   0
@@ -379,9 +409,9 @@
       (set! (-> sampler partial-pt) (-> this partial-point))
       (sample-point! this (-> this sample-len) (-> sample-pos position) sampler))
     (if (or (= (-> sampler cur-pt) (-> this end-point))
-            (= (-> sampler cur-pt) (-> this next-to-last-point))
-            (= (-> this point (-> sampler cur-pt) next) (-> this next-to-last-point)))
-      (set! (-> sampler cur-pt) (-> this used-point)))
+              (= (-> sampler cur-pt) (-> this next-to-last-point))
+              (= (-> this point (-> sampler cur-pt) next) (-> this next-to-last-point)))
+        (set! (-> sampler cur-pt) (-> this used-point)))
     (let ((cur-pt (-> this point (-> sampler cur-pt) next)))
       (when (!= cur-pt -134250495)
         (let ((next-pt (-> this point cur-pt next))
@@ -396,7 +426,8 @@
                 (set! best-pt cur-pt)))
             (set! cur-pt next-pt)
             (set! next-pt (-> this point cur-pt next)))
-          (if (< -2.0 best-dot) (delete-point! this best-pt))))))
+          (if (< -2.0 best-dot)
+              (delete-point! this best-pt))))))
   0
   (none))
 
@@ -419,17 +450,17 @@
                           (= (-> this point next-pt next) (-> this end-point))
                           (= (-> this point next-pt next) (-> this next-to-last-point))))
             (if (< (* (-> this point cur-pt tp-length)
-                      (+ 1.0
-                         (vector-dot (the-as vector (+ (the-as uint (-> this point 0 direction)) (* 48 cur-pt)))
-                                     (the-as vector (+ (the-as uint (the-as vector (-> this point 0 direction))) (* 48 next-pt))))))
-                   budget)
-              (delete-point! this cur-pt)
-              (set! cur-pt next-pt))
+                        (+ 1.0
+                           (vector-dot (the-as vector (+ (the-as uint (-> this point 0 direction)) (* 48 cur-pt)))
+                                       (the-as vector (+ (the-as uint (the-as vector (-> this point 0 direction))) (* 48 next-pt))))))
+                     budget)
+                (delete-point! this cur-pt)
+                (set! cur-pt next-pt))
             (set! next-pt (-> this point cur-pt next)))))))
   0
   (none))
 
-(defmethod add-point! ((this tracking-spline) (new-pos vector) (min-dist float) (prune-budget float) (can-prune symbol))
+(defmethod add-point! ((this tracking-spline) (new-pos vector) (min-dist meters) (prune-budget meters) (can-prune symbol))
   "Append new-pos when it is at least min-dist from the tail,
    optionally pruning the trail to obtain a free slot."
   (let ((free-pt (-> this free-point))
@@ -444,7 +475,8 @@
       (prune-most-collinear! this)
       (set! free-pt (-> this free-point)))
     (cond
-      ((= free-pt -134250495) (format 0 "ERROR <GMJ>: pos spline overflow~%"))
+      ((= free-pt -134250495)
+       (format 0 "ERROR <GMJ>: pos spline overflow~%"))
       (else
        (+! (-> this summed-len) (-> this point tail-pt tp-length))
        (set! (-> this free-point) (-> this point free-pt next))
@@ -454,7 +486,8 @@
        (set! (-> this point free-pt next) -134250495)
        (vector-copy! (-> this point free-pt position) new-pos)
        (+! (-> this used-count) 1)
-       (if (< 0.0 prune-budget) (prune-shallow-points! this prune-budget)))))
+       (if (< 0.0 prune-budget)
+           (prune-shallow-points! this prune-budget)))))
   0)
 
 (defmethod accumulate-sample! ((this tracking-spline) (arc-len float) (out-pos vector) (sampler tracking-spline-sampler))
@@ -496,9 +529,9 @@
   out-pos)
 
 (defmethod apply-trail-correction! ((this tracking-spline) (move vector) (stop-pt int))
-  "Bias move along the changes in trail direction before
-   stop-pt. The correction is strongest on short, curved trails and fades as the recorded path
-   becomes straighter."
+  "Bias move along the changes in trail direction
+   before stop-pt. The correction is strongest on short, curved trails and
+   fades as the recorded path becomes straighter."
   (let ((trail-dir (new 'stack-no-clear 'vector)))
     (vector-! trail-dir (-> this point (-> this used-point) position) (-> this point (-> this end-point) position))
     (let* ((chord-len (vector-length trail-dir))
@@ -510,7 +543,9 @@
                              ((< (-> *CAMERA-bank* min-detectable-velocity) (-> this summed-len))
                               (vector-float*! trail-dir trail-dir (/ 1.0 chord-len))
                               (/ chord-len (-> this summed-len)))
-                             (else (vector-reset! trail-dir) 0.0)))
+                             (else
+                              (vector-reset! trail-dir)
+                              0.0)))
              (straightness-bias (+ -0.2 chord-to-arc))
              (straightness-scale (* 2.0 straightness-bias))
              (alignment-weight (fmin 1.0 (fmax 0.05 straightness-scale)))
@@ -527,16 +562,17 @@
               (let ((forward-dot (vector-dot seg-dir trail-dir)))
                 (cond
                   ((>= 0.0 forward-dot))
-                  (else (set! correction (* correction (fmax 0.0 (- 0.75 (fabs (* alignment-weight forward-dot)))))))))
+                  (else
+                   (set! correction (* correction (fmax 0.0 (- 0.75 (fabs (* alignment-weight forward-dot)))))))))
               (cond
                 ((< correction 0.0)
                  (if (and *debug-segment* *display-camera-marks*)
-                   (camera-line-rel-len (-> this point next-pt position)
-                                        seg-dir
-                                        (* -40.96 correction)
-                                        (-> (new 'static 'inline-array qword 1 (new 'static 'qword :data (new 'static 'array uint32 4 #xff #xff #x0 #x80)))
-                                            0
-                                            vector4w)))
+                     (camera-line-rel-len (-> this point next-pt position)
+                                          seg-dir
+                                          (* -40.96 correction)
+                                          (-> (new 'static 'inline-array qword 1 (new 'static 'qword :data (new 'static 'array uint32 4 #xff #xff #x0 #x80)))
+                                              0
+                                              vector4w)))
                  (vector--float*! move move seg-dir correction))
                 ((and *debug-segment* *display-camera-marks*)
                  (camera-line-rel-len (-> this point next-pt position)
@@ -549,10 +585,11 @@
   0
   (none))
 
-(defmethod follow-update! ((this tracking-spline) (pos vector) (accel float) (max-speed float))
+(defmethod follow-update! ((this tracking-spline) (pos vector) (accel meters) (max-speed meters))
   "Advance the trail follower toward pos using accel and
-   max-speed. Average 64 evenly spaced samples over the adaptive sample window, apply the
-   trail-direction correction, and return the smoothed position."
+   max-speed. Average 64 evenly spaced samples over the adaptive sample
+   window, apply the trail-direction correction, and return the smoothed
+   position."
   (let ((cur-pt (-> this used-point))
         (partial (-> this partial-point)))
     (let ((trail-len (-> this summed-len)))
@@ -587,7 +624,7 @@
   (vector-copy! (-> this old-position) pos)
   pos)
 
-(defmethod trim-to-length! ((this tracking-spline) (max-len float))
+(defmethod trim-to-length! ((this tracking-spline) (max-len meters))
   "Drop the oldest trail segments until its live length is
    no greater than max-len."
   (when (< max-len (-> this summed-len))
@@ -611,7 +648,8 @@
       (+! live-count 1)
       (set! cur-pt (-> this point cur-pt next)))
     (when (!= live-count (-> this used-count))
-      (if *debug-segment* (format 0 "ERROR<GMJ>: tracking spline used count ~D actual ~D~%" (-> this used-count) live-count))
+      (if *debug-segment*
+          (format 0 "ERROR<GMJ>: tracking spline used count ~D actual ~D~%" (-> this used-count) live-count))
       (set! (-> this used-count) live-count))
     (let ((free-pt (-> this free-point))
           (free-count 0))
@@ -620,7 +658,7 @@
         (set! free-pt (-> this point free-pt next)))
       (when (!= free-count (- 32 (-> this used-count)))
         (if *debug-segment*
-          (format 0 "ERROR<GMJ>: tracking spline free count ~D actual ~D~%" (- 32 (-> this used-count)) free-count))
+            (format 0 "ERROR<GMJ>: tracking spline free count ~D actual ~D~%" (- 32 (-> this used-count)) free-count))
         (set! (-> this free-point) -134250495)
         (dotimes (i 32)
           (when (not (logtest? live-mask 1))
@@ -639,14 +677,14 @@
      (set! (-> self options) (-> *camera* slave-options))
      (set! (-> self change-event-from) (the-as (pointer process-drawable) (-> *camera* changer))))
     (else
-     (set! (-> self options) (the-as uint 0))
+     (set! (-> self options) (cam-slave-options))
      (set! (-> self change-event-from) (the-as (pointer process-drawable) #f))))
   (cond
     (*camera-combiner*
      (vector-copy! (-> self trans) (-> *camera-combiner* trans))
      (matrix-copy! (-> self tracking inv-mat) (-> *camera-combiner* inv-camera-rot))
-     (when *camera-init-mat*
-       (matrix-copy! (-> self tracking inv-mat) *camera-init-mat*))
+     (if *camera-init-mat*
+         (matrix-copy! (-> self tracking inv-mat) *camera-init-mat*))
      (set! (-> self fov) (-> *camera-combiner* fov))
      (vector-copy! (-> self velocity) (-> *camera-combiner* velocity)))
     (else
@@ -676,7 +714,9 @@
   "Reinitialize the camera slave and immediately enter next-state."
   (with-pp
     (cam-slave-init-vars)
-    (let ((enter-fn (the-as (function object) enter-state))) (set! (-> pp next-state) next-state) (enter-fn))
+    (let ((enter-fn (the-as (function object) enter-state)))
+      (set! (-> pp next-state) next-state)
+      (enter-fn))
     0
     (none)))
 
@@ -686,13 +726,15 @@
    initial-state current."
   (stack-size-set! (-> self main-thread) 512)
   (change-to-last-brother self)
-  (if (and (nonzero? camera-slave-debug) *debug-segment*) (add-connection *debug-engine* self camera-slave-debug self #f #f))
+  (if (and (nonzero? camera-slave-debug) *debug-segment*)
+      (add-connection *debug-engine* self camera-slave-debug self #f #f))
   (cam-slave-init-vars)
   (let ((voicebox-state 'cam-voicebox)
         (call-arg (the-as basic (-> initial-state name))))
     (cond
       ((= (the-as symbol call-arg) voicebox-state))
-      (camera-entity (set! (-> self cam-entity) camera-entity))
+      (camera-entity
+       (set! (-> self cam-entity) (the-as entity-camera camera-entity)))
       (else
        (let ((activation-event (new 'stack-no-clear 'event-message-block)))
          (set! (-> activation-event from) self)
@@ -703,7 +745,8 @@
            (set! call-arg *camera*)
            (send-event-fn (the-as camera-master call-arg) activation-event)))))
     (let ((state-enter-fn (the-as (function object object) (-> initial-state enter))))
-      (if state-enter-fn (state-enter-fn (the-as symbol call-arg))))
+      (if state-enter-fn
+          (state-enter-fn (the-as symbol call-arg))))
     (set! (-> self enter-has-run) #t)
     (set! (-> self event-hook) (-> initial-state event))
     (let ((enter-state-fn (the-as (function object object) enter-state)))
@@ -725,7 +768,8 @@
      (let ((next-state (the-as object (-> message param 0))))
        (cam-slave-init-vars)
        (let ((state-enter-fn (the-as (function object) (-> (the-as state next-state) enter))))
-         (if state-enter-fn (state-enter-fn)))
+         (if state-enter-fn
+             (state-enter-fn)))
        (set! (-> self enter-has-run) #t)
        (set! (-> self event-hook) (-> (the-as state next-state) event))
        (when (= event-type 'change-state)
@@ -736,12 +780,14 @@
      (cond
        ((-> message param 0)
         (set! (-> self tracking use-point-of-interest) #t)
-        (vector-copy! (-> self tracking point-of-interest) (the-as vector (-> message param 0)))
+        (set! (-> self tracking point-of-interest quad) (-> (the-as vector (-> message param 0)) quad))
         (set! (-> self tracking point-of-interest-blend target) 1.0))
-       (else (set! (-> self tracking use-point-of-interest) #f) (set! (-> self tracking point-of-interest-blend target) 0.0))))
+       (else
+        (set! (-> self tracking use-point-of-interest) #f)
+        (set! (-> self tracking point-of-interest-blend target) 0.0))))
     (('teleport)
      (cam-calc-follow! (-> self tracking) (-> self trans) #f)
-     (slave-set-rotation! (-> self tracking) (-> self trans) (the-as float (-> self options)) (-> self fov) #f))))
+     (slave-set-rotation! (-> self tracking) (-> self trans) (-> self options) (-> self fov) #f))))
 
 (defbehavior cam-curve-pos camera-slave ((pos vector) (tangent vector) (path curve) (use-follow-point? symbol))
   "Add the active intro and camera-path offsets to pos. When tangent is
@@ -750,10 +796,12 @@
   (let ((curve-offset (new-stack-vector0)))
     0.0
     (let ((tangent-sample (new-stack-vector0)))
-      (if tangent (set! (-> tangent w) 0.0))
+      (if tangent
+          (set! (-> tangent w) 0.0))
       (when (< (-> self intro-t) 1.0)
         (+! (-> self intro-t) (* (-> self intro-t-step) (-> *display* time-adjust-ratio)))
-        (if (< 1.0 (-> self intro-t)) (set! (-> self intro-t) 1.0))
+        (if (< 1.0 (-> self intro-t))
+            (set! (-> self intro-t) 1.0))
         (curve-get-pos! curve-offset (parameter-ease-sin-clamp (-> self intro-t)) (-> self intro-curve))
         (vector+! curve-offset curve-offset (-> self intro-offset))
         (vector+! pos pos curve-offset)
@@ -773,8 +821,8 @@
       ((not (-> self spline-exists)))
       ((= (-> self spline-follow-dist) 0.0)
        (let ((spline-t (if use-follow-point?
-                         (point->parameter (-> self index) (-> self tracking follow-pt))
-                         (point->parameter (-> self index) (-> *camera* tpos-curr-adj)))))
+                           (point->parameter (-> self index) (-> self tracking follow-pt))
+                           (point->parameter (-> self index) (-> *camera* tpos-curr-adj)))))
          (curve-get-pos! curve-offset spline-t (-> self spline-curve)))
        (vector+! curve-offset curve-offset (-> self spline-offset))
        (vector+! pos pos curve-offset))
@@ -782,8 +830,8 @@
        (let ((reference-pos (new 'stack-no-clear 'vector)))
          (curve-length (-> self spline-curve))
          (if use-follow-point?
-           (vector-copy! reference-pos (-> self tracking follow-pt))
-           (vector-copy! reference-pos (-> *camera* tpos-curr-adj)))
+             (vector-copy! reference-pos (-> self tracking follow-pt))
+             (vector-copy! reference-pos (-> *camera* tpos-curr-adj)))
          (set! (-> self spline-tt)
                (curve-closest-point (-> self spline-curve) reference-pos (-> self spline-tt) 1024.0 10 (-> self spline-follow-dist))))
        (curve-get-pos! curve-offset (-> self spline-tt) (-> self spline-curve))
@@ -806,9 +854,13 @@
      (set! (-> self intro-t) 0.0)
      (set! (-> self intro-t-step) (cam-slave-get-intro-step (-> self cam-entity)))
      (set! (-> self outro-exit-value) (cam-slave-get-float (-> self cam-entity) 'intro-exitValue 0.0))
-     (if (= (-> self outro-exit-value) 0.0) (set! (-> self outro-exit-value) 0.5)))
-    (else (set! (-> self intro-t) 1.0) (set! (-> self intro-t-step) 0.0)))
-  (if (nonzero? (-> *camera* no-intro)) (set! (-> self intro-t) 1.0))
+     (if (= (-> self outro-exit-value) 0.0)
+         (set! (-> self outro-exit-value) 0.5)))
+    (else
+     (set! (-> self intro-t) 1.0)
+     (set! (-> self intro-t-step) 0.0)))
+  (if (nonzero? (-> *camera* no-intro))
+      (set! (-> self intro-t) 1.0))
   0
   (none))
 
@@ -851,10 +903,11 @@
               (view-facing-angle (acos (vector-dot target-from-camera-flat target-facing-flat)))
               (clamped-angle (fmax 1820.4445 view-facing-angle)))
          (if (< clamped-angle 8192.0)
-           (vector-float*! desired-offset
-                           desired-offset
-                           (+ lead-scale
-                              (* (/ (- 1.0 lead-scale) (- 1.0 (cos 32768.0))) (+ (- (cos 32768.0)) (cos (* 5.142857 (- 8192.0 clamped-angle)))))))))
+             (vector-float*! desired-offset
+                             desired-offset
+                             (+ lead-scale
+                                (* (/ (- 1.0 lead-scale) (- 1.0 (cos (degrees 180))))
+                                   (+ (- (cos (degrees 180))) (cos (* 5.142857 (- 8192.0 clamped-angle)))))))))
        (cond
          ((< (-> *camera* ease-t) 1.0))
          ((< (-> tracker follow-blend) 1.0)
@@ -863,7 +916,8 @@
             (vector-float*! desired-offset desired-offset blend-factor))
           (+! (-> tracker follow-blend) (/ (-> *display* time-adjust-ratio) 60))
           (vector+! (-> tracker follow-off) (-> tracker follow-off) desired-offset))
-         (else (vector-copy! (-> tracker follow-off) desired-offset))))
+         (else
+          (vector-copy! (-> tracker follow-off) desired-offset))))
      (vector+! (-> tracker follow-pt) (-> *camera* tpos-curr-adj) (-> tracker follow-off))
      (vector--float*! (-> tracker follow-pt)
                       (-> tracker follow-pt)
@@ -874,7 +928,8 @@
      (let ((normal-offset (new-stack-vector0)))
        (set! (-> tracker follow-blend) 0.0)
        (cond
-         ((-> tracker no-follow) (vector-reset! normal-offset))
+         ((-> tracker no-follow)
+          (vector-reset! normal-offset))
          (else
           (vector-! normal-offset (-> *camera* tpos-curr-adj) camera-pos)
           (vector-normalize! normal-offset 1.0)
@@ -892,8 +947,8 @@
                    (distance-weight (fmax 0.0 distance-upper)))
               (vector-float*! normal-offset (-> *camera* tgt-rot-mat vector 2) (* (lerp 2048.0 8192.0 distance-weight) behind-weight))))))
        (if smooth?
-         (vector-seek-3d-smooth! (-> tracker follow-off) normal-offset (* 20480.0 (seconds-per-frame)) 0.05)
-         (set! (-> tracker follow-off quad) (-> normal-offset quad))))
+           (vector-seek-3d-smooth! (-> tracker follow-off) normal-offset (* 20480.0 (seconds-per-frame)) 0.05)
+           (vector-copy! (-> tracker follow-off) normal-offset)))
      (vector+! (-> tracker follow-pt) (-> *camera* tpos-curr-adj) (-> tracker follow-off))
      (vector--float*! (-> tracker follow-pt) (-> tracker follow-pt) (-> *camera* local-down) (-> *camera* target-height))))
   (-> tracker follow-pt))
@@ -912,7 +967,8 @@
         (when (< up-dot 0.99999)
           (vector-cross! desired-up (-> camera-matrix vector 1) desired-up)
           (let ((signed-sine (vector-length desired-up)))
-            (if (< 0.0 (vector-dot desired-up (-> camera-matrix vector 2))) (set! signed-sine (- signed-sine)))
+            (if (< 0.0 (vector-dot desired-up (-> camera-matrix vector 2)))
+                (set! signed-sine (- signed-sine)))
             (matrix-axis-sin-cos! roll-correction (-> camera-matrix vector 2) signed-sine up-dot))
           (matrix*! camera-matrix camera-matrix roll-correction)))))
   camera-matrix)
@@ -927,33 +983,43 @@
    adjusted quaternion step. The step grows with aim-vector distance; options-bits bit 2 selects
    full three-dimensional rather than local-down-flattened distance."
   (let ((distance-work (new-stack-vector0))
-        (current-rotation (new-stack-quaternion0)))
-    (let ((target-rotation (new-stack-quaternion0))
-          (delta-rotation (new-stack-quaternion0)))
-      0.0
-      (let* ((aim-distance (cond
-                             ((logtest? (the-as int options-bits) 4) (vector-length aim-vector))
-                             (else (vector-flatten! distance-work aim-vector (-> *camera* local-down)) (vector-length distance-work))))
-             (distance-weight (* 0.00048828125 (+ -1024.0 aim-distance))))
-        (cond
-          ((< distance-weight 0.0) (set! distance-weight 0.0))
-          ((< 1.0 distance-weight) (set! distance-weight 1.0)))
-        (let ((turn-step (* 364.0889 (-> *display* time-adjust-ratio) distance-weight)))
-          (matrix->quaternion current-rotation current-matrix)
-          (matrix->quaternion target-rotation target-matrix)
-          (quaternion-conjugate! delta-rotation current-rotation)
-          (quaternion*! delta-rotation delta-rotation target-rotation)
-          (quaternion-normalize! delta-rotation)
-          (if (< (-> delta-rotation w) 0.0) (quaternion-negate! delta-rotation delta-rotation))
-          (let ((turn-angle (acos (-> delta-rotation w))))
-            (if (< (* (/ (-> *display* time-adjust-ratio) 4) turn-angle) turn-step)
-              (set! turn-step (* (/ (-> *display* time-adjust-ratio) 4) turn-angle)))
-            (cond
-              ((< (-> delta-rotation w) 0.9999999)
-               (quaternion-float*! delta-rotation delta-rotation (/ (sin turn-step) (sin turn-angle)))
-               (set! (-> delta-rotation w) (cos turn-step)))
-              (else (quaternion-identity! delta-rotation))))))
-      (quaternion*! current-rotation current-rotation delta-rotation))
+        (current-rotation (new 'stack-no-clear 'quaternion)))
+    (vector-zero! (-> current-rotation vec))
+    (let ((target-rotation (new 'stack-no-clear 'quaternion)))
+      (vector-zero! (-> target-rotation vec))
+      (let ((delta-rotation (new 'stack-no-clear 'quaternion)))
+        (vector-zero! (-> delta-rotation vec))
+        0.0
+        (let* ((aim-distance (cond
+                               ((logtest? (the-as int options-bits) 4)
+                                (vector-length aim-vector))
+                               (else
+                                (vector-flatten! distance-work aim-vector (-> *camera* local-down))
+                                (vector-length distance-work))))
+               (distance-weight (* 0.00048828125 (+ -1024.0 aim-distance))))
+          (cond
+            ((< distance-weight 0.0)
+             (set! distance-weight 0.0))
+            ((< 1.0 distance-weight)
+             (set! distance-weight 1.0)))
+          (let ((turn-step (* 364.0889 (-> *display* time-adjust-ratio) distance-weight)))
+            (matrix->quaternion current-rotation current-matrix)
+            (matrix->quaternion target-rotation target-matrix)
+            (quaternion-conjugate! delta-rotation current-rotation)
+            (quaternion*! delta-rotation delta-rotation target-rotation)
+            (quaternion-normalize! delta-rotation)
+            (if (< (-> delta-rotation w) 0.0)
+                (quaternion-negate! delta-rotation delta-rotation))
+            (let ((turn-angle (acos (-> delta-rotation w))))
+              (if (< (* (/ (-> *display* time-adjust-ratio) 4) turn-angle) turn-step)
+                  (set! turn-step (* (/ (-> *display* time-adjust-ratio) 4) turn-angle)))
+              (cond
+                ((< (-> delta-rotation w) 0.9999999)
+                 (quaternion-float*! delta-rotation delta-rotation (/ (sin turn-step) (sin turn-angle)))
+                 (set! (-> delta-rotation w) (cos turn-step)))
+                (else
+                 (quaternion-identity! delta-rotation))))))
+        (quaternion*! current-rotation current-rotation delta-rotation)))
     (quaternion-normalize! current-rotation)
     (quaternion->matrix current-matrix current-rotation)))
 
@@ -986,7 +1052,8 @@
               (let ((right-axis-base (-> camera-matrix vector))
                     (horizontal-scale (* 0.8 (tan (/ fov 2)))))
                 (.lvf vf1 (&-> right-axis-base 0 quad))
-                (let ((horizontal-scale-bits horizontal-scale)) (.mov vf2 horizontal-scale-bits)))
+                (let ((horizontal-scale-bits horizontal-scale))
+                  (.mov vf2 horizontal-scale-bits)))
               (.add.x.vf.w vf1 vf0 vf0)
               (.mul.x.vf.xyz vf1 vf1 vf2)
               (.svf (&-> horizontal-edge quad) vf1))
@@ -995,7 +1062,7 @@
             (let ((horizontal-edge-dot (vector-dot frustum-edge (-> camera-matrix vector 0))))
               (when (< horizontal-edge-dot (fabs horizontal-target-dot))
                 (if (< horizontal-target-dot 0.0)
-                  (vector--float*! frustum-edge frustum-edge (-> camera-matrix vector 0) (* 2.0 horizontal-edge-dot)))
+                    (vector--float*! frustum-edge frustum-edge (-> camera-matrix vector 0) (* 2.0 horizontal-edge-dot)))
                 (matrix-from-two-vectors! correction-matrix frustum-edge target-dir)
                 (vector-matrix*! (-> camera-matrix vector 2) (-> camera-matrix vector 2) correction-matrix)
                 (vector-cross! (-> camera-matrix vector 0) (-> camera-matrix vector 1) (-> camera-matrix vector 2)))))
@@ -1009,7 +1076,8 @@
               (let ((up-axis (-> camera-matrix vector 1))
                     (vertical-scale (* 0.525 (tan (/ fov 2)))))
                 (.lvf vf1 (&-> up-axis quad))
-                (let ((vertical-scale-bits vertical-scale)) (.mov vf2 vertical-scale-bits)))
+                (let ((vertical-scale-bits vertical-scale))
+                  (.mov vf2 vertical-scale-bits)))
               (.add.x.vf.w vf1 vf0 vf0)
               (.mul.x.vf.xyz vf1 vf1 vf2)
               (.svf (&-> vertical-edge quad) vf1))
@@ -1035,23 +1103,21 @@
                  (set! rotate-up? #f))
                 ((< vertical-dot-limit 0.0)
                  (let ((opposite-head-dot (- (vector-dot frustum-edge target-dir))))
-                   (if (< opposite-head-dot vertical-dot-limit) (set! vertical-dot-limit opposite-head-dot)))))))
+                   (if (< opposite-head-dot vertical-dot-limit)
+                       (set! vertical-dot-limit opposite-head-dot)))))))
           (let ((correction-angle (if rotate-up? (- (acos vertical-dot-limit)) (acos vertical-dot-limit))))
             (matrix-axis-angle! correction-matrix (-> camera-matrix vector 0) correction-angle))))
       (vector-matrix*! (-> camera-matrix vector 2) (-> camera-matrix vector 2) correction-matrix))
     (vector-cross! (-> camera-matrix vector 1) (-> camera-matrix vector 2) (-> camera-matrix vector 0))))
 
-(defun slave-set-rotation! ((tracker cam-rotation-tracker) (camera-pos vector) (options-bits float) (fov float) (smooth? symbol))
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f3]
+;; ERROR: Unsupported inline assembly instruction kind - [madda.s f1, f4]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
+(defun slave-set-rotation! ((tracker cam-rotation-tracker) (camera-pos vector) (options-bits cam-slave-options) (fov float) (smooth? symbol))
   "Build tracker's inverse camera rotation from its follow point,
    optional point of interest and tilt; keep the target in frame, optionally blend toward the new
-   orientation, and remove roll. options-bits is a raw cam-slave-options word carried in a float."
-  ;; Start from the follow point and blend toward a point of interest without
-  ;; changing the aim-vector length. The tilt guard leaves 15 degrees of room
-  ;; before either vertical pole so the pitch adjustment cannot flip the view.
-  ;; Underwater framing narrows the effective field of view as far as one
-  ;; quarter, then the safe-frame correction, optional orientation blend, and
-  ;; final roll removal produce the inverse camera rotation.
-  (local-vars (forward-down-dot float) (tilt-matrix matrix))
+   orientation, and remove roll."
+  (local-vars (output-matrix matrix) (forward-down-dot float))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
          (vf5 :class vf)
@@ -1069,46 +1135,52 @@
                (vector-! point-of-interest-vector (-> tracker point-of-interest) camera-pos)
                (vector-normalize! point-of-interest-vector (* aim-distance (-> tracker point-of-interest-blend value)))
                (let ((blended-aim-out aim-vector))
-                 (let ((base-aim aim-vector)) (.mov.vf.w vf6 vf0) (.lvf vf4 (&-> base-aim quad)))
+                 (let ((base-aim aim-vector))
+                   (.mov.vf.w vf6 vf0)
+                   (.lvf vf4 (&-> base-aim quad)))
                  (.lvf vf5 (&-> point-of-interest-vector quad))
                  (.add.vf.xyz vf6 vf4 vf5)
                  (.svf (&-> blended-aim-out quad) vf6))
                (vector-normalize! aim-vector aim-distance))))
-          (else (vector-! aim-vector (-> tracker follow-pt) camera-pos)))
+          (else
+           (vector-! aim-vector (-> tracker follow-pt) camera-pos)))
         (forward-down->inv-matrix target-matrix aim-vector (-> *camera* local-down))
         (when (!= tilt-angle 0.0)
           0.0
           0.0
-          (set! tilt-matrix (new 'stack-no-clear 'matrix))
-          (let ((aim-direction (new 'stack-no-clear 'vector)))
-            (vector-normalize-copy! aim-direction aim-vector 1.0)
-            (let* ((down-axis (-> *camera* local-down))) (set! forward-down-dot (vector-dot aim-direction down-axis))))
-          (let* ((down-dot forward-down-dot)
-                 (vertical-angle (acos (fabs down-dot))))
-            (cond
-              ((< 0.0 tilt-angle)
-               (set! tilt-angle
-                     (if (< 0.0 down-dot)
-                       (fmin tilt-angle (fmax 0.0 (+ -2730.6667 vertical-angle)))
-                       (fmin tilt-angle (fmax 0.0 (- 32768.0 (+ 2730.6667 vertical-angle)))))))
-              ((< tilt-angle 0.0)
-               (set! tilt-angle
-                     (if (< 0.0 down-dot)
-                       (fmax tilt-angle (- (fmax 0.0 (- 32768.0 (+ 2730.6667 vertical-angle)))))
-                       (fmax tilt-angle (- (fmax 0.0 (+ -2730.6667 vertical-angle)))))))))
-          (matrix-rotate-x! tilt-matrix tilt-angle)
-          (matrix*! target-matrix tilt-matrix target-matrix)))
+          (let ((tilt-matrix (new 'stack-no-clear 'matrix)))
+            (let ((aim-direction (new 'stack-no-clear 'vector)))
+              (vector-normalize-copy! aim-direction aim-vector 1.0)
+              (let* ((down-axis (-> *camera* local-down)))
+                (set! forward-down-dot (vector-dot aim-direction down-axis))))
+            (let* ((down-dot forward-down-dot)
+                   (vertical-angle (acos (fabs down-dot))))
+              (cond
+                ((< 0.0 tilt-angle)
+                 (set! tilt-angle
+                       (if (< 0.0 down-dot)
+                           (fmin tilt-angle (fmax 0.0 (+ -2730.6667 vertical-angle)))
+                           (fmin tilt-angle (fmax 0.0 (- 32768.0 (+ 2730.6667 vertical-angle)))))))
+                ((< tilt-angle 0.0)
+                 (set! tilt-angle
+                       (if (< 0.0 down-dot)
+                           (fmax tilt-angle (- (fmax 0.0 (- 32768.0 (+ 2730.6667 vertical-angle)))))
+                           (fmax tilt-angle (- (fmax 0.0 (+ -2730.6667 vertical-angle)))))))))
+            (matrix-rotate-x! tilt-matrix tilt-angle)
+            (matrix*! target-matrix tilt-matrix target-matrix))))
       (if (and (= (-> *camera* under-water) 2) *target* (!= (-> *target* next-state name) 'target-swim-up))
-        (set! (-> tracker underwater-blend target) 1.0)
-        (set! (-> tracker underwater-blend target) 0.0))
+          (set! (-> tracker underwater-blend target) 1.0)
+          (set! (-> tracker underwater-blend target) 0.0))
       (vector-into-frustum-nosmooth! target-matrix camera-pos (lerp-clamp fov (/ fov 4) (-> tracker underwater-blend value)))
-      (cond
-        (smooth? (slave-matrix-blend-2 (-> tracker inv-mat) options-bits aim-vector target-matrix))
-        (else
-         (matrix-copy! (-> tracker inv-mat) target-matrix))))
+      (set! output-matrix
+            (cond
+              (smooth?
+               (slave-matrix-blend-2 (-> tracker inv-mat) (the-as float options-bits) aim-vector target-matrix)
+               output-matrix)
+              (else
+               (matrix-copy! (-> tracker inv-mat) target-matrix)))))
     (mat-remove-z-rot (-> tracker inv-mat) (-> *camera* local-down))
-    0
-    (none)))
+    0))
 
 (defun v-slrp2! ((out vector) (from-vector vector) (to-vector vector) (t float) (plane-normal vector) (max-angle float))
   "Spherically interpolate from-vector toward to-vector by t while
@@ -1119,56 +1191,51 @@
   ;; angular arc without the length collapse of a linear vector blend. With a
   ;; plane normal, only the in-plane direction rotates; the component on the
   ;; normal is restored and interpolated independently.
-  (local-vars
-    (direction-dot float)
-    (to-length float)
-    (from-length float)
-    (angle-limit float)
-    (to-direction vector)
-    (rotation-matrix matrix))
-  (set! angle-limit max-angle)
-  (let ((from-direction (new-stack-vector0)))
-    (set! to-direction (new 'stack-no-clear 'vector))
-    (set! (-> to-direction quad) (the-as uint128 0))
+  (local-vars (direction-dot float) (to-length float) (from-length float))
+  (let ((angle-limit max-angle)
+        (from-direction (new-stack-vector0))
+        (to-direction (new-stack-vector0)))
     1.0
     1.0
     (let ((rotation-axis (new-stack-vector0)))
       0.0
       1.0
-      (set! rotation-matrix (new 'stack-no-clear 'matrix))
-      (set! (-> rotation-matrix vector 0 quad) (the-as uint128 0))
-      (set! (-> rotation-matrix vector 1 quad) (the-as uint128 0))
-      (set! (-> rotation-matrix vector 2 quad) (the-as uint128 0))
-      (set! (-> rotation-matrix vector 3 quad) (the-as uint128 0))
-      (cond
-        ((< 1.0 t) (set! t 1.0))
-        ((< t 0.0) (set! t 0.0)))
-      (cond
-        (plane-normal
-         (vector-flatten! from-direction from-vector plane-normal)
-         (vector-flatten! to-direction to-vector plane-normal)
-         (set! from-length (vector-normalize-ret-len! from-direction 1.0))
-         (set! to-length (vector-normalize-ret-len! to-direction 1.0))
-         (vector-normalize! (vector-cross! rotation-axis to-direction from-direction) 1.0)
-         (let ((axis-side (vector-dot plane-normal rotation-axis)))
-           (vector-normalize-copy! rotation-axis plane-normal 1.0)
-           (if (< axis-side 0.0) (vector-negate! rotation-axis rotation-axis))))
-        (else
-         (set! (-> from-direction quad) (-> from-vector quad))
-         (vector-copy! to-direction to-vector)
-         (set! from-length (vector-normalize-ret-len! from-direction 1.0))
-         (set! to-length (vector-normalize-ret-len! to-direction 1.0))
-         (vector-normalize! (vector-cross! rotation-axis to-vector from-vector) 1.0)))
-      (let ((acos-fn acos))
-        (let* ((from-direction-copy from-direction)) (set! direction-dot (vector-dot from-direction-copy to-direction)))
-        (let* ((angle (acos-fn direction-dot))
-               (step-angle (* t angle)))
-          (when (< angle-limit step-angle)
-            (set! step-angle angle-limit)
-            (set! t (/ angle-limit angle)))
-          (let ((cos-angle (cos step-angle)))
-            (matrix-axis-sin-cos! rotation-matrix rotation-axis (sqrtf (- 1.0 (square cos-angle))) cos-angle))))
-      (vector-matrix*! out from-direction rotation-matrix)
+      (let ((rotation-matrix (new 'stack-no-clear 'matrix)))
+        (set! (-> rotation-matrix vector 0 quad) (the-as uint128 0))
+        (set! (-> rotation-matrix vector 1 quad) (the-as uint128 0))
+        (set! (-> rotation-matrix vector 2 quad) (the-as uint128 0))
+        (set! (-> rotation-matrix vector 3 quad) (the-as uint128 0))
+        (cond
+          ((< 1.0 t) (set! t 1.0))
+          ((< t 0.0) (set! t 0.0)))
+        (cond
+          (plane-normal
+           (vector-flatten! from-direction from-vector plane-normal)
+           (vector-flatten! to-direction to-vector plane-normal)
+           (set! from-length (vector-normalize-ret-len! from-direction 1.0))
+           (set! to-length (vector-normalize-ret-len! to-direction 1.0))
+           (vector-normalize! (vector-cross! rotation-axis to-direction from-direction) 1.0)
+           (let ((axis-side (vector-dot plane-normal rotation-axis)))
+             (vector-normalize-copy! rotation-axis plane-normal 1.0)
+             (if (< axis-side 0.0)
+                 (vector-negate! rotation-axis rotation-axis))))
+          (else
+           (vector-copy! from-direction from-vector)
+           (set! (-> to-direction quad) (-> to-vector quad))
+           (set! from-length (vector-normalize-ret-len! from-direction 1.0))
+           (set! to-length (vector-normalize-ret-len! to-direction 1.0))
+           (vector-normalize! (vector-cross! rotation-axis to-vector from-vector) 1.0)))
+        (let ((acos-fn acos))
+          (let* ((from-direction-copy from-direction))
+            (set! direction-dot (vector-dot from-direction-copy to-direction)))
+          (let* ((angle (acos-fn direction-dot))
+                 (step-angle (* t angle)))
+            (when (< angle-limit step-angle)
+              (set! step-angle angle-limit)
+              (set! t (/ angle-limit angle)))
+            (let ((cos-angle (cos step-angle)))
+              (matrix-axis-sin-cos! rotation-matrix rotation-axis (sqrtf (- 1.0 (square cos-angle))) cos-angle))))
+        (vector-matrix*! out from-direction rotation-matrix))
       (vector-normalize! out (lerp from-length to-length t))
       (when plane-normal
         (vector+float*! out out rotation-axis (vector-dot from-vector rotation-axis))
@@ -1182,11 +1249,10 @@
   "Spherically interpolate from-vector toward to-vector by no more than
    max-angle, using the required angular fraction and interpolating length separately. An optional
    plane-normal constrains the rotation plane."
-  (local-vars (direction-dot float) (to-length float) (from-length float) (angle-limit float) (to-direction vector))
-  (set! angle-limit max-angle)
-  (let ((from-direction (new-stack-vector0)))
-    (set! to-direction (new 'stack-no-clear 'vector))
-    (set! (-> to-direction quad) (the-as uint128 0))
+  (local-vars (direction-dot float) (to-length float) (from-length float))
+  (let ((angle-limit max-angle)
+        (from-direction (new-stack-vector0))
+        (to-direction (new-stack-vector0)))
     0.0
     0.0
     (let ((rotation-axis (new-stack-vector0))
@@ -1202,15 +1268,17 @@
            (vector-normalize! (vector-cross! rotation-axis to-direction from-direction) 1.0)
            (let ((axis-side (vector-dot plane-normal rotation-axis)))
              (vector-normalize-copy! rotation-axis plane-normal 1.0)
-             (if (< axis-side 0.0) (vector-negate! rotation-axis rotation-axis))))
+             (if (< axis-side 0.0)
+                 (vector-negate! rotation-axis rotation-axis))))
           (else
-           (set! (-> from-direction quad) (-> from-vector quad))
-           (vector-copy! to-direction to-vector)
+           (vector-copy! from-direction from-vector)
+           (set! (-> to-direction quad) (-> to-vector quad))
            (set! from-length (vector-normalize-ret-len! from-direction 1.0))
            (set! to-length (vector-normalize-ret-len! to-direction 1.0))
            (vector-normalize! (vector-cross! rotation-axis to-vector from-vector) 1.0)))
         (let ((acos-fn acos))
-          (let* ((from-direction-copy from-direction)) (set! direction-dot (vector-dot from-direction-copy to-direction)))
+          (let* ((from-direction-copy from-direction))
+            (set! direction-dot (vector-dot from-direction-copy to-direction)))
           (let ((angle (acos-fn direction-dot)))
             (when (< angle-limit angle)
               (set! fraction (/ angle-limit angle))
