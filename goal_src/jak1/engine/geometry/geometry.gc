@@ -5,72 +5,25 @@
 (require "engine/math/quaternion.gc")
 (require "engine/gfx/font.gc")
 
-;; Geometry functions are common vector/plane utilities + the "curve" stuff
-
-;; Conventions used throughout this file.
-;;
-;; Output first. Every function that produces a vector, matrix or quaternion takes it as the first
-;; argument and returns it, so calls chain. Whether that output may share storage with an input
-;; varies and each docstring says so; where it does not say so, assume it may not.
-;;
-;; The w lane is never incidental. init-vf0-vector loads vf0 with (0, 0, 0, 1), the value VU0's
-;; hardwired vf0 holds, so (.mov.vf.w dst vf0) is how a function sets w to 1.0 and
-;; (.add.x.vf.w dst vf0 vf0) is the same thing written as 0.0 + 1.0. An operation masked to xyz,
-;; including every outer product, leaves the destination register's w alone, which is why that w
-;; write usually appears well before the store rather than next to it.
-;;
-;; Units. Rotations are 65536 per revolution, so (degrees 1) is 182.044 and sin, cos, acos and
-;; atan all take and return that scale. Distances are 4096 per meter, so (meters 1) is 4096.0. A
-;; distance returned from this file is a true distance unless the name ends in -squared.
-;;
-;; A plane arrives in one of two forms and the argument type does not distinguish them. The plane
-;; type is ax + by + cz = d with d in w, which is what plane-volume-intersect-dist and
-;; point-in-vol? consume. vector-plane-distance instead reads its plane argument's xyz as a point
-;; on the plane and takes the normal as a separate argument, ignoring w completely.
-;;
-;; Three VU0 idioms recur here.
-;;
-;; A cross product is a pair of instructions: (.outer.product.a.vf acc a b) followed by
-;; (.outer.product.b.vf dst b a acc) leaves a x b in dst.xyz. Applying it twice computes a
-;; projection, because n x (v x n) expands to v * (n . n) - n * (n . v), which is the component of
-;; v lying in the plane through the origin with normal n as long as n is unit length. A non-unit
-;; normal scales the result by n . n and the function has no way to notice. vector-flatten! and all
-;; four vector-reflect* functions are built from that double cross, so every one of them requires a
-;; unit normal.
-;;
-;; (.mov gpr vf) and (.mov vf gpr) move bits between the register files instead of converting
-;; them. The move width comes from the destination's declared register class, not from the source:
-;; a float destination moves 32 bits and so picks up lane x, while an int or uint destination moves
-;; 64 bits and picks up lanes x and y together. closest-pt-in-triangle and point-in-triangle-cross
-;; depend on the wide form. Each sums an edge test into lane y, moves the xy pair into a general
-;; register, and reads the sign of the high word. Retyping such a local changes which lane the
-;; sign test examines, so those declarations are load-bearing.
-;;
-;; Given that, testing a float's sign is an integer branch: shift the moved bits right by 63 to
-;; get one bit per test, or or the carriers together and compare against zero to ask whether any
-;; of them was negative. Testing a float for zero is the same trick and is exact, but it is not
-;; symmetric about zero, since -0.0 has a nonzero bit pattern and reads as nonzero.
-;; circle-circle-xz-intersect tests its two center deltas that way.
-
 (defun vector-flatten! ((dst vector) (src vector) (plane-normal vector))
   "Get the projection of src onto a plane with the given normal
    The normal should have magnitude 1.0."
-  ;; dst may be src or plane-normal, since both are in registers before the store. dst.w is 1.0.
-  ;; A zero normal produces a zero result and a non-unit one scales the answer by its squared
-  ;; length; neither is detected.
   (rlet ((acc :class vf)
          (vf0 :class vf)
-         (source :class vf) ;; src
-         (normal :class vf) ;; normal
+         (source :class vf)
+         (normal :class vf)
          (in-plane :class vf))
     (init-vf0-vector)
     (.lvf source (&-> src quad))
     (.lvf normal (&-> plane-normal quad))
     (.mov.vf.w in-plane vf0)
-    ;; has the right magnitude, but rotation is off by 90 degrees
+    ;; use the triple-product to compute this without needing
+    ;; a slow divide.
+    ;; vec x normal gives us a vector with the right magnitude,
+    ;; and in plane, but rotated 90 degrees.
     (.outer.product.a.vf acc source normal)
     (.outer.product.b.vf in-plane normal source acc)
-    ;; rotate by 90 about normal of plane
+    ;; rotate by 90 about normal of plane to get the final vector.
     (.outer.product.a.vf acc normal in-plane)
     (.outer.product.b.vf in-plane in-plane normal acc)
     (.svf (&-> dst quad) in-plane)
@@ -93,13 +46,15 @@
     (.lvf source (&-> src quad))
     (.lvf normal (&-> plane-normal quad))
     (.mov.vf.w in-plane vf0)
+    ;; triple-product to project onto the plane
     (.outer.product.a.vf acc source normal)
     (.outer.product.b.vf in-plane normal source acc)
-    ;; in-plane is the projection on the plane
     (.outer.product.a.vf acc normal in-plane)
     (.outer.product.b.vf in-plane in-plane normal acc)
-    (.add.vf.xyz acc in-plane in-plane) ;; double that part
-    (.sub.mul.w.vf.xyz in-plane source vf0 acc) ;; and subtract the original
+    ;; add in-plane to itself to get 2 * T
+    (.add.vf.xyz acc in-plane in-plane)
+    ;; subtract src.
+    (.sub.mul.w.vf.xyz in-plane source vf0 acc)
     (.svf (&-> dst quad) in-plane)
     dst))
 
@@ -117,9 +72,9 @@
     (.lvf source (&-> src quad))
     (.lvf normal (&-> plane-normal quad))
     (.mov.vf.w in-plane vf0)
+    ;; triple-product to project onto plane
     (.outer.product.a.vf acc source normal)
     (.outer.product.b.vf in-plane normal source acc)
-    ;; part on the plane (requires normal to be unit)
     (.outer.product.a.vf acc normal in-plane)
     (.outer.product.b.vf in-plane in-plane normal acc)
     (.add.vf.xyz in-plane in-plane normal) ;; add normal to that.
@@ -128,8 +83,7 @@
 
 (defun vector-reflect-true-flat! ((dst vector) (src vector) (plane-normal vector))
   "Project src onto the plane with unit normal plane-normal; equivalent to vector-flatten!."
-  ;; Instruction for instruction the same function as vector-flatten!, kept as a separate symbol so
-  ;; callers can name which of the reflect variants they mean. dst may be either input; dst.w is 1.0.
+  ;; Instruction for instruction the same function as vector-flatten!
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (source :class vf)
@@ -149,7 +103,9 @@
 (defun vector-reflect-flat-above! ((dst vector) (src vector) (plane-normal vector))
   "Project src onto the plane with unit normal plane-normal, then lift the result off the plane by
    0.32 times its own length, capped at four meters. dst is used as scratch, so it must not alias
-   plane-normal, though it may alias src. dst.w is 1.0."
+   plane-normal, though it may alias src."
+   ;; this may just have a bug, normal-component below is always 0.
+   ;; in any case, this is a bit of a softer "bounce" than reflect.
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (source :class vf)
