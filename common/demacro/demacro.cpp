@@ -12,9 +12,10 @@
 #include "common/util/json_util.h"
 #include "common/util/string_util.h"
 
+#include "tree_sitter/api.h"
+
 #include "fmt/format.h"
 #include "third-party/json.hpp"
-#include "tree_sitter/api.h"
 
 extern "C" {
 extern const TSLanguage* tree_sitter_opengoal();
@@ -50,6 +51,7 @@ struct CompiledRule {
   std::string name;
   std::vector<Node> match;
   std::vector<Node> rewrite;
+  std::unordered_map<std::string, std::string> capture_types;
   size_t index = 0;
 };
 
@@ -74,8 +76,7 @@ bool is_comment_node(const TSNode& node) {
 
 bool is_gap_node(const TSNode& node) {
   const std::string_view type = ts_node_type(node);
-  return type == "(" || type == ")" || type == "_ws" || type == "ERROR" ||
-         is_comment_node(node);
+  return type == "(" || type == ")" || type == "_ws" || type == "ERROR" || is_comment_node(node);
 }
 
 std::string node_text(const std::string& source, const TSNode& node) {
@@ -152,9 +153,8 @@ std::vector<std::string> json_string_or_array(const nlohmann::json& value,
     std::vector<std::string> result;
     for (const auto& entry : value) {
       if (!entry.is_string()) {
-        throw std::runtime_error(
-            fmt::format("Demacro rule '{}' field '{}' must contain only strings", rule_name,
-                        field_name));
+        throw std::runtime_error(fmt::format(
+            "Demacro rule '{}' field '{}' must contain only strings", rule_name, field_name));
       }
       result.push_back(entry.get<std::string>());
     }
@@ -164,10 +164,9 @@ std::vector<std::string> json_string_or_array(const nlohmann::json& value,
       fmt::format("Demacro rule '{}' field '{}' must be a string or array", rule_name, field_name));
 }
 
-std::string substitute_row_values(
-    std::string text,
-    const std::unordered_map<std::string, std::string>& substitutions,
-    const std::string& rule_name) {
+std::string substitute_row_values(std::string text,
+                                  const std::unordered_map<std::string, std::string>& substitutions,
+                                  const std::string& rule_name) {
   for (const auto& [key, value] : substitutions) {
     const auto placeholder = "{{" + key + "}}";
     size_t cursor = 0;
@@ -196,6 +195,20 @@ Rule parse_rule(const nlohmann::json& entry,
   }
   for (auto& form : rule.rewrite) {
     form = substitute_row_values(std::move(form), substitutions, rule.name);
+  }
+  if (entry.contains("capture_types")) {
+    if (!entry.at("capture_types").is_object()) {
+      throw std::runtime_error(
+          fmt::format("Demacro rule '{}' field 'capture_types' must be an object", rule.name));
+    }
+    for (const auto& [capture, type] : entry.at("capture_types").items()) {
+      if (!type.is_string()) {
+        throw std::runtime_error(fmt::format(
+            "Demacro rule '{}' capture type for '{}' must be a string", rule.name, capture));
+      }
+      rule.capture_types.emplace(
+          capture, substitute_row_values(type.get<std::string>(), substitutions, rule.name));
+    }
   }
   return rule;
 }
@@ -270,8 +283,7 @@ std::vector<Captures> match_children_all(const std::vector<Node>& patterns,
                                          size_t input_idx,
                                          const Captures& captures) {
   if (pattern_idx == patterns.size()) {
-    return input_idx == inputs.size() ? std::vector<Captures>{captures}
-                                      : std::vector<Captures>{};
+    return input_idx == inputs.size() ? std::vector<Captures>{captures} : std::vector<Captures>{};
   }
 
   std::string sequence_name;
@@ -290,8 +302,7 @@ std::vector<Captures> match_children_all(const std::vector<Node>& patterns,
         continue;
       }
       next.sequence[sequence_name] = std::move(captured);
-      auto matches =
-          match_children_all(patterns, pattern_idx + 1, inputs, input_idx + count, next);
+      auto matches = match_children_all(patterns, pattern_idx + 1, inputs, input_idx + count, next);
       results.insert(results.end(), std::make_move_iterator(matches.begin()),
                      std::make_move_iterator(matches.end()));
     }
@@ -304,8 +315,7 @@ std::vector<Captures> match_children_all(const std::vector<Node>& patterns,
   std::vector<Captures> results;
   for (auto& node_match :
        match_node_all(patterns.at(pattern_idx), inputs.at(input_idx), captures)) {
-    auto matches =
-        match_children_all(patterns, pattern_idx + 1, inputs, input_idx + 1, node_match);
+    auto matches = match_children_all(patterns, pattern_idx + 1, inputs, input_idx + 1, node_match);
     results.insert(results.end(), std::make_move_iterator(matches.begin()),
                    std::make_move_iterator(matches.end()));
   }
@@ -320,7 +330,7 @@ std::vector<Captures> match_node_all(const Node& pattern,
     const auto previous = captures.single.find(capture_name);
     if (previous != captures.single.end()) {
       return structurally_equal(*previous->second, input) ? std::vector<Captures>{captures}
-                                                         : std::vector<Captures>{};
+                                                          : std::vector<Captures>{};
     }
     auto result = captures;
     result.single[capture_name] = &input;
@@ -331,8 +341,7 @@ std::vector<Captures> match_node_all(const Node& pattern,
     return {};
   }
   if (!pattern.is_list) {
-    return pattern.atom == input.atom ? std::vector<Captures>{captures}
-                                      : std::vector<Captures>{};
+    return pattern.atom == input.atom ? std::vector<Captures>{captures} : std::vector<Captures>{};
   }
   return match_children_all(pattern.children, 0, input.children, 0, captures);
 }
@@ -373,13 +382,59 @@ std::string original_text(const Node& node, const std::string& source) {
   return source.substr(node.start, node.end - node.start);
 }
 
+void collect_redundant_capture_casts(
+    const Node& node,
+    const Captures& captures,
+    const std::unordered_map<std::string, std::string>& capture_types,
+    std::vector<std::pair<const Node*, const Node*>>* casts) {
+  if (!node.is_list) {
+    return;
+  }
+  if (node.children.size() == 3 && !node.children.at(0).is_list &&
+      node.children.at(0).atom == "the-as" && !node.children.at(1).is_list) {
+    for (const auto& [capture_name, type] : capture_types) {
+      const auto capture = captures.single.find(capture_name);
+      if (capture != captures.single.end() && node.children.at(1).atom == type &&
+          structurally_equal(node.children.at(2), *capture->second)) {
+        casts->emplace_back(&node, &node.children.at(2));
+        return;
+      }
+    }
+  }
+  for (const auto& child : node.children) {
+    collect_redundant_capture_casts(child, captures, capture_types, casts);
+  }
+}
+
+std::string original_text_without_redundant_capture_casts(
+    const Node& node,
+    const std::string& source,
+    const Captures& captures,
+    const std::unordered_map<std::string, std::string>& capture_types) {
+  if (capture_types.empty()) {
+    return original_text(node, source);
+  }
+  std::vector<std::pair<const Node*, const Node*>> casts;
+  collect_redundant_capture_casts(node, captures, capture_types, &casts);
+  auto result = original_text(node, source);
+  for (auto cast = casts.rbegin(); cast != casts.rend(); ++cast) {
+    const auto start = cast->first->start - node.start;
+    const auto size = cast->first->end - cast->first->start;
+    result.replace(start, size, original_text(*cast->second, source));
+  }
+  return result;
+}
+
 std::string render_template(const Node& node,
                             const Captures& captures,
-                            const std::string& source);
+                            const std::string& source,
+                            const std::unordered_map<std::string, std::string>& capture_types);
 
-std::string render_template_children(const std::vector<Node>& nodes,
-                                     const Captures& captures,
-                                     const std::string& source) {
+std::string render_template_children(
+    const std::vector<Node>& nodes,
+    const Captures& captures,
+    const std::string& source,
+    const std::unordered_map<std::string, std::string>& capture_types) {
   std::string result;
   for (const auto& child : nodes) {
     std::string sequence_name;
@@ -393,13 +448,14 @@ std::string render_template_children(const std::vector<Node>& nodes,
         if (!result.empty()) {
           result += " ";
         }
-        result += original_text(*captured, source);
+        result += original_text_without_redundant_capture_casts(*captured, source, captures,
+                                                                capture_types);
       }
     } else {
       if (!result.empty()) {
         result += " ";
       }
-      result += render_template(child, captures, source);
+      result += render_template(child, captures, source, capture_types);
     }
   }
   return result;
@@ -407,19 +463,21 @@ std::string render_template_children(const std::vector<Node>& nodes,
 
 std::string render_template(const Node& node,
                             const Captures& captures,
-                            const std::string& source) {
+                            const std::string& source,
+                            const std::unordered_map<std::string, std::string>& capture_types) {
   std::string capture_name;
   if (is_capture(node, &capture_name)) {
     const auto found = captures.single.find(capture_name);
     if (found == captures.single.end()) {
       throw std::runtime_error(fmt::format("Unknown demacro capture '${}'", capture_name));
     }
-    return original_text(*found->second, source);
+    return original_text_without_redundant_capture_casts(*found->second, source, captures,
+                                                         capture_types);
   }
   if (!node.is_list) {
     return node.atom;
   }
-  return "(" + render_template_children(node.children, captures, source) + ")";
+  return "(" + render_template_children(node.children, captures, source, capture_types) + ")";
 }
 
 std::string indentation_at(const std::string& source, uint32_t offset) {
@@ -455,7 +513,7 @@ std::string render_rewrite(const CompiledRule& rule,
       replacement += "\n" + indentation;
     }
     replacement += indent_after_newlines(
-        render_template(form, candidate.captures, source), indentation);
+        render_template(form, candidate.captures, source, rule.capture_types), indentation);
   }
 
   // Comments are not part of semantic matching. Retain any comment which would otherwise be
@@ -542,7 +600,7 @@ std::vector<CompiledRule> compile_rules(const RuleSet& rules) {
     result.push_back({rule.name,
                       parse_form_sequence(rule.match, "match for demacro rule " + rule.name),
                       parse_form_sequence(rule.rewrite, "rewrite for demacro rule " + rule.name),
-                      i});
+                      rule.capture_types, i});
   }
   return result;
 }
@@ -571,9 +629,9 @@ RewriteResult rewrite_compiled(const std::string& source,
     std::vector<Edit> edits;
     edits.reserve(selected.size());
     for (const auto& candidate : selected) {
-      edits.push_back({candidate.start, candidate.end, candidate.rule_index,
-                       render_rewrite(compiled.at(candidate.rule_index), candidate, parsed,
-                                      result.source)});
+      edits.push_back(
+          {candidate.start, candidate.end, candidate.rule_index,
+           render_rewrite(compiled.at(candidate.rule_index), candidate, parsed, result.source)});
       result.stats.at(candidate.rule_index).rewrites++;
     }
     for (auto edit = edits.rbegin(); edit != edits.rend(); ++edit) {
@@ -640,8 +698,8 @@ RuleSet parse_rules(const std::string& contents, const std::string& source_name)
         std::unordered_map<std::string, std::string> values;
         for (const auto& [key, value] : row.items()) {
           if (!value.is_string()) {
-            throw std::runtime_error(fmt::format(
-                "{} table '{}' row values must be strings", source_name, table_name));
+            throw std::runtime_error(
+                fmt::format("{} table '{}' row values must be strings", source_name, table_name));
           }
           values[key] = value.get<std::string>();
         }
@@ -663,8 +721,8 @@ RuleSet parse_rules(const std::string& contents, const std::string& source_name)
                                              entry.at("name").get<std::string>(), table_name));
       }
       for (size_t i = 0; i < table->second.size(); ++i) {
-        result.rules.push_back(parse_rule(entry, table->second.at(i),
-                                          fmt::format("[{}:{}]", table_name, i)));
+        result.rules.push_back(
+            parse_rule(entry, table->second.at(i), fmt::format("[{}:{}]", table_name, i)));
       }
     } else {
       result.rules.push_back(parse_rule(entry, {}, ""));

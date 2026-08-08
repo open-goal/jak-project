@@ -185,6 +185,11 @@ class Env {
 
   const std::unordered_map<int, StackTypeCast>& stack_casts() const { return m_stack_typecasts; }
 
+  void set_scratchpad_type(const TypeSpec& type) { m_scratchpad_type = type; }
+  const std::optional<TypeSpec>& scratchpad_type() const { return m_scratchpad_type; }
+  void note_scratchpad_access() const { m_uses_scratchpad = true; }
+  bool uses_scratchpad() const { return m_uses_scratchpad; }
+
   void set_art_group(const std::string& art_group) { m_art_group = art_group; }
   const std::string& art_group() const { return m_art_group; }
   std::optional<std::string> get_art_elt_name(int idx) const;
@@ -282,6 +287,8 @@ class Env {
 
   std::unordered_map<int, std::vector<RegisterTypeCast>> m_typecasts;
   std::unordered_map<int, StackTypeCast> m_stack_typecasts;
+  std::optional<TypeSpec> m_scratchpad_type;
+  mutable bool m_uses_scratchpad = false;
   std::vector<StackStructureEntry> m_stack_structures;
   std::unordered_map<std::string, std::string> m_var_remap;
   std::unordered_map<std::string, TypeSpec> m_var_retype;

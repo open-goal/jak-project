@@ -612,6 +612,11 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
             try_lookup(config.stack_type_casts_by_function_by_stack_offset, func_name);
         func.ir2.env.set_stack_casts(stack_casts);
 
+        auto scratchpad_type = config.scratchpad_types_by_object.find(obj_name);
+        if (scratchpad_type != config.scratchpad_types_by_object.end()) {
+          func.ir2.env.set_scratchpad_type(TypeSpec(scratchpad_type->second));
+        }
+
         if (config.hacks.pair_functions_by_name.find(func_name) !=
             config.hacks.pair_functions_by_name.end()) {
           func.ir2.env.set_sloppy_pair_typing();
@@ -883,7 +888,8 @@ void ObjectFileDB::ir2_write_results(const fs::path& output_dir,
     auto unformatted_code = ir2_final_out(obj, imports, {});
     if (!config.demacro_file.empty()) {
       unformatted_code =
-          demacro::rewrite(unformatted_code, file_util::get_file_path({config.demacro_file})).source;
+          demacro::rewrite(unformatted_code, file_util::get_file_path({config.demacro_file}))
+              .source;
     }
     auto final_name = output_dir / (obj.to_unique_name() + "_disasm.gc");
     if (config.format_code) {

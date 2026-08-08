@@ -1897,7 +1897,7 @@ class WithDmaBufferAddBucketElement : public FormElement {
 
 class ResLumpMacroElement : public FormElement {
  public:
-  enum class Kind { DATA, STRUCT, VALUE, INVALID };
+  enum class Kind { DATA, DATA_EXACT, STRUCT, STRUCT_EXACT, VALUE, INVALID };
   ResLumpMacroElement(Kind kind,
                       Form* lump_object,
                       Form* property_name,

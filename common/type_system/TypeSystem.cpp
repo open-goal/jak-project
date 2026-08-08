@@ -1155,9 +1155,9 @@ void TypeSystem::add_builtin_types(GameVersion version) {
   // declared before any GOAL source is loaded, so its argument enum must also be a built-in type.
   if (version == GameVersion::Jak1) {
     const std::unordered_map<std::string, s64> mem_usage_flag_entries = {
-        {"prototype-data", 0},    {"instance-colors", 1},   {"tie-geometry-1", 2},
-        {"tie-geometry-2", 3},    {"tie-geometry-3", 4},    {"include-dead-pools", 5},
-        {"resource-entity", 6},   {"resource-ambient", 7},  {"resource-camera", 8},
+        {"prototype-data", 0},    {"instance-colors", 1},  {"tie-geometry-1", 2},
+        {"tie-geometry-2", 3},    {"tie-geometry-3", 4},   {"include-dead-pools", 5},
+        {"resource-entity", 6},   {"resource-ambient", 7}, {"resource-camera", 8},
         {"resource-joint-geo", 9}};
     auto* parent = get_type_of_type<ValueType>("uint32");
     auto flags =
@@ -1184,10 +1184,9 @@ void TypeSystem::add_builtin_types(GameVersion version) {
   declare_method(obj_type, "relocate", {}, false,
                  make_function_typespec({"_type_", "int"}, "_type_"), false);
   declare_method(obj_type, "mem-usage", {}, false,
-                 make_function_typespec(
-                     {"_type_", "memory-usage-block",
-                      version == GameVersion::Jak1 ? "mem-usage-flags" : "int"},
-                     "_type_"),
+                 make_function_typespec({"_type_", "memory-usage-block",
+                                         version == GameVersion::Jak1 ? "mem-usage-flags" : "int"},
+                                        "_type_"),
                  false);
 
   // STRUCTURE

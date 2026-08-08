@@ -193,6 +193,13 @@ Config make_config_via_json(nlohmann::json& json) {
     }
   }
 
+  if (json.contains("scratchpad_types_file")) {
+    auto scratchpad_types_json = read_json_file_from_config(json, "scratchpad_types_file");
+    for (auto& kv : scratchpad_types_json.items()) {
+      config.scratchpad_types_by_object[kv.key()] = kv.value().get<std::string>();
+    }
+  }
+
   auto anon_func_json = read_json_file_from_config(json, "anonymous_function_types_file");
   if (json.contains("anonymous_function_types_merge_file")) {
     anon_func_json.update(read_json_file_from_config(json, "anonymous_function_types_merge_file"));

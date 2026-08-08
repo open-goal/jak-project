@@ -86,11 +86,11 @@ struct LetRewriteStats {
   int light_trail_tracker_spawn = 0;
 
   int total() const {
-    return dotimes + countdown + abs + abs2 + unused + ja + ja_play + case_no_else + case_with_else +
-           set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
-           vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket + dma_buffer_add_gs_set +
-           launch_particles + call_parent_state_handler + suspend_for + font_method +
-           light_trail_tracker_spawn;
+    return dotimes + countdown + abs + abs2 + unused + ja + ja_play + case_no_else +
+           case_with_else + set_vector + set_vector2 + send_event + font_context_meth + proc_new +
+           attack_info + vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket +
+           dma_buffer_add_gs_set + launch_particles + call_parent_state_handler + suspend_for +
+           font_method + light_trail_tracker_spawn;
   }
 
   std::string print() const {

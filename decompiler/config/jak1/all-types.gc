@@ -13111,9 +13111,9 @@ past the end of the movement step." (_type_ vector) symbol) ;; 9
   :type uint64
   :bitfield #t
   (background 0)
-  (cak-1 1) ;; hit by player
-  (cak-2 2) ;; usually hit by player
-  (cak-3 3) ;; hit by others
+  (hit-by-player 1) ;; hit by player
+  (usually-hit-by-player 2) ;; usually hit by player
+  (hit-by-others 3) ;; hit by others
   (target 4) ;; target
   (water 5)
   (powerup 6)
@@ -17483,6 +17483,16 @@ its matching records and each allocation bitmap begins with every slot free."
   (in-base-region 6)
   )
 
+(defenum camera-blend-to-type
+  :type uint64
+  (direct 0)
+  (slave-controlled 1)
+  (combiner-tracked 2))
+
+(defenum external-cam-option
+  :bitfield #t
+  (allow-z 0))
+
 ;; - Types
 
 ;; Shared gameplay-camera tuning used for collision movement, input response,
@@ -17587,7 +17597,7 @@ its matching records and each allocation bitmap begins with every slot free."
     (prune-shallow-points! "Remove interior points whose length-weighted bend
      is below budget." (_type_ float) none) ;; 16
     (add-point! "Append new-pos when it is at least min-dist from the tail,
-     optionally pruning the trail to obtain a free slot." (_type_ vector float float symbol) int) ;; 17 ; - return value is actually none but they do a manual `return`
+     optionally pruning the trail to obtain a free slot." (_type_ vector meters meters symbol) int) ;; 17 ; - return value is actually none but they do a manual `return`
     (accumulate-sample! "Walk arc-len forward from sampler and add the sampled
      trail position to out-pos." (_type_ float vector tracking-spline-sampler) vector) ;; 18
     (sample-point! "Clear out-pos and sample the trail arc-len forward from
@@ -17598,9 +17608,9 @@ its matching records and each allocation bitmap begins with every slot free."
     (follow-update! "Advance the trail follower toward pos using accel and
      max-speed. Average 64 evenly spaced samples over the adaptive sample
      window, apply the trail-direction correction, and return the smoothed
-     position." (_type_ vector float float) vector) ;; 21
+     position." (_type_ vector meters meters) vector) ;; 21
     (trim-to-length! "Drop the oldest trail segments until its live length is
-     no greater than max-len." (_type_ float) none) ;; 22
+     no greater than max-len." (_type_ meters) none) ;; 22
     (debug-draw "Draw the used breadcrumb chain, the endpoints of the current
      sampling window, and the trail correction applied to the last output."
       (_type_) none) ;; 23
@@ -17700,9 +17710,9 @@ its matching records and each allocation bitmap begins with every slot free."
 ;; slave alive together while the combiner transitions between them.
 (deftype camera-slave (process)
   ((trans                         vector    :score 999 :inline :offset-assert 112)
-   (fov                           float                        :offset-assert 128)
-   (fov0                          float                        :offset-assert 132)
-   (fov1                          float                        :offset-assert 136)
+   (fov                           degrees                        :offset-assert 128)
+   (fov0                          degrees                        :offset-assert 132)
+   (fov1                          degrees                        :offset-assert 136)
    (fov-index                     cam-index            :inline :offset-assert 144)
    (tracking                      cam-rotation-tracker :inline :offset-assert 192)
    (view-off-param                float                        :offset-assert 400)
@@ -17719,7 +17729,7 @@ its matching records and each allocation bitmap begins with every slot free."
    (max-angle-offset              float                        :offset-assert 2192)
    (max-angle-curr                float                        :offset-assert 2196)
    (options                       cam-slave-options            :offset-assert 2200)
-   (cam-entity                    entity                       :offset-assert 2204) ; not totally confirmed yet, could be entity-actor
+   (cam-entity                    entity-camera                :offset-assert 2204) ; not totally confirmed yet, could be entity-actor
    (velocity                      vector               :inline :offset-assert 2208)
    (desired-pos                   vector               :inline :offset-assert 2224)
    (time-dist-too-far             uint32                       :offset-assert 2240)
@@ -17742,8 +17752,8 @@ its matching records and each allocation bitmap begins with every slot free."
    (spline-follow-dist            float                        :offset-assert 2484)
    (change-event-from             (pointer process-drawable)   :offset-assert 2488) ;; mistycannon
    (enter-has-run                 symbol                       :offset-assert 2492)
-   (blend-from-type               uint64                       :offset-assert 2496)
-   (blend-to-type                 uint64                       :offset-assert 2504)
+   (blend-from-type               camera-blend-to-type         :offset-assert 2496)
+   (blend-to-type                 camera-blend-to-type         :offset-assert 2504)
    (have-phony-joystick           basic                        :offset-assert 2512)
    (phony-joystick-x              float                        :offset-assert 2516)
    (phony-joystick-y              float                        :offset-assert 2520)
@@ -17791,7 +17801,7 @@ its matching records and each allocation bitmap begins with every slot free."
   ((master-options      cam-master-options        :offset-assert 112)
    (num-slaves          int32                     :offset-assert 116)
    (slave               (pointer camera-slave)           2       :offset-assert 120)
-   (slave-options       uint32                    :offset-assert 128)
+   (slave-options       cam-slave-options         :offset-assert 128)
    (view-off-param-save float                     :offset-assert 132)
    (changer             uint32                    :offset-assert 136)
    (cam-entity          entity                    :offset-assert 140) ; not totally confirmed yet
@@ -24238,10 +24248,8 @@ stopwatches for the next frame."
 
 ;; - Functions
 
-(define-extern camera-bounding-box-draw (function bounding-box basic rgba none))
 (define-extern collide-planes-test0 (function vector float float vector vector bounding-box vector float))
 (define-extern collide-planes-test1 (function vector float vector (inline-array vector) vector float))
-(define-extern camera-cross (function vector vector vector vector4w meters basic))
 (define-extern collide-planes-intersect (function vector (inline-array bounding-box) vector float))
 (define-extern collide-planes (function (inline-array vector) int vector (inline-array vector) symbol))
 
@@ -24582,22 +24590,21 @@ optional bottom depth. Enable ordinary water particles after loading the data." 
  optionally smooths that offset. The long-look mode uses a larger speed- and heading-dependent
  lead with a quartic transition." (function cam-rotation-tracker vector symbol vector))
 (define-extern slave-set-rotation! "Build tracker's inverse camera rotation from its follow point,
- optional point of interest and tilt; keep the target in frame, optionally blend toward the new
+  optional point of interest and tilt; keep the target in frame, optionally blend toward the new
  orientation, and remove roll."
-  (function cam-rotation-tracker vector cam-slave-options float symbol none))
+  (function cam-rotation-tracker vector cam-slave-options float symbol int))
 (define-extern camera-slave-debug (function camera-slave none))
-(define-extern camera-line-rel-len (function vector vector float vector4w none))
+(define-extern camera-line-rel-len (function vector vector meters vector4w none))
 (define-extern cam-slave-get-flags "Read property's base flag word, set bits from property-on,
- clear bits from property-off, and return the combined value." (function entity symbol uint128))
+ clear bits from property-off, and return the combined value." (function entity symbol cam-slave-options))
 (define-extern cam-slave-get-vector-with-offset "Read property from actor, using its live
  translation or rotation for the matching property names, add an optional property-offset vector,
- and write out. Return true when a value was available." (function entity-actor vector symbol symbol))
+ and write out. Return true when a value was available." (function entity-camera vector symbol symbol))
 (define-extern cam-slave-get-fov "Read fov plus fov-offset from entity. A zero base fov uses the
  64-degree default before applying the offset." (function entity float))
 (define-extern cam-slave-get-interp-time "Read interpTime plus interpTime-offset from entity and
  return zero when the combined duration is at most one millisecond." (function entity float))
-(define-extern cam-slave-get-rot "Convert actor's rotation to out-matrix after composing an optional
- rot-offset quaternion." (function entity-actor matrix matrix))
+(define-extern cam-slave-get-rot "Get the rotation of the entity, including optional rotation offset." (function entity-camera matrix matrix))
 (define-extern cam-state-from-entity "Select the camera state described by entity: circular for a
  pivot, standoff for align data, spline for a camera path, the base string mode for positive
  stringMaxLength, or fixed otherwise. Return false for no entity." (function entity state))
@@ -24650,9 +24657,7 @@ optional bottom depth. Enable ordinary water particles after loading the data." 
   (function matrix))
 (define-extern camera-angle "Return the camera's horizontal heading from the X and Z components of
  the world-to-camera right axis." (function float))
-(define-extern camera-teleport-to-entity "Build a unit-scale camera transform from start-entity's
- orientation and the position stored in the scale vector of its extra transform, then send it to
- the camera master as an immediate teleport."
+(define-extern camera-teleport-to-entity "Teleport the camera to the entity position."
   (function entity-actor none :behavior process))
 
 ;; - Symbols
@@ -24700,7 +24705,7 @@ optional bottom depth. Enable ordinary water particles after loading the data." 
 (define-extern master-track-target "Update the camera master's tracked position and target
  orientation. Handle ordinary and drawable targets, ground-to-air vertical smoothing, edge-grab
  clearance, water height limits, pitch look-ahead, and the ten-meter target breadcrumb trail."
-  (function symbol :behavior camera-master))
+  (function none :behavior camera-master))
 (define-extern master-check-regions "Keep the current camera region while its padded volume still
  contains the target, otherwise select the first active region whose volume contains it and whose
  cutout does not. Fall back to the base camera when none qualifies."
@@ -24711,10 +24716,10 @@ optional bottom depth. Enable ordinary water particles after loading the data." 
  base camera when necessary." (function object :behavior camera-master))
 (define-extern reset-target-tracking "Reset all target tracking state from the player, including
  position and facing, attack-aware string limits, water state, vertical offsets, and the target
- trail." (function symbol :behavior camera-master))
+ trail." (function none :behavior camera-master))
 (define-extern reset-drawable-tracking "Reset all target tracking state from the selected drawable
  target and bone, using its bone transform when available and its control transform otherwise."
-  (function symbol :behavior camera-master))
+  (function none :behavior camera-master))
 (define-extern master-switch-to-entity "Activate region's camera state and any alternates. Keep the
  candidate requiring the least change from the current view, then ask the camera master to blend
  to it using the authored interpolation time." (function entity symbol :behavior camera-master))
@@ -24726,7 +24731,7 @@ optional bottom depth. Enable ordinary water particles after loading the data." 
  entity's convex volume property. Each sample is an array of half-space planes; margin expands the
  accepted distance beyond every plane." (function vector entity float symbol symbol))
 (define-extern master-base-region "Apply region's authored string-camera bounds, point of interest,
- cliff height, tilt, and options to the persistent base camera." (function entity float :behavior camera-master))
+ cliff height, tilt, and options to the persistent base camera." (function entity-camera float :behavior camera-master))
 (define-extern setup-slave-for-hopefull "Prepare candidate's follow point and rotation when its
  blend-to mode requires tracking, so alternate-camera comparisons use its actual view."
   (function camera-slave none))
@@ -24861,7 +24866,7 @@ alternate height. Fall back to the camera position when no target exists."
   (function vector symbol))
 (define-extern cam-string-set-position-rel! "Install a relative string-camera offset, reset the
  desired and smoothed positions, clear velocity, and cancel a pending line-of-sight jump."
-  (function vector int :behavior camera-slave))
+  (function vector none :behavior camera-slave))
 (define-extern cam-debug-reset-coll-tri (function none)) ;; not confirmed
 (define-extern cam-string-follow "Carry the horizontal target-to-camera string with target motion,
  enforce its current length limits, and adjust field of view and distance for the long-string mode."
@@ -24891,7 +24896,6 @@ alternate height. Fall back to the camera position when no target exists."
  frame, classify it as clockwise, counter-clockwise, or straddling the line, and append its extents
  to the corresponding result bucket."
   (function (inline-array collide-cache-tri) vector vector float collide-los-result vector float symbol))
-(define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none))
 (define-extern cam-los-spline-collide "Sphere-cast from a target breadcrumb toward the camera with
  the tighter line-of-sight radius. Return -1 for a clear segment or the first significant hit
  fraction." (function vector vector pat-surface float))
@@ -25090,8 +25094,8 @@ debug ranges are generated from those planes when volume marks are enabled."
   ((volume-type  symbol  :offset-assert 0)
    (point-count  int16   :offset-assert 4)
    (normal-count int16   :offset-assert 6)
-   (first-point  (pointer vector)  :offset-assert 8)
-   (first-normal (pointer vector)  :offset-assert 12)
+   (first-point  (inline-array vector)  :offset-assert 8)
+   (first-normal (inline-array vector)  :offset-assert 12)
    (num-planes   int32   :offset-assert 16)
    (plane        (inline-array plane)  :offset-assert 20)
    )
@@ -25352,7 +25356,7 @@ are both enabled." (_type_) symbol) ;; 11
   "Draw the selected camera's frustum, pivot, alignment and interest points, camera and intro
    splines, index points, and interpolation diagnostics. The selected item blinks off every eight
    frames."
-  (function entity-actor basic))
+  (function entity-camera basic))
 (define-extern cam-layout-entity-volume-info
   "Draw every reconstructed camera volume as green vol, gray pvol, or red cutoutvol wireframe,
    blinking the selected volume."
@@ -25379,92 +25383,92 @@ are both enabled." (_type_) symbol) ;; 11
 (define-extern cam-layout-save-cam-rot
   "Write the camera's rot-offset quaternion when present, optionally printing the setup rotation
    and offset."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-cam-trans
   "Write trans-offset when present. Diagnostic output also shows the setup translation, the added
    offset, an optional subtracted translation_info level origin, and the resulting Maya position."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-pivot
   "Write pivot-offset when both the base pivot and its offset are present, optionally printing the
    base, offset, and combined position."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-align
   "Write align-offset when both the base alignment point and its offset are present, optionally
    printing the base, offset, and combined position."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-interesting
   "Write interesting-offset when both the base interest point and its offset are present,
    optionally printing the base, offset, and combined position."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-fov
   "Write a nonzero fov-offset in degrees and optionally print the base, offset, combined field of
    view, and corresponding Maya focal length."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-focalpull
   "Write a nonzero focalPull-offset in meters and optionally print the base, offset, and combined
    focal-pull distance."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-flags
   "Write nonzero camera flag-on and flag-off override masks, optionally printing the base and
    effective masks."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-introsplinetime
   "Write a nonzero intro-time-offset in seconds. Diagnostic output treats a zero base value as the
    one-second default."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-introsplineexitval
   "Write a nonzero intro-exitValue-offset. Diagnostic output notes that a zero base value uses the
    default exit value of 0.5."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-interptime
   "Write a nonzero interpTime-offset in seconds, optionally printing the base, offset, and combined
    interpolation time."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-splineoffset
   "Write spline-offset when a camera has no pivot and carries an explicit spline offset."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-spline-follow-dist-offset
   "Write spline-follow-dist-offset when a camera has no pivot and carries the distance offset."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-campointsoffset
   "Write campoints-offset when present, optionally printing the three meter components."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-tiltAdjust
   "Write a nonzero tiltAdjust-offset in degrees, optionally printing the base, offset, and combined
    adjustment."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-stringMinLength
   "Write a nonzero stringMinLength-offset in meters, optionally printing the base, offset, and
    combined value."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-stringMaxLength
   "Write a nonzero stringMaxLength-offset in meters, optionally printing the base, offset, and
    combined value."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-stringMinHeight
   "Write a nonzero stringMinHeight-offset in meters, optionally printing the base, offset, and
    combined value."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-stringMaxHeight
   "Write a nonzero stringMaxHeight-offset in meters, optionally printing the base, offset, and
    combined value."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-stringCliffHeight
   "Write a nonzero stringCliffHeight-offset in meters, optionally printing the base, offset, and
    combined value."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-maxAngle
   "Write a nonzero maxAngle-offset in degrees, optionally printing the base, offset, and combined
    angle."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-campoints-flags
   "Write nonzero campoints-flags-on and campoints-flags-off override masks, optionally printing the
    base and effective masks."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-layout-save-focalpull-flags
   "Write nonzero focalpull-flags-on and focalpull-flags-off override masks, optionally printing the
    base and effective masks."
-  (function symbol string entity-actor string))
+  (function symbol string entity-actor none))
 (define-extern cam-index-options->string (function cam-index-options object string))
 (define-extern cam-slave-options->string (function cam-slave-options object string))
 (define-extern fov->maya
@@ -25486,7 +25490,7 @@ are both enabled." (_type_) symbol) ;; 11
 (define-extern camera-fov-frame (function matrix vector float float float vector4w none))
 (define-extern interp-test
   "Draw ten segments sampled from interpolator, then draw and print the current debug-t sample."
-  (function (function vector vector vector float vector float none) interp-test-info basic))
+  (function (function vector vector vector float vector float none) interp-test-info none))
 (define-extern v-slrp!
   "Spherically interpolate between from and to at clamped fraction t and write dst. This form derives
    the angle from asin of the normalized cross-product length and does not handle parallel or
@@ -25495,9 +25499,8 @@ are both enabled." (_type_) symbol) ;; 11
 (define-extern interp-test-deg
   "Draw ten eighteen-degree samples from an angle-based interpolator, then draw and print the
    current debug-t sample over 180 degrees."
-  (function (function vector vector vector vector float none) interp-test-info basic))
+  (function (function vector vector vector vector float none) interp-test-info none))
 (define-extern camera-line-setup (function vector4w none))
-(define-extern camera-line-draw (function vector vector symbol))
 (define-extern cam-layout-intersect-dist
   "Return the signed distance along direction from point to plane, or a large sentinel when the
    direction is nearly parallel to the plane."
@@ -25634,7 +25637,7 @@ are both enabled." (_type_) symbol) ;; 11
   ((linevec4w      vector4w 2    :inline   :offset-assert 0)
    (color          vector  :inline :offset-assert 32)
    (plotvec        vector4w 2  :inline     :offset-assert 48)
-   (linevec        vector4w 2   :inline    :offset-assert 80)
+   (linevec        vector 2   :inline    :offset-assert 80)
    (rel-vec        vector  :inline :offset-assert 112)
    (sphere-v-start vector  :inline :offset-assert 128)
    (sphere-v-end   vector  :inline :offset-assert 144)
@@ -25686,7 +25689,7 @@ are both enabled." (_type_) symbol) ;; 11
   )
 
 (deftype cam-collision-record-array (inline-array-class)
-  ((data             cam-collision-record :dynamic :offset-assert 16)
+  ((data             cam-collision-record :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -25729,7 +25732,7 @@ are both enabled." (_type_) symbol) ;; 11
   "Transform and draw one world-space line using the color selected by
    camera-line-setup. Reject either endpoint whose transformed depth is past
    the debug renderer's unsigned cutoff."
-  (function vector vector symbol))
+  (function vector vector none))
 (define-extern camera-line
   "Draw one world-space line in color."
   (function vector vector vector4w none))
@@ -25741,49 +25744,47 @@ are both enabled." (_type_) symbol) ;; 11
   (function vector vector float vector4w none))
 (define-extern camera-sphere
   "Draw a sphere as a ten-by-ten latitude/longitude wireframe."
-  (function vector float vector none))
+  (function vector meters vector4w none))
 (define-extern camera-cross
   "Draw three perpendicular diameter lines through center. The first axis is
    axis-a; the other two are formed by successive crosses with axis-b and
    axis-a. half-length is the distance from center to each endpoint."
-  (function vector vector vector vector4w meters basic))
+  (function vector vector vector vector4w meters none))
 (define-extern camera-bounding-box-draw
-  "Draw the twelve edges of bounds in the original fixed gray. The two trailing
-   arguments are retained for compatibility but are not read."
-  (function bounding-box basic rgba none))
+  "Draw the twelve edges of bounds in the original fixed gray."
+  (function bounding-box none))
 (define-extern cam-debug-reset-coll-tri
   "Clear the per-frame camera collision and line-of-sight triangle lists."
   (function none))
 (define-extern cam-debug-add-los-tri
   "Save the first collision-cache triangle, intersection, and color in the
    line-of-sight debug list. The list holds at most 460 entries."
-  (function (inline-array collide-cache-tri) vector vector none))
+  (function (inline-array collide-cache-tri) vector vector4w none))
 (define-extern cam-debug-add-coll-tri
   "Copy a camera debug triangle with a new intersection and color into the
    collision debug list. The list holds at most 460 entries."
-  (function cam-debug-tri vector cam-debug-tri none))
+  (function cam-debug-tri vector vector4w none))
 (define-extern cam-debug-draw-tris
   "Draw the recorded camera line-of-sight and collision triangles selected by
    the corresponding display flags, with a cross at each intersection."
   (function symbol))
 (define-extern camera-fov-draw
-  "Draw one side of a camera frustum from two direction-vector addresses,
+  "Draw one side of a camera frustum from two direction vectors,
    origin, near distance, far distance, and color."
-  (function int int vector float float vector4w symbol))
+  (function vector vector vector meters meters vector4w none))
 (define-extern camera-fov-frame
   "Draw a camera frustum from its inverse rotation, origin, half field of view,
    vertical scale, horizontal scale, and color. The near and far outlines are
    4096 and 20480 GOAL units from the origin."
   (function matrix vector float float float vector4w none))
 (define-extern debug-euler
-  "Interpret the matrix packed from scratch.sphere-vec.w onward, print its Euler
-   conversion and reconstruction, and report whether any component differs by
-   more than 0.001."
-  (function cam-dbg-scratch object))
+  "Convert the camera rotation matrix to euler angles and back and report whether
+   any component differs by more than 0.001."
+  (function camera-slave none))
 (define-extern bike-cam-limit
   "Return a cosine camera limit that rises from zero to one as the nonnegative
    scaled input approaches 8192, and remains one beyond that range."
-  (function float float))
+  (function meters float))
 (define-extern camera-slave-debug
   "Draw the active camera-slave frustum, tracking basis and follow point,
    target body spheres, spline trail, and state-specific string, circular, or

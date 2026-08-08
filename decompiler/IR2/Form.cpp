@@ -3598,8 +3598,14 @@ goos::Object ResLumpMacroElement::to_form_internal(const Env& env) const {
     case Kind::DATA:
       forms.push_back(pretty_print::to_symbol("res-lump-data"));
       break;
+    case Kind::DATA_EXACT:
+      forms.push_back(pretty_print::to_symbol("res-lump-data-exact"));
+      break;
     case Kind::STRUCT:
       forms.push_back(pretty_print::to_symbol("res-lump-struct"));
+      break;
+    case Kind::STRUCT_EXACT:
+      forms.push_back(pretty_print::to_symbol("res-lump-struct-exact"));
       break;
     case Kind::VALUE:
       forms.push_back(pretty_print::to_symbol("res-lump-value"));

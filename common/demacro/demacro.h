@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "common/util/FileUtil.h"
@@ -11,6 +12,7 @@ struct Rule {
   std::string name;
   std::vector<std::string> match;
   std::vector<std::string> rewrite;
+  std::unordered_map<std::string, std::string> capture_types;
 };
 
 struct RuleSet {

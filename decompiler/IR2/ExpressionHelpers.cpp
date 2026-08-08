@@ -117,17 +117,27 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
   // get the name of the the thing we're looking up. This can be anything.
   Form* property_name = forms.at(1);
 
-  // get the mode. It must be interp.
+  // Exact data/structure lookups use sibling macros with a different default time.
   auto mode_atom = form_as_atom(forms.at(2));
-  if (!mode_atom || !mode_atom->is_sym_ptr("interp")) {
+  if (!mode_atom) {
     lg::error("fail data: bad mode {}", forms.at(2)->to_string(env));
     return nullptr;
+  }
+  const bool exact = mode_atom->is_sym_ptr("exact");
+  if (!mode_atom->is_sym_ptr("interp") && !exact) {
+    lg::error("fail data: bad mode {}", forms.at(2)->to_string(env));
+    return nullptr;
+  }
+  if (exact && kind == ResLumpMacroElement::Kind::DATA) {
+    kind = ResLumpMacroElement::Kind::DATA_EXACT;
+  } else if (exact && kind == ResLumpMacroElement::Kind::STRUCT) {
+    kind = ResLumpMacroElement::Kind::STRUCT_EXACT;
   }
 
   // get the time. It can be anything, but there's a default.
   auto time = forms.at(3);
   auto lookup_time = try_get_const_float(time);
-  if (lookup_time && *lookup_time == DEFAULT_RES_TIME) {
+  if (lookup_time && *lookup_time == (exact ? 0.f : DEFAULT_RES_TIME)) {
     time = nullptr;
   }
 
@@ -135,7 +145,8 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
   Form* default_value = forms.at(4);
   if (default_value->to_string(env) == expcted_default) {
     default_value = nullptr;
-  } else if (kind != ResLumpMacroElement::Kind::STRUCT ||
+  } else if ((kind != ResLumpMacroElement::Kind::STRUCT &&
+              kind != ResLumpMacroElement::Kind::STRUCT_EXACT) ||
              env.version != GameVersion::Jak1) {
     // Only Jak 1's res-lump-struct macro currently exposes a custom default.
     return nullptr;
@@ -154,8 +165,7 @@ FormElement* handle_get_property_data_or_structure(const std::vector<Form*>& for
     return nullptr;
   }
 
-  return pool.alloc_element<ResLumpMacroElement>(kind, lump_object, property_name,
-                                                 default_value,
+  return pool.alloc_element<ResLumpMacroElement>(kind, lump_object, property_name, default_value,
                                                  tag_pointer, time, default_type);
 }
 }  // namespace
