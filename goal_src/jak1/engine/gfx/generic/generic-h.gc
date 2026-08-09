@@ -9,7 +9,7 @@
 
 ;; The generic renderer is the slow but general renderer.  The EE expands compact
 ;; model data into GSF vertices, applies lighting, environment mapping, level of
-;; detail, and skeletal animation, then streams the result through VU0 and VU1.
+;; detail, and skeletal animation, then streams the result through VU1.
 
 ;; On the VU side, it has no effects, other than scissoring.
 
@@ -33,10 +33,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Entry points of the generic VU1 program.  A converter selects one by patching the immediate of
-;; consts.mscal-tag; nothing else about the packet changes.
-;; The program opens with a dispatch table of two instruction pairs per entry - a branch and its delay
-;; pair - so an entry's address is twice its position in that table. Deriving them says so; a column of
-;; even numbers does not.
+;; consts.mscal-tag.
+;; Each entry is 2 instructions long.
 (defmacro generic-vu1-entry (index)
   `(* 2 ,index))
 
@@ -61,21 +59,15 @@
 (defconstant GENERIC-VU1-INBUF-LAST (+ GENERIC-VU1-INBUF-FIRST (* 2 GENERIC-VU1-INBUF-STEP)))
 (defconstant GENERIC-VU1-HEADER-A 837)
 (defconstant GENERIC-VU1-HEADER-QWC 30)   ;; a header buffer: seven header quadwords plus its shaders
-;; Keep the folded value because static structure initializers require an immediate here.
 (defconstant GENERIC-VU1-HEADER-B 867)    ;; GENERIC-VU1-HEADER-A + GENERIC-VU1-HEADER-QWC
 (defconstant GENERIC-VU1-HEADER-FLIP (logxor GENERIC-VU1-HEADER-A GENERIC-VU1-HEADER-B))
 (defconstant GENERIC-VU1-CONSTANTS (+ GENERIC-VU1-HEADER-B GENERIC-VU1-HEADER-QWC))
 
-;; The two scratchpad output buffers, flipped after every packet. The value is not the buffer size:
-;; generic-effect-buffer puts the shared work area between the two halves so that both stay within a
-;; signed 16-bit displacement of the constants and lights every vertex needs, which makes the distance
-;; 3552 + 1056. generic-saves.xor-outbufs is the stored copy.
+;; constant to toggle output buffers with xor.
 (defconstant GENERIC-OUTBUF-FLIP
   (logxor (offset-of generic-effect-buffer outbuf-0) (offset-of generic-effect-buffer outbuf-1)))
 
-;; The generic work area starts one quadword into the scratchpad page, so an address relative to the
-;; page register is sixteen more than the field's offset inside generic-work.  Assembly that keeps
-;; the page in a register uses this instead of a bare number.
+;; The generic work area starts one quadword into the scratchpad page.
 (defconstant GENERIC-WORK-BASE 16)
 
 (defmacro generic-work-offset (&rest path)
@@ -84,13 +76,11 @@
 ;; DECOMP BEGINS
 
 ;; The 32-byte working vertex format shared by the generic EE and VU programs.
-;; "GSF" is retained as the format's original name; its expansion is not known.
-;; The overlays expose the two input layouts used by the pipeline: position,
-;; texture, normal, and color, or position plus delta texture/color data.
-;;
-;; The two readings of the second quadword are why the effect processors come in plain and "dproc"
-;; flavors.  A dproc fills dtex/dclr - the draw-point attribute lanes - where an ordinary processor
-;; would have left a normal and a color.
+;; The GSF acronym is unknown. Maybe Generic Strip Format?
+;; There are two possible uses:
+;;  (pos, tex, nrm, clr)
+;;  (pos, tex, dtex, dclr, clr)
+;; The "dproc" processors fill "d" values, used for second passes like environment mapping.
 (deftype gsf-vertex (structure)
   ((data uint32 8)
    (byte uint8 32 :overlay-at (-> data 0))
@@ -162,9 +152,6 @@
   ((pos uint16)
    (len uint16)))
 
-;; Where the environment-map pass parks the records it is working on.  It runs four vertices at a
-;; time through VU0 and has to keep the lanes VU0 does not touch alive across the call, so it saves
-;; the records themselves rather than reloading them from the vertex array.
 (deftype generic-envmap-saves (structure)
   ((index-mask vector4w :inline)
    (verts      uint128 12)
@@ -211,7 +198,7 @@
    (inbuf-adr         uint32)             ;; VU1 input bank, rotating through three
    (fade-val          uint32)
    (time-of-day-color rgba)
-   (to-vu0-waits      uint32)             ;; busy polls, charged to the timing display
+   (to-vu0-waits      uint32)             ;; busy poll counts
    (to-spr-waits      uint32)
    (from-spr-waits    uint32)
    (envmap            generic-envmap-saves :inline)))
@@ -228,8 +215,7 @@
    (num-strips uint32 :overlay-at (-> data 3))))
 
 (deftype ad-cmd (structure)
-  ;; One GIF A+D payload.  The overlays permit whole-qword copying or individual
-  ;; GS register/data construction without changing the packet representation.
+  ;; One GIF A+D payload.
   ((word uint32 4)
    (quad uint128 :overlay-at (-> word 0))
    (data uint64 :overlay-at (-> word 0))

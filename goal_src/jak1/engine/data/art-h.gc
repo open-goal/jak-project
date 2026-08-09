@@ -63,8 +63,7 @@
    (matrix-bits  joint-anim-matrix-flags)))
 
 ;; Constant components shared by every frame.  The offsets split the payload into the streams read
-;; at 64-, 32-, and 16-bit widths; this lets each value use its compact representation without
-;; padding every sample to the widest type.
+;; at 64-, 32-, and 16-bit widths.
 (deftype joint-anim-compressed-fixed (structure)
   ((hdr       joint-anim-compressed-hdr :inline)
    (offset-64 uint32)
@@ -83,7 +82,7 @@
    (data      vector 133 :inline)))
 
 ;; One fixed block followed by num-frames variable blocks.  The qwc fields are the exact DMA and
-;; pointer strides; data has a nominal element only so the dynamic frame table has an address.
+;; pointer strides.
 (deftype joint-anim-compressed-control (structure)
   ((num-frames uint32)
    (fixed-qwc  uint32)
@@ -95,8 +94,9 @@
 ;; ART
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Common header for a complete art group and for each element stored inside it.  length is
-;; interpreted by the concrete art type, while extra carries the asset's resource properties.
+;; Common header for a complete art group and for each individual art element stored inside it.  
+;; length is interpreted by the concrete art type
+;; extra carries named properties.
 (declare-type res-lump basic)
 
 (deftype art (basic)
@@ -152,9 +152,9 @@
 
 ;; Static recipe for constructing a drawable from an art-group.  jgeo, janim, mgeo, and shadow are
 ;; element indices in that group.  mgeo and lod-dist are parallel arrays; max-lod is their last
-;; valid index, so larger indices contain progressively less detailed geometry.  setup-lods! may
+;; valid index, and larger indices contain progressively less detailed geometry.  setup-lods! may
 ;; replace the authored distances with lod-dist resource data attached to the joint geometry.
-;; bounds is the model-space culling sphere.  longest-edge controls the near-camera clipping choice
+;; bounds is the model-space culling sphere.  longest-edge controls the clipping choice
 ;; for MERC geometry.
 (deftype skeleton-group (basic)
   ((art-group-name string)
@@ -181,7 +181,7 @@
 
 (declare-type merc-ctrl basic)
 
-;; One MERC geometry level and the camera-distance threshold at which it gives way to the next.
+;; One MERC geometry level and the camera-distance threshold.
 (deftype lod-group (structure)
   ((geo  merc-ctrl)
    (dist meters))

@@ -70,14 +70,7 @@
 ;; is fixed point, and d0 and d1 are the vertex's output slots -- which is how the render pipeline avoids
 ;; keeping a write cursor at all.
 ;;
-;; This describes the compact block tie-fragment.generic-ref points at, the converter's own copy of the
-;; geometry, which is separate data from the V4-16 point stream at point-ref that TIE's VU1 program
-;; unpacks. The two look like the same layout: sixteen bytes is exactly the two quadwords TIE expands a
-;; base point into, and d0 and d1 sit in the lanes TIE uses as output slots. But nothing in the source
-;; declares a type for TIE's stream, so that correspondence is observed rather than stated.
-;;
-;; The overlays exist because the converter moves these around by quadword and by doubleword rather than
-;; field by field.
+;; This describes the compact block tie-fragment.generic-ref points at.
 (deftype generic-tie-base-point (structure)
   ((x    int16)
    (y    int16)
@@ -103,27 +96,12 @@
 ;; scales the displacement by the instance's morph weight and adds it. At full collapse the surface is
 ;; exactly the next-coarser tessellation, so the triangles that disappear are degenerate by then rather
 ;; than popping. The color side of the same blend always uses a plain 50/50 average of the edge's two
-;; endpoints, so the intended collapse target is the edge midpoint -- though only the color is pinned
-;; there, the displacement being authored data.
+;; endpoints, so the intended collapse target is the edge midpoint.
 ;;
 ;; d0 is the output slot, the unused lane sits where the loop reads only xyz, and d1 is the second slot.
 ;;
-;; Which of the two vectors is which is genuinely unsettled, and the names do not settle it. In TIE's own
-;; stream the first vector is demonstrably the displacement: the render loop scales it by the morph weight
-;; and adds the second, and the coarsest geometry uses far-morph, whose x is 1, alongside a fully averaged
-;; color -- so weight 1 is the collapsed end and weight 0, full detail, leaves only the second vector.
-;; Read against that, x/y/z and dx/dy/dz are the wrong way round.
-;;
-;; The Generic converter agrees about the operation and adds nothing about the naming. It stages the two
-;; vectors in declaration order into a VU0 pair, its transform computes first * morph.x + second, and it
-;; has a second entry -- taken once the weight reaches zero -- which reads only the second vector. So both
-;; consumers of this type treat the first vector as the one that is scaled; which end of the LOD band that
-;; corresponds to is a fact about the instance pass, not about either of them.
-;;
-;; These are real field names out of the game's own type information, not something reconstructed, so
-;; they stay exactly as they are. Either they are simply backwards -- which happens -- or this type was
-;; written for the Generic converter alone and its block orders the two vectors the other way. Nothing
-;; here decides between those, and there is no separate type for TIE's stream to compare against.
+;; The naming here between xyz and dx,dy,dz seem backward. It's backward in generic and VU1 TIE paths,
+;; so probably this type was just named wrong.
 (deftype generic-tie-interp-point (structure)
   ((x      int16) ;; the vector that gets scaled by the morph weight
    (y      int16)
@@ -184,7 +162,7 @@
    (morph  vector :inline)
    (fog    qword :inline)))
 
-;; One packed vertex normal. Four bytes, so a normal costs as much as a palette index.
+;; One packed vertex normal.
 (deftype generic-tie-normal (structure)
   ((x     int8)
    (y     int8)
@@ -192,8 +170,7 @@
    (dummy int8)))
 
 ;; The converter's cursor block: where it is in every one of the parallel streams that make up a
-;; fragment. Advancing a fragment means advancing all of these together, which is why they live in one
-;; structure rather than in registers.
+;; fragment.
 (deftype generic-tie-control (structure)
   ((ptr-palette   uint32)
    (ptr-shaders   uint32)

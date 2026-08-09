@@ -11,19 +11,23 @@
 ;; math camera basics
 ;;;;;;;;;;;;;;;;;;;;;;
 
-;; the math camera computes the perspective matrix, hvdf offset, and hmge scale.
+;; the math camera computes the perspective matrix, hvdf offset, and hmge scale used by renderers.
 
-;; Multiplying a point by the perspective matrix, dividing HVD by the homogeneous Q scale, then
-;; adding hvdf-off gives:
-;; H : horizontal position (in GS coordinates)
-;; V : vertical position (in GS coordinates)
-;; D : reversed, nonlinear depth in the GS 24-bit z-buffer range
-;; F : linear fog, carried in the undivided fourth lane
+;; To render a point, renderers will:
+;; - multiply by `camera-temp` matrix to produce p0
+;; - elementwise-multiply p0 by `hmge-scale` to produce `homogenous-pt`
+;; - check for clipping with frustum and near/far planes by comparing `abs(homogenous-pt.xyz)` with `.w`
+;; - perspective divide `p0.xyz / homogenous-pt.w`
+;; - convert to GS format by adding `hvdf-offset` and converting to 4-bit fractional values.
 
-;; Multiplying the four matrix outputs by hmge-scale puts them in the VU clip volume and makes its
-;; fourth lane z*fov-scale/d. Q is the reciprocal of that value, so multiplying HVD by Q performs
-;; the perspective divide. The unscaled fourth matrix lane is retained for fog instead of being
-;; multiplied by Q.
+;; the resulting integers are HVDF:
+;; H - horizontal pixel (in fixed-point 28.4)
+;; V - vertical pixel (in fixed-point 28.4)
+;; D - depth (for 24-bit depth buffer)
+;; F - fog value
+
+;; For renderers which know they won't clip, computation of `homogenous-pt.w` is typically
+;; computed with p0.w / pfog0.
 
 ;; camera-temp combines the perspective and camera transformations for renderers that want one matrix.
 
@@ -34,8 +38,7 @@
 ;; The math-camera matrices are used to compute fogging values, which are a per-vertex uint8 that
 ;; tells the GS how "foggy" the color should be. This should be proportional to how far away the vertex
 ;; is. There is a scaling factor applied so the fog intensity isn't affected by the field of view angle.
-;; Fog is not perspective-divided: its matrix lane remains linear in camera-space depth. Scaling the
-;; fog endpoints by the same FOV correction used by the matrix makes that lane independent of zoom.
+;; Fog is not perspective-divided: its matrix lane remains linear in camera-space depth.
 
 ;; DECOMP BEGINS
 
@@ -57,8 +60,8 @@
 
 (defun update-math-camera ((math-cam math-camera) (video-mode symbol) (aspect symbol))
   "Rebuild the camera's projection and culling constants. The projection maps positive camera-space
-   depth d..f nonlinearly onto the reversed 24-bit GS depth interval 16760631..100, while its
-   undivided fourth lane carries linear fog. video-mode is retained but unused."
+   depth d..f nonlinearly onto the reversed 24-bit GS depth interval 16760631..100.
+   video-mode is unused."
   ;; the x/y ratio are frustum slopes
   (set! (-> math-cam x-ratio) (tan (* 0.5 (-> math-cam fov))))
   (if (= aspect 'aspect4x3)
@@ -221,9 +224,9 @@
         (set! (-> math-cam sprite-2d-hvdf z) (-> math-cam hvdf-off z))
         (set! (-> math-cam pfog0) fog-slope)
         (set! (-> math-cam pfog1) hvdf-w))))
-  ;; Set up the legacy visibility templates. This sequence really does initialize gifgr once,
-  ;; then write giftex three times; the final two stores do not address the two -trans slots.
-  0
+  ;; Set up the legacy visibility templates. It seems like this code is no longer in use,
+  ;; and has some bugs/typos/type issues.
+  ;; debug.gc does consume the fog0 in giftex
   (make-u128 0 (shl #x301ec000 32))
   (make-u128 0 (shl #x303ec000 32))
   (let ((pfog (-> math-cam pfog0)))
@@ -285,7 +288,7 @@
   (matrix->quaternion (-> *math-camera* inv-camera-rot-smooth-from) (-> *math-camera* inv-camera-rot-smooth)))
 
 (defun move-target-from-pad ((trans transform) (pad-idx int))
-  "Adjust a legacy Euler camera transform from the selected controller's held buttons."
+  "Adjust a legacy Euler transform from the selected controller's held buttons."
   ;; local-trans is the translation in the camera frame.
   (let ((local-trans (new-stack-vector0)))
     ;; circle/square move camera relative x (left and right)
@@ -326,431 +329,253 @@
   (if (cpad-hold? pad-idx right) (+! (-> trans rot y) -546.13336))
   trans)
 
-(#when PC_PORT
-  (defun transform-point-vector! ((out vector) (point vector))
-    "Transform point to floating-point GS horizontal, vertical, depth, and fog coordinates in out;
-     return true when it is inside all six clip planes."
-    (rlet ((acc :class vf)
-           (Q :class vf)
-           (vf0 :class vf)
-           (vf23 :class vf)
-           (vf24 :class vf)
-           (vf25 :class vf)
-           (vf26 :class vf)
-           (vf27 :class vf)
-           (vf28 :class vf)
-           (vf29 :class vf)
-           (vf30 :class vf)
-           (vf31 :class vf))
-      (init-vf0-vector)
-      0
-      (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
-      (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
-      (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
-      (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
-      (.lvf vf29 (&-> *math-camera* hmge-scale quad))
-      (.lvf vf30 (&-> *math-camera* hvdf-off quad))
-      (.lvf vf28 (&-> point quad))
-      (.mul.x.vf acc vf24 vf28)
-      (.add.mul.y.vf acc vf25 vf28 acc)
-      (.add.mul.z.vf acc vf26 vf28 acc)
-      (.add.mul.w.vf vf28 vf27 vf0 acc)
-      (.add.w.vf vf23 vf0 vf0)
-      (.mul.vf vf31 vf28 vf29)
-      ;;(TODO.VCLIP vf31 vf31)
-      (let ((clip (vu-clip vf31 0)))
-        (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
-        (.wait.vf)
-        ;;(.cfc2.i v1-7 Clipping)
-        (.mul.vf.xyz vf28 vf28 Q)
-        (.mul.vf vf23 vf23 Q)
-        (.add.vf vf28 vf28 vf30)
-        (.max.x.vf.w vf28 vf28 vf0)
-        (.svf (&-> out quad) vf28)
-        (zero? (logand clip 63))))))
-
-(#when PC_PORT
-  (defun transform-point-qword! ((out vector4w) (point vector))
-    "Transform point to signed 28.4 GS horizontal, vertical, depth, and fog coordinates in out;
-     return true when it is inside all six clip planes."
-    (rlet ((acc :class vf)
-           (Q :class vf)
-           (vf0 :class vf)
-           (vf23 :class vf)
-           (vf24 :class vf)
-           (vf25 :class vf)
-           (vf26 :class vf)
-           (vf27 :class vf)
-           (vf28 :class vf)
-           (vf29 :class vf)
-           (vf30 :class vf)
-           (vf31 :class vf))
-      (init-vf0-vector)
-      (let ((v1-0 0)))
-      ;; this camera matrix has both the projection and camera translation/rotation
-      (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
-      (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
-      (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
-      (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
-      ;; scaling
-      (.lvf vf29 (&-> *math-camera* hmge-scale quad))
-      ;; offset
-      (.lvf vf30 (&-> *math-camera* hvdf-off quad))
-      ;; input point
-      (.lvf vf28 (&-> point quad))
-      ;; matrix multiply, result in vf28
-      (.mul.x.vf acc vf24 vf28)
-      (.add.mul.y.vf acc vf25 vf28 acc)
-      (.add.mul.z.vf acc vf26 vf28 acc)
-      (.add.mul.w.vf vf28 vf27 vf0 acc)
-      (.add.w.vf vf23 vf0 vf0) ;; set w = 1.0
-      ;; apply hmge scaling. the result of this multiply sets clipping flags appropriately
-      (.mul.vf vf31 vf28 vf29) ;; scale.
-      ;;(TODO.VCLIP vf31 vf31)
-      (let ((clip (vu-clip vf31 0))) ;; clip!
-        ;; perspective divide
-        (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
-        (.wait.vf)
-        ;;(.cfc2.i v1-7 Clipping)
-        ;; perspective
-        (.mul.vf.xyz vf28 vf28 Q)
-        ;; compute scale factor (w was 1.0)
-        (.mul.vf vf23 vf23 Q)
-        ;; apply hvdf offsets
-        (.add.vf vf28 vf28 vf30)
-        ;; Clamp negative fog to vf0.x (zero).
-        (.max.x.vf.w vf28 vf28 vf0)
-        ;; convert to GS fixed point
-        (vftoi4.xyzw vf28 vf28)
-        ;; store result!
-        (.svf (&-> out quad) vf28)
-        ;; return result of clipping.
-        (zero? (logand clip 63))))))
-
-(#when PC_PORT
-  (defun transform-point-vector-scale! ((out vector) (point vector))
-    "Transform point to floating-point GS coordinates in out and return the homogeneous
-     perspective-divide scale."
-    (local-vars (perspective-scale float))
-    (rlet ((acc :class vf)
-           (Q :class vf)
-           (vf0 :class vf)
-           (vf23 :class vf)
-           (vf24 :class vf)
-           (vf25 :class vf)
-           (vf26 :class vf)
-           (vf27 :class vf)
-           (vf28 :class vf)
-           (vf29 :class vf)
-           (vf30 :class vf)
-           (vf31 :class vf))
-      (init-vf0-vector)
-      (let ((v1-0 0)))
-      (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
-      (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
-      (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
-      (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
-      (.lvf vf29 (&-> *math-camera* hmge-scale quad))
-      (.lvf vf30 (&-> *math-camera* hvdf-off quad))
-      (.lvf vf28 (&-> point quad))
-      (.mul.x.vf acc vf24 vf28)
-      (.add.mul.y.vf acc vf25 vf28 acc)
-      (.add.mul.z.vf acc vf26 vf28 acc)
-      (.add.mul.w.vf vf28 vf27 vf0 acc)
-      (.add.w.vf vf23 vf0 vf0)
-      (.mul.vf vf31 vf28 vf29)
-      ;;(TODO.VCLIP vf31 vf31) clip result was unused
+(defun transform-point-vector! ((out vector) (point vector))
+  "Transform point to floating-point GS horizontal, vertical, depth, and fog coordinates in out;
+   return true when it is inside all six clip planes.
+   Note that this is before int to float conversion so depth / fog will be effectively divided by 16"
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf))
+    (init-vf0-vector)
+    (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
+    (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
+    (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
+    (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
+    (.lvf vf29 (&-> *math-camera* hmge-scale quad))
+    (.lvf vf30 (&-> *math-camera* hvdf-off quad))
+    (.lvf vf28 (&-> point quad))
+    ;; multiply by camera-temp, store result in vf28
+    (.mul.x.vf acc vf24 vf28)
+    (.add.mul.y.vf acc vf25 vf28 acc)
+    (.add.mul.z.vf acc vf26 vf28 acc)
+    (.add.mul.w.vf vf28 vf27 vf0 acc)
+    ;; unused vf23
+    (.add.w.vf vf23 vf0 vf0)
+    ;; vf31 = homogenous coordinates
+    (.mul.vf vf31 vf28 vf29)
+    
+    ;; set clipping flags
+    ;; (TODO.VCLIP vf31 vf31)
+    (let ((clip (vu-clip vf31 0)))
+      ;; compute 1 / homogenous.w
       (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
       (.wait.vf)
       ;;(.cfc2.i v1-7 Clipping)
+      
+      ;; apply perspective divide
       (.mul.vf.xyz vf28 vf28 Q)
+      
+      ;; unused
       (.mul.vf vf23 vf23 Q)
+      
+      ;; add hvdf offset
       (.add.vf vf28 vf28 vf30)
+      
+      ;; clamp fog
       (.max.x.vf.w vf28 vf28 vf0)
       (.svf (&-> out quad) vf28)
-      ;;(let ((a0-2 (zero? (logand v1-7 63))))
-      ;; )
-      (.mov perspective-scale vf23)
-      perspective-scale)))
+      (zero? (logand clip 63)))))
 
-(#unless PC_PORT
-  (defun transform-point-vector! ((out vector) (point vector))
-    "Transform point to floating-point GS horizontal, vertical, depth, and fog coordinates in out;
-     return true when it is inside all six clip planes."
-    ;; Keep the fixed register schedule: these short helpers avoid a stack frame and feed VU0
-    ;; directly from the shared camera state.
-    (rlet ((camera)
-           (row-0 :reg vf24)
-           (row-1 :reg vf25)
-           (row-2 :reg vf26)
-           (row-3 :reg vf27)
-           (divide-scale :reg vf23)
-           (point-vf :reg vf28)
-           (homogeneous-scale :reg vf29)
-           (hvdf-offset :reg vf30)
-           (clip-coordinates :reg vf31)
-           (vf0 :reg vf0)
-           (Q :reg Q)
-           (clip-flags))
-      0
-      (m! camera *math-camera*)
-      (l.vf row-0 camera 572)
-      (m! camera *math-camera*)
-      (l.vf row-1 camera 588)
-      (m! camera *math-camera*)
-      (l.vf row-2 camera 604)
-      (m! camera *math-camera*)
-      (l.vf row-3 camera 620)
-      (m! camera *math-camera*)
-      (l.vf homogeneous-scale camera 700)
-      (m! camera *math-camera*)
-      (l.vf hvdf-offset camera 732)
-      (l.vf point-vf point)
-      (mula.x.vf row-0 point-vf)
-      (madda.y.vf row-1 point-vf)
-      (madda.z.vf row-2 point-vf)
-      (madd.w.vf point-vf row-3 vf0)
-      (add.w.vf divide-scale vf0 vf0)
-      (mul.vf clip-coordinates point-vf homogeneous-scale)
-      (clip.vf.xyz clip-coordinates clip-coordinates)
-      (div.w.w Q vf0 clip-coordinates)
-      (waitq)
-      (m clip-flags Clipping)
-      ;; The perspective divide applies only to HVD. Fog remains linear in camera depth.
-      (mulq.vf.xyz point-vf point-vf Q)
-      (mulq.vf divide-scale divide-scale Q)
-      (add.vf point-vf point-vf hvdf-offset)
-      (max.x.vf.w point-vf point-vf vf0)
-      (s.vf point-vf out)
-      (zero? (logand clip-flags 63)))))
+(defun transform-point-qword! ((out vector4w) (point vector))
+  "Transform point to signed 28.4 GS horizontal, vertical, depth, and fog coordinates in out;
+   return true when it is inside all six clip planes."
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf))
+    (init-vf0-vector)
+    (let ((v1-0 0)))
+    ;; this camera matrix has both the projection and camera translation/rotation
+    (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
+    (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
+    (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
+    (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
+    (.lvf vf29 (&-> *math-camera* hmge-scale quad))
+    (.lvf vf30 (&-> *math-camera* hvdf-off quad))
+    (.lvf vf28 (&-> point quad))
+    ;; multiply by camera-temp, store result in vf28
 
-(#unless PC_PORT
-  (defun transform-point-qword! ((out vector4w) (point vector))
-    "Transform point to signed 28.4 GS horizontal, vertical, depth, and fog coordinates in out;
-     return true when it is inside all six clip planes."
-    (rlet ((camera)
-           (row-0 :reg vf24)
-           (row-1 :reg vf25)
-           (row-2 :reg vf26)
-           (row-3 :reg vf27)
-           (divide-scale :reg vf23)
-           (point-vf :reg vf28)
-           (homogeneous-scale :reg vf29)
-           (hvdf-offset :reg vf30)
-           (clip-coordinates :reg vf31)
-           (vf0 :reg vf0)
-           (Q :reg Q)
-           (clip-flags))
-      0
-      (m! camera *math-camera*)
-      (l.vf row-0 camera 572)
-      (m! camera *math-camera*)
-      (l.vf row-1 camera 588)
-      (m! camera *math-camera*)
-      (l.vf row-2 camera 604)
-      (m! camera *math-camera*)
-      (l.vf row-3 camera 620)
-      (m! camera *math-camera*)
-      (l.vf homogeneous-scale camera 700)
-      (m! camera *math-camera*)
-      (l.vf hvdf-offset camera 732)
-      (l.vf point-vf point)
-      (mula.x.vf row-0 point-vf)
-      (madda.y.vf row-1 point-vf)
-      (madda.z.vf row-2 point-vf)
-      (madd.w.vf point-vf row-3 vf0)
-      (add.w.vf divide-scale vf0 vf0)
-      (mul.vf clip-coordinates point-vf homogeneous-scale)
-      (clip.vf.xyz clip-coordinates clip-coordinates)
-      (div.w.w Q vf0 clip-coordinates)
-      (waitq)
-      (m clip-flags Clipping)
-      (mulq.vf.xyz point-vf point-vf Q)
-      (mulq.vf divide-scale divide-scale Q)
-      (add.vf point-vf point-vf hvdf-offset)
-      ;; vf0.x is zero, so only negative fog values are saturated.
-      (max.x.vf.w point-vf point-vf vf0)
-      (ftoi.vf point-vf point-vf :fixed 4)
-      (s.vf point-vf out)
-      (zero? (logand clip-flags 63)))))
+    (.mul.x.vf acc vf24 vf28)
+    (.add.mul.y.vf acc vf25 vf28 acc)
+    (.add.mul.z.vf acc vf26 vf28 acc)
+    (.add.mul.w.vf vf28 vf27 vf0 acc)
+    (.add.w.vf vf23 vf0 vf0) ;; unused
+    ;; vf31 = homogenous coordinates
+    (.mul.vf vf31 vf28 vf29)
+    ;;(TODO.VCLIP vf31 vf31)
+    (let ((clip (vu-clip vf31 0))) ;; clip!
+      ;; perspective divide: 1/homogenous.w
+      (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
+      (.wait.vf)
+      ;;(.cfc2.i v1-7 Clipping)
+      ;; perspective
+      (.mul.vf.xyz vf28 vf28 Q)
+      ;; unused
+      (.mul.vf vf23 vf23 Q)
+      ;; apply hvdf offsets
+      (.add.vf vf28 vf28 vf30)
+      ;; Clamp negative fog to 0.
+      (.max.x.vf.w vf28 vf28 vf0)
+      ;; convert to GS fixed point
+      (vftoi4.xyzw vf28 vf28)
+      ;; store result!
+      (.svf (&-> out quad) vf28)
+      ;; return result of clipping.
+      (zero? (logand clip 63)))))
 
-(#unless PC_PORT
-  (defun transform-point-vector-scale! ((out vector) (point vector))
-    "Transform point to floating-point GS coordinates in out and return the homogeneous
-     perspective-divide scale."
-    (rlet ((camera)
-           (row-0 :reg vf24)
-           (row-1 :reg vf25)
-           (row-2 :reg vf26)
-           (row-3 :reg vf27)
-           (divide-scale :reg vf23)
-           (point-vf :reg vf28)
-           (homogeneous-scale :reg vf29)
-           (hvdf-offset :reg vf30)
-           (clip-coordinates :reg vf31)
-           (vf0 :reg vf0)
-           (Q :reg Q)
-           (clip-flags)
-           (perspective-scale))
-      0
-      (m! camera *math-camera*)
-      (l.vf row-0 camera 572)
-      (m! camera *math-camera*)
-      (l.vf row-1 camera 588)
-      (m! camera *math-camera*)
-      (l.vf row-2 camera 604)
-      (m! camera *math-camera*)
-      (l.vf row-3 camera 620)
-      (m! camera *math-camera*)
-      (l.vf homogeneous-scale camera 700)
-      (m! camera *math-camera*)
-      (l.vf hvdf-offset camera 732)
-      (l.vf point-vf point)
-      (mula.x.vf row-0 point-vf)
-      (madda.y.vf row-1 point-vf)
-      (madda.z.vf row-2 point-vf)
-      (madd.w.vf point-vf row-3 vf0)
-      (add.w.vf divide-scale vf0 vf0)
-      (mul.vf clip-coordinates point-vf homogeneous-scale)
-      ;; This routine returns Q instead of visibility, but the original still updates and reads
-      ;; the clip history before transferring Q through vf23.
-      (clip.vf.xyz clip-coordinates clip-coordinates)
-      (div.w.w Q vf0 clip-coordinates)
-      (waitq)
-      (m clip-flags Clipping)
-      (mulq.vf.xyz point-vf point-vf Q)
-      (mulq.vf divide-scale divide-scale Q)
-      (add.vf point-vf point-vf hvdf-offset)
-      (max.x.vf.w point-vf point-vf vf0)
-      (s.vf point-vf out)
-      (zero? (logand clip-flags 63))
-      (m perspective-scale divide-scale)
-      perspective-scale)))
+(defun transform-point-vector-scale! ((out vector) (point vector))
+  "Transform point to floating-point GS coordinates in out and return the homogeneous
+   perspective-divide scale."
+  (local-vars (perspective-scale float))
+  (rlet ((acc :class vf)
+         (Q :class vf)
+         (vf0 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf30 :class vf)
+         (vf31 :class vf))
+    (init-vf0-vector)
+    (let ((v1-0 0)))
+    (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
+    (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
+    (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
+    (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
+    (.lvf vf29 (&-> *math-camera* hmge-scale quad))
+    (.lvf vf30 (&-> *math-camera* hvdf-off quad))
+    (.lvf vf28 (&-> point quad))
+    ;; multiply by camera-temp, store in vf28
+    (.mul.x.vf acc vf24 vf28)
+    (.add.mul.y.vf acc vf25 vf28 acc)
+    (.add.mul.z.vf acc vf26 vf28 acc)
+    (.add.mul.w.vf vf28 vf27 vf0 acc)
+    
+    ;; set vf23.x = 1
+    (.add.w.vf vf23 vf0 vf0)
+    
+    ;; compute homogenous coordinates
+    (.mul.vf vf31 vf28 vf29)
+    ;;(TODO.VCLIP vf31 vf31) clip result was unused, no need to clip.
+    
+    ;; Q = 1 / homogenous.w
+    (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    ;;(.cfc2.i v1-7 Clipping)
+    ;; perspective divide
+    (.mul.vf.xyz vf28 vf28 Q)
+    ;; get the 1 / homogenous.w == scale!
+    (.mul.vf vf23 vf23 Q)
+    ;; add hvdf offset
+    (.add.vf vf28 vf28 vf30)
+    ;; clamp fog to 0
+    (.max.x.vf.w vf28 vf28 vf0)
+    ;; store
+    (.svf (&-> out quad) vf28)
+    ;; unused clipping result
+    ;;(let ((a0-2 (zero? (logand v1-7 63))))
+    ;; )
+    ;; return the perspective scale
+    (.mov perspective-scale vf23)
+    perspective-scale))
 
-(#when PC_PORT
-  (defun init-for-transform ((object-matrix matrix))
-    "Populate the persistent VU0 transform-register convention for object-matrix and the current camera."
-    (rlet ((vf1 :class vf)
-           (vf17 :class vf)
-           (vf18 :class vf)
-           (vf19 :class vf)
-           (vf2 :class vf)
-           (vf23 :class vf)
-           (vf24 :class vf)
-           (vf25 :class vf)
-           (vf26 :class vf)
-           (vf27 :class vf)
-           (vf28 :class vf)
-           (vf29 :class vf)
-           (vf3 :class vf)
-           (vf4 :class vf)
-           (vf6 :class vf)
-           (vf7 :class vf)
-           (vf8 :class vf)
-           (vf9 :class vf))
-      (let ((normal-matrix (new-stack-matrix0))
-            (transform-matrix (new-stack-matrix0))
-            (constant-vectors (new 'stack 'vector4s-3))
-            (ambient-vector (new-stack-vector0))
-            (basis-vectors (new 'stack 'vector4s-3)))
-        (matrix*! transform-matrix object-matrix (-> *math-camera* camera-temp))
-        (matrix-3x3-inverse-transpose! normal-matrix object-matrix)
-        (set-vector! ambient-vector 0.4 0.4 0.4 1.0)
-        (set-vector! (-> constant-vectors vector 0) 1.0 1.0 1.0 1.0)
-        (set-vector! (-> constant-vectors vector 1) 0.0 0.0 0.0 1.0)
-        (set-vector! (-> constant-vectors vector 2) 0.0 0.0 0.0 1.0)
-        (set-vector! (-> basis-vectors vector 0) 1.0 0.0 0.0 1.0)
-        (set-vector! (-> basis-vectors vector 1) 0.0 1.0 0.0 1.0)
-        (set-vector! (-> basis-vectors vector 2) 0.0 0.0 1.0 1.0)
-        (.lvf vf7 (&-> *math-camera* hmge-scale quad))
-        (.lvf vf8 (&-> *math-camera* hvdf-off quad))
-        (.lvf vf9 (&-> *math-camera* giftex))
-        (let ((v1-13 255)) (.mov vf6 v1-13))
-        ;;(.mov v1-14 vf6)
-        (.itof.vf vf6 vf6)
-        (.svf (&-> *transform-regs* vf7) vf7)
-        (.svf (&-> *transform-regs* vf8) vf8)
-        (.svf (&-> *transform-regs* vf9) vf9)
-        (.svf (&-> *transform-regs* vf6) vf6)
-        (set! (-> *transform-regs* vf1) (-> transform-matrix vector 0 quad))
-        (set! (-> *transform-regs* vf2) (-> transform-matrix vector 1 quad))
-        (set! (-> *transform-regs* vf3) (-> transform-matrix vector 2 quad))
-        (set! (-> *transform-regs* vf4) (-> transform-matrix vector 3 quad))
-        (set! (-> *transform-regs* vf17) (-> normal-matrix vector 0 quad))
-        (set! (-> *transform-regs* vf18) (-> normal-matrix vector 1 quad))
-        (set! (-> *transform-regs* vf19) (-> normal-matrix vector 2 quad))
-        (set! (-> *transform-regs* vf23) (-> basis-vectors quad 0))
-        (set! (-> *transform-regs* vf24) (-> basis-vectors quad 1))
-        (set! (-> *transform-regs* vf25) (-> basis-vectors quad 2))
-        (set! (-> *transform-regs* vf27) (-> constant-vectors quad 0))
-        (set! (-> *transform-regs* vf28) (-> constant-vectors quad 1))
-        (set! (-> *transform-regs* vf29) (-> constant-vectors quad 2))
-        (set! (-> *transform-regs* vf26) (-> ambient-vector quad)))
-      (none))))
+;; Old VU0 Register Convention
+;; (mostly unused at this point, but was likely used in early rendering)
+;; model matrix is OBJECT_MATRIX * CAMERA_TEMP, allowing you to render points in a model's local space.
+;; normal matrix is the inverse transpose of the upper 3x3 of model matrix, for transforming normals
 
-(#unless PC_PORT
-  (defun init-for-transform ((object-matrix matrix))
-    "Populate the persistent VU0 transform-register convention for object-matrix and the current camera."
-    ;; These physical VU0 registers form an ABI with the legacy transform routines. They deliberately
-    ;; remain live after this function returns.
-    (rlet ((transform-row-0 :reg vf1)
-           (transform-row-1 :reg vf2)
-           (transform-row-2 :reg vf3)
-           (transform-row-3 :reg vf4)
-           (max-fog :reg vf6)
-           (homogeneous-scale :reg vf7)
-           (hvdf-offset :reg vf8)
-           (visibility-template :reg vf9)
-           (normal-row-0 :reg vf17)
-           (normal-row-1 :reg vf18)
-           (normal-row-2 :reg vf19)
-           (basis-x :reg vf23)
-           (basis-y :reg vf24)
-           (basis-z :reg vf25)
-           (ambient :reg vf26)
-           (constant-0 :reg vf27)
-           (constant-1 :reg vf28)
-           (constant-2 :reg vf29)
-           (camera)
-           (max-fog-bits)
-           (unused-copy))
-      (let ((normal-matrix (new-stack-matrix0))
-            (transform-matrix (new-stack-matrix0))
-            (constant-vectors (new 'stack 'vector4s-3))
-            (ambient-vector (new-stack-vector0))
-            (basis-vectors (new 'stack 'vector4s-3)))
-        (matrix*! transform-matrix object-matrix (-> *math-camera* camera-temp))
-        (matrix-3x3-inverse-transpose! normal-matrix object-matrix)
-        (set-vector! ambient-vector 0.4 0.4 0.4 1.0)
-        (set-vector! (-> constant-vectors vector 0) 1.0 1.0 1.0 1.0)
-        (set-vector! (-> constant-vectors vector 1) 0.0 0.0 0.0 1.0)
-        (set-vector! (-> constant-vectors vector 2) 0.0 0.0 0.0 1.0)
-        (set-vector! (-> basis-vectors vector 0) 1.0 0.0 0.0 1.0)
-        (set-vector! (-> basis-vectors vector 1) 0.0 1.0 0.0 1.0)
-        (set-vector! (-> basis-vectors vector 2) 0.0 0.0 1.0 1.0)
-        (m! camera *math-camera*)
-        (l.vf homogeneous-scale camera 700)
-        (m! camera *math-camera*)
-        (l.vf hvdf-offset camera 732)
-        (m! camera *math-camera*)
-        (l.vf visibility-template camera 764)
-        (m! max-fog-bits 255)
-        (m max-fog max-fog-bits)
-        ;; Preserve the original EE/VU crossing even though this copy is not subsequently used.
-        (m unused-copy max-fog)
-        (itof.vf max-fog max-fog)
-        (l.vf transform-row-0 transform-matrix)
-        (l.vf transform-row-1 transform-matrix 16)
-        (l.vf transform-row-2 transform-matrix 32)
-        (l.vf transform-row-3 transform-matrix 48)
-        (l.vf normal-row-0 normal-matrix)
-        (l.vf normal-row-1 normal-matrix 16)
-        (l.vf normal-row-2 normal-matrix 32)
-        (l.vf basis-x basis-vectors)
-        (l.vf basis-y basis-vectors 16)
-        (l.vf basis-z basis-vectors 32)
-        (l.vf constant-0 constant-vectors)
-        (l.vf constant-1 constant-vectors 16)
-        (l.vf constant-2 constant-vectors 32)
-        (l.vf ambient ambient-vector))
-      (none))))
+;; vf1, vf2, vf3, vf4 : model matrix
+;; vf5 unused
+;; vf6 : 255.0 floating point
+;; vf7 : hmge-scale
+;; vf8 : hvdf-off
+;; vf9 : "giftex": [fog0, <some GS constants that appear wrong>]
+;; vf10 - vf16 : unused
+;; vf17, vf18, vf19 : normal matrix
+;; vf23, vf24, vf25 : identiy matrix (why do they need this lol)
+;; vf26 : [0.4, 0.4, 0.4, 1.0]
+;; vf27 : [1, 1, 1, 1]
+;; vf28 : [0, 0, 0, 1]
+;; vf29 : [0, 0, 0, 1]
+
+
+(defun init-for-transform ((object-matrix matrix))
+  "Populate the persistent VU0 transform-register convention for object-matrix and the current camera."
+  (rlet ((vf1 :class vf)
+         (vf17 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf2 :class vf)
+         (vf23 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf))
+    (let ((normal-matrix (new-stack-matrix0))
+          (transform-matrix (new-stack-matrix0))
+          (constant-vectors (new 'stack 'vector4s-3))
+          (ambient-vector (new-stack-vector0))
+          (basis-vectors (new 'stack 'vector4s-3)))
+      (matrix*! transform-matrix object-matrix (-> *math-camera* camera-temp))
+      (matrix-3x3-inverse-transpose! normal-matrix object-matrix)
+      (set-vector! ambient-vector 0.4 0.4 0.4 1.0)
+      (set-vector! (-> constant-vectors vector 0) 1.0 1.0 1.0 1.0)
+      (set-vector! (-> constant-vectors vector 1) 0.0 0.0 0.0 1.0)
+      (set-vector! (-> constant-vectors vector 2) 0.0 0.0 0.0 1.0)
+      (set-vector! (-> basis-vectors vector 0) 1.0 0.0 0.0 1.0)
+      (set-vector! (-> basis-vectors vector 1) 0.0 1.0 0.0 1.0)
+      (set-vector! (-> basis-vectors vector 2) 0.0 0.0 1.0 1.0)
+      (.lvf vf7 (&-> *math-camera* hmge-scale quad))
+      (.lvf vf8 (&-> *math-camera* hvdf-off quad))
+      (.lvf vf9 (&-> *math-camera* giftex))
+      (let ((v1-13 255)) (.mov vf6 v1-13))
+      ;;(.mov v1-14 vf6)
+      (.itof.vf vf6 vf6)
+      (.svf (&-> *transform-regs* vf7) vf7)
+      (.svf (&-> *transform-regs* vf8) vf8)
+      (.svf (&-> *transform-regs* vf9) vf9)
+      (.svf (&-> *transform-regs* vf6) vf6)
+      (set! (-> *transform-regs* vf1) (-> transform-matrix vector 0 quad))
+      (set! (-> *transform-regs* vf2) (-> transform-matrix vector 1 quad))
+      (set! (-> *transform-regs* vf3) (-> transform-matrix vector 2 quad))
+      (set! (-> *transform-regs* vf4) (-> transform-matrix vector 3 quad))
+      (set! (-> *transform-regs* vf17) (-> normal-matrix vector 0 quad))
+      (set! (-> *transform-regs* vf18) (-> normal-matrix vector 1 quad))
+      (set! (-> *transform-regs* vf19) (-> normal-matrix vector 2 quad))
+      (set! (-> *transform-regs* vf23) (-> basis-vectors quad 0))
+      (set! (-> *transform-regs* vf24) (-> basis-vectors quad 1))
+      (set! (-> *transform-regs* vf25) (-> basis-vectors quad 2))
+      (set! (-> *transform-regs* vf27) (-> constant-vectors quad 0))
+      (set! (-> *transform-regs* vf28) (-> constant-vectors quad 1))
+      (set! (-> *transform-regs* vf29) (-> constant-vectors quad 2))
+      (set! (-> *transform-regs* vf26) (-> ambient-vector quad)))
+    (none)))
+

@@ -5,9 +5,8 @@
 
 ;; DMA buckets let renderers build chains in any order while the final transfer visits them in a
 ;; fixed draw order. Each 16-byte header owns no payload. A NEXT tag transfers QWC quadwords stored
-;; immediately after itself, then fetches the following DMA tag from the address in ADDR. It does
-;; not continue to the tag after its inline payload; CNT has that behavior. These headers have QWC
-;; zero, so they transfer nothing and act only as pointers to the DMA tag in ADDR.
+;; immediately after itself, then fetches the following DMA tag from the address in ADDR.
+;; A NEXT with QWC zero transfers nothing and acts only as a pointer to the DMA tag in ADDR.
 ;;
 ;; last points to a QWC-zero NEXT tag whose ADDR has not yet been linked onward. An empty bucket uses
 ;; its header NEXT tag as this tail. Every added chain must also end in a QWC-zero NEXT tag. Insertion
@@ -37,7 +36,7 @@
     (dotimes (i count)
       (set! (-> buckets 0 last 0 addr) (the-as int (the-as pointer (-> buckets 1))))
       (set! (-> buckets 0 last) (the-as (pointer dma-tag) 0))
-      (set! buckets (the-as (inline-array dma-bucket) (-> buckets 1)))))
+      (set! buckets (&-> buckets 1))))
   buckets)
 
 (defun dma-bucket-insert-tag ((buckets (inline-array dma-bucket)) (bucket-index bucket-id) (tag-start pointer) (tag-end (pointer dma-tag)))

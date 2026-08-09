@@ -15,13 +15,14 @@
 ;;  - dma-buffer is memory management for the data to be sent
 ;;  - dma-bucket is organization of all the frame's DMA data in the correct order
 
-;; DMA submission is synchronous on PC, so the caller has no hardware transfer to wait for.
-;; When this flag is set, all DMA syncs complete immediately.
-(defglobalconstant INSTANT_DMA #t)
-
-;; Some DMA sync functions return a count for how long it took.
-;; When INSTANT_DMA is enabled, these functions will return this value.
-(defglobalconstant INSTANT_DMA_COUNT 123)
+;; In the PC Port, we handle DMA in three ways:
+;; - The game generates a single, massive DMA transfer to drive all rendering in a frame.
+;;   this chain is built and read by the C++ Renderer.
+;; - Simple uses of DMA to copy is replaced with plain memcpy.
+;; - Highly optimized code will use a double-buffered work area in scratchpad.
+;;   One buffer is used for computation while the other is being loaded/stored from
+;;   main memory over DMA. This code is handled on a case-by-case basis, but we
+;;   avoid ever doing transfers "in the background"
 
 ;; DMA Channel Control Register. This starts the DMA and can be checked to see if it's done.
 ;; There is one CHCR per DMA channel.
@@ -34,12 +35,12 @@
    (str uint8 :offset 8 :size 1) ;; start!
    (tag uint16 :offset 16)))
 
-;; Assembly cannot use the bitfield, so the two chcr values it writes and tests get names. STR reads
-;; as "still running" and writes as "go"; the chain-mode start value is what a builder stores to hand
-;; a channel a source chain: chain mode, transfer the tags, start.
-(defconstant DMA-CHCR-STR 256)
-
-(defconstant DMA-CHCR-START-CHAIN-TTE 324)
+;; Two common values for dma-chcr to start transfer
+;; Plain memory copy
+(defconstant DMA-CHCR-STR (new 'static 'dma-chcr :str 1))
+;; Copy, then follow tags. TTE enables copying the upper 64-bits of the DMAtag quadword,
+;; and is often used to stash VIFtags when transferring to VIF.
+(defconstant DMA-CHCR-START-CHAIN-TTE (new 'static 'dma-chcr :str 1 :tte 1 :mod 1))
 
 (defmethod inspect ((obj dma-chcr))
   (format #t "~Tdir: ~D~%" (-> obj dir))
@@ -116,18 +117,12 @@
 ;; These addresses are the location of DMA banks for each channel.
 ;; These addresses name EE hardware registers and are not dereferenced on PC.
 (defconstant VIF0_DMA_BANK (the dma-bank-vif #x10008000))
-
 (defconstant VIF1_DMA_BANK (the dma-bank-vif #x10009000))
-
 (defconstant GIF_DMA_BANK (the dma-bank #x1000a000))
-
 ;; ipuFrom, ipTop, sif0, sif1, sif2 believed unused.
 (defconstant SPR_FROM_BANK (the dma-bank-spr #x1000d000))
-
 (defconstant SPR_TO_BANK (the dma-bank-spr #x1000d400))
-
 (defconstant VU0_DATA_MEM_MAP (the (pointer uint32) #x11004000))
-
 (defconstant VU1_DATA_MEM_MAP (the (pointer uint32) #x1100c000))
 
 ;; The DMA system also has some shared control registers that
@@ -172,7 +167,7 @@
    (size         int32)
    (dest-address uint32)))
 
-;; Unused placeholder for a VU status value. No fields were needed.
+;; Unused placeholder for a VU status value.
 (deftype vu-stat (uint64) ())
 
 (defenum dma-tag-id
@@ -394,6 +389,7 @@
 ;; These unused helpers were written as inline EE assembly. The empty instructions in the polling
 ;; loops deliberately space accesses to the DMA registers: reading them continuously would consume
 ;; the same main bus bandwidth as the transfer being awaited.
+;; There is actually a better way by waiting on COP interrupts, but ND never did this.
 
 (#unless PC_PORT
   (defun dma-sync-fast ((bank dma-bank))
@@ -429,12 +425,8 @@
 (#when PC_PORT
   (defun dma-sync-fast ((bank dma-bank))
     "Wait for a DMA channel's start bit to clear. The PC submits DMA synchronously."
-    (declare (inline))
-    (#cond
-      (INSTANT_DMA 0)
-      (#t (while (nonzero? (-> bank chcr str)) (nop!))))
     (none)))
-
+  
 (#unless PC_PORT
   (defun dma-send-no-scratch ((bank dma-bank) (memory-address uint32) (quadword-count uint32))
     "Wait for a DMA channel, flush the cache, and start a normal-mode transfer from main memory.
@@ -442,20 +434,18 @@
     ((inline dma-sync-fast) bank)
     (flush-cache 0)
     (sync.l)
-    (rlet ((start #x100)) (s.w memory-address bank 16) (s.w quadword-count bank 32) (sync.l) (s.w start bank) (sync.l))
+    (rlet ((start DMA-CHCR-STR)) 
+      (s.w memory-address (-> bank madr))
+      (s.w quadword-count (-> bank qwc))
+      (sync.l)
+      (s.w start (-> bank chcr))
+      (sync.l))
     (none)))
 
 (#when PC_PORT
   (defun dma-send-no-scratch ((bank dma-bank) (memory-address uint32) (quadword-count uint32))
     "Wait for a DMA channel, flush the cache, and start a normal-mode transfer from main memory.
      All channel-control fields except the start bit are cleared. This function is unused."
-    ((inline dma-sync-fast) bank)
-    (flush-cache 0)
-    (.sync.l)
-    (set! (-> bank madr) memory-address)
-    (set! (-> bank qwc) quadword-count)
-    (.sync.l)
-    (set! (-> bank chcr) (new 'static 'dma-chcr :str 1))
     (none)))
 
 (#unless PC_PORT
@@ -483,12 +473,7 @@
   (defun dma-sync-with-count ((bank dma-bank) (poll-count (pointer int32)))
     "If a DMA channel is active, wait for it to finish and increment the caller's polling count
      once per sample. This function is unused."
-    (#cond
-      (INSTANT_DMA (set! (-> poll-count) INSTANT_DMA_COUNT) 0)
-      (#t
-       (when (nonzero? (-> bank chcr str))
-         (let ((count (-> poll-count))) (while (nonzero? (-> bank chcr str)) (+! count 1) (set! (-> poll-count) count))))
-       0))))
+    (none)))
 
 (#unless PC_PORT
   (defun dma-count-until-done ((bank dma-bank) (poll-count (pointer int32)))
@@ -511,6 +496,4 @@
   (defun dma-count-until-done ((bank dma-bank) (poll-count (pointer int32)))
     "Wait for a DMA channel to finish and increment the caller's polling count for every sample,
      including the final inactive sample. This function is unused."
-    (#cond
-      (INSTANT_DMA (set! (-> poll-count) INSTANT_DMA_COUNT) 0)
-      (#t (while (nonzero? (-> bank chcr str)) (set! (-> poll-count) (+ 1 (-> poll-count))))))))
+    (none)))

@@ -335,14 +335,18 @@
   "Move vec toward target in yz by alpha times the error, limiting the step length to max-step."
   (let ((y-diff (- (-> target y) (-> vec y)))
         (z-diff (- (-> target z) (-> vec z))))
-    (if (or (!= y-diff 0.0) (!= z-diff 0.0))
+    (when (or (!= y-diff 0.0) (!= z-diff 0.0))
       (let* ((y-step (* y-diff alpha))
              (z-step (* z-diff alpha))
              (step-len (sqrtf (+ (square y-step) (square z-step)))))
         (cond
-          ((>= max-step step-len) (+! (-> vec y) y-step) (+! (-> vec z) z-step))
+          ((>= max-step step-len)
+           (+! (-> vec y) y-step)
+           (+! (-> vec z) z-step))
           (else
-           (let ((step-scale (/ max-step step-len))) (+! (-> vec y) (* step-scale y-step)) (+! (-> vec z) (* step-scale z-step))))))))
+           (let ((step-scale (/ max-step step-len)))
+             (+! (-> vec y) (* step-scale y-step))
+             (+! (-> vec z) (* step-scale z-step))))))))
   vec)
 
 (defun vector-seek-3d-smooth! ((vec vector) (target vector) (max-step float) (alpha float))
@@ -350,13 +354,16 @@
   (let ((x-diff (- (-> target x) (-> vec x)))
         (y-diff (- (-> target y) (-> vec y)))
         (z-diff (- (-> target z) (-> vec z))))
-    (if (or (!= x-diff 0.0) (!= y-diff 0.0) (!= z-diff 0.0))
+    (when (or (!= x-diff 0.0) (!= y-diff 0.0) (!= z-diff 0.0))
       (let* ((x-step (* x-diff alpha))
              (y-step (* y-diff alpha))
              (z-step (* z-diff alpha))
-             (step-len (sqrtf (+ (+ (square x-step) (square y-step)) (square z-step)))))
+             (step-len (sqrtf (+ (square x-step) (square y-step) (square z-step)))))
         (cond
-          ((>= max-step step-len) (+! (-> vec x) x-step) (+! (-> vec y) y-step) (+! (-> vec z) z-step))
+          ((>= max-step step-len)
+           (+! (-> vec x) x-step)
+           (+! (-> vec y) y-step)
+           (+! (-> vec z) z-step))
           (else
            (let ((step-scale (/ max-step step-len)))
              (+! (-> vec x) (* step-scale x-step))
@@ -378,10 +385,7 @@
 
 (defun vector-identity! ((value vector))
   "Set all four lanes of value to 1."
-  (set! (-> value x) 1.0)
-  (set! (-> value y) 1.0)
-  (set! (-> value z) 1.0)
-  (set! (-> value w) 1.0)
+  (set-vector! value 1.0 1.0 1.0 1.0)
   value)
 
 (defun vector-seconds ((out vector) (seconds vector))
@@ -400,31 +404,31 @@
 
 (defun vector-v! ((velocity vector))
   "Convert a per-second velocity to displacement per frame in place."
-  (vector-float*! velocity velocity (-> *display* seconds-per-frame))
+  (vector-float*! velocity velocity (seconds-per-frame))
   velocity)
 
 (defun vector-v+! ((result vector) (position vector) (velocity vector))
   "Advance position by one frame of velocity and write result."
-  (vector+float*! result position velocity (-> *display* seconds-per-frame))
+  (vector+float*! result position velocity (seconds-per-frame))
   result)
 
 (defun vector-v*float+! ((result vector) (position vector) (velocity vector) (velocity-scale float))
   "Advance position by one frame of scaled velocity and write result."
-  (vector+float*! result position velocity (* velocity-scale (-> *display* seconds-per-frame)))
+  (vector+float*! result position velocity (* velocity-scale (seconds-per-frame)))
   result)
 
 (defun vector-v++! ((position vector) (velocity vector))
   "Advance position in place by two frame displacements of velocity."
-  (vector+float*! position position velocity (-> *display* seconds-per-frame))
+  (vector+float*! position position velocity (seconds-per-frame))
   position)
 
 (defun vector-v*float! ((delta-p vector) (velocity vector) (scale float))
   "Convert velocity to a scaled displacement per frame and write delta-p."
-  (vector-float*! delta-p velocity (* scale (-> *display* seconds-per-frame))))
+  (vector-float*! delta-p velocity (* scale (seconds-per-frame))))
 
 (defun vector-v*float++! ((position vector) (velocity vector) (scale float))
   "Advance position in place by one frame of scaled velocity."
-  (vector+float*! position position velocity (* scale (-> *display* seconds-per-frame)))
+  (vector+float*! position position velocity (* scale (seconds-per-frame)))
   position)
 
 (defun vector-to-ups! ((out vector) (per-frame vector))
@@ -717,11 +721,19 @@
 
 (defun vector-cvt.w.s! ((out vector) (value vector))
   "Truncate four floating-point lanes to signed 32-bit integers."
-  (rlet ((vf1 :class vf)) (.lvf vf1 (&-> value quad)) (.ftoi.vf vf1 vf1) (.svf (&-> out quad) vf1) out))
+  (rlet ((vf1 :class vf))
+    (.lvf vf1 (&-> value quad))
+    (.ftoi.vf vf1 vf1)
+    (.svf (&-> out quad) vf1)
+    out))
 
 (defun vector-cvt.s.w! ((out vector) (value vector))
   "Convert four signed 32-bit integer lanes to floating point."
-  (rlet ((vf1 :class vf)) (.lvf vf1 (&-> value quad)) (.itof.vf vf1 vf1) (.svf (&-> out quad) vf1) out))
+  (rlet ((vf1 :class vf))
+    (.lvf vf1 (&-> value quad))
+    (.itof.vf vf1 vf1)
+    (.svf (&-> out quad) vf1)
+    out))
 
 (defun rot-zxy-from-vector! ((out vector) (forward vector))
   "Compute yaw and pitch that orient a forward vector along forward using ZXY rotation order; roll is zero."
@@ -778,11 +790,17 @@
          (vf4 :class vf))
     (init-vf0-vector)
     (cond
-      ((>= 0.0 alpha) (vector-copy! out a))
-      ((>= alpha 1.0) (vector-copy! out b))
+      ((>= 0.0 alpha)
+       (vector-copy! out a))
+      ((>= alpha 1.0)
+       (vector-copy! out b))
       (else
        (let ((v1-2 out))
-         (let ((f0-2 alpha)) (.lvf vf1 (&-> a quad)) (.lvf vf2 (&-> b quad)) (let ((a1-1 f0-2)) (.mov vf4 a1-1)))
+         (let ((f0-2 alpha))
+           (.lvf vf1 (&-> a quad))
+           (.lvf vf2 (&-> b quad))
+           (let ((a1-1 f0-2))
+             (.mov vf4 a1-1)))
          (.add.x.vf.w vf3 vf0 vf0)
          (.sub.vf vf2 vf2 vf1)
          (.mul.x.vf vf2 vf2 vf4)
@@ -812,11 +830,17 @@
          (vf3 :class vf)
          (vf4 :class vf))
     (cond
-      ((>= 0.0 alpha) (vector-copy! out a))
-      ((>= alpha 1.0) (vector-copy! out b))
+      ((>= 0.0 alpha)
+       (vector-copy! out a))
+      ((>= alpha 1.0)
+       (vector-copy! out b))
       (else
        (let ((v1-2 out))
-         (let ((f0-2 alpha)) (.lvf vf1 (&-> a quad)) (.lvf vf2 (&-> b quad)) (let ((a1-1 f0-2)) (.mov vf4 a1-1)))
+         (let ((f0-2 alpha))
+           (.lvf vf1 (&-> a quad))
+           (.lvf vf2 (&-> b quad))
+           (let ((a1-1 f0-2))
+             (.mov vf4 a1-1)))
          (.sub.vf vf2 vf2 vf1)
          (.mul.x.vf vf2 vf2 vf4)
          (.add.vf vf3 vf1 vf2)
@@ -838,7 +862,8 @@
   "Arithmetic-shift packed angle words right 16 bits and convert them to rotation-unit floats."
   (local-vars (v1-1 uint128))
   (rlet ((vf1 :class vf))
-    (let ((v1-0 (-> packed-angles quad))) (.pw.sra v1-1 v1-0 16))
+    (let ((v1-0 (-> packed-angles quad)))
+      (.pw.sra v1-1 v1-0 16))
     (.mov vf1 v1-1)
     (.itof.vf vf1 vf1)
     (.svf (&-> out quad) vf1)
@@ -885,13 +910,16 @@
 (defun vector-deg-lerp-clamp! ((out vector) (minimum vector) (maximum vector) (amount float))
   "Apply clamped shortest-angle interpolation to three lanes and set out.w to 1."
   (cond
-    ((>= 0.0 amount) (vector-copy! out minimum))
-    ((>= amount 1.0) (vector-copy! out maximum))
+    ((>= 0.0 amount)
+     (vector-copy! out minimum))
+    ((>= amount 1.0)
+     (vector-copy! out maximum))
     (else
-     (set! (-> out x) (deg-lerp-clamp (-> minimum x) (-> maximum x) amount))
-     (set! (-> out y) (deg-lerp-clamp (-> minimum y) (-> maximum y) amount))
-     (set! (-> out z) (deg-lerp-clamp (-> minimum z) (-> maximum z) amount))
-     (set! (-> out w) 1.0)))
+     (set-vector! out
+                  (deg-lerp-clamp (-> minimum x) (-> maximum x) amount)
+                  (deg-lerp-clamp (-> minimum y) (-> maximum y) amount)
+                  (deg-lerp-clamp (-> minimum z) (-> maximum z) amount)
+                  1.0)))
   out)
 
 ;; The weird docstrings for the next 4 functions were left behind in the game.
@@ -955,7 +983,9 @@
 
 (defun sphere<-vector! ((out sphere) (center vector))
   "Copy center.xyz into out while preserving its radius."
-  (let ((f0-0 (-> out w))) (vector-copy! out center) (set! (-> out w) f0-0))
+  (let ((r (-> out w)))
+    (vector-copy! out center)
+    (set! (-> out w) r))
   out)
 
 (defun sphere<-vector+r! ((out sphere) (center vector) (radius float))

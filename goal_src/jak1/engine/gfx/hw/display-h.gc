@@ -48,11 +48,9 @@
 
 (defun put-draw-env ((packet (pointer gif-tag)))
   "Send the GIF packet beginning at packet as a direct GS draw-environment transfer."
-  ;; this is a workaround for OpenGOAL not supporting 128-bitfield access yet.
   (#when PC_PORT
     (return #f))
-  (let ((packet64 (the-as (pointer gif-tag64) packet)))
-    (dma-send GIF_DMA_BANK (the-as uint packet) (the-as uint (+ (the-as uint (-> packet64 0 nloop)) (the-as uint 1)))))
+  (dma-send (the-as dma-bank #x1000a000) (the-as uint packet) (+ (-> packet 0 nloop) 1))
   (none))
 
 ;; Per frame data that is used by the renderers.

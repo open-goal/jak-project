@@ -4,7 +4,8 @@
 (require "kernel-defs.gc")
 
 ;; Per-renderer enables for the VU1 drawing pass. The debug menu edits the menu mask, which is
-;; copied to the active mask at the start of each frame.
+;; copied to the active mask at the start of each frame to avoid switching on/off renderers
+;; in the middle of the frame, which could skip set-up or cleanup code.
 
 (defenum vu1-renderer-mask
   :bitfield #t
@@ -58,6 +59,7 @@
 (define *vu1-enable-user* (the-as vu1-renderer-mask 0))
 
 ;; A DMA sink identifies the bucket and texture-page context used by a foreground renderer.
+;; the page/level/bucket indices are into the level's bucket arrays, not absolute bucket indices.
 (deftype dma-foreground-sink (basic)
   ((bucket                   bucket-id)
    (foreground-texture-page  int8)
@@ -74,10 +76,9 @@
 (deftype generic-dma-foreground-sink (dma-foreground-sink)
   ((state generic-bucket-state :inline)))
 
-;; Three foreground sink references share one array. The named aliases select the merc slot at
-;; index zero and the generic slot at index one without storing duplicate references.
 (declare-type level basic)
 
+;; DMA sinks for a level's foreground rendering, divided by renderer.
 (deftype dma-foreground-sink-group (basic)
   ((sink         dma-foreground-sink 3)
    (merc-sink    dma-foreground-sink :overlay-at (-> sink 0))

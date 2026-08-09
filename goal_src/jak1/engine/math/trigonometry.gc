@@ -38,6 +38,10 @@
 
 (defconstant TWO_PI (the-as float #x40c90fda))
 
+(defmacro unwrap-angle (angle)
+  `(the float (sar (shl (the int ,angle) 48) 48))
+  )
+
 ;; DECOMP BEGINS
 
 (defun radmod ((angle float))
@@ -71,17 +75,19 @@
     (the float (sar target-int 48))))
 
 (defun deg-seek-smooth ((in float) (target float) (max-diff float) (amount float))
-  "Move amount of the shortest wrapped difference toward target, capped by max-diff."
+  "Move a fraction toward a rotation-unit target, capped by max-diff."
   (let ((step (* (deg- target in) amount)))
-    (if (< max-diff (fabs step)) (set! step (if (>= step 0.0) max-diff (- max-diff))))
+    (if (< max-diff (fabs step))
+        (set! step (if (>= step 0.0) max-diff (- max-diff))))
     (+ in step)))
 
 (defun deg-lerp-clamp ((min-val float) (max-val float) (in float))
-  "Interpolate along the shortest wrapped rotation-unit arc, clamping in to the endpoints."
+  "Interpolate along the shortest wrapped rotation-unit arc with a clamped amount."
   (cond
-    ((>= 0.00000000 in) min-val)
-    ((>= in 1.00000000) max-val)
-    (else (the float (sar (shl (the int (+ min-val (* in (deg-diff min-val max-val)))) 48) 48)))))
+    ((>= 0.0 in) min-val)
+    ((>= in 1.0) max-val)
+    (else
+     (unwrap-angle (+ min-val (* in (deg-diff min-val max-val)))))))
 
 ;; create a static array with the given values, interpreted as floats.
 (defmacro make-float-table (name size vals)
@@ -89,428 +95,262 @@
 
 ;; table[x] = 1/(2^x)
 ;; unused?
-(make-float-table binary-table
-                  32
-                  (#x3f800000 ;; 1.0
-                   #x3f000000 ;; 0.5
-                   #x3e800000 ;; 0.25
-                   #x3e000000 ;; ...
-                   #x3d800000
-                   #x3d000000
-                   #x3c800000
-                   #x3c000000
-                   #x3b800000
-                   #x3b000000
-                   #x3a800000
-                   #x3a000000
-                   #x39800000
-                   #x39000000
-                   #x38800000
-                   #x38000000
-                   #x37800000
-                   #x37000000
-                   #x36800000
-                   #x36000000
-                   #x35800000
-                   #x35000000
-                   #x34800000
-                   #x34000000
-                   #x33800000
-                   #x33000000
-                   #x32800000
-                   #x32000000
-                   #x31800000
-                   #x31000000
-                   #x30800000
-                   #x30000000))
+(define binary-table
+  (new 'static
+       'boxed-array
+       :type
+       float
+       1.0
+       0.5
+       0.25
+       0.125
+       0.0625
+       0.03125
+       0.015625
+       0.0078125
+       0.00390625
+       0.001953125
+       0.0009765625
+       0.00048828125
+       0.00024414062
+       0.00012207031
+       0.000061035156
+       0.000030517578
+       0.000015258789
+       0.0000076293945
+       0.0000038146973
+       0.0000019073486
+       0.0000009536743
+       0.00000047683716
+       0.00000023841858
+       0.00000011920929
+       0.000000059604645
+       0.000000029802322
+       0.000000014901161
+       0.000000007450581
+       0.0000000037252903
+       0.0000000018626451
+       0.0000000009313226
+       0.0000000004656613))
 
-;; CORDIC angle table: sincos-table[i] = atan(2^-i) radians. From entry 12 onward,
-;; atan(x) rounds to x in single precision, so the tail matches binary-table. The shipping
-;; trigonometric routines use polynomials instead; both tables are retained dead data from
-;; an earlier shift-and-add implementation.
-(make-float-table sincos-table
-                  32
-                  (#x3f490fdb
-                   #x3eed6338
-                   #x3e7adbb0
-                   #x3dfeadd5
-                   #x3d7faade
-                   #x3cffeaae
-                   #x3c7ffaab
-                   #x3bfffeab
-                   #x3b7fffab
-                   #x3affffeb
-                   #x3a7ffffb
-                   #x39fffffe
-                   #x39800000
-                   #x39000000
-                   #x38800000
-                   #x38000000
-                   #x37800000
-                   #x37000000
-                   #x36800000
-                   #x36000000
-                   #x35800000
-                   #x35000000
-                   #x34800000
-                   #x34000000
-                   #x33800000
-                   #x33000000
-                   #x32800000
-                   #x32000000
-                   #x31800000
-                   #x31000000
-                   #x30800000
-                   #x30000000))
+;; CORDIC angle table: sincos-table[i] = atan(2^-i) radians.
+;; Unused, actual sine/cosines all use polynomials instead of CORDIC.
+(define sincos-table
+  (new 'static
+       'boxed-array
+       :type
+       float
+       0.7853982
+       0.4636476
+       0.24497867
+       0.124354996
+       0.06241881
+       0.031239834
+       0.015623729
+       0.007812341
+       0.0039062302
+       0.0019531226
+       0.0009765622
+       0.0004882812
+       0.00024414062
+       0.00012207031
+       0.000061035156
+       0.000030517578
+       0.000015258789
+       0.0000076293945
+       0.0000038146973
+       0.0000019073486
+       0.0000009536743
+       0.00000047683716
+       0.00000023841858
+       0.00000011920929
+       0.000000059604645
+       0.000000029802322
+       0.000000014901161
+       0.000000007450581
+       0.0000000037252903
+       0.0000000018626451
+       0.0000000009313226
+       0.0000000004656613))
 
 (defun sin ((angle float))
   "Return sine for an angle in rotation units after wrapping it to a signed half-turn."
-  ;; Sign-extend the low 16 bits, then convert rotation units to radians before evaluating
-  ;; the degree-nine odd minimax polynomial.
-  (let ((f2-0 (* 0.000095873795 (the float (sar (shl (the int angle) 48) 48)))))
-    (let ((f0-1 f2-0)))
-    (let* ((f1-4 (* 0.999998 f2-0))
-           (f0-3 (* f2-0 f2-0))
-           (f2-1 (* f2-0 f0-3))
-           (f1-5 (+ f1-4 (* -0.16666014 f2-1)))
-           (f2-2 (* f2-1 f0-3))
-           (f1-6 (+ f1-5 (* 0.008326521 f2-2)))
-           (f2-3 (* f2-2 f0-3))
-           (f1-7 (+ f1-6 (* -0.0001956241 f2-3)))
-           (f0-4 (* f2-3 f0-3)))
-      (+ f1-7 (* 0.0000023042373 f0-4)))))
+  ;; 9-th degree polynomial
+  (let ((x (* 0.000095873795 (unwrap-angle angle))))
+    x
+    (let* ((y1 (* 0.999998 x))
+           (x2 (square x))
+           (x3 (* x x2))
+           (y3 (+ y1 (* -0.16666014 x3)))
+           (x5 (* x3 x2))
+           (y5 (+ y3 (* 0.008326521 x5)))
+           (x7 (* x5 x2))
+           (y7 (+ y5 (* -0.0001956241 x7)))
+           (x9 (* x7 x2)))
+      (+ y7 (* 0.0000023042373 x9)))))
 
-(defun sin-rad ((angle float))
-  "Return sine for a radian angle in the supported -pi to pi interval with a degree-nine odd minimax polynomial."
-  (local-vars
-    (f1-0 float)
-    (f2-0 float)
-    (f3-0 float)
-    (f4-0 float)
-    (f5-0 float)
-    (f6-0 float)
-    (f7-0 float)
-    (f8-0 float)
-    (f9-0 float)
-    (f10-0 float)
-    (f11-0 float)
-    (result float)
-    (acc float))
-  (set! f1-0 (* angle angle))
-  (set! f7-0 (the-as float #x3f7fffde))
-  (set! f8-0 (the-as float #xbe2aa8f5))
-  (set! f2-0 (* angle f1-0))
-  (set! f3-0 (* f1-0 f1-0))
-  (set! f9-0 (the-as float #x3c086bf6))
-  (set! f4-0 (* f2-0 f1-0))
-  (set! f5-0 (* f3-0 f2-0))
-  (set! f10-0 (the-as float #xb94d2072))
-  (set! f6-0 (* f4-0 f3-0))
-  (set! f11-0 (the-as float #x361aa27f))
-  (#unless PC_PORT
-    (mula.s angle f7-0)
-    (madda.s f2-0 f8-0)
-    (madda.s f4-0 f9-0)
-    (madda.s f5-0 f10-0)
-    (madd.s result f6-0 f11-0))
-  (#when PC_PORT
-    (set! acc (* angle f7-0))
-    (set! acc (+ acc (* f2-0 f8-0)))
-    (set! acc (+ acc (* f4-0 f9-0)))
-    (set! acc (+ acc (* f5-0 f10-0)))
-    (set! result (+ acc (* f6-0 f11-0))))
-  result)
+(defun sin-rad ((x float))
+  "Return sine for a radian angle in the supported interval with a degree-nine odd minimax polynomial."
+  (let* ((x2 (square x))
+         (c1 0.999998)
+         (c3 -0.16666014)
+         (x3 (* x x2))
+         (x4 (square x2))
+         (c5 0.008326521)
+         (x5 (* x3 x2))
+         (x7 (* x4 x3))
+         (c7 -0.0001956241)
+         (x9 (* x5 x4))
+         (c9 0.0000023042373))
+    (+ (* x c1)
+       (* x3 c3)
+       (* x5 c5)
+       (* x7 c7)
+       (* x9 c9))
+    ;; (.mula.s x c1)
+    ;; (.madda.s x3 c3)
+    ;; (.madda.s x5 c5)
+    ;; (.madda.s x7 c7)
+    ;; (.madd.s result x9 c9)
+    ))
 
 ;; Minimax coefficients for the odd sine approximation.
-(define *sin-poly-vec*
-  (new 'static
-       'vector
-       :x
-       (the-as float #xbe2aa8f5) ;; -1/3!
-       :y
-       (the-as float #x3c086bf6) ;; 1/5!
-       :z
-       (the-as float #xb94d2072) ;; -1/7!
-       :w
-       (the-as float #x361aa27f) ;; approximately 1/9!
-       ))
+(define *sin-poly-vec* (new 'static 'vector :x -0.16666014 :y 0.008326521 :z -0.0001956241 :w 0.0000023042373))
+(define *sin-poly-vec2* (new 'static 'vector :x 0.999998))
 
-;;
-(define *sin-poly-vec2* (new 'static 'vector :x (the-as float #x3f7fffde) :y 0.0 :z 0.0 :w 0.0))
 
-(#unless PC_PORT
-  (defun vector-sin-rad! ((dst vector) (src vector))
-    "Compute per-lane sine for radian inputs in the supported -pi to pi interval.
-     The degree-nine odd polynomial uses minimax-adjusted coefficients near the Taylor values."
-    (rlet ((input :class vf)
-           (result :class vf)
-           (input-squared :class vf)
-           (input-cubed :class vf)
-           (input-fourth :class vf)
-           (input-fifth :class vf)
-           (input-seventh :class vf)
-           (input-ninth :class vf)
-           (coefficients :class vf)
-           (linear-coefficient :class vf)
-           (coefficient-address)
-           (acc :class vf))
-      (.lvf input src)
-      (.mul.vf input-squared input input)
-      (m! coefficient-address *sin-poly-vec2*)
-      (.lvf linear-coefficient coefficient-address)
-      (m! coefficient-address *sin-poly-vec*)
-      (.lvf coefficients coefficient-address)
-      (.mul.vf input-cubed input-squared input)
-      (.mul.vf input-fourth input-squared input-squared)
-      (.mul.x.vf acc input linear-coefficient)
-      (.mul.vf input-fifth input-cubed input-squared)
-      (.mul.vf input-seventh input-fourth input-cubed)
-      (.add.mul.x.vf acc input-cubed coefficients acc)
-      (.mul.vf input-ninth input-fifth input-fourth)
-      (.add.mul.y.vf acc input-fifth coefficients acc)
-      (.add.mul.z.vf acc input-seventh coefficients acc)
-      (.add.mul.w.vf result input-ninth coefficients acc)
-      (.svf dst result)
-      dst)))
+(defun vector-sin-rad! ((dst vector) (src vector))
+  "Compute per-lane sine for radian inputs in the supported -pi to pi interval.
+   The degree-nine odd polynomial uses minimax-adjusted coefficients near the Taylor values."
+  (rlet ((input :class vf)
+         (result :class vf)
+         (input-squared :class vf)
+         (input-cubed :class vf)
+         (input-fourth :class vf)
+         (input-fifth :class vf)
+         (input-seventh :class vf)
+         (input-ninth :class vf)
+         (coefficients :class vf)
+         (linear-coefficient :class vf)
+         (acc :class vf))
+    (.lvf input src)
+    (.mul.vf input-squared input input)
+    (.lvf linear-coefficient *sin-poly-vec2*)
+    (.lvf coefficients *sin-poly-vec*)
+    (.mul.vf input-cubed input-squared input)
+    (.mul.vf input-fourth input-squared input-squared)
+    (.mul.x.vf acc input linear-coefficient)
+    (.mul.vf input-fifth input-cubed input-squared)
+    (.mul.vf input-seventh input-fourth input-cubed)
+    (.add.mul.x.vf acc input-cubed coefficients acc)
+    (.mul.vf input-ninth input-fifth input-fourth)
+    (.add.mul.y.vf acc input-fifth coefficients acc)
+    (.add.mul.z.vf acc input-seventh coefficients acc)
+    (.add.mul.w.vf result input-ninth coefficients acc)
+    (.svf dst result)
+    dst))
 
-(#when PC_PORT
-  (defun vector-sin-rad! ((dst vector) (src vector))
-    "Compute per-lane sine for radian inputs in the supported -pi to pi interval.
-     The degree-nine odd polynomial uses minimax-adjusted coefficients near the Taylor values."
-    (rlet ((input :class vf)
-           (result :class vf)
-           (input-squared :class vf)
-           (input-cubed :class vf)
-           (input-fourth :class vf)
-           (input-fifth :class vf)
-           (input-seventh :class vf)
-           (input-ninth :class vf)
-           (coefficients :class vf)
-           (linear-coefficient :class vf)
-           (acc :class vf))
-      (.lvf input src)
-      (.mul.vf input-squared input input)
-      (.lvf linear-coefficient *sin-poly-vec2*)
-      (.lvf coefficients *sin-poly-vec*)
-      (.mul.vf input-cubed input-squared input)
-      (.mul.vf input-fourth input-squared input-squared)
-      (.mul.x.vf acc input linear-coefficient)
-      (.mul.vf input-fifth input-cubed input-squared)
-      (.mul.vf input-seventh input-fourth input-cubed)
-      (.add.mul.x.vf acc input-cubed coefficients acc)
-      (.mul.vf input-ninth input-fifth input-fourth)
-      (.add.mul.y.vf acc input-fifth coefficients acc)
-      (.add.mul.z.vf acc input-seventh coefficients acc)
-      (.add.mul.w.vf result input-ninth coefficients acc)
-      (.svf dst result)
-      dst)))
+(defun cos-rad ((x float))
+  "Return cosine for a radian angle in the supported interval with a degree-eight even minimax polynomial."
+  (let* ((x2 (square x))
+         (c0 1.0)
+         (c2 -0.49998003)
+         (x4 (square x2))
+         (c4 0.041620404)
+         (c6 -0.0013636408)
+         (x6 (* x4 x2))
+         (x8 (square x4))
+         (c8 0.000020170546))
+    (+ c0
+       (* x2 c2)
+       (* x4 c4)
+       (* x6 c6)
+       (* x8 c8))
+    ;; (.mula.s c0 c0)
+    ;; (.madda.s c2 x2)
+    ;; (.madda.s c4 x4)
+    ;; (.madda.s c6 x6)
+    ;; (.madd.s result c8 x8)
+    ))
 
-(defun cos-rad ((angle float))
-  "Return cosine for a radian angle in the supported -pi to pi interval with a degree-eight even minimax polynomial."
-  (local-vars
-    (f1-0 float)
-    (f3-0 float)
-    (f4-0 float)
-    (f5-0 float)
-    (f7-0 float)
-    (f8-0 float)
-    (f9-0 float)
-    (f10-0 float)
-    (f11-0 float)
-    (result float)
-    (acc float))
-  (set! f1-0 (* angle angle))
-  (set! f7-0 1.000000)
-  (set! f8-0 (the-as float #xbefffd62))
-  (set! f3-0 (* f1-0 f1-0))
-  (set! f9-0 (the-as float #x3d2a7a28))
-  (set! f10-0 (the-as float #xbab2bc31))
-  (set! f4-0 (* f3-0 f1-0))
-  (set! f5-0 (* f3-0 f3-0))
-  (set! f11-0 (the-as float #x37a933eb))
-  (#unless PC_PORT
-    (mula.s f7-0 f7-0)
-    (madda.s f8-0 f1-0)
-    (madda.s f9-0 f3-0)
-    (madda.s f10-0 f4-0)
-    (madd.s result f11-0 f5-0))
-  (#when PC_PORT
-    (set! acc (* f7-0 f7-0))
-    (set! acc (+ acc (* f8-0 f1-0)))
-    (set! acc (+ acc (* f9-0 f3-0)))
-    (set! acc (+ acc (* f10-0 f4-0)))
-    (set! result (+ acc (* f11-0 f5-0))))
-  result)
+(define *cos-poly-vec* (new 'static 'vector :x -0.49998003 :y 0.041620404 :z -0.0013636408 :w 0.000020170546))
 
-(define *cos-poly-vec*
-  (new 'static
-       'vector
-       :x
-       (the-as float #xbefffd62)
-       :y
-       (the-as float #x3d2a7a28)
-       :z
-       (the-as float #xbab2bc31)
-       :w
-       (the-as float #x37a933eb)))
+(defun vector-cos-rad! ((dst vector) (src vector))
+  "Compute per-lane cosine for radian inputs in the supported -pi to pi interval."
+  (rlet ((vf0 :class vf)
+         (input :class vf)
+         (result :class vf)
+         (input-squared :class vf)
+         (input-fourth :class vf)
+         (input-sixth :class vf)
+         (input-eighth :class vf)
+         (coefficients :class vf)
+         (acc :class vf))
+    (init-vf0-vector)
+    (.lvf input src)
+    ;; Subtracting an uninitialized host SIMD register from itself can propagate NaNs.
+    ;; (.sub.vf result result result)
+    (.xor.vf result result result) ;; og:preserve
+    (.lvf coefficients *cos-poly-vec*)
+    (.mul.vf input-squared input input)
+    (.add.w.vf acc result vf0)
+    (.mul.vf input-fourth input-squared input-squared)
+    (.add.mul.x.vf acc input-squared coefficients acc)
+    (.mul.vf input-sixth input-fourth input-squared)
+    (.add.mul.y.vf acc input-fourth coefficients acc)
+    (.mul.vf input-eighth input-fourth input-fourth)
+    (.add.mul.z.vf acc input-sixth coefficients acc)
+    (.add.mul.w.vf result input-eighth coefficients acc)
+    (.svf dst result)
+    dst))
 
-(#unless PC_PORT
-  (defun vector-cos-rad! ((dst vector) (src vector))
-    "Compute per-lane cosine for radian inputs in the supported -pi to pi interval."
-    (rlet ((vf0 :reg vf0)
-           (input :class vf)
-           (result :class vf)
-           (input-squared :class vf)
-           (input-fourth :class vf)
-           (input-sixth :class vf)
-           (input-eighth :class vf)
-           (coefficients :class vf)
-           (coefficient-address)
-           (acc :class vf))
-      (.lvf input src)
-      ;; The original VU register is deliberately cleared by subtracting it from itself.
-      (.sub.vf result result result)
-      (m! coefficient-address *cos-poly-vec*)
-      (.lvf coefficients coefficient-address)
-      (.mul.vf input-squared input input)
-      (.add.w.vf acc result vf0)
-      (.mul.vf input-fourth input-squared input-squared)
-      (.add.mul.x.vf acc input-squared coefficients acc)
-      (.mul.vf input-sixth input-fourth input-squared)
-      (.add.mul.y.vf acc input-fourth coefficients acc)
-      (.mul.vf input-eighth input-fourth input-fourth)
-      (.add.mul.z.vf acc input-sixth coefficients acc)
-      (.add.mul.w.vf result input-eighth coefficients acc)
-      (.svf dst result)
-      dst)))
-
-(#when PC_PORT
-  (defun vector-cos-rad! ((dst vector) (src vector))
-    "Compute per-lane cosine for radian inputs in the supported -pi to pi interval."
-    (rlet ((vf0 :class vf)
-           (input :class vf)
-           (result :class vf)
-           (input-squared :class vf)
-           (input-fourth :class vf)
-           (input-sixth :class vf)
-           (input-eighth :class vf)
-           (coefficients :class vf)
-           (acc :class vf))
-      (init-vf0-vector)
-      (.lvf input src)
-      ;; Subtracting an uninitialized host SIMD register from itself can propagate NaNs.
-      (.xor.vf result result result) ;; og:preserve
-      (.lvf coefficients *cos-poly-vec*)
-      (.mul.vf input-squared input input)
-      (.add.w.vf acc result vf0)
-      (.mul.vf input-fourth input-squared input-squared)
-      (.add.mul.x.vf acc input-squared coefficients acc)
-      (.mul.vf input-sixth input-fourth input-squared)
-      (.add.mul.y.vf acc input-fourth coefficients acc)
-      (.mul.vf input-eighth input-fourth input-fourth)
-      (.add.mul.z.vf acc input-sixth coefficients acc)
-      (.add.mul.w.vf result input-eighth coefficients acc)
-      (.svf dst result)
-      dst)))
-
-(#unless PC_PORT
-  (defun vector-sincos-rad! ((dst-sin vector) (dst-cos vector) (src vector))
-    "Compute per-lane sine and cosine for radian inputs in the supported -pi to pi interval."
-    (rlet ((vf0 :reg vf0)
-           (input :class vf)
-           (input-squared :class vf)
-           (input-cubed :class vf)
-           (input-fourth :class vf)
-           (input-fifth :class vf)
-           (input-sixth :class vf)
-           (input-seventh :class vf)
-           (input-eighth :class vf)
-           (input-ninth :class vf)
-           (sin-coefficients :class vf)
-           (sin-linear-coefficient :class vf)
-           (sin-result :class vf)
-           (cos-coefficients :class vf)
-           (cos-result :class vf)
-           (coefficient-address)
-           (acc :class vf))
-      (.lvf input src)
-      ;; The original VU register is deliberately cleared by subtracting it from itself.
-      (.sub.vf cos-result cos-result cos-result)
-      (m! coefficient-address *sin-poly-vec2*)
-      (.lvf sin-linear-coefficient coefficient-address)
-      (.mul.vf input-squared input input)
-      (m! coefficient-address *sin-poly-vec*)
-      (.lvf sin-coefficients coefficient-address)
-      (m! coefficient-address *cos-poly-vec*)
-      (.lvf cos-coefficients coefficient-address)
-      (.mul.x.vf acc input sin-linear-coefficient)
-      (.mul.vf input-cubed input-squared input)
-      (.mul.vf input-fourth input-squared input-squared)
-      (.mul.vf input-fifth input-cubed input-squared)
-      (.mul.vf input-sixth input-cubed input-cubed)
-      (.mul.vf input-seventh input-fourth input-cubed)
-      (.mul.vf input-eighth input-fourth input-fourth)
-      (.mul.vf input-ninth input-fifth input-fourth)
-      (.add.mul.x.vf acc input-cubed sin-coefficients acc)
-      (.add.mul.y.vf acc input-fifth sin-coefficients acc)
-      (.add.mul.z.vf acc input-seventh sin-coefficients acc)
-      (.add.mul.w.vf sin-result input-ninth sin-coefficients acc)
-      (.add.w.vf acc cos-result vf0)
-      (.add.mul.x.vf acc input-squared cos-coefficients acc)
-      (.add.mul.y.vf acc input-fourth cos-coefficients acc)
-      (.add.mul.z.vf acc input-sixth cos-coefficients acc)
-      (.add.mul.w.vf cos-result input-eighth cos-coefficients acc)
-      (.svf dst-sin sin-result)
-      (.svf dst-cos cos-result)
-      0)))
-
-(#when PC_PORT
-  (defun vector-sincos-rad! ((dst-sin vector) (dst-cos vector) (src vector))
-    "Compute per-lane sine and cosine for radian inputs in the supported -pi to pi interval."
-    (rlet ((vf0 :class vf)
-           (input :class vf)
-           (input-squared :class vf)
-           (input-cubed :class vf)
-           (input-fourth :class vf)
-           (input-fifth :class vf)
-           (input-sixth :class vf)
-           (input-seventh :class vf)
-           (input-eighth :class vf)
-           (input-ninth :class vf)
-           (sin-coefficients :class vf)
-           (sin-linear-coefficient :class vf)
-           (sin-result :class vf)
-           (cos-coefficients :class vf)
-           (cos-result :class vf)
-           (acc :class vf))
-      (init-vf0-vector)
-      (.lvf input src)
-      ;; Subtracting an uninitialized host SIMD register from itself can propagate NaNs.
-      (.xor.vf cos-result cos-result cos-result) ;; og:preserve
-      (.lvf sin-linear-coefficient *sin-poly-vec2*)
-      (.mul.vf input-squared input input)
-      (.lvf sin-coefficients *sin-poly-vec*)
-      (.lvf cos-coefficients *cos-poly-vec*)
-      (.mul.x.vf acc input sin-linear-coefficient)
-      (.mul.vf input-cubed input-squared input)
-      (.mul.vf input-fourth input-squared input-squared)
-      (.mul.vf input-fifth input-cubed input-squared)
-      (.mul.vf input-sixth input-cubed input-cubed)
-      (.mul.vf input-seventh input-fourth input-cubed)
-      (.mul.vf input-eighth input-fourth input-fourth)
-      (.mul.vf input-ninth input-fifth input-fourth)
-      (.add.mul.x.vf acc input-cubed sin-coefficients acc)
-      (.add.mul.y.vf acc input-fifth sin-coefficients acc)
-      (.add.mul.z.vf acc input-seventh sin-coefficients acc)
-      (.add.mul.w.vf sin-result input-ninth sin-coefficients acc)
-      (.add.w.vf acc cos-result vf0)
-      (.add.mul.x.vf acc input-squared cos-coefficients acc)
-      (.add.mul.y.vf acc input-fourth cos-coefficients acc)
-      (.add.mul.z.vf acc input-sixth cos-coefficients acc)
-      (.add.mul.w.vf cos-result input-eighth cos-coefficients acc)
-      (.svf dst-sin sin-result)
-      (.svf dst-cos cos-result)
-      0)))
+(defun vector-sincos-rad! ((dst-sin vector) (dst-cos vector) (src vector))
+  "Compute per-lane sine and cosine for radian inputs in the supported -pi to pi interval."
+  (rlet ((vf0 :class vf)
+         (input :class vf)
+         (input-squared :class vf)
+         (input-cubed :class vf)
+         (input-fourth :class vf)
+         (input-fifth :class vf)
+         (input-sixth :class vf)
+         (input-seventh :class vf)
+         (input-eighth :class vf)
+         (input-ninth :class vf)
+         (sin-coefficients :class vf)
+         (sin-linear-coefficient :class vf)
+         (sin-result :class vf)
+         (cos-coefficients :class vf)
+         (cos-result :class vf)
+         (acc :class vf))
+    (init-vf0-vector)
+    (.lvf input src)
+    ;; Subtracting an uninitialized host SIMD register from itself can propagate NaNs.
+    ;; (.sub.vf cos-result cos-result cos-result)
+    (.xor.vf cos-result cos-result cos-result) ;; og:preserve
+    (.lvf sin-linear-coefficient *sin-poly-vec2*)
+    (.mul.vf input-squared input input)
+    (.lvf sin-coefficients *sin-poly-vec*)
+    (.lvf cos-coefficients *cos-poly-vec*)
+    (.mul.x.vf acc input sin-linear-coefficient)
+    (.mul.vf input-cubed input-squared input)
+    (.mul.vf input-fourth input-squared input-squared)
+    (.mul.vf input-fifth input-cubed input-squared)
+    (.mul.vf input-sixth input-cubed input-cubed)
+    (.mul.vf input-seventh input-fourth input-cubed)
+    (.mul.vf input-eighth input-fourth input-fourth)
+    (.mul.vf input-ninth input-fifth input-fourth)
+    (.add.mul.x.vf acc input-cubed sin-coefficients acc)
+    (.add.mul.y.vf acc input-fifth sin-coefficients acc)
+    (.add.mul.z.vf acc input-seventh sin-coefficients acc)
+    (.add.mul.w.vf sin-result input-ninth sin-coefficients acc)
+    (.add.w.vf acc cos-result vf0)
+    (.add.mul.x.vf acc input-squared cos-coefficients acc)
+    (.add.mul.y.vf acc input-fourth cos-coefficients acc)
+    (.add.mul.z.vf acc input-sixth cos-coefficients acc)
+    (.add.mul.w.vf cos-result input-eighth cos-coefficients acc)
+    (.svf dst-sin sin-result)
+    (.svf dst-cos cos-result)
+    0))
 
 (defmacro sincos-rad-asm (out x)
   "Emit the shared scalar sine/cosine polynomial and store sine followed by cosine."
@@ -892,76 +732,76 @@
        'array
        float
        32
-       (the-as float #x3f800000)
-       (the-as float #x3f82cd80)
-       (the-as float #x3f85aac0)
-       (the-as float #x3f889800)
-       (the-as float #x3f8b95c0)
-       (the-as float #x3f8ea400)
-       (the-as float #x3f91c3c0)
-       (the-as float #x3f94f4c0)
-       (the-as float #x3f9837c0)
-       (the-as float #x3f9b8d00)
-       (the-as float #x3f9ef500)
-       (the-as float #x3fa27040)
-       (the-as float #x3fa5fec0)
-       (the-as float #x3fa9a140)
-       (the-as float #x3fad5800)
-       (the-as float #x3fb123c0)
-       (the-as float #x3fb504c0)
-       (the-as float #x3fb8fb80)
-       (the-as float #x3fbd0880)
-       (the-as float #x3fc12c40)
-       (the-as float #x3fc56700)
-       (the-as float #x3fc9b980)
-       (the-as float #x3fce2480)
-       (the-as float #x3fd2a800)
-       (the-as float #x3fd744c0)
-       (the-as float #x3fdbfb80)
-       (the-as float #x3fe0ccc0)
-       (the-as float #x3fe5b900)
-       (the-as float #x3feac0c0)
-       (the-as float #x3fefe480)
-       (the-as float #x3ff52540)
-       (the-as float #x3ffa8380)))
+       1.0
+       1.0218964
+       1.0442734
+       1.0671387
+       1.0905075
+       1.1143799
+       1.1387863
+       1.1637192
+       1.1892014
+       1.2152405
+       1.2418518
+       1.2690506
+       1.2968369
+       1.3252335
+       1.354248
+       1.3839035
+       1.4142075
+       1.4451752
+       1.4768219
+       1.5091629
+       1.5422058
+       1.5759735
+       1.6104889
+       1.645752
+       1.6817856
+       1.7186127
+       1.7562485
+       1.7947083
+       1.8340073
+       1.8741608
+       1.9151993
+       1.9571381))
 
 (define exp-strail
   (new 'static
        'array
        float
        32
-       (the-as float #x0)
-       (the-as float #x35531585)
-       (the-as float #x34d9f312)
-       (the-as float #x35e8092e)
-       (the-as float #x3471f546)
-       (the-as float #x36e62d17)
-       (the-as float #x361b9d59)
-       (the-as float #x36bea3fc)
-       (the-as float #x36c14637)
-       (the-as float #x36e6e755)
-       (the-as float #x36c98247)
-       (the-as float #x34c0c312)
-       (the-as float #x36354d8b)
-       (the-as float #x3655a754)
-       (the-as float #x36fba90b)
-       (the-as float #x36d6074b)
-       (the-as float #x36cccfe7)
-       (the-as float #x36bd1d8c)
-       (the-as float #x368e7d60)
-       (the-as float #x35cca667)
-       (the-as float #x36a84554)
-       (the-as float #x36f619b9)
-       (the-as float #x35c151f8)
-       (the-as float #x366c8f89)
-       (the-as float #x36f32b5a)
-       (the-as float #x36de5f6c)
-       (the-as float #x36776155)
-       (the-as float #x355cef90)
-       (the-as float #x355cfba5)
-       (the-as float #x36e66f73)
-       (the-as float #x36f45492)
-       (the-as float #x36cb6dc9)))
+       0.0
+       0.0000007863494
+       0.00000040596257
+       0.0000017288019
+       0.00000022534104
+       0.0000068597833
+       0.0000023188388
+       0.0000056815315
+       0.0000057600223
+       0.0000068814647
+       0.000006005433
+       0.0000003590472
+       0.0000027016238
+       0.000003183687
+       0.000007500062
+       0.000006378546
+       0.000006103877
+       0.0000056360786
+       0.0000042465254
+       0.0000015247614
+       0.000005014861
+       0.000007334366
+       0.0000014403477
+       0.000003525029
+       0.000007247011
+       0.000006627224
+       0.0000036862523
+       0.00000082304996
+       0.0000008232258
+       0.0000068675085
+       0.000007281612
+       0.000006062652))
 
 (defun exp ((value float))
   "Approximate e^value with Tang-style range reduction.
@@ -1101,7 +941,7 @@
   "Return inverse cosine in rotation units."
   (let ((result (- 16384.000000 (asin value))))
     (#when PC_PORT
-      ;; Host rounding can produce exact zero here and trigger a punch-animation discontinuity.
+      ;; Host rounding can produce exact zero here and this triggers punch glitch.
       ;; Keep the PC result positive without changing the global floating-point rounding mode.
       (when (= result 0.0)
         (set! result 0.00000000001))) ;; og:preserve

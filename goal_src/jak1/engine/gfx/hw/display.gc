@@ -13,6 +13,18 @@
     (* 8 1024 1024) ;; 8M
     (* 16 1024 1024))) ;; 16M
 
+;; Display controls low-level frame presentation and timing.
+;; The "display env" is the context for low-level hardware display settings like
+;; resolution and pixel format, it forwards these settings to Sony Functions that
+;; know how to configure low-level analog video hardware.
+
+;; The "draw env" is a very simple context for drawing settings,
+;; including low-level settings like framebuffer address and memory layout,
+;; but also blending settings. The renderers are free to mess with blending settings
+;; outside of the draw-env but if they mess with framebuffer settings,
+;; they are responsible for restoring them.
+
+
 ;; DECOMP BEGINS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -155,7 +167,9 @@
 
 (defun put-display-alpha-env ((env display-env))
   "Write DISPFB1 and DISPLAY1 immediately from env."
-  (let ((gs (the-as gs-bank #x12000000))) (set! (-> gs dspfb1) (-> env dspfb)) (set! (-> gs display1) (-> env display)))
+  (let ((gs (the-as gs-bank #x12000000)))
+    (set! (-> gs dspfb1) (-> env dspfb))
+    (set! (-> gs display1) (-> env display)))
   (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -291,11 +305,8 @@
 
 ;; location and size
 (define *profile-x* 1808)
-
 (define *profile-y* (+ (-> *video-parms* screen-miny) 8))
-
 (define *profile-w* 416)
-
 (define *profile-h* 8)
 
 ;; ticks or percent?

@@ -6,24 +6,17 @@
 ;; The "generic merc" renderer converts merc data to be used by generic.
 ;; It is used for environment mapping and scissoring in the original game.
 
-;; Which fragments take this path is decided in bones.gc, not here: a fragment that failed the
-;; screen-edge test needs a clipper MERC's own microprogram does not have, and a fragment with an
-;; environment map needs a second attribute set it cannot produce. Either way the fragment is marked
-;; use-mercneric and arrives here instead, in the same compact form MERC would have received.
+;; Which fragments take this path is decided in bones.gc. The game prefers merc,
+;; but falls back to generic when clipping or environment mapping is needed.
 
 ;; DECOMP BEGINS
 
-;; One bone's transform on its way to VU0, with the DMA tag that carried it sharing the first
-;; quadword. Eight quadwords whether or not all eight are used, because the converter stages them in
-;; fixed-size slots.
+;; One bone's transform and DMA tag.
 (deftype merc-matrix (structure)
   ((quad   uint128 8)
    (vector vector 8 :inline :overlay-at (-> quad 0))
    (tag    uint64 :overlay-at (-> quad 0))))
 
-;; A DMA tag whose address and size words are read back as ordinary data: the converter walks the
-;; chain itself rather than letting the DMA controller follow it, so it needs the link in a form it
-;; can load.
 (deftype generic-merc-tag (dma-packet)
   ((next-ptr uint32 :overlay-at vif1)
    (size     uint32 :overlay-at vif0)))
@@ -107,8 +100,6 @@
    (hsr-xmult                  vector :inline)
    (hsr-ymult                  vector :inline)))
 
-;; The mercneric working set, overlaid on generic-input-buffer at offset zero. MERC and TIE never
-;; convert at the same time, so they share those 472 quadwords rather than each reserving their own.
 (deftype generic-merc-work (structure)
   ((input-a generic-merc-input :inline)
    (input-b generic-merc-input :inline)

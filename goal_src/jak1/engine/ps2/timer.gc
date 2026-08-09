@@ -11,7 +11,7 @@
 (defun timer-reset ((timer timer-bank))
   "Clear an EE hardware timer counter."
   (#when PC_PORT
-    ;; The host timer cannot be reset, so retain its current value as the new origin.
+    ;; The host timer cannot be reset, just store the value at reset time.
     (if (= timer TIMER1_BANK) (set! *timer-reset-value* (get-bus-clock/256)) (format 0 "Unknown timer #x~X in timer-reset~%"))
     (return (the uint 0)))
   (#unless PC_PORT
@@ -41,28 +41,29 @@
 (#unless PC_PORT
   (defun disable-irq ()
     "Clear the global interrupt-enable bit."
-    (rlet ((status :type uint)) (m status Status) (logand! status (lognot COP0_STATUS_IE)) (m Status status) (sync.p))))
+    (rlet ((status :type uint)) 
+      (m status Status)
+      (logand! status (lognot COP0_STATUS_IE))
+      (m Status status) (sync.p))))
 
 (#when PC_PORT
   (defun disable-irq ()
-    "Clear the global interrupt-enable bit."
-    ;; These assembly helpers are no-ops because host interrupts are not controlled by EE status.
-    (rlet ((status :type uint))
-      (.mfc0 status Status)
-      (logand! status (lognot COP0_STATUS_IE))
-      (.mtc0 Status status)
-      (.sync.p))))
+    "Clear the global interrupt-enable bit. Does nothing on PC."
+    (none)))
+    
 
 (#unless PC_PORT
   (defun enable-irq ()
     "Set the global interrupt-enable bit."
-    (rlet ((status :type uint)) (m status Status) (logior! status COP0_STATUS_IE) (m Status status) (sync.p))))
+    (rlet ((status :type uint)) 
+      (m status Status)
+      (logior! status COP0_STATUS_IE)
+      (m Status status) (sync.p))))
 
 (#when PC_PORT
   (defun enable-irq ()
-    "Set the global interrupt-enable bit."
-    ;; These assembly helpers are no-ops because host interrupts are not controlled by EE status.
-    (rlet ((status :type uint)) (.mfc0 status Status) (logior! status COP0_STATUS_IE) (.mtc0 Status status) (.sync.p))))
+    "Set the global interrupt-enable bit. Does nothing on PC."
+    (none)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Stopwatch (CPU clock cycle counting)

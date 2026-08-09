@@ -95,10 +95,15 @@
 ;; texture-page = file on DVD containing a bunch of textures.
 ;; they are designed so that you upload the TFRAG page, do TFRAG rendering,
 ;; upload the PRIS page, do PRIS rendering, etc.
+;; However, layouts are done in a clever way allowing some uploads to be skipped sometimes,
+;; and allowing some textures to remain only in VRAM and never need upload.
+;; Textures are never moved in memory: meshes therefore can calculate texture addresses once
+;; at initialization and never update them.
 
-;; they also contain records of textures. The texture system will update these records
+;; texture-pages also contain records of textures. The texture system will update these records
 ;; to reflect where the textures are actually placed in VRAM.
-;; However, it is possible that multiple texture are assigned to the same destination.
+;; However, it is possible that multiple texture are assigned to the same destination and
+;; texture will upload the correct texture at the correct time.
 ;; You can check for this by looking at the texture-pool ids.
 ;; Or, use the upload-vram-pages function which will add uploads to a DMA chain only if needed.
 
@@ -154,8 +159,9 @@
     (else 32)))
 
 (defun texture-qwc ((width int) (height int) (texture-format gs-psm))
-  "Get the number of quadwords in a texture. Round up."
-  (let ((bits-per-pixel (texture-bpp texture-format))) (sar (+ (* (* width height) bits-per-pixel) 127) 7)))
+  "Return the quadword count needed for an image of the given dimensions and format, rounded up."
+  (let ((bits-per-pixel (texture-bpp texture-format)))
+    (/ (+ (* (* width height) bits-per-pixel) 127) 128)))
 
 (defun physical-address ((address pointer))
   "Convert a pointer to a physical address than can be used for DMA"
@@ -630,8 +636,10 @@
   (initialize! (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
 
 (defmethod allocate-vram-words! ((this texture-pool) (word-count int))
-  "Allocate words in vram. Returns the index of the first word."
-  (let ((start (-> this cur))) (set! (-> this cur) (+ (-> this cur) word-count)) start))
+  "Reserve consecutive VRAM words and return the first word index."
+  (let ((start (-> this cur)))
+    (+! (-> this cur) word-count)
+    start))
 
 ;; boot common textures are "common" textures that are loaded at boot, but will live in RAM
 ;; and be uploaded to VRAM as needed.
@@ -687,7 +695,6 @@
   ;; reset allocator
   (set! (-> this cur) 0)
   ;; top is the pool's base (lowest address); allocations grow upward from it.
-  ;; The name comes from the visual orientation of VRAM rather than address order.
   (set! (-> this top) (-> this cur))
   ;; by default, use the default allocator.
   (set! (-> this allocate-func) texture-page-default-allocate)
@@ -1424,7 +1431,8 @@
   (none))
 
 (defmethod upload-one-common! ((this texture-pool) (lev level))
-  "Upload the first common texture page that's in in the common-page-mask."
+  "Upload the first common texture page that's in in the common-page-mask.
+   Users of common textures should call this to ensure their texture is loaded."
   (dotimes (i 32)
     (let ((page (-> this common-page i)))
       (when (and (nonzero? page) ;; known common texture page
@@ -2272,7 +2280,7 @@
   "Initialize a simple clamped texture shader, optionally filling its texture registers."
   (set! (-> shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
   (set! (-> shader tex0 tfx) 0)
-  #|
+
 (set!
    (-> shader tex0)
    (the-as
@@ -2280,7 +2288,7 @@
     (logand (the-as uint (-> shader tex0)) (the-as uint #xffffffe7ffffffff))
     )
    )
-  |#
+
   (if tex (adgif-shader<-texture! shader tex))
   (set! (-> shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
   (set! (-> shader alpha) (new 'static 'gs-alpha :b #x1 :d #x1))

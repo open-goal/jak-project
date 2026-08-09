@@ -50,15 +50,15 @@
 
 (defmethod clear-offset-bit ((this shadow-control))
   "Clear the disable-draw flag."
-  (set! (-> this settings center w)
-        (the-as float (logand (lognot #x20) (the-as int (-> this settings center w)))))
-  0)
+  (logclear! (-> this settings flags) (shadow-flags disable-draw))
+  0
+  )
 
 (defmethod set-offset-bit ((this shadow-control))
   "Set the disable-draw flag."
-  (set! (-> this settings center w)
-        (the-as float (logior (the-as int (-> this settings center w)) #x20)))
-  0)
+  (logior! (-> this settings flags) (shadow-flags disable-draw))
+  0
+  )
 
 (defmethod set-bottom-plane-offset ((this shadow-control) (y float))
   "Set the horizontal bottom clipping plane to the given Y coordinate."
@@ -142,8 +142,7 @@
 ;; One triangle, three vertex indices into the mesh's vertex table. faces is spare space in the
 ;; packed data that the CPU classifier writes its answer into: for a single-sided mesh a one means the
 ;; face turns toward the light and belongs on the cap list, and for a double-sided mesh it means the
-;; authored winding already faces the light and does not have to be reversed. It ships as zero and the
-;; classifier only ever writes a one, so the edge passes can read it back as a plain flag.
+;; authored winding already faces the light and does not have to be reversed.
 (deftype shadow-tri (structure)
   ((ind-0 uint8)
    (ind-1 uint8)
@@ -162,8 +161,8 @@
 ;; The packed shadow mesh. Every offset is measured from this header, and the whole block including the
 ;; header is qwc-data quadwords long -- the DMA tag that fetches it uses that count directly.
 ;;
-;; Vertices come in two runs: num-verts - num-twos of them name a single joint, and the last num-twos
-;; name two joints and carry a blend weight, so skinning is two loops rather than a test per vertex.
+;; Vertices come in two runs: (num-verts - num-twos) of them name a single joint, and the last num-twos
+;; name two joints and carry a blend weight.
 ;; Triangles and edges are likewise split into single-sided and double-sided runs, which is the
 ;; distinction that decides whether a face can be rejected for facing away from the light at all.
 (deftype shadow-header (structure)
