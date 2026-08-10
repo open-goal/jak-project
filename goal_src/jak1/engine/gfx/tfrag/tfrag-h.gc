@@ -6,71 +6,47 @@
 
 ;; DECOMP BEGINS
 
-;; Per-patch triangle and display-vertex counts, one entry per detail level plus a spare, filled in by
-;; the exporter and read only by stats-tfrag-asm for the terrain debug display. dverts counts the
-;; vertices a strip actually sends, which is two more than its triangle count per strip - which is how
-;; the debug display recovers the average strip length from the pair.
+;; Per-patch triangle and vertex counts, one entry per detail level plus a spare
+;; dverts counts the vertices a strip actually sends, two more than triangle count.
 (deftype tfragment-stats (structure)
   ((num-tris   uint16 4)
    (num-dverts uint16 4)))
 
-;; Debug-only, and absent from the retail levels: debug-lines is a null pointer there. edge-debug-lines
-;; draws the lists when they exist.
+;; Debug-only, and absent from the retail levels.
 (deftype tfragment-debug-data (structure)
   ((stats       tfragment-stats :inline)
    (debug-lines (array vector-array))))
 
-;; Declared, never built out. tfragment has no GENERIC path at all: nothing in the game reads or
-;; writes generic-tfragment or tfragment.generic, there is no environment-mapped or software-transformed
-;; terrain, and dummy exists only so the type has a size. Terrain always goes through VU1.
+;; Unused. Tfrag never falls back to generic.
 (deftype generic-tfragment (structure)
   ((dummy int32)))
 
-;; One independently culled terrain patch, and one of three nested meshes over the same vertices.
+;; A tfragment is one independently culled terrain patch, with three levels of detail.
 ;;
-;; The geometry is a single contiguous block of VIF commands in the level file, and the four transfers
+;; The geometry is a single contiguous block of data in the level file, and the four transfers
 ;; below are four windows into it. Nothing is duplicated except the per-level draw-point and strip
-;; tables, because those are the only part that a change of detail actually changes. Measured across
-;; JUN, BEA, VI1 and SNO, the block is laid out relative to dma-common (in quadwords):
+;; tables.  The block is laid out:
+;; BASE-ONLY
+;;   base-only mesh tables
+;; COMMON
+;;   control block, shaders, base point records, base vertices
+;; LEVEL-0
+;;   level-0-only mesh tables
+;;   level-0 interp table, point records, vertices
+;; LEVEL-1
+;;   level-1-only mesh tables
+;;   level-1 vertices, point records.
 ;;
-;;   -8 ..  0   base-only draw-point and strip tables        dma-base points here
-;;    0 .. C    control block, adgif shaders, base point records, base vertices     ("common")
-;;    C .. L    level-0-only draw-point and strip tables
-;;    L .. Z    level-0 additions: interpolation table, point records, vertices     dma-level-1 here
-;;    Z .. E    level-1 additions: vertices, point records, and its own tables
+;; Therefore to draw each level:
 ;;
-;; and the four transfers are
+;;  Base: single upload. Start at dma-base (BASE-ONLY), upload dma-qwc[1] (upload BASE-ONLY, COMMON)
+;;  Level0: single upload, Start at dma-level0 (overlays dma-common), upload dma-qwc[2] (upload COMMON, LEVEL-0)
+;;  Level1: two uploads,
+;;    dma-common, dma-qwc[0], only loads COMMON
+;;    dma-level-1, dmq-qwc[3], loads LEVEL-1
 ;;
-;;   base      dma-base     for dma-qwc[1]   ->  base tables, then everything in "common"
-;;   common    dma-common   for dma-qwc[0]   ->  "common" alone; dma-qwc[0] = C
-;;   level 0   dma-level-0  for dma-qwc[3]   ->  "common", level-0 tables, level-0 additions;
-;;                                               dma-qwc[3] = Z
-;;   level 1   dma-level-1  for dma-qwc[2]   ->  level-0 additions, then level-1 additions;
-;;                                               dma-qwc[2] = E - L
 ;;
-;; So a base draw is one transfer, a level-0 draw is one transfer, and a level-1 draw is two: "common"
-;; followed by the level-1 window, which deliberately skips the level-0-only tables in between while
-;; still picking up the level-0 additions that level 1 also needs. dma-common and dma-level-0 are one
-;; field under two names because the level-0 window simply starts where "common" starts; the two names
-;; distinguish "send the common prefix" from "send the whole level-0 window". That is also why
-;; dma-chain has three entries and dma-qwc has four - three distinct start addresses, four lengths.
-;;
-;; dma-qwc is in chain-entry order with the odd one appended, not in level order:
-;;   dma-qwc[0]  length of the common prefix         (with dma-chain[0])
-;;   dma-qwc[1]  length of the base window           (with dma-chain[1])
-;;   dma-qwc[2]  length of the level-1 window        (with dma-chain[2])
-;;   dma-qwc[3]  length of the whole level-0 window  (with dma-chain[0] again)
-;;
-;; Because the windows overlap, never treat the three pointers as three independent allocations; that
-;; is what mem-usage is subtracting for. A patch with no level-1 detail leaves dma-level-1 aliased onto
-;; dma-chain[0] and unused; num-level1-colors zero is the test for that, and likewise
-;; num-level0-colors zero means there is no level-0 window either.
-;;
-;; Every window unpacks the same five-quadword tfrag-control to the front of the VU input bank, and all
-;; three levels write their draw-point and strip tables at the same VU addresses, so the control block
-;; never has to change with the detail level.
-;;
-;; Colors are the one part of a patch that is not in the level file's VIF block, because they follow
+;; Colors are the one part of a patch that is not in the level file's data block, because they follow
 ;; the time of day. One time-of-day-palette is shared by the whole tree (drawable-tree-tfrag has it),
 ;; and each patch carries its own indices into that palette here:
 ;;
@@ -80,12 +56,6 @@
 ;;   num-level1-colors  number of vertices in base + level 0 + level 1
 ;;   color-offset       the VU quadword where the expanded colors start
 ;;
-;; The counts are cumulative over the nested vertex array, which is exactly what the EE needs: having
-;; chosen a stream it takes the matching count, expands that many indices into scratchpad RGBA, and
-;; writes the count into the color template's VIF NUM byte - num-base-colors for a base draw,
-;; num-level0-colors for level 0, num-level1-colors for level 1. So one number selects both how much
-;; color to gather and how much to unpack. color-offset is odd because vertex positions unpack on a
-;; 2/1 VIF cycle and the colors land in the quadwords the positions skip, one color per position.
 (deftype tfragment (drawable)
   ((color-index       uint16 :offset 6)
    (debug-data        tfragment-debug-data :offset 8)
@@ -112,46 +82,32 @@
    (generic           generic-tfragment)
    (generic-u32       uint32 :overlay-at generic)))
 
-;; The patch list. data is dynamic despite the declared length of one; the real count is the inherited
-;; length field, and the fragments are one contiguous 64-byte-stride run, which is what lets the EE draw
-;; functions walk them with a fixed stride and DMA sixteen headers at a time. Retail levels have one such
-;; array per terrain tree, of up to a couple of thousand fragments.
+;; Array of tfragments in the drawable BVH system.
+;; These use the usual fixed-max-depth, always 8 children layout and can be culled
+;; via precomputed visibility and BVH frustum culling very efficiently in draw-node.
 (deftype drawable-inline-array-tfrag (drawable-inline-array)
   ((data tfragment 1 :inline)
    (pad  uint32)))
 
-;; The translucent variant declares a second dynamic slot at offset 112. It is not a separate list: the
-;; declaration exists because the type is one tfragment longer than its parent, and the drawing code
-;; treats it exactly like the ordinary array.
+;; Variant for "transparent" tfrags, this is likely a mistake and unused.
+;; It has a second tfragment defined, but nothing seems to read it.
 (deftype drawable-inline-array-trans-tfrag (drawable-inline-array-tfrag)
   ((data2 tfragment 1 :inline)
    (pad2  uint32)))
 
-;; One terrain tree. arrays is every depth of the visibility hierarchy: each array before the last is a
-;; level of draw-node, and the last is the drawable-inline-array-tfrag holding the patches. Culling walks
-;; the depths, propagating visibility down, and the leaf array is then handed to the draw functions.
-;;
-;; The time-of-day palette is per tree, not per patch: every fragment's color-indices index into this one
-;; palette, and finish-background interpolates it once per frame per tree. That is why the trees are split
-;; by surface type in the first place - one palette and one set of GS state per tree.
+;; Full drawable tree (BVH hierarchy) for tfrag.
+;; Each array is at increasing depth in the BVH. The final array contains
+;; tfragment and the others contain draw-nodes (bounding sphere nodes)
+;; There's a single color palette shared for the entire tree.
 (deftype drawable-tree-tfrag (drawable-tree)
   ((time-of-day-pal time-of-day-palette :offset 12)
    (arrays          drawable-inline-array 1 :overlay-at (-> data 0))))
 
-;; The five subtypes below differ only in which bucket and which GS TEST setting they draw with; the
-;; geometry, the LOD machinery and the microprograms are identical. tfrag-methods.gc has the alpha tests:
-;; opaque terrain uses alpha >= #x26, translucent >= #x7e with framebuffer-only alpha failure, dirt uses
-;; framebuffer-only failure with no alpha comparison, and ice always passes alpha with the same failure
-;; mode. The lowres variants are declared for a distant-terrain pass; no consumer distinguishes them from
-;; their parents, and whether any shipped level actually builds one was not established here.
+;; The five subtypes below differ only in which bucket and which GS TEST setting they draw with
 (deftype drawable-tree-trans-tfrag (drawable-tree-tfrag) ())
-
 (deftype drawable-tree-dirt-tfrag (drawable-tree-tfrag) ())
-
 (deftype drawable-tree-ice-tfrag (drawable-tree-tfrag) ())
-
 (deftype drawable-tree-lowres-tfrag (drawable-tree-tfrag) ())
-
 (deftype drawable-tree-lowres-trans-tfrag (drawable-tree-trans-tfrag) ())
 
 ;; The LOD collapse coefficients, one entry per subdivision level. Despite looking like four
@@ -193,8 +149,8 @@
    (k0s         uint128 2 :overlay-at (-> data 40))
    (k1s         uint128 2 :overlay-at (-> data 48))))
 
-;; The five quadwords at the front of every VU1 terrain input bank. Every pointer is a quadword
-;; address relative to the bank base, so it can be added straight to the VIF TOP register.
+;; Tfrag data layout. `ptr`s are quadword addresses.
+;; TODO: this is very hard to understand - rewrite once we get to tfrag.gc
 ;;
 ;; A vertex is two quadwords: packed integer position, then the time-of-day color the EE unpacks into
 ;; the quadword the position skipped. Positions live at ptr-vtxdata in base, level-0, level-1 order,
@@ -244,10 +200,6 @@
    (ptr-strip-data            uint32)
    (ptr-texture-data          uint32)))
 
-;; Counters for the tfrag-print-stats debug page, filled in by hand from the shipped level data rather
-;; than by the renderer - nothing in the drawing path writes them, and the single instance is the global
-;; t-stat in tfrag.gc. The page turns them into an estimated DMA cost per frame, which is what the from,
-;; to and cnt fields are for.
 (deftype tfrag-stats (structure)
   ((from         int32)
    (to           int32)
@@ -266,8 +218,7 @@
    (drawpoints   int32)
    (vif          int32)))
 
-;; Two quadwords of DMA/VIF tag. Declared here and referenced by nothing: the EE draw functions build
-;; their packets straight out of the tfrag-work templates instead.
+;; Seems unused.
 (deftype tfrag-packet (structure)
   ((tag uint128 2)))
 
@@ -305,7 +256,7 @@
 
 ;; Scratchpad terrain workspace. banka and bankb each hold one batch of sixteen fragment headers, so
 ;; the toSPR DMA can be filling one while packets are built from the other; outa and outb each hold
-;; 128 quadwords of built packet, so the fromSPR DMA can be feeding the VIF buffer from one while the
+;; 128 quadwords of built packet, so the fromSPR DMA can be writing back to main memory from one while the
 ;; other is written. colors is where the EE gathers this frame's time-of-day RGBA before handing it to
 ;; the VU as part of each fragment's packet.
 (deftype tfrag-dma (structure)

@@ -7283,8 +7283,7 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
   // Reverse field lookup may already have rewritten the address expression into a dereference.
   // If its trailing tokens instantiate the indexed prefix of this access, retain that typed prefix
   // and append the fields which belong to the load itself.
-  if (auto* existing = dynamic_cast<DerefElement*>(new_val->try_as_single_active_element());
-      existing && !existing->is_addr_of()) {
+  if (auto* existing = dynamic_cast<DerefElement*>(new_val->try_as_single_active_element())) {
     const auto& existing_tokens = existing->tokens();
     for (size_t overlap = std::min(existing_tokens.size(), m_deref_tokens.size()); overlap > 0;
          --overlap) {
@@ -7321,8 +7320,8 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
         auto combined_tokens = existing_tokens;
         combined_tokens.insert(combined_tokens.end(), m_deref_tokens.begin() + overlap,
                                m_deref_tokens.end());
-        result->push_back(pool.alloc_element<DerefElement>(existing->base(), existing->is_addr_of(),
-                                                           combined_tokens));
+        result->push_back(
+            pool.alloc_element<DerefElement>(existing->base(), false, combined_tokens));
         return;
       }
     }

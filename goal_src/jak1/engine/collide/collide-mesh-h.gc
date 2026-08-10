@@ -6,8 +6,8 @@
 ;; DECOMP BEGINS
 
 ;; Foreground collision meshes belong to moving, jointed objects such as platforms. Their compact
-;; local-space vertices and triangles are transformed on demand for collision tests. Static level
-;; geometry uses collide-frag-mesh instead.
+;; local-space vertices and triangles are transformed to world-space on demand for collision tests.
+;; Static level geometry uses collide-frag-mesh instead.
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; result
@@ -15,7 +15,7 @@
 
 ;; The triangle and contact selected by a collision test. vertex holds the three world-space
 ;; corners, intersect is the closest/contact point, normal faces away from the triangle, and pat
-;; identifies the surface. Background collision tests use the same result format.
+;; identifies the surface parameters. Background collision tests use the same result format.
 (deftype collide-tri-result (structure)
   ((vertex    vector 3 :inline)
    (intersect vector :inline)
@@ -38,8 +38,6 @@
 (declare-type collide-mesh-cache-tri structure)
 
 ;; A compact collision mesh bound to one model joint. vertex-data points to local-space positions
-;; padded through the next group of four because the transform passes always load four vectors at a
-;; time. The variable-length tris array follows the fixed header and indexes the logical positions.
 (deftype collide-mesh (basic)
   ((joint-id    int32)
    (num-tris    uint32)
@@ -64,9 +62,7 @@
 ;; of transforming the mesh for every query. This is separate from the general collide-cache used
 ;; for background and mixed collision probes.
 ;;
-;; id identifies the current cache generation. Every allocation owner keeps the id with its cached
-;; triangle pointer; clearing or wrapping the cache advances id, invalidating all of those pointers
-;; without walking their owners.
+;; ID is used to invalidate the cache when the data is changed
 
 ;; og:preserve-this
 (defconstant COLLIDE_MESH_CACHE_SIZE #xa000)
@@ -85,8 +81,6 @@
   (defmethod next-id! ((this collide-mesh-cache))
     "Discard all cached blocks and advance to a nonzero generation id."
     (declare (asm-func uint))
-    ;; Generation zero is reserved. The likely branch changes a wrapped increment to one without
-    ;; executing its delay instruction for the normal case.
     (rlet ((this-reg :reg a0)
            (current-id :reg v1)
            (next-id :reg v0))
@@ -110,7 +104,7 @@
   (= (-> this id) cache-id))
 
 ;; Expanded cache entry: three world-space vertices, a unit normal, an integer-coordinate bounding
-;; box for fast rejection, and surface properties packed into the otherwise-unused normal.w lane.
+;; box for fast rejection, and surface properties packed into normal.w.
 (deftype collide-mesh-cache-tri (structure)
   ((vertex vector 3 :inline)
    (normal vector :inline)

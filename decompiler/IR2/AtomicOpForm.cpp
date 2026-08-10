@@ -63,7 +63,8 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
             pool.alloc_single_element_form<GenericElement>(
                 nullptr, GenericOperator::make_fixed(FixedOperatorKind::ADDRESS_OF),
                 pool.alloc_single_element_form<StackSpillValueElement>(
-                    nullptr, -1, offset, make_stack_slot_access(offset), false)),
+                    nullptr, -1, offset, env.get_stack_slot_access_for_op(m_my_idx, offset),
+                    false)),
             true, env.stack_slot_entries.at(offset).typespec);
       }
     } else {

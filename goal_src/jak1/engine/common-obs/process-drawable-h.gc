@@ -4,10 +4,9 @@
 (require "engine/gfx/hw/display-h.gc")
 (require "engine/anim/joint-h.gc")
 (require "engine/game/game-h.gc")
+
 (define-extern cspace-index-by-name (function process-drawable string int))
-
 (define-extern cspace-by-name (function process-drawable string cspace))
-
 (define-extern joint-control-reset! (function joint-control joint-control-channel none :behavior process-drawable))
 
 (defun cspace-by-name-no-fail ((drawable process-drawable) (name string))
@@ -93,8 +92,7 @@
    lets callers hold an animation on an explicitly selected frame."
   (-> channel frame-num))
 
-;; Persistent actor state carried between births. A try reset clears #x26f, a full game reset
-;; clears #x77f, and force-birth survives both.
+;; Persistent actor state carried between births.
 (defenum entity-perm-status
   :bitfield #t
   :type uint16
@@ -116,10 +114,11 @@
 Joint-animation recipe for creatures
 ------------------------------------
 
-The `ja` helpers operate on `self`'s joint controller.  A channel has an animation group, an
-internal frame, a frame interpolation value, and a frame-number function.  Channel zero is the
-ordinary whole-creature animation; use another channel only when the creature's skeleton and art
-were authored for a layered animation.
+The `ja` helpers operate on a process's joint controller.
+The controller tracks multiple "channels", which can be blended together to layer or fade
+animations.
+Each channel knows the animation, the progress, and has a num-func to produce the next frame
+index.
 
 Choose the animation with `:group!`, and choose how its frame changes with `:num!`:
 
@@ -133,41 +132,40 @@ Choose the animation with `:group!`, and choose how its frame changes with `:num
 
 The speed defaults to 1.0.  `seek!` also defaults its target to the animation's last internal
 frame, so `(seek!)` is the usual one-shot.  `ja-aframe` converts an artist's timeline frame to the
-internal frame used by `seek!`; use it for authored contacts, anticipation poses, and handoffs.
+internal frame used by `seek!`.
 
 `ja` applies the requested changes and, when `:num!` selects a frame rule, evaluates the channel
-immediately.  Direct field changes such as `:group!`, `:num-func`, and `:frame-num` can be combined
-to prepare a pose without advancing it.  `ja-no-eval` also suppresses the evaluation attached to
-`:num!`; that is useful immediately before pushing a blend, or when the caller needs to evaluate
-the old stack explicitly with `ja-blend-eval`.
+immediately.  Setting `:group!`, `:num-func`, and/or `:frame-num` without `:num!` won't evaluate.
+`ja-no-eval` can be used to suppresses evaluation even when a new num-func is set with `:num!`.
+That is useful when something else will evaluate later and you want to avoid evaluating twice.
 
-`ja-play` is the standard blocking one-shot: it installs the group and frame rule without an
-initial evaluation, then suspends once per frame and advances until a seek reaches its target.
-Forms in its body run before each suspension, which is where a creature should steer, align root
-motion, or evaluate the channels underneath a blend.
+`ja-play` is a blocking playback macro: it sets up an animation and runs code in the body until
+the animation is done.
 
 For a clean transition, call `ja-channel-push!` before selecting the new group.  It keeps the old
-pose below a new root group and fades it out over the supplied time.  During a hand-authored
-transition, call `ja-blend-eval` while the new animation plays so the retained pose stays current.
-Use `ja-group?` to select animation-specific handoffs rather than restarting a generic pose.
+anim below a new root anim and fades it out over the supplied time.  During a hand-authored
+transition, call `ja-blend-eval` while the new animation plays so the old animation is updated.
 
 Typical creature loops are:
 
   ;; A looping locomotion cycle.
+  ;; make the current animation fade out over 0.15 seconds
   (ja-channel-push! 1 (seconds 0.15))
+  ;; install the new main animation of run, starting at min frame
   (ja :group! creature-run-ja :num! min)
+  ;; run the run animation in a loop.
+  ;; evaluation will handle dropping the old animation automatically.
   (loop
     (suspend)
     (ja :num! (loop! run-speed)))
 
-  ;; A one-shot action with steering while it plays.
+  ;; A second example: A one-shot attack animation with steering while it plays.
+  ;; fade out old anim
   (ja-channel-push! 1 (seconds 0.1))
+  ;; play and steer until attack-ja is done.
   (ja-play :group! creature-attack-ja :num! (seek!) :frame-num 0.0
     (turn-toward-target! self))
 
-Keep `:frame-num 0.0` on a newly selected one-shot unless the action deliberately joins at a
-specific authored pose.  A polished creature should blend into new groups, use artist frames for
-visual beats, and make its locomotion speed explicit so motion and animation remain in step.
 |#
 
 (defmacro ja-group (&key (chan 0))

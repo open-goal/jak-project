@@ -685,6 +685,21 @@ RegisterAccess Env::get_stack_slot_access_for_op(int op_id, int offset) const {
   return make_stack_slot_access(offset, it->second);
 }
 
+namespace {
+
+std::optional<int> stack_slot_address_offset(const AtomicOp* op) {
+  const auto* set = dynamic_cast<const SetVarOp*>(op);
+  if (!set || set->src().kind() != SimpleExpression::Kind::ADD || set->src().args() != 2 ||
+      !set->src().get_arg(0).is_var() ||
+      set->src().get_arg(0).var().reg() != Register(Reg::GPR, Reg::SP) ||
+      !set->src().get_arg(1).is_int()) {
+    return {};
+  }
+  return set->src().get_arg(1).get_int();
+}
+
+}  // namespace
+
 void Env::disable_def(const RegisterAccess& access, DecompWarnings& warnings) {
   if (is_stack_slot_access(access)) {
     // Stack-slot use/def info is intentionally immutable during expression building.
@@ -732,6 +747,9 @@ void Env::rebuild_stack_slot_use_def_info() {
       offsets.insert(store->offset());
     } else if (auto* load = dynamic_cast<const StackSpillLoadOp*>(ops.ops.at(op_id).get())) {
       offsets.insert(load->offset());
+    } else if (auto address_offset = stack_slot_address_offset(ops.ops.at(op_id).get());
+               address_offset && stack_slot_entries.contains(*address_offset)) {
+      offsets.insert(*address_offset);
     }
   }
 
@@ -755,6 +773,8 @@ void Env::rebuild_stack_slot_use_def_info() {
             writes.at(block_id) = true;
             seen_write = true;
           }
+        } else if (stack_slot_address_offset(op) == offset && !seen_write) {
+          reads_before_write.at(block_id) = true;
         }
       }
     }
@@ -816,6 +836,13 @@ void Env::rebuild_stack_slot_use_def_info() {
           access_ops.push_back(op_id);
           auto& info = m_stack_slot_use_def_info[RegId(Register(Reg::GPR, Reg::SP), current_var)];
           info.defs.push_back({op_id, block_id, AccessMode::WRITE, false});
+          info.ssa_vars.insert(current_var);
+        } else if (stack_slot_address_offset(op) == offset) {
+          ASSERT(current_var != -1);
+          m_stack_slot_var_by_op[op_id] = current_var;
+          access_ops.push_back(op_id);
+          auto& info = m_stack_slot_use_def_info[RegId(Register(Reg::GPR, Reg::SP), current_var)];
+          info.uses.push_back({op_id, block_id, AccessMode::READ, false});
           info.ssa_vars.insert(current_var);
         }
       }

@@ -23,10 +23,11 @@
   (cycles-instructions 0)
   (icache-dcache 1))
 
-;; One renderer bucket is sampled at a time. select chooses either cycles/instructions or
+;; One statistic group in one category is sampled at a time.
+;; select chooses either cycles/instructions or
 ;; instruction-cache/data-cache events, ctrl is the corresponding EE Perf register value, and
 ;; accum0/accum1 collect the raw counter pair until the end-of-frame code assigns the named totals.
-;; The explicit wait totals account for stalls that the event counters do not describe directly.
+;; The explicit wait totals are incremented by the engine code when waiting for DMA completion.
 (deftype perf-stat (structure)
   ((frame-number   uint32)
    (count          uint32)
@@ -52,7 +53,6 @@
 (deftype perf-stat-array (inline-array-class)
   ((data perf-stat :inline :dynamic)))
 
-;; perf-stat is exactly 52 bytes; inline arrays use that as their dynamic element stride.
 (set! (-> perf-stat-array heap-base) (the-as uint 52))
 
 (#unless PC_PORT

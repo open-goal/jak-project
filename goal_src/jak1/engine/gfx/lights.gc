@@ -5,10 +5,10 @@
 (require "engine/gfx/foreground/bones-h.gc")
 (require "engine/geometry/geometry.gc")
 (require "engine/math/vector.gc")
+
 (defun light-slerp ((out light) (a light) (b light) (alpha float))
   "Blend light a toward b into out, clamping alpha to 0 through 1.
-   Color and level are interpolated linearly; direction uses spherical interpolation and
-   preserves a's direction magnitude."
+   Color and level are interpolated linearly; direction uses spherical interpolation."
   (let ((clamped-alpha (fmax 0.0 (fmin 1.0 alpha))))
     (vector-lerp! (-> out color) (-> a color) (-> b color) clamped-alpha)
     (vector-deg-slerp (-> out direction) (-> a direction) (-> b direction) clamped-alpha)
@@ -19,15 +19,14 @@
 
 (defun light-group-slerp ((out light-group) (a light-group) (b light-group) (alpha float))
   "Blend all three directional lights and the ambient light from
-   group a toward group b into out. light-slerp clamps alpha separately for each light."
+   group a toward group b into out."
   (dotimes (i 4)
     (light-slerp (-> out lights i) (-> a lights i) (-> b lights i) alpha))
   out)
 
 (defun light-group-process! ((lights vu-lights) (group light-group) (vector-a vector) (vector-b vector))
   "Convert group into the transposed VU lighting layout in lights.
-   The signed y rotation from vector-b to vector-a is calculated first, but its result is not
-   used."
+   Unused"
   (rotate-y<-vector+vector vector-b vector-a)
   (vu-lights<-light-group! lights group)
   (none))

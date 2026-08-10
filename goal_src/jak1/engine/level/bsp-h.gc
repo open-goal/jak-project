@@ -3,75 +3,146 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/draw/drawable-h.gc")
 
-;; Every level ends with a large "bt" file containing its bsp-header. Loading it last lets the
-;; static level data consume the rest of the level heap. The header owns or references the BSP,
-;; drawable trees, actors, cameras, collision properties, textures, and visibility data; it is much
-;; broader than its historical name suggests. The shipped files use the -vis suffix because they
-;; include precomputed visibility data.
+;; Every level DGO file ends with a large "bt" file containing its bsp-header.
+;; Loading it last lets it load directly onto the level-heap, skipping the usual double-buffered
+;; load and link loader for smaller files.
+;; The bsp-header has references to the actual BSP, drawable trees, actors, cameras, collision properties, 
+;; visibility, and more. The engine stashes references to texture pages and other data here too.
+;; The final game files use the -vis suffix because they include precomputed visibility data.
 ;;
 ;; "BSP" generally means this static level data, while "level" means its runtime state.
 
 (declare-type entity-camera basic)
 
-;; flags: 1 = load
-;;        2 = display
-;; Each terminal BSP side stores six of these two-bit pairs, one per neighboring level.
+;; The actual BSP is very strange.
+;; The bsp data structure is strongly inspired by a quake-style BSP.
+;; In this approach, each splitting plane is a face from the level geometry,
+;; and visibility is precomputed by casting rays through "portals".
+;; The design here is based on this, and ND developers stated this is how it works
+;; in a GDC talk.
+
+;; The actual data doesn't match this description. All bsp-nodes describe regularly sized
+;; rectangular prisms. (Jak 2 and on use a more comapct data structure: quantized AABBs)
+;; It's also a suspicious design. Can the portals really work for big outdoor levels?
+
+;; My guess is that they started with portals, then pivoted to something else.
+;; This "something else" uses rectangular volumes, which is awfully similar to
+;; what they did in Jak 2 and on, and _might_ have been the Insomniac approach,
+;; although this is pure speculation, ND might have done their own visibility precomputation.
 
 ;; DECOMP BEGINS
 
-;; Each plane splits space into front and back children. Front is
-;; dot(position, plane.xyz) - plane.w >= 0. A positive child is another bsp-node pointer; a
-;; nonpositive value identifies a terminal side; visibility trees use negative values to encode
-;; their leaf indices. Each side also carries the packed load/display pairs used when the camera
-;; reaches that terminal side.
+;; splitting planes in a BSP
 (deftype bsp-node (structure)
-  ((front       int32)
-   (back        int32)
+  ;; front/back indices are either:
+  ;; - positive value indicating a child bsp-node
+  ;; - negative value for a leaf node
+  ((front       int32)   ;; if dot(p, plane.xyz) - >= plane.w
+   (back        int32)   ;; otherwise
+   
+   ;; these flags appear to be used for diagnostics only.
+   ;; for each 6 neighboring levels, there is a load and display bit
+   ;; when the display bit is 0, the visibility generator would
+   ;; assume that the neighbor level isn't drawn, and therefore skips
+   ;; computation and maps the cell to all 0's.
+   ;; these are very similar, but not quite the same as the load boundaries.
+   ;; this means that you can have a level in "display", but all geometry is
+   ;; hidden because the camera is in a volume with display = 0.
+   ;; (it's possible that display/load was once triggered from these!)
    (front-flags uint32)
    (back-flags  uint32)
    (plane       vector :inline)))
 
-;; This drawable is stored first in the level bt file; drawing it draws the static level.
 (deftype bsp-header (drawable)
+  ;; file version, filename, date, etc
   ((info                    file-info :overlay-at id)
+   ;; visibility bitstring with a bit set for every visid
+   ;; used in this level
    (all-visible-list        (pointer uint16))
+   ;; number of bits in visibility list for this level
    (visible-list-length     int32)
+   ;; All the level models/collision
    (drawable-trees          drawable-tree-array)
-   (pat                     pointer)
+   ;; PAT describes the attributes of a collision triangle.
+   ;; To avoid storing a full 32-bit PAT per triangle,
+   ;; triangles typicall store an 8-bit index into
+   ;; this array.
+   (pat                     (pointer pat-surface))
    (pat-length              int32)
+   ;; The level texture pages contain combined textures for all assets in the level.
+   ;; art-groups for creatures/actors/enemies/objects within a level don't reference
+   ;; this combined texture. This remapping table maps per-art-group texture-ids to
+   ;; the combined per-level texture pages. This allows the engine to consume the same
+   ;; exact art-group file for an enemy no matter which level is actually providing
+   ;; the textures. Background geometry doesn't need this since it's built into
+   ;; the bsp file and contains reference to the combined texture-pages already.
    (texture-remap-table     (pointer uint64))
    (texture-remap-table-len int32)
+   
+   ;; a single texture-id for each texture-page.
+   ;; the textures aren't contained in the bsp-header.
+   ;; this allows a level to find its textures, which are hopefully loaded
+   ;; prior to the level.
    (texture-ids             (pointer texture-id))
    (texture-page-count      int32)
+   
+   ;; unused.
    (unk-zero-0              basic)
    (name                    symbol)
    (nickname                symbol)
+   
+   ;; level visibility data for this level plus 6 neighbors, plus 1 null-terminator.
    (vis-info                level-vis-info 8)
+   
+   ;; all the entity-actors. Each entity-actor defines how to spawn a process.
    (actors                  drawable-inline-array-actor)
+   
+   ;; all the hand-scripted cameras in the level
    (cameras                 (array entity-camera))
+   
+   ;; actual BSP structure
    (nodes                   (inline-array bsp-node))
+   
+   ;; edited at runtime: link to runtime level structure for this level
    (level                   level)
+   
+   ;; edited at runtime: current bsp leaf index for camera position
    (current-leaf-idx        uint16)
    (unk-data-2              uint16 9)
+   
+   ;; boundary of the level as an array of boxes.
    (boxes                   box8s-array)
-   ;; Packed neighboring-level flags from the terminal BSP side containing the camera.
-   (current-bsp-back-flags  uint32)
+   ;; edited at runtime: the leaf bsp flags
+   (current-bsp-flags       uint32)
+   
+   ;; effects in the level (sounds, music changes, etc)
    (ambients                drawable-inline-array-ambient)
-   (unk-data-4              float)
-   (unk-data-5              float)
+   
+   ;; per-level settings for terrain mesh level-of-detail.
+   (subdivide-close-distance meters)
+   (subdivide-far-distance meters)
+   
+   ;; all the "shaders" (texture + GS rendering settings) for background drawing.
    (adgifs                  adgif-shader-array)
+   
+   ;; order that actors should be birthed.
    (actor-birth-order       (pointer uint32))
+   
+   ;; seems to be diagnostic only, an index per each box in boxes.
    (split-box-indices       (pointer uint16))
+   
+   ;; unused?
    (unk-data-8              uint32 55))
   (:methods
    (relocate (_type_ kheap (pointer uint8)) none :replace)
    (birth (_type_) none)
    (deactivate-entities (_type_) none)))
 
-;; Minimal wrapper around a master BSP. Runtime levels normally use bsp-header directly.
+;; Minimal wrapper around a master BSP. Unused.
 (deftype game-level (basic)
   ((master-bsp basic)))
 
+;; View frustum, stored as vertices, using absurd "hither" and "yonder" for near and far.
 (deftype view-frustum (structure)
   ((hither-top-left     vector :inline)
    (hither-top-right    vector :inline)
@@ -112,6 +183,9 @@
      (if (> (-> node back) 0) (map-bsp-tree visit header (the-as bsp-node (-> node back))) (visit node))))
   (none))
 
+;; collision statistic. The collision statistics are mostly broken and
+;; likely were from earlier collision code, or were only enabled with a
+;; compile-time flag.
 (deftype cl-stat (structure)
   ((fragments uint32)
    (tris      uint32)

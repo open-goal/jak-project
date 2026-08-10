@@ -4,34 +4,34 @@
 (require "engine/entity/res-h.gc")
 (require "kernel/gcommon.gc")
 (require "engine/util/types-h.gc")
+
+;; Level data contains a list of "entity" objects.
+;; An entity-actor tells the game engine to spawn a process of a certain type with
+;; certain parameters.
+;; An entity-camera is a region with predefined camera setings
+;; An entity-ambient is a region with some game setting like music/rendering changes.
+
 (defun-extern entity-by-name string entity)
-
 (defun-extern entity-by-type type entity-actor)
-
 (defun-extern entity-by-aid uint entity)
 
 (define-extern reset-actors (function symbol none))
-
 (define-extern *spawn-actors* symbol)
-
-;; TODO - for cam-start
 (define-extern reset-cameras (function none))
-
 (define-extern process-by-ename (function string process))
-
 (define-extern entity-birth-no-kill (function entity none))
 
 ;; DECOMP BEGINS
 
+;; toggles for generating actor visibility data.
+;; a somewhat broken feature for computing the bounding box of where an actor can
+;; be based on watching where it goes.
 (define *generate-actor-vis* #f)
-
 (define *generate-actor-vis-start* #f)
-
 (define *generate-actor-vis-output* #f)
 
-;; Sixteen bytes of persistent per-entity state. The first eight bytes are available to each actor
-;; type, followed by lifecycle flags, task ownership, and the actor id. The quad overlay supports
-;; copying the complete record to and from save and level storage.
+;; Sixteen bytes of persistent per-entity state.
+;; The first 8 are user-defined, and the last 8 have shared meanings.
 (deftype entity-perm (structure)
   ((user-object object 2)
    (user-uint64 uint64 :overlay-at (-> user-object 0))
@@ -51,8 +51,8 @@
   (:methods
    (update-perm! (_type_ symbol entity-perm-status) _type_)))
 
-;; Runtime link between a static entity resource and its live process. Level lists use prev-link
-;; and next-link; trans and perm remain available while the process is absent.
+;; Runtime link between a static entity resource and its live process.
+;; prev-link and next-link iterate through the links in a level's entity list.
 (deftype entity-links (structure)
   ((prev-link entity-links)
    (next-link entity-links)
@@ -92,8 +92,7 @@
 (deftype entity-camera (entity)
   ((quat quaternion :inline)))
 
-;; Type-specific ambient state. The first twelve bytes are a compact payload interpreted by the
-;; function in the final word.
+;; ambient parameters, very flexible.
 (deftype entity-ambient-data (structure)
   ((user-object object 3)
    (function    (function drawable-ambient vector none))
@@ -112,19 +111,21 @@
 
 (set! (-> entity-ambient-data-array heap-base) (the-as uint 16))
 
+;; placement of an ambient.
 (deftype entity-ambient (entity)
   ((ambient-data entity-ambient-data :overlay-at extra))
   (:methods
    (draw-debug (_type_) none)
    (birth-ambient! (_type_) none)))
 
-;; An entity that can own a live actor process, navigation mesh, visibility id, task, and
-;; orientation.
+;; A placed entity. This inherits position and res-lump settings from
+;; the parent type and adds in the info needed to spawn an actor.
+;; putting nav-mesh in the entity base type is a bit odd.
 (deftype entity-actor (entity)
   ((nav-mesh      nav-mesh)
-   (etype         type)
-   (task          game-task)
-   (vis-id        uint16)
+   (etype         type)       ;; type of process to spawn
+   (task          game-task)  ;; associated task
+   (vis-id        uint16)     ;; visibility ID
    (vis-id-signed int16 :overlay-at vis-id)
    (quat          quaternion :inline))
   (:methods
@@ -134,6 +135,8 @@
    (set-or-clear-status! (_type_ entity-perm-status symbol) none)))
 
 ;; Actor creation table entry: process type, load dependencies, pool, and per-process heap size.
+;; This is only needed to override the defaults, which is usually only done to change process
+;; pool settings or heap sizes.
 (deftype entity-info (basic)
   ((ptype     type)
    (package   basic)
@@ -141,10 +144,8 @@
    (pool      basic)
    (heap-size int32)))
 
-;; Navigation supplies this function later in the load order. Until then entity login has a harmless
-;; default.
 (define-extern entity-nav-login (function entity-actor none))
-
+;; default entity-nav-login for now... a little suspicious that this is needed
 (if (zero? entity-nav-login) (set! entity-nav-login (the-as (function entity-actor none) nothing)))
 
 ;; Dynamic actor population limits. Processes pause outside pause-dist, eligible entities can be

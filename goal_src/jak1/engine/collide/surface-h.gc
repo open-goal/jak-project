@@ -2,6 +2,7 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel/gcommon.gc")
+
 (defenum surface-flags
   :bitfield #t
   :type uint32
@@ -22,10 +23,10 @@
   (prevent-jump)
   ;; target is launch jumping (from a blue eco pad)
   (prevent-attacks-during-launch-jump)
-  ;; never set by any shipped surface, but tested together with the launch-jump bit:
+  ;; never set by any surface, but tested together with the launch-jump bit:
   ;; blocks square/"hands" attacks, including the flop out of jump states
   (prevent-hand-attack)
-  ;; never set by a shipped surface; blocks circle/"feet" spin attacks
+  ;; never set by any surface; blocks circle/"feet" spin attacks
   (prevent-feet-attack)
   (allow-edge-grab) ;; if set, and jak is falling, turn on the ledge grab search.
   (jump) ;; set on all jumps, used to prevent "on-grounds" in places
@@ -48,7 +49,7 @@
    (turnv             float) ;; maximum rate for turning the facing direction
    (turnvv            float) ;; maximum rate for steering the target direction
    (tiltv             float) ;; maximum rate for leaning toward the surface normal
-   (tiltvv            float)
+   (tiltvv            float) ;; unused
    (transv-max        float) ;; hard speed limit
    (target-speed      float) ;; full-stick speed that acceleration seeks
    (seek0             float) ;; acceleration with input aligned to motion
@@ -79,18 +80,18 @@
 
 ;; these calc-terminal functions are unused.
 (defun calc-terminal-vel ((acceleration float) (constant-drag float) (drag-coefficient float))
-  "Compute the fixed-point velocity for the legacy linear drag equation from per-second
+  "Compute the final velocity for the legacy linear drag equation from per-second
    acceleration, constant drag, and the linear drag coefficient."
   (- (* (/ (- (/ acceleration 60) constant-drag) drag-coefficient) (- 1.0 drag-coefficient)) constant-drag))
 
 (defun calc-terminal2-vel ((acceleration float) (constant-drag float) (drag-coefficient float) (reserved float))
-  "Compute the fixed-point velocity for the legacy quadratic drag equation.
+  "Compute the final velocity for the legacy quadratic drag equation.
    reserved is accepted by the original interface but is not used."
   (let ((speed (sqrtf (/ (- (/ acceleration 60) constant-drag) drag-coefficient))))
     (- speed (+ constant-drag (* drag-coefficient (square speed))))))
 
 (defun calc-terminal4-vel ((acceleration float) (constant-drag float) (drag-coefficient float))
-  "Compute the fixed-point velocity for the legacy fourth-power drag equation from
+  "Compute the final velocity for the legacy fourth-power drag equation from
    per-second acceleration, constant drag, and the drag coefficient."
   (let ((speed (sqrtf (sqrtf (/ (- (/ acceleration 60) constant-drag) drag-coefficient)))))
     (- speed (+ constant-drag (* drag-coefficient (* (square speed) speed speed))))))
@@ -158,6 +159,7 @@
 
 ;; The common surfaces:
 
+;; modifiers during normal walking/running/standing.
 (define *walk-mods*
   (new 'static
        'surface
@@ -186,6 +188,8 @@
        :align-speed 1.0
        :flags (surface-flags allow-look-around)))
 
+;; modifiers during punch attack, turnv/turnvv are zero, locking in
+;; the punch direction
 (define *walk-no-turn-mods*
   (new 'static
        'surface
@@ -211,6 +215,7 @@
        :slope-up-traction 1.0
        :align-speed 1.0))
 
+;; modifiers during the "turn around" animation.
 (define *turn-around-mods*
   (new 'static
        'surface
@@ -233,6 +238,7 @@
        :slope-up-traction 1.0
        :align-speed 1.0))
 
+;; slower "duck" crawling walk
 (let ((a0-3 (new 'static
                  'surface
                  :name 'duck
@@ -263,6 +269,7 @@
   ;; og:preserve-this
   (define *duck-mods* a0-3))
 
+;; unused.
 (define *duck-attack-mods*
   (new 'static
        'surface
@@ -290,6 +297,7 @@
        :mode 'attack
        :flags (surface-flags attacking ducking)))
 
+;; modifiers for jump
 (define *jump-mods*
   (new 'static
        'surface
@@ -319,6 +327,7 @@
        :mode 'air
        :flags (surface-flags allow-edge-grab jump)))
 
+;; modifiers for jump
 (define *double-jump-mods*
   (new 'static
        'surface

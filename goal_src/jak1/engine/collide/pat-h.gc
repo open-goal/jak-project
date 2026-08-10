@@ -2,6 +2,13 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/math/math.gc")
+
+;; PAT packs the collision behavior of each mesh triangle into one 32-bit word.
+;; The low three skip bits can exclude the triangle from entity, camera, or edge
+;; queries. Mode classifies its collision response, material selects movement,
+;; sound, and particle effects, camera holds camera-query flags, and event selects
+;; a contact hazard.
+
 (defenum pat-material
   :type uint8
   (stone)
@@ -46,12 +53,6 @@
 
 ;; DECOMP BEGINS
 
-;; PAT packs the collision behavior of each mesh triangle into one 32-bit word.
-;; The low three skip bits can exclude the triangle from entity, camera, or edge
-;; queries. Mode classifies its collision response, material selects movement,
-;; sound, and particle effects, camera holds camera-query flags, and event selects
-;; a contact hazard.
-
 (deftype pat-surface (uint32)
   ((skip          uint8 :offset 0 :size 3) ;; combined collision-query skip mask
    (mode          pat-mode :offset 3 :size 3)
@@ -62,8 +63,7 @@
    (nocamera      uint8 :offset 1 :size 1) ;; exclude from camera collision queries
    (noedge        uint8 :offset 2 :size 1) ;; exclude from edge queries
    (nolineofsight uint8 :offset 12 :size 1) ;; exclude from camera line-of-sight queries
-   ;; Ignore endless-fall contacts. This overlaps bit 1 of event because ignore
-   ;; masks use the same packed bit positions as triangle PAT values.
+   ;; Ignore endless-fall contacts.
    (noendlessfall uint8 :offset 15 :size 1)))
 
 (defun-debug pat-material->string ((pat pat-surface))

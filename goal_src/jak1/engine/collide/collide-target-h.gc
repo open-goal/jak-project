@@ -5,10 +5,7 @@
 
 ;; DECOMP BEGINS
 
-;; target-collision-reaction records the result of each collision frame in a 128-entry ring.
-;; An entry keeps the contact point, final position, incoming and outgoing velocity, contact
-;; normals, collision state, reaction flags, surface properties, and time. Airborne frames get
-;; a minimal entry so readers can walk the ring without losing the frame sequence.
+;; History of collision from target, used for debugging.
 (deftype collide-history (structure)
   ((intersect      vector :inline)
    (trans          vector :inline)
@@ -23,10 +20,7 @@
   (:methods
    (update! (_type_ collide-shape-moving vector vector vector) _type_)))
 
-;; Jak's collision shape and movement state. The control frame rotates world velocity into Jak's
-;; facing frame so thrust, gravity, and surface response can be applied consistently before the
-;; velocity is rotated back to world space. The remainder of the type carries input, contact
-;; probes, attack state, edge-grab state, shared state-machine scratch, and collision history.
+;; Jak's collision shape and movement state.
 ;;
 ;; state-var0/1/2 and state-vector0/1 are deliberately shared between target states. The named
 ;; overlays select the interpretation used by each state. saved-launch-event through
@@ -118,7 +112,6 @@
    (danger-sphere0                      collide-shape-prim-sphere :offset 1632)
    (danger-sphere1                      collide-shape-prim-sphere :offset 1636)
    (danger-sphere2                      collide-shape-prim-sphere :offset 1640)
-   ;; Move cooldowns, body attachments, and velocity history.
    (wheel-counter                       int32 :offset 1656)
    (last-wheel-end-time                 time-frame :offset 1664)
    (last-running-attack-end-time        time-frame :offset 1672)
@@ -142,7 +135,6 @@
    (transv-history                      vector 16 :inline :offset 1856)
    (average-xz-vel                      float :offset 2112)
    (idx-of-fastest-xz-vel               int32 :offset 2116)
-   ;; Edge-grab and per-state data.
    (hand-to-edge-dist                   float :offset 2120)
    (edge-grab-edge-dir                  vector :inline :offset 2128)
    (edge-grab-across-edge-dir           vector :inline :offset 2144)
@@ -179,7 +171,6 @@
    (launch-camera-state                 int64 :offset 2440)
    (launch-dest                         int64 :offset 2448)
    (launch-tracking-time                int64 :offset 2456)
-   ;; Collision history and the PAL-expanded tail.
    (history-data-idx                    int16 :offset 2488)
    (history-length                      int16 :offset 2490)
    (history-data                        collide-history 128 :inline)
@@ -202,9 +193,7 @@
    (unknown-int36                       int32 :offset 19000)))
 
 (defmethod update! ((this collide-history) (shape collide-shape-moving) (intersect vector) (incoming-velocity vector) (outgoing-velocity vector))
-  "Record a collision-history sample, including the contact point, final position,
-   incoming and outgoing velocity, contact normals, collision state, reaction flags, surface
-   properties, and the current time."
+  "Record a collision-history sample."
   (vector-copy! (-> this intersect) intersect)
   (vector-copy! (-> this transv) incoming-velocity)
   (vector-copy! (-> this transv-out) outgoing-velocity)

@@ -2,24 +2,16 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
+
 (declare-type target process-drawable)
-
 (declare-type voicebox process-drawable)
-
 (defun-extern voicebox-spawn process vector (pointer process))
-
 (declare-type nav-control basic)
-
 (declare-type path-control basic)
-
 (declare-type vol-control basic)
-
 (declare-type actor-link-info basic)
-
 (declare-type sparticle-launch-control basic)
-
 (declare-type water-control basic)
-
 (declare-type collide-shape basic)
 
 (defenum attack-mask
@@ -40,7 +32,7 @@
   (rotate-to)
   (prev-state))
 
-;; Most state flags describe *target* and are queried through that global.
+;; Most state flags are specific to target.
 ;; Pickups also use fade-out-particles, and basebutton temporarily uses
 ;; use-alt-cam-pos while controlling the camera.
 (defenum state-flags
@@ -70,8 +62,6 @@
   )
 
 (defmacro static-attack-info (&key (mask ()) args)
-  ;; Derive mask bits from the supplied fields, then initialize a static packet.
-  ;; Inline vectors must be copied instead of assigned as references.
   (let ((mask-actual mask))
     (dolist (it args)
       (when (not (member (caar it) mask-actual))
@@ -89,6 +79,8 @@
 ;; collision, pickups, particles, water, and sound.
 (deftype process-drawable (process)
   ;; World pose and, for collidable subclasses, collision geometry.
+  ;; many process-drawable types will place a more specific type here
+  ;; which includes collision.
   ((root trsqv)
    ;; Joint and bone hierarchy, including the joint-to-bone mappings.
    (node-list cspace-array)

@@ -115,8 +115,8 @@ This system grew out of the Crash 2 entity resource system.
    interpolation endpoint. Return a negative packed result when the property or requested
    sample is missing."
   (local-vars (tag-idx int))
-  ;; These names belong to the fixed entity record and must not enter generic
-  ;; property lookup.
+  ;; These values are stored in the entity type directly. They might have been part of
+  ;; the lump properties in an earlier version.
   (when (or (= name-sym 'id)
             (= name-sym 'aid)
             (= name-sym 'trans)
@@ -130,7 +130,7 @@ This system grew out of the Crash 2 entity resource system.
   ;; these are the outputs of the function.
   (let ((hi-tag-idx-out -1)
         (lo-tag-idx-out -1))
-    ;; this value is the index of the most recently passed tag with an "invalid" timestamp
+    ;; track invalid timestamp point so we avoid using it in interpolation
     (let ((most-recent-invalid-time-idx -1)
           ;; read 8 chars of the name we want
           (type-chars (-> (the-as (pointer uint64) (-> (symbol->string name-sym) data)) 0)))
@@ -139,7 +139,6 @@ This system grew out of the Crash 2 entity resource system.
       ;; min/max are inclusive.
       (let ((max-search (+ (-> this length) -1))
             (min-search 0))
-        ;; inclusive, so >= is correct
         (while (>= max-search min-search)
           ;; check in the middle of the range to bisect it.
           (let* ((check-idx (+ min-search (/ (- max-search min-search) 2)))
@@ -156,6 +155,7 @@ This system grew out of the Crash 2 entity resource system.
       ;; got to the end of the loop without finding the answer. Set a negative tag
       (set! tag-idx -1)
       (label cfg-32)
+      ;; return error if the binary search failed.
       (if (< tag-idx 0) (return (the res-tag-pair tag-idx)))
       ;; if there are multiple tags with the same name and different timesteps, we can't be sure which we ended on.
       ;; this loop brings us to the first tag with the correct name.
@@ -219,22 +219,20 @@ This system grew out of the Crash 2 entity resource system.
 
 (defmethod make-property-data ((this res-lump) (time float) (tag-pair res-tag-pair) (buf pointer))
   "Return the property data selected by tag-pair at time.
-   Reference properties, exact samples, pairs with different element counts or types, a
-   false buf, and unsupported element types return the lower sample's address directly.
-   Otherwise interpolate every element of matching inline float, integer, or vector arrays
-   into buf and return buf. The caller must provide enough storage for the complete array."
+   This handles interpolation of the data."
   (let* ((tag-lo (-> this tag (-> tag-pair lo)))
          (tag-hi (-> this tag (-> tag-pair hi)))
          (elt-count (-> tag-lo elt-count)))
     (cond
+      ;; references just return the referenced data directly
       ((res-ref? tag-lo) (get-tag-data this tag-lo))
-      ((or (not buf)
-           (= (-> tag-pair lo) (-> tag-pair hi))
-           (!= elt-count (-> tag-hi elt-count))
-           (!= (-> tag-lo elt-type) (-> tag-hi elt-type)))
+      ((or (not buf) ;; no storage provided
+           (= (-> tag-pair lo) (-> tag-pair hi)) ;; no interp needed
+           (!= elt-count (-> tag-hi elt-count))  ;; different length samples: interpolation impossible
+           (!= (-> tag-lo elt-type) (-> tag-hi elt-type))) ;; differing types
        (get-tag-data this tag-lo))
       (else
-       ;; A bracketing pair has distinct key frames; exact samples take the path above.
+       ;; Interpolation is needed here.
        (let ((interp (/ (- time (-> tag-lo key-frame)) (- (-> tag-hi key-frame) (-> tag-lo key-frame))))
              (src-lo (get-tag-data this tag-lo))
              (src-hi (get-tag-data this tag-hi)))
@@ -243,6 +241,7 @@ This system grew out of the Crash 2 entity resource system.
             (dotimes (i elt-count)
               (set! (deref float buf i) (+ (* (deref float src-lo i) (- 1.0 interp)) (* (deref float src-hi i) interp))))
             buf)
+           ;; integer interpolation uses 12-bit fractional fixed point
            (('integer 'sinteger 'uinteger 'int64 'uint64) (make-res-int-data interp elt-count buf src-lo src-hi uint64))
            (('int8) (make-res-int-data interp elt-count buf src-lo src-hi int8))
            (('uint8) (make-res-int-data interp elt-count buf src-lo src-hi uint8))
@@ -304,10 +303,9 @@ This system grew out of the Crash 2 entity resource system.
    lookup or type conversion fails.
    mode controls lookup: base ignores time and selects the first sample, exact requires a
    sample at time, and interp selects an exact sample or brackets time for interpolation.
-   Integer values are sign- or zero-extended according to their element type; float bits
-   are returned in the same 128-bit container. If tag-addr is nonfalse, write the selected
-   lower res-tag there. buf-addr must hold the interpolated array when interpolation is
-   required."
+   Integer values are sign- or zero-extended according to their element type.
+   If tag-addr is nonfalse, write the selected lower res-tag there. buf-addr must hold
+   the interpolated array when interpolation is required."
   (let ((tag-pair (lookup-tag-idx this name mode time)))
     (cond
       ((< (the-as int tag-pair) 0))
@@ -511,6 +509,7 @@ This system grew out of the Crash 2 entity resource system.
   ;; get the name and ID
   (let ((mem-use-id (mem-usage-id res))
         (mem-use-name "res"))
+    ;; the caller may set flags giving us a more specific category
     (cond
       ((logtest? flags (mem-usage-flags resource-camera)) (set! mem-use-id (mem-usage-id camera)) (set! mem-use-name "camera"))
       ((logtest? flags (mem-usage-flags resource-entity)) (set! mem-use-id (mem-usage-id entity)) (set! mem-use-name "entity"))
@@ -569,9 +568,6 @@ This system grew out of the Crash 2 entity resource system.
   (the-as res-lump 0))
 
 (define *res-static-buf* (malloc 'global 128))
-
-;; Four lookup families cover packed data arrays, referenced structures, raw
-;; values up to 128 bits, and numeric values converted to float.
 
 (defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
   "Return named packed data, interpolating at time when the property has timed samples."

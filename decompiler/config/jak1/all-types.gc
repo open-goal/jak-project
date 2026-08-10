@@ -13029,6 +13029,15 @@ buffer as two allocations in the collide-mesh category.")
 
 ;; - Types
 
+(defenum collide-prim-id
+  :type int8
+  (invalid -2)
+  (sphere -1)
+  (group 0)
+  (fg-mesh 1)
+  (bg-mesh 2)
+  )
+
 (declare-type collide-shape-prim basic)
 (deftype collide-sticky-rider (structure)
   ((rider-handle    handle         :offset-assert 0)
@@ -13227,21 +13236,12 @@ past the end of the movement step." (_type_ vector) symbol) ;; 9
   (indestructible 4)  ;; can't attack it.
   )
 
-(defenum collide-prim-type
-  :type int8
-  :bitfield #t
-  (bad -2)
-  (unk0 0)
-  (unk1 1)
-  )
-
-
 (deftype collide-prim-core (structure)
   ((world-sphere vector  :inline   :offset-assert 0)
    (collide-as   collide-kind   :offset-assert 16)
    (action       collide-action    :offset-assert 24)
    (offense      collide-offense   :offset-assert 28)
-   (prim-type    int8              :offset-assert 29)
+   (prim-type    collide-prim-id   :offset-assert 29)
    (extra        uint8 2           :offset-assert 30)
    (quad         uint128 2         :offset 0)
    )
@@ -13264,7 +13264,7 @@ past the end of the movement step." (_type_ vector) symbol) ;; 9
    (collide-as      collide-kind           :offset 32)
    (action          collide-action            :offset 40)
    (offense         collide-offense           :offset 44)
-   (prim-type       int8                      :offset 45)
+   (prim-type       collide-prim-id           :offset 45)
    (radius          meters                    :offset 60)
    )
   :method-count-assert 28
@@ -14921,6 +14921,7 @@ when hand placement and hanging clearance succeed."
 
 ;; - Types
 
+
 (deftype bsp-node (structure)
   ;; A plane selects front when dot(position, plane.xyz) - plane.w is nonnegative. Positive
   ;; children are bsp-node pointers; nonpositive children identify terminal sides. Visibility
@@ -14945,7 +14946,7 @@ when hand placement and hanging clearance succeed."
    (all-visible-list (pointer uint16) :offset-assert 32)
    (visible-list-length int32 :offset-assert 36)
    (drawable-trees drawable-tree-array :offset-assert 40)
-   (pat pointer :offset-assert 44)
+   (pat (pointer pat-surface) :offset-assert 44)
    (pat-length int32 :offset-assert 48)
 
    ;; some sort of texture remapping info
@@ -14972,8 +14973,8 @@ when hand placement and hanging clearance succeed."
    ;; Packed neighboring-level flags from the terminal BSP side containing the camera.
    (current-bsp-back-flags uint32 :offset-assert 152)
    (ambients drawable-inline-array-ambient :offset-assert 156)
-   (unk-data-4 float :offset-assert 160)
-   (unk-data-5 float :offset-assert 164)
+   (subdivide-close-distance meters :offset-assert 160)
+   (subdivide-far-distance meters :offset-assert 164)
    (adgifs adgif-shader-array :offset-assert 168)
    (actor-birth-order (pointer uint32) :offset-assert 172)
    (split-box-indices (pointer uint16) :offset-assert 176)

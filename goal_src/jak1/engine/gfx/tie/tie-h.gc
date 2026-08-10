@@ -5,26 +5,19 @@
 (require "engine/draw/drawable-tree-h.gc")
 (require "engine/draw/drawable-inline-array-h.gc")
 
-;; TIE's data types. Three separate things live in here and it helps to keep them apart:
+;; TIE types for:
 ;;
-;;   * the prototype side -- prototype-tie and tie-fragment -- geometry authored once and uploaded to
-;;     VU1 once per frame;
-;;   * the instance side -- instance-tie and its drawable arrays -- the BVH of placements;
-;;   * the two scratchpad work areas the EE packet builders run out of.
+;;   * the prototypes -- prototype-tie and tie-fragment -- geometry uploaded to VU1 once per frame;
+;;   * the instances -- instance-tie and its drawable arrays -- the BVH of prototype placements;
+;;   * the two scratchpad work areas for DMA generation on the EE
 ;;
-;; A fragment holds only counts and references. The actual shaders, points, strip descriptions, and
-;; colors sit in separate blocks of level data that nothing in GOAL ever dereferences: they are DMA
-;; sources and VU1 input, and the only code that understands their layout is the microprogram in
-;; tie.gc and the packet builders in tie-methods.gc. A field with no GOAL reference is not therefore
-;; unused.
+;; A prototype-tie references geometry fragments which is a chunk of mesh. Mesh size is limited
+;; by the VU1 data memory size.
 ;;
-;; Ownership of the color data is split and it is easy to get backwards. The palette -- the colors --
-;; belongs to the prototype, in prototype-bucket-tie.tie-colors, and is uploaded once per prototype per
-;; frame for every fragment and every instance to share. What an instance owns is instance-tie's
-;; color-indices: a stream of one-byte indices into that shared palette, one per vertex. So instances of
-;; the same prototype are identical in geometry and in available colors, and differ only in which entry
-;; each of their vertices picks -- which is what lets the same authored crate sit in sunlight and in
-;; shadow for one byte per vertex.
+;; Ownership of the color data is split and it is easy to get backwards. The color palette (actual RGBs)
+;; belong to the prototype. Each instance has its own indices, allowing it to select instance-specific
+;; colors. (note that there's a single giant palette shared by all prototypes, prototypes just have
+;; a view into this)
 
 ;; DECOMP BEGINS
 
@@ -33,24 +26,18 @@
 ;; is either DMA'd straight to VU1 or read by the palette expander; the counts are what the packet
 ;; builder patches into its templates.
 (deftype tie-fragment (drawable)
-  ((gif-ref       (inline-array adgif-shader) :overlay-at id) ;; adgif shaders, five quadwords each
-   (point-ref     uint32 :offset 8) ;; packed points, uploaded as V4-16 to VU address 50. Nothing in the
-                                    ;; source declares a type for this stream; the closest are
-                                    ;; generic-tie-base-point and generic-tie-interp-point, which are the
-                                    ;; Generic converter's view of its own copy of the geometry.
+  ((gif-ref       (inline-array adgif-shader) :overlay-at id) ;; adgif shaders
+   (point-ref     uint32 :offset 8) ;; packed points, uploaded as V4-16 to VU address 50.
    (color-index   uint16 :offset 12) ;; this fragment's first entry in the prototype color table
-   (base-colors   uint8 :offset 14) ;; palette entries used by base points; each interpolated point takes three
-   (tex-count     uint16) ;; five times the shader count; login divides it back down
-   (gif-count     uint16) ;; quadwords of shader data to upload
-   (vertex-count  uint16) ;; quadwords in the point stream
-   (color-count   uint16) ;; palette entries this fragment selects from the prototype table
+   (base-colors   uint8 :offset 14) ;; unused? unknown meaning.
+   (tex-count     uint16) ;; size of adgifs in qw
+   (gif-count     uint16) ;; size of giftag templates in qw
+   (vertex-count  uint16) ;; size of points in qw
+   (color-count   uint16) ;; size of colors used in qw
    (num-tris      uint16) ;; triangles, for the renderer statistics display
-   (num-dverts    uint16) ;; output vertex slots in this fragment's GIF packets -- base points and
-                          ;; interpolated points together, and a vertex shared by two strips counts once
-                          ;; per strip. collect-stats multiplies it by the instance count to get the
-                          ;; drawn-vertex total, so "d" is the destination slot each one occupies.
-   (dp-ref        uint32) ;; strip descriptions: GIF tag templates and their destination offsets
-   (dp-qwc        uint32) ;; quadwords of strip description
+   (num-dverts    uint16) ;; output vertex slots in this fragment's GIF packets
+   (dp-ref        uint32) ;; unknown metadata for near renderer
+   (dp-qwc        uint32) ;; quadwords of dp
    (generic-ref   uint32) ;; generic-tie-header and its compact stream, when this fragment has one
    (generic-count uint32) ;; quadwords of Generic data
    (debug-lines   (array vector-array)))) ;; authoring-time wireframe, absent from shipped levels
@@ -58,10 +45,7 @@
 ;; One placement of a prototype. Instances are the leaves of the TIE tree's BVH, so rejecting a draw
 ;; node discards a whole subtree of them at once.
 ;;
-;; The transform is a matrix4h: sixteen int16, 32 bytes. Its three rotation rows are 1.12 fixed point
-;; and its translation row steps in units of 64 world units, which is how a complete placement fits in
-;; 64 bytes including the bounding sphere. See the unpack at the top of
-;; draw-inline-array-instance-tie.
+;; The transform is a matrix4h with fixed-point integer values.
 (deftype instance-tie (instance)
   ((color-indices uint32 :overlay-at error) ;; per-instance palette indices, or zero to use the prototype's
    (bucket-ptr    prototype-bucket-tie :offset 12) ;; the prototype this places
@@ -107,15 +91,10 @@
   :bitfield #t
   (has-generic 1))
 
-;; Everything the instance packet builder needs that is not in the instance itself: camera constants,
-;; the DMA/VIF templates it patches per instance, cursors into the visibility string, and the stall
-;; counters. tie-work.gc initializes the fixed part; the draw code fills in the camera and cursor
-;; fields each frame and copies the whole thing into draw-local storage, since the builder writes to
-;; it and the shared original must survive.
 (deftype instance-tie-work (structure)
   ((wind-const                  vector :inline) ;; wind spring: damping, force scale, timestep, low clamp
    (hmge-d                      vector :inline) ;; homogeneous depth range used by the near test
-   (hvdf-offset                 vector :inline) ;; screen-space offset from the camera
+   (hvdf-offset                 vector :inline) ;; see math-camera.gc
    (wind-force                  vector :inline)
    (constant                    vector :inline) ;; 4096.0 and 128.0: the wind phase clamp
    (far-morph                   vector :inline) ;; (1, 0, 0, 256): the fully collapsed morph quadword
@@ -150,10 +129,6 @@
 
 ;; The instance builder's scratchpad: two input banks of 32 instances, two 4 KiB output banks, and a
 ;; copy of the work area after them.
-;;
-;; The whole record sits one quadword into the scratchpad, leaving the first quadword for control
-;; words. That is why every displacement in the packet builders is a field offset plus sixteen -- see
-;; spr-offset in tie-methods.gc.
 (deftype instance-tie-dma (structure)
   ((banka instance-tie 32 :inline) ;; exactly one visibility word's worth of instances
    (bankb instance-tie 32 :inline)
@@ -190,9 +165,7 @@
    (near-wait-from-spr    uint32)
    (near-wait-to-spr      uint32)))
 
-;; The prototype builder's scratchpad: two 1 KiB palette banks, two 4 KiB output banks, and the
-;; per-prototype state its fragment loop works from. Like instance-tie-dma, this record starts one
-;; quadword into the scratchpad.
+;; The prototype builder's scratchpad
 (deftype prototype-tie-dma (structure)
   ((colora          rgba 256) ;; a 1 KiB source chunk is 32 time-of-day entries; each becomes one word
    (colorb          rgba 256)

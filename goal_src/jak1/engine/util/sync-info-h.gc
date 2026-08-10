@@ -3,10 +3,9 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; The sync-info types derive repeatable phases from the global game clock so
-;; independently updated objects remain synchronized. Platforms can therefore
-;; share a period and retain consistent relative positions without communicating
-;; every frame.
+;; The sync-info types keep gameplay objects like platforms in sync.
+;; Platforms may spawn and despawn during gameplay, and determine their
+;; momvement phase from the global clock.
 ;;
 ;; This file also contains small randomized and spring-like motion controls that
 ;; do not use the synchronization clock.
@@ -14,8 +13,8 @@
 ;; DECOMP BEGINS
 
 ;; The base clock produces a sawtooth phase from 0 to 1 over each period. Its
-;; mirrored form produces a triangular phase from 0 to 1 and back to 0 over the
-;; same period. Citadel's rotating "pies" are synchronized with this clock.
+;; mirrored versions produces a triangular phase from 0 to 1 and back to 0 over the
+;; same period.
 (deftype sync-info (structure)
   (;; Phase offset stored in game-time ticks rather than normalized phase.
    (offset float)
@@ -107,8 +106,7 @@
    (at-min? (_type_) symbol)
    (at-max? (_type_) symbol)))
 
-;; Vector counterpart to delayed-rand-float. X and Z share one symmetric range,
-;; Y has its own, and W remains zero.
+;; Vector counterpart to delayed-rand-float.
 (deftype delayed-rand-vector (structure)
   ((min-time   int32)
    (max-time   int32)

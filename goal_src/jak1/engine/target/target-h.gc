@@ -2,18 +2,17 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/game/game-h.gc")
+
 (declare-type snowball-info basic)
-
 (declare-type tube-info basic)
-
 (declare-type racer-info basic)
-
 (declare-type flut-info basic)
-
 (declare-type sidekick process-drawable)
 
-;; Jak and Daxter's process types and the core target entry points. Most movement and collision
-;; state lives in control-info, which occupies the process-drawable root slot.
+;; target is the player character.
+;; The name is probably from camera code, which refers to the thing being tracked as "target".
+;; In math-camera, there's also an unused function `move-target-from-pad`, which likely was
+;; used to move the camera target when testing very early camera code.
 
 ;; DECOMP BEGINS
 
@@ -34,7 +33,7 @@
    (attack-info-rec     attack-info :inline) ;; Most recently received attack description.
    (anim-seed           uint64) ;; Shared with Daxter to synchronize ambient animation.
    (alt-cam-pos         vector :inline) ;; Camera focus override selected by state-flags.
-   (snowball            snowball-info) ;; Snowball-riding state.
+   (snowball            snowball-info) ;; Snowball-riding state. (snowball is unimplemented)
    (tube                tube-info) ;; Tube-riding state.
    (flut                flut-info) ;; Flut Flut riding state.
    (current-level       level) ;; Current level used for in-level time accounting.
@@ -189,7 +188,7 @@
   ((parent-override  (pointer target) :overlay-at parent)
    (control          control-info :overlay-at root)
    (anim-seed        uint64 :offset 192) ;; Mirrors Jak's ambient-animation seed.
-   (shadow-in-movie? symbol)) ;; Permit Daxter's special shadow during movies.
+   (shadow-in-movie? symbol)) ;; Permit Daxter's shadow during movies.
   (:states
    sidekick-clone))
 

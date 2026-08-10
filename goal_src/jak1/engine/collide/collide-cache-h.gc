@@ -5,9 +5,7 @@
 
 ;; Broad-phase tests use *collide-work*, which is prepared for the active cache fill.
 (define-extern collide-cache-using-line-sphere-test (function vector symbol))
-
 (define-extern collide-cache-using-y-probe-test (function vector symbol))
-
 (define-extern collide-cache-using-box-test (function vector symbol))
 
 ;; DECOMP BEGINS
@@ -28,12 +26,14 @@
    (solid-only symbol)))
 
 (deftype collide-puss-sphere (structure)
-  "One query sphere and its integer-coordinate bounding box in the sphere-probe scratchpad work."
+  "One query sphere and its integer-coordinate bounding box in the sphere-probe scratchpad work.
+   PUSS = prim-using-spheres ?"
   ((bsphere sphere :inline)
    (bbox4w bounding-box4w :inline)))
 
 (deftype collide-puss-work (structure)
-  "Scratchpad work for testing the cached primitives against as many as 64 query spheres."
+  "Scratchpad work for testing the cached primitives against as many as 64 query spheres.
+   PUSS = prim-using-spheres ?"
   ((closest-pt vector :inline)
    (tri-normal vector :inline)
    (tri-bbox4w bounding-box4w :inline)
@@ -45,7 +45,8 @@
 
 (deftype collide-puyp-work (structure)
   "Working state for a downward Y probe. best-u tracks the nearest hit along move-dist and tri-out
-   receives its surface, point, normal, and representative vertices."
+   receives its surface, point, normal, and representative vertices.
+   PUYP = prim-using-y-probe"
   ((best-u float)
    (ignore-pat pat-surface)
    (tri-out collide-tri-result)
@@ -57,8 +58,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype collide-cache-tri (structure)
-  "One world-space triangle in the collision cache. Its final quadword overlays the surface
-   properties, owning primitive index, and query-specific user values."
+  "One world-space triangle in the collision cache."
   ((vertex vector 3 :inline) ;; actual locations
    (extra-quad uint128 :offset 48)
    (pat pat-surface :overlay-at extra-quad) ; metadata about the surface of this tri
