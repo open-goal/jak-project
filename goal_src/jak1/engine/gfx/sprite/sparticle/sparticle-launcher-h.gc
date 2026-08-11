@@ -3,31 +3,18 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel/gcommon.gc")
 
-;; The "sparticle" system is the particle system.
-;; Features
-;; - Support for 2D particles (autosave icon, progress menu graphics)
-;; - Support for 3D particles (many of the effects)
-;; - Uses the "sprite" renderer to draw particles
+;; sparticle (likely sprite - particle) is the particle system.
 
-;; The "sparticle-launcher" code is the framework for describing particle effects
-;; The "sparticle" code is the system that runs particles
-;; Note that neither of these link particles to the process system. See part-tracker for that.
+;; the description of a single particle is a "sparticle-launcher", which is constant data.
+;; The *part-id-table* stores references to each sparticle-launcher, indexed by ID
 
-;; The highest-level class here is sparticle-launch-control.
-;; Each instance of a particle effect must have one of these.
-;; For example, there would be one of these per eco-vent.
-;; These store some state (a sparticle-launch-state) and a reference to a sparticle-launch-group
-;; Multiple launch-controls can refer to the same launch-group.
+;; A "sparticle-launch-group" describes a group of sparticle-launchers, as a single effect.
+;; For example, there might be a sparticle-launch-group for an explosion which has
+;; both fireball and smoke sparticle-launchers.
+;; The *part-group-id-table* stores references to all sparticle-launch-groups
 
-;; A sparticle-launch-group is a description of a particle effect.
-;; It can contain multiple types of particles.
-;; The `*part-group-id-table*` array stores a reference to every launch-group, indexed by group id.
-;; Each launch-group is just a list of sparticle-launchers, stored as an index
 
-;; A launcher is a single particle effect.
-;; The `*part-id-table*` has references to all particle effects.
-;; It contains a list of "field-init-specs".  When the particle effect starts, the system
-;; iterates through this list and sets parameters about particles.
+;; A particle effect is described in a group of field : value declarations.
 
 ;; There are five types of fields:
 ;; misc fields
@@ -36,10 +23,9 @@
 ;; launch fields
 ;; weird fields
 
-;; The built-in parameters can be used for many simple effects, but sometimes it is not enough.
-;; You can provide a callback function to update the particle's state if needed.
+;; these are arranged based on how the engine consumes.
 
-;; These are the user-settable state variables for each particle effect
+;; List of all settable fields and grouping helpers
 (defenum sp-field-id
   :type uint16
   (misc-fields-start 0)
@@ -114,34 +100,48 @@
   (spt-scalevel 66)
   (spt-end 67))
 
-;; How sp-init-fields! interprets an sp-field-init-spec when initializing a
-;; field. Integer and floating-point fields store
-;; initial + random-mult * (rand * random-range), where rand-vu returns [0, 1).
+;; sp-flag controls how a field value is interpreted.
+;; The int, float, float-int-rand options create a randomized number:
+;; int:            initial + truncate(rand * random-range) * random-mult
+;; float:          initial + rand * random-rangef * random-multf
+;; float-int-rand: initial + truncate(rand * (random-range + 1)) * random-multf
 (defenum sp-flag
   :type uint16
-  (int 0) ;; integer field; the random term is truncated to an integer
-  (float 1) ;; floating-point field
-  (float-int-rand 2) ;; float with an integer-quantized random term
+  (int 0)    ;; end result is truncated to integer
+  (float 1)  ;; everything is float
+  (float-int-rand 2) ;; float with an integer-quantized random offset
   (copy-from-other 3) ;; copy an earlier field at the negative offset in initial-value
   (object 4) ;; raw object or label pointer, such as a sound-spec or :data payload
   (symbol 5) ;; store the symbol's value
-  (launcher 6) ;; resolve initial-value as an index in *part-id-table*
+  (launcher 6) ;; treat initial-value as an index in *part-id-table*
   )
 
+;; options for an entire group
+;; use-local-clock means the effect maintains its own clock.
+;;   this is used when effects have some explicit starting behavior,
+;;   for example an explosion might display fire at time 0 and smoke
+;;   at a later time. This is disabled for effects that need global
+;;   syncrhonization with other effects, like geysers.
+;; always-draw disables view frustum culling for processing.
+;;   this is useful for particle effects that take a while to get
+;;   going, like a waterfall that drops particles from high up.
+;;   you woudln't want the waterfall to restart each time
+;;   the player looks away and back.
+;; randomize-order "randomizes" the draw order of the particles
+;; only used on the sentinel beach waterfall.
 (defenum sp-group-flag
   :bitfield #t
   :type uint16
   (use-local-clock 0)
   (always-draw 1)
   (screen-space 2)
-  (unknown-bit-01 3) ;; beach-part
+  (randomize-order 3)
   )
 
 ;; DECOMP BEGINS
 
-;; This describes the initial value and some more info for a single field
-;; Note that there are overlays here and some values only make sense in some
-;; cases.
+;; This describes the initial value and randomization parameter
+;; for a field.
 (deftype sp-field-init-spec (structure)
   ((field          sp-field-id)
    (flags          sp-flag)
@@ -157,6 +157,18 @@
    (sym            symbol :overlay-at initial-valuef)
    (sound          sound-spec :overlay-at initial-valuef)))
 
+;; Definition of a particle effect as a list of fields.
+;; birthaccum and soundaccum are two accumulators for birth and sound triggers.
+;; Each time (launch-particles is called, it adds `num` to `birthaccum`. If the value
+;; is over 1.0, it triggers a launch. If the launch succeeds, it decrements by 1.
+;; There is no automatic retry, the intent is that you call (launch-particles on
+;; each frame, and the game launches `num` particles per 1/60 of a second on average
+;; (note that on PAL it's still num particles per 1/60th of a second)
+;; soundaccum accumulates `sound-spec.num` per launch, when it reaches 1 it triggers
+;; a sound.
+;; The soundaccum is always shared between all instances of a sparticle-launcher.
+;; If a particles is launched in a group with a state, it uses a state-local birthaccum.
+;; Otherwise, it uses this birthaccum.
 (deftype sparticle-launcher (basic)
   ((birthaccum float)
    (soundaccum float)
@@ -179,7 +191,7 @@
 ;; One launcher in a group, with its timing and visibility parameters. Timing
 ;; uses 300 Hz ticks. period is the cycle length, with zero meaning continuous
 ;; launch; length is the active window within a cycle; and offset changes the
-;; instance's phase. fade-after stops emission beyond that camera distance,
+;; instance's phase. fade-after decreases emission beyond that camera distance,
 ;; while falloff-to is the distance where the linearly scaled emission rate
 ;; reaches zero. hour-mask suppresses emission during selected in-game hours.
 (deftype sparticle-group-item (structure)
@@ -217,6 +229,7 @@
 
 (declare-type sparticle-cpuinfo structure)
 
+;; state of a single launcher
 (deftype sparticle-launch-state (structure)
   ((group-item sparticle-group-item)
    (flags      sp-launch-state-flags)
@@ -233,6 +246,7 @@
    (spec       basic :overlay-at sprite)
    (id         uint32 :overlay-at sprite3d)))
 
+;; definition of a launch group
 (deftype sparticle-launch-group (basic)
   ((length          int16)
    (duration        uint16)
