@@ -1007,8 +1007,8 @@
       (l.w v1 v1)
       (nop!)
       (b.ne v1 a1 next-binding :delay (l.h v1 a3 4))
-      (and.i a0 v1 (sp-launch-state-flags launcher-active))
-      (ori v1 v1 (sp-launch-state-flags launcher-active))
+      (and.i a0 v1 (sp-launch-state-flags enabled))
+      (ori v1 v1 (sp-launch-state-flags enabled))
       (b.nz a0 next-binding :delay (nop!))
       (s.h v1 a3 4)
       (nop!)
@@ -1585,14 +1585,14 @@
              (set! (-> state offset) (-> item offset))
              (set! (-> state randomize) (the-as uint 0))
              (cond
-               ((logtest? (-> item flags) (sp-group-item-flag start-dead))
+               ((logtest? (-> item flags) (sp-group-item-flag child))
                 ;; if we aren't immediate
-                (logclear! (-> state flags) (sp-launch-state-flags launcher-active))
+                (logclear! (-> state flags) (sp-launch-state-flags enabled))
                 (set! (-> state origin) #f)
                 (set! (-> state sprite3d) #f)
                 (set! (-> state sprite) #f))
                (else
-                (logior! (-> state flags) (sp-launch-state-flags launcher-active))
+                (logior! (-> state flags) (sp-launch-state-flags enabled))
                 ;; set the position now.
                 (set! (-> state origin) (-> this center))
                 (set! (-> state sprite3d) #f)
@@ -1617,7 +1617,7 @@
    optional sprite transform."
   ;; clear the flag.
   (countdown (i (-> this length))
-    (let ((state (-> this data i))) (logclear! (-> state flags) (sp-launch-state-flags particles-active))))
+    (let ((state (-> this data i))) (logclear! (-> state flags) (sp-launch-state-flags launched))))
   (set! (-> this local-clock) 0)
   (set! (-> this fade) 1.0)
   ;; kill the particles (let them go back to the sparticle system.)
@@ -1671,7 +1671,7 @@
   (vector-copy! (-> this center) pos)
   ;; og:preserve-this
   ;; check if we are visible (remove this check to force particles to be drawn.)
-  (if (not (or (is-visible? this pos) (logtest? (-> this group flags) (sp-group-flag always-draw screen-space))))
+  (if (not (or (is-visible? this pos) (logtest? (-> this group flags) (sp-group-flag always-process screen-space))))
     (return (the-as object 0)))
   (let ((now *particle-300hz-timer*)
         (last-time (-> this last-spawn-time)))
@@ -1702,7 +1702,7 @@
           (let* ((state (-> this data item-idx))
                  (item (-> state group-item))
                  (launcher (-> *part-id-table* (-> item launcher))))
-            (when (and launcher (nonzero? launcher) (logtest? (-> state flags) (sp-launch-state-flags launcher-active)))
+            (when (and launcher (nonzero? launcher) (logtest? (-> state flags) (sp-launch-state-flags enabled)))
               ;; we are active, and it is possible to launch.
               ;; rate is the launch rate: 1.0, reduced linearly toward 0 as distance approaches falloff-to.
               (let ((rate 1.0))
@@ -1710,18 +1710,18 @@
                 ;; reject if bad type
                 (let ((launcher-type sparticle-launcher)) (b! (!= (-> launcher type) launcher-type) bad-launcher :delay (nop!)))
                 ;; og:preserve-this PAL patch here
-                ;; If this is a one-shot item (launch-asap or relaunch-each-spawn), take the
+                ;; If this is a one-shot item (one-shot or every-frame), take the
                 ;; immediate-launch path just below; otherwise use the periodic scheduler.
-                (b! (zero? (logand (-> item flags) (sp-group-item-flag launch-asap relaunch-each-spawn))) periodic-path :delay (nop!))
-                (when (or (zero? (logand (-> state flags) (sp-launch-state-flags particles-active)))
-                          (logtest? (-> item flags) (sp-group-item-flag relaunch-each-spawn)))
-                  ;; particles are not active (or relaunch-each-spawn forces a burst every call):
+                (b! (zero? (logand (-> item flags) (sp-group-item-flag one-shot every-frame))) periodic-path :delay (nop!))
+                (when (or (zero? (logand (-> state flags) (sp-launch-state-flags launched)))
+                          (logtest? (-> item flags) (sp-group-item-flag every-frame)))
+                  ;; particles are not active (or every-frame forces a burst every call):
                   ;; launch one burst.
                   (set! (-> state spawn-time) (the-as uint now))
-                  (logior! (-> state flags) (sp-launch-state-flags particles-active))
+                  (logior! (-> state flags) (sp-launch-state-flags launched))
                   (if (< 0.0 rate)
                     (launch-particles :system
-                                      (if (logtest? (-> item flags) (sp-group-item-flag is-3d)) *sp-particle-system-3d* *sp-particle-system-2d*)
+                                      (if (logtest? (-> item flags) (sp-group-item-flag 3d)) *sp-particle-system-3d* *sp-particle-system-2d*)
                                       launcher
                                       (-> state origin)
                                       :launch-state
@@ -1759,10 +1759,10 @@
                              (* 0.2 (the float (- window-len (the-as uint last-phase))) rate))
                             ((and (>= last-phase (the-as int window-len)) (< now-phase window-len)) (* 0.2 (the float now-phase) rate))
                             (else
-                             ;; both endpoints are outside the emission window: only auto-rearm
+                             ;; both endpoints are outside the emission window: only loop
                              ;; items may start a new cycle (and only once a full period has
                              ;; elapsed since the last spawn); others go dormant.
-                             (when (not (logtest? (-> item flags) (sp-group-item-flag auto-rearm)))
+                             (when (not (logtest? (-> item flags) (sp-group-item-flag loop)))
                                0
                                (goto next-item))
                              (when (< (the-as uint (- now (the-as int (-> this data item-idx spawn-time)))) (-> item period))
@@ -1772,10 +1772,10 @@
                              (* 0.2 (the float (- now last-time)) rate)))))
                   (label emit-periodic)
                   (set! (-> state spawn-time) (the-as uint now))
-                  (logior! (-> state flags) (sp-launch-state-flags particles-active))
+                  (logior! (-> state flags) (sp-launch-state-flags launched))
                   (if (< 0.0 burst-rate)
                     (launch-particles :system
-                                      (if (logtest? (-> item flags) (sp-group-item-flag is-3d)) *sp-particle-system-3d* *sp-particle-system-2d*)
+                                      (if (logtest? (-> item flags) (sp-group-item-flag 3d)) *sp-particle-system-3d* *sp-particle-system-2d*)
                                       launcher
                                       (-> state origin)
                                       :launch-state

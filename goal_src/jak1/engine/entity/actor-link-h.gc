@@ -6,21 +6,10 @@
 (require "engine/entity/entity-h.gc")
 (require "engine/game/game-h.gc")
 
-;; An entity resource may contain a named list of references to other actors,
-;; stored either as actor names or actor IDs. Name lookup scans actors in every
-;; loaded level; actor-ID lookup uses the actor table's binary search.
-;;
-;; The next-actor and prev-actor entries form linked actor lists. Each
-;; participating process owns an actor-link-info that caches its immediate
-;; neighbors and provides list traversal, messaging, and counting operations.
-;; Traversal still resolves the resource entry at every hop.
+;; Actors can have references to other actors.
+;; This file has utilities for resolving those references.
 
 ;; DECOMP BEGINS
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Initial Lookup Functions
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; these functions find actors before we've built the links.
 
 (defun entity-actor-lookup ((lump res-lump) (name symbol) (idx int))
   "Resolve actor reference idx from a named resource entry. String entries use
@@ -40,9 +29,10 @@
   (let ((tag (new 'static 'res-tag)))
     (if (res-lump-data res name pointer :tag-ptr (& tag)) (the-as int (-> tag elt-count)) 0)))
 
-;; actor-link-info is allocated on the owning process heap and stored in a
-;; type-specific process field. It assumes one live process per linked actor;
-;; the actor's extra entity-links record supplies that process during messaging.
+;; Actors can also be in a linked list of actors. Each actor in the list
+;; stores the next and previous in an element name `next-actor` or `prev-actor`.
+;; actor-link-info is a cache of the actor lookup, however the cached result is
+;; not always used.
 
 (deftype actor-link-info (basic)
   ((process process)

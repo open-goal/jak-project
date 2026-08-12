@@ -17064,14 +17064,20 @@ the function that applies its ambient effect."
 (defenum sp-group-item-flag
   :bitfield #t
   :type uint16
-  (is-3d 0) ;; use the oriented 3D particle system rather than 2D billboards
-  ;; Periodic emitters re-arm each period rather than going dormant after one
-  ;; cycle. This is set by convention on most items, but only affects periodic
-  ;; items that do not use launch-asap.
-  (auto-rearm 1)
-  (start-dead 2) ;; begin inactive and wait for an explicit spawn
-  (launch-asap 3) ;; launch an immediate one-shot burst outside the period scheduler
-  (relaunch-each-spawn 6) ;; burst on every spawn call, even while particles remain active
+  (3d 0) ;; use the oriented 3D particle system rather than 2D billboards
+  ;; Allow a periodic item to restart and rephase after going dormant for a complete period.
+  ;; This has no effect on one-shot or every-frame items, which bypass the period scheduler.
+  (loop 1)
+  ;; Begin inactive. A parent particle whose group item names this launcher's ID in :binding
+  ;; normally activates the state, supplies its live position as the launch origin, and disables
+  ;; the state again when it dies.
+  (child 2)
+  ;; Bypass the period scheduler and launch once while launched is clear. For a child this
+  ;; normally means one launch per binding. falloff-to still scales the launch rate.
+  (one-shot 3)
+  ;; Bypass the period scheduler and launch on every sparticle-launch-control.spawn call while
+  ;; active (normally once per frame). This births new particles rather than relaunching old ones.
+  (every-frame 6)
   )
 
 ;; One launcher in a group, with its timing and visibility parameters. Timing
@@ -17100,9 +17106,8 @@ the function that applies its ambient effect."
 (defenum sp-launch-state-flags
   :bitfield #t
   :type uint16
-  (launcher-active 0) ;; enabled and considered by spawn
-  (particles-active 1) ;; a launch occurred and particles exist or are still wanted
-  (bit2 2)
+  (enabled 0) ;; enabled and considered by spawn
+  (launched 1) ;; a launch occurred and particles exist or are still wanted
   )
 
 (declare-type sparticle-cpuinfo structure)
@@ -17132,7 +17137,7 @@ the function that applies its ambient effect."
   :bitfield #t
   :type uint16
   (use-local-clock 0)
-  (always-draw 1)
+  (always-process 1)
   (screen-space 2)
   (unknown-bit-01 3) ;; beach-part
   )
@@ -26264,7 +26269,7 @@ object persist across ordinary actor culling.")
   (:states
     launcher-idle
     launcher-deactivated
-    launcher-active)
+    enabled)
   (:methods
     (init-from-entity! :override-doc
       "Build this launcher's collision sphere and drawable data, load its spring height, particle
