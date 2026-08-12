@@ -245,7 +245,6 @@
         (draw-highlight-bar arg0 arg1 (the int (+ 2.0 (-> arg1 origin y))) (the int (+ -1.0 f0-3)) f30-0))))
   (none))
 
-;;This is the function that gets called to draw the secrets menu
 (defmethod draw-option ((this menu-secret-option) (arg0 progress) (font-ctx font-context) (arg2 int) (arg3 symbol))
   (local-vars
     (sv-16 float)
@@ -253,7 +252,7 @@
     (sv-96 int)
     (sv-112 int)
     (sv-128 int)
-    (sv-192 string) ;; The text label for the secret, or ????????? if the secret not available yet.
+    (sv-192 string)
     (sv-208 text-id)
     (sv-240 string)
     (sv-288 int)
@@ -358,25 +357,19 @@
          )
         (else
           (progress-method-33 arg0 (-> *progress-work* sub-body-footer))
-          ;; What is going on here????
           (let* ((s3-3 (get-scissor-stack-top arg0))
-                 (f22-0 (- (-> s3-3 w) (-> s3-3 y)))
-                 ;; f30-1 = 10 + 24 * scale * font-scale 
+                 (secret-menu-height (- (-> s3-3 w) (-> s3-3 y)))
                  (f30-1 (+ 10.0 (* 24.0 (-> *video-params* relative-x-scale) (-> font-ctx scale))))
-                 (f28-1 (+ (- -10.0 (-> s3-3 x)) (-> s3-3 z)))
+                 (secret-menu-width (+ (- -10.0 (-> s3-3 x)) (-> s3-3 z)))
                  )
             (string-format "~32L~S~44L ~S" (lookup-text! *common-text* (text-id progress-on) #f) (lookup-text! *common-text* (text-id progress-off) #f))
             (let* ((string-width (-> (get-string-length *temp-string* font-ctx) length))
-                   (secret-text-width (- (- (- f28-1 f30-1) string-width) f30-1))
+                   (secret-text-width (- (- (- secret-menu-width f30-1) string-width) f30-1))
                    )
-
-            (format 0 "String length:~f f28:~f f30:~f Font scale:~f Video scale:~f ratio:~f~%" string-width f28-1 f30-1 (-> font-ctx scale) (-> *video-params* relative-x-scale)  (* (-> *pc-settings* aspect-ratio-reciprocal) f28-1))
-              (set-flags! font-ctx (font-flags kerning large))
-
-              (if (not (zero? (-> *pc-settings* use-vis?)))
-                (*! secret-text-width (-> *pc-settings* aspect-ratio-reciprocal))
+              (when (not (-> *pc-settings* use-vis?))
+                (*! secret-menu-width (-> *pc-settings* aspect-ratio-reciprocal))
               )
-              
+              (set-flags! font-ctx (font-flags kerning large))
               (set! (-> font-ctx width) secret-text-width)
               (let ((s1-5 (max 0 (the int (-> this current-index)))))
                 (let* ((a0-61 (-> *menu-secrets-array* s1-5))
@@ -397,28 +390,28 @@
                         (f1-25 (-> this current-index))
                         )
                     (set! (-> font-ctx origin y)
-                          (+ (- f0-33 (* f24-0 (- f1-25 (* (the float (the int (/ f1-25 1.0))) 1.0)))) (-> s3-3 y))
-                          )
+                      (+ (- f0-33 (* f24-0 (- f1-25 (* (the float (the int (/ f1-25 1.0))) 1.0)))) (-> s3-3 y))
                     )
-                  (set! (-> font-ctx height) f22-0)
+                  )
+                  (set! (-> font-ctx height) secret-menu-height)
                   ;; Continues printing lines in the secret menu while the font-context's origin is within the limits of the menu,
                   ;; And the index counter s1-5 still refers to a secret index that actually exists in the array.
                   (while (and (< (-> font-ctx origin y) (-> s3-3 w)) (< s1-5 (-> *menu-secrets-array* length)))
                     (let ((s0-6 (-> *menu-secrets-array* s1-5)))
-                      (set! sv-208 (-> *menu-secrets-array* s1-5 name)) ;; Gets name of secret from secrets array
-                      (set! sv-288 (secret-item-option-method-12 s0-6)) ;; Used to check if secret unlocked
+                      (set! sv-208 (-> *menu-secrets-array* s1-5 name))
+                      (set! sv-288 (secret-item-option-method-12 s0-6))
                       (case sv-288
                         ((4)
-                          (set! sv-240 "?????????") ;; Sets secret text to ????????? if secret not yet unlocked
-                          )
-                        (else
-                          (set! sv-240 (lookup-text! *common-text* sv-208 #f)) ;; Looks up text if secret unlocked
-                          )
+                          (set! sv-240 "?????????")
                         )
+                        (else
+                          (set! sv-240 (lookup-text! *common-text* sv-208 #f))
+                        )
+                      )
                       (cond
                         ((logtest? (-> *menu-secrets-array* s1-5 flags) (secret-item-option-flags sf0))
                           (set! (-> font-ctx origin x) (+ 10.0 (adjust-x-if-needed (-> s3-3 x))))
-                          (set! (-> font-ctx width) f28-1)
+                          (set! (-> font-ctx width) secret-menu-width)
                           (set-color! font-ctx (font-color font-color-34))
                           (set-flags! font-ctx (font-flags kerning large))
                           (let ((f22-1 (-> font-ctx origin y)))
@@ -455,7 +448,7 @@
                             (string-format "~S" sv-240) ;;Formatting secret text before printing it onscreen.
                             (let ((f20-0 (print-game-text *temp-string* font-ctx #f 40 (bucket-id hud-draw-hud-alpha))))
                               (when (not (logtest? (-> *menu-secrets-array* s1-5 flags) (secret-item-option-flags sf0)))
-                                (set! (-> font-ctx origin x) (adjust-x-if-needed (+ (-> s3-3 x) f28-1)))
+                                (set! (-> font-ctx origin x) (adjust-x-if-needed (+ (-> s3-3 x) secret-menu-width)))
                                 (set-flags! font-ctx (font-flags kerning right large))
                                 (set! sv-352 (lookup-text! *common-text* (text-id progress-on) #f))
                                 (set! sv-368 (lookup-text! *common-text* (text-id progress-off) #f))
@@ -579,7 +572,7 @@
     (string-format "~S" (lookup-text! *common-text* (text-id progress-missions-complete-icon) #f))
     (let ((f30-1 (+ 14.0 (-> (get-string-length *temp-string* arg1) length))))
       (set! (-> arg1 width) (+ (- (- -10.0 f30-1) (-> s3-0 x)) (-> s3-0 z)))
-      (if (not (zero? (-> *pc-settings* use-vis?)))
+      (when (not (-> *pc-settings* use-vis?))
         (*! (-> arg1 width) (-> *pc-settings* aspect-ratio-reciprocal))
       )
       (let ((s2-2 (-> *game-info* mission-list))
@@ -784,18 +777,18 @@
             (set! sv-96 (the int (+ 48.0 (-> s3-0 y))))
             (set! sv-112 (logior #x808080 (shr (shl (the int (* 128.0 arg3)) 56) 32)))
             (let ((f24-0 0.25)
-                  (f22-0 (+ 10.0 arg2 (-> s3-0 x)))
+                  (secret-menu-height (+ 10.0 arg2 (-> s3-0 x)))
                   )
               (set-scale! arg1 0.45)
-              (let ((f20-0 f22-0))
+              (let ((f20-0 secret-menu-height))
                 (draw-icon-array! (-> *progress-icon-arrays* 63) (the int (adjust-x-if-needed f20-0)) sv-96 0.25 0.25 (the-as rgba sv-112) arg3)
                 (highscore-page-info-method-10 this arg1 (-> sv-16 gold-score) (+ (adjust-x-if-needed f20-0) f28-1) f26-0)
                 )
-              (let ((f20-1 (+ f22-0 (* 0.333 f30-0))))
+              (let ((f20-1 (+ secret-menu-height (* 0.333 f30-0))))
                 (draw-icon-array! (-> *progress-icon-arrays* 64) (the int (adjust-x-if-needed f20-1)) sv-96 0.25 0.25 (the-as rgba sv-112) arg3)
                 (highscore-page-info-method-10 this arg1 (-> sv-16 silver-score) (+ (adjust-x-if-needed f20-1) f28-1) f26-0)
                 )
-              (let ((f30-1 (+ f22-0 (* 0.667 f30-0))))
+              (let ((f30-1 (+ secret-menu-height (* 0.667 f30-0))))
                 (draw-icon-array! (-> *progress-icon-arrays* 65) (the int (adjust-x-if-needed f30-1)) sv-96 f24-0 f24-0 (the-as rgba sv-112) arg3)
                 (highscore-page-info-method-10 this arg1 (-> sv-16 bronze-score) (+ (adjust-x-if-needed f30-1) f28-1) f26-0)
                 )

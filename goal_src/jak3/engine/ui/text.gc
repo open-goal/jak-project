@@ -420,7 +420,7 @@
 ;; Returns the height of the printed text.
 (defun print-game-text ((display_text string) (font-ctx font-context) (invisible symbol) (large_font_size int) (bucket_id bucket-id))
   (local-vars
-    (font_origin_x float)
+    (font_origin_x float) ;; Initial x and y position of font context
     (font_origin_y float)
     (font_flags font-flags)
     (font_color font-color)
@@ -452,32 +452,31 @@
      (set! (-> font-ctx max-x) (-> font-ctx origin x))
      (when (logtest? (-> font-ctx flags) (font-flags middle-vert)) ;; If middle-vert flag is set,
        (logclear! (-> font-ctx flags) (font-flags middle-vert)) ;; Clear the flag
-       (+! (-> font-ctx origin y) ;; font's y-origin = font's y origin - 0.5 * font-height * height of returned text? 
-           (the float
-                (the int (* 0.5 (- (-> font-ctx height) (print-game-text display_text font-ctx #t 44 (bucket-id hud-draw-hud-alpha)))))
-                )
-           )
-       )
+       (+! (-> font-ctx origin y) ;; font's y-origin += 0.5 * (font-height - height needed to print display_text) 
+          (the float
+            (the int (* 0.5 (- (-> font-ctx height) (print-game-text display_text font-ctx #t 44 (bucket-id hud-draw-hud-alpha)))))
+          )
+        )
+      )
      (set! cur_ch_ptr (-> display_text data))
      (set! font_cur_position (-> font-ctx origin x))
      (set! font_origin_x_copy (-> font-ctx origin x))
      (set! right_side (+ (-> font-ctx origin x) (-> font-ctx width))) 
-     (format 0 "text:~s origin-x:~f width:~f right_side:~f~%" display_text (-> font-ctx origin x) (-> font-ctx width) right_side)
      (set! bottom_side (+ (-> font-ctx origin y) (-> font-ctx height)))
      (set! whitespace_width (-> (get-string-length " " font-ctx) length))
 
-     ;;line_height is set to (large_font_size as a float if font-ctx has its large flat set or 28.0) * font-ctx scale
-     (set! line_height (* (if (logtest? (-> font-ctx flags) (font-flags large))
-                (the float large_font_size)
-                28.0
-                )
-            (-> font-ctx scale)
-            )
+     ;;line_height is set to font-ctx scale * (large_font_size if font-ctx has its large flat set or 28.0) 
+     (set! line_height (* (-> font-ctx scale)
+          (if (logtest? (-> font-ctx flags) (font-flags large))
+            (the float large_font_size)
+            28.0
+          )
+        )
      )
      (set! non_empty_lines 0)
      (if (logtest? (-> font-ctx flags) (font-flags middle))
-         (+! (-> font-ctx origin x) (/ (-> font-ctx width) 2))
-         )
+        (+! (-> font-ctx origin x) (/ (-> font-ctx width) 2))
+     )
      (set! cur_ch (-> cur_ch_ptr 0)) 
      (set! game-word-len 0)
      (set! game-line-len 0)
@@ -497,7 +496,7 @@
         ;;  (set! cur_ch_ptr (&-> cur_ch_ptr -1))
        (set! next_ch (-> cur_ch_ptr 1))
        (cond
-          ;; 0 <= current character < 4
+          ;; 0 < current character < 4
           ((and (> cur_ch 0) (< cur_ch (the-as uint 4)))
             ;; Copy current and next character from display text into game-text-word
             (set! (-> *game-text-word* data game-word-len) cur_ch)
@@ -535,8 +534,8 @@
             (set! game-word-len (+ game-word-len 1))
           )
           (else ;;Write character into word and increment word length
-           (set! (-> *game-text-word* data game-word-len) cur_ch)
-           (set! game-word-len (+ game-word-len 1))
+            (set! (-> *game-text-word* data game-word-len) cur_ch)
+            (set! game-word-len (+ game-word-len 1))
           )
          )
        (when word-break
@@ -553,7 +552,7 @@
                   (set! (-> font-ctx max-x) (fmax (-> font-ctx max-x) font_cur_position))
                   (set! num_lines_to_print (+ num_lines_to_print 1))
                 )
-               (else
+                (else
                   ;;Append game_word to the end of game_line
                   (copy-charp<-charp (&-> *game-text-line* data game-line-len) (-> *game-text-word* data))
                   (set! game-line-len (+ game-line-len game-word-len))
@@ -566,11 +565,11 @@
              )
            )
          )
-       (while (> num_lines_to_print 0)
-         ;; Store the position of the current line + line_height
-         (let ((next_line_origin_y (+ (-> font-ctx origin y) line_height)))
+        (while (> num_lines_to_print 0)
+          ;; Store the position of the current line + line_height
+          (let ((next_line_origin_y (+ (-> font-ctx origin y) line_height)))
             ;;Note: for now it seems like font-ctx start-line is always 0.
-           (when (>= num_lines (the-as int (-> font-ctx start-line)))
+            (when (>= num_lines (the-as int (-> font-ctx start-line)))
               ;; If game-text-line ends in a space, replace the space with 0
               ;; (should probably decrement length too??)
               (when (= (-> *game-text-line* data (+ game-line-len -1)) #\\s)
@@ -579,7 +578,7 @@
               )
               ;;Actually print the text onscreen if the text is not meant to be invisible.
               (when (not invisible)
-               (with-dma-buffer-add-bucket ((s2-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                (with-dma-buffer-add-bucket ((s2-1 (-> *display* frames (-> *display* on-screen) global-buf))
                                             bucket_id
                                             )
                  (draw-string *game-text-line* s2-1 font-ctx)
@@ -588,29 +587,29 @@
               (if (nonzero? (-> *game-text-line* data 0))
                 (set! non_empty_lines (+ non_empty_lines 1)) ;; Increment non-empty lines "printed"
               )
-             ;; Update the font-context to be positioned after the previous line
-             (set! (-> font-ctx origin y) next_line_origin_y) 
-             )
-           )
-         (set! num_lines (+ num_lines 1))
-         (set! (-> *game-text-line* data 0) (the-as uint 0))
-         (set! game-line-len 0)
-         (set! num_lines_to_print (+ num_lines_to_print -1))
-         (set! font_cur_position font_origin_x_copy)
-         (when word-break
+              ;; Update the font-context to be positioned after the previous line
+              (set! (-> font-ctx origin y) next_line_origin_y) 
+            )
+          )
+          (set! num_lines (+ num_lines 1))
+          (set! (-> *game-text-line* data 0) (the-as uint 0))
+          (set! game-line-len 0)
+          (set! num_lines_to_print (+ num_lines_to_print -1))
+          (set! font_cur_position font_origin_x_copy)
+          (when word-break
            ;;Copy game-text-word to the end of game-text-line
            (copy-charp<-charp (&-> *game-text-line* data game-line-len) (-> *game-text-word* data))
            (set! game-line-len (+ game-line-len game-word-len))
            (set! game-word-len 0)
            (set! word-break (the-as symbol #f)) ;; Reset 
            (set! font_cur_position (+ font_cur_position (the float game_text_word_width))) ;; Add word width to current position
-           )
-         )
-       (when (nonzero? cur_ch)
+          )
+        )
+        (when (nonzero? cur_ch)
          (set! cur_ch_ptr (&-> cur_ch_ptr 1))
          (set! cur_ch (-> cur_ch_ptr 0))
-         )
-       )
+        )
+      )
      ;; Restore font-ctx properties.
      (set! (-> font-ctx origin x) font_origin_x)
      (set! (-> font-ctx origin y) font_origin_y)
@@ -628,9 +627,9 @@
     )
     (else
       0.0
-      )
     )
   )
+)
 
 (defun disable-level-text-file-loading ()
   (set! *level-text-file-load-flag* #f)
