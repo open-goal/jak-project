@@ -64,19 +64,20 @@ void CodeTester::print_asm_dump() {
   printf("%s\n", dump_to_asm_string().data());
 }
 
-static constexpr int kFirstSavedGpr = 1;
+static constexpr int first_saved_gpr = 1;
+static constexpr int first_saved_simd = 0;
 
 static std::optional<size_t> match_push_gprs(const std::vector<CodeTester::DisasmLine>& lines,
                                              int last_gpr,
                                              size_t start) {
-  const int count = last_gpr - kFirstSavedGpr + 1;
+  const int count = last_gpr - first_saved_gpr + 1;
 
   if (start + count > lines.size()) {
     return std::nullopt;
   }
 
   for (int i = 0; i < count; i++) {
-    int reg = kFirstSavedGpr + i;
+    int reg = first_saved_gpr + i;
 
     std::string expected = "str\tx" + std::to_string(reg) + ", [sp, #-0x10]!";
 
@@ -91,7 +92,7 @@ static std::optional<size_t> match_push_gprs(const std::vector<CodeTester::Disas
 static std::optional<size_t> match_pop_gprs(const std::vector<CodeTester::DisasmLine>& lines,
                                             int last_gpr,
                                             size_t start) {
-  const int count = last_gpr - kFirstSavedGpr + 1;
+  const int count = last_gpr - first_saved_gpr + 1;
 
   if (start + count > lines.size()) {
     return std::nullopt;
@@ -108,6 +109,56 @@ static std::optional<size_t> match_pop_gprs(const std::vector<CodeTester::Disasm
   }
 
   return static_cast<size_t>(count);
+}
+
+static std::optional<size_t> match_push_simd(const std::vector<CodeTester::DisasmLine>& lines,
+                                             int last_simd,
+                                             size_t start) {
+  const int count = last_simd - first_saved_simd + 1;
+  const size_t line_count = static_cast<size_t>(count) * 2;
+
+  if (start + line_count > lines.size()) {
+    return std::nullopt;
+  }
+
+  for (int i = 0; i < count; i++) {
+    int reg = first_saved_simd + i;
+
+    std::string expected_sub = "sub\tsp, sp, #0x10";
+    std::string expected_str = "str\tq" + std::to_string(reg) + ", [sp]";
+
+    if (lines[start + i * 2].text != expected_sub ||
+        lines[start + i * 2 + 1].text != expected_str) {
+      return std::nullopt;
+    }
+  }
+
+  return line_count;
+}
+
+static std::optional<size_t> match_pop_simd(const std::vector<CodeTester::DisasmLine>& lines,
+                                            int last_simd,
+                                            size_t start) {
+  const int count = last_simd - first_saved_simd + 1;
+  const size_t line_count = static_cast<size_t>(count) * 2;
+
+  if (start + line_count > lines.size()) {
+    return std::nullopt;
+  }
+
+  for (int i = 0; i < count; i++) {
+    int reg = last_simd - i;
+
+    std::string expected_ldr = "ldr\tq" + std::to_string(reg) + ", [sp]";
+    std::string expected_add = "add\tsp, sp, #0x10";
+
+    if (lines[start + i * 2].text != expected_ldr ||
+        lines[start + i * 2 + 1].text != expected_add) {
+      return std::nullopt;
+    }
+  }
+
+  return line_count;
 }
 
 std::vector<CodeTester::DisasmLine> CodeTester::disassemble() {
@@ -139,8 +190,13 @@ std::vector<CodeTester::DisasmLine> CodeTester::disassemble() {
 
 std::string CodeTester::dump_to_asm_string() {
   auto lines = disassemble();
+
   // x31 is SP/ZR, not a GPR. The last real GPR is one before it.
-  const int last_gpr = get_reg_count() - 2;
+  const int last_gpr = get_reg_count() - 1;
+
+  // SIMD registers are V0-V31.
+  const int last_simd = get_simd_reg_count() - 1;
+
   std::string result;
   for (size_t i = 0; i < lines.size();) {
     if (auto count = match_push_gprs(lines, last_gpr, i)) {
@@ -148,16 +204,31 @@ std::string CodeTester::dump_to_asm_string() {
       i += *count;
       continue;
     }
+
     if (auto count = match_pop_gprs(lines, last_gpr, i)) {
       result += "\033[2m<pop all GPRs>\033[0m\n";
       i += *count;
       continue;
     }
+
+    if (auto count = match_push_simd(lines, last_simd, i)) {
+      result += "\033[2m<push all SIMDs>\033[0m\n";
+      i += *count;
+      continue;
+    }
+
+    if (auto count = match_pop_simd(lines, last_simd, i)) {
+      result += "\033[2m<pop all SIMDs>\033[0m\n";
+      i += *count;
+      continue;
+    }
+
     char buff[128];
     snprintf(buff, sizeof(buff), "%08llx:\t%s\n", lines[i].address, lines[i].text.c_str());
     result += buff;
     i++;
   }
+
   return result;
 }
 
@@ -231,6 +302,7 @@ void CodeTester::emit_push_all_simd() {
       emit(IGen::store128_gpr64_simd128(m_gen, RSP, XMM0 + i));
     }
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
+    // TODO - 16 or 32 simd regs available?
     for (int i = 0; i < 16; i++) {
       emit(IGen::sub_gpr64_imm8s(m_gen, SP, 16));
       emit(IGen::store128_gpr64_simd128(m_gen, SP, V0 + i));
@@ -245,13 +317,13 @@ void CodeTester::emit_push_all_simd() {
  */
 void CodeTester::emit_pop_all_simd() {
   if (m_gen.instr_set() == InstructionSet::X86) {
-    for (int i = 0; i < 16; i++) {
+    for (int i = 15; i >= 0; i--) {
       emit(IGen::load128_simd128_gpr64(m_gen, XMM0 + i, RSP));
       emit(IGen::add_gpr64_imm8s(m_gen, RSP, 16));
     }
     emit(IGen::add_gpr64_imm8s(m_gen, RSP, 8));
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
-    for (int i = 0; i < 16; i++) {
+    for (int i = 15; i >= 0; i--) {
       emit(IGen::load128_simd128_gpr64(m_gen, V0 + i, SP));
       emit(IGen::add_gpr64_imm8s(m_gen, SP, 16));
     }

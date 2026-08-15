@@ -118,7 +118,7 @@ InstructionARM64 mov_gpr64_gpr64(Register dst, Register src) {
                           Imm6(0));
 }
 
-InstructionARM64 mov_gpr64_u64(Register dst, uint64_t val) {
+std::vector<InstructionARM64> mov_gpr64_u64_instrs(Register dst, uint64_t val) {
   // Cannot be done in a single instruction, must combine multiple MOVZ/MOVKs
   std::vector<InstructionARM64> instrs;
   auto imm_chunks = decompose_into_imm16_chunks(val);
@@ -135,7 +135,11 @@ InstructionARM64 mov_gpr64_u64(Register dst, uint64_t val) {
           InstructionARM64(Base(0b111100101, 9), Hw(shift), Imm16(imm_chunk), Rd(dst.id())));
     }
   }
-  return InstructionARM64(instrs);
+  return instrs;
+}
+
+InstructionARM64 mov_gpr64_u64(Register dst, uint64_t val) {
+  return InstructionARM64(mov_gpr64_u64_instrs(dst, val));
 }
 
 InstructionARM64 mov_gpr64_u32(Register dst, uint64_t val) {
@@ -1279,8 +1283,8 @@ InstructionARM64 store32_xmm32_gpr64_plus_gpr64(Register addr1,
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_reg_fpsimd.html
   // 32-bit variant
   // STR <St>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
-  return InstructionARM64(Base(0b1011110000100000000010, 22), Rt(xmm_value.id()), Rm(addr1.id()),
-                          Rn(addr2.id()));
+  return InstructionARM64(Base(0b1011110000100000110010, 22), Rt(xmm_value.id()), Rm(addr2.id()),
+                          Rn(addr1.id()));
 }
 
 InstructionARM64 load32_xmm32_gpr64_plus_gpr64(Register simd_dest, Register addr1, Register addr2) {
@@ -1308,20 +1312,21 @@ InstructionARM64 store32_xmm32_gpr64_plus_gpr64_plus_s8(Register addr1,
       // ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
       InstructionARM64(Base(0b10001011000, 11), Rd(X16), Imm6(0), Rn(addr1.id()), Rm(addr2.id())),
   };
+  // TODO - optimization, if its less than imm12 we can just do an add/sub
+  auto mov_instrs = mov_gpr64_u64_instrs(X17, std::abs(offset));
+  for (const auto& instr : mov_instrs) {
+    instrs.push_back(InstructionARM64(instr));
+  }
   if (offset < 0) {
-    // we'll subtract instead
-    offset = std::abs(offset);
-    const auto sub_instrs = construct_multiple_imm12_subs(offset, X16);
-    instrs.insert(instrs.end(), sub_instrs.begin(), sub_instrs.end());
+    instrs.push_back(sub_gpr64_gpr64(X16, X17));
   } else {
-    const auto add_instrs = construct_multiple_imm12_adds(offset, X16);
-    instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
+    instrs.push_back(add_gpr64_gpr64(X16, X17));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_fpsimd.html
   // 32-bit variant
   // STR <St>, [<Xn|SP>], #<simm>
   instrs.emplace_back(
-      InstructionARM64(Base(0b1011110100000000000001, 22), Imm12(0), Rt(xmm_value.id()), Rn(X16)));
+      InstructionARM64(Base(0b1011110100000000000000, 22), Imm12(0), Rt(xmm_value.id()), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
@@ -1339,14 +1344,15 @@ InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s8(Register simd_dest,
       // ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
       InstructionARM64(Base(0b10001011000, 11), Rd(X16), Imm6(0), Rn(addr1.id()), Rm(addr2.id())),
   };
+  // TODO - optimization, if its less than imm12 we can just do an add/sub
+  auto mov_instrs = mov_gpr64_u64_instrs(X17, std::abs(offset));
+  for (const auto& instr : mov_instrs) {
+    instrs.push_back(InstructionARM64(instr));
+  }
   if (offset < 0) {
-    // we'll subtract instead
-    offset = std::abs(offset);
-    const auto sub_instrs = construct_multiple_imm12_subs(offset, X16);
-    instrs.insert(instrs.end(), sub_instrs.begin(), sub_instrs.end());
+    instrs.push_back(sub_gpr64_gpr64(X16, X17));
   } else {
-    const auto add_instrs = construct_multiple_imm12_adds(offset, X16);
-    instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
+    instrs.push_back(add_gpr64_gpr64(X16, X17));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_fpsimd.html
   // 32-bit variant
@@ -1370,20 +1376,21 @@ InstructionARM64 store32_xmm32_gpr64_plus_gpr64_plus_s32(Register addr1,
       // ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
       InstructionARM64(Base(0b10001011000, 11), Rd(X16), Imm6(0), Rn(addr1.id()), Rm(addr2.id())),
   };
+  // TODO - optimization, if its less than imm12 we can just do an add/sub
+  auto mov_instrs = mov_gpr64_u64_instrs(X17, std::abs(offset));
+  for (const auto& instr : mov_instrs) {
+    instrs.push_back(InstructionARM64(instr));
+  }
   if (offset < 0) {
-    // we'll subtract instead
-    offset = std::abs(offset);
-    const auto sub_instrs = construct_multiple_imm12_subs(offset, X16);
-    instrs.insert(instrs.end(), sub_instrs.begin(), sub_instrs.end());
+    instrs.push_back(sub_gpr64_gpr64(X16, X17));
   } else {
-    const auto add_instrs = construct_multiple_imm12_adds(offset, X16);
-    instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
+    instrs.push_back(add_gpr64_gpr64(X16, X17));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_fpsimd.html
   // 32-bit variant
   // STR <St>, [<Xn|SP>], #<simm>
   instrs.emplace_back(
-      InstructionARM64(Base(0b1011110100000000000001, 22), Imm12(0), Rt(xmm_value.id()), Rn(X16)));
+      InstructionARM64(Base(0b1011110100000000000000, 22), Imm12(0), Rt(xmm_value.id()), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
@@ -1397,20 +1404,21 @@ InstructionARM64 store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value,
       // ADD <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
       InstructionARM64(Base(0b100100010, 9), Sh(0), Imm12(0), Rd(X16), Rn(base.id())),
   };
+  // TODO - optimization, if its less than imm12 we can just do an add/sub
+  auto mov_instrs = mov_gpr64_u64_instrs(X17, std::abs(offset));
+  for (const auto& instr : mov_instrs) {
+    instrs.push_back(InstructionARM64(instr));
+  }
   if (offset < 0) {
-    // we'll subtract instead
-    offset = std::abs(offset);
-    const auto sub_instrs = construct_multiple_imm12_subs(offset, X16);
-    instrs.insert(instrs.end(), sub_instrs.begin(), sub_instrs.end());
+    instrs.push_back(sub_gpr64_gpr64(X16, X17));
   } else {
-    const auto add_instrs = construct_multiple_imm12_adds(offset, X16);
-    instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
+    instrs.push_back(add_gpr64_gpr64(X16, X17));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_fpsimd.html
   // 32-bit variant
   // STR <St>, [<Xn|SP>], #<simm>
   instrs.emplace_back(
-      InstructionARM64(Base(0b1011110100000000000001, 22), Imm12(0), Rt(xmm_value.id()), Rn(X16)));
+      InstructionARM64(Base(0b1011110100000000000000, 22), Imm12(0), Rt(xmm_value.id()), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
@@ -1424,20 +1432,21 @@ InstructionARM64 store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, 
       // ADD <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
       InstructionARM64(Base(0b100100010, 9), Sh(0), Imm12(0), Rd(X16), Rn(base.id())),
   };
+  // TODO - optimization, if its less than imm12 we can just do an add/sub
+  auto mov_instrs = mov_gpr64_u64_instrs(X17, std::abs(offset));
+  for (const auto& instr : mov_instrs) {
+    instrs.push_back(InstructionARM64(instr));
+  }
   if (offset < 0) {
-    // we'll subtract instead
-    offset = std::abs(offset);
-    const auto sub_instrs = construct_multiple_imm12_subs(offset, X16);
-    instrs.insert(instrs.end(), sub_instrs.begin(), sub_instrs.end());
+    instrs.push_back(sub_gpr64_gpr64(X16, X17));
   } else {
-    const auto add_instrs = construct_multiple_imm12_adds(offset, X16);
-    instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
+    instrs.push_back(add_gpr64_gpr64(X16, X17));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_fpsimd.html
   // 32-bit variant, unsigned
   // STR <St>, [<Xn|SP>], #<simm>
   instrs.emplace_back(
-      InstructionARM64(Base(0b1011110100000000000001, 22), Imm12(0), Rt(xmm_value.id()), Rn(X16)));
+      InstructionARM64(Base(0b1011110100000000000000, 22), Imm12(0), Rt(xmm_value.id()), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
@@ -1449,7 +1458,6 @@ InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register simd_dest,
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
-  // TODO - fix
   // first establish the base+index value in x16
   std::vector<InstructionARM64> instrs = {
       // https://www.scs.stanford.edu/~zyedidia/arm64/add_addsub_shift.html
@@ -1457,9 +1465,14 @@ InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register simd_dest,
       InstructionARM64(Base(0b10001011000, 11), Rd(X16), Imm6(0), Rn(addr1.id()), Rm(addr2.id())),
   };
   // TODO - optimization, if its less than imm12 we can just do an add/sub
-  auto mov_instrs = mov_gpr64_u64(X16, offset);
-  for (const auto& instr : mov_instrs.encodings) {
+  auto mov_instrs = mov_gpr64_u64_instrs(X17, std::abs(offset));
+  for (const auto& instr : mov_instrs) {
     instrs.push_back(InstructionARM64(instr));
+  }
+  if (offset < 0) {
+    instrs.push_back(sub_gpr64_gpr64(X16, X17));
+  } else {
+    instrs.push_back(add_gpr64_gpr64(X16, X17));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_fpsimd.html
   // 32-bit variant
@@ -1479,14 +1492,15 @@ InstructionARM64 load32_xmm32_gpr64_plus_s32(Register simd_dest, Register base, 
       // ADD <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
       InstructionARM64(Base(0b100100010, 9), Sh(0), Imm12(0), Rd(X16), Rn(base.id())),
   };
+  // TODO - optimization, if its less than imm12 we can just do an add/sub
+  auto mov_instrs = mov_gpr64_u64_instrs(X17, std::abs(offset));
+  for (const auto& instr : mov_instrs) {
+    instrs.push_back(InstructionARM64(instr));
+  }
   if (offset < 0) {
-    // we'll subtract instead
-    offset = std::abs(offset);
-    const auto sub_instrs = construct_multiple_imm12_subs(offset, X16);
-    instrs.insert(instrs.end(), sub_instrs.begin(), sub_instrs.end());
+    instrs.push_back(sub_gpr64_gpr64(X16, X17));
   } else {
-    const auto add_instrs = construct_multiple_imm12_adds(offset, X16);
-    instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
+    instrs.push_back(add_gpr64_gpr64(X16, X17));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_fpsimd.html
   // 32-bit variant
@@ -1506,14 +1520,15 @@ InstructionARM64 load32_xmm32_gpr64_plus_s8(Register simd_dest, Register base, s
       // ADD <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
       InstructionARM64(Base(0b100100010, 9), Sh(0), Imm12(0), Rd(X16), Rn(base.id())),
   };
+  // TODO - optimization, if its less than imm12 we can just do an add/sub
+  auto mov_instrs = mov_gpr64_u64_instrs(X17, std::abs(offset));
+  for (const auto& instr : mov_instrs) {
+    instrs.push_back(InstructionARM64(instr));
+  }
   if (offset < 0) {
-    // we'll subtract instead
-    offset = std::abs(offset);
-    const auto sub_instrs = construct_multiple_imm12_subs(offset, X16);
-    instrs.insert(instrs.end(), sub_instrs.begin(), sub_instrs.end());
+    instrs.push_back(sub_gpr64_gpr64(X16, X17));
   } else {
-    const auto add_instrs = construct_multiple_imm12_adds(offset, X16);
-    instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
+    instrs.push_back(add_gpr64_gpr64(X16, X17));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_fpsimd.html
   // 32-bit variant
@@ -2419,7 +2434,7 @@ InstructionARM64 max_f32_f32(Register dst, Register src) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/fmax_float.html
   // Single-precision (ftype == 00)
   // FMAX <Sd>, <Sn>, <Sm>
-  return InstructionARM64(Base(0b0001111000100000010010, 22), Rd(dst.id()), Rn(dst.id()),
+  return InstructionARM64(Base(0b0001111000100000010010, 22), Rd(dst.id()), Rn(src.id()),
                           Rm(src.id()));
 }
 
@@ -2427,14 +2442,14 @@ InstructionARM64 int32_to_f32(Register dst, Register src) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/scvtf_float_int.html
   // 32-bit to single-precision (sf == 0 && ftype == 00)
   // SCVTF <Sd>, <Wn>
-  return InstructionARM64(Base(0b0001111000100010000000, 22), Rd(dst.id()), Rn(dst.id()));
+  return InstructionARM64(Base(0b0001111000100010000000, 22), Rd(dst.id()), Rn(src.id()));
 }
 
 InstructionARM64 f32_to_int32(Register dst, Register src) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/fcvtzs_float_int.html
   // 32-bit to single-precision (sf == 0 && ftype == 00)
   // FCVTZS <Wd>, <Sn>
-  return InstructionARM64(Base(0b0001111000111000000000, 22), Rd(dst.id()), Rn(dst.id()));
+  return InstructionARM64(Base(0b0001111000111000000000, 22), Rd(dst.id()), Rn(src.id()));
 }
 
 InstructionARM64 nop() {
@@ -2553,7 +2568,7 @@ InstructionARM64 storevf_gpr64_plus_gpr64(Register value, Register addr1, Regist
   ASSERT(addr2 != SP);
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_reg_fpsimd.html
   // STR <Qt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
-  return InstructionARM64(Base(0b0011110010100000000010, 22), Rt(value.id()), Rn(addr1.id()),
+  return InstructionARM64(Base(0b0011110010100000011010, 22), Rt(value.id()), Rn(addr1.id()),
                           Rm(addr2.id()));
 }
 
@@ -2586,7 +2601,7 @@ InstructionARM64 storevf_gpr64_plus_gpr64_plus_s8(Register value,
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_fpsimd.html
   // STR <Qt>, [<Xn|SP>], #<simm>
   instrs.emplace_back(
-      InstructionARM64(Base(0b0011110010000000000001, 22), Rt(value.id()), Rn(X16), Imm9s(0)));
+      InstructionARM64(Base(0b0011110010000000000000, 22), Rt(value.id()), Rn(X16), Imm9s(0)));
   return InstructionARM64(instrs);
 }
 
@@ -2619,7 +2634,7 @@ InstructionARM64 storevf_gpr64_plus_gpr64_plus_s32(Register value,
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_fpsimd.html
   // STR <Qt>, [<Xn|SP>], #<simm>
   instrs.emplace_back(
-      InstructionARM64(Base(0b0011110010000000000001, 22), Rt(value.id()), Rn(X16), Imm9s(0)));
+      InstructionARM64(Base(0b0011110010000000000000, 22), Rt(value.id()), Rn(X16), Imm9s(0)));
   return InstructionARM64(instrs);
 }
 

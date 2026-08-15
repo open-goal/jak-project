@@ -102,9 +102,17 @@ class CodeTester {
 
   int get_reg_count() {
     if (m_gen.instr_set() == InstructionSet::ARM64) {
-      return 32;
+      return 31;  // 32 = XZR which is a special case / zero register
     } else {
       return 16;
+    }
+  }
+
+  int get_simd_reg_count() {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      return 16;  // TODO - check if platform has 16 or 32
+    } else {
+      return -1;  // TODO
     }
   }
 

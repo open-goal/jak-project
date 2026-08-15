@@ -1455,8 +1455,6 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_goal_ptr_gpr64) {
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
 
-        // printf("%s\n", tester.dump_to_asm_string().data());
-
         // prepare the memory:
         s32 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
 
@@ -1611,8 +1609,6 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_goal_ptr_gpr64) {
         // return!
         tester.emit_pop_all_gprs(true);
         tester.emit_return();
-
-        // printf("%s\n", tester.dump_to_asm_string().data());
 
         // prepare the memory:
         s64 memory[8] = {0, 0, -3, -2, -1, 0, 0, 0};
@@ -2297,7 +2293,7 @@ TEST(ARM64EmitterLoadsAndStores, load64_rip) {
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "600000586100005862000058630000586400005865000058660000586700005868000058690000586A0000"
             "586B0000586C0000586D0000586E0000586F00005870000058710000587200005873000058740000587500"
-            "0058760000587700005878000058790000587A0000587B0000587C0000587D0000587E0000587F000058");
+            "0058760000587700005878000058790000587A0000587B0000587C0000587D0000587E000058");
 }
 
 TEST(ARM64EmitterLoadsAndStores, load32s_rip) {
@@ -2313,7 +2309,7 @@ TEST(ARM64EmitterLoadsAndStores, load32s_rip) {
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "600000986100009862000098630000986400009865000098660000986700009868000098690000986A0000"
             "986B0000986C0000986D0000986E0000986F00009870000098710000987200009873000098740000987500"
-            "0098760000987700009878000098790000987A0000987B0000987C0000987D0000987E0000987F000098");
+            "0098760000987700009878000098790000987A0000987B0000987C0000987D0000987E000098");
 }
 
 TEST(ARM64EmitterLoadsAndStores, load32u_rip) {
@@ -2329,7 +2325,7 @@ TEST(ARM64EmitterLoadsAndStores, load32u_rip) {
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "600000186100001862000018630000186400001865000018660000186700001868000018690000186A0000"
             "186B0000186C0000186D0000186E0000186F00001870000018710000187200001873000018740000187500"
-            "0018760000187700001878000018790000187A0000187B0000187C0000187D0000187E0000187F000018");
+            "0018760000187700001878000018790000187A0000187B0000187C0000187D0000187E000018");
 }
 
 TEST(ARM64EmitterLoadsAndStores, load16u_rip) {
@@ -2348,7 +2344,7 @@ TEST(ARM64EmitterLoadsAndStores, load16u_rip) {
             "4079100000900B324079100000900C324079100000900D324079100000900E324079100000900F32407910"
             "00009010324079100000901132407910000090123240791000009013324079100000901432407910000090"
             "153240791000009016324079100000901732407910000090183240791000009019324079100000901A3240"
-            "79100000901B324079100000901C324079100000901D324079100000901E324079100000901F324079");
+            "79100000901B324079100000901C324079100000901D324079100000901E324079");
 }
 
 TEST(ARM64EmitterLoadsAndStores, load16s_rip) {
@@ -2367,7 +2363,7 @@ TEST(ARM64EmitterLoadsAndStores, load16s_rip) {
             "8079100000900B328079100000900C328079100000900D328079100000900E328079100000900F32807910"
             "00009010328079100000901132807910000090123280791000009013328079100000901432807910000090"
             "153280791000009016328079100000901732807910000090183280791000009019328079100000901A3280"
-            "79100000901B328079100000901C328079100000901D328079100000901E328079100000901F328079");
+            "79100000901B328079100000901C328079100000901D328079100000901E328079");
 }
 
 TEST(ARM64EmitterLoadsAndStores, load8s_rip) {
@@ -2386,7 +2382,7 @@ TEST(ARM64EmitterLoadsAndStores, load8s_rip) {
             "8039100000900B328039100000900C328039100000900D328039100000900E328039100000900F32803910"
             "00009010328039100000901132803910000090123280391000009013328039100000901432803910000090"
             "153280391000009016328039100000901732803910000090183280391000009019328039100000901A3280"
-            "39100000901B328039100000901C328039100000901D328039100000901E328039100000901F328039");
+            "39100000901B328039100000901C328039100000901D328039100000901E328039");
 }
 
 TEST(ARM64EmitterLoadsAndStores, load8u_rip) {
@@ -2405,7 +2401,7 @@ TEST(ARM64EmitterLoadsAndStores, load8u_rip) {
             "4039100000900B324039100000900C324039100000900D324039100000900E324039100000900F32403910"
             "00009010324039100000901132403910000090123240391000009013324039100000901432403910000090"
             "153240391000009016324039100000901732403910000090183240391000009019324039100000901A3240"
-            "39100000901B324039100000901C324039100000901D324039100000901E324039100000901F324039");
+            "39100000901B324039100000901C324039100000901D324039100000901E324039");
 }
 
 TEST(ARM64EmitterLoadsAndStores, store64_rip_s32) {
@@ -2424,7 +2420,7 @@ TEST(ARM64EmitterLoadsAndStores, store64_rip_s32) {
             "00F9100000900B3200F9100000900C3200F9100000900D3200F9100000900E3200F9100000900F3200F910"
             "000090103200F910000090113200F910000090123200F910000090133200F910000090143200F910000090"
             "153200F910000090163200F910000090173200F910000090183200F910000090193200F9100000901A3200"
-            "F9100000901B3200F9100000901C3200F9100000901D3200F9100000901E3200F9100000901F3200F9");
+            "F9100000901B3200F9100000901C3200F9100000901D3200F9100000901E3200F9");
 }
 
 TEST(ARM64EmitterLoadsAndStores, store32_rip_s32) {
@@ -2443,7 +2439,7 @@ TEST(ARM64EmitterLoadsAndStores, store32_rip_s32) {
             "00B9100000900B3200B9100000900C3200B9100000900D3200B9100000900E3200B9100000900F3200B910"
             "000090103200B910000090113200B910000090123200B910000090133200B910000090143200B910000090"
             "153200B910000090163200B910000090173200B910000090183200B910000090193200B9100000901A3200"
-            "B9100000901B3200B9100000901C3200B9100000901D3200B9100000901E3200B9100000901F3200B9");
+            "B9100000901B3200B9100000901C3200B9100000901D3200B9100000901E3200B9");
 }
 
 TEST(ARM64EmitterLoadsAndStores, store16_rip_s32) {
@@ -2462,7 +2458,7 @@ TEST(ARM64EmitterLoadsAndStores, store16_rip_s32) {
             "0079100000900B320079100000900C320079100000900D320079100000900E320079100000900F32007910"
             "00009010320079100000901132007910000090123200791000009013320079100000901432007910000090"
             "153200791000009016320079100000901732007910000090183200791000009019320079100000901A3200"
-            "79100000901B320079100000901C320079100000901D320079100000901E320079100000901F320079");
+            "79100000901B320079100000901C320079100000901D320079100000901E320079");
 }
 
 TEST(ARM64EmitterLoadsAndStores, store8_rip_s32) {
@@ -2481,7 +2477,7 @@ TEST(ARM64EmitterLoadsAndStores, store8_rip_s32) {
             "0039100000900B320039100000900C320039100000900D320039100000900E320039100000900F32003910"
             "00009010320039100000901132003910000090123200391000009013320039100000901432003910000090"
             "153200391000009016320039100000901732003910000090183200391000009019320039100000901A3200"
-            "39100000901B320039100000901C320039100000901D320039100000901E320039100000901F320039");
+            "39100000901B320039100000901C320039100000901D320039100000901E320039");
 }
 
 TEST(ARM64EmitterLoadsAndStores, static_addr) {
@@ -2542,14 +2538,16 @@ TEST(ARM64EmitterXMM, StackLoad32) {
   auto tester = create_tester();
   tester.emit(IGen::load32_xmm32_gpr64_plus_s32(tester.generator(), V0 + 3, SP, -1234));
   tester.emit(IGen::load32_xmm32_gpr64_plus_s32(tester.generator(), V0 + 13, SP, -1234));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091104A13D1030240BDF0030091104A13D10D0240BD");
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "F0030091519A80D2100211CB030240BDF0030091519A80D2100211CB0D0240BD");
 }
 
 TEST(ARM64EmitterXMM, StackLoad8) {
   auto tester = create_tester();
   tester.emit(IGen::load32_xmm32_gpr64_plus_s8(tester.generator(), V0 + 3, SP, -12));
   tester.emit(IGen::load32_xmm32_gpr64_plus_s8(tester.generator(), V0 + 13, SP, -12));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091103200D1030240BDF0030091103200D10D0240BD");
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "F0030091910180D2100211CB030240BDF0030091910180D2100211CB0D0240BD");
 }
 
 TEST(ARM64EmitterXMM, StackLoadFull32) {
@@ -2570,14 +2568,16 @@ TEST(ARM64EmitterXMM, StackStore32) {
   auto tester = create_tester();
   tester.emit(IGen::store32_xmm32_gpr64_plus_s32(tester.generator(), SP, V0 + 3, -1234));
   tester.emit(IGen::store32_xmm32_gpr64_plus_s32(tester.generator(), SP, V0 + 13, -1234));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091104A13D1030600BDF0030091104A13D10D0600BD");
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "F0030091519A80D2100211CB030200BDF0030091519A80D2100211CB0D0200BD");
 }
 
 TEST(ARM64EmitterXMM, StackStore8) {
   auto tester = create_tester();
   tester.emit(IGen::store32_xmm32_gpr64_plus_s8(tester.generator(), SP, V0 + 3, -12));
   tester.emit(IGen::store32_xmm32_gpr64_plus_s8(tester.generator(), SP, V0 + 13, -12));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091103200D1030600BDF0030091103200D10D0600BD");
+  EXPECT_EQ(tester.dump_to_hex_string(true),
+            "F0030091910180D2100211CB030200BDF0030091910180D2100211CB0D0200BD");
 }
 
 TEST(ARM64EmitterXMM, StackStoreFull32) {
@@ -2605,8 +2605,8 @@ TEST(ARM64EmitterXMM, SqrtS) {
 
 TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
   auto tester = create_tester();
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64(tester.generator(), XMM3, RAX, RBX));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "73E860BC");
+  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64(tester.generator(), V3, X0, X1));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "23E860BC");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
@@ -2630,7 +2630,7 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
         // load into k
         tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64(tester.generator(), V0 + k.id(), i, j));
         // move to return
-        tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + k.id()));
+        tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -2653,8 +2653,8 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
 
 TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
   auto tester = create_tester();
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), XMM3, RAX, RBX, -1));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "1000038B100600D1130240BD");
+  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), V3, X0, X1, -1));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030240BD");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
@@ -2679,7 +2679,7 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
         tester.emit(
             IGen::load32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), V0 + k.id(), i, j, -3));
         // move to return
-        tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + k.id()));
+        tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -2703,8 +2703,8 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
 
 TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
   auto tester = create_tester();
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), XMM3, RAX, RBX, -1));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "1000038B100600D1130240BD");
+  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), V3, X0, X1, -1));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030240BD");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
@@ -2719,9 +2719,7 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
 
         // fill k with junk
         tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, (iter & 1) ? 0 : UINT64_MAX));
-        printf("a\n");
         tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
-        printf("b\n");
 
         // pop args into appropriate register
         tester.emit(IGen::pop_gpr64(tester.generator(), i));  // i will have offset 0
@@ -2730,13 +2728,10 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
         s64 offset = (iter & 1) ? INT32_MAX : INT32_MIN;
 
         // load into k
-        printf("c\n");
         tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), V0 + k.id(), i,
                                                                  j, offset));
-        printf("d\n");
         // move to return
-        tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + k.id()));
-        printf("e\n");
+        tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -2774,8 +2769,8 @@ u32 as_u32(float x) {
 
 TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
   auto tester = create_tester();
-  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64(tester.generator(), RAX, RBX, XMM7));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "f3 0f 11 3c 03");
+  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64(tester.generator(), X0, X1, XMM7));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "17C821BC");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
     for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
@@ -2819,125 +2814,126 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
   });
 }
 
-// TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
-//   auto tester = create_tester();
-//   tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, XMM3,
-//   -1)); EXPECT_EQ(tester.dump_to_hex_string(true), "f3 0f 11 5c 03 ff");
+TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
+  auto tester = create_tester();
+  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, V3, -1));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030200BD");
 
-//   int iter = 0;
-//   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-//     for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-//       for_each_register_except(tester, {}, [&](Register k) {
-//         tester.clear();
-//         tester.emit_push_all_simd();
-//         tester.emit_push_all_gprs(true);
-//         // push args to the stack
-//         tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(1)));  // addr2
-//         tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(0)));  // addr1
-//         tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(2)));  // value
+  int iter = 0;
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except(tester, {}, [&](Register k) {
+        tester.clear();
+        tester.emit_push_all_simd();
+        tester.emit_push_all_gprs(true);
+        // push args to the stack
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(1)));  // addr2
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(0)));  // addr1
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(2)));  // value
 
-//         // pop value into addr1 GPR
-//         tester.emit(IGen::pop_gpr64(tester.generator(), i));
-//         // move to XMM
-//         tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
+        // pop value into addr1 GPR
+        tester.emit(IGen::pop_gpr64(tester.generator(), i));
+        // move to XMM
+        tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
 
-//         // pop addrs
-//         tester.emit(IGen::pop_gpr64(tester.generator(), i));
-//         tester.emit(IGen::pop_gpr64(tester.generator(), j));
+        // pop addrs
+        tester.emit(IGen::pop_gpr64(tester.generator(), i));
+        tester.emit(IGen::pop_gpr64(tester.generator(), j));
 
-//         s64 offset = (iter & 1) ? INT8_MAX : INT8_MIN;
+        s64 offset = (iter & 1) ? INT8_MAX : INT8_MIN;
 
-//         // load into k
-//         tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), i, j,
-//                                                                  V0 + k.id(), offset));
+        // load into k
+        tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), i, j,
+                                                                 V0 + k.id(), offset));
 
-//         // move to return
-//         tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + k.id()));
+        // move to return
+        tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
 
-//         // return!
-//         tester.emit_pop_all_gprs(true);
-//         tester.emit_pop_all_simd();
-//         tester.emit_return();
+        // return!
+        tester.emit_pop_all_gprs(true);
+        tester.emit_pop_all_simd();
+        tester.emit_return();
 
-//         // prepare the memory:
-//         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
+        // prepare the memory:
+        float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
-//         // run!
-//         execute_tester_no_cmp(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
-//         EXPECT_FLOAT_EQ(memory[2], 1.23f);
-//         EXPECT_FLOAT_EQ(memory[3], 1.234f);
-//         EXPECT_FLOAT_EQ(memory[4], 5.67f);
-//       });
-//     });
-//   });
-// }
+        // run!
+        EXPECT_EXECUTE_4ARG_NO_CMP(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
+        EXPECT_FLOAT_EQ(memory[2], 1.23f);
+        EXPECT_FLOAT_EQ(memory[3], 1.234f);
+        EXPECT_FLOAT_EQ(memory[4], 5.67f);
+      });
+    });
+  });
+}
 
-// TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
-//   auto tester = create_tester();
-//   tester.emit(
-//       IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, XMM3, -1));
-//   EXPECT_EQ(tester.dump_to_hex_string(true), "f3 0f 11 9c 03 ff ff ff ff");
+TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
+  auto tester = create_tester();
+  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, V3, -1));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030200BD");
 
-//   int iter = 0;
-//   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-//     for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-//       for_each_register_except(tester, {}, [&](Register k) {
-//         tester.clear();
-//         tester.emit_push_all_simd();
-//         tester.emit_push_all_gprs(true);
-//         // push args to the stack
-//         tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(1)));  // addr2
-//         tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(0)));  // addr1
-//         tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(2)));  // value
+  int iter = 0;
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except(tester, {}, [&](Register k) {
+        tester.clear();
+        tester.emit_push_all_simd();
+        tester.emit_push_all_gprs(true);
+        // push args to the stack
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(1)));  // addr2
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(0)));  // addr1
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(2)));  // value
 
-//         // pop value into addr1 GPR
-//         tester.emit(IGen::pop_gpr64(tester.generator(), i));
-//         // move to XMM
-//         tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
+        // pop value into addr1 GPR
+        tester.emit(IGen::pop_gpr64(tester.generator(), i));
+        // move to XMM
+        tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
 
-//         // pop addrs
-//         tester.emit(IGen::pop_gpr64(tester.generator(), i));
-//         tester.emit(IGen::pop_gpr64(tester.generator(), j));
+        // pop addrs
+        tester.emit(IGen::pop_gpr64(tester.generator(), i));
+        tester.emit(IGen::pop_gpr64(tester.generator(), j));
 
-//         s64 offset = (iter & 1) ? INT32_MAX : INT32_MIN;
+        s64 offset = (iter & 1) ? INT32_MAX : INT32_MIN;
 
-//         // load into k
-//         tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), i, j,
-//                                                                   V0 + k.id(), offset));
+        // load into k
+        tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), i, j,
+                                                                  V0 + k.id(), offset));
 
-//         // move to return
-//         tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + k.id()));
+        // move to return
+        tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
 
-//         // return!
-//         tester.emit_pop_all_gprs(true);
-//         tester.emit_pop_all_simd();
-//         tester.emit_return();
+        // return!
+        tester.emit_pop_all_gprs(true);
+        tester.emit_pop_all_simd();
+        tester.emit_return();
 
-//         // prepare the memory:
-//         float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
+        // prepare the memory:
+        float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
 
-//         // run!
-//         execute_tester_no_cmp(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
-//         EXPECT_FLOAT_EQ(memory[2], 1.23f);
-//         EXPECT_FLOAT_EQ(memory[3], 1.234f);
-//         EXPECT_FLOAT_EQ(memory[4], 5.67f);
-//       });
-//     });
-//   });
-// }
+        // run!
+        EXPECT_EXECUTE_4ARG_NO_CMP(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
+        EXPECT_FLOAT_EQ(memory[2], 1.23f);
+        EXPECT_FLOAT_EQ(memory[3], 1.234f);
+        EXPECT_FLOAT_EQ(memory[4], 5.67f);
+      });
+    });
+  });
+}
 
 // TEST(ARM64EmitterXmm32, static_load_xmm32) {
+//   // TODO - int32 max is not supported in current arm64 impl because
+//   // the assumption is that we don't need that much range
 //   auto tester = create_tester();
-//   for (int i = 0; i < 16; i++) {
+//   for_each_register_except(tester, {}, [&](Register i) {
 //     tester.clear();
 //     tester.emit_push_all_simd();
 //     tester.emit_push_all_gprs(true);
 
 //     auto loc_of_load = tester.size();
-//     auto load_instr = IGen::static_load_f32(tester.generator(), V0 + i, INT32_MAX);
+//     auto load_instr = IGen::static_load_f32(tester.generator(), V0 + i.id(), INT32_MAX);
 
 //     tester.emit(load_instr);
-//     tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + i));
+//     tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + i.id()));
 //     tester.emit_pop_all_gprs(true);
 //     tester.emit_pop_all_simd();
 //     tester.emit_return();
@@ -2947,20 +2943,23 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
 //     tester.write<s32>(loc_of_float - loc_of_load - load_instr.length(),
 //                       loc_of_load + load_instr.offset_of_disp());
 
-//     execute_ret_tester(tester, 0, 0, 0, 0, 1.2345f);
-//   }
+//     EXPECT_EXECUTE_RET_4ARG_EQ(tester, 0, 0, 0, 0, 1.2345f);
+//   });
 // }
 
 // TEST(ARM64EmitterXmm32, static_store_xmm32) {
+//   // TODO - int32 max is not supported in current arm64 impl because
+//   // the assumption is that we don't need that much range
 //   auto tester = create_tester();
-//   for (int i = 0; i < 16; i++) {
+//   for_each_register_except(tester, {}, [&](Register i) {
 //     tester.clear();
 //     tester.emit_push_all_simd();
 //     tester.emit_push_all_gprs(true);
-//     tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i, tester.get_c_abi_arg_reg(0)));
+//     tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i.id(),
+//     tester.get_c_abi_arg_reg(0)));
 
 //     auto loc_of_store = tester.size();
-//     auto store_instr = IGen::static_store_f32(tester.generator(), V0 + i, INT32_MAX);
+//     auto store_instr = IGen::static_store_f32(tester.generator(), V0 + i.id(), INT32_MAX);
 
 //     tester.emit(store_instr);
 //     tester.emit_pop_all_gprs(true);
@@ -2970,224 +2969,195 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
 
 //     tester.write<s32>(loc_of_float - loc_of_store - store_instr.length(),
 //                       loc_of_store + store_instr.offset_of_disp());
-//     execute_tester_no_cmp(tester, as_u32(-44.567f), 0, 0, 0);
+//     EXPECT_EXECUTE_4ARG_NO_CMP(tester, as_u32(-44.567f), 0, 0, 0);
 //     EXPECT_FLOAT_EQ(-44.567f, tester.read<float>(loc_of_float));
-//   }
+//   });
 // }
 
-// TEST(ARM64EmitterXmm32, ucomiss) {
-//   auto tester = create_tester();
-//   tester.emit(IGen::cmp_f32_f32(tester.generator(), XMM13, XMM14));
-//   EXPECT_EQ("45 0f 2e ee", tester.dump_to_hex_string(true));
-// }
+TEST(ARM64EmitterXmm32, ucomiss) {
+  auto tester = create_tester();
+  tester.emit(IGen::cmp_f32_f32(tester.generator(), V13, V14));
+  EXPECT_EQ("A0212E1E", tester.dump_to_hex_string(true));
+}
 
-// TEST(ARM64EmitterXmm32, mul) {
-//   auto tester = create_tester();
-//   std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
+TEST(ARM64EmitterXmm32, mul) {
+  auto tester = create_tester();
+  std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
 
-//   for (auto f : vals) {
-//     for (auto g : vals) {
-//       for (int i = 0; i < 16; i++) {
-//         for (int j = 0; j < 16; j++) {
-//           if (i == j) {
-//             continue;
-//           }
-//           auto expected = f * g;
-//           tester.clear();
-//           tester.emit_push_all_simd();
-//           tester.emit_push_all_gprs(true);
-//           u64 val = 0;
-//           memcpy(&val, &f, sizeof(float));
-//           tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//           tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i, RAX));
-//           memcpy(&val, &g, sizeof(float));
-//           tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//           tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + j, RAX));
-//           tester.emit(IGen::mul_f32_f32(tester.generator(), V0 + j, V0 + i));
-//           tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + j));
-//           tester.emit_pop_all_gprs(true);
-//           tester.emit_pop_all_simd();
-//           tester.emit_return();
+  for (auto f : vals) {
+    for (auto g : vals) {
+      for_each_register_except(tester, {}, [&](Register i) {
+        for_each_register_except(tester, {i}, [&](Register j) {
+          auto expected = f * g;
+          tester.clear();
+          tester.emit_push_all_simd();
+          tester.emit_push_all_gprs(true);
+          u64 val = 0;
+          memcpy(&val, &f, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+          tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i.id(), X0));
+          memcpy(&val, &g, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+          tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + j.id(), X0));
+          tester.emit(IGen::mul_f32_f32(tester.generator(), V0 + j.id(), V0 + i.id()));
+          tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + j.id()));
+          tester.emit_pop_all_gprs(true);
+          tester.emit_pop_all_simd();
+          tester.emit_return();
 
-//           execute_ret_tester(tester, 0, 0, 0, 0, expected);
-//         }
-//       }
-//     }
-//   }
-// }
+          EXPECT_EXECUTE_RET_4ARG_FLOAT_EQ(tester, 0, 0, 0, 0, expected);
+        });
+      });
+    }
+  }
+}
 
-// TEST(ARM64EmitterXmm32, div) {
-//   auto tester = create_tester();
-//   std::vector<float> vals = {1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
+TEST(ARM64EmitterXmm32, div) {
+  auto tester = create_tester();
+  std::vector<float> vals = {1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
 
-//   for (auto f : vals) {
-//     for (auto g : vals) {
-//       for (int i = 0; i < 16; i++) {
-//         for (int j = 0; j < 16; j++) {
-//           if (i == j) {
-//             continue;
-//           }
-//           auto expected = g / f;
-//           tester.clear();
-//           tester.emit_push_all_simd();
-//           tester.emit_push_all_gprs(true);
-//           u64 val = 0;
-//           memcpy(&val, &f, sizeof(float));
-//           tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//           tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i, RAX));
-//           memcpy(&val, &g, sizeof(float));
-//           tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//           tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + j, RAX));
-//           tester.emit(IGen::div_f32_f32(tester.generator(), V0 + j, V0 + i));
-//           tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + j));
-//           tester.emit_pop_all_gprs(true);
-//           tester.emit_pop_all_simd();
-//           tester.emit_return();
+  for (auto f : vals) {
+    for (auto g : vals) {
+      for_each_register_except(tester, {}, [&](Register i) {
+        for_each_register_except(tester, {i}, [&](Register j) {
+          auto expected = g / f;
+          tester.clear();
+          tester.emit_push_all_simd();
+          tester.emit_push_all_gprs(true);
+          u64 val = 0;
+          memcpy(&val, &f, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+          tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i.id(), X0));
+          memcpy(&val, &g, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+          tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + j.id(), X0));
+          tester.emit(IGen::div_f32_f32(tester.generator(), V0 + j.id(), V0 + i.id()));
+          tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + j.id()));
+          tester.emit_pop_all_gprs(true);
+          tester.emit_pop_all_simd();
+          tester.emit_return();
 
-//           execute_ret_tester(tester, 0, 0, 0, 0, expected);
-//         }
-//       }
-//     }
-//   }
-// }
+          EXPECT_EXECUTE_RET_4ARG_EQ(tester, 0, 0, 0, 0, expected);
+        });
+      });
+    }
+  }
+}
 
-// TEST(ARM64EmitterXmm32, add) {
-//   auto tester = create_tester();
-//   std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
-//   for (auto f : vals) {
-//     for (auto g : vals) {
-//       for (int i = 0; i < 16; i++) {
-//         for (int j = 0; j < 16; j++) {
-//           if (i == j) {
-//             continue;
-//           }
-//           auto expected = g + f;
-//           tester.clear();
-//           tester.emit_push_all_simd();
-//           tester.emit_push_all_gprs(true);
-//           u64 val = 0;
-//           memcpy(&val, &f, sizeof(float));
-//           tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//           tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i, RAX));
-//           memcpy(&val, &g, sizeof(float));
-//           tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//           tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + j, RAX));
-//           tester.emit(IGen::add_f32_f32(tester.generator(), V0 + j, V0 + i));
-//           tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + j));
-//           tester.emit_pop_all_gprs(true);
-//           tester.emit_pop_all_simd();
-//           tester.emit_return();
+TEST(ARM64EmitterXmm32, add) {
+  auto tester = create_tester();
+  std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
+  for (auto f : vals) {
+    for (auto g : vals) {
+      for_each_register_except(tester, {}, [&](Register i) {
+        for_each_register_except(tester, {i}, [&](Register j) {
+          auto expected = g + f;
+          tester.clear();
+          tester.emit_push_all_simd();
+          tester.emit_push_all_gprs(true);
+          u64 val = 0;
+          memcpy(&val, &f, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+          tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i.id(), X0));
+          memcpy(&val, &g, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+          tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + j.id(), X0));
+          tester.emit(IGen::add_f32_f32(tester.generator(), V0 + j.id(), V0 + i.id()));
+          tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + j.id()));
+          tester.emit_pop_all_gprs(true);
+          tester.emit_pop_all_simd();
+          tester.emit_return();
 
-//           execute_ret_tester(tester, 0, 0, 0, 0, expected);
-//         }
-//       }
-//     }
-//   }
-// }
+          EXPECT_EXECUTE_RET_4ARG_FLOAT_EQ(tester, 0, 0, 0, 0, expected);
+        });
+      });
+    }
+  }
+}
 
-// TEST(ARM64EmitterXmm32, sub) {
-//   auto tester = create_tester();
-//   std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
+TEST(ARM64EmitterXmm32, sub) {
+  auto tester = create_tester();
+  std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
 
-//   for (auto f : vals) {
-//     for (auto g : vals) {
-//       for (int i = 0; i < 16; i++) {
-//         for (int j = 0; j < 16; j++) {
-//           if (i == j) {
-//             continue;
-//           }
-//           auto expected = g - f;
-//           tester.clear();
-//           tester.emit_push_all_simd();
-//           tester.emit_push_all_gprs(true);
-//           u64 val = 0;
-//           memcpy(&val, &f, sizeof(float));
-//           tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//           tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i, RAX));
-//           memcpy(&val, &g, sizeof(float));
-//           tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//           tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + j, RAX));
-//           tester.emit(IGen::sub_f32_f32(tester.generator(), V0 + j, V0 + i));
-//           tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + j));
-//           tester.emit_pop_all_gprs(true);
-//           tester.emit_pop_all_simd();
-//           tester.emit_return();
+  for (auto f : vals) {
+    for (auto g : vals) {
+      for_each_register_except(tester, {}, [&](Register i) {
+        for_each_register_except(tester, {i}, [&](Register j) {
+          auto expected = g - f;
+          tester.clear();
+          tester.emit_push_all_simd();
+          tester.emit_push_all_gprs(true);
+          u64 val = 0;
+          memcpy(&val, &f, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+          tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i.id(), X0));
+          memcpy(&val, &g, sizeof(float));
+          tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+          tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + j.id(), X0));
+          tester.emit(IGen::sub_f32_f32(tester.generator(), V0 + j.id(), V0 + i.id()));
+          tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + j.id()));
+          tester.emit_pop_all_gprs(true);
+          tester.emit_pop_all_simd();
+          tester.emit_return();
 
-//           execute_ret_tester(tester, 0, 0, 0, 0, expected);
-//         }
-//       }
-//     }
-//   }
-// }
+          EXPECT_EXECUTE_RET_4ARG_FLOAT_EQ(tester, 0, 0, 0, 0, expected);
+        });
+      });
+    }
+  }
+}
 
-// TEST(ARM64EmitterXmm32, float_to_int) {
-//   auto tester = create_tester();
-//   std::vector<float> vals = {0.f,    1.f,  0.2f, -1.f,  1235423.2f, -3457343.3f,
-//                              7.545f, 0.1f, 0.9f, -0.1f, -0.9f};
+TEST(ARM64EmitterXmm32, float_to_int) {
+  auto tester = create_tester();
+  std::vector<float> vals = {0.f,    1.f,  0.2f, -1.f,  1235423.2f, -3457343.3f,
+                             7.545f, 0.1f, 0.9f, -0.1f, -0.9f};
 
-//   for (auto g : vals) {
-//     for (int i = 0; i < 16; i++) {
-//       for (int j = 0; j < 16; j++) {
-//         if (j == SP) {
-//           continue;
-//         }
-//         s32 expected = g;
-//         tester.clear();
-//         tester.emit_push_all_simd();
-//         tester.emit_push_all_gprs(true);
-//         u64 val = 0;
-//         memcpy(&val, &g, sizeof(float));
-//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), RAX, val));
-//         tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i, RAX));
-//         tester.emit(IGen::f32_to_int32(tester.generator(), j, V0 + i));
-//         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, j));
-//         tester.emit_pop_all_gprs(true);
-//         tester.emit_pop_all_simd();
-//         tester.emit_return();
-//         // TODO - no idea why the function call doesn't work here
-//         // execute_ret_tester(tester, 0, 0, 0, 0, expected);
-//         if (tester.generator().instr_set() == InstructionSet::ARM64) {
-// #ifdef __aarch64__
-//           auto result = tester.execute_ret<s32>(0, 0, 0, 0);
-//           EXPECT_FLOAT_EQ(result, expected);
-// #endif
-//         } else if (tester.generator().instr_set() == InstructionSet::X86) {
-// #ifndef __aarch64__
-//           auto result = tester.execute_ret<s32>(0, 0, 0, 0);
-//           EXPECT_FLOAT_EQ(result, expected);
-// #endif
-//         }
-//       }
-//     }
-//   }
-// }
+  for (auto g : vals) {
+    for_each_register_except(tester, {}, [&](Register i) {
+      for_each_register_except(tester, {X0, i}, [&](Register j) {
+        s32 expected = g;
+        tester.clear();
+        tester.emit_push_all_simd();
+        tester.emit_push_all_gprs(true);
+        u64 val = 0;
+        memcpy(&val, &g, sizeof(float));
+        tester.emit(IGen::mov_gpr64_u64(tester.generator(), X0, val));
+        tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + i.id(), X0));
+        tester.emit(IGen::f32_to_int32(tester.generator(), j, V0 + i.id()));
+        tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), X0, j));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_pop_all_simd();
+        tester.emit_return();
 
-// TEST(ARM64EmitterXmm32, int_to_float) {
-//   auto tester = create_tester();
-//   std::vector<s64> vals = {0, 1, -1, INT32_MAX, -3457343, 7, INT32_MIN};
+        EXPECT_EXECUTE_RET_4ARG_EQ(tester, 0, 0, 0, 0, expected);
+      });
+    });
+  }
+}
 
-//   for (auto g : vals) {
-//     for (int i = 0; i < 16; i++) {
-//       for (int j = 0; j < 16; j++) {
-//         if (j == SP) {
-//           continue;
-//         }
-//         float expected = g;
-//         tester.clear();
-//         tester.emit_push_all_simd();
-//         tester.emit_push_all_gprs(true);
-//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), j, g));
-//         tester.emit(IGen::int32_to_f32(tester.generator(), V0 + i, j));
-//         tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, V0 + i));
-//         tester.emit_pop_all_gprs(true);
-//         tester.emit_pop_all_simd();
-//         tester.emit_return();
+TEST(ARM64EmitterXmm32, int_to_float) {
+  auto tester = create_tester();
+  std::vector<s64> vals = {0, 1, -1, INT32_MAX, -3457343, 7, INT32_MIN};
 
-//         execute_ret_tester(tester, 0, 0, 0, 0, expected);
-//       }
-//     }
-//   }
-// }
+  for (auto g : vals) {
+    for_each_register_except(tester, {}, [&](Register i) {
+      for_each_register_except(tester, {i}, [&](Register j) {
+        float expected = g;
+        tester.clear();
+        tester.emit_push_all_simd();
+        tester.emit_push_all_gprs(true);
+        tester.emit(IGen::mov_gpr64_u64(tester.generator(), j, g));
+        tester.emit(IGen::int32_to_f32(tester.generator(), V0 + i.id(), j));
+        tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + i.id()));
+        tester.emit_pop_all_gprs(true);
+        tester.emit_pop_all_simd();
+        tester.emit_return();
+
+        EXPECT_EXECUTE_RET_4ARG_FLOAT_EQ(tester, 0, 0, 0, 0, expected);
+      });
+    });
+  }
+}
 
 // TEST(ARM64EmitterSlow, xmm32_move) {
 //   std::vector<u32> u32_constants = {0, INT32_MAX, UINT32_MAX, 17};
@@ -3218,7 +3188,7 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
 //             // move xmm to gpr
 //             tester.emit(IGen::movd_gpr32_f32(tester.generator(), r2, V0 + r4));
 //             // return!
-//             tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), RAX, r2));
+//             tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), X0, r2));
 //             tester.emit_pop_all_gprs(true);
 //             tester.emit_pop_all_simd();
 //             tester.emit_return();

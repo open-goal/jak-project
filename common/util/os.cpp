@@ -52,7 +52,7 @@ void __cpuidex(int result[4], int eax, int ecx) {
 
 void setup_cpu_info_windows(CpuInfo& info) {
 #if defined(_M_X64) || defined(_M_IX86)
-  // Vendor
+  // Brand string
   {
     int result[4];
     __cpuidex(result, 0, 0);
@@ -60,12 +60,12 @@ void setup_cpu_info_windows(CpuInfo& info) {
     for (int r : {1, 3, 2}) {
       int reg = result[r];
       for (int i = 0; i < 4; i++) {
-        info.vendor.push_back(reg & 0xff);
+        info.brand.push_back(reg & 0xff);
         reg >>= 8;
       }
     }
   }
-  // Brand string
+  // Model string
   for (int leaf = 0x80000002; leaf <= 0x80000004; leaf++) {
     int result[4];
     __cpuidex(result, leaf, 0);
@@ -88,7 +88,7 @@ void setup_cpu_info_windows(CpuInfo& info) {
     info.has_avx2 = result[1] & (1 << 5);
   }
 #elif defined(_M_ARM64)
-  info.vendor = "ARM";
+  info.brand = "ARM";
   HKEY key;
   if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 0,
                     KEY_READ, &key) == ERROR_SUCCESS) {
@@ -147,7 +147,7 @@ void setup_cpu_info_macos(CpuInfo& info) {
   for (int r : {1, 3, 2}) {
     int reg = result[r];
     for (int i = 0; i < 4; i++) {
-      info.vendor.push_back(reg & 0xff);
+      info.brand.push_back(reg & 0xff);
       reg >>= 8;
     }
   }
