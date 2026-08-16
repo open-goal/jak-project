@@ -1,0 +1,3 @@
+This directory contains a sample project for using Capstone from a Windows 
+driver. Open cs_driver.sln with Visual Studio 2013 or newer and see cs_driver.c 
+for details.

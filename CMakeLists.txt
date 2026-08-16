@@ -192,13 +192,17 @@ endif()
 
 function(build_third_party_lib dir_name target_name)
     add_subdirectory(third-party/${dir_name} EXCLUDE_FROM_ALL)
-    # Convert all public include dirs to SYSTEM
+    # Treat third-party headers as system headers.
     get_target_property(INCLUDES ${target_name} INTERFACE_INCLUDE_DIRECTORIES)
     if(INCLUDES)
         set_target_properties(${target_name} PROPERTIES
             INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${INCLUDES}"
         )
     endif()
+    # Suppress all warnings while compiling the third-party library itself.
+    target_compile_options(${target_name} PRIVATE
+        -w
+    )
 endfunction()
 
 # Dependencies and Libraries
@@ -348,6 +352,25 @@ else()
 endif()
 
 build_third_party_lib(zydis Zydis)
+
+# Capstone (zydis replacement eventually)
+option(CAPSTONE_ARCHITECTURE_DEFAULT "Capstone: Disable all by default" OFF)
+option(CAPSTONE_X86_SUPPORT "Capstone: x86 support" ON)
+option(CAPSTONE_ARM_SUPPORT "Capstone: ARM support" ON)
+option(CAPSTONE_AARCH64_SUPPORT "Capstone: ARM64 support" ON)
+
+if(STATICALLY_LINK)
+    message(STATUS "Statically linking capstone")
+    option(CAPSTONE_BUILD_SHARED_LIBS "Capstone: Build shared library" OFF)
+    option(CAPSTONE_BUILD_STATIC_LIBS "Capstone: Build static library" ON)
+else()
+    message(STATUS "dynamically linking capstone")
+    option(CAPSTONE_BUILD_SHARED_LIBS "Capstone: Build shared library" ON)
+    option(CAPSTONE_BUILD_STATIC_LIBS "Capstone: Build static library" OFF)
+endif()
+
+include_directories(third-party/capstone/include)
+build_third_party_lib(capstone capstone)
 
 # windows memory management lib
 if(WIN32)

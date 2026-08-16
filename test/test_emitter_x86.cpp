@@ -473,7 +473,7 @@ TEST(X86EmitterIntegerMath, sar_gpr64_cl) {
   }
 }
 
-TEST(X86EmitterIntegerMath, shl_gpr64_u8_new) {
+TEST(X86EmitterIntegerMath, shl_gpr64_u8) {
   CodeTester tester;
   tester.init_code_buffer(256);
   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
