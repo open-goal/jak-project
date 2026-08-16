@@ -2806,9 +2806,11 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
 
         // run!
         EXPECT_EXECUTE_4ARG_NO_CMP(tester, (u64)memory, 12, as_u32(1.234f), 0);
-        EXPECT_FLOAT_EQ(memory[2], 1.23f);
-        EXPECT_FLOAT_EQ(memory[3], 1.234f);
-        EXPECT_FLOAT_EQ(memory[4], 5.67f);
+        EXPECT_EXECUTE_IF_NATIVE(tester, {
+          EXPECT_FLOAT_EQ(memory[2], 1.23f);
+          EXPECT_FLOAT_EQ(memory[3], 1.234f);
+          EXPECT_FLOAT_EQ(memory[4], 5.67f);
+        });
       });
     });
   });
@@ -2859,9 +2861,11 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
 
         // run!
         EXPECT_EXECUTE_4ARG_NO_CMP(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
-        EXPECT_FLOAT_EQ(memory[2], 1.23f);
-        EXPECT_FLOAT_EQ(memory[3], 1.234f);
-        EXPECT_FLOAT_EQ(memory[4], 5.67f);
+        EXPECT_EXECUTE_IF_NATIVE(tester, {
+          EXPECT_FLOAT_EQ(memory[2], 1.23f);
+          EXPECT_FLOAT_EQ(memory[3], 1.234f);
+          EXPECT_FLOAT_EQ(memory[4], 5.67f);
+        });
       });
     });
   });
@@ -2912,9 +2916,11 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
 
         // run!
         EXPECT_EXECUTE_4ARG_NO_CMP(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
-        EXPECT_FLOAT_EQ(memory[2], 1.23f);
-        EXPECT_FLOAT_EQ(memory[3], 1.234f);
-        EXPECT_FLOAT_EQ(memory[4], 5.67f);
+        EXPECT_EXECUTE_IF_NATIVE(tester, {
+          EXPECT_FLOAT_EQ(memory[2], 1.23f);
+          EXPECT_FLOAT_EQ(memory[3], 1.234f);
+          EXPECT_FLOAT_EQ(memory[4], 5.67f);
+        });
       });
     });
   });

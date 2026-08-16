@@ -256,4 +256,27 @@ bool execute_ret_float_equals_4arg(emitter::CodeTester& tester,
           << tester.dump_to_hex_string(true) << "\n";                             \
     }                                                                             \
   } while (0)
+
+#ifdef __aarch64__
+#define EXPECT_EXECUTE_IF_NATIVE_ARM64(body) body
+#else
+#define EXPECT_EXECUTE_IF_NATIVE_ARM64(body)
+#endif
+
+#ifndef __aarch64__
+#define EXPECT_EXECUTE_IF_NATIVE_X86(body) body
+#else
+#define EXPECT_EXECUTE_IF_NATIVE_X86(body)
+#endif
+
+#define EXPECT_EXECUTE_IF_NATIVE(tester, body)             \
+  do {                                                     \
+    if ((tester).generator().instr_set() ==                \
+        emitter::InstructionSet::ARM64) {                  \
+      EXPECT_EXECUTE_IF_NATIVE_ARM64(body)                \
+    } else if ((tester).generator().instr_set() ==         \
+               emitter::InstructionSet::X86) {             \
+      EXPECT_EXECUTE_IF_NATIVE_X86(body)                  \
+    }                                                        \
+  } while (false)
 // clang-format on

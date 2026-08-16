@@ -24,8 +24,7 @@
 #include "CodeTester.h"
 #include "IGen.h"
 
-// TODO - cleanup this import...
-#include "third-party/capstone/include/capstone/capstone.h"
+#include "capstone/capstone.h"
 
 namespace emitter {
 

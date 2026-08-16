@@ -189,13 +189,17 @@ endif()
 
 function(build_third_party_lib dir_name target_name)
     add_subdirectory(third-party/${dir_name} EXCLUDE_FROM_ALL)
-    # Convert all public include dirs to SYSTEM
+    # Treat third-party headers as system headers.
     get_target_property(INCLUDES ${target_name} INTERFACE_INCLUDE_DIRECTORIES)
     if(INCLUDES)
         set_target_properties(${target_name} PROPERTIES
             INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${INCLUDES}"
         )
     endif()
+    # Suppress all warnings while compiling the third-party library itself.
+    target_compile_options(${target_name} PRIVATE
+        -w
+    )
 endfunction()
 
 # Dependencies and Libraries
