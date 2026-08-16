@@ -202,6 +202,13 @@ function(build_third_party_lib dir_name target_name)
 endfunction()
 
 # Dependencies and Libraries
+# - for reasons outside of my understanding, on some distros CMake can't find a library if it's
+# in `/usr/lib64` instead of `/usr/lib`.  This problem was encountered for libcurl not being able
+# to find OpenSSL even though its most definitely installed!
+if(UNIX AND NOT APPLE)
+    list(APPEND CMAKE_LIBRARY_PATH "/usr/lib64")
+endif()
+
 # includes relative to top level jak-project folder
 include_directories(./)
 
