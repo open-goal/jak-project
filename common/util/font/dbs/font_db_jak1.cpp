@@ -247,6 +247,7 @@ std::vector<ReplaceInfo> replace_info_jak1 = {
 
     // acute accents
     {"A~Y~-21H~-5V'~Z", "Á"},
+    {"R~Y~-21H~-5V'~Z", "Ŕ"},
     {"E~Y~-22H~-5V'~Z", "É"},
     {"I~Y~-19H~-5V'~Z", "Í"},
     {"O~Y~-22H~-4V'~Z", "Ó"},

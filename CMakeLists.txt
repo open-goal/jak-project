@@ -26,10 +26,13 @@ else()
 endif()
 
 # For clangd
+# file(COPY), not configure_file(): configure_file registers its input as a
+# configure dependency, putting the ever-rewritten compile_commands.json into
+# the Ninja regen rule and causing an endless reconfigure loop.
 if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
-    configure_file(
+    file(COPY
         "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json"
-        "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
+        DESTINATION "${PROJECT_SOURCE_DIR}/build")
 endif()
 
 # NOTE - for SDL, i think SDL3 regressed this - https://github.com/libsdl-org/SDL/pull/6455
@@ -189,16 +192,27 @@ endif()
 
 function(build_third_party_lib dir_name target_name)
     add_subdirectory(third-party/${dir_name} EXCLUDE_FROM_ALL)
-    # Convert all public include dirs to SYSTEM
+    # Treat third-party headers as system headers.
     get_target_property(INCLUDES ${target_name} INTERFACE_INCLUDE_DIRECTORIES)
     if(INCLUDES)
         set_target_properties(${target_name} PROPERTIES
             INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${INCLUDES}"
         )
     endif()
+    # Suppress all warnings while compiling the third-party library itself.
+    target_compile_options(${target_name} PRIVATE
+        -w
+    )
 endfunction()
 
 # Dependencies and Libraries
+# - for reasons outside of my understanding, on some distros CMake can't find a library if it's
+# in `/usr/lib64` instead of `/usr/lib`.  This problem was encountered for libcurl not being able
+# to find OpenSSL even though its most definitely installed!
+if(UNIX AND NOT APPLE)
+    list(APPEND CMAKE_LIBRARY_PATH "/usr/lib64")
+endif()
+
 # includes relative to top level jak-project folder
 include_directories(./)
 
@@ -213,18 +227,24 @@ set(CURL_USE_LIBSSH2 OFF)
 # but this is another part of libcurl we probably don't need (multi-threading/parallelism)
 set(CURL_USE_LIBPSL OFF)
 set(CURL_ZLIB OFF)
+# these default to AUTO since curl 8.10 and would silently pick up system libs
+set(CURL_BROTLI OFF)
+set(CURL_ZSTD OFF)
+# curl's BUILD_EXAMPLES cache option (default ON) would otherwise leak into
+# discord-rpc's identically named option and break its examples add_subdirectory
+set(BUILD_EXAMPLES OFF)
 # suddenly became enabled on macOS atleast, only needed for unicode URLs
 # wasn't being properly statically linked
 set(USE_LIBIDN2 OFF)
 if(WIN32)
     set(CURL_USE_SCHANNEL ON) # native Windows SSL support
-elseif(APPLE)
-    set(CURL_USE_SECTRANSP ON) # native macOS SSL support
 else()
+    # curl 8.15 removed the native macOS backend (CURL_USE_SECTRANSP), so macOS
+    # uses OpenSSL like linux (Homebrew openssl@3, see the macOS build workflows)
     if(STATICALLY_LINK)
         set(OPENSSL_USE_STATIC_LIBS TRUE)
     endif()
-    set(CURL_USE_OPENSSL ON) # not native, but seems to be the best choice for linux
+    set(CURL_USE_OPENSSL ON)
 endif()
 include_directories(third-party/curl/include)
 if(STATICALLY_LINK)
@@ -332,6 +352,25 @@ else()
 endif()
 
 build_third_party_lib(zydis Zydis)
+
+# Capstone (zydis replacement eventually)
+option(CAPSTONE_ARCHITECTURE_DEFAULT "Capstone: Disable all by default" OFF)
+option(CAPSTONE_X86_SUPPORT "Capstone: x86 support" ON)
+option(CAPSTONE_ARM_SUPPORT "Capstone: ARM support" ON)
+option(CAPSTONE_AARCH64_SUPPORT "Capstone: ARM64 support" ON)
+
+if(STATICALLY_LINK)
+    message(STATUS "Statically linking capstone")
+    option(CAPSTONE_BUILD_SHARED_LIBS "Capstone: Build shared library" OFF)
+    option(CAPSTONE_BUILD_STATIC_LIBS "Capstone: Build static library" ON)
+else()
+    message(STATUS "dynamically linking capstone")
+    option(CAPSTONE_BUILD_SHARED_LIBS "Capstone: Build shared library" ON)
+    option(CAPSTONE_BUILD_STATIC_LIBS "Capstone: Build static library" OFF)
+endif()
+
+include_directories(third-party/capstone/include)
+build_third_party_lib(capstone capstone)
 
 # windows memory management lib
 if(WIN32)

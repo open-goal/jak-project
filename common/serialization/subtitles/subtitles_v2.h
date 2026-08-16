@@ -10,6 +10,9 @@ struct SubtitleLineMetadata {
   int frame_end;
   bool offscreen;
   std::string speaker;
+  // NOTE: merge is a bad name, as we don't actually merge anything (the game doesn't load the
+  // english subtitles as well) and all this does if set is it's ignored when being written out to
+  // the file
   bool merge;
 
   bool operator==(const SubtitleLineMetadata& other) const {

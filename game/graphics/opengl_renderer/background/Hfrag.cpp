@@ -226,7 +226,6 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
   glEnableVertexAttribArray(1);
   glEnableVertexAttribArray(2);
   glEnableVertexAttribArray(3);
-  glEnableVertexAttribArray(4);
 
   glVertexAttribPointer(0,                                // location 0 in the shader
                         3,                                // 3 values per vert

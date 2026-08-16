@@ -24,13 +24,13 @@
 #
 ###########################################################################
 #
-import json
 import logging
-from typing import Optional, Tuple, List, Dict
+import os
+import socket
+import threading
+
 import pytest
-
-from testenv import Env, CurlClient, ExecResult
-
+from testenv import CurlClient, Env
 
 log = logging.getLogger(__name__)
 
@@ -39,26 +39,17 @@ log = logging.getLogger(__name__)
                     reason=f"httpd version too old for this: {Env.httpd_version()}")
 class TestErrors:
 
-    @pytest.fixture(autouse=True, scope='class')
-    def _class_scope(self, env, httpd, nghttpx):
-        if env.have_h3():
-            nghttpx.start_if_needed()
-        httpd.clear_extra_configs()
-        httpd.reload()
-
     # download 1 file, check that we get CURLE_PARTIAL_FILE
-    @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_05_01_partial_1(self, env: Env, httpd, nghttpx, repeat,
-                              proto):
-        if proto == 'h3' and not env.have_h3():
-            pytest.skip("h3 not supported")
-        if proto == 'h3' and env.curl_uses_lib('msh3'):
-            pytest.skip("msh3 stalls here")
+    @pytest.mark.parametrize("proto", Env.http_protos())
+    def test_05_01_partial_1(self, env: Env, httpd, nghttpx, proto):
+        if proto == 'h3' and env.curl_uses_lib('quiche') and \
+                not env.curl_lib_version_at_least('quiche', '0.29.0'):
+            pytest.skip("quiche issue #2277 not fixed")
         count = 1
         curl = CurlClient(env=env)
         urln = f'https://{env.authority_for(env.domain1, proto)}' \
-               f'/curltest/tweak?id=[0-{count - 1}]'\
-               '&chunks=3&chunk_size=16000&body_error=reset'
+            f'/curltest/tweak?id=[0-{count - 1}]'\
+            '&chunks=3&chunk_size=16000&body_error=reset'
         r = curl.http_download(urls=[urln], alpn_proto=proto, extra_args=[
             '--retry', '0'
         ])
@@ -70,18 +61,16 @@ class TestErrors:
         assert len(invalid_stats) == 0, f'failed: {invalid_stats}'
 
     # download files, check that we get CURLE_PARTIAL_FILE for all
-    @pytest.mark.parametrize("proto", ['h2', 'h3'])
-    def test_05_02_partial_20(self, env: Env, httpd, nghttpx, repeat,
-                              proto):
-        if proto == 'h3' and not env.have_h3():
-            pytest.skip("h3 not supported")
-        if proto == 'h3' and env.curl_uses_lib('msh3'):
-            pytest.skip("msh3 stalls here")
+    @pytest.mark.parametrize("proto", Env.http_mplx_protos())
+    def test_05_02_partial_20(self, env: Env, httpd, nghttpx, proto):
+        if proto == 'h3' and env.curl_uses_lib('quiche') and \
+                not env.curl_lib_version_at_least('quiche', '0.29.0'):
+            pytest.skip("quiche issue #2277 not fixed")
         count = 20
         curl = CurlClient(env=env)
         urln = f'https://{env.authority_for(env.domain1, proto)}' \
-               f'/curltest/tweak?id=[0-{count - 1}]'\
-               '&chunks=5&chunk_size=16000&body_error=reset'
+            f'/curltest/tweak?id=[0-{count - 1}]'\
+            '&chunks=5&chunk_size=16000&body_error=reset'
         r = curl.http_download(urls=[urln], alpn_proto=proto, extra_args=[
             '--retry', '0', '--parallel',
         ])
@@ -90,11 +79,12 @@ class TestErrors:
         invalid_stats = []
         for idx, s in enumerate(r.stats):
             if 'exitcode' not in s or s['exitcode'] not in [18, 55, 56, 92, 95]:
-                invalid_stats.append(f'request {idx} exit with {s["exitcode"]}\n{s}')
-        assert len(invalid_stats) == 0, f'failed: {invalid_stats}'
+                invalid_stats.append(f'request {idx} exit with {s["exitcode"]}\n{r.dump_logs()}')
+        assert len(invalid_stats) == 0, f'failed: {invalid_stats}\n{r.dump_logs()}'
 
     # access a resource that, on h2, RST the stream with HTTP_1_1_REQUIRED
-    def test_05_03_required(self, env: Env, httpd, nghttpx, repeat):
+    @pytest.mark.skipif(condition=not Env.have_h2_curl(), reason="curl without h2")
+    def test_05_03_required(self, env: Env, httpd, nghttpx):
         curl = CurlClient(env=env)
         proto = 'http/1.1'
         urln = f'https://{env.authority_for(env.domain1, proto)}/curltest/1_1'
@@ -108,3 +98,134 @@ class TestErrors:
         r.check_response(http_status=200, count=1)
         # check that we did a downgrade
         assert r.stats[0]['http_version'] == '1.1', r.dump_logs()
+
+    # On the URL used here, Apache is doing an "unclean" TLS shutdown,
+    # meaning it sends no shutdown notice and closes TCP.
+    # The HTTP response delivers a body without Content-Length. We expect:
+    # - http/1.0 to fail since it relies on a clean connection close to
+    #   detect the end of the body
+    # - http/1.1 to work since it will used "chunked" transfer encoding
+    #   and stop receiving when that signals the end
+    # - h2 to work since it will signal the end of the response before
+    #   and not see the "unclean" close either
+    @pytest.mark.parametrize("proto", ['http/1.0', 'http/1.1', 'h2'])
+    def test_05_04_unclean_tls_shutdown(self, env: Env, httpd, nghttpx, proto):
+        if proto == 'h2' and not env.have_h2_curl():
+            pytest.skip("h2 not supported")
+        if proto == 'h3' and not env.have_h3():
+            pytest.skip("h3 not supported")
+        count = 10 if proto == 'h2' else 1
+        curl = CurlClient(env=env)
+        url = f'https://{env.authority_for(env.domain1, proto)}'\
+            f'/curltest/shutdown_unclean?id=[0-{count-1}]&chunks=4'
+        r = curl.http_download(urls=[url], alpn_proto=proto, extra_args=[
+            '--parallel', '--trace-config', 'ssl'
+        ])
+        if proto == 'http/1.0':
+            # we are inconsistent if we fail or not in missing TLS shutdown
+            # openssl code ignore such errors intentionally in non-debug builds
+            r.check_exit_code(56)
+        else:
+            r.check_exit_code(0)
+            r.check_response(http_status=200, count=count)
+
+    # Make a connect with a fail for '::1' and wrong certificate for '127.0.0.1'
+    # The error message reported needs to be from the certificate.
+    # verifies issue #20608
+    @pytest.mark.parametrize("proto", Env.http_h1_h2_protos())
+    def test_05_05_failed_peer(self, env: Env, proto, httpd, nghttpx):
+        domain = f'invalid.{env.tld}'
+        url = f'https://{domain}:{env.port_for(proto)}/'
+        run_env = os.environ.copy()
+        run_env['CURL_DBG_SOCK_FAIL_IPV6'] = '1'
+        curl = CurlClient(env=env, run_env=run_env)
+        r = curl.http_download(urls=[url], alpn_proto=proto, extra_args=[
+            '--resolve', f'{domain}:{env.port_for(proto)}:::1,127.0.0.1',
+        ])
+        assert r.exit_code == 60, f'{r}'
+        assert r.stats[0]['errormsg'] != 'CURL_DBG_SOCK_FAIL_IPV6: failed to open socket'
+
+    # Get, retry on 502
+    def test_05_06_retry_502(self, env: Env, httpd, nghttpx):
+        proto = 'http/1.1'
+        curl = CurlClient(env=env)
+        url = f'https://{env.authority_for(env.domain1, proto)}/curltest/tweak?status=502'
+        r = curl.http_download(urls=[url], alpn_proto=proto, extra_args=[
+            '--retry', '2', '--retry-all-errors', '--retry-delay', '1',
+        ])
+        r.check_response(http_status=502)
+        assert r.stats[0]['num_retries'] == 2, f'{r}'
+        # curious, since curl does the retries, it finds the previous
+        # connection in the cache and reports that no connects were done
+        assert r.stats[0]['num_connects'] == 0, f'{r}'
+
+    # Get, retry on 502 in parallel mode
+    def test_05_07_retry_502_parallel(self, env: Env, httpd, nghttpx):
+        proto = 'http/1.1'
+        curl = CurlClient(env=env)
+        url = f'https://{env.authority_for(env.domain1, proto)}/curltest/tweak?status=502'
+        r = curl.http_download(urls=[url], alpn_proto=proto, extra_args=[
+            '--retry', '2', '--retry-all-errors', '--retry-delay', '1', '--parallel'
+        ])
+        r.check_response(http_status=502)
+        assert r.stats[0]['num_retries'] == 2, f'{r}'
+
+    # Get, retry on 401, not happening
+    def test_05_08_retry_401(self, env: Env, httpd, nghttpx):
+        proto = 'http/1.1'
+        curl = CurlClient(env=env)
+        url = f'https://{env.authority_for(env.domain1, proto)}/curltest/tweak?status=401'
+        r = curl.http_download(urls=[url], alpn_proto=proto, extra_args=[
+            '--retry', '2', '--retry-all-errors', '--retry-delay', '1'
+        ])
+        r.check_response(http_status=401)
+        # No retries on a 401
+        assert r.stats[0]['num_retries'] == 0, f'{r}'
+
+    # Server closes the connection immediately after accept,
+    def test_05_09_handshake_eof(self, env: Env):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.bind(('127.0.0.1', 0))
+            server.listen(1)
+            port = server.getsockname()[1]
+
+            # accept one connection and immediately close it
+            def accept_and_close():
+                try:
+                    conn, _ = server.accept()
+                    conn.recv(1)  # wait for ClientHello
+                    conn.close()
+                except Exception:
+                    # ignore expected socket error
+                    pass
+
+            t = threading.Thread(target=accept_and_close)
+            t.start()
+
+            run_env = os.environ.copy()
+            run_env['CURL_DEBUG'] = 'all'
+            curl = CurlClient(env=env, timeout=env.test_timeout, run_env=run_env)
+            url = f'https://127.0.0.1:{port}/'
+            r = curl.run_direct(args=[url, '--insecure', '-v'])
+
+            t.join(timeout=10)
+
+        # We expect an error code, not success (0) and not timeout (-1)
+        # Expected error codes are:
+        # - CURLE_SSL_CONNECT_ERROR (35) - common for handshake failures
+        # - CURLE_RECV_ERROR (56) - some TLS backends fail with that
+        assert r.exit_code in [35, 56], \
+            f'unexpected error {r.exit_code}\n{r.dump_logs()}'
+
+    # Get a resource many times with limited requests
+    @pytest.mark.skipif(condition=not Env.have_h2_curl(), reason='curl without HTTP/2')
+    def test_05_10_limits(self, env: Env, httpd):
+        proto = 'h2'
+        count = 6
+        curl = CurlClient(env=env)
+        url = f'https://{env.authority_for(env.domain1, proto)}/curltest/limit?id=[0-{count-1}]'
+        r = curl.http_download(urls=[url], alpn_proto=proto, extra_args=[
+            '--parallel', '--retry', '5'
+        ])
+        r.check_stats(count=count, http_status=200, exitcode=0)

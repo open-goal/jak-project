@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "common/common_types.h"
+#include "common/type_system/TypeSpec.h"
 #include "common/util/Assert.h"
 
 #include "goalc/debugger/disassemble.h"
@@ -19,10 +20,33 @@ class Object;
 class HeapObject;
 }  // namespace goos
 
+// location of a variable over a range of IR instructions.
+struct VariableLocation {
+  int start_ir = 0;
+  int end_ir = 0;
+  enum class Kind : u8 { REGISTER, STACK } kind = Kind::REGISTER;
+  int reg = -1;
+  int stack_offset = 0;
+};
+
+struct LocalVariableDebugInfo {
+  std::string name;
+  TypeSpec type;
+  bool is_parameter = false;
+  std::vector<VariableLocation> locations;
+
+  const VariableLocation* location_at(int ir_idx) const {
+    for (const auto& loc : locations) {
+      if (ir_idx >= loc.start_ir && ir_idx <= loc.end_ir) {
+        return &loc;
+      }
+    }
+    return nullptr;
+  }
+};
+
 /*!
  * FunctionDebugInfo stores per-function debugging information.
- * For now, it is pretty basic, but it will eventually contain stuff like stack frame info
- * and which var is in each register at each instruction.
  */
 struct FunctionDebugInfo {
   u32 offset_in_seg;  // not including type tag.
@@ -39,6 +63,9 @@ struct FunctionDebugInfo {
   // the actual bytes in the object file.
   std::vector<u8> generated_code;
   std::optional<int> stack_usage;
+
+  // named locals and parameters, for showing variable values at a breakpoint
+  std::vector<LocalVariableDebugInfo> locals;
 
   std::string disassemble_debug_info(bool* had_failure, const goos::Reader* reader, bool omit_ir);
 };
@@ -71,6 +98,10 @@ class DebugInfo {
   }
 
   FunctionDebugInfo& function_by_name(const std::string& name) { return m_functions.at(name); }
+
+  const std::unordered_map<std::string, FunctionDebugInfo>& functions() const {
+    return m_functions;
+  }
 
   void clear() { m_functions.clear(); }
 

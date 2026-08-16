@@ -39,9 +39,9 @@ struct Region {
   // (on-inside pair    :offset-assert 8)
   // (on-exit   pair    :offset-assert 12)
   u32 id;
-  std::optional<goos::Object*> on_enter;
-  std::optional<goos::Object*> on_inside;
-  std::optional<goos::Object*> on_exit;
+  std::optional<goos::Object> on_enter;
+  std::optional<goos::Object> on_inside;
+  std::optional<goos::Object> on_exit;
   math::Vector4f trans;
   math::Vector4f bsphere;
   std::string tree;   // target, camera, data, water, city_vis, sample, light, entity

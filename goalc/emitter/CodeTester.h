@@ -35,13 +35,22 @@ class CodeTester {
   ObjectGenerator m_gen;
 
  public:
+  struct DisasmLine {
+    uint64_t address;
+    std::string text;
+  };
+
   CodeTester();
   CodeTester(InstructionSet instruction_set);
   std::string dump_to_hex_string(bool nospace = false);
+  std::vector<DisasmLine> disassemble();
+  std::string dump_to_asm_string();
+  void print_hex_dump();
+  void print_asm_dump();
   ObjectGenerator generator() const { return m_gen; }
   void init_code_buffer(int capacity);
-  void emit_push_all_gprs(bool exclude_rax = false);
-  void emit_pop_all_gprs(bool exclude_rax = false);
+  void emit_push_all_gprs(bool exclude_return_register = false);
+  void emit_pop_all_gprs(bool exclude_return_register = false);
   void emit_push_all_simd();
   void emit_pop_all_simd();
   void emit_return();
@@ -91,10 +100,64 @@ class CodeTester {
     return ret;
   }
 
+  int get_reg_count() {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      return 31;  // 32 = XZR which is a special case / zero register
+    } else {
+      return 16;
+    }
+  }
+
+  int get_simd_reg_count() {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      return 16;  // TODO - check if platform has 16 or 32
+    } else {
+      return -1;  // TODO
+    }
+  }
+
+  Register get_stack_reg() {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      return SP;
+    } else {
+      return RSP;
+    }
+  }
+
+  Register get_return_reg() {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      return X0;
+    } else {
+      return RAX;
+    }
+  }
+
   /*!
    * Should allow emitter tests which run code to do the right thing on windows.
    */
   Register get_c_abi_arg_reg(int i) {
+    if (m_gen.instr_set() == InstructionSet::ARM64) {
+      switch (i) {
+        case 0:
+          return X0;
+        case 1:
+          return X1;
+        case 2:
+          return X2;
+        case 3:
+          return X3;
+        case 4:
+          return X4;
+        case 5:
+          return X5;
+        case 6:
+          return X6;
+        case 7:
+          return X7;
+        default:
+          throw std::runtime_error("Invalid ARM64 arg register index");
+      }
+    }
     // TODO ARM64 - x86 specific
 #ifdef _WIN32
     switch (i) {
@@ -135,6 +198,8 @@ class CodeTester {
    */
   int size() const { return code_buffer_size; }
   const u8* data() const { return code_buffer; }
+
+  uintptr_t code_address() const { return reinterpret_cast<uintptr_t>(code_buffer); }
 
   /*!
    * Write over existing data at the given offset.
