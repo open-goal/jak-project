@@ -122,7 +122,9 @@
       (#when PC_PORT
         (when (not (-> *pc-settings* use-vis?))
           (set! (-> box1 min x) (the float (the int (adjust-game-x (-> box min x)))))
-          (set! (-> box1 max x) (the float (the int (adjust-game-x (-> box max x)))))))
+          (set! (-> box1 max x) (the float (the int (adjust-game-x (-> box max x)))))
+        )
+      )
       (draw-box-prim-only box1 s4-0)))
   0)
 
@@ -274,12 +276,13 @@
           (progress-method-33 arg0 (-> *progress-work* sub-header))
           (let ((s3-0 (get-scissor-stack-top arg0)))
             (let* ((f0-5 0.64)
+                    ;; og:preserve-this fixing top line current orb-count/secret orb-cost text position
                    (f30-0 (* (the float (-> s2-0 w)) f0-5 (-> *video-params* relative-x-scale)))
                    )
               (let ((f1-5 (* (the float (-> s2-0 h)) f0-5)))
                 (draw-icon-array!
                   (-> *progress-icon-arrays* 68)
-                  (the int (adjust-x-if-needed (+ 10.0 (-> s3-0 x))))
+                  (the int (adjust-x-if-needed (+ 10.0 (-> s3-0 x)))) ;; og:preserve-this fixing top-left orb icon position
                   (the int (+ (-> s3-0 y) (* 0.5 (- 28.0 f1-5))))
                   f0-5
                   f0-5
@@ -300,12 +303,14 @@
                   )
                 )
                 (set-scale! font-ctx f28-0)
+                ;; og:preserve-this fixing top line current orb-count/secret orb-cost text position
                 (set! (-> font-ctx origin x) (+ (adjust-x-if-needed (+ (-> s3-0 x) 10.0)) f30-0))
                 (set! (-> font-ctx origin y) (+ (-> s3-0 y) (* 0.5 (- 28.0 (* 32.0 f28-0)))))
                 )
               )
             (print-game-text *temp-string* font-ctx #f 44 (bucket-id hud-draw-hud-alpha))
             (set-flags! font-ctx (font-flags kerning right large))
+            ;; og:preserve-this fixing total orbs collected text-position
             (set! (-> font-ctx origin x) (adjust-x-if-needed (- (-> s3-0 z) 10.0)))
           )
           ;; This code draws the line in the secrets menu indicating the number of orbs obtained so far out of the total 600 in-game.
@@ -369,6 +374,7 @@
             (let* ((string-width (-> (get-string-length *temp-string* font-ctx) length))
                    (secret-text-width (- (- (- secret-menu-width f30-1) string-width) f30-1))
                   )
+              ;; og:preserve-this Fixing secret text and secret group title text boundaries
               (when (not (-> *pc-settings* use-vis?))
                 (set! secret-text-width (- (* secret-text-width (-> *pc-settings* aspect-ratio-reciprocal)) 16))
                 (set! (-> font-ctx origin x) (+ 6.0 (adjust-game-x (-> s3-3 x))))
@@ -1122,6 +1128,7 @@
     (set-color! font-ctx (font-color font-color-32))
     (set! (-> font-ctx origin x) (+ 10.0 (-> s3-0 x)))
     (set! (-> font-ctx origin y) (-> s3-0 y))
+    ;; og:preserve-this Fixing header overflow when text is too large
     (when (not (-> *pc-settings* use-vis?))
       (*! header-area-width (-> *pc-settings* aspect-ratio-reciprocal))
       (set! (-> font-ctx origin x) (the float (adjust-game-x (-> font-ctx origin x))))
@@ -1132,6 +1139,7 @@
       header-area-width
       45.0
       header-text
+      ;; og:preserve-this Fixing header overflow when text is too large
       (if (not (-> *pc-settings* use-vis?)) (* 0.75 (if (< header-area-width header-text-width)
         (/ header-area-width header-text-width )
         1.0
@@ -1186,16 +1194,18 @@
               (when (= arg2 (-> arg0 option-index))
                 (set-scale! font-ctx 0.8)
                 (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf)) (bucket-id tex-hud-hud-alpha))
-                  (let ((f24-1 (+ (-> s3-1 x) (* 0.4 (- (-> s3-1 z) (-> s3-1 x))))))
-                    (when (not (-> *pc-settings* use-vis?))
-                      (*! f24-1 (-> *pc-settings* aspect-ratio-reciprocal))
-                    )
+                  ;; og:preserve-this fixing scaling for boxes around game saves
+                  (let ((box-start (adjust-x-if-needed (-> s3-1 x)))
+                        (box-end (adjust-x-if-needed (+ (-> s3-1 x) (* 0.4 (- (-> s3-1 z) (-> s3-1 x))))))
+                        )
                     (set-vector! (-> s0-0 color) 128 128 128 (the int (* 16.0 f30-0)))
                     (vector-copy! (the vector (-> s0-0 box)) s3-1)
-                    (set! (-> s0-0 box min x) f24-1)
-                    (draw-box-alpha-1 s0-0 buf)
-                    (set! (-> s0-0 box min x) (adjust-x-if-needed (-> s3-1 x)))
-                    (set! (-> s0-0 box max x) f24-1)
+                    ;; og:preserve-this removing excess red box to the right of menu for Automatic/Custom aspect ratios
+                    ;;(set! (-> s0-0 box min x) box-end)
+                    ;;(draw-box-alpha-1 s0-0 buf)
+                    ;; og:preserve-this fixing scaling for boxes around game saves
+                    (set! (-> s0-0 box min x) box-start)
+                    (set! (-> s0-0 box max x) box-end)
                   )
                   (set! (-> s0-0 box min y) f26-0)
                   (set! (-> s0-0 box max y) f28-1)
@@ -1287,12 +1297,12 @@
                     (set-width! font-ctx (the int (* 0.6 (- (-> s3-1 z) (-> s3-1 x)))))
                     (string-format "~S" (lookup-text! *common-text* (text-id progress-secrets-hero-mode) #f))
                     (print-game-text *temp-string* font-ctx #f 44 (bucket-id hud-draw-hud-alpha))
-                    )
                   )
                 )
               )
             )
           )
+        )
         (progress-method-34 arg0)
         ;;Here are where the menu-headers are drawn
         (when (zero? arg2)
