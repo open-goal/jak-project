@@ -56,7 +56,8 @@
                ;; Zero would take the old-diff=0 path and defeat this one-frame confirmation.
                (* 0.000000001 saturated-yaw)))))
     (set! (-> this old-y-angle-diff) saturated-yaw)
-    (let ((rotation (get-quaternion this))) (quaternion-rotate-y! rotation rotation saturated-yaw))))
+    (let ((rotation (get-quaternion this)))
+      (quaternion-rotate-y! rotation rotation saturated-yaw))))
 
 (defmethod set-heading-vec! ((this trsqv) (heading vector))
   "Immediately turn toward heading within the plane perpendicular to the current up direction,
@@ -189,8 +190,8 @@
        (.lvf vf3 (&-> dst vector 0 quad))
        (.lvf vf4 (&-> dst vector 1 quad))
        (.lvf vf5 (&-> dst vector 2 quad))
-       (.mov.vf.w vf2 vf0)
-       (.mul.x.vf vf3 vf3 vf1)
+       (.mov.vf.w vf2 vf0)      ;; set trans.w = 1
+       (.mul.x.vf vf3 vf3 vf1)  ;; apply scale
        (.mul.y.vf vf4 vf4 vf1)
        (.mul.z.vf vf5 vf5 vf1)
        (.svf (&-> dst vector 3 quad) vf2)
@@ -215,8 +216,8 @@
     (.lvf vf3 (&-> dst vector 0 quad))
     (.lvf vf4 (&-> dst vector 1 quad))
     (.lvf vf5 (&-> dst vector 2 quad))
-    (.mov.vf vf2 vf0)
-    (.mul.x.vf vf3 vf3 vf1)
+    (.mov.vf vf2 vf0)       ;; set trans = [0, 0, 0, 1]
+    (.mul.x.vf vf3 vf3 vf1) ;; apply scale
     (.mul.y.vf vf4 vf4 vf1)
     (.mul.z.vf vf5 vf5 vf1)
     (.svf (&-> dst vector 3 quad) vf2)
@@ -244,14 +245,14 @@
     (.lvf vf3 (&-> dst vector 0 quad))
     (.lvf vf4 (&-> dst vector 1 quad))
     (.lvf vf5 (&-> dst vector 2 quad))
-    (.mov.vf.w vf2 vf0)
-    (.mul.x.vf vf3 vf3 vf1)
+    (.mov.vf.w vf2 vf0)      ;; set original-trans.w = 1
+    (.mul.x.vf vf3 vf3 vf1)  ;; scale matrix
     (.mul.y.vf vf4 vf4 vf1)
     (.mul.z.vf vf5 vf5 vf1)
-    (.mul.x.vf acc vf3 vf6)
+    (.mul.x.vf acc vf3 vf6)          ;; rotate local-offset by scaled matrix
     (.add.mul.y.vf acc vf4 vf6 acc)
     (.add.mul.z.vf acc vf5 vf6 acc)
-    (.add.mul.w.vf.xyz vf2 vf2 vf0 acc)
+    (.add.mul.w.vf.xyz vf2 vf2 vf0 acc) ;; adds the offset and original translation
     (.svf (&-> dst vector 3 quad) vf2)
     (.svf (&-> dst vector 0 quad) vf3)
     (.svf (&-> dst vector 1 quad) vf4)
@@ -276,11 +277,11 @@
     (.lvf vf3 (&-> dst vector 0 quad))
     (.lvf vf4 (&-> dst vector 1 quad))
     (.lvf vf5 (&-> dst vector 2 quad))
-    (.mov.vf.w vf2 vf0)
-    (.mul.x.vf vf3 vf3 vf1)
+    (.mov.vf.w vf2 vf0)        ;; set trans.w = 1
+    (.mul.x.vf vf3 vf3 vf1)    ;; scale matrix
     (.mul.y.vf vf4 vf4 vf1)
     (.mul.z.vf vf5 vf5 vf1)
-    (.add.vf.xyz vf2 vf2 vf6)
+    (.add.vf.xyz vf2 vf2 vf6)  ;; add world trans offset
     (.svf (&-> dst vector 3 quad) vf2)
     (.svf (&-> dst vector 0 quad) vf3)
     (.svf (&-> dst vector 1 quad) vf4)
@@ -307,15 +308,15 @@
       (set! (-> inverse-parent-scale z) (/ 1.0 (-> parent-scale z)))
       (.lvf vf1 (&-> src scale quad))
       (.lvf vf2 (&-> src trans quad))
-      (.mov.vf.w vf2 vf0)
+      (.mov.vf.w vf2 vf0) ;; trans.w = 0
       (.lvf vf4 (&-> dst vector 0 quad))
       (.lvf vf5 (&-> dst vector 1 quad))
       (.lvf vf6 (&-> dst vector 2 quad))
-      (.mul.x.vf vf4 vf4 vf1)
+      (.mul.x.vf vf4 vf4 vf1)  ;; apply our scale
       (.mul.y.vf vf5 vf5 vf1)
       (.mul.z.vf vf6 vf6 vf1)
       (.lvf vf3 (&-> inverse-parent-scale quad)))
-    (.mul.vf vf4 vf4 vf3)
+    (.mul.vf vf4 vf4 vf3) ;; apply inverse parent scale
     (.mul.vf vf5 vf5 vf3)
     (.mul.vf vf6 vf6 vf3)
     (.svf (&-> dst vector 3 quad) vf2)

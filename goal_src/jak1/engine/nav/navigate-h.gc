@@ -36,14 +36,12 @@
 
 ;; DECOMP BEGINS
 
+;; Nav mesh triangle. In jak 1, nav-poly is always a triangle.
 (deftype nav-poly (structure)
-  "One navigation triangle. vertex indexes the mesh-local vertex array; adj-poly gives neighboring
-triangles with 255 as the boundary sentinel. pat bit zero marks a gap and the remaining defined
-bits select debug colors."
   ((id uint8)
-   (vertex uint8 3)
-   (adj-poly uint8 3)
-   (pat uint8))
+   (vertex uint8 3)    ;; index into mesh vertex table
+   (adj-poly uint8 3)  ;; 255 for no neighbor
+   (pat uint8))        ;; first bit set on gaps, other bits used for colors
   :pack-me)
 
 (deftype nav-vertex (vector)
@@ -51,7 +49,7 @@ bits select debug colors."
   ())
 
 (deftype nav-sphere (structure)
-  "A world-space obstacle sphere baked into the level navigation data."
+  "A world-space obstacle sphere."
   ((trans sphere :inline)))
 
 (deftype nav-ray (structure)
@@ -252,13 +250,15 @@ gathers obstacle spheres, and reports gap, blocked, and destination progress to 
   ;; try to find an entity with a nav-mesh, first from the given process
   (let ((ent (-> proc entity)))
     (when (zero? (-> ent nav-mesh))
-      ;; and if that doesn't have one already, lookup from the res-lump
-      (let ((lookup-entity (entity-actor-lookup ent 'nav-mesh-actor 0))) (if lookup-entity (set! ent lookup-entity))))
-    ;; now, look at the nav-mesh from the entity
+      ;; and if that doesn't have a nav-mesh, see if the res-lump specifies another entity-actor to check
+      (let ((lookup-entity (entity-actor-lookup ent 'nav-mesh-actor 0)))
+        (if lookup-entity
+            (set! ent lookup-entity))))
+    ;; try the nav-mesh from the entity
     (let ((entity-nav-mesh (-> ent nav-mesh)))
       (cond
         ((nonzero? entity-nav-mesh)
-         ;; We have a nav mesh already.
+         ;; We have a nav mesh, see if it needs initialization
          (when (zero? (-> entity-nav-mesh user-list))
            ;; Use the current process's level heap because process-level-heap is not guaranteed to
            ;; be established while navigation connections are built.
@@ -267,12 +267,15 @@ gathers obstacle spheres, and reports gap, blocked, and destination progress to 
            (set! (-> entity-nav-mesh user-list)
                  (new 'process-level-heap 'engine 'nav-engine (res-lump-value ent 'nav-max-users int :default (the-as uint128 32))))
            (initialize-mesh! entity-nav-mesh)
+           ;; the route table in the nav-mesh is patched so adjacent triangles have a portal
+           ;; edge index of 3. Unclear why this isn't done in advance.
            (update-route-table entity-nav-mesh))
          ;; param1 is the user process, param2 its nav-control, and param3 its transform or shape.
          (add-connection (-> entity-nav-mesh user-list) proc nothing proc nav-cont trans))
         (else
          ;; Mark an actor setup error and use the empty default mesh.
-         (if (and nav-cont (-> proc entity)) (logior! (-> proc entity extra perm status) (entity-perm-status error)))
+         (if (and nav-cont (-> proc entity))
+             (logior! (-> proc entity extra perm status) (entity-perm-status error)))
          (set! entity-nav-mesh *default-nav-mesh*)))
       entity-nav-mesh)))
 

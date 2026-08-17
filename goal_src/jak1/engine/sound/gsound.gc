@@ -59,7 +59,10 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
 (defun current-str-pos ((id sound-id))
   "Return the current streamed-audio position for id, or -1 when
    another stream is active."
-  (let ((position -1)) (if (= id (-> *sound-iop-info* str-id)) (set! position (-> *sound-iop-info* strpos))) position))
+  (let ((position -1))
+    (if (= id (-> *sound-iop-info* str-id))
+        (set! position (-> *sound-iop-info* strpos)))
+    position))
 
 (defun is-cd-in? ()
   "Return whether the IOP reports that a disc is present."
@@ -74,7 +77,8 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
   "Allocate the next sound ID, reserving values below #x10000 even after
    the counter wraps."
   (set! *current-sound-id* (the sound-id (1+ (the uint *current-sound-id*))))
-  (if (< (the-as int *current-sound-id*) #x10000) (set! *current-sound-id* (the-as sound-id #x10000)))
+  (if (< (the-as int *current-sound-id*) #x10000)
+      (set! *current-sound-id* (the-as sound-id #x10000)))
   *current-sound-id*)
 
 (defun check-irx-version ()
@@ -135,16 +139,15 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   0)
 
+;; Load the common sound bank, which remains loaded the whole time
 (case (scf-get-territory)
   ((GAME_TERRITORY_SCEI) (sound-bank-load (static-sound-name "commonj")))
   (else (sound-bank-load (static-sound-name "common"))))
 
+;; Load empty sound banks in the other two slots
 (sound-bank-load (static-sound-name "empty1"))
-
 (sound-bank-load (static-sound-name "empty2"))
-
 (define *sound-bank-1* 'empty1)
-
 (define *sound-bank-2* 'empty2)
 
 (defun sound-reload-info ()
@@ -212,13 +215,20 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
    listener state when space permits. Disable new sound commands while the previous RPC remains busy,
    and show the no-disc or bad-disc screen reported by the IOP."
   (cond
-    ((check-busy *sound-player-rpc*) (set! *sound-player-enable* #f))
+    ((check-busy *sound-player-rpc*)
+     ;; stop generating sounds to let the IOP catch up
+     (set! *sound-player-enable* #f))
     (else
      (let ((command-buffer (-> *sound-player-rpc* current)))
+       ;; set "ear" location if there's room
        (if (< (-> command-buffer elt-used) (-> command-buffer elt-count))
          (sound-set-ear-trans ear-position camera-position camera-angle)))
+     ;; submit sounds to IOP!
      (call *sound-player-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+     ;; re-enable more sounds to be queued by the engine on the next fame.
      (set! *sound-player-enable* #t)))
+  
+  ;; display CD errors to user
   (cond
     ((not (is-cd-in?))
      (if (or (not *progress-process*) (!= (-> *progress-process* 0 display-state) (progress-screen no-disc)))
@@ -235,7 +245,7 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
 
 (defun free-last-sound-buffer-entry ()
   "Discard the most recently reserved sound-player command."
-  (decrement-elt-used *sound-player-rpc*)
+  (free-last-element *sound-player-rpc*)
   0)
 
 (defun sound-basic-cb ((value int) (result (pointer int32)))
@@ -255,9 +265,12 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
 (defun sound-angle-convert ((angle float))
   "Interpret the low signed 16 bits of angle as one full turn,
    convert them to integer degrees, and wrap the result into zero through 359."
-  (let ((degrees (the int (* (/ 360.0 65536.0) (the float (sar (shl (the int angle) 48) 48))))))
-    (if (< degrees 0) (+! degrees 360))
-    (if (< 359 degrees) (+! degrees -360))
+  (let* ((signed-angle (unwrap-angle angle))
+         (degrees (the int (* 0.005493164 signed-angle))))
+    (if (< degrees 0)
+        (+! degrees 360))
+    (if (< 359 degrees)
+        (+! degrees -360))
     degrees))
 
 (defun string->sound-name ((str string))
@@ -326,8 +339,6 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
   "Queue name with the supplied sound ID, IOP-scale volume, pitch,
    bend, and group, then return id. trans may be a position, #t for the current process drawable's
    root, or #f for the listener."
-  (local-vars (sv-16 sound-group))
-  (set! sv-16 group)
   (let ((sound-trans trans))
     (when *sound-player-enable*
       (let ((cmd (the-as sound-rpc-play (get-sound-buffer-entry))))
@@ -335,7 +346,7 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
         (set! (-> cmd id) id)
         (set! (-> cmd name) name)
         (set! (-> cmd parms mask) (sound-mask))
-        (set! (-> cmd parms group) sv-16)
+        (set! (-> cmd parms group) group)
         (set! (-> cmd parms volume) vol)
         (set! (-> cmd parms pitch-mod) pitch)
         (set! (-> cmd parms bend) bend)
@@ -505,61 +516,53 @@ starting at frame, extending 12 bytes past the nominal type into the 16-byte all
   "Update continuous playback or start a scheduled one-shot when its timer expires.
    Entity-backed sounds rebuild their shared specification and skip playback outside the far falloff
    distance."
-  (if (not *ambient-sound-class*) (return (the int #f)))
-  (cond
-    ((-> this spec)
-     (when (or (< (-> this time-base) 0) (>= (-> *display* base-frame-counter) (-> this play-time)))
-       (when (>= (-> this time-base) 0)
-         (set! (-> this play-time)
-               (+ (-> *display* base-frame-counter) (-> this time-base) (rand-vu-int-count (-> this time-random))))
-         (set! (-> this playing-id) (new-sound-id)))
-       (let ((spec (-> this spec)))
-         (when (= spec *ambient-spec*)
-           (set! (-> spec volume) (-> this volume))
-           (set! (-> spec pitch-mod) (-> this pitch))
-           (set! (-> spec bend) 0)
-           (set! (-> spec sound-name) (-> this name))
-           (set! (-> spec fo-max) (-> this falloff-far))
-           (set! (-> spec mask) (sound-mask))
-           (if (-> this params) (effect-param->sound-spec spec (-> this params) (-> this param-count))))
-         (if (and (nonzero? (-> spec fo-max))
-                  (< (* 4096.0 (the float (-> spec fo-max))) (vector-vector-distance (ear-trans) (-> this trans))))
-           (return 0))
-         (when (and *debug-effect-control* (>= (-> this time-base) 0))
-           (with-pp
-             (format #t "(~5D) effect sound ~A ~G " (-> *display* base-frame-counter) (-> pp name) (-> spec sound-name-char))
+  (with-pp
+    (if (not *ambient-sound-class*)
+        (return (the-as int #f)))
+    (cond
+      ((-> this spec)
+       (when (or (< (-> this time-base) 0) (>= (current-time) (-> this play-time)))
+         (when (>= (-> this time-base) 0)
+           (set! (-> this play-time) (+ (current-time) (-> this time-base) (rand-vu-int-count (the-as int (-> this time-random)))))
+           (set! (-> this playing-id) (new-sound-id)))
+         (let ((spec (-> this spec)))
+           (when (= spec *ambient-spec*)
+             (set! (-> spec volume) (-> this volume))
+             (set! (-> spec pitch-mod) (-> this pitch))
+             (set! (-> spec bend) 0)
+             (set! (-> spec sound-name) (-> this name))
+             (set! (-> spec fo-max) (-> this falloff-far))
+             (set! (-> spec mask) (sound-mask))
+             (if (-> this params)
+                 (effect-param->sound-spec spec (-> this params) (-> this param-count))))
+           (if (and (nonzero? (-> spec fo-max))
+                      (< (* 4096.0 (the float (-> spec fo-max))) (vector-vector-distance (ear-trans) (-> this trans))))
+               (return 0))
+           (when (and *debug-effect-control* (>= (-> this time-base) 0))
+             (format #t "(~5D) effect sound ~A ~G " (current-time) (-> pp name) (&-> spec sound-name))
              (format #t
                      "volume: ~f  pitch-mod: ~f~%"
-                     (* (1/ 10.24) (the float (-> spec volume)))
-                     (* 0.000656168 (the float (-> spec pitch-mod))))))
-         (let ((spec-volume (-> spec volume)))
-           (set! (-> spec volume) (-> this volume))
-           (set! (-> this playing-id) (sound-play-by-spec spec (-> this playing-id) (-> this trans)))
-           (set! (-> spec volume) spec-volume)))))
-    (else
-     (cond
-       ((< (-> this time-base) 0)
-        (set! (-> this playing-id)
-              (sound-play-by-name (-> this name)
-                                  (-> this playing-id)
-                                  (-> this volume)
-                                  (-> this pitch)
-                                  0
-                                  (sound-group sfx)
-                                  (the-as symbol (-> this trans)))))
-       (else
-        (when (>= (-> *display* base-frame-counter) (-> this play-time))
-          (set! (-> this playing-id)
-                (sound-play-by-name (-> this name)
-                                    (new-sound-id)
-                                    (-> this volume)
-                                    (-> this pitch)
-                                    0
-                                    (sound-group sfx)
-                                    (the-as symbol (-> this trans))))
-          (set! (-> this play-time)
-                (+ (-> *display* base-frame-counter) (-> this time-base) (rand-vu-int-count (-> this time-random)))))))))
-  0)
+                     (* 0.09765625 (the float (-> spec volume)))
+                     (* 0.000656168 (the float (-> spec pitch-mod)))))
+           (let ((spec-volume (-> spec volume)))
+             (set! (-> spec volume) (-> this volume))
+             (set! (-> this playing-id) (sound-play-by-spec spec (-> this playing-id) (-> this trans)))
+             (set! (-> spec volume) spec-volume)))))
+      ((< (-> this time-base) 0)
+       (set! (-> this playing-id)
+             (sound-play-by-name (-> this name)
+                                 (-> this playing-id)
+                                 (-> this volume)
+                                 (-> this pitch)
+                                 0
+                                 (sound-group sfx)
+                                 (-> this trans))))
+      (else
+       (when (>= (current-time) (-> this play-time))
+         (set! (-> this playing-id)
+               (sound-play-by-name (-> this name) (new-sound-id) (-> this volume) (-> this pitch) 0 (sound-group sfx) (-> this trans)))
+         (set! (-> this play-time) (+ (current-time) (-> this time-base) (rand-vu-int-count (the-as int (-> this time-random))))))))
+    0))
 
 (defmethod stop! ((this ambient-sound))
   "Queue a stop command for this background sound's current playback ID."
@@ -694,7 +697,8 @@ event has no alternate variation for this bank."
   "Return the music variation mapped to event for music, or zero when
    the music or event has no mapping."
   (dotimes (i (-> *flava-table* count))
-    (if (= (-> *flava-table* row i music) music) (return (the-as int (-> *flava-table* row i flava event)))))
+    (if (= (-> *flava-table* row i music) music) 
+        (return (the-as int (-> *flava-table* row i flava event)))))
   0)
 
 (defmacro flava-table-add (name &rest flavas)

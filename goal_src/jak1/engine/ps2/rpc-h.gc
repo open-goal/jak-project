@@ -3,18 +3,14 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel/gcommon.gc")
 
-;; RPC channels.
+;; Channel indices to execute remote procedure calls in the Overlord IOP driver.
 ;; these should match XXX_RPC_CHANNEL in the game/common/xxx_rpc_types.h
+
 (defconstant RPC-SOUND-PLAYER 0) ;; called player in IOP code
-
 (defconstant RPC-SOUND-LOADER 1) ;; called loader in IOP code
-
 (defconstant RPC-RAMDISK 2) ;; called server in IOP code, sometimes
-
 (defconstant RPC-DGO 3)
-
 (defconstant RPC-LOAD-STR 4) ;; called STR in IOP code
-
 (defconstant RPC-PLAY-STR 5) ;; called PLAY in IOP code
 
 (defun-extern sound-buffer-dump int)
@@ -33,7 +29,6 @@ payload area within the dynamic trailing allocation."
    (elt-used uint32)
    (busy symbol) ;; are we being sent currently?
    (base pointer) ;; 64-byte aligned buffer of elts.
-   ;; I suspect this was 16-byte aligned for DMA purposes.
    (data uint8 :dynamic :offset 32))
   (:methods
    (new (symbol type uint uint) rpc-buffer)))
@@ -69,7 +64,7 @@ the other buffer may still be in use by the IOP."
    (new (symbol type uint uint int) rpc-buffer-pair)
    (call (rpc-buffer-pair uint pointer uint) int)
    (add-element (rpc-buffer-pair) pointer)
-   (decrement-elt-used (rpc-buffer-pair) int)
+   (free-last-element (rpc-buffer-pair) int)
    (sync (rpc-buffer-pair symbol) int)
    (check-busy (rpc-buffer-pair) symbol)
    (pop-last-received (rpc-buffer-pair) pointer)))
@@ -163,7 +158,9 @@ the other buffer may still be in use by the IOP."
 (defmethod pop-last-received ((this rpc-buffer-pair))
   "Return and clear the receive-buffer pointer supplied to the most recent
    call. The caller must first establish that the asynchronous RPC has completed."
-  (let ((result (-> this last-recv-buffer))) (set! (-> this last-recv-buffer) (the-as pointer #f)) result))
+  (let ((result (-> this last-recv-buffer)))
+    (set! (-> this last-recv-buffer) (the-as pointer #f))
+    result))
 
 (defmethod add-element ((this rpc-buffer-pair))
   "Reserve and return the next element in the current buffer. A full buffer is
@@ -187,7 +184,7 @@ the other buffer may still be in use by the IOP."
       (+! (-> current-buffer elt-used) 1)
       result)))
 
-(defmethod decrement-elt-used ((this rpc-buffer-pair))
+(defmethod free-last-element ((this rpc-buffer-pair))
   "Discard the most recently reserved element when the current buffer is not
    empty."
   (if (> (-> this current elt-used) 0) (+! (-> this current elt-used) -1))
