@@ -2043,7 +2043,269 @@
                         (bucket-id hud-draw-hud-alpha))))
     (end-scissor-resolution box 1.0))
   0
-  (none))
+  (none)
+)
+
+;; WARN: Return type mismatch int vs object.
+(defmethod draw-button-text ((this progress) (font-ctx font-context) (display-text string))
+  (let ((f0-1 (- 1.0 (-> this menu-transition))))
+    (set-scale! font-ctx 0.5)
+    (set! (-> font-ctx alpha) f0-1)
+  )
+  (print-game-text display-text font-ctx #f 44 (bucket-id hud-draw-hud-alpha))
+  0
+)
+
+(defmethod progress-method-45 ((this progress)
+                              (font-ctx font-context)
+                              (text-area-width float)
+                              (height-offset float)
+                              (arg3 string)
+                              (arg4 float)
+                              (arg5 float)
+                              (arg6 int)
+                              )
+  (set-width! font-ctx 10000)
+  (set-scale! font-ctx arg4)
+  (string-format "~S" arg3)
+  (let ((temp-string-width (-> (get-string-length *temp-string* font-ctx) length)))
+    (set-width! font-ctx (the int text-area-width))
+    (cond
+      ((< text-area-width temp-string-width)
+        (if (< (/ text-area-width temp-string-width) arg5)
+          (set-scale! font-ctx arg4)
+          (set-scale! font-ctx (/ (* text-area-width arg4) temp-string-width))
+        )
+      )
+      (else
+        (set-scale! font-ctx arg4)
+      )
+    )
+  )
+    (string-format "~S" arg3)
+    (let ((f30-0 (print-game-text *temp-string* font-ctx #t arg6 (bucket-id hud-draw-hud-alpha))))
+      (+! (-> font-ctx origin y) (* 0.5 (- height-offset f30-0)))
+      (let ((previous-origin-y (-> font-ctx origin y)))
+        (string-format "~S" arg3)
+        (print-game-text *temp-string* font-ctx #f arg6 (bucket-id hud-draw-hud-alpha))
+        (set! (-> font-ctx origin y) previous-origin-y)
+      )
+      f30-0
+    )
+)
+
+;; WARN: Return type mismatch int vs object.
+(defmethod draw-yes-no-style-footer ((this progress) (font-ctx font-context) (yes-text-id text-id) (no-text-id text-id))
+  (string-format
+    (if (-> this yes-no-choice)
+      "~33L~S~44L ~S"
+      "~44L~S ~33L~S"
+    )
+    (lookup-text! *common-text* yes-text-id #f)
+    (lookup-text! *common-text* no-text-id #f)
+  )
+  (print-game-text *temp-string* font-ctx #f 44 (bucket-id hud-draw-hud-alpha))
+  0
+)
+
+;; ERROR: Stack slot load at 80 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 160 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 80 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 160 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 160 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 160 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 80 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 160 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 80 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 96 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 160 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 160 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 176 mismatch: defined as size 4, got size 16
+;; WARN: Return type mismatch int vs object.
+;; two-choice-prompt
+(defmethod progress-method-50 ((this progress)
+                              (font-ctx font-context)
+                              (title-text-id text-id)
+                              (option1-text-id text-id)
+                              (option2-text-id text-id)
+                              (arg4 symbol)
+                              (arg5 symbol)
+                              (arg6 float)
+                              )
+  (let ((sv-16 (fmax 0.0 (* 2.0 (- 0.5 (-> this menu-transition)))))
+        (sv-20 (the-as string #f))
+        (sv-24 (get-scissor-stack-top this))
+        (option1-text (lookup-text! *common-text* option1-text-id #f))
+        (option2-text (lookup-text! *common-text* option2-text-id #f))
+        )
+    (set! (-> font-ctx alpha) sv-16)
+    (set! (-> font-ctx flags) (font-flags kerning middle large))
+    (let  ((f30-0 0.0)
+           (text-height-offset (the-as float 24.5))
+           (text-area-width (+ (- -20.0 (-> sv-24 x)) (-> sv-24 z)))
+           (title-text (the-as string (lookup-text! *common-text* title-text-id #f)))
+          )
+    (set! (-> font-ctx origin x) (+ 10.0 (-> sv-24 x)))
+    (when (not (-> *pc-settings* use-vis?))
+      (*! text-area-width (-> *pc-settings* aspect-ratio-reciprocal))
+      (set! (-> font-ctx origin x) (the float (adjust-game-x (-> font-ctx origin x))))
+    )
+    (set! sv-20
+            (cond
+              (arg5
+                (set! (-> font-ctx color) (font-color font-color-32))
+                (let ((f28-0 (progress-method-45
+                               this
+                               font-ctx
+                               text-area-width
+                               text-height-offset
+                               title-text
+                               arg6
+                               0.75
+                               35
+                               )
+                      )
+                    )
+                  (set! f30-0 (/ f28-0 2))
+                  (set-scale! font-ctx (/ (-> font-ctx scale) 2))
+                  (draw-highlight-bar this font-ctx (the int (+ -1.0 (-> font-ctx origin y))) (the int (+ 2.0 f28-0)) sv-16)
+                  (+! (-> font-ctx origin y) f28-0)
+                )
+                (string-format
+                  (if (-> this yes-no-choice)
+                    "~33L~S ~44L~S"
+                    "~44L~S~33L ~S"
+                  )
+                  option1-text
+                  option2-text
+                )
+                *temp-string*
+              )
+              (else
+                (set! (-> font-ctx color)
+                  (if arg4
+                    (font-color font-color-33)
+                    (font-color font-color-32)
+                  )
+                )
+                (let ((f28-1 (progress-method-45 
+                          this
+                          font-ctx
+                          text-area-width
+                          text-height-offset
+                          title-text
+                          arg6
+                          0.75
+                          35
+                          )
+                        )
+                      )
+                  (when arg4
+                    (let* ((a2-12 (the int (+ -1.0 (-> font-ctx origin y))))
+                            (a3-6 (the int (+ 1.0 f28-1)))
+                            )
+                      (draw-highlight-bar this font-ctx a2-12 a3-6 (the-as float sv-16))
+                    )
+                  )
+                  (+! (-> font-ctx origin y) f28-1)
+                )
+                (string-format
+                    (if (-> this yes-no-choice)
+                      "~1L~S~44L ~S"
+                      "~44L~S ~1L~S~1L"
+                    )
+                    option1-text
+                    option2-text
+                    title-text
+                )
+                *temp-string*
+              )
+            )
+        )
+      (draw-button-text this font-ctx sv-20)
+      (+! (-> font-ctx origin y) f30-0)
+      )
+    )
+  0
+)
+
+;; WARN: Return type mismatch int vs object.
+(defmethod progress-method-51 ((this progress) (font-ctx font-context))
+  (let ((v1-1 (get-scissor-stack-top this)))
+    (let ((f1-1 (+ (-> v1-1 y) (* 0.5 (- (-> v1-1 w) (-> v1-1 y))))))
+      (set! (-> font-ctx origin x) (-> v1-1 x))
+      (set! (-> font-ctx origin y) f1-1)
+    )
+    (set! (-> font-ctx width) (- (-> v1-1 z) (-> v1-1 x)))
+    )
+  (set-scale! font-ctx 0.6)
+  (set! (-> font-ctx flags) (font-flags kerning middle large))
+  (if (< (mod (current-time) 300) 210)
+      (print-game-text
+        (lookup-text! *common-text* (text-id progress-memcard-loading) #f)
+        font-ctx
+        #f
+        44
+        (bucket-id hud-draw-hud-alpha)
+        )
+      )
+  0
+)
+
+(defmethod draw-option ((this menu-picture-slider-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
+  (let ((f30-0 (fmax 0.0 (* 2.0 (- 0.5 (-> arg0 menu-transition))))))
+    (set! (-> arg1 alpha) f30-0)
+    (progress-method-33 arg0 (-> *progress-work* body))
+    (cond
+      ((not (loaded? *bigmap*))
+       (progress-method-51 arg0 arg1)
+       )
+      (else
+        (let ((f28-0 (-> (the-as (pointer float) (&+ (the-as pointer *setting-control*) (-> this setting-offset))))))
+          (draw-slider-option
+            arg0
+            arg1
+            (lookup-text! *common-text* (-> this name) #f)
+            f30-0
+            (-> this offset-y)
+            0.9
+            f28-0
+            (the-as float #f)
+            )
+          )
+        )
+      )
+    (when (zero? arg2)
+      (let ((s4-1 (get-scissor-stack-top arg0)))
+        (draw-header arg0 arg1 f30-0 (text-id progress-picture-options))
+        (draw-icon-array!
+          (-> *progress-icon-arrays* 75)
+          256
+          (the int (+ (-> s4-1 y) (* 0.75 (- (-> s4-1 w) (-> s4-1 y)))))
+          (if (not (-> *pc-settings* use-vis?))
+            (* (-> *video-params* relative-x-scale-reciprical) (-> *pc-settings* aspect-ratio-reciprocal))
+            (-> *video-params* relative-x-scale-reciprical)
+          )
+          10.0
+          (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+          f30-0
+          )
+        )
+      )
+    )
+  (progress-method-34 arg0)
+  0
+  (none)
+)
 
 ; (defun draw-highlight-music-player ((x int) (y int) (w int) (h int) (alpha float))
 ;   "draw the highlight for a number in the music player screen"
