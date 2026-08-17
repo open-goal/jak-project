@@ -57,9 +57,18 @@ def update_all_blocks(game_name, block_dict):
             lines = f.readlines()
         # Iterate through lines, (before ;; decomp begins) and update the blocks if we find them
         i = 0
+        seen_blocks = []
         while i < len(lines):
             line = lines[i]
             if line.lower().startswith(";; decomp begins"):
+                # Add any blocks we hadn't seen yet (were not added to the file automatically by some tool)
+                for block in blocks:
+                    if block.block_id in seen_blocks:
+                        continue
+                    final_lines.append(f";; +++{block.block_id}")
+                    for block_line in block.data:
+                        final_lines.append(block_line)
+                    final_lines.append(f";; ---{block.block_id}\n")
                 final_lines.append(line)
                 # Add all the rest of the lines until the end
                 while i + 1 < len(lines):
@@ -70,6 +79,7 @@ def update_all_blocks(game_name, block_dict):
             if line.startswith(";; +++"):
                 final_lines.append(line)
                 block_id = line.split(";; +++")[1]
+                seen_blocks.append(block_id)
                 # Look to see if we actually have that block
                 found_block = False
                 for block in blocks:
