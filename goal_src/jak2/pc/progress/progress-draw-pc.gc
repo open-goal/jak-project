@@ -9,6 +9,11 @@
 |#
 
 
+(defmacro adjust-x-if-needed (x)
+  "adjust an x screen coord if ps2 vis is disabled"
+  `(if (not (-> *pc-settings* use-vis?)) (adjust-game-x (the float ,x)) ,x))
+
+
 
 (defun draw-previous-next ((arg0 menu-highscores-option) (arg1 font-context) (arg2 symbol))
   (local-vars (sv-16 string) (sv-32 int))
@@ -1473,9 +1478,9 @@
         )
       (set! (-> this sprites 0 pos z) #xffffff)
       (set! (-> this sprites 0 pos w) 0)
-      (if (not (-> *pc-settings* use-vis?))
-          (set-hud-piece-position! (-> this sprites 0) (adjust-game-x 100.0) 128)
-          (set-hud-piece-position! (-> this sprites 0) 100 128))
+      ;; Fixes orb position in Automatic and other aspect ratios
+      (set! (-> this sprites 0 pos x) (adjust-x-if-needed 100))
+      (set! (-> this sprites 0 pos y) 128)
       (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                    (bucket-id progress)
                                    )
@@ -1698,11 +1703,6 @@
   0
   (none)
   )
-
-
-(defmacro adjust-x-if-needed (x)
-  "adjust an x screen coord if ps2 vis is disabled"
-  `(if (not (-> *pc-settings* use-vis?)) (adjust-game-x (the float ,x)) ,x))
 
 
 (defmethod draw-option ((obj menu-memcard-slot-option) (arg0 progress) (arg1 font-context) (arg2 int) (arg3 symbol))
