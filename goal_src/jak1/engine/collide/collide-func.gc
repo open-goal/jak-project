@@ -4,1028 +4,479 @@
 (require "engine/math/vector.gc")
 (require "kernel/gkernel-h.gc")
 
-;; This file contains the primitive intersection functions used for collision.
-;; Most take a description of primitive and a "probe"
-;; The probe has an origin and a direction.  The length of the direction vector is the length
-;; of the probe.
+;; raw-ray-sphere-intersect
+;;  only used as a helper in this file
+;; ray-sphere-intersect
+;;  used externally
+;; ray-circle-intersect
+;;  used externally
+;; ray-cylinder-intersect
+;;  used externally and internally
+;; ray-plane-intersect
+;;  unused
+;; ray-triangle-intersect
+;;  unused
+;; collide-do-primitives
+;;  used externally
+;; moving-sphere-triangle-intersect
+;;  used externally
+;; moving-sphere-sphere-intersect
+;;  used externally
+;; moving-sphere-moving-sphere-intersect
+;;  unused
 
-;; Generally, collision functions will return the fraction of the probe to reach the primitive.
-;; For example, if the probe is 5.0 long, and hits the primitive 2.0 away from the probe origin,
-;; the return value (u) would be 0.4.
-
-;; If (u) would be > 1.0, then it counts as "not intersecting" (object too far away)
-;; If (u) would be < 0.0, then it counts as "not intersecting" (object behind probe)
-;; If there's a miss, return COLLISION_MISS, a large negative number.
-;; If we are inside of the primitive, return 0.0
-
-;; Two VU0 idioms appear throughout this file.
-;;
-;; There is no dot-product instruction, so a dot product is a componentwise multiply followed by two
-;; lane adds that fold the remaining components into one lane:
-;;
-;;   (.mul.vf products left right)
-;;   (.add.x.vf.y products products products)    ;; products.y += products.x
-;;   (.add.z.vf.y products products products)    ;; products.y += products.z
-;;
-;; Which lane the adds target is not cosmetic. It determines how the result is read back out, which
-;; is the second idiom.
-;;
-;; (.mov <int-local> <vf>) moves the register's low doubleword into a 64-bit integer register, so
-;; lanes x and y land in bits 0 through 31 and 32 through 63, and bit 63 -- the integer's sign bit --
-;; is the y lane's sign bit. A scalar parked in y can therefore be sign-tested with an ordinary
-;; integer branch, with no floating-point compare and no wait on the VU0 pipeline. Two such words also
-;; combine in a single operation:
-;;
-;;   (logand a b) is negative  <=>  both y lanes are negative
-;;   (logior a b) is negative  <=>  either y lane is negative
-;;
-;; so three sign questions cost two ORs and one branch. That is how the inside test in
-;; ray-triangle-intersect and the end-cap tests in ray-cylinder-intersect are written. Two things bite
-;; here: negative zero counts as negative, and the x lane of these registers is often left holding a
-;; stale product on purpose. Where a value must be compared as a float instead,
-;; (.mov <float-local> <vf>) reads the x lane.
-
-;; decomp begins
 
 (defconstant COLLISION_MISS -100000000.0)
+(defglobalconstant COLLIDE_FUNC_COUNTERS #t)
 
-(#unless PC_PORT
-  (defun raw-ray-sphere-intersect ((radius float))
-    "Solve the finite ray-sphere quadratic for a sphere at the origin. radius is passed normally;
-     ray-relative-origin and ray-direction occupy VU0 vf1 and vf2 under the EE calling
-     convention. Return zero from inside the sphere and COLLISION_MISS for a miss."
-    (declare (asm-func float))
-    ;; For P(t) = origin + t * direction, use the half-b quadratic
-    ;;   a = direction.direction, b = direction.origin, c = origin.origin - radius^2
-    ;; and take t = (-b - sqrt(b^2 - a*c)) / a. The direction contains the full probe
-    ;; displacement, so the useful interval is zero through one.
-    (rlet ((origin :reg vf1)
-           (direction :reg vf2)
-           (radius-vf :reg vf3)
-           (a-and-reciprocal :reg vf4)
-           (b-term :reg vf5)
-           (c-and-limit-term :reg vf6)
-           (a-times-c :reg vf7)
-           (b-squared :reg vf8)
-           (discriminant-and-root :reg vf9)
-           (Q :reg Q)
-           (result)
-           (a-bits)
-           (a-bits-float)
-           (b-bits)
-           (c-bits)
-           (discriminant-bits)
-           (limit-left-bits)
-           (limit-right-bits)
-           (unused-one)
-           (zero-float))
-      (m radius-vf radius)
-      (mul.vf a-and-reciprocal direction direction)
-      (mul.vf radius-vf radius-vf radius-vf)
-      (mul.vf c-and-limit-term origin origin)
-      (mul.vf b-term direction origin)
-      (add.y.vf.x a-and-reciprocal a-and-reciprocal a-and-reciprocal)
-      (m! result 0)
-      (add.x.vf.y c-and-limit-term c-and-limit-term c-and-limit-term)
-      (sub.x.vf.z c-and-limit-term c-and-limit-term radius-vf)
-      (add.z.vf.x a-and-reciprocal a-and-reciprocal a-and-reciprocal)
-      (add.x.vf.y b-term b-term b-term)
-      (m! b-bits 0)
-      (add.z.vf.y c-and-limit-term c-and-limit-term c-and-limit-term)
-      (div.w.x Q vf0 a-and-reciprocal)
-      (add.z.vf.y b-term b-term b-term)
-      (m a-bits a-and-reciprocal)
-      (mul.x.vf a-times-c c-and-limit-term a-and-reciprocal)
-      (m c-bits c-and-limit-term)
-      (mul.vf b-squared b-term b-term)
-      ;; An origin inside the sphere is already in contact.
-      (b.lt c-bits r0 done :delay (m a-bits a-bits))
-      (mulq.vf.w a-and-reciprocal vf0 Q)
-      (sub.vf discriminant-and-root b-squared a-times-c)
-      (m a-bits-float a-bits)
-      (m zero-float b-bits)
-      (c.eq.s a-bits-float zero-float)
-      (vnop)
-      (b.fpt miss :delay (m b-bits b-term))
-      ;; A nonnegative b means the ray is moving away from a sphere that starts outside it.
-      (sqrt.y Q discriminant-and-root)
-      (b.ge b-bits r0 miss :delay (m discriminant-bits discriminant-and-root))
-      (b.lt discriminant-bits r0 miss :delay (m! unused-one 1.0))
-      ;; The following sign-bit identity rejects the smaller root when it lies beyond t = 1.
-      (add.x.vf c-and-limit-term b-term a-and-reciprocal)
-      (m limit-left-bits c-and-limit-term)
-      (mul.vf c-and-limit-term c-and-limit-term c-and-limit-term)
-      (mulq.vf.w discriminant-and-root vf0 Q)
-      (sub.vf c-and-limit-term discriminant-and-root c-and-limit-term)
-      (add.w.vf.y discriminant-and-root b-term discriminant-and-root)
-      (m limit-right-bits c-and-limit-term)
-      (mul.w.vf.y discriminant-and-root discriminant-and-root a-and-reciprocal)
-      (and limit-left-bits limit-left-bits limit-right-bits)
-      (b.lt limit-left-bits r0 miss :delay (sub.y.vf a-and-reciprocal vf0 discriminant-and-root))
-      (b done :delay (m result a-and-reciprocal))
-      (label miss)
-      (m! result COLLISION_MISS)
-      (label done)
-      result)))
+(#when COLLIDE_FUNC_COUNTERS
+       (define *raw-ray-sphere-intersect-count* 0)
+       (define *ray-sphere-intersect-count* 0)
+       (define *ray-circle-intersect-count* 0)
+       (define *ray-cylinder-intersect-count* 0)
+       (define *collide-do-primitives-count* 0)
+       (define *moving-sphere-triangle-intersect-count* 0)
+       (define *moving-sphere-sphere-intersect-count* 0)
+       (define *moving-sphere-moving-sphere-intersect-count* 0)
+       )
 
-(#when PC_PORT
-  (defun raw-ray-sphere-intersect ((radius float))
-    "The EE version receives the relative ray origin and direction in VU0 registers. PC callers must
-   use pc-port-raw-ray-sphere-implementation, which makes those arguments explicit."
-    (local-vars
-      (b-bits float)
-      (discriminant-bits float)
-      (limit-left-bits number)
-      (a-float float)
-      (a-float-copy float)
-      (limit-right-bits int)
-      (c-bits float))
-    (crash!)
-    (rlet ((Q :class vf)
-           (vf0 :class vf)
-           (origin :class vf)
-           (direction :class vf)
-           (radius-vf :class vf)
-           (a-and-reciprocal :class vf)
-           (b-term :class vf)
-           (c-and-limit-term :class vf)
-           (a-times-c :class vf)
-           (b-squared :class vf)
-           (discriminant-and-root :class vf))
-      (init-vf0-vector)
-      (.mov radius-vf radius) ;; radius-vf = radius
-      ;; sphere is at the origin, origin is source of the ray (o)
-      ;; direction is the ray's full probe displacement (u)
-      (.mul.vf a-and-reciprocal direction direction) ;; a-and-reciprocal = u.^2
-      (.mul.vf radius-vf radius-vf radius-vf) ;; radius-vf = r^2
-      (.mul.vf c-and-limit-term origin origin) ;; c-and-limit-term = o.^2
-      (.mul.vf b-term direction origin) ;; b-term = u . o
-      (.add.y.vf.x a-and-reciprocal a-and-reciprocal a-and-reciprocal)
-      (let ((result (the-as float 0)))
-        (.add.x.vf.y c-and-limit-term c-and-limit-term c-and-limit-term)
-        (.sub.x.vf.z c-and-limit-term c-and-limit-term radius-vf)
-        (.add.z.vf.x a-and-reciprocal a-and-reciprocal a-and-reciprocal)
-        (.add.x.vf.y b-term b-term b-term)
-        (let ((zero-float (the-as float 0)))
-          (.add.z.vf.y c-and-limit-term c-and-limit-term c-and-limit-term)
-          (.div.vf Q vf0 a-and-reciprocal :fsf #b11 :ftf #b0)
-          (.add.z.vf.y b-term b-term b-term)
-          (.mov a-float a-and-reciprocal)
-          (.mul.x.vf a-times-c c-and-limit-term a-and-reciprocal)
-          (.mov c-bits c-and-limit-term)
-          (.mul.vf b-squared b-term b-term)
-          (b! (< (the-as int c-bits) 0) done :delay (set! a-float-copy a-float))
-          (.mul.vf.w a-and-reciprocal vf0 Q)
-          (.sub.vf discriminant-and-root b-squared a-times-c)
-          (b! (= a-float-copy zero-float) miss :delay (.mov b-bits b-term)))
-        (.sqrt.vf Q discriminant-and-root :ftf #b1)
-        (b! (>= (the-as int b-bits) 0) miss :delay (.mov discriminant-bits discriminant-and-root))
-        (b! (< (the-as int discriminant-bits) 0) miss :delay 1.0)
-        (.add.x.vf c-and-limit-term b-term a-and-reciprocal)
-        (.mov limit-left-bits c-and-limit-term)
-        (.mul.vf c-and-limit-term c-and-limit-term c-and-limit-term)
-        (.mul.vf.w discriminant-and-root vf0 Q)
-        (.sub.vf c-and-limit-term discriminant-and-root c-and-limit-term)
-        (.add.w.vf.y discriminant-and-root b-term discriminant-and-root)
-        (.mov limit-right-bits c-and-limit-term)
-        (.mul.w.vf.y discriminant-and-root discriminant-and-root a-and-reciprocal)
-        (b! (< (logand (the-as uint limit-left-bits) (the-as uint limit-right-bits)) 0)
-            miss
-            :delay (.sub.y.vf a-and-reciprocal vf0 discriminant-and-root))
-        (b! #t done :delay (.mov result a-and-reciprocal))
-        (label miss)
-        (set! result -100000000.0)
-        (label done)
-        (the-as float result)))))
-
-(defmacro pc-port-do-raw-ray-sphere-intersect (radius relative-origin ray-direction)
-  "Spill the two VU arguments so the PC implementation can receive them through the normal ABI."
-  `(let ((relative-origin-storage (new 'stack-no-clear 'vector))
-        (ray-direction-storage (new 'stack-no-clear 'vector)))
-    (.svf (&-> relative-origin-storage quad) ,relative-origin)
-    (.svf (&-> ray-direction-storage quad) ,ray-direction)
-    (pc-port-raw-ray-sphere-implementation ,radius relative-origin-storage ray-direction-storage)))
-
-(defun pc-port-raw-ray-sphere-implementation ((radius float) (relative-origin vector) (ray-direction vector))
-  "Solve the finite ray-sphere quadratic for a sphere at the origin with explicit PC ABI arguments.
-   Return zero when relative-origin is inside the sphere and COLLISION_MISS when the ray points
-   away, has no real root, has zero squared length, or first meets the sphere beyond its endpoint."
-  ;; With P(t) = o + t*u, the half-b form is
-  ;;   a = u.u, b = u.o, c = o.o - radius^2, discriminant = b^2 - a*c.
-  ;; The first root is (-b - sqrt(discriminant)) / a. Since u is the complete probe displacement,
-  ;; t is already the fraction used by the collision callers.
+(defun raw-ray-sphere-intersect ((origin vector) (direction vector) (radius float))
+  "Check if a ray intersects a sphere at the origin.
+   Return the fraction along the ray where the intersection occurs, or COLLISION_MISS
+   if there is no collision."
+  
+  ;; Parameterize the ray with:
+  ;;   ray(t) = origin + t * direction with 0 <= t <= 1
+  ;; A point p is on the origin if:
+  ;;  dot(p, p) = radius^2
+  ;; 
+  ;; So a point p = ray(t) is on the sphere when:
+  ;;  dot(ray(t), ray(t)) = r^2
   ;;
+  ;; dot(dir, dir) * t^2 + 2 * dot(dir, origin) * t + dot(origin, origin) = r^2
   ;;
-  ;; Which lane each coefficient lands in matters. a goes to x, since it is the only coefficient tested
-  ;; as a float and it is also the divisor handed to the VU0 scalar pipeline, and both of those read x.
-  ;; b and c go to y so their signs can be taken from a 64-bit integer move. a-and-reciprocal is named
-  ;; for its second job: 1/a is parked in its w lane, which turns the final scaling of the root into a
-  ;; single w-lane multiply.
+  ;; a*t^2 + 2*b*t + c = 0
   ;;
-  ;; The rejections, in order: c below zero means the ray starts inside the sphere, which returns zero
-  ;; rather than a miss; a equal to zero is a zero-length probe whose reciprocal would be garbage; b at
-  ;; or above zero points away from a sphere the ray starts outside; and a negative discriminant misses
-  ;; the sphere entirely.
-  ;;
-  ;; The t greater than one rejection is the subtle one. Writing L for -(b + a), the root passes one
-  ;; exactly when L exceeds sqrt(discriminant), which requires both L above zero and L squared above
-  ;; the discriminant. Both are sign questions, so the code forms (b + a) and
-  ;; (discriminant - (b + a)^2), moves each y lane into an integer register and rejects when the AND of
-  ;; the two is negative. The square root is never compared against anything.
-  (local-vars
-    (b-bits int)
-    (discriminant-bits int)
-    (limit-left-bits int)
-    (a-float float)
-    (a-float-copy float)
-    (limit-right-bits int)
-    (c-bits int))
-  (rlet ((Q :class vf)
-         (vf0 :class vf)
-         (origin :class vf)
-         (direction :class vf)
-         (radius-vf :class vf)
-         (a-and-reciprocal :class vf)
-         (b-term :class vf)
-         (c-and-limit-term :class vf)
-         (a-times-c :class vf)
-         (b-squared :class vf)
-         (discriminant-and-root :class vf))
-    (init-vf0-vector)
-    (.lvf origin (&-> relative-origin quad))
-    (.lvf direction (&-> ray-direction quad))
-    (.mov radius-vf radius)
-    (.mul.vf a-and-reciprocal direction direction)
-    (.mul.vf radius-vf radius-vf radius-vf) ;; r^2 in every lane
-    (.mul.vf c-and-limit-term origin origin)
-    (.mul.vf b-term direction origin)
-    (.add.y.vf.x a-and-reciprocal a-and-reciprocal a-and-reciprocal)
-    (let ((result (the-as float 0)))
-      (.add.x.vf.y c-and-limit-term c-and-limit-term c-and-limit-term)
-      ;; The -r^2 term rides in the z lane, so the z fold below pays for it.
-      (.sub.x.vf.z c-and-limit-term c-and-limit-term radius-vf)
-      (.add.z.vf.x a-and-reciprocal a-and-reciprocal a-and-reciprocal) ;; a lands in x
-      (.add.x.vf.y b-term b-term b-term)
-      (let ((zero-float (the-as float 0)))
-        (.add.z.vf.y c-and-limit-term c-and-limit-term c-and-limit-term) ;; c lands in y
-        (.div.vf Q vf0 a-and-reciprocal :fsf #b11 :ftf #b0) ;; start 1/a in the scalar pipeline
-        (.add.z.vf.y b-term b-term b-term) ;; b lands in y
-        (.mov a-float a-and-reciprocal) ;; a as a float, out of the x lane
-        (.mul.x.vf a-times-c c-and-limit-term a-and-reciprocal) ;; a*c in y
-        (.mov c-bits c-and-limit-term) ;; c's sign, in bit 63
-        (.mul.vf b-squared b-term b-term) ;; b^2 in y
-        (b! (< (the-as int c-bits) 0) done :delay (set! a-float-copy a-float)) ;; in the sphere
-        (.mul.vf.w a-and-reciprocal vf0 Q) ;; park 1/a in the w lane
-        (.sub.vf discriminant-and-root b-squared a-times-c) ;; discriminant in y
-        (b! (= a-float-copy zero-float) miss :delay (.mov b-bits b-term)) ;; bad denominator in division
-        )
-      (.sqrt.vf Q discriminant-and-root :ftf #b1) ;; start sqrt(discriminant) from the y lane
-      (b! (>= (the-as int b-bits) 0) miss :delay (.mov discriminant-bits discriminant-and-root)) ;; wrong dir
-      (b! (< (the-as int discriminant-bits) 0) miss :delay 1.0) ;; bad sqrt
-      ;; The two sign bits gathered below are sign(b + a) and sign(discriminant - (b + a)^2); the root
-      ;; itself is computed in between them.
-      (.add.x.vf c-and-limit-term b-term a-and-reciprocal) ;; b + a in y
-      (.mov limit-left-bits c-and-limit-term)
-      (.mul.vf c-and-limit-term c-and-limit-term c-and-limit-term) ;; (b + a)^2
-      (.mul.vf.w discriminant-and-root vf0 Q) ;; sqrt(discriminant) into the w lane
-      (.sub.vf c-and-limit-term discriminant-and-root c-and-limit-term) ;; discriminant - (b + a)^2
-      (.add.w.vf.y discriminant-and-root b-term discriminant-and-root) ;; b + sqrt(discriminant)
-      (.mov limit-right-bits c-and-limit-term)
-      (.mul.w.vf.y discriminant-and-root discriminant-and-root a-and-reciprocal) ;; times 1/a
-      ;; too far.
-      ;; The delay slot negates the quotient into x, which is where the result is read.
-      (b! (< (logand (the-as int limit-left-bits) (the-as int limit-right-bits)) 0)
-          miss
-          :delay (.sub.y.vf a-and-reciprocal vf0 discriminant-and-root))
-      (b! #t done :delay (.mov result a-and-reciprocal))
-      (label miss)
-      (set! result -100000000.0)
-      (label done)
-      (the-as float result))))
+  ;; a = dot(dir, dir)
+  ;; b = dot(dir, origin)
+  ;; c = dot(origin, origin) - r^2
+  
+  (#when COLLIDE_FUNC_COUNTERS
+    (+! *raw-ray-sphere-intersect-count* 1))
+  
+  ;; this matches the order of operations in the original, just in case rounding matters.
+  (let ((c (+ (+ (square (-> origin x))
+                 (square (-> origin y)))
+              (- (square (-> origin z))
+                 (square radius)))))
+    ;; check if ray starts inside the sphere, if so, consider
+    ;; it an immediate collision
+    (if (< c 0.0)
+        (return 0.0))
+    (let ((a (vector-dot direction direction)))
+      ;; a zero length ray outside the sphere is always a miss
+      (if (= a 0.0)
+          (return COLLISION_MISS))
+      (let ((b (vector-dot direction origin)))
+        ;; at this point, ray starts outside the sphere.
+        ;; if it's pointing away from the origin, it's a miss
+        (if (>= b 0.0)
+            (return COLLISION_MISS))
+        (let ((discriminant (- (square b) (* a c))))
+          ;; check for no solution to quadratic - when the infinite line
+          ;; doesn't intersect the sphere
+          (if (< discriminant 0.0)
+              (return COLLISION_MISS))
+          
+          ;; the root is -b - sqrt(discriminant) / a
+          ;; we can check if this is > 1 without computing the sqrt
+          ;; -(b + a) > sqrt(discriminant)
+          ;; and we do the same here to get identical rounding to the original:
+          (let ((ba (+ b a)))
+            (if (and (< ba 0.0)
+                     (< (- discriminant (square ba)) 0.0))
+                (return COLLISION_MISS)
+                )
+            )
+          
+          ;; solve, using multiplication by reciprocal to match
+          ;; order of operations
+          (* (- (- b) (sqrtf discriminant))
+             (/ 1.0 a)))))))
 
-(defun ray-sphere-intersect ((ray-origin vector) (ray-direction vector) (sphere-origin vector) (radius float))
-  "Return the first contact fraction for a finite ray against a sphere. ray-direction spans the
-   whole probe rather than being unit length, so zero is the ray origin and one is its end. Return
-   zero when the origin is inside the sphere and COLLISION_MISS when contact lies outside the probe."
-  ;; Translate the sphere to the origin for the shared quadratic.
-  (rlet ((vu-relative-origin :class vf)
-         (vu-direction :class vf))
-    (.lvf vu-relative-origin (&-> ray-origin quad))
-    (.lvf vu-direction (&-> sphere-origin quad))
-    (.sub.vf vu-relative-origin vu-relative-origin vu-direction) ;; the sphere is at the origin in the actual intersection.
-    (.lvf vu-direction (&-> ray-direction quad))
-    (#if PC_PORT (pc-port-do-raw-ray-sphere-intersect radius vu-relative-origin vu-direction) (raw-ray-sphere-intersect radius))))
 
-(defun ray-circle-intersect ((ray-origin vector) (ray-direction vector) (circle-origin vector) (radius float))
-  "Return the first contact fraction for a finite ray against a circle in the XZ plane. The Y
-   components of the origin, direction, and circle center are ignored."
-  (rlet ((vf0 :class vf)
-         (vu-relative-origin :class vf)
-         (vu-direction :class vf))
-    (init-vf0-vector)
-    (.lvf vu-relative-origin (&-> ray-origin quad))
-    (.mov.vf.y vu-relative-origin vf0)
-    (.lvf vu-direction (&-> circle-origin quad))
-    (.mov.vf.y vu-direction vf0)
-    (.sub.vf vu-relative-origin vu-relative-origin vu-direction)
-    (.lvf vu-direction (&-> ray-direction quad))
-    (.mov.vf.y vu-direction vf0)
-    (#if PC_PORT (pc-port-do-raw-ray-sphere-intersect radius vu-relative-origin vu-direction) (raw-ray-sphere-intersect radius))))
+(defun ray-sphere-intersect ((ray-origin vector) (ray-dir vector) (sphere-origin vector) (radius float))
+  "Compute intersection between a ray and a sphere.
+   Return the fraction along the ray where the intersection occurs, or COLLISION_MISS
+   if there is no collision."
+  (#when COLLIDE_FUNC_COUNTERS
+    (+! *ray-sphere-intersect-count* 1))
+  
+  (raw-ray-sphere-intersect
+    (vector-! (new 'stack-no-clear 'vector) ray-origin sphere-origin)
+    ray-dir
+    radius))
 
-(defun ray-cylinder-intersect ((ray-origin vector)
-        (ray-direction vector)
-        (cylinder-origin vector)
-        (cylinder-axis vector)
-        (radius float)
-        (cylinder-length float)
-        (axis-point-out vector))
-  "Return the first contact fraction for a finite ray against the curved side of a finite cylinder.
-   cylinder-axis must be unit length and cylinder-length measures from cylinder-origin along that
-   axis. End caps are not tested. Write the corresponding point on the cylinder axis to
-   axis-point-out; only use that output after a nonnegative return. Return COLLISION_MISS when the
-   ray misses or meets the infinite cylinder beyond either end."
-  ;; The test runs in the cylinder's frame, splitting every point into a height along the axis and an
-  ;; offset perpendicular to it. cylinder-axis is unit length, so the perpendicular part of v is just
-  ;; v - axis * (v . axis). Stripping the axial part off both the ray origin and the ray direction
-  ;; leaves a two-dimensional ray against a circle in the cross section, which is what
-  ;; raw-ray-sphere-intersect solves once the axial component is gone.
-  ;;
-  ;; The heights all live in y lanes, so every cap test is a sign test:
-  ;;   axial-start .y    the origin's height
-  ;;   axial-travel .y   the height the ray covers
-  ;;   axial-end .y      their sum
-  ;;   overshoot .y      a height minus cylinder-length, negative below the far cap
-  ;;
-  ;; The two rejections before the circle test are a slab reject only. A segment can straddle a cap and
-  ;; still hit the side, so the decision is the contact height recomputed afterwards and checked
-  ;; against both caps. The end caps are not surfaces: a ray entering through one is a miss, and the
-  ;; swept-sphere callers cover that case with their vertex spheres.
-  (local-vars
-    (result float)
-    (axial-start-bits int)
-    (overshoot-bits int)
-    (axial-end-bits int)
-    (end-overshoot-bits int)
-    (axial-contact-bits int)
-    (contact-overshoot-bits int))
-  (rlet ((perp-origin :class vf)
-         (ray-origin-vf :class vf)
-         (direction :class vf)
-         (axis-point :class vf)
-         (axis :class vf)
-         (cylinder-length-vf :class vf)
-         (relative-origin :class vf)
-         (axial-start :class vf)
-         (axial-travel :class vf)
-         (axial-end :class vf)
-         (overshoot :class vf)
-         (perp-direction :class vf)
-         (end-overshoot :class vf)
-         (contact-fraction-vf :class vf))
-    (.lvf ray-origin-vf (&-> ray-origin quad))
-    (.lvf axis-point (&-> cylinder-origin quad)) ;; Walks out to the contact point on the axis.
-    (.sub.vf relative-origin ray-origin-vf axis-point)
-    (.lvf direction (&-> ray-direction quad))
-    (.lvf axis (&-> cylinder-axis quad))
-    (.mov cylinder-length-vf cylinder-length)
-    (.mul.vf axial-start relative-origin axis)
-    (.mul.vf axial-travel direction axis)
-    (.add.x.vf.y axial-start axial-start axial-start)
-    (.add.x.vf.y axial-travel axial-travel axial-travel)
-    (.add.z.vf.y axial-start axial-start axial-start) ;; The origin's height, in y.
-    (.add.z.vf.y axial-travel axial-travel axial-travel) ;; The height the ray covers, in y.
-    (.mul.y.vf perp-origin axis axial-start) ;; Axial part of the origin.
-    (.add.vf axial-end axial-travel axial-start) ;; The endpoint's height, in y.
-    (.sub.x.vf overshoot axial-start cylinder-length-vf)
-    (.mul.y.vf perp-direction axis axial-travel) ;; Axial part of the direction.
-    (.mov axial-start-bits axial-start)
-    (.sub.x.vf end-overshoot axial-end cylinder-length-vf)
-    (.mov axial-end-bits axial-end)
-    ;; Both heights negative: the whole segment is below the near cap.
-    (let ((both-ends-below-base (logand axial-start-bits (the-as uint axial-end-bits))))
-      (.sub.vf perp-origin relative-origin perp-origin) ;; Down to the cross section.
-      (b! (< both-ends-below-base 0) miss :delay (.sub.vf perp-direction direction perp-direction)))
-    (.mov overshoot-bits overshoot)
-    (.mov end-overshoot-bits end-overshoot)
-    ;; Neither overshoot negative: the whole segment is at or past the far cap.
-    (b! (>= (the-as int (logior overshoot-bits (the-as uint end-overshoot-bits))) 0) miss :delay (nop!))
-    ;; The circle test in the cross section. perp-origin and perp-direction are the VU0 arguments.
-    (let ((contact-fraction (#if PC_PORT (pc-port-do-raw-ray-sphere-intersect radius perp-origin perp-direction) (raw-ray-sphere-intersect radius))))
-      (b! (< (the-as int contact-fraction) 0) miss :delay (.mov contact-fraction-vf contact-fraction))
-      (.mul.x.vf axial-travel axial-travel contact-fraction-vf)
-      (.add.vf axial-start axial-start axial-travel) ;; The contact height, in y.
-      (.mul.y.vf axis axis axial-start) ;; The axis, scaled to the contact height.
-      (.sub.x.vf overshoot axial-start cylinder-length-vf)
-      (.mov axial-contact-bits axial-start)
-      ;; A contact off either end lies on the infinite cylinder rather than this one. The delay slots
-      ;; finish and store the axis point, so the far-cap rejection leaves axis-point-out written; the
-      ;; return value has to be checked before that output is used.
-      (b! (< (the-as int axial-contact-bits) 0) miss :delay (.add.vf.xyz axis-point axis-point axis))
-      (.mov contact-overshoot-bits overshoot)
-      (b! (>= (the-as int contact-overshoot-bits) 0) miss :delay (.svf (&-> axis-point-out quad) axis-point))
-      (b! #t done :delay (set! result contact-fraction)))
-    (label miss)
-    (set! result -100000000.0)
-    (label done)
-    result))
+(defun ray-circle-intersect ((ray-origin vector) (ray-dir vector) (circle-origin vector) (radius float))
+  "Compute intersection between a ray and a circle on the xz plane.
+   The y components of all arguments are ignored.
+   Return the fraction along the ray where the intersection occurs, or COLLISION_MISS
+   if there is no collision."
+  (#when COLLIDE_FUNC_COUNTERS
+    (+! *ray-circle-intersect-count* 1))
+  
+  (let ((ray-origin-xz (vector-! (new 'stack-no-clear 'vector) ray-origin circle-origin))
+        (ray-dir-xz (vector-copy! (new 'stack-no-clear 'vector) ray-dir)))
+    (set! (-> ray-origin-xz y) 0.0)
+    (set! (-> ray-dir-xz y) 0.0)
+    (raw-ray-sphere-intersect ray-origin-xz ray-dir-xz radius)))
 
-(defun ray-plane-intersect ((intersection-out vector)
-        (normal-out vector)
-        (ray-origin vector)
-        (ray-direction vector)
-        (plane-a vector)
-        (plane-b vector)
-        (plane-c vector))
-  "Intersect a ray with the infinite plane through plane-a, plane-b, and plane-c. Write the
-   intersection point and a unit plane normal to the output vectors, and return the ray parameter.
-   Return COLLISION_MISS without writing the outputs when the ray is parallel to the plane; this
-   function does not restrict the parameter to the finite zero-to-one probe interval."
-  ;; The plane arrives as three points, so the normal is the cross product of the two edges leaving
-  ;; plane-b, oriented as (b - c) x (b - a). A point p lies on the plane when n . (p - b) is zero, so
-  ;; substituting p = origin + t*direction gives
-  ;;   t = (n . (b - origin)) / (n . direction)
-  ;; and those two dot products are the only real work. Both fold into the x lane rather than y,
-  ;; because both are read out as floats: one for the zero check and one for an ordinary scalar divide,
-  ;; not the VU0 pipeline.
-  ;;
-  ;; normal-out is unit length with w set to one. The reciprocal length is started as soon as the
-  ;; squared length is known, well before the cond decides whether it is needed, and the later
-  ;; .wait.vf is what collects it.
-  ;;
-  ;; t is not clamped, so it can be negative or past one and the caller has to bound it. Neither output
-  ;; is written on the parallel path, and three collinear points give both a zero normal and a zero
-  ;; denominator, so they leave through that same path.
-  (local-vars (direction-dot float) (unused-intersection-read float) (plane-offset-dot float))
-  (rlet ((acc :class vf)
-         (Q :class vf)
-         (vf0 :class vf)
-         (edge-ba :class vf)
-         (edge-bc :class vf)
-         (vertex-b :class vf)
-         (normal :class vf)
-         (normal-length-squared :class vf)
-         (origin :class vf)
-         (direction :class vf)
-         (plane-offset :class vf)
-         (direction-normal-products :class vf))
-    (init-vf0-vector)
-    (.lvf vertex-b (&-> plane-b quad))
-    (.lvf edge-ba (&-> plane-a quad))
-    (.lvf edge-bc (&-> plane-c quad))
-    (.sub.vf edge-ba vertex-b edge-ba)
-    (.sub.vf edge-bc vertex-b edge-bc)
-    (.lvf origin (&-> ray-origin quad))
-    (.lvf direction (&-> ray-direction quad))
-    (.sub.vf plane-offset vertex-b origin)
-    (.outer.product.a.vf acc edge-bc edge-ba)
-    (.outer.product.b.vf normal edge-ba edge-bc acc)
-    (.mul.vf plane-offset plane-offset normal)
-    (.mul.vf direction-normal-products direction normal)
-    (.mul.vf normal-length-squared normal normal)
-    (.add.y.vf.x plane-offset plane-offset plane-offset)
-    (.add.y.vf.x direction-normal-products direction-normal-products direction-normal-products)
-    (.add.y.vf.x normal-length-squared normal-length-squared normal-length-squared)
-    (.add.z.vf.x plane-offset plane-offset plane-offset)
-    (.add.z.vf.x direction-normal-products direction-normal-products direction-normal-products)
-    (.add.z.vf.x normal-length-squared normal-length-squared normal-length-squared)
-    (.mov direction-dot direction-normal-products)
-    (.mov plane-offset-dot plane-offset)
-    (.isqrt.vf Q vf0 normal-length-squared :fsf #b11 :ftf #b0)
-    (let ((numerator plane-offset-dot)
-          (denominator direction-dot))
-      (cond
-        ((!= denominator 0.0)
-         (let ((ray-fraction (/ numerator denominator)))
-           (.mov.vf.w normal vf0)
-           (.wait.vf)
-           (.mul.vf.xyz normal normal Q)
-           (let ((result ray-fraction))
-             (.mov plane-offset result)
-             (.svf (&-> normal-out quad) normal)
-             (.mul.x.vf acc direction plane-offset)
-             (.add.mul.w.vf.xyz direction origin vf0 acc)
-             (.svf (&-> intersection-out quad) direction)
-             (.mov unused-intersection-read direction)
-             result)))
-        (else -100000000.0)))))
 
-(#unless PC_PORT
-  (defun ray-triangle-intersect ((ray-origin vector)
-          (ray-direction vector)
-          (radius float)
-          (triangle matrix)
-          (intersection-out vector)
-          (normal-out vector))
-    "Intersect a ray with the triangle formed by the first three rows of triangle. Write the plane
-     intersection and unit triangle normal to the output vectors. When radius rounds to a nonzero
-     integer, move the returned fraction earlier by radius divided by the ray length and clamp it to
-     zero; the inside test still uses the centerline-plane intersection. Return COLLISION_MISS for
-     a parallel ray, a contact behind the origin, or a point outside the triangle."
-    (declare (asm-func float))
-    (rlet ((vertex-a :reg vf1)
-           (vertex-b :reg vf2)
-           (vertex-c :reg vf3)
-           (edge-ba :reg vf4)
-           (edge-bc :reg vf5)
-           (normal :reg vf6)
-           (normal-length-squared :reg vf7)
-           (origin :reg vf8)
-           (direction :reg vf9)
-           (plane-offset-products :reg vf10)
-           (direction-normal-products :reg vf11)
-           (fraction-vf :reg vf12)
-           (intersection :reg vf13)
-           (edge-test-0 :reg vf14)
-           (edge-test-1 :reg vf15)
-           (edge-test-2 :reg vf16)
-           (direction-length-squared :reg vf17)
-           (radius-vf :reg vf18)
-           (edge-point-0 :reg vf19)
-           (edge-point-1 :reg vf20)
-           (edge-point-2 :reg vf21)
-           (Q :reg Q)
-           (denominator-bits)
-           (denominator-float)
-           (denominator-zero-test)
-           (numerator-bits)
-           (fraction-bits)
-           (edge-test-bits-0)
-           (edge-test-bits-1)
-           (edge-test-bits-2)
-           (edge-test-mask)
-           (radius-integer)
-           (radius-float)
-           (numerator-float)
-           (fraction-float)
-           (result))
-      (l.vf vertex-a triangle)
-      (l.vf vertex-b triangle 16)
-      (l.vf vertex-c triangle 32)
-      (l.vf origin ray-origin)
-      (l.vf direction ray-direction)
-      (sub.vf edge-ba vertex-b vertex-a)
-      (sub.vf edge-bc vertex-b vertex-c)
-      (sub.vf plane-offset-products vertex-b origin)
-      (mul.vf direction-length-squared direction direction)
-      (outer.product.a.vf acc edge-bc edge-ba)
-      (outer.product.b.vf normal edge-ba edge-bc acc)
-      (add.y.vf.x direction-length-squared direction-length-squared direction-length-squared)
-      (mul.vf normal-length-squared normal normal)
-      (mul.vf plane-offset-products plane-offset-products normal)
-      (mul.vf direction-normal-products direction normal)
-      (add.z.vf.x direction-length-squared direction-length-squared direction-length-squared)
-      (add.y.vf.x normal-length-squared normal-length-squared normal-length-squared)
-      (add.y.vf.x plane-offset-products plane-offset-products plane-offset-products)
-      (add.y.vf.x direction-normal-products direction-normal-products direction-normal-products)
-      (m radius-vf radius)
-      (add.z.vf.x normal-length-squared normal-length-squared normal-length-squared)
-      (add.z.vf.x plane-offset-products plane-offset-products plane-offset-products)
-      (add.z.vf.x direction-normal-products direction-normal-products direction-normal-products)
-      (rsqrt.w.x Q vf0 normal-length-squared)
-      (m denominator-bits direction-normal-products)
-      (m numerator-bits plane-offset-products)
-      (m denominator-float denominator-bits)
-      (m numerator-float numerator-bits)
-      (div.s fraction-float numerator-float denominator-float)
-      ;; Shifting the raw denominator bits treats both +0.0 and -0.0 as zero.
-      (sll denominator-zero-test denominator-bits 1)
-      (move.w.vf normal vf0)
-      (b.z denominator-zero-test miss :delay (waitq))
-      (mulq.vf.xyz normal normal Q)
-      (m fraction-bits fraction-float)
-      (m fraction-vf fraction-bits)
-      (s.vf normal normal-out)
-      (mula.x.vf direction fraction-vf)
-      (madd.w.vf intersection origin vf0)
-      ;; A plane hit is written before the finite triangle test, even when that point is later
-      ;; rejected.
-      (b.lt fraction-bits r0 miss :delay (s.vf intersection intersection-out))
-      (sub.vf edge-point-0 vertex-b intersection)
-      (sub.vf edge-point-1 intersection vertex-c)
-      (sub.vf edge-point-2 intersection vertex-a)
-      (rsqrt.w.x Q vf0 direction-length-squared)
-      (outer.product.a.vf acc edge-bc edge-point-0)
-      (outer.product.b.vf edge-test-0 edge-point-0 edge-bc acc)
-      (outer.product.a.vf acc edge-point-0 edge-ba)
-      (outer.product.b.vf edge-test-1 edge-ba edge-point-0 acc)
-      (outer.product.a.vf acc edge-point-1 edge-point-2)
-      (outer.product.b.vf edge-test-2 edge-point-2 edge-point-1 acc)
-      (mul.vf.xyz edge-test-0 edge-test-0 normal)
-      (mul.vf.xyz edge-test-1 edge-test-1 normal)
-      (mul.vf.xyz edge-test-2 edge-test-2 normal)
-      (add.x.vf.y edge-test-0 edge-test-0 edge-test-0)
-      (add.x.vf.y edge-test-1 edge-test-1 edge-test-1)
-      (add.x.vf.y edge-test-2 edge-test-2 edge-test-2)
-      (add.z.vf.y edge-test-0 edge-test-0 edge-test-0)
-      (add.z.vf.y edge-test-1 edge-test-1 edge-test-1)
-      (add.z.vf.y edge-test-2 edge-test-2 edge-test-2)
-      (m edge-test-bits-0 edge-test-0)
-      (m edge-test-bits-1 edge-test-1)
-      (m edge-test-bits-2 edge-test-2)
-      (or edge-test-mask edge-test-bits-0 edge-test-bits-1)
-      (or edge-test-mask edge-test-mask edge-test-bits-2)
-      (b.lt edge-test-mask r0 miss :delay (nop!))
-      (m radius-float radius)
-      (cvt.w.s radius-float radius-float)
-      (m radius-integer radius-float)
-      (b.z radius-integer done :delay (nop!))
-      (waitq)
-      (mulq.vf.x radius-vf radius-vf Q)
-      (sub.x.vf.x fraction-vf fraction-vf radius-vf)
-      (max.x.vf.x fraction-vf fraction-vf vf0)
-      (b done :delay (m result fraction-vf))
-      (label miss)
-      (m! result COLLISION_MISS)
-      (label done)
-      result)))
+(defun ray-cylinder-intersect ((ray-origin      vector)
+                               (ray-direction   vector)
+                               (cylinder-origin vector)
+                               (cylinder-axis   vector)   ;; must be normalized
+                               (radius          float)
+                               (cylinder-length float)
+                               (axis-point-out  vector))
+  "Intersect a finite ray against the curved wall of a finite cylinder, returning the
+   fraction of the ray where the intersection occurs, or COLLISION_MISS if there
+   is no collision.
+   If the ray starts inside the cylinder, returns 0.0.
+   If the ray enters through the end cap, returns COLLISION_MISS, even if it later
+   exits the cylinder through a curved wall!"
+   
+  (#when COLLIDE_FUNC_COUNTERS
+    (+! *ray-cylinder-intersect-count* 1))
+   
+   ;; relocate the ray to a cylinder at the origin
+   (let* ((relative-origin (vector-! (new 'stack-no-clear 'vector) ray-origin cylinder-origin))
+          ;; project ray onto cylinder axis (now at origin)
+          (axial-start  (vector-dot relative-origin cylinder-axis))
+          (axial-travel (vector-dot ray-direction   cylinder-axis))
+          (axial-end    (+ axial-start axial-travel)))
+     
+     ;; reject if ray is entirely below cylinder:
+     (if (and (< axial-start 0.0) (< axial-end 0.0))
+         (return COLLISION_MISS))
+     
+     ;; reject if ray is entirely above cylinder:
+     (let ((start-overshoot (- axial-start cylinder-length))
+           (end-overshoot   (- axial-end   cylinder-length)))
+       (if (and (>= start-overshoot 0.0) (>= end-overshoot 0.0))
+           (return COLLISION_MISS)))
+     
+     ;; project into a plane perpendicular to the cylinder axis, then use ray-sphere check
+     ;; this gives us a fraction for where the ray intersects the edge of an infinitely tall cylinder
+     (let* ((p-origin (vector-! (new 'stack-no-clear 'vector)
+                                relative-origin
+                                (vector-float*! (new 'stack-no-clear 'vector) cylinder-axis axial-start)))
+            (axial-dir  (vector-float*! (new 'stack-no-clear 'vector) cylinder-axis axial-travel))
+            (p-dir      (vector-! (new 'stack-no-clear 'vector) ray-direction axial-dir))
+            (ray-u      (raw-ray-sphere-intersect p-origin p-dir radius)))
+       ;; no ray intersection in the plane
+       (if (< ray-u 0.0)
+           (return COLLISION_MISS))
+       
+       ;; need to check cylinder height
+       (let* ((contact-height (+ axial-start (* axial-travel ray-u)))
+              (axis-pt        (vector+*! (new 'stack-no-clear 'vector)
+                                         cylinder-origin
+                                         cylinder-axis
+                                         contact-height)))
+         ;; collides below lower end
+         (if (< contact-height 0)
+             (return COLLISION_MISS))
+         
+         (let ((contact-overshoot (- contact-height cylinder-length)))
+           ;; to match the original, write the axis-pt here even if the next test fails
+           (vector-copy! axis-point-out axis-pt)
+           
+           ;; collides above upper end
+           (if (>= contact-overshoot 0.0)
+               (return COLLISION_MISS))
+           ray-u)))))
+   
+   
+;; ray-plane-intersect is unused
+;; ray-triangle-intersect is unused
 
-(#unless PC_PORT
-  (defun collide-do-primitives ((sphere-start vector) (sphere-motion vector) (radius float) (triangle collide-cache-tri) (contact-out vector))
-    "Sweep a sphere against the three vertices and three edges of triangle and retain the earliest
-     contact within the finite motion. On a hit, write the contacted vertex or closest point on the
-     contacted edge to contact-out. Return COLLISION_MISS when none of the six boundary primitives
-     is hit; contact-out is undefined in that case."
-    (declare (asm-func float))
-    ;; Faces are handled by moving-sphere-triangle-intersect. This function handles the rounded
-    ;; boundary of the swept triangle: a radius sphere at each vertex and a radius cylinder along
-    ;; each edge. The point saved for an edge hit is the closest point on the edge centerline.
-    (rlet ((best-fraction :reg f31)
-           (candidate-fraction :reg f30)
-           (zero :reg f28)
-           (best-point :reg vf31)
-           (edge-start :reg vf1)
-           (edge-vector :reg vf2)
-           (edge-length-squared :reg vf3)
-           (Q :reg Q)
-           (edge-direction)
-           (edge-length)
-           (edge-length-bits)
-           (candidate-bits)
-           (best-bits)
-           (miss-bits)
-           (one)
-           (result))
-      (m! edge-direction (new-stack-vector0))
-      (m! best-fraction 2.0)
-      (m! zero 0.0)
-      (m! candidate-bits (ray-sphere-intersect sphere-start sphere-motion (&-> triangle vertex 0) radius))
-      (m candidate-fraction candidate-bits)
-      (c.lt.s candidate-fraction zero)
-      (b.fpt vertex-1 :delay (nop!))
-      (m best-fraction candidate-bits)
-      (l.vf best-point triangle)
-      (label vertex-1)
-      (m! candidate-bits (ray-sphere-intersect sphere-start sphere-motion (&-> triangle vertex 1) radius))
-      (m candidate-fraction candidate-bits)
-      (c.lt.s candidate-fraction zero)
-      (b.fpt vertex-2 :delay (c.lt.s candidate-fraction best-fraction))
-      (b.fpf vertex-2 :delay (nop!))
-      (m best-fraction candidate-bits)
-      (l.vf best-point triangle 16)
-      (label vertex-2)
-      (m! candidate-bits (ray-sphere-intersect sphere-start sphere-motion (&-> triangle vertex 2) radius))
-      (m candidate-fraction candidate-bits)
-      (c.lt.s candidate-fraction zero)
-      (b.fpt edge-0 :delay (c.lt.s candidate-fraction best-fraction))
-      (b.fpf edge-0 :delay (nop!))
-      (m best-fraction candidate-bits)
-      (l.vf best-point triangle 32)
-      (label edge-0)
-      (l.vf edge-start triangle)
-      (l.vf edge-vector triangle 16)
-      (sub.vf edge-vector edge-vector edge-start)
-      (mul.vf edge-length-squared edge-vector edge-vector)
-      (add.y.vf.x edge-length-squared edge-length-squared edge-length-squared)
-      (add.z.vf.x edge-length-squared edge-length-squared edge-length-squared)
-      (rsqrt.w.x Q vf0 edge-length-squared)
-      (m edge-length-bits edge-length-squared)
-      (m edge-length edge-length-bits)
-      (sqrt.s edge-length edge-length)
-      (waitq)
-      (mulq.vf edge-vector edge-vector Q)
-      (s.vf edge-vector edge-direction)
-      (m edge-length-bits edge-length)
-      (m! candidate-bits
-          (ray-cylinder-intersect sphere-start
+
+(defun collide-do-primitives ((sphere-start vector)
+                              (sphere-motion vector)
+                              (radius float)
+                              (triangle collide-cache-tri)
+                              (contact-out vector))
+  "Sweep a sphere against the vertices and edges of a triangle, returning the
+   earliest contact fraction or COLLISION_MISS. The triangle face is handled by
+   moving-sphere-triangle-intersect."
+
+  ;; These intentionally capture the function's arguments and the best-hit locals below.
+  (defmacro check-vertex (vertex-index)
+    `(let ((candidate-fraction
+            (ray-sphere-intersect sphere-start
                                   sphere-motion
-                                  (&-> triangle vertex 0)
-                                  edge-direction
-                                  radius
-                                  (the-as float edge-length-bits)
-                                  contact-out))
-      (m candidate-fraction candidate-bits)
-      (c.lt.s candidate-fraction zero)
-      (b.fpt edge-1 :delay (c.lt.s candidate-fraction best-fraction))
-      (b.fpf edge-1 :delay (nop!))
-      (m best-fraction candidate-bits)
-      (l.vf best-point contact-out)
-      (label edge-1)
-      (l.vf edge-start triangle 16)
-      (l.vf edge-vector triangle 32)
-      (sub.vf edge-vector edge-vector edge-start)
-      (mul.vf edge-length-squared edge-vector edge-vector)
-      (add.y.vf.x edge-length-squared edge-length-squared edge-length-squared)
-      (add.z.vf.x edge-length-squared edge-length-squared edge-length-squared)
-      (rsqrt.w.x Q vf0 edge-length-squared)
-      (m edge-length-bits edge-length-squared)
-      (m edge-length edge-length-bits)
-      (sqrt.s edge-length edge-length)
-      (waitq)
-      (mulq.vf edge-vector edge-vector Q)
-      (s.vf edge-vector edge-direction)
-      (m edge-length-bits edge-length)
-      (m! candidate-bits
-          (ray-cylinder-intersect sphere-start
-                                  sphere-motion
-                                  (&-> triangle vertex 1)
-                                  edge-direction
-                                  radius
-                                  (the-as float edge-length-bits)
-                                  contact-out))
-      (m candidate-fraction candidate-bits)
-      (c.lt.s candidate-fraction zero)
-      (b.fpt edge-2 :delay (c.lt.s candidate-fraction best-fraction))
-      (b.fpf edge-2 :delay (nop!))
-      (m best-fraction candidate-bits)
-      (l.vf best-point contact-out)
-      (label edge-2)
-      (l.vf edge-start triangle 32)
-      (l.vf edge-vector triangle)
-      (sub.vf edge-vector edge-vector edge-start)
-      (mul.vf edge-length-squared edge-vector edge-vector)
-      (add.y.vf.x edge-length-squared edge-length-squared edge-length-squared)
-      (add.z.vf.x edge-length-squared edge-length-squared edge-length-squared)
-      (rsqrt.w.x Q vf0 edge-length-squared)
-      (m edge-length-bits edge-length-squared)
-      (m edge-length edge-length-bits)
-      (sqrt.s edge-length edge-length)
-      (waitq)
-      (mulq.vf edge-vector edge-vector Q)
-      (s.vf edge-vector edge-direction)
-      (m edge-length-bits edge-length)
-      (m! candidate-bits
-          (ray-cylinder-intersect sphere-start
-                                  sphere-motion
-                                  (&-> triangle vertex 2)
-                                  edge-direction
-                                  radius
-                                  (the-as float edge-length-bits)
-                                  contact-out))
-      (m candidate-fraction candidate-bits)
-      (c.lt.s candidate-fraction zero)
-      (b.fpt finish :delay (c.lt.s candidate-fraction best-fraction))
-      (b.fpf finish :delay (nop!))
-      (m best-fraction candidate-bits)
-      (l.vf best-point contact-out)
-      (label finish)
-      (m! one 1.0)
-      (m! miss-bits COLLISION_MISS)
-      (c.lt.s one best-fraction)
-      (b.fptl return :delay (m best-fraction miss-bits))
-      (label return)
-      (m result best-fraction)
-      (s.vf best-point contact-out)
-      result)))
+                                  (-> triangle vertex ,vertex-index)
+                                  radius)))
+      (when (and (>= candidate-fraction 0.0)
+                 (< candidate-fraction best-fraction))
+        (set! best-fraction candidate-fraction)
+        (vector-copy! best-point (-> triangle vertex ,vertex-index)))))
 
-(#when PC_PORT
-  (def-mips2c collide-do-primitives (function vector vector float collide-cache-tri vector float)))
+  (defmacro check-edge (start-index end-index)
+    `(let* ((edge-start (-> triangle vertex ,start-index))
+            (edge-end (-> triangle vertex ,end-index))
+            (edge-vector (vector-! (new 'stack-no-clear 'vector) edge-end edge-start))
+            (edge-length-squared (vector-dot edge-vector edge-vector))
+            (edge-length (sqrtf edge-length-squared)))
+      (vector-float*! edge-direction edge-vector (/ 1.0 edge-length))
+      (let ((candidate-fraction
+             (ray-cylinder-intersect sphere-start
+                                     sphere-motion
+                                     edge-start
+                                     edge-direction
+                                     radius
+                                     edge-length
+                                     contact-out)))
+        (when (and (>= candidate-fraction 0.0)
+                   (< candidate-fraction best-fraction))
+          (set! best-fraction candidate-fraction)
+          (vector-copy! best-point contact-out)))))
 
-(#unless PC_PORT
-  (defun moving-sphere-triangle-intersect ((sphere-start vector)
-          (sphere-motion vector)
-          (radius float)
-          (triangle collide-cache-tri)
-          (contact-out vector)
-          (normal-out vector))
-    "Sweep a sphere from sphere-start along sphere-motion against triangle. First reject disjoint
-     swept bounds, then test the triangle face thickened by radius; when the projected face point
-     falls outside the triangle, test its three vertices and edges. Write the triangle contact point
-     and unit normal and return the earliest zero-to-one contact fraction, or COLLISION_MISS."
-    (declare (asm-func float))
-    ;; The triangle is treated as a flat face with a rounded boundary. Its plane is expanded by
-    ;; radius on both sides, then collide-do-primitives supplies the vertex spheres and edge
-    ;; cylinders when the projected plane contact is outside the face.
-    (rlet ((radius-vf :reg vf1)
-           (triangle-min :reg vf2)
-           (triangle-max :reg vf3)
-           (sweep-min :reg vf4)
-           (sweep-max :reg vf5)
-           (sphere-end :reg vf6)
-           (normal-length-squared :reg vf7)
-           (center-at-contact :reg vf8)
-           (edge-point-0 :reg vf9)
-           (edge-point-1 :reg vf10)
-           (edge-a :reg vf11)
-           (vertex-b :reg vf12)
-           (edge-c :reg vf13)
-           (sphere-relative :reg vf14)
-           (motion :reg vf15)
-           (normal :reg vf16)
-           (Q :reg Q)
-           (bounds-a :class i128)
-           (bounds-b :class i128)
-           (bounds-mask :class i128)
-           (entry-bits)
-           (exit-bits)
-           (difference-bits)
-           (fraction-bits)
-           (edge-bits-0)
-           (edge-bits-1)
-           (edge-bits-2)
-           (edge-mask)
-           (result))
-      (l.vf sphere-relative sphere-start)
-      (l.vf motion sphere-motion)
-      (l.vf edge-a triangle)
-      (l.vf vertex-b triangle 16)
-      (l.vf edge-c triangle 32)
-      (m radius-vf radius)
-      (add.vf sphere-end sphere-relative motion)
-      (sub.vf edge-a edge-a vertex-b)
-      (sub.vf edge-c edge-c vertex-b)
-      (sub.vf sphere-relative sphere-relative vertex-b)
-      (sub.vf sphere-end sphere-end vertex-b)
-      ;; Compare the triangle bounds with the swept segment bounds expanded by the radius.
-      (min.vf triangle-min edge-a vf0)
-      (outer.product.a.vf acc edge-c edge-a)
-      (outer.product.b.vf normal edge-a edge-c acc)
-      (max.vf triangle-max edge-a vf0)
-      (min.vf sweep-min sphere-relative sphere-end)
-      (max.vf sweep-max sphere-relative sphere-end)
-      (mul.vf normal-length-squared normal normal)
-      (min.vf triangle-min triangle-min edge-c)
-      (max.vf triangle-max triangle-max edge-c)
-      (sub.x.vf sweep-min sweep-min radius-vf)
-      (add.y.vf.x normal-length-squared normal-length-squared normal-length-squared)
-      (add.x.vf sweep-max sweep-max radius-vf)
-      (nop!)
-      (sub.vf triangle-max triangle-max sweep-min)
-      (add.z.vf.x normal-length-squared normal-length-squared normal-length-squared)
-      (sub.vf sweep-max sweep-max triangle-min)
-      (nop!)
-      (m bounds-a triangle-max)
-      (m bounds-b sweep-max)
-      (rsqrt.w.x Q vf0 normal-length-squared)
-      (or bounds-mask bounds-a bounds-b)
-      (pcgt.w bounds-mask r0 bounds-mask)
-      (ppach bounds-mask r0 bounds-mask)
-      (sll bounds-mask bounds-mask 16)
-      (b.nz bounds-mask miss :delay (nop!))
-      ;; Project the motion and starting offset onto the unit normal. entry and exit are the
-      ;; fractions at which the sphere center crosses the two radius-offset plane boundaries.
-      (mul.vf triangle-min normal motion)
-      (mul.vf triangle-max normal sphere-relative)
-      (add.y.vf.x triangle-min triangle-min triangle-min)
-      (sub.y.vf.y triangle-max vf0 triangle-max)
-      (add.z.vf.x triangle-min triangle-min triangle-min)
-      (sub.x.vf.y triangle-max triangle-max triangle-max)
-      (sub.z.vf.y triangle-max triangle-max triangle-max)
-      (add.x.vf.x triangle-max vf0 vf0)
-      (add.x.vf.x sweep-min vf0 vf0)
-      (waitq)
-      (mulq.vf normal normal Q)
-      (move.w.vf normal vf0)
-      (mulq.vf triangle-min triangle-min Q)
-      (mulq.vf sweep-min triangle-max Q)
-      (mulq.vf triangle-max triangle-max Q)
-      (s.vf normal normal-out)
-      (vnop)
-      (vnop)
-      (div.w.x Q vf0 triangle-min)
-      (add.x.vf.y triangle-max triangle-max radius-vf)
-      (sub.x.vf.y sweep-min sweep-min radius-vf)
-      (waitq)
-      (mulq.vf triangle-max triangle-max Q)
-      (mulq.vf sweep-min sweep-min Q)
-      (nop!)
-      (nop!)
-      (m entry-bits triangle-max)
-      (m exit-bits sweep-min)
-      (b.lt entry-bits r0 entry-negative :delay (nop!))
-      (b.lt exit-bits r0 start-contact :delay (nop!))
-      (sub difference-bits entry-bits exit-bits)
-      (b.lt difference-bits r0 use-entry :delay (nop!))
-      (sub.w.vf triangle-min sweep-min vf0)
-      (m difference-bits triangle-min)
-      (b.ge difference-bits r0 miss :delay (nop!))
-      (m fraction-bits sweep-min)
-      (mula.w.vf sphere-relative vf0)
-      (madd.y.vf center-at-contact motion sweep-min)
-      (b test-face :delay (nop!))
-      (label use-entry)
-      (sub.w.vf triangle-min triangle-max vf0)
-      (m difference-bits triangle-min)
-      (b.ge difference-bits r0 miss :delay (nop!))
-      (mula.w.vf sphere-relative vf0)
-      (madd.y.vf center-at-contact motion triangle-max)
-      (m fraction-bits triangle-max)
-      (label test-face)
-      (sra32 fraction-bits fraction-bits 0)
-      (sub.vf edge-point-0 center-at-contact edge-c)
-      (sub.vf edge-point-1 center-at-contact edge-a)
-      (outer.product.a.vf acc edge-c center-at-contact)
-      (outer.product.b.vf sweep-max center-at-contact edge-c acc)
-      (outer.product.a.vf acc center-at-contact edge-a)
-      (outer.product.b.vf sphere-end edge-a center-at-contact acc)
-      (outer.product.a.vf acc edge-point-0 edge-point-1)
-      (outer.product.b.vf normal-length-squared edge-point-1 edge-point-0 acc)
-      (mul.vf sweep-max sweep-max normal)
-      (mul.vf sphere-end sphere-end normal)
-      (mul.vf normal-length-squared normal-length-squared normal)
-      (add.x.vf.y sweep-max sweep-max sweep-max)
-      (add.x.vf.y sphere-end sphere-end sphere-end)
-      (add.x.vf.y normal-length-squared normal-length-squared normal-length-squared)
-      (add.z.vf.y sweep-max sweep-max sweep-max)
-      (add.z.vf.y sphere-end sphere-end sphere-end)
-      (add.z.vf.y normal-length-squared normal-length-squared normal-length-squared)
-      (m edge-bits-0 sweep-max)
-      (m edge-bits-1 sphere-end)
-      (m edge-bits-2 normal-length-squared)
-      (or edge-mask edge-bits-0 edge-bits-1)
-      (or edge-mask edge-mask edge-bits-2)
-      (b.lt edge-mask r0 boundary :delay (nop!))
-      ;; Project the center onto the triangle plane with n x (n x center); the vertices above
-      ;; are relative to vertex-b, so add vertex-b back for the world-space contact point.
-      (outer.product.a.vf acc center-at-contact normal)
-      (outer.product.b.vf sweep-max normal center-at-contact acc)
-      (outer.product.a.vf acc normal sweep-max)
-      (outer.product.b.vf sweep-max sweep-max normal acc)
-      (add.vf sweep-max sweep-max vertex-b)
-      (s.vf sweep-max contact-out)
-      (m result fraction-bits)
-      (b return :delay (nop!))
-      (label boundary)
-      (m! result (collide-do-primitives sphere-start sphere-motion radius triangle contact-out))
-      (b return :delay (nop!))
-      (label entry-negative)
-      (b.lt exit-bits r0 miss :delay (nop!))
-      (label start-contact)
-      ;; The sphere starts within the plane slab. Test its initial projection before falling back
-      ;; to the rounded boundary.
-      (sub.vf edge-point-0 sphere-relative edge-c)
-      (sub.vf edge-point-1 sphere-relative edge-a)
-      (outer.product.a.vf acc edge-c sphere-relative)
-      (outer.product.b.vf sweep-max sphere-relative edge-c acc)
-      (outer.product.a.vf acc sphere-relative edge-a)
-      (outer.product.b.vf sphere-end edge-a sphere-relative acc)
-      (outer.product.a.vf acc edge-point-0 edge-point-1)
-      (outer.product.b.vf normal-length-squared edge-point-1 edge-point-0 acc)
-      (mul.vf sweep-max sweep-max normal)
-      (mul.vf sphere-end sphere-end normal)
-      (mul.vf normal-length-squared normal-length-squared normal)
-      (add.x.vf.y sweep-max sweep-max sweep-max)
-      (add.x.vf.y sphere-end sphere-end sphere-end)
-      (add.x.vf.y normal-length-squared normal-length-squared normal-length-squared)
-      (add.z.vf.y sweep-max sweep-max sweep-max)
-      (add.z.vf.y sphere-end sphere-end sphere-end)
-      (add.z.vf.y normal-length-squared normal-length-squared normal-length-squared)
-      (m edge-bits-0 sweep-max)
-      (m edge-bits-1 sphere-end)
-      (m edge-bits-2 normal-length-squared)
-      (or edge-mask edge-bits-0 edge-bits-1)
-      (or edge-mask edge-mask edge-bits-2)
-      (b.lt edge-mask r0 boundary :delay (nop!))
-      (outer.product.a.vf acc sphere-relative normal)
-      (outer.product.b.vf sweep-max normal sphere-relative acc)
-      (outer.product.a.vf acc normal sweep-max)
-      (outer.product.b.vf sweep-max sweep-max normal acc)
-      (add.vf sweep-max sweep-max vertex-b)
-      (s.vf sweep-max contact-out)
-      (b return :delay (m! result 0))
-      (label miss)
-      (m! result COLLISION_MISS)
-      (label return)
-      result)))
+  (#when COLLIDE_FUNC_COUNTERS
+    (+! *collide-do-primitives-count* 1))
 
-(#when PC_PORT
-  (def-mips2c moving-sphere-triangle-intersect (function vector vector float collide-cache-tri vector vector float)))
+  (let ((best-fraction 2.0)
+        (best-point (new 'stack-no-clear 'vector))
+        (edge-direction (new 'stack-no-clear 'vector)))
 
-(defun moving-sphere-sphere-intersect ((sphere-start vector) (sphere-motion vector) (static-sphere vector) (contact-out vector))
-  "Sweep a moving sphere along motion against a static sphere. Sphere vectors store center in xyz
-   and radius in w. Write the point on the moving sphere facing the static center at first contact
-   and return its fraction along motion, or COLLISION_MISS."
-  ;; Expanding the static sphere by the moving radius reduces the sweep to a ray-sphere test.
-  (let ((contact-fraction (ray-sphere-intersect sphere-start sphere-motion static-sphere (+ (-> sphere-start w) (-> static-sphere w)))))
+    ;; Test the three vertex spheres. Strict comparisons preserve the original
+    ;; tie-breaking order: vertex 0, vertex 1, then vertex 2.
+    (check-vertex 0)
+    (check-vertex 1)
+    (check-vertex 2)
+
+    ;; Test the three edge cylinders in the original order.
+    (check-edge 0 1)
+    (check-edge 1 2)
+    (check-edge 2 0)
+
+    ;; The primitive helpers already enforce the finite ray interval, but keep
+    ;; the original final check. contact-out is undefined when this returns a miss.
+    (if (> best-fraction 1.0)
+        (set! best-fraction COLLISION_MISS))
+    (vector-copy! contact-out best-point)
+    best-fraction))
+
+
+(defun moving-sphere-triangle-intersect ((sphere-start vector)
+                                         (sphere-motion vector)
+                                         (radius float)
+                                         (triangle collide-cache-tri)
+                                         (contact-out vector)
+                                         (normal-out vector))
+  "Sweep a sphere against a triangle, returning the fraction where the first
+   collision occurs or COLLISION_MISS. This checks the face first, then the
+   rounded vertex and edge boundary."
+
+  ;; This intentionally captures edge-a, edge-c, and normal below.
+  (defmacro inside-triangle? (point)
+    `(let* ((point-from-c (vector-! (new 'stack-no-clear 'vector) ,point edge-c))
+            (point-from-a (vector-! (new 'stack-no-clear 'vector) ,point edge-a))
+            (edge-test-0 (vector-dot (vector-cross! (new 'stack-no-clear 'vector)
+                                                    edge-c
+                                                    ,point)
+                                     normal))
+            (edge-test-1 (vector-dot (vector-cross! (new 'stack-no-clear 'vector)
+                                                    ,point
+                                                    edge-a)
+                                     normal))
+            (edge-test-2 (vector-dot (vector-cross! (new 'stack-no-clear 'vector)
+                                                    point-from-c
+                                                    point-from-a)
+                                     normal)))
+      (and (>= edge-test-0 0.0)
+           (>= edge-test-1 0.0)
+           (>= edge-test-2 0.0))))
+
+  (#when COLLIDE_FUNC_COUNTERS
+    (+! *moving-sphere-triangle-intersect-count* 1))
+
+  (let* ((vertex-a (&-> triangle vertex 0))
+         (vertex-b (&-> triangle vertex 1))
+         (vertex-c (&-> triangle vertex 2))
+         ;; Put everything in a coordinate system with vertex B at the origin.
+         (edge-a (vector-! (new 'stack-no-clear 'vector) vertex-a vertex-b))
+         (edge-c (vector-! (new 'stack-no-clear 'vector) vertex-c vertex-b))
+         (sphere-relative (vector-! (new 'stack-no-clear 'vector) sphere-start vertex-b))
+         (sphere-end (vector+! (new 'stack-no-clear 'vector) sphere-start sphere-motion))
+         (sphere-end-relative (vector-! (new 'stack-no-clear 'vector) sphere-end vertex-b)))
+
+    ;; Quickly reject when the swept sphere bounds do not touch the triangle bounds.
+    (let ((triangle-min-x (fmin (fmin (-> edge-a x) 0.0) (-> edge-c x)))
+          (triangle-min-y (fmin (fmin (-> edge-a y) 0.0) (-> edge-c y)))
+          (triangle-min-z (fmin (fmin (-> edge-a z) 0.0) (-> edge-c z)))
+          (triangle-max-x (fmax (fmax (-> edge-a x) 0.0) (-> edge-c x)))
+          (triangle-max-y (fmax (fmax (-> edge-a y) 0.0) (-> edge-c y)))
+          (triangle-max-z (fmax (fmax (-> edge-a z) 0.0) (-> edge-c z)))
+          (sweep-min-x (- (fmin (-> sphere-relative x) (-> sphere-end-relative x)) radius))
+          (sweep-min-y (- (fmin (-> sphere-relative y) (-> sphere-end-relative y)) radius))
+          (sweep-min-z (- (fmin (-> sphere-relative z) (-> sphere-end-relative z)) radius))
+          (sweep-max-x (+ (fmax (-> sphere-relative x) (-> sphere-end-relative x)) radius))
+          (sweep-max-y (+ (fmax (-> sphere-relative y) (-> sphere-end-relative y)) radius))
+          (sweep-max-z (+ (fmax (-> sphere-relative z) (-> sphere-end-relative z)) radius)))
+      (when (or (< triangle-max-x sweep-min-x)
+                (< triangle-max-y sweep-min-y)
+                (< triangle-max-z sweep-min-z)
+                (< sweep-max-x triangle-min-x)
+                (< sweep-max-y triangle-min-y)
+                (< sweep-max-z triangle-min-z))
+        (return COLLISION_MISS)))
+
+    ;; Expand the triangle plane by the sphere radius and find where the sphere
+    ;; center first enters that slab.
+    (let ((normal (vector-cross! (new 'stack-no-clear 'vector) edge-c edge-a)))
+      (vector-normalize! normal 1.0)
+      (vector-copy! normal-out normal)
+
+      (let* ((start-distance (vector-dot sphere-relative normal))
+             (normal-travel (vector-dot sphere-motion normal))
+             (contact-fraction 0.0))
+        (cond
+          ((= normal-travel 0.0)
+           (when (or (< start-distance (- radius))
+                     (> start-distance radius))
+             (return COLLISION_MISS)))
+          (else
+           (let ((first-plane-fraction (/ (- (- radius) start-distance) normal-travel))
+                 (second-plane-fraction (/ (- radius start-distance) normal-travel)))
+             ;; Both slab crossings behind the start means the sphere is moving away.
+             (when (and (< first-plane-fraction 0.0)
+                        (< second-plane-fraction 0.0))
+               (return COLLISION_MISS))
+             ;; If one crossing is behind us, the sphere starts inside the slab.
+             (if (or (< first-plane-fraction 0.0)
+                     (< second-plane-fraction 0.0))
+                 (set! contact-fraction 0.0)
+                 (set! contact-fraction (fmin first-plane-fraction second-plane-fraction)))
+             ;; Match the original face test, which excludes a contact at the endpoint.
+             (when (>= contact-fraction 1.0)
+               (return COLLISION_MISS)))))
+
+        (let ((center-at-contact
+               (vector+*! (new 'stack-no-clear 'vector)
+                           sphere-relative
+                           sphere-motion
+                           contact-fraction)))
+          (cond
+            ((inside-triangle? center-at-contact)
+             ;; Project the sphere center onto the triangle plane and put it back
+             ;; into world space for the contact point.
+             (let* ((plane-distance (vector-dot center-at-contact normal))
+                    (normal-offset (vector-float*! (new 'stack-no-clear 'vector)
+                                                   normal
+                                                   plane-distance))
+                    (plane-point (vector-! (new 'stack-no-clear 'vector)
+                                           center-at-contact
+                                           normal-offset)))
+               (vector+! contact-out plane-point vertex-b)
+               contact-fraction))
+            (else
+             ;; The plane contact is outside the face, so check the rounded boundary.
+             (collide-do-primitives sphere-start
+                                    sphere-motion
+                                    radius
+                                    triangle
+                                    contact-out))))))))
+
+
+(defun moving-sphere-sphere-intersect ((sphere-start vector)
+                                       (sphere-motion vector)
+                                       (static-sphere vector)
+                                       (contact-out vector))
+  "Sweep a moving sphere against a static sphere, returning the collision
+   fraction or COLLISION_MISS. Sphere radius is stored in the w component."
+
+  (#when COLLIDE_FUNC_COUNTERS
+    (+! *moving-sphere-sphere-intersect-count* 1))
+
+  ;; Add the two radii and sweep the moving center against the expanded sphere.
+  (let ((contact-fraction
+         (ray-sphere-intersect sphere-start
+                               sphere-motion
+                               static-sphere
+                               (+ (-> sphere-start w) (-> static-sphere w)))))
     (when (>= contact-fraction 0.0)
-      (let ((contact-offset (vector-normalize! (vector-! (new-stack-vector0) static-sphere sphere-start) (-> sphere-start w))))
+      (let ((contact-offset
+             (vector-normalize! (vector-! (new 'stack-no-clear 'vector)
+                                          static-sphere
+                                          sphere-start)
+                                (-> sphere-start w))))
         (vector+*! contact-out sphere-start sphere-motion contact-fraction)
         (vector+! contact-out contact-out contact-offset)))
     contact-fraction))
 
-(defun moving-sphere-moving-sphere-intersect ((first-sphere vector) (first-motion vector) (second-sphere vector) (second-motion vector) (contact-out vector))
-  "Sweep two moving spheres over the same zero-to-one interval using their relative motion. Sphere
-   vectors store center in xyz and radius in w. Write the point on the first sphere facing the
-   second at first contact and return the fraction, or COLLISION_MISS."
-  (let ((contact-fraction (ray-sphere-intersect first-sphere
-                                                (vector-! (new-stack-vector0) first-motion second-motion)
-                                                second-sphere
-                                                (+ (-> first-sphere w) (-> second-sphere w)))))
+
+(defun moving-sphere-moving-sphere-intersect ((first-sphere vector)
+                                              (first-motion vector)
+                                              (second-sphere vector)
+                                              (second-motion vector)
+                                              (contact-out vector))
+  "Sweep two moving spheres using their relative motion, returning the collision
+   fraction or COLLISION_MISS. Sphere radius is stored in the w component."
+
+  (#when COLLIDE_FUNC_COUNTERS
+    (+! *moving-sphere-moving-sphere-intersect-count* 1))
+
+  (let ((contact-fraction
+         (ray-sphere-intersect first-sphere
+                               (vector-! (new 'stack-no-clear 'vector)
+                                        first-motion
+                                        second-motion)
+                               second-sphere
+                               (+ (-> first-sphere w) (-> second-sphere w)))))
     (cond
       ((and (>= contact-fraction 0.0) (>= 1.0 contact-fraction))
-       (let ((contact-offset (vector-normalize! (vector-! (new-stack-vector0) second-sphere first-sphere) (-> first-sphere w))))
-         ;; Use the first sphere's actual motion for the world-space contact, not the relative
-         ;; motion used by the intersection test.
+       (let ((contact-offset
+              (vector-normalize! (vector-! (new 'stack-no-clear 'vector)
+                                           second-sphere
+                                           first-sphere)
+                                 (-> first-sphere w))))
+         ;; Use the first sphere's real motion after finding the fraction with relative motion.
          (vector+*! contact-out first-sphere first-motion contact-fraction)
          (vector+! contact-out contact-out contact-offset)))
-      (else (set! contact-fraction COLLISION_MISS)))
+      (else
+       (set! contact-fraction COLLISION_MISS)))
     contact-fraction))
+
+
+(#when COLLIDE_FUNC_COUNTERS
+  (defun clear-collide-func-counters ()
+    "Clear the collision function counters at the start of a frame."
+    (set! *raw-ray-sphere-intersect-count* 0)
+    (set! *ray-sphere-intersect-count* 0)
+    (set! *ray-circle-intersect-count* 0)
+    (set! *ray-cylinder-intersect-count* 0)
+    (set! *collide-do-primitives-count* 0)
+    (set! *moving-sphere-triangle-intersect-count* 0)
+    (set! *moving-sphere-sphere-intersect-count* 0)
+    (set! *moving-sphere-moving-sphere-intersect-count* 0)
+    (none))
+
+  (defun display-collide-func-counters ()
+    "Display the collision function counters, three per line."
+    (format *stdcon*
+            " krrs ~7D  rs ~7D  rc ~7D~%"
+            *raw-ray-sphere-intersect-count*
+            *ray-sphere-intersect-count*
+            *ray-circle-intersect-count*)
+    (format *stdcon*
+            " rcy ~7D  prim ~7D  mst ~7D~%"
+            *ray-cylinder-intersect-count*
+            *collide-do-primitives-count*
+            *moving-sphere-triangle-intersect-count*)
+    (format *stdcon*
+            " mss ~7D  msms ~7D~%"
+            *moving-sphere-sphere-intersect-count*
+            *moving-sphere-moving-sphere-intersect-count*)
+    (none)))

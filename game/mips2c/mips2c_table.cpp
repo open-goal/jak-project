@@ -44,8 +44,6 @@ namespace draw_boundary_polygon { extern void link(); }
 namespace draw_inline_array_tfrag { extern void link(); }
 namespace stats_tfrag_asm { extern void link(); }
 namespace time_of_day_interp_colors_scratch { extern void link(); }
-namespace collide_do_primitives { extern void link(); }
-namespace moving_sphere_triangle_intersect { extern void link(); }
 namespace method_12_collide_mesh { extern void link(); }
 namespace method_11_collide_mesh { extern void link(); }
 namespace collide_probe_node { extern void link(); }
@@ -416,8 +414,6 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak1::render_boundary_tri::link, jak1::draw_boundary_polygon::link}},
      {"tfrag", {jak1::draw_inline_array_tfrag::link, jak1::stats_tfrag_asm::link}},
      {"time-of-day", {jak1::time_of_day_interp_colors_scratch::link}},
-     {"collide-func",
-      {jak1::collide_do_primitives::link, jak1::moving_sphere_triangle_intersect::link}},
      {"collide-probe", {jak1::collide_probe_node::link, jak1::collide_probe_instance_tie::link}},
      {"collide-mesh",
       {jak1::method_12_collide_mesh::link, jak1::method_11_collide_mesh::link,

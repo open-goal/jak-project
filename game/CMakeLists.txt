@@ -159,7 +159,6 @@ set(RUNTIME_SOURCE
         mips2c/jak1_functions/bones.cpp
         mips2c/jak1_functions/collide_cache.cpp
         mips2c/jak1_functions/collide_edge_grab.cpp
-        mips2c/jak1_functions/collide_func.cpp
         mips2c/jak1_functions/collide_mesh.cpp
         mips2c/jak1_functions/collide_probe.cpp
         mips2c/jak1_functions/draw_string.cpp
