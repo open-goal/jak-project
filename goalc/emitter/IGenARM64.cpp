@@ -2482,6 +2482,43 @@ InstructionARM64 wait_vf() {
   return nop();
 }
 
+/*!
+ * MOV <Vd>.S[dst_lane], <Vn>.S[src_lane]. copies one 32 bit lane and leaves the rest of Vd alone.
+ */
+InstructionARM64 ins_vf_lane(Register dst, u8 dst_lane, Register src, u8 src_lane) {
+  ASSERT(dst.is_128bit_simd(instr_set));
+  ASSERT(src.is_128bit_simd(instr_set));
+  ASSERT(dst_lane < 4 && src_lane < 4);
+  // https://www.scs.stanford.edu/~zyedidia/arm64/mov_ins_advsimd_elt.html
+  // for 32 bit lanes imm5 is (index << 3) | 0b100 and imm4 is index << 2
+  return InstructionARM64(Base(0b01101110000000000000010000000000, 32),
+                          Imm5(u32(dst_lane << 3) | 0b100), Imm4(u32(src_lane << 2)), Rn(src.id()),
+                          Rd(dst.id()));
+}
+
+/*!
+ * MOV <Vd>.H[dst_lane], <Vn>.H[src_lane]. the 16 bit version of ins_vf_lane.
+ */
+InstructionARM64 ins_vf_lane_h(Register dst, u8 dst_lane, Register src, u8 src_lane) {
+  ASSERT(dst.is_128bit_simd(instr_set));
+  ASSERT(src.is_128bit_simd(instr_set));
+  ASSERT(dst_lane < 8 && src_lane < 8);
+  // for 16 bit lanes imm5 is (index << 2) | 0b10 and imm4 is index << 1
+  return InstructionARM64(Base(0b01101110000000000000010000000000, 32),
+                          Imm5(u32(dst_lane << 2) | 0b10), Imm4(u32(src_lane << 1)), Rn(src.id()),
+                          Rd(dst.id()));
+}
+
+InstructionARM64 dup_vf_lane(Register dst, Register src, u8 lane) {
+  ASSERT(dst.is_128bit_simd(instr_set));
+  ASSERT(src.is_128bit_simd(instr_set));
+  ASSERT(lane < 4);
+  // https://www.scs.stanford.edu/~zyedidia/arm64/dup_advsimd_elt.html
+  // DUP <Vd>.4S, <Vn>.S[lane] - imm5 is the same shape as ins_vf_lane's
+  return InstructionARM64(Base(0b01001110000000000000010000000000, 32),
+                          Imm5(u32(lane << 3) | 0b100), Rn(src.id()), Rd(dst.id()));
+}
+
 InstructionARM64 mov_vf_vf(Register dst, Register src) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/mov_orr_advsimd_reg.html
   // MOV <Vd>.<T>, <Vn>.<T>
@@ -2490,7 +2527,10 @@ InstructionARM64 mov_vf_vf(Register dst, Register src) {
   // 1 	16B
   ASSERT(dst.is_128bit_simd(instr_set));
   ASSERT(src.is_128bit_simd(instr_set));
-  return InstructionARM64(Base(0b0100111010100000000111, 22), Rd(dst.id()), Rn(src.id()));
+  // orr's Rm has to be the source too, or this comes out as `orr vD.16b, vN.16b, v0.16b`,
+  // which only moves when v0 is zero. checked against clang: mov.16b v5, v3 is 4ea31c65.
+  return InstructionARM64(Base(0b0100111010100000000111, 22), Rm(src.id()), Rd(dst.id()),
+                          Rn(src.id()));
 }
 
 InstructionARM64 loadvf_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2) {
@@ -2652,34 +2692,65 @@ InstructionARM64 loadvf_rip_plus_s32(Register dest, s64 offset) {
 }
 
 InstructionARM64 blend_vf(Register dst, Register src1, Register src2, u8 mask) {
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
+  ASSERT(!(mask & 0b11110000));
+  ASSERT(dst.is_128bit_simd(instr_set));
+  ASSERT(src1.is_128bit_simd(instr_set));
+  ASSERT(src2.is_128bit_simd(instr_set));
+  // x86 does this in one blendps. arm64 has no blend with an immediate lane mask, so take
+  // src1 and overwrite the lanes the mask selects. Built in v16 first, so dst is allowed to
+  // be either source.
+  std::vector<InstructionARM64> instrs = {mov_vf_vf(V16, src1)};
+  for (u8 lane = 0; lane < 4; lane++) {
+    if (mask & (1 << lane)) {
+      instrs.push_back(ins_vf_lane(V16, lane, src2, lane));
+    }
+  }
+  instrs.push_back(mov_vf_vf(dst, V16));
+  return InstructionARM64(instrs);
 }
 
 InstructionARM64 swizzle_vf(Register dst, Register src, u8 controlBytes) {
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
+  ASSERT(dst.is_128bit_simd(instr_set));
+  ASSERT(src.is_128bit_simd(instr_set));
+  // x86 uses shufps with both sources the same, so lane i of the result is lane
+  // (controlBytes >> 2i) & 3 of the source. same lane at a time approach as blend_vf, via v16
+  // so dst may alias src. All four lanes get written, so v16's previous contents don't matter.
+  std::vector<InstructionARM64> instrs;
+  for (u8 lane = 0; lane < 4; lane++) {
+    instrs.push_back(ins_vf_lane(V16, lane, src, (controlBytes >> (lane * 2)) & 0b11));
+  }
+  instrs.push_back(mov_vf_vf(dst, V16));
+  return InstructionARM64(instrs);
 }
 
 InstructionARM64 shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw) {
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
+  ASSERT(dst.is_128bit_simd(instr_set));
+  ASSERT(src.is_128bit_simd(instr_set));
+  ASSERT(dx < 4);
+  ASSERT(dy < 4);
+  ASSERT(dz < 4);
+  ASSERT(dw < 4);
+  // exactly what x86 does: pack the four lane picks into one control byte and hand it to
+  // swizzle_vf, which already builds the arm64 version one lane at a time. nothing in the
+  // compiler calls this on either backend, only test_emitter_avx.cpp does, but an
+  // ASSERT(false) here would just trip up whoever wires it up later, and the pieces were here.
+  u8 imm = dx + (dy << 2) + (dz << 4) + (dw << 6);
+  return swizzle_vf(dst, src, imm);
 }
 
 InstructionARM64 splat_vf(Register dst, Register src, Register::VF_ELEMENT element) {
+  // broadcasting one lane to all four is exactly what DUP does, in one instruction. this used
+  // to hand the equivalent control bytes to swizzle_vf, which builds the general four-lane
+  // case an INS at a time - five instructions for what DUP does in one.
   switch (element) {
     case Register::VF_ELEMENT::X:
-      return swizzle_vf(dst, src, 0b00000000);
-      break;
+      return dup_vf_lane(dst, src, 0);
     case Register::VF_ELEMENT::Y:
-      return swizzle_vf(dst, src, 0b01010101);
-      break;
+      return dup_vf_lane(dst, src, 1);
     case Register::VF_ELEMENT::Z:
-      return swizzle_vf(dst, src, 0b10101010);
-      break;
+      return dup_vf_lane(dst, src, 2);
     case Register::VF_ELEMENT::W:
-      return swizzle_vf(dst, src, 0b11111111);
-      break;
+      return dup_vf_lane(dst, src, 3);
     default:
       ASSERT(false);
       return {0};
@@ -2765,13 +2836,28 @@ InstructionARM64 ftoi_vf(Register dst, Register src) {
 
 // TODO - rename these instructions
 
+namespace {
+u32 vec_shl_immhb(u32 elem_bits, u8 shift) {
+  ASSERT_MSG(shift < elem_bits, "arm64 vector shift left amount is out of range");
+  return elem_bits + shift;
+}
+
+u32 vec_shr_immhb(u32 elem_bits, u8 shift) {
+  // a right shift of 0 does nothing on x86 and has no encoding here. it would need a move
+  // instead of a shift, which this layer can't emit.
+  ASSERT_MSG(shift >= 1 && shift <= elem_bits, "arm64 vector shift right amount is out of range");
+  return 2 * elem_bits - shift;
+}
+}  // namespace
+
 // - arithmetic_shift_right_32bit_vf
 InstructionARM64 pw_sra(Register dst, Register src, u8 imm) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/sshr_advsimd.html
   // - vector, 4S
   // SSHR <Vd>.<T>, <Vn>.<T>, #<shift>
-  return InstructionARM64(Base(0b0100111100100000000001, 22), Rn(src.id()), Rd(dst.id()),
-                          Immb(imm));
+  const u32 v = vec_shr_immhb(32, imm);
+  return InstructionARM64(Base(0b0100111100000000000001, 22), Rn(src.id()), Rd(dst.id()),
+                          Immh(v >> 3), Immb(v & 0b111));
 }
 
 // - logical_shift_right_32bit_vf
@@ -2779,8 +2865,9 @@ InstructionARM64 pw_srl(Register dst, Register src, u8 imm) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/ushr_advsimd.html
   // - vector, 4S
   // USHR <Vd>.<T>, <Vn>.<T>, #<shift>
-  return InstructionARM64(Base(0b0110111100100000000001, 22), Rn(src.id()), Rd(dst.id()),
-                          Immb(imm));
+  const u32 v = vec_shr_immhb(32, imm);
+  return InstructionARM64(Base(0b0110111100000000000001, 22), Rn(src.id()), Rd(dst.id()),
+                          Immh(v >> 3), Immb(v & 0b111));
 }
 
 // - logical_shift_left_32bit_vf
@@ -2788,8 +2875,9 @@ InstructionARM64 pw_sll(Register dst, Register src, u8 imm) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/shl_advsimd.html
   // - vector, 4S
   // SHL <Vd>.<T>, <Vn>.<T>, #<shift>
-  return InstructionARM64(Base(0b0100111100100000010101, 22), Rn(src.id()), Rd(dst.id()),
-                          Immb(imm));
+  const u32 v = vec_shl_immhb(32, imm);
+  return InstructionARM64(Base(0b0100111100000000010101, 22), Rn(src.id()), Rd(dst.id()),
+                          Immh(v >> 3), Immb(v & 0b111));
 }
 
 // - logical_shift_right_16bit_vf
@@ -2797,8 +2885,9 @@ InstructionARM64 ph_srl(Register dst, Register src, u8 imm) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/ushr_advsimd.html
   // - vector, 8H
   // USHR <Vd>.<T>, <Vn>.<T>, #<shift>
-  return InstructionARM64(Base(0b0110111100010000000001, 22), Rn(src.id()), Rd(dst.id()),
-                          Immb(imm));
+  const u32 v = vec_shr_immhb(16, imm);
+  return InstructionARM64(Base(0b0110111100000000000001, 22), Rn(src.id()), Rd(dst.id()),
+                          Immh(v >> 3), Immb(v & 0b111));
 }
 
 // - logical_shift_left_16bit_vf
@@ -2806,8 +2895,9 @@ InstructionARM64 ph_sll(Register dst, Register src, u8 imm) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/shl_advsimd.html
   // - vector, 8H
   // SHL <Vd>.<T>, <Vn>.<T>, #<shift>
-  return InstructionARM64(Base(0b0100111100010000010101, 22), Rn(src.id()), Rd(dst.id()),
-                          Immb(imm));
+  const u32 v = vec_shl_immhb(16, imm);
+  return InstructionARM64(Base(0b0100111100000000010101, 22), Rn(src.id()), Rd(dst.id()),
+                          Immh(v >> 3), Immb(v & 0b111));
 }
 
 InstructionARM64 parallel_add_byte(Register dst, Register src0, Register src1) {
@@ -2842,51 +2932,54 @@ InstructionARM64 parallel_bitwise_and(Register dst, Register src0, Register src1
                           Rd(dst.id()));
 }
 
+// The pext family is x86's punpck: PUNPCKL/H interleave two vectors, and arm64's interleave is
+// ZIP1/ZIP2. these were UZP1/UZP2, which does the opposite. UZP *de*interleaves. it
+// showed up as a 4x4 matrix transpose coming back with its rows shuffled.
 InstructionARM64 pextub_swapped(Register dst, Register src0, Register src1) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/uzp2_advsimd.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/zip2_advsimd.html
   // - 16B
-  // UZP2 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-  return InstructionARM64(Base(0b0100111000000000010110, 22), Rn(src0.id()), Rm(src1.id()),
+  // ZIP2 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+  return InstructionARM64(Base(0b0100111000000000011110, 22), Rn(src0.id()), Rm(src1.id()),
                           Rd(dst.id()));
 }
 
 InstructionARM64 pextuh_swapped(Register dst, Register src0, Register src1) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/uzp2_advsimd.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/zip2_advsimd.html
   // - 8H
-  // UZP2 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-  return InstructionARM64(Base(0b0100111001000000010110, 22), Rn(src0.id()), Rm(src1.id()),
+  // ZIP2 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+  return InstructionARM64(Base(0b0100111001000000011110, 22), Rn(src0.id()), Rm(src1.id()),
                           Rd(dst.id()));
 }
 
 InstructionARM64 pextuw_swapped(Register dst, Register src0, Register src1) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/uzp2_advsimd.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/zip2_advsimd.html
   // - 4S
-  // UZP2 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-  return InstructionARM64(Base(0b0100111010000000010110, 22), Rn(src0.id()), Rm(src1.id()),
+  // ZIP2 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+  return InstructionARM64(Base(0b0100111010000000011110, 22), Rn(src0.id()), Rm(src1.id()),
                           Rd(dst.id()));
 }
 
 InstructionARM64 pextlb_swapped(Register dst, Register src0, Register src1) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/uzp1_advsimd.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/zip1_advsimd.html
   // - 16B
-  // UZP1 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-  return InstructionARM64(Base(0b0100111000000000000110, 22), Rn(src0.id()), Rm(src1.id()),
+  // ZIP1 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+  return InstructionARM64(Base(0b0100111000000000001110, 22), Rn(src0.id()), Rm(src1.id()),
                           Rd(dst.id()));
 }
 
 InstructionARM64 pextlh_swapped(Register dst, Register src0, Register src1) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/uzp1_advsimd.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/zip1_advsimd.html
   // - 8H
-  // UZP1 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-  return InstructionARM64(Base(0b0100111001000000000110, 22), Rn(src0.id()), Rm(src1.id()),
+  // ZIP1 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+  return InstructionARM64(Base(0b0100111001000000001110, 22), Rn(src0.id()), Rm(src1.id()),
                           Rd(dst.id()));
 }
 
 InstructionARM64 pextlw_swapped(Register dst, Register src0, Register src1) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/uzp1_advsimd.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/zip1_advsimd.html
   // - 4S
-  // UZP1 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
-  return InstructionARM64(Base(0b0100111010000000000110, 22), Rn(src0.id()), Rm(src1.id()),
+  // ZIP1 <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
+  return InstructionARM64(Base(0b0100111010000000001110, 22), Rn(src0.id()), Rm(src1.id()),
                           Rd(dst.id()));
 }
 
@@ -2990,15 +3083,28 @@ InstructionARM64 vpslldq(Register dst, Register src, u8 imm) {
 }
 
 InstructionARM64 vpshuflw(Register dst, Register src, u8 imm) {
-  // TBL and a mov
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
+  ASSERT(dst.is_128bit_simd(instr_set));
+  ASSERT(src.is_128bit_simd(instr_set));
+  // pshuflw shuffles the low four 16 bit lanes by two bits each and copies the high four
+  // through. Start from a whole copy, then rewrite the low four. v16 so dst may alias src.
+  std::vector<InstructionARM64> instrs = {mov_vf_vf(V16, src)};
+  for (u8 lane = 0; lane < 4; lane++) {
+    instrs.push_back(ins_vf_lane_h(V16, lane, src, (imm >> (lane * 2)) & 0b11));
+  }
+  instrs.push_back(mov_vf_vf(dst, V16));
+  return InstructionARM64(instrs);
 }
 
 InstructionARM64 vpshufhw(Register dst, Register src, u8 imm) {
-  // TBL and a mov
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
+  ASSERT(dst.is_128bit_simd(instr_set));
+  ASSERT(src.is_128bit_simd(instr_set));
+  // same as vpshuflw, but the high four lanes, selecting from the high four
+  std::vector<InstructionARM64> instrs = {mov_vf_vf(V16, src)};
+  for (u8 lane = 0; lane < 4; lane++) {
+    instrs.push_back(ins_vf_lane_h(V16, u8(4 + lane), src, u8(4 + ((imm >> (lane * 2)) & 0b11))));
+  }
+  instrs.push_back(mov_vf_vf(dst, V16));
+  return InstructionARM64(instrs);
 }
 
 InstructionARM64 vpackuswb(Register dst, Register src0, Register src1) {
