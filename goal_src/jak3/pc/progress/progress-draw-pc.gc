@@ -1224,7 +1224,8 @@
                     1.0
                     1.0
                     (static-rgba #x80 #x80 #x80 #x80)
-                    f30-0)
+                    f30-0
+                  )
                   (set-scale! font-ctx 0.6)
                   (set-color! font-ctx (font-color font-color-32))
                   (adjust-font-origin-y arg0 font-ctx 0.675)
@@ -1243,7 +1244,7 @@
                     0.65
                     (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
                     f30-0
-                    )
+                  )
                   (set! (-> font-ctx origin x) (adjust-x-if-needed (+ (- (+ -10.0 (-> s3-1 z)) (-> s3-1 x)) (-> s3-1 x))))
                   (string-format "~D%" (the int (-> s2-0 file arg2 completion-percentage)))
                   (print-game-text *temp-string* font-ctx #f 44 (bucket-id hud-draw-hud-alpha))
@@ -1255,7 +1256,7 @@
                     0.7
                     (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
                     f30-0
-                    )
+                  )
                   (adjust-font-origin-y arg0 font-ctx 0.83)
                   (set! (-> font-ctx origin x) (adjust-x-if-needed (+ (-> s3-1 x) (* 0.675 (- (-> s3-1 z) (-> s3-1 x))))))
                   (string-format "~D" (the int (-> s2-0 file arg2 skill-count)))
@@ -1268,8 +1269,8 @@
                     0.7
                     (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
                     f30-0
-                    )
-                  (set! (-> font-ctx origin x) (adjust-x-if-needed (+ (- (+ -10.0 (-> s3-1 z)) (-> s3-1 x)) (-> s3-1 x))))
+                  )
+                  (set! (-> font-ctx origin x) (adjust-x-if-needed (- (-> s3-1 z) 10.0)))
                   (string-format "~D" (the int (-> s2-0 file arg2 gem-count)))
                   (print-game-text *temp-string* font-ctx #f 44 (bucket-id hud-draw-hud-alpha))
                   (draw-icon-array!
@@ -1280,12 +1281,16 @@
                     0.5
                     (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
                     f30-0
-                    )
+                  )
                   (when (logtest? (-> s2-0 file arg2 secrets) 1)
                     (set-flags! font-ctx (font-flags kerning middle large))
-                    (set! (-> font-ctx origin x) (adjust-x-if-needed (+ (-> s3-1 x) (* 0.4 (- (-> s3-1 z) (-> s3-1 x))))))
-                    (set! (-> font-ctx origin y) (+ 8.0 (-> s3-1 y)))
                     (set-width! font-ctx (the int (* 0.6 (- (-> s3-1 z) (-> s3-1 x)))))
+                    (set! (-> font-ctx origin x) (+ (-> s3-1 x) (* 0.4 (- (-> s3-1 z) (-> s3-1 x)))))
+                    (when (not (-> *pc-settings* use-vis?))
+                      (set-width! font-ctx (the int (* (-> font-ctx width) (-> *pc-settings* aspect-ratio-reciprocal))))
+                      (set! (-> font-ctx origin x) (the float (adjust-game-x (-> font-ctx origin x))))
+                    )
+                    (set! (-> font-ctx origin y) (+ 8.0 (-> s3-1 y)))
                     (string-format "~S" (lookup-text! *common-text* (text-id progress-secrets-hero-mode) #f))
                     (print-game-text *temp-string* font-ctx #f 44 (bucket-id hud-draw-hud-alpha))
                   )
@@ -1313,7 +1318,7 @@
       )
     )
   (none)
-  )
+)
 
 (defmethod draw-option ((this menu-save-sub-menu-option) (arg0 progress) (font-ctx font-context) (arg2 int) (arg3 symbol))
   (let ((f30-0 (fmax 0.0 (* 2.0 (- 0.5 (-> arg0 menu-transition))))))
