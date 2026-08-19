@@ -196,7 +196,22 @@ Config make_config_via_json(nlohmann::json& json) {
   if (json.contains("scratchpad_types_file")) {
     auto scratchpad_types_json = read_json_file_from_config(json, "scratchpad_types_file");
     for (auto& kv : scratchpad_types_json.items()) {
-      config.scratchpad_types_by_object[kv.key()] = kv.value().get<std::string>();
+      ScratchpadTypeConfig scratchpad_config;
+      if (kv.value().is_string()) {
+        scratchpad_config.type_name = kv.value().get<std::string>();
+      } else {
+        scratchpad_config.type_name = kv.value().at("type").get<std::string>();
+        if (kv.value().contains("field_score_overrides")) {
+          for (const auto& score_json : kv.value().at("field_score_overrides")) {
+            ScratchpadTypeConfig::FieldScoreOverride score_override;
+            score_override.type_name = score_json.at("type").get<std::string>();
+            score_override.field_name = score_json.at("field").get<std::string>();
+            score_override.score = score_json.at("score").get<double>();
+            scratchpad_config.field_score_overrides.push_back(std::move(score_override));
+          }
+        }
+      }
+      config.scratchpad_types_by_object[kv.key()] = std::move(scratchpad_config);
     }
   }
 

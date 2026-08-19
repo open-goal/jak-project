@@ -318,7 +318,7 @@ TP_Type get_stack_type_at_constant_offset(int offset,
     rd_in.stride = 0;                               // not a strided access
     rd_in.offset = offset - var.hint.stack_offset;  // offset into this var
     rd_in.base_type = var.ref_type;                 // use ref type for ptr.
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
+    auto rd = env.reverse_field_lookup(rd_in);
     if (rd.success) {
       auto result = TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
       lg::print("Matched a stack variable! {}\n", result.print());
@@ -476,7 +476,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         rd_in.offset = arg1_type.get_integer_constant();
         rd_in.stride = 0;
         rd_in.base_type = arg0_type.typespec();
-        auto out = env.dts->ts.reverse_field_lookup(rd_in);
+        auto out = env.reverse_field_lookup(rd_in);
         if (out.success) {
           sum_type = coerce_to_reg_type(out.result_type);
         }
@@ -514,7 +514,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.offset = arg0_type.get_add_int_constant();
     rd_in.stride = arg0_type.get_mult_int_constant();
     rd_in.base_type = arg1_type.typespec();
-    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    auto out = env.reverse_field_lookup(rd_in);
     if (out.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
     }
@@ -524,7 +524,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.offset = arg1_type.get_add_int_constant();
     rd_in.stride = arg1_type.get_mult_int_constant();
     rd_in.base_type = arg0_type.typespec();
-    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    auto out = env.reverse_field_lookup(rd_in);
     if (out.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
     }
@@ -535,7 +535,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.offset = arg0_type.get_integer_constant();
     rd_in.stride = 1;
     rd_in.base_type = arg1_type.typespec();
-    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    auto out = env.reverse_field_lookup(rd_in);
     if (out.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
     }
@@ -577,7 +577,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = 0;
     rd_in.offset = m_args[1].get_int();
     rd_in.base_type = arg0_type.typespec();
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
+    auto rd = env.reverse_field_lookup(rd_in);
 
     if (rd.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
@@ -593,7 +593,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = arg1_type.get_multiplier();
     rd_in.offset = 0;
     rd_in.base_type = arg0_type.typespec();
-    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+    auto rd = env.reverse_field_multi_lookup(rd_in);
 
     for (int i = 0; i < (int)rd.results.size(); i++) {
       if (rd.results.at(i).has_variable_token()) {
@@ -611,7 +611,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = arg0_type.get_multiplier();
     rd_in.offset = 0;
     rd_in.base_type = arg1_type.typespec();
-    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+    auto rd = env.reverse_field_multi_lookup(rd_in);
 
     for (int i = 0; i < (int)rd.results.size(); i++) {
       if (rd.results.at(i).has_variable_token()) {
@@ -698,7 +698,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         rd_in.offset = arg0_type.get_integer_constant();
         rd_in.stride = 0;
         rd_in.base_type = arg1_type.typespec();
-        auto out = env.dts->ts.reverse_field_lookup(rd_in);
+        auto out = env.reverse_field_lookup(rd_in);
         if (out.success) {
           sum_type = coerce_to_reg_type(out.result_type);
         }
@@ -1100,7 +1100,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
       rd_in.stride = input_type.get_multiplier();
       rd_in.offset = ro.offset;
-      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
 
       if (rd.success) {
         //        load_path_set = true;
@@ -1145,7 +1145,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       rd_in.base_type = input_type.typespec();
       rd_in.stride = 0;
       rd_in.offset = ro.offset;
-      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
 
       if (rd.success) {
         if (rd_in.base_type.base_type() == "state" && rd.tokens.size() == 1 &&
@@ -1210,7 +1210,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       rd_in.deref = dk;
       rd_in.base_type = input_type.get_objects_typespec();
       rd_in.offset = ro.offset;
-      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
       if (rd.success) {
         return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
       }
@@ -1227,7 +1227,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       rd_in.base_type = input_type.get_objects_typespec();
       rd_in.stride = 0;
       rd_in.offset = input_type.get_integer_constant();
-      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
       if (rd.success) {
         return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
       }

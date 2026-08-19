@@ -28,6 +28,16 @@ struct StackTypeCast {
   std::string type_name;
 };
 
+struct ScratchpadTypeConfig {
+  std::string type_name;
+  struct FieldScoreOverride {
+    std::string type_name;
+    std::string field_name;
+    double score = 0;
+  };
+  std::vector<FieldScoreOverride> field_score_overrides;
+};
+
 struct LabelConfigInfo {
   // if the label is a "value" type, it will be loaded directly into a register.
   // in all cases, this is a constant, either a 64-bit integer or a float.
@@ -167,7 +177,7 @@ struct Config {
   std::unordered_map<std::string, std::unordered_map<std::string, LabelConfigInfo>> label_types;
   std::unordered_map<std::string, std::vector<StackStructureHint>>
       stack_structure_hints_by_function;
-  std::unordered_map<std::string, std::string> scratchpad_types_by_object;
+  std::unordered_map<std::string, ScratchpadTypeConfig> scratchpad_types_by_object;
   std::unordered_map<std::string, ObjectPatchInfo> object_patches;
 
   std::unordered_map<std::string, int> bad_format_strings;

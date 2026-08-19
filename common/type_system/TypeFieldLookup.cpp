@@ -272,6 +272,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
     next_input.stride = 0;
     next_input.offset = input.offset;  // includes the offset.
     next_input.base_type = di.result_type;
+    next_input.field_score_overrides = input.field_score_overrides;
     try_reverse_lookup(next_input, ts, &var_idx_node, output, max_count);
     return;
   }
@@ -318,6 +319,7 @@ void try_reverse_lookup_inline_array(const FieldReverseLookupInput& input,
   next_input.stride = input.stride;
   next_input.offset = offset_into_elt;
   next_input.base_type = di.result_type;
+  next_input.field_score_overrides = input.field_score_overrides;
   try_reverse_lookup(next_input, ts, &const_idx_node, output, max_count);
 }
 
@@ -368,6 +370,12 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
       token.kind = FieldReverseLookupOutput::Token::Kind::FIELD;
       token.name = field.name();
       token.field_score = field.field_score();
+      for (const auto& score_override : input.field_score_overrides) {
+        if (score_override.type_name == input.base_type.base_type() &&
+            score_override.field_name == field.name()) {
+          token.field_score += score_override.score;
+        }
+      }
 
       if (field_deref.needs_deref) {
         if (offset_into_field == 0) {
@@ -440,6 +448,7 @@ void try_reverse_lookup_other(const FieldReverseLookupInput& input,
         next_input.offset = offset_into_field - expected_offset_into_field;
         next_input.stride = input.stride;
         next_input.base_type = field_deref.type;
+        next_input.field_score_overrides = input.field_score_overrides;
         ReverseLookupNode node;
         node.prev = parent;
         node.token = token;

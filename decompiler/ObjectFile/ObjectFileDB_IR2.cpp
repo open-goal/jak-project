@@ -614,7 +614,13 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
 
         auto scratchpad_type = config.scratchpad_types_by_object.find(obj_name);
         if (scratchpad_type != config.scratchpad_types_by_object.end()) {
-          func.ir2.env.set_scratchpad_type(TypeSpec(scratchpad_type->second));
+          func.ir2.env.set_scratchpad_type(TypeSpec(scratchpad_type->second.type_name));
+          std::vector<FieldReverseLookupScoreOverride> score_overrides;
+          for (const auto& override_config : scratchpad_type->second.field_score_overrides) {
+            score_overrides.push_back(
+                {override_config.type_name, override_config.field_name, override_config.score});
+          }
+          func.ir2.env.set_reverse_lookup_field_score_overrides(std::move(score_overrides));
         }
 
         if (config.hacks.pair_functions_by_name.find(func_name) !=

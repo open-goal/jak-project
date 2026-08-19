@@ -76,7 +76,7 @@ FormElement* SetVarOp::get_as_form(FormPool& pool, const Env& env) const {
         rd_in.stride = 0;
         rd_in.offset = m_src.get_arg(1).get_int();
         rd_in.base_type = arg0_type.typespec();
-        auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+        auto rd = env.reverse_field_lookup(rd_in);
 
         if (rd.success) {
           auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
@@ -235,7 +235,7 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
       rd_in.base_type = input_type.typespec();
       rd_in.stride = 0;
       rd_in.offset = ro.offset;
-      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
 
       if (rd.success) {
         auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
@@ -251,7 +251,7 @@ FormElement* StoreOp::get_vf_store_as_form(FormPool& pool, const Env& env) const
       } else {
         // try again with no deref.
         rd_in.deref = {};
-        auto rd_no_deref = env.dts->ts.reverse_field_lookup(rd_in);
+        auto rd_no_deref = env.reverse_field_lookup(rd_in);
         if (rd_no_deref.success) {
           auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
               nullptr, SimpleAtom::make_var(ro.var).as_expr(), m_my_idx);
@@ -378,7 +378,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
         rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
         rd_in.stride = input_type.get_multiplier();
         rd_in.offset = ro.offset;
-        auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+        auto rd = env.reverse_field_lookup(rd_in);
 
         if (rd.success) {
           std::vector<DerefToken> tokens;
@@ -412,7 +412,7 @@ FormElement* StoreOp::get_as_form(FormPool& pool, const Env& env) const {
       rd_in.base_type = input_type.typespec();
       rd_in.stride = 0;
       rd_in.offset = ro.offset;
-      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
 
       if (rd.success) {
         auto source = pool.alloc_single_element_form<SimpleExpressionElement>(
@@ -626,7 +626,7 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
           rd_in.stride = 1;
         }
         rd_in.offset = ro.offset;
-        auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+        auto rd = env.reverse_field_lookup(rd_in);
 
         if (rd.success) {
           std::vector<DerefToken> tokens;
@@ -673,7 +673,7 @@ Form* LoadVarOp::get_load_src(FormPool& pool, const Env& env) const {
       rd_in.base_type = input_type.typespec();
       rd_in.stride = 0;
       rd_in.offset = ro.offset;
-      auto rd = env.dts->ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
 
       // todo, error here?
 

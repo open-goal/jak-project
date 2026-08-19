@@ -17,6 +17,17 @@
 
 namespace decompiler {
 
+FieldReverseLookupOutput Env::reverse_field_lookup(FieldReverseLookupInput input) const {
+  input.field_score_overrides = m_reverse_lookup_field_score_overrides;
+  return dts->ts.reverse_field_lookup(input);
+}
+
+FieldReverseMultiLookupOutput Env::reverse_field_multi_lookup(FieldReverseLookupInput input,
+                                                              int max_count) const {
+  input.field_score_overrides = m_reverse_lookup_field_score_overrides;
+  return dts->ts.reverse_field_multi_lookup(input, max_count);
+}
+
 constexpr const char* reg_names[] = {"a0-0", "a1-0", "a2-0", "a3-0",
                                      "t0-0", "t1-0", "t2-0", "t3-0"};
 

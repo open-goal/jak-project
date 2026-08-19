@@ -9,34 +9,23 @@
 
 ;; Both shapes are stored the same way: origin is one end of the centerline, axis is a unit
 ;; direction, length is the centerline length, and radius is the distance from the centerline. So the
-;; far end is origin + axis * length, and a capsule extends radius beyond each end while a flat
-;; cylinder does not.
+;; far end is origin + axis * length.
 ;;
 ;; The intersect methods take a finite probe: the segment from probe-origin to
 ;; probe-origin + probe-displacement. They return the fraction of that displacement at which the
-;; earliest contact happens, always between zero and one, or COLLISION_MISS. Compare a returned
-;; fraction against zero before using it, since COLLISION_MISS is a large negative number rather
-;; than a distinguished type.
-;;
-;; The debug-draw methods build one longitudinal outline, rotate it a sixteenth of a revolution at a
-;; time, and draw both the rotated copy and the segment joining it to the previous one. The rotation
-;; matrix has its translation row patched so it turns about the shape's own axis rather than the
-;; world origin, which is what lets the same matrix be reapplied sixteen times.
+;; earliest contact happens, always between zero and one, or COLLISION_MISS.
 
 ;; DECOMP BEGINS
 
 (defmethod ray-capsule-intersect ((this cylinder) (probe-origin vector) (probe-displacement vector))
   "Test the finite probe origin + fraction * displacement against the cylindrical wall and both
-   hemispherical ends. Return the earliest zero-to-one fraction, or COLLISION_MISS.
-   The wall test's axis-point output is computed into a stack vector and discarded, so this method
-   reports when the capsule is hit but not where."
+   hemispherical ends. Return the earliest zero-to-one fraction, or COLLISION_MISS."
   (let ((axis-point (new 'stack-no-clear 'vector))
         (end-center (new 'stack-no-clear 'vector)))
     0.0
     0.0
-    ;; Test the wall first, then keep either spherical-cap contact when it is earlier.
-    ;; A negative wall fraction means the wall was missed, so the first cap contact replaces it
-    ;; outright; after that the comparison is a genuine "is this one earlier".
+    
+    ;; test wall
     (let ((contact-fraction (ray-cylinder-intersect probe-origin
                                                     probe-displacement
                                                     (-> this origin)
@@ -44,13 +33,18 @@
                                                     (-> this radius)
                                                     (-> this length)
                                                     axis-point)))
+      ;; test near cap
       (let ((origin-cap-fraction (ray-sphere-intersect probe-origin probe-displacement (-> this origin) (-> this radius))))
         (if (and (>= origin-cap-fraction 0.0) (or (< contact-fraction 0.0) (< origin-cap-fraction contact-fraction)))
-          (set! contact-fraction origin-cap-fraction)))
+            (set! contact-fraction origin-cap-fraction)))
+      
+      ;; test far cap
       (vector+float*! end-center (-> this origin) (-> this axis) (-> this length))
       (let ((end-cap-fraction (ray-sphere-intersect probe-origin probe-displacement end-center (-> this radius))))
         (if (and (>= end-cap-fraction 0.0) (or (< contact-fraction 0.0) (< end-cap-fraction contact-fraction)))
-          (set! contact-fraction end-cap-fraction)))
+            (set! contact-fraction end-cap-fraction)))
+      
+      ;; return closest hit.
       contact-fraction)))
 
 ;; This is used to hold vertices for debug-drawing cylinders.
@@ -124,14 +118,11 @@
 (defun ray-arbitrary-circle-intersect ((probe-origin vector) (probe-displacement vector) (circle-origin vector) (circle-normal vector) (radius float))
   "Intersect the finite probe origin + fraction * displacement with the filled disk centered at
    circle-origin in circle-normal's plane. Return a zero-to-one fraction only when the plane contact
-   lies strictly inside radius; return COLLISION_MISS otherwise.
-   circle-normal need not be unit, since it appears in both halves of the ratio, but it must not be
-   perpendicular to probe-displacement: a displacement parallel to the plane divides by zero and the
-   resulting fraction is compared without any special case. A point exactly on the rim counts as a
-   miss, and the disk is two-sided."
+   lies strictly inside radius; return COLLISION_MISS otherwise."
   ;; The membership test squares both sides rather than taking a square root of the radial offset.
   (let* ((center-offset (vector-! (new 'stack-no-clear 'vector) circle-origin probe-origin))
-         (contact-fraction (/ (vector-dot center-offset circle-normal) (vector-dot probe-displacement circle-normal))))
+         (contact-fraction (/ (vector-dot center-offset circle-normal)
+                              (vector-dot probe-displacement circle-normal))))
     (cond
       ((or (< 1.0 contact-fraction) (< contact-fraction 0.0)) COLLISION_MISS)
       ((let ((radial-offset (new 'stack-no-clear 'vector)))
@@ -143,9 +134,7 @@
 
 (defmethod ray-flat-cyl-intersect ((this cylinder-flat) (probe-origin vector) (probe-displacement vector))
   "Test the finite probe origin + fraction * displacement against the cylindrical wall and both
-   filled end caps. Return the earliest zero-to-one fraction, or COLLISION_MISS.
-   Unlike ray-capsule-intersect this keeps a contact position in a stack vector, overwriting it with
-   the relevant cap center when a cap wins, but that vector is local and is discarded on return."
+   filled end caps. Return the earliest zero-to-one fraction, or COLLISION_MISS."
   (let ((axis-point (new 'stack-no-clear 'vector))
         (end-center (new 'stack-no-clear 'vector)))
     0.0
@@ -217,7 +206,9 @@
           (dotimes (vertex-index 10)
             (vector-matrix*! (-> rotated-vertices vert vertex-index) (-> vertices vert vertex-index) rotation-matrix)
             (camera-line (-> vertices vert vertex-index) (-> rotated-vertices vert vertex-index) color)
-            (if (nonzero? vertex-index) (camera-line (-> vertices vert vertex-index) (-> vertices vert (+ vertex-index -1)) color)))
-          (let ((swap vertices)) (set! vertices rotated-vertices) (set! rotated-vertices swap)))))
+            (if (nonzero? vertex-index)
+                (camera-line (-> vertices vert vertex-index) (-> vertices vert (+ vertex-index -1)) color)))
+          (let ((swap vertices))
+            (set! vertices rotated-vertices) (set! rotated-vertices swap)))))
     0
     (none)))

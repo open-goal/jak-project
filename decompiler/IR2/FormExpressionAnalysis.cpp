@@ -671,8 +671,6 @@ Form* cast_form_from(Form* in,
                      FormPool& pool,
                      const Env& env,
                      bool tc_pass = false) {
-  auto& ts = env.dts->ts;
-
   auto form_type = try_get_deref_form_type(in, env);
   if (form_type == new_type) {
     return in;
@@ -694,7 +692,7 @@ Form* cast_form_from(Form* in,
       suffix_lookup.offset = 0;
       suffix_lookup.stride = 0;
       suffix_lookup.base_type = new_type;
-      auto suffix_results = ts.reverse_field_multi_lookup(suffix_lookup);
+      auto suffix_results = env.reverse_field_multi_lookup(suffix_lookup);
       for (const auto& result : suffix_results.results) {
         if (!result.addr_of && result.result_type == *form_type &&
             deref_suffix_matches_lookup(deref->tokens(), keep, result)) {
@@ -717,7 +715,7 @@ Form* cast_form_from(Form* in,
   lookup_input.offset = 0;
   lookup_input.stride = 0;
   lookup_input.base_type = form_type.value_or(old_type);
-  auto lookup_result = ts.reverse_field_multi_lookup(lookup_input);
+  auto lookup_result = env.reverse_field_multi_lookup(lookup_input);
   if (lookup_result.success) {
     for (auto& result : lookup_result.results) {
       if (result.result_type == new_type) {
@@ -1337,7 +1335,7 @@ DerefElement* try_reassociate_inline_array_field_access(Form* field_access,
       lookup.stride = stride;
       lookup.offset = 0;
       lookup.base_type = *base_type;
-      auto reverse = env.dts->ts.reverse_field_multi_lookup(lookup);
+      auto reverse = env.reverse_field_multi_lookup(lookup);
       for (const auto& candidate : reverse.results) {
         if (candidate.has_variable_token()) {
           auto tokens = deref->tokens();
@@ -1360,7 +1358,7 @@ DerefElement* try_reassociate_inline_array_field_access(Form* field_access,
   lookup.stride = stride;
   lookup.offset = 0;
   lookup.base_type = *field_type;
-  auto reverse = env.dts->ts.reverse_field_multi_lookup(lookup);
+  auto reverse = env.reverse_field_multi_lookup(lookup);
   for (const auto& candidate : reverse.results) {
     if (!candidate.has_variable_token()) {
       continue;
@@ -1472,7 +1470,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.offset = arg0_type.get_integer_constant();
       input.stride = 1;
       input.base_type = arg1_type.typespec();
-      auto out = env.dts->ts.reverse_field_lookup(input);
+      auto out = env.reverse_field_lookup(input);
       if (out.success && out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
@@ -1509,7 +1507,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.offset = arg0_type.get_add_int_constant();
       input.stride = arg0_type.get_mult_int_constant();
       input.base_type = arg1_type.typespec();
-      auto out = env.dts->ts.reverse_field_lookup(input);
+      auto out = env.reverse_field_lookup(input);
       if (out.success && out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
@@ -1585,7 +1583,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       rd_in.stride = arg1_type.get_multiplier();
       rd_in.offset = 0;
       rd_in.base_type = arg0_type.typespec();
-      auto rd = env.dts->ts.reverse_field_multi_lookup(rd_in);
+      auto rd = env.reverse_field_multi_lookup(rd_in);
       int idx_of_success = -1;
       if (rd.success) {
         for (int i = 0; i < (int)rd.results.size(); i++) {
@@ -1637,7 +1635,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       rd_in.stride = arg0_type.get_multiplier();
       rd_in.offset = 0;
       rd_in.base_type = arg1_type.typespec();
-      auto rd = env.dts->ts.reverse_field_multi_lookup(rd_in);
+      auto rd = env.reverse_field_multi_lookup(rd_in);
       int idx_of_success = -1;
       if (rd.success) {
         for (int i = 0; i < (int)rd.results.size(); i++) {
@@ -1689,7 +1687,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.offset = arg0_type.get_integer_constant();
       input.stride = 0;
       input.base_type = arg1_type.typespec();
-      auto out = env.dts->ts.reverse_field_lookup(input);
+      auto out = env.reverse_field_lookup(input);
       if (out.success && !out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index

@@ -15,7 +15,7 @@
 
 (defun-recursive mem-usage-bsp-tree none ((header bsp-header) (node bsp-node) (mem-use memory-usage-block) (flags mem-usage-flags))
   "Recursively count the 32-byte internal nodes reachable from node in the BSP-node memory
-   category. Nonpositive terminal children are not followed; header and flags are unused."
+   category."
   (cond
     ((zero? node))
     (else
@@ -30,238 +30,173 @@
 (defmethod mem-usage ((this bsp-header) (mem-use memory-usage-block) (flags mem-usage-flags))
   "Account for this header's owned level data and delegate memory accounting to its drawable
    trees and cameras."
-  ;; start off by setting the current bsp
+  ;; seems unused?
   (set! (-> mem-use work-bsp) this)
   ;; this seems slightly wrong, we count the file-info toward array.
   (when (nonzero? (-> this info))
     (mem-usage-add! mem-use array 1 (asize-of (-> this info))))
   ;; measure the drawable trees.
-  (if (nonzero? (-> this drawable-trees)) (mem-usage (-> this drawable-trees) mem-use flags))
-  ;; add stuff
+  (if (nonzero? (-> this drawable-trees))
+      (mem-usage (-> this drawable-trees) mem-use flags))
+  ;; set some names for categories that don't use the normal macros
   (set! (-> mem-use length) (max 63 (-> mem-use length)))
   (set! (-> mem-use data 43 name) "entity")
   (set! (-> mem-use data 44 name) "camera")
   (set! (-> mem-use data 62 name) "pat")
   (set! (-> mem-use data 58 name) "bsp-node")
-  ;; add the bsp-header itself
   (mem-usage-add! mem-use bsp-main 1 400)
-  ;; add the visible list
   (mem-usage-add! mem-use bsp-leaf-vis-self 1 (-> this visible-list-length))
-  ;; add the unk-data-0
   (mem-usage-add! mem-use bsp-misc 1 (* (-> this texture-remap-table-len) 8))
-  ;; add the unk-data-1
   (mem-usage-add! mem-use bsp-misc 1 (* (-> this texture-page-count) 4))
-  ;; add unk-zero-0
   (when (nonzero? (-> this unk-zero-0))
     (mem-usage-add! mem-use bsp-misc 1 (asize-of (-> this unk-zero-0))))
-  ;; add adgifs
   (when (nonzero? (-> this adgifs))
     (mem-usage-add! mem-use bsp-misc 1 (asize-of (-> this adgifs))))
-  ;; add boxes
   (when (nonzero? (-> this boxes))
     (mem-usage-add! mem-use bsp-misc 1 (asize-of (-> this boxes)))
-    ;; add box indices
     (when (nonzero? (-> this split-box-indices))
       (mem-usage-add! mem-use bsp-misc 1 (* (-> this boxes length) 2))))
-  ;; add actor-birth-order
   (when (nonzero? (-> this actor-birth-order))
-    ;; add actors
     (mem-usage-add! mem-use bsp-misc 1 (* (-> this actors length) 4)))
-  ;; add pat
   (+! (-> mem-use data 62 count) (-> this pat-length))
   (let ((pat-bytes (* (-> this pat-length) 4)))
     (+! (-> mem-use data 62 used) pat-bytes)
     (+! (-> mem-use data 62 total) (logand -16 (+ pat-bytes 15))))
-  ;; add cameras
   (let ((cameras (-> this cameras)))
     (when (nonzero? cameras)
       (dotimes (i (-> cameras length))
         (mem-usage (-> cameras i) mem-use (logior flags (mem-usage-flags resource-camera))))))
-  ;; add the tree itself
-  (mem-usage-bsp-tree this (the-as bsp-node (-> this nodes)) mem-use flags)
+  ;; recursively add bsp tree nodes
+  (mem-usage-bsp-tree this (-> this nodes 0) mem-use flags)
   this)
 
 (defmethod login ((this bsp-header))
-  "Log in the level's drawable trees and every ADGIF shader."
+  "Log in the level's drawable trees and every ADGIF shader.
+   This method takes too long to run and level.gc's login state
+   machine splits the work over multiple frames."
   ;; login our drawables
-  (if (nonzero? (-> this drawable-trees)) (login (-> this drawable-trees)))
+  (if (nonzero? (-> this drawable-trees))
+      (login (-> this drawable-trees)))
   ;; login our shaders
   (when (nonzero? (-> this adgifs))
-    (let ((shaders (-> this adgifs))) (dotimes (i (-> shaders length)) (adgif-shader-login-no-remap (-> shaders data i)))))
+    (let ((shaders (-> this adgifs)))
+      (dotimes (i (-> shaders length))
+        (adgif-shader-login-no-remap (-> shaders data i)))))
   this)
 
 (define *test-shrub* 0) ;; unused.
 
+(defmacro setup-drawing-registers ()
+  "Set VU0 registers to hold camera constants used in background rendering code."
+  `(let ((math-cam *math-camera*))
+     (with-vf (vf16 vf17 vf18 vf19 vf20 vf21 vf22 vf23 vf24 vf25 vf26 vf27 vf28 vf29 vf30 vf31)
+       :rw 'write
+       (.lvf vf16 (&-> math-cam plane 0 quad))
+       (.lvf vf17 (&-> math-cam plane 1 quad))
+       (.lvf vf18 (&-> math-cam plane 2 quad))
+       (.lvf vf19 (&-> math-cam plane 3 quad))
+       (.lvf vf20 (&-> math-cam shrub-mat vector 0 quad))
+       (.lvf vf21 (&-> math-cam shrub-mat vector 1 quad))
+       (.lvf vf22 (&-> math-cam shrub-mat vector 2 quad))
+       (.lvf vf23 (&-> math-cam shrub-mat vector 3 quad))
+       (.lvf vf24 (&-> math-cam camera-rot vector 0 quad))
+       (.lvf vf25 (&-> math-cam camera-rot vector 1 quad))
+       (.lvf vf26 (&-> math-cam camera-rot vector 2 quad))
+       (.lvf vf27 (&-> math-cam camera-rot vector 3 quad))
+       (.lvf vf28 (&-> math-cam camera-temp vector 0 quad))
+       (.lvf vf29 (&-> math-cam camera-temp vector 1 quad))
+       (.lvf vf30 (&-> math-cam camera-temp vector 2 quad))
+       (.lvf vf31 (&-> math-cam camera-temp vector 3 quad)))))
+
 (defmethod draw ((this bsp-header) (other-draw bsp-header) (disp-frame display-frame))
   "Prepare scratchpad visibility, subdivision state, and math-camera VU registers; draw the
    level's drawable trees and three foreground engines for the current display frame."
-  (local-vars (inverted-quad uint128) (flipped-quad uint128) (zero-quad uint128))
-  (set! zero-quad (the-as uint128 0))
-  (let ((lev (-> this level)))
-    ;; set up some stuff in the scratchpad
-    (set! (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index) (-> lev index))
-    (set! (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) mood) (-> lev mood))
-    ;; update the subdivision settings
-    (if *artist-use-menu-subdiv*
-      (update-subdivide-settings! *subdivide-settings* *math-camera* 3)
-      (update-subdivide-settings! *subdivide-settings* *math-camera* (-> lev index)))
-    ;; at this point we are no longer adding textures, so we can mark the end of the
-    ;; textures with interrupts to get rendering VIF interrupts for profiling.
-    (add-irq-to-tex-buckets! lev)
-    ;; upload the visible list to the scratchpad.
-    ;; the final result of all visibility calculations is stored in vis-bits.
-    ;; this goes at the end of the scratchpad.
-    (let ((vis-list-qwc (/ (+ (-> this visible-list-length) 15) 16)))
-      (dma-send-to-spr-no-flush (scratchpad-object uint :offset VISIBLE_LIST_SCRATCHPAD)
-                                (the-as uint (-> lev vis-bits))
-                                (the-as uint vis-list-qwc)
-                                #f)))
-  ;; this is a race condition with the previous DMA transfer.
-  ;; probably the DMA wins though.
-  ;; this messes with the visibility bits to invert what was just uploaded
-  (when *artist-flip-visible*
-    (let ((vis-list-qwc2 (/ (+ (-> this visible-list-length) 15) 16))
-          (vis-list-spad (scratchpad-object (pointer uint128) :offset VISIBLE_LIST_SCRATCHPAD))
-          (vis-list-lev (the-as (pointer uint128) (-> this all-visible-list))))
-      ;; iterate through all qw's in the visible list.
-      (dotimes (current-qw vis-list-qwc2)
-        ;; invert the stuff in the spad list
-        (let ((scratch-quad (-> vis-list-spad current-qw)))
-          ;; note: this isn't great x86 code, but it's probably fine.
-          (.pnor inverted-quad scratch-quad zero-quad))
-        ;; and with the all visible list so we don't
-        ;; accidentally turn on the vis bit for something that
-        ;; doesn't exist.
-        (let ((all-visible-quad (-> vis-list-lev current-qw))) (.pand flipped-quad inverted-quad all-visible-quad))
-        (set! (-> vis-list-spad current-qw) flipped-quad))))
-  ;; set up the math camera registers
-  (let ((math-cam *math-camera*))
-    (with-vf (vf16 vf17 vf18 vf19 vf20 vf21 vf22 vf23 vf24 vf25 vf26 vf27 vf28 vf29 vf30 vf31)
-      :rw 'write
-      (.lvf vf16 (&-> math-cam plane 0 quad))
-      (.lvf vf17 (&-> math-cam plane 1 quad))
-      (.lvf vf18 (&-> math-cam plane 2 quad))
-      (.lvf vf19 (&-> math-cam plane 3 quad))
-      (.lvf vf20 (&-> math-cam shrub-mat vector 0 quad))
-      (.lvf vf21 (&-> math-cam shrub-mat vector 1 quad))
-      (.lvf vf22 (&-> math-cam shrub-mat vector 2 quad))
-      (.lvf vf23 (&-> math-cam shrub-mat vector 3 quad))
-      (.lvf vf24 (&-> math-cam camera-rot vector 0 quad))
-      (.lvf vf25 (&-> math-cam camera-rot vector 1 quad))
-      (.lvf vf26 (&-> math-cam camera-rot vector 2 quad))
-      (.lvf vf27 (&-> math-cam camera-rot vector 3 quad))
-      (.lvf vf28 (&-> math-cam camera-temp vector 0 quad))
-      (.lvf vf29 (&-> math-cam camera-temp vector 1 quad))
-      (.lvf vf30 (&-> math-cam camera-temp vector 2 quad))
-      (.lvf vf31 (&-> math-cam camera-temp vector 3 quad))))
-  ;; draw the drawables!
-  ;; start a profile bar.
-  (when (nonzero? (-> this drawable-trees))
-    (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
-    ;; draw!
-    (let ((trees (-> this drawable-trees))) (draw trees trees disp-frame))
-    ;; end a profile bar
-    (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #x80 :g #xc0 :a #x80))))
-  ;; run the foreground system (0 check added)
-  (when (nonzero? foreground-engine-execute)
+  (local-vars (inverted-quad uint128) (flipped-quad uint128))
+  (slet (spad terrain-context)
+    (let ((lev (-> this level)))
+      ;; cache level info in scratchpad
+      (set! (-> spad bsp lev-index) (-> lev index))
+      (set! (-> spad bsp mood) (-> lev mood))
+      
+      ;; update background rendering subdivision (level of detail) thresholds consumed by
+      ;; renderers. level "3" is set from the menu
+      (if *artist-use-menu-subdiv*
+          (update-subdivide-settings! *subdivide-settings* *math-camera* 3)
+          (update-subdivide-settings! *subdivide-settings* *math-camera* (-> lev index)))
+      
+      ;; set up interrupts on texture bucket completion
+      ;; texture upload DMA is already built, using info from the last frame.
+      (add-irq-to-tex-buckets! lev)
+      
+      ;; upload visibility list to scratchpad (no sync happens, this is a race)
+      (let ((vis-list-qwc (/ (+ (-> this visible-list-length) 15) 16)))
+        (dma-send-to-spr-no-flush (-> spad work background vis-list) (-> lev vis-bits) (the-as uint vis-list-qwc) #f)))
+    
+    ;; flip visibility bits. Note that not every bit in the string is used and we only toggle used bits.
+    (when *artist-flip-visible*
+      (let ((vis-list-qwc2 (/ (+ (-> this visible-list-length) 15) 16))
+            (vis-list-spad (the-as (pointer uint128) (-> spad work background vis-list)))
+            (vis-list-lev (the-as (pointer uint128) (-> this all-visible-list))))
+        (dotimes (current-qw vis-list-qwc2)
+          ;; invert all bits
+          (let ((scratch-quad (-> vis-list-spad current-qw)))
+            (.pnor inverted-quad scratch-quad 0))
+          ;; mask with all-visible list
+          (let ((all-visible-quad (-> vis-list-lev current-qw)))
+            (.pand flipped-quad inverted-quad all-visible-quad))
+          (set! (-> vis-list-spad current-qw) flipped-quad))))
+    
+    ;; set up VU0 registers prior to traversing drawable trees
+    (setup-drawing-registers)
+    
+    (when (nonzero? (-> this drawable-trees))
+      (add-profile-frame! #x40 0 #x40 #x80 'draw)
+      (let ((trees (-> this drawable-trees)))
+        ;; draw! This ends up doing relatively little, most trees defer their drawing,
+        ;; and this just does book-keeping on what needs drawing later.
+        (draw trees trees disp-frame))
+      (add-profile-frame! #x80 #xc0 0 #x80 'draw))
+    
+    ;; draw foreground geometry. The foreground engines store the process-drawables associated with
+    ;; this level.
     (let ((frame (current-frame)))
-      ;; 0
-      (foreground-engine-execute (-> this level foreground-draw-engine 0)
-                                 frame
-                                 (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-                                 0)
-      ;; 1
-      (foreground-engine-execute (-> this level foreground-draw-engine 1)
-                                 frame
-                                 (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-                                 1)
-      ;; 2
-      (foreground-engine-execute (-> this level foreground-draw-engine 2)
-                                 frame
-                                 (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index)
-                                 2)))
-  (none))
+      (foreground-engine-execute (-> this level foreground-draw-engine 0) frame (-> spad bsp lev-index) 0)
+      (foreground-engine-execute (-> this level foreground-draw-engine 1) frame (-> spad bsp lev-index) 1)
+      (foreground-engine-execute (-> this level foreground-draw-engine 2) frame (-> spad bsp lev-index) 2))
+    (none)))
 
 (defmethod debug-draw ((this bsp-header) (other-draw drawable) (disp-frame display-frame))
   "Prepare the level's scratchpad visibility and math-camera VU registers, then submit debug
    geometry from its drawable trees."
-  (let ((lev (-> this level)))
-    ;; set up some stuff in the scratchpad
-    (set! (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) lev-index) (-> lev index))
-    (set! (-> (scratchpad-object terrain-bsp :offset TERRAIN_BSP_SCRATCHPAD) mood) (-> lev mood))
-    (add-irq-to-tex-buckets! lev)
-    (let ((vis-list-qwc (/ (+ (-> this visible-list-length) 15) 16)))
-      (dma-send-to-spr-no-flush (scratchpad-object uint :offset VISIBLE_LIST_SCRATCHPAD)
-                                (the-as uint (-> lev vis-bits))
-                                (the-as uint vis-list-qwc)
-                                #f)))
-  (let ((math-cam *math-camera*))
-    (with-vf (vf16 vf17 vf18 vf19 vf20 vf21 vf22 vf23 vf24 vf25 vf26 vf27 vf28 vf29 vf30 vf31)
-      :rw 'write
-      (.lvf vf16 (&-> math-cam plane 0 quad))
-      (.lvf vf17 (&-> math-cam plane 1 quad))
-      (.lvf vf18 (&-> math-cam plane 2 quad))
-      (.lvf vf19 (&-> math-cam plane 3 quad))
-      (.lvf vf20 (&-> math-cam shrub-mat vector 0 quad))
-      (.lvf vf21 (&-> math-cam shrub-mat vector 1 quad))
-      (.lvf vf22 (&-> math-cam shrub-mat vector 2 quad))
-      (.lvf vf23 (&-> math-cam shrub-mat vector 3 quad))
-      (.lvf vf24 (&-> math-cam camera-rot vector 0 quad))
-      (.lvf vf25 (&-> math-cam camera-rot vector 1 quad))
-      (.lvf vf26 (&-> math-cam camera-rot vector 2 quad))
-      (.lvf vf27 (&-> math-cam camera-rot vector 3 quad))
-      (.lvf vf28 (&-> math-cam camera-temp vector 0 quad))
-      (.lvf vf29 (&-> math-cam camera-temp vector 1 quad))
-      (.lvf vf30 (&-> math-cam camera-temp vector 2 quad))
-      (.lvf vf31 (&-> math-cam camera-temp vector 3 quad))))
-  (when (nonzero? (-> this drawable-trees))
-    (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
-    (let ((trees (-> this drawable-trees))) (debug-draw trees trees disp-frame))
-    (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #x80 :g #xc0 :a #x80))))
-  (none))
+  (slet (spad terrain-context)
+    (let ((lev (-> this level)))
+      (set! (-> spad bsp lev-index) (-> lev index))
+      (set! (-> spad bsp mood) (-> lev mood))
+      (add-irq-to-tex-buckets! lev)
+      (let ((vis-list-qwc (/ (+ (-> this visible-list-length) 15) 16)))
+        (dma-send-to-spr-no-flush (-> spad work background vis-list) (-> lev vis-bits) (the-as uint vis-list-qwc) #f)))
+
+    (setup-drawing-registers)
+    
+    (when (nonzero? (-> this drawable-trees))
+      (add-profile-frame! #x40 0 #x40 #x80 'draw)
+      (let ((trees (-> this drawable-trees)))
+        (debug-draw trees trees disp-frame))
+      (add-profile-frame! #x80 #xc0 0 #x80 'draw))
+    (none)))
 
 (defmethod collect-stats ((this bsp-header))
   "Upload the current visibility bits and math-camera VU registers, then collect renderer
    statistics from the level's drawable trees."
-  (let ((lev (-> this level))
-        (vis-list-qwc (/ (+ (-> this visible-list-length) 15) 16)))
-    (dma-send-to-spr-no-flush (scratchpad-object uint :offset VISIBLE_LIST_SCRATCHPAD)
-                              (the-as uint (-> lev vis-bits))
-                              (the-as uint vis-list-qwc)
-                              #f))
-  (let ((math-cam *math-camera*))
-    (with-vf (vf16 vf17 vf18 vf19 vf20 vf21 vf22 vf23 vf24 vf25 vf26 vf27 vf28 vf29 vf30 vf31)
-      :rw 'write
-      (.lvf vf16 (&-> math-cam plane 0 quad))
-      (.lvf vf17 (&-> math-cam plane 1 quad))
-      (.lvf vf18 (&-> math-cam plane 2 quad))
-      (.lvf vf19 (&-> math-cam plane 3 quad))
-      (.lvf vf20 (&-> math-cam shrub-mat vector 0 quad))
-      (.lvf vf21 (&-> math-cam shrub-mat vector 1 quad))
-      (.lvf vf22 (&-> math-cam shrub-mat vector 2 quad))
-      (.lvf vf23 (&-> math-cam shrub-mat vector 3 quad))
-      (.lvf vf24 (&-> math-cam camera-rot vector 0 quad))
-      (.lvf vf25 (&-> math-cam camera-rot vector 1 quad))
-      (.lvf vf26 (&-> math-cam camera-rot vector 2 quad))
-      (.lvf vf27 (&-> math-cam camera-rot vector 3 quad))
-      (.lvf vf28 (&-> math-cam camera-temp vector 0 quad))
-      (.lvf vf29 (&-> math-cam camera-temp vector 1 quad))
-      (.lvf vf30 (&-> math-cam camera-temp vector 2 quad))
-      (.lvf vf31 (&-> math-cam camera-temp vector 3 quad))))
-  (if (nonzero? (-> this drawable-trees)) (collect-stats (-> this drawable-trees)))
-  (none))
+  (slet (spad terrain-context)
+    (let ((lev (-> this level))
+          (vis-list-qwc (/ (+ (-> this visible-list-length) 15) 16)))
+      (dma-send-to-spr-no-flush (-> spad work background vis-list) (-> lev vis-bits) (the-as uint vis-list-qwc) #f))
+    (setup-drawing-registers)
+    (if (nonzero? (-> this drawable-trees))
+        (collect-stats (-> this drawable-trees)))
+    (none)))
+
 
 (#unless PC_PORT
   (defun bsp-camera-asm ((header bsp-header) (camera-position vector))
@@ -302,36 +237,24 @@
       (m result r0)
       (jr ra :delay (add sp sp r0)))))
 
-(#when PC_PORT
-  (defun bsp-camera-asm ((header bsp-header) (camera-position vector))
-    "Traverse the BSP for camera-position. At each split, select front when
-     dot(camera-position, plane.xyz) - plane.w is nonnegative. Store the terminal leaf index and
-     that side's packed neighboring-level flags in header."
-    (local-vars (plane-side int) (node bsp-node))
-    (rlet ((vf1 :class vf)
-           (vf2 :class vf))
-      (nop!)
-      (let ((next-node (the-as bsp-node (-> header nodes))))
-        (.lvf vf1 (&-> camera-position quad))
-        (label cfg-1)
-        (b! (< (the-as int next-node) 0) cfg-4 :delay (set! node next-node))
-        (.lvf vf2 (&-> node plane quad))
-        (.mul.vf.xyz vf2 vf2 vf1)
-        (.add.x.vf.y vf2 vf2 vf2)
-        (.add.z.vf.y vf2 vf2 vf2)
-        (.sub.w.vf.y vf2 vf2 vf2)
-        ;; The integer sign test reads the y lane's sign after the VU-to-EE transfer.
-        (.mov plane-side vf2)
-        (let ((side-flags (-> node front-flags)))
-          (b! (>= plane-side 0) cfg-1 :delay (set! next-node (the-as bsp-node (-> node front))))
-          (set! side-flags (-> node back-flags))
-          (b! #t cfg-1 :delay (set! next-node (the-as bsp-node (-> node back))))
-          (label cfg-4)
-          (set! (-> header current-leaf-idx) (the-as uint next-node))
-          (set! (-> header current-bsp-flags) side-flags)
-          ))
-      0
-      (none))))
+(defun bsp-camera-asm ((bsp bsp-header) (pos vector))
+  "Look up the leaf node containing pos and store its index in flags in the bsp-header"
+  (let ((iter (-> bsp nodes 0))
+        (flags (the uint 0)))
+    (while (>= (the int iter) 0)
+      ;; do front/back test
+      (let ((plane-test (- (vector-dot pos (-> iter plane)) (-> iter plane w))))
+        (cond 
+          ((>= plane-test 0.0)
+           (set! flags (-> iter front-flags))
+           (set! iter (the bsp-node (-> iter front))))
+          (else
+            (set! flags (-> iter back-flags))
+            (set! iter (the bsp-node (-> iter back)))))))
+    ;; update header - lower 16-bits of the final front/back value
+    (set! (-> bsp current-leaf-idx) (the uint iter))
+    (set! (-> bsp current-bsp-flags) flags))
+  (none))
 
 ;;;;;;;;;;;;;;;
 ;; Collision
@@ -356,10 +279,12 @@
   (none))
 
 (defmethod collide-ray ((this bsp-header) (length int) (result collide-list))
-  "Forward the active swept-sphere ray query to every drawable tree and append their geometry to
-   result. length is passed through for child implementations that use it."
+  "Forward the active swept-sphere ray query to every drawable tree and append their geometry
+   to result. length is passed through for child implementations that use it."
   (+! (-> *collide-stats* calls) 1)
-  (let ((trees (-> this drawable-trees))) (dotimes (i (-> trees length)) (collide-ray (-> trees trees i) length result)))
+  (let ((trees (-> this drawable-trees)))
+    (dotimes (i (-> trees length))
+      (collide-ray (-> trees trees i) length result)))
   (none))
 
 (defmethod collect-ambients ((this bsp-header) (query-sphere sphere) (length int) (result ambient-list))
@@ -400,10 +325,7 @@
   "Print the frame's collision counts, per-call averages, and target timing breakdown, then clear
    the counters and restart all three collision stopwatches."
   ;; for some unknown reason, we profile this.
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-               'draw
-               (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
+  (add-profile-frame! #x40 0 #x40 #x80 'draw)
   (format *stdcon* "~0k  frags       tris      output~%")
   (print-cl-stat (-> *collide-stats* other) "other")
   (format *stdcon* "~0k---------------------------------------------------------------~%")
@@ -431,43 +353,77 @@
   (stopwatch-init (-> *collide-stats* total-target))
   (stopwatch-init (-> *collide-stats* target-cache-fill))
   (stopwatch-init (-> *collide-stats* target-ray-poly))
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0) 'draw (new 'static 'rgba :b #xff :a #x80)))
+  (add-profile-frame! 0 0 #xff #x80 'draw)
   0
   (none))
 
 (defun level-remap-texture ((tex-id texture-id))
-  "Binary-search the active level's sorted texture-remap table using the texture ID's upper 24
-   bits. Return the original ID when no level BSP or matching entry exists; otherwise return the
-   entry's remapped ID with the canonical #x14 low-byte tag."
-  (let ((bsp-hdr (-> *level* log-in-level-bsp)))
-    (when bsp-hdr
-      (let* ((table-size (-> bsp-hdr texture-remap-table-len)) ;; in 64-bit entries
-             (search-start (-> bsp-hdr texture-remap-table))
-             (table-start search-start)
-             (entry-align-mask (the-as uint #xfffffff8)) ;; mask for table entry addresses
-             (lookup-id (logand (the-as uint #xffffff00) tex-id)) ;; bits of tex-id we care about
-             (search-end (&+ table-start (* table-size 8))))
-        ;; top of binary search
-        (label cfg-2)
-        ;; if we didn't find anything, quit
-        (b! (= search-start search-end) cfg-8)
-        ;; find the middle entry.
-        (let ((midpoint (logand (/ (+ (the-as int search-start) (the-as int search-end)) 2) entry-align-mask)))
-          ;; how did we do?
-          (let ((diff (- (-> (the-as (pointer int32) midpoint) 0) (the-as int lookup-id))))
-            (b! (zero? diff) cfg-7)
-            (b! (< diff 0) cfg-6 :delay (nop!)))
-          ;; in the lower section
-          (b! #t cfg-2 :delay (set! search-end (the-as (pointer uint64) midpoint)))
-          ;; in the upper section (not including the midpoint)
-          (label cfg-6)
-          (b! #t cfg-2 :delay (set! search-start (the-as (pointer uint64) (+ (the-as int midpoint) 8))))
-          ;; exact match
-          (label cfg-7)
-          ;; The key ignores the low byte. The matched value has that byte clear, so restore the
-          ;; canonical #x14 tag used by in-game texture IDs.
-          (set! tex-id (the-as texture-id (logior (-> (the-as (pointer int32) midpoint) 1) 20)))))
-      (label cfg-8)
-      0))
-  (the-as texture-id tex-id))
+  "Remap an actor texture ID to its combined level texture-page ID."
+  ;; actor art data references textures in a per-actor texture page.
+  ;; levels contain a larger texture page merging all the per-actor pages and this function
+  ;; remaps from the per-actor texture page to the big level page.
+  
+  ;; simplified GOAL version
+  (let ((bsp (-> *level* log-in-level-bsp)))
+    (when bsp
+      (let ((table (the-as (pointer texture-id) (-> bsp texture-remap-table)))
+            (lookup-id (the texture-id (logand tex-id #xffffff00)))
+            (begin 0)
+            (end (-> bsp texture-remap-table-len)))
+        (while (< begin end)
+          (let* ((midpoint (/ (+ begin end) 2))
+                 (entry-index (* midpoint 2))
+                 (source-id (-> table entry-index)))
+            (cond
+              ((< source-id lookup-id)
+               (set! begin (+ midpoint 1)))
+              ((> source-id lookup-id)
+               (set! end midpoint))
+              (else
+               (let ((remapped-id (-> table (+ entry-index 1))))
+                 ;; restore 0x14 here: low bytes of texture-id are part of A+D
+                 ;; format data, this 0x14 specifies TEX1_1 register.
+                 (return (the texture-id (logior remapped-id #x14)))))))))))
+    tex-id)
+
+(#unless PC_PORT
+  (defun level-remap-texture ((tex-id texture-id))
+    "Binary-search the active level's sorted texture-remap table using the texture ID's upper 24
+     bits. Return the original ID when no level BSP or matching entry exists; otherwise return the
+     entry's remapped ID with the canonical #x14 low-byte tag."
+     
+    ;; actor art data references textures in a per-actor texture page.
+    ;; levels contain a larger texture page merging all the per-actor pages and this function
+    ;; remaps from the per-actor texture page to the big level page.
+    (let ((bsp-hdr (-> *level* log-in-level-bsp)))
+      (when bsp-hdr
+        (let* ((table-size (-> bsp-hdr texture-remap-table-len)) ;; in 64-bit entries
+               (search-start (-> bsp-hdr texture-remap-table))
+               (table-start search-start)
+               (entry-align-mask (the-as uint #xfffffff8)) ;; mask for table entry addresses
+               (lookup-id (logand (the-as uint #xffffff00) tex-id)) ;; bits of tex-id we care about
+               (search-end (&+ table-start (* table-size 8))))
+          ;; top of binary search
+          (label cfg-2)
+          ;; if we didn't find anything, quit
+          (b! (= search-start search-end) cfg-8)
+          ;; find the middle entry.
+          (let ((midpoint (logand (/ (+ (the-as int search-start) (the-as int search-end)) 2) entry-align-mask)))
+            ;; how did we do?
+            (let ((diff (- (-> (the-as (pointer int32) midpoint) 0) (the-as int lookup-id))))
+              (b! (zero? diff) cfg-7)
+              (b! (< diff 0) cfg-6 :delay (nop!)))
+            ;; in the lower section
+            (b! #t cfg-2 :delay (set! search-end (the-as (pointer uint64) midpoint)))
+            ;; in the upper section (not including the midpoint)
+            (label cfg-6)
+            (b! #t cfg-2 :delay (set! search-start (the-as (pointer uint64) (+ (the-as int midpoint) 8))))
+            ;; exact match
+            (label cfg-7)
+            ;; The key ignores the low byte. The matched value has that byte clear, so restore the
+            ;; canonical #x14 tag used by in-game texture IDs.
+            (set! tex-id (the-as texture-id (logior (-> (the-as (pointer int32) midpoint) 1) 20)))))
+        (label cfg-8)
+        0))
+    (the-as texture-id tex-id)))
+

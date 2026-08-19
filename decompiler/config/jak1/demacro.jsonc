@@ -155,6 +155,26 @@
       {"count": "14", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10) :regs11 (gif-reg-id $reg11) :regs12 (gif-reg-id $reg12) :regs13 (gif-reg-id $reg13)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10 $reg11 $reg12 $reg13"},
       {"count": "15", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10) :regs11 (gif-reg-id $reg11) :regs12 (gif-reg-id $reg12) :regs13 (gif-reg-id $reg13) :regs14 (gif-reg-id $reg14)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10 $reg11 $reg12 $reg13 $reg14"},
       {"count": "16", "fields": ":regs0 (gif-reg-id $reg0) :regs1 (gif-reg-id $reg1) :regs2 (gif-reg-id $reg2) :regs3 (gif-reg-id $reg3) :regs4 (gif-reg-id $reg4) :regs5 (gif-reg-id $reg5) :regs6 (gif-reg-id $reg6) :regs7 (gif-reg-id $reg7) :regs8 (gif-reg-id $reg8) :regs9 (gif-reg-id $reg9) :regs10 (gif-reg-id $reg10) :regs11 (gif-reg-id $reg11) :regs12 (gif-reg-id $reg12) :regs13 (gif-reg-id $reg13) :regs14 (gif-reg-id $reg14) :regs15 (gif-reg-id $reg15)", "regs": "$reg0 $reg1 $reg2 $reg3 $reg4 $reg5 $reg6 $reg7 $reg8 $reg9 $reg10 $reg11 $reg12 $reg13 $reg14 $reg15"}
+    ],
+    // A static rgba constructor omits fields whose component is zero. Recover the source macro
+    // for every possible subset while supplying the omitted zeroes explicitly.
+    "static-rgba": [
+      {"mask": "0000", "fields": "", "r": "0", "g": "0", "b": "0", "a": "0"},
+      {"mask": "1000", "fields": ":r $r", "r": "$r", "g": "0", "b": "0", "a": "0"},
+      {"mask": "0100", "fields": ":g $g", "r": "0", "g": "$g", "b": "0", "a": "0"},
+      {"mask": "0010", "fields": ":b $b", "r": "0", "g": "0", "b": "$b", "a": "0"},
+      {"mask": "0001", "fields": ":a $a", "r": "0", "g": "0", "b": "0", "a": "$a"},
+      {"mask": "1100", "fields": ":r $r :g $g", "r": "$r", "g": "$g", "b": "0", "a": "0"},
+      {"mask": "1010", "fields": ":r $r :b $b", "r": "$r", "g": "0", "b": "$b", "a": "0"},
+      {"mask": "1001", "fields": ":r $r :a $a", "r": "$r", "g": "0", "b": "0", "a": "$a"},
+      {"mask": "0110", "fields": ":g $g :b $b", "r": "0", "g": "$g", "b": "$b", "a": "0"},
+      {"mask": "0101", "fields": ":g $g :a $a", "r": "0", "g": "$g", "b": "0", "a": "$a"},
+      {"mask": "0011", "fields": ":b $b :a $a", "r": "0", "g": "0", "b": "$b", "a": "$a"},
+      {"mask": "1110", "fields": ":r $r :g $g :b $b", "r": "$r", "g": "$g", "b": "$b", "a": "0"},
+      {"mask": "1101", "fields": ":r $r :g $g :a $a", "r": "$r", "g": "$g", "b": "0", "a": "$a"},
+      {"mask": "1011", "fields": ":r $r :b $b :a $a", "r": "$r", "g": "0", "b": "$b", "a": "$a"},
+      {"mask": "0111", "fields": ":g $g :b $b :a $a", "r": "0", "g": "$g", "b": "$b", "a": "$a"},
+      {"mask": "1111", "fields": ":r $r :g $g :b $b :a $a", "r": "$r", "g": "$g", "b": "$b", "a": "$a"}
     ]
   },
   "rules": [
@@ -495,6 +515,17 @@
       "for_each": "gs-reg-list",
       "match": "(new 'static 'gif-tag-regs {{fields}})",
       "rewrite": "(gs-reg-list {{regs}})"
+    },
+    {
+      "name": "static-rgba-{{mask}}",
+      "for_each": "static-rgba",
+      "match": "(new 'static 'rgba {{fields}})",
+      "rewrite": "(static-rgba {{r}} {{g}} {{b}} {{a}})"
+    },
+    {
+      "name": "add-profile-frame",
+      "match": "(if *debug-segment* (add-frame (-> (current-frame) profile-bar 0) $name (static-rgba $r $g $b $a)))",
+      "rewrite": "(add-profile-frame! $r $g $b $a $name)"
     },
     {
       "name": "scratchpad-object-direct-{{type}}",

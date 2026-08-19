@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "common/goos/Object.h"
+#include "common/type_system/TypeSystem.h"
 #include "common/util/Assert.h"
 
 #include "decompiler/Disasm/Register.h"
@@ -187,6 +188,13 @@ class Env {
 
   void set_scratchpad_type(const TypeSpec& type) { m_scratchpad_type = type; }
   const std::optional<TypeSpec>& scratchpad_type() const { return m_scratchpad_type; }
+  void set_reverse_lookup_field_score_overrides(
+      std::vector<FieldReverseLookupScoreOverride> overrides) {
+    m_reverse_lookup_field_score_overrides = std::move(overrides);
+  }
+  FieldReverseLookupOutput reverse_field_lookup(FieldReverseLookupInput input) const;
+  FieldReverseMultiLookupOutput reverse_field_multi_lookup(FieldReverseLookupInput input,
+                                                           int max_count = 100) const;
   void note_scratchpad_access() const { m_uses_scratchpad = true; }
   bool uses_scratchpad() const { return m_uses_scratchpad; }
 
@@ -288,6 +296,7 @@ class Env {
   std::unordered_map<int, std::vector<RegisterTypeCast>> m_typecasts;
   std::unordered_map<int, StackTypeCast> m_stack_typecasts;
   std::optional<TypeSpec> m_scratchpad_type;
+  std::vector<FieldReverseLookupScoreOverride> m_reverse_lookup_field_score_overrides;
   mutable bool m_uses_scratchpad = false;
   std::vector<StackStructureEntry> m_stack_structures;
   std::unordered_map<std::string, std::string> m_var_remap;
