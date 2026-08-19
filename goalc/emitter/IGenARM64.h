@@ -641,24 +641,6 @@ InstructionARM64 nop_vf();
 
 InstructionARM64 wait_vf();
 
-/*!
- * MOV <Vd>.S[dst_lane], <Vn>.S[src_lane]. copies one 32 bit lane and leaves the rest of Vd alone.
- * arm64 has no lane mask blend and no shuffle by immediate, so the ops that need one build
- * the result a lane at a time out of these.
- */
-InstructionARM64 ins_vf_lane(Register dst, u8 dst_lane, Register src, u8 src_lane);
-
-/*!
- * MOV <Vd>.H[dst_lane], <Vn>.H[src_lane]. the 16 bit version of ins_vf_lane.
- */
-InstructionARM64 ins_vf_lane_h(Register dst, u8 dst_lane, Register src, u8 src_lane);
-
-/*!
- * Broadcast one 32-bit lane of src to all four lanes of dst.
- * DUP <Vd>.4S, <Vn>.S[lane]
- */
-InstructionARM64 dup_vf_lane(Register dst, Register src, u8 lane);
-
 InstructionARM64 mov_vf_vf(Register dst, Register src);
 
 InstructionARM64 loadvf_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);

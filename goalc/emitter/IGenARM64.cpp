@@ -2482,6 +2482,9 @@ InstructionARM64 wait_vf() {
   return nop();
 }
 
+// arm64-only helpers for the blend/swizzle/splat encoders below. not part of the
+// instruction API, so they stay in this file.
+namespace {
 /*!
  * MOV <Vd>.S[dst_lane], <Vn>.S[src_lane]. copies one 32 bit lane and leaves the rest of Vd alone.
  */
@@ -2518,6 +2521,7 @@ InstructionARM64 dup_vf_lane(Register dst, Register src, u8 lane) {
   return InstructionARM64(Base(0b01001110000000000000010000000000, 32),
                           Imm5(u32(lane << 3) | 0b100), Rn(src.id()), Rd(dst.id()));
 }
+}  // namespace
 
 InstructionARM64 mov_vf_vf(Register dst, Register src) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/mov_orr_advsimd_reg.html
