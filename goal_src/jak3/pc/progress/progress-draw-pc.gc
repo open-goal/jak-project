@@ -2345,6 +2345,42 @@
   (none)
 )
 
+(defmethod draw-option ((this menu-already-exists-option) (arg0 progress) (font-ctx font-context) (arg2 int) (arg3 symbol))
+  (set! (-> font-ctx alpha) (- 1.0 (-> arg0 menu-transition)))
+  (set! (-> font-ctx color) (font-color font-color-32))
+  (set-scale! font-ctx 0.5)
+  (set! (-> font-ctx flags) (font-flags kerning middle middle-vert large))
+  (set! (-> font-ctx origin x) 80.0)
+  (set! (-> font-ctx origin y) 120.0)
+  (set-width! font-ctx 360)
+  (set-height! font-ctx 85)
+  (when (not (-> *pc-settings* use-vis?))
+    (set! (-> font-ctx origin x) (the float (adjust-game-x (-> font-ctx origin x))))
+    (set-width! font-ctx (the int (* (-> font-ctx width) (-> *pc-settings* aspect-ratio-reciprocal))))
+  )
+  (print-game-text
+    (lookup-text! *common-text* (text-id progress-memcard-overwrite-warning) #f)
+    font-ctx
+    #f
+    44
+    (bucket-id hud-draw-hud-alpha)
+    )
+  (+! (-> font-ctx origin y) 105.0)
+  (set-height! font-ctx 45)
+  (print-game-text
+    (lookup-text! *common-text* (text-id progress-memcard-overwrite-confirm?) #f)
+    font-ctx
+    #f
+    44
+    (bucket-id hud-draw-hud-alpha)
+    )
+  (+! (-> font-ctx origin y) 45.0)
+  (draw-highlight-bar arg0 font-ctx (the int (+ 8.0 (-> font-ctx origin y))) 24 (-> font-ctx alpha))
+  (draw-yes-no-style-footer arg0 font-ctx (text-id progress-yes) (text-id progress-no))
+  0
+  (none)
+)
+
 ; (defun draw-highlight-music-player ((x int) (y int) (w int) (h int) (alpha float))
 ;   "draw the highlight for a number in the music player screen"
 ;   (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
