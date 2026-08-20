@@ -5,6 +5,10 @@
 
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 
+#ifdef __aarch64__
+#include <arm_neon.h>
+#endif
+
 SkyBlendCPU::SkyBlendCPU() {
   for (int i = 0; i < 2; i++) {
     glGenTextures(1, &m_textures[i].gl);
@@ -21,8 +25,26 @@ SkyBlendCPU::~SkyBlendCPU() {
   }
 }
 
+/*!
+ * out[i] = saturate_u8((in[i] * intensity) >> 7)
+ */
 void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-#ifndef __arm64__
+#ifdef __aarch64__
+  // widen u8 to u16, multiply, shift, then narrow with saturation. 255*255 fits in a u16 so
+  // the multiply can't overflow, and vqmovn_u16 clamps at 255 like packus does.
+  const uint16x8_t intensity_vec = vdupq_n_u16(intensity);
+  u32 i = 0;
+  for (; i + 16 <= size; i += 16) {
+    const uint8x16_t tex = vld1q_u8(in + i);
+    const uint16x8_t lo = vshrq_n_u16(vmulq_u16(vmovl_u8(vget_low_u8(tex)), intensity_vec), 7);
+    const uint16x8_t hi = vshrq_n_u16(vmulq_u16(vmovl_u8(vget_high_u8(tex)), intensity_vec), 7);
+    vst1q_u8(out + i, vcombine_u8(vqmovn_u16(lo), vqmovn_u16(hi)));
+  }
+  for (; i < size; i++) {
+    const u32 v = ((u32)in[i] * intensity) >> 7;
+    out[i] = v > 255 ? 255 : (u8)v;
+  }
+#else
   if (get_cpu_info().has_avx2) {
 #ifdef __AVX2__
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
@@ -52,8 +74,29 @@ void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
 #endif
 }
 
+/*!
+ * out[i] = saturating_add_u8(out[i], saturate_u8((in[i] * intensity) >> 7))
+ */
 void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-#ifndef __arm64__
+#ifdef __aarch64__
+  const uint16x8_t intensity_vec = vdupq_n_u16(intensity);
+  u32 i = 0;
+  for (; i + 16 <= size; i += 16) {
+    const uint8x16_t tex = vld1q_u8(in + i);
+    const uint8x16_t cur = vld1q_u8(out + i);
+    const uint16x8_t lo = vshrq_n_u16(vmulq_u16(vmovl_u8(vget_low_u8(tex)), intensity_vec), 7);
+    const uint16x8_t hi = vshrq_n_u16(vmulq_u16(vmovl_u8(vget_high_u8(tex)), intensity_vec), 7);
+    // vqmovn_u16 clamps at 255, so it covers both the min and the packus the x86 path does
+    vst1q_u8(out + i, vqaddq_u8(cur, vcombine_u8(vqmovn_u16(lo), vqmovn_u16(hi))));
+  }
+  for (; i < size; i++) {
+    u32 v = ((u32)in[i] * intensity) >> 7;
+    if (v > 255)
+      v = 255;
+    const u32 sum = out[i] + v;
+    out[i] = sum > 255 ? 255 : (u8)sum;
+  }
+#else
   if (get_cpu_info().has_avx2) {
 #ifdef __AVX2__
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
