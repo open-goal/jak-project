@@ -93,8 +93,7 @@
   (none))
 
 (defun add-to-sprite-aux-list ((system sparticle-system) (cpuinfo sparticle-cpuinfo) (sprite-data sprite-vec-data-3d))
-  "Record a particle's four-byte 2D warp-sprite reference in the auxiliary list when space remains,
-   then clear the submitted 3D sprite's alpha. This is a sparticle callback."
+  "Sparticle callback to add a sprite to the aux-list."
   (let ((aux-list *sprite-aux-list*))
     (when (< (-> aux-list entry) (-> aux-list num-entries))
       (set! (-> aux-list data (-> aux-list entry)) (-> cpuinfo sprite))
@@ -135,14 +134,11 @@
    (fog-max            float :overlay-at (-> fog-clamp y))
    (max-scale          float :overlay-at (-> fog-clamp z))))
 
-;; Sprite VU1 memory map. Nothing here is a bare number twice: the input buffer is described by the
-;; per-chunk packet layout and the constants by sprite-frame-data, whose field order is its upload
-;; order, so both ends of the DMA name the same thing.
-;;
+;; Sprite VU1 memory map.
 ;;     0         chunk header: the sprite count for this batch
 ;;     1 - 144   48 sprites x 3 vector quadwords
 ;;   145 - 384   48 sprites x 5 adgif quadwords
-;;   400 - 799   the same layout again -- VIF's own double buffer, selected with BASE and OFFSET
+;;   400 - 799   Same as 0-399, double buffered input
 ;;   800 - 849   GIF output buffer 0
 ;;   850 - 899   GIF output buffer 1
 ;;   900 - 903   the active transform
@@ -170,15 +166,12 @@
 
 (defconstant SPRITE-VU-USER-HVDF (+ SPRITE-VU-HVDF 1))
 
-;; The frame constants. sprite-frame-data is uploaded as one 41-quadword block and its field order is
-;; its upload order, so every constant the microprogram loads can name a field instead of a number.
 (defconstant SPRITE-VU-FRAME-DATA 980)
 
 (defmacro sprite-frame-const (&rest path)
   `(+ SPRITE-VU-FRAME-DATA (/ (offset-of sprite-frame-data ,@path) 16)))
 
-;; VU1 entry points. Entry 0 loads the constants that outlive a chunk; the other three are one
-;; MSCAL per chunk.
+;; VU1 entry points.
 (defconstant SPRITE-VU-ENTRY-INIT 0)
 
 (defconstant SPRITE-VU-ENTRY-2D-WORLD 3)
@@ -198,14 +191,7 @@
   ;; the A+D mode
   ;; each adgif has 5x registers, so we set up a tag to do 5x a+d's
   (set! (-> data adgif-giftag tag) (new 'static 'gif-tag64 :nloop #x1 :nreg #x5))
-  (set! (-> data adgif-giftag regs)
-        (new 'static
-             'gif-tag-regs
-             :regs0 (gif-reg-id a+d)
-             :regs1 (gif-reg-id a+d)
-             :regs2 (gif-reg-id a+d)
-             :regs3 (gif-reg-id a+d)
-             :regs4 (gif-reg-id a+d)))
+  (set! (-> data adgif-giftag regs) (gs-reg-list a+d a+d a+d a+d a+d))
   ;; World-space 2D sprites use one shared color followed by four ST/XYZF2 pairs.
   (set! (-> data sprite-2d-giftag tag)
         (new 'static
@@ -216,18 +202,8 @@
              :prim
              (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :fge #x1 :abe #x1)
              :nreg #x9))
-  (set! (-> data sprite-2d-giftag regs)
-        (new 'static
-             'gif-tag-regs
-             :regs0 (gif-reg-id rgbaq)
-             :regs1 (gif-reg-id st)
-             :regs2 (gif-reg-id xyzf2)
-             :regs3 (gif-reg-id st)
-             :regs4 (gif-reg-id xyzf2)
-             :regs5 (gif-reg-id st)
-             :regs6 (gif-reg-id xyzf2)
-             :regs7 (gif-reg-id st)
-             :regs8 (gif-reg-id xyzf2)))
+  (set! (-> data sprite-2d-giftag regs) (gs-reg-list rgbaq st xyzf2 st xyzf2 st xyzf2 st xyzf2))
+
   ;; Screen-space 2D sprites use the same vertex layout without fog.
   (set! (-> data sprite-2d-giftag-2 tag)
         (new 'static
@@ -238,18 +214,8 @@
              :prim
              (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :abe #x1)
              :nreg #x9))
-  (set! (-> data sprite-2d-giftag-2 regs)
-        (new 'static
-             'gif-tag-regs
-             :regs0 (gif-reg-id rgbaq)
-             :regs1 (gif-reg-id st)
-             :regs2 (gif-reg-id xyzf2)
-             :regs3 (gif-reg-id st)
-             :regs4 (gif-reg-id xyzf2)
-             :regs5 (gif-reg-id st)
-             :regs6 (gif-reg-id xyzf2)
-             :regs7 (gif-reg-id st)
-             :regs8 (gif-reg-id xyzf2)))
+  (set! (-> data sprite-2d-giftag-2 regs) (gs-reg-list rgbaq st xyzf2 st xyzf2 st xyzf2 st xyzf2))
+
   ;; 3D sprites carry ST, color, and XYZF2 for each of their four vertices.
   (set! (-> data sprite-3d-giftag tag)
         (new 'static
@@ -261,21 +227,8 @@
              (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :fge #x1 :abe #x1)
              :nreg #xc))
   ;; note that we have rgbaq's per vertex in 3d
-  (set! (-> data sprite-3d-giftag regs)
-        (new 'static
-             'gif-tag-regs
-             :regs0 (gif-reg-id st)
-             :regs1 (gif-reg-id rgbaq)
-             :regs2 (gif-reg-id xyzf2)
-             :regs3 (gif-reg-id st)
-             :regs4 (gif-reg-id rgbaq)
-             :regs5 (gif-reg-id xyzf2)
-             :regs6 (gif-reg-id st)
-             :regs7 (gif-reg-id rgbaq)
-             :regs8 (gif-reg-id xyzf2)
-             :regs9 (gif-reg-id st)
-             :regs10 (gif-reg-id rgbaq)
-             :regs11 (gif-reg-id xyzf2)))
+  (set! (-> data sprite-3d-giftag regs) (gs-reg-list st rgbaq xyzf2 st rgbaq xyzf2 st rgbaq xyzf2 st rgbaq xyzf2))
+
   ;; A clipped 3D quad becomes a variable-length triangle fan, so each vertex supplies one
   ;; ST/RGBAQ/XYZF2 triplet.
   (set! (-> data clipped-giftag tag)
@@ -287,8 +240,8 @@
              :prim
              (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1 :fge #x1 :abe #x1)
              :nreg #x3))
-  (set! (-> data clipped-giftag regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
+  (set! (-> data clipped-giftag regs) (gs-reg-list st rgbaq xyzf2))
+  
   ;; Triangle giftag for the warped-sprite path. sprite-vu1-block does not load this frame
   ;; constant, so that path is not active here.
   (set! (-> data warp-giftag tag)
@@ -300,18 +253,8 @@
              :prim
              (new 'static 'gs-prim :prim (gs-prim-type tri) :tme #x1 :abe #x1)
              :nreg #xc))
-  (set! (-> data warp-giftag regs)
-        (new 'static
-             'gif-tag-regs
-             :regs0 (gif-reg-id st)
-             :regs1 (gif-reg-id rgbaq)
-             :regs2 (gif-reg-id xyzf2)
-             :regs3 (gif-reg-id st)
-             :regs4 (gif-reg-id rgbaq)
-             :regs5 (gif-reg-id xyzf2)
-             :regs6 (gif-reg-id st)
-             :regs7 (gif-reg-id rgbaq)
-             :regs8 (gif-reg-id xyzf2)))
+  (set! (-> data warp-giftag regs) (gs-reg-list st rgbaq xyzf2 st rgbaq xyzf2 st rgbaq xyzf2))
+
   ;; set up an adgif.
   (set! (-> data screen-shader prims 1) (gs-reg64 tex0-1))
   (set! (-> data screen-shader tex0) (new 'static 'gs-tex0 :tbw #x8 :tw #xa :th #x8 :tbp0 (* tbp-offset 32)))
@@ -324,7 +267,7 @@
         (new 'static 'gs-clamp :wms (gs-tex-wrap-mode region-clamp) :wmt (gs-tex-wrap-mode region-clamp) :maxu 639 :maxv 239))
   (set! (-> data screen-shader prims 9) (gs-reg64 alpha-1))
   (set! (-> data screen-shader alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
-  ;; sin/cosine table
+  ;; sin/cosine polynomial coefficients for rotation
   (set! (-> data sincos-01 z) 0.999998)
   (set! (-> data sincos-23 z) -0.16666014)
   (set! (-> data sincos-45 z) 0.008326521)
@@ -345,12 +288,11 @@
   (set! (-> data basis-y y) (- (-> *math-camera* perspective vector 1 y)))
   (set! (-> data min-scale) (sqrtf (* (/ 1.0 (-> data basis-x x)) (/ 1.0 (-> data basis-y y)))))
   (set! (-> data inv-area) (/ 1.0 (* (-> data min-scale) (-> data min-scale))))
-  ;; Four blocks of four corners. A 2D sprite's flag field is a quadword index straight into this
-  ;; array, so it selects its own block: 0 gives a quad centred on the sprite position, 4 gives one
-  ;; anchored at its left edge, which is what a bar or a run of text wants. Block 8 is the texture
-  ;; coordinate corners, the same for every sprite, and block 12 is a quad lying in the XZ plane --
-  ;; the 3D path's starting shape, before the quaternion rotates it, and the reason a fake shadow
-  ;; ends up flat on the ground.
+  ;; cdata stores 4 sets of 4 corners. The mode can be picked by flags / 4.
+  ;; 0  - centered (-0.5, -0.5) to (0.5, 0.5)
+  ;; 4  - (0, -0.5) to (1, 0.5)
+  ;; 8  - (0, 0) to (1, 1), used for texture coords
+  ;; 12 - XZ plane, for 3D
   (set-vector! (-> data cdata 0) -0.5 -0.5 0.0 0.0)
   (set-vector! (-> data cdata 1) 0.5 -0.5 0.0 0.0)
   (set-vector! (-> data cdata 2) 0.5 0.5 0.0 0.0)
@@ -548,27 +490,6 @@
   0
   (none))
 
-#|
-(defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
-  "Upload the frame data."
-  (let ((s5-0 41)) ;; qwc of frame data.
-    (dma-buffer-add-cnt-vif2 dma-buff s5-0
-               (new 'static 'vif-tag :cmd (vif-cmd stcycl)
-                                     :imm (new 'static 'vif-stcycl-imm :cl 4 :wl 4))
-               (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num s5-0
-                                     :imm (new 'static 'vif-unpack-imm :addr 980))
-               )
-    ;; setup frame data directly in the dma buffer.
-    (sprite-setup-frame-data
-     (the-as sprite-frame-data (-> dma-buff base))
-     (the-as int tbp-offset)
-     )
-    (&+! (-> dma-buff base) (* s5-0 16))
-    )
-  (none)
-  )
-|#
-
 (defun sprite-add-frame-data ((dma-buff dma-buffer) (tbp-offset uint))
   "Build and upload the 41 quadwords of sprite constants shared by every chunk in this frame."
   (let ((frame-qwc 41))
@@ -608,21 +529,6 @@
                              (&+ (-> sprites vec-data) (* 48 start-sprite-idx))
                              (new 'static 'vif-tag :cmd (vif-cmd nop))
                              (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc-pkt2 :imm (new 'static 'vif-unpack-imm :flg 1 :addr SPRITE-VU-VEC-DATA))))
-  #|
-  ;(when (= mscal-addr 3)
-    (dotimes (i num-sprites)
-      (let ((spidx (+ i start-sprite-idx)))
-        ;(when (or (= spidx (-> sprites num-sprites 0)) (= spidx (+ 1 (-> sprites num-sprites 0))))
-          (let ((data (the sprite-vec-data-2d (&+ (-> sprites vec-data) (* 48 (+ i start-sprite-idx))))))
-            (let ((vec (-> data x-y-z-sx)))
-              (format 0 "sp: ~d ~f ~f ~f~%" (+ i start-sprite-idx) (-> vec x) (-> vec y) (-> vec z))
-              )
-            )
-         ; )
-        )
-      )
-   ; )
-  |#
   ;; third packet is adgif data (5 qw/sprite)
   (let ((qwc-pkt3 (* 5 num-sprites)))
     (dma-buffer-add-ref-vif2 dma-buff

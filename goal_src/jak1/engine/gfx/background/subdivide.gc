@@ -54,11 +54,7 @@
 (defun-debug print-terrain-stats ()
   "Print active-level memory use and every renderer-statistics bucket, update the display strings,
    and clear the counters for the next reporting interval."
-  ;; make our own profile thing.
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-               'draw
-               (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
+  (add-profile-frame! #x40 0 #x40 #x80 'draw)
   (dotimes (i (-> *level* length))
     (let ((lev (-> *level* level i)))
       (when (= (-> lev status) 'active)
@@ -68,7 +64,6 @@
                 (-> lev index)
                 (-> lev name)
                 (* 0.0009765625 (the float (-> lev mem-usage)))))))
-  ;; print all stats
   (format *stdcon* "~0k~%grps  frags     tris   dverts    strip  insts~%")
   (print-tr-stat (-> *terrain-stats* pris) "pris" *temp-string*)
   (print-tr-stat (-> *merc-global-stats* merc) "merc" *temp-string*)
@@ -107,10 +102,10 @@
   (clear-tr-stat (-> *terrain-stats* ocean-mid))
   (clear-tr-stat (-> *terrain-stats* ocean-near))
   (clear-tr-stat (-> *terrain-stats* total))
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0) 'draw (new 'static 'rgba :b #xff :a #x80)))
+  (add-profile-frame! 0 0 #xff #x80 'draw)
   0
   (none))
+
 
 (defun update-subdivide-settings! ((settings subdivide-settings) (math-cam math-camera) (idx int))
   "Select a close/far LOD profile, construct five nonuniform world-distance thresholds, convert
@@ -125,14 +120,14 @@
     (set! (-> settings meters 3) (+ (-> settings meters 4) (/ band-unit 2)))
     (set! (-> settings meters 2) (+ (-> settings meters 3) band-unit))
     (set! (-> settings meters 1) (+ (-> settings meters 2) (* 2.0 band-unit))))
-  ;; VU code compares against homogeneous camera-space distance, so scale the world thresholds
-  ;; once here instead of converting each fragment during subdivision. The EE classifier wants the
-  ;; unscaled world values instead, because it works from a bounding sphere in world units; it gets
-  ;; them negated so it can add rather than subtract. meters[3] is computed for the record and has no
-  ;; consumer on either side.
+  
+  ;; On the VU, tfrag compares the FOG value, which is proportional to distance
+  ;; from the camera. This scale factor inverts it. inv-hmge-scale.w is the fog range and
+  ;; d converts from homogenous coordinates to actual distance in meters
   (let ((camera-scale (/ (-> math-cam inv-hmge-scale w) (-> math-cam d))))
     (dotimes (i 5)
       (set! (-> settings dist i) (* camera-scale (-> settings meters i)))))
+  ;; On the EE, the DMA generation code looks at world space positions and expects negated distances.
   (set! (-> *tfrag-work* frag-dists x) (- (-> settings meters 0)))
   (set! (-> *tfrag-work* frag-dists y) (- (-> settings meters 1)))
   (set! (-> *tfrag-work* frag-dists z) (- (-> settings meters 2)))
@@ -143,28 +138,24 @@
 (define *subdivide-settings* (new 'global 'subdivide-settings (meters 30) (meters 70)))
 
 (defun set-tfrag-dists! ((dists tfrag-dists))
-  "Fill the affine collapse coefficients for the two tfragment subdivision levels. For distance d in
-   [near, far], y is (far - d) / (far - near), x is half of (d - near) / (far - near), and w stores
-   the far boundary, which is the distance at which that level has finished collapsing."
-  ;; Each k0*d + k1 pair evaluates the descending y weight and half-scaled ascending x weight
-  ;; without a divide in the VU program. Entry 0 is level 0 and covers dist[0] down to dist[1];
-  ;; entry 1 is level 1 and covers dist[1] down to dist[2].
-  ;;
-  ;; The VU applies these as pos = pos * y + (parent-a + parent-b) * x, so at y = 0, x = 0.5 a
-  ;; subdivided vertex is sitting exactly on the midpoint of the parent edge it splits and the
-  ;; coarser mesh can take over without moving anything. Everything in here is per frame and per
-  ;; level, never per fragment: that is what makes two terrain patches agree on where a vertex they
-  ;; both own has got to, which is why terrain does not crack along a detail boundary.
-  ;;
-  ;; The w lanes are the same numbers again, kept unscaled so the VU can compare a transformed w
-  ;; against them directly for its discrete "both parents have finished collapsing" test. Remember
-  ;; these are camera-scaled through inv-hmge-scale.w, which is the fog slope and is negative, so
-  ;; dist[] is negative and grows more negative with distance.
+  "Fill the affine collapse coefficients for the two tfragment subdivision levels."
+  ;; The VU computes weights.xy = k0.xy * pos.w + k1.xy
+  ;; where
+  ;;  weights.x goes from 0 -> 0.5
+  ;;  weights.y goes from 1 -> 0
+  ;; and
+  ;;  pos = p * weights.y + (parent-a + parent-b) * weights.x
+  ;; so
+  ;;  pos goes from "p" to the midpoint of the parents as the level of detail drops.
   (let ((far-0 (-> *subdivide-settings* dist 0))
         (boundary-1 (-> *subdivide-settings* dist 1))
         (near-2 (-> *subdivide-settings* dist 2)))
+    ;; also store the boundaries so VU can check if both parents are beyond the threshold and
+    ;; collapse.
     (set! (-> dists k0s 0 w) far-0)
     (set! (-> dists k0s 1 w) boundary-1)
+    
+    ;; find k0/k1 coefficients
     (let ((inverse-span-0 (/ 1.0 (- far-0 boundary-1)))
           (inverse-span-1 (/ 1.0 (- boundary-1 near-2))))
       (set! (-> dists k0s 0 y) (- inverse-span-0))
