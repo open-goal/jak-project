@@ -22,6 +22,10 @@ extern u8* g_ee_main_mem;
 extern "C" {
 #ifdef __linux__
 u64 _call_goal8_asm_systemv(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off);
+#elif defined __APPLE__ && defined __aarch64__
+// Native Apple Silicon -- defined in asm_funcs_arm64.s
+u64 _call_goal8_asm_arm64(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off) asm(
+    "_call_goal8_asm_arm64");
 #elif defined __APPLE__ && defined __x86_64__
 u64 _call_goal8_asm_systemv(void* func, u64* arg_array, u64 zero, u64 pp, u64 st, void* off) asm(
     "_call_goal8_asm_systemv");
@@ -356,6 +360,11 @@ struct ExecutionContext {
 #ifdef __linux__
     gprs[v0].du64[0] = _call_goal8_asm_systemv(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
                                                gprs[s7].du64[0], g_ee_main_mem);
+#elif defined __APPLE__ && defined __aarch64__
+    // g_ee_main_mem is the exec alias (PROT_READ|PROT_EXEC); the func pointer handed
+    // to the trampoline must point through it so the BLR lands on executable memory.
+    gprs[v0].du64[0] = _call_goal8_asm_arm64(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
+                                             gprs[s7].du64[0], g_ee_main_mem);
 #elif defined __APPLE__ && defined __x86_64__
     gprs[v0].du64[0] = _call_goal8_asm_systemv(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
                                                gprs[s7].du64[0], g_ee_main_mem);
