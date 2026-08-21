@@ -16,23 +16,7 @@ CodeTester create_tester(int code_capacity = 1024) {
   return tester;
 }
 
-constexpr int kGoalPtr = 4096;
-constexpr int kBufSize = 16384;
-
-struct VecMem {
-  std::vector<u8> buf;
-  VecMem() : buf(kBufSize, 0) {}
-  u8* base() { return buf.data(); }
-  u8* at(int off) { return buf.data() + off; }
-};
-
-// three 16 byte vector slots, back to back
-constexpr int kA = kGoalPtr;
-constexpr int kB = kGoalPtr + 16;
-constexpr int kOut = kGoalPtr + 32;
-// far enough from kA that a displaced store cannot land on the markers around it
-constexpr int kDst = kGoalPtr + 4096;
-};  // namespace
+}  // namespace
 
 TEST(NEONEmitter, VF_NOP) {
   CodeTester tester = create_tester();
@@ -48,8 +32,28 @@ TEST(NEONEmitter, WAIT_VF) {
 
 // 128-bit loads and stores with a register offset. GOAL addresses vector memory as a base
 // register plus an offset register, so every addressing form has to use both.
+//
+// These run the code they emit, so they only build on an arm64 host. emitter_util.cpp guards
+// the arm64 tests that go through it the same way.
+#ifdef __aarch64__
 
 namespace {
+constexpr int kGoalPtr = 4096;
+constexpr int kBufSize = 16384;
+
+struct VecMem {
+  std::vector<u8> buf;
+  VecMem() : buf(kBufSize, 0) {}
+  u8* base() { return buf.data(); }
+  u8* at(int off) { return buf.data() + off; }
+};
+
+// two 16 byte vector slots, back to back
+constexpr int kA = kGoalPtr;
+constexpr int kB = kGoalPtr + 16;
+// far enough from kA that a displaced store cannot land on the markers around it
+constexpr int kDst = kGoalPtr + 4096;
+
 // x0 = base, x1 = source offset, x2 = second offset, x3 = destination offset
 template <typename EmitOp>
 void run_mem(CodeTester& tester, VecMem& mem, EmitOp emit_op) {
@@ -171,3 +175,5 @@ TEST(NEONEmitter, displaced_vector_access_leaves_the_address_registers_alone) {
   }
   tester.clear();
 }
+
+#endif  // __aarch64__
