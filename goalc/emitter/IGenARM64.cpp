@@ -2482,8 +2482,8 @@ InstructionARM64 wait_vf() {
   return nop();
 }
 
-// arm64-only helpers for the blend/swizzle/splat encoders below. not part of the
-// instruction API, so they stay in this file.
+// lane helpers for the encoders below. not part of the instruction API, so they stay out
+// of the header.
 namespace {
 /*!
  * MOV <Vd>.S[dst_lane], <Vn>.S[src_lane]. copies one 32 bit lane and leaves the rest of Vd alone.
@@ -2517,7 +2517,8 @@ InstructionARM64 dup_vf_lane(Register dst, Register src, u8 lane) {
   ASSERT(src.is_128bit_simd(instr_set));
   ASSERT(lane < 4);
   // https://www.scs.stanford.edu/~zyedidia/arm64/dup_advsimd_elt.html
-  // DUP <Vd>.4S, <Vn>.S[lane] - imm5 is the same shape as ins_vf_lane's
+  // DUP <Vd>.4S, <Vn>.S[lane]
+  // imm5 is the same shape as ins_vf_lane's
   return InstructionARM64(Base(0b01001110000000000000010000000000, 32),
                           Imm5(u32(lane << 3) | 0b100), Rn(src.id()), Rd(dst.id()));
 }
@@ -2701,7 +2702,7 @@ InstructionARM64 blend_vf(Register dst, Register src1, Register src2, u8 mask) {
   ASSERT(src1.is_128bit_simd(instr_set));
   ASSERT(src2.is_128bit_simd(instr_set));
   // x86 does this in one blendps. arm64 has no blend with an immediate lane mask, so take
-  // src1 and overwrite the lanes the mask selects. Built in v16 first, so dst is allowed to
+  // src1 and overwrite the lanes the mask selects. built in v16 first, so dst is allowed to
   // be either source.
   std::vector<InstructionARM64> instrs = {mov_vf_vf(V16, src1)};
   for (u8 lane = 0; lane < 4; lane++) {
@@ -2718,7 +2719,7 @@ InstructionARM64 swizzle_vf(Register dst, Register src, u8 controlBytes) {
   ASSERT(src.is_128bit_simd(instr_set));
   // x86 uses shufps with both sources the same, so lane i of the result is lane
   // (controlBytes >> 2i) & 3 of the source. same lane at a time approach as blend_vf, via v16
-  // so dst may alias src. All four lanes get written, so v16's previous contents don't matter.
+  // so dst may alias src. all four lanes get written, so v16's previous contents don't matter.
   std::vector<InstructionARM64> instrs;
   for (u8 lane = 0; lane < 4; lane++) {
     instrs.push_back(ins_vf_lane(V16, lane, src, (controlBytes >> (lane * 2)) & 0b11));
@@ -2734,18 +2735,15 @@ InstructionARM64 shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 
   ASSERT(dy < 4);
   ASSERT(dz < 4);
   ASSERT(dw < 4);
-  // exactly what x86 does: pack the four lane picks into one control byte and hand it to
-  // swizzle_vf, which already builds the arm64 version one lane at a time. nothing in the
-  // compiler calls this on either backend, only test_emitter_avx.cpp does, but an
-  // ASSERT(false) here would just trip up whoever wires it up later, and the pieces were here.
+  // pack the four lane picks into one control byte and hand it to swizzle_vf. nothing in the
+  // compiler calls this on either backend, only the emitter tests.
   u8 imm = dx + (dy << 2) + (dz << 4) + (dw << 6);
   return swizzle_vf(dst, src, imm);
 }
 
 InstructionARM64 splat_vf(Register dst, Register src, Register::VF_ELEMENT element) {
-  // broadcasting one lane to all four is exactly what DUP does, in one instruction. this used
-  // to hand the equivalent control bytes to swizzle_vf, which builds the general four-lane
-  // case an INS at a time - five instructions for what DUP does in one.
+  // broadcasting one lane to all four is what DUP does, in one instruction. going through
+  // swizzle_vf would take five, an INS per lane and a move.
   switch (element) {
     case Register::VF_ELEMENT::X:
       return dup_vf_lane(dst, src, 0);
@@ -2847,8 +2845,8 @@ u32 vec_shl_immhb(u32 elem_bits, u8 shift) {
 }
 
 u32 vec_shr_immhb(u32 elem_bits, u8 shift) {
-  // a right shift of 0 does nothing on x86 and has no encoding here. it would need a move
-  // instead of a shift, which this layer can't emit.
+  // immh:immb holds 2 * elem_bits minus the shift, so the smallest shift it can encode is 1.
+  // x86 allows a shift of 0, which would need a move here instead of a shift.
   ASSERT_MSG(shift >= 1 && shift <= elem_bits, "arm64 vector shift right amount is out of range");
   return 2 * elem_bits - shift;
 }
@@ -2936,9 +2934,8 @@ InstructionARM64 parallel_bitwise_and(Register dst, Register src0, Register src1
                           Rd(dst.id()));
 }
 
-// The pext family is x86's punpck: PUNPCKL/H interleave two vectors, and arm64's interleave is
-// ZIP1/ZIP2. these were UZP1/UZP2, which does the opposite. UZP *de*interleaves. it
-// showed up as a 4x4 matrix transpose coming back with its rows shuffled.
+// The pext family is x86's punpck. PUNPCKL/H interleave two vectors, and arm64's interleave
+// is ZIP1/ZIP2. UZP1/UZP2 look like the match but deinterleave, which is the opposite.
 InstructionARM64 pextub_swapped(Register dst, Register src0, Register src1) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/zip2_advsimd.html
   // - 16B
@@ -3090,7 +3087,7 @@ InstructionARM64 vpshuflw(Register dst, Register src, u8 imm) {
   ASSERT(dst.is_128bit_simd(instr_set));
   ASSERT(src.is_128bit_simd(instr_set));
   // pshuflw shuffles the low four 16 bit lanes by two bits each and copies the high four
-  // through. Start from a whole copy, then rewrite the low four. v16 so dst may alias src.
+  // through. start from a whole copy, then rewrite the low four. v16 so dst may alias src.
   std::vector<InstructionARM64> instrs = {mov_vf_vf(V16, src)};
   for (u8 lane = 0; lane < 4; lane++) {
     instrs.push_back(ins_vf_lane_h(V16, lane, src, (imm >> (lane * 2)) & 0b11));
