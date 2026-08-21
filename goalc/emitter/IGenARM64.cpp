@@ -2511,9 +2511,6 @@ InstructionARM64 loadvf_gpr64_plus_gpr64_plus_s8(Register dst,
                                                  Register addr1,
                                                  Register addr2,
                                                  s64 offset) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_fpsimd.html
-  // 128-bit variant
-  // LDR <Qt>, [<Xn|SP>], #<simm>
   ASSERT(dst.is_128bit_simd(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
@@ -2521,15 +2518,15 @@ InstructionARM64 loadvf_gpr64_plus_gpr64_plus_s8(Register dst,
   ASSERT(addr1 != SP);
   ASSERT(addr2 != SP);
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
-  // addr2 used to get dropped here, so this loaded from a bare GOAL offset with no base.
-  // the post indexed form it used also walked addr1 forward by `offset` every time.
-  // ldur's imm9 covers the whole s8 range, so the offset folds in and this needs no second add.
+  // base + index in x16, then ldur. imm9 covers the whole s8 range, so the offset folds in
+  // and this needs no second add.
   return InstructionARM64(
       {// https://www.scs.stanford.edu/~zyedidia/arm64/add_addsub_shift.html
        // ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
        InstructionARM64(Base(0b10001011000, 11), Rd(X16), Imm6(0), Rn(addr1.id()), Rm(addr2.id())),
        // https://www.scs.stanford.edu/~zyedidia/arm64/ldur_fpsimd.html
-       // LDUR <Qt>, [<Xn|SP>{, #<simm>}]. checked against clang, ldur q7, [x19, #124] is 3cc7c267
+       // LDUR <Qt>, [<Xn|SP>{, #<simm>}]
+       // checked against clang, ldur q7, [x19, #124] is 3cc7c267
        InstructionARM64(Base(0b0011110011000000000000, 22), Rt(dst.id()), Rn(X16), Imm9s(offset))});
 }
 
@@ -2560,9 +2557,9 @@ InstructionARM64 loadvf_gpr64_plus_gpr64_plus_s32(Register dst,
     instrs.insert(instrs.end(), add_instrs.begin(), add_instrs.end());
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/ldur_fpsimd.html
-  // LDUR <Qt>, [<Xn|SP>{, #<simm>}]. the whole address is in x16 already, so the offset is 0.
-  // this used to be the post indexed LDR, which is a different instruction that also writes
-  // x16 back.
+  // LDUR <Qt>, [<Xn|SP>{, #<simm>}]
+  // the whole address is in x16 already, so the offset is 0. the post indexed LDR is a
+  // different instruction that also writes x16 back.
   instrs.emplace_back(
       InstructionARM64(Base(0b0011110011000000000000, 22), Rt(dst.id()), Rn(X16), Imm9s(0)));
   return InstructionARM64(instrs);
@@ -2598,7 +2595,8 @@ InstructionARM64 storevf_gpr64_plus_gpr64_plus_s8(Register value,
        // ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
        InstructionARM64(Base(0b10001011000, 11), Rd(X16), Imm6(0), Rn(addr1.id()), Rm(addr2.id())),
        // https://www.scs.stanford.edu/~zyedidia/arm64/stur_fpsimd.html
-       // STUR <Qt>, [<Xn|SP>{, #<simm>}]. checked against clang, stur q7, [x16, #124] is 3c87c207
+       // STUR <Qt>, [<Xn|SP>{, #<simm>}]
+       // checked against clang, stur q7, [x16, #124] is 3c87c207
        InstructionARM64(Base(0b0011110010000000000000, 22), Rt(value.id()), Rn(X16),
                         Imm9s(offset))});
 }

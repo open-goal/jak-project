@@ -26,7 +26,7 @@ struct VecMem {
   u8* at(int off) { return buf.data() + off; }
 };
 
-// a = kGoalPtr, b = kGoalPtr + 16, out = kGoalPtr + 32
+// three 16 byte vector slots, back to back
 constexpr int kA = kGoalPtr;
 constexpr int kB = kGoalPtr + 16;
 constexpr int kOut = kGoalPtr + 32;
@@ -46,8 +46,8 @@ TEST(NEONEmitter, WAIT_VF) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "1F2003D5");
 }
 
-// 128-bit loads and stores with a register offset. these are how GOAL reaches vector memory,
-// base register plus the offset register, so every addressing form has to actually use both.
+// 128-bit loads and stores with a register offset. GOAL addresses vector memory as a base
+// register plus an offset register, so every addressing form has to use both.
 
 namespace {
 // x0 = base, x1 = source offset, x2 = second offset, x3 = destination offset
