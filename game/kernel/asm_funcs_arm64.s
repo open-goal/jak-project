@@ -172,10 +172,24 @@ _mips2c_call_arm64:
 _call_goal_asm_arm64:
   stp	x29, x30, [sp, #-16]!
   mov	x29, sp
-  ;; saved registers we need to modify for GOAL should be preserved
+  ;; Save the full AAPCS64 callee-saved set, not just the registers GOAL's
+  ;; own dispatch touches (x20-x22). GOAL's coroutine machinery loads whole
+  ;; register contexts from zero-initialized thread structs when it switches
+  ;; coroutines, so a GOAL call can come back with x19, x23-x28 or d8-d15
+  ;; clobbered even though GOAL-compiled code itself never touches them --
+  ;; and the C caller on the other side of this BLR is entitled to all of
+  ;; them under AAPCS64, same as any other call boundary.
   ; ARM64 requires 16-byte stack pointer alignment
   stp x20, x21, [sp, #-16]!
   str x22, [sp, #-16]!
+  stp x19, x23, [sp, #-16]!
+  stp x24, x25, [sp, #-16]!
+  stp x26, x27, [sp, #-16]!
+  str x28, [sp, #-16]!
+  stp q14, q15, [sp, #-32]!
+  stp q12, q13, [sp, #-32]!
+  stp q10, q11, [sp, #-32]!
+  stp q8, q9, [sp, #-32]!
 
   ;; x0 - first arg
   ;; x1 - second arg
@@ -194,6 +208,14 @@ _call_goal_asm_arm64:
   blr x3
 
   ;; restore saved registers.
+  ldp q8, q9, [sp], #32
+  ldp q10, q11, [sp], #32
+  ldp q12, q13, [sp], #32
+  ldp q14, q15, [sp], #32
+  ldr x28, [sp], #16
+  ldp x26, x27, [sp], #16
+  ldp x24, x25, [sp], #16
+  ldp x19, x23, [sp], #16
   ldr x22, [sp], #16
   ldp x20, x21, [sp], #16
   ldp	x29, x30, [sp], #16
@@ -204,10 +226,19 @@ _call_goal_asm_arm64:
 _call_goal8_asm_arm64:
   stp	x29, x30, [sp, #-16]!
   mov	x29, sp
-  ;; saved registers we need to modify for GOAL should be preserved
+  ;; Save the full AAPCS64 callee-saved set -- see note above the top of
+  ;; _call_goal_asm_arm64.
   ; ARM64 requires 16-byte stack pointer alignment
   stp x20, x21, [sp, #-16]!
   str x22, [sp, #-16]!
+  stp x19, x23, [sp, #-16]!
+  stp x24, x25, [sp, #-16]!
+  stp x26, x27, [sp, #-16]!
+  str x28, [sp, #-16]!
+  stp q14, q15, [sp, #-32]!
+  stp q12, q13, [sp, #-32]!
+  stp q10, q11, [sp, #-32]!
+  stp q8, q9, [sp, #-32]!
 
   ;; x0 - first arg (func)
   ;; x1 - second arg (arg array)
@@ -237,6 +268,14 @@ _call_goal8_asm_arm64:
   blr x8
 
   ;; retore registers.
+  ldp q8, q9, [sp], #32
+  ldp q10, q11, [sp], #32
+  ldp q12, q13, [sp], #32
+  ldp q14, q15, [sp], #32
+  ldr x28, [sp], #16
+  ldp x26, x27, [sp], #16
+  ldp x24, x25, [sp], #16
+  ldp x19, x23, [sp], #16
   ldr x22, [sp], #16
   ldp x20, x21, [sp], #16
   ldp	x29, x30, [sp], #16
@@ -255,24 +294,42 @@ _call_goal_on_stack_asm_arm64:
   ;; x4  - st (goes in x21 and x20)
   ;; x5  - offset (goes in x22)
 
-  ;; saved registers we need to modify for GOAL should be preserved
+  ;; Save the full AAPCS64 callee-saved set on the C stack, BEFORE switching
+  ;; sp to the GOAL stack below -- see note above the top of
+  ;; _call_goal_asm_arm64.
   ; ARM64 requires 16-byte stack pointer alignment
   stp x20, x21, [sp, #-16]!
   ;; also stash the current stack pointer on the stack
   ;; NOTE - you cannot directly store or load the `sp` register in arm64
   mov x9, sp
   stp x22, x9, [sp, #-16]!
+  stp x19, x23, [sp, #-16]!
+  stp x24, x25, [sp, #-16]!
+  stp x26, x27, [sp, #-16]!
+  str x28, [sp, #-16]!
+  stp q14, q15, [sp, #-32]!
+  stp q12, q13, [sp, #-32]!
+  stp q10, q11, [sp, #-32]!
+  stp q8, q9, [sp, #-32]!
 
   ;; switch to new stack
   mov sp, x0
 
-  mov x20, x4 ;; set GOAL function pointer  
+  mov x20, x4 ;; set GOAL function pointer
   mov x21, x4 ;; symbol table
   mov x22, x5 ;; offset
   ;; call GOAL by function pointer
   blr x3
 
   ;; restore registers
+  ldp q8, q9, [sp], #32
+  ldp q10, q11, [sp], #32
+  ldp q12, q13, [sp], #32
+  ldp q14, q15, [sp], #32
+  ldr x28, [sp], #16
+  ldp x26, x27, [sp], #16
+  ldp x24, x25, [sp], #16
+  ldp x19, x23, [sp], #16
   ldp x22, x9, [sp], #16
   mov sp, x9
   ldp x20, x21, [sp], #16
