@@ -2702,7 +2702,7 @@ InstructionARM64 sub_vf(Register dst, Register src1, Register src2) {
 }
 
 InstructionARM64 add_vf(Register dst, Register src1, Register src2) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/fadd_advsimd_vec.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/fadd_advsimd.html
   // FADD <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
   // 4 single precision floats
   return InstructionARM64(Base(0b0100111000100000110101, 22), Rn(src1.id()), Rm(src2.id()),
@@ -2718,7 +2718,7 @@ InstructionARM64 mul_vf(Register dst, Register src1, Register src2) {
 }
 
 InstructionARM64 max_vf(Register dst, Register src1, Register src2) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/fmax_advsimd_vec.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/fmax_advsimd.html
   // FMAX <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
   // 4 single precision floats
   return InstructionARM64(Base(0b0100111000100000111101, 22), Rn(src1.id()), Rm(src2.id()),
@@ -2726,7 +2726,7 @@ InstructionARM64 max_vf(Register dst, Register src1, Register src2) {
 }
 
 InstructionARM64 min_vf(Register dst, Register src1, Register src2) {
-  // https://www.scs.stanford.edu/~zyedidia/arm64/fmin_advsimd_vec.html
+  // https://www.scs.stanford.edu/~zyedidia/arm64/fmin_advsimd.html
   // FMIN <Vd>.<T>, <Vn>.<T>, <Vm>.<T>
   // 4 single precision floats
   return InstructionARM64(Base(0b0100111010100000111101, 22), Rn(src1.id()), Rm(src2.id()),
