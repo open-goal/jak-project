@@ -3,13 +3,14 @@
 #include "emitter_test_helpers.h"
 #include "emitter_util.h"
 
+#include "capstone/arm.h"
 #include "goalc/emitter/CodeTester.h"
 #include "goalc/emitter/IGen.h"
 #include "goalc/emitter/Register.h"
 #include "gtest/gtest.h"
-#include <capstone/arm.h>
-#include <fmt/base.h>
-#include <fmt/format.h>
+
+#include "fmt/base.h"
+#include "fmt/format.h"
 
 using namespace emitter;
 

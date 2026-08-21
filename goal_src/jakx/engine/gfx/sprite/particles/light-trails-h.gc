@@ -7,3 +7,182 @@
 
 ;; DECOMP BEGINS
 
+(deftype color-array (inline-array-class)
+  ((data  rgbaf  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> color-array heap-base) (the-as uint 16))
+
+(deftype light-trail-composition (structure)
+  ((color-mode         uint64)
+   (color-curve        curve-color-piecewise)
+   (color-repeat-dist  float)
+   (alpha-1-mode       uint64)
+   (alpha-2-mode       uint64)
+   (base-alpha         float)
+   (alpha-curve-1      curve2d-piecewise)
+   (alpha-curve-2      curve2d-piecewise)
+   (alpha-repeat-dist  float)
+   (width-mode         uint64)
+   (base-width         float)
+   (width-curve        curve2d-piecewise)
+   (width-repeat-dist  float)
+   (uv-mode            uint64)
+   (uv-repeat-dist     float)
+   (max-age            uint64)
+   (tex-id             texture-id)
+   (tex-name           basic)
+   (lie-mode           uint64)
+   (lie-vector         vector  :inline)
+   (zbuffer?           symbol)
+   (use-tape-mode?     symbol)
+   (blend-mode         uint64)
+   (frame-stagger      uint8)
+   )
+  )
+
+
+(deftype light-trail-breadcrumb (structure)
+  ((pos         vector  :inline)
+   (birth-time  uint32  :overlay-at (-> pos data 3))
+   )
+  )
+
+
+(deftype breadcrumb-array (inline-array-class)
+  ((data  light-trail-breadcrumb  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> breadcrumb-array heap-base) (the-as uint 16))
+
+(deftype light-trail (prim-client)
+  ((crumb-array              (array uint8))
+   (crumb-size               uint8)
+   (crumb-count              int16)
+   (max-crumb-count          int16)
+   (appearance               light-trail-composition)
+   (start-marker             uint64)
+   (end-marker               uint64)
+   (decision                 uint64)
+   (total-distance-traveled  float)
+   (strip                    prim-strip)
+   (strip2                   prim-strip)
+   (cache-vector             vector  4 :inline)
+   )
+  (:methods
+    (light-trail-method-10 () none)
+    (light-trail-method-11 () none)
+    (light-trail-method-12 () none)
+    (light-trail-method-13 () none)
+    (light-trail-method-14 () none)
+    (light-trail-method-15 () none)
+    (light-trail-method-16 () none)
+    (light-trail-method-17 () none)
+    (light-trail-method-18 () none)
+    (light-trail-method-19 () none)
+    (light-trail-method-20 () none)
+    (light-trail-method-21 () none)
+    (light-trail-method-22 () none)
+    )
+  )
+
+
+(deftype weapon-trail-crumb (light-trail-breadcrumb)
+  ((offset  vector  :inline)
+   )
+  )
+
+
+(deftype weapon-trail (light-trail)
+  ()
+  (:methods
+    (weapon-trail-method-23 () none)
+    (weapon-trail-method-24 () none)
+    )
+  )
+
+
+(deftype tread-trail-crumb (light-trail-breadcrumb)
+  ((normal  vector  :inline)
+   )
+  )
+
+
+(deftype tread-trail (light-trail)
+  ()
+  (:methods
+    (tread-trail-method-23 () none)
+    (tread-trail-method-24 () none)
+    )
+  )
+
+
+(deftype light-trail-tracker-spawn-params (structure)
+  ((appearance          light-trail-composition)
+   (max-num-crumbs      int32)
+   (tracked-obj         uint64)
+   (track-immediately?  symbol)
+   )
+  )
+
+
+(deftype weapon-trail-tracker-spawn-params (light-trail-tracker-spawn-params)
+  ((joint0  int16)
+   (joint1  int16)
+   )
+  )
+
+
+(deftype light-trail-tracker (process)
+  ((trail                 light-trail)
+   (tracked-object        handle)
+   (offscreen?            symbol)
+   (offscreen-start-time  uint64)
+   (next-line-check-time  uint64)
+   (last-add-frame-val    uint32)
+   )
+  (:state-methods
+    tracking
+    die
+    )
+  (:methods
+    (light-trail-tracker-method-16 () none)
+    (light-trail-tracker-method-17 () none)
+    (light-trail-tracker-method-18 () none)
+    (light-trail-tracker-method-19 () none)
+    (light-trail-tracker-method-20 () none)
+    )
+  )
+
+
+(deftype weapon-trail-tracker (light-trail-tracker)
+  ((joint0      int16)
+   (joint1      int16)
+   (state-time  uint64)
+   )
+  (:methods
+    (weapon-trail-tracker-method-22 () none)
+    )
+  )
+
+
+(deftype tread-trail-tracker (light-trail-tracker)
+  ()
+  )
+
+(deftype light-trail-tracker-water (light-trail-tracker)
+  ()
+  )
+
+
+(deftype light-trail-tracker-projectile (light-trail-tracker)
+  ((state-time  uint64)
+   )
+  (:methods
+    (light-trail-tracker-projectile-method-22 () none)
+    )
+  )

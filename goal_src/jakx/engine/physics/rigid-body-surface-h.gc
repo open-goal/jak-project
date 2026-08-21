@@ -5,5 +5,90 @@
 ;; name in dgo: rigid-body-surface-h
 ;; dgos: ENGINE, GAME
 
+;; +++rigid-body-surface-flag
+(defenum rigid-body-surface-flag
+  :type uint8
+  :bitfield #t
+  (moving 0)
+  )
+;; ---rigid-body-surface-flag
+
+
+;; +++surface-type
+(defenum surface-type
+  :type uint8
+  (stone 0)
+  (grass 1)
+  (dirt 2)
+  (sand 3)
+  (snow 4)
+  (water 5)
+  (wall 6)
+  (ice 7)
+  (none 8)
+  )
+;; ---surface-type
+
+
 ;; DECOMP BEGINS
 
+(deftype rigid-body-surface (structure)
+  ((flags             rigid-body-surface-flag)
+   (surface-type      surface-type)
+   (friction          float)
+   (bounce            float)
+   (drag              float)
+   (depth             float)
+   (damage            float)
+   (scrape-sound      uint16)
+   (glance-sound      uint16)
+   (impact-sound      uint16)
+   (tire-roll-mix     float  6)
+   (tire-roll-hum     float  :overlay-at (-> tire-roll-mix 0))
+   (tire-roll-dirt    float  :overlay-at (-> tire-roll-mix 1))
+   (tire-roll-sand    float  :overlay-at (-> tire-roll-mix 2))
+   (tire-roll-snow    float  :overlay-at (-> tire-roll-mix 3))
+   (tire-roll-grass   float  :overlay-at (-> tire-roll-mix 4))
+   (tire-roll-knobby  float  :overlay-at (-> tire-roll-mix 5))
+   (tire-slide-mix    float  2)
+   (tire-slide-road   float  :overlay-at (-> tire-slide-mix 0))
+   (tire-slide-dirt   float  :overlay-at (-> tire-slide-mix 1))
+   )
+  )
+
+
+(define *material-to-rb-material-table*
+  (new 'static 'array int8 34 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+  )
+
+(let ((v1-2 *material-to-rb-material-table*))
+  (dotimes (a0-2 34)
+    (set! (-> v1-2 a0-2) 7)
+    )
+  (set! (-> v1-2 0) 6)
+  (set! (-> v1-2 30) 6)
+  (set! (-> v1-2 23) 0)
+  (set! (-> v1-2 16) 0)
+  (set! (-> v1-2 6) 0)
+  (set! (-> v1-2 13) 0)
+  (set! (-> v1-2 14) 0)
+  (set! (-> v1-2 7) 1)
+  (set! (-> v1-2 15) 2)
+  (set! (-> v1-2 9) 4)
+  (set! (-> v1-2 5) 3)
+  (set! (-> v1-2 3) 3)
+  )
+
+0
+
+;; WARN: Return type mismatch int vs surface-type.
+(defun rigid-body-surface-type-from-material ((arg0 int))
+  (let ((v0-0 7))
+    (let ((v1-0 (logand arg0 63)))
+      (if (< v1-0 34)
+          (set! v0-0 (the-as int (-> (the-as (pointer uint8) (&+ *material-to-rb-material-table* v1-0)))))
+          )
+      )
+    (the-as surface-type v0-0)
+    )
+  )

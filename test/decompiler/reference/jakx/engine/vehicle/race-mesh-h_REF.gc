@@ -1,0 +1,217 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type race-mesh-hash-search
+(deftype race-mesh-hash-search (structure)
+  ((best-dist              float)
+   (debug-cells-searched   int32)
+   (debug-slices-searched  int32)
+   (bounds                 bounding-box4w  :inline)
+   (cell-quads             vector          2 :inline)
+   (slice-quads            vector          4 :inline)
+   (cell-bits              vector16ub      2 :inline :overlay-at cell-quads)
+   (slice-bits             vector16ub      2 :inline :overlay-at slice-quads)
+   )
+  )
+
+;; definition for method 3 of type race-mesh-hash-search
+(defmethod inspect ((this race-mesh-hash-search))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'race-mesh-hash-search)
+  (format #t "~1Tbest-dist: ~f~%" (-> this best-dist))
+  (format #t "~1Tdebug-cells-searched: ~D~%" (-> this debug-cells-searched))
+  (format #t "~1Tdebug-slices-searched: ~D~%" (-> this debug-slices-searched))
+  (format #t "~1Tbounds: #<bounding-box4w @ #x~X>~%" (-> this bounds))
+  (format #t "~1Tcell-quads[2] @ #x~X~%" (-> this cell-quads))
+  (format #t "~1Tslice-quads[4] @ #x~X~%" (-> this slice-quads))
+  (format #t "~1Tcell-bits[2] @ #x~X~%" (-> this cell-quads))
+  (format #t "~1Tslice-bits[2] @ #x~X~%" (-> this slice-quads))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type race-mesh-slice-query
+(deftype race-mesh-slice-query (structure)
+  ((search-sphere  sphere  :inline)
+   (slice-range    uint16  2)
+   (race-line      race-line)
+   (pt-on-slice    vector  :inline)
+   (slice-corners  vector  4 :inline)
+   (lap-dist       float)
+   (slice-id       int16)
+   )
+  )
+
+;; definition for method 3 of type race-mesh-slice-query
+(defmethod inspect ((this race-mesh-slice-query))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'race-mesh-slice-query)
+  (format #t "~1Tsearch-sphere: #<sphere @ #x~X>~%" (-> this search-sphere))
+  (format #t "~1Tslice-range[2] @ #x~X~%" (-> this slice-range))
+  (format #t "~1Trace-line: #<race-line @ #x~X>~%" (-> this race-line))
+  (format #t "~1Tpt-on-slice: #<vector @ #x~X>~%" (-> this pt-on-slice))
+  (format #t "~1Tslice-corners[4] @ #x~X~%" (-> this slice-corners))
+  (format #t "~1Tlap-dist: ~f~%" (-> this lap-dist))
+  (format #t "~1Tslice-id: ~D~%" (-> this slice-id))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type race-mesh-edge
+(deftype race-mesh-edge (structure)
+  ((left      vector  :inline)
+   (right     vector  :inline)
+   (lap-dist  float   :overlay-at (-> left data 3))
+   )
+  )
+
+;; definition for method 3 of type race-mesh-edge
+(defmethod inspect ((this race-mesh-edge))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'race-mesh-edge)
+  (format #t "~1Tleft: ~`vector`P~%" (-> this left))
+  (format #t "~1Tright: ~`vector`P~%" (-> this right))
+  (format #t "~1Tlap-dist: ~f~%" (-> this left w))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type race-mesh-slice
+(deftype race-mesh-slice (structure)
+  ((edge-index-array  uint16  2)
+   (start-edge        int16   :overlay-at (-> edge-index-array 0))
+   (end-edge          int16   :overlay-at (-> edge-index-array 1))
+   )
+  )
+
+;; definition for method 3 of type race-mesh-slice
+(defmethod inspect ((this race-mesh-slice))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'race-mesh-slice)
+  (format #t "~1Tedge-index-array[2] @ #x~X~%" (-> this edge-index-array))
+  (format #t "~1Tstart-edge: ~D~%" (-> this start-edge))
+  (format #t "~1Tend-edge: ~D~%" (-> this end-edge))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type race-mesh-hash-cell
+(deftype race-mesh-hash-cell (structure)
+  ((first-slice  int16)
+   (slice-count  uint8)
+   (pad          uint8)
+   )
+  )
+
+;; definition for method 3 of type race-mesh-hash-cell
+(defmethod inspect ((this race-mesh-hash-cell))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'race-mesh-hash-cell)
+  (format #t "~1Tfirst-slice: ~D~%" (-> this first-slice))
+  (format #t "~1Tslice-count: ~D~%" (-> this slice-count))
+  (format #t "~1Tpad: ~D~%" (-> this pad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type race-mesh-hash
+(deftype race-mesh-hash (structure)
+  ((cells-wide   int8)
+   (cells-tall   int8)
+   (cell-length  float)
+   (cells        (inline-array race-mesh-hash-cell))
+   (slice-table  (inline-array race-mesh-slice))
+   (origin       vector  :inline)
+   )
+  )
+
+;; definition for method 3 of type race-mesh-hash
+(defmethod inspect ((this race-mesh-hash))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'race-mesh-hash)
+  (format #t "~1Tcells-wide: ~D~%" (-> this cells-wide))
+  (format #t "~1Tcells-tall: ~D~%" (-> this cells-tall))
+  (format #t "~1Tcell-length: ~f~%" (-> this cell-length))
+  (format #t "~1Tcells: #x~X~%" (-> this cells))
+  (format #t "~1Tslice-table: #x~X~%" (-> this slice-table))
+  (format #t "~1Torigin: ~`vector`P~%" (-> this origin))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type race-mesh
+(deftype race-mesh (basic)
+  ((version          uint8)
+   (flags            uint8)
+   (slice-count      int16)
+   (edge-count       int16)
+   (race-line-count  int16)
+   (ai-valid-mask    int16)
+   (pad              uint8  2)
+   (slices           (inline-array race-mesh-slice))
+   (edges            (inline-array race-mesh-edge))
+   (hash             race-mesh-hash)
+   (race-lines       uint32)
+   )
+  (:methods
+    (race-mesh-method-9 () none)
+    (race-mesh-method-10 () none)
+    (race-mesh-method-11 () none)
+    (race-mesh-method-12 () none)
+    (race-mesh-method-13 () none)
+    (race-mesh-method-14 () none)
+    (race-mesh-method-15 () none)
+    (race-mesh-method-16 () none)
+    (race-mesh-method-17 () none)
+    (race-mesh-method-18 () none)
+    (race-mesh-method-19 () none)
+    (race-mesh-method-20 () none)
+    )
+  )
+
+;; definition for method 3 of type race-mesh
+(defmethod inspect ((this race-mesh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tversion: ~D~%" (-> this version))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tslice-count: ~D~%" (-> this slice-count))
+  (format #t "~1Tedge-count: ~D~%" (-> this edge-count))
+  (format #t "~1Trace-line-count: ~D~%" (-> this race-line-count))
+  (format #t "~1Tai-valid-mask: ~D~%" (-> this ai-valid-mask))
+  (format #t "~1Tpad[2] @ #x~X~%" (-> this pad))
+  (format #t "~1Tslices: #x~X~%" (-> this slices))
+  (format #t "~1Tedges: #x~X~%" (-> this edges))
+  (format #t "~1Thash: #<race-mesh-hash @ #x~X>~%" (-> this hash))
+  (format #t "~1Trace-lines: #x~X~%" (-> this race-lines))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+
