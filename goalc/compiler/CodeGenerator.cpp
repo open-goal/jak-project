@@ -15,6 +15,7 @@
 
 #include "goalc/debugger/DebugInfo.h"
 #include "goalc/emitter/IGen.h"
+#include "goalc/emitter/IGenARM64.h"
 
 #include "fmt/format.h"
 
@@ -165,13 +166,7 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
 
 void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   if (env->is_asm_func) {
-    if (m_gen.instr_set() == InstructionSet::X86) {
-      do_asm_function_x86(env, f_idx, env->asm_func_saved_regs);
-    } else if (m_gen.instr_set() == InstructionSet::ARM64) {
-      do_asm_function_arm64(env, f_idx, env->asm_func_saved_regs);
-    } else {
-      throw std::runtime_error("CodeGenerator::do_function, instruction set not supported");
-    }
+    do_asm_function(env, f_idx, env->asm_func_saved_regs);
   } else {
     if (m_gen.instr_set() == InstructionSet::X86) {
       do_goal_function_x86(env, f_idx);
@@ -194,7 +189,7 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   // todo, extra alignment settings
 
-  auto& ri = emitter::gRegInfo;
+  auto& ri = emitter::reg_info(m_gen.instr_set());
   const auto& allocs = env->alloc_result();
 
   // compute how much stack we will use
@@ -400,10 +395,173 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
 }
 
 void CodeGenerator::do_goal_function_arm64(FunctionEnv* env, int f_idx) {
-  throw std::runtime_error("NYI - CodeGenerator::do_goal_function_arm64");
+  auto* debug = &m_debug_info->function_by_name(env->name());
+  auto f_rec = m_gen.get_existing_function_record(f_idx);
+  const auto& allocs = env->alloc_result();
+
+  // keep sp 16-byte aligned and save x30
+  int stack_offset = 0;
+
+  std::vector<emitter::Register> gprs_to_save;
+  gprs_to_save.push_back(emitter::Register(emitter::ARM64_REG::X30));
+  for (auto& saved_reg : allocs.used_saved_regs) {
+    if (saved_reg.is_gpr(m_gen.instr_set())) {
+      gprs_to_save.push_back(saved_reg);
+    }
+  }
+  for (size_t i = 0; i < gprs_to_save.size(); i += 2) {
+    if (i + 1 < gprs_to_save.size()) {
+      m_gen.add_instr_no_ir(f_rec,
+                            IGen::ARM64::push_pair_gpr64(gprs_to_save[i], gprs_to_save[i + 1]),
+                            InstructionInfo::Kind::PROLOGUE);
+    } else {
+      // an odd GPR gets its own 16-byte slot
+      m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(m_gen, gprs_to_save[i]),
+                            InstructionInfo::Kind::PROLOGUE);
+    }
+    stack_offset += 16;
+  }
+
+  // save any allocated vector registers
+  int n_vec_backups = 0;
+  for (auto& saved_reg : allocs.used_saved_regs) {
+    if (saved_reg.is_128bit_simd(m_gen.instr_set())) {
+      n_vec_backups++;
+    }
+  }
+  int vec_backup_size = XMM_SIZE * n_vec_backups;
+  if (n_vec_backups > 0) {
+    m_gen.add_instr_no_ir(f_rec,
+                          IGen::sub_gpr64_imm(m_gen, emitter::ARM64_REG::SP, vec_backup_size),
+                          InstructionInfo::Kind::PROLOGUE);
+    int i = 0;
+    for (auto& saved_reg : allocs.used_saved_regs) {
+      if (saved_reg.is_128bit_simd(m_gen.instr_set())) {
+        m_gen.add_instr_no_ir(f_rec,
+                              IGen::store128_xmm128_reg_offset(m_gen, emitter::ARM64_REG::SP,
+                                                               saved_reg, i * XMM_SIZE),
+                              InstructionInfo::Kind::PROLOGUE);
+        i++;
+      }
+    }
+    stack_offset += vec_backup_size;
+  }
+
+  // aligned space for spills and stack variables
+  int manually_added_stack_offset =
+      GPR_SIZE * (allocs.stack_slots_for_spills + allocs.stack_slots_for_vars);
+  manually_added_stack_offset = (manually_added_stack_offset + 15) & ~15;
+  if (manually_added_stack_offset) {
+    m_gen.add_instr_no_ir(
+        f_rec, IGen::sub_gpr64_imm(m_gen, emitter::ARM64_REG::SP, manually_added_stack_offset),
+        InstructionInfo::Kind::PROLOGUE);
+    stack_offset += manually_added_stack_offset;
+  }
+  ASSERT((stack_offset & 15) == 0);
+  debug->stack_usage = stack_offset;
+
+  for (int ir_idx = 0; ir_idx < int(env->code().size()); ir_idx++) {
+    auto& ir = env->code().at(ir_idx);
+    auto i_rec = m_gen.add_ir(f_rec);
+
+    // reload any spilled operands
+    auto& bonus = allocs.stack_ops.at(ir_idx);
+    for (auto& op : bonus.ops) {
+      if (op.load) {
+        if (op.reg.is_gpr(m_gen.instr_set()) && op.reg_class == RegClass::GPR_64) {
+          m_gen.add_instr(IGen::load64_gpr64_plus_s32(m_gen, op.reg,
+                                                      allocs.get_slot_for_spill(op.slot) * GPR_SIZE,
+                                                      emitter::ARM64_REG::SP),
+                          i_rec);
+        } else if (op.reg.is_128bit_simd(m_gen.instr_set()) && op.reg_class == RegClass::FLOAT) {
+          // FLOAT spills use an 8-byte slot but move only 32 bits
+          m_gen.add_instr(
+              IGen::load_reg_offset_xmm32(m_gen, op.reg, emitter::ARM64_REG::SP,
+                                          allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+              i_rec);
+        } else if (op.reg.is_128bit_simd(m_gen.instr_set()) &&
+                   (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
+          m_gen.add_instr(
+              IGen::load128_xmm128_reg_offset(m_gen, op.reg, emitter::ARM64_REG::SP,
+                                              allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+              i_rec);
+        } else {
+          ASSERT(false);
+        }
+      }
+    }
+
+    ir->do_codegen_arm64(&m_gen, allocs, i_rec);
+
+    for (auto& op : bonus.ops) {
+      if (op.store) {
+        if (op.reg.is_gpr(m_gen.instr_set()) && op.reg_class == RegClass::GPR_64) {
+          m_gen.add_instr(
+              IGen::store64_gpr64_plus_s32(m_gen, emitter::ARM64_REG::SP,
+                                           allocs.get_slot_for_spill(op.slot) * GPR_SIZE, op.reg),
+              i_rec);
+        } else if (op.reg.is_128bit_simd(m_gen.instr_set()) && op.reg_class == RegClass::FLOAT) {
+          m_gen.add_instr(
+              IGen::store_reg_offset_xmm32(m_gen, emitter::ARM64_REG::SP, op.reg,
+                                           allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+              i_rec);
+        } else if (op.reg.is_128bit_simd(m_gen.instr_set()) &&
+                   (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
+          m_gen.add_instr(
+              IGen::store128_xmm128_reg_offset(m_gen, emitter::ARM64_REG::SP, op.reg,
+                                               allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+              i_rec);
+        } else {
+          ASSERT(false);
+        }
+      }
+    }
+  }
+
+  if (manually_added_stack_offset) {
+    m_gen.add_instr_no_ir(
+        f_rec, IGen::add_gpr64_imm(m_gen, emitter::ARM64_REG::SP, manually_added_stack_offset),
+        InstructionInfo::Kind::EPILOGUE);
+  }
+
+  if (n_vec_backups > 0) {
+    int j = n_vec_backups;
+    for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
+      auto& saved_reg = allocs.used_saved_regs.at(i);
+      if (saved_reg.is_128bit_simd(m_gen.instr_set())) {
+        j--;
+        m_gen.add_instr_no_ir(
+            f_rec,
+            IGen::load128_xmm128_reg_offset(m_gen, saved_reg, emitter::ARM64_REG::SP, j * XMM_SIZE),
+            InstructionInfo::Kind::EPILOGUE);
+      }
+    }
+    ASSERT(j == 0);
+    m_gen.add_instr_no_ir(f_rec,
+                          IGen::add_gpr64_imm(m_gen, emitter::ARM64_REG::SP, vec_backup_size),
+                          InstructionInfo::Kind::EPILOGUE);
+  }
+
+  // restore GPRs in reverse order
+  for (size_t i = (gprs_to_save.size() + 1) / 2 * 2; i >= 2;) {
+    i -= 2;
+    if (i + 1 < gprs_to_save.size()) {
+      m_gen.add_instr_no_ir(f_rec,
+                            IGen::ARM64::pop_pair_gpr64(gprs_to_save[i], gprs_to_save[i + 1]),
+                            InstructionInfo::Kind::EPILOGUE);
+    } else {
+      m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(m_gen, gprs_to_save[i]),
+                            InstructionInfo::Kind::EPILOGUE);
+    }
+  }
+
+  m_gen.add_instr_no_ir(f_rec, IGen::ret(m_gen), InstructionInfo::Kind::EPILOGUE);
 }
 
-void CodeGenerator::do_asm_function_x86(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
+/*!
+ * Emit an ASM function without a compiler-generated prologue or epilogue.
+ */
+void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   const auto& allocs = env->alloc_result();
 
@@ -411,7 +569,7 @@ void CodeGenerator::do_asm_function_x86(FunctionEnv* env, int f_idx, bool allow_
     std::string err = fmt::format(
         "ASM Function {}'s coloring using the following callee-saved registers: ", env->name());
     for (auto& x : allocs.used_saved_regs) {
-      err += x.print();
+      err += x.print(m_gen.instr_set());
       err += " ";
     }
     err.pop_back();
@@ -427,7 +585,6 @@ void CodeGenerator::do_asm_function_x86(FunctionEnv* env, int f_idx, bool allow_
     throw std::runtime_error("ASM Function has variables on the stack.");
   }
 
-  // emit each IR into x86 instructions.
   for (int ir_idx = 0; ir_idx < int(env->code().size()); ir_idx++) {
     auto& ir = env->code().at(ir_idx);
     // start of IR
@@ -439,10 +596,10 @@ void CodeGenerator::do_asm_function_x86(FunctionEnv* env, int f_idx, bool allow_
     }
 
     // do the actual op
-    ir->do_codegen_x86(&m_gen, allocs, i_rec);
+    if (m_gen.instr_set() == InstructionSet::X86) {
+      ir->do_codegen_x86(&m_gen, allocs, i_rec);
+    } else {
+      ir->do_codegen_arm64(&m_gen, allocs, i_rec);
+    }
   }
-}
-
-void CodeGenerator::do_asm_function_arm64(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
-  throw std::runtime_error("NYI - CodeGenerator::do_asm_function");
 }

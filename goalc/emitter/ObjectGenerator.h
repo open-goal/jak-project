@@ -106,6 +106,7 @@ class ObjectGenerator {
  private:
   void handle_temp_static_type_links(int seg);
   void handle_temp_jump_links(int seg);
+  void patch_arm64_branch(int seg, int patch_location, int delta, ARM64::RelocKind kind);
   void handle_temp_instr_sym_links(int seg);
   void handle_temp_static_sym_links(int seg);
   void handle_temp_rip_data_links(int seg);
@@ -236,6 +237,7 @@ class ObjectGenerator {
   // final link stuff
   seg_map<int> m_type_ptr_links_by_seg;
   seg_map<int> m_sym_links_by_seg;
+  seg_map<int> m_sym_mov32_links_by_seg;  // ARM64 only
   seg_vector<RipLink> m_rip_links_by_seg;
   seg_vector<PointerLink> m_pointer_links_by_seg;
 

@@ -29,8 +29,7 @@ class CodeGenerator {
   void do_function(FunctionEnv* env, int f_idx);
   void do_goal_function_x86(FunctionEnv* env, int f_idx);
   void do_goal_function_arm64(FunctionEnv* env, int f_idx);
-  void do_asm_function_x86(FunctionEnv* env, int f_idx, bool allow_saved_regs);
-  void do_asm_function_arm64(FunctionEnv* env, int f_idx, bool allow_saved_regs);
+  void do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs);
   emitter::ObjectGenerator m_gen;
   FileEnv* m_fe = nullptr;
   DebugInfo* m_debug_info = nullptr;

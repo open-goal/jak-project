@@ -15,6 +15,8 @@ const std::unordered_map<std::string, GoalCompilerForm> g_goal_forms = {
     // INLINE ASM
     {".nop",
      {.docstring = "A simple no-op, does nothing", .form_function = &Compiler::compile_nop}},
+    {".break",
+     {.docstring = "A trap for the (break) macro", .form_function = &Compiler::compile_asm_break}},
     {".ret", {.form_function = &Compiler::compile_asm_ret}},
     {".push", {.form_function = &Compiler::compile_asm_push}},
     {".pop", {.form_function = &Compiler::compile_asm_pop}},

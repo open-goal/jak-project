@@ -767,6 +767,9 @@ Instruction nop(const ObjectGenerator& gen);
 //   UTILITIES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+//! Emit the trap used by GOAL (break) without colliding with debugger breakpoints.
+Instruction trap(const ObjectGenerator& gen);
+
 /*!
  * A "null" instruction.  This instruction does not generate any bytes
  * but can be referred to by a label.  Useful to insert in place of a real instruction

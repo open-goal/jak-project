@@ -15,6 +15,8 @@
 #include "system/background_worker.h"
 
 extern u8* g_ee_main_mem;
+// executable view of g_ee_main_mem for GOAL calls
+extern u8* g_ee_main_mem_exec;
 extern GameVersion g_game_version;
 extern BackgroundWorker g_background_worker;
 extern int g_server_port;

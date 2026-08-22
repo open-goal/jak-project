@@ -18,6 +18,9 @@
 #elif _WIN32
 #include "third-party/mman/mman.h"
 #endif
+#if defined(__APPLE__) && defined(__aarch64__)
+#include <pthread.h>  // pthread_jit_write_protect_np
+#endif
 
 #include <cstdio>
 
@@ -301,7 +304,7 @@ void CodeTester::emit_push_all_simd() {
       emit(IGen::store128_gpr64_simd128(m_gen, RSP, XMM0 + i));
     }
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
-    // TODO - 16 or 32 simd regs available?
+    // The compiler allocator uses V0 through V15.
     for (int i = 0; i < 16; i++) {
       emit(IGen::sub_gpr64_imm8s(m_gen, SP, 16));
       emit(IGen::store128_gpr64_simd128(m_gen, SP, V0 + i));
@@ -349,12 +352,10 @@ u64 CodeTester::execute() {
 #endif
   // clang-format off
 #if defined(__APPLE__) && defined(__aarch64__)
-  // TODO - we may need to switch to using pthread_jit_write_protect_np
-  // there may also be issues if multiple threasd are involved
-  // but this seems to work so keep it simple until something proves otherwise.
-  mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
+  // block writes while this thread runs the MAP_JIT buffer
+  pthread_jit_write_protect_np(1);
   auto ret = ((u64(*)())code_buffer)();
-  mprotect(code_buffer, code_buffer_capacity, PROT_WRITE | PROT_READ);
+  pthread_jit_write_protect_np(0);
   return ret;
 #else
   return ((u64(*)())code_buffer)();
@@ -367,11 +368,14 @@ u64 CodeTester::execute() {
  * arguments will appear in (will handle windows/linux differences)
  */
 u64 CodeTester::execute(u64 in0, u64 in1, u64 in2, u64 in3) {
+#if defined(__aarch64__)
+  __builtin___clear_cache((char*)code_buffer, (char*)code_buffer + code_buffer_size);
+#endif
   // clang-format off
 #if defined(__APPLE__) && defined(__aarch64__)
-  mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
+  pthread_jit_write_protect_np(1);
   auto ret = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
-  mprotect(code_buffer, code_buffer_capacity, PROT_WRITE | PROT_READ);
+  pthread_jit_write_protect_np(0);
   return ret;
 #else
   return ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
@@ -383,23 +387,21 @@ u64 CodeTester::execute(u64 in0, u64 in1, u64 in2, u64 in3) {
  * Allocate a code buffer of the given size.
  */
 void CodeTester::init_code_buffer(int capacity) {
-// TODO Apple Silicon - You cannot make a page be RWX,
-// or more specifically it can't be both writable and executable at the same time
-//
-// https://github.com/zherczeg/sljit/issues/99
-//
-// The solution to this is to flip-flop between permissions, or perhaps have two threads
-// one that has writing permission, and another with executable permission
+  // MAP_JIT write protection is per thread
 #if defined(__APPLE__) && defined(__aarch64__)
-  code_buffer = (u8*)mmap(nullptr, capacity, PROT_WRITE | PROT_READ,
-                          MAP_ANONYMOUS | MAP_PRIVATE | MAP_JIT, 0, 0);
+  code_buffer = (u8*)mmap(nullptr, capacity, PROT_READ | PROT_WRITE | PROT_EXEC,
+                          MAP_ANONYMOUS | MAP_PRIVATE | MAP_JIT, -1, 0);
 #else
   code_buffer = (u8*)mmap(nullptr, capacity, PROT_EXEC | PROT_READ | PROT_WRITE,
-                          MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+                          MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 #endif
   if (code_buffer == (u8*)(-1)) {
     ASSERT_MSG(false, "[CodeTester] Failed to map memory!");
   }
+#if defined(__APPLE__) && defined(__aarch64__)
+  // allow writes before the first instruction
+  pthread_jit_write_protect_np(0);
+#endif
 
   code_buffer_capacity = capacity;
   code_buffer_size = 0;

@@ -1452,7 +1452,7 @@ InstructionX86 add_gpr64_imm(Register reg, int64_t imm) {
   } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
     return add_gpr64_imm32s(reg, imm);
   } else {
-    throw std::runtime_error("Invalid `add` with reg[" + reg.print() + "]/imm[" +
+    throw std::runtime_error("Invalid `add` with reg[" + reg.print(instr_set) + "]/imm[" +
                              std::to_string(imm) + "]");
   }
 }
@@ -1463,7 +1463,7 @@ InstructionX86 sub_gpr64_imm(Register reg, int64_t imm) {
   } else if (imm >= INT32_MIN && imm <= INT32_MAX) {
     return sub_gpr64_imm32s(reg, imm);
   } else {
-    throw std::runtime_error("Invalid `sub` with reg[" + reg.print() + "]/imm[" +
+    throw std::runtime_error("Invalid `sub` with reg[" + reg.print(instr_set) + "]/imm[" +
                              std::to_string(imm) + "]");
   }
 }
@@ -1802,6 +1802,13 @@ InstructionX86 f32_to_int32(Register dst, Register src) {
 
 InstructionX86 nop() {
   InstructionX86 instr(0x90);
+  return instr;
+}
+
+//! Emit UD2 because INT3 is reserved for debugger breakpoints.
+InstructionX86 trap() {
+  InstructionX86 instr(0x0f);
+  instr.set_op2(0x0b);
   return instr;
 }
 

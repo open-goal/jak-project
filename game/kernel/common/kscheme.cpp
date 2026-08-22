@@ -84,7 +84,39 @@ u64 goal_malloc(u32 heap, u32 size, u32 flags, u32 name) {
 
 extern "C" {
 // defined in asm_funcs.asm
-#ifdef __linux__
+#ifdef __aarch64__
+#ifdef __APPLE__
+uint64_t _call_goal_asm_arm64(u64 a0,
+                              u64 a1,
+                              u64 a2,
+                              void* fptr,
+                              void* st_ptr,
+                              void* offset,
+                              void* exec_offset) asm("_call_goal_asm_arm64");
+uint64_t _call_goal_on_stack_asm_arm64(u64 rsp,
+                                       u64 u0,
+                                       u64 u1,
+                                       void* fptr,
+                                       void* st_ptr,
+                                       void* offset,
+                                       void* exec_offset) asm("_call_goal_on_stack_asm_arm64");
+#else
+uint64_t _call_goal_asm_arm64(u64 a0,
+                              u64 a1,
+                              u64 a2,
+                              void* fptr,
+                              void* st_ptr,
+                              void* offset,
+                              void* exec_offset);
+uint64_t _call_goal_on_stack_asm_arm64(u64 rsp,
+                                       u64 u0,
+                                       u64 u1,
+                                       void* fptr,
+                                       void* st_ptr,
+                                       void* offset,
+                                       void* exec_offset);
+#endif
+#elif defined __linux__
 uint64_t _call_goal_asm_systemv(u64 a0, u64 a1, u64 a2, void* fptr, void* st_ptr, void* offset);
 uint64_t _call_goal_on_stack_asm_systemv(u64 rsp,
                                          u64 u0,
@@ -115,13 +147,19 @@ u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
   // auto st_ptr = (void*)((uint8_t*)(offset) + st); updated for the new compiler!
   void* st_ptr = (void*)st;
 
-  void* fptr = f.c();
-#ifdef __linux__
+  [[maybe_unused]] void* fptr = f.c();
+#ifdef __aarch64__
+  // use the executable mapping for the function and GOAL base
+  return _call_goal_asm_arm64(a, b, c, (void*)(g_ee_main_mem_exec + f.offset), st_ptr, offset,
+                              g_ee_main_mem_exec);
+#elif defined __linux__
   return _call_goal_asm_systemv(a, b, c, fptr, st_ptr, offset);
 #elif defined __APPLE__ && defined __x86_64__
   return _call_goal_asm_systemv(a, b, c, fptr, st_ptr, offset);
 #elif _WIN32
   return _call_goal_asm_win32(a, b, c, fptr, st_ptr, offset);
+#else
+#error "call_goal: no GOAL call trampoline for this architecture or platform"
 #endif
 }
 
@@ -131,13 +169,18 @@ u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
 u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset) {
   void* st_ptr = (void*)st;
 
-  void* fptr = f.c();
-#ifdef __linux__
+  [[maybe_unused]] void* fptr = f.c();
+#ifdef __aarch64__
+  return _call_goal_on_stack_asm_arm64(rsp, 0, 0, (void*)(g_ee_main_mem_exec + f.offset), st_ptr,
+                                       offset, g_ee_main_mem_exec);
+#elif defined __linux__
   return _call_goal_on_stack_asm_systemv(rsp, 0, 0, fptr, st_ptr, offset);
 #elif defined __APPLE__ && defined __x86_64__
   return _call_goal_on_stack_asm_systemv(rsp, 0, 0, fptr, st_ptr, offset);
 #elif _WIN32
   return _call_goal_on_stack_asm_win32(rsp, fptr, st_ptr, offset);
+#else
+#error "call_goal_on_stack: no GOAL call trampoline for this architecture or platform"
 #endif
 }
 

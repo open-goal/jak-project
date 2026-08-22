@@ -28,10 +28,11 @@ std::string IRegister::to_string() const {
   }
 }
 
-std::string IRegConstraint::to_string() const {
+std::string IRegConstraint::to_string(emitter::InstructionSet instr_set) const {
   if (contrain_everywhere) {
-    return fmt::format("[all] {} in {}", ireg.to_string(), desired_register.print());
+    return fmt::format("[all] {} in {}", ireg.to_string(), desired_register.print(instr_set));
   } else {
-    return fmt::format("[{:3d}] {} in {}", instr_idx, ireg.to_string(), desired_register.print());
+    return fmt::format("[{:3d}] {} in {}", instr_idx, ireg.to_string(),
+                       desired_register.print(instr_set));
   }
 }
