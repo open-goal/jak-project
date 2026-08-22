@@ -39,6 +39,11 @@ struct VramEntry {
   bool needs_pool_update = false;
   GpuTexture* pool_gpu_tex = nullptr;
 
+  // frame (render frame_idx) when the game last wrote this entry (upload, erase, or draw).
+  // decides write claim vs re-assert when syncing with the texture pool: entries the game
+  // has stopped writing must not keep evicting live uploads at the same address.
+  u64 last_write_frame = 0;
+
   void reset() {
     data.clear();
     kind = Kind::INVALID;
@@ -390,6 +395,8 @@ class TextureAnimator {
   std::vector<GLuint> m_private_output_slots;
   std::vector<GLuint> m_public_output_slots;
   std::vector<int> m_skip_tbps;
+  // the frame_idx of the current handle_texture_anim_data run, for stamping entry writes.
+  u64 m_current_frame_idx = 0;
 
   struct Bool {
     bool b = false;

@@ -1451,6 +1451,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
 
   m_render_state.version = m_version;
   m_render_state.frame_idx++;
+  m_render_state.texture_pool->set_frame_stamp(m_render_state.frame_idx);
   switch (m_version) {
     case GameVersion::Jak1:
       dispatch_buckets_jak1(dma, prof, sync_after_buckets);
