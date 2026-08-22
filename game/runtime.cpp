@@ -90,7 +90,7 @@ u8* g_ee_main_mem = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
 GameVersion g_game_version = GameVersion::Jak1;
 BackgroundWorker g_background_worker;
-int g_server_port = DECI2_PORT;
+int g_server_port = DECI2_PORT - 1 + (int)g_game_version;
 
 namespace {
 
@@ -106,7 +106,7 @@ void deci2_runner(SystemThreadInterface& iface) {
   std::function<bool()> shutdown_callback = [&]() { return iface.get_want_exit(); };
 
   // create and register server
-  Deci2Server server(shutdown_callback, DECI2_PORT - 1 + (int)g_game_version);
+  Deci2Server server(shutdown_callback, g_server_port);
   ee::LIBRARY_sceDeci2_register(&server);
 
   // now its ok to continue with initialization
