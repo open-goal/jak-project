@@ -8,6 +8,10 @@
 #include <unistd.h>
 
 #include <sys/mman.h>
+#if defined(__APPLE__) && defined(__aarch64__)
+#include <mach/mach.h>
+#include <mach/mach_vm.h>
+#endif
 #elif _WIN32
 #include <io.h>
 
@@ -87,6 +91,7 @@
 #include "system/SystemThread.h"
 
 u8* g_ee_main_mem = nullptr;
+u8* g_ee_main_mem_exec = nullptr;
 std::thread::id g_main_thread_id = std::thread::id();
 GameVersion g_game_version = GameVersion::Jak1;
 BackgroundWorker g_background_worker;
@@ -149,13 +154,7 @@ void deci2_runner(SystemThreadInterface& iface) {
 void ee_runner(SystemThreadInterface& iface) {
   prof().root_event();
   // Allocate Main RAM. Must have execute enabled.
-  // TODO Apple Silicon - You cannot make a page be RWX,
-  // or more specifically it can't be both writable and executable at the same time
-  //
-  // https://github.com/zherczeg/sljit/issues/99
-  //
-  // The solution to this is to flip-flop between permissions, or perhaps have two threads
-  // one that has writing permission, and another with executable permission
+  // Apple Silicon uses separate writable and executable mappings for EE memory.
   if (EE_MEM_LOW_MAP) {
     g_ee_main_mem =
         (u8*)mmap((void*)0x10000000, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
@@ -166,9 +165,15 @@ void ee_runner(SystemThreadInterface& iface) {
                   MAP_ANONYMOUS | MAP_32BIT | MAP_PRIVATE | MAP_POPULATE, 0, 0);
 #endif
   } else {
+#if defined(__APPLE__) && defined(__aarch64__)
+    // mach_vm_remap needs an anonymous writable mapping
+    g_ee_main_mem = (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_READ | PROT_WRITE,
+                              MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+#else
     g_ee_main_mem =
         (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
                   MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+#endif
   }
 
   if (g_ee_main_mem == (u8*)(-1)) {
@@ -176,6 +181,35 @@ void ee_runner(SystemThreadInterface& iface) {
     iface.initialization_complete();
     return;
   }
+
+  g_ee_main_mem_exec = g_ee_main_mem;
+
+#if defined(__APPLE__) && defined(__aarch64__)
+  // map the same pages again with read and execute access
+  {
+    mach_vm_address_t exec_addr = 0;
+    vm_prot_t cur_prot = 0, max_prot = 0;
+    kern_return_t kr = mach_vm_remap(
+        mach_task_self(), &exec_addr, EE_MAIN_MEM_SIZE, 0, VM_FLAGS_ANYWHERE, mach_task_self(),
+        (mach_vm_address_t)g_ee_main_mem, false, &cur_prot, &max_prot, VM_INHERIT_NONE);
+    if (kr != KERN_SUCCESS) {
+      lg::error("Cannot map the executable view of main memory: mach_vm_remap returned {}",
+                (int)kr);
+      iface.initialization_complete();
+      return;
+    }
+    kr = mach_vm_protect(mach_task_self(), exec_addr, EE_MAIN_MEM_SIZE, false,
+                         VM_PROT_READ | VM_PROT_EXECUTE);
+    if (kr != KERN_SUCCESS) {
+      lg::error("Cannot make main memory executable: mach_vm_protect returned {}", (int)kr);
+      iface.initialization_complete();
+      return;
+    }
+    g_ee_main_mem_exec = (u8*)exec_addr;
+    lg::debug("Main memory executable view at 0x{:016x} (delta 0x{:x})", (u64)g_ee_main_mem_exec,
+              (u64)(g_ee_main_mem_exec - g_ee_main_mem));
+  }
+#endif
 
   lg::debug("Main memory mapped at 0x{:016x}", (u64)(g_ee_main_mem));
   lg::debug("Main memory size 0x{:x} bytes ({:.3f} MB)", EE_MAIN_MEM_SIZE,

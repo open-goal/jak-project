@@ -805,6 +805,10 @@ Instruction nop(const ObjectGenerator& gen) {
   IGEN_DISPATCH(nop);
 }
 
+Instruction trap(const ObjectGenerator& gen) {
+  IGEN_DISPATCH(trap);
+}
+
 Instruction null(const ObjectGenerator& gen) {
   IGEN_DISPATCH(null);
 }

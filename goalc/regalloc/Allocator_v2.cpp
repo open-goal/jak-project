@@ -302,40 +302,69 @@ std::vector<emitter::Register> allowable_local_var_move_elim = {
     emitter::XMM1,  emitter::XMM0,  emitter::XMM8,  emitter::XMM9, emitter::XMM10, emitter::XMM11,
     emitter::XMM12, emitter::XMM13, emitter::XMM14, emitter::XMM15};
 
+AssignmentOrder REG_saved_first_order_arm64 = {
+    {emitter::V8, emitter::V9, emitter::V10, emitter::V11, emitter::V12, emitter::V13, emitter::V14,
+     emitter::V15, emitter::V7, emitter::V6, emitter::V5, emitter::V4, emitter::V3, emitter::V2,
+     emitter::V1, emitter::V0},
+    {emitter::X19, emitter::X23, emitter::X24, emitter::X25, emitter::X26, emitter::X15,
+     emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10, emitter::X9,
+     emitter::X8,  emitter::X7,  emitter::X6,  emitter::X5,  emitter::X4,  emitter::X3,
+     emitter::X2,  emitter::X1,  emitter::X0}};
+
+AssignmentOrder REG_temp_first_order_arm64 = {
+    {emitter::V7, emitter::V6, emitter::V5, emitter::V4, emitter::V3, emitter::V2, emitter::V1,
+     emitter::V0, emitter::V8, emitter::V9, emitter::V10, emitter::V11, emitter::V12, emitter::V13,
+     emitter::V14, emitter::V15},
+    {emitter::X15, emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10,
+     emitter::X9,  emitter::X8,  emitter::X7,  emitter::X6,  emitter::X5,  emitter::X4,
+     emitter::X3,  emitter::X2,  emitter::X1,  emitter::X0,  emitter::X19, emitter::X23,
+     emitter::X24, emitter::X25, emitter::X26}};
+
+AssignmentOrder REG_extra_hard_order_arm64 = {
+    {emitter::V7, emitter::V6, emitter::V5, emitter::V4, emitter::V3, emitter::V2, emitter::V1,
+     emitter::V0, emitter::V8, emitter::V9},
+    {emitter::X9, emitter::X5, emitter::X4, emitter::X0, emitter::X19, emitter::X23}};
+
+AssignmentOrder REG_temp_only_order_arm64 = {
+    {emitter::V7, emitter::V6, emitter::V5, emitter::V4, emitter::V3, emitter::V2, emitter::V1,
+     emitter::V0},
+    {emitter::X15, emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10,
+     emitter::X9, emitter::X8, emitter::X7, emitter::X6, emitter::X5, emitter::X4, emitter::X3,
+     emitter::X2, emitter::X1, emitter::X0}};
+
+std::vector<emitter::Register> allowable_local_var_move_elim_arm64 = {
+    emitter::X15, emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10,
+    emitter::X9,  emitter::X8,  emitter::X7,  emitter::X6,  emitter::X5,  emitter::X4,
+    emitter::X3,  emitter::X2,  emitter::X1,  emitter::X0,  emitter::X19, emitter::X23,
+    emitter::X24, emitter::X25, emitter::X26, emitter::V7,  emitter::V6,  emitter::V5,
+    emitter::V4,  emitter::V3,  emitter::V2,  emitter::V1,  emitter::V0,  emitter::V8,
+    emitter::V9,  emitter::V10, emitter::V11, emitter::V12, emitter::V13, emitter::V14,
+    emitter::V15};
+
+const std::vector<emitter::Register>& move_elim_regs(const AllocationInput& in) {
+  return in.instr_set == emitter::InstructionSet::ARM64 ? allowable_local_var_move_elim_arm64
+                                                        : allowable_local_var_move_elim;
+}
+
 const std::vector<emitter::Register>& get_alloc_order(int var_idx,
                                                       const AllocationInput& in,
                                                       const RACache& cache,
                                                       bool saved_first) {
   bool is_gpr =
       emitter::reg_class_to_hw(cache.iregs.at(var_idx).reg_class) == emitter::HWRegKind::GPR;
+  bool arm64 = in.instr_set == emitter::InstructionSet::ARM64;
+
+  const AssignmentOrder* order;
   if (in.is_asm_function) {
-    if (is_gpr) {
-      return REG_temp_only_order.gprs;
-    } else {
-      return REG_temp_only_order.xmms;
-    }
+    order = arm64 ? &REG_temp_only_order_arm64 : &REG_temp_only_order;
+  } else if (torture_test_spills) {
+    order = arm64 ? &REG_extra_hard_order_arm64 : &REG_extra_hard_order;
+  } else if (saved_first) {
+    order = arm64 ? &REG_saved_first_order_arm64 : &REG_saved_first_order;
   } else {
-    if (torture_test_spills) {
-      if (is_gpr) {
-        return REG_extra_hard_order.gprs;
-      } else {
-        return REG_extra_hard_order.xmms;
-      }
-    }
-    if (saved_first) {
-      if (is_gpr) {
-        return REG_saved_first_order.gprs;
-      } else {
-        return REG_saved_first_order.xmms;
-      }
-    } else {
-      if (is_gpr) {
-        return REG_temp_first_order.gprs;
-      } else {
-        return REG_temp_first_order.xmms;
-      }
-    }
+    order = arm64 ? &REG_temp_first_order_arm64 : &REG_temp_first_order;
   }
+  return is_gpr ? order->gprs : order->xmms;
 }
 
 /*!
@@ -418,7 +447,7 @@ std::vector<VarAssignment> initialize_unassigned(const std::vector<Range<s32>>& 
         if (block.live[instr][var]) {
           result.at(var).mark_live(block.instr_idx.at(instr));
           auto& i = input.instructions.at(block.instr_idx.at(instr));
-          if (!i.clobber.empty()) {
+          if (i.is_call || !i.clobber.empty()) {
             result.at(var).mark_crossing_function();
           }
         }
@@ -523,7 +552,7 @@ void do_constrained_alloc(RACache* cache, const AllocationInput& input, bool tra
   for (auto& constr : input.constraints) {
     auto var_id = constr.ireg.id;
     if (trace_debug) {
-      lg::print("[RA] Apply constraint {}\n", constr.to_string());
+      lg::print("[RA] Apply constraint {}\n", constr.to_string(input.instr_set));
     }
     cache->vars.at(var_id).constrain_to_register(constr.desired_register);
   }
@@ -575,7 +604,7 @@ bool check_constrained_alloc(RACache* cache, const AllocationInput& in) {
       if (lr.assigned()) {
         if (!lr.assigned_to_reg(constr.desired_register)) {
           lg::print("[RegAlloc Error] There are conflicting constraints on {}: {} and {}\n",
-                    constr.ireg.to_string(), constr.desired_register.print(), "???");
+                    constr.ireg.to_string(), constr.desired_register.print(in.instr_set), "???");
           ok = false;
         }
       }
@@ -603,10 +632,26 @@ bool check_constrained_alloc(RACache* cache, const AllocationInput& in) {
                 "[RegAlloc Error] {} Cannot satisfy constraints at instruction {} due to "
                 "constraints "
                 "on {} and {}, both are assigned to register {}\n",
-                in.function_name, i, lr1.var(), lr2.var(), lr1.reg().print());
+                in.function_name, i, lr1.var(), lr2.var(), lr1.reg().print(in.instr_set));
             ok = false;
           }
         }
+      }
+    }
+  }
+
+  for (int var_idx = 0; var_idx < in.max_vars; var_idx++) {
+    const auto& var = cache->vars.at(var_idx);
+    if (!var.seen() || !var.locked()) {
+      continue;
+    }
+    for (int i = var.first_live(); i <= var.last_live(); i++) {
+      const auto& instr = in.instructions.at(i);
+      if (instr.clobbers(var.reg(), cache->iregs.at(var_idx).reg_class, in.instr_set) &&
+          cache->liveout_per_instr.at(i)[var_idx] && !instr.writes(var_idx)) {
+        lg::print("[RegAlloc Error] {} cannot stay in {} across instruction {}\n",
+                  cache->iregs.at(var_idx).to_string(), var.reg().print(in.instr_set), i);
+        ok = false;
       }
     }
   }
@@ -685,17 +730,15 @@ bool check_register_assign_at(const AllocationInput& input,
 
   const auto& instr = input.instructions.at(instr_idx);
 
-  if (vector_contains(instr.clobber, reg)) {
+  if (instr.clobbers(reg, cache.iregs.at(var_idx).reg_class, input.instr_set)) {
     // there's two cases where this is okay.
     // 1: if we aren't live-out. The clobber won't clobber anything.
     if (!cache.liveout_per_instr.at(instr_idx)[var_idx]) {
       // ok
+    } else if (instr.writes(var_idx)) {
+      // the result is written after the clobber
     } else {
-      // otherwise, we need to write it.
-      //        if (!instr.writes(var_idx)) {
       return false;
-      //        }
-      // 2: we write it after the clobber.
     }
   }
 
@@ -769,7 +812,7 @@ bool check_register_assign(const AllocationInput& input,
       continue;
     }
 
-    if (vector_contains(instr.clobber, reg)) {
+    if (instr.clobbers(reg, cache.iregs.at(var_idx).reg_class, input.instr_set)) {
       // there's two cases where this is okay.
       // 1: if we aren't live-out. The clobber won't clobber anything.
       if (!cache.liveout_per_instr.at(instr_idx)[var_idx]) {
@@ -890,7 +933,7 @@ loop_top:
       auto& check_other_var = cache->vars.at(check_other_reg);
       if (check_other_var.assigned_to_reg()) {
         auto reg = check_other_var.reg();
-        if (vector_contains(allowable_local_var_move_elim, reg)) {
+        if (vector_contains(move_elim_regs(input), reg)) {
           if (check_register_assign_at(input, *cache, var_idx, instr_idx, reg)) {
             var.set_stack_slot_reg(reg, instr_idx);
             bonus.reg = reg;
@@ -1012,11 +1055,11 @@ bool run_assignment_on_var(const AllocationInput& input,
       const auto& other_var = cache->vars.at(other_live_var_idx);
       if (other_var.assigned_to_reg() &&
           safe_overlap(input, *cache, var, other_var, var.first_live())) {
-        if (vector_contains(allowable_local_var_move_elim, other_var.reg())) {
+        if (vector_contains(move_elim_regs(input), other_var.reg())) {
           bool worked = check_register_assign(input, *cache, var_idx, other_var.reg());
           if (trace) {
             lg::print("m0 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
-                      other_var.reg().print(), worked);
+                      other_var.reg().print(input.instr_set), worked);
           }
 
           if (worked) {
@@ -1040,11 +1083,11 @@ bool run_assignment_on_var(const AllocationInput& input,
 
       if (other_var.assigned_to_reg() &&
           safe_overlap(input, *cache, var, other_var, var.last_live())) {
-        if (vector_contains(allowable_local_var_move_elim, other_var.reg())) {
+        if (vector_contains(move_elim_regs(input), other_var.reg())) {
           bool worked = check_register_assign(input, *cache, var_idx, other_var.reg());
           if (trace) {
             lg::print("m1 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
-                      other_var.reg().print(), worked);
+                      other_var.reg().print(input.instr_set), worked);
           }
 
           if (worked) {
@@ -1062,8 +1105,8 @@ bool run_assignment_on_var(const AllocationInput& input,
         if (trace) {
           const auto& this_var = cache->vars.at(var_idx);
           lg::print("m2 trying var {} in {} (live {} to {}): {}\n",
-                    cache->iregs.at(var_idx).to_string(), reg.print(), this_var.first_live(),
-                    this_var.last_live(), worked);
+                    cache->iregs.at(var_idx).to_string(), reg.print(input.instr_set),
+                    this_var.first_live(), this_var.last_live(), worked);
         }
         if (worked) {
           var.assign_to_register(reg);
@@ -1182,7 +1225,7 @@ AllocationResult allocate_registers_v2(const AllocationInput& input) {
   result.stack_slots_for_vars = input.stack_slots_for_stack_vars;
 
   // check for use of saved registers
-  for (auto sr : emitter::gRegInfo.get_all_saved()) {
+  for (auto sr : emitter::reg_info(input.instr_set).get_all_saved()) {
     bool uses_sr = false;
     for (auto& lr : cache.vars) {
       for (int instr_idx = lr.first_live(); instr_idx <= lr.last_live(); instr_idx++) {

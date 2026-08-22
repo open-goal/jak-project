@@ -84,6 +84,24 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   return 1 + 3 * 4;
 }
 
+/*!
+ * Patches a 32-bit cross-segment GOAL address into a movz/movk pair.
+ */
+uint32_t arm64_other_seg_mov32_link_v3(Ptr<uint8_t> link, ObjectFileHeader* ofh, int current_seg) {
+  uint8_t target_seg = *link;
+  ASSERT(target_seg < ofh->segment_count);
+
+  uint32_t* link_data = (link + 1).cast<uint32_t>().c();
+  uint32_t patch_loc = link_data[1] + ofh->code_infos[current_seg].offset;
+
+  // discarded debug segments use a null GOAL pointer
+  uint32_t value =
+      ofh->code_infos[target_seg].offset ? (link_data[0] + ofh->code_infos[target_seg].offset) : 0;
+
+  arm64_write_mov32(Ptr<uint32_t>(patch_loc).c(), value);
+  return 1 + 2 * 4;
+}
+
 uint32_t ptr_link_v3(Ptr<u8> link, ObjectFileHeader* ofh, int current_seg) {
   auto* link_data = link.cast<u32>().c();
   u32 patch_loc = link_data[0] + ofh->code_infos[current_seg].offset;
@@ -133,7 +151,7 @@ uint32_t typelink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
  * Link symbols (both offsets and pointers) in "v3 equivalent" link data.
  * Returns a pointer to the link table data after the linking data for this symbol.
  */
-uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
+uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data, bool mov32) {
   // get the symbol name
   uint32_t seek = 0;
   char sym_name[256];
@@ -161,12 +179,21 @@ uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
     seek += 4;
     auto data_ptr = (data + offset).cast<int32_t>();
 
-    if (*data_ptr == -1) {
+    // ARM64 movz/movk links use the same s32 sentinel values as direct data links.
+    s32 current = mov32 ? s32(arm64_read_mov32((data + offset).cast<u32>().c())) : *data_ptr;
+    s32 value;
+    if (current == -1) {
       // a "-1" indicates that we should store the address.
-      *(data + offset).cast<int32_t>() = sym_addr;
+      value = sym_addr;
     } else {
       // otherwise store the offset to st.  Eventually this should become an s16 instead.
-      *(data + offset).cast<int32_t>() = sym_offset;
+      value = sym_offset;
+    }
+
+    if (mov32) {
+      arm64_write_mov32((data + offset).cast<u32>().c(), u32(value));
+    } else {
+      *data_ptr = value;
     }
   }
 
@@ -265,7 +292,11 @@ uint32_t link_control::jak1_work_v3() {
               break;
             case LINK_SYMBOL_OFFSET:
               lp = lp + 1;
-              lp = lp + symlink_v3(lp, Ptr<u8>(ofh->code_infos[m_segment_process].offset));
+              lp = lp + symlink_v3(lp, Ptr<u8>(ofh->code_infos[m_segment_process].offset), false);
+              break;
+            case LINK_ARM64_SYMBOL_MOV32:
+              lp = lp + 1;
+              lp = lp + symlink_v3(lp, Ptr<u8>(ofh->code_infos[m_segment_process].offset), true);
               break;
             case LINK_TYPE_PTR:
               lp = lp + 1;  // seek past id
@@ -278,6 +309,10 @@ uint32_t link_control::jak1_work_v3() {
             case LINK_DISTANCE_TO_OTHER_SEG_32:
               lp = lp + 1;
               lp = lp + cross_seg_dist_link_v3(lp, ofh, m_segment_process, 4);
+              break;
+            case LINK_ARM64_OTHER_SEG_MOV32:
+              lp = lp + 1;
+              lp = lp + arm64_other_seg_mov32_link_v3(lp, ofh, m_segment_process);
               break;
             case LINK_PTR:
               lp = lp + 1;
@@ -530,6 +565,9 @@ void link_control::jak1_finish(bool jump_from_c_to_goal) {
   if (ofh->object_file_version == 3) {
     // todo check function type of entry
 
+    // flush the executable view after relocation
+    flush_icache_for_linked_object(ofh);
+
     // setup mips2c functions
     const auto& it = Mips2C::gMips2CLinkCallbacks[GameVersion::Jak1].find(m_object_name);
     if (it != Mips2C::gMips2CLinkCallbacks[GameVersion::Jak1].end()) {
@@ -541,7 +579,7 @@ void link_control::jak1_finish(bool jump_from_c_to_goal) {
     // execute top level!
     if (m_entry.offset && (m_flags & LINK_FLAG_EXECUTE)) {
       if (jump_from_c_to_goal) {
-        u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - 8;
+        u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - GOAL_STACK_TOP_OFFSET;
         call_goal_on_stack(m_entry.cast<Function>(), goal_stack, s7.offset, g_ee_main_mem);
       } else {
         call_goal(m_entry.cast<Function>(), 0, 0, 0, s7.offset, g_ee_main_mem);
@@ -554,6 +592,8 @@ void link_control::jak1_finish(bool jump_from_c_to_goal) {
     }
   } else {
     if (m_flags & LINK_FLAG_EXECUTE) {
+      // work_v2 can move the code block, so flush its final range
+      flush_icache_for_linked_object_v2(m_object_data, m_code_size);
       auto entry = m_entry;
       auto name = basename_goal(m_object_name);
       strcpy(Ptr<char>(LINK_CONTROL_NAME_ADDR).c(), name);

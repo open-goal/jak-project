@@ -726,6 +726,7 @@ bool set_regs_now(const ThreadID& tid, const Regs& out) {
   return true;
 }
 #elif __APPLE__
+// macOS debugger backend is not implemented
 ThreadID::ThreadID(const std::string& str) {}
 
 std::string ThreadID::to_string() const {

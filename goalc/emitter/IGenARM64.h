@@ -31,6 +31,12 @@ InstructionARM64 mov_gpr64_u32(Register dst, uint64_t val);
  */
 InstructionARM64 mov_gpr64_s32(Register dst, int64_t val);
 
+//! Emit a patchable movz/movk pair for a 32-bit linker value.
+InstructionARM64 mov_gpr32_link_imm32(Register dst, u32 initial);
+
+//! Add a sign-extended 32-bit index for an s7-relative symbol offset.
+InstructionARM64 add_gpr64_gpr64_sxtw(Register dst, Register base, Register idx);
+
 /*!
  * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
  */
@@ -381,6 +387,8 @@ InstructionARM64 push_gpr64(Register reg);
 /*!
  * Instruction to pop 64 bit gpr from the stack
  */
+InstructionARM64 push_pair_gpr64(Register a, Register b);
+InstructionARM64 pop_pair_gpr64(Register a, Register b);
 InstructionARM64 pop_gpr64(Register reg);
 
 /*!
@@ -436,6 +444,13 @@ InstructionARM64 unsigned_div_gpr32(Register reg);
  */
 InstructionARM64 cdq();
 
+//! ARM64 division returns zero for a zero divisor and INT32_MIN for signed overflow.
+InstructionARM64 sdiv_gpr32(Register dst, Register n, Register m);
+InstructionARM64 udiv_gpr32(Register dst, Register n, Register m);
+
+//! Compute a 32-bit remainder as dst = a - n * m.
+InstructionARM64 msub_gpr32(Register dst, Register n, Register m, Register a);
+
 /*!
  * Move from gpr32 to gpr64, with sign extension.
  * Needed for multiplication/divsion madness.
@@ -444,7 +459,6 @@ InstructionARM64 movsx_r64_r32(Register dst, Register src);
 
 /*!
  * Compare gpr64.  This sets the flags for the jumps.
- * todo UNTESTED
  */
 InstructionARM64 cmp_gpr64_gpr64(Register a, Register b);
 
@@ -626,6 +640,9 @@ InstructionARM64 nop();
 //   UTILITIES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+//! Emit the trap instruction used by GOAL (break).
+InstructionARM64 trap();
+
 /*!
  * A "null" instruction.  This instruction does not generate any bytes
  * but can be referred to by a label.  Useful to insert in place of a real instruction
@@ -642,6 +659,15 @@ InstructionARM64 nop_vf();
 InstructionARM64 wait_vf();
 
 InstructionARM64 mov_vf_vf(Register dst, Register src);
+
+//! Copy one 32-bit source lane into one destination lane.
+InstructionARM64 ins_vf_lane(Register dst, u8 dst_lane, Register src, u8 src_lane);
+
+//! Broadcast one 32-bit source lane to all four destination lanes with DUP.
+InstructionARM64 dup_vf_lane(Register dst, Register src, u8 lane);
+
+//! Copy one 16-bit source lane into one destination lane.
+InstructionARM64 ins_vf_lane_h(Register dst, u8 dst_lane, Register src, u8 src_lane);
 
 InstructionARM64 loadvf_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
 

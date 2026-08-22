@@ -626,6 +626,9 @@ InstructionX86 nop();
 //   UTILITIES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+//! Emit the trap used by GOAL (break).
+InstructionX86 trap();
+
 /*!
  * A "null" instruction.  This instruction does not generate any bytes
  * but can be referred to by a label.  Useful to insert in place of a real instruction

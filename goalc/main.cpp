@@ -41,6 +41,7 @@ int main(int argc, char** argv) {
   int debug_port = -1;
   fs::path project_path_override;
   fs::path iso_path_override;
+  std::string instr_set_name = "x86";
 
   // TODO - a lot of these flags could be deprecated and moved into `repl-config.json`
   CLI::App app{"OpenGOAL Compiler / REPL"};
@@ -58,11 +59,23 @@ int main(int argc, char** argv) {
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
   app.add_option("--iso-path", iso_path_override, "Specify the location of the 'iso_data/' folder");
+  app.add_option("--instruction-set", instr_set_name,
+                 "Select the x86 or ARM64 code generation backend.");
   define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
   GameVersion game_version = game_name_to_version(game);
+
+  emitter::InstructionSet instr_set;
+  if (instr_set_name == "x86") {
+    instr_set = emitter::InstructionSet::X86;
+  } else if (instr_set_name == "arm64") {
+    instr_set = emitter::InstructionSet::ARM64;
+  } else {
+    lg::error("Instruction set '{}' must be 'x86' or 'arm64'", instr_set_name);
+    return 1;
+  }
 
   if (!project_path_override.empty()) {
     if (!fs::exists(project_path_override)) {
@@ -110,7 +123,7 @@ int main(int argc, char** argv) {
   // if a command is provided on the command line, no REPL just run the compiler on it
   try {
     if (!cmd.empty()) {
-      compiler = std::make_unique<Compiler>(game_version, emitter::InstructionSet::X86);
+      compiler = std::make_unique<Compiler>(game_version, instr_set);
       compiler->run_front_end_on_string(cmd);
       return 0;
     }
@@ -143,7 +156,7 @@ int main(int argc, char** argv) {
   // the compiler may throw an exception if it fails to load its standard library.
   try {
     compiler = std::make_unique<Compiler>(
-        game_version, emitter::InstructionSet::X86, std::make_optional(repl_config), username,
+        game_version, instr_set, std::make_optional(repl_config), username,
         std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok));
 
     if (debug_server_ok) {
@@ -181,7 +194,7 @@ int main(int argc, char** argv) {
           compiler->save_repl_history();
         }
         compiler = std::make_unique<Compiler>(
-            game_version, emitter::InstructionSet::X86, std::make_optional(repl_config), username,
+            game_version, instr_set, std::make_optional(repl_config), username,
             std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok));
         if (debug_server_ok) {
           debug_server.set_compiler(compiler.get(), &compiler_mutex);

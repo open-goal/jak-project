@@ -37,7 +37,7 @@ class Jak1KernelTest : public testing::Test {
   void TearDown() {}
 
   struct SharedCompiler {
-    SharedCompiler(GameVersion v) : compiler(v, emitter::InstructionSet::X86) {}
+    SharedCompiler(GameVersion v) : compiler(v, emitter::kNativeInstructionSet) {}
     std::thread runtime_thread;
     Compiler compiler;
     GoalTest::CompilerTestRunner runner;
@@ -125,14 +125,27 @@ TEST_F(Jak1KernelTest, RunFunctionInProcess) {
 TEST_F(Jak1KernelTest, StateAndXmm) {
   shared_compiler->runner.c->run_test_from_string(
       "(ml \"test/goalc/source_templates/kernel/kernel-test.gc\")");
-  std::string result =
-      send_code_and_get_multiple_responses("(state-test)", 5, &shared_compiler->runner);
+#if defined(__aarch64__)
+  constexpr int response_count = 6;
+#else
+  constexpr int response_count = 5;
+#endif
+  std::string result = send_code_and_get_multiple_responses("(state-test)", response_count,
+                                                            &shared_compiler->runner);
 
   std::string expected =
       "0\nenter wreck: 3 4 5 6\nwreck: 3 4 5 6\nenter check: 9 8 7 6\nrun xmm-check 12.3400 "
       "45.6300 9 8 7 6\nwreck: 3 4 5 6\nrun xmm-check 12.3400 45.6300 9 8 7 6\nwreck: 3 4 5 6\nrun "
-      "xmm-check 12.3400 45.6300 9 8 7 6\nwreck: 3 4 5 6\nexit check\nenter die\ntime to "
-      "die!\nexit die\nexit wreck\nenter die\ntime to die!\nexit die\n";
+      "xmm-check 12.3400 45.6300 9 8 7 6\nwreck: 3 4 5 6\n";
+#if defined(__aarch64__)
+  expected +=
+      "wreck: 3 4 5 6\n"
+      "suspend vectors #x18181818181818180808080808080808 "
+      "#x19191919191919190909090909090909\n";
+#endif
+  expected +=
+      "exit check\nenter die\ntime to die!\nexit die\nexit wreck\nenter die\ntime to die!\nexit "
+      "die\n";
   EXPECT_EQ(expected, result);
 }
 
@@ -144,7 +157,12 @@ TEST_F(Jak1KernelTest, ThrowXmm) {
 
   std::string expected =
       "value now is 10.1000\n"
-      "now its 10.1000\n"
-      "0\n";
+      "now its 10.1000\n";
+#if defined(__aarch64__)
+  expected +=
+      "throw vectors #x18181818181818180808080808080808 "
+      "#x19191919191919190909090909090909\n";
+#endif
+  expected += "0\n";
   EXPECT_EQ(expected, result);
 }

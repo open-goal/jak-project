@@ -461,6 +461,7 @@ void Debugger::reload_break_state() {
   m_memory_map = m_listener->build_memory_map();
   // lg::print("{}", m_memory_map.print());
   read_symbol_table();
+  // xdbg::Regs uses the x86 register layout and the macOS backend is not implemented.
   m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
 
   if (regs_valid()) {

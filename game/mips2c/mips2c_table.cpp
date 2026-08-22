@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 
+#include "game/kernel/common/codegen.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/jak1/kscheme.h"
@@ -11,7 +12,13 @@
 #include "game/runtime.h"
 
 extern "C" {
-#ifdef __linux__
+#ifdef __aarch64__
+#ifdef __APPLE__
+void _mips2c_call_arm64() asm("_mips2c_call_arm64");
+#else
+void _mips2c_call_arm64();
+#endif
+#elif defined __linux__
 void _mips2c_call_systemv();
 #elif defined __APPLE__ && defined __x86_64__
 void _mips2c_call_systemv() asm("_mips2c_call_systemv");
@@ -692,10 +699,20 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
   it.first->second.goal_trampoline = jump_to_asm;
 
   u8* ptr = jump_to_asm.c();
+  int written;
 
+#ifdef __aarch64__
+  // x9 is the target, x10 is the stack size, x17 jumps to the trampoline
+  written = emit_arm64_mov64(ptr, 9, (u64)exec);
+  written += emit_arm64_mov64(ptr + written, 10, (u64)stack_size);
+  written += emit_arm64_mov64(ptr + written, 17, (u64)_mips2c_call_arm64);
   {
-    // linux
-
+    u32 br = 0xd61f0000 | (17 << 5);  // br x17
+    memcpy(ptr + written, &br, 4);
+    written += 4;
+  }
+#else
+  {
     // push the function
     u64 addr = (u64)exec;
     *ptr = 0x48;
@@ -725,6 +742,8 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
     addr = (u64)_mips2c_call_systemv;
 #elif _WIN32
     addr = (u64)_mips2c_call_windows;
+#else
+#error "mips2c trampoline: no implementation for this architecture or platform"
 #endif
 
     *ptr = 0x48;
@@ -738,7 +757,15 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
     *ptr = 0xff;
     ptr++;
     *ptr = 0xe0;
+    ptr++;
+    written = int(ptr - jump_to_asm.c());
   }
+#endif
+
+  ASSERT_MSG(written <= 0x40, "mips2c stub exceeds its allocation");
+
+  // flush the executable view
+  flush_icache_goal(jump_to_asm.offset, written);
 }
 
 u32 LinkedFunctionTable::get(const std::string& name) {

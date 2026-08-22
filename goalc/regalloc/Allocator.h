@@ -199,10 +199,11 @@ struct LiveInfo {
     return overlap_min <= overlap_max;
   }
 
-  std::string print_assignment();
+  std::string print_assignment(emitter::InstructionSet instr_set);
 };
 
 struct RegAllocCache {
+  emitter::InstructionSet instr_set = emitter::InstructionSet::X86;
   ControlFlowAnalysisCache control_flow;
   std::vector<LiveInfo> live_ranges;
   int max_var = -1;

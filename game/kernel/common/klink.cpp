@@ -3,10 +3,26 @@
 #include "common/goal_constants.h"
 #include "common/symbols.h"
 
+#include "game/kernel/common/codegen.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kscheme.h"
 
 #include "fmt/format.h"
+
+void flush_icache_for_linked_object(const ObjectFileHeader* ofh) {
+  // link state 0 turns code_infos file offsets into heap addresses
+  for (int seg = 0; seg < N_SEG; seg++) {
+    if (ofh->code_infos[seg].offset && ofh->code_infos[seg].size) {
+      flush_icache_goal(ofh->code_infos[seg].offset, ofh->code_infos[seg].size);
+    }
+  }
+}
+
+void flush_icache_for_linked_object_v2(Ptr<uint8_t> code_start, uint32_t code_size) {
+  if (code_start.offset && code_size) {
+    flush_icache_goal(code_start.offset, code_size);
+  }
+}
 
 namespace {
 // turn on printf's for debugging linking issues.

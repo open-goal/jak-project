@@ -40,6 +40,17 @@ struct SegmentInfoV5 {
 };
 
 void klink_init_globals();
+
+/*!
+ * Makes each linked code segment visible after relocation.
+ */
+void flush_icache_for_linked_object(const ObjectFileHeader* ofh);
+
+/*!
+ * Makes the contiguous code block from a v2 object visible to instruction fetch.
+ */
+void flush_icache_for_linked_object_v2(Ptr<uint8_t> code_start, uint32_t code_size);
+
 /*!
  * Stores the state of the linker. Used for multi-threaded linking, so it can be suspended.
  */

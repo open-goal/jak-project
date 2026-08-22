@@ -1,27 +1,55 @@
 #include "goalc/compiler/Compiler.h"
 
-namespace {
-const char* reg_names[] = {
-    "rax",  "rcx",  "rdx",  "rbx",  "rsp",   "rbp",   "rsi",   "rdi",   "r8",    "r9",    "r10",
-    "r11",  "r12",  "r13",  "r14",  "r15",   "xmm0",  "xmm1",  "xmm2",  "xmm3",  "xmm4",  "xmm5",
-    "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15",
-};
-
-}
-
 emitter::Register Compiler::parse_register(const goos::Object& code) {
   if (!code.is_symbol()) {
     throw_compiler_error(code, "Could not parse {} as a register name", code.print());
   }
 
-  auto nas = code.as_symbol();
-  for (int i = 0; i < 32; i++) {
-    if (std::string_view(nas.name_ptr) == reg_names[i]) {
+  const auto& info = emitter::reg_info(m_instr_set);
+  std::string_view name(code.as_symbol().name_ptr);
+
+  // GOAL role names map to this backend's registers
+  if (name == "pp") {
+    return info.get_process_reg();
+  }
+  if (name == "st") {
+    return info.get_st_reg();
+  }
+  if (name == "off") {
+    return info.get_offset_reg();
+  }
+  if (name == "sp") {
+    return info.get_stack_reg();
+  }
+  // exec-off is the executable mapping base
+  if (name == "exec-off") {
+    return info.get_exec_base_reg();
+  }
+  // lr is x30 on ARM64
+  if (name == "lr") {
+    if (m_instr_set != emitter::InstructionSet::ARM64) {
+      throw_compiler_error(code, "lr is available only on ARM64");
+    }
+    return emitter::Register(emitter::ARM64_REG::X30);
+  }
+  // carg0 through carg7 are the C and GOAL argument registers
+  if (name.size() == 5 && name.substr(0, 4) == "carg") {
+    int arg_idx = name[4] - '0';
+    if (arg_idx >= 0 && arg_idx < emitter::RegisterInfo::N_ARGS) {
+      return info.get_gpr_arg_reg(arg_idx);
+    }
+  }
+
+  // hardware names come from the selected backend
+  for (int i = 0; i < emitter::RegisterInfo::N_REGS; i++) {
+    const auto& hw_name = info.get_info(emitter::Register(i)).name;
+    if (!hw_name.empty() && name == hw_name) {
       return emitter::Register(i);
     }
   }
 
-  throw_compiler_error(code, "Could not parse {} as a register name", code.print());
+  throw_compiler_error(code, "{} is not a register name for the {} backend", code.print(),
+                       m_instr_set == emitter::InstructionSet::ARM64 ? "arm64" : "x86");
   return {};
 }
 
@@ -151,6 +179,15 @@ Val* Compiler::compile_asm_ret(const goos::Object& form, const goos::Object& res
   }
 
   env->emit_ir<IR_AsmRet>(form, color);
+  return get_none();
+}
+
+//! Compile the trap instruction used by GOAL (break).
+Val* Compiler::compile_asm_break(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+
+  env->emit_ir<IR_AsmBreak>(form);
   return get_none();
 }
 
