@@ -485,7 +485,7 @@ class DrawMode {
     }
   }
 
-  bool get_tcc_enable() const { return m_val & (1 << 6); }
+  bool get_tcc_enable() const { return m_val & (1 << 7); }
   void enable_tcc() { m_val = m_val | (1 << 7); }
   void disable_tcc() { m_val = m_val & (~(1 << 7)); }
   void set_tcc(bool en) {
