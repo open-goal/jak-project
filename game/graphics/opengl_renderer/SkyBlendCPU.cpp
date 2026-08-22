@@ -45,8 +45,8 @@ void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
     out[i] = v > 255 ? 255 : (u8)v;
   }
 #else
-  if (get_cpu_info().has_avx2) {
 #ifdef __AVX2__
+  if (get_cpu_info().has_avx2) {
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
     for (u32 i = 0; i < size / 16; i++) {
       __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
@@ -57,19 +57,18 @@ void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
       _mm_storeu_si128((__m128i*)(out + (i * 16)), result);
     }
-#else
-    ASSERT(false);
+    return;
+  }
 #endif
-  } else {
-    __m128i intensity_vec = _mm_set1_epi16(intensity);
-    for (u32 i = 0; i < size / 8; i++) {
-      __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
-      __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
-      tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
-      tex_data16 = _mm_srli_epi16(tex_data16, 7);
-      auto result = _mm_packus_epi16(tex_data16, tex_data16);
-      _mm_storel_epi64((__m128i*)(out + (i * 8)), result);
-    }
+
+  __m128i intensity_vec = _mm_set1_epi16(intensity);
+  for (u32 i = 0; i < size / 8; i++) {
+    __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
+    __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
+    tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
+    tex_data16 = _mm_srli_epi16(tex_data16, 7);
+    auto result = _mm_packus_epi16(tex_data16, tex_data16);
+    _mm_storel_epi64((__m128i*)(out + (i * 8)), result);
   }
 #endif
 }
@@ -97,8 +96,8 @@ void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
     out[i] = sum > 255 ? 255 : (u8)sum;
   }
 #else
-  if (get_cpu_info().has_avx2) {
 #ifdef __AVX2__
+  if (get_cpu_info().has_avx2) {
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
     __m256i max_intensity = _mm256_set1_epi16(255);
     for (u32 i = 0; i < size / 16; i++) {
@@ -113,23 +112,22 @@ void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       out_val = _mm_adds_epu8(out_val, result);
       _mm_storeu_si128((__m128i*)(out + (i * 16)), out_val);
     }
-#else
-    ASSERT(false);
+    return;
+  }
 #endif
-  } else {
-    __m128i intensity_vec = _mm_set1_epi16(intensity);
-    __m128i max_intensity = _mm_set1_epi16(255);
-    for (u32 i = 0; i < size / 8; i++) {
-      __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
-      __m128i out_val = _mm_loadu_si64((const __m128i*)(out + (i * 8)));
-      __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
-      tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
-      tex_data16 = _mm_srli_epi16(tex_data16, 7);
-      tex_data16 = _mm_min_epi16(max_intensity, tex_data16);
-      auto result = _mm_packus_epi16(tex_data16, tex_data16);
-      out_val = _mm_adds_epu8(out_val, result);
-      _mm_storel_epi64((__m128i*)(out + (i * 8)), out_val);
-    }
+
+  __m128i intensity_vec = _mm_set1_epi16(intensity);
+  __m128i max_intensity = _mm_set1_epi16(255);
+  for (u32 i = 0; i < size / 8; i++) {
+    __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
+    __m128i out_val = _mm_loadu_si64((const __m128i*)(out + (i * 8)));
+    __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
+    tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
+    tex_data16 = _mm_srli_epi16(tex_data16, 7);
+    tex_data16 = _mm_min_epi16(max_intensity, tex_data16);
+    auto result = _mm_packus_epi16(tex_data16, tex_data16);
+    out_val = _mm_adds_epu8(out_val, result);
+    _mm_storel_epi64((__m128i*)(out + (i * 8)), out_val);
   }
 #endif
 }

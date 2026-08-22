@@ -54,7 +54,7 @@ TEST(SkyBlend, InitialMatchesReferenceAndActuallyWrites) {
 
 TEST(SkyBlend, BlendMatchesReferenceAndActuallyWrites) {
   constexpr u32 kSize = 16384;  // the 64x64 cloud buffer
-  std::vector<u8> in(kSize), out(kSize), seed(kSize);
+  std::vector<u8> in(kSize), seed(kSize);
   u32 st = 999;
   for (u32 i = 0; i < kSize; i++) {
     st = st * 1664525u + 1013904223u;
@@ -64,7 +64,7 @@ TEST(SkyBlend, BlendMatchesReferenceAndActuallyWrites) {
   }
 
   for (int intensity : {0, 1, 64, 127, 128, 200, 255}) {
-    out = seed;
+    auto out = seed;
     blend_sky_fast(u8(intensity), out.data(), in.data(), kSize);
 
     bool changed = false;
