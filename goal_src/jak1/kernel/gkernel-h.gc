@@ -465,11 +465,11 @@
 
 (defmacro suspend ()
   "suspend the current process, to be resumed on the next frame."
-  `(rlet ((pp :reg pp :reset-here #t))
+  `(rlet ((pp :reg r13 :reset-here #t))
     ;; debug check for stack overflow here, where we can easily print the process name.
     (#when (or KERNEL_DEBUG)
-      (rlet ((sp :reg sp :reset-here #t :type int)
-             (off :reg off :type uint))
+      (rlet ((sp :reg rsp :reset-here #t :type int)
+             (off :reg r15 :type uint))
         (let* ((sp-goal (- sp off))
                (stack-top-goal (-> (the process pp) top-thread stack-top))
                (stack-used (&- stack-top-goal sp-goal))
@@ -485,18 +485,18 @@
 
 (defmacro process-deactivate ()
   "deactivate (kill) the current process"
-  `(rlet ((pp :reg pp :reset-here #t :type process)) (deactivate pp)))
+  `(rlet ((pp :reg r13 :reset-here #t :type process)) (deactivate pp)))
 
 (defmacro with-pp (&rest body)
   "execute the body with pp bound to the current process register."
-  `(rlet ((pp :reg pp :reset-here #t :type process)) ,@body))
+  `(rlet ((pp :reg r13 :reset-here #t :type process)) ,@body))
 
 (defconstant PP (with-pp pp))
 
 (defmacro with-proc (bindings &rest body)
   "execute the body with process register set to the given value and bound to pp.
    it is recommended to use run-now-in-process over this"
-  `(rlet ((pp :reg pp :reset-here #t :type process)) (protect (pp) (set! pp ,(car bindings)) ,@body)))
+  `(rlet ((pp :reg r13 :reset-here #t :type process)) (protect (pp) (set! pp ,(car bindings)) ,@body)))
 
 (defmacro defbehavior (name process-type bindings &rest body)
   "define a new behavior. This is simply a function where self is bound to the process register,
@@ -539,7 +539,7 @@
 
 (defmacro with-sp (&rest body)
   "execute the body with sp bound to the current stack pointer (be careful!)"
-  `(rlet ((sp :reg sp :reset-here #t :type pointer)) ,@body))
+  `(rlet ((sp :reg rsp :reset-here #t :type pointer)) ,@body))
 
 (defmacro scratchpad-object (type &key (offset 0))
   "Access an object on the scratchpad."

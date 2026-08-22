@@ -450,8 +450,8 @@
       (.pop :color #f ra)
       (.ret)))
    (#t
-    (rlet ((sp :reg sp :type uint)
-           (off :reg off :type uint)
+    (rlet ((sp :reg rsp :type uint)
+           (off :reg r15 :type uint)
            (s0 :reg rbx :type uint)
            (s1 :reg rbp :type uint)
            (s2 :reg r10 :type uint)
@@ -503,9 +503,9 @@
       (.pop :color #f ra)
       (.ret)))
    (#t
-    (rlet ((pp :reg pp :type process)
-           (sp :reg sp :type uint)
-           (off :reg off :type uint)
+    (rlet ((pp :reg r13 :type process)
+           (sp :reg rsp :type uint)
+           (off :reg r15 :type uint)
            (s0 :reg rbx :type uint)
            (s1 :reg rbp :type uint)
            (s2 :reg r10 :type uint)
@@ -545,7 +545,7 @@
        (.jr temp)))
     (#t
      (rlet ((temp)
-            (off :reg off :type uint :reset-here #t))
+            (off :reg r15 :type uint :reset-here #t))
        (.mov temp return-from-thread) ;; could probably just call this...
        (.add temp off)
        (.push temp)
@@ -598,9 +598,9 @@
       (.add func xoff)
       (.jr func)))
    (#t
-    (rlet ((pp :reg pp :type process)
-           (sp :reg sp :type uint)
-           (off :reg off :type uint)
+    (rlet ((pp :reg r13 :type process)
+           (sp :reg rsp :type uint)
+           (off :reg r15 :type uint)
            (s0 :reg rbx :type uint)
            (s1 :reg rbp :type uint)
            (s2 :reg r10 :type uint)
@@ -2014,7 +2014,7 @@
 
 (defun throw ((name symbol) value)
   "Dynamic throw."
-  (rlet ((pp :reg pp :type process))
+  (rlet ((pp :reg r13 :type process))
     (let ((cur (-> pp stack-frame-top)))
       (while cur
         (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
@@ -2032,7 +2032,7 @@
     (set! (-> this type) type-to-make)
     (set! (-> this name) 'protect-frame)
     (set! (-> this exit) func)
-    (rlet ((pp :reg pp :type process)) (set! (-> this next) (-> pp stack-frame-top)) (set! (-> pp stack-frame-top) this))
+    (rlet ((pp :reg r13 :type process)) (set! (-> this next) (-> pp stack-frame-top)) (set! (-> pp stack-frame-top) this))
     this))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -2207,7 +2207,7 @@
   The function will run until it attempts to change state. At the first attempt to change state,
   this function will return.  The idea is that you use this when you want to initialize a process NOW.
   This will then return the value of the function you called!"
-  (rlet ((pp :reg pp :type process))
+  (rlet ((pp :reg r13 :type process))
     (let ((param-array (new 'stack-no-clear 'array 'uint64 6)))
       ;; copy params to the stack.
       (set! (-> param-array 0) (the uint64 a0))
@@ -2368,7 +2368,7 @@
     ;; clean up stack frames the process is in.
     ;; first, set pp so the cleanup code thinks its running in the right process.
     ;; we might be getting deactivated from another process.
-    (rlet ((pp :reg pp :type process))
+    (rlet ((pp :reg r13 :type process))
       (let ((old-pp pp))
         (set! pp this)
         (let ((cur (-> pp stack-frame-top)))

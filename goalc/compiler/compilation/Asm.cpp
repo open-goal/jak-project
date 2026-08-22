@@ -9,16 +9,16 @@ emitter::Register Compiler::parse_register(const goos::Object& code) {
   std::string_view name(code.as_symbol().name_ptr);
 
   // GOAL role names map to this backend's registers
-  if (name == "pp") {
+  if (name == "pp" || name == "r13") {
     return info.get_process_reg();
   }
-  if (name == "st") {
+  if (name == "st" || name == "r14") {
     return info.get_st_reg();
   }
-  if (name == "off") {
+  if (name == "off" || name == "r15") {
     return info.get_offset_reg();
   }
-  if (name == "sp") {
+  if (name == "sp" || name == "rsp") {
     return info.get_stack_reg();
   }
   // exec-off is the executable mapping base

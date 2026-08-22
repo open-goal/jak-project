@@ -474,8 +474,8 @@
          (.pop :color #f ra)
          (.ret)))
    (#t
-   (rlet ((sp :reg sp :type uint)
-          (off :reg off :type uint)
+   (rlet ((sp :reg rsp :type uint)
+          (off :reg r15 :type uint)
           (s0 :reg rbx :type uint)
           (s1 :reg rbp :type uint)
           (s2 :reg r10 :type uint)
@@ -532,9 +532,9 @@
          (.pop :color #f ra)
          (.ret)))
    (#t
-   (rlet ((pp :reg pp :type process)
-          (sp :reg sp :type uint)
-          (off :reg off :type uint)
+   (rlet ((pp :reg r13 :type process)
+          (sp :reg rsp :type uint)
+          (off :reg r15 :type uint)
           (s0 :reg rbx :type uint)
           (s1 :reg rbp :type uint)
           (s2 :reg r10 :type uint)
@@ -580,7 +580,7 @@
        (.jr temp)))
     (#t
      (rlet ((temp)
-            (off :reg off :type uint :reset-here #t))
+            (off :reg r15 :type uint :reset-here #t))
        (.mov temp return-from-thread) ;; could probably just call this...
        (.add temp off)
        (.push temp)
@@ -635,9 +635,9 @@
          (.add func xoff)
          (.jr func)))
    (#t
-   (rlet ((pp :reg pp :type process)
-          (sp :reg sp :type uint)
-          (off :reg off :type uint)
+   (rlet ((pp :reg r13 :type process)
+          (sp :reg rsp :type uint)
+          (off :reg r15 :type uint)
           (s0 :reg rbx :type uint)
           (s1 :reg rbp :type uint)
           (s2 :reg r10 :type uint)
@@ -772,10 +772,10 @@
          (.pop :color #f ra)
          (.ret)))
    (#t
-   (rlet ((this :reg pp :type cpu-thread)
+   (rlet ((this :reg r13 :type cpu-thread)
           (temp :reg rax :type uint)
-          (off :reg off :type uint)
-          (sp :reg sp :type uint)
+          (off :reg r15 :type uint)
+          (sp :reg rsp :type uint)
           (s0 :reg rbx :type uint)
           (s1 :reg rbp :type uint)
           (s2 :reg r10 :type uint)
@@ -982,10 +982,10 @@
          (.add a4 a4)
          (.add a5 a5)))
    (#t
-   (rlet ((this :reg pp :type cpu-thread)
+   (rlet ((this :reg r13 :type cpu-thread)
           (temp :reg rax :type uint)
-          (off :reg off :type uint)
-          (sp :reg sp :type uint)
+          (off :reg r15 :type uint)
+          (sp :reg rsp :type uint)
           (s0 :reg rbx :type uint)
           (s1 :reg rbp :type uint)
           (s2 :reg r10 :type uint)
@@ -2143,10 +2143,10 @@
              (.ret)
              (the object ret)))))
    (#t
-   (rlet ((pp :reg pp :type process)
+   (rlet ((pp :reg r13 :type process)
           (temp :reg rax :type uint)
-          (off :reg off :type uint)
-          (sp :reg sp :type uint)
+          (off :reg r15 :type uint)
+          (sp :reg rsp :type uint)
           (s0 :reg rbx :type uint)
           (s1 :reg rbp :type uint)
           (s2 :reg r10 :type (pointer uint64))
@@ -2312,10 +2312,10 @@
          (.mov retval value)
          (.ret)))
    (#t
-   (rlet ((pp :reg pp :type process)
+   (rlet ((pp :reg r13 :type process)
           (temp :reg rax :type uint)
-          (off :reg off :type uint)
-          (sp :reg sp :type uint)
+          (off :reg r15 :type uint)
+          (sp :reg rsp :type uint)
           (s0 :reg rbx :type uint)
           (s1 :reg rbp :type uint)
           (s2 :reg r10 :type (pointer uint64))
@@ -2384,7 +2384,7 @@
 
 (defun throw ((name symbol) value)
   "Dynamic throw."
-  (rlet ((pp :reg pp :type process))
+  (rlet ((pp :reg r13 :type process))
     (let ((cur (-> pp stack-frame-top)))
       (while cur
         (when (and (eq? (-> cur name) name) (eq? (-> cur type) catch-frame))
@@ -2615,7 +2615,7 @@
     (format 0 "attempting to run nullptr function!~%")
     (break!)
     )
-  (rlet ((pp :reg pp :type process))
+  (rlet ((pp :reg r13 :type process))
 
     (let ((param-array (new 'stack-no-clear 'array 'uint64 6))
           )
@@ -2718,7 +2718,7 @@
           (a1 :reg rsi :type uint)       ; ok
           (a2 :reg rdx :type uint)       ; ok
           (a3 :reg rcx :type uint)       ; ok
-          (off :reg off :type uint)
+          (off :reg r15 :type uint)
           (a4 :reg r8 :type uint)
           (a5 :reg r9 :type uint)
           (temp :reg rax)
