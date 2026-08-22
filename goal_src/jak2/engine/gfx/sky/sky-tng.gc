@@ -141,6 +141,14 @@ vf31: cam 0 (premultiplied by hmge)
   (none)
   )
 
+;; og:preserve-this sub-integer cloud scroll accumulators for the high-fps fix in
+;; update-time-and-speed below. Deliberately file-scope rather than fields on sky-work:
+;; sky-work is a singleton, so per-instance state is not needed, and leaving the type
+;; alone keeps goal_src and decompiler/config/jak2/all-types.gc in agreement. Adding
+;; fields makes the two disagree and fails Jak2TypeConsistency.
+(define *sky-off-s-frac* 0.0)
+(define *sky-off-t-frac* 0.0)
+
 (defmethod update-time-and-speed ((this sky-work) (arg0 float) (arg1 float))
   "Update based on the given time. Time is used to place suns/moon at the right spot, speed is used to scroll clouds."
   (if (and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) info taskname) 'nest))
@@ -149,8 +157,20 @@ vf31: cam 0 (premultiplied by hmge)
   (sky-make-sun-data this 0 arg0)
   (sky-make-sun-data this 1 arg0)
   (sky-make-moon-data this arg0)
-  (+! (-> this off-s) (the int (* -8.0 arg1)))
-  (+! (-> this off-t) (the int (* 2.0 arg1)))
+  ;; og:preserve-this high-fps cloud scroll fix. The original truncated the scaled
+  ;; per-frame step, (the int (* 2.0 arg1)), which reaches 0 above 120fps and freezes the
+  ;; cloud T scroll; the S term survives until above 480fps. Accumulate the fractional
+  ;; part and apply only the whole part each frame, carrying the remainder.
+  (set! *sky-off-s-frac* (+ *sky-off-s-frac* (* -8.0 arg1)))
+  (set! *sky-off-t-frac* (+ *sky-off-t-frac* (* 2.0 arg1)))
+  (let ((si (the int *sky-off-s-frac*))
+        (ti (the int *sky-off-t-frac*))
+        )
+    (+! (-> this off-s) si)
+    (+! (-> this off-t) ti)
+    (set! *sky-off-s-frac* (- *sky-off-s-frac* (the float si)))
+    (set! *sky-off-t-frac* (- *sky-off-t-frac* (the float ti)))
+    )
   (set! (-> this time) arg0)
   0
   (none)
