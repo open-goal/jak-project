@@ -17,7 +17,6 @@
   (:methods
    (notice-blue (handle) _type_ :state :overlay-at wad)))
 
-
 (defskelgroup *plat-eco-unlit-sg*
   plat-eco
   plat-eco-lod0-jg
@@ -32,13 +31,16 @@
   ((plat-eco-lit-lod0-mg (meters 20)) (plat-eco-lit-lod1-mg (meters 40)) (plat-eco-lit-lod2-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 3))
 
+;; An inactive platform uses its unlit LODs and waits for Jak to approach with blue eco, ride it
+;; while charged, or receive a wake from a linked platform. The nearby hint explains the blue-eco
+;; requirement before activation.
 (defstate plat-idle (plat-eco)
   :virtual #t
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((source process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('wake) (go-virtual plat-path-active (the-as plat #f)))
-        (('eco-blue) (go-virtual notice-blue (process->handle proc)))
+        (('eco-blue) (go-virtual notice-blue (process->handle source)))
         (('ridden 'edge-grabbed)
          (when (send-event *target* 'query 'powerup (pickup-type eco-blue))
            (send-to-all (-> self link) 'wake)
@@ -61,10 +63,14 @@
       (anim-loop))
   :post ja-post)
 
+;; Gaining blue eco creates a short-lived touch tracker around Jak. While that tracker overlaps the
+;; platform's blue-eco-suck collision mask, use its distance to make the platform bounce harder as
+;; the charging effect closes in, and scatter blue glows around the platform. A direct wake finishes
+;; activation; losing blue eco returns to idle once the current bounce has settled.
 (defstate notice-blue (plat-eco)
   :virtual override
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((source process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('wake)
          (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
@@ -76,41 +82,41 @@
   :trans
     (behavior ()
       ((-> (method-of-object self plat-idle) trans))
-      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-0 from) self)
-        (set! (-> a1-0 num-params) 2)
-        (set! (-> a1-0 message) 'query)
-        (set! (-> a1-0 param 0) (the-as uint 'powerup))
-        (set! (-> a1-0 param 1) (the-as uint 3))
-        (if (and (not (send-event-function *target* a1-0))
+      (let ((powerup-query (new 'stack-no-clear 'event-message-block)))
+        (set! (-> powerup-query from) self)
+        (set! (-> powerup-query num-params) 2)
+        (set! (-> powerup-query message) 'query)
+        (set! (-> powerup-query param 0) (the-as uint 'powerup))
+        (set! (-> powerup-query param 1) (the-as uint (pickup-type eco-blue)))
+        (if (and (not (send-event-function *target* powerup-query))
                  (begin
                    (logior! (-> self mask) (process-mask sleep-code))
                    (not (-> self bouncing))))
           (go-virtual plat-idle))))
   :code
-    (behavior ((arg0 handle))
-      (set! (-> self target) arg0)
+    (behavior ((tracker-handle handle))
+      (set! (-> self target) tracker-handle)
       (loop
-        (let* ((gp-0 (handle->process (-> self target)))
-               (v1-4 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable)) gp-0)))
-          (when v1-4
-            (let* ((gp-1 (-> (the-as process-drawable v1-4) root))
-                   (v1-6 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) collide-shape)) gp-1)))
-              (when v1-6
-                (let* ((s5-0 (-> self root root-prim prim-core))
-                       (a1-3 (-> (the-as collide-shape v1-6) root-prim prim-core))
-                       (f30-0 (vector-vector-distance (-> s5-0 world-sphere) (-> a1-3 world-sphere))))
+        (let* ((tracker-process (handle->process (-> self target)))
+               (tracker-drawable (if (and (nonzero? tracker-process) (type-type? (-> tracker-process type) process-drawable)) tracker-process)))
+          (when tracker-drawable
+            (let* ((tracker-root (-> (the-as process-drawable tracker-drawable) root))
+                   (tracker-shape (if (and (nonzero? tracker-root) (type-type? (-> tracker-root type) collide-shape)) tracker-root)))
+              (when tracker-shape
+                (let* ((platform-prim (-> self root root-prim prim-core))
+                       (tracker-prim (-> (the-as collide-shape tracker-shape) root-prim prim-core))
+                       (tracker-distance (vector-vector-distance (-> platform-prim world-sphere) (-> tracker-prim world-sphere))))
                   (when (rand-vu-percent? 0.5)
-                    (let ((gp-2 (new 'stack-no-clear 'vector)))
-                      (set! (-> gp-2 quad) (-> s5-0 world-sphere quad))
-                      (dotimes (s5-1 3)
-                        (+! (-> gp-2 data s5-1) (rand-vu-float-range -5324.8 5324.8)))
-                      (eco-blue-glow gp-2)))
+                    (let ((glow-position (new 'stack-no-clear 'vector)))
+                      (vector-copy! glow-position (-> platform-prim world-sphere))
+                      (dotimes (i 3)
+                        (+! (-> glow-position data i) (rand-vu-float-range -5324.8 5324.8)))
+                      (eco-blue-glow glow-position)))
                   (set! (-> self bouncing) #t)
                   (activate! (-> self smush)
                              (lerp-scale (rand-vu-float-range 1.1 1.3)
                                          (rand-vu-float-range 1.0 1.02)
-                                         f30-0
+                                         tracker-distance
                                          (-> *FACT-bank* suck-suck-dist)
                                          (-> *FACT-bank* suck-bounce-dist))
                              60
@@ -123,71 +129,84 @@
       (plat-trans)
       (plat-post)))
 
+;; An active platform switches to the lit art and follows the ordinary platform path state. A new
+;; activation is saved permanently and releases five blue-eco projectiles; a platform restored from
+;; permanent state starts directly at its authored clock offset without replaying those effects.
 (defstate plat-path-active (plat-eco)
   :virtual #t
   :enter
-    (behavior ((arg0 plat))
+    (behavior ((already-active? plat))
       (lods-assign! (-> self draw) (-> self lit-look))
       (sync-now! (-> self sync) (-> self sync-linear-val))
       (set! (-> self sync-offset-faux) (-> self sync offset))
-      (let* ((f0-3 (the float (-> self sync period)))
-             (f1-1 (/ f0-3 2)))
-        (if (< f1-1 (- (-> self sync-offset-dest) (-> self sync-offset-faux))) (+! (-> self sync-offset-faux) f0-3))
-        (if (< f1-1 (- (-> self sync-offset-faux) (-> self sync-offset-dest)))
-          (set! (-> self sync-offset-faux) (- (-> self sync-offset-faux) f0-3))))
+      ;; Pick the equivalent unwrapped clock offset nearest the authored destination. This lets the
+      ;; platform join the shared path clock without taking the long way around its period.
+      (let* ((period-ticks (the float (-> self sync period)))
+             (half-period (/ period-ticks 2)))
+        (if (< half-period (- (-> self sync-offset-dest) (-> self sync-offset-faux))) (+! (-> self sync-offset-faux) period-ticks))
+        (if (< half-period (- (-> self sync-offset-faux) (-> self sync-offset-dest)))
+          (set! (-> self sync-offset-faux) (- (-> self sync-offset-faux) period-ticks))))
       (cond
-        (arg0
-         (let ((f0-5 (-> self sync-offset-dest))) (set! (-> self sync offset) f0-5) (set! (-> self sync-offset-faux) f0-5)))
-        (else
-         (process-entity-status! self (entity-perm-status complete) #t)
-         (dotimes (gp-1 5)
-           (spawn-projectile-blue *target*)))))
+        (already-active?
+         (let ((destination-offset (-> self sync-offset-dest)))
+           (set! (-> self sync offset) destination-offset)
+           (set! (-> self sync-offset-faux) destination-offset)))
+        (else (process-entity-status! self (entity-perm-status complete) #t) (dotimes (i 5) (spawn-projectile-blue *target*)))))
   :trans
     (behavior ()
       (when (!= (-> self sync-offset-faux) (-> self sync-offset-dest))
         (seek! (-> self sync-offset-faux) (-> self sync-offset-dest) (* 12.0 (seconds-per-frame)))
-        (let* ((f0-7 (the float (-> self sync period)))
-               (f1-3 (+ (-> self sync-offset-faux) f0-7)))
-          (set! (-> self sync offset) (- f1-3 (* (the float (the int (/ f1-3 f0-7))) f0-7)))))
+        (let* ((period-ticks (the float (-> self sync period)))
+               (positive-offset (+ (-> self sync-offset-faux) period-ticks)))
+          (set! (-> self sync offset) (- positive-offset (* (the float (the int (/ positive-offset period-ticks))) period-ticks)))))
       ((-> (method-of-type plat plat-path-active) trans))))
 
-(defmethod baseplat-method-24 ((this plat-eco))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object blue-eco-suck))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 -1228.8 0.0 13926.4)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this plat-eco))
+  "Create a moving collision shape with one sticky, indestructible 3.4-metre blue-eco-suck
+   ground mesh, allocate one rider slot, and install it as the platform root."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision 1)
+    (let ((platform-mesh (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+      (set! (-> platform-mesh prim-core collide-as) (collide-kind ground-object blue-eco-suck))
+      (set! (-> platform-mesh collide-with) (collide-kind target))
+      (set! (-> platform-mesh prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> platform-mesh prim-core offense) (collide-offense indestructible))
+      (set! (-> platform-mesh transform-index) 0)
+      (set-vector! (-> platform-mesh local-sphere) 0.0 -1228.8 0.0 13926.4)
+      (set-root-prim! collision platform-mesh))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision))
   0
   (none))
 
 (defmethod get-unlit-skel ((this plat-eco))
+  "Return the ordinary unlit blue-eco platform skeleton group."
   *plat-eco-unlit-sg*)
 
 (defmethod get-lit-skel ((this plat-eco))
+  "Return the blue-eco-lit skeleton group used after activation."
   *plat-eco-lit-sg*)
 
-(defmethod init-from-entity! ((this plat-eco) (arg0 entity-actor))
+(defmethod init-from-entity! ((this plat-eco) (source-entity entity-actor))
+  "Create the blue-eco collision, drawable, unlit and lit LOD sets, particle control, path,
+   FACT response, and eased 10-second sync clock. Preserve the authored clock phase, place the
+   platform on its path, and start active when already completed or when notice-dist is
+   negative; otherwise wait for blue eco."
   (logior! (-> this mask) (process-mask platform))
-  (set! (-> this notice-dist) (res-lump-float arg0 'notice-dist :default -1.0))
+  (set! (-> this notice-dist) (res-lump-float source-entity 'notice-dist :default -1.0))
   (set! (-> this link) (new 'process 'actor-link-info this))
-  (baseplat-method-24 this)
-  (process-drawable-from-entity! this arg0)
-  (let ((s4-0 (get-unlit-skel this))
-        (s5-1 (get-lit-skel this)))
-    (initialize-skeleton this s4-0 '())
-    (setup-lods! (-> this unlit-look) s4-0 (-> this draw art-group) (-> this entity))
-    (setup-lods! (-> this lit-look) s5-1 (-> this draw art-group) (-> this entity)))
+  (setup-collision! this)
+  (process-drawable-from-entity! this source-entity)
+  (let ((unlit-skeleton (get-unlit-skel this))
+        (lit-skeleton (get-lit-skel this)))
+    (initialize-skeleton this unlit-skeleton '())
+    (setup-lods! (-> this unlit-look) unlit-skeleton (-> this draw art-group) (-> this entity))
+    (setup-lods! (-> this lit-look) lit-skeleton (-> this draw art-group) (-> this entity)))
   (logclear! (-> this mask) (process-mask actor-pause))
   (update-transforms! (-> this root))
   (set! (-> this part) (create-launch-control group-standard-plat this))
@@ -202,8 +221,8 @@
   (set! (-> this path-pos) (get-current-phase-with-mirror (-> this sync)))
   (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
   (set! (-> this sound-id) (new-sound-id))
-  (baseplat-method-26 this)
-  (baseplat-method-21 this)
+  (configure-options! this)
+  (init-platform! this)
   (if (or (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
           (< (-> this notice-dist) 0.0))
     (go (method-of-object this plat-path-active) (the-as plat #t))

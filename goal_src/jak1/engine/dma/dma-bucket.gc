@@ -3,71 +3,46 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/dma/dma-buffer.gc")
 
-;; A dma-bucket is used to organize dma data.
-;; When an object is drawn, it may add data to multiple buckets.
-;; When the dma data is transferred, it is transferred bucket by bucket.
+;; DMA buckets let renderers build chains in any order while the final transfer visits them in a
+;; fixed draw order. Each 16-byte header owns no payload. A NEXT tag transfers QWC quadwords stored
+;; immediately after itself, then fetches the following DMA tag from the address in ADDR.
+;; A NEXT with QWC zero transfers nothing and acts only as a pointer to the DMA tag in ADDR.
+;;
+;; last points to a QWC-zero NEXT tag whose ADDR has not yet been linked onward. An empty bucket uses
+;; its header NEXT tag as this tail. Every added chain must also end in a QWC-zero NEXT tag. Insertion
+;; patches the old tail's ADDR to the first tag in the new chain, then records the new chain's
+;; terminal NEXT tag as the bucket's new tail.
+;;
+;; Empty headers are reserved consecutively in the calculation buffer. Renderers append chains to
+;; individual buckets, then dma-buffer-patch-buckets splices every tail to the next header. The
+;; address just after the last header is the continuation following the bucket sequence.
 
-;; A dma-bucket is a 16 byte thing that lives in the dma-buffer.
-;; buckets live consecutively in the dma-buffer, and can mark the start of a DMA chain
-;; location anywhere.
-
-;; The bucket doesn't own the data, but rather is a beginning of a linked list of DMA data associated with that bucket
-;; that's stored somewhere else.
-
-;; At the end, all the buckets are spliced together.
-
-;; The typical process is:
-;; - empty buckets are allocated with add-buckets
-;; - tags are put somewhere and added to the appropriate bucket with insert-tag, updating last as needed.
-;; - buckets are patched to link to each other with dma-buffer-patch-buckets.
-
-;; the idea here is that you can build the buckets in whatever order you want, but the buckets
-;; will be DMAd in the bucket allocation order.
-
-;; Each bucket contains:
-;;   a tag, (64-bits), to point to the chain of the bucket
-;;   last, a pointer to the last tag of this bucket, so that the bucket can be patched to point to the next.
-
-(defun dma-buffer-add-buckets ((dma-buf dma-buffer) (count int))
-  "Add count buckets. Each bucket is initialized as empty and won't transfer anything."
-  (let* ((initial-bucket (the-as dma-bucket (-> dma-buf base)))
-         (current-bucket initial-bucket))
-    ;;(let ((current-bucket (the-as dma-bucket (-> dma-buf base))))
+(defun dma-buffer-add-buckets ((buffer dma-buffer) (count int))
+  "Reserve and initialize count consecutive DMA bucket headers at the buffer's write cursor."
+  (let* ((first-bucket (the-as dma-bucket (-> buffer base)))
+         (bucket first-bucket))
     (dotimes (i count)
-      ;; set the DMA tag to next, with a qwc of zero.
-      ;; the address is set to the next bucket.
-      ;; By default, this will do no transfer and just move on in the dma-buf.
-      ;; Data will be added to the bucket later.
-      (set! (-> current-bucket tag)
-            (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int (&+ (the-as pointer current-bucket) 16))))
-      ;; Set the last pointer to point to this tag (this lives in the 8 byte gap)
-      (set! (-> current-bucket last) (the-as (pointer dma-tag) current-bucket))
-      ;; Advance to next bucket.
-      (&+! current-bucket 16))
-    ;; update base ptr of dma-buffer to point after the buckets.
-    (set! (-> dma-buf base) (the-as pointer current-bucket))
-    (the (inline-array dma-bucket) initial-bucket)))
+      ;; An empty bucket's tail is its own header, so inserting its first chain patches this tag.
+      (set! (-> bucket tag) (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int (&+ (the-as pointer bucket) 16))))
+      (set! (-> bucket last) (the-as (pointer dma-tag) bucket))
+      (&+! bucket 16))
+    (set! (-> buffer base) (the-as pointer bucket))
+    (the (inline-array dma-bucket) first-bucket)))
 
-(defun dma-buffer-patch-buckets ((bucket (inline-array dma-bucket)) (count int))
-  "After adding all data to buckets, call this to stitch together the chains for
-  count consecutive buckets"
-  (when (nonzero? bucket)
+(defun dma-buffer-patch-buckets ((buckets (inline-array dma-bucket)) (count int))
+  "Splice each bucket tail to the following bucket header and return the address just after the
+   patched headers."
+  (when (nonzero? buckets)
     (dotimes (i count)
-      ;; set last tag's address to the next bucket.
-      (set! (-> bucket 0 last 0 addr) (the-as int (the-as pointer (-> bucket 1))))
-      ;; clear last pointer.
-      (set! (-> bucket 0 last) (the-as (pointer dma-tag) 0))
-      ;; next bucket
-      (set! bucket (the-as (inline-array dma-bucket) (-> bucket 1)))))
-  bucket)
+      (set! (-> buckets 0 last 0 addr) (the-as int (the-as pointer (-> buckets 1))))
+      (set! (-> buckets 0 last) (the-as (pointer dma-tag) 0))
+      (set! buckets (&-> buckets 1))))
+  buckets)
 
-(defun dma-bucket-insert-tag ((base (inline-array dma-bucket)) (idx bucket-id) (tag-start pointer) (tag-end (pointer dma-tag)))
-  "Add a DMA chain to the bucket"
-  ;; find the bucket
-  (let ((bucket (-> base idx)))
-    ;; update our last bucket to point to this one.
-    ;; this is abusing the dma-bucket type to set the "addr" field of the dma-tag.
+(defun dma-bucket-insert-tag ((buckets (inline-array dma-bucket)) (bucket-index bucket-id) (tag-start pointer) (tag-end (pointer dma-tag)))
+  "Append a DMA chain to one bucket by patching its previous tail and recording the new tail."
+  (let ((bucket (-> buckets bucket-index)))
+    ;; next aliases the ADDR field in the previous QWC-zero NEXT tag.
     (set! (-> (the-as dma-bucket (-> bucket last)) next) (the-as uint tag-start))
-    ;; remember this as the last tag in the bucket.
     (set! (-> bucket last) tag-end))
   tag-start)

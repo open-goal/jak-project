@@ -6,8 +6,17 @@
 (require "engine/target/target.gc")
 (declare-type first-person-hud process)
 
+;; The second half of Jak's (target's) states: ambient idle spool anims, first-person
+;; look-around (with the yellow-eco first-person HUD and blaster), edge grabbing, pole
+;; swinging, wading and swimming, eco powerup, grab/clone-anim cutscene support, and the
+;; launcher-pad flight state. See target.gc for the first half (stance/walk/jump/attack).
+
 ;; DECOMP BEGINS
 
+;; Holding state used while the next level loads: Jak trips, lies on the ground until the
+;; load finishes, then gets back up. Actors keep it alive by sending 'loading each frame,
+;; which refreshes state-time; once 0.05s pass with no 'loading event, the anim loop ends
+;; and we return to target-stance.
 (defstate target-load-wait (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -43,6 +52,9 @@
       (go target-stance))
   :post target-no-stick-post)
 
+;; Ambient idle: after standing still long enough, Jak plays one of four spooled (streamed)
+;; idle animations. The chosen spool-anim is stashed in state-var0 (read back through the
+;; state-spool-anim overlay). Any button press, stick input, or the progress menu aborts it.
 (defstate target-stance-ambient (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -53,51 +65,59 @@
     (behavior ()
       (set! (-> self neck flex-blend) 0.0)
       ((-> target-stance enter))
-      (let ((v1-2 (rand-vu-int-count 4)))
+      ;; pick one of the four ambient spool anims at random
+      (let ((anim-choice (rand-vu-int-count 4)))
         (cond
-          ((zero? v1-2)
-           (set! (-> self control unknown-uint20)
+          ((zero? anim-choice)
+           (set! (-> self control state-var0)
                  (the-as uint (new 'static 'spool-anim :name "eichar-ambient-1" :index #xe7 :parts 1 :command-list '()))))
-          ((= v1-2 1)
-           (set! (-> self control unknown-uint20)
+          ((= anim-choice 1)
+           (set! (-> self control state-var0)
                  (the-as uint (new 'static 'spool-anim :name "eichar-ambient-2" :index #xe8 :parts 1 :command-list '()))))
-          ((= v1-2 2)
-           (set! (-> self control unknown-uint20)
+          ((= anim-choice 2)
+           (set! (-> self control state-var0)
                  (the-as uint (new 'static 'spool-anim :name "eichar-ambient-3" :index #xe9 :parts 1 :command-list '()))))
           (else
-           (set! (-> self control unknown-uint20)
+           (set! (-> self control state-var0)
                  (the-as uint (new 'static 'spool-anim :name "eichar-ambient-4" :index #xea :parts 1 :command-list '()))))))
       (set-time! (-> self state-time)))
   :exit
     (behavior ()
-      (let ((a0-0 (-> self control unknown-spoolanim00)))
-        (when a0-0
-          (ja-abort-spooled-anim a0-0 (the-as art-joint-anim #f) -1)
+      ;; if the spooled anim is still playing, abort it and snap back to the stance loop
+      (let ((spool (-> self control state-spool-anim)))
+        (when spool
+          (ja-abort-spooled-anim spool (the-as art-joint-anim #f) -1)
           (ja-channel-set! 1)
           (ja :group! eichar-stance-loop-ja :num! min)))
       ((-> target-stance exit))
       (target-exit))
   :trans
     (behavior ()
-      (spool-push *art-control* (-> self control unknown-spoolanim00 name) 0 self (the-as float -99.0))
+      ;; keep requesting the spool data at top priority (-99) while we wait for/play it
+      (spool-push *art-control* (-> self control state-spool-anim name) 0 self (the-as float -99.0))
       (if (or (cpad-hold? (-> self control cpad number) start l1 r1 triangle circle x square) *progress-process*)
         (go target-stance)))
   :code
     (behavior ()
-      (while (let ((v1-13 (file-status *art-control* (-> self control unknown-spoolanim00 name) 0)))
-               (not (or (= v1-13 'locked) (= v1-13 'active))))
+      ;; loop the normal stance anim until the spooled anim data is resident
+      (while (let ((load-status (file-status *art-control* (-> self control state-spool-anim name) 0)))
+               (not (or (= load-status 'locked) (= load-status 'active))))
         (suspend)
         (ja :num! (loop!))
         (ja :chan 1 :num! (chan 0))
         (ja :chan 2 :num! (chan 0)))
-      (ja-play-spooled-anim (-> self control unknown-spoolanim00)
+      ;; play the spooled anim; the lambda aborts it as soon as the player moves the stick
+      (ja-play-spooled-anim (-> self control state-spool-anim)
                             (the-as art-joint-anim eichar-stance-loop-ja)
                             (the-as art-joint-anim eichar-stance-loop-ja)
                             (the-as (function process-drawable symbol) (lambda () (!= (-> *cpad-list* cpads 0 stick0-speed) 0.0))))
-      (set! (-> self control unknown-uint20) (the-as uint #f))
+      (set! (-> self control state-var0) (the-as uint #f))
       (go target-stance))
   :post target-post)
 
+;; Overlay HUD shown in first-person look-around mode: two side sprites that squeeze in from
+;; the screen edges plus the center aiming selector, all drawn as sprite particles.
+;; in-out-position animates 4096 (fully off-screen) -> 0 (fully on).
 (deftype first-person-hud (process)
   ((max-nb-of-particles int32)
    (nb-of-particles     int32)
@@ -114,48 +134,57 @@
    hud-normal
    hud-waiting))
 
+;; dedicated stack for the first-person-hud process (it is spawned with :stack)
 (define *fp-hud-stack* (malloc 'global #x3800))
 
+;; Free the HUD's particle launchers and their sprite hvdf slots, and re-enable the normal
+;; game HUD that was hidden while in first-person mode.
 (defmethod deactivate ((this first-person-hud))
-  (dotimes (s5-0 (-> this nb-of-particles))
-    (kill-and-free-particles (-> this particles s5-0 part))
-    (set! (-> this particles s5-0 part matrix) -1))
+  "Free the first-person HUD's particle launch controls and sprite slots, restore the normal
+   HUD, and deactivate this process."
+  (dotimes (i (-> this nb-of-particles))
+    (kill-and-free-particles (-> this particles i part))
+    (set! (-> this particles i part matrix) -1))
   (enable-hud)
   (set! (-> *target* fp-hud) (the-as handle #f))
   (call-parent-method this)
   (none))
 
+;; Set up the three HUD particles (left side, right side, center selector) with their
+;; screen-space positions, pick sprite scales per aspect ratio, and go to hud-waiting.
 (defbehavior first-person-hud-init-by-other first-person-hud ()
+  "Create the left, right, and selector particles for the first-person aiming HUD, choose their
+   scale and horizontal offset for the active aspect ratio, and begin with the HUD off-screen."
   (logclear! (-> self mask) (process-mask pause))
   (set! (-> self nb-of-particles) 0)
   (set! (-> self max-nb-of-particles) 3)
   (set! (-> self in-out-position) 4096)
   (when (< (-> self nb-of-particles) (-> self max-nb-of-particles))
-    (let ((gp-0 (-> self nb-of-particles)))
-      (set! (-> self particles gp-0) (new 'static 'hud-particle))
-      (set! (-> self particles gp-0 part) (create-launch-control group-part-first-person-hud-left self))
-      (set! (-> self particles gp-0 init-pos x) -320.0)
-      (set! (-> self particles gp-0 init-pos y) 254.0)
-      (set! (-> self particles gp-0 init-pos z) 15.0)
-      (set! (-> self particles gp-0 part matrix) -1))
+    (let ((left-i (-> self nb-of-particles)))
+      (set! (-> self particles left-i) (new 'static 'hud-particle))
+      (set! (-> self particles left-i part) (create-launch-control group-part-first-person-hud-left self))
+      (set! (-> self particles left-i init-pos x) -320.0)
+      (set! (-> self particles left-i init-pos y) 254.0)
+      (set! (-> self particles left-i init-pos z) 15.0)
+      (set! (-> self particles left-i part matrix) -1))
     (+! (-> self nb-of-particles) 1))
   (when (< (-> self nb-of-particles) (-> self max-nb-of-particles))
-    (let ((gp-1 (-> self nb-of-particles)))
-      (set! (-> self particles gp-1) (new 'static 'hud-particle))
-      (set! (-> self particles gp-1 part) (create-launch-control group-part-first-person-hud-right self))
-      (set! (-> self particles gp-1 init-pos x) -320.0)
-      (set! (-> self particles gp-1 init-pos y) 192.0)
-      (set! (-> self particles gp-1 init-pos z) 15.0)
-      (set! (-> self particles gp-1 part matrix) -1))
+    (let ((right-i (-> self nb-of-particles)))
+      (set! (-> self particles right-i) (new 'static 'hud-particle))
+      (set! (-> self particles right-i part) (create-launch-control group-part-first-person-hud-right self))
+      (set! (-> self particles right-i init-pos x) -320.0)
+      (set! (-> self particles right-i init-pos y) 192.0)
+      (set! (-> self particles right-i init-pos z) 15.0)
+      (set! (-> self particles right-i part matrix) -1))
     (+! (-> self nb-of-particles) 1))
   (when (< (-> self nb-of-particles) (-> self max-nb-of-particles))
-    (let ((gp-2 (-> self nb-of-particles)))
-      (set! (-> self particles gp-2) (new 'static 'hud-particle))
-      (set! (-> self particles gp-2 part) (create-launch-control group-part-first-person-hud-selector self))
-      (set! (-> self particles gp-2 init-pos x) 256.0)
-      (set! (-> self particles gp-2 init-pos y) 244.0)
-      (set! (-> self particles gp-2 init-pos z) 15.0)
-      (set! (-> self particles gp-2 part matrix) -1))
+    (let ((selector-i (-> self nb-of-particles)))
+      (set! (-> self particles selector-i) (new 'static 'hud-particle))
+      (set! (-> self particles selector-i part) (create-launch-control group-part-first-person-hud-selector self))
+      (set! (-> self particles selector-i init-pos x) 256.0)
+      (set! (-> self particles selector-i init-pos y) 244.0)
+      (set! (-> self particles selector-i init-pos z) 15.0)
+      (set! (-> self particles selector-i part matrix) -1))
     (+! (-> self nb-of-particles) 1))
   (case (get-aspect-ratio)
     (('aspect4x3) (set! (-> self sides-x-scale) 3.5) (set! (-> self sides-y-scale) 13.0) (set! (-> self x-offset) 0) 0)
@@ -164,31 +193,39 @@
   (go hud-waiting)
   (none))
 
+;; Fix up the heap pointers to the particle launch-controls when the process moves.
 (defmethod relocate ((this first-person-hud) (offset int))
-  (dotimes (v1-0 (-> this nb-of-particles))
-    (when (-> this particles v1-0 part)
-      (if (nonzero? (-> this particles v1-0 part)) (&+! (-> this particles v1-0 part) offset))))
+  "Relocate each heap-owned particle launch-control pointer before relocating this process."
+  (dotimes (i (-> this nb-of-particles))
+    (when (-> this particles i part)
+      (if (nonzero? (-> this particles i part)) (&+! (-> this particles i part) offset))))
   (the-as first-person-hud ((method-of-type process relocate) this offset)))
 
+;; Per-frame draw: convert each particle's screen-space init-pos into a sprite hvdf offset
+;; (2048 is the GS screen-center bias) and spawn the sprite particles.
 (defmethod spawn-particles! ((this first-person-hud))
-  (dotimes (s5-0 (-> this nb-of-particles))
-    (set! (-> this particles s5-0 pos x) (+ -256.0 (-> this particles s5-0 init-pos x)))
-    (set! (-> this particles s5-0 pos y)
+  "Update the screen-space position and GS sprite offset of each first-person HUD particle,
+   then spawn the visible particles."
+  (dotimes (i (-> this nb-of-particles))
+    (set! (-> this particles i pos x) (+ -256.0 (-> this particles i init-pos x)))
+    (set! (-> this particles i pos y)
           (* 0.5
-             (- (* (-> this particles s5-0 init-pos y) (-> *video-parms* relative-y-scale)) (the float (-> *video-parms* screen-sy)))))
-    (set! (-> this particles s5-0 pos z) (-> this particles s5-0 init-pos z))
-    (if (> (-> this particles s5-0 part matrix) 0)
-      (set-vector! (sprite-get-user-hvdf (-> this particles s5-0 part matrix))
-                   (the float (+ (the int (-> this particles s5-0 pos x)) 2048))
-                   (the float (+ (the int (-> this particles s5-0 pos y)) 2048))
-                   (- (-> *math-camera* hvdf-off z) (* 1024.0 (-> this particles s5-0 pos z)))
+             (- (* (-> this particles i init-pos y) (-> *video-parms* relative-y-scale)) (the float (-> *video-parms* screen-sy)))))
+    (set! (-> this particles i pos z) (-> this particles i init-pos z))
+    (if (> (-> this particles i part matrix) 0)
+      (set-vector! (sprite-get-user-hvdf (-> this particles i part matrix))
+                   (the float (+ (the int (-> this particles i pos x)) 2048))
+                   (the float (+ (the int (-> this particles i pos y)) 2048))
+                   (- (-> *math-camera* hvdf-off z) (* 1024.0 (-> this particles i pos z)))
                    (-> *math-camera* hvdf-off w)))
     ;; og:preserve-this Positioning of first person hud sprites
-    (when (or (-> *pc-settings* use-vis?) (= s5-0 2))
-      (spawn (-> this particles s5-0 part) *null-vector*)))
+    (when (or (-> *pc-settings* use-vis?) (= i 2))
+      (spawn (-> this particles i part) *null-vector*)))
   0
   (none))
 
+;; Initial HUD state: hides the normal game HUD, allocates sprite hvdf slots for the
+;; particles, then immediately transitions to hud-coming-in.
 (defstate hud-waiting (first-person-hud)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -200,13 +237,14 @@
   :code
     (behavior ()
       (loop
-        (dotimes (gp-0 (-> self nb-of-particles))
-          (if (= (-> self particles gp-0 part matrix) -1) (set! (-> self particles gp-0 part matrix) (sprite-allocate-user-hvdf))))
+        (dotimes (i (-> self nb-of-particles))
+          (if (= (-> self particles i part matrix) -1) (set! (-> self particles i part matrix) (sprite-allocate-user-hvdf))))
         (set-setting! 'common-page 'set 0.0 1)
         (suspend)
         (go hud-coming-in)
         (suspend))))
 
+;; Slide the HUD onto the screen (in-out-position seeks toward 0), then go to hud-normal.
 (defstate hud-coming-in (first-person-hud)
   :event
     (-> hud-waiting
@@ -221,6 +259,9 @@
     (behavior ()
       (spawn-particles! self)))
 
+;; Steady state: keep the HUD on-screen, but slide it back out while the progress (pause)
+;; menu is open. The existing sprite particles stay active, and their callbacks below read
+;; in-out-position as it changes.
 (defstate hud-normal (first-person-hud)
   :event
     (-> hud-waiting
@@ -235,6 +276,8 @@
           (seekl! (-> self in-out-position) 4096 (the int (* 200.0 (-> *display* time-adjust-ratio)))))
         (suspend))))
 
+;; Slide the HUD off-screen; when fully out (in-out-position back at 4096) deactivate the
+;; process, which restores the normal game HUD.
 (defstate hud-going-out (first-person-hud)
   :code
     (behavior ()
@@ -246,44 +289,63 @@
     (behavior ()
       (spawn-particles! self)))
 
-(defun part-first-person-hud-left-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((s5-0 (handle->process (-> *target* fp-hud))))
-    (when s5-0
-      (let ((f30-0 (* 0.00024414062 (the float (-> (the-as first-person-hud s5-0) in-out-position)))))
-        (if (or (-> *setting-control* current movie) (movie?)) (set! f30-0 1.0))
-        (if (< 0.25 f30-0) (set! f30-0 1.0) (* 4.0 f30-0))
-        (set! (-> (the-as first-person-hud s5-0) particles 0 init-pos x)
-              (the float (- 59 (-> (the-as first-person-hud s5-0) x-offset))))
-        (set! (-> arg2 vector 0 w) (* 4096.0 (+ (-> (the-as first-person-hud s5-0) sides-x-scale) (* 10.0 f30-0))))
-        (set! (-> arg2 vector 1 w) (* 4096.0 (+ (-> (the-as first-person-hud s5-0) sides-y-scale) (* 10.0 f30-0)))))))
+;; Sprite callback for the left HUD side piece: scales the sprite outward based on the HUD's
+;; in-out-position so it squeezes in from the screen edge (and stays out during movies).
+(defun part-first-person-hud-left-func ((system sparticle-system) (cpu-info sparticle-cpuinfo) (sprite-mat matrix))
+  "Place and scale the left first-person HUD sprite from the HUD's slide-out fraction. Hide it
+   during movies and expand it rapidly as it leaves the screen."
+  (let ((hud-proc (handle->process (-> *target* fp-hud))))
+    (when hud-proc
+      (let ((out-frac (* 0.00024414062 (the float (-> (the-as first-person-hud hud-proc) in-out-position)))))
+        (if (or (-> *setting-control* current movie) (movie?)) (set! out-frac 1.0))
+        (if (< 0.25 out-frac) (set! out-frac 1.0) (* 4.0 out-frac))
+        (set! (-> (the-as first-person-hud hud-proc) particles 0 init-pos x)
+              (the float (- 59 (-> (the-as first-person-hud hud-proc) x-offset))))
+        (set! (-> sprite-mat vector 0 w) (* 4096.0 (+ (-> (the-as first-person-hud hud-proc) sides-x-scale) (* 10.0 out-frac))))
+        (set! (-> sprite-mat vector 1 w) (* 4096.0 (+ (-> (the-as first-person-hud hud-proc) sides-y-scale) (* 10.0 out-frac)))))))
   0
   (none))
 
-(defun part-first-person-hud-right-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((s5-0 (handle->process (-> *target* fp-hud))))
-    (when s5-0
-      (let ((f30-0 (* 0.00024414062 (the float (-> (the-as first-person-hud s5-0) in-out-position)))))
-        (if (or (-> *setting-control* current movie) (movie?)) (set! f30-0 1.0))
-        (if (< 0.25 f30-0) (set! f30-0 1.0) (* 4.0 f30-0))
-        (set! (-> (the-as first-person-hud s5-0) particles 1 init-pos x)
-              (the float (+ (-> (the-as first-person-hud s5-0) x-offset) 452)))
-        (set! (-> arg2 vector 0 w) (* 4096.0 (+ (-> (the-as first-person-hud s5-0) sides-x-scale) (* 10.0 f30-0))))
-        (set! (-> arg2 vector 1 w) (* 4096.0 (+ (-> (the-as first-person-hud s5-0) sides-y-scale) (* 10.0 f30-0)))))))
+;; Sprite callback for the right HUD side piece; mirror of the left one.
+(defun part-first-person-hud-right-func ((system sparticle-system) (cpu-info sparticle-cpuinfo) (sprite-mat matrix))
+  "Place and scale the right first-person HUD sprite from the HUD's slide-out fraction. Hide it
+   during movies and expand it rapidly as it leaves the screen."
+  (let ((hud-proc (handle->process (-> *target* fp-hud))))
+    (when hud-proc
+      (let ((out-frac (* 0.00024414062 (the float (-> (the-as first-person-hud hud-proc) in-out-position)))))
+        (if (or (-> *setting-control* current movie) (movie?)) (set! out-frac 1.0))
+        (if (< 0.25 out-frac) (set! out-frac 1.0) (* 4.0 out-frac))
+        (set! (-> (the-as first-person-hud hud-proc) particles 1 init-pos x)
+              (the float (+ (-> (the-as first-person-hud hud-proc) x-offset) 452)))
+        (set! (-> sprite-mat vector 0 w) (* 4096.0 (+ (-> (the-as first-person-hud hud-proc) sides-x-scale) (* 10.0 out-frac))))
+        (set! (-> sprite-mat vector 1 w) (* 4096.0 (+ (-> (the-as first-person-hud hud-proc) sides-y-scale) (* 10.0 out-frac)))))))
   0
   (none))
 
-(defun part-first-person-hud-selector-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (let ((v1-2 (handle->process (-> *target* fp-hud))))
-    (when v1-2
-      (let ((f30-0 (* 0.00024414062 (the float (-> (the-as first-person-hud v1-2) in-out-position)))))
-        (if (or (-> *setting-control* current movie) (movie?)) (set! f30-0 1.0))
-        (if (< 0.5 f30-0) (set! f30-0 1.0) (* 2.0 f30-0))
-        (set! (-> arg2 vector 2 w) (- 64.0 (* 64.0 f30-0))))))
+;; Sprite callback for the center aiming selector: fades its alpha out (64 -> 0) as the HUD
+;; moves off-screen.
+(defun part-first-person-hud-selector-func ((system sparticle-system) (cpu-info sparticle-cpuinfo) (sprite-mat matrix))
+  "Fade the center selector's alpha from its full value to zero as the first-person HUD
+   leaves the screen, hiding it immediately during movies."
+  (let ((hud-proc (handle->process (-> *target* fp-hud))))
+    (when hud-proc
+      (let ((out-frac (* 0.00024414062 (the float (-> (the-as first-person-hud hud-proc) in-out-position)))))
+        (if (or (-> *setting-control* current movie) (movie?)) (set! out-frac 1.0))
+        (if (< 0.5 out-frac) (set! out-frac 1.0) (* 2.0 out-frac))
+        (set! (-> sprite-mat vector 2 w) (- 64.0 (* 64.0 out-frac))))))
   0
   (none))
 
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; Point-of-interest labels are disabled. The old resource scan and game-text drawing pass remains
+;; after an unconditional branch, so none of it can execute; the live path returns false.
+(defun look-for-points-of-interest ()
+  "Disabled point-of-interest display. Return false before the unfinished resource scan and
+   game-text overlay."
+  #f)
 
+;; Transition state used when leaving first-person look-around: behaves like target-stance,
+;; but waits for the camera to blend a bit away from the eye camera (1.2m from its interp
+;; source) before handing off to the real stance state, so Jak doesn't pop on screen.
 (defstate target-stance-look-around (target)
   :event target-standard-event-handler
   :enter
@@ -297,18 +359,25 @@
         trans)
   :code
     (behavior ()
-      (while (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-               (set! (-> a1-0 from) self)
-               (set! (-> a1-0 num-params) 0)
-               (set! (-> a1-0 message) 'dist-from-interp-src)
-               (and (< (send-event-function *camera* a1-0) 4915.2)
+      ;; wait until the camera has moved 1.2m from where it started blending, a short time
+      ;; has passed, or an animation gets pushed on us
+      (while (let ((query-msg (new 'stack-no-clear 'event-message-block)))
+               (set! (-> query-msg from) self)
+               (set! (-> query-msg num-params) 0)
+               (set! (-> query-msg message) 'dist-from-interp-src)
+               (and (< (send-event-function *camera* query-msg) 4915.2)
                     (not (time-elapsed? (-> self state-time) (seconds 0.07)))
                     (zero? (ja-group-size))))
         (suspend))
-      (let ((v1-8 target-stance)) (set! (-> self next-state) v1-8) (set! (-> self state) v1-8))
+      ;; become target-stance without re-running its enter (we already ran it)
+      (let ((stance-state target-stance)) (set! (-> self next-state) stance-state) (set! (-> self state) stance-state))
       ((the-as (function none :behavior target) (-> target-stance code))))
   :post target-post)
 
+;; First-person look-around mode (entered by standing still and pressing triangle, or from
+;; a periscope-style trigger). Switches to the cam-eye camera, spawns the first-person HUD,
+;; and lets the player fire yellow-eco projectiles straight down the camera's view with
+;; R2/circle/square. Pressing triangle again backs out via target-stance-look-around.
 (defstate target-look-around (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -346,54 +415,63 @@
              (vf6 :class vf))
         (init-vf0-vector)
         ;; og:preserve-this - High FPS Fix
+        ;; fire a yellow-eco projectile down the camera's view, rate-limited to one per 0.5s
         (when (and (recently-pressed? r2 circle square)
                    (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
-                   (time-elapsed? (-> self control unknown-dword82) (seconds 0.5))
+                   (time-elapsed? (-> self control last-fire-time) (seconds 0.5))
                    (not *pause-lock*))
-          (let ((gp-1 (vector-float*! (new-stack-vector0)
+          ;; velocity along the camera forward axis; spawn point 2m ahead and 0.5m below the camera
+          (let ((proj-velocity (vector-float*! (new-stack-vector0)
                                       (-> *math-camera* inv-camera-rot vector 2)
                                       (the-as float (-> *TARGET-bank* yellow-projectile-speed))))
-                (s5-1 (vector-float*! (new-stack-vector0) (-> *math-camera* inv-camera-rot vector 2) 8192.0)))
-            (vector+float*! s5-1 s5-1 (-> *math-camera* inv-camera-rot vector 1) (the-as float -2048.0))
-            (let ((s4-0 (get-process *default-dead-pool* projectile-yellow #x4000)))
-              (when s4-0
+                (muzzle-offset (vector-float*! (new-stack-vector0) (-> *math-camera* inv-camera-rot vector 2) 8192.0)))
+            (vector+float*! muzzle-offset muzzle-offset (-> *math-camera* inv-camera-rot vector 1) (the-as float -2048.0))
+            (let ((proj (get-process *default-dead-pool* projectile-yellow #x4000)))
+              (when proj
                 (let ((t9-2 (method-of-type projectile-yellow activate)))
-                  (t9-2 (the-as projectile-yellow s4-0) self 'projectile-yellow (the-as pointer #x70004000)))
+                  (t9-2 (the-as projectile-yellow proj) self 'projectile-yellow (the-as pointer #x70004000)))
                 (let ((s3-0 run-function-in-process)
-                      (s2-0 s4-0)
+                      (s2-0 proj)
                       (s1-0 projectile-init-by-other)
                       (s0-0 (-> self entity))
-                      (sv-48 s5-1))
+                      (spawn-pos muzzle-offset))
+                  ;; spawn-pos = camera position + muzzle offset (done in vector registers)
                   (let ((v0-3 (camera-pos))) (.mov.vf.w vf6 vf0) (.lvf vf4 (&-> v0-3 quad)))
-                  (.lvf vf5 (&-> s5-1 quad))
+                  (.lvf vf5 (&-> muzzle-offset quad))
                   (.add.vf.xyz vf6 vf4 vf5)
-                  (.svf (&-> sv-48 quad) vf6)
+                  (.svf (&-> spawn-pos quad) vf6)
                   ((the-as (function object object object object object object object none) s3-0)
                    s2-0
                    s1-0
                    s0-0
-                   sv-48
-                   gp-1
+                   spawn-pos
+                   proj-velocity
                    (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max)) 56 40)
                    #f))
-                (-> s4-0 ppointer))))
-          (set-time! (-> self control unknown-dword82)))
+                (-> proj ppointer))))
+          (set-time! (-> self control last-fire-time)))
+        ;; triangle exits look-around mode (the code loop watches cam-user-mode)
         (when (cpad-pressed? (-> self control cpad number) triangle)
           (logclear! (-> *cpad-list* cpads (-> self control cpad number) button0-abs 0) (pad-buttons triangle))
           (logclear! (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0) (pad-buttons triangle))
           (set! (-> self cam-user-mode) 'normal))))
   :code
     (behavior ()
-      (while (let ((f30-0 8192.0)) (< f30-0 (send-event *camera* 'dist-from-interp-dest)))
+      ;; keep the normal animation until the camera has blended to within 2m of the eye view
+      (while (let ((min-cam-dist 8192.0)) (< min-cam-dist (send-event *camera* 'dist-from-interp-dest)))
         (if (!= (-> self cam-user-mode) 'look-around) (go target-stance))
         (suspend))
+      ;; then hide Jak's model (no anim channels) and idle until the mode ends
       (ja-channel-set! 0)
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (loop
         (if (!= (-> self cam-user-mode) 'look-around) (go target-stance-look-around))
         (suspend)))
   :post target-no-move-post)
 
+;; First-person state for Billy's whack-a-rat game in Sandover: fixed cam-billy camera,
+;; same yellow-eco firing as target-look-around but with a shorter 0.45s cooldown and
+;; higher projectile options. Exits when the game process sends 'end-mode.
 (defstate target-billy-game (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -429,45 +507,50 @@
              (vf6 :class vf))
         (init-vf0-vector)
         ;; og:preserve-this - High FPS Fix
+        ;; same camera-aimed yellow-eco shot as target-look-around, 0.45s cooldown
         (when (and (recently-pressed? r2 circle square)
-                   (time-elapsed? (-> self control unknown-dword82) (seconds 0.45))
+                   (time-elapsed? (-> self control last-fire-time) (seconds 0.45))
                    (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
                    (not *pause-lock*))
-          (let ((gp-1 (vector-float*! (new-stack-vector0)
+          (let ((proj-velocity (vector-float*! (new-stack-vector0)
                                       (-> *math-camera* inv-camera-rot vector 2)
                                       (the-as float (-> *TARGET-bank* yellow-projectile-speed))))
-                (s5-1 (vector-float*! (new-stack-vector0) (-> *math-camera* inv-camera-rot vector 2) 8192.0)))
-            (vector+float*! s5-1 s5-1 (-> *math-camera* inv-camera-rot vector 1) (the-as float -2048.0))
-            (let ((s4-0 (get-process *default-dead-pool* projectile-yellow #x4000)))
-              (when s4-0
+                (muzzle-offset (vector-float*! (new-stack-vector0) (-> *math-camera* inv-camera-rot vector 2) 8192.0)))
+            (vector+float*! muzzle-offset muzzle-offset (-> *math-camera* inv-camera-rot vector 1) (the-as float -2048.0))
+            (let ((proj (get-process *default-dead-pool* projectile-yellow #x4000)))
+              (when proj
                 (let ((t9-2 (method-of-type projectile-yellow activate)))
-                  (t9-2 (the-as projectile-yellow s4-0) self 'projectile-yellow (the-as pointer #x70004000)))
+                  (t9-2 (the-as projectile-yellow proj) self 'projectile-yellow (the-as pointer #x70004000)))
                 (let ((s3-0 run-function-in-process)
-                      (s2-0 s4-0)
+                      (s2-0 proj)
                       (s1-0 projectile-init-by-other)
                       (s0-0 (-> self entity))
-                      (sv-48 s5-1))
+                      (spawn-pos muzzle-offset))
                   (let ((v0-4 (camera-pos))) (.mov.vf.w vf6 vf0) (.lvf vf4 (&-> v0-4 quad)))
-                  (.lvf vf5 (&-> s5-1 quad))
+                  (.lvf vf5 (&-> muzzle-offset quad))
                   (.add.vf.xyz vf6 vf4 vf5)
-                  (.svf (&-> sv-48 quad) vf6)
+                  (.svf (&-> spawn-pos quad) vf6)
                   ((the-as (function object object object object object object object none) s3-0)
                    s2-0
                    s1-0
                    s0-0
-                   sv-48
-                   gp-1
+                   spawn-pos
+                   proj-velocity
                    (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max)) 120 104)
                    #f))
-                (-> s4-0 ppointer))))
-          (set-time! (-> self control unknown-dword82)))))
+                (-> proj ppointer))))
+          (set-time! (-> self control last-fire-time)))))
   :code
     (behavior ()
       (ja-channel-set! 0)
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (anim-loop))
   :post target-no-move-post)
 
+;; Cutscene/scripted "grabbed" state: Jak is invulnerable and control is taken away while
+;; another process runs a script. The controlling process can send 'play-anim with 'stance,
+;; 'shock-in, or 'shock-out (stored in state-var0) to pick Jak's idle animation, or hand off
+;; to target-clone-anim / target-final-door. Sent 'end-mode to release him.
 (defstate target-grab (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -477,7 +560,7 @@
          (case message
            (('end-mode) (go target-stance))
            (('play-anim)
-            (let ((v0-0 (the-as object (-> block param 0)))) (set! (-> self control unknown-uint20) (the-as uint v0-0)) v0-0))
+            (let ((v0-0 (the-as object (-> block param 0)))) (set! (-> self control state-var0) (the-as uint v0-0)) v0-0))
            (('clone-anim) (go target-clone-anim (process->handle (the-as process (-> block param 0)))))
            (('change-mode)
             (case (-> block param 0)
@@ -491,7 +574,7 @@
       (set! (-> self control mod-surface) *grab-mods*)
       (set! (-> self neck flex-blend) 0.0)
       (logior! (-> self state-flags) (state-flags invulnerable grabbed))
-      (set! (-> self control unknown-uint20) (the-as uint 'stance)))
+      (set! (-> self control state-var0) (the-as uint 'stance)))
   :exit
     (behavior ()
       (logclear! (-> self state-flags) (state-flags invulnerable))
@@ -499,12 +582,13 @@
   :code
     (behavior ()
       (set-forward-vel (the-as float 0.0))
-      (let ((gp-0 0))
-        (while (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
+      ;; if grabbed in mid-air, fall to the ground first and play the landing anim
+      (let ((fall-time 0))
+        (while (not (logtest? (-> self control status) (collide-status on-surface)))
           (target-falling-anim-trans)
-          (+! gp-0 (- (current-time) (-> *display* old-base-frame-counter)))
+          (+! fall-time (- (current-time) (-> *display* old-base-frame-counter)))
           (suspend))
-        (if (or (> gp-0 0)
+        (if (or (> fall-time 0)
                 (let ((v1-11 (ja-group)))
                   (or (= v1-11 eichar-jump-ja)
                       (= v1-11 eichar-jump-loop-ja)
@@ -512,10 +596,13 @@
                       (= v1-11 eichar-launch-jump-loop-ja)
                       (= v1-11 eichar-duck-high-jump-ja))))
           (target-hit-ground-anim #f)))
-      (-> self control unknown-spoolanim00)
+      (-> self control state-spool-anim)
+      ;; loop the animation the controlling process requested via 'play-anim; restart the
+      ;; case whenever the requested mode (state-var0, read through the state-spool-anim
+      ;; overlay) changes
       (loop
-        (let ((gp-1 (-> self control unknown-spoolanim00)))
-          (case gp-1
+        (let ((anim-mode (-> self control state-spool-anim)))
+          (case anim-mode
             (('stance)
              (cond
                ((or (and (ja-group? eichar-walk-ja) (< 0.5 (-> self skel root-channel 6 frame-interp)))
@@ -545,34 +632,38 @@
              (loop
                (ja-no-eval :group! eichar-stance-loop-ja :num! (seek!) :frame-num 0.0)
                (until (ja-done? 0)
-                 (if (!= gp-1 (-> self control unknown-spoolanim00)) (goto cfg-94))
+                 (if (!= anim-mode (-> self control state-spool-anim)) (goto cfg-94))
                  (suspend)
                  (ja :num! (seek!)))))
             (('shock-in)
              (ja-channel-push! 1 (seconds 0.2))
              (ja-no-eval :group! eichar-shocked-ja :num! (seek! (ja-aframe (the-as float 18.0) 0)) :frame-num 0.0)
              (until (ja-done? 0)
-               (if (!= gp-1 (-> self control unknown-spoolanim00)) (goto cfg-94))
+               (if (!= anim-mode (-> self control state-spool-anim)) (goto cfg-94))
                (suspend)
                (ja :num! (seek! (ja-aframe (the-as float 18.0) 0))))
              (loop
-               (if (!= gp-1 (-> self control unknown-spoolanim00)) (goto cfg-94))
+               (if (!= anim-mode (-> self control state-spool-anim)) (goto cfg-94))
                (suspend)))
             (('shock-out)
              (if (not (ja-group? eichar-shocked-ja)) (ja-channel-push! 1 (seconds 0.2)))
              (ja-no-eval :group! eichar-shocked-ja :num! (seek!) :frame-num (ja-aframe (the-as float 18.0) 0))
              (until (ja-done? 0)
-               (if (!= gp-1 (-> self control unknown-spoolanim00)) (goto cfg-94))
+               (if (!= anim-mode (-> self control state-spool-anim)) (goto cfg-94))
                (suspend)
                (ja :num! (seek!)))
-             (set! (-> self control unknown-uint20) (the-as uint 'stance)))))
+             (set! (-> self control state-var0) (the-as uint 'stance)))))
         (label cfg-94)))
   :post
     (behavior ()
-      (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
-        (set! (-> self control transv quad) (the-as uint128 0)))
+      (if (logtest? (-> self control status) (collide-status on-surface))
+        (vector-zero! (-> self control transv)))
       (target-no-stick-post)))
 
+;; Hanging/swinging on a swingpole. The pole process (kept in swingpole-handle) pulls Jak
+;; into position (signalled via did-move-to-pole-or-max-jump-height). Pressing X dismounts
+;; based on the swing anim frame: late in the swing drops off backwards into a fall,
+;; mid-swing flips up on top of the pole, early swing flips forward off the end.
 (defstate target-pole-cycle (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -580,54 +671,61 @@
         (-> self state name)
         (target-standard-event-handler proc argc message block)))
   :enter
-    (behavior ((arg0 handle))
-      (set! (-> self control unknown-handle10) arg0)
+    (behavior ((pole handle))
+      (set! (-> self control swingpole-handle) pole)
       (set-time! (-> self state-time))
       (set! (-> self control mod-surface) *pole-mods*)
       (logior! (-> self control root-prim prim-core action) (collide-action swingpole-active))
       (target-collide-set! 'pole (the-as float 0.0))
-      (set! (-> self control unknown-vector102 quad) (-> self control transv quad))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      ;; save the incoming velocity in state-vector0 so :code can pick a mount anim from it
+      (vector-copy! (-> self control state-vector0) (-> self control transv))
+      (vector-zero! (-> self control transv))
       (send-event *camera* 'ease-in)
       (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as int #f)))
   :exit
     (behavior ()
       (target-collide-set! 'normal (the-as float 0.0))
       (logclear! (-> self control root-prim prim-core action) (collide-action swingpole-active))
-      (set! (-> self control unknown-handle10) (the-as handle #f)))
+      (set! (-> self control swingpole-handle) (the-as handle #f)))
   :trans
     (behavior ()
       ;; og:preserve-this - High FPS Fix
       (when (and (recently-pressed? x)
                  (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
                  (time-elapsed? (-> self state-time) (seconds 0.1)))
-        (set! (-> self control transv quad) (the-as uint128 0))
+        (vector-zero! (-> self control transv))
         (cond
+          ;; past aframe 44 (back of the swing): let go backwards, dropping fast
           ((< 44.0 (ja-aframe-num 0))
-           (set-forward-vel (the-as float -49152.0))
-           (let ((gp-0 (new-stack-vector0)))
+           (set-forward-vel (the-as float -49152.0)) ;; -12 m/s backwards
+           (let ((lateral-vel (new-stack-vector0)))
              (let ((f0-2 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
                0.0
-               (vector-! gp-0 (-> self control transv) (vector-float*! gp-0 (-> self control dynam gravity-normal) f0-2)))
-             (let* ((f0-3 (vector-length gp-0))
+               (vector-! lateral-vel (-> self control transv) (vector-float*! lateral-vel (-> self control dynam gravity-normal) f0-2)))
+             ;; replace the vertical component with -20 m/s straight down
+             (let* ((f0-3 (vector-length lateral-vel))
                     (f1-1 f0-3)
                     (f2-0 -81920.0))
                (vector+! (-> self control transv)
                          (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-0)
-                         (vector-float*! gp-0 gp-0 (/ f0-3 f1-1)))))
-           (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+                         (vector-float*! lateral-vel lateral-vel (/ f0-3 f1-1)))))
+           (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
            (go target-falling 'target-pole-cycle))
+          ;; aframes 14-44 (mid swing): flip up on top; forward speed scales with how early
           ((>= (ja-aframe-num 0) 14.0)
            (remove-exit)
-           (go target-pole-flip-up 28672.0 28672.0 (* 1024.0 (- 26.0 (ja-aframe-num 0)))))
+           (go target-pole-flip-up (the-as float 28672.0) (the-as float 28672.0) (* 1024.0 (- 26.0 (ja-aframe-num 0)))))
+          ;; early swing: flip forward off the end at 14 m/s
           (else (remove-exit) (go target-pole-flip-forward (the-as float 14336.0) (the-as float 14336.0) (the-as float 57344.0))))))
   :code
-    (behavior ((arg0 handle))
+    (behavior ((pole handle))
       (target-compute-pole)
-      (set! (-> self control unknown-uint20)
+      ;; state-var0 (as a float) = dot of pole axis with the saved approach direction; the
+      ;; sign says which way Jak swings around the pole (unused here, used by edge-grab)
+      (set! (-> self control state-var0)
             (the-as uint
                     (vector-dot (-> self control edge-grab-edge-dir)
-                                (vector-normalize! (-> self control unknown-vector102) (the-as float 1.0)))))
+                                (vector-normalize! (-> self control state-vector0) (the-as float 1.0)))))
       (cond
         ((ja-group? eichar-pole-jump-loop-ja)
          (while (not (-> self control did-move-to-pole-or-max-jump-height))
@@ -651,21 +749,22 @@
           (ja :num! (seek!)))))
   :post target-no-move-post)
 
+;; Anim-only lead-in for flipping up on top of a pole: plays the flip-up anim from roughly
+;; the current swing frame, then launches into target-pole-flip-up-jump.
 (defstate target-pole-flip-up (target)
   :event target-standard-event-handler
   :exit
     (-> target-pole-cycle
         exit)
   :code
-    (behavior ((arg0 object) (arg1 object) (arg2 float))
-      (ja-no-eval :group! eichar-pole-flip-up-ja :num! (seek!) :frame-num (ja-aframe (+ 1.0 (fmin 17.0 (ja-aframe-num 0))) 0))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
-      (set-forward-vel arg2)
-      (go target-pole-flip-up-jump (the-as float arg0) (the-as float arg1)))
+    (behavior ((min-height float) (max-height float) (fwd-vel float))
+      (ja-play :group! eichar-pole-flip-up-ja :num! (seek!) :frame-num (ja-aframe (+ 1.0 (fmin 17.0 (ja-aframe-num 0))) 0))
+      (set-forward-vel fwd-vel)
+      (go target-pole-flip-up-jump min-height max-height))
   :post target-no-move-post)
 
+;; The airborne part of flipping up from a pole: a jump-forward variant whose sideways
+;; velocity is flattened against the pole axis so Jak stays in the pole's vertical plane.
 (defstate target-pole-flip-up-jump (target)
   :event target-standard-event-handler
   :enter
@@ -675,19 +774,21 @@
   :trans
     (behavior ()
       ((-> target-jump-forward trans))
+      ;; kill any velocity along the pole's axis so we land on top, not off the side
       (vector-flatten! (-> self control transv) (-> self control transv) (-> self control edge-grab-edge-dir)))
   :code
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (sound-play "jump")
       (send-event *camera* 'damp-up)
       (ja :group! eichar-pole-jump-loop-ja :num! min)
-      (let ((f0-1 (target-height-above-ground))
-            (f1-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
-        (while (not (and (< (fabs (/ f0-1 (/ f1-1 300))) 40.0) (and (< f1-1 0.0) (ja-min? 0))))
+      ;; loop the pole-jump anim until falling and within ~40 frames of hitting the ground
+      (let ((height-above-ground (target-height-above-ground))
+            (up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+        (while (not (and (< (fabs (/ height-above-ground (/ up-vel 300))) 40.0) (and (< up-vel 0.0) (ja-min? 0))))
           (suspend)
           (ja :num! (loop!))
-          (set! f0-1 (target-height-above-ground))
-          (set! f1-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
+          (set! height-above-ground (target-height-above-ground))
+          (set! up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
       (ja-channel-push! 1 (seconds 0.25))
       (ja-no-eval :group! eichar-jump-loop-ja :num! (loop!) :frame-num 0.0)
       (loop
@@ -695,31 +796,32 @@
         (ja :group! eichar-jump-loop-ja :num! (loop!))))
   :post target-post)
 
+;; Anim-only lead-in for flipping forward off the end of a pole, then launches into
+;; target-pole-flip-forward-jump.
 (defstate target-pole-flip-forward (target)
   :event target-standard-event-handler
   :exit
     (-> target-pole-cycle
         exit)
   :code
-    (behavior ((arg0 float) (arg1 float) (arg2 float))
-      (ja-no-eval :group!
-                  eichar-pole-flip-forward-ja
-                  :num!
-                  (seek! (ja-aframe (the-as float 16.0) 0))
-                  :frame-num
-                  (ja-aframe (+ 1.0 (ja-aframe-num 0)) 0))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! (ja-aframe (the-as float 16.0) 0))))
-      (set-forward-vel arg2)
-      (go target-pole-flip-forward-jump arg0 arg1))
+    (behavior ((min-height float) (max-height float) (fwd-vel float))
+      (ja-play :group!
+               eichar-pole-flip-forward-ja
+               :num!
+               (seek! (ja-aframe (the-as float 16.0) 0))
+               :frame-num
+               (ja-aframe (+ 1.0 (ja-aframe-num 0)) 0))
+      (set-forward-vel fwd-vel)
+      (go target-pole-flip-forward-jump min-height max-height))
   :post target-no-move-post)
 
+;; The airborne part of flipping forward off a pole: a jump constrained to the pole's
+;; vertical plane, finishing with the shared pole-flip-up-jump landing logic.
 (defstate target-pole-flip-forward-jump (target)
   :event target-standard-event-handler
   :enter
-    (behavior ((arg0 float) (arg1 float))
-      ((-> target-jump enter) arg0 arg1 (the-as surface #f))
+    (behavior ((min-height float) (max-height float))
+      ((-> target-jump enter) min-height max-height (the-as surface #f))
       (set! (-> self control mod-surface) *forward-pole-jump-mods*))
   :exit target-exit
   :trans
@@ -727,7 +829,7 @@
       ((-> target-jump-forward trans))
       (vector-flatten! (-> self control transv) (-> self control transv) (-> self control edge-grab-edge-dir)))
   :code
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (sound-play "jump")
       (until (ja-done? 0)
         (suspend)
@@ -735,6 +837,9 @@
       ((the-as (function none :behavior target) (-> target-pole-flip-up-jump code))))
   :post target-post)
 
+;; Hanging from a ledge by the hands. Entered from the collision system's edge-grab
+;; detection (see collide-edge-grab). While hanging, X jumps up the ledge (if the space
+;; above is clear) and pulling back on the stick (or X with back held) drops off.
 (defstate target-edge-grab (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -745,10 +850,11 @@
     (behavior ()
       (set-time! (-> self state-time))
       (set! (-> self control mod-surface) *edge-grab-mods*)
-      (set-time! (-> self control unknown-dword41))
+      (set-time! (-> self control edge-grab-start-time))
       (logior! (-> self control root-prim prim-core action) (collide-action edgegrab-active edgegrab-cam))
-      (set! (-> self control unknown-vector102 quad) (-> self control transv quad))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      ;; save the incoming velocity in state-vector0 so :code can pick a swing anim from it
+      (vector-copy! (-> self control state-vector0) (-> self control transv))
+      (vector-zero! (-> self control transv))
       (send-event *camera* 'ease-in))
   :exit
     (behavior ()
@@ -762,34 +868,41 @@
                  (recently-pressed? x)
                  (not (logtest? (-> self state-flags) (state-flags prevent-jump))))
         (cond
+          ;; stick neutral or not pulled back: try to leap up over the ledge, but only if a
+          ;; sphere probe of the space above the edge comes back clear
           ((or (< -0.2 (local-pad-angle)) (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0))
-           (let ((a1-2 (new 'stack-no-clear 'collide-using-spheres-params)))
-             (set! (-> a1-2 spheres) (-> *collide-edge-work* world-player-leap-up-spheres))
-             (set! (-> a1-2 num-spheres) (the-as uint 6))
-             (set! (-> a1-2 collide-with) (-> self control root-prim collide-with))
-             (set! (-> a1-2 proc) #f)
-             (set! (-> a1-2 ignore-pat) (new 'static 'pat-surface :noentity #x1))
-             (set! (-> a1-2 solid-only) #t)
-             (when (not (fill-and-probe-using-spheres *collide-cache* a1-2))
+           (let ((probe-params (new 'stack-no-clear 'collide-using-spheres-params)))
+             (set! (-> probe-params spheres) (-> *collide-edge-work* world-player-leap-up-spheres))
+             (set! (-> probe-params num-spheres) (the-as uint 6))
+             (set! (-> probe-params collide-with) (-> self control root-prim collide-with))
+             (set! (-> probe-params proc) #f)
+             (set! (-> probe-params ignore-pat) (new 'static 'pat-surface :noentity #x1))
+             (set! (-> probe-params solid-only) #t)
+             (when (not (fill-and-probe-using-spheres *collide-cache* probe-params))
                (remove-exit)
                (go target-edge-grab-jump (-> *TARGET-bank* edge-grab-jump-height-min) (-> *TARGET-bank* edge-grab-jump-height-max)))))
+          ;; stick pulled back: let go of the ledge
           (else (remove-exit) (go target-edge-grab-off)))))
   :code
     (behavior ()
       (target-compute-edge)
-      (set! (-> self control unknown-uint20)
+      ;; state-var0 (as a float) = dot of the edge direction with the approach direction;
+      ;; the sign picks the left/right swing-up animation below
+      (set! (-> self control state-var0)
             (the-as uint
                     (vector-dot (-> self control edge-grab-edge-dir)
-                                (vector-normalize! (-> self control unknown-vector102) (the-as float 1.0)))))
-      (while (< 0.0 (-> self control unknown-float110))
+                                (vector-normalize! (-> self control state-vector0) (the-as float 1.0)))))
+      ;; keep the jump loop until the hands have been pulled down to the edge
+      (while (< 0.0 (-> self control hand-to-edge-dist))
         (when (not (ja-group? eichar-jump-loop-ja))
           (ja-channel-push! 1 (seconds 0.15))
           (ja :group! eichar-jump-loop-ja :num! min))
         (suspend))
       (ja-channel-push! 1 (seconds 0.15))
+      ;; pick the catch anim from the sideways swing component (dot thresholds +/-0.3)
       (cond
-        ((< (the-as float (-> self control unknown-uint20)) -0.3) (ja :group! eichar-edge-grab-swing-right-ja :num! min))
-        ((< 0.3 (the-as float (-> self control unknown-uint20))) (ja :group! eichar-edge-grab-swing-left-ja :num! min))
+        ((< (the-as float (-> self control state-var0)) -0.3) (ja :group! eichar-edge-grab-swing-right-ja :num! min))
+        ((< 0.3 (the-as float (-> self control state-var0))) (ja :group! eichar-edge-grab-swing-left-ja :num! min))
         (else (ja :group! eichar-falling-to-edge-grab-ja :num! min)))
       (until (ja-done? 0)
         (suspend)
@@ -807,6 +920,8 @@
           (ja :num! (seek!)))))
   :post target-no-move-post)
 
+;; Leaping up from an edge-grab: plays the pull-up-and-jump anim (following the anim's root
+;; motion and any movement of the grabbed edge), then converts to a forward jump.
 (defstate target-edge-grab-jump (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -817,28 +932,31 @@
     (-> target-edge-grab
         exit)
   :code
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (ja-channel-set! 1)
       (set-quaternion! (-> self control) (-> self control dir-targ))
       (logclear! (-> self control root-prim prim-core action) (collide-action edgegrab-active edgegrab-cam))
-      (set! (-> self control transv quad) (the-as uint128 0))
-      (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (vector-zero! (-> self control transv))
+      (let ((align-move (new 'stack-no-clear 'vector)))
         (ja-no-eval :group! eichar-edge-grab-to-jump-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
-          (target-compute-edge-rider)
+          (target-compute-edge-rider) ;; track the edge if it is on a moving platform
           (compute-alignment! (-> self align))
+          ;; apply the anim's root motion, rotated from control frame into world frame
           (when (not (logtest? (-> self align flags) (align-flags disabled)))
-            (vector-matrix*! s4-0 (-> self align delta trans) (-> self control c-R-w))
-            (move-by-vector! (-> self control) s4-0))
+            (vector-matrix*! align-move (-> self align delta trans) (-> self control c-R-w))
+            (move-by-vector! (-> self control) align-move))
           (suspend)
           (ja :num! (seek!))))
-      (set! (-> self control transv quad) (the-as uint128 0))
-      (set! (-> self control unknown-dword70) 0)
-      (set-forward-vel (the-as float 16384.0))
+      (vector-zero! (-> self control transv))
+      (set! (-> self control time-of-last-clear-wall-in-jump) 0)
+      (set-forward-vel (the-as float 16384.0)) ;; 4 m/s up over the lip
       (send-event *camera* 'damp-up)
-      (go target-jump-forward arg0 arg1))
+      (go target-jump-forward min-height max-height))
   :post target-no-move-post)
 
+;; Letting go of a ledge: plays the drop-off anim, then pushes Jak away from the wall
+;; (10 m/s opposite the across-edge direction) and falls.
 (defstate target-edge-grab-off (target)
   :event target-standard-event-handler
   :exit
@@ -849,18 +967,21 @@
       (ja-channel-set! 1)
       (set-quaternion! (-> self control) (-> self control dir-targ))
       (send-event *camera* 'damp-up)
-      (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (let ((align-move (new 'stack-no-clear 'vector)))
         (ja-no-eval :group! eichar-edge-grab-off-ja :num! (seek! (ja-aframe (the-as float 191.0) 0)) :frame-num 0.0)
         (until (ja-done? 0)
           (compute-alignment! (-> self align))
+          ;; apply the anim's root motion, rotated from control frame into world frame
           (when (not (logtest? (-> self align flags) (align-flags disabled)))
-            (vector-matrix*! gp-0 (-> self align delta trans) (-> self control c-R-w))
-            (move-by-vector! (-> self control) gp-0))
+            (vector-matrix*! align-move (-> self align delta trans) (-> self control c-R-w))
+            (move-by-vector! (-> self control) align-move))
           (suspend)
           (ja :num! (seek! (ja-aframe (the-as float 191.0) 0)))))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (logclear! (-> self control root-prim prim-core action) (collide-action edgegrab-active edgegrab-cam))
+      ;; push away from the ledge at 10 m/s
       (vector-float*! (-> self control transv) (-> self control edge-grab-across-edge-dir) -40960.0)
+      ;; if the ledge was on something moving, inherit its horizontal velocity
       (when (and (not (time-elapsed? (-> self control rider-time) (seconds 0.2)))
                  (or (logtest? (-> self control current-surface flags) (surface-flags moving-ground))
                      (= (-> self control poly-pat material) (pat-material rotate))))
@@ -869,6 +990,9 @@
       (go target-falling 'target-edge-grab))
   :post target-no-move-post)
 
+;; Yellow-eco punch on the ground: plays the running-blast anim and fires a projectile from
+;; Jak's right hand at the punch frame. Uses the running-attack event handler so it still
+;; counts as an attack; higher-damage projectile when eco level is maxed.
 (defstate target-yellow-blast (target)
   :event
     (-> target-running-attack
@@ -881,66 +1005,72 @@
       (set! (-> *run-attack-mods* turnvv) 655360.0)
       (target-start-attack)
       (target-danger-set! 'spin #f)
-      (set! (-> self control unknown-uint20) (the-as uint 0))
+      (set! (-> self control state-var0) (the-as uint 0))
       (set! (-> self control did-move-to-pole-or-max-jump-height) 0)
-      (set! (-> self control unknown-uint31) (the-as uint 0))
-      (let ((gp-0 (new-stack-vector0))
-            (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+      (set! (-> self control state-var2) (the-as uint 0))
+      ;; cancel any upward velocity (keep downward), preserving the horizontal component
+      (let ((lateral-vel (new-stack-vector0))
+            (up-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
         0.0
-        (vector-! gp-0 (-> self control transv) (vector-float*! gp-0 (-> self control dynam gravity-normal) f30-0))
-        (let* ((f0-5 (vector-length gp-0))
+        (vector-! lateral-vel (-> self control transv) (vector-float*! lateral-vel (-> self control dynam gravity-normal) up-vel))
+        (let* ((f0-5 (vector-length lateral-vel))
                (f1-0 f0-5))
-          (if (< 0.0 f30-0) (set! f30-0 0.0))
+          (if (< 0.0 up-vel) (set! up-vel 0.0))
           (vector+! (-> self control transv)
-                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f30-0)
-                    (vector-float*! gp-0 gp-0 (/ f0-5 f1-0))))))
+                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) up-vel)
+                    (vector-float*! lateral-vel lateral-vel (/ f0-5 f1-0))))))
   :exit
     (behavior ()
       (set! (-> *run-attack-mods* turnv) 0.0)
       (set! (-> *run-attack-mods* turnvv) 0.0)
-      (set-time! (-> self control unknown-dword31))
+      (set-time! (-> self control last-running-attack-end-time))
       (target-exit))
   :code
     (behavior ()
-      (let ((gp-0 (the-as handle #f)))
+      (let ((proj-handle (the-as handle #f)))
         (ja-channel-push! 1 (seconds 0.075))
         (level-hint-spawn (text-id swamp-eco-yellow-first-use) "sksp0145" (the-as entity #f) *entity-pool* (game-task none))
         (case (-> (level-get-target-inside *level*) name)
           (('maincave)
            (level-hint-spawn (text-id cave-gnawers-look-around) "sksp0328" (the-as entity #f) *entity-pool* (game-task none))))
+        ;; wind up to the punch frame (aframe 9)
         (ja-no-eval :group! eichar-yellow-running-blast-ja :num! (seek! (ja-aframe (the-as float 9.0) 0)) :frame-num 0.0)
         (until (ja-done? 0)
           (if (time-elapsed? (-> self state-time) (seconds 0.1)) (set! (-> *run-attack-mods* turnvv) 0.0))
           (suspend)
           (ja :num! (seek! (ja-aframe (the-as float 9.0) 0))))
-        (let ((s5-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat))))
-          (set! (-> s5-2 y) 0.0)
-          (vector-normalize! s5-2 (-> *TARGET-bank* yellow-projectile-speed))
+        ;; fire horizontally along Jak's facing, from the right hand joint
+        (let ((fire-dir (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat))))
+          (set! (-> fire-dir y) 0.0)
+          (vector-normalize! fire-dir (-> *TARGET-bank* yellow-projectile-speed))
           (when (and (= (-> self fact eco-type) (pickup-type eco-yellow)) (>= (-> self fact eco-level) 1.0))
-            (let ((gp-1 (get-process *default-dead-pool* projectile-yellow #x4000)))
-              (set! gp-0
-                    (ppointer->handle (when gp-1
+            (let ((proj (get-process *default-dead-pool* projectile-yellow #x4000)))
+              (set! proj-handle
+                    (ppointer->handle (when proj
                                         (let ((t9-12 (method-of-type projectile-yellow activate)))
-                                          (t9-12 (the-as projectile-yellow gp-1) self 'projectile-yellow (the-as pointer #x70004000)))
-                                        (run-now-in-process gp-1
+                                          (t9-12 (the-as projectile-yellow proj) self 'projectile-yellow (the-as pointer #x70004000)))
+                                        (run-now-in-process proj
                                                             projectile-init-by-other
                                                             (-> self entity)
                                                             (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg sk_rhand))
-                                                            s5-2
+                                                            fire-dir
                                                             (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max)) 25 9)
                                                             #f)
-                                        (-> gp-1 ppointer)))))
-            (set-time! (-> self control unknown-dword82))))
+                                        (-> proj ppointer)))))
+            (set-time! (-> self control last-fire-time))))
+        ;; finish the anim; kill the projectile if the attack got interrupted (state-var1 is
+        ;; a hit timestamp and state-var2 an abort flag set by the attack event handler)
         (ja-no-eval :group! eichar-yellow-running-blast-ja :num! (seek!) :frame-num (ja-aframe (the-as float 9.0) 0))
         (until (ja-done? 0)
-          (if (or (< (the-as uint (- (current-time) (the-as int (-> self control unknown-uint30)))) (the-as uint 30))
-                  (= (-> self control unknown-uint31) 1))
-            (send-event (handle->process gp-0) 'die))
+          (if (or (< (the-as uint (- (current-time) (the-as int (-> self control state-var1)))) (the-as uint 30))
+                  (= (-> self control state-var2) 1))
+            (send-event (handle->process proj-handle) 'die))
           (suspend)
           (ja :num! (seek!))))
-      (if (logtest? (-> self control status) (cshape-moving-flags onsurf)) (go target-stance) (go target-falling #f)))
+      (if (logtest? (-> self control status) (collide-status on-surface)) (go target-stance) (go target-falling #f)))
   :post target-post)
 
+;; air surface used while doing the yellow-eco jump blast
 (define *yellow-jump-mods*
   (new 'static
        'surface
@@ -965,25 +1095,28 @@
        :mode 'air
        :flags (surface-flags jump)))
 
+;; Yellow-eco blast in mid-air: pops Jak upward, fires a projectile forward from between
+;; his hands at the anim's fire frame, then pops him up again as recoil.
 (defstate target-yellow-jump-blast (target)
   :event target-standard-event-handler
   :enter
     (behavior ()
       (set! (-> self control mod-surface) *yellow-jump-mods*)
-      (let ((gp-0 (new-stack-vector0)))
+      ;; replace the vertical velocity with a fixed ~11.5 m/s hop, keeping horizontal speed
+      (let ((lateral-vel (new-stack-vector0)))
         (let ((f0-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
           0.0
-          (vector-! gp-0 (-> self control transv) (vector-float*! gp-0 (-> self control dynam gravity-normal) f0-1)))
-        (let* ((f0-2 (vector-length gp-0))
+          (vector-! lateral-vel (-> self control transv) (vector-float*! lateral-vel (-> self control dynam gravity-normal) f0-1)))
+        (let* ((f0-2 (vector-length lateral-vel))
                (f1-1 f0-2)
                (f2-0 46917.434))
           (vector+! (-> self control transv)
                     (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-0)
-                    (vector-float*! gp-0 gp-0 (/ f0-2 f1-1))))))
+                    (vector-float*! lateral-vel lateral-vel (/ f0-2 f1-1))))))
   :exit
     (behavior ()
       (rot->dir-targ! (-> self control))
-      (set-time! (-> self control unknown-dword31))
+      (set-time! (-> self control last-running-attack-end-time))
       (target-exit))
   :code
     (behavior ()
@@ -993,22 +1126,24 @@
         (suspend)
         (ja :num! (seek! (ja-aframe (the-as float 15.0) 0))))
       (suspend)
-      (let ((gp-2 (new-stack-vector0)))
+      ;; second upward pop (recoil) at the fire frame
+      (let ((lateral-vel (new-stack-vector0)))
         (let ((f0-6 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
           0.0
-          (vector-! gp-2 (-> self control transv) (vector-float*! gp-2 (-> self control dynam gravity-normal) f0-6)))
-        (let* ((f0-7 (vector-length gp-2))
+          (vector-! lateral-vel (-> self control transv) (vector-float*! lateral-vel (-> self control dynam gravity-normal) f0-6)))
+        (let* ((f0-7 (vector-length lateral-vel))
                (f1-1 f0-7)
                (f2-0 46917.434))
           (vector+! (-> self control transv)
                     (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-0)
-                    (vector-float*! gp-2 gp-2 (/ f0-7 f1-1)))))
+                    (vector-float*! lateral-vel lateral-vel (/ f0-7 f1-1)))))
       (ja :num! (seek!))
+      ;; fire from between the hands, along Jak's facing
       (process-spawn projectile-yellow
                      :init
                      projectile-init-by-other
                      (-> self entity)
-                     (-> self control unknown-vector90)
+                     (-> self control midpoint-of-hands)
                      (vector-float*! (new 'stack-no-clear 'vector)
                                      (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat))
                                      (the-as float (-> *TARGET-bank* yellow-projectile-speed)))
@@ -1016,15 +1151,18 @@
                      #f
                      :to
                      self)
-      (set-time! (-> self control unknown-dword82))
+      (set-time! (-> self control last-fire-time))
       (suspend-for (seconds 0.1))
       (ja-no-eval :group! eichar-yellow-jumping-blast-ja :num! (seek!) :frame-num (ja-frame-num 0))
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!)))
-      (if (logtest? (-> self control status) (cshape-moving-flags onsurf)) (go target-stance) (go target-falling #f)))
+      (if (logtest? (-> self control status) (collide-status on-surface)) (go target-stance) (go target-falling #f)))
   :post target-no-stick-post)
 
+;; Short celebration anim played when Jak picks up an eco powerup. A full-tank pickup
+;; (eco-amount = eco-full-inc, i.e. touching an eco vent) plays the whole anim slower;
+;; partial pickups play a faster, trimmed version. Jump/attacks can cancel out of it.
 (defstate target-eco-powerup (target)
   :event target-standard-event-handler
   :exit target-exit
@@ -1032,23 +1170,23 @@
     (behavior ()
       (slide-down-test))
   :code
-    (behavior ((arg0 object) (arg1 float))
+    (behavior ((unused-kind object) (eco-amount float))
       (set! (-> self neck flex-blend) 0.0)
       (set-time! (-> self state-time))
-      (if (= arg1 (-> *FACT-bank* eco-full-inc))
+      (if (= eco-amount (-> *FACT-bank* eco-full-inc))
         (set! (-> self control mod-surface) *double-jump-mods*)
         (set! (-> self control mod-surface) *walk-mods*))
       (ja-channel-push! 1 (seconds 0.05))
       (ja-no-eval :group!
                   eichar-powerup-ja
                   :num!
-                  (seek! max (the-as float (if (= arg1 (-> *FACT-bank* eco-full-inc)) 2.0 3.0)))
+                  (seek! max (the-as float (if (= eco-amount (-> *FACT-bank* eco-full-inc)) 2.0 3.0)))
                   :frame-num
-                  (ja-aframe (the-as float (if (= arg1 (-> *FACT-bank* eco-full-inc)) 0.0 6.0)) 0))
+                  (ja-aframe (the-as float (if (= eco-amount (-> *FACT-bank* eco-full-inc)) 0.0 6.0)) 0))
       (until (ja-done? 0)
         ;; og:preserve-this - High FPS Fix
         (if (and (recently-pressed? x)
-                 (not (logtest? (-> self water flags) (water-flags wt09)))
+                 (not (logtest? (-> self water flags) (water-flag touch-water)))
                  (not (logtest? (-> self state-flags) (state-flags prevent-jump))))
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
         (if (and (cpad-pressed? (-> self control cpad number) circle) (can-feet?)) (go target-attack-air #f))
@@ -1060,13 +1198,15 @@
         (align! (-> self align)
                 (align-opts adjust-y-vel)
                 (the-as float 1.0)
-                (the-as float (if (= arg1 (-> *FACT-bank* eco-full-inc)) 2.0 1.0))
+                (the-as float (if (= eco-amount (-> *FACT-bank* eco-full-inc)) 2.0 1.0))
                 (the-as float 1.0))
         (suspend)
-        (ja :num! (seek! max (the-as float (if (= arg1 (-> *FACT-bank* eco-full-inc)) 2.0 3.0)))))
+        (ja :num! (seek! max (the-as float (if (= eco-amount (-> *FACT-bank* eco-full-inc)) 2.0 3.0)))))
       (go target-falling 'target-eco-powerup))
   :post target-post)
 
+;; Standing still in wade-depth water (between wade-height and swim-height). Same controls
+;; as normal stance but with wade movement mods and splash effects on attacks.
 (defstate target-wade-stance (target)
   :event target-standard-event-handler
   :enter
@@ -1083,10 +1223,10 @@
   :trans
     (behavior ()
       ((-> self state-hook))
-      (when (and (not (logtest? (-> self water flags) (water-flags wt10))) (time-elapsed? (-> self water wade-time) (seconds 0.05)))
-        (if (logtest? (-> self water flags) (water-flags wt11)) (go target-swim-stance) (go target-stance)))
-      (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (can-duck?)) (go target-duck-stance))
-      (if (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0) (go target-wade-walk))
+      (when (and (not (logtest? (-> self water flags) (water-flag wading))) (time-elapsed? (-> self water wade-time) (seconds 0.05)))
+        (if (logtest? (-> self water flags) (water-flag swimming)) (go target-swim-stance) (go target-stance)))
+      (if (and (cpad-hold? (-> self control cpad number) l1 r1) (can-duck?)) (go target-duck-stance))
+      (if (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) (go target-wade-walk))
       ;; og:preserve-this - High FPS Fix
       (if (and (recently-pressed? x) (can-jump? #f))
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
@@ -1100,6 +1240,8 @@
         code)
   :post target-post)
 
+;; Walking through wade-depth water: blends shallow-wade, deep-wade, and normal walk anims
+;; by water depth and slope, and kicks up footstep splashes near the surface.
 (defstate target-wade-walk (target)
   :event target-standard-event-handler
   :enter
@@ -1111,10 +1253,10 @@
   :trans
     (behavior ()
       ((-> self state-hook))
-      (when (and (not (logtest? (-> self water flags) (water-flags wt10))) (time-elapsed? (-> self water wade-time) (seconds 0.1)))
-        (if (logtest? (-> self water flags) (water-flags wt11)) (go target-swim-stance) (go target-stance)))
-      (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0) (go target-wade-stance))
-      (if (and (cpad-hold? (-> self control unknown-cpad-info00 number) l1 r1) (can-duck?)) (go target-duck-walk))
+      (when (and (not (logtest? (-> self water flags) (water-flag wading))) (time-elapsed? (-> self water wade-time) (seconds 0.1)))
+        (if (logtest? (-> self water flags) (water-flag swimming)) (go target-swim-stance) (go target-stance)))
+      (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) (go target-wade-stance))
+      (if (and (cpad-hold? (-> self control cpad number) l1 r1) (can-duck?)) (go target-duck-walk))
       ;; og:preserve-this - High FPS Fix
       (if (and (recently-pressed? x) (can-jump? #f))
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
@@ -1125,80 +1267,86 @@
       (if (can-hands? #t) (go target-running-attack)))
   :code
     (behavior ()
-      (let ((gp-0 105)
-            (f30-0 0.0))
+      ;; blend into the 6-channel wade walk; blend time and starting frame depend on the
+      ;; animation we came from
+      (let ((blend-time 105)
+            (start-frame 0.0))
         (let ((v1-2 (ja-group)))
           (cond
-            ((or (= v1-2 eichar-walk-ja) (= v1-2 eichar-run-ja)) (set! gp-0 15) (set! f30-0 (ja-frame-num 0)))
-            ((let ((v1-9 (ja-group))) (or (= v1-9 eichar-jump-ja) (= v1-9 eichar-jump-loop-ja))) (set! gp-0 30))
-            ((ja-group? eichar-swim-walk-ja) (set! gp-0 120))))
+            ((or (= v1-2 eichar-walk-ja) (= v1-2 eichar-run-ja)) (set! blend-time 15) (set! start-frame (ja-frame-num 0)))
+            ((let ((v1-9 (ja-group))) (or (= v1-9 eichar-jump-ja) (= v1-9 eichar-jump-loop-ja))) (set! blend-time 30))
+            ((ja-group? eichar-swim-walk-ja) (set! blend-time 120))))
         (cond
           ((and (= (ja-group-size) 6) (ja-group? eichar-wade-shallow-walk-ja)))
           (else
-           (ja-channel-push! 6 (the-as time-frame gp-0))
-           (ja :group! eichar-wade-shallow-walk-ja :num! (identity f30-0) :dist (-> *TARGET-bank* wade-shallow-walk-cycle-dist))
-           (ja :chan 1 :group! eichar-wade-deep-walk-ja :num! (identity f30-0) :dist (-> *TARGET-bank* wade-deep-walk-cycle-dist))
-           (ja :chan 2 :group! eichar-walk-ja :num! (identity f30-0) :frame-interp 0.0 :dist (-> *TARGET-bank* walk-cycle-dist))
+           (ja-channel-push! 6 (the-as time-frame blend-time))
+           (ja :group! eichar-wade-shallow-walk-ja :num! (identity start-frame) :dist (-> *TARGET-bank* wade-shallow-walk-cycle-dist))
+           (ja :chan 1 :group! eichar-wade-deep-walk-ja :num! (identity start-frame) :dist (-> *TARGET-bank* wade-deep-walk-cycle-dist))
+           (ja :chan 2 :group! eichar-walk-ja :num! (identity start-frame) :frame-interp 0.0 :dist (-> *TARGET-bank* walk-cycle-dist))
            (ja :chan 3
                :group!
                eichar-walk-down-ja
-               :num! (identity f30-0)
+               :num! (identity start-frame)
                :frame-interp 0.0
                :dist (-> *TARGET-bank* walk-down-cycle-dist))
            (ja :chan 4
                :group!
                eichar-walk-left-ja
-               :num! (identity f30-0)
+               :num! (identity start-frame)
                :frame-interp 0.0
                :dist (-> *TARGET-bank* walk-side-cycle-dist)))))
       (set! (-> self skel root-channel 2 command) 'push)
       (set! (-> self skel root-channel 5 command) 'stack)
-      (let ((f30-1 0.0)
-            (f28-0 0.0)
-            (f26-0 (lerp-scale (the-as float 1.0)
+      ;; slope-z-blend/slope-x-blend smooth toward the ground slope to blend the up/down and
+      ;; left/right lean channels; dry-blend fades the dry-walk overlay out at speed
+      (let ((slope-z-blend 0.0)
+            (slope-x-blend 0.0)
+            (dry-blend (lerp-scale (the-as float 1.0)
                                (the-as float 0.0)
                                (-> self control ctrl-xz-vel)
                                (the-as float 16384.0)
                                (the-as float 32768.0)))
-            (gp-6 0))
+            (last-splash-time 0))
         (loop
-          (let ((f0-10 (fmax -1.0 (fmin 1.0 (* 2.0 (-> self control local-slope-z)))))
-                (f24-0 (fmax -1.0 (fmin 1.0 (* 1.6 (-> self control local-slope-x))))))
-            (let ((f1-4 (fabs (- f0-10 f30-1)))) (set! f30-1 (seek f30-1 f0-10 (fmax 0.05 (fmin 0.2 (/ f1-4 4))))))
-            (let ((f0-14 (fabs (- f24-0 f28-0)))) (set! f28-0 (seek f28-0 f24-0 (fmax 0.05 (fmin 0.2 (/ f0-14 4)))))))
+          (let ((slope-z-target (fmax -1.0 (fmin 1.0 (* 2.0 (-> self control local-slope-z)))))
+                (slope-x-target (fmax -1.0 (fmin 1.0 (* 1.6 (-> self control local-slope-x))))))
+            (let ((f1-4 (fabs (- slope-z-target slope-z-blend)))) (set! slope-z-blend (seek slope-z-blend slope-z-target (fmax 0.05 (fmin 0.2 (/ f1-4 4))))))
+            (let ((f0-14 (fabs (- slope-x-target slope-x-blend)))) (set! slope-x-blend (seek slope-x-blend slope-x-target (fmax 0.05 (fmin 0.2 (/ f0-14 4)))))))
           (ja :chan 3 :group! eichar-walk-down-ja :dist (-> *TARGET-bank* walk-down-cycle-dist))
-          (if (>= f30-1 0.0)
-            (ja :chan 3 :group! eichar-walk-up-ja :frame-interp (fabs f30-1) :dist (-> *TARGET-bank* walk-up-cycle-dist))
-            (ja :chan 3 :group! eichar-walk-down-ja :frame-interp (fabs f30-1) :dist (-> *TARGET-bank* walk-down-cycle-dist)))
-          (if (>= f28-0 0.0)
-            (ja :chan 4 :group! eichar-walk-right-ja :frame-interp (fabs f28-0) :dist (-> *TARGET-bank* walk-side-cycle-dist))
-            (ja :chan 4 :group! eichar-walk-left-ja :frame-interp (fabs f28-0) :dist (-> *TARGET-bank* walk-side-cycle-dist)))
-          (let* ((f0-30 (- (-> self water height) (-> self control trans y)))
-                 (f24-1 (lerp-scale (the-as float 0.0)
+          (if (>= slope-z-blend 0.0)
+            (ja :chan 3 :group! eichar-walk-up-ja :frame-interp (fabs slope-z-blend) :dist (-> *TARGET-bank* walk-up-cycle-dist))
+            (ja :chan 3 :group! eichar-walk-down-ja :frame-interp (fabs slope-z-blend) :dist (-> *TARGET-bank* walk-down-cycle-dist)))
+          (if (>= slope-x-blend 0.0)
+            (ja :chan 4 :group! eichar-walk-right-ja :frame-interp (fabs slope-x-blend) :dist (-> *TARGET-bank* walk-side-cycle-dist))
+            (ja :chan 4 :group! eichar-walk-left-ja :frame-interp (fabs slope-x-blend) :dist (-> *TARGET-bank* walk-side-cycle-dist)))
+          ;; depth-frac 0..1 blends shallow-wade toward deep-wade as the water gets deeper
+          (let* ((water-depth (- (-> self water height) (-> self control trans y)))
+                 (depth-frac (lerp-scale (the-as float 0.0)
                                     (the-as float 1.0)
-                                    f0-30
+                                    water-depth
                                     (lerp (-> self water wade-height) (-> self water swim-height) (the-as float 0.25))
                                     (lerp (-> self water wade-height) (-> self water swim-height) (the-as float 0.75)))))
-            (let ((v1-108 (-> self skel effect))) (set! (-> v1-108 channel-offset) (if (< 0.5 f24-1) 1 0)))
+            (let ((v1-108 (-> self skel effect))) (set! (-> v1-108 channel-offset) (if (< 0.5 depth-frac) 1 0)))
             0
-            (set! f26-0
-                  (seek f26-0
+            (set! dry-blend
+                  (seek dry-blend
                         (lerp-scale (the-as float 1.0)
                                     (the-as float 0.0)
                                     (-> self control ctrl-xz-vel)
                                     (the-as float 16384.0)
                                     (the-as float 32768.0))
                         (* 4.0 (seconds-per-frame))))
-            (set! (-> self skel root-channel 1 frame-interp) f24-1)
+            (set! (-> self skel root-channel 1 frame-interp) depth-frac)
             (ja :num!
                 (loop! (/ (-> self control ctrl-xz-vel)
                           (* 60.0 (/ (current-cycle-distance (-> self skel)) (-> *TARGET-bank* run-cycle-length))))))
-            (ja :chan 5 :frame-interp (lerp f26-0 (the-as float 0.0) f24-1)))
+            (ja :chan 5 :frame-interp (lerp dry-blend (the-as float 0.0) depth-frac)))
           (ja :chan 1 :num! (chan 0))
           (ja :chan 2 :num! (chan 0))
           (ja :chan 3 :num! (chan 0))
           (ja :chan 4 :num! (chan 0))
-          (when (and (time-elapsed? (the-as time-frame gp-6) (seconds 0.2))
+          ;; footstep splashes on the anim frames where each foot hits, at most every 0.2s
+          (when (and (time-elapsed? (the-as time-frame last-splash-time) (seconds 0.2))
                      (< (- (-> self water height) (-> self control trans y)) 4096.0))
             (case (the int (ja-aframe-num 0))
               ((15 16 17 18)
@@ -1207,42 +1355,56 @@
                               (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg Rtoes))
                               0
                               (vector-float*! (new 'stack-no-clear 'vector) (-> self control transv) 2.5))
-               (set! gp-6 (the-as int (current-time))))
+               (set! last-splash-time (the-as int (current-time))))
               ((46 47 48 49)
                (create-splash (-> self water)
                               (the-as float 0.2)
                               (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg Ltoes))
                               0
                               (vector-float*! (new 'stack-no-clear 'vector) (-> self control transv) 2.5))
-               (set! gp-6 (the-as int (current-time))))))
+               (set! last-splash-time (the-as int (current-time))))))
           (suspend))))
   :post target-post)
 
-(defbehavior target-swim-tilt target ((arg0 float) (arg1 float) (arg2 float) (arg3 float))
-  (let ((gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))))
-    (let ((v1-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control dir-targ)))
-          (f0-1 (fmin 1.0 (* arg0 (/ (-> self control ctrl-xz-vel) (-> self control current-surface target-speed))))))
-      (seek! (-> self control unknown-float130)
-             (fmax (fmin (* (+ f0-1 arg2) (fmax 0.5 (+ 0.5 (vector-dot gp-0 v1-2)))) arg3) (- arg3))
-             (* arg1 (seconds-per-frame))))
-    (let ((a2-2 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))))
-      (forward-up-nopitch->quaternion (-> self control override-quat) gp-0 a2-2)))
+;; Shared by all swim states: tilts Jak's model into the water by blending toward a
+;; quaternion pitched 90 degrees (16384 rot units) nose-down/up. swim-tilt-angle is the
+;; signed blend fraction (-max-tilt..max-tilt), driven by speed and how well Jak faces his
+;; turn target. Also sinks the drawn model (swim-draw-offset-y, -1.5m max) while diving.
+;;   speed-tilt-scale: how much xz speed (as a fraction of surface top speed) adds tilt
+;;   tilt-seek-speed:  blend rate per second
+;;   tilt-bias:        constant tilt added (e.g. -1.0 to force belly-up at the bottom)
+;;   max-tilt:         clamp on the blend fraction
+(defbehavior target-swim-tilt target ((speed-tilt-scale float) (tilt-seek-speed float) (tilt-bias float) (max-tilt float))
+  "Compute swimming pitch from horizontal speed and alignment with the requested direction. Add
+   tilt-bias, clamp to max-tilt, seek at tilt-seek-speed, build the override orientation from the
+   current facing and gravity-up directions, and update the diving draw offset."
+  (let ((facing-dir (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))))
+    (let ((target-dir (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control dir-targ)))
+          (speed-tilt (fmin 1.0 (* speed-tilt-scale (/ (-> self control ctrl-xz-vel) (-> self control current-surface target-speed))))))
+      (seek! (-> self control swim-tilt-angle)
+             (fmax (fmin (* (+ speed-tilt tilt-bias) (fmax 0.5 (+ 0.5 (vector-dot facing-dir target-dir)))) max-tilt) (- max-tilt))
+             (* tilt-seek-speed (seconds-per-frame))))
+    (let ((up-dir (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))))
+      (forward-up-nopitch->quaternion (-> self control override-quat) facing-dir up-dir)))
   (quaternion-rotate-x! (-> self control override-quat)
                         (-> self control override-quat)
-                        (the-as float (if (>= (-> self control unknown-float130) 0.0) 16384.0 -16384.0)))
-  (set! (-> self control override-quat-alpha) (fabs (-> self control unknown-float130)))
+                        (the-as float (if (>= (-> self control swim-tilt-angle) 0.0) 16384.0 -16384.0)))
+  (set! (-> self control override-quat-alpha) (fabs (-> self control swim-tilt-angle)))
   (if (= (-> self next-state name) 'target-swim-down)
-    (seek! (-> self control unknown-float131) (the-as float -6144.0) (* 4096.0 (seconds-per-frame)))
-    (seek! (-> self control unknown-float131) (the-as float 0.0) (* 2048.0 (seconds-per-frame))))
-  (set! (-> self control draw-offset y) (-> self control unknown-float131)))
+    (seek! (-> self control swim-draw-offset-y) (the-as float -6144.0) (* 4096.0 (seconds-per-frame)))
+    (seek! (-> self control swim-draw-offset-y) (the-as float 0.0) (* 2048.0 (seconds-per-frame))))
+  (set! (-> self control draw-offset y) (-> self control swim-draw-offset-y)))
 
+;; Treading water at the surface. X jumps out of the water, square dives (if deep enough),
+;; stick input goes to target-swim-walk, and leaving swim-depth water falls back to
+;; wade/normal stance.
 (defstate target-swim-stance (target)
   :event target-standard-event-handler
   :enter
     (behavior ()
       (set-time! (-> self state-time))
       (set! (-> self control mod-surface) *swim-mods*)
-      (logior! (-> self water flag) (water-flag swim-ground)))
+      (logior! (-> self water flags) (water-flag swim-ground)))
   :exit
     (behavior ()
       (target-state-hook-exit)
@@ -1257,11 +1419,11 @@
   :trans
     (behavior ()
       ((-> self state-hook))
-      (if (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
-               (not (logtest? (-> self control status) (cshape-moving-flags on-water))))
+      (if (and (logtest? (-> self control status) (collide-status on-surface))
+               (not (logtest? (-> self control status) (collide-status on-water))))
         (set-zero! (-> self water bob)))
-      (when (and (not (logtest? (-> self water flags) (water-flags wt11))) (time-elapsed? (-> self state-time) (seconds 0.1)))
-        (if (logtest? (-> self water flags) (water-flags wt10)) (go target-wade-stance) (go target-stance)))
+      (when (and (not (logtest? (-> self water flags) (water-flag swimming))) (time-elapsed? (-> self state-time) (seconds 0.1)))
+        (if (logtest? (-> self water flags) (water-flag wading)) (go target-wade-stance) (go target-stance)))
       ;; og:preserve-this - High FPS Fix
       (if (and (recently-pressed? x) (can-jump? #f) (time-elapsed? (-> self water enter-swim-time) (seconds 0.1)))
         (go target-swim-jump (-> *TARGET-bank* swim-jump-height-min) (-> *TARGET-bank* swim-jump-height-max)))
@@ -1269,9 +1431,9 @@
       (if (and (recently-pressed? square) (< (-> *TARGET-bank* min-dive-depth) (target-height-above-ground)))
         (go target-swim-down))
       (if (and (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
-               (let ((gp-0 (ja-group)))
+               (let ((current-anim (ja-group)))
                  (ja-aframe-num 0)
-                 (if (or (and (= gp-0 eichar-swim-up-ja) #t) (and (= gp-0 eichar-swim-down-to-up-ja) #t)) #f #t)))
+                 (if (or (and (= current-anim eichar-swim-up-ja) #t) (and (= current-anim eichar-swim-down-to-up-ja) #t)) #f #t)))
         (go target-swim-walk))
       (target-swim-tilt (the-as float 0.0) (the-as float 2.0) (the-as float 0.0) (the-as float 1.0)))
   :code
@@ -1301,24 +1463,27 @@
           (if (= (-> self skel root-channel 0) (-> self skel channel)) (ja :num! (seek!))))))
   :post target-swim-post)
 
+;; Paddling along the surface. The swim-walk anim's root motion drives the swim speed
+;; (surface target-speed) so Jak surges with each stroke. state-var0 holds the time of the
+;; last nonzero stick input; 15 ticks (0.05s) of neutral stick returns to swim-stance.
 (defstate target-swim-walk (target)
   :event target-standard-event-handler
   :enter
     (behavior ()
       ((-> target-swim-stance enter))
       (die-on-next-update! (-> self water bob))
-      (set! (-> self control unknown-uint20) (the-as uint (current-time))))
+      (set! (-> self control state-var0) (the-as uint (current-time))))
   :exit
     (-> target-swim-stance
         exit)
   :trans
     (behavior ()
       ((-> self state-hook))
-      (if (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
-               (not (logtest? (-> self control status) (cshape-moving-flags on-water))))
+      (if (and (logtest? (-> self control status) (collide-status on-surface))
+               (not (logtest? (-> self control status) (collide-status on-water))))
         (set-zero! (-> self water bob)))
-      (when (and (not (logtest? (-> self water flags) (water-flags wt11))) (time-elapsed? (-> self water swim-time) (seconds 0.1)))
-        (if (logtest? (-> self water flags) (water-flags wt10)) (go target-wade-stance) (go target-stance)))
+      (when (and (not (logtest? (-> self water flags) (water-flag swimming))) (time-elapsed? (-> self water swim-time) (seconds 0.1)))
+        (if (logtest? (-> self water flags) (water-flag wading)) (go target-wade-stance) (go target-stance)))
       ;; og:preserve-this - High FPS Fix
       (if (and (recently-pressed? x) (can-jump? #f) (time-elapsed? (-> self water enter-swim-time) (seconds 0.1)))
         (go target-swim-jump (-> *TARGET-bank* swim-jump-height-min) (-> *TARGET-bank* swim-jump-height-max)))
@@ -1327,9 +1492,9 @@
         (go target-swim-down))
       (cond
         ((= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
-         (if (>= (the-as uint (- (current-time) (the-as int (-> self control unknown-uint20)))) (the-as uint 15))
+         (if (>= (the-as uint (- (current-time) (the-as int (-> self control state-var0)))) (the-as uint 15))
            (go target-swim-stance)))
-        (else (set! (-> self control unknown-uint20) (the-as uint (current-time)))))
+        (else (set! (-> self control state-var0) (the-as uint (current-time)))))
       (target-swim-tilt (the-as float 0.0) (the-as float 2.0) (the-as float 0.0) (the-as float 1.0)))
   :code
     (behavior ()
@@ -1359,28 +1524,33 @@
           (ja :num! (seek!)))))
   :post target-swim-post)
 
+;; Diving underwater (hold square). Gravity is weakened to a gentle sink; releasing square
+;; (or taking a hit, or timing out after 10s) goes to target-swim-up. state-var0 is set #t
+;; by the attack handler so getting hit also ends the dive.
 (defstate target-swim-down (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('attack 'attack-invinc)
-         (let ((v1-2 (the-as attack-info (-> block param 1))))
-           (when (or (not (logtest? (-> v1-2 mask) (attack-mask mode))) (= (-> v1-2 mode) 'generic) (= (-> v1-2 mode) 'drown))
-             (set! (-> v1-2 mode) 'damage)
-             (if (and (= (-> self game mode) 'play) (>= 1.0 (-> self fact health))) (set! (-> v1-2 mode) 'drown-death))
-             (logior! (-> v1-2 mask) (attack-mask mode))
-             (set! (-> self control unknown-uint20) (the-as uint #t))))))
+         ;; underwater hits become plain damage (or drown-death at 1 health)
+         (let ((attack (the-as attack-info (-> block param 1))))
+           (when (or (not (logtest? (-> attack mask) (attack-mask mode))) (= (-> attack mode) 'generic) (= (-> attack mode) 'drown))
+             (set! (-> attack mode) 'damage)
+             (if (and (= (-> self game mode) 'play) (>= 1.0 (-> self fact health))) (set! (-> attack mode) 'drown-death))
+             (logior! (-> attack mask) (attack-mask mode))
+             (set! (-> self control state-var0) (the-as uint #t))))))
       (target-standard-event-handler proc argc message block))
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (logclear! (-> self water flag) (water-flag swim-ground))
+      (logclear! (-> self water flags) (water-flag swim-ground))
       (set! (-> self control mod-surface) *dive-mods*)
+      ;; weak underwater gravity (4m/s^2-scale instead of normal)
       (set! (-> self control dynam gravity-max) 16384.0)
       (set! (-> self control dynam gravity-length) 16384.0)
       (set-time! (-> self water swim-time))
-      (set! (-> self control unknown-uint20) (the-as uint #f))
-      (if (= (-> self next-state name) 'target-swim-down) (set! (-> self control unknown-float130) 0.0)))
+      (set! (-> self control state-var0) (the-as uint #f))
+      (if (= (-> self next-state name) 'target-swim-down) (set! (-> self control swim-tilt-angle) 0.0)))
   :exit
     (behavior ()
       (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
@@ -1406,17 +1576,21 @@
            (target-swim-tilt (the-as float 0.0) (the-as float 2.0) (the-as float -1.0) (the-as float 1.0))))))
   :code
     (behavior ()
-      (let ((gp-0 60)
-            (s5-0 3000)
-            (f30-0 0.0))
+      ;; min-dive-time: must dive at least this long (0.2s; 0.4s from a flop entry);
+      ;; max-dive-time: forced back up after 10s; dive-boost-vel: extra downward velocity
+      ;; from a diving flop entry, decayed to 0 over time
+      (let ((min-dive-time 60)
+            (max-dive-time 3000)
+            (dive-boost-vel 0.0))
         (let ((v1-2 (ja-group)))
-          (set! f30-0
+          (set! dive-boost-vel
                 (cond
                   ((or (= v1-2 eichar-swim-stance-ja)
                        (= v1-2 eichar-swim-walk-ja)
                        (= v1-2 eichar-swim-up-to-stance-ja)
                        (= v1-2 eichar-swim-up-ja)
                        (= v1-2 eichar-swim-down-to-up-ja))
+                   ;; from the surface: play the duck-under anim with a splash
                    (ja-channel-push! 1 (seconds 0.075))
                    (ja-no-eval :group! eichar-swim-walk-to-down-ja :num! (seek!) :frame-num 0.0)
                    (until (ja-done? 0)
@@ -1430,35 +1604,40 @@
                      (suspend)
                      (ja :num! (seek!)))
                    (ja :group! eichar-swim-down-ja :num! min)
-                   f30-0)
+                   dive-boost-vel)
                   (else
                    (case (ja-group)
+                     ;; belly-flopped into the water: keep sinking fast (-4 m/s boost)
                      ((eichar-flop-down-ja eichar-moving-flop-down-ja eichar-flop-down-loop-ja eichar-moving-flop-down-loop-ja)
                       (ja-channel-push! 1 (seconds 0.075))
-                      (set! gp-0 120)
+                      (set! min-dive-time 120)
                       (ja :group! eichar-swim-down-ja :num! (identity (ja-aframe (the-as float 124.0) 0)))
                       -16384.0)
-                     (else (ja-channel-push! 1 (seconds 0.075)) (ja :group! eichar-swim-down-ja :num! min) f30-0))))))
+                     (else (ja-channel-push! 1 (seconds 0.075)) (ja :group! eichar-swim-down-ja :num! min) dive-boost-vel))))))
         (loop
-          (if (and (or (not (cpad-hold? (-> self control cpad number) square)) (-> self control unknown-spoolanim00))
-                   (time-elapsed? (-> self state-time) gp-0))
+          ;; surface when square is released (or we got hit: state-var0 via the overlay)
+          (if (and (or (not (cpad-hold? (-> self control cpad number) square)) (-> self control state-spool-anim))
+                   (time-elapsed? (-> self state-time) min-dive-time))
             (go target-swim-up))
-          (if (or (time-elapsed? (-> self state-time) s5-0)
-                  (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
-                       (and (< (-> self water swim-depth) 8192.0) (time-elapsed? (-> self state-time) gp-0))))
+          ;; also surface on timeout, or when resting on a shallow (<2m) bottom
+          (if (or (time-elapsed? (-> self state-time) max-dive-time)
+                  (and (logtest? (-> self control status) (collide-status on-surface))
+                       (and (< (-> self water swim-depth) 8192.0) (time-elapsed? (-> self state-time) min-dive-time))))
             (go target-swim-up))
-          (let ((s4-3 (new-stack-vector0))
+          ;; apply (and decay) the dive boost along gravity, keeping lateral velocity
+          (let ((lateral-vel (new-stack-vector0))
                 (f24-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
             0.0
-            (vector-! s4-3 (-> self control transv) (vector-float*! s4-3 (-> self control dynam gravity-normal) f24-0))
-            (let* ((f28-0 (vector-length s4-3))
+            (vector-! lateral-vel (-> self control transv) (vector-float*! lateral-vel (-> self control dynam gravity-normal) f24-0))
+            (let* ((f28-0 (vector-length lateral-vel))
                    (f26-0 f28-0)
-                   (f24-1 (+ f24-0 f30-0)))
-              (set! f30-0 (seek f30-0 (the-as float 0.0) (* 32768.0 (seconds-per-frame))))
+                   (f24-1 (+ f24-0 dive-boost-vel)))
+              (set! dive-boost-vel (seek dive-boost-vel (the-as float 0.0) (* 32768.0 (seconds-per-frame))))
               (vector+! (-> self control transv)
                         (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f24-1)
-                        (vector-float*! s4-3 s4-3 (/ f28-0 f26-0)))))
+                        (vector-float*! lateral-vel lateral-vel (/ f28-0 f26-0)))))
           (suspend)
+          ;; paddle anim speed scales with how fast Jak is actually moving
           (ja :num!
               (loop! (lerp-scale (the-as float 0.4)
                                  (the-as float 1.0)
@@ -1467,6 +1646,9 @@
                                  (the-as float 16384.0)))))))
   :post target-swim-post)
 
+;; Kicking back up to the surface after a dive. X presses speed up the ascent (and once
+;; near the surface, X launches a swim jump); if Jak somehow stays stuck underwater for 10s
+;; without moving, he drowns.
 (defstate target-swim-up (target)
   :event
     (-> target-swim-down
@@ -1481,11 +1663,12 @@
     (behavior ()
       (if (and (cpad-pressed? (-> self control cpad number) x)
                (not (logtest? (-> self state-flags) (state-flags prevent-jump)))
-               (not (logtest? (-> self water flag) (water-flag head-under-water bouncing))))
+               (not (logtest? (-> self water flags) (water-flag head-under-water bouncing))))
         (go target-swim-jump-jump
             (-> *TARGET-bank* swim-jump-height-min)
             (-> *TARGET-bank* swim-jump-height-max)
             (the-as surface #f)))
+      ;; failsafe: stuck underwater going nowhere for 10s = drown
       (if (and (time-elapsed? (-> self state-time) (seconds 10))
                (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance)))
         (send-event self 'attack #f (static-attack-info ((mode 'drown-death)))))
@@ -1493,23 +1676,24 @@
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.1))
-      (let ((f30-0 1.0))
-        (let ((gp-0 #t))
+      ;; kick-speed doubles on each X press and decays back to 1.0
+      (let ((kick-speed 1.0))
+        (let ((under-water? #t))
           (ja-no-eval :group! eichar-swim-down-to-up-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (target-swim-tilt (the-as float (if (< 8192.0 (-> self water swim-depth)) 0.5 0.0))
                               (the-as float 1.0)
                               (the-as float 0.0)
                               (the-as float 0.1))
-            (if (and (not (logtest? (-> self water flag) (water-flag under-water)))
+            (if (and (not (logtest? (-> self water flags) (water-flag under-water)))
                      (or (>= (ja-aframe-num 0) 222.0)
                          (and (!= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) (>= (ja-aframe-num 0) 200.0))))
               (goto cfg-37))
             (compute-alignment! (-> self align))
-            (when (not (logtest? (-> self water flag) (water-flag under-water)))
-              (logior! (-> self water flag) (water-flag swim-ground))
-              (set! gp-0 #f))
-            (if gp-0 (align! (-> self align) (align-opts adjust-y-vel) (the-as float 1.0) (the-as float 1.0) (the-as float 1.0)))
+            (when (not (logtest? (-> self water flags) (water-flag under-water)))
+              (logior! (-> self water flags) (water-flag swim-ground))
+              (set! under-water? #f))
+            (if under-water? (align! (-> self align) (align-opts adjust-y-vel) (the-as float 1.0) (the-as float 1.0) (the-as float 1.0)))
             (suspend)
             (ja :num! (seek!))))
         (ja :group! eichar-swim-up-ja :num! min)
@@ -1518,23 +1702,27 @@
                             (the-as float 1.0)
                             (the-as float 0.0)
                             (the-as float 0.1))
-          (if (not (logtest? (-> self water flag) (water-flag under-water))) (goto cfg-37))
-          (if (cpad-pressed? (-> self control cpad number) x) (set! f30-0 2.0))
+          (if (not (logtest? (-> self water flags) (water-flag under-water))) (goto cfg-37))
+          (if (cpad-pressed? (-> self control cpad number) x) (set! kick-speed 2.0))
           (compute-alignment! (-> self align))
-          (when (logtest? (-> self water flag) (water-flag under-water))
+          (when (logtest? (-> self water flags) (water-flag under-water))
             (align! (-> self align) (align-opts adjust-y-vel) (the-as float 1.0) (the-as float 1.0) (the-as float 1.0))
-            (set! (-> self control transv y) (+ 8192.0 (* 8192.0 f30-0))))
+            ;; rise at 2-6 m/s depending on kick speed
+            (set! (-> self control transv y) (+ 8192.0 (* 8192.0 kick-speed))))
           (suspend)
-          (ja :num! (loop! f30-0))
-          (set! f30-0 (seek f30-0 (the-as float 1.0) (seconds-per-frame)))))
+          (ja :num! (loop! kick-speed))
+          (set! kick-speed (seek kick-speed (the-as float 1.0) (seconds-per-frame)))))
       (label cfg-37)
-      (logior! (-> self water flag) (water-flag swim-ground))
+      (logior! (-> self water flags) (water-flag swim-ground))
       (set-time! (-> self water swim-time))
       (start-bobbing! (-> self water) (the-as float -4096.0) 600 1500)
       (set! (-> self water bob start-time) (+ (current-time) (seconds -0.05)))
       (go target-swim-stance))
   :post target-swim-post)
 
+;; The airborne part of jumping out of water: a normal jump, except for the first 0.5s the
+;; water keeps flagging jump-out and surface contact is suppressed so the jump can't be
+;; cut short by the water surface itself.
 (defstate target-swim-jump-jump (target)
   :event
     (-> target-jump
@@ -1547,8 +1735,8 @@
     (behavior ()
       (cond
         ((not (time-elapsed? (-> self state-time) (seconds 0.5)))
-         (logior! (-> self water flag) (water-flag jump-out))
-         (logclear! (-> self control status) (cshape-moving-flags onsurf onground tsurf)))
+         (logior! (-> self water flags) (water-flag jump-out))
+         (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface)))
         (else (set! (-> self trans-hook) (-> target-jump trans))))
       ((-> target-jump trans)))
   :code
@@ -1556,6 +1744,8 @@
         code)
   :post target-post)
 
+;; Jumping out of the water from swim-stance/walk: plays the wind-up stroke, then hands off
+;; to target-swim-jump-jump with the actual leap.
 (defstate target-swim-jump (target)
   :event target-standard-event-handler
   :enter
@@ -1566,11 +1756,12 @@
       ((-> target-swim-stance exit))
       (die-on-next-update! (-> self water bob))
       (set! (-> self water align-offset) 0.0)
-      (logior! (-> self water flag) (water-flag jump-out)))
+      (logior! (-> self water flags) (water-flag jump-out)))
   :code
-    (behavior ((arg0 float) (arg1 float))
+    (behavior ((min-height float) (max-height float))
       (die-on-next-update! (-> self water bob))
       (ja-channel-push! 1 (seconds 0.05))
+      ;; wind-up stroke; its root motion lifts the water alignment offset
       (ja :group! eichar-swim-jump-ja :num! min)
       (until (and (ja-done? 0) (= (-> self skel root-channel 0) (-> self skel channel)))
         (compute-alignment! (-> self align))
@@ -1578,35 +1769,41 @@
           (+! (-> self water align-offset) (* 0.6 (-> self align delta trans y))))
         (suspend)
         (if (= (-> self skel root-channel 0) (-> self skel channel)) (ja :num! (seek! max 2.0))))
-      (let ((f30-0 (fmax 0.0 (- (-> self water bob-offset)))))
-        (let ((s4-1 (new-stack-vector0)))
+      ;; if we are bobbed below the rest height, add that depth to the jump height
+      (let ((bob-boost (fmax 0.0 (- (-> self water bob-offset)))))
+        ;; nearly zero the vertical velocity, keeping the horizontal component
+        (let ((lateral-vel (new-stack-vector0)))
           (let ((f0-8 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
             0.0
-            (vector-! s4-1 (-> self control transv) (vector-float*! s4-1 (-> self control dynam gravity-normal) f0-8)))
-          (let* ((f0-9 (vector-length s4-1))
+            (vector-! lateral-vel (-> self control transv) (vector-float*! lateral-vel (-> self control dynam gravity-normal) f0-8)))
+          (let* ((f0-9 (vector-length lateral-vel))
                  (f1-5 f0-9)
                  (f2-1 0.4096))
             (vector+! (-> self control transv)
                       (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-1)
-                      (vector-float*! s4-1 s4-1 (/ f0-9 f1-5)))))
-        (go target-swim-jump-jump (+ f30-0 arg0) (+ f30-0 arg1) (the-as surface #f))))
+                      (vector-float*! lateral-vel lateral-vel (/ f0-9 f1-5)))))
+        (go target-swim-jump-jump (+ bob-boost min-height) (+ bob-boost max-height) (the-as surface #f))))
   :post target-swim-post)
 
+;; Landing from a damaging fall: takes fall damage scaled by how far past fall-far the fall
+;; went (fall-dist 0.0 = no damage, just the painful-land anim), then plays the crumple
+;; landing before returning to stance, or dies if that took the last health.
 (defstate target-hit-ground-hard (target)
   :event target-standard-event-handler
   :enter
-    (behavior ((arg0 float))
-      (set! (-> self control unknown-dword31) 0)
+    (behavior ((fall-dist float))
+      (set! (-> self control last-running-attack-end-time) 0)
       (set! (-> self control last-attack-end-time) 0)
       (set-forward-vel (the-as float 0.0))
       (set! (-> self control mod-surface) *walk-mods*))
   :code
-    (behavior ((arg0 float))
-      (when (!= arg0 0.0)
-        (let ((f0-5 (the float (the int (+ 1.0 (/ (- arg0 (-> *TARGET-bank* fall-far)) (-> *TARGET-bank* fall-far-inc)))))))
+    (behavior ((fall-dist float))
+      (when (!= fall-dist 0.0)
+        ;; one health unit of damage per fall-far-inc fallen beyond fall-far
+        (let ((damage-units (the float (the int (+ 1.0 (/ (- fall-dist (-> *TARGET-bank* fall-far)) (-> *TARGET-bank* fall-far-inc)))))))
           (pickup-collectable! (-> self fact)
                                (pickup-type eco-green)
-                               (* (-> *FACT-bank* health-single-inc) (- (fmax 0.0 f0-5)))
+                               (* (-> *FACT-bank* health-single-inc) (- (fmax 0.0 damage-units)))
                                (the-as handle #f)))
         (if (not (cpad-hold? 0 l3)) (target-timed-invulnerable (-> *TARGET-bank* hit-invulnerable-timeout) self)))
       (cond
@@ -1627,6 +1824,11 @@
          (go target-stance))))
   :post target-no-stick-post)
 
+;; Launcher pad flight (e.g. the precursor launchers). Args come from the saved 'launch
+;; event block: height (launch-height), camera-state (launch-camera-state), landing-target
+;; (launch-dest, world position to land at), tracking-time (launch-tracking-time). Jak
+;; ducks down, then does a 'launch-flavored high jump; if tracking is requested, a child
+;; process homes his velocity onto the landing target during the flight.
 (defstate target-launch (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1634,69 +1836,81 @@
         'target-launch
         (target-standard-event-handler proc argc message block)))
   :code
-    (behavior ((arg0 float) (arg1 symbol) (arg2 vector) (arg3 int))
+    (behavior ((height float) (camera-state symbol) (landing-target vector) (tracking-time int))
       (set-time! (-> self state-time))
       (set! (-> self control mod-surface) *turn-around-mods*)
       (ja-channel-push! 1 (seconds 0.15))
       (set-forward-vel (the-as float 0.0))
+      ;; crouch down before the launch
       (ja-no-eval :group! eichar-duck-stance-ja :num! (seek! (ja-aframe (the-as float 15.0) 0) 3.0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! (ja-aframe (the-as float 15.0) 0) 3.0)))
-      (if arg1 (send-event *camera* 'change-state arg1 (seconds 0.6)))
-      (if (nonzero? arg3)
+      (if camera-state (send-event *camera* 'change-state camera-state (seconds 0.6)))
+      ;; spawn the homing tracker: while Jak is within rise-height (35m) of the launch
+      ;; point it just pins his xz position over the pad; above that it steers his xz
+      ;; velocity toward the landing target for track-time
+      (if (nonzero? tracking-time)
         (process-spawn-function process
-          (lambda :behavior process ((arg0 vector) (arg1 time-frame) (arg2 float))
+          (lambda :behavior process ((dest vector) (track-time time-frame) (rise-height float))
             (let ((sv-32 (current-time))
                   (v1-2 (new-stack-vector0)))
-              (set! (-> v1-2 quad) (-> arg0 quad))
-              (let ((sv-40 v1-2)
-                    (sv-44 #t))
-                (until (time-elapsed? sv-32 arg1)
-                  (let ((s4-0 (ppointer->process (-> self parent))))
+              (set! (-> v1-2 quad) (-> dest quad))
+              (let ((dest-pos v1-2)
+                    (rising? #t))
+                (until (time-elapsed? sv-32 track-time)
+                  (let ((tgt (ppointer->process (-> self parent))))
                     (cond
-                      ((and sv-44
-                            (< (- (-> (the-as target s4-0) control trans y) (-> (the-as target s4-0) control last-trans-any-surf y)) arg2))
-                       (vector-xz-normalize! (-> (the-as target s4-0) control transv) (the-as float 0.0))
+                      ;; still rising over the pad: kill xz velocity and clamp Jak to
+                      ;; within 0.7m of the pad center (only when within 5m of it)
+                      ((and rising?
+                            (< (- (-> (the-as target tgt) control trans y) (-> (the-as target tgt) control last-trans-any-surf y)) rise-height))
+                       (vector-xz-normalize! (-> (the-as target tgt) control transv) (the-as float 0.0))
                        ;; og:preserve-this PAL patch here
-                       (when (< (vector-vector-xz-distance (-> (the-as target s4-0) control trans) sv-40) 20480.0)
-                         (let ((v1-16 (vector-! (new-stack-vector0) (-> (the-as target s4-0) control trans) sv-40)))
-                           (set! (-> (the-as target s4-0) control trans x) (+ (-> sv-40 x) (fmax -2867.2 (fmin 2867.2 (-> v1-16 x)))))
-                           (set! (-> (the-as target s4-0) control trans z) (+ (-> sv-40 z) (fmax -2867.2 (fmin 2867.2 (-> v1-16 z))))))))
+                       (when (< (vector-vector-xz-distance (-> (the-as target tgt) control trans) dest-pos) 20480.0)
+                         (let ((v1-16 (vector-! (new-stack-vector0) (-> (the-as target tgt) control trans) dest-pos)))
+                           (set! (-> (the-as target tgt) control trans x) (+ (-> dest-pos x) (fmax -2867.2 (fmin 2867.2 (-> v1-16 x)))))
+                           (set! (-> (the-as target tgt) control trans z) (+ (-> dest-pos z) (fmax -2867.2 (fmin 2867.2 (-> v1-16 z))))))))
                       (else
-                       (if sv-44 (set! sv-32 (current-time)))
-                       (set! sv-44 (the-as symbol #f))
-                       (when (or (= (-> (the-as target s4-0) next-state name) 'target-duck-high-jump-jump)
-                                 (= (-> (the-as target s4-0) next-state name) 'target-falling))
-                         (let ((v1-30 (-> (the-as target s4-0) control trans))
-                               (s3-0 (-> (the-as target s4-0) control transv)))
-                           (set! (-> s3-0 x) (- (-> sv-40 x) (-> v1-30 x)))
-                           (set! (-> s3-0 z) (- (-> sv-40 z) (-> v1-30 z)))
-                           (let ((f30-0 (vector-xz-length s3-0)))
-                             (if (< 122880.0 f30-0) (vector-xz-normalize! s3-0 (the-as float 122880.0)))
-                             (if (< 4096.0 f30-0)
-                               (forward-up-nopitch->quaternion (-> (the-as target s4-0) control dir-targ)
-                                                               (vector-normalize-copy! (new 'stack-no-clear 'vector) s3-0 (the-as float 1.0))
-                                                               (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> (the-as target s4-0) control quat))))))))))
+                       ;; passed the rise height: the tracking timer starts now
+                       (if rising? (set! sv-32 (current-time)))
+                       (set! rising? (the-as symbol #f))
+                       (when (or (= (-> (the-as target tgt) next-state name) 'target-duck-high-jump-jump)
+                                 (= (-> (the-as target tgt) next-state name) 'target-falling))
+                         ;; xz velocity = offset to the landing target, capped at 30 m/s,
+                         ;; and face Jak along it once moving faster than 1 m/s
+                         (let ((tgt-trans (-> (the-as target tgt) control trans))
+                               (tgt-transv (-> (the-as target tgt) control transv)))
+                           (set! (-> tgt-transv x) (- (-> dest-pos x) (-> tgt-trans x)))
+                           (set! (-> tgt-transv z) (- (-> dest-pos z) (-> tgt-trans z)))
+                           (let ((dest-dist (vector-xz-length tgt-transv)))
+                             (if (< 122880.0 dest-dist) (vector-xz-normalize! tgt-transv (the-as float 122880.0)))
+                             (if (< 4096.0 dest-dist)
+                               (forward-up-nopitch->quaternion (-> (the-as target tgt) control dir-targ)
+                                                               (vector-normalize-copy! (new 'stack-no-clear 'vector) tgt-transv (the-as float 1.0))
+                                                               (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> (the-as target tgt) control quat))))))))))
                   (suspend)
                   0)))
             #f)
-          arg2
-          arg3
+          landing-target
+          tracking-time
           143360.0
           :to
           self))
       ;; og:preserve-this PAL patch (sound plays elsewhere)
       ;(sound-play "launch-fire")
-      (go target-high-jump arg0 arg0 'launch))
+      (go target-high-jump height height 'launch))
   :post target-no-stick-post)
 
+;; Using a periscope (Boggy Swamp): Jak turns to face the periscope, grabs on, and holds
+;; the grab pose while the periscope process runs its camera mode. state-var0 is the "still
+;; using it" flag; the periscope sends 'end-mode to clear it and release Jak.
 (defstate target-periscope (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('change-mode) #f)
-        (('end-mode) (when (-> self control unknown-spoolanim00) (set! (-> self control unknown-uint20) (the-as uint #f)) #t))
+        (('end-mode) (when (-> self control state-spool-anim) (set! (-> self control state-var0) (the-as uint #f)) #t))
         (else (target-generic-event-handler proc argc message block))))
   :exit
     (behavior ()
@@ -1705,22 +1919,24 @@
       ;; og:preserve-this PAL patch here
       (logclear! (-> self state-flags) (state-flags invulnerable grabbed)))
   :code
-    (behavior ((arg0 handle))
+    (behavior ((periscope handle))
       (set! (-> self neck flex-blend) 0.0)
       (target-exit)
       (logior! (-> self state-flags) (state-flags invulnerable do-not-notice))
-      (let ((v1-4 (handle->process arg0)))
-        (if v1-4
+      ;; face the periscope
+      (let ((periscope-proc (handle->process periscope)))
+        (if periscope-proc
           (quaterion<-rotate-y-vector (-> self control dir-targ)
-                                      (vector-! (new 'stack-no-clear 'vector) (-> (the-as process-drawable v1-4) root trans) (-> self control trans)))))
-      (set! (-> self control unknown-uint20) (the-as uint #t))
+                                      (vector-! (new 'stack-no-clear 'vector) (-> (the-as process-drawable periscope-proc) root trans) (-> self control trans)))))
+      (set! (-> self control state-var0) (the-as uint #t))
       (ja-channel-push! 1 (seconds 0.1))
       (ja-no-eval :group! eichar-periscope-grab-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!)))
-      (send-event (handle->process arg0) 'change-mode)
-      (while (-> self control unknown-spoolanim00)
+      (send-event (handle->process periscope) 'change-mode)
+      ;; hold on until the periscope clears the flag with 'end-mode
+      (while (-> self control state-spool-anim)
         (suspend))
       (ja-no-eval :group! eichar-periscope-grab-ja :num! (seek! 0.0 2.0) :frame-num max)
       (until (ja-done? 0)
@@ -1729,11 +1945,14 @@
       (go target-stance))
   :post target-no-stick-post)
 
+;; Scripted one-shot animation state: another process asks Jak to play a named joint anim
+;; (looked up by name in his art group) while grabbed, then he returns to stance. The
+;; requester's handle is stashed in swingpole-handle (reused scratch) so exit can notify it.
 (defstate target-play-anim (target)
   :event target-generic-event-handler
   :enter
-    (behavior ((arg0 string) (arg1 handle))
-      (set! (-> self control unknown-handle10) arg1)
+    (behavior ((anim-name string) (requester handle))
+      (set! (-> self control swingpole-handle) requester)
       (move-to-ground (-> self control)
                       (the-as float 40960.0)
                       (the-as float 40960.0)
@@ -1743,15 +1962,15 @@
       (set! (-> self neck flex-blend) 0.0))
   :exit
     (behavior ()
-      (send-event (handle->process (-> self control unknown-handle10)) 'end-mode)
+      (send-event (handle->process (-> self control swingpole-handle)) 'end-mode)
       (target-exit))
   :code
-    (behavior ((arg0 string) (arg1 handle))
-      (let ((gp-0 (the-as art-joint-anim (lookup-art (-> self draw art-group) arg0 art-joint-anim))))
-        (when gp-0
+    (behavior ((anim-name string) (requester handle))
+      (let ((anim (the-as art-joint-anim (lookup-art (-> self draw art-group) anim-name art-joint-anim))))
+        (when anim
           (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
           (ja-channel-set! 1)
-          (ja-no-eval :group! gp-0 :num! (seek!) :frame-num 0.0)
+          (ja-no-eval :group! anim :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek!)))
@@ -1759,17 +1978,21 @@
       (go target-stance))
   :post target-no-stick-post)
 
+;; Cutscene state: Jak's skeleton clones the animation of another process (ambient scene
+;; actors, e.g. sage cutscenes) until it finishes. state-var0 is #t while his real position
+;; should be restored from where the clone left him ('trans 'restore clears it); his
+;; pre-cutscene position/rotation are saved in state-vector0/state-vector1 as a fallback.
 (defstate target-clone-anim (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-      (if (and (= message 'trans) (= (-> block param 0) 'restore)) (set! (-> self control unknown-uint20) (the-as uint #f)))
+      (if (and (= message 'trans) (= (-> block param 0) 'restore)) (set! (-> self control state-var0) (the-as uint #f)))
       ((-> target-grab event) proc argc message block))
   :enter
-    (behavior ((arg0 handle))
-      (set! (-> self control unknown-handle10) arg0)
-      (set! (-> self control unknown-vector102 quad) (-> self control trans quad))
-      (set! (-> self control unknown-uint20) (the-as uint #t))
-      (quaternion-copy! (the-as quaternion (-> self control unknown-vector103)) (-> self control quat))
+    (behavior ((clone-source handle))
+      (set! (-> self control swingpole-handle) clone-source)
+      (vector-copy! (-> self control state-vector0) (-> self control trans))
+      (set! (-> self control state-var0) (the-as uint #t))
+      (quaternion-copy! (the-as quaternion (-> self control state-vector1)) (-> self control quat))
       (logior! (-> self state-flags) (state-flags grabbed))
       (vector-reset! (-> self control transv))
       (set! (-> self neck flex-blend) 0.0)
@@ -1778,38 +2001,41 @@
     (behavior ()
       (send-event (ppointer->process (-> self sidekick)) 'matrix 'normal)
       (send-event (ppointer->process (-> self sidekick)) 'shadow #t)
-      (let ((gp-0 (joint-node eichar-lod0-jg main))
-            (a1-2 (-> self control camera-pos)))
+      (let ((main-joint (joint-node eichar-lod0-jg main))
+            (end-pos (-> self control camera-pos)))
         (cond
-          ((not (-> self control unknown-spoolanim00)))
+          ;; restore was already handled (state-var0 cleared): leave position alone
+          ((not (-> self control state-spool-anim)))
           ((not (logtest? (-> self draw status) (draw-status hidden)))
-           (move-to-point! (-> self control) a1-2)
-           (matrix->quaternion (-> self control quat-for-control) (-> gp-0 bone transform))
+           ;; place Jak where the cloned anim left his model, snapped down to the ground
+           (move-to-point! (-> self control) end-pos)
+           (matrix->quaternion (-> self control quat-for-control) (-> main-joint bone transform))
            (quaternion-copy! (-> self control quat) (-> self control quat-for-control))
            (move-to-ground (-> self control)
                            (the-as float 4096.0)
                            (the-as float 40960.0)
                            #t
                            (-> self control root-prim collide-with))
-           (when (logtest? (-> self control status) (cshape-moving-flags on-water))
-             (let ((a1-6 (new-stack-vector0)))
-               (set! (-> a1-6 x) (-> self control trans x))
-               (set! (-> a1-6 y) (-> self water height))
-               (set! (-> a1-6 z) (-> self control trans z))
-               (set! (-> a1-6 w) 1.0)
-               (move-to-point! (-> self control) a1-6))))
+           (when (logtest? (-> self control status) (collide-status on-water))
+             (let ((surface-pos (new-stack-vector0)))
+               (set! (-> surface-pos x) (-> self control trans x))
+               (set! (-> surface-pos y) (-> self water height))
+               (set! (-> surface-pos z) (-> self control trans z))
+               (set! (-> surface-pos w) 1.0)
+               (move-to-point! (-> self control) surface-pos))))
           (else
+           ;; model was hidden at the end; fall back to the saved pre-cutscene transform
            (format 0 "ERROR: <ASG>: camera used backup position~%")
-           (move-to-point! (-> self control) (-> self control unknown-vector102))
-           (quaternion-copy! (-> self control quat) (the-as quaternion (-> self control unknown-vector103))))))
+           (move-to-point! (-> self control) (-> self control state-vector0))
+           (quaternion-copy! (-> self control quat) (the-as quaternion (-> self control state-vector1))))))
       (rot->dir-targ! (-> self control))
-      (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (logior! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (set-time! (-> self control last-time-on-surface))
       (ja-channel-set! 0)
       (ja-post)
       (target-exit))
   :code
-    (behavior ((arg0 handle))
-      (clone-anim arg0 (the-as int (-> self draw origin-joint-index)) #t "")
+    (behavior ((clone-source handle))
+      (clone-anim clone-source (the-as int (-> self draw origin-joint-index)) #t "")
       (go target-stance))
   :post target-no-ja-move-post)

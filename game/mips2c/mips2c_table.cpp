@@ -44,8 +44,6 @@ namespace draw_boundary_polygon { extern void link(); }
 namespace draw_inline_array_tfrag { extern void link(); }
 namespace stats_tfrag_asm { extern void link(); }
 namespace time_of_day_interp_colors_scratch { extern void link(); }
-namespace collide_do_primitives { extern void link(); }
-namespace moving_sphere_triangle_intersect { extern void link(); }
 namespace method_12_collide_mesh { extern void link(); }
 namespace method_11_collide_mesh { extern void link(); }
 namespace collide_probe_node { extern void link(); }
@@ -70,9 +68,7 @@ namespace method_16_collide_edge_work { extern void link(); }
 namespace method_15_collide_edge_work { extern void link(); }
 namespace method_10_collide_edge_hold_list { extern void link(); }
 namespace method_18_collide_edge_work { extern void link(); }
-namespace calc_animation_from_spr { extern void link(); }
 namespace bones_mtx_calc { extern void link(); }
-namespace cspace_parented_transformq_joint { extern void link(); }
 namespace draw_bones_merc { extern void link(); }
 namespace draw_bones_check_longest_edge_asm { extern void link(); }
 namespace blerc_execute { extern void link(); }
@@ -416,8 +412,6 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak1::render_boundary_tri::link, jak1::draw_boundary_polygon::link}},
      {"tfrag", {jak1::draw_inline_array_tfrag::link, jak1::stats_tfrag_asm::link}},
      {"time-of-day", {jak1::time_of_day_interp_colors_scratch::link}},
-     {"collide-func",
-      {jak1::collide_do_primitives::link, jak1::moving_sphere_triangle_intersect::link}},
      {"collide-probe", {jak1::collide_probe_node::link, jak1::collide_probe_instance_tie::link}},
      {"collide-mesh",
       {jak1::method_12_collide_mesh::link, jak1::method_11_collide_mesh::link,
@@ -433,7 +427,6 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"collide-edge-grab",
       {jak1::method_16_collide_edge_work::link, jak1::method_15_collide_edge_work::link,
        jak1::method_10_collide_edge_hold_list::link, jak1::method_18_collide_edge_work::link}},
-     {"joint", {jak1::calc_animation_from_spr::link, jak1::cspace_parented_transformq_joint::link}},
      {"bones",
       {jak1::bones_mtx_calc::link, jak1::draw_bones_merc::link,
        jak1::draw_bones_check_longest_edge_asm::link}},

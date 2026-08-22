@@ -11,7 +11,11 @@
 
 (deftype warpgate (process-hidden) ())
 
-
+;; Bring Jak back from a warp at the destination gate.  The shared target-warp-out enter hook has
+;; already saved the lowered gate position in state-vector0 and the continue point in state-vector1.
+;; Place Jak at the gate, wait for the destination to settle, then launch him one metre upward while
+;; retaining his planar velocity.  The transition hook steers that planar motion toward the continue
+;; point at twelve metres per second until Jak touches a surface.
 (defstate target-warp-in (target)
   :event target-generic-event-handler
   :enter
@@ -22,27 +26,29 @@
         exit)
   :trans
     (behavior ()
-      (set! (-> self control transv x) (- (-> self control unknown-vector103 x) (-> self control unknown-vector102 x)))
-      (set! (-> self control transv z) (- (-> self control unknown-vector103 z) (-> self control unknown-vector102 z)))
+      (set! (-> self control transv x) (- (-> self control state-vector1 x) (-> self control state-vector0 x)))
+      (set! (-> self control transv z) (- (-> self control state-vector1 z) (-> self control state-vector0 z)))
       (vector-xz-normalize! (-> self control transv) 49152.0)
-      (if (logtest? (-> self control status) (cshape-moving-flags onsurf)) (go target-hit-ground #f)))
+      (if (logtest? (-> self control status) (collide-status on-surface)) (go target-hit-ground #f)))
   :code
-    (behavior ((arg0 vector) (arg1 vector))
+    (behavior ((gate-position vector) (continue-position vector))
       (clear-collide-with-as (-> self control))
       (ja-channel-set! 0)
       (vector-reset! (-> self control transv))
-      (move-to-point! (-> self control) (-> self control unknown-vector102))
+      (move-to-point! (-> self control) (-> self control state-vector0))
       (suspend-for (seconds 1))
-      (let ((gp-1 (new-stack-vector0)))
-        (let ((f0-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+      (let ((planar-velocity (new-stack-vector0)))
+        (let ((gravity-axis-speed (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
           0.0
-          (vector-! gp-1 (-> self control transv) (vector-float*! gp-1 (-> self control dynam gravity-normal) f0-1)))
-        (let* ((f0-2 (vector-length gp-1))
-               (f1-1 f0-2)
-               (f2-3 (- (sqrtf (* 8192.0 (-> self control dynam gravity-length))) (* 0.008333334 (- (-> self control dynam gravity-length))))))
+          (vector-! planar-velocity
+                    (-> self control transv)
+                    (vector-float*! planar-velocity (-> self control dynam gravity-normal) gravity-axis-speed)))
+        (let* ((planar-speed (vector-length planar-velocity))
+               (normalization-speed planar-speed)
+               (launch-speed (- (sqrtf (* 8192.0 (-> self control dynam gravity-length))) (* 0.008333334 (- (-> self control dynam gravity-length))))))
           (vector+! (-> self control transv)
-                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-3)
-                    (vector-float*! gp-1 gp-1 (/ f0-2 f1-1)))))
+                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) launch-speed)
+                    (vector-float*! planar-velocity planar-velocity (/ planar-speed normalization-speed)))))
       (set-heading-vec! (-> self control) (-> self control transv))
       (rot->dir-targ! (-> self control))
       (set-time! (-> self state-time))
@@ -50,22 +56,18 @@
       (ja-channel-set! 1)
       (send-event self 'do-effect 'death-warp-in -1.0)
       (sound-play "warpgate-tele")
-      (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 50.0 0)) :frame-num (ja-aframe 40.0 0))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 50.0 0))))
+      (ja-play :group! eichar-duck-high-jump-ja :num! (seek! (ja-aframe 50.0 0)) :frame-num (ja-aframe 40.0 0))
       (restore-collide-with-as (-> self control))
-      (ja-no-eval :group! eichar-duck-high-jump-ja :num! (seek!) :frame-num (ja-aframe 50.0 0))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! eichar-duck-high-jump-ja :num! (seek!) :frame-num (ja-aframe 50.0 0))
       (target-falling-anim -1 (seconds 0.33)))
   :post target-no-move-post)
 
+;; Offer the warp selector while Jak is within five metres and free to interact.  Village 3's gate
+;; is one-sided, so its prompt appears only from the approach sector facing the switch.
 (defstate idle (warp-gate)
   :virtual #t
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('hide) (go-virtual hidden))))
   :code
@@ -79,10 +81,10 @@
                         (not (level-hint-displayed?))
                         (not (logtest? (-> *target* control root-prim prim-core action)
                                        (collide-action edgegrab-cam swingpole-active racer snowball tube flut)))
-                        (let* ((v1-16 (-> self root))
-                               (a1-2 (-> *target* control trans))
-                               (f0-1 (vector-y-angle (vector-! (new 'stack-no-clear 'vector) a1-2 (-> v1-16 trans)))))
-                          (or (!= (-> self level-slot) 3) (and (< f0-1 -9102.223) (< -32768.0 f0-1))))))
+                        (let* ((gate-root (-> self root))
+                               (target-position (-> *target* control trans))
+                               (approach-heading (vector-y-angle (vector-! (new 'stack-no-clear 'vector) target-position (-> gate-root trans)))))
+                          (or (!= (-> self level-slot) 3) (and (< approach-heading -9102.223) (< -32768.0 approach-heading))))))
           (hide-hud)
           (level-hint-surpress!)
           (kill-current-level-hint '() '(sidekick voicebox) 'exit)
@@ -96,40 +98,49 @@
                      (time-elapsed? (-> self state-time) (seconds 0.1)))
             (if (and (cpad-pressed? 0 circle) (process-grab? *target*)) (go-virtual active))
             (if (and *cheat-mode* (cpad-pressed? 0 l3)) (set! (-> self max-slot) 4))
-            (let ((gp-0 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
-              (set-width! gp-0 440)
-              (set-height! gp-0 80)
-              (set-scale! gp-0 0.9)
-              (set! (-> gp-0 flags) (font-flags shadow kerning large))
-              (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) gp-0 #f 128 22))))
+            (let ((prompt-context (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
+              (set-width! prompt-context 440)
+              (set-height! prompt-context 80)
+              (set-scale! prompt-context 0.9)
+              (set-flags! prompt-context (font-flags shadow kerning large))
+              (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) prompt-context #f 128 22))))
         (suspend))))
 
-(defun get-next-slot-up ((arg0 warp-gate) (arg1 int))
-  (let ((v0-0 (+ arg1 1)))
-    (if (< (-> arg0 max-slot) v0-0) (set! v0-0 (-> arg0 min-slot)))
-    (if (= v0-0 (-> arg0 level-slot)) (+! v0-0 1))
-    (if (< (-> arg0 max-slot) v0-0) (set! v0-0 (-> arg0 min-slot)))
-    v0-0))
+(defun get-next-slot-up ((gate warp-gate) (slot int))
+  "Advance one destination slot, wrapping through the gate's inclusive range and skipping the
+   current level."
+  (let ((next-slot (+ slot 1)))
+    (if (< (-> gate max-slot) next-slot) (set! next-slot (-> gate min-slot)))
+    (if (= next-slot (-> gate level-slot)) (+! next-slot 1))
+    (if (< (-> gate max-slot) next-slot) (set! next-slot (-> gate min-slot)))
+    next-slot))
 
-(defun get-next-slot-down ((arg0 warp-gate) (arg1 int))
-  (let ((v0-0 (+ arg1 -1)))
-    (if (< v0-0 (-> arg0 min-slot)) (set! v0-0 (-> arg0 max-slot)))
-    (if (= v0-0 (-> arg0 level-slot)) (+! v0-0 -1))
-    (if (< v0-0 (-> arg0 min-slot)) (set! v0-0 (-> arg0 max-slot)))
-    v0-0))
+(defun get-next-slot-down ((gate warp-gate) (slot int))
+  "Move back one destination slot, wrapping through the gate's inclusive range and skipping the
+   current level."
+  (let ((next-slot (+ slot -1)))
+    (if (< next-slot (-> gate min-slot)) (set! next-slot (-> gate max-slot)))
+    (if (= next-slot (-> gate level-slot)) (+! next-slot -1))
+    (if (< next-slot (-> gate min-slot)) (set! next-slot (-> gate max-slot)))
+    next-slot))
 
-(defun print-level-name ((arg0 int) (arg1 font-context) (arg2 int) (arg3 int))
-  (let ((s5-0 (if arg3 arg2 (- arg2))))
-    (+! (-> arg1 origin x) (the float s5-0))
-    (let ((f30-0 (- 1.0 (* 0.0033333334 (the float arg2)))))
-      (print-game-text-scaled (lookup-text! *common-text* (the-as text-id (+ arg0 286)) #f)
-                              f30-0
-                              arg1
-                              (the int (* 128.0 f30-0))))
-    (set! (-> arg1 origin x) (- (-> arg1 origin x) (the float s5-0))))
-  (set! (-> arg1 color) (font-color default))
-  arg1)
+(defun print-level-name ((slot int) (context font-context) (distance int) (right? int))
+  "Draw a destination name on the selected side of the carousel. Distance supplies both the
+   horizontal displacement and a linear fade from full intensity at zero to transparent at 300."
+  (let ((signed-offset (if right? distance (- distance))))
+    (+! (-> context origin x) (the float signed-offset))
+    (let ((intensity (- 1.0 (* 0.0033333334 (the float distance)))))
+      (print-game-text-scaled (lookup-text! *common-text* (the-as text-id (+ slot 286)) #f)
+                              intensity
+                              context
+                              (the int (* 128.0 intensity))))
+    (set! (-> context origin x) (- (-> context origin x) (the float signed-offset))))
+  (set-color! context (font-color default))
+  context)
 
+;; Hold Jak facing the gate while the destination carousel is open.  The centred entry commits
+;; halfway through a 300-unit slide; the old and new neighbours cross at 150 so repeated input can
+;; queue the next slot without disturbing the current interpolation.
 (defstate active (warp-gate)
   :virtual #t
   :enter
@@ -147,100 +158,112 @@
         (sound-play "cursor-options")
         (go-virtual idle))
       (when *target*
-        (let* ((gp-1 (-> *target* control))
-               (s4-0 (-> self root trans))
-               (f0-0 (deg-diff (y-angle gp-1) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-0 (-> gp-1 trans))))))
-          (if (!= f0-0 0.0)
-            (send-event *target* 'rotate-y-angle (fmax (fmin f0-0 (* 65536.0 (seconds-per-frame))) (* -65536.0 (seconds-per-frame))))))))
+        (let* ((target-control (-> *target* control))
+               (gate-position (-> self root trans))
+               (heading-error (deg-diff (y-angle target-control)
+                                        (vector-y-angle (vector-! (new 'stack-no-clear 'vector) gate-position (-> target-control trans))))))
+          (if (!= heading-error 0.0)
+            (send-event *target*
+                        'rotate-y-angle
+                        (fmax (fmin heading-error (* 65536.0 (seconds-per-frame))) (* -65536.0 (seconds-per-frame))))))))
   :code
     (behavior ()
-      (let ((gp-0 (get-next-slot-up self (+ (-> self level-slot) -1))))
+      (let ((selected-slot (get-next-slot-up self (+ (-> self level-slot) -1))))
         0
-        (let ((s5-0 #f)
-              (s2-0 0)
-              (s4-0 #f)
-              (s3-0 gp-0))
+        (let ((scrolling? #f)
+              (scroll-distance 0)
+              (scrolling-left? #f)
+              (pending-slot selected-slot))
           (loop
-            (when (zero? s2-0)
+            (when (zero? scroll-distance)
               (cond
                 ((cpad-pressed? 0 right)
-                 (set! s5-0 #t)
-                 (set! s4-0 #f)
+                 (set! scrolling? #t)
+                 (set! scrolling-left? #f)
                  (sound-play "cursor-up-down")
-                 (set! s3-0 (get-next-slot-up self s3-0)))
+                 (set! pending-slot (get-next-slot-up self pending-slot)))
                 ((cpad-pressed? 0 left)
-                 (set! s5-0 #t)
-                 (set! s4-0 #t)
+                 (set! scrolling? #t)
+                 (set! scrolling-left? #t)
                  (sound-play "cursor-up-down")
-                 (set! s3-0 (get-next-slot-down self s3-0)))))
-            (if s5-0 (set! s2-0 (seekl s2-0 300 (the int (* 15.0 (-> *display* time-adjust-ratio))))))
-            (when (>= s2-0 150)
-              (set! gp-0 s3-0)
-              (set! s5-0 #f)
-              (set! s2-0 0))
+                 (set! pending-slot (get-next-slot-down self pending-slot)))))
+            (if scrolling? (set! scroll-distance (seekl scroll-distance 300 (the int (* 15.0 (-> *display* time-adjust-ratio))))))
+            (when (>= scroll-distance 150)
+              (set! selected-slot pending-slot)
+              (set! scrolling? #f)
+              (set! scroll-distance 0))
             (can-grab-display? self)
             (hide-hud)
-            (let ((s1-2 (get-continue-by-name *game-info* (-> *warp-info* gp-0))))
-              (lookup-level-info (-> s1-2 level))
+            (let ((destination (get-continue-by-name *game-info* (-> *warp-info* selected-slot))))
+              (lookup-level-info (-> destination level))
               (when (and (time-elapsed? (-> self state-time) (seconds 0.05)) (cpad-pressed? 0 circle))
                 (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons circle))
                 (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle))
-                (go-virtual use gp-0 (the-as level s1-2))))
-            (let ((s1-3 (new 'stack 'font-context *font-default-matrix* 6 110 0.0 (font-color default) (font-flags shadow kerning))))
-              (set-scale! s1-3 0.7)
-              (set-width! s1-3 500)
-              (set-height! s1-3 55)
-              (set! (-> s1-3 flags) (font-flags shadow kerning middle middle-vert large))
-              (print-game-text (lookup-text! *common-text* (text-id warp-gate-use-dpad) #f) s1-3 #f 128 22)
-              (+! (-> s1-3 origin y) 35.0)
-              (set-height! s1-3 40)
-              (let ((a0-34 s1-3)) (set! (-> a0-34 color) (font-color progress-blue)))
+                (go-virtual use selected-slot (the-as level destination))))
+            (let ((menu-context (new 'stack 'font-context *font-default-matrix* 6 110 0.0 (font-color default) (font-flags shadow kerning))))
+              (set-scale! menu-context 0.7)
+              (set-width! menu-context 500)
+              (set-height! menu-context 55)
+              (set-flags! menu-context (font-flags shadow kerning middle middle-vert large))
+              (print-game-text (lookup-text! *common-text* (text-id warp-gate-use-dpad) #f) menu-context #f 128 22)
+              (+! (-> menu-context origin y) 35.0)
+              (set-height! menu-context 40)
+              (set-color! menu-context (font-color progress-blue))
               0
-              (let* ((s0-3 (get-next-slot-up self gp-0))
-                     (sv-112 (get-next-slot-down self gp-0))
-                     (sv-144 (get-next-slot-up self s0-3))
-                     (sv-128 (get-next-slot-down self sv-112)))
+              (let* ((next-slot (get-next-slot-up self selected-slot))
+                     (previous-slot (get-next-slot-down self selected-slot))
+                     (second-next-slot (get-next-slot-up self next-slot))
+                     (second-previous-slot (get-next-slot-down self previous-slot)))
                 (cond
-                  (s4-0
-                   (let ((a2-6 (- 300 (+ s2-0 150)))) (print-level-name sv-112 s1-3 a2-6 (the-as int #f)))
-                   (let ((a2-7 (+ s2-0 150)))
+                  (scrolling-left?
+                   (let ((outgoing-previous-distance (- 300 (+ scroll-distance 150))))
+                     (print-level-name previous-slot menu-context outgoing-previous-distance (the-as int #f)))
+                   (let ((incoming-next-distance (+ scroll-distance 150)))
                      (cond
-                       ((< a2-7 225) (print-level-name s0-3 s1-3 a2-7 (the-as int #t)))
-                       (else (let ((a2-8 (- 300 s2-0))) (print-level-name sv-128 s1-3 a2-8 (the-as int #f)))))))
+                       ((< incoming-next-distance 225) (print-level-name next-slot menu-context incoming-next-distance (the-as int #t)))
+                       (else
+                        (let ((second-previous-distance (- 300 scroll-distance)))
+                          (print-level-name second-previous-slot menu-context second-previous-distance (the-as int #f)))))))
                   (else
-                   (let ((a2-9 (+ s2-0 150)))
+                   (let ((incoming-previous-distance (+ scroll-distance 150)))
                      (cond
-                       ((< a2-9 225) (print-level-name sv-112 s1-3 a2-9 (the-as int #f)))
-                       (else (let ((a2-10 (- 300 s2-0))) (print-level-name sv-144 s1-3 a2-10 (the-as int #t))))))
-                   (let ((a2-11 (- 300 (+ s2-0 150)))) (print-level-name s0-3 s1-3 a2-11 (the-as int #t))))))
-              (when (not s5-0)
-                (let ((a0-47 s1-3)) (set! (-> a0-47 color) (font-color progress-yellow))))
-              (print-level-name gp-0 s1-3 s2-0 (the-as int s4-0))
-              (+! (-> s1-3 origin y) 20.0)
-              (print-game-text (lookup-text! *common-text* (text-id press-to-warp) #f) s1-3 #f 128 22)
-              (+! (-> s1-3 origin y) 15.0)
-              (print-game-text (lookup-text! *common-text* (text-id press-to-exit) #f) s1-3 #f 128 22))
+                       ((< incoming-previous-distance 225)
+                        (print-level-name previous-slot menu-context incoming-previous-distance (the-as int #f)))
+                       (else
+                        (let ((second-next-distance (- 300 scroll-distance)))
+                          (print-level-name second-next-slot menu-context second-next-distance (the-as int #t))))))
+                   (let ((outgoing-next-distance (- 300 (+ scroll-distance 150))))
+                     (print-level-name next-slot menu-context outgoing-next-distance (the-as int #t))))))
+              (when (not scrolling?)
+                (set-color! menu-context (font-color progress-yellow)))
+              (print-level-name selected-slot menu-context scroll-distance (the-as int scrolling-left?))
+              (+! (-> menu-context origin y) 20.0)
+              (print-game-text (lookup-text! *common-text* (text-id press-to-warp) #f) menu-context #f 128 22)
+              (+! (-> menu-context origin y) 15.0)
+              (print-game-text (lookup-text! *common-text* (text-id press-to-exit) #f) menu-context #f 128 22))
             (suspend))))))
 
 (defstate hidden (warp-gate)
   :virtual #t
   :code anim-loop)
 
-(defbehavior warp-gate-init-by-other warp-gate ((arg0 vector))
+(defbehavior warp-gate-init-by-other warp-gate ((position vector))
+  "Create a warp selector at position. Determine its current slot from the active level and expose
+   destinations only through the furthest unlocked village gate."
   (stack-size-set! (-> self main-thread) 512)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) position)
   (logior! (-> self mask) (process-mask actor-pause))
   (set! (-> self level) (-> self entity extra level name))
   (set! (-> self min-slot) 0)
-  (let ((v1-11 (-> self level)))
+  (let ((current-level (-> self level)))
     (set! (-> self level-slot)
           (cond
-            ((= v1-11 'training) 0)
-            ((= v1-11 'village1) 1)
-            ((= v1-11 'village2) 2)
-            ((= v1-11 'village3) 3)
-            ((or (= v1-11 'citadel) (= v1-11 'lavatube)) 4)
+            ((= current-level 'training) 0)
+            ((= current-level 'village1) 1)
+            ((= current-level 'village2) 2)
+            ((= current-level 'village3) 3)
+            ((or (= current-level 'citadel) (= current-level 'lavatube)) 4)
             (else -1))))
   (set! (-> self max-slot)
         (cond
@@ -256,7 +279,6 @@
   (:methods
    (pressable? (_type_) symbol)))
 
-
 (defskelgroup *warp-gate-switch-sg*
   warp-gate-switch
   warp-gate-switch-lod0-jg
@@ -264,38 +286,44 @@
   ((warp-gate-switch-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 1.5))
 
-(defmethod basebutton-method-27 ((this warp-gate-switch))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s5-0 s4-0)
-      (let ((s3-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-        (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
-        (set! (-> s3-0 collide-with) (collide-kind target))
-        (set! (-> s3-0 prim-core action) (collide-action solid rider-plat-sticky))
-        (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
-        (set! (-> s3-0 transform-index) 4)
-        (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 12288.0)
-        (append-prim s4-0 s3-0)))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    s5-0))
+(defmethod setup-collision! ((this warp-gate-switch))
+  "Create one sticky, indestructible ground mesh on skeleton transform 4 inside a three-metre
+   primitive group, allocate one rider, and install the moving collision shape as root."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision 1)
+    (let ((primitive-group (new 'process 'collide-shape-prim-group collision (the-as uint 1) 0)))
+      (set! (-> primitive-group prim-core collide-as) (collide-kind ground-object))
+      (set! (-> primitive-group collide-with) (collide-kind target))
+      (set! (-> primitive-group prim-core action) (collide-action solid rider-plat-sticky))
+      (set-vector! (-> primitive-group local-sphere) 0.0 0.0 0.0 12288.0)
+      (set-root-prim! collision primitive-group)
+      (let ((mesh-primitive (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+        (set! (-> mesh-primitive prim-core collide-as) (collide-kind ground-object))
+        (set! (-> mesh-primitive collide-with) (collide-kind target))
+        (set! (-> mesh-primitive prim-core action) (collide-action solid rider-plat-sticky))
+        (set! (-> mesh-primitive prim-core offense) (collide-offense indestructible))
+        (set! (-> mesh-primitive transform-index) 4)
+        (set-vector! (-> mesh-primitive local-sphere) 0.0 0.0 0.0 12288.0)
+        (append-prim primitive-group mesh-primitive)))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision)
+    collision))
 
 (defmethod pressable? ((this warp-gate-switch))
-  (let ((v1-2 (-> this entity extra perm task)))
+  "Reject presses while Jak is attached to special traversal geometry. The Training switch
+   also remains locked until all four tutorial tasks are complete and supplies its blocked
+   hint while locked."
+  (let ((task (-> this entity extra perm task)))
     (cond
       ((logtest? (-> *target* control root-prim prim-core action)
                  (collide-action edgegrab-cam swingpole-active racer snowball tube flut))
        #f)
-      ((= v1-2 (game-task training-door))
+      ((= task (game-task training-door))
        (cond
          ((and (task-complete? *game-info* (game-task training-door))
                (task-complete? *game-info* (game-task training-gimmie))
@@ -307,85 +335,96 @@
           #f)))
       (else #t))))
 
-(defmethod basebutton-method-26 ((this warp-gate-switch))
+(defmethod setup-skel-and-anim! ((this warp-gate-switch))
+  "Restore the switch's initial pressed state from its task, create the warp-gate-switch
+   skeleton, and pose its animation at the first or last frame before posting transforms."
   (set! (-> this warp) (the-as handle #f))
-  (let ((v1-2 (-> this entity extra perm task)))
+  (let ((task (-> this entity extra perm task)))
     (cond
-      ((= v1-2 (game-task training-door))
+      ((= task (game-task training-door))
        (set! (-> this down?)
              (the-as symbol (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete))))))
       (else
-       (if (or (= v1-2 (game-task none)) (task-closed? (-> this entity extra perm task) (task-status need-hint)))
+       (if (or (= task (game-task none)) (task-closed? (-> this entity extra perm task) (task-status need-hint)))
          (set! (-> this down?) #t)))))
   (initialize-skeleton this *warp-gate-switch-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (ja-channel-set! 1)
   (cond
     ((-> this down?)
-     (let ((s5-0 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-0 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-0 frame-num) (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1)))))
+     (let ((down-channel (-> this skel root-channel 0)))
+       (joint-control-channel-group-eval! down-channel
+                                          (the-as art-joint-anim (-> this draw art-group data 2))
+                                          num-func-identity)
+       (set! (-> down-channel frame-num)
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1)))))
     (else
-     (let ((s5-1 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-1 frame-num) 0.0))))
+     (let ((up-channel (-> this skel root-channel 0)))
+       (joint-control-channel-group-eval! up-channel (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
+       (set! (-> up-channel frame-num) 0.0))))
   (set! (-> this anim-speed) 2.0)
   (update-transforms! (-> this root))
   (ja-post)
   (none))
 
-(defmethod press! ((this warp-gate-switch) (arg0 symbol))
+(defmethod press! ((this warp-gate-switch) (pressed? symbol))
+  "When pressed, close the associated progression task, save the current Village 3 fuel-cell
+   count as the gondola's later two-cell baseline, notify the linked actor to start, and update
+   the base button state."
   (with-pp
-    (when arg0
-      (let ((s4-0 (-> this entity extra perm task)))
-        (when (nonzero? s4-0)
-          (close-specific-task! s4-0 (task-status need-hint))
-          (when (= s4-0 (game-task village3-button))
-            (let ((s4-1 (get-task-control s4-0)))
-              (when (zero? (get-reminder s4-1 2))
-                (let ((s3-1 (max 1 (the int (-> *game-info* fuel)))))
-                  (format #t "VILLAGE3 button saved ~D tasks~%" s3-1)
-                  (save-reminder s4-1 s3-1 2)))))))
-      (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-5 from) pp)
-        (set! (-> a1-5 num-params) 0)
-        (set! (-> a1-5 message) 'start)
-        (let ((t9-5 send-event-function)
-              (v1-14 (-> this notify-actor)))
-          (t9-5 (if v1-14 (-> v1-14 extra process)) a1-5))))
+    (when pressed?
+      (let ((task (-> this entity extra perm task)))
+        (when (nonzero? task)
+          (close-specific-task! task (task-status need-hint))
+          (when (= task (game-task village3-button))
+            (let ((task-control (get-task-control task)))
+              (when (zero? (get-reminder task-control 2))
+                (let ((saved-task-count (max 1 (the int (-> *game-info* fuel)))))
+                  (format #t "VILLAGE3 button saved ~D tasks~%" saved-task-count)
+                  (save-reminder task-control saved-task-count 2)))))))
+      (let ((event-block (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-block from) pp)
+        (set! (-> event-block num-params) 0)
+        (set! (-> event-block message) 'start)
+        (let ((send-event-fn send-event-function)
+              (notify-actor (-> this notify-actor)))
+          (send-event-fn (if notify-actor (-> notify-actor extra process)) event-block))))
     ;; og:preserve-this
     ;; note: they appear to be calling this on the wrong object.
     ;; this doesn't actually cause any problems but corrupts the type of `float` in the symbol
-    ;; table because they write to some field of arg0, which is actually #t and not a
+    ;; table because they write to some field of pressed?, which is actually #t and not a
     ;; basebutton.  The corruption is completely harmless but is annoying because it looks like
     ;; a more severe memory corruption problem. So we fix it.
-    ;; (call-parent-method (the-as warp-gate-switch arg0) arg0)
-    (call-parent-method this arg0)))
+    ;; (call-parent-method (the-as warp-gate-switch pressed?) pressed?)
+    (call-parent-method this pressed?)))
 
+;; An unpressed switch notifies its linked actor to stop.  Every minute it repeats the reminder
+;; sequence appropriate to its progression task; touching or attacking it begins the press only
+;; when pressable? accepts Jak's current state.
 (defstate basebutton-up-idle (warp-gate-switch)
   :virtual #t
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('touch 'attack)
          (when (pressable? self)
-           (basebutton-method-29 self (-> self event-going-down) (-> self notify-actor))
+           (notify-event! self (-> self event-going-down) (-> self notify-actor))
            (go-virtual basebutton-going-down)))
         (('hide) (send-event (handle->process (-> self warp)) message))
-        (else ((-> (method-of-type basebutton basebutton-up-idle) event) proc argc message block))))
+        (else ((-> (method-of-type basebutton basebutton-up-idle) event) sender argc message block))))
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (let ((t9-0 (-> (method-of-type basebutton basebutton-up-idle) enter))) (if t9-0 (t9-0))))
+      (let ((parent-enter (-> (method-of-type basebutton basebutton-up-idle) enter))) (if parent-enter (parent-enter))))
   :trans
     (behavior ()
-      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-0 from) self)
-        (set! (-> a1-0 num-params) 0)
-        (set! (-> a1-0 message) 'stop)
-        (let ((t9-0 send-event-function)
-              (v1-1 (-> self notify-actor)))
-          (t9-0 (if v1-1 (-> v1-1 extra process)) a1-0)))
+      (let ((event-block (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-block from) self)
+        (set! (-> event-block num-params) 0)
+        (set! (-> event-block message) 'stop)
+        (let ((send-event-fn send-event-function)
+              (notify-actor (-> self notify-actor)))
+          (send-event-fn (if notify-actor (-> notify-actor extra process)) event-block)))
       (when (time-elapsed? (-> self state-time) (seconds 60))
         (case (-> self entity extra perm task)
           (((game-task training-door))
@@ -404,25 +443,27 @@
            (level-hint-spawn (text-id village3-button-reminder2) "asstv104" (the-as entity #f) *entity-pool* (game-task none))
            (level-hint-spawn (text-id village3-button-reminder3) "asstv105" (the-as entity #f) *entity-pool* (game-task none))))
         (set-time! (-> self state-time)))
-      (let ((t9-13 (-> (method-of-type basebutton basebutton-up-idle) trans))) (if t9-13 (t9-13)))))
+      (let ((parent-trans (-> (method-of-type basebutton basebutton-up-idle) trans))) (if parent-trans (parent-trans)))))
 
+;; Keep the selector process alive while the switch is down and forward hide events to it.  The
+;; Training switch repeats its reminder after the beach eco-rock task has been introduced.
 (defstate basebutton-down-idle (warp-gate-switch)
   :virtual #t
   :event
-    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (behavior ((sender process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('hide) (send-event (handle->process (-> self warp)) message))
-        (else ((-> (method-of-type basebutton basebutton-down-idle) event) proc argc message block))))
+        (else ((-> (method-of-type basebutton basebutton-down-idle) event) sender argc message block))))
   :enter
     (behavior ()
       (set-time! (-> self state-time))
       (set! (-> self warp) (ppointer->handle (process-spawn warp-gate (-> self notify-actor extra trans) :to self)))
       (process-entity-status! self (entity-perm-status complete) #t)
-      (let ((t9-4 (-> (method-of-type basebutton basebutton-down-idle) enter))) (if t9-4 (t9-4))))
+      (let ((parent-enter (-> (method-of-type basebutton basebutton-down-idle) enter))) (if parent-enter (parent-enter))))
   :exit
     (behavior ()
-      (let ((a0-1 (handle->process (-> self warp)))) (if a0-1 (deactivate a0-1)))
-      (let ((t9-1 (-> (method-of-type basebutton basebutton-down-idle) exit))) (if t9-1 (t9-1))))
+      (let ((warp-process (handle->process (-> self warp)))) (if warp-process (deactivate warp-process)))
+      (let ((parent-exit (-> (method-of-type basebutton basebutton-down-idle) exit))) (if parent-exit (parent-exit))))
   :trans
     (behavior ()
       (when (time-elapsed? (-> self state-time) (seconds 60))
@@ -432,29 +473,31 @@
              (level-hint-spawn (text-id training-warp-gate-reminder) "sagevb39" (the-as entity #f) *entity-pool* (game-task none))
              (clear-text-seen! *game-info* (text-id training-warp-gate-reminder)))))
         (set-time! (-> self state-time)))
-      (let ((t9-3 (-> (method-of-type basebutton basebutton-down-idle) trans))) (if t9-3 (t9-3)))))
+      (let ((parent-trans (-> (method-of-type basebutton basebutton-down-idle) trans))) (if parent-trans (parent-trans)))))
 
+;; Trigger every linked trigger-actor before running the common button descent.  Actors that are not
+;; live yet are born first and receive the trigger on the following tick.
 (defstate basebutton-going-down (warp-gate-switch)
   :virtual #t
   :code
     (behavior ()
       (sound-play "warpgate-butt")
       (sound-play "warpgate-act")
-      (let ((gp-2 (entity-actor-count (-> self entity) 'trigger-actor)))
-        (dotimes (s5-2 gp-2)
-          (let ((s4-0 (entity-actor-lookup (-> self entity) 'trigger-actor s5-2))
-                (a1-4 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-4 from) self)
-            (set! (-> a1-4 num-params) 0)
-            (set! (-> a1-4 message) 'trigger)
-            (let ((t9-6 send-event-function)
-                  (v1-3 s4-0))
-              (when (not (t9-6 (if v1-3 (-> v1-3 extra process)) a1-4))
-                (entity-birth-no-kill s4-0)
+      (let ((trigger-count (entity-actor-count (-> self entity) 'trigger-actor)))
+        (dotimes (i trigger-count)
+          (let ((trigger-actor (entity-actor-lookup (-> self entity) 'trigger-actor i))
+                (event-block (new 'stack-no-clear 'event-message-block)))
+            (set! (-> event-block from) self)
+            (set! (-> event-block num-params) 0)
+            (set! (-> event-block message) 'trigger)
+            (let ((send-event-fn send-event-function)
+                  (actor-for-send trigger-actor))
+              (when (not (send-event-fn (if actor-for-send (-> actor-for-send extra process)) event-block))
+                (entity-birth-no-kill trigger-actor)
                 (suspend)
-                (send-event (if s4-0 (-> s4-0 extra process)) 'trigger))))))
-      (let ((t9-10 (-> (the-as (state basebutton) (find-parent-state)) code)))
-        (if t9-10 ((the-as (function none :behavior basebutton) t9-10))))))
+                (send-event (if trigger-actor (-> trigger-actor extra process)) 'trigger))))))
+      (let ((parent-code (-> (the-as (state basebutton) (find-parent-state)) code)))
+        (if parent-code ((the-as (function none :behavior basebutton) parent-code))))))
 
 (defskelgroup *village-cam-sg*
   village-cam
@@ -471,51 +514,59 @@
   (:state-methods
    idle))
 
-
 (defmethod relocate ((this village-cam) (offset int))
+  "Relocate the copied trigger transform, then let process relocate the allocation and its
+   ordinary process-owned storage."
   (if (nonzero? (-> this root-override)) (&+! (-> this root-override) offset))
   (the-as village-cam ((method-of-type process relocate) this offset)))
 
+;; Play the contextual village overview when Jak enters range and no dialog, loading, attack, or
+;; progress sequence can conflict with it.  Index 0 alternates two Fire Canyon views after twenty
+;; cells; index 1 is intentionally silent; indices 2 and 3 show the Village 2 and Village 3 switch
+;; reminders.  The latter two first wait for Jak to leave the trigger, so a task completed while he
+;; stands inside retires the now-obsolete camera without interrupting him.  The first Fire Canyon
+;; view leaves this trigger asleep for five minutes; its second visit uses the alternate view and
+;; then retires it.
 (defstate idle (village-cam)
   :virtual #t
   :code
     (behavior ()
-      (local-vars (v1-18 symbol))
+      (local-vars (left-range? symbol))
       (loop
-        (let ((v1-5 (and (and *target* (>= (-> self range) (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
-                         (and (-> *setting-control* current play-hints)
-                              (< 0.0 (-> *setting-control* current dialog-volume))
-                              (let ((v1-10 (-> self index)))
-                                (cond
-                                  ((zero? v1-10)
-                                   (and (>= (-> *game-info* fuel) 20.0)
-                                        (not (task-closed? (game-task firecanyon-assistant) (task-status need-reward-speech)))))
-                                  ((= v1-10 2) (not (task-closed? (game-task village2-levitator) (task-status need-hint))))
-                                  ((= v1-10 3) (not (task-closed? (game-task village3-button) (task-status need-hint))))
-                                  (else #t)))))))
-          (when v1-5
+        (let ((should-play? (and (and *target* (>= (-> self range) (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))
+                                 (and (-> *setting-control* current play-hints)
+                                      (< 0.0 (-> *setting-control* current dialog-volume))
+                                      (let ((eligibility-index (-> self index)))
+                                        (cond
+                                          ((zero? eligibility-index)
+                                           (and (>= (-> *game-info* fuel) 20.0)
+                                                (not (task-closed? (game-task firecanyon-assistant) (task-status need-reward-speech)))))
+                                          ((= eligibility-index 2) (not (task-closed? (game-task village2-levitator) (task-status need-hint))))
+                                          ((= eligibility-index 3) (not (task-closed? (game-task village3-button) (task-status need-hint))))
+                                          (else #t)))))))
+          (when should-play?
             (case (-> self index)
               ((2 3)
-               (until v1-18
+               (until left-range?
                  (suspend)
-                 (set! v1-18
+                 (set! left-range?
                        (or (not *target*)
                            (< (-> self range) (vector-vector-distance (-> self root-override trans) (-> *target* control trans))))))
-               (let* ((v1-23 (-> self index))
-                      (v1-24 (cond
-                               ((= v1-23 2) (not (task-closed? (game-task village2-levitator) (task-status need-hint))))
-                               ((= v1-23 3) (not (task-closed? (game-task village3-button) (task-status need-hint)))))))
-                 (when (not v1-24)
-                   (process-entity-status! self (entity-perm-status bit-3) #f)
+               (let* ((recheck-index (-> self index))
+                      (still-needed? (cond
+                                       ((= recheck-index 2) (not (task-closed? (game-task village2-levitator) (task-status need-hint))))
+                                       ((= recheck-index 3) (not (task-closed? (game-task village3-button) (task-status need-hint)))))))
+                 (when (not still-needed?)
+                   (process-entity-status! self (entity-perm-status no-kill) #f)
                    (process-entity-status! self (entity-perm-status dead) #t)
                    (deactivate self)))))
             (while (and *target*
                         (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                        (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf))))
+                        (not (logtest? (-> *target* control status) (collide-status on-surface))))
               (suspend))
             (set-time! (-> self state-time))
             (process-grab? *target*)
-            (process-entity-status! self (entity-perm-status bit-3) #t)
+            (process-entity-status! self (entity-perm-status no-kill) #t)
             (kill-current-level-hint '(ambient) '() 'exit)
             (until (not (or (-> *setting-control* current talking)
                             (or (-> *setting-control* current spooling)
@@ -524,11 +575,11 @@
                                 (not *target*)
                                 (logtest? (-> *target* state-flags) (state-flags being-attacked dying)))))
               (set-setting! 'allow-progress #f 0.0 0)
-              (let* ((a0-25 *setting-control*)
-                     (t9-14 (method-of-object a0-25 set-setting))
-                     (a2-5 'movie)
-                     (a3-1 (process->ppointer self)))
-                (t9-14 a0-25 self a2-5 a3-1 0.0 0))
+              (let* ((settings *setting-control*)
+                     (set-setting-method (method-of-object settings set-setting))
+                     (setting-name 'movie)
+                     (setting-owner (process->ppointer self)))
+                (set-setting-method settings self setting-name setting-owner 0.0 0))
               (apply-settings *setting-control*)
               (while (or (-> *setting-control* current talking)
                          (-> *setting-control* current spooling)
@@ -548,14 +599,14 @@
               (apply-settings *setting-control*)
               (suspend)
               (suspend))
-            (let ((v1-79 (-> self index)))
+            (let ((sequence-index (-> self index)))
               (cond
-                ((zero? v1-79)
-                 (let ((gp-0 (-> self entity extra perm)))
-                   (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
-                   (let ((v1-84 (-> gp-0 user-uint8 0)))
+                ((zero? sequence-index)
+                 (let ((sequence-perm (-> self entity extra perm)))
+                   (logior! (-> sequence-perm status) (entity-perm-status user-set-from-cstage))
+                   (let ((visit-count (-> sequence-perm user-uint8 0)))
                      (cond
-                       ((zero? v1-84)
+                       ((zero? visit-count)
                         (level-hint-spawn (text-id village1cam-enough-cells) "asstvb04" (the-as entity #f) *entity-pool* (game-task none))
                         (process-spawn pov-camera
                                        (-> self entity extra trans)
@@ -575,7 +626,7 @@
                                         (0 alive "money-2678"))
                                        :to
                                        self))
-                       ((= v1-84 1)
+                       ((= visit-count 1)
                         (level-hint-spawn (text-id village1cam-enough-cells2) "asstvb08" (the-as entity #f) *entity-pool* (game-task none))
                         (process-spawn pov-camera
                                        (-> self entity extra trans)
@@ -595,41 +646,42 @@
                                         (0 alive "money-2678"))
                                        :to
                                        self))))
-                   (set! (-> gp-0 user-int8 0) (seekl (the-as int (-> gp-0 user-uint8 0)) 255 1))))
-                ((= v1-79 1))
-                ((= v1-79 2)
+                   (set! (-> sequence-perm user-int8 0) (seekl (the-as int (-> sequence-perm user-uint8 0)) 255 1))))
+                ((= sequence-index 1))
+                ((= sequence-index 2)
                  (when (not (task-closed? (game-task village2-levitator) (task-status need-hint)))
                    (level-hint-spawn (text-id village2-button-reminder2) "asstvb29" (the-as entity #f) *entity-pool* (game-task none))
                    (process-spawn pov-camera (-> self entity extra trans) *village-cam-sg* "vi2-button-cam" 0 #f '() :to self)))
-                ((= v1-79 3)
+                ((= sequence-index 3)
                  (when (not (task-closed? (game-task village3-button) (task-status need-hint)))
                    (level-hint-spawn (text-id village2-button-reminder3) "asstvb30" (the-as entity #f) *entity-pool* (game-task none))
                    (process-spawn pov-camera (-> self entity extra trans) *village-cam-sg* "vi3-button-cam" 0 #f '() :to self)))))
             (while (-> self child)
               (suspend))
-            (let ((a0-66 (-> self entity)))
-              (if (when a0-66
-                    (let ((a0-67 (-> a0-66 extra perm task))) (if a0-67 (= a0-67 (game-task none)))))
+            (let ((source-entity (-> self entity)))
+              (if (when source-entity
+                    (let ((source-task (-> source-entity extra perm task))) (if source-task (= source-task (game-task none)))))
                 (set! (-> self entity extra perm task) (game-task complete))))
             (when (zero? (-> self index))
-              (let ((a0-70 (-> self entity extra perm)))
-                (when (= (-> a0-70 user-uint8 0) 1)
+              (let ((source-perm (-> self entity extra perm)))
+                (when (= (-> source-perm user-uint8 0) 1)
                   (remove-setting! 'allow-progress)
                   (suspend-for (seconds 300))
                   (go-virtual idle))))
-            (process-entity-status! self (entity-perm-status bit-3) #f)
+            (process-entity-status! self (entity-perm-status no-kill) #f)
             (process-entity-status! self (entity-perm-status dead) #t)
             (deactivate self)))
         (suspend))))
 
-(defmethod init-from-entity! ((this village-cam) (arg0 entity-actor))
-  "Copy defaults from the entity."
+(defmethod init-from-entity! ((this village-cam) (source-entity entity-actor))
+  "Copy the trigger transform, activation range, and sequence index from the entity, make the
+   process pause with actors, and enter the hint-camera state."
   (logior! (-> this mask) (process-mask actor-pause))
   (set! (-> this root-override) (new 'process 'trsq))
-  (set! (-> this root-override trans quad) (-> arg0 extra trans quad))
-  (quaternion-copy! (-> this root-override quat) (-> arg0 quat))
+  (vector-copy! (-> this root-override trans) (-> source-entity extra trans))
+  (quaternion-copy! (-> this root-override quat) (-> source-entity quat))
   (vector-identity! (-> this root-override scale))
-  (set! (-> this range) (res-lump-float arg0 'cam-notice-dist :default 81920.0))
-  (set! (-> this index) (res-lump-value arg0 'index int))
+  (set! (-> this range) (res-lump-float source-entity 'cam-notice-dist :default 81920.0))
+  (set! (-> this index) (res-lump-value source-entity 'index int))
   (go (method-of-object this idle))
   (none))

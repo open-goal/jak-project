@@ -4,15 +4,16 @@
 (require "kernel/gkernel-h.gc")
 (require "engine/engine/connect.gc")
 
-;; The settings system manages the state of settings like volume, language, and some other game state.
-;; There are two special features of settings:
-;; - To avoid changing a setting and forgetting to restore it, all changes must have an associated process. When that process dies, the settings is reverted.
-;; - If there are no processes trying to set a setting, it will go to a "default" setting.
-;; - We must catch the actual changing of settings once per frame, and possibly call functions for certains settings.
+;; The settings system manages global presentation and game-state overrides.
+;; Every request belongs to a process through a connection, so destroying the
+;; process automatically withdraws the request. Each frame starts with the
+;; defaults, resolves live requests from oldest to newest, and applies changes
+;; that need side effects or gradual transitions.
 
 ;; DECOMP BEGINS
 
-;; The full setting state.
+;; One complete resolved settings snapshot. Several fields are process pointers
+;; so other systems can identify which process currently owns an activity.
 (deftype setting-data (structure)
   ((border-mode          symbol)
    (sfx-volume           float)
@@ -32,6 +33,8 @@
    (ambient              (pointer process))
    (video-mode           symbol)
    (aspect-ratio         symbol)
+   ;; A requested music-flava event until settings update resolves it to the
+   ;; active music bank's concrete variation number.
    (sound-flava          uint8)
    (auto-save            symbol)
    (music-volume-movie   float)
@@ -56,9 +59,11 @@
    (update-from-engine (_type_ engine) setting-data)))
 
 ;; There are three copies of setting data:
-;;  - default - if nothing is requesting a setting to be set, you end up with this value.
-;;  - target  - the default settings, plus the changes from all processes
-;;  - current - the actual settings. gets set to target on each frame.
+;; - default is the base state used when no process requests an override.
+;; - target is rebuilt from default plus every live request.
+;; - current is the state already applied to the game. Cheap fields are copied
+;;   immediately; volumes, display mode, language, and other side effects are
+;;   reconciled by the per-frame update.
 
 ;; The setting-control manages the current/target/default system.
 ;; The setting requests are managed by the engine.
@@ -76,83 +81,28 @@
    (update (_type_) setting-data)))
 
 (defmethod new setting-control ((allocation symbol) (type-to-make type) (max-connections int))
-  "Allocate a new setting-control and its engine"
-  (let ((s4-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> s4-0 engine) ((method-of-type engine new) allocation engine 'setting-control max-connections))
-    s4-0))
+  "Allocate a setting controller with room for max-connections process-owned requests."
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this engine) ((method-of-type engine new) allocation engine 'setting-control max-connections))
+    this))
 
-(defmacro setting-control-func! (func s &rest args)
-  (let ((argb #f)
-        (argi 0)
-        (argf 0.0)
-        (setting (car s)))
-    (cond
-      ;; ((or (eq? setting 'border-mode)
-      ;;      (eq? setting 'allow-look-around)
-      ;;      (eq? setting 'ocean-off)
-      ;;      (eq? setting 'music)
-      ;;      (eq? setting 'vibration)
-      ;;      (eq? setting 'auto-save)
-      ;;      (eq? setting 'allow-pause)
-      ;;      (eq? setting 'allow-progress)
-      ;;      (eq? setting 'play-hints)
-      ;;      (eq? setting 'movie)
-      ;;      (eq? setting 'talking)
-      ;;      (eq? setting 'spooling)
-      ;;      (eq? setting 'hint)
-      ;;      (eq? setting 'ambient)
-      ;;      )
-      ;;   (set! argb (car args))
-      ;;   )
-      ;; ((or (eq? setting 'bg-r)
-      ;;      (eq? setting 'bg-g)
-      ;;      (eq? setting 'bg-b)
-      ;;      (eq? setting 'bg-a)
-      ;;      (eq? setting 'bg-a-speed)
-      ;;      (eq? setting 'bg-a-force)
-      ;;      )
-      ;;   (set! argf (car args))
-      ;;   )
-      ;; ((or (eq? setting 'language)
-      ;;      )
-      ;;   (set! argi (car args))
-      ;;   )
-      ;; ((or (eq? setting 'sound-flava)
-      ;;      )
-      ;;   (set! argi (car args))
-      ;;   (set! argf (cadr args))
-      ;;   )
-      ;; ((or (eq? setting 'process-mask)
-      ;;      (eq? setting 'common-page)
-      ;;      )
-      ;;   (set! argb (car args))
-      ;;   (set! argi (cadr args))
-      ;;   )
-      ;; ((or (eq? setting 'sfx-volume)
-      ;;      (eq? setting 'music-volume)
-      ;;      (eq? setting 'ambient-volume)
-      ;;      (eq? setting 'dialog-volume)
-      ;;      (eq? setting 'sfx-volume-movie)
-      ;;      (eq? setting 'music-volume-movie)
-      ;;      (eq? setting 'ambient-volume-movie)
-      ;;      (eq? setting 'dialog-volume-hint)
-      ;;      )
-      ;;   (set! argb (car args))
-      ;;   (set! argf (cadr args))
-      ;;   )
-      (#t (set! argb (car args)) (set! argf (cadr args)) (set! argi (caddr args))))
-    `(,func *setting-control* (with-pp pp) ,s ,argb ,argf ,argi)))
+;; The three request arguments occupy connection param1 through param3. Their
+;; meanings depend on the setting: for example, volume requests use mode and
+;; float value, while process masks use mode and integer bits.
+(defmacro setting-control-func! (func setting-name &rest request-args)
+  `(,func *setting-control* (with-pp pp) ,setting-name ,(car request-args) ,(cadr request-args) ,(caddr request-args)))
 
-(defmacro add-setting! (s &rest args)
-  `(setting-control-func! add-setting ,s ,@args))
+(defmacro add-setting! (setting-name &rest request-args)
+  `(setting-control-func! add-setting ,setting-name ,@request-args))
 
-(defmacro set-setting! (s &rest args)
-  `(setting-control-func! set-setting ,s ,@args))
+(defmacro set-setting! (setting-name &rest request-args)
+  `(setting-control-func! set-setting ,setting-name ,@request-args))
 
-(defmacro remove-setting! (s)
-  `(remove-setting *setting-control* (with-pp pp) ,s))
+(defmacro remove-setting! (setting-name)
+  `(remove-setting *setting-control* (with-pp pp) ,setting-name))
 
-;; used for memory card time information
+;; Raw system-clock result used for save metadata. The clock stores its time and
+;; date digits in packed BCD; stat reports whether the read succeeded.
 (deftype scf-time (structure)
   ((stat   uint8)
    (second uint8)

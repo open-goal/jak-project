@@ -230,6 +230,19 @@ bool form_contains_node_that_prevents_inlining(const FormatterTreeNode& curr_nod
   return false;
 }
 
+bool body_exceeds_inline_width_limit(const FormatterTreeNode& curr_node) {
+  const auto& config = curr_node.formatting_config;
+  if (!config.inline_body_width_limit) {
+    return false;
+  }
+  for (int i = config.inline_body_start_index; i < (int)curr_node.refs.size(); ++i) {
+    if (get_total_form_inlined_width(curr_node.refs.at(i)) > *config.inline_body_width_limit) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
   using namespace formatter_rules;
   if (curr_node.formatting_config.force_inline) {
@@ -246,6 +259,9 @@ bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
   // If the config explicitly prevents inlining, or it contains a sub-node that prevents inlining
   if (curr_node.formatting_config.prevent_inlining ||
       form_contains_node_that_prevents_inlining(curr_node)) {
+    return false;
+  }
+  if (body_exceeds_inline_width_limit(curr_node)) {
     return false;
   }
   // nor can we inline something that contains a comment in the middle
@@ -381,13 +397,17 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   // TODO there is a hack here so that multi-line forms that are consolidated still line up properly
   // i have to make consolidate a more first-class feature of the config
   // TODO - hacky, but prevents a bad situation, clean up
-  if (curr_node.formatting_config.inline_until_index(form_lines) &&
-      !str_util::contains(form_lines.at(0), ";")) {
+  auto inline_until_index = curr_node.formatting_config.inline_until_index(form_lines);
+  if (inline_until_index && body_exceeds_inline_width_limit(curr_node)) {
+    inline_until_index =
+        std::min(*inline_until_index, curr_node.formatting_config.inline_body_start_index);
+  }
+  if (inline_until_index && !str_util::contains(form_lines.at(0), ";")) {
     std::vector<std::string> new_form_lines = {};
     const auto original_form_head_width = str_util::split(form_lines.at(0), '\n').at(0).length();
     bool consolidating_lines = true;
     for (int i = 0; i < (int)form_lines.size(); i++) {
-      if (i < curr_node.formatting_config.inline_until_index(form_lines)) {
+      if (i < *inline_until_index) {
         if (new_form_lines.empty()) {
           new_form_lines.push_back(form_lines.at(i));
         } else {

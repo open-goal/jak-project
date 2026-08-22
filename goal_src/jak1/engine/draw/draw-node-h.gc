@@ -5,30 +5,41 @@
 
 ;; DECOMP BEGINS
 
-;; A "draw-node" is a way to group together a bunch of drawables (possibly other draw-nodes) in a BVH
-;; This BVH is used for sphere-in-view culling and the broad phase collision detection.
-;; _most_ uses of draw-node are in a special tree with these properties:
-;; - between 1 and 8 roots.
-;; - each child has between 1 and 8 children
-;; - all leaves are stored at the same depth
-;; - all nodes and leaves have visibility IDs
+;; Node in a bounding-volume hierarchy used for view-frustum culling and
+;; broad-phase collision. Child points directly at the first element of a
+;; contiguous drawable span, not at a drawable-inline-array wrapper; child-count
+;; supplies the span length. Depending on flags, the span contains more
+;; draw-nodes or renderer-specific leaves.
+;; Typically child and child-count represent a small section of a much larger
+;; array. Some renderers will have a large array of all nodes of a given depth,
+;; others may have arbitrary tree structures.
+;;
+;; Most terrain and collision trees have one to eight roots, one to eight
+;; children per node, equal-depth leaves, and visibility IDs on nodes and leaves.
+;; Shrub permits arbitrary child counts and leaf depths and does not use
+;; visibility IDs.
 
-;; shrub does not have these properties - it supports arbitrary children counts, leaves
-;; may occur at any depth, and nothing has visibility ids.
+(defenum draw-node-flags
+  :type uint8
+  :bitfield #t
+  ;; child points to another contiguous draw-node span instead of renderer leaves.
+  (children-are-draw-nodes 0))
 
 (deftype draw-node (drawable)
   ((child-count uint8 :offset 6)
-   (flags       uint8 :offset 7)
+   (flags       draw-node-flags :offset 7)
    (child       drawable :offset 8)
    (distance    float :offset 12)))
 
-;; for non-shrub uses of draw-node, this is used to store all the draw-nodes at a given depth.
+;; Top-level container for one depth of a non-shrub draw-node hierarchy.
 (deftype drawable-inline-array-node (drawable-inline-array)
   ((data draw-node 1 :inline)
    (pad  uint32)))
 
-;; the types of these fields are a guess for now.
-;; used for draw-node-cull function
+;; Ping-pong scratchpad input banks for draw-node-cull. The culler copies nodes
+;; in bulk and alternates between the two 32-node banks while walking a level.
+;; Shrub's unrestricted tree layout is handled separately and cannot use this
+;; fixed-bank traversal.
 (deftype draw-node-dma (structure)
   ((banka draw-node 32 :inline)
    (bankb draw-node 32 :inline)))

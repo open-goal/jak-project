@@ -6,52 +6,2097 @@
 (require "engine/gfx/math-camera-h.gc")
 (require "engine/gfx/hw/gs.gc")
 
-;; The "near" version of TIE.
-;; This correctly handles scissoring triangles.
-;; Like tfrag near, we plan to not port this because it's complicated, and instead let opengl do
-;; the hard work for us.
-
-;; This isn't super well documented or even complete, see tie.gc.
+;; TIE near -- the version of TIE for geometry close enough to touch the camera.
+;;
+;; Ordinary TIE is allowed to be careless about the view volume: it either rejects a fragment
+;; outright or projects it and lets the GS scissor the result. That stops working the moment a
+;; triangle straddles the camera plane, because dividing by a w near zero throws coordinates off to
+;; infinity and the GS has no way to recover. So the instance pass hands anything that comes near the
+;; guard volume to this renderer instead, which keeps positions homogeneous long enough to clip them
+;; properly.
+;;
+;; The fast path is unchanged: whole triangles inside the guard volume go through the same four-wide
+;; strip pipeline as ordinary TIE. Only the awkward ones are expensive. A triangle sharing an outside
+;; plane with all three vertices is thrown away; a triangle that actually crosses is copied into the
+;; work area and run through six Sutherland-Hodgman passes -- plus and minus x, y, z -- then emitted
+;; as a triangle fan. Every vertex generated on the way interpolates homogeneous position, packed
+;; color, and STQ with the same edge parameter, so the new edges match the old ones exactly.
+;;
+;; The clipper is written as one polygon loop plus six two-instruction subroutines, one per plane,
+;; whose addresses are installed into the plane records by entry 8. That is why the plane records have
+;; a code pointer in them.
+;;
+;; On PC the graphics API clips primitives itself, so the port keeps this renderer disabled and lets
+;; ordinary TIE draw everything.
 
 ;; DECOMP BEGINS
 
-;; uploaded to VU1 once per frame.
+;; The eleven constant quadwords uploaded to VU1 966 through 976. Declaration order is upload order,
+;; so each field's index below is its VU address minus 966.
 (deftype tie-near-consts (structure)
-  ((extra     qword :inline)
-   (gifbufs   qword :inline)
-   (clrbufs   qword :inline)
-   (adgif     gs-gif-tag :inline)
-   (strgif    gs-gif-tag :inline)
-   (fangif    gs-gif-tag :inline)
-   (hvdfoffs  vector :inline)
-   (invhscale vector :inline)
-   (guard     vector :inline)
+  ((extra     qword :inline) ;; x,z: sum of the three GIF bank addresses
+   (gifbufs   qword :inline) ;; the two GIF banks this fragment owns
+   (clrbufs   qword :inline) ;; the two instance-record input banks
+   (adgif     gs-gif-tag :inline) ;; five-register A+D tag for a shader
+   (strgif    gs-gif-tag :inline) ;; tag for an unclipped triangle strip
+   (fangif    gs-gif-tag :inline) ;; tag for a clipped triangle fan; selected by index off strgif
+   (hvdfoffs  vector :inline) ;; screen-space offset added after perspective divide
+   (invhscale vector :inline) ;; undoes the homogeneous clip scale once a vertex survives
+   (guard     vector :inline) ;; guard-volume half-extents used to widen the clip planes
    (atest     ad-cmd 2 :inline)
-   (atest-tra ad-cmd :inline :overlay-at (-> atest 0))
-   (atest-def ad-cmd :inline :overlay-at (-> atest 1))))
+   (atest-tra ad-cmd :inline :overlay-at (-> atest 0)) ;; alpha-tested translucent pass
+   (atest-def ad-cmd :inline :overlay-at (-> atest 1)))) ;; ordinary opaque pass
 
-;; the actual program.
-(define tie-near-vu1-block (new 'static 'vu-function :length #x6f8 :qlength #x37c))
+;; The near path shares TIE's VU memory map up to the palette; from 966 it diverges.
+;;
+;;   966 - 976   tie-near-consts
+;;   977 - 1017  six seven-quadword clipping-plane slots
+;;  1019 - 1022  deferred-edge stack for the polygon walk
+;;      1023     saved pipeline state for resuming an interrupted strip
+(defconstant TIE-NEAR-VU-PALETTE-BASE 838)
 
-(defun tie-near-init-consts ((arg0 tie-near-consts) (arg1 int))
-  "Initialize tie near constant data."
-  (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
-  (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  (set! (-> arg0 atest-tra cmds) (the-as uint 71))
-  (set! (-> arg0 atest-tra data) (the-as uint #x5026b))
-  (set! (-> arg0 atest-def cmds) (the-as uint 71))
-  (set! (-> arg0 atest-def data) (the-as uint #x5000e))
+;; tie-near-consts is uploaded as one eleven-quadword block and its field order is its upload order, so
+;; the addresses come from the type instead of eleven hand-written constants that could drift from it.
+(defconstant TIE-NEAR-VU-CONSTS 966)
+
+(defmacro tie-near-const (&rest path)
+  `(+ TIE-NEAR-VU-CONSTS (/ (offset-of tie-near-consts ,@path) 16)))
+
+;; One clipping-plane record, seven quadwords: the first vertex of the output polygon, the current
+;; vertex, the address of that plane's signed-distance subroutine, and room for the generated
+;; boundary vertices. The six records are contiguous so the polygon loop can walk them with one
+;; stride, and entry 8 clears them and installs the six subroutine addresses.
+(defconstant TIE-NEAR-VU-CLIP-PLANE-X-POS 977)
+
+(defconstant TIE-NEAR-VU-CLIP-PLANE-X-NEG 984)
+
+(defconstant TIE-NEAR-VU-CLIP-PLANE-Y-POS 991)
+
+(defconstant TIE-NEAR-VU-CLIP-PLANE-Y-NEG 998)
+
+(defconstant TIE-NEAR-VU-CLIP-PLANE-Z-POS 1005)
+
+(defconstant TIE-NEAR-VU-CLIP-PLANE-Z-NEG 1012)
+
+;; Edges whose far end has to wait until the near end is emitted are pushed here. The pop form
+;; addresses the stack one entry low so the index decrement comes for free.
+(defconstant TIE-NEAR-VU-EDGE-STACK 1019)
+
+(defconstant TIE-NEAR-VU-EDGE-STACK-POP 1018)
+
+;; Where the strip pipeline parks its phase before diving into the clipper, so a crossing triangle in
+;; the middle of a four-vertex group can be handled and the group resumed exactly where it stopped.
+(defconstant TIE-NEAR-VU-CLIP-STATE 1023)
+
+;; Entry points match ordinary TIE so the two renderers can share the prototype packet builder:
+;; 0 render an instance stream, 2 finish and kick the current GIF bank, 4 empty (wait for the
+;; previous invocation), 6 install a fragment's templates, 8 initialize the persistent buffers --
+;; and, unique to this program, clear the six clipping-plane records and install their
+;; signed-distance subroutine addresses.
+(#when PC_PORT
+  (define tie-near-vu1-block (new 'static 'vu-function :length 0 :qlength 0)))
+
+(#unless PC_PORT
+  (defvu1 tie-near-vu1-block
+          ;; Registers are named in two groups, because this program is really two programs sharing a
+          ;; register file: the four-wide strip pipeline it inherits from ordinary TIE, and the polygon
+          ;; clipper. The two do not agree about anything except the three persistent buffer registers,
+          ;; so a single name per register would be wrong half the time and everything else keeps its
+          ;; physical spelling.
+          ;;
+          ;; tie-near-float-reg and tie-near-int-reg below are the tables the program was written
+          ;; against and are the source of invh and hvdfnc, but they have drifted: they describe the
+          ;; clipper, where the strip pipeline has vf15 as a palette color and vf27/vf28 as GIF tags.
+          (rlet ((gifbuf :reg vf21) ;; biased addresses of the two GIF banks this fragment owns
+                 (clrbuf :reg vf22) ;; alternating instance-record input-bank addresses
+                 (extra :reg vf23) ;; sum of the three GIF addresses, plus saved output cursors
+                 ;; The polygon clipper, from setup-polygon-clip to the end of the program. Derived from
+                 ;; interpolate-clip-vertex and the six distance subroutines rather than from the table.
+                 (edge-p0 :reg vf18) ;; homogeneous position of the edge's first vertex
+                 (edge-p1 :reg vf19) ;; and of its second
+                 (edge-clr0 :reg vf27) ;; packed color of each endpoint
+                 (edge-clr1 :reg vf28)
+                 (edge-stq0 :reg vf24) ;; xyz: texture STQ. w: signed distance to the plane being clipped
+                 (edge-stq1 :reg vf25) ;; the same, except w is overwritten with d0 - d1 for the divide
+                 (new-p :reg vf20) ;; the boundary vertex this edge generates
+                 (new-clr :reg vf29)
+                 (new-stq :reg vf26)
+                 (invh :reg vf14) ;; inverse homogeneous scale, undone once a vertex survives clipping
+                 (hvdfnc :reg vf16) ;; screen-space offset added after the perspective divide
+                 )
+          (vu-pair (b render-basic-stream) (nop)) ;; #x000
+          (vu-pair (mr32.xyzw gifbuf gifbuf) (nop)) ;; #x001
+          (vu-pair (b finish-current-gif-buffer) (nop)) ;; #x002
+          (vu-pair (nop) (nop)) ;; #x003
+          (vu-pair (nop) (nop :e)) ;; #x004
+          (vu-pair (nop) (nop)) ;; #x005
+          (vu-pair (b initialize-fragment-templates) (nop)) ;; #x006
+          (vu-pair (iaddi vi02 vi00 0x0) (subx.xz gifbuf extra gifbuf)) ;; #x007
+          (vu-pair (b initialize-near-state) (nop)) ;; #x008
+          (vu-pair (nop) (nop)) ;; #x009
+          (label initialize-near-state)
+          ;; Entry 8's own work, on top of the persistent buffer registers: clear the six clipping-plane
+          ;; slots and install each plane's signed-distance subroutine address into the z lane of its
+          ;; slot's header. One polygon loop then serves all six planes by calling through that lane, which
+          ;; is why the addresses have to be materialized as immediates here.
+          ;;
+          ;; A slot is seven quadwords. Header lane roles, from the walk in close-polygon:
+          ;;
+          ;;     +0  x: address of the last vertex this plane emitted
+          ;;         y: address of the first, so the loop can close the polygon back onto it
+          ;;         z: this plane's signed-distance subroutine
+          ;;     +1 .. +3   first vertex generated at this plane: position, color, STQ
+          ;;     +4 .. +6   second, when one edge produces two
+          (vu-pair (lq.xyzw gifbuf vi00 (tie-near-const gifbufs)) (nop)) ;; #x00a
+          (vu-pair (lq.xz extra vi00 (tie-near-const extra)) (nop)) ;; #x00b
+          (vu-pair (lq.xyzw clrbuf vi00 (tie-near-const clrbufs)) (nop)) ;; #x00c
+          (vu-pair (sq.xyzw vf00 vi00 TIE-NEAR-VU-CLIP-PLANE-X-POS) (nop)) ;; #x00d
+          (vu-pair (sq.xyzw vf00 vi00 TIE-NEAR-VU-CLIP-PLANE-X-NEG) (nop)) ;; #x00e
+          (vu-pair (sq.xyzw vf00 vi00 TIE-NEAR-VU-CLIP-PLANE-Y-POS) (nop)) ;; #x00f
+          (vu-pair (sq.xyzw vf00 vi00 TIE-NEAR-VU-CLIP-PLANE-Y-NEG) (nop)) ;; #x010
+          (vu-pair (sq.xyzw vf00 vi00 TIE-NEAR-VU-CLIP-PLANE-Z-POS) (nop)) ;; #x011
+          (vu-pair (sq.xyzw vf00 vi00 TIE-NEAR-VU-CLIP-PLANE-Z-NEG) (nop)) ;; #x012
+          (vu-pair (iaddiu vi01 vi00 (vu-label positive-x-distance)) (nop)) ;; #x013
+          (vu-pair (isw.z vi01 vi00 TIE-NEAR-VU-CLIP-PLANE-X-POS) (nop)) ;; #x014
+          (vu-pair (iaddiu vi01 vi00 (vu-label negative-x-distance)) (nop)) ;; #x015
+          (vu-pair (isw.z vi01 vi00 TIE-NEAR-VU-CLIP-PLANE-X-NEG) (nop)) ;; #x016
+          (vu-pair (iaddiu vi01 vi00 (vu-label positive-y-distance)) (nop)) ;; #x017
+          (vu-pair (isw.z vi01 vi00 TIE-NEAR-VU-CLIP-PLANE-Y-POS) (nop)) ;; #x018
+          (vu-pair (iaddiu vi01 vi00 (vu-label negative-y-distance)) (nop)) ;; #x019
+          (vu-pair (isw.z vi01 vi00 TIE-NEAR-VU-CLIP-PLANE-Y-NEG) (nop)) ;; #x01a
+          (vu-pair (iaddiu vi01 vi00 (vu-label positive-z-distance)) (nop)) ;; #x01b
+          (vu-pair (isw.z vi01 vi00 TIE-NEAR-VU-CLIP-PLANE-Z-POS) (nop)) ;; #x01c
+          (vu-pair (iaddiu vi01 vi00 (vu-label negative-z-distance)) (nop :e)) ;; #x01d
+          (vu-pair (isw.z vi01 vi00 TIE-NEAR-VU-CLIP-PLANE-Z-NEG) (nop)) ;; #x01e
+          (label initialize-fragment-templates)
+          (vu-pair (lq.xyz vf01 vi00 (tie-near-const adgif)) (nop)) ;; #x01f
+          (vu-pair (ilwr.w vi04 vi02) (nop)) ;; #x020
+          (vu-pair (ilw.w vi09 vi02 1) (nop)) ;; #x021
+          (vu-pair (mtir vi06 gifbuf.y) (nop)) ;; #x022
+          (vu-pair (lqi.xyzw vf02 vi02) (suby.xz gifbuf gifbuf gifbuf)) ;; #x023
+          (vu-pair (lqi.xyzw vf03 vi02) (nop)) ;; #x024
+          (vu-pair (lqi.xyzw vf04 vi02) (nop)) ;; #x025
+          (vu-pair (lqi.xyzw vf05 vi02) (nop)) ;; #x026
+          (vu-pair (mtir vi05 gifbuf.x) (nop)) ;; #x027
+          (vu-pair (lqi.xyzw vf06 vi02) (subw.w vf01 vf01 vf01)) ;; #x028
+          (label copy-adgif-templates)
+          (vu-pair (iadd vi03 vi04 vi05) (nop)) ;; #x029
+          (vu-pair (iadd vi04 vi04 vi06) (nop)) ;; #x02a
+          (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x02b
+          (vu-pair (sqi.xyzw vf01 vi03) (nop)) ;; #x02c
+          (vu-pair (sqi.xyzw vf02 vi03) (nop)) ;; #x02d
+          (vu-pair (sqi.xyzw vf03 vi03) (nop)) ;; #x02e
+          (vu-pair (sqi.xyzw vf04 vi03) (nop)) ;; #x02f
+          (vu-pair (sqi.xyzw vf05 vi03) (nop)) ;; #x030
+          (vu-pair (sqi.xyzw vf06 vi03) (nop)) ;; #x031
+          (vu-pair (sqi.xyzw vf01 vi04) (nop)) ;; #x032
+          (vu-pair (sqi.xyzw vf02 vi04) (nop)) ;; #x033
+          (vu-pair (sqi.xyzw vf03 vi04) (nop)) ;; #x034
+          (vu-pair (sqi.xyzw vf04 vi04) (nop)) ;; #x035
+          (vu-pair (sqi.xyzw vf05 vi04) (nop)) ;; #x036
+          (vu-pair (sqi.xyzw vf06 vi04) (nop)) ;; #x037
+          (vu-pair (ilwr.w vi04 vi02) (nop)) ;; #x038
+          (vu-pair (lqi.xyzw vf02 vi02) (nop)) ;; #x039
+          (vu-pair (lqi.xyzw vf03 vi02) (nop)) ;; #x03a
+          (vu-pair (lqi.xyzw vf04 vi02) (nop)) ;; #x03b
+          (vu-pair (lqi.xyzw vf05 vi02) (nop)) ;; #x03c
+          (vu-pair (ibgtz vi09 copy-adgif-templates) (nop)) ;; #x03d
+          (vu-pair (lqi.xyzw vf06 vi02) (nop)) ;; #x03e
+          (vu-pair (mtir vi09 vf02.w) (nop)) ;; #x03f
+          (vu-pair (iaddi vi02 vi02 -0x2) (subw.w vf07 vf07 vf07)) ;; #x040
+          (vu-pair (ilwr.x vi07 vi02) (nop)) ;; #x041
+          (vu-pair (ilwr.y vi08 vi02) (nop)) ;; #x042
+          (vu-pair (ilwr.z vi04 vi02) (nop)) ;; #x043
+          (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x044
+          (vu-pair (iaddi vi02 vi02 0x1) (nop)) ;; #x045
+          (vu-pair (ibeq vi00 vi09 finish-template-copy) (nop)) ;; #x046
+          (vu-pair (lq.xyz vf07 vi08 (tie-near-const strgif)) (nop)) ;; #x047
+          (label copy-strip-templates)
+          (vu-pair (iadd vi03 vi04 vi05) (nop)) ;; #x048
+          (vu-pair (iadd vi04 vi04 vi06) (nop)) ;; #x049
+          (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x04a
+          (vu-pair (sq.xyzw vf07 vi03 0) (nop)) ;; #x04b
+          (vu-pair (iswr.x vi07 vi03) (nop)) ;; #x04c
+          (vu-pair (sq.xyzw vf07 vi04 0) (nop)) ;; #x04d
+          (vu-pair (iswr.x vi07 vi04) (nop)) ;; #x04e
+          (vu-pair (ilwr.x vi07 vi02) (nop)) ;; #x04f
+          (vu-pair (ilwr.y vi08 vi02) (nop)) ;; #x050
+          (vu-pair (ilwr.z vi04 vi02) (nop)) ;; #x051
+          (vu-pair (iaddi vi02 vi02 0x1) (nop)) ;; #x052
+          (vu-pair (ibne vi00 vi09 copy-strip-templates) (nop)) ;; #x053
+          (vu-pair (lq.xyz vf07 vi08 (tie-near-const strgif)) (nop)) ;; #x054
+          (label finish-template-copy)
+          (vu-pair (iaddiu vi07 vi07 0x4000) (nop)) ;; #x055
+          (vu-pair (iaddiu vi07 vi07 0x4000) (nop)) ;; #x056
+          (vu-pair (iadd vi03 vi04 vi05) (nop)) ;; #x057
+          (vu-pair (iadd vi04 vi04 vi06) (nop)) ;; #x058
+          (vu-pair (sq.xyzw vf07 vi03 0) (nop)) ;; #x059
+          (vu-pair (iswr.x vi07 vi03) (nop)) ;; #x05a
+          (vu-pair (sq.xyzw vf07 vi04 0) (nop)) ;; #x05b
+          (vu-pair (iswr.x vi07 vi04) (nop)) ;; #x05c
+          (vu-pair (mtir vi12 vf04.x) (nop)) ;; #x05d
+          (vu-pair (mtir vi13 vf04.y) (nop)) ;; #x05e
+          (vu-pair (iaddiu vi11 vi00 0x32) (nop)) ;; #x05f
+          (vu-pair (64.0) (nop :i)) ;; #x060
+          (vu-pair (iaddiu vi12 vi12 0x32) (nop)) ;; #x061
+          (vu-pair (lqi.xyzw vf06 vi11) (nop)) ;; #x062
+          (vu-pair (lqi.xyzw vf12 vi11) (nop)) ;; #x063
+          (vu-pair (nop) (nop)) ;; #x064
+          (vu-pair (nop) (nop)) ;; #x065
+          (vu-pair (nop) (itof0.xyzw vf06 vf06)) ;; #x066
+          (vu-pair (lqi.xyzw vf07 vi11) (itof12.xyz vf12 vf12)) ;; #x067
+          (vu-pair (lqi.xyzw vf13 vi11) (itof0.w vf12 vf12)) ;; #x068
+          (vu-pair (nop) (nop)) ;; #x069
+          (vu-pair (ibeq vi12 vi11 prepare-instance-stream) (muli.xyz vf06 vf06 I)) ;; #x06a
+          (vu-pair (nop) (itof0.xyzw vf07 vf07)) ;; #x06b
+          (label convert-packed-control-points)
+          (vu-pair (lqi.xyzw vf08 vi11) (itof12.xyz vf13 vf13)) ;; #x06c
+          (vu-pair (lqi.xyzw vf14 vi11) (itof0.w vf13 vf13)) ;; #x06d
+          (vu-pair (sq.xyzw vf12 vi11 -5) (nop)) ;; #x06e
+          (vu-pair (ibeq vi12 vi11 prepare-instance-stream) (muli.xyz vf07 vf07 I)) ;; #x06f
+          (vu-pair (sq.xyzw vf06 vi11 -6) (itof0.xyzw vf08 vf08)) ;; #x070
+          (vu-pair (lqi.xyzw vf06 vi11) (itof12.xyz vf14 vf14)) ;; #x071
+          (vu-pair (lqi.xyzw vf12 vi11) (itof0.w vf14 vf14)) ;; #x072
+          (vu-pair (sq.xyzw vf13 vi11 -5) (nop)) ;; #x073
+          (vu-pair (ibeq vi12 vi11 prepare-instance-stream) (muli.xyz vf08 vf08 I)) ;; #x074
+          (vu-pair (sq.xyzw vf07 vi11 -6) (itof0.xyzw vf06 vf06)) ;; #x075
+          (vu-pair (lqi.xyzw vf07 vi11) (itof12.xyz vf12 vf12)) ;; #x076
+          (vu-pair (lqi.xyzw vf13 vi11) (itof0.w vf12 vf12)) ;; #x077
+          (vu-pair (sq.xyzw vf14 vi11 -5) (nop)) ;; #x078
+          (vu-pair (ibne vi12 vi11 convert-packed-control-points) (muli.xyz vf06 vf06 I)) ;; #x079
+          (vu-pair (sq.xyzw vf08 vi11 -6) (itof0.xyzw vf07 vf07)) ;; #x07a
+          (label prepare-instance-stream)
+          (vu-pair (iaddi vi11 vi11 -0x4) (nop)) ;; #x07b
+          (vu-pair (iadd vi13 vi13 vi11) (nop)) ;; #x07c
+          (vu-pair (ior vi02 vi11 vi00) (nop)) ;; #x07d
+          (vu-pair (lqi.xyzw vf09 vi11) (nop)) ;; #x07e
+          (vu-pair (lqi.xyzw vf06 vi11) (nop)) ;; #x07f
+          (vu-pair (lqi.xyzw vf12 vi11) (nop)) ;; #x080
+          (vu-pair (nop) (nop)) ;; #x081
+          (vu-pair (nop) (nop)) ;; #x082
+          (vu-pair (ibeq vi13 vi11 setup-instance-render) (nop)) ;; #x083
+          (vu-pair (nop) (itof0.xyzw vf09 vf09)) ;; #x084
+          (vu-pair (lqi.xyzw vf10 vi11) (itof0.xyzw vf06 vf06)) ;; #x085
+          (vu-pair (lqi.xyzw vf07 vi11) (itof0.w vf12 vf12)) ;; #x086
+          (vu-pair (lqi.xyzw vf13 vi11) (itof12.xyz vf12 vf12)) ;; #x087
+          (vu-pair (nop) (nop)) ;; #x088
+          (vu-pair (nop) (muli.xyz vf09 vf09 I)) ;; #x089
+          (vu-pair (ibeq vi13 vi11 setup-instance-render) (muli.xyz vf06 vf06 I)) ;; #x08a
+          (vu-pair (nop) (itof0.xyzw vf10 vf10)) ;; #x08b
+          (label convert-indexed-points)
+          (vu-pair (lqi.xyzw vf11 vi11) (itof0.xyzw vf07 vf07)) ;; #x08c
+          (vu-pair (lqi.xyzw vf08 vi11) (itof0.w vf13 vf13)) ;; #x08d
+          (vu-pair (lqi.xyzw vf14 vi11) (itof12.xyz vf13 vf13)) ;; #x08e
+          (vu-pair (sqi.xyzw vf09 vi02) (nop)) ;; #x08f
+          (vu-pair (sqi.xyzw vf06 vi02) (muli.xyz vf10 vf10 I)) ;; #x090
+          (vu-pair (ibeq vi13 vi11 setup-instance-render) (muli.xyz vf07 vf07 I)) ;; #x091
+          (vu-pair (sqi.xyzw vf12 vi02) (itof0.xyzw vf11 vf11)) ;; #x092
+          (vu-pair (lqi.xyzw vf09 vi11) (itof0.xyzw vf08 vf08)) ;; #x093
+          (vu-pair (lqi.xyzw vf06 vi11) (itof0.w vf14 vf14)) ;; #x094
+          (vu-pair (lqi.xyzw vf12 vi11) (itof12.xyz vf14 vf14)) ;; #x095
+          (vu-pair (sqi.xyzw vf10 vi02) (nop)) ;; #x096
+          (vu-pair (sqi.xyzw vf07 vi02) (muli.xyz vf11 vf11 I)) ;; #x097
+          (vu-pair (ibeq vi13 vi11 setup-instance-render) (muli.xyz vf08 vf08 I)) ;; #x098
+          (vu-pair (sqi.xyzw vf13 vi02) (itof0.xyzw vf09 vf09)) ;; #x099
+          (vu-pair (lqi.xyzw vf10 vi11) (itof0.xyzw vf06 vf06)) ;; #x09a
+          (vu-pair (lqi.xyzw vf07 vi11) (itof0.w vf12 vf12)) ;; #x09b
+          (vu-pair (lqi.xyzw vf13 vi11) (itof12.xyz vf12 vf12)) ;; #x09c
+          (vu-pair (sqi.xyzw vf11 vi02) (nop)) ;; #x09d
+          (vu-pair (sqi.xyzw vf08 vi02) (muli.xyz vf09 vf09 I)) ;; #x09e
+          (vu-pair (ibne vi13 vi11 convert-indexed-points) (muli.xyz vf06 vf06 I)) ;; #x09f
+          (vu-pair (sqi.xyzw vf14 vi02) (itof0.xyzw vf10 vf10)) ;; #x0a0
+          (label setup-instance-render)
+          (vu-pair (mtir vi01 vf04.z) (nop)) ;; #x0a1
+          (vu-pair (mtir vi05 vf02.x) (nop)) ;; #x0a2
+          (vu-pair (mtir vi14 vf02.y) (nop)) ;; #x0a3
+          (vu-pair (mtir vi04 vf03.x) (nop)) ;; #x0a4
+          (vu-pair (ibne vi00 vi01 use-default-alpha-test) (nop)) ;; #x0a5
+          (vu-pair (isubiu vi09 vi00 0x7fff) (nop)) ;; #x0a6
+          (vu-pair (b finish-instance-setup) (nop)) ;; #x0a7
+          (vu-pair (lq.xyzw vf05 vi00 (tie-near-const atest 0)) (nop)) ;; #x0a8
+          (label use-default-alpha-test)
+          (vu-pair (lq.xyzw vf05 vi00 (tie-near-const atest 1)) (nop)) ;; #x0a9
+          (label finish-instance-setup)
+          (vu-pair (iaddiu vi01 vi00 0x3c6) (nop)) ;; #x0aa
+          (vu-pair (mtir vi06 vf03.y) (nop)) ;; #x0ab
+          (vu-pair (mtir vi07 vf03.z) (nop)) ;; #x0ac
+          (vu-pair (mtir vi08 vf03.w) (nop)) ;; #x0ad
+          (vu-pair (iaddi vi15 vi00 0x0) (nop)) ;; #x0ae
+          (vu-pair (mtir vi03 clrbuf.x) (nop)) ;; #x0af
+          (vu-pair (iaddiu vi02 vi00 0x32) (nop)) ;; #x0b0
+          (vu-pair (sq.xyzw vf01 vi01 0) (nop)) ;; #x0b1
+          (vu-pair (sq.xyzw vf05 vi01 1) (nop)) ;; #x0b2
+          (vu-pair (iswr.x vi09 vi01) (nop)) ;; #x0b3
+          (vu-pair (mr32.xyzw gifbuf gifbuf) (nop)) ;; #x0b4
+          (vu-pair (mfir.y extra vi00) (nop)) ;; #x0b5
+          (vu-pair (mfir.w extra vi00) (nop)) ;; #x0b6
+          (vu-pair (xgkick vi01) (nop)) ;; #x0b7
+          (vu-pair (nop) (nop :e)) ;; #x0b8
+          (vu-pair (nop) (nop)) ;; #x0b9
+          (label render-basic-stream)
+          (vu-pair (lqi.xyzw vf05 vi02) (nop)) ;; #x0ba
+          (vu-pair (lq.xyzw vf24 vi03 6) (nop)) ;; #x0bb
+          (vu-pair (lq.xyzw vf04 vi03 3) (nop)) ;; #x0bc
+          (vu-pair (lq.xyzw vf01 vi03 0) (nop)) ;; #x0bd
+          (vu-pair (lq.xyzw vf02 vi03 1) (nop)) ;; #x0be
+          (vu-pair (lq.xyzw vf03 vi03 2) (nop)) ;; #x0bf
+          (vu-pair (mtir vi09 vf24.x) (nop)) ;; #x0c0
+          (vu-pair (lqi.xyzw vf17 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x0c1
+          (vu-pair (lq.xyzw vf27 vi03 4) (maddax.xyzw ACC vf01 vf05)) ;; #x0c2
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf05)) ;; #x0c3
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (maddz.xyzw vf09 vf03 vf05)) ;; #x0c4
+          (vu-pair (lqi.xyzw vf06 vi02) (nop)) ;; #x0c5
+          (vu-pair (iaddi vi03 vi03 0x7) (nop)) ;; #x0c6
+          (vu-pair (mtir vi09 vf24.y) (nop)) ;; #x0c7
+          (vu-pair (div Q vf00.w vf09.w) (mulaw.xyzw ACC vf04 vf00)) ;; #x0c8
+          (vu-pair (lqi.xyzw vf18 vi02) (maddax.xyzw ACC vf01 vf06)) ;; #x0c9
+          (vu-pair (mtir vi01 gifbuf.x) (madday.xyzw ACC vf02 vf06)) ;; #x0ca
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (maddz.xyzw vf10 vf03 vf06)) ;; #x0cb
+          (vu-pair (isub vi01 vi01 vi15) (nop)) ;; #x0cc
+          (vu-pair (iadd vi04 vi04 vi01) (nop)) ;; #x0cd
+          (vu-pair (iadd vi06 vi06 vi01) (nop)) ;; #x0ce
+          (vu-pair (lqi.xyzw vf07 vi02) (nop)) ;; #x0cf
+          (vu-pair (div Q vf00.w vf10.w) (mul.xyz vf17 vf17 Q)) ;; #x0d0
+          (vu-pair (mtir vi09 vf24.z) (addx.w vf05 vf05 gifbuf)) ;; #x0d1
+          (vu-pair (lqi.xyzw vf19 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x0d2
+          (vu-pair (iadd vi07 vi07 vi01) (maddax.xyzw ACC vf01 vf07)) ;; #x0d3
+          (vu-pair (iadd vi08 vi08 vi01) (madday.xyzw ACC vf02 vf07)) ;; #x0d4
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x0d5
+          (vu-pair (ibeq vi04 vi12 begin-guard-volume-pass) (maddz.xyzw vf11 vf03 vf07)) ;; #x0d6
+          (vu-pair (iadd vi15 vi15 vi01) (nop)) ;; #x0d7
+          (label render-basic-pipeline)
+          (vu-pair (mtir vi12 vf05.w) (nop)) ;; #x0d8
+          (vu-pair (lqi.xyzw vf08 vi02) (nop)) ;; #x0d9
+          (vu-pair (div Q vf00.w vf11.w) (mul.xyz vf18 vf18 Q)) ;; #x0da
+          (vu-pair (mtir vi09 vf24.w) (addx.w vf06 vf06 gifbuf)) ;; #x0db
+          (vu-pair (lqi.xyzw vf20 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x0dc
+          (vu-pair (sq.xyzw vf17 vi12 0) (maddax.xyzw ACC vf01 vf08)) ;; #x0dd
+          (vu-pair (sq.xyzw vf13 vi12 1) (madday.xyzw ACC vf02 vf08)) ;; #x0de
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x0df
+          (vu-pair (ibeq vi04 vi12 basic-flush-slot1) (maddz.xyzw vf12 vf03 vf08)) ;; #x0e0
+          (vu-pair (sq.xyzw vf09 vi12 2) (nop)) ;; #x0e1
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x0e2
+          (vu-pair (mtir vi12 vf06.w) (nop)) ;; #x0e3
+          (vu-pair (lqi.xyzw vf05 vi02) (nop)) ;; #x0e4
+          (vu-pair (div Q vf00.w vf12.w) (mul.xyz vf19 vf19 Q)) ;; #x0e5
+          (vu-pair (mtir vi09 vf24.x) (addx.w vf07 vf07 gifbuf)) ;; #x0e6
+          (vu-pair (lqi.xyzw vf17 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x0e7
+          (vu-pair (sq.xyzw vf18 vi12 0) (maddax.xyzw ACC vf01 vf05)) ;; #x0e8
+          (vu-pair (sq.xyzw vf14 vi12 1) (madday.xyzw ACC vf02 vf05)) ;; #x0e9
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x0ea
+          (vu-pair (ibeq vi04 vi12 basic-flush-slot2) (maddz.xyzw vf09 vf03 vf05)) ;; #x0eb
+          (vu-pair (sq.xyzw vf10 vi12 2) (nop)) ;; #x0ec
+          (vu-pair (mtir vi12 vf07.w) (nop)) ;; #x0ed
+          (vu-pair (lqi.xyzw vf06 vi02) (nop)) ;; #x0ee
+          (vu-pair (div Q vf00.w vf09.w) (mul.xyz vf20 vf20 Q)) ;; #x0ef
+          (vu-pair (mtir vi09 vf24.y) (addx.w vf08 vf08 gifbuf)) ;; #x0f0
+          (vu-pair (lqi.xyzw vf18 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x0f1
+          (vu-pair (sq.xyzw vf19 vi12 0) (maddax.xyzw ACC vf01 vf06)) ;; #x0f2
+          (vu-pair (sq.xyzw vf15 vi12 1) (madday.xyzw ACC vf02 vf06)) ;; #x0f3
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x0f4
+          (vu-pair (ibeq vi04 vi12 basic-flush-slot3) (maddz.xyzw vf10 vf03 vf06)) ;; #x0f5
+          (vu-pair (sq.xyzw vf11 vi12 2) (nop)) ;; #x0f6
+          (vu-pair (mtir vi12 vf08.w) (nop)) ;; #x0f7
+          (vu-pair (lqi.xyzw vf07 vi02) (nop)) ;; #x0f8
+          (vu-pair (div Q vf00.w vf10.w) (mul.xyz vf17 vf17 Q)) ;; #x0f9
+          (vu-pair (mtir vi09 vf24.z) (addx.w vf05 vf05 gifbuf)) ;; #x0fa
+          (vu-pair (lqi.xyzw vf19 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x0fb
+          (vu-pair (sq.xyzw vf20 vi12 0) (maddax.xyzw ACC vf01 vf07)) ;; #x0fc
+          (vu-pair (sq.xyzw vf16 vi12 1) (madday.xyzw ACC vf02 vf07)) ;; #x0fd
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x0fe
+          (vu-pair (ibne vi04 vi12 render-basic-pipeline) (maddz.xyzw vf11 vf03 vf07)) ;; #x0ff
+          (vu-pair (sq.xyzw vf12 vi12 2) (nop)) ;; #x100
+          (vu-pair (mtir vi12 vf05.w) (nop)) ;; #x101
+          (vu-pair (ibne vi00 vi05 basic-short-slot1) (nop)) ;; #x102
+          (vu-pair (lqi.xyzw vf08 vi02) (mul.xyz vf18 vf18 Q)) ;; #x103
+          (vu-pair (div Q vf00.w vf11.w) (addx.w vf06 vf06 gifbuf)) ;; #x104
+          (vu-pair (mtir vi09 vf24.w) (mulaw.xyzw ACC vf04 vf00)) ;; #x105
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x106
+          (vu-pair (sq.xyzw vf17 vi12 0) (addx.w vf07 vf07 gifbuf)) ;; #x107
+          (vu-pair (sq.xyzw vf13 vi12 1) (maddax.xyzw ACC vf01 vf08)) ;; #x108
+          (vu-pair (lqi.xyzw vf20 vi02) (madday.xyzw ACC vf02 vf08)) ;; #x109
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x10a
+          (vu-pair (lqi.xyzw vf05 vi02) (maddz.xyzw vf12 vf03 vf08)) ;; #x10b
+          (vu-pair (sq.xyzw vf09 vi12 2) (nop)) ;; #x10c
+          (vu-pair (mtir vi12 vf06.w) (mul.xyz vf19 vf19 Q)) ;; #x10d
+          (vu-pair (lqi.xyzw vf17 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x10e
+          (vu-pair (mtir vi09 vf24.x) (maddax.xyzw ACC vf01 vf05)) ;; #x10f
+          (vu-pair (nop) (madday.xyzw ACC vf02 vf05)) ;; #x110
+          (vu-pair (div Q vf00.w vf12.w) (nop)) ;; #x111
+          (vu-pair (sq.xyzw vf18 vi12 0) (maddz.xyzw vf09 vf03 vf05)) ;; #x112
+          (vu-pair (sq.xyzw vf14 vi12 1) (nop)) ;; #x113
+          (vu-pair (sq.xyzw vf10 vi12 2) (nop)) ;; #x114
+          (vu-pair (mtir vi12 vf07.w) (nop)) ;; #x115
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (addx.w vf08 vf08 gifbuf)) ;; #x116
+          (vu-pair (div Q vf00.w vf09.w) (nop)) ;; #x117
+          (vu-pair (sq.xyzw vf19 vi12 0) (mul.xyz vf20 vf20 Q)) ;; #x118
+          (vu-pair (sq.xyzw vf15 vi12 1) (addx.w vf20 vf20 gifbuf)) ;; #x119
+          (vu-pair (sq.xyzw vf11 vi12 2) (nop)) ;; #x11a
+          (vu-pair (b basic-dual-dest-slot0) (nop)) ;; #x11b
+          (vu-pair (mtir vi12 vf08.w) (nop)) ;; #x11c
+          (label basic-flush-slot3)
+          (vu-pair (mtir vi12 vf08.w) (nop)) ;; #x11d
+          (vu-pair (ibne vi00 vi05 basic-short-slot0) (nop)) ;; #x11e
+          (vu-pair (lqi.xyzw vf07 vi02) (mul.xyz vf17 vf17 Q)) ;; #x11f
+          (vu-pair (div Q vf00.w vf10.w) (addx.w vf05 vf05 gifbuf)) ;; #x120
+          (vu-pair (mtir vi09 vf24.z) (mulaw.xyzw ACC vf04 vf00)) ;; #x121
+          (vu-pair (sq.xyzw vf20 vi12 0) (nop)) ;; #x122
+          (vu-pair (sq.xyzw vf16 vi12 1) (maddax.xyzw ACC vf01 vf07)) ;; #x123
+          (vu-pair (lqi.xyzw vf19 vi02) (madday.xyzw ACC vf02 vf07)) ;; #x124
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x125
+          (vu-pair (lqi.xyzw vf08 vi02) (maddz.xyzw vf11 vf03 vf07)) ;; #x126
+          (vu-pair (sq.xyzw vf12 vi12 2) (nop)) ;; #x127
+          (vu-pair (mtir vi12 vf05.w) (mul.xyz vf18 vf18 Q)) ;; #x128
+          (vu-pair (lqi.xyzw vf20 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x129
+          (vu-pair (div Q vf00.w vf11.w) (maddax.xyzw ACC vf01 vf08)) ;; #x12a
+          (vu-pair (mtir vi09 vf24.w) (addx.w vf06 vf06 gifbuf)) ;; #x12b
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x12c
+          (vu-pair (sq.xyzw vf17 vi12 0) (madday.xyzw ACC vf02 vf08)) ;; #x12d
+          (vu-pair (sq.xyzw vf13 vi12 1) (nop)) ;; #x12e
+          (vu-pair (sq.xyzw vf09 vi12 2) (maddz.xyzw vf12 vf03 vf08)) ;; #x12f
+          (vu-pair (mtir vi12 vf06.w) (nop)) ;; #x130
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (addx.w vf07 vf07 gifbuf)) ;; #x131
+          (vu-pair (div Q vf00.w vf12.w) (nop)) ;; #x132
+          (vu-pair (sq.xyzw vf18 vi12 0) (mul.xyz vf19 vf19 Q)) ;; #x133
+          (vu-pair (sq.xyzw vf14 vi12 1) (addx.w vf19 vf19 gifbuf)) ;; #x134
+          (vu-pair (sq.xyzw vf10 vi12 2) (nop)) ;; #x135
+          (vu-pair (b basic-dual-dest-slot3) (nop)) ;; #x136
+          (vu-pair (mtir vi12 vf07.w) (nop)) ;; #x137
+          (label basic-flush-slot2)
+          (vu-pair (mtir vi12 vf07.w) (nop)) ;; #x138
+          (vu-pair (ibne vi00 vi05 basic-short-slot3) (nop)) ;; #x139
+          (vu-pair (lqi.xyzw vf06 vi02) (mul.xyz vf20 vf20 Q)) ;; #x13a
+          (vu-pair (div Q vf00.w vf09.w) (addx.w vf08 vf08 gifbuf)) ;; #x13b
+          (vu-pair (mtir vi09 vf24.y) (mulaw.xyzw ACC vf04 vf00)) ;; #x13c
+          (vu-pair (sq.xyzw vf19 vi12 0) (nop)) ;; #x13d
+          (vu-pair (sq.xyzw vf15 vi12 1) (maddax.xyzw ACC vf01 vf06)) ;; #x13e
+          (vu-pair (lqi.xyzw vf18 vi02) (madday.xyzw ACC vf02 vf06)) ;; #x13f
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x140
+          (vu-pair (lqi.xyzw vf07 vi02) (maddz.xyzw vf10 vf03 vf06)) ;; #x141
+          (vu-pair (sq.xyzw vf11 vi12 2) (nop)) ;; #x142
+          (vu-pair (mtir vi12 vf08.w) (mul.xyz vf17 vf17 Q)) ;; #x143
+          (vu-pair (lqi.xyzw vf19 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x144
+          (vu-pair (div Q vf00.w vf10.w) (maddax.xyzw ACC vf01 vf07)) ;; #x145
+          (vu-pair (mtir vi09 vf24.z) (addx.w vf05 vf05 gifbuf)) ;; #x146
+          (vu-pair (sq.xyzw vf20 vi12 0) (madday.xyzw ACC vf02 vf07)) ;; #x147
+          (vu-pair (sq.xyzw vf16 vi12 1) (nop)) ;; #x148
+          (vu-pair (sq.xyzw vf12 vi12 2) (maddz.xyzw vf11 vf03 vf07)) ;; #x149
+          (vu-pair (mtir vi12 vf05.w) (nop)) ;; #x14a
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (addx.w vf06 vf06 gifbuf)) ;; #x14b
+          (vu-pair (sq.xyzw vf17 vi12 0) (nop)) ;; #x14c
+          (vu-pair (div Q vf00.w vf11.w) (mul.xyz vf18 vf18 Q)) ;; #x14d
+          (vu-pair (sq.xyzw vf13 vi12 1) (addx.w vf18 vf18 gifbuf)) ;; #x14e
+          (vu-pair (sq.xyzw vf09 vi12 2) (nop)) ;; #x14f
+          (vu-pair (b basic-dual-dest-slot2) (nop)) ;; #x150
+          (vu-pair (mtir vi12 vf06.w) (nop)) ;; #x151
+          (label basic-flush-slot1)
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x152
+          (vu-pair (mtir vi12 vf06.w) (nop)) ;; #x153
+          (vu-pair (ibne vi00 vi05 basic-short-slot2) (nop)) ;; #x154
+          (vu-pair (lqi.xyzw vf05 vi02) (mul.xyz vf19 vf19 Q)) ;; #x155
+          (vu-pair (div Q vf00.w vf12.w) (addx.w vf07 vf07 gifbuf)) ;; #x156
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf04 vf00)) ;; #x157
+          (vu-pair (sq.xyzw vf18 vi12 0) (maddax.xyzw ACC vf01 vf05)) ;; #x158
+          (vu-pair (sq.xyzw vf14 vi12 1) (madday.xyzw ACC vf02 vf05)) ;; #x159
+          (vu-pair (lqi.xyzw vf17 vi02) (nop)) ;; #x15a
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (maddz.xyzw vf09 vf03 vf05)) ;; #x15b
+          (vu-pair (lqi.xyzw vf06 vi02) (addx.w vf08 vf08 gifbuf)) ;; #x15c
+          (vu-pair (sq.xyzw vf10 vi12 2) (nop)) ;; #x15d
+          (vu-pair (mtir vi12 vf07.w) (mul.xyz vf20 vf20 Q)) ;; #x15e
+          (vu-pair (div Q vf00.w vf09.w) (mulaw.xyzw ACC vf04 vf00)) ;; #x15f
+          (vu-pair (mtir vi09 vf24.y) (maddax.xyzw ACC vf01 vf06)) ;; #x160
+          (vu-pair (lqi.xyzw vf18 vi02) (madday.xyzw ACC vf02 vf06)) ;; #x161
+          (vu-pair (sq.xyzw vf19 vi12 0) (nop)) ;; #x162
+          (vu-pair (sq.xyzw vf15 vi12 1) (maddz.xyzw vf10 vf03 vf06)) ;; #x163
+          (vu-pair (sq.xyzw vf11 vi12 2) (nop)) ;; #x164
+          (vu-pair (mtir vi12 vf08.w) (nop)) ;; #x165
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (addx.w vf05 vf05 gifbuf)) ;; #x166
+          (vu-pair (div Q vf00.w vf10.w) (nop)) ;; #x167
+          (vu-pair (sq.xyzw vf20 vi12 0) (mul.xyz vf17 vf17 Q)) ;; #x168
+          (vu-pair (sq.xyzw vf16 vi12 1) (addx.w vf17 vf17 gifbuf)) ;; #x169
+          (vu-pair (sq.xyzw vf12 vi12 2) (nop)) ;; #x16a
+          (vu-pair (b basic-dual-dest-slot1) (nop)) ;; #x16b
+          (vu-pair (mtir vi12 vf05.w) (nop)) ;; #x16c
+          (label basic-dual-dest-slot0)
+          (vu-pair (lqi.xyzw vf06 vi02) (nop)) ;; #x16d
+          (vu-pair (mtir vi09 vf24.y) (nop)) ;; #x16e
+          (vu-pair (mtir vi13 vf20.w) (mulaw.xyzw ACC vf04 vf00)) ;; #x16f
+          (vu-pair (sq.xyzw vf20 vi12 0) (addx.w vf05 vf05 gifbuf)) ;; #x170
+          (vu-pair (sq.xyzw vf16 vi12 1) (maddax.xyzw ACC vf01 vf06)) ;; #x171
+          (vu-pair (sq.xyzw vf12 vi12 2) (madday.xyzw ACC vf02 vf06)) ;; #x172
+          (vu-pair (lqi.xyzw vf18 vi02) (maddz.xyzw vf10 vf03 vf06)) ;; #x173
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x174
+          (vu-pair (sq.xyzw vf20 vi13 0) (mul.xyz vf17 vf17 Q)) ;; #x175
+          (vu-pair (sq.xyzw vf16 vi13 1) (addx.w vf17 vf17 gifbuf)) ;; #x176
+          (vu-pair (sq.xyzw vf12 vi13 2) (nop)) ;; #x177
+          (vu-pair (div Q vf00.w vf10.w) (nop)) ;; #x178
+          (vu-pair (ibeq vi06 vi12 basic-final-slot1) (nop)) ;; #x179
+          (vu-pair (mtir vi12 vf05.w) (nop)) ;; #x17a
+          (label basic-dual-dest-slot1)
+          (vu-pair (lqi.xyzw vf07 vi02) (nop)) ;; #x17b
+          (vu-pair (mtir vi09 vf24.z) (nop)) ;; #x17c
+          (vu-pair (mtir vi13 vf17.w) (mulaw.xyzw ACC vf04 vf00)) ;; #x17d
+          (vu-pair (sq.xyzw vf17 vi12 0) (addx.w vf06 vf06 gifbuf)) ;; #x17e
+          (vu-pair (sq.xyzw vf13 vi12 1) (maddax.xyzw ACC vf01 vf07)) ;; #x17f
+          (vu-pair (sq.xyzw vf09 vi12 2) (madday.xyzw ACC vf02 vf07)) ;; #x180
+          (vu-pair (lqi.xyzw vf19 vi02) (maddz.xyzw vf11 vf03 vf07)) ;; #x181
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x182
+          (vu-pair (sq.xyzw vf17 vi13 0) (mul.xyz vf18 vf18 Q)) ;; #x183
+          (vu-pair (sq.xyzw vf13 vi13 1) (addx.w vf18 vf18 gifbuf)) ;; #x184
+          (vu-pair (sq.xyzw vf09 vi13 2) (nop)) ;; #x185
+          (vu-pair (div Q vf00.w vf11.w) (nop)) ;; #x186
+          (vu-pair (ibeq vi06 vi12 basic-final-slot2) (nop)) ;; #x187
+          (vu-pair (mtir vi12 vf06.w) (nop)) ;; #x188
+          (label basic-dual-dest-slot2)
+          (vu-pair (lqi.xyzw vf08 vi02) (nop)) ;; #x189
+          (vu-pair (mtir vi09 vf24.w) (nop)) ;; #x18a
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x18b
+          (vu-pair (mtir vi13 vf18.w) (mulaw.xyzw ACC vf04 vf00)) ;; #x18c
+          (vu-pair (sq.xyzw vf18 vi12 0) (addx.w vf07 vf07 gifbuf)) ;; #x18d
+          (vu-pair (sq.xyzw vf14 vi12 1) (maddax.xyzw ACC vf01 vf08)) ;; #x18e
+          (vu-pair (sq.xyzw vf10 vi12 2) (madday.xyzw ACC vf02 vf08)) ;; #x18f
+          (vu-pair (lqi.xyzw vf20 vi02) (maddz.xyzw vf12 vf03 vf08)) ;; #x190
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x191
+          (vu-pair (sq.xyzw vf18 vi13 0) (mul.xyz vf19 vf19 Q)) ;; #x192
+          (vu-pair (sq.xyzw vf14 vi13 1) (addx.w vf19 vf19 gifbuf)) ;; #x193
+          (vu-pair (sq.xyzw vf10 vi13 2) (nop)) ;; #x194
+          (vu-pair (div Q vf00.w vf12.w) (nop)) ;; #x195
+          (vu-pair (ibeq vi06 vi12 basic-final-slot3) (nop)) ;; #x196
+          (vu-pair (mtir vi12 vf07.w) (nop)) ;; #x197
+          (label basic-dual-dest-slot3)
+          (vu-pair (lqi.xyzw vf05 vi02) (nop)) ;; #x198
+          (vu-pair (mtir vi09 vf24.x) (nop)) ;; #x199
+          (vu-pair (mtir vi13 vf19.w) (mulaw.xyzw ACC vf04 vf00)) ;; #x19a
+          (vu-pair (sq.xyzw vf19 vi12 0) (addx.w vf08 vf08 gifbuf)) ;; #x19b
+          (vu-pair (sq.xyzw vf15 vi12 1) (maddax.xyzw ACC vf01 vf05)) ;; #x19c
+          (vu-pair (sq.xyzw vf11 vi12 2) (madday.xyzw ACC vf02 vf05)) ;; #x19d
+          (vu-pair (lqi.xyzw vf17 vi02) (maddz.xyzw vf09 vf03 vf05)) ;; #x19e
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x19f
+          (vu-pair (sq.xyzw vf19 vi13 0) (mul.xyz vf20 vf20 Q)) ;; #x1a0
+          (vu-pair (sq.xyzw vf15 vi13 1) (addx.w vf20 vf20 gifbuf)) ;; #x1a1
+          (vu-pair (sq.xyzw vf11 vi13 2) (nop)) ;; #x1a2
+          (vu-pair (div Q vf00.w vf09.w) (nop)) ;; #x1a3
+          (vu-pair (ibne vi06 vi12 basic-dual-dest-slot0) (nop)) ;; #x1a4
+          (vu-pair (mtir vi12 vf08.w) (nop)) ;; #x1a5
+          (vu-pair (nop) (nop)) ;; #x1a6
+          (vu-pair (nop) (nop)) ;; #x1a7
+          (vu-pair (mtir vi13 vf20.w) (nop)) ;; #x1a8
+          (vu-pair (sq.xyzw vf20 vi12 0) (addx.w vf05 vf05 gifbuf)) ;; #x1a9
+          (vu-pair (sq.xyzw vf16 vi12 1) (addx.w vf17 vf17 gifbuf)) ;; #x1aa
+          (vu-pair (sq.xyzw vf12 vi12 2) (nop)) ;; #x1ab
+          (vu-pair (sq.xyzw vf20 vi13 0) (mul.xyz vf17 vf17 Q)) ;; #x1ac
+          (vu-pair (sq.xyzw vf16 vi13 1) (nop)) ;; #x1ad
+          (vu-pair (sq.xyzw vf12 vi13 2) (nop)) ;; #x1ae
+          (vu-pair (mtir vi12 vf05.w) (nop)) ;; #x1af
+          (vu-pair (mtir vi13 vf17.w) (nop)) ;; #x1b0
+          (vu-pair (sq.xyzw vf17 vi12 0) (nop)) ;; #x1b1
+          (vu-pair (sq.xyzw vf13 vi12 1) (nop)) ;; #x1b2
+          (vu-pair (sq.xyzw vf09 vi12 2) (nop)) ;; #x1b3
+          (vu-pair (sq.xyzw vf17 vi13 0) (nop)) ;; #x1b4
+          (vu-pair (sq.xyzw vf13 vi13 1) (nop)) ;; #x1b5
+          (vu-pair (ibeq vi00 vi14 morph-pipeline-slot0) (nop)) ;; #x1b6
+          (vu-pair (sq.xyzw vf09 vi13 2) (nop)) ;; #x1b7
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x1b8
+          (vu-pair (nop) (nop)) ;; #x1b9
+          (label basic-final-slot1)
+          (vu-pair (nop) (nop)) ;; #x1ba
+          (vu-pair (nop) (nop)) ;; #x1bb
+          (vu-pair (mtir vi13 vf17.w) (nop)) ;; #x1bc
+          (vu-pair (sq.xyzw vf17 vi12 0) (addx.w vf06 vf06 gifbuf)) ;; #x1bd
+          (vu-pair (sq.xyzw vf13 vi12 1) (addx.w vf18 vf18 gifbuf)) ;; #x1be
+          (vu-pair (sq.xyzw vf09 vi12 2) (nop)) ;; #x1bf
+          (vu-pair (sq.xyzw vf17 vi13 0) (mul.xyz vf18 vf18 Q)) ;; #x1c0
+          (vu-pair (sq.xyzw vf13 vi13 1) (nop)) ;; #x1c1
+          (vu-pair (sq.xyzw vf09 vi13 2) (nop)) ;; #x1c2
+          (vu-pair (mtir vi12 vf06.w) (nop)) ;; #x1c3
+          (vu-pair (mtir vi13 vf18.w) (nop)) ;; #x1c4
+          (vu-pair (sq.xyzw vf18 vi12 0) (nop)) ;; #x1c5
+          (vu-pair (sq.xyzw vf14 vi12 1) (nop)) ;; #x1c6
+          (vu-pair (sq.xyzw vf10 vi12 2) (nop)) ;; #x1c7
+          (vu-pair (sq.xyzw vf18 vi13 0) (nop)) ;; #x1c8
+          (vu-pair (sq.xyzw vf14 vi13 1) (nop)) ;; #x1c9
+          (vu-pair (ibeq vi00 vi14 morph-pipeline-slot1) (nop)) ;; #x1ca
+          (vu-pair (sq.xyzw vf10 vi13 2) (nop)) ;; #x1cb
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x1cc
+          (vu-pair (nop) (nop)) ;; #x1cd
+          (label basic-final-slot2)
+          (vu-pair (nop) (nop)) ;; #x1ce
+          (vu-pair (nop) (nop)) ;; #x1cf
+          (vu-pair (mtir vi13 vf18.w) (nop)) ;; #x1d0
+          (vu-pair (sq.xyzw vf18 vi12 0) (addx.w vf07 vf07 gifbuf)) ;; #x1d1
+          (vu-pair (sq.xyzw vf14 vi12 1) (addx.w vf19 vf19 gifbuf)) ;; #x1d2
+          (vu-pair (sq.xyzw vf10 vi12 2) (nop)) ;; #x1d3
+          (vu-pair (sq.xyzw vf18 vi13 0) (mul.xyz vf19 vf19 Q)) ;; #x1d4
+          (vu-pair (sq.xyzw vf14 vi13 1) (nop)) ;; #x1d5
+          (vu-pair (sq.xyzw vf10 vi13 2) (nop)) ;; #x1d6
+          (vu-pair (mtir vi12 vf07.w) (nop)) ;; #x1d7
+          (vu-pair (mtir vi13 vf19.w) (nop)) ;; #x1d8
+          (vu-pair (sq.xyzw vf19 vi12 0) (nop)) ;; #x1d9
+          (vu-pair (sq.xyzw vf15 vi12 1) (nop)) ;; #x1da
+          (vu-pair (sq.xyzw vf11 vi12 2) (nop)) ;; #x1db
+          (vu-pair (sq.xyzw vf19 vi13 0) (nop)) ;; #x1dc
+          (vu-pair (sq.xyzw vf15 vi13 1) (nop)) ;; #x1dd
+          (vu-pair (ibeq vi00 vi14 morph-pipeline-slot2) (nop)) ;; #x1de
+          (vu-pair (sq.xyzw vf11 vi13 2) (nop)) ;; #x1df
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x1e0
+          (vu-pair (nop) (nop)) ;; #x1e1
+          (label basic-final-slot3)
+          (vu-pair (nop) (nop)) ;; #x1e2
+          (vu-pair (nop) (nop)) ;; #x1e3
+          (vu-pair (mtir vi13 vf19.w) (nop)) ;; #x1e4
+          (vu-pair (sq.xyzw vf19 vi12 0) (addx.w vf08 vf08 gifbuf)) ;; #x1e5
+          (vu-pair (sq.xyzw vf15 vi12 1) (addx.w vf20 vf20 gifbuf)) ;; #x1e6
+          (vu-pair (sq.xyzw vf11 vi12 2) (nop)) ;; #x1e7
+          (vu-pair (sq.xyzw vf19 vi13 0) (mul.xyz vf20 vf20 Q)) ;; #x1e8
+          (vu-pair (sq.xyzw vf15 vi13 1) (nop)) ;; #x1e9
+          (vu-pair (sq.xyzw vf11 vi13 2) (nop)) ;; #x1ea
+          (vu-pair (mtir vi12 vf08.w) (nop)) ;; #x1eb
+          (vu-pair (mtir vi13 vf20.w) (nop)) ;; #x1ec
+          (vu-pair (sq.xyzw vf20 vi12 0) (nop)) ;; #x1ed
+          (vu-pair (sq.xyzw vf16 vi12 1) (nop)) ;; #x1ee
+          (vu-pair (sq.xyzw vf12 vi12 2) (nop)) ;; #x1ef
+          (vu-pair (sq.xyzw vf20 vi13 0) (nop)) ;; #x1f0
+          (vu-pair (sq.xyzw vf16 vi13 1) (nop)) ;; #x1f1
+          (vu-pair (ibeq vi00 vi14 begin-morph-stream) (nop)) ;; #x1f2
+          (vu-pair (sq.xyzw vf12 vi13 2) (nop)) ;; #x1f3
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x1f4
+          (vu-pair (nop) (nop)) ;; #x1f5
+          (label basic-short-slot2)
+          (vu-pair (div Q vf00.w vf12.w) (addx.w vf07 vf07 gifbuf)) ;; #x1f6
+          (vu-pair (sq.xyzw vf18 vi12 0) (addx.w vf08 vf08 gifbuf)) ;; #x1f7
+          (vu-pair (sq.xyzw vf14 vi12 1) (nop)) ;; #x1f8
+          (vu-pair (sq.xyzw vf10 vi12 2) (nop)) ;; #x1f9
+          (vu-pair (iaddi vi02 vi02 -0x1) (nop)) ;; #x1fa
+          (vu-pair (nop) (nop)) ;; #x1fb
+          (vu-pair (nop) (nop)) ;; #x1fc
+          (vu-pair (nop) (nop)) ;; #x1fd
+          (vu-pair (mtir vi12 vf07.w) (mul.xyz vf20 vf20 Q)) ;; #x1fe
+          (vu-pair (mtir vi13 vf08.w) (nop)) ;; #x1ff
+          (vu-pair (sq.xyzw vf19 vi12 0) (nop)) ;; #x200
+          (vu-pair (sq.xyzw vf15 vi12 1) (nop)) ;; #x201
+          (vu-pair (sq.xyzw vf11 vi12 2) (nop)) ;; #x202
+          (vu-pair (sq.xyzw vf20 vi13 0) (nop)) ;; #x203
+          (vu-pair (sq.xyzw vf16 vi13 1) (nop)) ;; #x204
+          (vu-pair (ibeq vi00 vi14 begin-morph-stream) (nop)) ;; #x205
+          (vu-pair (sq.xyzw vf12 vi13 2) (nop)) ;; #x206
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x207
+          (vu-pair (nop) (nop)) ;; #x208
+          (label basic-short-slot3)
+          (vu-pair (div Q vf00.w vf09.w) (addx.w vf08 vf08 gifbuf)) ;; #x209
+          (vu-pair (sq.xyzw vf19 vi12 0) (addx.w vf05 vf05 gifbuf)) ;; #x20a
+          (vu-pair (sq.xyzw vf15 vi12 1) (nop)) ;; #x20b
+          (vu-pair (sq.xyzw vf11 vi12 2) (nop)) ;; #x20c
+          (vu-pair (iaddi vi02 vi02 -0x1) (nop)) ;; #x20d
+          (vu-pair (nop) (nop)) ;; #x20e
+          (vu-pair (nop) (nop)) ;; #x20f
+          (vu-pair (nop) (nop)) ;; #x210
+          (vu-pair (mtir vi12 vf08.w) (mul.xyz vf17 vf17 Q)) ;; #x211
+          (vu-pair (mtir vi13 vf05.w) (nop)) ;; #x212
+          (vu-pair (sq.xyzw vf20 vi12 0) (nop)) ;; #x213
+          (vu-pair (sq.xyzw vf16 vi12 1) (nop)) ;; #x214
+          (vu-pair (sq.xyzw vf12 vi12 2) (nop)) ;; #x215
+          (vu-pair (sq.xyzw vf17 vi13 0) (nop)) ;; #x216
+          (vu-pair (sq.xyzw vf13 vi13 1) (nop)) ;; #x217
+          (vu-pair (ibeq vi00 vi14 morph-pipeline-slot0) (nop)) ;; #x218
+          (vu-pair (sq.xyzw vf09 vi13 2) (nop)) ;; #x219
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x21a
+          (vu-pair (nop) (nop)) ;; #x21b
+          (label basic-short-slot0)
+          (vu-pair (div Q vf00.w vf10.w) (addx.w vf05 vf05 gifbuf)) ;; #x21c
+          (vu-pair (sq.xyzw vf20 vi12 0) (addx.w vf06 vf06 gifbuf)) ;; #x21d
+          (vu-pair (sq.xyzw vf16 vi12 1) (nop)) ;; #x21e
+          (vu-pair (sq.xyzw vf12 vi12 2) (nop)) ;; #x21f
+          (vu-pair (iaddi vi02 vi02 -0x1) (nop)) ;; #x220
+          (vu-pair (nop) (nop)) ;; #x221
+          (vu-pair (nop) (nop)) ;; #x222
+          (vu-pair (nop) (nop)) ;; #x223
+          (vu-pair (mtir vi12 vf05.w) (mul.xyz vf18 vf18 Q)) ;; #x224
+          (vu-pair (mtir vi13 vf06.w) (nop)) ;; #x225
+          (vu-pair (sq.xyzw vf17 vi12 0) (nop)) ;; #x226
+          (vu-pair (sq.xyzw vf13 vi12 1) (nop)) ;; #x227
+          (vu-pair (sq.xyzw vf09 vi12 2) (nop)) ;; #x228
+          (vu-pair (sq.xyzw vf18 vi13 0) (nop)) ;; #x229
+          (vu-pair (sq.xyzw vf14 vi13 1) (nop)) ;; #x22a
+          (vu-pair (ibeq vi00 vi14 morph-pipeline-slot1) (nop)) ;; #x22b
+          (vu-pair (sq.xyzw vf10 vi13 2) (nop)) ;; #x22c
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x22d
+          (vu-pair (nop) (nop)) ;; #x22e
+          (label basic-short-slot1)
+          (vu-pair (div Q vf00.w vf11.w) (addx.w vf06 vf06 gifbuf)) ;; #x22f
+          (vu-pair (sq.xyzw vf17 vi12 0) (addx.w vf07 vf07 gifbuf)) ;; #x230
+          (vu-pair (sq.xyzw vf13 vi12 1) (nop)) ;; #x231
+          (vu-pair (sq.xyzw vf09 vi12 2) (nop)) ;; #x232
+          (vu-pair (iaddi vi02 vi02 -0x1) (nop)) ;; #x233
+          (vu-pair (nop) (nop)) ;; #x234
+          (vu-pair (nop) (nop)) ;; #x235
+          (vu-pair (nop) (nop)) ;; #x236
+          (vu-pair (mtir vi12 vf06.w) (mul.xyz vf19 vf19 Q)) ;; #x237
+          (vu-pair (mtir vi13 vf07.w) (nop)) ;; #x238
+          (vu-pair (sq.xyzw vf18 vi12 0) (nop)) ;; #x239
+          (vu-pair (sq.xyzw vf14 vi12 1) (nop)) ;; #x23a
+          (vu-pair (sq.xyzw vf10 vi12 2) (nop)) ;; #x23b
+          (vu-pair (sq.xyzw vf19 vi13 0) (nop)) ;; #x23c
+          (vu-pair (sq.xyzw vf15 vi13 1) (nop)) ;; #x23d
+          (vu-pair (ibeq vi00 vi14 morph-pipeline-slot2) (nop)) ;; #x23e
+          (vu-pair (sq.xyzw vf11 vi13 2) (nop)) ;; #x23f
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x240
+          (vu-pair (nop) (nop)) ;; #x241
+          (label begin-morph-stream)
+          (vu-pair (lqi.xyzw vf05 vi02) (nop)) ;; #x242
+          (vu-pair (0.5) (subw.w vf28 vf00 vf00 :i)) ;; #x243
+          (vu-pair (lqi.xyz vf28 vi02) (addi.y vf27 vf00 I)) ;; #x244
+          (vu-pair (lqi.xyzw vf17 vi02) (nop)) ;; #x245
+          (vu-pair (mtir vi09 vf24.x) (nop)) ;; #x246
+          (vu-pair (mtir vi10 vf24.y) (addx.w vf28 vf28 gifbuf)) ;; #x247
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf05 vf05 vf27)) ;; #x248
+          (vu-pair (nop) (nop)) ;; #x249
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x24a
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf05 vf05 vf28)) ;; #x24b
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x24c
+          (vu-pair (nop) (nop)) ;; #x24d
+          (vu-pair (nop) (nop)) ;; #x24e
+          (vu-pair (nop) (mulay.xyzw ACC vf29 vf27)) ;; #x24f
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x250
+          (vu-pair (lqi.xyzw vf06 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x251
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf05)) ;; #x252
+          (vu-pair (lqi.xyzw vf18 vi02) (madday.xyzw ACC vf02 vf05)) ;; #x253
+          (vu-pair (nop) (maddz.xyzw vf09 vf03 vf05)) ;; #x254
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x255
+          (vu-pair (mtir vi10 vf24.y) (maddz.xyzw vf13 vf13 vf27)) ;; #x256
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf06 vf06 vf27)) ;; #x257
+          (vu-pair (nop) (nop)) ;; #x258
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x259
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf06 vf06 vf28)) ;; #x25a
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x25b
+          (vu-pair (div Q vf00.w vf09.w) (nop)) ;; #x25c
+          (vu-pair (nop) (nop)) ;; #x25d
+          (vu-pair (nop) (mulay.xyzw ACC vf29 vf27)) ;; #x25e
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x25f
+          (vu-pair (lqi.xyzw vf07 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x260
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf06)) ;; #x261
+          (vu-pair (lqi.xyzw vf19 vi02) (madday.xyzw ACC vf02 vf06)) ;; #x262
+          (vu-pair (nop) (maddz.xyzw vf10 vf03 vf06)) ;; #x263
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x264
+          (vu-pair (mtir vi10 vf24.y) (mulx.xyz vf07 vf07 vf27)) ;; #x265
+          (vu-pair (mtir vi11 vf24.z) (maddz.xyzw vf14 vf14 vf27)) ;; #x266
+          (vu-pair (nop) (nop)) ;; #x267
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (mul.xyz vf17 vf17 Q)) ;; #x268
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf07 vf07 vf28)) ;; #x269
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x26a
+          (vu-pair (div Q vf00.w vf10.w) (nop)) ;; #x26b
+          (vu-pair (nop) (nop)) ;; #x26c
+          (vu-pair (b morph-pipeline-slot3) (mulay.xyzw ACC vf29 vf27)) ;; #x26d
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x26e
+          (label morph-pipeline-slot0)
+          (vu-pair (lqi.xyzw vf06 vi02) (nop)) ;; #x26f
+          (vu-pair (lqi.xyzw vf24 vi03) (subw.w vf28 vf00 vf00)) ;; #x270
+          (vu-pair (0.5) (nop :i)) ;; #x271
+          (vu-pair (lqi.xyz vf28 vi02) (addi.y vf27 vf00 I)) ;; #x272
+          (vu-pair (lqi.xyzw vf18 vi02) (nop)) ;; #x273
+          (vu-pair (mtir vi09 vf24.x) (addx.w vf28 vf28 gifbuf)) ;; #x274
+          (vu-pair (mtir vi10 vf24.y) (nop)) ;; #x275
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf06 vf06 vf27)) ;; #x276
+          (vu-pair (nop) (nop)) ;; #x277
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x278
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf06 vf06 vf28)) ;; #x279
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x27a
+          (vu-pair (nop) (nop)) ;; #x27b
+          (vu-pair (nop) (nop)) ;; #x27c
+          (vu-pair (nop) (mulay.xyzw ACC vf29 vf27)) ;; #x27d
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x27e
+          (vu-pair (lqi.xyzw vf07 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x27f
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf06)) ;; #x280
+          (vu-pair (lqi.xyzw vf19 vi02) (madday.xyzw ACC vf02 vf06)) ;; #x281
+          (vu-pair (nop) (maddz.xyzw vf10 vf03 vf06)) ;; #x282
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x283
+          (vu-pair (mtir vi10 vf24.y) (maddz.xyzw vf14 vf14 vf27)) ;; #x284
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf07 vf07 vf27)) ;; #x285
+          (vu-pair (nop) (nop)) ;; #x286
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x287
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf07 vf07 vf28)) ;; #x288
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x289
+          (vu-pair (div Q vf00.w vf10.w) (nop)) ;; #x28a
+          (vu-pair (nop) (nop)) ;; #x28b
+          (vu-pair (nop) (mulay.xyzw ACC vf29 vf27)) ;; #x28c
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x28d
+          (vu-pair (lqi.xyzw vf08 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x28e
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf07)) ;; #x28f
+          (vu-pair (lqi.xyzw vf20 vi02) (madday.xyzw ACC vf02 vf07)) ;; #x290
+          (vu-pair (nop) (maddz.xyzw vf11 vf03 vf07)) ;; #x291
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x292
+          (vu-pair (mtir vi10 vf24.y) (mulx.xyz vf08 vf08 vf27)) ;; #x293
+          (vu-pair (mtir vi11 vf24.z) (maddz.xyzw vf15 vf15 vf27)) ;; #x294
+          (vu-pair (nop) (nop)) ;; #x295
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (mul.xyz vf18 vf18 Q)) ;; #x296
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf08 vf08 vf28)) ;; #x297
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x298
+          (vu-pair (div Q vf00.w vf11.w) (nop)) ;; #x299
+          (vu-pair (nop) (nop)) ;; #x29a
+          (vu-pair (b morph-final-slot0) (mulay.xyzw ACC vf29 vf27)) ;; #x29b
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x29c
+          (label morph-pipeline-slot1)
+          (vu-pair (lqi.xyzw vf07 vi02) (nop)) ;; #x29d
+          (vu-pair (lqi.xyzw vf24 vi03) (subw.w vf28 vf00 vf00)) ;; #x29e
+          (vu-pair (0.5) (nop :i)) ;; #x29f
+          (vu-pair (lqi.xyz vf28 vi02) (addi.y vf27 vf00 I)) ;; #x2a0
+          (vu-pair (lqi.xyzw vf19 vi02) (nop)) ;; #x2a1
+          (vu-pair (mtir vi09 vf24.x) (addx.w vf28 vf28 gifbuf)) ;; #x2a2
+          (vu-pair (mtir vi10 vf24.y) (nop)) ;; #x2a3
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf07 vf07 vf27)) ;; #x2a4
+          (vu-pair (nop) (nop)) ;; #x2a5
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2a6
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf07 vf07 vf28)) ;; #x2a7
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2a8
+          (vu-pair (nop) (nop)) ;; #x2a9
+          (vu-pair (nop) (nop)) ;; #x2aa
+          (vu-pair (nop) (mulay.xyzw ACC vf29 vf27)) ;; #x2ab
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x2ac
+          (vu-pair (lqi.xyzw vf08 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x2ad
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf07)) ;; #x2ae
+          (vu-pair (lqi.xyzw vf20 vi02) (madday.xyzw ACC vf02 vf07)) ;; #x2af
+          (vu-pair (nop) (maddz.xyzw vf11 vf03 vf07)) ;; #x2b0
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x2b1
+          (vu-pair (mtir vi10 vf24.y) (maddz.xyzw vf15 vf15 vf27)) ;; #x2b2
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf08 vf08 vf27)) ;; #x2b3
+          (vu-pair (nop) (nop)) ;; #x2b4
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2b5
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf08 vf08 vf28)) ;; #x2b6
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2b7
+          (vu-pair (div Q vf00.w vf11.w) (nop)) ;; #x2b8
+          (vu-pair (nop) (nop)) ;; #x2b9
+          (vu-pair (nop) (mulay.xyzw ACC vf29 vf27)) ;; #x2ba
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x2bb
+          (vu-pair (lqi.xyzw vf05 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x2bc
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf08)) ;; #x2bd
+          (vu-pair (lqi.xyzw vf17 vi02) (madday.xyzw ACC vf02 vf08)) ;; #x2be
+          (vu-pair (nop) (maddz.xyzw vf12 vf03 vf08)) ;; #x2bf
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x2c0
+          (vu-pair (mtir vi10 vf24.y) (mulx.xyz vf05 vf05 vf27)) ;; #x2c1
+          (vu-pair (mtir vi11 vf24.z) (maddz.xyzw vf16 vf16 vf27)) ;; #x2c2
+          (vu-pair (nop) (nop)) ;; #x2c3
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (mul.xyz vf19 vf19 Q)) ;; #x2c4
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf05 vf05 vf28)) ;; #x2c5
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2c6
+          (vu-pair (div Q vf00.w vf12.w) (nop)) ;; #x2c7
+          (vu-pair (nop) (nop)) ;; #x2c8
+          (vu-pair (b morph-final-slot1) (mulay.xyzw ACC vf29 vf27)) ;; #x2c9
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x2ca
+          (label morph-pipeline-slot2)
+          (vu-pair (lqi.xyzw vf08 vi02) (nop)) ;; #x2cb
+          (vu-pair (lqi.xyzw vf24 vi03) (subw.w vf28 vf00 vf00)) ;; #x2cc
+          (vu-pair (0.5) (nop :i)) ;; #x2cd
+          (vu-pair (lqi.xyz vf28 vi02) (addi.y vf27 vf00 I)) ;; #x2ce
+          (vu-pair (lqi.xyzw vf20 vi02) (nop)) ;; #x2cf
+          (vu-pair (mtir vi09 vf24.x) (addx.w vf28 vf28 gifbuf)) ;; #x2d0
+          (vu-pair (mtir vi10 vf24.y) (nop)) ;; #x2d1
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf08 vf08 vf27)) ;; #x2d2
+          (vu-pair (nop) (nop)) ;; #x2d3
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2d4
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf08 vf08 vf28)) ;; #x2d5
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2d6
+          (vu-pair (nop) (nop)) ;; #x2d7
+          (vu-pair (nop) (nop)) ;; #x2d8
+          (vu-pair (nop) (mulay.xyzw ACC vf29 vf27)) ;; #x2d9
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x2da
+          (vu-pair (lqi.xyzw vf05 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x2db
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf08)) ;; #x2dc
+          (vu-pair (lqi.xyzw vf17 vi02) (madday.xyzw ACC vf02 vf08)) ;; #x2dd
+          (vu-pair (nop) (maddz.xyzw vf12 vf03 vf08)) ;; #x2de
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x2df
+          (vu-pair (mtir vi10 vf24.y) (maddz.xyzw vf16 vf16 vf27)) ;; #x2e0
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf05 vf05 vf27)) ;; #x2e1
+          (vu-pair (nop) (nop)) ;; #x2e2
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2e3
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf05 vf05 vf28)) ;; #x2e4
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2e5
+          (vu-pair (div Q vf00.w vf12.w) (nop)) ;; #x2e6
+          (vu-pair (nop) (nop)) ;; #x2e7
+          (vu-pair (nop) (mulay.xyzw ACC vf29 vf27)) ;; #x2e8
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x2e9
+          (vu-pair (lqi.xyzw vf06 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x2ea
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf05)) ;; #x2eb
+          (vu-pair (lqi.xyzw vf18 vi02) (madday.xyzw ACC vf02 vf05)) ;; #x2ec
+          (vu-pair (nop) (maddz.xyzw vf09 vf03 vf05)) ;; #x2ed
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x2ee
+          (vu-pair (mtir vi10 vf24.y) (mulx.xyz vf06 vf06 vf27)) ;; #x2ef
+          (vu-pair (mtir vi11 vf24.z) (maddz.xyzw vf13 vf13 vf27)) ;; #x2f0
+          (vu-pair (nop) (nop)) ;; #x2f1
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (mul.xyz vf20 vf20 Q)) ;; #x2f2
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (add.xyzw vf06 vf06 vf28)) ;; #x2f3
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x2f4
+          (vu-pair (div Q vf00.w vf09.w) (nop)) ;; #x2f5
+          (vu-pair (nop) (nop)) ;; #x2f6
+          (vu-pair (b morph-final-slot2) (mulay.xyzw ACC vf29 vf27)) ;; #x2f7
+          (vu-pair (lqi.xyzw vf24 vi03) (maddy.xyzw vf29 vf30 vf27)) ;; #x2f8
+          (label morph-pipeline-slot3)
+          (vu-pair (lqi.xyzw vf08 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x2f9
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf07)) ;; #x2fa
+          (vu-pair (lqi.xyzw vf20 vi02) (madday.xyzw ACC vf02 vf07)) ;; #x2fb
+          (vu-pair (mtir vi12 vf05.w) (maddz.xyzw vf11 vf03 vf07)) ;; #x2fc
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x2fd
+          (vu-pair (mtir vi10 vf24.y) (maddz.xyzw vf15 vf15 vf27)) ;; #x2fe
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf08 vf08 vf27)) ;; #x2ff
+          (vu-pair (sq.xyzw vf17 vi12 0) (nop)) ;; #x300
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (mul.xyz vf18 vf18 Q)) ;; #x301
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x302
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x303
+          (vu-pair (div Q vf00.w vf11.w) (nop)) ;; #x304
+          (vu-pair (sq.xyzw vf13 vi12 1) (add.xyzw vf08 vf08 vf28)) ;; #x305
+          (vu-pair (lqi.xyzw vf24 vi03) (mulay.xyzw ACC vf29 vf27)) ;; #x306
+          (vu-pair (ibeq vi07 vi12 morph-short-slot0) (nop)) ;; #x307
+          (vu-pair (sq.xyzw vf09 vi12 2) (maddy.xyzw vf29 vf30 vf27)) ;; #x308
+          (label morph-final-slot0)
+          (vu-pair (lqi.xyzw vf05 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x309
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf08)) ;; #x30a
+          (vu-pair (lqi.xyzw vf17 vi02) (madday.xyzw ACC vf02 vf08)) ;; #x30b
+          (vu-pair (mtir vi12 vf06.w) (maddz.xyzw vf12 vf03 vf08)) ;; #x30c
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x30d
+          (vu-pair (mtir vi10 vf24.y) (maddz.xyzw vf16 vf16 vf27)) ;; #x30e
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf05 vf05 vf27)) ;; #x30f
+          (vu-pair (sq.xyzw vf18 vi12 0) (nop)) ;; #x310
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (mul.xyz vf19 vf19 Q)) ;; #x311
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x312
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x313
+          (vu-pair (div Q vf00.w vf12.w) (nop)) ;; #x314
+          (vu-pair (sq.xyzw vf14 vi12 1) (add.xyzw vf05 vf05 vf28)) ;; #x315
+          (vu-pair (lqi.xyzw vf24 vi03) (mulay.xyzw ACC vf29 vf27)) ;; #x316
+          (vu-pair (ibeq vi07 vi12 morph-short-slot1) (nop)) ;; #x317
+          (vu-pair (sq.xyzw vf10 vi12 2) (maddy.xyzw vf29 vf30 vf27)) ;; #x318
+          (label morph-final-slot1)
+          (vu-pair (lqi.xyzw vf06 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x319
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf05)) ;; #x31a
+          (vu-pair (lqi.xyzw vf18 vi02) (madday.xyzw ACC vf02 vf05)) ;; #x31b
+          (vu-pair (mtir vi12 vf07.w) (maddz.xyzw vf09 vf03 vf05)) ;; #x31c
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x31d
+          (vu-pair (mtir vi10 vf24.y) (maddz.xyzw vf13 vf13 vf27)) ;; #x31e
+          (vu-pair (mtir vi11 vf24.z) (mulx.xyz vf06 vf06 vf27)) ;; #x31f
+          (vu-pair (sq.xyzw vf19 vi12 0) (nop)) ;; #x320
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (mul.xyz vf20 vf20 Q)) ;; #x321
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x322
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x323
+          (vu-pair (div Q vf00.w vf09.w) (nop)) ;; #x324
+          (vu-pair (sq.xyzw vf15 vi12 1) (add.xyzw vf06 vf06 vf28)) ;; #x325
+          (vu-pair (lqi.xyzw vf24 vi03) (mulay.xyzw ACC vf29 vf27)) ;; #x326
+          (vu-pair (ibeq vi07 vi12 morph-short-slot2) (nop)) ;; #x327
+          (vu-pair (sq.xyzw vf11 vi12 2) (maddy.xyzw vf29 vf30 vf27)) ;; #x328
+          (label morph-final-slot2)
+          (vu-pair (lqi.xyzw vf07 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x329
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf06)) ;; #x32a
+          (vu-pair (lqi.xyzw vf19 vi02) (madday.xyzw ACC vf02 vf06)) ;; #x32b
+          (vu-pair (mtir vi12 vf08.w) (maddz.xyzw vf10 vf03 vf06)) ;; #x32c
+          (vu-pair (mtir vi09 vf24.x) (mulaw.xyzw ACC vf29 vf27)) ;; #x32d
+          (vu-pair (mtir vi10 vf24.y) (maddz.xyzw vf14 vf14 vf27)) ;; #x32e
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x32f
+          (vu-pair (sq.xyzw vf20 vi12 0) (mul.xyz vf17 vf17 Q)) ;; #x330
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (mulx.xyz vf07 vf07 vf27)) ;; #x331
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x332
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x333
+          (vu-pair (div Q vf00.w vf10.w) (nop)) ;; #x334
+          (vu-pair (sq.xyzw vf16 vi12 1) (add.xyzw vf07 vf07 vf28)) ;; #x335
+          (vu-pair (lqi.xyzw vf24 vi03) (mulay.xyzw ACC vf29 vf27)) ;; #x336
+          (vu-pair (ibne vi07 vi12 morph-pipeline-slot3) (nop)) ;; #x337
+          (vu-pair (sq.xyzw vf12 vi12 2) (maddy.xyzw vf29 vf30 vf27)) ;; #x338
+          (vu-pair (mtir vi12 vf05.w) (addx.w vf17 vf17 gifbuf)) ;; #x339
+          (vu-pair (lqi.xyzw vf08 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x33a
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf07)) ;; #x33b
+          (vu-pair (lqi.xyzw vf20 vi02) (madday.xyzw ACC vf02 vf07)) ;; #x33c
+          (vu-pair (mtir vi13 vf17.w) (maddz.xyzw vf11 vf03 vf07)) ;; #x33d
+          (vu-pair (mtir vi09 vf24.x) (mul.xyz vf18 vf18 Q)) ;; #x33e
+          (vu-pair (mtir vi10 vf24.y) (nop)) ;; #x33f
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x340
+          (vu-pair (sq.xyzw vf13 vi12 1) (addx.w vf19 vf19 gifbuf)) ;; #x341
+          (vu-pair (div Q vf00.w vf11.w) (mulx.xyz vf08 vf08 vf27)) ;; #x342
+          (vu-pair (sq.xyzw vf17 vi12 0) (nop)) ;; #x343
+          (vu-pair (sq.xyzw vf09 vi12 2) (mulaw.xyzw ACC vf29 vf27)) ;; #x344
+          (vu-pair (sq.xyzw vf17 vi13 0) (maddz.xyzw vf15 vf15 vf27)) ;; #x345
+          (vu-pair (sq.xyzw vf13 vi13 1) (add.xyzw vf08 vf08 vf28)) ;; #x346
+          (vu-pair (sq.xyzw vf09 vi13 2) (addx.w vf18 vf18 gifbuf)) ;; #x347
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x348
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (mulaw.xyzw ACC vf04 vf00)) ;; #x349
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x34a
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x34b
+          (vu-pair (ibne vi08 vi12 morph-loop) (nop)) ;; #x34c
+          (vu-pair (mtir vi12 vf06.w) (maddax.xyzw ACC vf01 vf08)) ;; #x34d
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x34e
+          (vu-pair (nop) (nop)) ;; #x34f
+          (label morph-short-slot0)
+          (vu-pair (mtir vi12 vf06.w) (addx.w vf18 vf18 gifbuf)) ;; #x350
+          (vu-pair (lqi.xyzw vf05 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x351
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf08)) ;; #x352
+          (vu-pair (lqi.xyzw vf17 vi02) (madday.xyzw ACC vf02 vf08)) ;; #x353
+          (vu-pair (mtir vi13 vf18.w) (maddz.xyzw vf12 vf03 vf08)) ;; #x354
+          (vu-pair (mtir vi09 vf24.x) (mul.xyz vf19 vf19 Q)) ;; #x355
+          (vu-pair (mtir vi10 vf24.y) (nop)) ;; #x356
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x357
+          (vu-pair (sq.xyzw vf14 vi12 1) (addx.w vf20 vf20 gifbuf)) ;; #x358
+          (vu-pair (div Q vf00.w vf12.w) (mulx.xyz vf05 vf05 vf27)) ;; #x359
+          (vu-pair (sq.xyzw vf18 vi12 0) (nop)) ;; #x35a
+          (vu-pair (sq.xyzw vf10 vi12 2) (mulaw.xyzw ACC vf29 vf27)) ;; #x35b
+          (vu-pair (sq.xyzw vf18 vi13 0) (maddz.xyzw vf16 vf16 vf27)) ;; #x35c
+          (vu-pair (sq.xyzw vf14 vi13 1) (add.xyzw vf05 vf05 vf28)) ;; #x35d
+          (vu-pair (sq.xyzw vf10 vi13 2) (addx.w vf19 vf19 gifbuf)) ;; #x35e
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x35f
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (mulaw.xyzw ACC vf04 vf00)) ;; #x360
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x361
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x362
+          (vu-pair (ibne vi08 vi12 morph-loop-slot1) (nop)) ;; #x363
+          (vu-pair (mtir vi12 vf07.w) (maddax.xyzw ACC vf01 vf05)) ;; #x364
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x365
+          (vu-pair (nop) (nop)) ;; #x366
+          (label morph-short-slot1)
+          (vu-pair (mtir vi12 vf07.w) (addx.w vf19 vf19 gifbuf)) ;; #x367
+          (vu-pair (lqi.xyzw vf06 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x368
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf05)) ;; #x369
+          (vu-pair (lqi.xyzw vf18 vi02) (madday.xyzw ACC vf02 vf05)) ;; #x36a
+          (vu-pair (mtir vi13 vf19.w) (maddz.xyzw vf09 vf03 vf05)) ;; #x36b
+          (vu-pair (mtir vi09 vf24.x) (mul.xyz vf20 vf20 Q)) ;; #x36c
+          (vu-pair (mtir vi10 vf24.y) (nop)) ;; #x36d
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x36e
+          (vu-pair (sq.xyzw vf15 vi12 1) (addx.w vf17 vf17 gifbuf)) ;; #x36f
+          (vu-pair (div Q vf00.w vf09.w) (mulx.xyz vf06 vf06 vf27)) ;; #x370
+          (vu-pair (sq.xyzw vf19 vi12 0) (nop)) ;; #x371
+          (vu-pair (sq.xyzw vf11 vi12 2) (mulaw.xyzw ACC vf29 vf27)) ;; #x372
+          (vu-pair (sq.xyzw vf19 vi13 0) (maddz.xyzw vf13 vf13 vf27)) ;; #x373
+          (vu-pair (sq.xyzw vf15 vi13 1) (add.xyzw vf06 vf06 vf28)) ;; #x374
+          (vu-pair (sq.xyzw vf11 vi13 2) (addx.w vf20 vf20 gifbuf)) ;; #x375
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x376
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (mulaw.xyzw ACC vf04 vf00)) ;; #x377
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x378
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x379
+          (vu-pair (ibne vi08 vi12 morph-loop-slot2) (nop)) ;; #x37a
+          (vu-pair (mtir vi12 vf08.w) (maddax.xyzw ACC vf01 vf06)) ;; #x37b
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x37c
+          (vu-pair (nop) (nop)) ;; #x37d
+          (label morph-short-slot2)
+          (vu-pair (mtir vi12 vf08.w) (addx.w vf20 vf20 gifbuf)) ;; #x37e
+          (vu-pair (lqi.xyzw vf07 vi02) (mulaw.xyzw ACC vf04 vf00)) ;; #x37f
+          (vu-pair (lqi.xyz vf28 vi02) (maddax.xyzw ACC vf01 vf06)) ;; #x380
+          (vu-pair (lqi.xyzw vf19 vi02) (madday.xyzw ACC vf02 vf06)) ;; #x381
+          (vu-pair (mtir vi13 vf20.w) (maddz.xyzw vf10 vf03 vf06)) ;; #x382
+          (vu-pair (mtir vi09 vf24.x) (mul.xyz vf17 vf17 Q)) ;; #x383
+          (vu-pair (mtir vi10 vf24.y) (nop)) ;; #x384
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x385
+          (vu-pair (sq.xyzw vf16 vi12 1) (addx.w vf18 vf18 gifbuf)) ;; #x386
+          (vu-pair (div Q vf00.w vf10.w) (mulx.xyz vf07 vf07 vf27)) ;; #x387
+          (vu-pair (sq.xyzw vf20 vi12 0) (nop)) ;; #x388
+          (vu-pair (sq.xyzw vf12 vi12 2) (mulaw.xyzw ACC vf29 vf27)) ;; #x389
+          (vu-pair (sq.xyzw vf20 vi13 0) (maddz.xyzw vf14 vf14 vf27)) ;; #x38a
+          (vu-pair (sq.xyzw vf16 vi13 1) (add.xyzw vf07 vf07 vf28)) ;; #x38b
+          (vu-pair (sq.xyzw vf12 vi13 2) (addx.w vf17 vf17 gifbuf)) ;; #x38c
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x38d
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (mulaw.xyzw ACC vf04 vf00)) ;; #x38e
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x38f
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x390
+          (vu-pair (ibne vi08 vi12 morph-loop-slot3) (nop)) ;; #x391
+          (vu-pair (mtir vi12 vf05.w) (maddax.xyzw ACC vf01 vf07)) ;; #x392
+          (vu-pair (b begin-guard-volume-pass) (nop)) ;; #x393
+          (vu-pair (nop) (nop)) ;; #x394
+          (label morph-loop)
+          (vu-pair (lqi.xyzw vf05 vi02) (madday.xyzw ACC vf02 vf08)) ;; #x395
+          (vu-pair (lqi.xyz vf28 vi02) (maddz.xyzw vf12 vf03 vf08)) ;; #x396
+          (vu-pair (lqi.xyzw vf17 vi02) (mul.xyz vf19 vf19 Q)) ;; #x397
+          (vu-pair (mtir vi13 vf18.w) (nop)) ;; #x398
+          (vu-pair (mtir vi09 vf24.x) (mulay.xyzw ACC vf29 vf27)) ;; #x399
+          (vu-pair (mtir vi10 vf24.y) (maddy.xyzw vf29 vf30 vf27)) ;; #x39a
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x39b
+          (vu-pair (sq.xyzw vf14 vi12 1) (nop)) ;; #x39c
+          (vu-pair (div Q vf00.w vf12.w) (mulx.xyz vf05 vf05 vf27)) ;; #x39d
+          (vu-pair (sq.xyzw vf18 vi12 0) (addx.w vf20 vf20 gifbuf)) ;; #x39e
+          (vu-pair (sq.xyzw vf10 vi12 2) (mulaw.xyzw ACC vf29 vf27)) ;; #x39f
+          (vu-pair (sq.xyzw vf18 vi13 0) (maddz.xyzw vf16 vf16 vf27)) ;; #x3a0
+          (vu-pair (sq.xyzw vf14 vi13 1) (add.xyzw vf05 vf05 vf28)) ;; #x3a1
+          (vu-pair (sq.xyzw vf10 vi13 2) (nop)) ;; #x3a2
+          (vu-pair (lq.xyzw vf13 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x3a3
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (mulaw.xyzw ACC vf04 vf00)) ;; #x3a4
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x3a5
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x3a6
+          (vu-pair (ibeq vi08 vi12 begin-guard-volume-pass) (nop)) ;; #x3a7
+          (vu-pair (mtir vi12 vf07.w) (maddax.xyzw ACC vf01 vf05)) ;; #x3a8
+          (label morph-loop-slot1)
+          (vu-pair (lqi.xyzw vf06 vi02) (madday.xyzw ACC vf02 vf05)) ;; #x3a9
+          (vu-pair (lqi.xyz vf28 vi02) (maddz.xyzw vf09 vf03 vf05)) ;; #x3aa
+          (vu-pair (lqi.xyzw vf18 vi02) (mul.xyz vf20 vf20 Q)) ;; #x3ab
+          (vu-pair (mtir vi13 vf19.w) (nop)) ;; #x3ac
+          (vu-pair (mtir vi09 vf24.x) (mulay.xyzw ACC vf29 vf27)) ;; #x3ad
+          (vu-pair (mtir vi10 vf24.y) (maddy.xyzw vf29 vf30 vf27)) ;; #x3ae
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x3af
+          (vu-pair (sq.xyzw vf15 vi12 1) (nop)) ;; #x3b0
+          (vu-pair (div Q vf00.w vf09.w) (mulx.xyz vf06 vf06 vf27)) ;; #x3b1
+          (vu-pair (sq.xyzw vf19 vi12 0) (addx.w vf17 vf17 gifbuf)) ;; #x3b2
+          (vu-pair (sq.xyzw vf11 vi12 2) (mulaw.xyzw ACC vf29 vf27)) ;; #x3b3
+          (vu-pair (sq.xyzw vf19 vi13 0) (maddz.xyzw vf13 vf13 vf27)) ;; #x3b4
+          (vu-pair (sq.xyzw vf15 vi13 1) (add.xyzw vf06 vf06 vf28)) ;; #x3b5
+          (vu-pair (sq.xyzw vf11 vi13 2) (nop)) ;; #x3b6
+          (vu-pair (lq.xyzw vf14 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x3b7
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (mulaw.xyzw ACC vf04 vf00)) ;; #x3b8
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x3b9
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x3ba
+          (vu-pair (ibeq vi08 vi12 begin-guard-volume-pass) (nop)) ;; #x3bb
+          (vu-pair (mtir vi12 vf08.w) (maddax.xyzw ACC vf01 vf06)) ;; #x3bc
+          (label morph-loop-slot2)
+          (vu-pair (lqi.xyzw vf07 vi02) (madday.xyzw ACC vf02 vf06)) ;; #x3bd
+          (vu-pair (lqi.xyz vf28 vi02) (maddz.xyzw vf10 vf03 vf06)) ;; #x3be
+          (vu-pair (lqi.xyzw vf19 vi02) (mul.xyz vf17 vf17 Q)) ;; #x3bf
+          (vu-pair (mtir vi13 vf20.w) (nop)) ;; #x3c0
+          (vu-pair (mtir vi09 vf24.x) (mulay.xyzw ACC vf29 vf27)) ;; #x3c1
+          (vu-pair (mtir vi10 vf24.y) (maddy.xyzw vf29 vf30 vf27)) ;; #x3c2
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x3c3
+          (vu-pair (sq.xyzw vf16 vi12 1) (nop)) ;; #x3c4
+          (vu-pair (div Q vf00.w vf10.w) (mulx.xyz vf07 vf07 vf27)) ;; #x3c5
+          (vu-pair (sq.xyzw vf20 vi12 0) (addx.w vf18 vf18 gifbuf)) ;; #x3c6
+          (vu-pair (sq.xyzw vf12 vi12 2) (mulaw.xyzw ACC vf29 vf27)) ;; #x3c7
+          (vu-pair (sq.xyzw vf20 vi13 0) (maddz.xyzw vf14 vf14 vf27)) ;; #x3c8
+          (vu-pair (sq.xyzw vf16 vi13 1) (add.xyzw vf07 vf07 vf28)) ;; #x3c9
+          (vu-pair (sq.xyzw vf12 vi13 2) (nop)) ;; #x3ca
+          (vu-pair (lq.xyzw vf15 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x3cb
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (mulaw.xyzw ACC vf04 vf00)) ;; #x3cc
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x3cd
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x3ce
+          (vu-pair (ibeq vi08 vi12 begin-guard-volume-pass) (nop)) ;; #x3cf
+          (vu-pair (mtir vi12 vf05.w) (maddax.xyzw ACC vf01 vf07)) ;; #x3d0
+          (label morph-loop-slot3)
+          (vu-pair (lqi.xyzw vf08 vi02) (madday.xyzw ACC vf02 vf07)) ;; #x3d1
+          (vu-pair (lqi.xyz vf28 vi02) (maddz.xyzw vf11 vf03 vf07)) ;; #x3d2
+          (vu-pair (lqi.xyzw vf20 vi02) (mul.xyz vf18 vf18 Q)) ;; #x3d3
+          (vu-pair (mtir vi13 vf17.w) (nop)) ;; #x3d4
+          (vu-pair (mtir vi09 vf24.x) (mulay.xyzw ACC vf29 vf27)) ;; #x3d5
+          (vu-pair (mtir vi10 vf24.y) (maddy.xyzw vf29 vf30 vf27)) ;; #x3d6
+          (vu-pair (mtir vi11 vf24.z) (nop)) ;; #x3d7
+          (vu-pair (sq.xyzw vf13 vi12 1) (nop)) ;; #x3d8
+          (vu-pair (div Q vf00.w vf11.w) (mulx.xyz vf08 vf08 vf27)) ;; #x3d9
+          (vu-pair (sq.xyzw vf17 vi12 0) (addx.w vf19 vf19 gifbuf)) ;; #x3da
+          (vu-pair (sq.xyzw vf09 vi12 2) (mulaw.xyzw ACC vf29 vf27)) ;; #x3db
+          (vu-pair (sq.xyzw vf17 vi13 0) (maddz.xyzw vf15 vf15 vf27)) ;; #x3dc
+          (vu-pair (sq.xyzw vf13 vi13 1) (add.xyzw vf08 vf08 vf28)) ;; #x3dd
+          (vu-pair (sq.xyzw vf09 vi13 2) (nop)) ;; #x3de
+          (vu-pair (lq.xyzw vf16 vi09 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x3df
+          (vu-pair (lq.xyzw vf29 vi10 TIE-NEAR-VU-PALETTE-BASE) (mulaw.xyzw ACC vf04 vf00)) ;; #x3e0
+          (vu-pair (lq.xyzw vf30 vi11 TIE-NEAR-VU-PALETTE-BASE) (nop)) ;; #x3e1
+          (vu-pair (lqi.xyzw vf24 vi03) (nop)) ;; #x3e2
+          (vu-pair (ibne vi08 vi12 morph-loop) (nop)) ;; #x3e3
+          (vu-pair (mtir vi12 vf06.w) (maddax.xyzw ACC vf01 vf08)) ;; #x3e4
+          (label begin-guard-volume-pass)
+          (vu-pair (mfir.x vf29 vi04) (nop)) ;; #x3e5
+          (vu-pair (mfir.y vf29 vi05) (nop)) ;; #x3e6
+          (vu-pair (mfir.z vf29 vi06) (nop)) ;; #x3e7
+          (vu-pair (mfir.w vf29 vi07) (nop)) ;; #x3e8
+          (vu-pair (mfir.x vf30 vi08) (nop)) ;; #x3e9
+          (vu-pair (mfir.y vf30 vi09) (nop)) ;; #x3ea
+          (vu-pair (mfir.z vf30 vi10) (nop)) ;; #x3eb
+          (vu-pair (mfir.w vf30 vi11) (nop)) ;; #x3ec
+          (vu-pair (mfir.x vf31 vi13) (nop)) ;; #x3ed
+          (vu-pair (mfir.y vf31 vi14) (nop)) ;; #x3ee
+          (vu-pair (mfir.z vf31 vi15) (nop)) ;; #x3ef
+          (vu-pair (lq.xyzw vf13 vi00 30) (subx.x vf27 extra gifbuf)) ;; #x3f0
+          (vu-pair (mtir vi12 clrbuf.x) (nop)) ;; #x3f1
+          (vu-pair (mtir vi01 gifbuf.x) (nop)) ;; #x3f2
+          (vu-pair (iaddiu vi07 vi00 0x1f) (nop)) ;; #x3f3
+          (vu-pair (lq.xyzw vf16 vi00 (tie-near-const hvdfoffs)) (suby.x vf27 vf27 gifbuf)) ;; #x3f4
+          (vu-pair (mtir vi02 vf13.x) (nop)) ;; #x3f5
+          (vu-pair (lq.w vf16 vi12 5) (nop)) ;; #x3f6
+          (vu-pair (lq.xyzw vf14 vi00 (tie-near-const invhscale)) (nop)) ;; #x3f7
+          (vu-pair (iadd vi03 vi01 vi02) (nop)) ;; #x3f8
+          (vu-pair (mtir vi08 vf13.y) (nop)) ;; #x3f9
+          (vu-pair (lq.xyzw vf05 vi03 2) (nop)) ;; #x3fa
+          (vu-pair (mtir vi09 vf27.x) (addx.xyzw vf15 vf16 vf00)) ;; #x3fb
+          (vu-pair (iaddi vi01 vi01 0x1) (nop)) ;; #x3fc
+          (vu-pair (isw.y vi00 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x3fd
+          (vu-pair (isw.z vi01 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x3fe
+          (vu-pair (fcset 0x0) (addx.w vf09 vf00 vf00)) ;; #x3ff
+          ;; Keep four transformed vertices in flight while walking the strip. clipw accumulates each
+          ;; vertex's six homogeneous clip tests. A triangle with no common outside plane stays on this
+          ;; path; a triangle crossing any plane transfers its three vertices and attributes to the
+          ;; polygon clipper below.
+          (vu-pair (lq.xyz vf09 vi03 0) (mul.xyz vf01 vf05 vf14)) ;; #x400
+          (vu-pair (3072.0) (clipw.xyz vf05 vf05 :i)) ;; #x401
+          (vu-pair (iadd vi04 vi03 vi08) (addi.w vf15 vf15 I)) ;; #x402
+          (vu-pair (mtir vi02 vf13.z) (addx.w vf10 vf00 vf00)) ;; #x403
+          (vu-pair (lq.xyzw vf06 vi04 2) (nop)) ;; #x404
+          (vu-pair (lq.xyzw vf17 vi00 (tie-near-const guard)) (mulz.xyz vf01 vf01 vf09)) ;; #x405
+          (vu-pair (nop) (subw.w vf01 vf00 vf00)) ;; #x406
+          (vu-pair (iblez vi02 guard-reverse-entry) (subw.w vf11 vf00 vf00)) ;; #x407
+          (vu-pair (lq.xyz vf10 vi04 0) (mul.xyz vf02 vf06 vf14)) ;; #x408
+          (vu-pair (iaddi vi01 vi00 0x0) (clipw.xyz vf06 vf06)) ;; #x409
+          (vu-pair (iadd vi05 vi04 vi02) (nop)) ;; #x40a
+          (vu-pair (mtir vi08 vf13.w) (add.xyzw vf01 vf01 vf16)) ;; #x40b
+          (vu-pair (lq.xyzw vf07 vi05 2) (subw.w vf12 vf00 vf00)) ;; #x40c
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf02 vf02 vf10)) ;; #x40d
+          (vu-pair (lqi.xyzw vf13 vi07) (subw.w vf02 vf00 vf00)) ;; #x40e
+          (vu-pair (iblez vi08 guard-reverse-slot0) (ftoi4.xyzw vf01 vf01)) ;; #x40f
+          (vu-pair (lq.xyz vf11 vi05 0) (mul.xyz vf03 vf07 vf14)) ;; #x410
+          (label guard-forward-slot0)
+          (vu-pair (ibne vi00 vi01 clip-forward-triangle-slot0) (clipw.xyz vf07 vf07)) ;; #x411
+          (vu-pair (mtir vi02 vf13.x) (nop)) ;; #x412
+          (vu-pair (iadd vi06 vi05 vi08) (add.xyzw vf02 vf02 vf16)) ;; #x413
+          (vu-pair (lq.xyzw vf08 vi06 2) (subw.w vf09 vf00 vf00)) ;; #x414
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf03 vf03 vf11)) ;; #x415
+          (vu-pair (sq.xyzw vf01 vi03 2) (subw.w vf03 vf00 vf00)) ;; #x416
+          (label guard-forward-tail1)
+          (vu-pair (iblez vi02 guard-reverse-slot1) (ftoi4.xyzw vf02 vf02)) ;; #x417
+          (vu-pair (lq.xyz vf12 vi06 0) (mul.xyz vf04 vf08 vf14)) ;; #x418
+          (label guard-forward-slot1)
+          (vu-pair (ibne vi00 vi01 clip-forward-triangle-slot1) (clipw.xyz vf08 vf08)) ;; #x419
+          (vu-pair (mtir vi08 vf13.y) (nop)) ;; #x41a
+          (vu-pair (iadd vi03 vi06 vi02) (add.xyzw vf03 vf03 vf16)) ;; #x41b
+          (vu-pair (lq.xyzw vf05 vi03 2) (subw.w vf10 vf00 vf00)) ;; #x41c
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf04 vf04 vf12)) ;; #x41d
+          (vu-pair (sq.xyzw vf02 vi04 2) (subw.w vf04 vf00 vf00)) ;; #x41e
+          (label guard-forward-tail2)
+          (vu-pair (iblez vi08 guard-reverse-slot2) (ftoi4.xyzw vf03 vf03)) ;; #x41f
+          (vu-pair (lq.xyz vf09 vi03 0) (mul.xyz vf01 vf05 vf14)) ;; #x420
+          (label guard-forward-slot2)
+          (vu-pair (ibne vi00 vi01 clip-forward-triangle-slot2) (clipw.xyz vf05 vf05)) ;; #x421
+          (vu-pair (mtir vi02 vf13.z) (nop)) ;; #x422
+          (vu-pair (iadd vi04 vi03 vi08) (add.xyzw vf04 vf04 vf16)) ;; #x423
+          (vu-pair (lq.xyzw vf06 vi04 2) (subw.w vf11 vf00 vf00)) ;; #x424
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf01 vf01 vf09)) ;; #x425
+          (vu-pair (sq.xyzw vf03 vi05 2) (subw.w vf01 vf00 vf00)) ;; #x426
+          (label guard-forward-tail3)
+          (vu-pair (iblez vi02 guard-reverse-slot3) (ftoi4.xyzw vf04 vf04)) ;; #x427
+          (vu-pair (lq.xyz vf10 vi04 0) (mul.xyz vf02 vf06 vf14)) ;; #x428
+          (label guard-forward-slot3)
+          (vu-pair (ibne vi00 vi01 clip-forward-triangle-slot3) (clipw.xyz vf06 vf06)) ;; #x429
+          (vu-pair (mtir vi08 vf13.w) (nop)) ;; #x42a
+          (vu-pair (iadd vi05 vi04 vi02) (add.xyzw vf01 vf01 vf16)) ;; #x42b
+          (vu-pair (lq.xyzw vf07 vi05 2) (subw.w vf12 vf00 vf00)) ;; #x42c
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf02 vf02 vf10)) ;; #x42d
+          (vu-pair (sq.xyzw vf04 vi06 2) (subw.w vf02 vf00 vf00)) ;; #x42e
+          (label guard-forward-wrap)
+          (vu-pair (lqi.xyzw vf13 vi07) (nop)) ;; #x42f
+          (vu-pair (ibgtz vi08 guard-forward-slot0) (ftoi4.xyzw vf01 vf01)) ;; #x430
+          (vu-pair (lq.xyz vf11 vi05 0) (mul.xyz vf03 vf07 vf14)) ;; #x431
+          (label guard-reverse-slot0)
+          (vu-pair (ibne vi00 vi01 clip-reverse-triangle-slot0) (clipw.xyz vf07 vf07)) ;; #x432
+          (vu-pair (mtir vi02 vf13.x) (nop)) ;; #x433
+          (vu-pair (isub vi06 vi05 vi08) (addx.w vf12 vf00 vf00)) ;; #x434
+          (vu-pair (lq.xyzw vf08 vi06 2) (add.xyzw vf02 vf02 vf16)) ;; #x435
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf03 vf03 vf11)) ;; #x436
+          (vu-pair (sq.xyzw vf01 vi03 2) (subw.w vf03 vf00 vf00)) ;; #x437
+          (label guard-reverse-advance0)
+          (vu-pair (iaddi vi10 vi08 0xa) (nop)) ;; #x438
+          (vu-pair (fcset 0x0) (addx.w vf09 vf00 vf00)) ;; #x439
+          (vu-pair (ibne vi00 vi10 guard-forward-slot1) (ftoi4.xyzw vf02 vf02)) ;; #x43a
+          (vu-pair (lq.xyz vf12 vi06 0) (mul.xyz vf04 vf08 vf14)) ;; #x43b
+          (vu-pair (ibeq vi00 vi02 guard-reverse-tail0) (nop)) ;; #x43c
+          (vu-pair (iaddi vi11 vi06 -0x6) (nop)) ;; #x43d
+          (vu-pair (b guard-forward-slot1) (nop)) ;; #x43e
+          (vu-pair (isw.z vi11 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x43f
+          (label guard-reverse-tail0)
+          (vu-pair (ibne vi00 vi01 clip-reverse-tail-slot1) (nop)) ;; #x440
+          (vu-pair (nop) (nop)) ;; #x441
+          (vu-pair (nop) (add.xyzw vf03 vf03 vf16)) ;; #x442
+          (vu-pair (nop) (nop)) ;; #x443
+          (vu-pair (nop) (nop)) ;; #x444
+          (vu-pair (sq.xyzw vf02 vi04 2) (nop)) ;; #x445
+          (label guard-finish-tail0)
+          (vu-pair (nop) (ftoi4.xyzw vf03 vf03)) ;; #x446
+          (vu-pair (nop) (nop)) ;; #x447
+          (vu-pair (nop) (nop)) ;; #x448
+          (vu-pair (b finish-guard-volume-pass) (nop)) ;; #x449
+          (vu-pair (sq.xyzw vf03 vi05 2) (nop)) ;; #x44a
+          (label guard-reverse-slot1)
+          (vu-pair (ibne vi00 vi01 clip-reverse-triangle-slot1) (clipw.xyz vf08 vf08)) ;; #x44b
+          (vu-pair (mtir vi08 vf13.y) (nop)) ;; #x44c
+          (vu-pair (isub vi03 vi06 vi02) (addx.w vf09 vf00 vf00)) ;; #x44d
+          (vu-pair (lq.xyzw vf05 vi03 2) (add.xyzw vf03 vf03 vf16)) ;; #x44e
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf04 vf04 vf12)) ;; #x44f
+          (vu-pair (sq.xyzw vf02 vi04 2) (subw.w vf04 vf00 vf00)) ;; #x450
+          (label guard-reverse-advance1)
+          (vu-pair (iaddi vi10 vi02 0xa) (nop)) ;; #x451
+          (vu-pair (fcset 0x0) (addx.w vf10 vf00 vf00)) ;; #x452
+          (vu-pair (ibne vi00 vi10 guard-forward-slot2) (ftoi4.xyzw vf03 vf03)) ;; #x453
+          (vu-pair (lq.xyz vf09 vi03 0) (mul.xyz vf01 vf05 vf14)) ;; #x454
+          (vu-pair (ibeq vi00 vi08 guard-reverse-tail1) (nop)) ;; #x455
+          (vu-pair (iaddi vi11 vi03 -0x6) (nop)) ;; #x456
+          (vu-pair (b guard-forward-slot2) (nop)) ;; #x457
+          (vu-pair (isw.z vi11 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x458
+          (label guard-reverse-tail1)
+          (vu-pair (ibne vi00 vi01 clip-reverse-tail-slot2) (nop)) ;; #x459
+          (vu-pair (nop) (nop)) ;; #x45a
+          (vu-pair (nop) (add.xyzw vf04 vf04 vf16)) ;; #x45b
+          (vu-pair (nop) (nop)) ;; #x45c
+          (vu-pair (nop) (nop)) ;; #x45d
+          (vu-pair (sq.xyzw vf03 vi05 2) (nop)) ;; #x45e
+          (label guard-finish-tail1)
+          (vu-pair (nop) (ftoi4.xyzw vf04 vf04)) ;; #x45f
+          (vu-pair (nop) (nop)) ;; #x460
+          (vu-pair (nop) (nop)) ;; #x461
+          (vu-pair (b finish-guard-volume-pass) (nop)) ;; #x462
+          (vu-pair (sq.xyzw vf04 vi06 2) (nop)) ;; #x463
+          (label guard-reverse-slot2)
+          (vu-pair (ibne vi00 vi01 clip-reverse-triangle-slot2) (clipw.xyz vf05 vf05)) ;; #x464
+          (vu-pair (mtir vi02 vf13.z) (nop)) ;; #x465
+          (vu-pair (isub vi04 vi03 vi08) (addx.w vf10 vf00 vf00)) ;; #x466
+          (vu-pair (lq.xyzw vf06 vi04 2) (add.xyzw vf04 vf04 vf16)) ;; #x467
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf01 vf01 vf09)) ;; #x468
+          (vu-pair (sq.xyzw vf03 vi05 2) (subw.w vf01 vf00 vf00)) ;; #x469
+          (label guard-reverse-advance2)
+          (vu-pair (iaddi vi10 vi08 0xa) (nop)) ;; #x46a
+          (vu-pair (fcset 0x0) (addx.w vf11 vf00 vf00)) ;; #x46b
+          (vu-pair (ibne vi00 vi10 guard-forward-slot3) (ftoi4.xyzw vf04 vf04)) ;; #x46c
+          (vu-pair (lq.xyz vf10 vi04 0) (mul.xyz vf02 vf06 vf14)) ;; #x46d
+          (vu-pair (ibeq vi00 vi02 guard-reverse-tail2) (nop)) ;; #x46e
+          (vu-pair (iaddi vi11 vi04 -0x6) (nop)) ;; #x46f
+          (vu-pair (b guard-forward-slot3) (nop)) ;; #x470
+          (vu-pair (isw.z vi11 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x471
+          (label guard-reverse-tail2)
+          (vu-pair (ibne vi00 vi01 clip-reverse-tail-slot3) (nop)) ;; #x472
+          (vu-pair (nop) (nop)) ;; #x473
+          (vu-pair (nop) (add.xyzw vf01 vf01 vf16)) ;; #x474
+          (vu-pair (nop) (nop)) ;; #x475
+          (vu-pair (nop) (nop)) ;; #x476
+          (vu-pair (sq.xyzw vf04 vi06 2) (nop)) ;; #x477
+          (label guard-finish-tail2)
+          (vu-pair (nop) (ftoi4.xyzw vf01 vf01)) ;; #x478
+          (vu-pair (nop) (nop)) ;; #x479
+          (vu-pair (nop) (nop)) ;; #x47a
+          (vu-pair (b finish-guard-volume-pass) (nop)) ;; #x47b
+          (vu-pair (sq.xyzw vf04 vi03 2) (nop)) ;; #x47c
+          (label guard-reverse-slot3)
+          (vu-pair (ibne vi00 vi01 clip-reverse-triangle-slot3) (clipw.xyz vf06 vf06)) ;; #x47d
+          (vu-pair (mtir vi08 vf13.w) (nop)) ;; #x47e
+          (vu-pair (isub vi05 vi04 vi02) (addx.w vf11 vf00 vf00)) ;; #x47f
+          (vu-pair (lq.xyzw vf07 vi05 2) (add.xyzw vf01 vf01 vf16)) ;; #x480
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf02 vf02 vf10)) ;; #x481
+          (vu-pair (sq.xyzw vf04 vi06 2) (subw.w vf02 vf00 vf00)) ;; #x482
+          (label guard-reverse-advance3)
+          (vu-pair (lqi.xyzw vf13 vi07) (nop)) ;; #x483
+          (vu-pair (iaddi vi10 vi02 0xa) (nop)) ;; #x484
+          (vu-pair (fcset 0x0) (addx.w vf12 vf00 vf00)) ;; #x485
+          (vu-pair (ibne vi00 vi10 guard-forward-slot0) (ftoi4.xyzw vf01 vf01)) ;; #x486
+          (vu-pair (lq.xyz vf11 vi05 0) (mul.xyz vf03 vf07 vf14)) ;; #x487
+          (vu-pair (ibeq vi00 vi08 guard-reverse-tail3) (nop)) ;; #x488
+          (vu-pair (iaddi vi11 vi05 -0x6) (nop)) ;; #x489
+          (vu-pair (b guard-forward-slot0) (nop)) ;; #x48a
+          (vu-pair (isw.z vi11 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x48b
+          (label guard-reverse-tail3)
+          (vu-pair (ibne vi00 vi01 clip-reverse-tail-slot0) (nop)) ;; #x48c
+          (vu-pair (nop) (nop)) ;; #x48d
+          (vu-pair (nop) (add.xyzw vf02 vf02 vf16)) ;; #x48e
+          (vu-pair (nop) (nop)) ;; #x48f
+          (vu-pair (nop) (nop)) ;; #x490
+          (vu-pair (sq.xyzw vf01 vi03 2) (nop)) ;; #x491
+          (label guard-finish-tail3)
+          (vu-pair (nop) (ftoi4.xyzw vf02 vf02)) ;; #x492
+          (vu-pair (nop) (nop)) ;; #x493
+          (vu-pair (nop) (nop)) ;; #x494
+          (vu-pair (b finish-guard-volume-pass) (nop)) ;; #x495
+          (vu-pair (sq.xyzw vf02 vi04 2) (nop)) ;; #x496
+          (label guard-reverse-entry)
+          (vu-pair (iaddi vi01 vi00 0x0) (clipw.xyz vf06 vf06)) ;; #x497
+          (vu-pair (isub vi05 vi04 vi02) (nop)) ;; #x498
+          (vu-pair (mtir vi08 vf13.w) (add.xyzw vf01 vf01 vf16)) ;; #x499
+          (vu-pair (lq.xyzw vf07 vi05 2) (subw.w vf12 vf00 vf00)) ;; #x49a
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf02 vf02 vf10)) ;; #x49b
+          (vu-pair (lqi.xyzw vf13 vi07) (subw.w vf02 vf00 vf00)) ;; #x49c
+          (vu-pair (b guard-forward-slot0) (ftoi4.xyzw vf01 vf01)) ;; #x49d
+          (vu-pair (lq.xyz vf11 vi05 0) (mul.xyz vf03 vf07 vf14)) ;; #x49e
+          (label finish-guard-volume-pass)
+          (vu-pair (mtir vi04 vf29.x) (nop)) ;; #x49f
+          (vu-pair (mtir vi05 vf29.y) (nop)) ;; #x4a0
+          (vu-pair (mtir vi06 vf29.z) (nop)) ;; #x4a1
+          (vu-pair (mtir vi07 vf29.w) (nop)) ;; #x4a2
+          (vu-pair (mtir vi08 vf30.x) (nop)) ;; #x4a3
+          (vu-pair (mtir vi09 vf30.y) (nop)) ;; #x4a4
+          (vu-pair (mtir vi10 vf30.z) (nop)) ;; #x4a5
+          (vu-pair (mtir vi11 vf30.w) (nop)) ;; #x4a6
+          (vu-pair (mtir vi13 vf31.x) (nop)) ;; #x4a7
+          (vu-pair (mtir vi14 vf31.y) (nop)) ;; #x4a8
+          (vu-pair (mtir vi15 vf31.z) (nop)) ;; #x4a9
+          (vu-pair (iaddiu vi01 vi00 0x3c6) (nop)) ;; #x4aa
+          (vu-pair (nop) (nop)) ;; #x4ab
+          (vu-pair (xgkick vi01) (nop)) ;; #x4ac
+          (vu-pair (mtir vi01 gifbuf.x) (nop)) ;; #x4ad
+          (vu-pair (mtir vi12 extra.w) (nop)) ;; #x4ae
+          (vu-pair (mr32.xyzw clrbuf clrbuf) (nop)) ;; #x4af
+          (vu-pair (iaddiu vi02 vi00 0x32) (nop)) ;; #x4b0
+          (vu-pair (mfir.y extra vi00) (nop)) ;; #x4b1
+          (vu-pair (xgkick vi01) (nop)) ;; #x4b2
+          (vu-pair (mtir vi03 clrbuf.x) (nop :e)) ;; #x4b3
+          (vu-pair (nop) (nop)) ;; #x4b4
+          (label resume-unclipped-forward-slot3)
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf02 vf02 vf10)) ;; #x4b5
+          (vu-pair (b guard-forward-wrap) (subw.w vf02 vf00 vf00)) ;; #x4b6
+          (vu-pair (lq.xyzw vf07 vi05 2) (nop)) ;; #x4b7
+          (label clip-forward-triangle-slot3)
+          (vu-pair (nop) (subw.w vf00 vf09 vf00)) ;; #x4b8
+          (vu-pair (ior vi14 vi05 vi00) (mul.xyzw vf18 vf07 vf17)) ;; #x4b9
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf08 vf17)) ;; #x4ba
+          (vu-pair (iadd vi05 vi04 vi02) (mul.xyzw vf20 vf05 vf17)) ;; #x4bb
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x4bc
+          (vu-pair (ibeq vi00 vi10 resume-unclipped-forward-slot3) (add.xyzw vf01 vf01 vf15)) ;; #x4bd
+          (vu-pair (sq.xyzw vf04 vi06 2) (subw.w vf12 vf00 vf00)) ;; #x4be
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x4bf
+          (vu-pair (move.xyzw vf18 vf07) (clipw.xyz vf19 vf19)) ;; #x4c0
+          (vu-pair (move.xyzw vf19 vf08) (clipw.xyz vf20 vf20)) ;; #x4c1
+          (vu-pair (move.xyzw vf20 vf05) (nop)) ;; #x4c2
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf11 vf00)) ;; #x4c3
+          (vu-pair (fcget vi11) (clipw.xyz vf08 vf08)) ;; #x4c4
+          (vu-pair (fcget vi12) (clipw.xyz vf05 vf05)) ;; #x4c5
+          (vu-pair (lq.xyzw vf07 vi05 2) (addx.xyz vf25 vf12 vf00)) ;; #x4c6
+          (vu-pair (iand vi10 vi10 vi11) (clipw.xyz vf06 vf06)) ;; #x4c7
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf09 vf00)) ;; #x4c8
+          (vu-pair (iand vi10 vi10 vi13) (mulz.xyz vf02 vf02 vf10)) ;; #x4c9
+          (vu-pair (nop) (nop)) ;; #x4ca
+          (vu-pair (ibne vi00 vi10 guard-forward-wrap) (subw.w vf02 vf00 vf00)) ;; #x4cb
+          (vu-pair (fcand vi01 0x3ffff) (nop)) ;; #x4cc
+          (vu-pair (ior vi10 vi06 vi00) (nop)) ;; #x4cd
+          (vu-pair (ior vi11 vi03 vi00) (nop)) ;; #x4ce
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x4cf
+          (vu-pair (iaddiu vi15 vi00 0x42f) (nop)) ;; #x4d0
+          (label resume-unclipped-forward-slot0)
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf03 vf03 vf11)) ;; #x4d1
+          (vu-pair (b guard-forward-tail1) (subw.w vf03 vf00 vf00)) ;; #x4d2
+          (vu-pair (lq.xyzw vf08 vi06 2) (nop)) ;; #x4d3
+          (label clip-forward-triangle-slot0)
+          (vu-pair (nop) (subw.w vf00 vf10 vf00)) ;; #x4d4
+          (vu-pair (ior vi14 vi06 vi00) (mul.xyzw vf18 vf08 vf17)) ;; #x4d5
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf05 vf17)) ;; #x4d6
+          (vu-pair (iadd vi06 vi05 vi08) (mul.xyzw vf20 vf06 vf17)) ;; #x4d7
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x4d8
+          (vu-pair (ibeq vi00 vi10 resume-unclipped-forward-slot0) (add.xyzw vf02 vf02 vf15)) ;; #x4d9
+          (vu-pair (sq.xyzw vf01 vi03 2) (subw.w vf09 vf00 vf00)) ;; #x4da
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x4db
+          (vu-pair (move.xyzw vf18 vf08) (clipw.xyz vf19 vf19)) ;; #x4dc
+          (vu-pair (move.xyzw vf19 vf05) (clipw.xyz vf20 vf20)) ;; #x4dd
+          (vu-pair (move.xyzw vf20 vf06) (nop)) ;; #x4de
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf12 vf00)) ;; #x4df
+          (vu-pair (fcget vi11) (clipw.xyz vf05 vf05)) ;; #x4e0
+          (vu-pair (fcget vi12) (clipw.xyz vf06 vf06)) ;; #x4e1
+          (vu-pair (lq.xyzw vf08 vi06 2) (addx.xyz vf25 vf09 vf00)) ;; #x4e2
+          (vu-pair (iand vi10 vi10 vi11) (clipw.xyz vf07 vf07)) ;; #x4e3
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf10 vf00)) ;; #x4e4
+          (vu-pair (iand vi10 vi10 vi13) (mulz.xyz vf03 vf03 vf11)) ;; #x4e5
+          (vu-pair (nop) (nop)) ;; #x4e6
+          (vu-pair (ibne vi00 vi10 guard-forward-tail1) (subw.w vf03 vf00 vf00)) ;; #x4e7
+          (vu-pair (fcand vi01 0x3ffff) (nop)) ;; #x4e8
+          (vu-pair (ior vi10 vi03 vi00) (nop)) ;; #x4e9
+          (vu-pair (ior vi11 vi04 vi00) (nop)) ;; #x4ea
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x4eb
+          (vu-pair (iaddiu vi15 vi00 0x417) (nop)) ;; #x4ec
+          (label resume-unclipped-forward-slot1)
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf04 vf04 vf12)) ;; #x4ed
+          (vu-pair (b guard-forward-tail2) (subw.w vf04 vf00 vf00)) ;; #x4ee
+          (vu-pair (lq.xyzw vf05 vi03 2) (nop)) ;; #x4ef
+          (label clip-forward-triangle-slot1)
+          (vu-pair (nop) (subw.w vf00 vf11 vf00)) ;; #x4f0
+          (vu-pair (ior vi14 vi03 vi00) (mul.xyzw vf18 vf05 vf17)) ;; #x4f1
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf06 vf17)) ;; #x4f2
+          (vu-pair (iadd vi03 vi06 vi02) (mul.xyzw vf20 vf07 vf17)) ;; #x4f3
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x4f4
+          (vu-pair (ibeq vi00 vi10 resume-unclipped-forward-slot1) (add.xyzw vf03 vf03 vf15)) ;; #x4f5
+          (vu-pair (sq.xyzw vf02 vi04 2) (subw.w vf10 vf00 vf00)) ;; #x4f6
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x4f7
+          (vu-pair (move.xyzw vf18 vf05) (clipw.xyz vf19 vf19)) ;; #x4f8
+          (vu-pair (move.xyzw vf19 vf06) (clipw.xyz vf20 vf20)) ;; #x4f9
+          (vu-pair (move.xyzw vf20 vf07) (nop)) ;; #x4fa
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf09 vf00)) ;; #x4fb
+          (vu-pair (fcget vi11) (clipw.xyz vf06 vf06)) ;; #x4fc
+          (vu-pair (fcget vi12) (clipw.xyz vf07 vf07)) ;; #x4fd
+          (vu-pair (lq.xyzw vf05 vi03 2) (addx.xyz vf25 vf10 vf00)) ;; #x4fe
+          (vu-pair (iand vi10 vi10 vi11) (clipw.xyz vf08 vf08)) ;; #x4ff
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf11 vf00)) ;; #x500
+          (vu-pair (iand vi10 vi10 vi13) (mulz.xyz vf04 vf04 vf12)) ;; #x501
+          (vu-pair (nop) (nop)) ;; #x502
+          (vu-pair (ibne vi00 vi10 guard-forward-tail2) (subw.w vf04 vf00 vf00)) ;; #x503
+          (vu-pair (fcand vi01 0x3ffff) (nop)) ;; #x504
+          (vu-pair (ior vi10 vi04 vi00) (nop)) ;; #x505
+          (vu-pair (ior vi11 vi05 vi00) (nop)) ;; #x506
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x507
+          (vu-pair (iaddiu vi15 vi00 0x41f) (nop)) ;; #x508
+          (label resume-unclipped-forward-slot2)
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf01 vf01 vf09)) ;; #x509
+          (vu-pair (b guard-forward-tail3) (subw.w vf01 vf00 vf00)) ;; #x50a
+          (vu-pair (lq.xyzw vf06 vi04 2) (nop)) ;; #x50b
+          (label clip-forward-triangle-slot2)
+          (vu-pair (nop) (subw.w vf00 vf12 vf00)) ;; #x50c
+          (vu-pair (ior vi14 vi04 vi00) (mul.xyzw vf18 vf06 vf17)) ;; #x50d
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf07 vf17)) ;; #x50e
+          (vu-pair (iadd vi04 vi03 vi08) (mul.xyzw vf20 vf08 vf17)) ;; #x50f
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x510
+          (vu-pair (ibeq vi00 vi10 resume-unclipped-forward-slot2) (add.xyzw vf04 vf04 vf15)) ;; #x511
+          (vu-pair (sq.xyzw vf03 vi05 2) (subw.w vf11 vf00 vf00)) ;; #x512
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x513
+          (vu-pair (move.xyzw vf18 vf06) (clipw.xyz vf19 vf19)) ;; #x514
+          (vu-pair (move.xyzw vf19 vf07) (clipw.xyz vf20 vf20)) ;; #x515
+          (vu-pair (move.xyzw vf20 vf08) (nop)) ;; #x516
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf10 vf00)) ;; #x517
+          (vu-pair (fcget vi11) (clipw.xyz vf07 vf07)) ;; #x518
+          (vu-pair (fcget vi12) (clipw.xyz vf08 vf08)) ;; #x519
+          (vu-pair (lq.xyzw vf06 vi04 2) (addx.xyz vf25 vf11 vf00)) ;; #x51a
+          (vu-pair (iand vi10 vi10 vi11) (clipw.xyz vf05 vf05)) ;; #x51b
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf12 vf00)) ;; #x51c
+          (vu-pair (iand vi10 vi10 vi13) (mulz.xyz vf01 vf01 vf09)) ;; #x51d
+          (vu-pair (nop) (nop)) ;; #x51e
+          (vu-pair (ibne vi00 vi10 guard-forward-tail3) (subw.w vf01 vf00 vf00)) ;; #x51f
+          (vu-pair (fcand vi01 0x3ffff) (nop)) ;; #x520
+          (vu-pair (ior vi10 vi05 vi00) (nop)) ;; #x521
+          (vu-pair (ior vi11 vi06 vi00) (nop)) ;; #x522
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x523
+          (vu-pair (iaddiu vi15 vi00 0x427) (nop)) ;; #x524
+          (label resume-unclipped-reverse-slot3)
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf02 vf02 vf10)) ;; #x525
+          (vu-pair (b guard-reverse-advance3) (subw.w vf02 vf00 vf00)) ;; #x526
+          (vu-pair (lq.xyzw vf07 vi05 2) (nop)) ;; #x527
+          (label clip-reverse-triangle-slot3)
+          (vu-pair (nop) (subw.w vf00 vf09 vf00)) ;; #x528
+          (vu-pair (ior vi14 vi05 vi00) (mul.xyzw vf18 vf07 vf17)) ;; #x529
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf08 vf17)) ;; #x52a
+          (vu-pair (isub vi05 vi04 vi02) (mul.xyzw vf20 vf05 vf17)) ;; #x52b
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x52c
+          (vu-pair (ibeq vi00 vi10 resume-unclipped-reverse-slot3) (add.xyzw vf01 vf01 vf15)) ;; #x52d
+          (vu-pair (sq.xyzw vf04 vi06 2) (addx.w vf11 vf00 vf00)) ;; #x52e
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x52f
+          (vu-pair (move.xyzw vf18 vf07) (clipw.xyz vf19 vf19)) ;; #x530
+          (vu-pair (move.xyzw vf19 vf08) (clipw.xyz vf20 vf20)) ;; #x531
+          (vu-pair (move.xyzw vf20 vf05) (nop)) ;; #x532
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf11 vf00)) ;; #x533
+          (vu-pair (fcget vi11) (clipw.xyz vf08 vf08)) ;; #x534
+          (vu-pair (fcget vi12) (clipw.xyz vf05 vf05)) ;; #x535
+          (vu-pair (lq.xyzw vf07 vi05 2) (addx.xyz vf25 vf12 vf00)) ;; #x536
+          (vu-pair (iand vi10 vi10 vi11) (clipw.xyz vf06 vf06)) ;; #x537
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf09 vf00)) ;; #x538
+          (vu-pair (iand vi10 vi10 vi13) (mulz.xyz vf02 vf02 vf10)) ;; #x539
+          (vu-pair (nop) (nop)) ;; #x53a
+          (vu-pair (ibne vi00 vi10 guard-reverse-advance3) (subw.w vf02 vf00 vf00)) ;; #x53b
+          (vu-pair (fcand vi01 0x3ffff) (nop)) ;; #x53c
+          (vu-pair (ior vi10 vi06 vi00) (nop)) ;; #x53d
+          (vu-pair (ior vi11 vi03 vi00) (nop)) ;; #x53e
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x53f
+          (vu-pair (iaddiu vi15 vi00 0x483) (nop)) ;; #x540
+          (label resume-unclipped-reverse-slot0)
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf03 vf03 vf11)) ;; #x541
+          (vu-pair (b guard-reverse-advance0) (subw.w vf03 vf00 vf00)) ;; #x542
+          (vu-pair (lq.xyzw vf08 vi06 2) (nop)) ;; #x543
+          (label clip-reverse-triangle-slot0)
+          (vu-pair (nop) (subw.w vf00 vf10 vf00)) ;; #x544
+          (vu-pair (ior vi14 vi06 vi00) (mul.xyzw vf18 vf08 vf17)) ;; #x545
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf05 vf17)) ;; #x546
+          (vu-pair (isub vi06 vi05 vi08) (mul.xyzw vf20 vf06 vf17)) ;; #x547
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x548
+          (vu-pair (ibeq vi00 vi10 resume-unclipped-reverse-slot0) (add.xyzw vf02 vf02 vf15)) ;; #x549
+          (vu-pair (sq.xyzw vf01 vi03 2) (addx.w vf12 vf00 vf00)) ;; #x54a
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x54b
+          (vu-pair (move.xyzw vf18 vf08) (clipw.xyz vf19 vf19)) ;; #x54c
+          (vu-pair (move.xyzw vf19 vf05) (clipw.xyz vf20 vf20)) ;; #x54d
+          (vu-pair (move.xyzw vf20 vf06) (nop)) ;; #x54e
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf12 vf00)) ;; #x54f
+          (vu-pair (fcget vi11) (clipw.xyz vf05 vf05)) ;; #x550
+          (vu-pair (fcget vi12) (clipw.xyz vf06 vf06)) ;; #x551
+          (vu-pair (lq.xyzw vf08 vi06 2) (addx.xyz vf25 vf09 vf00)) ;; #x552
+          (vu-pair (iand vi10 vi10 vi11) (clipw.xyz vf07 vf07)) ;; #x553
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf10 vf00)) ;; #x554
+          (vu-pair (iand vi10 vi10 vi13) (mulz.xyz vf03 vf03 vf11)) ;; #x555
+          (vu-pair (nop) (nop)) ;; #x556
+          (vu-pair (ibne vi00 vi10 guard-reverse-advance0) (subw.w vf03 vf00 vf00)) ;; #x557
+          (vu-pair (fcand vi01 0x3ffff) (nop)) ;; #x558
+          (vu-pair (ior vi10 vi03 vi00) (nop)) ;; #x559
+          (vu-pair (ior vi11 vi04 vi00) (nop)) ;; #x55a
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x55b
+          (vu-pair (iaddiu vi15 vi00 0x438) (nop)) ;; #x55c
+          (label resume-unclipped-reverse-slot1)
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf04 vf04 vf12)) ;; #x55d
+          (vu-pair (b guard-reverse-advance1) (subw.w vf04 vf00 vf00)) ;; #x55e
+          (vu-pair (lq.xyzw vf05 vi03 2) (nop)) ;; #x55f
+          (label clip-reverse-triangle-slot1)
+          (vu-pair (nop) (subw.w vf00 vf11 vf00)) ;; #x560
+          (vu-pair (ior vi14 vi03 vi00) (mul.xyzw vf18 vf05 vf17)) ;; #x561
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf06 vf17)) ;; #x562
+          (vu-pair (isub vi03 vi06 vi02) (mul.xyzw vf20 vf07 vf17)) ;; #x563
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x564
+          (vu-pair (ibeq vi00 vi10 resume-unclipped-reverse-slot1) (add.xyzw vf03 vf03 vf15)) ;; #x565
+          (vu-pair (sq.xyzw vf02 vi04 2) (addx.w vf09 vf00 vf00)) ;; #x566
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x567
+          (vu-pair (move.xyzw vf18 vf05) (clipw.xyz vf19 vf19)) ;; #x568
+          (vu-pair (move.xyzw vf19 vf06) (clipw.xyz vf20 vf20)) ;; #x569
+          (vu-pair (move.xyzw vf20 vf07) (nop)) ;; #x56a
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf09 vf00)) ;; #x56b
+          (vu-pair (fcget vi11) (clipw.xyz vf06 vf06)) ;; #x56c
+          (vu-pair (fcget vi12) (clipw.xyz vf07 vf07)) ;; #x56d
+          (vu-pair (lq.xyzw vf05 vi03 2) (addx.xyz vf25 vf10 vf00)) ;; #x56e
+          (vu-pair (iand vi10 vi10 vi11) (clipw.xyz vf08 vf08)) ;; #x56f
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf11 vf00)) ;; #x570
+          (vu-pair (iand vi10 vi10 vi13) (mulz.xyz vf04 vf04 vf12)) ;; #x571
+          (vu-pair (nop) (nop)) ;; #x572
+          (vu-pair (ibne vi00 vi10 guard-reverse-advance1) (subw.w vf04 vf00 vf00)) ;; #x573
+          (vu-pair (fcand vi01 0x3ffff) (nop)) ;; #x574
+          (vu-pair (ior vi10 vi04 vi00) (nop)) ;; #x575
+          (vu-pair (ior vi11 vi05 vi00) (nop)) ;; #x576
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x577
+          (vu-pair (iaddiu vi15 vi00 0x451) (nop)) ;; #x578
+          (label resume-unclipped-reverse-slot2)
+          (vu-pair (fcand vi01 0x3ffff) (mulz.xyz vf01 vf01 vf09)) ;; #x579
+          (vu-pair (b guard-reverse-advance2) (subw.w vf01 vf00 vf00)) ;; #x57a
+          (vu-pair (lq.xyzw vf06 vi04 2) (nop)) ;; #x57b
+          (label clip-reverse-triangle-slot2)
+          (vu-pair (nop) (subw.w vf00 vf12 vf00)) ;; #x57c
+          (vu-pair (ior vi14 vi04 vi00) (mul.xyzw vf18 vf06 vf17)) ;; #x57d
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf07 vf17)) ;; #x57e
+          (vu-pair (isub vi04 vi03 vi08) (mul.xyzw vf20 vf08 vf17)) ;; #x57f
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x580
+          (vu-pair (ibeq vi00 vi10 resume-unclipped-reverse-slot2) (add.xyzw vf04 vf04 vf15)) ;; #x581
+          (vu-pair (sq.xyzw vf03 vi05 2) (addx.w vf10 vf00 vf00)) ;; #x582
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x583
+          (vu-pair (move.xyzw vf18 vf06) (clipw.xyz vf19 vf19)) ;; #x584
+          (vu-pair (move.xyzw vf19 vf07) (clipw.xyz vf20 vf20)) ;; #x585
+          (vu-pair (move.xyzw vf20 vf08) (nop)) ;; #x586
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf10 vf00)) ;; #x587
+          (vu-pair (fcget vi11) (clipw.xyz vf07 vf07)) ;; #x588
+          (vu-pair (fcget vi12) (clipw.xyz vf08 vf08)) ;; #x589
+          (vu-pair (lq.xyzw vf06 vi04 2) (addx.xyz vf25 vf11 vf00)) ;; #x58a
+          (vu-pair (iand vi10 vi10 vi11) (clipw.xyz vf05 vf05)) ;; #x58b
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf12 vf00)) ;; #x58c
+          (vu-pair (iand vi10 vi10 vi13) (mulz.xyz vf01 vf01 vf09)) ;; #x58d
+          (vu-pair (nop) (nop)) ;; #x58e
+          (vu-pair (ibne vi00 vi10 guard-reverse-advance2) (subw.w vf01 vf00 vf00)) ;; #x58f
+          (vu-pair (fcand vi01 0x3ffff) (nop)) ;; #x590
+          (vu-pair (ior vi10 vi05 vi00) (nop)) ;; #x591
+          (vu-pair (ior vi11 vi06 vi00) (nop)) ;; #x592
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x593
+          (vu-pair (iaddiu vi15 vi00 0x46a) (nop)) ;; #x594
+          (label clip-reverse-tail-slot3)
+          (vu-pair (nop) (mul.xyzw vf18 vf07 vf17)) ;; #x595
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf08 vf17)) ;; #x596
+          (vu-pair (nop) (mul.xyzw vf20 vf05 vf17)) ;; #x597
+          (vu-pair (ior vi14 vi05 vi00) (add.xyzw vf01 vf01 vf15)) ;; #x598
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x599
+          (vu-pair (move.xyzw vf18 vf07) (clipw.xyz vf19 vf19)) ;; #x59a
+          (vu-pair (move.xyzw vf19 vf08) (clipw.xyz vf20 vf20)) ;; #x59b
+          (vu-pair (move.xyzw vf20 vf05) (nop)) ;; #x59c
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf11 vf00)) ;; #x59d
+          (vu-pair (fcget vi11) (nop)) ;; #x59e
+          (vu-pair (fcget vi12) (nop)) ;; #x59f
+          (vu-pair (sq.xyzw vf04 vi06 2) (addx.xyz vf25 vf12 vf00)) ;; #x5a0
+          (vu-pair (iand vi10 vi10 vi11) (nop)) ;; #x5a1
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf09 vf00)) ;; #x5a2
+          (vu-pair (iand vi10 vi10 vi13) (nop)) ;; #x5a3
+          (vu-pair (nop) (nop)) ;; #x5a4
+          (vu-pair (ibne vi00 vi10 guard-finish-tail2) (nop)) ;; #x5a5
+          (vu-pair (ior vi10 vi06 vi00) (nop)) ;; #x5a6
+          (vu-pair (ior vi11 vi03 vi00) (nop)) ;; #x5a7
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x5a8
+          (vu-pair (iaddiu vi15 vi00 0x478) (nop)) ;; #x5a9
+          (label clip-reverse-tail-slot0)
+          (vu-pair (nop) (mul.xyzw vf18 vf08 vf17)) ;; #x5aa
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf05 vf17)) ;; #x5ab
+          (vu-pair (nop) (mul.xyzw vf20 vf06 vf17)) ;; #x5ac
+          (vu-pair (ior vi14 vi06 vi00) (add.xyzw vf02 vf02 vf15)) ;; #x5ad
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x5ae
+          (vu-pair (move.xyzw vf18 vf08) (clipw.xyz vf19 vf19)) ;; #x5af
+          (vu-pair (move.xyzw vf19 vf05) (clipw.xyz vf20 vf20)) ;; #x5b0
+          (vu-pair (move.xyzw vf20 vf06) (nop)) ;; #x5b1
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf12 vf00)) ;; #x5b2
+          (vu-pair (fcget vi11) (nop)) ;; #x5b3
+          (vu-pair (fcget vi12) (nop)) ;; #x5b4
+          (vu-pair (sq.xyzw vf01 vi03 2) (addx.xyz vf25 vf09 vf00)) ;; #x5b5
+          (vu-pair (iand vi10 vi10 vi11) (nop)) ;; #x5b6
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf10 vf00)) ;; #x5b7
+          (vu-pair (iand vi10 vi10 vi13) (nop)) ;; #x5b8
+          (vu-pair (nop) (nop)) ;; #x5b9
+          (vu-pair (ibne vi00 vi10 guard-finish-tail3) (nop)) ;; #x5ba
+          (vu-pair (ior vi10 vi03 vi00) (nop)) ;; #x5bb
+          (vu-pair (ior vi11 vi04 vi00) (nop)) ;; #x5bc
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x5bd
+          (vu-pair (iaddiu vi15 vi00 0x492) (nop)) ;; #x5be
+          (label clip-reverse-tail-slot1)
+          (vu-pair (nop) (mul.xyzw vf18 vf05 vf17)) ;; #x5bf
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf06 vf17)) ;; #x5c0
+          (vu-pair (nop) (mul.xyzw vf20 vf07 vf17)) ;; #x5c1
+          (vu-pair (ior vi14 vi03 vi00) (add.xyzw vf03 vf03 vf15)) ;; #x5c2
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x5c3
+          (vu-pair (move.xyzw vf18 vf05) (clipw.xyz vf19 vf19)) ;; #x5c4
+          (vu-pair (move.xyzw vf19 vf06) (clipw.xyz vf20 vf20)) ;; #x5c5
+          (vu-pair (move.xyzw vf20 vf07) (nop)) ;; #x5c6
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf09 vf00)) ;; #x5c7
+          (vu-pair (fcget vi11) (nop)) ;; #x5c8
+          (vu-pair (fcget vi12) (nop)) ;; #x5c9
+          (vu-pair (sq.xyzw vf02 vi04 2) (addx.xyz vf25 vf10 vf00)) ;; #x5ca
+          (vu-pair (iand vi10 vi10 vi11) (nop)) ;; #x5cb
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf11 vf00)) ;; #x5cc
+          (vu-pair (iand vi10 vi10 vi13) (nop)) ;; #x5cd
+          (vu-pair (nop) (nop)) ;; #x5ce
+          (vu-pair (ibne vi00 vi10 guard-finish-tail0) (nop)) ;; #x5cf
+          (vu-pair (ior vi10 vi04 vi00) (nop)) ;; #x5d0
+          (vu-pair (ior vi11 vi05 vi00) (nop)) ;; #x5d1
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x5d2
+          (vu-pair (iaddiu vi15 vi00 0x446) (nop)) ;; #x5d3
+          (label clip-reverse-tail-slot2)
+          (vu-pair (nop) (mul.xyzw vf18 vf06 vf17)) ;; #x5d4
+          (vu-pair (iaddiu vi13 vi00 0x3f) (mul.xyzw vf19 vf07 vf17)) ;; #x5d5
+          (vu-pair (nop) (mul.xyzw vf20 vf08 vf17)) ;; #x5d6
+          (vu-pair (ior vi14 vi04 vi00) (add.xyzw vf04 vf04 vf15)) ;; #x5d7
+          (vu-pair (nop) (clipw.xyz vf18 vf18)) ;; #x5d8
+          (vu-pair (move.xyzw vf18 vf06) (clipw.xyz vf19 vf19)) ;; #x5d9
+          (vu-pair (move.xyzw vf19 vf07) (clipw.xyz vf20 vf20)) ;; #x5da
+          (vu-pair (move.xyzw vf20 vf08) (nop)) ;; #x5db
+          (vu-pair (fcget vi10) (addx.xyz vf24 vf10 vf00)) ;; #x5dc
+          (vu-pair (fcget vi11) (nop)) ;; #x5dd
+          (vu-pair (fcget vi12) (nop)) ;; #x5de
+          (vu-pair (sq.xyzw vf03 vi05 2) (addx.xyz vf25 vf11 vf00)) ;; #x5df
+          (vu-pair (iand vi10 vi10 vi11) (nop)) ;; #x5e0
+          (vu-pair (iand vi10 vi10 vi12) (addx.xyz vf26 vf12 vf00)) ;; #x5e1
+          (vu-pair (iand vi10 vi10 vi13) (nop)) ;; #x5e2
+          (vu-pair (nop) (nop)) ;; #x5e3
+          (vu-pair (ibne vi00 vi10 guard-finish-tail1) (nop)) ;; #x5e4
+          (vu-pair (ior vi10 vi05 vi00) (nop)) ;; #x5e5
+          (vu-pair (ior vi11 vi06 vi00) (nop)) ;; #x5e6
+          (vu-pair (b save-pipeline-for-clipping) (nop)) ;; #x5e7
+          (vu-pair (iaddiu vi15 vi00 0x45f) (nop)) ;; #x5e8
+          (label save-pipeline-for-clipping)
+          ;; Save every live stream pointer and continuation address before borrowing the register set for
+          ;; polygon clipping. The continuation identifies the exact four-vertex pipeline phase to resume.
+          (vu-pair (isw.x vi02 vi09 44) (nop)) ;; #x5e9
+          (vu-pair (isw.y vi03 vi09 44) (nop)) ;; #x5ea
+          (vu-pair (isw.z vi04 vi09 44) (nop)) ;; #x5eb
+          (vu-pair (isw.w vi05 vi09 44) (nop)) ;; #x5ec
+          (vu-pair (isw.x vi06 vi09 45) (nop)) ;; #x5ed
+          (vu-pair (isw.y vi07 vi09 45) (nop)) ;; #x5ee
+          (vu-pair (isw.z vi08 vi09 45) (nop)) ;; #x5ef
+          (vu-pair (isw.w vi01 vi09 45) (nop)) ;; #x5f0
+          (vu-pair (isw.x vi15 vi09 46) (nop)) ;; #x5f1
+          (vu-pair (ilw.z vi02 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x5f2
+          (vu-pair (ilw.y vi01 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x5f3
+          (vu-pair (ior vi03 vi10 vi00) (nop)) ;; #x5f4
+          (vu-pair (ior vi04 vi11 vi00) (nop)) ;; #x5f5
+          (vu-pair (isub vi11 vi02 vi14) (nop)) ;; #x5f6
+          (vu-pair (ilw.x vi10 vi14 1) (nop)) ;; #x5f7
+          (vu-pair (iblez vi11 clip-and-emit-triangle) (nop)) ;; #x5f8
+          (vu-pair (ilw.y vi11 vi14 1) (nop)) ;; #x5f9
+          (vu-pair (ior vi02 vi01 vi00) (nop)) ;; #x5fa
+          (label clip-and-emit-triangle)
+          ;; Stage homogeneous position, packed color, and texture coordinates for one crossing triangle.
+          ;; The clipper may grow it to a convex polygon; the result uses the triangle-fan GIF template at
+          ;; VU address 971. The constant packet at 966 supplies the A+D state before the fan.
+          (vu-pair (sq.xyzw vf18 vi09 47) (nop)) ;; #x5fb
+          (vu-pair (sq.xyzw vf19 vi09 48) (nop)) ;; #x5fc
+          (vu-pair (sq.xyzw vf20 vi09 49) (nop)) ;; #x5fd
+          (vu-pair (sq.xyzw vf24 vi09 50) (nop)) ;; #x5fe
+          (vu-pair (lq.xyzw vf27 vi00 (tie-near-const adgif)) (nop)) ;; #x5ff
+          (vu-pair (lq.xyzw vf18 vi02 0) (nop)) ;; #x600
+          (vu-pair (lq.xyzw vf19 vi02 1) (nop)) ;; #x601
+          (vu-pair (lq.xyzw vf20 vi02 2) (nop)) ;; #x602
+          (vu-pair (lq.xyzw vf24 vi02 3) (nop)) ;; #x603
+          (vu-pair (sq.xyzw vf27 vi09 0) (nop)) ;; #x604
+          (vu-pair (sq.xyzw vf18 vi09 1) (nop)) ;; #x605
+          (vu-pair (lq.xyzw vf18 vi02 4) (nop)) ;; #x606
+          (vu-pair (sq.xyzw vf19 vi09 2) (nop)) ;; #x607
+          (vu-pair (sq.xyzw vf20 vi09 3) (nop)) ;; #x608
+          (vu-pair (sq.xyzw vf24 vi09 4) (nop)) ;; #x609
+          (vu-pair (sq.xyzw vf18 vi09 5) (nop)) ;; #x60a
+          (vu-pair (lq.xyzw vf18 vi09 47) (nop)) ;; #x60b
+          (vu-pair (lq.xyzw vf19 vi09 48) (nop)) ;; #x60c
+          (vu-pair (lq.xyzw vf20 vi09 49) (nop)) ;; #x60d
+          (vu-pair (lq.xyzw vf24 vi09 50) (nop)) ;; #x60e
+          (vu-pair (isw.y vi02 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x60f
+          (vu-pair (ilw.z vi12 vi14 1) (nop)) ;; #x610
+          (vu-pair (ilw.w vi13 vi14 1) (mulw.xyz vf24 vf24 vf18)) ;; #x611
+          (vu-pair (mfir.x vf27 vi10) (mulw.xyz vf25 vf25 vf19)) ;; #x612
+          (vu-pair (mfir.y vf27 vi11) (mulw.xyz vf26 vf26 vf20)) ;; #x613
+          (vu-pair (mfir.z vf27 vi12) (nop)) ;; #x614
+          (vu-pair (mfir.w vf27 vi13) (nop)) ;; #x615
+          (vu-pair (ilw.x vi10 vi03 1) (nop)) ;; #x616
+          (vu-pair (ilw.y vi11 vi03 1) (nop)) ;; #x617
+          (vu-pair (ilw.z vi12 vi03 1) (nop)) ;; #x618
+          (vu-pair (ilw.w vi13 vi03 1) (itof0.xyzw vf27 vf27)) ;; #x619
+          (vu-pair (mfir.x vf28 vi10) (nop)) ;; #x61a
+          (vu-pair (mfir.y vf28 vi11) (nop)) ;; #x61b
+          (vu-pair (mfir.z vf28 vi12) (nop)) ;; #x61c
+          (vu-pair (mfir.w vf28 vi13) (nop)) ;; #x61d
+          (vu-pair (sq.xyzw vf27 vi09 35) (nop)) ;; #x61e
+          (vu-pair (ilw.x vi10 vi04 1) (nop)) ;; #x61f
+          (vu-pair (ilw.y vi11 vi04 1) (nop)) ;; #x620
+          (vu-pair (ilw.z vi12 vi04 1) (nop)) ;; #x621
+          (vu-pair (ilw.w vi13 vi04 1) (itof0.xyzw vf28 vf28)) ;; #x622
+          (vu-pair (mfir.x vf27 vi10) (nop)) ;; #x623
+          (vu-pair (mfir.y vf27 vi11) (nop)) ;; #x624
+          (vu-pair (mfir.z vf27 vi12) (nop)) ;; #x625
+          (vu-pair (mfir.w vf27 vi13) (nop)) ;; #x626
+          (vu-pair (sq.xyzw vf28 vi09 38) (nop)) ;; #x627
+          (vu-pair (lq.xyzw vf28 vi00 (tie-near-const fangif)) (nop)) ;; #x628
+          (vu-pair (sq.xyzw vf18 vi09 34) (nop)) ;; #x629
+          (vu-pair (sq.xyzw vf24 vi09 36) (nop)) ;; #x62a
+          (vu-pair (sq.xyzw vf19 vi09 37) (itof0.xyzw vf27 vf27)) ;; #x62b
+          (vu-pair (sq.xyzw vf25 vi09 39) (nop)) ;; #x62c
+          (vu-pair (sq.xyzw vf20 vi09 40) (nop)) ;; #x62d
+          (vu-pair (sq.xyzw vf26 vi09 42) (nop)) ;; #x62e
+          (vu-pair (sq.xyzw vf27 vi09 41) (nop)) ;; #x62f
+          (vu-pair (sq.xyzw vf29 vi09 43) (nop)) ;; #x630
+          (vu-pair (sq.xyzw vf28 vi09 6) (nop)) ;; #x631
+          (vu-pair (bal vi15 setup-polygon-clip) (nop)) ;; #x632
+          (vu-pair (nop) (nop)) ;; #x633
+          (vu-pair (ibeq vi00 vi02 restore-pipeline-after-clipping) (nop)) ;; #x634
+          (vu-pair (nop) (nop)) ;; #x635
+          (vu-pair (iaddiu vi10 vi00 0x3c6) (nop)) ;; #x636
+          (vu-pair (xgkick vi10) (nop)) ;; #x637
+          (vu-pair (nop) (nop)) ;; #x638
+          (vu-pair (xgkick vi09) (nop)) ;; #x639
+          (vu-pair (nop) (nop)) ;; #x63a
+          (vu-pair (xgkick vi10) (nop)) ;; #x63b
+          (label restore-pipeline-after-clipping)
+          (vu-pair (lq.xyzw vf29 vi09 43) (nop)) ;; #x63c
+          (vu-pair (ilw.x vi15 vi09 46) (nop)) ;; #x63d
+          (vu-pair (ilw.x vi02 vi09 44) (nop)) ;; #x63e
+          (vu-pair (ilw.y vi03 vi09 44) (nop)) ;; #x63f
+          (vu-pair (ilw.z vi04 vi09 44) (nop)) ;; #x640
+          (vu-pair (ilw.w vi05 vi09 44) (nop)) ;; #x641
+          (vu-pair (ilw.x vi06 vi09 45) (nop)) ;; #x642
+          (vu-pair (ilw.y vi07 vi09 45) (nop)) ;; #x643
+          (vu-pair (ilw.z vi08 vi09 45) (nop)) ;; #x644
+          (vu-pair (jr vi15) (nop)) ;; #x645
+          (vu-pair (ilw.w vi01 vi09 45) (nop)) ;; #x646
+          (vu-pair (mtir vi04 vf29.x) (nop)) ;; #x647
+          (vu-pair (mtir vi05 vf29.y) (nop)) ;; #x648
+          (vu-pair (mtir vi06 vf29.z) (nop)) ;; #x649
+          (vu-pair (mtir vi07 vf29.w) (nop)) ;; #x64a
+          (vu-pair (mtir vi08 vf30.x) (nop)) ;; #x64b
+          (vu-pair (mtir vi09 vf30.y) (nop)) ;; #x64c
+          (vu-pair (mtir vi10 vf30.z) (nop)) ;; #x64d
+          (vu-pair (mtir vi11 vf30.w) (nop)) ;; #x64e
+          (vu-pair (mtir vi13 vf31.x) (nop)) ;; #x64f
+          (vu-pair (mtir vi14 vf31.y) (nop)) ;; #x650
+          (vu-pair (mtir vi15 vf31.z) (nop)) ;; #x651
+          (label finish-current-gif-buffer)
+          (vu-pair (mtir vi01 extra.y) (nop)) ;; #x652
+          (vu-pair (mtir vi12 extra.w) (nop)) ;; #x653
+          (vu-pair (mr32.xyzw clrbuf clrbuf) (nop)) ;; #x654
+          (vu-pair (iaddiu vi02 vi00 0x32) (nop)) ;; #x655
+          (vu-pair (iadd vi01 vi01 vi15) (nop)) ;; #x656
+          (vu-pair (mfir.y extra vi12) (nop :e)) ;; #x657
+          (vu-pair (mtir vi03 clrbuf.x) (nop)) ;; #x658
+          (vu-pair (nop) (nop :e)) ;; #x659
+          (vu-pair (nop) (nop)) ;; #x65a
+          ;; The Sutherland-Hodgman clipper. One triangle comes in, up to six planes chew on it, and a
+          ;; triangle fan comes out.
+          ;;
+          ;; The polygon lives in the six seven-quadword plane records at 977 onward, one per plane, and
+          ;; the outer loop walks them in order: each pass reads the polygon the previous plane produced
+          ;; and writes the polygon this plane produces. Every edge is classified by calling that plane's
+          ;; distance subroutine through the pointer in its record, so one edge loop serves all six planes.
+          ;;
+          ;; An edge crossing the plane generates one boundary vertex, interpolated at
+          ;; Q = d0 / (d0 - d1) -- see interpolate-clip-vertex, which applies that one parameter to
+          ;; position, color, and STQ so the new edge matches the old one exactly. An edge that leaves the
+          ;; volume has to emit its intersection before the vertex that follows it, so the far end is
+          ;; pushed onto the deferred-edge stack and picked up again after the walk reaches the end.
+          (label setup-polygon-clip)
+          ;; Feed the staged triangle through all six guard planes. Each plane produces a linked list of
+          ;; surviving vertices in its seven-quadword work record, so the output of one plane becomes the
+          ;; input to the next.
+          (vu-pair (iaddi vi12 vi09 0x7) (nop)) ;; #x65b
+          (vu-pair (isw.x vi15 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x65c
+          (vu-pair (iaddi vi02 vi00 0x0) (nop)) ;; #x65d
+          (vu-pair (bal vi15 clip-polygon) (nop)) ;; #x65e
+          (vu-pair (iaddiu vi04 vi09 0x22) (nop)) ;; #x65f
+          (vu-pair (bal vi15 clip-polygon) (nop)) ;; #x660
+          (vu-pair (iaddiu vi04 vi09 0x25) (nop)) ;; #x661
+          (vu-pair (bal vi15 clip-polygon) (nop)) ;; #x662
+          (vu-pair (iaddiu vi04 vi09 0x28) (nop)) ;; #x663
+          (vu-pair (b close-polygon) (nop)) ;; #x664
+          (vu-pair (nop) (nop)) ;; #x665
+          (label clip-polygon)
+          ;; Walk one polygon edge at a time. Vertices inside the current plane pass through unchanged;
+          ;; an edge that changes side emits an interpolated intersection. Deferred edges are kept in the
+          ;; small stack at the end of VU memory.
+          (vu-pair (iaddiu vi06 vi00 TIE-NEAR-VU-CLIP-PLANE-X-POS) (nop)) ;; #x666
+          (label begin-clip-plane)
+          (vu-pair (iaddi vi07 vi00 0x0) (nop)) ;; #x667
+          (label clip-edge-loop)
+          (vu-pair (isubiu vi01 vi06 0x3fb) (nop)) ;; #x668
+          (vu-pair (ilwr.y vi05 vi06) (nop)) ;; #x669
+          (vu-pair (ibeq vi00 vi01 emit-final-clip-vertex) (nop)) ;; #x66a
+          (vu-pair (ilwr.z vi03 vi06) (nop)) ;; #x66b
+          (vu-pair (lq.xyzw edge-p1 vi04 0) (nop)) ;; #x66c
+          (vu-pair (lq.xyzw edge-p0 vi05 0) (nop)) ;; #x66d
+          (vu-pair (ibne vi00 vi05 classify-clip-edge) (nop)) ;; #x66e
+          (vu-pair (iswr.y vi04 vi06) (nop)) ;; #x66f
+          (vu-pair (jalr vi08 vi03) (nop)) ;; #x670
+          (vu-pair (iswr.x vi04 vi06) (nop)) ;; #x671
+          (vu-pair (nop) (nop)) ;; #x672
+          (vu-pair (nop) (nop)) ;; #x673
+          (vu-pair (nop) (nop)) ;; #x674
+          (vu-pair (fsand vi11 0x2) (nop)) ;; #x675
+          (vu-pair (ibne vi00 vi11 resume-deferred-edge) (nop)) ;; #x676
+          (vu-pair (nop) (nop)) ;; #x677
+          (vu-pair (b clip-edge-loop) (nop)) ;; #x678
+          (vu-pair (iaddi vi06 vi06 0x7) (nop)) ;; #x679
+          (label classify-clip-edge)
+          (vu-pair (jalr vi08 vi03) (nop)) ;; #x67a
+          (vu-pair (lq.xyzw edge-clr0 vi05 1) (nop)) ;; #x67b
+          (vu-pair (lq.xyzw edge-clr1 vi04 1) (nop)) ;; #x67c
+          (vu-pair (lq.xyz edge-stq0 vi05 2) (nop)) ;; #x67d
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x67e
+          (vu-pair (fsand vi11 0x2) (subw.w edge-stq1 edge-stq0 edge-stq1)) ;; #x67f
+          (vu-pair (ibne vi00 vi10 emit-leaving-intersection) (nop)) ;; #x680
+          (vu-pair (lq.xyz edge-stq1 vi04 2) (nop)) ;; #x681
+          (vu-pair (ibne vi00 vi11 emit-entering-intersection) (nop)) ;; #x682
+          (vu-pair (div Q edge-stq0.w edge-stq1.w) (nop)) ;; #x683
+          (vu-pair (b clip-edge-loop) (nop)) ;; #x684
+          (vu-pair (iaddi vi06 vi06 0x7) (nop)) ;; #x685
+          (label emit-entering-intersection)
+          (vu-pair (bal vi08 interpolate-clip-vertex) (nop)) ;; #x686
+          (vu-pair (iaddi vi04 vi06 0x1) (nop)) ;; #x687
+          (vu-pair (sq.xyzw new-p vi06 1) (nop)) ;; #x688
+          (vu-pair (sq.xyzw new-clr vi06 2) (nop)) ;; #x689
+          (vu-pair (sq.xyz new-stq vi06 3) (nop)) ;; #x68a
+          (vu-pair (b clip-edge-loop) (nop)) ;; #x68b
+          (vu-pair (iaddi vi06 vi06 0x7) (nop)) ;; #x68c
+          (label emit-leaving-intersection)
+          (vu-pair (ibne vi00 vi11 resume-deferred-edge) (nop)) ;; #x68d
+          (vu-pair (div Q edge-stq0.w edge-stq1.w) (nop)) ;; #x68e
+          (vu-pair (bal vi08 interpolate-clip-vertex) (nop)) ;; #x68f
+          (vu-pair (nop) (nop)) ;; #x690
+          (vu-pair (sq.xyzw new-p vi06 4) (nop)) ;; #x691
+          (vu-pair (sq.xyzw new-clr vi06 5) (nop)) ;; #x692
+          (vu-pair (sq.xyz new-stq vi06 6) (nop)) ;; #x693
+          (vu-pair (iaddi vi06 vi06 0x7) (nop)) ;; #x694
+          (vu-pair (isw.x vi06 vi07 TIE-NEAR-VU-EDGE-STACK) (nop)) ;; #x695
+          (vu-pair (isw.y vi04 vi07 TIE-NEAR-VU-EDGE-STACK) (nop)) ;; #x696
+          (vu-pair (iaddi vi07 vi07 0x1) (nop)) ;; #x697
+          (vu-pair (b clip-edge-loop) (nop)) ;; #x698
+          (vu-pair (iaddi vi04 vi06 -0x3) (nop)) ;; #x699
+          (label emit-final-clip-vertex)
+          (vu-pair (lq.xyzw edge-p0 vi04 0) (nop)) ;; #x69a
+          (vu-pair (lq.xyzw edge-clr0 vi04 1) (nop)) ;; #x69b
+          (vu-pair (lq.xyz edge-stq0 vi04 2) (nop)) ;; #x69c
+          (vu-pair (iaddi vi02 vi02 0x1) (nop)) ;; #x69d
+          (vu-pair (nop) (nop)) ;; #x69e
+          (vu-pair (div Q vf00.w edge-p0.w) (mul.xyz edge-p0 edge-p0 invh)) ;; #x69f
+          (vu-pair (nop) (ftoi0.xyzw edge-clr0 edge-clr0)) ;; #x6a0
+          (vu-pair (nop) (subw.w edge-p0 vf00 vf00)) ;; #x6a1
+          (vu-pair (iaddi vi12 vi12 0x3) (nop)) ;; #x6a2
+          (vu-pair (waitq) (mul.xyz edge-stq0 edge-stq0 Q)) ;; #x6a3
+          (vu-pair (sq.xyzw edge-clr0 vi12 -2) (mul.xyz edge-p0 edge-p0 Q)) ;; #x6a4
+          (vu-pair (nop) (add.xyzw edge-p0 edge-p0 hvdfnc)) ;; #x6a5
+          (vu-pair (sq.xyz edge-stq0 vi12 -3) (ftoi4.xyzw edge-p0 edge-p0)) ;; #x6a6
+          (vu-pair (sq.xyzw edge-p0 vi12 -1) (nop)) ;; #x6a7
+          (label resume-deferred-edge)
+          (vu-pair (iblez vi07 finish-clip-plane) (nop)) ;; #x6a8
+          (vu-pair (nop) (nop)) ;; #x6a9
+          (vu-pair (ilw.x vi06 vi07 TIE-NEAR-VU-EDGE-STACK-POP) (nop)) ;; #x6aa
+          (vu-pair (ilw.y vi04 vi07 TIE-NEAR-VU-EDGE-STACK-POP) (nop)) ;; #x6ab
+          (vu-pair (b clip-edge-loop) (nop)) ;; #x6ac
+          (vu-pair (iaddi vi07 vi07 -0x1) (nop)) ;; #x6ad
+          (label finish-clip-plane)
+          (vu-pair (jr vi15) (nop)) ;; #x6ae
+          (vu-pair (nop) (nop)) ;; #x6af
+          (label close-polygon)
+          ;; Close the last edge back to the first vertex for every plane and terminate the generated
+          ;; lists. A zero final vertex count suppresses the triangle fan.
+          (vu-pair (iaddiu vi06 vi00 TIE-NEAR-VU-CLIP-PLANE-X-POS) (nop)) ;; #x6b0
+          (label close-plane-loop)
+          (vu-pair (ilwr.x vi05 vi06) (nop)) ;; #x6b1
+          (vu-pair (ilwr.y vi04 vi06) (nop)) ;; #x6b2
+          (vu-pair (ilwr.z vi03 vi06) (nop)) ;; #x6b3
+          (vu-pair (nop) (nop)) ;; #x6b4
+          (vu-pair (ibeq vi00 vi05 advance-clip-plane) (nop)) ;; #x6b5
+          (vu-pair (lq.xyzw edge-p0 vi04 0) (nop)) ;; #x6b6
+          (vu-pair (ibeq vi04 vi05 advance-clip-plane) (nop)) ;; #x6b7
+          (vu-pair (lq.xyzw edge-p1 vi05 0) (nop)) ;; #x6b8
+          (vu-pair (jalr vi08 vi03) (nop)) ;; #x6b9
+          (vu-pair (lq.xyzw edge-clr0 vi04 1) (nop)) ;; #x6ba
+          (vu-pair (lq.xyzw edge-clr1 vi05 1) (nop)) ;; #x6bb
+          (vu-pair (lq.xyz edge-stq0 vi04 2) (nop)) ;; #x6bc
+          (vu-pair (fsand vi10 0x2) (nop)) ;; #x6bd
+          (vu-pair (fsand vi11 0x2) (subw.w edge-stq1 edge-stq0 edge-stq1)) ;; #x6be
+          (vu-pair (ibeq vi11 vi10 advance-clip-plane) (nop)) ;; #x6bf
+          (vu-pair (lq.xyz edge-stq1 vi05 2) (nop)) ;; #x6c0
+          (vu-pair (ibeq vi00 vi10 close-with-entering-intersection) (nop)) ;; #x6c1
+          (vu-pair (div Q edge-stq0.w edge-stq1.w) (nop)) ;; #x6c2
+          (vu-pair (bal vi08 interpolate-clip-vertex) (nop)) ;; #x6c3
+          (vu-pair (nop) (nop)) ;; #x6c4
+          (vu-pair (sq.xyzw new-p vi06 4) (nop)) ;; #x6c5
+          (vu-pair (sq.xyzw new-clr vi06 5) (nop)) ;; #x6c6
+          (vu-pair (sq.xyz new-stq vi06 6) (nop)) ;; #x6c7
+          (vu-pair (iaddi vi04 vi06 0x4) (nop)) ;; #x6c8
+          (vu-pair (ior vi13 vi06 vi00) (nop)) ;; #x6c9
+          (vu-pair (bal vi15 begin-clip-plane) (nop)) ;; #x6ca
+          (vu-pair (iaddi vi06 vi06 0x7) (nop)) ;; #x6cb
+          (vu-pair (b advance-clip-plane) (nop)) ;; #x6cc
+          (vu-pair (ior vi06 vi13 vi00) (nop)) ;; #x6cd
+          (label close-with-entering-intersection)
+          (vu-pair (bal vi08 interpolate-clip-vertex) (nop)) ;; #x6ce
+          (vu-pair (nop) (nop)) ;; #x6cf
+          (vu-pair (sq.xyzw new-p vi06 1) (nop)) ;; #x6d0
+          (vu-pair (sq.xyzw new-clr vi06 2) (nop)) ;; #x6d1
+          (vu-pair (sq.xyz new-stq vi06 3) (nop)) ;; #x6d2
+          (vu-pair (iaddi vi04 vi06 0x1) (nop)) ;; #x6d3
+          (vu-pair (ior vi13 vi06 vi00) (nop)) ;; #x6d4
+          (vu-pair (bal vi15 begin-clip-plane) (nop)) ;; #x6d5
+          (vu-pair (iaddi vi06 vi06 0x7) (nop)) ;; #x6d6
+          (vu-pair (ior vi06 vi13 vi00) (nop)) ;; #x6d7
+          (label advance-clip-plane)
+          (vu-pair (isubiu vi01 vi06 TIE-NEAR-VU-CLIP-PLANE-Z-NEG) (nop)) ;; #x6d8
+          (vu-pair (iswr.x vi00 vi06) (nop)) ;; #x6d9
+          (vu-pair (iswr.y vi00 vi06) (nop)) ;; #x6da
+          (vu-pair (ibltz vi01 close-plane-loop) (nop)) ;; #x6db
+          (vu-pair (iaddi vi06 vi06 0x7) (nop)) ;; #x6dc
+          (vu-pair (ibeq vi00 vi02 restore-after-polygon-clip) (nop)) ;; #x6dd
+          (vu-pair (ilw.x vi15 vi00 TIE-NEAR-VU-CLIP-STATE) (nop)) ;; #x6de
+          (vu-pair (iaddiu vi02 vi02 0x4000) (nop)) ;; #x6df
+          (vu-pair (iaddiu vi02 vi02 0x4000) (nop)) ;; #x6e0
+          (label restore-after-polygon-clip)
+          (vu-pair (jr vi15) (nop)) ;; #x6e1
+          (vu-pair (isw.x vi02 vi09 6) (nop)) ;; #x6e2
+          ;; One two-instruction subroutine per clip plane, whose addresses entry 8 stored into the plane
+          ;; records. Each one writes the signed distance of both edge endpoints into the w lane of their
+          ;; STQ register -- positive means inside. Packing the distance into the spare lane of a register
+          ;; the clipper already has to keep live is what makes a plane test cost two instructions.
+          (label positive-x-distance)
+          (vu-pair (jr vi08) (addx.w edge-stq0 edge-p0 edge-p0)) ;; #x6e3
+          (vu-pair (nop) (addx.w edge-stq1 edge-p1 edge-p1)) ;; #x6e4
+          (label negative-x-distance)
+          (vu-pair (jr vi08) (subx.w edge-stq0 edge-p0 edge-p0)) ;; #x6e5
+          (vu-pair (nop) (subx.w edge-stq1 edge-p1 edge-p1)) ;; #x6e6
+          (label positive-y-distance)
+          (vu-pair (jr vi08) (addy.w edge-stq0 edge-p0 edge-p0)) ;; #x6e7
+          (vu-pair (nop) (addy.w edge-stq1 edge-p1 edge-p1)) ;; #x6e8
+          (label negative-y-distance)
+          (vu-pair (jr vi08) (suby.w edge-stq0 edge-p0 edge-p0)) ;; #x6e9
+          (vu-pair (nop) (suby.w edge-stq1 edge-p1 edge-p1)) ;; #x6ea
+          (label positive-z-distance)
+          (vu-pair (jr vi08) (addz.w edge-stq0 edge-p0 edge-p0)) ;; #x6eb
+          (vu-pair (nop) (addz.w edge-stq1 edge-p1 edge-p1)) ;; #x6ec
+          (label negative-z-distance)
+          (vu-pair (jr vi08) (subz.w edge-stq0 edge-p0 edge-p0)) ;; #x6ed
+          (vu-pair (nop) (subz.w edge-stq1 edge-p1 edge-p1)) ;; #x6ee
+          (label interpolate-clip-vertex)
+          ;; Q = d0 / (d0 - d1). Apply the same edge parameter to homogeneous position, packed color, and
+          ;; STQ so the new boundary vertex preserves the original triangle's attribute interpolation.
+          (vu-pair (nop) (sub.xyzw new-p edge-p1 edge-p0)) ;; #x6ef
+          (vu-pair (nop) (sub.xyzw new-clr edge-clr1 edge-clr0)) ;; #x6f0
+          (vu-pair (nop) (sub.xyz new-stq edge-stq1 edge-stq0)) ;; #x6f1
+          (vu-pair (waitq) (mul.xyzw new-p new-p Q)) ;; #x6f2
+          (vu-pair (nop) (mul.xyzw new-clr new-clr Q)) ;; #x6f3
+          (vu-pair (nop) (mul.xyz new-stq new-stq Q)) ;; #x6f4
+          (vu-pair (nop) (add.xyzw new-p edge-p0 new-p)) ;; #x6f5
+          (vu-pair (jr vi08) (add.xyzw new-clr edge-clr0 new-clr)) ;; #x6f6
+          (vu-pair (nop) (add.xyz new-stq edge-stq0 new-stq)) ;; #x6f7
+          )))
+
+(defun tie-near-init-consts ((consts tie-near-consts) (alpha-blend int))
+  "Build the TIE near-path packet templates, triple-buffer addresses, instance-data bank addresses,
+   camera projection constants, clipping guard volume, and normal and translucent alpha-test states.
+   alpha-blend controls the ABE bit in the strip and clipped-polygon primitives."
+  (set! (-> consts adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+  (set! (-> consts adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  (set! (-> consts atest-tra cmd) (gs-reg test-1))
+  (set! (-> consts atest-tra data)
+        (the uint
+             (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))))
+  (set! (-> consts atest-def cmd) (gs-reg test-1))
+  (set! (-> consts atest-def data)
+        (the uint (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal))))
   (cond
     ((zero? *subdivide-draw-mode*)
-     (set! (-> arg0 strgif tag)
+     (set! (-> consts strgif tag)
            (new 'static
                 'gif-tag64
                 :pre #x1
                 :nreg #x3
                 :prim
-                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1))))
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe alpha-blend))))
     ((= *subdivide-draw-mode* 3)
-     (set! (-> arg0 strgif tag)
+     (set! (-> consts strgif tag)
            (new 'static
                 'gif-tag64
                 :pre #x1
@@ -59,106 +2104,183 @@
                 (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
                 :nreg #x3)))
     ((= *subdivide-draw-mode* 1)
-     (set! (-> arg0 strgif tag)
+     (set! (-> consts strgif tag)
            (new 'static
                 'gif-tag64
                 :pre #x1
                 :nreg #x3
                 :prim
-                (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe arg1))))
+                (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe alpha-blend))))
     ((= *subdivide-draw-mode* 2)
-     (set! (-> arg0 strgif tag)
+     (set! (-> consts strgif tag)
            (new 'static
                 'gif-tag64
                 :pre #x1
                 :nreg #x3
                 :prim
-                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe arg1)))))
-  (set! (-> arg0 strgif regs)
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe alpha-blend)))))
+  (set! (-> consts strgif regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (set! (-> arg0 fangif tag)
+  (set! (-> consts fangif tag)
         (new 'static
              'gif-tag64
              :pre #x1
              :nreg #x3
              :prim
-             (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe arg1)))
-  (set! (-> arg0 fangif regs)
+             (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe alpha-blend)))
+  (set! (-> consts fangif regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (let ((f1-0 8388894.0)
-        (f2-0 8389078.0)
-        (f0-0 8389262.0))
-    (set! (-> arg0 gifbufs vector4w x) (the-as int f0-0))
-    (set! (-> arg0 gifbufs vector4w y) (the-as int f2-0))
-    (set! (-> arg0 gifbufs vector4w z) (the-as int f0-0))
-    (set! (-> arg0 gifbufs vector4w w) (the-as int f2-0))
-    (set! (-> arg0 extra vector4w x) (the-as int (+ f1-0 f2-0 f0-0)))
-    (set! (-> arg0 extra vector4w y) (the-as int 0.0))
-    (set! (-> arg0 extra vector4w z) (the-as int (+ f1-0 f2-0 f0-0))))
-  (set! (-> arg0 clrbufs vector4w x) 198)
-  (set! (-> arg0 clrbufs vector4w y) 242)
-  (set! (-> arg0 clrbufs vector4w z) 198)
-  (set! (-> arg0 clrbufs vector4w w) 242)
-  (let ((v1-41 *math-camera*))
-    (set! (-> arg0 invhscale quad) (-> v1-41 inv-hmge-scale quad))
-    (set! (-> arg0 hvdfoffs quad) (-> v1-41 hvdf-off quad))
-    (set! (-> arg0 guard quad) (-> v1-41 guard quad)))
+  ;; Encode VU addresses 286, 470, and 654 in the low mantissa bits of 2^23-based floats. VU1
+  ;; rotates the active pair by subtracting it from the sum of all three addresses.
+  (let ((gif-buffer-a 8388894.0)
+        (gif-buffer-b 8389078.0)
+        (gif-buffer-c 8389262.0))
+    (set! (-> consts gifbufs vector4w x) (the-as int gif-buffer-c))
+    (set! (-> consts gifbufs vector4w y) (the-as int gif-buffer-b))
+    (set! (-> consts gifbufs vector4w z) (the-as int gif-buffer-c))
+    (set! (-> consts gifbufs vector4w w) (the-as int gif-buffer-b))
+    (set! (-> consts extra vector4w x) (the-as int (+ gif-buffer-a gif-buffer-b gif-buffer-c)))
+    (set! (-> consts extra vector4w y) (the-as int 0.0))
+    (set! (-> consts extra vector4w z) (the-as int (+ gif-buffer-a gif-buffer-b gif-buffer-c))))
+  ;; The two input banks are 44 quadwords apart.
+  (set! (-> consts clrbufs vector4w x) 198)
+  (set! (-> consts clrbufs vector4w y) 242)
+  (set! (-> consts clrbufs vector4w z) 198)
+  (set! (-> consts clrbufs vector4w w) 242)
+  (let ((camera *math-camera*))
+    (vector-copy! (-> consts invhscale) (-> camera inv-hmge-scale))
+    (vector-copy! (-> consts hvdfoffs) (-> camera hvdf-off))
+    (vector-copy! (-> consts guard) (-> camera guard)))
   (none))
 
-;; SKIPPED tie-near-init-engine
-;; SKIPPED tie-near-end-buffer
+(defun tie-near-init-engine ((dma-buf dma-buffer) (test-state gs-test) (alpha-blend int))
+  "Append the TIE near-path VU1 upload and initialization packets to dma-buf. This uploads the
+   constant block, initializes the microprogram, and configures VIF's ROW, BASE/OFFSET, mode, and cycle
+   state for the packed instance stream. alpha-blend controls the geometry primitives' ABE bit. The
+   test-state argument is accepted by the shared renderer interface but is not used by this path."
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie-near))
+    (dma-buffer-add-vu-function dma-buf tie-near-vu1-block 1)
+    ;; Upload tie-near-consts to VU address 966.
+    (let ((constant-qwc 11))
+      (let* ((buffer dma-buf)
+             (constant-packet (the-as dma-packet (-> buffer base))))
+        (set! (-> constant-packet dma) (new 'static 'dma-tag :qwc constant-qwc :id (dma-tag-id cnt)))
+        (set! (-> constant-packet vif0) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+        (set! (-> constant-packet vif1) (new 'static 'vif-tag :imm #x3c6 :num constant-qwc :cmd (vif-cmd unpack-v4-32)))
+        (set! (-> buffer base) (&+ (the-as pointer constant-packet) 16)))
+      (tie-near-init-consts (the-as tie-near-consts (-> dma-buf base)) alpha-blend)
+      (&+! (-> dma-buf base) (* constant-qwc 16)))
+    ;; Entry 8 initializes the output and instance banks and installs the clipping-plane callbacks.
+    (let* ((buffer dma-buf)
+           (init-packet (the-as dma-packet (-> buffer base))))
+      (set! (-> init-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> init-packet vif0) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1))
+      (set! (-> init-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+      (set! (-> buffer base) (&+ (the-as pointer init-packet) 16)))
+    ;; 2^23 in every ROW lane turns small packed integers into exact floating-point bit patterns
+    ;; under VIF additive mode. mtir later recovers the address and index bits without conversion.
+    (let* ((buffer dma-buf)
+           (row-packet (the-as dma-packet (-> buffer base))))
+      (set! (-> row-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> row-packet vif0) (new 'static 'vif-tag))
+      (set! (-> row-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+      (set! (-> buffer base) (&+ (the-as pointer row-packet) 16)))
+    (let ((row-data (the-as (pointer uint32) (-> dma-buf base))))
+      (set! (-> (the-as (inline-array vector4w) row-data) 0 x) #x4b000000)
+      (set! (-> (the-as (inline-array vector4w) row-data) 0 y) #x4b000000)
+      (set! (-> (the-as (inline-array vector4w) row-data) 0 z) #x4b000000)
+      (set! (-> (the-as (inline-array vector4w) row-data) 0 w) #x4b000000)
+      (set! (-> (the-as (pointer vif-tag) row-data) 4) (new 'static 'vif-tag :cmd (vif-cmd base)))
+      (set! (-> (the-as (pointer vif-tag) row-data) 5) (new 'static 'vif-tag :imm #x2c :cmd (vif-cmd offset)))
+      (set! (-> (the-as (pointer vif-tag) row-data) 6) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+      (set! (-> (the-as (pointer vif-tag) row-data) 7) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> dma-buf base) (&+ (the-as pointer row-data) 32)))
+    0)
+  (none))
 
-(defun tie-near-make-perspective-matrix ((arg0 matrix))
-  (column-scale-matrix! arg0 (-> *math-camera* hmge-scale) (-> *math-camera* camera-temp)))
+(defun tie-near-end-buffer ((dma-buf dma-buffer))
+  "Append the TIE near-path shutdown packets, restoring the normal GS TEST state and clearing the
+   VIF mask, mode, and ROW state changed by tie-near-init-engine."
+  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie-near))
+    ;; Restore the alpha/depth test used by the translucent near path.
+    (dma-buffer-add-gs-set dma-buf
+                           (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))))
+    ;; Clear the VIF mask, execute the empty entry 4, and restore mode and ROW for the next renderer.
+    (let* ((buffer dma-buf)
+           (mask-packet (the-as dma-packet (-> buffer base))))
+      (set! (-> mask-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+      (set! (-> mask-packet vif0) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
+      (set! (-> mask-packet vif1) (new 'static 'vif-tag))
+      (set! (-> buffer base) (&+ (the-as pointer mask-packet) 16)))
+    (let* ((buffer dma-buf)
+           (reset-data (the-as (pointer uint32) (-> buffer base))))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscalf) :msk #x1))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 2) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 3) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 4) (new 'static 'vif-tag))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 5) (new 'static 'vif-tag))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 6) (new 'static 'vif-tag))
+      (set! (-> (the-as (pointer vif-tag) reset-data) 7) (new 'static 'vif-tag))
+      (set! (-> buffer base) (&+ (the-as pointer reset-data) 32)))
+    0)
+  (none))
 
-(defun tie-near-int-reg ((arg0 int))
-  (let ((v1-0 arg0))
+(defun tie-near-make-perspective-matrix ((out-matrix matrix))
+  "Build the TIE near-path perspective matrix by applying the camera's homogeneous projection
+   scale to camera-temp."
+  (column-scale-matrix! out-matrix (-> *math-camera* hmge-scale) (-> *math-camera* camera-temp)))
+
+(defun tie-near-int-reg ((register-index int))
+  "Return the source name assigned to a TIE near-path VU1 integer register."
+  (let ((i register-index))
     (cond
-      ((zero? v1-0) "zero")
-      ((= v1-0 1) "itemp")
-      ((= v1-0 2) "delta")
-      ((= v1-0 3) "dest-0")
-      ((= v1-0 4) "dest-1")
-      ((= v1-0 5) "dest-2")
-      ((= v1-0 6) "dest-3")
-      ((= v1-0 7) "delta-ptr")
-      ((= v1-0 8) "prev")
-      ((= v1-0 9) "itemp2"))))
+      ((zero? i) "zero")
+      ((= i 1) "itemp")
+      ((= i 2) "delta")
+      ((= i 3) "dest-0")
+      ((= i 4) "dest-1")
+      ((= i 5) "dest-2")
+      ((= i 6) "dest-3")
+      ((= i 7) "delta-ptr")
+      ((= i 8) "prev")
+      ((= i 9) "itemp2"))))
 
-(defun tie-near-float-reg ((arg0 int))
-  (let ((v1-0 arg0))
+(defun tie-near-float-reg ((register-index int))
+  "Return the source name assigned to a TIE near-path VU1 floating-point register."
+  (let ((i register-index))
     (cond
-      ((zero? v1-0) "zero")
-      ((= v1-0 1) "vtx-0")
-      ((= v1-0 2) "vtx-1")
-      ((= v1-0 3) "vtx-2")
-      ((= v1-0 4) "vtx-3")
-      ((= v1-0 5) "hvtx-0")
-      ((= v1-0 6) "hvtx-1")
-      ((= v1-0 7) "hvtx-2")
-      ((= v1-0 8) "hvtx-3")
-      ((= v1-0 9) "tex-0")
-      ((= v1-0 10) "tex-1")
-      ((= v1-0 11) "tex-2")
-      ((= v1-0 12) "tex-3")
-      ((= v1-0 13) "deltas")
-      ((= v1-0 14) "invh")
-      ((= v1-0 15) "hvdfcl")
-      ((= v1-0 16) "hvdfnc")
-      ((= v1-0 17) "--")
-      ((= v1-0 18) "--")
-      ((= v1-0 19) "--")
-      ((= v1-0 20) "--")
-      ((= v1-0 19) "--")
-      ((= v1-0 20) "--")
-      ((= v1-0 21) "gifbuf")
-      ((= v1-0 22) "clrbuf")
-      ((= v1-0 23) "extra")
-      ((= v1-0 24) "inds")
-      ((= v1-0 25) "--")
-      ((= v1-0 26) "--")
-      ((= v1-0 27) "morph")
-      ((= v1-0 28) "xyzofs")
-      ((= v1-0 29) "--")
-      ((= v1-0 30) "--")
-      ((= v1-0 31) "--"))))
+      ((zero? i) "zero")
+      ((= i 1) "vtx-0")
+      ((= i 2) "vtx-1")
+      ((= i 3) "vtx-2")
+      ((= i 4) "vtx-3")
+      ((= i 5) "hvtx-0")
+      ((= i 6) "hvtx-1")
+      ((= i 7) "hvtx-2")
+      ((= i 8) "hvtx-3")
+      ((= i 9) "tex-0")
+      ((= i 10) "tex-1")
+      ((= i 11) "tex-2")
+      ((= i 12) "tex-3")
+      ((= i 13) "deltas")
+      ((= i 14) "invh")
+      ((= i 15) "hvdfcl")
+      ((= i 16) "hvdfnc")
+      ((= i 17) "--")
+      ((= i 18) "--")
+      ((= i 19) "--")
+      ((= i 20) "--")
+      ((= i 19) "--")
+      ((= i 20) "--")
+      ((= i 21) "gifbuf")
+      ((= i 22) "clrbuf")
+      ((= i 23) "extra")
+      ((= i 24) "vf24")
+      ((= i 25) "--")
+      ((= i 26) "--")
+      ((= i 27) "morph")
+      ((= i 28) "xyzofs")
+      ((= i 29) "--")
+      ((= i 30) "--")
+      ((= i 31) "--"))))

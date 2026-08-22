@@ -40,24 +40,26 @@
   `(file-stream-seek ,fs 0 SCE_SEEK_CUR))
 
 (defmethod new file-stream ((allocation symbol) (type-to-make type) (name string) (mode symbol))
-  "Allocate a file-stream and open it."
-  (let ((a0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (file-stream-open a0-1 name mode)))
+  "Allocate and open a file stream with the requested name and mode."
+  (let ((stream (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (file-stream-open stream name mode)))
 
 ;; we already have a length method for a file-stream defined in C.
 ;; just store that in the method table.
 (set! (-> file-stream method-table 4) file-stream-length)
 
-(defun file-stream-read-string ((stream file-stream) (str string))
-  "Fill a string with data from a file stream.
-    Note: this function does not work."
-  ;; makes the length of the string 0.
-  (clear str)
-  ;; so this will read nothing.
-  (file-stream-read stream (-> str data) (length str))
-  str)
+(defun file-stream-read-string ((stream file-stream) (destination string))
+  "Read stream data into destination and return it; this legacy helper does not update the string length."
+  (clear destination)
+  ;; The PC port preserves the existing no-op behavior: clear sets this length to zero.
+  (file-stream-read stream
+                    (-> destination data)
+                    (#if PC_PORT
+                      (length destination) ;; og:preserve-this
+                      (length stream)))
+  destination)
 
-;; A common file header found in GOAL files.
+;; A common file header found in data files.
 (deftype file-info (basic)
   ((file-type      symbol)
    (file-name      basic)
@@ -101,15 +103,9 @@
 
 (defconstant TX_FILE_VERSION 1)
 
-(defun make-file-name ((kind file-kind) (name string) (art-group-version int) (arg3 symbol))
-  "Get a file name to open a file with the given kind and name.
-   The art-group-version argument can be used to override the version
-   of the art-group. Set it to 0 or less to use the default version
-   Similar to MakeFileName in C.
-   Note: file type enum is different between C and GOAL.
-   File versions should match those in versions.h.
-   Uses a single *file-temp-string* buffer, shared with make-vfile-name.
-   arg3 is unused."
+(defun make-file-name ((kind file-kind) (name string) (art-group-version int) (unused symbol))
+  "Build the path for a versioned game-data file in the shared temporary string.
+   A positive art-group-version overrides the default art-group version. The final argument is unused."
   (clear *file-temp-string*)
   (cond
     ((= kind (file-kind dir-tpage)) (format *file-temp-string* "texture-page~D/dir-tpages" TPAGE_FILE_VERSION))
@@ -131,8 +127,7 @@
   *file-temp-string*)
 
 (defun make-vfile-name ((kind file-kind) (name string))
-  "Make virtual? file name. This makes a name that the kernel knows how to
-   handle in a specific way. This function is not used."
+  "Build a kernel virtual path for a level or art-group file in the shared temporary string."
   (clear *file-temp-string*)
   (cond
     ((= kind (file-kind level-bt)) (format *file-temp-string* "$LEVEL/~S" name))
@@ -140,8 +135,7 @@
   *file-temp-string*)
 
 (defun file-info-correct-version? ((info file-info) (kind file-kind) (version-override int))
-  "Check if the version and kind in the info is valid.  The version-override can specify a
-   non-default version, or set to 0 for the default version"
+  "Return true when a file header has the expected kind and major version, printing an error otherwise."
   (let* ((expected-version (cond
                              ((zero? version-override)
                               (case kind
@@ -149,11 +143,11 @@
                                 (((file-kind level-bt)) 30)
                                 (((file-kind art-group)) 6)))
                              (else version-override)))
-         (v1-1 kind)
+         (kind-value kind)
          (kind-name (cond
-                      ((= v1-1 (file-kind tpage)) "texture-page")
-                      ((= v1-1 (file-kind level-bt)) "bsp-header")
-                      ((= v1-1 (file-kind art-group)) "art-group"))))
+                      ((= kind-value (file-kind tpage)) "texture-page")
+                      ((= kind-value (file-kind level-bt)) "bsp-header")
+                      ((= kind-value (file-kind art-group)) "art-group"))))
     (cond
       ((not (name= (the-as basic (-> info file-type value)) kind-name))
        (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%" (-> info file-name) (-> info file-type) kind-name)

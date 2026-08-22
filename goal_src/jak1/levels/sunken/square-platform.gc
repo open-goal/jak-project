@@ -24,13 +24,12 @@
    (up-pos            vector :inline)
    (down-pos          vector :inline))
   (:methods
-   (square-platform-method-27 (_type_ symbol) none))
+   (spawn-water-crossing-effects! (_type_ symbol) none))
   (:states
    square-platform-lowered
    square-platform-lowering
    square-platform-raised
    square-platform-rising))
-
 
 (defskelgroup *square-platform-sg*
   square-platform
@@ -40,7 +39,6 @@
   :bounds (static-spherem 0 -11 0 8))
 
 (deftype square-platform-button (basebutton) ())
-
 
 (deftype square-platform-master (process-drawable)
   ((button-id                int32)
@@ -56,12 +54,11 @@
    square-platform-master-activate
    square-platform-master-idle))
 
-
 (defpartgroup group-square-platform-breach-splash
   :id 437
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts ((sp-item 2222 :flags (is-3d)) (sp-item 2315 :flags (is-3d))))
+  :parts ((sp-item 2222 :flags (3d)) (sp-item 2315 :flags (3d))))
 
 (defpart 2222
   :init-specs
@@ -79,7 +76,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 3.2)
    (:timer (seconds 2))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.035) (seconds 0.097))
    (:next-launcher 2316)
    (:conerot-x (degrees 70) (degrees 20))
@@ -105,7 +102,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 3.2)
    (:timer (seconds 2))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.035) (seconds 0.097))
    (:next-launcher 2316)
    (:conerot-x (degrees 70) (degrees 20))
@@ -133,7 +130,7 @@
    (:vel-y (meters 0.013333334) (meters 0.006666667))
    (:fade-a 0.8)
    (:timer (seconds 3))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata -663298.44)
    (:func 'check-water-level-above-and-die)
    (:next-time (seconds 0.1) (seconds 0.097))
@@ -147,44 +144,47 @@
   :id 439
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts ((sp-item 2222 :flags (is-3d)) (sp-item 2315 :flags (is-3d))))
+  :parts ((sp-item 2222 :flags (3d)) (sp-item 2315 :flags (3d))))
 
-(defmethod square-platform-method-27 ((this square-platform) (arg0 symbol))
+(defmethod spawn-water-crossing-effects! ((this square-platform) (rising? symbol))
+  "Spawn breach splashes while rising or bubbles and a splash while submerging as the platform
+   crosses the linked water surface."
   (local-vars (v0-3 sound-id))
-  (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s4-0 quad) (-> this root trans quad))
-    (+! (-> s4-0 y) -20480.0)
-    (let* ((v1-1 (-> this water-entity))
-           (a0-4 (if v1-1 (-> v1-1 extra process))))
-      (when (not a0-4)
+  (let ((probe-position (new 'stack-no-clear 'vector)))
+    (vector-copy! probe-position (-> this root trans))
+    (+! (-> probe-position y) -20480.0)
+    (let* ((water-entity (-> this water-entity))
+           (water-process (if water-entity (-> water-entity extra process))))
+      (when (not water-process)
         (set! (-> this water-entity) (entity-actor-lookup (-> this entity) 'alt-actor 0))
-        (let ((v1-4 (-> this water-entity))) (set! a0-4 (if v1-4 (-> v1-4 extra process)))))
-      (when (the-as water-vol a0-4)
-        (let ((f0-2 (get-ripple-height (the-as water-vol a0-4) s4-0))
-              (s3-0 (new 'stack-no-clear 'vector)))
-          (set! (-> s3-0 quad) (-> s4-0 quad))
-          (set! (-> s3-0 y) f0-2)
+        (let ((resolved-water-entity (-> this water-entity)))
+          (set! water-process (if resolved-water-entity (-> resolved-water-entity extra process)))))
+      (when (the-as water-vol water-process)
+        (let ((surface-y (get-ripple-height (the-as water-vol water-process) probe-position))
+              (surface-position (new 'stack-no-clear 'vector)))
+          (vector-copy! surface-position probe-position)
+          (set! (-> surface-position y) surface-y)
           (if (zero? (-> this start-splash-time))
             (set! v0-3
                   (cond
-                    (arg0 (if (>= (-> s4-0 y) f0-2) (set-time! (-> this start-splash-time))) v0-3)
+                    (rising? (if (>= (-> probe-position y) surface-y) (set-time! (-> this start-splash-time))) v0-3)
                     (else
-                     (when (>= f0-2 (-> s4-0 y))
+                     (when (>= surface-y (-> probe-position y))
                        (set-time! (-> this start-splash-time))
                        (sound-play "large-splash" :pitch (rand-vu-float-range -0.8 0.8)))))))
           (when (nonzero? (-> this start-splash-time))
             (cond
-              (arg0
-               (let ((v1-21 (-> this splash-counter)))
-                 (when (< v1-21 2)
-                   (set! (-> this splash-counter) (+ v1-21 1))
-                   (spawn (-> this part2) s3-0))))
-              (else (spawn (-> this part3) s4-0))))
-          (when (not arg0)
-            (let ((v1-25 (-> this splash-counter)))
-              (when (< v1-25 2)
-                (set! (-> this splash-counter) (+ v1-25 1))
-                (spawn (-> this part4) s3-0))))))))
+              (rising?
+               (let ((splash-count (-> this splash-counter)))
+                 (when (< splash-count 2)
+                   (set! (-> this splash-counter) (+ splash-count 1))
+                   (spawn (-> this part2) surface-position))))
+              (else (spawn (-> this part3) probe-position))))
+          (when (not rising?)
+            (let ((submerge-count (-> this splash-counter)))
+              (when (< submerge-count 2)
+                (set! (-> this splash-counter) (+ submerge-count 1))
+                (spawn (-> this part4) surface-position))))))))
   (none))
 
 (defstate square-platform-lowered (square-platform)
@@ -205,7 +205,7 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))
+        (('bonk 'bounce) (bounce! self))
         (('untrigger) (go square-platform-lowering))))
   :enter
     (behavior ()
@@ -220,7 +220,7 @@
       (when (= (-> self pos-u) 1.0)
         (plat-post)
         (go square-platform-raised))
-      (square-platform-method-27 self #t))
+      (spawn-water-crossing-effects! self #t))
   :code
     (behavior ()
       (loop
@@ -232,7 +232,7 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))
+        (('bonk 'bounce) (bounce! self))
         (('untrigger) (go square-platform-lowering))))
   :trans plat-trans
   :code
@@ -247,7 +247,7 @@
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('bonk 'bounce) (baseplat-method-22 self))
+        (('bonk 'bounce) (bounce! self))
         (('trigger) (go square-platform-rising))
         (('touch) (send-event proc 'no-look-around (seconds 1.5)) #f)))
   :enter
@@ -263,7 +263,7 @@
       (when (= (-> self pos-u) 0.0)
         (plat-post)
         (go square-platform-lowered))
-      (square-platform-method-27 self #f))
+      (spawn-water-crossing-effects! self #f))
   :code
     (behavior ()
       (loop
@@ -272,6 +272,7 @@
   :post plat-post)
 
 (defmethod deactivate ((this square-platform))
+  "Stop and free the three water particle controls before deactivating the drawable."
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
   (if (nonzero? (-> this part3)) (kill-and-free-particles (-> this part3)))
   (if (nonzero? (-> this part4)) (kill-and-free-particles (-> this part4)))
@@ -279,12 +280,15 @@
   (none))
 
 (defmethod relocate ((this square-platform) (offset int))
+  "Relocate the three water particle controls before relocating the drawable."
   (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
   (if (nonzero? (-> this part3)) (&+! (-> this part3) offset))
   (if (nonzero? (-> this part4)) (&+! (-> this part4) offset))
   (call-parent-method this offset))
 
-(defmethod init-from-entity! ((this square-platform) (arg0 entity-actor))
+(defmethod init-from-entity! ((this square-platform) (source-entity entity-actor))
+  "Initialize the platform's collision, skeleton, raised and lowered positions, water particle
+   controls, and linked water volume."
   (set! (-> this pos-u) 0.0)
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -302,11 +306,11 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this plat-id) (actor-count-before (-> this link)))
   (initialize-skeleton this *square-platform-sg* '())
-  (baseplat-method-21 this)
+  (init-platform! this)
   (ja-channel-set! 1)
   (let ((s4-1 (-> this skel root-channel 0)))
     (joint-control-channel-group-eval! s4-1 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
@@ -317,16 +321,16 @@
          (sv-32 (new 'static 'res-tag))
          (v1-35 (res-lump-data (-> this entity) 'distance pointer :tag-ptr (& sv-32)))
          (f0-10 (if (and v1-35 (< 1 (the-as int (-> sv-32 elt-count)))) (-> (the-as (pointer float) v1-35) 1) 16384.0)))
-    (set! (-> this down-pos quad) (-> this root trans quad))
+    (vector-copy! (-> this down-pos) (-> this root trans))
     (+! (-> this down-pos y) f30-0)
-    (set! (-> this up-pos quad) (-> this root trans quad))
+    (vector-copy! (-> this up-pos) (-> this root trans))
     (+! (-> this up-pos y) f0-10))
-  (set! (-> this basetrans quad) (-> this down-pos quad))
-  (set! (-> this root trans quad) (-> this basetrans quad))
+  (vector-copy! (-> this basetrans) (-> this down-pos))
+  (vector-copy! (-> this root trans) (-> this basetrans))
   (set! (-> this part2) (create-launch-control group-square-platform-breach-splash this))
   (set! (-> this part3) (create-launch-control group-square-platform-submerge-bubbles this))
   (set! (-> this part4) (create-launch-control group-square-platform-submerge-splash this))
-  (set! (-> this water-entity) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this water-entity) (entity-actor-lookup source-entity 'alt-actor 0))
   (ja-post)
   (update-transforms! (-> this root))
   (go square-platform-lowered)
@@ -340,7 +344,7 @@
          (when (= (-> proc type) square-platform-button)
            (set! (-> self button-id) (-> (the-as square-platform-button proc) button-id))
            (logclear! (-> self mask) (process-mask actor-pause))
-           (process-entity-status! self (entity-perm-status bit-3) #t)
+           (process-entity-status! self (entity-perm-status no-kill) #t)
            (go square-platform-master-activate)))))
   :code
     (behavior ()
@@ -419,7 +423,7 @@
   :exit
     (behavior ()
       (logior! (-> self mask) (process-mask actor-pause))
-      (process-entity-status! self (entity-perm-status bit-3) #f))
+      (process-entity-status! self (entity-perm-status no-kill) #f))
   :trans
     (behavior ()
       (when (completed? (-> self ticker))
@@ -450,11 +454,12 @@
       (suspend)
       0))
 
-(defmethod init-from-entity! ((this square-platform-master) (arg0 entity-actor))
+(defmethod init-from-entity! ((this square-platform-master) (source-entity entity-actor))
+  "Initialize the platform sequence timing, actor links, platform mask, and idle state."
   (set! (-> this button-id) -1)
   (set! (-> this plat-id) -1)
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (set! (-> this timeout) (the-as time-frame (the int (* 300.0 (res-lump-float (-> this entity) 'timeout :default 10.0)))))
   (set! (-> this delay-til-wiggle) (+ (-> this timeout) (seconds -0.4)))
   (set! (-> this link) (new 'process 'actor-link-info this))

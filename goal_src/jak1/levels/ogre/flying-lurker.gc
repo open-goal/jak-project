@@ -24,7 +24,6 @@
    plunger-lurker-idle
    plunger-lurker-plunge))
 
-
 (defskelgroup *plunger-lurker-sg*
   plunger-lurker
   plunger-lurker-lod0-jg
@@ -37,7 +36,7 @@
     (behavior ()
       (set-setting! 'allow-progress #f 0.0 0)
       (logclear! (-> self mask) (process-mask actor-pause))
-      (process-entity-status! self (entity-perm-status bit-3) #t)
+      (process-entity-status! self (entity-perm-status no-kill) #t)
       (while (or (not *target*) (logtest? (-> *target* state-flags) (state-flags being-attacked dying)))
         (suspend))
       (while (not (process-grab? *target*))
@@ -143,14 +142,8 @@
         (deactivate self)))
   :code
     (behavior ()
-      (ja-no-eval :group! plunger-lurker-notice-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
-      (ja-no-eval :group! plunger-lurker-death-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! plunger-lurker-notice-ja :num! (seek!) :frame-num 0.0)
+      (ja-play :group! plunger-lurker-death-ja :num! (seek!) :frame-num 0.0)
       (loop
         (suspend)))
   :post ja-post)
@@ -169,10 +162,7 @@
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! plunger-lurker-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! plunger-lurker-idle-ja :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
 (defstate plunger-lurker-die (plunger-lurker)
@@ -183,7 +173,9 @@
       (suspend)
       0))
 
-(defmethod init-from-entity! ((this plunger-lurker) (arg0 entity-actor))
+(defmethod init-from-entity! ((this plunger-lurker) (source-entity entity-actor))
+  "Initialize the plunger lurker's collision and skeleton, find its linked actor, and enter the
+   active or finished state for the task."
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -197,9 +189,9 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *plunger-lurker-sg* '())
-  (set! (-> this alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this alt-actor) (entity-actor-lookup source-entity 'alt-actor 0))
   (set! (-> this got-hit) #f)
   (quaternion-rotate-y! (-> this root quat) (-> this root quat) -16384.0)
   (if (= (get-task-status (game-task plunger-lurker-hit)) (task-status invalid))
@@ -228,14 +220,13 @@
    (try-counted       symbol)
    (default-bounds    vector :inline))
   (:methods
-   (flying-lurker-method-20 (_type_) none))
+   (update-shadow! (_type_) none))
   (:states (flying-lurker-clone handle string)
    flying-lurker-die
    flying-lurker-fly
    flying-lurker-idle
    flying-lurker-sleep
    flying-lurker-start))
-
 
 (defskelgroup *flying-lurker-sg*
   flying-lurker
@@ -246,62 +237,65 @@
   :longest-edge (meters 2.3)
   :shadow flying-lurker-shadow-mg)
 
-(defmethod flying-lurker-method-20 ((this flying-lurker))
+(defmethod update-shadow! ((this flying-lurker))
+  "Probe for ground below the lurker, update its shadow planes, and expand its draw bounds to include
+   the projected shadow."
   (with-pp
-    (let ((s5-0 (-> this draw shadow-ctrl))
-          (s4-0 #f))
+    (let ((shadow-ctrl (-> this draw shadow-ctrl))
+          (shadow-valid? #f))
       (when (-> this draw shadow)
         (when (or (logtest? (-> this draw status) (draw-status was-drawn))
                   (< (vector-vector-xz-distance-squared (-> this root trans) (camera-pos)) 10485760000.0))
-          (let ((s3-1 (new 'stack-no-clear 'collide-tri-result))
-                (a1-1 (new 'stack-no-clear 'vector))
-                (a2-0 (new 'stack-no-clear 'vector)))
-            (set! (-> a1-1 quad) (-> this root trans quad))
-            (+! (-> a1-1 y) -8192.0)
-            (set-vector! a2-0 0.0 -81920.0 0.0 1.0)
+          (let ((probe-result (new 'stack-no-clear 'collide-tri-result))
+                (probe-start (new 'stack-no-clear 'vector))
+                (probe-direction (new 'stack-no-clear 'vector)))
+            (vector-copy! probe-start (-> this root trans))
+            (+! (-> probe-start y) -8192.0)
+            (set-vector! probe-direction 0.0 -81920.0 0.0 1.0)
             (when (>= (fill-and-probe-using-line-sphere *collide-cache*
-                                                        a1-1
-                                                        a2-0
+                                                        probe-start
+                                                        probe-direction
                                                         8192.0
                                                         (collide-kind background)
                                                         pp
-                                                        s3-1
+                                                        probe-result
                                                         (new 'static 'pat-surface :noentity #x1))
                       0.0)
-              (set! (-> s3-1 intersect w) 8192.0)
-              (when (and (sphere-in-view-frustum? (the-as sphere (-> s3-1 intersect)))
-                         (< 822083600.0 (vector-vector-distance-squared (-> s3-1 intersect) (camera-pos))))
-                (set! s4-0 #t)
-                (let ((v1-17 s5-0)) (logclear! (-> v1-17 settings flags) (shadow-flags disable-draw)))
+              (set! (-> probe-result intersect w) 8192.0)
+              (when (and (sphere-in-view-frustum? (the-as sphere (-> probe-result intersect)))
+                         (< 822083600.0 (vector-vector-distance-squared (-> probe-result intersect) (camera-pos))))
+                (set! shadow-valid? #t)
+                (let ((v1-17 shadow-ctrl)) (logclear! (-> v1-17 settings flags) (shadow-flags disable-draw)))
                 0
-                (let ((v1-19 s5-0)) (set! (-> v1-19 settings bot-plane w) (- (+ -8192.0 (-> s3-1 intersect y)))))
+                (let ((v1-19 shadow-ctrl)) (set! (-> v1-19 settings bot-plane w) (- (+ -8192.0 (-> probe-result intersect y)))))
                 0
-                (let ((v1-21 s5-0)) (set! (-> v1-21 settings top-plane w) (- (+ 6144.0 (-> s3-1 intersect y)))))
+                (let ((v1-21 shadow-ctrl)) (set! (-> v1-21 settings top-plane w) (- (+ 6144.0 (-> probe-result intersect y)))))
                 0
-                (let ((s2-2 (new 'stack-no-clear 'bounding-box)))
-                  (let ((s1-1 (new 'stack-no-clear 'vector)))
-                    (vector<-cspace! s1-1 (-> this node-list data 4))
-                    (vector+float! (-> s2-2 min) s1-1 -18432.0)
-                    (vector+float! (-> s2-2 max) s1-1 18432.0))
-                  (add-spheres! s2-2 (the-as (inline-array sphere) (-> s3-1 intersect)) 1)
-                  (let ((f0-17 (* 0.5 (vector-vector-distance (-> s2-2 min) (-> s2-2 max)))))
+                (let ((bounds (new 'stack-no-clear 'bounding-box)))
+                  (let ((joint-position (new 'stack-no-clear 'vector)))
+                    (vector<-cspace! joint-position (-> this node-list data 4))
+                    (vector+float! (-> bounds min) joint-position -18432.0)
+                    (vector+float! (-> bounds max) joint-position 18432.0))
+                  (add-spheres! bounds (the-as (inline-array sphere) (-> probe-result intersect)) 1)
+                  (let ((bounds-radius (* 0.5 (vector-vector-distance (-> bounds min) (-> bounds max)))))
                     (set-vector! (-> this draw bounds)
-                                 (* 0.5 (+ (-> s2-2 min x) (-> s2-2 max x)))
-                                 (* 0.5 (+ (-> s2-2 min y) (-> s2-2 max y)))
-                                 (* 0.5 (+ (-> s2-2 min z) (-> s2-2 max z)))
+                                 (* 0.5 (+ (-> bounds min x) (-> bounds max x)))
+                                 (* 0.5 (+ (-> bounds min y) (-> bounds max y)))
+                                 (* 0.5 (+ (-> bounds min z) (-> bounds max z)))
                                  1.0)
                     (vector-! (-> this draw bounds) (-> this draw bounds) (-> this root trans))
-                    (set! (-> this draw bounds w) f0-17)))
+                    (set! (-> this draw bounds w) bounds-radius)))
                 (set! (-> this draw origin-joint-index) (the-as uint 0))
                 0)))))
-      (when (not s4-0)
-        (logior! (-> s5-0 settings flags) (shadow-flags disable-draw))
+      (when (not shadow-valid?)
+        (logior! (-> shadow-ctrl settings flags) (shadow-flags disable-draw))
         0
-        (set! (-> this draw bounds quad) (-> this default-bounds quad))
+        (vector-copy! (-> this draw bounds) (-> this default-bounds))
         (set! (-> this draw origin-joint-index) (the-as uint 4))))
     (none)))
 
 (defbehavior flying-lurker-inc-try-count flying-lurker ()
+  "Increment and save this encounter's capped retry count once per attempt."
   (when (not (-> self try-counted))
     (set! (-> self try-counted) #t)
     (let ((gp-0 (-> self entity extra perm)))
@@ -312,6 +306,7 @@
   (none))
 
 (defun play-movie? ()
+  "Return true while the plunger-lurker task is waiting for its encounter movie."
   (= (get-task-status (game-task plunger-lurker-hit)) (task-status unknown)))
 
 (defstate flying-lurker-die (flying-lurker)
@@ -323,39 +318,47 @@
 (defstate flying-lurker-sleep (flying-lurker)
   :code
     (behavior ()
-      (process-entity-status! self (entity-perm-status bit-3) #f)
+      (process-entity-status! self (entity-perm-status no-kill) #f)
       (logior! (-> self draw status) (draw-status hidden))
       (loop
         (suspend))))
 
 (defbehavior first? flying-lurker ()
+  "Return true when this is the first flying lurker in its actor-link chain."
   (not (-> self link prev)))
 
-(defbehavior flying-lurker-calc-speed flying-lurker ((arg0 meters) (arg1 meters) (arg2 meters) (arg3 meters))
-  (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)))
-        (s3-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s3-0 quad) (-> self tangent quad))
+(defbehavior flying-lurker-calc-speed flying-lurker ((unused-near-distance meters) (unused-far-distance meters) (max-speed meters) (min-speed meters))
+  "Adjust flight speed from race pace, rank, the player's position, and the supplied minimum and
+   maximum speeds. The two distance arguments are retained by the interface but unused here."
+  (let ((target-offset (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)))
+        (path-tangent (new 'stack-no-clear 'vector)))
+    (vector-copy! path-tangent (-> self tangent))
     0.0
-    (let ((f30-0 (vector-length s4-1)))
-      (set! (-> s4-1 y) 0.0)
-      (set! (-> s3-0 y) 0.0)
-      (let ((f28-0 (vector-dot s4-1 s3-0)))
-        (let ((f26-0 (* (path-distance (-> self path))
-                        (/ (the float (- (-> *display* game-frame-counter) (-> self race-start-time))) (-> self race-seconds))))
-              (f0-6 (* (path-distance (-> self path)) (-> self curve-position))))
+    (let ((target-distance (vector-length target-offset)))
+      (set! (-> target-offset y) 0.0)
+      (set! (-> path-tangent y) 0.0)
+      (let ((target-distance-along-path (vector-dot target-offset path-tangent)))
+        (let ((expected-race-distance (* (path-distance (-> self path))
+                                         (/ (the float (- (-> *display* game-frame-counter) (-> self race-start-time))) (-> self race-seconds))))
+              (traveled-path-distance (* (path-distance (-> self path)) (-> self curve-position))))
           0.0
-          (let* ((f1-6 (* -81920.0 (the float (-> self rank))))
-                 (f0-10 (+ (if (< f26-0 f0-6) (fmax (+ -81920.0 f1-6) (- f26-0 f0-6)) (fmin (+ 245760.0 f1-6) (- f26-0 f0-6))) f28-0))
-                 (f1-10 (/ f0-10 (meters 20)))
-                 (f0-12 (fmax -0.5 (fmin 0.5 f1-10))))
-            (set! (-> self speed) (+ (* (+ 0.5 f0-12) (- arg2 arg3)) arg3))))
+          (let* ((rank-distance-offset (* -81920.0 (the float (-> self rank))))
+                 (pace-error (+ (if (< expected-race-distance traveled-path-distance)
+                                  (fmax (+ -81920.0 rank-distance-offset) (- expected-race-distance traveled-path-distance))
+                                  (fmin (+ 245760.0 rank-distance-offset) (- expected-race-distance traveled-path-distance)))
+                                target-distance-along-path))
+                 (normalized-pace-error (/ pace-error (meters 20)))
+                 (speed-blend (fmax -0.5 (fmin 0.5 normalized-pace-error))))
+            (set! (-> self speed) (+ (* (+ 0.5 speed-blend) (- max-speed min-speed)) min-speed))))
         ;; og:preserve-this PAL patch here
         (let ((f0-16 65536.0))
           (if (and (< 0.6332 (-> self curve-position)) (< (-> self curve-position) 0.6928)) (set! f0-16 40960.0))
-          (set! (-> self y-offset-desired) (fmin f0-16 (fmax 0.0 (* 1.6 (- 40960.0 (fmin (- f28-0) f30-0))))))))))
+          (set! (-> self y-offset-desired)
+                (fmin f0-16 (fmax 0.0 (* 1.6 (- 40960.0 (fmin (- target-distance-along-path) target-distance))))))))))
   (none))
 
 (defbehavior flying-lurker-move flying-lurker ()
+  "Advance along the race path and smoothly approach the desired vertical offset."
   (+! (-> self curve-position)
       (/ (the float (* (- (current-time) (-> *display* old-base-frame-counter)) (the int (-> self speed))))
          (path-distance (-> self path))))
@@ -381,11 +384,12 @@
   (none))
 
 (defbehavior flying-lurker-rotate flying-lurker ()
+  "Aim the lurker along the current path tangent and return its root rotation."
   (let ((gp-0 (new 'stack-no-clear 'matrix)))
     (let ((s5-0 (new 'stack-no-clear 'matrix)))
       (let ((s3-0 (new 'stack-no-clear 'vector))
             (s4-0 (new 'stack-no-clear 'vector)))
-        (path-control-method-14 (-> self path) (-> self tangent) (-> self curve-position))
+        (get-tangent-at-percent! (-> self path) (-> self tangent) (-> self curve-position))
         (eval-path-curve! (-> self path) s3-0 (+ (/ 12288.0 (path-distance (-> self path))) (-> self curve-position)) 'interp)
         (eval-path-curve! (-> self path) s4-0 (+ (/ 4096.0 (path-distance (-> self path))) (-> self curve-position)) 'interp)
         (vector-! s3-0 s3-0 (-> self root trans))
@@ -405,6 +409,7 @@
     (matrix->quaternion (-> self root quat) gp-0)))
 
 (defbehavior flying-lurker-calc-anim-speed flying-lurker ()
+  "Return the flight animation playback rate derived from current movement speed."
   (let* ((f0-1 (fabs (-> self speed)))
          (f0-2 (* 0.07324219 f0-1))
          (f0-3 (+ -15.0 f0-2))
@@ -475,11 +480,11 @@
          (deactivate self))))
   :enter
     (behavior ()
-      (process-entity-status! self (entity-perm-status bit-3) #t)
+      (process-entity-status! self (entity-perm-status no-kill) #t)
       (logclear! (-> self draw status) (draw-status hidden)))
   :trans
     (behavior ()
-      (flying-lurker-method-20 self)
+      (update-shadow! self)
       (when (not (movie?))
         (flying-lurker-calc-speed (meters 15) (meters 30) (meters 0.11666667) (meters 0.083333336))
         (flying-lurker-move)
@@ -506,10 +511,7 @@
         (suspend)
         (when (time-elapsed? (-> self last-look-time) (-> self time-to-next-look))
           (ja-channel-push! 1 (seconds 0.2))
-          (ja-no-eval :group! flying-lurker-look-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!)))
+          (ja-play :group! flying-lurker-look-ja :num! (seek!) :frame-num 0.0)
           (set-time! (-> self last-look-time))
           (let* ((f30-0 300.0)
                  (f28-0 3.0)
@@ -519,8 +521,10 @@
             (set! (-> self time-to-next-look) (the-as time-frame (the int (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 v1-42)))))))))))
   :post ja-post)
 
-(defbehavior flying-lurker-handler flying-lurker ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior flying-lurker-handler flying-lurker ((sender process) (argc int) (message symbol) (event event-message-block))
+  "Propagate the fly-away event through the linked racers, select this lurker's rank-dependent pace,
+   and begin the race."
+  (case message
     (('fly-away)
      (when (-> self link next)
        (entity-birth-no-kill (-> self link next))
@@ -528,13 +532,13 @@
          (set! (-> a1-1 from) self)
          (set! (-> a1-1 num-params) 2)
          (set! (-> a1-1 message) 'fly-away)
-         (set! (-> a1-1 param 0) (the-as uint (/ (the-as int (-> arg3 param 0)) 16)))
-         (set! (-> a1-1 param 1) (-> arg3 param 1))
+         (set! (-> a1-1 param 0) (the-as uint (/ (the-as int (-> event param 0)) 16)))
+         (set! (-> a1-1 param 1) (-> event param 1))
          (let ((t9-1 send-event-function)
                (v1-11 (-> self link next)))
            (t9-1 (if v1-11 (-> v1-11 extra process)) a1-1))))
-     (let* ((v1-14 (-> arg3 param 0))
-            (a0-4 (-> arg3 param 1))
+     (let* ((v1-14 (-> event param 0))
+            (a0-4 (-> event param 1))
             (v1-15 (logand v1-14 3)))
        (set! (-> self rank) (the-as int v1-15))
        (cond
@@ -561,6 +565,7 @@
      (go flying-lurker-fly))))
 
 (defbehavior flying-lurker-play-intro flying-lurker ()
+  "Run the plunger-lurker encounter movie and release the player into the flying-lurker race."
   (logclear! (-> self mask) (process-mask actor-pause))
   (close-specific-task! (game-task plunger-lurker-hit) (task-status unknown))
   (while (and *target*
@@ -770,19 +775,21 @@
            0)
           (else
            (ja :group! flying-lurker-fly-ja)
-           (ja-no-eval :group! flying-lurker-fly-ja :num! (seek! max f30-0) :frame-num (the float gp-0))
-           (until (ja-done? 0)
-             (if (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
-               (send-event self 'saw-player))
-             (suspend)
-             (ja :num! (seek! max f30-0)))
+           (ja-play :group!
+                    flying-lurker-fly-ja
+                    :num! (seek! max f30-0)
+                    :frame-num (the float gp-0)
+                    (if (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
+                      (send-event self 'saw-player)))
            (set! gp-0 0)))))
   :post ja-post)
 
-(defmethod init-from-entity! ((this flying-lurker) (arg0 entity-actor))
+(defmethod init-from-entity! ((this flying-lurker) (source-entity entity-actor))
+  "Initialize the flying lurker's path, skeleton, shadow, linked actor, race state, and starting
+   behavior."
   (stack-size-set! (-> this main-thread) 512)
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *flying-lurker-sg* '())
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
@@ -792,7 +799,7 @@
   (cond
     ((play-movie?)
      (eval-path-curve! (-> this path) (-> this root trans) (-> this curve-position) 'interp)
-     (path-control-method-14 (-> this path) (-> this tangent) (-> this curve-position))
+     (get-tangent-at-percent! (-> this path) (-> this tangent) (-> this curve-position))
      (quaternion-identity! (-> this root quat)))
     (else (flying-lurker-move) (flying-lurker-rotate)))
   (set! (-> this y-offset) 0.0)
@@ -803,11 +810,11 @@
   (set! (-> this draw shadow-joint-index) (the-as uint 4))
   (set! (-> this take-off) #f)
   (set-vector! (-> this default-bounds) 0.0 8192.0 0.0 24576.0)
-  (set! (-> this draw bounds quad) (-> this default-bounds quad))
+  (vector-copy! (-> this draw bounds) (-> this default-bounds))
   (set! (-> this draw shadow-ctrl) (new 'process 'shadow-control 131072.0 151552.0 614400.0 (the-as float 60) 409600.0))
   (let ((v1-27 (-> this draw shadow-ctrl))) (logclear! (-> v1-27 settings flags) (shadow-flags disable-draw)))
   0
-  (set! (-> this alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (set! (-> this alt-actor) (entity-actor-lookup source-entity 'alt-actor 0))
   (set! (-> this shadow-backup) (-> this draw shadow))
   (set! (-> this try-counted) #f)
   (if (= (get-task-status (game-task plunger-lurker-hit)) (task-status invalid))

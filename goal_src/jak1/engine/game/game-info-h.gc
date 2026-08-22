@@ -12,7 +12,7 @@
 
 ;; Game parameters.
 (deftype game-bank (basic)
-  ((life-max-default   float) ;; yes this life system works, but does nothing
+  ((life-max-default   float)
    (life-start-default float)
    (life-single-inc    float)
    (money-task-inc     float)
@@ -27,7 +27,7 @@
        :money-task-inc 90.0
        :money-oracle-inc 120.0))
 
-;; aid
+;; Actor identifier.
 (deftype actor-id (uint32) ())
 
 ;;;;;;;;;;;;;;;
@@ -45,13 +45,14 @@
    (force-inside? symbol))
   :pack-me)
 
-;; This includes more state than just "loading" - it also has a list of commands to execute and
-;; other random state.
+;; This also queues cutscene commands. The object arrays pair entity names with four-byte snapshots
+;; of entity-perm-status so temporary birth/kill commands can be undone.
 (deftype load-state (basic)
   ((want          level-buffer-state 2 :inline)
    (vis-nick      symbol)
    (command-list  pair)
-   (object-name   symbol 256)
+   (object-name   string 256)
+   ;; Four-byte slots holding entity-perm-status snapshots.
    (object-status basic 256))
   (:methods
    (new (symbol type) _type_)
@@ -69,6 +70,7 @@
    (set-force-inside! (_type_ symbol symbol) none)))
 
 (defmethod new load-state ((allocation symbol) (type-to-make type))
+  "Allocate and reset a load-state."
   (reset! (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
 
 (define-extern *load-state* load-state)
@@ -117,9 +119,9 @@
 
 (declare-type game-save basic)
 
-;; Game Info is the full state of the game
-;; this information can be saved/loaded from a game save.
-;; also, it must be manually synchronized with entity permanent state in the levels
+;; Game Info is the full state of the game.
+;; This information can be saved to and loaded from a game save.
+;; It must also be synchronized explicitly with permanent entity state in the levels.
 (deftype game-info (basic)
   ((mode                  symbol)
    (save-name             basic)
@@ -196,4 +198,4 @@
     (set! (-> temp in-level-time) (new 'global 'boxed-array time-frame 32))
     (set! *game-info* temp)))
 
-(define-extern game-task->string (function game-task string))
+(define-extern game-task->string "Return the debug name of a game task." (function game-task string))

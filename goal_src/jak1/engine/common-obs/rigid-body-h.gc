@@ -5,42 +5,57 @@
 
 ;; DECOMP BEGINS
 
+;; State for a freely translating and rotating solid body. position tracks the center of mass,
+;; while matrix stores the render origin after applying the rotated cm-offset-joint.
 (deftype rigid-body (structure)
   ((mass                        float)
    (inv-mass                    float)
    (lin-momentum-damping-factor float)
    (ang-momentum-damping-factor float)
-   (inertial-tensor             matrix :inline)
-   (inv-inertial-tensor         matrix :inline)
-   (cm-offset-joint             vector :inline)
-   (position                    vector :inline)
+   (inertial-tensor             matrix :inline) ;; Body-space inertia tensor.
+   (inv-inertial-tensor         matrix :inline) ;; Body-space inverse inertia tensor.
+   (cm-offset-joint             vector :inline) ;; Offset from the render origin to the center of mass.
+   (position                    vector :inline) ;; World-space center of mass.
    (rotation                    quaternion :inline)
    (lin-momentum                vector :inline)
    (ang-momentum                vector :inline)
    (lin-velocity                vector :inline)
    (ang-velocity                vector :inline)
-   (inv-i-world                 matrix :inline)
-   (matrix                      matrix :inline)
-   (force                       vector :inline)
-   (torque                      vector :inline)
+   (inv-i-world                 matrix :inline) ;; Inverse inertia tensor rotated into world space.
+   (matrix                      matrix :inline) ;; Orientation plus world-space render origin.
+   (force                       vector :inline) ;; Accumulated world-space force.
+   (torque                      vector :inline) ;; Accumulated world-space torque.
    (max-ang-momentum            float)
    (max-ang-velocity            float))
   (:methods
-   (rigid-body-method-9 (_type_ float float float float) none)
-   (rigid-body-method-10 (_type_ float) none)
-   (clear-force-torque! (_type_) none)
-   (clear-momentum! (_type_) none)
-   (rigid-body-method-13 (_type_ vector vector) none)
-   (rigid-body-method-14 (_type_ vector vector) none)
-   (rigid-body-method-15 (_type_ vector) none)
-   (rigid-body-method-16 (_type_ vector vector float) none)
-   (rigid-body-method-17 (_type_ vector vector) vector)
-   (rigid-body-method-18 (_type_ vector) vector)
-   (print-stats (_type_) none)
-   (rigid-body-method-20 (_type_) none)
-   (rigid-body-method-21 (_type_) none)
-   (rigid-body-method-22 (_type_ vector quaternion float float) none)))
+   (set-mass-and-box-inertia! "Set mass and its reciprocal, then compute diagonal inertia and
+inverse-inertia tensors for a solid box with the supplied X, Y, and Z dimensions." (_type_ float float float float) none)
+   (integrate! "Advance the body by dt. Integrate accumulated force and torque into damped momenta,
+derive linear and angular velocity, advance position and rotation, normalize the rotation, and
+rebuild the transform." (_type_ float) none)
+   (clear-force-torque! "Clear the accumulated world-space force and torque for the next simulation
+step." (_type_) none)
+   (clear-momentum! "Clear both linear and angular momentum." (_type_) none)
+   (apply-force-at-point! "Accumulate a world-space force at a world-space point. Add the force
+directly and add (point - center-of-mass) cross force to torque." (_type_ vector vector) none)
+   (apply-local-force-at-local-point! "Transform a body-local point and force to world space, then
+accumulate them as a force at a point." (_type_ vector vector) none)
+   (apply-force! "Accumulate a world-space force at the center of mass without adding torque." (_type_ vector) none)
+   (apply-force-at-point-clamped! "Accumulate a world-space force at a point, scaling its torque
+contribution when the point's lever arm exceeds max-arm." (_type_ vector vector float) none)
+   (velocity-at-point "Write and return the world-space velocity at point: linear velocity plus
+angular velocity crossed with the offset from the center of mass." (_type_ vector vector) vector)
+   (get-origin-position "Write and return the body's render origin by subtracting the rotated
+center-of-mass offset from its center-of-mass position." (_type_ vector) vector)
+   (print-stats "Print the body's force, torque, position, rotation, momentum, and velocity." (_type_) none)
+   (print-force-torque "Print the body's accumulated force and torque." (_type_) none)
+   (update-matrix! "Rebuild the rotation matrix from the body's quaternion and update its
+translation with the render origin." (_type_) none)
+   (reset! "Reset the body from position and rotation. Clear forces and momenta, install the damping
+factors, rebuild the transform, clear velocities and world inertia, and reset angular limits." (_type_ vector quaternion float float) none)))
 
+;; A sampled point fixed to the body, with its derived world position and velocity. Floating
+;; platforms use these points to accumulate buoyancy and drag.
 (deftype rigid-body-control-point (structure)
   ((local-pos vector :inline)
    (world-pos vector :inline)

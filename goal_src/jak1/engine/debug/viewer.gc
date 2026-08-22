@@ -15,6 +15,7 @@
        :lod-dist
        (new 'static 'array float 4 4095996000.0 0.0 0.0 0.0)))
 
+;; Lightweight art viewer used when an actor's concrete process code is unavailable.
 (deftype viewer (process-drawable)
   ((janim art-joint-anim))
   (:states
@@ -22,6 +23,7 @@
 
 (define-extern *viewer* viewer)
 
+;; Replay the selected animation and apply its root alignment on every frame.
 (defstate viewer-process (viewer)
   :code
     (behavior ()
@@ -44,110 +46,130 @@
 
 (define viewer-geo-name (new 'global 'string 64 (the-as string #f)))
 
-(defun actor-get-arg! ((arg0 string) (arg1 string) (arg2 string))
-  (let ((s5-0 (-> arg2 data))
-        (gp-0 (-> arg0 data)))
-    (set! (-> gp-0 0) (the-as uint 0))
-    (dotimes (s2-0 (- (length arg2) (+ (length arg1) 2)))
-      (when (= (-> s5-0 0) 45)
-        (let ((s1-0 #f))
-          (dotimes (s0-0 (length arg1))
-            (if (!= (-> s5-0 (+ s0-0 1)) (-> arg1 data s0-0)) (goto cfg-10)))
-          (if (= (-> s5-0 (+ (length arg1) 1)) 45) (set! s1-0 #t))
+(defun actor-get-arg! ((result string) (key string) (encoded-name string))
+  "Clear result, find the first -key-VALUE segment in encoded-name, and copy VALUE through the next
+   hyphen or null terminator. Return true when the key is present. The caller must provide enough
+   result capacity because copying is unchecked."
+  (let ((source-cursor (-> encoded-name data))
+        (result-cursor (-> result data)))
+    (set! (-> result-cursor 0) (the-as uint 0))
+    (dotimes (scan-index (- (length encoded-name) (+ (length key) 2)))
+      (when (= (-> source-cursor 0) 45)
+        (let ((matched? #f))
+          (dotimes (key-index (length key))
+            (if (!= (-> source-cursor (+ key-index 1)) (-> key data key-index)) (goto cfg-10)))
+          (if (= (-> source-cursor (+ (length key) 1)) 45) (set! matched? #t))
           (label cfg-10)
-          (when s1-0
-            (let ((v1-22 (&+ s5-0 (+ (length arg1) 2))))
-              (while (and (!= (-> v1-22 0) 45) (nonzero? (-> v1-22 0)))
-                (set! (-> gp-0 0) (-> v1-22 0))
-                (set! v1-22 (&-> v1-22 1))
-                (set! gp-0 (&-> gp-0 1))))
-            (set! (-> gp-0 0) (the-as uint 0))
+          (when matched?
+            (let ((value-cursor (&+ source-cursor (+ (length key) 2))))
+              (while (and (!= (-> value-cursor 0) 45) (nonzero? (-> value-cursor 0)))
+                (set! (-> result-cursor 0) (-> value-cursor 0))
+                (set! value-cursor (&-> value-cursor 1))
+                (set! result-cursor (&-> result-cursor 1))))
+            (set! (-> result-cursor 0) (the-as uint 0))
             (return #t))))
-      (set! s5-0 (&-> s5-0 1))))
+      (set! source-cursor (&-> source-cursor 1))))
   #f)
 
-(defun art-part-name ((arg0 string))
-  (let ((gp-0 (-> arg0 data)))
-    (while (nonzero? (-> gp-0 0))
-      (when (= (-> gp-0 0) 45)
+(defun art-part-name ((art-name string))
+  "Copy and return the suffix after the first hyphen in art-name using the shared viewer-string
+   buffer. Return the empty shared buffer when art-name has no hyphen."
+  (let ((cursor (-> art-name data)))
+    (while (nonzero? (-> cursor 0))
+      (when (= (-> cursor 0) 45)
         (copyn-string<-charp viewer-string
-                             (&-> gp-0 1)
-                             (- (length arg0) (the-as int (+ (- -1 (the-as int (-> arg0 data))) (the-as int gp-0)))))
+                             (&-> cursor 1)
+                             (- (length art-name) (the-as int (+ (- -1 (the-as int (-> art-name data))) (the-as int cursor)))))
         (return viewer-string))
-      (set! gp-0 (&-> gp-0 1))))
+      (set! cursor (&-> cursor 1))))
   (clear viewer-string))
 
-(defbehavior init-viewer viewer ((arg0 string))
-  (let ((s2-0 (load-to-heap-by-name (-> (if (-> self entity) (-> self entity extra level) (-> *level* level-default)) art-group)
-                                    arg0
-                                    #f
-                                    global
-                                    0))
-        (s5-0 (the-as int #f))
-        (s4-0 (the-as int #f))
-        (s3-0 (the-as int #f)))
-    (when s2-0
-      (dotimes (s1-0 (-> s2-0 length))
+(defbehavior init-viewer viewer ((art-group-name string))
+  "Load art-group-name from the owning entity's level or the default level. Select the requested
+   merc geometry and joint animation suffixes plus a joint-geometry entry, initialize the shared
+   viewer skeleton description, create alignment control, and enter viewer-process. Enter the art
+   error state if any required art is unavailable."
+  (let ((loaded-art (load-to-heap-by-name (-> (if (-> self entity) (-> self entity extra level) (-> *level* level-default)) art-group)
+                                          art-group-name
+                                          #f
+                                          global
+                                          0))
+        (joint-animation-index (the-as int #f))
+        (merc-geometry-index (the-as int #f))
+        (joint-geometry-index (the-as int #f)))
+    (when loaded-art
+      (dotimes (i (-> loaded-art length))
         (cond
-          ((and (not s4-0)
-                (= (-> s2-0 data s1-0 type) merc-ctrl)
-                (or (zero? (length viewer-geo-name)) (string= (art-part-name (-> s2-0 data s1-0 name)) viewer-geo-name)))
-           (set! s4-0 s1-0))
-          ((= (-> s2-0 data s1-0 type) art-joint-geo) (set! s3-0 s1-0))
-          ((and (= (-> s2-0 data s1-0 type) art-joint-anim)
-                (or (zero? (length viewer-ja-name)) (string= (art-part-name (-> s2-0 data s1-0 name)) viewer-ja-name)))
-           (set! s5-0 s1-0)))
-        (if (and s4-0 s3-0 s5-0) (goto cfg-34))))
+          ((and (not merc-geometry-index)
+                (= (-> loaded-art data i type) merc-ctrl)
+                (or (zero? (length viewer-geo-name)) (string= (art-part-name (-> loaded-art data i name)) viewer-geo-name)))
+           (set! merc-geometry-index i))
+          ((= (-> loaded-art data i type) art-joint-geo) (set! joint-geometry-index i))
+          ((and (= (-> loaded-art data i type) art-joint-anim)
+                (or (zero? (length viewer-ja-name)) (string= (art-part-name (-> loaded-art data i name)) viewer-ja-name)))
+           (set! joint-animation-index i)))
+        (if (and merc-geometry-index joint-geometry-index joint-animation-index) (goto cfg-34))))
     (label cfg-34)
     (cond
-      ((and s4-0 s3-0 s5-0)
-       (set! (-> self janim) (the-as art-joint-anim (-> s2-0 data s5-0)))
-       (let ((a1-3 *viewer-sg*))
-         (set! (-> a1-3 art-group-name) arg0)
-         (set! (-> a1-3 jgeo) s3-0)
-         (set! (-> a1-3 janim) s5-0)
-         (set! (-> a1-3 mgeo 0) s4-0)
-         (initialize-skeleton self a1-3 '()))
+      ((and merc-geometry-index joint-geometry-index joint-animation-index)
+       (set! (-> self janim) (the-as art-joint-anim (-> loaded-art data joint-animation-index)))
+       (let ((skeleton-description *viewer-sg*))
+         (set! (-> skeleton-description art-group-name) art-group-name)
+         (set! (-> skeleton-description jgeo) joint-geometry-index)
+         (set! (-> skeleton-description janim) joint-animation-index)
+         (set! (-> skeleton-description mgeo 0) merc-geometry-index)
+         (initialize-skeleton self skeleton-description '()))
        (set! (-> self align) (new 'process 'align-control self))
        (go viewer-process))
-      (else (go process-drawable-art-error arg0)))))
+      (else (go process-drawable-art-error art-group-name)))))
 
-(defmethod init-from-entity! ((this viewer) (arg0 entity-actor))
+(defmethod init-from-entity! ((this viewer) (actor entity-actor))
+  "Initialize an entity-backed art viewer. Parse optional -ja-NAME and -geo-NAME selectors
+   from the entity name, then load the art group named by the entity type."
   (set! *viewer* this)
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
-  (actor-get-arg! viewer-ja-name "ja" (res-lump-struct arg0 'name string))
-  (actor-get-arg! viewer-geo-name "geo" (res-lump-struct arg0 'name string))
-  (let ((gp-1 (-> arg0 etype)))
-    (if (valid? gp-1 type #f #f 0) (init-viewer (symbol->string (-> gp-1 symbol))) (go process-drawable-art-error "unknown")))
+  (process-drawable-from-entity! this actor)
+  (actor-get-arg! viewer-ja-name "ja" (res-lump-struct actor 'name string))
+  (actor-get-arg! viewer-geo-name "geo" (res-lump-struct actor 'name string))
+  (let ((entity-type (-> actor etype)))
+    (if (valid? entity-type type #f #f 0)
+      (init-viewer (symbol->string (-> entity-type symbol)))
+      (go process-drawable-art-error "unknown")))
   (none))
 
-(defbehavior init-viewer-for-other viewer ((arg0 string) (arg1 vector))
+(defbehavior init-viewer-for-other viewer ((art-name string) (position vector))
+  "Initialize a standalone viewer at position. Treat art-name as both the art-group name and the
+   encoded source of optional -ja-NAME and -geo-NAME selectors."
   (set! *viewer* self)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg1 quad))
+  (vector-copy! (-> self root trans) position)
   (quaternion-identity! (-> self root quat))
   (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
-  (actor-get-arg! viewer-ja-name "ja" arg0)
-  (actor-get-arg! viewer-geo-name "geo" arg0)
-  (init-viewer arg0)
+  (actor-get-arg! viewer-ja-name "ja" art-name)
+  (actor-get-arg! viewer-geo-name "geo" art-name)
+  (init-viewer art-name)
   (none))
 
-(defun add-a-bunch ((arg0 string) (arg1 int) (arg2 int) (arg3 float))
-  (dotimes (s2-0 arg1)
-    (dotimes (s1-0 arg2)
-      (let ((s0-0 (new-stack-vector0)))
-        (position-in-front-of-camera! s0-0 40960.0 4096.0)
-        (+! (-> s0-0 x) (the float (* (- s2-0 (/ arg1 2)) (the int arg3))))
-        (+! (-> s0-0 z) (the float (* (- s1-0 (/ arg2 2)) (the int arg3))))
-        (let ((sv-32 (get-process *default-dead-pool* viewer #x4000)))
-          (when sv-32
-            ((method-of-type viewer activate) (the-as viewer sv-32) *entity-pool* 'viewer (the-as pointer #x70004000))
-            (run-now-in-process sv-32 init-viewer-for-other arg0 s0-0)
-            (-> sv-32 ppointer))))))
+(defun add-a-bunch ((art-name string) (x-count int) (z-count int) (spacing float))
+  "Spawn an x-count by z-count grid of viewers around a point in front of the camera. Center the
+   grid in X and Z using spacing converted to an integer before each offset; unavailable process
+   slots are skipped."
+  (dotimes (x-index x-count)
+    (dotimes (z-index z-count)
+      (let ((position (new-stack-vector0)))
+        (position-in-front-of-camera! position 40960.0 4096.0)
+        (+! (-> position x) (the float (* (- x-index (/ x-count 2)) (the int spacing))))
+        (+! (-> position z) (the float (* (- z-index (/ z-count 2)) (the int spacing))))
+        (let ((spawned-process (get-process *default-dead-pool* viewer #x4000)))
+          (when spawned-process
+            ((method-of-type viewer activate) (the-as viewer spawned-process) *entity-pool* 'viewer (the-as pointer #x70004000))
+            (run-now-in-process spawned-process init-viewer-for-other art-name position)
+            (-> spawned-process ppointer))))))
   #f)
 
-(defun birth-viewer ((arg0 process) (arg1 entity-actor))
-  (set! (-> arg0 type) viewer)
-  (let ((t9-0 init-entity)) viewer (t9-0 arg0 arg1))
+(defun birth-viewer ((proc process) (actor entity-actor))
+  "Use the viewer fallback for an entity whose declared process type is unavailable. Retype proc as
+   viewer, initialize it through the ordinary entity path, and return true."
+  (set! (-> proc type) viewer)
+  (init-entity proc actor viewer)
   #t)

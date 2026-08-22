@@ -7,178 +7,236 @@
 (require "engine/geometry/bounding-box-h.gc")
 (require "engine/math/math.gc")
 
-;; definition for function drawable-sphere-box-intersect?
-;; WARN: Function may read a register that is not set: f31
-;; Used lq/sq
-(defun drawable-sphere-box-intersect? ((arg0 drawable) (arg1 bounding-box4w))
-  (local-vars
-    (r0-0 int)
-    (r0-1 int)
-    (r0-2 uint128)
-    (r0-3 int)
-    (v1-1 uint128)
-    (v1-2 uint128)
-    (v1-3 uint128)
-    (a0-1 uint128)
-    (a1-2 uint128)
-    (a2-0 uint128)
-    (f31-0 none))
-  (rlet ((vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf))
-    (nop!)
-    (nop!)
-    (.lvf vf1 (&-> arg0 bsphere quad))
-    (.add.w.vf.xyz vf2 vf1 vf1)
-    (let ((v1-0 (-> arg1 min quad)))
-      (.sub.w.vf.xyz vf1 vf1 vf1)
-      (let ((a1-1 (-> arg1 max quad)))
-        (.ftoi.vf vf4 vf2)
-        (nop!)
-        (.ftoi.vf vf3 vf1)
-        (nop!)
-        (.mov a0-1 vf4)
-        (nop!)
-        (.mov a2-0 vf3)
-        (nop!)
-        (.pcgtw a1-2 a2-0 a1-1))
-      (.mov r0-0 f31-0)
-      (.pcgtw v1-1 v1-0 a0-1))
-    (.mov r0-1 f31-0)
-    (.por v1-2 a1-2 v1-1)
-    (.mov r0-2 f31-0)
-    (.ppach v1-3 r0-2 v1-2)
-    (.mov r0-3 f31-0)
-    (let ((v1-4 (shl (the-as int v1-3) 16))) (nop!) (zero? v1-4))))
+;; Broad-phase rejects for a collide-cache fill.
+;;
+;; Filling the cache walks the level's background collide-fragment trees and its TIE instance lists.
+;; The query volume has already been reduced to an integer-coordinate bounding box in *collide-work*
+;; and every candidate carries a bsphere, so the only question is whether the sphere's box overlaps
+;; the query box. This runs once per candidate frag and once per candidate instance, thousands of
+;; times a frame while the target is moving, so it is written without branches.
+;;
+;; instance-sphere-box-intersect? is the exception. The collide frags of a TIE instance belong to its
+;; shared prototype, so their bspheres are in prototype space and must be carried through the
+;; instance transform first.
+;;
+;; The packed reduction that ends the first two functions is the same in both:
+;;
+;;   pcgtw low-corner query-max     ;; per lane: is the sphere's box entirely above the query box?
+;;   pcgtw query-min  high-corner   ;; entirely below?
+;;   por                            ;; this axis separates them
+;;   ppach                          ;; gather the low halfword of each of the four lanes
+;;   shl 16, then zero?             ;; is any of x, y or z set
+;;
+;; Two boxes are disjoint exactly when some axis separates them, so a nonzero reduction means no
+;; overlap and both functions return the zero test directly. The final shift is what restricts the
+;; answer to x, y and z: after ppach the four per-lane results occupy halfwords 0 through 3 of the low
+;; doubleword, and shifting left by sixteen pushes halfword 3 out of the 64 bits being tested. That
+;; lane holds a radius rather than a coordinate. Replacing the shift with a mask would drop the
+;; second job it is doing.
+;;
+;; The EE-only (mmi-nop!) forms between the packed operations are empty multimedia issue slots. The
+;; zero operand of ppach clears the upper half of the packed result, and those bits leave with the
+;; same shift.
 
-;; definition for function instance-sphere-box-intersect?
-;; WARN: Function may read a register that is not set: f31
-;; Used lq/sq
-(defun instance-sphere-box-intersect? ((arg0 drawable) (arg1 instance-tie) (arg2 bounding-box4w))
+;; DECOMP BEGINS
+
+(defun drawable-sphere-box-intersect? ((geometry drawable) (query-box bounding-box4w))
+  "Broad-phase reject of a world-space bsphere against an integer-coordinate box. The sphere's own
+   box comes from its radius in w, truncated to integer world units to match query-box, and only x, y
+   and z are compared. Touching counts as a hit."
+  (local-vars
+    (below-box uint128)
+    (separated uint128)
+    (separated-packed uint128)
+    (high-corner-words uint128)
+    (above-box uint128)
+    (low-corner-words uint128))
+  (rlet ((sphere-bounds :class vf) ;; Center in xyz, radius in w. Becomes the low corner below.
+         (high-corner :class vf)
+         (low-corner-int :class vf)
+         (high-corner-int :class vf))
+    (nop!)
+    (nop!)
+    (.lvf sphere-bounds (&-> geometry bsphere quad))
+    (.add.w.vf.xyz high-corner sphere-bounds sphere-bounds)
+    (let ((query-min (-> query-box min quad)))
+      (.sub.w.vf.xyz sphere-bounds sphere-bounds sphere-bounds) ;; Now the low corner.
+      (let ((query-max (-> query-box max quad)))
+        (.ftoi.vf high-corner-int high-corner)
+        (nop!)
+        (.ftoi.vf low-corner-int sphere-bounds)
+        (nop!)
+        (.mov high-corner-words high-corner-int) ;; VU0 to EE, bits preserved.
+        (nop!)
+        (.mov low-corner-words low-corner-int)
+        (nop!)
+        (.pcgtw above-box low-corner-words query-max))
+      (#unless PC_PORT
+        (mmi-nop!))
+      (.pcgtw below-box query-min high-corner-words))
+    (#unless PC_PORT
+      (mmi-nop!))
+    (.por separated above-box below-box)
+    (#unless PC_PORT
+      (mmi-nop!))
+    (.ppach separated-packed (the-as uint128 0) separated)
+    (#unless PC_PORT
+      (mmi-nop!))
+    ;; The shift drops w, leaving x, y and z.
+    (let ((xyz-separated (shl (the-as int separated-packed) 16))) (nop!) (zero? xyz-separated))))
+
+(defun instance-sphere-box-intersect? ((fragment drawable) (inst instance-tie) (query-box bounding-box4w))
+  "Broad-phase reject of one collide frag of a TIE instance against an integer-coordinate box. The
+   frag's bsphere is in prototype space, so it is carried through inst's compressed transform first."
+  ;; instance-tie stores its placement compressed. origin holds four vector4h rows: the first three
+  ;; are the signed Q12 basis, and the fourth is an offset from the instance's own world bsphere
+  ;; center in 64-unit steps. max-scale is an unsigned Q12 upper bound on how much the basis can
+  ;; stretch a length, so max-scale times the local radius still encloses the transformed frag. It is
+  ;; a bound rather than the true transformed radius, which makes the test conservative for a
+  ;; nonuniformly scaled instance.
+  ;;
+  ;; Unpacking a row takes one pextlh against zero, which lifts each signed halfword into the high
+  ;; half of a 32-bit lane, then an arithmetic shift right that sign-extends it and applies the row's
+  ;; scale: 16 for the Q12 basis rows, 10 for the translation, whose extra six bits are its 64-unit
+  ;; step.
   (local-vars
     (zero uint128)
-    (v1-3 uint128)
-    (v1-4 uint128)
-    (v1-5 uint128)
-    (a0-2 uint128)
-    (a1-2 uint128)
-    (a2-1 uint128)
-    (a3-1 uint128)
-    (a3-3 uint128)
-    (a3-4 uint128)
-    (t0-1 uint128)
-    (t0-2 uint128)
-    (t1-0 uint128)
-    (t2-1 uint128)
-    (t2-2 uint128)
-    (f31-0 none))
+    (below-box uint128)
+    (separated uint128)
+    (separated-packed uint128)
+    (high-corner-words uint128)
+    (above-box uint128)
+    (low-corner-words uint128)
+    (translation-lanes uint128)
+    (row-2-lanes uint128)
+    (row-2-words uint128)
+    (row-1-lanes uint128)
+    (row-1-words uint128)
+    (translation-shifted uint128)
+    (row-0-lanes uint128)
+    (row-0-words uint128)
+    (idle-slot-source none))
   (rlet ((acc :class vf)
          (vf0 :class vf)
-         (vf1 :class vf)
-         (vf10 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         (vf8 :class vf)
-         (vf9 :class vf))
+         (world-center :class vf) ;; Becomes the low corner once the radius comes off.
+         (radius-bound :class vf)
+         (high-corner :class vf)
+         (low-corner-int :class vf)
+         (high-corner-int :class vf)
+         (row-0 :class vf)
+         (row-1 :class vf)
+         (row-2 :class vf)
+         (translation :class vf)
+         (sphere-bounds :class vf))
     (init-vf0-vector)
     (nop!)
-    (let ((v1-0 (-> arg1 max-scale)))
+    (let ((max-scale-q12 (-> inst max-scale)))
       (nop!)
-      (let ((a3-0 (the-as uint128 (-> arg1 origin vector4h 3 long))))
+      (let ((translation-packed (the-as uint128 (-> inst origin vector4h 3 long))))
         (nop!)
-        (let ((t2-0 (the-as uint128 (-> arg1 origin vector4h 0 long))))
-          (.pextlh a3-1 a3-0 zero)
-          (let ((t0-0 (the-as uint128 (-> arg1 origin vector4h 1 long))))
-            (.pw.sra t1-0 a3-1 10)
-            (let ((a3-2 (the-as uint128 (-> arg1 origin vector4h 2 long))))
-              (.pextlh t2-1 t2-0 zero)
-              (.pw.sra t2-2 t2-1 16)
-              (.pextlh t0-1 t0-0 zero)
-              (.mov vf8 t1-0)
-              (.pw.sra t0-2 t0-1 16)
-              (.mov vf5 t2-2)
-              (.pextlh a3-3 a3-2 zero)))))
-      (.mov vf6 t0-2)
-      (.pw.sra a3-4 a3-3 16)
-      (.lvf vf9 (&-> arg1 bsphere quad))
+        (let ((row-0-packed (the-as uint128 (-> inst origin vector4h 0 long))))
+          (.pextlh translation-lanes translation-packed zero)
+          (let ((row-1-packed (the-as uint128 (-> inst origin vector4h 1 long))))
+            (.pw.sra translation-shifted translation-lanes 10) ;; Sign-extend and scale by 64.
+            (let ((row-2-packed (the-as uint128 (-> inst origin vector4h 2 long))))
+              (.pextlh row-0-lanes row-0-packed zero)
+              (#unless PC_PORT
+                (mmi-nop!))
+              (.pw.sra row-0-words row-0-lanes 16)
+              (#unless PC_PORT
+                (mmi-nop!))
+              (.pextlh row-1-lanes row-1-packed zero)
+              (.mov translation translation-shifted)
+              (.pw.sra row-1-words row-1-lanes 16)
+              (.mov row-0 row-0-words)
+              (.pextlh row-2-lanes row-2-packed zero)))))
+      (.mov row-1 row-1-words)
+      (.pw.sra row-2-words row-2-lanes 16)
+      (.lvf sphere-bounds (&-> inst bsphere quad)) ;; The instance's own world bsphere.
       (nop!)
-      (.mov vf7 a3-4)
+      (.mov row-2 row-2-words)
       (nop!)
-      (.mov vf10 v1-0))
-    (.itof.vf vf8 vf8)
+      (.mov radius-bound max-scale-q12))
+    (.itof.vf translation translation)
     (nop!)
-    (vitof12.xyzw vf5 vf5)
+    (vitof12.xyzw row-0 row-0)
     (nop!)
-    (vitof12.xyzw vf6 vf6)
+    (vitof12.xyzw row-1 row-1)
     (nop!)
-    (vitof12.xyzw vf7 vf7)
+    (vitof12.xyzw row-2 row-2)
     (nop!)
-    (.add.vf.xyz vf8 vf8 vf9)
+    ;; The offset is measured from the bsphere center, so this is the instance's world origin.
+    (.add.vf.xyz translation translation sphere-bounds)
     (nop!)
     (nop!)
-    (.lvf vf9 (&-> arg0 bsphere quad))
-    (vitof12.xyzw vf10 vf10)
+    (.lvf sphere-bounds (&-> fragment bsphere quad)) ;; Now the frag's prototype-space sphere.
+    (vitof12.xyzw radius-bound radius-bound)
     (nop!)
-    (.mul.w.vf.x vf10 vf10 vf9)
+    (.mul.w.vf.x radius-bound radius-bound sphere-bounds) ;; Bounding radius for the transformed frag.
     (nop!)
-    (.mul.x.vf acc vf5 vf9)
+    (.mul.x.vf acc row-0 sphere-bounds)
     (nop!)
-    (.add.mul.y.vf acc vf6 vf9 acc)
-    (let ((v1-2 (-> arg2 min quad)))
-      (.add.mul.z.vf acc vf7 vf9 acc)
-      (let ((a1-1 (-> arg2 max quad)))
-        (.add.mul.w.vf vf1 vf8 vf0 acc)
+    (.add.mul.y.vf acc row-1 sphere-bounds acc)
+    (let ((query-min (-> query-box min quad)))
+      (.add.mul.z.vf acc row-2 sphere-bounds acc)
+      (let ((query-max (-> query-box max quad)))
+        (.add.mul.w.vf world-center translation vf0 acc)
         (nop!)
-        (.add.x.vf.xyz vf2 vf1 vf10)
+        (.add.x.vf.xyz high-corner world-center radius-bound)
         (nop!)
-        (.sub.x.vf.xyz vf1 vf1 vf10)
+        (.sub.x.vf.xyz world-center world-center radius-bound) ;; world-center now holds the low corner
         (nop!)
-        (.ftoi.vf vf4 vf2)
+        (.ftoi.vf high-corner-int high-corner)
         (nop!)
-        (.ftoi.vf vf3 vf1)
+        (.ftoi.vf low-corner-int world-center)
         (nop!)
-        (.mov a0-2 vf4)
+        (.mov high-corner-words high-corner-int)
         (nop!)
-        (.mov a2-1 vf3)
+        (.mov low-corner-words low-corner-int)
         (nop!)
-        (.pcgtw a1-2 a2-1 a1-1))
-      (.pcgtw v1-3 v1-2 a0-2))
-    (.por v1-4 a1-2 v1-3)
-    (.ppach v1-5 zero v1-4)
-    (let ((v1-6 (shl (the-as int v1-5) 16))) (nop!) (zero? v1-6))))
+        (.pcgtw above-box low-corner-words query-max))
+      (#unless PC_PORT
+        (mmi-nop!))
+      (.pcgtw below-box query-min high-corner-words))
+    (#unless PC_PORT
+      (mmi-nop!))
+    (.por separated above-box below-box)
+    (#unless PC_PORT
+      (mmi-nop!))
+    (.ppach separated-packed zero separated)
+    (#unless PC_PORT
+      (mmi-nop!))
+    ;; The shift drops w, leaving x, y and z.
+    (let ((xyz-separated (shl (the-as int separated-packed) 16))) (nop!) (zero? xyz-separated))))
 
-;; definition for function instance-tfragment-add-debug-sphere
-;; Used lq/sq
-(defun instance-tfragment-add-debug-sphere ((arg0 drawable) (arg1 instance-tie))
-  (local-vars (r0-0 uint128) (v1-1 uint128) (v1-2 uint128) (a3-0 float))
+(defun instance-tfragment-add-debug-sphere ((geometry drawable) (inst instance-tie))
+  "Debug draw of one collide frag's world bsphere. Neither the instance basis nor max-scale is
+   applied, so this is only correct for an unrotated, unscaled instance. Unused."
+  (local-vars (zero uint128) (translation-lanes uint128) (translation-shifted uint128) (radius float))
   (rlet ((vf0 :class vf)
-         (vf10 :class vf)
-         (vf11 :class vf)
-         (vf12 :class vf)
-         (vf9 :class vf))
+         (instance-center :class vf)
+         (radius-vf :class vf)
+         (translation :class vf)
+         (fragment-center :class vf))
     (init-vf0-vector)
     (nop!)
-    (let ((v1-0 (the-as uint128 (-> arg1 origin vector4h 3 long)))) (.pextlh v1-1 v1-0 r0-0))
-    (.lvf vf9 (&-> arg0 bsphere quad))
-    (.pw.sra v1-2 v1-1 10)
-    (.lvf vf10 (&-> arg1 bsphere quad))
+    (let ((translation-packed (the-as uint128 (-> inst origin vector4h 3 long))))
+      (.pextlh translation-lanes translation-packed zero))
+    (.lvf fragment-center (&-> geometry bsphere quad))
+    (.pw.sra translation-shifted translation-lanes 10) ;; Sign-extend and scale by 64.
+    (.lvf instance-center (&-> inst bsphere quad))
     (nop!)
-    (.mov vf12 v1-2)
-    (.itof.vf vf12 vf12)
+    (.mov translation translation-shifted)
+    (.itof.vf translation translation)
     (nop!)
-    (.add.vf.xyz vf10 vf10 vf12)
+    (.add.vf.xyz instance-center instance-center translation)
     (nop!)
-    (.add.vf.xyz vf9 vf9 vf10)
+    (.add.vf.xyz fragment-center fragment-center instance-center)
     (nop!)
-    (.add.w.vf.x vf11 vf0 vf9)
+    (.add.w.vf.x radius-vf vf0 fragment-center) ;; The frag radius, out of w.
     (nop!)
-    (.mov a3-0 vf11)
+    (.mov radius radius-vf)
     (nop!)
-    (let ((a2-0 (new-stack-vector0)))
-      (.svf (&-> a2-0 quad) vf9)
-      (add-debug-sphere #t (bucket-id debug) a2-0 a3-0 (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)))))
+    (let ((world-center (new-stack-vector0)))
+      (.svf (&-> world-center quad) fragment-center)
+      (add-debug-sphere #t (bucket-id debug) world-center radius (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)))))

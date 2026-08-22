@@ -22,17 +22,16 @@
    (facing-rot             vector :inline)
    (path-trans-offset      vector :inline))
   (:methods
-   (sunkenfisha-method-20 (_type_) float)
-   (sunkenfisha-method-21 (_type_ vector float vector) vector)
+   (reverse-direction! (_type_) float)
+   (evaluate-swim-position! (_type_ vector float vector) vector)
    (sunkenfisha-method-22 (_type_) none)
-   (sunkenfisha-method-23 (_type_) quaternion)
-   (sunkenfisha-method-24 (_type_) vector)
-   (sunkenfisha-method-25 (_type_) none)
-   (sunkenfisha-method-26 (_type_) float)
-   (sunkenfisha-method-27 (_type_) float))
+   (update-facing! (_type_) quaternion)
+   (update-path-offset! (_type_) vector)
+   (advance-path! (_type_) none)
+   (initialize-appearance! (_type_) float)
+   (initialize-swim-path! (_type_) float))
   (:states
    sunkenfisha-idle))
-
 
 (defskelgroup *sunkenfisha-red-yellow-sg*
   sunkenfisha
@@ -56,20 +55,25 @@
   :bounds (static-spherem 0 1.5 0 2.5))
 
 (defmethod sunkenfisha-method-22 ((this sunkenfisha))
+  "Do nothing."
   0
   (none))
 
-(defmethod sunkenfisha-method-21 ((this sunkenfisha) (arg0 vector) (arg1 float) (arg2 vector))
-  (eval-path-curve! (-> this path) arg0 arg1 'interp)
-  (vector+! arg0 arg0 (-> this path-trans-offset))
-  (let ((s2-0 (new 'stack-no-clear 'vector)))
-    (path-control-method-14 (-> this path) s2-0 arg1)
-    (let ((f0-2 (atan (-> s2-0 x) (-> s2-0 z)))
-          (s4-1 (new 'stack-no-clear 'vector)))
-      (vector-rotate-around-y! s4-1 arg2 f0-2)
-      (vector+! arg0 arg0 s4-1))))
+(defmethod evaluate-swim-position! ((this sunkenfisha) (result vector) (progress float) (local-offset vector))
+  "Evaluate the path at normalized progress, apply the authored translation, rotate the local
+   offset by the path tangent, and store the resulting world position."
+  (eval-path-curve! (-> this path) result progress 'interp)
+  (vector+! result result (-> this path-trans-offset))
+  (let ((tangent (new 'stack-no-clear 'vector)))
+    (get-tangent-at-percent! (-> this path) tangent progress)
+    (let ((path-heading (atan (-> tangent x) (-> tangent z)))
+          (rotated-offset (new 'stack-no-clear 'vector)))
+      (vector-rotate-around-y! rotated-offset local-offset path-heading)
+      (vector+! result result rotated-offset))))
 
-(defmethod sunkenfisha-method-24 ((this sunkenfisha))
+(defmethod update-path-offset! ((this sunkenfisha))
+  "Choose a distant random local offset when needed and steer the current offset toward it at a
+   bounded angular and linear rate."
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'matrix))
         (gp-0 (new 'stack-no-clear 'vector)))
@@ -92,25 +96,32 @@
     (vector-float*! gp-0 (-> this local-path-offset-dir) (* 4096.0 (seconds-per-frame)))
     (vector+! (-> this local-path-offset) (-> this local-path-offset) gp-0)))
 
-(defmethod sunkenfisha-method-25 ((this sunkenfisha))
+(defmethod advance-path! ((this sunkenfisha))
+  "Seek the current path speed toward its target, advance normalized progress, and reverse at
+   either endpoint."
   (let* ((f0-0 (-> this path-speed))
          (f1-1 (seek f0-0 (-> this targ-path-speed) (* (-> this path-speed-seek-speed) (seconds-per-frame)))))
     (set! (-> this path-speed) f1-1)
     (let ((f30-0 (+ (-> this path-u) (* (-> this path-dir) f1-1 (seconds-per-frame)))))
       (cond
-        ((< f30-0 0.0) (set! f30-0 (- f30-0)) (sunkenfisha-method-20 this))
-        ((< 1.0 f30-0) (+! f30-0 (* 2.0 (- 1.0 f30-0))) (sunkenfisha-method-20 this)))
+        ((< f30-0 0.0) (set! f30-0 (- f30-0)) (reverse-direction! this))
+        ((< 1.0 f30-0) (+! f30-0 (* 2.0 (- 1.0 f30-0))) (reverse-direction! this)))
       (set! (-> this path-u) f30-0)))
   (none))
 
-(defmethod sunkenfisha-method-23 ((this sunkenfisha))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set-vector! s5-0 (- (vector-x-angle (-> this root transv))) (vector-y-angle (-> this root transv)) 0.0 1.0)
-    (set! (-> this facing-rot x) (deg-seek-smooth (-> this facing-rot x) (-> s5-0 x) (* 16384.0 (seconds-per-frame)) 0.1))
-    (set! (-> this facing-rot y) (deg-seek-smooth (-> this facing-rot y) (-> s5-0 y) (* 32768.0 (seconds-per-frame)) 0.1)))
+(defmethod update-facing! ((this sunkenfisha))
+  "Turn pitch and yaw smoothly toward the current velocity and update the root quaternion."
+  (let ((target-facing (new 'stack-no-clear 'vector)))
+    (set-vector! target-facing (- (vector-x-angle (-> this root transv))) (vector-y-angle (-> this root transv)) 0.0 1.0)
+    (set! (-> this facing-rot x)
+          (deg-seek-smooth (-> this facing-rot x) (-> target-facing x) (* 16384.0 (seconds-per-frame)) 0.1))
+    (set! (-> this facing-rot y)
+          (deg-seek-smooth (-> this facing-rot y) (-> target-facing y) (* 32768.0 (seconds-per-frame)) 0.1)))
   (quaternion-zxy! (-> this root quat) (-> this facing-rot)))
 
-(defmethod sunkenfisha-method-20 ((this sunkenfisha))
+(defmethod reverse-direction! ((this sunkenfisha))
+  "Reverse progress along the path, choose a new speed and turn time, and redirect the local
+   offset far enough across the path."
   (set! (-> this path-dir) (- (-> this path-dir)))
   (set! (-> this path-speed) 0.0)
   (set! (-> this targ-path-speed) (rand-vu-float-range (-> this path-normal-speed-lo) (-> this path-normal-speed-hi)))
@@ -131,13 +142,13 @@
              (vf1 :class vf)
              (vf2 :class vf))
         (init-vf0-vector)
-        (if (>= (current-time) (-> self change-path-dir-time)) (sunkenfisha-method-20 self))
-        (sunkenfisha-method-24 self)
-        (sunkenfisha-method-25 self)
+        (if (>= (current-time) (-> self change-path-dir-time)) (reverse-direction! self))
+        (update-path-offset! self)
+        (advance-path! self)
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (sunkenfisha-method-21 self gp-0 (-> self path-u) (-> self local-path-offset))
+          (evaluate-swim-position! self gp-0 (-> self path-u) (-> self local-path-offset))
           (vector-! (-> self root transv) gp-0 (-> self root trans))
-          (set! (-> self root trans quad) (-> gp-0 quad)))
+          (vector-copy! (-> self root trans) gp-0))
         (let ((v1-16 (-> self root transv)))
           (.lvf vf1 (&-> (-> self root transv) quad))
           (let ((f0-1 (-> *display* frames-per-second))) (.mov at-0 f0-1))
@@ -145,17 +156,15 @@
           (.mov.vf.w vf1 vf0)
           (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> v1-16 quad) vf1))
-        (sunkenfisha-method-23 self)))
+        (update-facing! self)))
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! sunkenfisha-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! sunkenfisha-idle-ja :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
-(defmethod sunkenfisha-method-26 ((this sunkenfisha))
+(defmethod initialize-appearance! ((this sunkenfisha))
+  "Create the transform, select one of three fish color variants, and start its idle animation."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this (-> this entity))
   (set-vector! (-> this root scale) 6.0 6.0 6.0 1.0)
@@ -169,7 +178,9 @@
     (joint-control-channel-group-eval! s5-0 (the-as art-joint-anim (-> this draw art-group data 6)) num-func-identity)
     (set! (-> s5-0 frame-num) 0.0)))
 
-(defmethod sunkenfisha-method-27 ((this sunkenfisha))
+(defmethod initialize-swim-path! ((this sunkenfisha))
+  "Load path offsets and speed limits, randomize initial progress and local offset, and orient
+   the fish along the curve tangent."
   (vector-reset! (-> this path-trans-offset))
   (set! (-> this path-u) (rand-vu-float-range 0.0 1.0))
   (if (zero? (rand-vu-int-count 2)) (set! (-> this path-dir) 1.0) (set! (-> this path-dir) -1.0))
@@ -184,7 +195,7 @@
         (rand-vu-float-range (- (-> this max-local-path-offset x)) (-> this max-local-path-offset x)))
   (set! (-> this local-path-offset y)
         (rand-vu-float-range (- (-> this max-local-path-offset y)) (-> this max-local-path-offset y)))
-  (set! (-> this targ-local-path-offset quad) (-> this local-path-offset quad))
+  (vector-copy! (-> this targ-local-path-offset) (-> this local-path-offset))
   (set! (-> this targ-local-path-offset x)
         (rand-vu-float-range (- (-> this max-local-path-offset x)) (-> this max-local-path-offset x)))
   (set! (-> this targ-local-path-offset y)
@@ -215,23 +226,25 @@
   (set! (-> this path-speed) (rand-vu-float-range (-> this path-normal-speed-lo) (-> this path-normal-speed-hi)))
   (set! (-> this targ-path-speed) (-> this path-speed))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (path-control-method-14 (-> this path) s4-0 (-> this path-u))
+    (get-tangent-at-percent! (-> this path) s4-0 (-> this path-u))
     (set-vector! (-> this facing-rot) 0.0 (atan (-> s4-0 x) (-> s4-0 z)) 0.0 1.0))
   (if (< (-> this path-dir) 0.0) (set! (-> this facing-rot y) (- (-> this facing-rot y)))))
 
-(defbehavior sunkenfisha-init-by-other sunkenfisha ((arg0 entity-actor))
-  (set! (-> self entity) arg0)
-  (sunkenfisha-method-26 self)
-  (sunkenfisha-method-27 self)
+(defbehavior sunkenfisha-init-by-other sunkenfisha ((source-entity entity-actor))
+  "Initialize a child fish from the same entity resource as its parent."
+  (set! (-> self entity) source-entity)
+  (initialize-appearance! self)
+  (initialize-swim-path! self)
   (go sunkenfisha-idle)
   (none))
 
-(defmethod init-from-entity! ((this sunkenfisha) (arg0 entity-actor))
-  (sunkenfisha-method-26 this)
-  (sunkenfisha-method-27 this)
-  (let ((s5-0 (+ (res-lump-value (-> this entity) 'count uint128 :default (the-as uint128 1)) -1)))
-    (while (> (the-as int s5-0) 0)
+(defmethod init-from-entity! ((this sunkenfisha) (source-entity entity-actor))
+  "Initialize the fish and spawn the resource-specified school size as child fish."
+  (initialize-appearance! this)
+  (initialize-swim-path! this)
+  (let ((remaining-fish (+ (res-lump-value (-> this entity) 'count uint128 :default (the-as uint128 1)) -1)))
+    (while (> (the-as int remaining-fish) 0)
       (process-spawn sunkenfisha (-> this entity) :to this)
-      (+! s5-0 -1)))
+      (+! remaining-fish -1)))
   (go sunkenfisha-idle)
   (none))

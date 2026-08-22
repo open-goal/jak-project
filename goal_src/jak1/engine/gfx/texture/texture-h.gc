@@ -22,16 +22,26 @@
   :bitfield #f
   (tfrag 0) ;; background
   (pris 1) ;; foreground
-  (shrub 2) ;; shrubs/sprites
+  (shrub 2) ;; shrubs
   (alpha 3) ;; effects
   (water 4) ;; non-ocean water (fj rivers, water near farmer)
   )
 
+(defenum texture-enable-mask
+  :bitfield #t
+  :type int32
+  (tfrag-tie 0)
+  (pris 1)
+  (shrub 2)
+  (alpha 3)
+  (water 4)
+  )
+
 ;; bitmask for enabled tpage-kinds (changed in debug menu)
-(define *texture-enable-user-menu* #x1f)
+(define *texture-enable-user-menu* (texture-enable-mask tfrag-tie pris shrub alpha water))
 
 ;; enabled textures (drawable.gc updates this from reading *texture-enable-user-menu*)
-(define *texture-enable-user* 0)
+(define *texture-enable-user* (texture-enable-mask))
 
 ;; Any individual texture can be uniquely identified with a texture-id.
 (deftype texture-id (uint32)
@@ -114,17 +124,18 @@
    (masks        uint32 3)))
 
 ;; tpages themselves are divided into segments.
-;; some renderers may know ahead of time that they don't need all segments
-;; and can skip uploading unused texture data.
+;; Segment 0 contains the coarsest, always-needed mip levels. Segments 1 and 2
+;; contain progressively finer levels, so renderers can omit high-detail data.
 (deftype texture-page-segment (structure)
   ((block-data pointer)
    (size       uint32)
    (dest       uint32))
   :pack-me)
 
-(defun texture-mip->segment ((arg0 int) (arg1 int))
-  "Convert a mip level to the segment that it is stored in."
-  (if (>= 2 arg1) (+ (- -1 arg0) arg1) (max 0 (- 2 arg0))))
+(defun texture-mip->segment ((mip-level int) (mip-count int))
+  "Return the texture-page segment for mip-level among mip-count levels.
+   Segment 0 holds the coarsest levels; up to two higher-detail levels occupy segments 1 and 2."
+  (if (>= 2 mip-count) (+ (- -1 mip-level) mip-count) (max 0 (- 2 mip-level))))
 
 ;; The actual texture-page header
 ;; After the dynamic array of texture is the actual texture data.

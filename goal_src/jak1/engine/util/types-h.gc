@@ -3,88 +3,75 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; these types may have bitfields in them.
-;; these have runtime types. But nothing appears to use them?
-
+;; Signed 300 Hz timestamps and durations used throughout the engine.
 (deftype time-frame (int64) ())
 
+;; Reserved identifier type for particle definitions. Particle tables use raw indices in this game.
 (deftype part-id (uint32) ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Common Units
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; in-game durations, distances, and rotations are stored in special formats.
-;; these macros/constants convert from literals to the correct format.
-;; for example, (meters 4.0) will give you a distance representing 4 in-game meters.
+;; In-game durations, distances, and rotations use fixed unit scales. These macros fold literal
+;; conversions at compile time and emit the equivalent arithmetic for runtime values.
 
-;; meters are stored as (usually) a float, scaled by 4096.
-;; this gives you reasonable accuracy as an integer.
+;; World coordinates use 4096 units per meter.
 (defglobalconstant METER_LENGTH 4096.0)
 
 (defmacro meters (x)
-  "Convert number to meters.
-   If the input is a constant float or integer, the result will be a
-   compile time constant float. Otherwise, it will not be constant.
-   Returns float."
+  "Convert meters to world units. Literal inputs become compile-time float constants."
   ;; we don't have enough constant propagation for the compiler to figure this out.
   (cond
     ((float? x) (* METER_LENGTH x))
     ((integer? x) (* METER_LENGTH x))
     (#t `(* METER_LENGTH ,x))))
 
-;; rotations are stored in 65,536ths of a full rotation.
-;; like with meters, you get a reasonable accuracy as an integer.
-;; additionally, it is a power-of-two, so wrapping rotations can be done
-;; quickly by converting to an int, masking, and back to float
+;; Rotations use 65,536 units per revolution. The power-of-two scale allows a rotation converted
+;; to integer to wrap with a 16-bit mask.
 (defglobalconstant DEGREES_PER_ROT 65536.0)
 
-;; this was deg in GOAL
 (defmacro degrees (x)
-  "Convert number to degrees unit.
-   Will keep a constant float/int constant."
+  "Convert degrees to rotation units, folding literal inputs at compile time."
   (cond
     ((or (float? x) (integer? x)) (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0)))
     (#t `(* (/ (the float ,x) 360.0) DEGREES_PER_ROT))))
 
-;; times are stored in 300ths of a second.
-;; this divides evenly into frames at both 50 and 60 fps.
-;; typically these are stored as integers as more precision is not useful.
-;; an unsigned 32-bit integer can store about 150 days
+;; Time uses 300 ticks per second, which divides evenly into both 50 Hz and 60 Hz display frames.
+;; Durations are normally integral; an unsigned 32-bit tick count spans about 166 days.
 (defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
 
-;; this was usec in GOAL
 (defmacro seconds (x)
-  "Convert number to seconds unit.
-   Returns uint."
+  "Convert seconds to 300 Hz clock units. Literal inputs are folded; runtime inputs produce uint."
   (cond
     ((integer? x) (* TICKS_PER_SECOND x))
     ((float? x) (* 1 (* 1.0 x TICKS_PER_SECOND)))
     (#t `(the uint (* TICKS_PER_SECOND ,x)))))
 
 (defmacro fsec (x)
-  "Convert number to seconds unit.
-   Returns float."
+  "Convert seconds to a floating-point clock-tick count."
   (cond
     ((or (integer? x) (float? x)) (* 1.0 TICKS_PER_SECOND x))
     (#t `(* 1.0 TICKS_PER_SECOND ,x))))
 
-;; maybe rename to "velocity"?
 (defmacro vel-tick (vel)
-  "turn a velocity value into a per-tick value"
+  "Convert a per-second velocity to the displacement for one 300 Hz tick."
   `(* (/ 1.0 ,TICKS_PER_SECOND) ,vel))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Debugging Stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; set to #t to get lots of prints during loading
+;; Enable compile-time expansion of loading diagnostics.
 (defglobalconstant DEBUG_LOAD #f)
 
+;; Enable compile-time expansion of texture diagnostics.
 (defglobalconstant DEBUG_TEX #f)
 
 (defmacro load-dbg (fmt-str &rest args)
+  "Emit a load diagnostic when DEBUG_LOAD is enabled; otherwise expand to empty."
   (if DEBUG_LOAD `(format 0 ,(string-append "[LOAD] " fmt-str) ,@args) '(empty)))
 
 (defmacro tex-dbg (fmt-str &rest args)
+  "Emit a texture diagnostic when DEBUG_TEX is enabled; otherwise expand to empty."
   (if DEBUG_TEX `(format 0 ,(string-append "[TEX] " fmt-str) ,@args) '(empty)))

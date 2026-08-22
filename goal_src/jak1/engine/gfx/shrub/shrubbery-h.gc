@@ -8,9 +8,23 @@
 
 ;; DECOMP BEGINS
 
+;; Shrubbery is an instanced renderer optimized for little grass, flowers, rocks, etc.
+;; Shrubs fade out or fade into simple single-quad billboard (always face camera)
+;; Each instance only has a single color multiplier from the precomputed lighting.
+;; (it still uses time of day interpolation, so a shrub can still flicker by a torch,
+;;  but all vertices receive the same final interpolated time-of-day color)
+;; Shrubs don't have precomputed visibility, but still do frustum culling.
+
+;; The coarsest geometry a shrub prototype can have: one camera-facing quad with one texture. There
+;; is no vertex data -- the EE builds the four corners from the instance's own flat-normal and
+;; flat-hwidth and writes them straight to the GS -- so the shader is the whole object.
 (deftype billboard (drawable)
   ((flat adgif-shader :inline)))
 
+;; The three quadwords of camera constants uploaded to VU data address 0.
+;; tex-start-ptr and mtx-buf-ptr are initial values for two words the microprogram
+;; reuses as its own saved cursors, and exp23 names the 2^23 bias that lets VU do address
+;; math in float registers.
 (deftype shrub-view-data (structure)
   ((data           uint128 3)
    (texture-giftag gs-gif-tag :inline :overlay-at (-> data 0))
@@ -26,23 +40,34 @@
    (fog-max        float :overlay-at (-> fog-clamp y))))
 
 (deftype shrubbery (drawable)
+  "Packed shrub geometry and its static DMA streams. header[0] is the number of two-texture shader
+   pairs, header[1] is the triangle-strip count, and header[2] is the display-vertex count; the
+   triangle count is therefore header[2] - 2 * header[1]."
   ((textures (inline-array adgif-shader) :overlay-at id)
-   (header   qword :offset 8)
-   (obj-qwc  uint8 :offset 12)
-   (vtx-qwc  uint8 :offset 13)
-   (col-qwc  uint8 :offset 14)
-   (stq-qwc  uint8 :offset 15)
-   (obj      uint32 :overlay-at (-> bsphere x))
-   (vtx      uint32 :overlay-at (-> bsphere y))
-   (col      uint32 :overlay-at (-> bsphere z))
-   (stq      uint32 :overlay-at (-> bsphere w))))
+   (header qword :offset 8)
+   (obj-qwc uint8 :offset 12)
+   (vtx-qwc uint8 :offset 13)
+   (col-qwc uint8 :offset 14)
+   (stq-qwc uint8 :offset 15)
+   (obj uint32 :overlay-at (-> bsphere x))
+   (vtx uint32 :overlay-at (-> bsphere y))
+   (col uint32 :overlay-at (-> bsphere z))
+   (stq uint32 :overlay-at (-> bsphere w))))
 
+;; One placement of a shrub prototype: 80 bytes, and the only per-instance data the renderer has.
+;; color-indices is a byte offset into the tree's 1024-entry time-of-day color table -- one color
+;; for the whole instance, not one per vertex. flat-normal and flat-hwidth describe the billboard
+;; this instance collapses to at distance.
 (deftype instance-shrubbery (instance)
   ((color-indices uint32 :overlay-at error)
    (flat-normal   vector :inline)
    (flat-hwidth   float :overlay-at (-> flat-normal w))
    (color         uint32 :overlay-at color-indices)))
 
+;; drawable system types for shrubs, allowing BVH traversal for frustum culling.
+;; unlike other BVHs, shrub doesn't have fixed depth and 8-child counts.
+;; The usual optimized draw-node asm therefore doesn't work.
+;; (shrub instead traverses the BVH in DFS order at DMA generation time using a stack)
 (deftype drawable-inline-array-instance-shrub (drawable-inline-array)
   ((data instance-shrubbery 1 :inline)
    (pad  uint32)))
@@ -51,6 +76,7 @@
   ((info         prototype-array-shrub-info :offset 8)
    (colors-added time-of-day-palette :offset 12)))
 
+;; duplicate geometry for the generic renderer - used when shrubs need clipping.
 (deftype generic-shrub-fragment (drawable)
   ((textures (inline-array adgif-shader) :overlay-at id)
    (vtx-cnt  uint32 :offset 8)
@@ -71,48 +97,90 @@
 
 (deftype prototype-generic-shrub (drawable-group) ())
 
+;; Shrub matrix and color uploaded to VU1 per instance.
 (deftype shrubbery-matrix (structure)
   ((mat   matrix :inline)
    (color qword :inline)))
 
 (defun shrubbery-login-post-texture ((this shrubbery))
-  "Copies adgif shader crap to somewhere"
-  ;; total number of adgif shaders for this shrubbery object.
-  (let* ((shader-count (-> this header data 0))
-         ;; one destination to place the data.
-         (dst (the-as qword (+ (the-as uint (-> this header)) (* (+ (-> this header data 1) 1) 16))))
-         ;; the second destination to place the data
-         (tex-dst (the-as qword (+ (the-as int dst) (* shader-count 64))))
-         ;; the input data (adgif shaders, each is 0x50 bytes, or 5 quads)
-         (src (the-as qword (-> this textures))))
-    ;; iterate over all shaders
-    (dotimes (a0-1 (the-as int shader-count))
-      ;; copy the first quadword directly to the second destination
-      (set! (-> tex-dst quad) (-> src quad))
-      ;; advance dst and src
-      (let ((text-dst2 (the-as qword (+ (the-as int tex-dst) 16)))
-            (src-2 (the-as qword (&+ (the-as pointer src) 16))))
-        ;; copy second quadword, but only the first three words
-        (set! (-> dst vector4w x) (the-as int (-> src-2 data 0)))
-        (set! (-> dst vector4w y) (the-as int (-> src-2 data 1)))
-        (set! (-> dst vector4w z) (the-as int (-> src-2 data 2)))
-        ;; advance dst and src
-        (set! dst (the-as qword (+ (the-as int dst) 16)))
-        (let ((src-3 (the-as qword (&+ (the-as pointer src-2) 16))))
-          ;; copy 3rd, 4th, and 5th quadwords
-          (dotimes (t0-4 3)
-            (set! (-> dst quad) (-> src-3 quad))
-            (set! dst (the-as qword (+ (the-as int dst) 16)))
-            (set! src-3 (the-as qword (&+ (the-as pointer src-3) 16))))
-          ;; more texture data (isn't this reading off of the end of the source?)
-          (set! (-> text-dst2 quad) (-> src-3 quad))
-          ;; advance to next source
-          (set! tex-dst (the-as qword (+ (the-as int text-dst2) 16)))
-          (set! src (the-as qword (&+ (the-as pointer src-3) 80)))))))
+  "Repack the logged-in adgif shaders into the shrub's VU1-facing DMA data.
+   Each shader pair shares data and is repacked for more efficient uploads."
+  ;; Each source adgif is five qwords. The pair has different texture registers but identical
+  ;; remaining state, so the VU1 packet doesn't store the identical part twice.
+  (let* ((shader-pair-count (-> this header data 0))
+         (state-dst (the-as qword (+ (the-as uint (-> this header)) (* (+ (-> this header data 1) 1) 16))))
+         (texture-dst (the-as qword (+ (the-as int state-dst) (* shader-pair-count 64))))
+         (shader-pair (the-as qword (-> this textures))))
+    (dotimes (i (the-as int shader-pair-count))
+      (set! (-> texture-dst quad) (-> shader-pair quad))
+      (let ((second-texture-dst (the-as qword (+ (the-as int texture-dst) 16)))
+            (state-head (the-as qword (&+ (the-as pointer shader-pair) 16))))
+        ;; The fourth word belongs to the existing packet and is deliberately left intact.
+        (set! (-> state-dst vector4w x) (the-as int (-> state-head data 0)))
+        (set! (-> state-dst vector4w y) (the-as int (-> state-head data 1)))
+        (set! (-> state-dst vector4w z) (the-as int (-> state-head data 2)))
+        (set! state-dst (the-as qword (+ (the-as int state-dst) 16)))
+        (let ((source-cursor (the-as qword (&+ (the-as pointer state-head) 16))))
+          (dotimes (quad-index 3)
+            (set! (-> state-dst quad) (-> source-cursor quad))
+            (set! state-dst (the-as qword (+ (the-as int state-dst) 16)))
+            (set! source-cursor (the-as qword (&+ (the-as pointer source-cursor) 16))))
+          ;; source-cursor now points at the second shader, not past the source array.
+          (set! (-> second-texture-dst quad) (-> source-cursor quad))
+          (set! texture-dst (the-as qword (+ (the-as int second-texture-dst) 16)))
+          (set! shader-pair (the-as qword (&+ (the-as pointer source-cursor) 80)))))))
   (none))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Shrub VU1 addresses
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; models, instances, and output data are all double-buffered.
+;; (unlike tie, shrub doesn't triple buffer the outputs)
+
+(defconstant SHRUB-VU-VIEW-DATA 0)
+
+(defmacro shrub-view-const (&rest path)
+  `(+ SHRUB-VU-VIEW-DATA (/ (offset-of shrub-view-data ,@path) 16)))
+
+;; The two model banks. *shrub-state* is the VIF BASE register for the next model upload and
+;; alternates between them. Each bank is 160 quadwords
+(defconstant SHRUB-VU-MODEL-BANK-A 2)
+
+(defconstant SHRUB-VU-MODEL-BANK-B 162)
+
+(defconstant SHRUB-VU-MODEL-BANK-SUM (+ SHRUB-VU-MODEL-BANK-A SHRUB-VU-MODEL-BANK-B))
+
+;; The two instance rings. A ring is one count word followed by ten shrubbery-matrix records.
+(defconstant SHRUB-VU-MATRIX-STRIDE (/ (type-size shrubbery-matrix) 16))
+(defconstant SHRUB-VU-RING-SLOTS 10)
+(defconstant SHRUB-VU-RING-A 322)
+(defconstant SHRUB-VU-RING-B (+ SHRUB-VU-RING-A 1 (* SHRUB-VU-RING-SLOTS SHRUB-VU-MATRIX-STRIDE)))
+(defconstant SHRUB-VU-RING-SUM (+ SHRUB-VU-RING-A SHRUB-VU-RING-B))
+
+(defmacro shrub-matrix-qword (&rest path)
+  `(+ 1 (/ (offset-of shrubbery-matrix ,@path) 16)))
+
+;; The two GIF output buffers, which begin where ring B ends.
+(defconstant SHRUB-VU-GIF-BUFFER-0 (+ SHRUB-VU-RING-B 1 (* SHRUB-VU-RING-SLOTS SHRUB-VU-MATRIX-STRIDE)))
+(defconstant SHRUB-VU-GIF-BUFFER-1 (+ SHRUB-VU-GIF-BUFFER-0 400))
+
+;; Entry points. Entry 0 loads the camera constants and builds the buffer-address vectors. Entries
+;; 17 and 21 relocate and expand a freshly uploaded model; they differ only in which instance ring
+;; the following draw will read, and start-bank in shrub-work.gc records which one each ring
+;; position needs. Entry 103 draws one ring of instances against the prepared model.
+(defconstant SHRUB-VU-ENTRY-INIT 0)
+(defconstant SHRUB-VU-ENTRY-INIT-MODEL-A 17)
+(defconstant SHRUB-VU-ENTRY-INIT-MODEL-B 21)
+(defconstant SHRUB-VU-ENTRY-DRAW 103)
+
+;; The VIF BASE register for the next model upload, and so the model bank the next shrubbery lands
+;; in. shrub-do-init-frame sets it and shrub-upload-model flips it.
 (define *shrub-state* 0)
 
+;; The DMA/VIF template for one near-shrub fragment, handed to the generic renderer rather than to
+;; shrub's own VU1 program. Six of the seven packets are patched per fragment -- qwc, source address
+;; and unpack count -- and the seventh runs the generic entry.
 (deftype shrub-near-packet (structure)
   ((matrix-tmpl dma-packet :inline)
    (header-tmpl dma-packet :inline)
@@ -123,6 +191,14 @@
    (init-tmpl   dma-packet :inline)
    (init-data   uint32 8)))
 
+;; The shrub renderer's work area. Three regions, all reached through one base register:
+;;
+;;   * templates the EE copies and patches: the twenty matrix and count packets of the instance ring,
+;;     the two MSCALF packets, the adgif and billboard GIF packets, and the six near packets.
+;;   * per-frame values: the camera planes and guard planes, the hvdf offset, the
+;;     min-dist accumulator, and colors -- the level's 1024-entry time-of-day palette.
+;;   * the builder's own state: the six-deep node stack, the two 128-byte node chain staging areas,
+;;     the current bucket's four list heads, the scratchpad cursors and the DMA stall counters.
 (deftype instance-shrub-work (structure)
   ((dummy                     qword 3 :inline)
    (chaina                    qword 8 :inline)

@@ -11,15 +11,15 @@
 (require "engine/math/vector.gc")
 
 ;; This file contains functions for debug drawing.
-;; In general, the 3d functions draw using the camera and the 2d functions draw in screen coordinated.
+;; In general, the 3D functions draw using the camera and the 2D functions draw in screen coordinates.
 ;; Most functions take a boolean as their first argument. If the boolean is set to #f, it will skip drawing the point.
 
 ;; DECOMP BEGINS
 
 (defun transform-float-point ((in vector) (out vector4w))
-  "Transform point in and store the result in out.
-   This uses the cached vf register transformation matrix
-   Note that the input/output order of the arguments is swapped from usual"
+  "Transform in with the cached camera registers, perform perspective division and GS offset and
+   depth clamping, convert to 28.4 fixed point, store the result in out, and return out. The input
+   precedes the output, unlike most destructive vector functions."
   (with-vf0
     (with-vf (vf4 vf1 vf2 vf3 vf9 vf8 vf6)
       (rlet ((acc :class vf)
@@ -48,51 +48,49 @@
 ;; They do a DMA packet per thing drawn.
 
 (defun-debug add-debug-point ((enable-draw symbol) (bucket bucket-id) (pt vector))
-  "Draw a point.
-   The point is actually a pretty large square with some weird rgb gradient."
+  "Draw a projected point as a large four-vertex red, green, and blue gradient diamond."
   (if (not enable-draw) (return #f))
-  (let ((s5-0 (new 'stack 'vector4w-2)))
+  (let ((point-data (new 'stack 'vector4w-2)))
     ;; transform the input point and convert to fixed point
     (set! (-> pt w) 1.0)
-    (when (transform-point-qword! (-> s5-0 vector 0) pt)
-      (with-dma-buffer-add-bucket ((v1-7 (-> (current-frame) debug-buf)) bucket)
-        (with-cnt-vif-block (v1-7)
-          (dma-buffer-add-gif-tag v1-7
+    (when (transform-point-qword! (-> point-data vector 0) pt)
+      (with-dma-buffer-add-bucket ((dma-buff (-> (current-frame) debug-buf)) bucket)
+        (with-cnt-vif-block (dma-buff)
+          (dma-buffer-add-gif-tag dma-buff
                                   (new 'static 'gif-tag64 :nloop 1 :eop 1 :pre 1 :nreg 8 :prim (gif-prim tri-strip))
                                   (gs-reg-list rgbaq xyzf2 rgbaq xyzf2 rgbaq xyzf2 rgbaq xyzf2))
           ;; upper point is red
-          (set! (-> s5-0 vector 1 x) 255) ;; r
-          (set! (-> s5-0 vector 1 y) 128)
-          (set! (-> s5-0 vector 1 z) 128)
-          (set! (-> s5-0 vector 1 w) 128)
-          (+! (-> s5-0 vector 0 y) 160)
-          (dma-buffer-add-uint128 v1-7 (-> s5-0 quad 1) (-> s5-0 quad 0))
+          (set! (-> point-data vector 1 x) 255) ;; r
+          (set! (-> point-data vector 1 y) 128)
+          (set! (-> point-data vector 1 z) 128)
+          (set! (-> point-data vector 1 w) 128)
+          (+! (-> point-data vector 0 y) 160)
+          (dma-buffer-add-uint128 dma-buff (-> point-data quad 1) (-> point-data quad 0))
           ;; left point is green
-          (+! (-> s5-0 vector 0 x) -256)
-          (+! (-> s5-0 vector 0 y) -160)
-          (set! (-> s5-0 vector 1 x) 128)
-          (set! (-> s5-0 vector 1 y) 255) ;; g
-          (dma-buffer-add-uint128 v1-7 (-> s5-0 quad 1) (-> s5-0 quad 0))
+          (+! (-> point-data vector 0 x) -256)
+          (+! (-> point-data vector 0 y) -160)
+          (set! (-> point-data vector 1 x) 128)
+          (set! (-> point-data vector 1 y) 255) ;; g
+          (dma-buffer-add-uint128 dma-buff (-> point-data quad 1) (-> point-data quad 0))
           ;; right point is blue
-          (+! (-> s5-0 vector 0 x) 512)
-          (set! (-> s5-0 vector 1 y) 128)
-          (set! (-> s5-0 vector 1 z) 255)
-          (dma-buffer-add-uint128 v1-7 (-> s5-0 quad 1) (-> s5-0 quad 0))
+          (+! (-> point-data vector 0 x) 512)
+          (set! (-> point-data vector 1 y) 128)
+          (set! (-> point-data vector 1 z) 255)
+          (dma-buffer-add-uint128 dma-buff (-> point-data quad 1) (-> point-data quad 0))
           ;; bottom point is red again
-          (+! (-> s5-0 vector 0 x) -256)
-          (+! (-> s5-0 vector 0 y) -160)
-          (set! (-> s5-0 vector 1 x) 255)
-          (set! (-> s5-0 vector 1 y) 128)
-          (dma-buffer-add-uint128 v1-7 (-> s5-0 quad 1) (-> s5-0 quad 0))))))
+          (+! (-> point-data vector 0 x) -256)
+          (+! (-> point-data vector 0 y) -160)
+          (set! (-> point-data vector 1 x) 255)
+          (set! (-> point-data vector 1 y) 128)
+          (dma-buffer-add-uint128 dma-buff (-> point-data quad 1) (-> point-data quad 0))))))
   #f)
 
 (defun-debug internal-draw-debug-line ((bucket bucket-id) (p0 vector) (p1 vector) (first-color rgba) (mode symbol) (second-color rgba))
-  "Draw a debug line from p0 to p1. Mode can be:
-   'fade, 'fade-depth, or #f.
-   second-color can be -1 to just use the same color.
-   "
-  (let ((a0-4 (-> (current-frame) debug-buf)))
-    (if (< (the-as uint (shr (+ (&- (-> a0-4 end) (the-as uint (-> a0-4 base))) 15) 4)) (the-as uint #x8000))
+  "Project and draw a 3D line immediately. A false mode uses the supplied colors, fade halves the
+   second endpoint RGB, and fade-depth scales both endpoint colors by projected depth. A second
+   color of -1 or opaque white reuses the first color."
+  (let ((dma-buff (-> (current-frame) debug-buf)))
+    (if (< (the-as uint (shr (+ (&- (-> dma-buff end) (the-as uint (-> dma-buff base))) 15) 4)) (the-as uint #x8000))
       (return (the-as pointer #f))))
   (if (or (zero? (+ second-color (the-as uint 1))) (= second-color (static-rgba #xff #xff #xff #xff)))
     (set! second-color first-color))
@@ -108,112 +106,117 @@
                 :b
                 (shr (-> second-color b) 1)
                 :a (-> second-color a)))))
-  (let ((s4-0 (new 'stack 'vector4w-2))
-        (s1-0 (new 'stack 'vector4w-2)))
+  (let ((projected-points (new 'stack 'vector4w-2))
+        (colors (new 'stack 'vector4w-2)))
     (set! (-> p0 w) 1.0)
     (set! (-> p1 w) 1.0)
-    (when (and (transform-point-qword! (-> s4-0 vector 0) p0) (transform-point-qword! (-> s4-0 vector 1) p1))
-      (with-dma-buffer-add-bucket ((v1-28 (-> (current-frame) debug-buf)) bucket)
-        (with-cnt-vif-block (v1-28)
-          (dma-buffer-add-gif-tag v1-28
+    (when (and (transform-point-qword! (-> projected-points vector 0) p0)
+               (transform-point-qword! (-> projected-points vector 1) p1))
+      (with-dma-buffer-add-bucket ((line-dma-buff (-> (current-frame) debug-buf)) bucket)
+        (with-cnt-vif-block (line-dma-buff)
+          (dma-buffer-add-gif-tag line-dma-buff
                                   (new 'static 'gif-tag64 :nloop 1 :eop 1 :pre 1 :nreg 4 :prim (gif-prim line))
                                   (gs-reg-list rgbaq xyzf2 rgbaq xyzf2))
           (case mode
             (('fade-depth)
-             (let ((f0-3 (fminmax (* (1/ #xffffff) (the float (-> s4-0 vector 0 z))) 0.2 1.0)))
-               (set! (-> s1-0 vector 0 x) (the int (* (the float (-> first-color r)) f0-3)))
-               (set! (-> s1-0 vector 0 y) (the int (* (the float (-> first-color g)) f0-3)))
-               (set! (-> s1-0 vector 0 z) (the int (* (the float (-> first-color b)) f0-3))))
-             (set! (-> s1-0 vector 0 w) (the-as int (-> first-color a))))
+             (let ((depth-scale (fminmax (* (1/ #xffffff) (the float (-> projected-points vector 0 z))) 0.2 1.0)))
+               (set! (-> colors vector 0 x) (the int (* (the float (-> first-color r)) depth-scale)))
+               (set! (-> colors vector 0 y) (the int (* (the float (-> first-color g)) depth-scale)))
+               (set! (-> colors vector 0 z) (the int (* (the float (-> first-color b)) depth-scale))))
+             (set! (-> colors vector 0 w) (the-as int (-> first-color a))))
             (else
-             (set! (-> s1-0 vector 0 x) (the-as int (-> first-color r)))
-             (set! (-> s1-0 vector 0 y) (the-as int (-> first-color g)))
-             (set! (-> s1-0 vector 0 z) (the-as int (-> first-color b)))
-             (set! (-> s1-0 vector 0 w) (the-as int (-> first-color a)))))
+             (set! (-> colors vector 0 x) (the-as int (-> first-color r)))
+             (set! (-> colors vector 0 y) (the-as int (-> first-color g)))
+             (set! (-> colors vector 0 z) (the-as int (-> first-color b)))
+             (set! (-> colors vector 0 w) (the-as int (-> first-color a)))))
           (cond
             ((= mode 'fade-depth)
-             (let ((f0-7 (fminmax (* (1/ #xffffff) (the float (-> s4-0 vector 1 z))) 0.2 1.0)))
-               (set! (-> s1-0 vector 1 x) (the int (* (the float (-> second-color r)) f0-7)))
-               (set! (-> s1-0 vector 1 y) (the int (* (the float (-> second-color g)) f0-7)))
-               (set! (-> s1-0 vector 1 z) (the int (* (the float (-> second-color b)) f0-7))))
-             (set! (-> s1-0 vector 1 w) (the-as int (-> second-color a))))
+             (let ((depth-scale (fminmax (* (1/ #xffffff) (the float (-> projected-points vector 1 z))) 0.2 1.0)))
+               (set! (-> colors vector 1 x) (the int (* (the float (-> second-color r)) depth-scale)))
+               (set! (-> colors vector 1 y) (the int (* (the float (-> second-color g)) depth-scale)))
+               (set! (-> colors vector 1 z) (the int (* (the float (-> second-color b)) depth-scale))))
+             (set! (-> colors vector 1 w) (the-as int (-> second-color a))))
             (else
-             (set! (-> s1-0 vector 1 x) (the-as int (-> second-color r)))
-             (set! (-> s1-0 vector 1 y) (the-as int (-> second-color g)))
-             (set! (-> s1-0 vector 1 z) (the-as int (-> second-color b)))
-             (set! (-> s1-0 vector 1 w) (the-as int (-> second-color a)))))
-          (+! (-> s4-0 vector 0 z) -8192)
-          (+! (-> s4-0 vector 1 z) -8192)
-          (dma-buffer-add-uint128 v1-28 (-> s1-0 quad 0) (-> s4-0 quad 0) (-> s1-0 quad 1) (-> s4-0 quad 1)))))))
+             (set! (-> colors vector 1 x) (the-as int (-> second-color r)))
+             (set! (-> colors vector 1 y) (the-as int (-> second-color g)))
+             (set! (-> colors vector 1 z) (the-as int (-> second-color b)))
+             (set! (-> colors vector 1 w) (the-as int (-> second-color a)))))
+          (+! (-> projected-points vector 0 z) -8192)
+          (+! (-> projected-points vector 1 z) -8192)
+          (dma-buffer-add-uint128 line-dma-buff
+                                  (-> colors quad 0)
+                                  (-> projected-points quad 0)
+                                  (-> colors quad 1)
+                                  (-> projected-points quad 1)))))))
 
 (defun-debug internal-draw-debug-text-3d ((bucket bucket-id) (str string) (location vector) (font-color-id font-color) (offset vector2h))
-  "Draw text at the given location (in 3D), with a 2D offset."
-  (let ((s2-0 (new 'stack-no-clear 'vector4w)))
-    (set! (-> s2-0 quad) (the-as uint128 0))
-    (when (transform-point-qword! (the-as vector4w s2-0) location)
-      (with-dma-buffer-add-bucket ((s3-0 (-> (current-frame) debug-buf)) bucket)
-        (let ((a2-2 (new 'stack
-                         'font-context
-                         *font-default-matrix*
-                         (+ (+ (-> offset x) -1792) (/ (-> s2-0 x) 16))
-                         (- (+ (+ (-> offset y) -8) (/ (-> s2-0 y) 16)) (-> *video-parms* screen-miny))
-                         0.0
-                         font-color-id
-                         (font-flags shadow kerning))))
-          (let ((v1-9 a2-2)) (set! (-> v1-9 origin z) (the float (/ (-> s2-0 z) 16))))
-          (draw-string str s3-0 a2-2))))))
+  "Project location, apply the 2D offset, and append text with font-color-id to bucket immediately."
+  (let ((projected (new 'stack-no-clear 'vector4w)))
+    (set! (-> projected quad) (the-as uint128 0))
+    (when (transform-point-qword! (the-as vector4w projected) location)
+      (with-dma-buffer-add-bucket ((dma-buff (-> (current-frame) debug-buf)) bucket)
+        (let ((font-ctx (new 'stack
+                             'font-context
+                             *font-default-matrix*
+                             (+ (+ (-> offset x) -1792) (/ (-> projected x) 16))
+                             (- (+ (+ (-> offset y) -8) (/ (-> projected y) 16)) (-> *video-parms* screen-miny))
+                             0.0
+                             font-color-id
+                             (font-flags shadow kerning))))
+          (set! (-> font-ctx origin z) (the float (/ (-> projected z) 16)))
+          (draw-string str dma-buff font-ctx))))))
 
-(defun-debug add-debug-outline-triangle ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
+(defun-debug add-debug-outline-triangle ((enable-draw symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   "Draw outline of a triangle using lines."
-  (when enable
+  (when enable-draw
     (add-debug-line #t bucket p0 p1 color #f (the-as rgba -1))
     (add-debug-line #t bucket p1 p2 color #f (the-as rgba -1))
     (add-debug-line #t bucket p2 p0 color #f (the-as rgba -1)))
   #f)
 
-(defun-debug add-debug-triangle-normal ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
-  "Draw the normal of a triangle, with length of 1 meter."
-  (when enable
-    (let ((s4-0 (new 'stack-no-clear 'vector))
-          (s3-0 (vector-3pt-cross! (new 'stack-no-clear 'vector) p0 p1 p2)))
-      (vector-float/! s3-0 s3-0 (* (1/ METER_LENGTH) (vector-length s3-0)))
-      (vector+! s4-0 p0 p1)
-      (vector+! s4-0 s4-0 p2)
-      (vector-float/! s4-0 s4-0 3.0)
-      (vector+! s3-0 s3-0 s4-0)
-      (add-debug-line #t bucket s4-0 s3-0 color #f (the-as rgba -1))))
+(defun-debug add-debug-triangle-normal ((enable-draw symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
+  "Draw a one-meter normal from the centroid of the triangle."
+  (when enable-draw
+    (let ((center (new 'stack-no-clear 'vector))
+          (normal-end (vector-3pt-cross! (new 'stack-no-clear 'vector) p0 p1 p2)))
+      (vector-float/! normal-end normal-end (* (1/ METER_LENGTH) (vector-length normal-end)))
+      (vector+! center p0 p1)
+      (vector+! center center p2)
+      (vector-float/! center center 3.0)
+      (vector+! normal-end normal-end center)
+      (add-debug-line #t bucket center normal-end color #f (the-as rgba -1))))
   #f)
 
 (defun-debug add-debug-flat-triangle ((enable-draw symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
-  "Draw a triangle with flat shading"
+  "Project and draw one flat-shaded triangle."
   (if (not enable-draw) (return #f))
-  (let ((s5-0 (new 'stack 'vector4w-3))
-        (s4-0 (new 'stack 'vector4w-3)))
+  (let ((projected-points (new 'stack 'vector4w-3))
+        (colors (new 'stack 'vector4w-3)))
     (set! (-> p0 w) 1.0)
     (set! (-> p1 w) 1.0)
     (set! (-> p2 w) 1.0)
-    (when (and (transform-point-qword! (-> s5-0 vector 0) p0)
-               (transform-point-qword! (-> s5-0 vector 1) p1)
-               (transform-point-qword! (-> s5-0 vector 2) p2))
-      (with-dma-buffer-add-bucket ((v1-9 (-> (current-frame) debug-buf)) bucket)
-        (with-cnt-vif-block (v1-9)
-          (dma-buffer-add-gif-tag v1-9
+    (when (and (transform-point-qword! (-> projected-points vector 0) p0)
+               (transform-point-qword! (-> projected-points vector 1) p1)
+               (transform-point-qword! (-> projected-points vector 2) p2))
+      (with-dma-buffer-add-bucket ((dma-buff (-> (current-frame) debug-buf)) bucket)
+        (with-cnt-vif-block (dma-buff)
+          (dma-buffer-add-gif-tag dma-buff
                                   (new 'static 'gif-tag64 :nloop 1 :eop 1 :pre 1 :nreg 6 :prim (gif-prim tri))
                                   (gs-reg-list rgbaq xyzf2 rgbaq xyzf2 rgbaq xyzf2))
-          (set! (-> s4-0 vector 0 x) (the-as int (-> color r)))
-          (set! (-> s4-0 vector 0 y) (the-as int (-> color g)))
-          (set! (-> s4-0 vector 0 z) (the-as int (-> color b)))
-          (set! (-> s4-0 vector 0 w) (the-as int (-> color a)))
-          (set! (-> s5-0 vector 0 z) (+ (-> s5-0 vector 0 z) -8192))
-          (set! (-> s5-0 vector 1 z) (+ (-> s5-0 vector 1 z) -8192))
-          (set! (-> s5-0 vector 2 z) (+ (-> s5-0 vector 2 z) -8192))
-          (dma-buffer-add-uint128 v1-9
-                                  (-> s4-0 quad 0)
-                                  (-> s5-0 quad 0) ;; xyz 1
-                                  (-> s4-0 quad 0)
-                                  (-> s5-0 quad 1) ;; xyz 2
-                                  (-> s4-0 quad 0)
-                                  (-> s5-0 quad 2) ;; xyz 3
+          (set! (-> colors vector 0 x) (the-as int (-> color r)))
+          (set! (-> colors vector 0 y) (the-as int (-> color g)))
+          (set! (-> colors vector 0 z) (the-as int (-> color b)))
+          (set! (-> colors vector 0 w) (the-as int (-> color a)))
+          (set! (-> projected-points vector 0 z) (+ (-> projected-points vector 0 z) -8192))
+          (set! (-> projected-points vector 1 z) (+ (-> projected-points vector 1 z) -8192))
+          (set! (-> projected-points vector 2 z) (+ (-> projected-points vector 2 z) -8192))
+          (dma-buffer-add-uint128 dma-buff
+                                  (-> colors quad 0)
+                                  (-> projected-points quad 0) ;; xyz 1
+                                  (-> colors quad 0)
+                                  (-> projected-points quad 1) ;; xyz 2
+                                  (-> colors quad 0)
+                                  (-> projected-points quad 2) ;; xyz 3
                                   )))))
   #f)
 
@@ -271,20 +274,20 @@
     (else (the-as debug-text-3d #f))))
 
 (defun-debug debug-reset-buffers ()
-  "Clear all allocated debug things"
+  "Clear the persistent line and 3D-text counts and leave pauseable drawing disabled."
   (set! (-> *debug-lines-trk* length) 0)
   (set! (-> *debug-text-3d-trk* length) 0)
   (set! *debug-draw-pauseable* #f)
   #f)
 
 (defun-debug debug-draw-buffers ()
-  "Draw all debug lines and debug text."
-  (dotimes (gp-0 (-> *debug-lines-trk* length))
-    (let ((v1-1 (-> *debug-lines* gp-0)))
-      (internal-draw-debug-line (-> v1-1 bucket) (-> v1-1 v1) (-> v1-1 v2) (-> v1-1 color) (-> v1-1 mode) (-> v1-1 color2))))
-  (dotimes (gp-1 (-> *debug-text-3d-trk* length))
-    (let ((v1-8 (-> *debug-text-3ds* gp-1)))
-      (internal-draw-debug-text-3d (-> v1-8 bucket) (-> v1-8 str) (-> v1-8 pos) (-> v1-8 color) (-> v1-8 offset))))
+  "Draw every persistent debug line and 3D text entry."
+  (dotimes (i (-> *debug-lines-trk* length))
+    (let ((line (-> *debug-lines* i)))
+      (internal-draw-debug-line (-> line bucket) (-> line v1) (-> line v2) (-> line color) (-> line mode) (-> line color2))))
+  (dotimes (i (-> *debug-text-3d-trk* length))
+    (let ((text (-> *debug-text-3ds* i)))
+      (internal-draw-debug-text-3d (-> text bucket) (-> text str) (-> text pos) (-> text color) (-> text offset))))
   #f)
 
 (defun-debug add-debug-line ((enable-draw symbol) (bucket bucket-id) (p0 vector) (p1 vector) (color rgba) (mode symbol) (color2 rgba))
@@ -292,133 +295,135 @@
   (when enable-draw
     (cond
       (*debug-draw-pauseable*
-       (let ((v1-2 (get-debug-line)))
-         (when v1-2
-           (set! (-> v1-2 bucket) bucket)
-           (set! (-> v1-2 v1 quad) (-> p0 quad))
-           (set! (-> v1-2 v2 quad) (-> p1 quad))
-           (set! (-> v1-2 color) color)
-           (set! (-> v1-2 color2) color2)
-           (set! (-> v1-2 mode) mode))))
+       (let ((line (get-debug-line)))
+         (when line
+           (set! (-> line bucket) bucket)
+           (vector-copy! (-> line v1) p0)
+           (vector-copy! (-> line v2) p1)
+           (set! (-> line color) color)
+           (set! (-> line color2) color2)
+           (set! (-> line mode) mode))))
       (else (internal-draw-debug-line bucket p0 p1 color mode color2))))
   #f)
 
-(defun-debug add-debug-line2d ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 vector) (arg4 vector))
-  "Draw a line in screen coordinates"
-  (if (not arg0) (return #f))
-  (with-dma-buffer-add-bucket ((s4-0 (-> (current-frame) debug-buf)) arg1)
-    (let ((s2-0 (new 'stack 'vector4w))
-          (v1-7 (new 'stack 'vector4w)))
-      (set! (-> s2-0 quad) (-> arg2 quad))
-      (set! (-> v1-7 quad) (-> arg3 quad))
-      (set! (-> s2-0 x) (* (+ (-> s2-0 x) 2048) 16))
-      (set! (-> s2-0 y) (* -16 (- 2048 (-> s2-0 y))))
-      (set! (-> s2-0 z) #x7fffff)
-      (set! (-> v1-7 x) (* (+ (-> v1-7 x) 2048) 16))
-      (set! (-> v1-7 y) (* -16 (- 2048 (-> v1-7 y))))
-      (set! (-> v1-7 z) #x7fffff)
-      (with-cnt-vif-block (s4-0)
-        (dma-buffer-add-gif-tag s4-0
+(defun-debug add-debug-line2d ((enable-draw symbol) (bucket bucket-id) (p0 vector) (p1 vector) (color vector))
+  "Convert two screen-coordinate points to GS coordinates and draw a line with the supplied packed
+   color vector."
+  (if (not enable-draw) (return #f))
+  (with-dma-buffer-add-bucket ((dma-buff (-> (current-frame) debug-buf)) bucket)
+    (let ((projected-p0 (new 'stack 'vector4w))
+          (projected-p1 (new 'stack 'vector4w)))
+      (set! (-> projected-p0 quad) (-> p0 quad))
+      (set! (-> projected-p1 quad) (-> p1 quad))
+      (set! (-> projected-p0 x) (* (+ (-> projected-p0 x) 2048) 16))
+      (set! (-> projected-p0 y) (* -16 (- 2048 (-> projected-p0 y))))
+      (set! (-> projected-p0 z) #x7fffff)
+      (set! (-> projected-p1 x) (* (+ (-> projected-p1 x) 2048) 16))
+      (set! (-> projected-p1 y) (* -16 (- 2048 (-> projected-p1 y))))
+      (set! (-> projected-p1 z) #x7fffff)
+      (with-cnt-vif-block (dma-buff)
+        (dma-buffer-add-gif-tag dma-buff
                                 (new 'static 'gif-tag64 :nloop 1 :eop 1 :pre 1 :nreg 4 :prim (gif-prim line))
                                 (gs-reg-list rgbaq xyzf2 rgbaq xyzf2))
-        (dma-buffer-add-uint128 s4-0 (-> arg4 quad) (-> s2-0 quad))
-        (dma-buffer-add-uint128 s4-0 (-> arg4 quad) (-> v1-7 quad)))))
+        (dma-buffer-add-uint128 dma-buff (-> color quad) (-> projected-p0 quad))
+        (dma-buffer-add-uint128 dma-buff (-> color quad) (-> projected-p1 quad)))))
   #f)
 
-(defun-debug add-debug-box ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 vector) (arg4 rgba))
-  "Draw an axis-aligned box"
-  (let ((s5-0 (new-stack-vector0)))
-    (set! (-> s5-0 quad) (-> arg2 quad))
-    (let ((s1-0 (new-stack-vector0)))
-      (set! (-> s1-0 quad) (-> arg2 quad))
-      (when arg0
-        (set! (-> s1-0 x) (-> arg3 x))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s1-0 x) (-> arg2 x))
-        (set! (-> s1-0 y) (-> arg3 y))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s1-0 y) (-> arg2 y))
-        (set! (-> s1-0 z) (-> arg3 z))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s5-0 y) (-> arg3 y))
-        (set! (-> s1-0 y) (-> arg3 y))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s1-0 z) (-> arg2 z))
-        (set! (-> s1-0 x) (-> arg3 x))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s1-0 y) (-> arg2 y))
-        (set! (-> s5-0 x) (-> arg3 x))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s5-0 quad) (-> arg3 quad))
-        (set! (-> s1-0 quad) (-> arg3 quad))
-        (set! (-> s1-0 x) (-> arg2 x))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s1-0 x) (-> arg3 x))
-        (set! (-> s1-0 y) (-> arg2 y))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s1-0 y) (-> arg3 y))
-        (set! (-> s1-0 z) (-> arg2 z))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s5-0 y) (-> arg2 y))
-        (set! (-> s1-0 y) (-> arg2 y))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s1-0 z) (-> arg3 z))
-        (set! (-> s1-0 x) (-> arg2 x))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1))
-        (set! (-> s1-0 y) (-> arg3 y))
-        (set! (-> s5-0 x) (-> arg2 x))
-        (add-debug-line #t arg1 s5-0 s1-0 arg4 #f (the-as rgba -1)))))
+(defun-debug add-debug-box ((enable-draw symbol) (bucket bucket-id) (min-point vector) (max-point vector) (color rgba))
+  "Draw all twelve edges of the axis-aligned box bounded by min-point and max-point."
+  (let ((start (new-stack-vector0)))
+    (set! (-> start quad) (-> min-point quad))
+    (let ((end (new-stack-vector0)))
+      (set! (-> end quad) (-> min-point quad))
+      (when enable-draw
+        (set! (-> end x) (-> max-point x))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> end x) (-> min-point x))
+        (set! (-> end y) (-> max-point y))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> end y) (-> min-point y))
+        (set! (-> end z) (-> max-point z))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> start y) (-> max-point y))
+        (set! (-> end y) (-> max-point y))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> end z) (-> min-point z))
+        (set! (-> end x) (-> max-point x))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> end y) (-> min-point y))
+        (set! (-> start x) (-> max-point x))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> start quad) (-> max-point quad))
+        (set! (-> end quad) (-> max-point quad))
+        (set! (-> end x) (-> min-point x))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> end x) (-> max-point x))
+        (set! (-> end y) (-> min-point y))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> end y) (-> max-point y))
+        (set! (-> end z) (-> min-point z))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> start y) (-> min-point y))
+        (set! (-> end y) (-> min-point y))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> end z) (-> max-point z))
+        (set! (-> end x) (-> min-point x))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1))
+        (set! (-> end y) (-> max-point y))
+        (set! (-> start x) (-> min-point x))
+        (add-debug-line #t bucket start end color #f (the-as rgba -1)))))
   #f)
 
-(defun-debug add-debug-x ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 rgba))
-  "Draw an X in the xz plane"
-  (if (not arg0) (return #f))
-  (let ((s3-0 (new-stack-vector0))
-        (s2-0 (new-stack-vector0)))
-    (vector+! s3-0 arg2 (new 'static 'vector :x -1228.8))
-    (vector+! s2-0 arg2 (new 'static 'vector :x 1228.8))
-    (add-debug-line #t arg1 s3-0 s2-0 arg3 #f (the-as rgba -1))
-    (vector+! s3-0 arg2 (new 'static 'vector :z -1228.8))
-    (vector+! s2-0 arg2 (new 'static 'vector :z 1228.8))
-    (add-debug-line #t arg1 s3-0 s2-0 arg3 #f (the-as rgba -1)))
+(defun-debug add-debug-x ((enable-draw symbol) (bucket bucket-id) (center vector) (color rgba))
+  "Draw two short perpendicular lines centered at center in the xz plane."
+  (if (not enable-draw) (return #f))
+  (let ((start (new-stack-vector0))
+        (end (new-stack-vector0)))
+    (vector+! start center (new 'static 'vector :x -1228.8))
+    (vector+! end center (new 'static 'vector :x 1228.8))
+    (add-debug-line #t bucket start end color #f (the-as rgba -1))
+    (vector+! start center (new 'static 'vector :z -1228.8))
+    (vector+! end center (new 'static 'vector :z 1228.8))
+    (add-debug-line #t bucket start end color #f (the-as rgba -1)))
   #f)
 
-(defun-debug add-debug-text-3d ((arg0 symbol) (arg1 bucket-id) (arg2 string) (arg3 vector) (arg4 font-color) (arg5 vector2h))
-  "Draw text at the given point. arg4 is the font-color index. arg5 is an offset and can be #f."
-  (when arg0
+(defun-debug add-debug-text-3d ((enable-draw symbol) (bucket bucket-id) (text string) (location vector) (font-color-id font-color) (offset vector2h))
+  "Draw text at location with font-color-id and an optional 2D offset. During pauseable drawing,
+   copy at most 79 characters into the persistent text buffer. The PC may filter distant strings."
+  (when enable-draw
     (#when PC_PORT
       ;; Check to see if the string should be filtered or not
-      (when (pc-filter-debug-string? arg2 (vector-vector-distance arg3 (target-pos 0)))
-        ;;(format #t "got: ~S~%" arg2)
+      (when (pc-filter-debug-string? text (vector-vector-distance location (target-pos 0)))
+        ;;(format #t "got: ~S~%" text)
         ;; no-op the function!
         (return #f)))
     (cond
       (*debug-draw-pauseable*
-       (let ((v1-2 (get-debug-text-3d)))
-         (when v1-2
-           (set! (-> v1-2 flags) 0)
-           (set! (-> v1-2 bucket) arg1)
-           (set! (-> v1-2 pos quad) (-> arg3 quad))
+       (let ((buffered-text (get-debug-text-3d)))
+         (when buffered-text
+           (set! (-> buffered-text flags) 0)
+           (set! (-> buffered-text bucket) bucket)
+           (vector-copy! (-> buffered-text pos) location)
            (cond
-             (arg5 (set! (-> v1-2 offset x) (-> arg5 x)) (set! (-> v1-2 offset y) (-> arg5 y)))
-             (else (set! (-> v1-2 offset x) 0) (set! (-> v1-2 offset y) 0) 0))
-           (set! (-> v1-2 color) arg4)
-           (let ((a0-6 0)
-                 (a1-2 (-> arg2 data))
-                 (v1-4 (-> v1-2 str data)))
-             (while (and (nonzero? (-> a1-2 0)) (< a0-6 79))
-               (set! (-> v1-4 0) (-> a1-2 0))
-               (set! a1-2 (&-> a1-2 1))
-               (set! v1-4 (&-> v1-4 1))
-               (+! a0-6 1))
-             (set! (-> v1-4 0) (the-as uint 0)))
+             (offset (set! (-> buffered-text offset x) (-> offset x)) (set! (-> buffered-text offset y) (-> offset y)))
+             (else (set! (-> buffered-text offset x) 0) (set! (-> buffered-text offset y) 0) 0))
+           (set! (-> buffered-text color) font-color-id)
+           (let ((length 0)
+                 (src (-> text data))
+                 (dst (-> buffered-text str data)))
+             (while (and (nonzero? (-> src 0)) (< length 79))
+               (set! (-> dst 0) (-> src 0))
+               (set! src (&-> src 1))
+               (set! dst (&-> dst 1))
+               (+! length 1))
+             (set! (-> dst 0) (the-as uint 0)))
            0)))
-      (else (internal-draw-debug-text-3d arg1 arg2 arg3 arg4 (if arg5 arg5 (new 'static 'vector2h))))))
+      (else (internal-draw-debug-text-3d bucket text location font-color-id (if offset offset (new 'static 'vector2h))))))
   #f)
 
-(defun-debug add-debug-sphere-with-transform ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 meters) (arg4 matrix) (arg5 rgba))
-  "Transform the given point by the given transform, then draw a debug sphere there.  The orientation of the debug sphere itself
-   is not changed by the transform, just its origin."
+(defun-debug add-debug-sphere-with-transform ((enable-draw symbol) (bucket bucket-id) (point vector) (radius meters) (xform matrix) (color rgba))
+  "Transform point by xform and draw a sphere of radius at the result. The sphere itself remains
+   axis-aligned; xform changes only its center."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -427,185 +432,234 @@
          (vf4 :class vf)
          (vf5 :class vf))
     (init-vf0-vector)
-    (when arg0
-      (.lvf vf5 (&-> arg2 quad))
-      (.lvf vf1 (&-> arg4 vector 0 quad))
-      (.lvf vf2 (&-> arg4 vector 1 quad))
-      (.lvf vf3 (&-> arg4 vector 2 quad))
-      (.lvf vf4 (&-> arg4 vector 3 quad))
+    (when enable-draw
+      (.lvf vf5 (&-> point quad))
+      (.lvf vf1 (&-> xform vector 0 quad))
+      (.lvf vf2 (&-> xform vector 1 quad))
+      (.lvf vf3 (&-> xform vector 2 quad))
+      (.lvf vf4 (&-> xform vector 3 quad))
       (.mul.w.vf acc vf4 vf0)
       (.add.mul.x.vf acc vf1 vf5 acc)
       (.add.mul.y.vf acc vf2 vf5 acc)
       (.add.mul.z.vf vf5 vf3 vf5 acc)
-      (let ((a2-1 (new 'stack-no-clear 'vector))) (.svf (&-> a2-1 quad) vf5) (add-debug-sphere arg0 arg1 a2-1 arg3 arg5)))
+      (let ((world-point (new 'stack-no-clear 'vector)))
+        (.svf (&-> world-point quad) vf5)
+        (add-debug-sphere enable-draw bucket world-point radius color)))
     #f))
 
-(defun-debug add-debug-sphere ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 meters) (arg4 rgba))
-  "Add a debug sphere at the given point. arg3 is radius."
-  (if arg0 (add-debug-sphere-from-table arg1 arg2 arg3 arg4))
+(defun-debug add-debug-sphere ((enable-draw symbol) (bucket bucket-id) (center vector) (radius meters) (color rgba))
+  "Draw a wireframe sphere of radius at center."
+  (if enable-draw (add-debug-sphere-from-table bucket center radius color))
   #f)
 
-(defun-debug add-debug-text-sphere ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 meters) (arg4 string) (arg5 rgba))
-  "Add a debug sphere at the given point, with some text. The color is for the sphere - the text is color 0."
-  (add-debug-sphere arg0 arg1 arg2 arg3 arg5)
-  (add-debug-text-3d arg0 arg1 arg4 arg2 (font-color default) (the-as vector2h #f))
+(defun-debug add-debug-text-sphere ((enable-draw symbol) (bucket bucket-id) (center vector) (radius meters) (text string) (color rgba))
+  "Draw a wireframe sphere of radius at center and place text there. Color affects the sphere; the
+   text uses the default font color."
+  (add-debug-sphere enable-draw bucket center radius color)
+  (add-debug-text-3d enable-draw bucket text center (font-color default) (the-as vector2h #f))
   #f)
 
-(defun-debug add-debug-spheres ((arg0 symbol) (arg1 bucket-id) (arg2 (inline-array vector)) (arg3 int) (arg4 rgba))
-  "Add a bunch of spheres. The radius is taken from the w component of the origin."
-  (when arg0
-    (let ((s4-0 (-> arg2 0))) (countdown (s3-0 arg3) (add-debug-sphere #t arg1 s4-0 (-> s4-0 w) arg4) (&+! s4-0 16))))
+(defun-debug add-debug-spheres ((enable-draw symbol) (bucket bucket-id) (centers (inline-array vector)) (count int) (color rgba))
+  "Draw count spheres from centers, taking each sphere's radius from the center vector's w lane."
+  (when enable-draw
+    (let ((center (-> centers 0)))
+      (countdown (remaining count)
+        (add-debug-sphere #t bucket center (-> center w) color)
+        (&+! center 16))))
   #f)
 
-(defun-debug add-debug-circle ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 float) (arg4 rgba) (arg5 matrix))
-  ""
-  "note: you may pass #f for orientation"
-  (if (not arg0) (return #f))
-  (let ((f30-0 0.0)
-        (s1-0 (new-stack-vector0))
-        (s0-0 (new-stack-vector0))
-        (sv-48 0))
-    (while (< sv-48 12)
-      (let ((sv-64 s1-0))
-        (set! (-> sv-64 x) (* arg3 (cos f30-0)))
-        (set! (-> sv-64 y) 0.0)
-        (set! (-> sv-64 z) (* arg3 (sin f30-0)))
-        (set! (-> sv-64 w) 1.0))
-      (set! f30-0 (+ 5461.3335 f30-0))
-      (let ((sv-80 s0-0))
-        (set! (-> sv-80 x) (* arg3 (cos f30-0)))
-        (set! (-> sv-80 y) 0.0)
-        (set! (-> sv-80 z) (* arg3 (sin f30-0)))
-        (set! (-> sv-80 w) 1.0))
-      (when arg5
-        (vector-matrix*! s1-0 s1-0 arg5)
-        (vector-matrix*! s0-0 s0-0 arg5))
-      (vector+! s1-0 s1-0 arg2)
-      (vector+! s0-0 s0-0 arg2)
-      (add-debug-line #t arg1 s1-0 s0-0 arg4 #f (the-as rgba -1))
-      (+! sv-48 1)))
+(defun-debug add-debug-circle ((enable-draw symbol) (bucket bucket-id) (center vector) (radius float) (color rgba) (orientation matrix))
+  "Draw a twelve-segment circle of radius around center. An optional orientation rotates its local
+   xz plane before translation."
+  (if (not enable-draw) (return #f))
+  (let ((angle 0.0)
+        (start-point (new-stack-vector0))
+        (end-point (new-stack-vector0))
+        (i 0))
+    (while (< i 12)
+      (set! (-> start-point x) (* radius (cos angle)))
+      (set! (-> start-point y) 0.0)
+      (set! (-> start-point z) (* radius (sin angle)))
+      (set! (-> start-point w) 1.0)
+      (set! angle (+ 5461.3335 angle))
+      (set! (-> end-point x) (* radius (cos angle)))
+      (set! (-> end-point y) 0.0)
+      (set! (-> end-point z) (* radius (sin angle)))
+      (set! (-> end-point w) 1.0)
+      (when orientation
+        (vector-matrix*! start-point start-point orientation)
+        (vector-matrix*! end-point end-point orientation))
+      (vector+! start-point start-point center)
+      (vector+! end-point end-point center)
+      (add-debug-line #t bucket start-point end-point color #f (the-as rgba -1))
+      (+! i 1)))
   #f)
 
-(defun-debug add-debug-vector ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 vector) (arg4 meters) (arg5 rgba))
-  (if (not arg0) (return #f))
-  (let ((v1-2 (new-stack-vector0)))
-    (set! (-> v1-2 x) (+ (-> arg2 x) (* (-> arg3 x) arg4)))
-    (set! (-> v1-2 y) (+ (-> arg2 y) (* (-> arg3 y) arg4)))
-    (set! (-> v1-2 z) (+ (-> arg2 z) (* (-> arg3 z) arg4)))
-    (add-debug-line #t arg1 arg2 v1-2 arg5 #f (the-as rgba -1)))
+(defun-debug add-debug-vector ((enable-draw symbol) (bucket bucket-id) (origin vector) (direction vector) (length meters) (color rgba))
+  "Draw a line from origin to origin plus direction times length."
+  (if (not enable-draw) (return #f))
+  (let ((end (new-stack-vector0)))
+    (set! (-> end x) (+ (-> origin x) (* (-> direction x) length)))
+    (set! (-> end y) (+ (-> origin y) (* (-> direction y) length)))
+    (set! (-> end z) (+ (-> origin z) (* (-> direction z) length)))
+    (add-debug-line #t bucket origin end color #f (the-as rgba -1)))
   #f)
 
-(defun-debug add-debug-matrix ((arg0 symbol) (arg1 bucket-id) (arg2 matrix))
-  (add-debug-vector arg0 arg1 (-> arg2 vector 3) (-> arg2 vector 0) (meters 2) (new 'static 'rgba :r #xff :a #x80))
-  (add-debug-vector arg0 arg1 (-> arg2 vector 3) (-> arg2 vector 1) (meters 2) (new 'static 'rgba :g #xff :a #x80))
-  (add-debug-vector arg0 arg1 (-> arg2 vector 3) (-> arg2 vector 2) (meters 2) (new 'static 'rgba :b #xff :a #x80))
-  arg2)
+(defun-debug add-debug-matrix ((enable-draw symbol) (bucket bucket-id) (xform matrix))
+  "Draw the three two-meter basis axes of xform at its translation, using red for x, green for y,
+   and blue for z. Return xform."
+  (add-debug-vector enable-draw
+                    bucket
+                    (-> xform vector 3)
+                    (-> xform vector 0)
+                    (meters 2)
+                    (new 'static 'rgba :r #xff :a #x80))
+  (add-debug-vector enable-draw
+                    bucket
+                    (-> xform vector 3)
+                    (-> xform vector 1)
+                    (meters 2)
+                    (new 'static 'rgba :g #xff :a #x80))
+  (add-debug-vector enable-draw
+                    bucket
+                    (-> xform vector 3)
+                    (-> xform vector 2)
+                    (meters 2)
+                    (new 'static 'rgba :b #xff :a #x80))
+  xform)
 
-(defun-debug add-debug-rot-matrix ((arg0 symbol) (arg1 bucket-id) (arg2 matrix) (arg3 vector))
-  (add-debug-vector arg0 arg1 arg3 (-> arg2 vector 0) (meters 2) (new 'static 'rgba :r #xff :a #x80))
-  (add-debug-vector arg0 arg1 arg3 (-> arg2 vector 1) (meters 2) (new 'static 'rgba :g #xff :a #x80))
-  (add-debug-vector arg0 arg1 arg3 (-> arg2 vector 2) (meters 2) (new 'static 'rgba :b #xff :a #x80))
-  arg2)
+(defun-debug add-debug-rot-matrix ((enable-draw symbol) (bucket bucket-id) (rotation matrix) (origin vector))
+  "Draw the three two-meter basis axes of rotation at origin, using red for x, green for y, and blue
+   for z. Return rotation."
+  (add-debug-vector enable-draw bucket origin (-> rotation vector 0) (meters 2) (new 'static 'rgba :r #xff :a #x80))
+  (add-debug-vector enable-draw bucket origin (-> rotation vector 1) (meters 2) (new 'static 'rgba :g #xff :a #x80))
+  (add-debug-vector enable-draw bucket origin (-> rotation vector 2) (meters 2) (new 'static 'rgba :b #xff :a #x80))
+  rotation)
 
 ;; WARN: Stack slot load at 32 mismatch: defined as size 4, got size 16
-(defun-debug add-debug-yrot-vector ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 float) (arg4 float) (arg5 rgba))
-  (let ((sv-32 arg3)
-        (s0-0 arg4)
-        (s3-0 arg5))
-    (if (not arg0) (return #f))
-    (let ((s1-0 (new-stack-vector0)))
-      (set-vector! s1-0 (+ (-> arg2 x) (* (sin sv-32) s0-0)) (-> arg2 y) (+ (-> arg2 z) (* (cos sv-32) s0-0)) 1.0)
-      (add-debug-line arg0 arg1 s1-0 arg2 s3-0 #f (the-as rgba -1))))
+(defun-debug add-debug-yrot-vector ((enable-draw symbol) (bucket bucket-id) (origin vector) (yrot float) (length float) (color rgba))
+  "Draw a line of length from origin in the horizontal direction selected by yrot."
+  (let ((angle yrot)
+        (draw-length length)
+        (draw-color color))
+    (if (not enable-draw) (return #f))
+    (let ((end (new-stack-vector0)))
+      (set-vector! end
+                   (+ (-> origin x) (* (sin angle) draw-length))
+                   (-> origin y)
+                   (+ (-> origin z) (* (cos angle) draw-length))
+                   1.0)
+      (add-debug-line enable-draw bucket end origin draw-color #f (the-as rgba -1))))
   #f)
 
-(defun-debug add-debug-arc ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 float) (arg4 float) (arg5 float) (arg6 rgba) (arg7 matrix))
-  ""
-  "note: you may pass #f for orientation"
-  (if (not arg0) (return #f))
-  (let ((f30-0 arg3)
-        (sv-48 (new 'stack-no-clear 'vector)))
-    (set! (-> sv-48 quad) (the-as uint128 0))
-    (let ((sv-64 (new 'stack-no-clear 'vector)))
-      (set! (-> sv-64 quad) (the-as uint128 0))
-      (let ((sv-80 0))
-        (while (< sv-80 12)
-          (let ((sv-96 sv-48))
-            (set! (-> sv-96 x) (* arg5 (sin f30-0)))
-            (set! (-> sv-96 y) 0.0)
-            (set! (-> sv-96 z) (* arg5 (cos f30-0)))
-            (set! (-> sv-96 w) 1.0))
-          (+! f30-0 (the float (/ (the int (- arg4 arg3)) 12)))
-          (let ((sv-112 sv-64))
-            (set! (-> sv-112 x) (* arg5 (sin f30-0)))
-            (set! (-> sv-112 y) 0.0)
-            (set! (-> sv-112 z) (* arg5 (cos f30-0)))
-            (set! (-> sv-112 w) 1.0))
-          (when arg7
-            (vector-matrix*! sv-48 sv-48 arg7)
-            (vector-matrix*! sv-64 sv-64 arg7))
-          (vector+! sv-48 sv-48 arg2)
-          (vector+! sv-64 sv-64 arg2)
-          (add-debug-line #t arg1 sv-48 sv-64 arg6 #f (the-as rgba -1))
+(defun-debug add-debug-arc ((enable-draw symbol)
+              (bucket bucket-id)
+              (center vector)
+              (start-angle float)
+              (end-angle float)
+              (radius float)
+              (color rgba)
+              (orientation matrix))
+  "Draw a twelve-segment arc from start-angle through end-angle at radius around center, plus radial
+   lines at both ends. An optional orientation rotates the local xz plane before translation."
+  (if (not enable-draw) (return #f))
+  (let ((angle start-angle)
+        (start-point (new 'stack-no-clear 'vector)))
+    (set! (-> start-point quad) (the-as uint128 0))
+    (let ((end-point (new 'stack-no-clear 'vector)))
+      (set! (-> end-point quad) (the-as uint128 0))
+      (let ((i 0))
+        (while (< i 12)
+          (set! (-> start-point x) (* radius (sin angle)))
+          (set! (-> start-point y) 0.0)
+          (set! (-> start-point z) (* radius (cos angle)))
+          (set! (-> start-point w) 1.0)
+          (+! angle (the float (/ (the int (- end-angle start-angle)) 12)))
+          (set! (-> end-point x) (* radius (sin angle)))
+          (set! (-> end-point y) 0.0)
+          (set! (-> end-point z) (* radius (cos angle)))
+          (set! (-> end-point w) 1.0)
+          (when orientation
+            (vector-matrix*! start-point start-point orientation)
+            (vector-matrix*! end-point end-point orientation))
+          (vector+! start-point start-point center)
+          (vector+! end-point end-point center)
+          (add-debug-line #t bucket start-point end-point color #f (the-as rgba -1))
           (cond
-            ((zero? sv-80) (add-debug-line #t arg1 sv-48 arg2 arg6 #f (the-as rgba -1)))
-            ((= sv-80 11) (add-debug-line #t arg1 sv-64 arg2 arg6 #f (the-as rgba -1))))
-          (+! sv-80 1)))))
+            ((zero? i) (add-debug-line #t bucket start-point center color #f (the-as rgba -1)))
+            ((= i 11) (add-debug-line #t bucket end-point center color #f (the-as rgba -1))))
+          (+! i 1)))))
   #f)
 
-(defun-debug add-debug-curve ((arg0 symbol) (arg1 bucket-id) (arg2 (inline-array vector)) (arg3 int) (arg4 (pointer float)) (arg5 int) (arg6 rgba))
-  (if (not arg0) (return #f))
-  (let ((s0-0 (new-stack-vector0))
-        (sv-48 (new 'stack-no-clear 'vector)))
-    (set! (-> sv-48 quad) (the-as uint128 0))
-    (let ((sv-64 (* arg3 4)))
-      (curve-evaluate! sv-48 (-> arg4 0) arg2 arg3 arg4 arg5)
-      (let ((sv-80 0))
-        (while (< sv-80 sv-64)
-          (set! (-> s0-0 quad) (-> sv-48 quad))
-          (curve-evaluate! sv-48 (/ (the float (+ sv-80 1)) (the float sv-64)) arg2 arg3 arg4 arg5)
-          (add-debug-line #t arg1 s0-0 sv-48 arg6 #f (the-as rgba -1))
-          (+! sv-80 1)))))
+(defun-debug add-debug-curve ((enable-draw symbol)
+              (bucket bucket-id)
+              (cverts (inline-array vector))
+              (num-cverts int)
+              (knots (pointer float))
+              (num-knots int)
+              (color rgba))
+  "Draw a curve from its control vertices and knots by evaluating four line segments per control
+   vertex over normalized progress from zero through one."
+  (if (not enable-draw) (return #f))
+  (let ((previous (new-stack-vector0))
+        (current (new 'stack-no-clear 'vector)))
+    (set! (-> current quad) (the-as uint128 0))
+    (let ((segment-count (* num-cverts 4)))
+      (curve-evaluate! current (-> knots 0) cverts num-cverts knots num-knots)
+      (let ((i 0))
+        (while (< i segment-count)
+          (set! (-> previous quad) (-> current quad))
+          (curve-evaluate! current (/ (the float (+ i 1)) (the float segment-count)) cverts num-cverts knots num-knots)
+          (add-debug-line #t bucket previous current color #f (the-as rgba -1))
+          (+! i 1)))))
   #f)
 
-(defun-debug add-debug-curve2 ((arg0 symbol) (arg1 bucket-id) (arg2 curve) (arg3 rgba) (arg4 symbol))
-  (if arg0 (add-debug-curve #t arg1 (-> arg2 cverts) (-> arg2 num-cverts) (-> arg2 knots) (-> arg2 num-knots) arg3))
+(defun-debug add-debug-curve2 ((enable-draw symbol) (bucket bucket-id) (curve-data curve) (color rgba) (unused-option symbol))
+  "Draw curve-data with add-debug-curve. unused-option is retained for the legacy interface."
+  (if enable-draw
+    (add-debug-curve #t
+                     bucket
+                     (-> curve-data cverts)
+                     (-> curve-data num-cverts)
+                     (-> curve-data knots)
+                     (-> curve-data num-knots)
+                     color))
   #f)
 
-(defun-debug add-debug-points ((arg0 symbol) (arg1 bucket-id) (arg2 (inline-array vector)) (arg3 int) (arg4 rgba) (arg5 float) (arg6 int))
-  (when arg0
-    (dotimes (s0-0 arg3)
-      (let ((sv-96 (new 'stack-no-clear 'vector)))
-        (set! (-> sv-96 quad) (the-as uint128 0))
-        (set! (-> sv-96 quad) (-> arg2 s0-0 quad))
-        (if (!= arg5 0.0) (set! (-> sv-96 y) arg5))
-        (let ((sv-32 add-debug-text-3d)
-              (sv-48 #t)
-              (sv-64 arg1))
-          (format (clear *temp-string*) "~d" s0-0)
-          (sv-32 sv-48 sv-64 *temp-string* sv-96 (font-color white) (the-as vector2h #f)))
-        (add-debug-x #t arg1 sv-96 (if (= s0-0 arg6) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80) arg4)))))
+(defun-debug add-debug-points ((enable-draw symbol)
+              (bucket bucket-id)
+              (points (inline-array vector))
+              (count int)
+              (color rgba)
+              (fixed-y float)
+              (highlight-index int))
+  "Label and mark count points. A nonzero fixed-y overrides every point's y coordinate, and
+   highlight-index is drawn white while the remaining points use color."
+  (when enable-draw
+    (dotimes (i count)
+      (let ((point (new 'stack-no-clear 'vector)))
+        (set! (-> point quad) (the-as uint128 0))
+        (set! (-> point quad) (-> points i quad))
+        (if (!= fixed-y 0.0) (set! (-> point y) fixed-y))
+        (let ((draw-text add-debug-text-3d)
+              (draw-enabled #t)
+              (draw-bucket bucket))
+          (format (clear *temp-string*) "~d" i)
+          (draw-text draw-enabled draw-bucket *temp-string* point (font-color white) (the-as vector2h #f)))
+        (add-debug-x #t bucket point (if (= i highlight-index) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80) color)))))
   #f)
 
-(defun-debug debug-percent-bar ((arg0 symbol) (arg1 bucket-id) (arg2 int) (arg3 int) (arg4 float) (arg5 rgba))
-  (if (not arg0) (return #f))
-  (let* ((s0-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
-         (s5-0 (-> s0-0 base)))
-    (draw-sprite2d-xy s0-0 arg2 arg3 255 14 (new 'static 'rgba :a #x40))
-    (draw-sprite2d-xy s0-0 arg2 (+ arg3 2) (the int (* 255.0 arg4)) 10 arg5)
-    (let ((a3-3 (-> s0-0 base)))
-      (let ((v1-5 (the-as dma-packet (-> s0-0 base))))
-        (set! (-> v1-5 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> v1-5 vif0) (new 'static 'vif-tag))
-        (set! (-> v1-5 vif1) (new 'static 'vif-tag))
-        (set! (-> s0-0 base) (&+ (the-as pointer v1-5) 16)))
-      (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                             arg1
-                             s5-0
-                             (the-as (pointer dma-tag) a3-3))))
+(defun-debug debug-percent-bar ((enable-draw symbol) (bucket bucket-id) (x int) (y int) (fraction float) (color rgba))
+  "Draw a 255-pixel background bar and a ten-pixel-high colored fill at screen position x,y. The
+   fill width is 255 times fraction."
+  (if (not enable-draw) (return #f))
+  (with-dma-buffer-add-bucket ((dma-buff (-> *display* frames (-> *display* on-screen) frame debug-buf)) bucket) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-sprite2d-xy dma-buff x y 255 14 (new 'static 'rgba :a #x40)) (draw-sprite2d-xy dma-buff x (+ y 2) (the int (* 255.0 fraction)) 10 color))
   #f)
 
-(defun-debug debug-pad-display ((arg0 cpad-info))
-  (let ((gp-0
+(defun-debug debug-pad-display ((pad cpad-info))
+  "Shift a 32-sample stick history, append the current left-stick direction and speed, and draw the
+   samples as fading 2D squares."
+  (let ((history
           ;; og:preserve-this
           (new 'static
                'inline-array
@@ -644,122 +698,150 @@
                (new 'static 'vector)
                (new 'static 'vector)
                (new 'static 'vector))))
-    (let ((v1-0 31)) (while (nonzero? v1-0) (+! v1-0 -1) (set! (-> gp-0 (+ v1-0 1) quad) (-> gp-0 v1-0 quad))))
-    (set! (-> gp-0 0 x) (* (sin (-> arg0 stick0-dir)) (-> arg0 stick0-speed)))
-    (set! (-> gp-0 0 y) (* (cos (-> arg0 stick0-dir)) (-> arg0 stick0-speed)))
-    (dotimes (s5-1 32)
-      (with-dma-buffer-add-bucket ((s3-0 (-> (current-frame) debug-buf)) (bucket-id debug))
-        (draw-sprite2d-xy s3-0
-                          (the int (* 120.0 (-> gp-0 s5-1 x)))
-                          (the int (* 144.0 (-> gp-0 s5-1 y)))
+    (let ((i 31)) (while (nonzero? i) (+! i -1) (set! (-> history (+ i 1) quad) (-> history i quad))))
+    (set! (-> history 0 x) (* (sin (-> pad stick0-dir)) (-> pad stick0-speed)))
+    (set! (-> history 0 y) (* (cos (-> pad stick0-dir)) (-> pad stick0-speed)))
+    (dotimes (i 32)
+      (with-dma-buffer-add-bucket ((dma-buff (-> (current-frame) debug-buf)) (bucket-id debug))
+        (draw-sprite2d-xy dma-buff
+                          (the int (* 120.0 (-> history i x)))
+                          (the int (* 144.0 (-> history i y)))
                           10
                           10
-                          (new 'static 'rgba :a #x80 :r (- 255 (* 7 s5-1)))))))
+                          (new 'static 'rgba :a #x80 :r (- 255 (* 7 i)))))))
   #f)
 
-(defun-debug add-debug-light ((arg0 symbol) (arg1 bucket-id) (arg2 light) (arg3 vector) (arg4 string))
-  (if (not arg0) (return #f))
-  (when (!= (-> arg2 levels x) 0.0)
-    (add-debug-vector arg0 arg1 arg3 (-> arg2 direction) (meters 3) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
-    (let ((s2-1 (vector+*! (new-stack-vector0) arg3 (-> arg2 direction) (* 12288.0 (-> arg2 levels x))))
-          (s1-0 (logior (logior (logior (shr (shl (the int (* 128.0 (-> arg2 color w))) 56) 32) (shr (shl (the int (* 128.0 (-> arg2 color z))) 56) 40))
-                                (shr (shl (the int (* 128.0 (-> arg2 color y))) 56) 48))
-                        (shr (shl (the int (* 128.0 (-> arg2 color x))) 56) 56))))
-      (format (clear *temp-string*) "~S ~,,2f" arg4 (-> arg2 levels x))
-      (let ((t0-2 *temp-string*))
-        (add-debug-text-sphere arg0 arg1 s2-1 (* 2048.0 (-> arg2 levels x)) t0-2 (the-as rgba s1-0)))))
+(defun-debug add-debug-light ((enable-draw symbol) (bucket bucket-id) (light-data light) (origin vector) (label string))
+  "When the light has a nonzero level, draw its direction from origin and place a labeled sphere at
+   the level-scaled endpoint. The sphere color is derived from the light color."
+  (if (not enable-draw) (return #f))
+  (when (!= (-> light-data levels x) 0.0)
+    (add-debug-vector enable-draw
+                      bucket
+                      origin
+                      (-> light-data direction)
+                      (meters 3)
+                      (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
+    (let ((position (vector+*! (new-stack-vector0) origin (-> light-data direction) (* 12288.0 (-> light-data levels x))))
+          (packed-color (logior (logior (logior (shr (shl (the int (* 128.0 (-> light-data color w))) 56) 32)
+                                                (shr (shl (the int (* 128.0 (-> light-data color z))) 56) 40))
+                                        (shr (shl (the int (* 128.0 (-> light-data color y))) 56) 48))
+                                (shr (shl (the int (* 128.0 (-> light-data color x))) 56) 56))))
+      (format (clear *temp-string*) "~S ~,,2f" label (-> light-data levels x))
+      (let ((text *temp-string*))
+        (add-debug-text-sphere enable-draw bucket position (* 2048.0 (-> light-data levels x)) text (the-as rgba packed-color)))))
   #f)
 
-(defun-debug add-debug-lights ((arg0 symbol) (arg1 bucket-id) (arg2 (inline-array light)) (arg3 vector))
-  (if (not arg0) (return #f))
-  (add-debug-light arg0 arg1 (-> arg2 0) arg3 "dir0")
-  (add-debug-light arg0 arg1 (-> arg2 1) arg3 "dir1")
-  (add-debug-light arg0 arg1 (-> arg2 2) arg3 "dir2")
-  (add-debug-light arg0 arg1 (-> arg2 3) arg3 "ambi")
+(defun-debug add-debug-lights ((enable-draw symbol) (bucket bucket-id) (lights (inline-array light)) (origin vector))
+  "Draw the three directional lights and ambient light in lights from origin."
+  (if (not enable-draw) (return #f))
+  (add-debug-light enable-draw bucket (-> lights 0) origin "dir0")
+  (add-debug-light enable-draw bucket (-> lights 1) origin "dir1")
+  (add-debug-light enable-draw bucket (-> lights 2) origin "dir2")
+  (add-debug-light enable-draw bucket (-> lights 3) origin "ambi")
   #f)
 
-(defun-debug-recursive drawable-frag-count int ((arg0 drawable))
-  (let ((gp-0 0))
+(defun-debug-recursive drawable-frag-count int ((drawable-data drawable))
+  "Recursively count leaf drawables below drawable-data. False contributes zero, a drawable-group
+   contributes the sum of its children, and any other drawable contributes one."
+  (let ((count 0))
     (cond
-      ((not arg0))
-      ((type-type? (-> arg0 type) drawable-group)
-       (dotimes (s4-0 (-> (the-as drawable-group arg0) length))
-         (+! gp-0 (drawable-frag-count (-> (the-as drawable-group arg0) data s4-0)))))
-      (else (+! gp-0 1)))
-    gp-0))
+      ((not drawable-data))
+      ((type-type? (-> drawable-data type) drawable-group)
+       (dotimes (i (-> (the-as drawable-group drawable-data) length))
+         (+! count (drawable-frag-count (-> (the-as drawable-group drawable-data) data i)))))
+      (else (+! count 1)))
+    count))
 
 (defmethod inspect ((obj debug-vertex-stats))
   (format #t "[~8x] ~A~%" obj (-> obj type))
   (format #t "~Tlength: ~D~%" (-> obj length))
   (format #t "~Tpos-count: ~D~%" (-> obj pos-count))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> obj length) (-> obj vertex))
-  (dotimes (s5-0 (-> obj length))
-    (let ((s4-0 (-> obj vertex s5-0)))
-      (format #t "  ~D : trans: ~D ~D ~D ~D" s5-0 (-> s4-0 trans x) (-> s4-0 trans y) (-> s4-0 trans z) (-> s4-0 trans w))
-      (format #t "   st: ~D ~D~%" (-> s4-0 st x) (-> s4-0 st y))
-      (format #t "       col: ~X   norm: ~D ~D ~D~%" (-> s4-0 color) (-> s4-0 normal x) (-> s4-0 normal y) (-> s4-0 normal z))))
+  (dotimes (i (-> obj length))
+    (let ((vertex (-> obj vertex i)))
+      (format #t
+              "  ~D : trans: ~D ~D ~D ~D"
+              i
+              (-> vertex trans x)
+              (-> vertex trans y)
+              (-> vertex trans z)
+              (-> vertex trans w))
+      (format #t "   st: ~D ~D~%" (-> vertex st x) (-> vertex st y))
+      (format #t
+              "       col: ~X   norm: ~D ~D ~D~%"
+              (-> vertex color)
+              (-> vertex normal x)
+              (-> vertex normal y)
+              (-> vertex normal z))))
   obj)
 
-(defun-debug history-init ((arg0 pos-history) (arg1 int))
-  (set! (-> arg0 num-points) arg1)
-  (set! (-> arg0 points) (the-as (inline-array vector) #f))
-  arg0)
+(defun-debug history-init ((history pos-history) (num-points int))
+  "Set history's capacity to num-points and clear its lazily allocated point buffer."
+  (set! (-> history num-points) num-points)
+  (set! (-> history points) (the-as (inline-array vector) #f))
+  history)
 
-(defun-debug history-draw-and-update ((arg0 pos-history) (arg1 int) (arg2 vector))
-  (if (and arg1 (not (-> arg0 points)))
-    (set! (-> arg0 points) (the-as (inline-array vector) (malloc 'debug (* (-> arg0 num-points) 16)))))
-  (when (-> arg0 points)
-    (set! (-> arg0 points (-> arg0 h-first) quad) (-> arg2 quad))
-    (+! (-> arg0 h-first) 1)
-    (when (>= (-> arg0 h-first) (-> arg0 num-points))
-      (set! (-> arg0 h-first) 0)
+(defun-debug history-draw-and-update ((history pos-history) (draw-enabled int) (position vector))
+  "Allocate history storage on the debug heap when drawing first becomes enabled, append position
+   to the circular cursor, and when enabled draw adjacent stored samples without closing the ring."
+  (if (and draw-enabled (not (-> history points)))
+    (set! (-> history points) (the-as (inline-array vector) (malloc 'debug (* (-> history num-points) 16)))))
+  (when (-> history points)
+    (vector-copy! (-> history points (-> history h-first)) position)
+    (+! (-> history h-first) 1)
+    (when (>= (-> history h-first) (-> history num-points))
+      (set! (-> history h-first) 0)
       0))
-  (when arg1
-    (dotimes (s5-1 (1- (-> arg0 num-points)))
-      (if (!= (+ s5-1 1) (-> arg0 h-first))
+  (when draw-enabled
+    (dotimes (i (1- (-> history num-points)))
+      (if (!= (+ i 1) (-> history h-first))
         (add-debug-line #t
                         (bucket-id debug-no-zbuf)
-                        (-> arg0 points s5-1)
-                        (-> arg0 points (1+ s5-1))
+                        (-> history points i)
+                        (-> history points (1+ i))
                         (static-rgba #x80 #xc0 #x80 #x80)
                         #f
                         (the-as rgba -1)))))
   #f)
 
 (defun-debug dma-timeout-cam ()
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) -666764.4)
-    (set! (-> a0-0 y) 21102.984)
-    (set! (-> a0-0 z) 51613.348)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) -0.911)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) 0.4122)
-    (set! (-> a1-0 vector 0 w) 0.0)
-    (set! (-> a1-0 vector 1 x) -0.0984)
-    (set! (-> a1-0 vector 1 y) 0.971)
-    (set! (-> a1-0 vector 1 z) -0.2174)
-    (set! (-> a1-0 vector 1 w) 0.0)
-    (set! (-> a1-0 vector 2 x) -0.4003)
-    (set! (-> a1-0 vector 2 y) -0.2387)
-    (set! (-> a1-0 vector 2 z) -0.8847)
-    (set! (-> a1-0 vector 2 w) 0.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0)))
+  "Set the debug camera to the fixed position and rotation used to investigate DMA timeouts."
+  (let ((position (new-stack-vector0))
+        (rotation (new-stack-matrix0)))
+    (set! (-> position x) -666764.4)
+    (set! (-> position y) 21102.984)
+    (set! (-> position z) 51613.348)
+    (set! (-> position w) 1.0)
+    (set! (-> rotation vector 0 x) -0.911)
+    (set! (-> rotation vector 0 y) 0.0)
+    (set! (-> rotation vector 0 z) 0.4122)
+    (set! (-> rotation vector 0 w) 0.0)
+    (set! (-> rotation vector 1 x) -0.0984)
+    (set! (-> rotation vector 1 y) 0.971)
+    (set! (-> rotation vector 1 z) -0.2174)
+    (set! (-> rotation vector 1 w) 0.0)
+    (set! (-> rotation vector 2 x) -0.4003)
+    (set! (-> rotation vector 2 y) -0.2387)
+    (set! (-> rotation vector 2 z) -0.8847)
+    (set! (-> rotation vector 2 w) 0.0)
+    (set! (-> rotation vector 3 x) 0.0)
+    (set! (-> rotation vector 3 y) 0.0)
+    (set! (-> rotation vector 3 z) 0.0)
+    (set! (-> rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! position rotation)))
 
 (defun-debug display-file-info ()
+  "When enabled outside menus, print file versions, source asset names, and tool diagnostics for
+   every active level."
   (when (and *display-file-info* (!= *master-mode* 'menu))
-    (dotimes (gp-0 (-> *level* length))
-      (let ((v1-7 (-> *level* level gp-0)))
-        (when (= (-> v1-7 status) 'active)
-          (let ((s5-0 (-> v1-7 bsp)))
-            (format *stdcon* "file name: ~S~%" (-> s5-0 info file-name))
-            (format *stdcon* "version: ~D.~D~%" (-> s5-0 info major-version) (-> s5-0 info minor-version))
-            (format *stdcon* "maya file: ~S~%" (-> s5-0 info maya-file-name))
-            (format *stdcon* "mdb file: ~S~%" (-> s5-0 info mdb-file-name))
-            (format *stdcon* "~S" (-> s5-0 info tool-debug)))))))
+    (dotimes (i (-> *level* length))
+      (let ((level-data (-> *level* level i)))
+        (when (= (-> level-data status) 'active)
+          (let ((bsp-data (-> level-data bsp)))
+            (format *stdcon* "file name: ~S~%" (-> bsp-data info file-name))
+            (format *stdcon* "version: ~D.~D~%" (-> bsp-data info major-version) (-> bsp-data info minor-version))
+            (format *stdcon* "maya file: ~S~%" (-> bsp-data info maya-file-name))
+            (format *stdcon* "mdb file: ~S~%" (-> bsp-data info mdb-file-name))
+            (format *stdcon* "~S" (-> bsp-data info tool-debug)))))))
   0)

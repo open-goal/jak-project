@@ -3,42 +3,115 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/gfx/ocean/ocean-transition.gc")
 
+;; The near grid is the innermost ring of the ocean.  It covers the 4x4 window of
+;; 24-metre cells around the camera that ocean-transition selected, and it is the
+;; only ocean pass whose vertices follow the animated wave field; the mid and far
+;; passes draw flat water and get their movement from the ocean texture alone.
+;;
+;; A near cell is a quarter of a 96-metre mid cell in each direction.  Inside a cell
+;; the surface is an 8x8 grid of quads, one per sample of the 32x32 wave-height
+;; field, so a quad is 3 metres across and the field wraps exactly once per mid
+;; cell.  A row of eight quads is an 18-vertex tri-strip; the four-vertex fan tags
+;; draw a single quad.
+;;
+;; VU1 receives three kinds of data:
+;;
+;;   - once per frame, the 36-quadword constant block (camera transform, fog, GIF
+;;     tags, adgif shaders, row addresses) and the whole 4 KiB height field;
+;;   - once per visible cell, an eight-quadword transform pair followed by the
+;;     cell's 8x8 suppression mask, the height-field offsets of its four corners,
+;;     the ocean-texture ST origin, and four interpolated corner colors;
+;;   - a microprogram call after each of those uploads.
+;;
+;; The per-cell data lands in the double-buffered input area established by the
+;; VIF BASE/OFFSET pair in draw-ocean-near, so the EE can build the next cell while
+;; VU1 is still drawing the current one.
+;;
+;; Each cell is drawn up to three times.  drw* is the lit, fogged, texture-mapped
+;; water; drw2 writes only the framebuffer alpha and drw3 puts the color mask back;
+;; env* adds the environment map.
+
+;; VU1 data addresses, in quadwords.  The constant block is 36 quadwords ending at
+;; 986; the wave field occupies 32 through 287 and is uploaded as two halves.
+(defconstant OCEAN-NEAR-VU1-CONSTANTS 951)
+
+(defconstant OCEAN-NEAR-VU1-HEIGHTS-0 32)
+
+(defconstant OCEAN-NEAR-VU1-HEIGHTS-1 160)
+
+(defconstant OCEAN-WAVE-FIELD-HALF-SIZE 2048) ;; bytes in one half of the field
+
+;; VU1 microprogram entry points, in instruction pairs.
+(defconstant OCEAN-NEAR-VU1-SETUP 0)
+
+(defconstant OCEAN-NEAR-VU1-DRAW-CELL 39)
+
+;; ocean-work near-mask-indices, as a halfword index from the object's field pointer.
+;; The entries are read signed: ocean-transition leaves -1 in a mid cell that has no
+;; near child, so the loop below can reject it with one comparison.
+(defconstant OCEAN-WORK-NEAR-MASK-INDICES 1550)
+
+;; ocean-map ocean-colors is a 49-by-52 grid of authored corner colors addressed by
+;; mid cell, so stepping one cell in z advances by a whole row.
+(defconstant OCEAN-COLOR-GRID-STRIDE 52)
+
 ;; DECOMP BEGINS
 
 (define ocean-near-block (new 'static 'vu-function)) ;; :length #x3dc :qlength #x1ee
 
-(defun ocean-near-add-call ((arg0 dma-buffer) (arg1 int))
-  (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm arg1))
-    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+(defun ocean-near-add-call ((dma-buf dma-buffer) (entry int))
+  "Append a VIF MSCALF that starts the near-grid microprogram at entry, an address in
+   instruction pairs, once the transfers already queued on VIF1 have drained.  The
+   second VIF slot clears STMOD so the unpacks after this call write absolute values
+   rather than adding to the data already in VU memory."
+  (let* ((buf dma-buf)
+         (packet (the-as object (-> buf base))))
+    (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm entry))
+    (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+    (set! (-> buf base) (&+ (the-as pointer packet) 16)))
   (none))
 
-(defun ocean-near-add-call-flush ((arg0 dma-buffer) (arg1 int))
-  (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm arg1))
-    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+(defun ocean-near-add-call-flush ((dma-buf dma-buffer) (entry int))
+  "Start the near-grid microprogram at entry like ocean-near-add-call, but hold the
+   DMA chain with FLUSHA until VIF1, the microprogram and the GIF path have all gone
+   idle instead of clearing STMOD.  Needed when the next packet changes state that
+   the running program's output still depends on."
+  (let* ((buf dma-buf)
+         (packet (the-as object (-> buf base))))
+    (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm entry))
+    (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+    (set! (-> buf base) (&+ (the-as pointer packet) 16)))
   (none))
 
-(defun ocean-near-setup-constants ((arg0 ocean-near-constants))
-  (let ((v1-0 *math-camera*))
-    (set! (-> arg0 hmge-scale quad) (-> v1-0 hmge-scale quad))
-    (set! (-> arg0 inv-hmge-scale quad) (-> v1-0 inv-hmge-scale quad))
-    (set! (-> arg0 hvdf-offset quad) (-> v1-0 hvdf-off quad))
-    (set-vector! (-> arg0 fog) (-> v1-0 pfog0) (-> v1-0 fog-min) (-> v1-0 fog-max) 3072.0))
-  (set-vector! (-> arg0 constants) 0.5 0.5 0.0 0.000010172526)
-  (set-vector! (-> arg0 constants2) 0.5 0.5 1.0 128.0)
-  (set-vector! (-> arg0 constants3) 12288.0 0.125 2.0 0.03125)
-  (set-vector! (-> arg0 constants4) 2.0 255.0 3.0 0.0078125)
-  (let ((v1-5 *ocean-subdivide-draw-mode*))
+(defun ocean-near-setup-constants ((consts ocean-near-constants))
+  "Fill consts, the 36-quadword block that ocean-near-add-constants uploads to VU1.
+   It carries this frame's homogeneous scale, HVDF offset and fog parameters, the
+   scale factors the microprogram needs to turn a cell-relative position into world
+   and texture coordinates, a GIF tag for the strip and fan form of each of the three
+   draw passes, the adgif shaders for the ocean texture and the environment map, the
+   TEX0 and FRAME qwords for the alpha-only pass, and the vertex-row addresses used
+   by the strip builder.  *ocean-subdivide-draw-mode* selects textured (0),
+   wireframe (1) or untextured (2) primitives for every pass at once.  The GS
+   addresses come from *ocean-base-page* and *ocean-base-block*, so the ocean's VRAM
+   must already be allocated."
+  (let ((camera *math-camera*))
+    (vector-copy! (-> consts hmge-scale) (-> camera hmge-scale))
+    (vector-copy! (-> consts inv-hmge-scale) (-> camera inv-hmge-scale))
+    (vector-copy! (-> consts hvdf-offset) (-> camera hvdf-off))
+    (set-vector! (-> consts fog) (-> camera pfog0) (-> camera fog-min) (-> camera fog-max) 3072.0))
+  ;; w is 1 / (meters 24): a position inside a cell as a fraction of the cell.
+  (set-vector! (-> consts constants) 0.5 0.5 0.0 0.000010172526)
+  (set-vector! (-> consts constants2) 0.5 0.5 1.0 128.0)
+  ;; x is the spacing of the wave-height samples; y and w are one sample expressed as
+  ;; a fraction of a near cell (1/8) and of the whole 32x32 field (1/32).
+  (set-vector! (-> consts constants3) (meters 3) 0.125 2.0 0.03125)
+  (set-vector! (-> consts constants4) 2.0 255.0 3.0 0.0078125)
+  (let ((draw-mode *ocean-subdivide-draw-mode*))
     (cond
-      ((zero? v1-5)
-       (set! (-> arg0 drw-fan tag)
+      ((zero? draw-mode)
+       (set! (-> consts drw-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -47,8 +120,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-5 1)
-       (set! (-> arg0 drw-fan tag)
+      ((= draw-mode 1)
+       (set! (-> consts drw-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -57,8 +130,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-5 2)
-       (set! (-> arg0 drw-fan tag)
+      ((= draw-mode 2)
+       (set! (-> consts drw-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -67,12 +140,12 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1 :abe #x1)
                   :nreg #x3)))))
-  (set! (-> arg0 drw-fan regs)
+  (set! (-> consts drw-fan regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (let ((v1-14 *ocean-subdivide-draw-mode*))
+  (let ((draw-mode *ocean-subdivide-draw-mode*))
     (cond
-      ((zero? v1-14)
-       (set! (-> arg0 drw2-fan tag)
+      ((zero? draw-mode)
+       (set! (-> consts drw2-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -81,8 +154,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-14 1)
-       (set! (-> arg0 drw2-fan tag)
+      ((= draw-mode 1)
+       (set! (-> consts drw2-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -91,8 +164,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-14 2)
-       (set! (-> arg0 drw2-fan tag)
+      ((= draw-mode 2)
+       (set! (-> consts drw2-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -101,12 +174,12 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))))
-  (set! (-> arg0 drw2-fan regs)
+  (set! (-> consts drw2-fan regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (let ((v1-23 *ocean-subdivide-draw-mode*))
+  (let ((draw-mode *ocean-subdivide-draw-mode*))
     (cond
-      ((zero? v1-23)
-       (set! (-> arg0 env-fan tag)
+      ((zero? draw-mode)
+       (set! (-> consts env-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -115,8 +188,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-23 1)
-       (set! (-> arg0 env-fan tag)
+      ((= draw-mode 1)
+       (set! (-> consts env-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -125,8 +198,8 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
                   :nreg #x3)))
-      ((= v1-23 2)
-       (set! (-> arg0 env-fan tag)
+      ((= draw-mode 2)
+       (set! (-> consts env-fan tag)
              (new 'static
                   'gif-tag64
                   :nloop #x4
@@ -135,31 +208,37 @@
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :abe #x1)
                   :nreg #x3)))))
-  (set! (-> arg0 env-fan regs)
+  (set! (-> consts env-fan regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-  (set! (-> arg0 drw-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
-  (set! (-> arg0 drw-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  (let* ((v1-34 *ocean-base-page*)
-         (s4-0 *ocean-base-block*)
-         (s2-0 (* (+ v1-34 8) 32))
-         (s3-0 (* (+ v1-34 10) 32))
-         (a0-18 (-> *display* on-screen))
-         (s5-0 (-> *display* frames a0-18 draw frame1 fbp)))
-    (set! (-> arg0 drw-texture tex0) (new 'static 'gs-tex0 :tbw #x2 :th (log2 128) :tw (log2 128) :tbp0 s4-0))
-    (set! (-> arg0 drw-texture prims 1) (gs-reg64 tex0-1))
-    (set! (-> arg0 drw-texture tex1) (new 'static 'gs-tex1 :mxl #x1 :mmag #x1 :mmin #x5 :l #x1 :k #xeed))
-    (set! (-> arg0 drw-texture prims 3) (gs-reg64 tex1-1))
-    (set! (-> arg0 drw-texture miptbp1)
-          (new 'static 'gs-miptbp :tbw1 #x1 :tbw2 #x1 :tbw3 #x1 :tbp3 (+ s3-0 16) :tbp2 s3-0 :tbp1 s2-0))
-    (set! (-> arg0 drw-texture prims 5) (gs-reg64 miptbp1-1))
-    (set! (-> arg0 drw-texture clamp) (new 'static 'gs-clamp))
-    (set! (-> arg0 drw-texture clamp-reg) (gs-reg64 clamp-1))
-    (set! (-> arg0 drw-texture alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
-    (set! (-> arg0 drw-texture prims 9) (gs-reg64 alpha-1))
-    (let ((v1-60 *ocean-subdivide-draw-mode*))
+  (set! (-> consts drw-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+  (set! (-> consts drw-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  ;; The ocean texture lives in the pages allocated for the ocean: the 128x128 base
+  ;; level at *ocean-base-block*, the 64x64 level a page later at +8, and the 32x32
+  ;; and 16x16 levels sharing the page at +10.  A page is 32 GS blocks.
+  (let* ((tex-page-0 *ocean-base-page*)
+         (tex-block-0 *ocean-base-block*)
+         (tex-block-1 (* (+ tex-page-0 8) 32))
+         (tex-block-2 (* (+ tex-page-0 10) 32))
+         (on-screen-index (-> *display* on-screen))
+         (screen-fbp (-> *display* frames on-screen-index draw frame1 fbp)))
+    (set! (-> consts drw-texture tex0) (new 'static 'gs-tex0 :tbw #x2 :th (log2 128) :tw (log2 128) :tbp0 tex-block-0))
+    (set! (-> consts drw-texture prims 1) (gs-reg64 tex0-1))
+    ;; MXL is 1, so the near grid samples only the base and the 64x64 level.  That
+    ;; level is produced by the mip pass in draw-ocean-texture, which runs in the
+    ;; earlier ocean bucket; the near bucket's own call rebuilds the base level only.
+    (set! (-> consts drw-texture tex1) (new 'static 'gs-tex1 :mxl #x1 :mmag #x1 :mmin #x5 :l #x1 :k #xeed))
+    (set! (-> consts drw-texture prims 3) (gs-reg64 tex1-1))
+    (set! (-> consts drw-texture miptbp1)
+          (new 'static 'gs-miptbp :tbw1 #x1 :tbw2 #x1 :tbw3 #x1 :tbp3 (+ tex-block-2 16) :tbp2 tex-block-2 :tbp1 tex-block-1))
+    (set! (-> consts drw-texture prims 5) (gs-reg64 miptbp1-1))
+    (set! (-> consts drw-texture clamp) (new 'static 'gs-clamp))
+    (set! (-> consts drw-texture clamp-reg) (gs-reg64 clamp-1))
+    (set! (-> consts drw-texture alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+    (set! (-> consts drw-texture prims 9) (gs-reg64 alpha-1))
+    (let ((draw-mode *ocean-subdivide-draw-mode*))
       (cond
-        ((zero? v1-60)
-         (set! (-> arg0 drw-strip tag)
+        ((zero? draw-mode)
+         (set! (-> consts drw-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -168,8 +247,8 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
                     :nreg #x3)))
-        ((= v1-60 1)
-         (set! (-> arg0 drw-strip tag)
+        ((= draw-mode 1)
+         (set! (-> consts drw-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -178,8 +257,8 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
                     :nreg #x3)))
-        ((= v1-60 2)
-         (set! (-> arg0 drw-strip tag)
+        ((= draw-mode 2)
+         (set! (-> consts drw-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -188,17 +267,17 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe #x1)
                     :nreg #x3)))))
-    (set! (-> arg0 drw-strip regs)
+    (set! (-> consts drw-strip regs)
           (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-    (set! (-> arg0 env-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
-    (set! (-> arg0 env-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-    (let ((s3-1 (-> arg0 env-texture)))
-      (adgif-shader<-texture-simple! s3-1 (get-texture environment-ocean environment-generic))
-      (set! (-> s3-1 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1)))
-    (let ((v1-72 *ocean-subdivide-draw-mode*))
+    (set! (-> consts env-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+    (set! (-> consts env-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+    (let ((env-shader (-> consts env-texture)))
+      (adgif-shader<-texture-simple! env-shader (get-texture environment-ocean environment-generic))
+      (set! (-> env-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1)))
+    (let ((draw-mode *ocean-subdivide-draw-mode*))
       (cond
-        ((zero? v1-72)
-         (set! (-> arg0 env-strip tag)
+        ((zero? draw-mode)
+         (set! (-> consts env-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -207,8 +286,8 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
                     :nreg #x3)))
-        ((= v1-72 1)
-         (set! (-> arg0 env-strip tag)
+        ((= draw-mode 1)
+         (set! (-> consts env-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -217,8 +296,8 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
                     :nreg #x3)))
-        ((= v1-72 2)
-         (set! (-> arg0 env-strip tag)
+        ((= draw-mode 2)
+         (set! (-> consts env-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -227,21 +306,26 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1)
                     :nreg #x3)))))
-    (set! (-> arg0 env-strip regs)
+    (set! (-> consts env-strip regs)
           (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-    (set! (-> arg0 env-color quad) (-> *time-of-day-context* current-sun env-color quad))
-    (set! (-> arg0 drw2-adgif tag) (new 'static 'gif-tag64 :nloop #x2 :eop #x1 :nreg #x1))
-    (set! (-> arg0 drw2-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-    (set! (-> arg0 drw2-tex0 dword 0)
-          (logior (logior (logior (the-as uint #x400008000) (shr (shl s4-0 50) 50)) (shr (shl (log2 128) 60) 34))
+    (vector-copy! (-> consts env-color) (-> *time-of-day-context* current-sun env-color))
+    (set! (-> consts drw2-adgif tag) (new 'static 'gif-tag64 :nloop #x2 :eop #x1 :nreg #x1))
+    (set! (-> consts drw2-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+    ;; The second draw pass writes only the framebuffer alpha, so its TEX0 and FRAME
+    ;; are assembled as raw A+D qwords rather than reusing the adgif-shader layout:
+    ;; TEX0_1 (register 6) takes TBP0 from the base level, TBW 2, TW and TH 7, and TCC
+    ;; set so the texture's own alpha reaches the blender, while FRAME_1 (register 76)
+    ;; keeps the on-screen FBP and FBW 8 but masks all 24 color bits.
+    (set! (-> consts drw2-tex0 dword 0)
+          (logior (logior (logior (the-as uint #x400008000) (shr (shl tex-block-0 50) 50)) (shr (shl (log2 128) 60) 34))
                   (shr (shl (log2 128) 60) 30)))
-    (set! (-> arg0 drw2-tex0 dword 1) (the-as uint 6))
-    (set! (-> arg0 drw2-frame dword 0) (logior (the-as uint #xffffff00080000) (shr (shl s5-0 55) 55)))
-    (set! (-> arg0 drw2-frame dword 1) (the-as uint 76))
-    (let ((v1-94 *ocean-subdivide-draw-mode*))
+    (set! (-> consts drw2-tex0 dword 1) (the-as uint 6))
+    (set! (-> consts drw2-frame dword 0) (logior (the-as uint #xffffff00080000) (shr (shl screen-fbp 55) 55)))
+    (set! (-> consts drw2-frame dword 1) (the-as uint 76))
+    (let ((draw-mode *ocean-subdivide-draw-mode*))
       (cond
-        ((zero? v1-94)
-         (set! (-> arg0 drw2-strip tag)
+        ((zero? draw-mode)
+         (set! (-> consts drw2-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -250,8 +334,8 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
                     :nreg #x3)))
-        ((= v1-94 1)
-         (set! (-> arg0 drw2-strip tag)
+        ((= draw-mode 1)
+         (set! (-> consts drw2-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -260,8 +344,8 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
                     :nreg #x3)))
-        ((= v1-94 2)
-         (set! (-> arg0 drw2-strip tag)
+        ((= draw-mode 2)
+         (set! (-> consts drw2-strip tag)
                (new 'static
                     'gif-tag64
                     :nloop #x12
@@ -270,303 +354,352 @@
                     :prim
                     (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :abe #x1)
                     :nreg #x3)))))
-    (set! (-> arg0 drw2-strip regs)
+    (set! (-> consts drw2-strip regs)
           (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-    (set! (-> arg0 drw3-adgif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-    (set! (-> arg0 drw3-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-    (set! (-> arg0 drw3-frame dword 0) (logior #x80000 (shr (shl s5-0 55) 55))))
-  (set! (-> arg0 drw3-frame dword 1) (the-as uint 76))
-  (set-vector! (-> arg0 index-table 0) 81 189 0 0)
-  (set-vector! (-> arg0 index-table 1) 54 162 0 0)
-  (set-vector! (-> arg0 index-table 2) 27 135 0 0)
-  (set-vector! (-> arg0 index-table 3) 0 108 0 0)
+    (set! (-> consts drw3-adgif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+    (set! (-> consts drw3-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+    ;; Third pass: the same FRAME_1 with the color mask cleared again, so whatever
+    ;; runs after the near grid writes all four channels normally.
+    (set! (-> consts drw3-frame dword 0) (logior #x80000 (shr (shl screen-fbp 55) 55))))
+  (set! (-> consts drw3-frame dword 1) (the-as uint 76))
+  ;; Vertex-row addresses in VU1 data memory.  A cell row is nine vertices of three
+  ;; quadwords each, so the rows are 27 quadwords apart; x names one row and y the row
+  ;; four further on, which is how the strip builder walks the 8x8 cell in pairs.
+  (set-vector! (-> consts index-table 0) 81 189 0 0)
+  (set-vector! (-> consts index-table 1) 54 162 0 0)
+  (set-vector! (-> consts index-table 2) 27 135 0 0)
+  (set-vector! (-> consts index-table 3) 0 108 0 0)
   (none))
 
-(defun ocean-near-add-constants ((arg0 dma-buffer))
-  (let* ((a1-0 36)
-         (v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-0))
-    (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x3b7 :cmd (vif-cmd unpack-v4-32) :num a1-0))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
-  (ocean-near-setup-constants (the-as ocean-near-constants (-> arg0 base)))
-  (&+! (-> arg0 base) 576)
+(defun ocean-near-add-constants ((dma-buf dma-buffer))
+  "Append the once-per-frame near-grid constant block: one 36-quadword VIF unpack to
+   OCEAN-NEAR-VU1-CONSTANTS whose payload ocean-near-setup-constants writes straight
+   into the DMA buffer, then advance past the 576 bytes it filled."
+  (let* ((qwc 36)
+         (buf dma-buf)
+         (packet (the-as object (-> buf base))))
+    (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+    (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet packet) vif1)
+          (new 'static 'vif-tag :imm OCEAN-NEAR-VU1-CONSTANTS :cmd (vif-cmd unpack-v4-32) :num qwc))
+    (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+  (ocean-near-setup-constants (the-as ocean-near-constants (-> dma-buf base)))
+  (&+! (-> dma-buf base) 576)
   (none))
 
-(defun ocean-near-add-heights ((arg0 dma-buffer))
-  (let ((v1-0 128)
-        (a1-0 (the-as object *ocean-heights*)))
-    (let* ((a2-0 arg0)
-           (a3-0 (the-as object (-> a2-0 base))))
-      (set! (-> (the-as dma-packet a3-0) dma) (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int a1-0) :qwc v1-0))
-      (set! (-> (the-as dma-packet a3-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a3-0) vif1) (new 'static 'vif-tag :imm #x20 :cmd (vif-cmd unpack-v4-32) :num v1-0))
-      (set! (-> a2-0 base) (&+ (the-as pointer a3-0) 16)))
-    (let ((a2-1 (the-as object (-> arg0 base))))
-      (set! (-> (the-as dma-packet a2-1) dma)
-            (new 'static 'dma-tag :id (dma-tag-id ref) :addr (+ (the-as int a1-0) 2048) :qwc v1-0))
-      (set! (-> (the-as dma-packet a2-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a2-1) vif1) (new 'static 'vif-tag :imm #xa0 :cmd (vif-cmd unpack-v4-32) :num v1-0))
-      (set! (-> arg0 base) (&+ (the-as pointer a2-1) 16))))
+(defun ocean-near-add-heights ((dma-buf dma-buffer))
+  "Append the wave-height field: the 32x32 floats that ocean-interp-wave left in
+   *ocean-heights* earlier this frame, sent by reference as two 2 KiB transfers that
+   land back to back starting at OCEAN-NEAR-VU1-HEIGHTS-0.  The samples are three
+   metres apart, so one near cell covers 8x8 of them and the field repeats once per
+   mid cell.  The buffer is in the frame's global DMA buffer, so this must be built
+   before that buffer is reused."
+  (let ((qwc 128)
+        (heights (the-as object *ocean-heights*)))
+    (let* ((buf dma-buf)
+           (packet (the-as object (-> buf base))))
+      (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int heights) :qwc qwc))
+      (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> (the-as dma-packet packet) vif1)
+            (new 'static 'vif-tag :imm OCEAN-NEAR-VU1-HEIGHTS-0 :cmd (vif-cmd unpack-v4-32) :num qwc))
+      (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+    (let ((packet (the-as object (-> dma-buf base))))
+      (set! (-> (the-as dma-packet packet) dma)
+            (new 'static 'dma-tag :id (dma-tag-id ref) :addr (+ (the-as int heights) OCEAN-WAVE-FIELD-HALF-SIZE) :qwc qwc))
+      (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> (the-as dma-packet packet) vif1)
+            (new 'static 'vif-tag :imm OCEAN-NEAR-VU1-HEIGHTS-1 :cmd (vif-cmd unpack-v4-32) :num qwc))
+      (set! (-> dma-buf base) (&+ (the-as pointer packet) 16))))
   (none))
 
-(defun ocean-near-add-matrices ((arg0 dma-buffer) (arg1 vector))
-  (let ((s5-0 (new-stack-vector0)))
+(defun ocean-near-add-matrices ((dma-buf dma-buffer) (cell-origin vector))
+  "Append the eight-quadword transform pair for one near cell.  cell-origin is the
+   cell's world-space corner with w = 1.  The first matrix is the camera rotation with
+   that corner, expressed in camera space, in its translation row; VU1 uses it to put
+   cell-relative wave positions and normals into camera space.  The second is that
+   matrix times the perspective matrix, which takes a cell-relative position straight
+   to homogeneous screen space.  Both go to the double-buffered input area."
+  (let ((origin-in-camera (new-stack-vector0)))
     (-> *math-camera* camera-rot)
-    (let* ((a2-0 8)
-           (v1-2 arg0)
-           (a0-1 (the-as object (-> v1-2 base))))
-      (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
-      (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd unpack-v4-32) :num a2-0))
-      (set! (-> v1-2 base) (the-as pointer (&+ (the-as vector a0-1) 16))))
-    (let ((s4-0 (the-as object (-> arg0 base))))
-      (let* ((v1-3 (the-as matrix s4-0))
-             (t0-2 (-> *math-camera* camera-rot))
-             (a0-4 (-> t0-2 vector 0 quad))
-             (a2-4 (-> t0-2 vector 1 quad))
-             (a3-4 (-> t0-2 vector 2 quad))
-             (t0-3 (-> t0-2 vector 3 quad)))
-        (set! (-> v1-3 vector 0 quad) a0-4)
-        (set! (-> v1-3 vector 1 quad) a2-4)
-        (set! (-> v1-3 vector 2 quad) a3-4)
-        (set! (-> v1-3 vector 3 quad) t0-3))
-      (let ((s3-0 (the-as object (&+ (the-as pointer s4-0) 48))))
-        (vector-matrix*! s5-0 arg1 (-> *math-camera* camera-rot))
-        (set! (-> (the-as vector s3-0) x) (-> s5-0 x))
-        (set! (-> (the-as vector s3-0) y) (-> s5-0 y))
-        (set! (-> (the-as vector s3-0) z) (-> s5-0 z)))
-      (let ((a0-6 (&+ (-> arg0 base) 64)))
-        (ocean-matrix*! (the-as matrix a0-6) (the-as matrix s4-0) (-> *math-camera* perspective)))))
-  (&+! (-> arg0 base) 128)
+    (let* ((qwc 8)
+           (buf dma-buf)
+           (packet (the-as object (-> buf base))))
+      (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+      (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd unpack-v4-32) :num qwc))
+      (set! (-> buf base) (the-as pointer (&+ (the-as vector packet) 16))))
+    (let ((rot (the-as object (-> dma-buf base))))
+      (matrix-copy! (the-as matrix rot) (-> *math-camera* camera-rot))
+      (let ((rot-trans (the-as object (&+ (the-as pointer rot) 48))))
+        (vector-matrix*! origin-in-camera cell-origin (-> *math-camera* camera-rot))
+        (set! (-> (the-as vector rot-trans) x) (-> origin-in-camera x))
+        (set! (-> (the-as vector rot-trans) y) (-> origin-in-camera y))
+        (set! (-> (the-as vector rot-trans) z) (-> origin-in-camera z)))
+      (let ((cell-to-screen (&+ (-> dma-buf base) 64)))
+        (ocean-matrix*! (the-as matrix cell-to-screen) (the-as matrix rot) (-> *math-camera* perspective)))))
+  (&+! (-> dma-buf base) 128)
   (none))
 
-(defun ocean-near-add-upload ((arg0 dma-buffer) (arg1 uint) (arg2 uint))
+(defun ocean-near-add-upload ((dma-buf dma-buffer) (cell-z uint) (cell-x uint))
+  "Append everything VU1 needs to draw the near cell at grid position (cell-x, cell-z),
+   which are indices into the 24-metre near grid rather than mid-cell indices.  After
+   the transform pair from ocean-near-add-matrices this writes four quadword groups:
+
+     - the cell's 8x8 suppression mask, one byte per row, spread over two quadwords
+       so the microprogram can read a row without shifting; a set bit drops one
+       three-metre quad, which is how authored land cuts holes in the water;
+     - the quadword offsets of the cell's four corners in the uploaded height field.
+       A field row is eight quadwords and a cell is eight samples tall, so stepping
+       one sub-cell in z is 64 quadwords and one in x is 2.  The x and z steps wrap
+       inside the mid cell, so the last sub-cell reads the first one's edge samples
+       and neighbouring cells agree on their shared vertices;
+     - the ocean-texture ST origin for the cell.  The texture covers one whole mid
+       cell, so a sub-cell starts at a quarter step in each direction;
+     - four vertex colors for the cell's corners, obtained on VU0 by weighting the
+       four authored map colors around this mid cell with the bilinear coefficients
+       *ocean-trans-corner-table* stores for the sub-cell's position inside it.
+
+   The caller must already have checked that the cell is visible and has a mask."
   (local-vars
-    (r0-0 int)
-    (r0-1 int)
-    (r0-2 int)
-    (r0-3 int)
-    (r0-4 int)
-    (v1-17 uint128)
-    (v1-18 uint128)
-    (v1-19 float)
-    (a0-18 uint128)
-    (a0-19 uint128)
-    (a0-20 uint128)
-    (a2-23 float)
-    (a2-30 uint128)
-    (a2-31 uint128)
-    (a3-27 uint128)
-    (f31-0 none))
+    (mmi-nop-0 int)
+    (mmi-nop-1 int)
+    (mmi-nop-2 int)
+    (mmi-nop-3 int)
+    (mmi-nop-4 int)
+    (halfword-color-11 uint128)
+    (word-color-11 uint128)
+    (near-color-11-x float)
+    (halfword-color-00 uint128)
+    (word-color-00 uint128)
+    (word-color-01 uint128)
+    (weight-11-x float)
+    (halfword-color-10 uint128)
+    (word-color-10 uint128)
+    (halfword-color-01 uint128)
+    (mmi-nop-src none))
+  ;; map-color-* are the four authored corner colors converted to float, weight-* the
+  ;; four bilinear coefficient vectors, near-color-* the four blended results.  The
+  ;; suffix is the corner: 00 is (x, z), 10 is (x+1, z), 01 is (x, z+1), 11 both.
   (rlet ((acc :class vf)
-         (vf1 :class vf)
-         (vf10 :class vf)
-         (vf11 :class vf)
-         (vf12 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         (vf8 :class vf)
-         (vf9 :class vf))
-    (let ((s2-0 (-> *ocean-work* mid-minx))
-          (s3-0 (-> *ocean-work* mid-minz)))
-      (let ((a1-1 (new-stack-vector0)))
-        (let ((v1-3 (-> *ocean-map* start-corner)))
-          (set! (-> a1-1 x) (+ (-> v1-3 x) (* 98304.0 (the float arg2))))
-          (set! (-> a1-1 y) (-> v1-3 y))
-          (set! (-> a1-1 z) (+ (-> v1-3 z) (* 98304.0 (the float arg1)))))
-        (set! (-> a1-1 w) 1.0)
-        (ocean-near-add-matrices arg0 a1-1))
-      (let* ((a1-2 8)
-             (v1-5 arg0)
-             (a0-2 (the-as object (-> v1-5 base))))
-        (set! (-> (the-as dma-packet a0-2) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-2))
-        (set! (-> (the-as dma-packet a0-2) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-        (set! (-> (the-as dma-packet a0-2) vif1) (new 'static 'vif-tag :imm #x8008 :cmd (vif-cmd unpack-v4-32) :num a1-2))
-        (set! (-> v1-5 base) (&+ (the-as pointer a0-2) 16)))
-      (let* ((v1-6 (-> arg0 base))
-             (a0-5 (- arg2 (* s2-0 4)))
-             (a1-7 (- arg1 (* s3-0 4)))
-             (a2-5 (shr a0-5 2))
-             (a3-2 (shr a1-7 2))
-             (a0-6 (logand a0-5 3))
-             (a1-8 (logand a1-7 3))
-             (a2-9 (-> (the-as (pointer int16) (+ (* (+ (* a3-2 4) a2-5) 2) (the-as uint *ocean-work*))) 1550))
-             (a3-8 (-> *ocean-map* ocean-near-indices data a2-9))
-             (a0-12 (-> *ocean-map* ocean-mid-masks data (-> (the-as (pointer int16) (+ (* (+ (* a1-8 4) a0-6) 2) (the-as uint a3-8)))))))
-        (set-vector! (the-as vector4w (&+ v1-6 0))
-                     (the-as int (-> a0-12 mask 0))
-                     (the-as int (-> a0-12 mask 1))
-                     (the-as int (-> a0-12 mask 2))
-                     (the-as int (-> a0-12 mask 3)))
-        (set-vector! (the-as vector4w (&+ v1-6 16))
-                     (the-as int (-> a0-12 mask 4))
-                     (the-as int (-> a0-12 mask 5))
-                     (the-as int (-> a0-12 mask 6))
-                     (the-as int (-> a0-12 mask 7)))))
-    (&+! (-> arg0 base) 32)
-    (let ((a0-14 (/ (the-as int arg2) 4))
-          (v1-10 (/ (the-as int arg1) 4))
-          (a2-18 (logand arg2 3))
-          (a3-9 (logand arg1 3)))
-      (let ((t0-0 (-> arg0 base))
-            (a1-15 (logand (+ arg2 1) 3))
-            (t1-1 (logand (+ arg1 1) 3)))
-        (set-vector! (the-as vector4w (&+ t0-0 0))
-                     (the-as int (+ (* a3-9 64) (* a2-18 2)))
-                     (the-as int (+ (* a3-9 64) (* a1-15 2)))
-                     (the-as int (+ (* t1-1 64) (* a2-18 2)))
-                     (the-as int (+ (* t1-1 64) (* a1-15 2)))))
-      (&+! (-> arg0 base) 16)
-      (set-vector! (the-as vector (&+ (-> arg0 base) 0)) (* 0.25 (the float a2-18)) (* 0.25 (the float a3-9)) 1.0 0.0)
-      (&+! (-> arg0 base) 16)
-      (let ((a1-24 (the-as object (-> arg0 base))))
-        (let ((a2-19 (+ (* 5 (the-as int a3-9)) a2-18)))
-          (.lvf vf5 (&-> (&-> *ocean-trans-corner-table* 0 quad a2-19) 0))
-          (.lvf vf6 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ a2-19 1)) 0))
-          (.lvf vf7 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ a2-19 5)) 0))
-          (.lvf vf8 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ a2-19 6)) 0)))
-        (.mov a2-23 vf8)
-        (let ((a2-29 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* 52 v1-10) a0-14))))
-              (a3-26 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ a0-14 1 (* 52 v1-10)))))
-              (t0-15 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* 52 (+ v1-10 1)) a0-14))))
-              (v1-16 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ a0-14 1 (* 52 (+ v1-10 1)))))))
-          (.pextlb a0-18 0 a2-29)
-          (.mov r0-0 f31-0)
-          (.pextlb a2-30 0 a3-26)
-          (.mov r0-1 f31-0)
-          (.pextlb a3-27 0 t0-15)
-          (.mov r0-2 f31-0)
-          (.pextlb v1-17 0 v1-16))
-        (.mov r0-3 f31-0)
-        (.pextlh a0-19 0 a0-18)
-        (.mov r0-4 f31-0)
-        (.pextlh a2-31 0 a2-30)
-        (.mov vf1 a0-19)
-        (.pextlh a0-20 0 a3-27)
-        (.mov vf2 a2-31)
-        (.pextlh v1-18 0 v1-17)
-        (.mov vf3 a0-20)
+         (map-color-00 :class vf)
+         (near-color-10 :class vf)
+         (near-color-01 :class vf)
+         (near-color-11 :class vf)
+         (map-color-10 :class vf)
+         (map-color-01 :class vf)
+         (map-color-11 :class vf)
+         (weight-00 :class vf)
+         (weight-10 :class vf)
+         (weight-01 :class vf)
+         (weight-11 :class vf)
+         (near-color-00 :class vf))
+    (let ((mid-minx (-> *ocean-work* mid-minx))
+          (mid-minz (-> *ocean-work* mid-minz)))
+      (let ((cell-origin (new-stack-vector0)))
+        (let ((start-corner (-> *ocean-map* start-corner)))
+          (set! (-> cell-origin x) (+ (-> start-corner x) (* (meters 24) (the float cell-x))))
+          (set! (-> cell-origin y) (-> start-corner y))
+          (set! (-> cell-origin z) (+ (-> start-corner z) (* (meters 24) (the float cell-z)))))
+        (set! (-> cell-origin w) 1.0)
+        (ocean-near-add-matrices dma-buf cell-origin))
+      (let* ((qwc 8)
+             (buf dma-buf)
+             (packet (the-as object (-> buf base))))
+        (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+        (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+        (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag :imm #x8008 :cmd (vif-cmd unpack-v4-32) :num qwc))
+        (set! (-> buf base) (&+ (the-as pointer packet) 16)))
+      ;; Two levels of indirection reach the mask: the position inside the 4x4 mid
+      ;; window picks a near index that ocean-transition left in ocean-work, that index
+      ;; picks one of the map's near tables, and the sub-cell position inside the mid
+      ;; cell picks the authored mid mask from it.
+      (let* ((mask-out (-> dma-buf base))
+             (window-x (- cell-x (* mid-minx 4)))
+             (window-z (- cell-z (* mid-minz 4)))
+             (window-mid-x (shr window-x 2))
+             (window-mid-z (shr window-z 2))
+             (mask-sub-x (logand window-x 3))
+             (mask-sub-z (logand window-z 3))
+             (near-index (-> (the-as (pointer int16) (+ (* (+ (* window-mid-z 4) window-mid-x) 2) (the-as uint *ocean-work*)))
+                             OCEAN-WORK-NEAR-MASK-INDICES))
+             (near-mask-table (-> *ocean-map* ocean-near-indices data near-index))
+             (cell-mask (-> *ocean-map*
+                            ocean-mid-masks
+                            data
+                            (-> (the-as (pointer int16) (+ (* (+ (* mask-sub-z 4) mask-sub-x) 2) (the-as uint near-mask-table)))))))
+        (set-vector! (the-as vector4w (&+ mask-out 0))
+                     (the-as int (-> cell-mask mask 0))
+                     (the-as int (-> cell-mask mask 1))
+                     (the-as int (-> cell-mask mask 2))
+                     (the-as int (-> cell-mask mask 3)))
+        (set-vector! (the-as vector4w (&+ mask-out 16))
+                     (the-as int (-> cell-mask mask 4))
+                     (the-as int (-> cell-mask mask 5))
+                     (the-as int (-> cell-mask mask 6))
+                     (the-as int (-> cell-mask mask 7)))))
+    (&+! (-> dma-buf base) 32)
+    (let ((map-x (/ (the-as int cell-x) 4))
+          (map-z (/ (the-as int cell-z) 4))
+          (sub-x (logand cell-x 3))
+          (sub-z (logand cell-z 3)))
+      ;; Height-field corner offsets, in quadwords: 64 per sub-cell row, 2 per column.
+      (let ((height-offsets-out (-> dma-buf base))
+            (next-sub-x (logand (+ cell-x 1) 3))
+            (next-sub-z (logand (+ cell-z 1) 3)))
+        (set-vector! (the-as vector4w (&+ height-offsets-out 0))
+                     (the-as int (+ (* sub-z 64) (* sub-x 2)))
+                     (the-as int (+ (* sub-z 64) (* next-sub-x 2)))
+                     (the-as int (+ (* next-sub-z 64) (* sub-x 2)))
+                     (the-as int (+ (* next-sub-z 64) (* next-sub-x 2)))))
+      (&+! (-> dma-buf base) 16)
+      ;; ST origin: the ocean texture spans a whole mid cell, so a sub-cell starts a
+      ;; quarter of the way along in each direction.
+      (set-vector! (the-as vector (&+ (-> dma-buf base) 0)) (* 0.25 (the float sub-x)) (* 0.25 (the float sub-z)) 1.0 0.0)
+      (&+! (-> dma-buf base) 16)
+      ;; *ocean-trans-corner-table* is a 5x5 grid of bilinear coefficient vectors
+      ;; indexed [5 * v + u], so the sub-cell's four corners are the entries at the
+      ;; index and at +1, +5 and +6.
+      (let ((color-out (the-as object (-> dma-buf base))))
+        (let ((weight-index (+ (* 5 (the-as int sub-z)) sub-x)))
+          (.lvf weight-00 (&-> (&-> *ocean-trans-corner-table* 0 quad weight-index) 0))
+          (.lvf weight-10 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ weight-index 1)) 0))
+          (.lvf weight-01 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ weight-index 5)) 0))
+          (.lvf weight-11 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ weight-index 6)) 0)))
+        (.mov weight-11-x weight-11)
+        ;; The four map colors surrounding this mid cell.  Each load pulls a whole
+        ;; quadword out of the color grid; the pextlb/pextlh pair then keeps only the
+        ;; first entry, spreading its four bytes into four words ready for itof.
+        (let ((packed-color-00 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* OCEAN-COLOR-GRID-STRIDE map-z) map-x))))
+              (packed-color-10 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ map-x 1 (* OCEAN-COLOR-GRID-STRIDE map-z)))))
+              (packed-color-01 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* OCEAN-COLOR-GRID-STRIDE (+ map-z 1)) map-x))))
+              (packed-color-11 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ map-x 1 (* OCEAN-COLOR-GRID-STRIDE (+ map-z 1)))))))
+          (.pextlb halfword-color-00 0 packed-color-00)
+          (.mov mmi-nop-0 mmi-nop-src)
+          (.pextlb halfword-color-10 0 packed-color-10)
+          (.mov mmi-nop-1 mmi-nop-src)
+          (.pextlb halfword-color-01 0 packed-color-01)
+          (.mov mmi-nop-2 mmi-nop-src)
+          (.pextlb halfword-color-11 0 packed-color-11))
+        (.mov mmi-nop-3 mmi-nop-src)
+        (.pextlh word-color-00 0 halfword-color-00)
+        (.mov mmi-nop-4 mmi-nop-src)
+        (.pextlh word-color-10 0 halfword-color-10)
+        (.mov map-color-00 word-color-00)
+        (.pextlh word-color-01 0 halfword-color-01)
+        (.mov map-color-10 word-color-10)
+        (.pextlh word-color-11 0 halfword-color-11)
+        (.mov map-color-01 word-color-01)
         (nop!)
-        (.mov vf4 v1-18)
-        (.itof.vf vf1 vf1)
+        (.mov map-color-11 word-color-11)
+        (.itof.vf map-color-00 map-color-00)
         (nop!)
-        (.itof.vf vf2 vf2)
+        (.itof.vf map-color-10 map-color-10)
         (nop!)
-        (.itof.vf vf3 vf3)
+        (.itof.vf map-color-01 map-color-01)
         (nop!)
-        (.itof.vf vf4 vf4)
+        (.itof.vf map-color-11 map-color-11)
         (nop!)
-        (.mul.x.vf acc vf1 vf5)
+        (.mul.x.vf acc map-color-00 weight-00)
         (nop!)
-        (.add.mul.y.vf acc vf2 vf5 acc)
+        (.add.mul.y.vf acc map-color-10 weight-00 acc)
         (nop!)
-        (.add.mul.z.vf acc vf3 vf5 acc)
+        (.add.mul.z.vf acc map-color-01 weight-00 acc)
         (nop!)
-        (.add.mul.w.vf vf9 vf4 vf5 acc)
+        (.add.mul.w.vf near-color-00 map-color-11 weight-00 acc)
         (nop!)
-        (.mul.x.vf acc vf1 vf6)
+        (.mul.x.vf acc map-color-00 weight-10)
         (nop!)
-        (.add.mul.y.vf acc vf2 vf6 acc)
+        (.add.mul.y.vf acc map-color-10 weight-10 acc)
         (nop!)
-        (.add.mul.z.vf acc vf3 vf6 acc)
+        (.add.mul.z.vf acc map-color-01 weight-10 acc)
         (nop!)
-        (.add.mul.w.vf vf10 vf4 vf6 acc)
-        (.svf (&-> (the-as (inline-array vector) a1-24) 0 quad) vf9)
-        (.mul.x.vf acc vf1 vf7)
+        (.add.mul.w.vf near-color-10 map-color-11 weight-10 acc)
+        (.svf (&-> (the-as (inline-array vector) color-out) 0 quad) near-color-00)
+        (.mul.x.vf acc map-color-00 weight-01)
         (nop!)
-        (.add.mul.y.vf acc vf2 vf7 acc)
+        (.add.mul.y.vf acc map-color-10 weight-01 acc)
         (nop!)
-        (.add.mul.z.vf acc vf3 vf7 acc)
+        (.add.mul.z.vf acc map-color-01 weight-01 acc)
         (nop!)
-        (.add.mul.w.vf vf11 vf4 vf7 acc)
-        (.svf (&-> (the-as (inline-array vector) a1-24) 1 quad) vf10)
-        (.mul.x.vf acc vf1 vf8)
+        (.add.mul.w.vf near-color-01 map-color-11 weight-01 acc)
+        (.svf (&-> (the-as (inline-array vector) color-out) 1 quad) near-color-10)
+        (.mul.x.vf acc map-color-00 weight-11)
         (nop!)
-        (.add.mul.y.vf acc vf2 vf8 acc)
+        (.add.mul.y.vf acc map-color-10 weight-11 acc)
         (nop!)
-        (.add.mul.z.vf acc vf3 vf8 acc)
+        (.add.mul.z.vf acc map-color-01 weight-11 acc)
         (nop!)
-        (.add.mul.w.vf vf12 vf4 vf8 acc)
-        (.svf (&-> (the-as (inline-array vector) a1-24) 2 quad) vf11)
+        (.add.mul.w.vf near-color-11 map-color-11 weight-11 acc)
+        (.svf (&-> (the-as (inline-array vector) color-out) 2 quad) near-color-01)
         (nop!)
-        (.svf (&-> (the-as (inline-array vector) a1-24) 3 quad) vf12)))
-    (.mov v1-19 vf12)
-    (&+! (-> arg0 base) 64)
+        (.svf (&-> (the-as (inline-array vector) color-out) 3 quad) near-color-11)))
+    (.mov near-color-11-x near-color-11)
+    (&+! (-> dma-buf base) 64)
     (none)))
 
-(defun draw-ocean-near ((arg0 dma-buffer))
-  (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag))
-    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> v1-0 base) (the-as pointer (&+ (the-as dma-packet a0-1) 16))))
-  (let* ((v1-1 arg0)
-         (a0-3 (the-as object (-> v1-1 base))))
-    (set! (-> (the-as gs-gif-tag a0-3) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-    (set! (-> (the-as gs-gif-tag a0-3) regs)
-          (new 'static
-               'gif-tag-regs
-               :regs0 (gif-reg-id a+d)
-               :regs1 (gif-reg-id a+d)
-               :regs2 (gif-reg-id a+d)
-               :regs3 (gif-reg-id a+d)
-               :regs4 (gif-reg-id a+d)
-               :regs5 (gif-reg-id a+d)
-               :regs6 (gif-reg-id a+d)
-               :regs7 (gif-reg-id a+d)
-               :regs8 (gif-reg-id a+d)
-               :regs9 (gif-reg-id a+d)
-               :regs10 (gif-reg-id a+d)
-               :regs11 (gif-reg-id a+d)
-               :regs12 (gif-reg-id a+d)
-               :regs13 (gif-reg-id a+d)
-               :regs14 (gif-reg-id a+d)
-               :regs15 (gif-reg-id a+d)))
-    (set! (-> v1-1 base) (the-as pointer (the-as dma-packet (&+ (the-as pointer a0-3) 16)))))
-  (let* ((v1-2 arg0)
-         (a0-5 (the-as object (-> v1-2 base))))
-    (set! (-> (the-as (pointer gs-test) a0-5) 0)
+(defun draw-ocean-near ((dma-buf dma-buffer))
+  "Build the near-grid DMA chain in dma-buf: the depth and alpha test for the pass,
+   the microprogram, this frame's constants and wave field, then one per-cell upload
+   and microprogram call for every visible near cell.  Cells are visited in the 4x4
+   mid-cell window ocean-transition selected, and a cell is drawn only when its
+   transition camera-mask bit is set and the map gives it both a near index and a
+   mask, so an authored coastline leaves the water out entirely rather than drawing
+   it under the land.  The caller closes the chain and inserts the bucket tag."
+  ;; ATE with ATST never and AFAIL keeping the framebuffer: every pixel fails the alpha
+  ;; test, so the near grid still shades against the depth buffer but never writes to
+  ;; it.  The three passes over each cell would otherwise reject each other.
+  (let* ((direct-buf dma-buf)
+         (direct-tag (the-as object (-> direct-buf base))))
+    (set! (-> (the-as dma-packet direct-tag) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet direct-tag) vif0) (new 'static 'vif-tag))
+    (set! (-> (the-as dma-packet direct-tag) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+    (set! (-> direct-buf base) (the-as pointer (&+ (the-as dma-packet direct-tag) 16))))
+  (let* ((tag-buf dma-buf)
+         (gif-tag-out (the-as object (-> tag-buf base))))
+    (set! (-> (the-as gs-gif-tag gif-tag-out) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
+    (set! (-> (the-as gs-gif-tag gif-tag-out) regs) GIF_REGS_ALL_AD)
+    (set! (-> tag-buf base) (the-as pointer (the-as dma-packet (&+ (the-as pointer gif-tag-out) 16)))))
+  (let* ((state-buf dma-buf)
+         (state-out (the-as object (-> state-buf base))))
+    (set! (-> (the-as (pointer gs-test) state-out) 0)
           (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)))
-    (set! (-> (the-as (pointer gs-reg64) a0-5) 1) (gs-reg64 test-1))
-    (set! (-> v1-2 base) (the-as pointer (the-as dma-packet (&+ (the-as dma-packet a0-5) 16)))))
-  (dma-buffer-add-vu-function arg0 ocean-near-block 1)
-  (let* ((v1-3 arg0)
-         (a0-8 (the-as object (-> v1-3 base))))
-    (set! (-> (the-as dma-packet a0-8) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a0-8) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
-    (set! (-> (the-as dma-packet a0-8) vif1) (new 'static 'vif-tag :imm #x10 :cmd (vif-cmd offset)))
-    (set! (-> v1-3 base) (the-as pointer (the-as dma-packet (&+ (the-as dma-packet a0-8) 16)))))
-  (ocean-near-add-constants arg0)
-  (ocean-near-add-heights arg0)
-  (ocean-near-add-call arg0 0)
-  (let ((s5-0 (-> *ocean-work* near-minx))
-        (s4-0 (-> *ocean-work* near-maxx))
-        (s3-0 (-> *ocean-work* near-minz))
-        (s2-0 (-> *ocean-work* near-maxz)))
-    (when (and (< s5-0 s4-0) (< s3-0 s2-0))
-      (while (>= s2-0 s3-0)
-        (let ((s1-0 s5-0)
-              (s0-0 s4-0))
-          (while (>= s0-0 s1-0)
-            (when (ocean-trans-camera-masks-bit? s3-0 s1-0)
-              (let* ((a1-13 (- (shr s1-0 2) (-> *ocean-work* mid-minx)))
-                     (a2-1 (- (shr s3-0 2) (-> *ocean-work* mid-minz)))
-                     (v1-13 (logand s1-0 3))
-                     (a0-19 (logand s3-0 3))
-                     (a1-17 (-> (the-as (pointer int16) (+ (* (+ (* a2-1 4) a1-13) 2) (the-as uint *ocean-work*))) 1550)))
-                (when (>= a1-17 0)
-                  (let ((a1-19 (-> *ocean-map* ocean-near-indices data a1-17)))
-                    (when (>= (-> (the-as (pointer int16) (+ (* (+ (* a0-19 4) v1-13) 2) (the-as uint a1-19)))) 0)
-                      (ocean-near-add-upload arg0 s3-0 s1-0)
-                      (ocean-near-add-call arg0 39))))))
-            (+! s1-0 1)))
-        (+! s3-0 1))))
+    (set! (-> (the-as (pointer gs-reg64) state-out) 1) (gs-reg64 test-1))
+    (set! (-> state-buf base) (the-as pointer (the-as dma-packet (&+ (the-as dma-packet state-out) 16)))))
+  (dma-buffer-add-vu-function dma-buf ocean-near-block 1)
+  ;; Double buffer the per-cell input: BASE 0, OFFSET 16, so consecutive cells alternate
+  ;; between VU1 quadwords 0 and 16 and the EE can fill one while VU1 reads the other.
+  (let* ((base-buf dma-buf)
+         (packet (the-as object (-> base-buf base))))
+    (set! (-> (the-as dma-packet packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
+    (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag :imm #x10 :cmd (vif-cmd offset)))
+    (set! (-> base-buf base) (the-as pointer (the-as dma-packet (&+ (the-as dma-packet packet) 16)))))
+  (ocean-near-add-constants dma-buf)
+  (ocean-near-add-heights dma-buf)
+  (ocean-near-add-call dma-buf OCEAN-NEAR-VU1-SETUP)
+  (let ((min-x (-> *ocean-work* near-minx))
+        (max-x (-> *ocean-work* near-maxx))
+        (z (-> *ocean-work* near-minz))
+        (max-z (-> *ocean-work* near-maxz)))
+    (when (and (< min-x max-x) (< z max-z))
+      (while (>= max-z z)
+        (let ((x min-x)
+              (x-end max-x))
+          (while (>= x-end x)
+            (when (ocean-trans-camera-masks-bit? z x)
+              (let* ((window-mid-x (- (shr x 2) (-> *ocean-work* mid-minx)))
+                     (window-mid-z (- (shr z 2) (-> *ocean-work* mid-minz)))
+                     (sub-x (logand x 3))
+                     (sub-z (logand z 3))
+                     (near-index (-> (the-as (pointer int16) (+ (* (+ (* window-mid-z 4) window-mid-x) 2) (the-as uint *ocean-work*)))
+                                     OCEAN-WORK-NEAR-MASK-INDICES)))
+                (when (>= near-index 0)
+                  (let ((near-mask-table (-> *ocean-map* ocean-near-indices data near-index)))
+                    ;; A negative entry in the near table means the map has no water here.
+                    (when (>= (-> (the-as (pointer int16) (+ (* (+ (* sub-z 4) sub-x) 2) (the-as uint near-mask-table)))) 0)
+                      (ocean-near-add-upload dma-buf z x)
+                      (ocean-near-add-call dma-buf OCEAN-NEAR-VU1-DRAW-CELL))))))
+            (+! x 1)))
+        (+! z 1))))
   0
   (none))

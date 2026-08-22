@@ -4,7 +4,7 @@
 (require "engine/gfx/vu1-user-h.gc")
 (require "engine/dma/dma-h.gc")
 
-;; The level system is responsible for loading and managning the two levels,
+;; The level system is responsible for loading and managing the two levels,
 ;; including the visible data.
 
 ;; The "level" type contains runtime information about a level (possibly one that is loading)
@@ -36,8 +36,8 @@
 ;; There's a binary space partition (bsp)
 ;; Each leaf node corresponds to a bit string with (up to) 16384 bits
 ;; These bits tell you if a certain "drawable" is visible or not.
-;; The drawable's index is the index of its visibilty bit.
-;; Note that not all drawables have a visibility bit - drawable groups sometimes don't and shrub's don't.
+;; The drawable's index is the index of its visibility bit.
+;; Note that not all drawables have a visibility bit - drawable groups sometimes don't and shrubs don't.
 
 ;; One challenge of the visibility system is that you can't actually load the visibility for two levels
 ;; at the same time.  Each level has a large .VIS file that must be loaded.
@@ -55,6 +55,15 @@
   (waiting-for-iop-to-ee 30) ;; not here yet
   (using-this-as-only-vis 31) ;; using this as the only visibility data
   )
+
+;; Bits 0 through 28 of level-vis-info.flags contain successive three-bit selectors. Each
+;; decompressor consumes the previous pass's output and shifting by three selects the next pass.
+(defenum vis-decompressor
+  :type uint32
+  :bitfield #f
+  (drawable-tree 1)
+  (run-length 2)
+  (huffman 3))
 
 ;; Information related to visibility data for a level.
 ;; This is just metadata that describes the actual visibiltiy data.
@@ -74,6 +83,7 @@
   ((level              symbol)
    (from-level         symbol)
    (from-bsp           bsp-header)
+   ;; High bits use vis-info-flag; bits 0 through 28 pack vis-decompressor selectors.
    (flags              uint32)
    (length             uint32)
    (allocated-length   uint32)
@@ -86,7 +96,7 @@
    (vis-string         uint32 :dynamic)))
 
 (defmethod asize-of ((this level-vis-info))
-  "Get the size of a level-vis-info in memory"
+  "Return the fixed level-vis-info header size plus its variable dictionary storage."
   (the-as int (+ (-> level-vis-info size) (-> this dictionary-length))))
 
 ;; Per level information related to how to load the level.
@@ -185,7 +195,12 @@
    (bsp-name (_type_) symbol)
    (compute-memory-usage (_type_ object) memory-usage-block)
    (point-in-boxes? (_type_ vector) symbol)
-   (update-vis! (_type_ level-vis-info uint uint) symbol)
+   (update-vis! "Update this level's visibility bits for vis-info's current camera leaf. Reuse a
+                 completed string when possible, wait for an outstanding IOP transfer, or fetch
+                 the self-level string from its VIS file. Neighbor visibility comes from
+                 bsp-vis-base. Apply the packed decompression passes, mask nonexistent drawable
+                 bits, and return false while data is still loading. The third argument is
+                 unused." (_type_ level-vis-info uint uint) symbol)
    (load-continue (_type_) _type_)
    (load-begin (_type_) _type_)
    (login-begin (_type_) _type_)
@@ -199,6 +214,11 @@
    (debug-print-splitbox (_type_ vector string) none)
    (art-group-get-by-name (_type_ string) art-group)))
 
+;; Array of levels and manager of level loading.
+;; There's 2 normal gameplay levels and a "deafult level"
+;; which handles things that don't belong to a gameplay level,
+;; like Jak's model. The "default level" doesn't have an
+;; associated BSP and is mostly used for renderer book-keeping.
 (deftype level-group (basic)
   ((length           int32)
    (log-in-level-bsp bsp-header)
@@ -241,7 +261,6 @@
 
 ;; Initialize the level structure. This assigns DMA buckets to each level.
 ;; there are 3 foreground sinks per texture bucket: merc, generic, and an unused one.
-;; TODO: figure out exactly which buckets are used for what.
 (define-extern *level* level-group)
 
 (if (zero? *level*)

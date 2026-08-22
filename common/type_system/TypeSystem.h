@@ -64,11 +64,20 @@ struct DerefKind {
   RegClass reg_kind = RegClass::INVALID;
 };
 
+struct FieldReverseLookupScoreOverride {
+  std::string type_name;
+  std::string field_name;
+  double score = 0;
+};
+
 struct FieldReverseLookupInput {
   std::optional<DerefKind> deref = std::nullopt;  // if we actually access memory
   int offset = 0;                                 // if we apply a constant offset
   int stride = 0;                                 // if we are doing a + (idx * stride)
   TypeSpec base_type;                             // the type of the thing we're accessing
+  // Per-call scoring adjustments for ambiguous overlay fields. Lookup still discovers and
+  // validates every candidate normally; these only affect which valid candidate is preferred.
+  std::vector<FieldReverseLookupScoreOverride> field_score_overrides;
 };
 
 constexpr double CONSTANT_INDEX_SCORE = -10.0;

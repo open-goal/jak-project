@@ -71,6 +71,9 @@ TP_Type SimpleAtom::get_type(const TypeState& input,
     case Kind::VARIABLE:
       return input.get(var().reg());
     case Kind::INTEGER_CONSTANT:
+      if (m_int == 0x70000000 && env.scratchpad_type()) {
+        return TP_Type::make_from_ts(*env.scratchpad_type());
+      }
       return TP_Type::make_from_integer(m_int);
     case Kind::SYMBOL_PTR:
       if (m_string == "#f") {
@@ -315,7 +318,7 @@ TP_Type get_stack_type_at_constant_offset(int offset,
     rd_in.stride = 0;                               // not a strided access
     rd_in.offset = offset - var.hint.stack_offset;  // offset into this var
     rd_in.base_type = var.ref_type;                 // use ref type for ptr.
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
+    auto rd = env.reverse_field_lookup(rd_in);
     if (rd.success) {
       auto result = TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
       lg::print("Matched a stack variable! {}\n", result.print());
@@ -473,7 +476,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         rd_in.offset = arg1_type.get_integer_constant();
         rd_in.stride = 0;
         rd_in.base_type = arg0_type.typespec();
-        auto out = env.dts->ts.reverse_field_lookup(rd_in);
+        auto out = env.reverse_field_lookup(rd_in);
         if (out.success) {
           sum_type = coerce_to_reg_type(out.result_type);
         }
@@ -511,7 +514,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.offset = arg0_type.get_add_int_constant();
     rd_in.stride = arg0_type.get_mult_int_constant();
     rd_in.base_type = arg1_type.typespec();
-    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    auto out = env.reverse_field_lookup(rd_in);
     if (out.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
     }
@@ -521,7 +524,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.offset = arg1_type.get_add_int_constant();
     rd_in.stride = arg1_type.get_mult_int_constant();
     rd_in.base_type = arg0_type.typespec();
-    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    auto out = env.reverse_field_lookup(rd_in);
     if (out.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
     }
@@ -532,7 +535,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.offset = arg0_type.get_integer_constant();
     rd_in.stride = 1;
     rd_in.base_type = arg1_type.typespec();
-    auto out = env.dts->ts.reverse_field_lookup(rd_in);
+    auto out = env.reverse_field_lookup(rd_in);
     if (out.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(out.result_type));
     }
@@ -574,7 +577,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = 0;
     rd_in.offset = m_args[1].get_int();
     rd_in.base_type = arg0_type.typespec();
-    auto rd = dts.ts.reverse_field_lookup(rd_in);
+    auto rd = env.reverse_field_lookup(rd_in);
 
     if (rd.success) {
       return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
@@ -590,7 +593,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = arg1_type.get_multiplier();
     rd_in.offset = 0;
     rd_in.base_type = arg0_type.typespec();
-    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+    auto rd = env.reverse_field_multi_lookup(rd_in);
 
     for (int i = 0; i < (int)rd.results.size(); i++) {
       if (rd.results.at(i).has_variable_token()) {
@@ -608,7 +611,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
     rd_in.stride = arg0_type.get_multiplier();
     rd_in.offset = 0;
     rd_in.base_type = arg1_type.typespec();
-    auto rd = dts.ts.reverse_field_multi_lookup(rd_in);
+    auto rd = env.reverse_field_multi_lookup(rd_in);
 
     for (int i = 0; i < (int)rd.results.size(); i++) {
       if (rd.results.at(i).has_variable_token()) {
@@ -695,7 +698,7 @@ TP_Type SimpleExpression::get_type_int2(const TypeState& input,
         rd_in.offset = arg0_type.get_integer_constant();
         rd_in.stride = 0;
         rd_in.base_type = arg1_type.typespec();
-        auto out = env.dts->ts.reverse_field_lookup(rd_in);
+        auto out = env.reverse_field_lookup(rd_in);
         if (out.success) {
           sum_type = coerce_to_reg_type(out.result_type);
         }
@@ -993,6 +996,28 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
   IR2_RegOffset ro;
   if (get_as_reg_offset(m_src, &ro)) {
     auto& input_type = input.get(ro.reg);
+
+    // A static value label is often materialized in a register before it is loaded. Preserve the
+    // label's analyzed value type just as we do when the load contains the static address directly.
+    // In particular, GOAL returns float constants through GPRs with a signed word load; treating
+    // that as a generic pointer load loses the float type even though label analysis and form
+    // reconstruction both identify the value as a float.
+    if (input_type.kind == TP_Type::Kind::LABEL_ADDR && ro.offset == 0) {
+      const auto& hint = env.file->label_db->lookup(input_type.label_id());
+      if (!hint.known) {
+        throw std::runtime_error(
+            fmt::format("Label {} was unknown in AtomicOpTypeAnalysis (load).", hint.name));
+      }
+      if (!hint.is_value) {
+        throw std::runtime_error(
+            fmt::format("Label {} was loaded as a value but wasn't marked as one.", hint.name));
+      }
+      if (m_size == 4 && (m_kind == Kind::SIGNED || m_kind == Kind::FLOAT) &&
+          hint.result_type == TypeSpec("float")) {
+        return TP_Type::make_from_ts("float");
+      }
+    }
+
     if ((input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_OR_CHILD ||
          input_type.kind == TP_Type::Kind::TYPE_OF_TYPE_NO_VIRTUAL) &&
         ro.offset >= 16 && (ro.offset & 3) == 0 && m_size == 4 && m_kind == Kind::UNSIGNED) {
@@ -1075,7 +1100,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       rd_in.base_type = input_type.get_obj_plus_const_mult_typespec();
       rd_in.stride = input_type.get_multiplier();
       rd_in.offset = ro.offset;
-      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
 
       if (rd.success) {
         //        load_path_set = true;
@@ -1120,7 +1145,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       rd_in.base_type = input_type.typespec();
       rd_in.stride = 0;
       rd_in.offset = ro.offset;
-      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
 
       if (rd.success) {
         if (rd_in.base_type.base_type() == "state" && rd.tokens.size() == 1 &&
@@ -1185,7 +1210,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       rd_in.deref = dk;
       rd_in.base_type = input_type.get_objects_typespec();
       rd_in.offset = ro.offset;
-      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
       if (rd.success) {
         return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
       }
@@ -1202,7 +1227,7 @@ TP_Type LoadVarOp::get_src_type(const TypeState& input,
       rd_in.base_type = input_type.get_objects_typespec();
       rd_in.stride = 0;
       rd_in.offset = input_type.get_integer_constant();
-      auto rd = dts.ts.reverse_field_lookup(rd_in);
+      auto rd = env.reverse_field_lookup(rd_in);
       if (rd.success) {
         return TP_Type::make_from_ts(coerce_to_reg_type(rd.result_type));
       }

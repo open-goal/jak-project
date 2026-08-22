@@ -1,0 +1,986 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; The sprite VU1 program. Everything it needs is described by types in sprite.gc and sprite-h.gc,
+;; so the addresses below are named rather than transcribed; see the memory map beside
+;; SPRITE-VU-FRAME-DATA there for the full layout.
+;;
+;; What a batch is. A sprite is three vector quadwords plus a five-quadword adgif shader, and the
+;; producers -- the sparticle system, the HUD, the fake-shadow buffer -- write them straight into one
+;; of two global sprite-array-2d / sprite-array-3d allocations as the frame runs. num-valid says how
+;; much of each array is live. sprite-add-2d-all then slices the live prefix into chunks of at most
+;; 48 and appends one DMA packet group per chunk: a header quadword holding the count, a ref to that
+;; slice's vectors, a ref to its shaders, and an MSCAL. The 48 is the input buffer: eight quadwords
+;; per sprite plus the header have to fit in 400, and VIF's own double buffering runs a second copy
+;; at 400 so the next chunk uploads while this one draws.
+;;
+;; A sprite-array has two groups, and which group a sprite is in decides which entry point draws it:
+;; group 0 of the 2D array is world space, with the camera transform and fog, and group 1 is screen
+;; space, with the HUD transform and one of 75 user HVDF offsets picked per sprite. The 3D array uses
+;; only group 0. Fake shadows are 3D sprites too, but their vectors and shaders are built into the
+;; DMA buffer as they are emitted rather than living in an array, since they are per-frame.
+;;
+;; Entry points: 0 loads the constants that outlive a chunk, 3 draws world-space 2D sprites, 109
+;; draws screen-space 2D sprites, and 211 draws 3D sprites and shadows.
+;;
+;; 2D sprites, entries 3 and 109. The three input quadwords are position with an x scale, then a
+;; quadword carrying the corner-block selector, the matrix mode, a rotation and a y scale, then a
+;; float color. Transform the centre, divide by w, and reject the sprite outright if the transformed
+;; w came out negative -- FMAND on the sign flag -- or if the clip test says all of it is off screen.
+;; The rotation is turned into a sine and cosine by the five-term polynomial in sincos-01 through
+;; sincos-89, and the four corners come from the cdata block the sprite selected, scaled by
+;; basis-x/basis-y and the clamped x and y scales. The scale clamp is why a particle shrinking to
+;; nothing stops at min-scale instead of vanishing into a subpixel: consts.z is the floor and
+;; fog-clamp.z the ceiling. Fog is the transformed z clamped between fog-min and fog-max, and the
+;; matrix-mode word doubles as an index that picks the giftag with fog or the one without.
+;;
+;; 3D sprites, entry 211. The second input quadword is a quaternion's xyz with the y scale in w; the
+;; missing component is rebuilt as the nonnegative square root of 1 - x^2 - y^2 - z^2, which works
+;; because sprite-set-3d-quaternion! negates xyz whenever w would have been negative. The quaternion
+;; is expanded into three basis vectors with cross products, scaled, applied to the four corners of
+;; the XZ-plane block, and each corner is transformed and divided separately -- so a 3D sprite is a
+;; real quad in space and can be seen edge on, unlike a 2D one.
+;;
+;; That also means a 3D sprite can straddle the frustum, which is what the clipper at clip-polygon is
+;; for. The quad is first tested as a whole: any vertex past the far plane rejects it, and any plane
+;; that all four vertices fail rejects it too. Otherwise it is written out as a polygon of ST /
+;; RGBAQ / clip-space position triples and clipped against five planes in turn -- the near plane and
+;; the four sides, but not the far plane, which the depth test handles. Each pass walks the previous
+;; polygon's edges in place: an edge with both ends outside is dropped, an edge that leaves the
+;; volume contributes its inside end plus the intersection, an edge that enters contributes only the
+;; intersection, and an edge entirely inside contributes its start. The vertex count can therefore
+;; grow, which is why the whole thing is a fan and not a quad by the end. After the fifth plane the
+;; survivors are divided through, converted to GS fixed point, given the clipped giftag with its
+;; loop count patched in, and kicked.
+;;
+;; Both output buffers are 50 quadwords and alternate per sprite, so the GIF is draining one while
+;; the program fills the other. A 2D sprite needs sixteen quadwords, a 3D one nineteen, and the
+;; worst clipped fan still fits.
+(#unless PC_PORT
+  (defvu1 sprite-vu1-block
+  (rlet ((vec-ptr :reg vi02) ;; cursor through this chunk's three-quadword sprite vectors
+         (adgif-ptr :reg vi03) ;; cursor through its five-quadword adgif shaders
+         (sprite-count :reg vi04) ;; sprites left in the chunk
+         (gif-ptr :reg vi05) ;; write cursor inside the GIF buffer being filled
+         (clip-mask :reg vi06) ;; the constant 1, the FMAND mask that reads the MAC sign flags
+         (gif-buf :reg vi15) ;; base of the GIF buffer being filled
+         (t-mtx0 :reg vf25) ;; the active transform, camera or screen
+         (t-mtx1 :reg vf26)
+         (t-mtx2 :reg vf27)
+         (t-mtx3 :reg vf28)
+         (hmge-scale :reg vf29) ;; the clip-space scale; the clipper reloads its reciprocal here
+         (hvdf-off :reg vf30) ;; the offset that moves clip space into GS screen space
+         (frame-consts :reg vf31) ;; x is 1.0, y is degrees-to-radians, z and w the scale clamps
+         ;; vi01 is the flag register: FMAND for the sign of the transformed w, FCAND and FCOR for
+         ;; the clip history. It also carries the buffer-address sum for two instructions at the
+         ;; bottom of each loop, which is why it keeps its physical name. vi07 through vi11 change
+         ;; role between the sprite loops and the clipper and are described where each begins.
+         ;; The vf01..vf24 working set is likewise different in each of the three entries.
+         )
+    ;; MSCALF 0: initialize constants and the first GIF output buffer.
+    (vu-pair (lq.xyzw hmge-scale vi00 (sprite-frame-const hmge-scale)) (nop)) ;; #x000
+    (vu-pair (lq.xyzw frame-consts vi00 (sprite-frame-const consts)) (nop :e)) ;; #x001
+    (vu-pair (iaddiu gif-buf vi00 SPRITE-VU-GIF-BUFFER-0) (nop)) ;; #x002
+    ;; MSCAL 3: draw world-space 2D sprites with the camera transform and fog.
+    (vu-pair (xtop vec-ptr) (nop)) ;; #x003
+    (vu-pair (nop) (nop)) ;; #x004
+    (vu-pair (ilwr.x sprite-count vec-ptr) (nop)) ;; #x005
+    (vu-pair (iaddi vec-ptr vec-ptr 0x1) (nop)) ;; #x006
+    (vu-pair (iaddiu adgif-ptr vec-ptr (- SPRITE-VU-ADGIF-DATA SPRITE-VU-VEC-DATA)) (nop)) ;; #x007
+    (label world-2d-load-sprite)
+    (vu-pair (ilw.y vi08 vec-ptr 1) (nop)) ;; #x008
+    (vu-pair (lq.xyzw t-mtx0 vi00 SPRITE-VU-MATRIX) (nop)) ;; #x009
+    (vu-pair (lq.xyzw t-mtx1 vi00 (+ SPRITE-VU-MATRIX 1)) (nop)) ;; #x00a
+    (vu-pair (lq.xyzw t-mtx2 vi00 (+ SPRITE-VU-MATRIX 2)) (nop)) ;; #x00b
+    (vu-pair (lq.xyzw t-mtx3 vi00 (+ SPRITE-VU-MATRIX 3)) (nop)) ;; #x00c
+    (vu-pair (lq.xyzw hvdf-off vi00 SPRITE-VU-HVDF) (nop)) ;; #x00d
+    (vu-pair (lqi.xyzw vf01 vec-ptr) (nop)) ;; #x00e
+    (vu-pair (lqi.xyzw vf05 vec-ptr) (nop)) ;; #x00f
+    (vu-pair (lqi.xyzw vf11 vec-ptr) (nop)) ;; #x010
+    (vu-pair (lq.xyzw vf12 vi00 (sprite-frame-const fog-clamp)) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x011
+    (vu-pair (nop) (maddax.xyzw ACC t-mtx0 vf01)) ;; #x012
+    (vu-pair (nop) (madday.xyzw ACC t-mtx1 vf01)) ;; #x013
+    (vu-pair (nop) (maddz.xyzw vf02 t-mtx2 vf01)) ;; #x014
+    (vu-pair (move.w vf05 vf00) (addw.z vf01 vf00 vf05)) ;; #x015
+    (vu-pair (nop) (nop)) ;; #x016
+    (vu-pair (div Q frame-consts.x vf02.w) (muly.z vf05 vf05 frame-consts)) ;; #x017
+    (vu-pair (nop) (mul.xyzw vf03 vf02 hmge-scale)) ;; #x018
+    (vu-pair (nop) (nop)) ;; #x019
+    (vu-pair (nop) (nop)) ;; #x01a
+    (vu-pair (nop) (mulz.z vf04 vf05 vf05)) ;; #x01b
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-01)) (clipw.xyz vf03 vf03)) ;; #x01c
+    (vu-pair (iaddi clip-mask vi00 0x1) (adda.xyzw ACC vf11 vf11)) ;; #x01d
+    (label world-2d-loop)
+    (vu-pair (ior gif-ptr gif-buf vi00) (mul.zw vf01 vf01 Q)) ;; #x01e
+    (vu-pair (lq.xyzw vf06 vi00 (sprite-frame-const adgif-giftag)) (mulz.xyzw vf15 vf05 vf04)) ;; #x01f
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-23)) (mula.xyzw ACC vf05 vf14)) ;; #x020
+    (vu-pair (fmand vi01 clip-mask) (mul.xyz vf02 vf02 Q)) ;; #x021
+    (vu-pair (ibne vi00 vi01 world-2d-reject-early) (addz.x vf01 vf00 vf01)) ;; #x022
+    (vu-pair (lqi.xyzw vf07 adgif-ptr) (mulz.xyzw vf16 vf15 vf04)) ;; #x023
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-45)) (madda.xyzw ACC vf15 vf14)) ;; #x024
+    (vu-pair (lqi.xyzw vf08 adgif-ptr) (add.xyzw vf10 vf02 hvdf-off)) ;; #x025
+    (vu-pair (lqi.xyzw vf09 adgif-ptr) (mulw.x vf01 vf01 vf01)) ;; #x026
+    (vu-pair (sqi.xyzw vf06 gif-ptr) (mulz.xyzw vf15 vf16 vf04)) ;; #x027
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-67)) (madda.xyzw ACC vf16 vf14)) ;; #x028
+    (vu-pair (sqi.xyzw vf07 gif-ptr) (maxx.w vf10 vf10 vf12)) ;; #x029
+    (vu-pair (sqi.xyzw vf08 gif-ptr) (maxz.zw vf01 vf01 frame-consts)) ;; #x02a
+    (vu-pair (sqi.xyzw vf09 gif-ptr) (mulz.xyzw vf16 vf15 vf04)) ;; #x02b
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-89)) (madda.xyzw ACC vf15 vf14)) ;; #x02c
+    (vu-pair (lqi.xyzw vf06 adgif-ptr) (mulw.x vf01 vf01 frame-consts)) ;; #x02d
+    (vu-pair (lqi.xyzw vf07 adgif-ptr) (miniy.w vf10 vf10 vf12)) ;; #x02e
+    (vu-pair (lq.xyzw vf08 vi08 (sprite-frame-const sprite-2d-giftag)) (miniz.zw vf01 vf01 vf12)) ;; #x02f
+    (vu-pair (ilw.x vi07 vec-ptr -2) (madd.xyzw vf05 vf16 vf14)) ;; #x030
+    (vu-pair (lqi.xyzw vf23 vec-ptr) (miniw.x vf01 vf01 vf00)) ;; #x031
+    (vu-pair (nop) (suby.w vf02 vf10 vf12)) ;; #x032
+    (vu-pair (lqi.xyzw vf24 vec-ptr) (mulx.w vf11 vf11 vf01)) ;; #x033
+    (vu-pair (fcand vi01 0x3f) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x034
+    (vu-pair (lq.xyzw vf17 vi00 (sprite-frame-const basis-x)) (maddax.xyzw ACC t-mtx0 vf23)) ;; #x035
+    (vu-pair (fmand vi09 clip-mask) (nop)) ;; #x036
+    (vu-pair (ibne vi00 vi09 world-2d-plain-giftag) (nop)) ;; #x037
+    (vu-pair (lq.xyzw vf18 vi00 (sprite-frame-const basis-y)) (madday.xyzw ACC t-mtx1 vf23)) ;; #x038
+    (label world-2d-build-packet)
+    (vu-pair (lq.xyzw vf19 vi07 (sprite-frame-const cdata 0)) (ftoi0.xyzw vf11 vf11)) ;; #x039
+    (vu-pair (lq.xyzw vf20 vi07 (sprite-frame-const cdata 1)) (maddz.xyzw vf02 t-mtx2 vf23)) ;; #x03a
+    (vu-pair (lq.xyzw vf21 vi07 (sprite-frame-const cdata 2)) (mulaw.xyzw ACC vf17 vf05)) ;; #x03b
+    (vu-pair (lq.xyzw vf22 vi07 (sprite-frame-const cdata 3)) (msubz.xyzw vf12 vf18 vf05)) ;; #x03c
+    (vu-pair (sq.xyzw vf11 gif-ptr 3) (mulaz.xyzw ACC vf17 vf05)) ;; #x03d
+    (vu-pair (lqi.xyzw vf11 vec-ptr) (maddw.xyzw vf13 vf18 vf05)) ;; #x03e
+    (vu-pair (move.w vf24 vf00) (addw.z vf23 vf00 vf24)) ;; #x03f
+    (vu-pair (div Q frame-consts.x vf02.w) (mulw.xyzw vf12 vf12 vf01)) ;; #x040
+    (vu-pair (ibne vi00 vi01 world-2d-reject-in-loop) (muly.z vf24 vf24 frame-consts)) ;; #x041
+    (vu-pair (ilw.y vi08 vec-ptr -2) (mulz.xyzw vf13 vf13 vf01)) ;; #x042
+    (vu-pair (sqi.xyzw vf06 gif-ptr) (mul.xyzw vf03 vf02 hmge-scale)) ;; #x043
+    (vu-pair (sqi.xyzw vf07 gif-ptr) (mulaw.xyzw ACC vf10 vf00)) ;; #x044
+    (vu-pair (sqi.xyzw vf08 gif-ptr) (maddax.xyzw ACC vf12 vf19)) ;; #x045
+    (vu-pair (lq.xyzw vf06 vi00 (sprite-frame-const cdata 8)) (maddy.xyzw vf19 vf13 vf19)) ;; #x046
+    (vu-pair (lq.xyzw vf07 vi00 (sprite-frame-const cdata 9)) (mulaw.xyzw ACC vf10 vf00)) ;; #x047
+    (vu-pair (lq.xyzw vf08 vi00 (sprite-frame-const cdata 10)) (maddax.xyzw ACC vf12 vf20)) ;; #x048
+    (vu-pair (lq.xyzw vf09 vi00 (sprite-frame-const cdata 11)) (maddy.xyzw vf20 vf13 vf20)) ;; #x049
+    (vu-pair (sq.xyzw vf06 gif-ptr 1) (mulaw.xyzw ACC vf10 vf00)) ;; #x04a
+    (vu-pair (sq.xyzw vf07 gif-ptr 3) (maddax.xyzw ACC vf12 vf21)) ;; #x04b
+    (vu-pair (sq.xyzw vf08 gif-ptr 5) (maddy.xyzw vf21 vf13 vf21)) ;; #x04c
+    (vu-pair (sq.xyzw vf09 gif-ptr 7) (mulaw.xyzw ACC vf10 vf00)) ;; #x04d
+    (vu-pair (nop) (maddax.xyzw ACC vf12 vf22)) ;; #x04e
+    (vu-pair (nop) (maddy.xyzw vf22 vf13 vf22)) ;; #x04f
+    (vu-pair (lq.xyzw vf12 vi00 (sprite-frame-const fog-clamp)) (ftoi4.xyzw vf19 vf19)) ;; #x050
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-01)) (ftoi4.xyzw vf20 vf20)) ;; #x051
+    (vu-pair (move.xyzw vf05 vf24) (ftoi4.xyzw vf21 vf21)) ;; #x052
+    (vu-pair (move.xyzw vf01 vf23) (ftoi4.xyzw vf22 vf22)) ;; #x053
+    (vu-pair (sq.xyzw vf19 gif-ptr 2) (mulz.z vf04 vf24 vf24)) ;; #x054
+    (vu-pair (sq.xyzw vf20 gif-ptr 4) (clipw.xyz vf03 vf03)) ;; #x055
+    (vu-pair (sq.xyzw vf21 gif-ptr 6) (nop)) ;; #x056
+    (vu-pair (sq.xyzw vf22 gif-ptr 8) (nop)) ;; #x057
+    (vu-pair (xgkick gif-buf) (nop)) ;; #x058
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x059
+    (vu-pair (iaddiu vi01 vi00 (+ SPRITE-VU-GIF-BUFFER-0 SPRITE-VU-GIF-BUFFER-1)) (nop)) ;; #x05a
+    (vu-pair (ibne vi00 sprite-count world-2d-loop) (nop)) ;; #x05b
+    (vu-pair (isub gif-buf vi01 gif-buf) (adda.xyzw ACC vf11 vf11)) ;; #x05c
+    (vu-pair (nop) (nop :e)) ;; #x05d
+    (vu-pair (nop) (nop)) ;; #x05e
+    (label world-2d-reject-in-loop)
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x05f
+    (vu-pair (iaddi vec-ptr vec-ptr -0x3) (nop)) ;; #x060
+    (vu-pair (ibne vi00 sprite-count world-2d-load-sprite) (nop)) ;; #x061
+    (vu-pair (nop) (nop)) ;; #x062
+    (vu-pair (nop) (nop :e)) ;; #x063
+    (vu-pair (nop) (nop)) ;; #x064
+    (label world-2d-reject-early)
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x065
+    (vu-pair (iaddi adgif-ptr adgif-ptr 0x4) (nop)) ;; #x066
+    (vu-pair (ibne vi00 sprite-count world-2d-load-sprite) (nop)) ;; #x067
+    (vu-pair (nop) (nop)) ;; #x068
+    (vu-pair (nop) (nop :e)) ;; #x069
+    (vu-pair (nop) (nop)) ;; #x06a
+    (label world-2d-plain-giftag)
+    (vu-pair (b world-2d-build-packet) (nop)) ;; #x06b
+    (vu-pair (lq.xyzw vf08 vi00 (sprite-frame-const sprite-2d-giftag-2)) (nop)) ;; #x06c
+    ;; MSCAL 109: draw screen-space 2D sprites with the HUD transform and user HVDF offsets.
+    (vu-pair (xtop vec-ptr) (nop)) ;; #x06d
+    (vu-pair (nop) (nop)) ;; #x06e
+    (vu-pair (ilwr.x sprite-count vec-ptr) (nop)) ;; #x06f
+    (vu-pair (iaddi vec-ptr vec-ptr 0x1) (nop)) ;; #x070
+    (vu-pair (iaddiu adgif-ptr vec-ptr (- SPRITE-VU-ADGIF-DATA SPRITE-VU-VEC-DATA)) (nop)) ;; #x071
+    (label screen-2d-load-sprite)
+    (vu-pair (ilw.y vi08 vec-ptr 1) (nop)) ;; #x072
+    (vu-pair (lq.xyzw t-mtx0 vi00 SPRITE-VU-MATRIX) (nop)) ;; #x073
+    (vu-pair (lq.xyzw t-mtx1 vi00 (+ SPRITE-VU-MATRIX 1)) (nop)) ;; #x074
+    (vu-pair (lq.xyzw t-mtx2 vi00 (+ SPRITE-VU-MATRIX 2)) (nop)) ;; #x075
+    (vu-pair (lq.xyzw t-mtx3 vi00 (+ SPRITE-VU-MATRIX 3)) (nop)) ;; #x076
+    (vu-pair (lq.xyzw hvdf-off vi08 SPRITE-VU-HVDF) (nop)) ;; #x077
+    (vu-pair (lqi.xyzw vf01 vec-ptr) (nop)) ;; #x078
+    (vu-pair (lqi.xyzw vf05 vec-ptr) (nop)) ;; #x079
+    (vu-pair (lqi.xyzw vf11 vec-ptr) (nop)) ;; #x07a
+    (vu-pair (lq.xyzw vf12 vi00 (sprite-frame-const fog-clamp)) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x07b
+    (vu-pair (ilw.y vi08 vec-ptr 1) (maddax.xyzw ACC t-mtx0 vf01)) ;; #x07c
+    (vu-pair (nop) (madday.xyzw ACC t-mtx1 vf01)) ;; #x07d
+    (vu-pair (nop) (maddz.xyzw vf02 t-mtx2 vf01)) ;; #x07e
+    (vu-pair (move.w vf05 vf00) (addw.z vf01 vf00 vf05)) ;; #x07f
+    (vu-pair (nop) (nop)) ;; #x080
+    (vu-pair (div Q frame-consts.x vf02.w) (muly.z vf05 vf05 frame-consts)) ;; #x081
+    (vu-pair (nop) (mul.xyzw vf03 vf02 hmge-scale)) ;; #x082
+    (vu-pair (nop) (nop)) ;; #x083
+    (vu-pair (nop) (nop)) ;; #x084
+    (vu-pair (nop) (mulz.z vf04 vf05 vf05)) ;; #x085
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-01)) (clipw.xyz vf03 vf03)) ;; #x086
+    (vu-pair (iaddi clip-mask vi00 0x1) (adda.xyzw ACC vf11 vf11)) ;; #x087
+    (label screen-2d-loop)
+    (vu-pair (ior gif-ptr gif-buf vi00) (mul.zw vf01 vf01 Q)) ;; #x088
+    (vu-pair (lq.xyzw vf06 vi00 (sprite-frame-const adgif-giftag)) (mulz.xyzw vf15 vf05 vf04)) ;; #x089
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-23)) (mula.xyzw ACC vf05 vf14)) ;; #x08a
+    (vu-pair (fmand vi01 clip-mask) (mul.xyz vf02 vf02 Q)) ;; #x08b
+    (vu-pair (ibne vi00 vi01 screen-2d-reject-early) (addz.x vf01 vf00 vf01)) ;; #x08c
+    (vu-pair (lqi.xyzw vf07 adgif-ptr) (mulz.xyzw vf16 vf15 vf04)) ;; #x08d
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-45)) (madda.xyzw ACC vf15 vf14)) ;; #x08e
+    (vu-pair (lqi.xyzw vf08 adgif-ptr) (add.xyzw vf10 vf02 hvdf-off)) ;; #x08f
+    (vu-pair (lqi.xyzw vf09 adgif-ptr) (mulw.x vf01 vf01 vf01)) ;; #x090
+    (vu-pair (sqi.xyzw vf06 gif-ptr) (mulz.xyzw vf15 vf16 vf04)) ;; #x091
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-67)) (madda.xyzw ACC vf16 vf14)) ;; #x092
+    (vu-pair (sqi.xyzw vf07 gif-ptr) (maxx.w vf10 vf10 vf12)) ;; #x093
+    (vu-pair (sqi.xyzw vf08 gif-ptr) (maxz.zw vf01 vf01 frame-consts)) ;; #x094
+    (vu-pair (sqi.xyzw vf09 gif-ptr) (mulz.xyzw vf16 vf15 vf04)) ;; #x095
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-89)) (madda.xyzw ACC vf15 vf14)) ;; #x096
+    (vu-pair (lqi.xyzw vf06 adgif-ptr) (mulw.x vf01 vf01 frame-consts)) ;; #x097
+    (vu-pair (lqi.xyzw vf07 adgif-ptr) (miniy.w vf10 vf10 vf12)) ;; #x098
+    (vu-pair (lq.xyzw vf08 vi00 (sprite-frame-const sprite-2d-giftag-2)) (nop)) ;; #x099
+    (vu-pair (ilw.x vi07 vec-ptr -2) (madd.xyzw vf05 vf16 vf14)) ;; #x09a
+    (vu-pair (lq.xyzw hvdf-off vi08 SPRITE-VU-HVDF) (nop)) ;; #x09b
+    (vu-pair (lqi.xyzw vf23 vec-ptr) (miniw.x vf01 vf01 vf00)) ;; #x09c
+    (vu-pair (lqi.xyzw vf24 vec-ptr) (mulx.w vf11 vf11 vf01)) ;; #x09d
+    (vu-pair (fcand vi01 0x3f) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x09e
+    (vu-pair (lq.xyzw vf17 vi00 (sprite-frame-const basis-x)) (maddax.xyzw ACC t-mtx0 vf23)) ;; #x09f
+    (vu-pair (lq.xyzw vf18 vi00 (sprite-frame-const basis-y)) (madday.xyzw ACC t-mtx1 vf23)) ;; #x0a0
+    (vu-pair (lq.xyzw vf19 vi07 (sprite-frame-const cdata 0)) (ftoi0.xyzw vf11 vf11)) ;; #x0a1
+    (vu-pair (lq.xyzw vf20 vi07 (sprite-frame-const cdata 1)) (maddz.xyzw vf02 t-mtx2 vf23)) ;; #x0a2
+    (vu-pair (lq.xyzw vf21 vi07 (sprite-frame-const cdata 2)) (mulaw.xyzw ACC vf17 vf05)) ;; #x0a3
+    (vu-pair (lq.xyzw vf22 vi07 (sprite-frame-const cdata 3)) (msubz.xyzw vf12 vf18 vf05)) ;; #x0a4
+    (vu-pair (sq.xyzw vf11 gif-ptr 3) (mulaz.xyzw ACC vf17 vf05)) ;; #x0a5
+    (vu-pair (lqi.xyzw vf11 vec-ptr) (maddw.xyzw vf13 vf18 vf05)) ;; #x0a6
+    (vu-pair (move.w vf24 vf00) (addw.z vf23 vf00 vf24)) ;; #x0a7
+    (vu-pair (div Q frame-consts.x vf02.w) (mulw.xyzw vf12 vf12 vf01)) ;; #x0a8
+    (vu-pair (ibne vi00 vi01 screen-2d-reject-in-loop) (muly.z vf24 vf24 frame-consts)) ;; #x0a9
+    (vu-pair (ilw.y vi08 vec-ptr 1) (mulz.xyzw vf13 vf13 vf01)) ;; #x0aa
+    (vu-pair (sqi.xyzw vf06 gif-ptr) (mul.xyzw vf03 vf02 hmge-scale)) ;; #x0ab
+    (vu-pair (sqi.xyzw vf07 gif-ptr) (mulaw.xyzw ACC vf10 vf00)) ;; #x0ac
+    (vu-pair (sqi.xyzw vf08 gif-ptr) (maddax.xyzw ACC vf12 vf19)) ;; #x0ad
+    (vu-pair (lq.xyzw vf06 vi00 (sprite-frame-const cdata 8)) (maddy.xyzw vf19 vf13 vf19)) ;; #x0ae
+    (vu-pair (lq.xyzw vf07 vi00 (sprite-frame-const cdata 9)) (mulaw.xyzw ACC vf10 vf00)) ;; #x0af
+    (vu-pair (lq.xyzw vf08 vi00 (sprite-frame-const cdata 10)) (maddax.xyzw ACC vf12 vf20)) ;; #x0b0
+    (vu-pair (lq.xyzw vf09 vi00 (sprite-frame-const cdata 11)) (maddy.xyzw vf20 vf13 vf20)) ;; #x0b1
+    (vu-pair (sq.xyzw vf06 gif-ptr 1) (mulaw.xyzw ACC vf10 vf00)) ;; #x0b2
+    (vu-pair (sq.xyzw vf07 gif-ptr 3) (maddax.xyzw ACC vf12 vf21)) ;; #x0b3
+    (vu-pair (sq.xyzw vf08 gif-ptr 5) (maddy.xyzw vf21 vf13 vf21)) ;; #x0b4
+    (vu-pair (sq.xyzw vf09 gif-ptr 7) (mulaw.xyzw ACC vf10 vf00)) ;; #x0b5
+    (vu-pair (nop) (maddax.xyzw ACC vf12 vf22)) ;; #x0b6
+    (vu-pair (nop) (maddy.xyzw vf22 vf13 vf22)) ;; #x0b7
+    (vu-pair (lq.xyzw vf12 vi00 (sprite-frame-const fog-clamp)) (ftoi4.xyzw vf19 vf19)) ;; #x0b8
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const sincos-01)) (ftoi4.xyzw vf20 vf20)) ;; #x0b9
+    (vu-pair (move.xyzw vf05 vf24) (ftoi4.xyzw vf21 vf21)) ;; #x0ba
+    (vu-pair (move.xyzw vf01 vf23) (ftoi4.xyzw vf22 vf22)) ;; #x0bb
+    (vu-pair (sq.xyzw vf19 gif-ptr 2) (mulz.z vf04 vf24 vf24)) ;; #x0bc
+    (vu-pair (sq.xyzw vf20 gif-ptr 4) (clipw.xyz vf03 vf03)) ;; #x0bd
+    (vu-pair (sq.xyzw vf21 gif-ptr 6) (nop)) ;; #x0be
+    (vu-pair (sq.xyzw vf22 gif-ptr 8) (nop)) ;; #x0bf
+    (vu-pair (xgkick gif-buf) (nop)) ;; #x0c0
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x0c1
+    (vu-pair (iaddiu vi01 vi00 (+ SPRITE-VU-GIF-BUFFER-0 SPRITE-VU-GIF-BUFFER-1)) (nop)) ;; #x0c2
+    (vu-pair (ibne vi00 sprite-count screen-2d-loop) (nop)) ;; #x0c3
+    (vu-pair (isub gif-buf vi01 gif-buf) (adda.xyzw ACC vf11 vf11)) ;; #x0c4
+    (vu-pair (nop) (nop :e)) ;; #x0c5
+    (vu-pair (nop) (nop)) ;; #x0c6
+    (label screen-2d-reject-in-loop)
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x0c7
+    (vu-pair (iaddi vec-ptr vec-ptr -0x3) (nop)) ;; #x0c8
+    (vu-pair (ibne vi00 sprite-count screen-2d-load-sprite) (nop)) ;; #x0c9
+    (vu-pair (nop) (nop)) ;; #x0ca
+    (vu-pair (nop) (nop :e)) ;; #x0cb
+    (vu-pair (nop) (nop)) ;; #x0cc
+    (label screen-2d-reject-early)
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x0cd
+    (vu-pair (iaddi adgif-ptr adgif-ptr 0x4) (nop)) ;; #x0ce
+    (vu-pair (ibne vi00 sprite-count screen-2d-load-sprite) (nop)) ;; #x0cf
+    (vu-pair (nop) (nop)) ;; #x0d0
+    (vu-pair (nop) (nop :e)) ;; #x0d1
+    (vu-pair (nop) (nop)) ;; #x0d2
+    ;; MSCAL 211: draw billboarded and quaternion-oriented 3D sprites and fake shadows.
+    (vu-pair (lq.xyzw t-mtx0 vi00 SPRITE-VU-MATRIX) (nop)) ;; #x0d3
+    (vu-pair (lq.xyzw t-mtx1 vi00 (+ SPRITE-VU-MATRIX 1)) (nop)) ;; #x0d4
+    (vu-pair (lq.xyzw t-mtx2 vi00 (+ SPRITE-VU-MATRIX 2)) (nop)) ;; #x0d5
+    (vu-pair (lq.xyzw t-mtx3 vi00 (+ SPRITE-VU-MATRIX 3)) (nop)) ;; #x0d6
+    (vu-pair (lq.xyzw hvdf-off vi00 SPRITE-VU-HVDF) (nop)) ;; #x0d7
+    (vu-pair (xtop vec-ptr) (nop)) ;; #x0d8
+    (vu-pair (nop) (nop)) ;; #x0d9
+    (vu-pair (ilwr.x sprite-count vec-ptr) (nop)) ;; #x0da
+    (vu-pair (iaddi vec-ptr vec-ptr 0x1) (nop)) ;; #x0db
+    (vu-pair (iaddiu adgif-ptr vec-ptr (- SPRITE-VU-ADGIF-DATA SPRITE-VU-VEC-DATA)) (nop)) ;; #x0dc
+    (vu-pair (lq.xyzw vf23 vi00 (sprite-frame-const fog-clamp)) (nop)) ;; #x0dd
+    (vu-pair (iaddi clip-mask vi00 0x1) (nop)) ;; #x0de
+    (label sprite-3d-load-sprite)
+    (vu-pair (lq.xyzw vf06 vec-ptr 1) (nop)) ;; #x0df
+    (vu-pair (lq.xyzw vf07 vec-ptr 2) (nop)) ;; #x0e0
+    (vu-pair (iaddi vi01 vi00 0x2) (nop)) ;; #x0e1
+    (vu-pair (nop) (nop)) ;; #x0e2
+    (vu-pair (nop) (mul.xyzw vf05 vf06 vf06)) ;; #x0e3
+    (vu-pair (nop) (addw.y vf08 vf00 vf06)) ;; #x0e4
+    (vu-pair (nop) (subw.w vf06 vf06 vf06)) ;; #x0e5
+    (vu-pair (nop) (adda.xyzw ACC vf07 vf07)) ;; #x0e6
+    (vu-pair (nop) (addy.x vf05 vf05 vf05)) ;; #x0e7
+    (vu-pair (nop) (nop)) ;; #x0e8
+    (vu-pair (nop) (nop)) ;; #x0e9
+    (vu-pair (fmand vi01 clip-mask) (nop)) ;; #x0ea
+    (vu-pair (ibne vi00 vi01 sprite-3d-reject-early) (addz.x vf05 vf05 vf05)) ;; #x0eb
+    (vu-pair (nop) (nop)) ;; #x0ec
+    (vu-pair (nop) (nop)) ;; #x0ed
+    (vu-pair (nop) (nop)) ;; #x0ee
+    (vu-pair (nop) (subx.w vf05 vf00 vf05)) ;; #x0ef
+    (vu-pair (nop) (nop)) ;; #x0f0
+    (vu-pair (nop) (nop)) ;; #x0f1
+    (vu-pair (nop) (nop)) ;; #x0f2
+    (vu-pair (sqrt Q vf05.w) (nop)) ;; #x0f3
+    (vu-pair (nop) (nop)) ;; #x0f4
+    (vu-pair (nop) (nop)) ;; #x0f5
+    (vu-pair (nop) (nop)) ;; #x0f6
+    (vu-pair (nop) (nop)) ;; #x0f7
+    (vu-pair (nop) (nop)) ;; #x0f8
+    (vu-pair (nop) (nop)) ;; #x0f9
+    (vu-pair (nop) (addq.w vf06 vf06 Q)) ;; #x0fa
+    (vu-pair (nop) (nop)) ;; #x0fb
+    (vu-pair (nop) (nop)) ;; #x0fc
+    (vu-pair (nop) (nop)) ;; #x0fd
+    (vu-pair (nop) (add.xyzw vf13 vf06 vf06)) ;; #x0fe
+    (vu-pair (nop) (addw.x vf09 vf00 vf06)) ;; #x0ff
+    (vu-pair (nop) (addz.y vf09 vf00 vf06)) ;; #x100
+    (vu-pair (nop) (suby.z vf09 vf00 vf06)) ;; #x101
+    (vu-pair (nop) (subw.w vf09 vf00 vf00)) ;; #x102
+    (vu-pair (nop) (subz.x vf10 vf00 vf06)) ;; #x103
+    (vu-pair (nop) (addw.y vf10 vf00 vf06)) ;; #x104
+    (vu-pair (nop) (addx.z vf10 vf00 vf06)) ;; #x105
+    (vu-pair (nop) (subw.w vf10 vf00 vf00)) ;; #x106
+    (vu-pair (nop) (addy.x vf11 vf00 vf06)) ;; #x107
+    (vu-pair (nop) (subx.y vf11 vf00 vf06)) ;; #x108
+    (vu-pair (nop) (addw.z vf11 vf00 vf06)) ;; #x109
+    (vu-pair (nop) (subw.w vf11 vf00 vf00)) ;; #x10a
+    (label sprite-3d-loop)
+    (vu-pair (lq.xyzw vf12 vec-ptr 0) (opmula.xyz ACC vf13 vf09)) ;; #x10b
+    (vu-pair (lq.xyzw vf07 vec-ptr 2) (opmsub.xyz vf09 vf09 vf13)) ;; #x10c
+    (vu-pair (iaddi vec-ptr vec-ptr 0x3) (opmula.xyz ACC vf13 vf10)) ;; #x10d
+    (vu-pair (lq.xyzw vf06 vec-ptr 1) (opmsub.xyz vf10 vf10 vf13)) ;; #x10e
+    (vu-pair (ior gif-ptr gif-buf vi00) (opmula.xyz ACC vf13 vf11)) ;; #x10f
+    (vu-pair (lq.xyzw vf01 vi00 (sprite-frame-const adgif-giftag)) (opmsub.xyz vf11 vf11 vf13)) ;; #x110
+    (vu-pair (lqi.xyzw vf02 adgif-ptr) (addw.x vf09 vf09 vf00)) ;; #x111
+    (vu-pair (lqi.xyzw vf03 adgif-ptr) (addw.y vf10 vf10 vf00)) ;; #x112
+    (vu-pair (lqi.xyzw vf04 adgif-ptr) (addw.z vf11 vf11 vf00)) ;; #x113
+    (vu-pair (sqi.xyzw vf01 gif-ptr) (mul.xyzw vf05 vf06 vf06)) ;; #x114
+    (vu-pair (move.w vf12 vf00) (mulw.xyzw vf09 vf09 vf12)) ;; #x115
+    (vu-pair (iaddi clip-mask vi00 0x1) (muly.xyzw vf11 vf11 vf08)) ;; #x116
+    (vu-pair (lq.xyzw vf14 vi00 (sprite-frame-const cdata 12)) (adda.xyzw ACC vf07 vf07)) ;; #x117
+    (vu-pair (lq.xyzw vf15 vi00 (sprite-frame-const cdata 13)) (ftoi0.xyzw vf07 vf07)) ;; #x118
+    (vu-pair (lq.xyzw vf16 vi00 (sprite-frame-const cdata 14)) (addw.y vf08 vf00 vf06)) ;; #x119
+    (vu-pair (lq.xyzw vf17 vi00 (sprite-frame-const cdata 15)) (subw.w vf06 vf06 vf06)) ;; #x11a
+    (vu-pair (fmand vi01 clip-mask) (mulax.xyzw ACC vf09 vf14)) ;; #x11b
+    (vu-pair (ibne vi00 vi01 sprite-3d-reject-in-loop) (madday.xyzw ACC vf10 vf14)) ;; #x11c
+    (vu-pair (sq.xyzw vf07 gif-ptr 7) (maddaz.xyzw ACC vf11 vf14)) ;; #x11d
+    (vu-pair (sq.xyzw vf07 gif-ptr 10) (maddw.xyzw vf14 vf12 vf00)) ;; #x11e
+    (vu-pair (sqi.xyzw vf02 gif-ptr) (addy.x vf05 vf05 vf05)) ;; #x11f
+    (vu-pair (sq.xyzw vf07 gif-ptr 12) (mulax.xyzw ACC vf09 vf15)) ;; #x120
+    (vu-pair (sq.xyzw vf07 gif-ptr 15) (madday.xyzw ACC vf10 vf15)) ;; #x121
+    (vu-pair (sqi.xyzw vf03 gif-ptr) (maddaz.xyzw ACC vf11 vf15)) ;; #x122
+    (vu-pair (sqi.xyzw vf04 gif-ptr) (addz.x vf05 vf05 vf05)) ;; #x123
+    (vu-pair (lqi.xyzw vf01 adgif-ptr) (maddw.xyzw vf15 vf12 vf00)) ;; #x124
+    (vu-pair (lqi.xyzw vf02 adgif-ptr) (mulax.xyzw ACC vf09 vf16)) ;; #x125
+    (vu-pair (lq.xyzw vf03 vi00 (sprite-frame-const sprite-3d-giftag)) (madday.xyzw ACC vf10 vf16)) ;; #x126
+    (vu-pair (nop) (subx.w vf05 vf00 vf05)) ;; #x127
+    (vu-pair (sqi.xyzw vf01 gif-ptr) (maddaz.xyzw ACC vf11 vf16)) ;; #x128
+    (vu-pair (sqi.xyzw vf02 gif-ptr) (maddw.xyzw vf16 vf12 vf00)) ;; #x129
+    (vu-pair (sqi.xyzw vf03 gif-ptr) (mulax.xyzw ACC vf09 vf17)) ;; #x12a
+    (vu-pair (sqrt Q vf05.w) (madday.xyzw ACC vf10 vf17)) ;; #x12b
+    (vu-pair (nop) (maddaz.xyzw ACC vf11 vf17)) ;; #x12c
+    (vu-pair (nop) (maddw.xyzw vf17 vf12 vf00)) ;; #x12d
+    (vu-pair (lq.xyzw vf18 vi00 (sprite-frame-const cdata 8)) (mulax.xyzw ACC t-mtx0 vf14)) ;; #x12e
+    (vu-pair (lq.xyzw vf19 vi00 (sprite-frame-const cdata 9)) (madday.xyzw ACC t-mtx1 vf14)) ;; #x12f
+    (vu-pair (lq.xyzw vf20 vi00 (sprite-frame-const cdata 10)) (maddaz.xyzw ACC t-mtx2 vf14)) ;; #x130
+    (vu-pair (lq.xyzw vf21 vi00 (sprite-frame-const cdata 11)) (maddw.xyzw vf14 t-mtx3 vf00)) ;; #x131
+    (vu-pair (nop) (addq.w vf06 vf06 Q)) ;; #x132
+    (vu-pair (nop) (mulax.xyzw ACC t-mtx0 vf15)) ;; #x133
+    (vu-pair (nop) (madday.xyzw ACC t-mtx1 vf15)) ;; #x134
+    (vu-pair (nop) (maddaz.xyzw ACC t-mtx2 vf15)) ;; #x135
+    (vu-pair (div Q frame-consts.x vf14.w) (mul.xyzw vf09 vf14 hmge-scale)) ;; #x136
+    (vu-pair (nop) (maddw.xyzw vf15 t-mtx3 vf00)) ;; #x137
+    (vu-pair (nop) (mulax.xyzw ACC t-mtx0 vf16)) ;; #x138
+    (vu-pair (nop) (madday.xyzw ACC t-mtx1 vf16)) ;; #x139
+    (vu-pair (nop) (maddaz.xyzw ACC t-mtx2 vf16)) ;; #x13a
+    (vu-pair (nop) (mul.xyzw vf10 vf15 hmge-scale)) ;; #x13b
+    (vu-pair (nop) (maddw.xyzw vf16 t-mtx3 vf00)) ;; #x13c
+    (vu-pair (div Q frame-consts.x vf15.w) (mul.xyz vf14 vf14 Q)) ;; #x13d
+    (vu-pair (nop) (mul.xyzw vf18 vf18 Q)) ;; #x13e
+    (vu-pair (nop) (mulax.xyzw ACC t-mtx0 vf17)) ;; #x13f
+    (vu-pair (nop) (madday.xyzw ACC t-mtx1 vf17)) ;; #x140
+    (vu-pair (nop) (maddaz.xyzw ACC t-mtx2 vf17)) ;; #x141
+    (vu-pair (sq.xyzw vf18 gif-ptr 0) (mul.xyzw vf11 vf16 hmge-scale)) ;; #x142
+    (vu-pair (nop) (maddw.xyzw vf17 t-mtx3 vf00)) ;; #x143
+    (vu-pair (div Q frame-consts.x vf16.w) (mul.xyz vf15 vf15 Q)) ;; #x144
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x145
+    (vu-pair (nop) (add.xyzw vf14 vf14 hvdf-off)) ;; #x146
+    (vu-pair (nop) (add.xyzw vf15 vf15 hvdf-off)) ;; #x147
+    (vu-pair (nop) (mul.xyzw vf12 vf17 hmge-scale)) ;; #x148
+    (vu-pair (sq.xyzw vf19 gif-ptr 3) (clipw.xyz vf09 vf09)) ;; #x149
+    (vu-pair (nop) (clipw.xyz vf10 vf10)) ;; #x14a
+    (vu-pair (div Q frame-consts.x vf17.w) (mul.xyz vf16 vf16 Q)) ;; #x14b
+    (vu-pair (nop) (mul.xyzw vf20 vf20 Q)) ;; #x14c
+    (vu-pair (nop) (clipw.xyz vf11 vf11)) ;; #x14d
+    (vu-pair (nop) (clipw.xyz vf12 vf12)) ;; #x14e
+    (vu-pair (nop) (add.xyzw vf16 vf16 hvdf-off)) ;; #x14f
+    (vu-pair (sq.xyzw vf20 gif-ptr 6) (maxx.w vf14 vf14 vf23)) ;; #x150
+    (vu-pair (nop) (maxx.w vf15 vf15 vf23)) ;; #x151
+    (vu-pair (fcand vi01 0x410410) (mul.xyz vf17 vf17 Q)) ;; #x152
+    (vu-pair (ibne vi00 vi01 sprite-3d-reject) (mul.xyzw vf21 vf21 Q)) ;; #x153
+    (vu-pair (fcand vi01 0xffffff) (maxx.w vf16 vf16 vf23)) ;; #x154
+    (vu-pair (ibne vi00 vi01 sprite-3d-clip-quad) (miniy.w vf14 vf14 vf23)) ;; #x155
+    (vu-pair (nop) (add.xyzw vf17 vf17 hvdf-off)) ;; #x156
+    (vu-pair (sq.xyzw vf21 gif-ptr 9) (miniy.w vf15 vf15 vf23)) ;; #x157
+    (vu-pair (nop) (miniy.w vf16 vf16 vf23)) ;; #x158
+    (vu-pair (nop) (ftoi4.xyzw vf14 vf14)) ;; #x159
+    (vu-pair (nop) (maxx.w vf17 vf17 vf23)) ;; #x15a
+    (vu-pair (nop) (ftoi4.xyzw vf15 vf15)) ;; #x15b
+    (vu-pair (nop) (ftoi4.xyzw vf16 vf16)) ;; #x15c
+    (vu-pair (sq.xyzw vf14 gif-ptr 2) (add.xyzw vf13 vf06 vf06)) ;; #x15d
+    (vu-pair (nop) (miniy.w vf17 vf17 vf23)) ;; #x15e
+    (vu-pair (sq.xyzw vf15 gif-ptr 5) (addw.x vf09 vf00 vf06)) ;; #x15f
+    (vu-pair (sq.xyzw vf16 gif-ptr 8) (addz.y vf09 vf00 vf06)) ;; #x160
+    (vu-pair (nop) (suby.z vf09 vf00 vf06)) ;; #x161
+    (vu-pair (nop) (ftoi4.xyzw vf17 vf17)) ;; #x162
+    (vu-pair (nop) (subw.w vf09 vf00 vf00)) ;; #x163
+    (vu-pair (nop) (subz.x vf10 vf00 vf06)) ;; #x164
+    (vu-pair (nop) (addw.y vf10 vf00 vf06)) ;; #x165
+    (vu-pair (sq.xyzw vf17 gif-ptr 11) (addx.z vf10 vf00 vf06)) ;; #x166
+    (vu-pair (xgkick gif-buf) (subw.w vf10 vf00 vf00)) ;; #x167
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (addy.x vf11 vf00 vf06)) ;; #x168
+    (vu-pair (iaddiu vi01 vi00 (+ SPRITE-VU-GIF-BUFFER-0 SPRITE-VU-GIF-BUFFER-1)) (subx.y vf11 vf00 vf06)) ;; #x169
+    (vu-pair (ibne vi00 sprite-count sprite-3d-loop) (addw.z vf11 vf00 vf06)) ;; #x16a
+    (vu-pair (isub gif-buf vi01 gif-buf) (subw.w vf11 vf00 vf00)) ;; #x16b
+    (vu-pair (nop) (nop :e)) ;; #x16c
+    (vu-pair (nop) (nop)) ;; #x16d
+    (label sprite-3d-reject)
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x16e
+    (vu-pair (nop) (nop)) ;; #x16f
+    (vu-pair (ibne vi00 sprite-count sprite-3d-load-sprite) (nop)) ;; #x170
+    (vu-pair (nop) (nop)) ;; #x171
+    (vu-pair (nop) (nop :e)) ;; #x172
+    (vu-pair (nop) (nop)) ;; #x173
+    (label sprite-3d-reject-in-loop)
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x174
+    (vu-pair (iaddi adgif-ptr adgif-ptr 0x2) (nop)) ;; #x175
+    (vu-pair (ibne vi00 sprite-count sprite-3d-load-sprite) (nop)) ;; #x176
+    (vu-pair (nop) (nop)) ;; #x177
+    (vu-pair (nop) (nop :e)) ;; #x178
+    (vu-pair (nop) (nop)) ;; #x179
+    (label sprite-3d-reject-early)
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x17a
+    (vu-pair (iaddi adgif-ptr adgif-ptr 0x5) (nop)) ;; #x17b
+    (vu-pair (ibne vi00 sprite-count sprite-3d-load-sprite) (nop)) ;; #x17c
+    (vu-pair (iaddi vec-ptr vec-ptr 0x3) (nop)) ;; #x17d
+    (vu-pair (nop) (nop :e)) ;; #x17e
+    (vu-pair (nop) (nop)) ;; #x17f
+    (label sprite-3d-clip-quad)
+    (vu-pair (fcor vi01 0x7df7df) (nop)) ;; #x180
+    (vu-pair (ibne vi00 vi01 sprite-3d-reject) (nop)) ;; #x181
+    (vu-pair (fcor vi01 0xdf7df7) (nop)) ;; #x182
+    (vu-pair (ibne vi00 vi01 sprite-3d-reject) (nop)) ;; #x183
+    (vu-pair (fcor vi01 0xefbefb) (nop)) ;; #x184
+    (vu-pair (ibne vi00 vi01 sprite-3d-reject) (nop)) ;; #x185
+    (vu-pair (fcor vi01 0xf7df7d) (nop)) ;; #x186
+    (vu-pair (ibne vi00 vi01 sprite-3d-reject) (nop)) ;; #x187
+    (vu-pair (fcor vi01 0xfbefbe) (nop)) ;; #x188
+    (vu-pair (ibne vi00 vi01 sprite-3d-reject) (nop)) ;; #x189
+    (vu-pair (ior vi07 gif-ptr vi00) (nop)) ;; #x18a
+    (vu-pair (nop) (itof0.xyzw vf07 vf07)) ;; #x18b
+    (vu-pair (sq.xyzw vf09 vi07 2) (nop)) ;; #x18c
+    (vu-pair (sq.xyzw vf10 vi07 5) (nop)) ;; #x18d
+    (vu-pair (sq.xyzw vf11 vi07 8) (nop)) ;; #x18e
+    (vu-pair (sq.xyzw vf12 vi07 11) (nop)) ;; #x18f
+    (vu-pair (sq.xyzw vf09 vi07 14) (nop)) ;; #x190
+    (vu-pair (lq.xyzw vf18 vi00 (sprite-frame-const cdata 8)) (nop)) ;; #x191
+    (vu-pair (lq.xyzw vf19 vi00 (sprite-frame-const cdata 9)) (nop)) ;; #x192
+    (vu-pair (lq.xyzw vf20 vi00 (sprite-frame-const cdata 10)) (nop)) ;; #x193
+    (vu-pair (lq.xyzw vf21 vi00 (sprite-frame-const cdata 11)) (nop)) ;; #x194
+    (vu-pair (sq.xyzw vf18 vi07 0) (nop)) ;; #x195
+    (vu-pair (sq.xyzw vf19 vi07 3) (nop)) ;; #x196
+    (vu-pair (sq.xyzw vf20 vi07 6) (nop)) ;; #x197
+    (vu-pair (sq.xyzw vf21 vi07 9) (nop)) ;; #x198
+    (vu-pair (sq.xyzw vf18 vi07 12) (nop)) ;; #x199
+    (vu-pair (sq.xyzw vf07 vi07 1) (nop)) ;; #x19a
+    (vu-pair (sq.xyzw vf07 vi07 4) (nop)) ;; #x19b
+    (vu-pair (sq.xyzw vf07 vi07 7) (nop)) ;; #x19c
+    (vu-pair (sq.xyzw vf07 vi07 10) (nop)) ;; #x19d
+    (vu-pair (sq.xyzw vf07 vi07 13) (nop)) ;; #x19e
+    (vu-pair (iaddi vi09 vi00 0x4) (nop)) ;; #x19f
+    (vu-pair (bal vi11 clip-polygon) (nop)) ;; #x1a0
+    (vu-pair (nop) (nop)) ;; #x1a1
+    (vu-pair (lq.xyzw vf01 vi00 (sprite-frame-const clipped-giftag)) (nop)) ;; #x1a2
+    (vu-pair (ibeq vi00 vi09 sprite-3d-reject) (nop)) ;; #x1a3
+    (vu-pair (iaddiu vi10 vi09 0x4000) (nop)) ;; #x1a4
+    (vu-pair (iaddiu vi10 vi10 0x4000) (nop)) ;; #x1a5
+    (vu-pair (sqd.xyzw vf01 gif-ptr) (nop)) ;; #x1a6
+    (vu-pair (iswr.x vi10 gif-ptr) (nop)) ;; #x1a7
+    (vu-pair (iaddi gif-ptr gif-ptr 0x1) (nop)) ;; #x1a8
+    (vu-pair (lq.xyzw hmge-scale vi00 (sprite-frame-const inv-hmge-scale)) (nop)) ;; #x1a9
+    (label clip-project-fan)
+    (vu-pair (lqi.xyzw vf17 gif-ptr) (nop)) ;; #x1aa
+    (vu-pair (lqi.xyzw vf20 gif-ptr) (nop)) ;; #x1ab
+    (vu-pair (lqi.xyzw vf14 gif-ptr) (nop)) ;; #x1ac
+    (vu-pair (nop) (nop)) ;; #x1ad
+    (vu-pair (nop) (nop)) ;; #x1ae
+    (vu-pair (nop) (nop)) ;; #x1af
+    (vu-pair (div Q vf00.w vf14.w) (mul.xyzw vf14 vf14 hmge-scale)) ;; #x1b0
+    (vu-pair (nop) (nop)) ;; #x1b1
+    (vu-pair (nop) (nop)) ;; #x1b2
+    (vu-pair (nop) (nop)) ;; #x1b3
+    (vu-pair (nop) (nop)) ;; #x1b4
+    (vu-pair (nop) (nop)) ;; #x1b5
+    (vu-pair (nop) (nop)) ;; #x1b6
+    (vu-pair (nop) (mul.xyz vf14 vf14 Q)) ;; #x1b7
+    (vu-pair (nop) (mul.xyzw vf17 vf17 Q)) ;; #x1b8
+    (vu-pair (nop) (nop)) ;; #x1b9
+    (vu-pair (nop) (nop)) ;; #x1ba
+    (vu-pair (nop) (add.xyzw vf14 vf14 hvdf-off)) ;; #x1bb
+    (vu-pair (nop) (nop)) ;; #x1bc
+    (vu-pair (nop) (nop)) ;; #x1bd
+    (vu-pair (nop) (nop)) ;; #x1be
+    (vu-pair (nop) (maxx.w vf14 vf14 vf23)) ;; #x1bf
+    (vu-pair (nop) (nop)) ;; #x1c0
+    (vu-pair (nop) (nop)) ;; #x1c1
+    (vu-pair (nop) (nop)) ;; #x1c2
+    (vu-pair (nop) (miniy.w vf14 vf14 vf23)) ;; #x1c3
+    (vu-pair (nop) (nop)) ;; #x1c4
+    (vu-pair (nop) (nop)) ;; #x1c5
+    (vu-pair (nop) (ftoi0.xyzw vf20 vf20)) ;; #x1c6
+    (vu-pair (nop) (ftoi4.xyzw vf14 vf14)) ;; #x1c7
+    (vu-pair (nop) (nop)) ;; #x1c8
+    (vu-pair (sq.xyzw vf17 gif-ptr -3) (nop)) ;; #x1c9
+    (vu-pair (sq.xyzw vf20 gif-ptr -2) (nop)) ;; #x1ca
+    (vu-pair (sq.xyzw vf14 gif-ptr -1) (nop)) ;; #x1cb
+    (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x1cc
+    (vu-pair (nop) (nop)) ;; #x1cd
+    (vu-pair (ibne vi00 vi09 clip-project-fan) (nop)) ;; #x1ce
+    (vu-pair (nop) (nop)) ;; #x1cf
+    (vu-pair (lq.xyzw hmge-scale vi00 (sprite-frame-const hmge-scale)) (nop)) ;; #x1d0
+    (vu-pair (xgkick gif-buf) (nop)) ;; #x1d1
+    (vu-pair (iaddi sprite-count sprite-count -0x1) (nop)) ;; #x1d2
+    (vu-pair (iaddiu vi01 vi00 (+ SPRITE-VU-GIF-BUFFER-0 SPRITE-VU-GIF-BUFFER-1)) (nop)) ;; #x1d3
+    (vu-pair (ibne vi00 sprite-count sprite-3d-load-sprite) (nop)) ;; #x1d4
+    (vu-pair (isub gif-buf vi01 gif-buf) (nop)) ;; #x1d5
+    (vu-pair (nop) (nop :e)) ;; #x1d6
+    (vu-pair (nop) (nop)) ;; #x1d7
+    ;; Clip a partially visible polygon in place. vi07 is the input cursor, vi08 the output cursor,
+    ;; vi09 the input vertex count, and vi10 the output vertex count. Each vertex occupies three
+    ;; quadwords: ST, RGBAQ, and homogeneous position.
+    (label clip-polygon)
+    (vu-pair (ior vi08 vi07 vi00) (nop)) ;; #x1d8
+    (vu-pair (lq.xyzw vf14 vi07 2) (nop)) ;; #x1d9
+    (vu-pair (ior vi10 vi09 vi00) (nop)) ;; #x1da
+    (vu-pair (lq.xyzw vf17 vi07 0) (nop)) ;; #x1db
+    (vu-pair (lq.xyzw vf20 vi07 1) (nop)) ;; #x1dc
+    (vu-pair (iaddi vi07 vi07 0x3) (clipw.xyz vf14 vf14)) ;; #x1dd
+    (label clip-near-edge)
+    (vu-pair (lq.xyzw vf15 vi07 2) (nop)) ;; #x1de
+    (vu-pair (lq.xyzw vf18 vi07 0) (nop)) ;; #x1df
+    (vu-pair (lq.xyzw vf21 vi07 1) (nop)) ;; #x1e0
+    (vu-pair (iaddi vi07 vi07 0x3) (nop)) ;; #x1e1
+    (vu-pair (nop) (clipw.xyz vf15 vf15)) ;; #x1e2
+    (vu-pair (nop) (nop)) ;; #x1e3
+    (vu-pair (nop) (nop)) ;; #x1e4
+    (vu-pair (nop) (nop)) ;; #x1e5
+    (vu-pair (fcor vi01 0xfff7df) (nop)) ;; #x1e6
+    (vu-pair (ibne vi00 vi01 clip-near-drop) (nop)) ;; #x1e7
+    (vu-pair (fcand vi01 0x20) (nop)) ;; #x1e8
+    (vu-pair (ibne vi00 vi01 clip-near-exit) (nop)) ;; #x1e9
+    (vu-pair (fcand vi01 0x800) (nop)) ;; #x1ea
+    (vu-pair (ibne vi00 vi01 clip-near-entry) (nop)) ;; #x1eb
+    (vu-pair (nop) (nop)) ;; #x1ec
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x1ed
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x1ee
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x1ef
+    (label clip-near-next)
+    (vu-pair (move.xyzw vf17 vf18) (nop)) ;; #x1f0
+    (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x1f1
+    (vu-pair (move.xyzw vf20 vf21) (nop)) ;; #x1f2
+    (vu-pair (ibne vi00 vi09 clip-near-edge) (nop)) ;; #x1f3
+    (vu-pair (move.xyzw vf14 vf15) (nop)) ;; #x1f4
+    (vu-pair (lq.xyzw vf17 gif-ptr 0) (nop)) ;; #x1f5
+    (vu-pair (lq.xyzw vf20 gif-ptr 1) (nop)) ;; #x1f6
+    (vu-pair (lq.xyzw vf14 gif-ptr 2) (nop)) ;; #x1f7
+    (vu-pair (ior vi07 gif-ptr vi00) (nop)) ;; #x1f8
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x1f9
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x1fa
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x1fb
+    (vu-pair (ibeq vi00 vi10 clip-done) (nop)) ;; #x1fc
+    (vu-pair (ior vi09 vi10 vi00) (nop)) ;; #x1fd
+    (vu-pair (ior vi08 vi07 vi00) (nop)) ;; #x1fe
+    (vu-pair (lq.xyzw vf14 vi07 2) (nop)) ;; #x1ff
+    (vu-pair (ior vi10 vi09 vi00) (nop)) ;; #x200
+    (vu-pair (lq.xyzw vf17 vi07 0) (nop)) ;; #x201
+    (vu-pair (lq.xyzw vf20 vi07 1) (nop)) ;; #x202
+    (vu-pair (iaddi vi07 vi07 0x3) (clipw.xyz vf14 vf14)) ;; #x203
+    (label clip-y-min-edge)
+    (vu-pair (lq.xyzw vf15 vi07 2) (nop)) ;; #x204
+    (vu-pair (lq.xyzw vf18 vi07 0) (nop)) ;; #x205
+    (vu-pair (lq.xyzw vf21 vi07 1) (nop)) ;; #x206
+    (vu-pair (iaddi vi07 vi07 0x3) (nop)) ;; #x207
+    (vu-pair (nop) (clipw.xyz vf15 vf15)) ;; #x208
+    (vu-pair (nop) (nop)) ;; #x209
+    (vu-pair (nop) (nop)) ;; #x20a
+    (vu-pair (nop) (nop)) ;; #x20b
+    (vu-pair (fcor vi01 0xfffdf7) (nop)) ;; #x20c
+    (vu-pair (ibne vi00 vi01 clip-y-min-drop) (nop)) ;; #x20d
+    (vu-pair (fcand vi01 0x8) (nop)) ;; #x20e
+    (vu-pair (ibne vi00 vi01 clip-y-min-exit) (nop)) ;; #x20f
+    (vu-pair (fcand vi01 0x200) (nop)) ;; #x210
+    (vu-pair (ibne vi00 vi01 clip-y-min-entry) (nop)) ;; #x211
+    (vu-pair (nop) (nop)) ;; #x212
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x213
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x214
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x215
+    (label clip-y-min-next)
+    (vu-pair (move.xyzw vf17 vf18) (nop)) ;; #x216
+    (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x217
+    (vu-pair (move.xyzw vf20 vf21) (nop)) ;; #x218
+    (vu-pair (ibne vi00 vi09 clip-y-min-edge) (nop)) ;; #x219
+    (vu-pair (move.xyzw vf14 vf15) (nop)) ;; #x21a
+    (vu-pair (lq.xyzw vf17 gif-ptr 0) (nop)) ;; #x21b
+    (vu-pair (lq.xyzw vf20 gif-ptr 1) (nop)) ;; #x21c
+    (vu-pair (lq.xyzw vf14 gif-ptr 2) (nop)) ;; #x21d
+    (vu-pair (ior vi07 gif-ptr vi00) (nop)) ;; #x21e
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x21f
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x220
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x221
+    (vu-pair (ibeq vi00 vi10 clip-done) (nop)) ;; #x222
+    (vu-pair (ior vi09 vi10 vi00) (nop)) ;; #x223
+    (vu-pair (ior vi08 vi07 vi00) (nop)) ;; #x224
+    (vu-pair (lq.xyzw vf14 vi07 2) (nop)) ;; #x225
+    (vu-pair (ior vi10 vi09 vi00) (nop)) ;; #x226
+    (vu-pair (lq.xyzw vf17 vi07 0) (nop)) ;; #x227
+    (vu-pair (lq.xyzw vf20 vi07 1) (nop)) ;; #x228
+    (vu-pair (iaddi vi07 vi07 0x3) (clipw.xyz vf14 vf14)) ;; #x229
+    (label clip-y-max-edge)
+    (vu-pair (lq.xyzw vf15 vi07 2) (nop)) ;; #x22a
+    (vu-pair (lq.xyzw vf18 vi07 0) (nop)) ;; #x22b
+    (vu-pair (lq.xyzw vf21 vi07 1) (nop)) ;; #x22c
+    (vu-pair (iaddi vi07 vi07 0x3) (nop)) ;; #x22d
+    (vu-pair (nop) (clipw.xyz vf15 vf15)) ;; #x22e
+    (vu-pair (nop) (nop)) ;; #x22f
+    (vu-pair (nop) (nop)) ;; #x230
+    (vu-pair (nop) (nop)) ;; #x231
+    (vu-pair (fcor vi01 0xfffefb) (nop)) ;; #x232
+    (vu-pair (ibne vi00 vi01 clip-y-max-drop) (nop)) ;; #x233
+    (vu-pair (fcand vi01 0x4) (nop)) ;; #x234
+    (vu-pair (ibne vi00 vi01 clip-y-max-exit) (nop)) ;; #x235
+    (vu-pair (fcand vi01 0x100) (nop)) ;; #x236
+    (vu-pair (ibne vi00 vi01 clip-y-max-entry) (nop)) ;; #x237
+    (vu-pair (nop) (nop)) ;; #x238
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x239
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x23a
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x23b
+    (label clip-y-max-next)
+    (vu-pair (move.xyzw vf17 vf18) (nop)) ;; #x23c
+    (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x23d
+    (vu-pair (move.xyzw vf20 vf21) (nop)) ;; #x23e
+    (vu-pair (ibne vi00 vi09 clip-y-max-edge) (nop)) ;; #x23f
+    (vu-pair (move.xyzw vf14 vf15) (nop)) ;; #x240
+    (vu-pair (lq.xyzw vf17 gif-ptr 0) (nop)) ;; #x241
+    (vu-pair (lq.xyzw vf20 gif-ptr 1) (nop)) ;; #x242
+    (vu-pair (lq.xyzw vf14 gif-ptr 2) (nop)) ;; #x243
+    (vu-pair (ior vi07 gif-ptr vi00) (nop)) ;; #x244
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x245
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x246
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x247
+    (vu-pair (ibeq vi00 vi10 clip-done) (nop)) ;; #x248
+    (vu-pair (ior vi09 vi10 vi00) (nop)) ;; #x249
+    (vu-pair (ior vi08 vi07 vi00) (nop)) ;; #x24a
+    (vu-pair (lq.xyzw vf14 vi07 2) (nop)) ;; #x24b
+    (vu-pair (ior vi10 vi09 vi00) (nop)) ;; #x24c
+    (vu-pair (lq.xyzw vf17 vi07 0) (nop)) ;; #x24d
+    (vu-pair (lq.xyzw vf20 vi07 1) (nop)) ;; #x24e
+    (vu-pair (iaddi vi07 vi07 0x3) (clipw.xyz vf14 vf14)) ;; #x24f
+    (label clip-x-min-edge)
+    (vu-pair (lq.xyzw vf15 vi07 2) (nop)) ;; #x250
+    (vu-pair (lq.xyzw vf18 vi07 0) (nop)) ;; #x251
+    (vu-pair (lq.xyzw vf21 vi07 1) (nop)) ;; #x252
+    (vu-pair (iaddi vi07 vi07 0x3) (nop)) ;; #x253
+    (vu-pair (nop) (clipw.xyz vf15 vf15)) ;; #x254
+    (vu-pair (nop) (nop)) ;; #x255
+    (vu-pair (nop) (nop)) ;; #x256
+    (vu-pair (nop) (nop)) ;; #x257
+    (vu-pair (fcor vi01 0xffff7d) (nop)) ;; #x258
+    (vu-pair (ibne vi00 vi01 clip-x-min-drop) (nop)) ;; #x259
+    (vu-pair (fcand vi01 0x2) (nop)) ;; #x25a
+    (vu-pair (ibne vi00 vi01 clip-x-min-exit) (nop)) ;; #x25b
+    (vu-pair (fcand vi01 0x80) (nop)) ;; #x25c
+    (vu-pair (ibne vi00 vi01 clip-x-min-entry) (nop)) ;; #x25d
+    (vu-pair (nop) (nop)) ;; #x25e
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x25f
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x260
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x261
+    (label clip-x-min-next)
+    (vu-pair (move.xyzw vf17 vf18) (nop)) ;; #x262
+    (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x263
+    (vu-pair (move.xyzw vf20 vf21) (nop)) ;; #x264
+    (vu-pair (ibne vi00 vi09 clip-x-min-edge) (nop)) ;; #x265
+    (vu-pair (move.xyzw vf14 vf15) (nop)) ;; #x266
+    (vu-pair (lq.xyzw vf17 gif-ptr 0) (nop)) ;; #x267
+    (vu-pair (lq.xyzw vf20 gif-ptr 1) (nop)) ;; #x268
+    (vu-pair (lq.xyzw vf14 gif-ptr 2) (nop)) ;; #x269
+    (vu-pair (ior vi07 gif-ptr vi00) (nop)) ;; #x26a
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x26b
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x26c
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x26d
+    (vu-pair (ibeq vi00 vi10 clip-done) (nop)) ;; #x26e
+    (vu-pair (ior vi09 vi10 vi00) (nop)) ;; #x26f
+    (vu-pair (ior vi08 vi07 vi00) (nop)) ;; #x270
+    (vu-pair (lq.xyzw vf14 vi07 2) (nop)) ;; #x271
+    (vu-pair (ior vi10 vi09 vi00) (nop)) ;; #x272
+    (vu-pair (lq.xyzw vf17 vi07 0) (nop)) ;; #x273
+    (vu-pair (lq.xyzw vf20 vi07 1) (nop)) ;; #x274
+    (vu-pair (iaddi vi07 vi07 0x3) (clipw.xyz vf14 vf14)) ;; #x275
+    (label clip-x-max-edge)
+    (vu-pair (lq.xyzw vf15 vi07 2) (nop)) ;; #x276
+    (vu-pair (lq.xyzw vf18 vi07 0) (nop)) ;; #x277
+    (vu-pair (lq.xyzw vf21 vi07 1) (nop)) ;; #x278
+    (vu-pair (iaddi vi07 vi07 0x3) (nop)) ;; #x279
+    (vu-pair (nop) (clipw.xyz vf15 vf15)) ;; #x27a
+    (vu-pair (nop) (nop)) ;; #x27b
+    (vu-pair (nop) (nop)) ;; #x27c
+    (vu-pair (nop) (nop)) ;; #x27d
+    (vu-pair (fcor vi01 0xffffbe) (nop)) ;; #x27e
+    (vu-pair (ibne vi00 vi01 clip-x-max-drop) (nop)) ;; #x27f
+    (vu-pair (fcand vi01 0x1) (nop)) ;; #x280
+    (vu-pair (ibne vi00 vi01 clip-x-max-exit) (nop)) ;; #x281
+    (vu-pair (fcand vi01 0x40) (nop)) ;; #x282
+    (vu-pair (ibne vi00 vi01 clip-x-max-entry) (nop)) ;; #x283
+    (vu-pair (nop) (nop)) ;; #x284
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x285
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x286
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x287
+    (label clip-x-max-next)
+    (vu-pair (move.xyzw vf17 vf18) (nop)) ;; #x288
+    (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x289
+    (vu-pair (move.xyzw vf20 vf21) (nop)) ;; #x28a
+    (vu-pair (ibne vi00 vi09 clip-x-max-edge) (nop)) ;; #x28b
+    (vu-pair (move.xyzw vf14 vf15) (nop)) ;; #x28c
+    (vu-pair (lq.xyzw vf17 gif-ptr 0) (nop)) ;; #x28d
+    (vu-pair (lq.xyzw vf20 gif-ptr 1) (nop)) ;; #x28e
+    (vu-pair (lq.xyzw vf14 gif-ptr 2) (nop)) ;; #x28f
+    (vu-pair (ior vi07 gif-ptr vi00) (nop)) ;; #x290
+    (vu-pair (sqi.xyzw vf17 vi08) (nop)) ;; #x291
+    (vu-pair (sqi.xyzw vf20 vi08) (nop)) ;; #x292
+    (vu-pair (sqi.xyzw vf14 vi08) (nop)) ;; #x293
+    (vu-pair (ibeq vi00 vi10 clip-done) (nop)) ;; #x294
+    (vu-pair (ior vi09 vi10 vi00) (nop)) ;; #x295
+    ;; Return after one plane has consumed the old polygon and produced the next polygon.
+    (label clip-done)
+    (vu-pair (jr vi11) (nop)) ;; #x296
+    (vu-pair (nop) (nop)) ;; #x297
+    (label clip-near-drop)
+    (vu-pair (b clip-near-next) (nop)) ;; #x298
+    (vu-pair (iaddi vi10 vi10 -0x1) (nop)) ;; #x299
+    (label clip-near-exit)
+    (vu-pair (sqi.xyzw vf17 vi08) (sub.xyzw vf16 vf15 vf14)) ;; #x29a
+    (vu-pair (sqi.xyzw vf20 vi08) (sub.xyzw vf19 vf18 vf17)) ;; #x29b
+    (vu-pair (sqi.xyzw vf14 vi08) (sub.xyzw vf22 vf21 vf20)) ;; #x29c
+    (vu-pair (ibeq vi07 vi08 clip-near-next) (nop)) ;; #x29d
+    (vu-pair (nop) (addz.w vf13 vf16 vf16)) ;; #x29e
+    (vu-pair (nop) (addw.z vf13 vf14 vf14)) ;; #x29f
+    (vu-pair (div Q vf13.z vf13.w) (nop)) ;; #x2a0
+    (vu-pair (waitq) (nop)) ;; #x2a1
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x2a2
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x2a3
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x2a4
+    (vu-pair (nop) (sub.xyzw vf19 vf17 vf19)) ;; #x2a5
+    (vu-pair (nop) (sub.xyzw vf22 vf20 vf22)) ;; #x2a6
+    (vu-pair (nop) (sub.xyzw vf16 vf14 vf16)) ;; #x2a7
+    (vu-pair (iaddi vi10 vi10 0x1) (nop)) ;; #x2a8
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x2a9
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x2aa
+    (vu-pair (b clip-near-next) (nop)) ;; #x2ab
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x2ac
+    (label clip-near-entry)
+    (vu-pair (nop) (sub.xyzw vf16 vf14 vf15)) ;; #x2ad
+    (vu-pair (nop) (sub.xyzw vf19 vf17 vf18)) ;; #x2ae
+    (vu-pair (nop) (sub.xyzw vf22 vf20 vf21)) ;; #x2af
+    (vu-pair (nop) (addz.w vf13 vf16 vf16)) ;; #x2b0
+    (vu-pair (nop) (addw.z vf13 vf15 vf15)) ;; #x2b1
+    (vu-pair (div Q vf13.z vf13.w) (nop)) ;; #x2b2
+    (vu-pair (waitq) (nop)) ;; #x2b3
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x2b4
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x2b5
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x2b6
+    (vu-pair (nop) (sub.xyzw vf19 vf18 vf19)) ;; #x2b7
+    (vu-pair (nop) (sub.xyzw vf22 vf21 vf22)) ;; #x2b8
+    (vu-pair (nop) (sub.xyzw vf16 vf15 vf16)) ;; #x2b9
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x2ba
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x2bb
+    (vu-pair (b clip-near-next) (nop)) ;; #x2bc
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x2bd
+    (label clip-y-min-drop)
+    (vu-pair (b clip-y-min-next) (nop)) ;; #x2be
+    (vu-pair (iaddi vi10 vi10 -0x1) (nop)) ;; #x2bf
+    (label clip-y-min-exit)
+    (vu-pair (sqi.xyzw vf17 vi08) (sub.xyzw vf16 vf15 vf14)) ;; #x2c0
+    (vu-pair (sqi.xyzw vf20 vi08) (sub.xyzw vf19 vf18 vf17)) ;; #x2c1
+    (vu-pair (sqi.xyzw vf14 vi08) (sub.xyzw vf22 vf21 vf20)) ;; #x2c2
+    (vu-pair (ibeq vi07 vi08 clip-y-min-next) (nop)) ;; #x2c3
+    (vu-pair (nop) (addy.w vf13 vf16 vf16)) ;; #x2c4
+    (vu-pair (nop) (addw.y vf13 vf14 vf14)) ;; #x2c5
+    (vu-pair (div Q vf13.y vf13.w) (nop)) ;; #x2c6
+    (vu-pair (waitq) (nop)) ;; #x2c7
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x2c8
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x2c9
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x2ca
+    (vu-pair (nop) (sub.xyzw vf19 vf17 vf19)) ;; #x2cb
+    (vu-pair (nop) (sub.xyzw vf22 vf20 vf22)) ;; #x2cc
+    (vu-pair (nop) (sub.xyzw vf16 vf14 vf16)) ;; #x2cd
+    (vu-pair (iaddi vi10 vi10 0x1) (nop)) ;; #x2ce
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x2cf
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x2d0
+    (vu-pair (b clip-y-min-next) (nop)) ;; #x2d1
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x2d2
+    (label clip-y-min-entry)
+    (vu-pair (nop) (sub.xyzw vf16 vf14 vf15)) ;; #x2d3
+    (vu-pair (nop) (sub.xyzw vf19 vf17 vf18)) ;; #x2d4
+    (vu-pair (nop) (sub.xyzw vf22 vf20 vf21)) ;; #x2d5
+    (vu-pair (nop) (addy.w vf13 vf16 vf16)) ;; #x2d6
+    (vu-pair (nop) (addw.y vf13 vf15 vf15)) ;; #x2d7
+    (vu-pair (div Q vf13.y vf13.w) (nop)) ;; #x2d8
+    (vu-pair (waitq) (nop)) ;; #x2d9
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x2da
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x2db
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x2dc
+    (vu-pair (nop) (sub.xyzw vf19 vf18 vf19)) ;; #x2dd
+    (vu-pair (nop) (sub.xyzw vf22 vf21 vf22)) ;; #x2de
+    (vu-pair (nop) (sub.xyzw vf16 vf15 vf16)) ;; #x2df
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x2e0
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x2e1
+    (vu-pair (b clip-y-min-next) (nop)) ;; #x2e2
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x2e3
+    (label clip-y-max-drop)
+    (vu-pair (b clip-y-max-next) (nop)) ;; #x2e4
+    (vu-pair (iaddi vi10 vi10 -0x1) (nop)) ;; #x2e5
+    (label clip-y-max-exit)
+    (vu-pair (sqi.xyzw vf17 vi08) (sub.xyzw vf16 vf15 vf14)) ;; #x2e6
+    (vu-pair (sqi.xyzw vf20 vi08) (sub.xyzw vf19 vf18 vf17)) ;; #x2e7
+    (vu-pair (sqi.xyzw vf14 vi08) (sub.xyzw vf22 vf21 vf20)) ;; #x2e8
+    (vu-pair (ibeq vi07 vi08 clip-y-max-next) (nop)) ;; #x2e9
+    (vu-pair (nop) (suby.w vf13 vf16 vf16)) ;; #x2ea
+    (vu-pair (nop) (subw.y vf13 vf14 vf14)) ;; #x2eb
+    (vu-pair (div Q vf13.y vf13.w) (nop)) ;; #x2ec
+    (vu-pair (waitq) (nop)) ;; #x2ed
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x2ee
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x2ef
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x2f0
+    (vu-pair (nop) (add.xyzw vf19 vf17 vf19)) ;; #x2f1
+    (vu-pair (nop) (add.xyzw vf22 vf20 vf22)) ;; #x2f2
+    (vu-pair (nop) (add.xyzw vf16 vf14 vf16)) ;; #x2f3
+    (vu-pair (iaddi vi10 vi10 0x1) (nop)) ;; #x2f4
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x2f5
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x2f6
+    (vu-pair (b clip-y-max-next) (nop)) ;; #x2f7
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x2f8
+    (label clip-y-max-entry)
+    (vu-pair (nop) (sub.xyzw vf16 vf14 vf15)) ;; #x2f9
+    (vu-pair (nop) (sub.xyzw vf19 vf17 vf18)) ;; #x2fa
+    (vu-pair (nop) (sub.xyzw vf22 vf20 vf21)) ;; #x2fb
+    (vu-pair (nop) (suby.w vf13 vf16 vf16)) ;; #x2fc
+    (vu-pair (nop) (subw.y vf13 vf15 vf15)) ;; #x2fd
+    (vu-pair (div Q vf13.y vf13.w) (nop)) ;; #x2fe
+    (vu-pair (waitq) (nop)) ;; #x2ff
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x300
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x301
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x302
+    (vu-pair (nop) (add.xyzw vf19 vf18 vf19)) ;; #x303
+    (vu-pair (nop) (add.xyzw vf22 vf21 vf22)) ;; #x304
+    (vu-pair (nop) (add.xyzw vf16 vf15 vf16)) ;; #x305
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x306
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x307
+    (vu-pair (b clip-y-max-next) (nop)) ;; #x308
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x309
+    (label clip-x-min-drop)
+    (vu-pair (b clip-x-min-next) (nop)) ;; #x30a
+    (vu-pair (iaddi vi10 vi10 -0x1) (nop)) ;; #x30b
+    (label clip-x-min-exit)
+    (vu-pair (sqi.xyzw vf17 vi08) (sub.xyzw vf16 vf15 vf14)) ;; #x30c
+    (vu-pair (sqi.xyzw vf20 vi08) (sub.xyzw vf19 vf18 vf17)) ;; #x30d
+    (vu-pair (sqi.xyzw vf14 vi08) (sub.xyzw vf22 vf21 vf20)) ;; #x30e
+    (vu-pair (ibeq vi07 vi08 clip-x-min-next) (nop)) ;; #x30f
+    (vu-pair (nop) (addx.w vf13 vf16 vf16)) ;; #x310
+    (vu-pair (nop) (addw.x vf13 vf14 vf14)) ;; #x311
+    (vu-pair (div Q vf13.x vf13.w) (nop)) ;; #x312
+    (vu-pair (waitq) (nop)) ;; #x313
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x314
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x315
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x316
+    (vu-pair (nop) (sub.xyzw vf19 vf17 vf19)) ;; #x317
+    (vu-pair (nop) (sub.xyzw vf22 vf20 vf22)) ;; #x318
+    (vu-pair (nop) (sub.xyzw vf16 vf14 vf16)) ;; #x319
+    (vu-pair (iaddi vi10 vi10 0x1) (nop)) ;; #x31a
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x31b
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x31c
+    (vu-pair (b clip-x-min-next) (nop)) ;; #x31d
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x31e
+    (label clip-x-min-entry)
+    (vu-pair (nop) (sub.xyzw vf16 vf14 vf15)) ;; #x31f
+    (vu-pair (nop) (sub.xyzw vf19 vf17 vf18)) ;; #x320
+    (vu-pair (nop) (sub.xyzw vf22 vf20 vf21)) ;; #x321
+    (vu-pair (nop) (addx.w vf13 vf16 vf16)) ;; #x322
+    (vu-pair (nop) (addw.x vf13 vf15 vf15)) ;; #x323
+    (vu-pair (div Q vf13.x vf13.w) (nop)) ;; #x324
+    (vu-pair (waitq) (nop)) ;; #x325
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x326
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x327
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x328
+    (vu-pair (nop) (sub.xyzw vf19 vf18 vf19)) ;; #x329
+    (vu-pair (nop) (sub.xyzw vf22 vf21 vf22)) ;; #x32a
+    (vu-pair (nop) (sub.xyzw vf16 vf15 vf16)) ;; #x32b
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x32c
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x32d
+    (vu-pair (b clip-x-min-next) (nop)) ;; #x32e
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x32f
+    (label clip-x-max-drop)
+    (vu-pair (b clip-x-max-next) (nop)) ;; #x330
+    (vu-pair (iaddi vi10 vi10 -0x1) (nop)) ;; #x331
+    (label clip-x-max-exit)
+    (vu-pair (sqi.xyzw vf17 vi08) (sub.xyzw vf16 vf15 vf14)) ;; #x332
+    (vu-pair (sqi.xyzw vf20 vi08) (sub.xyzw vf19 vf18 vf17)) ;; #x333
+    (vu-pair (sqi.xyzw vf14 vi08) (sub.xyzw vf22 vf21 vf20)) ;; #x334
+    (vu-pair (ibeq vi07 vi08 clip-x-max-next) (nop)) ;; #x335
+    (vu-pair (nop) (subx.w vf13 vf16 vf16)) ;; #x336
+    (vu-pair (nop) (subw.x vf13 vf14 vf14)) ;; #x337
+    (vu-pair (div Q vf13.x vf13.w) (nop)) ;; #x338
+    (vu-pair (waitq) (nop)) ;; #x339
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x33a
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x33b
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x33c
+    (vu-pair (nop) (add.xyzw vf19 vf17 vf19)) ;; #x33d
+    (vu-pair (nop) (add.xyzw vf22 vf20 vf22)) ;; #x33e
+    (vu-pair (nop) (add.xyzw vf16 vf14 vf16)) ;; #x33f
+    (vu-pair (iaddi vi10 vi10 0x1) (nop)) ;; #x340
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x341
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x342
+    (vu-pair (b clip-x-max-next) (nop)) ;; #x343
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x344
+    (label clip-x-max-entry)
+    (vu-pair (nop) (sub.xyzw vf16 vf14 vf15)) ;; #x345
+    (vu-pair (nop) (sub.xyzw vf19 vf17 vf18)) ;; #x346
+    (vu-pair (nop) (sub.xyzw vf22 vf20 vf21)) ;; #x347
+    (vu-pair (nop) (subx.w vf13 vf16 vf16)) ;; #x348
+    (vu-pair (nop) (subw.x vf13 vf15 vf15)) ;; #x349
+    (vu-pair (div Q vf13.x vf13.w) (nop)) ;; #x34a
+    (vu-pair (waitq) (nop)) ;; #x34b
+    (vu-pair (nop) (mul.xyzw vf19 vf19 Q)) ;; #x34c
+    (vu-pair (nop) (mul.xyzw vf22 vf22 Q)) ;; #x34d
+    (vu-pair (nop) (mul.xyzw vf16 vf16 Q)) ;; #x34e
+    (vu-pair (nop) (add.xyzw vf19 vf18 vf19)) ;; #x34f
+    (vu-pair (nop) (add.xyzw vf22 vf21 vf22)) ;; #x350
+    (vu-pair (nop) (add.xyzw vf16 vf15 vf16)) ;; #x351
+    (vu-pair (sqi.xyzw vf19 vi08) (nop)) ;; #x352
+    (vu-pair (sqi.xyzw vf22 vi08) (nop)) ;; #x353
+    (vu-pair (b clip-x-max-next) (nop)) ;; #x354
+    (vu-pair (sqi.xyzw vf16 vi08) (nop)) ;; #x355
+  )))

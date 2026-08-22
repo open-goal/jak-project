@@ -6,8 +6,9 @@
 
 ;; DECOMP BEGINS
 
-(deftype junglefish (nav-enemy) ())
-
+(deftype junglefish (nav-enemy)
+  "A small aquatic enemy that patrols and attacks while following the Jungle water surface."
+  ())
 
 (defskelgroup *junglefish-sg*
   junglefish
@@ -19,7 +20,8 @@
 nav-enemy-default-event-handler
 
 (defmethod common-post ((this junglefish))
-  (water-control-method-10 (-> this water))
+  "Update the fish's water state before running the inherited enemy post."
+  (update-water-state! (-> this water))
   (call-parent-method this)
   0
   (none))
@@ -181,7 +183,8 @@ nav-enemy-default-event-handler
        :debug-draw-neck #f
        :debug-draw-jump #f))
 
-(defmethod init-from-entity! ((this junglefish) (arg0 entity-actor))
+(defmethod init-from-entity! ((this junglefish) (source-entity entity-actor))
+  "Build the fish collision and skeleton, initialize navigation and water tracking, and begin idling."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
@@ -196,7 +199,7 @@ nav-enemy-default-event-handler
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this collide-info) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *junglefish-sg* '())
   (init-defaults! this *junglefish-nav-enemy-info*)
   (set! (-> this water) (new 'process 'water-control this 7 0.0 8192.0 2048.0))

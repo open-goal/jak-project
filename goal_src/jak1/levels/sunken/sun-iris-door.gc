@@ -26,7 +26,6 @@
    sun-iris-door-open
    sun-iris-door-opening))
 
-
 (defskelgroup *sun-iris-door-sg*
   sun-iris-door
   sun-iris-door-lod0-jg
@@ -35,6 +34,7 @@
   :bounds (static-spherem 0 0 0 4.5))
 
 (defmethod should-open? ((this sun-iris-door))
+  "Return whether Jak or the camera is within the opening distance and any task lock is clear."
   (let ((f30-0 1228800.0))
     0.0
     (let ((f0-7 (cond
@@ -61,7 +61,7 @@
         (('trigger) (go sun-iris-door-opening))
         (('move-to)
          (set! (-> self move-to?) #t)
-         (set! (-> self move-to-pos quad) (-> (the-as vector (-> block param 0)) quad))
+         (vector-copy! (-> self move-to-pos) (the-as vector (-> block param 0)))
          (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> block param 1))))))
   :trans
     (behavior ()
@@ -87,7 +87,7 @@
         (('untrigger) (go sun-iris-door-closing))
         (('move-to)
          (set! (-> self move-to?) #t)
-         (set! (-> self move-to-pos quad) (-> (the-as vector (-> block param 0)) quad))
+         (vector-copy! (-> self move-to-pos) (the-as vector (-> block param 0)))
          (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> block param 1))))))
   :code
     (behavior ()
@@ -109,6 +109,8 @@
         (else (transform-post)))))
 
 (defmethod should-close? ((this sun-iris-door))
+  "Return whether both Jak and the camera are beyond the closing distance. A directional door
+   closes only when they are also on the same side."
   (let ((f30-0 1228800.0))
     0.0
     (let ((f0-7 (cond
@@ -146,7 +148,7 @@
         (('untrigger) (go sun-iris-door-closing))
         (('move-to)
          (set! (-> self move-to?) #t)
-         (set! (-> self move-to-pos quad) (-> (the-as vector (-> block param 0)) quad))
+         (vector-copy! (-> self move-to-pos) (the-as vector (-> block param 0)))
          (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> block param 1))))))
   :enter
     (behavior ()
@@ -183,7 +185,7 @@
         (('trigger) (go sun-iris-door-opening))
         (('move-to)
          (set! (-> self move-to?) #t)
-         (set! (-> self move-to-pos quad) (-> (the-as vector (-> block param 0)) quad))
+         (vector-copy! (-> self move-to-pos) (the-as vector (-> block param 0)))
          (quaternion-copy! (-> self move-to-quat) (the-as quaternion (-> block param 1))))))
   :code
     (behavior ()
@@ -204,7 +206,9 @@
          (ja-post))
         (else (transform-post)))))
 
-(defmethod init-from-entity! ((this sun-iris-door) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sun-iris-door) (source-entity entity-actor))
+  "Initialize the iris door's collision, skeleton, proximity rules, scale, offset, and outward
+   direction."
   (set! (-> this move-to?) #f)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -218,19 +222,19 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *sun-iris-door-sg* '())
   (set! (-> this close-dist) 49152.0)
   (set! (-> this open-dist) 40960.0)
-  (set! (-> this timeout) (res-lump-float arg0 'timeout))
-  (set! (-> this proximity?) (nonzero? (res-lump-value arg0 'proximity uint128)))
+  (set! (-> this timeout) (res-lump-float source-entity 'timeout))
+  (set! (-> this proximity?) (nonzero? (res-lump-value source-entity 'proximity uint128)))
   (set! (-> this directional-proximity?) #f)
   (when (name= (-> this name) "sun-iris-door-6")
     (set! (-> this close-dist) 16384.0)
     (set! (-> this open-dist) 8192.0)
     (set! (-> this directional-proximity?) #t))
   (set! (-> this locked-by-task?) (nonzero? (-> this entity extra perm task)))
-  (let ((f0-11 (res-lump-float arg0 'scale-factor :default 1.0)))
+  (let ((f0-11 (res-lump-float source-entity 'scale-factor :default 1.0)))
     (set-vector! (-> this root scale) f0-11 f0-11 f0-11 1.0)
     (set! (-> this draw bounds w) (* 18432.0 f0-11))
     (let ((v1-25 (-> this root root-prim))) (set! (-> v1-25 local-sphere w) (* 24576.0 f0-11 f0-11))))
@@ -251,7 +255,9 @@
   (go sun-iris-door-closed)
   (none))
 
-(defbehavior sun-iris-door-init-by-other sun-iris-door ((arg0 vector) (arg1 quaternion) (arg2 symbol))
+(defbehavior sun-iris-door-init-by-other sun-iris-door ((position vector) (orientation quaternion) (open? symbol))
+  "Initialize a script-created iris door at a position and orientation, starting either open or
+   closed without proximity control."
   (set! (-> self move-to?) #f)
   (let ((s3-0 (new 'process 'collide-shape self (collide-list-enum hit-by-others))))
     (let ((s2-0 (new 'process 'collide-shape-prim-mesh s3-0 (the-as uint 0) (the-as uint 0))))
@@ -265,8 +271,8 @@
     (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
     (backup-collide-with-as s3-0)
     (set! (-> self root) s3-0))
-  (set! (-> self root trans quad) (-> arg0 quad))
-  (quaternion-copy! (-> self root quat) arg1)
+  (vector-copy! (-> self root trans) position)
+  (quaternion-copy! (-> self root quat) orientation)
   (initialize-skeleton self *sun-iris-door-sg* '())
   (set! (-> self close-dist) 49152.0)
   (set! (-> self open-dist) 40960.0)
@@ -274,7 +280,7 @@
   (set! (-> self proximity?) #f)
   (set! (-> self directional-proximity?) #f)
   (ja-channel-set! 1)
-  (if arg2 (ja :group! sun-iris-door-idle-ja :num! max) (ja :group! sun-iris-door-idle-ja :num! min))
+  (if open? (ja :group! sun-iris-door-idle-ja :num! max) (ja :group! sun-iris-door-idle-ja :num! min))
   (transform-post)
-  (if arg2 (go sun-iris-door-open) (go sun-iris-door-closed))
+  (if open? (go sun-iris-door-open) (go sun-iris-door-closed))
   (none))

@@ -6,6 +6,15 @@
 
 ;; THIS FILE IS REALLY WEIRD PLEASE JUST LOOK AWAY
 
+;; The list operations that are not small enough to inline. See glist-h.gc for
+;; how the header doubles as the two terminator nodes; that is what lets insert
+;; and remove here run without a special case for either end of the list.
+;;
+;; anim-tester is the only user in the game. It calls glst-init-list!,
+;; glst-add-tail, glst-remove, glst-insert-before, glst-insert-after,
+;; glst-num-elements, glst-get-node-by-index, glst-get-node-index and
+;; glst-find-node-by-name; the rest are unused.
+
 (declare-file (debug))
 
 (defun-debug glst-num-elements ((list glst-list))
@@ -13,7 +22,9 @@
   (-> list numelem))
 
 (defun-debug glst-remove ((list glst-list) (node glst-node))
-  "Remove the node from the list"
+  "Unlink node and return it. Safe on the first or last element, because the
+   neighbour that gets patched is then one of the header's own terminators.
+   Does not check that node is really on this list; only numelem says so."
   (let ((prev (glst-prev node))
         (next (glst-next node)))
     (set! (-> prev next) next)
@@ -23,17 +34,23 @@
 
 (defun-debug glst-remove-tail ((list glst-list))
   "Remove the last node from the list, if it is not also the first.
-   Returns the deleted node, or #f otherwise"
+   Returns the deleted node, or #f otherwise.
+
+   The test looks at the node before the last one rather than at the last one
+   itself, which is why a one-element list is left alone; on an empty list it
+   reads through #f. Unused."
   (let ((tail (glst-tail list))) (if (not (glst-start-of-list? (-> tail prev))) (glst-remove list tail))))
 
 (defun-debug glst-remove-head ((list glst-list))
   "Remove the first node from the list, if it is not also the last.
-   Returns the deleted node, or #f otherwise"
+   Returns the deleted node, or #f otherwise. Has the same extra indirection as
+   glst-remove-tail. Unused."
   (let ((head (glst-head list))) (if (not (glst-end-of-list? (-> head next))) (glst-remove list head))))
 
 (defun-debug glst-insert-before ((list glst-list) (node glst-node) (new-node glst-node))
   "Insert a new node before node in the list.
-   Returns the new node."
+   Returns the new node. node may be the header's back terminator, which is how
+   glst-add-tail appends."
   (let ((prev (glst-prev node)))
     (set! (-> new-node prev) prev)
     (set! (-> new-node next) node)
@@ -44,7 +61,8 @@
 
 (defun-debug glst-insert-after ((list glst-list) (node glst-node) (new-node glst-node))
   "Insert a new node after node in the list.
-   Returns the new node."
+   Returns the new node. node may be the header's front terminator, which is how
+   glst-add-head prepends."
   (let ((next (glst-next node)))
     (set! (-> new-node next) next)
     (set! (-> new-node prev) node)
@@ -54,15 +72,20 @@
   new-node)
 
 (defun-debug glst-add-tail ((list glst-list) (node glst-node))
-  "Add a node to the end of the list"
+  "Add a node to the end of the list, by inserting it before the terminator that
+   the tail field forms."
   (glst-insert-before list (the-as glst-node (&-> list tail)) node))
 
 (defun-debug glst-add-head ((list glst-list) (node glst-node))
-  "Add a node to the start of the list"
+  "Add a node to the start of the list, by inserting it after the terminator that
+   the head field forms. Unused."
   (glst-insert-after list (the-as glst-node (&-> list head)) node))
 
 (defun-debug glst-init-list! ((list glst-list))
-  "Init the list"
+  "Make the list empty: head points at the tail field, tailpred at the head
+   field, and tail is #f, so the two terminators are in place and each walk stops
+   at the other end. Returns the list. Must be called before anything else, and
+   is the only way to clear a list."
   (set! (-> list head) (the-as glst-node (&-> list tail)))
   (set! (-> list tail) #f)
   (set! (-> list tailpred) (the-as glst-node (&-> list head)))
@@ -70,11 +93,14 @@
   list)
 
 (defmacro glst-iterate-list (list node &rest body)
-  "Iterate through the list using node as the current node variable"
+  "Iterate through the list using node as the current node variable.
+   Stops at the back terminator, so body never sees one. Do not remove node
+   inside body: the walk reads its next pointer afterwards."
   `(let ((,node (glst-head ,list))) (while (not (glst-end-of-list? (-> ,node next))) ,@body (set! ,node (glst-next ,node)))))
 
 (defmacro glst-iterate-named-list (list node &rest body)
-  "Iterate through the named node list using node as the current node variable"
+  "Iterate through the named node list using node as the current node variable.
+   As glst-iterate-list, with node typed glst-named-node."
   `(let ((,node (the glst-named-node (glst-head ,list))))
     (while (not (glst-end-of-list? (-> ,node next)))
       ,@body
@@ -86,7 +112,9 @@
   (the-as glst-node #f))
 
 (defun-debug glst-get-node-by-index ((list glst-list) (n int))
-  "Return the n-th node in the list, beginning at zero"
+  "Return the n-th node in the list, beginning at zero, or #f if n is negative or
+   past the end. Walks from the head, so callers stepping through a list should
+   keep the node rather than the index."
   (if (and (< n (glst-num-elements list)) (>= n 0))
     (let ((node (glst-head list)))
       (dotimes (index n)
@@ -96,7 +124,9 @@
   (the-as glst-node #f))
 
 (defun-debug glst-length-of-longest-name ((list glst-list))
-  "Returns the length of longest name in a list of named nodes"
+  "Returns the length of longest name in a list of named nodes, or 0 if the list
+   is empty. Unused: anim-tester sizes its panels by asking each list handler to
+   measure its own rows."
   (let ((max-len 0))
     (glst-iterate-named-list list node (let ((len (length (-> node privname)))) (when (< max-len len) (set! max-len len))))
     max-len))

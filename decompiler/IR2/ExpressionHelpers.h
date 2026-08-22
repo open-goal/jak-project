@@ -29,4 +29,7 @@ FormElement* last_two_in_and_to_handle_get_proc(Form* first,
                                                 FormPool& pool,
                                                 FormStack& stack,
                                                 bool part_of_longer_sc);
+
+FormElement* try_to_rewrite_vector_copy(Form* dst, Form* src, FormPool& pool, const Env& env);
+
 }  // namespace decompiler

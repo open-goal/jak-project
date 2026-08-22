@@ -10,81 +10,79 @@
 
 (defmethod print ((this sparticle-cpuinfo))
   (format #t "<sparticle-cpuinfo>~%")
-  (dotimes (s5-0 16)
-    (format #t "~D:~F~%" s5-0 (the-as float (-> this data s5-0))))
+  (dotimes (i 16)
+    (format #t "~D:~F~%" i (the-as float (-> this data i))))
   (format #t "TIMER:~D~%" (-> this timer))
   (the-as sparticle-cpuinfo (format #t "FLAGS:~X~%" (-> this flags))))
 
-(defun sp-particle-copy! ((arg0 sparticle-cpuinfo) (arg1 sparticle-cpuinfo))
-  (let ((v1-1 (-> arg1 sprite x-y-z-sx quad))) (set! (-> arg0 sprite x-y-z-sx quad) v1-1))
-  (let ((v1-3 (-> arg1 sprite flag-rot-sy quad))) (set! (-> arg0 sprite flag-rot-sy quad) v1-3))
-  (let ((v1-5 (-> arg1 sprite color quad))) (set! (-> arg0 sprite color quad) v1-5))
-  (dotimes (v1-6 10)
-    (set! (-> arg0 adgif prims v1-6) (-> arg1 adgif prims v1-6)))
-  (set! (-> arg0 vel-sxvel quad) (-> arg1 vel-sxvel quad))
-  (set! (-> arg0 rot-syvel quad) (-> arg1 rot-syvel quad))
-  (set! (-> arg0 fade quad) (-> arg1 fade quad))
-  (set! (-> arg0 acc quad) (-> arg1 acc quad))
-  (set! (-> arg0 friction) (-> arg1 friction))
-  (set! (-> arg0 timer) (-> arg1 timer))
-  (set! (-> arg0 flags) (-> arg1 flags))
-  (set! (-> arg0 user-float) (-> arg1 user-float))
-  (set! (-> arg0 func) (-> arg1 func))
+(defun sp-particle-copy! ((dst sparticle-cpuinfo) (src sparticle-cpuinfo))
+  "Copy src's rendered sprite, shader, and simulated CPU state to dst without replacing dst's
+   pool bookkeeping, ownership key, binding, or cached record pointers."
+  (let ((position-and-scale (-> src sprite x-y-z-sx quad))) (set! (-> dst sprite x-y-z-sx quad) position-and-scale))
+  (let ((rotation-and-scale (-> src sprite flag-rot-sy quad))) (set! (-> dst sprite flag-rot-sy quad) rotation-and-scale))
+  (let ((color (-> src sprite color quad))) (set! (-> dst sprite color quad) color))
+  (dotimes (i 10)
+    (set! (-> dst adgif prims i) (-> src adgif prims i)))
+  (vector-copy! (-> dst vel-sxvel) (-> src vel-sxvel))
+  (vector-copy! (-> dst rot-syvel) (-> src rot-syvel))
+  (vector-copy! (-> dst fade) (-> src fade))
+  (vector-copy! (-> dst acc) (-> src acc))
+  (set! (-> dst friction) (-> src friction))
+  (set! (-> dst timer) (-> src timer))
+  (set! (-> dst flags) (-> src flags))
+  (set! (-> dst user-float) (-> src user-float))
+  (set! (-> dst func) (-> src func))
   (none))
 
 (defmethod new sparticle-system ((allocation symbol)
             (type-to-make type)
-            (arg0 int)
-            (arg1 int)
-            (arg2 symbol)
-            (arg3 pointer)
-            (arg4 (inline-array adgif-shader)))
-  "allocate a particle system.
-  arg0: number of group0's
-  arg1: number of group1's
-  arg2: is 3d?
-  arg3: pointer to sprite allocations
-  arg4: pointer to adgif allocation"
+            (group0-length int)
+            (group1-length int)
+            (is-3d? symbol)
+            (sprite-memory pointer)
+            (adgif-memory (inline-array adgif-shader)))
+  "Allocate a particle pool with two groups rounded up to 64-slot blocks. sprite-memory and
+   adgif-memory provide parallel rendering storage for every rounded slot; each CPU entry is linked
+   to its matching records and each allocation bitmap begins with every slot free."
   (#when PC_BIG_MEMORY
-    (*! arg0 SPRITE_MAX_AMOUNT_MULT)
-    ; (*! arg1 SPRITE_MAX_AMOUNT_MULT)
+    (*! group0-length SPRITE_MAX_AMOUNT_MULT)
+    ; (*! group1-length SPRITE_MAX_AMOUNT_MULT)
     )
-  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (let* ((v1-3 (/ (+ arg0 63) 64)) ;; num blocks
-           (a0-2 (/ (+ arg1 63) 64))
-           (a1-2 (* v1-3 64)) ;; length
-           (a2-2 (* a0-2 64))
-           (s2-1 (+ v1-3 a0-2)) ;; total blocks
-           (s5-1 (+ a1-2 a2-2)) ;; total length
-           )
-      (set! (-> gp-0 blocks 0) v1-3)
-      (set! (-> gp-0 length 0) a1-2)
-      (set! (-> gp-0 num-alloc 0) 0)
-      (set! (-> gp-0 blocks 1) a0-2)
-      (set! (-> gp-0 length 1) a2-2)
-      (set! (-> gp-0 num-alloc 1) 0)
-      (set! (-> gp-0 is-3d) arg2)
+  (let ((sys (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (let* ((group0-blocks (/ (+ group0-length 63) 64)) ;; num blocks
+           (group1-blocks (/ (+ group1-length 63) 64))
+           (group0-rounded-length (* group0-blocks 64)) ;; length
+           (group1-rounded-length (* group1-blocks 64))
+           (total-blocks (+ group0-blocks group1-blocks))
+           (total-length (+ group0-rounded-length group1-rounded-length)))
+      (set! (-> sys blocks 0) group0-blocks)
+      (set! (-> sys length 0) group0-rounded-length)
+      (set! (-> sys num-alloc 0) 0)
+      (set! (-> sys blocks 1) group1-blocks)
+      (set! (-> sys length 1) group1-rounded-length)
+      (set! (-> sys num-alloc 1) 0)
+      (set! (-> sys is-3d) is-3d?)
       ;; per block uint64 (bit per-sprite)
-      (set! (-> gp-0 alloc-table) (the-as (pointer uint64) (malloc 'global (* s2-1 8))))
+      (set! (-> sys alloc-table) (the-as (pointer uint64) (malloc 'global (* total-blocks 8))))
       ;; per particle
-      (set! (-> gp-0 cpuinfo-table) (the-as (inline-array sparticle-cpuinfo) (malloc 'global (* 144 s5-1))))
+      (set! (-> sys cpuinfo-table) (the-as (inline-array sparticle-cpuinfo) (malloc 'global (* 144 total-length))))
       ;; sprite data
-      (set! (-> gp-0 vecdata-table) arg3)
+      (set! (-> sys vecdata-table) sprite-memory)
       ;; adgifs
-      (set! (-> gp-0 adgifdata-table) arg4)
-      (dotimes (v1-5 s2-1)
+      (set! (-> sys adgifdata-table) adgif-memory)
+      (dotimes (block total-blocks)
         ;; fill alloc-table with 1's
-        (set! (-> gp-0 alloc-table v1-5) (the-as uint -1)))
-      (dotimes (s4-1 s5-1)
-        (set! (-> gp-0 cpuinfo-table s4-1 valid) #f)
+        (set! (-> sys alloc-table block) (the-as uint -1)))
+      (dotimes (i total-length)
+        (set! (-> sys cpuinfo-table i valid) #f)
         ;; link cpuinfos to sprite data
-        (set! (-> gp-0 cpuinfo-table s4-1 sprite) (the-as sprite-vec-data-2d (&+ (-> gp-0 vecdata-table) (* 48 s4-1))))
+        (set! (-> sys cpuinfo-table i sprite) (the-as sprite-vec-data-2d (&+ (-> sys vecdata-table) (* 48 i))))
         ;; and to adgif
-        (set! (-> gp-0 cpuinfo-table s4-1 adgif) (-> gp-0 adgifdata-table s4-1))
+        (set! (-> sys cpuinfo-table i adgif) (-> sys adgifdata-table i))
         ;; default init adgifs.
-        (adgif-shader<-texture-simple! (-> gp-0 adgifdata-table s4-1) (the-as texture #f))
-        (set! (-> gp-0 adgifdata-table s4-1 alpha) (new 'static 'gs-alpha :b #x2 :d #x1))))
-    gp-0))
+        (adgif-shader<-texture-simple! (-> sys adgifdata-table i) (the-as texture #f))
+        (set! (-> sys adgifdata-table i alpha) (new 'static 'gs-alpha :b #x2 :d #x1))))
+    sys))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; particle systems
@@ -93,97 +91,164 @@
 ;; note: these constants must match the sizes of the sprite arrays.
 
 (define *sp-particle-system-2d*
-  (new 'global 'sparticle-system 1920 128 #f (-> *sprite-array-2d* vec-data) (-> *sprite-array-2d* adgif-data)))
+  (new 'global 'sparticle-system 1920 128 #f (the pointer (-> *sprite-array-2d* vec-data)) (-> *sprite-array-2d* adgif-data)))
 
 (define *sp-particle-system-3d*
-  (new 'global 'sparticle-system 256 0 #t (-> *sprite-array-3d* vec-data) (-> *sprite-array-3d* adgif-data)))
+  (new 'global 'sparticle-system 256 0 #t (the pointer (-> *sprite-array-3d* vec-data)) (-> *sprite-array-3d* adgif-data)))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; alloc and block
 ;;;;;;;;;;;;;;;;;;;;
 
-(defun sp-get-block-size ((arg0 sparticle-system) (arg1 int))
-  "get the index of the highest used block for the given group (0 or 1)"
-  (let ((v0-0 0))
-    (let ((v1-0 0)
-          (a2-0 (-> arg0 blocks 0)))
-      (when (= arg1 1)
-        (set! v1-0 a2-0)
-        (set! a2-0 (-> arg0 blocks 1)))
-      (dotimes (a1-3 a2-0)
-        (if (!= (-> arg0 alloc-table (+ v1-0 a1-3)) -1) (set! v0-0 (+ a1-3 1)))))
-    v0-0))
+(defun sp-get-block-size ((sys sparticle-system) (group int))
+  "Return one past the highest partly occupied block in group, or zero when the group is empty."
+  (let ((used-blocks 0))
+    (let ((block-offset 0)
+          (num-blocks (-> sys blocks 0)))
+      (when (= group 1)
+        (set! block-offset num-blocks)
+        (set! num-blocks (-> sys blocks 1)))
+      (dotimes (i num-blocks)
+        (if (!= (-> sys alloc-table (+ block-offset i)) -1) (set! used-blocks (+ i 1)))))
+    used-blocks))
 
-(defun sp-get-approx-alloc-size ((arg0 sparticle-system) (arg1 int))
-  "get approximately the amount of sprite memory used."
-  ;; this is just (* 64 (sp-get-block-size arg0 arg1))
-  (let ((a3-0 arg1)
-        (v1-0 0))
-    (let ((a1-1 0)
-          (a2-0 (-> arg0 blocks 0)))
-      (when (= a3-0 1)
-        (set! a1-1 a2-0)
-        (set! a2-0 (-> arg0 blocks 1)))
-      (dotimes (a3-3 a2-0)
-        (if (!= (-> arg0 alloc-table (+ a1-1 a3-3)) -1) (set! v1-0 (+ a3-3 1)))))
-    (* v1-0 64)))
+(defun sp-get-approx-alloc-size ((sys sparticle-system) (group int))
+  "Return the number of slots through the last partly occupied block in group, rounded to 64.
+   This includes free holes and is the prefix that must be processed."
+  ;; This is just (* 64 (sp-get-block-size sys group)).
+  (let ((selected-group group)
+        (used-blocks 0))
+    (let ((block-offset 0)
+          (num-blocks (-> sys blocks 0)))
+      (when (= selected-group 1)
+        (set! block-offset num-blocks)
+        (set! num-blocks (-> sys blocks 1)))
+      (dotimes (i num-blocks)
+        (if (!= (-> sys alloc-table (+ block-offset i)) -1) (set! used-blocks (+ i 1)))))
+    (* used-blocks 64)))
 
-(defun sp-free-particle ((arg0 sparticle-system) (arg1 int) (arg2 sparticle-cpuinfo) (arg3 sprite-vec-data-2d))
-  "free a particle"
+(defun sp-free-particle ((sys sparticle-system) (slot int) (cpuinfo sparticle-cpuinfo) (sprite-data sprite-vec-data-2d))
+  "Release slot back to sys, clear its valid state and sprite alpha, and detach any active launcher."
   ;; clear flags on our launch state.
-  (if (and (-> arg2 binding) (nonzero? (-> arg2 binding)))
-    (logclear! (-> arg2 binding flags) (sp-launch-state-flags launcher-active particles-active)))
-  ;; clear the bit indicating that we're alive.
-  (let ((v1-6 (/ arg1 64))
-        (t0-4 (logand arg1 63)))
-    (logior! (-> arg0 alloc-table v1-6) (ash 1 t0-4)))
+  (if (and (-> cpuinfo binding) (nonzero? (-> cpuinfo binding)))
+    (logclear! (-> cpuinfo binding flags) (sp-launch-state-flags enabled launched)))
+  ;; Set the free bit for this slot.
+  (let ((block (/ slot 64))
+        (bit (logand slot 63)))
+    (logior! (-> sys alloc-table block) (ash 1 bit)))
   ;; decrease alloc count for the appropriate group
-  (if (< arg1 (-> arg0 length 0)) (+! (-> arg0 num-alloc 0) -1) (+! (-> arg0 num-alloc 1) -1))
-  (set! (-> arg2 valid) #f)
-  (set! (-> arg3 a) 0.0)
+  (if (< slot (-> sys length 0)) (+! (-> sys num-alloc 0) -1) (+! (-> sys num-alloc 1) -1))
+  (set! (-> cpuinfo valid) #f)
+  (set! (-> sprite-data a) 0.0)
   0
   (none))
 
-(defun sp-get-particle ((arg0 sparticle-system) (arg1 int) (arg2 sparticle-launch-state))
-  "alloc a particle"
-  ;; og:preserve-this
-  ;; pc port note : this function originally attempted to find a free sparticle by picking a "random"
-  ;; (actually incremental) starting block and going from there. we disable that completely for pc
-  ;; because it is actually detrimental since we may alloc sparticles spread over way too many blocks
-  ;; which can have a negative impact on our performance.
-  (let ((v1-0 0)
-        (t0-0 (-> arg0 blocks 0))
-        (a3-0 0))
-    (when (= arg1 1)
-      (set! v1-0 t0-0)
-      (set! t0-0 (-> arg0 blocks 1)))
-    (dotimes (blk t0-0)
-      (when (nonzero? (-> arg0 alloc-table (+ v1-0 a3-0)))
-        (dotimes (bit 64)
-          (when (nonzero? (logand (ash 1 bit) (-> arg0 alloc-table (+ v1-0 a3-0))))
-            (logxor! (-> arg0 alloc-table (+ v1-0 a3-0)) (ash 1 bit))
-            (+! (-> arg0 num-alloc arg1) 1)
-            (let ((v1-9 (-> arg0 cpuinfo-table (+ bit (* (+ v1-0 a3-0) 64))))) (set! (-> v1-9 valid) #t) (return v1-9)))))
-      (+! a3-0 1)
-      (if (= a3-0 t0-0) (set! a3-0 0))))
-  (the-as sparticle-cpuinfo #f))
+(#unless PC_PORT
+  (defun sp-get-particle ((sys sparticle-system) (group int) (binding sparticle-launch-state))
+    "Allocate a free particle in group, beginning at binding's rotating block index when supplied.
+     Clear its bitmap bit, mark its CPU record valid, and return it; return false when full."
+    (let ((block-offset 0)
+          (num-blocks (-> sys blocks 0))
+          (block-index 0))
+      (when (= group 1)
+        (set! block-offset num-blocks)
+        (set! num-blocks (-> sys blocks 1)))
+      ;; Rotate the first block examined so repeated launchers spread their allocations.
+      (when binding
+        (set! block-index (the int (-> binding randomize)))
+        (+! (-> binding randomize) 1)
+        (when (= (-> binding randomize) num-blocks)
+          (set! (-> binding randomize) (the uint 0))))
+      (dotimes (i num-blocks)
+        (let ((free-bits (-> sys alloc-table (+ block-offset block-index))))
+          (when (nonzero? free-bits)
+            ;; Find the least-significant set bit in six branchless halves. Shifting a candidate
+            ;; half to the sign end lets mov.nz keep it when that half contains a free slot;
+            ;; mov.z advances the bit index only when the candidate half is empty.
+            (let ((free-bit (rlet ((bits :reg t1)
+                                   (shifted :reg t2)
+                                   (candidate-index :reg t3)
+                                   (bit-index :reg a2))
+                              (m! bits free-bits)
+                              (m! bit-index 0)
+                              (sll32 shifted bits)
+                              (add.i candidate-index bit-index 32)
+                              (mov.nz bits shifted shifted)
+                              (mov.z bit-index candidate-index shifted)
+                              (sll shifted bits 16)
+                              (add.i candidate-index bit-index 16)
+                              (mov.nz bits shifted shifted)
+                              (mov.z bit-index candidate-index shifted)
+                              (sll shifted bits 8)
+                              (add.i candidate-index bit-index 8)
+                              (mov.nz bits shifted shifted)
+                              (mov.z bit-index candidate-index shifted)
+                              (sll shifted bits 4)
+                              (add.i candidate-index bit-index 4)
+                              (mov.nz bits shifted shifted)
+                              (mov.z bit-index candidate-index shifted)
+                              (sll shifted bits 2)
+                              (add.i candidate-index bit-index 2)
+                              (mov.nz bits shifted shifted)
+                              (mov.z bit-index candidate-index shifted)
+                              (sll shifted bits 1)
+                              (add.i candidate-index bit-index 1)
+                              (mov.nz bits shifted shifted)
+                              (mov.z bit-index candidate-index shifted)
+                              bit-index)))
+              (let ((slot (+ free-bit (* (+ block-offset block-index) 64))))
+                (logxor! (-> sys alloc-table (+ block-offset block-index)) (ash 1 free-bit))
+                (+! (-> sys num-alloc group) 1)
+                (let ((cpuinfo (-> sys cpuinfo-table slot))) (set! (-> cpuinfo valid) #t) (return cpuinfo))))))
+        (+! block-index 1)
+        (if (= block-index num-blocks) (set! block-index 0))))
+    (the-as sparticle-cpuinfo #f)))
 
-(defun sp-kill-particle ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
-  "kill the given particle"
+(#when PC_PORT
+  (defun sp-get-particle ((sys sparticle-system) (group int) (binding sparticle-launch-state))
+    "Allocate the first free particle in group, clear its bitmap bit, and return its CPU record.
+   Return false when all slots are occupied."
+    ;; og:preserve-this
+    ;; pc port note : this function originally attempted to find a free sparticle by picking a "random"
+    ;; (actually incremental) starting block and going from there. we disable that completely for pc
+    ;; because it is actually detrimental since we may alloc sparticles spread over way too many blocks
+    ;; which can have a negative impact on our performance.
+    (let ((block-offset 0)
+          (num-blocks (-> sys blocks 0))
+          (block-index 0))
+      (when (= group 1)
+        (set! block-offset num-blocks)
+        (set! num-blocks (-> sys blocks 1)))
+      (dotimes (i num-blocks)
+        (when (nonzero? (-> sys alloc-table (+ block-offset block-index)))
+          (dotimes (bit 64)
+            (when (nonzero? (logand (ash 1 bit) (-> sys alloc-table (+ block-offset block-index))))
+              (logxor! (-> sys alloc-table (+ block-offset block-index)) (ash 1 bit))
+              (+! (-> sys num-alloc group) 1)
+              (let ((cpuinfo (-> sys cpuinfo-table (+ bit (* (+ block-offset block-index) 64)))))
+                (set! (-> cpuinfo valid) #t)
+                (return cpuinfo)))))
+        (+! block-index 1)
+        (if (= block-index num-blocks) (set! block-index 0))))
+    (the-as sparticle-cpuinfo #f)))
+
+(defun sp-kill-particle ((sys sparticle-system) (cpuinfo sparticle-cpuinfo))
+  "Release a main-memory particle immediately. A scratchpad copy is instead marked with a zero
+   timer so its block update can perform the release safely."
   (cond
     ;; modified to check the end of the spad too.
-    ((in-scratchpad? arg1) ;;(>= (the-as int arg1) #x70000000) ;; TODO PC port
-     ;; if in the sratchpad, just set the timer to 0.
-     (set! (-> arg1 timer) 0)
+    ((in-scratchpad? cpuinfo) ;;(>= (the-as int cpuinfo) #x70000000) ;; TODO PC port
+     ;; If in the scratchpad, just set the timer to 0.
+     (set! (-> cpuinfo timer) 0)
      0)
     (else
-     (let ((a2-1 (/ (the-as int (- (the-as uint arg1) (the-as uint (-> arg0 cpuinfo-table 0)))) 144)))
-       (when (or (< a2-1 0) (>= a2-1 (+ (-> arg0 length 0) (-> arg0 length 1))))
+     (let ((slot (/ (the-as int (- (the-as uint cpuinfo) (the-as uint (-> sys cpuinfo-table 0)))) 144)))
+       (when (or (< slot 0) (>= slot (+ (-> sys length 0) (-> sys length 1))))
          ;; invalid location for particle, error
-         (format 0 "Tried to release particle ~D~%" a2-1)
+         (format 0 "Tried to release particle ~D~%" slot)
          (return #f))
        ;; free it.
-       (sp-free-particle arg0 a2-1 arg1 (-> arg1 sprite)))))
+       (sp-free-particle sys slot cpuinfo (-> cpuinfo sprite)))))
   #t
   (none))
 
@@ -191,34 +256,38 @@
 ;; effects
 ;;;;;;;;;;;;;;;;
 
-(defun sp-orbiter ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
-  (let* ((f2-0 (-> arg1 omega))
-         (f0-0 (-> arg1 radius))
-         (f4-0 (-> arg1 vel-sxvel x))
-         (f24-0 (-> arg1 vel-sxvel y))
-         (f1-0 (-> arg1 vel-sxvel z))
-         (f3-0 (-> *sp-frame-time* y))
-         (f28-0 (+ f2-0 (* f4-0 f3-0))))
-    (set! (-> arg1 omega) f28-0)
-    (let ((f30-0 (+ f0-0 (* f1-0 f3-0))))
-      (set! (-> arg1 radius) f30-0)
-      (let ((f26-0 (sin f28-0))
-            (f28-1 (cos f28-0))
-            (f22-0 (sin (* 0.5 f24-0)))
-            (f0-5 (cos (* 0.5 f24-0)))
-            (a1-1 (new 'stack-no-clear 'vector))
-            (s4-0 (new 'stack-no-clear 'vector)))
-        (let ((s3-0 (new 'stack-no-clear 'matrix)))
-          (set-vector! a1-1 (* f22-0 f28-1) 0.0 (* f22-0 f26-0) f0-5)
-          (quaternion*! (-> arg1 rotvel3d) (the-as quaternion a1-1) (-> arg1 rotvel3d))
-          (quaternion-normalize! (-> arg1 rotvel3d))
-          (set-vector! s4-0 (* f26-0 f30-0) 0.0 (* f28-1 f30-0) 1.0)
-          (quaternion->matrix s3-0 (-> arg1 rotvel3d))
-          (vector-matrix*! s4-0 s4-0 s3-0))
-        (let ((v1-3 (the-as object (-> arg1 user-float))))
-          (set! (-> arg2 x) (+ (-> s4-0 x) (-> (the-as sprite-vec-data-2d v1-3) x)))
-          (set! (-> arg2 y) (+ (-> s4-0 y) (-> (the-as sprite-vec-data-2d v1-3) y)))
-          (set! (-> arg2 z) (+ (-> s4-0 z) (-> (the-as sprite-vec-data-2d v1-3) z)))))))
+(defun sp-orbiter ((sys sparticle-system) (cpuinfo sparticle-cpuinfo) (out-pos vector))
+  "Advance cpuinfo around the center pointer packed in user-float and write the world position to
+   out-pos. omega and radius hold the current orbit state; vel-sxvel.x and .z change them over time,
+   while .y supplies the incremental precession of the orbit plane. rotvel3d accumulates that plane
+   orientation before it rotates the in-plane offset."
+  (let* ((angle (-> cpuinfo omega))
+         (radius (-> cpuinfo radius))
+         (angular-velocity (-> cpuinfo vel-sxvel x))
+         (plane-precession (-> cpuinfo vel-sxvel y))
+         (radial-velocity (-> cpuinfo vel-sxvel z))
+         (dt (-> *sp-frame-time* y))
+         (new-angle (+ angle (* angular-velocity dt))))
+    (set! (-> cpuinfo omega) new-angle)
+    (let ((new-radius (+ radius (* radial-velocity dt))))
+      (set! (-> cpuinfo radius) new-radius)
+      (let ((sin-angle (sin new-angle))
+            (cos-angle (cos new-angle))
+            (sin-half-precession (sin (* 0.5 plane-precession)))
+            (cos-half-precession (cos (* 0.5 plane-precession)))
+            (precession (new 'stack-no-clear 'vector))
+            (orbit-offset (new 'stack-no-clear 'vector)))
+        (let ((rotation (new 'stack-no-clear 'matrix)))
+          (set-vector! precession (* sin-half-precession cos-angle) 0.0 (* sin-half-precession sin-angle) cos-half-precession)
+          (quaternion*! (-> cpuinfo rotvel3d) (the-as quaternion precession) (-> cpuinfo rotvel3d))
+          (quaternion-normalize! (-> cpuinfo rotvel3d))
+          (set-vector! orbit-offset (* sin-angle new-radius) 0.0 (* cos-angle new-radius) 1.0)
+          (quaternion->matrix rotation (-> cpuinfo rotvel3d))
+          (vector-matrix*! orbit-offset orbit-offset rotation))
+        (let ((center (the-as object (-> cpuinfo user-float))))
+          (set! (-> out-pos x) (+ (-> orbit-offset x) (-> (the-as sprite-vec-data-2d center) x)))
+          (set! (-> out-pos y) (+ (-> orbit-offset y) (-> (the-as sprite-vec-data-2d center) y)))
+          (set! (-> out-pos z) (+ (-> orbit-offset z) (-> (the-as sprite-vec-data-2d center) z)))))))
   0
   (none))
 
@@ -226,220 +295,866 @@
 ;; particle update
 ;;;;;;;;;;;;;;;;;;;;;
 
-(def-mips2c sp-process-block-2d (function sparticle-system int int int int symbol none))
+(#unless PC_PORT
+  (defun sp-process-block-2d ((sys sparticle-system)
+          (scratchpad-cpuinfo int)
+          (scratchpad-sprite-data int)
+          (start-slot int)
+          (count int)
+          (paused? symbol))
+    "Update count 2D particle records in scratchpad: age, integrate, fade, invoke callbacks, handle
+     death or relaunch, and write their billboard sprite data."
+    (declare (asm-func none))
+    ;; Each iteration walks one 144-byte CPU record beside one 48-byte sprite record. The sprite
+    ;; record is three quadwords:
+    ;;
+    ;;   +0   position.xyz, x-scale
+    ;;   +16  sprite flags/matrix mode, rotation, y-scale
+    ;;   +32  color.rgba
+    ;;
+    ;; The matching CPU record keeps velocity.xyz/x-scale velocity at +16, rotation/y-scale
+    ;; velocity at +32, color fade at +48, acceleration at +64, friction at +96, timer at +100,
+    ;; flags at +104, the per-particle update function at +112, relaunch state at +116/+120, cached
+    ;; launch alpha at +124, and validity at +128. Keeping these records separate lets the sprite
+    ;; record remain ready for the renderer while simulation-only state stays in the CPU record.
+    ;;
+    ;; *sp-frame-time*.x carries the integer 300 Hz tick count in its low byte. Its y lane scales
+    ;; position, rotation, scale, and color increments, while z and w express the same interval in
+    ;; 60 Hz frames for acceleration and friction. Invalid slots are skipped. Pausing freezes a
+    ;; particle unless run-while-paused is set. A timer of -1 never expires; zero frees the particle.
+    ;; On the first visible update, just-launched restores the intended alpha from cache-alpha.
+    (rlet ((sys :reg gp)
+           (cpuinfo :reg s5 :type sparticle-cpuinfo)
+           (sprite-data :reg s4 :type sprite-vec-data-2d)
+           (slot :reg s1)
+           (remaining :reg s3)
+           (paused? :reg s2)
+           (ticks :reg s0)
+           (frame-time :reg vf9)
+           (sprite-pos-scale :reg vf1)
+           (sprite-rot-scale :reg vf2)
+           (sprite-color :reg vf3)
+           (velocity-scale-rate :reg vf4)
+           (rotation-scale-rate :reg vf5)
+           (color-fade-rate :reg vf6)
+           (acceleration :reg vf7)
+           (friction-factor :reg vf8)
+           (position-step :reg vf10)
+           (rotation-scale-step :reg vf11)
+           (color-step :reg vf12))
+      ;; Establish the scratchpad cursors and recover this frame's integer tick count.
+      (asm-block setup-2d
+                 (label particle-update-2d-entry)
+                 (add.i sp sp -128)
+                 (s.d ra sp)
+                 (s.q s0 sp 16)
+                 (s.q s1 sp 32)
+                 (s.q s2 sp 48)
+                 (s.q s3 sp 64)
+                 (s.q s4 sp 80)
+                 (s.q s5 sp 96)
+                 (s.q gp sp 112)
+                 (m sys a0)
+                 (m cpuinfo a1)
+                 (m sprite-data a2)
+                 (m slot a3)
+                 (m remaining t0)
+                 (m paused? t1)
+                 (m! v1 *sp-frame-time*)
+                 (l.vf frame-time v1)
+                 (m v1 frame-time)
+                 (and.i ticks v1 255))
+      ;; Reject unused slots, then decide whether a paused particle is allowed to simulate.
+      (asm-block particle-lifetime-2d
+                 (label particle-loop)
+                 (l.w.field v1 cpuinfo (valid))
+                 (b.eq v1 s7 next-particle :delay (nop!))
+                 (b.eq paused? s7 simulate-particle :delay (l.w.field v1 cpuinfo (flags)))
+                 (and.i v1 v1 #x2000)
+                 (b.nz v1 simulate-particle :delay (nop!))
+                 (l.w.field v1 cpuinfo (timer))
+                 (add.i a0 r0 -1)
+                 (b.eq v1 a0 reveal-new-particle :delay (nop!))
+                 (b.z v1 free-particle :delay (nop!))
+                 ;; A newly launched particle is hidden with alpha zero. Reveal it without advancing time when
+                 ;; the rest of its simulation is frozen.
+                 (label reveal-new-particle)
+                 (l.w.field a0 cpuinfo (flags))
+                 (and.i v1 a0 64)
+                 (xor a0 a0 v1)
+                 (b.z v1 next-particle :delay (s.w.field a0 cpuinfo (flags)))
+                 (l.w.field v1 cpuinfo (cache-alpha))
+                 (b next-particle :delay (s.w.field v1 sprite-data (a)))
+                 ;; Age finite particles in 300 Hz ticks. The packed maximum clamps an overshoot to zero so the
+                 ;; next iteration follows the ordinary zero-timer death path.
+                 (label simulate-particle)
+                 (l.w.field v1 cpuinfo (timer))
+                 (add.i a0 r0 -1)
+                 (b.eq v1 a0 run-callback :delay (sub a0 v1 ticks))
+                 (b.z v1 free-particle :delay (max.w v1 a0 r0))
+                 (s.w.field v1 cpuinfo (timer))
+                 ;; Restore the launch alpha before callbacks so custom particle logic sees the visible state.
+                 (label run-callback)
+                 (l.w.field a0 cpuinfo (flags))
+                 (and.i v1 a0 64)
+                 (xor a0 a0 v1)
+                 (b.z v1 call-update-function :delay (s.w.field a0 cpuinfo (flags)))
+                 (l.w.field v1 cpuinfo (cache-alpha))
+                 (s.w.field v1 sprite-data (a)))
+      ;; The callback may edit either the CPU record or its renderer-facing sprite record.
+      (asm-block callback-and-relaunch-2d
+                 (label call-update-function)
+                 (l.w.field t9 cpuinfo (func))
+                 (b.z t9 check-relaunch :delay (nop!))
+                 (add.i sp sp -80)
+                 (s.q sys sp)
+                 (s.q cpuinfo sp 16)
+                 (s.q sprite-data sp 32)
+                 (s.q slot sp 48)
+                 (m a0 sys)
+                 (m a1 cpuinfo)
+                 (m a2 sprite-data)
+                 (jalr ra t9 :delay (s.q remaining sp 64))
+                 (l.q sys sp)
+                 (l.q cpuinfo sp 16)
+                 (l.q sprite-data sp 32)
+                 (l.q slot sp 48)
+                 (l.q remaining sp 64)
+                 (add.i sp sp 80)
+                 ;; A nonfalse next-launcher owns a countdown independent of the particle lifetime. Relaunch as
+                 ;; soon as subtracting this frame's ticks carries it below zero.
+                 (label check-relaunch)
+                 (l.w.field a1 cpuinfo (next-launcher))
+                 (l.w.field v1 cpuinfo (next-time))
+                 (b.z a1 integrate :delay (sub a0 v1 ticks))
+                 (add.i v1 a0 -1)
+                 (b.ge v1 r0 integrate :delay (s.w.field a0 cpuinfo (next-time)))
+                 (add.i sp sp -96)
+                 (s.q sys sp)
+                 (s.q cpuinfo sp 16)
+                 (s.q sprite-data sp 32)
+                 (s.q slot sp 48)
+                 (s.q remaining sp 64)
+                 (s.q paused? sp 80)
+                 (m a0 sys)
+                 (m a3 sprite-data)
+                 (m a2 cpuinfo)
+                 (m! t9 sp-relaunch-particle-2d)
+                 (jalr ra t9 :delay (sll v0 ra 0))
+                 (l.q sys sp)
+                 (l.q cpuinfo sp 16)
+                 (l.q sprite-data sp 32)
+                 (l.q slot sp 48)
+                 (l.q remaining sp 64)
+                 (l.q paused? sp 80)
+                 (add.i sp sp 96))
+      ;; Integrate the four adjacent CPU vectors directly into the three sprite quadwords.
+      (asm-block integrate-motion-2d
+                 (label integrate)
+                 (l.vf.field sprite-pos-scale sprite-data (x-y-z-sx))
+                 (l.vf.field sprite-rot-scale sprite-data (flag-rot-sy))
+                 (l.vf.field sprite-color sprite-data (r-g-b-a))
+                 (l.vf.field velocity-scale-rate cpuinfo (vel-sxvel))
+                 (l.vf.field rotation-scale-rate cpuinfo (rot-syvel))
+                 (l.vf.field color-fade-rate cpuinfo (fade))
+                 (l.vf.field acceleration cpuinfo (acc))
+                 (l.s.field f0 cpuinfo (friction))
+                 (m v1 f0)
+                 ;; Acceleration uses 60 Hz frame units. Nonzero friction is converted to a retained-velocity
+                 ;; factor for this interval, then applied to xyz without disturbing x-scale velocity in w.
+                 (mul.z.vf acceleration acceleration frame-time)
+                 (b.z v1 no-friction :delay (add.vf.xyz velocity-scale-rate velocity-scale-rate acceleration))
+                 (m friction-factor v1)
+                 (sub.x.vf.w friction-factor vf0 friction-factor)
+                 (mul.w.vf friction-factor friction-factor frame-time)
+                 (sub.w.vf.w friction-factor vf0 friction-factor)
+                 (mul.w.vf.xyz velocity-scale-rate velocity-scale-rate friction-factor)
+                 (label no-friction)
+                 ;; Apply velocity, rotation/scale velocity, and fade with the full 300 Hz tick count. Clamp
+                 ;; color to zero so the packed death tests below can compare its float bits as integers.
+                 (mul.y.vf position-step velocity-scale-rate frame-time)
+                 (mul.y.vf rotation-scale-step rotation-scale-rate frame-time)
+                 (mul.y.vf color-step color-fade-rate frame-time)
+                 (add.vf sprite-pos-scale sprite-pos-scale position-step)
+                 (add.vf.zw sprite-rot-scale sprite-rot-scale rotation-scale-step)
+                 (add.vf sprite-color sprite-color color-step)
+                 (max.x.vf sprite-color sprite-color vf0)
+                 (s.vf.field velocity-scale-rate cpuinfo (vel-sxvel))
+                 (s.vf.field sprite-pos-scale sprite-data (x-y-z-sx))
+                 (s.vf.field sprite-rot-scale sprite-data (flag-rot-sy))
+                 (s.vf.field sprite-color sprite-data (r-g-b-a)))
+      ;; 2D rotation is kept as an integer-valued float, matching the sprite packet format.
+      (asm-block billboard-post-update
+                 (l.s.field f0 sprite-data (rot))
+                 (cvt.w.s f0 f0)
+                 (m v1 f0)
+                 (sll32 v1 v1 16)
+                 (sra32 v1 v1 16)
+                 (m f0 v1)
+                 (cvt.s.w f0 f0)
+                 (s.s.field f0 sprite-data (rot))
+                 ;; Orbiting is a post-integration position adjustment around the particle's stored center.
+                 (l.w.field v1 cpuinfo (flags))
+                 (and.i v1 v1 128)
+                 (b.z v1 test-death-flags :delay (m! t9 sp-orbiter))
+                 (add.i sp sp -96)
+                 (s.q sys sp)
+                 (s.q cpuinfo sp 16)
+                 (s.q sprite-data sp 32)
+                 (s.q slot sp 48)
+                 (s.q remaining sp 64)
+                 (m a0 sys)
+                 (m a1 cpuinfo)
+                 (m a2 sprite-data)
+                 (jalr ra t9 :delay (s.q paused? sp 80))
+                 (l.q sys sp)
+                 (l.q cpuinfo sp 16)
+                 (l.q sprite-data sp 32)
+                 (l.q slot sp 48)
+                 (l.q remaining sp 64)
+                 (l.q paused? sp 80)
+                 (add.i sp sp 96))
+      ;; Packed extracts test RGB together, then alpha, then x- and y-scale. These correspond to
+      ;; die-when-color-0, die-when-faded, and die-when-scale-0.
+      (asm-block death-tests-2d
+                 (label test-death-flags)
+                 (l.q.field v1 sprite-data (r-g-b-a))
+                 (l.w.field a0 cpuinfo (flags))
+                 (and.i a1 a0 2)
+                 (b.z a1 test-fade-death :delay (and.i a1 a0 4))
+                 (b.nz v1 test-fade-death :delay (pextuw t4 v1 r0))
+                 (b.z t4 free-particle :delay (nop!))
+                 (label test-fade-death)
+                 (b.z a1 test-scale-death :delay (and.i a0 a0 1))
+                 (pcpyud t4 v1 r0)
+                 (pexew t4 t4)
+                 (b.le t4 r0 free-particle :delay (nop!))
+                 (label test-scale-death)
+                 (b.z a0 next-particle :delay (nop!))
+                 (m v1 sprite-pos-scale)
+                 (pcpyud v1 v1 r0)
+                 (pexew v1 v1)
+                 (b.lt v1 r0 free-particle :delay (m v1 sprite-rot-scale))
+                 (pcpyud v1 v1 r0)
+                 (pexew v1 v1)
+                 (b.ge v1 r0 next-particle :delay (nop!))
+                 ;; Return dead particles to the bitmap-managed pool.
+                 (label free-particle)
+                 (m! t9 sp-free-particle)
+                 (m a0 sys)
+                 (m a1 slot)
+                 (m a2 cpuinfo)
+                 (m a3 sprite-data)
+                 (jalr ra t9 :delay (sll v0 ra 0)))
+      ;; Advance every parallel cursor even when this slot was invalid.
+      (asm-block advance-and-return-2d
+                 (label next-particle)
+                 (add.i remaining remaining -1)
+                 (add.i cpuinfo cpuinfo 144)
+                 (add.i sprite-data sprite-data 48)
+                 (b.nz remaining particle-loop :delay (add.i slot slot 1))
+                 ;; Return the first slot after the processed block.
+                 (m v0 slot)
+                 (l.d ra sp)
+                 (l.q sys sp 112)
+                 (l.q cpuinfo sp 96)
+                 (l.q sprite-data sp 80)
+                 (l.q remaining sp 64)
+                 (l.q paused? sp 48)
+                 (l.q slot sp 32)
+                 (l.q ticks sp 16)
+                 (jr ra :delay (add.i sp sp 128))
+                 (nop! :count 3)))))
 
-(def-mips2c sp-process-block-3d (function sparticle-system int int int int symbol none))
+(#when PC_PORT
+  (def-mips2c sp-process-block-2d (function sparticle-system int int int int symbol none)))
 
-(defun sp-copy-to-spr ((arg0 int) (arg1 pointer) (arg2 int))
-  ;; modified to use fake spad
-  (let ((a2-1 (/ (+ arg2 15) 16)))
-    (__mem-move (&+ (scratchpad-start) arg0) arg1 (the uint (* a2-1 16)))
-    ;; (dma-send-to-spr-no-flush (the-as uint arg0) (the-as uint arg1) (the-as uint a2-1) #t)
+(#unless PC_PORT
+  (defun sp-process-block-3d ((sys sparticle-system)
+          (scratchpad-cpuinfo int)
+          (scratchpad-sprite-data int)
+          (start-slot int)
+          (count int)
+          (paused? symbol))
+    "Update count 3D particle records in scratchpad: age, integrate, rotate, fade, invoke callbacks,
+     handle death or relaunch, and write their oriented sprite data."
+    (declare (asm-func none))
+    ;; The 3D path shares the 144-byte CPU record and 48-byte renderer record with the 2D path. The
+    ;; renderer record still stores position.xyz/x-scale at +0 and color.rgba at +32, but its middle
+    ;; quadword holds quaternion.xyz/y-scale rather than a billboard rotation. The complete
+    ;; rotational velocity quaternion is kept in the CPU record at +80.
+    ;;
+    ;; Quaternion w is omitted from the renderer record because a unit quaternion has only three
+    ;; independent components. Rebuild |w| from xyz, compose the rotational step, then choose the
+    ;; sign of the stored xyz so the omitted w can remain nonnegative. q and -q represent the same
+    ;; rotation, so the renderer can reconstruct an equivalent orientation without spending a sign
+    ;; bit.
+    ;;
+    ;; Lifetime, pause, callback, relaunch, integration, and packed death tests otherwise match the
+    ;; 2D update. A long frame of at least ten 300 Hz ticks composes the rotation step twice.
+    (rlet ((sys :reg gp)
+           (cpuinfo :reg s5 :type sparticle-cpuinfo)
+           (sprite-data :reg s4 :type sprite-vec-data-3d)
+           (slot :reg s0)
+           (remaining :reg s3)
+           (paused? :reg s2)
+           (rotation :reg s1)
+           (frame-time :reg vf16)
+           (sprite-pos-scale :reg vf8)
+           (sprite-quat-scale :reg vf9)
+           (sprite-color :reg vf10)
+           (velocity-scale-rate :reg vf11)
+           (rotation-scale-rate :reg vf12)
+           (color-fade-rate :reg vf13)
+           (acceleration :reg vf14)
+           (friction-factor :reg vf15)
+           (position-step :reg vf17)
+           (rotation-scale-step :reg vf18)
+           (color-step :reg vf19)
+           (stored-quat-scale :reg vf1)
+           (full-quaternion :reg vf2))
+      ;; Establish the scratchpad cursors, reserve a complete quaternion, and cache the tick count.
+      (asm-block setup-3d
+                 (label particle-update-3d-entry)
+                 (add.i sp sp -160)
+                 (s.d ra sp)
+                 (s.d fp sp 8)
+                 (m fp t9)
+                 (s.q s0 sp 48)
+                 (s.q s1 sp 64)
+                 (s.q s2 sp 80)
+                 (s.q s3 sp 96)
+                 (s.q s4 sp 112)
+                 (s.q s5 sp 128)
+                 (s.q gp sp 144)
+                 (m sys a0)
+                 (m cpuinfo a1)
+                 (m sprite-data a2)
+                 (m slot a3)
+                 (m remaining t0)
+                 (m paused? t1)
+                 (add.i rotation sp 16)
+                 (s.q r0 rotation)
+                 (m! v1 *sp-frame-time*)
+                 (l.vf frame-time v1)
+                 (m v1 frame-time)
+                 (and.i v1 v1 255)
+                 (s.q v1 sp 32)
+                 (nop!))
+      ;; Reject unused slots, then decide whether a paused particle is allowed to simulate.
+      (asm-block particle-lifetime-3d
+                 (label particle-loop-3d)
+                 (l.w.field v1 cpuinfo (valid))
+                 (b.eq v1 s7 next-particle-3d :delay (nop!))
+                 (b.eq paused? s7 simulate-particle-3d :delay (l.w.field v1 cpuinfo (flags)))
+                 (and.i v1 v1 #x2000)
+                 (b.nz v1 simulate-particle-3d :delay (nop!))
+                 (l.w.field v1 cpuinfo (timer))
+                 (add.i a0 r0 -1)
+                 (b.eq v1 a0 reveal-new-particle-3d :delay (nop!))
+                 (b.z v1 free-particle-3d :delay (nop!))
+                 ;; Reveal a newly launched particle without advancing it when simulation is frozen.
+                 (label reveal-new-particle-3d)
+                 (l.w.field a0 cpuinfo (flags))
+                 (and.i v1 a0 64)
+                 (xor a0 a0 v1)
+                 (b.z v1 next-particle-3d :delay (s.w.field a0 cpuinfo (flags)))
+                 (l.w.field v1 cpuinfo (cache-alpha))
+                 (b next-particle-3d :delay (s.w.field v1 sprite-data (a)))
+                 ;; Age finite particles in 300 Hz ticks and clamp an overshoot to zero.
+                 (label simulate-particle-3d)
+                 (l.w.field v1 cpuinfo (timer))
+                 (add.i a0 r0 -1)
+                 (b.eq v1 a0 run-callback-3d :delay (l.q a0 sp 32))
+                 (sub a0 v1 a0)
+                 (b.z v1 free-particle-3d :delay (max.w v1 a0 r0))
+                 (s.w.field v1 cpuinfo (timer))
+                 ;; Restore the launch alpha before custom particle logic runs.
+                 (label run-callback-3d)
+                 (l.w.field a0 cpuinfo (flags))
+                 (and.i v1 a0 64)
+                 (xor a0 a0 v1)
+                 (b.z v1 call-update-function-3d :delay (s.w.field a0 cpuinfo (flags)))
+                 (l.w.field v1 cpuinfo (cache-alpha))
+                 (s.w.field v1 sprite-data (a)))
+      ;; The callback may edit either the CPU record or its renderer-facing sprite record.
+      (asm-block callback-3d
+                 (label call-update-function-3d)
+                 (l.w.field t9 cpuinfo (func))
+                 (b.z t9 check-relaunch-3d :delay (nop!))
+                 (add.i sp sp -96)
+                 (s.q sys sp)
+                 (s.q cpuinfo sp 16)
+                 (s.q sprite-data sp 32)
+                 (s.q slot sp 48)
+                 (s.q remaining sp 64)
+                 (m a0 sys)
+                 (m a1 cpuinfo)
+                 (m a2 sprite-data)
+                 (jalr ra t9 :delay (s.q paused? sp 80))
+                 (l.q sys sp)
+                 (l.q cpuinfo sp 16)
+                 (l.q sprite-data sp 32)
+                 (l.q slot sp 48)
+                 (l.q remaining sp 64)
+                 (l.q paused? sp 80)
+                 (add.i sp sp 96))
+      ;; Relaunch on the first frame that carries the independent next-time countdown below zero.
+      (asm-block relaunch-3d
+                 (label check-relaunch-3d)
+                 (l.w.field a1 cpuinfo (next-launcher))
+                 (l.w.field v1 cpuinfo (next-time))
+                 (b.z a1 integrate-3d :delay (l.q a0 sp 32))
+                 (sub v1 v1 a0)
+                 (b.ge v1 r0 integrate-3d :delay (s.w.field v1 cpuinfo (next-time)))
+                 (add.i sp sp -96)
+                 (s.q sys sp)
+                 (s.q cpuinfo sp 16)
+                 (s.q sprite-data sp 32)
+                 (s.q slot sp 48)
+                 (s.q remaining sp 64)
+                 (s.q paused? sp 80)
+                 (m a0 sys)
+                 (m a3 sprite-data)
+                 (m a2 cpuinfo)
+                 (m! t9 sp-relaunch-particle-3d)
+                 (jalr ra t9 :delay (sll v0 ra 0))
+                 (l.q sys sp)
+                 (l.q cpuinfo sp 16)
+                 (l.q sprite-data sp 32)
+                 (l.q slot sp 48)
+                 (l.q remaining sp 64)
+                 (l.q paused? sp 80)
+                 (add.i sp sp 96))
+      ;; Integrate the four adjacent CPU vectors directly into the three sprite quadwords.
+      (asm-block integrate-motion-3d
+                 (label integrate-3d)
+                 (l.vf.field sprite-pos-scale sprite-data (x-y-z-sx))
+                 (l.vf.field sprite-quat-scale sprite-data (qx-qy-qz-sy))
+                 (l.vf.field sprite-color sprite-data (r-g-b-a))
+                 (l.vf.field velocity-scale-rate cpuinfo (vel-sxvel))
+                 (l.vf.field rotation-scale-rate cpuinfo (rot-syvel))
+                 (l.vf.field color-fade-rate cpuinfo (fade))
+                 (l.vf.field acceleration cpuinfo (acc))
+                 (l.s.field f0 cpuinfo (friction))
+                 (m v1 f0)
+                 ;; Acceleration uses 60 Hz frame units. Nonzero friction becomes a retained-velocity factor
+                 ;; for this interval and applies to xyz without disturbing x-scale velocity in w.
+                 (mul.z.vf acceleration acceleration frame-time)
+                 (b.z v1 no-friction-3d :delay (add.vf.xyz velocity-scale-rate velocity-scale-rate acceleration))
+                 (m friction-factor v1)
+                 (sub.x.vf.w friction-factor vf0 friction-factor)
+                 (mul.w.vf friction-factor friction-factor frame-time)
+                 (sub.w.vf.w friction-factor vf0 friction-factor)
+                 (mul.w.vf.xyz velocity-scale-rate velocity-scale-rate friction-factor)
+                 (label no-friction-3d)
+                 ;; Apply velocity, y-scale velocity, and fade with the full tick count. The xyz lanes of
+                 ;; rotation-scale-rate are not used here; orientation advances from rotvel3d below.
+                 (mul.y.vf position-step velocity-scale-rate frame-time)
+                 (mul.y.vf rotation-scale-step rotation-scale-rate frame-time)
+                 (mul.y.vf color-step color-fade-rate frame-time)
+                 (add.vf sprite-pos-scale sprite-pos-scale position-step)
+                 (add.w.vf.w sprite-quat-scale sprite-quat-scale rotation-scale-step)
+                 (add.vf sprite-color sprite-color color-step)
+                 (max.x.vf sprite-color sprite-color vf0)
+                 (s.vf.field velocity-scale-rate cpuinfo (vel-sxvel))
+                 (s.vf.field sprite-pos-scale sprite-data (x-y-z-sx))
+                 (s.vf.field sprite-quat-scale sprite-data (qx-qy-qz-sy))
+                 (s.vf.field sprite-color sprite-data (r-g-b-a)))
+      ;; Rebuild w = sqrt(1-x^2-y^2-z^2) in the stack quaternion. The constant is loaded relative to
+      ;; this function because the hand-written function keeps 1.0 in its local literal pool.
+      (asm-block update-quaternion
+                 (m v1 rotation)
+                 (m a0 sprite-data)
+                 (l.s f0 a0 16)
+                 (l.s f1 a0 20)
+                 (l.s f3 a0 24)
+                 (s.s f0 v1)
+                 (s.s f1 v1 4)
+                 (s.s f3 v1 8)
+                 (l.s f2 fp L157)
+                 (mul.s f3 f3 f3)
+                 (sub.s f2 f2 f3)
+                 (mul.s f1 f1 f1)
+                 (sub.s f1 f2 f1)
+                 (mul.s f0 f0 f0)
+                 (sub.s f0 f1 f0)
+                 (sqrt.s f0 f0)
+                 (s.s f0 v1 12)
+                 (m a0 f0)
+                 ;; Compose the particle's rotational velocity once, or twice when a long frame crosses the
+                 ;; ten-tick threshold.
+                 (m! v1 *sp-frame-time*)
+                 (l.s f0 v1)
+                 (m v1 f0)
+                 (and.i v1 v1 255)
+                 (add.i v1 v1 -10)
+                 (b.lt v1 r0 apply-rotation-step :delay (nop!))
+                 (m! t9 quaternion*!)
+                 (m a0 rotation)
+                 (m a1 rotation)
+                 (lea.field a2 cpuinfo (rotvel3d))
+                 (jalr ra t9 :delay (sll v0 ra 0))
+                 (label apply-rotation-step)
+                 (m! t9 quaternion*!)
+                 (m a0 rotation)
+                 (m a1 rotation)
+                 (lea.field a2 cpuinfo (rotvel3d))
+                 (jalr ra t9 :delay (sll v0 ra 0)))
+      ;; q and -q are equivalent. Store the sign whose omitted w is nonnegative so the renderer can
+      ;; reconstruct the same convention from xyz alone; preserve y-scale in the untouched w lane.
+      (asm-block store-compact-quaternion
+                 (m a0 sprite-data)
+                 (m v1 rotation)
+                 (l.s f0 v1 12)
+                 (m f1 r0)
+                 (c.lt.s f0 f1)
+                 (b.fpf store-positive-quaternion :delay (nop!))
+                 (l.vf stored-quat-scale a0 16)
+                 (l.vf full-quaternion v1)
+                 (sub.vf.xyz stored-quat-scale vf0 full-quaternion)
+                 (s.vf stored-quat-scale a0 16)
+                 (m a0 stored-quat-scale)
+                 (b test-death-flags-3d :delay (nop!))
+                 (label store-positive-quaternion)
+                 (l.vf stored-quat-scale a0 16)
+                 (l.vf full-quaternion v1)
+                 (add.vf.xyz stored-quat-scale vf0 full-quaternion)
+                 (s.vf stored-quat-scale a0 16)
+                 (m a0 stored-quat-scale))
+      ;; Packed extracts test RGB together, then alpha, then x- and y-scale. These correspond to
+      ;; die-when-color-0, die-when-faded, and die-when-scale-0.
+      (asm-block death-tests-3d
+                 (label test-death-flags-3d)
+                 (m v1 sprite-color)
+                 (l.w.field a0 cpuinfo (flags))
+                 (and.i a1 a0 2)
+                 (b.z a1 test-fade-death-3d :delay (and.i a1 a0 4))
+                 (b.nz v1 test-fade-death-3d :delay (pextuw a2 v1 r0))
+                 (b.z a2 free-particle-3d :delay (nop!))
+                 (label test-fade-death-3d)
+                 (b.z a1 test-scale-death-3d :delay (and.i a0 a0 1))
+                 (pcpyud v1 v1 r0)
+                 (pexew v1 v1)
+                 (b.le v1 r0 free-particle-3d :delay (nop!))
+                 (label test-scale-death-3d)
+                 (b.z a0 next-particle-3d :delay (nop!))
+                 (m v1 sprite-pos-scale)
+                 (pcpyud v1 v1 r0)
+                 (pexew v1 v1)
+                 (b.lt v1 r0 free-particle-3d :delay (m v1 sprite-quat-scale))
+                 (pcpyud v1 v1 r0)
+                 (pexew v1 v1)
+                 (b.ge v1 r0 next-particle-3d :delay (nop!))
+                 ;; Return dead particles to the bitmap-managed pool.
+                 (label free-particle-3d)
+                 (m! t9 sp-free-particle)
+                 (m a0 sys)
+                 (m a1 slot)
+                 (m a2 cpuinfo)
+                 (m a3 sprite-data)
+                 (jalr ra t9 :delay (sll v0 ra 0)))
+      ;; Advance every parallel cursor even when this slot was invalid.
+      (asm-block advance-and-return-3d
+                 (label next-particle-3d)
+                 (add.i remaining remaining -1)
+                 (add.i cpuinfo cpuinfo 144)
+                 (add.i sprite-data sprite-data 48)
+                 (b.nz remaining particle-loop-3d :delay (add.i slot slot 1))
+                 ;; Return the first slot after the processed block.
+                 (m v0 slot)
+                 (l.d ra sp)
+                 (l.d fp sp 8)
+                 (l.q sys sp 144)
+                 (l.q cpuinfo sp 128)
+                 (l.q sprite-data sp 112)
+                 (l.q remaining sp 96)
+                 (l.q paused? sp 80)
+                 (l.q rotation sp 64)
+                 (l.q slot sp 48)
+                 (jr ra :delay (add.i sp sp 160))
+                 (nop! :count 3)))))
+
+(#when PC_PORT
+  (def-mips2c sp-process-block-3d (function sparticle-system int int int int symbol none)))
+
+(defun sp-copy-to-spr ((scratchpad-offset int) (memory pointer) (size int))
+  "Copy size bytes from main memory to a scratchpad offset, rounded up to whole quadwords."
+  ;; The PC port uses the fake scratchpad.
+  (let ((quadword-count (/ (+ size 15) 16)))
+    (__mem-move (&+ (scratchpad-start) scratchpad-offset) memory (the uint (* quadword-count 16)))
+    ;; (dma-send-to-spr-no-flush
+    ;;   (the-as uint scratchpad-offset) (the-as uint memory) (the-as uint quadword-count) #t)
     )
   0
   (none))
 
-(defun sp-copy-from-spr ((arg0 int) (arg1 pointer) (arg2 int))
-  ;; modified to use fake spad.
-  (let ((a2-1 (/ (+ arg2 15) 16)))
-    (__mem-move arg1 (&+ (scratchpad-start) arg0) (the uint (* a2-1 16)))
-    ;;(dma-send-from-spr-no-flush (the-as uint arg1) (the-as uint arg0) (the-as uint a2-1) #t)
+(defun sp-copy-from-spr ((scratchpad-offset int) (memory pointer) (size int))
+  "Copy size bytes from a scratchpad offset to main memory, rounded up to whole quadwords."
+  ;; The PC port uses the fake scratchpad.
+  (let ((quadword-count (/ (+ size 15) 16)))
+    (__mem-move memory (&+ (scratchpad-start) scratchpad-offset) (the uint (* quadword-count 16)))
+    ;; (dma-send-from-spr-no-flush
+    ;;   (the-as uint memory) (the-as uint scratchpad-offset) (the-as uint quadword-count) #t)
     )
   0
   (none))
 
-;; TODO memcpy (unused)
+(#unless PC_PORT
+  (defun memcpy ((dst pointer) (src pointer) (size int))
+    "Copy size rounded-up bytes from src to dst in 128-byte bursts followed by 16-byte quadwords."
+    (declare (asm-func none))
+    ;; Particle scratchpad records are all quadword-padded, so this copier deliberately rounds size
+    ;; upward. Large transfers use eight quadword loads followed by eight stores per iteration.
+    (rlet ((dst :reg a0)
+           (src :reg a1)
+           (size :reg a2)
+           (quadwords :reg v1)
+           (data0 :reg a2 :type i128)
+           (data1 :reg a3 :type i128)
+           (data2 :reg t0 :type i128)
+           (data3 :reg t1 :type i128)
+           (data4 :reg t2 :type i128)
+           (data5 :reg t3 :type i128)
+           (data6 :reg t4 :type i128)
+           (data7 :reg t5 :type i128))
+      (add.i quadwords size 15)
+      (sra quadwords quadwords 4)
+      (add.i quadwords quadwords -8)
+      (b.lt quadwords r0 finish-bursts :delay (at-label copy-burst (l.q data0 src)))
+      (l.q data1 src 16)
+      (l.q data2 src 32)
+      (l.q data3 src 48)
+      (l.q data4 src 64)
+      (l.q data5 src 80)
+      (l.q data6 src 96)
+      (l.q data7 src 112)
+      (s.q data0 dst)
+      (s.q data1 dst 16)
+      (s.q data2 dst 32)
+      (s.q data3 dst 48)
+      (s.q data4 dst 64)
+      (s.q data5 dst 80)
+      (s.q data6 dst 96)
+      (s.q data7 dst 112)
+      (add.i src src 128)
+      (add.i quadwords quadwords -8)
+      (b.ge quadwords r0 copy-burst :delay (add.i dst dst 128))
+      (label finish-bursts)
+      (add.i quadwords quadwords 8)
+      (b.z quadwords done-copying :delay (at-label copy-quadword (l.q data0 src)))
+      (add.i src src 16)
+      (s.q data0 dst)
+      (add.i quadwords quadwords -1)
+      (nop!)
+      (b.nz quadwords copy-quadword :delay (add.i dst dst 16))
+      (label done-copying)
+      (m v0 r0)
+      (jr ra :delay (add sp sp r0))
+      (nop! :count 3))))
 
-(defun sp-process-block ((arg0 sparticle-system) (arg1 int) (arg2 sprite-array-2d) (arg3 int))
-  "update the given block of particles"
-  (local-vars (sv-16 int) (sv-32 int) (sv-80 int) (sv-96 int))
-  (let ((s3-0 16)
-        (s2-0 (* 144 arg3))
-        (s5-0 (* 48 arg3)))
-    (set! sv-32 (* 80 arg3))
-    (let ((s1-0 (+ s3-0 s2-0)))
-      (set! sv-16 (+ s1-0 s5-0))
-      (sp-copy-to-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
-      (sp-copy-to-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)
-      (let ((t9-2 sp-copy-to-spr)
-            (a1-7 (-> arg0 adgifdata-table arg1)))
-        (t9-2 sv-16 (the-as pointer a1-7) sv-32))
+(defun sp-process-block ((sys sparticle-system) (start-slot int) (sprite-array-data sprite-array-2d) (count int))
+  "Copy count parallel particle records beginning at start-slot into scratchpad, update them, and
+   copy the mutable CPU and sprite records back. Shader records are input-only."
+  ;; Scratchpad offset 0 is reserved. Each particle contributes 144 bytes of CPU state, 48 bytes of
+  ;; sprite data, and 80 bytes of shader state, in that order.
+  (local-vars (adgif-offset int) (adgif-size int) (scratchpad-cpuinfo int) (scratchpad-sprite-data int))
+  (let ((cpu-offset 16)
+        (cpu-size (* 144 count))
+        (sprite-size (* 48 count)))
+    (set! adgif-size (* 80 count))
+    (let ((sprite-offset (+ cpu-offset cpu-size)))
+      (set! adgif-offset (+ sprite-offset sprite-size))
+      (sp-copy-to-spr cpu-offset (the-as pointer (-> sys cpuinfo-table start-slot)) cpu-size)
+      (sp-copy-to-spr sprite-offset (&+ (-> sys vecdata-table) (* 48 start-slot)) sprite-size)
+      (let ((copy-to-scratchpad sp-copy-to-spr)
+            (adgif-data (-> sys adgifdata-table start-slot)))
+        (copy-to-scratchpad adgif-offset (the-as pointer adgif-data) adgif-size))
       ;; alternate to run without doing scratchpad (will change behavior of kill, but at least works for hud)
-      ; (set! sv-80 (the-as int (-> arg0 cpuinfo-table arg1)))
-      ; (set! sv-96 (the-as int (&+ (-> arg0 vecdata-table) (* 48 arg1))))
-      (set! sv-80 (+ (the int (scratchpad-start)) s3-0)) ;; spad
-      (set! sv-96 (+ (the int (scratchpad-start)) s1-0)) ;; spad
+      ; (set! scratchpad-cpuinfo (the-as int (-> sys cpuinfo-table start-slot)))
+      ; (set! scratchpad-sprite-data (the-as int (&+ (-> sys vecdata-table) (* 48 start-slot))))
+      (set! scratchpad-cpuinfo (+ (the int (scratchpad-start)) cpu-offset))
+      (set! scratchpad-sprite-data (+ (the int (scratchpad-start)) sprite-offset))
       (cond
-        ((-> arg0 is-3d) (sp-process-block-3d arg0 sv-80 sv-96 arg1 arg3 (paused?)))
-        (else (sp-process-block-2d arg0 sv-80 sv-96 arg1 arg3 (paused?))))
-      (sp-copy-from-spr s3-0 (the-as pointer (-> arg0 cpuinfo-table arg1)) s2-0)
-      (sp-copy-from-spr s1-0 (&+ (-> arg0 vecdata-table) (* 48 arg1)) s5-0)))
+        ((-> sys is-3d) (sp-process-block-3d sys scratchpad-cpuinfo scratchpad-sprite-data start-slot count (paused?)))
+        (else (sp-process-block-2d sys scratchpad-cpuinfo scratchpad-sprite-data start-slot count (paused?))))
+      (sp-copy-from-spr cpu-offset (the-as pointer (-> sys cpuinfo-table start-slot)) cpu-size)
+      (sp-copy-from-spr sprite-offset (&+ (-> sys vecdata-table) (* 48 start-slot)) sprite-size)))
   0
   (none))
 
-(defun sp-process-particle-system ((arg0 sparticle-system) (arg1 int) (arg2 sprite-array-2d))
-  "update an entire particle system."
-  (let* ((v1-0 16)
-         (s1-0 (/ (- #x4000 v1-0) 272)) ;; offset in spad of vecdata, max sprite data in spad
-         (s3-0 0) ;; mem offset
-         (s4-0 (sp-get-approx-alloc-size arg0 arg1)) ;; remaining size.
-         )
+(defun sp-process-particle-system ((sys sparticle-system) (group int) (sprite-array-data sprite-array-2d))
+  "Update the active prefix of one particle-system group in scratchpad-sized chunks and publish
+   that prefix length to the matching sprite-array group."
+  (let* ((scratchpad-header-size 16)
+         ;; 16 KiB scratchpad minus the header, at 144 + 48 + 80 bytes per particle.
+         (chunk-size (/ (- #x4000 scratchpad-header-size) 272))
+         (start-slot 0)
+         (remaining (sp-get-approx-alloc-size sys group)))
     ;; group 1 starts after group 0
-    (if (= arg1 1) (set! s3-0 (* (-> arg0 blocks 0) 64)))
-    (set! (-> arg2 num-valid arg1) s4-0)
+    (if (= group 1) (set! start-slot (* (-> sys blocks 0) 64)))
+    (set! (-> sprite-array-data num-valid group) remaining)
     ;; flush before processing
     (flush-cache 0)
-    (while (>= s4-0 s1-0) ;; there are full blocks remaining...
-      (sp-process-block arg0 s3-0 arg2 s1-0) ;; process it
-      (set! s4-0 (- s4-0 s1-0))
-      (+! s3-0 s1-0) ;; next data
-      )
+    (while (>= remaining chunk-size)
+      (sp-process-block sys start-slot sprite-array-data chunk-size)
+      (set! remaining (- remaining chunk-size))
+      (+! start-slot chunk-size))
     ;; if there's anything leftover, don't forget that.
-    (if (> s4-0 0) (sp-process-block arg0 s3-0 arg2 s4-0)))
+    (if (> remaining 0) (sp-process-block sys start-slot sprite-array-data remaining)))
   0
   (none))
 
 (define-perm *particles-flag* symbol #t)
 
-(defun forall-particles-with-key-runner ((arg0 sparticle-launch-control) (arg1 (function sparticle-system sparticle-cpuinfo none)) (arg2 sparticle-system))
-  "call the given function on all particles with the given key (arg0)"
-  (local-vars (sv-16 int))
-  (let ((s3-0 (the-as object (-> arg2 cpuinfo-table 0)))
-        (s2-0 (&+ (-> arg2 vecdata-table) 0))
-        (s1-0 (+ (-> arg2 blocks 0) (-> arg2 blocks 1))))
-    (dotimes (s0-0 s1-0) ;; loop over blocks
+(defun forall-particles-with-key-runner ((key sparticle-launch-control) (func (function sparticle-system sparticle-cpuinfo none)) (sys sparticle-system))
+  "Call func for every valid particle in sys whose launch-control key matches key."
+  (local-vars (bit int))
+  (let ((cpuinfo (the-as object (-> sys cpuinfo-table 0)))
+        (sprite-data (&+ (-> sys vecdata-table) 0))
+        (total-blocks (+ (-> sys blocks 0) (-> sys blocks 1))))
+    (dotimes (block total-blocks)
       (cond
-        ((!= (-> arg2 alloc-table s0-0) -1) ;; block has something allocated.
-         (set! sv-16 0)
-         (while (< sv-16 64)
-           (if (and (-> (the-as sparticle-cpuinfo s3-0) valid) ;; is allocated
-                    (= (-> (the-as sparticle-cpuinfo s3-0) key) arg0) ;; matches the key
+        ((!= (-> sys alloc-table block) -1) ;; block has something allocated.
+         (set! bit 0)
+         (while (< bit 64)
+           (if (and (-> (the-as sparticle-cpuinfo cpuinfo) valid) ;; is allocated
+                    (= (-> (the-as sparticle-cpuinfo cpuinfo) key) key) ;; matches the key
                     )
-             (arg1 arg2 (the-as sparticle-cpuinfo s3-0)) ;; run the callback!
+             (func sys (the-as sparticle-cpuinfo cpuinfo)) ;; run the callback!
              )
-           (set! s3-0 (-> (the-as (inline-array sparticle-cpuinfo) s3-0) 1)) ;; next cpu
-           (&+! s2-0 48) ;; next vec
-           (set! sv-16 (+ sv-16 1)) ;; next idx in block
-           ))
+           (set! cpuinfo (-> (the-as (inline-array sparticle-cpuinfo) cpuinfo) 1)) ;; next cpu
+           (&+! sprite-data 48) ;; next vec
+           (+! bit 1)))
         (else
          ;; skip the whole block!
-         (set! s3-0 (-> (the-as (inline-array sparticle-cpuinfo) s3-0) 64))
-         (&+! s2-0 3072)))))
+         (set! cpuinfo (-> (the-as (inline-array sparticle-cpuinfo) cpuinfo) 64))
+         (&+! sprite-data 3072)))))
   0
   (none))
 
-(defun forall-particles-with-key ((arg0 sparticle-launch-control) (arg1 (function sparticle-system sparticle-cpuinfo none)) (arg2 symbol) (arg3 symbol))
-  "call the given function on all particles with the given key. arg2 is 2d, arg3 is 3d."
-  (if arg2 (forall-particles-with-key-runner arg0 arg1 *sp-particle-system-2d*))
-  (if arg3 (forall-particles-with-key-runner arg0 arg1 *sp-particle-system-3d*))
+(defun forall-particles-with-key ((key sparticle-launch-control)
+        (func (function sparticle-system sparticle-cpuinfo none))
+        (do-2d? symbol)
+        (do-3d? symbol))
+  "Call func for particles owned by key in the selected 2D and 3D systems."
+  (if do-2d? (forall-particles-with-key-runner key func *sp-particle-system-2d*))
+  (if do-3d? (forall-particles-with-key-runner key func *sp-particle-system-3d*))
   0
   (none))
 
-(defun sparticle-kill-it ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
-  "kill a particle without freeing it."
-  (set! (-> arg1 timer) 0) ;; advance timer to zero
-  (set! (-> arg1 func) (the-as basic 0)) ;; don't let the callback run and save the timer
-  (when (and (-> arg1 binding) (nonzero? (-> arg1 binding)))
+(defun sparticle-kill-it ((sys sparticle-system) (cpuinfo sparticle-cpuinfo))
+  "Stop a particle and detach its launch-state without releasing its pool slot."
+  (set! (-> cpuinfo timer) 0)
+  (set! (-> cpuinfo func) (the-as basic 0)) ;; don't let the callback run and save the timer
+  (when (and (-> cpuinfo binding) (nonzero? (-> cpuinfo binding)))
     ;; kill the launcher too.
-    (logclear! (-> arg1 binding flags) (sp-launch-state-flags launcher-active particles-active))
-    ;; and forget it, I guess it could be unloaded
-    (set! (-> arg1 binding) #f))
+    (logclear! (-> cpuinfo binding flags) (sp-launch-state-flags enabled launched))
+    ;; Forget the binding because its heap may be unloaded before this pool slot is reused.
+    (set! (-> cpuinfo binding) #f))
   0
   (none))
 
-(defun sparticle-kill-it-level0 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
-  "kill all particles belonging to level 0"
-  (if (logtest? (-> arg1 flags) (sp-cpuinfo-flag level0)) (sparticle-kill-it arg0 arg1))
+(defun sparticle-kill-it-level0 ((sys sparticle-system) (cpuinfo sparticle-cpuinfo))
+  "Stop cpuinfo when it belongs to level heap zero."
+  (if (logtest? (-> cpuinfo flags) (sp-cpuinfo-flag level0)) (sparticle-kill-it sys cpuinfo))
   0
   (none))
 
-(defun sparticle-kill-it-level1 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo))
-  "kill all particles belonging to level 1."
-  (if (logtest? (-> arg1 flags) (sp-cpuinfo-flag level1)) (sparticle-kill-it arg0 arg1))
+(defun sparticle-kill-it-level1 ((sys sparticle-system) (cpuinfo sparticle-cpuinfo))
+  "Stop cpuinfo when it belongs to level heap one."
+  (if (logtest? (-> cpuinfo flags) (sp-cpuinfo-flag level1)) (sparticle-kill-it sys cpuinfo))
   0
   (none))
 
-(defun sparticle-60-to-50 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
-  "convert from 60hz to 50hz particles"
-  (let ((gp-0 (-> arg1 rotvel3d))
-        (s5-0 (new 'stack-no-clear 'quaternion)))
-    (vector-angle<-quaternion! (the-as vector s5-0) gp-0)
-    (set! (-> s5-0 w) (* 12516.455 (-> s5-0 w)))
-    (quaternion-vector-angle! gp-0 (the-as vector s5-0) (-> s5-0 w)))
+(defun sparticle-60-to-50 ((sys sparticle-system) (cpuinfo sparticle-cpuinfo) (sprite-data pointer))
+  "Convert one 3D particle's per-frame rotation quaternion from a 60 Hz step to a 50 Hz step."
+  ;; The extracted angle is radians. 12516.455 is (65536 / 2pi) * (6 / 5), converting it to the
+  ;; engine's rotation units while enlarging a 5-tick step to the equivalent 6-tick step.
+  (let ((rotational-step (-> cpuinfo rotvel3d))
+        (axis-angle (new 'stack-no-clear 'quaternion)))
+    (vector-angle<-quaternion! (the-as vector axis-angle) rotational-step)
+    (set! (-> axis-angle w) (* 12516.455 (-> axis-angle w)))
+    (quaternion-vector-angle! rotational-step (the-as vector axis-angle) (-> axis-angle w)))
   0
   (none))
 
-(defun sparticle-50-to-60 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 pointer))
-  "convert from 50hz to 60hz particles"
-  (let ((gp-0 (-> arg1 rotvel3d))
-        (s5-0 (new 'stack-no-clear 'quaternion)))
-    (vector-angle<-quaternion! (the-as vector s5-0) gp-0)
-    (set! (-> s5-0 w) (* 8691.982 (-> s5-0 w)))
-    (quaternion-vector-angle! gp-0 (the-as vector s5-0) (-> s5-0 w)))
+(defun sparticle-50-to-60 ((sys sparticle-system) (cpuinfo sparticle-cpuinfo) (sprite-data pointer))
+  "Convert one 3D particle's per-frame rotation quaternion from a 50 Hz step to a 60 Hz step."
+  ;; 8691.982 is (65536 / 2pi) * (5 / 6), the inverse conversion and timestep ratio.
+  (let ((rotational-step (-> cpuinfo rotvel3d))
+        (axis-angle (new 'stack-no-clear 'quaternion)))
+    (vector-angle<-quaternion! (the-as vector axis-angle) rotational-step)
+    (set! (-> axis-angle w) (* 8691.982 (-> axis-angle w)))
+    (quaternion-vector-angle! rotational-step (the-as vector axis-angle) (-> axis-angle w)))
   0
   (none))
 
-(defun kill-all-particles-with-key ((arg0 sparticle-launch-control))
-  (forall-particles-with-key arg0 sparticle-kill-it #t #t)
+(defun kill-all-particles-with-key ((key sparticle-launch-control))
+  "Stop every 2D and 3D particle owned by key without releasing its pool slots."
+  (forall-particles-with-key key sparticle-kill-it #t #t)
   0
   (none))
 
-(defun forall-particles-runner ((arg0 (function sparticle-system sparticle-cpuinfo pointer none)) (arg1 sparticle-system))
-  "run function on all particles in the system."
-  (let ((s4-0 (the-as object (-> arg1 cpuinfo-table 0)))
-        (s3-0 (&+ (-> arg1 vecdata-table) 0))
-        (s2-0 (+ (-> arg1 blocks 0) (-> arg1 blocks 1))))
-    (dotimes (s1-0 s2-0)
+(defun forall-particles-runner ((func (function sparticle-system sparticle-cpuinfo pointer none)) (sys sparticle-system))
+  "Call func for every valid particle in sys, passing its CPU record and parallel sprite record.
+   Completely free 64-slot blocks are skipped."
+  (let ((cpuinfo (the-as object (-> sys cpuinfo-table 0)))
+        (sprite-data (&+ (-> sys vecdata-table) 0))
+        (total-blocks (+ (-> sys blocks 0) (-> sys blocks 1))))
+    (dotimes (block total-blocks)
       (cond
-        ((!= (-> arg1 alloc-table s1-0) -1)
-         (dotimes (s0-0 64)
-           (if (-> (the-as sparticle-cpuinfo s4-0) valid) (arg0 arg1 (the-as sparticle-cpuinfo s4-0) s3-0))
-           (set! s4-0 (+ (the-as uint s4-0) 144))
-           (&+! s3-0 48)))
-        (else (set! s4-0 (&+ (the-as pointer s4-0) 9216)) (&+! s3-0 3072)))))
+        ((!= (-> sys alloc-table block) -1)
+         (dotimes (bit 64)
+           (if (-> (the-as sparticle-cpuinfo cpuinfo) valid) (func sys (the-as sparticle-cpuinfo cpuinfo) sprite-data))
+           (set! cpuinfo (+ (the-as uint cpuinfo) 144))
+           (&+! sprite-data 48)))
+        (else (set! cpuinfo (&+ (the-as pointer cpuinfo) 9216)) (&+! sprite-data 3072)))))
   0
   (none))
 
-(defun forall-particles ((arg0 function) (arg1 symbol) (arg2 symbol))
-  "run function on all particles. arg1 for 2d, arg2 for 3d."
-  (if arg1
-    (forall-particles-runner (the-as (function sparticle-system sparticle-cpuinfo pointer none) arg0)
+(defun forall-particles ((func function) (do-2d? symbol) (do-3d? symbol))
+  "Call func for every valid particle in the selected 2D and 3D systems."
+  (if do-2d?
+    (forall-particles-runner (the-as (function sparticle-system sparticle-cpuinfo pointer none) func)
                              *sp-particle-system-2d*))
-  (if arg2
-    (forall-particles-runner (the-as (function sparticle-system sparticle-cpuinfo pointer none) arg0)
+  (if do-3d?
+    (forall-particles-runner (the-as (function sparticle-system sparticle-cpuinfo pointer none) func)
                              *sp-particle-system-3d*))
   0
   (none))
 
-(defun kill-all-particles-in-level ((arg0 level))
-  "kill all particles belonging to the given level."
-  (forall-particles (if (zero? (-> arg0 index)) sparticle-kill-it-level0 sparticle-kill-it-level1) #t #t)
+(defun kill-all-particles-in-level ((lev level))
+  "Stop every particle tagged for lev's active level heap without releasing its pool slot."
+  (forall-particles (if (zero? (-> lev index)) sparticle-kill-it-level0 sparticle-kill-it-level1) #t #t)
   0)
 
 (defun all-particles-50-to-60 ()
+  "Rescale every live 3D particle's rotational step when switching from 50 Hz to 60 Hz."
   (forall-particles-runner sparticle-50-to-60 *sp-particle-system-3d*)
   (none))
 
 (defun all-particles-60-to-50 ()
+  "Rescale every live 3D particle's rotational step when switching from 60 Hz to 50 Hz."
   (forall-particles-runner sparticle-60-to-50 *sp-particle-system-3d*)
   (none))
 
-(defun set-particle-frame-time ((scaled-seconds int))
-  "Adjusts particle frame time based on the frame-rate (scaled-seconds). Note: This used to be a case statement and has been rewritten as a more generic formula"
-  (set-vector! *sp-frame-time*
-               (the-as float (logior #x800000 scaled-seconds))
-               (the float scaled-seconds)
-               (* 0.2 scaled-seconds)
-               (* 0.2 scaled-seconds))
+(defun set-particle-frame-time ((ticks int))
+  "Set particle timing from elapsed 300 Hz ticks: retain the tick count as both packed bits and a
+   float, and store the equivalent number of 60 Hz frames in the remaining lanes."
+  ;; The low byte of x carries the integer tick count. #x800000 supplies a normal float exponent so
+  ;; the packed value does not become a denormal when VU code loads the whole vector.
+  (set-vector! *sp-frame-time* (the-as float (logior #x800000 ticks)) (the float ticks) (* 0.2 ticks) (* 0.2 ticks))
   (none))
 
 (defun process-particles ()
-  "main particle system update."
-  (local-vars (v1-29 int) (gp-0 int))
+  "Update particle timing, all 2D, HUD, and 3D particle groups, profiling bars, and deferred
+   launches for one display frame."
+  (local-vars (end-cycles int) (start-cycles int))
   (when *particles-flag*
     0
     0
-    ;;(.mfc0 gp-0 Count)
+    ;;(.mfc0 start-cycles Count)
     (set! *sp-launcher-lock* #t)
     ;; start a profile frame.
     (if *debug-segment*
@@ -447,11 +1162,11 @@
                  'draw
                  (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
     ;; update timer
-    (let ((v1-14 (logand (the-as int (-> *sp-frame-time* x)) 255)))
-      (set! *particle-300hz-timer* (+ *particle-300hz-timer* v1-14))
+    (let ((ticks (logand (the-as int (-> *sp-frame-time* x)) 255)))
+      (set! *particle-300hz-timer* (+ *particle-300hz-timer* ticks))
       (cond
-        (*sp-60-hz* (when (or (= v1-14 6) (= v1-14 12)) (set! *sp-60-hz* #f) (all-particles-60-to-50)))
-        (else (when (or (= v1-14 5) (= v1-14 10)) (set! *sp-60-hz* #t) (all-particles-50-to-60)))))
+        (*sp-60-hz* (when (or (= ticks 6) (= ticks 12)) (set! *sp-60-hz* #f) (all-particles-60-to-50)))
+        (else (when (or (= ticks 5) (= ticks 10)) (set! *sp-60-hz* #t) (all-particles-50-to-60)))))
     ;; process the particles
     ;; og:preserve-this made this not run when paused, since aux sprites wont get added.
     (unless (paused?)
@@ -466,12 +1181,12 @@
     (set! *sp-launcher-lock* #f)
     ;; launch queued particles
     (sp-clear-queue)
-    ;;(.mfc0 v1-29 Count)
-    (let ((a2-5 (- v1-29 gp-0)))
+    ;;(.mfc0 end-cycles Count)
+    (let ((elapsed-cycles (- end-cycles start-cycles)))
       (if *display-sprite-info*
         (format *stdcon*
                 "Particle time = ~D cycles for ~D 2D [~D warp] and ~D HUD and ~D 3D~%"
-                a2-5
+                elapsed-cycles
                 (-> *sp-particle-system-2d* num-alloc 0)
                 (-> *sprite-aux-list* entry)
                 (-> *sp-particle-system-2d* num-alloc 1)

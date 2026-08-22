@@ -7,14 +7,25 @@
 (require "kernel/gstring-h.gc")
 (require "engine/game/game-h.gc")
 
-;; The merc-blend-shape renderer does face animations.
-;; This is missing most functions right now, but just has the types that we need for
-;; looking into merc.
+;; BLERC applies animated blend targets to packed MERC vertices. It is used heavily for facial
+;; expressions, but the format can deform any marked vertices. Animation data supplies one signed
+;; coefficient per target; the active target deltas are accumulated with the base vertex and the
+;; result is clamped back into MERC's packed byte layout.
+;;
+;; Work is gathered into one DMA chain during drawable updates. blerc-execute streams that chain
+;; through the two 8 KiB scratchpad halves, computes one block while the next is arriving, and
+;; copies completed vertices back to the fragment's lump data. The MERC renderer therefore sees the
+;; updated positions and normals without needing a second geometry format.
 
 ;; DECOMP BEGINS
 
 (define *stats-blerc* #f)
 
+;; Control data appended to one scratchpad output block. tag links the queued work blocks. overlap is
+;; the number of target rows that follow the base row, which is the same thing as the number of
+;; targets whose coefficient came out nonzero for this frame -- setup-blerc-chains-for-one-fragment
+;; counts exactly those, and blerc-a-fragment uses it as the length of the replicated-coefficient
+;; table and nothing else.
 (deftype blerc-block-header (structure)
   ((tag       generic-merc-tag :inline :offset-assert 0)
    (vtx-count uint32 :offset-assert 16)
@@ -25,6 +36,8 @@
   :size-assert #x20
   :flag-assert #x900000020)
 
+;; One scratchpad work block. output holds at most 53 packed 16-byte vertex records. The DMA chain
+;; that describes its base and target rows begins immediately after header, outside this type.
 (deftype blerc-block (structure)
   ((output uint8 848 :offset-assert 0)
    (header blerc-block-header :inline :offset-assert 848))
@@ -32,12 +45,16 @@
   :size-assert #x370
   :flag-assert #x900000370)
 
+;; One quadword per active blend target, each holding that target's signed coefficient replicated into
+;; all eight halfword lanes so PMADDH can take it directly. blerc-a-fragment builds it in *gsf-buffer*
+;; at the start of every block; forty is the most targets a MERC asset declares.
 (deftype blerc-dcache (structure)
   ((repl-mult vector 40 :inline :offset-assert 0))
   :method-count-assert 9
   :size-assert #x280
   :flag-assert #x900000280)
 
+;; Per-frame chain endpoints and optional range/workload statistics.
 (deftype blerc-globals (structure)
   ((first            uint32 :offset-assert 0)
    (next             uint32 :offset-assert 4)
@@ -52,6 +69,9 @@
 
 (define *blerc-globals* (new 'global 'blerc-globals))
 
+;; BLERC assigns block-a to scratchpad address 0 and block-b to address 8192. dummy is the first
+;; half's variable DMA-chain area. The second half's chain likewise continues beyond block-b and
+;; therefore past the declared end of this type into the remainder of the 16 KiB scratchpad.
 (deftype blerc-context (structure)
   ((block-a blerc-block :inline :offset-assert 0)
    (dummy   uint8 7312 :offset-assert 880)
@@ -60,7 +80,35 @@
   :size-assert #x2370
   :flag-assert #x900002370)
 
+;; Both halves of the scratchpad hold a blerc-block, and the second one is reached by adding this.
+;; Nothing else in blerc-context is addressed, so the offset comes from the type.
+(defconstant BLERC-BLOCK-B (offset-of blerc-context block-b))
+
+;; The DMA payload for a block is appended immediately after its header, and DMAtag transfer is on,
+;; so the source chain's tags land in the scratchpad too. The first tag quadword is therefore always
+;; here, and the index row it introduces at +16.
+(defconstant BLERC-SPR-CHAIN (+ (offset-of blerc-block header) (type-size blerc-block-header)))
+
+;; chcr's start bit stays set while a channel is running, so it is both the poll mask and, on its
+;; own, "go" for an ordinary transfer.
+;; og:preserve-this these three want to live in dma-h.gc: shadow-cpu and the generic renderers all
+;; define or use the same values, and merc is simply the first file in load order that needs them.
+
+(defconstant DMA-CHCR-START-SPR-CHAIN (new 'static 'dma-chcr :mod 1 :tte 1 :str 1))
+
+;; A scratchpad address is only meaningful modulo 16 KiB to the SPR channels; the #x70000000 the EE
+;; uses to reach the same memory has to come off first.
+(defconstant SPR-ADDRESS-MASK #x3fff)
+
+;; The packed accumulator runs in 13 fractional bits: a base vertex byte is multiplied by 8192 and
+;; each target's signed byte delta by that target's signed coefficient, then the sum is shifted back
+;; down. blerc-data coefficients are built as +/- 64 * 64, so a coefficient of 64 * 64 is 1.0 here.
+(defconstant BLERC-ONE 8192)
+
+(defconstant BLERC-FRACTION-BITS 13)
+
 (defun-debug blerc-stats-init ()
+  "Print the preceding BLERC frame's optional range and workload statistics, then reset them."
   (when *stats-blerc*
     (when (nonzero? (-> *blerc-globals* fragment-count))
       (format *stdcon* "~%BLERC (merc blend target) STATS~%")
@@ -71,106 +119,851 @@
               (/ (the float (-> *blerc-globals* target-vtx-count)) (the float (-> *blerc-globals* vtx-count))))
       (if (< (-> *blerc-globals* min-val) 0) (format *stdcon* "MINIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* min-val)))
       (if (< 255 (-> *blerc-globals* max-val)) (format *stdcon* "MAXIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* max-val))))
-    (let ((a0-7 *blerc-globals*))
-      (set! (-> a0-7 min-val) 255)
-      (set! (-> a0-7 max-val) 0)
-      (set! (-> a0-7 fragment-count) 0)
-      (set! (-> a0-7 vtx-count) 0)
-      (set! (-> a0-7 target-vtx-count) 0)))
+    (let ((stats *blerc-globals*))
+      (set! (-> stats min-val) 255)
+      (set! (-> stats max-val) 0)
+      (set! (-> stats fragment-count) 0)
+      (set! (-> stats vtx-count) 0)
+      (set! (-> stats target-vtx-count) 0)))
   0
   (none))
 
 (defun blerc-init ()
+  "Begin a BLERC frame by clearing the queued-chain head and tail after resetting statistics."
   (blerc-stats-init)
-  (let ((v1-0 *blerc-globals*)) (set! (-> v1-0 first) (the-as uint 0)) (set! (-> v1-0 next) (the-as uint 0)))
+  (let ((state *blerc-globals*)) (set! (-> state first) (the-as uint 0)) (set! (-> state next) (the-as uint 0)))
   0
   (none))
 
-;; todo blerc-a-fragment (unused)
+;; These helpers are kept as direct EE assembly because they program the scratchpad DMA channels
+;; and use the multimedia unit's packed multiply-accumulate registers.
+(#unless PC_PORT
+  (defun merc-dma-chain-to-spr ((scratchpad-dst pointer) (chain dma-packet))
+    "Wait for the to-scratchpad DMA channel, then run the source chain so its payload is written at
+     scratchpad-dst."
+    (declare (asm-func none))
+    (rlet ((to-spr :type dma-bank-spr)
+           (status)
+           (chain-tag)
+           (chcr-start)
+           (result :reg v0))
+      (asm-block wait-for-channel
+        (nop!)
+        (lui to-spr #x1000)
+        (nop!)
+        (ori to-spr to-spr #xd400)
+        (and.i scratchpad-dst scratchpad-dst SPR-ADDRESS-MASK)
+        (label wait-to-spr)
+        (l.w status (-> to-spr chcr))
+        (nop! :count 3)
+        (and.i status status DMA-CHCR-STR)
+        (nop!)
+        ;; The load of the caller's first tag is in the delay slot, so it happens on every poll and
+        ;; costs nothing extra on the last one.
+        (b.nz status wait-to-spr :delay (l.w chain-tag chain)))
+      ;; An empty chain is legal and means there is nothing to send. sadr is still written, in the
+      ;; delay slot, which is harmless with the channel stopped.
+      (asm-block start-source-chain
+        (b.z chain-tag to-spr-done :delay (s.w scratchpad-dst (-> to-spr sadr)))
+        (add.i chcr-start r0 DMA-CHCR-START-SPR-CHAIN)
+        (s.w chain-tag (-> to-spr tadr))
+        (s.w r0 (-> to-spr qwc))
+        (sync.l)
+        (s.w chcr-start (-> to-spr chcr))
+        (sync.l))
+      (label to-spr-done)
+      (m result r0)
+      (jr ra :delay (add sp sp r0))
+      (nop! :count 3)))
 
-;; todo dma-from-spr (unused)
+  (defun dma-from-spr ((qwc uint) (scratchpad-src pointer) (dst pointer))
+    "Wait for the from-scratchpad DMA channel, then copy qwc quadwords from scratchpad-src to dst."
+    (declare (asm-func none))
+    (rlet ((from-spr :type dma-bank-spr)
+           (status)
+           (chcr-start)
+           (result :reg v0))
+      (asm-block wait-for-channel
+        (nop!)
+        (lui from-spr #x1000)
+        (nop!)
+        (ori from-spr from-spr #xd000)
+        (and.i scratchpad-src scratchpad-src SPR-ADDRESS-MASK)
+        (label wait-from-spr)
+        (l.w status (-> from-spr chcr))
+        (nop! :count 3)
+        (and.i status status DMA-CHCR-STR)
+        (nop!)
+        (b.nz status wait-from-spr :delay (nop!)))
+      ;; A plain normal-mode transfer: qwc lands in madr's channel, not a chain. The argument order
+      ;; here is the caller's, not the channel's -- qwc is written before the destination.
+      (asm-block start-normal-transfer
+        (s.w scratchpad-src (-> from-spr sadr))
+        (add.i chcr-start r0 DMA-CHCR-STR)
+        (s.w qwc (-> from-spr qwc))
+        (nop!)
+        (s.w dst (-> from-spr madr))
+        (sync.l)
+        (s.w chcr-start (-> from-spr chcr))
+        (sync.l))
+      (m result r0)
+      (jr ra :delay (add sp sp r0))
+      (nop! :count 3)))
 
-;; todo merc-dma-chain-to-spr (unused)
+  (defun blerc-a-fragment ((block blerc-block))
+    "Apply every active blend target in one scratchpad block to its base vertices, clamp the packed
+     results to unsigned bytes, preserve the packed matrix/destination halfwords, and update
+     optional statistics."
+    (declare (asm-func none) (allow-saved-regs))
+    ;; The block is a blerc-block sitting in one half of the scratchpad. DMAtag transfer was on when
+    ;; it arrived, so its source chain's tags are in the scratchpad too, laid out as
+    ;;
+    ;;   BLERC-SPR-CHAIN + 0*stride   [tag][base row]      the fragment's unmodified packed bytes
+    ;;   BLERC-SPR-CHAIN + 1*stride   [tag][target row]    one signed delta per byte, coefficient in
+    ;;   ...                                               the tag's fourth word
+    ;;   BLERC-SPR-CHAIN + n*stride   [tag][index row]     the packed matrix/destination halfwords
+    ;;
+    ;; where n is header.overlap and stride is (tag qwc + 1) * 16 -- the row plus its own tag. Because
+    ;; every row is the same length the stride is read once, out of the first tag's low byte.
+    ;;
+    ;; *gsf-buffer* is borrowed as the replicated-coefficient table, and the finished vertices are
+    ;; written to output at block + 0 for the caller to send back to header.lump-dest.
+    (rlet ((block :reg a0 :type blerc-block)
+           (out-block :reg a2 :type blerc-block))
+      (asm-block read-block-layout
+        (add.i sp sp -48)
+        (s.d ra sp)
+        (s.q s5 sp 16)
+        (s.q gp sp 32)
+        (nop!)
+        (m! a1 *gsf-buffer*)
+        (add.i t2 block BLERC-SPR-CHAIN)
+        (l.b a3 t2) ;; the first tag's qwc: every row is this long
+        (nop!)
+        (m out-block block)
+        (l.w v1 (-> block header overlap))
+        (add.i a3 a3 1) ;; ... plus the tag quadword itself
+        (m t1 a1)
+        (sll a3 a3 4)
+        (sll t0 v1 4)
+        (add t0 t0 a1) ;; one coefficient quadword per target
+        (add t3 t2 a3)
+        (b.z v1 blend-vertices :delay (add.i t8 t2 16)))
 
-;; todo blerc-execute
-(def-mips2c blerc-execute (function none))
+      ;; Pull each active target's signed coefficient out of the upper word of its DMA tag and
+      ;; replicate it into all eight halfword lanes, so the inner loop can PMADDH against it with no
+      ;; further shuffling. PCPYH fills one doubleword, PCPYLD copies that into the other.
+      (asm-block build-coefficient-table
+        (l.h t5 t3 12)
+        (add t2 t3 a3)
+        (b copy-overlap-check :delay (nop!))
+        (label copy-overlap)
+        (l.h t5 t2 12)
+        (add t2 t2 a3)
+        (s.q t6 t1)
+        (add.i t1 t1 16)
+        (label copy-overlap-check)
+        (pcpyh t5 t5)
+        (mmi-nop!)
+        (b.ne t1 t0 copy-overlap :delay (pcpyld t6 t5 t5))
+        ;; Back up one stride: the loop left t2 past the index row, which is where the vertex count
+        ;; and the packed matrix/destination halfwords live.
+        (sub t3 t2 a3)
+        (nop!))
+
+      (label blend-vertices)
+      ;; t1 is a clamp of 255 in every halfword lane, t2 is BLERC-ONE in every lane, and t3/t4 start
+      ;; the running minimum and maximum used by the optional statistics.
+      (asm-block build-lane-constants
+        (add.i t1 r0 255)
+        (add.i t2 r0 BLERC-ONE)
+        (l.b t9 t3)
+        (add.i ra t3 16)
+        (pcpyh t1 t1)
+        (mmi-nop!)
+        (pcpyld t1 t1 t1)
+        (mmi-nop!)
+        (pcpyh t2 t2)
+        (mmi-nop!)
+        (pcpyld t2 t2 t2)
+        (mmi-nop!)
+        (m.q t3 t1)
+        (mmi-nop!)
+        (m.q t4 r0)
+        (mmi-nop!))
+
+      ;; Eight base bytes at a time. PEXTLB against zero widens them to unsigned halfwords, and
+      ;; PMULTH by BLERC-ONE seeds the four 32-bit accumulators that live in HI/LO. Each active target
+      ;; then contributes one PMADDH of (signed delta halfword) * (replicated coefficient); the delta
+      ;; is sign-extended by widening it into the *high* half of each lane and shifting back down,
+      ;; because the MMI has no sign-extending byte unpack.
+      (asm-block blend-one-vertex
+        (label vertex-loop)
+        (l.d t6 t8)
+        (add s5 t8 a3)
+        (add.i t8 t8 8)
+        (m gp a1)
+        (pextlb t6 r0 t6)
+        (mmi-nop!)
+        (pmulth t7 t6 t2)
+        (l.d t5 s5)
+        (add.i t9 t9 -1)
+        (nop!)
+        (b accumulate-target-check :delay (add s5 s5 a3))
+        (label accumulate-target)
+        (pmaddh t7 t5 t6)
+        (l.d t5 s5)
+        (add s5 s5 a3)
+        (add.i gp gp 16)
+        (label accumulate-target-check)
+        (l.q t6 gp)
+        (pextlb t5 t5 r0)
+        (b.ne gp t0 accumulate-target :delay (psrah t5 t5 8)))
+
+      ;; PMULTH and PMADDH keep four 32-bit accumulators split across HI and LO, so PMFHL.UW gathers
+      ;; the two that PMADDH's destination register did not. Shift both halves back down by
+      ;; BLERC-FRACTION-BITS, interleave them into lane order, record the pre-clamp extrema for the
+      ;; statistics, then clamp to 0..255 and pack.
+      ;;
+      ;; The index row supplies the two packed halfwords the blend must not touch -- the matrix and
+      ;; destination bytes -- and PEXTLH weaves them back in, which is what makes the result a
+      ;; complete merc-vtx again rather than positions and normals that still need merging.
+      (asm-block clamp-and-pack
+        (pmfhl.uw t5)
+        (mmi-nop!)
+        (psraw t7 t7 BLERC-FRACTION-BITS)
+        (mmi-nop!)
+        (psraw t5 t5 BLERC-FRACTION-BITS)
+        (mmi-nop!)
+        (pinteh t5 t5 t7)
+        (mmi-nop!)
+        (pminh t3 t3 t5)
+        (mmi-nop!)
+        (pmaxh t4 t4 t5)
+        (mmi-nop!)
+        (pminh t5 t5 t1)
+        (mmi-nop!)
+        (pmaxh t5 t5 r0)
+        (l.q t7 ra)
+        (ppacb t5 r0 t5)
+        (mmi-nop!)
+        (ppach t7 r0 t7)
+        (mmi-nop!)
+        (pextlh t5 t5 t7)
+        (mmi-nop!)
+        (s.q t5 out-block)
+        (add.i out-block out-block 16)
+        (b.nz t9 vertex-loop :delay (add.i ra ra 16)))
+
+      ;; Statistics only. The extrema are still spread across eight halfword lanes, so fold them with
+      ;; PCPYUD and two shifts before merging into the running frame values. Anything outside 0..255
+      ;; means the exporter's blend targets can push a vertex past what the packed format holds, and
+      ;; blerc-stats-init prints it.
+      (asm-block accumulate-statistics
+        (m! a1 *stats-blerc*)
+        (b.eq a1 s7 fragment-stats-done :delay (m! a1 *blerc-globals*))
+        (l.w t0 a1 12)
+        (l.w a3 a1 16)
+        (l.w a2 a1 20)
+        ;; Both block pointers are dead from here on; a0 and a2 are ordinary counters.
+        (l.w a0 (-> block header vtx-count))
+        (multu3 v1 v1 a0)
+        (add.i t0 t0 1)
+        (add a0 a3 a0)
+        (add v1 a2 v1)
+        (s.w t0 a1 12)
+        (s.w a0 a1 16)
+        (s.w v1 a1 20)
+        (pcpyud v1 t3 r0)
+        (pminh t3 t3 v1)
+        (srl32 v1 t3 0)
+        (pminh t3 t3 v1)
+        (srl t3 t3 16)
+        (l.h v1 a1 8)
+        (pminh t3 t3 v1)
+        (s.h t3 a1 8)
+        (pcpyud v1 t4 r0)
+        (pmaxh t4 t4 v1)
+        (srl32 v1 t4 0)
+        (pmaxh t4 t4 v1)
+        (srl t4 t4 16)
+        (l.h v1 a1 10)
+        (pmaxh t4 t4 v1)
+        (s.h t4 a1 10))
+      (label fragment-stats-done)
+      (m v0 r0)
+      (l.d ra sp)
+      (l.q gp sp 32)
+      (l.q s5 sp 16)
+      (jr ra :delay (add.i sp sp 48))
+      (nop! :count 2))))
+
+;; PC executes the same packed vertex math against its scratchpad mirror.
+(#when PC_PORT
+  (def-mips2c blerc-execute (function none)))
+
+(#unless PC_PORT
+  (defun blerc-execute ()
+    "Execute the queued BLERC chain through two scratchpad buffers, overlap transfers with packed
+     blend-target arithmetic, and copy each completed vertex block back into its MERC fragment."
+    (declare (asm-func none) (allow-saved-regs))
+    ;; gp selects the scratchpad half and s5 walks the queued work chain. Every iteration starts the
+    ;; toSPR transfer that fills the *other* half, computes the half it already has, then starts the
+    ;; fromSPR copy that returns it -- so at steady state one block is arriving, one is being blended,
+    ;; and one is going back to main memory.
+    ;;
+    ;; The blend kernel in the middle is blerc-a-fragment inlined, because the whole point is to keep
+    ;; both DMA channels live across it.
+    (rlet ((block :reg a0 :type blerc-block) ;; the half being blended
+           (work :reg a2 :type blerc-block) ;; ... and the copy of that pointer the kernel uses
+           (to-spr-a :reg a0 :type dma-bank-spr) ;; the toSPR channel, while block A is being seeded
+           (spr-channel :reg a2 :type dma-bank-spr)) ;; and afterwards, whichever channel is in use
+      ;; The data cache has to be written back before any of this: the blend kernel reads its base rows
+      ;; and coefficient table straight out of the scratchpad and *gsf-buffer* through uncached paths.
+      (asm-block save-registers-and-flush
+        (add.i sp sp -96)
+        (s.d ra sp)
+        (s.q s2 sp 16)
+        (s.q s3 sp 32)
+        (s.q s4 sp 48)
+        (s.q s5 sp 64)
+        (s.q gp sp 80)
+        (m! v1 *blerc-globals*)
+        (l.wu s5 v1)
+        (b.z s5 blerc-execute-done :delay (m v1 s7))
+
+        (add.i v1 r0 0)
+        (add.i gp r0 0)
+        (add.i v1 r0 0)
+        (m! v1 *gsf-buffer*)
+        (m! t9 flush-cache)
+        (add.i a0 r0 0)
+        (jalr ra t9 :delay (sll v0 ra 0)))
+
+      ;; Prime the pipeline by running the first queued source chain into block A's header, which is what
+      ;; puts its rows at BLERC-SPR-CHAIN. Then jump to the loop test rather than the loop body, so a
+      ;; single queued block still works.
+      (asm-block seed-block-a
+        (add.i v1 r0 (offset-of blerc-block header))
+        (lui a0 #x7000)
+        (add a1 v1 a0)
+        (m! v1 *blerc-globals*)
+        (m v1 v1)
+        (nop!)
+        (lui a0 #x1000)
+        (nop!)
+        (ori a0 a0 #xd400)
+        (and.i a1 a1 SPR-ADDRESS-MASK)
+        (label wait-first-to-spr)
+        (l.w a2 (-> to-spr-a chcr))
+        (nop! :count 3)
+        (and.i a2 a2 DMA-CHCR-STR)
+        (nop!)
+        (b.nz a2 wait-first-to-spr :delay (l.w a2 v1))
+        (b.z a2 first-block-ready :delay (s.w a1 (-> to-spr-a sadr)))
+        (add.i v1 r0 DMA-CHCR-START-SPR-CHAIN)
+        (s.w a2 (-> to-spr-a tadr))
+        (s.w r0 (-> to-spr-a qwc))
+        (sync.l)
+        (s.w v1 (-> to-spr-a chcr))
+        (sync.l)
+        (label first-block-ready)
+        (m v1 r0)
+        (b next-block :delay (nop!)))
+
+      (label process-block)
+      ;; gp alternates, so block is the half already loaded and a1 the half to fill next.
+      (asm-block select-halves
+        (b.nz gp use-block-b :delay (nop!))
+        (lui v1 #x7000)
+        (m a0 v1)
+        (b current-block-selected :delay (nop!))
+        (label use-block-b)
+        (add.i v1 r0 BLERC-BLOCK-B)
+        (lui a0 #x7000)
+        (add a0 v1 a0)
+        (label current-block-selected)
+        (b.nz gp next-is-block-a :delay (nop!))
+        (add.i v1 r0 BLERC-BLOCK-B)
+        (lui a1 #x7000)
+        (add a1 v1 a1)
+        (b next-block-selected :delay (nop!))
+        (label next-is-block-a)
+        (lui v1 #x7000)
+        (m a1 v1))
+      (label next-block-selected)
+      ;; Start the other half's transfer before touching the current block. The chain link comes out of
+      ;; this block's own header, which the previous transfer put in the scratchpad for us -- so walking
+      ;; the work list costs no main-memory read.
+      (asm-block start-next-transfer
+        (add.i v1 a0 (offset-of blerc-block header))
+        (m a2 a0)
+        (add.i a3 a1 (offset-of blerc-block header))
+        (add.i a1 v1 (offset-of blerc-block-header tag next-ptr))
+        (nop!)
+        (lui a2 #x1000)
+        (nop!)
+        (ori a2 a2 #xd400)
+        (and.i a3 a3 SPR-ADDRESS-MASK)
+        (label wait-next-to-spr)
+        (l.w t0 (-> spr-channel chcr))
+        (nop! :count 3)
+        (and.i t0 t0 DMA-CHCR-STR)
+        (nop!)
+        (b.nz t0 wait-next-to-spr :delay (l.w t0 a1))
+        (b.z t0 compute-block :delay (s.w a3 (-> spr-channel sadr)))
+        (add.i a1 r0 DMA-CHCR-START-SPR-CHAIN)
+        (s.w t0 (-> spr-channel tadr))
+        (s.w r0 (-> spr-channel qwc))
+        (sync.l))
+      (s.w a1 (-> spr-channel chcr))
+      (sync.l)
+
+      (label compute-block)
+      ;; blerc-a-fragment's kernel, inlined. See that function for what each packed step is doing.
+      (asm-block blend-block
+        (m a1 r0)
+        (m a2 a0)
+        (m! a3 *gsf-buffer*)
+        (add.i t2 a2 BLERC-SPR-CHAIN)
+        (l.b t1 t2)
+        (nop!)
+        (m t0 a2)
+        (l.w a1 (-> work header overlap))
+        (add.i t3 t1 1)
+        (m t1 a3)
+        (sll t8 t3 4)
+        (sll t3 a1 4)
+        (add t9 t3 a3)
+        (add t3 t2 t8)
+        (b.z a1 execute-blend-vertices :delay (add.i ra t2 16))
+        (l.h t5 t3 12)
+        (add t2 t3 t8)
+        (b execute-overlap-check :delay (nop!))
+        (label execute-overlap-copy)
+        (l.h t5 t2 12)
+        (add t2 t2 t8)
+        (s.q t6 t1)
+        (add.i t1 t1 16)
+        (label execute-overlap-check)
+        (pcpyh t5 t5)
+        (mmi-nop!)
+        (b.ne t1 t9 execute-overlap-copy :delay (pcpyld t6 t5 t5))
+        (sub t3 t2 t8)
+        (nop!)
+
+        (label execute-blend-vertices)
+        (add.i t1 r0 255)
+        (add.i t2 r0 BLERC-ONE)
+        (l.b s5 t3)
+        (add.i s4 t3 16)
+        (pcpyh t1 t1)
+        (mmi-nop!)
+        (pcpyld t1 t1 t1)
+        (mmi-nop!)
+        (pcpyh t2 t2)
+        (mmi-nop!)
+        (pcpyld t2 t2 t2)
+        (mmi-nop!)
+        (m.q t3 t1)
+        (mmi-nop!)
+        (m.q t4 r0)
+        (mmi-nop!)
+        (label execute-vertex-loop)
+        (l.d t6 ra)
+        (add s2 ra t8)
+        (add.i ra ra 8)
+        (m s3 a3)
+        (pextlb t6 r0 t6)
+        (mmi-nop!)
+        (pmulth t7 t6 t2)
+        (l.d t5 s2)
+        (add.i s5 s5 -1)
+        (nop!)
+        (b execute-target-check :delay (add s2 s2 t8))
+        (label execute-target-loop)
+        (pmaddh t7 t5 t6)
+        (l.d t5 s2)
+        (add s2 s2 t8)
+        (add.i s3 s3 16)
+        (label execute-target-check)
+        (l.q t6 s3)
+        (pextlb t5 t5 r0)
+        (b.ne s3 t9 execute-target-loop :delay (psrah t5 t5 8))
+        (pmfhl.uw t5)
+        (mmi-nop!)
+        (psraw t7 t7 BLERC-FRACTION-BITS)
+        (mmi-nop!)
+        (psraw t5 t5 BLERC-FRACTION-BITS)
+        (mmi-nop!)
+        (pinteh t5 t5 t7)
+        (mmi-nop!)
+        (pminh t3 t3 t5)
+        (mmi-nop!)
+        (pmaxh t4 t4 t5)
+        (mmi-nop!)
+        (pminh t5 t5 t1)
+        (mmi-nop!)
+        (pmaxh t5 t5 r0)
+        (l.q t7 s4)
+        (ppacb t5 r0 t5)
+        (mmi-nop!)
+        (ppach t7 r0 t7)
+        (mmi-nop!)
+        (pextlh t5 t5 t7)
+        (mmi-nop!)
+        (s.q t5 t0)
+        (add.i t0 t0 16)
+        (b.nz s5 execute-vertex-loop :delay (add.i s4 s4 16)))
+
+      (asm-block accumulate-statistics
+        (m! a3 *stats-blerc*)
+        (b.eq a3 s7 execute-stats-done :delay (m! a3 *blerc-globals*))
+        (l.w t2 a3 12)
+        (l.w t1 a3 16)
+        (l.w t0 a3 20)
+        (l.w a2 (-> work header vtx-count))
+        (multu3 a1 a1 a2)
+        (add.i t2 t2 1)
+        (add a2 t1 a2)
+        (add a1 t0 a1)
+        (s.w t2 a3 12)
+        (s.w a2 a3 16)
+        (s.w a1 a3 20)
+        (pcpyud a1 t3 r0)
+        (pminh t3 t3 a1)
+        (srl32 a1 t3 0)
+        (pminh t3 t3 a1)
+        (srl t3 t3 16)
+        (l.h a1 a3 8)
+        (pminh t3 t3 a1)
+        (s.h t3 a3 8)
+        (pcpyud a1 t4 r0)
+        (pmaxh t4 t4 a1)
+        (srl32 a1 t4 0)
+        (pmaxh t4 t4 a1)
+        (srl t4 t4 16)
+        (l.h a1 a3 10)
+        (pmaxh t4 t4 a1)
+        (s.h t4 a3 10))
+
+      (label execute-stats-done)
+      ;; Hand the finished vertices to the fromSPR channel and step to the next queued block. The output
+      ;; goes straight back over the fragment's lump data, so the MERC renderer needs no second geometry
+      ;; format and no second upload.
+      (asm-block return-output-and-advance
+        (m a1 r0)
+        (l.wu a1 (-> block header lump-dest))
+        (m a3 a0)
+        (l.wu a0 (-> block header lump-qwc))
+        (lui a2 #x1000)
+        (nop!)
+        (ori a2 a2 #xd000)
+        (and.i a3 a3 SPR-ADDRESS-MASK)
+        (label wait-output-dma)
+        (l.w t0 (-> spr-channel chcr))
+        (nop! :count 3)
+        (and.i t0 t0 DMA-CHCR-STR)
+        (nop!)
+        (b.nz t0 wait-output-dma :delay (nop!))
+        (s.w a3 (-> spr-channel sadr))
+        (add.i a3 r0 DMA-CHCR-STR)
+        (s.w a1 (-> spr-channel madr))
+        (nop!)
+        (s.w a0 (-> spr-channel qwc))
+        (sync.l)
+        (s.w a3 (-> spr-channel chcr))
+        (sync.l)
+        (m a0 r0)
+        (add.i a0 r0 1)
+        (sub gp a0 gp)
+        (l.wu s5 v1 (offset-of blerc-block-header tag next-ptr))
+        (m v1 s5))
+
+      (label next-block)
+      (b.nz s5 process-block :delay (nop!))
+      (m v1 s7)
+
+      (label blerc-execute-done)
+      (m v0 r0)
+      (l.d ra sp)
+      (l.q gp sp 80)
+      (l.q s5 sp 64)
+      (l.q s4 sp 48)
+      (l.q s3 sp 32)
+      (l.q s2 sp 16)
+      (jr ra :delay (add.i sp sp 96))
+      (nop! :count 3))))
 
 (define-extern setup-blerc-chains (function merc-ctrl (pointer int16) dma-buffer none))
 
-;; todo merc-blend-shape
-(defun merc-blend-shape ((arg0 process-drawable))
-  (let* ((v1-2 (-> arg0 skel root-channel 0))
-         (a3-0 (-> v1-2 frame-group)))
-    (when (and a3-0
-               (> (-> arg0 skel active-channels) 0)
-               (zero? (-> arg0 draw cur-lod))
-               (logtest? (-> arg0 skel status) (janim-status blerc)))
-      (let ((a1-4 (-> a3-0 blerc-data)))
-        (when a1-4
-          (let* ((a0-10 (-> arg0 draw mgeo))
-                 (a2-0 (-> a0-10 header blend-target-count))
-                 (t0-0 (-> v1-2 frame-num))
-                 (t1-0 (the int t0-0))
-                 (v1-4 (&+ a1-4 (* (the-as uint t1-0) a2-0)))
-                 (a1-5 (new 'stack-no-clear 'array 'int16 128)))
-            (let ((a2-1 (-> a0-10 header blend-target-count)))
+(defun merc-blend-shape ((drawable process-drawable))
+  "Interpolate the drawable's signed blend-target weights for its current animation frame and queue
+   its level-zero MERC geometry. After BLERC is disabled, queue one zero-weight pass to restore the
+   base vertices."
+  (let* ((root-channel (-> drawable skel root-channel 0))
+         (anim-group (-> root-channel frame-group)))
+    (when (and anim-group
+               (> (-> drawable skel active-channels) 0)
+               (zero? (-> drawable draw cur-lod))
+               (logtest? (-> drawable skel status) (janim-status blerc)))
+      (let ((frame-weights (-> anim-group blerc-data)))
+        (when frame-weights
+          (let* ((merc-geo (-> drawable draw mgeo))
+                 (target-count (-> merc-geo header blend-target-count))
+                 (frame (-> root-channel frame-num))
+                 (frame-index (the int frame))
+                 (current-frame-weights (&+ frame-weights (* (the-as uint frame-index) target-count)))
+                 (target-weights (new 'stack-no-clear 'array 'int16 128)))
+            (let ((target-count (-> merc-geo header blend-target-count)))
               (cond
-                ((< t1-0 (+ (-> a3-0 data 0 length) -1))
-                 (let* ((a3-5 (&+ v1-4 a2-1))
-                        (t0-1 (* 64.0 (- t0-0 (the float t1-0))))
-                        (t1-1 (- 64.0 t0-1)))
-                   (dotimes (t2-0 (the-as int a2-1))
-                     (set! (-> a1-5 t2-0)
-                           (the int (+ (* (the float (+ (-> v1-4 t2-0) -64)) t1-1) (* (the float (+ (-> a3-5 t2-0) -64)) t0-1)))))))
-                (else (dotimes (a3-6 (the-as int a2-1)) (set! (-> a1-5 a3-6) (the-as int (* (+ (-> v1-4 a3-6) -64) 64)))))))
-            (setup-blerc-chains a0-10 a1-5 (-> *display* frames (-> *display* on-screen) frame global-buf)))
-          (logior! (-> arg0 skel status) (janim-status blerc-done))
+                ((< frame-index (+ (-> anim-group data 0 length) -1))
+                 (let* ((next-frame-weights (&+ current-frame-weights target-count))
+                        (next-frame-scale (* 64.0 (- frame (the float frame-index))))
+                        (current-frame-scale (- 64.0 next-frame-scale)))
+                   (dotimes (i (the-as int target-count))
+                     (set! (-> target-weights i)
+                           (the int
+                                (+ (* (the float (+ (-> current-frame-weights i) -64)) current-frame-scale)
+                                   (* (the float (+ (-> next-frame-weights i) -64)) next-frame-scale)))))))
+                (else
+                 (dotimes (i (the-as int target-count))
+                   (set! (-> target-weights i) (the-as int (* (+ (-> current-frame-weights i) -64) 64)))))))
+            (setup-blerc-chains merc-geo target-weights (-> *display* frames (-> *display* on-screen) frame global-buf)))
+          (logior! (-> drawable skel status) (janim-status blerc-done))
           (return (the-as object #f))))))
-  (when (logtest? (-> arg0 skel status) (janim-status blerc-done))
-    (logclear! (-> arg0 skel status) (janim-status blerc-done))
-    (setup-blerc-chains (-> arg0 draw lod-set lod 0 geo)
+  (when (logtest? (-> drawable skel status) (janim-status blerc-done))
+    (logclear! (-> drawable skel status) (janim-status blerc-done))
+    (setup-blerc-chains (-> drawable draw lod-set lod 0 geo)
                         (new 'static 'array int16 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
                         (-> *display* frames (-> *display* on-screen) frame global-buf)))
   0)
 
-;; TODO setup-blerc-chains-for-one-fragment
-(def-mips2c setup-blerc-chains-for-one-fragment (function object object object object object object object))
+;; PC uses the ported chain builder so scratchpad references target its mirror.
+(#when PC_PORT
+  (def-mips2c setup-blerc-chains-for-one-fragment
+    (function int (pointer int16) dma-packet merc-blend-data merc-blend-ctrl pointer dma-packet)))
 
-(defun setup-blerc-chains ((arg0 merc-ctrl) (arg1 (pointer int16)) (arg2 dma-buffer))
-  (local-vars (sv-16 uint) (sv-20 pointer) (sv-24 merc-effect) (sv-28 uint) (sv-32 object) (sv-48 int) (sv-64 int))
-  (set! sv-16 (-> arg0 header effect-count))
-  (let ((s3-0 (-> arg0 header blend-target-count))
-        (v1-1 (-> arg2 base)))
-    (set! sv-20 (&+ v1-1 0))
-    (let ((a2-1 (the-as object (&+ v1-1 16))))
-      (if (zero? (-> *blerc-globals* first)) (set! (-> *blerc-globals* first) (the-as uint a2-1)))
-      (dotimes (s2-0 (the-as int sv-16))
-        (set! sv-24 (-> arg0 effect s2-0))
-        (set! sv-28 (-> sv-24 blend-frag-count))
-        (when (nonzero? sv-28)
-          (let ((v1-15 (the-as object (-> sv-24 frag-geo)))
-                (s1-0 (the-as structure (-> sv-24 frag-ctrl)))
-                (s0-0 (the-as object (-> sv-24 blend-data))))
-            (set! sv-32 (-> sv-24 blend-ctrl))
-            (set! sv-48 0)
-            (while (< sv-48 (the-as int sv-28))
-              (set! sv-64
-                    (+ (the-as int v1-15) (logand (* (+ (-> (the-as merc-fragment-control s1-0) unsigned-four-count) 3) 4) #xfff0)))
-              (if (nonzero? (-> (the-as (pointer uint8) sv-32) 0))
-                (set! a2-1 (setup-blerc-chains-for-one-fragment s3-0 arg1 a2-1 s0-0 sv-32 sv-64)))
-              (let ((a0-14 (logand (+ (* (the-as uint 6) (-> (the-as merc-blend-ctrl sv-32) blend-vtx-count)) 15) #xfff0)))
-                (set! v1-15
-                      (+ sv-64
-                         (logand (* (+ (-> (the-as merc-fragment-control s1-0) lump-four-count) 3) 4) #xfff0)
-                         (* (-> (the-as merc-fragment-control s1-0) fp-qwc) 16)))
-                (set! s1-0 (&+ s1-0 (* (-> (the-as merc-fragment-control s1-0) mat-xfer-count) 2) 4))
-                (set! s0-0 (+ (the-as int s0-0) (* (the-as uint a0-14) (+ (-> (the-as merc-blend-ctrl sv-32) nonzero-index-count) 1)))))
-              (set! sv-32 (+ (the-as int sv-32) s3-0 2))
-              (the-as int sv-32)
-              (set! sv-48 (+ sv-48 1))))))
-      (set! (-> (the-as (pointer int64) sv-20)) (logior #x20000000 (shr (shl (the-as int a2-1) 33) 1)))
-      (let ((v1-33 (the-as (pointer uint32) sv-20))) (set! (-> (&+ v1-33 8)) 0))
-      (let ((v1-34 (the-as (pointer uint32) sv-20))) (set! (-> (&+ v1-34 12)) 0))
-      (set! (-> arg2 base) (the-as pointer a2-1))))
+(#unless PC_PORT
+  (defun setup-blerc-chains-for-one-fragment ((target-count int) (target-weights (pointer int16)) (chain-cursor dma-packet) (blend-deltas merc-blend-data) (blend-control merc-blend-ctrl) (lump-data pointer))
+    "Append one fragment's blend-target data, active coefficients, and destination geometry to the
+     BLERC DMA chain. Split large vertex sets into scratchpad-sized blocks and return the next free
+     chain address."
+    (declare (asm-func dma-packet) (allow-saved-regs))
+    ;; The six-argument private ABI places blend-control in t0 and lump-data in t1. t2 counts
+    ;; vertices already assigned, t4 is the current block size, and t3 is the preceding block tag.
+    (asm-block save-registers
+      (add.i sp sp -128)
+      (s.d ra sp)
+      (s.q s0 sp 16)
+      (s.q s1 sp 32)
+      (s.q s2 sp 48)
+      (s.q s3 sp 64)
+      (s.q s4 sp 80)
+      (s.q s5 sp 96)
+      (s.q gp sp 112)
+      (l.b v1 t0)
+      (add.i t2 r0 0)
+      (m.q t7 r0)
+      (m! t3 *blerc-globals*)
+      (l.w t3 t3 4)
+      (m t4 v1))
+
+    (label build-blerc-block)
+    ;; Link a new CNT block into the per-frame work chain.
+    (asm-block link-work-block
+      (lui t7 #x1000)
+      (nop!)
+      (add.i t7 t7 1)
+      (nop!)
+      (b.z t3 first-blerc-block :delay (s.q t7 a2))
+      (s.w a2 t3 12)
+      (nop!)
+      (label first-blerc-block)
+      (m t3 a2))
+
+    ;; Base and target rows store six packed bytes per vertex, rounded to a quadword. The index row
+    ;; stores six bytes per fragment vertex, while each active target contributes one row plus its
+    ;; coefficient in the tag's upper word.
+    ;; Every row -- base, target, index -- is six bytes per vertex rounded up to a quadword, so the
+    ;; shifts and adds here are just 6*n for the block's vertex count, the fragment's vertex count, and
+    ;; the vertices already placed. t6 is the row size in bytes, t5 its quadword count, t8 the index
+    ;; row's quadword count, and ra the lump address this block writes back to.
+    (asm-block describe-base-row
+      (add t6 t4 t4)
+      (add t5 v1 v1)
+      (add t6 t6 t4)
+      (add t7 t5 v1)
+      (add t5 t6 t6)
+      (add t6 t7 t7)
+      (add t7 t5 t5)
+      (add.i t6 t6 15)
+      (add.i t5 t5 15)
+      (and.i t6 t6 #xfff0)
+      (srl t5 t5 4)
+      (add t8 t2 t2)
+      (add.i t7 t7 15)
+      (add t9 t8 t2)
+      (srl t8 t7 4)
+      (add ra t9 t9)
+      (add.i t9 r0 0)
+      (add t7 ra ra)
+      (add.i s3 a2 32)
+      (add s2 ra a3)
+      (add ra t7 t1)
+      (lui t7 #x3000)
+      (add.i gp a0 -1)
+      (add t7 t7 t5)
+      (m s5 a1)
+      (s.q t7 s3)
+      (add.i s4 t0 2)
+      (s.w s2 s3 4)
+      (add s2 s2 t6)
+      (add.i s3 s3 16)
+      (nop!))
+
+    (label add-target-tag)
+    ;; One REF tag per blend target, but only for targets whose interpolated coefficient came out
+    ;; nonzero -- the rest contribute nothing and are simply not transferred. The coefficient itself
+    ;; rides in the tag's fourth word, which the DMAC copies into the scratchpad along with the tag and
+    ;; which blerc-a-fragment then reads back out.
+    (asm-block describe-target-rows
+      (l.b s1 s4)
+      (add.i s4 s4 1)
+      (l.h s0 s5)
+      (add.i s5 s5 2)
+      (b.z s1 target-tag-done :delay (s.q t7 s3))
+      (s.w s2 s3 4)
+      (add s2 s2 t6)
+      (b.z s0 target-tag-done :delay (s.w s0 s3 12))
+      (add.i s3 s3 16)
+      (add.i t9 t9 1)
+      (label target-tag-done)
+      (b.nz gp add-target-tag :delay (add.i gp gp -1)))
+
+    ;; Close the source chain with the packed index row and a zeroed scratchpad destination tag,
+    ;; then describe the result block for blerc-execute.
+    (asm-block describe-index-row
+      (s.q t7 s3)
+      (m.q t6 r0)
+      (s.w ra s3 4)
+      (lui t6 #x7000)
+      (s.b t8 s3)
+      (nop!))
+    (s.q t6 s3 16)
+    (add.i t6 s3 32)
+    (s.w t9 a2 20)
+    (nop!)
+    (s.w t4 a2 16)
+    (nop!)
+    (s.w ra a2 24)
+    (nop!)
+    (s.w t8 a2 28)
+    (nop!)
+
+    ;; A full-fragment block is preferred. If its active-target chain would exceed the available
+    ;; scratchpad half, retry with 24 vertices; the final partial block uses exactly what remains.
+    ;; A whole fragment in one block is the preferred case. What can break it is the chain length rather
+    ;; than the vertex count: each row costs its quadword count plus its tag, there are targets + 3 rows
+    ;; (base, index, and the two-quadword terminator), and the whole thing plus the 53-quadword output
+    ;; area has to fit in one 8 KiB half. If it does not, retry at 24 vertices per block.
+    (asm-block choose-block-size
+      (b.ne t4 v1 block-size-ready :delay (add.i t5 t5 1))
+      (add.i t7 t9 3)
+      (multu3 t5 t5 t7)
+      (add.i t5 t5 -457)
+      (nop!)
+      (b.le t5 r0 block-size-ready :delay (nop!))
+      (b build-blerc-block :delay (add.i t4 r0 24)))
+
+    (label block-size-ready)
+    (asm-block advance-or-repeat
+      (m a2 t6)
+      (add t2 t2 t4)
+      (b.eq t2 v1 finish-blerc-chain :delay (add t5 t2 t4))
+      (sub t5 t5 v1)
+      (nop!)
+      (b.le t5 r0 build-blerc-block :delay (nop!))
+      (b build-blerc-block :delay (sub t4 v1 t2)))
+
+    (label finish-blerc-chain)
+    (m! v1 *blerc-globals*)
+    (s.w t3 v1 4)
+    (m v0 a2)
+    (l.d ra sp)
+    (l.q gp sp 112)
+    (l.q s5 sp 96)
+    (l.q s4 sp 80)
+    (l.q s3 sp 64)
+    (l.q s2 sp 48)
+    (l.q s1 sp 32)
+    (l.q s0 sp 16)
+    (jr ra :delay (add.i sp sp 128))
+    (nop!)
+    (nop!)
+    (nop!)))
+
+(defun setup-blerc-chains ((merc merc-ctrl) (target-weights (pointer int16)) (dma-buffer dma-buffer))
+  "Append BLERC work for every blendable fragment in merc using target-weights. The first packet is
+   retained for blerc-execute, and dma-buffer advances past the completed chain."
+  (local-vars
+    (effect-count uint)
+    (chain-header pointer)
+    (effect-data merc-effect)
+    (blend-fragment-count uint)
+    (blend-control object)
+    (fragment-index int)
+    (lump-data int))
+  (set! effect-count (-> merc header effect-count))
+  (let ((target-count (-> merc header blend-target-count))
+        (chain-start (-> dma-buffer base)))
+    (set! chain-header (&+ chain-start 0))
+    (let ((chain-cursor (the-as object (&+ chain-start 16))))
+      (if (zero? (-> *blerc-globals* first)) (set! (-> *blerc-globals* first) (the-as uint chain-cursor)))
+      (dotimes (effect-index (the-as int effect-count))
+        (set! effect-data (-> merc effect effect-index))
+        (set! blend-fragment-count (-> effect-data blend-frag-count))
+        (when (nonzero? blend-fragment-count)
+          (let ((fragment-geo (the-as object (-> effect-data frag-geo)))
+                (fragment-control (the-as structure (-> effect-data frag-ctrl)))
+                (blend-deltas (the-as object (-> effect-data blend-data))))
+            (set! blend-control (-> effect-data blend-ctrl))
+            (set! fragment-index 0)
+            (while (< fragment-index (the-as int blend-fragment-count))
+              (set! lump-data
+                    (+ (the-as int fragment-geo)
+                       (logand (* (+ (-> (the-as merc-fragment-control fragment-control) unsigned-four-count) 3) 4) #xfff0)))
+              (if (nonzero? (-> (the-as (pointer uint8) blend-control) 0))
+                (set! chain-cursor
+                      (setup-blerc-chains-for-one-fragment (the-as int target-count)
+                                                           target-weights
+                                                           (the-as dma-packet chain-cursor)
+                                                           (the-as merc-blend-data blend-deltas)
+                                                           (the-as merc-blend-ctrl blend-control)
+                                                           (the-as pointer lump-data))))
+              (let ((target-stride
+                      (logand (+ (* (the-as uint 6) (-> (the-as merc-blend-ctrl blend-control) blend-vtx-count)) 15) #xfff0)))
+                (set! fragment-geo
+                      (+ lump-data
+                         (logand (* (+ (-> (the-as merc-fragment-control fragment-control) lump-four-count) 3) 4) #xfff0)
+                         (* (-> (the-as merc-fragment-control fragment-control) fp-qwc) 16)))
+                (set! fragment-control
+                      (&+ fragment-control
+                          (* (-> (the-as merc-fragment-control fragment-control) mat-xfer-count) 2)
+                          4))
+                (set! blend-deltas
+                      (+ (the-as int blend-deltas)
+                         (* (the-as uint target-stride)
+                            (+ (-> (the-as merc-blend-ctrl blend-control) nonzero-index-count) 1)))))
+              (set! blend-control (+ (the-as int blend-control) target-count 2))
+              (the-as int (the-as int blend-control))
+              (+! fragment-index 1)))))
+      (set! (-> (the-as (pointer int64) chain-header))
+            (logior #x20000000 (shr (shl (the-as int chain-cursor) 33) 1)))
+      (let ((chain-header-words (the-as (pointer uint32) chain-header)))
+        (set! (-> (&+ chain-header-words 8)) 0))
+      (let ((chain-header-words (the-as (pointer uint32) chain-header)))
+        (set! (-> (&+ chain-header-words 12)) 0))
+      (set! (-> dma-buffer base) (the-as pointer chain-cursor))))
   0
   (none))

@@ -112,80 +112,91 @@
    (set-start-line! (font-context uint) font-context)
    (set-scale! (font-context float) font-context)))
 
-;; I don't believe these methods are called, so they might be inlined
+;; These small setters are kept inline so callers can update reusable font contexts cheaply.
 
 (defmethod set-mat! ((this font-context) (mat matrix))
-  ;; TODO - perhaps a keyword arg on `defmethod` would be better?
+  "Set the character transform matrix."
   (declare (inline))
   (set! (-> this mat) mat)
   this)
 
 (defmethod set-origin! ((this font-context) (x int) (y int))
+  "Set the integer screen-space origin."
   (declare (inline))
   (set! (-> this origin x) (the float x))
   (set! (-> this origin y) (the float y))
   this)
 
 (defmethod set-depth! ((this font-context) (z int))
+  "Set the integer depth coordinate."
   (declare (inline))
   (set! (-> this origin z) (the float z))
   this)
 
 (defmethod set-w! ((this font-context) (w float))
+  "Set the homogeneous origin coordinate."
   (declare (inline))
   (set! (-> this origin w) w)
   this)
 
 (defmethod set-width! ((this font-context) (width int))
+  "Set the text layout width in pixels."
   (declare (inline))
   (set! (-> this width) (the float width))
   this)
 
 (defmethod set-height! ((this font-context) (height int))
+  "Set the text layout height in pixels."
   (declare (inline))
   (set! (-> this height) (the float height))
   this)
 
 (defmethod set-projection! ((this font-context) (proj float))
+  "Set the font projection scale."
   (declare (inline))
   (set! (-> this projection) proj)
   this)
 
 (defmethod set-color! ((this font-context) (color font-color))
+  "Select the font color-table entry."
   (declare (inline))
   (set! (-> this color) color)
   this)
 
 (defmethod set-flags! ((this font-context) (flags font-flags))
+  "Replace the font rendering flags."
   (declare (inline))
   (set! (-> this flags) flags)
   this)
 
 (defmethod set-start-line! ((this font-context) (start-line uint))
+  "Set the first line used for multiline drawing."
   (declare (inline))
   (set! (-> this start-line) start-line)
   this)
 
 (defmethod set-scale! ((this font-context) (scale float))
+  "Set the glyph scale."
   (declare (inline))
   (set! (-> this scale) scale)
   this)
 
 (defmethod new font-context ((allocation symbol) (type-to-make type) (mat matrix) (x int) (y int) (z float) (color font-color) (flags font-flags))
+  "Allocate a font context with the requested transform, origin, color, and flags. A zero depth selects the isometric depth from the current math camera."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> this mat) mat)
-    (let ((v1-3 this)) (set! (-> v1-3 origin x) (the float x)) (set! (-> v1-3 origin y) (the float y)))
+    (set-mat! this mat)
+    (set-origin! this x y)
     (cond
-      ((= z 0.0) (let ((v1-4 this)) (set! (-> v1-4 origin z) (-> *math-camera* isometric vector 3 z))))
-      (else (let ((v1-5 this)) (set! (-> v1-5 origin z) z))))
-    (let ((v1-6 this)) (set! (-> v1-6 origin w) 1.0))
-    (let ((v1-7 this)) (set! (-> v1-7 width) (the float 512)))
-    (let ((v1-8 this)) (set! (-> v1-8 height) (the float 256)))
-    (let ((v1-9 this)) (set! (-> v1-9 projection) 1.0))
-    (set! (-> this color) color)
-    (set! (-> this flags) flags)
-    (let ((a0-4 this)) (set! (-> a0-4 start-line) (the-as uint 0)))
-    (let ((v1-13 this)) (set! (-> v1-13 scale) 1.0))
+      ((= z 0.0) (set! (-> this origin z) (-> *math-camera* isometric vector 3 z)))
+      (else (set! (-> this origin z) z)))
+    (set-w! this 1.0)
+    (set-width! this 512)
+    (set-height! this 256)
+    (set-projection! this 1.0)
+    (set-color! this color)
+    (set-flags! this flags)
+    (set-start-line! this (the-as uint 0))
+    (set-scale! this 1.0)
     this))
 
 ;; Data used by the font-renderer.
@@ -365,7 +376,7 @@
                  (new 'static 'vector :z 1.0)))
        :color-shadow
        (new 'static 'vector4w :x #x00 :y #x00 :z #x00 :w #x80)
-       ;; TODO - make enum for this
+       ;; Entries are indexed by font-color.
        :color-table
        (new 'static
             'inline-array
@@ -822,6 +833,7 @@
             (new 'static 'char-color))))
 
 (defun font-set-tex0 ((ptr-tex0 (pointer gs-tex0)) (tex texture) (tex-addr uint) (psm uint) (clut-addr uint))
+  "Build a GS TEX0 register for tex, converting tex-addr from VRAM words to 64-word GS blocks. clut-addr is already in the GS CBP address unit."
   (set! (-> ptr-tex0 0)
         (new 'static
              'gs-tex0
@@ -841,6 +853,13 @@
              psm))
   (none))
 
-(define-extern draw-string (function string dma-buffer font-context float))
+(define-extern draw-string
+  "Draw str with ctxt's transform, origin, colors, size, alignment, shadow, and kerning settings.
+   Interpret embedded font commands while appending glyph packets to buf and return the horizontal
+   displacement from the starting origin."
+  (function string dma-buffer font-context float))
 
-(define-extern draw-string-xy (function string dma-buffer int int font-color font-flags float))
+(define-extern draw-string-xy
+  "Draw str at x,y with a temporary context initialized from the default font matrix, color, and
+   flags, append its glyph packets to buf, and return the horizontal advance."
+  (function string dma-buffer int int font-color font-flags float))

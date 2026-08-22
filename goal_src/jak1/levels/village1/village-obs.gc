@@ -119,7 +119,7 @@
    (:fade-r -0.08888889)
    (:accel-y (meters -0.000033333334))
    (:timer (seconds 2.4))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 0) 3 (degrees 90))
    (:conerot-radius (meters 2) (meters 17.5))))
 
@@ -145,7 +145,7 @@
    (:fade-g -0.35555556)
    (:fade-a 0.35555556)
    (:timer (seconds 0.55))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees -45) 3 (degrees 90))
    (:conerot-radius (meters 2))))
 
@@ -170,7 +170,7 @@
    (:fade-r -0.17777778)
    (:accel-y (meters -0.001))
    (:timer (seconds 0.6))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees -45) 3 (degrees 90))
    (:conerot-radius (meters 10.6))))
 
@@ -194,7 +194,7 @@
    (:fade-r -0.17777778)
    (:fade-a -1.0888889)
    (:timer (seconds 0.55))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 2.3))))
 
@@ -208,12 +208,15 @@
   (:states
    windmill-sail-idle))
 
-
 (defmethod relocate ((this windmill-sail) (offset int))
+  "Adjust every optional drawable controller owned by this process, then relocate the process
+   allocation."
   (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
   (the-as windmill-sail ((method-of-type process-drawable relocate) this offset)))
 
 (defmethod deactivate ((this windmill-sail))
+  "Stop particles and ambient sound owned by this drawable, then perform the ordinary process
+   deactivation."
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
   ((method-of-type process-drawable deactivate) this)
   (none))
@@ -274,11 +277,13 @@
   :code anim-loop
   :post ja-post)
 
-(defmethod init-from-entity! ((this windmill-sail) (arg0 entity-actor))
+(defmethod init-from-entity! ((this windmill-sail) (source-entity entity-actor))
+  "Initialize the sail skeleton, rotation axis, particle launchers, and ambient sound from its
+   placed entity."
   (logior! (-> this mask) (process-mask ambient))
   (load-params! (-> this sync) this (the-as uint 4800) 0.0 0.15 0.15)
   (set! (-> this root-override) (new 'process 'trsq))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *windmill-sail-sg* '())
   (quaternion-copy! (-> this orig-quat) (-> this root-override quat))
@@ -286,7 +291,7 @@
   (vector-normalize! (-> this blade-normal) 1.0)
   (set! (-> this part) (create-launch-control group-win-wind-mill this))
   (set! (-> this part2) (create-launch-control group-win-wind-mill-hires this))
-  (set! (-> this sound) (new 'process 'ambient-sound arg0 (-> this root-override trans)))
+  (set! (-> this sound) (new 'process 'ambient-sound source-entity (-> this root-override trans)))
   (go windmill-sail-idle)
   (none))
 
@@ -297,7 +302,6 @@
    (orig-quat     quaternion :inline))
   (:states
    sagesail-idle))
-
 
 (defskelgroup *sagesail-sg*
   sagesail
@@ -321,11 +325,12 @@
   :code anim-loop
   :post ja-post)
 
-(defmethod init-from-entity! ((this sagesail) (arg0 entity-actor))
+(defmethod init-from-entity! ((this sagesail) (source-entity entity-actor))
+  "Initialize the sail skeleton and its synchronized rotation axis from the placed entity."
   (logior! (-> this mask) (process-mask ambient))
   (load-params! (-> this sync) this (the-as uint 3000) 0.0 0.15 0.15)
   (set! (-> this root-override) (new 'process 'trsq))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *sagesail-sg* '())
   (quaternion-copy! (-> this orig-quat) (-> this root-override quat))
@@ -342,8 +347,9 @@
   (:states
    windspinner-idle))
 
-
 (defmethod run-logic? ((this windspinner))
+  "Return true while the spinner must update because it is active, visible, animating, or
+   explicitly requests skeleton updates."
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (logtest? (-> this draw status) (draw-status was-drawn))
@@ -383,12 +389,13 @@
   :code anim-loop
   :post ja-post)
 
-(defmethod init-from-entity! ((this windspinner) (arg0 entity-actor))
+(defmethod init-from-entity! ((this windspinner) (source-entity entity-actor))
+  "Initialize the spinner skeleton, rotation axis, and starting angular velocity."
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this angle) 0.0)
   (set! (-> this angle-vel) 145.63556)
   (set! (-> this root) (the-as trsqv (new 'process 'trsq)))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *windspinner-sg* '())
   (set! (-> this root pause-adjust-distance) 819200.0)
   (quaternion-copy! (-> this orig-quat) (-> this root quat))
@@ -401,7 +408,6 @@
   ((alt-actor entity-actor))
   (:states
    mayorgears-idle))
-
 
 (defskelgroup *mayorgears-sg*
   mayorgears
@@ -418,10 +424,11 @@
         (suspend)))
   :post ja-post)
 
-(defmethod init-from-entity! ((this mayorgears) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mayorgears) (source-entity entity-actor))
+  "Initialize the gear skeleton and enter its idle animation."
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *mayorgears-sg* '())
   (set! (-> this draw shadow-mask) (the-as uint 255))
   (go mayorgears-idle)
@@ -448,15 +455,13 @@
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
-(defmethod init-from-entity! ((obj evilplant) (arg0 entity-actor))
+(defmethod init-from-entity! ((obj evilplant) (source-entity entity-actor))
+  "Initialize the evil-plant skeleton and enter its idle animation."
   (set! (-> obj root) (new 'process 'trsqv))
-  (process-drawable-from-entity! obj arg0)
+  (process-drawable-from-entity! obj source-entity)
   (initialize-skeleton obj *evilplant-sg* '())
   (go (method-of-object obj idle))
   (none))
@@ -466,7 +471,6 @@
    (next-reflector-trans vector :inline))
   (:states
    reflector-middle-idle))
-
 
 (defskelgroup *reflector-middle-sg*
   reflector-middle
@@ -484,17 +488,19 @@
   :code anim-loop
   :post ja-post)
 
-(defmethod init-from-entity! ((this reflector-middle) (arg0 entity-actor))
+(defmethod init-from-entity! ((this reflector-middle) (source-entity entity-actor))
+  "Initialize the reflector and cache the raised beam endpoints for this reflector and the next
+   linked entity."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *reflector-middle-sg* '())
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this link) (new 'process 'actor-link-info this))
-  (set! (-> this reflector-trans quad) (-> this root trans quad))
-  (+! (-> this reflector-trans y) (res-lump-float arg0 'height-info))
+  (vector-copy! (-> this reflector-trans) (-> this root trans))
+  (+! (-> this reflector-trans y) (res-lump-float source-entity 'height-info))
   (let ((a0-10 (-> this link next)))
     (when a0-10
-      (set! (-> this next-reflector-trans quad) (-> a0-10 extra trans quad))
+      (vector-copy! (-> this next-reflector-trans) (-> a0-10 extra trans))
       (+! (-> this next-reflector-trans y) (res-lump-float a0-10 'height-info))))
   (logior! (-> this draw status) (draw-status do-not-check-distance))
   (go reflector-middle-idle)
@@ -504,13 +510,13 @@
   (:states
    reflector-end-idle))
 
-
 (defstate reflector-end-idle (reflector-end)
   :code anim-loop)
 
-(defmethod init-from-entity! ((this reflector-end) (arg0 entity-actor))
+(defmethod init-from-entity! ((this reflector-end) (source-entity entity-actor))
+  "Initialize the terminal reflector from its placed entity."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (go reflector-end-idle)
   (none))
 
@@ -518,7 +524,6 @@
   ((child-count int8))
   (:states
    villa-starfish-idle))
-
 
 (defskelgroup *starfish-sg*
   villa-starfish
@@ -531,7 +536,6 @@
   (:states
    starfish-idle
    starfish-patrol))
-
 
 (defstate starfish-idle (starfish)
   :enter
@@ -556,7 +560,7 @@
   :enter
     (behavior ()
       (set-time! (-> self state-time))
-      (logior! (-> self nav flags) (nav-control-flags navcf19)))
+      (logior! (-> self nav flags) (nav-control-flags reached-destination)))
   :trans
     (behavior ()
       (when (time-elapsed? (-> self state-time) (seconds 1))
@@ -568,10 +572,7 @@
       (set! (-> self rotate-speed) 12743.111)
       (set! (-> self turn-time) (seconds 0.5))
       (loop
-        (ja-no-eval :group! villa-starfish-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! villa-starfish-idle-ja :num! (seek!) :frame-num 0.0)))
   :post nav-enemy-patrol-post)
 
 (define *starfish-nav-enemy-info*
@@ -627,6 +628,7 @@
        :debug-draw-jump #f))
 
 (defmethod initialize-collision ((this starfish))
+  "Create the starfish moving collision shape and navigation radius."
   (logior! (-> this mask) (process-mask enemy))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -642,29 +644,33 @@
   0
   (none))
 
-(defmethod nav-enemy-method-48 ((this starfish))
+(defmethod post-init-setup! ((this starfish))
+  "Initialize the starfish skeleton and apply its navigation defaults."
   (initialize-skeleton this *starfish-sg* '())
   (init-defaults! this *starfish-nav-enemy-info*)
   0
   (none))
 
-(defbehavior starfish-init-by-other starfish ((arg0 starfish) (arg1 vector))
+(defbehavior starfish-init-by-other starfish ((parent starfish) (position vector))
+  "Initialize a spawned starfish from its parent and requested position."
   (initialize-collision self)
   (logior! (-> self mask) (process-mask actor-pause))
-  (set! (-> self collide-info trans quad) (-> arg1 quad))
-  (quaternion-copy! (-> self collide-info quat) (-> arg0 collide-info quat))
+  (vector-copy! (-> self collide-info trans) position)
+  (quaternion-copy! (-> self collide-info quat) (-> parent collide-info quat))
   (vector-identity! (-> self collide-info scale))
-  (set! (-> self entity) (-> arg0 entity))
-  (nav-enemy-method-48 self)
+  (set! (-> self entity) (-> parent entity))
+  (post-init-setup! self)
   (go starfish-idle)
   (none))
 
 (defbehavior process-drawable-child-count process-drawable ()
+  "Count the process's direct children."
   (let ((v0-0 0))
     (let ((v1-0 (-> self child))) (while v1-0 (+! v0-0 1) (set! v1-0 (-> v1-0 0 brother)) (nop!) (nop!)))
     v0-0))
 
 (defbehavior starfish-spawn-child starfish ()
+  "Spawn a starfish at a random point on this spawner's path."
   (let ((gp-0 (new-stack-vector0))) (get-random-point (-> self path) gp-0) (process-spawn starfish self gp-0 :to self)))
 
 (defstate villa-starfish-idle (villa-starfish)
@@ -680,10 +686,11 @@
         (suspend)))
   :post #f)
 
-(defmethod init-from-entity! ((this villa-starfish) (arg0 entity-actor))
+(defmethod init-from-entity! ((this villa-starfish) (source-entity entity-actor))
+  "Initialize the spawner, read its child limit, and attach its spawn path."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
-  (let ((a1-4 (res-lump-value arg0 'num-lurkers uint128 :default (the-as uint128 3))))
+  (process-drawable-from-entity! this source-entity)
+  (let ((a1-4 (res-lump-value source-entity 'num-lurkers uint128 :default (the-as uint128 3))))
     (set! (-> this child-count) (max 1 (min 8 (the-as int a1-4)))))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
   (go villa-starfish-idle)
@@ -694,7 +701,6 @@
   (:states
    village-fish-idle))
 
-
 (defstate village-fish-idle (village-fish)
   :code
     (behavior ()
@@ -703,31 +709,31 @@
         (suspend)))
   :post #f)
 
-(defmethod init-from-entity! ((this village-fish) (arg0 entity-actor))
+(defmethod init-from-entity! ((this village-fish) (source-entity entity-actor))
+  "Initialize the fish drawable and enter its idle state."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (go village-fish-idle)
   (none))
 
 (deftype villa-fisha (village-fish) ())
 
-
 (deftype villa-fishb (village-fish) ())
-
 
 (deftype cyclegen (structure)
   ((output float)
    (inc    float))
   :pack-me)
 
+(defun set-period ((cycle cyclegen) (period int))
+  "Set the phase increment so the cycle advances five units over period updates."
+  (set! (-> cycle inc) (/ 5.0 (the float period))))
 
-(defun set-period ((arg0 cyclegen) (arg1 int))
-  (set! (-> arg0 inc) (/ 5.0 (the float arg1))))
-
-(defun update-clock ((arg0 cyclegen))
-  (let ((f0-1 (+ (-> arg0 output) (* (-> arg0 inc) (-> *display* time-adjust-ratio)))))
-    (set! (-> arg0 output) (- f0-1 (the float (the int f0-1)))))
-  (-> arg0 output))
+(defun update-clock ((cycle cyclegen))
+  "Advance the cycle by its time-scaled increment, wrap it to [0, 1), and return the new phase."
+  (let ((f0-1 (+ (-> cycle output) (* (-> cycle inc) (-> *display* time-adjust-ratio)))))
+    (set! (-> cycle output) (- f0-1 (the float (the int f0-1)))))
+  (-> cycle output))
 
 (deftype hutlamp (process-drawable)
   ((pivot joint-mod-set-local)
@@ -735,8 +741,9 @@
   (:states
    hutlamp-idle))
 
-
 (defmethod relocate ((this hutlamp) (offset int))
+  "Adjust every optional drawable controller owned by this process, then relocate the process
+   allocation."
   (if (nonzero? (-> this pivot)) (&+! (-> this pivot) offset))
   (call-parent-method this offset))
 
@@ -757,9 +764,10 @@
         (suspend)))
   :post ja-post)
 
-(defmethod init-from-entity! ((this hutlamp) (arg0 entity-actor))
+(defmethod init-from-entity! ((this hutlamp) (source-entity entity-actor))
+  "Initialize the lamp skeleton and pivot, then start its periodic swing at a random phase."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *hutlamp-sg* '())
   (set! (-> this pivot) (new 'process 'joint-mod-set-local this 3 #f #t #f))
   (set-period (-> this clock) 900)
@@ -770,7 +778,6 @@
 (deftype revcycleprop (process-drawable) ()
   (:state-methods
    idle))
-
 
 (defskelgroup *revcycleprop-sg*
   revcycleprop
@@ -784,9 +791,10 @@
   :code anim-loop
   :post ja-post)
 
-(defmethod init-from-entity! ((this revcycleprop) (arg0 entity-actor))
+(defmethod init-from-entity! ((this revcycleprop) (source-entity entity-actor))
+  "Initialize the prop skeleton and enter its idle animation."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *revcycleprop-sg* '())
   (set! (-> this draw light-index) (the-as uint 1))
   (go (method-of-object this idle))
@@ -795,7 +803,6 @@
 (deftype revcycle (process-drawable) ()
   (:state-methods
    idle))
-
 
 (defskelgroup *revcycle-sg*
   revcycle
@@ -809,16 +816,16 @@
   :code anim-loop
   :post ja-post)
 
-(defmethod init-from-entity! ((this revcycle) (arg0 entity-actor))
+(defmethod init-from-entity! ((this revcycle) (source-entity entity-actor))
+  "Initialize the rev-cycle skeleton and enter its idle animation."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *revcycle-sg* '())
   (set! (-> this draw light-index) (the-as uint 1))
   (go (method-of-object this idle))
   (none))
 
 (deftype villagea-water (water-anim) ())
-
 
 (define ripple-for-villagea-water
   (new 'static
@@ -836,13 +843,14 @@
             (new 'static 'ripple-wave :scale 5.0 :xdiv 5 :zdiv 3 :speed 0.75)
             (new 'static 'ripple-wave))))
 
-(defmethod water-vol-method-22 ((this villagea-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
-  (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> this draw ripple) v1-2)
+(defmethod setup-water! ((this villagea-water))
+  "Run the base water setup, then install the Village ripple controller and water tint."
+  (let ((t9-0 (method-of-type water-anim setup-water!))) (t9-0 this))
+  (let ((ripple (new 'process 'ripple-control)))
+    (set! (-> this draw ripple) ripple)
     (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
-    (set! (-> v1-2 global-scale) 3072.0)
-    (set! (-> v1-2 close-fade-dist) 163840.0)
-    (set! (-> v1-2 far-fade-dist) 245760.0)
-    (set! (-> v1-2 waveform) ripple-for-villagea-water))
+    (set! (-> ripple global-scale) 3072.0)
+    (set! (-> ripple close-fade-dist) 163840.0)
+    (set! (-> ripple far-fade-dist) 245760.0)
+    (set! (-> ripple waveform) ripple-for-villagea-water))
   (none))

@@ -3,24 +3,16 @@
 (bundles "KERNEL.CGO")
 (require "kernel/gcommon.gc")
 
-#|
-pskernel.gc contains a bunch of utilities for poking around the PS2's kernel.
-These are unused in the retail game, and wouldn't be "safe" to use on a retail console,
-as later console revisions may have different memory layout of the BIOS. I suspect this
-was used for the purposes of debugging and handling crashes.
-They took over syscall 102 to access memory inside the kernel.
+;; Debug-handler support for the EE kernel. These routines depend on the exact
+;; memory layout of the supported BIOS and verify every hardwired address before
+;; installing handlers. Syscall 102 is temporarily repurposed to enter the small
+;; copy/read/write routines stored in low kernel memory.
+;;
+;; The PC port keeps the public entry points as explicit stubs.
 
-There's an error message:
-"I CANNOT CONTINUE TO LOAD GOAL, BECAUSE THE KERNEL VERSION HAS CHANGED~%"
-"~%Alternatively, try removing pskernel.gc and debug-handlers.gc from project.cl, do an (lg) and then (:r) again~%"
-
-My theory is that debug-handlers.gc held crash handlers, and on load would install them using functions defined in pskernel.gc.
-In the retail game, they removed debug-handlers, but not pskernel.
-
-In the PC port, all of these functions are just stubs.
-|#
-
-;; map of the kernel's memory.
+;; Scratch layout beginning at #x80000. The kernel syscall dispatcher reads the
+;; three function slots installed below; the remaining fields hold interrupt and
+;; DMA bookkeeping shared with the exception handlers.
 (deftype lowmemmap (structure)
   ((irq-info-stack  uint32)
    (irq2-info-stack uint32)
@@ -43,66 +35,298 @@ In the PC port, all of these functions are just stubs.
     (break)
     (none)))
 
-(defun kernel-copy-function (unused source dest size)
-  "Copy size words from source to dest. The a0 argument is ignored.
-  Uses registers a0, a1, a2, a3"
-  (nyi-break kernel-copy-function))
+(defun kernel-copy-function ((unused object) (source pointer) (dest pointer) (word-count int))
+  "Copy a positive number of 32-bit words for the private kernel syscall. The first ABI argument is unused."
+  (#unless PC_PORT
+    (rlet ((source-reg :reg a1)
+           (dest-reg :reg a2)
+           (remaining :reg a3)
+           (word))
+     copy-word
+      (l.w word source-reg)
+      (s.w word dest-reg)
+      (&+! source-reg 4)
+      (&+! dest-reg 4)
+      (-! remaining 1)
+      (b.nz remaining copy-word :delay (nop!))
+      (j ra :delay (nop!))))
+  (#when PC_PORT
+    (nyi-break kernel-copy-function)))
 
-(defun kernel-copy-to-kernel-ram ()
-  "Does a syscall 102. This is CpuConfig on released PS2 BIOSes.
-  I'm guessing this somehow calls kernel-copy-function"
-  (nyi-break kernel-copy-to-kernel-ram))
+;; The syscall dispatcher reads these entry points directly from low memory.
+(#unless PC_PORT
+  (set! (-> (the lowmemmap #x80000) kernel-copy-fn) (the uint32 kernel-copy-function)))
 
-(defun kernel-write-function (unused source dest)
-  "Writes a single word to the destination"
-  (nyi-break kernel-write-function))
+(defun kernel-copy-to-kernel-ram ((unused object) (source pointer) (dest pointer) (word-count int))
+  "Invoke the private syscall-102 kernel copy service."
+  (#unless PC_PORT
+    (rlet ((selector :reg a0)
+           (syscall-id :reg v1))
+      (m! selector #xe001fd5a)
+      (m! syscall-id 102)
+      (syscall 0)
+      (return (none))))
+  (#when PC_PORT
+    (nyi-break kernel-copy-to-kernel-ram)))
 
-(defun kernel-write ()
-  "Does a syscall 102. I'm guessing this somehow calls kernel-write-function."
-  (nyi-break kernel-write))
+(defun kernel-write-function ((unused object) (dest pointer) (value uint32))
+  "Write one 32-bit word for the private kernel syscall. The first ABI argument is unused."
+  (#unless PC_PORT
+    (rlet ((dest-reg :reg a1)
+           (value-reg :reg a2))
+      (j ra :delay (s.w value-reg dest-reg))))
+  (#when PC_PORT
+    (nyi-break kernel-write-function)))
 
-(defun kernel-read-function (unused source)
-  "Read a single word (signed) from source"
-  (nyi-break kernel-read-function))
+(#unless PC_PORT
+  (set! (-> (the lowmemmap #x80000) kernel-write-fn) (the uint32 kernel-write-function)))
 
-(defun kernel-read ()
-  "Does a syscall 102. I'm guessing this somehow calls kernel-read-function"
-  (nyi-break kernel-read))
+(defun kernel-write ((unused object) (dest pointer) (value uint32))
+  "Invoke the private syscall-102 kernel word-write service."
+  (#unless PC_PORT
+    (rlet ((selector :reg a0)
+           (syscall-id :reg v1))
+      (m! selector #xe001fd5b)
+      (m! syscall-id 102)
+      (syscall 0)
+      (return (none))))
+  (#when PC_PORT
+    (nyi-break kernel-write)))
+
+(defun kernel-read-function ((unused object) (source pointer))
+  "Read one signed 32-bit word for the private kernel syscall. The first ABI argument is unused."
+  (#unless PC_PORT
+    (rlet ((source-reg :reg a1)
+           (result :reg v0))
+      (j ra :delay (l.w result source-reg))))
+  (#when PC_PORT
+    (nyi-break kernel-read-function)))
+
+(#unless PC_PORT
+  (set! (-> (the lowmemmap #x80000) kernel-read-fn) (the uint32 kernel-read-function)))
+
+(defun kernel-read ((unused object) (source pointer))
+  "Invoke the private syscall-102 kernel word-read service."
+  (#unless PC_PORT
+    (rlet ((selector :reg a0)
+           (syscall-id :reg v1)
+           (result :reg v0))
+      (m! selector #xe001fd68)
+      (m! syscall-id 102)
+      (syscall 0)
+      (return (the int result))))
+  (#when PC_PORT
+    (nyi-break kernel-read)))
 
 (defun kernel-check-hardwired-addresses ()
-  "Checks a bunch of stuff in the kernel using kernel-read.
-  If the memory layout isn't what it expects, it prints an error and crashes."
-  (nyi-break kernel-check-hardwired-addresses))
+  "Verify that the running PS2 kernel matches the hardwired debug-monitor memory layout."
+  (#unless PC_PORT
+    (let* ((irq-table (+ #x80010000 (logand (kernel-read 0 (the pointer #x80000248)) #xffff)))
+           (handler-2 (kernel-read 0 (the pointer (+ irq-table 8))))
+           (handler-3 (kernel-read 0 (the pointer (+ irq-table 12))))
+           (handler-7 (kernel-read 0 (the pointer (+ irq-table 28))))
+           (exception-table (+ #x80010000 (logand (kernel-read 0 (the pointer #x800001a0)) #xffff)))
+           (exception-handler (kernel-read 0 (the pointer exception-table)))
+           (level2-vector-1 (+ #x80000000 (* (logand (kernel-read 0 (the pointer #x80000088)) #xffff) 4)))
+           (level2-vector-2 (+ #x80000000 (* (logand (kernel-read 0 (the pointer #x80000108)) #xffff) 4)))
+           (syscall-table (+ #x80010000 (logand (kernel-read 0 (the pointer #x800002f8)) #xffff)))
+           (syscall-102-handler (kernel-read 0 (the pointer (+ syscall-table 408))))
+           (syscall-102-data
+             (logior (shl (logand (kernel-read 0 (the pointer syscall-102-handler)) #xffff) 16)
+                     (logand (kernel-read 0 (the pointer (+ syscall-102-handler 16))) #xffff)))
+           (valid? #t))
+      (format 0 "Read data from kernel~%")
+      (format 0 "IRQ table at       ~8X~%" irq-table)
+      (format 0 "  Handler 2        ~8X~%" handler-2)
+      (format 0 "  Handler 3        ~8X~%" handler-3)
+      (format 0 "  Handler 7        ~8X~%" handler-7)
+      (format 0 "Exception table at ~8X~%" exception-table)
+      (format 0 "  Handler          ~8X~%" exception-handler)
+      (format 0 "L2 exception #1    ~8X~%" level2-vector-1)
+      (format 0 "L2 exception #2    ~8X~%" level2-vector-2)
+      (format 0 "SYSCALL table at   ~8X~%" syscall-table)
+      (format 0 "  SYSCALL 102      ~8X~%" syscall-102-handler)
+      (format 0 "  SYSCALL 102 data ~8X~%" syscall-102-data)
+      (unless (= irq-table #x80014180) (set! valid? #f))
+      (unless (= handler-2 #x80000380) (set! valid? #f))
+      (unless (= handler-3 #x800004c0) (set! valid? #f))
+      (unless (= handler-7 #x80000600) (set! valid? #f))
+      (unless (= exception-table #x80014140) (set! valid? #f))
+      (unless (= exception-handler #x80012ec8) (set! valid? #f))
+      (unless (= level2-vector-1 #x80012f64) (set! valid? #f))
+      (unless (= level2-vector-2 #x80012f64) (set! valid? #f))
+      (unless (= syscall-table #x80013d40) (set! valid? #f))
+      (unless (= syscall-102-handler #x80000a80) (set! valid? #f))
+      (unless (= syscall-102-data #x80000aa0) (set! valid? #f))
+      (unless valid?
+        (format 0 "======================================================================~%")
+        (format 0 "I CANNOT CONTINUE TO LOAD GOAL, BECAUSE THE KERNEL VERSION HAS CHANGED~%")
+        (format 0 "======================================================================~%")
+        (format 0 "~%Alternatively, try removing pskernel.gc and debug-handlers.gc from project.cl, do an (lg) and then (:r) again~%")
+        ;; Stop immediately: using these addresses with another kernel would corrupt kernel memory.
+        (s.l r0 r0 2))
+      (dotimes (i 128)
+        (unless (zero? (kernel-read 0 (the pointer (+ #x80030000 (* i 4)))))
+          (set! valid? #f)))
+      (unless valid?
+        (format 0 "======================================================================~%")
+        (format 0 "I CANNOT CONTINUE TO LOAD GOAL, BECAUSE THE KERNEL VERSION HAS CHANGED~%")
+        (format 0 "                (Previously unused area now has data)                 ~%")
+        (format 0 "======================================================================~%")
+        (format 0 "~%Alternatively, try removing pskernel.gc and debug-handlers.gc from project.cl, do an (lg) and then (:r) again~%")
+        (s.l r0 r0 2))
+      (format 0 "Unused area OK~%")
+      (return (none))))
+  (#when PC_PORT
+    (nyi-break kernel-check-hardwired-addresses)))
 
-(defun install-default-debug-handler (handler)
-  "Installs the given handler as the debug handler 1 through 13.
-  Uses the install-debug-handler function defined in kmachine.cpp"
-  (nyi-break install-default-debug-handler))
+(defun install-default-debug-handler ((handler object))
+  "Install one debug handler for the supported EE exception classes."
+  (#unless PC_PORT
+    (install-debug-handler 1 handler)
+    (install-debug-handler 2 handler)
+    (install-debug-handler 3 handler)
+    (install-debug-handler 4 handler)
+    (install-debug-handler 5 handler)
+    (install-debug-handler 6 handler)
+    (install-debug-handler 7 handler)
+    (install-debug-handler 10 handler)
+    (install-debug-handler 11 handler)
+    (install-debug-handler 12 handler)
+    (install-debug-handler 13 handler)
+    (return (none)))
+  (#when PC_PORT
+    (nyi-break install-default-debug-handler)))
 
-(defun return-from-exception (regs)
-  "Restore the registers and eret."
-  (nyi-break return-from-exception))
+(defun return-from-exception ((regs (pointer uint128)))
+  "Restore an EE register image and return from the exception with eret."
+  (#unless PC_PORT
+    (rlet ((regs-base :reg a0))
+      (l.q r0 regs-base 0)
+      (l.q at regs-base 16)
+      (l.q v0 regs-base 32)
+      (l.q v1 regs-base 48)
+      (l.q a1 regs-base 80)
+      (l.q a2 regs-base 96)
+      (l.q a3 regs-base 112)
+      (l.q t0 regs-base 128)
+      (l.q t1 regs-base 144)
+      (l.q t2 regs-base 160)
+      (l.q t3 regs-base 176)
+      (l.q t4 regs-base 192)
+      (l.q t5 regs-base 208)
+      (l.q t6 regs-base 224)
+      (l.q t7 regs-base 240)
+      (l.q s0 regs-base 256)
+      (l.q s1 regs-base 272)
+      (l.q s2 regs-base 288)
+      (l.q s3 regs-base 304)
+      (l.q s4 regs-base 320)
+      (l.q s5 regs-base 336)
+      (l.q s6 regs-base 352)
+      (l.q s7 regs-base 368)
+      (l.q t8 regs-base 384)
+      (l.q t9 regs-base 400)
+      (l.q gp regs-base 448)
+      (l.q sp regs-base 464)
+      (l.q fp regs-base 480)
+      (l.q ra regs-base 496)
+      ;; a0 is restored last because it holds the register-image base.
+      (l.q a0 regs-base 64)
+      (sync.l)
+      (sync.p)
+      (eret :delay (nop!))
+      (nop!)
+      (nop!)))
+  (#when PC_PORT
+    (nyi-break return-from-exception)))
 
-(defun kernel-set-exception-vector ()
-  "Use syscall 13/syscall 14 to set exception handlers"
-  (nyi-break kernel-set-exception-vector))
+(defun kernel-set-exception-vector ((exception int) (handler object))
+  "Install a handler for an EE exception class."
+  (#unless PC_PORT
+    (rlet ((exception-reg :reg a0)
+           (syscall-id :reg v1)
+           (result :reg v0))
+      (b.geu exception-reg 4 common-handler :delay (nop!))
+      (m! syscall-id 13)
+      (syscall 0)
+      (m! result 0)
+      (b vector-done :delay (nop!))
+     common-handler
+      (m! syscall-id 14)
+      (syscall 0)
+      (m! result 0)
+     vector-done
+      (return (none))))
+  (#when PC_PORT
+    (nyi-break kernel-set-exception-vector)))
 
-(defun kernel-set-interrupt-vector ()
-  "Use syscall 15 to set an interrupt handler"
-  (nyi-break kernel-set-interrupt-vector))
+(defun kernel-set-interrupt-vector ((interrupt int) (handler object))
+  "Install an EE interrupt handler through syscall 15."
+  (#unless PC_PORT
+    (rlet ((syscall-id :reg v1)
+           (result :reg v0))
+      (m! syscall-id 15)
+      (syscall 0)
+      (m! result 0)
+      (return (none))))
+  (#when PC_PORT
+    (nyi-break kernel-set-interrupt-vector)))
 
-(defun kernel-set-level2-vector ()
-  "Set some handler by writing directly to kernel memory. Not sure what this is."
-  (nyi-break kernel-set-level2-vector))
+(defun kernel-set-level2-vector ((vector-number int) (handler uint))
+  "Install a KSEG0 handler for one of the two level-two vectors."
+  (#unless PC_PORT
+    (when (!= (logand (shl #xf000 16) handler) (shl #x8000 16))
+      (format 0 "CANNOT SET LEVEL2 HANDLER IF IT IS NOT IN KSEG0 MEMORY (#x8xxxxxxx)~%")
+      (return #f))
+    (if (= vector-number 1)
+      (kernel-write 0
+                    (the-as pointer (the-as uint #x80000088))
+                    (the-as uint32 (logior #x8000000 (shr (logand #xfffffff handler) 2)))))
+    (if (= vector-number 2)
+      (kernel-write 0
+                    (the-as pointer (the-as uint #x80000108))
+                    (the-as uint32 (logior #x8000000 (shr (logand #xfffffff handler) 2)))))
+    (return #t))
+  (#when PC_PORT
+    (nyi-break kernel-set-level2-vector)))
 
-(defun deinstall-debug-handler ()
-  "Set the kernel exception handler back to the default?"
-  (nyi-break deinstall-debug-handler))
+(defun deinstall-debug-handler ((exception int))
+  "Restore the default kernel handler for one exception class."
+  (#unless PC_PORT
+    (kernel-set-exception-vector exception (the-as uint #x80012ec8))
+    (return (none)))
+  (#when PC_PORT
+    (nyi-break deinstall-debug-handler)))
 
 (defun deinstall-debug-handlers ()
-  "Set a bunch of excpetion handlers back to the default?"
-  (nyi-break deinstall-debug-handlers))
+  "Restore the default kernel handler for every exception class used by the debug monitor."
+  (#unless PC_PORT
+    (kernel-set-exception-vector 1 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 2 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 3 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 4 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 5 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 6 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 7 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 10 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 11 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 12 (the-as uint #x80012ec8))
+    (kernel-set-exception-vector 13 (the-as uint #x80012ec8))
+    (return (none)))
+  (#when PC_PORT
+    (nyi-break deinstall-debug-handlers)))
 
-(defun resend-exception ()
-  "I think this was to return from a GOAL crash handler back to the EE kernel's crash handler."
-  (nyi-break resend-exception))
+(defun resend-exception ((status uint) (cause uint) (epc uint) (bad-vaddr uint) (bad-paddr uint) (regs (pointer uint128)))
+  "Remove the debug handlers, restore the saved COP0 exception state, and resume through the supplied register image."
+  (#unless PC_PORT
+    (deinstall-debug-handlers)
+    (m Status status)
+    (m Cause cause)
+    (m EPC epc)
+    (m BadVAddr bad-vaddr)
+    (m BadPAddr bad-paddr)
+    (return-from-exception regs)
+    (return (none)))
+  (#when PC_PORT
+    (nyi-break resend-exception)))

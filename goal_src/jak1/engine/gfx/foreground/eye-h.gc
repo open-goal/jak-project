@@ -2,14 +2,18 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel/gkernel-h.gc")
+
 (define-extern get-eye-block (function int int int))
-
 (define-extern merc-eye-anim (function process-drawable none))
-
 (define-extern update-eyes (function none))
+
+;; The eye renderer generates eye textures with an aniamted eyelid, iris, and pupil.
+;; It consumes animation data and renders the eye to a texture later used by merc/generic.
 
 ;; DECOMP BEGINS
 
+;; Everything that can be animated/adjusted on a single eye as floats.
+;; This can be driven from an animation or procedural blinking.
 (deftype eye (structure)
   ((data        vector 2 :inline)
    (x           float :overlay-at (-> data 0 x))
@@ -19,18 +23,24 @@
    (pupil-scale float :offset 20)
    (lid-scale   float :offset 24)))
 
+;; Characters with animated eyes add an eye-control
+;; note: background color of the eye is set to the 0,0 texel of the iris.
 (deftype eye-control (structure)
-  ((process     handle)
-   (random-time uint16)
-   (level       uint16)
-   (blink       float)
-   (shaders     (inline-array adgif-shader))
+  ((process     handle) ;; process owning the eye
+   (random-time uint16) ;; blink countdown
+   (level       uint16) ;; level owning the character, controls when eye textures are uploaded
+   (blink       float)  ;; blink state (shared between the left and right eye)
+   (shaders     (inline-array adgif-shader)) ;; shaders for the iris, pupil, lid.
    (left        eye :inline)
    (right       eye :inline)))
 
+;; Fixed pool indexed by the eye-slot stored in merc geometry.
+;; It's strange that eye slots weren't dynamically assigned.
 (deftype eye-control-array (basic)
   ((data eye-control 11 :inline)))
 
+;; DMA templates, an optimization for generating the rendering DMA chain.
+;; blink-table is the animation of closing, holding shut, and opening the eyelid.
 (deftype eye-work (structure)
   ((sprite-tmpl  dma-gif-packet :inline)
    (sprite-tmpl2 dma-gif-packet :inline)
@@ -39,8 +49,8 @@
 
 (define *eye-control-array* (new 'static 'eye-control-array))
 
-(dotimes (v1-5 11)
-  (set! (-> *eye-control-array* data v1-5 process) (the-as handle #f))
-  (set! (-> *eye-control-array* data v1-5 shaders) (the-as (inline-array adgif-shader) #f))
-  (set! (-> *eye-control-array* data v1-5 random-time) (the-as uint 60))
-  (set! (-> *eye-control-array* data v1-5 blink) 0.0))
+(dotimes (i 11)
+  (set! (-> *eye-control-array* data i process) (the-as handle #f))
+  (set! (-> *eye-control-array* data i shaders) (the-as (inline-array adgif-shader) #f))
+  (set! (-> *eye-control-array* data i random-time) (the-as uint 60))
+  (set! (-> *eye-control-array* data i blink) 0.0))

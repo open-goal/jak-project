@@ -25,136 +25,152 @@
             i
             (-> this string-array i)
             (-> this data-array i)
-            (mem-size (-> this data-array i) #f 0)))
+            (mem-size (-> this data-array i) #f (mem-usage-flags))))
   this)
 
-(defmethod mem-usage ((this load-dir) (usage memory-usage-block) (flags int))
-  (set! (-> usage length) (max 82 (-> usage length)))
-  (set! (-> usage data 81 name) "array")
-  (+! (-> usage data 81 count) 1)
-  (let ((v1-6 (asize-of this))) (+! (-> usage data 81 used) v1-6) (+! (-> usage data 81 total) (logand -16 (+ v1-6 15))))
-  (set! (-> usage length) (max 82 (-> usage length)))
-  (set! (-> usage data 81 name) "array")
-  (set! (-> usage data 81 count) (-> usage data 81 count))
-  (let ((v1-15 (asize-of (-> this string-array))))
-    (+! (-> usage data 81 used) v1-15)
-    (+! (-> usage data 81 total) (logand -16 (+ v1-15 15))))
-  (set! (-> usage length) (max 82 (-> usage length)))
-  (set! (-> usage data 81 name) "array")
-  (set! (-> usage data 81 count) (-> usage data 81 count))
-  (let ((v1-24 (asize-of (-> this data-array))))
-    (+! (-> usage data 81 used) v1-24)
-    (+! (-> usage data 81 total) (logand -16 (+ v1-24 15))))
-  (dotimes (s3-0 (-> this data-array length))
-    (mem-usage (-> this data-array s3-0) usage flags))
+(defmethod mem-usage ((this load-dir) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for the directory and both parallel arrays in the array memory category, then add
+   the memory owned by every loaded data object. Pass flags through to each child."
+  (mem-usage-add! usage array 1 (asize-of this))
+  (mem-usage-add! usage array 0 (asize-of (-> this string-array)))
+  (mem-usage-add! usage array 0 (asize-of (-> this data-array)))
+  (dotimes (i (-> this data-array length))
+    (mem-usage (-> this data-array i) usage flags))
   (the-as load-dir #f))
 
 (defmethod load-to-heap-by-name ((this load-dir-art-group) (art-name string) (do-reload symbol) (heap kheap) (version int))
-  "Load the art with the given name to the heap and return the art.
-  Won't load a thing if it's already loaded, unless you set do-reload.
-  This is intended for debug only."
+  "Return the art group named art-name from this directory. If it is already present, reload
+   and replace it only when do-reload is true and the new debug load succeeds. Otherwise load,
+   validate, and append a new entry. Return #f when a new load fails."
   ;; see if we already have it.
-  (let ((s5-0 (-> this string-array)))
-    (dotimes (s3-0 (-> s5-0 length))
-      (when (string= art-name (-> s5-0 s3-0))
+  (let ((name-array (-> this string-array)))
+    (dotimes (i (-> name-array length))
+      (when (string= art-name (-> name-array i))
         (when do-reload
           ;; we have it, reload it if requested
-          (let ((v1-4 (art-group-load-check art-name heap version))) (if v1-4 (set! (-> this art-group-array s3-0) v1-4))))
-        (return (-> this art-group-array s3-0))))
-    ;; nope, we don't have it,add it to the list.
-    (let ((v0-2 (art-group-load-check art-name heap version)))
-      (when v0-2
-        (set! (-> s5-0 (-> s5-0 length)) art-name)
-        (set! (-> this art-group-array (-> s5-0 length)) v0-2)
-        (+! (-> s5-0 length) 1)
+          (let ((reloaded-group (art-group-load-check art-name heap version)))
+            (if reloaded-group (set! (-> this art-group-array i) reloaded-group))))
+        (return (-> this art-group-array i))))
+    ;; The name isn't present, so try to add it.
+    (let ((new-group (art-group-load-check art-name heap version)))
+      (when new-group
+        (set! (-> name-array (-> name-array length)) art-name)
+        (set! (-> this art-group-array (-> name-array length)) new-group)
+        (+! (-> name-array length) 1)
         (+! (-> this art-group-array length) 1))
-      v0-2)))
+      new-group)))
 
-(defmethod set-loaded-art ((this load-dir-art-group) (arg0 art-group))
-  "Add some already loaded art to the load-dir."
-  (let ((s4-0 (-> this string-array)))
-    (dotimes (s3-0 (-> s4-0 length))
-      (when (string= (-> arg0 name) (-> s4-0 s3-0))
-        (set! (-> this art-group-array s3-0) arg0)
-        (return (-> this art-group-array s3-0))))
-    (set! (-> s4-0 (-> s4-0 length)) (-> arg0 name))
-    (set! (-> this art-group-array (-> s4-0 length)) arg0)
-    (set! (-> s4-0 length) (+ (-> s4-0 length) 1)))
+(defmethod set-loaded-art ((this load-dir-art-group) (group art-group))
+  "Insert an already loaded group. Replace the group with the same name when present;
+   otherwise append its name and pointer to the parallel arrays."
+  (let ((name-array (-> this string-array)))
+    (dotimes (i (-> name-array length))
+      (when (string= (-> group name) (-> name-array i))
+        (set! (-> this art-group-array i) group)
+        (return (-> this art-group-array i))))
+    (set! (-> name-array (-> name-array length)) (-> group name))
+    (set! (-> this art-group-array (-> name-array length)) group)
+    (+! (-> name-array length) 1))
   (set! (-> this art-group-array length) (+ (-> this art-group-array length) 1))
-  arg0)
+  group)
 
-(defun drawable-load ((arg0 drawable) (arg1 kheap))
-  "Load a drawable file. Unused."
-  (cond
-    ((type-type? (-> arg0 type) string)
-     #|
-(with-sp (protect sp
-      (if (< sp *stack-top*)
-        (set! sp (&+ *kernel-sp* -1024))
-        )
-     |#
-     (let ((s5-1 (the-as drawable (loado (the-as string arg0) arg1))))
-       (if (and s5-1 (type-type? (-> s5-1 type) drawable)) (login s5-1)))
-     ;;))
-     )
-    ((type-type? (-> arg0 type) drawable) (login arg0))))
+(#unless PC_PORT
+  (defun drawable-load ((source drawable) (heap kheap))
+    "Load and log in a drawable when source is a filename, or log in source directly when it is
+     already a drawable. The EE path moves low-stack loads to the protected kernel stack. Return #f
+     for an invalid object."
+    (cond
+      ((type-type? (-> source type) string)
+       (with-sp (protect sp
+                  (if (< sp *stack-top*) (set! sp (&+ *kernel-sp* -1024)))
+                  (let ((loaded-drawable (the-as drawable (loado (the-as string source) heap))))
+                    (if (and loaded-drawable (type-type? (-> loaded-drawable type) drawable)) (login loaded-drawable))))))
+      ((type-type? (-> source type) drawable) (login source)))))
 
-(defun art-load ((arg0 string) (arg1 kheap))
-  "Load an art file. Unused."
-  #|
-(with-sp (protect sp
-    (if (< sp *stack-top*)
-      (set! sp (&+ *kernel-sp* -1024))
-      )
-  |#
-  (let ((s5-0 (the-as art (loado arg0 arg1)))) (if (type-type? (-> s5-0 type) art) (login s5-0) (the-as art #f)))
-  ;;))
-  )
+(#when PC_PORT
+  (defun drawable-load ((source drawable) (heap kheap))
+    "Load and log in a drawable when source is a filename, or log in source directly when it is
+     already a drawable. The EE path moves low-stack loads to the protected kernel stack. Return #f
+     for an invalid object."
+    (cond
+      ((type-type? (-> source type) string)
+       (let ((loaded-drawable (the-as drawable (loado (the-as string source) heap))))
+         (if (and loaded-drawable (type-type? (-> loaded-drawable type) drawable)) (login loaded-drawable))))
+      ((type-type? (-> source type) drawable) (login source)))))
 
-(defun art-group-load-check ((arg0 string) (arg1 kheap) (arg2 int))
-  "Load and check an art-group file. this only runs if we're using debug memory."
-  (when *debug-segment*
-    #|
-(with-sp (protect sp
-      (if (< sp *stack-top*)
-        (set! sp (&+ *kernel-sp* -1024))
-        )
-    |#
-    (let ((s3-1 (the-as art-group (loado (make-file-name (file-kind art-group) arg0 arg2 #f) arg1))))
-      (cond
-        ((not s3-1) (format 0 "ERROR: art-group ~A is not a valid file.~%" arg0) (the-as art-group #f))
-        ((not (type-type? (-> s3-1 type) art-group))
-         (format 0 "ERROR: art-group ~A is not a art-group.~%" arg0)
-         (the-as art-group #f))
-        ((not (file-info-correct-version? (-> s3-1 info) (file-kind art-group) arg2))
-         ;;     ^ prints a detailed error if it fails.
-         ;;(format 0 "ERROR: art-group ~A is not the correct version.~%" arg0)
-         (the-as art-group #f))
-        (else (login s3-1))))
-    ;;))
-    ))
+(#unless PC_PORT
+  (defun art-load ((name string) (heap kheap))
+    "Load name into heap, verify that the result is art, and log it in. The EE path moves low-stack
+     loads to the protected kernel stack; return #f when the loaded object is not art."
+    (with-sp (protect sp
+               (if (< sp *stack-top*) (set! sp (&+ *kernel-sp* -1024)))
+               (let ((loaded-art (the-as art (loado name heap))))
+                 (if (type-type? (-> loaded-art type) art) (login loaded-art) (the-as art #f)))))))
 
-(defmethod set-pending-file ((this external-art-buffer) (arg0 string) (arg1 int) (arg2 handle) (arg3 float))
-  "Request a new file to be loaded into this buffer."
-  (set! (-> this pending-load-file) arg0)
-  (set! (-> this pending-load-file-part) arg1)
-  (set! (-> this pending-load-file-owner) arg2)
-  (set! (-> this pending-load-file-priority) arg3)
+(#when PC_PORT
+  (defun art-load ((name string) (heap kheap))
+    "Load name into heap, verify that the result is art, and log it in. The EE path moves low-stack
+     loads to the protected kernel stack; return #f when the loaded object is not art."
+    (let ((loaded-art (the-as art (loado name heap))))
+      (if (type-type? (-> loaded-art type) art) (login loaded-art) (the-as art #f)))))
+
+(#unless PC_PORT
+  (defun art-group-load-check ((name string) (heap kheap) (version int))
+    "In a debug build, load the versioned art-group file into heap, validate its type and file
+     version, and log it in. Return #f when debug memory is unavailable or any validation fails."
+    (when *debug-segment*
+      (with-sp (protect sp
+                 (if (< sp *stack-top*) (set! sp (&+ *kernel-sp* -1024)))
+                 (let ((loaded-group (the-as art-group (loado (make-file-name (file-kind art-group) name version #f) heap))))
+                   (cond
+                     ((not loaded-group) (format 0 "ERROR: art-group ~A is not a valid file.~%" name) (the-as art-group #f))
+                     ((not (type-type? (-> loaded-group type) art-group))
+                      (format 0 "ERROR: art-group ~A is not a art-group.~%" name)
+                      (the-as art-group #f))
+                     ((not (file-info-correct-version? (-> loaded-group info) (file-kind art-group) version))
+                      ;; file-info-correct-version? prints the detailed error.
+                      (the-as art-group #f))
+                     (else (login loaded-group)))))))))
+
+(#when PC_PORT
+  (defun art-group-load-check ((name string) (heap kheap) (version int))
+    "In a debug build, load the versioned art-group file into heap, validate its type and file
+     version, and log it in. Return #f when debug memory is unavailable or any validation fails."
+    (when *debug-segment*
+      (let ((loaded-group (the-as art-group (loado (make-file-name (file-kind art-group) name version #f) heap))))
+        (cond
+          ((not loaded-group) (format 0 "ERROR: art-group ~A is not a valid file.~%" name) (the-as art-group #f))
+          ((not (type-type? (-> loaded-group type) art-group))
+           (format 0 "ERROR: art-group ~A is not a art-group.~%" name)
+           (the-as art-group #f))
+          ((not (file-info-correct-version? (-> loaded-group info) (file-kind art-group) version))
+           ;; file-info-correct-version? prints the detailed error.
+           (the-as art-group #f))
+          (else (login loaded-group)))))))
+
+(defmethod set-pending-file ((this external-art-buffer) (name string) (part int) (owner handle) (priority float))
+  "Set the file part, owning process handle, and priority that this buffer should service on
+   its next update."
+  (set! (-> this pending-load-file) name)
+  (set! (-> this pending-load-file-part) part)
+  (set! (-> this pending-load-file-owner) owner)
+  (set! (-> this pending-load-file-priority) priority)
   0)
 
 (defmethod unlock! ((this external-art-buffer))
-  "Unlock this buffer."
+  "Clear the inter-buffer activation lock."
   (declare (inline))
   (set! (-> this locked?) #f)
   #f)
 
 (defmethod inactive? ((this external-art-buffer))
-  "Is this buffer inactive?"
+  "Return true unless this buffer currently has an active, linked art group."
   (declare (inline))
   (!= (-> this status) 'active))
 
 (defmethod file-status ((this external-art-buffer) (name string) (part int))
-  "Get the status of a file in the buffer. #f = file is not present."
+  "Return this buffer's state for the requested name and part. Return pending when it is queued
+   but not yet the current load, and #f when it is not requested by this buffer."
   (when (and (name= (-> this pending-load-file) name) (= (-> this pending-load-file-part) part))
     ;; the file is at least wanting to load
     (if (and (name= (-> this load-file) name) (= (-> this load-file-part) part))
@@ -163,23 +179,23 @@
       )))
 
 (defmethod link-art! ((this art-group))
-  "Links the elements of this art-group.
-   This will put a reference to this joint animation in the level art group.
-   Level art groups have slots for temporarily loaded joint animations."
+  "Install every joint animation in this group into a resident master art group. Search level
+   slots 2 through 0, prefer the animation's authored index when it is valid and empty, and
+   otherwise use an empty slot. Print an error for an animation that cannot be linked."
   (when this
-    (countdown (s5-0 (-> this length))
-      (let* ((art-elt (-> this data s5-0))
+    (countdown (i (-> this length))
+      (let* ((art-elt (-> this data i))
              (janim (if (and (nonzero? art-elt) (type-type? (-> art-elt type) art-joint-anim)) (the-as art-joint-anim art-elt)))
              (success #f))
         (when janim
           ;; a countdown with a label right at the start
-          (let ((s3-1 3))
+          (let ((level-index 3))
             (while (begin
                      (label cfg-22)
-                     (nonzero? s3-1))
+                     (nonzero? level-index))
               ;; loop over levels, looking for the master art group for this joint animation.
-              (+! s3-1 -1)
-              (let ((janim-group (art-group-get-by-name (-> *level* level s3-1) (-> janim master-art-group-name))))
+              (+! level-index -1)
+              (let ((janim-group (art-group-get-by-name (-> *level* level level-index) (-> janim master-art-group-name))))
                 (when janim-group
                   (cond
                     ((and (< (-> janim master-art-group-index) (-> janim-group length)) ;; index is valid
@@ -190,54 +206,59 @@
                      (set! success #t))
                     (else
                      ;; if the specified index is no good, just try looking for somewhere else.
-                     (countdown (a0-14 (-> janim-group length))
-                       (when (not (-> janim-group data a0-14))
+                     (countdown (slot-index (-> janim-group length))
+                       (when (not (-> janim-group data slot-index))
                          ;; found an empty one!
-                         (set! (-> janim-group data a0-14) janim)
+                         (set! (-> janim-group data slot-index) janim)
                          (set! success #t)
                          (goto cfg-22)))))))))
           (if (not success) (format 0 "ERROR: ~A could not find a master slot to link for ~A.~%" (-> this name) janim))))))
   this)
 
 (defmethod unlink-art! ((this art-group))
-  "Unlinks the elements of this art-group.  This will undo the link-art! function."
+  "Remove this group's joint animations from matching resident master art groups in level slots
+   2 through 0. Print an error for an animation that was not linked anywhere."
   (when this
-    (countdown (s5-0 (-> this length))
-      (let* ((art-elt (-> this data s5-0))
+    (countdown (i (-> this length))
+      (let* ((art-elt (-> this data i))
              (janim (if (and (nonzero? art-elt) (type-type? (-> art-elt type) art-joint-anim)) (the-as art-joint-anim art-elt)))
              (success #f))
         (when janim
-          (let ((s2-0 3))
+          (let ((level-index 3))
             (while (begin
                      (label cfg-16)
-                     (nonzero? s2-0))
-              (+! s2-0 -1)
-              (let ((janim-group (art-group-get-by-name (-> *level* level s2-0) (-> janim master-art-group-name))))
+                     (nonzero? level-index))
+              (+! level-index -1)
+              (let ((janim-group (art-group-get-by-name (-> *level* level level-index) (-> janim master-art-group-name))))
                 (when janim-group
-                  (countdown (a0-5 (-> janim-group length))
-                    (when (= janim (-> janim-group data a0-5))
-                      (set! (-> janim-group data a0-5) #f)
+                  (countdown (slot-index (-> janim-group length))
+                    (when (= janim (-> janim-group data slot-index))
+                      (set! (-> janim-group data slot-index) #f)
                       (set! success #t)
                       (goto cfg-16)))))))
           (if (not success) (format 0 "ERROR: ~A could not find a master slot to unlink for ~A.~%" (-> this name) janim))))))
   0)
 
-(defmethod link-file ((this external-art-buffer) (ag art-group))
-  "Link the art-group and set it to this buffer's art group."
-  (when ag
-    (link-art! ag)
-    (set! (-> this art-group) ag))
-  ag)
+(defmethod link-file ((this external-art-buffer) (group art-group))
+  "Link group's joint animations into their resident master groups and make it this buffer's
+   active art group."
+  (when group
+    (link-art! group)
+    (set! (-> this art-group) group))
+  group)
 
-(defmethod unlink-file ((this external-art-buffer) (ag art-group))
-  "Unlink the art-group and remove this buffer's art group."
-  (when ag
-    (unlink-art! ag)
+(defmethod unlink-file ((this external-art-buffer) (group art-group))
+  "Unlink group's joint animations and clear this buffer's active art-group pointer."
+  (when group
+    (unlink-art! group)
     (set! (-> this art-group) #f))
   0)
 
 (defmethod update ((this external-art-buffer))
-  "Update this buffer."
+  "Advance this buffer's streaming state. Adopt changed pending requests, cancel displaced
+   loads, initialize the fixed spool heap, start and poll the aligned STR transfer, link and
+   validate the resulting art group, serialize activation with the other buffer, and unload data
+   whose request was cleared. Requests whose owner no longer exists are discarded."
   (when (or (not (name= (-> this pending-load-file) (-> this load-file)))
             (!= (-> this pending-load-file-part) (-> this load-file-part)))
     ;; we're loading a different file, or a different part of a file
@@ -249,13 +270,13 @@
       (set! (-> this pending-load-file-priority) SPOOL_PRIORITY_LOWEST))
     (when (= (-> this status) 'initialize)
       ;; we need to initialize the heap
-      (let ((v1-11 (-> this heap)))
+      (let ((buffer-heap (-> this heap)))
         ;; Scary: this is a hard coded address that points to the kernel memory.
         ;; it turns out the kernel doesn't need this. So we can use it!
-        (set! (-> v1-11 base) (the-as pointer (+ #x84000 (* SPOOL_HEAP_SIZE (-> this index)))))
-        (set! (-> v1-11 current) (-> v1-11 base))
-        (set! (-> v1-11 top-base) (&+ (-> v1-11 base) SPOOL_HEAP_SIZE))
-        (set! (-> v1-11 top) (-> v1-11 top-base)))
+        (set! (-> buffer-heap base) (the-as pointer (+ #x84000 (* SPOOL_HEAP_SIZE (-> this index)))))
+        (set! (-> buffer-heap current) (-> buffer-heap base))
+        (set! (-> buffer-heap top-base) (&+ (-> buffer-heap base) SPOOL_HEAP_SIZE))
+        (set! (-> buffer-heap top) (-> buffer-heap top-base)))
       (set! (-> this status) 'inactive)
       ;; heap is now allocated, but there is no data to use
       )
@@ -334,23 +355,23 @@
            )))
        (('loaded)
         ;; file is loaded. link it and see if we're good
-        (let ((a0-37 (-> this buf)))
+        (let ((file-data (-> this buf)))
           (set! (-> this art-group)
-                (the-as art-group (link (the-as pointer a0-37) (-> this load-file data) (-> this len) (-> this heap) 0))))
-        (let ((s4-0 (-> this art-group))
-              (s3-0 (-> this load-file)))
+                (the-as art-group (link (the-as pointer file-data) (-> this load-file data) (-> this len) (-> this heap) 0))))
+        (let ((loaded-group (-> this art-group))
+              (file-name (-> this load-file)))
           (cond
-            ((not s4-0)
-             (format 0 "ERROR: art-group ~A part ~D is not a valid file.~%" s3-0 (-> this load-file-part))
+            ((not loaded-group)
+             (format 0 "ERROR: art-group ~A part ~D is not a valid file.~%" file-name (-> this load-file-part))
              (set! (-> this status) 'error))
-            ((not (type-type? (-> s4-0 type) art-group))
-             (format 0 "ERROR: art-group ~A part ~D is not a art-group.~%" s3-0 (-> this load-file-part))
+            ((not (type-type? (-> loaded-group type) art-group))
+             (format 0 "ERROR: art-group ~A part ~D is not a art-group.~%" file-name (-> this load-file-part))
              (set! (-> this status) 'error))
-            ((not (file-info-correct-version? (-> s4-0 info) (file-kind art-group) 0))
-             ;;(format 0 "ERROR: art-group ~A part ~D is the wrong version.~%" s3-0 (-> this load-file-part))
+            ((not (file-info-correct-version? (-> loaded-group info) (file-kind art-group) 0))
+             ;;(format 0 "ERROR: art-group ~A part ~D is the wrong version.~%" file-name (-> this load-file-part))
              (set! (-> this status) 'error))
             (else
-             (login s4-0)
+             (login loaded-group)
              (set! (-> this status) 'locked) ;; make file ready to be used
              ))))
        (('locked)
@@ -378,7 +399,7 @@
        (('active)
         ;; buffer is in use. not anymore!
         (unlink-file this (-> this art-group))
-        (let ((v1-70 (-> this heap))) (set! (-> v1-70 current) (-> v1-70 base)))
+        (let ((buffer-heap (-> this heap))) (set! (-> buffer-heap current) (-> buffer-heap base)))
         (set! (-> this art-group) #f)
         (set! (-> this status) 'inactive)
         ;; if the other is locked due to us, unlock it, then update it so it activates.
@@ -387,7 +408,7 @@
           (update (-> this other))))
        (else
         ;; some other scenario, just get rid of the whole thing.
-        (let ((v1-79 (-> this heap))) (set! (-> v1-79 current) (-> v1-79 base)))
+        (let ((buffer-heap (-> this heap))) (set! (-> buffer-heap current) (-> buffer-heap base)))
         (set! (-> this art-group) #f)
         (set! (-> this status) 'inactive)))))
   0)
@@ -397,136 +418,149 @@
 (define *preload-spool-anims* #t)
 
 (defmethod file-status ((this external-art-control) (name string) (part int))
-  "Get the status of a file in this art control. #f = file not found"
+  "Return the first buffer state for name and part, or #f when neither buffer is servicing the
+   request."
   (dotimes (i 2)
-    (awhen (file-status (-> this buffer i) name part) (return it)))
+    (awhen (file-status (-> this buffer i) name part)
+      (return it)))
   #f)
 
 (defmethod update ((this external-art-control) (debug-print symbol))
-  "Update this external-art-control. This validates the spool buffers, sorts the spools and queues the highest priority one, and does some other things.
-   If debug-print, also prints some text to the display console"
+  "Assign the two streaming buffers to the highest-priority eligible requests, retain buffers
+   already serving those requests, advance both buffer state machines, and queue the best
+   animation stream for audio preloading. Print request and buffer state when debug-print is true
+   and loader display is enabled."
   ;; if somebody wants a reserve buffer, they will set this to 1.
   (if (nonzero? (-> this reserve-buffer-count))
     (spool-push this "reserved" 0 *dproc* (if (-> this reserve-buffer) -110.0 -0.5)))
   ;; frame-lock will get set to #t if something is assigned to this buffer in this update.
-  (dotimes (v1-5 2)
-    (set! (-> this buffer v1-5 frame-lock) #f))
+  (dotimes (i 2)
+    (set! (-> this buffer i frame-lock) #f))
   ;; buffers assigned from this call to update
-  (dotimes (v1-8 3)
-    (set! (-> this rec v1-8 buf2) #f))
+  (dotimes (i 3)
+    (set! (-> this rec i buf2) #f))
   ;; update existing buffers from their recs
-  (dotimes (s4-0 2)
-    (let ((s3-0 (-> this rec s4-0)))
-      (when (-> s3-0 name)
+  (dotimes (request-index 2)
+    (let ((request (-> this rec request-index)))
+      (when (-> request name)
         ;; iterate over the two buffers
-        (dotimes (s2-0 2)
-          (when (and (file-status (-> this buffer s2-0) (-> s3-0 name) (-> s3-0 parts)) ;; this buffer holds the file for the rec
-                     (not (-> this buffer s2-0 frame-lock))) ;; and nothing has frame-locked this buffer
+        (dotimes (buffer-index 2)
+          (when (and (file-status (-> this buffer buffer-index) (-> request name) (-> request parts)) ;; this buffer holds the file for the rec
+                     (not (-> this buffer buffer-index frame-lock))) ;; and nothing has frame-locked this buffer
             ;; so we frame lock it to prevent it from being kicked out
-            (set! (-> this buffer s2-0 frame-lock) #t)
+            (set! (-> this buffer buffer-index frame-lock) #t)
             ;; remember what buffer
-            (set! (-> s3-0 index) (the-as int (-> this buffer s2-0)))
+            (set! (-> request buf2) (-> this buffer buffer-index))
             ;; update owner and priority.
-            (set! (-> this buffer s2-0 pending-load-file-owner) (-> s3-0 owner))
-            (set! (-> this buffer s2-0 load-file-owner) (-> s3-0 owner))
-            (set! (-> this buffer s2-0 pending-load-file-priority) (-> s3-0 priority))
-            (set! (-> this buffer s2-0 load-file-priority) (-> s3-0 priority))
+            (set! (-> this buffer buffer-index pending-load-file-owner) (-> request owner))
+            (set! (-> this buffer buffer-index load-file-owner) (-> request owner))
+            (set! (-> this buffer buffer-index pending-load-file-priority) (-> request priority))
+            (set! (-> this buffer buffer-index load-file-priority) (-> request priority))
             (goto cfg-24)))))
     (label cfg-24))
   ;; preload recs
   ;; iterate over recs
-  (dotimes (s4-1 2)
-    (let ((s3-1 (-> this rec s4-1)))
+  (dotimes (request-index 2)
+    (let ((request (-> this rec request-index)))
       ;; rec wants to load something, but doesn't have a buffer already
-      (when (and (-> s3-1 name) (not (-> s3-1 buf2)))
+      (when (and (-> request name) (not (-> request buf2)))
         ;; skip if we aren't preloading, or have a positive priority.
-        (if (and (not *preload-spool-anims*) (>= (-> s3-1 priority) 0.0))
+        (if (and (not *preload-spool-anims*) (>= (-> request priority) 0.0))
           ;; not in use, move on
           (goto cfg-46))
         ;; search for a buffer for preloading
-        (dotimes (s2-1 2)
+        (dotimes (buffer-index 2)
           ;; can't steal one that's already assigned
-          (when (not (-> this buffer s2-1 frame-lock))
+          (when (not (-> this buffer buffer-index frame-lock))
             ;; do the assignment!
-            (set! (-> this buffer s2-1 frame-lock) #t)
-            (set-pending-file (-> this buffer s2-1) (-> s3-1 name) (-> s3-1 parts) (-> s3-1 owner) (-> s3-1 priority))
-            (set! (-> s3-1 index) (the-as int (-> this buffer s2-1)))
+            (set! (-> this buffer buffer-index frame-lock) #t)
+            (set-pending-file (-> this buffer buffer-index)
+                              (-> request name)
+                              (-> request parts)
+                              (-> request owner)
+                              (-> request priority))
+            (set! (-> request buf2) (-> this buffer buffer-index))
             (goto cfg-46)))))
     (label cfg-46))
-  ;; this part is a bit confusing, but I think it basically kicks out the lowest priority thing.
+  ;; A locked top request cannot activate while the other buffer remains in use. Unless either
+  ;; buffer is reserved, clear the other request so its update unloads it and releases the lock.
   (when (not (-> this reserve-buffer))
-    (let ((s4-2 (-> this rec 0 buf2))) ;; top priority buffer
-      (if (and s4-2
-               (-> s4-2 locked?)
-               (not (string= (-> s4-2 pending-load-file) "reserved"))
-               (not (string= (-> s4-2 other pending-load-file) "reserved")))
-        (set-pending-file (-> s4-2 other) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST))))
+    (let ((highest-buffer (-> this rec 0 buf2))) ;; top priority buffer
+      (if (and highest-buffer
+               (-> highest-buffer locked?)
+               (not (string= (-> highest-buffer pending-load-file) "reserved"))
+               (not (string= (-> highest-buffer other pending-load-file) "reserved")))
+        (set-pending-file (-> highest-buffer other) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST))))
   ;; update the buffers
-  (dotimes (s4-3 2)
-    (update (-> this buffer s4-3)))
-  ;; sort spool anims.
-  (let ((s4-4 (the-as spool-anim #f)))
-    (countdown (s3-2 3)
-      (if (and (-> this rec s3-2 name) (not (name= (-> this rec s3-2 name) (-> this active-stream))))
-        (set! s4-4 (the-as spool-anim (-> this rec)))))
-    (if (and (-> this preload-stream name) (or (not s4-4) (< (-> this preload-stream priority) (-> s4-4 priority))))
-      (set! s4-4 (-> this preload-stream)))
+  (dotimes (i 2)
+    (update (-> this buffer i)))
+  ;; Choose the animation stream to preload.
+  (let ((preload (the-as spool-anim #f)))
+    (countdown (i 3)
+      (if (and (-> this rec i name) (not (name= (-> this rec i name) (-> this active-stream))))
+        (set! preload (the-as spool-anim (-> this rec)))))
+    (if (and (-> this preload-stream name) (or (not preload) (< (-> this preload-stream priority) (-> preload priority))))
+      (set! preload (-> this preload-stream)))
     (cond
-      (s4-4 (mem-copy! (&-> this last-preload-stream type) (&-> s4-4 type) 44) (str-play-queue (-> s4-4 name)))
+      (preload (mem-copy! (&-> this last-preload-stream type) (&-> preload type) 44) (str-play-queue (-> preload name)))
       (else (set! (-> this last-preload-stream name) #f) (set! (-> this last-preload-stream owner) (the-as handle #f)))))
   (when (and debug-print *display-art-control*)
-    (dotimes (s5-1 3)
+    (dotimes (i 3)
       (format *stdcon*
               "rec ~d ~S ~D ~f ~A~%"
-              s5-1
-              (-> this rec s5-1 name)
-              (-> this rec s5-1 parts)
-              (-> this rec s5-1 priority)
-              (handle->name (-> this rec s5-1 owner))))
-    (dotimes (s5-2 2)
+              i
+              (-> this rec i name)
+              (-> this rec i parts)
+              (-> this rec i priority)
+              (handle->name (-> this rec i owner))))
+    (dotimes (i 2)
       (format *stdcon*
               "buf ~d ~C ~S ~D ~A ~A~%"
-              s5-2
-              (if (-> this buffer s5-2 locked?) #\l #\\s)
-              (-> this buffer s5-2 pending-load-file)
-              (-> this buffer s5-2 pending-load-file-part)
-              (-> this buffer s5-2 status)
-              (handle->name (-> this buffer s5-2 pending-load-file-owner))))
+              i
+              (if (-> this buffer i locked?) #\l #\\s)
+              (-> this buffer i pending-load-file)
+              (-> this buffer i pending-load-file-part)
+              (-> this buffer i status)
+              (handle->name (-> this buffer i pending-load-file-owner))))
     (format *stdcon* " a: ~S~%" (-> this active-stream))
     (format *stdcon* " p: ~S  ~A~%" (-> this preload-stream name) (handle->name (-> this preload-stream owner)))
     (format *stdcon* " q: ~S  ~A~%" (-> this last-preload-stream name) (handle->name (-> this last-preload-stream owner))))
   0)
 
 (defmethod none-reserved? ((this external-art-control))
-  "are there any reserved buffers?"
+  "Return true when no general-use buffer reservation has been requested."
   (declare (inline))
   (zero? (-> this reserve-buffer-count)))
 
 (defmethod reserve-alloc ((this external-art-control))
-  "Reserve a buffer!"
+  "Request one streaming buffer for general heap use. Return its heap after update has activated
+   the reserved pseudo-file; return #f while the reservation is pending."
   (set! (-> this reserve-buffer-count) 1)
   (if (-> this reserve-buffer) (-> this reserve-buffer heap)))
 
-(defmethod reserve-free ((this external-art-control) (arg0 kheap))
-  "Free the reserved buffer!"
+(defmethod reserve-free ((this external-art-control) (heap kheap))
+  "Release the reservation backed by heap. Clear the reserved buffer's pending request and
+   advance it immediately; print an error when no reservation exists or heap is not the reserved
+   one."
   (cond
     ((none-reserved? this)
-     (format 0 "ERROR: illegal attempt to free a buffer #x~X which had not been reserved (none reserved).~%" arg0))
+     (format 0 "ERROR: illegal attempt to free a buffer #x~X which had not been reserved (none reserved).~%" heap))
     ((not (-> this reserve-buffer)) (set! (-> this reserve-buffer-count) 0))
-    ((= (-> this reserve-buffer heap) arg0)
+    ((= (-> this reserve-buffer heap) heap)
      (set-pending-file (-> this reserve-buffer) (the-as string #f) -1 (the-as handle #f) SPOOL_PRIORITY_LOWEST)
      (update (-> this reserve-buffer))
      (set! (-> this reserve-buffer-count) 0))
-    (else (format 0 "ERROR: illegal attempt to free a buffer #x~X which had not been reserved (buffer unknown).~%" arg0)))
+    (else (format 0 "ERROR: illegal attempt to free a buffer #x~X which had not been reserved (buffer unknown).~%" heap)))
   0)
 
 (defmethod clear-rec ((this external-art-control))
-  "Clears the recent spool anims from the art control."
+  "Clear streaming requests. In game mode clear all three ranked requests and the preload
+   candidate; outside game mode remove only the reserved pseudo-request and compact later records."
   (cond
     ((!= *master-mode* 'game)
-     (dotimes (s5-0 3)
-       (when (name= (-> this rec s5-0 name) "reserved")
-         (case s5-0
+     (dotimes (i 3)
+       (when (name= (-> this rec i name) "reserved")
+         (case i
            ((0)
             (mem-copy! (&-> this rec 0 type) (&-> this rec 1 type) (size-of spool-anim))
             (mem-copy! (&-> this rec 1 type) (&-> this rec 2 type) (size-of spool-anim)))
@@ -536,11 +570,11 @@
          (set! (-> this rec 2 priority) SPOOL_PRIORITY_LOWEST)
          (set! (-> this rec 2 owner) (the-as handle #f)))))
     (else
-     (dotimes (v1-19 3)
-       (set! (-> this rec v1-19 type) spool-anim)
-       (set! (-> this rec v1-19 name) #f)
-       (set! (-> this rec v1-19 priority) SPOOL_PRIORITY_LOWEST)
-       (set! (-> this rec v1-19 owner) (the-as handle #f)))
+     (dotimes (i 3)
+       (set! (-> this rec i type) spool-anim)
+       (set! (-> this rec i name) #f)
+       (set! (-> this rec i priority) SPOOL_PRIORITY_LOWEST)
+       (set! (-> this rec i owner) (the-as handle #f)))
      (set! (-> this preload-stream type) spool-anim)
      (set! (-> this preload-stream name) #f)
      (set! (-> this preload-stream priority) SPOOL_PRIORITY_LOWEST)
@@ -555,19 +589,22 @@
     (let ((target-trans (target-pos 0)))
       (set! ,priority (vector-vector-distance target-trans (-> (the-as process-drawable ,proc) root trans))))))
 
-(defmethod try-preload-stream ((this external-art-control) (arg0 string) (arg1 int) (arg2 process) (arg3 float))
-  "Set a new stream to be preloaded, if appropriate."
-  (spool-calc-priority arg3 arg2)
-  (unless (and (-> this preload-stream name) (>= arg3 (-> this preload-stream priority)))
-    (set! (-> this preload-stream name) arg0)
-    (set! (-> this preload-stream parts) arg1)
-    (set! (-> this preload-stream priority) arg3)
-    (set! (-> this preload-stream owner) (process->handle arg2)))
+(defmethod try-preload-stream ((this external-art-control) (name string) (part int) (requester process) (priority float))
+  "Make name and part the single speculative audio preload candidate when its priority is better
+   than the current candidate. SPOOL_PRIORITY_RECALC derives priority from requester distance."
+  (spool-calc-priority priority requester)
+  (unless (and (-> this preload-stream name) (>= priority (-> this preload-stream priority)))
+    (set! (-> this preload-stream name) name)
+    (set! (-> this preload-stream parts) part)
+    (set! (-> this preload-stream priority) priority)
+    (set! (-> this preload-stream owner) (process->handle requester)))
   0)
 
-(defmethod spool-push ((this external-art-control) (name string) (part int) (proc process) (priority float))
-  "Push a spool-anim to the spool array. There are only space for three, and only the three highest priority spool anims will be kept. (lowest priority = top)"
-  (spool-calc-priority priority proc)
+(defmethod spool-push ((this external-art-control) (name string) (part int) (requester process) (priority float))
+  "Insert a file-part request into the three-entry priority list. Lower values are more important;
+   SPOOL_PRIORITY_RECALC uses the requester's distance from the target. An existing request is
+   replaced only by a better priority, and requests below the top three are dropped."
+  (spool-calc-priority priority requester)
   ;; if this spool-anim already exists, pop it from the rec list
   (cond
     ((and (= part (-> this rec 0 parts)) (name= name (-> this rec 0 name)))
@@ -597,20 +634,20 @@
      (set! (-> this rec 0 name) name)
      (set! (-> this rec 0 parts) part)
      (set! (-> this rec 0 priority) priority)
-     (set! (-> this rec 0 owner) (process->handle proc)))
+     (set! (-> this rec 0 owner) (process->handle requester)))
     ((< priority (-> this rec 1 priority))
      ;; 2nd place.
      (mem-copy! (&-> this rec 2 type) (&-> this rec 1 type) (size-of spool-anim))
      (set! (-> this rec 1 name) name)
      (set! (-> this rec 1 parts) part)
      (set! (-> this rec 1 priority) priority)
-     (set! (-> this rec 1 owner) (process->handle proc)))
+     (set! (-> this rec 1 owner) (process->handle requester)))
     ((< priority (-> this rec 2 priority))
      ;; 3rd place...
      (set! (-> this rec 2 name) name)
      (set! (-> this rec 2 parts) part)
      (set! (-> this rec 2 priority) priority)
-     (set! (-> this rec 2 owner) (process->handle proc))))
+     (set! (-> this rec 2 owner) (process->handle requester))))
   0)
 
 (defun-extern level-hint-surpress! none) ;; ? TODO
@@ -629,110 +666,133 @@
 
 (define-extern ja-abort-spooled-anim (function spool-anim art-joint-anim int int :behavior process-drawable))
 
-(defbehavior ja-play-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 art-joint-anim) (arg3 (function process-drawable symbol)))
-  (local-vars (v0-39 int))
-  (let ((spool-part 0))
-    (let ((sv-24 -17.0))
-      (let ((old-skel-status (-> self skel status))))
-      (let ((sv-32 -2)
-            (sv-40 0)
-            (sv-48 0)
-            (sv-56 0)
-            (spool-sound (new-sound-id)))
-        (backup-load-state-and-set-cmds *load-state* (-> arg0 command-list))
-        (set-setting! 'spooling (process->ppointer self) 0.0 0)
-        (logior! (-> self skel status) (janim-status inited drawn done))
-        (kill-current-level-hint '() '() 'die)
-        (level-hint-surpress!)
-        (apply-settings *setting-control*)
-        (when (or (handle->process (-> *art-control* spool-lock)) (!= *master-mode* 'game))
-          (cond
-            (arg1 (when (!= (ja-group) arg1) (ja-channel-push! 1 (seconds 0.05)) (ja :group! arg1 :num! min)))
-            (else (ja-channel-set! 0)))
-          (while (or (handle->process (-> *art-control* spool-lock)) (!= *master-mode* 'game))
-            (format #t "WARNING: ---------------------> loader stall on lock~%")
-            (if (arg3 self) (goto cfg-88))
-            (spool-push *art-control* (-> arg0 name) spool-part self -9.0)
-            (suspend)
-            (if arg1 (ja :num! (loop!)))))
-        (set! (-> *art-control* spool-lock) (process->handle self))
-        (set! sv-48 (the-as int (current-time)))
-        (while (< spool-part (-> arg0 parts))
-          (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
-          (update *art-control* #f)
-          (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
-          (when (!= (file-status *art-control* (-> arg0 name) spool-part) 'active)
-            (cond
-              (arg1 (when (!= (ja-group) arg1) (ja-channel-set! 1) (ja :group! arg1 :num! min)))
-              (else (ja-channel-set! 0)))
-            (while (!= (file-status *art-control* (-> arg0 name) spool-part) 'active)
-              (if (arg3 self) (goto cfg-88))
-              (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
-              (format #t "WARNING: ---------------------> loader stall on art ~S ~D~%" (-> arg0 name) spool-part)
-              (suspend)
-              (if arg1 (ja :num! (loop!)))))
-          (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
-          (let ((s2-4 (the-as art-joint-anim (lookup-art (-> self draw art-group) (-> arg0 name) art-joint-anim))))
-            (cond
-              (s2-4
-               (ja-channel-set! 1)
-               (ja-no-eval :group! s2-4 :num! (seek!) :frame-num 0.0)
-               (when (zero? spool-part)
-                 (str-play-async (-> arg0 name) spool-sound)
-                 (set! (-> *art-control* active-stream) (-> arg0 name)))
-               (let* ((f30-0 (* 0.05859375 (-> s2-4 speed)))
-                      (f28-0 (+ sv-24 (/ (the float (+ (-> s2-4 data 0 length) -1)) f30-0))))
-                 (let ((sv-72 (current-str-pos spool-sound)))
-                   (set! sv-40 (the-as int (current-time)))
-                   (until (>= (the float v0-39) f28-0)
-                     (if (= (-> self skel root-channel 0) (-> self skel channel)) (logior! (-> self skel status) (janim-status spool)))
-                     (if (or (arg3 self)
-                             (and (<= sv-72 0) (time-elapsed? (the-as time-frame sv-40) (seconds 4)))
-                             (and (< 300 sv-56) (<= sv-72 0)))
-                       (goto cfg-88))
-                     (spool-push *art-control* (-> arg0 name) spool-part self -20.0)
-                     (if (< (+ spool-part 1) (-> arg0 parts))
-                       (spool-push *art-control* (-> arg0 name) (+ spool-part 1) self -10.0)
-                       (logclear! (-> self skel status) (janim-status done)))
-                     (execute-commands-up-to *load-state* (ja-aframe-num 0))
-                     (cond
-                       ((and (< sv-32 sv-72) (= (current-str-id) spool-sound))
-                        (+! sv-56 (- (current-time) (-> *display* old-base-frame-counter)))
-                        (set! sv-40 (the-as int (current-time))))
-                       (else 0))
-                     (set! sv-32 sv-72)
-                     (set! sv-48 (the-as int (current-time)))
-                     (suspend)
-                     (let ((f0-14 (* (- (the float (current-str-pos spool-sound)) sv-24) f30-0)))
-                       (ja-no-eval :num! (seek!) :frame-num f0-14))
-                     (set! v0-39 (current-str-pos spool-sound))
-                     (set! sv-72 v0-39)))
-                 (set! sv-24 f28-0))
-               (logclear! (-> self skel status) (janim-status spool)))
-              (else
-               ;; og:preserve-this fixed broken format string
-               (format 0 "ERROR: <asg> ~A in spool anim loop for ~A ~D, but not loaded.~%" self (-> arg0 name) spool-part)
-               (goto cfg-88))))
-          (+! spool-part 1))))
-    (+! spool-part -1)
-    (label cfg-88)
-    (ja-abort-spooled-anim arg0 arg2 spool-part))
+(defbehavior ja-play-spooled-anim process-drawable ((request spool-anim)
+              (idle-anim art-joint-anim)
+              (exit-anim art-joint-anim)
+              (break-func (function process-drawable symbol)))
+  "Play every streamed part in request while driving the joint animation from the audio stream
+   position. Wait on the global spool lock using idle-anim, request the current part at highest
+   priority and the next part at high priority, execute timed load commands, and abort through
+   break-func or when audio fails to start. Cleanup always passes the last completed part and
+   exit-anim to ja-abort-spooled-anim."
+  (local-vars
+    (stream-pos int)
+    (spool-part int)
+    (part-audio-start float)
+    (old-skel-status janim-status)
+    (old-stream-pos int)
+    (good-time int)
+    (old-time int)
+    (good-count int)
+    (spool-sound sound-id))
+  (set! spool-part 0)
+  (set! part-audio-start -17.0)
+  (set! old-skel-status (-> self skel status))
+  (set! old-stream-pos -2)
+  (set! good-time 0)
+  (set! old-time 0)
+  (set! good-count 0)
+  (set! spool-sound (new-sound-id))
+  (backup-load-state-and-set-cmds *load-state* (-> request command-list))
+  (set-setting! 'spooling (process->ppointer self) 0.0 0)
+  (logior! (-> self skel status) (janim-status inited drawn done))
+  (kill-current-level-hint '() '() 'die)
+  (level-hint-surpress!)
+  (apply-settings *setting-control*)
+  (when (or (handle->process (-> *art-control* spool-lock)) (!= *master-mode* 'game))
+    (cond
+      (idle-anim (when (!= (ja-group) idle-anim) (ja-channel-push! 1 (seconds 0.05)) (ja :group! idle-anim :num! min)))
+      (else (ja-channel-set! 0)))
+    (while (or (handle->process (-> *art-control* spool-lock)) (!= *master-mode* 'game))
+      (format #t "WARNING: ---------------------> loader stall on lock~%")
+      (if (break-func self) (goto cfg-88))
+      (spool-push *art-control* (-> request name) spool-part self -9.0)
+      (suspend)
+      (if idle-anim (ja :num! (loop!)))))
+  (set! (-> *art-control* spool-lock) (process->handle self))
+  (set! old-time (the-as int (current-time)))
+  (while (< spool-part (-> request parts))
+    (spool-push *art-control* (-> request name) spool-part self SPOOL_PRIORITY_HIGHEST)
+    (update *art-control* #f)
+    (spool-push *art-control* (-> request name) spool-part self SPOOL_PRIORITY_HIGHEST)
+    (when (!= (file-status *art-control* (-> request name) spool-part) 'active)
+      (cond
+        (idle-anim (when (!= (ja-group) idle-anim) (ja-channel-set! 1) (ja :group! idle-anim :num! min)))
+        (else (ja-channel-set! 0)))
+      (while (!= (file-status *art-control* (-> request name) spool-part) 'active)
+        (if (break-func self) (goto cfg-88))
+        (spool-push *art-control* (-> request name) spool-part self SPOOL_PRIORITY_HIGHEST)
+        (format #t "WARNING: ---------------------> loader stall on art ~S ~D~%" (-> request name) spool-part)
+        (suspend)
+        (if idle-anim (ja :num! (loop!)))))
+    (spool-push *art-control* (-> request name) spool-part self SPOOL_PRIORITY_HIGHEST)
+    (let ((loaded-anim (the-as art-joint-anim (lookup-art (-> self draw art-group) (-> request name) art-joint-anim))))
+      (cond
+        (loaded-anim
+         (ja-channel-set! 1)
+         (ja-no-eval :group! loaded-anim :num! (seek!) :frame-num 0.0)
+         (when (zero? spool-part)
+           (str-play-async (-> request name) spool-sound)
+           (set! (-> *art-control* active-stream) (-> request name)))
+         ;; Convert STR positions to animation frames. Each part begins where the preceding part's
+         ;; audio range ended, so the animation remains continuous across streamed chunks.
+         (let* ((frames-per-stream-unit (* 0.05859375 (-> loaded-anim speed)))
+                (part-audio-end (+ part-audio-start (/ (the float (+ (-> loaded-anim data 0 length) -1)) frames-per-stream-unit))))
+           (set! stream-pos (current-str-pos spool-sound))
+           (set! good-time (the-as int (current-time)))
+           (until (>= (the float stream-pos) part-audio-end)
+             (if (= (-> self skel root-channel 0) (-> self skel channel)) (logior! (-> self skel status) (janim-status spool)))
+             (if (or (break-func self)
+                     (and (<= stream-pos 0) (time-elapsed? (the-as time-frame good-time) (seconds 4)))
+                     (and (< 300 good-count) (<= stream-pos 0)))
+               (goto cfg-88))
+             (spool-push *art-control* (-> request name) spool-part self SPOOL_PRIORITY_HIGHEST)
+             (if (< (+ spool-part 1) (-> request parts))
+               (spool-push *art-control* (-> request name) (+ spool-part 1) self SPOOL_PRIORITY_HIGH)
+               (logclear! (-> self skel status) (janim-status done)))
+             (execute-commands-up-to *load-state* (ja-aframe-num 0))
+             (cond
+               ((and (< old-stream-pos stream-pos) (= (current-str-id) spool-sound))
+                ;; Use elapsed 300 Hz ticks for this display frame so high frame rates do not
+                ;; advance the startup counter too quickly.
+                (+! good-count (- (current-time) (-> *display* old-base-frame-counter)))
+                (set! good-time (the-as int (current-time))))
+               (else 0))
+             (set! old-stream-pos stream-pos)
+             (set! old-time (the-as int (current-time)))
+             (suspend)
+             (let ((anim-frame (* (- (the float (current-str-pos spool-sound)) part-audio-start) frames-per-stream-unit)))
+               (ja-no-eval :num! (seek!) :frame-num anim-frame))
+             (set! stream-pos (current-str-pos spool-sound)))
+           (set! part-audio-start part-audio-end))
+         (logclear! (-> self skel status) (janim-status spool)))
+        (else
+         ;; og:preserve-this fixed broken format string
+         (format 0 "ERROR: <asg> ~A in spool anim loop for ~A ~D, but not loaded.~%" self (-> request name) spool-part)
+         (goto cfg-88))))
+    (+! spool-part 1))
+  (+! spool-part -1)
+  (label cfg-88)
+  (ja-abort-spooled-anim request exit-anim spool-part)
   0)
 
-(defbehavior ja-abort-spooled-anim process-drawable ((arg0 spool-anim) (arg1 art-joint-anim) (arg2 int))
-  "Abort a spooled animation."
+(defbehavior ja-abort-spooled-anim process-drawable ((request spool-anim) (exit-anim art-joint-anim) (completed-part int))
+  "Finish or abort a spooled animation. Restore loader state, stop its stream, clear spooling
+   status, and release the spool lock. If exit-anim is supplied and completed-part is nonnegative,
+   blend onto that animation while keeping the completed part requested until the channel switch
+   finishes."
   (restore-load-state-and-cleanup *load-state*)
-  (str-play-stop (-> arg0 name))
+  (str-play-stop (-> request name))
   (set! (-> *art-control* active-stream) #f)
   (logclear! (-> self skel status) (janim-status drawn done))
   (if (not (logtest? (-> self skel status) (janim-status inited))) (logclear! (-> self skel status) (janim-status inited)))
   (remove-setting! 'spooling)
   (cond
-    ((and arg1 (>= arg2 0))
+    ((and exit-anim (>= completed-part 0))
      (ja-channel-push! 1 (seconds 0.1))
-     (set! (-> self skel root-channel 0 frame-group) arg1)
+     (set! (-> self skel root-channel 0 frame-group) exit-anim)
      (while (!= (-> self skel root-channel 0) (-> self skel channel))
-       (spool-push *art-control* (-> arg0 name) arg2 self -20.0)
+       (spool-push *art-control* (-> request name) completed-part self SPOOL_PRIORITY_HIGHEST)
        (suspend)
        (ja :num! (seek!))))
     (else (ja-channel-set! 0)))

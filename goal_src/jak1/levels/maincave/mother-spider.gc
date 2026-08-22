@@ -76,7 +76,7 @@
    (:fade-a -0.4)
    (:accel-y (meters -0.00033333333) (meters -0.00033333333))
    (:timer (seconds 0.7))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:conerot-x (degrees 90) (degrees 180))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -149,15 +149,16 @@
         (suspend)))
   :post ja-post)
 
-(defbehavior mother-spider-leg-init-by-other mother-spider-leg ((arg0 mother-spider) (arg1 vector) (arg2 vector) (arg3 vector))
-  (set! (-> self entity) (-> arg0 entity))
+(defbehavior mother-spider-leg-init-by-other mother-spider-leg ((spider mother-spider) (position vector) (leg-direction vector) (launch-direction vector))
+  "Launch a detached leg from the supplied joint position and directions."
+  (set! (-> self entity) (-> spider entity))
   (logior! (-> self mask) (process-mask enemy))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg1 quad))
+  (vector-copy! (-> self root trans) position)
   (vector-identity! (-> self root scale))
-  (set-heading-vec-clear-roll-pitch! (-> self root) arg2)
-  (vector-float*! (-> self transv) arg3 (rand-vu-float-range 10240.0 30720.0))
-  (rot-zxy-from-vector! (-> self facing-rot) arg2)
+  (set-heading-vec-clear-roll-pitch! (-> self root) leg-direction)
+  (vector-float*! (-> self transv) launch-direction (rand-vu-float-range 10240.0 30720.0))
+  (rot-zxy-from-vector! (-> self facing-rot) leg-direction)
   (set-vector! (-> self facing-rotv)
                (rand-vu-float-range 5461.3335 16384.0)
                0.0
@@ -196,19 +197,20 @@
    (:fade-a -0.4)
    (:accel-y (meters -0.00066666666))
    (:timer (seconds 0.7))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))))
 
-(defbehavior mother-spider-default-event-handler mother-spider ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior mother-spider-default-event-handler mother-spider ((source-process process) (argc int) (message symbol) (block event-message-block))
+  "Handle boss attacks, child triggers, and child-count updates."
+  (case message
     (('attack)
      (cond
-       ((= (-> arg0 type) target)
-        (let ((v1-2 (-> arg3 param 2)))
+       ((= (-> source-process type) target)
+        (let ((v1-2 (-> block param 2)))
           (when (!= v1-2 (-> self player-attack-id))
             (set! (-> self player-attack-id) v1-2)
-            (case (-> arg3 param 1)
+            (case (-> block param 1)
               (('uppercut) (go mother-spider-die-from-uppercut))
               (else
                (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -219,14 +221,17 @@
                  (if (mother-spider-method-21 self gp-0 102400.0 #t) (go mother-spider-die))))))))
        (else
         (let ((gp-1 (new 'stack-no-clear 'vector)))
-          (let ((v1-10 (-> (the-as process-drawable arg0) root trans))) (vector-! gp-1 (-> self root trans) v1-10))
+          (let ((v1-10 (-> (the-as process-drawable source-process) root trans))) (vector-! gp-1 (-> self root trans) v1-10))
           (set! (-> gp-1 y) 0.0)
           (vector-normalize! gp-1 1.0)
           (+! (-> self thread-vel) -40960.0)
           (if (mother-spider-method-21 self gp-1 102400.0 #t) (go mother-spider-die))))))
     (('touch)
-     (when (= (-> arg0 type) target)
-       (when (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((shove-up (meters 0.5)) (shove-back (meters 2)))))
+     (when (= (-> source-process type) target)
+       (when (send-event source-process
+                         'attack
+                         (-> block param 0)
+                         (static-attack-info ((shove-up (meters 0.5)) (shove-back (meters 2)))))
          (let ((gp-2 (new 'stack-no-clear 'vector)))
            (let ((v1-20 (target-pos 0))) (vector-! gp-2 (-> self root trans) v1-20))
            (set! (-> gp-2 y) 0.0)
@@ -234,23 +239,24 @@
            (+! (-> self thread-vel) -8192.0)
            (mother-spider-method-21 self gp-2 40960.0 #f)))))
     (('trigger)
-     (when (= (-> arg0 type) mother-spider-egg)
+     (when (= (-> source-process type) mother-spider-egg)
        (let ((gp-3 (new 'stack-no-clear 'vector))
-             (s5-0 (-> (the-as process-drawable arg0) root trans)))
+             (s5-0 (-> (the-as process-drawable source-process) root trans)))
          (vector-! gp-3 (target-pos 0) s5-0)
          (set! (-> gp-3 y) 0.0)
          (vector-normalize! gp-3 1.0)
          (spawn-child self s5-0 gp-3 #t))))
     (('untrigger)
-     (when (or (= (-> arg0 type) mother-spider-egg) (= (-> arg0 type) baby-spider))
+     (when (or (= (-> source-process type) mother-spider-egg) (= (-> source-process type) baby-spider))
        (let ((v0-0 (the-as object (+ (-> self baby-count) -1)))) (set! (-> self baby-count) (the-as int v0-0)) v0-0)))))
 
-(defbehavior mother-spider-death-event-handler mother-spider ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior mother-spider-death-event-handler mother-spider ((source-process process) (argc int) (message symbol) (block event-message-block))
+  "Handle egg triggers and the boss death pickup and visibility events."
+  (case message
     (('trigger)
-     (when (= (-> arg0 type) mother-spider-egg)
+     (when (= (-> source-process type) mother-spider-egg)
        (let ((gp-0 (new 'stack-no-clear 'vector))
-             (s5-0 (-> (the-as process-drawable arg0) root trans)))
+             (s5-0 (-> (the-as process-drawable source-process) root trans)))
          (vector-! gp-0 (target-pos 0) s5-0)
          (set! (-> gp-0 y) 0.0)
          (vector-normalize! gp-0 1.0)
@@ -261,17 +267,19 @@
        (set! (-> self draw status) (the-as draw-status v0-0))
        v0-0))))
 
-(defmethod spawn-child ((this mother-spider) (arg0 vector) (arg1 vector) (arg2 symbol))
+(defmethod spawn-child ((this mother-spider) (position vector) (heading vector) (hatched? symbol))
+  "Spawn a baby spider and increment the live-child count."
   (let ((s3-0 (new 'stack-no-clear 'baby-spider-spawn-params)))
-    (init! s3-0 arg2 #f #t #f 7 1 'untrigger)
+    (init! s3-0 hatched? #f #t #f 7 1 'untrigger)
     (set-delay! s3-0 (seconds 9))
-    (process-spawn baby-spider this arg0 arg1 s3-0 :to this))
+    (process-spawn baby-spider this position heading s3-0 :to this))
   (let ((v0-5 (+ (-> this baby-count) 1))) (set! (-> this baby-count) v0-5) v0-5))
 
 (defmethod is-player-stuck? ((this mother-spider))
+  "Track and report abrupt changes in Jak's vertical offset from the web anchor."
   (when (and *target*
              (not (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                       (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf))))))
+                       (not (logtest? (-> *target* control status) (collide-status on-surface))))))
     (let* ((v1-10 (target-pos 0))
            (f0-1 (- (-> this anchor-trans y) (-> v1-10 y)))
            (f1-2 (- (-> this player-sticky-dist-from-anchor) f0-1)))
@@ -281,19 +289,22 @@
   #f)
 
 (defmethod mother-spider-method-27 ((this mother-spider))
+  "Run the empty pre-update hook."
   (none))
 
 (defmethod mother-spider-method-28 ((this mother-spider))
+  "Run the empty post-update hook."
   0
   (none))
 
 (defmethod shadow-handler ((this mother-spider))
+  "Probe the ground and update the boss shadow."
   (cond
     ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
      (let ((s5-0 (new 'stack-no-clear 'collide-tri-result))
            (a1-0 (new 'stack-no-clear 'vector))
            (a2-0 (new 'stack-no-clear 'vector)))
-       (set! (-> a1-0 quad) (-> this root trans quad))
+       (vector-copy! a1-0 (-> this root trans))
        (set-vector! a2-0 0.0 -81920.0 0.0 1.0)
        (+! (-> a1-0 y) -8192.0)
        (cond
@@ -319,6 +330,7 @@
     (else (let ((v1-25 (-> this draw shadow-ctrl))) (logior! (-> v1-25 settings flags) (shadow-flags disable-draw))) 0)))
 
 (defmethod grab-player? ((this mother-spider))
+  "Return whether Jak is inside the boss's capture bounds."
   (when *target*
     (let ((s5-0 (target-pos 0)))
       (when (and (>= 40960.0 (- (-> this thread-min-trans y) (-> s5-0 y)))
@@ -330,6 +342,7 @@
   #f)
 
 (defmethod letgo-player? ((this mother-spider))
+  "Return whether Jak has left the boss's release bounds."
   (if (not *target*) (return #t))
   (let ((a1-0 (target-pos 0)))
     (when (-> this check-z-thresh?)
@@ -339,22 +352,23 @@
       (return #t)))
   #f)
 
-(defmethod mother-spider-method-21 ((this mother-spider) (arg0 vector) (arg1 float) (arg2 symbol))
+(defmethod mother-spider-method-21 ((this mother-spider) (direction vector) (strength float) (damage? symbol))
+  "Apply a swing impulse, optionally detach two legs, and return whether all legs are gone."
   (let ((f30-0 (vector-length (-> this swing-pos))))
     (when (< 0.0 f30-0)
       (let ((s1-0 (new 'stack-no-clear 'vector))
             (s2-0 (new 'stack-no-clear 'vector)))
         (vector-normalize-copy! s1-0 (-> this swing-pos) 1.0)
         (vector-rotate-around-y! s2-0 s1-0 16384.0)
-        (if (< (vector-dot arg0 s2-0) 0.0) (vector-negate! s2-0 s2-0))
-        (let ((f0-4 (fmin 1.0 (/ f30-0 (-> this max-swing-radius))))) (vector-lerp! arg0 arg0 s2-0 f0-4)))
-      (vector-normalize! arg0 1.0)))
+        (if (< (vector-dot direction s2-0) 0.0) (vector-negate! s2-0 s2-0))
+        (let ((f0-4 (fmin 1.0 (/ f30-0 (-> this max-swing-radius))))) (vector-lerp! direction direction s2-0 f0-4)))
+      (vector-normalize! direction 1.0)))
   (let ((s2-1 (new 'stack-no-clear 'vector)))
-    (vector-float*! s2-1 arg0 arg1)
-    (vector-flatten! (-> this swing-vel) (-> this swing-vel) arg0)
+    (vector-float*! s2-1 direction strength)
+    (vector-flatten! (-> this swing-vel) (-> this swing-vel) direction)
     (vector+! (-> this swing-vel) (-> this swing-vel) s2-1))
   (set! (-> this swing-vel y) 0.0)
-  (when arg2
+  (when damage?
     (set! (-> this hit?) #t)
     (set! (-> this spin-vel) 131072.0)
     (set-time! (-> this spin-time))
@@ -373,7 +387,7 @@
               (vector<-cspace! sv-128 (-> this node-list data (-> s1-1 joint-index1)))
               (vector-! sv-128 sv-128 s0-0)
               (vector-normalize! sv-128 1.0)
-              (vector-lerp! sv-144 sv-128 arg0 0.6)
+              (vector-lerp! sv-144 sv-128 direction 0.6)
               (vector-normalize! sv-144 1.0)
               (+! (-> sv-144 y) (rand-vu-float-range 0.0 0.3))
               (vector-normalize! sv-144 1.0)
@@ -393,7 +407,8 @@
           (+! s4-1 1)))))
   (>= (-> this damage) 6))
 
-(defmethod mother-spider-method-29 ((this mother-spider) (arg0 symbol) (arg1 symbol))
+(defmethod mother-spider-method-29 ((this mother-spider) (update-shadow? symbol) (update-look? symbol))
+  "Perform the once-per-frame boss, shadow, effects, and look-at update."
   (let ((v1-1 (current-time)))
     (when (!= v1-1 (-> this last-update-time))
       (set! (-> this last-update-time) v1-1)
@@ -402,7 +417,7 @@
         (cond
           ((>= f0-1 20480.0) (vector-identity! (-> this root scale)))
           (else (let ((f0-2 (/ f0-1 (meters 5)))) (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)))))
-      (if arg0 (shadow-handler this))
+      (if update-shadow? (shadow-handler this))
       (let ((s4-1 (-> this leg-socket-part-mask)))
         (when (nonzero? s4-1)
           (dotimes (s3-0 6)
@@ -416,7 +431,7 @@
                    (vector<-cspace! s2-0 (-> this node-list data (-> v1-20 joint-index0)))
                    (spawn (-> this part) s2-0)))))
             (set! s4-1 (/ s4-1 2)))))
-      (when arg1
+      (when update-look?
         (when *target*
           (case (-> this mode)
             ((1 2) (if *target* (look-at-enemy! (-> *target* neck) (-> this root root-prim prim-core world-sphere) 'attacking this)))))
@@ -424,6 +439,7 @@
   (none))
 
 (defmethod mother-spider-method-23 ((this mother-spider))
+  "Update thread extension and swing physics."
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -484,7 +500,7 @@
              (vector-v+! (-> this swing-base-pos) (-> this swing-base-pos) (-> this swing-vel))
              0)
             (else (vector-reset! (-> this swing-vel)))))))
-    (set! (-> this swing-pos quad) (-> this swing-base-pos quad))
+    (vector-copy! (-> this swing-pos) (-> this swing-base-pos))
     (let ((f30-1 (the float (- (current-time) (-> this spawned-time)))))
       (+! (-> this swing-pos x) (* 1024.0 (cos (* 54.613335 f30-1))))
       (+! (-> this swing-pos z) (* 1024.0 (cos (* 81.817726 f30-1)))))
@@ -498,7 +514,7 @@
            (vector-rotate-around-y! (-> this root trans) (-> this root trans) f0-36))
          (vector+! (-> this root trans) (-> this root trans) (-> this anchor-trans)))
         (else
-         (set! (-> this root trans quad) (-> this anchor-trans quad))
+         (vector-copy! (-> this root trans) (-> this anchor-trans))
          (set! (-> this root trans y) (- (-> this root trans y) (-> this dist-from-anchor))))))
     (let ((v1-51 (-> this draw bounds)))
       (vector+! v1-51 (-> this root trans) (-> this anchor-trans))
@@ -674,7 +690,7 @@
           (if (< 409.6 (fabs (- f1-4 (-> self dist-from-anchor)))) (go mother-spider-traveling (the-as uint 1)))))
       (if (or (not *target*)
               (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                   (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf)))))
+                   (not (logtest? (-> *target* control status) (collide-status on-surface)))))
         (set-time! (-> self last-player-in-air-time)))
       (when (and *target*
                  (time-elapsed? (-> self last-spit-time) (seconds 3))
@@ -682,11 +698,11 @@
                  (>= (-> self max-spit-xz-dist) (vector-vector-xz-distance (-> self root trans) (target-pos 0))))
         (let ((gp-2 (new 'stack-no-clear 'vector))
               (s5-2 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-2 quad) (-> self root trans quad))
+          (vector-copy! gp-2 (-> self root trans))
           (set! (-> gp-2 w) 4096.0)
           (when (sphere-in-view-frustum? (the-as sphere gp-2))
             (vector<-cspace! gp-2 (joint-node mother-spider-lod0-jg jaw))
-            (set! (-> s5-2 quad) (-> (target-pos 0) quad))
+            (vector-copy! s5-2 (target-pos 0))
             (+! (-> s5-2 y) 4915.2)
             (cond
               ((< 24576.0 (vector-vector-distance gp-2 s5-2)) (go mother-spider-spit))
@@ -754,7 +770,7 @@
                     (s5-0 (new 'stack-no-clear 'vector))
                     (s2-0 (new 'stack-no-clear 'vector)))
                 (vector<-cspace! s4-0 (joint-node mother-spider-lod0-jg jaw))
-                (set! (-> s5-0 quad) (-> (target-pos 0) quad))
+                (vector-copy! s5-0 (target-pos 0))
                 (+! (-> s5-0 y) 4915.2)
                 (when (< 24576.0 (vector-vector-distance s5-0 s4-0))
                   (let ((a2-1 (-> self node-list data 19 bone transform)))
@@ -808,7 +824,7 @@
                (and (>= 49152.0 (- (-> self max-dist-from-anchor) (-> self dist-from-anchor)))
                     (not (logtest? (-> *target* state-flags)
                                    (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)))
-                    (nav-control-method-21 (-> self nav) (-> self root trans))))
+                    (find-poly-fast-at (-> self nav) (-> self root trans))))
         (go mother-spider-birth-baby))
       (mother-spider-method-29 self #t #t))
   :code
@@ -833,7 +849,7 @@
     (behavior ()
       (if (-> self hit?) (go mother-spider-hit-while-birthing))
       (if (letgo-player? self) (go mother-spider-traveling (the-as uint 0)))
-      (if (not (nav-control-method-21 (-> self nav) (-> self root trans))) (go mother-spider-birthing))
+      (if (not (find-poly-fast-at (-> self nav) (-> self root trans))) (go mother-spider-birthing))
       (mother-spider-method-29 self #t #t))
   :code
     (behavior ()
@@ -855,10 +871,11 @@
       (go mother-spider-birthing))
   :post transform-post)
 
-(defmethod mother-spider-method-20 ((this mother-spider) (arg0 vector) (arg1 vector))
+(defmethod mother-spider-method-20 ((this mother-spider) (landing-pos vector) (landing-normal vector))
+  "Choose a nearby navigable egg landing point and normal."
   (set! (-> this nav nav-cull-radius) 40960.0)
-  (set-current-poly! (-> this nav) (nav-control-method-16 (-> this nav) (-> this root trans)))
-  (nav-control-method-28 (-> this nav) (the-as collide-kind -1))
+  (set-current-poly! (-> this nav) (find-poly-fast-from-world (-> this nav) (-> this root trans)))
+  (gather-nav-spheres! (-> this nav) (the-as collide-kind -1))
   (dotimes (s3-1 4)
     (let ((f28-0 (+ 32768.0 (-> this orient-rot y)))
           (f30-0 (rand-vu-float-range 16384.0 40960.0)))
@@ -866,15 +883,15 @@
             (s2-1 (new 'stack-no-clear 'vector)))
         (let ((f28-1 (+ f28-0 (rand-vu-float-range -9102.223 9102.223)))) (set-vector! s1-0 (sin f28-1) 0.0 (cos f28-1) 1.0))
         (vector-float*! s2-1 s1-0 f30-0)
-        (nav-control-method-35 (-> this nav) (-> this nav travel) (-> this root trans) s2-1 s1-0 f30-0))
-      (nav-control-method-24 (-> this nav) f30-0 (the-as clip-travel-vector-to-mesh-return-info #f)))
+        (avoid-spheres-world (-> this nav) (-> this nav travel) (-> this root trans) s2-1 s1-0 f30-0))
+      (clip-travel-to-mesh (-> this nav) f30-0 (the-as clip-travel-vector-to-mesh-return-info #f)))
     (cond
       ((>= (vector-xz-length (-> this nav travel)) 4096.0)
-       (vector+! arg0 (-> this root trans) (-> this nav travel))
+       (vector+! landing-pos (-> this root trans) (-> this nav travel))
        (let ((s2-2 (new 'stack-no-clear 'collide-tri-result)))
          (cond
            ((>= (fill-and-probe-using-line-sphere *collide-cache*
-                                                  arg0
+                                                  landing-pos
                                                   (new 'static 'vector :y -69632.0 :w 1.0)
                                                   40.96
                                                   (collide-kind background)
@@ -882,15 +899,15 @@
                                                   s2-2
                                                   (new 'static 'pat-surface :noentity #x1))
                 0.0)
-            (set! (-> arg0 y) (-> s2-2 intersect y))
-            (set! (-> arg1 quad) (-> s2-2 normal quad))
+            (set! (-> landing-pos y) (-> s2-2 intersect y))
+            (vector-copy! landing-normal (-> s2-2 normal))
             (return #t))
            (else 0))))
       (else 0)))
-  (project-onto-nav-mesh (-> this nav) arg0 (-> this root trans))
+  (project-onto-nav-mesh (-> this nav) landing-pos (-> this root trans))
   (let ((a1-12 (new 'stack-no-clear 'vector))
         (s3-2 (new 'stack-no-clear 'collide-tri-result)))
-    (set! (-> a1-12 quad) (-> arg0 quad))
+    (vector-copy! a1-12 landing-pos)
     (+! (-> a1-12 y) 8192.0)
     (cond
       ((>= (fill-and-probe-using-line-sphere *collide-cache*
@@ -902,8 +919,8 @@
                                              s3-2
                                              (new 'static 'pat-surface :noentity #x1))
            0.0)
-       (set! (-> arg0 y) (-> s3-2 intersect y))
-       (set! (-> arg1 quad) (-> s3-2 normal quad))
+       (set! (-> landing-pos y) (-> s3-2 intersect y))
+       (vector-copy! landing-normal (-> s3-2 normal))
        (return #t))
       (else 0)))
   #f)
@@ -953,7 +970,7 @@
               (vector<-cspace! s2-0 (-> self node-list data (-> s0-0 joint-index1)))
               (vector-! s2-0 s2-0 s3-0)
               (vector-normalize! s2-0 1.0)
-              (set! (-> s1-0 quad) (-> s2-0 quad))
+              (vector-copy! s1-0 s2-0)
               (+! (-> s1-0 y) 0.3)
               (vector-normalize! s1-0 1.0)
               (process-spawn mother-spider-leg self s3-0 s2-0 s1-0 :to self))
@@ -1009,34 +1026,35 @@
         (suspend))
       (cleanup-for-death self)))
 
-(defun mother-spider-full-joint-callback ((arg0 mother-spider))
-  (/ (-> arg0 dist-from-anchor) (-> arg0 max-dist-from-anchor))
+(defun mother-spider-full-joint-callback ((spider mother-spider))
+  "Lay out the web-thread joints and hide joints belonging to detached legs."
+  (/ (-> spider dist-from-anchor) (-> spider max-dist-from-anchor))
   (let ((a1-0 (the-as matrix #f)))
     (dotimes (s5-0 7)
       (let* ((v1-1 (the-as mother-spider-thread (+ (the-as uint *mother-spider-threads*) (* s5-0 16))))
-             (s4-0 (-> arg0 node-list data (-> v1-1 joint-index) bone transform)))
-        (vector-! (-> s4-0 vector 3) (-> arg0 root trans) (-> arg0 anchor-trans))
+             (s4-0 (-> spider node-list data (-> v1-1 joint-index) bone transform)))
+        (vector-! (-> s4-0 vector 3) (-> spider root trans) (-> spider anchor-trans))
         (vector-float*! (-> s4-0 vector 3) (-> s4-0 vector 3) (-> v1-1 trans-u))
-        (vector+! (-> s4-0 vector 3) (-> s4-0 vector 3) (-> arg0 anchor-trans))
-        (let ((f1-2 (- (-> s4-0 vector 3 x) (-> arg0 anchor-trans x)))
-              (f0-5 (- (-> s4-0 vector 3 z) (-> arg0 anchor-trans z))))
-          (set! (-> s4-0 vector 3 x) (+ (-> arg0 anchor-trans x) (* f1-2 (-> v1-1 swing-arc-u))))
-          (set! (-> s4-0 vector 3 z) (+ (-> arg0 anchor-trans z) (* f0-5 (-> v1-1 swing-arc-u)))))
-        (if a1-0 (mother-spider-method-22 arg0 a1-0 (-> s4-0 vector 3)))
+        (vector+! (-> s4-0 vector 3) (-> s4-0 vector 3) (-> spider anchor-trans))
+        (let ((f1-2 (- (-> s4-0 vector 3 x) (-> spider anchor-trans x)))
+              (f0-5 (- (-> s4-0 vector 3 z) (-> spider anchor-trans z))))
+          (set! (-> s4-0 vector 3 x) (+ (-> spider anchor-trans x) (* f1-2 (-> v1-1 swing-arc-u))))
+          (set! (-> s4-0 vector 3 z) (+ (-> spider anchor-trans z) (* f0-5 (-> v1-1 swing-arc-u)))))
+        (if a1-0 (mother-spider-method-22 spider a1-0 (-> s4-0 vector 3)))
         (set! a1-0 s4-0)))
-    (let ((a0-11 (-> arg0 node-list data 22 bone transform))
+    (let ((a0-11 (-> spider node-list data 22 bone transform))
           (a2-7 (new 'stack-no-clear 'vector)))
-      (vector-! a2-7 (-> arg0 root trans) (-> a0-11 vector 3))
-      (vector+! a2-7 a2-7 (-> arg0 root trans))
-      (mother-spider-method-22 arg0 a1-0 a2-7)))
-  (dotimes (v1-16 (-> arg0 damage))
+      (vector-! a2-7 (-> spider root trans) (-> a0-11 vector 3))
+      (vector+! a2-7 a2-7 (-> spider root trans))
+      (mother-spider-method-22 spider a1-0 a2-7)))
+  (dotimes (v1-16 (-> spider damage))
     (let ((a0-17 (-> *mother-spider-leg-infos* v1-16)))
-      (let ((a1-5 (-> arg0 node-list data (-> a0-17 joint-index0) bone transform)))
+      (let ((a1-5 (-> spider node-list data (-> a0-17 joint-index0) bone transform)))
         (set! (-> a1-5 vector 0 quad) (the-as uint128 0))
         (set! (-> a1-5 vector 1 quad) (the-as uint128 0))
         (set! (-> a1-5 vector 2 quad) (the-as uint128 0)))
       0
-      (let ((a0-22 (-> arg0 node-list data (-> a0-17 joint-index1) bone transform)))
+      (let ((a0-22 (-> spider node-list data (-> a0-17 joint-index1) bone transform)))
         (set! (-> a0-22 vector 0 quad) (the-as uint128 0))
         (set! (-> a0-22 vector 1 quad) (the-as uint128 0))
         (set! (-> a0-22 vector 2 quad) (the-as uint128 0))))
@@ -1044,32 +1062,39 @@
   0
   (none))
 
-(defmethod mother-spider-method-22 ((this mother-spider) (arg0 matrix) (arg1 vector))
+(defmethod mother-spider-method-22 ((this mother-spider) (joint-matrix matrix) (endpoint vector))
+  "Orient a thread-joint matrix toward the next point."
   (rlet ((vf0 :class vf))
     (init-vf0-vector)
-    (vector-! (-> arg0 vector 2) arg1 (-> arg0 vector 3))
-    (vector-normalize! (-> arg0 vector 2) 1.0)
-    (.svf (&-> (-> arg0 vector) 0 quad) vf0)
+    (vector-! (-> joint-matrix vector 2) endpoint (-> joint-matrix vector 3))
+    (vector-normalize! (-> joint-matrix vector 2) 1.0)
+    (.svf (&-> (-> joint-matrix vector) 0 quad) vf0)
     (cond
-      ((and (= (-> arg0 vector 2 x) 0.0) (= (-> arg0 vector 2 y) 0.0)) (set! (-> arg0 vector 0 x) (-> arg0 vector 2 z)))
-      (else (set! (-> arg0 vector 0 x) (- (-> arg0 vector 2 y))) (set! (-> arg0 vector 0 y) (-> arg0 vector 2 x))))
-    (vector-cross! (-> arg0 vector 1) (-> arg0 vector 0) (-> arg0 vector 2))
-    (vector-normalize! (-> arg0 vector 1) 1.0)
-    (set! (-> arg0 vector 0 w) 0.0)
-    (set! (-> arg0 vector 1 w) 0.0)
-    (set! (-> arg0 vector 2 w) 0.0)))
+      ((and (= (-> joint-matrix vector 2 x) 0.0) (= (-> joint-matrix vector 2 y) 0.0))
+       (set! (-> joint-matrix vector 0 x) (-> joint-matrix vector 2 z)))
+      (else
+       (set! (-> joint-matrix vector 0 x) (- (-> joint-matrix vector 2 y)))
+       (set! (-> joint-matrix vector 0 y) (-> joint-matrix vector 2 x))))
+    (vector-cross! (-> joint-matrix vector 1) (-> joint-matrix vector 0) (-> joint-matrix vector 2))
+    (vector-normalize! (-> joint-matrix vector 1) 1.0)
+    (set! (-> joint-matrix vector 0 w) 0.0)
+    (set! (-> joint-matrix vector 1 w) 0.0)
+    (set! (-> joint-matrix vector 2 w) 0.0)))
 
 (defmethod run-logic? ((this mother-spider))
+  "Run while active, nearby, blending animation, or requiring a skeleton update."
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (< (vector-vector-xz-distance (-> this root trans) (math-camera-pos)) (-> this deactivate-xz-dist))
           (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
           (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-status no-skeleton-update))))))
 
 (defmethod relocate ((this mother-spider) (offset int))
+  "Relocate the neck modifier before relocating the drawable."
   (if (nonzero? (-> this neck)) (&+! (-> this neck) offset))
   (the-as mother-spider ((method-of-type process-drawable relocate) this offset)))
 
-(defmethod init-from-entity! ((this mother-spider) (arg0 entity-actor))
+(defmethod init-from-entity! ((this mother-spider) (source-entity entity-actor))
+  "Initialize the boss collision, skeleton, thread, navigation, effects, and starting state."
   (set! (-> this baby-count) 0)
   (set! (-> this spit-counter) 0)
   (set! (-> this leg-socket-part-mask) 0)
@@ -1169,13 +1194,14 @@
     (set! (-> s4-0 nav-radius) 4096.0)
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *mother-spider-sg* '())
   (set! (-> this nav) (new 'process 'nav-control (-> this root) 16 40960.0))
-  (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
+  (logior! (-> this nav flags)
+           (nav-control-flags display-marks display-polys display-active-polys display-travel display-spheres))
   (set! (-> this nav nearest-y-threshold) 409600.0)
-  (logclear! (-> this root nav-flags) (nav-flags navf0))
-  (logclear! (-> this root nav-flags) (nav-flags navf1))
+  (logclear! (-> this root nav-flags) (nav-flags avoid-body))
+  (logclear! (-> this root nav-flags) (nav-flags avoid-extra-sphere))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (set! (-> this fact) (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
@@ -1190,13 +1216,13 @@
     (set! (-> v0-30 ear) (the-as uint 0))
     (set! (-> v0-30 max-dist) 102400.0)
     (set! (-> v0-30 ignore-angle) 16384.0))
-  (set! (-> this thread-min-trans quad) (-> this root trans quad))
-  (set! (-> this anchor-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this thread-min-trans) (-> this root trans))
+  (vector-copy! (-> this anchor-trans) (-> this root trans))
   (set! (-> this max-swing-radius) 73728.0)
   (set! (-> this max-baby-count) 4)
   (let ((s4-1 #f))
     (let* ((sv-16 (new 'static 'res-tag))
-           (v0-31 (res-lump-data arg0 'mother-spider pointer :tag-ptr (& sv-16))))
+           (v0-31 (res-lump-data source-entity 'mother-spider pointer :tag-ptr (& sv-16))))
       (cond
         (v0-31
          (+! (-> this thread-min-trans y) (-> (the-as (pointer float) v0-31) 0))
@@ -1219,7 +1245,7 @@
     (set! (-> this max-dist-from-anchor) (- (-> this anchor-trans y) (-> this thread-min-trans y)))
     (set! (-> this player-sticky-dist-from-anchor) (-> this max-dist-from-anchor))
     (set! (-> this targ-dist-from-anchor) (-> this idle-dist-from-anchor))
-    (set! (-> this root trans quad) (-> this anchor-trans quad))
+    (vector-copy! (-> this root trans) (-> this anchor-trans))
     (set! (-> this root trans y) (- (-> this root trans y) (-> this idle-dist-from-anchor)))
     (set-vector! (-> this orient-rot) 0.0 0.0 0.0 1.0)
     (quaternion-zxy! (-> this root quat) (-> this orient-rot))

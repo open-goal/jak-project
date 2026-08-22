@@ -15,31 +15,41 @@
   :bounds (static-spherem 0 0 0 4)
   :shadow assistant-village3-shadow-mg)
 
-(defmethod process-taskable-method-52 ((this assistant-villagec))
-  (let ((v1-1 (-> this draw shadow-ctrl)))
-    (when v1-1
-      (let ((f0-0 (-> this root trans y)))
-        (let ((a0-2 v1-1)) (set! (-> a0-2 settings bot-plane w) (- (+ -2048.0 f0-0))))
+(defmethod setup-shadow-settings! ((this assistant-villagec))
+  "Set the projected shadow's vertical clipping planes relative to the assistant's height."
+  (let ((shadow-ctrl (-> this draw shadow-ctrl)))
+    (when shadow-ctrl
+      (let ((root-y (-> this root trans y)))
+        (let ((ctrl shadow-ctrl)) (set! (-> ctrl settings bot-plane w) (- (+ -2048.0 root-y))))
         0
-        (set! (-> v1-1 settings top-plane w) (- (+ 1024.0 f0-0))))
+        (set! (-> shadow-ctrl settings top-plane w) (- (+ 1024.0 root-y))))
       0))
   (none))
 
 (defmethod draw-npc-shadow ((this assistant-villagec))
+  "Update the projected shadow when the highest-detail model was drawn this frame; otherwise
+   disable it."
+  (local-vars (shadow-ctrl shadow-control))
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
-     (let ((v1-9 (-> this draw shadow-ctrl))) (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw)))
+     (set! shadow-ctrl (-> this draw shadow-ctrl))
+     (logclear! (-> shadow-ctrl settings flags) (shadow-flags disable-draw))
      0
      (update-direction-from-time-of-day (-> this draw shadow-ctrl)))
-    (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
+    (else
+     (set! shadow-ctrl (-> this draw shadow-ctrl))
+     (logior! (-> shadow-ctrl settings flags) (shadow-flags disable-draw))
+     0))
   (none))
 
-(defmethod play-anim! ((this assistant-villagec) (arg0 symbol))
+(defmethod play-anim! ((this assistant-villagec) (commit? symbol))
+  "Select the assistant's animation for the final-sage task stage; report an invalid committed
+   request while the introduction is pending."
   (set! (-> this talk-message) (text-id press-to-talk-to-assistant))
   (cond
     ((= (get-task-status (game-task finalboss-movies)) (task-status need-introduction))
-     (if arg0
+     (if commit?
        (format 0
                "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
                (-> this name)
@@ -48,33 +58,38 @@
     (else (new 'static 'spool-anim :name "assistant-village3-reminder" :index 4 :parts 3 :command-list '()))))
 
 (defmethod get-art-elem ((this assistant-villagec))
+  "Return the art element on the active root animation channel."
   (-> this draw art-group data 3))
 
 (defmethod should-display? ((this assistant-villagec))
+  "Return true after the village button introduction closes and before the sages are kidnapped."
   (and (task-closed? (game-task village3-button) (task-status need-introduction)) (not (sages-kidnapped?))))
 
 (defmethod target-above-threshold? ((this assistant-villagec))
+  "Return true when the target is above the assistant's interaction-height threshold."
   (the-as symbol (and *target* (< (-> (target-pos 0) z) -14245888.0))))
 
-(defmethod process-taskable-method-43 ((this assistant-villagec))
+(defmethod try-play-ambient-chatter ((this assistant-villagec))
+  "Try to play one of the assistant's ambient voice lines after the chatter cooldown."
+  (local-vars (lavatube-status task-status))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
-    (let ((f0-2 (rand-float-gen)))
+    (let ((choice (rand-float-gen)))
       (cond
-        ((< 0.85714287 f0-2) (play-ambient (-> this ambient) "ASSTLP31" #f (-> this root trans)))
-        ((< 0.71428573 f0-2) (play-ambient (-> this ambient) "ASSTLP32" #f (-> this root trans)))
-        ((< 0.5714286 f0-2) (play-ambient (-> this ambient) "ASSTLP33" #f (-> this root trans)))
-        ((< 0.42857143 f0-2)
-         (let ((v1-16 (get-task-status (game-task lavatube-end))))
-           (if (not (or (= v1-16 (task-status need-reward-speech)) (= v1-16 (task-status invalid))))
-             (play-ambient (-> this ambient) "ASSTLP34" #f (-> this root trans)))))
-        ((< 0.2857143 f0-2)
-         (let ((v1-21 (get-task-status (game-task lavatube-end))))
-           (if (not (or (= v1-21 (task-status need-reward-speech)) (= v1-21 (task-status invalid))))
-             (play-ambient (-> this ambient) "ASSTLP35" #f (-> this root trans)))))
-        ((< 0.14285715 f0-2)
-         (let ((v1-26 (get-task-status (game-task lavatube-end))))
-           (if (not (or (= v1-26 (task-status need-reward-speech)) (= v1-26 (task-status invalid))))
-             (play-ambient (-> this ambient) "ASSTLP36" #f (-> this root trans)))))
+        ((< 0.85714287 choice) (play-ambient (-> this ambient) "ASSTLP31" #f (-> this root trans)))
+        ((< 0.71428573 choice) (play-ambient (-> this ambient) "ASSTLP32" #f (-> this root trans)))
+        ((< 0.5714286 choice) (play-ambient (-> this ambient) "ASSTLP33" #f (-> this root trans)))
+        ((< 0.42857143 choice)
+         (set! lavatube-status (get-task-status (game-task lavatube-end)))
+         (if (not (or (= lavatube-status (task-status need-reward-speech)) (= lavatube-status (task-status invalid))))
+           (play-ambient (-> this ambient) "ASSTLP34" #f (-> this root trans))))
+        ((< 0.2857143 choice)
+         (set! lavatube-status (get-task-status (game-task lavatube-end)))
+         (if (not (or (= lavatube-status (task-status need-reward-speech)) (= lavatube-status (task-status invalid))))
+           (play-ambient (-> this ambient) "ASSTLP35" #f (-> this root trans))))
+        ((< 0.14285715 choice)
+         (set! lavatube-status (get-task-status (game-task lavatube-end)))
+         (if (not (or (= lavatube-status (task-status need-reward-speech)) (= lavatube-status (task-status invalid))))
+           (play-ambient (-> this ambient) "ASSTLP36" #f (-> this root trans))))
         ((nonzero? (get-task-status (game-task citadel-sage-green)))
          (play-ambient (-> this ambient) "ASSTLP37" #f (-> this root trans)))))))
 
@@ -84,11 +99,8 @@
     (behavior ()
       (if (!= (ja-group) (get-art-elem self)) (ja-channel-push! 1 (seconds 0.05)))
       (loop
-        (process-taskable-method-43 self)
-        (ja-no-eval :group! assistant-village3-idle-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))
+        (try-play-ambient-chatter self)
+        (ja-play :group! assistant-village3-idle-ja :num! (seek!) :frame-num 0.0)
         (let ((gp-0 (current-time)))
           (while (let ((s5-0 (current-time))
                        (f30-0 300.0)
@@ -96,10 +108,7 @@
                        (f26-0 0.17000002))
                    (< (- s5-0 (the-as time-frame (the int (* f30-0 (+ f28-0 (* f26-0 (rand-float-gen))))))) gp-0))
             (suspend)))
-        (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 0.0 0)) :frame-num (ja-aframe 16.0 0))
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! (ja-aframe 0.0 0))))
+        (ja-play :group! (ja-group) :num! (seek! (ja-aframe 0.0 0)) :frame-num (ja-aframe 16.0 0))
         (let ((gp-3 (current-time)))
           (while (let ((s5-1 (current-time))
                        (f30-1 300.0)
@@ -108,8 +117,9 @@
                    (< (- s5-1 (the-as time-frame (the int (* f30-1 (+ f28-1 (* f26-1 (rand-float-gen))))))) gp-3))
             (suspend))))))
 
-(defmethod init-from-entity! ((this assistant-villagec) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *assistant-village3-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this assistant-villagec) (source-entity entity-actor))
+  "Initialize the village assistant as a task-controlled character."
+  (init-as-taskable! this source-entity *assistant-village3-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task assistant-village3)))
-  (process-taskable-method-42 this)
+  (goto-initial-state! this)
   (none))

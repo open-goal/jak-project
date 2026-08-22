@@ -3,19 +3,23 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; The sync-info system is used to synchronize the motion of objects.
-;; For example, platforms use this to have consistent relative positions.
-
-;; There are also some non-syncronized movement helpers in here.
+;; The sync-info types keep gameplay objects like platforms in sync.
+;; Platforms may spawn and despawn during gameplay, and determine their
+;; momvement phase from the global clock.
+;;
+;; This file also contains small randomized and spring-like motion controls that
+;; do not use the synchronization clock.
 
 ;; DECOMP BEGINS
 
-;; Simplest synchronization. Simply counts up, then resets once it reaches period.
-;; For example, this is used to synchronize the "pies" in citadel.
+;; The base clock produces a sawtooth phase from 0 to 1 over each period. Its
+;; mirrored versions produces a triangular phase from 0 to 1 and back to 0 over the
+;; same period.
 (deftype sync-info (structure)
-  ((offset float) ;; offset, stored as a time, not a phase.
-   (period uint32) ;; period, stored in seconds units
-   )
+  (;; Phase offset stored in game-time ticks rather than normalized phase.
+   (offset float)
+   ;; Cycle duration in 300 Hz game-time ticks.
+   (period uint32))
   :pack-me
   (:methods
    (get-current-value (_type_ float) float)
@@ -28,8 +32,11 @@
    (sync-now! (_type_ float) float)
    (get-phase-offset (_type_) float)))
 
-;; Syncronized, but also includes some smoothing at the beginning.
-;; This is used for motion of platforms.
+;; A synchronized triangular phase with a smooth start and stop on each leg.
+;; tlo and thi bound a piecewise quadratic-linear-quadratic curve. ylo is the
+;; value at the first boundary, m2 is the final quadratic's coefficient, and yend
+;; normalizes the curve to end at 1. The pieces meet with matching slopes and
+;; reach zero slope at both endpoints.
 (deftype sync-info-eased (sync-info)
   ((tlo  float)
    (thi  float)
@@ -38,14 +45,17 @@
    (yend float))
   :allow-misaligned)
 
-;; Syncronized, but includes a pause.
-;; This is used for whirlpools in lpc and the pushers in the yellow-eco room in snowy
+;; A synchronized phase that can wait at either endpoint. pause-after-out is the
+;; fraction of the complete cycle held at 1 after the outward leg;
+;; pause-after-in is the fraction held at 0 after the return leg. LPC whirlpools
+;; and the pushers in Snowy's yellow-eco room use this form.
 (deftype sync-info-paused (sync-info)
   ((pause-after-out float)
    (pause-after-in  float))
   :pack-me)
 
-;; This is a strange one. After a random amount of time, it changes to a random value.
+;; Holds one value for a random duration, then chooses another uniformly from
+;; -max-val through max-val.
 (deftype delayed-rand-float (structure)
   ((min-time   int32)
    (max-time   int32)
@@ -58,7 +68,9 @@
    (set-params! (_type_ int int float) float)
    (update! (_type_) float)))
 
-;; second order oscillating float.
+;; A damped discrete spring. update! accelerates value toward target plus an
+;; optional offset, clamps velocity, retains the damping fraction, and integrates
+;; value with the display time adjustment.
 (deftype oscillating-float (structure)
   ((value   float)
    (target  float)
@@ -71,13 +83,22 @@
    (set-params! (_type_ float float float float) float)
    (update! (_type_ float) float)))
 
-;; float that "bounces".
+;; A damped spring constrained between a floor and ceiling. Crossing an endpoint
+;; clamps the value and reflects outward velocity by elasticity; state records
+;; which endpoint the latest update struck.
+(defenum bouncing-float-state
+  :type int32
+  :bitfield #f
+  (at-minimum -1)
+  (free 0)
+  (at-maximum 1))
+
 (deftype bouncing-float (structure)
   ((osc        oscillating-float :inline)
    (max-value  float)
    (min-value  float)
    (elasticity float)
-   (state      int32))
+   (state      bouncing-float-state))
   :pack-me
   (:methods
    (set-params! (_type_ float float float float float float float) float)
@@ -85,7 +106,7 @@
    (at-min? (_type_) symbol)
    (at-max? (_type_) symbol)))
 
-;; like delayed-rand-float, but does 4 at a time.
+;; Vector counterpart to delayed-rand-float.
 (deftype delayed-rand-vector (structure)
   ((min-time   int32)
    (max-time   int32)
@@ -100,7 +121,8 @@
    (update-with-delay! (_type_) vector)
    (update-with-delay-or-reset! (_type_) vector)))
 
-;; like oscillating-float, but does 4 at a time.
+;; Vector counterpart to oscillating-float. Velocity is limited by vector length,
+;; so the direction of motion is preserved when it reaches max-vel.
 (deftype oscillating-vector (structure)
   ((value   vector :inline)
    (target  vector :inline)

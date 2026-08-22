@@ -5,6 +5,7 @@
 (require "engine/gfx/foreground/ripple.gc")
 (require "engine/common-obs/water-h.gc")
 (defenum water-look
+  :type int32
   (water-anim-sunken-big-room 0)
   (water-anim-sunken-first-room-from-entrance 1)
   (water-anim-sunken-qbert-room 2)
@@ -56,9 +57,11 @@
 
 ;; DECOMP BEGINS
 
+;; An animated surface volume. look selects a table entry containing the surface skeleton,
+;; animation, and optional ambient sound.
 (deftype water-anim (water-vol)
   ((ppointer-water-anim (pointer water-anim) :overlay-at ppointer)
-   (look                int32)
+   (look                water-look)
    (play-ambient-sound? symbol)))
 
 (defskelgroup *water-anim-sunken-dark-eco-qbert-sg*
@@ -397,6 +400,7 @@
   ((water-anim-village2-bucket-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 0.7))
 
+;; water-look values index this table directly.
 (deftype water-anim-look (structure)
   ((skel-group         symbol)
    (anim               int32)
@@ -571,19 +575,25 @@
        (new 'static 'water-anim-look :skel-group '*water-anim-village1-rice-paddy-top-sg* :anim 8 :ambient-sound-spec #f)
        (new 'static 'water-anim-look :skel-group '*water-anim-village2-bucket-sg* :anim 2 :ambient-sound-spec #f)))
 
+;; Relocation messages keep the surface height and sound position together. Hide the surface while
+;; the camera is more than two meters below it, and post one animation update whenever the sleeping
+;; process is awakened.
 (defstate water-vol-idle (water-anim)
   :virtual #t
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
         (('move-to)
-         (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
+         (vector-copy! (-> self root trans) (the-as vector (-> block param 0)))
          (set! (-> self water-height) (-> self root trans y))
          (if (nonzero? (-> self sound)) (update-trans! (-> self sound) (-> self root trans)))
-         (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code)))) (set! (-> self mask) v0-0) v0-0))))
+         (let ((updated-mask (logclear (-> self mask) (process-mask sleep-code))))
+           (set! (-> self mask) updated-mask)
+           updated-mask))))
   :trans
     (behavior ()
-      (let ((t9-0 (-> (method-of-type water-vol water-vol-idle) trans))) (if t9-0 (t9-0)))
+      (let ((parent-transition (-> (method-of-type water-vol water-vol-idle) trans)))
+        (if parent-transition (parent-transition)))
       (if (< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
         (logior! (-> self draw status) (draw-status hidden))
         (logclear! (-> self draw status) (draw-status hidden)))
@@ -595,44 +605,51 @@
         (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
-(defmethod get-ripple-height ((this water-anim) (arg0 vector))
-  (ripple-find-height this 0 arg0))
+(defmethod get-ripple-height ((this water-anim) (point vector))
+  "Return the ripple-displaced surface height at point for this animated water volume."
+  (ripple-find-height this 0 point))
 
 (defmethod set-stack-size! ((this water-anim))
+  "Leave the process stack size unchanged."
   (none))
 
-(defmethod water-vol-method-25 ((this water-anim))
+(defmethod setup-from-res! ((this water-anim))
+  "Enable ambient sound, read the look selector, add an optional translation offset to the root,
+   and apply an optional Y rotation offset."
   (set! (-> this play-ambient-sound?) #t)
-  (set! (-> this look) (res-lump-value (-> this entity) 'look int :default (the-as uint128 -1)))
-  (let* ((sv-16 (new 'static 'res-tag))
-         (v1-3 (res-lump-data (-> this entity) 'trans-offset (pointer float) :tag-ptr (& sv-16))))
-    (when v1-3
-      (+! (-> this root trans x) (-> v1-3 0))
-      (+! (-> this root trans y) (-> v1-3 1))
-      (+! (-> this root trans z) (-> v1-3 2))))
-  (let ((f0-6 (res-lump-float (-> this entity) 'rotoffset)))
-    (if (!= f0-6 0.0) (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-6)))
+  (set! (-> this look) (res-lump-value (-> this entity) 'look water-look :default (the-as uint128 -1)))
+  (let* ((resource-tag (new 'static 'res-tag))
+         (translation-offset (res-lump-data (-> this entity) 'trans-offset (pointer float) :tag-ptr (& resource-tag))))
+    (when translation-offset
+      (+! (-> this root trans x) (-> translation-offset 0))
+      (+! (-> this root trans y) (-> translation-offset 1))
+      (+! (-> this root trans z) (-> translation-offset 2))))
+  (let ((rotation-offset (res-lump-float (-> this entity) 'rotoffset)))
+    (if (!= rotation-offset 0.0) (quaternion-rotate-y! (-> this root quat) (-> this root quat) rotation-offset)))
   (none))
 
-(defmethod water-vol-method-22 ((this water-anim))
-  (let ((s5-0 (-> this look)))
-    (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length))) (go process-drawable-art-error "skel group"))
-    (let ((s5-1 (-> *water-anim-look* s5-0)))
-      (let ((s4-0 (-> s5-1 skel-group value)))
-        (let ((s3-0 s4-0))
-          (if (not (if (and (nonzero? s3-0) (type-type? (-> (the-as basic s3-0) type) skeleton-group)) s3-0))
+(defmethod setup-water! ((this water-anim))
+  "Validate the selected look, initialize its skeleton and animation at frame zero, create its
+   optional ambient sound at the drawable bounds center, and post the initial joint pose."
+  (let ((look-index (-> this look)))
+    (if (or (< (the-as int look-index) 0) (>= (the-as int look-index) (-> *water-anim-look* length)))
+      (go process-drawable-art-error "skel group"))
+    (let ((look-entry (-> *water-anim-look* look-index)))
+      (let ((skeleton (-> look-entry skel-group value)))
+        (let ((skeleton-check skeleton))
+          (if (not (if (and (nonzero? skeleton-check) (type-type? (-> (the-as basic skeleton-check) type) skeleton-group)) skeleton-check))
             (go process-drawable-art-error "skel group")))
-        (initialize-skeleton this (the-as skeleton-group s4-0) '()))
+        (initialize-skeleton this (the-as skeleton-group skeleton) '()))
       (ja-channel-set! 1)
-      (let ((s4-1 (-> this skel root-channel 0)))
-        (joint-control-channel-group-eval! s4-1
-                                           (the-as art-joint-anim (-> this draw art-group data (-> s5-1 anim)))
+      (let ((animation-channel (-> this skel root-channel 0)))
+        (joint-control-channel-group-eval! animation-channel
+                                           (the-as art-joint-anim (-> this draw art-group data (-> look-entry anim)))
                                            num-func-identity)
-        (set! (-> s4-1 frame-num) 0.0))
-      (let ((a2-2 (-> s5-1 ambient-sound-spec)))
-        (when a2-2
-          (let ((a3-0 (new 'stack-no-clear 'vector)))
-            (vector+! a3-0 (-> this root trans) (-> this draw bounds))
-            (set! (-> this sound) (new 'process 'ambient-sound a2-2 a3-0)))))))
+        (set! (-> animation-channel frame-num) 0.0))
+      (let ((ambient-spec (-> look-entry ambient-sound-spec)))
+        (when ambient-spec
+          (let ((sound-position (new 'stack-no-clear 'vector)))
+            (vector+! sound-position (-> this root trans) (-> this draw bounds))
+            (set! (-> this sound) (new 'process 'ambient-sound ambient-spec sound-position)))))))
   (ja-post)
   (none))

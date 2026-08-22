@@ -26,7 +26,6 @@
    helix-slide-door-idle-closed
    helix-slide-door-idle-open))
 
-
 (defskelgroup *helix-slide-door-sg*
   helix-slide-door
   helix-slide-door-lod0-jg
@@ -48,7 +47,6 @@
    helix-button-quick-activate
    helix-button-startup))
 
-
 (defskelgroup *helix-button-sg*
   helix-button
   helix-button-lod0-jg
@@ -57,7 +55,6 @@
   :bounds (static-spherem 0 3.5 0 5.4))
 
 (deftype helix-dark-eco (dark-eco-pool) ())
-
 
 (deftype helix-water (process-drawable)
   ((last-alt-actor-consumed int32)
@@ -68,11 +65,10 @@
    (dark-eco                (pointer helix-dark-eco)))
   (:methods
    (helix-water-method-20 (_type_) none)
-   (helix-water-method-21 (_type_) object))
+   (consume-next-submerged-actor! (_type_) object))
   (:states
    helix-water-activated
    helix-water-idle))
-
 
 (defstate water-vol-idle (helix-dark-eco)
   :virtual #t
@@ -108,10 +104,7 @@
 (defstate helix-slide-door-close (helix-slide-door)
   :code
     (behavior ()
-      (ja-no-eval :group! helix-slide-door-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! helix-slide-door-idle-ja :num! (seek!) :frame-num 0.0)
       (transform-post)
       (go helix-slide-door-idle-closed))
   :post transform-post)
@@ -123,26 +116,30 @@
         (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
-(defmethod init-from-entity! ((this helix-slide-door) (arg0 entity-actor))
-  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
-    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s3-0 transform-index) 3)
-      (set-vector! (-> s3-0 local-sphere) 0.0 22528.0 0.0 53248.0)
-      (set-root-prim! s4-0 s3-0))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+(defmethod init-from-entity! ((this helix-slide-door) (source-entity entity-actor))
+  "Create the sliding door mesh collision and skeleton at the entity transform, then leave the
+   door open until triggered."
+  (let ((collision (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
+    (let ((mesh (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh prim-core collide-as) (collide-kind wall-object))
+      (set! (-> mesh collide-with) (collide-kind target))
+      (set! (-> mesh prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> mesh prim-core offense) (collide-offense indestructible))
+      (set! (-> mesh transform-index) 3)
+      (set-vector! (-> mesh local-sphere) 0.0 22528.0 0.0 53248.0)
+      (set-root-prim! collision mesh))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision))
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *helix-slide-door-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (ja-channel-set! 1)
-  (let ((s5-1 (-> this skel root-channel 0)))
-    (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-    (set! (-> s5-1 frame-num) 0.0))
+  (let ((root-channel (-> this skel root-channel 0)))
+    (joint-control-channel-group-eval! root-channel
+                                       (the-as art-joint-anim (-> this draw art-group data 2))
+                                       num-func-identity)
+    (set! (-> root-channel frame-num) 0.0))
   (ja-post)
   (update-transforms! (-> this root))
   (set! *helix-slide-door* this)
@@ -154,7 +151,7 @@
     (behavior ()
       (when (not (task-complete? *game-info* (game-task sunken-slide)))
         (let ((a0-1 (new 'stack-no-clear 'vector)))
-          (set! (-> a0-1 quad) (-> self root trans quad))
+          (vector-copy! a0-1 (-> self root trans))
           (+! (-> a0-1 y) 30720.0)
           (let ((v1-7 (birth-pickup-at-point a0-1 (pickup-type fuel-cell) (the float (-> self entity extra perm task)) #f self (-> self fact))))
             (set! (-> self fcell-handle) (ppointer->handle v1-7))
@@ -167,7 +164,7 @@
       (case message
         (('touch)
          (when *target*
-           (when (logtest? (-> *target* control status) (cshape-moving-flags onsurf))
+           (when (logtest? (-> *target* control status) (collide-status on-surface))
              (cond
                ((and (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
                      (not (handle->process (-> self fcell-handle))))
@@ -224,7 +221,7 @@
       (level-hint-spawn (text-id sunken-helix-hint) "sksp0124" (the-as entity #f) *entity-pool* (game-task none))
       (send-event *target* 'play-anim 'shock-in)
       (sound-play "prec-button8")
-      (set! (-> self root transv quad) (the-as uint128 0))
+      (vector-zero! (-> self root transv))
       (let ((gp-3 5))
         (until (<= gp-3 0)
           (let ((f1-0 (-> self root transv y))
@@ -237,7 +234,7 @@
                 (set! f1-1 (* 0.65 (- f1-1)))
                 (+! gp-3 -1))
               (set! (-> self root transv y) f1-1)
-              (set! (-> a1-11 quad) (-> self root trans quad))
+              (vector-copy! a1-11 (-> self root trans))
               (set! (-> a1-11 y) f0-3))
             (move-to-point! (-> self root) a1-11))
           (suspend)))
@@ -300,7 +297,7 @@
         (let ((t9-6 send-event-function)
               (v1-11 (-> self my-water)))
           (t9-6 (if v1-11 (-> v1-11 extra process)) a1-4)))
-      (set! (-> self root transv quad) (the-as uint128 0))
+      (vector-zero! (-> self root transv))
       (let ((gp-2 5))
         (until (<= gp-2 0)
           (let ((f1-0 (-> self root transv y))
@@ -313,7 +310,7 @@
                 (set! f1-1 (* 0.65 (- f1-1)))
                 (+! gp-2 -1))
               (set! (-> self root transv y) f1-1)
-              (set! (-> a1-5 quad) (-> self root trans quad))
+              (vector-copy! a1-5 (-> self root trans))
               (set! (-> a1-5 y) f0-1))
             (move-to-point! (-> self root) a1-5))
           (suspend)))
@@ -326,34 +323,39 @@
       (loop
         (suspend))))
 
-(defmethod init-from-entity! ((this helix-button) (arg0 entity-actor))
+(defmethod init-from-entity! ((this helix-button) (source-entity entity-actor))
+  "Resolve the water and door entities, create the moving button and rider collision, and save
+   its camera and depressed positions."
   (set! (-> this fcell-handle) (the-as handle #f))
-  (set! (-> this my-water) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! (-> this my-door) (entity-actor-lookup arg0 'alt-actor 1))
-  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
-    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s4-0 1)
-    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s3-0 collide-with) (collide-kind target))
-      (set! (-> s3-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s3-0 transform-index) 0)
-      (set-vector! (-> s3-0 local-sphere) 0.0 14336.0 0.0 22118.4)
-      (set-root-prim! s4-0 s3-0))
-    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
-    (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (set! (-> this my-water) (entity-actor-lookup source-entity 'alt-actor 0))
+  (set! (-> this my-door) (entity-actor-lookup source-entity 'alt-actor 1))
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision 1)
+    (let ((mesh (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+      (set! (-> mesh prim-core collide-as) (collide-kind ground-object))
+      (set! (-> mesh collide-with) (collide-kind target))
+      (set! (-> mesh prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> mesh prim-core offense) (collide-offense indestructible))
+      (set! (-> mesh transform-index) 0)
+      (set-vector! (-> mesh local-sphere) 0.0 14336.0 0.0 22118.4)
+      (set-root-prim! collision mesh))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision))
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *helix-button-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (ja-channel-set! 1)
-  (let ((s5-1 (-> this skel root-channel 0)))
-    (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-    (set! (-> s5-1 frame-num) 0.0))
-  (set! (-> this spawn-trans quad) (-> this root trans quad))
+  (let ((root-channel (-> this skel root-channel 0)))
+    (joint-control-channel-group-eval! root-channel
+                                       (the-as art-joint-anim (-> this draw art-group data 2))
+                                       num-func-identity)
+    (set! (-> root-channel frame-num) 0.0))
+  (vector-copy! (-> this spawn-trans) (-> this root trans))
   (+! (-> this root trans y) -26624.0)
   (set! (-> this down-y) (+ -6553.6 (-> this root trans y)))
   (set! (-> this fact) (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
@@ -363,22 +365,24 @@
   (go helix-button-startup)
   (none))
 
-(defmethod helix-water-method-21 ((this helix-water))
-  (let ((s5-0 (+ (-> this last-alt-actor-consumed) 1)))
-    (when (< s5-0 (-> this alt-actors length))
-      (let* ((v1-5 (-> this alt-actors s5-0))
-             (s4-0 (if v1-5 (-> v1-5 extra process)))
-             (a0-3 (if (and (nonzero? s4-0) (type-type? (-> s4-0 type) process-drawable)) s4-0)))
+(defmethod consume-next-submerged-actor! ((this helix-water))
+  "Advance through the ordered alternate actors as the water reaches them, killing babaks and
+   launchers or hiding eco-vent particles."
+  (let ((next-index (+ (-> this last-alt-actor-consumed) 1)))
+    (when (< next-index (-> this alt-actors length))
+      (let* ((actor-entity (-> this alt-actors next-index))
+             (actor-process (if actor-entity (-> actor-entity extra process)))
+             (actor (if (and (nonzero? actor-process) (type-type? (-> actor-process type) process-drawable)) actor-process)))
         (+ -1638.4 (-> this root trans y))
         (cond
-          (a0-3
-           (when (< (-> (the-as process-drawable a0-3) root trans y) (-> this root trans y))
-             (set! (-> this last-alt-actor-consumed) s5-0)
-             (case (-> a0-3 type)
-               ((babak) (send-event a0-3 'instant-death))
-               ((ecovent) (send-event a0-3 'show-particles #f))
-               ((launcher) (send-event a0-3 'instant-death)))))
-          (else (set! (-> this last-alt-actor-consumed) s5-0) s5-0))))))
+          (actor
+           (when (< (-> (the-as process-drawable actor) root trans y) (-> this root trans y))
+             (set! (-> this last-alt-actor-consumed) next-index)
+             (case (-> actor type)
+               ((babak) (send-event actor 'instant-death))
+               ((ecovent) (send-event actor 'show-particles #f))
+               ((launcher) (send-event actor 'instant-death)))))
+          (else (set! (-> this last-alt-actor-consumed) next-index) next-index))))))
 
 (defstate helix-water-idle (helix-water)
   :event
@@ -419,7 +423,7 @@
       (+! (-> self root trans y) (* (-> self transv-y) (seconds-per-frame)))
       (if (< (-> self end-y) (-> self root trans y)) (set! (-> self root trans y) (-> self end-y)))
       (send-event (ppointer->process (-> self dark-eco)) 'move-to (-> self root trans))
-      (helix-water-method-21 self))
+      (consume-next-submerged-actor! self))
   :code
     (behavior ()
       (send-event (ppointer->process (-> self dark-eco)) 'trigger)
@@ -429,21 +433,24 @@
   :post ja-post)
 
 (defmethod relocate ((this helix-water) (offset int))
+  "Relocate the alternate-actor array, then relocate the parent drawable."
   (if (nonzero? (-> this alt-actors)) (&+! (-> this alt-actors) offset))
   (call-parent-method this offset))
 
-(defmethod init-from-entity! ((this helix-water) (arg0 entity-actor))
+(defmethod init-from-entity! ((this helix-water) (source-entity entity-actor))
+  "Create the rising water and dark-eco volume, collect the ordered actors it can consume, and
+   establish the start and end heights."
   (set! (-> this last-alt-actor-consumed) -1)
   (set! (-> this transv-y) 9216.0)
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (set! (-> this start-y) (+ -49152.0 (-> this root trans y)))
   (set! (-> this end-y) (+ 851968.0 (-> this start-y)))
   (set-vector! (-> this root scale) 1.0 0.8 1.0 1.0)
-  (let ((s4-0 (entity-actor-count arg0 'alt-actor)))
-    (set! (-> this alt-actors) (new 'process 'boxed-array entity-actor s4-0))
-    (dotimes (s3-0 s4-0)
-      (set! (-> this alt-actors s3-0) (entity-actor-lookup arg0 'alt-actor s3-0))))
+  (let ((alt-count (entity-actor-count source-entity 'alt-actor)))
+    (set! (-> this alt-actors) (new 'process 'boxed-array entity-actor alt-count))
+    (dotimes (i alt-count)
+      (set! (-> this alt-actors i) (entity-actor-lookup source-entity 'alt-actor i))))
   (set! (-> this root trans y) (-> this start-y))
   (set! (-> this dark-eco) (process-spawn helix-dark-eco :init water-vol-init-by-other (-> this entity) :to this))
   (set! *helix-water* this)

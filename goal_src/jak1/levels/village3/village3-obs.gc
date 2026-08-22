@@ -44,7 +44,6 @@
 
 (deftype villagec-lava (water-anim) ())
 
-
 (define ripple-for-villagec-lava
   (new 'static
        'ripple-wave-set
@@ -60,12 +59,14 @@
             (new 'static 'ripple-wave)
             (new 'static 'ripple-wave))))
 
-(defmethod water-vol-method-22 ((this villagec-lava))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
-  (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> this draw ripple) v1-2)
-    (set! (-> v1-2 global-scale) 3072.0)
-    (set! (-> v1-2 waveform) ripple-for-villagec-lava))
+(defmethod setup-water! ((this villagec-lava))
+  "Set up the animated water, install the Village 3 lava ripple waveform, mark it as lava rather
+   than ordinary particle water, and use the lava attack event."
+  (let ((parent-method (method-of-type water-anim setup-water!))) (parent-method this))
+  (let ((ripple (new 'process 'ripple-control)))
+    (set! (-> this draw ripple) ripple)
+    (set! (-> ripple global-scale) 3072.0)
+    (set! (-> ripple waveform) ripple-for-villagec-lava))
   (logclear! (-> this flag) (water-flag part-water))
   (logior! (-> this flag) (water-flag lava))
   (set! (-> this attack-event) 'lava)
@@ -78,7 +79,6 @@
   (:state-methods (idle symbol)
    ride-up
    ride-down))
-
 
 (defskelgroup *gondola-sg*
   gondola
@@ -183,7 +183,7 @@
                  (let ((s5-2 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
                    (set-width! s5-2 440)
                    (set-height! s5-2 80)
-                   (set! (-> s5-2 flags) (font-flags shadow kerning large))
+                   (set-flags! s5-2 (font-flags shadow kerning large))
                    (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) s5-2 #f 128 22))
                  (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
                    (if arg0 (go-virtual ride-down) (go-virtual ride-up))))))))
@@ -194,7 +194,7 @@
   :virtual #t
   :code
     (behavior ()
-      (process-entity-status! self (entity-perm-status bit-3) #t)
+      (process-entity-status! self (entity-perm-status no-kill) #t)
       (when (send-event *target* 'clone-anim self)
         (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
         (send-event *target* 'blend-shape #t)
@@ -218,7 +218,7 @@
           (send-event *camera* 'teleport-to-other-start-string))
         (load-state-want-vis 'sno)
         (set-continue! *game-info* "snow-start"))
-      (process-entity-status! self (entity-perm-status bit-3) #f)
+      (process-entity-status! self (entity-perm-status no-kill) #f)
       (go-virtual idle #t))
   :post
     (behavior ()
@@ -229,7 +229,7 @@
   :virtual #t
   :code
     (behavior ()
-      (process-entity-status! self (entity-perm-status bit-3) #t)
+      (process-entity-status! self (entity-perm-status no-kill) #t)
       (when (send-event *target* 'clone-anim self)
         (send-event *target* 'trans 'save (-> self old-target-pos))
         (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
@@ -254,13 +254,15 @@
           (send-event *camera* 'teleport-to-other-start-string))
         (load-state-want-vis 'vi3)
         (set-continue! *game-info* "village3-farside"))
-      (process-entity-status! self (entity-perm-status bit-3) #f)
+      (process-entity-status! self (entity-perm-status no-kill) #f)
       (go-virtual idle #f))
   :post
     (-> (method-of-type gondola ride-up)
         post))
 
-(defmethod init-from-entity! ((this gondola) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gondola) (source-entity entity-actor))
+  "Initialize the gondola's moving collision, skeleton, shadow, and starting direction from the
+   player's side of the route."
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -278,7 +280,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (quaternion-identity! (-> this root quat))
   (initialize-skeleton this *gondola-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
@@ -303,7 +305,6 @@
   (:state-methods
    idle
    (active handle symbol)))
-
 
 (defskelgroup *pistons-sg*
   pistons
@@ -341,9 +342,11 @@
       ;; og:preserve-this decompiler never gets here and fails hard
       (go-virtual idle)))
 
-(defmethod init-from-entity! ((this pistons) (arg0 entity-actor))
+(defmethod init-from-entity! ((this pistons) (source-entity entity-actor))
+  "Initialize the piston skeleton and generator sound, then enter the saved inactive or active
+   state."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *pistons-sg* '())
   (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "gdl-gen-loop" :fo-max 100) (-> this root trans)))
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
@@ -354,7 +357,6 @@
 (deftype gondolacables (process-drawable) ()
   (:state-methods
    idle))
-
 
 (defskelgroup *gondolacables-sg*
   gondolacables
@@ -370,22 +372,21 @@
       (case message
         (('update)
          (process-entity-status! self (entity-perm-status complete) #t)
-         (let ((v0-0 1)) (set! (-> self draw mgeo effect 0 effect-bits) (the-as uint v0-0)) v0-0))))
+         (let ((v0-0 1)) (set! (-> self draw mgeo effect 0 effect-bits) (the-as effect-bits v0-0)) v0-0))))
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
-(defmethod init-from-entity! ((this gondolacables) (arg0 entity-actor))
+(defmethod init-from-entity! ((this gondolacables) (source-entity entity-actor))
+  "Initialize the cable skeleton, restore its saved visible effect state, and enter idle."
   (set! (-> this root) (new 'process 'trsqv))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *gondolacables-sg* '())
   (set! (-> this draw mgeo effect 0 effect-bits)
-        (the-as uint
-                (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete))) 1 0)))
+        (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
+          (effect-bits texscroll)
+          (effect-bits)))
   (go (method-of-object this idle))
   (none))

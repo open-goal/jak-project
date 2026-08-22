@@ -5,9 +5,12 @@
 
 ;; DECOMP BEGINS
 
-(deftype citb-bunny (snow-bunny) ()
+(deftype citb-bunny (snow-bunny)
+  "Citadel Snow Bunny variant with level-specific art, much longer notice and chase ranges, and
+updates enabled during actor pause."
+  ()
   (:methods
-   (nav-enemy-method-48 (_type_ object) none :replace)))
+   (post-init-setup! (_type_ object) none :replace)))
 
 (defskelgroup *citb-bunny-sg*
   citb-bunny
@@ -69,15 +72,19 @@
        :debug-draw-jump #f))
 
 (defmethod nav-enemy-method-60 ((this citb-bunny))
+  "Initialize the Citadel Bunny skeleton and use joint 3 as its drawable origin."
   (initialize-skeleton this *citb-bunny-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   0
   (none))
 
-(defmethod nav-enemy-method-48 ((this citb-bunny) (arg0 object))
+(defmethod post-init-setup! ((this citb-bunny) (setup-context object))
+  "Initialize Citadel Bunny skeleton and navigation tuning, select retreat or lunge defense from
+   resource mode, configure jump, neck, shadow and patrol defaults, and keep updating during actor
+   pause."
   (nav-enemy-method-60 this)
   (init-defaults! this *citb-bunny-nav-enemy-info*)
-  (logclear! (-> this draw shadow-ctrl settings flags) (shadow-flags shdf03))
+  (logclear! (-> this draw shadow-ctrl settings flags) (shadow-flags scissor-top))
   (cond
     ((zero? (res-lump-value (-> this entity) 'mode uint128))
      (set! (-> this defense) (the-as uint 1))
@@ -97,18 +104,20 @@
   0
   (none))
 
-(defmethod set-jump-height-factor! ((this citb-bunny) (arg0 int))
-  (let ((v1-0 arg0))
+(defmethod set-jump-height-factor! ((this citb-bunny) (mode int))
+  "Select Citadel patrol, chase, or retreat jump tuning. Patrol uses animation 6 with a 0.6
+   distance factor; chase uses animation 5 with 0.6; retreat uses animation 5 with 0.4."
+  (let ((selected-mode mode))
     (cond
-      ((zero? v1-0)
+      ((zero? selected-mode)
        (set! (-> this jump-anim) 6)
        (set! (-> this jump-height-min) 4096.0)
        (set! (-> this jump-height-factor) 0.6))
-      ((= v1-0 1)
+      ((= selected-mode 1)
        (set! (-> this jump-anim) 5)
        (set! (-> this jump-height-min) 4096.0)
        (set! (-> this jump-height-factor) 0.6))
-      ((= v1-0 2)
+      ((= selected-mode 2)
        (set! (-> this jump-anim) 5)
        (set! (-> this jump-height-min) 4096.0)
        (set! (-> this jump-height-factor) 0.4))))

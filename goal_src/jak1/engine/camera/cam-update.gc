@@ -16,196 +16,191 @@
 
 ;; DECOMP BEGINS
 
-(defun plane-from-points ((arg0 (inline-array plane)) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 int))
-  "Get a plane that contains the 3 given points."
-  (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (vector-cross! s4-0 arg1 arg2)
-    (vector-normalize! s4-0 1.0)
-    (set! (-> s4-0 w) (vector-dot s4-0 arg3))
-    (set! (-> (&-> arg0 0 data arg4) 0) (-> s4-0 x))
-    (set! (-> (&-> arg0 0 data arg4) 4) (-> s4-0 y))
-    (set! (-> (&-> arg0 0 data arg4) 8) (-> s4-0 z))
-    (set! (-> (&-> arg0 0 data arg4) 12) (-> s4-0 w)))
+;; The four side planes are stored transposed for parallel point tests:
+;; planes[0] contains the four x coefficients, planes[1] the four y
+;; coefficients, planes[2] the four z coefficients, and planes[3] the
+;; four constants.  plane-index therefore selects one lane in each vector.
+(defun plane-from-points ((planes (inline-array plane)) (edge-a vector) (edge-b vector) (point vector) (plane-index int))
+  "Construct a normalized plane from two in-plane edge directions and
+   a point on the plane. Store its four coefficients at plane-index in the coefficient-transposed
+   four-plane array."
+  (let ((normal (new 'stack-no-clear 'vector)))
+    (vector-cross! normal edge-a edge-b)
+    (vector-normalize! normal 1.0)
+    (set! (-> normal w) (vector-dot normal point))
+    (set! (-> (&-> planes 0 data plane-index) 0) (-> normal x))
+    (set! (-> (&-> planes 0 data plane-index) 4) (-> normal y))
+    (set! (-> (&-> planes 0 data plane-index) 8) (-> normal z))
+    (set! (-> (&-> planes 0 data plane-index) 12) (-> normal w)))
   (none))
 
-(defun set-point ((arg0 vector) (arg1 float) (arg2 float) (arg3 float))
-  "Set a vector to an xyz point (sets w = 1.0)"
-  (set! (-> arg0 x) arg1)
-  (set! (-> arg0 y) arg2)
-  (set! (-> arg0 z) arg3)
-  (set! (-> arg0 w) 1.0)
+(defun set-point ((point vector) (x float) (y float) (z float))
+  "Set point's xyz coordinates and set w to one."
+  (set-vector! point x y z 1.0)
   (none))
 
-(defun update-view-planes ((arg0 math-camera) (arg1 (inline-array plane)) (arg2 float))
-  "Compute the frustum planes from the given camera."
+(defun update-view-planes ((camera math-camera) (planes (inline-array plane)) (scale float))
+  "Build the camera's four side clipping planes. Construct near and
+   far frustum corners at scale, rotate them into world space, form rays from the camera to the four
+   far corners, and write the resulting planes in coefficient-transposed form. scale widens the side
+   planes without changing the near and far distances."
   (when (not *artist-fix-frustum*)
-    (let ((s5-0 (new 'stack 'view-frustum)))
-      (let ((f30-0 (* arg2 (-> arg0 x-ratio) (-> arg0 d)))
-            (f26-0 (* arg2 (-> arg0 y-ratio) (-> arg0 d)))
-            (f28-0 (* arg2 (-> arg0 x-ratio) (-> arg0 f)))
-            (f24-0 (* arg2 (-> arg0 y-ratio) (-> arg0 f))))
-        (set-point (-> s5-0 hither-top-left) (- f30-0) f26-0 (-> arg0 d))
-        (set-point (-> s5-0 hither-top-right) f30-0 f26-0 (-> arg0 d))
-        (set-point (-> s5-0 hither-bottom-left) (- f30-0) (- f26-0) (-> arg0 d))
-        (set-point (-> s5-0 hither-bottom-right) f30-0 (- f26-0) (-> arg0 d))
-        (set-point (-> s5-0 yon-top-left) (- f28-0) f24-0 (-> arg0 f))
-        (set-point (-> s5-0 yon-top-right) f28-0 f24-0 (-> arg0 f))
-        (set-point (-> s5-0 yon-bottom-left) (- f28-0) (- f24-0) (-> arg0 f))
-        (set-point (-> s5-0 yon-bottom-right) f28-0 (- f24-0) (-> arg0 f)))
-      (vector-matrix*! (-> s5-0 hither-top-left) (-> s5-0 hither-top-left) (-> arg0 inv-camera-rot))
-      (vector-matrix*! (-> s5-0 hither-top-right) (-> s5-0 hither-top-right) (-> arg0 inv-camera-rot))
-      (vector-matrix*! (-> s5-0 hither-bottom-left) (-> s5-0 hither-bottom-left) (-> arg0 inv-camera-rot))
-      (vector-matrix*! (-> s5-0 hither-bottom-right) (-> s5-0 hither-bottom-right) (-> arg0 inv-camera-rot))
-      (vector-matrix*! (-> s5-0 yon-top-left) (-> s5-0 yon-top-left) (-> arg0 inv-camera-rot))
-      (vector-matrix*! (-> s5-0 yon-top-right) (-> s5-0 yon-top-right) (-> arg0 inv-camera-rot))
-      (vector-matrix*! (-> s5-0 yon-bottom-left) (-> s5-0 yon-bottom-left) (-> arg0 inv-camera-rot))
-      (vector-matrix*! (-> s5-0 yon-bottom-right) (-> s5-0 yon-bottom-right) (-> arg0 inv-camera-rot))
-      (let ((s2-0 (new-stack-vector0))
-            (s3-1 (new-stack-vector0))
-            (s1-0 (new-stack-vector0))
-            (s0-0 (new-stack-vector0)))
+    (let ((frustum (new 'stack 'view-frustum)))
+      (let ((near-half-width (* scale (-> camera x-ratio) (-> camera d)))
+            (near-half-height (* scale (-> camera y-ratio) (-> camera d)))
+            (far-half-width (* scale (-> camera x-ratio) (-> camera f)))
+            (far-half-height (* scale (-> camera y-ratio) (-> camera f))))
+        (set-point (-> frustum hither-top-left) (- near-half-width) near-half-height (-> camera d))
+        (set-point (-> frustum hither-top-right) near-half-width near-half-height (-> camera d))
+        (set-point (-> frustum hither-bottom-left) (- near-half-width) (- near-half-height) (-> camera d))
+        (set-point (-> frustum hither-bottom-right) near-half-width (- near-half-height) (-> camera d))
+        (set-point (-> frustum yon-top-left) (- far-half-width) far-half-height (-> camera f))
+        (set-point (-> frustum yon-top-right) far-half-width far-half-height (-> camera f))
+        (set-point (-> frustum yon-bottom-left) (- far-half-width) (- far-half-height) (-> camera f))
+        (set-point (-> frustum yon-bottom-right) far-half-width (- far-half-height) (-> camera f)))
+      (vector-matrix*! (-> frustum hither-top-left) (-> frustum hither-top-left) (-> camera inv-camera-rot))
+      (vector-matrix*! (-> frustum hither-top-right) (-> frustum hither-top-right) (-> camera inv-camera-rot))
+      (vector-matrix*! (-> frustum hither-bottom-left) (-> frustum hither-bottom-left) (-> camera inv-camera-rot))
+      (vector-matrix*! (-> frustum hither-bottom-right) (-> frustum hither-bottom-right) (-> camera inv-camera-rot))
+      (vector-matrix*! (-> frustum yon-top-left) (-> frustum yon-top-left) (-> camera inv-camera-rot))
+      (vector-matrix*! (-> frustum yon-top-right) (-> frustum yon-top-right) (-> camera inv-camera-rot))
+      (vector-matrix*! (-> frustum yon-bottom-left) (-> frustum yon-bottom-left) (-> camera inv-camera-rot))
+      (vector-matrix*! (-> frustum yon-bottom-right) (-> frustum yon-bottom-right) (-> camera inv-camera-rot))
+      ;; The side planes all pass through the camera.  Their normals come
+      ;; from pairs of rays through the far corners.  The complete near and
+      ;; far corner set is transformed even though this calculation needs
+      ;; only the four far corners.
+      (let ((far-top-left-ray (new-stack-vector0))
+            (far-top-right-ray (new-stack-vector0))
+            (far-bottom-left-ray (new-stack-vector0))
+            (far-bottom-right-ray (new-stack-vector0)))
         (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-        (let ((sv-240 (new 'stack-no-clear 'vector)))
-          (set! (-> sv-240 quad) (the-as uint128 0))
-          (set! (-> sv-240 quad) (-> arg0 inv-camera-rot vector 3 quad))
-          (vector-! s2-0 (-> s5-0 yon-top-left) sv-240)
-          (vector-! s3-1 (-> s5-0 yon-top-right) sv-240)
-          (vector-! s1-0 (-> s5-0 yon-bottom-left) sv-240)
-          (vector-! s0-0 (-> s5-0 yon-bottom-right) sv-240)
-          (plane-from-points arg1 s2-0 s1-0 sv-240 0)
-          (plane-from-points arg1 s0-0 s3-1 sv-240 1)
-          (plane-from-points arg1 s3-1 s2-0 sv-240 2)
-          (plane-from-points arg1 s1-0 s0-0 sv-240 3)))))
+        (let ((camera-position (new-stack-vector0)))
+          (set! (-> camera-position quad) (-> camera inv-camera-rot vector 3 quad))
+          (vector-! far-top-left-ray (-> frustum yon-top-left) camera-position)
+          (vector-! far-top-right-ray (-> frustum yon-top-right) camera-position)
+          (vector-! far-bottom-left-ray (-> frustum yon-bottom-left) camera-position)
+          (vector-! far-bottom-right-ray (-> frustum yon-bottom-right) camera-position)
+          (plane-from-points planes far-top-left-ray far-bottom-left-ray camera-position 0)
+          (plane-from-points planes far-bottom-right-ray far-top-right-ray camera-position 1)
+          (plane-from-points planes far-top-right-ray far-top-left-ray camera-position 2)
+          (plane-from-points planes far-bottom-left-ray far-bottom-right-ray camera-position 3)))))
   (none))
 
-;; if we should still attempt vis updates when outside of the bsp's boxes.
+;; If we should still attempt vis updates when outside of the BSP's boxes.
 (define *update-leaf-when-outside-bsp* #t)
 
-(defun update-visible ((arg0 math-camera))
-  "Update occlusion visibility data for the camera position.
-   Each level has a bsp. Each leaf of the bsp stores a list of visible objects.
-   This is used to implement occlusion culling.
-   The vis-bits of the level will be updated if needed."
-  (local-vars (a0-16 symbol) (s3-0 level-vis-info) (s4-0 level-vis-info))
+(defun update-visible ((camera math-camera))
+  "Select the current BSP leaf and visibility string for every active
+   level. Prefer valid self visibility, then adjacent-level visibility; retain the previous bits while
+   data is loading and fall back to all-visible when no usable string exists. Return false."
+  (local-vars (use-adjacent? symbol) (adjacent-vis level-vis-info) (self-vis level-vis-info))
   (when (not *artist-fix-visible*)
-    ;; first, determine which leaf of the bsp we are in (per level).
-    (dotimes (s5-0 (-> *level* length))
-      (let ((v1-4 (-> *level* level s5-0)))
-        (when (= (-> v1-4 status) 'active)
-          (if (and (nonzero? (-> v1-4 bsp nodes)) (or *update-leaf-when-outside-bsp* (-> v1-4 inside-boxes?)))
-            ;; will store in the bsp's current-leaf-idx.
-            (bsp-camera-asm (-> v1-4 bsp) (-> arg0 trans))))))
-    ;; do vis updates.
-    (dotimes (gp-1 (-> *level* length))
-      (let ((s5-1 (-> *level* level gp-1)))
-        (when (= (-> s5-1 status) 'active)
-          (let ((a2-0 (/ (+ (-> s5-1 bsp visible-list-length) 15) 16)))
-            ;; start by setting all-visible to something truthy (either original, or #t)
-            ;; below, we'll try to figure out a way to get vis data and set this back to #f.
-            (set! (-> s5-1 all-visible?) (if (-> s5-1 all-visible?) (-> s5-1 all-visible?) #t))
+    ;; First determine the current BSP leaf for each active level.
+    (dotimes (i (-> *level* length))
+      (let ((active-level (-> *level* level i)))
+        (when (= (-> active-level status) 'active)
+          (if (and (nonzero? (-> active-level bsp nodes)) (or *update-leaf-when-outside-bsp* (-> active-level inside-boxes?)))
+            ;; bsp-camera-asm stores the result in current-leaf-idx.
+            (bsp-camera-asm (-> active-level bsp) (-> camera trans))))))
+    ;; Then select or update the visibility string for each level.
+    (dotimes (i (-> *level* length))
+      (let ((active-level (-> *level* level i)))
+        (when (= (-> active-level status) 'active)
+          (let ((quad-count (/ (+ (-> active-level bsp visible-list-length) 15) 16)))
+            ;; Begin with a truthy state.  A usable visibility string below
+            ;; clears this, while 'loading preserves the last good bits.
+            (set! (-> active-level all-visible?) (if (-> active-level all-visible?) (-> active-level all-visible?) #t))
             (cond
-              ((or (not (-> s5-1 force-all-visible?)) (-> s5-1 inside-boxes?))
-               ;; we are inside the level's bsp, we should attempt vis stuff.
+              ((or (not (-> active-level force-all-visible?)) (-> active-level inside-boxes?))
                (cond
-                 ((or *artist-all-visible* (zero? (-> s5-1 bsp nodes)))
-                  ;; we have no bsp, or manual override all visible. Copy the all vis list
-                  ;; to our vis string.
-                  (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0))
+                 ((or *artist-all-visible* (zero? (-> active-level bsp nodes)))
+                  (quad-copy! (-> active-level vis-bits) (-> active-level bsp all-visible-list) quad-count))
                  ((begin
-                    ;; our vis info
-                    (set! s4-0 (-> s5-1 vis-info (-> s5-1 vis-self-index)))
-                    ;; adj vis info (idx will be 7 if there's no adj right now, and will give us #f)
-                    (set! s3-0 (-> s5-1 vis-info (-> s5-1 vis-adj-index)))
-                    (let ((v1-32 #f)) ;; should use self vis
-                      (set! a0-16 #f) ;; should use adj vis
-                      ;; see if we want self vis
-                      (when s4-0
-                        (set! v1-32 (nonzero? (logand (shl #x8000 16) (-> s4-0 flags))))
-                        ;; not sure when this would happen, but make sure that our leaf
-                        ;; index is in bounds (maybe if you use the wrong version of levels)
-                        (if (< (-> s4-0 length) (-> s4-0 from-bsp current-leaf-idx)) (set! v1-32 #f)))
-                      ;; see if we want adj vis.
-                      (when s3-0
-                        (set! a0-16 (logtest? (shl #x8000 16) (-> s3-0 flags)))
-                        (if (< (-> s3-0 length) (-> s3-0 from-bsp current-leaf-idx)) (set! a0-16 #f)))
-                      v1-32 ;; this is the cond condition, and is if we want the self vis.
-                      ))
-                  ;; want self.  clear all visible if we aren't loading.
-                  (if (!= (-> s5-1 all-visible?) 'loading) (set! (-> s5-1 all-visible?) #f))
-                  (when (update-vis! s5-1 s4-0 (-> s4-0 ramdisk) (-> s4-0 string-block))
-                    ;; success! Remove all other vis strings.
-                    ;; if update vis failed (due to still loading, etc), keep previous.
-                    (countdown (v1-40 8)
-                      (let ((a0-22 (-> s5-1 vis-info v1-40)))
-                        (when a0-22
-                          (if (!= a0-22 s4-0) (set! (-> a0-22 current-vis-string) (the-as uint -1))))))
-                    ;; successful vis update, remove all-visible.
-                    (set! (-> s5-1 all-visible?) #f)))
-                 ;; same case as above, but if we want to use the other vis.
-                 (a0-16
-                  (if (!= (-> s5-1 all-visible?) 'loading) (set! (-> s5-1 all-visible?) #f))
-                  (when (update-vis! s5-1 s3-0 (-> s3-0 ramdisk) (-> s3-0 string-block))
-                    (countdown (v1-50 8)
-                      (let ((a0-27 (-> s5-1 vis-info v1-50)))
-                        (when a0-27
-                          (if (!= a0-27 s3-0) (set! (-> a0-27 current-vis-string) (the-as uint -1))))))
-                    (set! (-> s5-1 all-visible?) #f)))
-                 ((and (= (-> s5-1 all-visible?) 'loading) (-> *level* play?))
-                  ;; if we're in between vis, then leave the old string.
-                  )
-                 (else
-                  ;; couldn't find any vis, just make everything visible
-                  (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0))))
-              (else
-               ;; outside boxes, and force all visible is set.
-               (quad-copy! (-> s5-1 vis-bits) (-> s5-1 bsp all-visible-list) a2-0))))
-          (if (and *stats-bsp* (= *master-mode* 'game)) (format *stdcon* "~0kleaf-index = ~d~%" (-> s5-1 bsp current-leaf-idx))))))
+                    ;; Prefer visibility authored by this level.  Slot 7
+                    ;; conventionally yields #f when there is no adjacent level.
+                    (set! self-vis (-> active-level vis-info (-> active-level vis-self-index)))
+                    (set! adjacent-vis (-> active-level vis-info (-> active-level vis-adj-index)))
+                    (let ((use-self? #f))
+                      (set! use-adjacent? #f)
+                      (when self-vis
+                        (set! use-self? (logtest? (vis-info-flag using-this-as-only-vis) (-> self-vis flags)))
+                        ;; A stale leaf index can occur while mismatched level
+                        ;; data is loaded, so never index beyond the string table.
+                        (if (< (-> self-vis length) (-> self-vis from-bsp current-leaf-idx)) (set! use-self? #f)))
+                      (when adjacent-vis
+                        (set! use-adjacent? (logtest? (vis-info-flag using-this-as-only-vis) (-> adjacent-vis flags)))
+                        (if (< (-> adjacent-vis length) (-> adjacent-vis from-bsp current-leaf-idx)) (set! use-adjacent? #f)))
+                      use-self?))
+                  (if (!= (-> active-level all-visible?) 'loading)
+                      (set! (-> active-level all-visible?) #f))
+                  (when (update-vis! active-level self-vis (-> self-vis ramdisk) (-> self-vis string-block))
+                    ;; A successful update makes every other cached string stale.
+                    (countdown (i 8)
+                      (let ((vis-info (-> active-level vis-info i)))
+                        (when vis-info
+                          (if (!= vis-info self-vis)
+                              (set! (-> vis-info current-vis-string) (the-as uint -1))))))
+                    (set! (-> active-level all-visible?) #f)))
+                 (use-adjacent?
+                  (if (!= (-> active-level all-visible?) 'loading)
+                      (set! (-> active-level all-visible?) #f))
+                  (when (update-vis! active-level adjacent-vis (-> adjacent-vis ramdisk) (-> adjacent-vis string-block))
+                    ;; The adjacent string follows the same cache rules.
+                    (countdown (i 8)
+                      (let ((vis-info (-> active-level vis-info i)))
+                        (when vis-info
+                          (if (!= vis-info adjacent-vis)
+                              (set! (-> vis-info current-vis-string) (the-as uint -1))))))
+                    (set! (-> active-level all-visible?) #f)))
+                 ;; Keep the old visibility bits while the next string loads
+                 ;; during play, avoiding an all-visible flash between strings.
+                 ((and (= (-> active-level all-visible?) 'loading) (-> *level* play?)))
+                 ;; No usable visibility data: draw the complete level.
+                 (else (quad-copy! (-> active-level vis-bits) (-> active-level bsp all-visible-list) quad-count))))
+              ;; Outside the level boxes with force-all-visible enabled.
+              (else (quad-copy! (-> active-level vis-bits) (-> active-level bsp all-visible-list) quad-count))))
+          (if (and *stats-bsp* (= *master-mode* 'game))
+            (format *stdcon* "~0kleaf-index = ~d~%" (-> active-level bsp current-leaf-idx))))))
     #f))
 
 (define *save-camera-inv-rot* (new 'global 'matrix))
 
 (matrix-identity! *save-camera-inv-rot*)
 
-(defun move-camera-from-pad ((arg0 math-camera))
-  (let ((v1-0 *external-cam-mode*)
-        (s5-0 0))
+(defun move-camera-from-pad ((camera math-camera))
+  "Apply the selected external-camera controller to camera.
+   Preserve an upright basis relative to gravity unless allow-z is enabled, accumulate orientation in
+   *save-camera-inv-rot*, copy that basis to the math camera, and return camera."
+  (let ((mode *external-cam-mode*)
+        (controller-index 0))
     (cond
-      ((= v1-0 'locked) (set! v1-0 #f))
-      ((= v1-0 'pad-1) (set! s5-0 1))
-      ((not *camera-combiner*) (set! v1-0 'pad-0)))
-    (when v1-0
-      (let ((s4-1 (vector-negate-in-place! (vector-normalize-copy! (new-stack-vector0) (-> *standard-dynamics* gravity) 1.0))))
-        (if (= (vector-length s4-1) 0.0) (set! (-> s4-1 y) -1.0))
-        (if (logtest? *external-cam-options* (external-cam-option allow-z)) (set! s4-1 (the-as vector #f)))
-        (cam-free-floating-move *save-camera-inv-rot* (-> arg0 trans) s4-1 s5-0))))
-  (let* ((a2-2 (-> *math-camera* inv-camera-rot))
-         (a3-1 *save-camera-inv-rot*)
-         (v1-11 (-> a3-1 vector 0 quad))
-         (a0-14 (-> a3-1 vector 1 quad))
-         (a1-2 (-> a3-1 vector 2 quad))
-         (a3-2 (-> a3-1 vector 3 quad)))
-    (set! (-> a2-2 vector 0 quad) v1-11)
-    (set! (-> a2-2 vector 1 quad) a0-14)
-    (set! (-> a2-2 vector 2 quad) a1-2)
-    (set! (-> a2-2 vector 3 quad) a3-2))
-  arg0)
+      ((= mode 'locked) (set! mode #f))
+      ((= mode 'pad-1)
+       (set! controller-index 1))
+      ((not *camera-combiner*)
+       (set! mode 'pad-0)))
+    (when mode
+      ;; Gravity supplies the camera's down direction.  Passing #f for up
+      ;; allows a fully free orientation, including roll.
+      (let ((up (vector-negate-in-place! (vector-normalize-copy! (new-stack-vector0) (-> *standard-dynamics* gravity) 1.0))))
+        (if (= (vector-length up) 0.0)
+            (set! (-> up y) -1.0))
+        (if (logtest? *external-cam-options* (external-cam-option allow-z))
+            (set! up (the-as vector #f)))
+        (cam-free-floating-move *save-camera-inv-rot* (-> camera trans) up controller-index))))
+  (matrix-copy! (-> *math-camera* inv-camera-rot) *save-camera-inv-rot*)
+  camera)
 
 ;; og:preserve-this PAL patch here (moved from cam-debug)
 (defun external-cam-reset! ()
+  "Reset the external math camera to the current combiner transform,
+   or to identity at the origin when the combiner is unavailable."
   (vector-reset! (-> *math-camera* trans))
   (matrix-identity! (-> *math-camera* inv-camera-rot))
   (when *camera-combiner*
-    (let* ((v1-6 (-> *math-camera* inv-camera-rot))
-           (a3-0 (-> *camera-combiner* inv-camera-rot))
-           (a0-2 (-> a3-0 vector 0 quad))
-           (a1-0 (-> a3-0 vector 1 quad))
-           (a2-0 (-> a3-0 vector 2 quad))
-           (a3-1 (-> a3-0 vector 3 quad)))
-      (set! (-> v1-6 vector 0 quad) a0-2)
-      (set! (-> v1-6 vector 1 quad) a1-0)
-      (set! (-> v1-6 vector 2 quad) a2-0)
-      (set! (-> v1-6 vector 3 quad) a3-1))
-    (set! (-> *math-camera* trans quad) (-> *camera-combiner* trans quad)))
+    (matrix-copy! (-> *math-camera* inv-camera-rot) (-> *camera-combiner* inv-camera-rot))
+    (vector-copy! (-> *math-camera* trans) (-> *camera-combiner* trans)))
   0
   (none))
 
@@ -215,7 +210,26 @@
 
 (define *start-pos* (new 'global 'vector))
 
+;; The camera orientation is kept in both directions.  inv-camera-rot is
+;; camera-local to world and carries the camera position in its fourth row.
+;; camera-rot is its transpose with (-camera-position * rotation) in the
+;; fourth row, making it the world-to-camera view matrix.  camera-temp is
+;; the view matrix multiplied by perspective; prev-camera-temp retains the
+;; previous frame for effects that need temporal camera motion.
+;;
+;; TIE and shrub rendering consume camera-derived constants directly.
+;; hmge-d combines the fog interval with each renderer's homogeneous near
+;; threshold, hvdf-offset is the GS screen-space offset, and billboard-const
+;; converts shrub sizes into projected pixel extents.  These values depend
+;; on the current near distance, aspect ratio, FOV, fog, and video setup, so
+;; they are rebuilt whenever the camera is updated.
 (defun update-camera ()
+  "Choose the gameplay, alternate, or controller-driven camera for this
+   frame; update the math camera's view, inverse-view, view-projection, smoothed rotation, fog and
+   field-of-view factors; publish camera constants and guard planes to TIE and shrub rendering; update
+   BSP visibility and wind; and return false."
+  ;; Measure horizontal travel between frames 180 and 480.  World
+  ;; coordinates use 4096 units per meter.
   (when *start-timer*
     (when (= *timer-value* 180)
       (format #t
@@ -223,7 +237,7 @@
               (-> *target* control trans x)
               (-> *target* control trans y)
               (-> *target* control trans z))
-      (set! (-> *start-pos* quad) (-> *target* control trans quad)))
+      (vector-copy! *start-pos* (-> *target* control trans)))
     (when (= *timer-value* 480)
       (format #t
               "Player pos = ~F ~F ~F~%"
@@ -232,178 +246,140 @@
               (-> *target* control trans z))
       (format #t "Dist = ~F~%" (* 0.00024414062 (vector-vector-xz-distance (-> *target* control trans) *start-pos*)))
       (set! *start-timer* (the-as int #f)))
-    (if (< 179 *timer-value*) (format *stdcon* "~%~%Time = ~D~%" *timer-value*))
+    (if (< 179 *timer-value*)
+        (format *stdcon* "~%~%Time = ~D~%" *timer-value*))
     (set! *timer-value* (+ *timer-value* 1)))
   (when (not *start-timer*)
     (set! *timer-value* 0)
     0)
-  (dotimes (gp-1 2)
-    (let ((s5-1 (-> *level* level gp-1)))
-      (when (!= (-> s5-1 status) 'inactive)
-        (let ((a0-14 (new-stack-vector0)))
-          (vector-! a0-14 (the-as vector (-> s5-1 info bsphere)) (-> *math-camera* trans))
-          (set! (-> s5-1 level-distance) (fmax 0.0 (- (vector-length a0-14) (-> s5-1 info bsphere w)))))
+  ;; Only the two resident level slots need a camera-to-bounds distance.
+  (dotimes (i 2)
+    (let ((active-level (-> *level* level i)))
+      (when (!= (-> active-level status) 'inactive)
+        (let ((camera-to-level (new-stack-vector0)))
+          (vector-! camera-to-level (the-as vector (-> active-level info bsphere)) (-> *math-camera* trans))
+          (set! (-> active-level level-distance) (fmax 0.0 (- (vector-length camera-to-level) (-> active-level info bsphere w)))))
         (when *display-level-spheres*
           (add-debug-sphere #t
                             (bucket-id debug-no-zbuf)
-                            (-> s5-1 info bsphere)
-                            (-> s5-1 info bsphere w)
+                            (-> active-level info bsphere)
+                            (-> active-level info bsphere w)
                             (new 'static 'rgba :r #xff :a #x80))
           (format *stdcon*
                   "~f ~f ~f ~f~%"
-                  (/ (-> s5-1 info bsphere x) METER_LENGTH)
-                  (/ (-> s5-1 info bsphere y) METER_LENGTH)
-                  (/ (-> s5-1 info bsphere z) METER_LENGTH)
-                  (/ (-> s5-1 info bsphere w) METER_LENGTH))))))
+                  (/ (-> active-level info bsphere x) METER_LENGTH)
+                  (/ (-> active-level info bsphere y) METER_LENGTH)
+                  (/ (-> active-level info bsphere z) METER_LENGTH)
+                  (/ (-> active-level info bsphere w) METER_LENGTH))))))
+  ;; Refresh projection and display constants before choosing this frame's
+  ;; pose.  Camera smush adds its vertical correction to gameplay poses.
   (update-math-camera *math-camera* (-> *setting-control* current video-mode) (-> *setting-control* current aspect-ratio))
   (update! *camera-smush-control*)
   (cond
     ((or (= *master-mode* 'pause) (= *master-mode* 'progress) *progress-process*))
-    ((>= *camera-look-through-other* 2) (set! *camera-look-through-other* 1))
-    ((and (= *camera-look-through-other* 1) (!= *master-mode* 'menu)) (set! *camera-look-through-other* 0) 0))
+    ((>= *camera-look-through-other* 2)
+     (set! *camera-look-through-other* 1))
+    ((and (= *camera-look-through-other* 1) (!= *master-mode* 'menu))
+     (set! *camera-look-through-other* 0)
+     0))
   (cond
-    (*external-cam-mode* (move-camera-from-pad *math-camera*))
+    (*external-cam-mode*
+     (move-camera-from-pad *math-camera*))
     ((nonzero? *camera-look-through-other*)
      (set! (-> *math-camera* fov) (-> *camera-other-fov* data))
-     (set! (-> *math-camera* trans quad) (-> *camera-other-trans* quad))
+     (vector-copy! (-> *math-camera* trans) *camera-other-trans*)
      (+! (-> *math-camera* trans y) (get-no-update *camera-smush-control*))
-     (let* ((a2-9 (-> *math-camera* inv-camera-rot))
-            (a3-4 *camera-other-matrix*)
-            (v1-86 (-> a3-4 vector 0 quad))
-            (a0-29 (-> a3-4 vector 1 quad))
-            (a1-10 (-> a3-4 vector 2 quad))
-            (a3-5 (-> a3-4 vector 3 quad)))
-       (set! (-> a2-9 vector 0 quad) v1-86)
-       (set! (-> a2-9 vector 1 quad) a0-29)
-       (set! (-> a2-9 vector 2 quad) a1-10)
-       (set! (-> a2-9 vector 3 quad) a3-5))
-     (let* ((a2-10 *save-camera-inv-rot*)
-            (a3-6 *camera-other-matrix*)
-            (v1-87 (-> a3-6 vector 0 quad))
-            (a0-30 (-> a3-6 vector 1 quad))
-            (a1-11 (-> a3-6 vector 2 quad))
-            (a3-7 (-> a3-6 vector 3 quad)))
-       (set! (-> a2-10 vector 0 quad) v1-87)
-       (set! (-> a2-10 vector 1 quad) a0-30)
-       (set! (-> a2-10 vector 2 quad) a1-11)
-       (set! (-> a2-10 vector 3 quad) a3-7)))
+     (matrix-copy! (-> *math-camera* inv-camera-rot) *camera-other-matrix*)
+     (matrix-copy! *save-camera-inv-rot* *camera-other-matrix*))
     ((and *camera-combiner* (not *external-cam-mode*))
      (set! (-> *math-camera* fov) (-> *camera-combiner* fov))
-     (set! (-> *math-camera* trans quad) (-> *camera-combiner* trans quad))
+     (vector-copy! (-> *math-camera* trans) (-> *camera-combiner* trans))
      (+! (-> *math-camera* trans y) (get-no-update *camera-smush-control*))
-     (let* ((v1-100 (-> *math-camera* inv-camera-rot))
-            (a3-8 (-> *camera-combiner* inv-camera-rot))
-            (a0-36 (-> a3-8 vector 0 quad))
-            (a1-12 (-> a3-8 vector 1 quad))
-            (a2-11 (-> a3-8 vector 2 quad))
-            (a3-9 (-> a3-8 vector 3 quad)))
-       (set! (-> v1-100 vector 0 quad) a0-36)
-       (set! (-> v1-100 vector 1 quad) a1-12)
-       (set! (-> v1-100 vector 2 quad) a2-11)
-       (set! (-> v1-100 vector 3 quad) a3-9))
-     (let* ((v1-101 *save-camera-inv-rot*)
-            (a3-10 (-> *camera-combiner* inv-camera-rot))
-            (a0-38 (-> a3-10 vector 0 quad))
-            (a1-13 (-> a3-10 vector 1 quad))
-            (a2-12 (-> a3-10 vector 2 quad))
-            (a3-11 (-> a3-10 vector 3 quad)))
-       (set! (-> v1-101 vector 0 quad) a0-38)
-       (set! (-> v1-101 vector 1 quad) a1-13)
-       (set! (-> v1-101 vector 2 quad) a2-12)
-       (set! (-> v1-101 vector 3 quad) a3-11)))
+     (matrix-copy! (-> *math-camera* inv-camera-rot) (-> *camera-combiner* inv-camera-rot))
+     (matrix-copy! *save-camera-inv-rot* (-> *camera-combiner* inv-camera-rot)))
     (else (move-camera-from-pad *math-camera*)))
   (matrix-transpose! (-> *math-camera* camera-rot) (-> *math-camera* inv-camera-rot))
+  ;; 11650.845 GOAL angle units is 64 degrees.  Narrower fields of view
+  ;; reduce the mip factor so zoomed views do not choose overly coarse mips;
+  ;; wider views are capped at one.
   (cond
-    (*camera-no-mip-correction* (set! (-> *math-camera* fov-correction-factor) 1.0))
+    (*camera-no-mip-correction*
+     (set! (-> *math-camera* fov-correction-factor) 1.0))
     (else
-     (let ((f0-28 (fmin 11650.845 (-> *math-camera* fov))))
-       (set! (-> *math-camera* fov-correction-factor) (* 0.00008583069 f0-28)))))
+     (let ((mip-fov (fmin 11650.845 (-> *math-camera* fov))))
+       (set! (-> *math-camera* fov-correction-factor) (* 0.00008583069 mip-fov)))))
+  ;; Blend from the saved orientation toward the current pose while smooth-t
+  ;; decays.  Once complete, keep an exact copy of the current orientation.
   (if (< 0.0 (-> *math-camera* smooth-t))
-    (set! (-> *math-camera* smooth-t) (- (-> *math-camera* smooth-t) (-> *math-camera* smooth-step))))
+      (set! (-> *math-camera* smooth-t) (- (-> *math-camera* smooth-t) (-> *math-camera* smooth-step))))
   (cond
     ((< 0.0 (-> *math-camera* smooth-t))
-     (let ((gp-2 (new-stack-quaternion0)))
-       (matrix->quaternion gp-2 (-> *math-camera* inv-camera-rot))
-       (quaternion-slerp! gp-2 gp-2 (-> *math-camera* inv-camera-rot-smooth-from) (-> *math-camera* smooth-t))
-       (quaternion->matrix (-> *math-camera* inv-camera-rot-smooth) gp-2)))
+     (let ((smooth-rotation (new-stack-quaternion0)))
+       (matrix->quaternion smooth-rotation (-> *math-camera* inv-camera-rot))
+       (quaternion-slerp! smooth-rotation
+                          smooth-rotation
+                          (-> *math-camera* inv-camera-rot-smooth-from)
+                          (-> *math-camera* smooth-t))
+       (quaternion->matrix (-> *math-camera* inv-camera-rot-smooth) smooth-rotation)))
     (else
-     (let* ((v1-124 (-> *math-camera* inv-camera-rot-smooth))
-            (a3-13 (-> *math-camera* inv-camera-rot))
-            (a0-45 (-> a3-13 vector 0 quad))
-            (a1-18 (-> a3-13 vector 1 quad))
-            (a2-14 (-> a3-13 vector 2 quad))
-            (a3-14 (-> a3-13 vector 3 quad)))
-       (set! (-> v1-124 vector 0 quad) a0-45)
-       (set! (-> v1-124 vector 1 quad) a1-18)
-       (set! (-> v1-124 vector 2 quad) a2-14)
-       (set! (-> v1-124 vector 3 quad) a3-14))))
+     (matrix-copy! (-> *math-camera* inv-camera-rot-smooth) (-> *math-camera* inv-camera-rot))))
   (if (and (!= *master-mode* 'menu) *display-camera-info*)
-    (format *stdcon* "cam pos ~M ~M ~M~%" (-> *math-camera* trans x) (-> *math-camera* trans y) (-> *math-camera* trans z)))
-  (when (zero? (-> *math-camera* reset))
-    (let* ((v1-136 (-> *math-camera* prev-camera-temp))
-           (a3-16 (-> *math-camera* camera-temp))
-           (a0-50 (-> a3-16 vector 0 quad))
-           (a1-20 (-> a3-16 vector 1 quad))
-           (a2-16 (-> a3-16 vector 2 quad))
-           (a3-17 (-> a3-16 vector 3 quad)))
-      (set! (-> v1-136 vector 0 quad) a0-50)
-      (set! (-> v1-136 vector 1 quad) a1-20)
-      (set! (-> v1-136 vector 2 quad) a2-16)
-      (set! (-> v1-136 vector 3 quad) a3-17)))
-  (let ((gp-3 (-> *math-camera* camera-temp))
-        (s4-1 (-> *math-camera* camera-rot))
-        (s5-2 (-> *math-camera* inv-camera-rot))
-        (s3-0 (-> *math-camera* trans)))
-    (let ((s2-0 (new-stack-vector0)))
-      (set! (-> s2-0 x) (- (-> s3-0 x)))
-      (set! (-> s2-0 y) (- (-> s3-0 y)))
-      (set! (-> s2-0 z) (- (-> s3-0 z)))
-      (set! (-> s2-0 w) 1.0)
-      (vector-matrix*! s2-0 s2-0 s4-1)
-      (set! (-> s4-1 vector 3 quad) (-> s2-0 quad)))
-    (matrix*! gp-3 s4-1 (-> *math-camera* perspective))
-    (set! (-> s5-2 vector 3 quad) (-> s3-0 quad)))
+      (format *stdcon* "cam pos ~M ~M ~M~%" (-> *math-camera* trans x) (-> *math-camera* trans y) (-> *math-camera* trans z)))
+  (if (zero? (-> *math-camera* reset))
+      (matrix-copy! (-> *math-camera* prev-camera-temp) (-> *math-camera* camera-temp)))
+  (let ((view-projection (-> *math-camera* camera-temp))
+        (view-matrix (-> *math-camera* camera-rot))
+        (inverse-view-matrix (-> *math-camera* inv-camera-rot))
+        (camera-position (-> *math-camera* trans)))
+    ;; Rigid inverse translation is -C transformed by the transposed
+    ;; orientation.  The inverse view keeps C directly in its fourth row.
+    (let ((negative-camera-position (new-stack-vector0)))
+      (set-vector! negative-camera-position
+                   (- (-> camera-position x))
+                   (- (-> camera-position y))
+                   (- (-> camera-position z))
+                   1.0)
+      (vector-matrix*! negative-camera-position negative-camera-position view-matrix)
+      (set! (-> view-matrix vector 3 quad) (-> negative-camera-position quad)))
+    (matrix*! view-projection view-matrix (-> *math-camera* perspective))
+    (set! (-> inverse-view-matrix vector 3 quad) (-> camera-position quad)))
   (when (nonzero? (-> *math-camera* reset))
-    (let* ((v1-148 (-> *math-camera* prev-camera-temp))
-           (a3-18 (-> *math-camera* camera-temp))
-           (a0-54 (-> a3-18 vector 0 quad))
-           (a1-23 (-> a3-18 vector 1 quad))
-           (a2-19 (-> a3-18 vector 2 quad))
-           (a3-19 (-> a3-18 vector 3 quad)))
-      (set! (-> v1-148 vector 0 quad) a0-54)
-      (set! (-> v1-148 vector 1 quad) a1-23)
-      (set! (-> v1-148 vector 2 quad) a2-19)
-      (set! (-> v1-148 vector 3 quad) a3-19))
+    (matrix-copy! (-> *math-camera* prev-camera-temp) (-> *math-camera* camera-temp))
     (set! (-> *math-camera* reset) 0)
     0)
-  (let ((f0-45 (-> *math-camera* fog-min))
-        (f1-10 (-> *math-camera* fog-max)))
-    (let ((f2-0 (-> *math-camera* d)))
-      (set! (-> *instance-tie-work* hmge-d x) f0-45)
-      (set! (-> *instance-tie-work* hmge-d y) f1-10)
-      (set! (-> *instance-tie-work* hmge-d z) (* 32.0 f2-0))
-      (set! (-> *instance-tie-work* hmge-d w) (* f2-0 (-> *math-camera* hmge-scale w)))
-      (let ((v1-160 (-> *math-camera* hvdf-off quad))) (set! (-> *instance-tie-work* hvdf-offset quad) v1-160))
-      (set! (-> *instance-shrub-work* hmge-d x) f0-45)
-      (set! (-> *instance-shrub-work* hmge-d y) f1-10)
-      (set! (-> *instance-shrub-work* hmge-d z) (* 3.0 f2-0))
-      (set! (-> *instance-shrub-work* hmge-d w) (* f2-0 (-> *math-camera* hmge-scale w)))
-      (set! (-> *instance-shrub-work* billboard-const x) (/ (-> *math-camera* x-pix) (* f2-0 (-> *math-camera* x-ratio))))
-      (set! (-> *instance-shrub-work* billboard-const y) (/ (-> *math-camera* y-pix) (* f2-0 (-> *math-camera* y-ratio)))))
-    (set! (-> *instance-shrub-work* billboard-const z) f0-45)
-    (set! (-> *instance-shrub-work* billboard-const w) f1-10))
+  ;; Publish the per-frame fog, homogeneous clipping, screen-offset, and
+  ;; billboard projection constants used by the instance renderers.
+  (let ((fog-min (-> *math-camera* fog-min))
+        (fog-max (-> *math-camera* fog-max)))
+    (let ((near-distance (-> *math-camera* d)))
+      (set! (-> *instance-tie-work* hmge-d x) fog-min)
+      (set! (-> *instance-tie-work* hmge-d y) fog-max)
+      (set! (-> *instance-tie-work* hmge-d z) (* 32.0 near-distance))
+      (set! (-> *instance-tie-work* hmge-d w) (* near-distance (-> *math-camera* hmge-scale w)))
+      (vector-copy! (-> *instance-tie-work* hvdf-offset) (-> *math-camera* hvdf-off))
+      (set! (-> *instance-shrub-work* hmge-d x) fog-min)
+      (set! (-> *instance-shrub-work* hmge-d y) fog-max)
+      (set! (-> *instance-shrub-work* hmge-d z) (* 3.0 near-distance))
+      (set! (-> *instance-shrub-work* hmge-d w) (* near-distance (-> *math-camera* hmge-scale w)))
+      (set! (-> *instance-shrub-work* billboard-const x)
+            (/ (-> *math-camera* x-pix) (* near-distance (-> *math-camera* x-ratio))))
+      (set! (-> *instance-shrub-work* billboard-const y)
+            (/ (-> *math-camera* y-pix) (* near-distance (-> *math-camera* y-ratio)))))
+    (set! (-> *instance-shrub-work* billboard-const z) fog-min)
+    (set! (-> *instance-shrub-work* billboard-const w) fog-max))
   (set! (-> *instance-shrub-work* constants w) (the-as float (-> *math-camera* vis-gifs 0 fog0)))
-  (let ((a0-56 (-> *math-camera* hvdf-off quad))) (set! (-> *instance-shrub-work* hvdf-offset quad) a0-56))
+  (vector-copy! (-> *instance-shrub-work* hvdf-offset) (-> *math-camera* hvdf-off))
   (update-view-planes *math-camera* (-> *math-camera* plane) 1.0)
   (update-view-planes *math-camera* (-> *math-camera* guard-plane) 4.0)
-  (set! (-> *instance-shrub-work* guard-plane 0 quad) (-> *math-camera* guard-plane 0 quad))
-  (set! (-> *instance-shrub-work* guard-plane 1 quad) (-> *math-camera* guard-plane 1 quad))
-  (set! (-> *instance-shrub-work* guard-plane 2 quad) (-> *math-camera* guard-plane 2 quad))
-  (set! (-> *instance-shrub-work* guard-plane 3 quad) (-> *math-camera* guard-plane 3 quad))
-  (set! (-> *instance-tie-work* guard-plane 0 quad) (-> *math-camera* guard-plane 0 quad))
-  (set! (-> *instance-tie-work* guard-plane 1 quad) (-> *math-camera* guard-plane 1 quad))
-  (set! (-> *instance-tie-work* guard-plane 2 quad) (-> *math-camera* guard-plane 2 quad))
-  (set! (-> *instance-tie-work* guard-plane 3 quad) (-> *math-camera* guard-plane 3 quad))
+  (vector-copy! (-> *instance-shrub-work* guard-plane 0) (-> *math-camera* guard-plane 0))
+  (vector-copy! (-> *instance-shrub-work* guard-plane 1) (-> *math-camera* guard-plane 1))
+  (vector-copy! (-> *instance-shrub-work* guard-plane 2) (-> *math-camera* guard-plane 2))
+  (vector-copy! (-> *instance-shrub-work* guard-plane 3) (-> *math-camera* guard-plane 3))
+  (vector-copy! (-> *instance-tie-work* guard-plane 0) (-> *math-camera* guard-plane 0))
+  (vector-copy! (-> *instance-tie-work* guard-plane 1) (-> *math-camera* guard-plane 1))
+  (vector-copy! (-> *instance-tie-work* guard-plane 2) (-> *math-camera* guard-plane 2))
+  (vector-copy! (-> *instance-tie-work* guard-plane 3) (-> *math-camera* guard-plane 3))
   (update-visible *math-camera*)
-  (if (not (paused?)) (update-wind *wind-work* *wind-scales*))
+  (if (not (paused?))
+      (update-wind *wind-work* *wind-scales*))
   #f)

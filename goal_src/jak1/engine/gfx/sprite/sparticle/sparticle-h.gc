@@ -3,37 +3,64 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/math/vector-h.gc")
 
+;; Types for the sparticle simulation: the live state of each particle, its
+;; runtime flags, and the particle pools. Effect descriptions and launch-group
+;; scheduling are defined in sparticle-launcher-h.gc.
+
 ;; DECOMP BEGINS
 
+;; Particle timestep data, updated each frame by set-particle-frame-time.
+;; x stores the 300 Hz tick count in the low byte of a valid float bit pattern;
+;; readers recover it by masking the reinterpreted integer with 255. It is 5
+;; at 60 Hz and 6 at 50 Hz. y holds the same count as a float for integration,
+;; while z and w hold 0.2 times that count in 60 Hz frame units.
 (define *sp-frame-time* (new 'global 'vector))
 
 (set-vector! *sp-frame-time* 0.00000000000000000000000000000000000001175495 5.0 1.0 1.0)
 
+;; True at 60 Hz and false at 50 Hz. Changing standards rescales every 3D
+;; particle's rotational velocity.
 (define *sp-60-hz* #t)
 
+;; Per-particle simulation and rendering flags. Bits 0 through 14 are consumed
+;; by the 2D/3D update functions and launch code; bits 16 through 20 control
+;; launch and relaunch transforms. If several blend flags are present, glow
+;; takes priority over subtract-blend, which takes priority over
+;; blend-erase-dest. With none present, the texture's normal blend is retained.
 (defenum sp-cpuinfo-flag
   :bitfield #t
   :type uint32
-  (bit0 0)
-  (bit1 1) ;; village1-part
-  (bit2 2) ;; cleared after an aux has its func set to add-to-sprite-aux-lst
-  (bit3 3)
-  (bit4 4) ;; see - swamp-blimp
-  (ready-to-launch 6) ;; maybe just just death?
-  (bit7 7)
-  (aux-list 8) ;; prevents relaunch, adds to aux
-  (bit9 9)
-  (level0 10)
-  (level1 11)
-  (bit12 12) ;; required to relaunch
-  (bit13 13)
-  (bit14 14)
-  (use-global-acc 16)
-  (launch-along-z 17)
-  (left-multiply-quat 18)
-  (right-multiply-quat 19)
-  (set-conerot 20))
+  (die-when-scale-0 0) ;; die when either scale component shrinks through zero
+  (die-when-color-0 1) ;; die when red, green, and blue have all reached zero
+  (die-when-faded 2) ;; die at zero alpha; aux-list particles clear this before hiding
+  (glow 3) ;; additive GS blend: (Cs - 0) * As + Cd
+  (subtract-blend 4) ;; subtractive GS blend: (0 - Cs) * As + Cd
+  (blend-erase-dest 5) ;; covered destination pixels are forced to black
+  ;; A newly launched particle begins at zero alpha with its intended alpha in
+  ;; cache-alpha. Its first simulation update restores alpha and clears this bit.
+  (just-launched 6)
+  (orbit 7) ;; orbit a center point in the 2D update
+  (aux-list 8) ;; use *sprite-aux-list* and prevent normal relaunch
+  (write-depth 9) ;; enable depth writes in the particle's ZBUF setting
+  (level0 10) ;; particle storage belongs to the level0 heap
+  (level1 11) ;; particle storage belongs to the level1 heap
+  (use-time-of-day-color 12) ;; multiply color and fade by the current time-of-day particle color
+  (run-while-paused 13) ;; keep simulating while the game is paused
+  (no-fog 14) ;; select the fog-disabled 2D giftag
+  (use-global-acc 16) ;; leave acceleration in world space
+  (launch-along-z 17) ;; use +z instead of +y as the launch cone axis
+  (left-multiply-quat 18) ;; on relaunch, q-new = parent-q * q
+  (right-multiply-quat 19) ;; on relaunch, q-new = q * parent-q
+  (set-conerot 20) ;; set cone rotation y from the additional y rotation
+  )
 
+;; Live state for one particle. The cpu fields in sp-field-id map directly to
+;; consecutive words beginning at omega, which sp-init-fields! fills by walking
+;; a pointer through this structure. The data overlays expose the same region
+;; as raw words, floats, or bytes.
+;;
+;; vel and accel alias the xyz lanes of the integration vectors. scalevelx and
+;; scalevely occupy the otherwise unused w lanes of vel-sxvel and rot-syvel.
 (deftype sparticle-cpuinfo (structure)
   ((sprite        sprite-vec-data-2d)
    (adgif         adgif-shader)
@@ -67,6 +94,10 @@
    (dataf         float 1 :overlay-at omega)
    (datac         uint8 1 :overlay-at omega)))
 
+;; Temporary launch transform assembled from the launch fields. launchrot and
+;; conerot carry Euler angles until sp-euler-convert produces the particle
+;; quaternion; coneradius adds a radial component around the cone axis, and
+;; rotate-y applies an additional rotation to the launch direction.
 (deftype sparticle-launchinfo (structure)
   ((launchrot  vector :inline)
    (conerot    vector :inline)
@@ -74,6 +105,15 @@
    (rotate-y   float)
    (data       uint8 1 :overlay-at (-> launchrot x))))
 
+;; A particle pool. There are separate 2D billboard and oriented-3D systems.
+;; Each divides its storage into two groups of 64-particle blocks; group 1 in
+;; the 2D system is reserved for screen-space and HUD particles. Each
+;; alloc-table word is a block bitmap whose set bits are free slots.
+;;
+;; cpuinfo-table, vecdata-table, and adgifdata-table are parallel arrays indexed
+;; by block * 64 + bit. They hold the simulation state, renderer vectors, and GS
+;; shader state respectively, and each cpuinfo caches its matching sprite and
+;; adgif pointers.
 (deftype sparticle-system (basic)
   ((blocks          int32 2)
    (length          int32 2)
@@ -101,4 +141,6 @@
 
 (defun-extern kill-all-particles-with-key sparticle-launch-control none)
 
+;; Allocate from group 0 or 1. Screen-space launch groups use group 1; ordinary
+;; world particles use group 0.
 (define-extern sp-get-particle (function sparticle-system int sparticle-launch-state sparticle-cpuinfo))

@@ -44,7 +44,7 @@
    (:accel-y (meters -0.0005) (meters -0.0005))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.1) (seconds 0.297))
    (:next-launcher 2239)
    (:conerot-x (degrees 0) (degrees 120))
@@ -71,7 +71,7 @@
    (:fade-b -1.0666667)
    (:fade-a -1.6)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2234
   :init-specs
@@ -85,7 +85,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds 3))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2235
   :init-specs
@@ -99,7 +99,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds 3))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2237
   :init-specs
@@ -121,7 +121,7 @@
    (:accel-y (meters 0.0005) (meters 0.0005))
    (:friction 0.85)
    (:timer (seconds 1.7))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.14))
    (:next-launcher 2240)
    (:conerot-x (degrees 0) (degrees 160))
@@ -173,7 +173,7 @@
    (:accel-y (meters -0.00016666666) (meters -0.00016666666))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.1) (seconds 0.297))
    (:next-launcher 2083)
    (:conerot-x (degrees 0) (degrees 120))
@@ -200,7 +200,7 @@
    (:fade-b -1.0666667)
    (:fade-a -1.6)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2079
   :init-specs
@@ -215,7 +215,7 @@
    (:a 128.0)
    (:fade-a -2.3272727)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2081
   :init-specs
@@ -237,7 +237,7 @@
    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
    (:friction 0.8)
    (:timer (seconds 1.7))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.14))
    (:next-launcher 2084)
    (:conerot-x (degrees 0) (degrees 120))
@@ -271,7 +271,6 @@
   (:state-methods
    idle
    (die symbol)))
-
 
 (defstate die (tntbarrel)
   :virtual #t
@@ -325,7 +324,8 @@
       (suspend)
       0))
 
-(defmethod init-from-entity! ((this tntbarrel) (arg0 entity-actor))
+(defmethod init-from-entity! ((this tntbarrel) (source-entity entity-actor))
+  "Initialize the barrel's collision and skeleton, brighten its model, and enter the idle state."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind crate))
@@ -338,7 +338,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *tntbarrel-sg* '())
   (set-vector! (-> this draw color-mult) 1.3 1.3 1.3 1.0)
   (go (method-of-object this idle))
@@ -401,10 +401,11 @@
    (active         symbol)
    (triggered      entity-actor)))
 
-
-(defmethod rigid-body-platform-method-23 ((this ogre-plat) (arg0 float))
-  (call-parent-method this arg0)
-  (rigid-body-platform-method-27 this (-> this anchor-point))
+(defmethod accumulate-forces! ((this ogre-plat) (sim-time float))
+  "Apply the inherited forces for sim-time, then pull the platform horizontally toward its anchor
+   point."
+  (call-parent-method this sim-time)
+  (apply-restoring-force! this (-> this anchor-point))
   0
   (none))
 
@@ -452,38 +453,42 @@
         (suspend)))
   :post rigid-body-platform-post)
 
-(defmethod rigid-body-platform-method-30 ((this ogre-plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 32768.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root-overlay) s5-0))
+(defmethod init-collision! ((this ogre-plat))
+  "Create the moving collision shape, rider slot, and sticky ground mesh used by an Ogre platform."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision 1)
+    (let ((collision-prim (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+      (set! (-> collision-prim prim-core collide-as) (collide-kind ground-object))
+      (set! (-> collision-prim collide-with) (collide-kind target))
+      (set! (-> collision-prim prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> collision-prim prim-core offense) (collide-offense indestructible))
+      (set! (-> collision-prim transform-index) 0)
+      (set-vector! (-> collision-prim local-sphere) 0.0 8192.0 0.0 32768.0)
+      (set-root-prim! collision collision-prim))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root-overlay) collision))
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this ogre-plat))
+(defmethod init-platform! ((this ogre-plat))
+  "Set the initial float height, distribute control points around the collision sphere, save the
+   anchor position, and clear the activation state."
   (set! (-> this float-height-offset) (-> this idle-y-offset))
-  (let ((s5-0 (-> this info control-point-count)))
-    (dotimes (s4-0 s5-0)
-      (let ((s3-0 (-> this control-point-array data s4-0)))
-        (let ((f30-0 (* 65536.0 (/ (the float s4-0) (the float s5-0))))
-              (f28-0 (-> this root-overlay root-prim local-sphere w)))
-          (set! (-> s3-0 local-pos x) (* f28-0 (sin f30-0)))
-          (set! (-> s3-0 local-pos y) 0.0)
-          (set! (-> s3-0 local-pos z) (* f28-0 (cos f30-0))))
-        (set! (-> s3-0 local-pos w) 1.0))))
-  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
+  (let ((point-count (-> this info control-point-count)))
+    (dotimes (i point-count)
+      (let ((point (-> this control-point-array data i)))
+        (let ((angle (* 65536.0 (/ (the float i) (the float point-count))))
+              (radius (-> this root-overlay root-prim local-sphere w)))
+          (set! (-> point local-pos x) (* radius (sin angle)))
+          (set! (-> point local-pos y) 0.0)
+          (set! (-> point local-pos z) (* radius (cos angle))))
+        (set! (-> point local-pos w) 1.0))))
+  (vector-copy! (-> this anchor-point) (-> this root-overlay trans))
   (set! (-> this active) #f)
   (set! (-> this triggered) #f)
   0
@@ -517,19 +522,22 @@
 
 (deftype ogre-step (ogre-plat) ())
 
-
-(defmethod rigid-body-platform-method-31 ((this ogre-step))
+(defmethod init-platform! ((this ogre-step))
+  "Configure an Ogre step's vertical offsets and physics constants, initialize the base platform,
+   and activate it when its linked alternate actor is complete."
   (set! (-> this idle-y-offset) -28672.0)
   (set! (-> this float-y-offset) 0.0)
   (+! (-> this root-overlay trans y) (-> this idle-y-offset))
-  (rigid-body-platform-method-29 this *ogre-step-constants*)
+  (setup-from-constants! this *ogre-step-constants*)
   (call-parent-method this)
-  (let ((a0-5 (entity-actor-lookup (-> this entity) 'alt-actor 0)))
-    (if (and a0-5 (logtest? (-> a0-5 extra perm status) (entity-perm-status complete))) (set! (-> this active) #t)))
+  (let ((alt-actor (entity-actor-lookup (-> this entity) 'alt-actor 0)))
+    (if (and alt-actor (logtest? (-> alt-actor extra perm status) (entity-perm-status complete))) (set! (-> this active) #t)))
   0
   (none))
 
-(defmethod rigid-body-platform-method-34 ((this ogre-step))
+(defmethod go-initial-state ((this ogre-step))
+  "Enter the floating state when this step is already active; otherwise enter the hidden idle
+   state."
   (if (-> this active)
     (go (method-of-object this rigid-body-platform-float))
     (go (method-of-object this rigid-body-platform-idle)))
@@ -538,38 +546,39 @@
 
 (deftype ogre-step-a (ogre-step) ())
 
-
 (deftype ogre-step-b (ogre-step) ())
-
 
 (deftype ogre-step-c (ogre-step) ())
 
-
 (deftype ogre-step-d (ogre-step) ())
 
-
-(defmethod rigid-body-platform-method-31 ((this ogre-step-a))
+(defmethod init-platform! ((this ogre-step-a))
+  "Set step A's collision sphere and skeleton, then initialize the shared step behavior."
   (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
   (initialize-skeleton this *ogre-step-a-sg* '())
   (call-parent-method this)
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this ogre-step-b))
+(defmethod init-platform! ((this ogre-step-b))
+  "Set step B's collision sphere and skeleton, then initialize the shared step behavior."
   (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
   (initialize-skeleton this *ogre-step-b-sg* '())
   (call-parent-method this)
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this ogre-step-c))
+(defmethod init-platform! ((this ogre-step-c))
+  "Set step C's larger collision sphere and skeleton, then initialize the shared step behavior."
   (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 26624.0)
   (initialize-skeleton this *ogre-step-c-sg* '())
   (call-parent-method this)
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this ogre-step-d))
+(defmethod init-platform! ((this ogre-step-d))
+  "Set step D's collision sphere and reused step-B skeleton, then initialize the shared step
+   behavior."
   (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 12288.0 0.0 20480.0)
   (initialize-skeleton this *ogre-step-b-sg* '())
   (call-parent-method this)
@@ -605,11 +614,12 @@
 
 (deftype ogre-isle (ogre-plat) ())
 
-
-(defmethod rigid-body-platform-method-31 ((this ogre-isle))
+(defmethod init-platform! ((this ogre-isle))
+  "Configure the isle's vertical offsets and physics constants, initialize the base platform, and
+   leave it active."
   (set! (-> this idle-y-offset) -6144.0)
   (set! (-> this float-y-offset) 4096.0)
-  (rigid-body-platform-method-29 this *ogre-isle-constants*)
+  (setup-from-constants! this *ogre-isle-constants*)
   (call-parent-method this)
   (set! (-> this active) #t)
   0
@@ -617,14 +627,12 @@
 
 (deftype ogre-isle-b (ogre-isle) ())
 
-
 (deftype ogre-isle-c (ogre-isle) ())
-
 
 (deftype ogre-isle-d (ogre-isle) ())
 
-
-(defmethod rigid-body-platform-method-31 ((this ogre-isle-b))
+(defmethod init-platform! ((this ogre-isle-b))
+  "Offset isle B, set its collision sphere and skeleton, then initialize the shared isle behavior."
   (+! (-> this root-overlay trans x) -8192.0)
   (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
   (initialize-skeleton this *ogre-isle-b-sg* '())
@@ -632,7 +640,9 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this ogre-isle-c))
+(defmethod init-platform! ((this ogre-isle-c))
+  "Offset isle C, set its collision sphere and reused isle-B skeleton, then initialize the shared
+   isle behavior."
   (+! (-> this root-overlay trans x) -8192.0)
   (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 24576.0)
   (initialize-skeleton this *ogre-isle-b-sg* '())
@@ -640,7 +650,9 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this ogre-isle-d))
+(defmethod init-platform! ((this ogre-isle-d))
+  "Offset isle D in X and Z, set its collision sphere and skeleton, then initialize the shared isle
+   behavior."
   (+! (-> this root-overlay trans x) -8192.0)
   (+! (-> this root-overlay trans z) -8192.0)
   (set-vector! (-> this root-overlay root-prim local-sphere) 0.0 8192.0 0.0 22528.0)
@@ -667,10 +679,10 @@
    ogre-bridge-break
    ogre-bridge-idle))
 
-
 (defmethod relocate ((this ogre-bridge) (offset int))
-  (dotimes (v1-0 8)
-    (if (nonzero? (-> this joint-mod-array v1-0)) (&+! (-> this joint-mod-array v1-0) offset)))
+  "Relocate the eight optional joint modifiers, then relocate the inherited drawable state."
+  (dotimes (i 8)
+    (if (nonzero? (-> this joint-mod-array i)) (&+! (-> this joint-mod-array i) offset)))
   (call-parent-method this offset))
 
 (defbehavior ogre-bridge-update-joints ogre-bridge ()
@@ -706,11 +718,11 @@
         (when (if v1-0 (not (send-event (if v1-0 (-> v1-0 extra process)) 'next-stage)))
           (suspend)
           0))
-      (ja-no-eval :group! ogre-bridge-assemble-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (if (rand-vu-percent? 0.2) (spawn-projectile-blue *target*))
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               ogre-bridge-assemble-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (if (rand-vu-percent? 0.2) (spawn-projectile-blue *target*)))
       (go ogre-bridge-activated))
   :post rider-post)
 
@@ -741,16 +753,15 @@
              (process-spawn part-tracker :init part-tracker-init group-ogre-bridge-splash -1 #f #f #f gp-0 :to *entity-pool*))))))
   :code
     (behavior ()
-      (ja-no-eval :group! ogre-bridge-break-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! ogre-bridge-break-ja :num! (seek!) :frame-num 0.0)
       (go ogre-bridge-idle))
   :post rider-post)
 
 (define *ogre-bridge-joint-array* (new 'static 'boxed-array :type uint8 #x4 #x9 #xc #x11 #x7 #xa #xf #x12))
 
-(defmethod init-from-entity! ((this ogre-bridge) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ogre-bridge) (source-entity entity-actor))
+  "Initialize the bridge's segmented collision, skeleton, joint modifiers, and saved encounter
+   state."
   (stack-size-set! (-> this main-thread) 512)
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -904,7 +915,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *ogre-bridge-sg* '())
   (logior! (-> this skel effect flags) (effect-control-flag event))
@@ -932,14 +943,14 @@
   (:states
    ogre-bridgeend-idle))
 
-
 (defstate ogre-bridgeend-idle (ogre-bridgeend)
   :code
     (behavior ()
       (transform-post)
       (anim-loop)))
 
-(defmethod init-from-entity! ((this ogre-bridgeend) (arg0 entity-actor))
+(defmethod init-from-entity! ((this ogre-bridgeend) (source-entity entity-actor))
+  "Initialize the bridge-end collision and skeleton, then enter its idle state."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -952,7 +963,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *ogre-bridgeend-sg* '())
   (go ogre-bridgeend-idle)
   (none))
@@ -960,7 +971,6 @@
 (deftype ogre-lava (water-anim)
   ((idle-anim int32)
    (anim      int32)))
-
 
 (defstate water-vol-idle (ogre-lava)
   :virtual #t
@@ -977,12 +987,13 @@
     (behavior ()
       (ja-channel-push! 2 (seconds 0.1))
       (ja :chan 1 :group! (-> self draw art-group data (-> self idle-anim)) :num! min)
-      (ja-no-eval :group! (-> self draw art-group data (-> self anim)) :num! (seek! max 0.5) :frame-num 0.0)
-      (until (ja-done? 0)
-        (ja :chan 1 :frame-interp 0.5)
-        (ja-post)
-        (suspend)
-        (ja :num! (seek! max 0.5)))
+      (ja-play :group!
+               (-> self draw art-group data (-> self anim))
+               :num!
+               (seek! max 0.5)
+               :frame-num 0.0
+               (ja :chan 1 :frame-interp 0.5)
+               (ja-post))
       (ja :group! (-> self draw art-group data (-> self idle-anim)))
       (ja :num-func num-func-identity :frame-num 0.0)
       (loop
@@ -1012,12 +1023,14 @@
             (new 'static 'ripple-wave)
             (new 'static 'ripple-wave))))
 
-(defmethod water-vol-method-22 ((this ogre-lava))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
-  (let ((v1-2 (new 'process 'ripple-control)))
-    (set! (-> this draw ripple) v1-2)
-    (set! (-> v1-2 global-scale) 2048.0)
-    (set! (-> v1-2 waveform) ripple-for-ogre-lava))
+(defmethod setup-water! ((this ogre-lava))
+  "Set up the animated water, install the Ogre lava ripple waveform, mark it as lava rather than
+   ordinary particle water, and use the lava attack event."
+  (let ((t9-0 (method-of-type water-anim setup-water!))) (t9-0 this))
+  (let ((ripple (new 'process 'ripple-control)))
+    (set! (-> this draw ripple) ripple)
+    (set! (-> ripple global-scale) 2048.0)
+    (set! (-> ripple waveform) ripple-for-ogre-lava))
   (logclear! (-> this flag) (water-flag part-water))
   (logior! (-> this flag) (water-flag lava))
   (set! (-> this attack-event) 'lava)
@@ -1029,7 +1042,6 @@
   (:states
    shortcut-boulder-break
    shortcut-boulder-idle))
-
 
 (defskelgroup *shortcut-boulder-whole-sg*
   shortcut-boulder
@@ -1067,7 +1079,7 @@
    (:a 128.0)
    (:fade-a -2.1333334)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 2149
   :init-specs
@@ -1085,7 +1097,7 @@
    (:accel-y (meters -0.0026666666))
    (:friction 0.99)
    (:timer (seconds 1))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:userdata 0.0)
    (:func 'check-water-level-drop)
    (:conerot-x (degrees 20) (degrees 50.000004))
@@ -1108,7 +1120,7 @@
    (:accel-y (meters -0.00026666667))
    (:friction 0.95)
    (:timer (seconds 2))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.1) (seconds 0.997))
    (:next-launcher 2152)
    (:conerot-x (degrees 70) (degrees 20))
@@ -1133,10 +1145,7 @@
                      (-> self root trans)
                      :to
                      *entity-pool*)
-      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (cleanup-for-death self)
       (deactivate self))
   :post ja-post)
@@ -1153,7 +1162,9 @@
         (logior! (-> self mask) (process-mask sleep))
         (suspend))))
 
-(defmethod init-from-entity! ((this shortcut-boulder) (arg0 entity-actor))
+(defmethod init-from-entity! ((this shortcut-boulder) (source-entity entity-actor))
+  "Initialize the boulder's collision and intact skeleton, prepare its broken appearance, and enter
+   the idle state."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
@@ -1166,7 +1177,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *shortcut-boulder-whole-sg* '())
   (setup-lods! (-> this broken-look) *shortcut-boulder-broken-sg* (-> this draw art-group) (-> this entity))
   (set-vector! (-> this draw color-emissive) 0.125 0.0625 0.0 0.0)

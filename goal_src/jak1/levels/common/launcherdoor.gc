@@ -6,15 +6,15 @@
 ;; DECOMP BEGINS
 
 (deftype launcherdoor (process-drawable)
-  ((root                       collide-shape :override)
+  "A level-streaming door that opens vertically and can notify the player after passage."
+  ((root collide-shape :override)
    (notify-player-passed-thru? symbol)
-   (thresh-y                   float)
-   (open-speed                 float)
-   (close-speed                float)
-   (load-mode                  symbol))
+   (thresh-y float)
+   (open-speed float)
+   (close-speed float)
+   (load-mode symbol))
   (:states (launcherdoor-closed symbol)
    (launcherdoor-open symbol)))
-
 
 (defskelgroup *launcherdoor-sg*
   launcherdoor
@@ -85,7 +85,8 @@
         (suspend)))
   :post ja-post)
 
-(defmethod init-from-entity! ((this launcherdoor) (arg0 entity-actor))
+(defmethod init-from-entity! ((this launcherdoor) (source-entity entity-actor))
+  "Build the door collision and skeleton, read its height, speed, and loading mode, and select its initial state."
   (set! (-> this notify-player-passed-thru?) #f)
   (set! (-> this open-speed) 4.0)
   (set! (-> this close-speed) 2.0)
@@ -101,7 +102,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (cond
     ((= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'maincave)
      (set! (-> this close-speed) 4.0)

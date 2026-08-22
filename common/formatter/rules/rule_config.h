@@ -27,6 +27,8 @@ struct FormFormattingConfig {
       inline_until_index = [](std::vector<std::string> /*curr_lines*/) { return std::nullopt; };
   bool has_constant_pairs = false;
   bool prevent_inlining = false;  // TODO - duplicate of below
+  std::optional<int> inline_body_width_limit;
+  int inline_body_start_index = 1;
   std::function<bool(FormFormattingConfig, int num_refs)> should_prevent_inlining =
       [](FormFormattingConfig config, int /*num_refs*/) { return config.prevent_inlining; };
   int parent_mutable_extra_indent = 0;

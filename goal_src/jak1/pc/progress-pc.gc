@@ -1409,7 +1409,7 @@
     (let ((f30-0 (- 1.0 (* 0.0033333334 (the float arg2)))))
       (print-game-text-scaled (lookup-text! *common-text* arg0 #f) f30-0 arg1 (the int (* 128.0 f30-0))))
     (set! (-> arg1 origin x) (- (-> arg1 origin x) (the float s5-0))))
-  (set! (-> arg1 color) (font-color default))
+  (set-color! arg1 (font-color default))
   arg1)
 
 (defun progress-draw-carousell-from-string-list ((options (array text-id)) (font font-context) (y-off int) (new-val int))
@@ -1904,42 +1904,28 @@
   (let ((f30-0 (+ -409.0 (-> this particles 2 init-pos x) (* 0.8 (the float (-> this left-x-offset)))))
         (s5-0 (if (or (-> this stat-transition) (nonzero? (-> this level-transition))) 0 (-> this transition-offset))))
     (let ((f28-0 (if (or (-> this stat-transition) (nonzero? (-> this level-transition))) 1.0 (-> this transition-percentage-invert))))
-      (let* ((s3-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-             (s4-0 (-> s3-0 base)))
-        (let ((s2-0 draw-string-xy))
-          (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* game money))))
-          (s2-0 *temp-string*
-                s3-0
-                (the int (+ *PC-ORB-TEXT-X-ADJUST* 428.0 (the float s5-0) f30-0))
-                (- 12 (the int (* 0.16666667 f30-0)))
-                (font-color default)
-                (font-flags shadow kerning large)))
-        (let ((s2-1 draw-string-xy))
-          (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* game fuel))))
-          (s2-1 *temp-string*
-                s3-0
-                (the int (+ *PC-CELL-TEXT-X-ADJUST* 456.0 (the float (adjust-pos s5-0 50)) f30-0))
-                (- 48 (the int (* 0.125 f30-0)))
-                (font-color default)
-                (font-flags shadow kerning large)))
-        (let ((s2-2 draw-string-xy))
-          (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* fact buzzer))))
-          (s2-2 *temp-string*
-                s3-0
-                (the int (+ *PC-BUZZER-TEXT-X-ADJUST* 469.0 (the float (adjust-pos s5-0 100)) f30-0))
-                89
-                (font-color default)
-                (font-flags shadow kerning large)))
-        (let ((a3-4 (-> s3-0 base)))
-          (let ((v1-20 (the-as object (-> s3-0 base))))
-            (set! (-> (the-as dma-packet v1-20) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            (set! (-> (the-as dma-packet v1-20) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet v1-20) vif1) (new 'static 'vif-tag))
-            (set! (-> s3-0 base) (&+ (the-as pointer v1-20) 16)))
-          (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                 (bucket-id debug)
-                                 s4-0
-                                 (the-as (pointer dma-tag) a3-4))))
+      (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let ((s2-0 draw-string-xy))
+                (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* game money))))
+                (s2-0 *temp-string*
+                      s3-0
+                      (the int (+ *PC-ORB-TEXT-X-ADJUST* 428.0 (the float s5-0) f30-0))
+                      (- 12 (the int (* 0.16666667 f30-0)))
+                      (font-color default)
+                      (font-flags shadow kerning large))) (let ((s2-1 draw-string-xy))
+                (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* game fuel))))
+                (s2-1 *temp-string*
+                      s3-0
+                      (the int (+ *PC-CELL-TEXT-X-ADJUST* 456.0 (the float (adjust-pos s5-0 50)) f30-0))
+                      (- 48 (the int (* 0.125 f30-0)))
+                      (font-color default)
+                      (font-flags shadow kerning large))) (let ((s2-2 draw-string-xy))
+                (format (clear *temp-string*) "~D" (the int (+ 0.5 (-> *target* fact buzzer))))
+                (s2-2 *temp-string*
+                      s3-0
+                      (the int (+ *PC-BUZZER-TEXT-X-ADJUST* 469.0 (the float (adjust-pos s5-0 100)) f30-0))
+                      89
+                      (font-color default)
+                      (font-flags shadow kerning large))))
       (let ((s4-2 (new 'stack
                        'font-context
                        *font-default-matrix*
@@ -1955,18 +1941,18 @@
         (let ((v1-29 s4-2)) (set! (-> v1-29 width) (the float 100)))
         (let ((v1-30 s4-2)) (set! (-> v1-30 height) (the float 15)))
         (let ((v1-31 s4-2)) (set! (-> v1-31 scale) 0.5))
-        (set! (-> s4-2 flags) (font-flags shadow kerning large))
+        (set-flags! s4-2 (font-flags shadow kerning large))
         (print-game-text (lookup-text! *common-text* (text-id options) #f) s4-2 #f 128 22)
         (let ((v1-34 s4-2)) (set! (-> v1-34 width) (the float 160)))
         (let ((v1-35 s4-2)) (set! (-> v1-35 height) (the float 22)))
         (let ((v1-36 s4-2)) (set! (-> v1-36 scale) 1.3))
-        (let ((a0-31 s4-2)) (set! (-> a0-31 color) (font-color progress-percent)))
+        (set-color! s4-2 (font-color progress-percent))
         (set! (-> s4-2 origin x)
               (+ *PC-PERCENT-X-ADJUST*
                  (- 435.0 (the float (if (< (-> *progress-process* 0 completion-percentage) 10.0) 93 80)))
                  f30-0))
         (set! (-> s4-2 origin y) 180.0)
-        (set! (-> s4-2 flags) (font-flags shadow kerning middle middle-vert large))
+        (set-flags! s4-2 (font-flags shadow kerning middle middle-vert large))
         (let ((s3-3 print-game-text))
           (format (clear *temp-string*) "~2D%" (the int (-> *progress-process* 0 completion-percentage)))
           (s3-3 *temp-string* s4-2 #f (the int (* 128.0 f28-0)) 22))))
@@ -1995,24 +1981,12 @@
     (when *cheat-mode*
       (let ((a0-46 "AUTO SAVE OFF"))
         (if (-> *setting-control* current auto-save) (set! a0-46 "AUTO SAVE ON"))
-        (let* ((s3-5 (-> *display* frames (-> *display* on-screen) frame global-buf))
-               (s4-4 (-> s3-5 base)))
-          (draw-string-xy a0-46
-                          s3-5
-                          (the int (+ *PC-AUTOSAVE-X-ADJUST* 430.0 f30-0))
-                          200
-                          (font-color progress-memcard)
-                          (font-flags shadow kerning middle))
-          (let ((a3-9 (-> s3-5 base)))
-            (let ((v1-81 (the-as object (-> s3-5 base))))
-              (set! (-> (the-as dma-packet v1-81) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-              (set! (-> (the-as dma-packet v1-81) vif0) (new 'static 'vif-tag))
-              (set! (-> (the-as dma-packet v1-81) vif1) (new 'static 'vif-tag))
-              (set! (-> s3-5 base) (&+ (the-as pointer v1-81) 16)))
-            (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                   (bucket-id debug)
-                                   s4-4
-                                   (the-as (pointer dma-tag) a3-9))))))
+        (with-dma-buffer-add-bucket ((s3-5 (-> *display* frames (-> *display* on-screen) frame global-buf)) (bucket-id debug)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (draw-string-xy a0-46
+                                  s3-5
+                                  (the int (+ *PC-AUTOSAVE-X-ADJUST* 430.0 f30-0))
+                                  200
+                                  (font-color progress-memcard)
+                                  (font-flags shadow kerning middle)))))
     (let ((a0-52 (-> this icons 5 icon 0 root)))
       (set-yaw-angle-clear-roll-pitch! a0-52 (- (y-angle a0-52) (* 182.04445 (* 4.0 (-> *display* time-adjust-ratio))))))
     (let* ((f28-2 (* 0.00024414062 (the float (-> *progress-process* 0 in-out-position))))
@@ -2973,7 +2947,7 @@
         ;; set the common params for the text drawing
         (set-width! font 370)
         (set-height! font 25)
-        (set! (-> font flags) (font-flags shadow kerning middle middle-vert large))
+        (set-flags! font (font-flags shadow kerning middle middle-vert large))
         ;; set scroll arrow sprite vertical position right now
         (set! (-> obj particles 32 init-pos y) (the float (* 2 (- y-off 20))))
         ;; when scrolling we draw an extra line
@@ -3544,7 +3518,7 @@
                               (font-flags shadow kerning))))
               (set-width! s5-1 328)
               (set-height! s5-1 45)
-              (set! (-> s5-1 flags) (font-flags shadow kerning middle middle-vert large))
+              (set-flags! s5-1 (font-flags shadow kerning middle middle-vert large))
               (print-game-text-scaled (lookup-text! *common-text* (-> gp-0 level-name-id) #f) f30-0 s5-1 (the int (* 128.0 f30-0))))))
         (case (-> self display-state)
           (((progress-screen fuel-cell) (progress-screen money) (progress-screen buzzer)) (draw-progress self)))

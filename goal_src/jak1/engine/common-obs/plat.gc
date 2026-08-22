@@ -46,7 +46,7 @@
    (:accel-y (meters -0.000033333334))
    (:friction 0.96)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 130) (degrees 100.00001))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 3))))
@@ -57,12 +57,11 @@
    (sound-id sound-id))
   (:methods
    (get-lit-skel (_type_) skeleton-group)
-   (plat-method-28 () none)
+   (reset-timeout? (_type_) symbol)
    (wad () _type_ :state)
    (plat-startup (plat) _type_ :state)
    (plat-idle () _type_ :state)
    (plat-path-active (plat) _type_ :state)))
-
 
 (defskelgroup *plat-sg*
   plat
@@ -86,6 +85,8 @@
   :bounds (static-spherem 0 -0.5 0 3.2))
 
 (defmethod get-unlit-skel ((this plat))
+  "Return the Jungle B skeleton in jungleb, the Sunken skeleton in sunken or sunkenb, and the
+   ordinary platform skeleton in every other level."
   (cond
     ((= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'jungleb) *plat-jungleb-sg*)
     ((or (= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'sunken)
@@ -93,50 +94,61 @@
      *plat-sunken-sg*)
     (else *plat-sg*)))
 
-(defmethod baseplat-method-24 ((this plat))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 13107.2)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0))
+(defmethod setup-collision! ((this plat))
+  "Create a moving collision shape with one sticky, indestructible 3.2-metre ground mesh,
+   allocate one rider slot, and install it as the platform root."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders collision 1)
+    (let ((collision-mesh (new 'process 'collide-shape-prim-mesh collision (the-as uint 0) (the-as uint 0))))
+      (set! (-> collision-mesh prim-core collide-as) (collide-kind ground-object))
+      (set! (-> collision-mesh collide-with) (collide-kind target))
+      (set! (-> collision-mesh prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> collision-mesh prim-core offense) (collide-offense indestructible))
+      (set! (-> collision-mesh transform-index) 0)
+      (set-vector! (-> collision-mesh local-sphere) 0.0 0.0 0.0 13107.2)
+      (set-root-prim! collision collision-mesh))
+    (set! (-> collision nav-radius) (* 0.75 (-> collision root-prim local-sphere w)))
+    (backup-collide-with-as collision)
+    (set! (-> this root) collision))
   0
   (none))
 
-(defmethod baseplat-method-26 ((this plat))
+(defmethod configure-options! ((this plat))
+  "Leave the standard platform options unchanged. Subtypes override this hook after path and
+   sync setup."
   0
   (none))
 
-(defmethod baseplat-method-25 ((this plat))
-  (the-as sparticle-launch-group
-          (when (!= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'maincave)
-            (let ((v0-0 (create-launch-control group-standard-plat this))) (set! (-> this part) v0-0) v0-0))))
+(defmethod setup-part! ((this plat))
+  "Create and save the standard platform particle launch control, except in maincave where
+   those particles are disabled. Return the saved control or false."
+  (when (!= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'maincave)
+    (let ((launch-control (create-launch-control group-standard-plat this)))
+      (set! (-> this part) launch-control)
+      launch-control)))
 
+;; Start path motion only when a path exists and the sync controller has a nonzero period.
 (defstate plat-startup (plat)
   :virtual #t
   :code
-    (behavior ((arg0 plat))
+    (behavior ((initial-marker plat))
       (cond
         ((logtest? (-> self path flags) (path-control-flag not-found)) (go-virtual plat-idle))
-        ((> (-> self sync period) 0) (go-virtual plat-path-active arg0))
+        ((> (-> self sync period) 0) (go-virtual plat-path-active initial-marker))
         (else (go-virtual plat-idle)))))
 
+;; Idle platforms keep their rider transform current, sleep their state code between bonks, and
+;; wake for the duration of each smush bounce.
 (defstate plat-idle (plat)
   :virtual #t
   :event plat-event
   :trans
     (behavior ()
-      (baseplat-method-20 self))
+      (spawn-part! self))
   :code
     (behavior ()
       (plat-trans)
@@ -154,6 +166,8 @@
           (rider-post)
           (suspend)))))
 
+;; Drive the path by the shared sync phase. wrap-phase loops in one direction; otherwise the phase
+;; mirrors at each end so the platform travels back and forth.
 (defstate plat-path-active (plat)
   :virtual #t
   :event plat-event
@@ -175,15 +189,19 @@
             anim-loop)
   :post plat-post)
 
-(defmethod init-from-entity! ((this plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this plat) (source-entity entity-actor))
+  "Create the collision, drawable, skeleton, particle control, sync controller, FACT response,
+   and path control. Place the platform at its initial path phase, apply subtype options, and
+   enter startup so it can choose idle or path-active behavior."
+  (local-vars (initial-marker plat))
   (logior! (-> this mask) (process-mask platform))
-  (baseplat-method-24 this)
-  (process-drawable-from-entity! this arg0)
+  (setup-collision! this)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this (get-unlit-skel this) '())
   (logior! (-> this skel status) (janim-status inited))
   (update-transforms! (-> this root))
-  (baseplat-method-21 this)
-  (baseplat-method-25 this)
+  (init-platform! this)
+  (setup-part! this)
   (load-params! (-> this sync) this (the-as uint 0) 0.0 0.15 0.15)
   (set! (-> this fact) (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
@@ -192,16 +210,22 @@
   (cond
     ((logtest? (-> this path flags) (path-control-flag not-found))
      (set! (-> this path-pos) 0.0)
-     (let ((a0-14 this)) (baseplat-method-26 a0-14) (go (method-of-object this plat-startup) a0-14)))
+     (set! initial-marker this)
+     (configure-options! initial-marker)
+     (go (method-of-object this plat-startup) initial-marker))
     ((> (-> this sync period) 0)
      (set! (-> this path-pos)
            (if (logtest? (-> this fact options) (fact-options wrap-phase))
              (get-current-phase (-> this sync))
              (get-current-phase-with-mirror (-> this sync))))
      (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
-     (let ((a0-18 this)) (baseplat-method-26 a0-18) (go (method-of-object this plat-startup) a0-18)))
+     (set! initial-marker this)
+     (configure-options! initial-marker)
+     (go (method-of-object this plat-startup) initial-marker))
     (else
      (set! (-> this path-pos) 0.0)
      (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
-     (let ((a0-20 this)) (baseplat-method-26 a0-20) (go (method-of-object this plat-startup) a0-20))))
+     (set! initial-marker this)
+     (configure-options! initial-marker)
+     (go (method-of-object this plat-startup) initial-marker)))
   (none))

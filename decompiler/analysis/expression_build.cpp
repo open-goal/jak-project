@@ -1,5 +1,7 @@
 #include "expression_build.h"
 
+#include <algorithm>
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
 
@@ -150,6 +152,34 @@ bool convert_to_expressions(
             GenericOperator::make_fixed(FixedOperatorKind::NONE)));
       }
     }
+
+    // A saved argument may intentionally share its preferred name with the argument itself.  Once
+    // both accesses print as the same, the prologue spill assignment is a lexical self-assignment;
+    // subsequent spill loads already name the argument binding.  Drop only exact, same-typed
+    // top-level aliases so independent same-named variables in nested scopes remain untouched.
+    new_entries.erase(
+        std::remove_if(new_entries.begin(), new_entries.end(), [&](FormElement* entry) {
+          auto* spill = dynamic_cast<StackSpillStoreElement*>(entry);
+          if (spill && spill->value().is_var()) {
+            const auto& source = spill->value().var();
+            const auto slot = f.ir2.env.stack_slot_entries.find(spill->stack_offset());
+            return slot != f.ir2.env.stack_slot_entries.end() &&
+                   slot->second.name() == f.ir2.env.get_variable_name(source) &&
+                   slot->second.typespec == f.ir2.env.get_variable_type(source, true);
+          }
+
+          auto* set = dynamic_cast<SetVarElement*>(entry);
+          if (!set) {
+            return false;
+          }
+          const auto source = form_element_as_atom(set->src()->try_as_single_element());
+          return source && source->is_var() &&
+                 f.ir2.env.get_variable_name(set->dst()) ==
+                     f.ir2.env.get_variable_name(source->var()) &&
+                 f.ir2.env.get_variable_type(set->dst(), true) ==
+                     f.ir2.env.get_variable_type(source->var(), true);
+        }),
+        new_entries.end());
 
     // if we are a totally empty function, insert a placeholder so we don't have to handle
     // the zero element case ever.

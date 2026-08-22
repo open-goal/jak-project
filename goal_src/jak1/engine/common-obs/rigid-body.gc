@@ -5,39 +5,46 @@
 (require "engine/common-obs/water-anim.gc")
 (require "engine/common-obs/rigid-body-h.gc")
 
-;; note: changed for high fps
+;; The fixed physics step is scaled for high-refresh-rate PC timing below.
 
 ;; DECOMP BEGINS
 
 (defmethod clear-force-torque! ((this rigid-body))
-  (set! (-> this force quad) (-> *null-vector* quad))
-  (set! (-> this torque quad) (-> *null-vector* quad))
+  "Clear the accumulated world-space force and torque for the next simulation step."
+  (vector-copy! (-> this force) *null-vector*)
+  (vector-copy! (-> this torque) *null-vector*)
   0
   (none))
 
 (defmethod clear-momentum! ((this rigid-body))
-  (set! (-> this lin-momentum quad) (-> *null-vector* quad))
-  (set! (-> this ang-momentum quad) (-> *null-vector* quad))
+  "Clear both linear and angular momentum."
+  (vector-copy! (-> this lin-momentum) *null-vector*)
+  (vector-copy! (-> this ang-momentum) *null-vector*)
   0
   (none))
 
-(defmethod rigid-body-method-21 ((this rigid-body))
+(defmethod update-matrix! ((this rigid-body))
+  "Rebuild the rotation matrix from the body's quaternion and update its translation with the
+   render origin."
   (quaternion->matrix (-> this matrix) (-> this rotation))
-  (rigid-body-method-18 this (-> this matrix vector 3))
+  (get-origin-position this (-> this matrix vector 3))
   0
   (none))
 
-(defmethod rigid-body-method-22 ((this rigid-body) (arg0 vector) (arg1 quaternion) (arg2 float) (arg3 float))
+(defmethod reset! ((this rigid-body) (position vector) (rotation quaternion) (linear-damping float) (angular-damping float))
+  "Reset the body from position and rotation. Clear forces and momenta, install the damping
+   factors, rebuild the transform, clear velocities and world inertia, and reset angular
+   limits."
   (clear-force-torque! this)
   (clear-momentum! this)
-  (vector+! (-> this position) arg0 (-> this cm-offset-joint))
-  (quaternion-copy! (-> this rotation) arg1)
+  (vector+! (-> this position) position (-> this cm-offset-joint))
+  (quaternion-copy! (-> this rotation) rotation)
   (quaternion-normalize! (-> this rotation))
-  (set! (-> this lin-momentum-damping-factor) arg2)
-  (set! (-> this ang-momentum-damping-factor) arg3)
-  (rigid-body-method-21 this)
-  (set! (-> this lin-velocity quad) (-> *null-vector* quad))
-  (set! (-> this ang-velocity quad) (-> *null-vector* quad))
+  (set! (-> this lin-momentum-damping-factor) linear-damping)
+  (set! (-> this ang-momentum-damping-factor) angular-damping)
+  (update-matrix! this)
+  (vector-copy! (-> this lin-velocity) *null-vector*)
+  (vector-copy! (-> this ang-velocity) *null-vector*)
   (set! (-> this inv-i-world vector 0 quad) (the-as uint128 0))
   (set! (-> this inv-i-world vector 1 quad) (the-as uint128 0))
   (set! (-> this inv-i-world vector 2 quad) (the-as uint128 0))
@@ -47,102 +54,125 @@
   0
   (none))
 
-(defmethod rigid-body-method-9 ((this rigid-body) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
-  (set! (-> this mass) arg0)
-  (let ((f0-1 arg0)) (set! (-> this inv-mass) (/ 1.0 f0-1)))
+(defmethod set-mass-and-box-inertia! ((this rigid-body) (mass float) (size-x float) (size-y float) (size-z float))
+  "Set mass and its reciprocal, then compute diagonal inertia and inverse-inertia tensors for a
+   solid box with the supplied X, Y, and Z dimensions."
+  (set! (-> this mass) mass)
+  (let ((mass-for-reciprocal mass)) (set! (-> this inv-mass) (/ 1.0 mass-for-reciprocal)))
   (matrix-identity! (-> this inertial-tensor))
   (matrix-identity! (-> this inv-inertial-tensor))
-  (let* ((f0-4 arg0)
-         (f1-1 12.0)
-         (f0-5 (* f0-4 (/ 1.0 f1-1))))
-    (set! (-> this inertial-tensor vector 0 x) (* f0-5 (+ (square arg2) (square arg3))))
-    (set! (-> this inertial-tensor vector 1 y) (* f0-5 (+ (square arg1) (square arg3))))
-    (set! (-> this inertial-tensor vector 2 z) (* f0-5 (+ (square arg1) (square arg2)))))
-  (let ((f0-7 (-> this inertial-tensor vector 0 x))) (set! (-> this inv-inertial-tensor vector 0 x) (/ 1.0 f0-7)))
-  (let ((f0-10 (-> this inertial-tensor vector 1 y))) (set! (-> this inv-inertial-tensor vector 1 y) (/ 1.0 f0-10)))
-  (let ((f0-13 (-> this inertial-tensor vector 2 z))) (set! (-> this inv-inertial-tensor vector 2 z) (/ 1.0 f0-13)))
+  (let* ((mass-value mass)
+         (box-inertia-divisor 12.0)
+         (mass-over-twelve (* mass-value (/ 1.0 box-inertia-divisor))))
+    (set! (-> this inertial-tensor vector 0 x) (* mass-over-twelve (+ (square size-y) (square size-z))))
+    (set! (-> this inertial-tensor vector 1 y) (* mass-over-twelve (+ (square size-x) (square size-z))))
+    (set! (-> this inertial-tensor vector 2 z) (* mass-over-twelve (+ (square size-x) (square size-y)))))
+  (let ((inertia-x (-> this inertial-tensor vector 0 x)))
+    (set! (-> this inv-inertial-tensor vector 0 x) (/ 1.0 inertia-x)))
+  (let ((inertia-y (-> this inertial-tensor vector 1 y)))
+    (set! (-> this inv-inertial-tensor vector 1 y) (/ 1.0 inertia-y)))
+  (let ((inertia-z (-> this inertial-tensor vector 2 z)))
+    (set! (-> this inv-inertial-tensor vector 2 z) (/ 1.0 inertia-z)))
   0
   (none))
 
-(defmethod rigid-body-method-17 ((this rigid-body) (arg0 vector) (arg1 vector))
-  (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this position))))
-    (vector-cross! arg1 (-> this ang-velocity) v1-1))
-  (vector+! arg1 arg1 (-> this lin-velocity))
-  arg1)
+(defmethod velocity-at-point ((this rigid-body) (point vector) (out-velocity vector))
+  "Write and return the world-space velocity at point: linear velocity plus angular velocity
+   crossed with the offset from the center of mass."
+  (let ((offset (vector-! (new 'stack-no-clear 'vector) point (-> this position))))
+    (vector-cross! out-velocity (-> this ang-velocity) offset))
+  (vector+! out-velocity out-velocity (-> this lin-velocity))
+  out-velocity)
 
-(defun matrix-3x3-triple-transpose-product ((arg0 matrix) (arg1 matrix) (arg2 matrix))
-  (let ((s2-0 (new 'stack-no-clear 'matrix))
-        (s3-0 (new 'stack-no-clear 'matrix)))
-    (matrix-transpose! s2-0 arg1)
+(defun matrix-3x3-triple-transpose-product ((result matrix) (left matrix) (middle matrix))
+  "Write left times middle times the transpose of left to result and return result. The rigid-body
+   integrator uses this to rotate the inverse inertia tensor into world space."
+  (let ((left-transpose (new 'stack-no-clear 'matrix))
+        (product (new 'stack-no-clear 'matrix)))
+    (matrix-transpose! left-transpose left)
     (cond
-      (#t (matrix*! s3-0 arg1 arg2) (matrix*! arg0 s3-0 s2-0))
-      (else (matrix*! s3-0 s2-0 arg2) (matrix*! arg0 s3-0 arg1))))
-  arg0)
+      (#t (matrix*! product left middle) (matrix*! result product left-transpose))
+      (else (matrix*! product left-transpose middle) (matrix*! result product left))))
+  result)
 
-(defmethod rigid-body-method-10 ((this rigid-body) (arg0 float))
-  (vector+*! (-> this lin-momentum) (-> this lin-momentum) (-> this force) arg0)
-  (vector+*! (-> this ang-momentum) (-> this ang-momentum) (-> this torque) arg0)
+(defmethod integrate! ((this rigid-body) (dt float))
+  "Advance the body by dt. Integrate accumulated force and torque into damped momenta, derive
+   linear and angular velocity, advance position and rotation, normalize the rotation, and
+   rebuild the transform."
+  (vector+*! (-> this lin-momentum) (-> this lin-momentum) (-> this force) dt)
+  (vector+*! (-> this ang-momentum) (-> this ang-momentum) (-> this torque) dt)
   (vector-float*! (-> this lin-momentum) (-> this lin-momentum) (-> this lin-momentum-damping-factor))
   (vector-float*! (-> this ang-momentum) (-> this ang-momentum) (-> this ang-momentum-damping-factor))
   (vector-float*! (-> this lin-velocity) (-> this lin-momentum) (-> this inv-mass))
   (set! (-> this matrix vector 3 quad) (-> *null-vector* quad))
   (matrix-3x3-triple-transpose-product (-> this inv-i-world) (-> this matrix) (-> this inv-inertial-tensor))
   (vector-rotate*! (-> this ang-velocity) (-> this ang-momentum) (-> this inv-i-world))
-  (vector+*! (-> this position) (-> this position) (-> this lin-velocity) arg0)
-  (let ((s4-0 (new 'stack-no-clear 'quaternion)))
-    (set! (-> (the-as vector (&-> s4-0 x)) quad) (-> this ang-velocity quad))
-    (set! (-> s4-0 w) 0.0)
-    (quaternion*! s4-0 s4-0 (-> this rotation))
-    (quaternion-float*! s4-0 s4-0 0.5)
-    (+! (-> this rotation x) (* (-> s4-0 x) arg0))
-    (+! (-> this rotation y) (* (-> s4-0 y) arg0))
-    (+! (-> this rotation z) (* (-> s4-0 z) arg0))
-    (+! (-> this rotation w) (* (-> s4-0 w) arg0)))
+  (vector+*! (-> this position) (-> this position) (-> this lin-velocity) dt)
+  (let ((spin-quaternion (new 'stack-no-clear 'quaternion)))
+    (set! (-> (the-as vector (&-> spin-quaternion x)) quad) (-> this ang-velocity quad))
+    (set! (-> spin-quaternion w) 0.0)
+    (quaternion*! spin-quaternion spin-quaternion (-> this rotation))
+    (quaternion-float*! spin-quaternion spin-quaternion 0.5)
+    (+! (-> this rotation x) (* (-> spin-quaternion x) dt))
+    (+! (-> this rotation y) (* (-> spin-quaternion y) dt))
+    (+! (-> this rotation z) (* (-> spin-quaternion z) dt))
+    (+! (-> this rotation w) (* (-> spin-quaternion w) dt)))
   (quaternion-normalize! (-> this rotation))
   (quaternion->matrix (-> this matrix) (-> this rotation))
-  (rigid-body-method-18 this (-> this matrix vector 3))
+  (get-origin-position this (-> this matrix vector 3))
   0
   (none))
 
-(defmethod rigid-body-method-13 ((this rigid-body) (arg0 vector) (arg1 vector))
-  (vector+! (-> this force) (-> this force) arg1)
-  (let* ((v1-2 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this position)))
-         (a1-2 (vector-cross! (new 'stack-no-clear 'vector) v1-2 arg1)))
-    (vector+! (-> this torque) (-> this torque) a1-2))
+(defmethod apply-force-at-point! ((this rigid-body) (point vector) (force vector))
+  "Accumulate a world-space force at a world-space point. Add the force directly and add
+   (point - center-of-mass) cross force to torque."
+  (vector+! (-> this force) (-> this force) force)
+  (let* ((offset (vector-! (new 'stack-no-clear 'vector) point (-> this position)))
+         (added-torque (vector-cross! (new 'stack-no-clear 'vector) offset force)))
+    (vector+! (-> this torque) (-> this torque) added-torque))
   0
   (none))
 
-(defmethod rigid-body-method-16 ((this rigid-body) (arg0 vector) (arg1 vector) (arg2 float))
-  (vector+! (-> this force) (-> this force) arg1)
-  (let* ((a0-3 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this position)))
-         (s4-1 (vector-cross! (new 'stack-no-clear 'vector) a0-3 arg1)))
-    (let ((f0-0 (vector-length a0-3))) (if (< arg2 f0-0) (vector-float*! s4-1 s4-1 (/ arg2 f0-0))))
-    (vector+! (-> this torque) (-> this torque) s4-1))
+(defmethod apply-force-at-point-clamped! ((this rigid-body) (point vector) (force vector) (max-arm float))
+  "Accumulate a world-space force at a point, scaling its torque contribution when the point's
+   lever arm exceeds max-arm."
+  (vector+! (-> this force) (-> this force) force)
+  (let* ((offset (vector-! (new 'stack-no-clear 'vector) point (-> this position)))
+         (added-torque (vector-cross! (new 'stack-no-clear 'vector) offset force)))
+    (let ((arm-length (vector-length offset)))
+      (if (< max-arm arm-length) (vector-float*! added-torque added-torque (/ max-arm arm-length))))
+    (vector+! (-> this torque) (-> this torque) added-torque))
   0
   (none))
 
-(defmethod rigid-body-method-14 ((this rigid-body) (arg0 vector) (arg1 vector))
-  (let ((s5-0 (new 'stack-no-clear 'vector))
-        (s4-0 (new 'stack-no-clear 'vector)))
-    (vector-rotate*! s4-0 arg1 (-> this matrix))
-    (vector-rotate*! s5-0 arg0 (-> this matrix))
-    (vector+! s5-0 s5-0 (-> this position))
-    (rigid-body-method-13 this s5-0 s4-0))
+(defmethod apply-local-force-at-local-point! ((this rigid-body) (local-point vector) (local-force vector))
+  "Transform a body-local point and force to world space, then accumulate them as a force at a
+   point."
+  (let ((world-point (new 'stack-no-clear 'vector))
+        (world-force (new 'stack-no-clear 'vector)))
+    (vector-rotate*! world-force local-force (-> this matrix))
+    (vector-rotate*! world-point local-point (-> this matrix))
+    (vector+! world-point world-point (-> this position))
+    (apply-force-at-point! this world-point world-force))
   0
   (none))
 
-(defmethod rigid-body-method-15 ((this rigid-body) (arg0 vector))
-  (vector+! (-> this force) (-> this force) arg0)
+(defmethod apply-force! ((this rigid-body) (force vector))
+  "Accumulate a world-space force at the center of mass without adding torque."
+  (vector+! (-> this force) (-> this force) force)
   0
   (none))
 
-(defmethod rigid-body-method-18 ((this rigid-body) (arg0 vector))
-  (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (vector-rotate*! gp-0 (-> this cm-offset-joint) (-> this matrix))
-    (vector-! arg0 (-> this position) gp-0))
-  arg0)
+(defmethod get-origin-position ((this rigid-body) (out-position vector))
+  "Write and return the body's render origin by subtracting the rotated center-of-mass offset
+   from its center-of-mass position."
+  (let ((world-center-offset (new 'stack-no-clear 'vector)))
+    (vector-rotate*! world-center-offset (-> this cm-offset-joint) (-> this matrix))
+    (vector-! out-position (-> this position) world-center-offset))
+  out-position)
 
 (defmethod print-stats ((this rigid-body))
+  "Print the body's force, torque, position, rotation, momentum, and velocity."
   (format #t "  force ~M ~M ~M" (-> this force x) (-> this force y) (-> this force z))
   (format #t "  torque ~f ~f ~f~%" (-> this torque x) (-> this torque y) (-> this torque z))
   (format #t "  position ~M ~M ~M" (-> this position x) (-> this position y) (-> this position z))
@@ -159,12 +189,16 @@
   0
   (none))
 
-(defmethod rigid-body-method-20 ((this rigid-body))
+(defmethod print-force-torque ((this rigid-body))
+  "Print the body's accumulated force and torque."
   (format #t "  force ~M ~M ~M" (-> this force x) (-> this force y) (-> this force z))
   (format #t "  torque ~f ~f ~f~%" (-> this torque x) (-> this torque y) (-> this torque z))
   0
   (none))
 
+;; Parameters for the small rigid-body model used by floating platforms. Dimensions and forces use
+;; game-space meters; each control point samples the water surface independently and shares the
+;; body's total buoyancy.
 (deftype rigid-body-platform-constants (structure)
   ((drag-factor           float)
    (buoyancy-factor       float)
@@ -192,13 +226,14 @@
    (platform              symbol)
    (sound-name            string)))
 
-
+;; Body-local buoyancy samples allocated with the process.
 (deftype rigid-body-control-point-inline-array (inline-array-class)
   ((data rigid-body-control-point :inline :dynamic :offset 16)))
 
-
 (set! (-> rigid-body-control-point-inline-array heap-base) (the-as uint 48))
 
+;; A moving platform whose transform comes from a lightweight rigid body. player-contact and
+;; player-impulse are boolean markers; the force and application point live in the adjacent vectors.
 (deftype rigid-body-platform (process-drawable)
   ((root-overlay          collide-shape-moving :overlay-at root)
    (info                  rigid-body-platform-constants)
@@ -213,194 +248,220 @@
    (player-attack-id      int32)
    (player-bonk-timeout   time-frame)
    (water-anim            water-anim)
-   (player-contact        basic)
-   (player-impulse        collide-shape-prim-mesh))
+   (player-contact        symbol)
+   (player-impulse        symbol))
   (:state-methods
    rigid-body-platform-idle
    rigid-body-platform-float)
   (:methods
-   (rigid-body-platform-method-22 (_type_ vector float) float)
-   (rigid-body-platform-method-23 (_type_ float) none)
-   (rigid-body-platform-method-24 (_type_ rigid-body-control-point float) none)
-   (rigid-body-platform-method-25 (_type_) none)
-   (rigid-body-platform-method-26 (_type_) none)
-   (rigid-body-platform-method-27 (_type_ vector) none)
-   (rigid-body-platform-method-28 (_type_) none)
-   (rigid-body-platform-method-29 (_type_ rigid-body-platform-constants) none)
-   (rigid-body-platform-method-30 (_type_) none)
-   (rigid-body-platform-method-31 (_type_) none)
-   (rigid-body-platform-method-32 (_type_) sound-id)
-   (rigid-body-platform-method-33 (_type_) object)
-   (rigid-body-platform-method-34 (_type_) none)))
-
+   (float-height-at (_type_ vector float) float)
+   (accumulate-forces! (_type_ float) none)
+   (apply-buoyancy-and-drag! (_type_ rigid-body-control-point float) none)
+   (apply-player-force! (_type_) none)
+   (apply-gravity! (_type_) none)
+   (apply-restoring-force! (_type_ vector) none)
+   (simulate! (_type_) none)
+   (setup-from-constants! (_type_ rigid-body-platform-constants) none)
+   (init-collision! (_type_) none)
+   (init-platform! (_type_) none)
+   (sync-on-state! (_type_) sound-id)
+   (notify-master-ridden! (_type_) object)
+   (go-initial-state (_type_) none)))
 
 (defmethod relocate ((this rigid-body-platform) (offset int))
+  "Relocate the separately allocated control-point array when present, then relocate the process
+   allocation through the parent method."
   (if (nonzero? (-> this control-point-array))
     (set! (-> this control-point-array)
           (the-as rigid-body-control-point-inline-array (+ (the-as int (-> this control-point-array)) offset))))
   (call-parent-method this offset))
 
-(defmethod rigid-body-platform-method-22 ((this rigid-body-platform) (arg0 vector) (arg1 float))
-  (let ((v1-0 (-> this water-anim)))
+(defmethod float-height-at ((this rigid-body-platform) (position vector) (simulation-time float))
+  "Return the surface height at position plus float-height-offset. Use the linked animated water's
+   ripple query or base height when present, otherwise sample the ocean. simulation-time is
+   available to subtype overrides."
+  (let ((water-actor (-> this water-anim)))
     0.0
     (+ (the-as float
                (cond
-                 (v1-0
-                  (let* ((a2-1 v1-0)
-                         (a0-1 (if a2-1 (-> a2-1 ppointer-water-anim 3))))
-                    (if a0-1 (get-ripple-height a0-1 arg0) (-> v1-0 ppointer-water-anim 9))))
-                 (else (ocean-get-height arg0))))
+                 (water-actor
+                  (let* ((water-link water-actor)
+                         (water-process (if water-link (-> water-link ppointer-water-anim 3))))
+                    (if water-process (get-ripple-height water-process position) (-> water-actor ppointer-water-anim 9))))
+                 (else (ocean-get-height position))))
        (-> this float-height-offset))))
 
-(defmethod rigid-body-platform-method-24 ((this rigid-body-platform) (arg0 rigid-body-control-point) (arg1 float))
-  (set! (-> arg0 world-pos w) (rigid-body-platform-method-22 this (-> arg0 world-pos) arg1))
-  (let* ((s4-0 (new 'stack-no-clear 'vector))
-         (f0-2 (- (-> arg0 world-pos w) (-> arg0 world-pos y)))
-         (f30-0 (/ f0-2 (-> this info max-buoyancy-depth))))
-    (when (< 0.0 f0-2)
-      (vector-float*! s4-0
+(defmethod apply-buoyancy-and-drag! ((this rigid-body-platform) (control-point rigid-body-control-point) (simulation-time float))
+  "Sample the surface at control-point, store the height in world-pos.w, and when submerged apply
+   depth-limited buoyancy plus velocity-proportional drag at that point."
+  (set! (-> control-point world-pos w) (float-height-at this (-> control-point world-pos) simulation-time))
+  (let* ((force (new 'stack-no-clear 'vector))
+         (submerged-depth (- (-> control-point world-pos w) (-> control-point world-pos y)))
+         (submerged-fraction (/ submerged-depth (-> this info max-buoyancy-depth))))
+    (when (< 0.0 submerged-depth)
+      (vector-float*! force
                       *y-vector*
                       (* (-> this rbody mass)
-                         (fmin 1.0 f30-0)
+                         (fmin 1.0 submerged-fraction)
                          (/ (-> this info gravity) (the float (-> this info control-point-count)))
                          (-> this info gravity-factor)
                          (-> this info buoyancy-factor)))
-      (rigid-body-method-13 (-> this rbody) (-> arg0 world-pos) s4-0)
-      (vector-float*! s4-0 (-> arg0 velocity) (* -1.0 (-> this info drag-factor) (fmin 1.0 f30-0)))
-      (rigid-body-method-13 (-> this rbody) (-> arg0 world-pos) s4-0)))
+      (apply-force-at-point! (-> this rbody) (-> control-point world-pos) force)
+      (vector-float*! force (-> control-point velocity) (* -1.0 (-> this info drag-factor) (fmin 1.0 submerged-fraction)))
+      (apply-force-at-point! (-> this rbody) (-> control-point world-pos) force)))
   0
   0
   (none))
 
-(defmethod rigid-body-platform-method-25 ((this rigid-body-platform))
+(defmethod apply-player-force! ((this rigid-body-platform))
+  "Apply a pending player impulse or contact force at its recorded point with a clamped lever arm,
+   then consume the impulse marker."
   (when (or (-> this player-impulse) (-> this player-contact))
     (set! (-> this player-impulse) #f)
-    (rigid-body-method-16 (-> this rbody)
-                          (-> this player-force-position)
-                          (-> this player-force)
-                          (-> this info player-force-distance)))
+    (apply-force-at-point-clamped! (-> this rbody)
+                                   (-> this player-force-position)
+                                   (-> this player-force)
+                                   (-> this info player-force-distance)))
   0
   (none))
 
-(defmethod rigid-body-platform-method-26 ((this rigid-body-platform))
-  (let ((a1-0 (new 'stack-no-clear 'vector)))
-    (vector-float*! a1-0 *y-vector* (* -1.0 (-> this info gravity-factor) (-> this info gravity) (-> this rbody mass)))
-    (rigid-body-method-15 (-> this rbody) a1-0))
+(defmethod apply-gravity! ((this rigid-body-platform))
+  "Apply the configured downward gravity force at the body's center of mass."
+  (let ((gravity-force (new 'stack-no-clear 'vector)))
+    (vector-float*! gravity-force
+                    *y-vector*
+                    (* -1.0 (-> this info gravity-factor) (-> this info gravity) (-> this rbody mass)))
+    (apply-force! (-> this rbody) gravity-force))
   0
   (none))
 
-(defmethod rigid-body-platform-method-27 ((this rigid-body-platform) (arg0 vector))
-  (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (vector-! gp-0 arg0 (-> this rbody position))
-    (set! (-> gp-0 y) 0.0)
-    (let* ((f0-1 (vector-length gp-0))
-           (f1-1 (* 10.0 (fmax 0.0 (fmin 4096.0 (+ -4096.0 f0-1))))))
-      (when (< 0.0 f1-1)
-        (vector-float*! gp-0 gp-0 (/ f1-1 f0-1))
-        (rigid-body-method-15 (-> this rbody) gp-0))))
+(defmethod apply-restoring-force! ((this rigid-body-platform) (target-position vector))
+  "Apply a horizontal force toward target-position once the body is more than one meter away.
+   Force grows linearly for the next meter and is capped thereafter."
+  (let ((offset (new 'stack-no-clear 'vector)))
+    (vector-! offset target-position (-> this rbody position))
+    (set! (-> offset y) 0.0)
+    (let* ((distance (vector-length offset))
+           (force-magnitude (* 10.0 (fmax 0.0 (fmin 4096.0 (+ -4096.0 distance))))))
+      (when (< 0.0 force-magnitude)
+        (vector-float*! offset offset (/ force-magnitude distance))
+        (apply-force! (-> this rbody) offset))))
   0
   (none))
 
-(defmethod rigid-body-platform-method-23 ((this rigid-body-platform) (arg0 float))
-  (let ((s4-0 (-> this rbody matrix)))
-    (dotimes (s3-0 (-> this info control-point-count))
-      (let ((s2-0 (-> this control-point-array data s3-0)))
-        (vector-matrix*! (-> s2-0 world-pos) (-> s2-0 local-pos) s4-0)
-        (rigid-body-method-17 (-> this rbody) (-> s2-0 world-pos) (-> s2-0 velocity))
-        (rigid-body-platform-method-24 this s2-0 arg0))))
-  (rigid-body-platform-method-26 this)
-  (rigid-body-platform-method-25 this)
+(defmethod accumulate-forces! ((this rigid-body-platform) (simulation-time float))
+  "For one physics step, transform every control point to world space, derive its point velocity,
+   accumulate buoyancy and drag, then add gravity and pending player forces."
+  (let ((body-matrix (-> this rbody matrix)))
+    (dotimes (i (-> this info control-point-count))
+      (let ((control-point (-> this control-point-array data i)))
+        (vector-matrix*! (-> control-point world-pos) (-> control-point local-pos) body-matrix)
+        (velocity-at-point (-> this rbody) (-> control-point world-pos) (-> control-point velocity))
+        (apply-buoyancy-and-drag! this control-point simulation-time))))
+  (apply-gravity! this)
+  (apply-player-force! this)
   0
   (none))
 
-(defmethod rigid-body-platform-method-28 ((this rigid-body-platform))
+(defmethod simulate! ((this rigid-body-platform))
+  "Detect riders, sample player velocity, accumulate elapsed game time, and run fixed physics
+   steps until less than half a step remains. Clear the per-frame contact marker afterward."
   (if (-> this info platform) (detect-riders! (-> this root-overlay)))
-  (set! (-> this player-velocity-prev quad) (-> this player-velocity quad))
+  (vector-copy! (-> this player-velocity-prev) (-> this player-velocity))
   (if *target*
-    (set! (-> this player-velocity quad) (-> *target* control transv quad))
-    (set! (-> this player-velocity quad) (-> *null-vector* quad)))
+    (vector-copy! (-> this player-velocity) (-> *target* control transv))
+    (vector-copy! (-> this player-velocity) *null-vector*))
   (+! (-> this sim-time-remaining) (* 0.0033333334 (the float (- (current-time) (-> *display* old-base-frame-counter)))))
-  (let ((f30-0 (* DISPLAY_FPS_RATIO 0.016666668)) ;; og:preserve-this changed for high fps
-        (f28-0 (* 0.0033333334 (the float (logand #xffffff (current-time))))))
-    (while (>= (-> this sim-time-remaining) (/ f30-0 2))
+  (let ((fixed-step (* DISPLAY_FPS_RATIO 0.016666668)) ;; og:preserve-this changed for high fps
+        (simulation-time (* 0.0033333334 (the float (logand #xffffff (current-time))))))
+    (while (>= (-> this sim-time-remaining) (/ fixed-step 2))
       (clear-force-torque! (-> this rbody))
-      (rigid-body-platform-method-23 this f28-0)
-      (rigid-body-method-10 (-> this rbody) f30-0)
-      (set! (-> this sim-time-remaining) (- (-> this sim-time-remaining) f30-0))))
+      (accumulate-forces! this simulation-time)
+      (integrate! (-> this rbody) fixed-step)
+      (set! (-> this sim-time-remaining) (- (-> this sim-time-remaining) fixed-step))))
   (set! (-> this player-contact) #f)
   0
   (none))
 
-(defbehavior rigid-body-platform-event-handler rigid-body-platform ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior rigid-body-platform-event-handler rigid-body-platform ((source process) (argc int) (message symbol) (block event-message-block))
+  "Convert bonk, attack, direct impulse, edge-grab, and ridden events into a pending player force,
+   enforcing attack-ID and bonk-timeout guards where applicable."
+  (case message
     (('bonk)
      (when (time-elapsed? (-> self player-bonk-timeout) (-> self info player-force-timeout))
        (set-time! (-> self player-bonk-timeout))
-       (let* ((s5-0 arg0)
-              (v1-7 (if (and (nonzero? s5-0) (type-type? (-> s5-0 type) process-drawable)) s5-0)))
-         (when v1-7
-           (set! (-> self player-impulse) (the-as collide-shape-prim-mesh #t))
-           (set! (-> self player-force-position quad) (-> (the-as process-drawable v1-7) root trans quad))
-           (let ((f0-4 (fmin (* 0.00012207031 (the-as float (-> arg3 param 1)) (-> self info player-bonk-factor) (-> self info player-weight))
-                             (-> self info player-force-clamp))))
-             (vector-float*! (-> self player-force) *y-vector* (- f0-4)))))))
+       (let* ((bonk-source source)
+              (bonk-drawable (if (and (nonzero? bonk-source) (type-type? (-> bonk-source type) process-drawable)) bonk-source)))
+         (when bonk-drawable
+           (set! (-> self player-impulse) #t)
+           (vector-copy! (-> self player-force-position) (-> (the-as process-drawable bonk-drawable) root trans))
+           (let ((bonk-force (fmin (* 0.00012207031 (the-as float (-> block param 1)) (-> self info player-bonk-factor) (-> self info player-weight))
+                                   (-> self info player-force-clamp))))
+             (vector-float*! (-> self player-force) *y-vector* (- bonk-force)))))))
     (('attack)
-     (let ((v1-16 (-> arg3 param 2)))
-       (when (!= v1-16 (-> self player-attack-id))
-         (set! (-> self player-attack-id) (the-as int v1-16))
+     (let ((attack-id (-> block param 2)))
+       (when (!= attack-id (-> self player-attack-id))
+         (set! (-> self player-attack-id) (the-as int attack-id))
          (cond
-           ((= (-> arg3 param 1) 'flop)
+           ((= (-> block param 1) 'flop)
             (when (time-elapsed? (-> self player-bonk-timeout) (-> self info player-force-timeout))
               (set-time! (-> self player-bonk-timeout))
-              (let* ((gp-1 arg0)
-                     (v1-24 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) process-drawable)) gp-1)))
-                (when v1-24
-                  (set! (-> self player-impulse) (the-as collide-shape-prim-mesh #t))
-                  (set! (-> self player-force-position quad) (-> (the-as process-drawable v1-24) root trans quad))
-                  (let ((f0-9 (fmin (* 16.0 (-> self info player-weight) (-> self info player-dive-factor)) (-> self info player-force-clamp))))
-                    (vector-float*! (-> self player-force) *y-vector* (- f0-9)))))))
-           ((= (-> arg3 param 1) 'explode)
-            (let* ((gp-2 arg0)
-                   (v1-34 (if (and (nonzero? gp-2) (type-type? (-> gp-2 type) process-drawable)) gp-2)))
-              (when v1-34
-                (set! (-> self player-impulse) (the-as collide-shape-prim-mesh #t))
-                (set! (-> self player-force-position quad) (-> (the-as process-drawable v1-34) root trans quad))
-                (vector-! (-> self player-force) (-> self rbody position) (-> (the-as process-drawable v1-34) root trans))
+              (let* ((flop-source source)
+                     (flop-drawable (if (and (nonzero? flop-source) (type-type? (-> flop-source type) process-drawable)) flop-source)))
+                (when flop-drawable
+                  (set! (-> self player-impulse) #t)
+                  (vector-copy! (-> self player-force-position) (-> (the-as process-drawable flop-drawable) root trans))
+                  (let ((flop-force (fmin (* 16.0 (-> self info player-weight) (-> self info player-dive-factor)) (-> self info player-force-clamp))))
+                    (vector-float*! (-> self player-force) *y-vector* (- flop-force)))))))
+           ((= (-> block param 1) 'explode)
+            (let* ((explosion-source source)
+                   (explosion-drawable (if (and (nonzero? explosion-source) (type-type? (-> explosion-source type) process-drawable)) explosion-source)))
+              (when explosion-drawable
+                (set! (-> self player-impulse) #t)
+                (vector-copy! (-> self player-force-position) (-> (the-as process-drawable explosion-drawable) root trans))
+                (vector-! (-> self player-force) (-> self rbody position) (-> (the-as process-drawable explosion-drawable) root trans))
                 (vector-normalize! (-> self player-force) (-> self info explosion-force)))))
            (else (the-as vector #f))))))
     (('impulse)
-     (let ((s5-1 arg0))
-       (when (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) process-drawable)) s5-1)
-         (set! (-> self player-impulse) (the-as collide-shape-prim-mesh #t))
-         (set! (-> self player-force-position quad) (-> self rbody position quad))
-         (let ((v0-0 (-> self player-force))) (set! (-> v0-0 quad) (-> (the-as vector (-> arg3 param 0)) quad)) v0-0))))
+     (let ((impulse-source source))
+       (when (if (and (nonzero? impulse-source) (type-type? (-> impulse-source type) process-drawable)) impulse-source)
+         (set! (-> self player-impulse) #t)
+         (vector-copy! (-> self player-force-position) (-> self rbody position))
+         (let ((force-vector (-> self player-force)))
+           (vector-copy! force-vector (the-as vector (-> block param 0)))
+           force-vector))))
     (('edge-grabbed)
-     (let ((v1-44 (-> arg3 param 0)))
+     (let ((edge-grab-data (-> block param 0)))
        (when (not (-> self player-impulse))
          (set! (-> self player-contact) #t)
-         (set! (-> self player-force-position quad) (-> (the-as vector (+ v1-44 32)) quad))
+         (vector-copy! (-> self player-force-position) (the-as vector (+ edge-grab-data 32)))
          (vector-float*! (-> self player-force) *y-vector* (* -1.0 (-> self info player-weight))))))
     (('ridden)
-     (let ((v1-48 (the-as object (-> arg3 param 0))))
-       (when (the-as uint v1-48)
-         (let ((v1-50 (handle->process (-> (the-as (pointer handle) v1-48) 0))))
-           (when (and v1-50 (= v1-50 *target*) (!= (-> *target* control mod-surface mode) 'swim))
+     (let ((rider-handle-reference (the-as object (-> block param 0))))
+       (when (the-as uint rider-handle-reference)
+         (let ((rider-process (handle->process (-> (the-as (pointer handle) rider-handle-reference) 0))))
+           (when (and rider-process (= rider-process *target*) (!= (-> *target* control mod-surface mode) 'swim))
              (when (not (-> self player-impulse))
                (set! (-> self player-contact) #t)
-               (set! (-> self player-force-position quad) (-> (the-as process-drawable v1-50) root trans quad))
-               (set! (-> self player-force quad) (-> *null-vector* quad))
+               (vector-copy! (-> self player-force-position) (-> (the-as process-drawable rider-process) root trans))
+               (vector-copy! (-> self player-force) *null-vector*)
                (vector+*! (-> self player-force) (-> self player-force) *y-vector* (* -1.0 (-> self info player-weight)))))))))))
 
 (defbehavior rigid-body-platform-post rigid-body-platform ()
+  "Refresh damping, play the configured impact sound for a pending impulse, simulate physics,
+   copy the body transform to the moving collision root, and post riders or the ordinary transform."
   (set! (-> self rbody lin-momentum-damping-factor) (-> self info linear-damping))
   (set! (-> self rbody ang-momentum-damping-factor) (-> self info angular-damping))
   (if (-> self player-impulse)
     (sound-play-by-name (string->sound-name (-> self info sound-name)) (new-sound-id) 1024 0 0 (sound-group sfx) #t))
-  (rigid-body-platform-method-28 self)
+  (simulate! self)
   (quaternion-copy! (-> self root-overlay quat) (-> self rbody rotation))
-  (rigid-body-method-18 (-> self rbody) (-> self root-overlay trans))
+  (get-origin-position (-> self rbody) (-> self root-overlay trans))
   (if (-> self info platform) (rider-post) (transform-post)))
 
+;; Floating-platform physics is only active while the target is within idle-distance. The idle state
+;; still posts the drawable but skips the rigid-body integration; float handles player events and
+;; advances the moving collision transform.
 (defstate rigid-body-platform-idle (rigid-body-platform)
   :virtual #t
   :trans
@@ -428,8 +489,10 @@
         (suspend)))
   :post rigid-body-platform-post)
 
-(defmethod rigid-body-platform-method-29 ((this rigid-body-platform) (arg0 rigid-body-platform-constants))
-  (set! (-> this info) arg0)
+(defmethod setup-from-constants! ((this rigid-body-platform) (constants rigid-body-platform-constants))
+  "Allocate control points and initialize the rigid body, mass, inertia, damping, player-force
+   state, transforms, and optional linked animated-water actor from constants."
+  (set! (-> this info) constants)
   (set! (-> this control-point-array)
         (new 'process 'rigid-body-control-point-inline-array (-> this info control-point-count)))
   (logior! (-> this skel status) (janim-status inited))
@@ -439,43 +502,46 @@
                (-> this info cm-joint-y)
                (-> this info cm-joint-z)
                1.0)
-  (rigid-body-method-22 (-> this rbody)
-                        (-> this root-overlay trans)
-                        (-> this root-overlay quat)
-                        (-> this info linear-damping)
-                        (-> this info angular-damping))
-  (rigid-body-method-9 (-> this rbody)
-                       (-> this info mass)
-                       (-> this info inertial-tensor-x)
-                       (-> this info inertial-tensor-y)
-                       (-> this info inertial-tensor-z))
+  (reset! (-> this rbody)
+          (-> this root-overlay trans)
+          (-> this root-overlay quat)
+          (-> this info linear-damping)
+          (-> this info angular-damping))
+  (set-mass-and-box-inertia! (-> this rbody)
+                             (-> this info mass)
+                             (-> this info inertial-tensor-x)
+                             (-> this info inertial-tensor-y)
+                             (-> this info inertial-tensor-z))
   (set! (-> this player-impulse) #f)
   (set! (-> this player-contact) #f)
   (set-time! (-> this player-bonk-timeout))
-  (set! (-> this player-force quad) (-> *null-vector* quad))
-  (set! (-> this player-velocity quad) (-> *null-vector* quad))
-  (set! (-> this player-velocity-prev quad) (-> *null-vector* quad))
+  (vector-copy! (-> this player-force) *null-vector*)
+  (vector-copy! (-> this player-velocity) *null-vector*)
+  (vector-copy! (-> this player-velocity-prev) *null-vector*)
   (set! (-> this water-anim) (the-as water-anim (entity-actor-lookup (-> this entity) 'water-actor 0)))
   0
   (none))
 
-(defmethod rigid-body-platform-method-30 ((this rigid-body-platform))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (alloc-riders s5-0 1)
-    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid rider-plat-sticky))
-      (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
-      (set! (-> s4-0 transform-index) 0)
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 20480.0)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
-    (backup-collide-with-as s5-0)
-    (set! (-> this root-overlay) s5-0))
+(defmethod init-collision! ((this rigid-body-platform))
+  "Create the moving platform collision shape, one rider slot, and an indestructible sticky ground
+   sphere that collides with the target; install it as root-overlay."
+  (let ((moving-shape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> moving-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> moving-shape reaction) default-collision-reaction)
+    (set! (-> moving-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (alloc-riders moving-shape 1)
+    (let ((sphere-prim (new 'process 'collide-shape-prim-mesh moving-shape (the-as uint 0) (the-as uint 0))))
+      (set! (-> sphere-prim prim-core collide-as) (collide-kind ground-object))
+      (set! (-> sphere-prim collide-with) (collide-kind target))
+      (set! (-> sphere-prim prim-core action) (collide-action solid rider-plat-sticky))
+      (set! (-> sphere-prim prim-core offense) (collide-offense indestructible))
+      (set! (-> sphere-prim transform-index) 0)
+      (set-vector! (-> sphere-prim local-sphere) 0.0 0.0 0.0 20480.0)
+      (set-root-prim! moving-shape sphere-prim))
+    (set! (-> moving-shape nav-radius) (* 0.75 (-> moving-shape root-prim local-sphere w)))
+    (backup-collide-with-as moving-shape)
+    (set! (-> this root-overlay) moving-shape))
   0
   (none))
 
@@ -505,30 +571,35 @@
        :platform #t
        :sound-name #f))
 
-(defmethod rigid-body-platform-method-34 ((this rigid-body-platform))
+(defmethod go-initial-state ((this rigid-body-platform))
+  "Enter this platform subtype's initial state. The base enters rigid-body-platform-idle."
   (go (method-of-object this rigid-body-platform-idle))
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this rigid-body-platform))
+(defmethod init-platform! ((this rigid-body-platform))
+  "Initialize this platform subtype. The base uses the default constants and places its control
+   points evenly around a three-meter circle, two and a half meters below the origin."
   (set! (-> this float-height-offset) 0.0)
-  (rigid-body-platform-method-29 this *rigid-body-platform-constants*)
-  (let ((s5-0 (-> this info control-point-count)))
-    (dotimes (s4-0 s5-0)
-      (let ((s3-0 (-> this control-point-array data s4-0)))
-        (let ((f30-0 (* 65536.0 (/ (the float s4-0) (the float s5-0)))))
-          (set! (-> s3-0 local-pos x) (* 12288.0 (sin f30-0)))
-          (set! (-> s3-0 local-pos y) -10240.0)
-          (set! (-> s3-0 local-pos z) (* 12288.0 (cos f30-0))))
-        (set! (-> s3-0 local-pos w) 1.0))))
+  (setup-from-constants! this *rigid-body-platform-constants*)
+  (let ((control-point-count (-> this info control-point-count)))
+    (dotimes (i control-point-count)
+      (let ((control-point (-> this control-point-array data i)))
+        (let ((angle (* 65536.0 (/ (the float i) (the float control-point-count)))))
+          (set! (-> control-point local-pos x) (* 12288.0 (sin angle)))
+          (set! (-> control-point local-pos y) -10240.0)
+          (set! (-> control-point local-pos z) (* 12288.0 (cos angle))))
+        (set! (-> control-point local-pos w) 1.0))))
   0
   (none))
 
-(defmethod init-from-entity! ((this rigid-body-platform) (arg0 entity-actor))
+(defmethod init-from-entity! ((this rigid-body-platform) (actor entity-actor))
+  "Mark the process as a platform, create its moving collision shape, initialize drawable state
+   from actor, install the subtype's physics configuration, and enter its initial state."
   (logior! (-> this mask) (process-mask platform))
-  (rigid-body-platform-method-30 this)
-  (process-drawable-from-entity! this arg0)
-  (rigid-body-platform-method-31 this)
-  (rigid-body-platform-method-34 this)
+  (init-collision! this)
+  (process-drawable-from-entity! this actor)
+  (init-platform! this)
+  (go-initial-state this)
   0
   (none))

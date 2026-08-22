@@ -13,7 +13,6 @@
   (:states
    bully-broken-cage-explode))
 
-
 (deftype bully (process-drawable)
   ((root            collide-shape-moving :override)
    (fact            fact-info-enemy :override)
@@ -31,14 +30,13 @@
    (hit-player-time time-frame)
    (neck            joint-mod))
   (:methods
-   (bully-method-20 (_type_) float))
+   (update-spin-velocity! (_type_) float))
   (:states
    bully-die
    (bully-idle symbol)
    bully-notice
    bully-start-spinning
    bully-stop-spinning))
-
 
 (defskelgroup *bully-sg*
   bully
@@ -61,7 +59,7 @@
        :settings
        (new 'static
             'shadow-settings
-            :flags (shadow-flags shdf00 shdf03)
+            :flags (shadow-flags camera-cull scissor-top)
             :shadow-dir
             (new 'static 'vector :y -1.0 :w 614400.0)
             :bot-plane
@@ -92,7 +90,7 @@
    (:rotvel-z (degrees -1.2) (degrees 1.2))
    (:accel-y (meters 0.00066666666))
    (:timer (seconds 0.4))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:next-time (seconds 0.1) (seconds 0.197))
    (:next-launcher 2876)
    (:conerot-x (degrees 70) (degrees 20))
@@ -119,7 +117,7 @@
    (:scalevel-y (meters 0.009765625))
    (:fade-a 2.1333334)
    (:timer (seconds 0.1))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:next-time (seconds 0.05))
    (:next-launcher 2877)
    (:rotate-y (degrees 0))))
@@ -140,7 +138,7 @@
    (:b 196.0)
    (:a 48.0)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 2874
   :init-specs
@@ -163,7 +161,7 @@
    (:accel-y (meters -0.0033333334))
    (:friction 0.97)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:next-time (seconds 0.25))
    (:next-launcher 2878)
    (:conerot-x (degrees 40) (degrees 30))
@@ -193,7 +191,7 @@
    (:accel-y (meters -0.0033333334))
    (:friction 0.97)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:next-time (seconds 0.25))
    (:next-launcher 2878)
    (:conerot-x (degrees 40) (degrees 30))
@@ -209,34 +207,36 @@
         (ja :num! (seek!))))
   :post ja-post)
 
-(defbehavior bully-broken-cage-init-by-other bully-broken-cage ((arg0 entity-actor))
-  (set! (-> self entity) arg0)
+(defbehavior bully-broken-cage-init-by-other bully-broken-cage ((source-entity entity-actor))
+  "Initialize the detached cage visual from its bully parent and play the explosion."
+  (set! (-> self entity) source-entity)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> self parent-override 0 root trans quad))
+  (vector-copy! (-> self root trans) (-> self parent-override 0 root trans))
   (quaternion-copy! (-> self root quat) (-> self parent-override 0 root quat))
-  (set! (-> self root scale quad) (-> self parent-override 0 root scale quad))
+  (vector-copy! (-> self root scale) (-> self parent-override 0 root scale))
   (initialize-skeleton self *bully-broken-cage-sg* '())
   (go bully-broken-cage-explode)
   (none))
 
 ;; WARN: disable def twice: 148. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defbehavior bully-default-event-handler bully ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defbehavior bully-default-event-handler bully ((source-process process) (argc int) (message symbol) (block event-message-block))
+  "Handle bully-to-bully bounces, player shoves and attacks, death, and forwarded touch attacks."
   (local-vars (v0-0 object))
-  (case arg2
+  (case message
     (('touch 'touched 'attack)
      (cond
-       ((= (-> arg0 type) bully)
+       ((= (-> source-process type) bully)
         (let ((v1-3 (new 'stack-no-clear 'vector)))
-          (vector-! v1-3 (-> self root trans) (-> (the-as process-drawable arg0) root trans))
+          (vector-! v1-3 (-> self root trans) (-> (the-as process-drawable source-process) root trans))
           (set! (-> self travel-ry) (atan (-> v1-3 x) (-> v1-3 z))))
         (set! (-> self bounced?) #t)
         (set! v0-0 100)
         (set! (-> self bounce-volume) (the-as int v0-0))
         v0-0)
-       ((= (-> arg0 type) target)
+       ((= (-> source-process type) target)
         (cond
-          ((= (-> arg3 param 1) 'flop) (go bully-die) (return #t) v0-0)
-          ((or (= arg2 'touch) (= arg2 'attack))
+          ((= (-> block param 1) 'flop) (go bully-die) (return #t) v0-0)
+          ((or (= message 'touch) (= message 'attack))
            (cond
              ((>= (- (-> (target-pos 0) y) (-> self root trans y)) 6144.0)
               (let* ((f0-6 (fmax 0.6 (* 0.000023935356 (-> self travel-speed))))
@@ -249,7 +249,7 @@
                     (let ((f0-11 (deg- f26-0 (-> self travel-ry))))
                       (if (< (fabs f0-11) 8192.0) (set! f26-0 (if (>= f0-11 0.0) (+ 8192.0 f26-0) (+ -8192.0 f26-0))))))
                   (set-vector! s4-0 (* (sin f26-0) f28-0) 0.0 (* (cos f26-0) f28-0) 1.0))
-                (when (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-up f30-0) (vector s4-0))))
+                (when (send-event source-process 'shove (-> block param 0) (static-attack-info ((shove-up f30-0) (vector s4-0))))
                   (level-hint-spawn (text-id sunken-bully-dive-hint) "sksp0131" (the-as entity #f) *entity-pool* (game-task none))
                   (set! (-> self bounced?) #t)
                   (set! v0-0 100)
@@ -257,9 +257,9 @@
                   v0-0)))
              (else
               (let ((f0-21 (fmax 0.6 (* 0.000023935356 (-> self travel-speed)))))
-                (when (send-event arg0
+                (when (send-event source-process
                                   'attack
-                                  (-> arg3 param 0)
+                                  (-> block param 0)
                                   (static-attack-info ((shove-up (* 12288.0 f0-21)) (shove-back (* 16384.0 f0-21)))))
                   (level-hint-spawn (text-id sunken-bully-dive-hint) "sksp0131" (the-as entity #f) *entity-pool* (game-task none))
                   (set! (-> self hit-player?) #t)
@@ -268,21 +268,23 @@
                   (set-time! (-> self hit-player-time))
                   (set-collide-offense (-> self root) 2 (collide-offense no-offense)))))))))
        (else
-        (when (= arg2 'touched)
+        (when (= message 'touched)
           (cond
-            ((= (-> arg0 type) target) (send-event arg0 'attack (-> arg3 param 0) (static-attack-info ((mode 'explode)))))
+            ((= (-> source-process type) target)
+             (send-event source-process 'attack (-> block param 0) (static-attack-info ((mode 'explode)))))
             (else
              (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
                (set! (-> a1-14 from) self)
                (set! (-> a1-14 num-params) 4)
                (set! (-> a1-14 message) 'attack)
-               (set! (-> a1-14 param 0) (-> arg3 param 0))
+               (set! (-> a1-14 param 0) (-> block param 0))
                (set! (-> a1-14 param 1) (the-as uint 'explode))
                (let ((v1-48 (+ *global-attack-id* 1))) (set! *global-attack-id* v1-48) (set! (-> a1-14 param 2) (the-as uint v1-48)))
                (set! (-> a1-14 param 3) (the-as uint 0))
-               (send-event-function arg0 a1-14))))))))))
+               (send-event-function source-process a1-14))))))))))
 
 (defbehavior bully-post bully ()
+  "Restore collision offense after the attack window, then post the bully transform."
   (when (and (-> self hit-player?)
              (or (not *target*)
                  (and (not (logtest? (-> *target* state-flags)
@@ -293,7 +295,9 @@
   (transform-post)
   (none))
 
-(defmethod bully-method-20 ((this bully))
+(defmethod update-spin-velocity! ((this bully))
+  "Build velocity from heading and speed, reflect from avoidance spheres or mesh boundaries,
+   apply gravity, and record a bounce when direction changes."
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -304,8 +308,8 @@
                  0.0
                  (* (cos (-> this travel-ry)) (-> this travel-speed))
                  1.0)
-    (let ((s5-1 #f))
-      (nav-control-method-28 (-> this nav) (collide-kind wall-object ground-object))
+    (let ((bounced? #f))
+      (gather-nav-spheres! (-> this nav) (collide-kind wall-object ground-object))
       (let ((v1-4 (-> this nav travel)))
         (.lvf vf1 (&-> (-> this root transv) quad))
         (let ((f0-8 (seconds-per-frame))) (.mov at-0 f0-8))
@@ -313,31 +317,31 @@
         (.mov.vf.w vf1 vf0)
         (.mul.x.vf.xyz vf1 vf1 vf2)
         (.svf (&-> v1-4 quad) vf1))
-      (let ((s4-0 (new 'stack-no-clear 'check-vector-collision-with-nav-spheres-info)))
-        (when (>= (nav-control-method-23 (-> this nav) (-> this nav travel) s4-0) 0.0)
-          (let ((s5-2 (new 'stack-no-clear 'vector)))
-            (set! (-> s5-2 quad) (-> s4-0 normal quad))
-            (set! (-> s5-2 y) 0.0)
-            (vector-normalize! s5-2 1.0)
-            (vector-reflect! (-> this root transv) (-> this root transv) s5-2))
+      (let ((sphere-info (new 'stack-no-clear 'check-vector-collision-with-nav-spheres-info)))
+        (when (>= (check-vector-collision-with-nav-spheres (-> this nav) (-> this nav travel) sphere-info) 0.0)
+          (let ((wall-normal (new 'stack-no-clear 'vector)))
+            (set! (-> wall-normal quad) (-> sphere-info normal quad))
+            (set! (-> wall-normal y) 0.0)
+            (vector-normalize! wall-normal 1.0)
+            (vector-reflect! (-> this root transv) (-> this root transv) wall-normal))
           (set! (-> this travel-ry) (atan (-> this root transv x) (-> this root transv z)))
           (+! (-> this travel-ry) (rand-vu-float-range -910.2222 910.2222))
           (vector-reset! (-> this root transv))
-          (set! s5-1 #t)
+          (set! bounced? #t)
           (set! (-> this bounced?) #t)
           (set! (-> this bounce-volume) 100)))
-      (when (not s5-1)
+      (when (not bounced?)
         (vector-normalize-copy! (-> this nav travel) (-> this root transv) 2048.0)
-        (let ((s5-3 (new 'stack 'clip-travel-vector-to-mesh-return-info)))
-          (nav-control-method-24 (-> this nav) 2048.0 s5-3)
-          (when (and (-> s5-3 found-boundary)
+        (let ((mesh-info (new 'stack 'clip-travel-vector-to-mesh-return-info)))
+          (clip-travel-to-mesh (-> this nav) 2048.0 mesh-info)
+          (when (and (-> mesh-info found-boundary)
                      (>= (* (-> this travel-speed) (seconds-per-frame))
-                         (vector-vector-xz-distance (-> s5-3 intersection) (-> this root trans))))
-            (let ((s4-1 (new 'stack-no-clear 'vector)))
-              (vector-negate! s4-1 (-> s5-3 boundary-normal))
-              (set! (-> s4-1 y) 0.0)
-              (vector-normalize! s4-1 1.0)
-              (vector-reflect! (-> this root transv) (-> this root transv) s4-1))
+                         (vector-vector-xz-distance (-> mesh-info intersection) (-> this root trans))))
+            (let ((boundary-normal (new 'stack-no-clear 'vector)))
+              (vector-negate! boundary-normal (-> mesh-info boundary-normal))
+              (set! (-> boundary-normal y) 0.0)
+              (vector-normalize! boundary-normal 1.0)
+              (vector-reflect! (-> this root transv) (-> this root transv) boundary-normal))
             (set! (-> this travel-ry) (atan (-> this root transv x) (-> this root transv z)))
             (+! (-> this travel-ry) (rand-vu-float-range -910.2222 910.2222))
             (vector-reset! (-> this root transv))
@@ -452,7 +456,7 @@
       (set! (-> self travel-speed) (* 41779.2 (-> self speed-u)))
       (+! (-> self facing-ry) (* (-> self spin-vel) (seconds-per-frame)))
       (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (-> self facing-ry))
-      (bully-method-20 self)
+      (update-spin-velocity! self)
       (integrate-for-enemy-with-move-to-ground! (-> self root)
                                                 (-> self root transv)
                                                 (collide-kind background)
@@ -460,7 +464,7 @@
                                                 #f
                                                 #f
                                                 #f)
-      (nav-control-method-27 (-> self nav)))
+      (relocalize-in-mesh! (-> self nav)))
   :code
     (behavior ()
       (local-vars (v1-34 symbol) (v1-52 symbol))
@@ -561,10 +565,12 @@
   :post transform-post)
 
 (defmethod relocate ((this bully) (offset int))
+  "Relocate the optional neck joint modifier, then relocate the parent drawable."
   (if (nonzero? (-> this neck)) (&+! (-> this neck) offset))
   (call-parent-method this offset))
 
-(defmethod init-from-entity! ((this bully) (arg0 entity-actor))
+(defmethod init-from-entity! ((this bully) (source-entity entity-actor))
+  "Initialize collision, animation, navigation, particles, pickup data, and neck tracking."
   (set! (-> this hit-player?) #f)
   (set! (-> this bounced?) #f)
   (set! (-> this bounce-volume) 100)
@@ -577,21 +583,21 @@
     (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s3-0 collide-with) (collide-kind cak-2 target crate enemy))
+      (set! (-> s3-0 collide-with) (collide-kind usually-hit-by-player target crate enemy))
       (set! (-> s3-0 prim-core action) (collide-action solid attackable attackable-unused))
       (set! (-> s3-0 prim-core offense) (collide-offense normal-attack))
       (set-vector! (-> s3-0 local-sphere) 0.0 6144.0 0.0 10240.0)
       (set-root-prim! s4-0 s3-0)
       (let ((s2-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
         (set! (-> s2-0 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-0 collide-with) (collide-kind cak-2 target crate enemy))
+        (set! (-> s2-0 collide-with) (collide-kind usually-hit-by-player target crate enemy))
         (set! (-> s2-0 prim-core action) (collide-action solid attackable attackable-unused))
         (set! (-> s2-0 prim-core offense) (collide-offense normal-attack))
         (set-vector! (-> s2-0 local-sphere) 0.0 4096.0 0.0 6963.2)
         (append-prim s3-0 s2-0))
       (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
         (set! (-> s2-1 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s2-1 collide-with) (collide-kind cak-2 target crate enemy))
+        (set! (-> s2-1 collide-with) (collide-kind usually-hit-by-player target crate enemy))
         (set! (-> s2-1 prim-core action) (collide-action solid attackable attackable-unused))
         (set! (-> s2-1 prim-core offense) (collide-offense normal-attack))
         (set-vector! (-> s2-1 local-sphere) 0.0 9420.8 0.0 4096.0)
@@ -601,11 +607,12 @@
     (set! (-> this root) s4-0))
   (set! (-> this root event-self) 'touched)
   (set! (-> this root event-other) 'touch)
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *bully-sg* '())
   (set! (-> this draw shadow-ctrl) *bully-shadow-control*)
   (set! (-> this nav) (new 'process 'nav-control (-> this root) 16 40960.0))
-  (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
+  (logior! (-> this nav flags)
+           (nav-control-flags display-marks display-polys display-active-polys display-travel display-spheres))
   (set! (-> this part) (create-launch-control group-bully-explode this))
   (set! (-> this fact) (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (let ((v1-49 (new 'process 'joint-mod (joint-mod-handler-mode reset) this 5)))

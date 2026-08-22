@@ -3,11 +3,8 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
-;; The "video" system manages PAL vs. NTSC and aspect ratio settings
-;;  (not including timing difference between PAL/NTSC)
-;; These are stored in the *video-parms* global.
-
-;; The game is interlaced, meaning each framebuffer is half height.
+;; Video parameters describe the PAL/NTSC display geometry and aspect-ratio correction. Timing is
+;; handled separately. The interlaced frame buffer stores one half-height field at a time.
 
 ;; DECOMP BEGINS
 
@@ -29,7 +26,8 @@
    (relative-x-scale-reciprical float)
    (relative-y-scale-reciprical float)))
 
-;; default to NTSC
+;; Default NTSC display geometry. Unspecified fields, including the y reciprocal, begin at zero and
+;; are filled when the video system selects its mode and aspect ratio.
 (define *video-parms*
   (new 'static
        'video-parms
@@ -45,20 +43,14 @@
        :screen-pages-high 7
        :relative-x-scale 1.0
        :relative-y-scale 1.0
-       :relative-x-scale-reciprical 1.0
-       :relative-y-scale-reciprical 0.0
-       ;; wrong.
-       ))
+       :relative-x-scale-reciprical 1.0))
 
 (define-extern get-video-mode (function symbol))
-
 (define-extern get-aspect-ratio (function symbol))
-
 (define-extern set-hud-aspect-ratio (function symbol symbol none))
-
 (define-extern set-aspect-ratio (function symbol none))
-
 (define-extern set-video-mode (function symbol none))
 
 (defmacro correct-x-int (pos)
+  "Scale an integer horizontal coordinate for the active aspect ratio."
   `(the int (* (-> *video-parms* relative-x-scale) (the float ,pos))))

@@ -8,64 +8,68 @@
   :bitfield #t
   :type uint32
   (display 0)
-  (draw-line 1) ;; TODO - only seen it used to control debug drawing so far
-  (draw-point 2) ;; TODO - only seen it used to control debug drawing so far
-  (draw-text 3) ;; TODO - only seen it used to control debug drawing so far
-  (not-found 4))
+  (draw-line 1) ;; draw the path or spline
+  (draw-point 2) ;; draw each control vertex
+  (draw-text 3) ;; label each control vertex with its index
+  (not-found 4)) ;; the requested vertex or knot resource was unavailable
 
 ;; DECOMP BEGINS
 
-;; A path-control is a curve that can be loaded from res-lump/entities.
 (deftype path-control (basic)
-  ((flags      path-control-flag)
-   (name       symbol)
-   (process    process-drawable)
-   (curve      curve :inline)
+  "A polyline associated with a process which stores its data in a resource lump.
+   Despite having a curve, this base class is only a polyline.
+   Use curve-control for the b-spline curve"
+  ((flags path-control-flag)
+   (name symbol)
+   (process process-drawable)
+   (curve curve :inline)
    (num-cverts int32 :overlay-at (-> curve num-cverts))
-   (cverts     (inline-array vector) :overlay-at (-> curve cverts)))
+   (cverts (inline-array vector) :overlay-at (-> curve cverts)))
   (:methods
    (new (symbol type process symbol float) _type_)
    (debug-draw (_type_) none)
    (eval-path-curve-div! (_type_ vector float symbol) vector)
    (get-random-point (_type_ vector) vector)
-   (path-control-method-12 (_type_ vector float) vector)
+   (get-tangent-at-vertex! (_type_ vector float) vector)
    (eval-path-curve! (_type_ vector float symbol) vector)
-   (path-control-method-14 (_type_ vector float) vector)
+   (get-tangent-at-percent! (_type_ vector float) vector)
    (length-as-float (_type_) float)
    (path-distance (_type_) float)
    (get-num-verts (_type_) int)
    (should-display? (_type_) symbol)
-   (path-control-method-19 (_type_) float)
-   (path-control-method-20 (_type_) float)))
+   (get-closest-vertex-index-to-target (_type_) float)
+   (get-closest-percent-to-target (_type_) float)))
 
 ;; A curve-control is very similar, but also gets knots.
-(deftype curve-control (path-control) ()
+(deftype curve-control (path-control)
+  "A B-spline associated with a process which stores its data in a resource lump."
+  ()
   (:methods
    (new (symbol type process symbol float) _type_)))
 
 (defmethod new path-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
+  "Load the named control vertices for proc at time. If the name is `path`, we try a `path-actor`
+   referenced by this process's actor."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (when (zero? this)
-      ;; allocation failed.
       (go process-drawable-art-error "memory")
       (set! this (the-as path-control 0))
       (goto cfg-9))
     (set! (-> this process) (the-as process-drawable proc))
     (set! (-> this name) name)
     (let ((ent (-> proc entity)))
+      ;; the path may be in a separate actor referenced by path-actor.
       (when (= name 'path)
-        ;; if we are a path, try to look up the path-actor.
-        (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0))) (if lookup-entity (set! ent lookup-entity))))
-      ;; look up the curve data
+        (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0)))
+          (if lookup-entity
+              (set! ent lookup-entity))))
       (let* ((tag (new 'static 'res-tag))
              (data (res-lump-data ent name pointer :tag-ptr (& tag) :time time)))
         (cond
           (data
-           ;; success, we got some data
            (set! (-> this cverts) (the-as (inline-array vector) data))
            (set! (-> this curve num-cverts) (the-as int (-> tag elt-count))))
-          (else
-           ;; did not find the data. Set flags and zero stuff
+          (else ;; not found
            (logior! (-> this flags) (path-control-flag not-found))
            (set! (-> this cverts) (the-as (inline-array vector) #f))
            (set! (-> this curve num-cverts) 0)
@@ -74,32 +78,39 @@
     (the-as path-control this)))
 
 (defmethod should-display? ((this path-control))
-  "Should we display path marks?"
+  "Return whether global path-mark display and this path's display flag are
+   both enabled."
   (and *display-path-marks* (logtest? (-> this flags) (path-control-flag display))))
 
 (defmethod length-as-float ((this path-control))
-  "Get the number of edges as a float"
+  "Return the number of control-vertex intervals as a float."
   (the float (+ (-> this curve num-cverts) -1)))
 
 (defmethod get-num-verts ((this path-control))
-  "Get the number of vertices"
+  "Return the number of control vertices."
   (-> this curve num-cverts))
 
 (defmethod new curve-control ((allocation symbol) (type-to-make type) (proc process) (name symbol) (time float))
+  "Load the named control vertices and their name-k knot resource for proc at time. path
+   uses path-k and may use a linked path-actor. Missing knots downgrade valid vertices to a plain
+   path; missing vertices set not-found."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this process) (the-as process-drawable proc))
     (set! (-> this name) name)
     (let* ((ent (-> proc entity))
-           (v1-2 name)
-           (s2-0 (cond
-                   ((= v1-2 'path)
-                    'path-k ;; for knots?
-                    )
-                   (else
-                    ;; appends a -k to the symbol name.
-                    (let ((s2-1 string->symbol)) (format (clear *temp-string*) "~A-k" name) (s2-1 *temp-string*))))))
-      (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0))) (if lookup-entity (set! ent lookup-entity)))
-      (when (not (get-curve-data! ent (-> this curve) name s2-0 time))
+           (curve-name name)
+           (knot-name (cond
+                        ((= curve-name 'path)
+                         'path-k ;; the standard path knot resource
+                         )
+                        (else
+                         ;; appends a -k to the symbol name.
+                         (let ((intern-symbol string->symbol))
+                           (format (clear *temp-string*) "~A-k" name)
+                           (intern-symbol *temp-string*))))))
+      (let ((lookup-entity (entity-actor-lookup ent 'path-actor 0)))
+        (if lookup-entity (set! ent lookup-entity)))
+      (when (not (get-curve-data! ent (the-as curve (&-> this cverts)) name knot-name time))
         (cond
           ((> (-> this curve num-cverts) 0)
            ;; downgrade us to a path-control, we got cverts but no knots.

@@ -8,7 +8,8 @@
 
 ;; DECOMP BEGINS
 
-(defun part-hud-racer-speed-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+(defun part-hud-racer-speed-func ((system sparticle-system) (particle sparticle-cpuinfo) (transform matrix))
+  "Rotate the racing speed needle toward the player's normalized horizontal speed."
   (let* ((f0-0 (-> *target* control ctrl-xz-vel))
          (f0-1 (cond
                  ((>= 122880.0 f0-0) (lerp-scale 42780.445 27488.71 f0-0 0.0 122880.0))
@@ -20,29 +21,29 @@
                  (else (lerp-scale -10922.667 -15473.777 f0-0 163840.0 172032.0)))))
     (cond
       ((< (-> *hud-parts* bike-speed 0 offset) 10)
-       (if (< f0-1 (-> arg2 vector 1 z))
-         (set! (-> arg2 vector 1 z) (deg-seek (-> arg2 vector 1 z) f0-1 (* 131072.0 (seconds-per-frame))))
-         (set! (-> arg2 vector 1 z) (deg-seek (-> arg2 vector 1 z) f0-1 (* 32768.0 (seconds-per-frame))))))
-      (else (set! (-> arg2 vector 1 z) f0-1))))
+       (if (< f0-1 (-> transform vector 1 z))
+         (set! (-> transform vector 1 z) (deg-seek (-> transform vector 1 z) f0-1 (* 131072.0 (seconds-per-frame))))
+         (set! (-> transform vector 1 z) (deg-seek (-> transform vector 1 z) f0-1 (* 32768.0 (seconds-per-frame))))))
+      (else (set! (-> transform vector 1 z) f0-1))))
   (none))
 
 (defpartgroup group-part-hud-racer-speed-dial
   :id 108
   :flags (screen-space)
   :bounds (static-bspherem 0 0 0 2)
-  :parts ((sp-item 740 :flags (launch-asap))))
+  :parts ((sp-item 740 :flags (one-shot))))
 
 (defpartgroup group-part-hud-racer-speed
   :id 109
   :flags (screen-space)
   :bounds (static-bspherem 0 0 0 2)
-  :parts ((sp-item 741 :flags (launch-asap))))
+  :parts ((sp-item 741 :flags (one-shot))))
 
 (defpartgroup group-part-hud-racer-speed-front
   :id 110
   :flags (screen-space)
   :bounds (static-bspherem 0 0 0 2)
-  :parts ((sp-item 1999 :flags (launch-asap))))
+  :parts ((sp-item 1999 :flags (one-shot))))
 
 (defpart 741
   :init-specs
@@ -56,7 +57,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))))
+   (:flags (die-when-faded write-depth))))
 
 (defpart 740
   :init-specs
@@ -71,7 +72,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-racer-speed-func)))
 
 (defpart 1999
@@ -86,79 +87,90 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))))
+   (:flags (die-when-faded write-depth))))
 
-(defun part-hud-racer-heat-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+(defun part-hud-racer-heat-func ((system sparticle-system) (particle sparticle-cpuinfo) (transform matrix))
+  "Rotate and color the racing heat needle from the player's normalized heat."
   (let ((f0-1 (/ (-> *target* racer heat) (-> *RACER-bank* heat-max))))
-    (set! (-> arg2 vector 1 z) (* 182.04445 (+ -45.0 (* 215.0 f0-1))))
+    (set! (-> transform vector 1 z) (* 182.04445 (+ -45.0 (* 215.0 f0-1))))
     (cond
       ((and (< 0.8 f0-1) (not (logtest? (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 8))) ;; og:preserve-this changed for high fps
-       (set! (-> arg2 vector 2 x) 128.0)
-       (set! (-> arg2 vector 2 y) 0.0)
-       (set! (-> arg2 vector 2 z) 0.0))
-      (else (set! (-> arg2 vector 2 x) 128.0) (set! (-> arg2 vector 2 y) 128.0) (set! (-> arg2 vector 2 z) 128.0))))
+       (set! (-> transform vector 2 x) 128.0)
+       (set! (-> transform vector 2 y) 0.0)
+       (set! (-> transform vector 2 z) 0.0))
+      (else
+       (set! (-> transform vector 2 x) 128.0)
+       (set! (-> transform vector 2 y) 128.0)
+       (set! (-> transform vector 2 z) 128.0))))
   (none))
 
-(defun zoomer-heat-slice-color ((arg0 matrix) (arg1 float))
+(defun zoomer-heat-slice-color ((transform matrix) (heat-fraction float))
+  "Set a heat-slice particle's color from its normalized heat value."
   (cond
-    ((< arg1 0.6)
-     (set! (-> arg0 vector 2 x) (* 213.33333 arg1))
-     (set! (-> arg0 vector 2 y) 128.0)
-     (set! (-> arg0 vector 2 z) 0.0))
-    ((< arg1 0.8)
-     (set! (-> arg0 vector 2 x) 128.0)
-     (set! (-> arg0 vector 2 y) (- 128.0 (* 640.0 (+ -0.6 arg1))))
-     (set! (-> arg0 vector 2 z) 0.0))
+    ((< heat-fraction 0.6)
+     (set! (-> transform vector 2 x) (* 213.33333 heat-fraction))
+     (set! (-> transform vector 2 y) 128.0)
+     (set! (-> transform vector 2 z) 0.0))
+    ((< heat-fraction 0.8)
+     (set! (-> transform vector 2 x) 128.0)
+     (set! (-> transform vector 2 y) (- 128.0 (* 640.0 (+ -0.6 heat-fraction))))
+     (set! (-> transform vector 2 z) 0.0))
     ((not (logtest? (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 8)) ;; og:preserve-this changed for high fps
-     (set! (-> arg0 vector 2 x) 128.0)
-     (set! (-> arg0 vector 2 y) 0.0)
-     (set! (-> arg0 vector 2 z) 0.0))
-    (else (set! (-> arg0 vector 2 x) 128.0) (set! (-> arg0 vector 2 y) 100.0) (set! (-> arg0 vector 2 z) 100.0)))
+     (set! (-> transform vector 2 x) 128.0)
+     (set! (-> transform vector 2 y) 0.0)
+     (set! (-> transform vector 2 z) 0.0))
+    (else
+     (set! (-> transform vector 2 x) 128.0)
+     (set! (-> transform vector 2 y) 100.0)
+     (set! (-> transform vector 2 z) 100.0)))
   (none))
 
-(defun part-hud-zoomer-heat-slice-01-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+(defun part-hud-zoomer-heat-slice-01-func ((system sparticle-system) (particle sparticle-cpuinfo) (transform matrix))
+  "Update the first racing heat slice."
   (let ((f0-1 (/ (-> *target* racer heat) (-> *RACER-bank* heat-max))))
-    (set! (-> arg2 vector 1 z) (* 182.04445 (+ -135.0 (* 215.0 f0-1))))
-    (zoomer-heat-slice-color arg2 f0-1))
+    (set! (-> transform vector 1 z) (* 182.04445 (+ -135.0 (* 215.0 f0-1))))
+    (zoomer-heat-slice-color transform f0-1))
   (none))
 
-(defun part-hud-zoomer-heat-slice-02-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+(defun part-hud-zoomer-heat-slice-02-func ((system sparticle-system) (particle sparticle-cpuinfo) (transform matrix))
+  "Update the second racing heat slice."
   (let ((f0-1 (/ (-> *target* racer heat) (-> *RACER-bank* heat-max))))
-    (set! (-> arg2 vector 1 z) (* 182.04445 (+ -225.0 (* 215.0 f0-1))))
-    (if (< (-> arg2 vector 1 z) -24576.0) (set! (-> arg2 vector 1 z) -24576.0))
-    (zoomer-heat-slice-color arg2 f0-1))
+    (set! (-> transform vector 1 z) (* 182.04445 (+ -225.0 (* 215.0 f0-1))))
+    (if (< (-> transform vector 1 z) -24576.0) (set! (-> transform vector 1 z) -24576.0))
+    (zoomer-heat-slice-color transform f0-1))
   (none))
 
-(defun part-hud-zoomer-heat-slice-03-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
+(defun part-hud-zoomer-heat-slice-03-func ((system sparticle-system) (particle sparticle-cpuinfo) (transform matrix))
+  "Update the third racing heat slice."
   (let ((f0-1 (/ (-> *target* racer heat) (-> *RACER-bank* heat-max))))
-    (set! (-> arg2 vector 1 z) (* 182.04445 (+ -315.0 (* 215.0 f0-1))))
-    (if (< (-> arg2 vector 1 z) -24576.0) (set! (-> arg2 vector 1 z) -24576.0))
-    (zoomer-heat-slice-color arg2 f0-1))
+    (set! (-> transform vector 1 z) (* 182.04445 (+ -315.0 (* 215.0 f0-1))))
+    (if (< (-> transform vector 1 z) -24576.0) (set! (-> transform vector 1 z) -24576.0))
+    (zoomer-heat-slice-color transform f0-1))
   (none))
 
 (defpartgroup group-part-hud-racer-heat-backing
   :id 111
   :flags (screen-space)
   :bounds (static-bspherem 0 0 0 2)
-  :parts ((sp-item 737 :flags (launch-asap))))
+  :parts ((sp-item 737 :flags (one-shot))))
 
 (defpartgroup group-part-hud-racer-heat-dial
   :id 112
   :flags (screen-space)
   :bounds (static-bspherem 0 0 0 2)
-  :parts ((sp-item 738 :flags (launch-asap))))
+  :parts ((sp-item 738 :flags (one-shot))))
 
 (defpartgroup group-part-hud-racer-heat
   :id 113
   :flags (screen-space)
   :bounds (static-bspherem 0 0 0 2)
-  :parts ((sp-item 739 :flags (launch-asap))))
+  :parts ((sp-item 739 :flags (one-shot))))
 
 (defpartgroup group-part-hud-racer-heat-slice
   :id 114
   :flags (use-local-clock screen-space)
   :bounds (static-bspherem 0 0 0 100)
-  :parts ((sp-item 2010 :flags (launch-asap)) (sp-item 2011 :flags (launch-asap)) (sp-item 2012 :flags (launch-asap))))
+  :parts ((sp-item 2010 :flags (one-shot)) (sp-item 2011 :flags (one-shot)) (sp-item 2012 :flags (one-shot))))
 
 (defpart 739
   :init-specs
@@ -172,7 +184,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))))
+   (:flags (die-when-faded write-depth))))
 
 (defpart 737
   :init-specs
@@ -186,7 +198,7 @@
    (:b 63.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))))
+   (:flags (die-when-faded write-depth))))
 
 (defpart 738
   :init-specs
@@ -200,7 +212,7 @@
    (:b 128.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-racer-heat-func)))
 
 (defpart 2010
@@ -214,7 +226,7 @@
    (:b 0.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-zoomer-heat-slice-01-func)))
 
 (defpart 2011
@@ -228,7 +240,7 @@
    (:b 0.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-zoomer-heat-slice-02-func)))
 
 (defpart 2012
@@ -242,18 +254,21 @@
    (:b 0.0)
    (:a 128.0)
    (:timer (seconds -0.005))
-   (:flags (bit2 bit9))
+   (:flags (die-when-faded write-depth))
    (:func 'part-hud-zoomer-heat-slice-03-func)))
 
-(deftype hud-bike-heat (hud) ())
-
+(deftype hud-bike-heat (hud)
+  "The racing-bike heat gauge."
+  ())
 
 (defmethod hud-update ((this hud-bike-heat))
+  "Update the gauge from the player's current racing-bike heat."
   (if *target* (tally-value this (the int (-> *target* racer heat)) 0))
   0
   (none))
 
-(defmethod init-particles! ((this hud-bike-heat) (arg0 int))
+(defmethod init-particles! ((this hud-bike-heat) (init-value int))
+  "Create the heat gauge's backing, dial, needle, and colored heat slices."
   (add-setting! 'common-page 'set 0.0 2)
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
     (let ((s5-0 (-> this nb-of-particles)))
@@ -299,15 +314,18 @@
   0
   (none))
 
-(deftype hud-bike-speed (hud) ())
-
+(deftype hud-bike-speed (hud)
+  "The racing-bike speed gauge."
+  ())
 
 (defmethod hud-update ((this hud-bike-speed))
+  "Update the gauge from the player's horizontal racing speed."
   (if *target* (tally-value this (the int (-> *target* control ctrl-xz-vel)) 0))
   0
   (none))
 
-(defmethod init-particles! ((this hud-bike-speed) (arg0 int))
+(defmethod init-particles! ((this hud-bike-speed) (init-value int))
+  "Create the speed gauge's dial, needle, and foreground particles."
   (add-setting! 'common-page 'set 0.0 2)
   (when (< (-> this nb-of-particles) (-> this max-nb-of-particles))
     (let ((s5-0 (-> this nb-of-particles)))
@@ -347,6 +365,7 @@
 (#when PC_PORT
   ;; og:preserve-this extra methods needed for aspect ratio in pc port
   (defmethod set-pos-and-scale ((this hud-bike-heat) (arg0 symbol) (arg1 symbol))
+    "Adjust the heat gauge for the PC display aspect ratio."
     (with-pc
       (let ((base-x (-> this particles 0 init-pos x)))
         (*! base-x (-> *pc-settings* aspect-ratio-reciprocal))
@@ -360,6 +379,7 @@
                   (+ base-x (* (-> *pc-settings* aspect-ratio-reciprocal) (- (-> this particles i init-pos x) base-x))))))))
     (none))
   (defmethod set-pos-and-scale ((this hud-bike-speed) (arg0 symbol) (arg1 symbol))
+    "Adjust the speed gauge for the PC display aspect ratio."
     (with-pc
       (let ((base-x (-> this particles 1 init-pos x)))
         (+! base-x (* (- 512.0 base-x) (- 1.0 (-> *pc-settings* aspect-ratio-reciprocal))))
@@ -378,7 +398,7 @@
   :parts
   ((sp-item 742 :fade-after (meters 160))
    (sp-item 743 :fade-after (meters 160))
-   (sp-item 744 :fade-after (meters 60) :falloff-to (meters 60) :flags (is-3d))))
+   (sp-item 744 :fade-after (meters 60) :falloff-to (meters 60) :flags (3d))))
 
 (defpart 742
   :init-specs
@@ -392,7 +412,7 @@
    (:b 128.0)
    (:a 32.0 32.0)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 743
   :init-specs
@@ -407,7 +427,7 @@
    (:a 64.0 64.0)
    (:fade-a -8.533334)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 744
   :init-specs
@@ -429,7 +449,7 @@
    (:fade-a -0.21333334)
    (:accel-y (meters -0.00015))
    (:timer (seconds 1))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 2211
   :init-specs
@@ -448,7 +468,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.95)
    (:timer (seconds 1))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -471,7 +491,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -491,7 +511,7 @@
    (:accel-y (meters -0.0013333333))
    (:friction 0.95)
    (:timer (seconds 0.9))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 40) (degrees 40))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 1))))
@@ -515,7 +535,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -536,7 +556,7 @@
    (:accel-y (meters -0.0013333333))
    (:friction 0.95)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3 bit12 bit14))
+   (:flags (die-when-faded glow use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 1))))
@@ -560,7 +580,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -583,7 +603,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -606,7 +626,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -629,7 +649,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit12 bit14))
+   (:flags (die-when-faded use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -650,7 +670,7 @@
    (:accel-y (meters -0.0013333333))
    (:friction 0.95)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 1))))
@@ -674,7 +694,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit3 bit12 bit14))
+   (:flags (die-when-faded glow use-time-of-day-color no-fog))
    (:conerot-x (degrees 60) (degrees 20))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -696,7 +716,7 @@
    (:fade-a 0.7111111)
    (:friction 0.94)
    (:timer (seconds 2))
-   (:flags (bit2 bit3 left-multiply-quat))
+   (:flags (die-when-faded glow left-multiply-quat))
    (:next-time (seconds 0.3))
    (:next-launcher 119)
    (:rotate-y (degrees 0))))
@@ -718,7 +738,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a 0.64)
    (:timer (seconds 2))
-   (:flags (bit2 bit3 left-multiply-quat))
+   (:flags (die-when-faded glow left-multiply-quat))
    (:next-time (seconds 0.5))
    (:next-launcher 116)))
 
@@ -737,7 +757,7 @@
    (:b 64.0 -16.0)
    (:a 64.0)
    (:timer (seconds 0.017))
-   (:flags (bit2 bit3 bit14))
+   (:flags (die-when-faded glow no-fog))
    (:userdata 0.0)))
 
 (defpart 2225
@@ -763,7 +783,7 @@
    (:accel-y (meters -0.001))
    (:friction 0.9)
    (:timer (seconds 0.3) (seconds 0.197))
-   (:flags (bit0 bit2 bit14))
+   (:flags (die-when-scale-0 die-when-faded no-fog))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 0.5))))
@@ -791,7 +811,7 @@
    (:accel-y (meters -0.001))
    (:friction 0.9)
    (:timer (seconds 0.3) (seconds 0.197))
-   (:flags (bit0 bit2 bit14))
+   (:flags (die-when-scale-0 die-when-faded no-fog))
    (:conerot-x (degrees 0) (degrees 360))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 0.5))))
@@ -814,7 +834,7 @@
    (:accel-y (meters 0.00033333333) (meters 0.00033333333))
    (:friction 0.85)
    (:timer (seconds 1.5))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.05) (seconds 0.015))
    (:next-launcher 2277)))
 
@@ -855,7 +875,7 @@
    (:accel-y (meters -0.00016666666) (meters -0.00016666666))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.1) (seconds 0.297))
    (:next-launcher 2283)
    (:conerot-x (degrees 0) (degrees 360))
@@ -882,7 +902,7 @@
    (:fade-b -1.0666667)
    (:fade-a -1.6)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2279
   :init-specs
@@ -897,7 +917,7 @@
    (:a 128.0)
    (:fade-a -2.3272727)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2281
   :init-specs
@@ -919,7 +939,7 @@
    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
    (:friction 0.8)
    (:timer (seconds 1.7))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.14))
    (:next-launcher 2284)
    (:conerot-x (degrees 0) (degrees 360))
@@ -956,4 +976,4 @@
    (:fade-a -0.4)
    (:accel-y (meters -0.000016666667))
    (:timer (seconds 1.5))
-   (:flags (bit0 bit2 bit3 bit14))))
+   (:flags (die-when-scale-0 die-when-faded glow no-fog))))

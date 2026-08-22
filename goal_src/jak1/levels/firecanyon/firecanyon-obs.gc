@@ -11,7 +11,6 @@
    balloon-idle
    balloon-popping))
 
-
 (defpartgroup group-balloon
   :id 227
   :duration (seconds 0.017)
@@ -35,7 +34,7 @@
    (:rotvel-z (degrees -1.2) (degrees 2.4))
    (:fade-a -0.42666668)
    (:timer (seconds 0.5))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 1008
   :init-specs
@@ -54,7 +53,7 @@
    (:fade-a -0.85333335)
    (:friction 0.98)
    (:timer (seconds 0.25))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:conerot-x (degrees 0) (degrees 180))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 1.5))))
@@ -73,7 +72,7 @@
    (:a 96.0)
    (:fade-a -0.08)
    (:timer (seconds 0.05))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defstate balloon-popping (balloon)
   :code
@@ -96,13 +95,11 @@
     (behavior ()
       (transform-post)
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
-(defmethod init-from-entity! ((this balloon) (arg0 entity-actor))
+(defmethod init-from-entity! ((this balloon) (source-entity entity-actor))
+  "Initialize the balloon's collision sphere, skeleton, and pop particles."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -113,7 +110,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *balloon-sg* '())
   (set! (-> this part) (create-launch-control group-balloon this))
   (go balloon-idle)
@@ -126,7 +123,6 @@
    spike-down
    spike-idle
    spike-up))
-
 
 (defskelgroup *spike-sg*
   spike
@@ -155,11 +151,7 @@
             0))))
   :code
     (behavior ()
-      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (transform-post)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0 (transform-post))
       (loop
         (suspend))))
 
@@ -205,7 +197,8 @@
       (loop
         (suspend))))
 
-(defmethod init-from-entity! ((this spike) (arg0 entity-actor))
+(defmethod init-from-entity! ((this spike) (source-entity entity-actor))
+  "Initialize the spike's four collision primitives, skeleton, and linked-spike count."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 4) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
@@ -250,7 +243,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *spike-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (set! (-> this num-alts) (entity-actor-count (-> this entity) 'alt-actor))
@@ -270,7 +263,6 @@
    idle
    die))
 
-
 (defpartgroup group-dark-cluster-explosion
   :id 228
   :duration (seconds 2)
@@ -282,70 +274,70 @@
    (sp-item 2102 :period (seconds 2) :length (seconds 0.067))
    (sp-item 2103 :period (seconds 2) :length (seconds 0.067))
    (sp-item 2104 :fade-after (meters 100) :period (seconds 2) :length (seconds 0.017) :binding 296)
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))
-   (sp-item 296 :flags (start-dead launch-asap) :binding 297)
-   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (start-dead))))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))
+   (sp-item 296 :flags (child one-shot) :binding 297)
+   (sp-item 297 :fade-after (meters 80) :falloff-to (meters 100) :flags (child))))
 
 (defpart 2104
   :init-specs
@@ -361,7 +353,7 @@
    (:accel-y (meters -0.00033333333))
    (:friction 0.94)
    (:timer (seconds 0.8))
-   (:flags (bit3))
+   (:flags (glow))
    (:conerot-x (degrees 0) (degrees 140))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -382,7 +374,7 @@
    (:accel-y (meters -0.00016666666) (meters -0.00016666666))
    (:friction 0.9)
    (:timer (seconds 1))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:next-time (seconds 0.1) (seconds 0.297))
    (:next-launcher 2105)
    (:conerot-x (degrees 0) (degrees 120))
@@ -407,7 +399,7 @@
    (:scalevel-y (meters 1.04))
    (:fade-a -1.6)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2100
   :init-specs
@@ -422,7 +414,7 @@
    (:a 128.0)
    (:fade-a -2.3272727)
    (:timer (seconds 0.18))
-   (:flags (bit2 bit3 bit14))))
+   (:flags (die-when-faded glow no-fog))))
 
 (defpart 2102
   :init-specs
@@ -444,7 +436,7 @@
    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
    (:friction 0.8)
    (:timer (seconds 1.7))
-   (:flags (bit2 bit14))
+   (:flags (die-when-faded no-fog))
    (:conerot-x (degrees 0) (degrees 120))
    (:conerot-y (degrees 0) (degrees 360))
    (:conerot-radius (meters 0) (meters 4))))
@@ -485,7 +477,8 @@
       (suspend)
       0))
 
-(defmethod init-from-entity! ((this crate-darkeco-cluster) (arg0 entity-actor))
+(defmethod init-from-entity! ((this crate-darkeco-cluster) (source-entity entity-actor))
+  "Initialize the dark-eco crate cluster's collision mesh and skeleton."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind crate))
@@ -498,7 +491,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *crate-darkeco-cluster-sg* '())
   (go (method-of-object this idle))
   (none))

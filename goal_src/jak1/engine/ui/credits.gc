@@ -5,18 +5,20 @@
 
 ;; DECOMP BEGINS
 
-(defun set-credits-font-color ((arg0 float))
+(defun set-credits-font-color ((brightness float))
+  "Set the RGB channels of all four variants in credits color slot 32. Each channel is 64 times
+   brightness, clamped to a minimum of 128; the alpha channels are unchanged."
   255.0
-  (dotimes (v1-0 4)
-    (let ((f0-2 (* 64.0 arg0)))
-      (if (< 128.0 f0-2) (set! f0-2 128.0))
-      (set! (-> *font-work* color-table 32 color v1-0 r) (the int f0-2)))
-    (let ((f0-5 (* 64.0 arg0)))
-      (if (< 128.0 f0-5) (set! f0-5 128.0))
-      (set! (-> *font-work* color-table 32 color v1-0 g) (the int f0-5)))
-    (let ((f0-8 (* 64.0 arg0)))
-      (if (< 128.0 f0-8) (set! f0-8 128.0))
-      (set! (-> *font-work* color-table 32 color v1-0 b) (the int f0-8))))
+  (dotimes (i 4)
+    (let ((red-value (* 64.0 brightness)))
+      (if (< 128.0 red-value) (set! red-value 128.0))
+      (set! (-> *font-work* color-table 32 color i r) (the int red-value)))
+    (let ((green-value (* 64.0 brightness)))
+      (if (< 128.0 green-value) (set! green-value 128.0))
+      (set! (-> *font-work* color-table 32 color i g) (the int green-value)))
+    (let ((blue-value (* 64.0 brightness)))
+      (if (< 128.0 blue-value) (set! blue-value 128.0))
+      (set! (-> *font-work* color-table 32 color i b) (the int blue-value))))
   0
   (none))
 
@@ -24,42 +26,50 @@
 
 (define *title-credits-spacing* (new 'static 'boxed-array :type int32 15 20 15 15 20 15 20 15))
 
-(defun draw-title-credits ((arg0 float))
-  (when (>= 1.0 arg0)
-    (let* ((s4-0 11)
-           (f30-0 (* arg0 (the float (+ s4-0 -2))))
-           (s5-0 (the int f30-0))
-           (gp-0 (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))))
+(defun draw-title-credits ((credit-progress float))
+  "Draw the opening title credits for a normalized time from 0 to 1. The timeline advances through
+   three-line cards: each card waits, fades in, holds at half opacity, and fades out. Per-line scale
+   and spacing come from the title-credit tables, with territory-specific company text on the first
+   card."
+  (when (>= 1.0 credit-progress)
+    (let* ((timeline-length 11)
+           (timeline-position (* credit-progress (the float (+ timeline-length -2))))
+           (timeline-index (the int timeline-position))
+           (font (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))))
       1.0
-      (let ((v1-3 gp-0)) (set! (-> v1-3 width) (the float 600)))
-      (let ((v1-4 gp-0)) (set! (-> v1-4 height) (the float 10)))
-      (set! (-> gp-0 flags) (font-flags kerning middle large))
-      (let* ((s5-1 (- s5-0 (mod s5-0 3)))
-             (f0-10 (- f30-0 (the float s5-1))))
-        (when (and (>= s5-1 0) (< s5-1 s4-0))
-          (let ((f30-1 (cond
-                         ((< f0-10 0.8) 0.0)
-                         ((< f0-10 1.6) (* 160.0 (+ -0.8 f0-10)))
-                         ((< f0-10 2.2) 128.0)
-                         (else (* 128.0 (- 1.0 (* 1.25 (+ -2.2 f0-10))))))))
-            (set! (-> gp-0 origin x) -44.0)
-            (set! (-> gp-0 origin y) 90.0)
-            (dotimes (s4-1 3)
-              (let* ((s2-0 (+ s4-1 3840 s5-1))
-                     (s3-0 (lookup-text! *common-text* (the-as text-id s2-0) #t)))
-                (when (= s2-0 3841)
+      (set-width! font 600)
+      (set-height! font 10)
+      (set-flags! font (font-flags kerning middle large))
+      (let* ((group-start (- timeline-index (mod timeline-index 3)))
+             (group-phase (- timeline-position (the float group-start))))
+        (when (and (>= group-start 0) (< group-start timeline-length))
+          (let ((opacity (cond
+                           ((< group-phase 0.8) 0.0)
+                           ((< group-phase 1.6) (* 160.0 (+ -0.8 group-phase)))
+                           ((< group-phase 2.2) 128.0)
+                           (else (* 128.0 (- 1.0 (* 1.25 (+ -2.2 group-phase))))))))
+            (set! (-> font origin x) -44.0)
+            (set! (-> font origin y) 90.0)
+            (dotimes (i 3)
+              (let* ((text-index (+ i 3840 group-start))
+                     (text (lookup-text! *common-text* (the-as text-id text-index) #t)))
+                (when (= text-index 3841)
                   (case (scf-get-territory)
-                    ((GAME_TERRITORY_SCEE) (set! s3-0 (lookup-text! *common-text* (text-id europe) #t)))
-                    ((GAME_TERRITORY_SCEI) (set! s3-0 (lookup-text! *common-text* (text-id inc) #t)))))
-                (when s3-0
-                  (let ((v1-25 gp-0)) (set! (-> v1-25 scale) (-> *title-credits-scale* (+ s5-1 s4-1))))
-                  (print-game-text s3-0 gp-0 #f (the int f30-1) 22)))
-              (+! (-> gp-0 origin y) (the float (-> *title-credits-spacing* (+ s5-1 s4-1))))))))))
+                    ((GAME_TERRITORY_SCEE) (set! text (lookup-text! *common-text* (text-id europe) #t)))
+                    ((GAME_TERRITORY_SCEI) (set! text (lookup-text! *common-text* (text-id inc) #t)))))
+                (when text
+                  (set-scale! font (-> *title-credits-scale* (+ group-start i)))
+                  (print-game-text text font #f (the int opacity) 22)))
+              (+! (-> font origin y) (the float (-> *title-credits-spacing* (+ group-start i))))))))))
   0
   (none))
 
-(defun draw-end-credits ((arg0 int))
-  (local-vars (v1-13 int))
+(defun draw-end-credits ((scroll-offset int))
+  "Scroll the end-credit text upward by the given pixel offset. Lines above the screen are measured
+   without drawing, visible lines are drawn through the bottom edge, and missing text entries take
+   25 pixels. Returns true after the final text ID; on PC the credits use the current audio language
+   and restore automatic level-text loading when finished."
+  (local-vars (draw-line-height int))
   (#when PC_PORT
     ;; og:preserve-this change text language during credits
     ;; disable the automatic text loading for now
@@ -68,32 +78,36 @@
       ;; swap language and load new text files
       (set! (-> *pc-settings* text-language) (the pc-language (-> *setting-control* current language)))
       (load-level-text-files 0)))
-  (let ((s4-0 (+ (- arg0) (the int (* 1.5 (the float (-> *video-parms* screen-sy))))))
-        (gp-0 2815)
-        (s3-0 0)
-        (s2-0 #t)
-        (s5-0 (new 'stack 'font-context *font-default-matrix* 31 0 0.0 (font-color default) (font-flags shadow kerning))))
-    (let ((v1-2 s5-0)) (set! (-> v1-2 width) (the float 450)))
-    (let ((v1-3 s5-0)) (set! (-> v1-3 height) (the float 10)))
-    (let ((v1-4 s5-0)) (set! (-> v1-4 scale) 1.0))
-    (set! (-> s5-0 flags) (font-flags shadow kerning middle large))
-    (while (or s2-0 (and (< s4-0 (- s3-0)) (< (the-as uint gp-0) (the-as uint 3262))))
-      (+! s4-0 s3-0)
-      (+! gp-0 1)
-      (let ((a0-8 (lookup-text! *common-text* (the-as text-id gp-0) #t)))
-        (if a0-8 (set! s3-0 (the int (+ 5.0 (print-game-text a0-8 s5-0 #t 128 20)))) (set! s3-0 25)))
-      (set! s2-0 #f))
+  (let ((y (+ (- scroll-offset) (the int (* 1.5 (the float (-> *video-parms* screen-sy))))))
+        (text-index 2815)
+        (skip-line-height 0)
+        (first-line? #t)
+        (font (new 'stack 'font-context *font-default-matrix* 31 0 0.0 (font-color default) (font-flags shadow kerning))))
+    (set-width! font 450)
+    (set-height! font 10)
+    (set-scale! font 1.0)
+    (set-flags! font (font-flags shadow kerning middle large))
+    (while (or first-line? (and (< y (- skip-line-height)) (< (the-as uint text-index) (the-as uint 3262))))
+      (+! y skip-line-height)
+      (+! text-index 1)
+      (let ((skip-text (lookup-text! *common-text* (the-as text-id text-index) #t)))
+        (if skip-text
+          (set! skip-line-height (the int (+ 5.0 (print-game-text skip-text font #t 128 20))))
+          (set! skip-line-height 25)))
+      (set! first-line? #f))
     (cond
-      ((>= (the-as uint gp-0) (the-as uint 3262))
+      ((>= (the-as uint text-index) (the-as uint 3262))
        (#when PC_PORT
          ;; credits are over - re-enable automatic text loading
          (enable-level-text-file-loading))
        #t)
       (else
-       (set! (-> s5-0 origin y) (the float s4-0))
-       (while (< (-> s5-0 origin y) (the float (-> *video-parms* screen-sy)))
-         (let ((a0-11 (lookup-text! *common-text* (the-as text-id gp-0) #t)))
-           (if a0-11 (set! v1-13 (the int (+ 5.0 (print-game-text a0-11 s5-0 #f 128 20)))) (set! v1-13 25)))
-         (+! (-> s5-0 origin y) (the float v1-13))
-         (+! gp-0 1))
+       (set! (-> font origin y) (the float y))
+       (while (< (-> font origin y) (the float (-> *video-parms* screen-sy)))
+         (let ((draw-text (lookup-text! *common-text* (the-as text-id text-index) #t)))
+           (if draw-text
+             (set! draw-line-height (the int (+ 5.0 (print-game-text draw-text font #f 128 20))))
+             (set! draw-line-height 25)))
+         (+! (-> font origin y) (the float draw-line-height))
+         (+! text-index 1))
        #f))))

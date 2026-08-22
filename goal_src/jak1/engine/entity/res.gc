@@ -6,38 +6,32 @@
 (require "engine/gfx/texture/texture.gc")
 
 #|
-res is a generic storage system for not very large data, used mostly for the game entities.
-These res files store collections of data, which can be as values (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector), or any structure (as references), which are tagged and identified with a res-tag.
-The data is stored similar to an unboxed inline-array, the type of the data is stored in the res-tag.
+Res is a compact property system used primarily by game entities. A res-lump owns
+a fixed-capacity table of res-tags followed by a packed data area. Each tag gives
+the property's name, element type and count, data offset, and optional key-frame
+time. Inline tags store raw scalar or vector elements in the lump; reference tags
+store pointers to structures and other objects. A lump can therefore hold unlike
+properties, such as a moving platform's vector path and its integer entity ID.
 
-A res-lump stores and is used to access all of the data for a single "resource", a collection of varying data.
-This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
+Tags are sorted by name and then key frame. The lookup methods can select the base
+sample, require an exact time, or return the two samples bracketing a time for
+interpolation. For example, several values of a camera property can be stored at
+different key frames and blended as the camera moves between them. A key frame of
+-1000000000.0 is the untimed base sample. It remains the fallback before the first
+timed sample and is never blended into that sample. The get-property methods
+provide the general lookup interface, while get-curve-data! fills a curve from
+named control-point and knot properties.
 
-A res-tag is a tag that contains information about a particular property of this resource, such as type, name, and amount of elements.
-For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
-
-Keyframes are used to specify when/where the data is relevant.
-For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
-when it starts, somewhere in the middle, and at the end.
-You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
-the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
-
-Properties are looked up from a res-lump using their name (a symbol).
-You can look up the data of the property you want directly using the various get-property methods.
-Curves can be quickly filled in using the get-curve-data! method.
-
-
-This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
+This system grew out of the Crash 2 entity resource system.
 |#
 
 (defmacro res-ref? (tag)
-  "Checks resource tag, and returns #t if resource data is a reference type, #f if it is inlined."
+  "Return true when tag stores references rather than inline element data."
   `(zero? (-> ,tag inlined?)))
 
 ;; DECOMP BEGINS
 
 (defmethod print ((this res-tag))
-  "print a res-tag."
   (if (res-ref? this)
     (format #t
             "#<res-tag :name ~A :key-frame ~f :elt-type ~A :elt-count ~D>"
@@ -54,24 +48,24 @@ This is updated from the entity system used in Crash 2, which had most of these 
   this)
 
 (defmethod length ((this res-tag))
-  "get the length in bytes of this tag's resource."
+  "Return the property's storage size in bytes: four bytes per reference or the element size for inline data."
   (the int
        (if (res-ref? this)
          (* (-> this elt-count) 4) ;; elements are pointers/references to data.
          (* (-> this elt-count) (-> this elt-type size)))))
 
-(defmethod get-tag-index-data ((this res-lump) (n int))
-  "get the data address of the n'th tag."
+(defmethod get-tag-index-data ((this res-lump) (i int))
+  "Return the data address for tag index i."
   (declare (inline))
-  (&+ (-> this data-base) (-> this tag n data-offset)))
+  (&+ (-> this data-base) (-> this tag i data-offset)))
 
 (defmethod get-tag-data ((this res-lump) (tag res-tag))
-  "get the data address of the specified tag."
+  "Return the data address described by tag."
   (declare (inline))
   (&+ (-> this data-base) (-> tag data-offset)))
 
 (defmethod new res-lump ((allocation symbol) (type-to-make type) (data-count int) (data-size int))
-  "Allocate a new res-lump."
+  "Allocate a res lump with room for data-count tags and data-size bytes of property data."
   (let ((this (object-new allocation
                           type-to-make
                           (the int (+ (-> type-to-make size) (* (1- data-count) (size-of res-tag)) data-size)))))
@@ -83,11 +77,11 @@ This is updated from the entity system used in Crash 2, which had most of these 
     this))
 
 (defmethod length ((this res-lump))
-  "get the amount of resources in a res-lump."
+  "Return the number of occupied property tags."
   (-> this length))
 
 (defmethod asize-of ((this res-lump))
-  "get the allocated size of a res-lump."
+  "Return the lump's allocated size, including its tag table and packed data area."
   (the int
        (+ (-> this type psize) ;; psize is used here, but size is used in the allocation?
           (* (-> this allocated-length) (size-of res-tag))
@@ -112,19 +106,17 @@ This is updated from the entity system used in Crash 2, which had most of these 
   this)
 
 (defmethod lookup-tag-idx ((this res-lump) (name-sym symbol) (mode symbol) (time float))
-  "Look up the index of the tag containing with the given name and timestamp.
-   Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
-   Depending on the mode, they may be the same, or they may be two tags that you should interpolate
-   between, if the exact time was not found.
-
-   name-sym should be the name of the thing you want.
-   time is for the timestamp you want.
-   If mode = 'base, then both the indices are the same and the timestamp is ignored.
-   If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found)
-   If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
-   If things go wrong, returns a negative number"
+  "Find the tag indices for property name-sym at time and return them packed as a
+   res-tag-pair.
+   In base mode, ignore time and repeat the earliest sample index in both halves. In exact
+   mode, require an exact key-frame match and repeat that index. In interp mode, repeat an
+   exact match or return the nearest lower and upper samples that bracket time.
+   The untimed -1000000000.0 sample is a fallback before the first timed sample, not an
+   interpolation endpoint. Return a negative packed result when the property or requested
+   sample is missing."
   (local-vars (tag-idx int))
-  ;; for some unknown reason, these names cannot be looked up with this method.
+  ;; These values are stored in the entity type directly. They might have been part of
+  ;; the lump properties in an earlier version.
   (when (or (= name-sym 'id)
             (= name-sym 'aid)
             (= name-sym 'trans)
@@ -138,7 +130,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   ;; these are the outputs of the function.
   (let ((hi-tag-idx-out -1)
         (lo-tag-idx-out -1))
-    ;; this value is the index of the most recently passed tag with an "invalid" timestamp
+    ;; track invalid timestamp point so we avoid using it in interpolation
     (let ((most-recent-invalid-time-idx -1)
           ;; read 8 chars of the name we want
           (type-chars (-> (the-as (pointer uint64) (-> (symbol->string name-sym) data)) 0)))
@@ -147,7 +139,6 @@ This is updated from the entity system used in Crash 2, which had most of these 
       ;; min/max are inclusive.
       (let ((max-search (+ (-> this length) -1))
             (min-search 0))
-        ;; inclusive, so >= is correct
         (while (>= max-search min-search)
           ;; check in the middle of the range to bisect it.
           (let* ((check-idx (+ min-search (/ (- max-search min-search) 2)))
@@ -164,24 +155,22 @@ This is updated from the entity system used in Crash 2, which had most of these 
       ;; got to the end of the loop without finding the answer. Set a negative tag
       (set! tag-idx -1)
       (label cfg-32)
+      ;; return error if the binary search failed.
       (if (< tag-idx 0) (return (the res-tag-pair tag-idx)))
       ;; if there are multiple tags with the same name and different timesteps, we can't be sure which we ended on.
       ;; this loop brings us to the first tag with the correct name.
       (while (and (> tag-idx 0)
                   (= type-chars (-> (the-as (pointer uint64) (-> (symbol->string (-> (-> this tag) (+ tag-idx -1) name)) data)) 0)))
         (+! tag-idx -1))
-      ;; in 'base mode, we just want the earliest tag with the right name.
-      ;; tags are in increasing timestamps, so we found it!
+      ;; Base mode returns the first sample, ignoring the requested time.
       (if (= mode 'base)
         (begin
           ;; both lo and hi are the same
           (set! lo-tag-idx-out tag-idx)
           (set! hi-tag-idx-out tag-idx)
           (goto cfg-73)))
-      ;; next we will iterate through tags with the right name and find the one(s) with the right timestamp
-      ;; interp-tag-idx is the index of tag-ptr always
-      ;; (the fact that they keep a pointer to a tag and not actually load the tag makes it seem like
-      ;; they ran into some 128-bit integer issues here...)
+      ;; Walk every tag sharing the first eight name bytes. Keep an address into
+      ;; the packed tag table so the full symbol and key frame can be checked.
       (let ((interp-tag-idx tag-idx)
             (tag-ptr (&-> (-> this tag) tag-idx)))
         ;; loop, until we reach another name or the end of the table
@@ -210,8 +199,8 @@ This is updated from the entity system used in Crash 2, which had most of these 
             ;; check for being too far (passed the time)
             ((< time (-> tag-ptr 0 key-frame))
              (begin
-               ;; if we're interpolation mode and valid, set the high one.
-               ;; not sure what the invalid time thing is about.
+               ;; The untimed base sample is a fallback, not an interpolation
+               ;; endpoint. Hold it until the first timed sample is reached.
                (if (and (!= lo-tag-idx-out most-recent-invalid-time-idx) (= mode 'interp)) (set! hi-tag-idx-out interp-tag-idx))
                (goto cfg-73))))
           ;; advance to next tag
@@ -222,35 +211,37 @@ This is updated from the entity system used in Crash 2, which had most of these 
     (the-as res-tag-pair (logior (logand #xffffffff (the-as uint lo-tag-idx-out)) (the-as uint (shl hi-tag-idx-out 32))))))
 
 (defmacro make-res-int-data (interp elt-count buf src-lo src-hi ty)
+  "Interpolate an integer array with 12-bit fixed-point weights."
   `(let ((fixed-pt (the int (* 4096.0 ,interp))))
     (dotimes (i ,elt-count)
-      (set! (deref ,ty ,buf 0) (ash (+ (* (deref ,ty ,src-lo i) (- 4096 fixed-pt)) (* (deref ,ty ,src-hi i) fixed-pt)) -12)))
+      (set! (deref ,ty ,buf i) (ash (+ (* (deref ,ty ,src-lo i) (- 4096 fixed-pt)) (* (deref ,ty ,src-hi i) fixed-pt)) -12)))
     buf))
 
 (defmethod make-property-data ((this res-lump) (time float) (tag-pair res-tag-pair) (buf pointer))
-  "Returns (a pointer to) the value data of a property with the tag-pair.
-   If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
-   with the result written into buf. buf must have enough space to copy all of the data.
-   Otherwise, simply returns an address to the resource binary."
+  "Return the property data selected by tag-pair at time.
+   This handles interpolation of the data."
   (let* ((tag-lo (-> this tag (-> tag-pair lo)))
          (tag-hi (-> this tag (-> tag-pair hi)))
          (elt-count (-> tag-lo elt-count)))
     (cond
+      ;; references just return the referenced data directly
       ((res-ref? tag-lo) (get-tag-data this tag-lo))
-      ((or (not buf)
-           (= (-> tag-pair lo) (-> tag-pair hi))
-           (!= elt-count (-> tag-hi elt-count))
-           (!= (-> tag-lo elt-type) (-> tag-hi elt-type)))
+      ((or (not buf) ;; no storage provided
+           (= (-> tag-pair lo) (-> tag-pair hi)) ;; no interp needed
+           (!= elt-count (-> tag-hi elt-count))  ;; different length samples: interpolation impossible
+           (!= (-> tag-lo elt-type) (-> tag-hi elt-type))) ;; differing types
        (get-tag-data this tag-lo))
       (else
-       (let ((interp (/ (- time (-> tag-lo key-frame)) (- (-> tag-hi key-frame) (-> tag-lo key-frame)))) ;; DBZ
+       ;; Interpolation is needed here.
+       (let ((interp (/ (- time (-> tag-lo key-frame)) (- (-> tag-hi key-frame) (-> tag-lo key-frame))))
              (src-lo (get-tag-data this tag-lo))
              (src-hi (get-tag-data this tag-hi)))
          (case (-> tag-lo elt-type symbol)
            (('float)
             (dotimes (i elt-count)
-              (set! (deref float buf 0) (+ (* (deref float src-lo i) (- 1.0 interp)) (* (deref float src-hi i) interp))))
+              (set! (deref float buf i) (+ (* (deref float src-lo i) (- 1.0 interp)) (* (deref float src-hi i) interp))))
             buf)
+           ;; integer interpolation uses 12-bit fractional fixed point
            (('integer 'sinteger 'uinteger 'int64 'uint64) (make-res-int-data interp elt-count buf src-lo src-hi uint64))
            (('int8) (make-res-int-data interp elt-count buf src-lo src-hi int8))
            (('uint8) (make-res-int-data interp elt-count buf src-lo src-hi uint8))
@@ -276,11 +267,12 @@ This is updated from the entity system used in Crash 2, which had most of these 
            (else (get-tag-data this tag-lo))))))))
 
 (defmethod get-property-data ((this res-lump) (name symbol) (mode symbol) (time float) (default pointer) (tag-addr (pointer res-tag)) (buf-addr pointer))
-  "Returns an address to a given property's data at a specific time stamp, or default on error.
-   name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-   default is the default result returned in the case of an error.
-   tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
-   buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+  "Return the address of property name at time, or default if lookup fails.
+   mode controls lookup: base ignores time and selects the first sample, exact requires a
+   sample at time, and interp selects an exact sample or brackets time for interpolation.
+   If tag-addr is nonfalse, write the selected lower res-tag there. If interpolation is
+   required, buf-addr must point to enough storage for every element of the result. Exact
+   and non-interpolated results point directly into the lump."
   (let ((tag-pair (lookup-tag-idx this name mode time)))
     (cond
       ((< (the-as int tag-pair) 0) (empty))
@@ -290,11 +282,12 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default)
 
 (defmethod get-property-struct ((this res-lump) (name symbol) (mode symbol) (time float) (default structure) (tag-addr (pointer res-tag)) (buf-addr pointer))
-  "Returns a given struct property's value at a specific time stamp, or default on error.
-   name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-   default is the default result returned in the case of an error.
-   tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
-   buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+  "Return structure property name at time, or default if lookup fails.
+   mode controls lookup: base ignores time and selects the first sample, exact requires a
+   sample at time, and interp selects an exact sample or brackets time for interpolation.
+   Reference tags are dereferenced before returning. If tag-addr is nonfalse, write the
+   selected lower res-tag there. buf-addr supplies interpolation storage, although
+   structure properties are normally references and therefore are not interpolated."
   (let ((tag-pair (lookup-tag-idx this name mode time)))
     (cond
       ((< (the-as int tag-pair) 0) (empty))
@@ -306,11 +299,13 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default)
 
 (defmethod get-property-value ((this res-lump) (name symbol) (mode symbol) (time float) (default uint128) (tag-addr (pointer res-tag)) (buf-addr pointer))
-  "Returns a given value property's value at a specific time stamp, or default on error.
-   name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-   default is the default result returned in the case of an error.
-   tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
-   buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+  "Return the first scalar element of property name in a 128-bit value, or default if
+   lookup or type conversion fails.
+   mode controls lookup: base ignores time and selects the first sample, exact requires a
+   sample at time, and interp selects an exact sample or brackets time for interpolation.
+   Integer values are sign- or zero-extended according to their element type.
+   If tag-addr is nonfalse, write the selected lower res-tag there. buf-addr must hold
+   the interpolated array when interpolation is required."
   (let ((tag-pair (lookup-tag-idx this name mode time)))
     (cond
       ((< (the-as int tag-pair) 0))
@@ -339,7 +334,14 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default)
 
 (defmethod get-property-value-float ((this res-lump) (name symbol) (mode symbol) (time float) (default float) (tag-addr (pointer res-tag)) (buf-addr pointer))
-  "same as get-property-value but float type is checked first?"
+  "Return the first numeric element of property name converted to float, or default if
+   lookup or type conversion fails.
+   mode controls lookup: base ignores time and selects the first sample, exact requires a
+   sample at time, and interp selects an exact sample or brackets time for interpolation.
+   Float properties are loaded directly and integer properties are numerically converted
+   according to their signedness and width. If tag-addr is nonfalse, write the selected
+   lower res-tag there. buf-addr must hold the interpolated array when interpolation is
+   required."
   (let ((tag-pair (lookup-tag-idx this name mode time)))
     (cond
       ((< (the-as int tag-pair) 0) (empty))
@@ -368,7 +370,7 @@ This is updated from the entity system used in Crash 2, which had most of these 
   default)
 
 (defmethod sort! ((this res-lump))
-  "Sort all tags based on name, then key-frame."
+  "Bubble-sort occupied tags by the first eight name bytes and then by key frame."
   (let ((tags-sorted -1))
     (while (nonzero? tags-sorted)
       (set! tags-sorted 0)
@@ -386,25 +388,22 @@ This is updated from the entity system used in Crash 2, which had most of these 
           (1+! i)))))
   this)
 
-(defmethod allocate-data-memory-for-tag! ((this res-lump) (arg0 res-tag))
-  "Find space for the data described by arg0 in `this`.
-   Returns a tag with data-offset set correctly for this res-lump.
-   If the lump already contains memory for the given tag, and it is big enough,
-   it will be reused.  Alignment will be at least 8 bytes.
-   If the input tag has elt-count = 0, it will return a tag for elt-count = 1."
+(defmethod allocate-data-memory-for-tag! ((this res-lump) (tag res-tag))
+  "Reuse an aligned compatible slot or allocate 16-byte-aligned lump storage for tag.
+   Install the updated tag, force a zero element count to one, and return false if the tag table or data area is full."
   (local-vars (resource-mem pointer))
   ;; first, look up the tag to see if it already exists in this res-lump
-  (let ((tag-pair (lookup-tag-idx this (-> arg0 name) 'exact (-> arg0 key-frame))))
+  (let ((tag-pair (lookup-tag-idx this (-> tag name) 'exact (-> tag key-frame))))
     (let ((existing-tag (-> this tag (-> tag-pair lo))))
       ;; If our existing tag is valid, but our key-frame is NaN, then we forget about it.
       (if (and (>= (the-as int tag-pair) 0)
-               (!= (-> arg0 key-frame) (-> arg0 key-frame)) ;; check for NaN
+               (!= (-> tag key-frame) (-> tag key-frame)) ;; check for NaN
                )
         (set! tag-pair (new 'static 'res-tag-pair :lo #xffffffff :hi #xffffffff)))
       ;; modify the input to have at least one element
-      (if (zero? (-> arg0 elt-count)) (set! (-> arg0 elt-count) 1))
+      (if (zero? (-> tag elt-count)) (set! (-> tag elt-count) 1))
       ;; next, we try to find some memory
-      (let ((data-size (length arg0))) ;; size in bytes to store the data.
+      (let ((data-size (length tag))) ;; size in bytes to store the data.
         (cond
           ((and (>= (the-as int tag-pair) 0) (>= (the-as uint (length existing-tag)) (the-as uint data-size)))
            ;; we have enough memory in the existing tag.
@@ -420,13 +419,13 @@ This is updated from the entity system used in Crash 2, which had most of these 
            (set! resource-mem (logand -16 (&+ (-> this data-top) 15)))
            (set! (-> this data-top) (&+ resource-mem data-size))))
         ;; set our data offset.
-        (set! (-> arg0 data-offset) (&- resource-mem (the-as uint (-> this data-base))))
+        (set! (-> tag data-offset) (&- resource-mem (the-as uint (-> this data-base))))
         ;; check for overflow of the data memory
         ;; this will leave things in a bad state.
         (when (>= (the-as int (&+ resource-mem data-size)) (the-as int (&+ (-> this data-base) (-> this data-size))))
           (format 0
                   "ERROR: attempting to a new tag ~`res-tag`P data of #x~X bytes to ~A, but data memory is full.~%"
-                  arg0
+                  tag
                   data-size
                   this)
           (return (the-as res-tag #f)))))
@@ -437,58 +436,49 @@ This is updated from the entity system used in Crash 2, which had most of these 
        (cond
          ((>= (-> this length) (-> this allocated-length))
           ;; but there isn't room for another tag.
-          (format 0 "ERROR: attempting to a new tag ~`res-tag`P to ~A, but tag memory is full.~%" arg0 this)
+          (format 0 "ERROR: attempting to a new tag ~`res-tag`P to ~A, but tag memory is full.~%" tag this)
           (return (the-as res-tag #f)))
          (else
           ;; allocate a new tag and sort, so the binary search works properly.
-          (set! (-> this tag (-> this length)) arg0)
+          (set! (-> this tag (-> this length)) tag)
           (set! (-> this length) (+ (-> this length) 1))
           (sort! this))))
       (else
        ;; reuse the existing tag.
-       (set! (-> this tag (-> tag-pair lo)) arg0))))
-  arg0)
+       (set! (-> this tag (-> tag-pair lo)) tag))))
+  tag)
 
-(defmethod add-data! ((this res-lump) (arg0 res-tag) (arg1 pointer))
-  "Given a tag and a pointer to its data, copy it to this res-lump.
-   This doesn't seem to do the right thing if the given tag is a non-inline tag
-   with > 1 element."
+(defmethod add-data! ((this res-lump) (tag res-tag) (data pointer))
+  "Install tag and copy its inline payload, or store data as a reference.
+   A reference tag with more than one element appears to store only the first pointer even
+   though its allocated length accounts for the full array."
   ;; get a tag for this lump with memory for the given tag.
-  (let ((new-tag (allocate-data-memory-for-tag! this arg0)))
+  (let ((new-tag (allocate-data-memory-for-tag! this tag)))
     (when new-tag
       ;; get pointer to new tag's memory
-      (let* ((v1-2 this)
-             (a1-1 new-tag)
-             (tag-mem (&+ (-> v1-2 data-base) (-> a1-1 data-offset))))
+      (let* ((lump this)
+             (stored-tag new-tag)
+             (tag-mem (&+ (-> lump data-base) (-> stored-tag data-offset))))
         (cond
           ((zero? (-> new-tag inlined?))
-           ;; this seems wrong, it should loop over the length maybe?
-           (length new-tag) ;; unused?
-           (set! (-> (the-as (pointer pointer) tag-mem)) arg1))
+           ;; Reference properties store the supplied object pointer in their data slot.
+           (length new-tag) ;; The computed length is unused; should this copy every reference?
+           (set! (-> (the-as (pointer pointer) tag-mem)) data))
           (else
            ;; otherwise, copy the memory.
-           (let ((a2-1 (length new-tag))) (mem-copy! tag-mem arg1 a2-1)))))))
+           (let ((byte-count (length new-tag))) (mem-copy! tag-mem data byte-count)))))))
   this)
 
-(defmethod add-32bit-data! ((this res-lump) (arg0 res-tag) (arg1 object))
-  "Add a single 32-bit value using add-data."
-  (set! (-> arg0 inlined?) 1)
-  (add-data! this arg0 (& arg1)) ;; note, only 32-bits are spilled to the stack here.
-  #|
-  (local-vars (sv-16 object))
-  (set! sv-16 arg1)
-  (let* ((v1-0 arg0)
-         (a1-4 (copy-and-set-bf v1-0 :inlined? 1))
-         )
-   (add-data! this a1-4 (& sv-16))
-   )
-  |#
-  )
+(defmethod add-32bit-data! ((this res-lump) (tag res-tag) (value object))
+  "Install value as one inline 32-bit property."
+  (set! (-> tag inlined?) 1)
+  ;; Only the low 32 bits of value are spilled for the inline copy.
+  (add-data! this tag (& value)))
 
 (defmethod get-curve-data! ((this res-lump) (curve-target curve) (points-name symbol) (knots-name symbol) (time float))
-  "Read curve data and write it to curve-target. Return #t if both control points and knots data was succesfully read, #f otherwise."
+  "Load exact control-point and knot properties into curve-target at time.
+   Return true only when both properties exist, and clamp the reported control-point count to 256."
   (let ((result #f))
-    ;; there's some macro here
     (let* ((points-tag (new 'static 'res-tag))
            (curve-data (get-property-data this points-name 'exact time (the pointer #f) (& points-tag) *res-static-buf*)))
       (when curve-data
@@ -514,16 +504,17 @@ This is updated from the entity system used in Crash 2, which had most of these 
 
 (declare-type collide-mesh basic)
 
-(defmethod mem-usage ((this res-lump) (block memory-usage-block) (flags int))
-  "Get the memory usage of this lump and its data"
+(defmethod mem-usage ((this res-lump) (block memory-usage-block) (flags mem-usage-flags))
+  "Add the lump and its referenced objects to the selected memory-usage category."
   ;; get the name and ID
   (let ((mem-use-id (mem-usage-id res))
         (mem-use-name "res"))
+    ;; the caller may set flags giving us a more specific category
     (cond
-      ((logtest? flags 256) (set! mem-use-id (mem-usage-id camera)) (set! mem-use-name "camera"))
-      ((logtest? flags 64) (set! mem-use-id (mem-usage-id entity)) (set! mem-use-name "entity"))
-      ((logtest? flags 128) (set! mem-use-id (mem-usage-id ambient)) (set! mem-use-name "ambient"))
-      ((logtest? flags 512) (set! mem-use-id (mem-usage-id art-joint-geo)) (set! mem-use-name "art-joint-geo")))
+      ((logtest? flags (mem-usage-flags resource-camera)) (set! mem-use-id (mem-usage-id camera)) (set! mem-use-name "camera"))
+      ((logtest? flags (mem-usage-flags resource-entity)) (set! mem-use-id (mem-usage-id entity)) (set! mem-use-name "entity"))
+      ((logtest? flags (mem-usage-flags resource-ambient)) (set! mem-use-id (mem-usage-id ambient)) (set! mem-use-name "ambient"))
+      ((logtest? flags (mem-usage-flags resource-joint-geo)) (set! mem-use-id (mem-usage-id art-joint-geo)) (set! mem-use-name "art-joint-geo")))
     ;; set up the block
     (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
     (set! (-> block data mem-use-id name) mem-use-name)
@@ -536,78 +527,71 @@ This is updated from the entity system used in Crash 2, which had most of these 
     ;; add the tags
     (dotimes (tag-idx (-> this length))
       (when (zero? (-> this tag tag-idx inlined?))
-        (let* ((a1-4 this)
-               (a0-15 tag-idx)
-               (tag-data (the-as basic (-> (the-as (pointer uint32) (&+ (-> a1-4 data-base) (-> a1-4 tag a0-15 data-offset)))))))
+        (let* ((lump this)
+               (tag-index tag-idx)
+               (tag-data (the-as basic (-> (the-as (pointer uint32) (&+ (-> lump data-base) (-> lump tag tag-index data-offset)))))))
           ;; ref to non-inline data.  Inline data would have been counted above.
           (when (not (part-group-pointer? (the-as pointer tag-data)))
             (case (-> (the-as basic tag-data) type)
               ((symbol type))
               ((string)
-               ;; strings add like a normal object.
-               ;; this seems identical to the else case.
+               ;; Strings use the normal object accounting path.
                (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
                (set! (-> block data mem-use-id name) mem-use-name)
                (+! (-> block data mem-use-id count) 1)
-               (let ((v1-47 (asize-of tag-data)))
-                 (+! (-> block data mem-use-id used) v1-47)
-                 (+! (-> block data mem-use-id total) (logand -16 (+ v1-47 15)))))
+               (let ((object-size (asize-of tag-data)))
+                 (+! (-> block data mem-use-id used) object-size)
+                 (+! (-> block data mem-use-id total) (logand -16 (+ object-size 15)))))
               ;; these have their own implementation.
               ((nav-mesh collide-mesh) (mem-usage (the-as collide-mesh tag-data) block flags))
               ((array)
                (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
                (set! (-> block data mem-use-id name) mem-use-name)
                (+! (-> block data mem-use-id count) 1)
-               (let ((v1-63 (asize-of (the-as (array object) tag-data))))
-                 (+! (-> block data mem-use-id used) v1-63)
-                 (+! (-> block data mem-use-id total) (logand -16 (+ v1-63 15))))
+               (let ((object-size (asize-of (the-as (array object) tag-data))))
+                 (+! (-> block data mem-use-id used) object-size)
+                 (+! (-> block data mem-use-id total) (logand -16 (+ object-size 15))))
                ;; call mem usage on all of our children.
-               (let ((sv-16 0))
-                 (while (< sv-16 (-> (the-as array tag-data) length))
-                   (let ((a0-58 (-> (the-as (array object) tag-data) sv-16)))
-                     ((method-of-type (rtype-of a0-58) mem-usage) a0-58 block flags))
-                   (+! sv-16 1))))
+               (let ((i 0))
+                 (while (< i (-> (the-as array tag-data) length))
+                   (let ((element (-> (the-as (array object) tag-data) i)))
+                     ((method-of-type (rtype-of element) mem-usage) element block flags))
+                   (+! i 1))))
               (else
-               ;; unknown type.
-               ;; we assume its nothing fancy and use the asize of.
+               ;; Other referenced objects contribute their own allocated size.
                (set! (-> block length) (max (-> block length) (+ mem-use-id 1)))
                (set! (-> block data mem-use-id name) mem-use-name)
                (+! (-> block data mem-use-id count) 1)
-               (let ((v1-88 (asize-of tag-data)))
-                 (+! (-> block data mem-use-id used) v1-88)
-                 (+! (-> block data mem-use-id total) (logand -16 (+ v1-88 15)))))))))))
+               (let ((object-size (asize-of tag-data)))
+                 (+! (-> block data mem-use-id used) object-size)
+                 (+! (-> block data mem-use-id total) (logand -16 (+ object-size 15)))))))))))
   (the-as res-lump 0))
 
 (define *res-static-buf* (malloc 'global 128))
 
-;; There are four common types of lookup:
-;; data. This is something like (pointer int32) or (inline-array vector), it should have a size.
-;; struct. This will get a GOAL struct or basic. Like a string.
-;; value. This will get a value. Possibly even a 128-bit value, though this does not appear to work properly.
-;; float. This will get a float. If the value stored is an int, it will be converted to a float.
-
 (defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
-  "Helper macro to get data from a res-lump without interpolation."
+  "Return named packed data, interpolating at time when the property has timed samples."
   `(the-as ,type
           ((method-of-type res-lump get-property-data) ,lump ,name 'interp ,time (the-as pointer #f) ,tag-ptr *res-static-buf*)))
 
 (defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
-  "Helper macro to get start of data from a res-lump."
+  "Return named packed data only when an exact sample exists at time."
   `(the-as ,type
           ((method-of-type res-lump get-property-data) ,lump ,name 'exact ,time (the-as pointer #f) ,tag-ptr *res-static-buf*)))
 
-(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
-  `(the-as ,type
-          ((method-of-type res-lump get-property-struct) ,lump ,name 'interp ,time (the-as structure #f) ,tag-ptr *res-static-buf*)))
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0) &key (default (the-as structure #f)))
+  "Return a named referenced structure, selecting the sample at time or default when absent."
+  `(the-as ,type ((method-of-type res-lump get-property-struct) ,lump ,name 'interp ,time ,default ,tag-ptr *res-static-buf*)))
 
 (defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  "Return a named referenced structure only when an exact sample exists at time."
   `(the-as ,type
           ((method-of-type res-lump get-property-struct) ,lump ,name 'exact ,time (the-as structure #f) ,tag-ptr *res-static-buf*)))
 
 (defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)) &key (time -1000000000.0))
-  "Helper macro to get a value from a res-lump with no interpolation."
+  "Return a named scalar value at time, or default when lookup fails."
   `(the-as ,type ((method-of-type res-lump get-property-value) ,lump ,name 'interp ,time ,default ,tag-ptr *res-static-buf*)))
 
 (defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0) &key (time -1000000000.0))
-  "Helper macro to get a float from a res-lump with no interpolation."
+  "Return a named numeric value converted to float at time, or default."
   `((method-of-type res-lump get-property-value-float) ,lump ,name 'interp ,time ,default ,tag-ptr *res-static-buf*))
