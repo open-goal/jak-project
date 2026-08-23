@@ -106,8 +106,8 @@ constexpr Field Ra(u32 x) {
 
 // element size and index selector of the SIMD copy family, bits 16-20
 constexpr Field Imm5(u32 x) {
-  ASSERT(x >= 0 && x <= (32 - 1));
-  return Field{(x & 31) << 16};
+  ASSERT(x >= 0 && x <= (pow2(5) - 1));
+  return Field{(x & 0b11111) << 16};
 }
 
 constexpr Field Imm4(u32 x) {

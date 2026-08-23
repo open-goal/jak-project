@@ -2726,7 +2726,7 @@ InstructionARM64 storevf_gpr64_plus_gpr64(Register value, Register addr1, Regist
   ASSERT(addr2 != SP);
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_reg_fpsimd.html
   // STR <Qt>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
-  return InstructionARM64(Base(0b0011110010100000011010, 22), Rt(value.hw_id(instr_set)),
+  return InstructionARM64(Base(0b0011110010100000111010, 22), Rt(value.hw_id(instr_set)),
                           Rn(addr1.hw_id(instr_set)), Rm(addr2.hw_id(instr_set)));
 }
 
