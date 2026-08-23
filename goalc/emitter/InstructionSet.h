@@ -3,7 +3,8 @@
 namespace emitter {
 enum class InstructionSet { X86, ARM64 };
 
-//! The instruction set that the current process can execute.
+//! Native target for tests that execute generated code.
+//! Compiler targets must be selected explicitly.
 constexpr InstructionSet kNativeInstructionSet =
 #ifdef __aarch64__
     InstructionSet::ARM64;

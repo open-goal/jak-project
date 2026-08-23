@@ -151,8 +151,8 @@ TEST(ARM64Memory, f32_loads_and_stores) {
 
       tester.clear();
       tester.emit_push_all_gprs(true);
-      tester.emit(
-          IGen::load_goal_xmm32(tester.generator(), Register(V0), Register(X0), Register(X1), off));
+      tester.emit(IGen::load_goal_simd32(tester.generator(), Register(V0), Register(X0),
+                                         Register(X1), off));
       tester.emit(IGen::movd_gpr32_f32(tester.generator(), Register(X0), Register(V0)));
       tester.emit_pop_all_gprs(true);
       tester.emit_return();
@@ -172,8 +172,8 @@ TEST(ARM64Memory, f32_loads_and_stores) {
       tester.clear();
       tester.emit_push_all_gprs(true);
       tester.emit(IGen::movd_f32_gpr32(tester.generator(), Register(V0), Register(X2)));
-      tester.emit(IGen::store_goal_xmm32(tester.generator(), Register(X0), Register(V0),
-                                         Register(X1), off));
+      tester.emit(IGen::store_goal_simd32(tester.generator(), Register(X0), Register(V0),
+                                          Register(X1), off));
       tester.emit_pop_all_gprs(true);
       tester.emit_return();
 
@@ -215,7 +215,7 @@ TEST(ARM64Memory, vf_loads_and_stores) {
     tester.clear();
     tester.emit_push_all_gprs(true);
     tester.emit(
-        IGen::load_goal_xmm128(tester.generator(), Register(V0), Register(X0), Register(X1), off));
+        IGen::load_goal_simd128(tester.generator(), Register(V0), Register(X0), Register(X1), off));
     tester.emit(
         IGen::store_goal_vf(tester.generator(), Register(X2), Register(V0), Register(X1), 0));
     tester.emit_pop_all_gprs(true);

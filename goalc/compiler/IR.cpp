@@ -10,9 +10,6 @@
 
 #include "fmt/format.h"
 
-// Each backend leaves some parameters unused.
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 using namespace emitter;
 namespace {
 Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_Record irec) {
@@ -129,8 +126,8 @@ void regset_common(emitter::ObjectGenerator* gen,
   auto src_class = src->ireg().reg_class;
   auto dst_class = dst->ireg().reg_class;
 
-  bool src_is_xmm128 = (src_class == RegClass::VECTOR_FLOAT || src_class == RegClass::INT_128);
-  bool dst_is_xmm128 = (dst_class == RegClass::VECTOR_FLOAT || dst_class == RegClass::INT_128);
+  bool src_is_simd128 = (src_class == RegClass::VECTOR_FLOAT || src_class == RegClass::INT_128);
+  bool dst_is_simd128 = (dst_class == RegClass::VECTOR_FLOAT || dst_class == RegClass::INT_128);
 
   if (src_class == RegClass::GPR_64 && dst_class == RegClass::GPR_64) {
     if (src_reg == dst_reg) {
@@ -148,7 +145,7 @@ void regset_common(emitter::ObjectGenerator* gen,
     } else {
       gen->add_instr(IGen::mov_f32_f32(*gen, dst_reg, src_reg), irec);
     }
-  } else if (src_is_xmm128 && dst_is_xmm128) {
+  } else if (src_is_simd128 && dst_is_simd128) {
     if (src_reg == dst_reg) {
       // eliminate move
       gen->count_eliminated_move();
@@ -157,20 +154,20 @@ void regset_common(emitter::ObjectGenerator* gen,
       gen->add_instr(IGen::mov_vf_vf(*gen, dst_reg, src_reg), irec);
     }
   } else if (src_class == RegClass::FLOAT && dst_class == RegClass::GPR_64) {
-    // xmm 1x -> gpr
+    // SIMD scalar -> GPR
     gen->add_instr(IGen::movd_gpr32_f32(*gen, dst_reg, src_reg), irec);
     // don't forget to sign extend
     gen->add_instr(IGen::movsx_r64_r32(*gen, dst_reg, dst_reg), irec);
   } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::FLOAT) {
-    // gpr -> xmm 1x
+    // GPR -> SIMD scalar
     gen->add_instr(IGen::movd_f32_gpr32(*gen, dst_reg, src_reg), irec);
-  } else if (src_is_xmm128 && dst_class == RegClass::FLOAT) {
+  } else if (src_is_simd128 && dst_class == RegClass::FLOAT) {
     gen->add_instr(IGen::mov_f32_f32(*gen, dst_reg, src_reg), irec);
-  } else if (src_class == RegClass::FLOAT && dst_is_xmm128) {
+  } else if (src_class == RegClass::FLOAT && dst_is_simd128) {
     gen->add_instr(IGen::mov_f32_f32(*gen, dst_reg, src_reg), irec);
-  } else if (src_class == RegClass::GPR_64 && dst_is_xmm128) {
+  } else if (src_class == RegClass::GPR_64 && dst_is_simd128) {
     gen->add_instr(IGen::movq_f64_gpr64(*gen, dst_reg, src_reg), irec);
-  } else if (src_is_xmm128 && dst_class == RegClass::GPR_64) {
+  } else if (src_is_simd128 && dst_class == RegClass::GPR_64) {
     gen->add_instr(IGen::movq_gpr64_f64(*gen, dst_reg, src_reg), irec);
   } else {
     ASSERT(false);  // unhandled move.
@@ -1077,8 +1074,8 @@ void IR_StaticVarLoad::do_codegen_arm64(emitter::ObjectGenerator* gen,
     ASSERT(load_info.load_signed == false);
     ASSERT(load_info.load_size == 4);
     ASSERT(load_info.requires_load == true);
-    gen->add_instr(IGen::load32_xmm32_gpr64_plus_gpr64(*gen, get_reg(m_dest, allocs, irec),
-                                                       info.get_offset_reg(), emitter::X16),
+    gen->add_instr(IGen::load32_simd32_gpr64_plus_gpr64(*gen, get_reg(m_dest, allocs, irec),
+                                                        info.get_offset_reg(), emitter::X16),
                    irec);
   } else if (m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT) {
     // load the vector structure without scalar load metadata
@@ -1276,16 +1273,16 @@ void IR_LoadConstOffset::do_codegen_x86(emitter::ObjectGenerator* gen,
   } else if (m_dest->ireg().reg_class == RegClass::FLOAT && m_info.size == 4 &&
              m_info.sign_extend == false && m_info.reg == RegClass::FLOAT) {
     gen->add_instr(
-        IGen::load_goal_xmm32(*gen, dest_reg, base_reg,
-                              emitter::reg_info(gen->instr_set()).get_offset_reg(), m_offset),
+        IGen::load_goal_simd32(*gen, dest_reg, base_reg,
+                               emitter::reg_info(gen->instr_set()).get_offset_reg(), m_offset),
         irec);
   } else if ((m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT ||
               m_dest->ireg().reg_class == RegClass::INT_128) &&
              m_info.size == 16 && m_info.sign_extend == false &&
              m_info.reg == m_dest->ireg().reg_class) {
     gen->add_instr(
-        IGen::load_goal_xmm128(*gen, dest_reg, base_reg,
-                               emitter::reg_info(gen->instr_set()).get_offset_reg(), m_offset),
+        IGen::load_goal_simd128(*gen, dest_reg, base_reg,
+                                emitter::reg_info(gen->instr_set()).get_offset_reg(), m_offset),
         irec);
   } else {
     throw std::runtime_error("IR_LoadConstOffset::do_codegen_x86 not supported");
@@ -1332,8 +1329,8 @@ void IR_StoreConstOffset::do_codegen_x86(emitter::ObjectGenerator* gen,
                    irec);
   } else if (m_value->ireg().reg_class == RegClass::FLOAT && m_size == 4) {
     gen->add_instr(
-        IGen::store_goal_xmm32(*gen, base_reg, value_reg,
-                               emitter::reg_info(gen->instr_set()).get_offset_reg(), m_offset),
+        IGen::store_goal_simd32(*gen, base_reg, value_reg,
+                                emitter::reg_info(gen->instr_set()).get_offset_reg(), m_offset),
         irec);
   } else if ((m_value->ireg().reg_class == RegClass::VECTOR_FLOAT ||
               m_value->ireg().reg_class == RegClass::INT_128) &&

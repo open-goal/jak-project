@@ -48,9 +48,9 @@ void run_vec(CodeTester& tester, VecMem& mem, EmitOp emit_op) {
   tester.clear();
   tester.emit_push_all_gprs(true);
   tester.emit(
-      IGen::load_goal_xmm128(tester.generator(), Register(V0), Register(X0), Register(X1), 0));
+      IGen::load_goal_simd128(tester.generator(), Register(V0), Register(X0), Register(X1), 0));
   tester.emit(
-      IGen::load_goal_xmm128(tester.generator(), Register(V1), Register(X2), Register(X1), 0));
+      IGen::load_goal_simd128(tester.generator(), Register(V1), Register(X2), Register(X1), 0));
   emit_op(tester);
   tester.emit(IGen::store_goal_vf(tester.generator(), Register(X3), Register(V2), Register(X1), 0));
   tester.emit_pop_all_gprs(true);
@@ -527,7 +527,7 @@ TEST(ARM64Alu, lane_shuffles) {
   tester.clear();
   tester.emit_push_all_gprs(true);
   tester.emit(
-      IGen::load_goal_xmm128(tester.generator(), Register(V0), Register(X0), Register(X1), 0));
+      IGen::load_goal_simd128(tester.generator(), Register(V0), Register(X0), Register(X1), 0));
   tester.emit(IGen::swizzle_vf(tester.generator(), Register(V0), Register(V0), 0b00011011));
   tester.emit(IGen::store_goal_vf(tester.generator(), Register(X3), Register(V0), Register(X1), 0));
   tester.emit_pop_all_gprs(true);

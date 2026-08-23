@@ -2,7 +2,7 @@
 
 /*!
  * @file Register.h
- * Representation of an x86-64 Register.
+ * Representation of target hardware registers.
  */
 
 #include <array>
@@ -17,12 +17,12 @@
 
 namespace emitter {
 
-enum class HWRegKind : u8 { GPR, XMM, INVALID };
+enum class HWRegKind : u8 { GPR, SIMD, INVALID };
 HWRegKind reg_class_to_hw(RegClass reg_class);
 std::string to_string(HWRegKind kind);
 
 constexpr int GPR_SIZE = 8;
-constexpr int XMM_SIZE = 16;
+constexpr int SIMD_SIZE = 16;
 
 // registers by name
 enum X86_REG : s8 {
@@ -81,8 +81,7 @@ enum ARM64_REG : s8 {
   X13,  // temp, not-saved
   X14,  // temp, not-saved
   X15,  // temp, not-saved
-  // temp, not-saved - Conventionally used for linker/veneer/temporary values (we will reserve this
-  // one atleast)
+  // temp, not-saved - conventionally used for linker, veneer, and temporary values
   X16,
   X17,  // scratch, reserved
   X18,  // temp, not-saved
@@ -102,9 +101,7 @@ enum ARM64_REG : s8 {
 
   SP,  // stack pointer
 
-  // quadword registers, equivalent to XMMs
-  // the convention in arm64 is the callee preserves all Q values
-  // at the same time though, the caller should not depend on this convention!
+  // SIMD registers. GOAL calls preserve the low scalar lane of v8 through v15.
 
   // vector IDs start at 32 so they do not overlap GPRs
   V0 = 32,
@@ -215,7 +212,7 @@ class Register {
   std::string print(InstructionSet instr_set) const;
 
   /*
-    Our XMM Registers are 4 packed single-precision floating points
+    Our SIMD registers are 4 packed single-precision floating points
     In the order (from left->right a.k.a most significant to least significant):
     W | Z | Y | X
   */
@@ -231,10 +228,7 @@ class RegisterInfo {
   // 32 GPR IDs and 32 vector IDs
   static constexpr int N_REGS = 64;
   static constexpr int N_SAVED_GPRS = 5;
-  static constexpr int N_SAVED_XMMS = 8;
-  static constexpr int N_TEMP_GPRS = 5;
-  static constexpr int N_TEMP_XMMS = 8;
-
+  static constexpr int N_SAVED_SIMDS = 8;
   static_assert(N_REGS > XMM15, "register info array too small for x86");
   static_assert(N_REGS > V31, "register info array too small for ARM64");
 
@@ -253,9 +247,9 @@ class RegisterInfo {
   const Info& get_info(Register r) const { return m_info.at(r.id()); }
   bool is_preserved_across_call(Register r, RegClass reg_class) const;
   Register get_gpr_arg_reg(int id) const { return m_gpr_arg_regs.at(id); }
-  Register get_xmm_arg_reg(int id) const { return m_xmm_arg_regs.at(id); }
+  Register get_simd_arg_reg(int id) const { return m_simd_arg_regs.at(id); }
   Register get_saved_gpr(int id) const { return m_saved_gprs.at(id); }
-  Register get_saved_xmm(int id) const { return m_saved_xmms.at(id); }
+  Register get_saved_simd(int id) const { return m_saved_simds.at(id); }
   Register get_process_reg() const { return m_process_reg; }
   Register get_st_reg() const { return m_st_reg; }
   Register get_offset_reg() const { return m_offset_reg; }
@@ -263,22 +257,22 @@ class RegisterInfo {
   Register get_exec_base_reg() const { return m_exec_base_reg; }
   Register get_stack_reg() const { return m_stack_reg; }
   Register get_gpr_ret_reg() const { return m_gpr_ret_reg; }
-  Register get_xmm_ret_reg() const { return m_xmm_ret_reg; }
+  Register get_simd_ret_reg() const { return m_simd_ret_reg; }
   const std::vector<Register>& get_gpr_alloc_order() const { return m_gpr_alloc_order; }
-  const std::vector<Register>& get_xmm_alloc_order() const { return m_xmm_alloc_order; }
+  const std::vector<Register>& get_simd_alloc_order() const { return m_simd_alloc_order; }
   const std::vector<Register>& get_gpr_temp_alloc_order() const {
     return m_gpr_temp_only_alloc_order;
   }
-  const std::vector<Register>& get_xmm_temp_alloc_order() const {
-    return m_xmm_temp_only_alloc_order;
+  const std::vector<Register>& get_simd_temp_alloc_order() const {
+    return m_simd_temp_only_alloc_order;
   }
   const std::vector<Register>& get_gpr_spill_alloc_order() const {
     return m_gpr_spill_temp_alloc_order;
   }
-  const std::vector<Register>& get_xmm_spill_alloc_order() const {
-    return m_xmm_spill_temp_alloc_order;
+  const std::vector<Register>& get_simd_spill_alloc_order() const {
+    return m_simd_spill_temp_alloc_order;
   }
-  const std::array<Register, N_SAVED_XMMS + N_SAVED_GPRS>& get_all_saved() const {
+  const std::array<Register, N_SAVED_SIMDS + N_SAVED_GPRS>& get_all_saved() const {
     return m_saved_all;
   }
 
@@ -286,23 +280,23 @@ class RegisterInfo {
   RegisterInfo() = default;
   std::array<Info, N_REGS> m_info;
   std::array<Register, N_ARGS> m_gpr_arg_regs;
-  std::array<Register, N_ARGS> m_xmm_arg_regs;
+  std::array<Register, N_ARGS> m_simd_arg_regs;
   std::array<Register, N_SAVED_GPRS> m_saved_gprs;
-  std::array<Register, N_SAVED_XMMS> m_saved_xmms;
-  std::array<Register, N_SAVED_XMMS + N_SAVED_GPRS> m_saved_all;
+  std::array<Register, N_SAVED_SIMDS> m_saved_simds;
+  std::array<Register, N_SAVED_SIMDS + N_SAVED_GPRS> m_saved_all;
   std::vector<Register> m_gpr_alloc_order;
-  std::vector<Register> m_xmm_alloc_order;
+  std::vector<Register> m_simd_alloc_order;
   std::vector<Register> m_gpr_temp_only_alloc_order;
-  std::vector<Register> m_xmm_temp_only_alloc_order;
+  std::vector<Register> m_simd_temp_only_alloc_order;
   std::vector<Register> m_gpr_spill_temp_alloc_order;
-  std::vector<Register> m_xmm_spill_temp_alloc_order;
+  std::vector<Register> m_simd_spill_temp_alloc_order;
   Register m_process_reg;
   Register m_st_reg;
   Register m_offset_reg;
   Register m_exec_base_reg;
   Register m_stack_reg;
   Register m_gpr_ret_reg;
-  Register m_xmm_ret_reg;
+  Register m_simd_ret_reg;
 };
 
 extern RegisterInfo gRegInfo;

@@ -46,32 +46,32 @@ RegisterInfo RegisterInfo::make_register_info() {
 
   info.m_gpr_arg_regs = std::array<Register, N_ARGS>({RDI, RSI, RDX, RCX, R8, R9, R10, R11});
   // skip xmm0 so it can be used for return.
-  info.m_xmm_arg_regs =
+  info.m_simd_arg_regs =
       std::array<Register, N_ARGS>({XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8});
   info.m_saved_gprs = std::array<Register, N_SAVED_GPRS>({RBX, RBP, R10, R11, R12});
-  info.m_saved_xmms =
-      std::array<Register, N_SAVED_XMMS>({XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15});
+  info.m_saved_simds =
+      std::array<Register, N_SAVED_SIMDS>({XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15});
 
   for (size_t i = 0; i < N_SAVED_GPRS; i++) {
     info.m_saved_all[i] = info.m_saved_gprs[i];
   }
-  for (size_t i = 0; i < N_SAVED_XMMS; i++) {
-    info.m_saved_all[i + N_SAVED_GPRS] = info.m_saved_xmms[i];
+  for (size_t i = 0; i < N_SAVED_SIMDS; i++) {
+    info.m_saved_all[i + N_SAVED_GPRS] = info.m_saved_simds[i];
   }
 
   // todo - experiment with better orders for allocation.
   info.m_gpr_alloc_order = {RAX, RCX, RDX, RBX, RBP, RSI, RDI, R8, R9, R10};  // arbitrary
-  info.m_xmm_alloc_order = {XMM0, XMM1, XMM2, XMM3,  XMM4,  XMM5,  XMM6,
-                            XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13};
+  info.m_simd_alloc_order = {XMM0, XMM1, XMM2, XMM3,  XMM4,  XMM5,  XMM6,
+                             XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13};
 
   // these should only be temp registers!
   info.m_gpr_temp_only_alloc_order = {RAX, RCX, RDX, RSI, RDI, R8, R9};
-  info.m_xmm_temp_only_alloc_order = {XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7};
+  info.m_simd_temp_only_alloc_order = {XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7};
 
   info.m_gpr_spill_temp_alloc_order = {RAX, RCX, RDX, RBX, RBP, RSI,
                                        RDI, R8,  R9,  R10, R11, R12};  // arbitrary
-  info.m_xmm_spill_temp_alloc_order = {XMM0, XMM1, XMM2,  XMM3,  XMM4,  XMM5,  XMM6,  XMM7,
-                                       XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15};
+  info.m_simd_spill_temp_alloc_order = {XMM0, XMM1, XMM2,  XMM3,  XMM4,  XMM5,  XMM6,  XMM7,
+                                        XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15};
 
   info.m_process_reg = R13;
   info.m_st_reg = R14;
@@ -80,7 +80,7 @@ RegisterInfo RegisterInfo::make_register_info() {
   info.m_exec_base_reg = R15;
   info.m_stack_reg = RSP;
   info.m_gpr_ret_reg = RAX;
-  info.m_xmm_ret_reg = XMM0;
+  info.m_simd_ret_reg = XMM0;
   return info;
 }
 
@@ -125,34 +125,38 @@ RegisterInfo RegisterInfo::make_register_info_arm64() {
     u8 preserved_bytes = saved ? 4 : 0;
     info.m_info[V0 + i] = {saved, false, "v" + std::to_string(i), preserved_bytes};
   }
-  // keep v16 free for lane helpers
+  // v16 is used as scratch by the multi-instruction SIMD helpers.
   info.m_info[V16] = {false, true, "v16"};
 
   info.m_gpr_arg_regs = std::array<Register, N_ARGS>({X0, X1, X2, X3, X4, X5, X6, X7});
   // skip v0 so it stays free for vector returns
-  info.m_xmm_arg_regs = std::array<Register, N_ARGS>({V1, V2, V3, V4, V5, V6, V7, V8});
+  info.m_simd_arg_regs = std::array<Register, N_ARGS>({V1, V2, V3, V4, V5, V6, V7, V8});
   info.m_saved_gprs = std::array<Register, N_SAVED_GPRS>({X19, X23, X24, X25, X26});
-  info.m_saved_xmms = std::array<Register, N_SAVED_XMMS>({V8, V9, V10, V11, V12, V13, V14, V15});
+  info.m_saved_simds = std::array<Register, N_SAVED_SIMDS>({V8, V9, V10, V11, V12, V13, V14, V15});
 
   for (size_t i = 0; i < N_SAVED_GPRS; i++) {
     info.m_saved_all[i] = info.m_saved_gprs[i];
   }
-  for (size_t i = 0; i < N_SAVED_XMMS; i++) {
-    info.m_saved_all[i + N_SAVED_GPRS] = info.m_saved_xmms[i];
+  for (size_t i = 0; i < N_SAVED_SIMDS; i++) {
+    info.m_saved_all[i + N_SAVED_GPRS] = info.m_saved_simds[i];
   }
 
   info.m_gpr_alloc_order = {X0,  X1,  X2,  X3,  X4,  X5,  X6,  X7,  X8,  X9, X10,
                             X11, X12, X13, X14, X15, X19, X23, X24, X25, X26};
-  info.m_xmm_alloc_order = {V0, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15};
+  info.m_simd_alloc_order = {V0,  V1,  V2,  V3,  V4,  V5,  V6,  V7,  V8,  V9,  V10,
+                             V11, V12, V13, V14, V15, V17, V18, V19, V20, V21, V22,
+                             V23, V24, V25, V26, V27, V28, V29, V30, V31};
 
   info.m_gpr_temp_only_alloc_order = {X0, X1, X2,  X3,  X4,  X5,  X6,  X7,
                                       X8, X9, X10, X11, X12, X13, X14, X15};
-  info.m_xmm_temp_only_alloc_order = {V0, V1, V2, V3, V4, V5, V6, V7};
+  info.m_simd_temp_only_alloc_order = {V0,  V1,  V2,  V3,  V4,  V5,  V6,  V7,  V17, V18, V19, V20,
+                                       V21, V22, V23, V24, V25, V26, V27, V28, V29, V30, V31};
 
   info.m_gpr_spill_temp_alloc_order = {X0,  X1,  X2,  X3,  X4,  X5,  X6,  X7,  X8,  X9, X10,
                                        X11, X12, X13, X14, X15, X19, X23, X24, X25, X26};
-  info.m_xmm_spill_temp_alloc_order = {V0, V1, V2,  V3,  V4,  V5,  V6,  V7,
-                                       V8, V9, V10, V11, V12, V13, V14, V15};
+  info.m_simd_spill_temp_alloc_order = {V0,  V1,  V2,  V3,  V4,  V5,  V6,  V7,  V8,  V9,  V10,
+                                        V11, V12, V13, V14, V15, V17, V18, V19, V20, V21, V22,
+                                        V23, V24, V25, V26, V27, V28, V29, V30, V31};
 
   info.m_process_reg = X20;
   info.m_st_reg = X21;
@@ -161,7 +165,7 @@ RegisterInfo RegisterInfo::make_register_info_arm64() {
   info.m_stack_reg = SP;
   // scalar returns use x0, vector returns use v0
   info.m_gpr_ret_reg = X0;
-  info.m_xmm_ret_reg = V0;
+  info.m_simd_ret_reg = V0;
   return info;
 }
 
@@ -203,8 +207,8 @@ std::string to_string(HWRegKind kind) {
   switch (kind) {
     case HWRegKind::GPR:
       return "gpr";
-    case HWRegKind::XMM:
-      return "xmm";
+    case HWRegKind::SIMD:
+      return "simd";
     default:
       throw std::runtime_error("Unsupported HWRegKind");
   }
@@ -215,7 +219,7 @@ HWRegKind reg_class_to_hw(RegClass reg_class) {
     case RegClass::VECTOR_FLOAT:
     case RegClass::FLOAT:
     case RegClass::INT_128:
-      return HWRegKind::XMM;
+      return HWRegKind::SIMD;
     case RegClass::GPR_64:
       return HWRegKind::GPR;
     default:

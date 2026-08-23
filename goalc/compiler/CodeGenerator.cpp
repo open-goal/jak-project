@@ -204,7 +204,7 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
   }
 
   // only for new xmms. if n == 0, we don't use this at all.
-  int xmm_backup_stack_offset = 8 + XMM_SIZE * n_xmm_backups;
+  int xmm_backup_stack_offset = 8 + SIMD_SIZE * n_xmm_backups;
 
   if (use_new_xmms) {
     if (n_xmm_backups > 0) {
@@ -216,9 +216,9 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
       int i = 0;
       for (auto& saved_reg : allocs.used_saved_regs) {
         if (saved_reg.is_xmm(m_gen.instr_set())) {
-          int offset = i * XMM_SIZE;
+          int offset = i * SIMD_SIZE;
           m_gen.add_instr_no_ir(f_rec,
-                                IGen::store128_xmm128_reg_offset(m_gen, RSP, saved_reg, offset),
+                                IGen::store128_simd128_reg_offset(m_gen, RSP, saved_reg, offset),
                                 InstructionInfo::Kind::PROLOGUE);
           i++;
         }
@@ -228,11 +228,11 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
     // back up xmms (currently not aligned)
     for (auto& saved_reg : allocs.used_saved_regs) {
       if (saved_reg.is_xmm(m_gen.instr_set())) {
-        m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(m_gen, RSP, XMM_SIZE),
+        m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(m_gen, RSP, SIMD_SIZE),
                               InstructionInfo::Kind::PROLOGUE);
         m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_simd128(m_gen, RSP, saved_reg),
                               InstructionInfo::Kind::PROLOGUE);
-        stack_offset += XMM_SIZE;
+        stack_offset += SIMD_SIZE;
       }
     }
   }
@@ -297,12 +297,12 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
                           i_rec);
         } else if (op.reg.is_xmm(m_gen.instr_set()) && op.reg_class == RegClass::FLOAT) {
           // load xmm32 off of the stack
-          m_gen.add_instr(IGen::load_reg_offset_xmm32(
+          m_gen.add_instr(IGen::load_reg_offset_simd32(
                               m_gen, op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else if (op.reg.is_xmm(m_gen.instr_set()) &&
                    (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
-          m_gen.add_instr(IGen::load128_xmm128_reg_offset(
+          m_gen.add_instr(IGen::load128_simd128_reg_offset(
                               m_gen, op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else {
@@ -324,12 +324,12 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
                           i_rec);
         } else if (op.reg.is_xmm(m_gen.instr_set()) && op.reg_class == RegClass::FLOAT) {
           // store xmm32 on the stack
-          m_gen.add_instr(IGen::store_reg_offset_xmm32(
+          m_gen.add_instr(IGen::store_reg_offset_simd32(
                               m_gen, RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else if (op.reg.is_xmm(m_gen.instr_set()) &&
                    (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
-          m_gen.add_instr(IGen::store128_xmm128_reg_offset(
+          m_gen.add_instr(IGen::store128_simd128_reg_offset(
                               m_gen, RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
         } else {
@@ -369,9 +369,9 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
         auto& saved_reg = allocs.used_saved_regs.at(i);
         if (saved_reg.is_xmm(m_gen.instr_set())) {
           j--;
-          int offset = j * XMM_SIZE;
+          int offset = j * SIMD_SIZE;
           m_gen.add_instr_no_ir(f_rec,
-                                IGen::load128_xmm128_reg_offset(m_gen, saved_reg, RSP, offset),
+                                IGen::load128_simd128_reg_offset(m_gen, saved_reg, RSP, offset),
                                 InstructionInfo::Kind::EPILOGUE);
         }
       }
@@ -385,7 +385,7 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
       if (saved_reg.is_xmm(m_gen.instr_set())) {
         m_gen.add_instr_no_ir(f_rec, IGen::load128_simd128_gpr64(m_gen, saved_reg, RSP),
                               InstructionInfo::Kind::EPILOGUE);
-        m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(m_gen, RSP, XMM_SIZE),
+        m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(m_gen, RSP, SIMD_SIZE),
                               InstructionInfo::Kind::EPILOGUE);
       }
     }
@@ -429,7 +429,7 @@ void CodeGenerator::do_goal_function_arm64(FunctionEnv* env, int f_idx) {
       n_vec_backups++;
     }
   }
-  int vec_backup_size = XMM_SIZE * n_vec_backups;
+  int vec_backup_size = SIMD_SIZE * n_vec_backups;
   if (n_vec_backups > 0) {
     m_gen.add_instr_no_ir(f_rec,
                           IGen::sub_gpr64_imm(m_gen, emitter::ARM64_REG::SP, vec_backup_size),
@@ -438,8 +438,8 @@ void CodeGenerator::do_goal_function_arm64(FunctionEnv* env, int f_idx) {
     for (auto& saved_reg : allocs.used_saved_regs) {
       if (saved_reg.is_128bit_simd(m_gen.instr_set())) {
         m_gen.add_instr_no_ir(f_rec,
-                              IGen::store128_xmm128_reg_offset(m_gen, emitter::ARM64_REG::SP,
-                                                               saved_reg, i * XMM_SIZE),
+                              IGen::store128_simd128_reg_offset(m_gen, emitter::ARM64_REG::SP,
+                                                                saved_reg, i * SIMD_SIZE),
                               InstructionInfo::Kind::PROLOGUE);
         i++;
       }
@@ -476,14 +476,14 @@ void CodeGenerator::do_goal_function_arm64(FunctionEnv* env, int f_idx) {
         } else if (op.reg.is_128bit_simd(m_gen.instr_set()) && op.reg_class == RegClass::FLOAT) {
           // FLOAT spills use an 8-byte slot but move only 32 bits
           m_gen.add_instr(
-              IGen::load_reg_offset_xmm32(m_gen, op.reg, emitter::ARM64_REG::SP,
-                                          allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+              IGen::load_reg_offset_simd32(m_gen, op.reg, emitter::ARM64_REG::SP,
+                                           allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
               i_rec);
         } else if (op.reg.is_128bit_simd(m_gen.instr_set()) &&
                    (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
           m_gen.add_instr(
-              IGen::load128_xmm128_reg_offset(m_gen, op.reg, emitter::ARM64_REG::SP,
-                                              allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+              IGen::load128_simd128_reg_offset(m_gen, op.reg, emitter::ARM64_REG::SP,
+                                               allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
               i_rec);
         } else {
           ASSERT(false);
@@ -502,14 +502,14 @@ void CodeGenerator::do_goal_function_arm64(FunctionEnv* env, int f_idx) {
               i_rec);
         } else if (op.reg.is_128bit_simd(m_gen.instr_set()) && op.reg_class == RegClass::FLOAT) {
           m_gen.add_instr(
-              IGen::store_reg_offset_xmm32(m_gen, emitter::ARM64_REG::SP, op.reg,
-                                           allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+              IGen::store_reg_offset_simd32(m_gen, emitter::ARM64_REG::SP, op.reg,
+                                            allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
               i_rec);
         } else if (op.reg.is_128bit_simd(m_gen.instr_set()) &&
                    (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
           m_gen.add_instr(
-              IGen::store128_xmm128_reg_offset(m_gen, emitter::ARM64_REG::SP, op.reg,
-                                               allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
+              IGen::store128_simd128_reg_offset(m_gen, emitter::ARM64_REG::SP, op.reg,
+                                                allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
               i_rec);
         } else {
           ASSERT(false);
@@ -530,10 +530,10 @@ void CodeGenerator::do_goal_function_arm64(FunctionEnv* env, int f_idx) {
       auto& saved_reg = allocs.used_saved_regs.at(i);
       if (saved_reg.is_128bit_simd(m_gen.instr_set())) {
         j--;
-        m_gen.add_instr_no_ir(
-            f_rec,
-            IGen::load128_xmm128_reg_offset(m_gen, saved_reg, emitter::ARM64_REG::SP, j * XMM_SIZE),
-            InstructionInfo::Kind::EPILOGUE);
+        m_gen.add_instr_no_ir(f_rec,
+                              IGen::load128_simd128_reg_offset(
+                                  m_gen, saved_reg, emitter::ARM64_REG::SP, j * SIMD_SIZE),
+                              InstructionInfo::Kind::EPILOGUE);
       }
     }
     ASSERT(j == 0);

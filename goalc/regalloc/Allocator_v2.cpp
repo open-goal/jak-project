@@ -275,7 +275,7 @@ struct RACache {
 };
 
 struct AssignmentOrder {
-  std::vector<emitter::Register> xmms, gprs;
+  std::vector<emitter::Register> simds, gprs;
 };
 
 AssignmentOrder REG_saved_first_order = {
@@ -309,18 +309,24 @@ std::vector<emitter::Register> allowable_local_var_move_elim = {
     emitter::XMM12, emitter::XMM13, emitter::XMM14, emitter::XMM15};
 
 AssignmentOrder REG_saved_first_order_arm64 = {
-    {emitter::V8, emitter::V9, emitter::V10, emitter::V11, emitter::V12, emitter::V13, emitter::V14,
-     emitter::V15, emitter::V7, emitter::V6, emitter::V5, emitter::V4, emitter::V3, emitter::V2,
-     emitter::V1, emitter::V0},
+    {emitter::V8,  emitter::V9,  emitter::V10, emitter::V11, emitter::V12, emitter::V13,
+     emitter::V14, emitter::V15, emitter::V7,  emitter::V6,  emitter::V5,  emitter::V4,
+     emitter::V3,  emitter::V2,  emitter::V1,  emitter::V0,  emitter::V17, emitter::V18,
+     emitter::V19, emitter::V20, emitter::V21, emitter::V22, emitter::V23, emitter::V24,
+     emitter::V25, emitter::V26, emitter::V27, emitter::V28, emitter::V29, emitter::V30,
+     emitter::V31},
     {emitter::X19, emitter::X23, emitter::X24, emitter::X25, emitter::X26, emitter::X15,
      emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10, emitter::X9,
      emitter::X8,  emitter::X7,  emitter::X6,  emitter::X5,  emitter::X4,  emitter::X3,
      emitter::X2,  emitter::X1,  emitter::X0}};
 
 AssignmentOrder REG_temp_first_order_arm64 = {
-    {emitter::V7, emitter::V6, emitter::V5, emitter::V4, emitter::V3, emitter::V2, emitter::V1,
-     emitter::V0, emitter::V8, emitter::V9, emitter::V10, emitter::V11, emitter::V12, emitter::V13,
-     emitter::V14, emitter::V15},
+    {emitter::V7,  emitter::V6,  emitter::V5,  emitter::V4,  emitter::V3,  emitter::V2,
+     emitter::V1,  emitter::V0,  emitter::V17, emitter::V18, emitter::V19, emitter::V20,
+     emitter::V21, emitter::V22, emitter::V23, emitter::V24, emitter::V25, emitter::V26,
+     emitter::V27, emitter::V28, emitter::V29, emitter::V30, emitter::V31, emitter::V8,
+     emitter::V9,  emitter::V10, emitter::V11, emitter::V12, emitter::V13, emitter::V14,
+     emitter::V15},
     {emitter::X15, emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10,
      emitter::X9,  emitter::X8,  emitter::X7,  emitter::X6,  emitter::X5,  emitter::X4,
      emitter::X3,  emitter::X2,  emitter::X1,  emitter::X0,  emitter::X19, emitter::X23,
@@ -332,8 +338,10 @@ AssignmentOrder REG_extra_hard_order_arm64 = {
     {emitter::X9, emitter::X5, emitter::X4, emitter::X0, emitter::X19, emitter::X23}};
 
 AssignmentOrder REG_temp_only_order_arm64 = {
-    {emitter::V7, emitter::V6, emitter::V5, emitter::V4, emitter::V3, emitter::V2, emitter::V1,
-     emitter::V0},
+    {emitter::V7,  emitter::V6,  emitter::V5,  emitter::V4,  emitter::V3,  emitter::V2,
+     emitter::V1,  emitter::V0,  emitter::V17, emitter::V18, emitter::V19, emitter::V20,
+     emitter::V21, emitter::V22, emitter::V23, emitter::V24, emitter::V25, emitter::V26,
+     emitter::V27, emitter::V28, emitter::V29, emitter::V30, emitter::V31},
     {emitter::X15, emitter::X14, emitter::X13, emitter::X12, emitter::X11, emitter::X10,
      emitter::X9, emitter::X8, emitter::X7, emitter::X6, emitter::X5, emitter::X4, emitter::X3,
      emitter::X2, emitter::X1, emitter::X0}};
@@ -345,7 +353,9 @@ std::vector<emitter::Register> allowable_local_var_move_elim_arm64 = {
     emitter::X24, emitter::X25, emitter::X26, emitter::V7,  emitter::V6,  emitter::V5,
     emitter::V4,  emitter::V3,  emitter::V2,  emitter::V1,  emitter::V0,  emitter::V8,
     emitter::V9,  emitter::V10, emitter::V11, emitter::V12, emitter::V13, emitter::V14,
-    emitter::V15};
+    emitter::V15, emitter::V17, emitter::V18, emitter::V19, emitter::V20, emitter::V21,
+    emitter::V22, emitter::V23, emitter::V24, emitter::V25, emitter::V26, emitter::V27,
+    emitter::V28, emitter::V29, emitter::V30, emitter::V31};
 
 const std::vector<emitter::Register>& move_elim_regs(const AllocationInput& in) {
   return in.instr_set == emitter::InstructionSet::ARM64 ? allowable_local_var_move_elim_arm64
@@ -370,7 +380,7 @@ const std::vector<emitter::Register>& get_alloc_order(int var_idx,
   } else {
     order = arm64 ? &REG_temp_first_order_arm64 : &REG_temp_first_order;
   }
-  return is_gpr ? order->gprs : order->xmms;
+  return is_gpr ? order->gprs : order->simds;
 }
 
 /*!

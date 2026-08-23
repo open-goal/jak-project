@@ -111,7 +111,7 @@ class CodeTester {
 
   int get_simd_reg_count() {
     if (m_gen.instr_set() == InstructionSet::ARM64) {
-      return 16;  // The compiler allocator uses V0 through V15.
+      return 32;
     } else {
       return -1;  // TODO
     }

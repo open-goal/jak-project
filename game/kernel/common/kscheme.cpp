@@ -159,7 +159,8 @@ u64 call_goal(Ptr<Function> f, u64 a, u64 b, u64 c, u64 st, void* offset) {
 #elif _WIN32
   return _call_goal_asm_win32(a, b, c, fptr, st_ptr, offset);
 #else
-#error "call_goal: no GOAL call trampoline for this architecture or platform"
+  ASSERT_MSG(false, "call_goal: no GOAL call trampoline for this architecture or platform");
+  return 0;
 #endif
 }
 
@@ -180,7 +181,9 @@ u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset) {
 #elif _WIN32
   return _call_goal_on_stack_asm_win32(rsp, fptr, st_ptr, offset);
 #else
-#error "call_goal_on_stack: no GOAL call trampoline for this architecture or platform"
+  ASSERT_MSG(false,
+             "call_goal_on_stack: no GOAL call trampoline for this architecture or platform");
+  return 0;
 #endif
 }
 

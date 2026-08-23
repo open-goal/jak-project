@@ -34,7 +34,9 @@ namespace emitter {
 CodeTester::CodeTester() : m_info(RegisterInfo::make_register_info()), m_gen(GameVersion::Jak1) {}
 
 CodeTester::CodeTester(InstructionSet instruction_set)
-    : m_info(RegisterInfo::make_register_info()), m_gen(GameVersion::Jak1, instruction_set) {}
+    : m_info(instruction_set == InstructionSet::ARM64 ? RegisterInfo::make_register_info_arm64()
+                                                      : RegisterInfo::make_register_info()),
+      m_gen(GameVersion::Jak1, instruction_set) {}
 
 /*!
  * Convert to a string for comparison against an assembler or tests.
@@ -294,7 +296,7 @@ void CodeTester::emit_push_all_gprs(bool exclude_return_register) {
 }
 
 /*!
- * Push all xmm registers (all 128-bits) to the stack.
+ * Push all SIMD registers (all 128 bits) to the stack.
  */
 void CodeTester::emit_push_all_simd() {
   if (m_gen.instr_set() == InstructionSet::X86) {
@@ -304,8 +306,7 @@ void CodeTester::emit_push_all_simd() {
       emit(IGen::store128_gpr64_simd128(m_gen, RSP, XMM0 + i));
     }
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
-    // The compiler allocator uses V0 through V15.
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 32; i++) {
       emit(IGen::sub_gpr64_imm8s(m_gen, SP, 16));
       emit(IGen::store128_gpr64_simd128(m_gen, SP, V0 + i));
     }
@@ -315,7 +316,7 @@ void CodeTester::emit_push_all_simd() {
 }
 
 /*!
- * Pop all xmm registers (all 128-bits) from the stack
+ * Pop all SIMD registers (all 128 bits) from the stack.
  */
 void CodeTester::emit_pop_all_simd() {
   if (m_gen.instr_set() == InstructionSet::X86) {
@@ -325,7 +326,7 @@ void CodeTester::emit_pop_all_simd() {
     }
     emit(IGen::add_gpr64_imm8s(m_gen, RSP, 8));
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
-    for (int i = 15; i >= 0; i--) {
+    for (int i = 31; i >= 0; i--) {
       emit(IGen::load128_simd128_gpr64(m_gen, V0 + i, SP));
       emit(IGen::add_gpr64_imm8s(m_gen, SP, 16));
     }

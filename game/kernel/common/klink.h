@@ -52,6 +52,11 @@ void flush_icache_for_linked_object(const ObjectFileHeader* ofh);
 void flush_icache_for_linked_object_v2(Ptr<uint8_t> code_start, uint32_t code_size);
 
 /*!
+ * Patches a 32-bit cross-segment GOAL address into a movz/movk pair.
+ */
+uint32_t arm64_other_seg_mov32_link_v3(Ptr<uint8_t> link, ObjectFileHeader* ofh, int current_seg);
+
+/*!
  * Stores the state of the linker. Used for multi-threaded linking, so it can be suspended.
  */
 struct link_control {

@@ -295,15 +295,14 @@ TEST_F(WithGameTests, DebuggerMemoryMap) {
 }
 
 TEST_F(WithGameTests, DebuggerDisassemble) {
-  // Zydis treats ARM64 words as x86, so instruction lengths are wrong
-#ifndef __aarch64__
-  auto di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
-  bool fail = false;
-  auto result =
-      di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader, false);
-  // printf("Got\n%s\n", result.c_str());
-  EXPECT_FALSE(fail);
-#endif
+  if (shared_compiler->compiler.instruction_set() == emitter::InstructionSet::X86) {
+    auto di = shared_compiler->compiler.get_debugger().get_debug_info_for_object("gcommon");
+    bool fail = false;
+    auto result =
+        di.disassemble_all_functions(&fail, &shared_compiler->compiler.get_goos().reader, false);
+    // printf("Got\n%s\n", result.c_str());
+    EXPECT_FALSE(fail);
+  }
 }
 
 TEST_F(WithGameTests, GameText) {
@@ -846,11 +845,12 @@ TEST_F(WithGameTests, SetU64FromFloat) {
 }
 
 TEST_F(WithGameTests, TrickyFloatBehavior) {
-  // FCVTZS matches PS2 positive overflow
-  // CVTTSS2SI returns integer indefinite on x86
-  const char* overflowed = emitter::kNativeInstructionSet == emitter::InstructionSet::ARM64
-                               ? "#x7fffffff"
-                               : "#xffffffff80000000";
+  // The EE Core Instruction Set Manual (CVT.W.S, p. 356) specifies 0x7fffffff for positive
+  // finite overflow. ARM64 matches it; x86 keeps its existing integer-indefinite result.
+  const char* overflowed =
+      shared_compiler->compiler.instruction_set() == emitter::InstructionSet::ARM64
+          ? "#x7fffffff"
+          : "#xffffffff80000000";
   shared_compiler->runner.run_static_test(
       testCategory, "tricky-floats.gc",
       {fmt::format("{} 1.0000 #xffffffffbf800000\n0\n", overflowed)});

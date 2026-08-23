@@ -13,6 +13,10 @@ on:
         required: false
         type: boolean
         default: false
+      checkoutRef:
+        required: false
+        type: string
+        default: ""
 
 jobs:
   build:
@@ -22,7 +26,16 @@ jobs:
 
     steps:
       - name: Checkout Repository
+        if: ${{ ! inputs.uploadArtifacts }}
         uses: actions/checkout@v7
+
+      - name: Checkout Repository with Tags
+        if: ${{ inputs.uploadArtifacts }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.checkoutRef }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Install Package Dependencies
         env:

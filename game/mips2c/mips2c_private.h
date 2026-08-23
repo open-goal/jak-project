@@ -386,7 +386,8 @@ struct ExecutionContext {
     gprs[v0].du64[0] = _call_goal8_asm_win32(g_ee_main_mem + addr, args, 0, gprs[s6].du64[0],
                                              gprs[s7].du64[0], g_ee_main_mem);
 #else
-#error "jalr: no GOAL call trampoline for this architecture or platform"
+    ASSERT_MSG(false, "jalr: no GOAL call trampoline for this architecture or platform");
+    return;
 #endif
   }
 

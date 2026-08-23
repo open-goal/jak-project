@@ -463,8 +463,8 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var_spill(int 
   auto hw_kind = emitter::reg_class_to_hw(info.reg_class);
   if (hw_kind == emitter::HWRegKind::GPR) {
     return emitter::reg_info(cache->instr_set).get_gpr_spill_alloc_order();
-  } else if (hw_kind == emitter::HWRegKind::XMM) {
-    return emitter::reg_info(cache->instr_set).get_xmm_spill_alloc_order();
+  } else if (hw_kind == emitter::HWRegKind::SIMD) {
+    return emitter::reg_info(cache->instr_set).get_simd_spill_alloc_order();
   } else {
     throw std::runtime_error("Unsupported HWRegKind");
   }
@@ -482,11 +482,11 @@ const std::vector<emitter::Register>& get_default_alloc_order_for_var(int v,
     } else {
       return emitter::reg_info(cache->instr_set).get_gpr_alloc_order();
     }
-  } else if (hw_kind == emitter::HWRegKind::XMM) {
+  } else if (hw_kind == emitter::HWRegKind::SIMD) {
     if (!get_all && cache->is_asm_func) {
-      return emitter::reg_info(cache->instr_set).get_xmm_temp_alloc_order();
+      return emitter::reg_info(cache->instr_set).get_simd_temp_alloc_order();
     } else {
-      return emitter::reg_info(cache->instr_set).get_xmm_alloc_order();
+      return emitter::reg_info(cache->instr_set).get_simd_alloc_order();
     }
   } else {
     throw std::runtime_error("Unsupported HWRegKind");

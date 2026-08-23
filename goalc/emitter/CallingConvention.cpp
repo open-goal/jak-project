@@ -10,7 +10,7 @@ CallingConvention get_function_calling_convention(const TypeSpec& function_type,
   ASSERT(function_type.arg_count() <= 9);
 
   int gpr_idx = 0;
-  int xmm_idx = 0;
+  int simd_idx = 0;
 
   CallingConvention cc;
 
@@ -23,7 +23,7 @@ CallingConvention get_function_calling_convention(const TypeSpec& function_type,
       auto info = type_system.lookup_type_allow_partial_def(function_type.get_arg(i));
       auto load_size = type_system.get_load_size_allow_partial_def(function_type.get_arg(i));
       if (dynamic_cast<const ValueType*>(info) && load_size == 16) {
-        cc.arg_regs.push_back(emitter::reg_info(instr_set).get_xmm_arg_reg(xmm_idx++));
+        cc.arg_regs.push_back(emitter::reg_info(instr_set).get_simd_arg_reg(simd_idx++));
       } else {
         cc.arg_regs.push_back(emitter::reg_info(instr_set).get_gpr_arg_reg(gpr_idx++));
       }
@@ -32,7 +32,7 @@ CallingConvention get_function_calling_convention(const TypeSpec& function_type,
 
   if (function_type.last_arg() != TypeSpec("none")) {
     if (type_system.get_load_size_allow_partial_def(function_type.last_arg()) == 16) {
-      cc.return_reg = emitter::reg_info(instr_set).get_xmm_ret_reg();
+      cc.return_reg = emitter::reg_info(instr_set).get_simd_ret_reg();
     } else {
       cc.return_reg = emitter::reg_info(instr_set).get_gpr_ret_reg();
     }
@@ -46,11 +46,11 @@ std::vector<emitter::Register> get_arg_registers(const TypeSystem& type_system,
                                                  emitter::InstructionSet instr_set) {
   std::vector<emitter::Register> result;
   int gpr_idx = 0;
-  int xmm_idx = 0;
+  int simd_idx = 0;
   for (auto& type : arg_types) {
     auto load_size = type_system.get_load_size_allow_partial_def(type);
     if (load_size == 16) {
-      result.push_back(emitter::reg_info(instr_set).get_xmm_arg_reg(xmm_idx++));
+      result.push_back(emitter::reg_info(instr_set).get_simd_arg_reg(simd_idx++));
     } else {
       result.push_back(emitter::reg_info(instr_set).get_gpr_arg_reg(gpr_idx++));
     }

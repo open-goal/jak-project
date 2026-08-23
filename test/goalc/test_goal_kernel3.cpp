@@ -126,11 +126,9 @@ TEST_F(Jak3KernelTest, RunFunctionInProcess) {
 TEST_F(Jak3KernelTest, StateAndXmm) {
   shared_compiler->runner.c->run_test_from_string(
       "(ml \"test/goalc/source_templates/jak3/kernel-test.gc\")");
-#if defined(__aarch64__)
-  constexpr int response_count = 6;
-#else
-  constexpr int response_count = 5;
-#endif
+  const bool is_arm64 =
+      shared_compiler->compiler.instruction_set() == emitter::InstructionSet::ARM64;
+  const int response_count = is_arm64 ? 6 : 5;
   std::string result = send_code_and_get_multiple_responses("(state-test)", response_count,
                                                             &shared_compiler->runner);
 
@@ -138,12 +136,12 @@ TEST_F(Jak3KernelTest, StateAndXmm) {
       "0\nenter wreck: 3 4 5 6\nwreck: 3 4 5 6\nenter check: 9 8 7 6\nrun xmm-check 12.3400 "
       "45.6300 9 8 7 6\nwreck: 3 4 5 6\nrun xmm-check 12.3400 45.6300 9 8 7 6\nwreck: 3 4 5 6\nrun "
       "xmm-check 12.3400 45.6300 9 8 7 6\nwreck: 3 4 5 6\n";
-#if defined(__aarch64__)
-  expected +=
-      "wreck: 3 4 5 6\n"
-      "suspend vectors #x18181818181818180808080808080808 "
-      "#x19191919191919190909090909090909\n";
-#endif
+  if (is_arm64) {
+    expected +=
+        "wreck: 3 4 5 6\n"
+        "suspend vectors #x18181818181818180808080808080808 "
+        "#x19191919191919190909090909090909\n";
+  }
   expected +=
       "exit check\nenter die\ntime to die!\nexit die\nexit wreck\nenter die\ntime to die!\nexit "
       "die\n";
@@ -159,11 +157,11 @@ TEST_F(Jak3KernelTest, ThrowXmm) {
   std::string expected =
       "value now is 10.1000\n"
       "now its 10.1000\n";
-#if defined(__aarch64__)
-  expected +=
-      "throw vectors #x18181818181818180808080808080808 "
-      "#x19191919191919190909090909090909\n";
-#endif
+  if (shared_compiler->compiler.instruction_set() == emitter::InstructionSet::ARM64) {
+    expected +=
+        "throw vectors #x18181818181818180808080808080808 "
+        "#x19191919191919190909090909090909\n";
+  }
   expected += "0\n";
   EXPECT_EQ(expected, result);
 }

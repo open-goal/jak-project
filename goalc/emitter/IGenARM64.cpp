@@ -3,6 +3,7 @@
 
 #include <tuple>
 
+#include "common/arm64/encoding.h"
 #include "common/util/Assert.h"
 
 #include "goalc/emitter/IGen.h"
@@ -13,9 +14,6 @@
 
 // https://armconverter.com/?code=ret
 // https://developer.arm.com/documentation/ddi0487/latest
-
-// Each backend leaves some parameters unused.
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 namespace emitter {
 namespace IGen {
@@ -127,18 +125,17 @@ InstructionARM64 mov_gpr64_gpr64(Register dst, Register src) {
 std::vector<InstructionARM64> mov_gpr64_u64_instrs(Register dst, uint64_t val) {
   // Cannot be done in a single instruction, must combine multiple MOVZ/MOVKs
   std::vector<InstructionARM64> instrs;
+  const auto reg = u32(dst.hw_id(instr_set));
   auto imm_chunks = decompose_into_imm16_chunks(val);
   for (const auto& [imm_chunk, shift] : imm_chunks) {
     if (shift == 0) {
       // https://www.scs.stanford.edu/~zyedidia/arm64/movz.html
       // MOVZ <Xd>, #<imm>{, LSL #<shift>/16}
-      instrs.emplace_back(InstructionARM64(Base(0b110100101, 9), Hw(shift), Imm16(imm_chunk),
-                                           Rd(dst.hw_id(instr_set))));
+      instrs.emplace_back(arm64::encode_movz_64(reg, imm_chunk, shift));
     } else {
       // https://www.scs.stanford.edu/~zyedidia/arm64/movk.html
       // MOVK <Xd>, #<imm>{, LSL #<shift>/16}
-      instrs.emplace_back(InstructionARM64(Base(0b111100101, 9), Hw(shift), Imm16(imm_chunk),
-                                           Rd(dst.hw_id(instr_set))));
+      instrs.emplace_back(arm64::encode_movk_64(reg, imm_chunk, shift));
     }
   }
   return instrs;
@@ -1157,7 +1154,7 @@ InstructionARM64 store_goal_gpr(Register addr, Register value, Register off, int
   }
 }
 
-InstructionARM64 load_goal_xmm128(Register dst, Register addr, Register off, int offset) {
+InstructionARM64 load_goal_simd128(Register dst, Register addr, Register off, int offset) {
   if (offset == 0) {
     return loadvf_gpr64_plus_gpr64(dst, addr, off);
   } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
@@ -1320,25 +1317,27 @@ InstructionARM64 lea_reg_plus_off(Register dest, Register base, s64 offset) {
 }
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-//   LOADS n' STORES - XMM32
+//   LOADS n' STORES - SIMD32
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-// TODO - rename these to f32 instead of xmm
+// TODO - rename these to f32
 
-InstructionARM64 store32_xmm32_gpr64_plus_gpr64(Register addr1,
-                                                Register addr2,
-                                                Register xmm_value) {
-  ASSERT(xmm_value.is_128bit_simd(instr_set));
+InstructionARM64 store32_simd32_gpr64_plus_gpr64(Register addr1,
+                                                 Register addr2,
+                                                 Register simd_value) {
+  ASSERT(simd_value.is_128bit_simd(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
   // https://www.scs.stanford.edu/~zyedidia/arm64/str_reg_fpsimd.html
   // 32-bit variant
   // STR <St>, [<Xn|SP>, (<Wm>|<Xm>){, <extend> {<amount>}}]
-  return InstructionARM64(Base(0b1011110000100000111010, 22), Rt(xmm_value.hw_id(instr_set)),
+  return InstructionARM64(Base(0b1011110000100000111010, 22), Rt(simd_value.hw_id(instr_set)),
                           Rm(addr2.hw_id(instr_set)), Rn(addr1.hw_id(instr_set)));
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_gpr64(Register simd_dest, Register addr1, Register addr2) {
+InstructionARM64 load32_simd32_gpr64_plus_gpr64(Register simd_dest,
+                                                Register addr1,
+                                                Register addr2) {
   ASSERT(simd_dest.is_128bit_simd(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
@@ -1349,11 +1348,11 @@ InstructionARM64 load32_xmm32_gpr64_plus_gpr64(Register simd_dest, Register addr
                           Rn(addr1.hw_id(instr_set)), Rm(addr2.hw_id(instr_set)));
 }
 
-InstructionARM64 store32_xmm32_gpr64_plus_gpr64_plus_s8(Register addr1,
-                                                        Register addr2,
-                                                        Register xmm_value,
-                                                        s64 offset) {
-  ASSERT(xmm_value.is_128bit_simd(instr_set));
+InstructionARM64 store32_simd32_gpr64_plus_gpr64_plus_s8(Register addr1,
+                                                         Register addr2,
+                                                         Register simd_value,
+                                                         s64 offset) {
+  ASSERT(simd_value.is_128bit_simd(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
@@ -1378,14 +1377,14 @@ InstructionARM64 store32_xmm32_gpr64_plus_gpr64_plus_s8(Register addr1,
   // 32-bit variant
   // STR <St>, [<Xn|SP>], #<simm>
   instrs.emplace_back(InstructionARM64(Base(0b1011110100000000000000, 22), Imm12(0),
-                                       Rt(xmm_value.hw_id(instr_set)), Rn(X16)));
+                                       Rt(simd_value.hw_id(instr_set)), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s8(Register simd_dest,
-                                                       Register addr1,
-                                                       Register addr2,
-                                                       s64 offset) {
+InstructionARM64 load32_simd32_gpr64_plus_gpr64_plus_s8(Register simd_dest,
+                                                        Register addr1,
+                                                        Register addr2,
+                                                        s64 offset) {
   ASSERT(simd_dest.is_128bit_simd(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
@@ -1415,11 +1414,11 @@ InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s8(Register simd_dest,
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 store32_xmm32_gpr64_plus_gpr64_plus_s32(Register addr1,
-                                                         Register addr2,
-                                                         Register xmm_value,
-                                                         s64 offset) {
-  ASSERT(xmm_value.is_128bit_simd(instr_set));
+InstructionARM64 store32_simd32_gpr64_plus_gpr64_plus_s32(Register addr1,
+                                                          Register addr2,
+                                                          Register simd_value,
+                                                          s64 offset) {
+  ASSERT(simd_value.is_128bit_simd(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
@@ -1444,12 +1443,12 @@ InstructionARM64 store32_xmm32_gpr64_plus_gpr64_plus_s32(Register addr1,
   // 32-bit variant
   // STR <St>, [<Xn|SP>], #<simm>
   instrs.emplace_back(InstructionARM64(Base(0b1011110100000000000000, 22), Imm12(0),
-                                       Rt(xmm_value.hw_id(instr_set)), Rn(X16)));
+                                       Rt(simd_value.hw_id(instr_set)), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value, s64 offset) {
-  ASSERT(xmm_value.is_128bit_simd(instr_set));
+InstructionARM64 store32_simd32_gpr64_plus_s32(Register base, Register simd_value, s64 offset) {
+  ASSERT(simd_value.is_128bit_simd(instr_set));
   ASSERT(base.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   // first establish the base+index value in x16
@@ -1472,12 +1471,12 @@ InstructionARM64 store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value,
   // 32-bit variant
   // STR <St>, [<Xn|SP>], #<simm>
   instrs.emplace_back(InstructionARM64(Base(0b1011110100000000000000, 22), Imm12(0),
-                                       Rt(xmm_value.hw_id(instr_set)), Rn(X16)));
+                                       Rt(simd_value.hw_id(instr_set)), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, s64 offset) {
-  ASSERT(xmm_value.is_128bit_simd(instr_set));
+InstructionARM64 store32_simd32_gpr64_plus_s8(Register base, Register simd_value, s64 offset) {
+  ASSERT(simd_value.is_128bit_simd(instr_set));
   ASSERT(base.is_gpr(instr_set));
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
   // first establish the base+index value in x16
@@ -1500,14 +1499,14 @@ InstructionARM64 store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, 
   // 32-bit variant, unsigned
   // STR <St>, [<Xn|SP>], #<simm>
   instrs.emplace_back(InstructionARM64(Base(0b1011110100000000000000, 22), Imm12(0),
-                                       Rt(xmm_value.hw_id(instr_set)), Rn(X16)));
+                                       Rt(simd_value.hw_id(instr_set)), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register simd_dest,
-                                                        Register addr1,
-                                                        Register addr2,
-                                                        s64 offset) {
+InstructionARM64 load32_simd32_gpr64_plus_gpr64_plus_s32(Register simd_dest,
+                                                         Register addr1,
+                                                         Register addr2,
+                                                         s64 offset) {
   ASSERT(simd_dest.is_128bit_simd(instr_set));
   ASSERT(addr1.is_gpr(instr_set));
   ASSERT(addr2.is_gpr(instr_set));
@@ -1537,7 +1536,7 @@ InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register simd_dest,
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_s32(Register simd_dest, Register base, s64 offset) {
+InstructionARM64 load32_simd32_gpr64_plus_s32(Register simd_dest, Register base, s64 offset) {
   ASSERT(simd_dest.is_128bit_simd(instr_set));
   ASSERT(base.is_gpr(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
@@ -1565,7 +1564,7 @@ InstructionARM64 load32_xmm32_gpr64_plus_s32(Register simd_dest, Register base, 
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_s8(Register simd_dest, Register base, s64 offset) {
+InstructionARM64 load32_simd32_gpr64_plus_s8(Register simd_dest, Register base, s64 offset) {
   ASSERT(simd_dest.is_128bit_simd(instr_set));
   ASSERT(base.is_gpr(instr_set));
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
@@ -1593,48 +1592,48 @@ InstructionARM64 load32_xmm32_gpr64_plus_s8(Register simd_dest, Register base, s
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 load_goal_xmm32(Register simd_dest, Register addr, Register off, s64 offset) {
+InstructionARM64 load_goal_simd32(Register simd_dest, Register addr, Register off, s64 offset) {
   if (offset == 0) {
-    return load32_xmm32_gpr64_plus_gpr64(simd_dest, addr, off);
+    return load32_simd32_gpr64_plus_gpr64(simd_dest, addr, off);
   } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
-    return load32_xmm32_gpr64_plus_gpr64_plus_s8(simd_dest, addr, off, offset);
+    return load32_simd32_gpr64_plus_gpr64_plus_s8(simd_dest, addr, off, offset);
   } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
-    return load32_xmm32_gpr64_plus_gpr64_plus_s32(simd_dest, addr, off, offset);
+    return load32_simd32_gpr64_plus_gpr64_plus_s32(simd_dest, addr, off, offset);
   } else {
     ASSERT(false);
     return {0};
   }
 }
 
-InstructionARM64 store_goal_xmm32(Register addr, Register xmm_value, Register off, s64 offset) {
+InstructionARM64 store_goal_simd32(Register addr, Register simd_value, Register off, s64 offset) {
   if (offset == 0) {
-    return store32_xmm32_gpr64_plus_gpr64(addr, off, xmm_value);
+    return store32_simd32_gpr64_plus_gpr64(addr, off, simd_value);
   } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
-    return store32_xmm32_gpr64_plus_gpr64_plus_s8(addr, off, xmm_value, offset);
+    return store32_simd32_gpr64_plus_gpr64_plus_s8(addr, off, simd_value, offset);
   } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
-    return store32_xmm32_gpr64_plus_gpr64_plus_s32(addr, off, xmm_value, offset);
+    return store32_simd32_gpr64_plus_gpr64_plus_s32(addr, off, simd_value, offset);
   } else {
     ASSERT(false);
     return {0};
   }
 }
 
-InstructionARM64 store_reg_offset_xmm32(Register base, Register xmm_value, s64 offset) {
+InstructionARM64 store_reg_offset_simd32(Register base, Register simd_value, s64 offset) {
   if (offset >= INT8_MIN && offset <= INT8_MAX) {
-    return store32_xmm32_gpr64_plus_s8(base, xmm_value, offset);
+    return store32_simd32_gpr64_plus_s8(base, simd_value, offset);
   } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
-    return store32_xmm32_gpr64_plus_s32(base, xmm_value, offset);
+    return store32_simd32_gpr64_plus_s32(base, simd_value, offset);
   } else {
     ASSERT(false);
     return {0};
   }
 }
 
-InstructionARM64 load_reg_offset_xmm32(Register simd_dest, Register base, s64 offset) {
+InstructionARM64 load_reg_offset_simd32(Register simd_dest, Register base, s64 offset) {
   if (offset >= INT8_MIN && offset <= INT8_MAX) {
-    return load32_xmm32_gpr64_plus_s8(simd_dest, base, offset);
+    return load32_simd32_gpr64_plus_s8(simd_dest, base, offset);
   } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
-    return load32_xmm32_gpr64_plus_s32(simd_dest, base, offset);
+    return load32_simd32_gpr64_plus_s32(simd_dest, base, offset);
   } else {
     ASSERT(false);
     return {0};
@@ -1654,9 +1653,9 @@ InstructionARM64 store128_gpr64_simd128(Register gpr_addr, Register simd_reg) {
                           Rt(simd_reg.hw_id(instr_set)), Imm12(0));
 }
 
-InstructionARM64 store128_gpr64_simd128_s32(Register gpr_addr, Register xmm_value, s64 offset) {
+InstructionARM64 store128_gpr64_simd128_s32(Register gpr_addr, Register simd_value, s64 offset) {
   ASSERT(gpr_addr.is_gpr(instr_set));
-  ASSERT(xmm_value.is_128bit_simd(instr_set));
+  ASSERT(simd_value.is_128bit_simd(instr_set));
   ASSERT(offset >= INT32_MIN && offset <= INT32_MAX);
   // first establish the base+index value in x16
   std::vector<InstructionARM64> instrs = {
@@ -1679,13 +1678,13 @@ InstructionARM64 store128_gpr64_simd128_s32(Register gpr_addr, Register xmm_valu
   // STR <Qt>, [<Xn|SP>{, #<pimm>}]
   // width 10 keeps the literal in its opcode field
   instrs.emplace_back(
-      InstructionARM64(Base(0b0011110110, 10), Imm12(0), Rt(xmm_value.hw_id(instr_set)), Rn(X16)));
+      InstructionARM64(Base(0b0011110110, 10), Imm12(0), Rt(simd_value.hw_id(instr_set)), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 store128_gpr64_simd128_s8(Register gpr_addr, Register xmm_value, s64 offset) {
+InstructionARM64 store128_gpr64_simd128_s8(Register gpr_addr, Register simd_value, s64 offset) {
   ASSERT(gpr_addr.is_gpr(instr_set));
-  ASSERT(xmm_value.is_128bit_simd(instr_set));
+  ASSERT(simd_value.is_128bit_simd(instr_set));
   ASSERT(offset >= INT8_MIN && offset <= INT8_MAX);
   // first establish the base+index value in x16
   std::vector<InstructionARM64> instrs = {
@@ -1708,7 +1707,7 @@ InstructionARM64 store128_gpr64_simd128_s8(Register gpr_addr, Register xmm_value
   // STR <Qt>, [<Xn|SP>{, #<pimm>}]
   // width 10 keeps the literal in its opcode field
   instrs.emplace_back(
-      InstructionARM64(Base(0b0011110110, 10), Imm12(0), Rt(xmm_value.hw_id(instr_set)), Rn(X16)));
+      InstructionARM64(Base(0b0011110110, 10), Imm12(0), Rt(simd_value.hw_id(instr_set)), Rn(X16)));
   return InstructionARM64(instrs);
 }
 
@@ -1775,7 +1774,7 @@ InstructionARM64 load128_simd128_gpr64_s8(Register simd_dest, Register gpr_addr,
   return InstructionARM64(instrs);
 }
 
-InstructionARM64 load128_xmm128_reg_offset(Register simd_dest, Register base, s64 offset) {
+InstructionARM64 load128_simd128_reg_offset(Register simd_dest, Register base, s64 offset) {
   if (offset == 0) {
     return load128_simd128_gpr64(simd_dest, base);
   } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
@@ -1788,13 +1787,13 @@ InstructionARM64 load128_xmm128_reg_offset(Register simd_dest, Register base, s6
   }
 }
 
-InstructionARM64 store128_xmm128_reg_offset(Register base, Register xmm_val, s64 offset) {
+InstructionARM64 store128_simd128_reg_offset(Register base, Register simd_val, s64 offset) {
   if (offset == 0) {
-    return store128_gpr64_simd128(base, xmm_val);
+    return store128_gpr64_simd128(base, simd_val);
   } else if (offset >= INT8_MIN && offset <= INT8_MAX) {
-    return store128_gpr64_simd128_s8(base, xmm_val, offset);
+    return store128_gpr64_simd128_s8(base, simd_val, offset);
   } else if (offset >= INT32_MIN && offset <= INT32_MAX) {
-    return store128_gpr64_simd128_s32(base, xmm_val, offset);
+    return store128_gpr64_simd128_s32(base, simd_val, offset);
   } else {
     ASSERT(false);
     return {0};
@@ -2047,8 +2046,8 @@ InstructionARM64 static_load_f32(Register simd_dest, s64 offset) {
   return InstructionARM64(Base(0b00011100, 8), Imm19(offset / 4), Rt(simd_dest.hw_id(instr_set)));
 }
 
-InstructionARM64 static_store_f32(Register xmm_value, s64 offset) {
-  ASSERT(xmm_value.is_128bit_simd(instr_set));
+InstructionARM64 static_store_f32(Register simd_value, s64 offset) {
+  ASSERT(simd_value.is_128bit_simd(instr_set));
   ASSERT_MSG(offset != 0,
              "PC Relative offset isn't 0 at encoding time, actually encode it properly!");
   return InstructionARM64(
@@ -2057,7 +2056,7 @@ InstructionARM64 static_store_f32(Register xmm_value, s64 offset) {
        InstructionARM64(Base(0b100100000000000000000000000, 27), Rd(X16), Immhi(0), Immlo(0)),
        // https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_fpsimd.html
        // STR <St>, [<Xn|SP>{, #<pimm>}]
-       InstructionARM64(Base(0b1011110100, 10), Imm12(offset), Rt(xmm_value.hw_id(instr_set)),
+       InstructionARM64(Base(0b1011110100, 10), Imm12(offset), Rt(simd_value.hw_id(instr_set)),
                         Rn(X16))});
 }
 
@@ -2223,12 +2222,12 @@ InstructionARM64 imul_gpr64_gpr64(Register dst, Register src) {
 }
 
 // ARM64 division uses SDIV, UDIV and MSUB.
-InstructionARM64 idiv_gpr32(Register reg) {
+InstructionARM64 idiv_gpr32(Register) {
   ASSERT_MSG(false, "ARM64 division uses sdiv_gpr32");
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 unsigned_div_gpr32(Register reg) {
+InstructionARM64 unsigned_div_gpr32(Register) {
   ASSERT_MSG(false, "ARM64 division uses udiv_gpr32");
   return InstructionARM64(0b0);
 }
@@ -2579,7 +2578,7 @@ InstructionARM64 int32_to_f32(Register dst, Register src) {
                           Rn(src.hw_id(instr_set)));
 }
 
-//! Convert a scalar float to int with the PS2 overflow behavior.
+//! Convert a scalar float to int. FCVTZS matches the PS2 finite overflow clamps.
 InstructionARM64 f32_to_int32(Register dst, Register src) {
   // https://www.scs.stanford.edu/~zyedidia/arm64/fcvtzs_float_int.html
   // 32-bit to single-precision (sf == 0 && ftype == 00)

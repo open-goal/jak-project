@@ -743,7 +743,8 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
 #elif _WIN32
     addr = (u64)_mips2c_call_windows;
 #else
-#error "mips2c trampoline: no implementation for this architecture or platform"
+    ASSERT_MSG(false, "mips2c trampoline: no implementation for this architecture or platform");
+    return;
 #endif
 
     *ptr = 0x48;

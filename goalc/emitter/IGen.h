@@ -33,32 +33,32 @@ Instruction mov_gpr64_u32(const ObjectGenerator& gen, Register dst, uint64_t val
 Instruction mov_gpr64_s32(const ObjectGenerator& gen, Register dst, int64_t val);
 
 /*!
- * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
+ * Move 32-bits of SIMD register to 32 bits of gpr (no sign extension).
  */
 Instruction movd_gpr32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Move 32-bits of gpr to 32-bits of xmm (no sign extension)
+ * Move 32-bits of gpr to 32-bits of SIMD register (no sign extension)
  */
 Instruction movd_f32_gpr32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
+ * Move 64-bits of SIMD register to 64 bits of gpr (no sign extension).
  */
 Instruction movq_gpr64_f64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
+ * Move 64-bits of gpr to 64-bits of SIMD register (no sign extension)
  */
 Instruction movq_f64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
- * Move 32-bits between xmm's
+ * Move 32-bits between SIMD registers
  */
 Instruction mov_f32_f32(const ObjectGenerator& gen, Register dst, Register src);
 
-// todo - GPR64 -> XMM64 (zext)
-// todo - XMM -> GPR64
+// todo - GPR64 -> SIMD64 (zext)
+// todo - SIMD -> GPR64
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   GOAL Loads and Stores
@@ -299,11 +299,11 @@ Instruction store_goal_gpr(const ObjectGenerator& gen,
                            int offset,
                            int size);
 
-Instruction load_goal_xmm128(const ObjectGenerator& gen,
-                             Register dst,
-                             Register addr,
-                             Register off,
-                             int offset);
+Instruction load_goal_simd128(const ObjectGenerator& gen,
+                              Register dst,
+                              Register addr,
+                              Register off,
+                              int offset);
 
 /*!
  * Load memory at addr + offset, where addr is a GOAL pointer and off is the offset register.
@@ -318,35 +318,35 @@ Instruction load_goal_gpr(const ObjectGenerator& gen,
                           bool sign_extend);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-//   LOADS n' STORES - XMM32
+//   LOADS n' STORES - SIMD32
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-Instruction store32_xmm32_gpr64_plus_gpr64(const ObjectGenerator& gen,
+Instruction store32_simd32_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                            Register addr1,
+                                            Register addr2,
+                                            Register simd_value);
+
+Instruction load32_simd32_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register simd_dest,
                                            Register addr1,
-                                           Register addr2,
-                                           Register xmm_value);
+                                           Register addr2);
 
-Instruction load32_xmm32_gpr64_plus_gpr64(const ObjectGenerator& gen,
-                                          Register simd_dest,
-                                          Register addr1,
-                                          Register addr2);
-
-Instruction store32_xmm32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
-                                                   Register addr1,
-                                                   Register addr2,
-                                                   Register xmm_value,
-                                                   s64 offset);
-
-Instruction load32_xmm32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
-                                                  Register simd_dest,
-                                                  Register addr1,
-                                                  Register addr2,
-                                                  s64 offset);
-
-Instruction store32_xmm32_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+Instruction store32_simd32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
                                                     Register addr1,
                                                     Register addr2,
-                                                    Register xmm_value,
+                                                    Register simd_value,
                                                     s64 offset);
+
+Instruction load32_simd32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register simd_dest,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
+
+Instruction store32_simd32_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                     Register addr1,
+                                                     Register addr2,
+                                                     Register simd_value,
+                                                     s64 offset);
 
 Instruction lea_reg_plus_off32(const ObjectGenerator& gen,
                                Register dest,
@@ -357,73 +357,73 @@ Instruction lea_reg_plus_off8(const ObjectGenerator& gen, Register dest, Registe
 
 Instruction lea_reg_plus_off(const ObjectGenerator& gen, Register dest, Register base, s64 offset);
 
-Instruction store32_xmm32_gpr64_plus_s32(const ObjectGenerator& gen,
+Instruction store32_simd32_gpr64_plus_s32(const ObjectGenerator& gen,
+                                          Register base,
+                                          Register simd_value,
+                                          s64 offset);
+
+Instruction store32_simd32_gpr64_plus_s8(const ObjectGenerator& gen,
                                          Register base,
-                                         Register xmm_value,
+                                         Register simd_value,
                                          s64 offset);
 
-Instruction store32_xmm32_gpr64_plus_s8(const ObjectGenerator& gen,
-                                        Register base,
-                                        Register xmm_value,
-                                        s64 offset);
+Instruction load32_simd32_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register simd_dest,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    s64 offset);
 
-Instruction load32_xmm32_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
-                                                   Register simd_dest,
-                                                   Register addr1,
-                                                   Register addr2,
-                                                   s64 offset);
+Instruction load32_simd32_gpr64_plus_s32(const ObjectGenerator& gen,
+                                         Register simd_dest,
+                                         Register base,
+                                         s64 offset);
 
-Instruction load32_xmm32_gpr64_plus_s32(const ObjectGenerator& gen,
+Instruction load32_simd32_gpr64_plus_s8(const ObjectGenerator& gen,
                                         Register simd_dest,
                                         Register base,
                                         s64 offset);
 
-Instruction load32_xmm32_gpr64_plus_s8(const ObjectGenerator& gen,
-                                       Register simd_dest,
-                                       Register base,
-                                       s64 offset);
-
-Instruction load_goal_xmm32(const ObjectGenerator& gen,
-                            Register simd_dest,
-                            Register addr,
-                            Register off,
-                            s64 offset);
-
-Instruction store_goal_xmm32(const ObjectGenerator& gen,
+Instruction load_goal_simd32(const ObjectGenerator& gen,
+                             Register simd_dest,
                              Register addr,
-                             Register xmm_value,
                              Register off,
                              s64 offset);
 
-Instruction store_reg_offset_xmm32(const ObjectGenerator& gen,
+Instruction store_goal_simd32(const ObjectGenerator& gen,
+                              Register addr,
+                              Register simd_value,
+                              Register off,
+                              s64 offset);
+
+Instruction store_reg_offset_simd32(const ObjectGenerator& gen,
+                                    Register base,
+                                    Register simd_value,
+                                    s64 offset);
+
+Instruction load_reg_offset_simd32(const ObjectGenerator& gen,
+                                   Register simd_dest,
                                    Register base,
-                                   Register xmm_value,
                                    s64 offset);
 
-Instruction load_reg_offset_xmm32(const ObjectGenerator& gen,
-                                  Register simd_dest,
-                                  Register base,
-                                  s64 offset);
-
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-//   LOADS n' STORES - XMM128
+//   LOADS n' STORES - SIMD128
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 /*!
- * Store a 128-bit xmm into an address stored in a register, no offset
+ * Store a 128-bit SIMD register into an address stored in a register, no offset
  */
 Instruction store128_gpr64_simd128(const ObjectGenerator& gen,
                                    Register gpr_addr,
-                                   Register xmm_value);
+                                   Register simd_value);
 
 Instruction store128_gpr64_simd128_s32(const ObjectGenerator& gen,
                                        Register gpr_addr,
-                                       Register xmm_value,
+                                       Register simd_value,
                                        s64 offset);
 
 Instruction store128_gpr64_simd128_s8(const ObjectGenerator& gen,
                                       Register gpr_addr,
-                                      Register xmm_value,
+                                      Register simd_value,
                                       s64 offset);
 
 Instruction load128_simd128_gpr64(const ObjectGenerator& gen,
@@ -440,15 +440,15 @@ Instruction load128_simd128_gpr64_s8(const ObjectGenerator& gen,
                                      Register gpr_addr,
                                      s64 offset);
 
-Instruction load128_xmm128_reg_offset(const ObjectGenerator& gen,
-                                      Register simd_dest,
-                                      Register base,
-                                      s64 offset);
-
-Instruction store128_xmm128_reg_offset(const ObjectGenerator& gen,
+Instruction load128_simd128_reg_offset(const ObjectGenerator& gen,
+                                       Register simd_dest,
                                        Register base,
-                                       Register xmm_val,
                                        s64 offset);
+
+Instruction store128_simd128_reg_offset(const ObjectGenerator& gen,
+                                        Register base,
+                                        Register simd_val,
+                                        s64 offset);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   RIP loads and stores
@@ -488,7 +488,7 @@ Instruction static_addr(const ObjectGenerator& gen, Register dst, s64 offset);
 
 Instruction static_load_f32(const ObjectGenerator& gen, Register simd_dest, s64 offset);
 
-Instruction static_store_f32(const ObjectGenerator& gen, Register xmm_value, s64 offset);
+Instruction static_store_f32(const ObjectGenerator& gen, Register simd_value, s64 offset);
 
 // TODO, special load/stores of 128 bit values.
 
@@ -846,10 +846,10 @@ shuffle_vf(const ObjectGenerator& gen, Register dst, Register src, u8 dx, u8 dy,
   - 10b - Copy the third element (from the right) (Z)
   - 11b - Copy the most significant element (W)
   Examples
-  ; xmm1 = (1.5, 2.5, 3.5, 4.5) (W,Z,Y,X in x86 land)
-  SHUFPS xmm1, xmm1, 0xff ; Copy the most significant element to all positions
+  ; simd1 = (1.5, 2.5, 3.5, 4.5) (W,Z,Y,X in x86 land)
+  SHUFPS simd1, simd1, 0xff ; Copy the most significant element to all positions
   > (1.5, 1.5, 1.5, 1.5)
-  SHUFPS xmm1, xmm1, 0x39 ; Rotate right
+  SHUFPS simd1, simd1, 0x39 ; Rotate right
   > (4.5, 1.5, 2.5, 3.5)
   */
 Instruction swizzle_vf(const ObjectGenerator& gen, Register dst, Register src, u8 controlBytes);
@@ -857,10 +857,10 @@ Instruction swizzle_vf(const ObjectGenerator& gen, Register dst, Register src, u
 /*
   Splats a single element in 'src' to all elements in 'dst'
   For example (pseudocode):
-  xmm1 = (1.5, 2.5, 3.5, 4.5)
-  xmm2 = (1, 2, 3, 4)
-  splat_vf(xmm1, xmm2, XMM_ELEMENT::X);
-  xmm1 = (4, 4, 4, 4)
+  simd1 = (1.5, 2.5, 3.5, 4.5)
+  simd2 = (1, 2, 3, 4)
+  splat_vf(simd1, simd2, VF_ELEMENT::X);
+  simd1 = (4, 4, 4, 4)
   */
 Instruction splat_vf(const ObjectGenerator& gen,
                      Register dst,

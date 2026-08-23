@@ -353,7 +353,7 @@ Val* Compiler::generate_inspector_for_bitfield_type(const goos::Object& form,
   constraint.ireg = input_arg->ireg();  // constrain this register
   if (bitfield_128) {
     constraint.desired_register =
-        emitter::reg_info(m_instr_set).get_xmm_arg_reg(0);  // to the first argument
+        emitter::reg_info(m_instr_set).get_simd_arg_reg(0);  // to the first argument
   } else {
     constraint.desired_register =
         emitter::reg_info(m_instr_set).get_gpr_arg_reg(0);  // to the first argument
@@ -648,8 +648,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     RegVal* final_result;
     emitter::Register ret_hw_reg = emitter::reg_info(m_instr_set).get_gpr_ret_reg();
     if (m_ts.lookup_type(result->type())->get_load_size() == 16) {
-      ret_hw_reg = emitter::reg_info(m_instr_set).get_xmm_ret_reg();
-      final_result = result->to_xmm128(form, new_func_env.get());
+      ret_hw_reg = emitter::reg_info(m_instr_set).get_simd_ret_reg();
+      final_result = result->to_simd128(form, new_func_env.get());
       return_reg->change_class(RegClass::INT_128);
     } else {
       final_result = result->to_gpr(form, new_func_env.get());

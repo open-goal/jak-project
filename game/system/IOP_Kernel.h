@@ -21,19 +21,6 @@
 class IOP_Kernel;
 namespace iop {
 struct sceSifQueueData;
-
-namespace detail {
-constexpr u32 system_time_low_from_microseconds(u64 microseconds) {
-  constexpr u64 kTicksPerMillisecond = 36864;
-  constexpr u64 kMicrosecondsPerMillisecond = 1000;
-  const auto milliseconds = microseconds / kMicrosecondsPerMillisecond;
-  const auto remaining_microseconds = microseconds % kMicrosecondsPerMillisecond;
-  const auto ticks = milliseconds * kTicksPerMillisecond;
-  const auto remaining_ticks =
-      remaining_microseconds * kTicksPerMillisecond / kMicrosecondsPerMillisecond;
-  return static_cast<u32>(ticks + remaining_ticks);
-}
-}  // namespace detail
 }  // namespace iop
 
 using time_stamp = std::chrono::time_point<std::chrono::steady_clock, std::chrono::microseconds>;

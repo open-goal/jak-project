@@ -7,7 +7,10 @@
 
 #include <cstring>
 
+#include "common/arm64/encoding.h"
 #include "common/common_types.h"
+
+#include "game/runtime.h"
 
 #ifdef __APPLE__
 #include <libkern/OSCacheControl.h>
@@ -29,9 +32,6 @@ inline void flush_icache(void* addr, int size) {
 #endif
 }
 
-// forward declaration avoids the game/runtime.h dependency
-extern u8* g_ee_main_mem_exec;
-
 /*!
  * Makes EE instructions visible through their executable mapping.
  */
@@ -44,12 +44,12 @@ inline void flush_icache_goal(u32 goal_addr, u32 size) {
 /*!
  * Emits a fixed movz/movk sequence for a 64-bit value.
  */
-inline int emit_arm64_mov64(u8* dst, int reg, u64 val) {
-  u32 instr = 0xd2800000 | ((val & 0xffff) << 5) | reg;  // movz
+inline int emit_arm64_mov64(u8* dst, u32 reg, u64 val) {
+  u32 instr = arm64::encode_movz_64(reg, u16(val & 0xffff), 0);
   memcpy(dst, &instr, 4);
   int offset = 4;
-  for (int shift = 1; shift < 4; shift++) {
-    instr = 0xf2800000 | (shift << 21) | (((val >> (shift * 16)) & 0xffff) << 5) | reg;  // movk
+  for (u32 halfword = 1; halfword < 4; halfword++) {
+    instr = arm64::encode_movk_64(reg, u16((val >> (halfword * 16)) & 0xffff), halfword);
     memcpy(dst + offset, &instr, 4);
     offset += 4;
   }
@@ -100,7 +100,7 @@ inline int emit_return_stub(u8* dst) {
 inline int emit_zero_stub(u8* dst) {
 #ifdef __aarch64__
   // movz x0, #0 followed by ret
-  const u32 instrs[2] = {0xd2800000, 0xd65f03c0};
+  const u32 instrs[2] = {arm64::encode_movz_64(0, 0, 0), 0xd65f03c0};
   memcpy(dst, instrs, 8);
   return 8;
 #else

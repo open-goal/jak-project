@@ -87,6 +87,7 @@ class Compiler {
     m_ts.add_type_to_allowed_redefinition_list(type_name);
   }
   Debugger& get_debugger() { return m_debugger; }
+  emitter::InstructionSet instruction_set() const { return m_instr_set; }
   listener::Listener& listener() { return m_listener; }
   void poke_target() { m_listener.send_poke(); }
   bool connect_to_target();

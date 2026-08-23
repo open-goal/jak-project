@@ -278,6 +278,7 @@ struct InstructionARM64 : InstructionImpl<InstructionARM64> {
     return count * 4;
   }
 
+  // TODO ARM - all placeholders, no idea if this is even relevant, if not, get rid of it all
   // ARM64 relocations use reloc_kind and reloc_word instead.
   int get_imm_size() const { return 0; }
 

@@ -1,7 +1,6 @@
 # TODO - order matters, unfortunately, the kernel tests write to the filesystem and
 # other tests depend on that, solve that someday, maybe
 
-# GOAL tests use the current process architecture
 set(GOALC_TEST_CASES
     ${CMAKE_CURRENT_LIST_DIR}/test_goal_kernel.cpp
     ${CMAKE_CURRENT_LIST_DIR}/test_goal_kernel2.cpp

@@ -503,24 +503,6 @@ uint32_t cross_seg_dist_link_v3(Ptr<uint8_t> link,
   return 1 + 3 * 4;
 }
 
-/*!
- * Patches a 32-bit cross-segment GOAL address into a movz/movk pair.
- */
-uint32_t arm64_other_seg_mov32_link_v3(Ptr<uint8_t> link, ObjectFileHeader* ofh, int current_seg) {
-  uint8_t target_seg = *link;
-  ASSERT(target_seg < ofh->segment_count);
-
-  uint32_t* link_data = (link + 1).cast<uint32_t>().c();
-  uint32_t patch_loc = link_data[1] + ofh->code_infos[current_seg].offset;
-
-  // discarded debug segments use a null GOAL pointer
-  uint32_t value =
-      ofh->code_infos[target_seg].offset ? (link_data[0] + ofh->code_infos[target_seg].offset) : 0;
-
-  arm64_write_mov32(Ptr<uint32_t>(patch_loc).c(), value);
-  return 1 + 2 * 4;
-}
-
 uint32_t ptr_link_v3(Ptr<u8> link, ObjectFileHeader* ofh, int current_seg) {
   auto* link_data = link.cast<u32>().c();
   u32 patch_loc = link_data[0] + ofh->code_infos[current_seg].offset;
@@ -572,9 +554,10 @@ uint32_t typelink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data) {
 }
 /*!
  * Link symbols (both offsets and pointers) in "v3 equivalent" link data.
+ * If patch_mov32 is true, locations point to ARM64 movz/movk pairs instead of data words.
  * Returns a pointer to the link table data after the linking data for this symbol.
  */
-uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data, bool mov32) {
+uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data, bool patch_mov32) {
   // get the symbol name
   uint32_t seek = 0;
   char sym_name[256];
@@ -603,7 +586,7 @@ uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data, bool mov32) {
     auto data_ptr = (data + offset).cast<int32_t>();
 
     // ARM64 movz/movk links use the same s32 sentinel values as direct data links.
-    s32 current = mov32 ? s32(arm64_read_mov32((data + offset).cast<u32>().c())) : *data_ptr;
+    s32 current = patch_mov32 ? s32(arm64_read_mov32((data + offset).cast<u32>().c())) : *data_ptr;
     s32 value;
     if (current == -1) {
       // a "-1" indicates that we should store the address.
@@ -615,7 +598,7 @@ uint32_t symlink_v3(Ptr<uint8_t> link, Ptr<uint8_t> data, bool mov32) {
       value = sym_offset;
     }
 
-    if (mov32) {
+    if (patch_mov32) {
       arm64_write_mov32((data + offset).cast<u32>().c(), u32(value));
     } else {
       *data_ptr = value;
