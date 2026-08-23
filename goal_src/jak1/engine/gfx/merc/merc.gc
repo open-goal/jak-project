@@ -36,7 +36,8 @@
         ((and eye-ctrl (= (logand (the-as texture-id -256) (-> shader texture-id)) #x1cf06f00))
          ;; eye slot 0
          (adgif-shader-login shader)
-         (let ((eye-texture-block (get-eye-block (-> eye-ctrl eye-slot) 0))) (set! (-> shader tex0 tbp0) eye-texture-block))
+         (let ((eye-texture-block (get-eye-block (-> eye-ctrl eye-slot) 0)))
+           (set! (-> shader tex0 tbp0) eye-texture-block))
          (set! (-> shader tex0 tw) 5)
          (set! (-> shader tex0 th) 5)
          (set! (-> shader tex0 tcc) 1)
@@ -48,7 +49,8 @@
         ((and eye-ctrl (= (logand (the-as texture-id -256) (-> shader texture-id)) #x1cf07000))
          ;; eye slot 1
          (adgif-shader-login shader)
-         (let ((eye-texture-block (get-eye-block (-> eye-ctrl eye-slot) 1))) (set! (-> shader tex0 tbp0) eye-texture-block))
+         (let ((eye-texture-block (get-eye-block (-> eye-ctrl eye-slot) 1)))
+           (set! (-> shader tex0 tbp0) eye-texture-block))
          (set! (-> shader tex0 tw) 5)
          (set! (-> shader tex0 th) 5)
          (set! (-> shader tex0 tcc) 1)
@@ -122,7 +124,8 @@
   "Account for the base art data, packed fragment control and geometry, blend targets, and eye
    animation owned by this MERC asset."
   ;; do extra
-  (if (-> this extra) (mem-usage (-> this extra) usage flags))
+  (if (-> this extra)
+      (mem-usage (-> this extra) usage flags))
   ;; do merc ctrls in each effect:
   (let ((ctrl-mem (+ 32 80 (* (-> this header effect-count) 32))))
     (dotimes (effect-idx (the-as int (-> this header effect-count)))
@@ -158,7 +161,7 @@
 
 (defmethod login ((this merc-ctrl))
   "Log in every effect and eye shader, collect texture masks, and move the effect marked
-   translucent to the final effect slot. Discard an unrelocated low-address eye-control value."
+   translucent to the final effect slot."
   ;; so we can find it
   (set! *merc-ctrl-header* (-> this header))
   ;; clear masks. logging in will set these for textures we need.
@@ -168,6 +171,7 @@
   (dotimes (effect-idx (the-as int (-> this header effect-count)))
     (login-adgifs (-> this effect effect-idx)))
   ;; Translucent geometry occupies the final effect slot expected by the MERC submission code.
+  ;; This code swaps the last slot with the translucent geometry.
   (let ((translucent-effect-index -1)
         (effect-count (-> this header effect-count)))
     (dotimes (effect-index (the-as int effect-count))
@@ -184,7 +188,7 @@
   ;; login eye.
   (cond
     ((not (logtest? -65536 (the-as int (-> this header eye-ctrl))))
-     ;; A linked eye-control pointer must not fit in the unrelocated low 16-bit form.
+     ;; Set eye-ctrl to 0 if it's not a valid pointer
      (set! (-> this header eye-ctrl) (the-as merc-eye-ctrl 0))
      0)
     (else
@@ -314,16 +318,11 @@
 
 (defun merc-vu1-init-buffer ((dma-bucket bucket-id) (test gs-test) (unused int))
   "If bucket-id received drawing commands, prepend a MERC VU1/GS initialization chain using test
-   and link it to the bucket's previous head. The third argument is reserved and currently unused."
-  ;; Drawing has already filled the buckets, so this can skip empty ones and splice initialization
-  ;; only in front of work that will run. display-frame-finish calls this after the previous DMA is
-  ;; synchronized.
-  (let ((bucket (-> *display* frames (-> *display* on-screen) frame bucket-group dma-bucket)))
+   and link it to the bucket's previous head."
+  (let ((bucket (-> (current-frame) bucket-group dma-bucket)))
     (when (!= bucket (-> bucket last))
-      (let* ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
-             (draw-data-start (-> dma-buf base)) ;; remember old beginning
-             )
-        ;; Upload and initialize MERC, then send the bucket's GS TEST value through VIF DIRECT.
+      (let* ((dma-buf (-> (current-frame) global-buf))
+             (draw-data-start (-> dma-buf base)))
         (set! (-> dma-buf base) (the-as pointer (merc-vu1-initialize-chain (the-as dma-gif-packet (-> dma-buf base)))))
         (let* ((buffer-for-vif-tag dma-buf)
                (vif-packet (the-as object (-> buffer-for-vif-tag base))))
@@ -331,18 +330,12 @@
           (set! (-> (the-as dma-packet vif-packet) vif0) (new 'static 'vif-tag))
           (set! (-> (the-as dma-packet vif-packet) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
           (set! (-> buffer-for-vif-tag base) (&+ (the-as pointer vif-packet) 16)))
-        (let* ((buffer-for-gif-tag dma-buf)
-               (gif-packet (the-as object (-> buffer-for-gif-tag base))))
-          (set! (-> (the-as gs-gif-tag gif-packet) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-          (set! (-> (the-as gs-gif-tag gif-packet) regs) GIF_REGS_ALL_AD)
-          (set! (-> buffer-for-gif-tag base) (&+ (the-as pointer gif-packet) 16)))
+        (dma-buffer-add-gif-tag dma-buf (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1) GIF_REGS_ALL_AD)
         (let* ((buffer-for-test dma-buf)
                (test-packet (-> buffer-for-test base)))
           (set! (-> (the-as (pointer gs-test) test-packet) 0) test)
           (set! (-> (the-as (pointer gs-reg64) test-packet) 1) (gs-reg64 test-1))
           (set! (-> buffer-for-test base) (&+ test-packet 16)))
-        ;; The new prefix jumps to the bucket's previous head; the bucket now starts at the saved
-        ;; global-buffer cursor.
         (let ((chain-tail (the-as object (-> dma-buf base))))
           (set! (-> (the-as dma-packet chain-tail) dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (-> bucket next)))
           (set! (-> (the-as dma-packet chain-tail) vif0) (new 'static 'vif-tag))
@@ -354,8 +347,7 @@
 
 (defun merc-vu1-init-buffers ()
   "After drawing has filled the MERC buckets, prepend initialization chains to each nonempty
-   enabled bucket. Ordinary buckets use alpha reference #x26; water uses #x80 and preserves the
-   framebuffer on alpha failure."
+   enabled bucket."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask merc))
     (merc-vu1-init-buffer (bucket-id merc-tfrag-tex0)
                           (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))

@@ -169,7 +169,6 @@ set(RUNTIME_SOURCE
         mips2c/jak1_functions/merc_blend_shape.cpp
         mips2c/jak1_functions/ocean_vu0.cpp
         mips2c/jak1_functions/ocean.cpp
-        mips2c/jak1_functions/ripple.cpp
         mips2c/jak1_functions/shadow.cpp
         mips2c/jak1_functions/sky_tng.cpp
         mips2c/jak1_functions/sparticle_launcher.cpp

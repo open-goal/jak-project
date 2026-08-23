@@ -13,7 +13,7 @@
 ;; DECOMP BEGINS
 
 (deftype ripple-request (structure)
-  ((waveform ripple-wave)
+  ((waveform ripple-wave-set)
    (effect   merc-effect))
   :pack-me)
 
@@ -23,7 +23,7 @@
 
 (define *ripple-globals* (new 'global 'ripple-globals))
 
-(defun ripple-make-request ((waveform ripple-wave) (effect merc-effect))
+(defun ripple-make-request ((waveform ripple-wave-set) (effect merc-effect))
   "Queue an effect to receive a waveform during this frame. Ignore duplicate effects and requests
    beyond the sixteen-entry buffer."
   (let ((request-count (-> *ripple-globals* count))
@@ -31,7 +31,8 @@
         (already-queued 0))
     (when (< request-count 16)
       (dotimes (i request-count)
-        (if (= effect (-> requests i effect)) (set! already-queued 1)))
+        (if (= effect (-> requests i effect))
+            (set! already-queued 1)))
       (when (zero? already-queued)
         (set! (-> requests request-count effect) effect)
         (set! (-> requests request-count waveform) waveform)
@@ -53,11 +54,6 @@
       (set! (-> wave-set frame-save) (the-as uint (-> *display* integral-frame-counter)))))
   0
   (none))
-
-(#when PC_PORT
-  (def-mips2c ripple-execute-init (function none))
-  (def-mips2c ripple-create-wave-table (function ripple-wave-set int))
-  (def-mips2c ripple-apply-wave-table (function merc-effect symbol)))
 
 ;; Ripple generation uses VU0 data memory for its cosine interpolation table and the scratchpad for
 ;; the 16 by 16 height/normal field. The EE versions retain the vector pipeline and packed vertex
@@ -504,6 +500,167 @@
       (nop!)
       (nop!))))
 
+;; Plain-GOAL ripple implementation.
+(deftype ripple-cosine-table (structure)
+  ((entry vector 256 :inline)))
+
+(define *ripple-cosine-table* (new 'global 'ripple-cosine-table))
+
+(defun ripple-cosine-table-init ((table ripple-cosine-table))
+  "Build the cosine interpolation table used by the plain-GOAL ripple generator. The first half
+   covers zero through pi; negated copies in the second half complete the cycle."
+  (let ((phase-step 0.024543691)
+        (phase 0.024543691)
+        (sample 1.0))
+    (dotimes (i 128)
+      ;; Match the original degree-eight cosine polynomial. Keeping the delta beside each sample
+      ;; lets the table generator linearly interpolate the low eight phase bits.
+      (let* ((phase-squared (square phase))
+             (phase-fourth (square phase-squared))
+             (phase-sixth (* phase-fourth phase-squared))
+             (phase-eighth (square phase-fourth))
+             (next-sample (+ 1.0
+                             (* phase-squared (-> *cos-poly-vec* x))
+                             (* phase-fourth (-> *cos-poly-vec* y))
+                             (* phase-sixth (-> *cos-poly-vec* z))
+                             (* phase-eighth (-> *cos-poly-vec* w))))
+             (delta (- next-sample sample))
+             (positive-entry (-> table entry i))
+             (negative-entry (-> table entry (+ i 128))))
+        (set! (-> positive-entry x) sample)
+        (set! (-> positive-entry y) delta)
+        (set! (-> negative-entry x) (- sample))
+        (set! (-> negative-entry y) (- delta))
+        (set! sample next-sample)
+        (+! phase phase-step))))
+  (none))
+
+(ripple-cosine-table-init *ripple-cosine-table*)
+
+(defun ripple-execute-init ()
+  ;; nothing to initialize in the re-written ripple implementation.
+  (none))
+
+(defun ripple-create-wave-table ((wave-set ripple-wave-set))
+  "Sum the wave set into a 16 by 16 height grid, then pack height and x/z slopes into the
+   scratchpad table consumed by MERC vertices. The grid wraps in both directions so it tiles."
+  ;; Build wave deltas
+  (when (not (-> wave-set converted))
+    (dotimes (i (-> wave-set count))
+      (let* ((wave (-> wave-set wave i))
+             (direction (atan (the float (-> wave zdiv)) (the float (-> wave xdiv))))
+             (wavelength (/ 16.0
+                            (sqrtf (the float (+ (square (the int (-> wave xdiv)))
+                                                   (square (the int (-> wave zdiv))))))))
+             (phase-per-cell (/ 65536.0 wavelength)))
+        (set! (-> wave xmul) (* (cos direction) phase-per-cell))
+        (set! (-> wave zmul) (* (sin direction) phase-per-cell))
+        (cond
+          ((= (-> *setting-control* current video-mode) 'ntsc)
+           (set! (-> wave delta) (* 0.016666668 (- phase-per-cell) (-> wave speed))))
+          ((= (-> *setting-control* current video-mode) 'pal)
+           (set! (-> wave delta) (* 0.02 (- phase-per-cell) (-> wave speed)))))))
+    (set! (-> wave-set converted) #t))
+
+  ;; update wave phases
+  (ripple-update-waveform-offs wave-set)
+  (let ((heights (scratchpad-ptr float))
+        (packed-table (scratchpad-ptr uint8 :offset 1024)))
+    
+    ;; initialize heights to zero
+    (dotimes (grid-index 256)
+      (set! (-> heights grid-index) 0.0))
+
+    ;; Add each wave to the height table
+    (dotimes (wave-index (-> wave-set count))
+      (let* ((wave (-> wave-set wave wave-index))
+             (phase-base (+ 16384.0 (* 0.00390625 (-> wave offs))))
+             (phase-x-step (* 0.00390625 (-> wave xmul)))
+             (phase-z-step (* 0.00390625 (-> wave zmul))))
+        (dotimes (grid-z 16)
+          (dotimes (grid-x 16)
+            (let* ((grid-index (+ grid-x (* grid-z 16)))
+                   (phase (+ phase-base
+                             (* (the float grid-x) phase-x-step)
+                             (* (the float grid-z) phase-z-step)))
+                   (table-index (the int phase))
+                   (fraction (- phase (the float table-index)))
+                   (entry (-> *ripple-cosine-table* entry (logand table-index #xff)))
+                   (sample (+ (-> entry x) (* fraction (-> entry y)))))
+              (+! (-> heights grid-index) (* sample (-> wave scale))))))))
+
+    ;; Create packed vertex data in MERC vertex format [pos-y, nrm-x, nrm-z, PAD] 
+    (dotimes (grid-z 16)
+      (dotimes (grid-x 16)
+        (let* ((grid-index (+ grid-x (* grid-z 16)))
+               (right-index (+ (mod (+ grid-x 1) 16) (* grid-z 16)))
+               (down-index (+ grid-x (* (mod (+ grid-z 1) 16) 16)))
+               (height (-> heights grid-index))
+               (normal-scale (fmax 0.0 (-> wave-set normal-scale)))
+               (packed-index (* grid-index 4)))
+          ;; height
+          (set! (-> packed-table packed-index)
+                (the-as uint (the int (fmax 0.0 (fmin 255.0 (+ 128.0 height))))))
+          ;; finite difference to get normal X
+          (set! (-> packed-table (+ packed-index 1))
+                (the-as uint
+                        (the int
+                             (fmax 0.0
+                                   (fmin 255.0
+                                         (+ 128.0 (* normal-scale (- height (-> heights right-index)))))))))
+          ;; finite difference to get normal Y
+          (set! (-> packed-table (+ packed-index 2))
+                (the-as uint
+                        (the int
+                             (fmax 0.0
+                                   (fmin 255.0
+                                         (+ 128.0 (* normal-scale (- height (-> heights down-index)))))))))
+          (set! (-> packed-table (+ packed-index 3)) 128))))
+  0))
+
+(defun ripple-apply-wave-table ((effect merc-effect))
+  "Patch the packed height and normal bytes of every rippled MERC vertex. Each two-byte query uses
+   its low nibbles as x/z coordinates in the 16 by 16 table."
+  (let ((packed-table (scratchpad-ptr uint8 :offset 1024))
+        (fragment (-> effect frag-geo))
+        (fragment-control (-> effect frag-ctrl))
+        (queries (the-as (pointer uint8) (-> effect blend-data)))
+        (blend-control (-> effect blend-ctrl)))
+    (dotimes (fragment-index (the-as int (-> effect frag-count)))
+      (let* ((vertex-count (-> blend-control blend-vtx-count))
+             ;; Unsigned-four data is qword-aligned immediately before the packed vertices.
+             (vertex-data (the-as merc-vtx
+                                  (&+ (the-as pointer fragment)
+                                      (logand (* (+ (-> fragment-control unsigned-four-count) 3) 4)
+                                              #xfff0)))))
+        (dotimes (vertex-index (the-as int vertex-count))
+          (let* ((table-x (logand (-> queries (* vertex-index 2)) #xf))
+                 (table-z (logand (-> queries (+ (* vertex-index 2) 1)) #xf))
+                 (table-index (* (+ table-x (* table-z 16)) 4))
+                 (vertex (the-as merc-vtx
+                                 (&+ (the-as pointer vertex-data) (* vertex-index 12)))))
+            (set! (-> vertex pos-y) (-> packed-table table-index))
+            (set! (-> vertex nrm-x) (-> packed-table (+ table-index 1)))
+            (set! (-> vertex nrm-z) (-> packed-table (+ table-index 2)))))
+
+        ;; Advance the four packed streams independently; their fragment records have different
+        ;; alignment and variable-length tails.
+        (set! fragment
+              (the-as merc-fragment
+                      (&+ (the-as pointer vertex-data)
+                          (* (+ (-> fragment-control fp-qwc)
+                                (/ (+ (-> fragment-control lump-four-count) 3) 4))
+                             16))))
+        (set! fragment-control
+              (the-as merc-fragment-control
+                      (&+ (the-as pointer fragment-control)
+                          (+ 4 (* (-> fragment-control mat-xfer-count) 2)))))
+        (set! queries
+              (the-as (pointer uint8)
+                      (&+ queries (logand (+ (* vertex-count 2) 15) #xfff0))))
+        (set! blend-control (the-as merc-blend-ctrl (&+ (the-as pointer blend-control) 2))))))
+  #f)
+
 (defun ripple-execute ()
   "Build each requested waveform table once, apply it to every queued effect that shares that
    waveform, and clear the request list."
@@ -520,19 +677,16 @@
             (protect ((-> *setting-control* current video-mode))
               (when (= (-> *setting-control* current video-mode) 'custom)
                 (set! (-> *setting-control* current video-mode) 'ntsc))
-              (ripple-create-wave-table (the-as ripple-wave-set waveform)))
+                (ripple-create-wave-table waveform))
             (while (!= match-index request-count)
               (when (= waveform (-> requests match-index waveform))
-                (ripple-apply-wave-table (-> requests match-index effect))
+                  (ripple-apply-wave-table (-> requests match-index effect))
                 (set! (-> requests match-index waveform) #f))
               (+! match-index 1))))
         (+! request-index 1)))
     (set! (-> *ripple-globals* count) 0)
     0)
   (none))
-
-(#when PC_PORT
-  (def-mips2c ripple-matrix-scale (function pointer int float float float pointer none)))
 
 (defun-debug ripple-add-debug-sphere ((drawable process-drawable) (grid-point vector) (x-slope float) (z-slope float))
   "Transform one local ripple-grid point by the drawable's inverse yaw and root translation, then

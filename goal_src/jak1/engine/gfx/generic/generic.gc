@@ -6,30 +6,25 @@
 (require "engine/gfx/lights.gc")
 (require "engine/gfx/generic/generic-h.gc")
 
-;; A generic sink is a bucket plus the VU1 buffer rotation belonging to that bucket.  There is one per
-;; place in the draw order where converted foreground geometry can be inserted: level 0, level 1, and
-;; default each contribute a tfrag sink and a pris sink, then shrub, then the two level water sinks.
-;; A sink outlives a single conversion pass - MERC and TIE can both feed the same bucket in one frame
-;; - which is why the buffer addresses are kept here and not in the scratchpad work area.
+;; A generic sink is a bucket plus the VU1 buffer rotation belonging to that bucket.
+;; There's one per level x texture-group pair, plus one for shrub.
+;; Both MERC and TIE can submit to these and VU1 buffer state must be consistent,
+;; so these are stored globally instead of in rendering code like normal.
 (define *generic-foreground-sinks*
   (new 'static 'boxed-array :type generic-dma-foreground-sink :length 0 :allocated-length 9))
 
 (set! (-> *generic-foreground-sinks* 0) (-> *level* level0 tfrag-tex-foreground-sink-group generic-sink))
-
 (set! (-> *generic-foreground-sinks* 1) (-> *level* level0 pris-tex-foreground-sink-group generic-sink))
 
 (set! (-> *generic-foreground-sinks* 2) (-> *level* level1 tfrag-tex-foreground-sink-group generic-sink))
-
 (set! (-> *generic-foreground-sinks* 3) (-> *level* level1 pris-tex-foreground-sink-group generic-sink))
 
 (set! (-> *generic-foreground-sinks* 4) (-> *level* level-default tfrag-tex-foreground-sink-group generic-sink))
-
 (set! (-> *generic-foreground-sinks* 5) (-> *level* level-default pris-tex-foreground-sink-group generic-sink))
 
 (set! (-> *generic-foreground-sinks* 6) (new 'static 'generic-dma-foreground-sink :bucket (bucket-id shrub-generic1)))
 
 (set! (-> *generic-foreground-sinks* 7) (-> *level* level0 water-tex-foreground-sink-group generic-sink))
-
 (set! (-> *generic-foreground-sinks* 8) (-> *level* level1 water-tex-foreground-sink-group generic-sink))
 
 (defun generic-dma-foreground-sink-init ((sink generic-dma-foreground-sink))

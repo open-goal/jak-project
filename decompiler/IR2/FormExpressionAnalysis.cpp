@@ -2964,6 +2964,51 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
 // SetVarElement
 ///////////////////
 
+namespace {
+bool try_rewrite_string_format_load(SetVarElement& set,
+                                    const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack) {
+  // string-format expands to
+  //   (begin (format (clear *temp-string*) args...) *temp-string*)
+  //
+  // Recognize the reload only when the matching format call is the immediately preceding active
+  // expression. Keeping the resulting value at the reload's position is important: normal stack
+  // popping can then inline it only where doing so preserves argument evaluation order, or leave a
+  // temporary when an intervening argument was evaluated after the format call.
+  if (!set.src()->to_form(env).is_symbol("*temp-string*")) {
+    return false;
+  }
+
+  const auto* previous = stack.active_back();
+  if (!previous || previous->destination || !previous->elt) {
+    return false;
+  }
+
+  auto* format_call = dynamic_cast<GenericElement*>(previous->elt);
+  if (!format_call || !format_call->op().is_func() ||
+      !format_call->op().func()->to_form(env).is_symbol("format") || format_call->elts().empty()) {
+    return false;
+  }
+
+  auto* clear_call = format_call->elts().front()->try_as_element<GenericElement>();
+  if (!clear_call || !clear_call->op().is_func() ||
+      !clear_call->op().func()->to_form(env).is_symbol("clear") || clear_call->elts().size() != 1 ||
+      !clear_call->elts().front()->to_form(env).is_symbol("*temp-string*")) {
+    return false;
+  }
+
+  std::vector<Form*> format_args(format_call->elts().begin() + 1, format_call->elts().end());
+  auto string_format = pool.form<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("string-format")),
+      format_args);
+
+  stack.pop_active_back();
+  stack.push_value_to_reg(set.dst(), string_format, true, set.src_type(), set.info());
+  return true;
+}
+}  // namespace
+
 void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
   for (auto x : m_src->elts()) {
@@ -2974,6 +3019,10 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   // hack for method stuff
   if (is_dead_set()) {
     stack.push_value_to_reg_dead(m_dst, m_src, true, m_src_type, m_var_info);
+    return;
+  }
+
+  if (try_rewrite_string_format_load(*this, env, pool, stack)) {
     return;
   }
 

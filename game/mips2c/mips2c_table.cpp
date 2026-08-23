@@ -81,10 +81,6 @@ namespace generic_light_proc { extern void link(); }
 namespace generic_envmap_proc { extern void link(); }
 namespace high_speed_reject { extern void link(); }
 namespace generic_prepare_dma_single { extern void link(); }
-namespace ripple_create_wave_table { extern void link(); }
-namespace ripple_execute_init { extern void link(); }
-namespace ripple_apply_wave_table { extern void link(); }
-namespace ripple_matrix_scale { extern void link(); }
 namespace init_ocean_far_regs { extern void link(); }
 namespace render_ocean_quad { extern void link(); }
 namespace draw_large_polygon_ocean { extern void link(); }
@@ -108,9 +104,6 @@ namespace shadow_xform_verts { extern void link(); }
 namespace draw_inline_array_instance_tie { extern void link(); }
 namespace draw_inline_array_prototype_tie_generic_asm { extern void link(); }
 namespace generic_tie_dma_to_spad_sync { extern void link(); }
-namespace generic_envmap_dproc { extern void link(); }
-namespace generic_interp_dproc { extern void link(); }
-namespace generic_no_light_dproc { extern void link(); }
 namespace generic_tie_convert { extern void link(); }
 }  // namespace jak1
 
@@ -437,12 +430,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak1::mercneric_convert::link, jak1::high_speed_reject::link}},
      {"generic-effect",
       {jak1::generic_prepare_dma_double::link, jak1::generic_light_proc::link,
-       jak1::generic_envmap_proc::link, jak1::generic_prepare_dma_single::link,
-       jak1::generic_envmap_dproc::link, jak1::generic_interp_dproc::link,
-       jak1::generic_no_light_dproc::link}},
-     {"ripple",
-      {jak1::ripple_execute_init::link, jak1::ripple_create_wave_table::link,
-       jak1::ripple_apply_wave_table::link, jak1::ripple_matrix_scale::link}},
+       jak1::generic_envmap_proc::link, jak1::generic_prepare_dma_single::link}},
      {"ocean",
       {jak1::init_ocean_far_regs::link, jak1::render_ocean_quad::link,
        jak1::draw_large_polygon_ocean::link}},

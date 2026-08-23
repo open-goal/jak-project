@@ -4,15 +4,28 @@
 (require "engine/gfx/sprite/sprite.gc")
 (require "engine/gfx/math-camera.gc")
 
-;; The sprite distortion renderer draws circular warps by sampling the current framebuffer around
-;; projected particle positions. The particle's turn count selects the radial mesh resolution, and
-;; its RGB lanes are reused as two radial scales and a framebuffer-sample displacement.
+;; Draws the heat-haze/water-warp particles. These distort
+;; a roughly circular area underneath the particle.
+
+;; The mesh contains two conentric rings of vertices. Both rings have `turns` vertices.
+;; So `turns = 3` would be a triangle, turns = 4 is a square, etc.
+
+;; There is a triangle fan at the center, using the vertices of the inner ring,
+;; and a triangle strip in between the inner and outer rings.
+;; The center and outer ring sample the framebuffer at their current position and
+;; the inner ring samples at an offset. This makes the center and edge of the distort sprite
+;; have no distortion, eliminating discontinuities and making the effect clearly centered around
+;; the sprite's center.
+
+;; This geometry is controlled by the color: red controls the outer ring radius, g the inner,
+;; and b the sampling location of the inner ring. Setting g = b will effectively disable the effect,
+;; increasing the difference will increase the strength.
 
 ;; DECOMP BEGINS
 
-;; For every turn count from 3 through 11, entry stores alternating screen-space directions and
-;; framebuffer texture-coordinate offsets. ientry maps a turn count to its first direction pair in
-;; VU1 memory. The final angle-zero pair closes the eleven-turn table.
+;; Unit spokes for every supported side count. Each spoke is stored twice: once in projected screen
+;; units for the mesh, then in framebuffer ST units for sampling. ientry points VU1 at the right set
+;; for a given `turns`; the last angle-zero pair closes the 11-sided set.
 (deftype sprite-distorter-sine-tables (basic)
   ((aspx   float)
    (aspy   float)
@@ -51,10 +64,8 @@
 (define *sprite-distorter-sine-tables* (new 'global 'sprite-distorter-sine-tables))
 
 (defun sprite-distorter-generate-tables ()
-  "Rebuild the radial warp direction tables for the current projection. For each turn count from
-   3 through 11, store one screen-space direction and one framebuffer-texture offset per segment;
-   adjacent tables share the angle-zero closing pair. These values are generated at runtime because
-   both the on-screen directions and framebuffer sampling offsets depend on the active projection."
+  "Build the spoke tables used by the distortion mesh. Each spoke has matching screen-space and
+   framebuffer-ST directions, and the tables are rebuilt when the projection changes."
   (let ((tables *sprite-distorter-sine-tables*))
     (let ((entry-index 0)
           (turn-table-index 0)
@@ -75,7 +86,7 @@
             (let ((angle (* 65536.0 (/ (the float i) (the float turns)))))
               (set-vector! (-> tables entry entry-index) (* (sin angle) aspect-x) (* (cos angle) aspect-y) 0.0 0.0)
               (let ((next-entry-index (+ entry-index 1)))
-                ;; The framebuffer is sampled on the 512 by 256 render grid.
+                ;; Same spoke as above, converted to the framebuffer's 512x256 ST grid.
                 (set-vector! (-> tables entry next-entry-index)
                              (* (/ aspect-x 512) (sin angle))
                              (* (/ aspect-y 256) (cos angle))
@@ -116,8 +127,8 @@
   (define sprite-distort-vu1-block (new 'static 'vu-function)))
 
 (defun sprite-init-distorter ((dma-buff dma-buffer) (frame-base-pointer uint))
-  "Configure the GS to sample the current framebuffer without writing depth, upload the radial warp
-   tables, and load the sprite-distortion VU1 program."
+  "Set up framebuffer sampling for the distortion pass, upload the spoke tables, and load its VU1
+   program."
   ;;(format #t "distorter: ~d~%" (-> *sprite-aux-list* entry))
   ;; set up GS registers
   (dma-buffer-add-gs-set dma-buff
@@ -165,10 +176,8 @@
   (none))
 
 (defun sprite-draw-distorters ((dma-buff dma-buffer))
-  "Project each enabled warp sprite with its selected camera or screen matrix, discard clipped
-   sprites, replace an invalid radial turn count with 11, and shrink warps that cross the lower
-   screen edge. Pack visible sprites into VU1 batches of at most 170 and draw each as radial
-   framebuffer-texture strips."
+  "Project the distortion particles, clip them, and send the visible discs to VU1 in batches of at
+   most 170. Bad side counts fall back to 11, and discs are shrunk to stay on the framebuffer."
   (local-vars (clip-flags int) (warp-sprite sprite-vec-data-2d) (center-st pointer) (warp-params pointer))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -226,8 +235,8 @@
             (set! clip-flags (vu-clip vf10 0)) ;; safe to just drop the higher bits.
             (b! (logtest? clip-flags 63) cfg-21 :delay (.add.vf vf1 vf1 vf9))
             (.max.x.vf.w vf1 vf1 vf0)
-            ;; Pack the projected center, its framebuffer ST coordinate, and the three warp scales
-            ;; consumed by one VU1 invocation.
+            ;; VU1 gets the projected centre, its matching framebuffer ST, and the particle's RGB:
+            ;; red = seamless outer radius, green = warp-ring radius, blue = sample radius there.
             (.svf (&-> (the-as vector packed-sprite) quad) vf1)
             (.svf (&-> (the-as vector warp-params) quad) vf2)
             (set! (-> (the-as vector packed-sprite) w) 255.0)
@@ -244,9 +253,8 @@
                  (bottom-t (+ center-t (* (-> (the-as (pointer float) warp-params)) projection-y)))
                  (visible-scale 256.0)
                  (warp-scale (-> (the-as (pointer float) warp-params))))
-            ;; Keep the warp inside the lower edge of the visible framebuffer and cap its radius at
-            ;; 128 pixels. Scale all three parameters together so the two radii and sampling
-            ;; displacement retain their proportions.
+            ;; Keep the outer edge inside the bottom of the framebuffer and cap it at 128 pixels.
+            ;; Scale all three radii together so the shape of the warp does not change.
             (if (< (the float (-> *video-parms* screen-sy)) bottom-t)
               (set! visible-scale (/ (- (the float (-> *video-parms* screen-sy)) center-t) projection-y)))
             (if (< 128.0 visible-scale) (set! visible-scale 128.0))

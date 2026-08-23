@@ -56,9 +56,9 @@
 ;; aux list
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; The sparticle callback records a four-byte reference to each submitted CPU particle's 2D warp
-;; sprite here. The one-element data field is the start of trailing variable-length reference
-;; storage consumed by the framebuffer-distortion renderer.
+;; The aux list stores distortion particles that are handled by the separate
+;; sprite-distort renderer. Distorion sprites use the add-to-sprite-aux-list
+;; callback to add themselves to the aux list on each frame.
 
 (deftype sprite-aux-list (basic)
   ((num-entries int32) ;; capacity
@@ -102,7 +102,7 @@
   0
   (none))
 
-;; The sprite-frame-data is data transferred to VU1 and remains there for all chunks of sprites.
+;; Uploaded to VU1 once per frame
 (deftype sprite-frame-data (structure)
   ((cdata              vector 16 :inline)
    (hmge-scale         vector :inline)
@@ -145,9 +145,6 @@
 ;;   904         its HVDF offset, or the first of the screen-space table
 ;;   905 - 979   75 user HVDF offsets, uploaded only for the screen-space pass
 ;;   980 - 1020  sprite-frame-data
-;;
-;; The chunk limit falls out of the input buffer: eight quadwords per sprite plus the header must fit
-;; in 400, and 48 is what the exporter and the sparticle system were built around.
 (defconstant SPRITE-VU-HEADER 0)
 
 (defconstant SPRITE-VU-VEC-DATA (+ SPRITE-VU-HEADER 1))
@@ -322,8 +319,7 @@
   (set! (-> data fog-clamp z) 2048.0)
   (none))
 
-;; The original 854-pair VU1 program is documented in sprite-vu1.gc. PC rendering does not execute
-;; it, but the DMA-list builder still requires a valid object.
+;; The original 854-pair VU1 program is documented in sprite-vu1.gc.
 (#when PC_PORT
   (define sprite-vu1-block (new 'static 'vu-function)))
 
@@ -332,7 +328,7 @@
 ;;;;;;;;;;;;;;;;;;
 
 ;; There are two global sprite arrays, one for 2D and one for 3D. Each has two groups, although 3D
-;; sprites only use group 0. Each sprite occupies three vector quadwords and five shader quadwords.
+;; sprites only use group 0.
 
 (defmethod new sprite-array-2d ((allocation symbol) (type-to-make type) (group-0-size int) (group-1-size int))
   "Allocate a 2D sprite array with the requested capacity for its world and screen groups."

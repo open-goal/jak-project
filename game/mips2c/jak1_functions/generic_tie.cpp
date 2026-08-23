@@ -114,16 +114,6 @@ namespace generic_prepare_dma_double {
 extern u64 execute(void* ctxt);
 }
 
-namespace generic_envmap_dproc {
-extern u64 execute(void* ctxt);
-}
-namespace generic_interp_dproc {
-extern u64 execute(void* ctxt);
-}
-namespace generic_no_light_dproc {
-extern u64 execute(void* ctxt);
-}
-
 namespace generic_tie_convert {
 struct Cache {
   void* fake_scratchpad_data; // *fake-scratchpad-data*
@@ -2092,17 +2082,17 @@ u64 execute(void* ctxt) {
   call_addr = c->gprs[v1].du32[0];                  // function call:
   // Unknown instr: sllv v0, ra, r0
   // c->jalr(call_addr);                               // jalr ra, v1
-  generic_envmap_dproc::execute(c);
+  // generic_envmap_dproc::execute(c);
   c->lw(v1, 756, at);                               // lw v1, 756(at)
   call_addr = c->gprs[v1].du32[0];                  // function call:
   // Unknown instr: sllv v0, ra, r0
   // c->jalr(call_addr);                               // jalr ra, v1
-  generic_interp_dproc::execute(c);
+  // generic_interp_dproc::execute(c);
   c->lw(v1, 760, at);                               // lw v1, 760(at)
   call_addr = c->gprs[v1].du32[0];                  // function call:
   // Unknown instr: sllv v0, ra, r0
   // c->jalr(call_addr);                               // jalr ra, v1
-  generic_no_light_dproc::execute(c);
+  // generic_no_light_dproc::execute(c);
   c->lw(v1, 40, at);                                // lw v1, 40(at)
   c->lw(a0, 56, at);                                // lw a0, 56(at)
   c->mov64(a3, v1);                                 // or a3, v1, r0

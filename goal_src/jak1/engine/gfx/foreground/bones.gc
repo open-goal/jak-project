@@ -15,15 +15,17 @@
 
 ;; note: changed for high fps
 
-;; Bones.
+;; This file is a bit of a mess.
+;; It calculates skinning matrices for rendering, but also handles
+;; renderer-specific DMA generation for foreground rendering.
+
+;; For bone calculations:
 ;; There are 4 main functions used by the outside world:
 ;;  - bones-init. Call this before doing process-drawable DMA building.
 ;;  - draw-bones. Call this once for each process-drawable during DMA building.
 ;;  - bones-wrapup. Call this after all calls to draw-bones.
-;; the above 3 functions are done separate for different levels.
-;;  - bones-mtx-calc-execute. Call this after all that.
-
-;; It's more than just bones in here - submitting to merc is done from here.
+;; the above 3 functions are done separately for different levels.
+;;  - bones-mtx-calc-execute then computes all bone matrices
 
 (defglobalconstant BACKWARD_COMPAT_MERC_CLIP #f)
 
@@ -36,24 +38,11 @@
   :bitfield #t
   ;; Write per-bone ripple deformation data after calculating the skinning matrices.
   (write-ripple-data 0)
-  ;; Use identity instead of camera rotation for screen-space bones. HUD draw paths set this.
-  (no-cam-rot 1)
-  (bncfl02 2) ;; bits 2-15 are unused in Jak 1
-  (bncfl03 3)
-  (bncfl04 4)
-  (bncfl05 5)
-  (bncfl06 6)
-  (bncfl07 7)
-  (bncfl08 8)
-  (bncfl09 9)
-  (bncfl10 10)
-  (bncfl11 11)
-  (bncfl12 12)
-  (bncfl13 13)
-  (bncfl14 14)
-  (bncfl15 15))
+  ;; Use identity instead of camera rotation for screen-space bones. For HUD drawing.
+  (no-cam-rot 1))
 
-;; this type represents a "calculation" that will be performed at later time.
+;; this type represents a "calculation" that will be performed at later time,
+;; it computes all skinning matrices for a single geometry.
 (deftype bone-calculation (structure)
   ((flags               bone-calc-flags :offset-assert 0)
    (num-bones           uint16 :offset-assert 2)
@@ -203,15 +192,11 @@
 ;; VU / DMA
 ;;;;;;;;;;;;;;;;
 
-;; The scratchpad holds a terrain-context: a short header naming the level and its mood, then a work
-;; area each renderer overlays with its own record. The bone calculator's is bone-mem, and that is
-;; where the sixteen in every scratchpad address below comes from.
+;; Address helper for scratchpad access
 (defmacro bones-spr-offset (&rest path)
   `(+ (offset-of terrain-context work) (offset-of bone-memory ,@path)))
 
-;; Two banks, each holding sixteen joints' bind poses, sixteen bone transforms, and sixteen finished
-;; 128-byte pris-mtx records. Only the first two arrays are declared in bone-buffer; the output area is
-;; the third field the type comments out, and it begins where the bone array ends.
+;; double-buffered output, holds 16 bones.
 (defmacro bones-spr-bank-output (bank)
   `(+ (bones-spr-offset buffer ,bank bone 0) (* 16 (type-size bone))))
 
@@ -222,28 +207,12 @@
 (defconstant BONES-SPR-BONE-B (bones-spr-offset buffer 1 bone 0))
 (defconstant BONES-SPR-OUTPUT-B (bones-spr-bank-output 1))
 
-;; Sixteen bones per bank is what the two 4608-byte buffers hold, and it is also the unroll of the
-;; bank loop below.
 (defconstant BONES-PER-BANK 16)
 
-;; Only the 64-byte bind-pose matrix of each 80-byte joint is wanted, so the joint transfer runs in
-;; DMA interleave mode with SQWC set to "copy four quadwords, skip one" -- see bones-set-sqwc. That is
-;; why the joint transfer's chcr differs from the bone and output transfers.
+;; Interleave copy is used to extract the bind-pose matrix (64 bytes) from each joint (80 bytes)
 (defconstant DMA-CHCR-START-INTERLEAVE (new 'static 'dma-chcr :mod 2 :str 1))
 
-;; Poll an SPR channel until it stops. Twenty instructions, in this order:
-;;
-;;   (label poll)              1  l.w of chcr
-;;   ...                       2..4  three no-ops, the load-delay gap plus slack
-;;   ...                       5  and.i against the start bit
-;;   ...                       6  no-op
-;;   ...                       7,8  b.z to ready with a no-op delay slot
-;;   ...                       9..18 ten no-ops
-;;   ...                       19,20 b back to poll with a no-op delay slot
-;;   (label ready)
-;;
-;; The ten no-ops in the not-taken path are the point: a busy channel is re-read at a fixed, generous
-;; interval instead of hammering the bus, and the whole thing is branch-free on the ready path.
+;; Poll an SPR channel until it stops.
 (defmacro dma-wait-spr! (poll-label ready-label channel status)
   `(begin
      (label ,poll-label)
@@ -259,10 +228,9 @@
 (#when PC_PORT
   (define bones-vu0-block (new 'static 'vu-function :length 63 :qlength 32)))
 
-;; Entry 0 composes one bone transform with its inverse bind pose, derives the inverse-transpose
-;; normal matrix, applies camera rotation, and leaves transformed position rows in vf13-vf16 and
-;; normal rows in vf9-vf11. Entry 54 rotates three light directions in vf4-vf6 by vf1-vf3 and
-;; returns them in vf7-vf9.
+
+;; Entry 0: compute one bone transform, including normal matrix (writes mtx vf13-vf16, ntmx vf9-vf11)
+;; Entry 54: rotate light directions in vf4-vf6 by vf1-vf3, return in vf7-vf9
 (#unless PC_PORT
   (defvu0 bones-vu0-block
           (vu-pair (nop) (mulax.xyzw ACC vf05 vf01)) ;; 0: transform * bind-pose columns
@@ -350,7 +318,6 @@
     (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x1)))
   (none))
 
-;; ?? used by generic merc
 (define *merc-global-array* (new 'global 'merc-global-array))
 
 (defun vu-lights<-light-group! ((arg0 vu-lights) (arg1 light-group))
@@ -2570,7 +2537,7 @@
                       (set! (-> dma-buf base) (the-as pointer (-> (the-as (pointer uint32) s2-0) 1)))
                       (set! s2-0 (-> dma-buf base))
                       (if (not (and (= f30-0 0.0) (= (-> sv-144 last-frame-scale) 0.0)))
-                        (ripple-make-request (the-as ripple-wave (-> sv-144 waveform)) (-> geom effect effect-idx)))
+                        (ripple-make-request (-> sv-144 waveform) (-> geom effect effect-idx)))
                       (set! (-> sv-144 last-frame-scale) f30-0))))
                 ;; additional check on PC to force mercneric for blend shapes
                 (#when PC_PORT

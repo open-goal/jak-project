@@ -327,11 +327,47 @@
         "(dma-buffer-add-gif-tag $buf $tag $regs)"
     },
     {
+      // &-> produces the address of the selected value. Immediately dereferencing element zero
+      // cancels that address operation and can be expressed as an ordinary value access.
+      "name": "deref-zero-of-addressed-field",
+      "match":
+        "(-> (&-> $base $*tokens) 0)",
+      "rewrite":
+        "(-> $base $*tokens)"
+    },
+    {
       "name": "dma-buffer-add-two-uint128",
       "match":
         "(let* (($alias $buf) ($data (-> $alias base))) (set! (-> (the-as (pointer uint128) $data) 0) $value0) (set! (-> (the-as (pointer uint128) $data) 1) $value1) (set! (-> $alias base) (&+ $data 32)))",
       "rewrite":
         "(dma-buffer-add-uint128 $buf $value0 $value1)"
+    },
+    {
+      // The cursor binding can retain an inferred storage view while the casts on both stores
+      // establish the actual flat uint128 layout.
+      "name": "dma-buffer-add-two-uint128-cast-stores",
+      "match":
+        "(let* (($alias $buf) ($data (the-as $storage-type (-> $alias base)))) (set! (-> (the-as (pointer uint128) $data) 0) $value0) (set! (-> (the-as (pointer uint128) $data) 1) $value1) (set! (-> $alias base) (&+ (the-as pointer $data) 32)))",
+      "rewrite":
+        "(dma-buffer-add-uint128 $buf $value0 $value1)"
+    },
+    {
+      // Four qwords may be reconstructed through an aggregate containing two pairs instead of as
+      // a flat uint128 pointer. The field sequence and 64-byte advance identify the same append.
+      "name": "dma-buffer-add-four-uint128-pairs",
+      "match":
+        "(let* (($alias $buf) ($data (the-as (inline-array vector4w-2) (-> $alias base)))) (set! (-> $data 0 quad 0) $value0) (set! (-> $data 0 quad 1) $value1) (set! (-> $data 1 quad 0) $value2) (set! (-> $data 1 quad 1) $value3) (set! (-> $alias base) (&+ (the-as pointer $data) 64)))",
+      "rewrite":
+        "(dma-buffer-add-uint128 $buf $value0 $value1 $value2 $value3)"
+    },
+    {
+      // A storage view may remain on the cursor binding, but explicit uint128 casts on all six
+      // indexed stores make their flat contiguous layout independent of that inferred view.
+      "name": "dma-buffer-add-six-uint128-cast-stores",
+      "match":
+        "(let* (($alias $buf) ($data (the-as $storage-type (-> $alias base)))) (set! (-> (the-as (pointer uint128) $data) 0) $value0) (set! (-> (the-as (pointer uint128) $data) 1) $value1) (set! (-> (the-as (pointer uint128) $data) 2) $value2) (set! (-> (the-as (pointer uint128) $data) 3) $value3) (set! (-> (the-as (pointer uint128) $data) 4) $value4) (set! (-> (the-as (pointer uint128) $data) 5) $value5) (set! (-> $alias base) (&+ (the-as pointer $data) 96)))",
+      "rewrite":
+        "(dma-buffer-add-uint128 $buf $value0 $value1 $value2 $value3 $value4 $value5)"
     },
     {
       // Four sequential eight-byte stores are the common expansion of dma-buffer-add-uint64.
@@ -349,6 +385,24 @@
         "(let (($start (the-as object (-> $buf base)))) (dma-buffer-add-cnt-vif2 $buf 0 (new 'static 'vif-tag) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1)) $*body (let (($qwc (/ (the-as int (+ (- -16 (the-as int $start)) (the-as int (-> $buf base)))) 16))) (cond ((nonzero? $qwc) (logior! (-> (the-as dma-packet $start) dma) (shr (shl $qwc 48) 48)) (logior! (-> (the-as (pointer uint64) $start) 1) (shl (shr (shl $qwc 48) 48) 32))) (else (set! (-> $buf base) (the-as (pointer uint64) $start))))))",
       "rewrite":
         "(with-cnt-vif-block ($buf) $*body)"
+    },
+    {
+      // Variant emitted when the saved tag is inferred as a uint64 pointer. The pointer-form
+      // subtraction and direct uint64 stores are equivalent to the typed dma-tag expansion.
+      "name": "with-cnt-vif-block-uint64-tag",
+      "match":
+        "(let (($start (the-as (pointer uint64) (-> $buf base)))) (dma-buffer-add-cnt-vif2 $buf 0 (new 'static 'vif-tag) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1)) $*body (let (($qwc (/ (the-as int (+ (&- (the-as pointer -16) (the-as uint $start)) (the-as int (-> $buf base)))) 16))) (cond ((nonzero? $qwc) (logior! (-> $start 0) (shr (shl $qwc 48) 48)) (logior! (-> $start 1) (shl (shr (shl $qwc 48) 48) 32))) (else (set! (-> $buf base) $start)))))",
+      "rewrite":
+        "(with-cnt-vif-block ($buf) $*body)"
+    },
+    {
+      // gif-prim sets exactly IIP and ABE in addition to the primitive kind. Keep the complete
+      // constructor in the match so primitives with any other flag combination remain explicit.
+      "name": "gif-prim",
+      "match":
+        "(new 'static 'gs-prim :prim (gs-prim-type $prim-type) :iip #x1 :abe #x1)",
+      "rewrite":
+        "(gif-prim $prim-type)"
     },
     {
       // Let insertion may merge the saved tag pointer into a caller's surrounding let*.

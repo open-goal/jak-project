@@ -6,19 +6,6 @@
 ;; Generic conversion calls this library at several entry points. Entry 0 lights four vertices,
 ;; entry 48 calculates four environment-map coordinates, and entries 104 through 292 stage and
 ;; transform packed TIE vertices in VU0 data memory.
-;;
-;; This is a library, not a pipeline: no main loop, eighteen independently callable entries, and no
-;; constants of its own beyond what the EE crosses in.  It is uploaded at program address zero, so a
-;; callms immediate is an index into the instruction pairs below.
-;;
-;; Both of the four-vertex entries run a group behind the caller, so the values the EE collects after a
-;; call belong to the group it submitted on the previous call.  The caller therefore stores results from
-;; before the loop body's own call, and the drain entries exist purely to publish the last group.  The
-;; two get there differently, though.  Entry 0 opens by copying vf17-vf20 into vf21-vf24 outright.  Entry
-;; 48 has no such copy: its last two pairs start the fourth vertex's arithmetic and the first thirteen
-;; pairs of the next call finish it, with vf05-vf08, vf29 and vf30 carrying the pipeline across the call
-;; boundary.  Two consequences of that for a caller - its first call's output is garbage, so it must call
-;; twice before reading anything, and no other VU0 entry may be used between two entry-48 calls.
 (defconstant GENERIC-VU0-LIGHT 0)   ;; light four vertices
 (defconstant GENERIC-VU0-ENVMAP 48) ;; four reflected environment-map coordinates
 

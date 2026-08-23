@@ -929,7 +929,7 @@ FormElement* rewrite_set_vector(LetElement* in, const Env& env, FormPool& pool) 
 FormElement* rewrite_set_vector_sequence(const std::array<FormElement*, 4>& elts,
                                          const Env& env,
                                          FormPool& pool) {
-  std::optional<RegisterAccess> vector_access;
+  std::optional<RegisterAccess> root_access;
   Form* vector_form = nullptr;
   std::vector<Form*> sources;
 
@@ -940,26 +940,37 @@ FormElement* rewrite_set_vector_sequence(const std::array<FormElement*, 4>& elts
     }
 
     auto* deref = set->dst()->try_as_element<DerefElement>();
-    Matcher dst_matcher = Matcher::deref(Matcher::any_reg(0), false,
-                                         {DerefTokenMatcher::string(std::string(1, "xyzw"[i]))});
-    auto mr = match(dst_matcher, set->dst());
-    if (!deref || !mr.matched) {
+    if (!deref || deref->is_addr_of() || deref->tokens().empty() ||
+        !deref->tokens().back().is_field_name(std::string(1, "xyzw"[i]))) {
       return nullptr;
     }
 
-    const auto this_access = *mr.maps.regs.at(0);
-    if (vector_access &&
-        env.get_program_var_id(*vector_access) != env.get_program_var_id(this_access)) {
+    const auto root_atom = form_as_atom(deref->base());
+    if (!root_atom || !root_atom->is_var()) {
       return nullptr;
     }
-    vector_access = this_access;
+    const auto this_root = root_atom->var();
+    if (root_access && env.get_program_var_id(*root_access) != env.get_program_var_id(this_root)) {
+      return nullptr;
+    }
+    root_access = this_root;
+
+    auto target_tokens = deref->tokens();
+    target_tokens.pop_back();
+    Form* this_vector_form = deref->base();
+    if (!target_tokens.empty()) {
+      this_vector_form = pool.form<DerefElement>(deref->base(), false, std::move(target_tokens));
+    }
+    if (vector_form && vector_form->to_form(env) != this_vector_form->to_form(env)) {
+      return nullptr;
+    }
     if (!vector_form) {
-      vector_form = deref->base();
+      vector_form = this_vector_form;
     }
     sources.push_back(set->src());
   }
 
-  ASSERT(vector_access);
+  ASSERT(root_access);
   std::vector<Form*> args = {vector_form};
   args.insert(args.end(), sources.begin(), sources.end());
   auto op = GenericOperator::make_function(

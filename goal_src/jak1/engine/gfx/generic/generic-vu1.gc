@@ -1322,29 +1322,17 @@
   "Fill the Generic VU1 constant block from the active camera and select alpha blending for its
    triangle-strip GIF tag."
   (let ((camera *math-camera*))
-    (set-vector!
-      (-> constants fog)
-      (-> camera pfog0)
-      (-> camera fog-min)
-      (-> camera fog-max)
-      3071.0))
+    (set-vector! (-> constants fog) (-> camera pfog0) (-> camera fog-min) (-> camera fog-max) 3071.0))
   (set! (-> constants adgif tag) (new 'static 'gif-tag64 :nloop #x7 :nreg #x1))
-  (set! (-> constants adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  (set! (-> constants adgif regs) (gs-reg-list a+d))
   (set! (-> constants giftag tag)
         (new 'static
              'gif-tag64
              :pre #x1
              :nreg #x3
              :prim
-             (new 'static
-                  'gs-prim
-                  :prim (gs-prim-type tri-strip)
-                  :iip #x1
-                  :tme #x1
-                  :fge #x1
-                  :abe alpha-blend)))
-  (set! (-> constants giftag regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
+             (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe alpha-blend)))
+  (set! (-> constants giftag regs) (gs-reg-list st rgbaq xyzf2))
   (vector-copy! (-> constants hvdf-offset) (-> *math-camera* hvdf-off))
   (vector-copy! (-> constants hmge-scale) (-> *math-camera* hmge-scale))
   (vector-copy! (-> constants invh-scale) (-> *math-camera* inv-hmge-scale))
@@ -1382,65 +1370,37 @@
            (upload-packet (the-as dma-packet (-> buffer base))))
       (set! (-> upload-packet dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
       (set! (-> upload-packet vif0) (new 'static 'vif-tag))
-      (set! (-> upload-packet vif1)
-            (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> upload-packet vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
       (set! (-> buffer base) (the-as pointer (&+ upload-packet 16))))
     (let* ((buffer dma-buf)
            (direct-tag (the-as gs-gif-tag (-> buffer base))))
       (set! (-> direct-tag tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
-      (set! (-> direct-tag regs)
-            (new 'static
-                 'gif-tag-regs
-                 :regs0 (gif-reg-id a+d)
-                 :regs1 (gif-reg-id a+d)
-                 :regs2 (gif-reg-id a+d)
-                 :regs3 (gif-reg-id a+d)
-                 :regs4 (gif-reg-id a+d)
-                 :regs5 (gif-reg-id a+d)
-                 :regs6 (gif-reg-id a+d)
-                 :regs7 (gif-reg-id a+d)
-                 :regs8 (gif-reg-id a+d)
-                 :regs9 (gif-reg-id a+d)
-                 :regs10 (gif-reg-id a+d)
-                 :regs11 (gif-reg-id a+d)
-                 :regs12 (gif-reg-id a+d)
-                 :regs13 (gif-reg-id a+d)
-                 :regs14 (gif-reg-id a+d)
-                 :regs15 (gif-reg-id a+d)))
+      (set! (-> direct-tag regs) GIF_REGS_ALL_AD)
       (set! (-> buffer base) (the-as pointer (&+ direct-tag 16))))
-    (let* ((buffer dma-buf)
-           (gs-registers (-> buffer base)))
-      (set! (-> (the-as (pointer gs-test) gs-registers) 0)
-            (new 'static
-                 'gs-test
-                 :ate #x1
-                 :atst (gs-atest greater-equal)
-                 :aref #x26
-                 :afail #x1
-                 :zte #x1
-                 :ztst (gs-ztest greater-equal)))
-      (set! (-> (the-as (pointer uint64) gs-registers) 1) (the-as uint (gs-reg test-1)))
-      (set! (-> (the-as (pointer gs-zbuf) gs-registers) 2) zbuf)
-      (set! (-> (the-as (pointer uint64) gs-registers) 3) (the-as uint (gs-reg zbuf-1)))
-      (set! (-> buffer base) (&+ gs-registers 32)))
+    (dma-buffer-add-uint64 dma-buf
+                           (new 'static
+                                'gs-test
+                                :ate #x1
+                                :atst (gs-atest greater-equal)
+                                :aref #x26
+                                :afail #x1
+                                :zte #x1
+                                :ztst (gs-ztest greater-equal))
+                           (the-as uint (gs-reg test-1))
+                           zbuf
+                           (the-as uint (gs-reg zbuf-1)))
     (generic-add-constants dma-buf alpha-blend)
-    ;; MSCALF with a zero immediate: entry GENERIC-VU1-INIT, which loads the constant block we just
-    ;; uploaded and then falls through into the reset entry.
     (let* ((buffer dma-buf)
            (start-packet (the-as dma-packet (-> buffer base))))
       (set! (-> start-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> start-packet vif0)
-            (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
+      (set! (-> start-packet vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
       (set! (-> start-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
       (set! (-> buffer base) (the-as pointer (&+ start-packet 16))))
     (let ((vif-state (the-as (pointer int32) (-> dma-buf base))))
-      (set! (-> (the-as (pointer vif-tag) vif-state) 0)
-            (new 'static 'vif-tag :cmd (vif-cmd base)))
-      (set! (-> (the-as (pointer vif-tag) vif-state) 1)
-            (new 'static 'vif-tag :cmd (vif-cmd offset)))
+      (set! (-> (the-as (pointer vif-tag) vif-state) 0) (new 'static 'vif-tag :cmd (vif-cmd base)))
+      (set! (-> (the-as (pointer vif-tag) vif-state) 1) (new 'static 'vif-tag :cmd (vif-cmd offset)))
       (set! (-> (the-as (pointer vif-tag) vif-state) 2) (new 'static 'vif-tag))
-      (set! (-> (the-as (pointer vif-tag) vif-state) 3)
-            (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+      (set! (-> (the-as (pointer vif-tag) vif-state) 3) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
       (set! (-> vif-state 4) 0)
       (set! (-> vif-state 5) 0)
       (set! (-> vif-state 6) 0)

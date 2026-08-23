@@ -7,37 +7,33 @@
 (require "kernel/gstring-h.gc")
 (require "engine/game/game-h.gc")
 
-;; BLERC applies animated blend targets to packed MERC vertices. It is used heavily for facial
-;; expressions, but the format can deform any marked vertices. Animation data supplies one signed
-;; coefficient per target; the active target deltas are accumulated with the base vertex and the
-;; result is clamped back into MERC's packed byte layout.
+;; BLERC applies animated blend targets to packed MERC vertices for facial animation.
+;; The animation data specifies a weight for each target and the BLERC code modifies
+;; the MERC vertices in place, overwriting them with interpolated targets from BLERC
+;; data.
 ;;
-;; Work is gathered into one DMA chain during drawable updates. blerc-execute streams that chain
-;; through the two 8 KiB scratchpad halves, computes one block while the next is arriving, and
-;; copies completed vertices back to the fragment's lump data. The MERC renderer therefore sees the
-;; updated positions and normals without needing a second geometry format.
+;; Work is gathered into one DMA chain during drawable updates. A later call to blerc-execute
+;; DMAs the chain to the scratchpad where the vertices are modified, then copied back.
+;;
+;; BLERC vertex modification races MERC rendering. It's unclear exactly how this worked,
+;; but it's likely that DMA bus arbitration prevented rednering from seeing half-updated frags.
 
 ;; DECOMP BEGINS
 
 (define *stats-blerc* #f)
 
-;; Control data appended to one scratchpad output block. tag links the queued work blocks. overlap is
-;; the number of target rows that follow the base row, which is the same thing as the number of
-;; targets whose coefficient came out nonzero for this frame -- setup-blerc-chains-for-one-fragment
-;; counts exactly those, and blerc-a-fragment uses it as the length of the replicated-coefficient
-;; table and nothing else.
+;; control info for a single block
 (deftype blerc-block-header (structure)
-  ((tag       generic-merc-tag :inline :offset-assert 0)
-   (vtx-count uint32 :offset-assert 16)
-   (overlap   uint32 :offset-assert 20)
-   (lump-dest uint32 :offset-assert 24)
-   (lump-qwc  uint32 :offset-assert 28))
+  ((tag       generic-merc-tag :inline :offset-assert 0) ;; DMA chain of work blocks
+   (vtx-count uint32 :offset-assert 16)    ;; vertex count in block
+   (overlap   uint32 :offset-assert 20)    ;; number of blend targets to use
+   (lump-dest uint32 :offset-assert 24)    ;; EE address of MERC fragment to modify
+   (lump-qwc  uint32 :offset-assert 28))   ;; number of quadwords in MERC data
   :method-count-assert 9
   :size-assert #x20
   :flag-assert #x900000020)
 
-;; One scratchpad work block. output holds at most 53 packed 16-byte vertex records. The DMA chain
-;; that describes its base and target rows begins immediately after header, outside this type.
+;; single block of vertex data to process + control info.
 (deftype blerc-block (structure)
   ((output uint8 848 :offset-assert 0)
    (header blerc-block-header :inline :offset-assert 848))
@@ -45,9 +41,8 @@
   :size-assert #x370
   :flag-assert #x900000370)
 
-;; One quadword per active blend target, each holding that target's signed coefficient replicated into
-;; all eight halfword lanes so PMADDH can take it directly. blerc-a-fragment builds it in *gsf-buffer*
-;; at the start of every block; forty is the most targets a MERC asset declares.
+;; cache of broadcasted target weights. repl-mult[i] stores the 16-bit weight replicated 8 times for
+;; target i.
 (deftype blerc-dcache (structure)
   ((repl-mult vector 40 :inline :offset-assert 0))
   :method-count-assert 9
@@ -56,22 +51,20 @@
 
 ;; Per-frame chain endpoints and optional range/workload statistics.
 (deftype blerc-globals (structure)
-  ((first            uint32 :offset-assert 0)
-   (next             uint32 :offset-assert 4)
-   (min-val          int16 :offset-assert 8)
+  ((first            uint32 :offset-assert 0) ;; DMA chain start
+   (next             uint32 :offset-assert 4) ;; DMA chain current pointer
+   (min-val          int16 :offset-assert 8)  ;; min/max value seen, used for debug
    (max-val          int16 :offset-assert 10)
-   (fragment-count   int32 :offset-assert 12)
-   (vtx-count        int32 :offset-assert 16)
-   (target-vtx-count int32 :offset-assert 20))
+   (fragment-count   int32 :offset-assert 12) ;; merc fragments
+   (vtx-count        int32 :offset-assert 16) ;; output vertices written
+   (target-vtx-count int32 :offset-assert 20));; blend target vertices read
   :method-count-assert 9
   :size-assert #x18
   :flag-assert #x900000018)
 
 (define *blerc-globals* (new 'global 'blerc-globals))
 
-;; BLERC assigns block-a to scratchpad address 0 and block-b to address 8192. dummy is the first
-;; half's variable DMA-chain area. The second half's chain likewise continues beyond block-b and
-;; therefore past the declared end of this type into the remainder of the 16 KiB scratchpad.
+;; Scratchpad memory layout. dummy, and the data after block-b are used for DMA memory.
 (deftype blerc-context (structure)
   ((block-a blerc-block :inline :offset-assert 0)
    (dummy   uint8 7312 :offset-assert 880)
@@ -80,32 +73,23 @@
   :size-assert #x2370
   :flag-assert #x900002370)
 
-;; Both halves of the scratchpad hold a blerc-block, and the second one is reached by adding this.
-;; Nothing else in blerc-context is addressed, so the offset comes from the type.
+
 (defconstant BLERC-BLOCK-B (offset-of blerc-context block-b))
 
-;; The DMA payload for a block is appended immediately after its header, and DMAtag transfer is on,
-;; so the source chain's tags land in the scratchpad too. The first tag quadword is therefore always
-;; here, and the index row it introduces at +16.
+;; Offset of transferred data (after header)
 (defconstant BLERC-SPR-CHAIN (+ (offset-of blerc-block header) (type-size blerc-block-header)))
 
-;; chcr's start bit stays set while a channel is running, so it is both the poll mask and, on its
-;; own, "go" for an ordinary transfer.
-;; og:preserve-this these three want to live in dma-h.gc: shadow-cpu and the generic renderers all
-;; define or use the same values, and merc is simply the first file in load order that needs them.
-
+;; constant to write to DMA register to start chain transfer
 (defconstant DMA-CHCR-START-SPR-CHAIN (new 'static 'dma-chcr :mod 1 :tte 1 :str 1))
 
-;; A scratchpad address is only meaningful modulo 16 KiB to the SPR channels; the #x70000000 the EE
-;; uses to reach the same memory has to come off first.
+;; Mask to get scratchpad offsets from the EE scratchpad addresses starting at #x70000000
 (defconstant SPR-ADDRESS-MASK #x3fff)
 
-;; The packed accumulator runs in 13 fractional bits: a base vertex byte is multiplied by 8192 and
-;; each target's signed byte delta by that target's signed coefficient, then the sum is shifted back
-;; down. blerc-data coefficients are built as +/- 64 * 64, so a coefficient of 64 * 64 is 1.0 here.
+
+;; BLERC uses integer math. When accumulating, uses 13-bit fixed-point, so 8192 == 1
+(defconstant BLERC-FRACTION-BITS 13)
 (defconstant BLERC-ONE 8192)
 
-(defconstant BLERC-FRACTION-BITS 13)
 
 (defun-debug blerc-stats-init ()
   "Print the preceding BLERC frame's optional range and workload statistics, then reset them."
@@ -117,8 +101,10 @@
               "  ~D blend target computations (~F average)~%"
               (-> *blerc-globals* target-vtx-count)
               (/ (the float (-> *blerc-globals* target-vtx-count)) (the float (-> *blerc-globals* vtx-count))))
-      (if (< (-> *blerc-globals* min-val) 0) (format *stdcon* "MINIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* min-val)))
-      (if (< 255 (-> *blerc-globals* max-val)) (format *stdcon* "MAXIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* max-val))))
+      (if (< (-> *blerc-globals* min-val) 0)
+          (format *stdcon* "MINIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* min-val)))
+      (if (< 255 (-> *blerc-globals* max-val))
+          (format *stdcon* "MAXIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* max-val))))
     (let ((stats *blerc-globals*))
       (set! (-> stats min-val) 255)
       (set! (-> stats max-val) 0)
@@ -131,7 +117,9 @@
 (defun blerc-init ()
   "Begin a BLERC frame by clearing the queued-chain head and tail after resetting statistics."
   (blerc-stats-init)
-  (let ((state *blerc-globals*)) (set! (-> state first) (the-as uint 0)) (set! (-> state next) (the-as uint 0)))
+  (let ((state *blerc-globals*))
+    (set! (-> state first) (the-as uint 0))
+    (set! (-> state next) (the-as uint 0)))
   0
   (none))
 
@@ -223,8 +211,7 @@
     ;;   ...                                               the tag's fourth word
     ;;   BLERC-SPR-CHAIN + n*stride   [tag][index row]     the packed matrix/destination halfwords
     ;;
-    ;; where n is header.overlap and stride is (tag qwc + 1) * 16 -- the row plus its own tag. Because
-    ;; every row is the same length the stride is read once, out of the first tag's low byte.
+    ;; where n is header.overlap and stride is (tag qwc + 1) * 16 -- the row plus its own tag.
     ;;
     ;; *gsf-buffer* is borrowed as the replicated-coefficient table, and the finished vertices are
     ;; written to output at block + 0 for the caller to send back to header.lump-dest.
@@ -412,8 +399,7 @@
     ;; fromSPR copy that returns it -- so at steady state one block is arriving, one is being blended,
     ;; and one is going back to main memory.
     ;;
-    ;; The blend kernel in the middle is blerc-a-fragment inlined, because the whole point is to keep
-    ;; both DMA channels live across it.
+    ;; The blend kernel in the middle is blerc-a-fragment inlined.
     (rlet ((block :reg a0 :type blerc-block) ;; the half being blended
            (work :reg a2 :type blerc-block) ;; ... and the copy of that pointer the kernel uses
            (to-spr-a :reg a0 :type dma-bank-spr) ;; the toSPR channel, while block A is being seeded
@@ -701,12 +687,16 @@
   "Interpolate the drawable's signed blend-target weights for its current animation frame and queue
    its level-zero MERC geometry. After BLERC is disabled, queue one zero-weight pass to restore the
    base vertices."
+   
+  ;; this function is what generates BLERC weights from animation data.
+  ;; first, check if animation is valid and blerc is enabled
   (let* ((root-channel (-> drawable skel root-channel 0))
          (anim-group (-> root-channel frame-group)))
     (when (and anim-group
                (> (-> drawable skel active-channels) 0)
                (zero? (-> drawable draw cur-lod))
                (logtest? (-> drawable skel status) (janim-status blerc)))
+      ;; find weights
       (let ((frame-weights (-> anim-group blerc-data)))
         (when frame-weights
           (let* ((merc-geo (-> drawable draw mgeo))
@@ -717,7 +707,7 @@
                  (target-weights (new 'stack-no-clear 'array 'int16 128)))
             (let ((target-count (-> merc-geo header blend-target-count)))
               (cond
-                ((< frame-index (+ (-> anim-group data 0 length) -1))
+                ((< frame-index (+ (-> anim-group data 0 length) -1)) ;; interpolation needed
                  (let* ((next-frame-weights (&+ current-frame-weights target-count))
                         (next-frame-scale (* 64.0 (- frame (the float frame-index))))
                         (current-frame-scale (- 64.0 next-frame-scale)))
@@ -727,16 +717,19 @@
                                 (+ (* (the float (+ (-> current-frame-weights i) -64)) current-frame-scale)
                                    (* (the float (+ (-> next-frame-weights i) -64)) next-frame-scale)))))))
                 (else
+                  ;; at end of animation, just grab last frame's weights
                  (dotimes (i (the-as int target-count))
                    (set! (-> target-weights i) (the-as int (* (+ (-> current-frame-weights i) -64) 64)))))))
-            (setup-blerc-chains merc-geo target-weights (-> *display* frames (-> *display* on-screen) frame global-buf)))
+            (setup-blerc-chains merc-geo target-weights (-> (current-frame) global-buf)))
           (logior! (-> drawable skel status) (janim-status blerc-done))
           (return (the-as object #f))))))
+  
+  ;; when disabling blerc, restore vertices to default.
   (when (logtest? (-> drawable skel status) (janim-status blerc-done))
     (logclear! (-> drawable skel status) (janim-status blerc-done))
     (setup-blerc-chains (-> drawable draw lod-set lod 0 geo)
                         (new 'static 'array int16 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
-                        (-> *display* frames (-> *display* on-screen) frame global-buf)))
+                        (-> (current-frame) global-buf)))
   0)
 
 ;; PC uses the ported chain builder so scratchpad references target its mirror.
