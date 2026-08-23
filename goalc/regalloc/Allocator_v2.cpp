@@ -245,6 +245,11 @@ class VarAssignment {
 };
 
 struct RACache {
+  struct ReusableSpillSlot {
+    int slot = -1;
+    std::vector<int> vars;
+  };
+
   ControlFlowAnalysisCache control_flow;
   std::vector<VarAssignment> vars;  // per var
   std::vector<bool> was_allocated;  // per var
@@ -252,6 +257,7 @@ struct RACache {
   std::vector<IRegister> iregs;
   std::vector<StackOp> stack_ops;  // per instr.
   std::unordered_map<s32, s32> var_to_stack_slot;
+  std::vector<ReusableSpillSlot> reusable_full_width_spill_slots;
   // list of live vars per instruction.
   std::vector<std::vector<s32>> live_per_instruction;
 
@@ -830,13 +836,15 @@ bool check_register_assign(const AllocationInput& input,
   return true;
 }
 
-int get_stack_slot_for_var(int var, RACache* cache) {
+bool live_ranges_overlap(const VarAssignment& first, const VarAssignment& second) {
+  return first.first_live() <= second.last_live() && second.first_live() <= first.last_live();
+}
+
+int get_stack_slot_for_var(int var, RACache* cache, const AllocationInput& input) {
   int slot_size;
   auto& info = cache->iregs.at(var);
   switch (info.reg_class) {
     case RegClass::INT_128:
-      slot_size = 2;
-      break;
     case RegClass::VECTOR_FLOAT:
       slot_size = 2;
       break;
@@ -850,17 +858,43 @@ int get_stack_slot_for_var(int var, RACache* cache) {
       ASSERT(false);
   }
   auto kv = cache->var_to_stack_slot.find(var);
-  if (kv == cache->var_to_stack_slot.end()) {
-    if (slot_size == 2 && (cache->current_stack_slot & 1)) {
-      cache->current_stack_slot++;
-    }
-    auto slot = cache->current_stack_slot;
-    cache->current_stack_slot += slot_size;
-    cache->var_to_stack_slot[var] = slot;
-    return slot;
-  } else {
+  if (kv != cache->var_to_stack_slot.end()) {
     return kv->second;
   }
+
+  // Keep the existing x86 stack layout, but reuse full-width ARM64 spill slots when their live
+  // ranges do not overlap. Address-taken variables need their own slots.
+  if (input.instr_set == emitter::InstructionSet::ARM64 && slot_size == 2 &&
+      !input.force_on_stack_regs.contains(var)) {
+    for (auto& spill_slot : cache->reusable_full_width_spill_slots) {
+      bool slot_is_available = true;
+      for (int other_var : spill_slot.vars) {
+        if (input.force_on_stack_regs.contains(other_var) ||
+            live_ranges_overlap(cache->vars.at(var), cache->vars.at(other_var))) {
+          slot_is_available = false;
+          break;
+        }
+      }
+
+      if (slot_is_available) {
+        spill_slot.vars.push_back(var);
+        cache->var_to_stack_slot[var] = spill_slot.slot;
+        return spill_slot.slot;
+      }
+    }
+  }
+
+  if (slot_size == 2 && (cache->current_stack_slot & 1)) {
+    cache->current_stack_slot++;
+  }
+  auto slot = cache->current_stack_slot;
+  cache->current_stack_slot += slot_size;
+  cache->var_to_stack_slot[var] = slot;
+  if (input.instr_set == emitter::InstructionSet::ARM64 && slot_size == 2 &&
+      !input.force_on_stack_regs.contains(var)) {
+    cache->reusable_full_width_spill_slots.push_back({slot, {var}});
+  }
+  return slot;
 }
 
 struct AssignmentSettings {
@@ -884,7 +918,7 @@ bool try_demote_stack(const AllocationInput& input,
     return false;  // not in a reg.
   }
 
-  int my_slot = get_stack_slot_for_var(var_idx, cache);
+  int my_slot = get_stack_slot_for_var(var_idx, cache, input);
   var.demote_to_stack(my_slot);
   setup_stack_bonus_ops(input, cache, var_idx, settings, my_slot);
   return true;
@@ -1026,7 +1060,7 @@ bool handle_failed_register_allocation(const AllocationInput& input,
                                        const AssignmentSettings& settings) {
   // so we couldn't find a register and we need to put this on the stack.  Set on stack:
   auto& var = cache->vars.at(var_idx);
-  int my_slot = get_stack_slot_for_var(var_idx, cache);
+  int my_slot = get_stack_slot_for_var(var_idx, cache, input);
   var.assign_to_stack(my_slot);
   return setup_stack_bonus_ops(input, cache, var_idx, settings, my_slot);
 }

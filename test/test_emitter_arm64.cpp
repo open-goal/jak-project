@@ -3419,6 +3419,112 @@ TEST(ARM64RegisterAllocator, live_across_call_uses_compatible_storage) {
   }
 }
 
+TEST(ARM64RegisterAllocator, reuses_disjoint_spill_slots) {
+  auto make_input = [](RegClass reg_class, bool overlap) {
+    AllocationInput in;
+    in.instr_set = InstructionSet::ARM64;
+    in.max_vars = 2;
+    in.function_name = "spill-slot-reuse-test";
+
+    IRegister first{reg_class, 0};
+    IRegister second{reg_class, 1};
+
+    RegAllocInstr write_first;
+    write_first.write = {first};
+    in.add_instruction(write_first);
+
+    if (overlap) {
+      RegAllocInstr write_second;
+      write_second.write = {second};
+      in.add_instruction(write_second);
+      in.add_instruction(arm64_call_for_regalloc_test());
+
+      RegAllocInstr read_both;
+      read_both.read = {first, second};
+      read_both.fallthrough = false;
+      in.add_instruction(read_both);
+    } else {
+      in.add_instruction(arm64_call_for_regalloc_test());
+
+      RegAllocInstr read_first;
+      read_first.read = {first};
+      in.add_instruction(read_first);
+
+      RegAllocInstr write_second;
+      write_second.write = {second};
+      in.add_instruction(write_second);
+      in.add_instruction(arm64_call_for_regalloc_test());
+
+      RegAllocInstr read_second;
+      read_second.read = {second};
+      read_second.fallthrough = false;
+      in.add_instruction(read_second);
+    }
+    return in;
+  };
+
+  for (auto reg_class : {RegClass::INT_128, RegClass::VECTOR_FLOAT}) {
+    auto disjoint = allocate_registers_v2(make_input(reg_class, false));
+    ASSERT_TRUE(disjoint.ok);
+    EXPECT_EQ(disjoint.stack_slots_for_spills, 2);
+    ASSERT_EQ(disjoint.ass_as_ranges.at(0).get(1).kind, Assignment::Kind::STACK);
+    ASSERT_EQ(disjoint.ass_as_ranges.at(1).get(4).kind, Assignment::Kind::STACK);
+    EXPECT_EQ(disjoint.ass_as_ranges.at(0).get(1).stack_slot,
+              disjoint.ass_as_ranges.at(1).get(4).stack_slot);
+
+    auto overlapping = allocate_registers_v2(make_input(reg_class, true));
+    ASSERT_TRUE(overlapping.ok);
+    EXPECT_EQ(overlapping.stack_slots_for_spills, 4);
+    ASSERT_EQ(overlapping.ass_as_ranges.at(0).get(2).kind, Assignment::Kind::STACK);
+    ASSERT_EQ(overlapping.ass_as_ranges.at(1).get(2).kind, Assignment::Kind::STACK);
+    EXPECT_NE(overlapping.ass_as_ranges.at(0).get(2).stack_slot,
+              overlapping.ass_as_ranges.at(1).get(2).stack_slot);
+  }
+
+  AllocationInput touching;
+  touching.instr_set = InstructionSet::ARM64;
+  touching.max_vars = 2;
+  touching.function_name = "touching-spill-slot-test";
+  IRegister first{RegClass::INT_128, 0};
+  IRegister second{RegClass::INT_128, 1};
+  RegAllocInstr write_first;
+  write_first.write = {first};
+  touching.add_instruction(write_first);
+  touching.add_instruction(arm64_call_for_regalloc_test());
+  RegAllocInstr handoff;
+  handoff.read = {first};
+  handoff.write = {second};
+  touching.add_instruction(handoff);
+  touching.add_instruction(arm64_call_for_regalloc_test());
+  RegAllocInstr read_second;
+  read_second.read = {second};
+  read_second.fallthrough = false;
+  touching.add_instruction(read_second);
+  auto touching_result = allocate_registers_v2(touching);
+  ASSERT_TRUE(touching_result.ok);
+  EXPECT_EQ(touching_result.stack_slots_for_spills, 4);
+  EXPECT_NE(touching_result.ass_as_ranges.at(0).get(1).stack_slot,
+            touching_result.ass_as_ranges.at(1).get(3).stack_slot);
+
+  auto address_taken = make_input(RegClass::INT_128, false);
+  address_taken.force_on_stack_regs = {0, 1};
+  auto address_taken_result = allocate_registers_v2(address_taken);
+  ASSERT_TRUE(address_taken_result.ok);
+  EXPECT_EQ(address_taken_result.stack_slots_for_spills, 4);
+  ASSERT_EQ(address_taken_result.ass_as_ranges.at(0).get(1).kind, Assignment::Kind::STACK);
+  ASSERT_EQ(address_taken_result.ass_as_ranges.at(1).get(4).kind, Assignment::Kind::STACK);
+  EXPECT_NE(address_taken_result.ass_as_ranges.at(0).get(1).stack_slot,
+            address_taken_result.ass_as_ranges.at(1).get(4).stack_slot);
+
+  address_taken.instr_set = InstructionSet::X86;
+  auto x86 = allocate_registers_v2(address_taken);
+  ASSERT_TRUE(x86.ok);
+  EXPECT_EQ(x86.stack_slots_for_spills, 4);
+  ASSERT_EQ(x86.ass_as_ranges.at(0).get(1).kind, Assignment::Kind::STACK);
+  ASSERT_EQ(x86.ass_as_ranges.at(1).get(4).kind, Assignment::Kind::STACK);
+  EXPECT_NE(x86.ass_as_ranges.at(0).get(1).stack_slot, x86.ass_as_ranges.at(1).get(4).stack_slot);
+}
+
 TEST(ARM64RegisterAllocator, full_width_call_arguments_and_returns) {
   AllocationInput in;
   in.instr_set = InstructionSet::ARM64;
