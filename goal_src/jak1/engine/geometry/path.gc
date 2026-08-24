@@ -8,184 +8,260 @@
 ;; DECOMP BEGINS
 
 (defmethod debug-draw ((this path-control))
+  "Draw the enabled line or curve, control points, and index labels, or report missing
+   path data when entity-error display is enabled."
+  (local-vars
+    (debug-bucket int)
+    (enabled symbol)
+    (draw-text (function symbol bucket-id string vector font-color vector2h symbol)))
   (cond
     ((logtest? (-> this flags) (path-control-flag not-found))
      (when (and (type-type? (-> this process type) process-drawable) *display-entity-errors*)
-       (let ((s5-0 add-debug-text-3d)
-             (s4-0 #t)
-             (s3-0 68))
-         (format (clear *temp-string*) "path data error in ~S" (-> this process name))
-         (s5-0 s4-0 (the-as bucket-id s3-0) *temp-string* (-> this process root trans) (font-color red) (the-as vector2h #f)))))
-    ((let ((a0-5 this)) (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display))))
-     (dotimes (s5-1 (-> this curve num-cverts))
-       (let ((s4-1 (-> this cverts s5-1)))
-         (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (< s5-1 (+ (-> this curve num-cverts) -1)))
+       (set! draw-text add-debug-text-3d)
+       (set! enabled #t)
+       (set! debug-bucket 68)
+       (format (clear *temp-string*) "path data error in ~S" (-> this process name))
+       (draw-text enabled
+                  (the-as bucket-id debug-bucket)
+                  *temp-string*
+                  (-> this process root trans)
+                  (font-color red)
+                  (the-as vector2h #f))))
+    ((let ((control this)) (and *display-path-marks* (logtest? (-> control flags) (path-control-flag display))))
+     (dotimes (i (-> this curve num-cverts))
+       (let ((point (-> this cverts i)))
+         (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (< i (+ (-> this curve num-cverts) -1)))
            (add-debug-line #t
                            (bucket-id debug-no-zbuf)
-                           s4-1
-                           (-> this cverts (+ s5-1 1))
+                           point
+                           (-> this cverts (+ i 1))
                            (new 'static 'rgba :r #xff :g #x80 :a #x80)
                            #f
                            (the-as rgba -1)))
          (if (logtest? (-> this flags) (path-control-flag draw-point))
-           (add-debug-x #t (bucket-id debug-no-zbuf) s4-1 (new 'static 'rgba :r #xff :a #x80)))
+           (add-debug-x #t (bucket-id debug-no-zbuf) point (new 'static 'rgba :r #xff :a #x80)))
          (when (logtest? (-> this flags) (path-control-flag draw-text))
-           (let ((s3-1 add-debug-text-3d)
-                 (s2-1 #t)
-                 (s1-0 68))
-             (format (clear *temp-string*) "~D" s5-1)
-             (s3-1 s2-1 (the-as bucket-id s1-0) *temp-string* s4-1 (font-color orange) (the-as vector2h #f))))))))
+           (set! draw-text add-debug-text-3d)
+           (set! enabled #t)
+           (set! debug-bucket 68)
+           (format (clear *temp-string*) "~D" i)
+           (draw-text enabled (the-as bucket-id debug-bucket) *temp-string* point (font-color orange) (the-as vector2h #f)))))))
   0
   (none))
 
 (defmethod path-distance ((this path-control))
-  (let ((f30-0 0.0))
-    (dotimes (s5-0 (+ (-> this curve num-cverts) -1))
-      (+! f30-0 (vector-vector-distance (-> this cverts s5-0) (-> this cverts (+ s5-0 1)))))
-    f30-0))
+  "Return the polyline's exact segment sum. A curve-control override lazily caches
+   curve-length's three-samples-per-control-point estimate instead."
+  (let ((total-distance 0.0))
+    (dotimes (i (+ (-> this curve num-cverts) -1))
+      (+! total-distance (vector-vector-distance (-> this cverts i) (-> this cverts (+ i 1)))))
+    total-distance))
 
 (defmethod path-distance ((this curve-control))
-  (let ((f0-0 (-> this curve length)))
-    (when (= f0-0 0.0)
-      (set! f0-0 (curve-length (the-as curve (&-> this cverts))))
-      (set! (-> this curve length) f0-0))
-    f0-0))
+  "Return the polyline's exact segment sum. A curve-control override lazily caches
+   curve-length's three-samples-per-control-point estimate instead."
+  (let ((cached-length (-> this curve length)))
+    (when (= cached-length 0.0)
+      (set! cached-length (curve-length (the-as curve (&-> this cverts))))
+      (set! (-> this curve length) cached-length))
+    cached-length))
 
-(defmethod eval-path-curve-div! ((this path-control) (arg0 vector) (arg1 float) (arg2 symbol))
-  (let ((a1-1 (-> this curve num-cverts))
-        (f0-3 (the float (the int arg1))))
+(defmethod eval-path-curve-div! ((this path-control) (result vector) (vertex-progress float) (mode symbol))
+  "Evaluate at progress measured in control-vertex intervals. A plain path
+   clamps to its endpoints and mode exact selects the lower vertex instead of interpolating. A curve
+   divides progress by num-cverts minus one and ignores mode. Valid data must contain vertices."
+  (let ((num-cverts (-> this curve num-cverts))
+        (vertex-index (the float (the int vertex-progress))))
     (cond
-      ((< arg1 0.0) (set! (-> arg0 quad) (-> this cverts 0 quad)))
-      ((>= f0-3 (the float (+ a1-1 -1))) (set! (-> arg0 quad) (-> this cverts (+ a1-1 -1) quad)))
-      ((or (= arg2 'exact) (= f0-3 arg1)) (set! (-> arg0 quad) (-> this cverts (the int f0-3) quad)))
-      (else (vector-lerp! arg0 (-> this cverts (the int f0-3)) (-> this cverts (the int (+ 1.0 f0-3))) (- arg1 f0-3)))))
-  arg0)
+      ((< vertex-progress 0.0) (set! (-> result quad) (-> this cverts 0 quad)))
+      ((>= vertex-index (the float (+ num-cverts -1))) (set! (-> result quad) (-> this cverts (+ num-cverts -1) quad)))
+      ((or (= mode 'exact) (= vertex-index vertex-progress))
+       (set! (-> result quad) (-> this cverts (the int vertex-index) quad)))
+      (else
+       (vector-lerp! result
+                     (-> this cverts (the int vertex-index))
+                     (-> this cverts (the int (+ 1.0 vertex-index)))
+                     (- vertex-progress vertex-index)))))
+  result)
 
-(defmethod get-random-point ((this path-control) (arg0 vector))
+(defmethod get-random-point ((this path-control) (result vector))
+  "Copy a random control vertex into result, or the null vector when the path
+   is empty."
   (with-pp
     (cond
       ((> (-> this curve num-cverts) 0)
-       (let ((s4-0 (rand-vu-int-count (-> this curve num-cverts))))
+       (let ((random-index (rand-vu-int-count (-> this curve num-cverts))))
          (when *run-time-assert-enable*
            (set-pos *__private-assert-info* "path" (the-as uint 83) (the-as uint 6))
-           (__assert-zero-lim-range-int s4-0 (-> this curve num-cverts) "rand-index" "(-> obj num-cverts)"))
-         (set! (-> arg0 quad) (-> this cverts s4-0 quad))))
+           (__assert-zero-lim-range-int random-index (-> this curve num-cverts) "rand-index" "(-> obj num-cverts)"))
+         (set! (-> result quad) (-> this cverts random-index quad))))
       (else
        (format #t "WARNING: method get-random-point called on a path-control object with no vertices.~%")
        (if pp (format #t "current process is ~A~%" (-> pp name)))
-       (set! (-> arg0 quad) (-> *null-vector* quad))))
-    arg0))
+       (vector-copy! result *null-vector*)))
+    result))
 
-(defmethod eval-path-curve! ((this path-control) (arg0 vector) (arg1 float) (arg2 symbol))
-  (eval-path-curve-div! this arg0 (* arg1 (the float (+ (-> this curve num-cverts) -1))) arg2))
+(defmethod eval-path-curve! ((this path-control) (result vector) (percent float) (mode symbol))
+  "Evaluate at normalized progress. A plain path maps progress uniformly across
+   its vertex intervals and mode exact selects a vertex instead of interpolating. A curve evaluates
+   its knot spline and ignores mode."
+  (eval-path-curve-div! this result (* percent (the float (+ (-> this curve num-cverts) -1))) mode))
 
-(defmethod eval-path-curve! ((this curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
+(defmethod eval-path-curve! ((this curve-control) (result vector) (percent float) (mode symbol))
+  "Evaluate at normalized progress. A plain path maps progress uniformly across
+   its vertex intervals and mode exact selects a vertex instead of interpolating. A curve evaluates
+   its knot spline and ignores mode."
   (the-as vector
           (if (logtest? (-> this flags) (path-control-flag not-found))
             0.0
-            (curve-evaluate! arg0 arg1 (-> this cverts) (-> this curve num-cverts) (-> this curve knots) (-> this curve num-knots)))))
-
-(defmethod eval-path-curve-div! ((this curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
-  (the-as vector
-          (if (logtest? (-> this flags) (path-control-flag not-found))
-            0.0
-            (curve-evaluate! arg0
-                             (/ arg1 (the float (+ (-> this curve num-cverts) -1)))
+            (curve-evaluate! result
+                             percent
                              (-> this cverts)
                              (-> this curve num-cverts)
                              (-> this curve knots)
                              (-> this curve num-knots)))))
 
-(defmethod path-control-method-12 ((this path-control) (arg0 vector) (arg1 float))
+(defmethod eval-path-curve-div! ((this curve-control) (result vector) (vertex-progress float) (mode symbol))
+  "Evaluate at progress measured in control-vertex intervals. A plain path
+   clamps to its endpoints and mode exact selects the lower vertex instead of interpolating. A curve
+   divides progress by num-cverts minus one and ignores mode. Valid data must contain vertices."
+  (the-as vector
+          (if (logtest? (-> this flags) (path-control-flag not-found))
+            0.0
+            (curve-evaluate! result
+                             (/ vertex-progress (the float (+ (-> this curve num-cverts) -1)))
+                             (-> this cverts)
+                             (-> this curve num-cverts)
+                             (-> this curve knots)
+                             (-> this curve num-knots)))))
+
+(defmethod get-tangent-at-vertex! ((this path-control) (result vector) (vertex-progress float))
+  "Store the normalized tangent at progress measured in control-vertex
+   intervals. A plain path uses its containing segment; a curve converts progress to normalized
+   parameter space. Fewer than two plain-path vertices leave result's direction unchanged before
+   normalization."
   (when (not (logtest? (-> this flags) (path-control-flag not-found)))
-    (let ((v1-3 (-> this curve num-cverts))
-          (f0-3 (the float (the int arg1))))
+    (let ((num-cverts (-> this curve num-cverts))
+          (vertex-index (the float (the int vertex-progress))))
       (cond
-        ((< v1-3 2))
-        ((< arg1 0.0) (vector-! arg0 (-> this cverts 1) (-> this cverts 0)))
+        ((< num-cverts 2))
+        ((< vertex-progress 0.0) (vector-! result (-> this cverts 1) (-> this cverts 0)))
         (else
-         (let ((f0-4 (fmin f0-3 (the float (+ v1-3 -2)))))
-           (vector-! arg0 (-> this cverts (the int (+ 1.0 f0-4))) (-> this cverts (the int f0-4))))))))
-  (vector-normalize! arg0 1.0))
+         (let ((capped-index (fmin vertex-index (the float (+ num-cverts -2)))))
+           (vector-! result (-> this cverts (the int (+ 1.0 capped-index))) (-> this cverts (the int capped-index))))))))
+  (vector-normalize! result 1.0))
 
-(defmethod path-control-method-14 ((this path-control) (arg0 vector) (arg1 float))
-  (path-control-method-12 this arg0 (* arg1 (the float (+ (-> this curve num-cverts) -1)))))
+(defmethod get-tangent-at-percent! ((this path-control) (result vector) (percent float))
+  "Store the normalized tangent at normalized progress. Plain paths use
+   the containing segment. Curves use a 0.01 forward parameter difference before 0.99 and a backward
+   difference thereafter."
+  (get-tangent-at-vertex! this result (* percent (the float (+ (-> this curve num-cverts) -1)))))
 
-(defmethod path-control-method-14 ((this curve-control) (arg0 vector) (arg1 float))
+(defmethod get-tangent-at-percent! ((this curve-control) (result vector) (percent float))
+  "Store the normalized tangent at normalized progress. Plain paths use
+   the containing segment. Curves use a 0.01 forward parameter difference before 0.99 and a backward
+   difference thereafter."
   (when (not (logtest? (-> this flags) (path-control-flag not-found)))
-    (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (curve-evaluate! arg0 arg1 (-> this cverts) (-> this curve num-cverts) (-> this curve knots) (-> this curve num-knots))
+    (let ((nearby-point (new 'stack-no-clear 'vector)))
+      (curve-evaluate! result
+                       percent
+                       (-> this cverts)
+                       (-> this curve num-cverts)
+                       (-> this curve knots)
+                       (-> this curve num-knots))
       (cond
-        ((< arg1 0.99)
-         (curve-evaluate! s4-0
-                          (+ 0.01 arg1)
+        ((< percent 0.99)
+         (curve-evaluate! nearby-point
+                          (+ 0.01 percent)
                           (-> this cverts)
                           (-> this curve num-cverts)
                           (-> this curve knots)
                           (-> this curve num-knots))
-         (vector-! arg0 s4-0 arg0))
+         (vector-! result nearby-point result))
         (else
-         (curve-evaluate! s4-0
-                          (+ -0.01 arg1)
+         (curve-evaluate! nearby-point
+                          (+ -0.01 percent)
                           (-> this cverts)
                           (-> this curve num-cverts)
                           (-> this curve knots)
                           (-> this curve num-knots))
-         (vector-! arg0 arg0 s4-0)))))
-  (vector-normalize! arg0 1.0))
+         (vector-! result result nearby-point)))))
+  (vector-normalize! result 1.0))
 
-(defmethod path-control-method-12 ((this curve-control) (arg0 vector) (arg1 float))
-  (path-control-method-14 this arg0 (/ arg1 (the float (+ (-> this curve num-cverts) -1)))))
+(defmethod get-tangent-at-vertex! ((this curve-control) (result vector) (vertex-progress float))
+  "Store the normalized tangent at progress measured in control-vertex
+   intervals. A plain path uses its containing segment; a curve converts progress to normalized
+   parameter space. Fewer than two plain-path vertices leave result's direction unchanged before
+   normalization."
+  (get-tangent-at-percent! this result (/ vertex-progress (the float (+ (-> this curve num-cverts) -1)))))
 
-(defmethod path-control-method-19 ((this path-control))
-  (let ((s5-0 (new 'stack-no-clear 'vector))
-        (s4-0 (new 'stack-no-clear 'vector))
-        (s3-0 (new 'stack-no-clear 'vector))
-        (f30-0 4096000000.0)
-        (f28-0 0.0))
-    (let ((s2-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s3-0 quad) (-> (target-pos 0) quad))
-      (set! (-> s3-0 y) 0.0)
-      (eval-path-curve-div! this s4-0 0.0 'interp)
-      (set! (-> s4-0 y) 0.0)
-      (dotimes (s1-1 (+ (-> this curve num-cverts) -1))
-        (set! (-> s5-0 quad) (-> s4-0 quad))
-        (eval-path-curve-div! this s4-0 (the float (+ s1-1 1)) 'interp)
-        (set! (-> s4-0 y) 0.0)
-        (let ((f0-5 (vector-segment-distance-point! s3-0 s5-0 s4-0 s2-0)))
-          (when (< f0-5 f30-0)
-            (set! f30-0 f0-5)
-            (set! f28-0 (+ (/ (vector-vector-xz-distance s2-0 s5-0) (vector-vector-xz-distance s4-0 s5-0)) (the float s1-1)))))))
-    f28-0))
+(defmethod get-closest-vertex-index-to-target ((this path-control))
+  "Return the fractional control-vertex interval nearest the
+   target in XZ. Each interval is tested as a segment; inherited curve-control use therefore tests
+   chords between uniformly spaced spline samples rather than solving the exact closest point."
+  (let ((segment-start (new 'stack-no-clear 'vector))
+        (segment-end (new 'stack-no-clear 'vector))
+        (target-point (new 'stack-no-clear 'vector))
+        (closest-distance 4096000000.0)
+        (closest-progress 0.0))
+    (let ((closest-point (new 'stack-no-clear 'vector)))
+      (vector-copy! target-point (target-pos 0))
+      (set! (-> target-point y) 0.0)
+      (eval-path-curve-div! this segment-end 0.0 'interp)
+      (set! (-> segment-end y) 0.0)
+      (dotimes (i (+ (-> this curve num-cverts) -1))
+        (vector-copy! segment-start segment-end)
+        (eval-path-curve-div! this segment-end (the float (+ i 1)) 'interp)
+        (set! (-> segment-end y) 0.0)
+        (let ((distance (vector-segment-distance-point! target-point segment-start segment-end closest-point)))
+          (when (< distance closest-distance)
+            (set! closest-distance distance)
+            (set! closest-progress
+                  (+ (/ (vector-vector-xz-distance closest-point segment-start) (vector-vector-xz-distance segment-end segment-start))
+                     (the float i)))))))
+    closest-progress))
 
-(defmethod path-control-method-20 ((this path-control))
-  (/ (path-control-method-19 this) (the float (+ (-> this curve num-cverts) -1))))
+(defmethod get-closest-percent-to-target ((this path-control))
+  "Normalize get-closest-vertex-index-to-target by the number of
+   control-vertex intervals."
+  (/ (get-closest-vertex-index-to-target this) (the float (+ (-> this curve num-cverts) -1))))
 
 (defmethod debug-draw ((this curve-control))
+  "Draw the enabled line or curve, control points, and index labels, or report missing
+   path data when entity-error display is enabled."
+  (local-vars
+    (debug-bucket int)
+    (enabled symbol)
+    (draw-text (function symbol bucket-id string vector font-color vector2h symbol)))
   (cond
     ((logtest? (-> this flags) (path-control-flag not-found))
      (when (and (type-type? (-> this process type) process-drawable) *display-entity-errors*)
-       (let ((s5-0 add-debug-text-3d)
-             (s4-0 #t)
-             (s3-0 68))
-         (format (clear *temp-string*) "curve data error in ~S" (-> this process name))
-         (s5-0 s4-0 (the-as bucket-id s3-0) *temp-string* (-> this process root trans) (font-color red) (the-as vector2h #f)))))
-    ((let ((a0-5 this)) (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display))))
+       (set! draw-text add-debug-text-3d)
+       (set! enabled #t)
+       (set! debug-bucket 68)
+       (format (clear *temp-string*) "curve data error in ~S" (-> this process name))
+       (draw-text enabled
+                  (the-as bucket-id debug-bucket)
+                  *temp-string*
+                  (-> this process root trans)
+                  (font-color red)
+                  (the-as vector2h #f))))
+    ((let ((control this)) (and *display-path-marks* (logtest? (-> control flags) (path-control-flag display))))
      (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (> (-> this curve num-cverts) 0))
        (add-debug-curve2 #t
                          (bucket-id debug-no-zbuf)
                          (the-as curve (&-> this cverts))
                          (new 'static 'rgba :r #xff :g #x80 :a #x80)
                          #f))
-     (dotimes (s5-1 (-> this curve num-cverts))
-       (let ((s4-1 (-> this cverts s5-1)))
+     (dotimes (i (-> this curve num-cverts))
+       (let ((point (-> this cverts i)))
          (if (logtest? (-> this flags) (path-control-flag draw-point))
-           (add-debug-x #t (bucket-id debug-no-zbuf) s4-1 (new 'static 'rgba :r #xff :a #x80)))
+           (add-debug-x #t (bucket-id debug-no-zbuf) point (new 'static 'rgba :r #xff :a #x80)))
          (when (logtest? (-> this flags) (path-control-flag draw-text))
-           (let ((s3-1 add-debug-text-3d)
-                 (s2-1 #t)
-                 (s1-0 68))
-             (format (clear *temp-string*) "~D" s5-1)
-             (s3-1 s2-1 (the-as bucket-id s1-0) *temp-string* s4-1 (font-color orange) (the-as vector2h #f))))))))
+           (set! draw-text add-debug-text-3d)
+           (set! enabled #t)
+           (set! debug-bucket 68)
+           (format (clear *temp-string*) "~D" i)
+           (draw-text enabled (the-as bucket-id debug-bucket) *temp-string* point (font-color orange) (the-as vector2h #f)))))))
   0
   (none))

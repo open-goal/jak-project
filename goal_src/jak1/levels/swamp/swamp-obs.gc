@@ -42,7 +42,7 @@
    (:accel-y (meters -0.000033333334) (meters -0.00006666667))
    (:friction 0.96)
    (:timer (seconds 1.5))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.1) (seconds 0.997))
    (:next-launcher 1328)
    (:conerot-x (degrees 70) (degrees 20))
@@ -69,7 +69,7 @@
    (:accel-y (meters 0.000033333334) (meters 0.00006666667))
    (:friction 0.96)
    (:timer (seconds 1.5))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.1) (seconds 0.997))
    (:next-launcher 1328)
    (:conerot-x (degrees 90) (degrees 20))
@@ -92,7 +92,7 @@
    (:accel-y (meters -0.0033333334))
    (:friction 0.96)
    (:timer (seconds 0.5))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:userdata 0.0)
    (:func 'check-water-level-drop)
    (:next-time (seconds 1.3))
@@ -139,8 +139,9 @@
             (the-as uint 1))
          (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info)))))))
 
-(defun swamp-spike-set-particle-rotation-callback ((arg0 part-tracker))
-  (let* ((v1-0 (the-as object (-> arg0 userdata)))
+(defun swamp-spike-set-particle-rotation-callback ((tracker part-tracker))
+  "Orient the swamp-spike particles from the owning spike's Y rotation."
+  (let* ((v1-0 (the-as object (-> tracker userdata)))
          (f0-1 (+ -65314.562 (quaternion-y-angle (-> (the-as (pointer swamp-spike) v1-0) 0 root quat)))))
     (set! (-> *part-id-table* 1325 init-specs 20 initial-valuef) f0-1)
     (set! (-> *part-id-table* 1326 init-specs 20 initial-valuef) f0-1)
@@ -177,10 +178,7 @@
             (cond
               (s5-0 (until (< (get-current-phase (-> self sync)) 0.5) (suspend)))
               (else
-               (ja-no-eval :group! swamp-spike-shake-ja :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))
+               (ja-play :group! swamp-spike-shake-ja :num! (seek!) :frame-num 0.0)
                (if (logtest? (-> self draw status) (draw-status was-drawn))
                  (process-spawn part-tracker
                                 :init
@@ -194,10 +192,7 @@
                                 :to
                                 self))
                (set! (-> self dangerous) #t)
-               (ja-no-eval :group! swamp-spike-up-ja :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))
+               (ja-play :group! swamp-spike-up-ja :num! (seek!) :frame-num 0.0)
                (set! (-> self dangerous) #f)
                (set-time! (-> self state-time))
                (ja :num-func num-func-identity :frame-num max)
@@ -215,10 +210,7 @@
                                 (-> self root trans)
                                 :to
                                 self))
-               (ja-no-eval :group! swamp-spike-down-ja :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))))))))
+               (ja-play :group! swamp-spike-down-ja :num! (seek!) :frame-num 0.0)))))))
   :post swamp-spike-post)
 
 (defstate swamp-spike-gate-up (swampgate)
@@ -244,10 +236,7 @@
                      (-> self root trans)
                      :to
                      self)
-      (ja-no-eval :group! swamp-spike-down-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! swamp-spike-down-ja :num! (seek!) :frame-num 0.0)
       (go swamp-spike-gate-down))
   :post swamp-spike-post)
 
@@ -259,6 +248,7 @@
   :post swamp-spike-post)
 
 (defmethod init! ((this swamp-spike))
+  "Initialize the spike's collision, skeleton, phase synchronization, and gate state."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind wall-object))
@@ -293,7 +283,8 @@
   (set! (-> this dangerous) #f)
   #f)
 
-(defmethod init-from-entity! ((this swamp-spike) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swamp-spike) (source-entity entity-actor))
+  "Initialize a timed swamp spike and enter its idle state."
   (init! this)
   (go swamp-spike-idle)
   (none))
@@ -304,9 +295,12 @@
    swamp-spike-gate-up))
 
 
-(defmethod init-from-entity! ((this swampgate) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swampgate) (source-entity entity-actor))
+  "Initialize the swamp gate and select its open or closed state from saved completion."
   (init! this)
-  (if (logtest? (-> arg0 extra perm status) (entity-perm-status complete)) (go swamp-spike-gate-down) (go swamp-spike-gate-up))
+  (if (logtest? (-> source-entity extra perm status) (entity-perm-status complete))
+    (go swamp-spike-gate-down)
+    (go swamp-spike-gate-up))
   (none))
 
 (deftype balance-plat (process-drawable)
@@ -378,7 +372,9 @@
         (suspend)))
   :post rider-post)
 
-(defmethod init-from-entity! ((this balance-plat) (arg0 entity-actor))
+(defmethod init-from-entity! ((this balance-plat) (source-entity entity-actor))
+  "Initialize the balance platform's collision, skeleton, link, vertical motion, and travel
+   distance."
   ;; og:preserve-this PAL patch here. usually-hit-by-player -> hit-by-others
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
@@ -397,7 +393,7 @@
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *balance-plat-sg* '())
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this y-accel) 0.0)
@@ -405,7 +401,7 @@
   (set! (-> this y-offset) 0.0)
   (set! (-> this y-init) (-> this root trans y))
   (set! (-> this got-grow) #f)
-  (set! (-> this y-travel) (res-lump-float arg0 'distance :default 20480.0))
+  (set! (-> this y-travel) (res-lump-float source-entity 'distance :default 20480.0))
   (go balance-plat-idle)
   (none))
 
@@ -438,7 +434,7 @@
    (:a 128.0)
    (:fade-a -2.1333334)
    (:timer (seconds 0.2))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 1330
   :init-specs
@@ -456,7 +452,7 @@
    (:accel-y (meters -0.0026666666))
    (:friction 0.99)
    (:timer (seconds 1))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:userdata 0.0)
    (:func 'check-water-level-drop)
    (:conerot-x (degrees 20) (degrees 50.000004))
@@ -479,7 +475,7 @@
    (:accel-y (meters -0.00026666667))
    (:friction 0.95)
    (:timer (seconds 2))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:next-time (seconds 0.1) (seconds 0.997))
    (:next-launcher 1333)
    (:conerot-x (degrees 70) (degrees 20))
@@ -527,9 +523,11 @@
         (logior! (-> self mask) (process-mask sleep))
         (suspend))))
 
-(defmethod init-from-entity! ((this swamp-rock) (arg0 entity-actor))
+(defmethod init-from-entity! ((this swamp-rock) (source-entity entity-actor))
+  "Initialize a destructible swamp rock at its authored scale with collision, navigation, and
+   explosion effects."
   (logior! (-> this mask) (process-mask attackable))
-  (let ((f30-0 (res-lump-float arg0 'scale-factor :default 1.0)))
+  (let ((f30-0 (res-lump-float source-entity 'scale-factor :default 1.0)))
     (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
       (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
         (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
@@ -542,7 +540,7 @@
       (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
       (backup-collide-with-as s4-0)
       (set! (-> this root) (the-as collide-shape-moving s4-0)))
-    (process-drawable-from-entity! this arg0)
+    (process-drawable-from-entity! this source-entity)
     (vector-float*! (-> this root scale) *identity-vector* f30-0))
   (initialize-skeleton this *swamp-rock-sg* '())
   (nav-mesh-connect this (-> this root) (the-as nav-control #f))
@@ -550,7 +548,7 @@
   (go swamp-rock-idle)
   (none))
 
-(defbehavior swamp-rock-init-by-other swamp-rock ((arg0 vector))
+(defbehavior swamp-rock-init-by-other swamp-rock ((position vector))
   (logior! (-> self mask) (process-mask attackable))
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -568,7 +566,7 @@
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
     (set! (-> self root) s5-0))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) position)
   (initialize-skeleton self *swamp-rock-sg* '())
   (nav-mesh-connect self (-> self root) (the-as nav-control #f))
   (set! (-> self part) (create-launch-control group-swamp-rock-explosion self))
@@ -614,14 +612,16 @@
    (float-height float)))
 
 
-(defmethod rigid-body-platform-method-22 ((this tar-plat) (arg0 vector) (arg1 float))
+(defmethod float-height-at ((this tar-plat) (position vector) (time float))
+  "Return the tar platform's base float height plus its offset and position-dependent bobbing."
   (+ (-> this float-height)
      (-> this float-height-offset)
-     (* 512.0 (cos (* 109.22667 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))))
+     (* 512.0 (cos (* 109.22667 (+ (* 60.0 time) (* 0.03 (-> position x)) (* 0.03 (-> position z))))))))
 
-(defmethod rigid-body-platform-method-23 ((this tar-plat) (arg0 float))
-  (call-parent-method this arg0)
-  (rigid-body-platform-method-27 this (-> this anchor-point))
+(defmethod accumulate-forces! ((this tar-plat) (sim-time float))
+  "Accumulate the standard rigid-body forces, then pull the platform toward its anchor point."
+  (call-parent-method this sim-time)
+  (apply-restoring-force! this (-> this anchor-point))
   0
   (none))
 
@@ -657,7 +657,8 @@
         (suspend)))
   :post rigid-body-platform-post)
 
-(defmethod rigid-body-platform-method-30 ((this tar-plat))
+(defmethod init-collision! ((this tar-plat))
+  "Create and install the tar platform's moving, sticky collision shape."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -677,9 +678,11 @@
   0
   (none))
 
-(defmethod rigid-body-platform-method-31 ((this tar-plat))
+(defmethod init-platform! ((this tar-plat))
+  "Initialize the tar platform constants and skeleton, arrange four control points around the
+   platform, and save its anchor point."
   (initialize-skeleton this *tar-plat-sg* '())
-  (rigid-body-platform-method-29 this *tar-plat-constants*)
+  (setup-from-constants! this *tar-plat-constants*)
   (set! (-> this float-height) (-> this entity extra trans y))
   (set! (-> this float-height-offset) -2048.0)
   (let ((s5-0 (-> this info control-point-count)))
@@ -693,7 +696,7 @@
           (set! (-> s3-0 local-pos z) (fmax (fmin (* f28-0 (cos f26-0)) f30-0) (- f30-0))))
         (set! (-> s3-0 local-pos w) 1.0))))
   (nav-mesh-connect this (-> this root-overlay) (the-as nav-control #f))
-  (set! (-> this anchor-point quad) (-> this root-overlay trans quad))
+  (vector-copy! (-> this anchor-point) (-> this root-overlay trans))
   0
   (none))
 

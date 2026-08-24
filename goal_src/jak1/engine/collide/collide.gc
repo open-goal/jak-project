@@ -5,21 +5,24 @@
 
 ;; DECOMP BEGINS
 
+;; Initialize the VIF0 state used to unpack collision vertices. Offset mode adds the collision
+;; coordinate bias to each packed XYZ word, while the mask supplies row.w = 1.0 so every unpacked
+;; vertex is a homogeneous point. The trailing VIF nops pad the upload to three quadwords.
 (define *collide-vif0-init*
   (the-as (array uint32)
           (new 'static
                'boxed-array
                :type
                uint32
-               #x30000000
-               #x4d000000
-               #x4d000000
-               #x4d000000
-               #x3f800000
-               #x5000001
-               #x20000000
-               #x40404040
-               #x1000404
-               #x0
+               #x30000000 ;; STROW
+               #x4d000000 ;; row.x: packed collision-coordinate bias
+               #x4d000000 ;; row.y
+               #x4d000000 ;; row.z
+               #x3f800000 ;; row.w: 1.0
+               #x5000001 ;; STMOD offset mode
+               #x20000000 ;; STMASK
+               #x40404040 ;; replace W with row.w in each unpacked vector
+               #x1000404 ;; STCYCL: CL = 4, WL = 4
+               #x0 ;; VIF nops
                #x0
                #x0)))

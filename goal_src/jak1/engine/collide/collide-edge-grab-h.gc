@@ -8,57 +8,63 @@
 ;; Edge Grab
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; There is a specialized collision system for finding edge grabs
-;; It doesn't participate in the collide shape system at all
-;; It does use the main collide-cache.
+;; Edge grabs use a specialized search over the main collision cache instead of a collide shape.
+;; The search accepts upward supporting triangles, extracts their exposed boundary edges, rates
+;; reachable hold points, and verifies space for Jak's hands and body before returning a grab.
 
 ;; DECOMP BEGINS
 
 (deftype edge-grab-info (structure)
-  ((world-vertex             vector 6 :inline)
-   (local-vertex             vector 6 :inline)
+  "A validated edge hold: edge and triangle vertices, hand and center points, the hanging frame,
+   and enough actor-local data to follow a moving foreground primitive."
+  ((world-vertex vector 6 :inline)
+   (local-vertex vector 6 :inline)
    (actor-cshape-prim-offset int32)
-   (actor-handle             handle)
-   (hanging-matrix           matrix :inline)
-   (edge-vertex              vector 2 :inline :overlay-at (-> world-vertex 0))
-   (center-hold              vector :inline :overlay-at (-> world-vertex 2))
-   (tri-vertex               vector 3 :inline :overlay-at (-> world-vertex 3))
-   (left-hand-hold           vector :inline)
-   (right-hand-hold          vector :inline)
-   (center-hold-old          vector :inline)
-   (edge-tri-pat             uint32))
+   (actor-handle handle)
+   (hanging-matrix matrix :inline)
+   (edge-vertex vector 2 :inline :overlay-at (-> world-vertex 0))
+   (center-hold vector :inline :overlay-at (-> world-vertex 2))
+   (tri-vertex vector 3 :inline :overlay-at (-> world-vertex 3))
+   (left-hand-hold vector :inline)
+   (right-hand-hold vector :inline)
+   (center-hold-old vector :inline)
+   (edge-tri-pat pat-surface))
   (:methods
-   (edge-grab-info-method-9 (_type_) symbol)
+   (update-and-validate! (_type_) symbol)
    (debug-draw (_type_) symbol)))
 
 ;; og:preserve-this
 (declare-type collide-cache-tri structure)
 
 (deftype collide-edge-tri (structure)
-  ((ctri   collide-cache-tri)
+  "A collision-cache triangle accepted as a possible supporting face for an edge grab."
+  ((ctri collide-cache-tri)
    (normal vector :inline)))
 
 (deftype collide-edge-edge (structure)
-  ((ignore        basic)
-   (etri          collide-edge-tri)
-   (vertex-ptr    (inline-array vector) 2)
-   (outward       vector :inline)
+  "One candidate edge, its supporting triangle, endpoints, outward direction, and edge direction."
+  ((ignore basic)
+   (etri collide-edge-tri)
+   (vertex-ptr (inline-array vector) 2)
+   (outward vector :inline)
    (edge-vec-norm vector :inline)))
 
 (deftype collide-edge-hold-item (structure)
-  ((next       collide-edge-hold-item)
-   (rating     float)
-   (split      int8)
-   (edge       collide-edge-edge)
-   (center-pt  vector :inline)
+  "A rated hold point on a candidate edge, including fallback split state."
+  ((next collide-edge-hold-item)
+   (rating float)
+   (split int8)
+   (edge collide-edge-edge)
+   (center-pt vector :inline)
    (outward-pt vector :inline)))
 
 (deftype collide-edge-hold-list (structure)
-  ((num-allocs   uint32)
+  "A distance-sorted list of at most 32 candidate holds and their debug attempt positions."
+  ((num-allocs uint32)
    (num-attempts uint32)
-   (head         collide-edge-hold-item)
-   (items        collide-edge-hold-item 32 :inline)
-   (attempts     qword 32 :inline))
+   (head collide-edge-hold-item)
+   (items collide-edge-hold-item 32 :inline)
+   (attempts qword 32 :inline))
   (:methods
    (debug-draw (_type_) object)
    (add-to-list! (_type_ collide-edge-hold-item) none)))
@@ -69,45 +75,54 @@
 (declare-type collide-shape basic)
 
 (deftype collide-edge-work (structure)
-  ((ccache                       collide-cache)
-   (cshape                       collide-shape)
-   (num-verts                    uint32)
-   (num-edges                    uint32)
-   (num-tris                     uint32)
-   (cache-fill-box               bounding-box :inline)
-   (within-reach-box             bounding-box :inline)
-   (within-reach-box4w           bounding-box4w :inline)
-   (search-pt                    vector :inline)
-   (search-dir-vec               vector :inline)
-   (max-dist-sqrd-to-outward-pt  float)
-   (max-dir-cosa-delta           float)
-   (split-dists                  float 2)
-   (outward-offset               vector :inline)
-   (local-cache-fill-box         bounding-box :inline)
-   (local-within-reach-box       bounding-box :inline)
-   (local-player-spheres         sphere 12 :inline)
-   (world-player-spheres         sphere 12 :inline)
+  "Scratch storage and search limits for extracting grabbable edges from a collision cache."
+  ((ccache collide-cache)
+   (cshape collide-shape)
+   (num-verts uint32)
+   (num-edges uint32)
+   (num-tris uint32)
+   (cache-fill-box bounding-box :inline)
+   (within-reach-box bounding-box :inline)
+   (within-reach-box4w bounding-box4w :inline)
+   (search-pt vector :inline)
+   (search-dir-vec vector :inline)
+   (max-dist-sqrd-to-outward-pt float)
+   (max-dir-cosa-delta float)
+   (split-dists float 2)
+   (outward-offset vector :inline)
+   (local-cache-fill-box bounding-box :inline)
+   (local-within-reach-box bounding-box :inline)
+   (local-player-spheres sphere 12 :inline)
+   (world-player-spheres sphere 12 :inline)
    (local-player-hanging-spheres sphere 6 :inline :overlay-at (-> local-player-spheres 0))
    (world-player-hanging-spheres sphere 6 :inline :overlay-at (-> world-player-spheres 0))
    (local-player-leap-up-spheres sphere 6 :inline :overlay-at (-> local-player-spheres 6))
    (world-player-leap-up-spheres sphere 6 :inline :overlay-at (-> world-player-spheres 6))
-   (verts                        vector 64 :inline)
-   (edges                        collide-edge-edge 96 :inline)
-   (tris                         collide-edge-tri 48 :inline)
-   (hold-list                    collide-edge-hold-list :inline))
+   (verts vector 64 :inline)
+   (edges collide-edge-edge 96 :inline)
+   (tris collide-edge-tri 48 :inline)
+   (hold-list collide-edge-hold-list :inline))
   (:methods
    (search-for-edges (_type_ collide-edge-hold-list) symbol)
    (debug-draw-edges (_type_) object)
    (debug-draw-tris (_type_) none)
    (debug-draw-sphere (_type_) symbol)
    (compute-center-point! (_type_ collide-edge-edge vector) float)
-   (collide-edge-work-method-14 (_type_ vector vector int) float)
+   (nearest-grab-edge-distance! (_type_ vector vector int) float)
    (find-grabbable-edges! (_type_) none)
    (find-grabbable-tris! (_type_) none)
    (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol)
    (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol)
    (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol)))
 
+;; The cache-fill box covers two meters around Jak and extends from 2.7 meters below to six
+;; meters above him. Candidate holds must lie in the narrower box extending 1.5 meters in xz, stay
+;; within 1.5 meters of Jak after the 0.173-meter outward test, and have a direction dot of at
+;; least 0.6 against the chosen search direction. Failed center holds retry 0.25 meters along
+;; either direction; the second fallback adds another 0.35 meters, reaching 0.60 meters from the
+;; original center.
+;; The first six clearance spheres describe the hanging pose and the second six the leap-up pose;
+;; initial validation checks all twelve.
 (define *collide-edge-work*
   (new 'static
        'collide-edge-work

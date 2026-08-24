@@ -9,11 +9,12 @@ Summary of state system:
 A process can be put into a state, using enter-state, or the go macro.
 This will set up the process to run the appropriate handler functions defined by the state.
 The state handlers are:
-- enter : gets run before trans on the first time the state is used. Can be #f. Must return.
-- trans : gets run before code each time the code is run. Can be #f. Must return.
-- code  : main thread. Can suspend. If it returns, the process dies
-- exit  : gets run when leaving a state. must return.
-- event : not sure of the details here yet.
+- enter : runs once before trans when entering the state. Can be #f. Must return.
+- trans : runs before code and again on each scheduled update. Can be #f. Must return.
+- code  : main thread. Can suspend. If it returns, the process dies.
+- exit  : runs when leaving a state. Can be #f. Must return.
+- event : receives messages sent to the process. Can be #f. Must return.
+- post  : temporary thread run after the process update. Can be #f. Must return.
 
 You can use "go" to change the state of a process.  This causes the process main thread execution to be abandoned.
 If the main thread has exits/protects on the stack frame, they will be run first to clean up.
@@ -30,7 +31,7 @@ There are several ways to "go"
 
 - go from a non-main thread in the right process. You can do a go from a temporary thread, like trans or post.
   If you do it from post, the go returns and the rest of the post runs. If you do it from any other thread, the temporary thread
-  is immediately abandonded. Like the previous two, it will defer the actual go until the next time the
+  is immediately abandoned. Like the previous two, it will defer the actual go until the next time the
   process runs.
 
 - go from the main thread of the main process. This causes the (-> pp state) to change, the stack frames
@@ -244,9 +245,9 @@ It type checks the arguments for the entry function.
             (trans (function object))
             (enter function)
             (exit (function object))
-            (event (function process int symbol event-message-block object)))
-  "Allocate a new state. It seems like this isn't really used much and most states are
-   statically allocated and as a result don't have the constructor called."
+            (event
+              (function process int symbol event-message-block object)))
+  "Allocate a state and install its handlers. Most states are statically allocated by defstate."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this name) name)
     (set! (-> this next) #f)
@@ -259,7 +260,7 @@ It type checks the arguments for the entry function.
     this))
 
 (defun inherit-state ((child state) (parent state))
-  "Copy handler functions from parent to child"
+  "Copy every handler from parent to child. Report a null parent without dereferencing it."
   (cond
     ((nonzero? parent)
      (set! (-> child exit) (-> parent exit))
@@ -282,7 +283,7 @@ It type checks the arguments for the entry function.
 (define-extern enter-state (function object object object object object object object))
 
 (defun enter-state (arg0 arg1 arg2 arg3 arg4 arg5)
-  "Make the process stored in pp enter the state in pp next-state"
+  "Move pp to next-state now when running its main thread, or schedule the transition for its next dispatch."
   (with-pp
     ;; unsleep us
     (process-mask-clear! (-> pp mask) sleep sleep-code)
@@ -339,71 +340,79 @@ It type checks the arguments for the entry function.
            (if enter-func ((the (function _varargs_ none) enter-func) arg0 arg1 arg2 arg3 arg4 arg5)))
          ;; run the trans function before the code.
          (let ((trans-func (-> new-state trans))) (if trans-func (trans-func)))
-         ;; now we run the code, but in a tricky way.
-         ;; we need to:
-         ;; - make sure that when this code returns, we do a deactivate
-         ;; - reset the stack to the top, so we can't just call the code.
-         (rlet ((temp)
-                (func)
-                (sp :reg rsp :type uint)
-                (off :reg r15 :type uint)
-                (carg0 :reg rdi)
-                (carg1 :reg rsi)
-                (carg2 :reg rdx)
-                (carg3 :reg rcx))
-           ;; prepare args
-           ;; compiler will likely have these on the stack, we need to get them in regs
-           ;; before messing with the stack.
-           (.mov carg0 arg0)
-           (.mov carg1 arg1)
-           (.mov carg2 arg2)
-           (.mov carg3 arg3)
-           ;; get the main code as an x86-64 pointer
-           (.mov func (-> new-state code))
-           (.add func off)
-           ;; reset the stack (scary)
-           (.mov sp (-> pp main-thread stack-top))
-           (.add sp off)
-           ;; push the return trampoline for when code returns.
-           (.mov temp return-from-thread-dead) ;; will deactivate
-           (.add temp off)
-           (.push temp)
-           ;; and call!
-           (.jr func)
-           ;; stupid hack so the compiler doesn't throw away these registers.
-           (.add carg0 carg1)
-           (.add carg2 carg3)
-           #f ;; can't get here
-           )))
+         ;; State code starts on a clean main-thread stack and returns through the deactivation
+         ;; trampoline. The code handler receives the first five transition arguments; the sixth
+         ;; argument is available to enter but is not forwarded to code.
+         (#unless PC_PORT
+           (rlet ((stack-pointer :reg sp)
+                  (code :reg t9)
+                  (return-address :reg ra)
+                  (code-arg0 :reg a0)
+                  (code-arg1 :reg a1)
+                  (code-arg2 :reg a2)
+                  (code-arg3 :reg a3)
+                  (code-arg4 :reg t0))
+             (m! stack-pointer (-> pp main-thread stack-top))
+             (m! code (-> new-state code))
+             (m! code-arg0 arg0)
+             (m! code-arg1 arg1)
+             (m! code-arg2 arg2)
+             (m! code-arg3 arg3)
+             (m! return-address return-from-thread-dead)
+             (j code :delay (m! code-arg4 arg4))
+             #f))
+         (#when PC_PORT
+           (rlet ((temp)
+                  (func)
+                  (sp :reg rsp :type uint)
+                  (off :reg r15 :type uint)
+                  (carg0 :reg rdi)
+                  (carg1 :reg rsi)
+                  (carg2 :reg rdx)
+                  (carg3 :reg rcx))
+             ;; Preserve the arguments before replacing the current stack.
+             (.mov carg0 arg0)
+             (.mov carg1 arg1)
+             (.mov carg2 arg2)
+             (.mov carg3 arg3)
+             (.mov func (-> new-state code))
+             (.add func off)
+             (.mov sp (-> pp main-thread stack-top))
+             (.add sp off)
+             (.mov temp return-from-thread-dead)
+             (.add temp off)
+             (.push temp)
+             (.jr func)
+             ;; Keep the argument registers live through the inline jump.
+             (.add carg0 carg1)
+             (.add carg2 carg3)
+             #f))))
       (else
        ;; not in the main-thread.
        ;; so we set up the main thread to try again.
        (set! (-> pp trans-hook) #f)
        (set-to-run (-> pp main-thread) enter-state arg0 arg1 arg2 arg3 arg4 arg5)
        (when (!= (-> pp top-thread name) 'post)
-         ;; abandon this one too.
-         ;; NOTE - this is different from GOAL.
-         ;; GOAL installs this as the return address for this function and returns normally.
-         ;; but we don't because I don't have an easy way to find where to stick this.
-         ;; I can't see how this makes a difference, as all non-main threads seem
-         ;; temporary, but if this turns out to be false, we will need to change this.
-         (rlet ((temp)
-                (off :reg r15 :type uint :reset-here #t))
-           (.mov temp return-from-thread) ;; could probably just call this...
-           (.add temp off)
-           (.push temp)
-           (.ret)
-           #f ;; can't get here
-           ))))))
+         ;; The EE abandons this temporary thread by replacing enter-state's saved return address.
+         ;; The normal epilogue restores it and returns directly to the kernel context trampoline.
+         (#unless PC_PORT
+           (rlet ((return-target)) (m! return-target return-from-thread) (s.w return-target sp 0)))
+         ;; On PC, push the equivalent trampoline and return through the host ABI.
+         (#when PC_PORT
+           (rlet ((temp)
+                  (off :reg r15 :type uint :reset-here #t))
+             (.mov temp return-from-thread)
+             (.add temp off)
+             (.push temp)
+             (.ret)
+             #f)))))))
 
 (defun send-event-function ((proc process-tree) (msg event-message-block))
-  "Function to send an event to a process. Please use the send-event macros when possible"
+  "Deliver msg through proc's state event hook. Prefer the send-event macro at call sites."
   (with-pp
     ;; og:preserve-this check that we have a _valid_ process. originally this just checked
     ;; that type != process-tree, but sometimes we might get stale process ref (qbert-plat-master)
-    (when (and (valid? proc process #f #f 0)
-               (nonzero? (-> (the process proc) pid))
-               (-> (the process proc) event-hook))
+    (when (and (valid? proc process #f #f 0) (nonzero? (-> (the process proc) pid)) (-> (the process proc) event-hook))
       (let ((pp-backup pp))
         (set! pp (the process proc))
         (let ((result ((-> (the process proc) event-hook) (-> msg from) (-> msg num-params) (-> msg message) msg)))
@@ -420,7 +429,7 @@ It type checks the arguments for the entry function.
     (send-event-function ,proc event-data)))
 
 (defun looping-code ()
-  "Loop."
+  "Suspend forever, resuming once per process dispatch."
   (loop
     (suspend))
   #f)

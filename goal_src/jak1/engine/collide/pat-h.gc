@@ -2,6 +2,13 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/math/math.gc")
+
+;; PAT packs the collision behavior of each mesh triangle into one 32-bit word.
+;; The low three skip bits can exclude the triangle from entity, camera, or edge
+;; queries. Mode classifies its collision response, material selects movement,
+;; sound, and particle effects, camera holds camera-query flags, and event selects
+;; a contact hazard.
+
 (defenum pat-material
   :type uint8
   (stone)
@@ -46,31 +53,36 @@
 
 ;; DECOMP BEGINS
 
-;; The "pat" system is used to store some data per triangle in collision meshes.
-;; It packs all data into a 32-bit pat-surface type.
-
 (deftype pat-surface (uint32)
-  ((skip          uint8 :offset 0 :size 3)
+  ((skip          uint8 :offset 0 :size 3) ;; combined collision-query skip mask
    (mode          pat-mode :offset 3 :size 3)
    (material      pat-material :offset 6 :size 6)
-   (camera        uint8 :offset 12 :size 2)
+   (camera        uint8 :offset 12 :size 2) ;; combined camera-query flags
    (event         pat-event :offset 14 :size 6)
-   (noentity      uint8 :offset 0 :size 1)
-   (nocamera      uint8 :offset 1 :size 1)
-   (noedge        uint8 :offset 2 :size 1)
-   (nolineofsight uint8 :offset 12 :size 1)
-   (unknown-bit   uint8 :offset 15 :size 1)))
+   (noentity      uint8 :offset 0 :size 1) ;; exclude from entity collision queries
+   (nocamera      uint8 :offset 1 :size 1) ;; exclude from camera collision queries
+   (noedge        uint8 :offset 2 :size 1) ;; exclude from edge queries
+   (nolineofsight uint8 :offset 12 :size 1) ;; exclude from camera line-of-sight queries
+   ;; Ignore endless-fall contacts.
+   (noendlessfall uint8 :offset 15 :size 1)))
 
 (defun-debug pat-material->string ((pat pat-surface))
+  "Return pat's material name, or *unknown* when its packed value is outside
+   pat-material."
   (enum->string pat-material (-> pat material)))
 
 (defun-debug pat-mode->string ((pat pat-surface))
+  "Return pat's collision-mode name, or *unknown* when its packed value is outside
+   pat-mode."
   (enum->string pat-mode (-> pat mode)))
 
 (defun-debug pat-event->string ((pat pat-surface))
+  "Return pat's contact-event name, or *unknown* when its packed value is outside
+   pat-event."
   (enum->string pat-event (-> pat event)))
 
-;; for debug drawing pat's by mode.
+;; Debug names, wall thresholds, and colors indexed by the raw PAT mode. Entry 3
+;; is pole even though pat-mode itself declares only values 0 through 2.
 (deftype pat-mode-info (structure)
   ((name         string)
    (wall-angle   float)

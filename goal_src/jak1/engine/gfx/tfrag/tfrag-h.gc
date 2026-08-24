@@ -6,28 +6,68 @@
 
 ;; DECOMP BEGINS
 
-;; definition of type tfragment-stats
+;; Per-patch triangle and vertex counts, one entry per detail level plus a spare
+;; dverts counts the vertices a strip actually sends, two more than triangle count.
 (deftype tfragment-stats (structure)
   ((num-tris   uint16 4)
    (num-dverts uint16 4)))
 
+;; Debug-only, and absent from the retail levels.
 (deftype tfragment-debug-data (structure)
   ((stats       tfragment-stats :inline)
    (debug-lines (array vector-array))))
 
+;; Unused. Tfrag never falls back to generic.
 (deftype generic-tfragment (structure)
   ((dummy int32)))
 
+;; A tfragment is one independently culled terrain patch, with three levels of detail.
+;;
+;; The geometry is a single contiguous block of data in the level file, and the four transfers
+;; below are four windows into it. Nothing is duplicated except the per-level draw-point and strip
+;; tables.  The block is laid out:
+;; BASE-ONLY
+;;   base-only mesh tables
+;; COMMON
+;;   control block, shaders, base point records, base vertices
+;; LEVEL-0
+;;   level-0-only mesh tables
+;;   level-0 interp table, point records, vertices
+;; LEVEL-1
+;;   level-1-only mesh tables
+;;   level-1 vertices, point records.
+;;
+;; Therefore to draw each level:
+;;
+;;  Base: single upload. Start at dma-base (BASE-ONLY), upload dma-qwc[1] (upload BASE-ONLY, COMMON)
+;;  Level0: single upload, Start at dma-level0 (overlays dma-common), upload dma-qwc[2] (upload COMMON, LEVEL-0)
+;;  Level1: two uploads,
+;;    dma-common, dma-qwc[0], only loads COMMON
+;;    dma-level-1, dmq-qwc[3], loads LEVEL-1
+;;
+;;
+;; Colors are the one part of a patch that is not in the level file's data block, because they follow
+;; the time of day. One time-of-day-palette is shared by the whole tree (drawable-tree-tfrag has it),
+;; and each patch carries its own indices into that palette here:
+;;
+;;   color-indices      packed uint16 palette indices, one per vertex, in vertex order
+;;   num-base-colors    number of vertices in the base mesh
+;;   num-level0-colors  number of vertices in base + level 0        (cumulative, not per level)
+;;   num-level1-colors  number of vertices in base + level 0 + level 1
+;;   color-offset       the VU quadword where the expanded colors start
+;;
 (deftype tfragment (drawable)
   ((color-index       uint16 :offset 6)
    (debug-data        tfragment-debug-data :offset 8)
    (color-indices     uint32 :offset 12)
    (colors            uint32 :overlay-at color-indices)
+   ;; three start addresses, four windows: see above. dma-common and dma-level-0 are the same word.
    (dma-chain         uint32 3)
    (dma-common        uint32 :overlay-at (-> dma-chain 0))
    (dma-level-0       uint32 :overlay-at (-> dma-chain 0))
    (dma-base          uint32 :overlay-at (-> dma-chain 1))
    (dma-level-1       uint32 :overlay-at (-> dma-chain 2))
+   ;; common, base, level-1, level-0 - chain-entry order, not level order
    (dma-qwc           uint8 4 :offset 44)
    (shader            (inline-array adgif-shader) :offset 48)
    (num-shaders       uint8 :offset 52)
@@ -38,37 +78,60 @@
    (color-count       uint8 :offset 57)
    (pad0              uint8 :offset 58)
    (pad1              uint8 :offset 59)
+   ;; never used; see generic-tfragment above
    (generic           generic-tfragment)
    (generic-u32       uint32 :overlay-at generic)))
 
+;; Array of tfragments in the drawable BVH system.
+;; These use the usual fixed-max-depth, always 8 children layout and can be culled
+;; via precomputed visibility and BVH frustum culling very efficiently in draw-node.
 (deftype drawable-inline-array-tfrag (drawable-inline-array)
   ((data tfragment 1 :inline)
    (pad  uint32)))
 
+;; Variant for "transparent" tfrags, this is likely a mistake and unused.
+;; It has a second tfragment defined, but nothing seems to read it.
 (deftype drawable-inline-array-trans-tfrag (drawable-inline-array-tfrag)
   ((data2 tfragment 1 :inline)
    (pad2  uint32)))
 
+;; Full drawable tree (BVH hierarchy) for tfrag.
+;; Each array is at increasing depth in the BVH. The final array contains
+;; tfragment and the others contain draw-nodes (bounding sphere nodes)
+;; There's a single color palette shared for the entire tree.
 (deftype drawable-tree-tfrag (drawable-tree)
   ((time-of-day-pal time-of-day-palette :offset 12)
    (arrays          drawable-inline-array 1 :overlay-at (-> data 0))))
 
+;; The five subtypes below differ only in which bucket and which GS TEST setting they draw with
 (deftype drawable-tree-trans-tfrag (drawable-tree-tfrag) ())
-
 (deftype drawable-tree-dirt-tfrag (drawable-tree-tfrag) ())
-
 (deftype drawable-tree-ice-tfrag (drawable-tree-tfrag) ())
-
 (deftype drawable-tree-lowres-tfrag (drawable-tree-tfrag) ())
-
 (deftype drawable-tree-lowres-trans-tfrag (drawable-tree-trans-tfrag) ())
 
+;; The LOD collapse coefficients, one entry per subdivision level. Despite looking like four
+;; vectors these are two coefficient pairs, and the VU only ever loads them as lq.xy and lq.w:
+;;
+;;   weight.xy = k1s[level].xy + k0s[level].xy * position.w
+;;
+;; clamped to [0, 0.5] and [0, 1]. weight.y falls from one to zero across the level's distance band
+;; while weight.x rises from zero to a half, so a subdivided vertex slides from its authored position
+;; onto the exact midpoint of the parent edge it splits. Level 0 uses coefficient entry 0 and level 1 entry 1.
+;;
+;; k0s[level].w carries that level's collapse distance, used by the discrete test that swaps a fully
+;; collapsed point for its parent outright. Remember that transformed w is negative and grows more
+;; negative with distance, so is the collapse distance. k1s[*].w is unused.
+;;
+;; set-tfrag-dists! fills all of this once per frame with no fragment argument, which is what makes
+;; the collapse identical in every patch that contains a given vertex.
 (deftype tfrag-dists (structure)
   ((data   uint32 16)
    (vector vector 4 :inline :overlay-at (-> data 0))
    (k0s    vector 2 :inline :overlay-at (-> data 0))
    (k1s    vector 2 :inline :overlay-at (-> data 8))))
 
+;; Constants and GIF templates uploaded ahead of the VU1 terrain programs.
 (deftype tfrag-data (structure)
   ((data        uint32 56 :offset 0)
    (vector      vector 14 :inline :overlay-at (-> data 0))
@@ -86,6 +149,35 @@
    (k0s         uint128 2 :overlay-at (-> data 40))
    (k1s         uint128 2 :overlay-at (-> data 48))))
 
+;; Tfrag data layout. `ptr`s are quadword addresses.
+;; TODO: this is very hard to understand - rewrite once we get to tfrag.gc
+;;
+;; A vertex is two quadwords: packed integer position, then the time-of-day color the EE unpacks into
+;; the quadword the position skipped. Positions live at ptr-vtxdata in base, level-0, level-1 order,
+;; so a coarser stream simply uploads fewer of them.
+;;
+;; A point is one quadword: x and y are the texture coordinate biased by 2048.0, z is the VU address
+;; of one parent's vertex, and w is the VU address of this point's own vertex. Base points have no
+;; parent. A level-0 or level-1 point splits an edge: its texture coordinate is already the exact
+;; midpoint of its two parents', and the VU slides its position and color onto the parent midpoint as
+;; the camera pulls away.
+;;
+;; The second parent is named indirectly, through ptr-interpolated-0 / ptr-interpolated1: four
+;; point-record addresses per quadword, in the same order as the point list. The indirection is not
+;; free real estate - the VU needs parent B's whole record, not just its vertex, because collapsing a
+;; point outright means overwriting the point with parent B's record so the texture coordinate follows.
+;;
+;; "shared" does not mean shared with the neighbouring patch. Each level's shared points sit
+;; immediately after its ordinary points and duplicate a vertex that the ordinary list already names,
+;; with a different texture coordinate - a wrap seam, or a change of adgif shader. They share the
+;; vertex slot, so the position and color blend must run once over the ordinary list only, while the
+;; collapse substitution has to be applied to every duplicate as well. That is why the VU has a
+;; separate shared pass that touches records and not vertex data.
+;;
+;; ptr-draw-points is the draw order: four point-record addresses per quadword. ptr-strip-data holds
+;; the signed byte counts that break that order into strips and mark shader changes. Each stream
+;; rewrites both at the same addresses. ptr-texture-data locates the adgif shaders, five quadwords
+;; each.
 (deftype tfrag-control (structure)
   ((num-base-points           uint32)
    (num-shared-base-points    uint32)
@@ -126,9 +218,17 @@
    (drawpoints   int32)
    (vif          int32)))
 
+;; Seems unused.
 (deftype tfrag-packet (structure)
   ((tag uint128 2)))
 
+;; Per-frame terrain renderer state: DMA templates, distance limits, visibility traversal cursors,
+;; and scratchpad-transfer synchronization.
+;;
+;; frag-dists is the LOD classifier's whole threshold set in one quadword, negated so the EE can add
+;; instead of subtract: (-meters[0], -meters[1], -meters[2], -meters[4]) from *subdivide-settings*,
+;; ordered far to near. min-dist accumulates the nearest fragment seen this frame for
+;; finish-background; max-dist.z is its "nothing visible" seed.
 (deftype tfrag-work (structure)
   ((base-tmpl             dma-packet :inline)
    (level-0-tmpl          dma-packet :inline)
@@ -154,6 +254,11 @@
    (near-wait-from-spr    uint32)
    (near-wait-to-spr      uint32)))
 
+;; Scratchpad terrain workspace. banka and bankb each hold one batch of sixteen fragment headers, so
+;; the toSPR DMA can be filling one while packets are built from the other; outa and outb each hold
+;; 128 quadwords of built packet, so the fromSPR DMA can be writing back to main memory from one while the
+;; other is written. colors is where the EE gathers this frame's time-of-day RGBA before handing it to
+;; the VU as part of each fragment's packet.
 (deftype tfrag-dma (structure)
   ((banka  tfragment 16 :inline)
    (bankb  tfragment 16 :inline)

@@ -3,21 +3,23 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel/gcommon.gc")
 
-;; It seems like some of these are unused.
-;; The commonly used lights are vu-lights and light-group.
+;; Foreground lighting has two representations.  light-group is the editable EE
+;; form; vu-lights is its transposed, tightly packed VU input.  The light volumes
+;; aren't used - foreground lighting is pretty simple.
 
 ;; DECOMP BEGINS
 
-;; this type represents the lights that can be sent to the VU for merc (and maybe generic?) rendering.
-;; it contains 3 directional lights and an ambient light.
-;; Note that the data is transposed to be faster for use in the VU code.
-;; the w components are unused for lighting information - you can put whatever you want in them...
+;; Three directional lights plus ambient color in the layout consumed by merc and
+;; generic VU programs.  direction is transposed: its three vectors contain the
+;; x, y, and z components of all three light directions.
+;; The w component isn't used for light and can hold magic flags for renderers.
 (deftype vu-lights (structure)
   ((direction vector 3 :inline)
    (color     vector 3 :inline)
    (ambient   vector :inline)))
 
-;; a single directional light.
+;; One editable directional light.  level scales its contribution; sort-level is
+;; working state used while choosing and ordering a light kit.
 (deftype light (structure)
   ((direction  vector :inline)
    (color      rgbaf :inline)
@@ -25,7 +27,9 @@
    (level      float :overlay-at (-> levels x))
    (sort-level float :overlay-at (-> levels y))))
 
-;; unused?
+;; Legacy spatial light record.  The matrix's w lanes hold name, decay policy,
+;; ambient/point balance, and intensity beside the transform columns.  func-symbol
+;; and func share the color alpha slot while the callback name is being resolved.
 (deftype light-ellipse (structure)
   ((matrix              matrix :inline)
    (color               rgbaf :inline)
@@ -36,23 +40,22 @@
    (func-symbol         basic :overlay-at (-> color a))
    (func                basic :overlay-at (-> color a))))
 
-;; This likely doesn't work correctly in both GOAL and OpenGOAL
-;; unused?
+;; Collection of spatial lights.
 (deftype light-array (array) ())
 
-;; unused?
+;; A bounded region referring to the lights that apply inside it.
 (deftype light-volume (basic)
   ((light-array light-array)))
 
-;; unused?
+;; Spherical light-volume bound.
 (deftype light-volume-sphere (light-volume)
   ((bsphere sphere :inline)))
 
-;; unused?
+;; Light-volume bound by four vertical planes.
 (deftype light-volume-planes (light-volume)
   ((planes vertical-planes)))
 
-;; unused?
+;; Legacy collection of spatial light volumes.
 (deftype light-volume-array (array) ())
 
 (defmethod print ((this light))
@@ -65,7 +68,8 @@
   (format #t "~F ~F ~F @ #x~X>" (-> this color x) (-> this color y) (-> this color z) this)
   this)
 
-;; the primary light type, used before conversion to vu-lights.
+;; Primary editable light kit: three directional contributions and one ambient
+;; contribution.  lights is the indexed view of the same four inline records.
 (deftype light-group (structure)
   ((dir0   light :inline)
    (dir1   light :inline)

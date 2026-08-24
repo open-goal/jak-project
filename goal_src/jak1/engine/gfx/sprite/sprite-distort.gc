@@ -4,12 +4,28 @@
 (require "engine/gfx/sprite/sprite.gc")
 (require "engine/gfx/math-camera.gc")
 
-;; The sprite-distort is a VU1 renderer.
-;; It likely does some of the effects with sprites.
+;; Draws the heat-haze/water-warp particles. These distort
+;; a roughly circular area underneath the particle.
+
+;; The mesh contains two conentric rings of vertices. Both rings have `turns` vertices.
+;; So `turns = 3` would be a triangle, turns = 4 is a square, etc.
+
+;; There is a triangle fan at the center, using the vertices of the inner ring,
+;; and a triangle strip in between the inner and outer rings.
+;; The center and outer ring sample the framebuffer at their current position and
+;; the inner ring samples at an offset. This makes the center and edge of the distort sprite
+;; have no distortion, eliminating discontinuities and making the effect clearly centered around
+;; the sprite's center.
+
+;; This geometry is controlled by the color: red controls the outer ring radius, g the inner,
+;; and b the sampling location of the inner ring. Setting g = b will effectively disable the effect,
+;; increasing the difference will increase the strength.
 
 ;; DECOMP BEGINS
 
-;; Scratch information used by the sprite-distorter.
+;; Unit spokes for every supported side count. Each spoke is stored twice: once in projected screen
+;; units for the mesh, then in framebuffer ST units for sampling. ientry points VU1 at the right set
+;; for a given `turns`; the last angle-zero pair closes the 11-sided set.
 (deftype sprite-distorter-sine-tables (basic)
   ((aspx   float)
    (aspy   float)
@@ -18,39 +34,71 @@
    (giftag gs-gif-tag :inline)
    (color  qword :inline)))
 
+;; VU1 memory for the distorter.
+;;
+;;   352 - 479   entry: 128 quadwords, alternating screen direction and framebuffer ST offset
+;;   480 - 488   ientry: the first direction of each turn count from 3 through 11
+;;   489         giftag: one strip of five vertices, its loop count patched per sprite
+;;   490         color: neutral 128 grey
+;;   511         the number of sprites in this batch
+;;   512 -       three quadwords per sprite: projected centre, centre ST plus turn count, warp scales
+;;
+;;   0 - 175     GIF output buffer 0
+;; 176 - 351     GIF output buffer 1
+(defconstant SPRITE-DISTORT-VU-TABLES 352)
+
+(defmacro sprite-distort-const (&rest path)
+  `(+ SPRITE-DISTORT-VU-TABLES
+      (/ (- (offset-of sprite-distorter-sine-tables ,@path)
+            (offset-of sprite-distorter-sine-tables entry))
+         16)))
+
+(defconstant SPRITE-DISTORT-VU-COUNT 511)
+
+(defconstant SPRITE-DISTORT-VU-INPUT 512)
+
+(defconstant SPRITE-DISTORT-VU-GIF-BUFFER-0 0)
+
+(defconstant SPRITE-DISTORT-VU-GIF-BUFFER-1 176)
+
 (define *sprite-distorter-sine-tables* (new 'global 'sprite-distorter-sine-tables))
 
 (defun sprite-distorter-generate-tables ()
-  "Regenerate sprite-distorter tables.  This should be done whenever the aspect ratio changes"
+  "Build the spoke tables used by the distortion mesh. Each spoke has matching screen-space and
+   framebuffer-ST directions, and the tables are rebuilt when the projection changes."
   (let ((tables *sprite-distorter-sine-tables*))
     (let ((entry-index 0)
-          (ientry-index 0)
-          (iterations 3)
+          (turn-table-index 0)
+          (turns 3)
           ;; get camera aspect
-          (cam-aspx (- (-> *math-camera* perspective vector 0 x)))
-          (cam-aspy (- (-> *math-camera* perspective vector 1 y))))
+          (aspect-x (- (-> *math-camera* perspective vector 0 x)))
+          (aspect-y (- (-> *math-camera* perspective vector 1 y))))
       ;; regenerate if aspect ratio changed
       ;; og:preserve-this Fix intermittent crash on start up due to a race with the DMA
       (when #t
-        (set! (-> tables aspx) cam-aspx)
-        (set! (-> tables aspy) cam-aspy)
-        (while (< iterations 12)
-          ;; set ientry
-          (set! (-> tables ientry ientry-index vector4w x) (+ entry-index 352)) ;; 352 = tables.entry in VU
-          (+! ientry-index 1)
-          ;; set entries
-          (dotimes (i iterations)
-            (let ((f26-0 (* 65536.0 (/ (the float i) (the float iterations)))))
-              (set-vector! (-> tables entry entry-index) (* (sin f26-0) cam-aspx) (* (cos f26-0) cam-aspy) 0.0 0.0)
-              (let ((s3-1 (+ entry-index 1)))
-                (set-vector! (-> tables entry s3-1) (* 0.001953125 cam-aspx (sin f26-0)) (* 0.00390625 cam-aspy (cos f26-0)) 0.0 0.0)
-                (set! entry-index (+ s3-1 1)))))
-          (+! iterations 1))
+        (set! (-> tables aspx) aspect-x)
+        (set! (-> tables aspy) aspect-y)
+        (while (< turns 12)
+          ;; ientry holds absolute VU addresses, and the program indexes it with turns - 3.
+          (set! (-> tables ientry turn-table-index vector4w x) (+ entry-index SPRITE-DISTORT-VU-TABLES))
+          (+! turn-table-index 1)
+          (dotimes (i turns)
+            (let ((angle (* 65536.0 (/ (the float i) (the float turns)))))
+              (set-vector! (-> tables entry entry-index) (* (sin angle) aspect-x) (* (cos angle) aspect-y) 0.0 0.0)
+              (let ((next-entry-index (+ entry-index 1)))
+                ;; Same spoke as above, converted to the framebuffer's 512x256 ST grid.
+                (set-vector! (-> tables entry next-entry-index)
+                             (* (/ aspect-x 512) (sin angle))
+                             (* (/ aspect-y 256) (cos angle))
+                             0.0
+                             0.0)
+                (set! entry-index (+ next-entry-index 1)))))
+          (+! turns 1))
         ;; final entry pair
-        (set-vector! (-> tables entry entry-index) 0.0 cam-aspy 0.0 0.0)
-        (let ((v1-17 (+ entry-index 1)))
-          (set-vector! (-> tables entry v1-17) 0.0 (* 0.00390625 cam-aspy) 0.0 0.0)
-          (+ v1-17 1) ;; ?
+        (set-vector! (-> tables entry entry-index) 0.0 aspect-y 0.0 0.0)
+        (let ((closing-offset-index (+ entry-index 1)))
+          (set-vector! (-> tables entry closing-offset-index) 0.0 (/ aspect-y 256) 0.0 0.0)
+          (+ closing-offset-index 1) ;; ?
           )))
     ;; set up giftag
     (set! (-> tables giftag tag)
@@ -63,24 +111,8 @@
                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1)
                :nreg #xf))
     ;; set up registers
-    (set! (-> tables giftag regs)
-          (new 'static
-               'gif-tag-regs
-               :regs0 (gif-reg-id st)
-               :regs1 (gif-reg-id rgbaq)
-               :regs2 (gif-reg-id xyzf2)
-               :regs3 (gif-reg-id st)
-               :regs4 (gif-reg-id rgbaq)
-               :regs5 (gif-reg-id xyzf2)
-               :regs6 (gif-reg-id st)
-               :regs7 (gif-reg-id rgbaq)
-               :regs8 (gif-reg-id xyzf2)
-               :regs9 (gif-reg-id st)
-               :regs10 (gif-reg-id rgbaq)
-               :regs11 (gif-reg-id xyzf2)
-               :regs12 (gif-reg-id st)
-               :regs13 (gif-reg-id rgbaq)
-               :regs14 (gif-reg-id xyzf2)))
+    (set! (-> tables giftag regs) (gs-reg-list st rgbaq xyzf2 st rgbaq xyzf2 st rgbaq xyzf2 st rgbaq xyzf2 st rgbaq xyzf2))
+
     ;; set color
     (set! (-> tables color vector4w x) 128)
     (set! (-> tables color vector4w y) 128)
@@ -89,11 +121,14 @@
   0
   (none))
 
-;; we need to at least put something here so dma-buffer-add-vu-function doesn't crash.
-(define sprite-distort-vu1-block (new 'static 'vu-function))
+;; PC rendering does not execute the VU1 program in sprite-distort-vu1.gc, but the DMA-list builder
+;; still requires a valid object.
+(#when PC_PORT
+  (define sprite-distort-vu1-block (new 'static 'vu-function)))
 
 (defun sprite-init-distorter ((dma-buff dma-buffer) (frame-base-pointer uint))
-  "Set up DMA for setting up the sprite-distorter renderer"
+  "Set up framebuffer sampling for the distortion pass, upload the spoke tables, and load its VU1
+   program."
   ;;(format #t "distorter: ~d~%" (-> *sprite-aux-list* entry))
   ;; set up GS registers
   (dma-buffer-add-gs-set dma-buff
@@ -129,15 +164,21 @@
                            #x8b
                            (-> *sprite-distorter-sine-tables* entry)
                            (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
-                           (new 'static 'vif-tag :imm #x160 :num #x8b :cmd (vif-cmd unpack-v4-32)))
+                           (new 'static
+                                'vif-tag
+                                :imm
+                                SPRITE-DISTORT-VU-TABLES
+                                :num #x8b
+                                :cmd (vif-cmd unpack-v4-32)))
   ;; load VU1 code
   (dma-buffer-add-vu-function dma-buff sprite-distort-vu1-block 1)
   0
   (none))
 
-(defun sprite-draw-distorters ((arg0 dma-buffer))
-  "Set up DMA for the sprite-distorter renderer"
-  (local-vars (v1-25 int) (sv-16 sprite-vec-data-2d) (sv-32 pointer) (sv-48 pointer))
+(defun sprite-draw-distorters ((dma-buff dma-buffer))
+  "Project the distortion particles, clip them, and send the visible discs to VU1 in batches of at
+   most 170. Bad side counts fall back to 11, and discs are shrunk to stay on the framebuffer."
+  (local-vars (clip-flags int) (warp-sprite sprite-vec-data-2d) (center-st pointer) (warp-params pointer))
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -152,19 +193,19 @@
          (vf9 :class vf))
     (init-vf0-vector)
     (.lvf vf8 (&-> *math-camera* hmge-scale quad))
-    (let ((s0-0 (-> arg0 base))
-          (s4-0 0)
-          (s5-0 0))
-      (&+! (-> arg0 base) 16)
-      (let* ((s3-0 *sprite-aux-list*)
-             (s2-0 (-> s3-0 entry)))
-        (dotimes (s1-0 s2-0)
-          (set! sv-16 (-> s3-0 data s1-0))
-          (let ((a0-1 (the-as object (-> arg0 base))))
-            (set! sv-32 (&+ (the-as pointer a0-1) 16))
-            (set! sv-48 (&+ (the-as pointer a0-1) 32))
+    (let ((upload-tag (-> dma-buff base))
+          (chunk-count 0)
+          (uploaded-count 0))
+      (&+! (-> dma-buff base) 16)
+      (let* ((aux-list *sprite-aux-list*)
+             (aux-count (-> aux-list entry)))
+        (dotimes (i aux-count)
+          (set! warp-sprite (-> aux-list data i))
+          (let ((packed-sprite (the-as object (-> dma-buff base))))
+            (set! center-st (&+ (the-as pointer packed-sprite) 16))
+            (set! warp-params (&+ (the-as pointer packed-sprite) 32))
             (cond
-              ((= (-> sv-16 matrix) 1)
+              ((= (-> warp-sprite matrix) (sprite-matrix-mode screen))
                (.lvf vf3 (&-> *math-camera* sprite-2d vector 0 quad))
                (.lvf vf4 (&-> *math-camera* sprite-2d vector 1 quad))
                (.lvf vf5 (&-> *math-camera* sprite-2d vector 2 quad))
@@ -176,8 +217,8 @@
                (.lvf vf5 (&-> *math-camera* camera-temp vector 2 quad))
                (.lvf vf6 (&-> *math-camera* camera-temp vector 3 quad))
                (.lvf vf9 (&-> *math-camera* hvdf-off quad))))
-            (.lvf vf1 (&-> sv-16 x-y-z-sx quad))
-            (.lvf vf2 (&-> sv-16 color quad))
+            (.lvf vf1 (&-> warp-sprite x-y-z-sx quad))
+            (.lvf vf2 (&-> warp-sprite color quad))
             (.mul.w.vf acc vf6 vf0)
             (.add.mul.x.vf acc vf3 vf1 acc)
             (.add.mul.y.vf acc vf4 vf1 acc)
@@ -185,109 +226,128 @@
             (.mul.vf vf10 vf1 vf8)
             (.div.vf Q vf0 vf10 :fsf #b11 :ftf #b11)
             ;;(TODO.VCLIP vf10 vf10)
-            (b! (zero? (-> sv-16 flag)) cfg-21)
+            (b! (zero? (-> warp-sprite flag)) cfg-21)
             (.wait.vf)
             (.mul.vf.xyz vf1 vf1 Q)
             (.mul.vf.xyz vf2 vf2 Q)
-            ;;(.cfc2.i v1-25 Clipping)
-            (set! v1-25 (vu-clip vf10 0)) ;; safe to just drop the higher bits.
-            (b! (logtest? v1-25 63) cfg-21 :delay (.add.vf vf1 vf1 vf9))
+            ;;(.cfc2.i clip-flags Clipping)
+            ;; og:preserve-this PC reads the portable clip result instead of the VU0 control register.
+            (set! clip-flags (vu-clip vf10 0)) ;; safe to just drop the higher bits.
+            (b! (logtest? clip-flags 63) cfg-21 :delay (.add.vf vf1 vf1 vf9))
             (.max.x.vf.w vf1 vf1 vf0)
-            (.svf (&-> (the-as vector a0-1) quad) vf1)
-            (.svf (&-> (the-as vector sv-48) quad) vf2)
-            (set! (-> (the-as vector a0-1) w) 255.0)
-            (set! (-> (the-as (pointer float) sv-32)) (* 0.001953125 (+ -1792.0 (-> (the-as vector a0-1) x))))
-            (set! (-> (the-as vector sv-32) y)
-                  (* 0.00390625 (+ -2048.0 (the float (-> *video-parms* screen-hy)) (-> (the-as vector a0-1) y)))))
-          (set! (-> (the-as vector sv-32) z) 1.0)
-          (when (or (< (-> sv-16 flag) 3) (< 11 (-> sv-16 flag)))
-            (format 0 "Turns = ~D!!!~%" (-> sv-16 flag))
-            (set! (-> (the-as (pointer int32) sv-16) 4) 11))
-          (set! (-> (the-as (pointer int32) sv-32) 3) (-> sv-16 flag))
-          (let* ((f0-7 (- (-> *math-camera* perspective vector 1 y)))
-                 (f2-4 (-> (the-as vector sv-32) y))
-                 (f4-0 (+ f2-4 (* (-> (the-as (pointer float) sv-48)) f0-7)))
-                 (f3-0 256.0)
-                 (f1-7 (-> (the-as (pointer float) sv-48))))
-            (if (< (the float (-> *video-parms* screen-sy)) f4-0)
-              (set! f3-0 (/ (- (the float (-> *video-parms* screen-sy)) f2-4) f0-7)))
-            (if (< 128.0 f3-0) (set! f3-0 128.0))
-            (when (< f3-0 f1-7)
-              (let ((v1-55 (/ f3-0 f1-7))) (.mov vf1 v1-55))
+            ;; VU1 gets the projected centre, its matching framebuffer ST, and the particle's RGB:
+            ;; red = seamless outer radius, green = warp-ring radius, blue = sample radius there.
+            (.svf (&-> (the-as vector packed-sprite) quad) vf1)
+            (.svf (&-> (the-as vector warp-params) quad) vf2)
+            (set! (-> (the-as vector packed-sprite) w) 255.0)
+            (set! (-> (the-as (pointer float) center-st)) (* 0.001953125 (+ -1792.0 (-> (the-as vector packed-sprite) x))))
+            (set! (-> (the-as vector center-st) y)
+                  (* 0.00390625 (+ -2048.0 (the float (-> *video-parms* screen-hy)) (-> (the-as vector packed-sprite) y)))))
+          (set! (-> (the-as vector center-st) z) 1.0)
+          (when (or (< (-> warp-sprite flag) 3) (< 11 (-> warp-sprite flag)))
+            (format 0 "Turns = ~D!!!~%" (-> warp-sprite flag))
+            (set! (-> (the-as (pointer int32) warp-sprite) 4) 11))
+          (set! (-> (the-as (pointer int32) center-st) 3) (-> warp-sprite flag))
+          (let* ((projection-y (- (-> *math-camera* perspective vector 1 y)))
+                 (center-t (-> (the-as vector center-st) y))
+                 (bottom-t (+ center-t (* (-> (the-as (pointer float) warp-params)) projection-y)))
+                 (visible-scale 256.0)
+                 (warp-scale (-> (the-as (pointer float) warp-params))))
+            ;; Keep the outer edge inside the bottom of the framebuffer and cap it at 128 pixels.
+            ;; Scale all three radii together so the shape of the warp does not change.
+            (if (< (the float (-> *video-parms* screen-sy)) bottom-t)
+              (set! visible-scale (/ (- (the float (-> *video-parms* screen-sy)) center-t) projection-y)))
+            (if (< 128.0 visible-scale) (set! visible-scale 128.0))
+            (when (< visible-scale warp-scale)
+              (let ((scale-ratio (/ visible-scale warp-scale))) (.mov vf1 scale-ratio))
               (.mul.x.vf vf2 vf2 vf1)
-              (.svf (&-> (the-as vector sv-48) quad) vf2)))
-          (&+! (-> arg0 base) 48)
-          (+! s4-0 1)
-          (when (= s4-0 85)
-            (let ((v1-62 (-> arg0 base)))
-              (set! (-> arg0 base) s0-0)
-              (let* ((a0-8 arg0)
-                     (a1-3 (the-as object (-> a0-8 base))))
-                (set! (-> (the-as dma-packet a1-3) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (* 3 s4-0)))
-                (set! (-> (the-as dma-packet a1-3) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet a1-3) vif1)
-                      (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :imm (shr (shl (+ (* 3 s5-0) 512) 54) 54) :num (* 3 s4-0)))
-                (set! (-> a0-8 base) (&+ (the-as pointer a1-3) 16)))
-              (set! (-> arg0 base) v1-62))
-            (set! s4-0 0)
-            (+! s5-0 85)
-            (when (= s5-0 170)
-              (let* ((v1-65 arg0)
-                     (a0-9 (the-as object (-> v1-65 base))))
-                (set! (-> (the-as dma-packet a0-9) dma) (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt)))
-                (set! (-> (the-as dma-packet a0-9) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet a0-9) vif1) (new 'static 'vif-tag :imm #x1ff :num #x1 :cmd (vif-cmd unpack-v4-32)))
-                (set! (-> v1-65 base) (&+ (the-as pointer a0-9) 16)))
-              (let* ((v1-66 arg0)
-                     (a0-11 (the-as object (-> v1-66 base))))
-                (set! (-> (the-as vector4w a0-11) x) s5-0)
-                (set! (-> (the-as vector4w a0-11) y) 0)
-                (set! (-> (the-as vector4w a0-11) z) 0)
-                (set! (-> (the-as vector4w a0-11) w) 0)
-                (set! (-> v1-66 base) (&+ (the-as pointer a0-11) 16)))
-              (let* ((v1-67 arg0)
-                     (a0-13 (the-as object (-> v1-67 base))))
-                (set! (-> (the-as dma-packet a0-13) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-                (set! (-> (the-as dma-packet a0-13) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
-                (set! (-> (the-as dma-packet a0-13) vif1) (new 'static 'vif-tag :cmd (vif-cmd flush) :msk #x1))
-                (set! (-> v1-67 base) (&+ (the-as pointer a0-13) 16)))
-              (set! s5-0 0))
-            (set! s0-0 (-> arg0 base))
-            (&+! (-> arg0 base) 16))
+              (.svf (&-> (the-as vector warp-params) quad) vf2)))
+          (&+! (-> dma-buff base) 48)
+          (+! chunk-count 1)
+          ;; One VIF UNPACK carries at most 85 three-quadword sprites. Two consecutive uploads fill
+          ;; the 170-sprite VU input area before address 511 receives the total and MSCALF starts it.
+          (when (= chunk-count 85)
+            (let ((chunk-end (-> dma-buff base)))
+              (set! (-> dma-buff base) upload-tag)
+              (let* ((packet-buffer dma-buff)
+                     (upload-packet (the-as dma-packet (-> packet-buffer base))))
+                (set! (-> upload-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (* 3 chunk-count)))
+                (set! (-> upload-packet vif0) (new 'static 'vif-tag))
+                (set! (-> upload-packet vif1)
+                      (new 'static
+                           'vif-tag
+                           :cmd (vif-cmd unpack-v4-32)
+                           :imm
+                           (shr (shl (+ (* 3 uploaded-count) SPRITE-DISTORT-VU-INPUT) 54) 54)
+                           :num
+                           (* 3 chunk-count)))
+                (set! (-> packet-buffer base) (&+ (the-as pointer upload-packet) 16)))
+              (set! (-> dma-buff base) chunk-end))
+            (set! chunk-count 0)
+            (+! uploaded-count 85)
+            (when (= uploaded-count 170)
+              (let* ((count-buffer dma-buff)
+                     (count-packet (the-as dma-packet (-> count-buffer base))))
+                (set! (-> count-packet dma) (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt)))
+                (set! (-> count-packet vif0) (new 'static 'vif-tag))
+                (set! (-> count-packet vif1) (new 'static 'vif-tag :imm SPRITE-DISTORT-VU-COUNT :num #x1 :cmd (vif-cmd unpack-v4-32)))
+                (set! (-> count-buffer base) (&+ (the-as pointer count-packet) 16)))
+              (let* ((data-buffer dma-buff)
+                     (count-data (the-as vector4w (-> data-buffer base))))
+                (set! (-> count-data x) uploaded-count)
+                (set! (-> count-data y) 0)
+                (set! (-> count-data z) 0)
+                (set! (-> count-data w) 0)
+                (set! (-> data-buffer base) (&+ (the-as pointer count-data) 16)))
+              (let* ((run-buffer dma-buff)
+                     (run-packet (the-as dma-packet (-> run-buffer base))))
+                (set! (-> run-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+                (set! (-> run-packet vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
+                (set! (-> run-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd flush) :msk #x1))
+                (set! (-> run-buffer base) (&+ (the-as pointer run-packet) 16)))
+              (set! uploaded-count 0))
+            (set! upload-tag (-> dma-buff base))
+            (&+! (-> dma-buff base) 16))
           (label cfg-21)))
       (cond
-        ((zero? s4-0) (set! (-> arg0 base) s0-0) (nop!) 0)
+        ((zero? chunk-count) (set! (-> dma-buff base) upload-tag) (nop!) 0)
         (else
-         (let ((v1-74 (-> arg0 base)))
-           (set! (-> arg0 base) s0-0)
-           (let* ((a0-15 arg0)
-                  (a1-10 (the-as object (-> a0-15 base))))
-             (set! (-> (the-as dma-packet a1-10) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (* 3 s4-0)))
-             (set! (-> (the-as dma-packet a1-10) vif0) (new 'static 'vif-tag))
-             (set! (-> (the-as dma-packet a1-10) vif1)
-                   (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :imm (shr (shl (+ (* 3 s5-0) 512) 54) 54) :num (* 3 s4-0)))
-             (set! (-> a0-15 base) (&+ (the-as pointer a1-10) 16)))
-           (set! (-> arg0 base) v1-74))))
-      (let ((v1-75 (+ s4-0 s5-0)))
-        (when (nonzero? v1-75)
-          (let* ((a0-17 arg0)
-                 (a1-12 (the-as object (-> a0-17 base))))
-            (set! (-> (the-as dma-packet a1-12) dma) (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt)))
-            (set! (-> (the-as dma-packet a1-12) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet a1-12) vif1) (new 'static 'vif-tag :imm #x1ff :num #x1 :cmd (vif-cmd unpack-v4-32)))
-            (set! (-> a0-17 base) (&+ (the-as pointer a1-12) 16)))
-          (let* ((a0-18 arg0)
-                 (a1-14 (the-as object (-> a0-18 base))))
-            (set! (-> (the-as vector4w a1-14) x) v1-75)
-            (set! (-> (the-as vector4w a1-14) y) 0)
-            (set! (-> (the-as vector4w a1-14) z) 0)
-            (set! (-> (the-as vector4w a1-14) w) 0)
-            (set! (-> a0-18 base) (&+ (the-as pointer a1-14) 16)))
-          (let ((v1-77 (the-as object (-> arg0 base))))
-            (set! (-> (the-as dma-packet v1-77) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-            (set! (-> (the-as dma-packet v1-77) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
-            (set! (-> (the-as dma-packet v1-77) vif1) (new 'static 'vif-tag :cmd (vif-cmd flush) :msk #x1))
-            (set! (-> arg0 base) (&+ (the-as pointer v1-77) 16))))))
+         (let ((chunk-end (-> dma-buff base)))
+           (set! (-> dma-buff base) upload-tag)
+           (let* ((packet-buffer dma-buff)
+                  (upload-packet (the-as dma-packet (-> packet-buffer base))))
+             (set! (-> upload-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc (* 3 chunk-count)))
+             (set! (-> upload-packet vif0) (new 'static 'vif-tag))
+             (set! (-> upload-packet vif1)
+                   (new 'static
+                        'vif-tag
+                        :cmd (vif-cmd unpack-v4-32)
+                        :imm
+                        (shr (shl (+ (* 3 uploaded-count) SPRITE-DISTORT-VU-INPUT) 54) 54)
+                        :num
+                        (* 3 chunk-count)))
+             (set! (-> packet-buffer base) (&+ (the-as pointer upload-packet) 16)))
+           (set! (-> dma-buff base) chunk-end))))
+      (let ((total-count (+ chunk-count uploaded-count)))
+        (when (nonzero? total-count)
+          (let* ((count-buffer dma-buff)
+                 (count-packet (the-as dma-packet (-> count-buffer base))))
+            (set! (-> count-packet dma) (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt)))
+            (set! (-> count-packet vif0) (new 'static 'vif-tag))
+            (set! (-> count-packet vif1) (new 'static 'vif-tag :imm SPRITE-DISTORT-VU-COUNT :num #x1 :cmd (vif-cmd unpack-v4-32)))
+            (set! (-> count-buffer base) (&+ (the-as pointer count-packet) 16)))
+          (let* ((data-buffer dma-buff)
+                 (count-data (the-as vector4w (-> data-buffer base))))
+            (set! (-> count-data x) total-count)
+            (set! (-> count-data y) 0)
+            (set! (-> count-data z) 0)
+            (set! (-> count-data w) 0)
+            (set! (-> data-buffer base) (&+ (the-as pointer count-data) 16)))
+          (let ((run-packet (the-as dma-packet (-> dma-buff base))))
+            (set! (-> run-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+            (set! (-> run-packet vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
+            (set! (-> run-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd flush) :msk #x1))
+            (set! (-> dma-buff base) (&+ (the-as pointer run-packet) 16))))))
     0
     (none)))
 

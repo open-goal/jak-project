@@ -16,7 +16,6 @@
    yeti-slave-appear-land
    yeti-slave-show-anims))
 
-
 (deftype yeti (process-drawable)
   ((child-process         (pointer yeti-slave) :overlay-at child)
    (desired-num-children  int32)
@@ -26,13 +25,12 @@
    (unknown1              basic)
    (unknown2              basic))
   (:methods
-   (yeti-method-20 (_type_ vector vector) symbol)
+   (find-slave-spawn-point! (_type_ vector vector) symbol)
    (aggro? (_type_ vector) symbol))
   (:states
    yeti-first-time-start
    yeti-idle
    yeti-resuming-start))
-
 
 (defskelgroup *yeti-sg*
   yeti
@@ -123,7 +121,7 @@
    (:accel-y (meters -0.0013333333))
    (:friction 0.99)
    (:timer (seconds 1.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 40))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -149,7 +147,7 @@
    (:accel-y (meters -0.0013333333))
    (:friction 0.99)
    (:timer (seconds 1.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 40))
    (:conerot-y (degrees 0) (degrees 360))))
 
@@ -176,14 +174,16 @@
    (:rotvel-z (degrees -2.4) (degrees 3.4666667))
    (:accel-y (meters -0.0013333333))
    (:timer (seconds 0.5))
-   (:flags (bit2 bit12))
+   (:flags (die-when-faded use-time-of-day-color))
    (:conerot-x (degrees 0) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
-(defbehavior yeti-slave-default-event-handler yeti-slave ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
-    (('attack) (nav-enemy-set-hit-from-direction arg0) (go-virtual nav-enemy-die))
-    (('touch) (nav-enemy-send-attack arg0 (the-as touching-shapes-entry (-> arg3 param 0)) 'generic))))
+(defbehavior yeti-slave-default-event-handler yeti-slave ((sender process) (argc int) (message symbol) (event-block event-message-block))
+  "Kill the slave when attacked and forward touch collisions through ordinary enemy attack
+   handling."
+  (case message
+    (('attack) (nav-enemy-set-hit-from-direction sender) (go-virtual nav-enemy-die))
+    (('touch) (nav-enemy-send-attack sender (the-as touching-shapes-entry (-> event-block param 0)) 'generic))))
 
 (defstate yeti-slave-appear-jump-up (yeti-slave)
   :event yeti-slave-default-event-handler
@@ -192,18 +192,18 @@
       (nav-enemy-neck-control-inactive)
       (set-time! (-> self state-time))
       (if (-> self nav-info move-to-ground) (move-to-ground (-> self collide-info) 40960.0 40960.0 #t (collide-kind background)))
-      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags navenmf1 navenmf2))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags noticed-before hostile))
       (set! (-> self state-timeout) (seconds 1))
       (set! (-> self ground-y) (-> self collide-info trans y))
       (spawn (-> self part) (-> self collide-info trans))
       (+! (-> self collide-info trans y) -12288.0)
-      (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+      (vector-copy! (-> self collide-info transv) *null-vector*)
       (set! (-> self collide-info transv y) (rand-vu-float-range 102400.0 114688.0)))
   :trans
     (behavior ()
       (when (and (< (-> self collide-info trans y) (-> self ground-y)) (< (-> self collide-info transv y) 0.0))
         (set! (-> self collide-info trans y) (-> self ground-y))
-        (set! (-> self collide-info transv quad) (-> *null-vector* quad))
+        (vector-copy! (-> self collide-info transv) *null-vector*)
         (go yeti-slave-appear-land))
       (let* ((s5-0 (-> self node-list))
              (a0-2 (-> s5-0 length))
@@ -213,10 +213,7 @@
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group! yeti-jump-ja :num! (seek!) :frame-num (ja-aframe 10.0 0))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! yeti-jump-ja :num! (seek!) :frame-num (ja-aframe 10.0 0))
       (loop
         (suspend)))
   :post nav-enemy-falling-post)
@@ -226,10 +223,7 @@
   :code
     (behavior ()
       (ja-channel-push! 1 (seconds 0.05))
-      (ja-no-eval :group! yeti-jump-land-ja :num! (seek! max 0.5) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! max 0.5)))
+      (ja-play :group! yeti-jump-land-ja :num! (seek! max 0.5) :frame-num 0.0)
       (if (target-in-range? self (-> self nav-info notice-distance)) (go-virtual nav-enemy-chase) (go-virtual nav-enemy-idle)))
   :post ja-post)
 
@@ -249,35 +243,21 @@
       (cond
         ((ja-group? yeti-give-up-hop-ja)
          (ja-channel-push! 1 (seconds 0.15))
-         (ja-no-eval :group! yeti-walk-ja :num! (seek!) :frame-num (ja-aframe 12.0 0))
-         (until (ja-done? 0)
-           (suspend)
-           (ja :num! (seek!))))
+         (ja-play :group! yeti-walk-ja :num! (seek!) :frame-num (ja-aframe 12.0 0)))
         (else (ja-channel-push! 1 (seconds 0.2))))
       (loop
-        (ja-no-eval :group! yeti-walk-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))
+        (ja-play :group! yeti-walk-ja :num! (seek!) :frame-num 0.0)
         (when (nav-enemy-rnd-percent? 0.2)
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
           (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
           (let ((gp-1 (nav-enemy-rnd-int-range 2 6)))
             (dotimes (s5-0 gp-1)
-              (ja-no-eval :group! yeti-idle-ja :num! (seek!) :frame-num 0.0)
-              (until (ja-done? 0)
-                (ja-blend-eval)
-                (suspend)
-                (ja :num! (seek!)))))
+              (ja-play :group! yeti-idle-ja :num! (seek!) :frame-num 0.0 (ja-blend-eval))))
           (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
-          (ja-no-eval :group! yeti-walk-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (ja-blend-eval)
-            (suspend)
-            (ja :num! (seek!)))))))
+          (ja-play :group! yeti-walk-ja :num! (seek!) :frame-num 0.0 (ja-blend-eval))))))
 
 (defstate nav-enemy-chase (yeti-slave)
   :virtual #t
@@ -288,11 +268,11 @@
           ((ja-group? yeti-jump-land-ja)
            (ja-no-eval :num! (seek!))
            (ja-channel-push! 1 (seconds 0.17))
-           (ja-no-eval :group! (-> self draw art-group data (-> self nav-info run-anim)) :num! (seek! max f30-0) :frame-num 0.0)
-           (until (ja-done? 0)
-             (ja-blend-eval)
-             (suspend)
-             (ja :num! (seek! max f30-0))))
+           (ja-play :group!
+                    (-> self draw art-group data (-> self nav-info run-anim))
+                    :num! (seek! max f30-0)
+                    :frame-num 0.0
+                    (ja-blend-eval)))
           (else
            (ja-channel-push! 1 (seconds 0.2))
            (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
@@ -307,13 +287,10 @@
     (behavior ()
       (set! (-> self turn-time) (seconds 0.2))
       (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-        (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+        (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags attack-landed))
                   (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5)))
           (ja-channel-push! 1 (seconds 0.1))
-          (ja-no-eval :group! yeti-win-ja :num! (seek! (ja-aframe 68.0 0) f30-0) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek! (ja-aframe 68.0 0) f30-0))))
+          (ja-play :group! yeti-win-ja :num! (seek! (ja-aframe 68.0 0) f30-0) :frame-num 0.0))
         (loop
           (when (not (nav-enemy-facing-player? 2730.6667))
             (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
@@ -327,16 +304,10 @@
               (ja :num! (loop! 0.75)))
             (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel)))
           (if (not (ja-group? yeti-idle-ja)) (ja-channel-push! 1 (seconds 0.2)))
-          (ja-no-eval :group! yeti-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek! max f30-0)))
+          (ja-play :group! yeti-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
           (when (nav-enemy-rnd-percent? 0.3)
             (ja-channel-push! 1 (seconds 0.1))
-            (ja-no-eval :group! yeti-win-ja :num! (seek! (ja-aframe 68.0 0) f30-0) :frame-num 0.0)
-            (until (ja-done? 0)
-              (suspend)
-              (ja :num! (seek! (ja-aframe 68.0 0) f30-0))))))))
+            (ja-play :group! yeti-win-ja :num! (seek! (ja-aframe 68.0 0) f30-0) :frame-num 0.0))))))
 
 (defstate nav-enemy-give-up (yeti-slave)
   :virtual #t
@@ -349,20 +320,17 @@
             (s5-0 (target-pos 0)))
         (when (< (fabs (deg-diff (y-angle s4-0) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s5-0 (-> s4-0 trans)))))
                  12743.111)
-          (ja-no-eval :group! yeti-give-up-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!)))))
-      (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
+          (ja-play :group! yeti-give-up-ja :num! (seek!) :frame-num 0.0)))
+      (logclear! (-> self nav flags) (nav-control-flags blocked reached-destination))
       (nav-enemy-get-new-patrol-point)
-      (ja-no-eval :group! yeti-give-up-hop-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (seek-to-point-toward-point! (-> self collide-info)
-                                     (-> self nav destination-pos)
-                                     (-> self rotate-speed)
-                                     (-> self turn-time))
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group!
+               yeti-give-up-hop-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (seek-to-point-toward-point! (-> self collide-info)
+                                            (-> self nav destination-pos)
+                                            (-> self rotate-speed)
+                                            (-> self turn-time)))
       (go-virtual nav-enemy-patrol)))
 
 (defstate nav-enemy-jump-land (yeti-slave)
@@ -371,18 +339,17 @@
     (behavior ()
       (ja-no-eval :num! (seek!))
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info jump-land-anim))
-                  :num!
-                  (seek! (ja-aframe 32.0 0) 0.5)
-                  :frame-num 0.0)
-      (until (ja-done? 0)
-        (ja-blend-eval)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 32.0 0) 0.5)))
+      (ja-play :group!
+               (-> self draw art-group data (-> self nav-info jump-land-anim))
+               :num!
+               (seek! (ja-aframe 32.0 0) 0.5)
+               :frame-num 0.0
+               (ja-blend-eval))
       (go-virtual nav-enemy-chase)))
 
 (defmethod initialize-collision ((this yeti-slave))
+  "Create the slave's moving collision shape with two body spheres and one joint-attached attack
+   sphere."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
@@ -421,7 +388,8 @@
   0
   (none))
 
-(defmethod nav-enemy-method-48 ((this yeti-slave))
+(defmethod post-init-setup! ((this yeti-slave))
+  "Initialize the slave skeleton, navigation defaults, origin joint, and neck joints."
   (initialize-skeleton this *yeti-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (init-defaults! this *yeti-nav-enemy-info*)
@@ -432,53 +400,63 @@
   (none))
 
 (defmethod deactivate ((this yeti-slave))
+  "Stop the appearance-particle controller before ordinary drawable deactivation."
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
   ((method-of-type process-drawable deactivate) this)
   (none))
 
 (defmethod relocate ((this yeti-slave) (offset int))
+  "Adjust the appearance-particle controller pointer before parent relocation."
   (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
   (call-parent-method this offset))
 
-(defbehavior yeti-slave-init-by-other yeti-slave ((arg0 entity) (arg1 yeti) (arg2 vector) (arg3 vector) (arg4 symbol))
+(defbehavior yeti-slave-init-by-other yeti-slave ((unused-entity entity) (parent yeti) (spawn-position vector) (spawn-direction vector) (resume? symbol))
+  "Initialize a slave at spawn-position facing spawn-direction, then enter ordinary idle or play
+   its appearance jump."
   (set! (-> self part) (create-launch-control group-yeti-slave-appear1 self))
   (set! (-> self part2) (create-launch-control group-yeti-slave-appear2 self))
   (initialize-collision self)
-  (set! (-> self collide-info trans quad) (-> arg2 quad))
+  (vector-copy! (-> self collide-info trans) spawn-position)
   (vector-identity! (-> self collide-info scale))
-  (forward-up->quaternion (-> self collide-info quat) arg3 *up-vector*)
-  (set! (-> self entity) (-> arg1 entity))
-  (nav-enemy-method-48 self)
-  (if arg4 (go-virtual nav-enemy-idle) (go yeti-slave-appear-jump-up))
+  (forward-up->quaternion (-> self collide-info quat) spawn-direction *up-vector*)
+  (set! (-> self entity) (-> parent entity))
+  (post-init-setup! self)
+  (if resume? (go-virtual nav-enemy-idle) (go yeti-slave-appear-jump-up))
   (none))
 
-(defmethod aggro? ((this yeti) (arg0 vector))
-  (let ((s5-0 (the-as (pointer process-tree) (-> this child-process))))
-    (while s5-0
-      (if (< (vector-vector-xz-distance-squared arg0 (-> (the-as (pointer yeti-slave) s5-0) 0 collide-info trans)) 603979800.0)
+(defmethod aggro? ((this yeti) (candidate-position vector))
+  "Return true when candidate-position is at least six meters from the player and every existing
+   slave, making it suitable for a new spawn."
+  (let ((child (the-as (pointer process-tree) (-> this child-process))))
+    (while child
+      (if (< (vector-vector-xz-distance-squared candidate-position (-> (the-as (pointer yeti-slave) child) 0 collide-info trans))
+             603979800.0)
         (return #f))
-      (set! s5-0 (-> s5-0 0 brother))))
+      (set! child (-> child 0 brother))))
   (when *target*
-    (if (< (vector-vector-xz-distance-squared arg0 (target-pos 0)) 603979800.0) (return #f)))
+    (if (< (vector-vector-xz-distance-squared candidate-position (target-pos 0)) 603979800.0) (return #f)))
   #t)
 
-(defmethod yeti-method-20 ((this yeti) (arg0 vector) (arg1 vector))
-  (let ((s3-0 (-> this path curve num-cverts)))
-    (if (<= s3-0 0) (return #f))
-    (let ((s1-0 (rand-vu-int-count s3-0))
-          (s2-0 s3-0))
-      (while (> s2-0 0)
-        (eval-path-curve-div! (-> this path) arg0 (the float s1-0) 'interp)
-        (when (aggro? this arg0)
+(defmethod find-slave-spawn-point! ((this yeti) (spawn-position vector) (spawn-direction vector))
+  "Search the path control vertices for a point clear of the player and existing slaves. Write the
+   selected position and a normalized facing direction, then return true; return false when no
+   control vertex is suitable."
+  (let ((num-vertices (-> this path curve num-cverts)))
+    (if (<= num-vertices 0) (return #f))
+    (let ((vertex-index (rand-vu-int-count num-vertices))
+          (tries-left num-vertices))
+      (while (> tries-left 0)
+        (eval-path-curve-div! (-> this path) spawn-position (the float vertex-index) 'interp)
+        (when (aggro? this spawn-position)
           (cond
-            (*target* (vector-! arg1 (target-pos 0) arg0) (set! (-> arg1 y) 0.0))
+            (*target* (vector-! spawn-direction (target-pos 0) spawn-position) (set! (-> spawn-direction y) 0.0))
             (else
-             (set-vector! arg1 (rand-vu-float-range -4096.0 4096.0) 0.0 (rand-vu-float-range -4096.0 4096.0) 1.0)
-             (+! (-> arg1 x) 409.6)))
-          (vector-normalize! arg1 1.0)
+             (set-vector! spawn-direction (rand-vu-float-range -4096.0 4096.0) 0.0 (rand-vu-float-range -4096.0 4096.0) 1.0)
+             (+! (-> spawn-direction x) 409.6)))
+          (vector-normalize! spawn-direction 1.0)
           (return #t))
-        (set! s1-0 (mod (+ s1-0 1) s3-0))
-        (+! s2-0 -1))))
+        (set! vertex-index (mod (+ vertex-index 1) num-vertices))
+        (+! tries-left -1))))
   #f)
 
 (defstate yeti-first-time-start (yeti)
@@ -504,7 +482,7 @@
         (while (< gp-0 (-> self desired-num-children))
           (let ((s5-0 (new 'stack-no-clear 'vector))
                 (s4-0 (new 'stack-no-clear 'vector)))
-            (if (not (yeti-method-20 self s5-0 s4-0)) (go yeti-idle))
+            (if (not (find-slave-spawn-point! self s5-0 s4-0)) (go yeti-idle))
             (process-spawn yeti-slave (-> self entity) self s5-0 s4-0 #t :to self))
           (+! gp-0 1)))
       (go yeti-idle)))
@@ -529,20 +507,22 @@
            (when (time-elapsed? (-> self state-time) (-> self spawn-delay))
              (let ((gp-0 (new 'stack-no-clear 'vector))
                    (s5-0 (new 'stack-no-clear 'vector)))
-               (when (yeti-method-20 self gp-0 s5-0)
+               (when (find-slave-spawn-point! self gp-0 s5-0)
                  (process-spawn yeti-slave (-> self entity) self gp-0 s5-0 #f :to self)
                  (set! (-> self spawn-delay) 0)
                  0)))))
         (suspend))))
 
-(defmethod init-from-entity! ((this yeti) (arg0 entity-actor))
+(defmethod init-from-entity! ((this yeti) (entity-record entity-actor))
+  "Initialize the yeti population controller from its path and placement settings, then wait for
+   the player's first approach or restore the completed population."
   (set! (-> this spawn-delay) 0)
   (set! (-> this root) (new 'process 'trsqv))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this entity-record)
   (set! (-> this desired-num-children)
-        (res-lump-value arg0 'num-lurkers int :default (the-as uint128 (-> this path curve num-cverts))))
-  (set! (-> this first-time-spawn-dist) (res-lump-float arg0 'notice-dist :default 204800.0))
+        (res-lump-value entity-record 'num-lurkers int :default (the-as uint128 (-> this path curve num-cverts))))
+  (set! (-> this first-time-spawn-dist) (res-lump-float entity-record 'notice-dist :default 204800.0))
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
     (go yeti-resuming-start)
     (go yeti-first-time-start))

@@ -6,7 +6,7 @@
 
 ;; The "merc" renderer is the main foreground renderer.
 ;; All foreground objects are stored in merc format.
-;; See bones.gc for where it's actually used and the pc port changes.
+;; bones builds its matrix and fragment uploads.
 
 ;; DECOMP BEGINS
 
@@ -21,11 +21,9 @@
 
 (set! (-> ripple-merc-query heap-base) 16)
 
-;; header to fragments uploaded to VU.
-;; This gets upacked with v4_8 mode.
-;; for a more detailed description of the various formats, see extract_merc.cpp
-;; Note that a fragment may rely on vertices, GS state, and matrices from a previous
-;; fragment in the same merc "effect".
+;; Header for one VU fragment, unpacked with V4-8.  Its offsets address the expanded VU layout,
+;; while the mm-quadword fields describe the compact main-memory record.  A fragment may retain
+;; vertices, GS state, and matrices installed by an earlier fragment in the same effect.
 (deftype merc-byte-header (structure)
   ;; these offsets are after unpacking/upload to VU.
   ((srcdest-off uint8) ;; location of srcdst table for vertex copying
@@ -44,16 +42,15 @@
    (mat-slot uint8 10) ;; which matrices to upload where for this fragment
    ))
 
-;; merc VU fragment: contains the header and data.
+;; A MERC VU fragment.
 (deftype merc-fragment (structure)
   ((header merc-byte-header :inline)
    (rest   uint8 1))
   (:methods
    (login-adgifs (_type_) none)))
 
-;; packed merc vertex, before unpack by VIF
-;; the meaning of flags is situation dependent in the renderer, see extract_merc.cpp
-;; for the details.
+;; Packed MERC vertex before VIF expansion.  The matrix and destination bytes also carry strip and
+;; matrix-reuse flags interpreted according to the vertex's one-, two-, or three-matrix section.
 (deftype merc-vtx (structure)
   ((mat-0 uint8) ;; matrix number for first bone (and flags)
    (mat-1 uint8) ;; matrix number for second bone (and flags)
@@ -79,9 +76,9 @@
    (kick-info-step   uint8)
    (hword-cnt        uint8)))
 
-(defun merc-fragment-fp-data ((arg0 merc-fragment))
-  "Get the floating-point data of a merc-fragment"
-  (the merc-fp-header (&+ arg0 (the-as uint (shl (-> arg0 header mm-quadword-fp-off) 4)))))
+(defun merc-fragment-fp-data ((fragment merc-fragment))
+  "Return the floating-point header inside fragment."
+  (the-as merc-fp-header (+ (the-as uint fragment) (* (-> fragment header mm-quadword-fp-off) 16))))
 
 ;; a description of a matrix upload to merc
 (deftype merc-mat-dest (structure)
@@ -110,11 +107,12 @@
    (nonzero-index-count uint8)
    (bt-index            uint8 :dynamic)))
 
-;; info for environment map "extra"
+;; Environment-map strength is clamp(fade0 * camera-distance + fade1).  tint is multiplied by the
+;; current time-of-day environment color before the extra pass is drawn.
 (deftype mei-envmap-tint (structure)
   ((fade0 float)
    (fade1 float)
-   (tint  uint32)
+   (tint  rgba)
    (dummy int32)))
 
 ;; info for texture scrolling "extra"
@@ -142,6 +140,20 @@
    (ripple-offset         uint8)
    (dummy                 uint8 12)))
 
+;; Per-effect features. Translucent geometry is moved to the final effect slot during login and its
+;; bit is copied into the working header's use-translucent byte before drawing.
+(defenum effect-bits
+  :type uint8
+  :bitfield #t
+  (texscroll 0)
+  (translucent 1)
+  (ripple 2)
+  (effect-bit3 3)
+  (effect-bit4 4)
+  (effect-bit5 5)
+  (effect-bit6 6)
+  (effect-bit7 7))
+
 ;; a collection of fragments that must be sent all together.
 ;; and their extra effects.
 (deftype merc-effect (structure)
@@ -150,7 +162,7 @@
    (blend-data       merc-blend-data)
    (blend-ctrl       merc-blend-ctrl)
    (dummy0           uint8)
-   (effect-bits      uint8)
+   (effect-bits      effect-bits)
    (frag-count       uint16)
    (blend-frag-count uint16)
    (tri-count        uint16)
@@ -162,10 +174,8 @@
   (:methods
    (login-adgifs (_type_) none)))
 
-;; eye info (for a single eye)
-;; there's a pupil, iris, and lid. The pupil and iris can move around (together),
-;; The pupil/iris can be scaled (independtenly)
-;; the eyelid goes up and down
+;; Eye material setup for one runtime eye slot.  The iris, pupil, and lid shaders are shared by the
+;; independently animated left and right eye state in eye-control.
 (deftype merc-eye-ctrl (structure)
   ((eye-slot      int8)
    (shader-offset int8)
@@ -175,7 +185,8 @@
    (pupil-shader  adgif-shader :inline :overlay-at (-> shader 1))
    (lid-shader    adgif-shader :inline :overlay-at (-> shader 2))))
 
-;; single frame for eye animation
+;; One eye's packed animation sample.  Translation and blink are signed fixed-point values; the
+;; three scales are unsigned fixed-point values.
 (deftype merc-eye-anim-frame (structure)
   ((pupil-trans-x int8)
    (pupil-trans-y int8)
@@ -186,13 +197,16 @@
    (dword         uint64 :overlay-at pupil-trans-x))
   :pack-me)
 
-;; just an array of eye anim frames.
+;; Packed samples are stored as left/right pairs for every animation frame.  max-frame is the last
+;; valid frame index.
 (deftype merc-eye-anim-block (structure)
   ((max-frame int16)
    (data      merc-eye-anim-frame :inline :dynamic :offset 8)))
 
-;; metadata for merc art for a single model
-;; mostly just stats and parameters used in dma/rendering.
+;; Asset-wide MERC statistics and quantization parameters.  The region from fragment-count through
+;; num-verts is also the five-qword working header used by the generic path: bones copies the asset
+;; header, then overwrites the overlay fields with per-draw clipping, ripple, death, and shader
+;; state.
 (deftype merc-ctrl-header (structure)
   ((xyz-scale              float)
    (st-magic               uint32)
@@ -241,7 +255,8 @@
    (header     merc-ctrl-header :inline)
    (effect     merc-effect :inline :dynamic)))
 
-;; low memory upload to vu1 for merc (which merc later writes over)
+;; The first eight quadwords of MERC VU1 data: GS packet tags, camera projection constants, and fog.
+;; Later stages reuse this low-memory area after initialization.
 (deftype merc-vu1-low-mem (structure)
   ((tri-strip-gif gs-gif-tag :inline)
    (ad-gif        gs-gif-tag :inline)
@@ -281,6 +296,7 @@
    (new (symbol type) _type_)))
 
 (defmethod new ripple-control ((allocation symbol) (type-to-make type))
+  "Allocate disabled ripple state with distant default fade limits."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this global-scale) 0.0)
     (set! (-> this last-frame-scale) -0.001)

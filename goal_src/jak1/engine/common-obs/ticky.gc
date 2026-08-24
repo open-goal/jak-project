@@ -15,28 +15,34 @@
    (reached-delay? (_type_ time-frame) symbol)
    (completed? (_type_) symbol)))
 
-(defmethod sleep ((this ticky) (arg0 time-frame))
+(defmethod sleep ((this ticky) (duration time-frame))
+  "Start a countdown lasting duration. Begin the accelerating stopwatch ticks during its final
+   four seconds, or immediately when duration is shorter."
   (set-time! (-> this starting-time))
-  (set! (-> this delay-til-timeout) arg0)
-  (set! (-> this delay-til-ramp) (max 0 (+ arg0 (seconds -4))))
+  (set! (-> this delay-til-timeout) duration)
+  (set! (-> this delay-til-ramp) (max 0 (+ duration (seconds -4))))
   (set! (-> this last-tick-time) 0)
   0
   (none))
 
 (defmethod completed? ((this ticky))
-  (let ((gp-0 #f))
-    (let ((v1-2 (- (current-time) (-> this starting-time))))
+  "Return true once the countdown duration has elapsed. Before completion, play the stopwatch
+   sound at intervals that shrink linearly from 105 ticks to 41 ticks over the final four
+   seconds."
+  (let ((complete? #f))
+    (let ((elapsed (- (current-time) (-> this starting-time))))
       (cond
-        ((>= v1-2 (-> this delay-til-timeout)) (set! gp-0 #t))
+        ((>= elapsed (-> this delay-til-timeout)) (set! complete? #t))
         (else
-         (let* ((f0-1 (fmin 1.0
-                            (/ (the float (max 0 (- v1-2 (-> this delay-til-ramp))))
-                               (the float (- (-> this delay-til-timeout) (-> this delay-til-ramp))))))
-                (v1-7 (the int (lerp 105.0 41.0 f0-1))))
-           (when (time-elapsed? (-> this last-tick-time) v1-7)
+         (let* ((ramp-progress (fmin 1.0
+                                     (/ (the float (max 0 (- elapsed (-> this delay-til-ramp))))
+                                        (the float (- (-> this delay-til-timeout) (-> this delay-til-ramp))))))
+                (tick-interval (the int (lerp 105.0 41.0 ramp-progress))))
+           (when (time-elapsed? (-> this last-tick-time) tick-interval)
              (set-time! (-> this last-tick-time))
              (sound-play "stopwatch"))))))
-    gp-0))
+    complete?))
 
-(defmethod reached-delay? ((this ticky) (arg0 time-frame))
-  (time-elapsed? (-> this starting-time) arg0))
+(defmethod reached-delay? ((this ticky) (delay time-frame))
+  "Return true once delay has elapsed since the countdown started."
+  (time-elapsed? (-> this starting-time) delay))

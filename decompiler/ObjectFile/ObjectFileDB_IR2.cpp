@@ -5,6 +5,7 @@
 
 #include "ObjectFileDB.h"
 
+#include "common/demacro/demacro.h"
 #include "common/formatter/formatter.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
@@ -611,6 +612,17 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
             try_lookup(config.stack_type_casts_by_function_by_stack_offset, func_name);
         func.ir2.env.set_stack_casts(stack_casts);
 
+        auto scratchpad_type = config.scratchpad_types_by_object.find(obj_name);
+        if (scratchpad_type != config.scratchpad_types_by_object.end()) {
+          func.ir2.env.set_scratchpad_type(TypeSpec(scratchpad_type->second.type_name));
+          std::vector<FieldReverseLookupScoreOverride> score_overrides;
+          for (const auto& override_config : scratchpad_type->second.field_score_overrides) {
+            score_overrides.push_back(
+                {override_config.type_name, override_config.field_name, override_config.score});
+          }
+          func.ir2.env.set_reverse_lookup_field_score_overrides(std::move(score_overrides));
+        }
+
         if (config.hacks.pair_functions_by_name.find(func_name) !=
             config.hacks.pair_functions_by_name.end()) {
           func.ir2.env.set_sloppy_pair_typing();
@@ -791,6 +803,11 @@ void ObjectFileDB::ir2_build_expressions(int seg, const Config& config, ObjectFi
         func.ir2.env.types_succeeded) {
       auto name = func.name();
       auto arg_config = config.function_arg_names.find(name);
+      if (arg_config == config.function_arg_names.end() &&
+          func.guessed_name.kind == FunctionName::FunctionKind::UNIDENTIFIED) {
+        arg_config = config.function_arg_names.find(
+            fmt::format("(anon-function * {})", func.guessed_name.object_name));
+      }
       auto var_config = config.function_var_overrides.find(name);
       if (convert_to_expressions(func.ir2.top_form, *func.ir2.form_pool, func,
                                  arg_config != config.function_arg_names.end()
@@ -875,6 +892,11 @@ void ObjectFileDB::ir2_write_results(const fs::path& output_dir,
     file_util::write_text_file(file_name, file_text);
 
     auto unformatted_code = ir2_final_out(obj, imports, {});
+    if (!config.demacro_file.empty()) {
+      unformatted_code =
+          demacro::rewrite(unformatted_code, file_util::get_file_path({config.demacro_file}))
+              .source;
+    }
     auto final_name = output_dir / (obj.to_unique_name() + "_disasm.gc");
     if (config.format_code) {
       const auto formatted_code = formatter::format_code(unformatted_code);

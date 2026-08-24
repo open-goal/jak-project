@@ -6,8 +6,8 @@
 ;; DECOMP BEGINS
 
 (deftype assistant (process-taskable)
+  "Keira at the Sandover Village workshop."
   ((sound-id sound-id)))
-
 
 (defskelgroup *assistant-sg*
   assistant
@@ -17,7 +17,8 @@
   :bounds (static-spherem 0 0 0 2)
   :shadow assistant-shadow-mg)
 
-(defmethod process-taskable-method-52 ((this assistant))
+(defmethod setup-shadow-settings! ((this assistant))
+  "Set Keira's shadow clipping planes around her root position."
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((f0-0 (-> this root trans y)))
@@ -25,10 +26,12 @@
         0
         (let ((a0-4 v1-1)) (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))))
+      (logclear! (-> v1-1 settings flags) (shadow-flags scissor-top))))
   (none))
 
 (defmethod draw-npc-shadow ((this assistant))
+  "Update Keira's shadow and sun direction when her highest-detail geometry was drawn; otherwise
+   disable the shadow."
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
@@ -38,12 +41,14 @@
     (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
   (none))
 
-(defmethod play-anim! ((this assistant) (arg0 symbol))
+(defmethod play-anim! ((this assistant) (commit? symbol))
+  "Choose Keira's conversation animation for the current Blue Eco switch or Zoomer stage. When
+   commit? is true, apply the corresponding introduction or reminder progression."
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
      (case (current-task (-> this tasks))
        (((game-task jungle-eggtop))
-        (when arg0
+        (when commit?
           (let* ((s5-1 (-> this tasks))
                  (s4-0 (method-of-object s5-1 save-reminder)))
             (s4-0 s5-1 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1))
@@ -81,7 +86,7 @@
               (1138 blackout 0)
               (1216 joint "camera"))))
        (else
-        (if arg0 (close-status! (-> this tasks) (task-status need-introduction)))
+        (if commit? (close-status! (-> this tasks) (task-status need-introduction)))
         (new 'static
              'spool-anim
              :name "assistant-introduction-race-bike"
@@ -100,13 +105,13 @@
             (not (closed? (-> this tasks) (game-task misty-bike) (task-status need-introduction))))
         (new 'static 'spool-anim :name "assistant-reminder-1-blue-eco-switch" :index 11 :parts 3 :command-list '()))
        ((zero? (get-reminder (-> this tasks) 2))
-        (if arg0 (save-reminder (-> this tasks) 1 2))
+        (if commit? (save-reminder (-> this tasks) 1 2))
         (new 'static 'spool-anim :name "assistant-reminder-1-race-bike" :index 13 :parts 3 :command-list '()))
        (else
-        (if arg0 (save-reminder (-> this tasks) 0 2))
+        (if commit? (save-reminder (-> this tasks) 0 2))
         (new 'static 'spool-anim :name "assistant-reminder-1-blue-eco-switch" :index 11 :parts 3 :command-list '()))))
     (else
-     (if arg0
+     (if commit?
        (format 0
                "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
                (-> this name)
@@ -114,18 +119,21 @@
      (-> this draw art-group data 3))))
 
 (defmethod get-art-elem ((this assistant))
+  "Return Keira's active art element."
   (-> this draw art-group data 3))
 
-(defmethod process-taskable-method-43 ((this assistant))
-  (let ((s5-0 (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)))
-    (when s5-0
-      (let ((f0-2 (rand-float-gen)))
+(defmethod try-play-ambient-chatter ((this assistant))
+  "When the target is within thirty metres, the thirty-second cooldown has elapsed, and the target
+   is not more than four metres below her, choose one of five workshop lines."
+  (let ((target-offset (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)))
+    (when target-offset
+      (let ((choice (rand-float-gen)))
         (cond
-          ((< 16384.0 (-> s5-0 y)) #f)
-          ((< 0.8 f0-2) (play-ambient (-> this ambient) "ASSTLP01" #f (-> this root trans)))
-          ((< 0.6 f0-2) (play-ambient (-> this ambient) "ASSTLP04" #f (-> this root trans)))
-          ((< 0.4 f0-2) (play-ambient (-> this ambient) "ASSTLP05" #f (-> this root trans)))
-          ((< 0.2 f0-2) (play-ambient (-> this ambient) "ASSTLP02" #f (-> this root trans)))
+          ((< 16384.0 (-> target-offset y)) #f)
+          ((< 0.8 choice) (play-ambient (-> this ambient) "ASSTLP01" #f (-> this root trans)))
+          ((< 0.6 choice) (play-ambient (-> this ambient) "ASSTLP04" #f (-> this root trans)))
+          ((< 0.4 choice) (play-ambient (-> this ambient) "ASSTLP05" #f (-> this root trans)))
+          ((< 0.2 choice) (play-ambient (-> this ambient) "ASSTLP02" #f (-> this root trans)))
           (else (play-ambient (-> this ambient) "ASSTLP03" #f (-> this root trans))))))))
 
 (defstate idle (assistant)
@@ -134,59 +142,37 @@
     (behavior ()
       (if (!= (ja-group) assistant-idle-leaning-right-ja) (ja-channel-push! 1 (seconds 0.2)))
       (loop
-        (process-taskable-method-43 self)
+        (try-play-ambient-chatter self)
         (ja :group! assistant-idle-leaning-right-ja)
         (countdown (gp-0 (+ (the int (rand-float-gen)) 2))
-          (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!))))
+          (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0))
         (cond
           ((< (rand-float-gen) 0.66)
-           (ja-no-eval :group! assistant-idle-transition-to-welding-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
-           (sound-play "welding-loop" :id (-> self sound-id) :position (the-as symbol (target-pos 0)))
+           (ja-play :group! assistant-idle-transition-to-welding-ja :num! (seek!) :frame-num 0.0)
+           (sound-play "welding-loop" :id (-> self sound-id) :position (target-pos 0))
            (ja :group! assistant-idle-welding-ja)
            (let* ((f30-0 4.0)
                   (v1-76 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                   (v1-77 (the-as number (logior #x3f800000 v1-76))))
              (countdown (gp-2 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-77)))) 4))
-               (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-lod0-jg torchTIP)))
-                 (suspend)
-                 (ja :num! (seek!)))
-               (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
-               (until (ja-done? 0)
-                 (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-lod0-jg torchTIP)))
-                 (suspend)
-                 (ja :num! (seek! 0.0)))))
+               (ja-play :group! (ja-group)
+                        :num! (seek!)
+                        :frame-num 0.0
+                        (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-lod0-jg torchTIP))))
+               (ja-play :group! (ja-group)
+                        :num!
+                        (seek! 0.0)
+                        :frame-num
+                        max
+                        (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node assistant-lod0-jg torchTIP))))))
            (sound-stop (-> self sound-id))
-           (ja-no-eval :group! assistant-idle-transition-to-welding-ja :num! (seek! 0.0) :frame-num max)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek! 0.0)))
-           (when (< (rand-float-gen) 0.66)
-             (ja-no-eval :group! assistant-idle-wiping-brow-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))))
+           (ja-play :group! assistant-idle-transition-to-welding-ja :num! (seek! 0.0) :frame-num max)
+           (if (< (rand-float-gen) 0.66) (ja-play :group! assistant-idle-wiping-brow-ja :num! (seek!) :frame-num 0.0)))
           (else
-           (ja-no-eval :group! assistant-idle-transition-right-to-left-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+           (ja-play :group! assistant-idle-transition-right-to-left-ja :num! (seek!) :frame-num 0.0)
            (countdown (gp-3 (+ (the int (rand-float-gen)) 1))
-             (ja-no-eval :group! assistant-idle-leaning-left-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!))))
-           (ja-no-eval :group! assistant-idle-transition-left-to-right-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))))))
+             (ja-play :group! assistant-idle-leaning-left-ja :num! (seek!) :frame-num 0.0))
+           (ja-play :group! assistant-idle-transition-left-to-right-ja :num! (seek!) :frame-num 0.0))))))
 
 (defpartgroup group-assistant-torch
   :id 122
@@ -208,7 +194,7 @@
    (:a 32.0 64.0)
    (:fade-a -6.4)
    (:timer (seconds 0.035))
-   (:flags (bit2 bit3))))
+   (:flags (die-when-faded glow))))
 
 (defpart 366
   :init-specs
@@ -228,7 +214,7 @@
    (:accel-y (meters -0.002))
    (:friction 0.93)
    (:timer (seconds 4))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:userdata 140288.0)
    (:func 'check-drop-level-assistant)
    (:conerot-x (degrees 0) (degrees 180))
@@ -247,21 +233,25 @@
    (:fade-a -0.85333335)
    (:accel-y (meters -0.00016666666))
    (:timer (seconds 1))
-   (:flags (bit2))
+   (:flags (die-when-faded))
    (:conerot-x (degrees 50.000004) (degrees 30))
    (:conerot-y (degrees 0) (degrees 360))))
 
-(defun check-drop-level-assistant ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
-  (when (< (-> arg2 y) (-> arg1 user-float))
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (sp-kill-particle arg0 arg1)
+(defun check-drop-level-assistant ((system sparticle-system) (particle sparticle-cpuinfo) (position vector))
+  "Kill a welding spark below its drop height and launch a small impact burst, occasionally playing
+   a water-drop sound."
+  (when (< (-> position y) (-> particle user-float))
+    (let ((impact-position (new 'stack-no-clear 'vector)))
+      (sp-kill-particle system particle)
       (if (< (rand-float-gen) 0.25) (sound-play "water-drop"))
-      (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
-      (launch-particles (-> *part-id-table* 367) gp-0)))
+      (set-vector! impact-position (-> position x) (-> particle user-float) (-> position z) 1.0)
+      (launch-particles (-> *part-id-table* 367) impact-position)))
   (none))
 
-(defmethod init-from-entity! ((this assistant) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *assistant-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this assistant) (source-entity entity-actor))
+  "Initialize Keira's workshop actor, welding particles, task state, sound, and lighting, then
+   enter idle or deactivate her according to Fire Canyon progress."
+  (init-as-taskable! this source-entity *assistant-sg* 3 31 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this bounce-away) #f)
   (set! (-> this part) (create-launch-control group-assistant-torch this))
   (set! (-> this tasks) (get-task-control (game-task jungle-eggtop)))

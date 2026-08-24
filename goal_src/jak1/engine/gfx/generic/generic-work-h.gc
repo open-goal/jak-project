@@ -5,8 +5,25 @@
 
 ;; common types for internal generic work.
 
+;; This file is the scratchpad map for the whole generic renderer.  generic-work is allocated one
+;; quadword into the page and fills it to the end:
+;;
+;;   0x70000000 +0      unused quadword
+;;              +16     generic-work
+;;              +16       saves     generic-saves          368 bytes
+;;              +384      storage   generic-storage        256 bytes
+;;              +640      in-buf    generic-input-buffer   472 quadwords
+;;              +8192     fx-buf    generic-effect-buffer  8160 bytes
+;;   0x70003fe0 +16352  end
+;;
+;; Nothing in the renderer takes a scratchpad pointer as an argument: the converters, the packet
+;; builders, and the effect processors all address this one layout from a register holding the page
+;; base, which is what makes them cheap to call from each other and impossible to run twice at once.
+
 ;; DECOMP BEGINS
 
+;; The arrival area for whichever renderer is feeding generic.  MERC and TIE never convert at the same
+;; time, so their working sets share the same 472 quadwords rather than each reserving their own.
 (deftype generic-input-buffer (structure)
   ((merc generic-merc-work :inline :offset 0)
    (tie  generic-tie-work :inline :offset 0)
@@ -21,6 +38,10 @@
    (start-addr int32)
    (lock       int32)))
 
+;; The head of a generic VU1 packet, and the only part of it that is not literally copied from the
+;; constant templates.  The two A+D quadwords are a pair of GS no-ops whose unused upper words carry
+;; the draw-point count and the offset of the first kick, so the counts ride along inside a packet the
+;; GS is willing to accept.
 (deftype generic-vu1-header (structure)
   ((matrix  matrix :inline)
    (strgif  generic-gif-tag :inline)
@@ -31,6 +52,8 @@
    (kickoff uint16 :overlay-at (-> adnop2 word 3))
    (strips  uint16 :overlay-at (-> strgif data 3))))
 
+;; The header as VU1 receives it, followed by the fragment's adgif shaders: five quadwords each, and
+;; the VU program indexes them by the shader number stored with each strip.
 (deftype generic-vu1-texbuf (structure)
   ((header generic-vu1-header :inline)
    (shader uint32 :dynamic)))
@@ -40,12 +63,17 @@
    (header generic-vu1-header :inline)
    (shader uint32 :dynamic)))
 
+;; Read-mostly data the per-vertex processors touch on every iteration: the packet templates, two
+;; scratch blocks, and the seven quadwords of lighting state.
 (deftype generic-effect-work (structure)
   ((consts   generic-consts :inline)
    (storage  generic-storage :inline)
    (storage2 generic-storage :inline)
    (lights   vu-lights :inline)))
 
+;; The two output buffers the converter alternates, with the work area deliberately between them
+;; rather than before them: both halves then sit within a signed 16-bit displacement of the constants
+;; and lights that every vertex needs.
 (deftype generic-effect-buffer (structure)
   ((outbuf-0 uint8 3552)
    (work     generic-effect-work :inline)

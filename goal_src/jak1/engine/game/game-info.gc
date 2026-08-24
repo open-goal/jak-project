@@ -27,24 +27,23 @@
 ;; This border-plane seems to be unused.  This is separate from load boundaries.
 
 (defmethod debug-draw! ((this border-plane))
-  "Debug draw a border plane with a vector and text."
-  (let* ((v1-0 (-> this action))
+  "Draw this plane's name, origin, and normal, using green for a load action and red otherwise."
+  (let* ((action (-> this action))
          ;; pick color based on action
-         (s5-0 (if (= v1-0 'load) (new 'static 'rgba :g #xff :a #x80) (new 'static 'rgba :r #xff :a #x80))))
+         (color (if (= action 'load) (new 'static 'rgba :g #xff :a #x80) (new 'static 'rgba :r #xff :a #x80))))
     ;; add text and vector
-    (add-debug-text-sphere #t (bucket-id debug-no-zbuf) (-> this trans) 819.2 (symbol->string (-> this name)) s5-0)
-    (add-debug-vector #t (bucket-id debug-no-zbuf) (-> this trans) (-> this normal) (meters 2) s5-0))
+    (add-debug-text-sphere #t (bucket-id debug-no-zbuf) (-> this trans) 819.2 (symbol->string (-> this name)) color)
+    (add-debug-vector #t (bucket-id debug-no-zbuf) (-> this trans) (-> this normal) (meters 2) color))
   0
   (none))
 
-(defmethod point-past-plane? ((this border-plane) (arg0 vector))
-  "Which side of the plane is the given point on?
-   #t = on the plane, or on the side the normal points toward."
-  (>= (vector-dot (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)) (-> this normal)) 0.0))
+(defmethod point-past-plane? ((this border-plane) (point vector))
+  "Return whether point lies on the plane or on the side toward its normal."
+  (>= (vector-dot (vector-! (new 'stack-no-clear 'vector) point (-> this trans)) (-> this normal)) 0.0))
 
-(defmethod task-complete? ((this game-info) (arg0 game-task))
-  "Likely closed, or in the process of closing"
-  (logtest? (-> this task-perm-list data arg0 status) (entity-perm-status real-complete)))
+(defmethod task-complete? ((this game-info) (task game-task))
+  "Return whether task's permanent record has the real-complete bit."
+  (logtest? (-> this task-perm-list data task status) (entity-perm-status real-complete)))
 
 ;; set up a static continue point that can be used as a temporary continue point.
 (define *default-continue*
@@ -67,83 +66,76 @@
        :disp1 #f))
 
 (defmethod get-or-create-continue! ((this game-info))
-  "Attempt to get a continue point, if it doesn't exist set the
-   default-continue to a location in front of the camera."
+  "Return the current checkpoint in play mode when present. Otherwise populate and return the
+   shared default checkpoint in front of the camera using the current two-level load state."
   (cond
     ((and (= (-> this mode) 'play) (-> this current-continue))
      ;; we have a continue.
      (-> this current-continue))
     (else
      ;; need to make one
-     (let ((gp-0 *default-continue*))
-       (position-in-front-of-camera! (-> gp-0 trans) 40960.0 4096.0)
-       (quaternion-identity! (-> gp-0 quat))
-       (set! (-> gp-0 vis-nick) (-> *load-state* vis-nick))
-       (set! (-> gp-0 lev0) (-> *load-state* want 0 name))
-       (set! (-> gp-0 disp0) (-> *load-state* want 0 display?))
-       (set! (-> gp-0 lev1) (-> *load-state* want 1 name))
-       (set! (-> gp-0 disp1) (-> *load-state* want 1 display?))
-       gp-0))))
+     (let ((continue *default-continue*))
+       (position-in-front-of-camera! (-> continue trans) 40960.0 4096.0)
+       (quaternion-identity! (-> continue quat))
+       (set! (-> continue vis-nick) (-> *load-state* vis-nick))
+       (set! (-> continue lev0) (-> *load-state* want 0 name))
+       (set! (-> continue disp0) (-> *load-state* want 0 display?))
+       (set! (-> continue lev1) (-> *load-state* want 1 name))
+       (set! (-> continue disp1) (-> *load-state* want 1 display?))
+       continue))))
 
-(defmethod get-continue-by-name ((this game-info) (arg0 string))
-  "Look up a continue point by string name"
-  (let ((s5-0 *level-load-list*))
+(defmethod get-continue-by-name ((this game-info) (name string))
+  "Search every loaded level descriptor's checkpoint list and return the matching name, or #f."
+  (let ((level-list *level-load-list*))
     ;; loop over levels
-    (while (not (null? s5-0))
-      (let ((s4-0 (-> (the-as level-load-info (-> (the-as symbol (car s5-0)) value)) continues)))
+    (while (not (null? level-list))
+      (let ((continue-list (-> (the-as level-load-info (-> (the-as symbol (car level-list)) value)) continues)))
         ;; loop over continues in the level
-        (while (not (null? s4-0))
-          (let ((s3-0 (car s4-0)))
-            (if (string= arg0 (-> (the-as continue-point s3-0) name))
+        (while (not (null? continue-list))
+          (let ((continue (car continue-list)))
+            (if (string= name (-> (the-as continue-point continue) name))
               ;; match!
-              (return (the-as continue-point s3-0))))
-          (set! s4-0 (cdr s4-0))))
-      (set! s5-0 (cdr s5-0))))
+              (return (the-as continue-point continue))))
+          (set! continue-list (cdr continue-list))))
+      (set! level-list (cdr level-list))))
   (the-as continue-point #f))
 
-(defmethod set-continue! ((this game-info) (arg0 basic))
-  "Set the current continue point to to arg0.
-   arg0 can be:
-    '() or #f, in which case it does nothing.
-    a string, in which case it looks up by name
-    a continue point.
-
-   If it fails to get a continue-point, sets up a temporary continue point
-   in the default-continue
-
-   If the continue is changed, resets the death and time counters
-   "
-  (let ((s5-0 (-> this current-continue)))
-    (if (null? arg0) (set! arg0 #f))
-    (case (-> arg0 type)
+(defmethod set-continue! ((this game-info) (continue basic))
+  "Select a checkpoint from a name or continue-point. A missing or invalid value creates the
+   shared camera-relative default checkpoint. Reset checkpoint death and time counters when the
+   selected pointer changes."
+  (let ((old-continue (-> this current-continue)))
+    (if (null? continue) (set! continue #f))
+    (case (-> continue type)
       ((string)
-       (let ((v1-5 (get-continue-by-name this (the-as string arg0)))) (if v1-5 (set! (-> this current-continue) v1-5))))
-      ((continue-point) (set! (-> this current-continue) (the-as continue-point arg0)))
+       (let ((named-continue (get-continue-by-name this (the-as string continue))))
+         (if named-continue (set! (-> this current-continue) named-continue))))
+      ((continue-point) (set! (-> this current-continue) (the-as continue-point continue)))
       (else
-       (let ((s4-3 *default-continue*))
-         (position-in-front-of-camera! (-> s4-3 trans) 40960.0 4096.0)
-         (quaternion-identity! (-> s4-3 quat))
-         (set! (-> s4-3 vis-nick) (-> *load-state* vis-nick))
-         (set! (-> s4-3 lev0) (-> *load-state* want 0 name))
-         (set! (-> s4-3 disp0) (-> *load-state* want 0 display?))
-         (set! (-> s4-3 lev1) (-> *load-state* want 1 name))
-         (set! (-> s4-3 disp1) (-> *load-state* want 1 display?))
-         (set! (-> this current-continue) s4-3))))
-    (when (!= s5-0 (-> this current-continue))
+       (let ((default-continue *default-continue*))
+         (position-in-front-of-camera! (-> default-continue trans) 40960.0 4096.0)
+         (quaternion-identity! (-> default-continue quat))
+         (set! (-> default-continue vis-nick) (-> *load-state* vis-nick))
+         (set! (-> default-continue lev0) (-> *load-state* want 0 name))
+         (set! (-> default-continue disp0) (-> *load-state* want 0 display?))
+         (set! (-> default-continue lev1) (-> *load-state* want 1 name))
+         (set! (-> default-continue disp1) (-> *load-state* want 1 display?))
+         (set! (-> this current-continue) default-continue))))
+    (when (!= old-continue (-> this current-continue))
       (set! (-> this continue-deaths) 0)
       (set-time! (-> this continue-time))))
   (-> this current-continue))
 
-(defmethod get-entity-task-perm ((this game-info) (arg0 game-task))
-  "Get the permanent storage for a game-task"
-  (-> this task-perm-list data arg0))
+(defmethod get-entity-task-perm ((this game-info) (task game-task))
+  "Return the permanent task record indexed by task."
+  (-> this task-perm-list data task))
 
 (defmethod initialize! ((this game-info) (cause symbol) (save-to-load game-save) (continue-point-override string))
-  "Initialize the game-info.
-    The cause can be 'dead if you die, or 'game to reset everything.
-    If save-to-load is not #f will load data from that.
-    If continue-point-override is not #f, will use that."
-  (local-vars (v0-0 int))
+  "Reset or reload game state for cause. dead records death statistics and becomes life or try
+   in play mode; game clears all persistent progress and selects a starting checkpoint; try and
+   game restore lives. In play mode, restart actors asynchronously at the selected checkpoint and
+   optionally load save-to-load. continue-point-override applies only to a game reset."
+  (local-vars (death-count int))
   (case cause
     (('dead)
      ;; reload game-info because we died.  Increase death counts
@@ -151,14 +143,14 @@
      (+! (-> this continue-deaths) 1)
      (+! (-> this fuel-cell-deaths) 1)
      (when *target*
-       (let ((lev-info (-> *target* current-level info)))
-         (set! v0-0
-               (when (>= (-> *level-task-data-remap* length) (-> lev-info index))
+       (let ((level-info (-> *target* current-level info)))
+         (set! death-count
+               (when (>= (-> *level-task-data-remap* length) (-> level-info index))
                  ;; update death per level.
-                 (set! v0-0
-                       (seekl (the-as int (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1)))) 255 1))
-                 (set! (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> lev-info index) -1))) (the-as uint v0-0))
-                 v0-0))))
+                 (set! death-count
+                       (seekl (the-as int (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> level-info index) -1)))) 255 1))
+                 (set! (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> level-info index) -1))) (the-as uint death-count))
+                 death-count))))
      (case (-> this mode)
        (('play)
         ;; now pick between life/try depending on if we ran out of lives or not. (this isnt really used)
@@ -197,15 +189,15 @@
      (set-time! (-> this continue-time))
      (set-time! (-> this death-time))
      (set-time! (-> this hit-time))
-     (dotimes (v1-50 116)
+     (dotimes (i 116)
        (set! (-> this fuel-cell-time 0) 0)
        (nop!))
-     (dotimes (v1-53 32)
-       (set! (-> this money-per-level v1-53) (the-as uint 0))
-       (set! (-> this deaths-per-level v1-53) (the-as uint 0))
-       (set! (-> this enter-level-time v1-53) 0)
-       (set! (-> this in-level-time v1-53) 0)
-       (set! (-> this level-opened v1-53) (the-as uint 0))
+     (dotimes (i 32)
+       (set! (-> this money-per-level i) (the-as uint 0))
+       (set! (-> this deaths-per-level i) (the-as uint 0))
+       (set! (-> this enter-level-time i) 0)
+       (set! (-> this in-level-time i) 0)
+       (set! (-> this level-opened i) (the-as uint 0))
        (nop!))))
   (case cause
     (('game 'try)
@@ -214,13 +206,13 @@
        (('play) (set! *display-profile* #f) (set! *display-entity-errors* #f)))
      (set! (-> this life-max) (-> *GAME-bank* life-max-default))
      (set! (-> this life) (-> *GAME-bank* life-start-default))))
-  (let ((v1-65 (-> this mode)))
+  (let ((mode (-> this mode)))
     (cond
-      ((= v1-65 'debug)
+      ((= mode 'debug)
        ;; in debug, we didn't kill things so we don't need to restart them
        (reset-actors cause)
        (if save-to-load (load-game! this save-to-load)))
-      ((= v1-65 'play)
+      ((= mode 'play)
        ;; don't allow pausing/start menu
        (when *target*
          (set-setting *setting-control* *target* 'allow-pause #f 0.0 0)
@@ -237,15 +229,15 @@
        (send-event *target* 'reset)
        ;; start a temporary process to restart things
        (process-spawn-function process
-         (lambda ((arg0 symbol) (arg1 symbol) (arg2 continue-point) (arg3 game-save))
-           (stop arg0)
-           (reset-actors arg1)
-           (set-continue! *game-info* arg2)
-           (when arg3
-             (load-game! *game-info* arg3)
-             (set! arg2 (get-or-create-continue! *game-info*)))
+         (lambda ((mode symbol) (cause symbol) (continue continue-point) (save game-save))
+           (stop mode)
+           (reset-actors cause)
+           (set-continue! *game-info* continue)
+           (when save
+             (load-game! *game-info* save)
+             (set! continue (get-or-create-continue! *game-info*)))
            (suspend)
-           (start arg0 arg2)
+           (start mode continue)
            (none))
          (-> this mode)
          cause
@@ -258,7 +250,10 @@
   this)
 
 (defmethod adjust ((this game-info) (item symbol) (amount float) (source handle))
-  "Adjust the number of items by amount."
+  "Adjust lives, precursor orbs, power cells, or scout flies. Positive orb collection updates
+   per-level and total counts; a power-cell amount is its game-task ID; a scout-fly amount packs
+   the task in the low halfword and fly index in the high halfword. Return the resulting item
+   count."
   (case item
     (('life)
      ;; get/lose a life, just modify the life field
@@ -287,21 +282,21 @@
     (('fuel-cell)
      ;; got a power cell!
      ;; in this case, the amount is actually the index of the power cell's task
-     (let ((s5-1 (the int amount)))
-       (when (not (or (task-complete? this (the-as game-task s5-1)) (>= (the-as uint 1) (the-as uint s5-1))))
+     (let ((task (the int amount)))
+       (when (not (or (task-complete? this (the-as game-task task)) (>= (the-as uint 1) (the-as uint task))))
          ;; the cell corresponds to a valid and previously incomplete task.
          ;; update our stats
          (set! (-> this fuel-cell-deaths) 0)
          (set-time! (-> this fuel-cell-pickup-time))
-         (set-time! (-> this fuel-cell-time s5-1))
+         (set-time! (-> this fuel-cell-time task))
          ;; increment power cells!
          (+! (-> this fuel) 1.0)
          ;; mark as completed
-         (logior! (-> this task-perm-list data s5-1 status) (entity-perm-status real-complete))
+         (logior! (-> this task-perm-list data task status) (entity-perm-status real-complete))
          ;; unused.
-         (get-task-control (the-as game-task s5-1))
+         (get-task-control (the-as game-task task))
          ;; close the task!
-         (close-specific-task! (the-as game-task s5-1) (task-status need-resolution))))
+         (close-specific-task! (the-as game-task task) (task-status need-resolution))))
      (-> this fuel))
     (('buzzer)
      ;; got a scout fly. In this case, the amount is actually two 16 bit numbers
@@ -319,61 +314,61 @@
              ;; increment total if we haven't collected it before
              (if (not (logtest? buzz-bits (ash 1 buzz-index))) (+! (-> this buzzer-total) 1.0))
              ;; set the updated bits
-             (let ((t9-10 (method-of-object ctrl save-reminder)))
-               (set! buzz-bits (logior buzz-bits (ash 1 buzz-index)))
-               (t9-10 ctrl buzz-bits 0)))
+             (set! buzz-bits (logior buzz-bits (ash 1 buzz-index)))
+             (save-reminder ctrl buzz-bits 0))
            ;; recompute the total count
-           (countdown (v1-58 (the int (-> *FACT-bank* buzzer-max-default)))
-             (if (logtest? buzz-bits (ash 1 v1-58)) (set! buzz-count (+ 1.0 buzz-count))))))
+           (countdown (i (the int (-> *FACT-bank* buzzer-max-default)))
+             (if (logtest? buzz-bits (ash 1 i)) (set! buzz-count (+ 1.0 buzz-count))))))
        buzz-count))))
 
-(defmethod got-buzzer? ((this game-info) (arg0 game-task) (arg1 int))
-  "Do we have the arg1-th buzzer for the given buzzer task?"
+(defmethod got-buzzer? ((this game-info) (task game-task) (index int))
+  "Return whether scout-fly index is set in task's first reminder byte."
   ;; buzzers mis-use their reminder bits as a bitfield of which ones have been collected
-  (logtest? (get-reminder (get-task-control arg0) 0) (ash 1 arg1)))
+  (logtest? (get-reminder (get-task-control task) 0) (ash 1 index)))
 
-(defmethod buzzer-count ((this game-info) (arg0 game-task))
-  "How many buzzers do we have for this task?"
-  (let ((v1-1 (get-reminder (get-task-control arg0) 0)) ;; buzzer bitmask
-        (v0-2 0) ;; count
+(defmethod buzzer-count ((this game-info) (task game-task))
+  "Count the scout-fly bits stored in task's first reminder byte."
+  (let ((buzzer-bits (get-reminder (get-task-control task) 0)) ;; buzzer bitmask
+        (count 0) ;; count
         )
-    (countdown (a0-4 (the int (-> *FACT-bank* buzzer-max-default)))
-      (if (logtest? v1-1 (ash 1 a0-4)) (+! v0-2 1)))
-    v0-2))
+    (countdown (i (the int (-> *FACT-bank* buzzer-max-default)))
+      (if (logtest? buzzer-bits (ash 1 i)) (+! count 1)))
+    count))
 
-(defmethod seen-text? ((this game-info) (arg0 text-id))
-  "Have we already displayed this text?
-   This is used to display level names on only the first enter.
-   It seems like hints could also display text on screen at one point in time."
-  (get-bit (-> this text-ids-seen) (the-as int arg0)))
+(defmethod seen-text? ((this game-info) (text text-id))
+  "Return whether text's bit is set in the seen-text table. Level names use this to display only
+   on the first visit."
+  (get-bit (-> this text-ids-seen) (the-as int text)))
 
-(defmethod mark-text-as-seen ((this game-info) (arg0 text-id))
-  "Mark the game text as seen.  This only works if the text id < 4096, and ignores otherwise"
-  (if (and (< (the-as uint arg0) (the-as uint 4095)) (> (the-as uint arg0) 0))
-    (set-bit (-> this text-ids-seen) (the-as int arg0)))
+(defmethod mark-text-as-seen ((this game-info) (text text-id))
+  "Mark text as seen when its ID is between 1 and 4094."
+  (if (and (< (the-as uint text) (the-as uint 4095)) (> (the-as uint text) 0))
+    (set-bit (-> this text-ids-seen) (the-as int text)))
   0
   (none))
 
-(defmethod clear-text-seen! ((this game-info) (arg0 text-id))
-  "Mark text as unseen. MUST be a valid text id"
-  (clear-bit (-> this text-ids-seen) (the-as int arg0))
+(defmethod clear-text-seen! ((this game-info) (text text-id))
+  "Clear text's bit in the seen-text table; text must be a valid ID."
+  (clear-bit (-> this text-ids-seen) (the-as int text))
   0
   (none))
 
-(defmethod reset! ((this fact-info-target) (arg0 symbol))
-  "Reset the facts for a given thing"
-  (when (or (not arg0) (= arg0 'eco))
+(defmethod reset! ((this fact-info-target) (field symbol))
+  "Reset one target pickup category, or all categories when field is #f. Eco clears its level
+   and timeout; health restores its configured maximum; buzzer and eco-pill restore their maxima
+   and clear their counts."
+  (when (or (not field) (= field 'eco))
     (set! (-> this eco-timeout) 0)
     (set! (-> this eco-level) 0.0)
     (set! (-> this eco-pickup-time) (-> *display* game-frame-counter)))
-  (when (or (not arg0) (= arg0 'health))
+  (when (or (not field) (= field 'health))
     (set! (-> this health-max) (-> *FACT-bank* health-max-default))
     (set! (-> this health) (-> this health-max))
     (set! (-> this health-pickup-time) (seconds -100)))
-  (when (or (not arg0) (= arg0 'buzzer))
+  (when (or (not field) (= field 'buzzer))
     (set! (-> this buzzer-max) (-> *FACT-bank* buzzer-max-default))
     (set! (-> this buzzer) 0.0))
-  (when (or (not arg0) (= arg0 'eco-pill))
+  (when (or (not field) (= field 'eco-pill))
     (set! (-> this eco-pill-max) (-> *FACT-bank* eco-pill-max-default))
     (set! (-> this eco-pill) 0.0))
   (none))
@@ -381,7 +376,10 @@
 (declare-type vent process-drawable)
 
 (defmethod pickup-collectable! ((this fact-info-target) (kind pickup-type) (amount float) (source-handle handle))
-  "Pickup a thing!"
+  "Apply a target pickup. Handle green health eco, small eco pills, precursor orbs, power cells,
+   scout flies, and timed red, blue, or yellow eco; update counts, timers, sound, vibration,
+   collision state, and blue-eco tracking effects. A zero colored-eco amount returns the active
+   amount for that eco kind without extending its timer."
   (case kind
     (((pickup-type eco-green))
      ;; big green eco.  This counts toward the health (up to 3), and if that's full, maxes out the little green ecos to 50.
@@ -413,7 +411,7 @@
        (else
         ;; negative health. Subtract.
         (seek! (-> this health) 0.0 (- amount))
-        ;; not sure why we do this. But this will set the eco pill collection time.
+        ;; Small damage also refreshes the eco-pill pickup timer without adding any eco pills.
         (if (>= amount -10.0) (pickup-collectable! this (pickup-type eco-pill) 0.0 source-handle))
         ;; subtract lives.
         (if (= (-> this health) 0.0)
@@ -449,9 +447,9 @@
      (adjust (-> (the-as target (-> this process)) game) 'money amount source-handle))
     (((pickup-type fuel-cell))
      ;; the amount is actually the index of the task.
-     (let ((s4-2 (the int amount)))
-       (when (not (or (task-complete? (-> (the-as target (-> this process)) game) (the-as game-task s4-2))
-                      (>= (the-as uint 1) (the-as uint s4-2))))
+     (let ((task (the int amount)))
+       (when (not (or (task-complete? (-> (the-as target (-> this process)) game) (the-as game-task task))
+                      (>= (the-as uint 1) (the-as uint task))))
          ;; og:preserve-this make sure any speedrun display is hidden
          (#when PC_PORT
            (hide-speedrun-display))
@@ -482,13 +480,13 @@
        (set! (-> this eco-level) 0.0)
        (set! (-> this eco-timeout) 0))
      (set! (-> this eco-type) kind)
-     (let ((eco-lev (-> this eco-level)))
+     (let ((old-eco-level (-> this eco-level)))
        (set! (-> this eco-level) 1.0) ;; just set to 1.
        ;; this check now doesn't make much sense...
-       (when (and (= eco-lev 0.0) (< 0.0 (-> this eco-level)))
+       (when (and (= old-eco-level 0.0) (< 0.0 (-> this eco-level)))
          ;; didn't have eco and now we do, remember when
          (set! (-> this eco-pickup-time) (-> *display* game-frame-counter))
-         ;; send a reset-collide message. Not sure why we do this.
+         ;; Gaining eco changes the target's collision and danger modes, so rebuild its collide set.
          (send-event (-> this process) 'reset-collide))
        ;; this logic prevents eco from respawning before you are out.
        ;; the time until respawn is min(full_eco_time, old_time + single_timeout)
@@ -514,45 +512,47 @@
        (set-time! (-> this eco-source-time))
        ;; special case for blue eco magnet effect
        (when (= kind (pickup-type eco-blue))
-         (when (= eco-lev 0.0)
-           (let ((s5-1 (-> this process)))
-             (let ((s4-3 (process-spawn touch-tracker
-                                        :init
-                                        touch-tracker-init
-                                        (-> s5-1 root trans)
-                                        (-> *FACT-bank* suck-bounce-dist)
-                                        (seconds 1)
-                                        :to
-                                        s5-1)))
-               (send-event (ppointer->process s4-3) 'target s5-1)
-               (send-event (ppointer->process s4-3) 'event 'eco-blue)
-               (send-event (ppointer->process s4-3) 'exit (lambda () (send-event *target* 'query 'powerup (pickup-type eco-blue))))
-               (send-event (ppointer->process s4-3)
+         (when (= old-eco-level 0.0)
+           (let ((owner (-> this process)))
+             (let ((tracker (process-spawn touch-tracker
+                                           :init
+                                           touch-tracker-init
+                                           (-> owner root trans)
+                                           (-> *FACT-bank* suck-bounce-dist)
+                                           (seconds 1)
+                                           :to
+                                           owner)))
+               (send-event (ppointer->process tracker) 'target owner)
+               (send-event (ppointer->process tracker) 'event 'eco-blue)
+               (send-event (ppointer->process tracker) 'exit (lambda () (send-event *target* 'query 'powerup (pickup-type eco-blue))))
+               (send-event (ppointer->process tracker)
                            'eval
                            (lambda :behavior process-drawable ()
-                             (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with) (collide-kind cak-1 cak-2 cak-3 blue-eco-suck))
+                             (set! (-> (the-as collide-shape (-> self root)) root-prim collide-with) (collide-kind hit-by-player usually-hit-by-player hit-by-others blue-eco-suck))
                              (none))))
              (process-spawn-function process
-               (lambda ((arg0 process-drawable))
+               (lambda ((effect-owner process-drawable))
                  (suspend-for (seconds 0.6)
-                   (send-event arg0 'effect 'eco-blue))
+                   (send-event effect-owner 'effect 'eco-blue))
                  (none))
-               s5-1
+               owner
                :from
                *4k-dead-pool*
                :to
-               s5-1)))))
+               owner)))))
      (-> this eco-level))
     (else ((method-of-type fact-info pickup-collectable!) this kind amount source-handle))))
 
 (defmethod lookup-entity-perm-by-aid ((this game-info) (aid actor-id))
-  (let ((v1-0 (-> this perm-list)))
-    (countdown (a0-1 (-> v1-0 length))
-      (if (= aid (-> v1-0 data a0-1 aid)) (return (-> v1-0 data a0-1)))))
+  "Return the saved entity permission record with actor ID aid, or #f when absent."
+  (let ((perms (-> this perm-list)))
+    (countdown (i (-> perms length))
+      (if (= aid (-> perms data i aid)) (return (-> perms data i)))))
   (the-as entity-perm #f))
 
 (defmethod copy-perms-from-level! ((this game-info) (lev level))
-  "Iterate through entities in the level and copy their perms into game-info"
+  "Copy task-bearing entity permission records from lev into persistent game state, replacing
+   records with matching actor IDs and appending new records while capacity remains."
   (let ((perms (-> this perm-list)) ;; our perms
         (lev-entities (-> lev bsp level entity)) ;; entities in the level
         )
@@ -576,7 +576,8 @@
   (none))
 
 (defmethod copy-perms-to-level! ((this game-info) (lev level))
-  "Does the opposite of the previous, copies perms from game-info to level entities"
+  "Copy matching persistent entity permission records into lev, then clear transient try-reset
+   status bits before the entities are used."
   (let ((lev-entities (-> lev bsp level entity)))
     (dotimes (lev-entity-idx (-> lev-entities length))
       (let* ((lev-entity-perm (-> lev-entities data lev-entity-idx entity extra perm))
@@ -584,8 +585,10 @@
         (when info-entity-perm
           ;; found the level entity in game-info, copy
           (set! (-> lev-entity-perm quad) (-> info-entity-perm quad))
-          ;; and also do this thing, not sure exactly what, but updates the status bits
-          (update-perm! lev-entity-perm 'try (entity-perm-status bit-0 bit-1 dead bit-3 user-set-from-cstage complete bit-9))))))
+          ;; Clear transient status bits for a new try after restoring the persistent record.
+          (update-perm! lev-entity-perm
+                        'try
+                        (entity-perm-status birth-blocked error dead no-kill user-set-from-cstage complete suppress-birth))))))
   0
   (none))
 
@@ -594,7 +597,7 @@
   this)
 
 (defmethod debug-draw! ((this continue-point))
-  "Draw a continue point."
+  "Draw this checkpoint's position, name, and forward direction."
   (add-debug-x #t (bucket-id debug-no-zbuf) (-> this trans) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-text-3d #t
                      (bucket-id debug-no-zbuf)
@@ -602,39 +605,44 @@
                      (-> this trans)
                      (font-color white)
                      (new 'static 'vector2h :y 8))
-  (let ((a3-2 (vector-z-quaternion! (new-stack-vector0) (-> this quat))))
+  (let ((forward (vector-z-quaternion! (new-stack-vector0) (-> this quat))))
     (add-debug-vector #t
                       (bucket-id debug-no-zbuf)
                       (-> this trans)
-                      a3-2
+                      forward
                       (meters 2)
                       (new 'static 'rgba :r #xff :g #x80 :a #x80)))
   0
   (none))
 
-(defun-debug trsq->continue-point ((arg0 trsq))
-  "Print out a continue point."
-  (let ((a2-0 (level-get-target-inside *level*)))
-    (format #t "~%(static-continue-point ~A ()~%" (symbol->string (-> a2-0 name))))
-  (format #t "                       (target ~m ~m ~m " (-> arg0 trans x) (-> arg0 trans y) (-> arg0 trans z))
-  (format #t "~f ~f ~f ~f)~%" (-> arg0 quat x) (-> arg0 quat y) (-> arg0 quat z) (-> arg0 quat w))
-  (let ((gp-1 *math-camera*))
+(defun-debug trsq->continue-point ((transform trsq))
+  "Print source text for a static checkpoint using transform, the current target level, camera
+   transform, and two-level load state."
+  (let ((target-level (level-get-target-inside *level*)))
+    (format #t "~%(static-continue-point ~A ()~%" (symbol->string (-> target-level name))))
+  (format #t
+          "                       (target ~m ~m ~m "
+          (-> transform trans x)
+          (-> transform trans y)
+          (-> transform trans z))
+  (format #t "~f ~f ~f ~f)~%" (-> transform quat x) (-> transform quat y) (-> transform quat z) (-> transform quat w))
+  (let ((camera *math-camera*))
     (format #t
             "                       (camera ~m ~m ~m ~f ~f ~f "
-            (-> gp-1 trans x)
-            (-> gp-1 trans y)
-            (-> gp-1 trans z)
-            (-> gp-1 inv-camera-rot vector 0 x)
-            (-> gp-1 inv-camera-rot vector 0 y)
-            (-> gp-1 inv-camera-rot vector 0 z))
+            (-> camera trans x)
+            (-> camera trans y)
+            (-> camera trans z)
+            (-> camera inv-camera-rot vector 0 x)
+            (-> camera inv-camera-rot vector 0 y)
+            (-> camera inv-camera-rot vector 0 z))
     (format #t
             "~f ~f ~f ~f ~f ~f)~%"
-            (-> gp-1 inv-camera-rot vector 1 x)
-            (-> gp-1 inv-camera-rot vector 1 y)
-            (-> gp-1 inv-camera-rot vector 1 z)
-            (-> gp-1 inv-camera-rot vector 2 x)
-            (-> gp-1 inv-camera-rot vector 2 y)
-            (-> gp-1 inv-camera-rot vector 2 z)))
+            (-> camera inv-camera-rot vector 1 x)
+            (-> camera inv-camera-rot vector 1 y)
+            (-> camera inv-camera-rot vector 1 z)
+            (-> camera inv-camera-rot vector 2 x)
+            (-> camera inv-camera-rot vector 2 y)
+            (-> camera inv-camera-rot vector 2 z)))
   (format #t
           "                       (load '~A '~A '~A '~A '~A)~%"
           (-> *load-state* vis-nick)
@@ -646,60 +654,66 @@
   0
   (none))
 
-(defun-debug game-task->string ((arg0 game-task))
-  (enum->string game-task arg0))
+(defun-debug game-task->string ((task game-task))
+  "Return the debug name of a game task."
+  (enum->string game-task task))
 
-(defmethod debug-print ((this game-info) (arg0 symbol))
+(defmethod debug-print ((this game-info) (category symbol))
+  "Inspect game state and optionally print completed game tasks or saved entity permissions.
+   Pass #f for both categories."
   (inspect this)
-  (when (or (not arg0) (= arg0 'game-task))
+  (when (or (not category) (= category 'game-task))
     (format #t "~Tgame-task:~%")
-    (dotimes (s4-0 116)
-      (if (task-complete? this (the-as game-task s4-0)) (format #t "~T~T~S~%" (game-task->string (the-as game-task s4-0))))))
-  (when (or (not arg0) (= arg0 'entity-perm))
+    (dotimes (i 116)
+      (if (task-complete? this (the-as game-task i)) (format #t "~T~T~S~%" (game-task->string (the-as game-task i))))))
+  (when (or (not category) (= category 'entity-perm))
     (format #t "~Tentity-perm:~%")
-    (let ((s5-1 (-> this perm-list)))
-      (dotimes (s4-1 (-> s5-1 length))
-        (format #t "~T~T~`entity-perm`P~%" (-> s5-1 data s4-1)))))
+    (let ((perms (-> this perm-list)))
+      (dotimes (i (-> perms length))
+        (format #t "~T~T~`entity-perm`P~%" (-> perms data i)))))
   this)
 
 ;; allocate storage for game info
-(let ((gp-0 *game-info*))
+(let ((game *game-info*))
   ;; perms
-  (when (zero? (-> gp-0 perm-list))
-    (set! (-> gp-0 perm-list) (new 'global 'entity-perm-array 4096))
-    (set! (-> gp-0 perm-list length) 0)
+  (when (zero? (-> game perm-list))
+    (set! (-> game perm-list) (new 'global 'entity-perm-array 4096))
+    (set! (-> game perm-list length) 0)
     0)
   ;; task perms
-  (when (zero? (-> gp-0 task-perm-list))
-    (let ((v1-15 (new 'global 'entity-perm-array 116)))
-      (set! (-> gp-0 task-perm-list) v1-15)
-      (dotimes (a0-24 (-> v1-15 length))
-        (set! (-> v1-15 data a0-24 task) (the-as game-task a0-24)))
-      (logior! (-> v1-15 data 1 status) (entity-perm-status real-complete))))
+  (when (zero? (-> game task-perm-list))
+    (let ((task-perms (new 'global 'entity-perm-array 116)))
+      (set! (-> game task-perm-list) task-perms)
+      (dotimes (i (-> task-perms length))
+        (set! (-> task-perms data i task) (the-as game-task i)))
+      (logior! (-> task-perms data 1 status) (entity-perm-status real-complete))))
   ;; text idx
-  (if (zero? (-> gp-0 text-ids-seen)) (set! (-> gp-0 text-ids-seen) (new 'global 'bit-array 4095)))
+  (if (zero? (-> game text-ids-seen)) (set! (-> game text-ids-seen) (new 'global 'bit-array 4095)))
   ;; death locations
-  (when (zero? (-> gp-0 death-pos))
-    (set! (-> gp-0 death-pos) (new 'global 'vector-array 64))
-    (set! (-> gp-0 death-pos length) 0)
+  (when (zero? (-> game death-pos))
+    (set! (-> game death-pos) (new 'global 'vector-array 64))
+    (set! (-> game death-pos length) 0)
     0)
   ;; initialize some fields
-  (if (zero? (-> gp-0 display-text-handle)) (set! (-> gp-0 display-text-handle) (the-as handle #f)))
-  (if (not (-> gp-0 current-continue)) (set-continue! gp-0 *default-continue*))
-  (set! (-> gp-0 want-auto-save) #f)
-  (set! (-> gp-0 auto-save-proc) (the-as handle #f))
-  (set! (-> gp-0 auto-save-status) (mc-status-code ok))
-  (set! (-> gp-0 auto-save-card) 0)
-  (set! (-> gp-0 auto-save-which) -1)
-  (set! (-> gp-0 pov-camera-handle) (the-as handle #f))
-  (set! (-> gp-0 other-camera-handle) (the-as handle #f)))
+  (if (zero? (-> game display-text-handle)) (set! (-> game display-text-handle) (the-as handle #f)))
+  (if (not (-> game current-continue)) (set-continue! game *default-continue*))
+  (set! (-> game want-auto-save) #f)
+  (set! (-> game auto-save-proc) (the-as handle #f))
+  (set! (-> game auto-save-status) (mc-status-code ok))
+  (set! (-> game auto-save-card) 0)
+  (set! (-> game auto-save-which) -1)
+  (set! (-> game pov-camera-handle) (the-as handle #f))
+  (set! (-> game other-camera-handle) (the-as handle #f)))
 
-(defmethod get-death-count ((this game-info) (arg0 symbol))
-  (let ((v1-13 (if (and arg0 *target* (>= (-> *level-task-data-remap* length) (-> *target* current-level info index)))
-                 (the-as int (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
-                 (-> this fuel-cell-deaths))))
+(defmethod get-death-count ((this game-info) (per-level? symbol))
+  "Return deaths divided by five and capped at four. Use the current level's death byte when
+   per-level? is true and it has a valid remap; otherwise use deaths since the last power cell."
+  (let ((deaths (if (and per-level? *target* (>= (-> *level-task-data-remap* length) (-> *target* current-level info index)))
+                  (the-as int (-> this deaths-per-level (-> *level-task-data-remap* (+ (-> *target* current-level info index) -1))))
+                  (-> this fuel-cell-deaths))))
     0
-    (min 4 (/ v1-13 5))))
+    (min 4 (/ deaths 5))))
 
-(defmethod get-health-percent-lost ((this game-info) (arg0 symbol))
+(defmethod get-health-percent-lost ((this game-info) (unused symbol))
+  "Return one quarter of the capped death count; the argument is unused."
   (* 0.25 (the float (get-death-count this #f))))

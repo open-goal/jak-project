@@ -207,6 +207,7 @@ const std::unordered_map<std::string, GoalCompilerForm> g_goal_forms = {
     {"defmethod", {.form_function = &Compiler::compile_defmethod}},
     {"defenum", {.form_function = &Compiler::compile_defenum}},
     {"->", {.form_function = &Compiler::compile_deref}},
+    {"&->", {.form_function = &Compiler::compile_addr_deref}},
     {"&", {.form_function = &Compiler::compile_addr_of}},
     {"the-as", {.form_function = &Compiler::compile_the_as}},
     {"the", {.form_function = &Compiler::compile_the}},

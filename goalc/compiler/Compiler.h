@@ -717,6 +717,11 @@ class Compiler {
   Val* compile_deftype(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_defmethod(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_deref(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_addr_deref(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_deref_impl(const goos::Object& form,
+                          const goos::Object& rest,
+                          Env* env,
+                          bool return_address);
   Val* compile_the_as(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_the(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_print_type(const goos::Object& form, const goos::Object& rest, Env* env);

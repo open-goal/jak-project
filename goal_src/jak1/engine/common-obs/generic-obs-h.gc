@@ -2,29 +2,20 @@
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/game/game-h.gc")
+
 (define-extern mistycam-spawn (function none))
-
 (define-extern beachcam-spawn (function none))
-
 (declare-type camera-tracker process)
-
 (define-extern process-grab? (function process symbol :behavior camera-tracker))
-
 (define-extern process-release? (function process symbol :behavior process))
-
 (define-extern fuel-cell type)
-
 (define-extern birth-pickup-at-point
   (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
 
 (declare-type collide-shape trsqv)
-
 (declare-type collide-shape-moving collide-shape)
-
 (declare-type sparticle-launch-group basic)
-
 (declare-type part-tracker process)
-
 (declare-type collide-prim-core structure)
 
 (define-extern part-tracker-init
@@ -39,19 +30,19 @@
             part-tracker))
 
 (declare-type touch-tracker process-drawable)
-
 (define-extern touch-tracker-init (function vector float time-frame none :behavior touch-tracker))
-
 (define-extern eco-blue-glow (function vector none))
-
 (declare-type joint-mod basic)
 
 ;; DECOMP BEGINS
 
-;; generic-obs has general game "objects".  It's not related to the generic renderer.
+;; generic-obs contains reusable gameplay processes; it is unrelated to the
+;; generic geometry renderer.
 
-;; A manipy is a way to draw and move something. More complicated objects that want to draw multiple
-;; things may create a child manipy and then send it commands.
+;; A manipy is a command-driven drawable used as a movable child of a more
+;; complicated actor. It can swap animation and process hooks, track grab and
+;; target handles, apply four joint modifiers, and independently hide or show its
+;; draw data.
 (deftype manipy (process-drawable)
   ((new-trans-hook       (function none))
    (cur-trans-hook       (function none))
@@ -66,11 +57,13 @@
    (new-post-hook        (function none))
    (cur-post-hook        (function none))
    (clone-copy-trans     symbol)
-   (shadow-backup        basic)
+   (shadow-backup        shadow-geo)
    (draw?                symbol))
   (:states
    manipy-idle))
 
+;; A part-spawner continuously launches one particle group at its root while
+;; enabled. world-sphere is rebuilt for visibility tests from root and radius.
 (deftype part-spawner (process-drawable)
   ((mode         (pointer sparticle-launch-group))
    (enable       symbol)
@@ -81,8 +74,9 @@
   (:states
    part-spawner-active))
 
-;; a part-tracker will spawn particles, then linger for a bit, and then finally die.
-;; a more complicated object can use this to manage particles that do something interesting (like follow you)
+;; A part-tracker launches particles for duration, optionally following target
+;; plus offset and invoking callback each frame. It then runs linger-callback
+;; during linger-duration, notifies its parent, and stops.
 (deftype part-tracker (process)
   ((root            trsqv)
    (part            sparticle-launch-control)
@@ -100,7 +94,10 @@
   (:states
    part-tracker-process))
 
-;; a camera-tracker can control the camera.
+;; A camera-tracker runs a camera script or callback while movie-mode settings
+;; suppress ordinary processes and the HUD. Script commands can grab or release
+;; processes, select look-at and point-of-view targets, launch animation helpers,
+;; and wait for timed or event-driven conditions.
 (deftype camera-tracker (process)
   ((grab-target     handle :offset 120)
    (grab-event      symbol)
@@ -126,7 +123,8 @@
   (:states
    camera-tracker-process))
 
-;; a touch tracker waits to be touched, then calls some callback function.
+;; A touch-tracker owns moving collision geometry and forwards touch events or
+;; invokes a configured callback until its duration expires.
 (deftype touch-tracker (process-drawable)
   ((root         collide-shape-moving :override)
    (duration     time-frame)
@@ -134,11 +132,12 @@
    (event        symbol)
    (run-function (function object))
    (callback     (function touch-tracker none))
-   (event-mode   basic))
+   (event-mode   symbol))
   (:states
    touch-tracker-idle))
 
-;; the classic pole
+;; A swingpole exposes a horizontal pole segment with a grab range and edge
+;; length, and switches between active and occupied stance states.
 (deftype swingpole (process)
   ((root        trsq)
    (dir         vector :inline)
@@ -148,7 +147,7 @@
    swingpole-active
    swingpole-stance))
 
-;; do you want to fish?
+;; A packed yes/no prompt used by scripted conversations and minigames.
 (deftype gui-query (structure)
   ((x-position        int32)
    (y-position        int32)
@@ -159,10 +158,13 @@
    (message-space     int32))
   :pack-me
   (:methods
-   (init! (_type_ string int int int symbol string) none)
-   (get-response (_type_) symbol)))
+   (init! "Initialize a positioned prompt, response-line spacing, confirmation policy, and cancel
+     label." (_type_ string int int int symbol string) none)
+   (get-response "Display the prompt, consume its confirm or cancel input, and return yes, no, or
+     undecided." (_type_) symbol)))
 
-;; control the camera from something else (an animation)
+;; othercam drives the camera from a joint on another animated process, retaining
+;; the previous camera pose and process masks so they can be restored afterward.
 (deftype othercam (process)
   ((hand              handle)
    (old-global-mask   process-mask)
@@ -178,7 +180,9 @@
   (:states
    othercam-running))
 
-;; don't draw it! I guess used to disable things during development.
+;; Base for invisible marker entities such as target-start and camera-start.
+;; Initialization marks the entity permanently dead and immediately enters die,
+;; leaving the marker in level data without an active or drawable process.
 (deftype process-hidden (process) ()
   (:state-methods
    die))

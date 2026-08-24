@@ -7,7 +7,6 @@
 
 (deftype lurkerpuppy (nav-enemy) ())
 
-
 (defskelgroup *lurkerpuppy-sg*
   lurkerpuppy
   lurkerpuppy-lod0-jg
@@ -18,6 +17,11 @@
 
 nav-enemy-default-event-handler
 
+;; A newly noticed puppy celebrates before chasing. Each run cycle has a one-in-four bark chance;
+;; once its contact attack lands it plays the head-butt sound and celebrates four times before
+;; resuming the chase. Staring uses the same celebration as a short lunge: travel is enabled only
+;; from animation frames 2.5 through 7.5, followed by 1.25--1.5 seconds of idle. Giving up clears
+;; the blocked and destination flags, chooses a new patrol point, and turns toward it.
 (defstate nav-enemy-notice (lurkerpuppy)
   :virtual #t
   :event nav-enemy-default-event-handler
@@ -25,11 +29,7 @@ nav-enemy-default-event-handler
     (behavior ()
       (ja-no-eval :num! (loop!))
       (ja-channel-push! 1 (seconds 0.17))
-      (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (ja-blend-eval)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! lurkerpuppy-celebrate-ja :num! (seek!) :frame-num 0.0 (ja-blend-eval))
       (go-virtual nav-enemy-chase)))
 
 (defstate nav-enemy-chase (lurkerpuppy)
@@ -40,19 +40,16 @@ nav-enemy-default-event-handler
       (cond
         ((ja-group? lurkerpuppy-jump-land-ja)
          (ja-channel-push! 1 (seconds 0.17))
-         (ja-no-eval :group! lurkerpuppy-run-ja :num! (seek!) :frame-num (ja-aframe 4.0 0))
-         (until (ja-done? 0)
-           (suspend)
-           (ja :num! (seek!))))
+         (ja-play :group! lurkerpuppy-run-ja :num! (seek!) :frame-num (ja-aframe 4.0 0)))
         (else (ja-channel-push! 1 (seconds 0.17))))
-      (let ((f30-0 (rand-vu-float-range 0.9 1.1)))
+      (let ((run-speed-scale (rand-vu-float-range 0.9 1.1)))
         (loop
           (if (rand-vu-percent? 0.25) (sound-play "puppy-bark"))
-          (ja-no-eval :group! lurkerpuppy-run-ja :num! (seek! max f30-0) :frame-num 0.0)
-          (until (ja-done? 0)
-            (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8)) (go-virtual nav-enemy-attack))
-            (suspend)
-            (ja :num! (seek! max f30-0)))))))
+          (ja-play :group!
+                   lurkerpuppy-run-ja
+                   :num! (seek! max run-speed-scale)
+                   :frame-num 0.0
+                   (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags attack-landed)) (go-virtual nav-enemy-attack)))))))
 
 (defstate nav-enemy-stare (lurkerpuppy)
   :virtual #t
@@ -62,23 +59,25 @@ nav-enemy-default-event-handler
       (set! (-> self rotate-speed) 1456355.5)
       (set! (-> self turn-time) (seconds 0.1))
       (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-      (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
+      (let ((celebrate-speed-scale (rand-vu-float-range 0.8 1.2)))
         (loop
           (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (ja-channel-push! 1 (seconds 0.1))
-          (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek! (ja-aframe 12.0 0) f30-0) :frame-num 0.0)
-          (until (ja-done? 0)
-            (let ((f0-3 (ja-aframe-num 0)))
-              (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-              (if (and (>= f0-3 2.5) (>= 7.5 f0-3)) (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))))
-            (suspend)
-            (ja :num! (seek! (ja-aframe 12.0 0) f30-0)))
+          (ja-play :group!
+                   lurkerpuppy-celebrate-ja
+                   :num!
+                   (seek! (ja-aframe 12.0 0) celebrate-speed-scale)
+                   :frame-num 0.0
+                   (let ((celebrate-frame (ja-aframe-num 0)))
+                     (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+                     (if (and (>= celebrate-frame 2.5) (>= 7.5 celebrate-frame))
+                       (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel)))))
           (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.1))
           (ja :group! lurkerpuppy-idle-ja)
           (ja :num-func num-func-identity :frame-num 0.0)
-          (let ((gp-2 (rand-vu-int-range 750 900))) (suspend-for gp-2 (ja :num! (loop!)) (ja-blend-eval)))))))
+          (let ((idle-time (rand-vu-int-range 750 900))) (suspend-for idle-time (ja :num! (loop!)) (ja-blend-eval)))))))
 
 (defstate nav-enemy-give-up (lurkerpuppy)
   :virtual #t
@@ -88,20 +87,18 @@ nav-enemy-default-event-handler
       (set! (-> self rotate-speed) 218453.33)
       (set! (-> self turn-time) (seconds 0.5))
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group! lurkerpuppy-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
-      (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
+      (ja-play :group! lurkerpuppy-idle-ja :num! (seek!) :frame-num 0.0)
+      (logclear! (-> self nav flags) (nav-control-flags blocked reached-destination))
       (nav-enemy-get-new-patrol-point)
-      (ja-no-eval :group! lurkerpuppy-idle-ja :num! (seek! max 1.4) :frame-num 0.0)
-      (until (ja-done? 0)
-        (seek-to-point-toward-point! (-> self collide-info)
-                                     (-> self nav destination-pos)
-                                     (-> self rotate-speed)
-                                     (-> self turn-time))
-        (suspend)
-        (ja :num! (seek! max 1.4)))
+      (ja-play :group!
+               lurkerpuppy-idle-ja
+               :num!
+               (seek! max 1.4)
+               :frame-num 0.0
+               (seek-to-point-toward-point! (-> self collide-info)
+                                            (-> self nav destination-pos)
+                                            (-> self rotate-speed)
+                                            (-> self turn-time)))
       (go-virtual nav-enemy-patrol)))
 
 (defstate nav-enemy-attack (lurkerpuppy)
@@ -122,14 +119,15 @@ nav-enemy-default-event-handler
     (behavior ()
       (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
       (ja-channel-push! 1 (seconds 0.075))
-      (dotimes (gp-0 4)
-        (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (let ((f0-4 (ja-aframe-num 0)))
-            (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-            (if (and (>= f0-4 2.5) (>= 7.5 f0-4)) (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))))
-          (suspend)
-          (ja :num! (seek!))))
+      (dotimes (i 4)
+        (ja-play :group!
+                 lurkerpuppy-celebrate-ja
+                 :num! (seek!)
+                 :frame-num 0.0
+                 (let ((celebrate-frame (ja-aframe-num 0)))
+                   (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+                   (if (and (>= celebrate-frame 2.5) (>= 7.5 celebrate-frame))
+                     (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))))))
       (go-virtual nav-enemy-chase))
   :post nav-enemy-face-player-post)
 
@@ -188,24 +186,29 @@ nav-enemy-default-event-handler
        :debug-draw-jump #f))
 
 (defmethod initialize-collision ((this lurkerpuppy))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set! (-> s4-0 prim-core offense) (collide-offense normal-attack))
-      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 4915.2)
-      (set-root-prim! s5-0 s4-0))
-    (set! (-> s5-0 nav-radius) 2048.0)
-    (backup-collide-with-as s5-0)
-    (set! (-> this collide-info) s5-0))
+  "Create a moving collision shape with a 1.2-metre normal-attack sphere and a half-metre
+   navigation radius."
+  (let ((root-shape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> root-shape dynam) (copy *standard-dynamics* 'process))
+    (set! (-> root-shape reaction) default-collision-reaction)
+    (set! (-> root-shape no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((attack-sphere (new 'process 'collide-shape-prim-sphere root-shape (the-as uint 3))))
+      (set! (-> attack-sphere prim-core collide-as) (collide-kind enemy))
+      (set! (-> attack-sphere collide-with) (collide-kind target))
+      (set! (-> attack-sphere prim-core action) (collide-action solid))
+      (set! (-> attack-sphere prim-core offense) (collide-offense normal-attack))
+      (set-vector! (-> attack-sphere local-sphere) 0.0 0.0 0.0 4915.2)
+      (set-root-prim! root-shape attack-sphere))
+    (set! (-> root-shape nav-radius) 2048.0)
+    (backup-collide-with-as root-shape)
+    (set! (-> this collide-info) root-shape))
   0
   (none))
 
-(defmethod nav-enemy-method-48 ((this lurkerpuppy))
+(defmethod post-init-setup! ((this lurkerpuppy))
+  "Initialize the puppy skeleton and navigation tuning, then assign neck-controller up, nose,
+   and ear indices 0, 1, and 2 when the controller is present."
   (initialize-skeleton this *lurkerpuppy-sg* '())
   (init-defaults! this *lurkerpuppy-nav-enemy-info*)
   (when (nonzero? (-> this neck))

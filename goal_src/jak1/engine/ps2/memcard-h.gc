@@ -41,32 +41,36 @@
   :pack-me)
 
 (defun mc-sync ()
-  "Block here, waiting for the memory card to finish being read/written.
-   Note - this will freeze the entire game, so this should not be used
-   outside of debugging."
-  (let ((v0-0 0)) (while (zero? v0-0) (mc-run) (set! v0-0 (mc-check-result))) v0-0))
+  "Wait for the current memory-card read or write to finish by advancing the memory-card
+   state machine until it reports a result. Return that result. This blocks the entire game, so it is
+   intended only for debugging."
+  (let ((result 0))
+    (while (zero? result)
+      (mc-run)
+      (set! result (mc-check-result)))
+    result))
 
 (defun show-mc-info ((dma-buf dma-buffer))
-  "Print mc info to the screen."
+  "Draw the current status of both memory-card slots."
   (let ((info (new 'stack-no-clear 'mc-slot-info)))
-    (dotimes (slot-idx 2)
-      (mc-get-slot-info slot-idx info)
+    (dotimes (slot 2)
+      (mc-get-slot-info slot info)
       (cond
-        ((zero? (-> info known)) (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" slot-idx) *temp-string*)
-        ((zero? (-> info handle)) (format (clear *temp-string*) "SLOT ~D: NO CARD~%" slot-idx) *temp-string*)
+        ((zero? (-> info known)) (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" slot) *temp-string*)
+        ((zero? (-> info handle)) (format (clear *temp-string*) "SLOT ~D: NO CARD~%" slot) *temp-string*)
         ((zero? (-> info formatted))
-         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" slot-idx (-> info handle))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" slot (-> info handle))
          *temp-string*)
         ((zero? (-> info inited))
          (format (clear *temp-string*)
                  "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
-                 slot-idx
+                 slot
                  (-> info handle)
                  (-> info mem-required)
                  (-> info mem-actual))
          *temp-string*)
         (else
-         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " slot-idx (-> info handle))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " slot (-> info handle))
          *temp-string*
          (format *temp-string*
                  "SAVES ~D ~D ~D ~D : LAST ~D~%"
@@ -75,6 +79,6 @@
                  (-> info file 2 present)
                  (-> info file 3 present)
                  (-> info last-file))))
-      (draw-string-xy *temp-string* dma-buf 32 (+ (* 12 slot-idx) 8) (font-color red) (font-flags shadow))))
+      (draw-string-xy *temp-string* dma-buf 32 (+ (* 12 slot) 8) (font-color red) (font-flags shadow))))
   0
   (none))

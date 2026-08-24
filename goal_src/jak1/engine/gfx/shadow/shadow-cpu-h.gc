@@ -13,18 +13,18 @@
 (defenum shadow-flags
   :bitfield #t
   :type int32
-  (shdf00)
-  (disable-fade) ;; ignore max distance settings
-  (shdf02)
-  (shdf03)
-  (shdf04)
-  (disable-draw) ;; disable completely.
+  (camera-cull)        ;; skip when the camera is behind the bottom clip plane
+  (disable-fade)       ;; ignore the fade-distance cull
+  (world-space-planes) ;; use clip planes directly instead of offsetting them by the shadow center
+  (scissor-top)        ;; clip the volume against top-plane
+  (shdf04)             ;; unused
+  (disable-draw)       ;; master off switch
   )
 
 ;; settings computed by the user, consumed by the shadow renderer
 (deftype shadow-settings (structure)
-  ((center        vector :inline) ;; unused?
-   (flags         shadow-flags :overlay-at (-> center w)) ;; used to disable, most other flags do nothing?
+  ((center        vector :inline)
+   (flags         shadow-flags :overlay-at (-> center w))
    (shadow-dir    vector :inline)
    (dist-to-locus float :overlay-at (-> shadow-dir w))
    (bot-plane     plane :inline) ;; volume clip plane
@@ -33,7 +33,7 @@
    (fade-start    float) ;; distance where fadeout starts
    (dummy-2       int32)
    (dummy-3       int32)
-   (fade-vec      vector :inline :overlay-at fade-dist) ;; added
+   (fade-vec      vector :inline :overlay-at fade-dist)
    ))
 
 (deftype shadow-control (basic)
@@ -48,22 +48,26 @@
    (update-direction-from-time-of-day (_type_) none)
    (collide-to-find-planes (_type_ vector float float float) none)))
 
-(defmethod clear-offset-bit ((obj shadow-control))
-  "Clear a bit in w for the center of the shadow."
-  (set! (-> obj settings center w) (the-as float (logand (lognot #x20) (the-as int (-> obj settings center w)))))
+(defmethod clear-offset-bit ((this shadow-control))
+  "Clear the disable-draw flag."
+  (logclear! (-> this settings flags) (shadow-flags disable-draw))
+  0
+  )
+
+(defmethod set-offset-bit ((this shadow-control))
+  "Set the disable-draw flag."
+  (logior! (-> this settings flags) (shadow-flags disable-draw))
+  0
+  )
+
+(defmethod set-bottom-plane-offset ((this shadow-control) (y float))
+  "Set the horizontal bottom clipping plane to the given Y coordinate."
+  (set! (-> this settings bot-plane d) (- y))
   0)
 
-(defmethod set-offset-bit ((obj shadow-control))
-  "Set a bit in w for the center position of the shadow"
-  (set! (-> obj settings center w) (the-as float (logior (the-as int (-> obj settings center w)) #x20)))
-  0)
-
-(defmethod set-bottom-plane-offset ((obj shadow-control) (arg0 float))
-  (set! (-> obj settings bot-plane d) (- arg0))
-  0)
-
-(defmethod set-top-plane-offset ((obj shadow-control) (arg0 float))
-  (set! (-> obj settings top-plane d) (- arg0))
+(defmethod set-top-plane-offset ((this shadow-control) (y float))
+  "Set the horizontal top clipping plane to the given Y coordinate."
+  (set! (-> this settings top-plane d) (- y))
   0)
 
 (deftype shadow-data (structure)
@@ -93,13 +97,16 @@
    (cur-run  uint32)
    (run      shadow-run 15 :inline)))
 
-(defun shadow-queue-append ((arg0 shadow-queue))
-  "Increment the run counter"
-  (set! (-> arg0 cur-run) (+ (-> arg0 cur-run) 1)))
+(defun shadow-queue-append ((queue shadow-queue))
+  "Advance to the next shadow run and return its index."
+  (let ((next-index (+ (-> queue cur-run) 1)))
+    (set! (-> queue cur-run) next-index)
+    next-index))
 
-(defun shadow-queue-reset ((arg0 shadow-queue))
-  "Reset the run counter"
-  (set! (-> arg0 cur-run) 0))
+(defun shadow-queue-reset ((queue shadow-queue))
+  "Select the first shadow run."
+  (set! (-> queue cur-run) (the-as uint 0))
+  0)
 
 (define *shadow-queue* (new 'global 'shadow-queue))
 
@@ -132,34 +139,49 @@
 ;   )                                   ;
 |#
 
+;; One triangle, three vertex indices into the mesh's vertex table. faces is spare space in the
+;; packed data that the CPU classifier writes its answer into: for a single-sided mesh a one means the
+;; face turns toward the light and belongs on the cap list, and for a double-sided mesh it means the
+;; authored winding already faces the light and does not have to be reversed.
 (deftype shadow-tri (structure)
   ((ind-0 uint8)
    (ind-1 uint8)
    (ind-2 uint8)
    (faces uint8)))
 
+;; One edge of the mesh, by its two endpoints and the one or two triangles that share it. tri-1 of 255
+;; means there is no second triangle: an open boundary, which is on the silhouette whenever its single
+;; face is lit.
 (deftype shadow-edge (structure)
   ((ind-0 uint8)
    (ind-1 uint8)
    (tri-0 uint8)
    (tri-1 uint8)))
 
+;; The packed shadow mesh. Every offset is measured from this header, and the whole block including the
+;; header is qwc-data quadwords long -- the DMA tag that fetches it uses that count directly.
+;;
+;; Vertices come in two runs: (num-verts - num-twos) of them name a single joint, and the last num-twos
+;; name two joints and carry a blend weight.
+;; Triangles and edges are likewise split into single-sided and double-sided runs, which is the
+;; distinction that decides whether a face can be rejected for facing away from the light at all.
 (deftype shadow-header (structure)
-  ((qwc-data         uint32)
-   (num-joints       uint32)
+  ((qwc-data         uint32)  ;; size of the whole packed block, in quadwords
+   (num-joints       uint32)  ;; sizes the matrix transfer; skinning follows the per-vertex references
    (num-verts        uint16)
-   (num-twos         uint16)
+   (num-twos         uint16)  ;; how many of those vertices blend two joints
    (num-single-tris  uint16)
    (num-single-edges uint16)
    (num-double-tris  uint16)
    (num-double-edges uint16)
    (ofs-verts        uint32)
-   (ofs-refs         uint32)
+   (ofs-refs         uint32)  ;; one shadow-matrix-ref per vertex, in vertex order
    (ofs-single-tris  uint32)
    (ofs-single-edges uint32)
    (ofs-double-tris  uint32)
    (ofs-double-edges uint32)))
 
+;; total-size aliases qwc-data and is therefore a quadword count, not a byte count.
 (deftype shadow-geo (art-element)
   ((total-size uint32)
    (header     shadow-header :inline :overlay-at total-size)
@@ -169,16 +191,17 @@
             (type-to-make type)
             (bottom-offset float)
             (top-offset float)
-            (dir float)
-            (center float)
-            (fade float))
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> obj settings center w) center)
-    (set-vector! (-> obj settings shadow-dir) 0.0 -1.0 0.0 dir)
-    (set-vector! (-> obj settings bot-plane) 0.0 1.0 0.0 (- bottom-offset))
-    (set-vector! (-> obj settings top-plane) 0.0 1.0 0.0 (- top-offset))
-    (set! (-> obj settings fade-dist) fade)
-    obj))
+            (dist-to-locus float)
+            (flags float)
+            (fade-dist float))
+  "Allocate shadow controls with horizontal clipping planes, a downward projection direction, packed flags, and a fade distance."
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this settings center w) flags)
+    (set-vector! (-> this settings shadow-dir) 0.0 -1.0 0.0 dist-to-locus)
+    (set-vector! (-> this settings bot-plane) 0.0 1.0 0.0 (- bottom-offset))
+    (set-vector! (-> this settings top-plane) 0.0 1.0 0.0 (- top-offset))
+    (set! (-> this settings fade-dist) fade-dist)
+    this))
 
 (define *shadow* #f)
 

@@ -8,8 +8,50 @@
 (require "engine/gfx/generic/generic-h.gc")
 (define-extern *generic-envmap-texture* texture)
 
+;; GENERIC converts expanded fragment geometry into the DMA/VIF packets consumed by the Generic VU1
+;; renderer. MERC and Generic TIE first build a GSF source buffer in main memory. Its header supplies
+;; strip and draw-point counts, ptr-iks supplies the indexed draw order, and ptr-verts addresses the
+;; expanded 32-byte position/texture/normal/color records. Camera, lighting, packet-template, shader,
+;; and output-cursor state lives in the shared generic-work scratchpad page.
+;;
+;; Each packet is assembled in one of the two scratchpad banks selected by saves.cur-outbuf:
+;;
+;;   1. A packet builder writes the outer DMA/VIF prefix, VU1 header, and per-strip A+D shaders.
+;;   2. It reserves packed position, color, and texture-coordinate payloads and publishes their
+;;      scratchpad addresses through generic-saves.
+;;   3. The selected effect processors gather GSF vertices in draw-point order and fill those spans.
+;;   4. The caller copies saves.qwc quadwords from cur-outbuf through fromSPR to saves.basep, the
+;;      current write cursor in the frame's main-memory DMA buffer, then flips the scratchpad bank.
+;;
+;; The resulting main-memory block is already a complete Generic DMA/VIF fragment. When the frame's
+;; foreground bucket executes, VIF1 uploads its header, shaders, and vertex streams into the selected
+;; VU1 banks; VU1 transforms the vertices and emits the final GIF stream to the GS.
+;;
+;; Builders and processors take no arguments because generic-saves is their shared interface. Stream
+;; sizes are rounded to four draw points, matching the original four-at-a-time processors and keeping
+;; each payload qword-aligned; the final group may therefore consume converter-provided padding.
+;; Each gsf-ik contributes an 8-bit vertex index and an 8-bit no-kick flag. The processors place the
+;; flag in bit 0 of S, which VU1 removes from the coordinate and converts to the GS ADC bit. Authored
+;; texture coordinates must consequently keep bit 0 clear.
+;;
+;; Single-pass packet:
+;;   DMA/VIF | VU header | shaders | VIF+position | VIF+color | VIF+texture | MSCAL/FLUSH
+;;
+;; Base + environment packet:
+;;   DMA/VIF | base header | base shaders | position | color | texture
+;;           | VIF switch | env header | env shaders | env color | env texture
+;;           | DMA REF(position) | MSCAL
+;;
+;; The environment pass carries only a second color and texture-coordinate stream. Its DMA REF points
+;; back to the base positions after fromSPR has copied them to main memory, so the geometry is uploaded
+;; once and shaded twice. generic-light-proc fills the base streams; generic-envmap-proc fills the two
+;; environment streams.
+
 (define *target-lock* (the-as symbol 0))
 
+;; Immutable packet templates and arithmetic constants. generic-work-init copies this block into
+;; scratchpad; packet builders then patch transfer counts, VU destinations, and DMA addresses in the
+;; private copy without modifying these defaults.
 (define *generic-consts*
   (new 'static
        'generic-consts
@@ -71,96 +113,593 @@
        :light-consts
        (new 'static 'vector :x 255.0 :y 8388608.0)))
 
-(defun generic-work-init ((arg0 generic-dma-foreground-sink))
-  "Initialize generic-work."
-  ;; copy to scratchpad copy of the work
+
+(defun generic-work-init ((sink generic-dma-foreground-sink))
+  "Initialize Generic's per-sink scratchpad state: copy the packet templates, restore sink's VU1
+   cursors, select the first output bank, and build the shared environment-map A+D shader."
+  ;; Seed the private constants before any builder patches its packet templates.
   (quad-copy! (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts))
               (the-as pointer *generic-consts*)
               27)
-  ;; set buffer addresses
-  (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves gifbuf-adr) (-> arg0 state gifbuf-adr))
-  (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves inbuf-adr) (-> arg0 state inbuf-adr))
+  ;; A foreground sink owns its VU1 input/header rotation across calls. Continue that rotation and
+  ;; start packet construction in the first of the two scratchpad output banks.
+  (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves gifbuf-adr)
+        (-> sink state gifbuf-adr))
+  (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves inbuf-adr)
+        (-> sink state inbuf-adr))
   (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves cur-outbuf)
         (the-as uint (+ 8192 (scratchpad-object int))))
-  ;; initialize the environment map "shader". This isn't a real shader, but just texturing settings.
-  (let ((gp-1 (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts envmap shader)))
-    (let ((a1-1 *generic-envmap-texture*)) (adgif-shader<-texture! gp-1 a1-1))
-    (set! (-> gp-1 tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-    (set! (-> gp-1 clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-    (set! (-> gp-1 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
-    (set! (-> gp-1 prims 1) (gs-reg64 tex0-1))
-    (set! (-> gp-1 prims 3) (gs-reg64 tex1-1))
-    (set! (-> gp-1 prims 5) (gs-reg64 miptbp1-1))
-    (set! (-> gp-1 clamp-reg) (gs-reg64 clamp-1))
-    (set! (-> gp-1 prims 9) (gs-reg64 alpha-1)))
+  ;; Every environment strip uses the same texture state, so build one shared A+D shader from the
+  ;; currently selected environment texture and copy it into each packet that needs the second pass.
+  (let ((envmap-shader
+          (-> (scratchpad-object terrain-context)
+              work
+              foreground
+              generic-work
+              fx-buf
+              work
+              consts
+              envmap
+              shader)))
+    (let ((envmap-texture *generic-envmap-texture*))
+      (adgif-shader<-texture! envmap-shader envmap-texture))
+    (set! (-> envmap-shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+    (set! (-> envmap-shader clamp)
+          (new 'static
+               'gs-clamp
+               :wms (gs-tex-wrap-mode clamp)
+               :wmt (gs-tex-wrap-mode clamp)))
+    (set! (-> envmap-shader alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
+    (set! (-> envmap-shader prims 1) (gs-reg64 tex0-1))
+    (set! (-> envmap-shader prims 3) (gs-reg64 tex1-1))
+    (set! (-> envmap-shader prims 5) (gs-reg64 miptbp1-1))
+    (set! (-> envmap-shader clamp-reg) (gs-reg64 clamp-1))
+    (set! (-> envmap-shader prims 9) (gs-reg64 alpha-1)))
   (none))
 
-(defun upload-vu0-program ((func vu-function) (wait-ptr pointer))
-  "Upload and block until done.
-   Generating the DMA is highly optimized."
-  (none))
+(#when PC_PORT
+  ;; The PC Generic renderer performs the VU0 stages natively. These stubs retain the EE-facing
+  ;; initialization interface without uploading a microprogram that the host renderer will not run.
+  (defun upload-vu0-program ((func vu-function) (wait-counter pointer))
+    "PC stub for the synchronous EE VU0-program upload interface."
+    (none))
 
-(defun generic-upload-vu0 ()
-  "Start upload, but don't sync yet.
-   Generating the DMA chain is not as optimized."
-  (none))
+  (defun generic-upload-vu0 ()
+    "PC stub for the asynchronous Generic VU0 upload used by the EE renderer."
+    (none)))
 
-(defun generic-initialize-without-sink ((arg0 matrix) (arg1 vu-lights))
-  "Prepare for Generic.
-   Upload the generic vu0 block and set the matrix and lights.
-   The generic VU0 block is loaded to program address 0."
+(defun generic-initialize-without-sink ((camera-transform matrix) (lights vu-lights))
+  "Initialize Generic's camera and optional seven-vector lighting block without changing a sink's
+   VU1 cursors. On EE, synchronously load the Generic VU0 program at address zero first."
   (upload-vu0-program generic-vu0-block (the-as pointer #x70000064))
-  (let (;(a2-0 (+ #x2e20 (the-as int (the-as terrain-context #x70000000))))
-        (a2-0 (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts matrix))
-        (v1-1 (-> arg0 vector 0 quad))
-        (a0-3 (-> arg0 vector 1 quad))
-        (a1-2 (-> arg0 vector 2 quad))
-        (a3-0 (-> arg0 vector 3 quad)))
-    ;;(set! (-> (the-as (pointer uint128) a2-0)) v1-1)
-    (set! (-> a2-0 vector 0 quad) v1-1)
-    ;;(s.q! (+ a2-0 16) a0-3)
-    (set! (-> a2-0 vector 1 quad) a0-3)
-    ;; (s.q! (+ a2-0 32) a1-2)
-    (set! (-> a2-0 vector 2 quad) a1-2)
-    ;;(s.q! (+ a2-0 48) a3-0)
-    (set! (-> a2-0 vector 3 quad) a3-0))
-  (if arg1
-    ;;(quad-copy! (the-as pointer (+ #x3190 #x70000000)) (the-as pointer arg1) 7)
+  (let ((work-matrix (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts matrix)))
+    (matrix-copy! work-matrix camera-transform)
+    )
+  (if lights
     (quad-copy! (the pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work lights))
-                (the-as pointer arg1)
+                (the-as pointer lights)
                 7))
   0
   (none))
 
-(defun generic-initialize ((arg0 generic-dma-foreground-sink) (arg1 matrix) (arg2 vu-lights))
-  (generic-work-init arg0)
+(defun generic-initialize ((sink generic-dma-foreground-sink) (camera-transform matrix) (lights vu-lights))
+  "Initialize sink's Generic packet state, start the EE VU0 upload when applicable, and copy the
+   camera transform and optional seven-vector lighting block into scratchpad."
+  (generic-work-init sink)
   (generic-upload-vu0)
-  ;;(let ((a2-1 (+ #x2e20 (the-as int #x70000000)))
-  (let ((a2-1 (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts matrix))
-        (v1-1 (-> arg1 vector 0 quad))
-        (a0-2 (-> arg1 vector 1 quad))
-        (a1-1 (-> arg1 vector 2 quad))
-        (a3-0 (-> arg1 vector 3 quad)))
-    (set! (-> a2-1 vector 0 quad) v1-1)
-    (set! (-> a2-1 vector 1 quad) a0-2)
-    (set! (-> a2-1 vector 2 quad) a1-1)
-    (set! (-> a2-1 vector 3 quad) a3-0))
-  (if arg2
+  (matrix-copy! (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts matrix) camera-transform)
+  (if lights
     (quad-copy! (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work lights))
-                (the-as pointer arg2)
+                (the-as pointer lights)
                 7))
   0
   (none))
 
-(defun generic-wrapup ((arg0 generic-dma-foreground-sink))
-  (set! (-> arg0 state gifbuf-adr) (-> (scratchpad-object terrain-context) work foreground generic-work saves gifbuf-adr))
-  (set! (-> arg0 state inbuf-adr) (-> (scratchpad-object terrain-context) work foreground generic-work saves inbuf-adr))
+(defun generic-wrapup ((sink generic-dma-foreground-sink))
+  "Save Generic's next VU1 input-bank and header-buffer destinations back into sink."
+  ;; These cursors belong to the foreground sink, not to one conversion pass. If MERC and Generic TIE
+  ;; both append to the same bucket, the later producer must continue the rotation or it can overwrite
+  ;; a VU1 bank that an earlier packet is still using.
+  (set! (-> sink state gifbuf-adr)
+        (-> (scratchpad-object terrain-context) work foreground generic-work saves gifbuf-adr))
+  (set! (-> sink state inbuf-adr)
+        (-> (scratchpad-object terrain-context) work foreground generic-work saves inbuf-adr))
   (none))
 
-(def-mips2c generic-prepare-dma-single function)
+(defun generic-none ()
+  "Satisfy an effect-processor slot without producing or modifying a vertex stream."
+  (none))
 
-(def-mips2c generic-prepare-dma-double function)
+(defun generic-post-debug ()
+  "Dump the first 256 bytes of the shared GSF buffer as sixteen hexadecimal quadwords."
+  (when #t
+    (let ((buffer *gsf-buffer*))
+      (dotimes (i 16)
+        (let ((row-base buffer))
+          (format *stdcon*
+                  "~04x: ~08x ~08x ~08x ~08x~%"
+                  (+ (the-as uint buffer) (* i 16))
+                  (-> (the-as (pointer uint32) (+ (the-as uint row-base) (* (* i 4) 4))))
+                  (-> (the-as (pointer uint32) (+ (the-as uint row-base) (* (+ (* i 4) 1) 4))))
+                  (-> (the-as (pointer uint32) (+ (the-as uint row-base) (* (+ (* i 4) 2) 4))))
+                  (-> (the-as (pointer uint32) (+ (the-as uint row-base) (* (+ (* i 4) 3) 4))))))))
+    (format *stdcon* "~%"))
+  0
+  (none))
 
-(def-mips2c generic-light-proc function)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Plain GOAL effect implementations
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-mips2c generic-envmap-proc function)
+;; Portable versions of the packet builders and per-draw-point processors used by the PC converters.
+;; They preserve the original scratchpad ABI: builders publish raw stream addresses in generic-saves,
+;; processors fill those addresses, and the surrounding MERC/TIE code performs the fromSPR copy.
+
+;; Optional counters for comparing the portable effect path with the surrounding conversion cost.
+(define *generic-effect-stats* #f)
+
+(deftype generic-effect-debug-stats (structure)
+  ((timer                stopwatch :inline)
+   (light-vertices       uint32)
+   (envmap-vertices      uint32)
+   (prepare-single-calls uint32)
+   (prepare-double-calls uint32)))
+
+(deftype vector3s-packed (structure)
+  ((x float)
+   (y float)
+   (z float))
+  :pack-me)
+
+(deftype gsf-ik-packed (structure)
+  ((index   uint8)
+   (no-kick uint8))
+  :pack-me)
+
+(define *generic-effect-debug-stats-data* (new 'global 'generic-effect-debug-stats))
+
+(defun generic-rounded-draw-points ((count int))
+  "Round count up to the four-draw-point groups used by Generic's qword-aligned streams."
+  (declare (inline))
+  (logand (+ count 3) -4))
+
+(defun generic-next-inbuf ((address int))
+  "Return the VU1 input bank after address, wrapping across Generic's three-bank ring."
+  (declare (inline))
+  (if (= address GENERIC-VU1-INBUF-LAST) GENERIC-VU1-INBUF-FIRST (+ address GENERIC-VU1-INBUF-STEP)))
+
+(defun generic-copy-effect-shader! ((dst adgif-shader) (src adgif-shader) (kick-offset int) (vertex-count int))
+  "Copy src's five A+D quadwords to dst and patch the strip's VU kick offset and vertex count."
+  (declare (inline))
+  (quad-copy! (the-as pointer dst) (the-as pointer src) 5)
+  (set! (-> dst quad 0 word 3) (the-as uint kick-offset))
+  (set! (-> dst quad 1 word 3) (the-as uint vertex-count))
+  (none))
+
+(defun generic-write-stream-tag! ((stream uint32) (vif0-tag uint) (vif1-tag uint))
+  "Clear the 16-byte prefix immediately before stream and install its two trailing VIF commands."
+  (declare (inline))
+  (let ((tag (the-as dma-packet (- stream 16))))
+    (set! (-> tag quad) (the-as uint128 0))
+    (set! (-> tag vif0) (the-as vif-tag vif0-tag))
+    (set! (-> tag vif1) (the-as vif-tag vif1-tag)))
+  (none))
+
+;; Build one scratchpad-resident Generic fragment from the GSF header and the shader pointers in
+;; generic-saves. is-envmap selects the base or environment GIF header and shader source. A zero
+;; ptr-shaders means an earlier pass already prepared the header and shader list in this output bank;
+;; this call preserves them while rebuilding the outer tag, vertex-stream prefixes, and launch tail.
+;;
+;; The output payloads are V3-32 positions (12 bytes per draw point), V4-8 colors (4 bytes), and V2-16
+;; texture coordinates (4 bytes). Their VIF NUM fields and storage spans use the four-point padded
+;; count. On return, saves holds the three writable scratchpad cursors, the flat fromSPR size, and the
+;; next VU1 input/header destinations; a processor still has to fill the payloads before copy-out.
+(defun generic-prepare-dma-single-new ()
+  "Lay out one Generic VIF fragment in cur-outbuf and publish its three vertex-payload cursors."
+  (let* ((work (-> (scratchpad-object terrain-context) work foreground generic-work))
+         (saves (-> work saves))
+         (consts (-> work fx-buf work consts))
+         (gsf (-> saves gsf-buf))
+         (packet (the-as generic-texbuf (-> saves cur-outbuf)))
+         (out (the-as pointer packet))
+         (out-address (the-as uint32 packet))
+         (header (-> packet header))
+         (num-strips (the-as int (-> gsf header num-strips)))
+         (num-dps (the-as int (-> gsf header num-dps)))
+         (padded-dps (generic-rounded-draw-points num-dps))
+         (shader-end (&+ out (+ 128 (* num-strips 80))))
+         (position-bytes (* padded-dps 12))
+         (attribute-bytes (* padded-dps 4))
+         (position-stream (the-as uint32 (&+ shader-end 16)))
+         (color-stream (the-as uint32 (&+ shader-end (+ 48 position-bytes))))
+         (texture-stream (the-as uint32 (&+ shader-end (+ 64 position-bytes attribute-bytes))))
+         (control (the-as uint32 (&+ shader-end (+ 64 position-bytes (* attribute-bytes 2)))))
+         (shaders (the-as (inline-array adgif-shader) (&+ out 128)))
+         (control-tags (the-as (pointer vif-tag) control))
+         (inbuf (the-as int (-> saves inbuf-adr)))
+         (header-qwc (+ 7 (* num-strips 5))))
+    ;; Always refresh the outer CNT/VIF prefix. Refresh the VU header and shaders only when the caller
+    ;; supplied a new base shader list; the zero-pointer path deliberately reuses the bank's contents.
+    (set! (-> packet tag quad) (-> consts dma-header quad))
+    (when (nonzero? (-> saves ptr-shaders))
+      (matrix-copy! (-> header matrix) (-> consts matrix))
+      (cond
+        ((nonzero? (-> saves is-envmap))
+         (set! (-> header strgif qword quad) (-> consts envmap strgif qword quad))
+         (set! (-> header adnop1 quad) (-> consts adcmds 3 quad))
+         (set! (-> header adnop2 quad) (-> consts adcmds 3 quad)))
+        (else
+         (set! (-> header strgif qword quad) (-> consts base-strgif qword quad))
+         (set! (-> header adnop1 quad) (-> consts adcmds 0 quad))
+         (set! (-> header adnop2 quad) (-> consts adcmds 3 quad))))
+
+      ;; A base pass owns one authored shader per strip. A standalone environment pass repeats the
+      ;; shared environment shader but patches each copy with that strip's count and running kick.
+      (let ((strip-table (the-as (pointer uint8) (&-> gsf header strip-table 0)))
+            (shader-source (the-as (inline-array adgif-shader)
+                                   (if (nonzero? (-> saves is-envmap))
+                                     (-> saves ptr-env-shader)
+                                     (-> saves ptr-shaders))))
+            (kick-offset 0))
+        (dotimes (strip num-strips)
+          (let ((strip-count (the-as int (-> strip-table strip))))
+            (generic-copy-effect-shader!
+              (-> shaders strip)
+              (-> shader-source (if (nonzero? (-> saves is-envmap)) 0 strip))
+              kick-offset
+              strip-count)
+            (+! kick-offset (+ 9 (* strip-count 3)))))
+        (when (nonzero? num-strips)
+          (logior! (-> shaders (- num-strips 1) quad 1 word 3) #x8000)))
+      (set! (-> header strips) (the-as uint num-strips))
+      (set! (-> header dps) (the-as uint num-dps))
+      (set! (-> header kickoff) 0))
+
+    ;; Upload this fragment's VU header to the sink's current header bank, then select the other bank
+    ;; for the next single-pass fragment.
+    (set! (-> packet tag vif1)
+          (the-as vif-tag
+                  (logior (the-as uint (-> packet tag vif1))
+                          (the-as uint (-> saves gifbuf-adr))
+                          (shl header-qwc 16))))
+    (set! (-> saves gifbuf-adr) (logxor (-> saves gifbuf-adr) GENERIC-VU1-HEADER-FLIP))
+
+    ;; Prefix each dense payload with its UNPACK and clear the intervening qwords to VIF NOPs. STCYCL
+    ;; interleaves the separately uploaded position, color, and coordinate fields in VU memory.
+    (generic-write-stream-tag!
+      position-stream
+      (-> consts stcycle-tag)
+      (logior (-> consts unpack-vtx-tag) (shl padded-dps 16) (+ inbuf 2)))
+    (set! (-> (the-as (pointer uint128) (- color-stream 32)) 0) (the-as uint128 0))
+    (generic-write-stream-tag!
+      color-stream (the-as uint 0) (logior (-> consts unpack-clr-tag) (shl padded-dps 16) (+ inbuf 1)))
+    (set! (-> (the-as (pointer uint128) (- texture-stream 32)) 0) (the-as uint128 0))
+    (generic-write-stream-tag!
+      texture-stream (the-as uint 0) (logior (-> consts unpack-tex-tag) (shl padded-dps 16) inbuf))
+    (set! (-> (the-as (pointer uint128) control) 0) (the-as uint128 0))
+    (set! (-> control-tags 0) (the-as vif-tag (-> consts reset-cycle-tag)))
+    (set! (-> control-tags 2) (the-as vif-tag (-> consts mscal-tag)))
+    (set! (-> control-tags 3) (the-as vif-tag (-> consts flush-tag)))
+
+    ;; The outer CNT tag excludes its own qword; saves.qwc includes it because fromSPR copies the whole
+    ;; flat block. Publish the payload addresses only after the layout and counts are final.
+    (let ((dma-qwc (/ (- control out-address) 16)))
+      (set! (-> packet tag dma qwc) (the-as uint dma-qwc))
+      (set! (-> saves qwc) (the-as uint (+ dma-qwc 1))))
+    (set! (-> saves inbuf-adr) (the-as uint (generic-next-inbuf inbuf)))
+    (set! (-> saves num-dps) (the-as uint num-dps))
+    (set! (-> saves ptr-vtxs) position-stream)
+    (set! (-> saves ptr-clrs) color-stream)
+    (set! (-> saves ptr-texs) texture-stream)
+    0
+    (none)))
+
+
+;; Build the base and environment fragments for a lit environment-mapped model in one scratchpad
+;; block. Both fragments share the transform, strip topology, and positions. The base fragment owns
+;; the V3-32 payload; the environment fragment carries only V4-8 tint and V2-16 reflected coordinates,
+;; then a DMA REF reads the base positions from their future address in the main-memory output buffer:
+;; saves.basep plus the position payload's offset from cur-outbuf.
+;;
+;; The base streams use the current VU1 input bank. An inline VIF switch launches that fragment and
+;; uploads the environment header to the alternate header buffer. The environment attributes and
+;; referenced positions use the next input bank, and a final CNT tag launches the second fragment.
+;; Two input banks are consumed. The two header-buffer flips cancel, so gifbuf-adr is unchanged.
+(defun generic-prepare-dma-double-new ()
+  "Lay out paired base/environment VIF fragments, with the second reusing the first's positions."
+  (let* ((work (-> (scratchpad-object terrain-context) work foreground generic-work))
+         (saves (-> work saves))
+         (consts (-> work fx-buf work consts))
+         (gsf (-> saves gsf-buf))
+         (base-packet (the-as generic-texbuf (-> saves cur-outbuf)))
+         (out (the-as pointer base-packet))
+         (out-address (the-as uint32 base-packet))
+         (base-header (-> base-packet header))
+         (num-strips (the-as int (-> gsf header num-strips)))
+         (num-dps (the-as int (-> gsf header num-dps)))
+         (padded-dps (generic-rounded-draw-points num-dps))
+         (shader-span (+ 112 (* num-strips 80)))
+         (position-bytes (* padded-dps 12))
+         (attribute-bytes (* padded-dps 4))
+         (inbuf0 (the-as int (-> saves inbuf-adr)))
+         (inbuf1 (generic-next-inbuf inbuf0))
+         (inbuf2 (generic-next-inbuf inbuf1))
+         (gifbuf0 (the-as int (-> saves gifbuf-adr)))
+         (gifbuf1 (logxor gifbuf0 GENERIC-VU1-HEADER-FLIP))
+         (header-qwc (+ 7 (* num-strips 5))))
+    ;; Derive every cursor before writing: each fragment has its own header/shader span and attribute
+    ;; payloads, while the base position span appears only once.
+    (let* ((position-stream (the-as uint32 (&+ out (+ shader-span 32))))
+           (color-stream (the-as uint32 (&+ out (+ shader-span position-bytes 64))))
+           (texture-stream
+             (the-as uint32 (&+ out (+ shader-span position-bytes attribute-bytes 80))))
+           (env-packet
+             (&+ out (+ shader-span position-bytes (* attribute-bytes 2) 80)))
+           (env-color-stream
+             (the-as uint32 (&+ env-packet (+ shader-span 32))))
+           (env-texture-stream
+             (the-as uint32 (&+ env-packet (+ shader-span attribute-bytes 48))))
+           (position-ref
+             (&+ env-packet (+ shader-span (* attribute-bytes 2) 48))))
+      ;; Seed the outer CNT tag and the inline VIF switch between fragments.
+      (set! (-> base-packet tag quad) (-> consts dma-header quad))
+      (let ((env-prefix (the-as dma-packet env-packet))
+            (env-switch (the-as qword env-packet))
+            (position-ref-tags (the-as (inline-array dma-packet) position-ref))
+            (vif-header-template (the-as qword (&-> consts vif-header 0))))
+        ;; The switch launches the base fragment and uploads the environment header. The REF then
+        ;; fetches the copied-out base positions, and the following CNT carries the second MSCAL.
+        (set! (-> env-switch quad) (-> vif-header-template quad))
+        (set! (-> env-switch word 0) (-> consts mscal-tag))
+        (set! (-> env-switch word 1) (-> consts reset-cycle-tag))
+        (set! (-> env-prefix vif1)
+              (the-as vif-tag (logior (the-as uint (-> env-prefix vif1)) gifbuf1 (shl header-qwc 16))))
+        (set! (-> position-ref-tags 0 quad) (-> consts dma-ref-vtxs quad))
+        (set! (-> position-ref-tags 1 quad) (-> consts dma-cnt-call quad))
+        (set! (-> position-ref-tags 0 dma)
+              (new 'static
+                   'dma-tag
+                   :id (dma-tag-id ref)
+                   :qwc (/ position-bytes 16)
+                   :addr (the-as int (+ (-> saves basep) (- position-stream out-address)))))
+        (set! (-> position-ref-tags 0 vif1)
+              (the-as vif-tag
+                      (logior (-> consts unpack-vtx-tag) (shl padded-dps 16) (+ inbuf1 2))))
+        (set! (-> position-ref-tags 1 vif0) (the-as vif-tag (-> consts reset-cycle-tag)))
+        (set! (-> position-ref-tags 1 vif1) (the-as vif-tag (-> consts mscal-tag))))
+
+      (set! (-> base-packet tag vif1)
+            (the-as vif-tag
+                    (logior (the-as uint (-> base-packet tag vif1)) gifbuf0 (shl header-qwc 16))))
+
+      ;; Write the base position/color/coordinate UNPACKs and the environment color/coordinate
+      ;; UNPACKs. Cleared qwords between payloads are interpreted as VIF NOPs.
+      (generic-write-stream-tag!
+        position-stream
+        (-> consts stcycle-tag)
+        (logior (-> consts unpack-vtx-tag) (shl padded-dps 16) (+ inbuf0 2)))
+      (set! (-> (the-as (pointer uint128) (- color-stream 32)) 0) (the-as uint128 0))
+      (generic-write-stream-tag!
+        color-stream (the-as uint 0) (logior (-> consts unpack-clr-tag) (shl padded-dps 16) (+ inbuf0 1)))
+      (set! (-> (the-as (pointer uint128) (- texture-stream 32)) 0) (the-as uint128 0))
+      (generic-write-stream-tag!
+        texture-stream (the-as uint 0) (logior (-> consts unpack-tex-tag) (shl padded-dps 16) inbuf0))
+      (set! (-> (the-as (pointer uint128) (&+ env-packet -16)) 0) (the-as uint128 0))
+      (generic-write-stream-tag!
+        env-color-stream
+        (-> consts stcycle-tag)
+        (logior (-> consts unpack-clr-tag) (shl padded-dps 16) (+ inbuf1 1)))
+      (set! (-> (the-as (pointer uint128) (- env-texture-stream 32)) 0) (the-as uint128 0))
+      (generic-write-stream-tag!
+        env-texture-stream (the-as uint 0) (logior (-> consts unpack-tex-tag) (shl padded-dps 16) inbuf1))
+      (set! (-> (the-as (pointer uint128) (&+ position-ref -16)) 0) (the-as uint128 0))
+
+      (let ((env-header (-> (the-as generic-texbuf env-packet) header))
+            (base-shaders (the-as (inline-array adgif-shader) (&+ out 128)))
+            (env-shaders (the-as (inline-array adgif-shader) (&+ env-packet 128))))
+        (cond
+          ;; A fresh base shader list requires both complete headers and both per-strip shader lists.
+          ((nonzero? (-> saves ptr-shaders))
+           (matrix-copy! (-> base-header matrix) (-> consts matrix))
+           (matrix-copy! (-> env-header matrix) (-> consts matrix))
+           (set! (-> base-header strgif qword quad) (-> consts base-strgif qword quad))
+           (set! (-> base-header adnop1 quad) (-> consts adcmds 0 quad))
+           (set! (-> base-header adnop2 quad) (-> consts adcmds 3 quad))
+           (set! (-> env-header strgif qword quad) (-> consts envmap strgif qword quad))
+           (set! (-> env-header adnop1 quad) (-> consts adcmds 3 quad))
+           (set! (-> env-header adnop2 quad) (-> consts adcmds 3 quad))
+           (let ((strip-table (the-as (pointer uint8) (&-> gsf header strip-table 0)))
+                 (base-source (the-as (inline-array adgif-shader) (-> saves ptr-shaders)))
+                 (env-source (the-as (inline-array adgif-shader) (-> saves ptr-env-shader)))
+                 (kick-offset 0))
+             (dotimes (strip num-strips)
+               (let ((strip-count (the-as int (-> strip-table strip))))
+                 (generic-copy-effect-shader!
+                   (-> base-shaders strip) (-> base-source strip) kick-offset strip-count)
+                 (generic-copy-effect-shader!
+                   (-> env-shaders strip) (-> env-source 0) kick-offset strip-count)
+                 (+! kick-offset (+ 9 (* strip-count 3)))))
+             (when (nonzero? num-strips)
+               (logior! (-> base-shaders (- num-strips 1) quad 1 word 3) #x8000)
+               (logior! (-> env-shaders (- num-strips 1) quad 1 word 3) #x8000)))
+           (set! (-> base-header strips) (the-as uint num-strips))
+           (set! (-> base-header dps) (the-as uint num-dps))
+           (set! (-> base-header kickoff) 0))
+          ;; With no new base shader pointer, retain the prepared base fragment and derive the
+          ;; environment fragment from its transform and per-strip kick/count words.
+          (else
+           (matrix-copy! (-> env-header matrix) (-> base-header matrix))
+           (set! (-> env-header strgif qword quad) (-> consts envmap strgif qword quad))
+           (set! (-> env-header adnop1 quad) (-> consts adcmds 3 quad))
+           (set! (-> env-header adnop2 quad) (-> consts adcmds 3 quad))
+           (let ((env-source (the-as (inline-array adgif-shader) (-> saves ptr-env-shader))))
+             (dotimes (strip num-strips)
+               (generic-copy-effect-shader!
+                 (-> env-shaders strip)
+                 (-> env-source 0)
+                 (the-as int (-> base-shaders strip quad 0 word 3))
+                 (the-as int (-> base-shaders strip quad 1 word 3)))))))
+        (set! (-> env-header strips) (the-as uint num-strips))
+        (set! (-> env-header dps) (the-as uint num-dps))
+        (set! (-> env-header kickoff) 0))
+
+      ;; Include the final REF and CNT tags in the flat fromSPR span, advance across two VU1 input
+      ;; banks, and publish the five payload cursors for the two processors.
+      (let ((dma-qwc (- (/ (&- position-ref out) 16) 1)))
+        (set! (-> base-packet tag dma qwc) (the-as uint dma-qwc))
+        (set! (-> saves qwc) (the-as uint (+ dma-qwc 3))))
+      (set! (-> saves inbuf-adr) (the-as uint inbuf2))
+      (set! (-> saves num-dps) (the-as uint num-dps))
+      (set! (-> saves ptr-vtxs) position-stream)
+      (set! (-> saves ptr-clrs) color-stream)
+      (set! (-> saves ptr-texs) texture-stream)
+      (set! (-> saves ptr-env-clrs) env-color-stream)
+      (set! (-> saves ptr-env-texs) env-texture-stream)
+      0
+      (none))))
+
+
+
+;; Fill a prepared base fragment from the main-memory GSF source. ptr-iks supplies draw order and the
+;; no-kick bit; each index selects one expanded record from ptr-verts. Copy camera-space XYZ into the
+;; dense V3-32 payload and authored ST into V2-16, reserving bit 0 of S for no-kick. For color, clamp
+;; each normal/light dot product at zero, combine three directional colors with ambient, modulate the
+;; source RGBA channels, clamp them at 255, and pack one V4-8 value per draw point.
+;;
+;; The padded iterations intentionally consume the converter's trailing index entries so all three
+;; output payloads exactly match the VIF NUM written by the packet builder.
+(defun generic-light-proc-new ()
+  "Gather and light indexed GSF draw points into a prepared fragment's base vertex payloads."
+  (let* ((work (-> (scratchpad-object terrain-context) work foreground generic-work))
+         (saves (-> work saves))
+         (lights (-> work fx-buf work lights))
+         (gsf (-> saves gsf-buf))
+         ;; These are dense wire-format arrays, not arrays of GOAL object references.
+         (indices (the-as (inline-array gsf-ik-packed) (-> gsf info ptr-iks)))
+         (vertices (the-as (inline-array gsf-vertex) (-> gsf info ptr-verts)))
+         (positions (the-as (inline-array vector3s-packed) (-> saves ptr-vtxs)))
+         (colors (the-as (inline-array vector4ub) (-> saves ptr-clrs)))
+         (textures (the-as (inline-array vector2uh) (-> saves ptr-texs)))
+         (num-dps (the-as int (-> saves num-dps)))
+         (padded-dps (generic-rounded-draw-points num-dps)))
+    (dotimes (draw-point padded-dps)
+      (let* ((index (-> indices draw-point))
+             (vertex (-> vertices (-> index index)))
+             (source-position (-> vertex pos))
+             (normal (-> vertex nrm))
+             (source-texture (-> vertex tex))
+             (source-color (-> vertex clr))
+             (output-position (-> positions draw-point))
+             (output-texture (-> textures draw-point))
+             (output-color (-> colors draw-point))
+             (nx (-> normal x))
+             (ny (-> normal y))
+             (nz (-> normal z))
+             (light0 (fmax 0.0 (+ (* nx (-> lights direction 0 x))
+                                   (* ny (-> lights direction 1 x))
+                                   (* nz (-> lights direction 2 x)))))
+             (light1 (fmax 0.0 (+ (* nx (-> lights direction 0 y))
+                                   (* ny (-> lights direction 1 y))
+                                   (* nz (-> lights direction 2 y)))))
+             (light2 (fmax 0.0 (+ (* nx (-> lights direction 0 z))
+                                   (* ny (-> lights direction 1 z))
+                                   (* nz (-> lights direction 2 z)))))
+             (red (fmin 255.0 (* (the float (-> source-color x))
+                                  (+ (-> lights ambient x) (* light0 (-> lights color 0 x))
+                                     (* light1 (-> lights color 1 x)) (* light2 (-> lights color 2 x))))))
+             (green (fmin 255.0 (* (the float (-> source-color y))
+                                    (+ (-> lights ambient y) (* light0 (-> lights color 0 y))
+                                       (* light1 (-> lights color 1 y)) (* light2 (-> lights color 2 y))))))
+             (blue (fmin 255.0 (* (the float (-> source-color z))
+                                   (+ (-> lights ambient z) (* light0 (-> lights color 0 z))
+                                      (* light1 (-> lights color 1 z)) (* light2 (-> lights color 2 z))))))
+             (alpha (fmin 255.0 (* (the float (-> source-color w))
+                                    (+ (-> lights ambient w) (* light0 (-> lights color 0 w))
+                                       (* light1 (-> lights color 1 w)) (* light2 (-> lights color 2 w)))))))
+        (set! (-> output-position x) (-> source-position x))
+        (set! (-> output-position y) (-> source-position y))
+        (set! (-> output-position z) (-> source-position z))
+        (set! (-> output-texture x)
+              (the-as uint (logior (logand (-> source-texture x) #xfffe)
+                                   (logand (-> index no-kick) 1))))
+        (set! (-> output-texture y) (the-as uint (logand (-> source-texture y) #xfffe)))
+        (set! (-> output-color clr)
+              (logior (the-as uint (the int red))
+                      (shl (the int green) 8)
+                      (shl (the int blue) 16)
+                      (shl (the int alpha) 24)))))
+    0
+    (none)))
+
+;; Fill a prepared environment fragment from the same indexed GSF source as the base pass. Position
+;; and normal are already in camera space. Let m = normal - (0, 0, 1), then reflect the eye vector:
+;;
+;;   r = position + m * dot(m, position) / m.z
+;;
+;; Normalize r, map XY from [-1, 1] to [0, 1], and scale to the V2-16 stream's 12-bit coordinate
+;; range. Copy the fragment's packed environment tint to the V4-8 stream and place no-kick in bit 0
+;; of S. This pass emits no positions; its packet uses the base fragment's DMA REF instead. As with
+;; the base processor, padded iterations make the payload sizes agree with their VIF NUM fields.
+(defun generic-envmap-proc-new ()
+  "Generate reflected coordinates and packed tint for a prepared environment fragment."
+  (let* ((work (-> (scratchpad-object terrain-context) work foreground generic-work))
+         (saves (-> work saves))
+         (consts (-> work fx-buf work consts))
+         (gsf (-> saves gsf-buf))
+         (indices (the-as (inline-array gsf-ik-packed) (-> gsf info ptr-iks)))
+         (vertices (the-as (inline-array gsf-vertex) (-> gsf info ptr-verts)))
+         (colors (the-as (inline-array vector4ub) (-> saves ptr-env-clrs)))
+         (textures (the-as (inline-array vector2uh) (-> saves ptr-env-texs)))
+         (num-dps (the-as int (-> saves num-dps)))
+         (padded-dps (generic-rounded-draw-points num-dps)))
+    (dotimes (draw-point padded-dps)
+      (let* ((index (-> indices draw-point))
+             (vertex (-> vertices (-> index index)))
+             (position (-> vertex pos))
+             (normal (-> vertex nrm))
+             (output-color (-> colors draw-point))
+             (output-texture (-> textures draw-point))
+             (mx (-> normal x))
+             (my (-> normal y))
+             (mz (- (-> normal z) 1.0))
+             (reflection-scale (/ (+ (* mx (-> position x))
+                                      (* my (-> position y))
+                                      (* mz (-> position z)))
+                                   mz))
+             (rx (+ (-> position x) (* mx reflection-scale)))
+             (ry (+ (-> position y) (* my reflection-scale)))
+             (rz (+ (-> position z) (* mz reflection-scale)))
+             (inverse-length (/ 1.0 (sqrtf (+ (square rx) (square ry) (square rz)))))
+             (s (the int (* 4096.0 (+ 0.5 (* 0.5 rx inverse-length)))))
+             (t (the int (* 4096.0 (+ 0.5 (* 0.5 ry inverse-length))))))
+        (set! (-> output-color clr) (the-as uint (-> consts envmap colors x)))
+        (set! (-> output-texture x)
+              (the-as uint (logior (logand s #xfffe)
+                                   (logand (-> index no-kick) 1))))
+        (set! (-> output-texture y) (the-as uint (logand t #xfffe)))))
+    0
+    (none)))
+
+(defun generic-note-prepare-dma-single ()
+  "Count one single-fragment packet build when portable-effect statistics are enabled."
+  (when *generic-effect-stats* (+! (-> *generic-effect-debug-stats-data* prepare-single-calls) 1))
+  (none))
+
+(defun generic-note-prepare-dma-double ()
+  "Count one paired base/environment packet build when portable-effect statistics are enabled."
+  (when *generic-effect-stats* (+! (-> *generic-effect-debug-stats-data* prepare-double-calls) 1))
+  (none))
+
+(defun generic-note-light-proc ()
+  "Add the current fragment's draw-point count to the portable lighting statistic."
+  (when *generic-effect-stats*
+    (+! (-> *generic-effect-debug-stats-data* light-vertices)
+        (-> (scratchpad-object terrain-context) work foreground generic-work saves num-dps)))
+  (none))
+
+(defun generic-note-envmap-proc ()
+  "Add the current fragment's draw-point count to the portable environment statistic."
+  (when *generic-effect-stats*
+    (+! (-> *generic-effect-debug-stats-data* envmap-vertices)
+        (-> (scratchpad-object terrain-context) work foreground generic-work saves num-dps)))
+  (none))

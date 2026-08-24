@@ -5,14 +5,21 @@
 
 ;; DECOMP BEGINS
 
-;; Trajectory represents a ballistic trajectory.
-;; First, call one of the setup methods to setup the trajectory object.
-;; Then, use eval-position or eval-velocity to get the position or velocity of the
-;; object along the trajectory.
+;; A trajectory describes ballistic motion under constant vertical acceleration.
+;; The setup methods solve an initial velocity and flight duration from endpoint
+;; constraints: a fixed duration, horizontal speed, initial vertical speed, or
+;; apex height above the higher endpoint.
+;;
+;; eval-position! and eval-velocity! use elapsed game-time ticks and write into a
+;; caller-provided vector. They do not clamp evaluation to the solved flight
+;; duration, so callers decide when the projectile has arrived or collided.
 (deftype trajectory (structure)
-  ((initial-position vector :inline)
+  (;; Position and velocity at elapsed time zero.
+   (initial-position vector :inline)
    (initial-velocity vector :inline)
+   ;; Solved time from the initial position to the requested destination.
    (time             float)
+   ;; Signed vertical acceleration per game-time tick squared.
    (gravity          meters))
   (:methods
    (eval-position! (_type_ float vector) vector)

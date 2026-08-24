@@ -7,104 +7,186 @@
 (require "engine/gfx/shadow/shadow-h.gc")
 (require "engine/gfx/sprite/sparticle/sparticle-launcher-h.gc")
 
+;; ------------------------------------------------------------------------------------------------
+;; Fake shadows
+;; ------------------------------------------------------------------------------------------------
+;; Most things that need a shadow do not need the projected-volume renderer in shadow-cpu. A thrown
+;; crate, a projectile, or a small enemy gets a "fake shadow" instead: one round sprite laid flat on
+;; the ground, tilted to match the surface it landed on and faded out as the caster rises. This file
+;; is the whole front end. It probes for the ground, turns the surface normal into the rotation the
+;; sprite renderer wants, and appends the result to *fake-shadow-buffer*.
+;;
+;; Orientation is packed. fake-shadow keeps only qx/qy/qz of the unit quaternion that rotates +y onto
+;; the ground normal; the 3D sprite VU1 program recovers w from those three lanes. That is why
+;; compute-and-draw-shadow negates the vector whenever quaternion-vector-angle! produced a negative
+;; w: only the positive-w hemisphere survives the round trip. flags is the other packed field, and
+;; sprite-add-shadow-chunk reads its bit 0 to pick an additive sprite instead of the usual
+;; subtractive one.
+;;
+;; The buffer is double-buffered because filling and drawing happen in different phases of the frame.
+;; Process code fills the buffer that is open, drawable's foreground pass calls
+;; swap-fake-shadow-buffers just before sprite-draw, and sprite-draw hands the buffer that swap
+;; retired to sprite-add-shadow-all. Nothing carries over between frames; the swap only guarantees
+;; that the list is not appended to while the DMA for it is built.
+
 ;; DECOMP BEGINS
 
-(defun add-fake-shadow-to-buffer ((arg0 vector) (arg1 vector) (arg2 float) (arg3 int))
-  (let ((v1-0 *fake-shadow-buffer*))
-    (when (< (-> v1-0 num-shadows) 32)
-      (let ((t0-5 (-> v1-0 data (-> v1-0 num-shadows))))
-        (set! (-> t0-5 px) (-> arg0 x))
-        (set! (-> t0-5 py) (-> arg0 y))
-        (set! (-> t0-5 pz) (-> arg0 z))
-        (set! (-> t0-5 scale) arg2)
-        (set! (-> t0-5 qx) (-> arg1 x))
-        (set! (-> t0-5 qy) (-> arg1 y))
-        (set! (-> t0-5 qz) (-> arg1 z))
-        (set! (-> t0-5 flags) arg3))
-      (+! (-> v1-0 num-shadows) 1)))
+(defun add-fake-shadow-to-buffer ((pos vector) (ground-rot vector) (scale float) (flags int))
+  "Append one shadow sprite to the fake-shadow buffer that is currently open for filling.
+   pos is the world position of the sprite's center, already lifted clear of the ground.
+   ground-rot supplies the xyz lanes of the unit quaternion that rotates +y onto the ground
+   normal; its w lane is not stored and is reconstructed by the sprite VU1 program.
+   scale is the sprite size in world units, and flags selects the sprite's blend mode: bit 0
+   picks additive, otherwise the sprite is subtracted from the frame buffer.
+   Does nothing once the buffer holds 32 shadows."
+  (let ((buf *fake-shadow-buffer*))
+    (when (< (-> buf num-shadows) 32)
+      (let ((entry (-> buf data (-> buf num-shadows))))
+        (set! (-> entry px) (-> pos x))
+        (set! (-> entry py) (-> pos y))
+        (set! (-> entry pz) (-> pos z))
+        (set! (-> entry scale) scale)
+        (set! (-> entry qx) (-> ground-rot x))
+        (set! (-> entry qy) (-> ground-rot y))
+        (set! (-> entry qz) (-> ground-rot z))
+        (set! (-> entry flags) flags))
+      (+! (-> buf num-shadows) 1)))
   0
   (none))
 
 (defun swap-fake-shadow-buffers ()
+  "Retire the buffer that is open for filling and open the other one, empty. The retired buffer
+   stays intact for sprite-add-shadow-all, which recomputes which of the two it is the same way."
   (set! *fake-shadow-buffer*
         (if (= *fake-shadow-buffer* *fake-shadow-buffer-1*) *fake-shadow-buffer-2* *fake-shadow-buffer-1*))
   (set! (-> *fake-shadow-buffer* num-shadows) 0)
   0
   (none))
 
-(defun draw-shadow ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float) (arg4 float) (arg5 float))
-  (let ((f0-1 (- (-> arg0 y) (-> arg1 y))))
-    (if (< f0-1 arg4) (add-fake-shadow-to-buffer arg1 arg2 (* (- 1.0 (/ f0-1 arg4)) arg3) (the-as int arg5))))
+(defun draw-shadow ((pos vector) (ground-pos vector) (ground-rot vector) (radius float) (fade-height float) (flags float))
+  "Queue a fake shadow at ground-pos for a caster at pos, sized radius where the two touch and
+   shrinking linearly to nothing as the caster climbs fade-height above the ground. Nothing is
+   queued once the caster reaches fade-height. ground-rot and flags pass straight through to
+   add-fake-shadow-to-buffer; flags is an integer carried in a float register."
+  (let ((height (- (-> pos y) (-> ground-pos y))))
+    (if (< height fade-height)
+      (add-fake-shadow-to-buffer ground-pos ground-rot (* (- 1.0 (/ height fade-height)) radius) (the-as int flags))))
   0
   (none))
 
-(defun compute-and-draw-shadow ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 float) (arg5 float))
-  (local-vars (v1-10 float) (v1-11 float))
+(defun compute-and-draw-shadow ((pos vector) (ground-pos vector) (ground-normal vector) (radius vector) (fade-height float) (flags float))
+  "Queue a fake shadow lying flat on a surface whose normal is ground-normal. pos is the caster,
+   ground-pos is the contact point found for it, and radius, fade-height and flags mean what they
+   do in draw-shadow; radius is a float carried in a pointer register and flags an integer carried
+   in a float register.
+   Returns without queueing anything when the caster has already reached fade-height.
+   Raises ground-pos by a centimeter as a side effect, so the sprite does not z-fight the surface
+   it sits on."
+  (local-vars (rot-x float))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf))
     (init-vf0-vector)
-    (let ((sv-96 arg2)
-          (s4-0 arg3)
-          (s3-0 arg4)
-          (s2-0 arg5))
-      (when (< (- (-> arg0 y) (-> arg1 y)) s3-0)
-        (let ((sv-144 (new 'stack-no-clear 'vector))
-              (s0-0 (new 'stack-no-clear 'vector))
-              (s1-0 (new 'stack-no-clear 'sparticle-cpuinfo)))
-          (+! (-> arg1 y) 40.96)
-          (set! (-> sv-144 x) (-> sv-96 z))
-          (set! (-> sv-144 y) 0.0)
-          (set! (-> sv-144 z) (- (-> sv-96 x)))
-          (vector-normalize! sv-144 1.0)
-          (quaternion-vector-angle! (the-as quaternion s0-0) sv-144 (acos (-> sv-96 y)))
-          (let ((v1-9 s1-0))
+    ;; the vector helpers below clobber the argument registers, so keep working copies
+    (let ((normal ground-normal)
+          (scale radius)
+          (max-height fade-height)
+          (shadow-flags flags))
+      (when (< (- (-> pos y) (-> ground-pos y)) max-height)
+        (let ((tilt-axis (new 'stack-no-clear 'vector))
+              (ground-quat (new 'stack-no-clear 'vector))
+              (rot-work (new 'stack-no-clear 'sparticle-cpuinfo)))
+          (+! (-> ground-pos y) (meters 0.01))
+          ;; rotate +y onto the normal: the axis is the horizontal direction perpendicular to the
+          ;; normal's xz projection, and the angle is how far the normal leans away from vertical
+          (set! (-> tilt-axis x) (-> normal z))
+          (set! (-> tilt-axis y) 0.0)
+          (set! (-> tilt-axis z) (- (-> normal x)))
+          (vector-normalize! tilt-axis 1.0)
+          (quaternion-vector-angle! (the-as quaternion ground-quat) tilt-axis (acos (-> normal y)))
+          ;; keep xyz only, in the hemisphere where w is positive, since that is all fake-shadow
+          ;; stores and all the sprite program can invert. the masked add and subtract leave the w
+          ;; lane of the loaded quadword alone, and the move out of it is unused.
+          (let ((dest rot-work))
             (cond
-              ((< (-> s0-0 w) 0.0)
-               (.lvf vf1 (&-> v1-9 vel-sxvel quad))
-               (.lvf vf2 (&-> s0-0 quad))
+              ((< (-> ground-quat w) 0.0)
+               (.lvf vf1 (&-> dest vel-sxvel quad))
+               (.lvf vf2 (&-> ground-quat quad))
                (.sub.vf.xyz vf1 vf0 vf2)
-               (.svf (&-> v1-9 vel-sxvel quad) vf1)
-               (.mov v1-10 vf1))
+               (.svf (&-> dest vel-sxvel quad) vf1)
+               (.mov rot-x vf1))
               (else
-               (.lvf vf1 (&-> v1-9 vel-sxvel quad))
-               (.lvf vf2 (&-> s0-0 quad))
+               (.lvf vf1 (&-> dest vel-sxvel quad))
+               (.lvf vf2 (&-> ground-quat quad))
                (.add.vf.xyz vf1 vf0 vf2)
-               (.svf (&-> v1-9 vel-sxvel quad) vf1)
-               (.mov v1-11 vf1))))
-          (draw-shadow arg0 arg1 (-> s1-0 vel-sxvel) (the-as float s4-0) s3-0 s2-0))))
+               (.svf (&-> dest vel-sxvel quad) vf1)
+               (.mov rot-x vf1))))
+          (draw-shadow pos ground-pos (-> rot-work vel-sxvel) (the-as float scale) max-height shadow-flags))))
     0
     (none)))
 
-(defun find-ground-and-draw-shadow ((arg0 vector) (arg1 vector) (arg2 float) (arg3 collide-kind) (arg4 process-drawable) (arg5 float) (arg6 float))
-  (let ((s2-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s2-0 quad) (-> arg0 quad))
+(defun find-ground-and-draw-shadow ((pos vector)
+        (ground-pos vector)
+        (radius float)
+        (collide-with collide-kind)
+        (ignore-proc process-drawable)
+        (probe-y-offset float)
+        (probe-length float))
+  "Probe straight down for the surface under pos and queue a fake shadow on it. The probe starts
+   probe-y-offset above pos, reaches probe-length, considers only collide-with surfaces, and skips
+   ignore-proc's own primitives along with anything marked noentity.
+   radius sizes the shadow sprite; pass 0 to probe without drawing anything, which is what a caster
+   that already has a real projected shadow wants. probe-length doubles as the height over which the
+   sprite fades out.
+   ground-pos, when it is not #f, receives the contact point. It is left alone on a water bottom, so
+   a caster over water keeps the reference point it already had, and it is placed at the bottom of
+   the probe range when nothing was hit at all."
+  (let ((probe-origin (new 'stack-no-clear 'vector)))
+    (vector-copy! probe-origin pos)
+    ;; a second stack vector is reserved here and never used
     (new 'stack-no-clear 'vector)
-    (+! (-> s2-0 y) arg5)
-    (let ((s4-0 (new 'stack-no-clear 'collide-tri-result)))
+    (+! (-> probe-origin y) probe-y-offset)
+    (let ((hit (new 'stack-no-clear 'collide-tri-result)))
       (cond
-        ((>= (fill-and-probe-using-y-probe *collide-cache* s2-0 arg6 arg3 arg4 s4-0 (new 'static 'pat-surface :noentity #x1)) 0.0)
-         (if (!= arg2 0.0)
-           (compute-and-draw-shadow s2-0 (-> s4-0 intersect) (-> s4-0 normal) (the-as vector arg2) arg6 (the-as float 0)))
-         (if (and arg1 (!= (-> s4-0 pat material) 3)) (set! (-> arg1 quad) (-> s4-0 intersect quad))))
-        (else (if arg1 (vector+float*! arg1 arg0 (-> *standard-dynamics* gravity-normal) (- arg6)))))))
+        ((>= (fill-and-probe-using-y-probe *collide-cache*
+                                           probe-origin
+                                           probe-length
+                                           collide-with
+                                           ignore-proc
+                                           hit
+                                           (new 'static 'pat-surface :noentity #x1))
+             0.0)
+         (if (!= radius 0.0)
+           (compute-and-draw-shadow probe-origin
+                                    (-> hit intersect)
+                                    (-> hit normal)
+                                    (the-as vector radius)
+                                    probe-length
+                                    (the-as float 0)))
+         (if (and ground-pos (!= (-> hit pat material) (pat-material waterbottom)))
+           (vector-copy! ground-pos (-> hit intersect))))
+        (else (if ground-pos (vector+float*! ground-pos pos (-> *standard-dynamics* gravity-normal) (- probe-length)))))))
   0
   (none))
 
 (defbehavior do-target-shadow target ()
+  "Refresh the player's ground reference point once per frame. The player casts a real projected
+   shadow, so the radius is zero and this probe only updates control shadow-pos, which is seeded
+   from trans first in case the probe finds nothing. Skipped while off a surface, while swimming,
+   diving or flopping, and while the drawable is hidden or has its bones suppressed."
   (if (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
            (!= (-> self control mod-surface mode) 'swim)
            (!= (-> self control mod-surface mode) 'dive)
            (!= (-> self next-state name) 'target-flop)
            (not (logtest? (-> self draw status) (draw-status hidden no-anim skip-bones))))
-    (set! (-> self control shadow-pos quad) (-> self control trans quad))
+    (vector-copy! (-> self control shadow-pos) (-> self control trans))
     (find-ground-and-draw-shadow (-> self control trans)
                                  (-> self control shadow-pos)
                                  0.0
                                  (-> (the-as collide-shape-prim (-> self control root-prim)) collide-with)
                                  self
                                  0.0
-                                 81920.0))
+                                 (meters 20)))
   0
   (none))
 
@@ -124,7 +206,7 @@
    (:scalevel-y :copy scalevel-x)
    (:fade-a -0.3)
    (:timer (seconds 16.68))
-   (:flags (bit2 bit3))
+   (:flags (die-when-faded glow))
    (:launchrot-x (degrees -20) (degrees 15))
    (:conerot-x (degrees 90))
    (:conerot-y (degrees -180) (degrees 360))

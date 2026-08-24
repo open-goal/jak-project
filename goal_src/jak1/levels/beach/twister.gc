@@ -7,11 +7,15 @@
 
 ;; DECOMP BEGINS
 
+;; Only the first eight bytes of each dynamic joint slot are named here. Twister allocation and
+;; indexing use a sixteen-byte stride, leaving the upper eight bytes of every slot reserved.
 (deftype twist-joint (structure)
   ((ry      float)
    (max-dry float))
   :allow-misaligned)
 
+;; The last controlled joint follows target. Earlier joints are rebuilt backward so each adjacent
+;; wrapped Y-angle difference stays within that joint's max-dry limit.
 (deftype twister (basic)
   ((num-joints   int32)
    (first-joint  int32)
@@ -26,73 +30,102 @@
    (data         twist-joint :inline :dynamic))
   (:methods
    (new (symbol type int int float float float float) _type_)
-   (twister-method-9 (_type_ int int float) none)
+   (set-max-dry-range! (_type_ int int float) none)
    (set-target! (_type_ float) none)
-   (twister-method-11 (_type_) none)
-   (twister-method-12 (_type_ process-drawable) none)))
+   (update-twist! (_type_) none)
+   (apply-twist-to-bones! (_type_ process-drawable) none)))
 
-(defmethod new twister ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int) (arg2 float) (arg3 float) (arg4 float) (arg5 float))
-  (let* ((gp-0 (+ (- 1 arg0) arg1))
-         (v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* gp-0 16))))))
-    (set! (-> v0-0 first-joint) arg0)
-    (set! (-> v0-0 last-joint) arg1)
-    (set! (-> v0-0 num-joints) gp-0)
-    (set! (-> v0-0 max-speed) arg2)
-    (set! (-> v0-0 smoothing) arg4)
-    (set! (-> v0-0 min-dist) arg5)
-    (set! (-> v0-0 target) 0.0)
-    (set! (-> v0-0 ry) 0.0)
-    (set! (-> v0-0 max-speed-ry) arg3)
-    (dotimes (v1-4 gp-0)
-      (set! (-> v0-0 data v1-4 ry) 0.0)
-      (set! (-> v0-0 data v1-4 max-dry) 0.0))
-    v0-0))
+(defmethod new twister ((allocation symbol)
+            (type-to-make type)
+            (first-joint int)
+            (last-joint int)
+            (max-speed float)
+            (max-speed-ry float)
+            (smoothing float)
+            (min-dist float))
+  "Allocate twist state for the inclusive skeleton-joint range first-joint through last-joint.
+   Store the speed and smoothing tuning, clear the target and every joint's angle and relative
+   twist limit, and reserve a sixteen-byte dynamic slot per joint."
+  (let* ((joint-count (+ (- 1 first-joint) last-joint))
+         (new-twister (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* joint-count 16))))))
+    (set! (-> new-twister first-joint) first-joint)
+    (set! (-> new-twister last-joint) last-joint)
+    (set! (-> new-twister num-joints) joint-count)
+    (set! (-> new-twister max-speed) max-speed)
+    (set! (-> new-twister smoothing) smoothing)
+    (set! (-> new-twister min-dist) min-dist)
+    (set! (-> new-twister target) 0.0)
+    (set! (-> new-twister ry) 0.0)
+    (set! (-> new-twister max-speed-ry) max-speed-ry)
+    (dotimes (i joint-count)
+      (set! (-> new-twister data i ry) 0.0)
+      (set! (-> new-twister data i max-dry) 0.0))
+    new-twister))
 
 (defmethod asize-of ((this twister))
+  "Return the allocation size: a forty-byte fixed header plus one sixteen-byte dynamic slot per
+   controlled joint."
   (+ (* (-> this num-joints) 16) 40))
 
-(defmethod twister-method-9 ((this twister) (arg0 int) (arg1 int) (arg2 float))
-  (let ((v1-1 (- arg0 (-> this first-joint)))
-        (a1-2 (- arg1 (-> this first-joint))))
-    (while (>= a1-2 v1-1)
-      (set! (-> this data v1-1 max-dry) arg2)
-      (+! v1-1 1)))
+(defmethod set-max-dry-range! ((this twister) (start-joint int) (end-joint int) (max-dry float))
+  "Set the maximum relative Y twist for the inclusive skeleton-joint range start-joint through
+   end-joint. Joint numbers are converted to indices relative to first-joint; callers must keep
+   the range inside this twister."
+  (let ((i (- start-joint (-> this first-joint)))
+        (end-index (- end-joint (-> this first-joint))))
+    (while (>= end-index i)
+      (set! (-> this data i max-dry) max-dry)
+      (+! i 1)))
   0
   (none))
 
-(defmethod set-target! ((this twister) (arg0 float))
-  (set! (-> this target) arg0)
+(defmethod set-target! ((this twister) (target-angle float))
+  "Set the desired Y angle for the last controlled joint."
+  (set! (-> this target) target-angle)
   0
   (none))
 
-(defmethod twister-method-11 ((this twister))
-  (let* ((s5-0 (+ (-> this num-joints) -1))
-         (s4-0 (-> this data s5-0)))
-    (let ((f0-2 (deg-diff (-> s4-0 ry) (-> this target))))
-      (+! (-> s4-0 ry) (seek-with-smooth 0.0 f0-2 (-> this max-speed) (-> this smoothing) (-> this min-dist))))
-    (let ((f30-1 (-> s4-0 ry)))
-      (while (> s5-0 0)
-        (+! s5-0 -1)
-        (let ((s4-1 (-> this data s5-0)))
-          (let ((f0-9 (deg-diff f30-1 (-> s4-1 ry))))
+(defmethod update-twist! ((this twister))
+  "Smooth the last joint toward target, then walk backward through the chain. Preserve each
+   joint's existing wrapped angle difference when it is within max-dry; otherwise smooth that
+   difference toward the signed limit. A zero max-dry locks the joint to its successor."
+  (let* ((i (+ (-> this num-joints) -1))
+         (last-state (-> this data i)))
+    (let ((target-delta (deg-diff (-> last-state ry) (-> this target))))
+      (+! (-> last-state ry) (seek-with-smooth 0.0 target-delta (-> this max-speed) (-> this smoothing) (-> this min-dist))))
+    (let ((propagated-angle (-> last-state ry)))
+      (while (> i 0)
+        (+! i -1)
+        (let ((joint-state (-> this data i)))
+          (let ((relative-delta (deg-diff propagated-angle (-> joint-state ry))))
             (cond
-              ((= (-> s4-1 max-dry) 0.0) (set! f0-9 0.0))
-              ((< (fabs f0-9) (-> s4-1 max-dry)))
-              ((< f0-9 0.0)
-               (set! f0-9 (seek-with-smooth f0-9 (- (-> s4-1 max-dry)) (-> this max-speed) (-> this smoothing) (-> this min-dist))))
-              (else (set! f0-9 (seek-with-smooth f0-9 (-> s4-1 max-dry) (-> this max-speed) (-> this smoothing) (-> this min-dist)))))
-            (+! f30-1 f0-9))
-          (set! (-> s4-1 ry) f30-1)))))
+              ((= (-> joint-state max-dry) 0.0) (set! relative-delta 0.0))
+              ((< (fabs relative-delta) (-> joint-state max-dry)))
+              ((< relative-delta 0.0)
+               (set! relative-delta
+                     (seek-with-smooth relative-delta
+                                       (- (-> joint-state max-dry))
+                                       (-> this max-speed)
+                                       (-> this smoothing)
+                                       (-> this min-dist))))
+              (else
+               (set! relative-delta
+                     (seek-with-smooth relative-delta (-> joint-state max-dry) (-> this max-speed) (-> this smoothing) (-> this min-dist)))))
+            (+! propagated-angle relative-delta))
+          (set! (-> joint-state ry) propagated-angle)))))
   0
   (none))
 
-(defmethod twister-method-12 ((this twister) (arg0 process-drawable))
-  (let ((s4-0 (new 'stack-no-clear 'matrix)))
-    (dotimes (s3-0 (-> this num-joints))
-      (let ((s2-0 (-> arg0 node-list data (+ (-> this first-joint) s3-0) bone transform)))
-        (matrix-rotate-y! s4-0 (-> this data s3-0 ry))
-        (vector-! (-> s2-0 vector 3) (-> s2-0 vector 3) (-> arg0 root trans))
-        (matrix*! s2-0 s2-0 s4-0)
-        (vector+! (-> s2-0 vector 3) (-> s2-0 vector 3) (-> arg0 root trans)))))
+(defmethod apply-twist-to-bones! ((this twister) (owner process-drawable))
+  "Postmultiply each controlled bone transform by its Y-rotation about the drawable's root
+   position. Translate the bone to root-relative space before rotation, then restore the world
+   offset."
+  (let ((rotation (new 'stack-no-clear 'matrix)))
+    (dotimes (i (-> this num-joints))
+      (let ((bone-transform (-> owner node-list data (+ (-> this first-joint) i) bone transform)))
+        (matrix-rotate-y! rotation (-> this data i ry))
+        (vector-! (-> bone-transform vector 3) (-> bone-transform vector 3) (-> owner root trans))
+        (matrix*! bone-transform bone-transform rotation)
+        (vector+! (-> bone-transform vector 3) (-> bone-transform vector 3) (-> owner root trans)))))
   0
   (none))

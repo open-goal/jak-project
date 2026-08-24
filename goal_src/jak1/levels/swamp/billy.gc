@@ -26,10 +26,10 @@
    billy-done
    billy-playing))
 
-
 (defmethod relocate ((this billy) (offset int))
-  (countdown (v1-0 3)
-    (if (nonzero? (-> this path-data v1-0)) (&+! (-> this path-data v1-0) offset)))
+  "Adjust the three optional path-control pointers after this process moves."
+  (countdown (i 3)
+    (if (nonzero? (-> this path-data i)) (&+! (-> this path-data i) offset)))
   (call-parent-method this offset))
 
 (deftype billy-snack (process-drawable)
@@ -37,7 +37,6 @@
   (:states
    billy-snack-eat
    billy-snack-idle))
-
 
 (defskelgroup *farthy-snack-sg*
   farthy-snack
@@ -50,10 +49,7 @@
   :code
     (behavior ()
       (ja :group! farthy-snack-eat-ja)
-      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (deactivate self)
       (loop
         (suspend)))
@@ -67,15 +63,12 @@
   :code
     (behavior ()
       (loop
-        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek!)))))
+        (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)))
   :post ja-post)
 
-(defbehavior billy-snack-init-by-other billy-snack ((arg0 vector))
+(defbehavior billy-snack-init-by-other billy-snack ((position vector))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) position)
   (initialize-skeleton self *farthy-snack-sg* '())
   (set! (-> self num-rats) 0)
   (go billy-snack-idle)
@@ -90,9 +83,9 @@
    billy-rat-eat
    billy-rat-salivate))
 
-
-(defun rat-about-to-eat? ((arg0 billy-rat) (arg1 billy))
-  (the-as symbol (and (= (-> arg0 dest-type) 2) (> (-> arg1 num-snacks) 0) (handle->process (-> arg0 snack)))))
+(defun rat-about-to-eat? ((rat billy-rat) (game billy))
+  "Return whether rat is headed for a live snack while Billy still has snacks remaining."
+  (the-as symbol (and (= (-> rat dest-type) 2) (> (-> game num-snacks) 0) (handle->process (-> rat snack)))))
 
 (defstate nav-enemy-idle (billy-rat)
   :virtual #t
@@ -123,12 +116,9 @@
       (sound-play "rat-gulp")
       (ja-channel-push! 1 (seconds 0.05))
       (ja :group! swamp-rat-eat-ja)
-      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!)))
+      (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
-      (logclear! (-> self nav flags) (nav-control-flags navcf19))
+      (logclear! (-> self nav flags) (nav-control-flags reached-destination))
       (go-virtual nav-enemy-chase))
   :post nav-enemy-simple-post)
 
@@ -140,13 +130,7 @@
       (dotimes (gp-0 1)
         (sound-play "rat-eat")
         (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-          (ja-no-eval :group!
-                      (-> self draw art-group data (-> self nav-info victory-anim))
-                      :num! (seek! max f30-0)
-                      :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek! max f30-0)))))
+          (ja-play :group! (-> self draw art-group data (-> self nav-info victory-anim)) :num! (seek! max f30-0) :frame-num 0.0)))
       (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)
       (if (= (-> self dest-type) 3) (go billy-rat-eat) (go-virtual nav-enemy-chase)))
   :post nav-enemy-simple-post)
@@ -156,8 +140,8 @@
   :enter
     (behavior ()
       (call-parent-state-handler enter)
-      (when (logtest? (nav-control-flags navcf19) (-> self nav flags))
-        (logclear! (-> self nav flags) (nav-control-flags navcf19))
+      (when (logtest? (nav-control-flags reached-destination) (-> self nav flags))
+        (logclear! (-> self nav flags) (nav-control-flags reached-destination))
         (if (rat-about-to-eat? self (-> self billy 0))
           (go billy-rat-salivate)
           (send-event (ppointer->process (-> self billy)) 'billy-rat-needs-destination)))))
@@ -173,7 +157,7 @@
   :trans
     (behavior ()
       (set! (-> self speed-scale) (-> self billy 0 rat-speed))
-      (if (or (logtest? (nav-control-flags navcf19) (-> self nav flags))
+      (if (or (logtest? (nav-control-flags reached-destination) (-> self nav flags))
               (time-elapsed? (-> self state-time) (-> self chase-rest-time)))
         (go-virtual nav-enemy-victory)))
   :post
@@ -181,15 +165,15 @@
       (swamp-rat-update-wiggle-target (-> self destination))
       (nav-enemy-travel-post)))
 
-(defbehavior billy-rat-init-by-other billy-rat ((arg0 billy) (arg1 vector) (arg2 vector))
-  (set! (-> self billy) (the-as (pointer billy) (process->ppointer arg0)))
-  (set! (-> self destination quad) (-> arg2 quad))
+(defbehavior billy-rat-init-by-other billy-rat ((game billy) (position vector) (destination vector))
+  (set! (-> self billy) (the-as (pointer billy) (process->ppointer game)))
+  (vector-copy! (-> self destination) destination)
   (set! (-> self dest-type) (the-as uint 1))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (vector-! s4-0 arg2 arg1)
+    (vector-! s4-0 destination position)
     (set! (-> s4-0 y) 0.0)
     (vector-normalize! s4-0 1.0)
-    (swamp-rat-init-by-other arg0 arg1 s4-0 (pickup-type none) #t))
+    (swamp-rat-init-by-other game position s4-0 (pickup-type none) #t))
   (none))
 
 (defskelgroup *billy-sg*
@@ -218,10 +202,13 @@
       (set! s5-0 (-> gp-0 0 brother))))
   #f)
 
-(defmethod play-anim! ((this billy) (arg0 symbol))
+(defmethod play-anim! ((this billy) (commit? symbol))
+  "Return this character's animation for the current task stage. commit? lets subtype
+   implementations apply progression changes when playback really begins; false only selects or
+   prefetches the animation."
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
-     (when arg0
+     (when commit?
        (set! (-> this blend-on-exit) (the-as art-joint-anim #t))
        (close-status! (-> this tasks) (task-status need-introduction))
        (let ((s5-1 (new 'stack-no-clear 'vector)))
@@ -299,7 +286,7 @@
            (0 kill "swamp-spike-44")
            (0 kill "swamp-spike-45"))))
     (((task-status need-reward-speech))
-     (when arg0
+     (when commit?
        (set! (-> this cell-for-task) (current-task (-> this tasks)))
        (close-current! (-> this tasks)))
      (new 'static
@@ -331,7 +318,7 @@
            (0 kill "swamp-spike-44")
            (0 kill "swamp-spike-45"))))
     (else
-     (if arg0
+     (if commit?
        (format 0
                "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
                (-> this name)
@@ -339,22 +326,29 @@
      (-> this draw art-group data 3))))
 
 (defmethod get-art-elem ((this billy))
+  "Return the art element on the active root animation channel."
   (case (current-status (-> this tasks))
     (((task-status invalid) (task-status need-resolution)) (-> this draw art-group data 10))
     (else (-> this draw art-group data 3))))
 
-(defmethod process-taskable-method-38 ((this billy))
+(defmethod goto-post-anim-state! ((this billy))
+  "After play-anim, query for reminders, replay for a reward speech, or use the default
+   post-animation state."
   (case (current-status (-> this tasks))
     (((task-status need-reminder-a) (task-status need-reminder)) (go (method-of-object this query)))
     (((task-status need-reward-speech)) (go (method-of-object this play-anim)))
     (else (call-parent-method this)))
   (none))
 
-(defmethod get-accept-anim ((this billy) (arg0 symbol))
-  (if arg0 (close-current! (-> this tasks)))
+(defmethod get-accept-anim ((this billy) (commit? symbol))
+  "Return the task-accept animation. commit? lets subtype implementations apply the accepted
+   choice when playback begins."
+  (if commit? (close-current! (-> this tasks)))
   (new 'static 'spool-anim :name "billy-accept" :index 6 :parts 3 :command-list '()))
 
-(defmethod get-reject-anim ((this billy) (arg0 symbol))
+(defmethod get-reject-anim ((this billy) (commit? symbol))
+  "Return the task-reject animation. commit? lets subtype implementations apply the rejected
+   choice when playback begins."
   (new 'static 'spool-anim :name "billy-reject" :index 7 :parts 3 :command-list '()))
 
 (defstate billy-done (billy)
@@ -576,7 +570,7 @@
                 (set! (-> self offending-rat) (process->handle gp-0))
                 (set! (-> gp-0 dest-type) (the-as uint 3))
                 (let ((v0-1 (the-as object (-> gp-0 destination))))
-                  (set! (-> (the-as vector v0-1) quad) (-> (the-as billy-snack (-> gp-0 snack process 0)) root trans quad))
+                  (vector-copy! (the-as vector v0-1) (-> (the-as billy-snack (-> gp-0 snack process 0)) root trans))
                   v0-1))
                ((or (= (-> gp-0 dest-type) 2) (= (-> gp-0 dest-type) 3) (<= (-> self num-snacks) 0))
                 (set! (-> gp-0 dest-type) (the-as uint 1))
@@ -603,7 +597,7 @@
                      (set! (-> gp-0 snack) (process->handle (the-as billy-snack s5-1)))
                      (+! (-> (the-as billy-snack s5-1) num-rats) 1)
                      (set! (-> gp-0 dest-type) (the-as uint 2))
-                     (set! (-> gp-0 destination quad) (-> (the-as billy-snack s5-1) root trans quad))
+                     (vector-copy! (-> gp-0 destination) (-> (the-as billy-snack s5-1) root trans))
                      (set! (-> gp-0 destination x) (+ 6799.36 (-> gp-0 destination x)))))))))))))
   :enter
     (behavior ()
@@ -682,27 +676,28 @@
             (v1-8 (move-to-point! (-> *target* control) (-> v1-8 extra trans)) (go billy-playing))
             (else))))))
 
-(defmethod process-taskable-method-43 ((this billy))
+(defmethod try-play-ambient-chatter ((this billy))
+  "Occasionally play a random Billy ambient line while he is idle."
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
-    (let ((f30-0 (rand-float-gen)))
+    (let ((rng (rand-float-gen)))
       (cond
-        ((< 0.9411765 f30-0) (play-ambient (-> this ambient) "BIL-AM01" #f (-> this root trans)))
-        ((< 0.88235295 f30-0) (play-ambient (-> this ambient) "BIL-AM02" #f (-> this root trans)))
-        ((< 0.8235294 f30-0) (play-ambient (-> this ambient) "BIL-AM03" #f (-> this root trans)))
-        ((< 0.7647059 f30-0) (play-ambient (-> this ambient) "BIL-AM04" #f (-> this root trans)))
-        ((< 0.7058824 f30-0) (play-ambient (-> this ambient) "BIL-AM05" #f (-> this root trans)))
-        ((< 0.64705884 f30-0) (play-ambient (-> this ambient) "BIL-AM06" #f (-> this root trans)))
-        ((< 0.5882353 f30-0) (play-ambient (-> this ambient) "BIL-AM07" #f (-> this root trans)))
-        ((< 0.5294118 f30-0) (play-ambient (-> this ambient) "BIL-AM08" #f (-> this root trans)))
-        ((< 0.47058824 f30-0) (play-ambient (-> this ambient) "BIL-AM1A" #f (-> this root trans)))
-        ((< 0.4117647 f30-0) (play-ambient (-> this ambient) "BIL-AM2A" #f (-> this root trans)))
-        ((< 0.3529412 f30-0) (play-ambient (-> this ambient) "BIL-AM2B" #f (-> this root trans)))
+        ((< 0.9411765 rng) (play-ambient (-> this ambient) "BIL-AM01" #f (-> this root trans)))
+        ((< 0.88235295 rng) (play-ambient (-> this ambient) "BIL-AM02" #f (-> this root trans)))
+        ((< 0.8235294 rng) (play-ambient (-> this ambient) "BIL-AM03" #f (-> this root trans)))
+        ((< 0.7647059 rng) (play-ambient (-> this ambient) "BIL-AM04" #f (-> this root trans)))
+        ((< 0.7058824 rng) (play-ambient (-> this ambient) "BIL-AM05" #f (-> this root trans)))
+        ((< 0.64705884 rng) (play-ambient (-> this ambient) "BIL-AM06" #f (-> this root trans)))
+        ((< 0.5882353 rng) (play-ambient (-> this ambient) "BIL-AM07" #f (-> this root trans)))
+        ((< 0.5294118 rng) (play-ambient (-> this ambient) "BIL-AM08" #f (-> this root trans)))
+        ((< 0.47058824 rng) (play-ambient (-> this ambient) "BIL-AM1A" #f (-> this root trans)))
+        ((< 0.4117647 rng) (play-ambient (-> this ambient) "BIL-AM2A" #f (-> this root trans)))
+        ((< 0.3529412 rng) (play-ambient (-> this ambient) "BIL-AM2B" #f (-> this root trans)))
         ((= (current-status (-> this tasks)) (task-status invalid)) #f)
-        ((< 0.29411766 f30-0) (play-ambient (-> this ambient) "BIL-LO01" #f (-> this root trans)))
-        ((< 0.23529412 f30-0) (play-ambient (-> this ambient) "BIL-LO02" #f (-> this root trans)))
-        ((< 0.1764706 f30-0) (play-ambient (-> this ambient) "BIL-LO03" #f (-> this root trans)))
-        ((< 0.11764706 f30-0) (play-ambient (-> this ambient) "BIL-LO1A" #f (-> this root trans)))
-        ((< 0.05882353 f30-0) (play-ambient (-> this ambient) "BIL-LO2A" #f (-> this root trans)))
+        ((< 0.29411766 rng) (play-ambient (-> this ambient) "BIL-LO01" #f (-> this root trans)))
+        ((< 0.23529412 rng) (play-ambient (-> this ambient) "BIL-LO02" #f (-> this root trans)))
+        ((< 0.1764706 rng) (play-ambient (-> this ambient) "BIL-LO03" #f (-> this root trans)))
+        ((< 0.11764706 rng) (play-ambient (-> this ambient) "BIL-LO1A" #f (-> this root trans)))
+        ((< 0.05882353 rng) (play-ambient (-> this ambient) "BIL-LO2A" #f (-> this root trans)))
         (else (play-ambient (-> this ambient) "BIL-LO2B" #f (-> this root trans)))))))
 
 (defstate play-anim (billy)
@@ -723,31 +718,27 @@
                (v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                (v1-10 (the-as number (logior #x3f800000 v1-9))))
           (countdown (gp-1 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-10)))) 5))
-            (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-            (until (ja-done? 0)
-              (process-taskable-method-43 self)
-              (suspend)
-              (ja :num! (seek!)))))
+            (ja-play :group! (ja-group) :num! (seek!) :frame-num 0.0 (try-play-ambient-chatter self))))
         (when (ja-group? billy-idle-breath-ja)
-          (ja-no-eval :group! billy-idle-shoo-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!)))))))
+          (ja-play :group! billy-idle-shoo-ja :num! (seek!) :frame-num 0.0)))))
 
 (defmethod target-above-threshold? ((this billy))
+  "Return whether the target is above this character's interaction threshold."
   (the-as symbol (and *target* (not (logtest? (-> *target* control root-prim prim-core action) (collide-action flut))))))
 
-(defmethod init-from-entity! ((this billy) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *billy-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this billy) (source-entity entity-actor))
+  "Initialize Billy as a taskable character, create his three paths and sidekick, and enter the
+   appropriate initial state."
+  (init-as-taskable! this source-entity *billy-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task swamp-billy)))
-  (dotimes (s5-0 3)
-    (let ((v1-3 (new 'process 'curve-control this 'path (the float s5-0))))
-      (set! (-> this path-data s5-0) v1-3)
+  (dotimes (i 3)
+    (let ((v1-3 (new 'process 'curve-control this 'path (the float i))))
+      (set! (-> this path-data i) v1-3)
       (logior! (-> v1-3 flags) (path-control-flag display draw-line draw-point draw-text))))
   (set! (-> this path) (-> this path-snacks))
   (set! (-> this farthy)
         (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *billy-sidekick-sg* #f :to this)))
   (send-event (handle->process (-> this farthy)) 'center-joint 3)
   (send-event (handle->process (-> this farthy)) 'anim-mode 'clone-anim)
-  (process-taskable-method-42 this)
+  (goto-initial-state! this)
   (none))

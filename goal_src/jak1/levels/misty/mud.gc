@@ -5,8 +5,9 @@
 
 ;; DECOMP BEGINS
 
-(deftype mud (water-anim) ())
-
+(deftype mud (water-anim)
+  "Misty Island animated mud with level-specific ripple waveforms and fade distances."
+  ())
 
 (define ripple-for-mud
   (new 'static
@@ -40,20 +41,32 @@
             (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
             (new 'static 'ripple-wave))))
 
-(defmethod water-vol-method-22 ((this mud))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
+(defmethod setup-water! ((this mud))
+  "Run the animated-water setup, mark this volume as mud, create its ripple controller, and
+   select large or small waves and fade distances from the placed look."
+  (let ((parent-method (method-of-type water-anim setup-water!))) (parent-method this))
   (logclear! (-> this flag) (water-flag part-water))
   (logior! (-> this flag) (water-flag mud))
-  (let ((gp-0 (new 'process 'ripple-control)))
-    (set! (-> this draw ripple) gp-0)
-    (set! (-> gp-0 global-scale) 3072.0)
-    (set! (-> gp-0 waveform) ripple-for-mud)
-    (let ((v1-9 (res-lump-data (-> this entity) 'water-anim-fade-dist (pointer float))))
-      (when v1-9
-        (set! (-> gp-0 close-fade-dist) (-> v1-9 0))
-        (set! (-> gp-0 far-fade-dist) (-> v1-9 1))))
+  (let ((ripple (new 'process 'ripple-control)))
+    (set! (-> this draw ripple) ripple)
+    (set! (-> ripple global-scale) 3072.0)
+    (set! (-> ripple waveform) ripple-for-mud)
+    (let ((fade-distances (res-lump-data (-> this entity) 'water-anim-fade-dist (pointer float))))
+      (when fade-distances
+        (set! (-> ripple close-fade-dist) (-> fade-distances 0))
+        (set! (-> ripple far-fade-dist) (-> fade-distances 1))))
     (case (-> this look)
-      ((21 25 29) (set! (-> gp-0 close-fade-dist) 4096000000.0) (set! (-> gp-0 far-fade-dist) 8192000000.0)))
+      (((water-look water-anim-misty-mud-by-arena)
+        (water-look water-anim-misty-mud-above-skull-front)
+        (water-look water-anim-misty-mud-by-dock))
+       (set! (-> ripple close-fade-dist) 4096000000.0)
+       (set! (-> ripple far-fade-dist) 8192000000.0)))
     (case (-> this look)
-      ((22 25 24 27 26 31) (set! (-> gp-0 waveform) ripple-for-small-mud))))
+      (((water-look water-anim-misty-mud-above-skeleton)
+        (water-look water-anim-misty-mud-above-skull-front)
+        (water-look water-anim-misty-mud-above-skull-back)
+        (water-look water-anim-misty-mud-near-skull)
+        (water-look water-anim-misty-mud-other-near-skull)
+        (water-look water-anim-misty-mud-lonely-island))
+       (set! (-> ripple waveform) ripple-for-small-mud))))
   (none))

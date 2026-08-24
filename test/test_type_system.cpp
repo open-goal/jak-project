@@ -41,6 +41,34 @@ TEST(TypeSystem, DefaultMethods) {
   ts.assert_method_id("function", "mem-usage", GOAL_MEMUSAGE_METHOD);
 }
 
+TEST(TypeSystem, Jak1MemUsageFlags) {
+  TypeSystem jak1;
+  jak1.add_builtin_types(GameVersion::Jak1);
+
+  auto* flags = jak1.try_enum_lookup("mem-usage-flags");
+  ASSERT_NE(flags, nullptr);
+  EXPECT_TRUE(flags->is_bitfield());
+  EXPECT_EQ(flags->get_runtime_name(), "uint32");
+  EXPECT_EQ(flags->entries().at("prototype-data"), 0);
+  EXPECT_EQ(flags->entries().at("instance-colors"), 1);
+  EXPECT_EQ(flags->entries().at("tie-geometry-1"), 2);
+  EXPECT_EQ(flags->entries().at("tie-geometry-2"), 3);
+  EXPECT_EQ(flags->entries().at("tie-geometry-3"), 4);
+  EXPECT_EQ(flags->entries().at("include-dead-pools"), 5);
+  EXPECT_EQ(flags->entries().at("resource-entity"), 6);
+  EXPECT_EQ(flags->entries().at("resource-ambient"), 7);
+  EXPECT_EQ(flags->entries().at("resource-camera"), 8);
+  EXPECT_EQ(flags->entries().at("resource-joint-geo"), 9);
+  EXPECT_EQ(jak1.lookup_method("object", "mem-usage").type.print(),
+            "(function _type_ memory-usage-block mem-usage-flags _type_)");
+
+  TypeSystem jak2;
+  jak2.add_builtin_types(GameVersion::Jak2);
+  EXPECT_EQ(jak2.try_enum_lookup("mem-usage-flags"), nullptr);
+  EXPECT_EQ(jak2.lookup_method("object", "mem-usage").type.print(),
+            "(function _type_ memory-usage-block int _type_)");
+}
+
 TEST(TypeSystemReverse, NestedInlineWeird) {
   // tests the case where we're accessing nested inline arrays, with a dynamic inner access
   // and constant outer access, which will be constant propagated by the GOAL compiler.

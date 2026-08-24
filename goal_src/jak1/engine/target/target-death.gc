@@ -6,8 +6,15 @@
 (require "engine/camera/pov-camera-h.gc")
 (require "engine/target/target-part.gc")
 
+;; This file covers Jak's death and damage handling: the target-hit knockback state and
+;; its helpers, the target-death state with its per-cause death sequences (drowning,
+;; lava/dark eco, endless fall, boss deaths, the spooled death-camera movies), and the
+;; target-continue state that respawns Jak at a continue point and reloads levels.
+
 ;; DECOMP BEGINS
 
+;; skeleton for the invisible "deathcam" actor whose animation drives the point-of-view
+;; camera during the spooled death movies.
 (defskelgroup *deathcam-sg*
   deathcam
   deathcam-lod0-jg
@@ -16,21 +23,36 @@
   :bounds (static-spherem 0 0 0 4)
   :texture-level 2)
 
+;; debug flag: when true, target-continue immediately starts the next level's first
+;; continue point after finishing, letting the game auto-walk through all levels.
 (define *auto-continue* #f)
 
-(defun next-level ((arg0 symbol))
-  (let ((v1-0 (lookup-level-info arg0)))
+;; *level-load-list* stores names rather than the level records themselves, so each
+;; symbol's value cell is followed before comparing the level indices.
+(defun next-level ((level-name symbol))
+  "Return the level-load-info whose index immediately follows the named level, or false when no
+   such entry exists. This supports the automatic level-walk debug mode."
+  (let ((info (lookup-level-info level-name)))
     (the-as level-load-info
-            (when v1-0
-              (let* ((a0-1 *level-load-list*)
-                     (a1-0 (car a0-1)))
-                (while (not (null? a0-1))
-                  (let ((a1-1 (the-as basic (-> (the-as level-load-info a1-0) name))))
-                    (if (= (-> (the-as level-load-info a1-1) index) (+ (-> v1-0 index) 1)) (return (the-as level-load-info a1-1))))
-                  (set! a0-1 (cdr a0-1))
-                  (set! a1-0 (car a0-1))))
+            (when info
+              (let* ((rest *level-load-list*)
+                     (candidate-name (the symbol (car rest))))
+                (while (not (null? rest))
+                  (let ((candidate (the level-load-info (-> candidate-name value))))
+                    (if (= (-> candidate index) (+ (-> info index) 1)) (return candidate)))
+                  (set! rest (cdr rest))
+                  (set! candidate-name (the symbol (car rest)))))
               #f))))
 
+;; The respawn/teleport state: places Jak at a continue-point (after death, or when
+;; starting/warping). The :code behavior fades out audio, moves Jak and the camera to
+;; the continue's stored transform, drives *load-state* to load and display the
+;; continue's two levels (waiting until they are active and visible), then handles the
+;; special continue types: title screen, intro sequences, sage cutscene intros, demo,
+;; and the four village/citadel warp gates (which hide nearby NPCs and redirect the
+;; saved continue). Finally it restores control and goes to target-stance. The :exit
+;; behavior records the load boundary reference positions and cleans up all the
+;; settings the load pushed.
 (defstate target-continue (target)
   :event target-generic-event-handler
   :exit
@@ -50,76 +72,76 @@
       (remove-setting! 'ambient-volume)
       (remove-setting! 'music))
   :code
-    (behavior ((arg0 continue-point))
+    (behavior ((cont continue-point))
       (set-time! (-> self state-time))
       (if (-> *art-control* reserve-buffer) (reserve-free *art-control* (-> *art-control* reserve-buffer heap)))
       (add-setting! 'bg-a 'abs 1.0 0)
       (set! (-> *setting-control* current bg-a) 1.0)
       (set-setting! 'sfx-volume 'abs 0.0 0)
       (set-setting! 'ambient-volume 'abs 0.0 0)
-      (let ((v1-20 (lookup-level-info (-> arg0 level))))
-        (when v1-20
-          (set-setting! 'music (-> v1-20 music-bank) 0.0 0)
+      (let ((level-info (lookup-level-info (-> cont level))))
+        (when level-info
+          (set-setting! 'music (-> level-info music-bank) 0.0 0)
           (set-setting! 'music-volume 'abs 0.0 0)))
       (set! (-> *level* border?) #f)
       (set! (-> *setting-control* default border-mode) #f)
       (reset-target-state #t)
       (target-exit)
       (ja-channel-set! 0)
-      (quaternion-copy! (-> self control quat-for-control) (-> arg0 quat))
-      (move-to-point! (-> self control) (-> arg0 trans))
+      (quaternion-copy! (-> self control quat-for-control) (-> cont quat))
+      (move-to-point! (-> self control) (-> cont trans))
       (rot->dir-targ! (-> self control))
-      (set! (-> self control camera-pos quad) (-> self control trans quad))
+      (vector-copy! (-> self control camera-pos) (-> self control trans))
       (cond
-        ((not (string= (-> arg0 name) "default")) (set! *external-cam-mode* #f) (cam-stop) (suspend) 0)
+        ((not (string= (-> cont name) "default")) (set! *external-cam-mode* #f) (cam-stop) (suspend) 0)
         (else (send-event *camera* 'clear-entity) (send-event *camera* 'change-state cam-fixed 0) (suspend) 0))
-      (set! (-> *load-state* vis-nick) (-> arg0 vis-nick))
-      (set! (-> *load-state* want 0 name) (-> arg0 lev0))
-      (set! (-> *load-state* want 0 display?) (-> arg0 disp0))
+      (set! (-> *load-state* vis-nick) (-> cont vis-nick))
+      (set! (-> *load-state* want 0 name) (-> cont lev0))
+      (set! (-> *load-state* want 0 display?) (-> cont disp0))
       (set! (-> *load-state* want 0 force-vis?) #f)
       (set! (-> *load-state* want 0 force-inside?) #f)
-      (set! (-> *load-state* want 1 name) (-> arg0 lev1))
-      (set! (-> *load-state* want 1 display?) (-> arg0 disp1))
+      (set! (-> *load-state* want 1 name) (-> cont lev1))
+      (set! (-> *load-state* want 1 display?) (-> cont disp1))
       (set! (-> *load-state* want 1 force-vis?) #f)
       (set! (-> *load-state* want 1 force-inside?) #f)
-      (when (not (string= (-> arg0 name) "default"))
-        (while (not (and (or (not (-> arg0 lev0)) (not (-> arg0 disp0)) (= (level-status *level* (-> arg0 lev0)) 'active))
-                         (or (not (-> arg0 lev1)) (not (-> arg0 disp1)) (= (level-status *level* (-> arg0 lev1)) 'active))))
-          (let ((v1-52 (lookup-level-info (-> arg0 level))))
+      (when (not (string= (-> cont name) "default"))
+        (while (not (and (or (not (-> cont lev0)) (not (-> cont disp0)) (= (level-status *level* (-> cont lev0)) 'active))
+                         (or (not (-> cont lev1)) (not (-> cont disp1)) (= (level-status *level* (-> cont lev1)) 'active))))
+          (let ((v1-52 (lookup-level-info (-> cont level))))
             (if (and v1-52
                      (= (-> *setting-control* current music) (-> v1-52 music-bank))
-                     (not (logtest? (-> arg0 flags) (continue-flags sage-intro title))))
+                     (not (logtest? (-> cont flags) (continue-flags sage-intro title))))
               (remove-setting! 'music-volume)))
           (suspend)))
       (backup-load-state-and-set-cmds *load-state* '())
       (execute-command *load-state* '(teleport))
-      (let* ((s5-0 (-> arg0 load-commands))
-             (a1-18 (car s5-0)))
-        (while (not (null? s5-0))
-          (execute-command *load-state* (the-as pair a1-18))
-          (set! s5-0 (cdr s5-0))
-          (set! a1-18 (car s5-0))))
+      (let* ((cmds (-> cont load-commands))
+             (cmd (car cmds)))
+        (while (not (null? cmds))
+          (execute-command *load-state* (the-as pair cmd))
+          (set! cmds (cdr cmds))
+          (set! cmd (car cmds))))
       (restore-load-state *load-state*)
       (set! (-> *ACTOR-bank* birth-max) 1000)
       (new 'stack 'transformq)
       (cond
-        ((not (string= (-> arg0 name) "default"))
+        ((not (string= (-> cont name) "default"))
          (cam-start #t)
          (suspend)
          (suspend)
-         (set! (-> *camera-combiner* trans quad) (-> arg0 camera-trans quad))
-         (let ((s5-1 (-> *camera-combiner* inv-camera-rot))
-               (s4-0 (-> arg0 camera-rot)))
-           (matrix-identity! s5-1)
-           (set! (-> s5-1 vector 0 x) (-> s4-0 0))
-           (set! (-> s5-1 vector 0 y) (-> s4-0 1))
-           (set! (-> s5-1 vector 0 z) (-> s4-0 2))
-           (set! (-> s5-1 vector 1 x) (-> s4-0 3))
-           (set! (-> s5-1 vector 1 y) (-> s4-0 4))
-           (set! (-> s5-1 vector 1 z) (-> s4-0 5))
-           (set! (-> s5-1 vector 2 x) (-> s4-0 6))
-           (set! (-> s5-1 vector 2 y) (-> s4-0 7))
-           (set! (-> s5-1 vector 2 z) (-> s4-0 8)))
+         (vector-copy! (-> *camera-combiner* trans) (-> cont camera-trans))
+         (let ((inv-rot (-> *camera-combiner* inv-camera-rot))
+               (cam-rot (-> cont camera-rot)))
+           (matrix-identity! inv-rot)
+           (set! (-> inv-rot vector 0 x) (-> cam-rot 0))
+           (set! (-> inv-rot vector 0 y) (-> cam-rot 1))
+           (set! (-> inv-rot vector 0 z) (-> cam-rot 2))
+           (set! (-> inv-rot vector 1 x) (-> cam-rot 3))
+           (set! (-> inv-rot vector 1 y) (-> cam-rot 4))
+           (set! (-> inv-rot vector 1 z) (-> cam-rot 5))
+           (set! (-> inv-rot vector 2 x) (-> cam-rot 6))
+           (set! (-> inv-rot vector 2 y) (-> cam-rot 7))
+           (set! (-> inv-rot vector 2 z) (-> cam-rot 8)))
          (send-event *camera* 'change-target self)
          (send-event *camera* 'no-intro)
          (send-event *camera* 'clear-entity)
@@ -132,66 +154,66 @@
          (send-event *camera* 'teleport)
          (send-event *camera* 'no-intro)
          (send-event *camera* 'clear-entity)))
-      (send-event self 'level-enter (-> arg0 level))
+      (send-event self 'level-enter (-> cont level))
       (dotimes (v1-124 (-> *level* length))
-        (let ((a0-64 (-> *level* level v1-124))) (if (= (-> a0-64 status) 'active) (set! (-> a0-64 all-visible?) 'loading))))
-      (let ((s5-2 (level-get *level* (-> arg0 level))))
+        (let ((lvl (-> *level* level v1-124))) (if (= (-> lvl status) 'active) (set! (-> lvl all-visible?) 'loading))))
+      (let ((cont-level (level-get *level* (-> cont level))))
         ;; vis info check added for PC, don't bother waiting for vis if the level doesn't have it.
-        (when (and s5-2 (-> s5-2 vis-info 0))
-          (while (and (= (-> s5-2 all-visible?) 'loading) (-> *level* vis?))
+        (when (and cont-level (-> cont-level vis-info 0))
+          (while (and (= (-> cont-level all-visible?) 'loading) (-> *level* vis?))
             (suspend))))
       (set! *spawn-actors* #t)
       (set! *teleport* #t)
       (set! (-> *ACTOR-bank* birth-max) 1000)
       (set-blackout-frames (seconds 0.1))
       (cond
-        ((logtest? (-> arg0 flags) (continue-flags title)) (go target-title))
-        ((logtest? (-> arg0 flags) (continue-flags intro)) (start-sequence-a))
-        ((logtest? (-> arg0 flags) (continue-flags sage-intro))
-         (let ((s5-3 (entity-by-name "sage-23")))
-           (when s5-3
+        ((logtest? (-> cont flags) (continue-flags title)) (go target-title))
+        ((logtest? (-> cont flags) (continue-flags intro)) (start-sequence-a))
+        ((logtest? (-> cont flags) (continue-flags sage-intro))
+         (let ((sage (entity-by-name "sage-23")))
+           (when sage
              (set-blackout-frames (seconds 100))
-             (entity-birth-no-kill s5-3)
+             (entity-birth-no-kill sage)
              (suspend)
-             (send-event (if s5-3 (-> s5-3 extra process)) 'play-anim))))
-        ((and (logtest? (-> arg0 flags) (continue-flags sage-ecorocks))
+             (send-event (if sage (-> sage extra process)) 'play-anim))))
+        ((and (logtest? (-> cont flags) (continue-flags sage-ecorocks))
               (or (= (get-task-status (game-task beach-ecorocks)) (task-status need-hint))
                   (= (get-task-status (game-task beach-ecorocks)) (task-status need-introduction)))
               (#when PC_PORT
                 (not (is-speedrun-category? 'il-village1))) ;; og:preserve-this skip green sage cutscene in Sandover IL speedrun
               )
-         (let ((s5-4 (entity-by-name "sage-23")))
-           (when s5-4
+         (let ((ecorocks-sage (entity-by-name "sage-23")))
+           (when ecorocks-sage
              (set-blackout-frames (seconds 100))
-             (entity-birth-no-kill s5-4)
+             (entity-birth-no-kill ecorocks-sage)
              (suspend)
-             (set! arg0 (get-continue-by-name *game-info* "village1-hut"))
-             (send-event (if s5-4 (-> s5-4 extra process)) 'play-anim))))
-        ((logtest? (-> arg0 flags) (continue-flags demo)) (go target-demo))
-        ((logtest? (-> arg0 flags) (continue-flags sage-demo-convo))
+             (set! cont (get-continue-by-name *game-info* "village1-hut"))
+             (send-event (if ecorocks-sage (-> ecorocks-sage extra process)) 'play-anim))))
+        ((logtest? (-> cont flags) (continue-flags demo)) (go target-demo))
+        ((logtest? (-> cont flags) (continue-flags sage-demo-convo))
          (set-blackout-frames (seconds 1))
          (process-spawn-function process
            (lambda ()
-             (local-vars (v1-10 basic))
-             (let ((gp-0 (entity-by-name "sage-23")))
-               (when gp-0
+             (local-vars (still-grabbed basic))
+             (let ((sage-entity (entity-by-name "sage-23")))
+               (when sage-entity
                  (set-blackout-frames (seconds 100))
-                 (entity-birth-no-kill gp-0)
+                 (entity-birth-no-kill sage-entity)
                  (suspend)
                  (suspend)
-                 (send-event (if gp-0 (-> gp-0 extra process)) 'play-anim)))
+                 (send-event (if sage-entity (-> sage-entity extra process)) 'play-anim)))
              (suspend-for (seconds 2))
-             (until (not v1-10)
+             (until (not still-grabbed)
                (suspend)
-               (set! v1-10 (and *target* (logtest? (-> *target* state-flags) (state-flags grabbed)))))
+               (set! still-grabbed (and *target* (logtest? (-> *target* state-flags) (state-flags grabbed)))))
              (set-time! (-> *cpad-list* cpads 0 change-time))
              (reset-actors 'dead)
              (start 'play (get-continue-by-name *game-info* "misty-start")))))
-        ((logtest? (-> arg0 flags) (continue-flags warp))
-         (let ((s5-6 (new 'static 'vector)))
+        ((logtest? (-> cont flags) (continue-flags warp))
+         (let ((warp-pos (new 'static 'vector)))
            (cond
-             ((string= (-> arg0 name) "village1-warp")
-              (set! (-> s5-6 quad) (-> (entity-by-name "villagea-part-1") extra trans quad))
+             ((string= (-> cont name) "village1-warp")
+              (vector-copy! warp-pos (-> (entity-by-name "villagea-part-1") extra trans))
               (suspend)
               (let ((s4-2 (new 'stack-no-clear 'event-message-block)))
                 (set! (-> s4-2 from) self)
@@ -208,13 +230,13 @@
                       (v1-179 (entity-by-name "assistant-11")))
                   (s3-1 (if v1-179 (-> v1-179 extra process)) s4-3)))
               (set-continue! *game-info* "village1-hut"))
-             ((or (string= (-> arg0 name) "training-warp") (string= (-> arg0 name) "game-start"))
-              (if (logtest? (-> arg0 flags) (continue-flags game-start))
+             ((or (string= (-> cont name) "training-warp") (string= (-> cont name) "game-start"))
+              (if (logtest? (-> cont flags) (continue-flags game-start))
                 (close-specific-task! (game-task intro) (task-status need-resolution)))
-              (set! (-> s5-6 quad) (-> (entity-by-name "training-part-1") extra trans quad))
+              (vector-copy! warp-pos (-> (entity-by-name "training-part-1") extra trans))
               (set-continue! *game-info* "training-start"))
-             ((string= (-> arg0 name) "village2-warp")
-              (set! (-> s5-6 quad) (-> (entity-by-name "villageb-part-55") extra trans quad))
+             ((string= (-> cont name) "village2-warp")
+              (vector-copy! warp-pos (-> (entity-by-name "villageb-part-55") extra trans))
               (when (task-closed? (game-task village2-levitator) (task-status need-hint))
                 (suspend)
                 (let ((s4-6 (new 'stack-no-clear 'event-message-block)))
@@ -239,8 +261,8 @@
                         (v1-209 (entity-by-name "flutflut-bluehut-1")))
                     (s3-4 (if v1-209 (-> v1-209 extra process)) s4-8))))
               (set-continue! *game-info* "village2-start"))
-             ((string= (-> arg0 name) "village3-warp")
-              (set! (-> s5-6 quad) (-> (entity-by-name "villagec-part-32") extra trans quad))
+             ((string= (-> cont name) "village3-warp")
+              (vector-copy! warp-pos (-> (entity-by-name "villagec-part-32") extra trans))
               (when (task-closed? (game-task village3-button) (task-status need-hint))
                 (suspend)
                 (let ((s4-10 (new 'stack-no-clear 'event-message-block)))
@@ -258,8 +280,8 @@
                         (v1-224 (entity-by-name "sage-villagec-1")))
                     (s3-6 (if v1-224 (-> v1-224 extra process)) s4-11))))
               (set-continue! *game-info* "village3-start"))
-             ((string= (-> arg0 name) "citadel-warp")
-              (set! (-> s5-6 quad) (-> (entity-by-name "citb-part-1") extra trans quad))
+             ((string= (-> cont name) "citadel-warp")
+              (vector-copy! warp-pos (-> (entity-by-name "citb-part-1") extra trans))
               (when (task-closed? (game-task village4-button) (task-status need-hint))
                 (suspend)
                 (let ((s4-13 (new 'stack-no-clear 'event-message-block)))
@@ -270,25 +292,30 @@
                         (v1-235 (entity-by-name "assistant-lavatube-end-3")))
                     (s3-7 (if v1-235 (-> v1-235 extra process)) s4-13))))
               (set-continue! *game-info* "lavatube-end")))
-           (go target-warp-in s5-6 (-> arg0 trans))))
+           (go target-warp-in warp-pos (-> cont trans))))
         (else (suspend-for (seconds 0.05))))
-      (set-continue! *game-info* arg0)
+      (set-continue! *game-info* cont)
       (when *auto-continue*
-        (let ((s5-8 (next-level (-> arg0 level))))
-          (when (and s5-8 (not (null? (-> s5-8 continues))))
-            (format 0 "~A ~A ~A~%" (-> arg0 level) (-> s5-8 name) (car (-> s5-8 continues)))
+        (let ((next-lev (next-level (-> cont level))))
+          (when (and next-lev (not (null? (-> next-lev continues))))
+            (format 0 "~A ~A ~A~%" (-> cont level) (-> next-lev name) (car (-> next-lev continues)))
             (inspect global)
             (process-spawn-function process
-              (lambda ((arg0 continue-point))
-                (start 'play arg0))
-              (car (-> s5-8 continues))))))
+              (lambda ((next-cont continue-point))
+                (start 'play next-cont))
+              (car (-> next-lev continues))))))
       (ja-channel-set! 1)
       (ja :group! eichar-stance-loop-ja)
       (suspend)
-      (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
+      (logior! (-> self control status) (collide-status on-surface on-ground touch-surface))
       (go target-stance))
   :post target-no-move-post)
 
+;; Air surface mods used while Jak is being knocked back by a hit. The mult-hook makes
+;; the knockback homing-capable: it lerps the turn seek rates toward 409600.0 (instant)
+;; and the speed caps toward force-turn-to-target-speed, using force-turn-to-strength as the
+;; blend. Both fields are set by velocity-set-to-target! when the attack specifies a
+;; point to knock Jak toward (e.g. lurkers smacking Jak back to a set spot).
 (define *smack-mods*
   (new 'static
        'surface
@@ -316,17 +343,20 @@
        :mult-hook
        (lambda :behavior target ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
          (when (= arg3 1)
-           (let ((f30-0 (-> self control smack-speed-lerp-min))
-                 (f28-0 (-> self control force-turn-to-strength)))
-             (set! (-> arg0 seek0) (lerp (-> arg0 seek0) (the-as float 409600.0) f28-0))
-             (set! (-> arg0 seek90) (lerp (-> arg0 seek90) (the-as float 409600.0) f28-0))
-             (set! (-> arg0 seek180) (lerp (-> arg0 seek180) (the-as float 409600.0) f28-0))
-             (set! (-> arg0 target-speed) (lerp (-> arg0 target-speed) f30-0 f28-0))
-             (set! (-> arg0 transv-max) (lerp (-> arg0 transv-max) f30-0 f28-0))))
+           (let ((speed-min (-> self control force-turn-to-target-speed))
+                 (turn-strength (-> self control force-turn-to-strength)))
+             (set! (-> arg0 seek0) (lerp (-> arg0 seek0) (the-as float 409600.0) turn-strength))
+             (set! (-> arg0 seek90) (lerp (-> arg0 seek90) (the-as float 409600.0) turn-strength))
+             (set! (-> arg0 seek180) (lerp (-> arg0 seek180) (the-as float 409600.0) turn-strength))
+             (set! (-> arg0 target-speed) (lerp (-> arg0 target-speed) speed-min turn-strength))
+             (set! (-> arg0 transv-max) (lerp (-> arg0 transv-max) speed-min turn-strength))))
          (none))
        :mode 'air
        :flags (surface-flags jump)))
 
+;; Variant of *smack-mods* for 'up-forward hits: same homing mult-hook, but the
+;; no-turn-around/no-rotate-toward-transv flags keep Jak facing the attacker while he
+;; is launched up and away.
 (define *smack-up-mods*
   (new 'static
        'surface
@@ -356,29 +386,37 @@
        :mult-hook
        (lambda :behavior target ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
          (when (= arg3 1)
-           (let ((f30-0 (-> self control smack-speed-lerp-min))
-                 (f28-0 (-> self control force-turn-to-strength)))
-             (set! (-> arg0 seek0) (lerp (-> arg0 seek0) (the-as float 409600.0) f28-0))
-             (set! (-> arg0 seek90) (lerp (-> arg0 seek90) (the-as float 409600.0) f28-0))
-             (set! (-> arg0 seek180) (lerp (-> arg0 seek180) (the-as float 409600.0) f28-0))
-             (set! (-> arg0 target-speed) (lerp (-> arg0 target-speed) f30-0 f28-0))
-             (set! (-> arg0 transv-max) (lerp (-> arg0 transv-max) f30-0 f28-0))))
+           (let ((speed-min (-> self control force-turn-to-target-speed))
+                 (turn-strength (-> self control force-turn-to-strength)))
+             (set! (-> arg0 seek0) (lerp (-> arg0 seek0) (the-as float 409600.0) turn-strength))
+             (set! (-> arg0 seek90) (lerp (-> arg0 seek90) (the-as float 409600.0) turn-strength))
+             (set! (-> arg0 seek180) (lerp (-> arg0 seek180) (the-as float 409600.0) turn-strength))
+             (set! (-> arg0 target-speed) (lerp (-> arg0 target-speed) speed-min turn-strength))
+             (set! (-> arg0 transv-max) (lerp (-> arg0 transv-max) speed-min turn-strength))))
          (none))
        :mode 'air
        :flags (surface-flags no-turn-around no-rotate-toward-transv jump)))
 
-(defbehavior velocity-set-to-target! target ((arg0 vector) (arg1 float) (arg2 attack-info))
-  (let* ((v1-1 (-> self control trans))
-         (gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 v1-1)))
-    (set! (-> gp-1 y) 0.0)
-    (set! (-> self control force-turn-to-direction quad) (-> gp-1 quad))
+;; Points the forced-turn steering at target-pt (in the XZ plane only) so the smack
+;; surface mods will home the knockback toward it at the given speed. The steering
+;; strength is (1 - attack control): control 0 means the attack fully steers Jak,
+;; control 1 leaves the velocity alone. Returns the un-normalized offset to the target.
+(defbehavior velocity-set-to-target! target ((target-pt vector) (speed float) (attack attack-info))
+  (let* ((cur-trans (-> self control trans))
+         (to-target (vector-! (new 'stack-no-clear 'vector) target-pt cur-trans)))
+    (set! (-> to-target y) 0.0)
+    (vector-copy! (-> self control force-turn-to-direction) to-target)
     (vector-xz-normalize! (-> self control force-turn-to-direction) (the-as float 1.0))
-    (set! (-> self control force-turn-to-speed) 1.0)
-    (set! (-> self control smack-speed-lerp-min) arg1)
-    (set! (-> self control force-turn-to-strength) (- 1.0 (-> arg2 control)))
-    gp-1))
+    (set! (-> self control force-turn-to-magnitude) 1.0)
+    (set! (-> self control force-turn-to-target-speed) speed)
+    (set! (-> self control force-turn-to-strength) (- 1.0 (-> attack control)))
+    to-target))
 
-(defbehavior target-hit-effect target ((arg0 attack-info))
+;; Feedback for taking a real hit: spawns the hit particle group at the contact point
+;; (or Jak's root prim), grants the post-hit invulnerability window, rumbles the pad,
+;; and plays the appropriate pain sound. Burn hits also attach the 4-second burning
+;; particle effect process.
+(defbehavior target-hit-effect target ((attack attack-info))
   (process-spawn part-tracker
                  :init
                  part-tracker-init
@@ -387,19 +425,19 @@
                  #f
                  #f
                  #f
-                 (if (logtest? (-> arg0 mask) (attack-mask intersection)) (-> arg0 intersection) (-> self control root-prim prim-core))
+                 (if (logtest? (-> attack mask) (attack-mask intersection)) (-> attack intersection) (-> self control root-prim prim-core))
                  :to
                  self)
-  (let ((v1-9 (-> arg0 mode)))
+  (let ((mode (-> attack mode)))
     (cond
-      ((or (= v1-9 'endlessfall) (= v1-9 'instant-death)))
+      ((or (= mode 'endlessfall) (= mode 'instant-death)))
       ((begin
-         (target-timed-invulnerable (-> arg0 invinc-time) self)
+         (target-timed-invulnerable (-> attack invinc-time) self)
          (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 255 (seconds 0.5))
-         (let ((v1-13 (-> arg0 angle))) (= v1-13 'up)))
+         (let ((angle (-> attack angle))) (= angle 'up)))
        (sound-play "hit-up"))
       (else (sound-play "oof"))))
-  (case (-> arg0 mode)
+  (case (-> attack mode)
     (('burn 'burnup)
      ;; og:preserve-this
      (if (not (handle->process (-> self burn-proc)))
@@ -409,18 +447,28 @@
   0
   (none))
 
-(defbehavior target-hit-push target ((arg0 vector) (arg1 matrix) (arg2 float) (arg3 float) (arg4 attack-info))
-  (case (-> arg4 angle)
+;; One frame of knockback movement, called every frame by target-hit-move. hit-origin is
+;; where Jak stood when hit, push-rot rotates +z to the knockback direction (attack
+;; vector yaw + 180 degrees), and push-dist is how far along that direction we should be
+;; by now. If the attack knocked Jak upward and he survived, the player may cancel into
+;; an air attack (circle) or a ground flop (square). Detects being wedged against
+;; geometry ('stuck) when Jak barely moved for stuck-time. Otherwise computes the target
+;; point for this frame and, while still within the attack's dist range, homes toward it
+;; via velocity-set-to-target!. Returns #t while still homing, #f once steering is
+;; released, or 'stuck.
+(defbehavior target-hit-push target ((hit-origin vector) (push-rot matrix) (push-dist float) (push-speed float) (attack attack-info))
+  (case (-> attack angle)
     (('jump 'up 'up-forward)
      (when (and (not (logtest? (-> self control root-prim prim-core action) (collide-action racer flut)))
                 (not (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))))
        (if (and (cpad-pressed? (-> self control cpad number) circle) (can-feet?)) (go target-attack-air #f))
+       ;; flop escape window: rising slower than 26624.0 (6.5m/s) and falling slower than 61440.0 (15m/s)
        (if (and (cpad-pressed? (-> self control cpad number) square)
                 (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 26624.0)
                 (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
                      (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
                      (not (logtest? (-> self state-flags) (state-flags prevent-attack)))
-                     (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump surf08)))))
+                     (not (logtest? (-> self control current-surface flags) (surface-flags prevent-attacks-during-launch-jump prevent-hand-attack)))))
          (go target-flop
              (the-as float 65502.96)
              (the-as float -163840.0)
@@ -429,40 +477,48 @@
                  (and (time-elapsed? (-> self state-time) (the-as time-frame (-> *TARGET-bank* stuck-time)))
                       (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))))
           #t)
-    (logior! (-> self control status) (cshape-moving-flags onsurf))
+    (logior! (-> self control status) (collide-status on-surface))
     (return (the-as object 'stuck)))
-  (let ((s1-0 (new-stack-vector0)))
-    (set! (-> s1-0 z) arg2)
-    (vector-matrix*! s1-0 s1-0 arg1)
-    (vector+! s1-0 s1-0 arg0)
+  (let ((push-target (new-stack-vector0)))
+    (set! (-> push-target z) push-dist)
+    (vector-matrix*! push-target push-target push-rot)
+    (vector+! push-target push-target hit-origin)
     (cond
-      ((< (vector-vector-distance arg0 s1-0) (fabs (-> arg4 dist))) (velocity-set-to-target! s1-0 (fabs arg3) arg4) #t)
+      ((< (vector-vector-distance hit-origin push-target) (fabs (-> attack dist))) (velocity-set-to-target! push-target (fabs push-speed) attack) #t)
       (else
-       (set! (-> self control smack-speed-lerp-min) 0.0)
-       (set! (-> self control force-turn-to-strength) (- 1.0 (-> arg4 control)))
+       (set! (-> self control force-turn-to-target-speed) 0.0)
+       (set! (-> self control force-turn-to-strength) (- 1.0 (-> attack control)))
        #f))))
 
-(defbehavior target-hit-orient target ((arg0 attack-info) (arg1 vector))
-  (let ((s5-0 #f))
-    (if (and (!= (-> arg0 angle) 'front)
-             (!= (-> arg0 angle) 'shove)
-             (logtest? (-> arg0 mask) (attack-mask vector))
-             (!= (-> arg0 shove-back) 0.0))
-      (forward-up-nopitch->quaternion (-> self control dir-targ) arg1 (-> self control dynam gravity-normal)))
-    (case (-> arg0 angle)
-      (('back 'air) (set! s5-0 #t))
+;; Faces Jak appropriately for the hit reaction and picks special surface mods per attack
+;; angle: face along the attack vector normally, face back toward the attacker for
+;; 'front, use *smack-up-mods* for 'up-forward and the high jump mods for 'jump. Returns
+;; whether the hit animation should be cut short as soon as Jak lands (passed to
+;; target-hit-move).
+(defbehavior target-hit-orient target ((attack attack-info) (attack-dir vector))
+  (let ((end-anim-on-ground #f))
+    (if (and (!= (-> attack angle) 'front)
+             (!= (-> attack angle) 'shove)
+             (logtest? (-> attack mask) (attack-mask vector))
+             (!= (-> attack shove-back) 0.0))
+      (forward-up-nopitch->quaternion (-> self control dir-targ) attack-dir (-> self control dynam gravity-normal)))
+    (case (-> attack angle)
+      (('back 'air) (set! end-anim-on-ground #t))
       (('up-forward) (set! (-> self control mod-surface) *smack-up-mods*))
       (('front)
-       (if (and (logtest? (-> arg0 mask) (attack-mask vector)) (!= (-> arg0 shove-back) 0.0))
+       (if (and (logtest? (-> attack mask) (attack-mask vector)) (!= (-> attack shove-back) 0.0))
          (forward-up-nopitch->quaternion (-> self control dir-targ)
-                                         (vector-negate! (new 'stack-no-clear 'vector) arg1)
+                                         (vector-negate! (new 'stack-no-clear 'vector) attack-dir)
                                          (-> self control dynam gravity-normal)))
-       (set! s5-0 #t))
-      (('jump) (set! s5-0 #t) (set! (-> self control mod-surface) *forward-high-jump-mods*)))
-    s5-0))
+       (set! end-anim-on-ground #t))
+      (('jump) (set! end-anim-on-ground #t) (set! (-> self control mod-surface) *forward-high-jump-mods*)))
+    end-anim-on-ground))
 
-(defbehavior target-hit-setup-anim target ((arg0 attack-info))
-  (case (-> arg0 angle)
+;; Starts the hit-reaction animation matching the attack angle: hit-from-back, hit-up,
+;; the jump anim for airborne knocks (with smack-surface effects when Jak slams a wall),
+;; the smack-surface anim for shoves, and hit-from-front as the default.
+(defbehavior target-hit-setup-anim target ((attack attack-info))
+  (case (-> attack angle)
     (('back)
      (when (not (ja-group? eichar-hit-from-back-ja))
        (ja-channel-push! 1 (seconds 0.075))
@@ -474,10 +530,10 @@
     (('air 'jump)
      (ja-channel-push! 1 (seconds 0.05))
      (ja-no-eval :group! eichar-jump-ja :num! (seek!) :frame-num 0.0)
-     (when (= (-> arg0 angle) 'air)
+     (when (= (-> attack angle) 'air)
        (sound-play "smack-surface")
-       (effect-control-method-10 (-> self skel effect) 'group-smack-surface (the-as float 0.0) 5)
-       (effect-control-method-10 (-> self skel effect) 'group-smack-surface-dizzy (the-as float 0.0) 8)))
+       (do-effect (-> self skel effect) 'group-smack-surface (the-as float 0.0) 5)
+       (do-effect (-> self skel effect) 'group-smack-surface-dizzy (the-as float 0.0) 8)))
     (('shove)
      (ja-channel-push! 1 (seconds 0.05))
      (ja-no-eval :group! eichar-smack-surface-ja :num! (seek!) :frame-num 0.0)
@@ -488,55 +544,71 @@
        (ja :group! eichar-hit-from-front-ja :num! min))))
   (none))
 
-(defbehavior target-hit-move target ((arg0 attack-info) (arg1 symbol) (arg2 (function none :behavior target)) (arg3 float))
-  (local-vars (v1-40 symbol) (s2-1 object))
+;; Runs the whole knockback: gives Jak an initial upward pop computed from shove-up
+;; (sqrt(2*g*height) form, so he rises about shove-up meters), then steps target-hit-push
+;; every frame. First loop runs until the hit anim finishes (or Jak lands, when
+;; end-anim-on-ground); second loop keeps pushing (running fall-fn for the falling anim)
+;; until Jak is on a surface and the homing has released, or he is stuck. anim-scale
+;; scales the push speed so the shove-back distance is covered over the anim's length.
+(defbehavior target-hit-move target ((attack attack-info) (end-anim-on-ground symbol) (fall-fn (function none :behavior target)) (anim-scale float))
+  (local-vars (done symbol) (push-result object))
   (vector-identity! (-> self control transv))
-  (let ((s3-0 (new-stack-vector0)))
+  (let ((flat-vel (new-stack-vector0)))
     (let ((f0-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
       0.0
-      (vector-! s3-0 (-> self control transv) (vector-float*! s3-0 (-> self control dynam gravity-normal) f0-1)))
-    (let* ((f0-2 (vector-length s3-0))
+      (vector-! flat-vel (-> self control transv) (vector-float*! flat-vel (-> self control dynam gravity-normal) f0-1)))
+    (let* ((f0-2 (vector-length flat-vel))
            (f1-1 f0-2)
-           (f2-1 (+ 2048.0 (sqrtf (* 491520.0 (-> arg0 shove-up))))))
+           (up-vel (+ 2048.0 (sqrtf (* 491520.0 (-> attack shove-up))))))
       (vector+! (-> self control transv)
-                (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-1)
-                (vector-float*! s3-0 s3-0 (/ f0-2 f1-1)))))
-  (let ((s3-1 (new 'stack-no-clear 'vector)))
-    (set! (-> s3-1 quad) (-> self control trans quad))
-    (let ((s1-1 (matrix-rotate-y! (new 'stack-no-clear 'matrix) (+ 32768.0 (vector-y-angle (-> arg0 vector)))))
-          (f30-1 0.0))
+                (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) up-vel)
+                (vector-float*! flat-vel flat-vel (/ f0-2 f1-1)))))
+  (let ((hit-origin (new 'stack-no-clear 'vector)))
+    (vector-copy! hit-origin (-> self control trans))
+    (let ((push-rot (matrix-rotate-y! (new 'stack-no-clear 'matrix) (+ 32768.0 (vector-y-angle (-> attack vector)))))
+          (push-dist 0.0))
       (set-quaternion! (-> self control) (-> self control dir-targ))
       #t
-      (let ((f28-1 (* 1.05 (/ (* -60.0 arg3) (* (the float (+ (-> (ja-group) data 0 length) -1)) (ja-step 0))))))
-        (until v1-40
-          (+! f30-1 (* (-> arg0 shove-back) f28-1 (seconds-per-frame)))
-          (set! s2-1 (target-hit-push s3-1 s1-1 f30-1 (* (-> arg0 shove-back) f28-1) arg0))
+      (let ((push-rate (* 1.05 (/ (* -60.0 anim-scale) (* (the float (+ (-> (ja-group) data 0 length) -1)) (ja-step 0))))))
+        (until done
+          (+! push-dist (* (-> attack shove-back) push-rate (seconds-per-frame)))
+          (set! push-result (target-hit-push hit-origin push-rot push-dist (* (-> attack shove-back) push-rate) attack))
           (suspend)
           (ja :num! (seek!))
-          (set! v1-40 (or (ja-done? 0) (and arg1 (logtest? (-> self control status) (cshape-moving-flags onsurf))))))
-        (while (and (or (not (logtest? (-> self control status) (cshape-moving-flags onsurf))) s2-1) (!= s2-1 'stuck))
-          (arg2)
-          (+! f30-1 (* (-> arg0 shove-back) f28-1 (seconds-per-frame)))
-          (set! s2-1 (target-hit-push s3-1 s1-1 f30-1 (* (-> arg0 shove-back) f28-1) arg0))
-          (if (not s2-1) (logclear! (-> self state-flags) (state-flags being-attacked)))
+          (set! done (or (ja-done? 0) (and end-anim-on-ground (logtest? (-> self control status) (collide-status on-surface))))))
+        (while (and (or (not (logtest? (-> self control status) (collide-status on-surface))) push-result) (!= push-result 'stuck))
+          (fall-fn)
+          (+! push-dist (* (-> attack shove-back) push-rate (seconds-per-frame)))
+          (set! push-result (target-hit-push hit-origin push-rot push-dist (* (-> attack shove-back) push-rate) attack))
+          (if (not push-result) (logclear! (-> self state-flags) (state-flags being-attacked)))
           (suspend)))))
   0
   (none))
 
+;; The knockback/damage state, entered with ('attack attack-info) or ('shove attack-info)
+;; from the event handlers. The :code behavior fills (-> self attack-info) with generic
+;; defaults (6144.0/4915.2 = 1.5m back, 1.2m up), merges in the incoming attack-info,
+;; derives the knock vector from Jak's facing when the attacker gave none, and classifies
+;; front/back by the facing dot product. For killing or instant-death modes it charges
+;; health and transitions to target-death; survivable hits play effects and run the
+;; knockback via target-hit-move, ending in target-hit-ground. The :exit behavior clamps
+;; the horizontal exit velocity to 40960.0 (10m/s) so a hit cannot fling Jak at silly
+;; speeds into the next state. The :trans behavior is the debug-mode insta-heal escape
+;; (hold R2 in debug to refill one health and pop back to stance).
 (defstate target-hit (target)
   :event target-standard-event-handler
   :exit
     (behavior ()
-      (let ((gp-0 (new-stack-vector0))
-            (f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+      (let ((flat-vel (new-stack-vector0))
+            (grav-vel (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
         0.0
-        (vector-! gp-0 (-> self control transv) (vector-float*! gp-0 (-> self control dynam gravity-normal) f30-0))
-        (let* ((f1-0 (vector-length gp-0))
+        (vector-! flat-vel (-> self control transv) (vector-float*! flat-vel (-> self control dynam gravity-normal) grav-vel))
+        (let* ((f1-0 (vector-length flat-vel))
                (f0-3 f1-0))
           (if (< 40960.0 f1-0) (set! f1-0 40960.0))
           (vector+! (-> self control transv)
-                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f30-0)
-                    (vector-float*! gp-0 gp-0 (/ f1-0 f0-3)))))
+                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) grav-vel)
+                    (vector-float*! flat-vel flat-vel (/ f1-0 f0-3)))))
       (if (!= (-> self next-state name) 'target-death) (logclear! (-> self state-flags) (state-flags being-attacked dying)))
       (target-exit))
   :trans
@@ -546,74 +618,80 @@
           (pickup-collectable! (-> self fact) (pickup-type eco-green) (the-as float 1.0) (the-as handle #f))
           (go target-stance))))
   :code
-    (behavior ((arg0 symbol) (arg1 attack-info))
-      (logclear! (-> self water flag) (water-flag jump-out))
+    (behavior ((mode symbol) (attack attack-info))
+      (logclear! (-> self water flags) (water-flag jump-out))
       (set-time! (-> self state-time))
-      (let ((gp-0 (-> self attack-info)))
-        (let ((s5-0 (new 'stack-no-clear 'vector)))
-          (let ((v1-4 gp-0))
+      (let ((info (-> self attack-info)))
+        (let ((attack-dir (new 'stack-no-clear 'vector)))
+          (let ((v1-4 info))
             (set! (-> v1-4 attacker) (the-as handle #f))
             (set! (-> v1-4 mode) 'generic)
             (set! (-> v1-4 shove-back) 6144.0)
             (set! (-> v1-4 shove-up) 4915.2)
             (set! (-> v1-4 angle) #f)
-            (set! (-> v1-4 trans quad) (-> self control trans quad))
+            (vector-copy! (-> v1-4 trans) (-> self control trans))
             (set! (-> v1-4 control) 0.0)
             (set! (-> v1-4 invinc-time) (-> *TARGET-bank* hit-invulnerable-timeout)))
-          (case arg0
+          (case mode
             (('shove)
-             (let ((v1-7 gp-0))
+             (let ((v1-7 info))
                (set! (-> v1-7 shove-back) (-> *TARGET-bank* smack-surface-dist))
                (set! (-> v1-7 shove-up) (-> *TARGET-bank* smack-surface-height))
                (set! (-> v1-7 angle) 'shove))))
-          (combine! gp-0 arg1)
-          (when (not (logtest? (-> gp-0 mask) (attack-mask vector)))
-            (vector-z-quaternion! (-> gp-0 vector) (-> self control quat-for-control))
-            (vector-xz-normalize! (-> gp-0 vector) (- (fabs (-> gp-0 shove-back))))
-            (set! (-> gp-0 vector y) (-> gp-0 shove-up)))
-          (set! (-> s5-0 quad) (-> gp-0 vector quad))
-          (let ((f0-10 (vector-dot (vector-normalize-copy! (new 'stack-no-clear 'vector) s5-0 (the-as float 1.0))
+          (combine! info attack)
+          (when (not (logtest? (-> info mask) (attack-mask vector)))
+            (vector-z-quaternion! (-> info vector) (-> self control quat-for-control))
+            (vector-xz-normalize! (-> info vector) (- (fabs (-> info shove-back))))
+            (set! (-> info vector y) (-> info shove-up)))
+          (vector-copy! attack-dir (-> info vector))
+          (let ((facing-dot (vector-dot (vector-normalize-copy! (new 'stack-no-clear 'vector) attack-dir (the-as float 1.0))
                                    (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control)))))
-            (if (not (-> self attack-info angle)) (set! (-> self attack-info angle) (if (>= 0.0 f0-10) 'front 'back))))
+            (if (not (-> self attack-info angle)) (set! (-> self attack-info angle) (if (>= 0.0 facing-dot) 'front 'back))))
           (cond
-            ((= arg0 'attack)
+            ((= mode 'attack)
              (logior! (-> self state-flags) (state-flags being-attacked))
              (set-time! (-> self game hit-time))
-             (case (-> gp-0 mode)
+             (case (-> info mode)
                (('endlessfall)
                 (cond
+                  ;; in debug mode a bottomless-pit fall is free: warp back to the last
+                  ;; spot where Jak stood on safe ground instead of dying.
                   ((= (-> self game mode) 'debug)
-                   (let ((s4-1 (new-stack-vector0)))
-                     (set! (-> s4-1 quad) (-> self control last-known-safe-ground quad))
+                   (let ((safe-pos (new-stack-vector0)))
+                     (set! (-> safe-pos quad) (-> self control last-known-safe-ground quad))
                      (ja-channel-set! 0)
-                     (let ((s3-1 (current-time))) (until (time-elapsed? s3-1 (seconds 1)) (suspend)))
-                     (move-to-point! (-> self control) s4-1))
-                   (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
+                     (let ((wait-start (current-time))) (until (time-elapsed? wait-start (seconds 1)) (suspend)))
+                     (move-to-point! (-> self control) safe-pos))
+                   ;; snap the camera reference position (camera-pos vector, via its raw
+                   ;; uint128 view) to the warped position before teleporting the camera.
+                   (set! (-> (&-> (-> self control) camera-pos-qword) 0) (-> self control trans quad))
                    (send-event *camera* 'teleport)
                    (go target-stance))
                   (else
                    (pickup-collectable! (-> self fact) (pickup-type eco-green) (the-as float -1000.0) (the-as handle #f))
-                   (go target-death (-> gp-0 mode)))))
+                   (go target-death (-> info mode)))))
                (('drown-death 'sharkey 'lava 'dark-eco-pool 'ogreboss-super-boulder 'melt 'instant-death)
                 (pickup-collectable! (-> self fact) (pickup-type eco-green) (the-as float -1000.0) (the-as handle #f))
-                (if (= (-> self game mode) 'play) (go target-death (-> gp-0 mode))))
+                (if (= (-> self game mode) 'play) (go target-death (-> info mode))))
                (('death) (pickup-collectable! (-> self fact) (pickup-type eco-green) (the-as float -1000.0) (the-as handle #f)))
                (('plant-boss)
                 (pickup-collectable! (-> self fact) (pickup-type eco-green) (- (-> *FACT-bank* health-single-inc)) (the-as handle #f))
-                (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health))) (go target-death (-> gp-0 mode))))
+                (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health))) (go target-death (-> info mode))))
                (else
                 (pickup-collectable! (-> self fact) (pickup-type eco-green) (- (-> *FACT-bank* health-single-inc)) (the-as handle #f))))
-             (target-hit-effect gp-0))
+             (target-hit-effect info))
             (else
-             (case (-> gp-0 mode)
+             (case (-> info mode)
                (('burn 'burnup) (sound-play "get-burned")))))
-          (set! (-> self control unknown-surface00) *smack-mods*)
-          (target-hit-setup-anim gp-0)
-          (target-hit-move gp-0 (target-hit-orient gp-0 s5-0) target-falling-anim-trans (the-as float 1.0)))
-        (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health))) (go target-death (-> gp-0 mode))))
+          (set! (-> self control mod-surface) *smack-mods*)
+          (target-hit-setup-anim info)
+          (target-hit-move info (target-hit-orient info attack-dir) target-falling-anim-trans (the-as float 1.0)))
+        (if (and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health))) (go target-death (-> info mode))))
       (go target-hit-ground #f))
   :post target-post)
 
+;; The pool of spooled death-camera movies (Daxter's quips over Jak's death). One is
+;; picked per death via death-movie-remap so consecutive deaths do not repeat.
 (define *death-spool-array*
   (new 'static
        'boxed-array
@@ -631,41 +709,60 @@
        (new 'static 'spool-anim :name "death-0199" :index 12 :parts 2 :command-list '())
        (new 'static 'spool-anim :name "death-0202" :index 13 :parts 1 :command-list '())))
 
+;; outside a retail 'play boot (e.g. debug boot) only the first 3 movies are available.
 (if (!= *kernel-boot-message* 'play) (set! (-> *death-spool-array* length) 3))
 
-(defun death-movie-remap ((arg0 int) (arg1 int))
-  (let ((v1-0 (/ arg0 arg1)))
-    (mod (if (not (logtest? v1-0 1)) (logxor v1-0 arg0) (logand #xfffffff (- (logxor v1-0 arg0)))) arg1)))
+;; Maps the monotonically increasing death counter to a movie index, walking the array
+;; forward on even passes and backward on odd ones (a xor-based zigzag) so the sequence
+;; of movies varies without immediate repeats.
+(defun death-movie-remap ((tick int) (count int))
+  "Map a monotonically increasing death count into count movie slots, alternating forward and
+   backward passes so adjacent cycles do not restart with the same ordering."
+  (let ((cycle (/ tick count)))
+    (mod (if (not (logtest? cycle 1)) (logxor cycle tick) (logand #xfffffff (- (logxor cycle tick)))) count)))
 
-(defbehavior target-death-anim target ((arg0 spool-anim))
+;; Plays Jak's generic collapse animation (deatha), holding the camera behind him and
+;; pre-spooling the upcoming death movie (if any) so it can start without a hitch. The
+;; align delta of the anim is converted to world space each frame and applied as velocity
+;; so the collapse actually moves Jak's root.
+(defbehavior target-death-anim target ((spool spool-anim))
   (set! (-> self control mod-surface) *neutral-mods*)
   (ja-channel-push! 1 (seconds 0.1))
   (ja-no-eval :group! eichar-deatha-ja :num! (seek!) :frame-num 0.0)
   (until (ja-done? 0)
-    (if arg0 (spool-push *art-control* (-> arg0 name) 0 self (the-as float -99.0)))
+    (if spool (spool-push *art-control* (-> spool name) 0 self (the-as float -99.0)))
     (send-event *camera* 'joystick 0.0 -1.0)
     (compute-alignment! (-> self align))
-    (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (let ((align-move (new 'stack-no-clear 'vector)))
       (when (not (logtest? (-> self align flags) (align-flags disabled)))
-        (vector-matrix*! s5-0 (-> self align delta trans) (-> self control c-R-w))
-        (vector-float*! (-> self control transv) s5-0 (-> *display* frames-per-second))))
+        (vector-matrix*! align-move (-> self align delta trans) (-> self control c-R-w))
+        (vector-float*! (-> self control transv) align-move (-> *display* frames-per-second))))
     (suspend)
     (ja :num! (seek!)))
   0
   (none))
 
+;; The death state. Entered from target-hit (or directly) with the death cause symbol;
+;; plays the per-cause death sequence, then re-initializes the game as 'dead, which makes
+;; an external process send us back through target-continue. While a spooled death movie
+;; or pov-camera runs, the per-state scratch slot is used as the "sequence finished"
+;; flag: the :event behavior sets it (as state-var0) on 'end-mode or on a pov-camera
+;; 'notify ('die / 'abort-request), and the :code loops read the same slot through its
+;; state-spool-anim overlay. Pickups and touches are refused while dead. The :exit
+;; behavior clears the dying flags, restores collision, the pat ignore mask, and the
+;; standard gravity that the drown sequence overrode.
 (defstate target-death (target)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
       (case message
-        (('end-mode) (let ((v0-0 (the-as object #t))) (set! (-> self control unknown-uint20) (the-as uint v0-0)) v0-0))
+        (('end-mode) (let ((v0-0 (the-as object #t))) (set! (-> self control state-var0) (the-as uint v0-0)) v0-0))
         (('change-mode)
          (case (-> block param 0)
            (('grab) #t)))
         (('notify)
          (when (type-type? (-> proc type) pov-camera)
            (case (-> block param 0)
-             (('die 'abort-request) (set! (-> self control unknown-uint20) (the-as uint #t)) (set-blackout-frames (seconds 0.2))))))
+             (('die 'abort-request) (set! (-> self control state-var0) (the-as uint #t)) (set-blackout-frames (seconds 0.2))))))
         (('get-pickup) #f)
         (('touched) #f)
         (else (target-generic-event-handler proc argc message block))))
@@ -683,18 +780,23 @@
     (-> target-hit
         trans)
   :code
-    (behavior ((arg0 symbol))
-      (set! (-> self control unknown-uint20) (the-as uint #f))
+    (behavior ((death-mode symbol))
+      (set! (-> self control state-var0) (the-as uint #f))
+      ;; tell the killer we are dying; its response is stashed (some bosses use it to
+      ;; signal that they will drive the death sequence, checked by the plant-boss case).
       (set! (-> self control did-move-to-pole-or-max-jump-height)
-            (the-as int (send-event (handle->process (-> self attack-info attacker)) 'target 'die arg0)))
+            (the-as int (send-event (handle->process (-> self attack-info attacker)) 'target 'die death-mode)))
       (set! (-> self neck flex-blend) 0.0)
       (target-timed-invulnerable-off self)
+      ;; freeze enemies/platforms/projectiles while the death sequence plays
       (set-setting! 'process-mask 'set 0.0 (process-mask enemy platform projectile death))
       (apply-settings *setting-control*)
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (logior! (-> self state-flags) (state-flags dying))
-      (case arg0
+      (case death-mode
         (('none 'instant-death))
+        ;; squashed by the ogreboss boulder: impact particles, then hold Jak's last pose
+        ;; (anim channels off) for a second.
         (('ogreboss-super-boulder)
          ;; og:preserve-this PAL patch here
          (process-spawn part-tracker
@@ -713,36 +815,41 @@
          (ja-channel-set! 0)
          (ja-post)
          (suspend-for (seconds 1)))
+        ;; drowning: turn off collision, weaken gravity to 6144.0 (1.5m gravity, a slow
+        ;; sink) and blend into the floating-face-down anim held at aframe 73.
         (('drown 'drown-death)
          (sound-play "death-drown")
-         (logclear! (-> self water flag) (water-flag swim-ground))
+         (logclear! (-> self water flags) (water-flag swim-ground))
          (clear-collide-with-as (-> self control))
          (set! (-> self control mod-surface) *dive-mods*)
          (set! (-> self control dynam gravity-max) 6144.0)
          (set! (-> self control dynam gravity-length) 6144.0)
          (ja-channel-push! 1 (seconds 0.1))
-         (let ((f30-0 0.7)
-               (gp-3 (-> self skel root-channel 0)))
-           (set! (-> gp-3 frame-group) (the-as art-joint-anim eichar-swim-walk-to-down-ja))
-           (set! (-> gp-3 param 0) (ja-aframe (the-as float 73.0) 0))
-           (let ((f30-1 (seek f30-0 (the-as float 0.05) (* 1.5 (seconds-per-frame)))))
-             (set! (-> gp-3 param 1) f30-1)
-             (set! (-> gp-3 frame-num) 0.0)
-             (joint-control-channel-group! gp-3 (the-as art-joint-anim eichar-swim-walk-to-down-ja) num-func-seek!)
+         (let ((blend 0.7)
+               (chan (-> self skel root-channel 0)))
+           (set! (-> chan frame-group) (the-as art-joint-anim eichar-swim-walk-to-down-ja))
+           (set! (-> chan param 0) (ja-aframe (the-as float 73.0) 0))
+           (let ((cur-blend (seek blend (the-as float 0.05) (* 1.5 (seconds-per-frame)))))
+             (set! (-> chan param 1) cur-blend)
+             (set! (-> chan frame-num) 0.0)
+             (joint-control-channel-group! chan (the-as art-joint-anim eichar-swim-walk-to-down-ja) num-func-seek!)
              (until (ja-done? 0)
                (suspend)
-               (let ((gp-4 (-> self skel root-channel 0)))
-                 (set! (-> gp-4 param 0) (ja-aframe (the-as float 73.0) 0))
-                 (set! f30-1 (seek f30-1 (the-as float 0.05) (* 1.5 (seconds-per-frame))))
-                 (set! (-> gp-4 param 1) f30-1)
-                 (joint-control-channel-group-eval! gp-4 (the-as art-joint-anim #f) num-func-seek!))))))
+               (let ((chan2 (-> self skel root-channel 0)))
+                 (set! (-> chan2 param 0) (ja-aframe (the-as float 73.0) 0))
+                 (set! cur-blend (seek cur-blend (the-as float 0.05) (* 1.5 (seconds-per-frame))))
+                 (set! (-> chan2 param 1) cur-blend)
+                 (joint-control-channel-group-eval! chan2 (the-as art-joint-anim #f) num-func-seek!))))))
+        ;; deadly pools: if the killer is a water volume, flag the fall-into-pool state so
+        ;; the camera holds 4096.0 (1m) above the surface, spawn the matching death
+        ;; particles, then sink with collision and animation disabled.
         (('lava 'dark-eco-pool 'melt)
-         (let ((s5-1 (handle->process (-> self attack-info attacker))))
-           (when (if (and (nonzero? s5-1) (type-type? (-> s5-1 type) water-vol)) s5-1)
+         (let ((attacker-proc (handle->process (-> self attack-info attacker))))
+           (when (if (and (nonzero? attacker-proc) (type-type? (-> attacker-proc type) water-vol)) attacker-proc)
              (logior! (-> self state-flags) (state-flags falling-into-pool-of-bad))
              (set! (-> self alt-cam-pos y) (+ 4096.0 (-> self water height)))))
          (cond
-           ((= arg0 'dark-eco-pool)
+           ((= death-mode 'dark-eco-pool)
             (sound-play "death-darkeco")
             (process-spawn part-tracker
                            :init
@@ -755,7 +862,7 @@
                            (-> self control trans)
                            :to
                            *entity-pool*))
-           ((or (= arg0 'lava) (= arg0 'melt))
+           ((or (= death-mode 'lava) (= death-mode 'melt))
             (sound-play "death-melt")
             (process-spawn part-tracker
                            :init
@@ -773,37 +880,42 @@
          (ja-channel-set! 0)
          (ja-post)
          (suspend-for (seconds 2)))
+        ;; falling into a bottomless pit: switch to the endless-fall camera and keep
+        ;; falling forever while fading Jak's colors to black.
         (('endlessfall)
          (sound-play "death-fall")
          (camera-change-to (the-as string cam-endlessfall) 30 #f)
-         (set! (-> self control pat-ignore-mask unknown-bit) 1)
-         (logclear! (-> self water flag) (water-flag swim-ground))
-         (let ((f30-2 (fmin -4096.0 (- (-> self control ground-impact-vel)))))
-           (set! (-> self control unknown-uint20) (the-as uint f30-2))
-           (let ((gp-11 (new-stack-vector0)))
+         (set! (-> self control pat-ignore-mask noendlessfall) 1)
+         (logclear! (-> self water flags) (water-flag swim-ground))
+         ;; cap the downward speed at the impact speed we entered with (at least 1m/s).
+         ;; NOTE: the float cap is stored in state-var0 (a uint field) via type punning,
+         ;; and the trans-hook below reads it back as a float each frame.
+         (let ((fall-vel-cap (fmin -4096.0 (- (-> self control ground-impact-vel)))))
+           (set! (-> self control state-var0) (the-as uint fall-vel-cap))
+           (let ((flat-vel (new-stack-vector0)))
              (let ((f0-14 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
                0.0
-               (vector-! gp-11 (-> self control transv) (vector-float*! gp-11 (-> self control dynam gravity-normal) f0-14)))
-             (let* ((f0-15 (vector-length gp-11))
+               (vector-! flat-vel (-> self control transv) (vector-float*! flat-vel (-> self control dynam gravity-normal) f0-14)))
+             (let* ((f0-15 (vector-length flat-vel))
                     (f1-6 f0-15))
                (vector+! (-> self control transv)
-                         (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f30-2)
-                         (vector-float*! gp-11 gp-11 (/ f0-15 f1-6))))))
+                         (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) fall-vel-cap)
+                         (vector-float*! flat-vel flat-vel (/ f0-15 f1-6))))))
          (set! (-> self trans-hook)
                (lambda :behavior target ()
                  (vector-seek! (-> self draw color-mult) *zero-vector* (seconds-per-frame))
-                 (let ((gp-0 (new-stack-vector0))
-                       (f30-0 (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
+                 (let ((flat-vel (new-stack-vector0))
+                       (down-vel (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
                    0.0
-                   (vector-! gp-0
+                   (vector-! flat-vel
                              (-> self control transv)
-                             (vector-float*! gp-0 (-> self control dynam gravity-normal) (the-as float f30-0)))
-                   (let* ((f0-4 (vector-length gp-0))
+                             (vector-float*! flat-vel (-> self control dynam gravity-normal) (the-as float down-vel)))
+                   (let* ((f0-4 (vector-length flat-vel))
                           (f1-0 f0-4))
-                     (if (< (the-as float (-> self control unknown-uint20)) (the-as float f30-0)) (set! f30-0 (-> self control unknown-uint20)))
+                     (if (< (the-as float (-> self control state-var0)) (the-as float down-vel)) (set! down-vel (-> self control state-var0)))
                      (vector+! (-> self control transv)
-                               (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) (the-as float f30-0))
-                               (vector-float*! gp-0 gp-0 (/ f0-4 f1-0)))))
+                               (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) (the-as float down-vel))
+                               (vector-float*! flat-vel flat-vel (/ f0-4 f1-0)))))
                  ((-> target-hit trans))
                  (none)))
          (target-falling-anim (seconds 0.1) (seconds 0.33))
@@ -812,6 +924,7 @@
          (suspend-for (seconds 0.8)
            (ja :group! eichar-launch-jump-loop-ja :num! (loop! 0.5)))
          (camera-change-to (the-as string 'base) 0 #f))
+        ;; died from a long fall onto ground: just play the painful landing anim.
         (('target-hit-ground-hard)
          (set! (-> self control mod-surface) *neutral-mods*)
          (ja-channel-push! 1 (seconds 0.1))
@@ -819,45 +932,45 @@
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek!))))
+        ;; eaten by sharkey: the shark process animates Jak (our anim channels are off),
+        ;; so just hold the camera still until the shark process despawns or something
+        ;; sets the sequence-finished flag (state-spool-anim overlay of state-var0).
         (('sharkey)
          (send-event self 'dry)
          (set! (-> self post-hook) target-no-ja-move-post)
-         (let ((gp-13 (-> self attack-info attacker)))
+         (let ((shark-attacker (-> self attack-info attacker)))
            (ja-channel-set! 0)
            (ja-post)
-           (while (and (handle->process gp-13) (not (-> self control unknown-spoolanim00)))
+           (while (and (handle->process shark-attacker) (not (-> self control state-spool-anim)))
              (send-event *camera* 'joystick 0.0 0.0)
              (suspend))))
+        ;; eaten by the plant boss: ask the boss which of its joints holds Jak, then every
+        ;; frame copy that joint's bone transform onto our root and clone the boss's anim
+        ;; (joint 33) so Jak rides inside the boss's mouth during its eating animation.
         (('plant-boss)
          (set! (-> self trans-hook) #f)
-         (let ((gp-14 (-> self attack-info attacker))
-               (a1-44 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-44 from) self)
-           (set! (-> a1-44 num-params) 0)
-           (set! (-> a1-44 message) 'joint)
-           (let ((s5-5 (the-as int (send-event-function (handle->process gp-14) a1-44))))
+         (let ((boss-attacker (-> self attack-info attacker))
+               (joint-event (new 'stack-no-clear 'event-message-block)))
+           (set! (-> joint-event from) self)
+           (set! (-> joint-event num-params) 0)
+           (set! (-> joint-event message) 'joint)
+           (let ((joint-idx (the-as int (send-event-function (handle->process boss-attacker) joint-event))))
              (send-event (ppointer->process (-> self sidekick)) 'matrix 'copy-parent)
              (set! (-> self post-hook) target-no-ja-move-post)
-             (let ((a0-98 (-> self node-list data)))
-               (set! (-> a0-98 0 param0) nothing)
-               (set! (-> a0-98 0 param1) #f)
-               (set! (-> a0-98 0 param2) #f))
-             (while (and (handle->process gp-14)
-                         (not (-> self control unknown-spoolanim00))
+             (let ((nodes (-> self node-list data)))
+               (set! (-> nodes 0 param0) nothing)
+               (set! (-> nodes 0 param1) #f)
+               (set! (-> nodes 0 param2) #f))
+             (while (and (handle->process boss-attacker)
+                         (not (-> self control state-spool-anim))
                          (-> self control did-move-to-pole-or-max-jump-height))
-               (let* ((v1-205 (-> (the-as process-drawable (handle->process gp-14)) node-list data s5-5 bone transform))
-                      (a3-9 (-> self node-list data 0 bone transform))
-                      (a0-106 (-> v1-205 vector 0 quad))
-                      (a1-47 (-> v1-205 vector 1 quad))
-                      (a2-26 (-> v1-205 vector 2 quad))
-                      (v1-206 (-> v1-205 vector 3 quad)))
-                 (set! (-> a3-9 vector 0 quad) a0-106)
-                 (set! (-> a3-9 vector 1 quad) a1-47)
-                 (set! (-> a3-9 vector 2 quad) a2-26)
-                 (set! (-> a3-9 vector 3 quad) v1-206))
-               (clone-anim-once gp-14 33 #f "")
+               (matrix-copy!
+                 (-> self node-list data 0 bone transform)
+                 (-> (the-as process-drawable (handle->process boss-attacker)) node-list data joint-idx bone transform))
+               (clone-anim-once boss-attacker 33 #f "")
                (suspend)
                0))))
+        ;; burned to death: burn particles plus the generic collapse (no movie).
         (('burn 'burnup)
          (process-spawn part-tracker
                         :init
@@ -871,46 +984,56 @@
                         :to
                         *entity-pool*)
          (target-death-anim (the-as spool-anim #f)))
+        ;; the ordinary death: advance the death-movie counter (skipping a tick if the
+        ;; remap would repeat the previous movie), play the collapse anim while the movie
+        ;; spools, and then - conditions permitting - run the spooled death-cam movie.
         (else
-         (case arg0
+         (case death-mode
            (('tar) (sound-play "death-drown")))
          (+! (-> *game-info* death-movie-tick) 1)
          (if (= (death-movie-remap (+ (-> *game-info* death-movie-tick) -1) (-> *death-spool-array* length))
                 (death-movie-remap (-> *game-info* death-movie-tick) (-> *death-spool-array* length)))
            (+! (-> *game-info* death-movie-tick) 1))
-         (let ((gp-18 (-> *death-spool-array* (death-movie-remap (-> *game-info* death-movie-tick) (-> *death-spool-array* length)))))
+         (let ((death-spool (-> *death-spool-array* (death-movie-remap (-> *game-info* death-movie-tick) (-> *death-spool-array* length)))))
            (set-setting! 'allow-progress #f 0.0 0)
-           (target-death-anim gp-18)
+           (target-death-anim death-spool)
+           ;; only play the movie sometimes (random chance shrinking as deaths mount), and
+           ;; never in water or on deepsnow/hotcoals ground (pat materials 9 and 10).
            (when (and (< (rand-vu-int-count (-> *game-info* death-movie-tick)) (* (-> *death-spool-array* length) 2))
-                      (not (logtest? (-> self water flag) (water-flag touch-water)))
+                      (not (logtest? (-> self water flags) (water-flag touch-water)))
                       (!= (-> self control ground-pat material) 9)
                       (!= (-> self control ground-pat material) 10))
+             ;; flag every enemy within 61440.0 (15m) so it stays gone while the death
+             ;; movie plays around Jak's body.
              (iterate-process-tree *entity-pool*
-                                   (lambda :behavior target ((arg0 process))
-                                     (if (and (logtest? (process-mask enemy) (-> arg0 mask))
-                                              (type-type? (-> arg0 type) process-drawable)
-                                              (nonzero? (-> (the-as process-drawable arg0) root))
-                                              (< (vector-vector-distance (-> (the-as process-drawable arg0) root trans) (-> *target* control trans)) 61440.0))
-                                       (process-entity-status! arg0 (entity-perm-status bit-9) #t)))
+                                   (lambda :behavior target ((proc process))
+                                     (if (and (logtest? (process-mask enemy) (-> proc mask))
+                                              (type-type? (-> proc type) process-drawable)
+                                              (nonzero? (-> (the-as process-drawable proc) root))
+                                              (< (vector-vector-distance (-> (the-as process-drawable proc) root trans) (-> *target* control trans)) 61440.0))
+                                       (process-entity-status! proc (entity-perm-status suppress-birth) #t)))
                                    *null-kernel-context*)
              (set! (-> *ACTOR-bank* birth-max) 1000)
              (set! (-> self trans-hook) #f)
              (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
              (send-event (ppointer->process (-> self sidekick)) 'shadow #f)
              (send-event self 'blend-shape #t)
-             (let ((s5-8 (ppointer->handle (process-spawn pov-camera (-> self control trans) *deathcam-sg* gp-18 4 self '() :to *target-pool*))))
-               (send-event (handle->process s5-8) 'music-movie-volume 0.0)
-               (send-event (handle->process s5-8) 'sfx-movie-volume 50.0)
+             ;; spawn the pov deathcam and clone its spooled animation (joint 33) onto Jak
+             ;; until the movie signals completion through the state-var0/state-spool-anim
+             ;; scratch slot (set by the :event behavior when the pov-camera notifies us).
+             (let ((deathcam (ppointer->handle (process-spawn pov-camera (-> self control trans) *deathcam-sg* death-spool 4 self '() :to *target-pool*))))
+               (send-event (handle->process deathcam) 'music-movie-volume 0.0)
+               (send-event (handle->process deathcam) 'sfx-movie-volume 50.0)
                (set! (-> self post-hook) target-no-ja-move-post)
-               (while (not (-> self control unknown-spoolanim00))
-                 (spool-push *art-control* (-> gp-18 name) 0 self (the-as float -99.0))
-                 (clone-anim-once s5-8 33 #f "")
+               (while (not (-> self control state-spool-anim))
+                 (spool-push *art-control* (-> death-spool name) 0 self (the-as float -99.0))
+                 (clone-anim-once deathcam 33 #f "")
                  (suspend))
-               (let ((a0-155 (handle->process s5-8))) (if a0-155 (deactivate a0-155))))
+               (let ((cam-proc (handle->process deathcam))) (if cam-proc (deactivate cam-proc))))
              (send-event (ppointer->process (-> self sidekick)) 'shadow #t)
              (suspend)
              0))))
-      (set! (-> self control transv quad) (the-as uint128 0))
+      (vector-zero! (-> self control transv))
       (initialize! (-> self game) 'dead (the-as game-save #f) (the-as string #f))
       (set-time! (-> self state-time))
       (anim-loop))

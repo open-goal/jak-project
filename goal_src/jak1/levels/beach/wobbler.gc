@@ -6,6 +6,8 @@
 
 ;; DECOMP BEGINS
 
+;; A two-axis spring used to lean an upright object after an impulse. Damping and spring are
+;; per-frame coefficients; only the position integration is scaled by elapsed frame time.
 (deftype wobbler (basic)
   ((posx    float)
    (posy    float)
@@ -18,26 +20,32 @@
    (reset! (_type_ float float float) none)
    (inc-xy-vel! (_type_ float float) none)
    (move! (_type_) none)
-   (wobbler-method-12 (_type_ quaternion) none)))
+   (tilt-quaternion! (_type_ quaternion) none)))
 
-(defmethod reset! ((this wobbler) (arg0 float) (arg1 float) (arg2 float))
+(defmethod reset! ((this wobbler) (spring float) (damping float) (height float))
+  "Clear displacement and velocity, then set the per-frame spring coefficient, velocity damping
+   multiplier, and reference height used to convert displacement into tilt."
   (set! (-> this posx) 0.0)
   (set! (-> this posy) 0.0)
   (set! (-> this velx) 0.0)
   (set! (-> this vely) 0.0)
-  (set! (-> this spring) arg0)
-  (set! (-> this damping) arg1)
-  (set! (-> this height) arg2)
+  (set! (-> this spring) spring)
+  (set! (-> this damping) damping)
+  (set! (-> this height) height)
   0
   (none))
 
-(defmethod inc-xy-vel! ((this wobbler) (arg0 float) (arg1 float))
-  (+! (-> this velx) arg0)
-  (+! (-> this vely) arg1)
+(defmethod inc-xy-vel! ((this wobbler) (x-impulse float) (y-impulse float))
+  "Add an X/Y impulse to the wobble velocity."
+  (+! (-> this velx) x-impulse)
+  (+! (-> this vely) y-impulse)
   0
   (none))
 
 (defmethod move! ((this wobbler))
+  "Advance the two-axis damped spring by one frame. Integrate displacement using
+   seconds-per-frame, multiply velocity by damping, then subtract displacement times spring
+   without an additional time scale."
   (+! (-> this posx) (* (-> this velx) (seconds-per-frame)))
   (+! (-> this posy) (* (-> this vely) (seconds-per-frame)))
   (set! (-> this velx) (* (-> this velx) (-> this damping)))
@@ -47,14 +55,17 @@
   0
   (none))
 
-(defmethod wobbler-method-12 ((this wobbler) (arg0 quaternion))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 x) (-> this posy))
-    (set! (-> s5-0 y) 0.0)
-    (set! (-> s5-0 z) (- (-> this posx)))
-    (vector-normalize! s5-0 1.0)
-    (let* ((f0-8 (/ (sqrtf (+ (* (-> this posx) (-> this posx)) (* (-> this posy) (-> this posy)))) (-> this height)))
-           (f0-9 (atan f0-8 1.0)))
-      (quaternion-vector-angle! arg0 s5-0 f0-9)))
+(defmethod tilt-quaternion! ((this wobbler) (output quaternion))
+  "Set output to the lean represented by the current two-axis displacement. Use
+   (posy, 0, -posx) as the normalized tilt axis and atan(displacement magnitude / height) as
+   the angle."
+  (let ((tilt-axis (new 'stack-no-clear 'vector)))
+    (set! (-> tilt-axis x) (-> this posy))
+    (set! (-> tilt-axis y) 0.0)
+    (set! (-> tilt-axis z) (- (-> this posx)))
+    (vector-normalize! tilt-axis 1.0)
+    (let* ((tilt-ratio (/ (sqrtf (+ (* (-> this posx) (-> this posx)) (* (-> this posy) (-> this posy)))) (-> this height)))
+           (tilt-angle (atan tilt-ratio 1.0)))
+      (quaternion-vector-angle! output tilt-axis tilt-angle)))
   0
   (none))

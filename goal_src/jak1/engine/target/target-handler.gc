@@ -4,206 +4,234 @@
 (require "engine/target/logic-target.gc")
 (define-extern target-powerup-effect (function symbol none :behavior target))
 
+;; This file has the shared event handlers for the target (player) process.
+;; Every target state points its :event at one of these behaviors (or at a state-specific
+;; wrapper around them). They receive events sent to Jak by other processes: incoming
+;; attacks and shoves, launchers, eco powerups, mode changes (racer/flut/tube/...), and
+;; pickup/level/camera queries. This file also has the outgoing-attack delivery function
+;; (target-send-attack) and the common state :exit cleanup behaviors.
+
 ;; DECOMP BEGINS
 
-(defbehavior target-generic-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (v0-0 object))
-  (case arg2
+(defbehavior target-generic-event-handler target ((proc process) (argc int) (message symbol) (block event-message-block))
+  "Handle target events that are valid in any state. These include pickups and queries, level
+   accounting, collision reset, transform save and restore, effects, sidekick lifetime, neck and
+   draw control, wait timers, and scripted state changes. proc is the sender, argc is the event
+   parameter count, message selects the operation, and block contains its parameters."
+  (local-vars (result object))
+  (case message
     (('get-pickup)
      (when (not (logtest? (-> self state-flags) (state-flags dying)))
-       (let ((s4-0 (-> arg3 param 0))
-             (f28-0 (the-as float (-> arg3 param 1))))
-         (if (!= (pickup-collectable! (-> self fact) (the-as pickup-type s4-0) (the-as float 0.0) (the-as handle #f))
-                 (pickup-collectable! (-> self fact) (the-as pickup-type s4-0) f28-0 (process->handle arg0)))
+       (let ((kind (-> block param 0))
+             (amount (the-as float (-> block param 1))))
+         (if (!= (pickup-collectable! (-> self fact) (the-as pickup-type kind) (the-as float 0.0) (the-as handle #f))
+                 (pickup-collectable! (-> self fact) (the-as pickup-type kind) amount (process->handle proc)))
            #t
            'full))))
-    (('reset-pickup) (reset! (-> self fact) (the-as symbol (-> arg3 param 0))))
+    (('reset-pickup) (reset! (-> self fact) (the-as symbol (-> block param 0))))
+    ;; re-apply the current collision configuration: either the special collide-mode
+    ;; (duck/tube/etc.) or the current attack danger-mode's hitbox prims.
     (('reset-collide)
      (cond
-       ((-> self control unknown-symbol00)
-        (target-collide-set! (-> self control unknown-symbol00) (-> self control unknown-float90)))
+       ((-> self control collide-mode)
+        (target-collide-set! (-> self control collide-mode) (-> self control collide-mode-transition)))
        ((-> self control danger-mode) (target-danger-set! (-> self control danger-mode) #f))))
     (('level-deactivate) #f)
     (('level-enter)
-     (let ((v1-21 (level-get *level* (the-as symbol (-> arg3 param 0)))))
-       (when v1-21
-         (let ((s5-1 (-> v1-21 info)))
-           (let ((v1-22 (-> s5-1 buzzer)))
-             (if (zero? v1-22)
+     (let ((lev (level-get *level* (the-as symbol (-> block param 0)))))
+       (when lev
+         (let ((lev-info (-> lev info)))
+           (let ((buzzer-count (-> lev-info buzzer)))
+             (if (zero? buzzer-count)
                (set! (-> self fact buzzer) 0.0)
                (set! (-> self fact buzzer)
-                     (pickup-collectable! (-> self fact) (pickup-type buzzer) (the float (logior -65536 v1-22)) (the-as handle #f)))))
-           (if (and (zero? (-> *game-info* enter-level-time (-> s5-1 index))) (>= (-> *level-task-data-remap* length) (-> s5-1 index)))
-             (set-time! (-> *game-info* enter-level-time (-> *level-task-data-remap* (+ (-> s5-1 index) -1))))))
+                     (pickup-collectable! (-> self fact) (pickup-type buzzer) (the float (logior -65536 buzzer-count)) (the-as handle #f)))))
+           (if (and (zero? (-> *game-info* enter-level-time (-> lev-info index))) (>= (-> *level-task-data-remap* length) (-> lev-info index)))
+             (set-time! (-> *game-info* enter-level-time (-> *level-task-data-remap* (+ (-> lev-info index) -1))))))
          (send-event (ppointer->process (-> *hud-parts* buzzers)) 'sync)
-         (format #t "GAMEPLAY: enter ~A~%" (-> arg3 param 0)))))
+         (format #t "GAMEPLAY: enter ~A~%" (-> block param 0)))))
     (('get-attack-count)
-     (set! v0-0 (+ (-> self control attack-count) (-> arg3 param 0)))
-     (set! (-> self control attack-count) (the-as int v0-0))
-     v0-0)
-    (('continue) (go target-continue (the-as continue-point (-> arg3 param 0))))
+     (set! result (+ (-> self control attack-count) (-> block param 0)))
+     (set! (-> self control attack-count) (the-as int result))
+     result)
+    (('continue) (go target-continue (the-as continue-point (-> block param 0))))
     (('query)
-     (case (-> arg3 param 0)
-       (('powerup) (and (= (-> self fact eco-type) (-> arg3 param 1)) (< 0.0 (-> self fact eco-level))))
+     (case (-> block param 0)
+       (('powerup) (and (= (-> self fact eco-type) (-> block param 1)) (< 0.0 (-> self fact eco-level))))
        (('pickup)
-        (pickup-collectable! (-> self fact) (the-as pickup-type (-> arg3 param 1)) (the-as float 0.0) (the-as handle #f)))
+        (pickup-collectable! (-> self fact) (the-as pickup-type (-> block param 1)) (the-as float 0.0) (the-as handle #f)))
        (('ground-height) (target-height-above-ground))))
+    ;; Save the 48-byte translation/quaternion/scale block for scripted sequences. Restore applies
+    ;; the saved translation and quaternion; target scale remains under the active state.
     (('trans)
-     (case (-> arg3 param 0)
+     (case (-> block param 0)
        (('save)
-        (set! (-> self alt-cam-pos quad) (-> self control trans quad))
+        (vector-copy! (-> self alt-cam-pos) (-> self control trans))
         (logior! (-> self state-flags) (state-flags has-saved-position))
-        (mem-copy! (the-as pointer (-> arg3 param 1)) (the-as pointer (-> self control trans)) 48))
+        (mem-copy! (the-as pointer (-> block param 1)) (the-as pointer (-> self control trans)) 48))
        (('restore)
         (logclear! (-> self state-flags) (state-flags has-saved-position))
-        (let ((gp-1 (-> arg3 param 1)))
-          (move-to-point! (-> self control) (the-as vector (+ gp-1 0)))
-          (quaternion-copy! (-> self control quat) (the-as quaternion (+ gp-1 16))))
+        (let ((trans-data (-> block param 1)))
+          (move-to-point! (-> self control) (the-as vector (+ trans-data 0)))
+          (quaternion-copy! (-> self control quat) (the-as quaternion (+ trans-data 16))))
         (rot->dir-targ! (-> self control))
-        (logior! (-> self control status) (cshape-moving-flags onsurf onground tsurf))
-        (set! v0-0 (current-time))
-        (set! (-> self control last-time-on-surface) (the-as time-frame v0-0))
-        v0-0)
+        ;; pretend we are standing on the ground at the restored position so the state
+        ;; machine does not think Jak has been falling all this time.
+        (logior! (-> self control status) (collide-status on-surface on-ground touch-surface))
+        (set! result (current-time))
+        (set! (-> self control last-time-on-surface) (the-as time-frame result))
+        result)
        (('reset)
-        (set! v0-0 (logclear (-> self state-flags) (state-flags has-saved-position)))
-        (set! (-> self state-flags) (the-as state-flags v0-0))
-        v0-0)))
-    (('effect) (target-powerup-effect (the-as symbol (-> arg3 param 0))))
+        (set! result (logclear (-> self state-flags) (state-flags has-saved-position)))
+        (set! (-> self state-flags) (the-as state-flags result))
+        result)))
+    (('effect) (target-powerup-effect (the-as symbol (-> block param 0))))
     (('do-effect)
-     (effect-control-method-10 (-> self skel effect) (the-as symbol (-> arg3 param 0)) (the-as float (-> arg3 param 1)) -1)
+     (do-effect (-> self skel effect) (the-as symbol (-> block param 0)) (the-as float (-> block param 1)) -1)
      (if (-> self sidekick)
-       (effect-control-method-10 (-> self sidekick 0 skel effect)
-                                 (the-as symbol (-> arg3 param 0))
-                                 (the-as float (-> arg3 param 1))
-                                 -1)))
+       (do-effect (-> self sidekick 0 skel effect) (the-as symbol (-> block param 0)) (the-as float (-> block param 1)) -1)))
     (('neck)
-     (set! (-> self neck flex-blend) (the-as float (-> arg3 param 0)))
+     (set! (-> self neck flex-blend) (the-as float (-> block param 0)))
      (cond
-       ((-> arg3 param 1)
+       ((-> block param 1)
         (logior! (-> self state-flags) (state-flags looking-at-enemy))
-        (set! (-> self alt-neck-pos quad) (-> (the-as vector (-> arg3 param 1)) quad))
-        (look-at-enemy! (-> self neck) (-> self alt-neck-pos) 'force arg0))
+        (vector-copy! (-> self alt-neck-pos) (the-as vector (-> block param 1)))
+        (look-at-enemy! (-> self neck) (-> self alt-neck-pos) 'force proc))
        (else
-        (set! v0-0 (logclear (-> self state-flags) (state-flags looking-at-enemy)))
-        (set! (-> self state-flags) (the-as state-flags v0-0))
-        v0-0)))
+        (set! result (logclear (-> self state-flags) (state-flags looking-at-enemy)))
+        (set! (-> self state-flags) (the-as state-flags result))
+        result)))
     (('sidekick)
      (cond
-       ((and (-> arg3 param 0) (not (-> self sidekick)))
-        (let ((gp-2 (get-process *default-dead-pool* sidekick #x4000)))
-          (set! v0-0
-                (when gp-2
+       ((and (-> block param 0) (not (-> self sidekick)))
+        (let ((new-sidekick (get-process *default-dead-pool* sidekick #x4000)))
+          (set! result
+                (when new-sidekick
                   (let ((t9-21 (method-of-type sidekick activate)))
-                    (t9-21 (the-as sidekick gp-2) self 'sidekick (the-as pointer #x70004000)))
-                  (run-now-in-process gp-2 init-sidekick)
-                  (-> gp-2 ppointer))))
-        (set! (-> self sidekick) (the-as (pointer sidekick) v0-0))
-        v0-0)
-       ((and (not (-> arg3 param 0)) (-> self sidekick))
+                    (t9-21 (the-as sidekick new-sidekick) self 'sidekick (the-as pointer #x70004000)))
+                  (run-now-in-process new-sidekick init-sidekick)
+                  (-> new-sidekick ppointer))))
+        (set! (-> self sidekick) (the-as (pointer sidekick) result))
+        result)
+       ((and (not (-> block param 0)) (-> self sidekick))
         (deactivate (-> self sidekick 0))
         (set! (-> self sidekick) (the-as (pointer sidekick) #f))
         #f)))
     (('blend-shape)
-     (if (-> arg3 param 0)
+     (if (-> block param 0)
        (logior! (-> self skel status) (janim-status blerc))
        (logclear! (-> self skel status) (janim-status blerc)))
-     (let ((v1-105 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> v1-105 from) arg0)
-       (set! (-> v1-105 num-params) arg1)
-       (set! (-> v1-105 message) arg2)
-       (set! (-> v1-105 param 0) (-> arg3 param 0))
-       (set! (-> v1-105 param 1) (-> arg3 param 1))
-       (set! (-> v1-105 param 2) (-> arg3 param 2))
-       (set! (-> v1-105 param 3) (-> arg3 param 3))
-       (set! (-> v1-105 param 4) (-> arg3 param 4))
-       (set! (-> v1-105 param 5) (-> arg3 param 5))
-       (set! (-> v1-105 param 6) (-> arg3 param 6))
-       (send-event-function (ppointer->process (-> self sidekick)) v1-105)))
+     (let ((sidekick-event (new 'stack-no-clear 'event-message-block)))
+       (set! (-> sidekick-event from) proc)
+       (set! (-> sidekick-event num-params) argc)
+       (set! (-> sidekick-event message) message)
+       (set! (-> sidekick-event param 0) (-> block param 0))
+       (set! (-> sidekick-event param 1) (-> block param 1))
+       (set! (-> sidekick-event param 2) (-> block param 2))
+       (set! (-> sidekick-event param 3) (-> block param 3))
+       (set! (-> sidekick-event param 4) (-> block param 4))
+       (set! (-> sidekick-event param 5) (-> block param 5))
+       (set! (-> sidekick-event param 6) (-> block param 6))
+       (send-event-function (ppointer->process (-> self sidekick)) sidekick-event)))
     (('shadow)
      (cond
-       ((-> arg3 param 0)
-        (let ((v1-108 (-> self draw shadow-ctrl))) (logclear! (-> v1-108 settings flags) (shadow-flags disable-draw)))
+       ((-> block param 0)
+        (let ((shadow-data (-> self draw shadow-ctrl)))
+          (logclear! (-> shadow-data settings flags) (shadow-flags disable-draw)))
         0)
-       (else (let ((v1-110 (-> self draw shadow-ctrl))) (logior! (-> v1-110 settings flags) (shadow-flags disable-draw))) 0)))
+       (else
+        (let ((shadow-data (-> self draw shadow-ctrl)))
+          (logior! (-> shadow-data settings flags) (shadow-flags disable-draw)))
+        0)))
     (('rotate-y-angle)
      (quaternion-rotate-y! (-> self control quat-for-control)
                            (-> self control quat-for-control)
-                           (the-as float (-> arg3 param 0)))
+                           (the-as float (-> block param 0)))
      (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0) (rot->dir-targ! (-> self control))))
-    (('touched) (send-event arg0 'touch (-> arg3 param 0)))
+    (('touched) (send-event proc 'touch (-> block param 0)))
     (('dry) (set! (-> self water drip-wetness) 0.0))
-    (('reset-height) (set! (-> self control last-trans-any-surf quad) (-> self control trans quad)) #f)
+    (('reset-height) (vector-copy! (-> self control last-trans-any-surf) (-> self control trans)) #f)
     (('draw)
-     (if (-> arg3 param 0)
+     (if (-> block param 0)
        (logclear! (-> self draw status) (draw-status skip-bones))
        (logior! (-> self draw status) (draw-status skip-bones)))
-     (let ((v1-132 (new 'stack-no-clear 'event-message-block)))
-       (set! (-> v1-132 from) arg0)
-       (set! (-> v1-132 num-params) arg1)
-       (set! (-> v1-132 message) arg2)
-       (set! (-> v1-132 param 0) (-> arg3 param 0))
-       (set! (-> v1-132 param 1) (-> arg3 param 1))
-       (set! (-> v1-132 param 2) (-> arg3 param 2))
-       (set! (-> v1-132 param 3) (-> arg3 param 3))
-       (set! (-> v1-132 param 4) (-> arg3 param 4))
-       (set! (-> v1-132 param 5) (-> arg3 param 5))
-       (set! (-> v1-132 param 6) (-> arg3 param 6))
-       (send-event-function (ppointer->process (-> self manipy)) v1-132)))
+     (let ((manipy-event (new 'stack-no-clear 'event-message-block)))
+       (set! (-> manipy-event from) proc)
+       (set! (-> manipy-event num-params) argc)
+       (set! (-> manipy-event message) message)
+       (set! (-> manipy-event param 0) (-> block param 0))
+       (set! (-> manipy-event param 1) (-> block param 1))
+       (set! (-> manipy-event param 2) (-> block param 2))
+       (set! (-> manipy-event param 3) (-> block param 3))
+       (set! (-> manipy-event param 4) (-> block param 4))
+       (set! (-> manipy-event param 5) (-> block param 5))
+       (set! (-> manipy-event param 6) (-> block param 6))
+       (send-event-function (ppointer->process (-> self manipy)) manipy-event)))
     (('no-load-wait)
-     (set! v0-0 (+ (current-time) (the-as time-frame (-> arg3 param 0))))
-     (set! (-> self no-load-wait) (the-as time-frame v0-0))
-     v0-0)
+     (set! result (+ (current-time) (the-as time-frame (-> block param 0))))
+     (set! (-> self no-load-wait) (the-as time-frame result))
+     result)
     (('no-look-around)
-     (set! (-> self no-look-around-wait) (+ (current-time) (the-as time-frame (-> arg3 param 0))))
+     (set! (-> self no-look-around-wait) (+ (current-time) (the-as time-frame (-> block param 0))))
      (if (= (-> self next-state name) 'target-look-around) (send-event self 'end-mode)))
     (('change-state)
-     (go (the-as (state object object object object target) (-> arg3 param 0))
-         (-> arg3 param 1)
-         (-> arg3 param 2)
-         (-> arg3 param 3)
-         (-> arg3 param 4)))))
+     (go (the-as (state object object object object target) (-> block param 0))
+         (-> block param 1)
+         (-> block param 2)
+         (-> block param 3)
+         (-> block param 4)))))
 
-(defbehavior target-shoved target ((arg0 meters) (arg1 meters) (arg2 process) (arg3 (state object object target)))
-  (let ((s5-0 (new 'static 'attack-info)))
-    (set! (-> s5-0 attacker) (process->handle arg2))
-    (set! (-> s5-0 shove-back) arg0)
-    (set! (-> s5-0 shove-up) arg1)
-    (set! (-> s5-0 angle)
-          (if (not (logtest? (logior (-> self control status) (-> self control old-status)) (cshape-moving-flags onsurf))) 'air 'shove))
-    (set! (-> s5-0 mask) (attack-mask attacker shove-back shove-up angle))
+(defbehavior target-shoved target ((shove-back meters) (shove-up meters) (attacker process) (hit-state (state object object target)))
+  "Construct a non-damaging attack record that pushes the target shove-back meters horizontally and
+   shove-up meters vertically, buzz the pad, and enter hit-state. Use the airborne reaction when the
+   target was not on a surface in either the current or previous collision update."
+  (let ((attack (new 'static 'attack-info)))
+    (set! (-> attack attacker) (process->handle attacker))
+    (set! (-> attack shove-back) shove-back)
+    (set! (-> attack shove-up) shove-up)
+    (set! (-> attack angle)
+          (if (not (logtest? (logior (-> self control status) (-> self control old-status)) (collide-status on-surface))) 'air 'shove))
+    (set! (-> attack mask) (attack-mask attacker shove-back shove-up angle))
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
-    (go arg3 'shove s5-0)))
+    (go hit-state 'shove attack)))
 
-(defun get-intersect-point ((arg0 vector) (arg1 touching-prims-entry) (arg2 control-info) (arg3 touching-shapes-entry))
-  (let ((a0-2 (get-touched-tri arg1 arg2 arg3)))
-    (if a0-2 (set! (-> arg0 quad) (-> a0-2 intersect quad)) (get-middle-of-bsphere-overlap arg1 arg0)))
-  arg0)
+(defun get-intersect-point ((dest vector) (prims touching-prims-entry) (cinfo control-info) (touch touching-shapes-entry))
+  "Write the touched triangle's exact intersection to dest when available; otherwise write the
+   midpoint of the overlapping bounding spheres. Return dest."
+  (let ((tri (get-touched-tri prims cinfo touch)))
+    (if tri (set! (-> dest quad) (-> tri intersect quad)) (get-middle-of-bsphere-overlap prims dest)))
+  dest)
 
-(defbehavior target-attacked target ((arg0 symbol) (arg1 attack-info) (arg2 process) (arg3 touching-shapes-entry) (arg4 (state symbol attack-info target)))
+(defbehavior target-attacked target ((message symbol) (attack attack-info) (attacker process) (touch touching-shapes-entry) (hit-state (state symbol attack-info target)))
+  "Apply an incoming attack to the target unless its invulnerability rules reject it. Copy and
+   complete the attack record, derive a contact point when possible, apply simple survivable damage
+   in place, or enter hit-state for knockback and lethal hits. attack-or-shove and attack-invinc
+   select their exceptions to ordinary invulnerability; red eco also protects dangerous attacks
+   from dark eco. Return false when the hit is ignored."
   (when (not (logtest? (-> self state-flags) (state-flags being-attacked)))
     (cond
       ((or (logtest? (-> self state-flags) (state-flags invulnerable timed-invulnerable invuln-powerup))
-           (and (logtest? (-> arg1 mask) (attack-mask mode))
-                (= (-> arg1 mode) 'darkeco)
+           (and (logtest? (-> attack mask) (attack-mask mode))
+                (= (-> attack mode) 'darkeco)
                 (and (and (= (-> self fact eco-type) (pickup-type eco-red)) (>= (-> self fact eco-level) 1.0))
                      (logtest? (state-flags dangerous flop-hit-ground) (-> self state-flags)))))
-       (case arg0
+       (case message
          (('attack-or-shove))
-         (('attack-invinc) (set! arg0 'attack))
+         (('attack-invinc) (set! message 'attack))
          (else (return #f))))
       (else
-       (case arg0
-         (('attack-or-shove 'attack-invinc) (set! arg0 'attack)))))
-    (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer arg1) 104)
-    (when arg3
-      (let ((a1-2 (prims-touching? arg3 (-> self control) (the-as uint -1))))
-        (when a1-2
-          (get-intersect-point (-> self attack-info-rec intersection) a1-2 (-> self control) arg3)
+       (case message
+         (('attack-or-shove 'attack-invinc) (set! message 'attack)))))
+    (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer attack) 104)
+    (when touch
+      (let ((touched-prims (prims-touching? touch (-> self control) (the-as uint -1))))
+        (when touched-prims
+          (get-intersect-point (-> self attack-info-rec intersection) touched-prims (-> self control) touch)
           (logior! (-> self attack-info-rec mask) (attack-mask intersection)))))
     (set! (-> self attack-info-rec prev-state) (-> self state))
-    (logior! (-> self attack-info-rec mask) (attack-mask atki13))
+    (logior! (-> self attack-info-rec mask) (attack-mask prev-state))
     (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
-      (set! (-> self attack-info-rec attacker) (process->handle arg2))
+      (set! (-> self attack-info-rec attacker) (process->handle attacker))
       (logior! (-> self attack-info-rec mask) (attack-mask attacker)))
     (cond
       ((and (logtest? (-> self attack-info-rec mask) (attack-mask mode))
@@ -231,217 +259,240 @@
        #t)
       (else
        (logior! (-> self state-flags) (state-flags being-attacked))
-       (if (and (= (-> self game mode) 'play) (and (>= 1.0 (-> self fact health)) (= arg0 'attack)))
+       (if (and (= (-> self game mode) 'play) (and (>= 1.0 (-> self fact health)) (= message 'attack)))
          (logior! (-> self state-flags) (state-flags dying)))
-       (go arg4 arg0 (-> self attack-info-rec))))))
+       (go hit-state message (-> self attack-info-rec))))))
 
-(defbehavior target-send-attack target ((arg0 process) (arg1 uint) (arg2 touching-shapes-entry) (arg3 int) (arg4 int))
-  (let ((v1-0 (new 'stack-no-clear 'event-message-block)))
-    (set! (-> v1-0 from) self)
-    (set! (-> v1-0 num-params) 4)
-    (set! (-> v1-0 message) 'attack)
-    (set! (-> v1-0 param 0) (the-as uint arg2))
-    (set! (-> v1-0 param 1) arg1)
-    (set! (-> v1-0 param 2) (the-as uint arg3))
-    (set! (-> v1-0 param 3) (the-as uint arg4))
-    (let ((gp-0 (send-event-function arg0 v1-0)))
-      (when (and gp-0 (!= gp-0 'push))
-        (let ((v1-5 (-> self control danger-mode)))
+(defbehavior target-send-attack target ((attacked-proc process) (mode symbol) (touch touching-shapes-entry) (attack-id int) (attack-count int))
+  "Send one of the target's attacks to a touched process with the touching record, attack mode,
+   per-swing attack id used to reject duplicate contacts, and attack count. If the receiver returns
+   neither false nor push, produce the appropriate contact particles, effect sound, and pad
+   feedback. Return the receiver's response."
+  (local-vars (spin-prims touching-prims-entry) (punch-prims touching-prims-entry) (uppercut-prims touching-prims-entry))
+  (let ((attack-event (new 'stack-no-clear 'event-message-block)))
+    (set! (-> attack-event from) self)
+    (set! (-> attack-event num-params) 4)
+    (set! (-> attack-event message) 'attack)
+    (set! (-> attack-event param 0) (the-as uint touch))
+    (set! (-> attack-event param 1) (the-as uint mode))
+    (set! (-> attack-event param 2) (the-as uint attack-id))
+    (set! (-> attack-event param 3) (the-as uint attack-count))
+    (let ((response (send-event-function attacked-proc attack-event)))
+      (when (and response (!= response 'push))
+        (let ((danger (-> self control danger-mode)))
           (cond
-            ((or (= v1-5 'spin) (= v1-5 'spin-air))
-             (let ((sv-96 (prims-touching? arg2 (-> self control) (the-as uint 64))))
-               (if sv-96
-                 (process-spawn part-tracker
-                                :init
-                                part-tracker-init
-                                group-spin-hit
-                                -1
-                                (the-as symbol #f)
-                                (the-as symbol #f)
-                                (the-as symbol #f)
-                                (get-intersect-point (new 'stack-no-clear 'vector) sv-96 (-> self control) arg2)
-                                :to
-                                self)
-                 (effect-control-method-10 (-> self skel effect) 'group-spin-hit (the-as float -1.0) 74)))
-             (effect-control-method-12 (-> self skel effect)
-                                       (-> self control danger-mode)
-                                       (the-as float -1.0)
-                                       74
-                                       #f
-                                       (static-sound-name "spin-hit"))
+            ((or (= danger 'spin) (= danger 'spin-air))
+             (set! spin-prims (prims-touching? touch (-> self control) (the-as uint 64)))
+             (if spin-prims
+               (process-spawn part-tracker
+                              :init
+                              part-tracker-init
+                              group-spin-hit
+                              -1
+                              (the-as symbol #f)
+                              (the-as symbol #f)
+                              (the-as symbol #f)
+                              (get-intersect-point (new 'stack-no-clear 'vector) spin-prims (-> self control) touch)
+                              :to
+                              self)
+               (do-effect (-> self skel effect) 'group-spin-hit (the-as float -1.0) 74))
+             (play-effect-sound (-> self skel effect)
+                                (-> self control danger-mode)
+                                (the-as float -1.0)
+                                74
+                                #f
+                                (static-sound-name "spin-hit"))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2)))
-            ((= v1-5 'punch)
-             (let ((sv-128 (prims-touching? arg2 (-> self control) (the-as uint 64))))
-               (cond
-                 (sv-128
-                  (process-spawn part-tracker
-                                 :init
-                                 part-tracker-init
-                                 group-punch-hit
-                                 -1
-                                 (the-as symbol #f)
-                                 (the-as symbol #f)
-                                 (the-as symbol #f)
-                                 (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2)
-                                 :to
-                                 self))
-                 ((let ((v0-14 (prims-touching? arg2 (-> self control) (the-as uint 32)))) (set! sv-128 v0-14) v0-14)
-                  (process-spawn part-tracker
-                                 :init
-                                 part-tracker-init
-                                 group-punch-hit
-                                 -1
-                                 (the-as symbol #f)
-                                 (the-as symbol #f)
-                                 (the-as symbol #f)
-                                 (get-intersect-point (new 'stack-no-clear 'vector) sv-128 (-> self control) arg2)
-                                 :to
-                                 self))))
-             (effect-control-method-12 (-> self skel effect)
-                                       (-> self control danger-mode)
-                                       (the-as float -1.0)
-                                       23
-                                       #f
-                                       (static-sound-name "punch-hit"))
+            ((= danger 'punch)
+             (set! punch-prims (prims-touching? touch (-> self control) (the-as uint 64)))
+             (cond
+               (punch-prims
+                (process-spawn part-tracker
+                               :init
+                               part-tracker-init
+                               group-punch-hit
+                               -1
+                               (the-as symbol #f)
+                               (the-as symbol #f)
+                               (the-as symbol #f)
+                               (get-intersect-point (new 'stack-no-clear 'vector) punch-prims (-> self control) touch)
+                               :to
+                               self))
+               ((let ((candidate-prims (prims-touching? touch (-> self control) (the-as uint 32))))
+                  (set! punch-prims candidate-prims)
+                  candidate-prims)
+                (process-spawn part-tracker
+                               :init
+                               part-tracker-init
+                               group-punch-hit
+                               -1
+                               (the-as symbol #f)
+                               (the-as symbol #f)
+                               (the-as symbol #f)
+                               (get-intersect-point (new 'stack-no-clear 'vector) punch-prims (-> self control) touch)
+                               :to
+                               self)))
+             (play-effect-sound (-> self skel effect)
+                                (-> self control danger-mode)
+                                (the-as float -1.0)
+                                23
+                                #f
+                                (static-sound-name "punch-hit"))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1)))
-            ((= v1-5 'flip)
-             (effect-control-method-12 (-> self skel effect)
-                                       (-> self control danger-mode)
-                                       (the-as float -1.0)
-                                       74
-                                       #f
-                                       (static-sound-name "punch-hit"))
+            ((= danger 'flip)
+             (play-effect-sound (-> self skel effect)
+                                (-> self control danger-mode)
+                                (the-as float -1.0)
+                                74
+                                #f
+                                (static-sound-name "punch-hit"))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.1)))
-            ((= v1-5 'uppercut)
-             (let ((sv-176 (prims-touching? arg2 (-> self control) (the-as uint 64))))
-               (cond
-                 (sv-176
-                  (process-spawn part-tracker
-                                 :init
-                                 part-tracker-init
-                                 group-punch-hit
-                                 -1
-                                 (the-as symbol #f)
-                                 (the-as symbol #f)
-                                 (the-as symbol #f)
-                                 (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2)
-                                 :to
-                                 self))
-                 ((let ((v0-26 (prims-touching? arg2 (-> self control) (the-as uint 32)))) (set! sv-176 v0-26) v0-26)
-                  (process-spawn part-tracker
-                                 :init
-                                 part-tracker-init
-                                 group-punch-hit
-                                 -1
-                                 (the-as symbol #f)
-                                 (the-as symbol #f)
-                                 (the-as symbol #f)
-                                 (get-intersect-point (new 'stack-no-clear 'vector) sv-176 (-> self control) arg2)
-                                 :to
-                                 self))))
-             (effect-control-method-10 (-> self skel effect) 'group-uppercut-hit (the-as float -1.0) 23)
-             (effect-control-method-12 (-> self skel effect)
-                                       (-> self control danger-mode)
-                                       (the-as float -1.0)
-                                       23
-                                       #f
-                                       (static-sound-name "uppercut-hit"))
+            ((= danger 'uppercut)
+             (set! uppercut-prims (prims-touching? touch (-> self control) (the-as uint 64)))
+             (cond
+               (uppercut-prims
+                (process-spawn part-tracker
+                               :init
+                               part-tracker-init
+                               group-punch-hit
+                               -1
+                               (the-as symbol #f)
+                               (the-as symbol #f)
+                               (the-as symbol #f)
+                               (get-intersect-point (new 'stack-no-clear 'vector) uppercut-prims (-> self control) touch)
+                               :to
+                               self))
+               ((let ((candidate-prims (prims-touching? touch (-> self control) (the-as uint 32))))
+                  (set! uppercut-prims candidate-prims)
+                  candidate-prims)
+                (process-spawn part-tracker
+                               :init
+                               part-tracker-init
+                               group-punch-hit
+                               -1
+                               (the-as symbol #f)
+                               (the-as symbol #f)
+                               (the-as symbol #f)
+                               (get-intersect-point (new 'stack-no-clear 'vector) uppercut-prims (-> self control) touch)
+                               :to
+                               self)))
+             (do-effect (-> self skel effect) 'group-uppercut-hit (the-as float -1.0) 23)
+             (play-effect-sound (-> self skel effect)
+                                (-> self control danger-mode)
+                                (the-as float -1.0)
+                                23
+                                #f
+                                (static-sound-name "uppercut-hit"))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1)))
-            ((or (= v1-5 'flop) (= v1-5 'flop-down))
-             (effect-control-method-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 23)
-             (effect-control-method-10 (-> self skel effect) 'group-flop-hit (the-as float -1.0) 17)
-             (effect-control-method-12 (-> self skel effect)
-                                       (-> self control danger-mode)
-                                       (the-as float -1.0)
-                                       23
-                                       #f
-                                       (static-sound-name "flop-hit"))
+            ((or (= danger 'flop) (= danger 'flop-down))
+             (do-effect (-> self skel effect) 'group-flop-hit (the-as float -1.0) 23)
+             (do-effect (-> self skel effect) 'group-flop-hit (the-as float -1.0) 17)
+             (play-effect-sound (-> self skel effect)
+                                (-> self control danger-mode)
+                                (the-as float -1.0)
+                                23
+                                #f
+                                (static-sound-name "flop-hit"))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1)))
-            ((= v1-5 'flut-attack)
-             (effect-control-method-12 (-> self skel effect)
-                                       (-> self control danger-mode)
-                                       (the-as float -1.0)
-                                       23
-                                       #f
-                                       (static-sound-name "punch-hit"))
+            ((= danger 'flut-attack)
+             (play-effect-sound (-> self skel effect)
+                                (-> self control danger-mode)
+                                (the-as float -1.0)
+                                23
+                                #f
+                                (static-sound-name "punch-hit"))
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.2))))))
-      (the-as symbol gp-0))))
+      (the-as symbol response))))
 
-(defbehavior target-apply-tongue target ((arg0 vector))
+(defbehavior target-apply-tongue target ((tongue-pos vector))
+  "Pull the target toward a tongue attachment point. Scale pull speed over the five-to-fifteen-meter
+   distance range, flatten the direction against local gravity, and accumulate directions when
+   several tongues attach during the same frame."
   (when (not (logtest? (-> self state-flags) (state-flags being-attacked)))
     (logior! (-> self state-flags) (state-flags prevent-attack prevent-duck remove-prevents))
-    (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> self control trans))))
+    (let ((pull-dir (vector-! (new 'stack-no-clear 'vector) tongue-pos (-> self control trans))))
       (set! (-> self control force-turn-to-strength)
             (lerp-scale (-> *TARGET-bank* tongue-pull-speed-min)
                         (-> *TARGET-bank* tongue-pull-speed-max)
-                        (vector-length gp-1)
+                        (vector-length pull-dir)
                         (the-as float 20480.0)
                         (the-as float 61440.0)))
-      (if (zero? (-> self control unknown-int00)) (vector-reset! (-> self control force-turn-to-direction)))
-      (vector-flatten! gp-1 gp-1 (-> self control local-normal))
-      (vector-normalize! gp-1 (the-as float 1.0))
-      (vector+! (-> self control force-turn-to-direction) (-> self control force-turn-to-direction) gp-1))
-    (set! (-> self control force-turn-to-speed) 1.0)
-    (+! (-> self control unknown-int00) 1)
+      (if (zero? (-> self control tongue-counter)) (vector-reset! (-> self control force-turn-to-direction)))
+      (vector-flatten! pull-dir pull-dir (-> self control local-normal))
+      (vector-normalize! pull-dir (the-as float 1.0))
+      (vector+! (-> self control force-turn-to-direction) (-> self control force-turn-to-direction) pull-dir))
+    (set! (-> self control force-turn-to-magnitude) 1.0)
+    (+! (-> self control tongue-counter) 1)
     #t))
 
-(defbehavior target-standard-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior target-standard-event-handler target ((proc process) (argc int) (message symbol) (block event-message-block))
+  "Handle the ordinary target state interface: incoming attacks and shoves, saved launcher data,
+   powerups and loading waits, scripted movement modes and animations, edge and pole grabs, and
+   water transitions. Launcher events are retained intact for the jump state. Unrecognized messages
+   pass to target-generic-event-handler."
+  (case message
     (('attack 'attack-or-shove 'attack-invinc)
-     (target-attacked arg2
-                      (the-as attack-info (-> arg3 param 1))
-                      arg0
-                      (the-as touching-shapes-entry (-> arg3 param 0))
+     (target-attacked message
+                      (the-as attack-info (-> block param 1))
+                      proc
+                      (the-as touching-shapes-entry (-> block param 0))
                       target-hit))
     (('shove)
      (when (!= (-> self next-state name) 'target-hit)
-       (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 104)
+       (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> block param 1)) 104)
        (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
-         (set! (-> self attack-info-rec attacker) (process->handle arg0))
+         (set! (-> self attack-info-rec attacker) (process->handle proc))
          (logior! (-> self attack-info-rec mask) (attack-mask attacker)))
        (go target-hit 'shove (-> self attack-info-rec))))
-    (('launch) (mem-copy! (&-> self control unknown-pointer00) (the-as pointer arg3) 72) #t)
+    ;; a launcher wants to fling Jak: memcpy the whole event block (72 bytes) over the
+    ;; saved-launch-event..launch-tracking-time fields. This is why jump-kind is literally
+    ;; the saved event's message word ('launch), and launch-height/-camera-state/-dest/
+    ;; -tracking-time are the event's param0..param3. target-jump code checks jump-kind later.
+    (('launch) (mem-copy! (&-> self control saved-launch-event) (the-as pointer block) 72) #t)
     (('powerup)
      (if (or (= (-> self next-state name) 'target-stance)
              (= (-> self next-state name) 'target-walk)
              (= (-> self next-state name) 'target-stance-look-around))
-       (go target-eco-powerup (-> arg3 param 0) (the-as float (-> arg3 param 1)))))
+       (go target-eco-powerup (-> block param 0) (the-as float (-> block param 1)))))
     (('loading)
      (if (not (or (and (logtest? (-> self control mod-surface flags) (surface-flags jump))
-                       (not (logtest? (-> self control status) (cshape-moving-flags onsurf))))
-                  (or (logtest? (-> self water flag) (water-flag touch-water))
+                       (not (logtest? (-> self control status) (collide-status on-surface))))
+                  (or (logtest? (-> self water flags) (water-flag touch-water))
                       (logtest? (-> self state-flags) (state-flags dangerous sf02 being-attacked grabbed first-person-mode dying))
                       (logtest? (-> self control root-prim prim-core action)
                                 (collide-action edgegrab-cam swingpole-active racer snowball tube flut))
                       (>= (-> self no-load-wait) (current-time)))))
        (go target-load-wait)))
     (('change-mode)
-     (case (-> arg3 param 0)
+     (case (-> block param 0)
        (('grab) (go target-grab))
        (('look-around) (go target-look-around))
        (('billy) (go target-billy-game))
        (('falling) (go target-falling #f))
-       (('racing) (go target-racing-start (process->handle (the-as process (-> arg3 param 1)))))
-       (('flut) (go target-flut-start (process->handle (the-as process (-> arg3 param 1)))))
-       (('snowball) (go target-snowball-start (process->handle (the-as process (-> arg3 param 1)))))
+       (('racing) (go target-racing-start (process->handle (the-as process (-> block param 1)))))
+       (('flut) (go target-flut-start (process->handle (the-as process (-> block param 1)))))
+       (('snowball) (go target-snowball-start (process->handle (the-as process (-> block param 1)))))
        (('tube)
-        (if (and (logtest? (-> self control status) (cshape-moving-flags onsurf))
-                 (not (logtest? (-> self water flag) (water-flag touch-water))))
-          (go target-tube-start (process->handle (the-as process (-> arg3 param 1))))))
+        (if (and (logtest? (-> self control status) (collide-status on-surface))
+                 (not (logtest? (-> self water flags) (water-flag touch-water))))
+          (go target-tube-start (process->handle (the-as process (-> block param 1))))))
        (('periscope)
-        (if (logtest? (-> self control status) (cshape-moving-flags onsurf))
-          (go target-periscope (process->handle (the-as process (-> arg3 param 1))))))
-       (('fishing) (go target-fishing (process->handle (the-as process (-> arg3 param 1)))))
+        (if (logtest? (-> self control status) (collide-status on-surface))
+          (go target-periscope (process->handle (the-as process (-> block param 1))))))
+       (('fishing) (go target-fishing (process->handle (the-as process (-> block param 1)))))
        (('final-door)
         (go target-final-door
-            (the-as basic (process->handle (the-as process (-> arg3 param 1))))
-            (process->handle (the-as process (-> arg3 param 2)))))))
-    (('play-anim) (go target-play-anim (the-as string (-> arg3 param 0)) (the-as handle arg1)))
-    (('clone-anim) (go target-clone-anim (process->handle (the-as process (-> arg3 param 0)))))
+            (the-as basic (process->handle (the-as process (-> block param 1))))
+            (process->handle (the-as process (-> block param 2)))))))
+    ;; The second state parameter is deliberately the event argument count rather than a parameter
+    ;; value. target-play-anim stores it as a handle and sends end-mode on exit; ordinary small
+    ;; counts do not resolve to a process, so the notification becomes a no-op.
+    (('play-anim) (go target-play-anim (the-as string (-> block param 0)) (the-as handle argc)))
+    (('clone-anim) (go target-clone-anim (process->handle (the-as process (-> block param 0)))))
     (('edge-grab) (go target-edge-grab))
     (('pole-grab)
      (if (not (logtest? (-> self control root-prim prim-core action) (collide-action swingpole-active)))
-       (go target-pole-cycle (process->handle (the-as process (-> arg3 param 0))))))
+       (go target-pole-cycle (process->handle (the-as process (-> block param 0))))))
     (('swim)
      (if (not (or (= (-> self control mod-surface mode) 'swim)
                   (= (-> self control mod-surface mode) 'dive)
@@ -454,91 +505,105 @@
                   (= (-> self next-state name) 'target-walk)
                   (= (-> self next-state name) 'target-stance-look-around)))
        (go target-wade-stance)))
-    (('tongue) (target-apply-tongue (the-as vector (-> arg3 param 0))))
-    (else (target-generic-event-handler arg0 arg1 arg2 arg3))))
+    (('tongue) (target-apply-tongue (the-as vector (-> block param 0))))
+    (else (target-generic-event-handler proc argc message block))))
 
-(defbehavior target-dangerous-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
+(defbehavior target-dangerous-event-handler target ((proc process) (argc int) (message symbol) (block event-message-block))
+  "While the target is attacking, deliver contact from any of its three danger spheres to the
+   touched process. Incoming attacks still go directly through target-attacked, and all other
+   messages use target-standard-event-handler."
+  (case message
     (('touched)
      (if ((method-of-type touching-shapes-entry prims-touching?)
-          (the-as touching-shapes-entry (-> arg3 param 0))
+          (the-as touching-shapes-entry (-> block param 0))
           (-> self control)
           (the-as uint 224))
-       (target-send-attack arg0
-                           (the-as uint (-> self control danger-mode))
-                           (the-as touching-shapes-entry (-> arg3 param 0))
+       (target-send-attack proc
+                           (-> self control danger-mode)
+                           (the-as touching-shapes-entry (-> block param 0))
                            (-> self control target-attack-id)
                            (-> self control attack-count))
-       (target-standard-event-handler arg0 arg1 arg2 arg3)))
+       (target-standard-event-handler proc argc message block)))
     (('attack 'attack-or-shove 'attack-invinc)
-     (target-attacked arg2
-                      (the-as attack-info (-> arg3 param 1))
-                      arg0
-                      (the-as touching-shapes-entry (-> arg3 param 0))
+     (target-attacked message
+                      (the-as attack-info (-> block param 1))
+                      proc
+                      (the-as touching-shapes-entry (-> block param 0))
                       target-hit))
-    (else (target-standard-event-handler arg0 arg1 arg2 arg3))))
+    (else (target-standard-event-handler proc argc message block))))
 
-(defbehavior target-bonk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((s4-0 (new 'stack-no-clear 'vector)))
+(defbehavior target-bonk-event-handler target ((proc process) (argc int) (message symbol) (block event-message-block))
+  "Handle contact with an actor beneath the target and explicit jump events. Body-sphere contact
+   that reverses vertical velocity by more than four meters per second sends bonk when the target is
+   nearly above the contact. A fall beyond fall-far also delivers the target's bonk attack and
+   rebounds into target-jump. Return false when ordinary event handling should continue."
+  (let ((contact-to-center (new 'stack-no-clear 'vector)))
     (cond
-      ((and (= arg2 'touched)
+      ((and (= message 'touched)
             ((method-of-type touching-shapes-entry prims-touching?)
-             (the-as touching-shapes-entry (-> arg3 param 0))
+             (the-as touching-shapes-entry (-> block param 0))
              (-> self control)
              (the-as uint 6))
             (< (* 16384.0 (-> *display* time-adjust-ratio))
                (vector-dot (-> self control dynam gravity-normal)
                            (vector-! (new 'stack-no-clear 'vector) (-> self control transv) (-> self control last-transv))))
             (begin
-              (vector-normalize! (vector-! s4-0 (-> self control unknown-sphere-array00 0 prim-core world-sphere) (-> self control actor-contact-pt))
+              (vector-normalize! (vector-! contact-to-center (-> self control collision-spheres 0 prim-core world-sphere) (-> self control actor-contact-pt))
                                  (the-as float 1.0))
-              (< 0.01 (-> s4-0 y))))
-       (if (< 0.75 (-> s4-0 y))
-         (send-event arg0
+              (< 0.01 (-> contact-to-center y))))
+       (if (< 0.75 (-> contact-to-center y))
+         (send-event proc
                      'bonk
-                     (-> arg3 param 0)
+                     (-> block param 0)
                      (fmax (-> self control ground-impact-vel)
                            (- (vector-dot (-> self control transv) (-> self control dynam gravity-normal))))))
-       (let ((f0-7 (vector-dot (-> self control dynam gravity-normal)
+       (let ((fall-dist (vector-dot (-> self control dynam gravity-normal)
                                (vector-! (new 'stack-no-clear 'vector) (-> self control highest-jump-mark) (-> self control trans)))))
-         (when (< (-> *TARGET-bank* fall-far) f0-7)
-           (when (and (target-send-attack arg0
-                                          (the-as uint 'bonk)
-                                          (the-as touching-shapes-entry (-> arg3 param 0))
+         (when (< (-> *TARGET-bank* fall-far) fall-dist)
+           (when (and (target-send-attack proc
+                                          'bonk
+                                          (the-as touching-shapes-entry (-> block param 0))
                                           (-> self control target-attack-id)
                                           (-> self control attack-count))
                       (not (logtest? (-> self state-flags) (state-flags being-attacked dying))))
-             (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
+             (vector-copy! (-> self control last-trans-any-surf) (-> self control trans))
              (target-timed-invulnerable (seconds 0.1) self)
              (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))))
        #f)
-      ((= arg2 'jump)
+      ((= message 'jump)
        (sound-play "jump-long")
-       (go target-jump (the-as float (-> arg3 param 0)) (the-as float (-> arg3 param 1)) (the-as surface (-> arg3 param 2)))))))
+       (go target-jump (the-as float (-> block param 0)) (the-as float (-> block param 1)) (the-as surface (-> block param 2)))))))
 
-(defbehavior target-jump-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (if (and (= arg2 'swim) (< 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))) (return #f))
-  (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+(defbehavior target-jump-event-handler target ((proc process) (argc int) (message symbol) (block event-message-block))
+  "Handle airborne bonks and jumps before the standard event interface. Ignore a swim request while
+   the target is still moving upward so a jump out of water is not immediately cancelled."
+  (if (and (= message 'swim) (< 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))) (return #f))
+  (let ((bonk-result (target-bonk-event-handler proc argc message block)))
     (cond
-      (v0-0 (empty) v0-0)
-      (else (target-standard-event-handler arg0 arg1 arg2 arg3)))))
+      (bonk-result (empty) bonk-result)
+      (else (target-standard-event-handler proc argc message block)))))
 
-(defbehavior target-walk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (let ((v0-0 (target-bonk-event-handler arg0 arg1 arg2 arg3)))
+(defbehavior target-walk-event-handler target ((proc process) (argc int) (message symbol) (block event-message-block))
+  "Handle grounded bonks and explicit jumps before passing remaining messages to the standard target
+   event interface."
+  (let ((bonk-result (target-bonk-event-handler proc argc message block)))
     (cond
-      (v0-0 (empty) v0-0)
-      (else (target-standard-event-handler arg0 arg1 arg2 arg3)))))
+      (bonk-result (empty) bonk-result)
+      (else (target-standard-event-handler proc argc message block)))))
 
 target-post
 
 target-standard-event-handler
 
 (defbehavior target-exit target ()
+  "Restore the common target state after leaving a movement or action state: reset walking surface
+   properties and animation offsets, clear temporary turn, bend, water, neck, draw, spool, and
+   collision flags, and make the attack spheres harmless."
   (set! (-> self control mod-surface) *walk-mods*)
-  (set! (-> self control unknown-vector13 quad) (the-as uint128 0))
-  (set! (-> self control anim-collide-offset-world quad) (the-as uint128 0))
-  (set! (-> self control old-anim-collide-offset-world quad) (the-as uint128 0))
-  (set! (-> self control draw-offset quad) (the-as uint128 0))
+  (vector-zero! (-> self control anim-collide-offset-local))
+  (vector-zero! (-> self control anim-collide-offset-world))
+  (vector-zero! (-> self control old-anim-collide-offset-world))
+  (vector-zero! (-> self control draw-offset))
   (set! (-> self control force-turn-to-strength) 0.0)
   (set! (-> self control bend-target) 0.0)
   (logclear! (-> self state-flags)
@@ -551,22 +616,24 @@ target-standard-event-handler
                           falling-into-pool-of-bad
                           flop-hit-ground))
   (target-danger-set! 'harmless #f)
-  (logior! (-> self water flag) (water-flag swim-ground))
-  (logclear! (-> self water flag) (water-flag jump-out))
+  (logior! (-> self water flags) (water-flag swim-ground))
+  (logclear! (-> self water flags) (water-flag jump-out))
   (set! (-> self water drip-mult) 1.0)
   (set! (-> self neck flex-blend) 1.0)
-  (set! (-> self control unknown-float91) 0.0)
+  (set! (-> self control duck-tube-transition) 0.0)
   (logclear! (-> self draw status) (draw-status hidden))
   (logclear! (-> self skel status) (janim-status spool))
-  (logclear! (-> self control status) (cshape-moving-flags t-ceil-sticky))
+  (logclear! (-> self control status) (collide-status touch-ceiling-sticky))
   0
   (none))
 
 (defbehavior target-state-hook-exit target ()
+  "Clear the per-state target hook when leaving a state that installed one."
   (set! (-> self state-hook) (the-as (function none :behavior target) nothing))
   (none))
 
 (defbehavior target-effect-exit target ()
-  (let ((v1-1 (-> self skel effect))) (set! (-> v1-1 channel-offset) 0))
+  "Restore the target skeleton's effect channel offset after leaving a state that retargeted it."
+  (let ((skeleton-effects (-> self skel effect))) (set! (-> skeleton-effects channel-offset) 0))
   0
   (none))

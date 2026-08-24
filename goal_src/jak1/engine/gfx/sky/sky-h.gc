@@ -3,20 +3,34 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/math/trigonometry.gc")
 
-;; the "sky" system draws the sky and determines colors for lights.
-;; each level has 8 skies that are interpolated between.
+;; The sky system positions the two suns and moon, draws the sky dome and cloud
+;; layers, and supplies lighting colors.  Time-of-day data selects and blends
+;; among as many as eight authored snapshots for each level.
 
 ;; DECOMP BEGINS
 
-;; represents the skies that are used during a single hour.
-;; there can be 1 or 2 skies used.
+(defenum sky-sun-index
+  :type int32
+  (sun 0)
+  (green-sun 1))
+
+(defenum sky-orbit-index
+  :type int32
+  (sun 0)
+  (green-sun 1)
+  (moon 2))
+
+;; The snapshot pair and blend amount at the beginning and end of one hour.
+;; During the hour, the mood system interpolates morph-start to morph-end and
+;; uses the result to blend the two snapshots.  The same schedule structure is
+;; used for fog, lighting palettes, and sky textures.
 (deftype sky-color-hour (structure)
   ((snapshot1   int32)
    (snapshot2   int32)
    (morph-start float)
    (morph-end   float)))
 
-;; a sky-color-hour for each hour of the day.
+;; A complete repeating 24-hour snapshot schedule.
 (deftype sky-color-day (structure)
   ((hour sky-color-hour 24 :inline)))
 
@@ -24,15 +38,15 @@
 ;; Old Sky Renderer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; there's an old sky renderer that's no longer used.
-;; it seems like it drew the suns and moon.
-;; these types are designed for the old renderer, but partially used by the new one
+;; The original sky renderer is no longer drawn, but its sun, moon, and orbit
+;; data still drive the replacement renderer and the weather particles.
 
-;; these stores points on a squashed circle (xy only)
+;; A closed 16-segment oval.  Entry 16 repeats entry 0 for strip closure.
 (deftype sky-circle-data (structure)
   ((data vector 17 :inline)))
 
-;; sun particle tracks this
+;; Position, apparent radii, and center-to-edge colors for one sun.
+;; The four raw quadwords are also the upload layout expected by the old renderer.
 (deftype sky-sun-data (structure)
   ((data           uint128 4)
    (pos            vector :inline :overlay-at (-> data 0))
@@ -46,13 +60,15 @@
    (c-aurora-start rgba :offset 40)
    (c-aurora-end   rgba :offset 56)))
 
-;; moon particle tracks this
+;; Position and scale tracked by the moon particle.
 (deftype sky-moon-data (structure)
   ((data  uint128 2)
    (pos   vector :inline :overlay-at (-> data 0))
    (scale vector :inline :overlay-at (-> data 1))))
 
-;; parameters for the sun/moon motion.
+;; Parameters for a sun or moon orbit.  high-noon is an hour of day; tilt and
+;; rise are stored in radians (sky-set-orbit accepts degrees); dist is the orbit
+;; radius; and the halo limits are the endpoints used to animate r-aurora.
 (deftype sky-orbit (structure)
   ((high-noon float)
    (tilt      float)
@@ -62,14 +78,17 @@
    (max-halo  float))
   :allow-misaligned)
 
-;; sky data to send to old sky renderer.
+;; Contiguous old-renderer upload image: 17 circle vectors, two four-vector
+;; suns, and a two-vector moon.
 (deftype sky-upload-data (basic)
   ((circle sky-circle-data :inline)
    (sun    sky-sun-data 2 :inline)
    (moon   sky-moon-data :inline)
    (data   uint128 27 :overlay-at (-> circle data))))
 
-;; all sky data. This has a copy of sky-upload-data that's used by the new sky renderer.
+;; Shared celestial parameters.  The renderer and weather systems still use
+;; upload-data for the current sun and moon positions; the light fields belong
+;; to the retired renderer.
 (deftype sky-parms (basic)
   ((orbit             sky-orbit 3 :inline)
    (upload-data       sky-upload-data :inline)
@@ -81,54 +100,60 @@
    (new (symbol type) _type_)))
 
 (defmethod new sky-parms ((allocation symbol) (type-to-make type))
-  "allocate a new sky-parms"
-  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 upload-data type) sky-upload-data)
-    v0-0))
+  "Allocate the shared sky parameters and initialize the embedded upload-data type."
+  (let ((result (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> result upload-data type) sky-upload-data)
+    result))
 
 (define *sky-parms* (new 'global 'sky-parms))
 
-;; here's another sky-upload-data. It's just used to hold these cirlces.
+;; Standalone storage for the old renderer's oval vertices.
 (define *sky-upload-data* (new 'global 'sky-upload-data))
 
-;; generate some points on a circle for the sky renderer.
-(dotimes (gp-0 17)
-  (let ((f30-0 (+ MINUS_PI (* 0.39269906 (the float (logand gp-0 15))))))
-    (set! (-> *sky-upload-data* circle data gp-0 x) (* 2.2 (sin-rad f30-0)))
-    (set! (-> *sky-upload-data* circle data gp-0 y) (cos-rad f30-0)))
-  (set! (-> *sky-upload-data* circle data gp-0 z) 0.0)
-  (set! (-> *sky-upload-data* circle data gp-0 w) 0.0))
+;; Generate the oval, repeating the first point at the end.
+(dotimes (i 17)
+  (let ((angle (+ MINUS_PI (* 0.39269906 (the float (logand i 15))))))
+    (set! (-> *sky-upload-data* circle data i x) (* 2.2 (sin-rad angle)))
+    (set! (-> *sky-upload-data* circle data i y) (cos-rad angle)))
+  (set! (-> *sky-upload-data* circle data i z) 0.0)
+  (set! (-> *sky-upload-data* circle data i w) 0.0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; new sky renderer (TNG)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype sky-tng-data (basic)
-  ((giftag-base  gs-gif-tag :inline)
-   (giftag-roof  gs-gif-tag :inline)
+  ;; The three tags select the base dome, textured roof, and fogged ocean forms.
+  ;; fog is shared with the sky, boundary, and far-ocean VU paths.  The two
+  ;; offset pairs scroll the two cloud layers independently.
+  ((giftag-base gs-gif-tag :inline)
+   (giftag-roof gs-gif-tag :inline)
    (giftag-ocean gs-gif-tag :inline)
-   (fog          vector :inline)
-   (sky          uint32 8)
-   (time         float)
-   (off-s-0      uint16)
-   (off-t-0      uint16)
-   (off-s-1      uint16)
-   (off-t-1      uint16)))
+   (fog vector :inline)
+   (sky uint32 8)
+   (time float)
+   (off-s-0 uint16)
+   (off-t-0 uint16)
+   (off-s-1 uint16)
+   (off-t-1 uint16)))
 
 (deftype sky-work (structure)
+  ;; Ready-to-copy GIF packet headers and five-qword textured-sprite payloads
+  ;; used while compositing the level's sky and cloud textures.
   ((adgif-tmpl dma-gif-packet :inline)
-   (draw-tmpl  dma-gif-packet :inline)
+   (draw-tmpl dma-gif-packet :inline)
    (blend-tmpl dma-gif-packet :inline)
-   (sky-data   qword 5 :inline)
+   (sky-data qword 5 :inline)
    (cloud-data qword 5 :inline)))
 
 (deftype sky-vertex (structure)
+  ;; Floating-point position, perspective texture coordinates, and RGBA color.
   ((pos vector :inline)
    (stq vector :inline)
    (col vector :inline)))
 
-;; the sky renderer writes sky and cloud textures to vram - these booleans tell you if
-;; it has done this, and if the sky/cloud textures should be used.
+;; Set after the first sky or cloud snapshot is copied into the level texture.
+;; Further snapshots alpha-blend over the first instead of replacing it.
 (define *sky-drawn* #f)
 
 (define *cloud-drawn* #f)

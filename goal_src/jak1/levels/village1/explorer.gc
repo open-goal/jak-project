@@ -5,7 +5,9 @@
 
 ;; DECOMP BEGINS
 
-(deftype explorer (process-taskable) ())
+(deftype explorer (process-taskable)
+  "The explorer who trades a Power Cell for Precursor orbs in Sandover Village."
+  ())
 
 (defskelgroup *explorer-sg*
   explorer
@@ -15,7 +17,8 @@
   :bounds (static-spherem 0 0 0 2.5)
   :shadow explorer-shadow-mg)
 
-(defmethod process-taskable-method-52 ((this explorer))
+(defmethod setup-shadow-settings! ((this explorer))
+  "Set the Explorer's shadow clipping planes around his root position."
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((f0-0 (-> this root trans y)))
@@ -23,10 +26,12 @@
         0
         (let ((a0-4 v1-1)) (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))))
+      (logclear! (-> v1-1 settings flags) (shadow-flags scissor-top))))
   (none))
 
 (defmethod draw-npc-shadow ((this explorer))
+  "Update the Explorer's shadow and sun direction when his highest-detail geometry was drawn;
+   otherwise disable the shadow."
   (-> this draw shadow-ctrl)
   (cond
     ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
@@ -36,11 +41,13 @@
     (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
   (none))
 
-(defmethod play-anim! ((this explorer) (arg0 symbol))
+(defmethod play-anim! ((this explorer) (commit? symbol))
+  "Choose the Explorer's conversation animation for the current orb-trade stage. When commit? is
+   true, apply the corresponding introduction, reminder, payment, or reward progression."
   (set! (-> this talk-message) (text-id press-to-talk))
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
-     (if arg0 (close-status! (-> this tasks) (task-status need-introduction)))
+     (if commit? (close-status! (-> this tasks) (task-status need-introduction)))
      (new 'static
           'spool-anim
           :name "explorer-introduction"
@@ -52,7 +59,7 @@
      (set! (-> this skippable) #t)
      (cond
        ((zero? (get-reminder (-> this tasks) 0))
-        (if arg0 (save-reminder (-> this tasks) 1 0))
+        (if commit? (save-reminder (-> this tasks) 1 0))
         (new 'static
              'spool-anim
              :name "explorer-reminder-1"
@@ -66,11 +73,11 @@
               (390 joint "camera")
               (505 send-event target draw #t))))
        (else
-        (if arg0 (save-reminder (-> this tasks) 0 0))
+        (if commit? (save-reminder (-> this tasks) 0 0))
         (new 'static 'spool-anim :name "explorer-reminder-2" :index 11 :parts 3 :command-list '()))))
     (((task-status need-reward-speech))
      (cond
-       (arg0
+       (commit?
         (set! (-> this cell-for-task) (current-task (-> this tasks)))
         (close-current! (-> this tasks))
         (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc))))
@@ -83,7 +90,7 @@
           :command-list
           '((167 joint "cameraB") (310 joint "camera"))))
     (else
-     (if arg0
+     (if commit?
        (format 0
                "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
                (-> this name)
@@ -91,25 +98,29 @@
      (-> this draw art-group data 3))))
 
 (defmethod get-art-elem ((this explorer))
+  "Return the Explorer's active art element."
   (-> this draw art-group data 3))
 
-(defmethod process-taskable-method-43 ((this explorer))
+(defmethod try-play-ambient-chatter ((this explorer))
+  "When the target is within thirty metres and the thirty-second cooldown has elapsed, choose
+   one of seven Explorer lines; two task-specific lines are silent after their reminder closes."
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
-    (let ((f0-2 (rand-float-gen)))
+    (let ((choice (rand-float-gen)))
       (cond
-        ((< 0.85714287 f0-2) (play-ambient (-> this ambient) "EXP-AM05" #f (-> this root trans)))
-        ((< 0.71428573 f0-2)
+        ((< 0.85714287 choice) (play-ambient (-> this ambient) "EXP-AM05" #f (-> this root trans)))
+        ((< 0.71428573 choice)
          (if (not (closed? (-> this tasks) (game-task village1-uncle-money) (task-status need-reminder)))
            (play-ambient (-> this ambient) "EXP-LO02" #f (-> this root trans))))
-        ((< 0.5714286 f0-2) (play-ambient (-> this ambient) "EXP-AM04" #f (-> this root trans)))
-        ((< 0.42857143 f0-2) (play-ambient (-> this ambient) "EXP-AM03" #f (-> this root trans)))
-        ((< 0.2857143 f0-2) (play-ambient (-> this ambient) "EXP-AM02" #f (-> this root trans)))
-        ((< 0.14285715 f0-2)
+        ((< 0.5714286 choice) (play-ambient (-> this ambient) "EXP-AM04" #f (-> this root trans)))
+        ((< 0.42857143 choice) (play-ambient (-> this ambient) "EXP-AM03" #f (-> this root trans)))
+        ((< 0.2857143 choice) (play-ambient (-> this ambient) "EXP-AM02" #f (-> this root trans)))
+        ((< 0.14285715 choice)
          (if (not (closed? (-> this tasks) (game-task village1-uncle-money) (task-status need-reminder)))
            (play-ambient (-> this ambient) "EXP-AM01" #f (-> this root trans))))
         (else (play-ambient (-> this ambient) "EXP-LO1A" #f (-> this root trans)))))))
 
 (defmethod target-above-threshold? ((this explorer))
+  "Return whether the target is west of and north of the Explorer's interaction boundary."
   (the-as symbol (and *target* (< (-> (target-pos 0) x) -202752.0) (< 98304.0 (-> (target-pos 0) z)))))
 
 (defstate idle (explorer)
@@ -118,22 +129,16 @@
     (behavior ()
       (if (!= (ja-group) explorer-idle-ja) (ja-channel-push! 1 (seconds 0.2)))
       (loop
-        (process-taskable-method-43 self)
+        (try-play-ambient-chatter self)
         (ja :group! explorer-idle-ja)
         (let* ((f30-0 2.0)
                (v1-11 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                (v1-12 (the-as number (logior #x3f800000 v1-11))))
           (countdown (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-12)))) 1))
-            (ja-no-eval :group! explorer-idle-ja :num! (seek!) :frame-num 0.0)
-            (until (ja-done? 0)
-              (suspend)
-              (ja :num! (seek!)))))
+            (ja-play :group! explorer-idle-ja :num! (seek!) :frame-num 0.0)))
         (cond
           ((< (rand-float-gen) 0.5)
-           (ja-no-eval :group! explorer-idle2-look-at-map-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+           (ja-play :group! explorer-idle2-look-at-map-ja :num! (seek!) :frame-num 0.0)
            (let ((gp-1 (current-time)))
              (while (let ((s5-0 (current-time))
                           (f30-1 300.0)
@@ -142,10 +147,7 @@
                       (< (- s5-0 (the-as time-frame (the int (* f30-1 (+ f28-0 (* f26-0 (rand-float-gen))))))) gp-1))
                (suspend)))
            (when (< (rand-float-gen) 0.75)
-             (ja-no-eval :group! explorer-idle2-look-right-map-ja :num! (seek!) :frame-num 0.0)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek!)))
+             (ja-play :group! explorer-idle2-look-right-map-ja :num! (seek!) :frame-num 0.0)
              (let ((gp-2 (current-time)))
                (while (let ((s5-1 (current-time))
                             (f30-2 300.0)
@@ -153,15 +155,9 @@
                             (f26-1 0.5))
                         (< (- s5-1 (the-as time-frame (the int (* f30-2 (+ f28-1 (* f26-1 (rand-float-gen))))))) gp-2))
                  (suspend)))
-             (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
-             (until (ja-done? 0)
-               (suspend)
-               (ja :num! (seek! 0.0)))
+             (ja-play :group! (ja-group) :num! (seek! 0.0) :frame-num max)
              (when (< (rand-float-gen) 0.5)
-               (ja-no-eval :group! explorer-idle2-look-right-map-ja :num! (seek!) :frame-num 0.0)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek!)))
+               (ja-play :group! explorer-idle2-look-right-map-ja :num! (seek!) :frame-num 0.0)
                (let ((gp-3 (current-time)))
                  (while (let ((s5-2 (current-time))
                               (f30-3 300.0)
@@ -169,19 +165,10 @@
                               (f26-2 0.5))
                           (< (- s5-2 (the-as time-frame (the int (* f30-3 (+ f28-2 (* f26-2 (rand-float-gen))))))) gp-3))
                    (suspend)))
-               (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
-               (until (ja-done? 0)
-                 (suspend)
-                 (ja :num! (seek! 0.0)))))
-           (ja-no-eval :group! explorer-idle2-look-at-map-ja :num! (seek! 0.0) :frame-num max)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek! 0.0))))
+               (ja-play :group! (ja-group) :num! (seek! 0.0) :frame-num max)))
+           (ja-play :group! explorer-idle2-look-at-map-ja :num! (seek! 0.0) :frame-num max))
           (else
-           (ja-no-eval :group! explorer-idle3-step-right-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+           (ja-play :group! explorer-idle3-step-right-ja :num! (seek!) :frame-num 0.0)
            (let ((gp-4 (current-time)))
              (while (let ((s5-3 (current-time))
                           (f30-4 300.0)
@@ -189,10 +176,7 @@
                           (f26-3 0.5))
                       (< (- s5-3 (the-as time-frame (the int (* f30-4 (+ f28-3 (* f26-3 (rand-float-gen))))))) gp-4))
                (suspend)))
-           (ja-no-eval :group! explorer-idle3-looking-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!)))
+           (ja-play :group! explorer-idle3-looking-ja :num! (seek!) :frame-num 0.0)
            (let ((gp-5 (current-time)))
              (while (let ((s5-4 (current-time))
                           (f30-5 300.0)
@@ -200,10 +184,7 @@
                           (f26-4 0.5))
                       (< (- s5-4 (the-as time-frame (the int (* f30-5 (+ f28-4 (* f26-4 (rand-float-gen))))))) gp-5))
                (suspend)))
-           (ja-no-eval :group! (ja-group) :num! (seek! 0.0) :frame-num max)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek! 0.0)))
+           (ja-play :group! (ja-group) :num! (seek! 0.0) :frame-num max)
            (let ((gp-6 (current-time)))
              (while (let ((s5-5 (current-time))
                           (f30-6 300.0)
@@ -211,15 +192,14 @@
                           (f26-5 0.5))
                       (< (- s5-5 (the-as time-frame (the int (* f30-6 (+ f28-5 (* f26-5 (rand-float-gen))))))) gp-6))
                (suspend)))
-           (ja-no-eval :group! explorer-idle3-step-left-ja :num! (seek!) :frame-num 0.0)
-           (until (ja-done? 0)
-             (suspend)
-             (ja :num! (seek!))))))))
+           (ja-play :group! explorer-idle3-step-left-ja :num! (seek!) :frame-num 0.0))))))
 
-(defmethod init-from-entity! ((this explorer) (arg0 entity-actor))
-  (process-taskable-method-40 this arg0 *explorer-sg* 3 42 (new 'static 'vector :w 4096.0) 5)
+(defmethod init-from-entity! ((this explorer) (source-entity entity-actor))
+  "Initialize the Explorer for the village orb-trade task, configure his music and lighting, and
+   enter his initial taskable state."
+  (init-as-taskable! this source-entity *explorer-sg* 3 42 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task village1-uncle-money)))
   (set! (-> this sound-flava) (music-flava explorer))
   (set! (-> this draw light-index) (the-as uint 5))
-  (process-taskable-method-42 this)
+  (goto-initial-state! this)
   (none))

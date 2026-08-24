@@ -5,9 +5,11 @@
 (require "engine/ui/text-h.gc")
 (require "engine/game/task/game-task-h.gc")
 
-;; This file contains the layouts for all of the menus.
+;; Static menu descriptions and the task data used by the progress screen. init-game-options
+;; connects these templates to live setting fields and installs them in *options-remap*.
 
-;; options in the start menu options
+;; Pause-menu options. Demo builds stop after the three settings submenus; demo-shared also
+;; provides an exit button for returning to its launcher.
 (define *main-options*
   (new 'static
        'boxed-array
@@ -253,12 +255,14 @@
        (new 'static 'game-option :option-type (game-option-type button) :name (text-id continue-without-saving) :scale #f)
        (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #f)))
 
-;; maps options to a progress screen
-;; the length matches with `(progress-screen max)`
+;; Maps each progress-screen state to its option array. init-game-options clears and fills this
+;; table at startup. The PC menu adds more screen states, so its allocation follows the expanded
+;; progress-screen enum instead of the original 35 entries.
 (define *options-remap*
   (new 'static 'boxed-array :type (array game-option) :length 0 :allocated-length (#if (not PC_PORT) 35 68)))
 
 ;; added in PC port
+;; Canonical progress regions. Several streamed level files share one task/count record.
 (defenum level-task-data-index
   :type int32
   (training 0)
@@ -279,7 +283,9 @@
   (citadel 15)
   (max 16))
 
-;; maps level-info indices to the appropriate offset in *level-task-data*
+;; Maps the zero-based level-info index used by callers to a canonical progress region. The paired
+;; jungle and sunken files, the three cave files, the citadel/final-boss pair, and the intro/demo
+;; files intentionally share task and count storage.
 (define *level-task-data-remap*
   (new 'static
        'boxed-array
@@ -288,29 +294,29 @@
        (level-task-data-index training)
        (level-task-data-index village1)
        (level-task-data-index beach)
-       (level-task-data-index jungle) ;; jungle?
-       (level-task-data-index jungle) ;; jungleb?
+       (level-task-data-index jungle) ;; jungle
+       (level-task-data-index jungle) ;; jungleb
        (level-task-data-index misty)
        (level-task-data-index firecanyon)
        (level-task-data-index village2)
-       (level-task-data-index sunken) ;; sunken?
-       (level-task-data-index sunken) ;; sunkenb?
+       (level-task-data-index sunken) ;; sunken
+       (level-task-data-index sunken) ;; sunkenb
        (level-task-data-index swamp)
        (level-task-data-index rolling)
        (level-task-data-index ogre)
        (level-task-data-index village3)
        (level-task-data-index snow)
-       (level-task-data-index cave) ;; maincave?
-       (level-task-data-index cave) ;; robocave?
-       (level-task-data-index cave) ;; darkcave?
+       (level-task-data-index cave) ;; maincave
+       (level-task-data-index cave) ;; robocave
+       (level-task-data-index cave) ;; darkcave
        (level-task-data-index lavatube)
-       (level-task-data-index citadel) ;; citadel?
-       (level-task-data-index citadel) ;; finalboss?
-       (level-task-data-index misty) ;; demo?
-       (level-task-data-index misty) ;; intro?
+       (level-task-data-index citadel) ;; citadel
+       (level-task-data-index citadel) ;; finalboss
+       (level-task-data-index misty) ;; demo
+       (level-task-data-index misty) ;; intro
        ))
 
-;; maps goal language ID to its name string ID
+;; Maps each GOAL language ID to the localized language-name string displayed by the menu.
 (define *language-name-remap*
   (new 'static
        'boxed-array
@@ -323,7 +329,9 @@
        (text-id italian)
        (text-id japanese)))
 
-;; all level tasks
+;; One task/count description per canonical progress region. nb-of-tasks selects the live prefix
+;; of each eight-entry task-info array; buzzer-task-index identifies the scout-fly entry. Each task
+;; reserves four text slots; the first three describe its introduction, reminder, and resolution.
 (define *level-task-data*
   (new 'static
        'boxed-array
@@ -1398,7 +1406,9 @@
                       :task-name
                       (new 'static 'array text-id 4 (text-id citadel-buzzer) (text-id citadel-buzzer) (text-id citadel-buzzer) (text-id zero)))))))
 
-;; goes down by 24 or 23 every time
+;; Starting X coordinate for a row of zero through eight task eggs. Index by nb-of-tasks; the
+;; roughly 24-pixel steps keep the complete row centered.
 (define *task-egg-starting-x* (new 'static 'boxed-array :type int32 218 194 171 147 124 100 77 53 30))
 
+;; The active progress process installs its per-level collected-orb and scout-fly counts here.
 (define *game-counts* (the-as game-count-info #f))

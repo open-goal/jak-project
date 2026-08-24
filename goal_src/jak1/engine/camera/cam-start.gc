@@ -6,6 +6,8 @@
 ;; DECOMP BEGINS
 
 (defun cam-stop ()
+  "Destroy every active camera master, slave, and combiner; clear the live
+   camera globals; and restore cam-string as the base camera mode."
   (kill-by-name 'camera-master *active-pool*)
   (kill-by-name 'camera-slave *active-pool*)
   (kill-by-name 'camera-combiner *active-pool*)
@@ -14,7 +16,9 @@
   (set! *camera-base-mode* cam-string)
   (none))
 
-(defun cam-start ((arg0 symbol))
+(defun cam-start ((reset? symbol))
+  "Restart the camera combiner and master. When reset? is true, clear the
+   camera-engine list and rebirth the camera entities from every active level."
   (cam-stop)
   (process-spawn camera-combiner :init cam-combiner-init :from *camera-dead-pool* :to *camera-pool*)
   (set! *camera*
@@ -25,7 +29,7 @@
                                      *camera-master-dead-pool*
                                      :to
                                      *camera-pool*))))
-  (if arg0 (reset-cameras))
+  (if reset? (reset-cameras))
   0
   (none))
 

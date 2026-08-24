@@ -21,20 +21,23 @@
 (define *merc-ctrl-header* (the-as merc-ctrl-header #f))
 
 (defmethod asize-of ((this merc-fragment))
-  "Get the size in memory of a merc-fragment"
+  "Return the complete qword-aligned fragment size, including packed data beyond the nominal
+   header."
   (the-as int (* (-> this header mm-quadword-size) 16)))
 
 (defmethod login-adgifs ((this merc-fragment))
-  "Set up a merc-fragment. Does adgifs and eye stuff"
+  "Log in the fragment's shaders, bind reserved eye shaders to the current runtime eye
+   textures, and accumulate ordinary shader texture masks in the active MERC header."
   (let* ((fp-data (merc-fragment-fp-data this))
          (eye-ctrl (if (nonzero? (-> *merc-ctrl-header* eye-ctrl)) (-> *merc-ctrl-header* eye-ctrl) (the-as merc-eye-ctrl #f)))
          (shader (the-as adgif-shader (&+ fp-data 16))))
-    (dotimes (s2-0 (the-as int (-> fp-data shader-cnt)))
+    (dotimes (shader-index (the-as int (-> fp-data shader-cnt)))
       (cond
         ((and eye-ctrl (= (logand (the-as texture-id -256) (-> shader texture-id)) #x1cf06f00))
          ;; eye slot 0
          (adgif-shader-login shader)
-         (let ((eye-tex-block (get-eye-block (-> eye-ctrl eye-slot) 0))) (set! (-> shader tex0 tbp0) eye-tex-block))
+         (let ((eye-texture-block (get-eye-block (-> eye-ctrl eye-slot) 0)))
+           (set! (-> shader tex0 tbp0) eye-texture-block))
          (set! (-> shader tex0 tw) 5)
          (set! (-> shader tex0 th) 5)
          (set! (-> shader tex0 tcc) 1)
@@ -46,7 +49,8 @@
         ((and eye-ctrl (= (logand (the-as texture-id -256) (-> shader texture-id)) #x1cf07000))
          ;; eye slot 1
          (adgif-shader-login shader)
-         (let ((eye-tex-block-2 (get-eye-block (-> eye-ctrl eye-slot) 1))) (set! (-> shader tex0 tbp0) eye-tex-block-2))
+         (let ((eye-texture-block (get-eye-block (-> eye-ctrl eye-slot) 1)))
+           (set! (-> shader tex0 tbp0) eye-texture-block))
          (set! (-> shader tex0 tw) 5)
          (set! (-> shader tex0 th) 5)
          (set! (-> shader tex0 tcc) 1)
@@ -65,6 +69,8 @@
   (none))
 
 (defmethod asize-of ((this merc-fragment-control))
+  "Return the four-byte control header plus one two-byte destination record per matrix
+   transfer."
   (the-as int (+ (* (-> this mat-xfer-count) 2) 4)))
 
 (defmethod inspect ((this merc-fragment-control))
@@ -74,14 +80,15 @@
   (format #t "~Tlump-four-count: ~D~%" (-> this lump-four-count))
   (format #t "~Tfp-qwc: ~D~%" (-> this fp-qwc))
   (format #t "~Tmat-xfer-count: ~D~%" (-> this mat-xfer-count))
-  (dotimes (s5-0 (the-as int (-> this mat-xfer-count)))
-    (format #t "~Tmat-dest-data[~d]:~%" s5-0)
-    (format #t "~T~Tmatrix-number: ~D~%" (-> this mat-dest-data s5-0 matrix-number))
-    (format #t "~T~Tmatrix-dest: ~D~%" (-> this mat-dest-data s5-0 matrix-dest)))
+  (dotimes (i (the-as int (-> this mat-xfer-count)))
+    (format #t "~Tmat-dest-data[~d]:~%" i)
+    (format #t "~T~Tmatrix-number: ~D~%" (-> this mat-dest-data i matrix-number))
+    (format #t "~T~Tmatrix-dest: ~D~%" (-> this mat-dest-data i matrix-dest)))
   this)
 
 (defmethod login-adgifs ((this merc-effect))
-  "Login everything for this merc-effect."
+  "Log in the effect's optional attached shader and every variable-size fragment, accumulating
+   their texture masks in the active MERC header."
   ;; login adgifs, if we have them.
   (let ((data (-> this extra-info)))
     (when (nonzero? data)
@@ -109,14 +116,16 @@
   (format #t "~Tnum-joints: ~D~%" (-> this num-joints))
   (format #t "~Textra: ~A~%" (-> this extra))
   (inspect (-> this header))
-  (dotimes (s5-0 (the-as int (-> this header effect-count)))
-    (inspect (-> this effect s5-0)))
+  (dotimes (effect-index (the-as int (-> this header effect-count)))
+    (inspect (-> this effect effect-index)))
   this)
 
-(defmethod mem-usage ((this merc-ctrl) (arg0 memory-usage-block) (arg1 int))
-  "Compute memory usage stats for a merc-ctrl"
+(defmethod mem-usage ((this merc-ctrl) (usage memory-usage-block) (flags mem-usage-flags))
+  "Account for the base art data, packed fragment control and geometry, blend targets, and eye
+   animation owned by this MERC asset."
   ;; do extra
-  (if (-> this extra) (mem-usage (-> this extra) arg0 arg1))
+  (if (-> this extra)
+      (mem-usage (-> this extra) usage flags))
   ;; do merc ctrls in each effect:
   (let ((ctrl-mem (+ 32 80 (* (-> this header effect-count) 32))))
     (dotimes (effect-idx (the-as int (-> this header effect-count)))
@@ -129,131 +138,130 @@
                    (* (-> fctrl fp-qwc) 16)
                    (asize-of fctrl)))
           (set! fctrl (the-as merc-fragment-control (&+ (the-as pointer fctrl) (asize-of fctrl)))))))
-    (set! (-> arg0 length) (max 76 (-> arg0 length)))
-    (set! (-> arg0 data 75 name) "merc-ctrl")
-    (+! (-> arg0 data 75 count) 1)
-    (+! (-> arg0 data 75 used) ctrl-mem)
-    (+! (-> arg0 data 75 total) (logand -16 (+ ctrl-mem 15))))
+    (mem-usage-add! usage merc-ctrl 1 ctrl-mem))
   ;; do effect blend shapes
   (let ((effect-mem 0))
     (dotimes (effect-idx2 (the-as int (-> this header effect-count)))
       (when (nonzero? (-> this effect effect-idx2 blend-frag-count))
         (let ((bctrl (-> this effect effect-idx2 blend-ctrl)))
           (dotimes (blend-frag-idx (the-as int (-> this effect effect-idx2 blend-frag-count)))
-            (let ((v1-36 (+ effect-mem
-                            (* (+ (-> bctrl nonzero-index-count) 1)
-                               (the-as uint (logand (+ (* (the-as uint 6) (-> bctrl blend-vtx-count)) 15) #xfff0))))))
-              (set! effect-mem (the-as int (+ (-> this header blend-target-count) 2 v1-36))))
+            (let ((size-through-target-data
+                    (+ effect-mem
+                       (* (+ (-> bctrl nonzero-index-count) 1)
+                          (the-as uint (logand (+ (* (the-as uint 6) (-> bctrl blend-vtx-count)) 15) #xfff0))))))
+              (set! effect-mem (the-as int (+ (-> this header blend-target-count) 2 size-through-target-data))))
             (set! bctrl (the-as merc-blend-ctrl (&+ (the-as pointer bctrl) (+ (-> this header blend-target-count) 2))))))))
     (when (nonzero? effect-mem)
-      (set! (-> arg0 length) (max 78 (-> arg0 length)))
-      (set! (-> arg0 data 77 name) "blend-shape")
-      (+! (-> arg0 data 77 count) 1)
-      (+! (-> arg0 data 77 used) effect-mem)
-      (+! (-> arg0 data 77 total) (logand -16 (+ effect-mem 15)))))
+      (mem-usage-add! usage blend-shape 1 effect-mem)))
   ;; do eyes.
   (when (nonzero? (-> this header eye-ctrl))
-    (let ((a0-28 (-> this header eye-ctrl)))
-      (set! (-> arg0 length) (max 109 (-> arg0 length)))
-      (set! (-> arg0 data 108 name) "eye-anim")
-      (+! (-> arg0 data 108 count) 1)
-      (let ((v1-47 (asize-of a0-28)))
-        (+! (-> arg0 data 108 used) v1-47)
-        (+! (-> arg0 data 108 total) (logand -16 (+ v1-47 15))))))
+    (let ((eye-ctrl (-> this header eye-ctrl)))
+      (mem-usage-add! usage eye-anim 1 (asize-of eye-ctrl))))
   this)
 
 (defmethod login ((this merc-ctrl))
-  "Log in a merc-ctrl."
+  "Log in every effect and eye shader, collect texture masks, and move the effect marked
+   translucent to the final effect slot."
   ;; so we can find it
   (set! *merc-ctrl-header* (-> this header))
   ;; clear masks. logging in will set these for textures we need.
-  (dotimes (v1-1 3)
-    (set! (-> *merc-ctrl-header* masks v1-1) (the-as uint 0)))
+  (dotimes (seg 3)
+    (set! (-> *merc-ctrl-header* masks seg) (the-as uint 0)))
   ;; login the effects
   (dotimes (effect-idx (the-as int (-> this header effect-count)))
     (login-adgifs (-> this effect effect-idx)))
-  ;; some weird hack to swap two effects.
-  (let ((idx-with-bit1 -1)
-        (a1-1 (-> this header effect-count)))
-    (dotimes (v1-11 (the-as int a1-1))
-      (if (logtest? (-> this effect v1-11 effect-bits) 2) (set! idx-with-bit1 v1-11)))
-    (when (!= idx-with-bit1 -1)
-      (let ((v1-16 4)
-            (this-effect (-> this effect idx-with-bit1))
-            (last-effect (-> this effect (+ a1-1 -1))))
-        (dotimes (copy-idx v1-16)
-          (let ((a3-2 (-> this-effect data copy-idx)))
-            (set! (-> this-effect data copy-idx) (-> last-effect data copy-idx))
-            (set! (-> last-effect data copy-idx) a3-2))))))
+  ;; Translucent geometry occupies the final effect slot expected by the MERC submission code.
+  ;; This code swaps the last slot with the translucent geometry.
+  (let ((translucent-effect-index -1)
+        (effect-count (-> this header effect-count)))
+    (dotimes (effect-index (the-as int effect-count))
+      (if (logtest? (-> this effect effect-index effect-bits) (effect-bits translucent))
+        (set! translucent-effect-index effect-index)))
+    (when (!= translucent-effect-index -1)
+      (let ((effect-word-count 4)
+            (translucent-effect (-> this effect translucent-effect-index))
+            (last-effect (-> this effect (+ effect-count -1))))
+        (dotimes (word-index effect-word-count)
+          (let ((effect-word (-> translucent-effect data word-index)))
+            (set! (-> translucent-effect data word-index) (-> last-effect data word-index))
+            (set! (-> last-effect data word-index) effect-word))))))
   ;; login eye.
   (cond
     ((not (logtest? -65536 (the-as int (-> this header eye-ctrl))))
-     ;; no idea what this is for.
+     ;; Set eye-ctrl to 0 if it's not a valid pointer
      (set! (-> this header eye-ctrl) (the-as merc-eye-ctrl 0))
      0)
     (else
-     (let ((s5-1 (-> this header eye-ctrl)))
+     (let ((eye-ctrl (-> this header eye-ctrl)))
        ;; login and set masks
-       (dotimes (s4-0 3)
-         (let ((v1-25 (adgif-shader-login (-> s5-1 shader s4-0))))
-           (when v1-25
-             (dotimes (a0-11 3)
-               (logior! (-> *merc-ctrl-header* masks a0-11) (-> v1-25 masks a0-11)))))))))
+       (dotimes (shader-index 3)
+         (let ((tex (adgif-shader-login (-> eye-ctrl shader shader-index))))
+           (when tex
+             (dotimes (seg 3)
+               (logior! (-> *merc-ctrl-header* masks seg) (-> tex masks seg)))))))))
   this)
 
-(defun-debug merc-stats-display ((arg0 merc-ctrl))
-  "Print debug stats to #t."
-  (format #t "~30s:" (-> arg0 name))
-  (let ((s5-0 (-> arg0 header st-int-scale))
-        (s4-0 (ash 1 (- 12 (the-as int (-> arg0 header st-int-scale))))))
-    (format #t " ST ~3D, " s4-0)
+(defun-debug merc-stats-display ((ctrl merc-ctrl))
+  "Print one MERC asset's texture-coordinate quantization range and per-effect fragment, vertex,
+   triangle, and strip-length statistics."
+  (format #t "~30s:" (-> ctrl name))
+  (let ((st-int-scale (-> ctrl header st-int-scale))
+        (st-scale (ash 1 (- 12 (the-as int (-> ctrl header st-int-scale))))))
+    (format #t " ST ~3D, " st-scale)
     (cond
-      ((>= s5-0 (the-as uint 5)) (format #t "RANGE ~D+," (/ 128 s4-0)))
-      ((= s5-0 4) (format #t "RANGE 0.5+,"))))
-  (dotimes (s5-1 (the-as int (-> arg0 header effect-count)))
-    (let ((s3-0 (-> arg0 effect s5-1)))
-      (if (nonzero? s5-1) (format #t "~48s " " "))
-      (let ((a2-4 (-> s3-0 frag-count))
-            (s4-1 (-> s3-0 tri-count))
-            (f30-0 (the float (-> s3-0 frag-count)))
-            (f28-0 (the float (-> s3-0 dvert-count)))
-            (f26-0 (the float (-> s3-0 tri-count))))
-        (if (>= (/ (+ 50.0 f28-0) f30-0) 50.0)
-          (format #t "~3D frags, ~2,,1f dverts/frag " a2-4 (/ f28-0 f30-0))
-          (format #t "~3D frags, ~2,,1f ******/**** " a2-4 (/ f28-0 f30-0)))
-        (format #t "(~4D tris, striplen ~2,,2f, ~2,,1f tris/frag)~%" s4-1 (/ (* 2.0 f26-0) (- f28-0 f26-0)) (/ f26-0 f30-0)))))
+      ((>= st-int-scale (the-as uint 5)) (format #t "RANGE ~D+," (/ 128 st-scale)))
+      ((= st-int-scale 4) (format #t "RANGE 0.5+,"))))
+  (dotimes (effect-index (the-as int (-> ctrl header effect-count)))
+    (let ((effect (-> ctrl effect effect-index)))
+      (if (nonzero? effect-index) (format #t "~48s " " "))
+      (let ((fragment-count (-> effect frag-count))
+            (triangle-count (-> effect tri-count))
+            (fragment-count-float (the float (-> effect frag-count)))
+            (dvert-count-float (the float (-> effect dvert-count)))
+            (triangle-count-float (the float (-> effect tri-count))))
+        (if (>= (/ (+ 50.0 dvert-count-float) fragment-count-float) 50.0)
+          (format #t "~3D frags, ~2,,1f dverts/frag " fragment-count (/ dvert-count-float fragment-count-float))
+          (format #t "~3D frags, ~2,,1f ******/**** " fragment-count (/ dvert-count-float fragment-count-float)))
+        (format #t
+                "(~4D tris, striplen ~2,,2f, ~2,,1f tris/frag)~%"
+                triangle-count
+                (/ (* 2.0 triangle-count-float) (- dvert-count-float triangle-count-float))
+                (/ triangle-count-float fragment-count-float)))))
   (none))
 
 (defun-debug merc-stats ()
-  "Iterate through all merc-ctrls and print."
-  (dotimes (gp-0 3) ;; levels
-    (let ((s5-0 (-> *level* level gp-0 art-group)))
-      (when (nonzero? s5-0)
-        (dotimes (s4-0 (-> s5-0 art-group-array length))
-          (let ((s3-0 (-> s5-0 art-group-array s4-0)))
-            (dotimes (s2-0 (-> s3-0 length))
-              (let* ((s1-0 (-> s3-0 data s2-0))
-                     (a0-3 (if (and (nonzero? s1-0) (type-type? (-> s1-0 type) merc-ctrl)) s1-0)))
-                (if a0-3 (merc-stats-display (the-as merc-ctrl a0-3))))))))))
+  "Find every loaded MERC asset in the three level slots and print its geometry statistics."
+  (dotimes (level-index 3) ;; levels
+    (let ((level-art-group (-> *level* level level-index art-group)))
+      (when (nonzero? level-art-group)
+        (dotimes (group-index (-> level-art-group art-group-array length))
+          (let ((art-list (-> level-art-group art-group-array group-index)))
+            (dotimes (art-index (-> art-list length))
+              (let* ((art (-> art-list data art-index))
+                     (merc (if (and (nonzero? art) (type-type? (-> art type) merc-ctrl)) art)))
+                (if merc (merc-stats-display (the-as merc-ctrl merc))))))))))
   0
   (none))
 
 (defun-debug merc-edge-stats ()
-  "Print the longest edges in each."
-  (dotimes (gp-0 3)
-    (let ((s5-0 (-> *level* level gp-0 art-group)))
-      (when (nonzero? s5-0)
-        (dotimes (s4-0 (-> s5-0 art-group-array length))
-          (let ((s3-0 (-> s5-0 art-group-array s4-0)))
-            (dotimes (s2-0 (-> s3-0 length))
-              (let* ((s1-0 (-> s3-0 data s2-0))
-                     (v1-10 (if (and (nonzero? s1-0) (type-type? (-> s1-0 type) merc-ctrl)) s1-0)))
-                (if v1-10 (format #t "~30s: ~f~%" (-> (the-as merc-ctrl v1-10) name) (-> (the-as merc-ctrl v1-10) header longest-edge))))))))))
+  "Find every loaded MERC asset in the three level slots and print its longest encoded edge."
+  (dotimes (level-index 3)
+    (let ((level-art-group (-> *level* level level-index art-group)))
+      (when (nonzero? level-art-group)
+        (dotimes (group-index (-> level-art-group art-group-array length))
+          (let ((art-list (-> level-art-group art-group-array group-index)))
+            (dotimes (art-index (-> art-list length))
+              (let* ((art (-> art-list data art-index))
+                     (merc (if (and (nonzero? art) (type-type? (-> art type) merc-ctrl)) art)))
+                (if merc
+                  (format #t "~30s: ~f~%" (-> (the-as merc-ctrl merc) name) (-> (the-as merc-ctrl merc) header longest-edge))))))))))
   0
   (none))
 
 (defun merc-vu1-add-vu-function ((dma dma-packet) (func vu-function) (flush-mode int))
-  "Add a function to a dma chain. Return pointer to chain after the upload data."
+  "Append REF/MPG packets that upload func at its VU origin and return the next packet. Uploads are
+   split at 127 quadwords so each VIF NUM field can describe its 254 instructions. A zero flush-mode
+   uses FLUSHE; any other value uses FLUSHA."
   (let ((func-data (&-> func data 4))
         (qwc (-> func qlength))
         (dst (-> func origin)))
@@ -268,89 +276,78 @@
         (+! dst (* qwc-this-time 2)))))
   (the-as dma-gif-packet dma))
 
-(defun merc-vu1-initialize-chain ((arg0 dma-gif-packet))
-  "Initialize a merc chain."
-  ;; upload the function.
-  (let ((gp-0 (the-as object (merc-vu1-add-vu-function (the-as dma-packet arg0) merc-vu1-block 1))))
-    ;; now set up the VIF.
-    (set! (-> (the-as dma-gif-packet gp-0) dma-vif dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-gif-packet gp-0) dma-vif vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-gif-packet gp-0) dma-vif vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-    (set! (-> (the-as (pointer vif-tag) gp-0) 4) (new 'static 'vif-tag :imm #x1ba :cmd (vif-cmd base)))
-    (set! (-> (the-as (pointer vif-tag) gp-0) 5) (new 'static 'vif-tag :imm #xfe46 :cmd (vif-cmd offset)))
-    (set! (-> (the-as (pointer vif-tag) gp-0) 6) (new 'static 'vif-tag))
+(defun merc-vu1-initialize-chain ((dma dma-gif-packet))
+  "Append the MERC microprogram upload, configure VIF1's 442-qword double buffers, upload the eight
+   low-memory constants, start VU1 at entry zero, and return the next DMA packet."
+  ;; Upload the complete program before configuring its input buffers.
+  (let ((cursor (the-as object (merc-vu1-add-vu-function (the-as dma-packet dma) merc-vu1-block 1))))
+    ;; A 4/4 cycle transfers complete vectors. BASE 442 and OFFSET -442 alternate TOPS between
+    ;; quadwords 442 and 0, matching the two 442-qword VU1 work areas.
+    (set! (-> (the-as dma-gif-packet cursor) dma-vif dma) (new 'static 'dma-tag :qwc #xa :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-gif-packet cursor) dma-vif vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-gif-packet cursor) dma-vif vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+    (set! (-> (the-as (pointer vif-tag) cursor) 4) (new 'static 'vif-tag :imm #x1ba :cmd (vif-cmd base)))
+    (set! (-> (the-as (pointer vif-tag) cursor) 5) (new 'static 'vif-tag :imm #xfe46 :cmd (vif-cmd offset)))
+    (set! (-> (the-as (pointer vif-tag) cursor) 6) (new 'static 'vif-tag))
     ;; upload VU low memory
-    (set! (-> (the-as (pointer vif-tag) gp-0) 7) (new 'static 'vif-tag :num #x8 :cmd (vif-cmd unpack-v4-32)))
-    ;; template:
-    (let ((s5-0 (the-as merc-vu1-low-mem (&+ (the-as dma-gif-packet gp-0) 32))))
-      (set! (-> s5-0 tri-strip-gif tag)
+    (set! (-> (the-as (pointer vif-tag) cursor) 7) (new 'static 'vif-tag :num #x8 :cmd (vif-cmd unpack-v4-32)))
+    (let ((low-memory (the-as merc-vu1-low-mem (&+ (the-as dma-gif-packet cursor) 32))))
+      (set! (-> low-memory tri-strip-gif tag)
             (new 'static
                  'gif-tag64
                  :pre #x1
                  :prim
                  (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
                  :nreg #x3))
-      (set! (-> s5-0 tri-strip-gif regs)
+      (set! (-> low-memory tri-strip-gif regs)
             (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-      ;; what is this, they snuck something in here...
-      (set! (-> s5-0 tri-strip-gif word 3) (shr (make-u128 0 (shl #x303e4000 32)) 32))
-      (set! (-> s5-0 ad-gif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
-      (set! (-> s5-0 ad-gif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-      (set! (-> s5-0 hvdf-offset quad) (-> *math-camera* hvdf-off quad))
-      (quad-copy! (-> s5-0 perspective) (the-as pointer (-> *math-camera* perspective)) 4)
-      (set-vector! (-> s5-0 fog) (-> *math-camera* pfog0) (-> *math-camera* fog-min) (-> *math-camera* fog-max) 0.0))
-    ;; end.
-    (let ((v1-20 (-> (the-as (inline-array dma-packet) gp-0) 10)))
-      (set! (-> v1-20 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-      (set! (-> v1-20 vif0) (new 'static 'vif-tag))
-      (set! (-> v1-20 vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1 :imm #x0))
-      (&+ v1-20 16))))
+      ;; The unused high register-list word keeps a pristine copy of the tag's #x303e4000 control
+      ;; word. The VU program rotates it back into word 1 before emitting each patched strip tag.
+      (set! (-> low-memory tri-strip-gif word 3) (shr (make-u128 0 (shl #x303e4000 32)) 32))
+      (set! (-> low-memory ad-gif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+      (set! (-> low-memory ad-gif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+      (vector-copy! (-> low-memory hvdf-offset) (-> *math-camera* hvdf-off))
+      (quad-copy! (-> low-memory perspective) (the-as pointer (-> *math-camera* perspective)) 4)
+      (set-vector! (-> low-memory fog) (-> *math-camera* pfog0) (-> *math-camera* fog-min) (-> *math-camera* fog-max) 0.0))
+    ;; Run the per-frame initialization entry after the constants arrive.
+    (let ((start-packet (-> (the-as (inline-array dma-packet) cursor) 10)))
+      (set! (-> start-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> start-packet vif0) (new 'static 'vif-tag))
+      (set! (-> start-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1 :imm #x0))
+      (&+ start-packet 16))))
 
-(defun merc-vu1-init-buffer ((dma-bucket bucket-id) (test gs-test) (arg2 int))
-  "Setup merc DMA buffer."
-  ;; This function works differently from most and splices to the beginning of the bucket, as
-  ;; drawing has already put stuff in buckets.
-  ;; The advantage of this is that we can check if nothing was drawn, then skip this.
-  ;; NOTE: This runs as part of display-frame-finish, so after previous DMA is synced.
-  ;; grab out bucket directly.
-  (let ((bucket (-> *display* frames (-> *display* on-screen) frame bucket-group dma-bucket)))
-    ;; only if we draw anything.
+(defun merc-vu1-init-buffer ((dma-bucket bucket-id) (test gs-test) (unused int))
+  "If bucket-id received drawing commands, prepend a MERC VU1/GS initialization chain using test
+   and link it to the bucket's previous head."
+  (let ((bucket (-> (current-frame) bucket-group dma-bucket)))
     (when (!= bucket (-> bucket last))
-      (let* ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf))
-             (draw-data-start (-> dma-buf base)) ;; remember old beginning
-             )
-        ;; set the beginning to be the merc init stuff.
+      (let* ((dma-buf (-> (current-frame) global-buf))
+             (draw-data-start (-> dma-buf base)))
         (set! (-> dma-buf base) (the-as pointer (merc-vu1-initialize-chain (the-as dma-gif-packet (-> dma-buf base)))))
-        ;; some other merc setup for the GS.
-        (let* ((v1-8 dma-buf)
-               (a0-6 (the-as object (-> v1-8 base))))
-          (set! (-> (the-as dma-packet a0-6) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-          (set! (-> (the-as dma-packet a0-6) vif0) (new 'static 'vif-tag))
-          (set! (-> (the-as dma-packet a0-6) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-          (set! (-> v1-8 base) (&+ (the-as pointer a0-6) 16)))
-        (let* ((v1-9 dma-buf)
-               (a0-8 (the-as object (-> v1-9 base))))
-          (set! (-> (the-as gs-gif-tag a0-8) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-          (set! (-> (the-as gs-gif-tag a0-8) regs) GIF_REGS_ALL_AD)
-          (set! (-> v1-9 base) (&+ (the-as pointer a0-8) 16)))
-        (let* ((v1-10 dma-buf)
-               (a0-10 (-> v1-10 base)))
-          (set! (-> (the-as (pointer gs-test) a0-10) 0) test)
-          (set! (-> (the-as (pointer gs-reg64) a0-10) 1) (gs-reg64 test-1))
-          (set! (-> v1-10 base) (&+ a0-10 16)))
-        ;; terminate as normal
-        (let ((v1-11 (the-as object (-> dma-buf base))))
-          (set! (-> (the-as dma-packet v1-11) dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (-> bucket next)))
-          (set! (-> (the-as dma-packet v1-11) vif0) (new 'static 'vif-tag))
-          (set! (-> (the-as dma-packet v1-11) vif1) (new 'static 'vif-tag))
-          (set! (-> dma-buf base) (&+ (the-as pointer v1-11) 16)))
-        ;; but splice the existing chain.
+        (let* ((buffer-for-vif-tag dma-buf)
+               (vif-packet (the-as object (-> buffer-for-vif-tag base))))
+          (set! (-> (the-as dma-packet vif-packet) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+          (set! (-> (the-as dma-packet vif-packet) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet vif-packet) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+          (set! (-> buffer-for-vif-tag base) (&+ (the-as pointer vif-packet) 16)))
+        (dma-buffer-add-gif-tag dma-buf (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1) GIF_REGS_ALL_AD)
+        (let* ((buffer-for-test dma-buf)
+               (test-packet (-> buffer-for-test base)))
+          (set! (-> (the-as (pointer gs-test) test-packet) 0) test)
+          (set! (-> (the-as (pointer gs-reg64) test-packet) 1) (gs-reg64 test-1))
+          (set! (-> buffer-for-test base) (&+ test-packet 16)))
+        (let ((chain-tail (the-as object (-> dma-buf base))))
+          (set! (-> (the-as dma-packet chain-tail) dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (-> bucket next)))
+          (set! (-> (the-as dma-packet chain-tail) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet chain-tail) vif1) (new 'static 'vif-tag))
+          (set! (-> dma-buf base) (&+ (the-as pointer chain-tail) 16)))
         (set! (-> bucket next) (the-as uint draw-data-start)))))
   0
   (none))
 
 (defun merc-vu1-init-buffers ()
-  "Setup merc DMA buffers. Call this _after_ drawing."
+  "After drawing has filled the MERC buckets, prepend initialization chains to each nonempty
+   enabled bucket."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask merc))
     (merc-vu1-init-buffer (bucket-id merc-tfrag-tex0)
                           (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))

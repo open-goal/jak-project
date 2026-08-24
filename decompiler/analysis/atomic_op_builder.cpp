@@ -1171,12 +1171,9 @@ std::unique_ptr<AtomicOp> convert_slt_2(const Instruction& i0,
   auto temp = i0.get_dst(0).get_reg();
   auto left = i0.get_src(0).get_reg();
   auto right = i0.get_src(1).get_reg();
-  if (temp == left) {
+  if (temp == left || temp == right || left == right) {
     return nullptr;
   }
-  ASSERT(temp != left);
-  ASSERT(temp != right);
-  ASSERT(left != right);
   std::unique_ptr<AtomicOp> result;
   SimpleExpression::Kind kind;
   if (is_gpr_3(i1, InstructionKind::MOVZ, left, right, temp)) {
@@ -1338,12 +1335,12 @@ std::unique_ptr<AtomicOp> convert_dsubu_3(const Instruction& i0,
     auto a = i0.get_src(0).get_reg();
     auto b = i0.get_src(1).get_reg();
     auto dest = i1.get_dst(0).get_reg();
-    ASSERT(i1.get_src(0).is_reg(rs7()));
-    ASSERT(i1.get_src(1).is_imm(true_symbol_offset(version)));
-    ASSERT(i2.get_dst(0).get_reg() == dest);
-    ASSERT(i2.get_src(0).is_reg(rs7()));
-    ASSERT(i2.get_src(1).get_reg() == temp);
-    ASSERT(temp != dest);
+    if (!i1.get_src(0).is_reg(rs7()) ||
+        !i1.get_src(1).is_imm(true_symbol_offset(version)) ||
+        i2.get_dst(0).get_reg() != dest || !i2.get_src(0).is_reg(rs7()) ||
+        i2.get_src(1).get_reg() != temp || temp == dest) {
+      return nullptr;
+    }
     auto kind = i2.kind == InstructionKind::MOVN ? IR2_Condition::Kind::EQUAL
                                                  : IR2_Condition::Kind::NOT_EQUAL;
     std::unique_ptr<AtomicOp> result;
@@ -1397,8 +1394,9 @@ std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
     // delay slot
     auto temp = i0.get_dst(0).get_reg();
     auto dest = i1.get_src(2).get_label();
-    ASSERT(i1.get_src(0).get_reg() == temp);
-    ASSERT(i1.get_src(1).is_reg(rr0()));
+    if (i1.get_src(0).get_reg() != temp || !i1.get_src(1).is_reg(rr0())) {
+      return nullptr;
+    }
 
     IR2_Condition condition;
     if (s1 == rr0()) {
@@ -1430,12 +1428,12 @@ std::unique_ptr<AtomicOp> convert_slt_3(const Instruction& i0,
     // movz dest, s7, temp
     auto temp = i0.get_dst(0).get_reg();
     auto dest = i1.get_dst(0).get_reg();
-    ASSERT(i1.get_src(0).is_reg(rs7()));
-    ASSERT(i1.get_src(1).is_imm(true_symbol_offset(version)));
-    ASSERT(i2.get_dst(0).get_reg() == dest);
-    ASSERT(i2.get_src(0).is_reg(rs7()));
-    ASSERT(i2.get_src(1).get_reg() == temp);
-    ASSERT(temp != dest);
+    if (!i1.get_src(0).is_reg(rs7()) ||
+        !i1.get_src(1).is_imm(true_symbol_offset(version)) ||
+        i2.get_dst(0).get_reg() != dest || !i2.get_src(0).is_reg(rs7()) ||
+        i2.get_src(1).get_reg() != temp || temp == dest) {
+      return nullptr;
+    }
     IR2_Condition condition;
     if (s1 == rr0()) {
       auto kind = is_signed ? IR2_Condition::Kind::LESS_THAN_ZERO_SIGNED
@@ -1477,8 +1475,9 @@ std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
     // delay slot
     auto temp = i0.get_dst(0).get_reg();
     auto dest = i1.get_src(2).get_label();
-    ASSERT(i1.get_src(0).get_reg() == temp);
-    ASSERT(i1.get_src(1).is_reg(rr0()));
+    if (i1.get_src(0).get_reg() != temp || !i1.get_src(1).is_reg(rr0())) {
+      return nullptr;
+    }
     auto kind =
         is_signed ? IR2_Condition::Kind::LESS_THAN_SIGNED : IR2_Condition::Kind::LESS_THAN_UNSIGNED;
     auto condition = IR2_Condition(kind, make_src_atom(s0, idx), s1);
@@ -1496,12 +1495,12 @@ std::unique_ptr<AtomicOp> convert_slti_3(const Instruction& i0,
     // movz dest, s7, temp
     auto temp = i0.get_dst(0).get_reg();
     auto dest = i1.get_dst(0).get_reg();
-    ASSERT(i1.get_src(0).is_reg(rs7()));
-    ASSERT(i1.get_src(1).is_imm(true_symbol_offset(version)));
-    ASSERT(i2.get_dst(0).get_reg() == dest);
-    ASSERT(i2.get_src(0).is_reg(rs7()));
-    ASSERT(i2.get_src(1).get_reg() == temp);
-    ASSERT(temp != dest);
+    if (!i1.get_src(0).is_reg(rs7()) ||
+        !i1.get_src(1).is_imm(true_symbol_offset(version)) ||
+        i2.get_dst(0).get_reg() != dest || !i2.get_src(0).is_reg(rs7()) ||
+        i2.get_src(1).get_reg() != temp || temp == dest) {
+      return nullptr;
+    }
     IR2_Condition condition;
 
     auto kind =

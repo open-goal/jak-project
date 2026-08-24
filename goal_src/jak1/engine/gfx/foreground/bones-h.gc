@@ -3,9 +3,8 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/gfx/shadow/shadow-cpu-h.gc")
 
-;; The "bone" system computes bone matrices from joint animations.
-;; It looks like it also expanded to do most of the DMA generation
-;; for the foreground renderers.
+;; The bone system computes bone matrices from joint animations and builds most
+;; of the DMA chains for foreground rendering.
 
 ;; DECOMP BEGINS
 
@@ -51,15 +50,24 @@
    (buffer   bone-buffer 2 :inline)
    (dma-list dma-packet :inline :overlay-at (-> buffer 0 joint 0 control-bits 0))))
 
-(defun invalidate-cache-line ((arg0 pointer))
-  "Invalidate a single cache line. Won't be used in PC"
-  (#unless PC_PORT
-    (.sync.l)
-    (.cache dxwbin arg0 0)
-    (.sync.l)
-    (.cache dxwbin arg0 1)
-    (.sync.l))
-  0)
+(#unless PC_PORT
+  (defun invalidate-cache-line ((address pointer))
+    "Write back and invalidate both ways of an EE data-cache line."
+    (declare (asm-func int))
+    (rlet ((address-reg :reg a0)
+           (result :reg v0))
+      (sync.l)
+      (cache dxwbin address-reg 0)
+      (sync.l)
+      (cache dxwbin address-reg 1)
+      (sync.l)
+      (m result r0)
+      (jr ra :delay (add sp sp r0)))))
+
+(#when PC_PORT
+  (defun invalidate-cache-line ((address pointer))
+    "Write back and invalidate both ways of an EE data-cache line."
+    0))
 
 (deftype merc-globals (structure)
   ((first uint32)
@@ -80,7 +88,9 @@
    (mtx-ref  dma-packet :inline)
    (end-tag  dma-packet :inline)))
 
-(define-extern vu-lights<-light-group! (function vu-lights light-group none))
+(define-extern vu-lights<-light-group!
+  "Convert a light group to the VU lighting layout used by foreground renderers."
+  (function vu-lights light-group none))
 
-;; TODO - for mood
+;; Shared fallback shadow settings; mood updates the projection direction over time.
 (define-extern *default-shadow-settings* shadow-settings)

@@ -3,8 +3,34 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/gfx/shadow/shadow-cpu.gc")
 
+;; The perspective matrix goes in at the bottom of VU1 data memory, one row per quadword.
+(defconstant SHADOW-VU1-MATRIX 0)
+
+;; The clipper's scratch, all of it above the constant block. Six polygon records, then the stack of
+;; edges whose crossing vertex still has to be generated, then the clipper's own GIF buffer, then its
+;; output vertices. SHADOW-VU1-CLIP-VERTS is where a drawing entry parks the clip-space positions it
+;; is handing over; they are three quadwords apart because a polygon vertex slot is that big, even
+;; though only the position quadword of each is ever written here.
+(defconstant SHADOW-VU1-CLIP-POLY 893)
+(defconstant SHADOW-VU1-CLIP-STRIDE 7)
+(defconstant SHADOW-VU1-CLIP-STACK
+  (+ SHADOW-VU1-CLIP-POLY (* 6 SHADOW-VU1-CLIP-STRIDE)))
+(defconstant SHADOW-VU1-CLIP-GIF 940)
+(defconstant SHADOW-VU1-CLIP-OUT 944)
+(defconstant SHADOW-VU1-CLIP-VERTS 1000)
+
+;; The two-quadword packet at the very top of VU memory that puts RGBAQ back after a clipped polygon.
+(defconstant SHADOW-VU1-RESTORE-GIF 1022)
+
 ;; DECOMP BEGINS
 
+;; Projection and GS state uploaded once per shadow pass, as one thirteen-quadword block. hmgescale
+;; and invhscale scale into and back out of the clipper's homogeneous space; hvdfoff shifts the
+;; divided position into GS screen and depth units; texoffset and texscale turn that same screen
+;; position into the texture coordinate that reads the frame buffer's alpha plane back; fog x is
+;; pfog0, the numerator of the perspective divide. clrs holds the two vertex colors whose alpha is the
+;; stencil increment and decrement, and the four tags at the end are copied into both GIF output
+;; buffers by the init entry.
 (deftype shadow-vu1-constants (structure)
   ((hmgescale vector :inline)
    (invhscale vector :inline)
@@ -19,6 +45,19 @@
    (trigif    gs-gif-tag :inline)
    (quadgif   gs-gif-tag :inline)))
 
+;; The field order of shadow-vu1-constants *is* the upload order, so a constant's VU address is its
+;; quadword index within the type. Naming it that way rather than as thirteen separate numbers means
+;; the addresses cannot drift away from the record shadow-vu1-add-constants fills in.
+;;
+;; (shadow-const hmgescale) is 880 and (shadow-const quadgif) is 892. It has to live below the deftype
+;; rather than with the other addresses above, because it reads that type's layout.
+(defconstant SHADOW-VU-CONSTS 880)
+
+(defmacro shadow-const (&rest path)
+  `(+ SHADOW-VU-CONSTS (/ (offset-of shadow-vu1-constants ,@path) 16)))
+
+;; One VU1 GIF output buffer. The triangle and quad tags share the state prefix but select three or
+;; four ST/XYZF vertex pairs.
 (deftype shadow-vu1-gifbuf-template (structure)
   ((adgif   gs-gif-tag :inline)
    (ad      ad-cmd :inline)
@@ -87,50 +126,1007 @@
                  :regs7 (gif-reg-id st)
                  :regs8 (gif-reg-id xyzf2)))))
 
-(define shadow-vu1-block (new 'static 'vu-function)) ;; :length #x2e4 :qlength #x172
+(#when PC_PORT
+  ;; Shadow-volume rasterization is performed by the native renderer on PC.
+  (define shadow-vu1-block (new 'static 'vu-function :length #x0 :qlength #x0)))
 
-(defun shadow-vu1-add-constants ((arg0 dma-buffer))
-  (let* ((a2-0 13)
-         (v1-0 arg0)
-         (a1-0 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
-    (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag :imm #x370 :cmd (vif-cmd unpack-v4-32) :num a2-0))
-    (set! (-> v1-0 base) (&+ (the-as pointer a1-0) 16)))
-  (let ((v1-1 (the-as object (-> arg0 base)))
-        (a3-4 *math-camera*)
-        (a2-4 *shadow-data*)
-        (a1-2 *shadow-vu1-tri-template*))
-    (set! (-> (the-as shadow-vu1-constants v1-1) hmgescale quad) (-> a3-4 hmge-scale quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) invhscale quad) (-> a3-4 inv-hmge-scale quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) texoffset quad) (-> a2-4 texoffset quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) texscale quad) (-> a2-4 texscale quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) hvdfoff quad) (-> a3-4 hvdf-off quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) fog x) (-> a3-4 pfog0))
-    (set! (-> (the-as shadow-vu1-constants v1-1) clrs 0 quad) (-> a2-4 clrs 0 quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) clrs 1 quad) (-> a2-4 clrs 1 quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) adgif qword) (-> a1-2 adgif qword))
-    (set! (-> (the-as shadow-vu1-constants v1-1) texflush quad) (-> a1-2 ad quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) flush quad) (-> a1-2 flush quad))
-    (set! (-> (the-as shadow-vu1-constants v1-1) trigif qword) (-> a1-2 trigif qword))
-    (set! (-> (the-as shadow-vu1-constants v1-1) quadgif qword) (-> a1-2 quadgif qword)))
-  (&+! (-> arg0 base) 208)
-  (let* ((v1-4 arg0)
-         (a1-4 (the-as object (-> v1-4 base))))
-    (set! (-> (the-as dma-packet a1-4) dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a1-4) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a1-4) vif1) (new 'static 'vif-tag :imm #x3ac :num #x4 :cmd (vif-cmd unpack-v4-32)))
-    (set! (-> v1-4 base) (&+ (the-as pointer a1-4) 16)))
-  (let* ((v1-5 arg0)
-         (a1-6 (the-as object (-> v1-5 base))))
-    (set! (-> (the-as shadow-vu1-gifbuf-template a1-6) adgif tag) (new 'static 'gif-tag64 :nloop #x1 :nreg #x2))
-    (set! (-> (the-as shadow-vu1-gifbuf-template a1-6) adgif regs)
+(#unless PC_PORT
+  ;; VU1's whole job is to rasterize a shadow volume the EE has already built. It gets a table of
+  ;; skinned vertices, a table of their duals on the ground plane, and one index list; it does not know
+  ;; what a silhouette is and never computes one.
+  ;;
+  ;; The three closed pieces of the volume come from the three drawing entries, dispatched by MSCALF:
+  ;;
+  ;;   SHADOW-VU1-ENTRY-SINGLE-TRIS   the near and far caps of a single-sided mesh
+  ;;   SHADOW-VU1-ENTRY-EDGES         the walls, one quad per silhouette edge, both kinds of mesh
+  ;;   SHADOW-VU1-ENTRY-DOUBLE-TRIS   the near and far caps of a double-sided mesh
+  ;;   SHADOW-VU1-ENTRY-INIT          set both GIF buffers up and cache the constants
+  ;;
+  ;; Both cap entries make two passes over the same index list: once from the skinned vertices and once
+  ;; from the duals, with two of the three indices exchanged so the ground cap faces outward. That is
+  ;; what closes the volume, and it is why a cap list costs two passes and no extra data.
+  ;;
+  ;; Every path does the same thing to a vertex: multiply by the perspective matrix, divide xyz by w
+  ;; scaled by pfog0, add hvdfoff, and derive ST from the same screen position so the polygon samples
+  ;; the frame buffer's alpha plane exactly where it writes it. The face's own cross product picks
+  ;; between the two vertex colors, whose alphas are the stencil's increment and decrement. A primitive
+  ;; that touches the frustum goes to the clipper at the bottom of the program instead of straight out.
+  ;;
+  ;; The two GIF output buffers alternate around every XGKICK, so the next primitive is assembled while
+  ;; the GS is still reading the last one. The alternation is a lane rotate of one register rather than
+  ;; a test: gif-buffers holds A B A B and mr32 turns it by one lane per kick.
+  (defvu1 shadow-vu1-block
+    ;; Registers that hold the same thing for the whole program: the pair of GIF output buffer
+    ;; addresses, and the projection, texture, and fog constants the init entry cached.
+    (rlet ((gif-buffers :reg vf01)
+           (hmgescale :reg vf02)
+           (texoffset :reg vf03)
+           (texscale :reg vf04)
+           (hvdfoff :reg vf05)
+           (screen-min :reg vf10)
+           (screen-max :reg vf11)
+           (fog :reg vf12)
+           (invhscale :reg vf13))
+      ;; The dispatch table. Each MSCALF immediate lands on one of these branch pairs; the E bit at the
+      ;; bottom stops the program if the EE ever calls an unused slot.
+      (vu-pair (b init-buffers) (nop)) ;; #x000
+      (vu-pair (nop) (nop)) ;; #x001
+      (vu-pair (b draw-single-caps) (nop)) ;; #x002
+      (vu-pair (nop) (nop)) ;; #x003
+      (vu-pair (b draw-silhouette-quads) (nop)) ;; #x004
+      (vu-pair (nop) (nop)) ;; #x005
+      (vu-pair (b draw-double-caps) (nop)) ;; #x006
+      (vu-pair (nop) (nop)) ;; #x007
+      (vu-pair (nop) (nop :e)) ;; #x008
+      (vu-pair (nop) (nop)) ;; #x009
+      ;; The drawing pipeline: one transform, one clip test, one GIF packet, repeated for every record in
+      ;; whichever index list the entry selected.
+      (rlet ((mtx-row-0 :reg vf06)
+             (mtx-row-1 :reg vf07)
+             (mtx-row-2 :reg vf08)
+             (mtx-row-3 :reg vf09)
+             (first-vertex :reg vf15)
+             (indices :reg vf16)
+             (pos-0 :reg vf17)
+             (pos-1 :reg vf18)
+             (pos-2 :reg vf19)
+             (pos-3 :reg vf20)
+             (clip-0 :reg vf21)
+             (clip-1 :reg vf22)
+             (clip-2 :reg vf23)
+             (clip-3 :reg vf24)
+             (st-0 :reg vf25)
+             (st-1 :reg vf26)
+             (st-2 :reg vf27)
+             (st-3 :reg vf28)
+             (edge-a :reg vf29)
+             (edge-b :reg vf30)
+             (color :reg vf31)
+             (gif-buffer :reg vi02)
+             (list :reg vi03)
+             (slot-0 :reg vi04)
+             (slot-1 :reg vi05)
+             (slot-2 :reg vi06)
+             (count :reg vi08))
+        ;; vi01 and vi07 stay physical. vi01 is the flag-test scratch in every loop and the cap
+        ;; orientation in the double-sided one; vi07 belongs to the clipper and is only saved and
+        ;; restored around a call into it.
+        ;; Entry SHADOW-VU1-ENTRY-INIT. Cache both GIF output buffer addresses in the four lanes of one
+        ;; register and load the projection constants every drawing entry needs. Rotating that register's
+        ;; lanes is how the two buffers alternate later, so the order comes out A B A B without a test.
+        (label init-buffers)
+        (vu-pair (iaddiu vi01 vi00 SHADOW-VU1-GIFBUF-A) (nop)) ;; #x00a
+        (vu-pair (iaddiu gif-buffer vi00 SHADOW-VU1-GIFBUF-B) (nop)) ;; #x00b
+        (vu-pair (mfir.x gif-buffers vi01) (nop)) ;; #x00c
+        (vu-pair (mfir.y gif-buffers gif-buffer) (nop)) ;; #x00d
+        (vu-pair (mfir.z gif-buffers vi01) (nop)) ;; #x00e
+        (vu-pair (mfir.w gif-buffers gif-buffer) (nop)) ;; #x00f
+        (vu-pair (lq.xyzw hmgescale vi00 (shadow-const hmgescale)) (nop)) ;; #x010
+        (vu-pair (lq.xyzw texoffset vi00 (shadow-const texoffset)) (nop)) ;; #x011
+        (vu-pair (lq.xyzw texscale vi00 (shadow-const texscale)) (nop)) ;; #x012
+        (vu-pair (lq.xyzw hvdfoff vi00 (shadow-const hvdfoff)) (nop)) ;; #x013
+        (vu-pair (lq.xyzw fog vi00 (shadow-const fog)) (nop :e)) ;; #x014
+        (vu-pair (lq.xyzw invhscale vi00 (shadow-const invhscale)) (nop)) ;; #x015
+        ;; Entry SHADOW-VU1-ENTRY-SINGLE-TRIS: the near and far caps of a single-sided volume. Each record in
+        ;; the triangle list is three vertex indices. The first loop draws them from the skinned vertices; the
+        ;; second draws the same triangles from their duals with two indices exchanged, so the ground cap
+        ;; faces the other way and the volume is closed.
+        ;;
+        ;; The layout of a GIF output buffer, filled in from slot 3 onward as each vertex is finished:
+        ;;
+        ;;    0  A+D tag, one register        3  RGBAQ, the front or back face color
+        ;;    1  TEXFLUSH                     4  ST of vertex 0     5  XYZF2 of vertex 0
+        ;;    2  the primitive's GIF tag      6  ST of vertex 1     7  XYZF2 of vertex 1
+        ;;                                    8  ST of vertex 2     9  XYZF2 of vertex 2
+        ;;                                   10  ST of vertex 3    11  XYZF2 of vertex 3
+        ;;
+        ;; The TEXFLUSH is not decoration. TEX0 points at the frame buffer this pass is writing, so the
+        ;; texture cache has to be dropped before every primitive or a wall would sample the alpha as it stood
+        ;; several polygons ago.
+        (label draw-single-caps)
+        (vu-pair (iaddiu list vi00 SHADOW-VU1-TRI-LIST) (nop)) ;; #x016
+        (vu-pair (ilwr.x count list) (nop)) ;; #x017
+        (vu-pair (mtir gif-buffer gif-buffers.x) (nop)) ;; #x018
+        (vu-pair (iaddi list list 0x1) (addw.z st-0 vf00 vf00)) ;; #x019
+        (vu-pair (lq.xyzw st-0 vi00 (shadow-const adgif)) (addw.z st-1 vf00 vf00)) ;; #x01a
+        (vu-pair (lq.xyzw edge-a vi00 (shadow-const texflush)) (addw.z st-2 vf00 vf00)) ;; #x01b
+        (vu-pair (lq.xyzw edge-b vi00 (shadow-const trigif)) (addw.z st-3 vf00 vf00)) ;; #x01c
+        (vu-pair (lq.xyzw mtx-row-0 vi00 SHADOW-VU1-MATRIX) (nop)) ;; #x01d
+        (vu-pair (lq.xyzw mtx-row-1 vi00 (+ SHADOW-VU1-MATRIX 1)) (nop)) ;; #x01e
+        (vu-pair (lq.xyzw mtx-row-2 vi00 (+ SHADOW-VU1-MATRIX 2)) (nop)) ;; #x01f
+        (vu-pair (lq.xyzw mtx-row-3 vi00 (+ SHADOW-VU1-MATRIX 3)) (nop)) ;; #x020
+        (vu-pair (mtir vi01 gif-buffers.y) (nop)) ;; #x021
+        (vu-pair (sq.xyzw st-0 gif-buffer 0) (nop)) ;; #x022
+        (vu-pair (sq.xyzw edge-a gif-buffer 1) (nop)) ;; #x023
+        (vu-pair (sq.xyzw edge-b gif-buffer 2) (nop)) ;; #x024
+        (vu-pair (sq.xyzw st-0 vi01 0) (nop)) ;; #x025
+        (vu-pair (sq.xyzw edge-a vi01 1) (nop)) ;; #x026
+        (vu-pair (sq.xyzw edge-b vi01 2) (nop)) ;; #x027
+        ;; One triangle. Transform three vertices, divide by w, take the face's own cross product to choose the
+        ;; front or back alpha, and clip. The screen position is also the texture coordinate:
+        ;; ST is (screen + texoffset) * texscale, so a polygon samples the alpha at exactly the pixel it is
+        ;; about to write. screen-min and screen-max accumulate a screen bounding box that nothing in this
+        ;; program ever reads back.
+        (label single-cap-loop)
+        (vu-pair (lqi.xyzw indices list) (nop)) ;; #x028
+        (vu-pair (nop) (nop)) ;; #x029
+        (vu-pair (nop) (nop)) ;; #x02a
+        (vu-pair (nop) (nop)) ;; #x02b
+        (vu-pair (mtir slot-0 indices.x) (nop)) ;; #x02c
+        (vu-pair (mtir slot-1 indices.y) (nop)) ;; #x02d
+        (vu-pair (mtir slot-2 indices.z) (nop)) ;; #x02e
+        (vu-pair (nop) (nop)) ;; #x02f
+        (vu-pair (lq.xyzw pos-0 slot-0 SHADOW-VU1-VERTS) (nop)) ;; #x030
+        (vu-pair (lq.xyzw pos-1 slot-1 SHADOW-VU1-VERTS) (nop)) ;; #x031
+        (vu-pair (lq.xyzw pos-2 slot-2 SHADOW-VU1-VERTS) (nop)) ;; #x032
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x033
+        (vu-pair (move.xyzw first-vertex pos-0) (maddax.xyzw ACC mtx-row-0 pos-0)) ;; #x034
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-0)) ;; #x035
+        (vu-pair (nop) (maddz.xyzw pos-0 mtx-row-2 pos-0)) ;; #x036
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x037
+        (vu-pair (nop) (sub.xyzw edge-a pos-1 first-vertex)) ;; #x038
+        (vu-pair (nop) (sub.xyzw edge-b pos-2 first-vertex)) ;; #x039
+        (vu-pair (div Q fog.x pos-0.w) (maddax.xyzw ACC mtx-row-0 pos-1)) ;; #x03a
+        (vu-pair (nop) (mul.xyzw clip-0 pos-0 hmgescale)) ;; #x03b
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-1)) ;; #x03c
+        (vu-pair (nop) (maddz.xyzw pos-1 mtx-row-2 pos-1)) ;; #x03d
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x03e
+        (vu-pair (nop) (maddax.xyzw ACC mtx-row-0 pos-2)) ;; #x03f
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-2)) ;; #x040
+        (vu-pair (div Q fog.x pos-1.w) (mul.xyz pos-0 pos-0 Q)) ;; #x041
+        (vu-pair (nop) (maddz.xyzw pos-2 mtx-row-2 pos-2)) ;; #x042
+        (vu-pair (nop) (mul.xyzw clip-1 pos-1 hmgescale)) ;; #x043
+        (vu-pair (nop) (opmula.xyz ACC edge-a edge-b)) ;; #x044
+        (vu-pair (nop) (opmsub.xyz edge-a edge-b edge-a)) ;; #x045
+        (vu-pair (nop) (add.xy st-0 pos-0 texoffset)) ;; #x046
+        (vu-pair (nop) (add.xyzw pos-0 pos-0 hvdfoff)) ;; #x047
+        (vu-pair (div Q fog.x pos-2.w) (mul.xyz pos-1 pos-1 Q)) ;; #x048
+        (vu-pair (nop) (mul.xyzw clip-2 pos-2 hmgescale)) ;; #x049
+        (vu-pair (nop) (mul.xyz edge-a edge-a first-vertex)) ;; #x04a
+        (vu-pair (nop) (mul.xy st-0 st-0 texscale)) ;; #x04b
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-0)) ;; #x04c
+        (vu-pair (nop) (max.xyzw screen-max screen-max pos-0)) ;; #x04d
+        (vu-pair (nop) (ftoi4.xyzw pos-0 pos-0)) ;; #x04e
+        (vu-pair (nop) (add.xy st-1 pos-1 texoffset)) ;; #x04f
+        (vu-pair (nop) (add.xyzw pos-1 pos-1 hvdfoff)) ;; #x050
+        (vu-pair (fcset 0x0) (addy.x edge-a edge-a edge-a)) ;; #x051
+        (vu-pair (nop) (mul.xyz pos-2 pos-2 Q)) ;; #x052
+        (vu-pair (sq.xyzw st-0 gif-buffer 4) (mini.xyzw screen-min screen-min pos-1)) ;; #x053
+        (vu-pair (sq.xyzw pos-0 gif-buffer 5) (max.xyzw screen-max screen-max pos-1)) ;; #x054
+        (vu-pair (nop) (clipw.xyz clip-0 clip-0)) ;; #x055
+        (vu-pair (nop) (mul.xy st-1 st-1 texscale)) ;; #x056
+        (vu-pair (nop) (addz.x edge-a edge-a edge-a)) ;; #x057
+        (vu-pair (nop) (ftoi4.xyzw pos-1 pos-1)) ;; #x058
+        (vu-pair (nop) (add.xy st-2 pos-2 texoffset)) ;; #x059
+        (vu-pair (sq.xyzw st-1 gif-buffer 6) (add.xyzw pos-2 pos-2 hvdfoff)) ;; #x05a
+        (vu-pair (fsand vi01 0x2) (clipw.xyz clip-1 clip-1)) ;; #x05b
+        (vu-pair (sq.xyzw pos-1 gif-buffer 7) (clipw.xyz clip-2 clip-2)) ;; #x05c
+        (vu-pair (ibeq vi00 vi01 single-cap-back-color) (mul.xy st-2 st-2 texscale)) ;; #x05d
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-2)) ;; #x05e
+        (vu-pair (b single-cap-emit) (nop)) ;; #x05f
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 1)) (max.xyzw screen-max screen-max pos-2)) ;; #x060
+        (label single-cap-back-color)
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 0)) (max.xyzw screen-max screen-max pos-2)) ;; #x061
+        (label single-cap-emit)
+        ;; Six clip bits per vertex, three vertices: anything set means the triangle touched the frustum.
+        (vu-pair (fcand vi01 0x3ffff) (ftoi4.xyzw pos-2 pos-2)) ;; #x062
+        (vu-pair (ibne vi00 vi01 single-cap-clip) (nop)) ;; #x063
+        (vu-pair (iaddi count count -0x1) (nop)) ;; #x064
+        (vu-pair (sq.xyzw st-2 gif-buffer 8) (nop)) ;; #x065
+        (vu-pair (sq.xyzw color gif-buffer 3) (nop)) ;; #x066
+        (vu-pair (sq.xyzw pos-2 gif-buffer 9) (nop)) ;; #x067
+        (vu-pair (xgkick gif-buffer) (nop)) ;; #x068
+        (vu-pair (mtir gif-buffer gif-buffers.y) (nop)) ;; #x069
+        (vu-pair (mr32.xyzw gif-buffers gif-buffers) (nop)) ;; #x06a
+        (label single-cap-next)
+        (vu-pair (ibgtz count single-cap-loop) (nop)) ;; #x06b
+        (vu-pair (nop) (nop)) ;; #x06c
+        (vu-pair (iaddiu list vi00 SHADOW-VU1-TRI-LIST) (nop)) ;; #x06d
+        (vu-pair (ilwr.x count list) (nop)) ;; #x06e
+        (vu-pair (iaddi list list 0x1) (nop)) ;; #x06f
+        ;; The far cap: the same triangles read from the dual vertices, with slot-1 and slot-2 exchanged.
+        (label single-dual-cap-loop)
+        (vu-pair (lqi.xyzw indices list) (nop)) ;; #x070
+        (vu-pair (nop) (nop)) ;; #x071
+        (vu-pair (nop) (nop)) ;; #x072
+        (vu-pair (nop) (nop)) ;; #x073
+        (vu-pair (mtir slot-0 indices.x) (nop)) ;; #x074
+        (vu-pair (mtir slot-1 indices.y) (nop)) ;; #x075
+        (vu-pair (mtir slot-2 indices.z) (nop)) ;; #x076
+        (vu-pair (nop) (nop)) ;; #x077
+        (vu-pair (lq.xyzw pos-0 slot-0 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x078
+        (vu-pair (lq.xyzw pos-1 slot-2 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x079
+        (vu-pair (lq.xyzw pos-2 slot-1 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x07a
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x07b
+        (vu-pair (move.xyzw first-vertex pos-0) (maddax.xyzw ACC mtx-row-0 pos-0)) ;; #x07c
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-0)) ;; #x07d
+        (vu-pair (nop) (maddz.xyzw pos-0 mtx-row-2 pos-0)) ;; #x07e
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x07f
+        (vu-pair (nop) (sub.xyzw edge-a pos-1 first-vertex)) ;; #x080
+        (vu-pair (nop) (sub.xyzw edge-b pos-2 first-vertex)) ;; #x081
+        (vu-pair (div Q fog.x pos-0.w) (maddax.xyzw ACC mtx-row-0 pos-1)) ;; #x082
+        (vu-pair (nop) (mul.xyzw clip-0 pos-0 hmgescale)) ;; #x083
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-1)) ;; #x084
+        (vu-pair (nop) (maddz.xyzw pos-1 mtx-row-2 pos-1)) ;; #x085
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x086
+        (vu-pair (nop) (maddax.xyzw ACC mtx-row-0 pos-2)) ;; #x087
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-2)) ;; #x088
+        (vu-pair (div Q fog.x pos-1.w) (mul.xyz pos-0 pos-0 Q)) ;; #x089
+        (vu-pair (nop) (maddz.xyzw pos-2 mtx-row-2 pos-2)) ;; #x08a
+        (vu-pair (nop) (mul.xyzw clip-1 pos-1 hmgescale)) ;; #x08b
+        (vu-pair (nop) (opmula.xyz ACC edge-a edge-b)) ;; #x08c
+        (vu-pair (nop) (opmsub.xyz edge-a edge-b edge-a)) ;; #x08d
+        (vu-pair (nop) (add.xy st-0 pos-0 texoffset)) ;; #x08e
+        (vu-pair (nop) (add.xyzw pos-0 pos-0 hvdfoff)) ;; #x08f
+        (vu-pair (div Q fog.x pos-2.w) (mul.xyz pos-1 pos-1 Q)) ;; #x090
+        (vu-pair (nop) (mul.xyzw clip-2 pos-2 hmgescale)) ;; #x091
+        (vu-pair (nop) (mul.xyz edge-a edge-a first-vertex)) ;; #x092
+        (vu-pair (nop) (mul.xy st-0 st-0 texscale)) ;; #x093
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-0)) ;; #x094
+        (vu-pair (nop) (max.xyzw screen-max screen-max pos-0)) ;; #x095
+        (vu-pair (nop) (ftoi4.xyzw pos-0 pos-0)) ;; #x096
+        (vu-pair (nop) (add.xy st-1 pos-1 texoffset)) ;; #x097
+        (vu-pair (nop) (add.xyzw pos-1 pos-1 hvdfoff)) ;; #x098
+        (vu-pair (fcset 0x0) (addy.x edge-a edge-a edge-a)) ;; #x099
+        (vu-pair (nop) (mul.xyz pos-2 pos-2 Q)) ;; #x09a
+        (vu-pair (sq.xyzw st-0 gif-buffer 4) (mini.xyzw screen-min screen-min pos-1)) ;; #x09b
+        (vu-pair (sq.xyzw pos-0 gif-buffer 5) (max.xyzw screen-max screen-max pos-1)) ;; #x09c
+        (vu-pair (nop) (clipw.xyz clip-0 clip-0)) ;; #x09d
+        (vu-pair (nop) (mul.xy st-1 st-1 texscale)) ;; #x09e
+        (vu-pair (iaddi count count -0x1) (addz.x edge-a edge-a edge-a)) ;; #x09f
+        (vu-pair (nop) (ftoi4.xyzw pos-1 pos-1)) ;; #x0a0
+        (vu-pair (nop) (add.xy st-2 pos-2 texoffset)) ;; #x0a1
+        (vu-pair (sq.xyzw st-1 gif-buffer 6) (add.xyzw pos-2 pos-2 hvdfoff)) ;; #x0a2
+        (vu-pair (fsand vi01 0x2) (clipw.xyz clip-1 clip-1)) ;; #x0a3
+        (vu-pair (sq.xyzw pos-1 gif-buffer 7) (clipw.xyz clip-2 clip-2)) ;; #x0a4
+        (vu-pair (ibeq vi00 vi01 single-dual-cap-back-color) (mul.xy st-2 st-2 texscale)) ;; #x0a5
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-2)) ;; #x0a6
+        (vu-pair (b single-dual-cap-emit) (nop)) ;; #x0a7
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 1)) (max.xyzw screen-max screen-max pos-2)) ;; #x0a8
+        (label single-dual-cap-back-color)
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 0)) (max.xyzw screen-max screen-max pos-2)) ;; #x0a9
+        (label single-dual-cap-emit)
+        (vu-pair (fcand vi01 0x3ffff) (ftoi4.xyzw pos-2 pos-2)) ;; #x0aa
+        (vu-pair (ibne vi00 vi01 single-dual-cap-clip) (nop)) ;; #x0ab
+        (vu-pair (sq.xyzw st-2 gif-buffer 8) (nop)) ;; #x0ac
+        (vu-pair (sq.xyzw color gif-buffer 3) (nop)) ;; #x0ad
+        (vu-pair (sq.xyzw pos-2 gif-buffer 9) (nop)) ;; #x0ae
+        (vu-pair (xgkick gif-buffer) (nop)) ;; #x0af
+        (vu-pair (mtir gif-buffer gif-buffers.y) (nop)) ;; #x0b0
+        (vu-pair (mr32.xyzw gif-buffers gif-buffers) (nop)) ;; #x0b1
+        (label single-dual-cap-next)
+        (vu-pair (ibgtz count single-dual-cap-loop) (nop)) ;; #x0b2
+        (vu-pair (nop) (nop)) ;; #x0b3
+        (vu-pair (nop) (nop :e)) ;; #x0b4
+        (vu-pair (nop) (nop)) ;; #x0b5
+        ;; A triangle crossed the frustum. Park its three clip-space positions where the clipper expects them,
+        ;; pack the four integer registers the clipper will overwrite into the lanes of one vector, and call it.
+        (label single-cap-clip)
+        (vu-pair (sq.xyzw clip-0 vi00 SHADOW-VU1-CLIP-VERTS) (nop)) ;; #x0b6
+        (vu-pair (sq.xyzw clip-1 vi00 (+ SHADOW-VU1-CLIP-VERTS 3)) (nop)) ;; #x0b7
+        (vu-pair (sq.xyzw clip-2 vi00 (+ SHADOW-VU1-CLIP-VERTS 6)) (nop)) ;; #x0b8
+        (vu-pair (sq.xyzw color vi00 (+ SHADOW-VU1-CLIP-GIF 2)) (nop)) ;; #x0b9
+        (vu-pair (mfir.x edge-a gif-buffer) (nop)) ;; #x0ba
+        (vu-pair (mfir.y edge-a list) (nop)) ;; #x0bb
+        (vu-pair (mfir.z edge-a vi07) (nop)) ;; #x0bc
+        (vu-pair (bal vi15 clip-triangle) (nop)) ;; #x0bd
+        (vu-pair (mfir.w edge-a count) (nop)) ;; #x0be
+        (vu-pair (mtir count edge-a.w) (nop)) ;; #x0bf
+        (vu-pair (mtir list edge-a.y) (nop)) ;; #x0c0
+        (vu-pair (mtir vi07 edge-a.z) (nop)) ;; #x0c1
+        (vu-pair (b single-cap-next) (nop)) ;; #x0c2
+        (vu-pair (mtir gif-buffer edge-a.x) (nop)) ;; #x0c3
+        (label single-dual-cap-clip)
+        (vu-pair (sq.xyzw clip-0 vi00 SHADOW-VU1-CLIP-VERTS) (nop)) ;; #x0c4
+        (vu-pair (sq.xyzw clip-1 vi00 (+ SHADOW-VU1-CLIP-VERTS 3)) (nop)) ;; #x0c5
+        (vu-pair (sq.xyzw clip-2 vi00 (+ SHADOW-VU1-CLIP-VERTS 6)) (nop)) ;; #x0c6
+        (vu-pair (sq.xyzw color vi00 (+ SHADOW-VU1-CLIP-GIF 2)) (nop)) ;; #x0c7
+        (vu-pair (mfir.x edge-a gif-buffer) (nop)) ;; #x0c8
+        (vu-pair (mfir.y edge-a list) (nop)) ;; #x0c9
+        (vu-pair (mfir.z edge-a vi07) (nop)) ;; #x0ca
+        (vu-pair (bal vi15 clip-triangle) (nop)) ;; #x0cb
+        (vu-pair (mfir.w edge-a count) (nop)) ;; #x0cc
+        (vu-pair (mtir count edge-a.w) (nop)) ;; #x0cd
+        (vu-pair (mtir list edge-a.y) (nop)) ;; #x0ce
+        (vu-pair (mtir vi07 edge-a.z) (nop)) ;; #x0cf
+        (vu-pair (b single-dual-cap-next) (nop)) ;; #x0d0
+        (vu-pair (mtir gif-buffer edge-a.x) (nop)) ;; #x0d1
+        ;; Entry SHADOW-VU1-ENTRY-EDGES: the walls. Each record is two vertex indices and an orientation flag,
+        ;; and the quad runs from those two vertices to their two duals. The flag chooses which endpoint leads,
+        ;; which is how a wall off a back-facing double-sided sheet still winds outward.
+        (label draw-silhouette-quads)
+        (vu-pair (iaddiu list vi00 SHADOW-VU1-EDGE-LIST) (nop)) ;; #x0d2
+        (vu-pair (ilwr.x count list) (nop)) ;; #x0d3
+        (vu-pair (mtir gif-buffer gif-buffers.x) (nop)) ;; #x0d4
+        (vu-pair (iaddi list list 0x1) (addw.z st-0 vf00 vf00)) ;; #x0d5
+        (vu-pair (lq.xyzw st-0 vi00 (shadow-const adgif)) (addw.z st-1 vf00 vf00)) ;; #x0d6
+        (vu-pair (lq.xyzw edge-a vi00 (shadow-const texflush)) (addw.z st-2 vf00 vf00)) ;; #x0d7
+        (vu-pair (lq.xyzw edge-b vi00 (shadow-const quadgif)) (nop)) ;; #x0d8
+        (vu-pair (lq.xyzw mtx-row-0 vi00 SHADOW-VU1-MATRIX) (nop)) ;; #x0d9
+        (vu-pair (lq.xyzw mtx-row-1 vi00 (+ SHADOW-VU1-MATRIX 1)) (nop)) ;; #x0da
+        (vu-pair (lq.xyzw mtx-row-2 vi00 (+ SHADOW-VU1-MATRIX 2)) (nop)) ;; #x0db
+        (vu-pair (lq.xyzw mtx-row-3 vi00 (+ SHADOW-VU1-MATRIX 3)) (nop)) ;; #x0dc
+        (vu-pair (mtir vi01 gif-buffers.y) (nop)) ;; #x0dd
+        (vu-pair (sq.xyzw st-0 gif-buffer 0) (nop)) ;; #x0de
+        (vu-pair (sq.xyzw edge-a gif-buffer 1) (nop)) ;; #x0df
+        (vu-pair (sq.xyzw edge-b gif-buffer 2) (nop)) ;; #x0e0
+        (vu-pair (sq.xyzw st-0 vi01 0) (nop)) ;; #x0e1
+        (vu-pair (sq.xyzw edge-a vi01 1) (nop)) ;; #x0e2
+        (vu-pair (sq.xyzw edge-b vi01 2) (nop)) ;; #x0e3
+        (label quad-loop)
+        (vu-pair (lqi.xyzw indices list) (nop)) ;; #x0e4
+        (vu-pair (nop) (nop)) ;; #x0e5
+        (vu-pair (nop) (nop)) ;; #x0e6
+        (vu-pair (nop) (nop)) ;; #x0e7
+        (vu-pair (mtir slot-2 indices.z) (nop)) ;; #x0e8
+        (vu-pair (mtir slot-0 indices.x) (nop)) ;; #x0e9
+        (vu-pair (mtir slot-1 indices.y) (nop)) ;; #x0ea
+        (vu-pair (ibeq vi00 slot-2 quad-swapped) (nop)) ;; #x0eb
+        (vu-pair (nop) (nop)) ;; #x0ec
+        (vu-pair (lq.xyzw pos-0 slot-0 SHADOW-VU1-VERTS) (nop)) ;; #x0ed
+        (vu-pair (lq.xyzw pos-1 slot-1 SHADOW-VU1-VERTS) (nop)) ;; #x0ee
+        (vu-pair (lq.xyzw pos-2 slot-1 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x0ef
+        (vu-pair (b quad-transform) (nop)) ;; #x0f0
+        (vu-pair (lq.xyzw pos-3 slot-0 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x0f1
+        ;; The orientation flag was zero, so the pair leads with the other endpoint.
+        (label quad-swapped)
+        (vu-pair (lq.xyzw pos-0 slot-1 SHADOW-VU1-VERTS) (nop)) ;; #x0f2
+        (vu-pair (lq.xyzw pos-1 slot-0 SHADOW-VU1-VERTS) (nop)) ;; #x0f3
+        (vu-pair (lq.xyzw pos-2 slot-0 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x0f4
+        (vu-pair (lq.xyzw pos-3 slot-1 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x0f5
+        (label quad-transform)
+        (vu-pair (move.xyzw first-vertex pos-0) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x0f6
+        (vu-pair (nop) (maddax.xyzw ACC mtx-row-0 pos-0)) ;; #x0f7
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-0)) ;; #x0f8
+        (vu-pair (nop) (maddz.xyzw pos-0 mtx-row-2 pos-0)) ;; #x0f9
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x0fa
+        (vu-pair (nop) (sub.xyzw edge-a pos-1 first-vertex)) ;; #x0fb
+        (vu-pair (nop) (sub.xyzw edge-b pos-2 first-vertex)) ;; #x0fc
+        (vu-pair (div Q fog.x pos-0.w) (maddax.xyzw ACC mtx-row-0 pos-1)) ;; #x0fd
+        (vu-pair (nop) (mul.xyzw clip-0 pos-0 hmgescale)) ;; #x0fe
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-1)) ;; #x0ff
+        (vu-pair (nop) (maddz.xyzw pos-1 mtx-row-2 pos-1)) ;; #x100
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x101
+        (vu-pair (nop) (maddax.xyzw ACC mtx-row-0 pos-2)) ;; #x102
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-2)) ;; #x103
+        (vu-pair (div Q fog.x pos-1.w) (mul.xyz pos-0 pos-0 Q)) ;; #x104
+        (vu-pair (nop) (maddz.xyzw pos-2 mtx-row-2 pos-2)) ;; #x105
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x106
+        (vu-pair (nop) (maddax.xyzw ACC mtx-row-0 pos-3)) ;; #x107
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-3)) ;; #x108
+        (vu-pair (nop) (maddz.xyzw pos-3 mtx-row-2 pos-3)) ;; #x109
+        (vu-pair (nop) (mul.xyzw clip-1 pos-1 hmgescale)) ;; #x10a
+        (vu-pair (div Q fog.x pos-2.w) (mul.xyz pos-1 pos-1 Q)) ;; #x10b
+        (vu-pair (nop) (add.xy st-0 pos-0 texoffset)) ;; #x10c
+        (vu-pair (nop) (add.xyzw pos-0 pos-0 hvdfoff)) ;; #x10d
+        (vu-pair (nop) (opmula.xyz ACC edge-a edge-b)) ;; #x10e
+        (vu-pair (nop) (opmsub.xyz edge-a edge-b edge-a)) ;; #x10f
+        (vu-pair (nop) (mul.xyzw clip-2 pos-2 hmgescale)) ;; #x110
+        (vu-pair (nop) (mul.xyz edge-a edge-a first-vertex)) ;; #x111
+        (vu-pair (div Q fog.x pos-3.w) (mul.xyz pos-2 pos-2 Q)) ;; #x112
+        (vu-pair (nop) (mul.xyzw clip-3 pos-3 hmgescale)) ;; #x113
+        (vu-pair (nop) (mul.xy st-0 st-0 texscale)) ;; #x114
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-0)) ;; #x115
+        (vu-pair (nop) (max.xyzw screen-max screen-max pos-0)) ;; #x116
+        (vu-pair (nop) (ftoi4.xyzw pos-0 pos-0)) ;; #x117
+        (vu-pair (nop) (add.xy st-1 pos-1 texoffset)) ;; #x118
+        (vu-pair (nop) (mul.xyz pos-3 pos-3 Q)) ;; #x119
+        (vu-pair (nop) (add.xyzw pos-1 pos-1 hvdfoff)) ;; #x11a
+        (vu-pair (nop) (addy.x edge-a edge-a edge-a)) ;; #x11b
+        (vu-pair (sq.xyzw st-0 gif-buffer 4) (mini.xyzw screen-min screen-min pos-1)) ;; #x11c
+        (vu-pair (sq.xyzw pos-0 gif-buffer 5) (max.xyzw screen-max screen-max pos-1)) ;; #x11d
+        (vu-pair (nop) (clipw.xyz clip-0 clip-0)) ;; #x11e
+        (vu-pair (nop) (mul.xy st-1 st-1 texscale)) ;; #x11f
+        (vu-pair (nop) (addz.x edge-a edge-a edge-a)) ;; #x120
+        (vu-pair (nop) (ftoi4.xyzw pos-1 pos-1)) ;; #x121
+        (vu-pair (nop) (add.xy st-2 pos-2 texoffset)) ;; #x122
+        (vu-pair (sq.xyzw st-1 gif-buffer 6) (add.xyzw pos-2 pos-2 hvdfoff)) ;; #x123
+        (vu-pair (fsand vi01 0x2) (clipw.xyz clip-1 clip-1)) ;; #x124
+        (vu-pair (sq.xyzw pos-1 gif-buffer 7) (clipw.xyz clip-2 clip-2)) ;; #x125
+        (vu-pair (nop) (clipw.xyz clip-3 clip-3)) ;; #x126
+        (vu-pair (nop) (add.xy st-3 pos-3 texoffset)) ;; #x127
+        (vu-pair (nop) (add.xyzw pos-3 pos-3 hvdfoff)) ;; #x128
+        (vu-pair (nop) (mul.xy st-2 st-2 texscale)) ;; #x129
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-2)) ;; #x12a
+        (vu-pair (nop) (max.xyzw screen-max screen-max pos-2)) ;; #x12b
+        (vu-pair (ibeq vi00 vi01 quad-back-color) (mul.xy st-3 st-3 texscale)) ;; #x12c
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-3)) ;; #x12d
+        (vu-pair (b quad-emit) (nop)) ;; #x12e
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 1)) (max.xyzw screen-max screen-max pos-3)) ;; #x12f
+        (label quad-back-color)
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 0)) (max.xyzw screen-max screen-max pos-3)) ;; #x130
+        (label quad-emit)
+        ;; Four vertices this time, so twenty-four accumulated clip bits.
+        (vu-pair (fcand vi01 0xffffff) (ftoi4.xyzw pos-2 pos-2)) ;; #x131
+        (vu-pair (ibne vi00 vi01 quad-clip) (max.xyzw screen-max screen-max pos-3)) ;; #x132
+        (vu-pair (iaddi count count -0x1) (nop)) ;; #x133
+        (vu-pair (sq.xyzw st-2 gif-buffer 8) (ftoi4.xyzw pos-3 pos-3)) ;; #x134
+        (vu-pair (sq.xyzw color gif-buffer 3) (nop)) ;; #x135
+        (vu-pair (sq.xyzw pos-2 gif-buffer 9) (nop)) ;; #x136
+        (vu-pair (sq.xyzw st-3 gif-buffer 10) (nop)) ;; #x137
+        (vu-pair (sq.xyzw pos-3 gif-buffer 11) (nop)) ;; #x138
+        (vu-pair (xgkick gif-buffer) (nop)) ;; #x139
+        (vu-pair (mtir gif-buffer gif-buffers.y) (nop)) ;; #x13a
+        (vu-pair (mr32.xyzw gif-buffers gif-buffers) (nop)) ;; #x13b
+        (label quad-next)
+        (vu-pair (ibgtz count quad-loop) (nop)) ;; #x13c
+        (vu-pair (nop) (nop)) ;; #x13d
+        (vu-pair (nop) (nop :e)) ;; #x13e
+        (vu-pair (nop) (nop)) ;; #x13f
+        (label quad-clip)
+        (vu-pair (sq.xyzw clip-0 vi00 SHADOW-VU1-CLIP-VERTS) (nop)) ;; #x140
+        (vu-pair (sq.xyzw clip-1 vi00 (+ SHADOW-VU1-CLIP-VERTS 3)) (nop)) ;; #x141
+        (vu-pair (sq.xyzw clip-2 vi00 (+ SHADOW-VU1-CLIP-VERTS 6)) (nop)) ;; #x142
+        (vu-pair (sq.xyzw clip-3 vi00 (+ SHADOW-VU1-CLIP-VERTS 9)) (nop)) ;; #x143
+        (vu-pair (sq.xyzw color vi00 (+ SHADOW-VU1-CLIP-GIF 2)) (nop)) ;; #x144
+        (vu-pair (mfir.x edge-a gif-buffer) (nop)) ;; #x145
+        (vu-pair (mfir.y edge-a list) (nop)) ;; #x146
+        (vu-pair (mfir.z edge-a vi07) (nop)) ;; #x147
+        (vu-pair (bal vi15 clip-quad) (nop)) ;; #x148
+        (vu-pair (mfir.w edge-a count) (nop)) ;; #x149
+        (vu-pair (mtir count edge-a.w) (nop)) ;; #x14a
+        (vu-pair (mtir list edge-a.y) (nop)) ;; #x14b
+        (vu-pair (mtir vi07 edge-a.z) (nop)) ;; #x14c
+        (vu-pair (b quad-next) (nop)) ;; #x14d
+        (vu-pair (mtir gif-buffer edge-a.x) (nop)) ;; #x14e
+        ;; Entry SHADOW-VU1-ENTRY-DOUBLE-TRIS: the caps of a double-sided volume. Every triangle is drawn, but
+        ;; the faces byte the CPU classifier wrote decides whether the authored winding is used as-is or with
+        ;; its last two indices exchanged. There are two passes here as well, near then far, and the far pass
+        ;; takes the opposite branch so the ground cap faces the other way.
+        (label draw-double-caps)
+        (vu-pair (iaddiu list vi00 SHADOW-VU1-TRI-LIST) (nop)) ;; #x14f
+        (vu-pair (ilwr.x count list) (nop)) ;; #x150
+        (vu-pair (mtir gif-buffer gif-buffers.x) (nop)) ;; #x151
+        (vu-pair (iaddi list list 0x1) (addw.z st-0 vf00 vf00)) ;; #x152
+        (vu-pair (lq.xyzw st-0 vi00 (shadow-const adgif)) (addw.z st-1 vf00 vf00)) ;; #x153
+        (vu-pair (lq.xyzw edge-a vi00 (shadow-const texflush)) (addw.z st-2 vf00 vf00)) ;; #x154
+        (vu-pair (lq.xyzw edge-b vi00 (shadow-const trigif)) (addw.z st-3 vf00 vf00)) ;; #x155
+        (vu-pair (lq.xyzw mtx-row-0 vi00 SHADOW-VU1-MATRIX) (nop)) ;; #x156
+        (vu-pair (lq.xyzw mtx-row-1 vi00 (+ SHADOW-VU1-MATRIX 1)) (nop)) ;; #x157
+        (vu-pair (lq.xyzw mtx-row-2 vi00 (+ SHADOW-VU1-MATRIX 2)) (nop)) ;; #x158
+        (vu-pair (lq.xyzw mtx-row-3 vi00 (+ SHADOW-VU1-MATRIX 3)) (nop)) ;; #x159
+        (vu-pair (mtir vi01 gif-buffers.y) (nop)) ;; #x15a
+        (vu-pair (sq.xyzw st-0 gif-buffer 0) (nop)) ;; #x15b
+        (vu-pair (sq.xyzw edge-a gif-buffer 1) (nop)) ;; #x15c
+        (vu-pair (sq.xyzw edge-b gif-buffer 2) (nop)) ;; #x15d
+        (vu-pair (sq.xyzw st-0 vi01 0) (nop)) ;; #x15e
+        (vu-pair (sq.xyzw edge-a vi01 1) (nop)) ;; #x15f
+        (vu-pair (sq.xyzw edge-b vi01 2) (nop)) ;; #x160
+        (label double-cap-loop)
+        (vu-pair (lqi.xyzw indices list) (nop)) ;; #x161
+        (vu-pair (nop) (nop)) ;; #x162
+        (vu-pair (nop) (nop)) ;; #x163
+        (vu-pair (nop) (nop)) ;; #x164
+        (vu-pair (mtir vi01 indices.w) (nop)) ;; #x165
+        (vu-pair (mtir slot-0 indices.x) (nop)) ;; #x166
+        (vu-pair (mtir slot-1 indices.y) (nop)) ;; #x167
+        (vu-pair (mtir slot-2 indices.z) (nop)) ;; #x168
+        (vu-pair (ibeq vi00 vi01 double-cap-reversed) (nop)) ;; #x169
+        (vu-pair (lq.xyzw pos-0 slot-0 SHADOW-VU1-VERTS) (nop)) ;; #x16a
+        (vu-pair (lq.xyzw pos-1 slot-1 SHADOW-VU1-VERTS) (nop)) ;; #x16b
+        (vu-pair (b double-cap-transform) (nop)) ;; #x16c
+        (vu-pair (lq.xyzw pos-2 slot-2 SHADOW-VU1-VERTS) (nop)) ;; #x16d
+        (label double-cap-reversed)
+        (vu-pair (lq.xyzw pos-2 slot-1 SHADOW-VU1-VERTS) (nop)) ;; #x16e
+        (vu-pair (lq.xyzw pos-1 slot-2 SHADOW-VU1-VERTS) (nop)) ;; #x16f
+        (label double-cap-transform)
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x170
+        (vu-pair (move.xyzw first-vertex pos-0) (maddax.xyzw ACC mtx-row-0 pos-0)) ;; #x171
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-0)) ;; #x172
+        (vu-pair (nop) (sub.xyzw edge-a pos-1 pos-0)) ;; #x173
+        (vu-pair (nop) (sub.xyzw edge-b pos-2 pos-0)) ;; #x174
+        (vu-pair (nop) (maddz.xyzw pos-0 mtx-row-2 pos-0)) ;; #x175
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x176
+        (vu-pair (div Q fog.x pos-0.w) (maddax.xyzw ACC mtx-row-0 pos-1)) ;; #x177
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-1)) ;; #x178
+        (vu-pair (nop) (mul.xyzw clip-0 pos-0 hmgescale)) ;; #x179
+        (vu-pair (nop) (maddz.xyzw pos-1 mtx-row-2 pos-1)) ;; #x17a
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x17b
+        (vu-pair (nop) (maddax.xyzw ACC mtx-row-0 pos-2)) ;; #x17c
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-2)) ;; #x17d
+        (vu-pair (div Q fog.x pos-1.w) (mul.xyz pos-0 pos-0 Q)) ;; #x17e
+        (vu-pair (nop) (maddz.xyzw pos-2 mtx-row-2 pos-2)) ;; #x17f
+        (vu-pair (nop) (mul.xyzw clip-1 pos-1 hmgescale)) ;; #x180
+        (vu-pair (nop) (opmula.xyz ACC edge-a edge-b)) ;; #x181
+        (vu-pair (nop) (opmsub.xyz edge-a edge-b edge-a)) ;; #x182
+        (vu-pair (nop) (add.xy st-0 pos-0 texoffset)) ;; #x183
+        (vu-pair (nop) (add.xyzw pos-0 pos-0 hvdfoff)) ;; #x184
+        (vu-pair (div Q fog.x pos-2.w) (mul.xyz pos-1 pos-1 Q)) ;; #x185
+        (vu-pair (nop) (mul.xyzw clip-2 pos-2 hmgescale)) ;; #x186
+        (vu-pair (nop) (mul.xyz edge-a edge-a first-vertex)) ;; #x187
+        (vu-pair (nop) (mul.xy st-0 st-0 texscale)) ;; #x188
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-0)) ;; #x189
+        (vu-pair (nop) (max.xyzw screen-max screen-max pos-0)) ;; #x18a
+        (vu-pair (nop) (ftoi4.xyzw pos-0 pos-0)) ;; #x18b
+        (vu-pair (nop) (add.xy st-1 pos-1 texoffset)) ;; #x18c
+        (vu-pair (nop) (add.xyzw pos-1 pos-1 hvdfoff)) ;; #x18d
+        (vu-pair (fcset 0x0) (addy.x edge-a edge-a edge-a)) ;; #x18e
+        (vu-pair (nop) (mul.xyz pos-2 pos-2 Q)) ;; #x18f
+        (vu-pair (sq.xyzw st-0 gif-buffer 4) (mini.xyzw screen-min screen-min pos-1)) ;; #x190
+        (vu-pair (sq.xyzw pos-0 gif-buffer 5) (max.xyzw screen-max screen-max pos-1)) ;; #x191
+        (vu-pair (nop) (clipw.xyz clip-0 clip-0)) ;; #x192
+        (vu-pair (nop) (mul.xy st-1 st-1 texscale)) ;; #x193
+        (vu-pair (nop) (addz.x edge-a edge-a edge-a)) ;; #x194
+        (vu-pair (nop) (ftoi4.xyzw pos-1 pos-1)) ;; #x195
+        (vu-pair (nop) (add.xy st-2 pos-2 texoffset)) ;; #x196
+        (vu-pair (sq.xyzw st-1 gif-buffer 6) (add.xyzw pos-2 pos-2 hvdfoff)) ;; #x197
+        (vu-pair (fsand vi01 0x2) (clipw.xyz clip-1 clip-1)) ;; #x198
+        (vu-pair (sq.xyzw pos-1 gif-buffer 7) (clipw.xyz clip-2 clip-2)) ;; #x199
+        (vu-pair (ibeq vi00 vi01 double-cap-back-color) (mul.xy st-2 st-2 texscale)) ;; #x19a
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-2)) ;; #x19b
+        (vu-pair (b double-cap-emit) (nop)) ;; #x19c
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 1)) (max.xyzw screen-max screen-max pos-2)) ;; #x19d
+        (label double-cap-back-color)
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 0)) (max.xyzw screen-max screen-max pos-2)) ;; #x19e
+        (label double-cap-emit)
+        (vu-pair (fcand vi01 0x3ffff) (ftoi4.xyzw pos-2 pos-2)) ;; #x19f
+        (vu-pair (ibne vi00 vi01 double-cap-clip) (nop)) ;; #x1a0
+        (vu-pair (iaddi count count -0x1) (nop)) ;; #x1a1
+        (vu-pair (sq.xyzw st-2 gif-buffer 8) (nop)) ;; #x1a2
+        (vu-pair (sq.xyzw color gif-buffer 3) (nop)) ;; #x1a3
+        (vu-pair (sq.xyzw pos-2 gif-buffer 9) (nop)) ;; #x1a4
+        (vu-pair (xgkick gif-buffer) (nop)) ;; #x1a5
+        (vu-pair (mtir gif-buffer gif-buffers.y) (nop)) ;; #x1a6
+        (vu-pair (mr32.xyzw gif-buffers gif-buffers) (nop)) ;; #x1a7
+        (label double-cap-next)
+        (vu-pair (ibgtz count double-cap-loop) (nop)) ;; #x1a8
+        (vu-pair (nop) (nop)) ;; #x1a9
+        (vu-pair (iaddiu list vi00 SHADOW-VU1-TRI-LIST) (nop)) ;; #x1aa
+        (vu-pair (ilwr.x count list) (nop)) ;; #x1ab
+        (vu-pair (iaddi list list 0x1) (nop)) ;; #x1ac
+        (label double-dual-cap-loop)
+        (vu-pair (lqi.xyzw indices list) (nop)) ;; #x1ad
+        (vu-pair (nop) (nop)) ;; #x1ae
+        (vu-pair (nop) (nop)) ;; #x1af
+        (vu-pair (nop) (nop)) ;; #x1b0
+        (vu-pair (mtir vi01 indices.w) (nop)) ;; #x1b1
+        (vu-pair (mtir slot-0 indices.x) (nop)) ;; #x1b2
+        (vu-pair (mtir slot-1 indices.y) (nop)) ;; #x1b3
+        (vu-pair (mtir slot-2 indices.z) (nop)) ;; #x1b4
+        (vu-pair (ibne vi00 vi01 double-dual-cap-reversed) (nop)) ;; #x1b5
+        (vu-pair (lq.xyzw pos-0 slot-0 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x1b6
+        (vu-pair (lq.xyzw pos-1 slot-1 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x1b7
+        (vu-pair (b double-dual-cap-transform) (nop)) ;; #x1b8
+        (vu-pair (lq.xyzw pos-2 slot-2 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x1b9
+        (label double-dual-cap-reversed)
+        (vu-pair (lq.xyzw pos-2 slot-1 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x1ba
+        (vu-pair (lq.xyzw pos-1 slot-2 SHADOW-VU1-DUAL-VERTS) (nop)) ;; #x1bb
+        (label double-dual-cap-transform)
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x1bc
+        (vu-pair (move.xyzw first-vertex pos-0) (maddax.xyzw ACC mtx-row-0 pos-0)) ;; #x1bd
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-0)) ;; #x1be
+        (vu-pair (nop) (maddz.xyzw pos-0 mtx-row-2 pos-0)) ;; #x1bf
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x1c0
+        (vu-pair (nop) (sub.xyzw edge-a pos-1 first-vertex)) ;; #x1c1
+        (vu-pair (nop) (sub.xyzw edge-b pos-2 first-vertex)) ;; #x1c2
+        (vu-pair (div Q fog.x pos-0.w) (maddax.xyzw ACC mtx-row-0 pos-1)) ;; #x1c3
+        (vu-pair (nop) (mul.xyzw clip-0 pos-0 hmgescale)) ;; #x1c4
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-1)) ;; #x1c5
+        (vu-pair (nop) (maddz.xyzw pos-1 mtx-row-2 pos-1)) ;; #x1c6
+        (vu-pair (nop) (mulaw.xyzw ACC mtx-row-3 vf00)) ;; #x1c7
+        (vu-pair (nop) (maddax.xyzw ACC mtx-row-0 pos-2)) ;; #x1c8
+        (vu-pair (nop) (madday.xyzw ACC mtx-row-1 pos-2)) ;; #x1c9
+        (vu-pair (div Q fog.x pos-1.w) (mul.xyz pos-0 pos-0 Q)) ;; #x1ca
+        (vu-pair (nop) (maddz.xyzw pos-2 mtx-row-2 pos-2)) ;; #x1cb
+        (vu-pair (nop) (mul.xyzw clip-1 pos-1 hmgescale)) ;; #x1cc
+        (vu-pair (nop) (opmula.xyz ACC edge-a edge-b)) ;; #x1cd
+        (vu-pair (nop) (opmsub.xyz edge-a edge-b edge-a)) ;; #x1ce
+        (vu-pair (nop) (add.xy st-0 pos-0 texoffset)) ;; #x1cf
+        (vu-pair (nop) (add.xyzw pos-0 pos-0 hvdfoff)) ;; #x1d0
+        (vu-pair (div Q fog.x pos-2.w) (mul.xyz pos-1 pos-1 Q)) ;; #x1d1
+        (vu-pair (nop) (mul.xyzw clip-2 pos-2 hmgescale)) ;; #x1d2
+        (vu-pair (nop) (mul.xyz edge-a edge-a first-vertex)) ;; #x1d3
+        (vu-pair (nop) (mul.xy st-0 st-0 texscale)) ;; #x1d4
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-0)) ;; #x1d5
+        (vu-pair (nop) (max.xyzw screen-max screen-max pos-0)) ;; #x1d6
+        (vu-pair (nop) (ftoi4.xyzw pos-0 pos-0)) ;; #x1d7
+        (vu-pair (nop) (add.xy st-1 pos-1 texoffset)) ;; #x1d8
+        (vu-pair (nop) (add.xyzw pos-1 pos-1 hvdfoff)) ;; #x1d9
+        (vu-pair (fcset 0x0) (addy.x edge-a edge-a edge-a)) ;; #x1da
+        (vu-pair (nop) (mul.xyz pos-2 pos-2 Q)) ;; #x1db
+        (vu-pair (sq.xyzw st-0 gif-buffer 4) (mini.xyzw screen-min screen-min pos-1)) ;; #x1dc
+        (vu-pair (sq.xyzw pos-0 gif-buffer 5) (max.xyzw screen-max screen-max pos-1)) ;; #x1dd
+        (vu-pair (nop) (clipw.xyz clip-0 clip-0)) ;; #x1de
+        (vu-pair (nop) (mul.xy st-1 st-1 texscale)) ;; #x1df
+        (vu-pair (nop) (addz.x edge-a edge-a edge-a)) ;; #x1e0
+        (vu-pair (nop) (ftoi4.xyzw pos-1 pos-1)) ;; #x1e1
+        (vu-pair (nop) (add.xy st-2 pos-2 texoffset)) ;; #x1e2
+        (vu-pair (sq.xyzw st-1 gif-buffer 6) (add.xyzw pos-2 pos-2 hvdfoff)) ;; #x1e3
+        (vu-pair (fsand vi01 0x2) (clipw.xyz clip-1 clip-1)) ;; #x1e4
+        (vu-pair (sq.xyzw pos-1 gif-buffer 7) (clipw.xyz clip-2 clip-2)) ;; #x1e5
+        (vu-pair (ibeq vi00 vi01 double-dual-cap-back-color) (mul.xy st-2 st-2 texscale)) ;; #x1e6
+        (vu-pair (nop) (mini.xyzw screen-min screen-min pos-2)) ;; #x1e7
+        (vu-pair (b double-dual-cap-emit) (nop)) ;; #x1e8
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 1)) (max.xyzw screen-max screen-max pos-2)) ;; #x1e9
+        (label double-dual-cap-back-color)
+        (vu-pair (lq.xyzw color vi00 (shadow-const clrs 0)) (max.xyzw screen-max screen-max pos-2)) ;; #x1ea
+        (label double-dual-cap-emit)
+        (vu-pair (fcand vi01 0x3ffff) (ftoi4.xyzw pos-2 pos-2)) ;; #x1eb
+        (vu-pair (ibne vi00 vi01 double-dual-cap-clip) (nop)) ;; #x1ec
+        (vu-pair (iaddi count count -0x1) (nop)) ;; #x1ed
+        (vu-pair (sq.xyzw st-2 gif-buffer 8) (nop)) ;; #x1ee
+        (vu-pair (sq.xyzw color gif-buffer 3) (nop)) ;; #x1ef
+        (vu-pair (sq.xyzw pos-2 gif-buffer 9) (nop)) ;; #x1f0
+        (vu-pair (xgkick gif-buffer) (nop)) ;; #x1f1
+        (vu-pair (mtir gif-buffer gif-buffers.y) (nop)) ;; #x1f2
+        (vu-pair (mr32.xyzw gif-buffers gif-buffers) (nop)) ;; #x1f3
+        (label double-dual-cap-next)
+        (vu-pair (ibgtz count double-dual-cap-loop) (nop)) ;; #x1f4
+        (vu-pair (nop) (nop)) ;; #x1f5
+        (vu-pair (nop) (nop :e)) ;; #x1f6
+        (vu-pair (nop) (nop)) ;; #x1f7
+        (label double-cap-clip)
+        (vu-pair (sq.xyzw clip-0 vi00 SHADOW-VU1-CLIP-VERTS) (nop)) ;; #x1f8
+        (vu-pair (sq.xyzw clip-1 vi00 (+ SHADOW-VU1-CLIP-VERTS 3)) (nop)) ;; #x1f9
+        (vu-pair (sq.xyzw clip-2 vi00 (+ SHADOW-VU1-CLIP-VERTS 6)) (nop)) ;; #x1fa
+        (vu-pair (sq.xyzw color vi00 (+ SHADOW-VU1-CLIP-GIF 2)) (nop)) ;; #x1fb
+        (vu-pair (mfir.x edge-a gif-buffer) (nop)) ;; #x1fc
+        (vu-pair (mfir.y edge-a list) (nop)) ;; #x1fd
+        (vu-pair (mfir.z edge-a vi07) (nop)) ;; #x1fe
+        (vu-pair (bal vi15 clip-triangle) (nop)) ;; #x1ff
+        (vu-pair (mfir.w edge-a count) (nop)) ;; #x200
+        (vu-pair (mtir count edge-a.w) (nop)) ;; #x201
+        (vu-pair (mtir list edge-a.y) (nop)) ;; #x202
+        (vu-pair (mtir vi07 edge-a.z) (nop)) ;; #x203
+        (vu-pair (b double-cap-next) (nop)) ;; #x204
+        (vu-pair (mtir gif-buffer edge-a.x) (nop)) ;; #x205
+        (label double-dual-cap-clip)
+        (vu-pair (sq.xyzw clip-0 vi00 SHADOW-VU1-CLIP-VERTS) (nop)) ;; #x206
+        (vu-pair (sq.xyzw clip-1 vi00 (+ SHADOW-VU1-CLIP-VERTS 3)) (nop)) ;; #x207
+        (vu-pair (sq.xyzw clip-2 vi00 (+ SHADOW-VU1-CLIP-VERTS 6)) (nop)) ;; #x208
+        (vu-pair (sq.xyzw color vi00 (+ SHADOW-VU1-CLIP-GIF 2)) (nop)) ;; #x209
+        (vu-pair (mfir.x edge-a gif-buffer) (nop)) ;; #x20a
+        (vu-pair (mfir.y edge-a list) (nop)) ;; #x20b
+        (vu-pair (mfir.z edge-a vi07) (nop)) ;; #x20c
+        (vu-pair (bal vi15 clip-triangle) (nop)) ;; #x20d
+        (vu-pair (mfir.w edge-a count) (nop)) ;; #x20e
+        (vu-pair (mtir count edge-a.w) (nop)) ;; #x20f
+        (vu-pair (mtir list edge-a.y) (nop)) ;; #x210
+        (vu-pair (mtir vi07 edge-a.z) (nop)) ;; #x211
+        (vu-pair (b double-dual-cap-next) (nop)) ;; #x212
+        (vu-pair (mtir gif-buffer edge-a.x) (nop))) ;; #x213
+      (rlet ((edge-start :reg vf14)
+             (edge-end :reg vf15)
+             (clipped :reg vf16)
+             (clip-st :reg vf26)
+             (start-dist :reg vf30)
+             (end-dist :reg vf31)
+             (out-cursor :reg vi03)
+             (out-gif :reg vi04)
+             (out-count :reg vi05)
+             (poly :reg vi09)
+             (stack-depth :reg vi10)
+             (sub-return :reg vi11)
+             (saved-poly :reg vi12)
+             (clip-return :reg vi15))
+        ;; The clipper. A triangle or quad that touched the frustum is rebuilt as a small linked polygon and
+        ;; walked once per frustum plane.
+        ;;
+        ;; Each of the six planes owns a SHADOW-VU1-CLIP-STRIDE-quadword record whose first quadword holds two
+        ;; vertex links in lanes x and y and, in lane z, the address of the two-instruction subroutine that
+        ;; measures distance to that plane. The other six quadwords are two vertex slots three quadwords apart.
+        ;; Installing the plane test as a code address means the walk is written once and dispatches with jalr.
+        ;;
+        ;; A vertex that survives all six planes is projected, textured, and appended to the clipper's own GIF
+        ;; buffer; the surviving vertex count is patched into that buffer's primitive tag just before the kick.
+        ;;
+        ;; vi01, vi02, vi06, vi07 and vi08 keep physical names here. The two polygon walks below load the two
+        ;; ends of an edge from vi07 and vi08 in opposite order, so one name for either would be wrong in one
+        ;; of them.
+        ;;
+        ;; end-dist doubles as storage for the outer return address: it lives in lane x while the plane tests
+        ;; only ever write lane w. That is how the return survives the nested bal calls without a stack.
+        (label clip-triangle)
+        (vu-pair (sq.xyzw vf00 vi00 SHADOW-VU1-CLIP-POLY) (nop)) ;; #x214
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 1 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x215
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 2 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x216
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 3 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x217
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 4 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x218
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 5 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x219
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-minus-x)) (nop)) ;; #x21a
+        (vu-pair (isw.z vi01 vi00 SHADOW-VU1-CLIP-POLY) (nop)) ;; #x21b
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-plus-x)) (nop)) ;; #x21c
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 1 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x21d
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-minus-y)) (nop)) ;; #x21e
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 2 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x21f
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-plus-y)) (nop)) ;; #x220
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 3 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x221
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-minus-z)) (nop)) ;; #x222
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 4 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x223
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-plus-z)) (nop)) ;; #x224
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 5 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x225
+        (vu-pair (iaddiu out-cursor vi00 SHADOW-VU1-CLIP-OUT) (nop)) ;; #x226
+        (vu-pair (iaddiu out-gif vi00 (+ SHADOW-VU1-CLIP-GIF 3)) (nop)) ;; #x227
+        (vu-pair (mfir.x end-dist clip-return) (nop)) ;; #x228
+        (vu-pair (iaddi out-count vi00 0x0) (nop)) ;; #x229
+        (vu-pair (bal clip-return clip-against-plane) (nop)) ;; #x22a
+        (vu-pair (iaddiu vi07 vi00 SHADOW-VU1-CLIP-VERTS) (nop)) ;; #x22b
+        (vu-pair (bal clip-return clip-against-plane) (nop)) ;; #x22c
+        (vu-pair (iaddiu vi07 vi00 (+ SHADOW-VU1-CLIP-VERTS 3)) (nop)) ;; #x22d
+        (vu-pair (bal clip-return clip-against-plane) (nop)) ;; #x22e
+        (vu-pair (iaddiu vi07 vi00 (+ SHADOW-VU1-CLIP-VERTS 6)) (nop)) ;; #x22f
+        (vu-pair (b emit-clipped-polygon) (nop)) ;; #x230
+        (vu-pair (nop) (nop)) ;; #x231
+        ;; The same walk with a fourth starting edge, for a wall quad.
+        (label clip-quad)
+        (vu-pair (sq.xyzw vf00 vi00 SHADOW-VU1-CLIP-POLY) (nop)) ;; #x232
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 1 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x233
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 2 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x234
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 3 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x235
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 4 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x236
+        (vu-pair (sq.xyzw vf00 vi00 (+ SHADOW-VU1-CLIP-POLY (* 5 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x237
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-minus-x)) (nop)) ;; #x238
+        (vu-pair (isw.z vi01 vi00 SHADOW-VU1-CLIP-POLY) (nop)) ;; #x239
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-plus-x)) (nop)) ;; #x23a
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 1 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x23b
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-minus-y)) (nop)) ;; #x23c
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 2 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x23d
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-plus-y)) (nop)) ;; #x23e
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 3 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x23f
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-minus-z)) (nop)) ;; #x240
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 4 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x241
+        (vu-pair (iaddiu vi01 vi00 (vu-label distance-to-plus-z)) (nop)) ;; #x242
+        (vu-pair (isw.z vi01 vi00 (+ SHADOW-VU1-CLIP-POLY (* 5 SHADOW-VU1-CLIP-STRIDE))) (nop)) ;; #x243
+        (vu-pair (iaddiu out-cursor vi00 SHADOW-VU1-CLIP-OUT) (nop)) ;; #x244
+        (vu-pair (iaddiu out-gif vi00 (+ SHADOW-VU1-CLIP-GIF 3)) (nop)) ;; #x245
+        (vu-pair (mfir.x end-dist clip-return) (nop)) ;; #x246
+        (vu-pair (iaddi out-count vi00 0x0) (nop)) ;; #x247
+        (vu-pair (bal clip-return clip-against-plane) (nop)) ;; #x248
+        (vu-pair (iaddiu vi07 vi00 SHADOW-VU1-CLIP-VERTS) (nop)) ;; #x249
+        (vu-pair (bal clip-return clip-against-plane) (nop)) ;; #x24a
+        (vu-pair (iaddiu vi07 vi00 (+ SHADOW-VU1-CLIP-VERTS 3)) (nop)) ;; #x24b
+        (vu-pair (bal clip-return clip-against-plane) (nop)) ;; #x24c
+        (vu-pair (iaddiu vi07 vi00 (+ SHADOW-VU1-CLIP-VERTS 6)) (nop)) ;; #x24d
+        (vu-pair (bal clip-return clip-against-plane) (nop)) ;; #x24e
+        (vu-pair (iaddiu vi07 vi00 (+ SHADOW-VU1-CLIP-VERTS 9)) (nop)) ;; #x24f
+        (vu-pair (b emit-clipped-polygon) (nop)) ;; #x250
+        (vu-pair (nop) (nop)) ;; #x251
+        (label clip-against-plane)
+        (vu-pair (iaddiu poly vi00 SHADOW-VU1-CLIP-POLY) (nop)) ;; #x252
+        (label walk-polygon)
+        (vu-pair (iaddi stack-depth vi00 0x0) (nop)) ;; #x253
+        (label next-polygon-vertex)
+        (vu-pair (isubiu vi01 poly SHADOW-VU1-CLIP-STACK) (nop)) ;; #x254
+        (vu-pair (ilwr.y vi08 poly) (nop)) ;; #x255
+        (vu-pair (ibgez vi01 project-polygon-vertex) (nop)) ;; #x256
+        (vu-pair (ilwr.z vi06 poly) (nop)) ;; #x257
+        (vu-pair (lq.xyzw edge-end vi07 0) (nop)) ;; #x258
+        (vu-pair (lq.xyzw edge-start vi08 0) (nop)) ;; #x259
+        (vu-pair (ibne vi00 vi08 test-both-ends) (nop)) ;; #x25a
+        (vu-pair (iswr.y vi07 poly) (nop)) ;; #x25b
+        (vu-pair (jalr sub-return vi06) (nop)) ;; #x25c
+        (vu-pair (iswr.x vi07 poly) (nop)) ;; #x25d
+        (vu-pair (nop) (nop)) ;; #x25e
+        (vu-pair (nop) (nop)) ;; #x25f
+        (vu-pair (nop) (nop)) ;; #x260
+        (vu-pair (fsand vi02 0x2) (nop)) ;; #x261
+        (vu-pair (ibne vi00 vi02 pop-deferred-edge) (nop)) ;; #x262
+        (vu-pair (nop) (nop)) ;; #x263
+        (vu-pair (b next-polygon-vertex) (nop)) ;; #x264
+        (vu-pair (iaddi poly poly 0x7) (nop)) ;; #x265
+        (label test-both-ends)
+        (vu-pair (jalr sub-return vi06) (nop)) ;; #x266
+        (vu-pair (nop) (nop)) ;; #x267
+        (vu-pair (nop) (nop)) ;; #x268
+        (vu-pair (nop) (nop)) ;; #x269
+        (vu-pair (fsand vi01 0x2) (nop)) ;; #x26a
+        (vu-pair (fsand vi02 0x2) (subw.w end-dist start-dist end-dist)) ;; #x26b
+        (vu-pair (ibne vi00 vi01 edge-leaves) (nop)) ;; #x26c
+        (vu-pair (nop) (nop)) ;; #x26d
+        (vu-pair (ibne vi00 vi02 edge-enters) (nop)) ;; #x26e
+        (vu-pair (div Q start-dist.w end-dist.w) (nop)) ;; #x26f
+        (vu-pair (b next-polygon-vertex) (nop)) ;; #x270
+        (vu-pair (iaddi poly poly 0x7) (nop)) ;; #x271
+        (label edge-enters)
+        (vu-pair (bal sub-return interpolate-clip-vertex) (nop)) ;; #x272
+        (vu-pair (iaddi vi07 poly 0x1) (nop)) ;; #x273
+        (vu-pair (sq.xyzw clipped poly 1) (nop)) ;; #x274
+        (vu-pair (b next-polygon-vertex) (nop)) ;; #x275
+        (vu-pair (iaddi poly poly 0x7) (nop)) ;; #x276
+        (label edge-leaves)
+        (vu-pair (ibne vi00 vi02 pop-deferred-edge) (nop)) ;; #x277
+        (vu-pair (div Q start-dist.w end-dist.w) (nop)) ;; #x278
+        (vu-pair (bal sub-return interpolate-clip-vertex) (nop)) ;; #x279
+        (vu-pair (nop) (nop)) ;; #x27a
+        (vu-pair (sq.xyzw clipped poly 4) (nop)) ;; #x27b
+        (vu-pair (iaddi poly poly 0x7) (nop)) ;; #x27c
+        (vu-pair (isw.x poly stack-depth SHADOW-VU1-CLIP-STACK) (nop)) ;; #x27d
+        (vu-pair (isw.y vi07 stack-depth SHADOW-VU1-CLIP-STACK) (nop)) ;; #x27e
+        (vu-pair (iaddi stack-depth stack-depth 0x1) (nop)) ;; #x27f
+        (vu-pair (b next-polygon-vertex) (nop)) ;; #x280
+        (vu-pair (iaddi vi07 poly -0x3) (nop)) ;; #x281
+        ;; This vertex is inside every plane. Undo the homogeneous scale, divide, build ST from the screen
+        ;; position, and append an ST/XYZF pair to the clipper's output.
+        (label project-polygon-vertex)
+        (vu-pair (lq.xyzw edge-start vi07 0) (nop)) ;; #x282
+        (vu-pair (iaddi out-count out-count 0x1) (nop)) ;; #x283
+        (vu-pair (div Q vf00.w edge-start.w) (nop)) ;; #x284
+        (vu-pair (nop) (mul.xyzw edge-start edge-start invhscale)) ;; #x285
+        (vu-pair (iaddi out-cursor out-cursor 0x2) (nop)) ;; #x286
+        (vu-pair (waitq) (subw.w edge-start vf00 vf00)) ;; #x287
+        (vu-pair (nop) (mul.xyz edge-start edge-start Q)) ;; #x288
+        (vu-pair (nop) (add.xy clip-st edge-start texoffset)) ;; #x289
+        (vu-pair (nop) (add.xyzw edge-start edge-start hvdfoff)) ;; #x28a
+        (vu-pair (nop) (mul.xy clip-st clip-st texscale)) ;; #x28b
+        (vu-pair (nop) (mini.xyzw screen-min screen-min edge-start)) ;; #x28c
+        (vu-pair (nop) (max.xyzw screen-max screen-max edge-start)) ;; #x28d
+        (vu-pair (sq.xyzw clip-st out-cursor -2) (ftoi4.xyzw edge-start edge-start)) ;; #x28e
+        (vu-pair (sq.xyzw edge-start out-cursor -1) (nop)) ;; #x28f
+        (label pop-deferred-edge)
+        (vu-pair (iblez stack-depth plane-done) (nop)) ;; #x290
+        (vu-pair (nop) (nop)) ;; #x291
+        (vu-pair (ilw.x poly stack-depth (- SHADOW-VU1-CLIP-STACK 1)) (nop)) ;; #x292
+        (vu-pair (ilw.y vi07 stack-depth (- SHADOW-VU1-CLIP-STACK 1)) (nop)) ;; #x293
+        (vu-pair (b next-polygon-vertex) (nop)) ;; #x294
+        (vu-pair (iaddi stack-depth stack-depth -0x1) (nop)) ;; #x295
+        (label plane-done)
+        (vu-pair (jr clip-return) (nop)) ;; #x296
+        (vu-pair (nop) (nop)) ;; #x297
+        ;; Walk the finished polygon and emit it. An edge that enters or leaves the frustum is recursed into so
+        ;; the crossing vertex exists before the edge is written out.
+        (label emit-clipped-polygon)
+        (vu-pair (iaddiu poly vi00 SHADOW-VU1-CLIP-POLY) (nop)) ;; #x298
+        (label emit-edge)
+        (vu-pair (ilwr.x vi08 poly) (nop)) ;; #x299
+        (vu-pair (ilwr.y vi07 poly) (nop)) ;; #x29a
+        (vu-pair (ilwr.z vi06 poly) (nop)) ;; #x29b
+        (vu-pair (nop) (nop)) ;; #x29c
+        (vu-pair (ibeq vi00 vi08 next-emit-edge) (nop)) ;; #x29d
+        (vu-pair (lq.xyzw edge-start vi07 0) (nop)) ;; #x29e
+        (vu-pair (ibeq vi07 vi08 next-emit-edge) (nop)) ;; #x29f
+        (vu-pair (lq.xyzw edge-end vi08 0) (nop)) ;; #x2a0
+        (vu-pair (jalr sub-return vi06) (nop)) ;; #x2a1
+        (vu-pair (nop) (nop)) ;; #x2a2
+        (vu-pair (nop) (nop)) ;; #x2a3
+        (vu-pair (nop) (nop)) ;; #x2a4
+        (vu-pair (fsand vi01 0x2) (nop)) ;; #x2a5
+        (vu-pair (fsand vi02 0x2) (subw.w end-dist start-dist end-dist)) ;; #x2a6
+        (vu-pair (ibeq vi02 vi01 next-emit-edge) (nop)) ;; #x2a7
+        (vu-pair (nop) (nop)) ;; #x2a8
+        (vu-pair (ibeq vi00 vi01 emit-entering-edge) (nop)) ;; #x2a9
+        (vu-pair (div Q start-dist.w end-dist.w) (nop)) ;; #x2aa
+        (vu-pair (bal sub-return interpolate-clip-vertex) (nop)) ;; #x2ab
+        (vu-pair (nop) (nop)) ;; #x2ac
+        (vu-pair (sq.xyzw clipped poly 4) (nop)) ;; #x2ad
+        (vu-pair (iaddi vi07 poly 0x4) (nop)) ;; #x2ae
+        (vu-pair (ior saved-poly poly vi00) (nop)) ;; #x2af
+        (vu-pair (bal clip-return walk-polygon) (nop)) ;; #x2b0
+        (vu-pair (iaddi poly poly 0x7) (nop)) ;; #x2b1
+        (vu-pair (b next-emit-edge) (nop)) ;; #x2b2
+        (vu-pair (ior poly saved-poly vi00) (nop)) ;; #x2b3
+        (label emit-entering-edge)
+        (vu-pair (bal sub-return interpolate-clip-vertex) (nop)) ;; #x2b4
+        (vu-pair (nop) (nop)) ;; #x2b5
+        (vu-pair (sq.xyzw clipped poly 1) (nop)) ;; #x2b6
+        (vu-pair (iaddi vi07 poly 0x1) (nop)) ;; #x2b7
+        (vu-pair (ior saved-poly poly vi00) (nop)) ;; #x2b8
+        (vu-pair (bal clip-return walk-polygon) (nop)) ;; #x2b9
+        (vu-pair (iaddi poly poly 0x7) (nop)) ;; #x2ba
+        (vu-pair (ior poly saved-poly vi00) (nop)) ;; #x2bb
+        (label next-emit-edge)
+        (vu-pair (isubiu vi01 poly (- SHADOW-VU1-CLIP-STACK SHADOW-VU1-CLIP-STRIDE)) (nop)) ;; #x2bc
+        (vu-pair (iswr.x vi00 poly) (nop)) ;; #x2bd
+        (vu-pair (iswr.y vi00 poly) (nop)) ;; #x2be
+        (vu-pair (ibltz vi01 emit-edge) (nop)) ;; #x2bf
+        (vu-pair (iaddi poly poly 0x7) (nop)) ;; #x2c0
+        ;; Nothing survived: skip the kick. Otherwise patch the vertex count and the EOP bit into the primitive
+        ;; tag, kick the polygon, then kick a one-register A+D packet out of the constant area to put RGBAQ
+        ;; back for whatever draws next.
+        (vu-pair (ibeq vi00 out-count clip-return-point) (nop)) ;; #x2c1
+        (vu-pair (mtir clip-return end-dist.x) (nop)) ;; #x2c2
+        ;; iaddiu's immediate is fifteen bits, so the GIF tag's EOP bit takes two of them.
+        ;; out-count is the surviving vertex count and becomes the tag's nloop at the same time.
+        (vu-pair (iaddiu out-count out-count 0x4000) (nop)) ;; #x2c3
+        (vu-pair (iaddiu out-count out-count 0x4000) (nop)) ;; #x2c4
+        (vu-pair (iswr.x out-count out-gif) (nop)) ;; #x2c5
+        (vu-pair (iaddiu vi01 vi00 SHADOW-VU1-CLIP-GIF) (nop)) ;; #x2c6
+        (vu-pair (xgkick vi01) (nop)) ;; #x2c7
+        (vu-pair (lq.xyzw start-dist vi00 (shadow-const adgif)) (nop)) ;; #x2c8
+        (vu-pair (lq.xyzw end-dist vi00 (shadow-const flush)) (nop)) ;; #x2c9
+        (vu-pair (iaddiu vi01 vi00 SHADOW-VU1-RESTORE-GIF) (nop)) ;; #x2ca
+        ;; -0x7fff is 0x8001: nloop of one with EOP set, patched into the trailing A+D tag.
+        (vu-pair (isubiu vi02 vi00 0x7fff) (nop)) ;; #x2cb
+        (vu-pair (sq.xyzw start-dist vi01 0) (nop)) ;; #x2cc
+        (vu-pair (iswr.x vi02 vi01) (nop)) ;; #x2cd
+        (vu-pair (sq.xyzw end-dist vi01 1) (nop)) ;; #x2ce
+        (vu-pair (nop) (nop)) ;; #x2cf
+        (vu-pair (xgkick vi01) (nop)) ;; #x2d0
+        (label clip-return-point)
+        (vu-pair (nop) (nop)) ;; #x2d1
+        (vu-pair (jr clip-return) (nop)) ;; #x2d2
+        (vu-pair (nop) (nop)) ;; #x2d3
+        ;; Six two-instruction plane tests, each leaving both endpoints' signed distances in the w lanes of
+        ;; start-dist and end-dist. The sign of w is what the walk above tests with fsand.
+        (label distance-to-minus-x)
+        (vu-pair (jr sub-return) (addx.w start-dist edge-start edge-start)) ;; #x2d4
+        (vu-pair (nop) (addx.w end-dist edge-end edge-end)) ;; #x2d5
+        (label distance-to-plus-x)
+        (vu-pair (jr sub-return) (subx.w start-dist edge-start edge-start)) ;; #x2d6
+        (vu-pair (nop) (subx.w end-dist edge-end edge-end)) ;; #x2d7
+        (label distance-to-minus-y)
+        (vu-pair (jr sub-return) (addy.w start-dist edge-start edge-start)) ;; #x2d8
+        (vu-pair (nop) (addy.w end-dist edge-end edge-end)) ;; #x2d9
+        (label distance-to-plus-y)
+        (vu-pair (jr sub-return) (suby.w start-dist edge-start edge-start)) ;; #x2da
+        (vu-pair (nop) (suby.w end-dist edge-end edge-end)) ;; #x2db
+        (label distance-to-minus-z)
+        (vu-pair (jr sub-return) (addz.w start-dist edge-start edge-start)) ;; #x2dc
+        (vu-pair (nop) (addz.w end-dist edge-end edge-end)) ;; #x2dd
+        (label distance-to-plus-z)
+        (vu-pair (jr sub-return) (subz.w start-dist edge-start edge-start)) ;; #x2de
+        (vu-pair (nop) (subz.w end-dist edge-end edge-end)) ;; #x2df
+        ;; Linear interpolation along an edge, using the ratio the caller already handed to the divider.
+        (label interpolate-clip-vertex)
+        (vu-pair (nop) (sub.xyzw clipped edge-end edge-start)) ;; #x2e0
+        (vu-pair (waitq) (mul.xyzw clipped clipped Q)) ;; #x2e1
+        (vu-pair (jr sub-return) (add.xyzw clipped edge-start clipped)) ;; #x2e2
+        (vu-pair (nop) (nop))))) ;; #x2e3
+  )
+
+(defun shadow-vu1-add-constants ((dma-buf dma-buffer))
+  "Upload the shadow projection, texture, fog, and color constants, then the four-quadword GIF tag block
+   the clipper writes its polygons into."
+  (let* ((qwc 13)
+         (packet-buffer dma-buf)
+         (upload-packet (the-as object (-> packet-buffer base))))
+    (set! (-> (the-as dma-packet upload-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+    (set! (-> (the-as dma-packet upload-packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet upload-packet) vif1) (new 'static 'vif-tag :imm SHADOW-VU-CONSTS :cmd (vif-cmd unpack-v4-32) :num qwc))
+    (set! (-> packet-buffer base) (&+ (the-as pointer upload-packet) 16)))
+  (let ((constants (the-as object (-> dma-buf base)))
+        (camera *math-camera*)
+        (shadow-state *shadow-data*)
+        (tri-template *shadow-vu1-tri-template*))
+    (vector-copy! (-> (the-as shadow-vu1-constants constants) hmgescale) (-> camera hmge-scale))
+    (vector-copy! (-> (the-as shadow-vu1-constants constants) invhscale) (-> camera inv-hmge-scale))
+    (vector-copy! (-> (the-as shadow-vu1-constants constants) texoffset) (-> shadow-state texoffset))
+    (vector-copy! (-> (the-as shadow-vu1-constants constants) texscale) (-> shadow-state texscale))
+    (vector-copy! (-> (the-as shadow-vu1-constants constants) hvdfoff) (-> camera hvdf-off))
+    (set! (-> (the-as shadow-vu1-constants constants) fog x) (-> camera pfog0))
+    (vector-copy! (-> (the-as shadow-vu1-constants constants) clrs 0) (-> shadow-state clrs 0))
+    (vector-copy! (-> (the-as shadow-vu1-constants constants) clrs 1) (-> shadow-state clrs 1))
+    (set! (-> (the-as shadow-vu1-constants constants) adgif qword) (-> tri-template adgif qword))
+    (set! (-> (the-as shadow-vu1-constants constants) texflush quad) (-> tri-template ad quad))
+    (set! (-> (the-as shadow-vu1-constants constants) flush quad) (-> tri-template flush quad))
+    (set! (-> (the-as shadow-vu1-constants constants) trigif qword) (-> tri-template trigif qword))
+    (set! (-> (the-as shadow-vu1-constants constants) quadgif qword) (-> tri-template quadgif qword)))
+  (&+! (-> dma-buf base) 208)
+  (let* ((gif-upload-buffer dma-buf)
+         (gif-upload (the-as object (-> gif-upload-buffer base))))
+    (set! (-> (the-as dma-packet gif-upload) dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet gif-upload) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-packet gif-upload) vif1) (new 'static 'vif-tag :imm SHADOW-VU1-CLIP-GIF :num #x4 :cmd (vif-cmd unpack-v4-32)))
+    (set! (-> gif-upload-buffer base) (&+ (the-as pointer gif-upload) 16)))
+  (let* ((gif-template-buffer dma-buf)
+         (gif-template (the-as object (-> gif-template-buffer base))))
+    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) adgif tag) (new 'static 'gif-tag64 :nloop #x1 :nreg #x2))
+    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) adgif regs)
           (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d) :regs1 (gif-reg-id rgbaq)))
-    (set! (-> (the-as shadow-vu1-gifbuf-template a1-6) ad data) (the-as uint 0))
-    (set! (-> (the-as shadow-vu1-gifbuf-template a1-6) ad cmds) (the-as uint 63))
-    (set! (-> (the-as shadow-vu1-gifbuf-template a1-6) flush data) (the-as uint 0))
-    (set! (-> (the-as shadow-vu1-gifbuf-template a1-6) flush cmds) (the-as uint 0))
-    (set! (-> (the-as shadow-vu1-gifbuf-template a1-6) trigif tag)
+    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) ad data) (the-as uint 0))
+    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) ad cmds) (the-as uint 63))
+    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) flush data) (the-as uint 0))
+    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) flush cmds) (the-as uint 0))
+    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) trigif tag)
           (new 'static
                'gif-tag64
                :nloop #x3
@@ -139,39 +1135,35 @@
                :prim
                (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1)
                :nreg #x2))
-    (set! (-> (the-as shadow-vu1-gifbuf-template a1-6) trigif regs)
+    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) trigif regs)
           (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id xyzf2)))
-    (set! (-> v1-5 base) (&+ (the-as pointer a1-6) 64)))
+    (set! (-> gif-template-buffer base) (&+ (the-as pointer gif-template) 64)))
   (none))
 
-(defun shadow-vu1-add-matrix ((arg0 dma-buffer) (arg1 math-camera))
-  (let ((v1-0 4))
-    (let* ((a2-4 arg0)
-           (a3-0 (the-as object (-> a2-4 base))))
-      (set! (-> (the-as dma-packet a3-0) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc v1-0))
-      (set! (-> (the-as dma-packet a3-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a3-0) vif1) (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num v1-0))
-      (set! (-> a2-4 base) (the-as pointer (&+ (the-as dma-packet a3-0) 16)))))
-  (let ((v1-5 (the-as object (-> arg0 base))))
-    (let ((a2-5 (-> arg1 perspective vector 0 quad))
-          (a3-1 (-> arg1 perspective vector 1 quad))
-          (t0-4 (-> arg1 perspective vector 2 quad))
-          (a1-1 (-> arg1 perspective vector 3 quad)))
-      (set! (-> (the-as matrix v1-5) vector 0 quad) a2-5)
-      (set! (-> (the-as matrix v1-5) vector 1 quad) a3-1)
-      (set! (-> (the-as matrix v1-5) vector 2 quad) t0-4)
-      (set! (-> (the-as matrix v1-5) vector 3 quad) a1-1))
-    (set! (-> arg0 base) (the-as pointer (&+ (the-as matrix v1-5) 64))))
+(defun shadow-vu1-add-matrix ((dma-buf dma-buffer) (camera math-camera))
+  "Upload the four perspective-matrix rows every shadow-volume vertex is transformed by, to
+   SHADOW-VU1-MATRIX."
+  (let ((qwc 4))
+    (let* ((packet-buffer dma-buf)
+           (upload-packet (the-as object (-> packet-buffer base))))
+      (set! (-> (the-as dma-packet upload-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+      (set! (-> (the-as dma-packet upload-packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+      (set! (-> (the-as dma-packet upload-packet) vif1) (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32) :num qwc))
+      (set! (-> packet-buffer base) (the-as pointer (&+ (the-as dma-packet upload-packet) 16)))))
+  (let ((matrix-out (the-as object (-> dma-buf base))))
+    (matrix-copy! (the-as matrix matrix-out) (-> camera perspective))
+    (set! (-> dma-buf base) (the-as pointer (&+ (the-as matrix matrix-out) 64))))
   (none))
 
-(defun shadow-vu1-init-buffer ((arg0 dma-buffer))
-  (dma-buffer-add-vu-function arg0 shadow-vu1-block 1)
-  (shadow-vu1-add-constants arg0)
-  (shadow-vu1-add-matrix arg0 *math-camera*)
-  (let* ((v1-0 arg0)
-         (a0-4 (the-as object (-> v1-0 base))))
-    (set! (-> (the-as dma-packet a0-4) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet a0-4) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm #xa))
-    (set! (-> (the-as dma-packet a0-4) vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-4) 16)))
+(defun shadow-vu1-init-buffer ((dma-buf dma-buffer))
+  "Append the shadow VU1 program, constants, camera matrix, and initialization call to a DMA buffer."
+  (dma-buffer-add-vu-function dma-buf shadow-vu1-block 1)
+  (shadow-vu1-add-constants dma-buf)
+  (shadow-vu1-add-matrix dma-buf *math-camera*)
+  (let* ((packet-buffer dma-buf)
+         (start-packet (the-as object (-> packet-buffer base))))
+    (set! (-> (the-as dma-packet start-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet start-packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm SHADOW-VU1-ENTRY-INIT))
+    (set! (-> (the-as dma-packet start-packet) vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
+    (set! (-> packet-buffer base) (&+ (the-as pointer start-packet) 16)))
   (none))

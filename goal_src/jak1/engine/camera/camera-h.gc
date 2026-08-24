@@ -4,37 +4,30 @@
 (require "engine/math/vector-h.gc")
 (require "engine/gfx/hw/display-h.gc")
 
-;; TODO - for cam-layout
-(define-extern v-slrp2! (function vector vector vector float vector float vector))
-
-(define-extern v-slrp3! (function vector vector vector vector float vector))
-
-(declare-type camera-slave process)
-
-(declare-type camera-master process)
-
-(declare-type tracking-point structure)
-
-(declare-type cam-rotation-tracker structure)
-
-(declare-type camera-combiner process)
-
-;; TODO - for cam-master
-;; TODO - for camera
-(define-extern camera-line-rel-len (function vector vector float vector4w none))
-
-(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
-
-(define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
-
-;; TODO - for cam-combiner
-(define-extern paused? (function symbol))
-
-;; TODO - for cam-start
-(define-extern cam-master-init (function none :behavior camera-master))
-
 (defenum cam-slave-options
   :bitfield #t
+  (BUTT_CAM)
+  (SAME_SIDE)
+  (MOVE_SPHERICAL)
+  (ALLOW_Z_ROT)
+  (JUMP_PITCHES)
+  (COLLIDE)
+  (FIND_HIDDEN_TARGET)
+  (DRAG)
+  (PLAYER_MOVING_CAMERA)
+  (LINE_OF_SIGHT)
+  (MOVEMENT_BLOCKED)
+  (SHRINK_MAX_ANGLE)
+  (GOTO_GOOD_POINT)
+  (BLOCK_SHIFT_BUTTONS)
+  (BIKE_MODE)
+  (NO_ROTATE)
+  (STICKY_ANGLE)
+  (AIR_EXIT))
+
+(defenum cam-slave-options-i
+  :bitfield #t
+  :type int32
   (BUTT_CAM)
   (SAME_SIDE)
   (MOVE_SPHERICAL)
@@ -67,8 +60,35 @@
   (ccw 2)
   (between 3))
 
+(defenum cam-track-status
+   :type uint64
+   (use-slave-tracking 0)
+   (track-at-combiner 1)
+   (track-at-dst 2)
+   (track-at-src 3))
+
+
+(defenum camera-blend-to-type
+  :type uint64
+  (direct 0)
+  (slave-controlled 1)
+  (combiner-tracked 2))
+
+(defenum cam-master-options
+  :type uint32
+  :bitfield #t
+  (ignore-regions 0)
+  (have-target 1)
+  (switch-only-on-ground 2)
+  (set-combiner-axis 3)
+  (flip-combiner 4)
+  (have-ease-to-pos 5)
+  (in-base-region 6))
+
 ;; DECOMP BEGINS
 
+;; Shared gameplay-camera tuning used for collision movement, input response,
+;; attack timing, the default third-person distance envelope, and view tilt.
 (deftype camera-bank (basic)
   ((collide-move-rad        float)
    (joypad                  uint32)
@@ -94,13 +114,19 @@
        :default-string-push-z (meters 10)
        :default-tilt-adjust (degrees -6.5000005)))
 
+;; Two endpoints and a parameterization mode. Camera entities use this to map a
+;; world point to a normalized position along a linear, radial, or spherical
+;; interval.
 (deftype cam-index (structure)
   ((flags cam-index-options)
    (vec   vector 2 :inline :offset 16))
   (:methods
-   (cam-index-method-9 (_type_ symbol entity vector curve) symbol)
-   (cam-index-method-10 (_type_ vector) float)))
+   (setup-from-entity! (_type_ symbol entity vector curve) symbol)
+   (point->parameter (_type_ vector) float)))
 
+;; One node in a camera tracking trail. direction and tp-length describe the
+;; segment to next; incarnation changes whenever a fixed-pool slot is reused so
+;; saved cursors can detect stale indices.
 (deftype tracking-point (structure)
   ((position    vector :inline)
    (direction   vector :inline)
@@ -108,10 +134,14 @@
    (next        int32)
    (incarnation int32)))
 
+;; Interpolation coordinate for a tracking-spline
 (deftype tracking-spline-sampler (structure)
   ((cur-pt     int32)
    (partial-pt float)))
 
+;; A fixed pool of 32 tracking points shared by an intrusive used list and free
+;; list. The used chain records a moving breadcrumb trail; sampling and pruning
+;; let the camera follow its arc rather than cut directly across corners.
 (deftype tracking-spline (structure)
   ((point              tracking-point 32 :inline)
    (summed-len         float)
@@ -128,22 +158,23 @@
    (debug-out-position vector :inline)
    (debug-last-point   int32))
   (:methods
-   (tracking-spline-method-9 (_type_) none)
-   (tracking-spline-method-10 (_type_ vector) none)
+   (validate! (_type_) none)
+   (reset! (_type_ vector) none)
    (print-nth-point (_type_ int) none)
-   (tracking-spline-method-12 (_type_) none)
-   (tracking-spline-method-13 (_type_ int) none)
-   (tracking-spline-method-14 (_type_ tracking-spline-sampler) none)
-   (tracking-spline-method-15 (_type_) none)
-   (tracking-spline-method-16 (_type_ float) none)
-   (tracking-spline-method-17 (_type_ vector float float symbol) int)
-   (tracking-spline-method-18 (_type_ float vector tracking-spline-sampler) vector)
-   (tracking-spline-method-19 (_type_ float vector tracking-spline-sampler) vector)
-   (tracking-spline-method-20 (_type_ vector int) none)
-   (tracking-spline-method-21 (_type_ vector float float) vector)
-   (tracking-spline-method-22 (_type_ float) none)
-   (tracking-spline-method-23 (_type_) none)))
+   (print-all-points (_type_) none)
+   (delete-point! (_type_ int) none)
+   (advance-used-point! (_type_ tracking-spline-sampler) none)
+   (prune-most-collinear! (_type_) none)
+   (prune-shallow-points! (_type_ float) none)
+   (add-point! (_type_ vector meters meters symbol) int)
+   (accumulate-sample! (_type_ float vector tracking-spline-sampler) vector)
+   (sample-point! (_type_ float vector tracking-spline-sampler) vector)
+   (apply-trail-correction! (_type_ vector int) none)
+   (follow-update! (_type_ vector meters meters) vector)
+   (trim-to-length! (_type_ meters) none)
+   (debug-draw (_type_) none)))
 
+;; Move `value` to `target` with smooth motion.
 (deftype cam-float-seeker (structure)
   ((target      float)
    (value       float)
@@ -158,43 +189,56 @@
    (update! (_type_ float) none)
    (jump-to-target! (_type_ float) float)))
 
-(defmethod init-cam-float-seeker ((this cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
-  (set! (-> this target) arg0)
-  (set! (-> this value) arg0)
+(defmethod init-cam-float-seeker ((this cam-float-seeker) (initial-value float) (accel float) (max-vel float) (max-partial float))
+  "Initialize target and value to initial-value, clear
+   velocity, and set the acceleration and two speed limits."
+  (set! (-> this target) initial-value)
+  (set! (-> this value) initial-value)
   (set! (-> this vel) 0.0)
-  (set! (-> this accel) arg1)
-  (set! (-> this max-vel) arg2)
-  (set! (-> this max-partial) arg3)
+  (set! (-> this accel) accel)
+  (set! (-> this max-vel) max-vel)
+  (set! (-> this max-partial) max-partial)
   0
   (none))
 
-(defmethod copy-cam-float-seeker ((this cam-float-seeker) (arg0 cam-float-seeker))
-  (set! (-> this target) (-> arg0 target))
-  (set! (-> this value) (-> arg0 value))
-  (set! (-> this vel) (-> arg0 vel))
-  (set! (-> this accel) (-> arg0 accel))
-  (set! (-> this max-vel) (-> arg0 max-vel))
-  (set! (-> this max-partial) (-> arg0 max-partial))
+(defmethod copy-cam-float-seeker ((this cam-float-seeker) (source cam-float-seeker))
+  "Copy the complete seeker state from source."
+  (set! (-> this target) (-> source target))
+  (set! (-> this value) (-> source value))
+  (set! (-> this vel) (-> source vel))
+  (set! (-> this accel) (-> source accel))
+  (set! (-> this max-vel) (-> source max-vel))
+  (set! (-> this max-partial) (-> source max-partial))
   0
   (none))
 
 (defmethod update! ((this cam-float-seeker) (offset float))
+  "Advance one frame toward target plus offset. Acceleration and
+   displacement use the display time ratio, and velocity is capped by the
+   smaller of max-vel and max-partial times the remaining distance."
   0.0
   0.0
   (let* ((pos-error (- (+ (-> this target) offset) (-> this value)))
          (partial-velocity-limit (* (-> this max-partial) (fabs pos-error))))
-    (let ((daccel (* pos-error (* (-> this accel) (-> *display* time-adjust-ratio))))) (+! (-> this vel) daccel))
+    (let ((daccel (* pos-error (* (-> this accel) (-> *display* time-adjust-ratio)))))
+      (+! (-> this vel) daccel))
     (let ((abs-vel (fabs (-> this vel)))
           (abs-vel-limit (fmin partial-velocity-limit (-> this max-vel))))
-      (if (< abs-vel-limit abs-vel) (set! (-> this vel) (* (-> this vel) (/ abs-vel-limit abs-vel))))))
-  (let ((dpos (* (-> this vel) (-> *display* time-adjust-ratio)))) (+! (-> this value) dpos))
+      (if (< abs-vel-limit abs-vel)
+          (set! (-> this vel) (* (-> this vel) (/ abs-vel-limit abs-vel))))))
+  (let ((dpos (* (-> this vel) (-> *display* time-adjust-ratio))))
+    (+! (-> this value) dpos))
   0
   (none))
 
-(defmethod jump-to-target! ((this cam-float-seeker) (arg0 float))
-  (set! (-> this value) (+ (-> this target) arg0))
+(defmethod jump-to-target! ((this cam-float-seeker) (offset float))
+  "Set value directly to target plus offset, clear velocity,
+   and return the new value."
+  (set! (-> this value) (+ (-> this target) offset))
   (set! (-> this vel) 0.0))
 
+;; Vector form of cam-float-seeker. The velocity magnitude is limited as a
+;; whole, preserving direction and giving an isotropic three-dimensional seek.
 (deftype cam-vector-seeker (structure)
   ((target      vector :inline)
    (value       vector :inline)
@@ -206,34 +250,48 @@
    (init! (_type_ vector float float float) none)
    (update! (_type_ vector) none)))
 
-(defmethod init! ((this cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+(defmethod init! ((this cam-vector-seeker) (initial-value vector) (accel float) (max-vel float) (max-partial float))
+  "Initialize target and value from initial-value, or zero when it is
+   false; clear velocity and set the acceleration and speed limits."
   (cond
-    (arg0 (set! (-> this target quad) (-> arg0 quad)) (set! (-> this value quad) (-> arg0 quad)))
-    (else (vector-reset! (-> this target)) (vector-reset! (-> this value))))
+    (initial-value
+     (vector-copy! (-> this target) initial-value)
+     (vector-copy! (-> this value) initial-value))
+    (else
+     (vector-reset! (-> this target))
+     (vector-reset! (-> this value))))
   (vector-reset! (-> this vel))
-  (set! (-> this accel) arg1)
-  (set! (-> this max-vel) arg2)
-  (set! (-> this max-partial) arg3)
+  (set! (-> this accel) accel)
+  (set! (-> this max-vel) max-vel)
+  (set! (-> this max-partial) max-partial)
   0
   (none))
 
-(defmethod update! ((this cam-vector-seeker) (arg0 vector))
-  (let ((gp-0 (new 'stack-no-clear 'vector)))
+(defmethod update! ((this cam-vector-seeker) (offset vector))
+  "Advance one frame toward target plus optional offset, limiting
+   velocity magnitude by max-vel and the remaining-distance limit."
+  (let ((error (new 'stack-no-clear 'vector)))
     0.0
     (cond
-      (arg0 (vector+! gp-0 (-> this target) arg0) (vector-! gp-0 gp-0 (-> this value)))
-      (else (vector-! gp-0 (-> this target) (-> this value))))
-    (let ((f30-1 (* (-> this max-partial) (vector-length gp-0))))
-      (vector-float*! gp-0 gp-0 (* (-> this accel) (-> *display* time-adjust-ratio)))
-      (vector+! (-> this vel) (-> this vel) gp-0)
-      (let ((f0-4 (vector-length (-> this vel)))
-            (f1-2 (fmin f30-1 (-> this max-vel))))
-        (if (< f1-2 f0-4) (vector-float*! (-> this vel) (-> this vel) (/ f1-2 f0-4)))))
-    (vector-float*! gp-0 (-> this vel) (-> *display* time-adjust-ratio))
-    (vector+! (-> this value) (-> this value) gp-0))
+      (offset
+       (vector+! error (-> this target) offset)
+       (vector-! error error (-> this value)))
+      (else
+       (vector-! error (-> this target) (-> this value))))
+    (let ((partial-velocity-limit (* (-> this max-partial) (vector-length error))))
+      (vector-float*! error error (* (-> this accel) (-> *display* time-adjust-ratio)))
+      (vector+! (-> this vel) (-> this vel) error)
+      (let ((velocity (vector-length (-> this vel)))
+            (velocity-limit (fmin partial-velocity-limit (-> this max-vel))))
+        (if (< velocity-limit velocity)
+            (vector-float*! (-> this vel) (-> this vel) (/ velocity-limit velocity)))))
+    (vector-float*! error (-> this vel) (-> *display* time-adjust-ratio))
+    (vector+! (-> this value) (-> this value) error))
   0
   (none))
 
+;; Rotate a camera to tack a target point, with some extra features.
+;; This is used to aim a camera at target.
 (deftype cam-rotation-tracker (structure)
   ((inv-mat                 matrix :inline)
    (no-follow               basic)
@@ -246,6 +304,8 @@
    (point-of-interest-blend cam-float-seeker :inline)
    (underwater-blend        cam-float-seeker :inline)))
 
+;; The combiner blends two camera-slave outputs during a transition and
+;; produces the position, inverse rotation, and field of view used for drawing.
 (deftype camera-combiner (process)
   ((trans             vector :inline)
    (inv-camera-rot    matrix :inline)
@@ -256,17 +316,19 @@
    (dist-from-dest    float)
    (flip-control-axis vector :inline)
    (velocity          vector :inline)
-   (tracking-status   uint64)
-   (tracking-options  int32)
+   (tracking-status   cam-track-status)
+   (tracking-options  cam-slave-options-i)
    (tracking          cam-rotation-tracker :inline))
   (:states
    cam-combiner-active))
 
+;; One camera placement behavior. The master may keep an outgoing and incoming
+;; slave alive together while the combiner transitions between them.
 (deftype camera-slave (process)
   ((trans                         vector :inline)
-   (fov                           float)
-   (fov0                          float)
-   (fov1                          float)
+   (fov                           degrees)
+   (fov0                          degrees)
+   (fov1                          degrees)
    (fov-index                     cam-index :inline)
    (tracking                      cam-rotation-tracker :inline)
    (view-off-param                float)
@@ -282,8 +344,8 @@
    (circular-follow               vector :inline)
    (max-angle-offset              float)
    (max-angle-curr                float)
-   (options                       uint32)
-   (cam-entity                    entity)
+   (options                       cam-slave-options)
+   (cam-entity                    entity-camera)
    (velocity                      vector :inline)
    (desired-pos                   vector :inline)
    (time-dist-too-far             uint32)
@@ -306,8 +368,8 @@
    (spline-follow-dist            float)
    (change-event-from             (pointer process-drawable))
    (enter-has-run                 symbol)
-   (blend-from-type               uint64)
-   (blend-to-type                 uint64)
+   (blend-from-type               camera-blend-to-type)
+   (blend-to-type                 camera-blend-to-type)
    (have-phony-joystick           basic)
    (phony-joystick-x              float)
    (phony-joystick-y              float)
@@ -342,11 +404,14 @@
    cam-stick
    cam-string))
 
+;; Coordinates gameplay camera selection and target tracking. It maintains the
+;; active slaves, target transforms and tracking trail, and transition state;
+;; the combiner produces the final rendered camera.
 (deftype camera-master (process)
-  ((master-options      uint32)
+  ((master-options      cam-master-options)
    (num-slaves          int32)
    (slave               (pointer camera-slave) 2)
-   (slave-options       uint32)
+   (slave-options       cam-slave-options)
    (view-off-param-save float)
    (changer             uint32)
    (cam-entity          entity)
@@ -399,3 +464,7 @@
   (:states
    cam-master-active
    list-keeper-active))
+
+
+(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
+(define-extern slave-set-rotation! (function cam-rotation-tracker vector cam-slave-options float symbol int))

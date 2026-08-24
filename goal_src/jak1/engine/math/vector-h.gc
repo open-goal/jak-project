@@ -12,14 +12,12 @@
 ;; bit array
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; the bit-array is a dynamically sized array that is bit addressable
+;; A dynamically sized, bit-addressable array. The first storage byte overlays _pad,
+;; so allocation adds only the remaining bytes after the fixed type size.
 
 (deftype bit-array (basic)
   ((length           int32)
    (allocated-length int32)
-   ;; neither of these show up in the inspect.
-   ;; it seems like there's a single byte of data array
-   ;; included in the type already
    (_pad             uint8)
    (bytes            uint8 :dynamic :overlay-at _pad))
   (:methods
@@ -30,40 +28,40 @@
    (clear-all! (_type_) _type_)))
 
 (defmethod new bit-array ((allocation symbol) (type-to-make type) (length int))
-  "Allocate a new bit-array which can hold length bits.
-   Sets both the length and the allocated-length to this length."
-  (let ((this (object-new allocation type-to-make (+ (+ (/ (logand -8 (+ length 7)) 8) -1) (the-as int (-> type-to-make size))))))
+  "Allocate a bit-array for length addressable bits."
+  (let ((this (object-new allocation type-to-make (+ (/ (logand -8 (+ length 7)) 8) -1 (-> type-to-make size)))))
     (set! (-> this length) length)
     (set! (-> this allocated-length) length)
     this))
 
 (defmethod length ((this bit-array))
-  "Get the length (in bits)"
+  "Return the active length in bits."
   (-> this length))
 
 (defmethod asize-of ((this bit-array))
-  "Get the size in memory.
-   It is wrong and says its one byte longer, which is safe."
+  "Return the nominal type size plus the rounded byte capacity. Because the dynamic bytes overlay _pad, this is one byte larger than the allocation."
   (the-as int (+ (-> this type size) (/ (logand -8 (+ (-> this allocated-length) 7)) 8))))
 
-(defmethod get-bit ((this bit-array) (arg0 int))
-  "Is the bit at idx set or not?"
-  (let ((v1-2 (-> this bytes (/ arg0 8)))) (logtest? v1-2 (ash 1 (logand arg0 7)))))
+(defmethod get-bit ((this bit-array) (i int))
+  "Return true when the bit at unchecked index i is set."
+  (let ((byte (-> this bytes (/ i 8)))) (logtest? byte (ash 1 (logand i 7)))))
 
-(defmethod clear-bit ((this bit-array) (arg0 int))
-  "Clear the bit at position idx"
-  (logclear! (-> this bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+(defmethod clear-bit ((this bit-array) (i int))
+  "Clear the bit at unchecked index i and return zero."
+  (logclear! (-> this bytes (/ i 8)) (ash 1 (logand i 7)))
   0)
 
-(defmethod set-bit ((this bit-array) (arg0 int))
-  "Set the bit at position idx"
-  (logior! (-> this bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+(defmethod set-bit ((this bit-array) (i int))
+  "Set the bit at unchecked index i and return zero."
+  (logior! (-> this bytes (/ i 8)) (ash 1 (logand i 7)))
   0)
 
 (defmethod clear-all! ((this bit-array))
-  "Set all bits to zero."
-  (countdown (idx (/ (logand -8 (+ (-> this allocated-length) 7)) 8))
-    (set! (-> this bytes idx) (the-as uint 0)))
+  "Clear every storage byte, including unused bits in the final byte, and return this array."
+  (countdown (i (/ (logand -8 (+ (-> this allocated-length) 7)) 8))
+    (nop!)
+    (nop!)
+    (set! (-> this bytes i) (the-as uint 0)))
   this)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -71,10 +69,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro init-vf0-vector ()
-  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  "Make the VU0 constant vector (0, 0, 0, 1) available to portable VU operations."
   `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0)))
-
-;; the GOAL vector types are structures, storing values in memory.
 
 ;; Vector of 4 unsigned bytes.
 (deftype vector4ub (structure)
@@ -86,7 +82,7 @@
    (clr  uint32 :overlay-at (-> data 0)))
   :pack-me)
 
-;; Vector of 4 signed bytes
+;; Vector of 4 signed bytes.
 (deftype vector4b (structure)
   ((data int8 4)
    (x    int8 :overlay-at (-> data 0))
@@ -94,14 +90,14 @@
    (z    int8 :overlay-at (-> data 2))
    (w    int8 :overlay-at (-> data 3))))
 
-;; Vector of 2 signed halfwords
+;; Vector of 2 signed halfwords.
 (deftype vector2h (structure)
   ((data int16 2)
    (x    int16 :overlay-at (-> data 0))
    (y    int16 :overlay-at (-> data 1)))
   :pack-me)
 
-;; Vector of 2 unsigned halfwords
+;; Vector of 2 unsigned halfwords.
 (deftype vector2uh (structure)
   ((data uint16 2)
    (x    uint16 :overlay-at (-> data 0))
@@ -109,21 +105,21 @@
    (val  uint32 :overlay-at (-> data 0)))
   :pack-me)
 
-;; Vector of 3 halfwords
+;; Vector of 3 signed halfwords.
 (deftype vector3h (structure)
   ((data int16 2)
    (x    int16 :overlay-at (-> data 0))
    (y    int16 :overlay-at (-> data 1))
    (z    int16)))
 
-;; Vector of 2 signed words
+;; Vector of 2 signed words.
 (deftype vector2w (structure)
   ((data int32 2)
    (x    int32 :overlay-at (-> data 0))
    (y    int32 :overlay-at (-> data 1)))
   :pack-me)
 
-;; Vector of 3 signed words
+;; Vector of 3 signed words.
 (deftype vector3w (structure)
   ((data int32 3)
    (x    int32 :overlay-at (-> data 0))
@@ -131,7 +127,7 @@
    (z    int32 :overlay-at (-> data 2)))
   :allow-misaligned)
 
-;; Vector of 4 signed words
+;; Vector of 4 signed words.
 (deftype vector4w (structure)
   ((data  uint32 4)
    (x     int32 :overlay-at (-> data 0))
@@ -145,25 +141,25 @@
   (format #t "#<vector4w ~D ~D ~D ~D @ #x~X>" (-> this x) (-> this y) (-> this z) (-> this w) this)
   this)
 
-;; Two vector4w's
+;; Two vector4w values.
 (deftype vector4w-2 (structure)
   ((data   int32 8)
    (quad   uint128 2 :overlay-at (-> data 0))
    (vector vector4w 2 :inline :overlay-at (-> data 0))))
 
-;; Three vector4w's
+;; Three vector4w values.
 (deftype vector4w-3 (structure)
   ((data   int32 12)
    (quad   uint128 3 :overlay-at (-> data 0))
    (vector vector4w 3 :inline :overlay-at (-> data 0))))
 
-;; Four vector4w's
+;; Four vector4w values.
 (deftype vector4w-4 (structure)
   ((data   int32 16)
    (quad   uint128 4 :overlay-at (-> data 0))
    (vector vector4w 4 :inline :overlay-at (-> data 0))))
 
-;; Vector of 4 halfwords
+;; Vector of 4 signed halfwords.
 (deftype vector4h (structure)
   ((data int16 4)
    (x    int16 :overlay-at (-> data 0))
@@ -173,7 +169,7 @@
    (long uint64 :overlay-at (-> data 0)))
   :pack-me)
 
-;; Vector of 8 halfwords
+;; Vector of 8 signed halfwords.
 (deftype vector8h (structure)
   ((data int16 8)
    (quad uint128 :overlay-at (-> data 0))))
@@ -218,7 +214,7 @@
 ;; note: y is up.
 (define *up-vector* (new 'static 'vector :x 0. :y 1. :z 0. :w 1.))
 
-;; Three vector's
+;; Three vectors in one 48-byte block.
 (deftype vector4s-3 (structure)
   ((data   float 12)
    (quad   uint128 3 :overlay-at (-> data 0))
@@ -239,37 +235,36 @@
 ;; other geometric things
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; ax + by + cz = d form
+;; Plane in ax + by + cz = d form.
 (deftype plane (vector)
   ((a float :overlay-at x)
    (b float :overlay-at y)
    (c float :overlay-at z)
    (d float :overlay-at w)))
 
-;; x, y, z are the origin, replaces w with r, the radius
+;; x, y, and z are the center and the radius overlays `w`.
 (deftype sphere (vector)
   ((r float :overlay-at w)))
 
 (deftype isphere (vec4s) ())
 
 (defmacro static-vector (x y z w)
-  "creates a static vector."
+  "Construct a static vector from four components."
   `(new 'static 'vector :x ,x :y ,y :z ,z :w ,w))
 
 (defmacro static-vectorm (x y z)
-  "creates a static vector using meters. w is set to 1.0"
+  "Construct a static position vector from coordinates in meters, with w set to 1.0."
   `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w 1.0))
 
 (defmacro static-spherem (x y z r)
-  "creates a static vector using meters where the w component is used as sphere radius. for a 'real' sphere use static-bspherem."
+  "Construct a static vector whose xyz center and w radius are specified in meters."
   `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r)))
 
 (defmacro static-bspherem (x y z r)
-  "creates a static sphere using meters."
+  "Construct a static sphere whose center and radius are specified in meters."
   `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r)))
 
-;; this type represents a bounding-box, stored as minimum/maximum points
-;; note that the types in bounding-box are mostly used, this is used very rarely.
+;; A compact bounding box stored as minimum and maximum points.
 (deftype box8s (structure)
   ((data   float 8)
    (quad   uint128 2 :overlay-at (-> data 0))
@@ -282,7 +277,8 @@
 
 (set! (-> box8s-array heap-base) 32)
 
-;; This is really a capsule - a cylinder with spheres at both ends
+;; A capsule: a cylinder with hemispherical ends. origin is the center of the first end, axis is a
+;; unit vector toward the second end, and length is the distance between the two end centers.
 (deftype cylinder (structure)
   ((origin vector :inline)
    (axis   vector :inline)
@@ -292,7 +288,8 @@
    (debug-draw (_type_ vector4w) none)
    (ray-capsule-intersect (_type_ vector vector) float)))
 
-;; This is a normal cylinder.
+;; A flat-ended cylinder. origin is the center of the first cap, axis is a unit vector toward the
+;; second cap, and length is the distance between the cap centers.
 (deftype cylinder-flat (structure)
   ((origin vector :inline)
    (axis   vector :inline)
@@ -302,7 +299,7 @@
    (debug-draw (_type_ vector4w) none)
    (ray-flat-cyl-intersect (_type_ vector vector) float)))
 
-;; these vertical plane types are basically unused
+;; Four vertical planes, used by the light-volume types.
 (deftype vertical-planes (structure)
   ((data uint128 4)))
 
@@ -310,8 +307,7 @@
   ((length uint32)
    (data   vertical-planes :inline :dynamic)))
 
-;; common 16-byte "quadword" structure.
-;; allows access to unsigned arrays of integers of all sizes and floats
+;; Common 16-byte quadword storage with scalar, packed-integer, and vector views.
 (deftype qword (structure)
   ((data     uint32 4)
    (byte     uint8 16 :overlay-at (-> data 0))
@@ -322,7 +318,7 @@
    (vector   vector :inline :overlay-at (-> data 0))
    (vector4w vector4w :inline :overlay-at (-> data 0))))
 
-;; 12-byte vector with only 3 components. It's not used very much.
+;; Compact 12-byte, three-component floating-point vector.
 (deftype vector3s (structure)
   ((data float 3)
    (x    float :overlay-at (-> data 0))
@@ -334,114 +330,143 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmacro set-vector! (v xv yv zv wv)
-  "Set all fields in a vector"
+  "Set all four components of v and return v."
   (with-gensyms (vec)
     `(let ((,vec ,v)) (set! (-> ,vec x) ,xv) (set! (-> ,vec y) ,yv) (set! (-> ,vec z) ,zv) (set! (-> ,vec w) ,wv) ,vec)))
 
 (defmacro set-vector-xyz! (v xv yv zv)
-  "Set xyz fields in a vector"
+  "Set the xyz components of v, leave w unchanged, and return v."
   (with-gensyms (vec)
     `(let ((,vec ,v)) (set! (-> ,vec x) ,xv) (set! (-> ,vec y) ,yv) (set! (-> ,vec z) ,zv) ,vec)))
 
 (defun vector-dot ((a vector) (b vector))
-  "Take the dot product of two vectors.
-   Only does the x, y, z compoments.
-   Originally handwritten assembly to space out loads and use FPU accumulator"
+  "Return the xyz dot product using the EE scalar floating-point accumulator."
   (declare (inline))
-  (let ((result 0.))
-    (+! result (* (-> a x) (-> b x)))
-    (+! result (* (-> a y) (-> b y)))
-    (+! result (* (-> a z) (-> b z)))
-    result))
+  (#unless PC_PORT
+    (rlet ((a-reg :reg a0)
+           (b-reg :reg a1)
+           (sum :reg f0)
+           (a-y :reg f1)
+           (a-z :reg f2)
+           (b-x :reg f3)
+           (b-y :reg f4)
+           (b-z :reg f5)
+           (result :reg v0))
+      ;; Interleave the loads before using the EE floating-point accumulator.
+      (l.s sum a-reg)
+      (l.s a-y a-reg 4)
+      (l.s a-z a-reg 8)
+      (l.s b-x b-reg)
+      (l.s b-y b-reg 4)
+      (l.s b-z b-reg 8)
+      (mula.s sum b-x)
+      (madda.s a-y b-y)
+      (madd.s sum a-z b-z)
+      (m result sum)
+      (j ra :delay (nop!))))
+  (#when PC_PORT
+    (let ((result 0.0))
+      (+! result (* (-> a x) (-> b x)))
+      (+! result (* (-> a y) (-> b y)))
+      (+! result (* (-> a z) (-> b z)))
+      result)))
 
 (defun vector-dot-vu ((a vector) (b vector))
-  "Take the dot product of two vectors.
-   Only does the x, y, z components.
-   Originally implemented using VU macro ops"
+  "Return the xyz dot product using VU0 packed arithmetic."
   (declare (inline))
+  (local-vars (result float))
   (rlet ((vf1 :class vf)
-         (vf2 :class vf)
-         (result :class fpr :type float))
-    ;; (.lqc2 vf1 0 arg0)
-    (.lvf vf1 a)
-    ;; (.lqc2 vf2 0 arg1)
-    (.lvf vf2 b)
-    ;; (.vmul.xyzw vf1 vf1 vf2)
+         (vf2 :class vf))
+    (.lvf vf1 (&-> a quad))
+    (.lvf vf2 (&-> b quad))
     (.mul.vf vf1 vf1 vf2)
-    ;; (.vaddy.x vf1 vf1 vf1)
     (.add.y.vf.x vf1 vf1 vf1)
-    ;; (.vaddz.x vf1 vf1 vf1)
     (.add.z.vf.x vf1 vf1 vf1)
-    ;; (.qmfc2.i v0-0 vf1)
     (.mov result vf1)
     result))
 
 (defun vector4-dot ((a vector) (b vector))
-  "Take the dot product of two vectors.
-   Does the x, y, z, and w compoments"
+  "Return the xyzw dot product using the EE scalar floating-point accumulator."
   (declare (inline))
-  (let ((result 0.))
-    (+! result (* (-> a x) (-> b x)))
-    (+! result (* (-> a y) (-> b y)))
-    (+! result (* (-> a z) (-> b z)))
-    (+! result (* (-> a w) (-> b w)))
-    result))
+  (#unless PC_PORT
+    (rlet ((a-reg :reg a0)
+           (b-reg :reg a1)
+           (sum :reg f0)
+           (a-y :reg f1)
+           (a-z :reg f2)
+           (a-w :reg f3)
+           (b-x :reg f4)
+           (b-y :reg f5)
+           (b-z :reg f6)
+           (b-w :reg f7)
+           (result :reg v0))
+      (l.s sum a-reg)
+      (l.s a-y a-reg 4)
+      (l.s a-z a-reg 8)
+      (l.s a-w a-reg 12)
+      (l.s b-x b-reg)
+      (l.s b-y b-reg 4)
+      (l.s b-z b-reg 8)
+      (l.s b-w b-reg 12)
+      (mula.s sum b-x)
+      (madda.s a-y b-y)
+      (madda.s a-z b-z)
+      (madd.s sum a-w b-w)
+      (m result sum)
+      (j ra :delay (nop!))))
+  (#when PC_PORT
+    (let ((result 0.0))
+      (+! result (* (-> a x) (-> b x)))
+      (+! result (* (-> a y) (-> b y)))
+      (+! result (* (-> a z) (-> b z)))
+      (+! result (* (-> a w) (-> b w)))
+      result)))
 
 (defmacro print-vf (vf &key (name #f))
-  "Print out a vf register as a vector."
-  `(let ((temp (new 'stack 'vector)))
-    (.svf temp ,vf)
-    ,(if name `(format #t "~A: ~`vector`P~%" (quote ,name) temp) `(format #t "~`vector`P~%" temp))))
+  "Print a VU vector register as four floating-point components."
+  (with-gensyms (temp)
+    `(let ((,temp (new 'stack 'vector)))
+      (.svf ,temp ,vf)
+      ,(if name `(format #t "~A: ~`vector`P~%" (quote ,name) ,temp) `(format #t "~`vector`P~%" ,temp)))))
 
 (defmacro print-vf-hex (vf)
-  "Print out a vf register as 4x 32-bit hexadecimal integers"
-  `(let ((temp (new 'stack 'vector4w))) (.svf temp ,vf) (format #t "~`vector4w`P~%" temp)))
+  "Print a VU vector register through vector4w's decimal printer, despite the historical name."
+  (with-gensyms (temp)
+    `(let ((,temp (new 'stack 'vector4w))) (.svf ,temp ,vf) (format #t "~`vector4w`P~%" ,temp))))
 
 (defmacro print-vf-dec (vf)
-  "Print out a vf register as 4x 32-bit base-10 integers"
-  `(let ((temp (new 'stack 'vector4w)))
-    (.svf temp ,vf)
-    (format #t " ~d ~d ~d ~d~%" (-> temp data 0) (-> temp data 1) (-> temp data 2) (-> temp data 3))))
+  "Print a VU vector register as four 32-bit decimal integers."
+  (with-gensyms (temp)
+    `(let ((,temp (new 'stack 'vector4w)))
+      (.svf ,temp ,vf)
+      (format #t " ~d ~d ~d ~d~%" (-> ,temp data 0) (-> ,temp data 1) (-> ,temp data 2) (-> ,temp data 3)))))
 
 (defun vector4-dot-vu ((a vector) (b vector))
-  "Take the dot product of two vectors.
-   Does the x, y, z, and w compoments
-   Originally implemented using VU macro ops"
+  "Return the xyzw dot product using VU0 packed arithmetic."
   (declare (inline))
-  (rlet ((vf1 :class vf)
-         (vf2 :class vf)
-         (vf3 :class vf)
-         (acc :class vf)
+  (local-vars (result float))
+  (rlet ((acc :class vf)
          (vf0 :class vf)
-         (result :class fpr :type float))
-    (.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
-    ;; (.lqc2 vf1 0 arg0)
-    (.lvf vf1 a)
-    ;; (.lqc2 vf2 0 arg1)
-    (.lvf vf2 b)
-    ;; (.vmul.xyzw vf1 vf1 vf2)
-    ;; set vf1 to element-wise products
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf))
+    (init-vf0-vector)
+    (.lvf vf1 (&-> a quad))
+    (.lvf vf2 (&-> b quad))
     (.mul.vf vf1 vf1 vf2)
-    ;; (.vaddw.x vf3 vf0 vf0)
-    ;; set vf3x to 1
+    ;; og:preserve-this Clear every host SIMD lane before the masked write; stale NaNs are very slow on x86.
     (.xor.vf vf3 vf3 vf3)
+    ;; Use vf3.x = 1.0 as the other multiplicand while the accumulator sums the packed products.
     (.add.w.vf.x vf3 vf0 vf0)
-    ;; (.vmulax.x acc vf3 vf1)
-    ;; acc.x is now (xa * xb)
     (.mul.x.vf.x acc vf3 vf1)
-    ;; (.vmadday.x acc vf3 vf1)
-    ;;  acc += thing
     (.add.mul.y.vf.x acc vf3 vf1 acc)
-    ;; (.vmaddaz.x acc vf3 vf1)
     (.add.mul.z.vf.x acc vf3 vf1 acc)
-    ;; (.vmaddw.x vf1 vf3 vf1)
     (.add.mul.w.vf.x vf1 vf3 vf1 acc)
-    ;; (.qmfc2.i v0-0 vf1)
     (.mov result vf1)
     result))
 
 (defun vector+! ((dst vector) (a vector) (b vector))
-  "Set dst = a + b. The w component of dst is set to 0."
+  "Set dst.xyz to a.xyz + b.xyz, set dst.w to 1.0, and return dst."
   (declare (inline))
   (rlet ((vf0 :class vf :reset-here #t)
          (vf1 :class vf :reset-here #t)
@@ -460,7 +485,7 @@
   dst)
 
 (defun vector-! ((dst vector) (a vector) (b vector))
-  "Set dst = a - b. The w componenent of dst is set to 0."
+  "Set dst.xyz to a.xyz - b.xyz, set dst.w to 1.0, and return dst."
   (declare (inline))
   (rlet ((vf0 :class vf :reset-here #t)
          (vf1 :class vf :reset-here #t)
@@ -478,63 +503,64 @@
     (.svf dst vf1))
   dst)
 
-(defun vector-zero! ((dest vector))
-  "Set xyzw to 0."
+(defun vector-zero! ((dst vector))
+  "Set all four components of dst to zero and return dst."
   (declare (inline))
-  (rlet ((vf1 :class vf :reset-here #t))
-    ;; set vf1 = 0
-    (.xor.vf vf1 vf1 vf1)
-    ;; store the 0
-    (.svf dest vf1))
-  dest)
+  (#unless PC_PORT
+    (set! (-> dst quad) (the-as uint128 0))
+    dst)
+  (#when PC_PORT
+    (rlet ((value :class vf :reset-here #t)) (.xor.vf value value value) (.svf dst value))
+    dst))
 
 (defun vector-reset! ((dst vector))
-  "Set vector to 0,0,0,1."
+  "Set dst to (0, 0, 0, 1) and return dst."
   (declare (inline))
-  (vector-zero! dst)
-  (set! (-> dst w) 1.0)
-  dst)
+  (#unless PC_PORT
+    (rlet ((vf0 :class vf)) (init-vf0-vector) (.svf (&-> dst quad) vf0) dst))
+  (#when PC_PORT
+    (vector-zero! dst)
+    (set! (-> dst w) 1.0)
+    dst))
 
 (defun vector-copy! ((dst vector) (src vector))
-  "Copy vector src to dst. Copies the entire quadword (xyzw).
-   The vectors must be aligned."
+  "Copy all four components from src to dst as one aligned quadword and return dst."
   (declare (inline))
-  (rlet ((vf1 :class vf :reset-here #t)) (.lvf vf1 src) (.svf dst vf1))
+  (#unless PC_PORT
+    (set! (-> dst quad) (-> src quad))
+    dst)
+  (#when PC_PORT
+    (rlet ((value :class vf :reset-here #t)) (.lvf value src) (.svf dst value))
+    dst))
+
+(defun vector4w-copy! ((dst vector) (src vector4w))
+  "Copy the raw quadword from a vector4w source to a vector destination and return dst."
+  (declare (inline))
+  (set! (-> dst quad) (-> src quad))
   dst)
 
 (defmacro new-stack-vector0 ()
-  "Get a stack vector that's set to 0.
-   This is more efficient than (new 'stack 'vector) because
-   this doesn't call the constructor."
-  `(let ((vec (new 'stack-no-clear 'vector))) (set! (-> vec quad) (the-as uint128 0)) vec))
+  "Allocate a zeroed stack vector without calling the constructor."
+  (with-gensyms (vec)
+    `(let ((,vec (new 'stack-no-clear 'vector))) (set! (-> ,vec quad) (the-as uint128 0)) ,vec)))
 
 (defmacro print-vector4m (vec &key (dst #t))
-  `(format ,dst "~m ~m ~m ~m~%" (-> ,vec x) (-> ,vec y) (-> ,vec z) (-> ,vec w)))
+  "Print all four vector components as distances in meters."
+  (with-gensyms (value)
+    `(let ((,value ,vec)) (format ,dst "~m ~m ~m ~m~%" (-> ,value x) (-> ,value y) (-> ,value z) (-> ,value w)))))
 
 (define *zero-vector* (new 'static 'vector :x 0. :y 0. :z 0. :w 0.))
 
 (define-extern vector-identity! (function vector vector))
-
 (define-extern vector-length (function vector float))
-
 (define-extern vector-xz-normalize! (function vector float vector))
-
 (define-extern vector-xz-length (function vector float))
-
 (defun-extern vector+float*! vector vector vector float vector)
-
 (defun-extern vector-normalize! vector float vector)
-
 (defun-extern vector-float*! vector vector float vector)
-
 (define-extern vector-normalize-copy! (function vector vector float vector))
-
 (define-extern vector-cross! (function vector vector vector vector))
-
 (define-extern vector-negate! (function vector vector vector))
-
 (define-extern vector-normalize-ret-len! (function vector float float))
-
 (define-extern vector-vector-distance (function vector vector float))
-
 (define-extern vector-vector-distance-squared (function vector vector float))

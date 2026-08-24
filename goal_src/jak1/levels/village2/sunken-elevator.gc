@@ -20,6 +20,8 @@
   :bounds (static-spherem 0 -1 0 6.6))
 
 (defmethod should-teleport? ((this sunken-elevator))
+  "Return whether the camera has crossed the endpoint-specific height threshold and the
+   elevator should swap directly to the other endpoint."
   (let ((f0-0 (-> (camera-pos) y)))
     (case (-> this path-pos)
       ((0.0) (if (< f0-0 (-> this teleport-if-below-y)) (return #t)))
@@ -99,38 +101,48 @@
       (let ((s5-0 (new 'stack-no-clear 'vector))
             (gp-0 (new 'stack-no-clear 'vector)))
         (set! *teleport* #t)
-        (set! (-> s5-0 quad) (-> self root trans quad))
+        (vector-copy! s5-0 (-> self root trans))
         (call-parent-state-handler trans)
         (vector-! gp-0 (-> self root trans) s5-0)
         (when (< (-> self path-pos) 0.9)
           (move-by-vector! (-> *target* control) gp-0)
           (send-event *target* 'reset-height)))))
 
-(defmethod can-target-move? ((this sunken-elevator))
+(defmethod configure-movement! ((this sunken-elevator))
+  "Compute the camera-height thresholds at forty and sixty percent along the elevator path."
   (set! (-> this play-at-top-going-up-camera?) #f)
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (eval-path-curve! (-> this path) s5-0 0.4 'interp)
-    (set! (-> this teleport-if-above-y) (-> s5-0 y))
-    (eval-path-curve! (-> this path) s5-0 0.6 'interp)
-    (set! (-> this teleport-if-below-y) (-> s5-0 y)))
+  (let ((path-position (new 'stack-no-clear 'vector)))
+    (eval-path-curve! (-> this path) path-position 0.4 'interp)
+    (set! (-> this teleport-if-above-y) (-> path-position y))
+    (eval-path-curve! (-> this path) path-position 0.6 'interp)
+    (set! (-> this teleport-if-below-y) (-> path-position y)))
   (none))
 
-(defmethod plat-button-method-27 ((this sunken-elevator))
+(defmethod pose-skeleton! ((this sunken-elevator))
+  "Pose the button animation at its first frame when the platform can activate, or its final
+   frame otherwise, then post the pose and update collision transforms."
+  (local-vars (anim-channel joint-control-channel))
   (ja-channel-set! 1)
   (cond
     ((can-activate? this)
-     (let ((s5-0 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-0 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-0 frame-num) 0.0)))
+     (set! anim-channel (-> this skel root-channel 0))
+     (joint-control-channel-group-eval! anim-channel
+                                        (the-as art-joint-anim (-> this draw art-group data 2))
+                                        num-func-identity)
+     (set! (-> anim-channel frame-num) 0.0))
     (else
-     (let ((s5-1 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
-       (set! (-> s5-1 frame-num) (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1))))))
+     (set! anim-channel (-> this skel root-channel 0))
+     (joint-control-channel-group-eval! anim-channel
+                                        (the-as art-joint-anim (-> this draw art-group data 2))
+                                        num-func-identity)
+     (set! (-> anim-channel frame-num)
+           (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 2)) data 0 length) -1)))))
   (ja-post)
   (update-transforms! (-> this root))
   (none))
 
-(defmethod plat-button-method-31 ((this sunken-elevator))
+(defmethod setup-skeleton! ((this sunken-elevator))
+  "Initialize the Sunken Elevator skeleton."
   (initialize-skeleton this *sunken-elevator-sg* '())
   0
   (none))

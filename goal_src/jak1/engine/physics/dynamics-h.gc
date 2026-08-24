@@ -5,7 +5,10 @@
 
 ;; DECOMP BEGINS
 
-;; dyanamics contain gravity properties
+;; A dynamics profile defines the local up direction, gravity acceleration and
+;; terminal fall speed used by a moving object. gravity points upward so callers
+;; negate it when applying acceleration; gravity-normal is the corresponding unit
+;; vector.
 (deftype dynamics (basic)
   ((name           basic)
    (gravity-max    meters)
@@ -15,21 +18,25 @@
    (walk-distance  meters)
    (run-distance   meters)))
 
+(defun time-to-apex ((upward-velocity float) (gravity-acceleration float))
+  "Return the truncated number of 300 Hz ticks until upward-velocity reaches zero under
+   constant gravity-acceleration. The acceleration is signed along the same axis and is
+   normally negative."
+  (the int (/ upward-velocity (- (vel-tick gravity-acceleration)))))
 
-(defun time-to-apex ((arg0 float) (arg1 float))
-  "How many ticks it takes to reach the apex of a ballistic trajectory."
-  (the int (/ arg0 (- (vel-tick arg1)))))
-
-(defun time-to-ground ((arg0 float) (arg1 float) (arg2 float))
-  "How many ticks it takes to reach the ground for a ballistic trajectory."
-  (let ((f0-0 0.0)
-        (v0-0 0))
+(defun time-to-ground ((upward-velocity float) (gravity-strength float) (height float))
+  "Return the number of 300 Hz ticks needed to fall height.
+   Starting with upward-velocity, subtract the positive downward gravity-strength each tick
+   and then advance displacement with the new velocity. This matches the game's discrete
+   integration order."
+  (let ((displacement 0.0)
+        (ticks 0))
     ;; actually integrate forward, just like the game will do so we're exact.
-    (while (< (- arg2) f0-0)
-      (set! arg0 (- arg0 (/ arg1 300)))
-      (+! f0-0 (/ arg0 300))
-      (+! v0-0 1))
-    v0-0))
+    (while (< (- height) displacement)
+      (set! upward-velocity (- upward-velocity (/ gravity-strength 300)))
+      (+! displacement (/ upward-velocity 300))
+      (+! ticks 1))
+    ticks))
 
 ;; the default dynamics of the world.
 (define *standard-dynamics*

@@ -18,17 +18,21 @@
   :longest-edge (meters 1)
   :shadow babak-shadow-mg)
 
+;; Resume walking from frame 12 after the give-up hop so the two animations join cleanly.
 (defstate nav-enemy-patrol (babak)
   :virtual #t
   :code
     (behavior ()
       (cond
+        ;; Preserve the special handoff only when the hop is the animation currently driving Babak.
         ((ja-group? babak-give-up-hop-ja)
+         ;; Keep the end of the hop under the walk for 0.15 seconds, softening the change of gait.
          (ja-channel-push! 1 (seconds 0.15))
-         (ja-no-eval :group! babak-walk-ja :num! (seek!) :frame-num (ja-aframe 12.0 0))
-         (until (ja-done? 0)
-           (suspend)
-           (ja :num! (seek!))))
+         ;; Join the walk at artist frame 12 and seek through the remainder before normal patrol
+         ;; takes over.  `ja-aframe` keeps this join tied to the animator's timeline numbering.
+         (ja-play :group! babak-walk-ja :num! (seek!) :frame-num (ja-aframe 12.0 0)))
+        ;; All other entries get a slightly gentler 0.2-second blend for the patrol animation
+        ;; selected by the shared nav-enemy state.
         (else (ja-channel-push! 1 (seconds 0.2))))
       ((the-as (function none) (-> (method-of-type nav-enemy nav-enemy-patrol) code)))))
 
@@ -36,60 +40,80 @@
   :virtual #t
   :code
     (behavior ()
-      (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+      ;; Blend the landing pose into a fresh run cycle; otherwise start the run directly.
+      (let ((animation-speed (nav-enemy-rnd-float-range 0.9 1.1)))
         (cond
+          ;; The landing has a deliberate run handoff; other incoming poses use the ordinary start.
           ((ja-group? babak-jump-land-ja)
+           ;; Finish configuring the landing seek without evaluating it again before it is stacked.
            (ja-no-eval :num! (seek!))
+           ;; Retain the landing beneath the new run for a short, responsive cross-fade.
            (ja-channel-push! 1 (seconds 0.17))
-           (ja-no-eval :group! (-> self draw art-group data (-> self nav-info run-anim)) :num! (seek! max f30-0) :frame-num 0.0)
-           (until (ja-done? 0)
-             (ja-blend-eval)
-             (suspend)
-             (ja :num! (seek! max f30-0))))
+           ;; Run once from frame zero to the end at this creature's chosen speed.  Evaluating the
+           ;; lower stack each tick lets the landing continue naturally while its influence fades.
+           (ja-play :group!
+                    (-> self draw art-group data (-> self nav-info run-anim))
+                    :num! (seek! max animation-speed)
+                    :frame-num 0.0
+                    (ja-blend-eval)))
           (else
+           ;; Give an arbitrary incoming pose a little more time to blend into locomotion.
            (ja-channel-push! 1 (seconds 0.2))
+           ;; Select the run group first, without advancing it, so its opening pose is available.
            (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
+           ;; Hold that opening pose at frame zero until the chase loop begins advancing the run.
            (ja :num-func num-func-identity :frame-num 0.0)))
         (loop
           (suspend)
-          (ja :num! (loop! f30-0))))))
+          ;; Advance and wrap the established run every game tick, with a small per-Babak speed
+          ;; variation to keep a group of creatures from moving in mechanical lockstep.
+          (ja :num! (loop! animation-speed))))))
 
+;; Face the player, idle, and celebrate after a landed attack or occasional vulnerable opening.
 (defstate nav-enemy-stare (babak)
   :virtual #t
   :code
     (behavior ()
       (set! (-> self turn-time) (seconds 0.2))
-      (let ((f30-0 (nav-enemy-rnd-float-range 0.8 1.2)))
-        (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
+      (let ((animation-speed (nav-enemy-rnd-float-range 0.8 1.2)))
+        (when (or (logtest? (-> self nav-enemy-flags) (nav-enemy-flags attack-landed))
                   (and (nav-enemy-player-vulnerable?) (nav-enemy-rnd-percent? 0.5)))
+          ;; Blend quickly into the celebratory gesture so a successful attack reads immediately.
           (ja-channel-push! 1 (seconds 0.1))
-          (ja-no-eval :group! babak-win-ja :num! (seek! (ja-aframe 68.0 0) f30-0) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek! (ja-aframe 68.0 0) f30-0))))
+          ;; Play from frame zero through artist frame 68, converting that authored beat to the
+          ;; internal timeline and stopping there rather than running into the clip's recovery.
+          (ja-play :group! babak-win-ja :num! (seek! (ja-aframe 68.0 0) animation-speed) :frame-num 0.0))
         (loop
           (when (not (nav-enemy-facing-player? 2730.6667))
             (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+            ;; Leave the outgoing pose on a looping rule without evaluating it yet; it will remain
+            ;; alive underneath the turn while the blend is in progress.
             (ja-no-eval :num! (loop!))
+            ;; Stack one turn channel over the outgoing motion with a relaxed 0.2-second fade.
             (ja-channel-push! 1 (seconds 0.2))
+            ;; Install the turn animation without advancing it so the first pose can be held cleanly.
             (ja :group! babak-turn-ja)
+            ;; Pin the turn to frame zero until steering has entered the tighter facing tolerance.
             (ja :num-func num-func-identity :frame-num 0.0)
             (until (nav-enemy-facing-player? 1820.4445)
+              ;; Keep the pose below the turn current; otherwise the cross-fade would blend against
+              ;; a frozen outgoing frame.
               (ja-blend-eval)
               (suspend)
+              ;; Advance and wrap the turn at three-quarter speed while navigation rotates Babak.
               (ja :num! (loop! 0.75)))
             (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel)))
+          ;; Do not stack an identical idle over itself.  Any other pose gets a smooth 0.2-second
+          ;; transition before the idle is selected.
           (if (not (ja-group? babak-idle-ja)) (ja-channel-push! 1 (seconds 0.2)))
-          (ja-no-eval :group! babak-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek! max f30-0)))
+          ;; Play one complete idle pass at the chosen personality speed, starting from frame zero.
+          (ja-play :group! babak-idle-ja :num! (seek! max animation-speed) :frame-num 0.0)
           (when (nav-enemy-rnd-percent? 0.3)
+            ;; The optional flourish should snap into the rhythm, so use a brisk 0.1-second blend.
             (ja-channel-push! 1 (seconds 0.1))
-            (ja-no-eval :group! babak-win-ja :num! (seek! (ja-aframe 68.0 0) f30-0) :frame-num 0.0)
-            (until (ja-done? 0)
-              (suspend)
-              (ja :num! (seek! (ja-aframe 68.0 0) f30-0))))))))
+            ;; Repeat the same authored celebration beat, stopping at artist frame 68 before the
+            ;; stare loop returns to idle.
+            (ja-play :group! babak-win-ja :num! (seek! (ja-aframe 68.0 0) animation-speed) :frame-num 0.0))))))
 
 (defstate nav-enemy-give-up (babak)
   :virtual #t
@@ -97,42 +121,47 @@
     (behavior ()
       (set! (-> self rotate-speed) 218453.33)
       (set! (-> self turn-time) (seconds 0.5))
+      ;; Establish one blended action channel for the optional gesture and the hop that follows it.
       (ja-channel-push! 1 (seconds 0.15))
-      (let ((s4-0 (-> self collide-info))
-            (s5-0 (target-pos 0)))
-        (when (< (fabs (deg-diff (y-angle s4-0) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s5-0 (-> s4-0 trans)))))
-                 12743.111)
-          (ja-no-eval :group! babak-give-up-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!)))))
-      (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
+      ;; Only play the give-up gesture when the player is within 70 degrees of Babak's facing.
+      (let ((collision (-> self collide-info))
+            (player-position (target-pos 0)))
+        (if (< (fabs (deg-diff (y-angle collision)
+                               (vector-y-angle (vector-! (new 'stack-no-clear 'vector) player-position (-> collision trans)))))
+               12743.111)
+          ;; Seek the give-up gesture from frame zero to its natural end as a complete one-shot.
+          (ja-play :group! babak-give-up-ja :num! (seek!) :frame-num 0.0)))
+      (logclear! (-> self nav flags) (nav-control-flags blocked reached-destination))
       (nav-enemy-get-new-patrol-point)
-      (ja-no-eval :group! babak-give-up-hop-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (seek-to-point-toward-point! (-> self collide-info)
-                                     (-> self nav destination-pos)
-                                     (-> self rotate-speed)
-                                     (-> self turn-time))
-        (suspend)
-        (ja :num! (seek!)))
+      ;; Play the hop from beginning to end.  The body steers toward the new patrol point every
+      ;; frame, keeping the authored hop and the navigation turn visibly locked together.
+      (ja-play :group!
+               babak-give-up-hop-ja
+               :num! (seek!)
+               :frame-num 0.0
+               (seek-to-point-toward-point! (-> self collide-info)
+                                            (-> self nav destination-pos)
+                                            (-> self rotate-speed)
+                                            (-> self turn-time)))
       (go-virtual nav-enemy-patrol)))
 
+;; Blend the first 32 landing frames at half speed, then hand control back to the chase.
 (defstate nav-enemy-jump-land (babak)
   :virtual #t
   :code
     (behavior ()
+      ;; Put the outgoing jump on its final-frame seek without evaluating it before the blend.
       (ja-no-eval :num! (seek!))
+      ;; The landing needs a short blend so its contact remains sharp instead of looking slippery.
       (ja-channel-push! 1 (seconds 0.075))
-      (ja-no-eval :group!
-                  (-> self draw art-group data (-> self nav-info jump-land-anim))
-                  :num!
-                  (seek! (ja-aframe 32.0 0) 0.5)
-                  :frame-num 0.0)
-      (until (ja-done? 0)
-        (ja-blend-eval)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 32.0 0) 0.5)))
+      ;; Play only the first 32 artist frames of the landing at half speed.  While waiting, update
+      ;; the jump below it so the blend has a live source pose all the way through the contact.
+      (ja-play :group!
+               (-> self draw art-group data (-> self nav-info jump-land-anim))
+               :num!
+               (seek! (ja-aframe 32.0 0) 0.5)
+               :frame-num 0.0
+               (ja-blend-eval))
       (go-virtual nav-enemy-chase)))
 
 (define *babak-nav-enemy-info*
@@ -191,45 +220,51 @@
        :debug-draw-jump #f))
 
 (defmethod initialize-collision ((this babak))
-  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
-    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
-    (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
-    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
-      (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
-      (set! (-> s4-0 collide-with) (collide-kind target))
-      (set! (-> s4-0 prim-core action) (collide-action solid))
-      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
-      (set-root-prim! s5-0 s4-0)
-      (let ((s3-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-        (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s3-0 collide-with) (collide-kind target))
-        (set! (-> s3-0 prim-core action) (collide-action solid))
-        (set! (-> s3-0 prim-core offense) (collide-offense touch))
-        (set-vector! (-> s3-0 local-sphere) 0.0 4096.0 0.0 3072.0)
-        (append-prim s4-0 s3-0))
-      (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
-        (set! (-> s3-1 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s3-1 collide-with) (collide-kind target))
-        (set! (-> s3-1 prim-core action) (collide-action solid))
-        (set! (-> s3-1 prim-core offense) (collide-offense touch))
-        (set-vector! (-> s3-1 local-sphere) 0.0 9830.4 0.0 3072.0)
-        (append-prim s4-0 s3-1))
-      (let ((s3-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
-        (set! (-> s3-2 prim-core collide-as) (collide-kind enemy))
-        (set! (-> s3-2 collide-with) (collide-kind target))
-        (set! (-> s3-2 prim-core offense) (collide-offense normal-attack))
-        (set! (-> s3-2 transform-index) 6)
-        (set-vector! (-> s3-2 local-sphere) 0.0 0.0 0.0 2048.0)
-        (append-prim s4-0 s3-2)))
-    (set! (-> s5-0 nav-radius) 6144.0)
-    (backup-collide-with-as s5-0)
-    (set! (-> s5-0 max-iteration-count) (the-as uint 2))
-    (set! (-> this collide-info) s5-0))
+  "Create Babak's moving collision shape: a three-metre root bound, lower and upper 0.75-metre
+   touch spheres, and a 0.5-metre normal-attack sphere attached to skeleton transform 6. Set a
+   1.5-metre navigation radius and allow at most two collision iterations."
+  (let ((collision (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> collision dynam) (copy *standard-dynamics* 'process))
+    (set! (-> collision reaction) default-collision-reaction)
+    (set! (-> collision no-reaction)
+          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
+    (let ((primitive-group (new 'process 'collide-shape-prim-group collision (the-as uint 3) 0)))
+      (set! (-> primitive-group prim-core collide-as) (collide-kind enemy))
+      (set! (-> primitive-group collide-with) (collide-kind target))
+      (set! (-> primitive-group prim-core action) (collide-action solid))
+      (set-vector! (-> primitive-group local-sphere) 0.0 8192.0 0.0 12288.0)
+      (set-root-prim! collision primitive-group)
+      (let ((lower-touch-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 3))))
+        (set! (-> lower-touch-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> lower-touch-sphere collide-with) (collide-kind target))
+        (set! (-> lower-touch-sphere prim-core action) (collide-action solid))
+        (set! (-> lower-touch-sphere prim-core offense) (collide-offense touch))
+        (set-vector! (-> lower-touch-sphere local-sphere) 0.0 4096.0 0.0 3072.0)
+        (append-prim primitive-group lower-touch-sphere))
+      (let ((upper-touch-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 3))))
+        (set! (-> upper-touch-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> upper-touch-sphere collide-with) (collide-kind target))
+        (set! (-> upper-touch-sphere prim-core action) (collide-action solid))
+        (set! (-> upper-touch-sphere prim-core offense) (collide-offense touch))
+        (set-vector! (-> upper-touch-sphere local-sphere) 0.0 9830.4 0.0 3072.0)
+        (append-prim primitive-group upper-touch-sphere))
+      (let ((attack-sphere (new 'process 'collide-shape-prim-sphere collision (the-as uint 1))))
+        (set! (-> attack-sphere prim-core collide-as) (collide-kind enemy))
+        (set! (-> attack-sphere collide-with) (collide-kind target))
+        (set! (-> attack-sphere prim-core offense) (collide-offense normal-attack))
+        (set! (-> attack-sphere transform-index) 6)
+        (set-vector! (-> attack-sphere local-sphere) 0.0 0.0 0.0 2048.0)
+        (append-prim primitive-group attack-sphere)))
+    (set! (-> collision nav-radius) 6144.0)
+    (backup-collide-with-as collision)
+    (set! (-> collision max-iteration-count) (the-as uint 2))
+    (set! (-> this collide-info) collision))
   0
   (none))
 
-(defmethod nav-enemy-method-48 ((this babak))
+(defmethod post-init-setup! ((this babak))
+  "Initialize the Babak skeleton and navigation defaults, then configure neck modifier axes
+   0, 1, and 2 as up, nose, and ear."
   (initialize-skeleton this *babak-sg* '())
   (init-defaults! this *babak-nav-enemy-info*)
   (set! (-> this neck up) (the-as uint 0))
@@ -238,12 +273,15 @@
   0
   (none))
 
-(defmethod nav-enemy-method-59 ((this babak))
+(defmethod go-initial-state! ((this babak))
+  "Enter fuel-cell behavior when a placed Babak carrying a power cell is already complete;
+   otherwise honor start-wait-for-cue, or enter the ordinary idle state."
   (cond
     ((and (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
           (logtest? (-> this enemy-info options) (fact-options has-power-cell)))
      (go (method-of-object this nav-enemy-fuel-cell)))
-    ((logtest? (-> this enemy-info options) (fact-options fop5)) (go (method-of-object this nav-enemy-wait-for-cue)))
+    ((logtest? (-> this enemy-info options) (fact-options start-wait-for-cue))
+     (go (method-of-object this nav-enemy-wait-for-cue)))
     (else (go (method-of-object this nav-enemy-idle))))
   0
   (none))

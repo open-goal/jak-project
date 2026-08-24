@@ -562,13 +562,150 @@ Form* cast_form(Form* in,
   return pool.form<CastElement>(new_type, in);
 }
 
+std::optional<TypeSpec> try_get_deref_form_type(Form* form,
+                                                const Env& env,
+                                                std::optional<size_t> token_count = {}) {
+  auto* deref = form->try_as_element<DerefElement>();
+  if (!deref || deref->is_addr_of()) {
+    return {};
+  }
+
+  std::optional<TypeSpec> current;
+  auto base_atom = form_as_atom(deref->base());
+  if (base_atom && base_atom->is_var()) {
+    current = env.get_variable_type(base_atom->var(), true);
+  } else if (auto* cast = deref->base()->try_as_element<CastElement>()) {
+    current = cast->type();
+  } else {
+    auto base_form = deref->base()->to_form(env);
+    if (base_form.is_symbol()) {
+      try {
+        current = env.dts->lookup_symbol_type(base_form.as_symbol().name_ptr);
+      } catch (const std::runtime_error&) {
+      }
+    }
+  }
+  if (!current) {
+    return {};
+  }
+
+  const auto tokens_to_follow = token_count.value_or(deref->tokens().size());
+  if (tokens_to_follow > deref->tokens().size()) {
+    return {};
+  }
+  for (size_t i = 0; i < tokens_to_follow; ++i) {
+    const auto& token = deref->tokens().at(i);
+    if (token.kind() == DerefToken::Kind::FIELD_NAME) {
+      try {
+        current = env.dts->ts.lookup_field_info(current->base_type(), token.field_name()).type;
+      } catch (const std::exception&) {
+        return {};
+      }
+    } else if (token.kind() == DerefToken::Kind::INTEGER_CONSTANT ||
+               token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
+      if (!current->has_single_arg()) {
+        return {};
+      }
+      const auto element_type = current->get_single_arg();
+      current = element_type;
+    } else {
+      return {};
+    }
+  }
+  return current;
+}
+
+bool try_rewrite_inline_array_cursor(Form* form, const TypeSpec& expected_type, const Env& env) {
+  auto* deref = form->try_as_element<DerefElement>();
+  if (expected_type.base_type() != "inline-array" || !expected_type.has_single_arg() || !deref ||
+      deref->is_addr_of() || deref->tokens().empty()) {
+    return false;
+  }
+
+  const auto token_kind = deref->tokens().back().kind();
+  if (token_kind != DerefToken::Kind::INTEGER_CONSTANT &&
+      token_kind != DerefToken::Kind::INTEGER_EXPRESSION) {
+    return false;
+  }
+
+  const auto element_type = try_get_deref_form_type(form, env);
+  const auto container_type = try_get_deref_form_type(form, env, deref->tokens().size() - 1);
+  if (element_type != expected_type.get_single_arg() || container_type != expected_type) {
+    return false;
+  }
+
+  deref->set_addr_of(true);
+  return true;
+}
+
+bool deref_suffix_matches_lookup(const std::vector<DerefToken>& tokens,
+                                 size_t suffix_start,
+                                 const FieldReverseLookupOutput& lookup) {
+  if (tokens.size() - suffix_start != lookup.tokens.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < lookup.tokens.size(); ++i) {
+    const auto& actual = tokens.at(suffix_start + i);
+    const auto& expected = lookup.tokens.at(i);
+    switch (expected.kind) {
+      case FieldReverseLookupOutput::Token::Kind::FIELD:
+        if (!actual.is_field_name(expected.name)) {
+          return false;
+        }
+        break;
+      case FieldReverseLookupOutput::Token::Kind::CONSTANT_IDX:
+        if (!actual.is_int(expected.idx)) {
+          return false;
+        }
+        break;
+      case FieldReverseLookupOutput::Token::Kind::VAR_IDX:
+        return false;
+    }
+  }
+  return true;
+}
+
 Form* cast_form_from(Form* in,
                      const TypeSpec& old_type,
                      const TypeSpec& new_type,
                      FormPool& pool,
                      const Env& env,
                      bool tc_pass = false) {
-  auto& ts = env.dts->ts;
+  auto form_type = try_get_deref_form_type(in, env);
+  if (form_type == new_type) {
+    return in;
+  }
+
+  // A dereference can end in a zero-offset inline view of the object the consumer expects. If
+  // reverse lookup confirms that the suffix changes only the type, trim it instead of casting the
+  // view back to its enclosing object.
+  auto* deref = in->try_as_element<DerefElement>();
+  if (deref && !deref->is_addr_of() && form_type) {
+    for (size_t keep = deref->tokens().size(); keep-- > 0;) {
+      auto prefix_type = try_get_deref_form_type(in, env, keep);
+      if (prefix_type != new_type) {
+        continue;
+      }
+
+      FieldReverseLookupInput suffix_lookup;
+      suffix_lookup.deref = std::nullopt;
+      suffix_lookup.offset = 0;
+      suffix_lookup.stride = 0;
+      suffix_lookup.base_type = new_type;
+      auto suffix_results = env.reverse_field_multi_lookup(suffix_lookup);
+      for (const auto& result : suffix_results.results) {
+        if (!result.addr_of && result.result_type == *form_type &&
+            deref_suffix_matches_lookup(deref->tokens(), keep, result)) {
+          std::vector<DerefToken> prefix_tokens(deref->tokens().begin(),
+                                                deref->tokens().begin() + keep);
+          if (prefix_tokens.empty()) {
+            return deref->base();
+          }
+          return pool.form<DerefElement>(deref->base(), false, std::move(prefix_tokens));
+        }
+      }
+    }
+  }
 
   // sometimes, accessing a field is a no-op but changes the type. For example, accessing an inlined
   // structure at the start of a structure. To detect this, look up all the possible derefs with no
@@ -577,8 +714,8 @@ Form* cast_form_from(Form* in,
   lookup_input.deref = std::nullopt;
   lookup_input.offset = 0;
   lookup_input.stride = 0;
-  lookup_input.base_type = old_type;
-  auto lookup_result = ts.reverse_field_multi_lookup(lookup_input);
+  lookup_input.base_type = form_type.value_or(old_type);
+  auto lookup_result = env.reverse_field_multi_lookup(lookup_input);
   if (lookup_result.success) {
     for (auto& result : lookup_result.results) {
       if (result.result_type == new_type) {
@@ -1153,6 +1290,99 @@ void SimpleExpressionElement::update_from_stack_si_1(const Env& env,
       make_cast_if_needed(arg, in_type, TypeSpec("int"), pool, env)));
 }
 
+DerefElement* try_reassociate_inline_array_field_access(Form* field_access,
+                                                        Form* product,
+                                                        int stride,
+                                                        const Env& env,
+                                                        FormPool& pool) {
+  auto* deref = field_access->try_as_element<DerefElement>();
+  if (!deref || deref->is_addr_of()) {
+    return nullptr;
+  }
+
+  auto stride_matcher =
+      Matcher::match_or({Matcher::cast("uint", Matcher::integer(stride)),
+                         Matcher::cast("int", Matcher::integer(stride)), Matcher::integer(stride)});
+  auto product_matcher =
+      Matcher::match_or({Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                     {Matcher::any(0), stride_matcher}),
+                         Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::MULTIPLICATION),
+                                     {stride_matcher, Matcher::any(0)})});
+  auto product_match = match(product_matcher, product);
+  if (!product_match.matched) {
+    return nullptr;
+  }
+
+  // Preserve a field path that was already reconstructed from a constant-zero inline-array
+  // element, replacing only that index with the dynamic one.
+  if (!deref->tokens().empty() && deref->tokens().front().is_int(0)) {
+    std::optional<TypeSpec> base_type;
+    auto base_atom = form_as_atom(deref->base());
+    if (base_atom && base_atom->is_var()) {
+      base_type = env.get_variable_type(base_atom->var(), true);
+    } else {
+      auto base_form = deref->base()->to_form(env);
+      if (base_form.is_symbol()) {
+        try {
+          base_type = env.dts->lookup_symbol_type(base_form.as_symbol().name_ptr);
+        } catch (const std::runtime_error&) {
+        }
+      }
+    }
+    if (base_type && base_type->base_type() == "inline-array") {
+      FieldReverseLookupInput lookup;
+      lookup.deref = std::nullopt;
+      lookup.stride = stride;
+      lookup.offset = 0;
+      lookup.base_type = *base_type;
+      auto reverse = env.reverse_field_multi_lookup(lookup);
+      for (const auto& candidate : reverse.results) {
+        if (candidate.has_variable_token()) {
+          auto tokens = deref->tokens();
+          tokens.front() = DerefToken::make_int_expr(product_match.maps.forms.at(0));
+          return pool.alloc_element<DerefElement>(deref->base(), false, std::move(tokens));
+        }
+      }
+    }
+  }
+
+  // The array can also be an inline field at offset zero in the reconstructed base expression.
+  // Ask reverse lookup for the complete path instead of requiring the base itself to have an
+  // inline-array type.
+  auto field_type = try_get_deref_form_type(field_access, env);
+  if (!field_type) {
+    return nullptr;
+  }
+  FieldReverseLookupInput lookup;
+  lookup.deref = std::nullopt;
+  lookup.stride = stride;
+  lookup.offset = 0;
+  lookup.base_type = *field_type;
+  auto reverse = env.reverse_field_multi_lookup(lookup);
+  for (const auto& candidate : reverse.results) {
+    if (!candidate.has_variable_token()) {
+      continue;
+    }
+    bool used_index = false;
+    std::vector<DerefToken> tokens;
+    for (const auto& token : candidate.tokens) {
+      if (token.kind == FieldReverseLookupOutput::Token::Kind::VAR_IDX) {
+        if (used_index) {
+          return nullptr;
+        }
+        used_index = true;
+        tokens.push_back(DerefToken::make_int_expr(product_match.maps.forms.at(0)));
+      } else {
+        tokens.push_back(to_token(token));
+      }
+    }
+    auto* result = pool.alloc_element<DerefElement>(field_access, candidate.addr_of, tokens);
+    result->inline_nested();
+    return result;
+  }
+  return nullptr;
+}
+
 void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
                                                       FormPool& pool,
                                                       FormStack& stack,
@@ -1220,13 +1450,27 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
     auto addition_matcher =
         GenericOpMatcher::or_match({GenericOpMatcher::fixed(FixedOperatorKind::ADDITION),
                                     GenericOpMatcher::fixed(FixedOperatorKind::ADDITION_PTR)});
+    if (arg1_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+      if (auto* indexed = try_reassociate_inline_array_field_access(
+              args.at(0), args.at(1), arg1_type.get_multiplier(), env, pool)) {
+        result->push_back(indexed);
+        return;
+      }
+    }
+    if (arg0_type.kind == TP_Type::Kind::PRODUCT_WITH_CONSTANT) {
+      if (auto* indexed = try_reassociate_inline_array_field_access(
+              args.at(1), args.at(0), arg0_type.get_multiplier(), env, pool)) {
+        result->push_back(indexed);
+        return;
+      }
+    }
     if (arg0_type.kind == TP_Type::Kind::INTEGER_CONSTANT_PLUS_VAR) {
       // try to see if this is valid, from the type system.
       FieldReverseLookupInput input;
       input.offset = arg0_type.get_integer_constant();
       input.stride = 1;
       input.base_type = arg1_type.typespec();
-      auto out = env.dts->ts.reverse_field_lookup(input);
+      auto out = env.reverse_field_lookup(input);
       if (out.success && out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
@@ -1263,7 +1507,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.offset = arg0_type.get_add_int_constant();
       input.stride = arg0_type.get_mult_int_constant();
       input.base_type = arg1_type.typespec();
-      auto out = env.dts->ts.reverse_field_lookup(input);
+      auto out = env.reverse_field_lookup(input);
       if (out.success && out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
@@ -1339,7 +1583,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       rd_in.stride = arg1_type.get_multiplier();
       rd_in.offset = 0;
       rd_in.base_type = arg0_type.typespec();
-      auto rd = env.dts->ts.reverse_field_multi_lookup(rd_in);
+      auto rd = env.reverse_field_multi_lookup(rd_in);
       int idx_of_success = -1;
       if (rd.success) {
         for (int i = 0; i < (int)rd.results.size(); i++) {
@@ -1391,7 +1635,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       rd_in.stride = arg0_type.get_multiplier();
       rd_in.offset = 0;
       rd_in.base_type = arg1_type.typespec();
-      auto rd = env.dts->ts.reverse_field_multi_lookup(rd_in);
+      auto rd = env.reverse_field_multi_lookup(rd_in);
       int idx_of_success = -1;
       if (rd.success) {
         for (int i = 0; i < (int)rd.results.size(); i++) {
@@ -1443,7 +1687,7 @@ void SimpleExpressionElement::update_from_stack_add_i(const Env& env,
       input.offset = arg0_type.get_integer_constant();
       input.stride = 0;
       input.base_type = arg1_type.typespec();
-      auto out = env.dts->ts.reverse_field_lookup(input);
+      auto out = env.reverse_field_lookup(input);
       if (out.success && !out.has_variable_token()) {
         // it is. now we have to modify things
         // first, look for the index
@@ -2720,6 +2964,51 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
 // SetVarElement
 ///////////////////
 
+namespace {
+bool try_rewrite_string_format_load(SetVarElement& set,
+                                    const Env& env,
+                                    FormPool& pool,
+                                    FormStack& stack) {
+  // string-format expands to
+  //   (begin (format (clear *temp-string*) args...) *temp-string*)
+  //
+  // Recognize the reload only when the matching format call is the immediately preceding active
+  // expression. Keeping the resulting value at the reload's position is important: normal stack
+  // popping can then inline it only where doing so preserves argument evaluation order, or leave a
+  // temporary when an intervening argument was evaluated after the format call.
+  if (!set.src()->to_form(env).is_symbol("*temp-string*")) {
+    return false;
+  }
+
+  const auto* previous = stack.active_back();
+  if (!previous || previous->destination || !previous->elt) {
+    return false;
+  }
+
+  auto* format_call = dynamic_cast<GenericElement*>(previous->elt);
+  if (!format_call || !format_call->op().is_func() ||
+      !format_call->op().func()->to_form(env).is_symbol("format") || format_call->elts().empty()) {
+    return false;
+  }
+
+  auto* clear_call = format_call->elts().front()->try_as_element<GenericElement>();
+  if (!clear_call || !clear_call->op().is_func() ||
+      !clear_call->op().func()->to_form(env).is_symbol("clear") || clear_call->elts().size() != 1 ||
+      !clear_call->elts().front()->to_form(env).is_symbol("*temp-string*")) {
+    return false;
+  }
+
+  std::vector<Form*> format_args(format_call->elts().begin() + 1, format_call->elts().end());
+  auto string_format = pool.form<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("string-format")),
+      format_args);
+
+  stack.pop_active_back();
+  stack.push_value_to_reg(set.dst(), string_format, true, set.src_type(), set.info());
+  return true;
+}
+}  // namespace
+
 void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
   mark_popped();
   for (auto x : m_src->elts()) {
@@ -2730,6 +3019,10 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
   // hack for method stuff
   if (is_dead_set()) {
     stack.push_value_to_reg_dead(m_dst, m_src, true, m_src_type, m_var_info);
+    return;
+  }
+
+  if (try_rewrite_string_format_load(*this, env, pool, stack)) {
     return;
   }
 
@@ -2746,13 +3039,19 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     if (src_as_se) {
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
-        // this can happen late in the case of coloring moves which are also gpr -> fpr's
-        // so they don't get caught by SetVarOp::get_as_form's check.
-        if (env.op_id_is_eliminated_coloring_move(src_as_se->expr().get_arg(0).var().idx())) {
+        const auto src_var = src_as_se->expr().get_arg(0).var();
+        if (env.get_variable_name(m_dst) == env.get_variable_name(src_var) &&
+            env.get_variable_type(m_dst, true) == env.get_variable_type(src_var, true)) {
           m_var_info.is_eliminated_coloring_move = true;
         }
 
-        auto var = src_as_se->expr().get_arg(0).var();
+        // this can happen late in the case of coloring moves which are also gpr -> fpr's
+        // so they don't get caught by SetVarOp::get_as_form's check.
+        if (env.op_id_is_eliminated_coloring_move(src_var.idx())) {
+          m_var_info.is_eliminated_coloring_move = true;
+        }
+
+        auto var = src_var;
         bool is_consumed_reg_move = false;
         if (is_stack_slot_access(var)) {
           auto& use_def = env.get_use_def_info(var);
@@ -2772,6 +3071,11 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
 
   // we aren't a reg-reg move, so update our source
   m_src->update_children_from_stack(env, pool, stack, true);
+
+  const auto expected_type = env.get_variable_type(m_dst, true);
+  if (try_rewrite_inline_array_cursor(m_src, expected_type, env)) {
+    m_src_type = expected_type;
+  }
 
   for (auto x : m_src->elts()) {
     ASSERT(x->parent_form == m_src);
@@ -2793,7 +3097,12 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
       // stripped off by update_children_from_stack.
       if (src_as_se->expr().kind() == SimpleExpression::Kind::IDENTITY &&
           src_as_se->expr().get_arg(0).is_var()) {
-        if (env.op_id_is_eliminated_coloring_move(src_as_se->expr().get_arg(0).var().idx())) {
+        const auto src_var = src_as_se->expr().get_arg(0).var();
+        if (env.get_variable_name(m_dst) == env.get_variable_name(src_var) &&
+            env.get_variable_type(m_dst, true) == env.get_variable_type(src_var, true)) {
+          m_var_info.is_eliminated_coloring_move = true;
+        }
+        if (env.op_id_is_eliminated_coloring_move(src_var.idx())) {
           m_var_info.is_eliminated_coloring_move = true;
         }
       }
@@ -2887,6 +3196,17 @@ void SetFormFormElement::push_to_stack(const Env& env, FormPool& pool, FormStack
   ASSERT(m_popped);
   ASSERT(m_real_push_count == 0);
   m_real_push_count++;
+
+  // An indexed element cast back to its containing inline-array type is an address/cursor update.
+  if (m_cast_for_set && try_rewrite_inline_array_cursor(m_src, *m_cast_for_set, env)) {
+    m_cast_for_set = {};
+  }
+  if (auto* cast = m_src->try_as_element<CastElement>();
+      cast && !cast->numeric() &&
+      try_rewrite_inline_array_cursor(cast->source(), cast->type(), env)) {
+    m_src = cast->source();
+    m_src->parent_element = this;
+  }
 
   // check for bitfield setting:
   auto src_as_bf_set = dynamic_cast<ModifiedCopyBitfieldElement*>(m_src->try_as_single_element());
@@ -3138,8 +3458,139 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
   return false;
 }
 
+struct Jak1MatrixRowDeref {
+  RegisterAccess base;
+  std::vector<DerefToken> matrix_tokens;
+  bool is_vector_view = false;
+};
+
+std::optional<RegisterAccess> identity_var(Form* form) {
+  auto* elt = form ? form->try_as_element<SimpleExpressionElement>() : nullptr;
+  if (!elt || elt->expr().kind() != SimpleExpression::Kind::IDENTITY ||
+      !elt->expr().get_arg(0).is_var()) {
+    return {};
+  }
+  return elt->expr().get_arg(0).var();
+}
+
+std::optional<TypeSpec> deref_result_type(RegisterAccess base,
+                                          const std::vector<DerefToken>& tokens,
+                                          const Env& env) {
+  TypeSpec current = env.get_variable_type(base, true);
+  for (const auto& token : tokens) {
+    if (token.kind() == DerefToken::Kind::FIELD_NAME) {
+      try {
+        current = env.dts->ts.lookup_field_info(current.base_type(), token.field_name()).type;
+      } catch (const std::exception&) {
+        return {};
+      }
+    } else if (token.kind() == DerefToken::Kind::INTEGER_CONSTANT ||
+               token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
+      if (!current.has_single_arg()) {
+        return {};
+      }
+      // get_single_arg() refers into current, so copy it before assignment destroys the argument
+      // storage.
+      const auto element_type = current.get_single_arg();
+      current = element_type;
+    } else {
+      return {};
+    }
+  }
+  return current;
+}
+
+std::optional<Jak1MatrixRowDeref> match_jak1_matrix_row(Form* form, int row, const Env& env) {
+  auto* deref = form ? form->try_as_element<DerefElement>() : nullptr;
+  if (!deref || deref->is_addr_of() || deref->tokens().size() < 2) {
+    return {};
+  }
+
+  auto base = identity_var(deref->base());
+  if (!base) {
+    return {};
+  }
+
+  const auto row_token = deref->tokens().size() - 2;
+  if (!deref->tokens().at(row_token).is_int(row) ||
+      !deref->tokens().at(row_token + 1).is_field_name("quad")) {
+    return {};
+  }
+
+  bool is_vector_view = true;
+  auto matrix_end = row_token;
+  if (row_token && deref->tokens().at(row_token - 1).is_field_name("vector")) {
+    is_vector_view = false;
+    matrix_end--;
+  }
+
+  std::vector<DerefToken> matrix_tokens(deref->tokens().begin(),
+                                        deref->tokens().begin() + matrix_end);
+  auto container_type = deref_result_type(*base, matrix_tokens, env);
+  const auto expected_type =
+      is_vector_view ? TypeSpec("inline-array", {TypeSpec("vector")}) : TypeSpec("matrix");
+  if (!container_type || *container_type != expected_type) {
+    return {};
+  }
+  return Jak1MatrixRowDeref{*base, std::move(matrix_tokens), is_vector_view};
+}
+
+bool same_deref_tokens(std::vector<DerefToken> lhs, std::vector<DerefToken> rhs, const Env& env) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (lhs.at(i).kind() != rhs.at(i).kind()) {
+      return false;
+    }
+    switch (lhs.at(i).kind()) {
+      case DerefToken::Kind::FIELD_NAME:
+        if (lhs.at(i).field_name() != rhs.at(i).field_name()) {
+          return false;
+        }
+        break;
+      case DerefToken::Kind::INTEGER_CONSTANT:
+        if (lhs.at(i).int_constant() != rhs.at(i).int_constant()) {
+          return false;
+        }
+        break;
+      case DerefToken::Kind::INTEGER_EXPRESSION:
+        if (lhs.at(i).expr()->to_string(env) != rhs.at(i).expr()->to_string(env)) {
+          return false;
+        }
+        break;
+      default:
+        return false;
+    }
+  }
+  return true;
+}
+
+Form* append_deref_tokens(Form* base, const std::vector<DerefToken>& tokens, FormPool& pool) {
+  if (tokens.empty()) {
+    return base;
+  }
+  return pool.form<DerefElement>(base, false, tokens);
+}
+
+Form* matrix_from_jak1_vector_view(Form* view, FormPool& pool, const Env& env) {
+  auto* deref = view ? view->try_as_element<DerefElement>() : nullptr;
+  if (deref && !deref->is_addr_of() && !deref->tokens().empty() &&
+      deref->tokens().back().is_field_name("vector")) {
+    auto tokens = deref->tokens();
+    tokens.pop_back();
+    auto matrix = append_deref_tokens(deref->base(), tokens, pool);
+    auto matrix_type = try_get_deref_form_type(matrix, env);
+    if (matrix_type == TypeSpec("matrix")) {
+      return matrix;
+    }
+  }
+  return cast_form(view, TypeSpec("matrix"), pool, env);
+}
+
 bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack& stack) {
-  if (env.func->name() == "(method 63 collide-shape-moving)") {
+  if (env.func->name() == "matrix-copy!" ||
+      env.func->name() == "(method 63 collide-shape-moving)") {
     return false;
   }
   auto matrix_entries =
@@ -3147,32 +3598,65 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
   if (matrix_entries) {
     // first, check the loads. they should be something like source = (-> MAT vec quad)
     // MAT should always be a variable
-    const char* names[] = {"rvec", "uvec", "fvec", "trans"};
-
     std::vector<RegisterAccess> load_src_ras, store_dest_ras, store_src_ras;
+    std::vector<DerefToken> src_matrix_tokens, dst_matrix_tokens;
+    bool src_is_vector_view = false;
+    bool dst_is_vector_view = false;
     for (int i = 0; i < 4; i++) {
-      auto deref_matcher =
-          Matcher::deref(Matcher::any_reg(0), false,
-                         {DerefTokenMatcher::string(names[i]), DerefTokenMatcher::string("quad")});
-      auto mr = match(deref_matcher, matrix_entries->at(i).source, &env);
-      if (!mr.matched) {
-        return false;
+      if (env.version == GameVersion::Jak1) {
+        auto row = match_jak1_matrix_row(matrix_entries->at(i).source, i, env);
+        if (!row || (i && (src_is_vector_view != row->is_vector_view ||
+                           !same_deref_tokens(src_matrix_tokens, row->matrix_tokens, env)))) {
+          return false;
+        }
+        load_src_ras.push_back(row->base);
+        if (!i) {
+          src_matrix_tokens = std::move(row->matrix_tokens);
+          src_is_vector_view = row->is_vector_view;
+        }
+      } else {
+        const char* names[] = {"rvec", "uvec", "fvec", "trans"};
+        auto deref_matcher = Matcher::deref(
+            Matcher::any_reg(0), false,
+            {DerefTokenMatcher::string(names[i]), DerefTokenMatcher::string("quad")});
+        auto mr = match(deref_matcher, matrix_entries->at(i).source, &env);
+        if (!mr.matched) {
+          return false;
+        }
+        load_src_ras.push_back(mr.maps.regs.at(0).value());
       }
-      load_src_ras.push_back(mr.maps.regs.at(0).value());
     }
 
     // check the stores
     for (int i = 4; i < 8; i++) {
-      Matcher matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
-                                                    {DerefTokenMatcher::string(names[i - 4]),
-                                                     DerefTokenMatcher::string("quad")}),
-                                     Matcher::any_reg(1));
-      auto mr = match(matcher, matrix_entries->at(i).elt, &env);
-      if (!mr.matched) {
-        return false;
+      if (env.version == GameVersion::Jak1) {
+        auto* set = dynamic_cast<SetFormFormElement*>(matrix_entries->at(i).elt);
+        auto row = set ? match_jak1_matrix_row(set->dst(), i - 4, env) : std::nullopt;
+        auto src = set ? identity_var(set->src()) : std::nullopt;
+        if (!row || !src ||
+            (i != 4 && (dst_is_vector_view != row->is_vector_view ||
+                        !same_deref_tokens(dst_matrix_tokens, row->matrix_tokens, env)))) {
+          return false;
+        }
+        store_dest_ras.push_back(row->base);
+        store_src_ras.push_back(*src);
+        if (i == 4) {
+          dst_matrix_tokens = std::move(row->matrix_tokens);
+          dst_is_vector_view = row->is_vector_view;
+        }
+      } else {
+        const char* names[] = {"rvec", "uvec", "fvec", "trans"};
+        auto dst_matcher = Matcher::deref(
+            Matcher::any_reg(0), false,
+            {DerefTokenMatcher::string(names[i - 4]), DerefTokenMatcher::string("quad")});
+        Matcher matcher = Matcher::set(dst_matcher, Matcher::any_reg(1));
+        auto mr = match(matcher, matrix_entries->at(i).elt, &env);
+        if (!mr.matched) {
+          return false;
+        }
+        store_dest_ras.push_back(mr.maps.regs.at(0).value());
+        store_src_ras.push_back(mr.maps.regs.at(1).value());
       }
-      store_dest_ras.push_back(mr.maps.regs.at(0).value());
-      store_src_ras.push_back(mr.maps.regs.at(1).value());
     }
 
     // check loads are all loading from the same matrix
@@ -3196,13 +3680,15 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
       }
     }
 
-    // check types
-    if (env.get_variable_type(load_src_ras.at(0), true) != TypeSpec("matrix")) {
-      return false;
-    }
+    // For Jak 1, match_jak1_matrix_row checked the types after following the dereference prefix.
+    if (env.version != GameVersion::Jak1) {
+      if (env.get_variable_type(load_src_ras.at(0), true) != TypeSpec("matrix")) {
+        return false;
+      }
 
-    if (env.get_variable_type(store_dest_ras.at(0), true) != TypeSpec("matrix")) {
-      return false;
+      if (env.get_variable_type(store_dest_ras.at(0), true) != TypeSpec("matrix")) {
+        return false;
+      }
     }
 
     stack.pop(8);
@@ -3218,6 +3704,10 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
     } else {
       // lg::info(" popped src: {}", src_repopped->to_string(env));
     }
+    src_repopped = append_deref_tokens(src_repopped, src_matrix_tokens, pool);
+    if (src_is_vector_view) {
+      src_repopped = matrix_from_jak1_vector_view(src_repopped, pool, env);
+    }
 
     // src_repopped = matrix_entries->at(0).source;
     bool found = false;
@@ -3231,8 +3721,14 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
       // lg::info(" popped dst: {} {} {}", dst_repopped->to_string(env), ra.reg().to_string(),
       //          ra.mode() == AccessMode::WRITE);
     }
+    dst_repopped = append_deref_tokens(dst_repopped, dst_matrix_tokens, pool);
+    if (dst_is_vector_view) {
+      dst_repopped = matrix_from_jak1_vector_view(dst_repopped, pool, env);
+    }
 
-    if (found) {
+    // If the matrix is a field of the popped value, the copy result is not the value of that
+    // containing object. Emit it as a standalone side-effecting form instead.
+    if (found && dst_matrix_tokens.empty() && !dst_is_vector_view) {
       stack.push_value_to_reg(
           ra,
           pool.form<GenericElement>(
@@ -3345,6 +3841,8 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
           }
         }
       } break;
+      case GameVersion::JakX:
+        return false;
     }
 
     // success!
@@ -3369,6 +3867,71 @@ bool is_deref_to_quad(DerefElement* deref) {
          deref->tokens().back().is_field_name("quad");
 }
 
+struct DerefContainerInfo {
+  TypeSpec type;
+  bool is_matrix_row = false;
+  bool is_quaternion_view = false;
+};
+
+std::optional<DerefContainerInfo> deref_container_info(DerefElement* deref, const Env& env) {
+  if (!is_deref_to_quad(deref)) {
+    return {};
+  }
+
+  auto base = form_as_atom(deref->base());
+  if (!base) {
+    return {};
+  }
+
+  std::optional<TypeSpec> base_type;
+  if (base->is_var()) {
+    base_type = env.get_variable_type(base->var(), true);
+  } else if (base->is_int() && base->get_int() == 0x70000000 && env.scratchpad_type()) {
+    base_type = env.scratchpad_type();
+  } else {
+    auto base_form = deref->base()->to_form(env);
+    if (base_form.is_symbol()) {
+      try {
+        base_type = env.dts->lookup_symbol_type(base_form.as_symbol().name_ptr);
+      } catch (const std::runtime_error&) {
+      }
+    }
+  }
+  if (!base_type) {
+    return {};
+  }
+
+  TypeSpec current = *base_type;
+  bool is_matrix_row = current == TypeSpec("matrix") || current == TypeSpec("matrix3");
+  bool is_quaternion_view = false;
+  for (size_t i = 0; i + 1 < deref->tokens().size(); ++i) {
+    const auto& token = deref->tokens().at(i);
+    if (token.kind() == DerefToken::Kind::FIELD_NAME) {
+      is_quaternion_view =
+          is_quaternion_view || (current == TypeSpec("quaternion") && token.field_name() == "vec");
+      try {
+        current = env.dts->ts.lookup_field_info(current.base_type(), token.field_name()).type;
+      } catch (const std::exception&) {
+        return {};
+      }
+    } else if (token.kind() == DerefToken::Kind::INTEGER_CONSTANT ||
+               token.kind() == DerefToken::Kind::INTEGER_EXPRESSION) {
+      if (!current.has_single_arg()) {
+        return {};
+      }
+      // get_single_arg() refers into current, so copy it before assignment destroys the argument
+      // storage.
+      const auto element_type = current.get_single_arg();
+      current = element_type;
+    } else {
+      return {};
+    }
+    is_matrix_row =
+        is_matrix_row || current == TypeSpec("matrix") || current == TypeSpec("matrix3");
+  }
+  return DerefContainerInfo{current, is_matrix_row, is_quaternion_view};
+}
+
 Form* pop_last_deref_token(Form* form) {
   auto deref = form->try_as_element<DerefElement>();
   ASSERT(deref);
@@ -3380,27 +3943,14 @@ Form* pop_last_deref_token(Form* form) {
   }
 }
 
-FormElement* try_to_rewrite_vector_copy(Form* dst,
-                                        const TypeSpec& dst_type,
-                                        Form* src,
-                                        const TypeSpec& src_type,
-                                        FormPool& pool,
-                                        const Env& env) {
-  if (env.func->name() == "vector-copy!") {
+}  // namespace
+
+FormElement* try_to_rewrite_vector_copy(Form* dst, Form* src, FormPool& pool, const Env& env) {
+  if (env.func->name() == "vector-copy!" || env.func->name() == "vector4w-copy!") {
     return nullptr;
   }
 
   if (dst && src) {
-    // check types
-    if (dst_type != TypeSpec("vector")) {
-      return nullptr;
-    }
-
-    // kinda sus - we really want to check the place where this was loaded...
-    if (src_type != TypeSpec("uint128")) {
-      return nullptr;
-    }
-
     auto* dst_deref = dst->try_as_element<DerefElement>();
     auto* src_deref = src->try_as_element<DerefElement>();
     if (!dst_deref) {
@@ -3411,21 +3961,74 @@ FormElement* try_to_rewrite_vector_copy(Form* dst,
       return nullptr;
     }
 
-    if (!is_deref_to_quad(dst_deref)) {
+    const auto dst_info = deref_container_info(dst_deref, env);
+    const auto src_info = deref_container_info(src_deref, env);
+    if (!dst_info || !src_info || !env.dts->ts.tc(TypeSpec("vector"), dst_info->type)) {
       return nullptr;
     }
 
-    if (!is_deref_to_quad(src_deref)) {
+    const bool is_vector_copy = env.dts->ts.tc(TypeSpec("vector"), src_info->type);
+    const bool is_vector4w_copy = src_info->type == TypeSpec("vector4w");
+    if (!is_vector_copy && !is_vector4w_copy) {
+      return nullptr;
+    }
+
+    // A matrix row is represented by an inline vector, but folding its individual quadword copy
+    // would prevent the four-row matrix-copy! recognizer from seeing the complete operation.
+    if (dst_info->is_matrix_row || src_info->is_matrix_row) {
       return nullptr;
     }
 
     auto ret = pool.alloc_element<GenericElement>(
-        GenericOperator::make_function(pool.form<ConstantTokenElement>("vector-copy!")),
+        GenericOperator::make_function(
+            pool.form<ConstantTokenElement>(is_vector4w_copy ? "vector4w-copy!" : "vector-copy!")),
         std::vector<Form*>{pop_last_deref_token(dst), pop_last_deref_token(src)});
     // lg::info("success: {}\n", ret->to_string(env));
     return ret;
   }
   return nullptr;
+}
+
+namespace {
+
+FormElement* try_to_rewrite_vector_zero(Form* dst, Form* value, FormPool& pool, const Env& env) {
+  if (env.func->name() == "vector-zero!") {
+    return nullptr;
+  }
+
+  auto dst_deref = dst ? dst->try_as_element<DerefElement>() : nullptr;
+  const auto dst_info = dst_deref ? deref_container_info(dst_deref, env) : std::nullopt;
+  if (!dst_info || dst_info->is_quaternion_view ||
+      !env.dts->ts.tc(TypeSpec("vector"), dst_info->type)) {
+    return nullptr;
+  }
+  if (!match(Matcher::cast("uint128", Matcher::integer(0)), value, &env).matched) {
+    return nullptr;
+  }
+
+  return pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("vector-zero!")),
+      std::vector<Form*>{pop_last_deref_token(dst)});
+}
+
+bool is_pending_stack_ctor(const FormStack& stack,
+                           RegisterAccess destination,
+                           const TypeSpec& type,
+                           int max_following_stores) {
+  for (int following_stores = 0; following_stores <= max_following_stores; ++following_stores) {
+    std::vector<bool> pattern(1 + following_stores, false);
+    pattern.front() = true;
+    auto entries = stack.try_getting_active_stack_entries(pattern);
+    if (!entries || !entries->front().destination ||
+        entries->front().destination->reg() != destination.reg()) {
+      continue;
+    }
+    auto stack_value = entries->front().source->try_as_element<StackStructureDefElement>();
+    if (stack_value && stack_value->type() == type) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -3451,11 +4054,8 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
 
     FormElement* fr = nullptr;
 
-    // hack: for now only do this on Jak 3
-    if (size() == 16 && env.version == GameVersion::Jak3) {
-      fr = try_to_rewrite_vector_copy(
-          m_dst, env.get_variable_type(m_base_var, true), popped.at(0),
-          m_src_cast_type.value_or(env.get_variable_type(m_expr.var(), true)), pool, env);
+    if (size() == 16 && (env.version == GameVersion::Jak1 || env.version == GameVersion::Jak3)) {
+      fr = try_to_rewrite_vector_copy(m_dst, popped.at(0), pool, env);
     }
 
     if (!fr) {
@@ -3475,10 +4075,21 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     m_dst->try_as_element<DerefElement>()->inline_nested();
     auto val = pool.form<SimpleExpressionElement>(m_expr, m_my_idx);
     val->mark_popped();
-    auto fr = pool.alloc_element<SetFormFormElement>(
-        m_dst, make_optional_cast(m_src_cast_type, val, pool, env));
-    fr->mark_popped();
-    stack.push_form_element(fr, true);
+    auto typed_value = make_optional_cast(m_src_cast_type, val, pool, env);
+    FormElement* fr = nullptr;
+    const bool pending_stack_ctor =
+        is_pending_stack_ctor(stack, m_base_var, TypeSpec("vector"), 0) ||
+        is_pending_stack_ctor(stack, m_base_var, TypeSpec("matrix"), 3);
+    if (size() == 16 && env.version == GameVersion::Jak1 && !pending_stack_ctor) {
+      fr = try_to_rewrite_vector_zero(m_dst, typed_value, pool, env);
+    }
+    if (!fr) {
+      fr = pool.alloc_element<SetFormFormElement>(m_dst, typed_value);
+      fr->mark_popped();
+      stack.push_form_element(fr, true);
+    } else {
+      fr->push_to_stack(env, pool, stack);
+    }
   }
 
   if (!try_to_rewrite_matrix_inline_ctor(env, pool, stack)) {
@@ -6716,6 +7327,53 @@ void ArrayFieldAccess::update_with_val(Form* new_val,
                                        FormPool& pool,
                                        std::vector<FormElement*>* result,
                                        bool) {
+  // Reverse field lookup may already have rewritten the address expression into a dereference.
+  // If its trailing tokens instantiate the indexed prefix of this access, retain that typed prefix
+  // and append the fields which belong to the load itself.
+  if (auto* existing = dynamic_cast<DerefElement*>(new_val->try_as_single_active_element())) {
+    const auto& existing_tokens = existing->tokens();
+    for (size_t overlap = std::min(existing_tokens.size(), m_deref_tokens.size()); overlap > 0;
+         --overlap) {
+      bool matches = true;
+      bool matched_placeholder = false;
+      const size_t existing_start = existing_tokens.size() - overlap;
+      for (size_t i = 0; i < overlap; ++i) {
+        const auto& expected = m_deref_tokens.at(i);
+        const auto& actual = existing_tokens.at(existing_start + i);
+        switch (expected.kind()) {
+          case DerefToken::Kind::FIELD_NAME:
+            matches = actual.kind() == DerefToken::Kind::FIELD_NAME &&
+                      actual.field_name() == expected.field_name();
+            break;
+          case DerefToken::Kind::INTEGER_CONSTANT:
+            matches = actual.kind() == DerefToken::Kind::INTEGER_CONSTANT &&
+                      actual.int_constant() == expected.int_constant();
+            break;
+          case DerefToken::Kind::EXPRESSION_PLACEHOLDER:
+            matches = actual.kind() == DerefToken::Kind::INTEGER_EXPRESSION ||
+                      actual.kind() == DerefToken::Kind::INTEGER_CONSTANT;
+            matched_placeholder = matches;
+            break;
+          default:
+            matches = false;
+            break;
+        }
+        if (!matches) {
+          break;
+        }
+      }
+
+      if (matches && matched_placeholder) {
+        auto combined_tokens = existing_tokens;
+        combined_tokens.insert(combined_tokens.end(), m_deref_tokens.begin() + overlap,
+                               m_deref_tokens.end());
+        result->push_back(
+            pool.alloc_element<DerefElement>(existing->base(), false, combined_tokens));
+        return;
+      }
+    }
+  }
+
   int power_of_two = 0;
 
   if (m_constant_offset == 0) {
@@ -6984,7 +7642,19 @@ void TypeOfElement::update_from_stack(const Env& env,
                                       std::vector<FormElement*>* result,
                                       bool allow_side_effects) {
   mark_popped();
-  value->update_children_from_stack(env, pool, stack, allow_side_effects);
+  // The CFG rewrite replaces several uses in the expanded runtime-type check with this single
+  // expression. The original register-use analysis therefore does not mark the input as consumed,
+  // even though rtype-of is now its last use. Supply the post-rewrite consumption explicitly so a
+  // one-use input can still be propagated into rtype-of.
+  auto value_var = identity_var(value);
+  if (value_var) {
+    value =
+        pop_to_forms({*value_var}, env, pool, stack, allow_side_effects, RegSet{value_var->reg()})
+            .at(0);
+    value->parent_element = this;
+  } else {
+    value->update_children_from_stack(env, pool, stack, allow_side_effects);
+  }
   result->push_back(this);
 }
 ////////////////////////

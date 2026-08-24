@@ -9,6 +9,7 @@
 ;; DECOMP BEGINS
 
 (defmethod ease-loc-t ((this robotboss))
+  "Apply a clamped sine ease to the boss's current location interpolation parameter."
   (parameter-ease-sin-clamp (-> this loc-t)))
 
 (defskelgroup *robotboss-blueeco-sg*
@@ -33,29 +34,31 @@
   :bounds (static-spherem 0 0 0 200))
 
 (defbehavior robotboss-cut-cam-exit robotboss ()
+  "Release Jak and restore normal camera and skeleton state after a boss cutaway."
   (set! (-> self valid-frames) 0)
   (if (and *target* (logtest? (-> *target* state-flags) (state-flags grabbed))) (process-release? *target*))
   (logclear! (-> self skel status) (janim-status inited))
   (set! (-> self skip-cut) #f)
   (none))
 
-(defbehavior robotboss-cut-cam robotboss ((arg0 float) (arg1 float) (arg2 int))
+(defbehavior robotboss-cut-cam robotboss ((start-frame float) (end-frame float) (animation int))
+  "Use the boss camera joint during the selected animation frame interval unless Jak skips the shot."
   (let ((f0-0 (ja-aframe-num 0)))
     (cond
-      ((or (not (ja-group? arg2)) (< f0-0 arg0) (< arg1 f0-0)) (robotboss-cut-cam-exit))
+      ((or (not (ja-group? animation)) (< f0-0 start-frame) (< end-frame f0-0)) (robotboss-cut-cam-exit))
       ((or (and (logtest? (-> *target* control mod-surface flags) (surface-flags jump))
-                (not (logtest? (-> *target* control status) (cshape-moving-flags onsurf))))
+                (not (logtest? (-> *target* control status) (collide-status on-surface))))
            (-> self skip-cut))
        (set! (-> self skip-cut) #t))
       (else
        (logior! (-> self skel status) (janim-status inited))
        (process-grab? *target*)
-       (set! (-> *camera-other-root* quad) (-> self root trans quad))
+       (vector-copy! *camera-other-root* (-> self root trans))
        (let ((s5-1 (-> self node-list data 88 bone transform))
              (gp-1 (-> self node-list data 88 bone scale)))
          (let ((s4-1 (new 'stack-no-clear 'vector)))
            (vector<-cspace! s4-1 (joint-node robotboss-basic-lod0-jg camera))
-           (set! (-> *camera-other-trans* quad) (-> s4-1 quad)))
+           (vector-copy! *camera-other-trans* s4-1))
          (vector-normalize-copy! (-> *camera-other-matrix* vector 0) (-> s5-1 vector 0) (the-as float -1.0))
          (set! (-> *camera-other-matrix* vector 0 w) 0.0)
          (vector-normalize-copy! (-> *camera-other-matrix* vector 1) (-> s5-1 vector 1) (the-as float 1.0))
@@ -71,7 +74,8 @@
          (+! (-> self valid-frames) 1)))))
   (none))
 
-(defbehavior robotboss-always-trans robotboss ((arg0 (state robotboss)))
+(defbehavior robotboss-always-trans robotboss ((debug-state (state robotboss)))
+  "Update the boss's smoke and palette fade, manage fight cameras, and permit the debug state jump."
   (when (-> self blue-smoke)
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (vector<-cspace! s5-0 (joint-node robotboss-basic-lod0-jg blue_eco_piece))
@@ -152,21 +156,23 @@
      (let ((s5-10 (new 'stack-no-clear 'vector)))
        (vector<-cspace! s5-10 (joint-node robotboss-basic-lod0-jg interesting))
        (send-event *camera* 'point-of-interest s5-10))))
-  (when (and arg0 *debug-segment* (cpad-pressed? 0 l3)) ;; og:preserve-this changed from (cpad-pressed? 1 x)
+  (when (and debug-state *debug-segment* (cpad-pressed? 0 l3)) ;; og:preserve-this changed from (cpad-pressed? 1 x)
     (cpad-clear! 0 l3)
-    (go arg0))
+    (go debug-state))
   (none))
 
-(defbehavior robotboss-shooting-trans robotboss ((arg0 int))
+(defbehavior robotboss-shooting-trans robotboss ((joint-index int))
+  "Move the active shot attractor to the selected skeleton joint."
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (vector<-cspace! gp-0 (-> self node-list data arg0))
+    (vector<-cspace! gp-0 (-> self node-list data joint-index))
     (send-event (handle->process (-> self shot-attractor)) 'trans gp-0))
   (none))
 
-(defbehavior robotboss-setup-for-hits robotboss ((arg0 int) (arg1 int))
+(defbehavior robotboss-setup-for-hits robotboss ((vulnerable-prim-index int) (hit-count int))
+  "Reset the current hit target and spawn the visible shot-attractor marker."
   (set! (-> self took-hit) #f)
-  (set! (-> self hits-to-go) arg1)
-  (set! (-> self vulnerable) arg0)
+  (set! (-> self hits-to-go) hit-count)
+  (set! (-> self vulnerable) vulnerable-prim-index)
   (let ((gp-0 (new 'stack 'sphere)))
     (set! (-> gp-0 w) 4096.0)
     (set! (-> self shot-attractor)
@@ -175,28 +181,31 @@
   (send-event (handle->process (-> self shot-attractor)) 'draw #f))
 
 (defbehavior robotboss-yellow-eco-off robotboss ()
+  "Hide the four yellow-eco pieces."
   ;; patches the one frame of ghost yellow eco bug that can
   ;; occcur under certain conditions when robot-boss-yellow-eco-off is called.
   (#when PC_PORT
-    (logclear! (-> self alts 7 extra perm status) (entity-perm-status bit-3))
-    (logclear! (-> self alts 8 extra perm status) (entity-perm-status bit-3))
-    (logclear! (-> self alts 9 extra perm status) (entity-perm-status bit-3))
-    (logclear! (-> self alts 10 extra perm status) (entity-perm-status bit-3)))
-  (logior! (-> self alts 7 extra perm status) (entity-perm-status bit-9))
-  (logior! (-> self alts 8 extra perm status) (entity-perm-status bit-9))
-  (logior! (-> self alts 9 extra perm status) (entity-perm-status bit-9))
-  (logior! (-> self alts 10 extra perm status) (entity-perm-status bit-9))
+    (logclear! (-> self alts 7 extra perm status) (entity-perm-status no-kill))
+    (logclear! (-> self alts 8 extra perm status) (entity-perm-status no-kill))
+    (logclear! (-> self alts 9 extra perm status) (entity-perm-status no-kill))
+    (logclear! (-> self alts 10 extra perm status) (entity-perm-status no-kill)))
+  (logior! (-> self alts 7 extra perm status) (entity-perm-status suppress-birth))
+  (logior! (-> self alts 8 extra perm status) (entity-perm-status suppress-birth))
+  (logior! (-> self alts 9 extra perm status) (entity-perm-status suppress-birth))
+  (logior! (-> self alts 10 extra perm status) (entity-perm-status suppress-birth))
   (none))
 
 (defbehavior robotboss-yellow-eco-on robotboss ()
-  (logclear! (-> self alts 7 extra perm status) (entity-perm-status bit-9))
-  (logclear! (-> self alts 8 extra perm status) (entity-perm-status bit-9))
-  (logclear! (-> self alts 9 extra perm status) (entity-perm-status bit-9))
-  (logclear! (-> self alts 10 extra perm status) (entity-perm-status bit-9))
+  "Show the four yellow-eco pieces."
+  (logclear! (-> self alts 7 extra perm status) (entity-perm-status suppress-birth))
+  (logclear! (-> self alts 8 extra perm status) (entity-perm-status suppress-birth))
+  (logclear! (-> self alts 9 extra perm status) (entity-perm-status suppress-birth))
+  (logclear! (-> self alts 10 extra perm status) (entity-perm-status suppress-birth))
   (none))
 
-(defbehavior robotboss-anim-blend-loop robotboss ((arg0 art-joint-anim))
-  (let ((s5-0 (ja-group))) (ja-channel-push! 2 0) (ja :group! arg0 :num! min) (ja :chan 1 :group! s5-0 :num! min))
+(defbehavior robotboss-anim-blend-loop robotboss ((animation art-joint-anim))
+  "Blend indefinitely between the requested animation and the current channel as location easing advances."
+  (let ((s5-0 (ja-group))) (ja-channel-push! 2 0) (ja :group! animation :num! min) (ja :chan 1 :group! s5-0 :num! min))
   (loop
     (ja :num! (loop!))
     (ja :chan 1 :num! (chan 0) :frame-interp (- 1.0 (ease-loc-t self)))
@@ -204,6 +213,7 @@
   (none))
 
 (defbehavior robotboss-position robotboss ()
+  "Ease the boss between arena offsets, face it toward the arena center, and update the camera pivot."
   (let ((s5-0 (-> self entity extra trans))
         (gp-0 (new 'stack-no-clear 'vector)))
     (let ((s4-0 (new 'stack-no-clear 'matrix)))
@@ -229,20 +239,21 @@
           (f0-10 (+ (-> self entity extra trans y) (-> self desired-pool-y))))
       (when a0-16
         (let ((v1-23 (new 'stack-no-clear 'vector)))
-          (set! (-> v1-23 quad) (-> (the-as process-drawable a0-16) root trans quad))
+          (vector-copy! v1-23 (-> (the-as process-drawable a0-16) root trans))
           (cond
             ((< (-> v1-23 y) (+ -204.8 f0-10)) (+! (-> v1-23 y) 20.48))
             ((< (+ 204.8 f0-10) (-> v1-23 y)) (+! (-> v1-23 y) -20.48)))
           (send-event a0-16 'move-to v1-23))))))
 
-(defbehavior robotboss-darkecobomb robotboss ((arg0 vector) (arg1 float))
+(defbehavior robotboss-darkecobomb robotboss ((destination-offset vector) (flight-time float))
+  "Launch a dark-eco bomb toward an arena-relative destination."
   (+! (-> self children-spawned) 1)
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
       (vector<-cspace! gp-0 (joint-node robotboss-basic-lod0-jg darkbombD))
-      (set! (-> s4-0 quad) (-> self entity extra trans quad))
-      (vector+! s4-0 s4-0 arg0)
-      (process-spawn darkecobomb gp-0 s4-0 61440.0 300 arg1 :to self))
+      (vector-copy! s4-0 (-> self entity extra trans))
+      (vector+! s4-0 s4-0 destination-offset)
+      (process-spawn darkecobomb gp-0 s4-0 61440.0 300 flight-time :to self))
     (process-spawn part-tracker
                    :init
                    part-tracker-init
@@ -255,10 +266,11 @@
                    :to
                    *entity-pool*)))
 
-(defbehavior robotboss-bomb-handler robotboss ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defbehavior robotboss-bomb-handler robotboss ((sender process) (argc int) (message symbol) (event event-message-block))
+  "Handle palette flashes and dark-bomb progress events."
   (local-vars (v0-0 object))
-  (case arg2
-    (('flash) (set! (-> self palette-val) (* 0.0078125 (the-as float (-> arg3 param 0)))))
+  (case message
+    (('flash) (set! (-> self palette-val) (* 0.0078125 (the-as float (-> event param 0)))))
     (('bomb-done)
      (set! (-> self des-cam-entity) #f)
      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
@@ -277,14 +289,15 @@
      (set! (-> self ignore-camera) (the-as symbol v0-0))
      v0-0)))
 
-(defbehavior robotboss-handler robotboss ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (case arg2
-    (('flash) (set! (-> self palette-val) (* 0.0078125 (the-as float (-> arg3 param 0)))))
+(defbehavior robotboss-handler robotboss ((sender process) (argc int) (message symbol) (event event-message-block))
+  "Handle the boss's palette flash and vulnerable-part attack events."
+  (case message
+    (('flash) (set! (-> self palette-val) (* 0.0078125 (the-as float (-> event param 0)))))
     (('attack)
-     (when (>= arg1 2)
-       (case (-> arg3 param 1)
+     (when (>= argc 2)
+       (case (-> event param 1)
          (('eco-yellow)
-          (let ((a0-5 (-> arg3 param 0)))
+          (let ((a0-5 (-> event param 0)))
             (when (and a0-5
                        ((method-of-type touching-shapes-entry prims-touching?)
                         (the-as touching-shapes-entry a0-5)
@@ -438,7 +451,7 @@
       (when (and (< (-> self children-spawned) 1) (time-elapsed? (-> self state-time) (seconds 0.95)))
         (+! (-> self children-spawned) 1)
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> self entity extra trans quad))
+          (vector-copy! gp-0 (-> self entity extra trans))
           (+! (-> gp-0 y) 81920.0)
           (set! (-> self white-eco) (ppointer->handle (process-spawn light-eco-mother (-> self entity) gp-0 :to self))))))
   :code
@@ -564,12 +577,13 @@
   :post transform-post)
 
 (defbehavior robotboss-yellowshot robotboss ()
+  "Launch a yellow shot toward Jak and play its launch effects."
   (+! (-> self children-spawned) 1)
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (vector<-cspace! gp-0 (joint-node robotboss-basic-lod0-jg Lyellow_ecoBarrell))
       (set! (-> gp-0 y) 1972633.6)
-      (if *target* (set! (-> s5-0 quad) (-> (target-pos 0) quad)) (set! (-> s5-0 quad) (-> self entity extra trans quad)))
+      (if *target* (vector-copy! s5-0 (target-pos 0)) (vector-copy! s5-0 (-> self entity extra trans)))
       (set! (-> s5-0 y) (+ 8192.0 (-> self entity extra trans y)))
       (vector-! s5-0 s5-0 gp-0)
       (vector-normalize! s5-0 (the-as float 819200.0))
@@ -591,9 +605,11 @@
   (none))
 
 (defbehavior robotboss-is-yellow-hit robotboss ()
+  "Return whether either yellow-damage animation is playing."
   (or (ja-group? robotboss-yellow-hit-ja) (ja-group? robotboss-yellow-last-hit-ja)))
 
 (defbehavior robotboss-time-to-shoot-yellow robotboss ()
+  "Return whether the yellow gun's randomized shot delay has elapsed."
   (>= (- (-> *display* game-frame-counter) (-> self state-time)) (+ (-> self till-next-shot) 750)))
 
 (defstate robotboss-yellow-wait (robotboss)
@@ -802,12 +818,12 @@
   :enter
     (behavior ()
       (set! (-> self children-spawned) 0)
-      (logior! (-> self alts 11 extra perm status) (entity-perm-status bit-3)))
+      (logior! (-> self alts 11 extra perm status) (entity-perm-status no-kill)))
   :exit
     (behavior ()
       (set! (-> self ignore-camera) #f)
       (set! (-> self des-cam-entity) #f)
-      (logclear! (-> self alts 11 extra perm status) (entity-perm-status bit-3)))
+      (logclear! (-> self alts 11 extra perm status) (entity-perm-status no-kill)))
   :trans
     (behavior ()
       (robotboss-always-trans robotboss-yellow)
@@ -876,18 +892,17 @@
    (flight-time time-frame)
    (stall-time  time-frame)))
 
-
 (deftype redshot-launch-array (structure)
   ((info redshot-launch-info 6 :inline)))
 
-
-(defbehavior robotboss-redshot-fill-array robotboss ((arg0 redshot-launch-array))
+(defbehavior robotboss-redshot-fill-array robotboss ((launches redshot-launch-array))
+  "Generate six separated red-shot destinations and staggered flight and stall times."
   (let ((s2-0 0)
         (s4-0 (new 'stack-no-clear 'vector))
         (s5-0 (new-stack-vector0)))
     0.0
     (dotimes (s3-0 6)
-      (let ((s1-0 (-> arg0 info s3-0)))
+      (let ((s1-0 (-> launches info s3-0)))
         (let ((f30-0 -40960.0)
               (f28-0 81920.0))
           (set! (-> s1-0 dest x) (+ f30-0 (* f28-0 (rand-float-gen)))))
@@ -897,30 +912,31 @@
           (set! (-> s1-0 dest z) (+ f30-1 (* f28-1 (rand-float-gen)))))
         (set! (-> s1-0 dest w) 1.0))
       (dotimes (s1-1 s3-0)
-        (vector-! s4-0 (-> arg0 info s3-0 dest) (-> arg0 info s1-1 dest))
+        (vector-! s4-0 (-> launches info s3-0 dest) (-> launches info s1-1 dest))
         (let ((f0-13 (vector-length-squared s4-0)))
           (if (< f0-13 1073741800.0)
-            (vector+float*! (-> arg0 info s3-0 dest) (-> arg0 info s1-1 dest) s4-0 (/ 32768.0 (sqrtf f0-13))))))
-      (vector+! s5-0 s5-0 (-> arg0 info s3-0 dest))
+            (vector+float*! (-> launches info s3-0 dest) (-> launches info s1-1 dest) s4-0 (/ 32768.0 (sqrtf f0-13))))))
+      (vector+! s5-0 s5-0 (-> launches info s3-0 dest))
       (let* ((f30-2 60.0)
              (v1-27 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
              (v1-28 (the-as number (logior #x3f800000 v1-27))))
-        (set! (-> arg0 info s3-0 flight-time) (the-as time-frame (+ (the int (* f30-2 (+ -1.0 (the-as float v1-28)))) 180))))
-      (let ((s1-3 (max 150 (- (the-as time-frame s2-0) (-> arg0 info s3-0 flight-time))))
+        (set! (-> launches info s3-0 flight-time) (the-as time-frame (+ (the int (* f30-2 (+ -1.0 (the-as float v1-28)))) 180))))
+      (let ((s1-3 (max 150 (- (the-as time-frame s2-0) (-> launches info s3-0 flight-time))))
             (f30-3 60.0))
-        (set! (-> arg0 info s3-0 stall-time) (the-as time-frame (+ (the int (* f30-3 (rand-float-gen))) 300 s1-3))))
-      (set! s2-0 (the-as int (+ (-> arg0 info s3-0 flight-time) (-> arg0 info s3-0 stall-time)))))
+        (set! (-> launches info s3-0 stall-time) (the-as time-frame (+ (the int (* f30-3 (rand-float-gen))) 300 s1-3))))
+      (set! s2-0 (the-as int (+ (-> launches info s3-0 flight-time) (-> launches info s3-0 stall-time)))))
     (vector-float*! s5-0 s5-0 0.16666667)
     (vector-! s5-0 (-> self entity extra trans) s5-0)
     (dotimes (v1-53 6)
-      (vector+! (-> arg0 info v1-53 dest) (-> arg0 info v1-53 dest) s5-0)
-      (+! (-> arg0 info v1-53 dest y) 2048.0)))
+      (vector+! (-> launches info v1-53 dest) (-> launches info v1-53 dest) s5-0)
+      (+! (-> launches info v1-53 dest y) 2048.0)))
   (none))
 
 ;; WARN: Stack slot load at 64 mismatch: defined as size 4, got size 16
-(defbehavior robotboss-redshot robotboss ((arg0 redshot-launch-info) (arg1 symbol))
-  (let ((sv-32 arg0)
-        (s5-0 arg1))
+(defbehavior robotboss-redshot robotboss ((launch redshot-launch-info) (play-effects? symbol))
+  "Launch one configured red shot and optionally play its launch effect and sound."
+  (let ((sv-32 launch)
+        (s5-0 play-effects?))
     (+! (-> self children-spawned) 1)
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (vector<-cspace! gp-0 (joint-node robotboss-basic-lod0-jg red_ecoTip))
@@ -957,6 +973,7 @@
         (sound-play "red-fire")))))
 
 (defbehavior robotboss-is-red-hit robotboss ()
+  "Return whether either red-damage animation is playing."
   (or (ja-group? robotboss-red-hit-ja) (ja-group? robotboss-red-last-hit-ja)))
 
 (defstate robotboss-red-wait (robotboss)
@@ -1232,16 +1249,17 @@
           (ja :num! (seek!)))))
   :post transform-post)
 
-(defbehavior robotboss-greenshot robotboss ((arg0 vector) (arg1 float) (arg2 int) (arg3 symbol))
+(defbehavior robotboss-greenshot robotboss ((destination-offset vector) (arc-height float) (flight-time int) (play-effects? symbol))
+  "Launch a green shot toward an arena-relative destination, optionally with launch effects."
   (+! (-> self children-spawned) 1)
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (let ((s2-0 (new 'stack-no-clear 'vector)))
       (vector<-cspace! gp-0 (joint-node robotboss-basic-lod0-jg green_eco))
-      (set! (-> s2-0 quad) (-> self entity extra trans quad))
+      (vector-copy! s2-0 (-> self entity extra trans))
       (+! (-> s2-0 y) -40960.0)
-      (vector+! s2-0 s2-0 arg0)
-      (process-spawn greenshot gp-0 s2-0 arg1 arg2 :to self))
-    (when arg3
+      (vector+! s2-0 s2-0 destination-offset)
+      (process-spawn greenshot gp-0 s2-0 arc-height flight-time :to self))
+    (when play-effects?
       (process-spawn part-tracker
                      :init
                      part-tracker-init
@@ -1499,12 +1517,13 @@
           (ja :num! (seek!)))))
   :post transform-post)
 
-(defbehavior robotboss-blue-beam robotboss ((arg0 int) (arg1 symbol))
+(defbehavior robotboss-blue-beam robotboss ((joint-index int) (apply-damage? symbol))
+  "Update the blue beam and impact effects from a skeleton joint and apply their contact attacks."
   (let ((s4-0 (new 'stack-no-clear 'vector))
         (gp-0 (new 'stack-no-clear 'vector)))
     (let ((s3-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self entity extra trans quad))
-      (vector<-cspace! s4-0 (-> self node-list data arg0))
+      (vector-copy! gp-0 (-> self entity extra trans))
+      (vector<-cspace! s4-0 (-> self node-list data joint-index))
       (vector-! s3-0 gp-0 s4-0)
       (let ((f30-0 (vector-y-angle s3-0))
             (f0-1 (- 16384.0 (vector-x-angle s3-0))))
@@ -1517,7 +1536,7 @@
     (cond
       ((and (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 0.4)) (ja-group? robotboss-idle-blue-ja))
        (spawn (-> self particle 0) s4-0)
-       (when (and arg1 (nonzero? (-> self looping-sound 0)))
+       (when (and apply-damage? (nonzero? (-> self looping-sound 0)))
          (update! (-> self looping-sound 0))
          (when (and *target*
                     (not (logtest? (-> *target* state-flags)
@@ -1540,7 +1559,7 @@
       ((and (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 1.4))
             (not (ja-group? robotboss-blue-roar-ja)))
        (spawn (-> self particle 1) gp-0)
-       (when (and arg1 (nonzero? (-> self looping-sound 1)))
+       (when (and apply-damage? (nonzero? (-> self looping-sound 1)))
          (update! (-> self looping-sound 1))
          (if (and *target*
                   (not (logtest? (-> *target* state-flags)
@@ -1551,6 +1570,7 @@
   (none))
 
 (defbehavior robotboss-set-dda robotboss ()
+  "Select the boss attack timings and counts from the saved final-boss difficulty value."
   0
   (let ((gp-0 (-> self entity extra perm)))
     (logior! (-> gp-0 status) (entity-perm-status user-set-from-cstage))
@@ -1613,6 +1633,7 @@
   (none))
 
 (defbehavior robotboss-blue-done robotboss ()
+  "Turn off the yellow-eco pieces and reveal the dark-eco bomb actor after the blue phase."
   (robotboss-yellow-eco-off)
   (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
     (set! (-> a1-0 from) self)
@@ -1635,7 +1656,7 @@
         (let ((t9-1 send-event-function)
               (v1-3 (-> self alts 11)))
           (t9-1 (if v1-3 (-> v1-3 extra process)) a1-1)))
-      (process-entity-status! self (entity-perm-status bit-3) #t)
+      (process-entity-status! self (entity-perm-status no-kill) #t)
       (set! (-> self use-interesting) #t)
       (robotboss-yellow-eco-on))
   :exit
@@ -1741,7 +1762,9 @@
           (go robotboss-blue-dark-bomb))))
   :post transform-post)
 
-(defmethod init-from-entity! ((this robotboss) (arg0 entity-actor))
+(defmethod init-from-entity! ((this robotboss) (source-entity entity-actor))
+  "Build the boss collision meshes and navigation controls, bind its art and alternate actors,
+   create its particle and sound controls, initialize fight state, and enter the blue phase."
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -1909,12 +1932,13 @@
     (set! (-> s4-0 nav-radius) 4096.0)
     (backup-collide-with-as s4-0)
     (set! (-> this root) s4-0))
-  (process-drawable-from-entity! this arg0)
+  (process-drawable-from-entity! this source-entity)
   (initialize-skeleton this *robotboss-sg* '())
   (aybabtu 2)
   (set! (-> this nav) (new 'process 'nav-control (-> this root) 16 (the-as float 40960.0)))
-  (logior! (-> this nav flags) (nav-control-flags display-marks navcf3 navcf5 navcf6 navcf7))
-  (logclear! (-> this root nav-flags) (nav-flags navf0))
+  (logior! (-> this nav flags)
+           (nav-control-flags display-marks display-polys display-active-polys display-travel display-spheres))
+  (logclear! (-> this root nav-flags) (nav-flags avoid-body))
   (set! (-> this path) (new 'process 'path-control this 'path (the-as float 0.0)))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (logclear! (-> this mask) (process-mask actor-pause))

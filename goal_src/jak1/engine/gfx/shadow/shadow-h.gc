@@ -3,8 +3,13 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "kernel-defs.gc")
 
+;; shadow-h is the "fake shadow" system. This draws a circular shadow on the ground.
+;; It was later mostly replaced by shadow volumes based on simplified meshes.
+;; A few things still use fake shadows, like projectiles.
+
 ;; DECOMP BEGINS
 
+;; Fake shadow record: location, orientation, and size.
 (deftype fake-shadow (structure)
   ((px    float)
    (py    float)
@@ -16,6 +21,9 @@
    (flags int32))
   :pack-me)
 
+;; Double-buffered fake shadows. It doesn't seem like this is needed at all,
+;; since sprite.gc ends up copying these into the DMA buffer directly, this may
+;; be a leftover from an earlier rendering implementation.
 (deftype fake-shadow-buffer (basic)
   ((num-shadows int32)
    (data        fake-shadow 32 :inline)))

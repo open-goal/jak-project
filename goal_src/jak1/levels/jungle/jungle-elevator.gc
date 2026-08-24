@@ -6,12 +6,13 @@
 ;; DECOMP BEGINS
 
 (deftype jungle-elevator (plat-button)
-  ((bottom-height       float)
+  "The elevator between Jungle and Jungle B, including level streaming and endpoint teleport thresholds."
+  ((bottom-height float)
    (teleport-if-below-y float)
    (teleport-if-above-y float)))
 
-
 (defmethod can-activate? ((this jungle-elevator))
+  "Allow activation after the Jungle Tower task is complete and the base endpoint rules permit it."
   (and ((method-of-type plat-button can-activate?) this) (task-complete? *game-info* (game-task jungle-tower))))
 
 (defstate plat-button-move-downward (jungle-elevator)
@@ -31,7 +32,7 @@
     (behavior ()
       (let ((s5-0 (new 'stack-no-clear 'vector))
             (gp-0 (new 'stack-no-clear 'vector)))
-        (set! (-> s5-0 quad) (-> self root trans quad))
+        (vector-copy! s5-0 (-> self root trans))
         (call-parent-state-handler trans)
         (vector-! gp-0 (-> self root trans) s5-0)
         (when (< (-> self path-pos) 0.9)
@@ -74,18 +75,23 @@
         (if t9-4 ((the-as (function none :behavior plat-button) t9-4))))))
 
 (defmethod should-teleport? ((this jungle-elevator))
-  (let ((f0-0 (-> (camera-pos) y)))
+  "Return whether the camera crossed the height threshold for swapping to the opposite endpoint."
+  (let ((camera-y (-> (camera-pos) y)))
     (case (-> this path-pos)
-      ((0.0) (when (< f0-0 (-> this teleport-if-below-y)) (set! (-> this draw light-index) (the-as uint 1)) (return #t)))
-      ((1.0) (when (< (-> this teleport-if-above-y) f0-0) (set! (-> this draw light-index) (the-as uint 255)) (return #t)))))
+      ((0.0) (when (< camera-y (-> this teleport-if-below-y)) (set! (-> this draw light-index) (the-as uint 1)) (return #t)))
+      ((1.0)
+       (when (< (-> this teleport-if-above-y) camera-y)
+         (set! (-> this draw light-index) (the-as uint 255))
+         (return #t)))))
   #f)
 
-(defmethod can-target-move? ((this jungle-elevator))
-  (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (eval-path-curve! (-> this path) s5-0 0.4 'interp)
-    (set! (-> this teleport-if-above-y) (-> s5-0 y))
-    (eval-path-curve! (-> this path) s5-0 0.6 'interp)
-    (set! (-> this teleport-if-below-y) (-> s5-0 y)))
+(defmethod configure-movement! ((this jungle-elevator))
+  "Sample camera-height thresholds along the path and configure one-way, automatic player transport."
+  (let ((path-point (new 'stack-no-clear 'vector)))
+    (eval-path-curve! (-> this path) path-point 0.4 'interp)
+    (set! (-> this teleport-if-above-y) (-> path-point y))
+    (eval-path-curve! (-> this path) path-point 0.6 'interp)
+    (set! (-> this teleport-if-below-y) (-> path-point y)))
   (set! (-> this draw light-index) (the-as uint 255))
   (set! (-> this bidirectional?) #f)
   (set! (-> this should-grab-player?) #t)

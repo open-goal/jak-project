@@ -11,9 +11,9 @@
 ;;   :pool      the pool that the process should be allocated from
 ;;   :heap-size the required size for the process heap
 
-;; At one point, this was much bigger, but got smaller between
-;; the demo and final build.  The entity info is possibly stored somewhere else
-;; and this may not even be used.
+;; This table was much larger in the demo and was reduced for the final game.  The actor birth path
+;; uses heap-size to size each process heap; the other fields retain the package, art, and pool
+;; requirements that go with the process type.
 
 (define *entity-info*
   (new 'static
@@ -196,23 +196,23 @@
             :pool '*16k-dead-pool*
             :heap-size #x400)))
 
-(defun entity-info-lookup ((arg0 type))
-  "Look up the entity-info for a given type.
-   to speed-up the lookup in the future,
-   this caches the result in the method table..."
+(defun entity-info-lookup ((entity-type type))
+  "Find the spawn metadata for entity-type. A successful search replaces the inherited
+   process-tree method in slot 13 with the matching entity-info pointer, so later lookups can return
+   it directly. Store #f and return #f when the type has no table entry."
   (the-as entity-info
           (cond
-            ((nonzero? (-> arg0 method-table 13))
-             ;; we already cached the type in the method table
-             (-> arg0 method-table 13))
+            ((nonzero? (-> entity-type method-table 13))
+             ;; Return the entity info already cached in the method table.
+             (-> entity-type method-table 13))
             (else
-             ;; search the table
-             (let ((v1-1 *entity-info*))
-               (dotimes (a1-0 (-> v1-1 length))
-                 (when (= arg0 (-> v1-1 a1-0 ptype))
-                   ;; found it, cache it in the method table
-                   (set! (-> arg0 method-table 13) (the-as function (-> v1-1 a1-0)))
-                   (return (-> v1-1 a1-0)))))
-             ;; didn't find it, cache and return #f
-             (set! (-> arg0 method-table 13) #f)
+             ;; Search the table.
+             (let ((info-table *entity-info*))
+               (dotimes (i (-> info-table length))
+                 (when (= entity-type (-> info-table i ptype))
+                   ;; Cache a successful lookup in method slot 13.
+                   (set! (-> entity-type method-table 13) (the-as function (-> info-table i)))
+                   (return (the-as entity-info (-> info-table i))))))
+             ;; Record the miss and return #f.
+             (set! (-> entity-type method-table 13) #f)
              #f))))

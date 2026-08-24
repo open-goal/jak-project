@@ -7,61 +7,67 @@
 
 ;; DECOMP BEGINS
 
-;; the transformq is a transform, but _replaces_ the rotation field with a quaternion.
-;; it is much more commonly used than transform.
+;; A transform whose rotation storage is interpreted as a quaternion.
+;; This is the usual compact transform representation.
 (deftype transformq (transform)
-  ;; this overlays the rot field of transform.
+  ;; Overlay transform.rot without changing the inherited layout.
   ((quat quaternion :inline :overlay-at (-> rot x))))
 
-;; trsq is the quaternion version of trs (trs is like a transform, but is basic.)
+;; The basic-object counterpart of transformq.
 (deftype trsq (trs)
-  ;; this overlays the rot field of trs.
+  ;; Overlay trs.rot without changing the inherited layout.
   ((quat quaternion :inline :overlay-at (-> rot x))))
 
-;; Representing a translate/rotate/scale with a quaternion and a velocity.
-;; This is often used as the base type for the position of a game object that can move around
-;; so it has methods to do common control functions.
-;; many of these functions assume that y is up and assume that roll/pitch is small
-;; (a reasonable assumption for most in-game objects that don't do flips)
-;; note: Jak's control uses this as a base class.
-
+;; A quaternion transform with linear, angular, and scale velocities.
+;; Moving game objects commonly inherit this type for its steering controls; Jak's
+;; control object does as well. Most controls assume Y is up and roll and pitch remain
+;; small, as expected for actors that stay upright.
 (deftype trsqv (trsq)
-  ((pause-adjust-distance meters :offset 4) ;; hack: adjusts the distance where actor logic is paused, if this is an actor
-   (nav-radius            meters :offset 8) ;; hack: the radius of the bounding sphere used by the navigate system.
-   (transv                vector :inline) ;; velocity (meters/second)
-   (rotv                  vector :inline) ;; angular velocity (deg/second)
-   (scalev                vector :inline) ;; scale velocity (unused?)
-   ;; there's a hacky ~first-order orientation yaw control with hysteresis
-   ;; it makes the yaw change smoothly and attempts to cancel out oscillations from the collision system
-   (dir-targ              quaternion :inline) ;; direction target
-   (angle-change-time     time-frame) ;; the time when we change rotation directions
-   (old-y-angle-diff      float) ;; the amount we moved last time
-   )
+  ((pause-adjust-distance meters :offset 4) ;; Actor logic-pause distance adjustment.
+   (nav-radius            meters :offset 8) ;; Navigation bounding-sphere radius.
+   (transv                vector :inline) ;; Linear velocity in meters per second.
+   (rotv                  vector :inline) ;; Angular velocity in rotation units per second.
+   (scalev                vector :inline) ;; Scale velocity.
+   (dir-targ              quaternion :inline) ;; Desired orientation used by target and vehicle controls.
+   ;; World-Y reversal filter. The signed previous step confirms a reversal that persists for a
+   ;; second frame; the timestamp permits an immediate reversal after 0.2 seconds without a full turn.
+   (angle-change-time     time-frame)
+   (old-y-angle-diff      float))
   (:methods
-   (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion)
-   (set-heading-vec! (_type_ vector) quaternion)
-   (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion)
-   (point-toward-point! (_type_ vector) quaternion)
-   (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion)
-   (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion)
-   (set-roll-to-grav! (_type_ float) quaternion)
-   (set-roll-to-grav-2! (_type_ float) quaternion)
-   (rotate-toward-orientation! (_type_ quaternion float float) quaternion)
-   (set-quaternion! (_type_ quaternion) quaternion)
-   (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion)
-   (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion)
-   (rot->dir-targ! (_type_) quaternion)
-   (y-angle (_type_) float)
-   (global-y-angle-to-point (_type_ vector) float)
-   (relative-y-angle-to-point (_type_ vector) float)
-   (roll-relative-to-gravity (_type_) float)
+   (seek-toward-heading-vec! "Turn about world Y toward heading's XZ yaw. Clamp each frame's step by max-yaw-rate and
+response-time. A fresh reversal requires one confirming frame unless no full turn has been accepted
+for 0.2 seconds." (_type_ vector float time-frame) quaternion)
+   (set-heading-vec! "Immediately turn toward heading within the plane perpendicular to the current up direction,
+preserving that up direction." (_type_ vector) quaternion)
+   (seek-to-point-toward-point! "Turn about world Y toward target-point from this position using max-yaw-rate and
+response-time." (_type_ vector float time-frame) quaternion)
+   (point-toward-point! "Immediately turn toward target-point within the plane perpendicular to the current up
+direction." (_type_ vector) quaternion)
+   (seek-toward-yaw-angle! "Turn toward yaw using max-yaw-rate and response-time." (_type_ float float time-frame) quaternion)
+   (set-yaw-angle-clear-roll-pitch! "Set yaw immediately with a horizontal forward direction and world +Y up." (_type_ float) quaternion)
+   (set-roll-to-grav! "Align local up with standard world up while retaining forward, then apply roll-offset." (_type_ float) quaternion)
+   (set-roll-to-grav-2! "Align local up with standard world up projected perpendicular to forward, rebuild the right
+axis, then apply roll-offset about local Z." (_type_ float) quaternion)
+   (rotate-toward-orientation! "Rotate the current local Y axis toward target's Y axis at z-rate, then the resulting local Z
+axis toward target's Z axis at y-rate. Each rate is converted to a per-frame maximum." (_type_ quaternion float float) quaternion)
+   (set-quaternion! "Copy rotation into this transform." (_type_ quaternion) quaternion)
+   (set-heading-vec-clear-roll-pitch! "Build an orientation from normalized heading and world +Y. This removes roll; a horizontal
+heading also removes pitch." (_type_ vector) quaternion)
+   (point-toward-point-clear-roll-pitch! "Build an orientation toward target-point using world +Y. This removes roll; a target at the
+same height also removes pitch." (_type_ vector) quaternion)
+   (rot->dir-targ! "Copy the current rotation into dir-targ." (_type_) quaternion)
+   (y-angle "Return the current quaternion's yaw." (_type_) float)
+   (global-y-angle-to-point "Return the world yaw from this position to point." (_type_ vector) float)
+   (relative-y-angle-to-point "Return the shortest yaw from this orientation toward point." (_type_ vector) float)
+   (roll-relative-to-gravity "Return signed roll relative to standard world up after projecting world up perpendicular to
+the current forward axis." (_type_) float)
    (set-and-limit-velocity (_type_ int vector float) trsqv)
-   (get-quaternion (_type_) quaternion)))
+   (get-quaternion "Return the transform's quaternion storage." (_type_) quaternion)))
 
-(defmethod global-y-angle-to-point ((this trsqv) (arg0 vector))
-  "Get the angle in the xz plane from the position of this trsqv to the point arg0."
-  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans))))
+(defmethod global-y-angle-to-point ((this trsqv) (point vector))
+  "Return the world yaw from this position to point."
+  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) point (-> this trans))))
 
-(defmethod relative-y-angle-to-point ((this trsqv) (arg0 vector))
-  "Get the y angle between the current orientation and arg0."
-  (deg-diff (y-angle this) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)))))
+(defmethod relative-y-angle-to-point ((this trsqv) (point vector))
+  "Return the shortest yaw from this orientation toward point."
+  (deg-diff (y-angle this) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) point (-> this trans)))))

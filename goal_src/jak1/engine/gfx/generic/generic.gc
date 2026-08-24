@@ -4,45 +4,52 @@
 (require "engine/level/level-h.gc")
 (require "engine/dma/dma-bucket.gc")
 (require "engine/gfx/lights.gc")
+(require "engine/gfx/generic/generic-h.gc")
+
+;; A generic sink is a bucket plus the VU1 buffer rotation belonging to that bucket.
+;; There's one per level x texture-group pair, plus one for shrub.
+;; Both MERC and TIE can submit to these and VU1 buffer state must be consistent,
+;; so these are stored globally instead of in rendering code like normal.
 (define *generic-foreground-sinks*
   (new 'static 'boxed-array :type generic-dma-foreground-sink :length 0 :allocated-length 9))
 
 (set! (-> *generic-foreground-sinks* 0) (-> *level* level0 tfrag-tex-foreground-sink-group generic-sink))
-
 (set! (-> *generic-foreground-sinks* 1) (-> *level* level0 pris-tex-foreground-sink-group generic-sink))
 
 (set! (-> *generic-foreground-sinks* 2) (-> *level* level1 tfrag-tex-foreground-sink-group generic-sink))
-
 (set! (-> *generic-foreground-sinks* 3) (-> *level* level1 pris-tex-foreground-sink-group generic-sink))
 
 (set! (-> *generic-foreground-sinks* 4) (-> *level* level-default tfrag-tex-foreground-sink-group generic-sink))
-
 (set! (-> *generic-foreground-sinks* 5) (-> *level* level-default pris-tex-foreground-sink-group generic-sink))
 
 (set! (-> *generic-foreground-sinks* 6) (new 'static 'generic-dma-foreground-sink :bucket (bucket-id shrub-generic1)))
 
 (set! (-> *generic-foreground-sinks* 7) (-> *level* level0 water-tex-foreground-sink-group generic-sink))
-
 (set! (-> *generic-foreground-sinks* 8) (-> *level* level1 water-tex-foreground-sink-group generic-sink))
 
-(defun generic-dma-foreground-sink-init ((arg0 generic-dma-foreground-sink))
-  (set! (-> arg0 state gifbuf-adr) (the-as uint 837))
-  (set! (-> arg0 state inbuf-adr) (the-as uint 9))
+(defun generic-dma-foreground-sink-init ((sink generic-dma-foreground-sink))
+  "Reset one sink's persistent VU1 data-memory cursors to the first header buffer and the first
+   packed input bank."
+  (set! (-> sink state gifbuf-adr) (the-as uint GENERIC-VU1-HEADER-A))
+  (set! (-> sink state inbuf-adr) (the-as uint GENERIC-VU1-INBUF-FIRST))
   (none))
 
 (defun generic-init-buffers ()
+  "Initialize the default lights, append Generic VU1 and GS setup to every active foreground
+   bucket, disable depth writes for the two water sinks, and reset each sink's persistent cursors."
   (vu-lights-default! *default-lights*)
-  (let ((gp-0 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
-        (s5-0 (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)))
-    (dotimes (s4-0 9)
-      (let ((s1-0 (-> *generic-foreground-sinks* s4-0)))
-        (when s1-0
-          (let ((s3-0 (-> s1-0 bucket)))
-            (with-dma-buffer-add-bucket ((s0-0 (-> (current-frame) global-buf)) s3-0)
-              (if (>= s4-0 7) (generic-init-buf s0-0 1 s5-0) (generic-init-buf s0-0 1 gp-0))
-              (generic-dma-foreground-sink-init s1-0)))))))
+  ;; Water is drawn after everything it can be seen through, so it tests depth but must not write it.
+  (let ((normal-zbuf (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+        (water-zbuf (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)))
+    (dotimes (i 9)
+      (let ((sink (-> *generic-foreground-sinks* i)))
+        (when sink
+          (let ((bucket (-> sink bucket)))
+            (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) bucket)
+              (if (>= i 7) (generic-init-buf dma-buf 1 water-zbuf) (generic-init-buf dma-buf 1 normal-zbuf))
+              (generic-dma-foreground-sink-init sink)))))))
   #f)
 
 (defun generic-sink ((i int))
-  "Get the generic sink i"
+  "Return generic foreground sink i."
   (-> *generic-foreground-sinks* i))

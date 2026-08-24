@@ -6,61 +6,66 @@
 
 ;; DECOMP BEGINS
 
-(defun sky-make-sun-data ((arg0 sky-parms) (arg1 int) (arg2 float))
-  "Make sun data for the arg1th sun at arg2 time"
-  (let* ((s4-0 (-> arg0 orbit arg1))
-         (s3-0 (-> arg0 upload-data sun arg1))
-         (f0-1 (- arg2 (-> s4-0 high-noon)))
-         (f30-0 (* 2730.6667 f0-1))
-         (f28-0 (* (sin f30-0) (-> s4-0 dist)))
-         (f30-1 (cos f30-0)))
-    (let* ((f24-0 (* f30-1 (-> s4-0 dist)))
-           (f26-0 (* f24-0 (cos-rad (-> s4-0 tilt))))
-           (f24-1 (* f24-0 (sin-rad (-> s4-0 tilt))))
-           (f22-0 (sin-rad (-> s4-0 rise)))
-           (f0-10 (cos-rad (-> s4-0 rise))))
-      (set! (-> s3-0 pos z) (- (+ (* f28-0 f0-10) (* f24-1 f22-0))))
-      (set! (-> s3-0 pos y) f26-0)
-      (set! (-> s3-0 pos x) (- (* f24-1 f0-10) (* f28-0 f22-0))))
-    (let ((f0-14 (if (< f30-1 0.0) 0.0 f30-1)))
-      (set! (-> arg0 upload-data sun arg1 r-aurora) (+ (* (-> s4-0 min-halo) (- 1.0 f0-14)) (* (-> s4-0 max-halo) f0-14)))))
+(defun sky-make-sun-data ((parms sky-parms) (sun-index sky-sun-index) (hour float))
+  "Place one sun on its tilted orbit for hour, completing one revolution per 24 hours. Its
+   aurora radius blends from min-halo to max-halo as the sun rises to high noon and stays at
+   min-halo throughout the far half of the orbit."
+  (let* ((orbit-data (-> parms orbit sun-index))
+         (sun-data (-> parms upload-data sun sun-index))
+         (phase-hours (- hour (-> orbit-data high-noon)))
+         (phase-angle (* 2730.6667 phase-hours))
+         (sin-distance (* (sin phase-angle) (-> orbit-data dist)))
+         (phase-cosine (cos phase-angle)))
+    (let* ((cos-distance (* phase-cosine (-> orbit-data dist)))
+           (vertical-position (* cos-distance (cos-rad (-> orbit-data tilt))))
+           (tilted-cos-distance (* cos-distance (sin-rad (-> orbit-data tilt))))
+           (sin-rise (sin-rad (-> orbit-data rise)))
+           (cos-rise (cos-rad (-> orbit-data rise))))
+      (set! (-> sun-data pos z) (- (+ (* sin-distance cos-rise) (* tilted-cos-distance sin-rise))))
+      (set! (-> sun-data pos y) vertical-position)
+      (set! (-> sun-data pos x) (- (* tilted-cos-distance cos-rise) (* sin-distance sin-rise))))
+    (let ((day-height (if (< phase-cosine 0.0) 0.0 phase-cosine)))
+      (set! (-> parms upload-data sun sun-index r-aurora)
+            (+ (* (-> orbit-data min-halo) (- 1.0 day-height)) (* (-> orbit-data max-halo) day-height)))))
   (none))
 
-(defun sky-make-moon-data ((arg0 sky-parms) (arg1 float))
-  "Make moon data for moon at arg1 time"
-  (let* ((s5-0 (-> arg0 orbit 2))
-         (gp-0 (-> arg0 upload-data moon))
-         (f0-1 (- arg1 (-> s5-0 high-noon)))
-         (f28-0 (* 2730.6667 f0-1))
-         (f30-0 (* (sin f28-0) (-> s5-0 dist)))
-         (f26-0 (* (cos f28-0) (-> s5-0 dist)))
-         (f28-1 (* f26-0 (cos-rad (-> s5-0 tilt))))
-         (f26-1 (* f26-0 (sin-rad (-> s5-0 tilt))))
-         (f24-0 (sin-rad (-> s5-0 rise)))
-         (f0-10 (cos-rad (-> s5-0 rise))))
-    (set! (-> gp-0 pos z) (- (+ (* f30-0 f0-10) (* f26-1 f24-0))))
-    (set! (-> gp-0 pos y) f28-1)
-    (set! (-> gp-0 pos x) (- (* f26-1 f0-10) (* f30-0 f24-0))))
+(defun sky-make-moon-data ((parms sky-parms) (hour float))
+  "Place the moon on its tilted orbit for hour, completing one revolution per 24 hours."
+  (let* ((orbit-data (-> parms orbit 2))
+         (moon-data (-> parms upload-data moon))
+         (phase-hours (- hour (-> orbit-data high-noon)))
+         (phase-angle (* 2730.6667 phase-hours))
+         (sin-distance (* (sin phase-angle) (-> orbit-data dist)))
+         (cos-distance (* (cos phase-angle) (-> orbit-data dist)))
+         (vertical-position (* cos-distance (cos-rad (-> orbit-data tilt))))
+         (tilted-cos-distance (* cos-distance (sin-rad (-> orbit-data tilt))))
+         (sin-rise (sin-rad (-> orbit-data rise)))
+         (cos-rise (cos-rad (-> orbit-data rise))))
+    (set! (-> moon-data pos z) (- (+ (* sin-distance cos-rise) (* tilted-cos-distance sin-rise))))
+    (set! (-> moon-data pos y) vertical-position)
+    (set! (-> moon-data pos x) (- (* tilted-cos-distance cos-rise) (* sin-distance sin-rise))))
   (none))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Old Sky Renderer
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defun sky-make-light ((arg0 sky-parms) (arg1 light) (arg2 int) (arg3 rgba))
-  (let* ((v1-2 (-> arg0 orbit arg2))
-         (a0-1 (if (= arg2 2) (-> arg0 upload-data moon) (-> arg0 upload-data sun arg2)))
-         (f0-0 0.003921569)
-         (f1-1 (/ 1.0 (-> v1-2 dist)))
-         (v1-3 arg1))
-    (set! (-> v1-3 direction x) (* (-> (the-as sky-sun-data a0-1) pos x) f1-1))
-    (set! (-> v1-3 direction y) (* (-> (the-as sky-sun-data a0-1) pos y) f1-1))
-    (set! (-> v1-3 direction z) (* (-> (the-as sky-sun-data a0-1) pos z) f1-1))
-    (set! (-> v1-3 color x) (* (the float (-> arg3 r)) f0-0))
-    (set! (-> v1-3 color y) (* (the float (-> arg3 g)) f0-0))
-    (set! (-> v1-3 color z) (* (the float (-> arg3 b)) f0-0))
-    (set! (-> v1-3 color w) 1.0)
-    (set! (-> v1-3 levels x) 1.0))
+(defun sky-make-light ((parms sky-parms) (dst-light light) (orbit-index sky-orbit-index) (light-color rgba))
+  "Point dst-light toward the selected sun or moon, assign light-color's RGB bytes as normalized
+   floats while replacing its alpha with 1, and enable the light's first level."
+  (let* ((orbit-data (-> parms orbit orbit-index))
+         (body-data (if (= orbit-index (sky-orbit-index moon)) (-> parms upload-data moon) (-> parms upload-data sun orbit-index)))
+         (byte-to-float 0.003921569)
+         (inverse-distance (/ 1.0 (-> orbit-data dist)))
+         (dst dst-light))
+    (set! (-> dst direction x) (* (-> (the-as sky-sun-data body-data) pos x) inverse-distance))
+    (set! (-> dst direction y) (* (-> (the-as sky-sun-data body-data) pos y) inverse-distance))
+    (set! (-> dst direction z) (* (-> (the-as sky-sun-data body-data) pos z) inverse-distance))
+    (set! (-> dst color x) (* (the float (-> light-color r)) byte-to-float))
+    (set! (-> dst color y) (* (the float (-> light-color g)) byte-to-float))
+    (set! (-> dst color z) (* (the float (-> light-color b)) byte-to-float))
+    (set! (-> dst color w) 1.0)
+    (set! (-> dst levels x) 1.0))
   (none))
 
 (deftype sky-frame-data (structure)
@@ -70,39 +75,527 @@
    (hvdf-offset       vector :inline :overlay-at (-> data 5))
    (consts            vector :inline :overlay-at (-> data 6))
    (pfog0             float :overlay-at (-> data 6))
-   (radius            float :overlay-at (-> consts y))
+   (radius            float :overlay-at (-> consts y)) ;; reserved by the current VU program
    (nokick            float :overlay-at (-> consts w))
-   (strip-giftag      qword :inline :overlay-at (-> data 7))
+   (strip-giftag      qword :inline :overlay-at (-> data 7)) ;; reserved
    (col-adgif         qword :inline :overlay-at (-> data 8))
-   (save              uint128 5 :overlay-at (-> data 9))
+   (save              uint128 5 :overlay-at (-> data 9)) ;; reserved workspace
    (sun-fan-giftag    qword :inline :overlay-at (-> data 14))
    (sun-strip-giftag  qword :inline :overlay-at (-> data 15))
    (sun-alpha         qword :inline :overlay-at (-> data 16))
    (sun-alpha-giftag  qword :inline :overlay-at (-> data 17))))
 
-;; skipping old sky stuff (for now)
-(define sky-vu1-block (new 'static 'vu-function))
+(defun sky-init-upload-data ((parms sky-parms) (sun-color rgba))
+  "Initialize the normal sun's center-to-edge color layers from one packed color, using alpha
+   96 for the inner halo, 48 for its outer edge and the inner aurora, and 0 at the aurora edge."
+  (set! (-> parms upload-data sun 0 c-sun-start) sun-color)
+  (set! (-> parms upload-data sun 0 c-sun-end) sun-color)
+  (set! (-> parms upload-data sun 0 c-halo-start) sun-color)
+  (set! (-> parms upload-data sun 0 c-halo-end) sun-color)
+  (set! (-> parms upload-data sun 0 c-aurora-start) sun-color)
+  (set! (-> parms upload-data sun 0 c-aurora-end) sun-color)
+  (set! (-> parms upload-data sun 0 c-halo-start a) 96)
+  (set! (-> parms upload-data sun 0 c-halo-end a) 48)
+  (set! (-> parms upload-data sun 0 c-aurora-start a) 48)
+  (set! (-> parms upload-data sun 0 c-aurora-end a) 0)
+  0
+  (none))
 
-;; this stuff seems to only be used by the "old" sky renderer, which is never used.
-;; TODO sky-init-upload-data
-;; sky-add-frame-data
-;; sky-upload
-;; sky-draw
+;; The old renderer sends the oval in sky-upload-data to VU address 256 and an 18-qword
+;; sky-frame-data block to address 291.  Each sun is drawn in three pieces: an 18-vertex fan for
+;; the disc, a 34-vertex strip from r-sun to r-halo, and another 34-vertex strip from r-halo to
+;; r-aurora.  The fan and strips carry separate center-to-edge colors from the packed sun data.
+;;
+;; VU1 transforms the celestial position and generated oval vertices, performs the perspective
+;; divide, applies the GS scale and offset, and converts XYZF to 12.4 fixed point.  It retains the
+;; clip flags for the other vertices in the current triangle.  When all three vertices lie outside
+;; the same clip plane, adding nokick to the output w lane sets the GS ADC bit and suppresses that
+;; triangle.  The two 128-qword output banks alternate so XGKICK can consume one while the next
+;; packet is assembled.  The packets are rebuilt because the camera projection, fog, time-of-day
+;; lighting, celestial positions, and animated halo radius can all change from one frame to the next.
+(#when PC_PORT
+  (define sky-vu1-block (new 'static 'vu-function)))
+
+(#unless PC_PORT
+  (defvu1 sky-vu1-block
+          ;; Stable vector-register roles:
+          ;;   vf01       transformed sun center       vf02       sun, halo, and aurora radii
+          ;;   vf03/vf09 packed start/end colors      vf05       shared RGBAQ A+D record
+          ;;   vf06/vf10 generated inner/outer point  vf07/vf08 projected point and clip test
+          ;;   vf25       fog/radius/no-kick constants vf26/vf27 GS offset and projection scale
+          ;;   vf28..vf31 world-homogeneous matrix
+          ;; Frame constants occupy VU addresses 291 through 308.  The first entry only loads the shared
+          ;; projection state.  The draw entry starts at draw-sun-0 and falls through to draw-sun-1.
+          (vu-pair (iaddi vi14 vi00 0x0) (nop)) ;; #x000
+          (vu-pair (lq.xyzw vf28 vi00 291) (nop)) ;; #x001 world-homo-matrix row 0
+          (vu-pair (lq.xyzw vf29 vi00 292) (nop)) ;; #x002 world-homo-matrix row 1
+          (vu-pair (lq.xyzw vf30 vi00 293) (nop)) ;; #x003 world-homo-matrix row 2
+          (vu-pair (lq.xyzw vf31 vi00 294) (nop)) ;; #x004 world-homo-matrix row 3
+          (vu-pair (lq.xyzw vf27 vi00 295) (nop)) ;; #x005 hmge-scale
+          (vu-pair (lq.xyzw vf26 vi00 296) (nop :e)) ;; #x006 hvdf-offset
+          (vu-pair (lq.xyzw vf25 vi00 297) (nop)) ;; #x007 pfog0, radius, unused, nokick
+          ;; Draw one sun.  vf01 is its direction, vf02 contains its three radii, and vf03/vf09 contain
+          ;; the three packed start/end colors.  The caller loads those four qwords and returns through
+          ;; vi15 after this common body has kicked the disc and both annular strips.
+          (label draw-sun)
+          (vu-pair (lq.xyzw vf05 vi00 299) (nop)) ;; #x008 col-adgif
+          (vu-pair (lq.xyzw vf07 vi00 308) (nop)) ;; #x009 sun-alpha-giftag
+          (vu-pair (lq.xyzw vf08 vi00 307) (nop)) ;; #x00a sun-alpha
+          (vu-pair (ior vi04 vi14 vi00) (nop)) ;; #x00b
+          (vu-pair (iaddiu vi02 vi00 0x100) (mulax.xyzw ACC vf28 vf01)) ;; #x00c circle data
+          (vu-pair (lq.xyzw vf04 vi00 305) (madday.xyzw ACC vf29 vf01)) ;; #x00d fan giftag
+          (vu-pair (iaddiu vi03 vi00 0x11) (maddz.xyzw vf01 vf30 vf01)) ;; #x00e
+          ;; The fan starts with the alpha state, tag, center color, and transformed center.  Each of the
+          ;; 17 oval samples then contributes an edge color and an XYZF vertex.
+          (vu-pair (sqi.xyzw vf07 vi04) (nop)) ;; #x00f
+          (vu-pair (sqi.xyzw vf08 vi04) (nop)) ;; #x010
+          (vu-pair (sqi.xyzw vf04 vi04) (nop)) ;; #x011
+          (vu-pair (sqi.xyzw vf05 vi04) (nop)) ;; #x012
+          (vu-pair (sq.x vf03 vi04 -1) (nop)) ;; #x013 disc center color
+          (vu-pair (sqi.xyzw vf01 vi04) (nop)) ;; #x014
+          (label build-disc-fan)
+          (vu-pair (lqi.xyzw vf06 vi02) (nop)) ;; #x015
+          (vu-pair (sqi.xyzw vf05 vi04) (nop)) ;; #x016
+          (vu-pair (sq.x vf09 vi04 -1) (nop)) ;; #x017 disc edge color
+          (vu-pair (nop) (nop)) ;; #x018
+          (vu-pair (nop) (mulx.xyzw vf06 vf06 vf02)) ;; #x019 r-sun
+          (vu-pair (nop) (nop)) ;; #x01a
+          (vu-pair (nop) (nop)) ;; #x01b
+          (vu-pair (nop) (nop)) ;; #x01c
+          (vu-pair (nop) (add.xyzw vf06 vf06 vf01)) ;; #x01d
+          (vu-pair (iaddi vi03 vi03 -0x1) (nop)) ;; #x01e
+          (vu-pair (nop) (nop)) ;; #x01f
+          (vu-pair (ibne vi00 vi03 build-disc-fan) (nop)) ;; #x020
+          (vu-pair (sqi.xyzw vf06 vi04) (nop)) ;; #x021
+          ;; Project the fan vertices in place.  vi05 retains the center's clip flags and vi06 retains
+          ;; the preceding edge's flags, so their intersection with vi07 identifies a fully rejected fan
+          ;; triangle.  The first edge cannot complete a triangle and starts with vi06 clear.
+          (vu-pair (iaddi vi04 vi14 0x3) (nop)) ;; #x022
+          (vu-pair (iaddi vi05 vi00 0x0) (nop)) ;; #x023
+          (vu-pair (iaddi vi06 vi00 0x0) (nop)) ;; #x024
+          (vu-pair (iaddiu vi03 vi00 0x11) (nop)) ;; #x025
+          (vu-pair (lq.xyzw vf07 vi04 1) (nop)) ;; #x026 center
+          (vu-pair (iaddi vi04 vi04 0x2) (nop)) ;; #x027
+          (vu-pair (nop) (nop)) ;; #x028
+          (vu-pair (nop) (nop)) ;; #x029
+          (vu-pair (div Q vf25.x vf07.w) (mul.xyzw vf08 vf07 vf27)) ;; #x02a
+          (vu-pair (move.z vf07 vf00) (nop)) ;; #x02b
+          (vu-pair (nop) (nop)) ;; #x02c
+          (vu-pair (nop) (nop)) ;; #x02d
+          (vu-pair (nop) (clipw.xyz vf08 vf08)) ;; #x02e
+          (vu-pair (nop) (nop)) ;; #x02f
+          (vu-pair (nop) (nop)) ;; #x030
+          (vu-pair (iaddiu vi01 vi00 0x2f) (mul.xy vf07 vf07 Q)) ;; #x031
+          (vu-pair (fcget vi05) (nop)) ;; #x032 center clip flags
+          (vu-pair (iand vi05 vi05 vi01) (nop)) ;; #x033
+          (vu-pair (nop) (nop)) ;; #x034
+          (vu-pair (nop) (add.xyzw vf07 vf07 vf26)) ;; #x035
+          (vu-pair (nop) (nop)) ;; #x036
+          (vu-pair (nop) (nop)) ;; #x037
+          (vu-pair (nop) (nop)) ;; #x038
+          (vu-pair (nop) (maxx.w vf07 vf07 vf00)) ;; #x039
+          (vu-pair (nop) (nop)) ;; #x03a
+          (vu-pair (nop) (nop)) ;; #x03b
+          (vu-pair (nop) (nop)) ;; #x03c
+          (vu-pair (nop) (ftoi4.xyzw vf07 vf07)) ;; #x03d
+          (vu-pair (nop) (nop)) ;; #x03e
+          (vu-pair (nop) (nop)) ;; #x03f
+          (vu-pair (nop) (nop)) ;; #x040
+          (vu-pair (sq.xyzw vf07 vi04 -1) (nop)) ;; #x041
+          (label project-disc-edge)
+          (vu-pair (lq.xyzw vf07 vi04 1) (nop)) ;; #x042
+          (vu-pair (iaddi vi04 vi04 0x2) (nop)) ;; #x043
+          (vu-pair (nop) (nop)) ;; #x044
+          (vu-pair (nop) (nop)) ;; #x045
+          (vu-pair (div Q vf25.x vf07.w) (mul.xyzw vf08 vf07 vf27)) ;; #x046
+          (vu-pair (move.z vf07 vf00) (nop)) ;; #x047
+          (vu-pair (nop) (nop)) ;; #x048
+          (vu-pair (nop) (nop)) ;; #x049
+          (vu-pair (nop) (clipw.xyz vf08 vf08)) ;; #x04a
+          (vu-pair (nop) (nop)) ;; #x04b
+          (vu-pair (nop) (nop)) ;; #x04c
+          (vu-pair (iaddiu vi01 vi00 0x2f) (mul.xy vf07 vf07 Q)) ;; #x04d
+          (vu-pair (fcget vi07) (nop)) ;; #x04e current edge clip flags
+          (vu-pair (iand vi07 vi07 vi01) (nop)) ;; #x04f
+          (vu-pair (iand vi06 vi06 vi05) (nop)) ;; #x050
+          (vu-pair (iand vi06 vi06 vi07) (add.xyzw vf07 vf07 vf26)) ;; #x051
+          (vu-pair (nop) (nop)) ;; #x052
+          (vu-pair (ibne vi00 vi06 reject-disc-triangle) (nop)) ;; #x053
+          (vu-pair (nop) (nop)) ;; #x054
+          (vu-pair (nop) (maxx.w vf07 vf07 vf00)) ;; #x055
+          (vu-pair (nop) (nop)) ;; #x056
+          (vu-pair (nop) (nop)) ;; #x057
+          (vu-pair (nop) (nop)) ;; #x058
+          (vu-pair (nop) (ftoi4.xyzw vf07 vf07)) ;; #x059
+          (vu-pair (iaddi vi03 vi03 -0x1) (nop)) ;; #x05a
+          (vu-pair (ior vi06 vi07 vi00) (nop)) ;; #x05b
+          (vu-pair (ibne vi00 vi03 project-disc-edge) (nop)) ;; #x05c
+          (vu-pair (sq.xyzw vf07 vi04 -1) (nop)) ;; #x05d
+          (vu-pair (b disc-kicked) (nop)) ;; #x05e
+          (vu-pair (xgkick vi14) (nop)) ;; #x05f branch delay
+          (label reject-disc-triangle)
+          (vu-pair (nop) (maxx.w vf07 vf07 vf00)) ;; #x060
+          (vu-pair (nop) (nop)) ;; #x061
+          (vu-pair (nop) (nop)) ;; #x062
+          (vu-pair (nop) (nop)) ;; #x063
+          (vu-pair (nop) (addw.w vf07 vf07 vf25)) ;; #x064 set ADC/no-kick
+          (vu-pair (nop) (nop)) ;; #x065
+          (vu-pair (nop) (nop)) ;; #x066
+          (vu-pair (nop) (nop)) ;; #x067
+          (vu-pair (nop) (ftoi4.xyzw vf07 vf07)) ;; #x068
+          (vu-pair (iaddi vi03 vi03 -0x1) (nop)) ;; #x069
+          (vu-pair (ior vi06 vi07 vi00) (nop)) ;; #x06a
+          (vu-pair (ibne vi00 vi03 project-disc-edge) (nop)) ;; #x06b
+          (vu-pair (sq.xyzw vf07 vi04 -1) (nop)) ;; #x06c
+          (vu-pair (xgkick vi14) (nop)) ;; #x06d
+          ;; Build the two annular strips in the other output bank.  MR32 advances the packed color and
+          ;; radius vectors from sun to halo and then halo to aurora.  Each oval sample emits the inner
+          ;; and outer colored vertices needed by the strip.
+          (label disc-kicked)
+          (vu-pair (iaddiu vi01 vi00 0x80) (nop)) ;; #x06e
+          (vu-pair (isub vi14 vi01 vi14) (nop)) ;; #x06f
+          (vu-pair (iaddi vi08 vi00 0x2) (nop)) ;; #x070
+          (label build-annular-strip)
+          (vu-pair (iaddiu vi02 vi00 0x100) (nop)) ;; #x071 circle data
+          (vu-pair (lq.xyzw vf04 vi00 306) (nop)) ;; #x072 strip giftag
+          (vu-pair (iaddiu vi03 vi00 0x11) (nop)) ;; #x073
+          (vu-pair (ior vi04 vi14 vi00) (nop)) ;; #x074
+          (vu-pair (mr32.xyzw vf03 vf03) (nop)) ;; #x075 next start color
+          (vu-pair (mr32.xyzw vf09 vf09) (nop)) ;; #x076 next end color
+          (vu-pair (sqi.xyzw vf04 vi04) (nop)) ;; #x077
+          (vu-pair (nop) (nop)) ;; #x078
+          (label build-strip-vertices)
+          (vu-pair (lqi.xyzw vf06 vi02) (nop)) ;; #x079
+          (vu-pair (sq.xyzw vf05 vi04 0) (nop)) ;; #x07a
+          (vu-pair (sq.x vf03 vi04 0) (nop)) ;; #x07b inner color
+          (vu-pair (sq.xyzw vf05 vi04 2) (nop)) ;; #x07c
+          (vu-pair (sq.x vf09 vi04 2) (mulx.xyzw vf10 vf06 vf02)) ;; #x07d inner radius
+          (vu-pair (iaddi vi04 vi04 0x4) (muly.xyzw vf06 vf06 vf02)) ;; #x07e outer radius
+          (vu-pair (nop) (nop)) ;; #x07f
+          (vu-pair (nop) (nop)) ;; #x080
+          (vu-pair (nop) (add.xyzw vf10 vf10 vf01)) ;; #x081
+          (vu-pair (nop) (add.xyzw vf06 vf06 vf01)) ;; #x082
+          (vu-pair (nop) (nop)) ;; #x083
+          (vu-pair (iaddi vi03 vi03 -0x1) (nop)) ;; #x084
+          (vu-pair (sq.xyzw vf10 vi04 -3) (nop)) ;; #x085
+          (vu-pair (ibne vi00 vi03 build-strip-vertices) (nop)) ;; #x086
+          (vu-pair (sq.xyzw vf06 vi04 -1) (nop)) ;; #x087
+          ;; Project all 34 strip vertices.  vi05 and vi06 are the two preceding clip masks; a nonzero
+          ;; intersection with vi07 means the current strip triangle is wholly outside one clip plane.
+          (vu-pair (iaddi vi04 vi14 0x1) (nop)) ;; #x088
+          (vu-pair (iaddi vi05 vi00 0x0) (nop)) ;; #x089
+          (vu-pair (iaddi vi06 vi00 0x0) (nop)) ;; #x08a
+          (vu-pair (iaddiu vi03 vi00 0x22) (nop)) ;; #x08b
+          (label project-strip-vertex)
+          (vu-pair (lq.xyzw vf07 vi04 1) (nop)) ;; #x08c
+          (vu-pair (iaddi vi04 vi04 0x2) (nop)) ;; #x08d
+          (vu-pair (nop) (nop)) ;; #x08e
+          (vu-pair (nop) (nop)) ;; #x08f
+          (vu-pair (div Q vf25.x vf07.w) (mul.xyzw vf08 vf07 vf27)) ;; #x090
+          (vu-pair (move.z vf07 vf00) (nop)) ;; #x091
+          (vu-pair (nop) (nop)) ;; #x092
+          (vu-pair (nop) (nop)) ;; #x093
+          (vu-pair (nop) (clipw.xyz vf08 vf08)) ;; #x094
+          (vu-pair (nop) (nop)) ;; #x095
+          (vu-pair (nop) (nop)) ;; #x096
+          (vu-pair (iaddiu vi01 vi00 0x2f) (mul.xy vf07 vf07 Q)) ;; #x097
+          (vu-pair (fcget vi07) (nop)) ;; #x098
+          (vu-pair (iand vi07 vi07 vi01) (nop)) ;; #x099
+          (vu-pair (iand vi05 vi05 vi06) (nop)) ;; #x09a
+          (vu-pair (iand vi05 vi05 vi07) (add.xyzw vf07 vf07 vf26)) ;; #x09b
+          (vu-pair (nop) (nop)) ;; #x09c
+          (vu-pair (ibne vi00 vi05 reject-strip-triangle) (nop)) ;; #x09d
+          (vu-pair (nop) (nop)) ;; #x09e
+          (vu-pair (nop) (maxx.w vf07 vf07 vf00)) ;; #x09f
+          (vu-pair (nop) (nop)) ;; #x0a0
+          (vu-pair (nop) (nop)) ;; #x0a1
+          (vu-pair (nop) (nop)) ;; #x0a2
+          (vu-pair (ior vi05 vi06 vi00) (ftoi4.xyzw vf07 vf07)) ;; #x0a3
+          (vu-pair (iaddi vi03 vi03 -0x1) (nop)) ;; #x0a4
+          (vu-pair (ior vi06 vi07 vi00) (nop)) ;; #x0a5
+          (vu-pair (ibne vi00 vi03 project-strip-vertex) (nop)) ;; #x0a6
+          (vu-pair (sq.xyzw vf07 vi04 -1) (nop)) ;; #x0a7
+          (vu-pair (b strip-kicked) (nop)) ;; #x0a8
+          (vu-pair (xgkick vi14) (nop)) ;; #x0a9 branch delay
+          (label reject-strip-triangle)
+          (vu-pair (nop) (maxx.w vf07 vf07 vf00)) ;; #x0aa
+          (vu-pair (nop) (nop)) ;; #x0ab
+          (vu-pair (nop) (nop)) ;; #x0ac
+          (vu-pair (nop) (nop)) ;; #x0ad
+          (vu-pair (nop) (addw.w vf07 vf07 vf25)) ;; #x0ae set ADC/no-kick
+          (vu-pair (nop) (nop)) ;; #x0af
+          (vu-pair (nop) (nop)) ;; #x0b0
+          (vu-pair (nop) (nop)) ;; #x0b1
+          (vu-pair (ior vi05 vi06 vi00) (ftoi4.xyzw vf07 vf07)) ;; #x0b2
+          (vu-pair (iaddi vi03 vi03 -0x1) (nop)) ;; #x0b3
+          (vu-pair (ior vi06 vi07 vi00) (nop)) ;; #x0b4
+          (vu-pair (ibne vi00 vi03 project-strip-vertex) (nop)) ;; #x0b5
+          (vu-pair (sq.xyzw vf07 vi04 -1) (nop)) ;; #x0b6
+          (vu-pair (xgkick vi14) (nop)) ;; #x0b7
+          (label strip-kicked)
+          (vu-pair (iaddi vi08 vi08 -0x1) (nop)) ;; #x0b8
+          (vu-pair (iaddiu vi01 vi00 0x80) (nop)) ;; #x0b9
+          (vu-pair (isub vi14 vi01 vi14) (nop)) ;; #x0ba
+          (vu-pair (ibne vi00 vi08 build-annular-strip) (nop)) ;; #x0bb
+          (vu-pair (mr32.xyzw vf02 vf02) (nop)) ;; #x0bc advance sun/halo to halo/aurora
+          (vu-pair (jr vi15) (nop)) ;; #x0bd
+          (vu-pair (nop) (nop)) ;; #x0be
+          ;; The draw entry selects the first packed sun record, then falls through to the second.
+          (label draw-sun-0)
+          (vu-pair (lq.xyzw vf01 vi00 273) (nop)) ;; #x0bf position
+          (vu-pair (lq.xyzw vf02 vi00 274) (nop)) ;; #x0c0 radii
+          (vu-pair (lq.xyzw vf03 vi00 275) (nop)) ;; #x0c1 start colors
+          (vu-pair (lq.xyzw vf09 vi00 276) (nop)) ;; #x0c2 end colors
+          (vu-pair (bal vi15 draw-sun) (nop)) ;; #x0c3
+          (vu-pair (nop) (nop)) ;; #x0c4
+          (label draw-sun-1)
+          (vu-pair (lq.xyzw vf01 vi00 277) (nop)) ;; #x0c5 position
+          (vu-pair (lq.xyzw vf02 vi00 278) (nop)) ;; #x0c6 radii
+          (vu-pair (lq.xyzw vf03 vi00 279) (nop)) ;; #x0c7 start colors
+          (vu-pair (lq.xyzw vf09 vi00 280) (nop)) ;; #x0c8 end colors
+          (vu-pair (bal vi15 draw-sun) (nop)) ;; #x0c9
+          (vu-pair (nop) (nop)) ;; #x0ca
+          (vu-pair (nop) (nop :e)) ;; #x0cb
+          (vu-pair (nop) (nop)) ;; #x0cc
+          ))
+
+(#unless PC_PORT
+  ;; Function-relative constants used while constructing the per-frame VIF and GIF records.
+  (asm-data (label sky-radius)
+            (word #x4a7a0000) ;; 4096000.0
+            (label sky-no-kick)
+            (word #x45400000) ;; 3072.0, which becomes the GS ADC bit after FTOI4
+            (label sky-sun-strip-tag)
+            (word #x00008022 #x20264000)
+            (label sky-sun-fan-tag)
+            (word #x00008012 #x2026c000)
+            (label sky-alpha-tag)
+            (word #x00000001 #x10000000))
+  (defun sky-add-frame-data ((dma-buf dma-buffer) (unused object))
+    "Append the 18-qword frame block, update its lighting and celestial upload image, and append the
+     VIF reference that transfers the 27 celestial-data qwords to VU address 256."
+    (declare (asm-func none) (allow-saved-regs))
+    ;; sky-frame-data is uploaded to VU address 291.  Its first seven qwords contain the camera
+    ;; transform, projection scale/offset, fog scale, legacy 4096000 radius field, and ADC no-kick
+    ;; value.  strip-giftag and save[5] are left untouched; this program loads the shared color A+D
+    ;; record and the later sun-specific fan, strip, and alpha records.
+    (rlet ((buffer :reg gp)
+           (frame-qwc :reg v1)
+           (cursor :reg a1)
+           (camera :reg a2)
+           (function-base :reg fp)
+           (result :reg v0))
+      (add.i sp sp -32)
+      (s.d ra sp)
+      (s.d function-base sp 8)
+      (m function-base t9)
+      (s.q buffer sp 16)
+      (m buffer a0)
+      (asm-block append-frame-unpack
+                 (add.i frame-qwc r0 18)
+                 (m a0 buffer)
+                 (l.w.field cursor a0 (base))
+                 (lui a2 #x1000)
+                 (sll32 a3 frame-qwc 16)
+                 (srl32 a3 a3 16)
+                 (or a2 a2 a3)
+                 (s.d a2 cursor)
+                 (lui a2 256)
+                 (ori a2 a2 1028) ;; STCYCL 4,4
+                 (s.w a2 cursor 8)
+                 (lui a2 #x6c00)
+                 (ori a2 a2 291)
+                 (sll32 a3 frame-qwc 24)
+                 (srl32 a3 a3 8)
+                 (or a2 a2 a3) ;; UNPACK V4-32, 18 qwords, VU address 291
+                 (s.w a2 cursor 12)
+                 (add.i cursor cursor 16)
+                 (s.w.field cursor a0 (base)))
+      (asm-block fill-camera-frame-data
+                 (l.w.field a0 buffer (base))
+                 (add cursor r0 a0)
+                 (m! camera *math-camera*)
+                 (lea.field t1 camera (camera-temp))
+                 (l.q camera t1)
+                 (l.q a3 t1 16)
+                 (l.q t0 t1 32)
+                 (l.q t1 t1 48)
+                 (s.q camera cursor)
+                 (s.q a3 cursor 16)
+                 (s.q t0 cursor 32)
+                 (s.q t1 cursor 48)
+                 (add.i cursor a0 64)
+                 (m! camera *math-camera*)
+                 (lea.field camera camera (hmge-scale))
+                 (l.q camera camera)
+                 (s.q camera cursor)
+                 (add.i cursor a0 80)
+                 (m! camera *math-camera*)
+                 (lea.field camera camera (hvdf-off))
+                 (l.q camera camera)
+                 (s.q camera cursor)
+                 ;; Keep the sky on its fixed GS depth plane instead of applying the camera's Z offset.
+                 (m f0 r0)
+                 (s.s f0 a0 88)
+                 (m! cursor *math-camera*)
+                 (l.s.field f0 cursor (pfog0))
+                 (s.s f0 a0 96)
+                 (l.s f0 function-base sky-radius)
+                 (s.s f0 a0 100)
+                 (l.s f0 function-base sky-no-kick)
+                 (s.s f0 a0 108))
+      (asm-block fill-gif-state
+                 ;; Constant RGBAQ A+D record: RGBA=(128,96,96,32), Q=1.
+                 (lui cursor #x2060)
+                 (ori cursor cursor #x6080)
+                 (s.w cursor a0 128)
+                 (lui cursor #x3f80)
+                 (s.w cursor a0 132)
+                 (add.i cursor r0 1)
+                 (s.w cursor a0 136)
+                 (s.w r0 a0 140)
+                 ;; Gouraud, alpha-blended fan and strip tags, each alternating A+D color and XYZF2.
+                 (l.d cursor function-base sky-sun-fan-tag)
+                 (pcpyld cursor r0 cursor)
+                 (s.d cursor a0 224)
+                 (add.i cursor r0 78)
+                 (s.d cursor a0 232)
+                 (l.d cursor function-base sky-sun-strip-tag)
+                 (pcpyld cursor r0 cursor)
+                 (s.d cursor a0 240)
+                 (add.i cursor r0 78)
+                 (s.d cursor a0 248)
+                 ;; ALPHA_1 value 0x44 and its one-register A+D GIF tag.
+                 (add.i cursor r0 68)
+                 (s.d cursor a0 256)
+                 (add.i cursor r0 66)
+                 (s.d cursor a0 264)
+                 (l.d cursor function-base sky-alpha-tag)
+                 (pcpyld cursor r0 cursor)
+                 (s.d cursor a0 272)
+                 (add.i cursor r0 14)
+                 (s.d cursor a0 280))
+      (l.w.field a0 buffer (base))
+      (sll frame-qwc frame-qwc 4)
+      (add frame-qwc a0 frame-qwc)
+      (s.w.field frame-qwc buffer (base))
+      ;; Convert the current primary light group into the VU layout retained by sky-parms.
+      (m! t9 vu-lights<-light-group!)
+      (m! frame-qwc *sky-parms*)
+      (lea.field a0 frame-qwc (default-vu-lights))
+      (m! frame-qwc *time-of-day-context*)
+      (lea.field a1 frame-qwc (light-group 0))
+      (jalr ra t9 :delay (sll v0 ra 0))
+      ;; Refresh the standalone 27-qword image, then reference it with an UNPACK to address 256.
+      (m! t9 qmem-copy<-!)
+      (m! frame-qwc *sky-upload-data*)
+      (lea.field a0 frame-qwc (data))
+      (m! frame-qwc *sky-parms*)
+      (lea.field a1 frame-qwc (upload-data data))
+      (add.i a2 r0 432)
+      (jalr ra t9 :delay (sll v0 ra 0))
+      (l.w.field frame-qwc buffer (base))
+      (lui a0 #x3000)
+      (ori a0 a0 27)
+      (m! a1 *sky-upload-data*)
+      (lea.field a1 a1 (data))
+      (sll32 a1 a1 1)
+      (srl a1 a1 1)
+      (or a0 a0 a1)
+      (s.d a0 frame-qwc)
+      (s.w r0 frame-qwc 8)
+      (lui a0 #x6c1b)
+      (ori a0 a0 256)
+      (s.w a0 frame-qwc 12) ;; UNPACK V4-32, 27 qwords, VU address 256
+      (add.i frame-qwc frame-qwc 16)
+      (s.w.field frame-qwc buffer (base))
+      (m result s7)
+      (l.d ra sp)
+      (l.d function-base sp 8)
+      (l.q buffer sp 16)
+      (jr ra :delay (add.i sp sp 32))
+      (nop! :count 2)))
+  (defun sky-upload ((dma-buf dma-buffer) (unused object))
+    "Upload the old sky VU1 program and frame data, then append an MSCALF packet for entry zero."
+    (declare (asm-func none) (allow-saved-regs))
+    (rlet ((buffer :reg gp)
+           (legacy-arg :reg s5)
+           (cursor :reg v1)
+           (result :reg v0))
+      (add.i sp sp -48)
+      (s.d ra sp)
+      (s.q legacy-arg sp 16)
+      (s.q buffer sp 32)
+      (m buffer a0)
+      (m legacy-arg a1)
+      (m! t9 dma-buffer-add-vu-function)
+      (m a0 buffer)
+      (m! a1 sky-vu1-block)
+      (add.i a2 r0 1)
+      (jalr ra t9 :delay (sll v0 ra 0))
+      (m! t9 sky-add-frame-data)
+      (m a0 buffer)
+      (m a1 legacy-arg)
+      (jalr ra t9 :delay (sll v0 ra 0))
+      (l.w.field cursor buffer (base))
+      (lui a0 #x1000)
+      (s.d a0 cursor)
+      (lui a0 #x1500)
+      (add.i a1 r0 0)
+      (sll32 a1 a1 16)
+      (srl32 a1 a1 16)
+      (or a0 a0 a1)
+      (s.w a0 cursor 8)
+      (lui a0 #x1000)
+      (s.w a0 cursor 12)
+      (add.i cursor cursor 16)
+      (s.w.field cursor buffer (base))
+      (m result r0)
+      (l.d ra sp)
+      (l.q buffer sp 32)
+      (l.q legacy-arg sp 16)
+      (jr ra :delay (add.i sp sp 48))
+      (nop! :count 3)))
+  (defun sky-draw ((dma-buf dma-buffer))
+    "Append the MSCALF packet that enters sky-vu1-block at draw-sun-0."
+    (declare (asm-func none))
+    (rlet ((buffer :reg v1)
+           (cursor :reg a0)
+           (command :reg a1)
+           (entry :reg a2)
+           (result :reg v0))
+      (m buffer a0)
+      (l.w.field cursor buffer (base))
+      (lui command #x1000)
+      (s.d command cursor)
+      (lui command #x1500)
+      (add.i entry r0 191)
+      (sll32 entry entry 16)
+      (srl32 entry entry 16)
+      (or command command entry)
+      (s.w command cursor 8)
+      (lui command #x1000)
+      (s.w command cursor 12)
+      (add.i cursor cursor 16)
+      (s.w.field cursor buffer (base))
+      (m result r0)
+      (jr ra :delay (add sp sp r0))
+      (nop! :count 2))))
 
 ;; set the suns
-(sky-set-sun-radii *sky-parms* 0 60.0 200.0 300.0)
+(sky-set-sun-radii *sky-parms* (sky-sun-index sun) 60.0 200.0 300.0)
 
-(sky-set-sun-radii *sky-parms* 1 15.0 20.0 300.0)
+(sky-set-sun-radii *sky-parms* (sky-sun-index green-sun) 15.0 20.0 300.0)
 
 (sky-set-sun-colors *sky-parms*
-                    1
+                    (sky-sun-index green-sun)
                     (new 'static 'rgba :r #xc2 :g #xfe :b #x78 :a #x80)
                     (new 'static 'rgba :r #xc2 :g #xfe :b #x78 :a #x80)
                     (new 'static 'rgba :r #xc2 :g #xfe :b #x78 :a #x20)
                     (new 'static 'rgba :r #xc2 :g #xfe :b #x78))
 
-(sky-set-orbit *sky-parms* 0 12.5 -15.0 0.0 9950.0 300.0 300.0)
+(sky-set-orbit *sky-parms* (sky-orbit-index sun) 12.5 -15.0 0.0 9950.0 300.0 300.0)
 
-(sky-set-orbit *sky-parms* 1 4.0 0.0 60.0 9950.0 120.0 120.0)
+(sky-set-orbit *sky-parms* (sky-orbit-index green-sun) 4.0 0.0 60.0 9950.0 120.0 120.0)
 
-(sky-set-orbit *sky-parms* 2 0.0 0.0 -10.0 9950.0 0.0 0.0)
+(sky-set-orbit *sky-parms* (sky-orbit-index moon) 0.0 0.0 -10.0 9950.0 0.0 0.0)

@@ -13,12 +13,13 @@
 
 (define *merc-global-stats* (new 'global 'merc-global-stats))
 
-(defun clear-tr-stat ((arg0 tr-stat))
-  (set! (-> arg0 groups) (the-as uint 0))
-  (set! (-> arg0 fragments) (the-as uint 0))
-  (set! (-> arg0 tris) (the-as uint 0))
-  (set! (-> arg0 dverts) (the-as uint 0))
-  (set! (-> arg0 instances) (the-as uint 0))
+(defun clear-tr-stat ((stat tr-stat))
+  "Zero all renderer-statistics counters in stat."
+  (set! (-> stat groups) (the-as uint 0))
+  (set! (-> stat fragments) (the-as uint 0))
+  (set! (-> stat tris) (the-as uint 0))
+  (set! (-> stat dverts) (the-as uint 0))
+  (set! (-> stat instances) (the-as uint 0))
   0
   (none))
 
@@ -30,7 +31,8 @@
 (define *stat-string-total* (new 'global 'string 128 (the-as string #f)))
 
 (defun-debug print-tr-stat ((stat tr-stat) (name string) (dest string))
-  "Print the statistics for stat to dest and to the screen. Also add them to the total stats"
+  "Format and print a nonempty renderer-statistics bucket, then add its counters to the terrain
+   total. The strip column is the average number of triangles per triangle strip."
   (clear dest)
   (when (nonzero? (+ (-> stat groups) (-> stat fragments) (-> stat tris) (-> stat dverts) (-> stat instances)))
     (format dest "~0k~4d  ~5d   ~6d   ~6d" (-> stat groups) (-> stat fragments) (-> stat tris) (-> stat dverts))
@@ -50,22 +52,18 @@
   (none))
 
 (defun-debug print-terrain-stats ()
-  "Print all terrain statistics"
-  ;; make our own profile thing.
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-               'draw
-               (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
-  (dotimes (gp-0 (-> *level* length))
-    (let ((s5-0 (-> *level* level gp-0)))
-      (when (= (-> s5-0 status) 'active)
-        (compute-memory-usage s5-0 #f)
+  "Print active-level memory use and every renderer-statistics bucket, update the display strings,
+   and clear the counters for the next reporting interval."
+  (add-profile-frame! #x40 0 #x40 #x80 'draw)
+  (dotimes (i (-> *level* length))
+    (let ((lev (-> *level* level i)))
+      (when (= (-> lev status) 'active)
+        (compute-memory-usage lev #f)
         (format *stdcon*
                 "~0k~D ~A ~,,2fK + textures~%"
-                (-> s5-0 index)
-                (-> s5-0 name)
-                (* 0.0009765625 (the float (-> s5-0 mem-usage)))))))
-  ;; print all stats
+                (-> lev index)
+                (-> lev name)
+                (* 0.0009765625 (the float (-> lev mem-usage)))))))
   (format *stdcon* "~0k~%grps  frags     tris   dverts    strip  insts~%")
   (print-tr-stat (-> *terrain-stats* pris) "pris" *temp-string*)
   (print-tr-stat (-> *merc-global-stats* merc) "merc" *temp-string*)
@@ -104,22 +102,32 @@
   (clear-tr-stat (-> *terrain-stats* ocean-mid))
   (clear-tr-stat (-> *terrain-stats* ocean-near))
   (clear-tr-stat (-> *terrain-stats* total))
-  (if *debug-segment*
-    (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0) 'draw (new 'static 'rgba :b #xff :a #x80)))
+  (add-profile-frame! 0 0 #xff #x80 'draw)
   0
   (none))
 
+
 (defun update-subdivide-settings! ((settings subdivide-settings) (math-cam math-camera) (idx int))
-  "Change the subdivide settings."
+  "Select a close/far LOD profile, construct five nonuniform world-distance thresholds, convert
+   them to camera-scaled distances, and update the tfragment thresholds."
+  ;; Tfragments choose progressively finer meshes as they approach the camera. meters[0] is the
+  ;; far threshold, meters[4] is the close threshold, and the three interior thresholds are
+  ;; deliberately nonuniform. With band-unit = (far - close) / 7, their offsets from close are
+  ;; 0.5, 1.5, and 3.5 band units, leaving successively wider bands toward the far plane.
   (set! (-> settings meters 0) (-> settings far idx))
   (set! (-> settings meters 4) (-> settings close idx))
-  (let ((f0-3 (* 0.14285715 (- (-> settings meters 0) (-> settings meters 4)))))
-    (set! (-> settings meters 3) (+ (-> settings meters 4) (* 0.5 f0-3)))
-    (set! (-> settings meters 2) (+ (-> settings meters 3) f0-3))
-    (set! (-> settings meters 1) (+ (-> settings meters 2) (* 2.0 f0-3))))
-  (let ((f0-7 (/ (-> math-cam inv-hmge-scale w) (-> math-cam d))))
-    (dotimes (v1-5 5)
-      (set! (-> settings dist v1-5) (* f0-7 (-> settings meters v1-5)))))
+  (let ((band-unit (* 0.14285715 (- (-> settings meters 0) (-> settings meters 4)))))
+    (set! (-> settings meters 3) (+ (-> settings meters 4) (/ band-unit 2)))
+    (set! (-> settings meters 2) (+ (-> settings meters 3) band-unit))
+    (set! (-> settings meters 1) (+ (-> settings meters 2) (* 2.0 band-unit))))
+  
+  ;; On the VU, tfrag compares the FOG value, which is proportional to distance
+  ;; from the camera. This scale factor inverts it. inv-hmge-scale.w is the fog range and
+  ;; d converts from homogenous coordinates to actual distance in meters
+  (let ((camera-scale (/ (-> math-cam inv-hmge-scale w) (-> math-cam d))))
+    (dotimes (i 5)
+      (set! (-> settings dist i) (* camera-scale (-> settings meters i)))))
+  ;; On the EE, the DMA generation code looks at world space positions and expects negated distances.
   (set! (-> *tfrag-work* frag-dists x) (- (-> settings meters 0)))
   (set! (-> *tfrag-work* frag-dists y) (- (-> settings meters 1)))
   (set! (-> *tfrag-work* frag-dists z) (- (-> settings meters 2)))
@@ -129,24 +137,37 @@
 
 (define *subdivide-settings* (new 'global 'subdivide-settings (meters 30) (meters 70)))
 
-(defun set-tfrag-dists! ((arg0 tfrag-dists))
-  (let ((f2-0 (-> *subdivide-settings* dist 0))
-        (f1-0 (-> *subdivide-settings* dist 1))
-        (f0-0 (-> *subdivide-settings* dist 2)))
-    (set! (-> arg0 k0s 0 w) f2-0)
-    (set! (-> arg0 k0s 1 w) f1-0)
-    (let ((f4-1 (/ 1.0 (- f2-0 f1-0)))
-          (f3-2 (/ 1.0 (- f1-0 f0-0))))
-      (set! (-> arg0 k0s 0 y) (- f4-1))
-      (set! (-> arg0 k0s 1 y) (- f3-2))
-      (set! (-> arg0 k0s 0 x) (* 0.5 f4-1))
-      (set! (-> arg0 k0s 1 x) (* 0.5 f3-2))
-      (let ((f2-1 (* f2-0 f4-1))
-            (f5-7 (* f1-0 f3-2)))
-        (set! (-> arg0 k1s 0 y) f2-1)
-        (set! (-> arg0 k1s 1 y) f5-7))
-      (set! (-> arg0 k1s 0 x) (* -0.5 f4-1 f1-0))
-      (set! (-> arg0 k1s 1 x) (* -0.5 f3-2 f0-0))))
+(defun set-tfrag-dists! ((dists tfrag-dists))
+  "Fill the affine collapse coefficients for the two tfragment subdivision levels."
+  ;; The VU computes weights.xy = k0.xy * pos.w + k1.xy
+  ;; where
+  ;;  weights.x goes from 0 -> 0.5
+  ;;  weights.y goes from 1 -> 0
+  ;; and
+  ;;  pos = p * weights.y + (parent-a + parent-b) * weights.x
+  ;; so
+  ;;  pos goes from "p" to the midpoint of the parents as the level of detail drops.
+  (let ((far-0 (-> *subdivide-settings* dist 0))
+        (boundary-1 (-> *subdivide-settings* dist 1))
+        (near-2 (-> *subdivide-settings* dist 2)))
+    ;; also store the boundaries so VU can check if both parents are beyond the threshold and
+    ;; collapse.
+    (set! (-> dists k0s 0 w) far-0)
+    (set! (-> dists k0s 1 w) boundary-1)
+    
+    ;; find k0/k1 coefficients
+    (let ((inverse-span-0 (/ 1.0 (- far-0 boundary-1)))
+          (inverse-span-1 (/ 1.0 (- boundary-1 near-2))))
+      (set! (-> dists k0s 0 y) (- inverse-span-0))
+      (set! (-> dists k0s 1 y) (- inverse-span-1))
+      (set! (-> dists k0s 0 x) (/ inverse-span-0 2))
+      (set! (-> dists k0s 1 x) (/ inverse-span-1 2))
+      (let ((y-intercept-0 (* far-0 inverse-span-0))
+            (y-intercept-1 (* boundary-1 inverse-span-1)))
+        (set! (-> dists k1s 0 y) y-intercept-0)
+        (set! (-> dists k1s 1 y) y-intercept-1))
+      (set! (-> dists k1s 0 x) (* (/ inverse-span-0 -2) boundary-1))
+      (set! (-> dists k1s 1 x) (* (/ inverse-span-1 -2) near-2))))
   (none))
 
 (define *terrain-context* (new 'global 'terrain-context))
@@ -154,9 +175,9 @@
 ;; oops, this runs even when not debugging and ends up on global.
 (define *perf-stats* (new 'debug 'perf-stat-array 17))
 
-(defmethod print-to-stream ((this perf-stat) (arg0 string) (arg1 basic))
-  "Print performance info to a stream. But the stream is ignored and it is
-   printed to the screen."
+(defmethod print-to-stream ((this perf-stat) (name string) (stream basic))
+  "Print one performance-counter row to the console. stream is accepted for the standard
+   print-to-stream interface but is ignored."
   (format *stdcon*
           "~3d  ~8d  ~8d  ~6d ~6d"
           (-> this count)
@@ -165,7 +186,7 @@
           (-> this icache)
           (-> this dcache))
   (format *stdcon* "  ~2d ~2d ~2d" (-> this to-vu0-waits) (-> this to-spr-waits) (-> this from-spr-waits))
-  (format *stdcon* "   ~s~%" arg0)
+  (format *stdcon* "   ~s~%" name)
   (none))
 
 (defenum perf-stat-bucket
@@ -187,15 +208,16 @@
   (collide 15)
   (camera 16))
 
-(defun-debug perf-stat-bucket->string ((arg0 perf-stat-bucket))
-  (enum->string perf-stat-bucket arg0))
+(defun-debug perf-stat-bucket->string ((bucket perf-stat-bucket))
+  "Return the debug name of a performance-statistics bucket."
+  (enum->string perf-stat-bucket bucket))
 
 ;; Set up for the GOMI STATS HACK
 (define GSH_ENABLE #f)
 
 (define GSH_BUCKET (bucket-id sky-draw))
 
-(define GSH_WHICH_STAT 1)
+(define GSH_WHICH_STAT (perf-counter-pair icache-dcache))
 
 (define GSH_MAX_DISPLAY (the-as basic #f))
 
@@ -204,12 +226,16 @@
 (define *gomi-stats-hack* (the-as (inline-array perf-stat) (malloc 'debug (* 52 (+ GSH_TIME 1)))))
 
 (defun-debug start-perf-stat-collection ()
+  "Advance the rotating renderer performance sample, clear the selected bucket, and start its
+   selected counter pair. The EE uses its hardware counters; the PC records elapsed CPU-clock
+   ticks."
   (let ((frame-idx (+ (-> *perf-stats* data 0 frame-number) 1)))
     (set! (-> *perf-stats* data 0 frame-number) frame-idx)
-    (let ((gp-0 (mod frame-idx (the-as uint 34))))
+    (let ((selection-state (mod frame-idx (the-as uint 34))))
       (when GSH_ENABLE
         (let ((bucket GSH_BUCKET))
-          (let ((which-stat GSH_WHICH_STAT)) (set! gp-0 (+ (* (the-as uint bucket) 2) which-stat)))
+          (let ((which-stat GSH_WHICH_STAT))
+            (set! selection-state (+ (* (the-as uint bucket) 2) (the-as uint which-stat))))
           (when GSH_MAX_DISPLAY
             (let ((stat-idx (logand (-> *perf-stats* data 0 frame-number) (+ GSH_TIME -1))))
               (set! (-> *gomi-stats-hack* stat-idx cycles) (-> *perf-stats* data (the-as int bucket) cycles))
@@ -221,89 +247,104 @@
                 (set! (-> *gomi-stats-hack* GSH_TIME instructions) (the-as uint 0))
                 (set! (-> *gomi-stats-hack* GSH_TIME icache) (the-as uint 0))
                 (set! (-> *gomi-stats-hack* GSH_TIME dcache) (the-as uint 0))
-                (dotimes (v1-22 GSH_TIME)
-                  (if (< (-> *gomi-stats-hack* GSH_TIME cycles) (-> *gomi-stats-hack* v1-22 cycles))
-                    (set! (-> *gomi-stats-hack* GSH_TIME cycles) (-> *gomi-stats-hack* v1-22 cycles)))
-                  (if (< (-> *gomi-stats-hack* GSH_TIME instructions) (-> *gomi-stats-hack* v1-22 instructions))
-                    (set! (-> *gomi-stats-hack* GSH_TIME instructions) (-> *gomi-stats-hack* v1-22 instructions)))
-                  (if (< (-> *gomi-stats-hack* GSH_TIME icache) (-> *gomi-stats-hack* v1-22 icache))
-                    (set! (-> *gomi-stats-hack* GSH_TIME icache) (-> *gomi-stats-hack* v1-22 icache)))
-                  (if (< (-> *gomi-stats-hack* GSH_TIME dcache) (-> *gomi-stats-hack* v1-22 dcache))
-                    (set! (-> *gomi-stats-hack* GSH_TIME dcache) (-> *gomi-stats-hack* v1-22 dcache))))))
+                (dotimes (i GSH_TIME)
+                  (if (< (-> *gomi-stats-hack* GSH_TIME cycles) (-> *gomi-stats-hack* i cycles))
+                    (set! (-> *gomi-stats-hack* GSH_TIME cycles) (-> *gomi-stats-hack* i cycles)))
+                  (if (< (-> *gomi-stats-hack* GSH_TIME instructions) (-> *gomi-stats-hack* i instructions))
+                    (set! (-> *gomi-stats-hack* GSH_TIME instructions) (-> *gomi-stats-hack* i instructions)))
+                  (if (< (-> *gomi-stats-hack* GSH_TIME icache) (-> *gomi-stats-hack* i icache))
+                    (set! (-> *gomi-stats-hack* GSH_TIME icache) (-> *gomi-stats-hack* i icache)))
+                  (if (< (-> *gomi-stats-hack* GSH_TIME dcache) (-> *gomi-stats-hack* i dcache))
+                    (set! (-> *gomi-stats-hack* GSH_TIME dcache) (-> *gomi-stats-hack* i dcache))))))
             (format *stdcon* "~%")
             (print-to-stream (-> *gomi-stats-hack* GSH_TIME) "max-value" *stdcon*))))
-      (dotimes (v1-27 17)
-        (set! (-> *perf-stats* data v1-27 count) (the-as uint 0))
+      (dotimes (i 17)
+        (set! (-> *perf-stats* data i count) (the-as uint 0))
         (cond
-          ((!= v1-27 (shr gp-0 1)) (set! (-> *perf-stats* data v1-27 ctrl) (the-as uint 0)) 0)
+          ((!= i (shr selection-state 1)) (set! (-> *perf-stats* data i ctrl) (the-as uint 0)) 0)
           (else
-           (let ((a1-63 (logand gp-0 1))
-                 (a0-64 (the-as uint #x80004010)))
+           (let ((counter-pair (the-as perf-counter-pair (logand selection-state 1)))
+                 (control (the-as uint #x80004010)))
              (cond
-               ((zero? a1-63) (set! a0-64 (the-as uint (+ #x60020 a0-64))))
-               ((= a1-63 1) (set! a0-64 (the-as uint (+ #x300c0 a0-64)))))
-             (set! (-> *perf-stats* data v1-27 select) a1-63)
-             (set! (-> *perf-stats* data v1-27 ctrl) a0-64))
-           (set! (-> *perf-stats* data v1-27 accum0) (the-as uint 0))
-           (set! (-> *perf-stats* data v1-27 accum1) (the-as uint 0))
-           (set! (-> *perf-stats* data v1-27 to-vu0-waits) (the-as uint 0))
-           (set! (-> *perf-stats* data v1-27 to-spr-waits) (the-as uint 0))
-           (set! (-> *perf-stats* data v1-27 from-spr-waits) (the-as uint 0))
+               ((= counter-pair (perf-counter-pair cycles-instructions))
+                (set! control (the-as uint (+ #x60020 control))))
+               ((= counter-pair (perf-counter-pair icache-dcache))
+                (set! control (the-as uint (+ #x300c0 control)))))
+             (set! (-> *perf-stats* data i select) counter-pair)
+             (set! (-> *perf-stats* data i ctrl) control))
+           (set! (-> *perf-stats* data i accum0) (the-as uint 0))
+           (set! (-> *perf-stats* data i accum1) (the-as uint 0))
+           (set! (-> *perf-stats* data i to-vu0-waits) (the-as uint 0))
+           (set! (-> *perf-stats* data i to-spr-waits) (the-as uint 0))
+           (set! (-> *perf-stats* data i from-spr-waits) (the-as uint 0))
            0)))))
-  (let* ((v1-31 (-> *perf-stats* data))
-         (a0-76 (-> v1-31 0 ctrl)))
-    (+! (-> v1-31 0 count) 1)
-    (b! (zero? a0-76) cfg-28 :delay (nop!))
-    (set! *pc-perf-stat-counter* (get-cpu-clock)) ;; patched
-    #|
-    (.mtc0 Perf 0)
-    (.sync.l)
-    (.sync.p)
-    (.mtpc pcr0 0)
-    (.mtpc pcr1 0)
-    (.sync.l)
-    (.sync.p)
-    (.mtc0 Perf a0-76)
-    |#
-    )
-  (.sync.l)
-  (.sync.p)
-  (label cfg-28)
+  (let* ((stats (-> *perf-stats* data))
+         (all-code-control (-> stats 0 ctrl)))
+    (+! (-> stats 0 count) 1)
+    (#when PC_PORT
+      ;; PC performance statistics only expose elapsed CPU-clock ticks.
+      (when (nonzero? all-code-control)
+        (set! *pc-perf-stat-counter* (get-cpu-clock))))
+    (#unless PC_PORT
+      (b.z all-code-control perf-counters-disabled :delay (nop!))
+      ;; Stop and clear both EE counters before enabling the selected pair.
+      (m Perf r0)
+      (sync.l)
+      (sync.p)
+      (mtpc pcr0 r0)
+      (mtpc pcr1 r0)
+      (sync.l)
+      (sync.p)
+      (m Perf all-code-control)
+      (sync.l)
+      (sync.p)
+      (label perf-counters-disabled)))
   0
   0
   (none))
 
 (defun-debug end-perf-stat-collection ()
-  (local-vars (a0-1 int) (a0-3 int))
-  (let ((v1-1 (-> *perf-stats* data)))
-    (b! (zero? (-> v1-1 0 ctrl)) cfg-2)
-    ;;(.mtc0 Perf r0-0)
-    (.sync.l)
-    (.sync.p)
-    ;;(.mfpc a0-1 pcr0)
-    ;; (+! (-> v1-1 0 accum0) (the-as uint a0-1))
-    (+! (-> v1-1 0 accum0) (- (get-cpu-clock) *pc-perf-stat-counter*)) ;; patched
-    ;;(.mfpc a0-3 pcr1)
-    ;; (+! (-> v1-1 0 accum1) (the-as uint a0-3))
-    (set! (-> v1-1 0 accum1) 0) ;;  ;; patched
-    )
-  (label cfg-2)
+  "Stop the all-code performance sample, accumulate the active counter pair, and copy each enabled
+   bucket's raw accumulators to its named result fields."
+  (let* ((stats (-> *perf-stats* data))
+         (all-code-control (-> stats 0 ctrl)))
+    (#when PC_PORT
+      (when (nonzero? all-code-control)
+        (+! (-> stats 0 accum0) (- (get-cpu-clock) *pc-perf-stat-counter*))
+        (set! (-> stats 0 accum1) 0)))
+    (#unless PC_PORT
+      (rlet ((counter-0)
+             (counter-1))
+        (b.z all-code-control perf-counters-disabled :delay (nop!))
+        (m Perf r0)
+        (sync.l)
+        (sync.p)
+        (mfpc counter-0 pcr0)
+        (+! (-> stats 0 accum0) counter-0)
+        (mfpc counter-1 pcr1)
+        (+! (-> stats 0 accum1) counter-1)
+        (label perf-counters-disabled))))
   0
-  (dotimes (v1-3 17)
-    (when (nonzero? (-> *perf-stats* data v1-3 ctrl))
-      (let ((a2-0 (-> *perf-stats* data v1-3 select))
-            (a1-8 (-> *perf-stats* data v1-3 accum0))
-            (a0-15 (-> *perf-stats* data v1-3 accum1)))
+  (dotimes (i 17)
+    (when (nonzero? (-> *perf-stats* data i ctrl))
+      (let ((counter-pair (-> *perf-stats* data i select))
+            (accum-0 (-> *perf-stats* data i accum0))
+            (accum-1 (-> *perf-stats* data i accum1)))
         (cond
-          ((zero? a2-0) (set! (-> *perf-stats* data v1-3 cycles) a1-8) (set! (-> *perf-stats* data v1-3 instructions) a0-15))
-          ((= a2-0 1) (set! (-> *perf-stats* data v1-3 icache) a1-8) (set! (-> *perf-stats* data v1-3 dcache) a0-15))))))
+          ((= counter-pair (perf-counter-pair cycles-instructions))
+           (set! (-> *perf-stats* data i cycles) accum-0)
+           (set! (-> *perf-stats* data i instructions) accum-1))
+          ((= counter-pair (perf-counter-pair icache-dcache))
+           (set! (-> *perf-stats* data i icache) accum-0)
+           (set! (-> *perf-stats* data i dcache) accum-1))))))
   0
   (none))
 
 (defun-debug print-perf-stats ()
+  "Print every performance-statistics bucket that collected at least one sample."
   (format *stdcon* "~0k~%count  cycles     instr  icache dcache  vu0/to/from~%")
-  (dotimes (gp-0 17)
-    (if (nonzero? (-> *perf-stats* data gp-0 count))
-      (print-to-stream (-> *perf-stats* data gp-0) (perf-stat-bucket->string (the-as perf-stat-bucket gp-0)) *stdcon*)))
+  (dotimes (i 17)
+    (if (nonzero? (-> *perf-stats* data i count))
+      (print-to-stream (-> *perf-stats* data i) (perf-stat-bucket->string (the-as perf-stat-bucket i)) *stdcon*)))
   0
   (none))

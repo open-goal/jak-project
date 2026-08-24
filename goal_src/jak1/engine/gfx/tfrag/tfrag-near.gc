@@ -5,57 +5,1145 @@
 (require "engine/gfx/tfrag/tfrag-h.gc")
 (require "engine/math/matrix-h.gc")
 (require "engine/camera/cam-debug-h.gc")
-(define tnear-vu1-block (new 'static 'vu-function :length #x0 :qlength #x0))
+(#when PC_PORT
+  ;; The PC terrain renderer consumes extracted mesh data and does not execute this VU1 program.
+  (define tnear-vu1-block (new 'static 'vu-function :length #x0 :qlength #x0)))
 
-(defun-debug tfrag-details ((arg0 tfragment))
-  "Print some stats about tfrag. It accessest past the end of the dma chain array,
-  so I think this is from a slightly older tfrag format"
-  (format 0 "id = ~d~%" (-> arg0 id))
+;; VU1 data memory for the near-terrain program. The two input banks and the shared frame constants sit
+;; where the far program puts them, because both are fed by the same add-tfrag-mtx-0/1 and add-tfrag-data.
+(defconstant TNEAR-VU-BANK-1 328)
+(defconstant TNEAR-VU-CAMERA 5)          ;; camera transform, four rows, bank relative
+(defconstant TNEAR-VU-FOG 656)
+(defconstant TNEAR-VU-VAL 657)
+(defconstant TNEAR-VU-STRGIF 658)
+(defconstant TNEAR-VU-FANGIF 659)        ;; the clipped output is a fan, not a strip
+(defconstant TNEAR-VU-ADGIF 660)
+(defconstant TNEAR-VU-HVDF-OFFSET 661)
+(defconstant TNEAR-VU-HMGE-SCALE 662)
+(defconstant TNEAR-VU-INVH-SCALE 663)
+(defconstant TNEAR-VU-AMBIENT 664)
+(defconstant TNEAR-VU-GUARD 665)
+
+;; Its GIF buffers are smaller than the far program's, because the clipper needs the top of memory.
+(defconstant TNEAR-VU-GIF-BUF-0 672)
+(defconstant TNEAR-VU-GIF-BUF-1 823)
+
+;; Six seven-quadword clip-plane records, then the deferred-edge stack and the saved outer link.
+(defconstant TNEAR-VU-CLIP-PLANES 974)
+(defconstant TNEAR-VU-CLIP-PLANES-END 1016)
+(defconstant TNEAR-VU-CLIP-DEFER-STACK 1016)
+;; One quadword shared by two unrelated saves: x is the clipper's outer return address, y is where the
+;; strip pipeline parks its shader cursor across a kick.
+(defconstant TNEAR-VU-SAVED-STATE 1022)
+
+;; Entry addresses, as draw-inline-array-tfrag-near spells them in its MSCAL immediates. There is only
+;; one drawing entry: near terrain never selects a detail level.
+(defconstant TNEAR-VU-INIT 0)
+(defconstant TNEAR-VU-DRAW 2)
+(defconstant TNEAR-VU-DONE 4)
+
+(#unless PC_PORT
+  ;; The near-terrain microprogram. It has no LOD machinery at all: draw-inline-array-tfrag-near
+  ;; always uploads the finest stream a patch owns and calls TNEAR-VU-DRAW, because a patch that has come
+  ;; this close should never be losing detail. What it has instead, and the far program does not, is a
+  ;; real six-plane polygon clipper for triangles that cross the camera guard volume.
+  ;;
+  ;; TNEAR-VU-INIT initializes the two GIF output buffers and six homogeneous clip-plane work records.
+  ;; TNEAR-VU-DRAW renders the VIF TOP input bank, and TNEAR-VU-DONE is the short terminator used after the
+  ;; buffered draw calls.
+  ;;
+  ;; VU memory is divided into two 328-quadword input banks at 0 and 328. Their camera matrices begin
+  ;; at 5 and 333. Shared frame constants occupy 656 through 669: fog, strip/fan/adgif templates,
+  ;; screen and homogeneous scales, ambient color, guard-band scale, and distance coefficients. GIF
+  ;; output alternates between 672..822 and 823..973. The six-plane polygon clipper uses 974..1015,
+  ;; with its deferred-edge stack and saved pipeline state in 1016..1023.
+  ;;
+  ;; vi3 and vi9 walk the vertex- and draw-address books, vi4 addresses packed position/color pairs,
+  ;; vi8 is the adgif base, and vi13 walks the selected five-qword adgif. vi6 writes the current GIF
+  ;; buffer, vi5 marks its end, vi10 remembers the current strip header, and vi12 carries the encoded
+  ;; vertex count. vf4/vf7/vf8 and vf9 are the camera rotation and translation; vf12..vf15 are the
+  ;; four-way position pipeline, vf16..vf19 its homogeneous positions, vf20..vf23 its colors, and
+  ;; vf24..vf27 its STQ values.
+  (defvu1 tnear-vu1-block
+          (vu-pair (b initialize-clip-work) (nop)) ;; #x000
+          (vu-pair (nop) (nop)) ;; #x001
+          (vu-pair (b render-input-bank) (nop)) ;; #x002
+          (vu-pair (xtop vi14) (nop)) ;; #x003
+          (vu-pair (b finish-entry) (nop)) ;; #x004
+          (vu-pair (xtop vi14) (nop)) ;; #x005
+          (label finish-entry)
+          (vu-pair (lq.xyzw vf04 vi00 TNEAR-VU-AMBIENT) (nop :e)) ;; #x006
+          (vu-pair (nop) (nop)) ;; #x007
+          (label initialize-clip-work)
+          ;; Alternate between the two 151-qword GIF buffers. Each seven-qword clip record starts empty and
+          ;; stores the callback address for one of +X, -X, +Y, -Y, +Z, and -Z.
+          (vu-pair (iaddiu vi14 vi00 TNEAR-VU-GIF-BUF-0) (nop)) ;; #x008
+          (vu-pair (iaddiu vi01 vi00 TNEAR-VU-GIF-BUF-1) (nop)) ;; #x009
+          (vu-pair (mfir.x vf03 vi14) (nop)) ;; #x00a
+          (vu-pair (mfir.y vf03 vi01) (nop)) ;; #x00b
+          (vu-pair (mfir.z vf03 vi14) (nop)) ;; #x00c
+          (vu-pair (mfir.w vf03 vi01) (nop)) ;; #x00d
+          (vu-pair (lq.xyzw vf04 vi00 TNEAR-VU-AMBIENT) (nop)) ;; #x00e
+          (vu-pair (iaddiu vi14 vi00 TNEAR-VU-CLIP-PLANES) (nop)) ;; #x00f
+          (vu-pair (sq.xyzw vf00 vi14 0) (nop)) ;; #x010
+          (vu-pair (sq.xyzw vf00 vi14 7) (nop)) ;; #x011
+          (vu-pair (sq.xyzw vf00 vi14 14) (nop)) ;; #x012
+          (vu-pair (sq.xyzw vf00 vi14 21) (nop)) ;; #x013
+          (vu-pair (sq.xyzw vf00 vi14 28) (nop)) ;; #x014
+          (vu-pair (sq.xyzw vf00 vi14 35) (nop)) ;; #x015
+          (vu-pair (iaddiu vi01 vi00 (vu-label positive-x-distance)) (nop)) ;; #x016
+          (vu-pair (iswr.z vi01 vi14) (nop)) ;; #x017
+          (vu-pair (iaddiu vi01 vi00 (vu-label negative-x-distance)) (nop)) ;; #x018
+          (vu-pair (isw.z vi01 vi14 7) (nop)) ;; #x019
+          (vu-pair (iaddiu vi01 vi00 (vu-label positive-y-distance)) (nop)) ;; #x01a
+          (vu-pair (isw.z vi01 vi14 14) (nop)) ;; #x01b
+          (vu-pair (iaddiu vi01 vi00 (vu-label negative-y-distance)) (nop)) ;; #x01c
+          (vu-pair (isw.z vi01 vi14 21) (nop)) ;; #x01d
+          (vu-pair (iaddiu vi01 vi00 (vu-label positive-z-distance)) (nop)) ;; #x01e
+          (vu-pair (isw.z vi01 vi14 28) (nop)) ;; #x01f
+          (vu-pair (iaddiu vi01 vi00 (vu-label negative-z-distance)) (nop :e)) ;; #x020
+          (vu-pair (isw.z vi01 vi14 35) (nop)) ;; #x021
+          (label finish-gif-chunk)
+          (vu-pair (iaddi vi07 vi00 -0x1) (nop)) ;; #x022
+          (vu-pair (iblez vi12 begin-next-draw) (nop)) ;; #x023
+          (vu-pair (iaddi vi09 vi09 0x1) (nop)) ;; #x024
+          (vu-pair (ior vi10 vi06 vi00) (nop)) ;; #x025
+          (vu-pair (iadd vi01 vi12 vi12) (nop)) ;; #x026
+          (vu-pair (iadd vi01 vi01 vi12) (nop)) ;; #x027
+          (vu-pair (iadd vi05 vi06 vi01) (nop)) ;; #x028
+          (vu-pair (sqi.xyzw vf06 vi06) (nop)) ;; #x029
+          (vu-pair (isw.x vi12 vi06 -1) (nop)) ;; #x02a
+          (vu-pair (jr vi15) (nop)) ;; #x02b
+          (vu-pair (ilwr.x vi12 vi09) (nop)) ;; #x02c
+          (label begin-next-draw)
+          (vu-pair (ilw.y vi01 vi09 -1) (nop)) ;; #x02d
+          (vu-pair (ilw.z vi13 vi09 -1) (nop)) ;; #x02e
+          (vu-pair (ibeq vi00 vi12 finish-render) (nop)) ;; #x02f
+          (vu-pair (ilwr.x vi14 vi10) (nop)) ;; #x030
+          (vu-pair (ibltz vi01 kick-reusing-shader) (nop)) ;; #x031
+          (vu-pair (iaddiu vi12 vi12 0x80) (nop)) ;; #x032
+          (vu-pair (iadd vi13 vi13 vi08) (nop)) ;; #x033
+          (vu-pair (lqi.xyzw vf29 vi13) (nop)) ;; #x034
+          (vu-pair (lqi.xyzw vf30 vi13) (nop)) ;; #x035
+          (vu-pair (lqi.xyzw vf31 vi13) (nop)) ;; #x036
+          (vu-pair (sqi.xyzw vf05 vi06) (nop)) ;; #x037
+          (vu-pair (sqi.xyzw vf29 vi06) (nop)) ;; #x038
+          (vu-pair (sqi.xyzw vf30 vi06) (nop)) ;; #x039
+          (vu-pair (sqi.xyzw vf31 vi06) (nop)) ;; #x03a
+          (vu-pair (lqi.xyzw vf29 vi13) (nop)) ;; #x03b
+          (vu-pair (lqi.xyzw vf30 vi13) (nop)) ;; #x03c
+          (vu-pair (iadd vi01 vi12 vi12) (nop)) ;; #x03d
+          (vu-pair (iadd vi01 vi01 vi12) (nop)) ;; #x03e
+          (vu-pair (sqi.xyzw vf29 vi06) (nop)) ;; #x03f
+          (vu-pair (sqi.xyzw vf30 vi06) (nop)) ;; #x040
+          (vu-pair (ior vi10 vi06 vi00) (nop)) ;; #x041
+          (vu-pair (iadd vi05 vi06 vi01) (nop)) ;; #x042
+          (vu-pair (sqi.xyzw vf06 vi06) (nop)) ;; #x043
+          (vu-pair (isw.x vi12 vi06 -1) (nop)) ;; #x044
+          (vu-pair (jr vi15) (nop)) ;; #x045
+          (vu-pair (ilwr.x vi12 vi09) (nop)) ;; #x046
+          (label kick-reusing-shader)
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x047
+          (vu-pair (mtir vi06 vf03.y) (nop)) ;; #x048
+          (vu-pair (mr32.xyzw vf03 vf03) (nop)) ;; #x049
+          (vu-pair (iadd vi14 vi14 vi11) (nop)) ;; #x04a
+          (vu-pair (ibgez vi13 kick-and-load-shader) (nop)) ;; #x04b
+          (vu-pair (iswr.x vi14 vi10) (nop)) ;; #x04c
+          (vu-pair (xgkick vi01) (nop)) ;; #x04d
+          (vu-pair (ior vi10 vi06 vi00) (nop)) ;; #x04e
+          (vu-pair (mfir.w vf24 vi06) (nop)) ;; #x04f
+          (vu-pair (iadd vi01 vi12 vi12) (nop)) ;; #x050
+          (vu-pair (iadd vi01 vi01 vi12) (nop)) ;; #x051
+          (vu-pair (iadd vi05 vi06 vi01) (nop)) ;; #x052
+          (vu-pair (sqi.xyzw vf06 vi06) (nop)) ;; #x053
+          (vu-pair (isw.x vi12 vi06 -1) (nop)) ;; #x054
+          (vu-pair (jr vi15) (nop)) ;; #x055
+          (vu-pair (ilwr.x vi12 vi09) (nop)) ;; #x056
+          (label kick-and-load-shader)
+          (vu-pair (iadd vi13 vi13 vi08) (nop)) ;; #x057
+          (vu-pair (xgkick vi01) (nop)) ;; #x058
+          (vu-pair (lqi.xyzw vf29 vi13) (nop)) ;; #x059
+          (vu-pair (lqi.xyzw vf30 vi13) (nop)) ;; #x05a
+          (vu-pair (lqi.xyzw vf31 vi13) (nop)) ;; #x05b
+          (vu-pair (mfir.w vf24 vi06) (nop)) ;; #x05c
+          (vu-pair (sqi.xyzw vf05 vi06) (nop)) ;; #x05d
+          (vu-pair (sqi.xyzw vf29 vi06) (nop)) ;; #x05e
+          (vu-pair (sqi.xyzw vf30 vi06) (nop)) ;; #x05f
+          (vu-pair (sqi.xyzw vf31 vi06) (nop)) ;; #x060
+          (vu-pair (lqi.xyzw vf29 vi13) (nop)) ;; #x061
+          (vu-pair (lqi.xyzw vf30 vi13) (nop)) ;; #x062
+          (vu-pair (iadd vi01 vi12 vi12) (nop)) ;; #x063
+          (vu-pair (iadd vi01 vi01 vi12) (nop)) ;; #x064
+          (vu-pair (sqi.xyzw vf29 vi06) (nop)) ;; #x065
+          (vu-pair (sqi.xyzw vf30 vi06) (nop)) ;; #x066
+          (vu-pair (nop) (nop)) ;; #x067
+          (vu-pair (ior vi10 vi06 vi00) (nop)) ;; #x068
+          (vu-pair (iadd vi05 vi06 vi01) (nop)) ;; #x069
+          (vu-pair (sqi.xyzw vf06 vi06) (nop)) ;; #x06a
+          (vu-pair (isw.x vi12 vi06 -1) (nop)) ;; #x06b
+          (vu-pair (jr vi15) (nop)) ;; #x06c
+          (vu-pair (ilwr.x vi12 vi09) (nop)) ;; #x06d
+          (label finish-render)
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x06e
+          (vu-pair (mr32.xyzw vf03 vf03) (nop)) ;; #x06f
+          (vu-pair (iadd vi14 vi14 vi11) (nop)) ;; #x070
+          (vu-pair (iswr.x vi14 vi10) (nop)) ;; #x071
+          (vu-pair (lq.xyzw vf04 vi00 TNEAR-VU-AMBIENT) (nop)) ;; #x072
+          (vu-pair (xgkick vi01) (nop)) ;; #x073
+          (vu-pair (nop) (nop :e)) ;; #x074
+          (vu-pair (nop) (nop)) ;; #x075
+          (label render-input-bank)
+          ;; TOP selects either packed input bank. Load its address books and matrix, then transform four
+          ;; vertices in parallel while producing ST, RGBAQ, and XYZF2 triples in the active GIF buffer.
+          ;; Homogeneous W supplies Q for perspective correction and the fog value is clamped before ftoi4.
+          (vu-pair (ilw.w vi08 vi14 4) (nop)) ;; #x076
+          (vu-pair (lq.xyzw vf02 vi00 TNEAR-VU-GUARD) (addw.z vf28 vf00 vf00)) ;; #x077
+          (vu-pair (lq.xyzw vf05 vi00 TNEAR-VU-ADGIF) (nop)) ;; #x078
+          (vu-pair (lq.xyzw vf06 vi00 TNEAR-VU-STRGIF) (nop)) ;; #x079
+          (vu-pair (iadd vi08 vi08 vi14) (nop)) ;; #x07a
+          (vu-pair (lq.xyzw vf11 vi00 TNEAR-VU-HMGE-SCALE) (nop)) ;; #x07b
+          (vu-pair (lq.w vf29 vi08 1) (nop)) ;; #x07c
+          (vu-pair (lq.xyzw vf10 vi00 TNEAR-VU-HVDF-OFFSET) (nop)) ;; #x07d
+          (vu-pair (ilw.z vi09 vi14 4) (nop)) ;; #x07e
+          (vu-pair (ilw.y vi03 vi14 3) (nop)) ;; #x07f
+          (vu-pair (nop) (addy.w vf25 vf29 vf00)) ;; #x080
+          (vu-pair (iaddi vi07 vi00 -0x1) (addw.z vf28 vf28 vf29)) ;; #x081
+          (vu-pair (lq.xyzw vf04 vi14 5) (mulw.xyzw vf16 vf00 vf00)) ;; #x082
+          (vu-pair (lq.xyzw vf07 vi14 6) (mulw.xyzw vf17 vf00 vf00)) ;; #x083
+          (vu-pair (ibne vi00 vi14 render-bank1) (mulw.xyzw vf18 vf00 vf00)) ;; #x084
+          (vu-pair (lq.xyzw vf08 vi14 7) (mulw.xyzw vf19 vf00 vf00)) ;; #x085
+          (vu-pair (ilwr.x vi02 vi03) (nop)) ;; #x086
+          (vu-pair (lq.xyzw vf09 vi14 8) (nop)) ;; #x087
+          (vu-pair (lq.xyzw vf01 vi00 TNEAR-VU-FOG) (nop)) ;; #x088
+          (vu-pair (iadd vi09 vi09 vi14) (nop)) ;; #x089
+          (vu-pair (lq.xyw vf28 vi02 0) (nop)) ;; #x08a
+          (vu-pair (mtir vi06 vf03.x) (nop)) ;; #x08b
+          (vu-pair (ilwr.x vi12 vi09) (nop)) ;; #x08c
+          (vu-pair (ilwr.z vi13 vi09) (nop)) ;; #x08d
+          (vu-pair (mtir vi04 vf28.w) (subw.xyz vf24 vf28 vf25)) ;; #x08e
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x08f
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x090
+          (vu-pair (ilwr.y vi02 vi03) (nop)) ;; #x091
+          (vu-pair (lq.xyzw vf12 vi04 0) (nop)) ;; #x092
+          (vu-pair (lq.xyzw vf20 vi04 1) (nop)) ;; #x093
+          (vu-pair (iaddiu vi12 vi12 0x80) (nop)) ;; #x094
+          (vu-pair (iadd vi13 vi13 vi08) (nop)) ;; #x095
+          (vu-pair (lq.xyw vf28 vi02 0) (itof0.xyzw vf12 vf12)) ;; #x096
+          (vu-pair (mfir.w vf24 vi06) (nop)) ;; #x097
+          (vu-pair (lqi.xyzw vf29 vi13) (nop)) ;; #x098
+          (vu-pair (lqi.xyzw vf30 vi13) (nop)) ;; #x099
+          (vu-pair (lqi.xyzw vf31 vi13) (nop)) ;; #x09a
+          (vu-pair (sqi.xyzw vf05 vi06) (subw.xyz vf25 vf28 vf25)) ;; #x09b
+          (vu-pair (sqi.xyzw vf29 vi06) (mulaw.xyzw ACC vf09 vf00)) ;; #x09c
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x09d
+          (vu-pair (sqi.xyzw vf30 vi06) (maddax.xyzw ACC vf04 vf12)) ;; #x09e
+          (vu-pair (sqi.xyzw vf31 vi06) (nop)) ;; #x09f
+          (vu-pair (ilwr.z vi02 vi03) (nop)) ;; #x0a0
+          (vu-pair (lq.xyzw vf13 vi04 0) (madday.xyzw ACC vf07 vf12)) ;; #x0a1
+          (vu-pair (lq.xyzw vf21 vi04 1) (maddz.xyzw vf12 vf08 vf12)) ;; #x0a2
+          (vu-pair (lqi.xyzw vf29 vi13) (nop)) ;; #x0a3
+          (vu-pair (lqi.xyzw vf30 vi13) (nop)) ;; #x0a4
+          (vu-pair (lq.xyw vf28 vi02 0) (itof0.xyzw vf13 vf13)) ;; #x0a5
+          (vu-pair (div Q vf01.x vf12.w) (mul.xyzw vf16 vf12 vf11)) ;; #x0a6
+          (vu-pair (sqi.xyzw vf29 vi06) (nop)) ;; #x0a7
+          (vu-pair (sqi.xyzw vf30 vi06) (nop)) ;; #x0a8
+          (vu-pair (iadd vi01 vi12 vi12) (subw.xyz vf26 vf28 vf25)) ;; #x0a9
+          (vu-pair (iadd vi01 vi01 vi12) (mulaw.xyzw ACC vf09 vf00)) ;; #x0aa
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x0ab
+          (vu-pair (iadd vi05 vi06 vi01) (maddax.xyzw ACC vf04 vf13)) ;; #x0ac
+          (vu-pair (ior vi10 vi06 vi00) (mul.xyz vf12 vf12 Q)) ;; #x0ad
+          (vu-pair (ilwr.w vi02 vi03) (mul.xyz vf24 vf24 Q)) ;; #x0ae
+          (vu-pair (lq.xyzw vf14 vi04 0) (madday.xyzw ACC vf07 vf13)) ;; #x0af
+          (vu-pair (lq.xyzw vf22 vi04 1) (maddz.xyzw vf13 vf08 vf13)) ;; #x0b0
+          (vu-pair (sqi.xyzw vf06 vi06) (add.xyzw vf12 vf12 vf10)) ;; #x0b1
+          (vu-pair (isw.x vi12 vi06 -1) (nop)) ;; #x0b2
+          (vu-pair (lq.xyw vf28 vi02 0) (itof0.xyzw vf14 vf14)) ;; #x0b3
+          (vu-pair (div Q vf01.x vf13.w) (mul.xyzw vf17 vf13 vf11)) ;; #x0b4
+          (vu-pair (iaddi vi09 vi09 0x1) (miniz.w vf12 vf12 vf01)) ;; #x0b5
+          (vu-pair (ilwr.x vi12 vi09) (clipw.xyz vf16 vf16)) ;; #x0b6
+          (label bank0-pipeline-0)
+          (vu-pair (iaddi vi03 vi03 0x1) (subw.xyz vf27 vf28 vf25)) ;; #x0b7
+          (vu-pair (iaddi vi07 vi07 0x1) (mulaw.xyzw ACC vf09 vf00)) ;; #x0b8
+          (vu-pair (mtir vi04 vf28.w) (maxy.w vf12 vf12 vf01)) ;; #x0b9
+          (vu-pair (fcand vi01 0x3ffff) (maddax.xyzw ACC vf04 vf14)) ;; #x0ba
+          (vu-pair (ibne vi00 vi01 clip-bank0-triangle-0) (mul.xyz vf13 vf13 Q)) ;; #x0bb
+          (vu-pair (ilwr.x vi02 vi03) (mul.xyz vf25 vf25 Q)) ;; #x0bc
+          (label bank0-pipeline-1)
+          (vu-pair (lq.xyzw vf15 vi04 0) (madday.xyzw ACC vf07 vf14)) ;; #x0bd
+          (vu-pair (lq.xyzw vf23 vi04 1) (maddz.xyzw vf14 vf08 vf14)) ;; #x0be
+          (vu-pair (sqi.xyz vf24 vi06) (add.xyzw vf13 vf13 vf10)) ;; #x0bf
+          (vu-pair (sqi.xyzw vf20 vi06) (ftoi4.xyzw vf12 vf12)) ;; #x0c0
+          (vu-pair (lq.xyw vf28 vi02 0) (itof0.xyzw vf15 vf15)) ;; #x0c1
+          (vu-pair (div Q vf01.x vf14.w) (mul.xyzw vf18 vf14 vf11)) ;; #x0c2
+          (vu-pair (ibeq vi05 vi06 bank0-kick-before-1) (miniz.w vf13 vf13 vf01)) ;; #x0c3
+          (vu-pair (sqi.xyzw vf12 vi06) (clipw.xyz vf17 vf17)) ;; #x0c4
+          (vu-pair (nop) (subw.xyz vf24 vf28 vf25)) ;; #x0c5
+          (vu-pair (iaddi vi07 vi07 0x1) (mulaw.xyzw ACC vf09 vf00)) ;; #x0c6
+          (vu-pair (mtir vi04 vf28.w) (maxy.w vf13 vf13 vf01)) ;; #x0c7
+          (vu-pair (fcand vi01 0x3ffff) (maddax.xyzw ACC vf04 vf15)) ;; #x0c8
+          (vu-pair (ibne vi00 vi01 clip-bank0-triangle-1) (mul.xyz vf14 vf14 Q)) ;; #x0c9
+          (vu-pair (ilwr.y vi02 vi03) (mul.xyz vf26 vf26 Q)) ;; #x0ca
+          (label bank0-pipeline-2)
+          (vu-pair (lq.xyzw vf12 vi04 0) (madday.xyzw ACC vf07 vf15)) ;; #x0cb
+          (vu-pair (lq.xyzw vf20 vi04 1) (maddz.xyzw vf15 vf08 vf15)) ;; #x0cc
+          (vu-pair (sqi.xyzw vf25 vi06) (add.xyzw vf14 vf14 vf10)) ;; #x0cd
+          (vu-pair (sqi.xyzw vf21 vi06) (ftoi4.xyzw vf13 vf13)) ;; #x0ce
+          (vu-pair (lq.xyw vf28 vi02 0) (itof0.xyzw vf12 vf12)) ;; #x0cf
+          (vu-pair (div Q vf01.x vf15.w) (mul.xyzw vf19 vf15 vf11)) ;; #x0d0
+          (vu-pair (ibeq vi05 vi06 bank0-kick-before-2) (miniz.w vf14 vf14 vf01)) ;; #x0d1
+          (vu-pair (sqi.xyzw vf13 vi06) (clipw.xyz vf18 vf18)) ;; #x0d2
+          (vu-pair (nop) (subw.xyz vf25 vf28 vf25)) ;; #x0d3
+          (vu-pair (iaddi vi07 vi07 0x1) (mulaw.xyzw ACC vf09 vf00)) ;; #x0d4
+          (vu-pair (mtir vi04 vf28.w) (maxy.w vf14 vf14 vf01)) ;; #x0d5
+          (vu-pair (fcand vi01 0x3ffff) (maddax.xyzw ACC vf04 vf12)) ;; #x0d6
+          (vu-pair (ibne vi00 vi01 clip-bank0-triangle-2) (mul.xyz vf15 vf15 Q)) ;; #x0d7
+          (vu-pair (ilwr.z vi02 vi03) (mul.xyz vf27 vf27 Q)) ;; #x0d8
+          (label bank0-pipeline-3)
+          (vu-pair (lq.xyzw vf13 vi04 0) (madday.xyzw ACC vf07 vf12)) ;; #x0d9
+          (vu-pair (lq.xyzw vf21 vi04 1) (maddz.xyzw vf12 vf08 vf12)) ;; #x0da
+          (vu-pair (sqi.xyzw vf26 vi06) (add.xyzw vf15 vf15 vf10)) ;; #x0db
+          (vu-pair (sqi.xyzw vf22 vi06) (ftoi4.xyzw vf14 vf14)) ;; #x0dc
+          (vu-pair (lq.xyw vf28 vi02 0) (itof0.xyzw vf13 vf13)) ;; #x0dd
+          (vu-pair (div Q vf01.x vf12.w) (mul.xyzw vf16 vf12 vf11)) ;; #x0de
+          (vu-pair (ibeq vi05 vi06 bank0-kick-before-3) (miniz.w vf15 vf15 vf01)) ;; #x0df
+          (vu-pair (sqi.xyzw vf14 vi06) (clipw.xyz vf19 vf19)) ;; #x0e0
+          (vu-pair (nop) (subw.xyz vf26 vf28 vf25)) ;; #x0e1
+          (vu-pair (iaddi vi07 vi07 0x1) (mulaw.xyzw ACC vf09 vf00)) ;; #x0e2
+          (vu-pair (mtir vi04 vf28.w) (maxy.w vf15 vf15 vf01)) ;; #x0e3
+          (vu-pair (fcand vi01 0x3ffff) (maddax.xyzw ACC vf04 vf13)) ;; #x0e4
+          (vu-pair (ibne vi00 vi01 clip-bank0-triangle-3) (mul.xyz vf12 vf12 Q)) ;; #x0e5
+          (vu-pair (ilwr.w vi02 vi03) (mul.xyz vf24 vf24 Q)) ;; #x0e6
+          (label bank0-pipeline-4)
+          (vu-pair (lq.xyzw vf14 vi04 0) (madday.xyzw ACC vf07 vf13)) ;; #x0e7
+          (vu-pair (lq.xyzw vf22 vi04 1) (maddz.xyzw vf13 vf08 vf13)) ;; #x0e8
+          (vu-pair (sqi.xyzw vf27 vi06) (add.xyzw vf12 vf12 vf10)) ;; #x0e9
+          (vu-pair (sqi.xyzw vf23 vi06) (ftoi4.xyzw vf15 vf15)) ;; #x0ea
+          (vu-pair (lq.xyw vf28 vi02 0) (itof0.xyzw vf14 vf14)) ;; #x0eb
+          (vu-pair (div Q vf01.x vf13.w) (mul.xyzw vf17 vf13 vf11)) ;; #x0ec
+          (vu-pair (ibne vi05 vi06 bank0-pipeline-0) (miniz.w vf12 vf12 vf01)) ;; #x0ed
+          (vu-pair (sqi.xyzw vf15 vi06) (clipw.xyz vf16 vf16)) ;; #x0ee
+          (vu-pair (b finish-gif-chunk) (nop)) ;; #x0ef
+          (vu-pair (iaddiu vi15 vi00 0xb7) (nop)) ;; #x0f0
+          (label bank0-kick-before-1)
+          (vu-pair (b finish-gif-chunk) (nop)) ;; #x0f1
+          (vu-pair (iaddiu vi15 vi00 0xc5) (nop)) ;; #x0f2
+          (label bank0-kick-before-2)
+          (vu-pair (b finish-gif-chunk) (nop)) ;; #x0f3
+          (vu-pair (iaddiu vi15 vi00 0xd3) (nop)) ;; #x0f4
+          (label bank0-kick-before-3)
+          (vu-pair (b finish-gif-chunk) (nop)) ;; #x0f5
+          (vu-pair (iaddiu vi15 vi00 0xe1) (nop)) ;; #x0f6
+          (label save-pipeline-for-clipping)
+          (vu-pair (iaddiu vi14 vi07 0x4000) (nop)) ;; #x0f7
+          (vu-pair (iaddiu vi14 vi14 0x4000) (nop)) ;; #x0f8
+          (vu-pair (isw.y vi13 vi00 TNEAR-VU-SAVED-STATE) (nop)) ;; #x0f9
+          (vu-pair (isw.z vi05 vi00 1021) (nop)) ;; #x0fa
+          (vu-pair (isw.x vi06 vi00 1020) (nop)) ;; #x0fb
+          (vu-pair (isw.y vi07 vi00 1020) (nop)) ;; #x0fc
+          (vu-pair (isw.z vi08 vi00 1020) (nop)) ;; #x0fd
+          (vu-pair (isw.w vi09 vi00 1020) (nop)) ;; #x0fe
+          (vu-pair (isw.x vi10 vi00 1021) (nop)) ;; #x0ff
+          (vu-pair (isw.y vi12 vi00 1021) (nop)) ;; #x100
+          (vu-pair (iswr.x vi14 vi10) (nop)) ;; #x101
+          (vu-pair (lq.xyzw vf06 vi00 TNEAR-VU-FANGIF) (nop)) ;; #x102
+          (vu-pair (xgkick vi01) (nop)) ;; #x103
+          (vu-pair (mtir vi11 vf03.y) (nop)) ;; #x104
+          (vu-pair (iaddiu vi01 vi00 0x4000) (nop)) ;; #x105
+          (vu-pair (iaddiu vi01 vi01 0x4000) (nop)) ;; #x106
+          (vu-pair (sq.xyzw vf06 vi11 0) (nop)) ;; #x107
+          (vu-pair (jr vi15) (nop)) ;; #x108
+          (vu-pair (iswr.x vi01 vi11) (nop)) ;; #x109
+          (label restore-pipeline-after-clipping)
+          (vu-pair (ilw.y vi14 vi00 TNEAR-VU-SAVED-STATE) (nop)) ;; #x10a
+          (vu-pair (ilw.z vi05 vi00 1021) (nop)) ;; #x10b
+          (vu-pair (ilw.x vi06 vi00 1020) (nop)) ;; #x10c
+          (vu-pair (ilw.y vi07 vi00 1020) (nop)) ;; #x10d
+          (vu-pair (ilw.z vi08 vi00 1020) (nop)) ;; #x10e
+          (vu-pair (ilw.w vi09 vi00 1020) (nop)) ;; #x10f
+          (vu-pair (ilw.x vi10 vi00 1021) (nop)) ;; #x110
+          (vu-pair (ilw.y vi12 vi00 1021) (nop)) ;; #x111
+          (vu-pair (lq.xyzw vf06 vi00 TNEAR-VU-STRGIF) (nop)) ;; #x112
+          (vu-pair (mtir vi11 vf03.y) (nop)) ;; #x113
+          (vu-pair (iaddi vi01 vi06 -0x4) (nop)) ;; #x114
+          (vu-pair (isub vi14 vi14 vi07) (nop)) ;; #x115
+          (vu-pair (iaddi vi14 vi14 0x1) (nop)) ;; #x116
+          (vu-pair (xgkick vi11) (nop)) ;; #x117
+          (vu-pair (mfir.w vf24 vi01) (nop)) ;; #x118
+          (vu-pair (ior vi10 vi01 vi00) (nop)) ;; #x119
+          (vu-pair (sq.xyzw vf06 vi01 0) (nop)) ;; #x11a
+          (vu-pair (iswr.x vi14 vi01) (nop)) ;; #x11b
+          (vu-pair (jr vi15) (nop)) ;; #x11c
+          (vu-pair (iaddi vi07 vi00 0x1) (nop)) ;; #x11d
+          (label clip-bank0-triangle-0)
+          ;; A triangle that crosses the guard volume cannot be emitted by the straight strip path. Reject
+          ;; it if all three homogeneous positions lie beyond the same plane; otherwise save the streaming
+          ;; state, stage its position/color/STQ triples, clip the polygon, and resume at the same pipeline
+          ;; phase. The next three blocks are rotations of this case for the other pipeline phases.
+          (vu-pair (iaddi vi01 vi07 -0x2) (mul.xyzw vf29 vf18 vf02)) ;; #x11e
+          (vu-pair (isw.w vi15 vi00 1021) (mul.xyzw vf30 vf19 vf02)) ;; #x11f
+          (vu-pair (ibltz vi01 bank0-pipeline-1) (mul.xyzw vf31 vf16 vf02)) ;; #x120
+          (vu-pair (nop) (addw.w vf12 vf12 vf01)) ;; #x121
+          (vu-pair (nop) (clipw.xyz vf29 vf29)) ;; #x122
+          (vu-pair (nop) (clipw.xyz vf30 vf30)) ;; #x123
+          (vu-pair (nop) (clipw.xyz vf31 vf31)) ;; #x124
+          (vu-pair (iaddiu vi11 vi00 0x3f) (nop)) ;; #x125
+          (vu-pair (fcget vi01) (nop)) ;; #x126
+          (vu-pair (fcget vi13) (nop)) ;; #x127
+          (vu-pair (fcget vi14) (nop)) ;; #x128
+          (vu-pair (iand vi01 vi01 vi13) (clipw.xyz vf18 vf18)) ;; #x129
+          (vu-pair (iand vi01 vi01 vi14) (clipw.xyz vf19 vf19)) ;; #x12a
+          (vu-pair (iand vi01 vi01 vi11) (clipw.xyz vf16 vf16)) ;; #x12b
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x12c
+          (vu-pair (ibne vi00 vi01 bank0-pipeline-1) (nop)) ;; #x12d
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x12e
+          (vu-pair (ilwr.x vi13 vi10) (nop)) ;; #x12f
+          (vu-pair (bal vi15 save-pipeline-for-clipping) (nop)) ;; #x130
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x131
+          (vu-pair (ilw.z vi14 vi03 -2) (nop)) ;; #x132
+          (vu-pair (sq.xyzw vf16 vi11 28) (nop)) ;; #x133
+          (vu-pair (sq.xyzw vf20 vi11 29) (nop)) ;; #x134
+          (vu-pair (sq.xyzw vf19 vi11 31) (nop)) ;; #x135
+          (vu-pair (ilwr.w vi13 vi14) (nop)) ;; #x136
+          (vu-pair (sq.xyzw vf23 vi11 32) (nop)) ;; #x137
+          (vu-pair (sq.xyzw vf18 vi11 34) (nop)) ;; #x138
+          (vu-pair (ilw.x vi01 vi03 -1) (nop)) ;; #x139
+          (vu-pair (lq.xyzw vf29 vi13 1) (nop)) ;; #x13a
+          (vu-pair (bal vi15 load-clip-triangle-bank0) (nop)) ;; #x13b
+          (vu-pair (ilw.w vi13 vi03 -2) (nop)) ;; #x13c
+          (vu-pair (bal vi15 restore-pipeline-after-clipping) (nop)) ;; #x13d
+          (vu-pair (nop) (nop)) ;; #x13e
+          (vu-pair (ilw.w vi15 vi00 1021) (nop)) ;; #x13f
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x140
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x141
+          (vu-pair (b bank0-pipeline-1) (nop)) ;; #x142
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x143
+          (label clip-bank0-triangle-1)
+          (vu-pair (iaddi vi01 vi07 -0x2) (mul.xyzw vf29 vf19 vf02)) ;; #x144
+          (vu-pair (isw.w vi15 vi00 1021) (mul.xyzw vf30 vf16 vf02)) ;; #x145
+          (vu-pair (ibltz vi01 bank0-pipeline-2) (mul.xyzw vf31 vf17 vf02)) ;; #x146
+          (vu-pair (nop) (addw.w vf13 vf13 vf01)) ;; #x147
+          (vu-pair (nop) (clipw.xyz vf29 vf29)) ;; #x148
+          (vu-pair (nop) (clipw.xyz vf30 vf30)) ;; #x149
+          (vu-pair (nop) (clipw.xyz vf31 vf31)) ;; #x14a
+          (vu-pair (iaddiu vi11 vi00 0x3f) (nop)) ;; #x14b
+          (vu-pair (fcget vi01) (nop)) ;; #x14c
+          (vu-pair (fcget vi13) (nop)) ;; #x14d
+          (vu-pair (fcget vi14) (nop)) ;; #x14e
+          (vu-pair (iand vi01 vi01 vi13) (clipw.xyz vf19 vf19)) ;; #x14f
+          (vu-pair (iand vi01 vi01 vi14) (clipw.xyz vf16 vf16)) ;; #x150
+          (vu-pair (iand vi01 vi01 vi11) (clipw.xyz vf17 vf17)) ;; #x151
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x152
+          (vu-pair (ibne vi00 vi01 bank0-pipeline-2) (nop)) ;; #x153
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x154
+          (vu-pair (ilwr.x vi13 vi10) (nop)) ;; #x155
+          (vu-pair (bal vi15 save-pipeline-for-clipping) (nop)) ;; #x156
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x157
+          (vu-pair (ilw.w vi14 vi03 -2) (nop)) ;; #x158
+          (vu-pair (sq.xyzw vf17 vi11 28) (nop)) ;; #x159
+          (vu-pair (sq.xyzw vf21 vi11 29) (nop)) ;; #x15a
+          (vu-pair (sq.xyzw vf16 vi11 31) (nop)) ;; #x15b
+          (vu-pair (ilwr.w vi13 vi14) (nop)) ;; #x15c
+          (vu-pair (sq.xyzw vf20 vi11 32) (nop)) ;; #x15d
+          (vu-pair (sq.xyzw vf19 vi11 34) (nop)) ;; #x15e
+          (vu-pair (ilw.y vi01 vi03 -1) (nop)) ;; #x15f
+          (vu-pair (lq.xyzw vf29 vi13 1) (nop)) ;; #x160
+          (vu-pair (bal vi15 load-clip-triangle-bank0) (nop)) ;; #x161
+          (vu-pair (ilw.x vi13 vi03 -1) (nop)) ;; #x162
+          (vu-pair (bal vi15 restore-pipeline-after-clipping) (nop)) ;; #x163
+          (vu-pair (nop) (nop)) ;; #x164
+          (vu-pair (ilw.w vi15 vi00 1021) (nop)) ;; #x165
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x166
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x167
+          (vu-pair (b bank0-pipeline-2) (nop)) ;; #x168
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x169
+          (label clip-bank0-triangle-2)
+          (vu-pair (iaddi vi01 vi07 -0x2) (mul.xyzw vf29 vf16 vf02)) ;; #x16a
+          (vu-pair (isw.w vi15 vi00 1021) (mul.xyzw vf30 vf17 vf02)) ;; #x16b
+          (vu-pair (ibltz vi01 bank0-pipeline-3) (mul.xyzw vf31 vf18 vf02)) ;; #x16c
+          (vu-pair (nop) (addw.w vf14 vf14 vf01)) ;; #x16d
+          (vu-pair (nop) (clipw.xyz vf29 vf29)) ;; #x16e
+          (vu-pair (nop) (clipw.xyz vf30 vf30)) ;; #x16f
+          (vu-pair (nop) (clipw.xyz vf31 vf31)) ;; #x170
+          (vu-pair (iaddiu vi11 vi00 0x3f) (nop)) ;; #x171
+          (vu-pair (fcget vi01) (nop)) ;; #x172
+          (vu-pair (fcget vi13) (nop)) ;; #x173
+          (vu-pair (fcget vi14) (nop)) ;; #x174
+          (vu-pair (iand vi01 vi01 vi13) (clipw.xyz vf16 vf16)) ;; #x175
+          (vu-pair (iand vi01 vi01 vi14) (clipw.xyz vf17 vf17)) ;; #x176
+          (vu-pair (iand vi01 vi01 vi11) (clipw.xyz vf18 vf18)) ;; #x177
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x178
+          (vu-pair (ibne vi00 vi01 bank0-pipeline-3) (nop)) ;; #x179
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x17a
+          (vu-pair (ilwr.x vi13 vi10) (nop)) ;; #x17b
+          (vu-pair (bal vi15 save-pipeline-for-clipping) (nop)) ;; #x17c
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x17d
+          (vu-pair (ilw.x vi14 vi03 -1) (nop)) ;; #x17e
+          (vu-pair (sq.xyzw vf18 vi11 28) (nop)) ;; #x17f
+          (vu-pair (sq.xyzw vf22 vi11 29) (nop)) ;; #x180
+          (vu-pair (sq.xyzw vf17 vi11 31) (nop)) ;; #x181
+          (vu-pair (ilwr.w vi13 vi14) (nop)) ;; #x182
+          (vu-pair (sq.xyzw vf21 vi11 32) (nop)) ;; #x183
+          (vu-pair (sq.xyzw vf16 vi11 34) (nop)) ;; #x184
+          (vu-pair (ilw.z vi01 vi03 -1) (nop)) ;; #x185
+          (vu-pair (lq.xyzw vf29 vi13 1) (nop)) ;; #x186
+          (vu-pair (bal vi15 load-clip-triangle-bank0) (nop)) ;; #x187
+          (vu-pair (ilw.y vi13 vi03 -1) (nop)) ;; #x188
+          (vu-pair (bal vi15 restore-pipeline-after-clipping) (nop)) ;; #x189
+          (vu-pair (nop) (nop)) ;; #x18a
+          (vu-pair (ilw.w vi15 vi00 1021) (nop)) ;; #x18b
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x18c
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x18d
+          (vu-pair (b bank0-pipeline-3) (nop)) ;; #x18e
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x18f
+          (label clip-bank0-triangle-3)
+          (vu-pair (iaddi vi01 vi07 -0x2) (mul.xyzw vf29 vf17 vf02)) ;; #x190
+          (vu-pair (isw.w vi15 vi00 1021) (mul.xyzw vf30 vf18 vf02)) ;; #x191
+          (vu-pair (ibltz vi01 bank0-pipeline-4) (mul.xyzw vf31 vf19 vf02)) ;; #x192
+          (vu-pair (nop) (addw.w vf15 vf15 vf01)) ;; #x193
+          (vu-pair (nop) (clipw.xyz vf29 vf29)) ;; #x194
+          (vu-pair (nop) (clipw.xyz vf30 vf30)) ;; #x195
+          (vu-pair (nop) (clipw.xyz vf31 vf31)) ;; #x196
+          (vu-pair (iaddiu vi11 vi00 0x3f) (nop)) ;; #x197
+          (vu-pair (fcget vi01) (nop)) ;; #x198
+          (vu-pair (fcget vi13) (nop)) ;; #x199
+          (vu-pair (fcget vi14) (nop)) ;; #x19a
+          (vu-pair (iand vi01 vi01 vi13) (clipw.xyz vf17 vf17)) ;; #x19b
+          (vu-pair (iand vi01 vi01 vi14) (clipw.xyz vf18 vf18)) ;; #x19c
+          (vu-pair (iand vi01 vi01 vi11) (clipw.xyz vf19 vf19)) ;; #x19d
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x19e
+          (vu-pair (ibne vi00 vi01 bank0-pipeline-4) (nop)) ;; #x19f
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x1a0
+          (vu-pair (ilwr.x vi13 vi10) (nop)) ;; #x1a1
+          (vu-pair (bal vi15 save-pipeline-for-clipping) (nop)) ;; #x1a2
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x1a3
+          (vu-pair (ilw.y vi14 vi03 -1) (nop)) ;; #x1a4
+          (vu-pair (sq.xyzw vf19 vi11 28) (nop)) ;; #x1a5
+          (vu-pair (sq.xyzw vf23 vi11 29) (nop)) ;; #x1a6
+          (vu-pair (sq.xyzw vf18 vi11 31) (nop)) ;; #x1a7
+          (vu-pair (ilwr.w vi13 vi14) (nop)) ;; #x1a8
+          (vu-pair (sq.xyzw vf22 vi11 32) (nop)) ;; #x1a9
+          (vu-pair (sq.xyzw vf17 vi11 34) (nop)) ;; #x1aa
+          (vu-pair (ilw.w vi01 vi03 -1) (nop)) ;; #x1ab
+          (vu-pair (lq.xyzw vf29 vi13 1) (nop)) ;; #x1ac
+          (vu-pair (bal vi15 load-clip-triangle-bank0) (nop)) ;; #x1ad
+          (vu-pair (ilw.z vi13 vi03 -1) (nop)) ;; #x1ae
+          (vu-pair (bal vi15 restore-pipeline-after-clipping) (nop)) ;; #x1af
+          (vu-pair (nop) (nop)) ;; #x1b0
+          (vu-pair (ilw.w vi15 vi00 1021) (nop)) ;; #x1b1
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x1b2
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x1b3
+          (vu-pair (b bank0-pipeline-4) (nop)) ;; #x1b4
+          (vu-pair (iaddiu vi11 vi11 0x4000) (addw.w vf15 vf15 vf01)) ;; #x1b5
+          (label render-bank1)
+          ;; The second VIF bank has the same layout at an offset of 328 quadwords. This duplicated body
+          ;; keeps all packed loads and address-book accesses relative to that bank.
+          (vu-pair (ilw.x vi02 vi03 328) (nop)) ;; #x1b6
+          (vu-pair (lq.xyzw vf09 vi14 8) (nop)) ;; #x1b7
+          (vu-pair (lq.xyzw vf01 vi00 TNEAR-VU-FOG) (nop)) ;; #x1b8
+          (vu-pair (iadd vi09 vi09 vi14) (nop)) ;; #x1b9
+          (vu-pair (lq.xyw vf28 vi02 328) (nop)) ;; #x1ba
+          (vu-pair (mtir vi06 vf03.x) (nop)) ;; #x1bb
+          (vu-pair (ilwr.x vi12 vi09) (nop)) ;; #x1bc
+          (vu-pair (ilwr.z vi13 vi09) (nop)) ;; #x1bd
+          (vu-pair (mtir vi04 vf28.w) (subw.xyz vf24 vf28 vf25)) ;; #x1be
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x1bf
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x1c0
+          (vu-pair (ilw.y vi02 vi03 328) (nop)) ;; #x1c1
+          (vu-pair (lq.xyzw vf12 vi04 328) (nop)) ;; #x1c2
+          (vu-pair (lq.xyzw vf20 vi04 329) (nop)) ;; #x1c3
+          (vu-pair (iaddiu vi12 vi12 0x80) (nop)) ;; #x1c4
+          (vu-pair (iadd vi13 vi13 vi08) (nop)) ;; #x1c5
+          (vu-pair (lq.xyw vf28 vi02 328) (itof0.xyzw vf12 vf12)) ;; #x1c6
+          (vu-pair (mfir.w vf24 vi06) (nop)) ;; #x1c7
+          (vu-pair (lqi.xyzw vf29 vi13) (nop)) ;; #x1c8
+          (vu-pair (lqi.xyzw vf30 vi13) (nop)) ;; #x1c9
+          (vu-pair (lqi.xyzw vf31 vi13) (nop)) ;; #x1ca
+          (vu-pair (sqi.xyzw vf05 vi06) (subw.xyz vf25 vf28 vf25)) ;; #x1cb
+          (vu-pair (sqi.xyzw vf29 vi06) (mulaw.xyzw ACC vf09 vf00)) ;; #x1cc
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x1cd
+          (vu-pair (sqi.xyzw vf30 vi06) (maddax.xyzw ACC vf04 vf12)) ;; #x1ce
+          (vu-pair (sqi.xyzw vf31 vi06) (nop)) ;; #x1cf
+          (vu-pair (ilw.z vi02 vi03 328) (nop)) ;; #x1d0
+          (vu-pair (lq.xyzw vf13 vi04 328) (madday.xyzw ACC vf07 vf12)) ;; #x1d1
+          (vu-pair (lq.xyzw vf21 vi04 329) (maddz.xyzw vf12 vf08 vf12)) ;; #x1d2
+          (vu-pair (lqi.xyzw vf29 vi13) (nop)) ;; #x1d3
+          (vu-pair (lqi.xyzw vf30 vi13) (nop)) ;; #x1d4
+          (vu-pair (lq.xyw vf28 vi02 328) (itof0.xyzw vf13 vf13)) ;; #x1d5
+          (vu-pair (div Q vf01.x vf12.w) (mul.xyzw vf16 vf12 vf11)) ;; #x1d6
+          (vu-pair (sqi.xyzw vf29 vi06) (nop)) ;; #x1d7
+          (vu-pair (sqi.xyzw vf30 vi06) (nop)) ;; #x1d8
+          (vu-pair (iadd vi01 vi12 vi12) (subw.xyz vf26 vf28 vf25)) ;; #x1d9
+          (vu-pair (iadd vi01 vi01 vi12) (mulaw.xyzw ACC vf09 vf00)) ;; #x1da
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x1db
+          (vu-pair (iadd vi05 vi06 vi01) (maddax.xyzw ACC vf04 vf13)) ;; #x1dc
+          (vu-pair (ior vi10 vi06 vi00) (mul.xyz vf12 vf12 Q)) ;; #x1dd
+          (vu-pair (ilw.w vi02 vi03 328) (mul.xyz vf24 vf24 Q)) ;; #x1de
+          (vu-pair (lq.xyzw vf14 vi04 328) (madday.xyzw ACC vf07 vf13)) ;; #x1df
+          (vu-pair (lq.xyzw vf22 vi04 329) (maddz.xyzw vf13 vf08 vf13)) ;; #x1e0
+          (vu-pair (sqi.xyzw vf06 vi06) (add.xyzw vf12 vf12 vf10)) ;; #x1e1
+          (vu-pair (isw.x vi12 vi06 -1) (nop)) ;; #x1e2
+          (vu-pair (lq.xyw vf28 vi02 328) (itof0.xyzw vf14 vf14)) ;; #x1e3
+          (vu-pair (div Q vf01.x vf13.w) (mul.xyzw vf17 vf13 vf11)) ;; #x1e4
+          (vu-pair (iaddi vi09 vi09 0x1) (miniz.w vf12 vf12 vf01)) ;; #x1e5
+          (vu-pair (ilwr.x vi12 vi09) (clipw.xyz vf16 vf16)) ;; #x1e6
+          (label bank1-pipeline-0)
+          (vu-pair (iaddi vi03 vi03 0x1) (subw.xyz vf27 vf28 vf25)) ;; #x1e7
+          (vu-pair (iaddi vi07 vi07 0x1) (mulaw.xyzw ACC vf09 vf00)) ;; #x1e8
+          (vu-pair (mtir vi04 vf28.w) (maxy.w vf12 vf12 vf01)) ;; #x1e9
+          (vu-pair (fcand vi01 0x3ffff) (maddax.xyzw ACC vf04 vf14)) ;; #x1ea
+          (vu-pair (ibne vi00 vi01 clip-bank1-triangle-0) (mul.xyz vf13 vf13 Q)) ;; #x1eb
+          (vu-pair (ilw.x vi02 vi03 328) (mul.xyz vf25 vf25 Q)) ;; #x1ec
+          (label bank1-pipeline-1)
+          (vu-pair (lq.xyzw vf15 vi04 328) (madday.xyzw ACC vf07 vf14)) ;; #x1ed
+          (vu-pair (lq.xyzw vf23 vi04 329) (maddz.xyzw vf14 vf08 vf14)) ;; #x1ee
+          (vu-pair (sqi.xyz vf24 vi06) (add.xyzw vf13 vf13 vf10)) ;; #x1ef
+          (vu-pair (sqi.xyzw vf20 vi06) (ftoi4.xyzw vf12 vf12)) ;; #x1f0
+          (vu-pair (lq.xyw vf28 vi02 328) (itof0.xyzw vf15 vf15)) ;; #x1f1
+          (vu-pair (div Q vf01.x vf14.w) (mul.xyzw vf18 vf14 vf11)) ;; #x1f2
+          (vu-pair (ibeq vi05 vi06 bank1-kick-before-1) (miniz.w vf13 vf13 vf01)) ;; #x1f3
+          (vu-pair (sqi.xyzw vf12 vi06) (clipw.xyz vf17 vf17)) ;; #x1f4
+          (vu-pair (nop) (subw.xyz vf24 vf28 vf25)) ;; #x1f5
+          (vu-pair (iaddi vi07 vi07 0x1) (mulaw.xyzw ACC vf09 vf00)) ;; #x1f6
+          (vu-pair (mtir vi04 vf28.w) (maxy.w vf13 vf13 vf01)) ;; #x1f7
+          (vu-pair (fcand vi01 0x3ffff) (maddax.xyzw ACC vf04 vf15)) ;; #x1f8
+          (vu-pair (ibne vi00 vi01 clip-bank1-triangle-1) (mul.xyz vf14 vf14 Q)) ;; #x1f9
+          (vu-pair (ilw.y vi02 vi03 328) (mul.xyz vf26 vf26 Q)) ;; #x1fa
+          (label bank1-pipeline-2)
+          (vu-pair (lq.xyzw vf12 vi04 328) (madday.xyzw ACC vf07 vf15)) ;; #x1fb
+          (vu-pair (lq.xyzw vf20 vi04 329) (maddz.xyzw vf15 vf08 vf15)) ;; #x1fc
+          (vu-pair (sqi.xyzw vf25 vi06) (add.xyzw vf14 vf14 vf10)) ;; #x1fd
+          (vu-pair (sqi.xyzw vf21 vi06) (ftoi4.xyzw vf13 vf13)) ;; #x1fe
+          (vu-pair (lq.xyw vf28 vi02 328) (itof0.xyzw vf12 vf12)) ;; #x1ff
+          (vu-pair (div Q vf01.x vf15.w) (mul.xyzw vf19 vf15 vf11)) ;; #x200
+          (vu-pair (ibeq vi05 vi06 bank1-kick-before-2) (miniz.w vf14 vf14 vf01)) ;; #x201
+          (vu-pair (sqi.xyzw vf13 vi06) (clipw.xyz vf18 vf18)) ;; #x202
+          (vu-pair (nop) (subw.xyz vf25 vf28 vf25)) ;; #x203
+          (vu-pair (iaddi vi07 vi07 0x1) (mulaw.xyzw ACC vf09 vf00)) ;; #x204
+          (vu-pair (mtir vi04 vf28.w) (maxy.w vf14 vf14 vf01)) ;; #x205
+          (vu-pair (fcand vi01 0x3ffff) (maddax.xyzw ACC vf04 vf12)) ;; #x206
+          (vu-pair (ibne vi00 vi01 clip-bank1-triangle-2) (mul.xyz vf15 vf15 Q)) ;; #x207
+          (vu-pair (ilw.z vi02 vi03 328) (mul.xyz vf27 vf27 Q)) ;; #x208
+          (label bank1-pipeline-3)
+          (vu-pair (lq.xyzw vf13 vi04 328) (madday.xyzw ACC vf07 vf12)) ;; #x209
+          (vu-pair (lq.xyzw vf21 vi04 329) (maddz.xyzw vf12 vf08 vf12)) ;; #x20a
+          (vu-pair (sqi.xyzw vf26 vi06) (add.xyzw vf15 vf15 vf10)) ;; #x20b
+          (vu-pair (sqi.xyzw vf22 vi06) (ftoi4.xyzw vf14 vf14)) ;; #x20c
+          (vu-pair (lq.xyw vf28 vi02 328) (itof0.xyzw vf13 vf13)) ;; #x20d
+          (vu-pair (div Q vf01.x vf12.w) (mul.xyzw vf16 vf12 vf11)) ;; #x20e
+          (vu-pair (ibeq vi05 vi06 bank1-kick-before-3) (miniz.w vf15 vf15 vf01)) ;; #x20f
+          (vu-pair (sqi.xyzw vf14 vi06) (clipw.xyz vf19 vf19)) ;; #x210
+          (vu-pair (nop) (subw.xyz vf26 vf28 vf25)) ;; #x211
+          (vu-pair (iaddi vi07 vi07 0x1) (mulaw.xyzw ACC vf09 vf00)) ;; #x212
+          (vu-pair (mtir vi04 vf28.w) (maxy.w vf15 vf15 vf01)) ;; #x213
+          (vu-pair (fcand vi01 0x3ffff) (maddax.xyzw ACC vf04 vf13)) ;; #x214
+          (vu-pair (ibne vi00 vi01 clip-bank1-triangle-3) (mul.xyz vf12 vf12 Q)) ;; #x215
+          (vu-pair (ilw.w vi02 vi03 328) (mul.xyz vf24 vf24 Q)) ;; #x216
+          (label bank1-pipeline-4)
+          (vu-pair (lq.xyzw vf14 vi04 328) (madday.xyzw ACC vf07 vf13)) ;; #x217
+          (vu-pair (lq.xyzw vf22 vi04 329) (maddz.xyzw vf13 vf08 vf13)) ;; #x218
+          (vu-pair (sqi.xyzw vf27 vi06) (add.xyzw vf12 vf12 vf10)) ;; #x219
+          (vu-pair (sqi.xyzw vf23 vi06) (ftoi4.xyzw vf15 vf15)) ;; #x21a
+          (vu-pair (lq.xyw vf28 vi02 328) (itof0.xyzw vf14 vf14)) ;; #x21b
+          (vu-pair (div Q vf01.x vf13.w) (mul.xyzw vf17 vf13 vf11)) ;; #x21c
+          (vu-pair (ibne vi05 vi06 bank1-pipeline-0) (miniz.w vf12 vf12 vf01)) ;; #x21d
+          (vu-pair (sqi.xyzw vf15 vi06) (clipw.xyz vf16 vf16)) ;; #x21e
+          (vu-pair (b finish-gif-chunk) (nop)) ;; #x21f
+          (vu-pair (iaddiu vi15 vi00 0x1e7) (nop)) ;; #x220
+          (label bank1-kick-before-1)
+          (vu-pair (b finish-gif-chunk) (nop)) ;; #x221
+          (vu-pair (iaddiu vi15 vi00 0x1f5) (nop)) ;; #x222
+          (label bank1-kick-before-2)
+          (vu-pair (b finish-gif-chunk) (nop)) ;; #x223
+          (vu-pair (iaddiu vi15 vi00 0x203) (nop)) ;; #x224
+          (label bank1-kick-before-3)
+          (vu-pair (b finish-gif-chunk) (nop)) ;; #x225
+          (vu-pair (iaddiu vi15 vi00 0x211) (nop)) ;; #x226
+          (label clip-bank1-triangle-0)
+          ;; Guard-volume clipping for the second input bank. The four phase blocks mirror the first bank
+          ;; but load packed attributes and address-book entries at +328.
+          (vu-pair (iaddi vi01 vi07 -0x2) (mul.xyzw vf29 vf18 vf02)) ;; #x227
+          (vu-pair (isw.w vi15 vi00 1021) (mul.xyzw vf30 vf19 vf02)) ;; #x228
+          (vu-pair (ibltz vi01 bank1-pipeline-1) (mul.xyzw vf31 vf16 vf02)) ;; #x229
+          (vu-pair (nop) (addw.w vf12 vf12 vf01)) ;; #x22a
+          (vu-pair (nop) (clipw.xyz vf29 vf29)) ;; #x22b
+          (vu-pair (nop) (clipw.xyz vf30 vf30)) ;; #x22c
+          (vu-pair (nop) (clipw.xyz vf31 vf31)) ;; #x22d
+          (vu-pair (iaddiu vi11 vi00 0x3f) (nop)) ;; #x22e
+          (vu-pair (fcget vi01) (nop)) ;; #x22f
+          (vu-pair (fcget vi13) (nop)) ;; #x230
+          (vu-pair (fcget vi14) (nop)) ;; #x231
+          (vu-pair (iand vi01 vi01 vi13) (clipw.xyz vf18 vf18)) ;; #x232
+          (vu-pair (iand vi01 vi01 vi14) (clipw.xyz vf19 vf19)) ;; #x233
+          (vu-pair (iand vi01 vi01 vi11) (clipw.xyz vf16 vf16)) ;; #x234
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x235
+          (vu-pair (ibne vi00 vi01 bank1-pipeline-1) (nop)) ;; #x236
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x237
+          (vu-pair (ilwr.x vi13 vi10) (nop)) ;; #x238
+          (vu-pair (bal vi15 save-pipeline-for-clipping) (nop)) ;; #x239
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x23a
+          (vu-pair (ilw.z vi14 vi03 326) (nop)) ;; #x23b
+          (vu-pair (sq.xyzw vf16 vi11 28) (nop)) ;; #x23c
+          (vu-pair (sq.xyzw vf20 vi11 29) (nop)) ;; #x23d
+          (vu-pair (sq.xyzw vf19 vi11 31) (nop)) ;; #x23e
+          (vu-pair (ilw.w vi13 vi14 328) (nop)) ;; #x23f
+          (vu-pair (sq.xyzw vf23 vi11 32) (nop)) ;; #x240
+          (vu-pair (sq.xyzw vf18 vi11 34) (nop)) ;; #x241
+          (vu-pair (ilw.x vi01 vi03 327) (nop)) ;; #x242
+          (vu-pair (lq.xyzw vf29 vi13 329) (nop)) ;; #x243
+          (vu-pair (bal vi15 load-clip-triangle-bank1) (nop)) ;; #x244
+          (vu-pair (ilw.w vi13 vi03 326) (nop)) ;; #x245
+          (vu-pair (bal vi15 restore-pipeline-after-clipping) (nop)) ;; #x246
+          (vu-pair (nop) (nop)) ;; #x247
+          (vu-pair (ilw.w vi15 vi00 1021) (nop)) ;; #x248
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x249
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x24a
+          (vu-pair (b bank1-pipeline-1) (nop)) ;; #x24b
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x24c
+          (label clip-bank1-triangle-1)
+          (vu-pair (iaddi vi01 vi07 -0x2) (mul.xyzw vf29 vf19 vf02)) ;; #x24d
+          (vu-pair (isw.w vi15 vi00 1021) (mul.xyzw vf30 vf16 vf02)) ;; #x24e
+          (vu-pair (ibltz vi01 bank1-pipeline-2) (mul.xyzw vf31 vf17 vf02)) ;; #x24f
+          (vu-pair (nop) (addw.w vf13 vf13 vf01)) ;; #x250
+          (vu-pair (nop) (clipw.xyz vf29 vf29)) ;; #x251
+          (vu-pair (nop) (clipw.xyz vf30 vf30)) ;; #x252
+          (vu-pair (nop) (clipw.xyz vf31 vf31)) ;; #x253
+          (vu-pair (iaddiu vi11 vi00 0x3f) (nop)) ;; #x254
+          (vu-pair (fcget vi01) (nop)) ;; #x255
+          (vu-pair (fcget vi13) (nop)) ;; #x256
+          (vu-pair (fcget vi14) (nop)) ;; #x257
+          (vu-pair (iand vi01 vi01 vi13) (clipw.xyz vf19 vf19)) ;; #x258
+          (vu-pair (iand vi01 vi01 vi14) (clipw.xyz vf16 vf16)) ;; #x259
+          (vu-pair (iand vi01 vi01 vi11) (clipw.xyz vf17 vf17)) ;; #x25a
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x25b
+          (vu-pair (ibne vi00 vi01 bank1-pipeline-2) (nop)) ;; #x25c
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x25d
+          (vu-pair (ilwr.x vi13 vi10) (nop)) ;; #x25e
+          (vu-pair (bal vi15 save-pipeline-for-clipping) (nop)) ;; #x25f
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x260
+          (vu-pair (ilw.w vi14 vi03 326) (nop)) ;; #x261
+          (vu-pair (sq.xyzw vf17 vi11 28) (nop)) ;; #x262
+          (vu-pair (sq.xyzw vf21 vi11 29) (nop)) ;; #x263
+          (vu-pair (sq.xyzw vf16 vi11 31) (nop)) ;; #x264
+          (vu-pair (ilw.w vi13 vi14 328) (nop)) ;; #x265
+          (vu-pair (sq.xyzw vf20 vi11 32) (nop)) ;; #x266
+          (vu-pair (sq.xyzw vf19 vi11 34) (nop)) ;; #x267
+          (vu-pair (ilw.y vi01 vi03 327) (nop)) ;; #x268
+          (vu-pair (lq.xyzw vf29 vi13 329) (nop)) ;; #x269
+          (vu-pair (bal vi15 load-clip-triangle-bank1) (nop)) ;; #x26a
+          (vu-pair (ilw.x vi13 vi03 327) (nop)) ;; #x26b
+          (vu-pair (bal vi15 restore-pipeline-after-clipping) (nop)) ;; #x26c
+          (vu-pair (nop) (nop)) ;; #x26d
+          (vu-pair (ilw.w vi15 vi00 1021) (nop)) ;; #x26e
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x26f
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x270
+          (vu-pair (b bank1-pipeline-2) (nop)) ;; #x271
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x272
+          (label clip-bank1-triangle-2)
+          (vu-pair (iaddi vi01 vi07 -0x2) (mul.xyzw vf29 vf16 vf02)) ;; #x273
+          (vu-pair (isw.w vi15 vi00 1021) (mul.xyzw vf30 vf17 vf02)) ;; #x274
+          (vu-pair (ibltz vi01 bank1-pipeline-3) (mul.xyzw vf31 vf18 vf02)) ;; #x275
+          (vu-pair (nop) (addw.w vf14 vf14 vf01)) ;; #x276
+          (vu-pair (nop) (clipw.xyz vf29 vf29)) ;; #x277
+          (vu-pair (nop) (clipw.xyz vf30 vf30)) ;; #x278
+          (vu-pair (nop) (clipw.xyz vf31 vf31)) ;; #x279
+          (vu-pair (iaddiu vi11 vi00 0x3f) (nop)) ;; #x27a
+          (vu-pair (fcget vi01) (nop)) ;; #x27b
+          (vu-pair (fcget vi13) (nop)) ;; #x27c
+          (vu-pair (fcget vi14) (nop)) ;; #x27d
+          (vu-pair (iand vi01 vi01 vi13) (clipw.xyz vf16 vf16)) ;; #x27e
+          (vu-pair (iand vi01 vi01 vi14) (clipw.xyz vf17 vf17)) ;; #x27f
+          (vu-pair (iand vi01 vi01 vi11) (clipw.xyz vf18 vf18)) ;; #x280
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x281
+          (vu-pair (ibne vi00 vi01 bank1-pipeline-3) (nop)) ;; #x282
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x283
+          (vu-pair (ilwr.x vi13 vi10) (nop)) ;; #x284
+          (vu-pair (bal vi15 save-pipeline-for-clipping) (nop)) ;; #x285
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x286
+          (vu-pair (ilw.x vi14 vi03 327) (nop)) ;; #x287
+          (vu-pair (sq.xyzw vf18 vi11 28) (nop)) ;; #x288
+          (vu-pair (sq.xyzw vf22 vi11 29) (nop)) ;; #x289
+          (vu-pair (sq.xyzw vf17 vi11 31) (nop)) ;; #x28a
+          (vu-pair (ilw.w vi13 vi14 328) (nop)) ;; #x28b
+          (vu-pair (sq.xyzw vf21 vi11 32) (nop)) ;; #x28c
+          (vu-pair (sq.xyzw vf16 vi11 34) (nop)) ;; #x28d
+          (vu-pair (ilw.z vi01 vi03 327) (nop)) ;; #x28e
+          (vu-pair (lq.xyzw vf29 vi13 329) (nop)) ;; #x28f
+          (vu-pair (bal vi15 load-clip-triangle-bank1) (nop)) ;; #x290
+          (vu-pair (ilw.y vi13 vi03 327) (nop)) ;; #x291
+          (vu-pair (bal vi15 restore-pipeline-after-clipping) (nop)) ;; #x292
+          (vu-pair (nop) (nop)) ;; #x293
+          (vu-pair (ilw.w vi15 vi00 1021) (nop)) ;; #x294
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x295
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x296
+          (vu-pair (b bank1-pipeline-3) (nop)) ;; #x297
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x298
+          (label clip-bank1-triangle-3)
+          (vu-pair (iaddi vi01 vi07 -0x2) (mul.xyzw vf29 vf17 vf02)) ;; #x299
+          (vu-pair (isw.w vi15 vi00 1021) (mul.xyzw vf30 vf18 vf02)) ;; #x29a
+          (vu-pair (ibltz vi01 bank1-pipeline-4) (mul.xyzw vf31 vf19 vf02)) ;; #x29b
+          (vu-pair (nop) (addw.w vf15 vf15 vf01)) ;; #x29c
+          (vu-pair (nop) (clipw.xyz vf29 vf29)) ;; #x29d
+          (vu-pair (nop) (clipw.xyz vf30 vf30)) ;; #x29e
+          (vu-pair (nop) (clipw.xyz vf31 vf31)) ;; #x29f
+          (vu-pair (iaddiu vi11 vi00 0x3f) (nop)) ;; #x2a0
+          (vu-pair (fcget vi01) (nop)) ;; #x2a1
+          (vu-pair (fcget vi13) (nop)) ;; #x2a2
+          (vu-pair (fcget vi14) (nop)) ;; #x2a3
+          (vu-pair (iand vi01 vi01 vi13) (clipw.xyz vf17 vf17)) ;; #x2a4
+          (vu-pair (iand vi01 vi01 vi14) (clipw.xyz vf18 vf18)) ;; #x2a5
+          (vu-pair (iand vi01 vi01 vi11) (clipw.xyz vf19 vf19)) ;; #x2a6
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x2a7
+          (vu-pair (ibne vi00 vi01 bank1-pipeline-4) (nop)) ;; #x2a8
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x2a9
+          (vu-pair (ilwr.x vi13 vi10) (nop)) ;; #x2aa
+          (vu-pair (bal vi15 save-pipeline-for-clipping) (nop)) ;; #x2ab
+          (vu-pair (mtir vi01 vf24.w) (nop)) ;; #x2ac
+          (vu-pair (ilw.y vi14 vi03 327) (nop)) ;; #x2ad
+          (vu-pair (sq.xyzw vf19 vi11 28) (nop)) ;; #x2ae
+          (vu-pair (sq.xyzw vf23 vi11 29) (nop)) ;; #x2af
+          (vu-pair (sq.xyzw vf18 vi11 31) (nop)) ;; #x2b0
+          (vu-pair (ilw.w vi13 vi14 328) (nop)) ;; #x2b1
+          (vu-pair (sq.xyzw vf22 vi11 32) (nop)) ;; #x2b2
+          (vu-pair (sq.xyzw vf17 vi11 34) (nop)) ;; #x2b3
+          (vu-pair (ilw.w vi01 vi03 327) (nop)) ;; #x2b4
+          (vu-pair (lq.xyzw vf29 vi13 329) (nop)) ;; #x2b5
+          (vu-pair (bal vi15 load-clip-triangle-bank1) (nop)) ;; #x2b6
+          (vu-pair (ilw.z vi13 vi03 327) (nop)) ;; #x2b7
+          (vu-pair (bal vi15 restore-pipeline-after-clipping) (nop)) ;; #x2b8
+          (vu-pair (nop) (nop)) ;; #x2b9
+          (vu-pair (ilw.w vi15 vi00 1021) (nop)) ;; #x2ba
+          (vu-pair (mtir vi04 vf28.w) (nop)) ;; #x2bb
+          (vu-pair (iaddiu vi11 vi00 0x4000) (nop)) ;; #x2bc
+          (vu-pair (b bank1-pipeline-4) (nop)) ;; #x2bd
+          (vu-pair (iaddiu vi11 vi11 0x4000) (nop)) ;; #x2be
+          ;; The clipper's own register conventions, which are not the streaming pipeline's - vi14 is an output
+          ;; cursor here rather than the input bank, and vf16..vf18 carry texture coordinates rather than
+          ;; homogeneous positions. Only the registers that keep one job for the whole of the clipper are named;
+          ;; vi01, vi13 and vi14 are borrowed for flag tests and cursors from one branch to the next and stay
+          ;; physical, and the vector registers stay physical in this region because restore-after-polygon-clip
+          ;; below reloads the same numbers with their streaming meanings.
+          ;;
+          ;; Each plane owns seven quadwords starting at TNEAR-VU-CLIP-PLANES, and the walk ends when the cursor
+          ;; reaches TNEAR-VU-CLIP-PLANES-END:
+          ;;
+          ;;   +0.x  first vertex of the polygon this plane produced
+          ;;   +0.y  last vertex appended to it
+          ;;   +0.z  address of this plane's two-instruction distance subroutine, installed by TNEAR-VU-INIT
+          ;;   +1..3 the entering intersection: position, color, texture coordinate
+          ;;   +4..6 the leaving intersection, same three
+          (rlet ((plane-record :reg vi08)                                  ;; walks the six seven-quadword plane records
+                 (plane-distance-fn :reg vi05)                             ;; the record's own callback address
+                 (callback-link :reg vi10)                                 ;; link for the distance callbacks and the interpolator
+                 (deferred-depth :reg vi09)                                ;; depth of the deferred-edge stack at 1016
+                 (clip-work :reg vi11)                                     ;; base of the clipping workspace
+                 (fan-verts :reg vi04)                                     ;; vertices emitted into the clipped fan
+                 (prev-vertex :reg vi06)
+                 (next-vertex :reg vi07))
+            (label load-clip-triangle-bank0)
+            ;; Copy one triangle's projected positions, colors, and STQ values into the clipping workspace.
+            (vu-pair (sq.xyzw vf16 clip-work 45) (nop)) ;; #x2bf
+            (vu-pair (sq.xyzw vf17 clip-work 46) (nop)) ;; #x2c0
+            (vu-pair (sq.xyzw vf18 clip-work 47) (nop)) ;; #x2c1
+            (vu-pair (lq.xy vf16 vi01 0) (nop)) ;; #x2c2
+            (vu-pair (lq.xy vf17 vi13 0) (addw.z vf16 vf00 vf00)) ;; #x2c3
+            (vu-pair (b setup-polygon-clip) (nop)) ;; #x2c4
+            (vu-pair (lq.xy vf18 vi14 0) (addw.z vf17 vf00 vf00)) ;; #x2c5
+            (label load-clip-triangle-bank1)
+            ;; The second-bank path differs only in the packed STQ source addresses.
+            (vu-pair (sq.xyzw vf16 clip-work 45) (nop)) ;; #x2c6
+            (vu-pair (sq.xyzw vf17 clip-work 46) (nop)) ;; #x2c7
+            (vu-pair (sq.xyzw vf18 clip-work 47) (nop)) ;; #x2c8
+            (vu-pair (lq.xy vf16 vi01 328) (nop)) ;; #x2c9
+            (vu-pair (lq.xy vf17 vi13 328) (addw.z vf16 vf00 vf00)) ;; #x2ca
+            (vu-pair (b setup-polygon-clip) (nop)) ;; #x2cb
+            (vu-pair (lq.xy vf18 vi14 328) (addw.z vf17 vf00 vf00)) ;; #x2cc
+            (label setup-polygon-clip)
+            ;; Preserve the streaming pipeline and feed the triangle through all six homogeneous planes. Each
+            ;; generated edge intersection linearly interpolates projected position, color, and STQ with the
+            ;; same edge parameter, so the clipped fan preserves the strip's attribute interpolation.
+            (vu-pair (sq.xyzw vf20 clip-work 42) (addw.z vf18 vf00 vf00)) ;; #x2cd
+            (vu-pair (sq.xyzw vf21 clip-work 43) (nop)) ;; #x2ce
+            (vu-pair (sq.xyzw vf22 clip-work 44) (nop)) ;; #x2cf
+            (vu-pair (lq.xyzw vf20 clip-work 29) (subw.xy vf16 vf16 vf25)) ;; #x2d0
+            (vu-pair (lq.xyzw vf21 clip-work 32) (subw.xy vf17 vf17 vf25)) ;; #x2d1
+            (vu-pair (sq.xyzw vf12 clip-work 39) (subw.xy vf18 vf18 vf25)) ;; #x2d2
+            (vu-pair (sq.xyzw vf13 clip-work 40) (nop)) ;; #x2d3
+            (vu-pair (sq.xyzw vf16 clip-work 30) (itof0.xyzw vf20 vf20)) ;; #x2d4
+            (vu-pair (sq.xyzw vf17 clip-work 33) (itof0.xyzw vf21 vf21)) ;; #x2d5
+            (vu-pair (sq.xyzw vf18 clip-work 36) (itof0.xyzw vf22 vf29)) ;; #x2d6
+            (vu-pair (sq.xyzw vf14 clip-work 41) (nop)) ;; #x2d7
+            (vu-pair (sq.xyzw vf20 clip-work 29) (nop)) ;; #x2d8
+            (vu-pair (sq.xyzw vf21 clip-work 32) (nop)) ;; #x2d9
+            (vu-pair (sq.xyzw vf22 clip-work 35) (nop)) ;; #x2da
+            (vu-pair (iaddi vi14 clip-work 0x1) (nop)) ;; #x2db
+            (vu-pair (lq.xyzw vf31 vi00 TNEAR-VU-INVH-SCALE) (nop)) ;; #x2dc
+            (vu-pair (isw.x vi15 vi00 TNEAR-VU-SAVED-STATE) (nop)) ;; #x2dd
+            (vu-pair (iaddi fan-verts vi00 0x0) (nop)) ;; #x2de
+            (vu-pair (bal vi15 clip-polygon) (nop)) ;; #x2df
+            (vu-pair (iaddiu prev-vertex clip-work 0x1c) (nop)) ;; #x2e0
+            (vu-pair (bal vi15 clip-polygon) (nop)) ;; #x2e1
+            (vu-pair (iaddiu prev-vertex clip-work 0x1f) (nop)) ;; #x2e2
+            (vu-pair (bal vi15 clip-polygon) (nop)) ;; #x2e3
+            (vu-pair (iaddiu prev-vertex clip-work 0x22) (nop)) ;; #x2e4
+            (vu-pair (b close-polygon) (nop)) ;; #x2e5
+            (vu-pair (nop) (nop)) ;; #x2e6
+            (label clip-polygon)
+            ;; Each plane owns a seven-qword record beginning at 974. Walk the current polygon edges, keep
+            ;; vertices on the inside, and emit an interpolated vertex whenever an edge changes side.
+            (vu-pair (iaddiu plane-record vi00 TNEAR-VU-CLIP-PLANES) (nop)) ;; #x2e7
+            (label begin-clip-plane)
+            (vu-pair (iaddi deferred-depth vi00 0x0) (nop)) ;; #x2e8
+            (label clip-edge-loop)
+            (vu-pair (isubiu vi01 plane-record TNEAR-VU-CLIP-PLANES-END) (nop)) ;; #x2e9
+            (vu-pair (ilwr.y next-vertex plane-record) (nop)) ;; #x2ea
+            (vu-pair (ibeq vi00 vi01 emit-final-clip-vertex) (nop)) ;; #x2eb
+            (vu-pair (ilwr.z plane-distance-fn plane-record) (nop)) ;; #x2ec
+            (vu-pair (lq.xyzw vf13 prev-vertex 0) (nop)) ;; #x2ed
+            (vu-pair (lq.xyzw vf12 next-vertex 0) (nop)) ;; #x2ee
+            (vu-pair (ibne vi00 next-vertex classify-clip-edge) (nop)) ;; #x2ef
+            (vu-pair (iswr.y prev-vertex plane-record) (nop)) ;; #x2f0
+            (vu-pair (jalr callback-link plane-distance-fn) (nop)) ;; #x2f1
+            (vu-pair (iswr.x prev-vertex plane-record) (nop)) ;; #x2f2
+            (vu-pair (nop) (nop)) ;; #x2f3
+            (vu-pair (nop) (nop)) ;; #x2f4
+            (vu-pair (nop) (nop)) ;; #x2f5
+            (vu-pair (fsand vi13 0x2) (nop)) ;; #x2f6
+            (vu-pair (ibne vi00 vi13 resume-deferred-edge) (nop)) ;; #x2f7
+            (vu-pair (nop) (nop)) ;; #x2f8
+            (vu-pair (b clip-edge-loop) (nop)) ;; #x2f9
+            (vu-pair (iaddi plane-record plane-record 0x7) (nop)) ;; #x2fa
+            (label classify-clip-edge)
+            (vu-pair (jalr callback-link plane-distance-fn) (nop)) ;; #x2fb
+            (vu-pair (lq.xyzw vf20 next-vertex 1) (nop)) ;; #x2fc
+            (vu-pair (lq.xyzw vf21 prev-vertex 1) (nop)) ;; #x2fd
+            (vu-pair (lq.xyzw vf16 next-vertex 2) (nop)) ;; #x2fe
+            (vu-pair (fsand vi01 0x2) (nop)) ;; #x2ff
+            (vu-pair (fsand vi13 0x2) (subw.w vf30 vf29 vf30)) ;; #x300
+            (vu-pair (ibne vi00 vi01 emit-leaving-intersection) (nop)) ;; #x301
+            (vu-pair (lq.xyzw vf17 prev-vertex 2) (nop)) ;; #x302
+            (vu-pair (ibne vi00 vi13 emit-entering-intersection) (nop)) ;; #x303
+            (vu-pair (div Q vf29.w vf30.w) (nop)) ;; #x304
+            (vu-pair (b clip-edge-loop) (nop)) ;; #x305
+            (vu-pair (iaddi plane-record plane-record 0x7) (nop)) ;; #x306
+            (label emit-entering-intersection)
+            (vu-pair (bal callback-link interpolate-clip-vertex) (nop)) ;; #x307
+            (vu-pair (iaddi prev-vertex plane-record 0x1) (nop)) ;; #x308
+            (vu-pair (sq.xyzw vf14 plane-record 1) (nop)) ;; #x309
+            (vu-pair (sq.xyzw vf22 plane-record 2) (nop)) ;; #x30a
+            (vu-pair (sq.xyzw vf18 plane-record 3) (nop)) ;; #x30b
+            (vu-pair (b clip-edge-loop) (nop)) ;; #x30c
+            (vu-pair (iaddi plane-record plane-record 0x7) (nop)) ;; #x30d
+            (label emit-leaving-intersection)
+            (vu-pair (ibne vi00 vi13 resume-deferred-edge) (nop)) ;; #x30e
+            (vu-pair (div Q vf29.w vf30.w) (nop)) ;; #x30f
+            (vu-pair (bal callback-link interpolate-clip-vertex) (nop)) ;; #x310
+            (vu-pair (nop) (nop)) ;; #x311
+            (vu-pair (sq.xyzw vf14 plane-record 4) (nop)) ;; #x312
+            (vu-pair (sq.xyzw vf22 plane-record 5) (nop)) ;; #x313
+            (vu-pair (sq.xyzw vf18 plane-record 6) (nop)) ;; #x314
+            (vu-pair (iaddi plane-record plane-record 0x7) (nop)) ;; #x315
+            (vu-pair (isw.x plane-record deferred-depth TNEAR-VU-CLIP-DEFER-STACK) (nop)) ;; #x316
+            (vu-pair (isw.y prev-vertex deferred-depth TNEAR-VU-CLIP-DEFER-STACK) (nop)) ;; #x317
+            (vu-pair (iaddi deferred-depth deferred-depth 0x1) (nop)) ;; #x318
+            (vu-pair (b clip-edge-loop) (nop)) ;; #x319
+            (vu-pair (iaddi prev-vertex plane-record -0x3) (nop)) ;; #x31a
+            (label emit-final-clip-vertex)
+            (vu-pair (lq.xyzw vf12 prev-vertex 0) (nop)) ;; #x31b
+            (vu-pair (lq.xyzw vf20 prev-vertex 1) (nop)) ;; #x31c
+            (vu-pair (lq.xyzw vf16 prev-vertex 2) (nop)) ;; #x31d
+            (vu-pair (iaddi fan-verts fan-verts 0x1) (nop)) ;; #x31e
+            (vu-pair (nop) (nop)) ;; #x31f
+            (vu-pair (div Q vf00.w vf12.w) (mul.xyzw vf12 vf12 vf31)) ;; #x320
+            (vu-pair (nop) (ftoi0.xyzw vf20 vf20)) ;; #x321
+            (vu-pair (nop) (nop)) ;; #x322
+            (vu-pair (iaddi vi14 vi14 0x3) (nop)) ;; #x323
+            (vu-pair (waitq) (mul.xyz vf16 vf16 Q)) ;; #x324
+            (vu-pair (sq.xyzw vf20 vi14 -2) (mul.xyz vf12 vf12 Q)) ;; #x325
+            (vu-pair (nop) (add.xyzw vf12 vf12 vf10)) ;; #x326
+            (vu-pair (nop) (maxy.w vf12 vf12 vf01)) ;; #x327
+            (vu-pair (nop) (miniz.w vf12 vf12 vf01)) ;; #x328
+            (vu-pair (sq.xyzw vf16 vi14 -3) (ftoi4.xyzw vf12 vf12)) ;; #x329
+            (vu-pair (sq.xyzw vf12 vi14 -1) (nop)) ;; #x32a
+            (label resume-deferred-edge)
+            (vu-pair (iblez deferred-depth finish-clip-plane) (nop)) ;; #x32b
+            (vu-pair (nop) (nop)) ;; #x32c
+            (vu-pair (ilw.x plane-record deferred-depth (+ TNEAR-VU-CLIP-DEFER-STACK -1)) (nop)) ;; #x32d
+            (vu-pair (ilw.y prev-vertex deferred-depth (+ TNEAR-VU-CLIP-DEFER-STACK -1)) (nop)) ;; #x32e
+            (vu-pair (b clip-edge-loop) (nop)) ;; #x32f
+            (vu-pair (iaddi deferred-depth deferred-depth -0x1) (nop)) ;; #x330
+            (label finish-clip-plane)
+            (vu-pair (jr vi15) (nop)) ;; #x331
+            (vu-pair (nop) (nop)) ;; #x332
+            (label close-polygon)
+            ;; Close the last edge against the first vertex for every plane, terminate each generated list,
+            ;; and flag an empty final polygon so the caller can omit the clipped fan.
+            (vu-pair (iaddiu plane-record vi00 TNEAR-VU-CLIP-PLANES) (nop)) ;; #x333
+            (label close-plane-loop)
+            (vu-pair (ilwr.x next-vertex plane-record) (nop)) ;; #x334
+            (vu-pair (ilwr.y prev-vertex plane-record) (nop)) ;; #x335
+            (vu-pair (ilwr.z plane-distance-fn plane-record) (nop)) ;; #x336
+            (vu-pair (nop) (nop)) ;; #x337
+            (vu-pair (ibeq vi00 next-vertex advance-clip-plane) (nop)) ;; #x338
+            (vu-pair (lq.xyzw vf12 prev-vertex 0) (nop)) ;; #x339
+            (vu-pair (ibeq prev-vertex next-vertex advance-clip-plane) (nop)) ;; #x33a
+            (vu-pair (lq.xyzw vf13 next-vertex 0) (nop)) ;; #x33b
+            (vu-pair (jalr callback-link plane-distance-fn) (nop)) ;; #x33c
+            (vu-pair (lq.xyzw vf20 prev-vertex 1) (nop)) ;; #x33d
+            (vu-pair (lq.xyzw vf21 next-vertex 1) (nop)) ;; #x33e
+            (vu-pair (lq.xyzw vf16 prev-vertex 2) (nop)) ;; #x33f
+            (vu-pair (fsand vi01 0x2) (nop)) ;; #x340
+            (vu-pair (fsand vi13 0x2) (subw.w vf30 vf29 vf30)) ;; #x341
+            (vu-pair (ibeq vi13 vi01 advance-clip-plane) (nop)) ;; #x342
+            (vu-pair (lq.xyzw vf17 next-vertex 2) (nop)) ;; #x343
+            (vu-pair (ibeq vi00 vi01 close-with-entering-intersection) (nop)) ;; #x344
+            (vu-pair (div Q vf29.w vf30.w) (nop)) ;; #x345
+            (vu-pair (bal callback-link interpolate-clip-vertex) (nop)) ;; #x346
+            (vu-pair (nop) (nop)) ;; #x347
+            (vu-pair (sq.xyzw vf14 plane-record 4) (nop)) ;; #x348
+            (vu-pair (sq.xyzw vf22 plane-record 5) (nop)) ;; #x349
+            (vu-pair (sq.xyzw vf18 plane-record 6) (nop)) ;; #x34a
+            (vu-pair (iaddi prev-vertex plane-record 0x4) (nop)) ;; #x34b
+            (vu-pair (ior vi12 plane-record vi00) (nop)) ;; #x34c
+            (vu-pair (bal vi15 begin-clip-plane) (nop)) ;; #x34d
+            (vu-pair (iaddi plane-record plane-record 0x7) (nop)) ;; #x34e
+            (vu-pair (b advance-clip-plane) (nop)) ;; #x34f
+            (vu-pair (ior plane-record vi12 vi00) (nop)) ;; #x350
+            (label close-with-entering-intersection)
+            (vu-pair (bal callback-link interpolate-clip-vertex) (nop)) ;; #x351
+            (vu-pair (nop) (nop)) ;; #x352
+            (vu-pair (sq.xyzw vf14 plane-record 1) (nop)) ;; #x353
+            (vu-pair (sq.xyzw vf22 plane-record 2) (nop)) ;; #x354
+            (vu-pair (sq.xyzw vf18 plane-record 3) (nop)) ;; #x355
+            (vu-pair (iaddi prev-vertex plane-record 0x1) (nop)) ;; #x356
+            (vu-pair (ior vi12 plane-record vi00) (nop)) ;; #x357
+            (vu-pair (bal vi15 begin-clip-plane) (nop)) ;; #x358
+            (vu-pair (iaddi plane-record plane-record 0x7) (nop)) ;; #x359
+            (vu-pair (ior plane-record vi12 vi00) (nop)) ;; #x35a
+            (label advance-clip-plane)
+            (vu-pair (isubiu vi01 plane-record 0x3f1) (nop)) ;; #x35b
+            (vu-pair (iswr.x vi00 plane-record) (nop)) ;; #x35c
+            (vu-pair (iswr.y vi00 plane-record) (nop)) ;; #x35d
+            (vu-pair (ibltz vi01 close-plane-loop) (nop)) ;; #x35e
+            (vu-pair (iaddi plane-record plane-record 0x7) (nop)) ;; #x35f
+            (vu-pair (ibeq vi00 fan-verts restore-after-polygon-clip) (nop)) ;; #x360
+            (vu-pair (nop) (nop)) ;; #x361
+            (vu-pair (iaddiu fan-verts fan-verts 0x4000) (nop)) ;; #x362
+            (vu-pair (iaddiu fan-verts fan-verts 0x4000) (nop)) ;; #x363
+            (vu-pair (iswr.x fan-verts clip-work) (nop))) ;; #x364
+          (label restore-after-polygon-clip)
+          (vu-pair (ilw.x vi15 vi00 TNEAR-VU-SAVED-STATE) (nop)) ;; #x365
+          (vu-pair (lq.xyzw vf29 vi11 37) (nop)) ;; #x366
+          (vu-pair (lq.xyzw vf30 vi11 38) (nop)) ;; #x367
+          (vu-pair (lq.xyzw vf12 vi11 39) (nop)) ;; #x368
+          (vu-pair (lq.xyzw vf13 vi11 40) (nop)) ;; #x369
+          (vu-pair (lq.xyzw vf14 vi11 41) (nop)) ;; #x36a
+          (vu-pair (lq.xyzw vf20 vi11 42) (nop)) ;; #x36b
+          (vu-pair (lq.xyzw vf21 vi11 43) (nop)) ;; #x36c
+          (vu-pair (lq.xyzw vf22 vi11 44) (nop)) ;; #x36d
+          (vu-pair (lq.xyzw vf16 vi11 45) (nop)) ;; #x36e
+          (vu-pair (lq.xyzw vf17 vi11 46) (nop)) ;; #x36f
+          (vu-pair (lq.xyzw vf18 vi11 47) (nop)) ;; #x370
+          (vu-pair (jr vi15) (nop)) ;; #x371
+          (vu-pair (lq.xyzw vf31 vi11 48) (nop)) ;; #x372
+          ;; Six two-instruction subroutines, one per half-space, and the shared interpolator. Each computes the
+          ;; homogeneous distance of both edge endpoints at once - w + x for +X, w - x for -X and so on - leaving
+          ;; them in the w lanes of dist-a and dist-b, which the caller turns into the edge parameter with
+          ;; d0 / (d0 - d1). Their addresses are what TNEAR-VU-INIT writes into the plane records.
+          (rlet ((callback-link :reg vi10)
+                 (dist-a :reg vf29)                                        ;; signed distance of edge vertex A from the plane, in w
+                 (dist-b :reg vf30)                                        ;; and of vertex B; then d0 - d1 for the divide
+                 (pos-a :reg vf12)
+                 (pos-b :reg vf13)
+                 (color-a :reg vf20)
+                 (color-b :reg vf21)
+                 (stq-a :reg vf16)
+                 (stq-b :reg vf17)
+                 (clip-pos :reg vf14)
+                 (clip-color :reg vf22)
+                 (clip-stq :reg vf18))
+            (label positive-x-distance)
+            (vu-pair (jr callback-link) (addx.w dist-a pos-a pos-a)) ;; #x373
+            (vu-pair (nop) (addx.w dist-b pos-b pos-b)) ;; #x374
+            (label negative-x-distance)
+            (vu-pair (jr callback-link) (subx.w dist-a pos-a pos-a)) ;; #x375
+            (vu-pair (nop) (subx.w dist-b pos-b pos-b)) ;; #x376
+            (label positive-y-distance)
+            (vu-pair (jr callback-link) (addy.w dist-a pos-a pos-a)) ;; #x377
+            (vu-pair (nop) (addy.w dist-b pos-b pos-b)) ;; #x378
+            (label negative-y-distance)
+            (vu-pair (jr callback-link) (suby.w dist-a pos-a pos-a)) ;; #x379
+            (vu-pair (nop) (suby.w dist-b pos-b pos-b)) ;; #x37a
+            (label positive-z-distance)
+            (vu-pair (jr callback-link) (addz.w dist-a pos-a pos-a)) ;; #x37b
+            (vu-pair (nop) (addz.w dist-b pos-b pos-b)) ;; #x37c
+            (label negative-z-distance)
+            (vu-pair (jr callback-link) (subz.w dist-a pos-a pos-a)) ;; #x37d
+            (vu-pair (nop) (subz.w dist-b pos-b pos-b)) ;; #x37e
+            (label interpolate-clip-vertex)
+            ;; Interpolate all three vertex attributes at a plane crossing using Q = d0 / (d0 - d1).
+            (vu-pair (nop) (sub.xyzw clip-pos pos-b pos-a)) ;; #x37f
+            (vu-pair (nop) (sub.xyzw clip-color color-b color-a)) ;; #x380
+            (vu-pair (nop) (sub.xyzw clip-stq stq-b stq-a)) ;; #x381
+            (vu-pair (waitq) (mul.xyzw clip-pos clip-pos Q)) ;; #x382
+            (vu-pair (nop) (mul.xyzw clip-color clip-color Q)) ;; #x383
+            (vu-pair (nop) (mul.xyzw clip-stq clip-stq Q)) ;; #x384
+            (vu-pair (nop) (add.xyzw clip-pos pos-a clip-pos)) ;; #x385
+            (vu-pair (jr callback-link) (add.xyzw clip-color color-a clip-color)) ;; #x386
+            (vu-pair (nop) (add.xyzw clip-stq stq-a clip-stq))) ;; #x387
+          ))
+
+(defun-debug tfrag-details ((fragment tfragment))
+  "Disassemble a tfragment's common, base, level-zero, and level-one VIF streams. The level-zero
+   view pairs dma-qwc[3] with the raw word at offset 40, the final dma-chain slot; that unusual
+   pairing may come from an older tfragment debug layout."
+  (format 0 "id = ~d~%" (-> fragment id))
   (format 0 "common:~%")
-  (let ((s5-0 (-> arg0 dma-qwc 0))
-        (s4-0 (-> arg0 dma-common)))
-    (format 0 "qwc = ~d, ref = ~x~%" s5-0 s4-0)
-    (disasm-vif-tag (the-as (pointer vif-tag) s4-0) (the-as int (* s5-0 4)) (the-as symbol 0) #t))
+  (let ((common-qwc (-> fragment dma-qwc 0))
+        (common-data (-> fragment dma-common)))
+    (format 0 "qwc = ~d, ref = ~x~%" common-qwc common-data)
+    (disasm-vif-tag (the-as (pointer vif-tag) common-data) (the-as int (* common-qwc 4)) (the-as symbol 0) #t))
   (format 0 "base:~%")
-  (let ((s5-1 (-> arg0 dma-qwc 1))
-        (s4-1 (-> arg0 dma-base)))
-    (format 0 "qwc = ~d, ref = ~x~%" s5-1 s4-1)
-    (disasm-vif-tag (the-as (pointer vif-tag) s4-1) (the-as int (* s5-1 4)) (the-as symbol 0) #t))
+  (let ((base-qwc (-> fragment dma-qwc 1))
+        (base-data (-> fragment dma-base)))
+    (format 0 "qwc = ~d, ref = ~x~%" base-qwc base-data)
+    (disasm-vif-tag (the-as (pointer vif-tag) base-data) (the-as int (* base-qwc 4)) (the-as symbol 0) #t))
   (format 0 "level-0:~%")
-  (let ((s5-2 (-> arg0 dma-qwc 3))
-        (s4-2 (-> (the-as (pointer uint32) arg0) 10)))
-    (format 0 "qwc = ~d, ref = ~x~%" s5-2 s4-2)
-    (disasm-vif-tag (the-as (pointer vif-tag) s4-2) (the-as int (* s5-2 4)) (the-as symbol 0) #t))
+  ;; The level-zero debug view uses the final dma-chain word with the fourth cumulative QWC
+  ;; boundary. It differs from the named dma-level-0 overlay and may describe an older layout.
+  (let ((level-0-qwc (-> fragment dma-qwc 3))
+        (level-0-data (-> (the-as (pointer uint32) fragment) 10)))
+    (format 0 "qwc = ~d, ref = ~x~%" level-0-qwc level-0-data)
+    (disasm-vif-tag (the-as (pointer vif-tag) level-0-data) (the-as int (* level-0-qwc 4)) (the-as symbol 0) #t))
   (format 0 "level-1:~%")
-  (let ((s5-3 (-> arg0 dma-qwc 2))
-        (gp-1 (-> arg0 dma-level-1)))
-    (format 0 "qwc = ~d, ref = ~x~%" s5-3 gp-1)
-    (disasm-vif-tag (the-as (pointer vif-tag) gp-1) (the-as int (* s5-3 4)) (the-as symbol 0) #t))
+  (let ((level-1-qwc (-> fragment dma-qwc 2))
+        (level-1-data (-> fragment dma-level-1)))
+    (format 0 "qwc = ~d, ref = ~x~%" level-1-qwc level-1-data)
+    (disasm-vif-tag (the-as (pointer vif-tag) level-1-data) (the-as int (* level-1-qwc 4)) (the-as symbol 0) #t))
   (none))
 
 (defun-debug clip-restore ()
-  "Move the camera to a place in sandover"
-  (let ((a0-0 (new-stack-vector0))
-        (a1-0 (new-stack-matrix0)))
-    (set! (-> a0-0 x) 92648.22)
-    (set! (-> a0-0 y) 238025.03)
-    (set! (-> a0-0 z) 199836.31)
-    (set! (-> a0-0 w) 1.0)
-    (set! (-> a1-0 vector 0 x) -0.9283)
-    (set! (-> a1-0 vector 0 y) 0.0)
-    (set! (-> a1-0 vector 0 z) 0.3716)
-    (set! (-> a1-0 vector 0 w) 0.0)
-    (set! (-> a1-0 vector 1 x) -0.2257)
-    (set! (-> a1-0 vector 1 y) 0.7945)
-    (set! (-> a1-0 vector 1 z) -0.5637)
-    (set! (-> a1-0 vector 1 w) 0.0)
-    (set! (-> a1-0 vector 2 x) -0.2952)
-    (set! (-> a1-0 vector 2 y) -0.6072)
-    (set! (-> a1-0 vector 2 z) -0.7375)
-    (set! (-> a1-0 vector 2 w) 0.0)
-    (set! (-> a1-0 vector 3 x) 0.0)
-    (set! (-> a1-0 vector 3 y) 0.0)
-    (set! (-> a1-0 vector 3 z) 0.0)
-    (set! (-> a1-0 vector 3 w) 1.0)
-    (debug-set-camera-pos-rot! a0-0 a1-0))
+  "Move the debug camera to a captured Sandover pose used to inspect near-terrain clipping."
+  (let ((camera-position (new-stack-vector0))
+        (camera-rotation (new-stack-matrix0)))
+    (set! (-> camera-position x) 92648.22)
+    (set! (-> camera-position y) 238025.03)
+    (set! (-> camera-position z) 199836.31)
+    (set! (-> camera-position w) 1.0)
+    (set! (-> camera-rotation vector 0 x) -0.9283)
+    (set! (-> camera-rotation vector 0 y) 0.0)
+    (set! (-> camera-rotation vector 0 z) 0.3716)
+    (set! (-> camera-rotation vector 0 w) 0.0)
+    (set! (-> camera-rotation vector 1 x) -0.2257)
+    (set! (-> camera-rotation vector 1 y) 0.7945)
+    (set! (-> camera-rotation vector 1 z) -0.5637)
+    (set! (-> camera-rotation vector 1 w) 0.0)
+    (set! (-> camera-rotation vector 2 x) -0.2952)
+    (set! (-> camera-rotation vector 2 y) -0.6072)
+    (set! (-> camera-rotation vector 2 z) -0.7375)
+    (set! (-> camera-rotation vector 2 w) 0.0)
+    (set! (-> camera-rotation vector 3 x) 0.0)
+    (set! (-> camera-rotation vector 3 y) 0.0)
+    (set! (-> camera-rotation vector 3 z) 0.0)
+    (set! (-> camera-rotation vector 3 w) 1.0)
+    (debug-set-camera-pos-rot! camera-position camera-rotation))
   (none))

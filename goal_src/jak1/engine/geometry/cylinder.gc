@@ -7,158 +7,208 @@
 
 ;; Note: "cylinder" refers to a capsule, "cylinder-flat" refers to a real cylinder with end caps.
 
+;; Both shapes are stored the same way: origin is one end of the centerline, axis is a unit
+;; direction, length is the centerline length, and radius is the distance from the centerline. So the
+;; far end is origin + axis * length.
+;;
+;; The intersect methods take a finite probe: the segment from probe-origin to
+;; probe-origin + probe-displacement. They return the fraction of that displacement at which the
+;; earliest contact happens, always between zero and one, or COLLISION_MISS.
+
 ;; DECOMP BEGINS
 
-(defmethod ray-capsule-intersect ((this cylinder) (probe-origin vector) (probe-dir vector))
-  "Intersect a ray with a capsule."
-  (let ((t2-0 (new 'stack-no-clear 'vector))
-        (end-pt (new 'stack-no-clear 'vector)))
-    ;; first intersect with the cylinder part.
-    (let ((result (ray-cylinder-intersect probe-origin probe-dir (-> this origin) (-> this axis) (-> this radius) (-> this length) t2-0)))
-      ;; next, intersect with the sphere at the origin.
-      (let ((u-origin-sph (ray-sphere-intersect probe-origin probe-dir (-> this origin) (-> this radius))))
-        ;; if that was closer, we went through both the sphere and the wall, and we want the sphere.
-        (if (and (>= u-origin-sph 0.0) (or (< result 0.0) (< u-origin-sph result))) (set! result u-origin-sph)))
-      ;; compute the location of the other end's sphere's origin
-      (vector+float*! end-pt (-> this origin) (-> this axis) (-> this length))
-      ;; intersect that
-      (let ((u-end-sphere (ray-sphere-intersect probe-origin probe-dir end-pt (-> this radius))))
-        ;; and pick it if it's closer.
-        (if (and (>= u-end-sphere 0.0) (or (< result 0.0) (< u-end-sphere result))) (set! result u-end-sphere)))
-      result)))
+(defmethod ray-capsule-intersect ((this cylinder) (probe-origin vector) (probe-displacement vector))
+  "Test the finite probe origin + fraction * displacement against the cylindrical wall and both
+   hemispherical ends. Return the earliest zero-to-one fraction, or COLLISION_MISS."
+  (let ((axis-point (new 'stack-no-clear 'vector))
+        (end-center (new 'stack-no-clear 'vector)))
+    0.0
+    0.0
+    
+    ;; test wall
+    (let ((contact-fraction (ray-cylinder-intersect probe-origin
+                                                    probe-displacement
+                                                    (-> this origin)
+                                                    (-> this axis)
+                                                    (-> this radius)
+                                                    (-> this length)
+                                                    axis-point)))
+      ;; test near cap
+      (let ((origin-cap-fraction (ray-sphere-intersect probe-origin probe-displacement (-> this origin) (-> this radius))))
+        (if (and (>= origin-cap-fraction 0.0) (or (< contact-fraction 0.0) (< origin-cap-fraction contact-fraction)))
+            (set! contact-fraction origin-cap-fraction)))
+      
+      ;; test far cap
+      (vector+float*! end-center (-> this origin) (-> this axis) (-> this length))
+      (let ((end-cap-fraction (ray-sphere-intersect probe-origin probe-displacement end-center (-> this radius))))
+        (if (and (>= end-cap-fraction 0.0) (or (< contact-fraction 0.0) (< end-cap-fraction contact-fraction)))
+            (set! contact-fraction end-cap-fraction)))
+      
+      ;; return closest hit.
+      contact-fraction)))
 
 ;; This is used to hold vertices for debug-drawing cylinders.
 (deftype cylinder-verts (structure)
   ((vert vector 24 :inline)))
 
-
-(defmethod debug-draw ((this cylinder) (arg0 vector4w))
-  "Debug draw a cylinder. This is slow and ugly"
+(defmethod debug-draw ((this cylinder) (color vector4w))
+  "Draw a 16-sided wireframe capsule in color. Build one 24-point longitudinal strip, rotate
+   it around the capsule axis, and submit each connecting segment individually.
+   The strip is vertices 0 through 7 for the origin hemisphere, 8 through 15 up the wall, and 16
+   through 23 for the far hemisphere, so the joining lines run continuously from one pole to the
+   other. Draws only; nothing is returned and the cylinder is not modified."
+  (local-vars (i int))
   (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf))
+         (axis-origin :class vf)
+         (turned-origin :class vf)
+         (recentering :class vf))
     (init-vf0-vector)
-    (let ((s1-0 (new 'stack-no-clear 'vector))
-          (s0-0 (new 'stack-no-clear 'vector)))
+    ;; Any direction perpendicular to the axis will do for the outline, so cross the axis with a
+    ;; world axis -- with +z instead of +y when the cylinder is close to vertical, since crossing
+    ;; against a nearly parallel vector loses all its precision.
+    (let ((radial (new 'stack-no-clear 'vector))
+          (axis-step (new 'stack-no-clear 'vector)))
       (if (< 0.999 (fabs (-> this axis y)))
-        (vector-cross! s1-0 (-> this axis) (new 'static 'vector :z 1.0))
-        (vector-cross! s1-0 (-> this axis) (new 'static 'vector :y 1.0)))
-      (vector-normalize! s1-0 (-> this radius))
-      (vector-float*! s0-0 (-> this axis) (/ (-> this length) 8))
-      (let ((s5-0 (new 'stack-no-clear 'cylinder-verts))
-            (s4-0 (new 'stack-no-clear 'cylinder-verts))
-            (s3-0 (new 'stack-no-clear 'matrix)))
-        (matrix-axis-angle! s3-0 (-> this axis) 4096.0)
-        (let ((sv-896 (new 'stack-no-clear 'matrix)))
-          (vector-matrix*! (the-as vector sv-896) (-> this origin) s3-0)
-          (let ((v1-5 (-> s3-0 vector 3)))
-            (.lvf vf4 (&-> (-> this origin) quad))
-            (.lvf vf5 (&-> sv-896 vector 0 quad))
-            (.mov.vf.w vf6 vf0)
-            (.sub.vf.xyz vf6 vf4 vf5)
-            (.svf (&-> v1-5 quad) vf6)))
-        (let ((sv-912 0))
-          (while (< sv-912 8)
-            (vector+! (-> s5-0 vert (+ sv-912 8)) (-> this origin) s1-0)
-            (vector+float*! (-> s5-0 vert (+ sv-912 8)) (-> s5-0 vert (+ sv-912 8)) s0-0 (the float sv-912))
-            (+! sv-912 1)))
-        (dotimes (s0-1 8)
-          (vector+float*! (-> s5-0 vert s0-1) (-> this origin) s1-0 (cos (* 2048.0 (the float (- 7 s0-1)))))
-          (vector+float*! (-> s5-0 vert s0-1)
-                          (-> s5-0 vert s0-1)
+        (vector-cross! radial (-> this axis) (new 'static 'vector :z 1.0))
+        (vector-cross! radial (-> this axis) (new 'static 'vector :y 1.0)))
+      (vector-normalize! radial (-> this radius))
+      (vector-float*! axis-step (-> this axis) (/ (-> this length) 8))
+      (let ((vertices (new 'stack-no-clear 'cylinder-verts))
+            (rotated-vertices (new 'stack-no-clear 'cylinder-verts))
+            (rotation-matrix (new 'stack-no-clear 'matrix)))
+        (matrix-axis-angle! rotation-matrix (-> this axis) (degrees 22.5))
+        ;; Rotate around the cylinder axis through origin rather than around the world origin.
+        ;; The translation that puts origin back where it started is origin minus its own rotated
+        ;; image, so it is obtained by rotating origin once and subtracting.
+        (let ((rotated-origin (new 'stack-no-clear 'matrix)))
+          (vector-matrix*! (the-as vector rotated-origin) (-> this origin) rotation-matrix)
+          (let ((rotation-translation (-> rotation-matrix vector 3)))
+            (.lvf axis-origin (&-> (-> this origin) quad))
+            (.lvf turned-origin (&-> rotated-origin vector 0 quad))
+            (.mov.vf.w recentering vf0)
+            (.sub.vf.xyz recentering axis-origin turned-origin)
+            (.svf (&-> rotation-translation quad) recentering)))
+        (set! i 0)
+        (while (< i 8)
+          (vector+! (-> vertices vert (+ i 8)) (-> this origin) radial)
+          (vector+float*! (-> vertices vert (+ i 8)) (-> vertices vert (+ i 8)) axis-step (the float i))
+          (+! i 1))
+        ;; The two hemispheres walk eight steps of an eighth of a quarter revolution. radial already
+        ;; carries the radius, so the cosine scales it directly and the sine walks along the axis.
+        (dotimes (cap-index 8)
+          (vector+float*! (-> vertices vert cap-index) (-> this origin) radial (cos (* (degrees 11.25) (the float (- 7 cap-index)))))
+          (vector+float*! (-> vertices vert cap-index)
+                          (-> vertices vert cap-index)
                           (-> this axis)
-                          (* (- (-> this radius)) (sin (* 2048.0 (the float (- 7 s0-1))))))
-          (vector+float*! (-> s5-0 vert (+ s0-1 16)) (-> this origin) s1-0 (cos (* 2048.0 (the float s0-1))))
-          (vector+float*! (-> s5-0 vert (+ s0-1 16))
-                          (-> s5-0 vert (+ s0-1 16))
+                          (* (- (-> this radius)) (sin (* (degrees 11.25) (the float (- 7 cap-index))))))
+          (vector+float*! (-> vertices vert (+ cap-index 16)) (-> this origin) radial (cos (* (degrees 11.25) (the float cap-index))))
+          (vector+float*! (-> vertices vert (+ cap-index 16))
+                          (-> vertices vert (+ cap-index 16))
                           (-> this axis)
-                          (+ (-> this length) (* (-> this radius) (sin (* 2048.0 (the float s0-1)))))))
-        (dotimes (s2-1 16)
-          (dotimes (s1-1 24)
-            (vector-matrix*! (-> s4-0 vert s1-1) (-> s5-0 vert s1-1) s3-0)
-            (camera-line (-> s5-0 vert s1-1) (-> s4-0 vert s1-1) arg0)
-            (if (nonzero? s1-1) (camera-line (-> s5-0 vert s1-1) (-> s5-0 vert (+ s1-1 -1)) arg0)))
-          (let ((v1-77 s5-0)) (set! s5-0 s4-0) (set! s4-0 v1-77)))))
+                          (+ (-> this length) (* (-> this radius) (sin (* (degrees 11.25) (the float cap-index)))))))
+        (dotimes (rotation-index 16)
+          (dotimes (vertex-index 24)
+            (vector-matrix*! (-> rotated-vertices vert vertex-index) (-> vertices vert vertex-index) rotation-matrix)
+            (camera-line (-> vertices vert vertex-index) (-> rotated-vertices vert vertex-index) color)
+            (if (nonzero? vertex-index) (camera-line (-> vertices vert vertex-index) (-> vertices vert (+ vertex-index -1)) color)))
+          (let ((swap vertices)) (set! vertices rotated-vertices) (set! rotated-vertices swap)))))
     0
     (none)))
 
-(defun ray-arbitrary-circle-intersect ((probe-origin vector) (probe-dir vector) (circle-origin vector) (circle-normal vector) (radius float))
-  "Intersect a ray with a non-axis-aligned circle."
-  (let* ((v1-1 (vector-! (new 'stack-no-clear 'vector) circle-origin probe-origin)) ;; circle -> probe offset
-         (f0-2 (/ (vector-dot v1-1 circle-normal) (vector-dot probe-dir circle-normal))))
+(defun ray-arbitrary-circle-intersect ((probe-origin vector) (probe-displacement vector) (circle-origin vector) (circle-normal vector) (radius float))
+  "Intersect the finite probe origin + fraction * displacement with the filled disk centered at
+   circle-origin in circle-normal's plane. Return a zero-to-one fraction only when the plane contact
+   lies strictly inside radius; return COLLISION_MISS otherwise."
+  ;; The membership test squares both sides rather than taking a square root of the radial offset.
+  (let* ((center-offset (vector-! (new 'stack-no-clear 'vector) circle-origin probe-origin))
+         (contact-fraction (/ (vector-dot center-offset circle-normal)
+                              (vector-dot probe-displacement circle-normal))))
     (cond
-      ((or (< 1.0 f0-2) (< f0-2 0.0)) -100000000.0)
-      ((let ((a0-7 (new 'stack-no-clear 'vector)))
-         (vector-float*! a0-7 probe-dir f0-2)
-         (vector-! a0-7 a0-7 v1-1)
-         (< (vector-dot a0-7 a0-7) (* radius radius)))
-       f0-2)
-      (else -100000000.0))))
+      ((or (< 1.0 contact-fraction) (< contact-fraction 0.0)) COLLISION_MISS)
+      ((let ((radial-offset (new 'stack-no-clear 'vector)))
+         (vector-float*! radial-offset probe-displacement contact-fraction)
+         (vector-! radial-offset radial-offset center-offset)
+         (< (vector-dot radial-offset radial-offset) (* radius radius)))
+       contact-fraction)
+      (else COLLISION_MISS))))
 
-(defmethod ray-flat-cyl-intersect ((this cylinder-flat) (probe-origin vector) (probe-dir vector))
-  "Intersect with a real cylinder."
-  (let ((gp-0 (new 'stack-no-clear 'vector))
-        (end-pt (new 'stack-no-clear 'vector)))
+(defmethod ray-flat-cyl-intersect ((this cylinder-flat) (probe-origin vector) (probe-displacement vector))
+  "Test the finite probe origin + fraction * displacement against the cylindrical wall and both
+   filled end caps. Return the earliest zero-to-one fraction, or COLLISION_MISS."
+  (let ((axis-point (new 'stack-no-clear 'vector))
+        (end-center (new 'stack-no-clear 'vector)))
     0.0
     0.0
-    ;; walls
-    (let ((result (ray-cylinder-intersect probe-origin probe-dir (-> this origin) (-> this axis) (-> this radius) (-> this length) gp-0)))
-      ;; one end cap
-      (let ((u-origin-circle (ray-arbitrary-circle-intersect probe-origin probe-dir (-> this origin) (-> this axis) (-> this radius))))
-        (when (and (>= u-origin-circle 0.0) (or (< result 0.0) (< u-origin-circle result)))
-          (set! result u-origin-circle)
-          (set! (-> gp-0 quad) (-> this origin quad))))
-      ;; get other end cap
-      (vector+float*! end-pt (-> this origin) (-> this axis) (-> this length))
-      (let ((u-end-circle (ray-arbitrary-circle-intersect probe-origin probe-dir end-pt (-> this axis) (-> this radius))))
-        (when (and (>= u-end-circle 0.0) (or (< result 0.0) (< u-end-circle result)))
-          (set! result u-end-circle)
-          (set! (-> gp-0 quad) (-> end-pt quad))))
-      result)))
+    ;; Test the wall first, then keep either filled-cap contact when it is earlier.
+    (let ((contact-fraction (ray-cylinder-intersect probe-origin
+                                                    probe-displacement
+                                                    (-> this origin)
+                                                    (-> this axis)
+                                                    (-> this radius)
+                                                    (-> this length)
+                                                    axis-point)))
+      (let ((origin-cap-fraction (ray-arbitrary-circle-intersect probe-origin probe-displacement (-> this origin) (-> this axis) (-> this radius))))
+        (when (and (>= origin-cap-fraction 0.0) (or (< contact-fraction 0.0) (< origin-cap-fraction contact-fraction)))
+          (set! contact-fraction origin-cap-fraction)
+          (vector-copy! axis-point (-> this origin))))
+      (vector+float*! end-center (-> this origin) (-> this axis) (-> this length))
+      (let ((end-cap-fraction (ray-arbitrary-circle-intersect probe-origin probe-displacement end-center (-> this axis) (-> this radius))))
+        (when (and (>= end-cap-fraction 0.0) (or (< contact-fraction 0.0) (< end-cap-fraction contact-fraction)))
+          (set! contact-fraction end-cap-fraction)
+          (vector-copy! axis-point end-center)))
+      contact-fraction)))
 
 ;; debug draw for cylinder flat.
 (deftype cylinder-flat-verts (structure)
   ((vert vector 10 :inline)))
 
-
-(defmethod debug-draw ((this cylinder-flat) (arg0 vector4w))
+(defmethod debug-draw ((this cylinder-flat) (color vector4w))
+  "Draw a 16-sided wireframe flat-ended cylinder in color. Build one longitudinal strip from
+   the two cap centers and eight wall points, rotate it around the axis, and submit each connecting
+   segment individually.
+   Vertex 0 is the origin cap center, 1 through 8 run up the wall, and 9 is the far cap center, so
+   the joining lines also draw both cap spokes. Draws only; nothing is returned."
+  (local-vars (i int))
   (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf))
+         (axis-origin :class vf)
+         (turned-origin :class vf)
+         (recentering :class vf))
     (init-vf0-vector)
-    (let ((s1-0 (new 'stack-no-clear 'vector))
-          (s0-0 (new 'stack-no-clear 'vector)))
+    ;; Eight wall points over seven steps, so both ends of the wall land exactly on a cap.
+    (let ((radial (new 'stack-no-clear 'vector))
+          (axis-step (new 'stack-no-clear 'vector)))
       (if (< 0.999 (fabs (-> this axis y)))
-        (vector-cross! s1-0 (-> this axis) (new 'static 'vector :z 1.0))
-        (vector-cross! s1-0 (-> this axis) (new 'static 'vector :y 1.0)))
-      (vector-normalize! s1-0 (-> this radius))
-      (vector-float*! s0-0 (-> this axis) (/ (-> this length) 7))
-      (let ((s5-0 (new 'stack-no-clear 'cylinder-flat-verts))
-            (s4-0 (new 'stack-no-clear 'cylinder-flat-verts))
-            (s3-0 (new 'stack-no-clear 'matrix)))
-        (matrix-axis-angle! s3-0 (-> this axis) 4096.0)
-        (let ((sv-448 (new 'stack-no-clear 'vector)))
-          (vector-matrix*! sv-448 (-> this origin) s3-0)
-          (let ((v1-5 (-> s3-0 vector 3)))
-            (.lvf vf4 (&-> (-> this origin) quad))
-            (.lvf vf5 (&-> sv-448 quad))
-            (.mov.vf.w vf6 vf0)
-            (.sub.vf.xyz vf6 vf4 vf5)
-            (.svf (&-> v1-5 quad) vf6)))
-        (let ((sv-464 0))
-          (while (< sv-464 8)
-            (vector+! (-> s5-0 vert (+ sv-464 1)) (-> this origin) s1-0)
-            (vector+float*! (-> s5-0 vert (+ sv-464 1)) (-> s5-0 vert (+ sv-464 1)) s0-0 (the float sv-464))
-            (+! sv-464 1)))
-        (set! (-> s5-0 vert 0 quad) (-> this origin quad))
-        (vector+float*! (-> s5-0 vert 9) (-> this origin) (-> this axis) (-> this length))
-        (dotimes (s2-1 16)
-          (dotimes (s1-1 10)
-            (vector-matrix*! (-> s4-0 vert s1-1) (-> s5-0 vert s1-1) s3-0)
-            (camera-line (-> s5-0 vert s1-1) (-> s4-0 vert s1-1) arg0)
-            (if (nonzero? s1-1) (camera-line (-> s5-0 vert s1-1) (-> s5-0 vert (+ s1-1 -1)) arg0)))
-          (let ((v1-43 s5-0)) (set! s5-0 s4-0) (set! s4-0 v1-43)))))
+        (vector-cross! radial (-> this axis) (new 'static 'vector :z 1.0))
+        (vector-cross! radial (-> this axis) (new 'static 'vector :y 1.0)))
+      (vector-normalize! radial (-> this radius))
+      (vector-float*! axis-step (-> this axis) (/ (-> this length) 7))
+      (let ((vertices (new 'stack-no-clear 'cylinder-flat-verts))
+            (rotated-vertices (new 'stack-no-clear 'cylinder-flat-verts))
+            (rotation-matrix (new 'stack-no-clear 'matrix)))
+        (matrix-axis-angle! rotation-matrix (-> this axis) (degrees 22.5))
+        ;; Rotate around the cylinder axis through origin rather than around the world origin.
+        (let ((rotated-origin (new 'stack-no-clear 'vector)))
+          (vector-matrix*! rotated-origin (-> this origin) rotation-matrix)
+          (let ((rotation-translation (-> rotation-matrix vector 3)))
+            (.lvf axis-origin (&-> (-> this origin) quad))
+            (.lvf turned-origin (&-> rotated-origin quad))
+            (.mov.vf.w recentering vf0)
+            (.sub.vf.xyz recentering axis-origin turned-origin)
+            (.svf (&-> rotation-translation quad) recentering)))
+        (set! i 0)
+        (while (< i 8)
+          (vector+! (-> vertices vert (+ i 1)) (-> this origin) radial)
+          (vector+float*! (-> vertices vert (+ i 1)) (-> vertices vert (+ i 1)) axis-step (the float i))
+          (+! i 1))
+        (vector-copy! (-> vertices vert 0) (-> this origin))
+        (vector+float*! (-> vertices vert 9) (-> this origin) (-> this axis) (-> this length))
+        (dotimes (rotation-index 16)
+          (dotimes (vertex-index 10)
+            (vector-matrix*! (-> rotated-vertices vert vertex-index) (-> vertices vert vertex-index) rotation-matrix)
+            (camera-line (-> vertices vert vertex-index) (-> rotated-vertices vert vertex-index) color)
+            (if (nonzero? vertex-index)
+                (camera-line (-> vertices vert vertex-index) (-> vertices vert (+ vertex-index -1)) color)))
+          (let ((swap vertices))
+            (set! vertices rotated-vertices) (set! rotated-vertices swap)))))
     0
     (none)))

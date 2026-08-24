@@ -11,27 +11,31 @@
 ;; Collide Frag
 ;;;;;;;;;;;;;;;;;
 
-;; A collide fragment stores background collide data.
-;; It's a drawable-tree, and it uses the familiar sphere BVH.
-;; The actual "fragments" are in a weird packed format.
+;; Background collision is divided into sphere-bounded fragments under a drawable-tree. Broad
+;; phase queries traverse the tree and collect fragments; the collide cache then expands their
+;; compact vertices and strips into ordinary collision triangles. These fragments do not
+;; participate directly in the foreground collide-shape hierarchy.
 
-;; This doesn't participate in the foreground collide shape system directly.
-
-; TODO - defined in drawable, but needed in collide-frag
 (define-extern sphere-cull (function vector symbol))
 
+;; One expanded background-collision vertex.
 (deftype collide-frag-vertex (vector) ())
 
 (deftype collide-frag-mesh (basic)
-  ((packed-data     uint32)
-   (pat-array       uint32)
-   (strip-data-len  uint16)
+  (;; The packed stream starts with VIF-expanded 16-bit XYZ vertices. The strip bytecode follows
+   ;; at vertex-data-qwc qwords, followed by one PAT-table index byte for each polygon.
+   (packed-data     uint32)
+   (pat-array       uint32) ;; Array of PAT values indexed by the polygon bytes.
+   (strip-data-len  uint16) ;; Byte length of the strip stream, including its terminators.
    (poly-count      uint16)
-   (base-trans      vector :inline)
+   (base-trans      vector :inline) ;; Fixed-point translation applied while expanding vertices.
    (vertex-count    uint8 :overlay-at (-> base-trans w))
    (vertex-data-qwc uint8 :offset 29)
    (total-qwc       uint8 :offset 30)
    (unused          uint8 :offset 31)))
+
+;; drawable containing a collide-fragment.
+;; These drawables are inserted into the BVH tree for broad-phase collision filtering.
 
 (deftype collide-fragment (drawable)
   ((mesh collide-frag-mesh :offset 8)))
