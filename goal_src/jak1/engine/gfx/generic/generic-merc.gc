@@ -3279,6 +3279,13 @@
    insert each completed chain in its foreground bucket, and update wait and DMA-memory statistics."
   (local-vars (a0-26 int) (a0-28 int))
   (when (nonzero? (-> *merc-global-array* count))
+    (when *generic-effect-stats*
+      (set! (-> *generic-effect-debug-stats-data* light-vertices) 0)
+      (set! (-> *generic-effect-debug-stats-data* envmap-vertices) 0)
+      (set! (-> *generic-effect-debug-stats-data* prepare-single-calls) 0)
+      (set! (-> *generic-effect-debug-stats-data* prepare-double-calls) 0)
+      (stopwatch-init (-> *generic-effect-debug-stats-data* timer))
+      (stopwatch-start (-> *generic-effect-debug-stats-data* timer)))
     (let ((global-buffer-start (-> *display* frames (-> *display* on-screen) frame global-buf base)))
       ;; set up performance stats
       (if *debug-segment*
@@ -3302,6 +3309,13 @@
       ;;  - high-speed-reject
       ;; and also loads the mercneric-vu0-block block with an offset of 280.
       (generic-merc-init-asm)
+      ;; Publish the GOAL implementations. MIPS2C calls these addresses through its ordinary
+      ;; indirect-call bridge.
+      (let ((calls (-> (scratchpad-object terrain-context) work foreground generic-work in-buf merc shadow)))
+        (set! (-> calls generic-prepare-dma-single) generic-prepare-dma-single-new)
+        (set! (-> calls generic-prepare-dma-double) generic-prepare-dma-double-new)
+        (set! (-> calls generic-light-proc) generic-light-proc-new)
+        (set! (-> calls generic-envmap-proc) generic-envmap-proc-new))
       ;; set a limit, so we don't write off the end of the dma buffer.
       (set! (-> (scratchpad-object terrain-context) work foreground generic-work in-buf merc shadow write-limit)
             (&+ (-> dma-buf end) -65536))
@@ -3358,5 +3372,15 @@
           (+! (-> dma-usage data 86 used)
               (&- (-> *display* frames (-> *display* on-screen) frame global-buf base)
                   (the-as uint global-buffer-start)))
-          (set! (-> dma-usage data 86 total) (-> dma-usage data 86 used))))))
+          (set! (-> dma-usage data 86 total) (-> dma-usage data 86 used)))))
+    (when *generic-effect-stats*
+      (stopwatch-stop (-> *generic-effect-debug-stats-data* timer))
+      (format *stdcon*
+              "generic: ~D us, light ~D verts, envmap ~D verts, prepare single ~D, double ~D~%"
+              (the int (* 1000000.0
+                          (stopwatch-elapsed-seconds (-> *generic-effect-debug-stats-data* timer))))
+              (-> *generic-effect-debug-stats-data* light-vertices)
+              (-> *generic-effect-debug-stats-data* envmap-vertices)
+              (-> *generic-effect-debug-stats-data* prepare-single-calls)
+              (-> *generic-effect-debug-stats-data* prepare-double-calls))))
   (none))

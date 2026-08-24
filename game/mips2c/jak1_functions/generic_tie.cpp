@@ -2077,7 +2077,7 @@ u64 execute(void* ctxt) {
   call_addr = c->gprs[v1].du32[0];                  // function call:
   // Unknown instr: sllv v0, ra, r0
   // c->jalr(call_addr);                               // jalr ra, v1
-  generic_prepare_dma_double::execute(c);
+  // generic_prepare_dma_double::execute(c);
   c->lw(v1, 752, at);                               // lw v1, 752(at)
   call_addr = c->gprs[v1].du32[0];                  // function call:
   // Unknown instr: sllv v0, ra, r0

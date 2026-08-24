@@ -76,11 +76,7 @@ namespace setup_blerc_chains_for_one_fragment { extern void link(); }
 namespace generic_merc_init_asm { extern void link(); }
 namespace generic_merc_execute_asm { extern void link(); }
 namespace mercneric_convert { extern void link(); }
-namespace generic_prepare_dma_double { extern void link(); }
-namespace generic_light_proc { extern void link(); }
-namespace generic_envmap_proc { extern void link(); }
 namespace high_speed_reject { extern void link(); }
-namespace generic_prepare_dma_single { extern void link(); }
 namespace init_ocean_far_regs { extern void link(); }
 namespace render_ocean_quad { extern void link(); }
 namespace draw_large_polygon_ocean { extern void link(); }
@@ -428,9 +424,6 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"generic-merc",
       {jak1::generic_merc_init_asm::link, jak1::generic_merc_execute_asm::link,
        jak1::mercneric_convert::link, jak1::high_speed_reject::link}},
-     {"generic-effect",
-      {jak1::generic_prepare_dma_double::link, jak1::generic_light_proc::link,
-       jak1::generic_envmap_proc::link, jak1::generic_prepare_dma_single::link}},
      {"ocean",
       {jak1::init_ocean_far_regs::link, jak1::render_ocean_quad::link,
        jak1::draw_large_polygon_ocean::link}},

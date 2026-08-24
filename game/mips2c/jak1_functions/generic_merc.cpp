@@ -3,19 +3,7 @@
 using namespace jak1;
 
 namespace Mips2C::jak1 {
-namespace generic_prepare_dma_single {
-u64 execute(void* ctxt);
-}
-namespace generic_prepare_dma_double {
-u64 execute(void* ctxt);
-}
 namespace mercneric_convert {
-u64 execute(void* ctxt);
-}
-namespace generic_light_proc {
-u64 execute(void* ctxt);
-}
-namespace generic_envmap_proc {
 u64 execute(void* ctxt);
 }
 namespace high_speed_reject {
@@ -292,7 +280,23 @@ struct Cache {
   void* merc_globals; // *merc-globals*
   void* merc_death_spawn; // merc-death-spawn
   void* vector_matrix; // vector-matrix*!
+  void* generic_effect_stats; // *generic-effect-stats*
+  void* note_prepare_dma_single; // generic-note-prepare-dma-single
+  void* note_prepare_dma_double; // generic-note-prepare-dma-double
+  void* note_light_proc; // generic-note-light-proc
+  void* note_envmap_proc; // generic-note-envmap-proc
 } cache;
+
+static u32 symbol_value(void* symbol) {
+  return *reinterpret_cast<u32*>(symbol);
+}
+
+static void call_generic_effect(ExecutionContext* c, u32 address, void* note_symbol) {
+  if (symbol_value(cache.generic_effect_stats) != c->gprs[s7].du32[0]) {
+    c->jalr(symbol_value(note_symbol));
+  }
+  c->jalr(address);
+}
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -1033,20 +1037,17 @@ u64 execute(void* ctxt) {
   c->lwu(t9, 7336, v1);                             // lwu t9, 7336(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  // c->jalr(call_addr);                               // jalr ra, t9
-  generic_prepare_dma_double::execute(c);
+  call_generic_effect(c, call_addr, cache.note_prepare_dma_double);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7340, v1);                             // lwu t9, 7340(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  // c->jalr(call_addr);                               // jalr ra, t9
-  generic_light_proc::execute(c);
+  call_generic_effect(c, call_addr, cache.note_light_proc);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7344, v1);                             // lwu t9, 7344(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  // c->jalr(call_addr);                               // jalr ra, t9
-  generic_envmap_proc::execute(c);
+  call_generic_effect(c, call_addr, cache.note_envmap_proc);
   c->lw(v1, 40, at);                                // lw v1, 40(at)
   c->lw(a0, 56, at);                                // lw a0, 56(at)
   c->mov64(a3, v1);                                 // or a3, v1, r0
@@ -1142,20 +1143,17 @@ u64 execute(void* ctxt) {
   c->lwu(t9, 7336, v1);                             // lwu t9, 7336(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  // c->jalr(call_addr);                               // jalr ra, t9
-  generic_prepare_dma_double::execute(c);
+  call_generic_effect(c, call_addr, cache.note_prepare_dma_double);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7340, v1);                             // lwu t9, 7340(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  // c->jalr(call_addr);                               // jalr ra, t9
-  generic_light_proc::execute(c);
+  call_generic_effect(c, call_addr, cache.note_light_proc);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7344, v1);                             // lwu t9, 7344(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  // c->jalr(call_addr);                               // jalr ra, t9
-  generic_envmap_proc::execute(c);
+  call_generic_effect(c, call_addr, cache.note_envmap_proc);
   c->lw(v1, 40, at);                                // lw v1, 40(at)
   c->lw(a0, 56, at);                                // lw a0, 56(at)
   c->mov64(a3, v1);                                 // or a3, v1, r0
@@ -1231,14 +1229,12 @@ u64 execute(void* ctxt) {
   c->lwu(t9, 7332, v1);                             // lwu t9, 7332(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  // c->jalr(call_addr);                               // jalr ra, t9
-  generic_prepare_dma_single::execute(c);
+  call_generic_effect(c, call_addr, cache.note_prepare_dma_single);
   get_fake_spad_addr(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lwu(t9, 7340, v1);                             // lwu t9, 7340(v1)
   call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
-  // c->jalr(call_addr);                               // jalr ra, t9
-  generic_light_proc::execute(c);
+  call_generic_effect(c, call_addr, cache.note_light_proc);
   c->lw(v1, 40, at);                                // lw v1, 40(at)
   c->lw(a0, 56, at);                                // lw a0, 56(at)
   c->mov64(a3, v1);                                 // or a3, v1, r0
@@ -1343,6 +1339,11 @@ void link() {
   cache.merc_globals = intern_from_c("*merc-globals*").c();
   cache.merc_death_spawn = intern_from_c("merc-death-spawn").c();
   cache.vector_matrix = intern_from_c("vector-matrix*!").c();
+  cache.generic_effect_stats = intern_from_c("*generic-effect-stats*").c();
+  cache.note_prepare_dma_single = intern_from_c("generic-note-prepare-dma-single").c();
+  cache.note_prepare_dma_double = intern_from_c("generic-note-prepare-dma-double").c();
+  cache.note_light_proc = intern_from_c("generic-note-light-proc").c();
+  cache.note_envmap_proc = intern_from_c("generic-note-envmap-proc").c();
   gLinkedFunctionTable.reg("generic-merc-execute-asm", execute, 1024);
 }
 
@@ -3826,6 +3827,3 @@ void link() {
 
 } // namespace high_speed_reject
 } // namespace Mips2C
-
-
-

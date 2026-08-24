@@ -162,8 +162,6 @@ set(RUNTIME_SOURCE
         mips2c/jak1_functions/collide_mesh.cpp
         mips2c/jak1_functions/collide_probe.cpp
         mips2c/jak1_functions/draw_string.cpp
-        mips2c/jak1_functions/generic_effect.cpp
-        mips2c/jak1_functions/generic_effect2.cpp
         mips2c/jak1_functions/generic_merc.cpp
         mips2c/jak1_functions/generic_tie.cpp
         mips2c/jak1_functions/merc_blend_shape.cpp
