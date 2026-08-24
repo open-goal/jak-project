@@ -187,6 +187,14 @@ Val* Compiler::compile_asm_break(const goos::Object& form, const goos::Object& r
   auto args = get_va(form, rest);
   va_check(form, args, {}, {});
 
+  // Keep the old x86 output.
+  if (m_instr_set == emitter::InstructionSet::X86) {
+    return compile_div(form,
+                       goos::build_list(std::vector<goos::Object>{goos::Object::make_integer(0),
+                                                                  goos::Object::make_integer(0)}),
+                       env);
+  }
+
   env->emit_ir<IR_AsmBreak>(form);
   return get_none();
 }

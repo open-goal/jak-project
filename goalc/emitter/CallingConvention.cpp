@@ -10,7 +10,6 @@ CallingConvention get_function_calling_convention(const TypeSpec& function_type,
   ASSERT(function_type.arg_count() <= 9);
 
   int gpr_idx = 0;
-  int simd_idx = 0;
 
   CallingConvention cc;
 
@@ -19,6 +18,7 @@ CallingConvention get_function_calling_convention(const TypeSpec& function_type,
       cc.arg_regs.push_back(emitter::reg_info(instr_set).get_gpr_arg_reg(gpr_idx++));
     }
   } else {
+    int simd_idx = 0;
     for (int i = 0; i < (int)function_type.arg_count() - 1; i++) {
       auto info = type_system.lookup_type_allow_partial_def(function_type.get_arg(i));
       auto load_size = type_system.get_load_size_allow_partial_def(function_type.get_arg(i));
