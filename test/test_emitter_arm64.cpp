@@ -3,13 +3,24 @@
 #include "emitter_test_helpers.h"
 #include "emitter_util.h"
 
+#include "common/link_types.h"
+#include "common/type_system/TypeSystem.h"
+
+#include "goalc/compiler/IR.h"
+#include "goalc/debugger/DebugInfo.h"
 #include "goalc/emitter/CodeTester.h"
 #include "goalc/emitter/IGen.h"
+#include "goalc/emitter/IGenARM64.h"
+#include "goalc/emitter/ObjectGenerator.h"
 #include "goalc/emitter/Register.h"
+#include "goalc/regalloc/Allocator.h"
+#include "goalc/regalloc/Allocator_v2.h"
 #include "gtest/gtest.h"
 #include <capstone/arm.h>
 #include <fmt/base.h>
 #include <fmt/format.h>
+
+#include "fmt/format.h"
 
 using namespace emitter;
 
@@ -63,8 +74,17 @@ void for_each_register_except(CodeTester& tester,
 }
 
 template <typename Fn>
+void for_each_gpr_except(CodeTester& tester, std::initializer_list<Register> excluded, Fn&& fn) {
+  for_each_register_except(tester, excluded, [&](Register reg) {
+    if (reg.id() != X18) {
+      fn(reg);
+    }
+  });
+}
+
+template <typename Fn>
 void for_each_register_except_stack_and_scratch(CodeTester& tester, Fn&& fn) {
-  for_each_register_except(tester, {tester.get_stack_reg(), Register(X16)}, std::forward<Fn>(fn));
+  for_each_gpr_except(tester, {tester.get_stack_reg(), Register(X16)}, std::forward<Fn>(fn));
 }
 
 TEST(ARM64EmitterIntegerMath, add_gpr64_imm8s) {
@@ -194,7 +214,7 @@ TEST(ARM64EmitterIntegerMath, add_gpr64_gpr64) {
   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
                            INT64_MAX, 117, 32, -348473,   83747382};
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for (auto v1 : vals) {
         for (auto v2 : vals) {
           tester.clear();
@@ -218,7 +238,7 @@ TEST(ARM64EmitterIntegerMath, sub_gpr64_gpr64) {
   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
                            INT64_MAX, 117, 32, -348473,   83747382};
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for (auto v1 : vals) {
         for (auto v2 : vals) {
           tester.clear();
@@ -244,7 +264,7 @@ TEST(ARM64EmitterIntegerMath, mul_gpr32_gpr32) {
       0, 1, -2, -20, 123123, INT32_MIN, INT32_MAX, INT32_MIN + 1, INT32_MAX - 1};
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for (auto v1 : vals) {
         for (auto v2 : vals) {
           // this is kind of weird behavior, but it's what the PS2 CPU does, I think.
@@ -273,7 +293,7 @@ TEST(ARM64EmitterIntegerMath, or_gpr64_gpr64) {
   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
                            INT64_MAX, 117, 32, -348473,   83747382};
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for (auto v1 : vals) {
         for (auto v2 : vals) {
           tester.clear();
@@ -298,7 +318,7 @@ TEST(ARM64EmitterIntegerMath, and_gpr64_gpr64) {
   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
                            INT64_MAX, 117, 32, -348473,   83747382};
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for (auto v1 : vals) {
         for (auto v2 : vals) {
           tester.clear();
@@ -323,7 +343,7 @@ TEST(ARM64EmitterIntegerMath, xor_gpr64_gpr64) {
   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
                            INT64_MAX, 117, 32, -348473,   83747382};
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for (auto v1 : vals) {
         for (auto v2 : vals) {
           tester.clear();
@@ -362,82 +382,6 @@ TEST(ARM64EmitterIntegerMath, not_gpr64) {
     }
   });
 }
-
-// TODO - not yet implemented
-// TEST(ARM64EmitterIntegerMath, shl_gpr64_cl) {
-//   auto tester = create_tester();
-//   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
-//                            INT64_MAX, 117, 32, -348473,   83747382};
-//   std::vector<u8> sas = {0, 1, 23, 53, 64};
-
-//   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-//     for (auto v : vals) {
-//       for (auto sa : sas) {
-//         auto expected = v << sa;
-//         tester.clear();
-//         tester.emit_push_all_gprs(true);
-//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
-//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
-//         tester.emit(IGen::shl_gpr64_reg(tester.generator(), i, 0));
-//         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
-//         tester.emit_pop_all_gprs(true);
-//         tester.emit_return();
-
-//         EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
-//       }
-//     }
-//   });
-// }
-
-// TEST(ARM64EmitterIntegerMath, shr_gpr64_cl) {
-//   auto tester = create_tester();
-//   std::vector<u64> vals = {0,         1,   u64(-2), u64(INT32_MIN), INT32_MAX, u64(INT64_MIN),
-//                            INT64_MAX, 117, 32,      u64(-348473),   83747382};
-//   std::vector<u8> sas = {0, 1, 23, 53, 64};
-
-//   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-//     for (auto v : vals) {
-//       for (auto sa : sas) {
-//         auto expected = v >> sa;
-//         tester.clear();
-//         tester.emit_push_all_gprs(true);
-//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
-//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
-//         tester.emit(IGen::shr_gpr64_reg(tester.generator(), i, 0));
-//         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
-//         tester.emit_pop_all_gprs(true);
-//         tester.emit_return();
-
-//         EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
-//       }
-//     }
-//   });
-// }
-
-// TEST(ARM64EmitterIntegerMath, sar_gpr64_cl) {
-//   auto tester = create_tester();
-//   std::vector<s64> vals = {0,         1,   -2, INT32_MIN, INT32_MAX, INT64_MIN,
-//                            INT64_MAX, 117, 32, -348473,   83747382};
-//   std::vector<u8> sas = {0, 1, 23, 53, 64};
-
-//   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-//     for (auto v : vals) {
-//       for (auto sa : sas) {
-//         auto expected = v >> sa;
-//         tester.clear();
-//         tester.emit_push_all_gprs(true);
-//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, v));
-//         tester.emit(IGen::mov_gpr64_u64(tester.generator(), RCX, sa));
-//         tester.emit(IGen::sar_gpr64_reg(tester.generator(), i, 0));
-//         tester.emit(IGen::mov_gpr64_gpr64(tester.generator(), tester.get_return_reg(), i));
-//         tester.emit_pop_all_gprs(true);
-//         tester.emit_return();
-
-//         EXPECT_EXECUTE_RET_EQ(tester, 0, expected);
-//       }
-//     }
-//   });
-// }
 
 TEST(ARM64EmitterIntegerMath, shl_gpr64_u8) {
   auto tester = create_tester();
@@ -588,7 +532,7 @@ TEST(ARM64EmitterLoadsAndStores, load_constant_64_and_move_gpr_gpr_64) {
 
   for (auto constant : u64_constants) {
     for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         tester.emit(IGen::mov_gpr64_u64(tester.generator(), i, constant));
@@ -651,7 +595,7 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_goal_ptr_gpr64) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -704,7 +648,7 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s8) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -756,7 +700,7 @@ TEST(ARM64EmitterLoadsAndStores, load8s_gpr64_gpr64_gpr64_s32) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -807,7 +751,7 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_goal_ptr_gpr64) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -859,7 +803,7 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s8) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -911,7 +855,7 @@ TEST(ARM64EmitterLoadsAndStores, load8u_gpr64_gpr64_gpr64_s32) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -962,7 +906,7 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_goal_ptr_gpr64) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1014,7 +958,7 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s8) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1066,7 +1010,7 @@ TEST(ARM64EmitterLoadsAndStores, load16s_gpr64_gpr64_plus_gpr64_plus_s32) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1117,7 +1061,7 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_goal_ptr_gpr64) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1169,7 +1113,7 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s8) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1221,7 +1165,7 @@ TEST(ARM64EmitterLoadsAndStores, load16u_gpr64_gpr64_plus_gpr64_plus_s32) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1272,7 +1216,7 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_goal_ptr_gpr64) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1324,7 +1268,7 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s8) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1376,7 +1320,7 @@ TEST(ARM64EmitterLoadsAndStores, load32s_gpr64_gpr64_plus_gpr64_plus_s32) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1427,7 +1371,7 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_goal_ptr_gpr64) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1479,7 +1423,7 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s8) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1527,11 +1471,11 @@ TEST(ARM64EmitterLoadsAndStores, load32u_gpr64_gpr64_plus_gpr64_plus_s32) {
   tester.clear();
   tester.emit(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D1000640B8");
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D1000240B8");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1582,7 +1526,7 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_goal_ptr_gpr64) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1634,7 +1578,7 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s8) {
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1682,11 +1626,11 @@ TEST(ARM64EmitterLoadsAndStores, load64_gpr64_gpr64_plus_gpr64_plus_s32) {
   tester.clear();
   tester.emit(IGen::load64_gpr64_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, X2, -3));
 
-  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D1000640F8");
+  EXPECT_EQ(tester.dump_to_hex_string(true), "3000028B100E00D1000240F8");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except_stack_and_scratch(tester, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
@@ -1737,8 +1681,8 @@ TEST(ARM64EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "02E82138");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1783,8 +1727,8 @@ TEST(ARM64EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64_plus_s8) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "10E0218B02C20038");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1829,8 +1773,8 @@ TEST(ARM64EmitterLoadsAndStores, store8_gpr64_gpr64_plus_gpr64_plus_s32) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B1032009102020039");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1875,8 +1819,8 @@ TEST(ARM64EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "28E82078");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1921,8 +1865,8 @@ TEST(ARM64EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64_plus_s8) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "10E0218B08C20078");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -1967,8 +1911,8 @@ TEST(ARM64EmitterLoadsAndStores, store16_gpr64_gpr64_plus_gpr64_plus_s32) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B1032009108020079");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -2013,8 +1957,8 @@ TEST(ARM64EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "28E820B8");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -2059,8 +2003,8 @@ TEST(ARM64EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64_plus_s8) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B10320091080200B9");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -2105,8 +2049,8 @@ TEST(ARM64EmitterLoadsAndStores, store32_gpr64_gpr64_plus_gpr64_plus_s32) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B10320091080200B9");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -2151,8 +2095,8 @@ TEST(ARM64EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "28E820F8");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -2197,8 +2141,8 @@ TEST(ARM64EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64_plus_s8) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B10320091080200F9");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -2243,8 +2187,8 @@ TEST(ARM64EmitterLoadsAndStores, store64_gpr64_gpr64_plus_gpr64_plus_s32) {
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B10320091080200F9");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i, j}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_gprs(true);
         // push args to the stack
@@ -2534,83 +2478,83 @@ TEST(ARM64Emitter, LEA) {
             "9184B004D1ED030091ADB104D18D010091ADB104D1");
 }
 
-TEST(ARM64EmitterXMM, StackLoad32) {
+TEST(ARM64EmitterSIMD, StackLoad32) {
   auto tester = create_tester();
-  tester.emit(IGen::load32_xmm32_gpr64_plus_s32(tester.generator(), V0 + 3, SP, -1234));
-  tester.emit(IGen::load32_xmm32_gpr64_plus_s32(tester.generator(), V0 + 13, SP, -1234));
+  tester.emit(IGen::load32_simd32_gpr64_plus_s32(tester.generator(), V0 + 3, SP, -1234));
+  tester.emit(IGen::load32_simd32_gpr64_plus_s32(tester.generator(), V0 + 13, SP, -1234));
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "F0030091519A80D2100211CB030240BDF0030091519A80D2100211CB0D0240BD");
 }
 
-TEST(ARM64EmitterXMM, StackLoad8) {
+TEST(ARM64EmitterSIMD, StackLoad8) {
   auto tester = create_tester();
-  tester.emit(IGen::load32_xmm32_gpr64_plus_s8(tester.generator(), V0 + 3, SP, -12));
-  tester.emit(IGen::load32_xmm32_gpr64_plus_s8(tester.generator(), V0 + 13, SP, -12));
+  tester.emit(IGen::load32_simd32_gpr64_plus_s8(tester.generator(), V0 + 3, SP, -12));
+  tester.emit(IGen::load32_simd32_gpr64_plus_s8(tester.generator(), V0 + 13, SP, -12));
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "F0030091910180D2100211CB030240BDF0030091910180D2100211CB0D0240BD");
 }
 
-TEST(ARM64EmitterXMM, StackLoadFull32) {
+TEST(ARM64EmitterSIMD, StackLoadFull32) {
   auto tester = create_tester();
   tester.emit(IGen::load128_simd128_gpr64_s32(tester.generator(), V0 + 3, SP, -1234));
   tester.emit(IGen::load128_simd128_gpr64_s32(tester.generator(), V0 + 13, SP, -1234));
   EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091104A13D10302C03DF0030091104A13D10D02C03D");
 }
 
-TEST(ARM64EmitterXMM, StackLoadFull8) {
+TEST(ARM64EmitterSIMD, StackLoadFull8) {
   auto tester = create_tester();
   tester.emit(IGen::load128_simd128_gpr64_s8(tester.generator(), V0 + 3, SP, -12));
   tester.emit(IGen::load128_simd128_gpr64_s8(tester.generator(), V0 + 13, SP, -12));
   EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091103200D10302C03DF0030091103200D10D02C03D");
 }
 
-TEST(ARM64EmitterXMM, StackStore32) {
+TEST(ARM64EmitterSIMD, StackStore32) {
   auto tester = create_tester();
-  tester.emit(IGen::store32_xmm32_gpr64_plus_s32(tester.generator(), SP, V0 + 3, -1234));
-  tester.emit(IGen::store32_xmm32_gpr64_plus_s32(tester.generator(), SP, V0 + 13, -1234));
+  tester.emit(IGen::store32_simd32_gpr64_plus_s32(tester.generator(), SP, V0 + 3, -1234));
+  tester.emit(IGen::store32_simd32_gpr64_plus_s32(tester.generator(), SP, V0 + 13, -1234));
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "F0030091519A80D2100211CB030200BDF0030091519A80D2100211CB0D0200BD");
 }
 
-TEST(ARM64EmitterXMM, StackStore8) {
+TEST(ARM64EmitterSIMD, StackStore8) {
   auto tester = create_tester();
-  tester.emit(IGen::store32_xmm32_gpr64_plus_s8(tester.generator(), SP, V0 + 3, -12));
-  tester.emit(IGen::store32_xmm32_gpr64_plus_s8(tester.generator(), SP, V0 + 13, -12));
+  tester.emit(IGen::store32_simd32_gpr64_plus_s8(tester.generator(), SP, V0 + 3, -12));
+  tester.emit(IGen::store32_simd32_gpr64_plus_s8(tester.generator(), SP, V0 + 13, -12));
   EXPECT_EQ(tester.dump_to_hex_string(true),
             "F0030091910180D2100211CB030200BDF0030091910180D2100211CB0D0200BD");
 }
 
-TEST(ARM64EmitterXMM, StackStoreFull32) {
+TEST(ARM64EmitterSIMD, StackStoreFull32) {
   auto tester = create_tester();
   tester.emit(IGen::store128_gpr64_simd128_s32(tester.generator(), SP, V0 + 3, -1234));
   tester.emit(IGen::store128_gpr64_simd128_s32(tester.generator(), SP, V0 + 13, -1234));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091104A13D103DA0300F0030091104A13D10DDA0300");
+  EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091104A13D10302803DF0030091104A13D10D02803D");
 }
 
-TEST(ARM64EmitterXMM, StackStoreFull8) {
+TEST(ARM64EmitterSIMD, StackStoreFull8) {
   auto tester = create_tester();
   tester.emit(IGen::store128_gpr64_simd128_s8(tester.generator(), SP, V0 + 3, -12));
   tester.emit(IGen::store128_gpr64_simd128_s8(tester.generator(), SP, V0 + 13, -12));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091103200D103DA0300F0030091103200D10DDA0300");
+  EXPECT_EQ(tester.dump_to_hex_string(true), "F0030091103200D10302803DF0030091103200D10D02803D");
 }
 
-TEST(ARM64EmitterXMM, SqrtS) {
+TEST(ARM64EmitterSIMD, SqrtS) {
   auto tester = create_tester();
   tester.emit(IGen::sqrt_f32(tester.generator(), V0 + 1, V0 + 2));
   tester.emit(IGen::sqrt_f32(tester.generator(), V0 + 11, V0 + 2));
   tester.emit(IGen::sqrt_f32(tester.generator(), V0 + 1, V0 + 12));
   tester.emit(IGen::sqrt_f32(tester.generator(), V0 + 11, V0 + 12));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "40C0211E40C02B1E80C1211E80C12B1E");
+  EXPECT_EQ(tester.dump_to_hex_string(true), "41C0211E4BC0211E81C1211E8BC1211E");
 }
 
-TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
+TEST(ARM64EmitterFloat32, load32_simd32_gpr64_plus_gpr64) {
   auto tester = create_tester();
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64(tester.generator(), V3, X0, X1));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "23E860BC");
+  tester.emit(IGen::load32_simd32_gpr64_plus_gpr64(tester.generator(), V3, X0, X1));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "03E861BC");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except(tester, {}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_simd();
@@ -2628,7 +2572,7 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
         tester.emit(IGen::pop_gpr64(tester.generator(), j));  // j will have offset 1
 
         // load into k
-        tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64(tester.generator(), V0 + k.id(), i, j));
+        tester.emit(IGen::load32_simd32_gpr64_plus_gpr64(tester.generator(), V0 + k.id(), i, j));
         // move to return
         tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
 
@@ -2651,14 +2595,14 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
   });
 }
 
-TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
+TEST(ARM64EmitterFloat32, load32_simd32_gpr64_plus_gpr64_plus_s8) {
   auto tester = create_tester();
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), V3, X0, X1, -1));
+  tester.emit(IGen::load32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), V3, X0, X1, -1));
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030240BD");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except(tester, {}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_simd();
@@ -2676,8 +2620,8 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
         tester.emit(IGen::pop_gpr64(tester.generator(), j));  // j will have offset 1
 
         // load into k
-        tester.emit(
-            IGen::load32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), V0 + k.id(), i, j, -3));
+        tester.emit(IGen::load32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), V0 + k.id(), i,
+                                                                 j, -3));
         // move to return
         tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
 
@@ -2701,14 +2645,14 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
   });
 }
 
-TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
+TEST(ARM64EmitterFloat32, load32_simd32_gpr64_plus_gpr64_plus_s32) {
   auto tester = create_tester();
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), V3, X0, X1, -1));
+  tester.emit(IGen::load32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), V3, X0, X1, -1));
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030240BD");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except(tester, {}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_simd();
@@ -2728,8 +2672,8 @@ TEST(ARM64EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
         s64 offset = (iter & 1) ? INT32_MAX : INT32_MIN;
 
         // load into k
-        tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), V0 + k.id(), i,
-                                                                 j, offset));
+        tester.emit(IGen::load32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), V0 + k.id(),
+                                                                  i, j, offset));
         // move to return
         tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
 
@@ -2767,13 +2711,13 @@ u32 as_u32(float x) {
 }
 }  // namespace
 
-TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
+TEST(ARM64EmitterFloat32, store32_simd32_gpr64_plus_gpr64) {
   auto tester = create_tester();
-  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64(tester.generator(), X0, X1, XMM7));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "17C821BC");
+  tester.emit(IGen::store32_simd32_gpr64_plus_gpr64(tester.generator(), X0, X1, V7));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "07E821BC");
 
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except(tester, {}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_simd();
@@ -2786,7 +2730,7 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
 
         // pop value into addr1 GPR
         tester.emit(IGen::pop_gpr64(tester.generator(), i));
-        // move to XMM
+        // move to SIMD
         tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
 
         // pop addrs
@@ -2794,7 +2738,7 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
         tester.emit(IGen::pop_gpr64(tester.generator(), j));
 
         // store
-        tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64(tester.generator(), i, j, V0 + k.id()));
+        tester.emit(IGen::store32_simd32_gpr64_plus_gpr64(tester.generator(), i, j, V0 + k.id()));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -2816,14 +2760,14 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
   });
 }
 
-TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
+TEST(ARM64EmitterFloat32, store32_simd32_gpr64_plus_gpr64_plus_s8) {
   auto tester = create_tester();
-  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, V3, -1));
+  tester.emit(IGen::store32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), X0, X1, V3, -1));
   EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030200BD");
 
   int iter = 0;
   for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
       for_each_register_except(tester, {}, [&](Register k) {
         tester.clear();
         tester.emit_push_all_simd();
@@ -2835,7 +2779,7 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
 
         // pop value into addr1 GPR
         tester.emit(IGen::pop_gpr64(tester.generator(), i));
-        // move to XMM
+        // move to SIMD
         tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
 
         // pop addrs
@@ -2845,62 +2789,7 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
         s64 offset = (iter & 1) ? INT8_MAX : INT8_MIN;
 
         // load into k
-        tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), i, j,
-                                                                 V0 + k.id(), offset));
-
-        // move to return
-        tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
-
-        // return!
-        tester.emit_pop_all_gprs(true);
-        tester.emit_pop_all_simd();
-        tester.emit_return();
-
-        // prepare the memory:
-        float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
-
-        // run!
-        EXPECT_EXECUTE_4ARG_NO_CMP(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
-        EXPECT_EXECUTE_IF_NATIVE(tester, {
-          EXPECT_FLOAT_EQ(memory[2], 1.23f);
-          EXPECT_FLOAT_EQ(memory[3], 1.234f);
-          EXPECT_FLOAT_EQ(memory[4], 5.67f);
-        });
-      });
-    });
-  });
-}
-
-TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
-  auto tester = create_tester();
-  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, V3, -1));
-  EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030200BD");
-
-  int iter = 0;
-  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
-    for_each_register_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
-      for_each_register_except(tester, {}, [&](Register k) {
-        tester.clear();
-        tester.emit_push_all_simd();
-        tester.emit_push_all_gprs(true);
-        // push args to the stack
-        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(1)));  // addr2
-        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(0)));  // addr1
-        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(2)));  // value
-
-        // pop value into addr1 GPR
-        tester.emit(IGen::pop_gpr64(tester.generator(), i));
-        // move to XMM
-        tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
-
-        // pop addrs
-        tester.emit(IGen::pop_gpr64(tester.generator(), i));
-        tester.emit(IGen::pop_gpr64(tester.generator(), j));
-
-        s64 offset = (iter & 1) ? INT32_MAX : INT32_MIN;
-
-        // load into k
-        tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), i, j,
+        tester.emit(IGen::store32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), i, j,
                                                                   V0 + k.id(), offset));
 
         // move to return
@@ -2926,7 +2815,62 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
   });
 }
 
-// TEST(ARM64EmitterXmm32, static_load_xmm32) {
+TEST(ARM64EmitterFloat32, store32_simd32_gpr64_plus_gpr64_plus_s32) {
+  auto tester = create_tester();
+  tester.emit(IGen::store32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), X0, X1, V3, -1));
+  EXPECT_EQ(tester.dump_to_hex_string(true), "1000018B310080D2100211CB030200BD");
+
+  int iter = 0;
+  for_each_register_except_stack_and_scratch(tester, [&](Register i) {
+    for_each_gpr_except(tester, {tester.get_stack_reg(), X16, i}, [&](Register j) {
+      for_each_register_except(tester, {}, [&](Register k) {
+        tester.clear();
+        tester.emit_push_all_simd();
+        tester.emit_push_all_gprs(true);
+        // push args to the stack
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(1)));  // addr2
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(0)));  // addr1
+        tester.emit(IGen::push_gpr64(tester.generator(), tester.get_c_abi_arg_reg(2)));  // value
+
+        // pop value into addr1 GPR
+        tester.emit(IGen::pop_gpr64(tester.generator(), i));
+        // move to SIMD
+        tester.emit(IGen::movd_f32_gpr32(tester.generator(), V0 + k.id(), i));
+
+        // pop addrs
+        tester.emit(IGen::pop_gpr64(tester.generator(), i));
+        tester.emit(IGen::pop_gpr64(tester.generator(), j));
+
+        s64 offset = (iter & 1) ? INT32_MAX : INT32_MIN;
+
+        // load into k
+        tester.emit(IGen::store32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), i, j,
+                                                                   V0 + k.id(), offset));
+
+        // move to return
+        tester.emit(IGen::movd_gpr32_f32(tester.generator(), X0, V0 + k.id()));
+
+        // return!
+        tester.emit_pop_all_gprs(true);
+        tester.emit_pop_all_simd();
+        tester.emit_return();
+
+        // prepare the memory:
+        float memory[8] = {0, 0, 1.23f, 3.45f, 5.67f, 0, 0, 0};
+
+        // run!
+        EXPECT_EXECUTE_4ARG_NO_CMP(tester, (u64)memory, 12 - offset, as_u32(1.234f), 0);
+        EXPECT_EXECUTE_IF_NATIVE(tester, {
+          EXPECT_FLOAT_EQ(memory[2], 1.23f);
+          EXPECT_FLOAT_EQ(memory[3], 1.234f);
+          EXPECT_FLOAT_EQ(memory[4], 5.67f);
+        });
+      });
+    });
+  });
+}
+
+// TEST(ARM64EmitterFloat32, static_load_xmm32) {
 //   // TODO - int32 max is not supported in current arm64 impl because
 //   // the assumption is that we don't need that much range
 //   auto tester = create_tester();
@@ -2953,7 +2897,7 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
 //   });
 // }
 
-// TEST(ARM64EmitterXmm32, static_store_xmm32) {
+// TEST(ARM64EmitterFloat32, static_store_xmm32) {
 //   // TODO - int32 max is not supported in current arm64 impl because
 //   // the assumption is that we don't need that much range
 //   auto tester = create_tester();
@@ -2980,13 +2924,13 @@ TEST(ARM64EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
 //   });
 // }
 
-TEST(ARM64EmitterXmm32, ucomiss) {
+TEST(ARM64EmitterFloat32, ucomiss) {
   auto tester = create_tester();
   tester.emit(IGen::cmp_f32_f32(tester.generator(), V13, V14));
   EXPECT_EQ("A0212E1E", tester.dump_to_hex_string(true));
 }
 
-TEST(ARM64EmitterXmm32, mul) {
+TEST(ARM64EmitterFloat32, mul) {
   auto tester = create_tester();
   std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
 
@@ -3018,7 +2962,769 @@ TEST(ARM64EmitterXmm32, mul) {
   }
 }
 
-TEST(ARM64EmitterXmm32, div) {
+namespace {
+// quotient and optional remainder used by IR_IntegerMath
+void emit_div_sequence(CodeTester& tester, bool is_signed, bool wants_remainder) {
+  const Register dest(X0), arg(X1), scratch(X16);
+  auto quotient = wants_remainder ? scratch : dest;
+  tester.emit(is_signed ? IGen::ARM64::sdiv_gpr32(quotient, dest, arg)
+                        : IGen::ARM64::udiv_gpr32(quotient, dest, arg));
+  if (wants_remainder) {
+    tester.emit(IGen::ARM64::msub_gpr32(dest, quotient, arg, dest));
+  }
+  tester.emit(IGen::movsx_r64_r32(tester.generator(), dest, dest));
+  tester.emit_return();
+}
+}  // namespace
+
+#ifdef __aarch64__  // runs the code it emits
+TEST(ARM64EmitterDivide, signed_and_unsigned_division) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  std::vector<std::pair<s32, s32>> cases = {{7, 2},    {-7, 2},        {7, -2},  {-7, -2},
+                                            {1, 1},    {0, 5},         {-1, 3},  {100, 7},
+                                            {-100, 7}, {INT32_MIN, 2}, {-1, -1}, {12345, 100}};
+
+  for (auto [a, b] : cases) {
+    auto in0 = u64(u32(a)), in1 = u64(u32(b));
+
+    tester.clear();
+    emit_div_sequence(tester, true, false);
+    EXPECT_EQ(tester.execute_ret<s64>(in0, in1, 0, 0), s64(a / b)) << a << " / " << b;
+
+    tester.clear();
+    emit_div_sequence(tester, true, true);
+    EXPECT_EQ(tester.execute_ret<s64>(in0, in1, 0, 0), s64(a % b)) << a << " % " << b;
+
+    tester.clear();
+    emit_div_sequence(tester, false, false);
+    EXPECT_EQ(tester.execute_ret<s64>(in0, in1, 0, 0), s64(s32(u32(a) / u32(b))))
+        << u32(a) << " u/ " << u32(b);
+
+    tester.clear();
+    emit_div_sequence(tester, false, true);
+    EXPECT_EQ(tester.execute_ret<s64>(in0, in1, 0, 0), s64(s32(u32(a) % u32(b))))
+        << u32(a) << " u% " << u32(b);
+  }
+  tester.clear();
+}
+#endif  // __aarch64__
+
+// division by zero and signed overflow
+#ifdef __aarch64__  // runs the code it emits
+TEST(ARM64EmitterDivide, division_edge_cases) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  tester.clear();
+  emit_div_sequence(tester, true, false);
+  EXPECT_EQ(tester.execute_ret<s64>(5, 0, 0, 0), 0) << "5 / 0";
+
+  tester.clear();
+  emit_div_sequence(tester, true, true);
+  EXPECT_EQ(tester.execute_ret<s64>(5, 0, 0, 0), 5) << "5 % 0";
+
+  tester.clear();
+  emit_div_sequence(tester, true, false);
+  EXPECT_EQ(tester.execute_ret<s64>(u64(u32(INT32_MIN)), u64(u32(-1)), 0, 0), INT32_MIN)
+      << "INT32_MIN / -1";
+
+  tester.clear();
+  emit_div_sequence(tester, true, true);
+  EXPECT_EQ(tester.execute_ret<s64>(u64(u32(INT32_MIN)), u64(u32(-1)), 0, 0), 0)
+      << "INT32_MIN % -1";
+  tester.clear();
+}
+#endif  // __aarch64__
+
+#ifdef __aarch64__  // runs the code it emits
+TEST(ARM64EmitterVF, blend_and_swizzle) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(512);
+
+  // in0 and in1 are the sources, in2 is the destination
+  auto run = [&tester](const std::array<u32, 4>& a, const std::array<u32, 4>& b,
+                       const Instruction& op, Register output = Register(V5)) {
+    alignas(16) std::array<u32, 4> src1 = a, src2 = b, out = {0, 0, 0, 0};
+    tester.clear();
+    // x3 stays zero so the loads use the base directly
+    tester.emit(IGen::loadvf_gpr64_plus_gpr64(tester.generator(), Register(V3), Register(X0),
+                                              Register(X3)));
+    tester.emit(IGen::loadvf_gpr64_plus_gpr64(tester.generator(), Register(V7), Register(X1),
+                                              Register(X3)));
+    tester.emit(op);
+    tester.emit(
+        IGen::storevf_gpr64_plus_gpr64(tester.generator(), output, Register(X2), Register(X3)));
+    tester.emit_return();
+    tester.execute_ret<u64>((u64)src1.data(), (u64)src2.data(), (u64)out.data(), 0);
+    return out;
+  };
+
+  const std::array<u32, 4> a = {0xa0, 0xa1, 0xa2, 0xa3};
+  const std::array<u32, 4> b = {0xb0, 0xb1, 0xb2, 0xb3};
+
+  for (u8 mask = 0; mask < 16; mask++) {
+    auto got = run(a, b, IGen::ARM64::blend_vf(Register(V5), Register(V3), Register(V7), mask));
+    for (int lane = 0; lane < 4; lane++) {
+      u32 want = (mask & (1 << lane)) ? b[lane] : a[lane];
+      EXPECT_EQ(got[lane], want) << "blend mask " << int(mask) << " lane " << lane;
+    }
+  }
+
+  for (int ctrl = 0; ctrl < 256; ctrl++) {
+    auto got = run(a, b, IGen::ARM64::swizzle_vf(Register(V5), Register(V3), u8(ctrl)));
+    for (int lane = 0; lane < 4; lane++) {
+      EXPECT_EQ(got[lane], a[(ctrl >> (lane * 2)) & 3]) << "swizzle " << ctrl << " lane " << lane;
+    }
+  }
+
+  // destination aliases src1
+  auto same = run(a, b, IGen::ARM64::blend_vf(Register(V3), Register(V3), Register(V7), 0b0101),
+                  Register(V3));
+  for (int lane = 0; lane < 4; lane++) {
+    EXPECT_EQ(same[lane], (0b0101 & (1 << lane)) ? b[lane] : a[lane]);
+  }
+  tester.clear();
+}
+#endif  // __aarch64__
+
+#ifdef __aarch64__  // runs the code it emits
+TEST(ARM64EmitterVF, halfword_shuffles) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(512);
+
+  alignas(16) std::array<u16, 8> src = {0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17};
+
+  auto run = [&tester, &src](const Instruction& op) {
+    alignas(16) std::array<u16, 8> out = {0, 0, 0, 0, 0, 0, 0, 0};
+    tester.clear();
+    tester.emit(IGen::loadvf_gpr64_plus_gpr64(tester.generator(), Register(V3), Register(X0),
+                                              Register(X3)));
+    tester.emit(op);
+    tester.emit(IGen::storevf_gpr64_plus_gpr64(tester.generator(), Register(V5), Register(X1),
+                                               Register(X3)));
+    tester.emit_return();
+    tester.execute_ret<u64>((u64)src.data(), (u64)out.data(), 0, 0);
+    return out;
+  };
+
+  for (int imm = 0; imm < 256; imm++) {
+    auto lo = run(IGen::ARM64::vpshuflw(Register(V5), Register(V3), u8(imm)));
+    for (int i = 0; i < 4; i++) {
+      EXPECT_EQ(lo[i], src[(imm >> (i * 2)) & 3]) << "pshuflw " << imm << " lane " << i;
+      EXPECT_EQ(lo[4 + i], src[4 + i]) << "pshuflw " << imm << " kept lane " << (4 + i);
+    }
+
+    auto hi = run(IGen::ARM64::vpshufhw(Register(V5), Register(V3), u8(imm)));
+    for (int i = 0; i < 4; i++) {
+      EXPECT_EQ(hi[i], src[i]) << "pshufhw " << imm << " kept lane " << i;
+      EXPECT_EQ(hi[4 + i], src[4 + ((imm >> (i * 2)) & 3)]) << "pshufhw " << imm << " lane " << i;
+    }
+  }
+  tester.clear();
+}
+#endif  // __aarch64__
+
+TEST(ARM64EmitterStackPointer, sp_encodings) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  const Register sp(SP), x5(X5), x22(X22);
+  struct {
+    Instruction instr;
+    u32 expected;
+    const char* asm_text;
+  } cases[] = {
+      {IGen::mov_gpr64_gpr64(tester.generator(), x5, sp), 0x910003e5, "mov x5, sp"},
+      {IGen::mov_gpr64_gpr64(tester.generator(), sp, x5), 0x910000bf, "mov sp, x5"},
+      {IGen::add_gpr64_gpr64(tester.generator(), sp, x22), 0x8b3663ff, "add sp, sp, x22"},
+      {IGen::sub_gpr64_gpr64(tester.generator(), sp, x22), 0xcb3663ff, "sub sp, sp, x22"},
+      // regular register encodings
+      {IGen::mov_gpr64_gpr64(tester.generator(), x5, Register(X30)), 0xaa1e03e5, "mov x5, x30"},
+      {IGen::add_gpr64_gpr64(tester.generator(), x5, x22), 0x8b1600a5, "add x5, x5, x22"},
+      {IGen::sub_gpr64_gpr64(tester.generator(), x5, x22), 0xcb1600a5, "sub x5, x5, x22"},
+  };
+
+  for (auto& c : cases) {
+    tester.clear();
+    tester.emit(c.instr);
+    ASSERT_EQ(tester.size(), 4) << c.asm_text;
+    EXPECT_EQ(tester.read<u32>(0), c.expected) << c.asm_text;
+  }
+  tester.clear();
+}
+
+TEST(ARM64EmitterCompare, cmp_encodings) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  struct {
+    Register a, b;
+    u32 expected;
+  } cases[] = {
+      {Register(X1), Register(X2), 0xeb02003f},  {Register(X0), Register(X0), 0xeb00001f},
+      {Register(X9), Register(X21), 0xeb15013f}, {Register(X28), Register(X7), 0xeb07039f},
+      {Register(V1), Register(V2), 0x1e222020},  {Register(V13), Register(V14), 0x1e2e21a0},
+  };
+
+  for (auto& c : cases) {
+    tester.clear();
+    if (c.a.is_gpr(InstructionSet::ARM64)) {
+      tester.emit(IGen::cmp_gpr64_gpr64(tester.generator(), c.a, c.b));
+    } else {
+      tester.emit(IGen::cmp_f32_f32(tester.generator(), c.a, c.b));
+    }
+    EXPECT_EQ(tester.read<u32>(0), c.expected);
+  }
+  tester.clear();
+}
+
+TEST(ARM64ObjectGenerator, branch_patching) {
+  TypeSystem ts;
+  ts.add_builtin_types(GameVersion::Jak1);
+
+  ObjectGenerator gen(GameVersion::Jak1, InstructionSet::ARM64);
+  FunctionDebugInfo debug;
+  auto func = gen.add_function_to_seg(MAIN_SEGMENT, &debug);
+
+  auto ir0 = gen.add_ir(func);
+  auto fwd = gen.add_instr(IGen::jmp_imm(gen), ir0);
+  gen.link_instruction_jump(fwd, gen.get_future_ir_record_in_same_func(ir0, 2));
+
+  auto ir1 = gen.add_ir(func);
+  gen.add_instr(IGen::mov_gpr64_gpr64(gen, Register(X0), Register(X1)), ir1);
+
+  auto ir2 = gen.add_ir(func);
+  auto back = gen.add_instr(IGen::je_imm(gen), ir2);
+  gen.link_instruction_jump(back, gen.get_future_ir_record_in_same_func(ir2, 0));
+  gen.add_instr(IGen::ret(gen), ir2);
+
+  auto obj = gen.generate_data_v3(&ts);
+
+  // forward skips one instruction, conditional jumps back to the start
+  std::vector<u32> expected = {0x14000002, 0xaa0103e0, 0x54ffffc0, 0xd65f03c0};
+  ASSERT_EQ(debug.generated_code.size(), expected.size() * 4);
+  for (size_t i = 0; i < expected.size(); i++) {
+    u32 word;
+    memcpy(&word, debug.generated_code.data() + i * 4, 4);
+    EXPECT_EQ(word, expected[i]) << "word " << i;
+  }
+}
+
+TEST(ARM64ObjectGenerator, symbol_link) {
+  TypeSystem ts;
+  ts.add_builtin_types(GameVersion::Jak1);
+
+  ObjectGenerator gen(GameVersion::Jak1, InstructionSet::ARM64);
+  const auto& info = reg_info(InstructionSet::ARM64);
+  FunctionDebugInfo debug;
+  auto func = gen.add_function_to_seg(MAIN_SEGMENT, &debug);
+
+  auto ir0 = gen.add_ir(func);
+  auto mov = gen.add_instr(IGen::ARM64::mov_gpr32_link_imm32(X16, LINK_SYM_NO_OFFSET_FLAG), ir0);
+  gen.link_instruction_symbol_mem(mov, "*foo*");
+  gen.add_instr(IGen::ARM64::add_gpr64_gpr64_sxtw(X16, info.get_st_reg(), X16), ir0);
+  gen.add_instr(IGen::load32u_gpr64_gpr64_plus_gpr64(gen, Register(X3), info.get_offset_reg(), X16),
+                ir0);
+
+  auto obj = gen.generate_data_v3(&ts);
+
+  // use both halves of the movz/movk pair
+  std::vector<u32> expected = {0x5297ddf0, 0x72a175b0, 0x8b30c2b0, 0xb870eac3};
+  ASSERT_EQ(debug.generated_code.size(), expected.size() * 4);
+  for (size_t i = 0; i < expected.size(); i++) {
+    u32 word;
+    memcpy(&word, debug.generated_code.data() + i * 4, 4);
+    EXPECT_EQ(word, expected[i]) << "word " << i;
+  }
+
+  const auto& link = obj.link_tables.at(MAIN_SEGMENT);
+  ASSERT_GE(link.size(), 1u);
+  EXPECT_EQ(link.at(0), LINK_ARM64_SYMBOL_MOV32);
+  EXPECT_EQ(std::string((const char*)link.data() + 1), "*foo*");
+  u32 count, patch_loc;
+  memcpy(&count, link.data() + 1 + 6, 4);
+  memcpy(&patch_loc, link.data() + 1 + 6 + 4, 4);
+  EXPECT_EQ(count, 1u);
+  EXPECT_EQ(patch_loc, debug.offset_in_seg);
+
+  // round trip through the runtime linker
+  auto seg = obj.segment_data.at(MAIN_SEGMENT);
+  EXPECT_EQ(arm64_read_mov32((u32*)(seg.data() + patch_loc)), LINK_SYM_NO_OFFSET_FLAG);
+  arm64_write_mov32((u32*)(seg.data() + patch_loc), u32(-0x1234));
+  EXPECT_EQ(arm64_read_mov32((u32*)(seg.data() + patch_loc)), u32(-0x1234));
+}
+
+TEST(ARM64ObjectGenerator, other_segment_link) {
+  TypeSystem ts;
+  ts.add_builtin_types(GameVersion::Jak1);
+
+  ObjectGenerator gen(GameVersion::Jak1, InstructionSet::ARM64);
+  FunctionDebugInfo caller_debug, callee_debug;
+  auto caller = gen.add_function_to_seg(MAIN_SEGMENT, &caller_debug);
+  auto callee = gen.add_function_to_seg(DEBUG_SEGMENT, &callee_debug);
+
+  auto ir0 = gen.add_ir(caller);
+  auto mov = gen.add_instr(IGen::ARM64::mov_gpr32_link_imm32(Register(X0), 0), ir0);
+  gen.link_instruction_to_function(mov, callee);
+  gen.add_instr(IGen::ret(gen), ir0);
+
+  auto ir1 = gen.add_ir(callee);
+  gen.add_instr(IGen::ret(gen), ir1);
+
+  auto obj = gen.generate_data_v3(&ts);
+
+  std::vector<u32> expected = {0x52800000, 0x72a00000, 0xd65f03c0};
+  ASSERT_EQ(caller_debug.generated_code.size(), expected.size() * 4);
+  for (size_t i = 0; i < expected.size(); i++) {
+    u32 word;
+    memcpy(&word, caller_debug.generated_code.data() + i * 4, 4);
+    EXPECT_EQ(word, expected[i]) << "word " << i;
+  }
+
+  // skip the type pointer links
+  const auto& link = obj.link_tables.at(MAIN_SEGMENT);
+  size_t at = 0;
+  while (at < link.size() && link[at] != LINK_ARM64_OTHER_SEG_MOV32) {
+    at++;
+  }
+  ASSERT_LT(at, link.size()) << "ARM64 cross-segment link is missing";
+  EXPECT_EQ(link.at(at + 1), DEBUG_SEGMENT);
+  u32 target, patch_loc;
+  memcpy(&target, link.data() + at + 2, 4);
+  memcpy(&patch_loc, link.data() + at + 6, 4);
+  EXPECT_EQ(target, callee_debug.offset_in_seg);
+  EXPECT_EQ(patch_loc, caller_debug.offset_in_seg);
+}
+
+TEST(ARM64RegisterAllocator, register_classes) {
+  AllocationInput in;
+  in.instr_set = InstructionSet::ARM64;
+  in.max_vars = 2;
+  in.function_name = "arm64-regalloc-test";
+
+  IRegister gpr{RegClass::GPR_64, 0};
+  IRegister flt{RegClass::FLOAT, 1};
+  IRegister vf{RegClass::VECTOR_FLOAT, 2};
+  in.max_vars = 3;
+
+  RegAllocInstr write;
+  write.write = {gpr, flt, vf};
+  in.add_instruction(write);
+
+  RegAllocInstr read;
+  read.read = {gpr, flt, vf};
+  read.fallthrough = false;
+  in.add_instruction(read);
+
+  const auto& info = reg_info(InstructionSet::ARM64);
+  for (bool use_v2 : {false, true}) {
+    auto result = use_v2 ? allocate_registers_v2(in) : allocate_registers(in);
+    ASSERT_TRUE(result.ok) << (use_v2 ? "v2" : "v1");
+
+    auto check = [&info, use_v2](Register r, bool want_simd, const char* what) {
+      EXPECT_EQ(r.is_128bit_simd(InstructionSet::ARM64), want_simd)
+          << (use_v2 ? "v2 " : "v1 ") << what << " has id " << r.id();
+      EXPECT_EQ(r.is_gpr(InstructionSet::ARM64), !want_simd)
+          << (use_v2 ? "v2 " : "v1 ") << what << " has id " << r.id();
+      EXPECT_FALSE(info.get_info(r).special)
+          << (use_v2 ? "v2 " : "v1 ") << what << " is a special register";
+    };
+    check(result.ass_as_ranges.at(0).get(0).reg, false, "gpr");
+    check(result.ass_as_ranges.at(1).get(0).reg, true, "float");
+    check(result.ass_as_ranges.at(2).get(0).reg, true, "vector float");
+  }
+}
+
+TEST(ARM64RegisterAllocator, uses_high_simd_registers) {
+  AllocationInput in;
+  in.instr_set = InstructionSet::ARM64;
+  in.max_vars = 17;
+  in.function_name = "arm64-high-simd-reg-test";
+
+  RegAllocInstr write;
+  RegAllocInstr read;
+  for (int id = 0; id < in.max_vars; id++) {
+    IRegister reg{RegClass::FLOAT, id};
+    write.write.push_back(reg);
+    read.read.push_back(reg);
+  }
+  in.add_instruction(write);
+  read.fallthrough = false;
+  in.add_instruction(read);
+
+  for (bool use_v2 : {false, true}) {
+    const auto result = use_v2 ? allocate_registers_v2(in) : allocate_registers(in);
+    ASSERT_TRUE(result.ok) << (use_v2 ? "v2" : "v1");
+
+    bool used_high_reg = false;
+    for (int id = 0; id < in.max_vars; id++) {
+      const auto& assignment = result.ass_as_ranges.at(id).get(0);
+      ASSERT_EQ(assignment.kind, Assignment::Kind::REGISTER);
+      EXPECT_NE(assignment.reg, Register(V16));
+      used_high_reg |= assignment.reg.id() >= V17;
+    }
+    EXPECT_TRUE(used_high_reg) << (use_v2 ? "v2" : "v1");
+  }
+}
+
+TEST(ARM64RegisterAllocator, function_calls_use_preserved_width) {
+  RegVal function({RegClass::GPR_64, 0}, TypeSpec("function"));
+  RegVal result({RegClass::GPR_64, 1}, TypeSpec("object"));
+
+  IR_FunctionCall arm_call(&function, &result, {}, {}, std::nullopt);
+  auto arm_rai = arm_call.to_rai();
+  ASSERT_TRUE(arm_rai.is_call);
+  const auto& arm_info = reg_info(InstructionSet::ARM64);
+  for (int id = V8; id <= V15; id++) {
+    Register reg(id);
+    EXPECT_EQ(arm_info.get_info(reg).call_preserved_bytes, 4);
+    EXPECT_TRUE(arm_info.is_preserved_across_call(reg, RegClass::FLOAT));
+    EXPECT_FALSE(arm_info.is_preserved_across_call(reg, RegClass::VECTOR_FLOAT));
+    EXPECT_FALSE(arm_info.is_preserved_across_call(reg, RegClass::INT_128));
+    EXPECT_FALSE(arm_rai.clobbers(reg, RegClass::FLOAT, InstructionSet::ARM64));
+    EXPECT_TRUE(arm_rai.clobbers(reg, RegClass::VECTOR_FLOAT, InstructionSet::ARM64));
+    EXPECT_TRUE(arm_rai.clobbers(reg, RegClass::INT_128, InstructionSet::ARM64));
+  }
+  EXPECT_TRUE(arm_rai.clobbers(Register(V7), RegClass::FLOAT, InstructionSet::ARM64));
+  EXPECT_TRUE(arm_rai.clobbers(Register(V17), RegClass::FLOAT, InstructionSet::ARM64));
+  EXPECT_TRUE(arm_rai.clobbers(Register(V31), RegClass::FLOAT, InstructionSet::ARM64));
+  EXPECT_FALSE(arm_rai.clobbers(Register(X19), RegClass::GPR_64, InstructionSet::ARM64));
+  EXPECT_TRUE(arm_rai.clobbers(Register(X0), RegClass::GPR_64, InstructionSet::ARM64));
+
+  IR_FunctionCall x86_call(&function, &result, {}, {}, std::nullopt);
+  auto x86_rai = x86_call.to_rai();
+  ASSERT_TRUE(x86_rai.is_call);
+  EXPECT_FALSE(x86_rai.clobbers(Register(XMM8), RegClass::VECTOR_FLOAT, InstructionSet::X86));
+  EXPECT_TRUE(x86_rai.clobbers(Register(XMM7), RegClass::VECTOR_FLOAT, InstructionSet::X86));
+}
+
+namespace {
+RegAllocInstr arm64_call_for_regalloc_test() {
+  RegAllocInstr call;
+  call.is_call = true;
+  return call;
+}
+}  // namespace
+
+TEST(ARM64RegisterAllocator, live_across_call_uses_compatible_storage) {
+  AllocationInput in;
+  in.instr_set = InstructionSet::ARM64;
+  in.max_vars = 4;
+  in.function_name = "arm64-saved-reg-test";
+
+  IRegister gpr{RegClass::GPR_64, 0};
+  IRegister flt{RegClass::FLOAT, 1};
+  IRegister vf{RegClass::VECTOR_FLOAT, 2};
+  IRegister i128{RegClass::INT_128, 3};
+
+  RegAllocInstr write;
+  write.write = {gpr, flt, vf, i128};
+  in.add_instruction(write);
+
+  in.add_instruction(arm64_call_for_regalloc_test());
+
+  RegAllocInstr read;
+  read.read = {gpr, flt, vf, i128};
+  read.fallthrough = false;
+  in.add_instruction(read);
+
+  const auto& info = reg_info(InstructionSet::ARM64);
+  for (bool use_v2 : {false, true}) {
+    auto result = use_v2 ? allocate_registers_v2(in) : allocate_registers(in);
+    ASSERT_TRUE(result.ok) << (use_v2 ? "v2" : "v1");
+
+    for (int var : {gpr.id, flt.id}) {
+      EXPECT_EQ(result.ass_as_ranges.at(var).get(1).kind, Assignment::Kind::REGISTER)
+          << (use_v2 ? "v2" : "v1");
+      Register reg = result.ass_as_ranges.at(var).get(1).reg;
+      EXPECT_TRUE(info.get_info(reg).saved) << (use_v2 ? "v2 " : "v1 ") << info.get_info(reg).name;
+      EXPECT_NE(std::find(result.used_saved_regs.begin(), result.used_saved_regs.end(), reg),
+                result.used_saved_regs.end())
+          << (use_v2 ? "v2 " : "v1 ") << info.get_info(reg).name;
+    }
+
+    for (int var : {vf.id, i128.id}) {
+      const auto& assignment = result.ass_as_ranges.at(var).get(1);
+      EXPECT_EQ(assignment.kind, Assignment::Kind::STACK) << (use_v2 ? "v2" : "v1");
+      EXPECT_EQ(assignment.stack_slot & 1, 0) << (use_v2 ? "v2" : "v1");
+    }
+  }
+}
+
+TEST(ARM64RegisterAllocator, reuses_disjoint_spill_slots) {
+  auto make_input = [](RegClass reg_class, bool overlap) {
+    AllocationInput in;
+    in.instr_set = InstructionSet::ARM64;
+    in.max_vars = 2;
+    in.function_name = "spill-slot-reuse-test";
+
+    IRegister first{reg_class, 0};
+    IRegister second{reg_class, 1};
+
+    RegAllocInstr write_first;
+    write_first.write = {first};
+    in.add_instruction(write_first);
+
+    if (overlap) {
+      RegAllocInstr write_second;
+      write_second.write = {second};
+      in.add_instruction(write_second);
+      in.add_instruction(arm64_call_for_regalloc_test());
+
+      RegAllocInstr read_both;
+      read_both.read = {first, second};
+      read_both.fallthrough = false;
+      in.add_instruction(read_both);
+    } else {
+      in.add_instruction(arm64_call_for_regalloc_test());
+
+      RegAllocInstr read_first;
+      read_first.read = {first};
+      in.add_instruction(read_first);
+
+      RegAllocInstr write_second;
+      write_second.write = {second};
+      in.add_instruction(write_second);
+      in.add_instruction(arm64_call_for_regalloc_test());
+
+      RegAllocInstr read_second;
+      read_second.read = {second};
+      read_second.fallthrough = false;
+      in.add_instruction(read_second);
+    }
+    return in;
+  };
+
+  for (auto reg_class : {RegClass::INT_128, RegClass::VECTOR_FLOAT}) {
+    auto disjoint = allocate_registers_v2(make_input(reg_class, false));
+    ASSERT_TRUE(disjoint.ok);
+    EXPECT_EQ(disjoint.stack_slots_for_spills, 2);
+    ASSERT_EQ(disjoint.ass_as_ranges.at(0).get(1).kind, Assignment::Kind::STACK);
+    ASSERT_EQ(disjoint.ass_as_ranges.at(1).get(4).kind, Assignment::Kind::STACK);
+    EXPECT_EQ(disjoint.ass_as_ranges.at(0).get(1).stack_slot,
+              disjoint.ass_as_ranges.at(1).get(4).stack_slot);
+
+    auto overlapping = allocate_registers_v2(make_input(reg_class, true));
+    ASSERT_TRUE(overlapping.ok);
+    EXPECT_EQ(overlapping.stack_slots_for_spills, 4);
+    ASSERT_EQ(overlapping.ass_as_ranges.at(0).get(2).kind, Assignment::Kind::STACK);
+    ASSERT_EQ(overlapping.ass_as_ranges.at(1).get(2).kind, Assignment::Kind::STACK);
+    EXPECT_NE(overlapping.ass_as_ranges.at(0).get(2).stack_slot,
+              overlapping.ass_as_ranges.at(1).get(2).stack_slot);
+  }
+
+  AllocationInput touching;
+  touching.instr_set = InstructionSet::ARM64;
+  touching.max_vars = 2;
+  touching.function_name = "touching-spill-slot-test";
+  IRegister first{RegClass::INT_128, 0};
+  IRegister second{RegClass::INT_128, 1};
+  RegAllocInstr write_first;
+  write_first.write = {first};
+  touching.add_instruction(write_first);
+  touching.add_instruction(arm64_call_for_regalloc_test());
+  RegAllocInstr handoff;
+  handoff.read = {first};
+  handoff.write = {second};
+  touching.add_instruction(handoff);
+  touching.add_instruction(arm64_call_for_regalloc_test());
+  RegAllocInstr read_second;
+  read_second.read = {second};
+  read_second.fallthrough = false;
+  touching.add_instruction(read_second);
+  auto touching_result = allocate_registers_v2(touching);
+  ASSERT_TRUE(touching_result.ok);
+  EXPECT_EQ(touching_result.stack_slots_for_spills, 4);
+  EXPECT_NE(touching_result.ass_as_ranges.at(0).get(1).stack_slot,
+            touching_result.ass_as_ranges.at(1).get(3).stack_slot);
+
+  auto address_taken = make_input(RegClass::INT_128, false);
+  address_taken.force_on_stack_regs = {0, 1};
+  auto address_taken_result = allocate_registers_v2(address_taken);
+  ASSERT_TRUE(address_taken_result.ok);
+  EXPECT_EQ(address_taken_result.stack_slots_for_spills, 4);
+  ASSERT_EQ(address_taken_result.ass_as_ranges.at(0).get(1).kind, Assignment::Kind::STACK);
+  ASSERT_EQ(address_taken_result.ass_as_ranges.at(1).get(4).kind, Assignment::Kind::STACK);
+  EXPECT_NE(address_taken_result.ass_as_ranges.at(0).get(1).stack_slot,
+            address_taken_result.ass_as_ranges.at(1).get(4).stack_slot);
+
+  address_taken.instr_set = InstructionSet::X86;
+  auto x86 = allocate_registers_v2(address_taken);
+  ASSERT_TRUE(x86.ok);
+  EXPECT_EQ(x86.stack_slots_for_spills, 4);
+  ASSERT_EQ(x86.ass_as_ranges.at(0).get(1).kind, Assignment::Kind::STACK);
+  ASSERT_EQ(x86.ass_as_ranges.at(1).get(4).kind, Assignment::Kind::STACK);
+  EXPECT_NE(x86.ass_as_ranges.at(0).get(1).stack_slot, x86.ass_as_ranges.at(1).get(4).stack_slot);
+}
+
+TEST(ARM64RegisterAllocator, full_width_call_arguments_and_returns) {
+  AllocationInput in;
+  in.instr_set = InstructionSet::ARM64;
+  in.max_vars = 2;
+  in.function_name = "arm64-vector-call-boundary-test";
+
+  IRegister arg{RegClass::VECTOR_FLOAT, 0};
+  IRegister ret{RegClass::VECTOR_FLOAT, 1};
+
+  RegAllocInstr write;
+  write.write = {arg};
+  in.add_instruction(write);
+
+  auto call = arm64_call_for_regalloc_test();
+  call.read = {arg};
+  call.write = {ret};
+  in.add_instruction(call);
+
+  RegAllocInstr read;
+  read.read = {ret};
+  read.fallthrough = false;
+  in.add_instruction(read);
+
+  in.constraints.push_back({arg, 1, false, Register(V8)});
+  in.constraints.push_back({ret, 1, false, Register(V9)});
+
+  for (bool use_v2 : {false, true}) {
+    auto result = use_v2 ? allocate_registers_v2(in) : allocate_registers(in);
+    ASSERT_TRUE(result.ok) << (use_v2 ? "v2" : "v1");
+    EXPECT_EQ(result.ass_as_ranges.at(arg.id).get(1).reg, Register(V8));
+    EXPECT_EQ(result.ass_as_ranges.at(ret.id).get(1).reg, Register(V9));
+  }
+}
+
+TEST(ARM64RegisterAllocator, saved_simd_constraints_match_value_width) {
+  for (auto reg_class : {RegClass::FLOAT, RegClass::VECTOR_FLOAT, RegClass::INT_128}) {
+    AllocationInput in;
+    in.instr_set = InstructionSet::ARM64;
+    in.max_vars = 1;
+    in.function_name = "arm64-saved-simd-constraint-test";
+
+    IRegister value{reg_class, 0};
+    RegAllocInstr write;
+    write.write = {value};
+    in.add_instruction(write);
+    in.add_instruction(arm64_call_for_regalloc_test());
+    RegAllocInstr read;
+    read.read = {value};
+    read.fallthrough = false;
+    in.add_instruction(read);
+    in.constraints.push_back({value, 0, true, Register(V8)});
+
+    for (bool use_v2 : {false, true}) {
+      auto result = use_v2 ? allocate_registers_v2(in) : allocate_registers(in);
+      const bool scalar = reg_class == RegClass::FLOAT;
+      EXPECT_EQ(result.ok, scalar) << (use_v2 ? "v2" : "v1") << " class " << int(reg_class);
+    }
+  }
+}
+
+TEST(ARM64RegisterInfo, role_and_return_registers) {
+  const auto& info = reg_info(InstructionSet::ARM64);
+  EXPECT_EQ(info.get_process_reg(), Register(X20));
+  EXPECT_EQ(info.get_st_reg(), Register(X21));
+  EXPECT_EQ(info.get_offset_reg(), Register(X22));
+  EXPECT_EQ(info.get_exec_base_reg(), Register(X27));
+  EXPECT_EQ(info.get_gpr_ret_reg(), Register(X0));
+  EXPECT_EQ(info.get_simd_ret_reg(), Register(V0));
+}
+
+TEST(ARM64RegisterInfo, gpr_and_vector_ids) {
+  EXPECT_NE(Register(X0), Register(V0));
+  EXPECT_TRUE(Register(X0).is_gpr(InstructionSet::ARM64));
+  EXPECT_FALSE(Register(X0).is_128bit_simd(InstructionSet::ARM64));
+  EXPECT_TRUE(Register(V0).is_128bit_simd(InstructionSet::ARM64));
+  EXPECT_FALSE(Register(V0).is_gpr(InstructionSet::ARM64));
+}
+
+TEST(ARM64RegisterInfo, allocation_orders) {
+  auto& info = const_cast<RegisterInfo&>(reg_info(InstructionSet::ARM64));
+  for (auto r : info.get_gpr_alloc_order()) {
+    EXPECT_FALSE(info.get_info(r).special) << info.get_info(r).name << " is special";
+  }
+  for (auto r : info.get_simd_alloc_order()) {
+    EXPECT_FALSE(info.get_info(r).special) << info.get_info(r).name << " is special";
+  }
+  EXPECT_EQ(info.get_simd_alloc_order().size(), 31);
+  for (int id = V0; id <= V31; id++) {
+    const Register reg(id);
+    const bool allocatable =
+        std::find(info.get_simd_alloc_order().begin(), info.get_simd_alloc_order().end(), reg) !=
+        info.get_simd_alloc_order().end();
+    EXPECT_EQ(allocatable, reg != Register(V16)) << info.get_info(reg).name;
+  }
+  for (auto r : info.get_gpr_spill_alloc_order()) {
+    EXPECT_FALSE(info.get_info(r).special) << info.get_info(r).name << " is special";
+  }
+  // keep x16 through x18 out of allocation
+  EXPECT_TRUE(info.get_info(Register(X16)).special);
+  EXPECT_TRUE(info.get_info(Register(X17)).special);
+  EXPECT_TRUE(info.get_info(Register(X18)).special);
+  EXPECT_TRUE(info.get_info(Register(X20)).special);
+  EXPECT_TRUE(info.get_info(Register(X21)).special);
+  EXPECT_TRUE(info.get_info(Register(X22)).special);
+  EXPECT_TRUE(info.get_info(Register(X27)).special);
+  EXPECT_TRUE(info.get_info(Register(X28)).special);
+  EXPECT_TRUE(info.get_info(Register(X29)).special);
+  EXPECT_TRUE(info.get_info(Register(X30)).special);
+  EXPECT_TRUE(info.get_info(Register(V16)).special);
+}
+
+TEST(ARM64RegisterInfo, temporary_allocation_orders) {
+  auto& info = const_cast<RegisterInfo&>(reg_info(InstructionSet::ARM64));
+  for (auto r : info.get_gpr_temp_alloc_order()) {
+    EXPECT_FALSE(info.get_info(r).saved) << info.get_info(r).name << " is callee-saved";
+  }
+  for (auto r : info.get_simd_temp_alloc_order()) {
+    EXPECT_FALSE(info.get_info(r).saved) << info.get_info(r).name << " is callee-saved";
+    EXPECT_FALSE(info.get_info(r).special) << info.get_info(r).name << " is special";
+  }
+  EXPECT_EQ(info.get_simd_temp_alloc_order().size(), 23);
+}
+
+TEST(ARM64CodeTester, saves_all_simd_registers) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(1024);
+  EXPECT_EQ(tester.get_simd_reg_count(), 32);
+
+  tester.emit_push_all_simd();
+  tester.emit_pop_all_simd();
+
+  EXPECT_EQ(tester.size(), 512);
+  EXPECT_EQ(tester.dump_to_asm_string(),
+            "\033[2m<push all SIMDs>\033[0m\n\033[2m<pop all SIMDs>\033[0m\n");
+}
+
+TEST(ARM64RegisterInfo, saved_allocation_orders) {
+  for (auto target_set : {InstructionSet::ARM64, InstructionSet::X86}) {
+    const auto& info = reg_info(target_set);
+    auto all_saved = info.get_all_saved();
+    auto is_in_saved_list = [&all_saved](Register r) {
+      return std::find(all_saved.begin(), all_saved.end(), r) != all_saved.end();
+    };
+    for (int id = 0; id < RegisterInfo::N_REGS; id++) {
+      Register r(id);
+      if (info.get_info(r).saved) {
+        EXPECT_TRUE(is_in_saved_list(r))
+            << info.get_info(r).name << " is missing from the prologue save list";
+      }
+    }
+    for (auto r : info.get_gpr_alloc_order()) {
+      if (info.get_info(r).saved) {
+        EXPECT_TRUE(is_in_saved_list(r))
+            << info.get_info(r).name << " is missing from the prologue save list";
+      }
+    }
+    for (auto r : info.get_simd_alloc_order()) {
+      if (info.get_info(r).saved) {
+        EXPECT_TRUE(is_in_saved_list(r))
+            << info.get_info(r).name << " is missing from the prologue save list";
+      }
+    }
+  }
+}
+
+TEST(ARM64EmitterFloat32, div) {
   auto tester = create_tester();
   std::vector<float> vals = {1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
 
@@ -3050,7 +3756,7 @@ TEST(ARM64EmitterXmm32, div) {
   }
 }
 
-TEST(ARM64EmitterXmm32, add) {
+TEST(ARM64EmitterFloat32, add) {
   auto tester = create_tester();
   std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
   for (auto f : vals) {
@@ -3081,7 +3787,7 @@ TEST(ARM64EmitterXmm32, add) {
   }
 }
 
-TEST(ARM64EmitterXmm32, sub) {
+TEST(ARM64EmitterFloat32, sub) {
   auto tester = create_tester();
   std::vector<float> vals = {0.f, 1.f, 0.2f, -1.f, 1235423.2f, -3457343.3f, 7.545f};
 
@@ -3113,14 +3819,14 @@ TEST(ARM64EmitterXmm32, sub) {
   }
 }
 
-TEST(ARM64EmitterXmm32, float_to_int) {
+TEST(ARM64EmitterFloat32, float_to_int) {
   auto tester = create_tester();
   std::vector<float> vals = {0.f,    1.f,  0.2f, -1.f,  1235423.2f, -3457343.3f,
                              7.545f, 0.1f, 0.9f, -0.1f, -0.9f};
 
   for (auto g : vals) {
     for_each_register_except(tester, {}, [&](Register i) {
-      for_each_register_except(tester, {X0, i}, [&](Register j) {
+      for_each_gpr_except(tester, {X0, i}, [&](Register j) {
         s32 expected = g;
         tester.clear();
         tester.emit_push_all_simd();
@@ -3141,13 +3847,13 @@ TEST(ARM64EmitterXmm32, float_to_int) {
   }
 }
 
-TEST(ARM64EmitterXmm32, int_to_float) {
+TEST(ARM64EmitterFloat32, int_to_float) {
   auto tester = create_tester();
   std::vector<s64> vals = {0, 1, -1, INT32_MAX, -3457343, 7, INT32_MIN};
 
   for (auto g : vals) {
     for_each_register_except(tester, {}, [&](Register i) {
-      for_each_register_except(tester, {i}, [&](Register j) {
+      for_each_gpr_except(tester, {i}, [&](Register j) {
         float expected = g;
         tester.clear();
         tester.emit_push_all_simd();
@@ -3205,3 +3911,235 @@ TEST(ARM64EmitterXmm32, int_to_float) {
 //   }
 //   // todo - finish this test
 // }
+
+TEST(ARM64RegisterInfo, saved_register_list) {
+  auto& info = const_cast<RegisterInfo&>(reg_info(InstructionSet::ARM64));
+  for (auto r : info.get_all_saved()) {
+    EXPECT_TRUE(info.get_info(r).saved) << info.get_info(r).name << " is not marked as saved";
+    EXPECT_FALSE(info.get_info(r).special) << info.get_info(r).name << " is special";
+  }
+}
+
+TEST(ARM64RegisterInfo, role_and_argument_registers) {
+  const auto& x86 = reg_info(InstructionSet::X86);
+  const auto& arm = reg_info(InstructionSet::ARM64);
+
+  EXPECT_EQ(x86.get_process_reg(), Register(R13));
+  EXPECT_EQ(arm.get_process_reg(), Register(X20));
+  EXPECT_EQ(x86.get_st_reg(), Register(R14));
+  EXPECT_EQ(arm.get_st_reg(), Register(X21));
+  EXPECT_EQ(x86.get_offset_reg(), Register(R15));
+  EXPECT_EQ(arm.get_offset_reg(), Register(X22));
+  EXPECT_EQ(x86.get_stack_reg(), Register(RSP));
+  EXPECT_EQ(arm.get_stack_reg(), Register(SP));
+
+  const Register x86_cargs[] = {Register(RDI), Register(RSI), Register(RDX), Register(RCX)};
+  const Register arm_cargs[] = {Register(X0), Register(X1), Register(X2), Register(X3)};
+  for (int i = 0; i < 4; i++) {
+    EXPECT_EQ(x86.get_gpr_arg_reg(i), x86_cargs[i]) << "carg" << i;
+    EXPECT_EQ(arm.get_gpr_arg_reg(i), arm_cargs[i]) << "carg" << i;
+  }
+}
+
+TEST(ARM64RegisterInfo, x86_role_and_return_registers) {
+  const auto& info = reg_info(InstructionSet::X86);
+  EXPECT_EQ(info.get_process_reg(), Register(R13));
+  EXPECT_EQ(info.get_st_reg(), Register(R14));
+  EXPECT_EQ(info.get_offset_reg(), Register(R15));
+  EXPECT_EQ(info.get_gpr_ret_reg(), Register(RAX));
+  EXPECT_EQ(info.get_simd_ret_reg(), Register(XMM0));
+  for (int id = XMM15 + 1; id < RegisterInfo::N_REGS; id++) {
+    EXPECT_TRUE(info.get_info(Register(id)).special);
+  }
+}
+
+TEST(ARM64EmitterIntegerMath, immediate_shift_boundaries) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  const Register x9(X9);
+  struct {
+    u8 sa;
+    u32 shl, shr, sar;
+  } cases[] = {
+      {0, 0xd340fd29, 0xd340fd29, 0x9340fd29},  {1, 0xd37ff929, 0xd341fd29, 0x9341fd29},
+      {31, 0xd3618129, 0xd35ffd29, 0x935ffd29}, {32, 0xd3607d29, 0xd360fd29, 0x9360fd29},
+      {62, 0xd3420529, 0xd37efd29, 0x937efd29}, {63, 0xd3410129, 0xd37ffd29, 0x937ffd29},
+  };
+
+  for (auto& c : cases) {
+    tester.clear();
+    tester.emit(IGen::shl_gpr64_u8(tester.generator(), x9, c.sa));
+    EXPECT_EQ(tester.read<u32>(0), c.shl) << "lsl x9, x9, #" << int(c.sa);
+    tester.clear();
+    tester.emit(IGen::shr_gpr64_u8(tester.generator(), x9, c.sa));
+    EXPECT_EQ(tester.read<u32>(0), c.shr) << "lsr x9, x9, #" << int(c.sa);
+    tester.clear();
+    tester.emit(IGen::sar_gpr64_u8(tester.generator(), x9, c.sa));
+    EXPECT_EQ(tester.read<u32>(0), c.sar) << "asr x9, x9, #" << int(c.sa);
+  }
+  tester.clear();
+}
+
+TEST(ARM64EmitterVF, vector_shift_amounts) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  const Register v1(V1), v2(V2);
+  struct {
+    Instruction instr;
+    u32 expected;
+    const char* asm_text;
+  } cases[] = {
+      // 32-bit right shifts use 1 through 32
+      {IGen::pw_sra(tester.generator(), v1, v2, 1), 0x4f3f0441, "sshr.4s v1, v2, #1"},
+      {IGen::pw_sra(tester.generator(), v1, v2, 6), 0x4f3a0441, "sshr.4s v1, v2, #6"},
+      {IGen::pw_sra(tester.generator(), v1, v2, 10), 0x4f360441, "sshr.4s v1, v2, #10"},
+      {IGen::pw_sra(tester.generator(), v1, v2, 16), 0x4f300441, "sshr.4s v1, v2, #16"},
+      {IGen::pw_sra(tester.generator(), v1, v2, 31), 0x4f210441, "sshr.4s v1, v2, #31"},
+      {IGen::pw_sra(tester.generator(), v1, v2, 32), 0x4f200441, "sshr.4s v1, v2, #32"},
+      {IGen::pw_srl(tester.generator(), v1, v2, 1), 0x6f3f0441, "ushr.4s v1, v2, #1"},
+      {IGen::pw_srl(tester.generator(), v1, v2, 6), 0x6f3a0441, "ushr.4s v1, v2, #6"},
+      {IGen::pw_srl(tester.generator(), v1, v2, 32), 0x6f200441, "ushr.4s v1, v2, #32"},
+      // 32-bit left shifts use 0 through 31
+      {IGen::pw_sll(tester.generator(), v1, v2, 0), 0x4f205441, "shl.4s v1, v2, #0"},
+      {IGen::pw_sll(tester.generator(), v1, v2, 6), 0x4f265441, "shl.4s v1, v2, #6"},
+      {IGen::pw_sll(tester.generator(), v1, v2, 16), 0x4f305441, "shl.4s v1, v2, #16"},
+      {IGen::pw_sll(tester.generator(), v1, v2, 31), 0x4f3f5441, "shl.4s v1, v2, #31"},
+      // halfword right shifts use 1 through 16
+      // halfword left shifts use 0 through 15
+      {IGen::ph_srl(tester.generator(), v1, v2, 1), 0x6f1f0441, "ushr.8h v1, v2, #1"},
+      {IGen::ph_srl(tester.generator(), v1, v2, 8), 0x6f180441, "ushr.8h v1, v2, #8"},
+      {IGen::ph_srl(tester.generator(), v1, v2, 16), 0x6f100441, "ushr.8h v1, v2, #16"},
+      {IGen::ph_sll(tester.generator(), v1, v2, 0), 0x4f105441, "shl.8h v1, v2, #0"},
+      {IGen::ph_sll(tester.generator(), v1, v2, 8), 0x4f185441, "shl.8h v1, v2, #8"},
+      {IGen::ph_sll(tester.generator(), v1, v2, 15), 0x4f1f5441, "shl.8h v1, v2, #15"},
+  };
+
+  for (auto& c : cases) {
+    tester.clear();
+    tester.emit(c.instr);
+    ASSERT_EQ(tester.size(), 4) << c.asm_text;
+    EXPECT_EQ(tester.read<u32>(0), c.expected) << c.asm_text;
+  }
+  tester.clear();
+}
+
+TEST(ARM64EmitterVF, vector_stack_offsets) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  const Register sp(SP), x16(X16), v8(V8), v9(V9);
+  // zero offset uses the base directly
+  tester.clear();
+  tester.emit(IGen::store128_simd128_reg_offset(tester.generator(), sp, v8, 0));
+  ASSERT_EQ(tester.size(), 4);
+  EXPECT_EQ(tester.read<u32>(0), 0x3d8003e8u) << "str q8, [sp]";
+
+  tester.clear();
+  tester.emit(IGen::load128_simd128_reg_offset(tester.generator(), v8, sp, 0));
+  ASSERT_EQ(tester.size(), 4);
+  EXPECT_EQ(tester.read<u32>(0), 0x3dc003e8u) << "ldr q8, [sp]";
+
+  // nonzero offsets go through x16
+  tester.clear();
+  tester.emit(IGen::store128_simd128_reg_offset(tester.generator(), sp, v9, 16));
+  ASSERT_EQ(tester.size(), 12) << "mov x16, sp / add x16, x16, #16 / str q9, [x16]";
+  EXPECT_EQ(tester.read<u32>(8), 0x3d800209u) << "str q9, [x16]";
+
+  tester.clear();
+  tester.emit(IGen::load128_simd128_reg_offset(tester.generator(), v9, sp, 16));
+  ASSERT_EQ(tester.size(), 12) << "mov x16, sp / add x16, x16, #16 / ldr q9, [x16]";
+  EXPECT_EQ(tester.read<u32>(8), 0x3dc00209u) << "ldr q9, [x16]";
+
+  tester.clear();
+}
+
+TEST(ARM64EmitterVF, sqrt_f32_destination) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  struct {
+    Register dst, src;
+    u32 expected;
+    const char* asm_text;
+  } cases[] = {
+      {Register(V0), Register(V7), 0x1e21c0e0, "fsqrt s0, s7"},
+      {Register(V10), Register(V7), 0x1e21c0ea, "fsqrt s10, s7"},
+      {Register(V3), Register(V1), 0x1e21c023, "fsqrt s3, s1"},
+  };
+
+  for (auto& c : cases) {
+    tester.clear();
+    tester.emit(IGen::sqrt_f32(tester.generator(), c.dst, c.src));
+    ASSERT_EQ(tester.size(), 4) << c.asm_text;
+    EXPECT_EQ(tester.read<u32>(0), c.expected) << c.asm_text;
+  }
+  tester.clear();
+}
+
+TEST(ARM64EmitterVF, indexed_vector_accesses) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  // add the bases before LDUR or STUR
+  tester.clear();
+  tester.emit(IGen::loadvf_gpr64_plus_gpr64_plus_s8(tester.generator(), Register(V7), Register(X19),
+                                                    Register(X22), 124));
+  ASSERT_EQ(tester.size(), 8);
+  EXPECT_EQ(tester.read<u32>(0), 0x8b160270u) << "add x16, x19, x22";
+  EXPECT_EQ(tester.read<u32>(4), 0x3cc7c207u) << "ldur q7, [x16, #124]";
+
+  tester.clear();
+  tester.emit(IGen::storevf_gpr64_plus_gpr64_plus_s8(tester.generator(), Register(V7),
+                                                     Register(X19), Register(X22), 124));
+  ASSERT_EQ(tester.size(), 8);
+  EXPECT_EQ(tester.read<u32>(0), 0x8b160270u) << "add x16, x19, x22";
+  EXPECT_EQ(tester.read<u32>(4), 0x3c87c207u) << "stur q7, [x16, #124]";
+
+  tester.clear();
+  tester.emit(IGen::loadvf_gpr64_plus_gpr64_plus_s8(tester.generator(), Register(V7), Register(X19),
+                                                    Register(X22), -8));
+  ASSERT_EQ(tester.size(), 8);
+  EXPECT_EQ(tester.read<u32>(4), 0x3cdf8207u) << "ldur q7, [x16, #-8]";
+
+  // larger offsets use x16 with a zero LDUR or STUR offset
+  tester.clear();
+  tester.emit(IGen::loadvf_gpr64_plus_gpr64_plus_s32(tester.generator(), Register(V7),
+                                                     Register(X19), Register(X22), 0x10c));
+  EXPECT_EQ(tester.read<u32>(0), 0x8b160270u) << "add x16, x19, x22";
+  EXPECT_EQ(tester.read<u32>(tester.size() - 4), 0x3cc00207u) << "ldur q7, [x16]";
+
+  tester.clear();
+  tester.emit(IGen::storevf_gpr64_plus_gpr64_plus_s32(tester.generator(), Register(V7),
+                                                      Register(X19), Register(X22), 0x10c));
+  EXPECT_EQ(tester.read<u32>(0), 0x8b160270u) << "add x16, x19, x22";
+  EXPECT_EQ(tester.read<u32>(tester.size() - 4), 0x3c800207u) << "stur q7, [x16]";
+  tester.clear();
+}
+
+TEST(ARM64EmitterTrap, trap) {
+  CodeTester tester(InstructionSet::ARM64);
+  tester.init_code_buffer(256);
+
+  tester.clear();
+  tester.emit(IGen::trap(tester.generator()));
+  ASSERT_EQ(tester.size(), 4);
+  EXPECT_EQ(tester.read<u32>(0), 0xd4200020u) << "brk #1";
+
+  // BRK #0 belongs to the debugger
+  EXPECT_NE(tester.read<u32>(0), 0xd4200000u) << "brk #0 is reserved for the debugger";
+  tester.clear();
+}
+
+TEST(X86EmitterTrap, trap) {
+  CodeTester tester(InstructionSet::X86);
+  tester.init_code_buffer(256);
+
+  tester.clear();
+  tester.emit(IGen::trap(tester.generator()));
+  ASSERT_EQ(tester.size(), 2);
+  EXPECT_EQ(tester.read<u8>(0), 0x0f);
+  EXPECT_EQ(tester.read<u8>(1), 0x0b);
+  tester.clear();
+}

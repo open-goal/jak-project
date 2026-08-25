@@ -3183,10 +3183,10 @@ TEST(X86EmitterLoadsAndStores, static_addr) {
 }
 
 #ifdef __linux__
-TEST(X86EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
+TEST(X86EmitterXmm32, load32_simd32_gpr64_plus_gpr64) {
   CodeTester tester;
   tester.init_code_buffer(512);
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64(tester.generator(), XMM3, RAX, RBX));
+  tester.emit(IGen::load32_simd32_gpr64_plus_gpr64(tester.generator(), XMM3, RAX, RBX));
   EXPECT_EQ(tester.dump_to_hex_string(), "f3 0f 10 1c 03");
 
   int iter = 0;
@@ -3215,7 +3215,7 @@ TEST(X86EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
         tester.emit(IGen::pop_gpr64(tester.generator(), j));  // j will have offset 1
 
         // load into k
-        tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64(tester.generator(), XMM0 + k, i, j));
+        tester.emit(IGen::load32_simd32_gpr64_plus_gpr64(tester.generator(), XMM0 + k, i, j));
         // move to return
         tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, XMM0 + k));
 
@@ -3239,13 +3239,13 @@ TEST(X86EmitterXmm32, load32_xmm32_gpr64_plus_gpr64) {
   }
 }
 
-TEST(X86EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
+TEST(X86EmitterXmm32, load32_simd32_gpr64_plus_gpr64_plus_s8) {
   CodeTester tester;
   tester.init_code_buffer(512);
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), XMM3, RAX, RBX, -1));
+  tester.emit(IGen::load32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), XMM3, RAX, RBX, -1));
   EXPECT_EQ(tester.dump_to_hex_string(), "f3 0f 10 5c 03 ff");
 
-  auto instr = IGen::load32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), XMM3, RBX, RSI, -3);
+  auto instr = IGen::load32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), XMM3, RBX, RSI, -3);
   u8 buff[256];
   instr.emit(buff);
   EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
@@ -3277,7 +3277,7 @@ TEST(X86EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
 
         // load into k
         tester.emit(
-            IGen::load32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), XMM0 + k, i, j, -3));
+            IGen::load32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), XMM0 + k, i, j, -3));
         // move to return
         tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, XMM0 + k));
 
@@ -3301,14 +3301,15 @@ TEST(X86EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s8) {
   }
 }
 
-TEST(X86EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
+TEST(X86EmitterXmm32, load32_simd32_gpr64_plus_gpr64_plus_s32) {
   CodeTester tester;
   tester.init_code_buffer(512);
-  tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), XMM3, RAX, RBX, -1));
+  tester.emit(
+      IGen::load32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), XMM3, RAX, RBX, -1));
   EXPECT_EQ(tester.dump_to_hex_string(), "f3 0f 10 9c 03 ff ff ff ff");
 
   auto instr =
-      IGen::load32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), XMM3, RBX, RSI, -1234);
+      IGen::load32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), XMM3, RBX, RSI, -1234);
   u8 buff[256];
   instr.emit(buff);
   EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -1234);
@@ -3341,8 +3342,8 @@ TEST(X86EmitterXmm32, load32_xmm32_gpr64_plus_gpr64_plus_s32) {
         s64 offset = (iter & 1) ? INT32_MAX : INT32_MIN;
 
         // load into k
-        tester.emit(IGen::load32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), XMM0 + k, i, j,
-                                                                 offset));
+        tester.emit(IGen::load32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), XMM0 + k, i,
+                                                                  j, offset));
         // move to return
         tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, XMM0 + k));
 
@@ -3380,10 +3381,10 @@ u32 as_u32(float x) {
 }
 }  // namespace
 
-TEST(X86EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
+TEST(X86EmitterXmm32, store32_simd32_gpr64_plus_gpr64) {
   CodeTester tester;
   tester.init_code_buffer(512);
-  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64(tester.generator(), RAX, RBX, XMM7));
+  tester.emit(IGen::store32_simd32_gpr64_plus_gpr64(tester.generator(), RAX, RBX, XMM7));
   EXPECT_EQ(tester.dump_to_hex_string(), "f3 0f 11 3c 03");
 
   int iter = 0;
@@ -3417,7 +3418,7 @@ TEST(X86EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
         tester.emit(IGen::pop_gpr64(tester.generator(), j));
 
         // store
-        tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64(tester.generator(), i, j, XMM0 + k));
+        tester.emit(IGen::store32_simd32_gpr64_plus_gpr64(tester.generator(), i, j, XMM0 + k));
 
         // return!
         tester.emit_pop_all_gprs(true);
@@ -3439,13 +3440,15 @@ TEST(X86EmitterXmm32, store32_xmm32_gpr64_plus_gpr64) {
   }
 }
 
-TEST(X86EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
+TEST(X86EmitterXmm32, store32_simd32_gpr64_plus_gpr64_plus_s8) {
   CodeTester tester;
   tester.init_code_buffer(512);
-  tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, XMM3, -1));
+  tester.emit(
+      IGen::store32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), RAX, RBX, XMM3, -1));
   EXPECT_EQ(tester.dump_to_hex_string(), "f3 0f 11 5c 03 ff");
 
-  auto instr = IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), RBX, RSI, XMM3, -3);
+  auto instr =
+      IGen::store32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), RBX, RSI, XMM3, -3);
   u8 buff[256];
   instr.emit(buff);
   EXPECT_EQ(s8(buff[instr.offset_of_disp()]), -3);
@@ -3480,8 +3483,8 @@ TEST(X86EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
         s64 offset = (iter & 1) ? INT8_MAX : INT8_MIN;
 
         // load into k
-        tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s8(tester.generator(), i, j, XMM0 + k,
-                                                                 offset));
+        tester.emit(IGen::store32_simd32_gpr64_plus_gpr64_plus_s8(tester.generator(), i, j,
+                                                                  XMM0 + k, offset));
 
         // move to return
         tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, XMM0 + k));
@@ -3506,15 +3509,15 @@ TEST(X86EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s8) {
   }
 }
 
-TEST(X86EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
+TEST(X86EmitterXmm32, store32_simd32_gpr64_plus_gpr64_plus_s32) {
   CodeTester tester;
   tester.init_code_buffer(512);
   tester.emit(
-      IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, XMM3, -1));
+      IGen::store32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), RAX, RBX, XMM3, -1));
   EXPECT_EQ(tester.dump_to_hex_string(), "f3 0f 11 9c 03 ff ff ff ff");
 
   auto instr =
-      IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), RBX, RSI, XMM3, -1234);
+      IGen::store32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), RBX, RSI, XMM3, -1234);
   u8 buff[256];
   instr.emit(buff);
   EXPECT_EQ(*(s32*)(buff + instr.offset_of_disp()), -1234);
@@ -3549,8 +3552,8 @@ TEST(X86EmitterXmm32, store32_xmm32_gpr64_plus_gpr64_plus_s32) {
         s64 offset = (iter & 1) ? INT32_MAX : INT32_MIN;
 
         // load into k
-        tester.emit(IGen::store32_xmm32_gpr64_plus_gpr64_plus_s32(tester.generator(), i, j,
-                                                                  XMM0 + k, offset));
+        tester.emit(IGen::store32_simd32_gpr64_plus_gpr64_plus_s32(tester.generator(), i, j,
+                                                                   XMM0 + k, offset));
 
         // move to return
         tester.emit(IGen::movd_gpr32_f32(tester.generator(), RAX, XMM0 + k));
@@ -3915,16 +3918,16 @@ TEST(X86Emitter, LEA) {
 TEST(X86EmitterXMM, StackLoad32) {
   CodeTester tester;
   tester.init_code_buffer(1024);
-  tester.emit(IGen::load32_xmm32_gpr64_plus_s32(tester.generator(), XMM0 + 3, RSP, -1234));
-  tester.emit(IGen::load32_xmm32_gpr64_plus_s32(tester.generator(), XMM0 + 13, RSP, -1234));
+  tester.emit(IGen::load32_simd32_gpr64_plus_s32(tester.generator(), XMM0 + 3, RSP, -1234));
+  tester.emit(IGen::load32_simd32_gpr64_plus_s32(tester.generator(), XMM0 + 13, RSP, -1234));
   EXPECT_EQ(tester.dump_to_hex_string(true), "F30F109C242EFBFFFFF3440F10AC242EFBFFFF");
 }
 
 TEST(X86EmitterXMM, StackLoad8) {
   CodeTester tester;
   tester.init_code_buffer(1024);
-  tester.emit(IGen::load32_xmm32_gpr64_plus_s8(tester.generator(), XMM0 + 3, RSP, -12));
-  tester.emit(IGen::load32_xmm32_gpr64_plus_s8(tester.generator(), XMM0 + 13, RSP, -12));
+  tester.emit(IGen::load32_simd32_gpr64_plus_s8(tester.generator(), XMM0 + 3, RSP, -12));
+  tester.emit(IGen::load32_simd32_gpr64_plus_s8(tester.generator(), XMM0 + 13, RSP, -12));
   EXPECT_EQ(tester.dump_to_hex_string(true), "F30F105C24F4F3440F106C24F4");
 }
 
@@ -3947,16 +3950,16 @@ TEST(X86EmitterXMM, StackLoadFull8) {
 TEST(X86EmitterXMM, StackStore32) {
   CodeTester tester;
   tester.init_code_buffer(1024);
-  tester.emit(IGen::store32_xmm32_gpr64_plus_s32(tester.generator(), RSP, XMM0 + 3, -1234));
-  tester.emit(IGen::store32_xmm32_gpr64_plus_s32(tester.generator(), RSP, XMM0 + 13, -1234));
+  tester.emit(IGen::store32_simd32_gpr64_plus_s32(tester.generator(), RSP, XMM0 + 3, -1234));
+  tester.emit(IGen::store32_simd32_gpr64_plus_s32(tester.generator(), RSP, XMM0 + 13, -1234));
   EXPECT_EQ(tester.dump_to_hex_string(true), "F30F119C242EFBFFFFF3440F11AC242EFBFFFF");
 }
 
 TEST(X86EmitterXMM, StackStore8) {
   CodeTester tester;
   tester.init_code_buffer(1024);
-  tester.emit(IGen::store32_xmm32_gpr64_plus_s8(tester.generator(), RSP, XMM0 + 3, -12));
-  tester.emit(IGen::store32_xmm32_gpr64_plus_s8(tester.generator(), RSP, XMM0 + 13, -12));
+  tester.emit(IGen::store32_simd32_gpr64_plus_s8(tester.generator(), RSP, XMM0 + 3, -12));
+  tester.emit(IGen::store32_simd32_gpr64_plus_s8(tester.generator(), RSP, XMM0 + 13, -12));
   EXPECT_EQ(tester.dump_to_hex_string(true), "F30F115C24F4F3440F116C24F4");
 }
 

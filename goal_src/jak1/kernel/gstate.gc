@@ -343,38 +343,70 @@ It type checks the arguments for the entry function.
          ;; we need to:
          ;; - make sure that when this code returns, we do a deactivate
          ;; - reset the stack to the top, so we can't just call the code.
-         (rlet ((temp)
-                (func)
-                (sp :reg rsp :type uint)
-                (off :reg r15 :type uint)
-                (carg0 :reg rdi)
-                (carg1 :reg rsi)
-                (carg2 :reg rdx)
-                (carg3 :reg rcx))
-           ;; prepare args
-           ;; compiler will likely have these on the stack, we need to get them in regs
-           ;; before messing with the stack.
-           (.mov carg0 arg0)
-           (.mov carg1 arg1)
-           (.mov carg2 arg2)
-           (.mov carg3 arg3)
-           ;; get the main code as an x86-64 pointer
-           (.mov func (-> new-state code))
-           (.add func off)
-           ;; reset the stack (scary)
-           (.mov sp (-> pp main-thread stack-top))
-           (.add sp off)
-           ;; push the return trampoline for when code returns.
-           (.mov temp return-from-thread-dead) ;; will deactivate
-           (.add temp off)
-           (.push temp)
-           ;; and call!
-           (.jr func)
-           ;; stupid hack so the compiler doesn't throw away these registers.
-           (.add carg0 carg1)
-           (.add carg2 carg3)
-           #f ;; can't get here
-           )))
+         (#cond
+          ((eq? INSTRUCTION_SET 'arm64)
+           (rlet ((func)
+                  (sp :reg sp :type uint)
+                  (off :reg off :type uint)
+                  (xoff :reg exec-off :type uint)
+                  (ra :reg lr :type uint)
+                  (carg0 :reg carg0)
+                  (carg1 :reg carg1)
+                  (carg2 :reg carg2)
+                  (carg3 :reg carg3))
+             ;; load the arguments before discarding their stack slots
+             (.mov carg0 arg0)
+             (.mov carg1 arg1)
+             (.mov carg2 arg2)
+             (.mov carg3 arg3)
+             ;; convert the code pointer to the executable alias before branching
+             (.mov func (-> new-state code))
+             (.add func xoff)
+             ;; reset sp through the writable alias
+             (.mov sp (-> pp main-thread stack-top))
+             (.add sp off)
+             ;; return through deactivate
+             (.mov ra return-from-thread-dead)
+             (.add ra xoff)
+             (.jr func)
+             ;; keep the argument registers live until the branch
+             (.add carg0 carg1)
+             (.add carg2 carg3)
+             #f ;; can't get here
+             ))
+          (#t
+           (rlet ((temp)
+                  (func)
+                  (sp :reg rsp :type uint)
+                  (off :reg r15 :type uint)
+                  (carg0 :reg rdi)
+                  (carg1 :reg rsi)
+                  (carg2 :reg rdx)
+                  (carg3 :reg rcx))
+             ;; prepare args
+             ;; compiler will likely have these on the stack, we need to get them in regs
+             ;; before messing with the stack.
+             (.mov carg0 arg0)
+             (.mov carg1 arg1)
+             (.mov carg2 arg2)
+             (.mov carg3 arg3)
+             ;; get the main code as an x86-64 pointer
+             (.mov func (-> new-state code))
+             (.add func off)
+             ;; reset the stack (scary)
+             (.mov sp (-> pp main-thread stack-top))
+             (.add sp off)
+             ;; push the return trampoline for when code returns.
+             (.mov temp return-from-thread-dead) ;; will deactivate
+             (.add temp off)
+             (.push temp)
+             ;; and call!
+             (.jr func)
+             ;; stupid hack so the compiler doesn't throw away these registers.
+             (.add carg0 carg1)
+             (.add carg2 carg3)
+             #f ;; can't get here
+             )))))
       (else
        ;; not in the main-thread.
        ;; so we set up the main thread to try again.
@@ -387,14 +419,25 @@ It type checks the arguments for the entry function.
          ;; but we don't because I don't have an easy way to find where to stick this.
          ;; I can't see how this makes a difference, as all non-main threads seem
          ;; temporary, but if this turns out to be false, we will need to change this.
-         (rlet ((temp)
-                (off :reg r15 :type uint :reset-here #t))
-           (.mov temp return-from-thread) ;; could probably just call this...
-           (.add temp off)
-           (.push temp)
-           (.ret)
-           #f ;; can't get here
-           ))))))
+         (#cond
+          ((eq? INSTRUCTION_SET 'arm64)
+           ;; branch to return-from-thread through the executable alias
+           (rlet ((temp)
+                  (xoff :reg exec-off :type uint :reset-here #t))
+             (.mov temp return-from-thread)
+             (.add temp xoff)
+             (.jr temp)
+             #f ;; can't get here
+             ))
+          (#t
+           (rlet ((temp)
+                  (off :reg r15 :type uint :reset-here #t))
+             (.mov temp return-from-thread) ;; could probably just call this...
+             (.add temp off)
+             (.push temp)
+             (.ret)
+             #f ;; can't get here
+             ))))))))
 
 (defun send-event-function ((proc process-tree) (msg event-message-block))
   "Function to send an event to a process. Please use the send-event macros when possible"

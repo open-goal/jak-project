@@ -1,27 +1,55 @@
 #include "goalc/compiler/Compiler.h"
 
-namespace {
-const char* reg_names[] = {
-    "rax",  "rcx",  "rdx",  "rbx",  "rsp",   "rbp",   "rsi",   "rdi",   "r8",    "r9",    "r10",
-    "r11",  "r12",  "r13",  "r14",  "r15",   "xmm0",  "xmm1",  "xmm2",  "xmm3",  "xmm4",  "xmm5",
-    "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15",
-};
-
-}
-
 emitter::Register Compiler::parse_register(const goos::Object& code) {
   if (!code.is_symbol()) {
     throw_compiler_error(code, "Could not parse {} as a register name", code.print());
   }
 
-  auto nas = code.as_symbol();
-  for (int i = 0; i < 32; i++) {
-    if (std::string_view(nas.name_ptr) == reg_names[i]) {
+  const auto& info = emitter::reg_info(m_instr_set);
+  std::string_view name(code.as_symbol().name_ptr);
+
+  // GOAL role names map to this backend's registers
+  if (name == "pp" || name == "r13") {
+    return info.get_process_reg();
+  }
+  if (name == "st" || name == "r14") {
+    return info.get_st_reg();
+  }
+  if (name == "off" || name == "r15") {
+    return info.get_offset_reg();
+  }
+  if (name == "sp" || name == "rsp") {
+    return info.get_stack_reg();
+  }
+  // exec-off is the executable mapping base
+  if (name == "exec-off") {
+    return info.get_exec_base_reg();
+  }
+  // lr is x30 on ARM64
+  if (name == "lr") {
+    if (m_instr_set != emitter::InstructionSet::ARM64) {
+      throw_compiler_error(code, "lr is available only on ARM64");
+    }
+    return emitter::Register(emitter::ARM64_REG::X30);
+  }
+  // carg0 through carg7 are the C and GOAL argument registers
+  if (name.size() == 5 && name.substr(0, 4) == "carg") {
+    int arg_idx = name[4] - '0';
+    if (arg_idx >= 0 && arg_idx < emitter::RegisterInfo::N_ARGS) {
+      return info.get_gpr_arg_reg(arg_idx);
+    }
+  }
+
+  // hardware names come from the selected backend
+  for (int i = 0; i < emitter::RegisterInfo::N_REGS; i++) {
+    const auto& hw_name = info.get_info(emitter::Register(i)).name;
+    if (!hw_name.empty() && name == hw_name) {
       return emitter::Register(i);
     }
   }
 
-  throw_compiler_error(code, "Could not parse {} as a register name", code.print());
+  throw_compiler_error(code, "{} is not a register name for the {} backend", code.print(),
+                       m_instr_set == emitter::InstructionSet::ARM64 ? "arm64" : "x86");
   return {};
 }
 
@@ -151,6 +179,23 @@ Val* Compiler::compile_asm_ret(const goos::Object& form, const goos::Object& res
   }
 
   env->emit_ir<IR_AsmRet>(form, color);
+  return get_none();
+}
+
+//! Compile the trap instruction used by GOAL (break).
+Val* Compiler::compile_asm_break(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+
+  // Keep the old x86 output.
+  if (m_instr_set == emitter::InstructionSet::X86) {
+    return compile_div(form,
+                       goos::build_list(std::vector<goos::Object>{goos::Object::make_integer(0),
+                                                                  goos::Object::make_integer(0)}),
+                       env);
+  }
+
+  env->emit_ir<IR_AsmBreak>(form);
   return get_none();
 }
 
@@ -403,7 +448,7 @@ Val* Compiler::compile_asm_mov_vf(const goos::Object& form, const goos::Object& 
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
   check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
 
   u8 mask = 0b1111;
@@ -430,8 +475,8 @@ Val* Compiler::compile_asm_blend_vf(const goos::Object& form, const goos::Object
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -463,8 +508,8 @@ Val* Compiler::compile_asm_vf_math3(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -524,8 +569,8 @@ Val* Compiler::compile_asm_int128_math3(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
 
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot set destination");
@@ -548,7 +593,7 @@ Val* Compiler::compile_asm_vf_math2(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
   check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
 
   u8 mask = 0b1111;
@@ -588,7 +633,7 @@ Val* Compiler::compile_asm_int128_math2_imm_u8(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
   s64 imm = get_constant_integer_or_error(args.unnamed.at(2), env);
 
   if (imm < 0 || imm > 255) {
@@ -648,8 +693,8 @@ Val* Compiler::compile_asm_pnor(const goos::Object& form, const goos::Object& re
   va_check(form, args, {{}, {}, {}}, {});
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);  // rs
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);  // rt
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);  // rt
   auto temp = env->make_ireg(TypeSpec("uint128"), RegClass::INT_128);
 
   if (!ireg_is_128_ok(dest->ireg())) {
@@ -756,8 +801,8 @@ Val* Compiler::compile_asm_ppach(const goos::Object& form, const goos::Object& r
   va_check(form, args, {{}, {}, {}}, {});
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);  // rs
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);  // rt
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);  // rt
   auto temp = env->make_ireg(TypeSpec("uint128"), RegClass::INT_128);
 
   if (!dest->settable()) {
@@ -781,8 +826,8 @@ Val* Compiler::compile_asm_ppacb(const goos::Object& form, const goos::Object& r
   va_check(form, args, {{}, {}, {}}, {});
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);  // rs
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);  // rt
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);  // rt
   auto temp = env->make_ireg(TypeSpec("uint128"), RegClass::INT_128);
 
   if (!dest->settable()) {
@@ -809,8 +854,8 @@ Val* Compiler::compile_asm_xorp(const goos::Object& form, const goos::Object& re
   va_check(form, args, {{}, {}, {}}, {});
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);  // rs
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);  // rt
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);  // rs
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);  // rt
 
   if (!dest->settable()) {
     throw_compiler_error(form, "Cannot set destination");
@@ -974,15 +1019,15 @@ Val* Compiler::compile_asm_vf_math4_two_operation(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
   // This third register is intended for the ACC/Q/ETC, and is used to temporarily store the value
   // that eventually goes into the destination
   //
   // For example VMADDA:
   // > ACC += src1 * src2
   // > DEST = ACC
-  auto src3 = compile_error_guard(args.unnamed.at(3), env)->to_xmm128(form, env);
+  auto src3 = compile_error_guard(args.unnamed.at(3), env)->to_simd128(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest},
                            {"first source", src1},
@@ -1131,7 +1176,7 @@ Val* Compiler::compile_asm_abs_vf(const goos::Object& form, const goos::Object& 
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
   check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
 
   u8 mask = 0b1111;
@@ -1208,8 +1253,8 @@ Val* Compiler::compile_asm_div_vf(const goos::Object& form, const goos::Object& 
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -1257,7 +1302,7 @@ Val* Compiler::compile_asm_sqrt_vf(const goos::Object& form, const goos::Object&
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
+  auto src = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
   check_vector_float_regs(form, env, {{"destination", dest}, {"source", src}});
 
   u8 ftf = args.named.at("ftf").as_int();
@@ -1298,8 +1343,8 @@ Val* Compiler::compile_asm_inv_sqrt_vf(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -1339,8 +1384,8 @@ Val* Compiler::compile_asm_outer_product_vf(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -1402,8 +1447,8 @@ Val* Compiler::compile_asm_outer_product_a_vf(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest}, {"first source", src1}, {"second source", src2}});
 
@@ -1444,9 +1489,9 @@ Val* Compiler::compile_asm_outer_product_b_vf(const goos::Object& form,
   }
 
   auto dest = compile_error_guard(args.unnamed.at(0), env)->to_reg(form, env);
-  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_xmm128(form, env);
-  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_xmm128(form, env);
-  auto acc = compile_error_guard(args.unnamed.at(3), env)->to_xmm128(form, env);
+  auto src1 = compile_error_guard(args.unnamed.at(1), env)->to_simd128(form, env);
+  auto src2 = compile_error_guard(args.unnamed.at(2), env)->to_simd128(form, env);
+  auto acc = compile_error_guard(args.unnamed.at(3), env)->to_simd128(form, env);
   check_vector_float_regs(form, env,
                           {{"destination", dest},
                            {"first source", src1},

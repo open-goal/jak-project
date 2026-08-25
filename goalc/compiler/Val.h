@@ -42,7 +42,7 @@ class Val {
   }
   virtual RegVal* to_gpr(const goos::Object& form, Env* fe);
   virtual RegVal* to_fpr(const goos::Object& form, Env* fe);
-  virtual RegVal* to_xmm128(const goos::Object& form, Env* fe);
+  virtual RegVal* to_simd128(const goos::Object& form, Env* fe);
 
   const TypeSpec& type() const { return m_ts; }
   void set_type(TypeSpec ts) { m_ts = std::move(ts); }
@@ -78,7 +78,7 @@ class RegVal : public Val {
   RegVal* to_reg(const goos::Object& form, Env* fe) override;
   RegVal* to_gpr(const goos::Object& form, Env* fe) override;
   RegVal* to_fpr(const goos::Object& form, Env* fe) override;
-  RegVal* to_xmm128(const goos::Object& form, Env* fe) override;
+  RegVal* to_simd128(const goos::Object& form, Env* fe) override;
   void set_rlet_constraint(emitter::Register reg);
   const std::optional<emitter::Register>& rlet_constraint() const;
   void force_on_stack() { m_on_stack = true; }
@@ -241,7 +241,7 @@ class AliasVal : public Val {
   AliasVal(TypeSpec ts, Val* _base) : Val(std::move(ts)), base(_base) {}
   std::string print() const override { return "alias-of-" + base->print(); }
   RegVal* to_reg(const goos::Object& form, Env* fe) override;
-  RegVal* to_xmm128(const goos::Object& form, Env* fe) override;
+  RegVal* to_simd128(const goos::Object& form, Env* fe) override;
   Val* base = nullptr;
 };
 
@@ -254,7 +254,7 @@ class IntegerConstantVal : public Val {
 
   std::string print() const override { return std::string("integer-constant-") + m_value.print(); }
   RegVal* to_reg(const goos::Object& form, Env* fe) override;
-  RegVal* to_xmm128(const goos::Object& form, Env* fe) override;
+  RegVal* to_simd128(const goos::Object& form, Env* fe) override;
   const ConstantValue& value() const { return m_value; }
 
  protected:

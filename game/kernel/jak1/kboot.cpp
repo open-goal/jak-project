@@ -106,7 +106,7 @@ s32 goal_main(int argc, const char* const* argv) {
  * Main loop to dispatch the GOAL kernel.
  */
 void KernelCheckAndDispatch() {
-  u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - 8;
+  u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - GOAL_STACK_TOP_OFFSET;
 
   while (MasterExit == RuntimeExitStatus::RUNNING) {
     // try to get a message from the listener, and process it if needed

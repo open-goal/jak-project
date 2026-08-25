@@ -5,6 +5,10 @@
 
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 
+#ifdef __aarch64__
+#include <arm_neon.h>
+#endif
+
 SkyBlendCPU::SkyBlendCPU() {
   for (int i = 0; i < 2; i++) {
     glGenTextures(1, &m_textures[i].gl);
@@ -21,10 +25,28 @@ SkyBlendCPU::~SkyBlendCPU() {
   }
 }
 
+/*!
+ * out[i] = saturate_u8((in[i] * intensity) >> 7)
+ */
 void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-#ifndef __arm64__
-  if (get_cpu_info().has_avx2) {
+#ifdef __aarch64__
+  // widen u8 to u16, multiply, shift, then narrow with saturation. 255*255 fits in a u16 so
+  // the multiply can't overflow, and vqmovn_u16 clamps at 255 like packus does.
+  const uint16x8_t intensity_vec = vdupq_n_u16(intensity);
+  u32 i = 0;
+  for (; i + 16 <= size; i += 16) {
+    const uint8x16_t tex = vld1q_u8(in + i);
+    const uint16x8_t lo = vshrq_n_u16(vmulq_u16(vmovl_u8(vget_low_u8(tex)), intensity_vec), 7);
+    const uint16x8_t hi = vshrq_n_u16(vmulq_u16(vmovl_u8(vget_high_u8(tex)), intensity_vec), 7);
+    vst1q_u8(out + i, vcombine_u8(vqmovn_u16(lo), vqmovn_u16(hi)));
+  }
+  for (; i < size; i++) {
+    const u32 v = ((u32)in[i] * intensity) >> 7;
+    out[i] = v > 255 ? 255 : (u8)v;
+  }
+#else
 #ifdef __AVX2__
+  if (get_cpu_info().has_avx2) {
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
     for (u32 i = 0; i < size / 16; i++) {
       __m128i tex_data8 = _mm_loadu_si128((const __m128i*)(in + (i * 16)));
@@ -35,27 +57,47 @@ void blend_sky_initial_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       auto result = _mm_packus_epi16(_mm256_castsi256_si128(tex_data16), hi);
       _mm_storeu_si128((__m128i*)(out + (i * 16)), result);
     }
-#else
-    ASSERT(false);
+    return;
+  }
 #endif
-  } else {
-    __m128i intensity_vec = _mm_set1_epi16(intensity);
-    for (u32 i = 0; i < size / 8; i++) {
-      __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
-      __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
-      tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
-      tex_data16 = _mm_srli_epi16(tex_data16, 7);
-      auto result = _mm_packus_epi16(tex_data16, tex_data16);
-      _mm_storel_epi64((__m128i*)(out + (i * 8)), result);
-    }
+
+  __m128i intensity_vec = _mm_set1_epi16(intensity);
+  for (u32 i = 0; i < size / 8; i++) {
+    __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
+    __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
+    tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
+    tex_data16 = _mm_srli_epi16(tex_data16, 7);
+    auto result = _mm_packus_epi16(tex_data16, tex_data16);
+    _mm_storel_epi64((__m128i*)(out + (i * 8)), result);
   }
 #endif
 }
 
+/*!
+ * out[i] = saturating_add_u8(out[i], saturate_u8((in[i] * intensity) >> 7))
+ */
 void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
-#ifndef __arm64__
-  if (get_cpu_info().has_avx2) {
+#ifdef __aarch64__
+  const uint16x8_t intensity_vec = vdupq_n_u16(intensity);
+  u32 i = 0;
+  for (; i + 16 <= size; i += 16) {
+    const uint8x16_t tex = vld1q_u8(in + i);
+    const uint8x16_t cur = vld1q_u8(out + i);
+    const uint16x8_t lo = vshrq_n_u16(vmulq_u16(vmovl_u8(vget_low_u8(tex)), intensity_vec), 7);
+    const uint16x8_t hi = vshrq_n_u16(vmulq_u16(vmovl_u8(vget_high_u8(tex)), intensity_vec), 7);
+    // vqmovn_u16 clamps at 255, so it covers both the min and the packus the x86 path does
+    vst1q_u8(out + i, vqaddq_u8(cur, vcombine_u8(vqmovn_u16(lo), vqmovn_u16(hi))));
+  }
+  for (; i < size; i++) {
+    u32 v = ((u32)in[i] * intensity) >> 7;
+    if (v > 255)
+      v = 255;
+    const u32 sum = out[i] + v;
+    out[i] = sum > 255 ? 255 : (u8)sum;
+  }
+#else
 #ifdef __AVX2__
+  if (get_cpu_info().has_avx2) {
     __m256i intensity_vec = _mm256_set1_epi16(intensity);
     __m256i max_intensity = _mm256_set1_epi16(255);
     for (u32 i = 0; i < size / 16; i++) {
@@ -70,23 +112,22 @@ void blend_sky_fast(u8 intensity, u8* out, const u8* in, u32 size) {
       out_val = _mm_adds_epu8(out_val, result);
       _mm_storeu_si128((__m128i*)(out + (i * 16)), out_val);
     }
-#else
-    ASSERT(false);
+    return;
+  }
 #endif
-  } else {
-    __m128i intensity_vec = _mm_set1_epi16(intensity);
-    __m128i max_intensity = _mm_set1_epi16(255);
-    for (u32 i = 0; i < size / 8; i++) {
-      __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
-      __m128i out_val = _mm_loadu_si64((const __m128i*)(out + (i * 8)));
-      __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
-      tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
-      tex_data16 = _mm_srli_epi16(tex_data16, 7);
-      tex_data16 = _mm_min_epi16(max_intensity, tex_data16);
-      auto result = _mm_packus_epi16(tex_data16, tex_data16);
-      out_val = _mm_adds_epu8(out_val, result);
-      _mm_storel_epi64((__m128i*)(out + (i * 8)), out_val);
-    }
+
+  __m128i intensity_vec = _mm_set1_epi16(intensity);
+  __m128i max_intensity = _mm_set1_epi16(255);
+  for (u32 i = 0; i < size / 8; i++) {
+    __m128i tex_data8 = _mm_loadu_si64((const __m128i*)(in + (i * 8)));
+    __m128i out_val = _mm_loadu_si64((const __m128i*)(out + (i * 8)));
+    __m128i tex_data16 = _mm_cvtepu8_epi16(tex_data8);
+    tex_data16 = _mm_mullo_epi16(tex_data16, intensity_vec);
+    tex_data16 = _mm_srli_epi16(tex_data16, 7);
+    tex_data16 = _mm_min_epi16(max_intensity, tex_data16);
+    auto result = _mm_packus_epi16(tex_data16, tex_data16);
+    out_val = _mm_adds_epu8(out_val, result);
+    _mm_storel_epi64((__m128i*)(out + (i * 8)), out_val);
   }
 #endif
 }
