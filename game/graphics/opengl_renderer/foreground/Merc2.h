@@ -51,6 +51,9 @@ class Merc2 {
 
  private:
   const std::vector<GLuint>* m_anim_slot_array;
+  // EE main memory base, for resolving GOAL addresses embedded in merc DMA payloads.
+  // Set per render() call; must not be derived from chain pointers.
+  const u8* m_ee_memory = nullptr;
   enum MercDataMemory {
     LOW_MEMORY = 0,
     BUFFER_BASE = 442,
@@ -253,7 +256,6 @@ class Merc2 {
                        const tfrag3::MercModel* model,
                        const LevelData* lev,
                        const u8* input_data,
-                       const DmaTransfer& setup,
                        ModBuffers* mod_opengl_buffers,
                        MercDebugStats* stats);
   void model_mod_blerc_draws(int num_effects,
