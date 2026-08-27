@@ -19,7 +19,7 @@
 #include <capstone/arm.h>
 #include <fmt/base.h>
 #include <fmt/format.h>
-
+#include <algorithm>
 #include "fmt/format.h"
 
 using namespace emitter;
