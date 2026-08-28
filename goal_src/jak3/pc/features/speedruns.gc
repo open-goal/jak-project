@@ -510,6 +510,42 @@
       (deactivate self)))
   (cam-master-activate-slave #f))
 
+(defmacro speedrun-get-secrets-length (secrets)
+  (with-gensyms (num-secrets)
+    `(let ((,num-secrets 0))
+      (dotimes (i 64)
+        (when (logtest? ,secrets (shl 1 i)) ;; valid secret
+          (+! ,num-secrets 1)))
+      ,num-secrets)))
+
+(defmacro speedrun-secrets-confirm (full-secrets index settings-secrets)
+  (with-gensyms (num-secrets)
+    `(let ((,num-secrets 0))
+      (dotimes (i 64)
+        (when (logtest? ,full-secrets (shl 1 i)) ;; valid secret
+          (when (= ,num-secrets ,index) ;; index-th valid secret
+            (logxor! ,settings-secrets (shl 1 i))
+            (return (pc-settings-save)))
+          (+! ,num-secrets 1))))))
+
+(defmacro speedrun-secrets-get-label (secrets index str-dest)
+  (with-gensyms (num-secrets)
+    `(let ((,num-secrets 0))
+      (dotimes (i 64)
+        (when (logtest? ,secrets (shl 1 i)) ;; valid secret
+          (when (= ,num-secrets ,index) ;; index-th valid secret
+            (return (copy-string<-string ,str-dest (bitfield->string game-secrets i))))
+          (+! ,num-secrets 1))))))
+
+(defmacro speedrun-secrets-selected? (full-secrets index settings-secrets)
+  (with-gensyms (num-secrets)
+    `(let ((,num-secrets 0))
+      (dotimes (i 64)
+        (when (logtest? ,full-secrets (shl 1 i)) ;; valid secret
+          (when (= ,num-secrets ,index) ;; index-th valid secret
+            (return (logtest? ,settings-secrets (shl 1 i))))
+          (+! ,num-secrets 1))))))
+
 (define *speedrun-popup-menu-entries*
   (new 'static
        'boxed-array
@@ -644,36 +680,16 @@
                       :label "Act 2"
                       :get-length
                       (lambda ()
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? ACT_2_SECRETS (shl 1 i)) ;; valid act 2 secret
-                              (+! x 1)))
-                          x))
+                        (speedrun-get-secrets-length ACT_2_SECRETS))
                       :get-entry-label
                       (lambda ((index int) (str-dest string))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? ACT_2_SECRETS (shl 1 i)) ;; valid act 2 secret
-                              (when (= x index) ;; index-th valid secret
-                                (return (copy-string<-string str-dest (bitfield->string game-secrets i))))
-                              (+! x 1)))))
+                        (speedrun-secrets-get-label ACT_2_SECRETS index str-dest))
                       :on-entry-confirm
                       (lambda ((index int))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? ACT_2_SECRETS (shl 1 i)) ;; valid act 2 secret
-                              (when (= x index) ;; index-th valid secret
-                                (logxor! (-> *pc-settings* speedrunner-mode-act2-secrets) (shl 1 i))
-                                (return (pc-settings-save)))
-                              (+! x 1)))))
+                        (speedrun-secrets-confirm ACT_2_SECRETS index (-> *pc-settings* speedrunner-mode-act2-secrets)))
                       :entry-selected?
                       (lambda ((index int))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? ACT_2_SECRETS (shl 1 i)) ;; valid act 2 secret
-                              (when (= x index) ;; index-th valid secret
-                                (return (logtest? (-> *pc-settings* speedrunner-mode-act2-secrets) (shl 1 i))))
-                              (+! x 1)))))
+                        (speedrun-secrets-selected? ACT_2_SECRETS index (-> *pc-settings* speedrunner-mode-act2-secrets)))
                       :on-reset
                       (lambda ()
                         (reset-speedrunner-mode-secrets! *pc-settings* (speedrun-category act-2))
@@ -684,36 +700,16 @@
                       :label "Act 3"
                       :get-length
                       (lambda ()
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? ACT_3_SECRETS (shl 1 i)) ;; valid act 3 secret
-                              (+! x 1)))
-                          x))
+                        (speedrun-get-secrets-length ACT_3_SECRETS))
                       :get-entry-label
                       (lambda ((index int) (str-dest string))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? ACT_3_SECRETS (shl 1 i)) ;; valid act 3 secret
-                              (when (= x index) ;; index-th valid secret
-                                (return (copy-string<-string str-dest (bitfield->string game-secrets i))))
-                              (+! x 1)))))
+                        (speedrun-secrets-get-label ACT_3_SECRETS index str-dest))
                       :on-entry-confirm
                       (lambda ((index int))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? ACT_3_SECRETS (shl 1 i)) ;; valid act 3 secret
-                              (when (= x index) ;; index-th valid secret
-                                (logxor! (-> *pc-settings* speedrunner-mode-act3-secrets) (shl 1 i))
-                                (return (pc-settings-save)))
-                              (+! x 1)))))
+                        (speedrun-secrets-confirm ACT_3_SECRETS index (-> *pc-settings* speedrunner-mode-act3-secrets)))
                       :entry-selected?
                       (lambda ((index int))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? ACT_3_SECRETS (shl 1 i)) ;; valid act 3 secret
-                              (when (= x index) ;; index-th valid secret
-                                (return (logtest? (-> *pc-settings* speedrunner-mode-act3-secrets) (shl 1 i))))
-                              (+! x 1)))))
+                        (speedrun-secrets-selected? ACT_3_SECRETS index (-> *pc-settings* speedrunner-mode-act3-secrets)))
                       :on-reset
                       (lambda ()
                         (reset-speedrunner-mode-secrets! *pc-settings* (speedrun-category act-3))
@@ -724,36 +720,16 @@
                       :label "Post-Game"
                       :get-length
                       (lambda ()
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? POST_GAME_SECRETS (shl 1 i)) ;; valid post-game secret
-                              (+! x 1)))
-                          x))
+                        (speedrun-get-secrets-length POST_GAME_SECRETS))
                       :get-entry-label
                       (lambda ((index int) (str-dest string))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? POST_GAME_SECRETS (shl 1 i)) ;; valid post-game secret
-                              (when (= x index) ;; index-th valid secret
-                                (return (copy-string<-string str-dest (bitfield->string game-secrets i))))
-                              (+! x 1)))))
+                        (speedrun-secrets-get-label POST_GAME_SECRETS index str-dest))
                       :on-entry-confirm
                       (lambda ((index int))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? POST_GAME_SECRETS (shl 1 i)) ;; valid post-game secret
-                              (when (= x index) ;; index-th valid secret
-                                (logxor! (-> *pc-settings* speedrunner-mode-postgame-secrets) (shl 1 i))
-                                (return (pc-settings-save)))
-                              (+! x 1)))))
+                        (speedrun-secrets-confirm POST_GAME_SECRETS index (-> *pc-settings* speedrunner-mode-postgame-secrets)))
                       :entry-selected?
                       (lambda ((index int))
-                        (let ((x 0))
-                          (dotimes (i 64)
-                            (when (logtest? POST_GAME_SECRETS (shl 1 i)) ;; valid post-game secret
-                              (when (= x index) ;; index-th valid secret
-                                (return (logtest? (-> *pc-settings* speedrunner-mode-postgame-secrets) (shl 1 i))))
-                              (+! x 1)))))
+                        (speedrun-secrets-selected? POST_GAME_SECRETS index (-> *pc-settings* speedrunner-mode-postgame-secrets)))
                       :on-reset
                       (lambda ()
                         (reset-speedrunner-mode-secrets! *pc-settings* (speedrun-category post-game))
