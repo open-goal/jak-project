@@ -529,7 +529,10 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
     u64 ignore_alpha_mask;
     u8 effect_count;
     u8 bitflags;
+    u8 pad[6];
+    u64 prelit_mask;  // only valid if bitflags & 32, jak 3 writes it, jak 1/2 don't.
   };
+  static_assert(sizeof(PcMercFlags) == 32);
   auto* flags = (const PcMercFlags*)input_data;
   int num_effects = flags->effect_count;  // mostly just a sanity check
   ASSERT(num_effects < kMaxEffect);
@@ -540,6 +543,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   bool model_uses_pc_blerc = flags->bitflags & 4;
   bool model_disables_envmap = flags->bitflags & 8;
   bool model_no_texture = flags->bitflags & 16;
+  u64 current_prelit_bits = (flags->bitflags & 32) ? flags->prelit_mask : 0;
   input_data += 32;
 
   float blerc_weights[kMaxBlerc];
@@ -647,6 +651,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
     bool ignore_alpha = !!(current_ignore_alpha_bits & (1ull << ei));
     args.ignore_alpha = ignore_alpha;
+    args.prelit = !!(current_prelit_bits & (1ull << ei));
     auto& effect = model->effects[ei];
 
     bool should_envmap = effect.has_envmap && !model_disables_envmap;
@@ -745,6 +750,7 @@ void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms, bool include_
 
   uniforms->fog = glGetUniformLocation(id, "fog_constants");
   uniforms->decal = glGetUniformLocation(id, "decal_enable");
+  uniforms->prelit = glGetUniformLocation(id, "prelit_enable");
 
   uniforms->fog_color = glGetUniformLocation(id, "fog_color");
   uniforms->perspective_matrix = glGetUniformLocation(id, "perspective_matrix");
@@ -1113,6 +1119,9 @@ Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw, const DrawA
   if (args.no_texture) {
     draw->flags |= NO_TEXTURE;
   }
+  if (args.prelit) {
+    draw->flags |= PRELIT;
+  }
   for (int i = 0; i < 4; i++) {
     draw->fade[i] = 0;
   }
@@ -1306,6 +1315,7 @@ void Merc2::do_draws(const Draw* draw_array,
     }
 
     glUniform1i(uniforms.decal, draw.mode.get_decal());
+    glUniform1i(uniforms.prelit, (draw.flags & PRELIT) != 0);
     glUniform1i(uniforms.gfx_hack_no_tex, (draw.flags & NO_TEXTURE) != 0);
 
     if (set_fade) {
