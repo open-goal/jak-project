@@ -444,6 +444,52 @@
       "rewrite": "(set-flags! $font (font-flags $*flags))"
     },
     {
+      // perf-stat.reset! is commonly inlined. Anchor the rule on *perf-stats* so the method's own
+      // definition is not rewritten into a recursive call.
+      "name": "perf-stat-reset",
+      "match": [
+        "(let* (($stat (-> *perf-stats* data $bucket)) ($ctrl (-> $stat ctrl))) (+! (-> $stat count) 1) (b! (zero? $ctrl) $done :delay (nop!)) (.mtc0 Perf 0) (.sync.l) (.sync.p) (.mtpc pcr0 0) (.mtpc pcr1 0) (.sync.l) (.sync.p) (.mtc0 Perf $ctrl))",
+        "(.sync.l)",
+        "(.sync.p)",
+        "(label $done)",
+        "0"
+      ],
+      "rewrite": "(reset! (-> *perf-stats* data $bucket))"
+    },
+    {
+      // perf-stat.read! has the same branch-and-label expansion but accumulates both counters.
+      "name": "perf-stat-read",
+      "match": [
+        "(let (($stat (-> *perf-stats* data $bucket))) (b! (zero? (-> $stat ctrl)) $done :delay (nop!)) (.mtc0 Perf 0) (.sync.l) (.sync.p) (.mfpc $counter0 pcr0) (+! (-> $stat accum0) $counter0) (.mfpc $counter1 pcr1) (+! (-> $stat accum1) $counter1))",
+        "(label $done)",
+        "0"
+      ],
+      "rewrite": "(read! (-> *perf-stats* data $bucket))"
+    },
+    {
+      // DMA accounting is always guarded by the debug usage block. Its high-water total mirrors
+      // the cumulative used byte count rather than accumulating independently aligned sizes.
+      "name": "dma-mem-usage-add-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": "(let (($usage *dma-mem-usage*)) (when (nonzero? $usage) (set! (-> $usage length) (max {{next}} (-> $usage length))) (set! (-> $usage data {{value}} name) \"{{symbol}}\") (+! (-> $usage data {{value}} count) $count) (+! (-> $usage data {{value}} used) $bytes) (set! (-> $usage data {{value}} total) (-> $usage data {{value}} used))))",
+      "rewrite": "(dma-mem-usage-add! {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "dma-mem-usage-add-enum-index-{{symbol}}",
+      "for_each": "mem-usage-id",
+      "match": "(let (($usage *dma-mem-usage*)) (when (nonzero? $usage) (set! (-> $usage length) (max {{next}} (-> $usage length))) (set! (-> $usage data (mem-usage-id {{symbol}}) name) \"{{symbol}}\") (+! (-> $usage data (mem-usage-id {{symbol}}) count) $count) (+! (-> $usage data (mem-usage-id {{symbol}}) used) $bytes) (set! (-> $usage data (mem-usage-id {{symbol}}) total) (-> $usage data (mem-usage-id {{symbol}}) used))))",
+      "rewrite": "(dma-mem-usage-add! {{symbol}} $count $bytes)"
+    },
+    {
+      "name": "invalidate-cache-line",
+      "match": [
+        "(let (($address $value)) (.sync.l) (.cache dxwbin $address 0) (.sync.l) (.cache dxwbin $address 1))",
+        "(.sync.l)",
+        "0"
+      ],
+      "rewrite": "(invalidate-cache-line $value)"
+    },
+    {
       "name": "mem-usage-add-{{symbol}}",
       "for_each": "mem-usage-id",
       "match": [

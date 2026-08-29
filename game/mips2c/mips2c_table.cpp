@@ -99,8 +99,6 @@ namespace shadow_calc_dual_verts { extern void link(); }
 namespace shadow_xform_verts { extern void link(); }
 namespace draw_inline_array_instance_tie { extern void link(); }
 namespace draw_inline_array_prototype_tie_generic_asm { extern void link(); }
-namespace generic_tie_dma_to_spad_sync { extern void link(); }
-namespace generic_tie_convert { extern void link(); }
 }  // namespace jak1
 
 namespace jak2 {
@@ -439,8 +437,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak1::shadow_xform_verts::link}},
      {"tie-methods",
       {jak1::draw_inline_array_instance_tie::link,
-       jak1::draw_inline_array_prototype_tie_generic_asm::link}},
-     {"generic-tie", {jak1::generic_tie_dma_to_spad_sync::link, jak1::generic_tie_convert::link}}},
+       jak1::draw_inline_array_prototype_tie_generic_asm::link}}},
     /////////// JAK 2
     {{"collide-func",
       {jak2::collide_do_primitives::link, jak2::moving_sphere_triangle_intersect::link}},

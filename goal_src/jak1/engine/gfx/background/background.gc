@@ -15,47 +15,45 @@
 ;; The recursive draw call through the drawable trees will add drawables to various lists.
 ;; After this, (finish-background) is called to finalize DMA lists.
 ;;
-;; Which renderers, and how they differ, because the answer is not obvious from any one file:
+;; TFRAG -- terrain, smooth cave walls, etc. Not instanced. Detail is a nested
+;; vertex array (base points, then level-0 additions, then level-1 additions).
+;; To simplify, it moves a vertex to the midpoint of a parent edge, creating a degenerate triangle
+;; that can be removed.
+;; To avoid t-junctions, morph weights are calculated per _vertex_ meaning that points appearing in
+;; multiple fragments are computed the same way in both fragments.
+;; Colors come from one time-of-day palette per tree, indexed per fragment. There are
+;; several categories: ordinary, translucent, dirt, ice, and low-resolution versions of the first
+;; two. These share the same renderer but have different ordering and blending settings.
+;; Geometry that reaches the camera goes to TFRAG-NEAR, which clips. There is no generic fallback,
+;; the generic field is never populated and there's no renderer.
 ;;
-;; TFRAG -- terrain. Not instanced: every fragment is its own geometry, drawn once. Detail is a nested
-;; vertex array (base points, then level-0 additions, then level-1 additions) and the renderer unwinds
-;; one subdivision level at a time as a fragment recedes, sliding each added point onto the midpoint of
-;; the parent edge it split until it is collinear and contributes nothing. Nothing is ever dropped by the
-;; renderer -- a strip's length is fixed before its first vertex -- the point simply becomes redundant and
-;; the EE stops uploading that level. The morph weight is evaluated per *vertex*, from that vertex's own
-;; transformed w, which is what lets two fragments agree along a shared edge provided the exporter gave
-;; them the same two parents; a fragment only gives up a level once its whole bounding sphere is past
-;; that level's collapse distance, so a shared vertex has finished collapsing in the neighbour before
-;; anyone stops drawing it. Colors come from one time-of-day palette per tree, indexed per fragment. Six tree
-;; categories share the code: ordinary, translucent, dirt, ice, and low-resolution versions of the first
-;; two. Geometry that reaches the camera goes to TFRAG-NEAR, which clips. There is no GENERIC path --
-;; tfragment has a `generic` field, but generic-tfragment is a four-byte stub and nothing consumes it.
-;;
-;; TIE -- background models placed repeatedly: crates, huts, pillars, fences. Instanced, and that shapes
-;; everything: a prototype's geometry is uploaded to VU1 once and then every placement that chose it
-;; streams through as a 64-byte instance record. Detail is four separately authored meshes per prototype
-;; rather than a subdivision hierarchy, and the whole instance is drawn at one level, with one morph
+;; TIE -- background models placed repeatedly, typically rocks, trees, roof tiles, etc.
+;; TIE can handle very small objects placed many times, or very complicated objects placed few times
+;; quite well.
+;; A prototype's geometry is uploaded to VU1 once and then every placement that chose it
+;; streams through as a 64-byte instance record. The whole instance is drawn at one level, with one morph
 ;; weight for the entire placement -- there is no per-vertex evaluation and no seam problem, because
 ;; every fragment of a prototype is always at the same level. One time-of-day palette per prototype,
-;; shared by all its instances; what an instance owns is a byte of palette *index* per vertex, so the
-;; same authored crate can stand in sunlight and in shadow. Instances near the camera go to TIE-NEAR,
+;; shared by all its instances; each index has its own palette *index* per vertex, so the
+;; same prototype have different lighting per instance. Instances near the camera go to TIE-NEAR,
 ;; which clips. Prototypes needing an environment map leave the VU1 path entirely and go through
-;; GENERIC-TIE.
+;; GENERIC-TIE. On PC, we send those to ETIE instead of taking the slower generic path.
 ;;
-;; SHRUB -- small vegetation, instanced like TIE but with no LOD morph, no clipping path and no GENERIC
-;; path. The cheapest of the three.
+;; SHRUB -- small vegetation, instanced like TIE but with no LOD morph. Turns into billboard or fades
+;; out at long distance. Each instance is "lit" by a single time-of-day color.
 ;;
-;; All three share the VU0 program uploaded by background-upload-vu0 below, the scratchpad
-;; terrain-context, and the convention that vf16..vf31 hold camera state for the whole background pass.
-;; finish-background draws them in the order shrubbery, terrain, TIE, then any GENERIC-TIE fallback.
+;; The original design has all background renderers share the VU0 program uploaded by background-upload-vu0 below,
+;; the scratchpad terrain-context, and the convention that vf16..vf31 hold camera state for the whole background pass.
+;; However, the final versions of these renderers set up their own conventions.
 
 (define *background-work* (new 'global 'background-work))
 
 ;; The setup entry stores the camera state in VU0 data memory:
 ;;   0..3   clipping-plane matrix
-;;   4..7   camera rotation
-;;   8..11  camera temporary matrix
+;;   4..7   camera rotation (includes translation)
+;;   8..11  camera temporary matrix (camera with perspective)
 ;;   12..15 each camera-rotation row's z coefficient broadcast across all lanes
+;;          used for distance-from-camera testing to select level of detail
 ;;
 ;; Entries 16, 25, and 29 reload the clipping planes and either depth or full rotation constants.
 ;; Entry 33 transforms one point to plane distances and camera depth. Entry 42 additionally applies
@@ -344,33 +342,20 @@
   ;;;;;;;;;;;;;;;;
   ;; shrubbery
   ;;;;;;;;;;;;;;;;
-  (set! (-> *instance-shrub-work* paused) (paused?))
+  (set! (-> *instance-shrub-work* paused) (paused?))  
   (when (nonzero? (-> *background-work* shrub-tree-count))
-    (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
-    ;; iterate over all drawable trees
+    (add-profile-frame! #x40 0 #x40 #x80 'draw)
     (dotimes (i (-> *background-work* shrub-tree-count))
-      ;; update the level index in the scratchpad
       (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> *background-work* shrub-levels i index))
       (flush-cache 0)
       (let ((shrub-tree (-> *background-work* shrub-trees i))
             (shrub-lev (-> *background-work* shrub-levels i)))
-        ;; setup colors for shrub (skipping because I don't think we'll need it here...)
-        ; (if (nonzero? (-> shrub-tree colors-added))
-        ;     (time-of-day-interp-colors
-        ;       (-> *instance-shrub-work* colors)
-        ;       (-> shrub-tree colors-added)
-        ;       (-> shrub-lev mood)
-        ;       )
-        ;     )
-        ;; and draw!
+        ;; og:perserve-this - shrub colors computed in C++ now
+        ;; (if (nonzero? (-> shrub-tree colors-added))
+        ;;     (time-of-day-interp-colors (-> *instance-shrub-work* colors) (-> shrub-tree colors-added) (-> shrub-lev mood)))
         (draw-drawable-tree-instance-shrub shrub-tree shrub-lev)))
-    (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #x40 :g #x60 :b #x80 :a #x80))))
+    (add-profile-frame! #x40 #x60 #x80 #x80 'draw))
+      
   (let ((previous-lev (the-as level #f)))
     (when (or (nonzero? (-> *background-work* tfrag-tree-count))
               (nonzero? (-> *background-work* trans-tfrag-tree-count))
@@ -405,10 +390,7 @@
              (previous-palette (the-as time-of-day-palette #f))
              (tfrag-tree-count (max (max highres-tree-count (-> *background-work* lowres-tfrag-tree-count))
                                     (-> *background-work* lowres-trans-tfrag-tree-count))))
-        (if *debug-segment*
-          (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                     'draw
-                     (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
+        (add-profile-frame! #x40 0 #x40 #x80 'draw)
         ;; loop over all tfrag trees
         (dotimes (i tfrag-tree-count)
           ;;;;;;;;;;;;;; Normal TFRAG
@@ -514,19 +496,13 @@
               (set! (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
                     (fmin (-> *level* level (-> (scratchpad-object terrain-context) bsp lev-index) closest-object 3)
                           (-> *tfrag-work* min-dist z)))))))
-      (if *debug-segment*
-        (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                   'draw
-                   (new 'static 'rgba :r #x40 :g #x80 :b #x60 :a #x80))))
+      (add-profile-frame! #x40 #x80 #x60 #x80 'draw))
     ;;;;;;;;;; TIE (TFRAG Instance Engine)
     ;; common setup
     (set! (-> *instance-tie-work* paused) (paused?))
     (when (nonzero? (-> *background-work* tie-tree-count))
       (tie-near-make-perspective-matrix (-> *instance-tie-work* tie-near-perspective-matrix))
-      (if *debug-segment*
-        (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                   'draw
-                   (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
+      (add-profile-frame! #x40 0 #x40 #x80 'draw)
       ;;;;;;;;;; Normal TIE
       (dotimes (i (-> *background-work* tie-tree-count))
         (let ((tie-lev (-> *background-work* tie-levels i)))
@@ -538,13 +514,9 @@
           (set! (-> (scratchpad-object terrain-context) bsp lev-index) (-> tie-lev index))
           (set! (-> (scratchpad-object terrain-context) bsp mood) (-> tie-lev mood))
           (draw-drawable-tree-instance-tie (-> *background-work* tie-trees i) tie-lev))
-        ;; This field holds the 32-bit EE address of a generated generic-prototype DMA chain rather
-        ;; than a GOAL object. generic-tie-execute treats that address as an opaque chain head.
         (set! (-> *background-work* tie-generic i) (the-as basic (-> *instance-tie-work* first-generic-prototype))))
-      (if *debug-segment*
-        (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                   'draw
-                   (new 'static 'rgba :r #x80 :g #x20 :b #x60 :a #x80)))
+      (add-profile-frame! #x80 #x20 #x60 #x80 'draw)
+      
       ;; TIE Generic
       (when (not *use-etie*)
         (dotimes (i (-> *background-work* tie-tree-count))

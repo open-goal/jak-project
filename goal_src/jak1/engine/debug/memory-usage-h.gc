@@ -189,4 +189,16 @@
         (+! (-> ,usage data (mem-usage-id ,kind) used) ,bytes)
         (+! (-> ,usage data (mem-usage-id ,kind) total) (align16 ,bytes))))))
 
+;; Record DMA bytes in a named category when DMA-memory debugging is enabled. Unlike ordinary
+;; allocation accounting, each category's total mirrors its cumulative used byte count.
+(defmacro dma-mem-usage-add! (kind count size)
+  (with-gensyms (usage)
+    `(let ((,usage *dma-mem-usage*))
+      (when (nonzero? ,usage)
+        (set! (-> ,usage length) (max (+ 1 (mem-usage-id-int ,kind)) (-> ,usage length)))
+        (set! (-> ,usage data (mem-usage-id ,kind) name) ,(symbol->string kind))
+        (+! (-> ,usage data (mem-usage-id ,kind) count) ,count)
+        (+! (-> ,usage data (mem-usage-id ,kind) used) ,size)
+        (set! (-> ,usage data (mem-usage-id ,kind) total) (-> ,usage data (mem-usage-id ,kind) used))))))
+
 (defun-extern mem-size basic symbol mem-usage-flags int)

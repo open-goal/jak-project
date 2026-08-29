@@ -3,6 +3,10 @@
 (bundles "ENGINE.CGO" "GAME.CGO")
 (require "engine/gfx/shadow/shadow-cpu.gc")
 
+;; NOTE: this file is a bit of a mess now.
+;; I'm planning to remove most of it and replace with PC shadow
+;; renderer very soon.
+
 ;; The perspective matrix goes in at the bottom of VU1 data memory, one row per quadword.
 (defconstant SHADOW-VU1-MATRIX 0)
 
@@ -1084,49 +1088,48 @@
   )
 
 (defun shadow-vu1-add-constants ((dma-buf dma-buffer))
-  "Upload the shadow projection, texture, fog, and color constants, then the four-quadword GIF tag block
-   the clipper writes its polygons into."
+  "Upload the shadow projection, texture, fog, color, and GIF constants plus the initial VU1 GIF
+   buffer template."
   (let* ((qwc 13)
          (packet-buffer dma-buf)
-         (upload-packet (the-as object (-> packet-buffer base))))
-    (set! (-> (the-as dma-packet upload-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
-    (set! (-> (the-as dma-packet upload-packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet upload-packet) vif1) (new 'static 'vif-tag :imm SHADOW-VU-CONSTS :cmd (vif-cmd unpack-v4-32) :num qwc))
+         (upload-packet (the-as dma-packet (-> packet-buffer base))))
+    (set! (-> upload-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc qwc))
+    (set! (-> upload-packet vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> upload-packet vif1) (new 'static 'vif-tag :imm #x370 :cmd (vif-cmd unpack-v4-32) :num qwc))
     (set! (-> packet-buffer base) (&+ (the-as pointer upload-packet) 16)))
-  (let ((constants (the-as object (-> dma-buf base)))
+  (let ((constants (the-as shadow-vu1-constants (-> dma-buf base)))
         (camera *math-camera*)
         (shadow-state *shadow-data*)
         (tri-template *shadow-vu1-tri-template*))
-    (vector-copy! (-> (the-as shadow-vu1-constants constants) hmgescale) (-> camera hmge-scale))
-    (vector-copy! (-> (the-as shadow-vu1-constants constants) invhscale) (-> camera inv-hmge-scale))
-    (vector-copy! (-> (the-as shadow-vu1-constants constants) texoffset) (-> shadow-state texoffset))
-    (vector-copy! (-> (the-as shadow-vu1-constants constants) texscale) (-> shadow-state texscale))
-    (vector-copy! (-> (the-as shadow-vu1-constants constants) hvdfoff) (-> camera hvdf-off))
-    (set! (-> (the-as shadow-vu1-constants constants) fog x) (-> camera pfog0))
-    (vector-copy! (-> (the-as shadow-vu1-constants constants) clrs 0) (-> shadow-state clrs 0))
-    (vector-copy! (-> (the-as shadow-vu1-constants constants) clrs 1) (-> shadow-state clrs 1))
-    (set! (-> (the-as shadow-vu1-constants constants) adgif qword) (-> tri-template adgif qword))
-    (set! (-> (the-as shadow-vu1-constants constants) texflush quad) (-> tri-template ad quad))
-    (set! (-> (the-as shadow-vu1-constants constants) flush quad) (-> tri-template flush quad))
-    (set! (-> (the-as shadow-vu1-constants constants) trigif qword) (-> tri-template trigif qword))
-    (set! (-> (the-as shadow-vu1-constants constants) quadgif qword) (-> tri-template quadgif qword)))
+    (vector-copy! (-> constants hmgescale) (-> camera hmge-scale))
+    (vector-copy! (-> constants invhscale) (-> camera inv-hmge-scale))
+    (vector-copy! (-> constants texoffset) (-> shadow-state texoffset))
+    (vector-copy! (-> constants texscale) (-> shadow-state texscale))
+    (vector-copy! (-> constants hvdfoff) (-> camera hvdf-off))
+    (set! (-> constants fog x) (-> camera pfog0))
+    (vector-copy! (-> constants clrs 0) (-> shadow-state clrs 0))
+    (vector-copy! (-> constants clrs 1) (-> shadow-state clrs 1))
+    (set! (-> constants adgif qword) (-> tri-template adgif qword))
+    (set! (-> constants texflush quad) (-> tri-template ad quad))
+    (set! (-> constants flush quad) (-> tri-template flush quad))
+    (set! (-> constants trigif qword) (-> tri-template trigif qword))
+    (set! (-> constants quadgif qword) (-> tri-template quadgif qword)))
   (&+! (-> dma-buf base) 208)
   (let* ((gif-upload-buffer dma-buf)
-         (gif-upload (the-as object (-> gif-upload-buffer base))))
-    (set! (-> (the-as dma-packet gif-upload) dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet gif-upload) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet gif-upload) vif1) (new 'static 'vif-tag :imm SHADOW-VU1-CLIP-GIF :num #x4 :cmd (vif-cmd unpack-v4-32)))
+         (gif-upload (the-as dma-packet (-> gif-upload-buffer base))))
+    (set! (-> gif-upload dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
+    (set! (-> gif-upload vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> gif-upload vif1) (new 'static 'vif-tag :imm #x3ac :num #x4 :cmd (vif-cmd unpack-v4-32)))
     (set! (-> gif-upload-buffer base) (&+ (the-as pointer gif-upload) 16)))
   (let* ((gif-template-buffer dma-buf)
-         (gif-template (the-as object (-> gif-template-buffer base))))
-    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) adgif tag) (new 'static 'gif-tag64 :nloop #x1 :nreg #x2))
-    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) adgif regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d) :regs1 (gif-reg-id rgbaq)))
-    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) ad data) (the-as uint 0))
-    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) ad cmds) (the-as uint 63))
-    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) flush data) (the-as uint 0))
-    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) flush cmds) (the-as uint 0))
-    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) trigif tag)
+         (gif-template (the-as shadow-vu1-gifbuf-template (-> gif-template-buffer base))))
+    (set! (-> gif-template adgif tag) (new 'static 'gif-tag64 :nloop #x1 :nreg #x2))
+    (set! (-> gif-template adgif regs) (gs-reg-list a+d rgbaq))
+    (set! (-> gif-template ad data) (the-as uint 0))
+    (set! (-> gif-template ad cmds) (the-as uint 63))
+    (set! (-> gif-template flush data) (the-as uint 0))
+    (set! (-> gif-template flush cmds) (the-as uint 0))
+    (set! (-> gif-template trigif tag)
           (new 'static
                'gif-tag64
                :nloop #x3
@@ -1135,8 +1138,7 @@
                :prim
                (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :tme #x1)
                :nreg #x2))
-    (set! (-> (the-as shadow-vu1-gifbuf-template gif-template) trigif regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id xyzf2)))
+    (set! (-> gif-template trigif regs) (gs-reg-list st xyzf2))
     (set! (-> gif-template-buffer base) (&+ (the-as pointer gif-template) 64)))
   (none))
 
@@ -1160,10 +1162,8 @@
   (dma-buffer-add-vu-function dma-buf shadow-vu1-block 1)
   (shadow-vu1-add-constants dma-buf)
   (shadow-vu1-add-matrix dma-buf *math-camera*)
-  (let* ((packet-buffer dma-buf)
-         (start-packet (the-as object (-> packet-buffer base))))
-    (set! (-> (the-as dma-packet start-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet start-packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm SHADOW-VU1-ENTRY-INIT))
-    (set! (-> (the-as dma-packet start-packet) vif1) (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
-    (set! (-> packet-buffer base) (&+ (the-as pointer start-packet) 16)))
+  (dma-buffer-add-cnt-vif2 dma-buf
+                           0
+                           (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm #xa)
+                           (new 'static 'vif-tag :cmd (vif-cmd flushe) :msk #x1))
   (none))

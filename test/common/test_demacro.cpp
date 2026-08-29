@@ -110,15 +110,14 @@ TEST(Demacro, ExpandsPatternTables) {
       ]
     }
   )RULES");
-  const auto result =
-      demacro::rewrite("(begin (expanded-kind 0) (expanded-kind 1))", rules);
+  const auto result = demacro::rewrite("(begin (expanded-kind 0) (expanded-kind 1))", rules);
   EXPECT_EQ(result.rewrite_count(), 2);
   EXPECT_EQ(result.source, "(begin (kind first) (kind second))");
 }
 
 TEST(Demacro, Jak1PreservesMemUsageNameSemantics) {
-  const auto rules = demacro::load_rules(
-      file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
   const std::string source = R"((begin
   (set! (-> usage length) (max 1 (-> usage length)))
   (set! (-> usage data 0 name) "drawable-group")
@@ -141,9 +140,65 @@ TEST(Demacro, Jak1PreservesMemUsageNameSemantics) {
 )");
 }
 
+TEST(Demacro, Jak1RecognizesPerfStatAndDmaMemUsageMacros) {
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const std::string source = R"((begin
+  (let* ((stat (-> *perf-stats* data 1))
+         (ctrl (-> stat ctrl)))
+    (+! (-> stat count) 1)
+    (b! (zero? ctrl) reset-done :delay (nop!))
+    (.mtc0 Perf 0)
+    (.sync.l)
+    (.sync.p)
+    (.mtpc pcr0 0)
+    (.mtpc pcr1 0)
+    (.sync.l)
+    (.sync.p)
+    (.mtc0 Perf ctrl))
+  (.sync.l)
+  (.sync.p)
+  (label reset-done)
+  0
+  (let ((stat (-> *perf-stats* data 1)))
+    (b! (zero? (-> stat ctrl)) read-done :delay (nop!))
+    (.mtc0 Perf 0)
+    (.sync.l)
+    (.sync.p)
+    (.mfpc counter0 pcr0)
+    (+! (-> stat accum0) counter0)
+    (.mfpc counter1 pcr1)
+    (+! (-> stat accum1) counter1))
+  (label read-done)
+  0
+  (let ((usage *dma-mem-usage*))
+    (when (nonzero? usage)
+      (set! (-> usage length) (max 87 (-> usage length)))
+      (set! (-> usage data 86 name) "pris-generic")
+      (+! (-> usage data 86 count) 1)
+      (+! (-> usage data 86 used) bytes)
+      (set! (-> usage data 86 total) (-> usage data 86 used))))
+  (let ((line (-> dma-buf base)))
+    (.sync.l)
+    (.cache dxwbin line 0)
+    (.sync.l)
+    (.cache dxwbin line 1))
+  (.sync.l)
+  0)
+)";
+  const auto result = demacro::rewrite(source, rules);
+  EXPECT_EQ(result.rewrite_count(), 4);
+  EXPECT_EQ(result.source, R"((begin
+  (reset! (-> *perf-stats* data 1))
+  (read! (-> *perf-stats* data 1))
+  (dma-mem-usage-add! pris-generic 1 bytes)
+  (invalidate-cache-line (-> dma-buf base)))
+)");
+}
+
 TEST(Demacro, Jak1RecognizesCachedEngineIteration) {
-  const auto rules = demacro::load_rules(
-      file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
   const std::string source = R"((let ((node (-> *collide-player-list* alive-list next0)))
   *collide-player-list*
   (let ((next-node (-> node next0)))
@@ -162,8 +217,8 @@ TEST(Demacro, Jak1RecognizesCachedEngineIteration) {
 }
 
 TEST(Demacro, Jak1RecognizesMergedCachedEngineIterations) {
-  const auto rules = demacro::load_rules(
-      file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
   const std::string source = R"((begin
   (let ((node (-> first-engine alive-list next0)))
     first-engine
@@ -210,8 +265,8 @@ TEST(Demacro, Jak1RecognizesMergedCachedEngineIterations) {
 }
 
 TEST(Demacro, Jak1RecognizesDmaBucketConstruction) {
-  const auto rules = demacro::load_rules(
-      file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
   const std::string source = R"((let* ((buf (-> (current-frame) debug-buf))
        (start (-> buf base)))
   ;; Keep the packet-building body.
@@ -232,8 +287,8 @@ TEST(Demacro, Jak1RecognizesDmaBucketConstruction) {
 }
 
 TEST(Demacro, Jak1RecognizesInlinedFontEnumSetters) {
-  const auto rules = demacro::load_rules(
-      file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
   const std::string source = R"((begin
   (set! (-> font flags) (font-flags shadow kerning large))
   ;; Keep the color choice with its reconstructed call.

@@ -184,9 +184,17 @@ goos::Object SimpleAtom::to_form(const std::vector<DecompilerLabel>& labels, con
     case Kind::VARIABLE:
       return m_variable.to_form(env);
     case Kind::INTEGER_CONSTANT: {
-      if (m_int == 0x70000000 && env.scratchpad_type()) {
+      constexpr s64 kScratchpadBase = 0x70000000;
+      constexpr s64 kScratchpadSize = 16 * 1024;
+      if (m_int >= kScratchpadBase && m_int < kScratchpadBase + kScratchpadSize &&
+          env.scratchpad_type()) {
         env.note_scratchpad_access();
-        return pretty_print::to_symbol("spad");
+        const auto offset = m_int - kScratchpadBase;
+        if (offset == 0) {
+          return pretty_print::to_symbol("spad");
+        }
+        return pretty_print::build_list("&+", pretty_print::to_symbol("spad"),
+                                        goos::Object::make_integer_no_hex(offset));
       }
       if (m_display_int_as_float) {
         float f;

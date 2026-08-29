@@ -18,6 +18,7 @@ const std::map<InstructionKind, OpenGOALAsm::Function> MIPS_ASM_TO_OPEN_GOAL_FUN
     {InstructionKind::MFPC, {".mfpc", {}}},
     {InstructionKind::SYNCP, {".sync.p", {}}},
     {InstructionKind::SYNCL, {".sync.l", {}}},
+    {InstructionKind::CACHE_DXWBIN, {".cache dxwbin", {}}},
 
     // Shifts and such
     {InstructionKind::PSLLW, {".pw.sll", {}}},
