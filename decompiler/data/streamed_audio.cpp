@@ -6,7 +6,9 @@
 #include "common/util/BinaryReader.h"
 #include "common/util/FileUtil.h"
 #include "common/util/string_util.h"
-
+#include "game/sound/989snd/loader.h"
+#include "game/sound/989snd/vagvoice.h"
+#include "game/sound/989snd/sfxblock.h"
 #include "fmt/format.h"
 #include "third-party/json.hpp"
 
@@ -251,6 +253,123 @@ AudioFileInfo process_audio_file(const fs::path& output_folder,
   }
   return {vag_filename,
           ((double)left_samples.size() + (double)right_samples.size()) / header.sample_rate};
+}
+
+size_t find_bank_offset(const std::vector<u8>& d) {
+  auto u32_at = [&](size_t p) {
+    u32 v = 0;
+    std::memcpy(&v, d.data() + p, sizeof(v));
+    return v;
+  };
+  auto is_fourcc = [&](size_t p, const char* cc) {
+    return p + 4 <= d.size() && d[p] == static_cast<u8>(cc[0]) &&
+           d[p + 1] == static_cast<u8>(cc[1]) && d[p + 2] == static_cast<u8>(cc[2]) &&
+           d[p + 3] == static_cast<u8>(cc[3]);
+  };
+
+  for (size_t off = 0; off + 16 <= d.size(); off += 2048) {
+    const u32 type = u32_at(off);
+    if (type != 1 && type != 3) {
+      continue;
+    }
+    const u32 num_chunks = u32_at(off + 4);
+    if (num_chunks < 2 || num_chunks > 3 || off + 8 + static_cast<size_t>(num_chunks) * 8 > d.size()) {
+      continue;
+    }
+    bool chunks_ok = true;
+    for (u32 i = 0; i < num_chunks; i++) {
+      const u32 coff = u32_at(off + 8 + i * 8);
+      const u32 csz = u32_at(off + 8 + i * 8 + 4);
+      if (off + static_cast<size_t>(coff) + csz > d.size()) {
+        chunks_ok = false;
+        break;
+      }
+    }
+    if (chunks_ok && (is_fourcc(off + u32_at(off + 8), "SBlk") ||
+                      is_fourcc(off + u32_at(off + 8), "SBv2"))) {
+      return off;
+    }
+  }
+  return SIZE_MAX;
+}
+
+void process_sfx(const fs::path& output_path,
+                            const fs::path& input_dir) {
+  auto dir = input_dir / "SBK";
+  std::vector<fs::path> sbkFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.SBK"));
+
+  snd::Loader loader;
+  int soundid = 0;
+  for(auto& sbk : sbkFiles){
+    auto data = file_util::read_binary_file(sbk);
+    // if (config.game_version == GameVersion::Jak1) {
+    //   //TODO
+    // }
+    snd::SFXBlock *block = (snd::SFXBlock*)loader.BankLoad(data);
+    for(auto& sound : block->Sounds){
+      for(auto &grain : sound.Grains){
+        if(grain.Type == snd::GrainType::TONE || grain.Type == snd::GrainType::TONE2){
+          auto tone = std::get<snd::Tone>(grain.data);
+          BinaryReader reader(std::span(block->SampleData));
+          reader.set_seek(tone.Sample - &block->SampleData[0]);
+          const auto [left_samples, right_samples] = decode_adpcm(reader, false, 0);
+
+          // while (reader.bytes_left()) {
+          //   ASSERT(reader.read<u8>() == 0);
+          // }
+
+          std::string name = "sound" + std::to_string(soundid++) + ".wav";
+          auto file_name = fmt::format("{}.wav", remove_trailing_spaces(name));
+          write_wave_file(left_samples, right_samples, 48000,
+                  output_path / name);
+        }
+      }
+    }
+
+    // write_wave_file(left_samples, right_samples, header.sample_rate,
+    //             output_folder / suffix / file_name);
+  }
+
+
+  // auto dir_data = read_audio_dir(config, input_dir / "VAG" / "VAGDIR.AYB");
+  // double audio_len = 0.f;
+
+  // std::vector<std::string> langs;
+  // std::vector<std::vector<std::string>> filename_data;
+  // for (auto& e : dir_data.entries) {
+  //   std::vector<std::string> placeholders = {remove_trailing_spaces(e.name)};
+  //   for (size_t i = 0; i < audio_files.size(); i++) {
+  //     placeholders.push_back("????");
+  //   }
+  //   filename_data.push_back(placeholders);
+  // }
+
+  // for (size_t lang_id = 0; lang_id < audio_files.size(); lang_id++) {
+  //   auto& file = audio_files[lang_id];
+  //   auto wad_data = file_util::read_binary_file(input_dir / "VAG" / file);
+  //   auto suffix = fs::path(file).extension().string().substr(1);
+  //   bool int_bank_p = suffix.compare("INT") == 0;
+  //   langs.push_back(suffix);
+  //   for (int i = 0; i < dir_data.entry_count(); i++) {
+  //     auto entry = dir_data.entries.at(i);
+  //     if (entry.international != int_bank_p) {
+  //       continue;
+  //     }
+
+  //     lg::info("File {}, total {:.2f} minutes", entry.name, audio_len / 60.0);
+  //     auto data = std::span(wad_data).subspan(entry.start_byte);
+  //     auto info =
+  //         process_audio_file(output_path, data, entry.name, suffix, entry.stereo, dir_data.version);
+  //     audio_len += info.length_seconds;
+  //     filename_data[i][lang_id + 1] = info.filename;
+  //   }
+  // }
+
+  // nlohmann::json file_list;
+  // file_list["names"] = filename_data;
+  // file_list["languages"] = langs;
+
+  // file_util::write_text_file(output_path / "file_list.txt", file_list.dump(2));
 }
 
 void process_streamed_audio(const decompiler::Config& config,

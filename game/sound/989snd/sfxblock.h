@@ -44,7 +44,7 @@ class SFXBlock : public SoundBank {
   std::vector<SFX> Sounds;
   std::string Name;
   std::map<std::string, u32> Names;
-  std::unique_ptr<u8[]> SampleData;
+  std::vector<u8> SampleData;
 
   static SFXBlock* ReadBlock(std::span<u8> bank_data, std::span<u8> samples);
 

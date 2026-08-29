@@ -200,8 +200,8 @@ SFXBlock* SFXBlock::ReadBlock(std::span<u8> bank_data, std::span<u8> samples) {
     return nullptr;
   }
 
-  block->SampleData = std::make_unique<u8[]>(samples.size());
-  std::copy(samples.begin(), samples.end(), block->SampleData.get());
+  block->SampleData.resize(samples.size_bytes());
+  std::copy(samples.begin(), samples.end(), block->SampleData.data());
 
   block->Version = data.read<u32>();
   block->Flags.flags = data.read<u32>();
@@ -249,9 +249,9 @@ SFXBlock* SFXBlock::ReadBlock(std::span<u8> bank_data, std::span<u8> samples) {
       auto grains = data.at(FirstGrain + FirstSFXGrain);
       for (auto& grain : sfx.Grains) {
         if (block->Version < 2) {
-          grain = ReadGrainV1(grains, block->SampleData.get());
+          grain = ReadGrainV1(grains, block->SampleData.data());
         } else {
-          grain = ReadGrainV2(grains, data.at(GrainData), block->SampleData.get());
+          grain = ReadGrainV2(grains, data.at(GrainData), block->SampleData.data());
         }
       }
     }
