@@ -293,19 +293,65 @@ size_t find_bank_offset(const std::vector<u8>& d) {
   return SIZE_MAX;
 }
 
-void process_sfx(const fs::path& output_path,
-                            const fs::path& input_dir) {
+void parse_jak1_name_table(const std::vector<u8>& d,
+                           size_t limit,
+                           std::string& bank_name,
+                           std::vector<std::string>& names) {
+  bank_name.clear();
+  names.clear();
+  if (limit < 0x18 || limit > d.size()) {
+    return;
+  }
+  auto read_name16 = [&](size_t p) {
+    char buf[17];
+    std::memcpy(buf, d.data() + p, 16);
+    buf[16] = 0;
+    return std::string(buf);
+  };
+  u32 count = 0;
+  std::memcpy(&count, d.data() + 0x14, sizeof(count));
+
+  bank_name = read_name16(0);
+  size_t pos = 0x18;
+  for (u32 i = 0; i < count && pos + 20 <= limit; i++, pos += 20) {
+    names.push_back(read_name16(pos));
+  }
+}
+
+void process_sfx(const Config& config, 
+                const fs::path& output_path, 
+                const fs::path& input_dir) {
   auto dir = input_dir / "SBK";
   std::vector<fs::path> sbkFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.SBK"));
 
   snd::Loader loader;
-  int soundid = 0;
   for(auto& sbk : sbkFiles){
+
+    auto sbk_name = sbk.filename().replace_extension("");
     auto data = file_util::read_binary_file(sbk);
-    // if (config.game_version == GameVersion::Jak1) {
-    //   //TODO
-    // }
-    snd::SFXBlock *block = (snd::SFXBlock*)loader.BankLoad(data);
+
+
+    const size_t bank_offset = find_bank_offset(data); //Find where the sfx bank starts
+    std::vector<std::string> sfx_names;
+    if (bank_offset == SIZE_MAX) {
+      lg::error("'{}' is not a valid .MUS or .SBK bank.", sbk_name.string());
+      return;
+    }
+    if (bank_offset > 0) {
+      std::string bank_name;
+      parse_jak1_name_table(data, bank_offset, bank_name, sfx_names);
+    }
+
+    auto output_folder= output_path / sbk_name;
+    file_util::create_dir_if_needed(output_folder);
+    snd::SFXBlock *block = (snd::SFXBlock*)loader.BankLoad(std::span<u8>(data).subspan(bank_offset));
+
+
+    std::map<u32, std::string> names_by_index;
+    for (const auto& [name, index] : block->Names) {
+      names_by_index.insert({index,name});
+    }
+    u64 sound_index = 0;
     for(auto& sound : block->Sounds){
       for(auto &grain : sound.Grains){
         if(grain.Type == snd::GrainType::TONE || grain.Type == snd::GrainType::TONE2){
@@ -318,12 +364,21 @@ void process_sfx(const fs::path& output_path,
           //   ASSERT(reader.read<u8>() == 0);
           // }
 
-          std::string name = "sound" + std::to_string(soundid++) + ".wav";
+          std::string name;
+          if (auto it = names_by_index.find(sound_index); it != names_by_index.end())
+            name = it->second;
+          else if (sound_index < sfx_names.size())
+            name = sfx_names[sound_index];
+          else
+            name = "sound" + std::to_string(sound_index) + ".wav";
+
+
           auto file_name = fmt::format("{}.wav", remove_trailing_spaces(name));
           write_wave_file(left_samples, right_samples, 48000,
-                  output_path / name);
+                  output_folder / name);
         }
       }
+      ++sound_index;
     }
 
     // write_wave_file(left_samples, right_samples, header.sample_rate,
