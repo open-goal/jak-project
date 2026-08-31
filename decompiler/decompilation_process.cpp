@@ -311,8 +311,8 @@ if (config.levels_extract) {
   if (config.rip_streamed_audio) {
     auto streaming_audio_out = out_folder / "audio";
     file_util::create_dir_if_needed(streaming_audio_out);
-    //process_streamed_audio(config, streaming_audio_out / "voice_lines", in_folder,
-    //                      config.streamed_audio_file_names);
+    process_streamed_audio(config, streaming_audio_out / "voice_lines", in_folder,
+                         config.streamed_audio_file_names);
     process_sfx(streaming_audio_out / "sfx", in_folder);
   }
 
