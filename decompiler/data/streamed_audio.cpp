@@ -359,11 +359,18 @@ void process_music(const fs::path& output_path,
       for(auto &flavaVariant : flava_set->variants)
       {
         const auto variantName = std::string(flavaVariant.name);
-        if(variantName == "none")
+        if (variantName == "none")
           continue;
 
         fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
-        fakeplayer.SetSoundReg(flava_set->reg, flavaVariant.value);
+        if (flavaVariant.value > 0){
+          //Play for a tenth of a second before setting the register, then clear left/right samples so they don't get added to track.
+          //This seems to help ensure that the correct flava actually plays.
+          fakeplayer.Tick(left_samples, right_samples, snd::SAMPLE_RATE / 10);
+          fakeplayer.SetSoundReg(flava_set->reg, flavaVariant.value);
+          left_samples.clear();
+          right_samples.clear();
+        }
         fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
   
         auto file_name = variantName == "default" ? mus_name : mus_name + '_' + variantName;
