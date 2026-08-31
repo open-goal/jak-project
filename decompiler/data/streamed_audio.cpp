@@ -1,13 +1,13 @@
 
 #include "streamed_audio.h"
+#include <cstdint>
 
 #include "common/audio/audio_formats.h"
 #include "common/log/log.h"
 #include "common/util/BinaryReader.h"
 #include "common/util/FileUtil.h"
 #include "common/util/string_util.h"
-#include "game/sound/989snd/loader.h"
-#include "game/sound/989snd/vagvoice.h"
+#include "game/sound/989snd/fakeplayer.h"
 #include "game/sound/989snd/sfxblock.h"
 #include "fmt/format.h"
 #include "third-party/json.hpp"
@@ -318,15 +318,17 @@ void parse_jak1_name_table(const std::vector<u8>& d,
   }
 }
 
-void process_sfx(const Config& config, 
-                const fs::path& output_path, 
+void process_sfx(const fs::path& output_path, 
                 const fs::path& input_dir) {
   auto dir = input_dir / "SBK";
   std::vector<fs::path> sbkFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.SBK"));
 
-  snd::Loader loader;
+  //Create a fake player that will generate the samples to play the sounds exactly as they are in the games :)
+  snd::FakePlayer fakeplayer; 
+  std::vector<s16> left_samples, right_samples;
+  left_samples.reserve(1024*1024);
+  right_samples.reserve(1024*1024);
   for(auto& sbk : sbkFiles){
-
     auto sbk_name = sbk.filename().replace_extension("");
     auto data = file_util::read_binary_file(sbk);
 
@@ -344,43 +346,37 @@ void process_sfx(const Config& config,
 
     auto output_folder= output_path / sbk_name;
     file_util::create_dir_if_needed(output_folder);
-    snd::SFXBlock *block = (snd::SFXBlock*)loader.BankLoad(std::span<u8>(data).subspan(bank_offset));
+    snd::SFXBlock *block = (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
 
 
     std::map<u32, std::string> names_by_index;
     for (const auto& [name, index] : block->Names) {
       names_by_index.insert({index,name});
     }
-    u64 sound_index = 0;
-    for(auto& sound : block->Sounds){
-      for(auto &grain : sound.Grains){
-        if(grain.Type == snd::GrainType::TONE || grain.Type == snd::GrainType::TONE2){
-          auto tone = std::get<snd::Tone>(grain.data);
-          BinaryReader reader(std::span(block->SampleData));
-          reader.set_seek(tone.Sample - &block->SampleData[0]);
-          const auto [left_samples, right_samples] = decode_adpcm(reader, false, 0);
 
-          // while (reader.bytes_left()) {
-          //   ASSERT(reader.read<u8>() == 0);
-          // }
+    for(u32 sound_index = 0; sound_index < block->Sounds.size(); ++sound_index)
+    {
+      fakeplayer.PlaySound(block, sound_index, 0x400, 0, 0, 0);
+      const s64 TEN_SECONDS = 480000;
+      fakeplayer.Tick(left_samples, right_samples, TEN_SECONDS);
 
-          std::string name;
-          if (auto it = names_by_index.find(sound_index); it != names_by_index.end())
-            name = it->second;
-          else if (sound_index < sfx_names.size())
-            name = sfx_names[sound_index];
-          else
-            name = "sound" + std::to_string(sound_index) + ".wav";
+      std::string name;
+      if (auto it = names_by_index.find(sound_index); it != names_by_index.end())
+        name = it->second;
+      else if (sound_index < sfx_names.size())
+        name = sfx_names[sound_index];
+      else
+        name = "sound" + std::to_string(sound_index);
 
 
-          auto file_name = fmt::format("{}.wav", remove_trailing_spaces(name));
-          write_wave_file(left_samples, right_samples, 48000,
-                  output_folder / name);
-        }
-      }
-      ++sound_index;
+      auto file_name = fmt::format("{}.wav", remove_trailing_spaces(name));
+      write_wave_file(left_samples, right_samples, 48000,
+              output_folder / file_name);
+
+      left_samples.clear();
+      right_samples.clear();
     }
-
+    fakeplayer.UnloadBank(block);
     // write_wave_file(left_samples, right_samples, header.sample_rate,
     //             output_folder / suffix / file_name);
   }

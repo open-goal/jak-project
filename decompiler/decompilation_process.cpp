@@ -299,7 +299,7 @@ int run_decompilation_process(decompiler::Config config,
     }
   }
 
-  if (config.levels_extract) {
+if (config.levels_extract) {
     auto level_out_path =
         file_util::get_jak_project_dir() / "out" / game_version_names[config.game_version] / "fr3";
     file_util::create_dir_if_needed(level_out_path);
@@ -311,9 +311,9 @@ int run_decompilation_process(decompiler::Config config,
   if (config.rip_streamed_audio) {
     auto streaming_audio_out = out_folder / "audio";
     file_util::create_dir_if_needed(streaming_audio_out);
-    process_streamed_audio(config, streaming_audio_out / "voice_lines", in_folder,
-                          config.streamed_audio_file_names);
-    process_sfx(config, streaming_audio_out / "sfx", in_folder);
+    //process_streamed_audio(config, streaming_audio_out / "voice_lines", in_folder,
+    //                      config.streamed_audio_file_names);
+    process_sfx(streaming_audio_out / "sfx", in_folder);
   }
 
   lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());
