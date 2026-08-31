@@ -13,7 +13,7 @@
 #include "game/runtime.h"
 
 #ifdef __APPLE__
-#include <libkern/OSCacheControl.h>
+#include "libkern/OSCacheControl.h"
 #endif
 
 /*!
