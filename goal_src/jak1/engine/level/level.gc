@@ -48,12 +48,15 @@
 (defmethod art-group-get-by-name ((this level) (name string))
   "Return this level's art group whose name matches name, or false."
   (countdown (i (-> this art-group art-group-array length))
-    (if (name= (-> this art-group art-group-array i name) name) (return (-> this art-group art-group-array i))))
+    (if (name= (-> this art-group art-group-array i name) name)
+        (return (-> this art-group art-group-array i))))
   (the-as art-group #f))
 
 (defmethod bsp-name ((this level))
   "Return the loaded BSP name when available, otherwise return this level's requested name."
-  (if (and (!= (-> this status) 'inactive) (-> this bsp) (nonzero? (-> this bsp name))) (-> this bsp name) (-> this name)))
+  (if (and (!= (-> this status) 'inactive)(-> this bsp) (nonzero? (-> this bsp name)))
+      (-> this bsp name)
+      (-> this name)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; BSP
@@ -67,9 +70,10 @@
 
 (defun add-bsp-drawable ((bsp-data bsp-header) (level-data level) (unused symbol) (display-frame-data display-frame))
   "Draw a level BSP for the current display frame and optionally append its strip-line debug view."
-  ;; do the draw
+  ;; do the draw (just adds to background queues, real drawing is deferred again.)
   (draw bsp-data bsp-data display-frame-data)
-  (if (nonzero? *display-strip-lines*) (debug-draw bsp-data bsp-data display-frame-data))
+  (if (nonzero? *display-strip-lines*)
+      (debug-draw bsp-data bsp-data display-frame-data))
   (none))
 
 (defmethod print ((this level))
@@ -80,7 +84,7 @@
 (defmethod relocate ((this bsp-header) (heap kheap) (name (pointer uint8)))
   "Validate a newly linked BSP for the currently loading level, preserve the corrected title and
    demo names, and connect the BSP and level to each other. Reject invalid types, versions, and
-   visibility lists longer than 2048 entries."
+   visibility lists longer than 2048 bytes."
   ;; we expect that we'll have a loading-level set when we link/login a bsp-header
   (let ((loading-level (-> *level* loading-level)))
     (if loading-level
@@ -114,7 +118,8 @@
 (defmethod load-required-packages ((this level))
   "Load the common package requested by a non-debug BSP when its level package list is nonempty."
   (when (not (or (not (-> this bsp)) (= *kernel-boot-mode* 'debug-boot)))
-    (if (not (null? (-> this info packages))) (load-package "common" global)))
+    (if (not (null? (-> this info packages)))
+        (load-package "common" global)))
   this)
 
 ;;;;;;;;;;;;;;
@@ -265,7 +270,9 @@
 
 (defmethod level-status ((this level-group) (level-name symbol))
   "Return the status of the loaded level matching level-name, or false."
-  (let ((loaded-level (level-get *level* level-name))) (if loaded-level (-> loaded-level status))))
+  (let ((loaded-level (level-get *level* level-name)))
+    (if loaded-level
+        (-> loaded-level status))))
 
 (defmethod level-status-set! ((this level) (want-status symbol))
   "Move this level toward want-status through the legal load, login, birth, activation,
@@ -304,7 +311,7 @@
             (remove-by-param1 *background-draw-engine* (-> this bsp))
             (add-connection *background-draw-engine*
                             *dproc*
-                            (the (function object object object object object) add-bsp-drawable)
+                            add-bsp-drawable
                             (-> this bsp)
                             this
                             #f)
@@ -1037,7 +1044,7 @@
   0)
 
 (defun update-sound-banks ()
-  "Reconcile the two resident sound-bank slots with the distinct banks required by active levels.
+  "Set up sound banks based on the currently loaded levels.
    Do nothing while the loader RPC is busy or a movie is active, report more than two requirements,
    and perform at most one load or unload per call."
   (if (nonzero? (rpc-busy? RPC-SOUND-LOADER)) (return 0))
@@ -1122,7 +1129,8 @@
                   (define-extern *entity* entity)
                   (set! *entity* (the entity #f)))))))))
     (let ((ordinary-slots-empty #f))
-      (if (and (= (-> *level* level0 status) 'inactive) (= (-> *level* level1 status) 'inactive)) (set! ordinary-slots-empty #t))
+      (if (and (= (-> *level* level0 status) 'inactive) (= (-> *level* level1 status) 'inactive))
+          (set! ordinary-slots-empty #t))
       (if discarded-level (return 0))
       (let ((need-level0 #f)
             (need-level1 #f))
@@ -1367,7 +1375,8 @@
       (format *stdcon*
               "  nick ~A cur ~S  cont ~A~%~%"
               (-> *load-state* vis-nick)
-              (let ((lev-name (and *target* (-> *target* current-level name)))) (if lev-name (symbol->string lev-name)))
+              (let ((lev-name (and *target* (-> *target* current-level name))))
+                (if lev-name (symbol->string lev-name)))
               (-> *game-info* current-continue name))
       ; (let ((t9-16 format)
       ;       (a0-53 *stdcon*)

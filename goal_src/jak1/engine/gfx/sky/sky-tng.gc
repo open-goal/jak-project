@@ -9,6 +9,9 @@
 
 ;; DECOMP BEGINS
 
+;; Initialize DMA templates in *sky-work*
+;; The sky renderer creates a sky and a cloud texture from interpolating (blending) two base textures,
+;; then draws very large polygons.
 (define *sky-work*
   (new 'static
        'sky-work
@@ -83,26 +86,27 @@
                  :regs2 (gif-reg-id xyzf2)
                  :regs3 (gif-reg-id uv)
                  :regs4 (gif-reg-id xyzf2)))
+       ;; GS vertex data for drawing to texture
        :sky-data
        (new 'static
             'inline-array
             qword
             5
-            (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #x0 #x80))
-            (new 'static 'qword)
-            (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #xffffff #x0))
-            (new 'static 'qword :data (new 'static 'array uint32 4 #x200 #x200 #x0 #x0))
-            (new 'static 'qword :data (new 'static 'array uint32 4 #x200 #x200 #xffffff #x0)))
+            (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #x0 #x80)) ;; RGBA
+            (new 'static 'qword) ;; UV0
+            (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #xffffff #x0)) ;; XYZF0
+            (new 'static 'qword :data (new 'static 'array uint32 4 #x200 #x200 #x0 #x0)) ;; UV1
+            (new 'static 'qword :data (new 'static 'array uint32 4 #x200 #x200 #xffffff #x0))) ;; XYZF1
        :cloud-data
        (new 'static
             'inline-array
             qword
             5
-            (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #x0 #x80))
-            (new 'static 'qword)
-            (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x200 #xffffff #x0))
-            (new 'static 'qword :data (new 'static 'array uint32 4 #x400 #x400 #x0 #x0))
-            (new 'static 'qword :data (new 'static 'array uint32 4 #x400 #x600 #xffffff #x0)))))
+            (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x0 #x0 #x80)) ;; RGBA
+            (new 'static 'qword) ;; UV0
+            (new 'static 'qword :data (new 'static 'array uint32 4 #x0 #x200 #xffffff #x0)) ;; XYZF0
+            (new 'static 'qword :data (new 'static 'array uint32 4 #x400 #x400 #x0 #x0)) ;; UV1
+            (new 'static 'qword :data (new 'static 'array uint32 4 #x400 #x600 #xffffff #x0))))) ;; XYZF1
 
 (defun init-sky-tng-data ((data sky-tng-data))
   "Initialize the untextured base, alpha-blended textured roof, and fogged ocean giftags, then
@@ -172,860 +176,276 @@
   0
   (none))
 
-;; The PC renderer keeps the persistent VU0 values in its MIPS2C context.
-(#when PC_PORT
-  (def-mips2c init-sky-regs (function none))
-  (def-mips2c set-sky-vf27 (function object none))
-  (def-mips2c set-sky-vf23-value (function int none)))
+;; The sky polygon renderer abused standard calling-convention and stashed intermediate values
+;; in registers. We've rewritten that and use this as the context instead.
 
-;; The rest of the PC path shares that context and the two emulated scratch pages.
-(#when PC_PORT
-  (def-mips2c set-tex-offset (function int int none))
-  (def-mips2c draw-large-polygon function)
-  ;;(def-mips2c clip-polygon-against-positive-hyperplane function)
-  ;;(def-mips2c clip-polygon-against-negative-hyperplane function)
-  (def-mips2c render-sky-quad (function (inline-array sky-vertex) dma-buffer none))
-  (def-mips2c render-sky-tri (function (inline-array sky-vertex) dma-buffer none))
-  (defun close-sky-buffer ((dma-buf dma-buffer))
-    "Append the #x8000 terminator for the current large-polygon stream and advance the DMA buffer by
-     one qword."
-    (nop!)
-    (let ((terminator #x8000)
-          (cursor (-> dma-buf base)))
-      (set! (-> (the-as (pointer int128) cursor)) (the int128 0))
-      (nop!)
-      (set! (-> (the-as (pointer int32) cursor)) terminator)
-      (let ((next-cursor (&+ cursor 16)))
-        ;; Advance the caller's cursor in the return delay slot.
-        ;;(.jr ra-0)
-        (set! (-> dma-buf base) next-cursor)))
-    (none)))
+(deftype sky-polygon-renderer-state (basic)
+  ((transform        matrix :inline)
+   (inv-hmge-scale   vector :inline)
+   (screen-offset    vector :inline)
+   (texture-offset   vector :inline)
+   (fog-clamp        vector :inline)
+   (giftag           gs-gif-tag :inline)
+   (layer-depth      float)
+   (vertex-count     int32)
+   (dma-buf          dma-buffer)
+   (vertices-a       sky-vertex 12 :inline)
+   (vertices-b       sky-vertex 12 :inline)))
 
-;; Each sky vertex is three consecutive quadwords:
-;;
-;;   +0x00  homogeneous position
-;;   +0x10  perspective texture coordinates (s, t, q, unused)
-;;   +0x20  floating-point RGBA
-;;
-;; Polygon lists are closed by repeating the first complete 48-byte record after the last distinct
-;; vertex.  render-sky-tri and render-sky-quad transform their input into the scratch pages at
-;; #x70003000 and #x70003800, preserving STQ and color.  draw-large-polygon alternates those pages
-;; through four Sutherland-Hodgman clipping passes before emitting ST/RGBAQ/XYZF into the DMA
-;; buffer.  The persistent VU0 registers are initialized once per layer:
-;;
-;;   vf31..vf28  camera rows scaled into the homogeneous clip volume
-;;   vf26        inverse homogeneous scale used after clipping
-;;   vf25        screen/fog offset, with z forced to zero
-;;   vf24        normalized scrolling texture offset
-;;   vf23.x      GS layer depth (zero normally, 256 for the base layer)
-;;   vf13        pfog0, fog-min, fog-max, and the 3071 fog ceiling
-(#unless PC_PORT
-  (asm-data (label sky-fog-ceiling)
-            (word #x453ff000) ;; 3071.0
-            (label sky-screen-offset-2049)
-            (word #x45001000) ;; 2049.0
-            (label sky-texel-phase-scale)
-            (word #x37800000) ;; 1 / 65536
-            (label sky-screen-offset-2047)
-            (word #x44ffe000)) ;; 2047.0
-  (defun init-sky-regs ()
-    "Load the camera, projection, fog, and initial layer state used by the inline VU0 sky path.
-     Select vertical screen offset 2049 when camera translation y is positive and 2047 otherwise."
-    (declare (asm-func none))
-    (rlet ((camera :reg v1)
-           (screen-offset :reg a0)
-           (work :reg a1)
-           (address :reg a2)
-           (function-base :reg fp)
-           (result :reg v0))
-      (add.i sp sp -32)
-      (s.d function-base sp 8)
-      (m function-base t9)
-      (m! camera *math-camera*)
-      (add.i screen-offset sp 16)
-      (s.q r0 screen-offset)
-      (m work screen-offset)
-      (lea.field address camera (hvdf-off))
-      (l.q address address)
-      (s.q address work)
-      (m f0 r0)
-      (l.s.field f1 camera (trans y))
-      (c.lt.s f0 f1)
-      (b.fpf sky-use-2047-offset :delay (nop!))
-      (l.s f0 function-base sky-screen-offset-2049)
-      (s.s f0 screen-offset 4)
-      (m work f0)
-      (b sky-screen-offset-ready :delay (nop!))
-      (label sky-use-2047-offset)
-      (l.s f0 function-base sky-screen-offset-2047)
-      (s.s f0 screen-offset 4)
-      (m work f0)
-      (label sky-screen-offset-ready)
-      ;; Keep the fog range beside the runtime texture state so the projection loop can retain it
-      ;; in vf13 without further scalar loads.
-      (m! work *sky-tng-data*)
-      (lea.field work work (fog))
-      (l.s.field f0 camera (pfog0))
-      (s.s f0 work)
-      (l.s.field f0 camera (fog-min))
-      (s.s f0 work 4)
-      (l.s.field f0 camera (fog-max))
-      (s.s f0 work 8)
-      (l.s f0 function-base sky-fog-ceiling)
-      (s.s f0 work 12)
-      (asm-block load-persistent-sky-vectors
-                 (l.vf vf31 camera 572)
-                 (l.vf vf30 camera 588)
-                 (l.vf vf29 camera 604)
-                 (l.vf vf28 camera 620)
-                 (l.vf vf14 camera 700)
-                 (l.vf vf26 camera 716)
-                 (l.vf vf25 screen-offset)
-                 (m! camera *sky-tng-data*)
-                 (l.vf vf13 camera 60)
-                 (mul.vf vf31 vf31 vf14)
-                 (mul.vf vf30 vf30 vf14)
-                 (mul.vf vf29 vf29 vf14)
-                 (mul.vf vf28 vf28 vf14)
-                 (vmove.z vf25 vf0)
-                 (vmove.xyzw vf24 vf0)
-                 (vmove.xyzw vf23 vf0))
-      (m camera vf23)
-      (m result r0)
-      (l.d function-base sp 8)
-      (jr ra :delay (add.i sp sp 32))
-      (nop! :count 3)))
-  (defun set-tex-offset ((s-offset int) (t-offset int))
-    "Convert wrapped 16-bit texture phases to normalized offsets in vf24.xy; clear z and w."
-    (declare (asm-func none))
-    (rlet ((offset :reg v1)
-           (function-base :reg fp)
-           (result :reg v0))
-      (add.i sp sp -32)
-      (s.d function-base sp 8)
-      (m function-base t9)
-      (add.i offset sp 16)
-      (s.q r0 offset)
-      (l.s f0 function-base sky-texel-phase-scale)
-      (m f1 a0)
-      (cvt.s.w f1 f1)
-      (mul.s f0 f0 f1)
-      (s.s f0 offset)
-      (l.s f0 function-base sky-texel-phase-scale)
-      (m f1 a1)
-      (cvt.s.w f1 f1)
-      (mul.s f0 f0 f1)
-      (s.s f0 offset 4)
-      (m f0 r0)
-      (s.s f0 offset 8)
-      (m f0 r0)
-      (s.s f0 offset 12)
-      (l.vf vf24 offset)
-      (m offset vf24)
-      (m result r0)
-      (l.d function-base sp 8)
-      (jr ra :delay (add.i sp sp 32))
-      (nop! :count 2)))
-  (defun draw-large-polygon ()
-    "Clip the closed scratch polygon against the four side planes, then append its GS vertices.
-     The private calling convention carries the polygon count in t0, the DMA buffer in a1, and
-     the alternating scratch pages in t4 and t5. Return #f if clipping removes every vertex."
-    (declare (asm-func none))
-    (nop!)
-    (add.i sp sp -8)
-    (nop!)
-    (s.d ra sp)
-    ;; Sutherland-Hodgman clipping alternates pages so that each pass may stream its output without
-    ;; disturbing unread input.  t2 selects x or y within each position; the positive helper tests
-    ;; component <= w and the negative helper tests component >= -w.
-    (asm-block clip-sky-side-planes
-               (m! t9 clip-polygon-against-positive-hyperplane)
-               (m a2 t4)
-               (m a3 t5)
-               (jalr ra t9 :delay (add t2 a2 r0))
-               (b.z t0 sky-polygon-clipped-away :delay (nop!))
-               (m a2 t5)
-               (m a3 t4)
-               (jalr ra t9 :delay (add.i t2 a2 4))
-               (b.z t0 sky-polygon-clipped-away :delay (m! t9 clip-polygon-against-negative-hyperplane))
-               (m a2 t4)
-               (m a3 t5)
-               (jalr ra t9 :delay (add t2 a2 r0))
-               (b.z t0 sky-polygon-clipped-away :delay (nop!))
-               (m a2 t5)
-               (m a3 t4)
-               (jalr ra t9 :delay (add.i t2 a2 4))
-               (b.z t0 sky-polygon-clipped-away :delay (l.w.field a3 a1 (base))))
-    ;; vf27 is the GIF tag for this polygon.  Its first word is replaced by the clipped vertex
-    ;; count before ST/RGBAQ/XYZF records are written behind it.
-    (m a2 t4)
-    (nop!)
-    (s.vf vf27 a3)
-    (add.i a3 a3 16)
-    (s.w t0 a3 -16)
-    (nop!)
-    (label emit-sky-polygon-vertices)
-    (asm-block project-sky-vertex
-               (l.vf vf1 a2)
-               (nop!)
-               (l.vf vf2 a2 16)
-               (nop!)
-               (l.vf vf3 a2 32)
-               ;; Recover 1/w after clipping, undo the homogeneous clip scale, and convert the packed color.
-               (vdiv Q vf0.w vf1.w)
-               (mul.vf vf1 vf1 vf26)
-               (nop!)
-               (ftoi.vf vf3 vf3)
-               (nop!)
-               ;; Add the scrolling phase before perspective division so STQ remains perspective correct.
-               (add.vf vf2 vf2 vf24)
-               (nop!)
-               (waitq)
-               (nop!)
-               (vmulq.xyz vf1 vf1 Q)
-               (s.vf vf3 a3 16)
-               (vmulq.xyzw vf2 vf2 Q)
-               (add.i a2 a2 48)
-               ;; Map to GS screen space.  vf23.x selects the layer depth, while w becomes the clamped fog
-               ;; value carried in XYZF after 12.4 fixed-point conversion.
-               (add.vf vf1 vf1 vf25)
-               (add.i a3 a3 48)
-               (vmulz.z vf1 vf1 vf0)
-               (nop!)
-               (vminiz.w vf1 vf1 vf13)
-               (nop!)
-               (vaddx.z vf1 vf1 vf23)
-               (nop!)
-               (vmaxy.w vf1 vf1 vf13)
-               (nop!)
-               (s.vf vf2 a3 -48)
-               (add.i t0 t0 -1)
-               (vftoi4.xyzw vf1 vf1)
-               (nop!)
-               (b.nz t0 emit-sky-polygon-vertices :delay (s.vf vf1 a3 -16)))
-    (s.w.field a3 a1 (base))
-    (nop!)
-    (l.d ra sp)
-    (add.i v0 s7 8)
-    (jr ra :delay (add.i sp sp 8))
-    (label sky-polygon-clipped-away)
-    (l.d ra sp)
-    (m v0 s7)
-    (jr ra :delay (add.i sp sp 8))
-    (jr ra :delay (add sp sp r0))
-    (nop! :count 2))
-  (defun clip-polygon-against-positive-hyperplane ()
-    "Clip a closed scratch polygon against component <= w. t2 points at the selected x or y
-     component of the first position, a2 and a3 are the input and output pages, and t0 is replaced
-     by the output vertex count. Every crossing interpolates position, STQ, and color together."
-    (declare (asm-func none))
-    (asm-block classify-first-positive-vertex
-               (nop!)
-               (m t1 t0)
-               (add.i t0 r0 0)
-               (l.s f1 t2)
-               (add.i t2 t2 48)
-               (l.s f0 a2 12)
-               (m t3 a3)
-               (l.vf vf1 a2)
-               (add.i a2 a2 48)
-               (c.lt.s f0 f1)
-               (l.vf vf2 a2 -32)
-               (b.fpf positive-inside-a :delay (l.vf vf3 a2 -16)))
-    ;; The a/b paths alternate vf1..vf3 and vf4..vf6 as the previous and current records.  This
-    ;; avoids moving the three qwords at every edge while retaining the closed-list traversal.
-    (asm-block walk-positive-outside
-               (label positive-outside-a)
-               (l.s f3 t2)
-               (add.i t2 t2 48)
-               (l.s f2 a2 12)
-               (add.i t1 t1 -1)
-               (l.vf vf4 a2)
-               (add.i a2 a2 48)
-               (c.lt.s f2 f3)
-               (l.vf vf5 a2 -32)
-               (b.fpf positive-enter-from-a :delay (l.vf vf6 a2 -16))
-               (b.z t1 positive-clip-finish :delay (nop!))
-               (label positive-outside-b)
-               (l.s f1 t2)
-               (add.i t2 t2 48)
-               (l.s f0 a2 12)
-               (add.i t1 t1 -1)
-               (l.vf vf1 a2)
-               (add.i a2 a2 48)
-               (c.lt.s f0 f1)
-               (l.vf vf2 a2 -32)
-               (b.fpf positive-enter-from-b :delay (l.vf vf3 a2 -16))
-               (b.nz t1 positive-outside-a :delay (nop!))
-               (b positive-clip-finish :delay (nop!))
-               ;; Outside -> inside: solve the plane distance linearly and append only the crossing point.
-               ;; The inside endpoint remains current and is emitted by the following inside path.
-               (label positive-enter-from-a)
-               (sub.s f7 f0 f1)
-               (sub.vf vf7 vf4 vf1)
-               (sub.s f8 f2 f3)
-               (sub.vf vf8 vf5 vf2)
-               (sub.s f5 f7 f8)
-               (sub.vf vf9 vf6 vf3)
-               (div.s f6 f7 f5)
-               (add.i a3 a3 48)
-               (m v1 f6)
-               (m vf10 v1)
-               (add.i t0 t0 1)
-               (mula.w.vf vf1 vf0)
-               (add.i t6 s7 8)
-               (vmaddx.xyzw vf7 vf7 vf10)
-               (nop!)
-               (mula.w.vf vf2 vf0)
-               (nop!)
-               (vmaddx.xyzw vf8 vf8 vf10)
-               (nop!)
-               (mula.w.vf vf3 vf0)
-               (nop!)
-               (vmaddx.xyzw vf9 vf9 vf10)
-               (nop!)
-               (s.vf vf7 a3 -48)
-               (nop!)
-               (s.vf vf8 a3 -32)
-               (nop!)
-               (b.nz t1 positive-inside-b :delay (s.vf vf9 a3 -16))
-               (b positive-clip-finish :delay (nop!))
-               (label positive-enter-from-b)
-               (sub.s f7 f0 f1)
-               (sub.vf vf7 vf1 vf4)
-               (sub.s f8 f2 f3)
-               (sub.vf vf8 vf2 vf5)
-               (sub.s f5 f8 f7)
-               (sub.vf vf9 vf3 vf6)
-               (div.s f6 f8 f5)
-               (add.i a3 a3 48)
-               (m v1 f6)
-               (m vf10 v1)
-               (add.i t0 t0 1)
-               (mula.w.vf vf4 vf0)
-               (add.i t6 s7 8)
-               (vmaddx.xyzw vf7 vf7 vf10)
-               (nop!)
-               (mula.w.vf vf5 vf0)
-               (nop!)
-               (vmaddx.xyzw vf8 vf8 vf10)
-               (nop!)
-               (mula.w.vf vf6 vf0)
-               (nop!)
-               (vmaddx.xyzw vf9 vf9 vf10)
-               (nop!)
-               (s.vf vf7 a3 -48)
-               (nop!)
-               (s.vf vf8 a3 -32)
-               (nop!)
-               (b.z t1 positive-clip-finish :delay (s.vf vf9 a3 -16)))
-    ;; Inside -> inside copies the previous record.  If the next record is outside, the leave path
-    ;; copies the inside endpoint and appends the crossing point as a second record.
-    (asm-block walk-positive-inside
-               (label positive-inside-a)
-               (l.s f3 t2)
-               (add.i t2 t2 48)
-               (l.s f2 a2 12)
-               (add.i t1 t1 -1)
-               (l.vf vf4 a2)
-               (add.i a2 a2 48)
-               (c.lt.s f2 f3)
-               (l.vf vf5 a2 -32)
-               (b.fpt positive-leave-from-a :delay (l.vf vf6 a2 -16))
-               (s.vf vf1 a3)
-               (add.i a3 a3 48)
-               (s.vf vf2 a3 -32)
-               (add.i t0 t0 1)
-               (b.z t1 positive-clip-finish :delay (s.vf vf3 a3 -16))
-               (label positive-inside-b)
-               (l.s f1 t2)
-               (add.i t2 t2 48)
-               (l.s f0 a2 12)
-               (add.i t1 t1 -1)
-               (l.vf vf1 a2)
-               (add.i a2 a2 48)
-               (c.lt.s f0 f1)
-               (l.vf vf2 a2 -32)
-               (b.fpt positive-leave-from-b :delay (l.vf vf3 a2 -16))
-               (s.vf vf4 a3)
-               (add.i a3 a3 48)
-               (s.vf vf5 a3 -32)
-               (add.i t0 t0 1)
-               (b.nz t1 positive-inside-a :delay (s.vf vf6 a3 -16))
-               (b positive-clip-finish :delay (nop!))
-               (label positive-leave-from-a)
-               (sub.s f7 f0 f1)
-               (sub.vf vf7 vf1 vf4)
-               (sub.s f8 f2 f3)
-               (sub.vf vf8 vf2 vf5)
-               (sub.s f5 f8 f7)
-               (sub.vf vf9 vf3 vf6)
-               (div.s f6 f8 f5)
-               (add.i a3 a3 96)
-               (m v1 f6)
-               (m vf10 v1)
-               (s.vf vf1 a3 -96)
-               (mula.w.vf vf4 vf0)
-               (s.vf vf2 a3 -80)
-               (vmaddx.xyzw vf7 vf7 vf10)
-               (s.vf vf3 a3 -64)
-               (mula.w.vf vf5 vf0)
-               (add.i t0 t0 2)
-               (vmaddx.xyzw vf8 vf8 vf10)
-               (add.i t6 s7 8)
-               (mula.w.vf vf6 vf0)
-               (nop!)
-               (vmaddx.xyzw vf9 vf9 vf10)
-               (nop!)
-               (s.vf vf7 a3 -48)
-               (nop!)
-               (s.vf vf8 a3 -32)
-               (nop!)
-               (b.nz t1 positive-outside-b :delay (s.vf vf9 a3 -16))
-               (b positive-clip-finish :delay (nop!))
-               (label positive-leave-from-b)
-               (sub.s f7 f0 f1)
-               (sub.vf vf7 vf4 vf1)
-               (sub.s f8 f2 f3)
-               (sub.vf vf8 vf5 vf2)
-               (sub.s f5 f7 f8)
-               (sub.vf vf9 vf6 vf3)
-               (div.s f6 f7 f5)
-               (add.i a3 a3 96)
-               (m v1 f6)
-               (m vf10 v1)
-               (s.vf vf4 a3 -96)
-               (mula.w.vf vf1 vf0)
-               (s.vf vf5 a3 -80)
-               (vmaddx.xyzw vf7 vf7 vf10)
-               (s.vf vf6 a3 -64)
-               (mula.w.vf vf2 vf0)
-               (add.i t0 t0 2)
-               (vmaddx.xyzw vf8 vf8 vf10)
-               (add.i t6 s7 8)
-               (mula.w.vf vf3 vf0)
-               (nop!)
-               (vmaddx.xyzw vf9 vf9 vf10)
-               (nop!)
-               (s.vf vf7 a3 -48)
-               (nop!)
-               (s.vf vf8 a3 -32)
-               (nop!)
-               (b.nz t1 positive-outside-a :delay (s.vf vf9 a3 -16)))
-    ;; Restore the closed representation expected by the next clipping pass.
-    (asm-block close-positive-polygon
-               (label positive-clip-finish)
-               (l.vf vf1 t3)
-               (nop!)
-               (l.vf vf2 t3 16)
-               (nop!)
-               (l.vf vf3 t3 32)
-               (nop!)
-               (s.vf vf1 a3)
-               (nop!)
-               (s.vf vf2 a3 16)
-               (nop!)
-               (jr ra :delay (s.vf vf3 a3 32))
-               (jr ra :delay (add sp sp r0))
-               (nop! :count 2)))
-  (defun clip-polygon-against-negative-hyperplane ()
-    "Clip a closed scratch polygon against component >= -w. This is the negative-plane mirror of
-     clip-polygon-against-positive-hyperplane and uses the same private registers and closed output
-     format."
-    (declare (asm-func none))
-    (asm-block classify-first-negative-vertex
-               (nop!)
-               (m t1 t0)
-               (add.i t0 r0 0)
-               (l.s f0 a2 12)
-               (m t3 a3)
-               (l.s f1 t2)
-               (add.i t2 t2 48)
-               (l.vf vf1 a2)
-               (neg.s f0 f0)
-               (nop!)
-               (l.vf vf2 a2 16)
-               (c.lt.s f1 f0)
-               (add.i a2 a2 48)
-               (b.fpf negative-inside-a :delay (l.vf vf3 a2 -16)))
-    ;; The two paths alternate register triples instead of copying the current 48-byte record.
-    (asm-block walk-negative-outside
-               (label negative-outside-a)
-               (l.s f2 a2 12)
-               (add.i t1 t1 -1)
-               (l.s f3 t2)
-               (add.i t2 t2 48)
-               (l.vf vf4 a2)
-               (neg.s f2 f2)
-               (nop!)
-               (l.vf vf5 a2 16)
-               (c.lt.s f3 f2)
-               (add.i a2 a2 48)
-               (b.fpf negative-enter-from-a :delay (l.vf vf6 a2 -16))
-               (b.z t1 negative-clip-finish :delay (nop!))
-               (label negative-outside-b)
-               (l.s f0 a2 12)
-               (add.i t1 t1 -1)
-               (l.s f1 t2)
-               (add.i t2 t2 48)
-               (l.vf vf1 a2)
-               (neg.s f0 f0)
-               (nop!)
-               (l.vf vf2 a2 16)
-               (c.lt.s f1 f0)
-               (add.i a2 a2 48)
-               (b.fpf negative-enter-from-b :delay (l.vf vf3 a2 -16))
-               (b.nz t1 negative-outside-a :delay (nop!))
-               (b negative-clip-finish :delay (nop!))
-               ;; Outside -> inside writes the interpolated crossing.  f6 is the edge fraction measured from
-               ;; the outside endpoint; the same fraction is applied to position, STQ, and color.
-               (label negative-enter-from-a)
-               (sub.s f7 f0 f1)
-               (sub.vf vf7 vf4 vf1)
-               (sub.s f8 f2 f3)
-               (sub.vf vf8 vf5 vf2)
-               (sub.s f5 f7 f8)
-               (sub.vf vf9 vf6 vf3)
-               (div.s f6 f7 f5)
-               (add.i a3 a3 48)
-               (m v1 f6)
-               (m vf10 v1)
-               (add.i t0 t0 1)
-               (mula.w.vf vf1 vf0)
-               (add.i t6 s7 8)
-               (vmaddx.xyzw vf7 vf7 vf10)
-               (nop!)
-               (mula.w.vf vf2 vf0)
-               (nop!)
-               (vmaddx.xyzw vf8 vf8 vf10)
-               (nop!)
-               (mula.w.vf vf3 vf0)
-               (nop!)
-               (vmaddx.xyzw vf9 vf9 vf10)
-               (nop!)
-               (s.vf vf7 a3 -48)
-               (nop!)
-               (s.vf vf8 a3 -32)
-               (nop!)
-               (b.nz t1 negative-inside-b :delay (s.vf vf9 a3 -16))
-               (b negative-clip-finish :delay (nop!))
-               (label negative-enter-from-b)
-               (sub.s f7 f0 f1)
-               (sub.vf vf7 vf1 vf4)
-               (sub.s f8 f2 f3)
-               (sub.vf vf8 vf2 vf5)
-               (sub.s f5 f8 f7)
-               (sub.vf vf9 vf3 vf6)
-               (div.s f6 f8 f5)
-               (add.i a3 a3 48)
-               (m v1 f6)
-               (m vf10 v1)
-               (add.i t0 t0 1)
-               (mula.w.vf vf4 vf0)
-               (add.i t6 s7 8)
-               (vmaddx.xyzw vf7 vf7 vf10)
-               (nop!)
-               (mula.w.vf vf5 vf0)
-               (nop!)
-               (vmaddx.xyzw vf8 vf8 vf10)
-               (nop!)
-               (mula.w.vf vf6 vf0)
-               (nop!)
-               (vmaddx.xyzw vf9 vf9 vf10)
-               (nop!)
-               (s.vf vf7 a3 -48)
-               (nop!)
-               (s.vf vf8 a3 -32)
-               (nop!)
-               (b.z t1 negative-clip-finish :delay (s.vf vf9 a3 -16)))
-    ;; Inside runs copy their previous record.  A leaving edge emits the inside endpoint followed
-    ;; by the intersection, which is why those paths advance the output by two records.
-    (asm-block walk-negative-inside
-               (label negative-inside-a)
-               (l.s f2 a2 12)
-               (add.i t1 t1 -1)
-               (l.s f3 t2)
-               (add.i t2 t2 48)
-               (l.vf vf4 a2)
-               (neg.s f2 f2)
-               (nop!)
-               (l.vf vf5 a2 16)
-               (c.lt.s f3 f2)
-               (add.i a2 a2 48)
-               (b.fpt negative-leave-from-a :delay (l.vf vf6 a2 -16))
-               (s.vf vf1 a3)
-               (add.i a3 a3 48)
-               (s.vf vf2 a3 -32)
-               (add.i t0 t0 1)
-               (b.z t1 negative-clip-finish :delay (s.vf vf3 a3 -16))
-               (label negative-inside-b)
-               (l.s f0 a2 12)
-               (add.i t1 t1 -1)
-               (l.s f1 t2)
-               (add.i t2 t2 48)
-               (l.vf vf1 a2)
-               (neg.s f0 f0)
-               (nop!)
-               (l.vf vf2 a2 16)
-               (c.lt.s f1 f0)
-               (add.i a2 a2 48)
-               (b.fpt negative-leave-from-b :delay (l.vf vf3 a2 -16))
-               (s.vf vf4 a3)
-               (add.i a3 a3 48)
-               (s.vf vf5 a3 -32)
-               (add.i t0 t0 1)
-               (b.nz t1 negative-inside-a :delay (s.vf vf6 a3 -16))
-               (b negative-clip-finish :delay (nop!))
-               (label negative-leave-from-a)
-               (sub.s f7 f0 f1)
-               (sub.vf vf7 vf1 vf4)
-               (sub.s f8 f2 f3)
-               (sub.vf vf8 vf2 vf5)
-               (sub.s f5 f8 f7)
-               (sub.vf vf9 vf3 vf6)
-               (div.s f6 f8 f5)
-               (add.i a3 a3 96)
-               (m v1 f6)
-               (m vf10 v1)
-               (s.vf vf1 a3 -96)
-               (mula.w.vf vf4 vf0)
-               (s.vf vf2 a3 -80)
-               (vmaddx.xyzw vf7 vf7 vf10)
-               (s.vf vf3 a3 -64)
-               (mula.w.vf vf5 vf0)
-               (add.i t0 t0 2)
-               (vmaddx.xyzw vf8 vf8 vf10)
-               (add.i t6 s7 8)
-               (mula.w.vf vf6 vf0)
-               (nop!)
-               (vmaddx.xyzw vf9 vf9 vf10)
-               (nop!)
-               (s.vf vf7 a3 -48)
-               (nop!)
-               (s.vf vf8 a3 -32)
-               (nop!)
-               (b.nz t1 negative-outside-b :delay (s.vf vf9 a3 -16))
-               (b negative-clip-finish :delay (nop!))
-               (label negative-leave-from-b)
-               (sub.s f7 f0 f1)
-               (sub.vf vf7 vf4 vf1)
-               (sub.s f8 f2 f3)
-               (sub.vf vf8 vf5 vf2)
-               (sub.s f5 f7 f8)
-               (sub.vf vf9 vf6 vf3)
-               (div.s f6 f7 f5)
-               (add.i a3 a3 96)
-               (m v1 f6)
-               (m vf10 v1)
-               (s.vf vf4 a3 -96)
-               (mula.w.vf vf1 vf0)
-               (s.vf vf5 a3 -80)
-               (vmaddx.xyzw vf7 vf7 vf10)
-               (s.vf vf6 a3 -64)
-               (mula.w.vf vf2 vf0)
-               (add.i t0 t0 2)
-               (vmaddx.xyzw vf8 vf8 vf10)
-               (add.i t6 s7 8)
-               (mula.w.vf vf3 vf0)
-               (nop!)
-               (vmaddx.xyzw vf9 vf9 vf10)
-               (nop!)
-               (s.vf vf7 a3 -48)
-               (nop!)
-               (s.vf vf8 a3 -32)
-               (nop!)
-               (b.nz t1 negative-outside-a :delay (s.vf vf9 a3 -16)))
-    (asm-block close-negative-polygon
-               (label negative-clip-finish)
-               (l.vf vf1 t3)
-               (nop!)
-               (l.vf vf2 t3 16)
-               (nop!)
-               (l.vf vf3 t3 32)
-               (nop!)
-               (s.vf vf1 a3)
-               (nop!)
-               (s.vf vf2 a3 16)
-               (nop!)
-               (jr ra :delay (s.vf vf3 a3 32))
-               (jr ra :delay (add sp sp r0))
-               (nop! :count 2)))
-  (defun render-sky-quad ((vertices (inline-array sky-vertex)) (dma-buf dma-buffer))
-    "Transform four sky vertices into a closed five-record scratch polygon and tail-call the
-     clipping and packet conversion path."
-    (declare (asm-func none))
-    ;; vf31..vf28 are the persistent camera rows from init-sky-regs.  Only x, y, and w are retained;
-    ;; z is cleared so the final layer depth is supplied explicitly by vf23.x.
-    (asm-block prepare-sky-quad
-               (m v1 a0)
-               (m! v1 *math-camera*)
-               ;; Refresh the homogeneous scale with the rest of the camera state before building the page.
-               (l.vf vf14 v1 700)
-               (lui t4 #x7000)
-               (ori t4 t4 #x3000)
-               (lui t5 #x7000)
-               (ori t5 t5 #x3800)
-               (lui v1 #x3000)
-               (m a3 t4)
-               (or a0 a0 v1)
-               (nop!)
-               (l.vf vf1 a0)
-               (add.i t0 r0 4)
-               (l.vf vf2 a0 16)
-               (nop!)
-               (l.vf vf3 a0 32)
-               (mula.x.vf vf31 vf1)
-               (l.vf vf4 a0 48)
-               (madda.y.vf vf30 vf1)
-               (l.vf vf5 a0 64)
-               (madda.z.vf vf29 vf1)
-               (l.vf vf6 a0 80)
-               (vmaddw.xyw vf1 vf28 vf1)
-               (l.vf vf7 a0 96)
-               (vmove.z vf1 vf0)
-               (l.vf vf8 a0 112)
-               (mula.x.vf vf31 vf4)
-               (l.vf vf9 a0 128)
-               (madda.y.vf vf30 vf4)
-               (l.vf vf10 a0 144)
-               (madda.z.vf vf29 vf4)
-               (l.vf vf11 a0 160)
-               (vmaddw.xyw vf4 vf28 vf4)
-               (l.vf vf12 a0 176)
-               (vmove.z vf4 vf0))
-    (asm-block finish-sky-quad
-               (s.vf vf2 a3 16)
-               (mula.x.vf vf31 vf7)
-               (s.vf vf3 a3 32)
-               (madda.y.vf vf30 vf7)
-               (s.vf vf5 a3 64)
-               (madda.z.vf vf29 vf7)
-               (s.vf vf6 a3 80)
-               (vmaddw.xyw vf7 vf28 vf7)
-               (s.vf vf8 a3 112)
-               (vmove.z vf7 vf0)
-               (s.vf vf9 a3 128)
-               (mula.x.vf vf31 vf10)
-               (s.vf vf11 a3 160)
-               (madda.y.vf vf30 vf10)
-               (s.vf vf12 a3 176)
-               (madda.z.vf vf29 vf10)
-               (s.vf vf2 a3 208)
-               (vmaddw.xyw vf10 vf28 vf10)
-               (s.vf vf3 a3 224)
-               (vmove.z vf10 vf0)
-               (s.vf vf1 a3)
-               (nop!)
-               ;; Repeat record zero after record three to close the list.
-               (s.vf vf1 a3 192)
-               (nop!)
-               (s.vf vf4 a3 48)
-               (nop!)
-               (s.vf vf7 a3 96)
-               (nop!)
-               (s.vf vf10 a3 144)
-               (m! t9 draw-large-polygon)
-               (jr t9 :delay (nop!))
-               (jr ra :delay (add sp sp r0))
-               (nop! :count 2)))
-  (defun render-sky-tri ((vertices (inline-array sky-vertex)) (dma-buf dma-buffer))
-    "Transform three sky vertices into a closed four-record scratch polygon and tail-call the
-     clipping and packet conversion path."
-    (declare (asm-func none))
-    (asm-block prepare-sky-triangle
-               (m v1 a0)
-               (lui t4 #x7000)
-               (ori t4 t4 #x3000)
-               (lui t5 #x7000)
-               (ori t5 t5 #x3800)
-               (lui v1 #x3000)
-               (m a3 t4)
-               (or a0 a0 v1)
-               (nop!)
-               (l.vf vf1 a0)
-               (add.i t0 r0 3)
-               (l.vf vf2 a0 16)
-               (nop!)
-               (l.vf vf3 a0 32)
-               (mula.x.vf vf31 vf1)
-               (l.vf vf4 a0 48)
-               (madda.y.vf vf30 vf1)
-               (l.vf vf5 a0 64)
-               (madda.z.vf vf29 vf1)
-               (l.vf vf6 a0 80)
-               (vmaddw.xyw vf1 vf28 vf1)
-               (l.vf vf7 a0 96)
-               (vmove.z vf1 vf0)
-               (l.vf vf8 a0 112)
-               (mula.x.vf vf31 vf4)
-               (l.vf vf9 a0 128)
-               (madda.y.vf vf30 vf4)
-               (s.vf vf2 a3 16)
-               (madda.z.vf vf29 vf4)
-               (s.vf vf3 a3 32)
-               (vmaddw.xyw vf4 vf28 vf4)
-               (s.vf vf5 a3 64)
-               (vmove.z vf4 vf0)
-               (s.vf vf6 a3 80)
-               (mula.x.vf vf31 vf7)
-               (s.vf vf8 a3 112)
-               (madda.y.vf vf30 vf7)
-               (s.vf vf9 a3 128)
-               (madda.z.vf vf29 vf7)
-               (s.vf vf2 a3 160)
-               (vmaddw.xyw vf7 vf28 vf7)
-               (s.vf vf3 a3 176)
-               (vmove.z vf7 vf0)
-               (s.vf vf1 a3)
-               (nop!)
-               ;; Repeat record zero after record two to close the list.
-               (s.vf vf1 a3 144)
-               (nop!)
-               (s.vf vf4 a3 48)
-               (nop!)
-               (s.vf vf7 a3 96)
-               (m! t9 draw-large-polygon)
-               (jr t9 :delay (nop!))
-               (jr ra :delay (add sp sp r0))
-               (nop! :count 2)))
-  (defun sky-duplicate-polys ((dma-buf dma-buffer) (begin (pointer uint128)) (end (pointer uint128)))
-    "Append the half-open quadword range [begin, end) to dma-buf. An empty or reversed range writes
-     nothing."
-    (declare (asm-func none))
-    (rlet ((cursor :reg v1)
-           (quad :reg a3 :class i128)
-           (result :reg v0))
-      (l.w.field cursor a0 (base))
-      (b sky-duplicate-test :delay (nop!))
-      (label sky-duplicate-copy)
-      (l.q quad a1)
-      (s.q quad cursor)
-      (add.i cursor cursor 16)
-      (add.i a1 a1 16)
-      (label sky-duplicate-test)
-      (slt a3 a1 a2)
-      (b.nz a3 sky-duplicate-copy :delay (nop!))
-      (m a1 s7)
-      (s.w.field cursor a0 (base))
-      (m result r0)
-      (jr ra :delay (add sp sp r0))
-      (nop! :count 2)))
-  (defun close-sky-buffer ((dma-buf dma-buffer))
-    "Append the #x8000 terminator for a large-polygon stream and advance the buffer by one qword."
-    (declare (asm-func none))
-    (rlet ((terminator :reg v1)
-           (cursor :reg v0))
-      (nop!)
-      (ori terminator r0 #x8000)
-      (l.w.field cursor a0 (base))
-      (s.q r0 cursor)
-      (nop!)
-      (s.w terminator cursor)
-      (add.i cursor cursor 16)
-      (jr ra :delay (s.w.field cursor a0 (base)))
-      (jr ra :delay (add sp sp r0))
-      (nop! :count 2))))
+(define *sky-polygon-renderer* (new 'global 'sky-polygon-renderer-state))
 
+(defun sky-copy-vertex! ((dst sky-vertex) (src sky-vertex))
+  (declare (inline))
+  (vector-copy! (-> dst pos) (-> src pos))
+  (vector-copy! (-> dst stq) (-> src stq))
+  (vector-copy! (-> dst col) (-> src col))
+  dst)
+
+(defun sky-interpolate-vertex! ((dst sky-vertex) (a sky-vertex) (b sky-vertex) (amount float))
+  (declare (inline))
+  (vector4-lerp! (-> dst pos) (-> a pos) (-> b pos) amount)
+  (vector4-lerp! (-> dst stq) (-> a stq) (-> b stq) amount)
+  (vector4-lerp! (-> dst col) (-> a col) (-> b col) amount)
+  dst)
+
+(defun sky-vector4*! ((dst vector) (a vector) (b vector))
+  "Multiply all 4 values."
+  (declare (inline))
+  (rlet ((a-value :class vf)
+         (b-value :class vf)
+         (result :class vf))
+    (.lvf a-value (&-> a quad))
+    (.lvf b-value (&-> b quad))
+    (.mul.vf result a-value b-value)
+    (.svf (&-> dst quad) result))
+  dst)
+
+(defun sky-vector4-float*! ((dst vector) (value vector) (scale float))
+  "Multiply all four values by scale."
+  (declare (inline))
+  (rlet ((value-reg :class vf)
+         (scale-reg :class vf))
+    (.lvf value-reg (&-> value quad))
+    (.mov scale-reg scale)
+    (.mul.x.vf value-reg value-reg scale-reg)
+    (.svf (&-> dst quad) value-reg))
+  dst)
+
+(defun sky-clip-distance ((vertex sky-vertex) (component int) (positive-plane? symbol))
+  "Return the homogeneous distance from vertex to x/y <= w or x/y >= -w. Nonnegative is inside."
+  (declare (inline))
+  (let ((axis (if (zero? component) (-> vertex pos x) (-> vertex pos y))))
+    (if positive-plane?
+        (- (-> vertex pos w) axis)
+        (+ (-> vertex pos w) axis))))
+
+(defun sky-clip-outside? ((vertex sky-vertex) (component int) (positive-plane? symbol))
+  "Test the clip comparison directly, preserving the EE behavior that a NaN comparison is inside."
+  (declare (inline))
+  (let ((axis (if (zero? component) (-> vertex pos x) (-> vertex pos y))))
+    (if positive-plane?
+        (< (-> vertex pos w) axis)
+        (< axis (- (-> vertex pos w))))))
+
+(defun sky-clip-polygon! ((input (inline-array sky-vertex))
+                          (output (inline-array sky-vertex))
+                          (vertex-count int)
+                          (component int)
+                          (positive-plane? symbol))
+  "Sutherland-Hodgman clip one convex sky polygon against a homogeneous side plane."
+  ;; This iterates over edges of the polygon, emitting vertices in three cases:
+  ;;  - original vertex on inside of plane
+  ;;  - edge crosses from inside to outside, emit interpolated vertex on edge
+  ;;  - edge cross from outside to inside, emit interpolated vertex on edge
+  (let ((output-count 0))
+    (dotimes (i vertex-count)
+      (let* ((current (-> input i))
+             (next (-> input (if (= i (- vertex-count 1)) 0 (+ i 1))))
+             (current-distance (sky-clip-distance current component positive-plane?))
+             (next-distance (sky-clip-distance next component positive-plane?))
+             (current-outside? (sky-clip-outside? current component positive-plane?))
+             (next-outside? (sky-clip-outside? next component positive-plane?)))
+        (cond
+          ((not current-outside?)
+           ;; Case 1, emit vertex directly
+           (sky-copy-vertex! (-> output output-count) current)
+           (+! output-count 1)
+           (when next-outside?
+             ;; Inside to outside, emit inerpolated
+             (let ((amount (/ next-distance (- next-distance current-distance))))
+               (sky-interpolate-vertex! (-> output output-count) next current amount)
+               (+! output-count 1))))
+          ((not next-outside?)
+           ;; Outside to inside, emit interpolated
+           (let ((amount (/ current-distance (- current-distance next-distance))))
+             (sky-interpolate-vertex! (-> output output-count) current next amount)
+             (+! output-count 1))))))
+    output-count))
+
+(defun init-sky-regs ()
+  "Snapshot the camera, projection, fog, zero texture phase, and zero layer depth used by subsequent
+   sky polygon calls."
+  (let ((state *sky-polygon-renderer*))
+    ;; Sky polygon renderer does math in homogeneous coordinates, apply hmge-scale to camera matrix.
+    (dotimes (i 4)
+      (sky-vector4*! (-> state transform vector i)
+                     (-> *math-camera* camera-temp vector i)
+                     (-> *math-camera* hmge-scale)))
+    ;; Store what we need to go from homogenous to screen-space
+    (vector-copy! (-> state inv-hmge-scale) (-> *math-camera* inv-hmge-scale))
+    (vector-copy! (-> state screen-offset) (-> *math-camera* hvdf-off))
+    ;; unclear why this is done, but it applies a 1-pixel shift when the camera is below the horizon.
+    ;; This is possibly to avoid some seam/gap between ocean and sky.
+    (set! (-> state screen-offset y) (if (> (-> *math-camera* trans y) 0.0) 2049.0 2047.0))
+    (set! (-> state screen-offset z) 0.0)
+    (set-vector! (-> state fog-clamp)
+                 (-> *math-camera* pfog0)
+                 (-> *math-camera* fog-max)
+                 (-> *math-camera* fog-end)
+                 3071.0)
+    (set-vector! (-> state texture-offset) 0.0 0.0 0.0 0.0)
+    (set! (-> state layer-depth) 0.0))
+  (none))
+
+(defun set-sky-giftag ((giftag gs-gif-tag))
+  "Latch the giftag used by subsequent sky polygon calls."
+  (declare (inline))
+  (set! (-> *sky-polygon-renderer* giftag qword) (-> giftag qword))
+  (none))
+
+(defun set-sky-depth ((depth float))
+  "Latch the layer-depth bit pattern used by subsequent sky polygon calls."
+  (declare (inline))
+  (set! (-> *sky-polygon-renderer* layer-depth) depth)
+  (none))
+
+(defun set-tex-offset ((s-offset int) (t-offset int))
+  "Convert two wrapped 16-bit texture phases to [0, 1] UV coordinates"
+  (let ((offset (-> *sky-polygon-renderer* texture-offset)))
+    (set-vector! offset
+                 (* (the float s-offset) 0.000015258789)
+                 (* (the float t-offset) 0.000015258789)
+                 0.0
+                 0.0))
+  (none))
+
+(defun sky-transform-vertex! ((dst sky-vertex) (src sky-vertex))
+  "Transform vertex to homogeneous coordinates, set z = 0"
+  (vector-matrix*! (-> dst pos) (-> src pos) (-> *sky-polygon-renderer* transform))
+  (set! (-> dst pos z) 0.0)
+  (vector-copy! (-> dst stq) (-> src stq))
+  (vector-copy! (-> dst col) (-> src col))
+  dst)
+
+(defun sky-emit-polygon! ((vertices (inline-array sky-vertex)) (vertex-count int) (dma-buf dma-buffer))
+  "Append one GIF tag and the perspective-correct ST, integer RGBAQ, and 12.4 XYZF records."
+  (let* ((state *sky-polygon-renderer*)
+         (packet-start (-> dma-buf base))
+         (giftag (the-as gs-gif-tag packet-start))
+         (output (the-as (pointer uint128) (&+ packet-start 16))))
+    (set! (-> giftag qword) (-> state giftag qword))
+    ;; The original SW writes the complete low word, not just the nloop bitfield. In particular,
+    ;; this clears the template's EOP bit so close-sky-buffer's empty EOP tag ends the combined
+    ;; DIRECT transfer after every polygon has been consumed.
+    (set! (-> (the-as (pointer uint32) packet-start) 0) vertex-count)
+    (dotimes (i vertex-count)
+      (let* ((vertex (-> vertices i))
+             (q (/ 1.0 (-> vertex pos w))) ;; perspective divide
+             (st (new 'stack-no-clear 'vector))
+             (color-int (new 'stack-no-clear 'vector))
+             (projected (new 'stack-no-clear 'vector))
+             (projected-int (new 'stack-no-clear 'vector)))
+        ;; TEXTURE: apply offset and multiply by q for GS perspective correction
+        (vector-copy! st (-> vertex stq))
+        (+! (-> st x) (-> state texture-offset x))
+        (+! (-> st y) (-> state texture-offset y))
+        (sky-vector4-float*! st st q)
+        ;; COLOR: convert to integers
+        (vector-cvt.w.s! color-int (-> vertex col))
+        ;; undo homogeneous scale (done for clipping)
+        (sky-vector4*! projected (-> vertex pos) (-> state inv-hmge-scale))
+        ;; apply perspective divide
+        (*! (-> projected x) q)
+        (*! (-> projected y) q)
+        (*! (-> projected z) q)
+        ;; apply X/Y offset for GS integer rendering area
+        (+! (-> projected x) (-> state screen-offset x))
+        (+! (-> projected y) (-> state screen-offset y))
+        ;; overwrite depth with the user-specified depth
+        (set! (-> projected z) (-> state layer-depth))
+        ;; set fog to clamped distance from camera
+        (set! (-> projected w)
+              (max (-> state fog-clamp y) (min (-> projected w) (-> state fog-clamp z))))
+        ;; Convert to GS 12.4 fixed point
+        (sky-vector4-float*! projected projected 16.0)
+        (vector-cvt.w.s! projected-int projected)
+        ;; Store
+        (set! (-> output (* i 3)) (-> st quad))
+        (set! (-> output (+ (* i 3) 1)) (-> color-int quad))
+        (set! (-> output (+ (* i 3) 2)) (-> projected-int quad))))
+    (set! (-> dma-buf base) (&+ packet-start (* (+ 1 (* vertex-count 3)) 16))))
+  (none))
+
+(defun draw-large-polygon ()
+  "Clip the current polygon against x <= w, y <= w, x >= -w, and y >= -w, then emit it."
+  (let* ((state *sky-polygon-renderer*)
+         (vertices-a (-> state vertices-a))
+         (vertices-b (-> state vertices-b))
+         (vertex-count (-> state vertex-count)))
+    (when (nonzero? vertex-count)
+      (set! vertex-count (sky-clip-polygon! vertices-a vertices-b vertex-count 0 #t)))
+    (when (nonzero? vertex-count)
+      (set! vertex-count (sky-clip-polygon! vertices-b vertices-a vertex-count 1 #t)))
+    (when (nonzero? vertex-count)
+      (set! vertex-count (sky-clip-polygon! vertices-a vertices-b vertex-count 0 #f)))
+    (when (nonzero? vertex-count)
+      (set! vertex-count (sky-clip-polygon! vertices-b vertices-a vertex-count 1 #f)))
+    (when (nonzero? vertex-count)
+      (sky-emit-polygon! vertices-a vertex-count (-> state dma-buf))))
+  (none))
+
+(defun render-sky-polygon ((vertices (inline-array sky-vertex)) (dma-buf dma-buffer) (vertex-count int))
+  "Transform and render a polygon."
+  (let ((state *sky-polygon-renderer*))
+    (set! (-> state dma-buf) dma-buf)
+    (set! (-> state vertex-count) vertex-count)
+    (dotimes (i vertex-count)
+      (sky-transform-vertex! (-> state vertices-a i) (-> vertices i)))
+    (draw-large-polygon))
+  (none))
+
+(defun render-sky-quad ((vertices (inline-array sky-vertex)) (dma-buf dma-buffer))
+  "Transform and render four sky vertices."
+  (render-sky-polygon vertices dma-buf 4)
+  (none))
+
+(defun render-sky-tri ((vertices (inline-array sky-vertex)) (dma-buf dma-buffer))
+  "Transform and render three sky vertices."
+  (render-sky-polygon vertices dma-buf 3)
+  (none))
+
+(defun close-sky-buffer ((dma-buf dma-buffer))
+  "Append the #x8000 EOP terminator for the current large-polygon stream and advance by one qword."
+  (let ((cursor (the-as (pointer uint128) (-> dma-buf base))))
+    (set! (-> cursor 0) (the-as uint128 #x8000))
+    (set! (-> dma-buf base) (&+ (the-as pointer cursor) 16)))
+  (none))
+
+(defun sky-duplicate-polys ((dma-buf dma-buffer) (begin (pointer uint128)) (end (pointer uint128)))
+  "Append the half-open aligned quadword range [begin, end) to the DMA buffer. An empty or reversed
+   range writes nothing."
+  (let ((cursor (the-as (pointer uint128) (-> dma-buf base))))
+    (while (< (the-as int begin) (the-as int end))
+      (set! (-> cursor 0) (-> begin 0))
+      (set! cursor (&-> cursor 1))
+      (set! begin (&-> begin 1)))
+    (set! (-> dma-buf base) (the-as pointer cursor)))
+  (none))
+
+;; This is large, upside down, untextured pyramid (4 triangular sides, no base).
+;; The camera sits inside the pyramid and this draws the stuff below the horizon.
+;; The color of these polygons is updated by mood, called erase-color.
+;; These have w = 0, so effectively camera translation is ignored - the pyramid is always centered at the cam.
 (define sky-base-polygons
   (new 'static
        'inline-array
@@ -1084,6 +504,8 @@
             :col
             (new 'static 'vector :x 3.0 :y 18.0 :z 113.0 :w 128.0))))
 
+;; Large, textured pyramid over the entire game world. 4-sided, with triangular sides.
+;; These have w = 0, so effectively camera translation is ignored - the pyramid is always centered at the cam.
 (define sky-roof-polygons
   (new 'static
        'inline-array
@@ -1264,47 +686,59 @@
        (new 'static 'sky-vertex)
        (new 'static 'sky-vertex)))
 
+;; Vertex indices for the cloud mesh. Clouds are drawn over the sky.
+;; There are three nested squares. The inner-most square is the highest
 (define sky-cloud-polygon-indices
   (new 'static
        'array
        uint8
        48
+       ;; outer to middle top
        #x0
        #x1
        #x9
        #x8
+       ;; outer to middle right
        #x1
        #x2
        #xa
        #x9
+       ;; outer to middle bottom
        #x2
        #x3
        #xb
        #xa
+       ;; outer to middle left
        #x3
        #x0
        #x8
        #xb
+       ;; middle to center top
        #x8
        #x9
        #x5
        #x4
+       ;; middle to center right
        #x9
        #xa
        #x6
        #x5
+       ;; middle to center bottom
        #xa
        #xb
        #x7
        #x6
+       ;; middle to center left
        #xb
        #x8
        #x4
        #x7
+       ;; center
        #x4
        #x5
        #x6
        #x7
+       ;; unused...
        #x0
        #x0
        #x0
@@ -1350,54 +784,29 @@
                (inner-max-t-factor (/ (- inner-max-z outer-min-z) (- outer-max-z outer-min-z)))
                (inner-min-st (+ outer-min-st (* inner-min-factor (- outer-max-st outer-min-st))))
                (inner-max-st (+ outer-min-st (* inner-max-factor (- outer-max-st outer-min-st)))))
-          ;; These two T values are computed from z but not retained. The shipped layout uses the
-          ;; x-derived inner-min-st and inner-max-st for both texture axes.
+          ;; These two T values are computed from z but not used.
           (+ outer-min-t (* inner-min-t-factor (- outer-max-t outer-min-t)))
           (+ outer-min-t (* inner-max-t-factor (- outer-max-t outer-min-t)))
           (let ((outer-corner (-> control-vertices 0)))
-            (set! (-> outer-corner pos x) outer-min-x)
-            (set! (-> outer-corner pos y) 0.0)
-            (set! (-> outer-corner pos z) outer-min-z)
-            (set! (-> outer-corner pos w) 0.0))
+            (set-vector! (-> outer-corner pos) outer-min-x 0.0 outer-min-z 0.0))
           (let ((outer-corner (-> control-vertices 1)))
-            (set! (-> outer-corner pos x) outer-max-x)
-            (set! (-> outer-corner pos y) 0.0)
-            (set! (-> outer-corner pos z) outer-min-z)
-            (set! (-> outer-corner pos w) 0.0))
+            (set-vector! (-> outer-corner pos) outer-max-x 0.0 outer-min-z 0.0))
           (let ((outer-corner (-> control-vertices 2)))
-            (set! (-> outer-corner pos x) outer-max-x)
-            (set! (-> outer-corner pos y) 0.0)
-            (set! (-> outer-corner pos z) outer-max-z)
-            (set! (-> outer-corner pos w) 0.0))
+            (set-vector! (-> outer-corner pos) outer-max-x 0.0 outer-max-z 0.0))
           (let ((outer-corner (-> control-vertices 3)))
-            (set! (-> outer-corner pos x) outer-min-x)
-            (set! (-> outer-corner pos y) 0.0)
-            (set! (-> outer-corner pos z) outer-max-z)
-            (set! (-> outer-corner pos w) 0.0))
+            (set-vector! (-> outer-corner pos) outer-min-x 0.0 outer-max-z 0.0))
           (set-vector! (-> control-vertices 0 stq) outer-min-st outer-min-st 1.0 1.0)
           (set-vector! (-> control-vertices 1 stq) outer-max-st outer-min-st 1.0 1.0)
           (set-vector! (-> control-vertices 2 stq) outer-max-st outer-max-st 1.0 1.0)
           (set-vector! (-> control-vertices 3 stq) outer-min-st outer-max-st 1.0 1.0)
           (let ((inner-corner (-> control-vertices 4)))
-            (set! (-> inner-corner pos x) inner-min-x)
-            (set! (-> inner-corner pos y) 1.0)
-            (set! (-> inner-corner pos z) inner-min-z)
-            (set! (-> inner-corner pos w) 0.0))
+            (set-vector! (-> inner-corner pos) inner-min-x 1.0 inner-min-z 0.0))
           (let ((inner-corner (-> control-vertices 5)))
-            (set! (-> inner-corner pos x) inner-max-x)
-            (set! (-> inner-corner pos y) 1.0)
-            (set! (-> inner-corner pos z) inner-min-z)
-            (set! (-> inner-corner pos w) 0.0))
+            (set-vector! (-> inner-corner pos) inner-max-x 1.0 inner-min-z 0.0))
           (let ((inner-corner (-> control-vertices 6)))
-            (set! (-> inner-corner pos x) inner-max-x)
-            (set! (-> inner-corner pos y) 1.0)
-            (set! (-> inner-corner pos z) inner-max-z)
-            (set! (-> inner-corner pos w) 0.0))
+            (set-vector! (-> inner-corner pos) inner-max-x 1.0 inner-max-z 0.0))
           (let ((inner-corner (-> control-vertices 7)))
-            (set! (-> inner-corner pos x) inner-min-x)
-            (set! (-> inner-corner pos y) 1.0)
-            (set! (-> inner-corner pos z) inner-max-z)
-            (set! (-> inner-corner pos w) 0.0))
+            (set-vector! (-> inner-corner pos) inner-min-x 1.0 inner-max-z 0.0))
           (set-vector! (-> control-vertices 4 stq) inner-min-st inner-min-st 1.0 1.0)
           (set-vector! (-> control-vertices 5 stq) inner-max-st inner-min-st 1.0 1.0)
           (set-vector! (-> control-vertices 6 stq) inner-max-st inner-max-st 1.0 1.0)
@@ -1407,23 +816,23 @@
               (z (-> control-vertices i pos z)))
           (set! (-> control-vertices i pos x) (+ (* x outer-rotation-cos) (* z outer-rotation-sin)))
           (set! (-> control-vertices i pos z) (- (* z outer-rotation-cos) (* x outer-rotation-sin))))
-        (set! (-> control-vertices i col quad) (-> color quad))
+        (vector-copy! (-> control-vertices i col) color)
         (set! (-> control-vertices i col w) 0.0))
       (dotimes (i 4)
         (let ((x (-> control-vertices (+ i 4) pos x))
               (z (-> control-vertices (+ i 4) pos z)))
           (set! (-> control-vertices (+ i 4) pos x) (+ (* x inner-rotation-cos) (* z inner-rotation-sin)))
           (set! (-> control-vertices (+ i 4) pos z) (- (* z inner-rotation-cos) (* x inner-rotation-sin))))
-        (set! (-> control-vertices (+ i 4) col quad) (-> color quad)))
+        (vector-copy! (-> control-vertices (+ i 4) col) color))
       (dotimes (i 4)
         (vector4-lerp! (-> control-vertices (+ i 8) pos) (-> control-vertices i pos) (-> control-vertices (+ i 4) pos) midpoint)
         (vector4-lerp! (-> control-vertices (+ i 8) stq) (-> control-vertices i stq) (-> control-vertices (+ i 4) stq) midpoint)
-        (set! (-> control-vertices (+ i 8) col quad) (-> color quad))))
+        (vector-copy! (-> control-vertices (+ i 8) col) color)))
     (dotimes (i 36)
       (let ((control-index (-> sky-cloud-polygon-indices i)))
-        (set! (-> output i pos quad) (-> control-vertices control-index pos quad))
-        (set! (-> output i stq quad) (-> control-vertices control-index stq quad))
-        (set! (-> output i col quad) (-> control-vertices control-index col quad)))))
+        (vector-copy! (-> output i pos) (-> control-vertices control-index pos))
+        (vector-copy! (-> output i stq) (-> control-vertices control-index stq))
+        (vector-copy! (-> output i col) (-> control-vertices control-index col)))))
   0
   (none))
 
@@ -1433,7 +842,7 @@
   (let ((layer0-color (new 'static 'vector :x 20.0 :y 20.0 :z 20.0 :w 128.0))
         (layer1-color (new 'static 'vector :x 20.0 :y 20.0 :z 30.0 :w 128.0)))
     (sky-tng-setup-cloud-layer 0.0 0.0 layer0-color sky-cloud-polygons)
-    (sky-tng-setup-cloud-layer 0.05584 0.01396 layer1-color (the-as (inline-array sky-vertex) (-> sky-cloud-polygons 36))))
+    (sky-tng-setup-cloud-layer 0.05584 0.01396 layer1-color (&-> sky-cloud-polygons 36)))
   0
   (none))
 
@@ -1443,141 +852,130 @@
   "Composite the prepared sky texture over four roof triangles, draw two independently scrolling
    nine-quad cloud layers, fill the four base triangles at GS layer depth 256, and enqueue the
    completed packet in the sky bucket."
-  (local-vars (base-depth float))
-  (rlet ((vf23 :class vf)
-         (vf27 :class vf))
-    (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
-    (let ((usage-start (-> *display* frames (-> *display* on-screen) frame global-buf base)))
-      (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf)) (bucket-id sky-draw)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (let* ((state-buffer dma-buf)
-                     (state-header (the-as object (-> state-buffer base))))
-                (set! (-> (the-as dma-packet state-header) dma) (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt)))
-                (set! (-> (the-as dma-packet state-header) vif0) (new 'static 'vif-tag))
-                (set! (-> (the-as dma-packet state-header) vif1) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
-                (set! (-> state-buffer base) (&+ (the-as pointer state-header) 16))) (let* ((state-buffer dma-buf)
-                     (state-giftag (the-as object (-> state-buffer base))))
-                (set! (-> (the-as gs-gif-tag state-giftag) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3))
-                (set! (-> (the-as gs-gif-tag state-giftag) regs) GIF_REGS_ALL_AD)
-                (set! (-> state-buffer base) (&+ (the-as pointer state-giftag) 16))) (let* ((state-buffer dma-buf)
-                     (state-registers (-> state-buffer base)))
-                (set! (-> (the-as (pointer gs-zbuf) state-registers) 0) (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
-                (set! (-> (the-as (pointer gs-reg64) state-registers) 1) (gs-reg64 zbuf-1))
-                (set! (-> (the-as (pointer gs-test) state-registers) 2)
-                      (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
-                (set! (-> (the-as (pointer gs-reg64) state-registers) 3) (gs-reg64 test-1))
-                (set! (-> (the-as (pointer gs-alpha) state-registers) 4) (new 'static 'gs-alpha :b #x1 :d #x1))
-                (set! (-> (the-as (pointer gs-reg64) state-registers) 5) (gs-reg64 alpha-1))
-                (set! (-> state-buffer base) (&+ state-registers 48))) (init-sky-regs) (#unless PC_PORT
-                (m! vf27 (-> *sky-tng-data* giftag-roof qword))) (#when PC_PORT
-                (set-sky-vf27 (&-> *sky-tng-data* giftag-roof qword))) (when *sky-drawn*
-                (let* ((roof-buffer dma-buf)
-                       (roof-header (the-as object (-> roof-buffer base))))
-                  (set! (-> (the-as dma-packet roof-header) dma) (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt)))
-                  (set! (-> (the-as dma-packet roof-header) vif0) (new 'static 'vif-tag))
-                  (set! (-> (the-as dma-packet roof-header) vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
-                  (set! (-> roof-buffer base) (&+ (the-as pointer roof-header) 16)))
-                (let* ((roof-buffer dma-buf)
-                       (roof-giftag (the-as object (-> roof-buffer base))))
-                  (set! (-> (the-as gs-gif-tag roof-giftag) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x4))
-                  (set! (-> (the-as gs-gif-tag roof-giftag) regs) GIF_REGS_ALL_AD)
-                  (set! (-> roof-buffer base) (&+ (the-as pointer roof-giftag) 16)))
-                (let* ((roof-state-buffer dma-buf)
-                       (roof-state (-> roof-state-buffer base)))
-                  (set! (-> (the-as (pointer gs-tex0) roof-state) 0)
-                        (new 'static 'gs-tex0 :tbw #x1 :th (log2 32) :tw (log2 32) :tbp0 *sky-base-block*))
-                  (set! (-> (the-as (pointer gs-reg64) roof-state) 1) (gs-reg64 tex0-1))
-                  (set! (-> (the-as (pointer gs-tex1) roof-state) 2) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-                  (set! (-> (the-as (pointer gs-reg64) roof-state) 3) (gs-reg64 tex1-1))
-                  (set! (-> (the-as (pointer gs-clamp) roof-state) 4)
-                        (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-                  (set! (-> (the-as (pointer gs-reg64) roof-state) 5) (gs-reg64 clamp-1))
-                  (set! (-> (the-as (pointer uint64) roof-state) 6) (the-as uint 0))
-                  (set! (-> (the-as (pointer gs-reg64) roof-state) 7) (gs-reg64 texflush))
-                  (set! (-> roof-state-buffer base) (&+ roof-state 64)))
-                (let ((roof-packet-start (the-as object (-> dma-buf base))))
-                  (&+! (-> dma-buf base) 16)
-                  (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 0)) dma-buf)
-                  (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 3)) dma-buf)
-                  (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 6)) dma-buf)
-                  (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 9)) dma-buf)
-                  (close-sky-buffer dma-buf)
-                  (let ((roof-qwc (/ (the-as int (+ (- -16 (the-as int roof-packet-start)) (the-as int (-> dma-buf base)))) 16)))
-                    (set! (-> (the-as dma-packet roof-packet-start) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc roof-qwc))
-                    (set! (-> (the-as dma-packet roof-packet-start) vif0) (new 'static 'vif-tag))
-                    (set! (-> (the-as dma-packet roof-packet-start) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm roof-qwc))))) (when *cloud-drawn*
-                (let* ((cloud-buffer dma-buf)
-                       (cloud-header (the-as object (-> cloud-buffer base))))
-                  (set! (-> (the-as dma-packet cloud-header) dma) (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt)))
-                  (set! (-> (the-as dma-packet cloud-header) vif0) (new 'static 'vif-tag))
-                  (set! (-> (the-as dma-packet cloud-header) vif1) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
-                  (set! (-> cloud-buffer base) (&+ (the-as pointer cloud-header) 16)))
-                (let* ((cloud-buffer dma-buf)
-                       (cloud-giftag (the-as object (-> cloud-buffer base))))
-                  (set! (-> (the-as gs-gif-tag cloud-giftag) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x5))
-                  (set! (-> (the-as gs-gif-tag cloud-giftag) regs) GIF_REGS_ALL_AD)
-                  (set! (-> cloud-buffer base) (&+ (the-as pointer cloud-giftag) 16)))
-                (let* ((cloud-state-buffer dma-buf)
-                       (cloud-state (-> cloud-state-buffer base)))
-                  (set! (-> (the-as (pointer gs-alpha) cloud-state) 0) (new 'static 'gs-alpha :b #x2 :d #x1))
-                  (set! (-> (the-as (pointer gs-reg64) cloud-state) 1) (gs-reg64 alpha-1))
-                  (set! (-> (the-as (pointer gs-tex0) cloud-state) 2)
-                        (new 'static 'gs-tex0 :tbw #x1 :th (log2 64) :tw (log2 64) :tbp0 (+ *sky-base-block* 32)))
-                  (set! (-> (the-as (pointer gs-reg64) cloud-state) 3) (gs-reg64 tex0-1))
-                  (set! (-> (the-as (pointer gs-tex1) cloud-state) 4) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-                  (set! (-> (the-as (pointer gs-reg64) cloud-state) 5) (gs-reg64 tex1-1))
-                  (set! (-> (the-as (pointer gs-clamp) cloud-state) 6) (new 'static 'gs-clamp))
-                  (set! (-> (the-as (pointer gs-reg64) cloud-state) 7) (gs-reg64 clamp-1))
-                  (set! (-> (the-as (pointer int64) cloud-state) 8) 0)
-                  (set! (-> (the-as (pointer gs-reg64) cloud-state) 9) (gs-reg64 texflush))
-                  (set! (-> cloud-state-buffer base) (&+ cloud-state 80)))
-                (let ((cloud-packet-start (the-as object (-> dma-buf base))))
-                  (&+! (-> dma-buf base) 16)
-                  (init-sky-regs)
-                  (let ((vertices (the-as object (-> sky-cloud-polygons 0))))
-                    (set-tex-offset (the-as int (-> *sky-tng-data* off-s-0)) (the-as int (-> *sky-tng-data* off-t-0)))
-                    ;; first cloud layer
-                    (dotimes (i 9)
-                      (render-sky-quad (the-as (inline-array sky-vertex) vertices) dma-buf)
-                      (set! vertices (-> (the-as (inline-array sky-vertex) vertices) 4)))
-                    (set-tex-offset (the-as int (-> *sky-tng-data* off-s-1)) (the-as int (-> *sky-tng-data* off-t-1)))
-                    ;; second cloud layer
-                    (dotimes (i 9)
-                      (render-sky-quad (the-as (inline-array sky-vertex) vertices) dma-buf)
-                      (set! vertices (-> (the-as (inline-array sky-vertex) vertices) 4))))
-                  ;; The untextured base triangles fill the region below the roof at GS layer depth 256.
-                  (#unless PC_PORT
-                    (m! vf27 (-> *sky-tng-data* giftag-base qword))
-                    (let ((base-depth-bits #x43800000)) (m vf23 base-depth-bits))
-                    (m base-depth vf23))
-                  (#when PC_PORT
-                    (set-sky-vf27 (&-> *sky-tng-data* giftag-base qword))
-                    (set-sky-vf23-value #x43800000))
-                  (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 0)) dma-buf)
-                  (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 3)) dma-buf)
-                  (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 6)) dma-buf)
-                  (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 9)) dma-buf)
-                  (close-sky-buffer dma-buf)
-                  (let ((cloud-qwc (/ (the-as int (+ (- -16 (the-as int cloud-packet-start)) (the-as int (-> dma-buf base)))) 16)))
-                    (set! (-> (the-as dma-packet cloud-packet-start) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc cloud-qwc))
-                    (set! (-> (the-as dma-packet cloud-packet-start) vif0) (new 'static 'vif-tag))
-                    (set! (-> (the-as dma-packet cloud-packet-start) vif1)
-                          (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm cloud-qwc))))))
-      (let ((usage *dma-mem-usage*))
-        (when (nonzero? usage)
-          (set! (-> usage length) (max 86 (-> usage length)))
-          (set! (-> usage data 85 name) "sky")
-          (+! (-> usage data 85 count) 1)
-          (+! (-> usage data 85 used)
-              (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint usage-start)))
-          (set! (-> usage data 85 total) (-> usage data 85 used)))))
-    (if *debug-segment*
-      (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-                 'draw
-                 (new 'static 'rgba :r #xff :b #xff :a #x80)))
-    0
-    (none)))
+  (add-profile-frame! #x40 0 #x40 #x80 'draw)
+  (let ((usage-start (-> (current-frame) global-buf base)))
+    (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) (bucket-id sky-draw))
+      ;; initialize drawing mode
+      (dma-buffer-add-cnt-vif2
+       dma-buf
+       #x4
+       (new 'static 'vif-tag)
+       (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
+      (dma-buffer-add-gif-tag
+       dma-buf
+       (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x3)
+       GIF_REGS_ALL_AD)
+      (let ((state-registers (-> dma-buf base)))
+        (set! (-> (the-as (pointer gs-zbuf) state-registers) 0)
+              (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24)))
+        (set! (-> (the-as (pointer gs-reg64) state-registers) 1) (gs-reg64 zbuf-1))
+        (set! (-> (the-as (pointer gs-test) state-registers) 2)
+              (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+        (set! (-> (the-as (pointer gs-reg64) state-registers) 3) (gs-reg64 test-1))
+        (set! (-> (the-as (pointer gs-alpha) state-registers) 4)
+              (new 'static 'gs-alpha :b #x1 :d #x1))
+        (set! (-> (the-as (pointer gs-reg64) state-registers) 5) (gs-reg64 alpha-1))
+        (&+! (-> dma-buf base) 48))
+
+      ;; initialize polygon renderer
+      (init-sky-regs)
+      (set-sky-giftag (-> *sky-tng-data* giftag-roof))
+
+      ;; only render sky when the texture exists.
+      ;; set up texturing to use the blended sky texture
+      (when *sky-drawn*
+        (dma-buffer-add-cnt-vif2
+         dma-buf
+         #x5
+         (new 'static 'vif-tag)
+         (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1))
+        (dma-buffer-add-gif-tag
+         dma-buf
+         (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x4)
+         GIF_REGS_ALL_AD)
+        (let ((roof-state (-> dma-buf base)))
+          (set! (-> (the-as (pointer gs-tex0) roof-state) 0)
+                (new 'static 'gs-tex0 :tbw #x1 :th (log2 32) :tw (log2 32) :tbp0 *sky-base-block*))
+          (set! (-> (the-as (pointer gs-reg64) roof-state) 1) (gs-reg64 tex0-1))
+          (set! (-> (the-as (pointer gs-tex1) roof-state) 2)
+                (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+          (set! (-> (the-as (pointer gs-reg64) roof-state) 3) (gs-reg64 tex1-1))
+          (set! (-> (the-as (pointer gs-clamp) roof-state) 4)
+                (new 'static 'gs-clamp
+                     :wms (gs-tex-wrap-mode clamp)
+                     :wmt (gs-tex-wrap-mode clamp)))
+          (set! (-> (the-as (pointer gs-reg64) roof-state) 5) (gs-reg64 clamp-1))
+          (set! (-> (the-as (pointer uint64) roof-state) 6) (the-as uint 0))
+          (set! (-> (the-as (pointer gs-reg64) roof-state) 7) (gs-reg64 texflush))
+          (&+! (-> dma-buf base) 64))
+        ;; render 4 sides of pyramid
+        (with-cnt-vif-block (dma-buf)
+          (render-sky-tri sky-roof-polygons dma-buf)
+          (render-sky-tri (&-> sky-roof-polygons 3) dma-buf)
+          (render-sky-tri (&-> sky-roof-polygons 6) dma-buf)
+          (render-sky-tri (&-> sky-roof-polygons 9) dma-buf)
+          (close-sky-buffer dma-buf)))
+
+      (when *cloud-drawn*
+        (dma-buffer-add-cnt-vif2
+         dma-buf
+         #x6
+         (new 'static 'vif-tag)
+         (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
+        (dma-buffer-add-gif-tag
+         dma-buf
+         (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x5)
+         GIF_REGS_ALL_AD)
+        (let ((cloud-state (-> dma-buf base)))
+          (set! (-> (the-as (pointer gs-alpha) cloud-state) 0)
+                (new 'static 'gs-alpha :b #x2 :d #x1))
+          (set! (-> (the-as (pointer gs-reg64) cloud-state) 1) (gs-reg64 alpha-1))
+          (set! (-> (the-as (pointer gs-tex0) cloud-state) 2)
+                (new 'static
+                     'gs-tex0
+                     :tbw #x1
+                     :th (log2 64)
+                     :tw (log2 64)
+                     :tbp0 (+ *sky-base-block* 32)))
+          (set! (-> (the-as (pointer gs-reg64) cloud-state) 3) (gs-reg64 tex0-1))
+          (set! (-> (the-as (pointer gs-tex1) cloud-state) 4)
+                (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+          (set! (-> (the-as (pointer gs-reg64) cloud-state) 5) (gs-reg64 tex1-1))
+          (set! (-> (the-as (pointer gs-clamp) cloud-state) 6) (new 'static 'gs-clamp))
+          (set! (-> (the-as (pointer gs-reg64) cloud-state) 7) (gs-reg64 clamp-1))
+          (set! (-> (the-as (pointer int64) cloud-state) 8) 0)
+          (set! (-> (the-as (pointer gs-reg64) cloud-state) 9) (gs-reg64 texflush))
+          (&+! (-> dma-buf base) 80))
+        (with-cnt-vif-block (dma-buf)
+          (init-sky-regs)
+          ;; draw first cloud
+          (let ((vertices sky-cloud-polygons))
+            (set-tex-offset
+             (the-as int (-> *sky-tng-data* off-s-0))
+             (the-as int (-> *sky-tng-data* off-t-0)))
+            (dotimes (i 9)
+              (render-sky-quad vertices dma-buf)
+              (set! vertices (&-> vertices 4)))
+            ;; draw second cloud
+            (set-tex-offset
+             (the-as int (-> *sky-tng-data* off-s-1))
+             (the-as int (-> *sky-tng-data* off-t-1)))
+            (dotimes (i 9)
+              (render-sky-quad vertices dma-buf)
+              (set! vertices (&-> vertices 4))))
+            
+          ;; draw base
+          (set-sky-giftag (-> *sky-tng-data* giftag-base))
+          (set-sky-depth 256.0)
+          (render-sky-tri sky-base-polygons dma-buf)
+          (render-sky-tri (&-> sky-base-polygons 3) dma-buf)
+          (render-sky-tri (&-> sky-base-polygons 6) dma-buf)
+          (render-sky-tri (&-> sky-base-polygons 9) dma-buf)
+          (close-sky-buffer dma-buf))))
+    (dma-mem-usage-add! sky 1 (&- (-> (current-frame) global-buf base) (the-as uint usage-start))))
+  (add-profile-frame! #xff 0 #xff #x80 'draw)
+  0
+  (none))
 
 (defun copy-sky-texture ((dma-buf dma-buffer) (shader adgif-shader) (weight float))
   "Append one weighted 32-by-32 time-of-day snapshot to the runtime sky target. The first
@@ -1585,10 +983,7 @@
   (let ((packet (-> dma-buf base)))
     (let ((modulation (the int (+ 0.5 (* 128.0 weight))))
           (sprite-data (-> *sky-work* sky-data)))
-      (set! (-> sprite-data 0 vector4w x) modulation)
-      (set! (-> sprite-data 0 vector4w y) modulation)
-      (set! (-> sprite-data 0 vector4w z) modulation)
-      (set! (-> sprite-data 0 vector4w w) 128))
+      (set-vector! (-> sprite-data 0 vector4w) modulation modulation modulation 128))
     (set! (-> (the-as (pointer uint128) packet) 0) (-> *sky-work* adgif-tmpl dma-vif quad))
     (set! (-> (the-as (pointer uint128) packet) 1) (-> *sky-work* adgif-tmpl quad 1))
     (let ((shader-copy (the-as object (&-> (the-as (pointer uint128) packet) 2))))
@@ -1614,10 +1009,7 @@
   (let ((packet (-> dma-buf base)))
     (let ((modulation (the int (+ 0.5 (* 128.0 weight))))
           (sprite-data (-> *sky-work* cloud-data)))
-      (set! (-> sprite-data 0 vector4w x) modulation)
-      (set! (-> sprite-data 0 vector4w y) modulation)
-      (set! (-> sprite-data 0 vector4w z) modulation)
-      (set! (-> sprite-data 0 vector4w w) 128))
+      (set-vector! (-> sprite-data 0 vector4w) modulation modulation modulation 128))
     (set! (-> (the-as (pointer uint128) packet) 0) (-> *sky-work* adgif-tmpl dma-vif quad))
     (set! (-> (the-as (pointer uint128) packet) 1) (-> *sky-work* adgif-tmpl quad 1))
     (let ((shader-copy (the-as object (&-> (the-as (pointer uint128) packet) 2))))
@@ -1641,32 +1033,32 @@
   "Composite one active level's eight time-of-day sky snapshots and cloud source into the shared
    64-by-96 runtime target. Weight the result for the current cross-level transition, restore the
    GS state, and enqueue the packet in that level's translucent bucket."
-  ;; This target is rebuilt because the eight sky weights change with time of day and the complete
-  ;; level image is weighted again while two levels crossfade. The cloud source occupies the lower
-  ;; 64-by-64 region beneath the 32-by-32 sky image.
   (when (and (= (-> *level* level level-index status) 'active) (-> *level* level level-index info sky))
     (let ((level-weight (-> context current-interp)))
-      (if (zero? level-index) (set! level-weight (- 1.0 level-weight)))
-      (if (= (-> context active-count) 1) (set! level-weight 1.0))
+      (if (zero? level-index)
+          (set! level-weight (- 1.0 level-weight)))
+      (if (= (-> context active-count) 1)
+          (set! level-weight 1.0))
       (when (!= level-weight 0.0)
-        (let ((blend-bucket (if (zero? level-index) (the-as bucket-id (bucket-id tfrag-trans-0)) (the-as bucket-id (bucket-id tfrag-trans-1))))
+        (let ((blend-bucket (if (zero? level-index)
+                                (the-as bucket-id (bucket-id tfrag-trans-0))
+                                (the-as bucket-id (bucket-id tfrag-trans-1))))
               (adgifs (-> *level* level level-index bsp adgifs)))
           (when (nonzero? adgifs)
-            (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) frame global-buf)) (the-as bucket-id blend-bucket)) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set-display-gs-state dma-buf *sky-base-page* 64 96 0 0) (dotimes (texture-index 8)
-                            (let ((texture-weight (* (-> context moods level-index sky-times texture-index) level-weight)))
-                              (if (!= texture-weight 0.0) (copy-sky-texture dma-buf (-> adgifs data texture-index) texture-weight)))) (copy-cloud-texture dma-buf (-> adgifs data 8) level-weight) (let* ((finish-buffer dma-buf)
-                                 (finish-header (the-as object (-> finish-buffer base))))
-                            (set! (-> (the-as dma-packet finish-header) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-                            (set! (-> (the-as dma-packet finish-header) vif0) (new 'static 'vif-tag))
-                            (set! (-> (the-as dma-packet finish-header) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-                            (set! (-> finish-buffer base) (&+ (the-as pointer finish-header) 16))) (let* ((finish-buffer dma-buf)
-                                 (finish-giftag (the-as object (-> finish-buffer base))))
-                            (set! (-> (the-as gs-gif-tag finish-giftag) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-                            (set! (-> (the-as gs-gif-tag finish-giftag) regs) GIF_REGS_ALL_AD)
-                            (set! (-> finish-buffer base) (&+ (the-as pointer finish-giftag) 16))) (let* ((finish-buffer dma-buf)
-                                 (finish-alpha (-> finish-buffer base)))
-                            (set! (-> (the-as (pointer gs-alpha) finish-alpha) 0) (new 'static 'gs-alpha :b #x1 :d #x1))
-                            (set! (-> (the-as (pointer gs-reg64) finish-alpha) 1) (gs-reg64 alpha-1))
-                            (set! (-> finish-buffer base) (&+ finish-alpha 16))) (reset-display-gs-state *display* dma-buf *oddeven*)))))))
+            (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) (the-as bucket-id blend-bucket))
+              (set-display-gs-state dma-buf *sky-base-page* 64 96 0 0)
+              (dotimes (texture-index 8)
+                (let ((texture-weight (* (-> context moods level-index sky-times texture-index) level-weight)))
+                  (if (!= texture-weight 0.0)
+                      (copy-sky-texture dma-buf (-> adgifs data texture-index) texture-weight))))
+              (copy-cloud-texture dma-buf (-> adgifs data 8) level-weight)
+              (dma-buffer-add-cnt-vif2 dma-buf #x2 (new 'static 'vif-tag) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+              (dma-buffer-add-gif-tag dma-buf (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1) GIF_REGS_ALL_AD)
+              (let* ((finish-buffer dma-buf)
+                     (finish-alpha (-> finish-buffer base)))
+                (set! (-> (the-as (pointer gs-alpha) finish-alpha) 0) (new 'static 'gs-alpha :b #x1 :d #x1))
+                (set! (-> (the-as (pointer gs-reg64) finish-alpha) 1) (gs-reg64 alpha-1))
+                (set! (-> finish-buffer base) (&+ finish-alpha 16)))
+              (reset-display-gs-state *display* dma-buf *oddeven*)))))))
   0
   (none))

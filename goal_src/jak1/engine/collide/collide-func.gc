@@ -25,28 +25,28 @@
 ;; moving-sphere-moving-sphere-intersect
 ;;  unused
 
-
 (defconstant COLLISION_MISS -100000000.0)
+
 (defglobalconstant COLLIDE_FUNC_COUNTERS #t)
 
 (#when COLLIDE_FUNC_COUNTERS
-       (define *raw-ray-sphere-intersect-count* 0)
-       (define *ray-sphere-intersect-count* 0)
-       (define *ray-circle-intersect-count* 0)
-       (define *ray-cylinder-intersect-count* 0)
-       (define *collide-do-primitives-count* 0)
-       (define *moving-sphere-triangle-intersect-count* 0)
-       (define *moving-sphere-sphere-intersect-count* 0)
-       (define *moving-sphere-moving-sphere-intersect-count* 0)
-       )
+  (define *raw-ray-sphere-intersect-count* 0)
+  (define *ray-sphere-intersect-count* 0)
+  (define *ray-circle-intersect-count* 0)
+  (define *ray-cylinder-intersect-count* 0)
+  (define *collide-do-primitives-count* 0)
+  (define *moving-sphere-triangle-intersect-count* 0)
+  (define *moving-sphere-sphere-intersect-count* 0)
+  (define *moving-sphere-moving-sphere-intersect-count* 0)
+  (define *collide-probe-make-list-count* 0)
+  (define *collide-probe-make-list-item-count* 0)
+  (define *collide-probe-make-list-timer* (new 'global 'stopwatch)))
 
 (defun raw-ray-sphere-intersect ((origin vector) (direction vector) (radius float))
   "Check if a ray intersects a sphere at the origin.
    Return the fraction along the ray where the intersection occurs, or COLLISION_MISS
    if there is no collision."
-   
   ;; This function is rewritten in plain GOAL
-  
   ;; Parameterize the ray with:
   ;;   ray(t) = origin + t * direction with 0 <= t <= 1
   ;; A point p is on the origin if:
@@ -62,10 +62,8 @@
   ;; a = dot(dir, dir)
   ;; b = dot(dir, origin)
   ;; c = dot(origin, origin) - r^2
-  
   (#when COLLIDE_FUNC_COUNTERS
     (+! *raw-ray-sphere-intersect-count* 1))
-  
   ;; this matches the order of operations in the original, just in case rounding matters.
   (let ((c (+ (+ (square (-> origin x))
                  (square (-> origin y)))
@@ -464,10 +462,9 @@
        (set! contact-fraction COLLISION_MISS)))
     contact-fraction))
 
-
 (#when COLLIDE_FUNC_COUNTERS
   (defun clear-collide-func-counters ()
-    "Clear the collision function counters at the start of a frame."
+    "Clear the collision function counters and probe-list profile at the start of a frame."
     (set! *raw-ray-sphere-intersect-count* 0)
     (set! *ray-sphere-intersect-count* 0)
     (set! *ray-circle-intersect-count* 0)
@@ -476,10 +473,12 @@
     (set! *moving-sphere-triangle-intersect-count* 0)
     (set! *moving-sphere-sphere-intersect-count* 0)
     (set! *moving-sphere-moving-sphere-intersect-count* 0)
+    (set! *collide-probe-make-list-count* 0)
+    (set! *collide-probe-make-list-item-count* 0)
+    (stopwatch-init *collide-probe-make-list-timer*)
     (none))
-
   (defun display-collide-func-counters ()
-    "Display the collision function counters, three per line."
+    "Display the collision function counters and probe-list frame totals."
     (format *stdcon*
             " krrs ~7D  rs ~7D  rc ~7D~%"
             *raw-ray-sphere-intersect-count*
@@ -494,4 +493,9 @@
             " mss ~7D  msms ~7D~%"
             *moving-sphere-sphere-intersect-count*
             *moving-sphere-moving-sphere-intersect-count*)
+    (format *stdcon*
+            " probe-list ~7D calls  ~7D items  ~3D us~%"
+            *collide-probe-make-list-count*
+            *collide-probe-make-list-item-count*
+            (the int (* 1000000.0 (stopwatch-elapsed-seconds *collide-probe-make-list-timer*))))
     (none)))
