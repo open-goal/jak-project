@@ -41,8 +41,6 @@ namespace init_boundary_regs { extern void link(); }
 namespace render_boundary_quad { extern void link(); }
 namespace render_boundary_tri { extern void link(); }
 namespace draw_boundary_polygon { extern void link(); }
-namespace draw_inline_array_tfrag { extern void link(); }
-namespace stats_tfrag_asm { extern void link(); }
 namespace time_of_day_interp_colors_scratch { extern void link(); }
 namespace method_12_collide_mesh { extern void link(); }
 namespace method_11_collide_mesh { extern void link(); }
@@ -97,8 +95,6 @@ namespace shadow_scissor_top { extern void link(); }
 namespace shadow_scissor_edges { extern void link(); }
 namespace shadow_calc_dual_verts { extern void link(); }
 namespace shadow_xform_verts { extern void link(); }
-namespace draw_inline_array_instance_tie { extern void link(); }
-namespace draw_inline_array_prototype_tie_generic_asm { extern void link(); }
 }  // namespace jak1
 
 namespace jak2 {
@@ -397,7 +393,6 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"load-boundary",
       {jak1::init_boundary_regs::link, jak1::render_boundary_quad::link,
        jak1::render_boundary_tri::link, jak1::draw_boundary_polygon::link}},
-     {"tfrag", {jak1::draw_inline_array_tfrag::link, jak1::stats_tfrag_asm::link}},
      {"time-of-day", {jak1::time_of_day_interp_colors_scratch::link}},
      {"collide-probe", {jak1::collide_probe_node::link, jak1::collide_probe_instance_tie::link}},
      {"collide-mesh",
@@ -434,10 +429,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak1::shadow_find_single_edges::link, jak1::shadow_find_facing_single_tris::link,
        jak1::shadow_init_vars::link, jak1::shadow_scissor_top::link,
        jak1::shadow_scissor_edges::link, jak1::shadow_calc_dual_verts::link,
-       jak1::shadow_xform_verts::link}},
-     {"tie-methods",
-      {jak1::draw_inline_array_instance_tie::link,
-       jak1::draw_inline_array_prototype_tie_generic_asm::link}}},
+       jak1::shadow_xform_verts::link}}},
     /////////// JAK 2
     {{"collide-func",
       {jak2::collide_do_primitives::link, jak2::moving_sphere_triangle_intersect::link}},

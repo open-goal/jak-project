@@ -7,23 +7,12 @@
 (require "engine/gfx/background/background.gc")
 (require "engine/collide/collide-shape-h.gc")
 
-;; The terrain hierarchy: drawable-tree traversal, visibility propagation down the draw-node depths,
-;; and the four category draw functions that turn a culled tree into far and near DMA streams.
-;;
-;; Nothing here chooses a detail level. Culling here is purely visibility, and the far draw function
-;; picks each fragment's mesh from its own bounding sphere; see classify-fragment-lod in tfrag.gc for
-;; why that choice has to be made per fragment from the whole sphere rather than per tree or from a
-;; node.
-
 ;; DECOMP BEGINS
 
 (defun edge-debug-lines ((edge-lists (array vector-array)))
   "Draw the selected edge lists as pairs of white, translucent, depth-independent debug lines.
    *display-strip-lines* selects lists by bit position."
-  ;; These edge lists are debug data and are not present in the retail game.
   (when (nonzero? edge-lists)
-    (#when PC_PORT
-      (format 0 "bad~%"))
     (dotimes (i (-> edge-lists length))
       (when (logtest? *display-strip-lines* (ash 1 i))
         (let ((edges (-> edge-lists i)))
@@ -32,7 +21,7 @@
                             (bucket-id debug-no-zbuf)
                             (-> edges data (* edge-index 2))
                             (-> edges data (+ (* edge-index 2) 1))
-                            (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                            (static-rgba #xff #xff #xff #x80)
                             #f
                             (the-as rgba -1)))))))
   (none))
@@ -41,836 +30,223 @@
 ;; tree draw functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Calling draw on a top-level terrain tree only queues the tree and its level. finish-background
-;; later consumes those queues and builds the DMA streams here, after all ordinary draw traversal
-;; has finished.
+;; Each tree type has its own draw function. They are mostly structured the same, other than this ordering.
 
+(defmacro finish-tfrag-perf-read-first! (stat wait-to-spr wait-from-spr)
+  `(begin
+    (read! ,stat)
+    (update-wait-stats ,stat (the-as uint 0) ,wait-to-spr ,wait-from-spr)))
+
+(defmacro finish-tfrag-perf-wait-first! (stat wait-to-spr wait-from-spr)
+  `(begin
+    (update-wait-stats ,stat (the-as uint 0) ,wait-to-spr ,wait-from-spr)
+    (read! ,stat)))
+
+;; Build one of the original EE terrain draw functions. Renderer masks, bucket pairs, TEST state,
+;; alpha mode, and performance-counter ordering are parameters because they differ by category.
 (#unless PC_PORT
-  (defun draw-drawable-tree-tfrag ((tree drawable-tree-tfrag))
-    "Cull the tree hierarchy, build the opaque far and near terrain DMA streams, submit them to the
-     current level's terrain buckets, and account for the DMA storage used."
-    (local-vars (visibility-bits (pointer uint8)))
-    (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-      (let ((last-array-index (+ (-> tree length) -1)))
-        ;; Refine the scratchpad visibility list one draw-node depth at a time. The BSP pass has
-        ;; already left one bit per drawable id in vis-list; the byte at a node's own id holds the
-        ;; bits for its up-to-eight children. Each pass reads the current depth's bits and clears the
-        ;; child byte of any node whose own bit is off or whose bounding sphere is outside a camera
-        ;; side plane, so what survives walks down the tree in place. Nothing else is produced: the
-        ;; list is the output. The last array holds fragments rather than nodes, hence length - 1
-        ;; passes, and its bits are what the two draw loops below read.
-        (when (nonzero? last-array-index)
-          (dotimes (depth-index last-array-index)
-            (let* ((parent-array (-> tree arrays depth-index))
-                   (child-array (-> tree arrays (+ depth-index 1)))
-                   (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
-                   (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
-                   (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
-                   (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
-              (draw-node-cull child-visibility
-                              parent-visibility
-                              (-> (the-as drawable-inline-array-node parent-array) data)
-                              (-> (the-as drawable-inline-array-node parent-array) length)))))
-        (let* ((fragment-array (the-as drawable-inline-array-tfrag (-> tree arrays last-array-index)))
-               (fragments (-> fragment-array data))
-               (fragment-count (-> fragment-array length)))
-          (set! visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments 0 id) 8)))
-          (let ((dma-start (-> (current-frame) global-buf base)))
-            ;; Far and near are two passes over the same fragment array into two buckets. Both open a
-            ;; chain in the global buffer, end it with a next tag and hand the span to the bucket
-            ;; system, which patches the chains together before the DMA goes out.
+  (defmacro define-tfrag-tree-draw (name tree-type fragment-array-type renderer-mask far-bucket-0 far-bucket-1 near-bucket-0 near-bucket-1 test alpha-blend far-perf-finish ee-docstring pc-docstring dma-bindings &rest epilogue)
+    `(defun ,name ((tree ,tree-type))
+      ,ee-docstring
+      (when (logtest? *vu1-enable-user* (vu1-renderer-mask ,renderer-mask))
+        (let ((last-array-index (+ (-> tree length) -1)))
+          (when (nonzero? last-array-index)
+            ;; update visibility bits based on frustum culling.
+            ;; This iterates through each depth level of the BVH and runs the optimized draw-node-cull function,
+            ;; which avoids testing children whose parents are flagged as not visible due to precomputed or frustum culling.
+            (dotimes (depth-index last-array-index)
+              (let* ((parent-array (-> tree arrays depth-index))
+                     (child-array (-> tree arrays (+ depth-index 1)))
+                     (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
+                     (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
+                     (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
+                     (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
+                (draw-node-cull child-visibility
+                                parent-visibility
+                                (-> (the-as drawable-inline-array-node parent-array) data)
+                                (-> (the-as drawable-inline-array-node parent-array) length)))))
+          (let* ((fragment-array (the-as ,fragment-array-type (-> tree arrays last-array-index)))
+                 (fragments (-> fragment-array data))
+                 (fragment-count (-> fragment-array length))
+                 (visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments 0 id) 8)))
+                 ,@dma-bindings)
+            ;; "far" (not-near) drawing
             (with-dma-buffer-add-bucket ((far-dma-buf (-> (current-frame) global-buf))
                                          (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                           (bucket-id tfrag-0)
-                                           (bucket-id tfrag-1)))
+                                             (bucket-id ,far-bucket-0)
+                                             (bucket-id ,far-bucket-1)))
               (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
               (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-              (tfrag-init-buffer far-dma-buf
-                                 (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
-                                 0)
+              (tfrag-init-buffer far-dma-buf ,test ,alpha-blend)
               (reset! (-> *perf-stats* data 5))
               (draw-inline-array-tfrag visibility-bits (the-as (pointer tfragment) fragments) fragment-count far-dma-buf)
-              (read! (-> *perf-stats* data 5))
-              (update-wait-stats (-> *perf-stats* data 5)
-                                 (the-as uint 0)
-                                 (-> *tfrag-work* wait-to-spr)
-                                 (-> *tfrag-work* wait-from-spr))
+              (,far-perf-finish (-> *perf-stats* data 5) (-> *tfrag-work* wait-to-spr) (-> *tfrag-work* wait-from-spr))
               (tfrag-end-buffer far-dma-buf))
+            ;; near (clipping) drawing
             (with-dma-buffer-add-bucket ((near-dma-buf (-> (current-frame) global-buf))
                                          (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                           (bucket-id tfrag-near-0)
-                                           (bucket-id tfrag-near-1)))
+                                             (bucket-id ,near-bucket-0)
+                                             (bucket-id ,near-bucket-1)))
               (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
               (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-              (tfrag-near-init-buffer near-dma-buf
-                                      (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
-                                      0)
+              (tfrag-near-init-buffer near-dma-buf ,test ,alpha-blend)
               (reset! (-> *perf-stats* data 6))
               (draw-inline-array-tfrag-near visibility-bits (the-as (pointer tfragment) fragments) fragment-count near-dma-buf)
-              (read! (-> *perf-stats* data 6))
-              (update-wait-stats (-> *perf-stats* data 6)
-                                 (the-as uint 0)
-                                 (-> *tfrag-work* near-wait-to-spr)
-                                 (-> *tfrag-work* near-wait-from-spr))
+              (finish-tfrag-perf-read-first! (-> *perf-stats* data 6)
+                                             (-> *tfrag-work* near-wait-to-spr)
+                                             (-> *tfrag-work* near-wait-from-spr))
               (tfrag-near-end-buffer near-dma-buf))
-            ;; Both streams are charged to the tfragment row of the DMA usage report.
-            (let ((usage *dma-mem-usage*))
-              (when (nonzero? usage)
-                (set! (-> usage length) (max 2 (-> usage length)))
-                (set! (-> usage data 1 name) "tfragment")
-                (+! (-> usage data 1 count) 1)
-                (+! (-> usage data 1 used) (&- (-> (current-frame) global-buf base) (the-as uint dma-start)))
-                (set! (-> usage data 1 total) (-> usage data 1 used))))))))
-    (none)))
+            ,@epilogue)))
+      (none))))
 
+;; PC version, much simpler.
 (#when PC_PORT
-  (defun draw-drawable-tree-tfrag ((arg0 drawable-tree-tfrag) (lev level))
-    "Build and submit the opaque terrain packet for lev. The PC packet includes the level's
-     time-of-day state and name for the native renderer."
-    (local-vars (r0-0 none) (a0-20 int) (a0-22 int) (a0-38 int) (a0-40 int) (sv-16 (pointer uint8)))
-    (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-      ;; first, do draw node culling.
-      ;; the culling is done in batches, doing all nodes at one depth before going to the enxt.
-      ;; only arrays of draw nodes can be culled - tfragments themselves can't (they are the wrong size)
-      (let ((s5-0 (+ (-> arg0 length) -1))) ;; get the number of trees with draw-nodes (see doc, the last one is always tfragments)
-        ;; TODO
-        #|
-        (when (nonzero? s5-0) ;; only if we have draw-nodes (levels like INT have only like 2 tfrags)
-          (dotimes (s4-0 s5-0) ;; loop over tree depths
-
-            ;; not sure of the details yet, but we take two levels as inputs
-            (let* ((v1-7 (-> arg0 arrays s4-0))
-                   (a0-4 (-> arg0 arrays (+ s4-0 1)))
-                   (a1-1 (/ (-> (the-as drawable-inline-array-node v1-7) data 0 id) 8))
-                   (a0-6 (/ (-> (the-as drawable-inline-array-node a0-4) data 0 id) 8))
-                   (a1-3 (&-> (scratchpad-object terrain-context) work background vis-list a1-1))
-                   (a0-8 (&-> (scratchpad-object terrain-context) work background vis-list a0-6))
-                   )
-              (draw-node-cull
-                a0-8
-                a1-3
-                (-> (the-as drawable-inline-array-node v1-7) data)
-                (-> (the-as drawable-inline-array-node v1-7) length)
-                )
-              )
-            )
-          )
-        |#
-        ;; draw, using the full list of all tfrags (not tree format)
-        (let* ((v1-13 (the-as drawable-inline-array-tfrag (-> arg0 arrays s5-0)))
-               (s4-1 (-> v1-13 data))
-               (s3-0 (-> v1-13 length)))
-          ;; pointer to vis data for the first tfrag
-          (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s4-1 0 id) 8)))
-          ;; all DMA
-          (let ((s5-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
-            ;; (format *stdcon* " #x~X~%" s5-1)
-            ;; DMA for TFRAG
-            ;; clear stats
-            ;; initialize dma buffer
-            ;; do the draw!
-            ;;(format 0 "DRAW: ~D~%" s3-0)
-            ;; (draw-inline-array-tfrag sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-0)
-            ;; update stats for the draw
-            ;; finish dma buffer
-            ;; close dma packet
-            (with-dma-buffer-add-bucket ((s1-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (the-as bucket-id
-                                                           (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-0) (bucket-id tfrag-1)))) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0)) (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0)) (tfrag-init-buffer s1-0
-                                             (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
-                                             0
-                                             lev) (reset! (-> *perf-stats* data 5)) (read! (-> *perf-stats* data 5)) (update-wait-stats (-> *perf-stats* data 5)
-                                             (the-as uint 0)
-                                             (-> *tfrag-work* wait-to-spr)
-                                             (-> *tfrag-work* wait-from-spr)) (tfrag-end-buffer s1-0))
-            ;; (format *stdcon* " #x~X~%" (-> *display* frames (-> *display* on-screen) frame global-buf base))
-            ;; DMA for TFRAG NEAR
-            ; (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
-            ;        (s2-1 (-> s1-1 base))
-            ;        )
-            ;   (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
-            ;   (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-            ;   (tfrag-near-init-buffer
-            ;     s1-1
-            ;     (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
-            ;     0
-            ;     )
-            ;   (reset! (-> *perf-stats* data 6))
-            ;   (draw-inline-array-tfrag-near sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-1)
-            ;   (read! (-> *perf-stats* data 6))
-            ;   (update-wait-stats (-> *perf-stats* data 6) (the-as uint 0) (-> *tfrag-work* near-wait-to-spr) (-> *tfrag-work* near-wait-from-spr))
-            ;   (tfrag-near-end-buffer s1-1)
-            ;   (let ((a3-6 (-> s1-1 base)))
-            ;     (let ((v1-62 (the-as object (-> s1-1 base))))
-            ;       (set! (-> (the-as dma-packet v1-62) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-            ;       (set! (-> (the-as dma-packet v1-62) vif0) (new 'static 'vif-tag))
-            ;       (set! (-> (the-as dma-packet v1-62) vif1) (new 'static 'vif-tag))
-            ;       (set! (-> s1-1 base) (&+ (the-as pointer v1-62) 16))
-            ;       )
-            ;     (dma-bucket-insert-tag
-            ;       (-> *display* frames (-> *display* on-screen) frame bucket-group)
-            ;       (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-            ;                             (bucket-id tfrag-near-0)
-            ;                             (bucket-id tfrag-near-1)
-            ;                             )
-            ;               )
-            ;       s2-1
-            ;       (the-as (pointer dma-tag) a3-6)
-            ;       )
-            ;     )
-            ;   )
-            ;; DMA memory stats
-            (let ((v1-69 *dma-mem-usage*))
-              (when (nonzero? v1-69)
-                (set! (-> v1-69 length) (max 2 (-> v1-69 length)))
-                (set! (-> v1-69 data 1 name) "tfragment")
-                (+! (-> v1-69 data 1 count) 1)
-                (+! (-> v1-69 data 1 used) (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s5-1)))
-                (set! (-> v1-69 data 1 total) (-> v1-69 data 1 used))))))))
-    (none)))
-
-(#unless PC_PORT
-  (defun draw-drawable-tree-trans-tfrag ((tree drawable-tree-trans-tfrag))
-    "Cull the tree hierarchy and build alpha-blended far and near terrain streams using the
-     translucent TEST state and buckets."
-    (local-vars (visibility-bits (pointer uint8)))
-    (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-      (let ((last-array-index (+ (-> tree length) -1)))
-        ;; Walk the visibility list down the node depths in place; see draw-drawable-tree-tfrag.
-        (when (nonzero? last-array-index)
-          (dotimes (depth-index last-array-index)
-            (let* ((parent-array (-> tree arrays depth-index))
-                   (child-array (-> tree arrays (+ depth-index 1)))
-                   (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
-                   (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
-                   (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
-                   (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
-              (draw-node-cull child-visibility
-                              parent-visibility
-                              (-> (the-as drawable-inline-array-node parent-array) data)
-                              (-> (the-as drawable-inline-array-node parent-array) length)))))
-        (let* ((fragment-array (-> tree arrays last-array-index))
-               (fragments (&+ fragment-array 32))
-               (fragment-count (-> fragment-array length)))
-          (set! visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments id) 8)))
-          (with-dma-buffer-add-bucket ((far-dma-buf (-> (current-frame) global-buf))
+  (defmacro define-tfrag-tree-draw (name tree-type fragment-array-type renderer-mask far-bucket-0 far-bucket-1 near-bucket-0 near-bucket-1 test alpha-blend far-perf-finish ee-docstring pc-docstring dma-bindings &rest epilogue)
+    `(defun ,name ((tree ,tree-type) (lev level))
+      ,pc-docstring
+      (when (logtest? *vu1-enable-user* (vu1-renderer-mask ,renderer-mask))
+        (let ((dma-start (-> (current-frame) global-buf base)))
+          (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))
                                        (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                         (bucket-id tfrag-trans-0)
-                                         (bucket-id tfrag-trans-1)))
+                                           (bucket-id ,far-bucket-0)
+                                           (bucket-id ,far-bucket-1)))
             (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
             (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-            (tfrag-init-buffer far-dma-buf
-                               (new 'static
-                                    'gs-test
-                                    :ate #x1
-                                    :atst (gs-atest greater-equal)
-                                    :aref #x7e
-                                    :afail #x1
-                                    :zte #x1
-                                    :ztst (gs-ztest greater-equal))
-                               1)
+            (tfrag-init-buffer dma-buf ,test ,alpha-blend lev)
             (reset! (-> *perf-stats* data 5))
-            (draw-inline-array-tfrag visibility-bits (the-as (pointer tfragment) fragments) fragment-count far-dma-buf)
-            (update-wait-stats (-> *perf-stats* data 5)
-                               (the-as uint 0)
-                               (-> *tfrag-work* wait-to-spr)
-                               (-> *tfrag-work* wait-from-spr))
-            (read! (-> *perf-stats* data 5))
-            (tfrag-end-buffer far-dma-buf))
-          (with-dma-buffer-add-bucket ((near-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                         (bucket-id tfrag-trans-near-0)
-                                         (bucket-id tfrag-trans-near-1)))
-            (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-            (tfrag-near-init-buffer near-dma-buf
-                                    (new 'static
-                                         'gs-test
-                                         :ate #x1
-                                         :atst (gs-atest greater-equal)
-                                         :aref #x7e
-                                         :afail #x1
-                                         :zte #x1
-                                         :ztst (gs-ztest greater-equal))
-                                    1)
-            (reset! (-> *perf-stats* data 6))
-            (draw-inline-array-tfrag-near visibility-bits (the-as (pointer tfragment) fragments) fragment-count near-dma-buf)
-            (read! (-> *perf-stats* data 6))
-            (update-wait-stats (-> *perf-stats* data 6)
-                               (the-as uint 0)
-                               (-> *tfrag-work* near-wait-to-spr)
-                               (-> *tfrag-work* near-wait-from-spr))
-            (tfrag-near-end-buffer near-dma-buf)))))
+            (,far-perf-finish (-> *perf-stats* data 5) (-> *tfrag-work* wait-to-spr) (-> *tfrag-work* wait-from-spr))
+            (tfrag-end-buffer dma-buf))
+          (dma-mem-usage-add! tfragment 1 (&- (-> (current-frame) global-buf base) (the-as uint dma-start)))))
+      (none))))
+
+;; standard TFRAG drawing
+(define-tfrag-tree-draw draw-drawable-tree-tfrag
+                        drawable-tree-tfrag
+                        drawable-inline-array-tfrag
+                        tfrag
+                        tfrag-0
+                        tfrag-1
+                        tfrag-near-0
+                        tfrag-near-1
+                        (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
+                        0
+                        finish-tfrag-perf-read-first!
+                        "Cull the tree hierarchy, build the opaque far and near terrain DMA streams, submit them to the
+                         current level's terrain buckets, and account for the DMA storage used."
+                        "Build and submit the opaque terrain packet for lev. The PC packet includes the level's
+                         time-of-day state and name for the native renderer."
+                        ((dma-start (-> (current-frame) global-buf base)))
+                        (dma-mem-usage-add! tfragment 1 (&- (-> (current-frame) global-buf base) (the-as uint dma-start))))
+
+(define-tfrag-tree-draw draw-drawable-tree-trans-tfrag
+                        drawable-tree-trans-tfrag
+                        drawable-inline-array-trans-tfrag
+                        trans-tfrag
+                        tfrag-trans-0
+                        tfrag-trans-1
+                        tfrag-trans-near-0
+                        tfrag-trans-near-1
+                        (new 'static
+                             'gs-test
+                             :ate #x1
+                             :atst (gs-atest greater-equal)
+                             :aref #x7e
+                             :afail #x1
+                             :zte #x1
+                             :ztst (gs-ztest greater-equal))
+                        1
+                        finish-tfrag-perf-wait-first!
+                        "Cull the tree hierarchy and build alpha-blended far and near terrain streams using the
+                         translucent TEST state and buckets."
+                        "Build and submit the translucent terrain packet for lev using its alpha-test state."
+                        ())
+
+(define-tfrag-tree-draw draw-drawable-tree-dirt-tfrag
+                        drawable-tree-dirt-tfrag
+                        drawable-inline-array-trans-tfrag
+                        trans-tfrag
+                        tfrag-dirt-0
+                        tfrag-dirt-1
+                        tfrag-dirt-near-0
+                        tfrag-dirt-near-1
+                        (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+                        1
+                        finish-tfrag-perf-wait-first!
+                        "Cull the tree hierarchy and build alpha-blended far and near dirt-terrain streams using their
+                         dedicated TEST state and buckets."
+                        "Build and submit the dirt-terrain packet for lev using its alpha-test state."
+                        ())
+
+(define-tfrag-tree-draw draw-drawable-tree-ice-tfrag
+                        drawable-tree-ice-tfrag
+                        drawable-inline-array-trans-tfrag
+                        trans-tfrag
+                        tfrag-ice-0
+                        tfrag-ice-1
+                        tfrag-ice-near-0
+                        tfrag-ice-near-1
+                        (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+                        1
+                        finish-tfrag-perf-wait-first!
+                        "Cull the tree hierarchy and build alpha-blended far and near ice-terrain streams using their
+                         dedicated TEST state and buckets."
+                        "Build and submit the ice-terrain packet for lev using its alpha-test state."
+                        ())
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; queue methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro define-tfrag-tree-draw-method (tree-type count-field trees-field levels-field docstring)
+  `(defmethod draw ((this ,tree-type) (submitted-tree ,tree-type) (frame display-frame))
+    ,docstring
+    (let* ((queue-index (-> *background-work* ,count-field))
+           (level-index (-> (scratchpad-object terrain-context) bsp lev-index))
+           (lev (-> *level* level level-index)))
+      (set! (-> *background-work* ,trees-field queue-index) this)
+      (set! (-> *background-work* ,levels-field queue-index) lev))
+    (+! (-> *background-work* ,count-field) 1)
     (none)))
 
-(#when PC_PORT
-  (defun draw-drawable-tree-trans-tfrag ((arg0 drawable-tree-trans-tfrag) (lev level))
-    "Build and submit the translucent terrain packet for lev using its alpha-test state."
-    (local-vars (r0-0 none) (a0-18 int) (a0-20 int) (a0-35 int) (a0-37 int) (sv-16 (pointer uint8)))
-    (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-      (let ((s5-0 (+ (-> arg0 length) -1)))
-        #|
-   TODO
-      (when (nonzero? s5-0)
-       (dotimes (s4-0 s5-0)
-        (let* ((v1-7 (-> arg0 arrays s4-0))
-               (a0-4 (-> arg0 arrays (+ s4-0 1)))
-               (a1-1 (/ (-> (the-as drawable-inline-array-node v1-7) data 0 id) 8))
-               (a0-6 (/ (-> (the-as drawable-inline-array-node a0-4) data 0 id) 8))
-               (a1-3 (&-> (the-as terrain-context #x70000000) work background vis-list a1-1))
-               (a0-8 (&-> (the-as terrain-context #x70000000) work background vis-list a0-6))
-               )
-         (draw-node-cull
-          a0-8
-          a1-3
-          (-> (the-as drawable-inline-array-node v1-7) data)
-          (-> (the-as drawable-inline-array-node v1-7) length)
-          )
-         )
-        )
-       )
-        |#
-        (let* ((v1-13 (-> arg0 arrays s5-0))
-               (s5-1 (&+ v1-13 32))
-               (s4-1 (-> v1-13 length)))
-          (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
-          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-          (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (the-as bucket-id
-                                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-trans-0) (bucket-id tfrag-trans-1)))) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0)) (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0)) (tfrag-init-buffer s2-0
-                                         (new 'static
-                                              'gs-test
-                                              :ate #x1
-                                              :atst (gs-atest greater-equal)
-                                              :aref #x7e
-                                              :afail #x1
-                                              :zte #x1
-                                              :ztst (gs-ztest greater-equal))
-                                         1
-                                         lev) (reset! (-> *perf-stats* data 5)) (update-wait-stats (-> *perf-stats* data 5)
-                                         (the-as uint 0)
-                                         (-> *tfrag-work* wait-to-spr)
-                                         (-> *tfrag-work* wait-from-spr)) (read! (-> *perf-stats* data 5)) (tfrag-end-buffer s2-0))
-          #|
-   TODO
-       (let*
-        ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (s3-1 (-> s2-1 base))
-         )
-        (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
-        (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-        (tfrag-near-init-buffer
-         s2-1
-         (new 'static 'gs-test
-          :ate #x1
-          :atst (gs-atest greater-equal)
-          :aref #x7e
-          :afail #x1
-          :zte #x1
-          :ztst (gs-ztest greater-equal)
-          )
-         1
-         )
-        (let* ((v1-48 (-> *perf-stats* data 6))
-               (a0-32 (-> v1-48 ctrl))
-               )
-         (+! (-> v1-48 count) 1)
-         (b! (zero? a0-32) cfg-15 :delay (nop!))
-         (.mtc0 Perf r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mtpc pcr0 r0-0)
-         (.mtpc pcr1 r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mtc0 Perf a0-32)
-         )
-        (.sync.l)
-        (.sync.p)
-        (label cfg-15)
-        0
-        (draw-inline-array-tfrag-near sv-16 s5-1 s4-1 s2-1)
-        (let ((v1-51 (-> *perf-stats* data 6)))
-         (b! (zero? (-> v1-51 ctrl)) cfg-17 :delay (nop!))
-         (.mtc0 Perf r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mfpc a0-35 pcr0)
-         (+! (-> v1-51 accum0) a0-35)
-         (.mfpc a0-37 pcr1)
-         (+! (-> v1-51 accum1) a0-37)
-         )
-        (label cfg-17)
-        0
-        (update-wait-stats
-         (-> *perf-stats* data 6)
-         (the-as uint 0)
-         (-> *tfrag-work* near-wait-to-spr)
-         (-> *tfrag-work* near-wait-from-spr)
-         )
-        (tfrag-near-end-buffer s2-1)
-        (let ((a3-6 (-> s2-1 base)))
-         (let ((v1-58 (the-as object (-> s2-1 base))))
-          (set!
-           (-> (the-as dma-packet v1-58) dma)
-           (new 'static 'dma-tag :id (dma-tag-id next))
-           )
-          (set! (-> (the-as dma-packet v1-58) vif0) (new 'static 'vif-tag))
-          (set! (-> (the-as dma-packet v1-58) vif1) (new 'static 'vif-tag))
-          (set! (-> s2-1 base) (&+ (the-as pointer v1-58) 16))
-          )
-         (dma-bucket-insert-tag
-          (-> *display* frames (-> *display* on-screen) frame bucket-group)
-          (the-as
-           bucket-id
-           (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
-            33
-            40
-            )
-           )
-          s3-1
-          (the-as (pointer dma-tag) a3-6)
-          )
-         )
-        )
-          |#
-          )))
-    (none)))
+(define-tfrag-tree-draw-method drawable-tree-tfrag
+                               tfrag-tree-count
+                               tfrag-trees
+                               tfrag-levels
+                               "Queue this terrain tree and its owning level for the background renderer.")
 
-(#unless PC_PORT
-  (defun draw-drawable-tree-dirt-tfrag ((tree drawable-tree-dirt-tfrag))
-    "Cull the tree hierarchy and build alpha-blended far and near dirt-terrain streams using their
-     dedicated TEST state and buckets."
-    (local-vars (visibility-bits (pointer uint8)))
-    ;; The dirt and ice trees are gated by the trans-tfrag enable bit, not one of their own.
-    (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-      (let ((last-array-index (+ (-> tree length) -1)))
-        ;; Walk the visibility list down the node depths in place; see draw-drawable-tree-tfrag.
-        (when (nonzero? last-array-index)
-          (dotimes (depth-index last-array-index)
-            (let* ((parent-array (-> tree arrays depth-index))
-                   (child-array (-> tree arrays (+ depth-index 1)))
-                   (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
-                   (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
-                   (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
-                   (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
-              (draw-node-cull child-visibility
-                              parent-visibility
-                              (-> (the-as drawable-inline-array-node parent-array) data)
-                              (-> (the-as drawable-inline-array-node parent-array) length)))))
-        (let* ((fragment-array (-> tree arrays last-array-index))
-               (fragments (&+ fragment-array 32))
-               (fragment-count (-> fragment-array length)))
-          (set! visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments id) 8)))
-          (with-dma-buffer-add-bucket ((far-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                         (bucket-id tfrag-dirt-0)
-                                         (bucket-id tfrag-dirt-1)))
-            (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-            (tfrag-init-buffer far-dma-buf (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)) 1)
-            (reset! (-> *perf-stats* data 5))
-            (draw-inline-array-tfrag visibility-bits (the-as (pointer tfragment) fragments) fragment-count far-dma-buf)
-            (update-wait-stats (-> *perf-stats* data 5)
-                               (the-as uint 0)
-                               (-> *tfrag-work* wait-to-spr)
-                               (-> *tfrag-work* wait-from-spr))
-            (read! (-> *perf-stats* data 5))
-            (tfrag-end-buffer far-dma-buf))
-          (with-dma-buffer-add-bucket ((near-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                         (bucket-id tfrag-dirt-near-0)
-                                         (bucket-id tfrag-dirt-near-1)))
-            (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-            (tfrag-near-init-buffer near-dma-buf (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)) 1)
-            (reset! (-> *perf-stats* data 6))
-            (draw-inline-array-tfrag-near visibility-bits (the-as (pointer tfragment) fragments) fragment-count near-dma-buf)
-            (read! (-> *perf-stats* data 6))
-            (update-wait-stats (-> *perf-stats* data 6)
-                               (the-as uint 0)
-                               (-> *tfrag-work* near-wait-to-spr)
-                               (-> *tfrag-work* near-wait-from-spr))
-            (tfrag-near-end-buffer near-dma-buf)))))
-    (none)))
+(define-tfrag-tree-draw-method drawable-tree-trans-tfrag
+                               trans-tfrag-tree-count
+                               trans-tfrag-trees
+                               trans-tfrag-levels
+                               "Queue this translucent terrain tree and its owning level for the background renderer.")
 
-(#when PC_PORT
-  (defun draw-drawable-tree-dirt-tfrag ((arg0 drawable-tree-dirt-tfrag) (lev level))
-    "Build and submit the dirt-terrain packet for lev using its alpha-test state."
-    (local-vars (r0-0 none) (a0-18 int) (a0-20 int) (a0-35 int) (a0-37 int) (sv-16 (pointer uint8)))
-    (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-      (let ((s5-0 (+ (-> arg0 length) -1)))
-        #|
-   TODO
-      (when (nonzero? s5-0)
-       (dotimes (s4-0 s5-0)
-        (let* ((v1-7 (-> arg0 arrays s4-0))
-               (a0-4 (-> arg0 arrays (+ s4-0 1)))
-               (a1-1 (/ (-> (the-as drawable-inline-array-node v1-7) data 0 id) 8))
-               (a0-6 (/ (-> (the-as drawable-inline-array-node a0-4) data 0 id) 8))
-               (a1-3
-                (&->
-                 (the-as terrain-context #x70000000)
-                 work
-                 background
-                 vis-list
-                 a1-1
-                 )
-                )
-               (a0-8
-                (&->
-                 (the-as terrain-context #x70000000)
-                 work
-                 background
-                 vis-list
-                 a0-6
-                 )
-                )
-               )
-         (draw-node-cull
-          a0-8
-          a1-3
-          (-> (the-as drawable-inline-array-node v1-7) data)
-          (-> (the-as drawable-inline-array-node v1-7) length)
-          )
-         )
-        )
-       )
-        |#
-        (let* ((v1-13 (-> arg0 arrays s5-0))
-               (s5-1 (&+ v1-13 32))
-               (s4-1 (-> v1-13 length)))
-          (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
-          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-          (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-dirt-0) (bucket-id tfrag-dirt-1))) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0)) (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0)) (tfrag-init-buffer s2-0 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)) 1 lev) (reset! (-> *perf-stats* data 5)) (update-wait-stats (-> *perf-stats* data 5)
-                                         (the-as uint 0)
-                                         (-> *tfrag-work* wait-to-spr)
-                                         (-> *tfrag-work* wait-from-spr)) (read! (-> *perf-stats* data 5)) (tfrag-end-buffer s2-0))
-          #|
-       (let*
-        ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (s3-1 (-> s2-1 base))
-         )
-        (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
-        (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-        (tfrag-near-init-buffer
-         s2-1
-         (new 'static 'gs-test
-          :ate #x1
-          :afail #x1
-          :zte #x1
-          :ztst (gs-ztest greater-equal)
-          )
-         1
-         )
-        (let* ((v1-48 (-> *perf-stats* data 6))
-               (a0-32 (-> v1-48 ctrl))
-               )
-         (+! (-> v1-48 count) 1)
-         (b! (zero? a0-32) cfg-15 :delay (nop!))
-         (.mtc0 Perf r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mtpc pcr0 r0-0)
-         (.mtpc pcr1 r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mtc0 Perf a0-32)
-         )
-        (.sync.l)
-        (.sync.p)
-        (label cfg-15)
-        0
-        (draw-inline-array-tfrag-near sv-16 s5-1 s4-1 s2-1)
-        (let ((v1-51 (-> *perf-stats* data 6)))
-         (b! (zero? (-> v1-51 ctrl)) cfg-17 :delay (nop!))
-         (.mtc0 Perf r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mfpc a0-35 pcr0)
-         (+! (-> v1-51 accum0) a0-35)
-         (.mfpc a0-37 pcr1)
-         (+! (-> v1-51 accum1) a0-37)
-         )
-        (label cfg-17)
-        0
-        (update-wait-stats
-         (-> *perf-stats* data 6)
-         (the-as uint 0)
-         (-> *tfrag-work* near-wait-to-spr)
-         (-> *tfrag-work* near-wait-from-spr)
-         )
-        (tfrag-near-end-buffer s2-1)
-        (let ((a3-6 (-> s2-1 base)))
-         (let ((v1-58 (the-as object (-> s2-1 base))))
-          (set!
-           (-> (the-as dma-packet v1-58) dma)
-           (new 'static 'dma-tag :id (dma-tag-id next))
-           )
-          (set! (-> (the-as dma-packet v1-58) vif0) (new 'static 'vif-tag))
-          (set! (-> (the-as dma-packet v1-58) vif1) (new 'static 'vif-tag))
-          (set! (-> s2-1 base) (&+ (the-as pointer v1-58) 16))
-          )
-         (dma-bucket-insert-tag
-          (-> *display* frames (-> *display* on-screen) frame bucket-group)
-          (the-as
-           bucket-id
-           (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
-            35
-            42
-            )
-           )
-          s3-1
-          (the-as (pointer dma-tag) a3-6)
-          )
-         )
-        )
-          |#
-          )))
-    (none)))
+(define-tfrag-tree-draw-method drawable-tree-dirt-tfrag
+                               dirt-tfrag-tree-count
+                               dirt-tfrag-trees
+                               dirt-tfrag-levels
+                               "Queue this dirt terrain tree and its owning level for the background renderer.")
 
-(#unless PC_PORT
-  (defun draw-drawable-tree-ice-tfrag ((tree drawable-tree-ice-tfrag))
-    "Cull the tree hierarchy and build alpha-blended far and near ice-terrain streams using their
-     dedicated TEST state and buckets."
-    (local-vars (visibility-bits (pointer uint8)))
-    ;; The dirt and ice trees are gated by the trans-tfrag enable bit, not one of their own.
-    (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-      (let ((last-array-index (+ (-> tree length) -1)))
-        ;; Walk the visibility list down the node depths in place; see draw-drawable-tree-tfrag.
-        (when (nonzero? last-array-index)
-          (dotimes (depth-index last-array-index)
-            (let* ((parent-array (-> tree arrays depth-index))
-                   (child-array (-> tree arrays (+ depth-index 1)))
-                   (parent-vis-byte-index (/ (-> (the-as drawable-inline-array-node parent-array) data 0 id) 8))
-                   (child-vis-byte-index (/ (-> (the-as drawable-inline-array-node child-array) data 0 id) 8))
-                   (parent-visibility (&-> (scratchpad-object terrain-context) work background vis-list parent-vis-byte-index))
-                   (child-visibility (&-> (scratchpad-object terrain-context) work background vis-list child-vis-byte-index)))
-              (draw-node-cull child-visibility
-                              parent-visibility
-                              (-> (the-as drawable-inline-array-node parent-array) data)
-                              (-> (the-as drawable-inline-array-node parent-array) length)))))
-        (let* ((fragment-array (-> tree arrays last-array-index))
-               (fragments (&+ fragment-array 32))
-               (fragment-count (-> fragment-array length)))
-          (set! visibility-bits (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> fragments id) 8)))
-          (with-dma-buffer-add-bucket ((far-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                         (bucket-id tfrag-ice-0)
-                                         (bucket-id tfrag-ice-1)))
-            (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-            (tfrag-init-buffer far-dma-buf
-                               (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
-                               1)
-            (reset! (-> *perf-stats* data 5))
-            (draw-inline-array-tfrag visibility-bits (the-as (pointer tfragment) fragments) fragment-count far-dma-buf)
-            (update-wait-stats (-> *perf-stats* data 5)
-                               (the-as uint 0)
-                               (-> *tfrag-work* wait-to-spr)
-                               (-> *tfrag-work* wait-from-spr))
-            (read! (-> *perf-stats* data 5))
-            (tfrag-end-buffer far-dma-buf))
-          (with-dma-buffer-add-bucket ((near-dma-buf (-> (current-frame) global-buf))
-                                       (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                         (bucket-id tfrag-ice-near-0)
-                                         (bucket-id tfrag-ice-near-1)))
-            (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
-            (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-            (tfrag-near-init-buffer near-dma-buf
-                                    (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
-                                    1)
-            (reset! (-> *perf-stats* data 6))
-            (draw-inline-array-tfrag-near visibility-bits (the-as (pointer tfragment) fragments) fragment-count near-dma-buf)
-            (read! (-> *perf-stats* data 6))
-            (update-wait-stats (-> *perf-stats* data 6)
-                               (the-as uint 0)
-                               (-> *tfrag-work* near-wait-to-spr)
-                               (-> *tfrag-work* near-wait-from-spr))
-            (tfrag-near-end-buffer near-dma-buf)))))
-    (none)))
+(define-tfrag-tree-draw-method drawable-tree-ice-tfrag
+                               ice-tfrag-tree-count
+                               ice-tfrag-trees
+                               ice-tfrag-levels
+                               "Queue this ice terrain tree and its owning level for the background renderer.")
 
-(#when PC_PORT
-  (defun draw-drawable-tree-ice-tfrag ((arg0 drawable-tree-ice-tfrag) (lev level))
-    "Build and submit the ice-terrain packet for lev using its alpha-test state."
-    (local-vars (r0-0 none) (a0-18 int) (a0-20 int) (a0-35 int) (a0-37 int) (sv-16 (pointer uint8)))
-    (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-      (let ((s5-0 (+ (-> arg0 length) -1)))
-        #|
-   TODO
-      (when (nonzero? s5-0)
-       (dotimes (s4-0 s5-0)
-        (let* ((v1-7 (-> arg0 arrays s4-0))
-               (a0-4 (-> arg0 arrays (+ s4-0 1)))
-               (a1-1 (/ (-> (the-as drawable-inline-array-node v1-7) data 0 id) 8))
-               (a0-6 (/ (-> (the-as drawable-inline-array-node a0-4) data 0 id) 8))
-               (a1-3 (&-> (the-as terrain-context #x70000000) work background vis-list a1-1))
-               (a0-8 (&-> (the-as terrain-context #x70000000) work background vis-list a0-6))
-               )
-         (draw-node-cull
-          a0-8
-          a1-3
-          (-> (the-as drawable-inline-array-node v1-7) data)
-          (-> (the-as drawable-inline-array-node v1-7) length)
-          )
-         )
-        )
-       )
-        |#
-        (let* ((v1-13 (-> arg0 arrays s5-0))
-               (s5-1 (&+ v1-13 32))
-               (s4-1 (-> v1-13 length)))
-          (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
-          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-          (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf)) (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) 36 43))) :bucket-group (-> *display* frames (-> *display* on-screen) frame bucket-group) (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0)) (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0)) (tfrag-init-buffer s2-0
-                                         (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
-                                         1
-                                         lev) (reset! (-> *perf-stats* data 5)) (update-wait-stats (-> *perf-stats* data 5)
-                                         (the-as uint 0)
-                                         (-> *tfrag-work* wait-to-spr)
-                                         (-> *tfrag-work* wait-from-spr)) (read! (-> *perf-stats* data 5)) (tfrag-end-buffer s2-0))
-          #|
-       (let*
-        ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
-         (s3-1 (-> s2-1 base))
-         )
-        (set! (-> *tfrag-work* near-wait-to-spr) (the-as uint 0))
-        (set! (-> *tfrag-work* near-wait-from-spr) (the-as uint 0))
-        (tfrag-near-init-buffer
-         s2-1
-         (new 'static 'gs-test
-          :ate #x1
-          :atst (gs-atest always)
-          :afail #x1
-          :zte #x1
-          :ztst (gs-ztest greater-equal)
-          )
-         1
-         )
-        (let* ((v1-48 (-> *perf-stats* data 6))
-               (a0-32 (-> v1-48 ctrl))
-               )
-         (+! (-> v1-48 count) 1)
-         (b! (zero? a0-32) cfg-15 :delay (nop!))
-         (.mtc0 Perf r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mtpc pcr0 r0-0)
-         (.mtpc pcr1 r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mtc0 Perf a0-32)
-         )
-        (.sync.l)
-        (.sync.p)
-        (label cfg-15)
-        0
-        (draw-inline-array-tfrag-near sv-16 s5-1 s4-1 s2-1)
-        (let ((v1-51 (-> *perf-stats* data 6)))
-         (b! (zero? (-> v1-51 ctrl)) cfg-17 :delay (nop!))
-         (.mtc0 Perf r0-0)
-         (.sync.l)
-         (.sync.p)
-         (.mfpc a0-35 pcr0)
-         (+! (-> v1-51 accum0) a0-35)
-         (.mfpc a0-37 pcr1)
-         (+! (-> v1-51 accum1) a0-37)
-         )
-        (label cfg-17)
-        0
-        (update-wait-stats
-         (-> *perf-stats* data 6)
-         (the-as uint 0)
-         (-> *tfrag-work* near-wait-to-spr)
-         (-> *tfrag-work* near-wait-from-spr)
-         )
-        (tfrag-near-end-buffer s2-1)
-        (let ((a3-6 (-> s2-1 base)))
-         (let ((v1-58 (the-as object (-> s2-1 base))))
-          (set!
-           (-> (the-as dma-packet v1-58) dma)
-           (new 'static 'dma-tag :id (dma-tag-id next))
-           )
-          (set! (-> (the-as dma-packet v1-58) vif0) (new 'static 'vif-tag))
-          (set! (-> (the-as dma-packet v1-58) vif1) (new 'static 'vif-tag))
-          (set! (-> s2-1 base) (&+ (the-as pointer v1-58) 16))
-          )
-         (dma-bucket-insert-tag
-          (-> *display* frames (-> *display* on-screen) frame bucket-group)
-          (the-as
-           bucket-id
-           (if (zero? (-> (the-as terrain-context #x70000000) bsp lev-index))
-            37
-            44
-            )
-           )
-          s3-1
-          (the-as (pointer dma-tag) a3-6)
-          )
-         )
-        )
-          |#
-          )))
-    (none)))
+(define-tfrag-tree-draw-method drawable-tree-lowres-tfrag
+                               lowres-tfrag-tree-count
+                               lowres-tfrag-trees
+                               lowres-tfrag-levels
+                               "Queue this low-resolution terrain tree and its owning level for the background renderer.")
 
-(defmethod draw ((this drawable-tree-tfrag) (submitted-tree drawable-tree-tfrag) (frame display-frame))
-  "Queue this terrain tree and its owning level for the background renderer."
-  (let* ((queue-index (-> *background-work* tfrag-tree-count))
-         (level-index (-> (scratchpad-object terrain-context) bsp lev-index))
-         (lev (-> *level* level level-index)))
-    (set! (-> *background-work* tfrag-trees queue-index) this)
-    (set! (-> *background-work* tfrag-levels queue-index) lev))
-  (+! (-> *background-work* tfrag-tree-count) 1)
-  (none))
+(define-tfrag-tree-draw-method drawable-tree-lowres-trans-tfrag
+                               lowres-trans-tfrag-tree-count
+                               lowres-trans-tfrag-trees
+                               lowres-trans-tfrag-levels
+                               "Queue this low-resolution translucent terrain tree and its owning level for the background renderer.")
 
-(defmethod draw ((this drawable-tree-trans-tfrag) (submitted-tree drawable-tree-trans-tfrag) (frame display-frame))
-  "Queue this translucent terrain tree and its owning level for the background renderer."
-  (let* ((queue-index (-> *background-work* trans-tfrag-tree-count))
-         (level-index (-> (scratchpad-object terrain-context) bsp lev-index))
-         (lev (-> *level* level level-index)))
-    (set! (-> *background-work* trans-tfrag-trees queue-index) this)
-    (set! (-> *background-work* trans-tfrag-levels queue-index) lev))
-  (+! (-> *background-work* trans-tfrag-tree-count) 1)
-  (none))
-
-(defmethod draw ((this drawable-tree-dirt-tfrag) (submitted-tree drawable-tree-dirt-tfrag) (frame display-frame))
-  "Queue this dirt terrain tree and its owning level for the background renderer."
-  (let* ((queue-index (-> *background-work* dirt-tfrag-tree-count))
-         (level-index (-> (scratchpad-object terrain-context) bsp lev-index))
-         (lev (-> *level* level level-index)))
-    (set! (-> *background-work* dirt-tfrag-trees queue-index) this)
-    (set! (-> *background-work* dirt-tfrag-levels queue-index) lev))
-  (+! (-> *background-work* dirt-tfrag-tree-count) 1)
-  (none))
-
-(defmethod draw ((this drawable-tree-ice-tfrag) (submitted-tree drawable-tree-ice-tfrag) (frame display-frame))
-  "Queue this ice terrain tree and its owning level for the background renderer."
-  (let* ((queue-index (-> *background-work* ice-tfrag-tree-count))
-         (level-index (-> (scratchpad-object terrain-context) bsp lev-index))
-         (lev (-> *level* level level-index)))
-    (set! (-> *background-work* ice-tfrag-trees queue-index) this)
-    (set! (-> *background-work* ice-tfrag-levels queue-index) lev))
-  (+! (-> *background-work* ice-tfrag-tree-count) 1)
-  (none))
-
-(defmethod draw ((this drawable-tree-lowres-tfrag) (submitted-tree drawable-tree-lowres-tfrag) (frame display-frame))
-  "Queue this low-resolution terrain tree and its owning level for the background renderer."
-  (let* ((queue-index (-> *background-work* lowres-tfrag-tree-count))
-         (level-index (-> (scratchpad-object terrain-context) bsp lev-index))
-         (lev (-> *level* level level-index)))
-    (set! (-> *background-work* lowres-tfrag-trees queue-index) this)
-    (set! (-> *background-work* lowres-tfrag-levels queue-index) lev))
-  (+! (-> *background-work* lowres-tfrag-tree-count) 1)
-  (none))
-
-(defmethod draw ((this drawable-tree-lowres-trans-tfrag) (submitted-tree drawable-tree-lowres-trans-tfrag) (frame display-frame))
-  "Queue this low-resolution translucent terrain tree and its owning level for the background
-   renderer."
-  (let* ((queue-index (-> *background-work* lowres-trans-tfrag-tree-count))
-         (level-index (-> (scratchpad-object terrain-context) bsp lev-index))
-         (lev (-> *level* level level-index)))
-    (set! (-> *background-work* lowres-trans-tfrag-trees queue-index) this)
-    (set! (-> *background-work* lowres-trans-tfrag-levels queue-index) lev))
-  (+! (-> *background-work* lowres-trans-tfrag-tree-count) 1)
-  (none))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; statistics methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defmethod collect-stats ((this tfragment))
   "Classify this fragment against the camera and add the selected detail stream's counts to the
@@ -878,122 +254,100 @@
   (stats-tfrag-asm this)
   (none))
 
-(defmethod collect-stats ((this drawable-tree-tfrag))
-  "Configure normal-terrain statistics and traverse every array in this tree."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
-    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
-    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* tfrag))
-    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* tfrag-near))
-    (let ((distance-data (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) distance-data))
-    (dotimes (i (-> this length))
-      (collect-stats (-> this arrays i))))
-  (none))
+(defmacro define-tfrag-tree-collect-stats (tree-type renderer-mask far-stat near-stat docstring)
+  `(defmethod collect-stats ((this ,tree-type))
+    ,docstring
+    (when (logtest? *vu1-enable-user* (vu1-renderer-mask ,renderer-mask))
+      (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask ,renderer-mask))))
+      (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask ,renderer-mask))))
+      (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* ,far-stat))
+      (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* ,near-stat))
+      (vector-copy! (-> *tfrag-work* frag-dists) (-> *tfrag-work* frag-dists))
+      (dotimes (i (-> this length))
+        (collect-stats (-> this arrays i))))
+    (none)))
 
-(defmethod collect-stats ((this drawable-tree-lowres-tfrag))
-  "Configure normal-terrain statistics and traverse every low-resolution array in this tree."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
-    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
-    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* tfrag))
-    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* tfrag-near))
-    (let ((distance-data (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) distance-data))
-    (dotimes (i (-> this length))
-      (collect-stats (-> this arrays i))))
-  (none))
+(define-tfrag-tree-collect-stats drawable-tree-tfrag
+                                 tfrag
+                                 tfrag
+                                 tfrag-near
+                                 "Configure normal-terrain statistics and traverse every array in this tree.")
 
-(defmethod collect-stats ((this drawable-tree-trans-tfrag))
-  "Configure translucent-terrain statistics and traverse every array in this tree."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
-    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
-    (let ((distance-data (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) distance-data))
-    (dotimes (i (-> this length))
-      (collect-stats (-> this arrays i))))
-  (none))
+(define-tfrag-tree-collect-stats drawable-tree-lowres-tfrag
+                                 tfrag
+                                 tfrag
+                                 tfrag-near
+                                 "Configure normal-terrain statistics and traverse every low-resolution array in this tree.")
 
-(defmethod collect-stats ((this drawable-tree-lowres-trans-tfrag))
-  "Configure translucent-terrain statistics and traverse every low-resolution array in this
-   tree."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
-    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
-    (let ((distance-data (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) distance-data))
-    (dotimes (i (-> this length))
-      (collect-stats (-> this arrays i))))
-  (none))
+(define-tfrag-tree-collect-stats drawable-tree-trans-tfrag
+                                 trans-tfrag
+                                 trans-tfrag
+                                 trans-tfrag-near
+                                 "Configure translucent-terrain statistics and traverse every array in this tree.")
 
-(defmethod collect-stats ((this drawable-tree-dirt-tfrag))
-  "Configure translucent-terrain statistics and traverse every dirt array in this tree."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
-    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
-    (let ((distance-data (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) distance-data))
-    (dotimes (i (-> this length))
-      (collect-stats (-> this arrays i))))
-  (none))
+(define-tfrag-tree-collect-stats drawable-tree-lowres-trans-tfrag
+                                 trans-tfrag
+                                 trans-tfrag
+                                 trans-tfrag-near
+                                 "Configure translucent-terrain statistics and traverse every low-resolution array in this tree.")
 
-(defmethod collect-stats ((this drawable-tree-ice-tfrag))
-  "Configure translucent-terrain statistics and traverse every ice array in this tree."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
-    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
-    (let ((distance-data (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) distance-data))
-    (dotimes (i (-> this length))
-      (collect-stats (-> this arrays i))))
-  (none))
+(define-tfrag-tree-collect-stats drawable-tree-dirt-tfrag
+                                 trans-tfrag
+                                 trans-tfrag
+                                 trans-tfrag-near
+                                 "Configure translucent-terrain statistics and traverse every dirt array in this tree.")
 
-(defmethod collect-stats ((this drawable-inline-array-tfrag))
-  "Accumulate statistics for the visible fragments in this inline array."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-    (dotimes (i (-> this length))
-      (let ((fragment (-> this data i))) (if (vis-cull (-> fragment id)) (collect-stats fragment)))))
-  (none))
+(define-tfrag-tree-collect-stats drawable-tree-ice-tfrag
+                                 trans-tfrag
+                                 trans-tfrag
+                                 trans-tfrag-near
+                                 "Configure translucent-terrain statistics and traverse every ice array in this tree.")
 
-(defmethod collect-stats ((this drawable-inline-array-trans-tfrag))
-  "Accumulate statistics for the visible translucent fragments in this inline array."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-    (dotimes (i (-> this length))
-      (let ((fragment (-> this data i))) (if (vis-cull (-> fragment id)) (collect-stats fragment)))))
-  (none))
+(defmacro define-tfrag-inline-array-collect-stats (array-type renderer-mask docstring)
+  `(defmethod collect-stats ((this ,array-type))
+    ,docstring
+    (when (logtest? *vu1-enable-user* (vu1-renderer-mask ,renderer-mask))
+      (dotimes (i (-> this length))
+        (let ((fragment (-> this data i)))
+          (if (vis-cull (-> fragment id))
+              (collect-stats fragment)))))
+    (none)))
 
-(defmethod debug-draw ((this drawable-tree-tfrag) (submitted-tree drawable) (frame display-frame))
-  "Draw debug geometry for every array in this tree while terrain rendering is enabled."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-    (dotimes (i (-> this length))
-      (let ((child (-> this arrays i))) (debug-draw child child frame))))
-  (none))
+(define-tfrag-inline-array-collect-stats drawable-inline-array-tfrag
+                                         tfrag
+                                         "Accumulate statistics for the visible fragments in this inline array.")
 
-(defmethod debug-draw ((this drawable-tree-trans-tfrag) (submitted-tree drawable) (frame display-frame))
-  "Draw debug geometry for every array in this tree while terrain rendering is enabled."
-  (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-    (dotimes (i (-> this length))
-      (let ((child (-> this arrays i))) (debug-draw child child frame))))
-  (none))
+(define-tfrag-inline-array-collect-stats drawable-inline-array-trans-tfrag
+                                         trans-tfrag
+                                         "Accumulate statistics for the visible translucent fragments in this inline array.")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; debug methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defmacro define-tfrag-tree-debug-draw (tree-type renderer-mask)
+  `(defmethod debug-draw ((this ,tree-type) (submitted-tree drawable) (frame display-frame))
+    "Draw debug geometry for every array in this tree while terrain rendering is enabled."
+    (when (logtest? *vu1-enable-user* (vu1-renderer-mask ,renderer-mask))
+      (dotimes (i (-> this length))
+        (let ((child (-> this arrays i)))
+          (debug-draw child child frame))))
+    (none)))
+
+(define-tfrag-tree-debug-draw drawable-tree-tfrag tfrag)
+
+(define-tfrag-tree-debug-draw drawable-tree-trans-tfrag tfrag)
 
 (defmethod debug-draw ((this drawable-inline-array-tfrag) (submitted-array drawable) (frame display-frame))
   "Draw debug geometry for every visible fragment in this inline array."
   (dotimes (i (-> this length))
-    (let ((fragment (-> this data i))) (if (vis-cull (-> fragment id)) (debug-draw fragment fragment frame))))
+    (let ((fragment (-> this data i)))
+      (if (vis-cull (-> fragment id))
+          (debug-draw fragment fragment frame))))
   (none))
 
 (defmethod debug-draw ((this tfragment) (submitted-fragment drawable) (frame display-frame))
   "Draw this fragment's saved edge-debug geometry."
   (-> frame global-buf)
   (edge-debug-lines (-> this debug-data debug-lines))
-  (#when PC_PORT
-    (add-debug-sphere #t
-                      (bucket-id debug)
-                      (-> this bsphere)
-                      (-> this bsphere w)
-                      (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)))
-  ;; (add-debug-x #t (bucket-id debug) (-> this bsphere) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
   (none))

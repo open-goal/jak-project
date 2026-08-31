@@ -6,13 +6,10 @@
 (require "engine/gfx/background/background-h.gc")
 (require "engine/gfx/tfrag/tfrag-near.gc")
 
-;; Terrain fragments are collected into inline arrays under a drawable tree. The background
-;; renderer queues those trees, then builds the terrain DMA stream here after visibility has been
-;; computed.
 ;;
 ;; How the work splits between the EE and VU1
 ;; ------------------------------------------
-;; The EE never touches a vertex. Terrain geometry lives in the level file as ready-made VIF chains,
+;; The EE never touches a vertex. TFRAG geometry lives in the level file as ready-made VIF chains,
 ;; three per patch, and all the EE does is decide which chain to reference and which microprogram
 ;; entry to call. Per batch of sixteen fragments it:
 ;;
@@ -24,7 +21,7 @@
 ;;     *tfrag-work*.color-ptr and appends them as a CNT packet, because the time-of-day palette
 ;;     changes every frame while the geometry never does;
 ;;   - writes REF tags pointing at the level's chains, plus an MSCAL, into one of two 128-quadword
-;;     output banks and hands the full one to the VIF DMA while filling the other.
+;;     output banks and hands the full one to the DMA while filling the other.
 ;;
 ;; VU1 owns everything geometric. It unpacks the chain into one of two 328-quadword input banks
 ;; (alternating, so the next patch uploads while this one draws), runs the LOD collapse over the
@@ -32,8 +29,7 @@
 ;; one of two GIF buffers, and kicks. Shared constants sit above both input banks and are uploaded
 ;; once per frame by add-tfrag-data.
 ;;
-;; The detail hierarchy, because the names run the opposite way to the detail and a reader will
-;; otherwise assume "base" is the finest
+;; The detail hierarchy:
 ;; --------------------------------------------------------------------------------------------------
 ;; A patch's vertices are one nested list: the base vertices, then the level-0 additions, then the
 ;; level-1 additions. Each addition splits an edge of the mesh below it, so:
@@ -42,66 +38,90 @@
 ;;   level-0 stream   base + level-0 additions
 ;;   level-1 stream   base + level-0 + level-1 additions, finest, drawn when CLOSEST
 ;;
-;; The classifier steps DOWN, level 1 to level 0 to base, as the patch recedes, and the VU unwinds one
-;; subdivision level at a time, the coarser one first. Unwinding slides each added point onto the
+;; The classifier steps DOWN, level 1 to level 0 to base, as the patch recedes, and the VU collapses one
+;; subdivision level at a time, the coarser one first. Collapsing slides each added point onto the
 ;; midpoint of the edge it splits, so it never merges into another point on the way; it just stops
 ;; contributing, and the level below it is then an exact description of the same surface. A point's
-;; parents are always at a strictly coarser level, so the hierarchy is only ever two deep and nothing
-;; is chasing anything.
+;; parents are always at a strictly coarser level.
 ;;
 ;; What spans the EE and VU halves is the seam rule: the VU decides how far a point has been unwound
 ;; from that point's own depth and per-frame globals only, and the EE only drops a subdivision level
-;; once the WHOLE bounding sphere is past the distance where that level has finished unwinding. Those
+;; once the WHOLE bounding sphere is past the distance where that level has finished collapsing. Those
 ;; two together mean a patch never abandons detail that a neighbour is still displaying. See
 ;; classify-fragment-lod below for the part of the argument that lives on this side.
 
 ;; VU1 data-memory map. Quadword addresses; the two input banks alternate under VIF TOP, so a
 ;; bank-relative address is used directly as an offset from the TOP register.
 (defconstant TFRAG-VU-BANK-0 0)
+
 (defconstant TFRAG-VU-BANK-1 328)
-(defconstant TFRAG-VU-CONTROL 0)        ;; tfrag-control, five quadwords, bank relative
-(defconstant TFRAG-VU-CAMERA 5)         ;; camera transform, four rows, bank relative
+
+(defconstant TFRAG-VU-CONTROL 0) ;; tfrag-control, five quadwords, bank relative
+
+(defconstant TFRAG-VU-CAMERA 5) ;; camera transform, four rows, bank relative
 
 ;; The fourteen shared quadwords of tfrag-data, uploaded once per frame at TFRAG-VU-CONSTANTS.
 (defconstant TFRAG-VU-CONSTANTS 656)
+
 (defconstant TFRAG-VU-FOG 656)
-(defconstant TFRAG-VU-VAL 657)          ;; (0.5, 1.0, 2048.0, 0.0)
+
+(defconstant TFRAG-VU-VAL 657) ;; (0.5, 1.0, 2048.0, 0.0)
+
 (defconstant TFRAG-VU-STRGIF 658)
+
 (defconstant TFRAG-VU-FANGIF 659)
+
 (defconstant TFRAG-VU-ADGIF 660)
+
 (defconstant TFRAG-VU-HVDF-OFFSET 661)
+
 (defconstant TFRAG-VU-HMGE-SCALE 662)
+
 (defconstant TFRAG-VU-INVH-SCALE 663)
+
 (defconstant TFRAG-VU-AMBIENT 664)
+
 (defconstant TFRAG-VU-GUARD 665)
+
 ;; tfrag-dists: slope pair then intercept pair, level 0 then level 1. The w lane of each slope
 ;; entry is that level's collapse distance.
 (defconstant TFRAG-VU-K0-LEVEL0 666)
+
 (defconstant TFRAG-VU-K0-LEVEL1 667)
+
 (defconstant TFRAG-VU-K1-LEVEL0 668)
+
 (defconstant TFRAG-VU-K1-LEVEL1 669)
 
 ;; Two GIF output buffers. One is written while the other is being read out by xgkick.
 (defconstant TFRAG-VU-GIF-BUF-0 672)
+
 (defconstant TFRAG-VU-GIF-BUF-1 848)
 
 ;; Scratchpad bank alternation. Each mask is whatever bits the two bank offsets disagree on, which for
 ;; the packet banks is not the bank size: they are 2048 bytes long but sit at 2048 and 4096, so the
 ;; mask is #x1800. As a literal that looks like a typo, so derive it.
 (defconstant TFRAG-INPUT-BANK-FLIP (logxor (offset-of tfrag-dma banka) (offset-of tfrag-dma bankb)))
+
 (defconstant TFRAG-PACKET-BANK-FLIP (logxor (offset-of tfrag-dma outa) (offset-of tfrag-dma outb)))
 
 ;; Microprogram entry points, as the EE spells them in its MSCAL immediates. These seven are the ones
 ;; the EE actually selects; the other seven even addresses either terminate at once or duplicate
 ;; TFRAG-VU-DRAW-BASE, and nothing reaches them. The names are reconstructed - the original source's
 ;; names for them are not recovered.
-(defconstant TFRAG-VU-INIT 0)                   ;; set up both GIF buffers, once per frame
-(defconstant TFRAG-VU-DRAW-BASE 6)              ;; the coarsest mesh; no simplification to do
-(defconstant TFRAG-VU-DRAW-LEVEL0 10)           ;; level 0, whole patch inside its distance band
-(defconstant TFRAG-VU-DRAW-LEVEL0-CROSSING 8)   ;; level 0, patch straddles the far end of that band
-(defconstant TFRAG-VU-DRAW-LEVEL1 16)           ;; level 1, whole patch inside its distance band
-(defconstant TFRAG-VU-DRAW-LEVEL1-CROSSING 14)  ;; level 1, patch straddles the far end of that band
-(defconstant TFRAG-VU-DRAW-LEVEL1-CLIPPED 18)   ;; level 1, near enough to need the guard-volume clip
+(defconstant TFRAG-VU-INIT 0) ;; set up both GIF buffers, once per frame
+
+(defconstant TFRAG-VU-DRAW-BASE 6) ;; the coarsest mesh; no simplification to do
+
+(defconstant TFRAG-VU-DRAW-LEVEL0 10) ;; level 0, whole patch inside its distance band
+
+(defconstant TFRAG-VU-DRAW-LEVEL0-CROSSING 8) ;; level 0, patch straddles the far end of that band
+
+(defconstant TFRAG-VU-DRAW-LEVEL1 16) ;; level 1, whole patch inside its distance band
+
+(defconstant TFRAG-VU-DRAW-LEVEL1-CROSSING 14) ;; level 1, patch straddles the far end of that band
+
+(defconstant TFRAG-VU-DRAW-LEVEL1-CLIPPED 18) ;; level 1, near enough to need the guard-volume clip
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; basic methods
@@ -167,8 +187,8 @@
     (set! (-> usage data (+ category 5) name) "tfragment-color")
     (+! (-> usage data (+ category 5) count) 1)
     (let ((packed-color-bytes (if (logtest? flags (mem-usage-flags prototype-data))
-                                0
-                                (the-as int (* (+ (-> this num-base-colors) (-> this num-level0-colors) (-> this num-level1-colors)) 2)))))
+                                  0
+                                  (the-as int (* (+ (-> this num-base-colors) (-> this num-level0-colors) (-> this num-level1-colors)) 2)))))
       (+! (-> usage data (+ category 5) used) packed-color-bytes)
       (+! (-> usage data (+ category 5) total) (logand -16 (+ packed-color-bytes 15))))
     (set! (-> usage data (+ category 6) name) "tfragment-debug"))
@@ -254,30 +274,22 @@
 ;;   position = own * weight.y + (endpoint1 + endpoint2) * weight.x
 ;;
 ;; with weight.y falling 1 -> 0 and weight.x rising 0 -> 0.5 across the level's distance band, so the
-;; far end of the slide is exactly the midpoint of the two endpoints. Color blends the same way, and
-;; the texture coordinate needs no blend because the exporter already stores the edge midpoint.
+;; far end of the slide is exactly the midpoint of the two endpoints. Color blends the same way.
+;; It's important that these weights are computed per-vertex rather than per-patch, so a vertex
+;; shared in two-patches is drawn at the same position in both patches.
 ;;
-;; EDGE RETIREMENT is the second half of it, and the term is worth pinning down because everything
-;; below refers to it. A vertex is authored displaced from the midpoint - that displacement is the
-;; detail it exists to add - so its own distance is the midpoint's distance plus whatever the
-;; displacement contributes. That means a vertex can still be short of the end of its band while the
-;; edge it splits is entirely past it, and the slide alone would leave a residual bump on an edge that
-;; is supposed to be flat by now. So the program also asks a question about the EDGE rather than the
-;; vertex: are BOTH of its endpoints past the distance where this level finishes simplifying? When they
-;; are, the edge has RETIRED, and the vertex is forced the rest of the way rather than interpolated
-;; there - its point record is overwritten with the record of one endpoint, so it draws as a duplicate
-;; of that endpoint and its triangles go to zero area. Same resulting surface, reached in one step.
+;; There is one edge case: when the endpoints of an edge are past the band, but the displaced vertex is not.
+;; In this case, adjacent fragments could disagree on whether to upload the midpoint vertex.
+;; Their solution here is to simply "retire" the midpoint vertex if both edge endpoints are in the lower-lod region.
+;; This likely introduces a tiny pop as the decision to retire is made, but avoids any t-junction artifacts.
 ;;
-;; The reason for asking about the endpoints instead of the vertex is that the endpoints are shared with
-;; the neighbouring patch and are not displaced, so both patches reach the same answer at the same
-;; camera distance. That is the whole seam argument; classify-fragment-lod carries the rest of it.
 ;;
 ;; --------------------------------------------------------------------------------------------------
 ;; 3. The data layout
 ;; --------------------------------------------------------------------------------------------------
-;; Six kinds of thing, all uploaded into one VU input bank, all located by tfrag-control at its front:
+;;  This is confusing: there's two levels of indirection for vertex data here.
 ;;
-;;   vertices          position and color, and nothing else            ptr-vtxdata
+;;   vertices          position and color, and nothing else             ptr-vtxdata
 ;;   point records     texture coordinate, plus which vertex to use     ptr-base/level0/level1-points
 ;;   endpoint tables   the second endpoint of each split edge           ptr-interpolated-0/1
 ;;   the index list    which point records to draw, in order            ptr-draw-points
@@ -319,7 +331,7 @@
 ;; wrap seam, a shader change - gets a SHARED record instead: same vertex address, a different texture
 ;; coordinate, no endpoint data of its own, and crucially not walked by the blend loop. A second main
 ;; record would blend the same vertex twice; that is why the shared records are a separate array with a
-;; separate count. "Main" is descriptive; the control block names only the shared ones.
+;; separate count.
 ;;
 ;; The consequence is retirement. Retiring a point rewrites a record, and every record naming that point
 ;; has to be rewritten or it will still point at a vertex the blend loop never stored. The blend pass
@@ -327,8 +339,7 @@
 ;; tables, so it can run the same both-endpoints test.
 ;;
 ;; Each level's shared array ABUTS its main array exactly: ptr-shared-level0-points is
-;; ptr-level0-points + num-level0-points, and likewise for base and level 1. Contiguous and disjoint,
-;; which is what lets one VIF command unpack both.
+;; ptr-level0-points + num-level0-points, and likewise for base and level 1. One VIF unpack handles both.
 ;;
 ;; An ENDPOINT TABLE holds the OTHER endpoint of each split edge - the one the record's z lane does not
 ;; name. There is one per level, because each level's points split the edges of a different mesh:
@@ -371,15 +382,12 @@
 ;; --------------------------------------------------------------------------------------------------
 ;; 4. The VU program
 ;; --------------------------------------------------------------------------------------------------
-;; Buffering first, because every loop below exists in two copies because of it.
 ;;
 ;;   input banks       two, double-buffered by the VIF. Every entry begins with xtop, and every pass and
 ;;                     renderer has a duplicated bank-1 copy of itself selected by ibne against
 ;;                     input-bank, because the load and store immediates differ by TFRAG-VU-BANK-1.
 ;;                     Handover is the VIF's, at the MSCAL.
-;;   vertex array      double-buffered for free: ptr-vtxdata is bank-relative, so the transformed
-;;                     vertices live in the input bank and ARE the uploaded data, rewritten in place.
-;;                     No second allocation and nothing copied to get there.
+;;   vertex array      vertices are modified in the input bank directly
 ;;   GIF output        two buffers, addresses in the x and y lanes of gif-buffers, swapped by mr32 at
 ;;                     every kick. Two is enough because the gather writes through one sequential
 ;;                     cursor, so only one buffer is ever being filled.
@@ -394,8 +402,7 @@
 ;;     and it is what the LEVEL1 entries use instead.
 ;;
 ;;     There is no pass that transforms every vertex. Whatever the prefix does not cover is transformed
-;;     by the blend loop that owns it, which is why a straight-through walk can coexist with vertices
-;;     that end up never transformed at all - see pass 3.
+;;     by the blend loop.
 ;;  2. morph-level0-points. Walks ptr-level0-points; for each record, loads the vertex it names,
 ;;     transforms it, slides it toward the midpoint of its two endpoints by that vertex's own distance,
 ;;     and stores it back in place. So this loop is where a level-0 vertex gets transformed, not pass 1.
@@ -501,18 +508,6 @@
 ;;
 ;; See tie.gc for that side; this comment does not repeat it.
 ;;
-;; --------------------------------------------------------------------------------------------------
-;; Whose words these are
-;; --------------------------------------------------------------------------------------------------
-;; tfrag-control supplies the vocabulary for everything structural. From it: points, and base, level-0
-;; and level-1 as their groups; shared; interpolated, which is what the game calls a point that splits
-;; an edge and hence the table naming its second endpoint; vtxdata, draw-points, strip-data,
-;; texture-data.
-;;
-;; Endpoint, midpoint, retire, collapse and duplicate are descriptive terms adopted while reading the
-;; instruction stream, as are the entry-point constant names above. Nothing in the data distinguishes
-;; the two endpoints of an edge by name, so "parent A" and "parent B" in the register aliases below are
-;; only a way of telling the z lane from the endpoint-table entry.
 ;;
 ;; --------------------------------------------------------------------------------------------------
 ;; Register conventions
@@ -526,9 +521,9 @@
 ;; own nested rlet and only the values that live for its whole body are named.
 (#unless PC_PORT
   (defvu1 tfrag-vu1-block
-          (rlet ((input-bank :reg vi14)                                  ;; VIF TOP: 0 or TFRAG-VU-BANK-1
-                 (subroutine-link :reg vi15)                             ;; bal link, or a resume address loaded by hand
-                 (fog :reg vf01))                                        ;; TFRAG-VU-FOG; never holds anything else
+          (rlet ((input-bank :reg vi14) ;; VIF TOP: 0 or TFRAG-VU-BANK-1
+                 (subroutine-link :reg vi15) ;; bal link, or a resume address loaded by hand
+                 (fog :reg vf01)) ;; TFRAG-VU-FOG; never holds anything else
             ;; Even entry addresses. Two things vary: how much preparation the incoming stream needs before a
             ;; renderer can look at it, and whether that renderer has to guard-clip. Entries 4, 6, 12 and 20 have no
             ;; preparation at all, so their renderer converts and transforms positions itself; the rest hand their
@@ -627,14 +622,14 @@
           (vu-pair (mfir.z vf03 vi14) (nop)) ;; #x04c
           (vu-pair (mfir.w vf03 vi01) (nop :e)) ;; #x04d
           (vu-pair (lq.xyzw vf04 vi00 TFRAG-VU-AMBIENT) (nop)) ;; #x04e
-          (rlet ((input-bank :reg vi14)                                  ;; VIF TOP: 0 or TFRAG-VU-BANK-1
-                 (subroutine-link :reg vi15)                             ;; bal link, or a resume address loaded by hand
-                 (fog :reg vf01))                                        ;; TFRAG-VU-FOG; never holds anything else
-            (rlet ((points-left :reg vi02)                               ;; how many points still to transform
+          (rlet ((input-bank :reg vi14) ;; VIF TOP: 0 or TFRAG-VU-BANK-1
+                 (subroutine-link :reg vi15) ;; bal link, or a resume address loaded by hand
+                 (fog :reg vf01)) ;; TFRAG-VU-FOG; never holds anything else
+            (rlet ((points-left :reg vi02) ;; how many points still to transform
                    (base-count :reg vi04)
                    (level1-count :reg vi01)
-                   (load-cursor :reg vi05)                               ;; walks the vertex array
-                   (store-cursor :reg vi06)                              ;; trails it by three vertices
+                   (load-cursor :reg vi05) ;; walks the vertex array
+                   (store-cursor :reg vi06) ;; trails it by three vertices
                    (val :reg vf02)
                    (cam-row-x :reg vf05)
                    (cam-row-y :reg vf06)
@@ -644,7 +639,7 @@
                    (pos-1 :reg vf13)
                    (pos-2 :reg vf14)
                    (pos-3 :reg vf15)
-                   (color-0 :reg vf16)                                   ;; colors only get an itof
+                   (color-0 :reg vf16) ;; colors only get an itof
                    (color-1 :reg vf17)
                    (color-2 :reg vf18)
                    (color-3 :reg vf19))
@@ -723,15 +718,15 @@
               (vu-pair (jr subroutine-link) (nop)) ;; #x088
               (vu-pair (nop) (nop))) ;; #x089
             (rlet ((points-left :reg vi02)
-                   (point-cursor :reg vi03)                              ;; this level's point records
-                   (endpoint-cursor :reg vi04)                               ;; walks the level's endpoint table, four addresses per quadword
+                   (point-cursor :reg vi03) ;; this level's point records
+                   (endpoint-cursor :reg vi04) ;; walks the level's endpoint table, four addresses per quadword
                    (own-vertex-0 :reg vi05)
                    (own-vertex-1 :reg vi06)
                    (parent-record :reg vi07)
                    (parent-b-vertex :reg vi08)
                    (parent-a-vertex :reg vi09)
                    (store-vertex :reg vi10)
-                   (val :reg vf02)                                       ;; (0.5, 1.0, 2048.0, 0.0)
+                   (val :reg vf02) ;; (0.5, 1.0, 2048.0, 0.0)
                    (cam-row-x :reg vf05)
                    (cam-row-y :reg vf06)
                    (cam-row-z :reg vf07)
@@ -742,8 +737,8 @@
                    (color-1 :reg vf15)
                    (weight-0 :reg vf16)
                    (weight-1 :reg vf17)
-                   (k0 :reg vf18)                                        ;; slope pair for this level
-                   (k1 :reg vf19)                                        ;; intercept pair
+                   (k0 :reg vf18) ;; slope pair for this level
+                   (k1 :reg vf19) ;; intercept pair
                    (parent-b-pos :reg vf20)
                    (parent-b-color :reg vf21)
                    (parent-a-pos :reg vf22)
@@ -1006,7 +1001,7 @@
                    (parent-b-vertex :reg vi09)
                    (parent-a-vertex :reg vi10)
                    (store-vertex :reg vi11)
-                   (parent-b-collapsed :reg vi01)                        ;; sign flag of parent-b.w - collapse-dist
+                   (parent-b-collapsed :reg vi01) ;; sign flag of parent-b.w - collapse-dist
                    (parent-a-collapsed :reg vi12)
                    (val :reg vf02)
                    (cam-row-x :reg vf05)
@@ -1027,7 +1022,7 @@
                    (parent-a-color :reg vf23)
                    (parent-sum-pos :reg vf24)
                    (parent-sum-color :reg vf25)
-                   (collapse-dist :reg vf26)                             ;; k0s[level].w, broadcast in w only
+                   (collapse-dist :reg vf26) ;; k0s[level].w, broadcast in w only
                    (replacement-record :reg vf27))
               ;; The same unwind, with the edge-retirement test added. Everything above is driven by the point's OWN
               ;; depth, and a point is authored displaced from the midpoint - that displacement is the detail it exists
@@ -1421,7 +1416,8 @@
               (vu-pair (ilw.w own-vertex-0 point-cursor (+ TFRAG-VU-BANK-1 2)) (mulaw.xy ACC k1 vf00)) ;; #x25d
               (vu-pair (nop) (maddw.xy weight-1 k0 pos-1)) ;; #x25e
               (vu-pair (ibne vi00 points-left collapse-points-bank1-stage1) (add.xyzw parent-sum-pos parent-b-pos parent-a-pos)) ;; #x25f
-              (vu-pair (sq.xyzw replacement-record point-cursor TFRAG-VU-BANK-1) (add.xyzw parent-sum-color parent-b-color parent-a-color)) ;; #x260
+              (vu-pair (sq.xyzw replacement-record point-cursor TFRAG-VU-BANK-1)
+                       (add.xyzw parent-sum-color parent-b-color parent-a-color)) ;; #x260
               (vu-pair (jr subroutine-link) (nop)) ;; #x261
               (vu-pair (nop) (nop)) ;; #x262
               (label substitute-parent-bank1-stage1)
@@ -1429,7 +1425,8 @@
               (vu-pair (ilw.w own-vertex-1 point-cursor (+ TFRAG-VU-BANK-1 3)) (mulaw.xy ACC k1 vf00)) ;; #x264
               (vu-pair (nop) (maddw.xy weight-0 k0 pos-0)) ;; #x265
               (vu-pair (ibne vi00 points-left collapse-points-bank1-stage2) (add.xyzw parent-sum-pos parent-b-pos parent-a-pos)) ;; #x266
-              (vu-pair (sq.xyzw replacement-record point-cursor (+ TFRAG-VU-BANK-1 1)) (add.xyzw parent-sum-color parent-b-color parent-a-color)) ;; #x267
+              (vu-pair (sq.xyzw replacement-record point-cursor (+ TFRAG-VU-BANK-1 1))
+                       (add.xyzw parent-sum-color parent-b-color parent-a-color)) ;; #x267
               (vu-pair (jr subroutine-link) (nop)) ;; #x268
               (vu-pair (nop) (nop)) ;; #x269
               (label substitute-parent-bank1-stage2)
@@ -1437,7 +1434,8 @@
               (vu-pair (ilw.w own-vertex-0 point-cursor (+ TFRAG-VU-BANK-1 4)) (mulaw.xy ACC k1 vf00)) ;; #x26b
               (vu-pair (iaddi endpoint-cursor endpoint-cursor 0x1) (maddw.xy weight-1 k0 pos-1)) ;; #x26c
               (vu-pair (ibne vi00 points-left collapse-points-bank1-stage3) (add.xyzw parent-sum-pos parent-b-pos parent-a-pos)) ;; #x26d
-              (vu-pair (sq.xyzw replacement-record point-cursor (+ TFRAG-VU-BANK-1 2)) (add.xyzw parent-sum-color parent-b-color parent-a-color)) ;; #x26e
+              (vu-pair (sq.xyzw replacement-record point-cursor (+ TFRAG-VU-BANK-1 2))
+                       (add.xyzw parent-sum-color parent-b-color parent-a-color)) ;; #x26e
               (vu-pair (jr subroutine-link) (nop)) ;; #x26f
               (vu-pair (nop) (nop)) ;; #x270
               (label substitute-parent-bank1-stage3)
@@ -1445,7 +1443,8 @@
               (vu-pair (ilw.w own-vertex-1 point-cursor (+ TFRAG-VU-BANK-1 5)) (mulaw.xy ACC k1 vf00)) ;; #x272
               (vu-pair (iaddi point-cursor point-cursor 0x4) (maddw.xy weight-0 k0 pos-0)) ;; #x273
               (vu-pair (ibne vi00 points-left collapse-points-bank1-stage0) (add.xyzw parent-sum-pos parent-b-pos parent-a-pos)) ;; #x274
-              (vu-pair (sq.xyzw replacement-record point-cursor (+ TFRAG-VU-BANK-1 -1)) (add.xyzw parent-sum-color parent-b-color parent-a-color)) ;; #x275
+              (vu-pair (sq.xyzw replacement-record point-cursor (+ TFRAG-VU-BANK-1 -1))
+                       (add.xyzw parent-sum-color parent-b-color parent-a-color)) ;; #x275
               (vu-pair (jr subroutine-link) (nop)) ;; #x276
               (vu-pair (nop) (nop))) ;; #x277
             (rlet ((shared-count :reg vi11)
@@ -1459,7 +1458,7 @@
                    (parent-b-vertex :reg vi08)
                    (parent-a-vertex :reg vi09)
                    (parent-collapsed :reg vi01)
-                   (point-record :reg vf06)                              ;; read with lqi, so its lanes come out through mtir
+                   (point-record :reg vf06) ;; read with lqi, so its lanes come out through mtir
                    (parent-b-pos :reg vf07)
                    (parent-a-pos :reg vf08)
                    (replacement-record :reg vf09)
@@ -1700,25 +1699,25 @@
               (vu-pair (iaddi endpoint-cursor endpoint-cursor 0x1) (nop)) ;; #x32f
               (vu-pair (b collapse-shared-bank1-stage0) (nop)) ;; #x330
               (vu-pair (lqi.xyzw point-record point-cursor) (subw.w vf00 parent-a-pos collapse-dist))) ;; #x331
-            (rlet ((gif-buffers :reg vf03)                                   ;; the two GIF buffer addresses, rotated by mr32
+            (rlet ((gif-buffers :reg vf03) ;; the two GIF buffer addresses, rotated by mr32
                    (adgif-tag :reg vf05)
                    (strip-tag :reg vf06)
-                   (shader-0 :reg vf29)                                      ;; the five adgif quadwords, copied straight through
+                   (shader-0 :reg vf29) ;; the five adgif quadwords, copied straight through
                    (shader-1 :reg vf30)
                    (shader-2 :reg vf31)
-                   (draw-point :reg vi02)                                    ;; the point record draw-cursor currently names
-                   (draw-cursor :reg vi03)                                   ;; walks ptr-draw-points
-                   (vertex :reg vi04)                                        ;; the vertex that record names: position, then color
-                   (chunk-end :reg vi05)                                     ;; last quadword this chunk may write
+                   (draw-point :reg vi02) ;; the point record draw-cursor currently names
+                   (draw-cursor :reg vi03) ;; walks ptr-draw-points
+                   (vertex :reg vi04) ;; the vertex that record names: position, then color
+                   (chunk-end :reg vi05) ;; last quadword this chunk may write
                    (gif-cursor :reg vi06)
                    (shader-base :reg vi08)
-                   (strip-cursor :reg vi09)                                  ;; walks ptr-strip-data
-                   (chunk-start :reg vi10)                                   ;; the strip tag whose NLOOP gets patched
-                   (gif-eop :reg vi11)                                       ;; GIF tag EOP bit; two adds because iaddiu is 15 bits
+                   (strip-cursor :reg vi09) ;; walks ptr-strip-data
+                   (chunk-start :reg vi10) ;; the strip tag whose NLOOP gets patched
+                   (gif-eop :reg vi11) ;; GIF tag EOP bit; two adds because iaddiu is 15 bits
                    (strip-verts :reg vi12)
                    (shader-cursor :reg vi13))
-              (rlet ((tag-word :reg vi07)                                     ;; a strip tag's first word, read back to OR in EOP
-                     (ambient :reg vf04))                                     ;; only in the terminating pair
+              (rlet ((tag-word :reg vi07) ;; a strip tag's first word, read back to OR in EOP
+                     (ambient :reg vf04)) ;; only in the terminating pair
                 ;; Strip closer shared by three of the four renderers: finish the current GIF chunk, kick it, and pick the
                 ;; next strip length and adgif shader out of the draw address book. The renderers arrive here with a
                 ;; return address they loaded into subroutine-link by hand rather than through bal, so each one can resume
@@ -1814,15 +1813,15 @@
                 (vu-pair (xgkick vi01) (nop)) ;; #x37f
                 (vu-pair (lq.xyzw ambient vi00 TFRAG-VU-AMBIENT) (nop :e)) ;; #x380
                 (vu-pair (nop) (nop))) ;; #x381
-              (rlet ((st-bias :reg vf02)                                     ;; 2048.0, taken out of the shader block
+              (rlet ((st-bias :reg vf02) ;; 2048.0, taken out of the shader block
                      (hvdf-offset :reg vf07)
                      (hmge-scale :reg vf08)
-                     (point-record :reg vf25)                                ;; ST and vertex address, read as floats
+                     (point-record :reg vf25) ;; ST and vertex address, read as floats
                      (pos-0 :reg vf09)
                      (pos-1 :reg vf10)
                      (pos-2 :reg vf11)
                      (pos-3 :reg vf12)
-                     (clip-0 :reg vf13)                                      ;; position scaled for the guard-volume test
+                     (clip-0 :reg vf13) ;; position scaled for the guard-volume test
                      (clip-1 :reg vf14)
                      (clip-2 :reg vf15)
                      (clip-3 :reg vf16)
@@ -2567,8 +2566,8 @@
               ;; vi14's input-bank job is finished by the time a strip closes, so the base-mesh closer
               ;; borrows it as the tag scratch. Two names for one register rather than one that lies.
               (rlet ((tag-word :reg vi14)
-                     (vert-tally :reg vi07)                                    ;; reset here; nothing ever reads it
-                     (ambient :reg vf04))                                     ;; only in the terminating pair
+                     (vert-tally :reg vi07) ;; reset here; nothing ever reads it
+                     (ambient :reg vf04)) ;; only in the terminating pair
                 ;; Strip closer for the base-mesh renderer alone. Same job as the shared one above; a separate copy
                 ;; because the base renderer's register conventions differ from everyone else's.
                 (label close-base-strip)
@@ -2662,7 +2661,7 @@
                 (vu-pair (nop) (nop :e)) ;; #x650
                 (vu-pair (nop) (nop))) ;; #x651
               (rlet ((val :reg vf02)
-                     (vert-tally :reg vi07)                                    ;; counted per vertex and never read
+                     (vert-tally :reg vi07) ;; counted per vertex and never read
                      (hvdf-offset :reg vf10)
                      (hmge-scale :reg vf11)
                      (point-record :reg vf28)
@@ -2965,8 +2964,8 @@
    alpha-blend selects the GS ABE bit; *subdivide-draw-mode* can replace textured strips and fans with
    wireframe lines or untextured geometry."
   (let ((camera *math-camera*))
-    (set-vector! (-> data fog) (-> camera pfog0) (-> camera fog-min) (-> camera fog-max) 3072.0)
-    (set-vector! (-> data val) 0.5 1.0 2048.0 0.0)
+    (set-vector! (-> data fog) (-> camera pfog0) (-> camera fog-min) (-> camera fog-max) (meters 0.75))
+    (set-vector! (-> data val) 0.5 1.0 (meters 0.5) 0.0)
     (set-vector! (-> data ambient) 1.0 1.0 1.0 1.0)
     (cond
       ((zero? *subdivide-draw-mode*)
@@ -3014,12 +3013,10 @@
                   :nreg #x3
                   :prim
                   (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1 :abe alpha-blend)))))
-    (set! (-> data strgif regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
-    (set! (-> data fangif regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
+    (set! (-> data strgif regs) (gs-reg-list st rgbaq xyzf2))
+    (set! (-> data fangif regs) (gs-reg-list st rgbaq xyzf2))
     (set! (-> data adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
-    (set! (-> data adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+    (set! (-> data adgif regs) (gs-reg-list a+d))
     (vector-copy! (-> data hvdf-offset) (-> camera hvdf-off))
     (vector-copy! (-> data hmge-scale) (-> camera hmge-scale))
     (vector-copy! (-> data invh-scale) (-> camera inv-hmge-scale))
@@ -3114,7 +3111,7 @@
     (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
     (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
     (if (<= 32 (length (symbol->string (bsp-name lev))))
-      (format #t "level name ~a is too long!! must be shorter than 32 characters~%" (bsp-name lev)))
+        (format #t "level name ~a is too long!! must be shorter than 32 characters~%" (bsp-name lev)))
     (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (bsp-name lev))))
   (&+! (-> dma-buf base) (* 16 25)))
 
@@ -3159,97 +3156,41 @@
 ;; buffer
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(#unless PC_PORT
-  (defun tfrag-init-buffer ((dma-buf dma-buffer) (test gs-test) (alpha-blend int))
-    "Upload the terrain VU1 program, install TEST_1, both camera-matrix banks, and shared constants,
-     set the VIF double-buffer base and offset, and clear the frame's terrain counters."
-    (dma-buffer-add-vu-function dma-buf tfrag-vu1-block 1)
-    (let* ((dma-state dma-buf)
-           (direct-packet (the-as object (-> dma-state base))))
-      (set! (-> (the-as dma-packet direct-packet) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet direct-packet) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet direct-packet) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> dma-state base) (&+ (the-as pointer direct-packet) 16)))
-    (let* ((dma-state dma-buf)
-           (giftag (the-as object (-> dma-state base))))
-      (set! (-> (the-as gs-gif-tag giftag) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag giftag) regs) GIF_REGS_ALL_AD)
-      (set! (-> dma-state base) (&+ (the-as pointer giftag) 16)))
-    (let* ((dma-state dma-buf)
-           (test-packet (-> dma-state base)))
-      (set! (-> (the-as (pointer gs-test) test-packet) 0) test)
-      (set! (-> (the-as (pointer gs-reg64) test-packet) 1) (gs-reg64 test-1))
-      (set! (-> dma-state base) (&+ test-packet 16)))
-    (add-tfrag-mtx-0 dma-buf)
-    (add-tfrag-mtx-1 dma-buf)
-    (add-tfrag-data dma-buf alpha-blend)
-    (let ((vif-state-packet (the-as object (-> dma-buf base))))
-      (set! (-> (the-as dma-packet vif-state-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet vif-state-packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
-      (set! (-> (the-as dma-packet vif-state-packet) vif1) (new 'static 'vif-tag :imm #x148 :cmd (vif-cmd offset)))
-      (set! (-> dma-buf base) (&+ (the-as pointer vif-state-packet) 16)))
-    (set! (-> *tfrag-work* last-call) (the-as uint 0))
-    (set! (-> t-stat cnt) 0)
-    (set! (-> t-stat tris) 0)
-    (set! (-> t-stat tfaces) 0)
-    (set! (-> t-stat tfrags) 0)
-    (set! (-> t-stat dtris) 0)
-    (set! (-> t-stat dma-cnt) 0)
-    (set! (-> t-stat dma-dta) 0)
-    (set! (-> t-stat dma-tex) 0)
-    (set! (-> t-stat strips) 0)
-    (set! (-> t-stat drawpoints) 0)
-    (set! (-> t-stat base-verts) 0)
-    (set! (-> t-stat level0-verts) 0)
-    (set! (-> t-stat level1-verts) 0)
-    (none)))
-
-(#when PC_PORT
-  (defun tfrag-init-buffer ((dma-buf dma-buffer) (test gs-test) (alpha-blend int) (lev level))
-    "Upload the terrain VU1 program, install TEST_1, both camera-matrix banks, and shared constants,
-     set the VIF double-buffer base and offset, and clear the frame's terrain counters. The PC
-     packet also receives the level's time-of-day state and name."
-    (dma-buffer-add-vu-function dma-buf tfrag-vu1-block 1)
-    (let* ((dma-state dma-buf)
-           (direct-packet (the-as object (-> dma-state base))))
-      (set! (-> (the-as dma-packet direct-packet) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet direct-packet) vif0) (new 'static 'vif-tag))
-      (set! (-> (the-as dma-packet direct-packet) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> dma-state base) (&+ (the-as pointer direct-packet) 16)))
-    (let* ((dma-state dma-buf)
-           (giftag (the-as object (-> dma-state base))))
-      (set! (-> (the-as gs-gif-tag giftag) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> (the-as gs-gif-tag giftag) regs) GIF_REGS_ALL_AD)
-      (set! (-> dma-state base) (&+ (the-as pointer giftag) 16)))
-    (let* ((dma-state dma-buf)
-           (test-packet (-> dma-state base)))
-      (set! (-> (the-as (pointer gs-test) test-packet) 0) test)
-      (set! (-> (the-as (pointer gs-reg64) test-packet) 1) (gs-reg64 test-1))
-      (set! (-> dma-state base) (&+ test-packet 16)))
-    (add-tfrag-mtx-0 dma-buf)
-    (add-tfrag-mtx-1 dma-buf)
-    (add-tfrag-data dma-buf alpha-blend)
-    (add-pc-tfrag3-data dma-buf lev)
-    (let ((vif-state-packet (the-as object (-> dma-buf base))))
-      (set! (-> (the-as dma-packet vif-state-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-      (set! (-> (the-as dma-packet vif-state-packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
-      (set! (-> (the-as dma-packet vif-state-packet) vif1) (new 'static 'vif-tag :imm #x148 :cmd (vif-cmd offset)))
-      (set! (-> dma-buf base) (&+ (the-as pointer vif-state-packet) 16)))
-    (set! (-> *tfrag-work* last-call) (the-as uint 0))
-    (set! (-> t-stat cnt) 0)
-    (set! (-> t-stat tris) 0)
-    (set! (-> t-stat tfaces) 0)
-    (set! (-> t-stat tfrags) 0)
-    (set! (-> t-stat dtris) 0)
-    (set! (-> t-stat dma-cnt) 0)
-    (set! (-> t-stat dma-dta) 0)
-    (set! (-> t-stat dma-tex) 0)
-    (set! (-> t-stat strips) 0)
-    (set! (-> t-stat drawpoints) 0)
-    (set! (-> t-stat base-verts) 0)
-    (set! (-> t-stat level0-verts) 0)
-    (set! (-> t-stat level1-verts) 0)
-    (none)))
+(defun tfrag-init-buffer ((dma-buf dma-buffer) (test gs-test) (alpha-blend int) (lev level))
+  "Upload the terrain VU1 program, install TEST_1, both camera-matrix banks, and shared constants,
+   set the VIF double-buffer base and offset, and clear the frame's terrain counters."
+  (dma-buffer-add-vu-function dma-buf tfrag-vu1-block 1)
+  (dma-buffer-add-cnt-vif2 dma-buf #x2 (new 'static 'vif-tag) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+  (dma-buffer-add-gif-tag dma-buf (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1) GIF_REGS_ALL_AD)
+  (let* ((dma-state dma-buf)
+         (test-packet (-> dma-state base)))
+    (set! (-> (the-as (pointer gs-test) test-packet) 0) test)
+    (set! (-> (the-as (pointer gs-reg64) test-packet) 1) (gs-reg64 test-1))
+    (set! (-> dma-state base) (&+ test-packet 16)))
+  (add-tfrag-mtx-0 dma-buf)
+  (add-tfrag-mtx-1 dma-buf)
+  (add-tfrag-data dma-buf alpha-blend)
+  (add-pc-tfrag3-data dma-buf lev)
+  (let ((vif-state-packet (the-as object (-> dma-buf base))))
+    (set! (-> (the-as dma-packet vif-state-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet vif-state-packet) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
+    (set! (-> (the-as dma-packet vif-state-packet) vif1) (new 'static 'vif-tag :imm #x148 :cmd (vif-cmd offset)))
+    (set! (-> dma-buf base) (&+ (the-as pointer vif-state-packet) 16)))
+  (set! (-> *tfrag-work* last-call) (the-as uint 0))
+  (set! (-> t-stat cnt) 0)
+  (set! (-> t-stat tris) 0)
+  (set! (-> t-stat tfaces) 0)
+  (set! (-> t-stat tfrags) 0)
+  (set! (-> t-stat dtris) 0)
+  (set! (-> t-stat dma-cnt) 0)
+  (set! (-> t-stat dma-dta) 0)
+  (set! (-> t-stat dma-tex) 0)
+  (set! (-> t-stat strips) 0)
+  (set! (-> t-stat drawpoints) 0)
+  (set! (-> t-stat base-verts) 0)
+  (set! (-> t-stat level0-verts) 0)
+  (set! (-> t-stat level1-verts) 0)
+  (none))
 
 (defun tfrag-end-buffer ((dma-buf dma-buffer))
   "Patch the final terrain VU call into the DMA stream, wait for VU1, and restore the VIF mode, row,
@@ -3277,9 +3218,6 @@
     (set! (-> dma-state base) (&+ finish-packet 48)))
   (none))
 
-(#when PC_PORT
-  (def-mips2c draw-inline-array-tfrag (function (pointer uint8) (pointer tfragment) int dma-buffer none)))
-
 ;; The far-terrain packet builder. Visibility is walked sixteen fragments at a time: one 1024-byte
 ;; scratchpad bank receives that batch's sixteen 64-byte headers by toSPR DMA while packets are built
 ;; out of the other, and the two 2048-byte packet banks alternate the same way against the fromSPR
@@ -3300,523 +3238,510 @@
     ;; are short-lived and keep physical names; ra in particular is both a scratch for DMA-status
     ;; polling and the scratchpad packet cursor.
     (rlet ((work :reg t0 :type tfrag-work)
-           (frag :reg t8 :type tfragment)              ;; scratchpad record: RAW, addresses the type tag
-           (color-cursor :reg t8)                        ;; what t8 is while colors are gathered
-           (to-spr-channel :reg t4 :type dma-bank-spr)  ;; headers, main memory to scratchpad
+           (frag :reg t8 :type tfragment) ;; scratchpad record: RAW, addresses the type tag
+           (color-cursor :reg t8) ;; what t8 is while colors are gathered
+           (to-spr-channel :reg t4 :type dma-bank-spr) ;; headers, main memory to scratchpad
            (from-spr-channel :reg t1 :type dma-bank-spr) ;; packets, scratchpad to the VIF buffer
-           (mscal-tag :reg t2)                          ;; VIF MSCAL opcode, entry address ORed in
-           (packet-qwc :reg t6)                         ;; quadwords built into the current bank
-           (out-cursor :reg v1)                         ;; write position in the dma-buffer
-           (dma-buf :reg a3 :type dma-buffer))          ;; the argument, before a3 becomes the packet bank
-    (label tfrag-draw-entry)
-    (add.i sp sp -128)
-    (s.d ra sp)
-    (s.q s0 sp 16)
-    (s.q s1 sp 32)
-    (s.q s2 sp 48)
-    (s.q s3 sp 64)
-    (s.q s4 sp 80)
-    (s.q s5 sp 96)
-    (s.q gp sp 112)
-    (lui mscal-tag #x1400)
-    (l.w out-cursor (-> dma-buf base))
-    (lui t3 #x1000)
-    (lui from-spr-channel #x1000)
-    (sync.l)
-    (cache dxwbin out-cursor 0)
-    (sync.l)
-    (cache dxwbin out-cursor 1)
-    (sync.l)
-    (m! work *tfrag-work*)
-    (ori to-spr-channel t3 #xd400)
-    (ori from-spr-channel from-spr-channel #xd000)
-    (lui t5 #x7000)
-    (l.vf vf3 (-> work frag-dists))
-    (s.w a3 (-> work dma-buffer))
-    (ori a3 t5 2064)
-    (add.i t3 r0 0)
-    (ori t5 t5 1040)
-    (max.w.vf vf1 vf0 vf0)
-    (l.h t7 a0)
-    (l.vf vf4 (-> work max-dist))
-    (add.i a1 a1 -4)
-    (add.i packet-qwc r0 0)
-    (m ra a3)
-    (label skip-invisible-batch)
-    (b.nz t7 start-first-header-dma :delay (nop!))
-    (add.i a0 a0 2)
-    (add.i a1 a1 1024)
-    (add.i a2 a2 -16)
-    (l.h t7 a0)
-    (b.le a2 r0 tfrag-draw-return :delay (nop!))
-    (b skip-invisible-batch :delay (nop!))
-    (label start-first-header-dma)
-    (l.w t7 (-> to-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i t7 t7 DMA-CHCR-STR)
-    (nop!)
-    (b.nz t7 start-first-header-dma :delay (nop!))
-    (s.w a1 (-> to-spr-channel madr))
-    (xor.i t7 t5 TFRAG-INPUT-BANK-FLIP)
-    (s.w t7 (-> to-spr-channel sadr))
-    (add.i t7 r0 64)
-    (s.w t7 (-> to-spr-channel qwc))
-    (add.i t7 r0 DMA-CHCR-STR)
-    (s.w t7 (-> to-spr-channel chcr))
-    (nop!)
-    ;; One pass of the outer loop covers sixteen fragments: their headers are DMAed into one scratchpad input
-    ;; bank while packets are built out of the other, so the header fetch is always a batch ahead.
-    (label begin-batch)
-    (m gp a0)
-    (xor.i t5 t5 TFRAG-INPUT-BANK-FLIP)
-    (add.i a0 a0 2)
-    (m t9 a0)
-    (m frag t5)
-    (add.i t7 a2 -16)
-    (b.gt t7 r0 find-next-visible-batch :delay (l.h t7 a0))
-    (b wait-last-header-dma :delay (nop!))
-    (label skip-empty-batch)
-    (add.i a2 a2 -16)
-    (add.i a0 a0 2)
-    (b.le a2 r0 wait-last-header-dma :delay (l.h t7 a0))
-    (nop!)
-    (nop!)
-    (label find-next-visible-batch)
-    (b.z t7 skip-empty-batch :delay (add.i a1 a1 1024))
-    (label wait-header-dma)
-    (l.w t7 (-> to-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i t7 t7 DMA-CHCR-STR)
-    (nop!)
-    (b.z t7 start-header-dma :delay (nop!))
-    (nop!)
-    (l.w t7 (-> work wait-to-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i t7 t7 1)
-    (nop!)
-    (s.w t7 (-> work wait-to-spr))
-    (b wait-header-dma :delay (nop!))
-    (label start-header-dma)
-    (s.w a1 (-> to-spr-channel madr))
-    (xor.i t7 t5 TFRAG-INPUT-BANK-FLIP)
-    (s.w t7 (-> to-spr-channel sadr))
-    (add.i t7 r0 64)
-    (s.w t7 (-> to-spr-channel qwc))
-    (add.i t7 r0 DMA-CHCR-STR)
-    (b read-visibility-byte :delay (s.w t7 (-> to-spr-channel chcr)))
-    (label wait-last-header-dma)
-    (l.w t7 (-> to-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i t7 t7 DMA-CHCR-STR)
-    (nop!)
-    (b.z t7 read-visibility-byte :delay (nop!))
-    (nop!)
-    (l.w t7 (-> work wait-to-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i t7 t7 1)
-    (nop!)
-    (s.w t7 (-> work wait-to-spr))
-    (b wait-last-header-dma :delay (nop!))
-    (label read-visibility-byte)
-    (l.b t7 gp)
-    (add.i gp gp 1)
-    (nop!)
-    (s.w gp (-> work cur-vis-bits))
-    (b.nz t7 begin-visible-group :delay (s.w t9 (-> work end-vis-bits)))
-    (add.i a2 a2 -8)
-    (add.i frag frag 512)
-    (b group-done :delay (nop!))
-    (label begin-visible-group)
-    (add.i t9 r0 128)
-    (l.vf vf2 (-> frag bsphere))
-    (label fragment-loop)
-    (add.i gp packet-qwc -124)
-    (nop!)
-    (b.le gp r0 classify-fragment-lod :delay (nop!))
-    ;; Hand the finished packet bank to the fromSPR channel and continue in the other one. The flip mask is
-    ;; whatever bits the two bank offsets disagree on, which is not the bank size.
-    (label wait-packet-bank-free)
-    (l.w ra (-> from-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i ra ra DMA-CHCR-STR)
-    (nop!)
-    (b.z ra send-packet-bank :delay (nop!))
-    (nop!)
-    (l.w ra (-> work wait-from-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i ra ra 1)
-    (nop!)
-    (s.w ra (-> work wait-from-spr))
-    (b wait-packet-bank-free :delay (nop!))
-    (label send-packet-bank)
-    (s.w a3 (-> from-spr-channel sadr))
-    (xor.i a3 a3 TFRAG-PACKET-BANK-FLIP)
-    (s.w out-cursor (-> from-spr-channel madr))
-    (sll ra packet-qwc 4)
-    (add out-cursor out-cursor ra)
-    (m ra a3)
-    (s.w packet-qwc (-> from-spr-channel qwc))
-    (add.i packet-qwc r0 DMA-CHCR-STR)
-    (s.w packet-qwc (-> from-spr-channel chcr))
-    (add.i packet-qwc r0 0)
-    ;; Pick this fragment's detail level, and with it the microprogram entry.
-
-    ;; vf24..vf27 give camera depth in world units and vf16..vf19 the four culling planes, so one accumulator
-    ;; chain produces the sphere's near and far points against the planes and another produces depth+radius
-    ;; and depth-radius. Adding frag-dists - which holds the thresholds already negated - compares the sphere
-    ;; against all four distance bands at once, and pinteh/ppacb squeezes the eight answers down to eight
-    ;; bytes of one register: for each of meters[0], meters[1], meters[2] and the close threshold, one byte
-    ;; saying part of the sphere is nearer and one saying all of it is.
-
-    ;; THE SEAM RULE LIVES HERE. A level is only given up when NO PART of the sphere is nearer than that
-    ;; level's collapse distance, never when merely the center is. A vertex on the border between two patches
-    ;; sits inside both of their spheres, so if this patch abandons level 0 that vertex is past meters[0] in
-    ;; the neighbour too, where the VU has already slid it onto the midpoint of its parent edge - position,
-    ;; color and texture coordinate. The neighbour's finer strip then covers the same surface as our coarser
-    ;; one, provided the two patches name the same two parents for that vertex, which is the exporter's side of
-    ;; the bargain and not something this code can check. Compare the sphere centre instead of its near edge
-    ;; and the runtime side of the bargain is broken outright: adjacent patches would start disagreeing about
-    ;; detail while their shared vertices were still displaced, which is what tears terrain open.
-
-    ;; Streams that do not exist (num-level0-colors or num-level1-colors zero) fall through to the next
-    ;; coarser one, and a fragment whose whole sphere is inside the close threshold is left for the near
-    ;; renderer.
-
-    ;; Interleaved with the arithmetic, all five DMA templates in the work area are filled in from the
-    ;; fragment header before it is known which of them will be used - the loads are free in the empty
-    ;; integer slots and it saves a branch. Each geometry template gets an address and a quadword count,
-    ;; and the pairings are the four windows into the patch's single contiguous VIF block that tfragment
-    ;; documents: base takes dma-base with dma-qwc[1], level-0 takes dma-common with dma-qwc[3], common
-    ;; takes that same dma-common with dma-qwc[0], and level-1 takes dma-level-1 with dma-qwc[2]. Level 0
-    ;; and common sharing one address with two different counts is the whole trick - how much detail is
-    ;; how far down the block you transfer. The color template's VIF1 unpack then takes its destination
-    ;; from color-offset and its NUM from whichever cumulative color count matches the chosen level.
-    (label classify-fragment-lod)
-    (and gp t7 t9)
-    (mula.x.vf vf16 vf2)
-    (b.z gp next-fragment :delay (l.wu gp (-> frag dma-base)))
-    (madda.y.vf vf17 vf2)
-    (l.bu s5 (-> frag dma-qwc 1))
-    (madda.z.vf vf18 vf2)
-    (s.w gp (-> work base-tmpl dma addr))
-    (msuba.w.vf vf19 vf0)
-    (s.h s5 (-> work base-tmpl dma qwc))
-    (madd.w.vf vf5 vf1 vf2)
-    (l.wu gp (-> frag dma-common))
-    (mula.w.vf vf27 vf0)
-    (l.bu s5 (-> frag dma-qwc 3))
-    (madda.x.vf vf24 vf2)
-    (s.w gp (-> work level-0-tmpl dma addr))
-    (madda.y.vf vf25 vf2)
-    (s.h s5 (-> work level-0-tmpl dma qwc))
-    (madda.z.vf vf26 vf2)
-    (l.wu gp (-> frag dma-common))
-    (m s5 vf5)
-    (l.bu s4 (-> frag dma-qwc 0))
-    (madd.w.vf vf6 vf1 vf2)
-    (s.w gp (-> work common-tmpl dma addr))
-    (msub.w.vf vf8 vf1 vf2)
-    (s.h s4 (-> work common-tmpl dma qwc))
-    (pcgt.w s5 r0 s5)
-    (l.wu gp (-> frag dma-level-1))
-    (ppach s5 r0 s5)
-    (l.bu s4 (-> frag dma-qwc 2))
-    (add.z.vf vf6 vf3 vf6)
-    (s.w gp (-> work level-1-tmpl dma addr))
-    (add.z.vf vf7 vf3 vf8)
-    (s.w t3 (-> work base-tmpl vif1))
-    (b.nz s5 fragment-culled :delay (s.h s4 (-> work level-1-tmpl dma qwc)))
-    (min.vf vf4 vf4 vf8)
-    (s.w t3 (-> work level-0-tmpl vif1))
-    (nop!)
-    (l.bu s5 (-> frag num-base-colors))
-    (m gp vf6)
-    (s.w t3 (-> work common-tmpl vif1))
-    (m s3 vf7)
-    (l.bu s4 (-> frag color-offset))
-    (pcgt.w s2 r0 gp)
-    (l.w gp (-> frag color-indices))
-    (pcgt.w s3 r0 s3)
-    (s.b s4 (-> work color-tmpl vif1))
-    (pinteh s4 s2 s3)
-    (l.bu s2 (-> frag num-level0-colors))
-    (ppacb s3 r0 s4)
-    (l.bu s1 (-> frag num-level1-colors))
-    (b.z s3 select-base-stream :delay (srl32 s4 s3 8))
-    (b.z s2 select-base-stream :delay (nop!))
-    (b.z s1 select-level0-stream :delay (srl s5 s3 16))
-    (b.z s5 select-level0-stream :delay (srl32 s5 s3 24))
-    (b.nz s5 next-fragment :delay (add.i s5 s1 3))
-    (sra s4 s5 2)
-    (m s5 s1)
-    (sll t3 s4 2)
-    (s.h s4 (-> work color-tmpl dma qwc))
-    (nop!)
-    (s.b t3 (-> work color-tmpl vif1 num))
-    (add.i packet-qwc packet-qwc 3)
-    (l.q s2 (-> work common-tmpl dma qwc))
-    (nop!)
-    (l.q s1 (-> work level-1-tmpl dma qwc))
-    (nop!)
-    (l.q t3 (-> work color-tmpl dma qwc))
-    (s.q s2 ra)
-    (nop!)
-    (s.q s1 ra 16)
-    (srl32 s2 s3 16)
-    (s.q t3 ra 32)
-    (add.i ra ra 48)
-    (b.nz s2 check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL1-CLIPPED))
-    (srl32 t3 s3 8)
-    (nop!)
-    (b.nz t3 check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL1))
-    (b check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL1-CROSSING))
-    ;; Level 0: the level-0 template plus this frame's colors. TFRAG-VU-DRAW-LEVEL0 when the whole sphere is nearer than
-    ;; meters[0], because then no level-0 point can be past its collapse distance and the microprogram can
-    ;; use the loop without the substitution test; TFRAG-VU-DRAW-LEVEL0-CROSSING when it straddles it.
-    (label select-level0-stream)
-    (b.nz s4 next-fragment :delay (add.i s5 s2 3))
-    (sra s4 s5 2)
-    (m s5 s2)
-    (sll t3 s4 2)
-    (s.h s4 (-> work color-tmpl dma qwc))
-    (nop!)
-    (s.b t3 (-> work color-tmpl vif1 num))
-    (add.i packet-qwc packet-qwc 2)
-    (l.q s2 (-> work level-0-tmpl dma qwc))
-    (nop!)
-    (l.q t3 (-> work color-tmpl dma qwc))
-    (s.q s2 ra)
-    (srl s3 s3 8)
-    (s.q t3 ra 16)
-    (add.i ra ra 32)
-    (b.nz s3 check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL0))
-    (b check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL0-CROSSING))
-    ;; Base mesh: one template, no detail. This is also where a fragment with no level-0 data ends up
-    ;; regardless of distance, which is why TFRAG-VU-DRAW-BASE's renderer is the one that guard-clips.
-    (label select-base-stream)
-    (b.nz s4 next-fragment :delay (add.i s4 s5 3))
-    (sra s4 s4 2)
-    (nop!)
-    (sll t3 s4 2)
-    (s.h s4 (-> work color-tmpl dma qwc))
-    (nop!)
-    (s.b t3 (-> work color-tmpl vif1 num))
-    (ori t3 mscal-tag TFRAG-VU-DRAW-BASE)
-    (l.q s3 (-> work base-tmpl quad))
-    (add.i packet-qwc packet-qwc 2)
-    (l.q s2 (-> work color-tmpl dma qwc))
-    (s.q s3 ra)
-    (nop!)
-    (s.q s2 ra 16)
-    (add.i ra ra 32)
-    (label check-packet-bank-room)
-    (add.i s3 r0 127)
-    (add s2 packet-qwc s4)
-    (sub s3 s3 s2)
-    (nop!)
-    (b.ge s3 r0 expand-fragment-colors :delay (nop!))
-    (label wait-packet-bank-free-2)
-    (l.w ra (-> from-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i ra ra DMA-CHCR-STR)
-    (nop!)
-    (b.z ra send-packet-bank-2 :delay (nop!))
-    (nop!)
-    (l.w ra (-> work wait-from-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i ra ra 1)
-    (nop!)
-    (s.w ra (-> work wait-from-spr))
-    (b wait-packet-bank-free-2 :delay (nop!))
-    (label send-packet-bank-2)
-    (s.w a3 (-> from-spr-channel sadr))
-    (xor.i a3 a3 TFRAG-PACKET-BANK-FLIP)
-    (s.w out-cursor (-> from-spr-channel madr))
-    (sll ra packet-qwc 4)
-    (add out-cursor out-cursor ra)
-    (m ra a3)
-    (s.w packet-qwc (-> from-spr-channel qwc))
-    (add.i packet-qwc r0 DMA-CHCR-STR)
-    (s.w packet-qwc (-> from-spr-channel chcr))
-    (add.i packet-qwc r0 0)
-    ;; Expand the fragment's packed uint16 color indices into scratchpad RGBA addresses. pextlh widens four
-    ;; indices into four 32-bit lanes at once and color-ptr holds the same scratchpad base in all four lanes,
-    ;; so one add produces four independent gather addresses; the four loads then walk out of the vector
-    ;; register through sra32 and pcpyud. Colors are the only part of a terrain patch that changes with time
-    ;; of day, which is why they are rebuilt per frame instead of living in the level file.
-    ;;
-    ;; t8 is needed as the index cursor here, so the fragment address it was holding is parked in
-    ;; work.src-ptr for the duration and reloaded at the end - that is the whole purpose of that field. For
-    ;; the length of the loop t8 is color-cursor and not frag, and the doubleword load takes four packed
-    ;; uint16 indices in one go rather than reading any tfragment field.
-    ;; Same color gather as the far builder, and the same register borrow: the fragment address in t8 is
-    ;; parked in work.src-ptr while t8 walks the packed uint16 indices as color-cursor, then reloaded. The
-    ;; doubleword load reads four indices at once, not a tfragment field.
-    (label expand-fragment-colors)
-    (add packet-qwc packet-qwc s4)
-    (s.w frag (-> work src-ptr))
-    (l.d s4 gp)
-    (add.i color-cursor gp 8)
-    (add.i gp s5 -4)
-    (l.q s5 (-> work color-ptr))
-    (pextlh s4 r0 s4)
-    (mmi-nop!)
-    (add.w s2 s4 s5)
-    (mmi-nop!)
-    (l.w s4 s2)
-    (sra32 s3 s2 0)
-    (l.w s3 s3)
-    (pcpyud s1 s2 s2)
-    (l.w s2 s1)
-    (sra32 s1 s1 0)
-    (b.le gp r0 expand-colors-tail :delay (l.w s1 s1))
-    (label expand-colors-loop)
-    (l.d s0 color-cursor) ;; four packed color indices at once
-    (add.i ra ra 16)
-    (add.i color-cursor color-cursor 8)
-    (s.w s4 ra -16)
-    (add.i gp gp -4)
-    (s.w s3 ra -12)
-    (pextlh s4 r0 s0)
-    (s.w s2 ra -8)
-    (add.w s2 s4 s5)
-    (s.w s1 ra -4)
-    (l.w s4 s2)
-    (sra32 s3 s2 0)
-    (l.w s3 s3)
-    (pcpyud s1 s2 s2)
-    (l.w s2 s1)
-    (sra32 s1 s1 0)
-    (b.gt gp r0 expand-colors-loop :delay (l.w s1 s1))
-    (label expand-colors-tail)
-    (add.i ra ra 16)
-    (l.w frag (-> work src-ptr))
-    (nop!)
-    (s.w s4 ra -16)
-    (nop!)
-    (s.w s3 ra -12)
-    (nop!)
-    (s.w s2 ra -8)
-    (nop!)
-    (s.w s1 ra -4)
-    (label fragment-culled)
-    (xor t7 t7 t9)
-    (nop!)
-    (label next-fragment)
-    (add.i frag frag 64)
-    (srl t9 t9 1)
-    (add.i a2 a2 -1)
-    (nop!)
-    (b.nz t9 fragment-loop :delay (l.vf vf2 (-> frag bsphere)))
-    (label group-done)
-    (nop!)
-    (l.w gp (-> work cur-vis-bits))
-    (nop!)
-    (l.w t9 (-> work end-vis-bits))
-    (b.ne gp t9 read-visibility-byte :delay (s.b t7 gp -1))
-    (b.gt a2 r0 begin-batch :delay (nop!))
-    (b.z packet-qwc wait-packet-dma-idle :delay (nop!))
-    (label wait-final-packet-dma)
-    (l.w a0 (-> from-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i a0 a0 DMA-CHCR-STR)
-    (nop!)
-    (b.z a0 send-final-packet-bank :delay (nop!))
-    (nop!)
-    (l.w a0 (-> work wait-from-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i a0 a0 1)
-    (nop!)
-    (s.w a0 (-> work wait-from-spr))
-    (b wait-final-packet-dma :delay (nop!))
-    (label send-final-packet-bank)
-    (s.w a3 (-> from-spr-channel sadr))
-    (xor.i a0 a3 #x1800)
-    (s.w out-cursor (-> from-spr-channel madr))
-    (sll a1 packet-qwc 4)
-    (add out-cursor out-cursor a1)
-    (m a0 a0)
-    (s.w packet-qwc (-> from-spr-channel qwc))
-    (add.i a0 r0 DMA-CHCR-STR)
-    (s.w a0 (-> from-spr-channel chcr))
-    (add.i a0 r0 0)
-    (label wait-packet-dma-idle)
-    (l.w a0 (-> from-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i a0 a0 DMA-CHCR-STR)
-    (nop!)
-    (b.z a0 tfrag-draw-return :delay (nop!))
-    (nop!)
-    (l.w a0 (-> work wait-from-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i a0 a0 1)
-    (nop!)
-    (s.w a0 (-> work wait-from-spr))
-    (b wait-packet-dma-idle :delay (nop!))
-    (label tfrag-draw-return)
-    (l.w a0 (-> work dma-buffer))
-    (nop!)
-    (s.w t3 (-> work last-call))
-    (nop!)
-    (s.vf vf4 (-> work min-dist))
-    (nop!)
-    (s.w out-cursor a0 4)
-    (nop!)
-    (m v0 r0)
-    (l.d ra sp)
-    (l.q gp sp 112)
-    (l.q s5 sp 96)
-    (l.q s4 sp 80)
-    (l.q s3 sp 64)
-    (l.q s2 sp 48)
-    (l.q s1 sp 32)
-    (l.q s0 sp 16)
-    (jr ra :delay (add.i sp sp 128))
-    (nop!)
-    (nop!)
-    (nop!))))
+           (mscal-tag :reg t2) ;; VIF MSCAL opcode, entry address ORed in
+           (packet-qwc :reg t6) ;; quadwords built into the current bank
+           (out-cursor :reg v1) ;; write position in the dma-buffer
+           (dma-buf :reg a3 :type dma-buffer)) ;; the argument, before a3 becomes the packet bank
+      (label tfrag-draw-entry)
+      (add.i sp sp -128)
+      (s.d ra sp)
+      (s.q s0 sp 16)
+      (s.q s1 sp 32)
+      (s.q s2 sp 48)
+      (s.q s3 sp 64)
+      (s.q s4 sp 80)
+      (s.q s5 sp 96)
+      (s.q gp sp 112)
+      (lui mscal-tag #x1400)
+      (l.w out-cursor (-> dma-buf base))
+      (lui t3 #x1000)
+      (lui from-spr-channel #x1000)
+      (sync.l)
+      (cache dxwbin out-cursor 0)
+      (sync.l)
+      (cache dxwbin out-cursor 1)
+      (sync.l)
+      (m! work *tfrag-work*)
+      (ori to-spr-channel t3 #xd400)
+      (ori from-spr-channel from-spr-channel #xd000)
+      (lui t5 #x7000)
+      (l.vf vf3 (-> work frag-dists))
+      (s.w a3 (-> work dma-buffer))
+      (ori a3 t5 2064)
+      (add.i t3 r0 0)
+      (ori t5 t5 1040)
+      (max.w.vf vf1 vf0 vf0)
+      (l.h t7 a0)
+      (l.vf vf4 (-> work max-dist))
+      (add.i a1 a1 -4)
+      (add.i packet-qwc r0 0)
+      (m ra a3)
+      (label skip-invisible-batch)
+      (b.nz t7 start-first-header-dma :delay (nop!))
+      (add.i a0 a0 2)
+      (add.i a1 a1 1024)
+      (add.i a2 a2 -16)
+      (l.h t7 a0)
+      (b.le a2 r0 tfrag-draw-return :delay (nop!))
+      (b skip-invisible-batch :delay (nop!))
+      (label start-first-header-dma)
+      (l.w t7 (-> to-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i t7 t7 DMA-CHCR-STR)
+      (nop!)
+      (b.nz t7 start-first-header-dma :delay (nop!))
+      (s.w a1 (-> to-spr-channel madr))
+      (xor.i t7 t5 TFRAG-INPUT-BANK-FLIP)
+      (s.w t7 (-> to-spr-channel sadr))
+      (add.i t7 r0 64)
+      (s.w t7 (-> to-spr-channel qwc))
+      (add.i t7 r0 DMA-CHCR-STR)
+      (s.w t7 (-> to-spr-channel chcr))
+      (nop!)
+      ;; One pass of the outer loop covers sixteen fragments: their headers are DMAed into one scratchpad input
+      ;; bank while packets are built out of the other, so the header fetch is always a batch ahead.
+      (label begin-batch)
+      (m gp a0)
+      (xor.i t5 t5 TFRAG-INPUT-BANK-FLIP)
+      (add.i a0 a0 2)
+      (m t9 a0)
+      (m frag t5)
+      (add.i t7 a2 -16)
+      (b.gt t7 r0 find-next-visible-batch :delay (l.h t7 a0))
+      (b wait-last-header-dma :delay (nop!))
+      (label skip-empty-batch)
+      (add.i a2 a2 -16)
+      (add.i a0 a0 2)
+      (b.le a2 r0 wait-last-header-dma :delay (l.h t7 a0))
+      (nop!)
+      (nop!)
+      (label find-next-visible-batch)
+      (b.z t7 skip-empty-batch :delay (add.i a1 a1 1024))
+      (label wait-header-dma)
+      (l.w t7 (-> to-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i t7 t7 DMA-CHCR-STR)
+      (nop!)
+      (b.z t7 start-header-dma :delay (nop!))
+      (nop!)
+      (l.w t7 (-> work wait-to-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i t7 t7 1)
+      (nop!)
+      (s.w t7 (-> work wait-to-spr))
+      (b wait-header-dma :delay (nop!))
+      (label start-header-dma)
+      (s.w a1 (-> to-spr-channel madr))
+      (xor.i t7 t5 TFRAG-INPUT-BANK-FLIP)
+      (s.w t7 (-> to-spr-channel sadr))
+      (add.i t7 r0 64)
+      (s.w t7 (-> to-spr-channel qwc))
+      (add.i t7 r0 DMA-CHCR-STR)
+      (b read-visibility-byte :delay (s.w t7 (-> to-spr-channel chcr)))
+      (label wait-last-header-dma)
+      (l.w t7 (-> to-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i t7 t7 DMA-CHCR-STR)
+      (nop!)
+      (b.z t7 read-visibility-byte :delay (nop!))
+      (nop!)
+      (l.w t7 (-> work wait-to-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i t7 t7 1)
+      (nop!)
+      (s.w t7 (-> work wait-to-spr))
+      (b wait-last-header-dma :delay (nop!))
+      (label read-visibility-byte)
+      (l.b t7 gp)
+      (add.i gp gp 1)
+      (nop!)
+      (s.w gp (-> work cur-vis-bits))
+      (b.nz t7 begin-visible-group :delay (s.w t9 (-> work end-vis-bits)))
+      (add.i a2 a2 -8)
+      (add.i frag frag 512)
+      (b group-done :delay (nop!))
+      (label begin-visible-group)
+      (add.i t9 r0 128)
+      (l.vf vf2 (-> frag bsphere))
+      (label fragment-loop)
+      (add.i gp packet-qwc -124)
+      (nop!)
+      (b.le gp r0 classify-fragment-lod :delay (nop!))
+      ;; Hand the finished packet bank to the fromSPR channel and continue in the other one. The flip mask is
+      ;; whatever bits the two bank offsets disagree on, which is not the bank size.
+      (label wait-packet-bank-free)
+      (l.w ra (-> from-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i ra ra DMA-CHCR-STR)
+      (nop!)
+      (b.z ra send-packet-bank :delay (nop!))
+      (nop!)
+      (l.w ra (-> work wait-from-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i ra ra 1)
+      (nop!)
+      (s.w ra (-> work wait-from-spr))
+      (b wait-packet-bank-free :delay (nop!))
+      (label send-packet-bank)
+      (s.w a3 (-> from-spr-channel sadr))
+      (xor.i a3 a3 TFRAG-PACKET-BANK-FLIP)
+      (s.w out-cursor (-> from-spr-channel madr))
+      (sll ra packet-qwc 4)
+      (add out-cursor out-cursor ra)
+      (m ra a3)
+      (s.w packet-qwc (-> from-spr-channel qwc))
+      (add.i packet-qwc r0 DMA-CHCR-STR)
+      (s.w packet-qwc (-> from-spr-channel chcr))
+      (add.i packet-qwc r0 0)
+      ;; Pick this fragment's detail level, and with it the microprogram entry.
+      ;; vf24..vf27 give camera depth in world units and vf16..vf19 the four culling planes, so one accumulator
+      ;; chain produces the sphere's near and far points against the planes and another produces depth+radius
+      ;; and depth-radius. Adding frag-dists - which holds the thresholds already negated - compares the sphere
+      ;; against all four distance bands at once, and pinteh/ppacb squeezes the eight answers down to eight
+      ;; bytes of one register: for each of meters[0], meters[1], meters[2] and the close threshold, one byte
+      ;; saying part of the sphere is nearer and one saying all of it is.
+      ;; THE SEAM RULE LIVES HERE. A level is only given up when NO PART of the sphere is nearer than that
+      ;; level's collapse distance, never when merely the center is. A vertex on the border between two patches
+      ;; sits inside both of their spheres, so if this patch abandons level 0 that vertex is past meters[0] in
+      ;; the neighbour too, where the VU has already slid it onto the midpoint of its parent edge - position,
+      ;; color and texture coordinate. The neighbour's finer strip then covers the same surface as our coarser
+      ;; one, provided the two patches name the same two parents for that vertex, which is the exporter's side of
+      ;; the bargain and not something this code can check. Compare the sphere centre instead of its near edge
+      ;; and the runtime side of the bargain is broken outright: adjacent patches would start disagreeing about
+      ;; detail while their shared vertices were still displaced, which is what tears terrain open.
+      ;; Streams that do not exist (num-level0-colors or num-level1-colors zero) fall through to the next
+      ;; coarser one, and a fragment whose whole sphere is inside the close threshold is left for the near
+      ;; renderer.
+      ;; Interleaved with the arithmetic, all five DMA templates in the work area are filled in from the
+      ;; fragment header before it is known which of them will be used - the loads are free in the empty
+      ;; integer slots and it saves a branch. Each geometry template gets an address and a quadword count,
+      ;; and the pairings are the four windows into the patch's single contiguous VIF block that tfragment
+      ;; documents: base takes dma-base with dma-qwc[1], level-0 takes dma-common with dma-qwc[3], common
+      ;; takes that same dma-common with dma-qwc[0], and level-1 takes dma-level-1 with dma-qwc[2]. Level 0
+      ;; and common sharing one address with two different counts is the whole trick - how much detail is
+      ;; how far down the block you transfer. The color template's VIF1 unpack then takes its destination
+      ;; from color-offset and its NUM from whichever cumulative color count matches the chosen level.
+      (label classify-fragment-lod)
+      (and gp t7 t9)
+      (mula.x.vf vf16 vf2)
+      (b.z gp next-fragment :delay (l.wu gp (-> frag dma-base)))
+      (madda.y.vf vf17 vf2)
+      (l.bu s5 (-> frag dma-qwc 1))
+      (madda.z.vf vf18 vf2)
+      (s.w gp (-> work base-tmpl dma addr))
+      (msuba.w.vf vf19 vf0)
+      (s.h s5 (-> work base-tmpl dma qwc))
+      (madd.w.vf vf5 vf1 vf2)
+      (l.wu gp (-> frag dma-common))
+      (mula.w.vf vf27 vf0)
+      (l.bu s5 (-> frag dma-qwc 3))
+      (madda.x.vf vf24 vf2)
+      (s.w gp (-> work level-0-tmpl dma addr))
+      (madda.y.vf vf25 vf2)
+      (s.h s5 (-> work level-0-tmpl dma qwc))
+      (madda.z.vf vf26 vf2)
+      (l.wu gp (-> frag dma-common))
+      (m s5 vf5)
+      (l.bu s4 (-> frag dma-qwc 0))
+      (madd.w.vf vf6 vf1 vf2)
+      (s.w gp (-> work common-tmpl dma addr))
+      (msub.w.vf vf8 vf1 vf2)
+      (s.h s4 (-> work common-tmpl dma qwc))
+      (pcgt.w s5 r0 s5)
+      (l.wu gp (-> frag dma-level-1))
+      (ppach s5 r0 s5)
+      (l.bu s4 (-> frag dma-qwc 2))
+      (add.z.vf vf6 vf3 vf6)
+      (s.w gp (-> work level-1-tmpl dma addr))
+      (add.z.vf vf7 vf3 vf8)
+      (s.w t3 (-> work base-tmpl vif1))
+      (b.nz s5 fragment-culled :delay (s.h s4 (-> work level-1-tmpl dma qwc)))
+      (min.vf vf4 vf4 vf8)
+      (s.w t3 (-> work level-0-tmpl vif1))
+      (nop!)
+      (l.bu s5 (-> frag num-base-colors))
+      (m gp vf6)
+      (s.w t3 (-> work common-tmpl vif1))
+      (m s3 vf7)
+      (l.bu s4 (-> frag color-offset))
+      (pcgt.w s2 r0 gp)
+      (l.w gp (-> frag color-indices))
+      (pcgt.w s3 r0 s3)
+      (s.b s4 (-> work color-tmpl vif1))
+      (pinteh s4 s2 s3)
+      (l.bu s2 (-> frag num-level0-colors))
+      (ppacb s3 r0 s4)
+      (l.bu s1 (-> frag num-level1-colors))
+      (b.z s3 select-base-stream :delay (srl32 s4 s3 8))
+      (b.z s2 select-base-stream :delay (nop!))
+      (b.z s1 select-level0-stream :delay (srl s5 s3 16))
+      (b.z s5 select-level0-stream :delay (srl32 s5 s3 24))
+      (b.nz s5 next-fragment :delay (add.i s5 s1 3))
+      (sra s4 s5 2)
+      (m s5 s1)
+      (sll t3 s4 2)
+      (s.h s4 (-> work color-tmpl dma qwc))
+      (nop!)
+      (s.b t3 (-> work color-tmpl vif1 num))
+      (add.i packet-qwc packet-qwc 3)
+      (l.q s2 (-> work common-tmpl dma qwc))
+      (nop!)
+      (l.q s1 (-> work level-1-tmpl dma qwc))
+      (nop!)
+      (l.q t3 (-> work color-tmpl dma qwc))
+      (s.q s2 ra)
+      (nop!)
+      (s.q s1 ra 16)
+      (srl32 s2 s3 16)
+      (s.q t3 ra 32)
+      (add.i ra ra 48)
+      (b.nz s2 check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL1-CLIPPED))
+      (srl32 t3 s3 8)
+      (nop!)
+      (b.nz t3 check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL1))
+      (b check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL1-CROSSING))
+      ;; Level 0: the level-0 template plus this frame's colors. TFRAG-VU-DRAW-LEVEL0 when the whole sphere is nearer than
+      ;; meters[0], because then no level-0 point can be past its collapse distance and the microprogram can
+      ;; use the loop without the substitution test; TFRAG-VU-DRAW-LEVEL0-CROSSING when it straddles it.
+      (label select-level0-stream)
+      (b.nz s4 next-fragment :delay (add.i s5 s2 3))
+      (sra s4 s5 2)
+      (m s5 s2)
+      (sll t3 s4 2)
+      (s.h s4 (-> work color-tmpl dma qwc))
+      (nop!)
+      (s.b t3 (-> work color-tmpl vif1 num))
+      (add.i packet-qwc packet-qwc 2)
+      (l.q s2 (-> work level-0-tmpl dma qwc))
+      (nop!)
+      (l.q t3 (-> work color-tmpl dma qwc))
+      (s.q s2 ra)
+      (srl s3 s3 8)
+      (s.q t3 ra 16)
+      (add.i ra ra 32)
+      (b.nz s3 check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL0))
+      (b check-packet-bank-room :delay (ori t3 mscal-tag TFRAG-VU-DRAW-LEVEL0-CROSSING))
+      ;; Base mesh: one template, no detail. This is also where a fragment with no level-0 data ends up
+      ;; regardless of distance, which is why TFRAG-VU-DRAW-BASE's renderer is the one that guard-clips.
+      (label select-base-stream)
+      (b.nz s4 next-fragment :delay (add.i s4 s5 3))
+      (sra s4 s4 2)
+      (nop!)
+      (sll t3 s4 2)
+      (s.h s4 (-> work color-tmpl dma qwc))
+      (nop!)
+      (s.b t3 (-> work color-tmpl vif1 num))
+      (ori t3 mscal-tag TFRAG-VU-DRAW-BASE)
+      (l.q s3 (-> work base-tmpl quad))
+      (add.i packet-qwc packet-qwc 2)
+      (l.q s2 (-> work color-tmpl dma qwc))
+      (s.q s3 ra)
+      (nop!)
+      (s.q s2 ra 16)
+      (add.i ra ra 32)
+      (label check-packet-bank-room)
+      (add.i s3 r0 127)
+      (add s2 packet-qwc s4)
+      (sub s3 s3 s2)
+      (nop!)
+      (b.ge s3 r0 expand-fragment-colors :delay (nop!))
+      (label wait-packet-bank-free-2)
+      (l.w ra (-> from-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i ra ra DMA-CHCR-STR)
+      (nop!)
+      (b.z ra send-packet-bank-2 :delay (nop!))
+      (nop!)
+      (l.w ra (-> work wait-from-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i ra ra 1)
+      (nop!)
+      (s.w ra (-> work wait-from-spr))
+      (b wait-packet-bank-free-2 :delay (nop!))
+      (label send-packet-bank-2)
+      (s.w a3 (-> from-spr-channel sadr))
+      (xor.i a3 a3 TFRAG-PACKET-BANK-FLIP)
+      (s.w out-cursor (-> from-spr-channel madr))
+      (sll ra packet-qwc 4)
+      (add out-cursor out-cursor ra)
+      (m ra a3)
+      (s.w packet-qwc (-> from-spr-channel qwc))
+      (add.i packet-qwc r0 DMA-CHCR-STR)
+      (s.w packet-qwc (-> from-spr-channel chcr))
+      (add.i packet-qwc r0 0)
+      ;; Expand the fragment's packed uint16 color indices into scratchpad RGBA addresses. pextlh widens four
+      ;; indices into four 32-bit lanes at once and color-ptr holds the same scratchpad base in all four lanes,
+      ;; so one add produces four independent gather addresses; the four loads then walk out of the vector
+      ;; register through sra32 and pcpyud. Colors are the only part of a terrain patch that changes with time
+      ;; of day, which is why they are rebuilt per frame instead of living in the level file.
+      ;;
+      ;; t8 is needed as the index cursor here, so the fragment address it was holding is parked in
+      ;; work.src-ptr for the duration and reloaded at the end - that is the whole purpose of that field. For
+      ;; the length of the loop t8 is color-cursor and not frag, and the doubleword load takes four packed
+      ;; uint16 indices in one go rather than reading any tfragment field.
+      ;; Same color gather as the far builder, and the same register borrow: the fragment address in t8 is
+      ;; parked in work.src-ptr while t8 walks the packed uint16 indices as color-cursor, then reloaded. The
+      ;; doubleword load reads four indices at once, not a tfragment field.
+      (label expand-fragment-colors)
+      (add packet-qwc packet-qwc s4)
+      (s.w frag (-> work src-ptr))
+      (l.d s4 gp)
+      (add.i color-cursor gp 8)
+      (add.i gp s5 -4)
+      (l.q s5 (-> work color-ptr))
+      (pextlh s4 r0 s4)
+      (mmi-nop!)
+      (add.w s2 s4 s5)
+      (mmi-nop!)
+      (l.w s4 s2)
+      (sra32 s3 s2 0)
+      (l.w s3 s3)
+      (pcpyud s1 s2 s2)
+      (l.w s2 s1)
+      (sra32 s1 s1 0)
+      (b.le gp r0 expand-colors-tail :delay (l.w s1 s1))
+      (label expand-colors-loop)
+      (l.d s0 color-cursor) ;; four packed color indices at once
+      (add.i ra ra 16)
+      (add.i color-cursor color-cursor 8)
+      (s.w s4 ra -16)
+      (add.i gp gp -4)
+      (s.w s3 ra -12)
+      (pextlh s4 r0 s0)
+      (s.w s2 ra -8)
+      (add.w s2 s4 s5)
+      (s.w s1 ra -4)
+      (l.w s4 s2)
+      (sra32 s3 s2 0)
+      (l.w s3 s3)
+      (pcpyud s1 s2 s2)
+      (l.w s2 s1)
+      (sra32 s1 s1 0)
+      (b.gt gp r0 expand-colors-loop :delay (l.w s1 s1))
+      (label expand-colors-tail)
+      (add.i ra ra 16)
+      (l.w frag (-> work src-ptr))
+      (nop!)
+      (s.w s4 ra -16)
+      (nop!)
+      (s.w s3 ra -12)
+      (nop!)
+      (s.w s2 ra -8)
+      (nop!)
+      (s.w s1 ra -4)
+      (label fragment-culled)
+      (xor t7 t7 t9)
+      (nop!)
+      (label next-fragment)
+      (add.i frag frag 64)
+      (srl t9 t9 1)
+      (add.i a2 a2 -1)
+      (nop!)
+      (b.nz t9 fragment-loop :delay (l.vf vf2 (-> frag bsphere)))
+      (label group-done)
+      (nop!)
+      (l.w gp (-> work cur-vis-bits))
+      (nop!)
+      (l.w t9 (-> work end-vis-bits))
+      (b.ne gp t9 read-visibility-byte :delay (s.b t7 gp -1))
+      (b.gt a2 r0 begin-batch :delay (nop!))
+      (b.z packet-qwc wait-packet-dma-idle :delay (nop!))
+      (label wait-final-packet-dma)
+      (l.w a0 (-> from-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i a0 a0 DMA-CHCR-STR)
+      (nop!)
+      (b.z a0 send-final-packet-bank :delay (nop!))
+      (nop!)
+      (l.w a0 (-> work wait-from-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i a0 a0 1)
+      (nop!)
+      (s.w a0 (-> work wait-from-spr))
+      (b wait-final-packet-dma :delay (nop!))
+      (label send-final-packet-bank)
+      (s.w a3 (-> from-spr-channel sadr))
+      (xor.i a0 a3 #x1800)
+      (s.w out-cursor (-> from-spr-channel madr))
+      (sll a1 packet-qwc 4)
+      (add out-cursor out-cursor a1)
+      (m a0 a0)
+      (s.w packet-qwc (-> from-spr-channel qwc))
+      (add.i a0 r0 DMA-CHCR-STR)
+      (s.w a0 (-> from-spr-channel chcr))
+      (add.i a0 r0 0)
+      (label wait-packet-dma-idle)
+      (l.w a0 (-> from-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i a0 a0 DMA-CHCR-STR)
+      (nop!)
+      (b.z a0 tfrag-draw-return :delay (nop!))
+      (nop!)
+      (l.w a0 (-> work wait-from-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i a0 a0 1)
+      (nop!)
+      (s.w a0 (-> work wait-from-spr))
+      (b wait-packet-dma-idle :delay (nop!))
+      (label tfrag-draw-return)
+      (l.w a0 (-> work dma-buffer))
+      (nop!)
+      (s.w t3 (-> work last-call))
+      (nop!)
+      (s.vf vf4 (-> work min-dist))
+      (nop!)
+      (s.w out-cursor a0 4)
+      (nop!)
+      (m v0 r0)
+      (l.d ra sp)
+      (l.q gp sp 112)
+      (l.q s5 sp 96)
+      (l.q s4 sp 80)
+      (l.q s3 sp 64)
+      (l.q s2 sp 48)
+      (l.q s1 sp 32)
+      (l.q s0 sp 16)
+      (jr ra :delay (add.i sp sp 128))
+      (nop!)
+      (nop!)
+      (nop!))))
 
 (defun tfrag-near-init-buffer ((dma-buf dma-buffer) (test gs-test) (alpha-blend int))
   "Initialize the near-terrain DMA stream with its VU1 program, TEST_1 state, both camera-matrix
    banks, shared constants, and VIF double-buffer base and offset."
   (dma-buffer-add-vu-function dma-buf tnear-vu1-block 1)
-  (let* ((dma-state dma-buf)
-         (direct-packet (the-as object (-> dma-state base))))
-    (set! (-> (the-as dma-packet direct-packet) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet direct-packet) vif0) (new 'static 'vif-tag))
-    (set! (-> (the-as dma-packet direct-packet) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> dma-state base) (&+ (the-as pointer direct-packet) 16)))
-  (let* ((dma-state dma-buf)
-         (giftag (the-as object (-> dma-state base))))
-    (set! (-> (the-as gs-gif-tag giftag) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-    (set! (-> (the-as gs-gif-tag giftag) regs) GIF_REGS_ALL_AD)
-    (set! (-> dma-state base) (&+ (the-as pointer giftag) 16)))
+  (dma-buffer-add-cnt-vif2 dma-buf #x2 (new 'static 'vif-tag) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+  (dma-buffer-add-gif-tag dma-buf (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1) GIF_REGS_ALL_AD)
   (let* ((dma-state dma-buf)
          (test-packet (-> dma-state base)))
     (set! (-> (the-as (pointer gs-test) test-packet) 0) test)
@@ -3859,8 +3784,6 @@
     (set! (-> dma-state base) (&+ finish-packet 48)))
   (none))
 
-(define-extern draw-inline-array-tfrag-near (function (pointer uint8) (pointer tfragment) int dma-buffer none))
-
 ;; The near path uses the same scratchpad and output double buffering, but does not run the far
 ;; distance classifier. It selects the available base/detail stream, expands packed color indices,
 ;; and calls TNEAR-VU-DRAW for each packet. Register roles match the far function.
@@ -3873,451 +3796,505 @@
     ;; TNEAR-VU-DRAW, the program with the real polygon clipper. ra, gp, t5, t7, t9 and
     ;; s0..s5 are short-lived and keep physical names.
     (rlet ((work :reg t0 :type tfrag-work)
-           (frag :reg t8 :type tfragment)               ;; scratchpad record: RAW, addresses the type tag
-           (color-cursor :reg t8)                        ;; what t8 is while colors are gathered
-           (to-spr-channel :reg t3 :type dma-bank-spr)  ;; headers, main memory to scratchpad
+           (frag :reg t8 :type tfragment) ;; scratchpad record: RAW, addresses the type tag
+           (color-cursor :reg t8) ;; what t8 is while colors are gathered
+           (to-spr-channel :reg t3 :type dma-bank-spr) ;; headers, main memory to scratchpad
            (from-spr-channel :reg t1 :type dma-bank-spr) ;; packets, scratchpad to the VIF buffer
-           (mscal-tag :reg t2)                          ;; VIF MSCAL opcode, entry address ORed in
-           (packet-qwc :reg t6)                         ;; quadwords built into the current bank
-           (out-cursor :reg v1)                         ;; write position in the dma-buffer
-           (dma-buf :reg a3 :type dma-buffer))          ;; the argument, before a3 becomes the packet bank
-    (label tfrag-near-draw-entry)
-    (add.i sp sp -128)
-    (s.d ra sp)
-    (s.q s0 sp 16)
-    (s.q s1 sp 32)
-    (s.q s2 sp 48)
-    (s.q s3 sp 64)
-    (s.q s4 sp 80)
-    (s.q s5 sp 96)
-    (s.q gp sp 112)
-    (lui mscal-tag #x1400)
-    (l.w out-cursor (-> dma-buf base))
-    (lui to-spr-channel #x1000)
-    (lui from-spr-channel #x1000)
-    (sync.l)
-    (cache dxwbin out-cursor 0)
-    (sync.l)
-    (cache dxwbin out-cursor 1)
-    (sync.l)
-    (m! work *tfrag-work*)
-    (ori to-spr-channel to-spr-channel #xd400)
-    (ori from-spr-channel from-spr-channel #xd000)
-    (lui t4 #x7000)
-    (s.w dma-buf (-> work dma-buffer))
-    (add.i t5 r0 0)
-    (ori dma-buf t4 2064)
-    (l.vf vf3 (-> work frag-dists))
-    (ori t4 t4 1040)
-    (l.h t7 a0)
-    (max.w.vf vf1 vf0 vf0)
-    (add.i a1 a1 -4)
-    (add.i packet-qwc r0 0)
-    (nop!)
-    (m ra dma-buf)
-    (label skip-invisible-batch)
-    (b.nz t7 start-first-header-dma :delay (nop!))
-    (add.i a0 a0 2)
-    (add.i a1 a1 1024)
-    (add.i a2 a2 -16)
-    (l.h t7 a0)
-    (b.le a2 r0 tfrag-near-draw-return :delay (nop!))
-    (b skip-invisible-batch :delay (nop!))
-    (label start-first-header-dma)
-    (l.w t7 (-> to-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i t7 t7 DMA-CHCR-STR)
-    (nop!)
-    (b.nz t7 start-first-header-dma :delay (nop!))
-    (s.w a1 (-> to-spr-channel madr))
-    (xor.i t7 t4 TFRAG-INPUT-BANK-FLIP)
-    (s.w t7 (-> to-spr-channel sadr))
-    (add.i t7 r0 64)
-    (s.w t7 (-> to-spr-channel qwc))
-    (add.i t7 r0 DMA-CHCR-STR)
-    (s.w t7 (-> to-spr-channel chcr))
-    (nop!)
-    (label begin-batch)
-    (m gp a0)
-    (xor.i t4 t4 TFRAG-INPUT-BANK-FLIP)
-    (add.i a0 a0 2)
-    (m t9 a0)
-    (m frag t4)
-    (add.i t7 a2 -16)
-    (b.gt t7 r0 find-next-visible-batch :delay (l.h t7 a0))
-    (b wait-last-header-dma :delay (nop!))
-    (label skip-empty-batch)
-    (add.i a2 a2 -16)
-    (add.i a0 a0 2)
-    (b.le a2 r0 wait-last-header-dma :delay (l.h t7 a0))
-    (nop!)
-    (nop!)
-    (label find-next-visible-batch)
-    (b.z t7 skip-empty-batch :delay (add.i a1 a1 1024))
-    (label wait-header-dma)
-    (l.w t7 (-> to-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i t7 t7 DMA-CHCR-STR)
-    (nop!)
-    (b.z t7 start-header-dma :delay (nop!))
-    (nop!)
-    (l.w t7 (-> work near-wait-to-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i t7 t7 1)
-    (nop!)
-    (s.w t7 (-> work near-wait-to-spr))
-    (b wait-header-dma :delay (nop!))
-    (label start-header-dma)
-    (s.w a1 (-> to-spr-channel madr))
-    (xor.i t7 t4 TFRAG-INPUT-BANK-FLIP)
-    (s.w t7 (-> to-spr-channel sadr))
-    (add.i t7 r0 64)
-    (s.w t7 (-> to-spr-channel qwc))
-    (add.i t7 r0 DMA-CHCR-STR)
-    (b read-visibility-byte :delay (s.w t7 (-> to-spr-channel chcr)))
-    (label wait-last-header-dma)
-    (l.w t7 (-> to-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i t7 t7 DMA-CHCR-STR)
-    (nop!)
-    (b.z t7 read-visibility-byte :delay (nop!))
-    (nop!)
-    (l.w t7 (-> work near-wait-to-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i t7 t7 1)
-    (nop!)
-    (s.w t7 (-> work near-wait-to-spr))
-    (b wait-last-header-dma :delay (nop!))
-    (label read-visibility-byte)
-    (l.b t7 gp)
-    (add.i gp gp 1)
-    (nop!)
-    (s.w gp (-> work cur-vis-bits))
-    (b.nz t7 begin-visible-group :delay (s.w t9 (-> work end-vis-bits)))
-    (add.i a2 a2 -8)
-    (add.i frag frag 512)
-    (b group-done :delay (nop!))
-    (label begin-visible-group)
-    (add.i t9 r0 128)
-    (l.vf vf2 (-> frag bsphere))
-    (label fragment-loop)
-    (nop!)
-    (l.hu gp (-> frag id))
-    (nop!)
-    (l.w s5 (-> work test-id))
-    (b.ne gp s5 wait-packet-bank-free :delay (nop!))
-    (nop!)
-    (nop!)
-    (label wait-packet-bank-free)
-    (add.i gp packet-qwc -124)
-    (nop!)
-    (b.le gp r0 select-finest-stream :delay (nop!))
-    (label send-packet-bank)
-    (l.w ra (-> from-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i ra ra DMA-CHCR-STR)
-    (nop!)
-    (b.z ra send-packet-bank-body :delay (nop!))
-    (nop!)
-    (l.w ra (-> work near-wait-from-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i ra ra 1)
-    (nop!)
-    (s.w ra (-> work near-wait-from-spr))
-    (b send-packet-bank :delay (nop!))
-    (label send-packet-bank-body)
-    (s.w dma-buf (-> from-spr-channel sadr))
-    (xor.i dma-buf dma-buf TFRAG-PACKET-BANK-FLIP)
-    (s.w out-cursor (-> from-spr-channel madr))
-    (sll ra packet-qwc 4)
-    (add out-cursor out-cursor ra)
-    (m ra dma-buf)
-    (s.w packet-qwc (-> from-spr-channel qwc))
-    (add.i packet-qwc r0 DMA-CHCR-STR)
-    (s.w packet-qwc (-> from-spr-channel chcr))
-    (add.i packet-qwc r0 0)
-    (label select-finest-stream)
-    (and s5 t7 t9)
-    (l.bu gp (-> frag num-base-colors))
-    (b.z s5 next-fragment :delay (l.bu s5 (-> frag color-offset)))
-    (nop!)
-    (l.bu s4 (-> frag num-level0-colors))
-    (nop!)
-    (l.bu s3 (-> frag num-level1-colors))
-    (nop!)
-    (s.b s5 (-> work color-tmpl vif1))
-    (b.z s4 select-base-stream :delay (l.w s5 (-> frag color-indices)))
-    (b.z s3 select-level0-stream :delay (nop!))
-    (add.i s4 s3 3)
-    (m gp s3)
-    (sra s4 s4 2)
-    (s.w t5 (-> work common-tmpl vif1))
-    (sll t5 s4 2)
-    (s.h s4 (-> work color-tmpl dma))
-    (nop!)
-    (s.b t5 (-> work color-tmpl vif1 num))
-    (add.i packet-qwc packet-qwc 3)
-    (l.wu t5 (-> frag dma-chain 0))
-    (nop!)
-    (l.bu s3 (-> frag dma-qwc 0))
-    (nop!)
-    (s.w t5 (-> work common-tmpl dma addr))
-    (nop!)
-    (s.h s3 (-> work common-tmpl dma))
-    (nop!)
-    (l.wu t5 (-> frag dma-chain 2))
-    (nop!)
-    (l.bu s3 (-> frag dma-qwc 2))
-    (nop!)
-    (s.w t5 (-> work level-1-tmpl dma addr))
-    (nop!)
-    (s.h s3 (-> work level-1-tmpl dma))
-    (l.q t5 (-> work common-tmpl dma))
-    (nop!)
-    (l.q s3 (-> work level-1-tmpl dma))
-    (nop!)
-    (l.q s2 (-> work color-tmpl dma))
-    (nop!)
-    (s.q t5 ra)
-    (nop!)
-    (s.q s3 ra 16)
-    (nop!)
-    (s.q s2 ra 32)
-    (add.i ra ra 48)
-    (b check-packet-bank-room :delay (ori t5 mscal-tag TNEAR-VU-DRAW))
-    (label select-level0-stream)
-    (add.i s3 s4 3)
-    (m gp s4)
-    (sra s4 s3 2)
-    (s.w t5 (-> work level-0-tmpl vif1))
-    (sll t5 s4 2)
-    (s.h s4 (-> work color-tmpl dma))
-    (nop!)
-    (s.b t5 (-> work color-tmpl vif1 num))
-    (add.i packet-qwc packet-qwc 2)
-    (l.wu t5 (-> frag dma-chain 0))
-    (nop!)
-    (l.bu s3 (-> frag dma-qwc 3))
-    (nop!)
-    (s.w t5 (-> work level-0-tmpl dma addr))
-    (nop!)
-    (s.h s3 (-> work level-0-tmpl dma))
-    (l.q t5 (-> work level-0-tmpl dma))
-    (nop!)
-    (l.q s3 (-> work color-tmpl dma))
-    (nop!)
-    (s.q t5 ra)
-    (nop!)
-    (s.q s3 ra 16)
-    (add.i ra ra 32)
-    (b check-packet-bank-room :delay (ori t5 mscal-tag TNEAR-VU-DRAW))
-    (label select-base-stream)
-    (add.i s4 gp 3)
-    (nop!)
-    (sra s4 s4 2)
-    (s.w t5 (-> work base-tmpl vif1))
-    (sll t5 s4 2)
-    (s.h s4 (-> work color-tmpl dma))
-    (nop!)
-    (s.b t5 (-> work color-tmpl vif1 num))
-    (add.i packet-qwc packet-qwc 2)
-    (l.wu t5 (-> frag dma-chain 1))
-    (nop!)
-    (l.bu s3 (-> frag dma-qwc 1))
-    (nop!)
-    (s.w t5 (-> work base-tmpl dma addr))
-    (nop!)
-    (s.h s3 (-> work base-tmpl dma))
-    (l.q t5 (-> work base-tmpl dma))
-    (nop!)
-    (l.q s3 (-> work color-tmpl dma))
-    (nop!)
-    (s.q t5 ra)
-    (ori t5 mscal-tag TNEAR-VU-DRAW)
-    (s.q s3 ra 16)
-    (add.i ra ra 32)
-    (label check-packet-bank-room)
-    (add.i s3 r0 127)
-    (add s2 packet-qwc s4)
-    (sub s3 s3 s2)
-    (nop!)
-    (b.ge s3 r0 expand-fragment-colors :delay (nop!))
-    (label wait-packet-bank-free-2)
-    (l.w ra (-> from-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i ra ra DMA-CHCR-STR)
-    (nop!)
-    (b.z ra send-packet-bank-2 :delay (nop!))
-    (nop!)
-    (l.w ra (-> work near-wait-from-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i ra ra 1)
-    (nop!)
-    (s.w ra (-> work near-wait-from-spr))
-    (b wait-packet-bank-free-2 :delay (nop!))
-    (label send-packet-bank-2)
-    (s.w dma-buf (-> from-spr-channel sadr))
-    (xor.i dma-buf dma-buf TFRAG-PACKET-BANK-FLIP)
-    (s.w out-cursor (-> from-spr-channel madr))
-    (sll ra packet-qwc 4)
-    (add out-cursor out-cursor ra)
-    (m ra dma-buf)
-    (s.w packet-qwc (-> from-spr-channel qwc))
-    (add.i packet-qwc r0 DMA-CHCR-STR)
-    (s.w packet-qwc (-> from-spr-channel chcr))
-    (add.i packet-qwc r0 0)
-    ;; Same color gather as the far builder, and the same register borrow: the fragment address in t8 is
-    ;; parked in work.src-ptr while t8 walks the packed uint16 indices as color-cursor, then reloaded. The
-    ;; doubleword load reads four indices at once, not a tfragment field.
-    (label expand-fragment-colors)
-    (add packet-qwc packet-qwc s4)
-    (s.w frag (-> work src-ptr))
-    (l.d s4 s5)
-    (add.i color-cursor s5 8)
-    (add.i gp gp -4)
-    (l.q s5 (-> work color-ptr))
-    (pextlh s4 r0 s4)
-    (mmi-nop!)
-    (add.w s2 s4 s5)
-    (mmi-nop!)
-    (l.w s4 s2)
-    (sra32 s3 s2 0)
-    (l.w s3 s3)
-    (pcpyud s1 s2 s2)
-    (l.w s2 s1)
-    (sra32 s1 s1 0)
-    (b.le gp r0 expand-colors-tail :delay (l.w s1 s1))
-    (label expand-colors-loop)
-    (l.d s0 color-cursor) ;; four packed color indices at once
-    (add.i ra ra 16)
-    (add.i color-cursor color-cursor 8)
-    (s.w s4 ra -16)
-    (add.i gp gp -4)
-    (s.w s3 ra -12)
-    (pextlh s4 r0 s0)
-    (s.w s2 ra -8)
-    (add.w s2 s4 s5)
-    (s.w s1 ra -4)
-    (l.w s4 s2)
-    (sra32 s3 s2 0)
-    (l.w s3 s3)
-    (pcpyud s1 s2 s2)
-    (l.w s2 s1)
-    (sra32 s1 s1 0)
-    (b.gt gp r0 expand-colors-loop :delay (l.w s1 s1))
-    (label expand-colors-tail)
-    (add.i ra ra 16)
-    (l.w frag (-> work src-ptr))
-    (nop!)
-    (s.w s4 ra -16)
-    (nop!)
-    (s.w s3 ra -12)
-    (nop!)
-    (s.w s2 ra -8)
-    (nop!)
-    (s.w s1 ra -4)
-    (xor t7 t7 t9)
-    (nop!)
-    (label next-fragment)
-    (add.i frag frag 64)
-    (srl t9 t9 1)
-    (add.i a2 a2 -1)
-    (nop!)
-    (b.nz t9 fragment-loop :delay (l.vf vf2 (-> frag bsphere)))
-    (label group-done)
-    (nop!)
-    (l.w gp (-> work cur-vis-bits))
-    (nop!)
-    (l.w t9 (-> work end-vis-bits))
-    (b.ne gp t9 read-visibility-byte :delay (s.b t7 gp -1))
-    (b.gt a2 r0 begin-batch :delay (nop!))
-    (b.z packet-qwc wait-packet-dma-idle :delay (nop!))
-    (label wait-final-packet-dma)
-    (l.w a0 (-> from-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i a0 a0 DMA-CHCR-STR)
-    (nop!)
-    (b.z a0 send-final-packet-bank :delay (nop!))
-    (nop!)
-    (l.w a0 (-> work near-wait-from-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i a0 a0 1)
-    (nop!)
-    (s.w a0 (-> work near-wait-from-spr))
-    (b wait-final-packet-dma :delay (nop!))
-    (label send-final-packet-bank)
-    (s.w dma-buf (-> from-spr-channel sadr))
-    (xor.i a0 dma-buf #x1800)
-    (s.w out-cursor (-> from-spr-channel madr))
-    (sll a1 packet-qwc 4)
-    (add out-cursor out-cursor a1)
-    (m a0 a0)
-    (s.w packet-qwc (-> from-spr-channel qwc))
-    (add.i a0 r0 DMA-CHCR-STR)
-    (s.w a0 (-> from-spr-channel chcr))
-    (add.i a0 r0 0)
-    (label wait-packet-dma-idle)
-    (l.w a0 (-> from-spr-channel chcr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (and.i a0 a0 DMA-CHCR-STR)
-    (nop!)
-    (b.z a0 tfrag-near-draw-return :delay (nop!))
-    (nop!)
-    (l.w a0 (-> work near-wait-from-spr))
-    (nop!)
-    (nop!)
-    (nop!)
-    (add.i a0 a0 1)
-    (nop!)
-    (s.w a0 (-> work near-wait-from-spr))
-    (b wait-packet-dma-idle :delay (nop!))
-    (label tfrag-near-draw-return)
-    (l.w a0 (-> work dma-buffer))
-    (nop!)
-    (s.w t5 (-> work last-call))
-    (nop!)
-    (s.w out-cursor a0 4)
-    (nop!)
-    (m v0 r0)
-    (l.d ra sp)
-    (l.q gp sp 112)
-    (l.q s5 sp 96)
-    (l.q s4 sp 80)
-    (l.q s3 sp 64)
-    (l.q s2 sp 48)
-    (l.q s1 sp 32)
-    (l.q s0 sp 16)
-    (jr ra :delay (add.i sp sp 128))
-    (nop!)
-    (nop!)
-    (nop!))))
+           (mscal-tag :reg t2) ;; VIF MSCAL opcode, entry address ORed in
+           (packet-qwc :reg t6) ;; quadwords built into the current bank
+           (out-cursor :reg v1) ;; write position in the dma-buffer
+           (dma-buf :reg a3 :type dma-buffer)) ;; the argument, before a3 becomes the packet bank
+      (label tfrag-near-draw-entry)
+      (add.i sp sp -128)
+      (s.d ra sp)
+      (s.q s0 sp 16)
+      (s.q s1 sp 32)
+      (s.q s2 sp 48)
+      (s.q s3 sp 64)
+      (s.q s4 sp 80)
+      (s.q s5 sp 96)
+      (s.q gp sp 112)
+      (lui mscal-tag #x1400)
+      (l.w out-cursor (-> dma-buf base))
+      (lui to-spr-channel #x1000)
+      (lui from-spr-channel #x1000)
+      (sync.l)
+      (cache dxwbin out-cursor 0)
+      (sync.l)
+      (cache dxwbin out-cursor 1)
+      (sync.l)
+      (m! work *tfrag-work*)
+      (ori to-spr-channel to-spr-channel #xd400)
+      (ori from-spr-channel from-spr-channel #xd000)
+      (lui t4 #x7000)
+      (s.w dma-buf (-> work dma-buffer))
+      (add.i t5 r0 0)
+      (ori dma-buf t4 2064)
+      (l.vf vf3 (-> work frag-dists))
+      (ori t4 t4 1040)
+      (l.h t7 a0)
+      (max.w.vf vf1 vf0 vf0)
+      (add.i a1 a1 -4)
+      (add.i packet-qwc r0 0)
+      (nop!)
+      (m ra dma-buf)
+      (label skip-invisible-batch)
+      (b.nz t7 start-first-header-dma :delay (nop!))
+      (add.i a0 a0 2)
+      (add.i a1 a1 1024)
+      (add.i a2 a2 -16)
+      (l.h t7 a0)
+      (b.le a2 r0 tfrag-near-draw-return :delay (nop!))
+      (b skip-invisible-batch :delay (nop!))
+      (label start-first-header-dma)
+      (l.w t7 (-> to-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i t7 t7 DMA-CHCR-STR)
+      (nop!)
+      (b.nz t7 start-first-header-dma :delay (nop!))
+      (s.w a1 (-> to-spr-channel madr))
+      (xor.i t7 t4 TFRAG-INPUT-BANK-FLIP)
+      (s.w t7 (-> to-spr-channel sadr))
+      (add.i t7 r0 64)
+      (s.w t7 (-> to-spr-channel qwc))
+      (add.i t7 r0 DMA-CHCR-STR)
+      (s.w t7 (-> to-spr-channel chcr))
+      (nop!)
+      (label begin-batch)
+      (m gp a0)
+      (xor.i t4 t4 TFRAG-INPUT-BANK-FLIP)
+      (add.i a0 a0 2)
+      (m t9 a0)
+      (m frag t4)
+      (add.i t7 a2 -16)
+      (b.gt t7 r0 find-next-visible-batch :delay (l.h t7 a0))
+      (b wait-last-header-dma :delay (nop!))
+      (label skip-empty-batch)
+      (add.i a2 a2 -16)
+      (add.i a0 a0 2)
+      (b.le a2 r0 wait-last-header-dma :delay (l.h t7 a0))
+      (nop!)
+      (nop!)
+      (label find-next-visible-batch)
+      (b.z t7 skip-empty-batch :delay (add.i a1 a1 1024))
+      (label wait-header-dma)
+      (l.w t7 (-> to-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i t7 t7 DMA-CHCR-STR)
+      (nop!)
+      (b.z t7 start-header-dma :delay (nop!))
+      (nop!)
+      (l.w t7 (-> work near-wait-to-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i t7 t7 1)
+      (nop!)
+      (s.w t7 (-> work near-wait-to-spr))
+      (b wait-header-dma :delay (nop!))
+      (label start-header-dma)
+      (s.w a1 (-> to-spr-channel madr))
+      (xor.i t7 t4 TFRAG-INPUT-BANK-FLIP)
+      (s.w t7 (-> to-spr-channel sadr))
+      (add.i t7 r0 64)
+      (s.w t7 (-> to-spr-channel qwc))
+      (add.i t7 r0 DMA-CHCR-STR)
+      (b read-visibility-byte :delay (s.w t7 (-> to-spr-channel chcr)))
+      (label wait-last-header-dma)
+      (l.w t7 (-> to-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i t7 t7 DMA-CHCR-STR)
+      (nop!)
+      (b.z t7 read-visibility-byte :delay (nop!))
+      (nop!)
+      (l.w t7 (-> work near-wait-to-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i t7 t7 1)
+      (nop!)
+      (s.w t7 (-> work near-wait-to-spr))
+      (b wait-last-header-dma :delay (nop!))
+      (label read-visibility-byte)
+      (l.b t7 gp)
+      (add.i gp gp 1)
+      (nop!)
+      (s.w gp (-> work cur-vis-bits))
+      (b.nz t7 begin-visible-group :delay (s.w t9 (-> work end-vis-bits)))
+      (add.i a2 a2 -8)
+      (add.i frag frag 512)
+      (b group-done :delay (nop!))
+      (label begin-visible-group)
+      (add.i t9 r0 128)
+      (l.vf vf2 (-> frag bsphere))
+      (label fragment-loop)
+      (nop!)
+      (l.hu gp (-> frag id))
+      (nop!)
+      (l.w s5 (-> work test-id))
+      (b.ne gp s5 wait-packet-bank-free :delay (nop!))
+      (nop!)
+      (nop!)
+      (label wait-packet-bank-free)
+      (add.i gp packet-qwc -124)
+      (nop!)
+      (b.le gp r0 select-finest-stream :delay (nop!))
+      (label send-packet-bank)
+      (l.w ra (-> from-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i ra ra DMA-CHCR-STR)
+      (nop!)
+      (b.z ra send-packet-bank-body :delay (nop!))
+      (nop!)
+      (l.w ra (-> work near-wait-from-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i ra ra 1)
+      (nop!)
+      (s.w ra (-> work near-wait-from-spr))
+      (b send-packet-bank :delay (nop!))
+      (label send-packet-bank-body)
+      (s.w dma-buf (-> from-spr-channel sadr))
+      (xor.i dma-buf dma-buf TFRAG-PACKET-BANK-FLIP)
+      (s.w out-cursor (-> from-spr-channel madr))
+      (sll ra packet-qwc 4)
+      (add out-cursor out-cursor ra)
+      (m ra dma-buf)
+      (s.w packet-qwc (-> from-spr-channel qwc))
+      (add.i packet-qwc r0 DMA-CHCR-STR)
+      (s.w packet-qwc (-> from-spr-channel chcr))
+      (add.i packet-qwc r0 0)
+      (label select-finest-stream)
+      (and s5 t7 t9)
+      (l.bu gp (-> frag num-base-colors))
+      (b.z s5 next-fragment :delay (l.bu s5 (-> frag color-offset)))
+      (nop!)
+      (l.bu s4 (-> frag num-level0-colors))
+      (nop!)
+      (l.bu s3 (-> frag num-level1-colors))
+      (nop!)
+      (s.b s5 (-> work color-tmpl vif1))
+      (b.z s4 select-base-stream :delay (l.w s5 (-> frag color-indices)))
+      (b.z s3 select-level0-stream :delay (nop!))
+      (add.i s4 s3 3)
+      (m gp s3)
+      (sra s4 s4 2)
+      (s.w t5 (-> work common-tmpl vif1))
+      (sll t5 s4 2)
+      (s.h s4 (-> work color-tmpl dma))
+      (nop!)
+      (s.b t5 (-> work color-tmpl vif1 num))
+      (add.i packet-qwc packet-qwc 3)
+      (l.wu t5 (-> frag dma-chain 0))
+      (nop!)
+      (l.bu s3 (-> frag dma-qwc 0))
+      (nop!)
+      (s.w t5 (-> work common-tmpl dma addr))
+      (nop!)
+      (s.h s3 (-> work common-tmpl dma))
+      (nop!)
+      (l.wu t5 (-> frag dma-chain 2))
+      (nop!)
+      (l.bu s3 (-> frag dma-qwc 2))
+      (nop!)
+      (s.w t5 (-> work level-1-tmpl dma addr))
+      (nop!)
+      (s.h s3 (-> work level-1-tmpl dma))
+      (l.q t5 (-> work common-tmpl dma))
+      (nop!)
+      (l.q s3 (-> work level-1-tmpl dma))
+      (nop!)
+      (l.q s2 (-> work color-tmpl dma))
+      (nop!)
+      (s.q t5 ra)
+      (nop!)
+      (s.q s3 ra 16)
+      (nop!)
+      (s.q s2 ra 32)
+      (add.i ra ra 48)
+      (b check-packet-bank-room :delay (ori t5 mscal-tag TNEAR-VU-DRAW))
+      (label select-level0-stream)
+      (add.i s3 s4 3)
+      (m gp s4)
+      (sra s4 s3 2)
+      (s.w t5 (-> work level-0-tmpl vif1))
+      (sll t5 s4 2)
+      (s.h s4 (-> work color-tmpl dma))
+      (nop!)
+      (s.b t5 (-> work color-tmpl vif1 num))
+      (add.i packet-qwc packet-qwc 2)
+      (l.wu t5 (-> frag dma-chain 0))
+      (nop!)
+      (l.bu s3 (-> frag dma-qwc 3))
+      (nop!)
+      (s.w t5 (-> work level-0-tmpl dma addr))
+      (nop!)
+      (s.h s3 (-> work level-0-tmpl dma))
+      (l.q t5 (-> work level-0-tmpl dma))
+      (nop!)
+      (l.q s3 (-> work color-tmpl dma))
+      (nop!)
+      (s.q t5 ra)
+      (nop!)
+      (s.q s3 ra 16)
+      (add.i ra ra 32)
+      (b check-packet-bank-room :delay (ori t5 mscal-tag TNEAR-VU-DRAW))
+      (label select-base-stream)
+      (add.i s4 gp 3)
+      (nop!)
+      (sra s4 s4 2)
+      (s.w t5 (-> work base-tmpl vif1))
+      (sll t5 s4 2)
+      (s.h s4 (-> work color-tmpl dma))
+      (nop!)
+      (s.b t5 (-> work color-tmpl vif1 num))
+      (add.i packet-qwc packet-qwc 2)
+      (l.wu t5 (-> frag dma-chain 1))
+      (nop!)
+      (l.bu s3 (-> frag dma-qwc 1))
+      (nop!)
+      (s.w t5 (-> work base-tmpl dma addr))
+      (nop!)
+      (s.h s3 (-> work base-tmpl dma))
+      (l.q t5 (-> work base-tmpl dma))
+      (nop!)
+      (l.q s3 (-> work color-tmpl dma))
+      (nop!)
+      (s.q t5 ra)
+      (ori t5 mscal-tag TNEAR-VU-DRAW)
+      (s.q s3 ra 16)
+      (add.i ra ra 32)
+      (label check-packet-bank-room)
+      (add.i s3 r0 127)
+      (add s2 packet-qwc s4)
+      (sub s3 s3 s2)
+      (nop!)
+      (b.ge s3 r0 expand-fragment-colors :delay (nop!))
+      (label wait-packet-bank-free-2)
+      (l.w ra (-> from-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i ra ra DMA-CHCR-STR)
+      (nop!)
+      (b.z ra send-packet-bank-2 :delay (nop!))
+      (nop!)
+      (l.w ra (-> work near-wait-from-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i ra ra 1)
+      (nop!)
+      (s.w ra (-> work near-wait-from-spr))
+      (b wait-packet-bank-free-2 :delay (nop!))
+      (label send-packet-bank-2)
+      (s.w dma-buf (-> from-spr-channel sadr))
+      (xor.i dma-buf dma-buf TFRAG-PACKET-BANK-FLIP)
+      (s.w out-cursor (-> from-spr-channel madr))
+      (sll ra packet-qwc 4)
+      (add out-cursor out-cursor ra)
+      (m ra dma-buf)
+      (s.w packet-qwc (-> from-spr-channel qwc))
+      (add.i packet-qwc r0 DMA-CHCR-STR)
+      (s.w packet-qwc (-> from-spr-channel chcr))
+      (add.i packet-qwc r0 0)
+      ;; Same color gather as the far builder, and the same register borrow: the fragment address in t8 is
+      ;; parked in work.src-ptr while t8 walks the packed uint16 indices as color-cursor, then reloaded. The
+      ;; doubleword load reads four indices at once, not a tfragment field.
+      (label expand-fragment-colors)
+      (add packet-qwc packet-qwc s4)
+      (s.w frag (-> work src-ptr))
+      (l.d s4 s5)
+      (add.i color-cursor s5 8)
+      (add.i gp gp -4)
+      (l.q s5 (-> work color-ptr))
+      (pextlh s4 r0 s4)
+      (mmi-nop!)
+      (add.w s2 s4 s5)
+      (mmi-nop!)
+      (l.w s4 s2)
+      (sra32 s3 s2 0)
+      (l.w s3 s3)
+      (pcpyud s1 s2 s2)
+      (l.w s2 s1)
+      (sra32 s1 s1 0)
+      (b.le gp r0 expand-colors-tail :delay (l.w s1 s1))
+      (label expand-colors-loop)
+      (l.d s0 color-cursor) ;; four packed color indices at once
+      (add.i ra ra 16)
+      (add.i color-cursor color-cursor 8)
+      (s.w s4 ra -16)
+      (add.i gp gp -4)
+      (s.w s3 ra -12)
+      (pextlh s4 r0 s0)
+      (s.w s2 ra -8)
+      (add.w s2 s4 s5)
+      (s.w s1 ra -4)
+      (l.w s4 s2)
+      (sra32 s3 s2 0)
+      (l.w s3 s3)
+      (pcpyud s1 s2 s2)
+      (l.w s2 s1)
+      (sra32 s1 s1 0)
+      (b.gt gp r0 expand-colors-loop :delay (l.w s1 s1))
+      (label expand-colors-tail)
+      (add.i ra ra 16)
+      (l.w frag (-> work src-ptr))
+      (nop!)
+      (s.w s4 ra -16)
+      (nop!)
+      (s.w s3 ra -12)
+      (nop!)
+      (s.w s2 ra -8)
+      (nop!)
+      (s.w s1 ra -4)
+      (xor t7 t7 t9)
+      (nop!)
+      (label next-fragment)
+      (add.i frag frag 64)
+      (srl t9 t9 1)
+      (add.i a2 a2 -1)
+      (nop!)
+      (b.nz t9 fragment-loop :delay (l.vf vf2 (-> frag bsphere)))
+      (label group-done)
+      (nop!)
+      (l.w gp (-> work cur-vis-bits))
+      (nop!)
+      (l.w t9 (-> work end-vis-bits))
+      (b.ne gp t9 read-visibility-byte :delay (s.b t7 gp -1))
+      (b.gt a2 r0 begin-batch :delay (nop!))
+      (b.z packet-qwc wait-packet-dma-idle :delay (nop!))
+      (label wait-final-packet-dma)
+      (l.w a0 (-> from-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i a0 a0 DMA-CHCR-STR)
+      (nop!)
+      (b.z a0 send-final-packet-bank :delay (nop!))
+      (nop!)
+      (l.w a0 (-> work near-wait-from-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i a0 a0 1)
+      (nop!)
+      (s.w a0 (-> work near-wait-from-spr))
+      (b wait-final-packet-dma :delay (nop!))
+      (label send-final-packet-bank)
+      (s.w dma-buf (-> from-spr-channel sadr))
+      (xor.i a0 dma-buf #x1800)
+      (s.w out-cursor (-> from-spr-channel madr))
+      (sll a1 packet-qwc 4)
+      (add out-cursor out-cursor a1)
+      (m a0 a0)
+      (s.w packet-qwc (-> from-spr-channel qwc))
+      (add.i a0 r0 DMA-CHCR-STR)
+      (s.w a0 (-> from-spr-channel chcr))
+      (add.i a0 r0 0)
+      (label wait-packet-dma-idle)
+      (l.w a0 (-> from-spr-channel chcr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (and.i a0 a0 DMA-CHCR-STR)
+      (nop!)
+      (b.z a0 tfrag-near-draw-return :delay (nop!))
+      (nop!)
+      (l.w a0 (-> work near-wait-from-spr))
+      (nop!)
+      (nop!)
+      (nop!)
+      (add.i a0 a0 1)
+      (nop!)
+      (s.w a0 (-> work near-wait-from-spr))
+      (b wait-packet-dma-idle :delay (nop!))
+      (label tfrag-near-draw-return)
+      (l.w a0 (-> work dma-buffer))
+      (nop!)
+      (s.w t5 (-> work last-call))
+      (nop!)
+      (s.w out-cursor a0 4)
+      (nop!)
+      (m v0 r0)
+      (l.d ra sp)
+      (l.q gp sp 112)
+      (l.q s5 sp 96)
+      (l.q s4 sp 80)
+      (l.q s3 sp 64)
+      (l.q s2 sp 48)
+      (l.q s1 sp 32)
+      (l.q s0 sp 16)
+      (jr ra :delay (add.i sp sp 128))
+      (nop!)
+      (nop!)
+      (nop!))))
 
 (#when PC_PORT
-  (def-mips2c stats-tfrag-asm (function tfragment none)))
+  (defun stats-tfrag-asm ((fragment tfragment))
+    "Classify a visible terrain fragment and accumulate the statistics for the selected detail level."
+    (let ((debug (-> fragment debug-data)))
+      (when (nonzero? debug)
+        (let* ((sphere (-> fragment bsphere))
+               (camera *math-camera*)
+               (radius (-> sphere w))
+               (inside-frustum? (and (>= (+ (* (-> camera plane 0 x) (-> sphere x))
+                                            (* (-> camera plane 1 x) (-> sphere y))
+                                            (* (-> camera plane 2 x) (-> sphere z))
+                                            (- (-> camera plane 3 x))
+                                            radius)
+                                         0.0)
+                                     (>= (+ (* (-> camera plane 0 y) (-> sphere x))
+                                            (* (-> camera plane 1 y) (-> sphere y))
+                                            (* (-> camera plane 2 y) (-> sphere z))
+                                            (- (-> camera plane 3 y))
+                                            radius)
+                                         0.0)
+                                     (>= (+ (* (-> camera plane 0 z) (-> sphere x))
+                                            (* (-> camera plane 1 z) (-> sphere y))
+                                            (* (-> camera plane 2 z) (-> sphere z))
+                                            (- (-> camera plane 3 z))
+                                            radius)
+                                         0.0)
+                                     (>= (+ (* (-> camera plane 0 w) (-> sphere x))
+                                            (* (-> camera plane 1 w) (-> sphere y))
+                                            (* (-> camera plane 2 w) (-> sphere z))
+                                            (- (-> camera plane 3 w))
+                                            radius)
+                                         0.0))))
+          (when inside-frustum?
+            (let* ((work *tfrag-work*)
+                   (depth (+ (* (-> camera camera-rot vector 0 z) (-> sphere x))
+                             (* (-> camera camera-rot vector 1 z) (-> sphere y))
+                             (* (-> camera camera-rot vector 2 z) (-> sphere z))
+                             (-> camera camera-rot vector 3 z)))
+                   (near-edge (- depth radius))
+                   (far-edge (+ depth radius))
+                   (detail-level (cond
+                                   ((or (>= near-edge (- (-> work frag-dists x))) (zero? (-> fragment num-level0-colors))) 0)
+                                   ((or (>= near-edge (- (-> work frag-dists y))) (zero? (-> fragment num-level1-colors))) 1)
+                                   (else 2)))
+                   (near-stat?
+                     ;; The lower streams count as near when either the whole sphere is inside the
+                     ;; level-1 threshold or any part has crossed the close threshold.
+                     (if (= detail-level 2)
+                         (< far-edge (- (-> work frag-dists w)))
+                         (or (< far-edge (- (-> work frag-dists z))) (< near-edge (- (-> work frag-dists w))))))
+                   (stat (if near-stat? (-> work tr-stat-tfrag-near) (-> work tr-stat-tfrag))))
+              ;; The original loads only the low byte of each uint16 debug count.
+              (+! (-> stat tris) (logand (-> debug stats num-tris detail-level) #xff))
+              (+! (-> stat dverts) (logand (-> debug stats num-dverts detail-level) #xff))
+              (+! (-> stat fragments) 1))))))
+    (none)))
 
 ;; Transform the fragment bounding sphere with the camera rows in *tfrag-work*. Fragments outside
 ;; the homogeneous guard range do not contribute. The remaining packed detail tests select one of
@@ -4329,145 +4306,138 @@
     ;; been chosen, so both get a second name. a0 becomes a pointer to the tr-stat the fragment counts
     ;; toward, and v1 becomes a running dvert total; in between a0 briefly holds a color count and then
     ;; shifted flag bytes, and those keep the physical spelling because they are not either thing.
-
-    ;; Note which pointer convention frag follows here. It is an ordinary GOAL basic pointer, so a
-    ;; displacement is four less than the offset the deftype shows - which is why bsphere is reached at
-    ;; 12 and the color counts at 49, 50 and 51. The scratchpad copies that the two draw functions walk
-    ;; are biased the other way and address the type tag, so the same field is four higher there. Reading
-    ;; one convention with the other silently shifts every field by one word.
-
     ;; The vector registers are the shared background camera convention rather than anything local:
     ;; vf16..vf19 are the culling planes and vf24..vf27 the camera transform, exactly as the LOD
     ;; classifier uses them.
-    (rlet ((frag :reg a0 :type tfragment)                ;; BASIC pointer, unlike the draw functions
-           (stat :reg a0 :type tr-stat)                  ;; what a0 becomes once a level is chosen
-           (debug :reg a1 :type tfragment-debug-data)     ;; the exporter's per-level triangle counts
+    (rlet ((frag :reg a0 :type tfragment) ;; BASIC pointer, unlike the draw functions
+           (stat :reg a0 :type tr-stat) ;; what a0 becomes once a level is chosen
+           (debug :reg a1 :type tfragment-debug-data) ;; the exporter's per-level triangle counts
            (work :reg v1 :type tfrag-work)
-           (dvert-total :reg v1))                        ;; what v1 becomes in the accumulate blocks
-    (label stats-tfrag-entry)
-    (nop!)
-    (nop!)
-    (m! work *tfrag-work*)
-    (nop!)
-    (l.w debug (-> frag debug-data))
-    (nop!)
-    (l.vf vf10 (-> frag bsphere))
-    (b.z debug stats-tfrag-asm-finish-stats :delay (l.vf vf14 (-> work frag-dists)))
-    (mula.x.vf vf16 vf10)
-    (l.b a2 (-> frag num-base-colors))
-    (madda.y.vf vf17 vf10)
-    (l.b a2 (-> frag num-level0-colors))
-    (madda.z.vf vf18 vf10)
-    (l.b a0 (-> frag num-level1-colors))
-    (msub.w.vf vf9 vf19 vf0)
-    (nop!)
-    (mula.w.vf vf27 vf0)
-    (nop!)
-    (madda.x.vf vf24 vf10)
-    (nop!)
-    (madda.y.vf vf25 vf10)
-    (nop!)
-    (add.w.vf vf9 vf9 vf10)
-    (nop!)
-    (madd.z.vf vf11 vf26 vf10)
-    (nop!)
-    (add.w.vf vf12 vf11 vf10)
-    (nop!)
-    (sub.w.vf vf13 vf11 vf10)
-    (nop!)
-    (sub.z.vf vf11 vf0 vf12)
-    (nop!)
-    (m a3 vf9)
-    (nop!)
-    (pcgt.w a3 r0 a3)
-    (mmi-nop!)
-    (ppach a3 r0 a3)
-    (mmi-nop!)
-    (b.nz a3 stats-tfrag-asm-finish-stats :delay (add.z.vf vf12 vf14 vf12))
-    (nop!)
-    (add.z.vf vf13 vf14 vf13)
-    (m t0 vf12)
-    (nop!)
-    (m a3 vf13)
-    (nop!)
-    (pcgt.w t0 r0 t0)
-    (mmi-nop!)
-    (pcgt.w a3 r0 a3)
-    (mmi-nop!)
-    (pinteh a3 t0 a3)
-    (mmi-nop!)
-    (ppacb a3 r0 a3)
-    (mmi-nop!)
-    (b.z a3 stats-tfrag-asm-select-base-stat :delay (nop!))
-    (b.z a2 stats-tfrag-asm-select-base-stat :delay (nop!))
-    (b.z a0 stats-tfrag-asm-select-middle-stat :delay (srl a0 a3 16))
-    (b.z a0 stats-tfrag-asm-select-middle-stat :delay (nop!))
-    (srl32 a0 a3 24)
-    (l.bu a2 (-> debug stats num-tris 2))
-    (b.nz a0 stats-tfrag-asm-accumulate-selected-high :delay (l.w stat (-> work tr-stat-tfrag-near)))
-    (nop!)
-    (l.w stat (-> work tr-stat-tfrag))
-    (label stats-tfrag-asm-accumulate-selected-high)
-    (nop!)
-    (l.bu dvert-total (-> debug stats num-dverts 2))
-    (nop!)
-    (l.w a3 (-> stat tris))
-    (nop!)
-    (l.w a1 (-> stat dverts))
-    (add a2 a3 a2)
-    (s.w a2 (-> stat tris))
-    (nop!)
-    (l.h a2 (-> stat fragments))
-    (add dvert-total a1 dvert-total)
-    (s.w dvert-total (-> stat dverts))
-    (add.i dvert-total a2 1)
-    (s.h dvert-total (-> stat fragments))
-    (b stats-tfrag-asm-finish-stats :delay (nop!))
-    (label stats-tfrag-asm-select-middle-stat)
-    (srl32 a0 a3 8)
-    (l.bu a2 (-> debug stats num-tris 1))
-    (b.nz a0 stats-tfrag-asm-accumulate-selected-middle :delay (l.w stat (-> work tr-stat-tfrag-near)))
-    (nop!)
-    (l.w stat (-> work tr-stat-tfrag))
-    (label stats-tfrag-asm-accumulate-selected-middle)
-    (nop!)
-    (l.bu dvert-total (-> debug stats num-dverts 1))
-    (nop!)
-    (l.w a3 (-> stat tris))
-    (nop!)
-    (l.w a1 (-> stat dverts))
-    (add a2 a3 a2)
-    (s.w a2 (-> stat tris))
-    (nop!)
-    (l.h a2 (-> stat fragments))
-    (add dvert-total a1 dvert-total)
-    (s.w dvert-total (-> stat dverts))
-    (add.i dvert-total a2 1)
-    (s.h dvert-total (-> stat fragments))
-    (b stats-tfrag-asm-finish-stats :delay (nop!))
-    (label stats-tfrag-asm-select-base-stat)
-    (srl32 a0 a3 8)
-    (l.bu a2 (-> debug stats num-tris 0))
-    (b.nz a0 stats-tfrag-asm-accumulate-selected-base :delay (l.w stat (-> work tr-stat-tfrag-near)))
-    (b stats-tfrag-asm-accumulate-selected-base :delay (l.w stat (-> work tr-stat-tfrag)))
-    (label stats-tfrag-asm-accumulate-selected-base)
-    (nop!)
-    (l.bu dvert-total (-> debug stats num-dverts 0))
-    (nop!)
-    (l.w a3 (-> stat tris))
-    (nop!)
-    (l.w a1 (-> stat dverts))
-    (add a2 a3 a2)
-    (s.w a2 (-> stat tris))
-    (nop!)
-    (l.h a2 (-> stat fragments))
-    (add dvert-total a1 dvert-total)
-    (s.w dvert-total (-> stat dverts))
-    (add.i dvert-total a2 1)
-    (s.h dvert-total (-> stat fragments))
-    (label stats-tfrag-asm-finish-stats)
-    (m v0 r0)
-    (jr ra :delay (add sp sp r0))
-    (nop!)
-    (nop!)
-    (nop!))))
+           (dvert-total :reg v1)) ;; what v1 becomes in the accumulate blocks
+      (label stats-tfrag-entry)
+      (nop!)
+      (nop!)
+      (m! work *tfrag-work*)
+      (nop!)
+      (l.w debug (-> frag debug-data))
+      (nop!)
+      (l.vf vf10 (-> frag bsphere))
+      (b.z debug stats-tfrag-asm-finish-stats :delay (l.vf vf14 (-> work frag-dists)))
+      (mula.x.vf vf16 vf10)
+      (l.b a2 (-> frag num-base-colors))
+      (madda.y.vf vf17 vf10)
+      (l.b a2 (-> frag num-level0-colors))
+      (madda.z.vf vf18 vf10)
+      (l.b a0 (-> frag num-level1-colors))
+      (msub.w.vf vf9 vf19 vf0)
+      (nop!)
+      (mula.w.vf vf27 vf0)
+      (nop!)
+      (madda.x.vf vf24 vf10)
+      (nop!)
+      (madda.y.vf vf25 vf10)
+      (nop!)
+      (add.w.vf vf9 vf9 vf10)
+      (nop!)
+      (madd.z.vf vf11 vf26 vf10)
+      (nop!)
+      (add.w.vf vf12 vf11 vf10)
+      (nop!)
+      (sub.w.vf vf13 vf11 vf10)
+      (nop!)
+      (sub.z.vf vf11 vf0 vf12)
+      (nop!)
+      (m a3 vf9)
+      (nop!)
+      (pcgt.w a3 r0 a3)
+      (mmi-nop!)
+      (ppach a3 r0 a3)
+      (mmi-nop!)
+      (b.nz a3 stats-tfrag-asm-finish-stats :delay (add.z.vf vf12 vf14 vf12))
+      (nop!)
+      (add.z.vf vf13 vf14 vf13)
+      (m t0 vf12)
+      (nop!)
+      (m a3 vf13)
+      (nop!)
+      (pcgt.w t0 r0 t0)
+      (mmi-nop!)
+      (pcgt.w a3 r0 a3)
+      (mmi-nop!)
+      (pinteh a3 t0 a3)
+      (mmi-nop!)
+      (ppacb a3 r0 a3)
+      (mmi-nop!)
+      (b.z a3 stats-tfrag-asm-select-base-stat :delay (nop!))
+      (b.z a2 stats-tfrag-asm-select-base-stat :delay (nop!))
+      (b.z a0 stats-tfrag-asm-select-middle-stat :delay (srl a0 a3 16))
+      (b.z a0 stats-tfrag-asm-select-middle-stat :delay (nop!))
+      (srl32 a0 a3 24)
+      (l.bu a2 (-> debug stats num-tris 2))
+      (b.nz a0 stats-tfrag-asm-accumulate-selected-high :delay (l.w stat (-> work tr-stat-tfrag-near)))
+      (nop!)
+      (l.w stat (-> work tr-stat-tfrag))
+      (label stats-tfrag-asm-accumulate-selected-high)
+      (nop!)
+      (l.bu dvert-total (-> debug stats num-dverts 2))
+      (nop!)
+      (l.w a3 (-> stat tris))
+      (nop!)
+      (l.w a1 (-> stat dverts))
+      (add a2 a3 a2)
+      (s.w a2 (-> stat tris))
+      (nop!)
+      (l.h a2 (-> stat fragments))
+      (add dvert-total a1 dvert-total)
+      (s.w dvert-total (-> stat dverts))
+      (add.i dvert-total a2 1)
+      (s.h dvert-total (-> stat fragments))
+      (b stats-tfrag-asm-finish-stats :delay (nop!))
+      (label stats-tfrag-asm-select-middle-stat)
+      (srl32 a0 a3 8)
+      (l.bu a2 (-> debug stats num-tris 1))
+      (b.nz a0 stats-tfrag-asm-accumulate-selected-middle :delay (l.w stat (-> work tr-stat-tfrag-near)))
+      (nop!)
+      (l.w stat (-> work tr-stat-tfrag))
+      (label stats-tfrag-asm-accumulate-selected-middle)
+      (nop!)
+      (l.bu dvert-total (-> debug stats num-dverts 1))
+      (nop!)
+      (l.w a3 (-> stat tris))
+      (nop!)
+      (l.w a1 (-> stat dverts))
+      (add a2 a3 a2)
+      (s.w a2 (-> stat tris))
+      (nop!)
+      (l.h a2 (-> stat fragments))
+      (add dvert-total a1 dvert-total)
+      (s.w dvert-total (-> stat dverts))
+      (add.i dvert-total a2 1)
+      (s.h dvert-total (-> stat fragments))
+      (b stats-tfrag-asm-finish-stats :delay (nop!))
+      (label stats-tfrag-asm-select-base-stat)
+      (srl32 a0 a3 8)
+      (l.bu a2 (-> debug stats num-tris 0))
+      (b.nz a0 stats-tfrag-asm-accumulate-selected-base :delay (l.w stat (-> work tr-stat-tfrag-near)))
+      (b stats-tfrag-asm-accumulate-selected-base :delay (l.w stat (-> work tr-stat-tfrag)))
+      (label stats-tfrag-asm-accumulate-selected-base)
+      (nop!)
+      (l.bu dvert-total (-> debug stats num-dverts 0))
+      (nop!)
+      (l.w a3 (-> stat tris))
+      (nop!)
+      (l.w a1 (-> stat dverts))
+      (add a2 a3 a2)
+      (s.w a2 (-> stat tris))
+      (nop!)
+      (l.h a2 (-> stat fragments))
+      (add dvert-total a1 dvert-total)
+      (s.w dvert-total (-> stat dverts))
+      (add.i dvert-total a2 1)
+      (s.h dvert-total (-> stat fragments))
+      (label stats-tfrag-asm-finish-stats)
+      (m v0 r0)
+      (jr ra :delay (add sp sp r0))
+      (nop!)
+      (nop!)
+      (nop!))))

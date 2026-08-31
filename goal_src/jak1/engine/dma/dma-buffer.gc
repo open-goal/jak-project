@@ -127,6 +127,17 @@
                               (set! (-> ,pkt vif0) ,vif0)
                               (set! (-> ,pkt vif1) ,vif1))))
 
+(defmacro dma-buffer-add-next-vif2 (buf qwc addr vif0 vif1)
+  "Append a NEXT dma-packet. It transfers qwc quadwords following the tag, then continues at addr;
+   vif0 and vif1 occupy the tag-transfer command words."
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf
+                              ,pkt
+                              dma-packet
+                              (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id next) :qwc ,qwc :addr (the-as int ,addr)))
+                              (set! (-> ,pkt vif0) ,vif0)
+                              (set! (-> ,pkt vif1) ,vif1))))
+
 (defmacro dma-buffer-add-ret (buf)
   "Append a RET dma-packet with two VIF no-ops."
   (with-gensyms (pkt)
@@ -255,4 +266,5 @@
   "Bind a dma-buffer to a variable and use it on a block to allow adding things to a new bucket.
    usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body)
    example: (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf)) ...)"
-  `(let ((,(caar bindings) ,(cadar bindings))) (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings)) ,@body)))
+  `(let ((,(caar bindings) ,(cadar bindings)))
+    (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings)) ,@body)))

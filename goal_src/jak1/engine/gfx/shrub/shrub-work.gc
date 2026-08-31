@@ -9,29 +9,6 @@
 ;; DECOMP BEGINS
 
 ;; The static templates shrubbery.gc copies and patches while it builds the frame's shrub DMA chains.
-;;
-;; matrix-tmpl and count-tmpl are one twenty-position cycle over the two VU1 instance rings. mod-count
-;; is the position: 0 through 9 fill ring A's ten slots and 10 through 19 fill ring B's. Position k's
-;; matrix packet unpacks five quadwords to that ring's slot, and the count packet at a group boundary
-;; writes how many instances the ring holds.
-;;
-;; The DMA tag ids are the interesting part. Records are appended backwards -- each new tag's ADDR is
-;; patched to the record appended before it -- so the chain runs newest-first, and a next tag is all
-;; that is needed in the middle of a group. At the four group boundaries, positions 0, 9, 10 and 19,
-;; the tag is a cnt instead, so the chain flows on by adjacency into whatever the EE wrote
-;; immediately after it: the count packet when a ring has just filled, or an MSCALF that runs the
-;; draw entry when the next group opens. Read in DMA order, one prototype's chain is the current
-;; partial group followed by each earlier full group in reverse, each ending in its own MSCALF.
-;;
-;; mscalf-tmpl and mscalf-ret-tmpl are that MSCALF, in next and ret flavours. The chain is entered
-;; with a call, so the earliest group -- the last one the DMAC reaches -- has to return instead of
-;; jumping onward, and the builder picks the ret flavour when the bucket has no earlier group.
-;;
-;; The six near packets pair two matrix destinations with three packed-stream destinations, so the EE
-;; can rotate to a free packet while an earlier chain still names the last one. start-bank records
-;; which of the two model-init entries each ring position needs; entry 17 leaves the draw entry
-;; reading ring A and entry 21 leaves it reading ring B, which is why positions 1 through 10 want one
-;; and 0 and 11 through 19 want the other.
 (define *instance-shrub-work*
   (new 'static
        'instance-shrub-work
@@ -507,8 +484,6 @@
        :start-bank
        (new 'static 'array uint8 20 #x0 #x1 #x1 #x1 #x1 #x1 #x1 #x1 #x1 #x1 #x1 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0)))
 
-;; Both flavours start the draw entry. Patched here rather than written into the static data because
-;; the entry address is a property of the microprogram, not of the packet.
 (set! (-> *instance-shrub-work* mscalf-tmpl vif0 imm) SHRUB-VU-ENTRY-DRAW)
 
 (set! (-> *instance-shrub-work* mscalf-ret-tmpl vif0 imm) SHRUB-VU-ENTRY-DRAW)
@@ -587,10 +562,8 @@
                (shr (shl (+ stream-vu-address 2) 54) 54)
                :num (-> fragment vtx-cnt)))
     (set! (-> dma-state base) (&+ (the-as pointer vertex-packet) 16)))
-  (let* ((dma-state dma-buf)
-         (run-packet (the-as object (-> dma-state base))))
-    (set! (-> (the-as dma-packet run-packet) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    (set! (-> (the-as dma-packet run-packet) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet run-packet) vif1) (new 'static 'vif-tag :imm #xa :cmd (vif-cmd mscal) :msk #x1))
-    (set! (-> dma-state base) (&+ (the-as pointer run-packet) 16)))
+  (dma-buffer-add-cnt-vif2 dma-buf
+                           0
+                           (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
+                           (new 'static 'vif-tag :imm #xa :cmd (vif-cmd mscal) :msk #x1))
   dma-buf)

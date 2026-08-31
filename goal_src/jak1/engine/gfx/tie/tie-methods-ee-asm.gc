@@ -1,0 +1,2261 @@
+;;-*-Lisp-*-
+(in-package goal)
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/tie/tie.gc")
+(require "engine/gfx/background/wind-h.gc")
+(require "engine/level/bsp.gc")
+(require "kernel/gstate.gc")
+(require "engine/draw/draw-node-h.gc")
+(require "engine/gfx/generic/generic-h.gc")
+(require "engine/gfx/background/background.gc")
+(require "engine/camera/cam-interface-h.gc")
+(require "engine/collide/collide-shape-h.gc")
+(require "engine/gfx/tie/tie-work.gc")
+(require "engine/gfx/background/subdivide.gc")
+
+;; TIE's four EE packet builders are the densest code in the renderer, and most of that density is
+;; bookkeeping rather than arithmetic: waiting on a scratchpad DMA channel, handing back a full output
+;; bank, and reaching into one of the two work areas. The forms below carry that weight so the
+;; interesting parts stay visible. They emit exactly the instructions listed and nothing else.
+
+;; The scratchpad is a terrain-context: a small header naming the level and its mood, then a work area
+;; that each renderer overlays with its own record. The builders keep their base register at the
+;; scratchpad base and reach the header through it directly, so a field of the overlaid record needs the
+;; work area's own offset added. That is where the otherwise mysterious sixteen comes from.
+(defmacro spr-offset (type &rest path)
+  `(+ (offset-of terrain-context work) (offset-of ,type ,@path)))
+
+;; Flipping between a pair of scratchpad banks is one xor, because each pair differs in exactly the
+;; bits its two offsets disagree on. Deriving the masks from the layout keeps the surprising ones
+;; honest: the instance output pair toggles #x3000, not the #x1000 the 4 KiB bank size suggests,
+;; because outa sits at 4096 and outb at 8192.
+(defconstant TIE-INSTANCE-INPUT-FLIP (logxor (offset-of instance-tie-dma banka) (offset-of instance-tie-dma bankb)))
+
+(defconstant TIE-INSTANCE-OUTPUT-FLIP (logxor (offset-of instance-tie-dma outa) (offset-of instance-tie-dma outb)))
+
+;; One visibility word covers 32 instances, which is also one input bank's worth.
+(defconstant TIE-INSTANCE-BLOCK-SIZE (- (offset-of instance-tie-dma bankb) (offset-of instance-tie-dma banka)))
+
+(defconstant TIE-PROTOTYPE-PALETTE-FLIP
+  (logxor (offset-of prototype-tie-dma colora) (offset-of prototype-tie-dma colorb)))
+
+(defconstant TIE-PROTOTYPE-OUTPUT-FLIP (logxor (offset-of prototype-tie-dma outa) (offset-of prototype-tie-dma outb)))
+
+(#unless PC_PORT
+  (defun draw-inline-array-instance-tie ((visibility pointer) (instances (inline-array instance-tie)) (instance-count int) (dma-buf dma-buffer))
+    "Cull and transform the visible TIE instances, append per-LOD instance records to their
+     prototype buckets, and return the completed packet blocks to dma-buf."
+    (declare (asm-func none) (allow-saved-regs))
+    ;; The instance pass never touches main memory directly if it can help it. Instances arrive 32 at a
+    ;; time into one of two 2 KiB scratchpad banks while the EE reads the other; finished packets go out
+    ;; of two 4 KiB banks, each returned as soon as it holds 256 quadwords. The level's visibility
+    ;; string is scanned a word at a time, and a word of zeroes skips 32 instances without so much as
+    ;; starting a transfer -- which is most of them, most frames.
+    ;;
+    ;; Field accesses through a typed base register carry their own displacement, so instance-tie-work,
+    ;; the instance record, the prototype bucket, and the DMA channel registers all read as fields.
+    ;; Numeric displacements are left only where the address really is untyped: the fixed scratchpad
+    ;; bank bases and the packet layouts assembled inside them.
+    (rlet ((instance-work :reg t0 :type instance-tie-work)
+           (to-spr-channel :reg t1 :type dma-bank-spr)
+           (input-bank :reg t2)
+           (instance-block :reg t3)
+           (scratch-base :reg t4 :type terrain-context)
+           (instance :reg t4 :type instance-tie)
+           (wind-time :reg t5)
+           (vis-bits :reg t6)
+           (vis-mask :reg t7)
+           ;; The six-quadword instance record under construction. Advancing by 96 and then writing the
+           ;; three command quadwords behind the cursor is why the negative displacements below are raw.
+           (packet-cursor :reg t8 :type tie-matrix)
+           (packet-qwc :reg t9)
+           (memory-cursor :reg v1)
+           ;; Two of the arguments are consumed during setup and their registers then carry something
+           ;; else for the rest of the function. Both names are given so each half reads correctly.
+           (dma-buf :reg a3 :type dma-buffer)
+           (from-spr-channel :reg a3 :type dma-bank-spr)
+           (instances :reg a1)
+           (output-bank :reg a1)
+           (vis-word-ptr :reg a0)
+           (instance-count :reg a2)
+           ;; The instance's prototype, reached through the pointer cached in the instance record.
+           (bucket :reg ra :type prototype-bucket-tie))
+      ;; gp and s0 through s5 are short-lived temporaries whose meaning changes every few
+      ;; instructions, so they keep their physical names; each block says what they are holding.
+      ;; ra doubles as the saved visibility cursor between blocks and as the bucket pointer inside
+      ;; the classifier, which is why both spellings appear.
+      ;;
+      ;; VU0 registers, established by background-upload-vu0 and the background VU0 program and live
+      ;; for this whole function:
+      ;;   vf1        1.0 in every lane
+      ;;   vf2        the point handed to VU0 -- here, the instance's bounding sphere
+      ;;   vf4/5/6    VU0 entry 42's results: plane distances, camera-temp times the point, and
+      ;;              camera rotation times the point
+      ;;   vf20..23   the ordinary background camera matrix
+      ;;   vi1        the MAC sign flags VU0 leaves for the reject test
+      (asm-block setup-instance-stream
+                 (label tie-instance-entry)
+                 (add.i sp sp -128)
+                 (s.d ra sp)
+                 (s.q s0 sp 16)
+                 (s.q s1 sp 32)
+                 (s.q s2 sp 48)
+                 (s.q s3 sp 64)
+                 (s.q s4 sp 80)
+                 (s.q s5 sp 96)
+                 (s.q gp sp 112)
+                 ;; t4 is the scratchpad base until the instance cursor takes it over. Both DMA channel
+                 ;; addresses share the upper half of SPR_TO_BANK and SPR_FROM_BANK, so one lui does for
+                 ;; both of them and for the bank bases.
+                 (lui scratch-base #x7000)
+                 (l.w memory-cursor (-> dma-buf base))
+                 (lui to-spr-channel #x1000)
+                 (lui input-bank #x1000)
+                 ;; Write back and invalidate the two cache ways covering the DMA cursor before the
+                 ;; fromSPR channel starts writing behind the EE's back.
+                 (sync.l)
+                 (cache dxwbin memory-cursor 0)
+                 (sync.l)
+                 (cache dxwbin memory-cursor 1)
+                 (sync.l)
+                 (m! instance-work *instance-tie-work-copy*)
+                 (ori to-spr-channel to-spr-channel #xd400)
+                 (s.w dma-buf (-> instance-work dma-buffer))
+                 (ori from-spr-channel input-bank #xd000)
+                 (m! wind-time *wind-work*)
+                 (l.w vis-bits vis-word-ptr)
+                 (ori input-bank instance (spr-offset instance-tie-dma banka))
+                 ;; 1.0 in every lane, used throughout as the multiply-add identity.
+                 (max.w.vf vf1 vf0 vf0)
+                 ;; The visibility walk pre-decrements, so the instance cursor starts one word low.
+                 (add.i instance-block instances -4)
+                 (ori output-bank instance (spr-offset instance-tie-dma outa))
+                 (s.w to-spr-channel (-> instance-work to-spr))
+                 (add.i packet-qwc r0 0)
+                 (s.w from-spr-channel (-> instance-work from-spr))
+                 (m packet-cursor output-bank)
+                 (s.w wind-time (-> instance-work wind-work))
+                 (nop!)
+                 (l.vf vf3 (-> instance-work constant))
+                 (nop!)
+                 (s.w r0 (-> instance-work flags)))
+      ;; Find the first occupied 32-instance visibility word. Empty words need no input transfer.
+      (asm-block stream-visible-instance-blocks
+                 (label tie-instance-find-visible-word)
+                 (b.nz vis-bits tie-instance-wait-first-instance-upload :delay (nop!))
+                 (add.i vis-word-ptr vis-word-ptr 4)
+                 (add.i instance-block instance-block TIE-INSTANCE-BLOCK-SIZE)
+                 (add.i instance-count instance-count -32)
+                 (l.w vis-bits vis-word-ptr)
+                 (b.le instance-count r0 tie-instance-finish :delay (nop!))
+                 (b tie-instance-find-visible-word :delay (nop!))
+                 ;; The first occupied block can start once the previous to-scratchpad transfer completes.
+                 (label tie-instance-wait-first-instance-upload)
+                 (l.w instance (-> to-spr-channel chcr))
+                 (nop! :count 3)
+                 (and.i instance instance DMA-CHCR-STR)
+                 (nop!)
+                 (b.nz instance tie-instance-wait-first-instance-upload :delay (nop!))
+                 (s.w instance-block (-> to-spr-channel madr))
+                 (xor.i instance input-bank TIE-INSTANCE-INPUT-FLIP)
+                 (s.w instance (-> to-spr-channel sadr))
+                 (add.i instance r0 128)
+                 (s.w instance (-> to-spr-channel qwc))
+                 (add.i instance r0 DMA-CHCR-STR)
+                 (s.w instance (-> to-spr-channel chcr))
+                 (nop!)
+                 ;; Preserve this word's visibility address, select the other input bank, and look ahead for the
+                 ;; next occupied word while the current block is consumed.
+                 (label tie-instance-begin-instance-block)
+                 (m ra vis-word-ptr)
+                 (xor.i input-bank input-bank TIE-INSTANCE-INPUT-FLIP)
+                 (add.i vis-word-ptr vis-word-ptr 4)
+                 (m vis-mask vis-word-ptr)
+                 (m instance input-bank)
+                 (add.i vis-bits instance-count -32)
+                 (b.gt vis-bits r0 tie-instance-find-next-visible-word :delay (l.w vis-bits vis-word-ptr))
+                 (b tie-instance-finish-instance-upload :delay (nop!))
+                 (nop!)
+                 (l.w memory-cursor r0 400)
+                 ;; Skip an empty look-ahead word, keeping its instance address in lockstep with visibility.
+                 (label tie-instance-advance-visibility-word)
+                 (add.i instance-count instance-count -32)
+                 (add.i vis-word-ptr vis-word-ptr 4)
+                 (b.le instance-count r0 tie-instance-finish-instance-upload :delay (l.w vis-bits vis-word-ptr))
+                 (nop! :count 2)
+                 ;; Do not overwrite the input bank until the outstanding to-scratchpad DMA is finished.
+                 (label tie-instance-find-next-visible-word)
+                 (b.z vis-bits tie-instance-advance-visibility-word :delay (add.i instance-block instance-block TIE-INSTANCE-BLOCK-SIZE))
+                 (dma-wait-counting-stalls! t6
+                                            to-spr-channel
+                                            (-> instance-work wait-to-spr)
+                                            tie-instance-wait-instance-upload
+                                            tie-instance-start-instance-upload)
+                 ;; Transfer the next occupied 32-instance block into the bank not currently being read.
+                 (label tie-instance-start-instance-upload)
+                 (s.w instance-block (-> to-spr-channel madr))
+                 (xor.i vis-bits input-bank TIE-INSTANCE-INPUT-FLIP)
+                 (s.w vis-bits (-> to-spr-channel sadr))
+                 (add.i vis-bits r0 128)
+                 (s.w vis-bits (-> to-spr-channel qwc))
+                 (add.i vis-bits r0 DMA-CHCR-STR)
+                 (b tie-instance-next-visibility-byte :delay (s.w vis-bits (-> to-spr-channel chcr)))
+                 ;; At the tail, wait for the last input block rather than starting another look-ahead transfer.
+                 (dma-wait-counting-stalls! t6
+                                            to-spr-channel
+                                            (-> instance-work wait-to-spr)
+                                            tie-instance-finish-instance-upload
+                                            tie-instance-next-visibility-byte)
+                 ;; Consume eight visibility bits at a time. A zero byte skips eight instance records at once.
+                 (label tie-instance-next-visibility-byte)
+                 (l.b vis-bits ra)
+                 (add.i ra ra 1)
+                 (nop!)
+                 (s.w ra (-> instance-work cur-vis-bits))
+                 (b.nz vis-bits tie-instance-begin-visible-byte :delay (s.w vis-mask (-> instance-work end-vis-bits)))
+                 (add.i instance-count instance-count -8)
+                 (add.i instance instance 512)
+                 (b tie-instance-finish-visibility-byte :delay (nop!)))
+      ;; Each set bit selects one 64-byte instance. VU0 entry 42 transforms its bounds through
+      ;; the background matrices and returns the common-plane reject bits before any packet work.
+      (asm-block cull-visible-instances
+                 (label tie-instance-begin-visible-byte)
+                 (add.i vis-mask r0 128)
+                 (l.vf vf2 (-> instance bsphere))
+                 (label tie-instance-next-instance)
+                 (add.i ra packet-qwc -246)
+                 (nop!)
+                 (b.le ra r0 tie-instance-classify-instance :delay (callms 42))
+                 ;; A transformed instance needs at most ten qwords beyond the current packet tail. Return a
+                 ;; nearly full bank before classifying it so one instance never crosses output banks.
+                 (dma-wait-counting-stalls! packet-cursor
+                                            from-spr-channel
+                                            (-> instance-work wait-from-spr)
+                                            tie-instance-wait-output-space
+                                            tie-instance-flush-output)
+                 ;; Submit the occupied qwords and immediately switch to the other 4 KiB output bank.
+                 (dma-return-output-bank! output-bank
+                                          TIE-INSTANCE-OUTPUT-FLIP
+                                          packet-cursor
+                                          packet-qwc
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-instance-flush-output))
+      ;; Unpack the instance, decide what it is, and shear it into the wind.
+      ;;
+      ;; VU0 entry 42 has already turned the instance's bounding sphere into plane distances and a
+      ;; camera-space position, so the reject test and the LOD distance are both available before any
+      ;; packet work happens. From the distance the code derives three things at once: whether the
+      ;; instance is near enough to need the clipping renderer, which of the prototype's four
+      ;; geometries to use, and the morph weight that blends the chosen geometry toward the next
+      ;; coarser one. Ordinary TIE uses geometries 1 through 3, the near path uses 0, and Generic
+      ;; keeps its own four lists.
+      ;;
+      ;; VU0 registers through this block:
+      ;;   vf8         camera-space distance to the instance, broadcast (z minus bounding radius)
+      ;;   vf10..vf13  the four instance rows, unpacked and then sheared, sent to VU1 as-is
+      ;;   vf14/vf15   the prototype's dists and rdists, then the LOD fractions derived from them
+      ;;   vf16..vf19  wind temporaries and wind-const
+      ;;   vf28..vf30  the morph quadword for LOD 1, 2 and 3
+      ;;
+      ;; A morph quadword is (1 - f, unused, trunc(256 f), 256 - trunc(256 f)) where f falls from one
+      ;; to zero across the LOD band. x collapses interpolated vertices onto their neighbours and the
+      ;; zw pair blends their colors; see the interp-point pipeline in tie.gc for why those two sum to
+      ;; 256 instead of one. Geometry 3 uses far-morph itself, (1, 0, 0, 256), which is fully
+      ;; collapsed and fully blended.
+      (asm-block classify-instance-and-apply-wind
+                 (label tie-instance-classify-instance)
+                 ;; Unpack one instance. Its transform is stored as a matrix4h: sixteen int16 in four
+                 ;; doublewords, which pextlh spreads one per 32-bit lane (each value landing in the upper
+                 ;; half) and an arithmetic shift then brings back down. The three rotation rows shift by 16,
+                 ;; so they arrive as plain sign-extended integers and itof with twelve fraction bits reads
+                 ;; them as 1.12 fixed point. The translation row shifts by only 10, which leaves it
+                 ;; multiplied by 64 -- world units, at 64 per int16 step. Sixty-four bytes of instance
+                 ;; therefore reconstruct a full transform, which is the entire reason TIE can afford
+                 ;; thousands of placements.
+                 ;;
+                 ;; Two things can reject the instance: the visibility bit unpacked from the level's
+                 ;; visibility string, and the prototype's own "do not draw" flag.
+                 (nop!)
+                 (l.w bucket (-> instance bucket-ptr))
+                 (and gp vis-bits vis-mask)
+                 (l.d s5 (-> instance origin long 3)) ;; translation row
+                 (b.z gp tie-instance-advance-instance :delay (l.d s2 (-> instance origin long 0)))
+                 (sll gp packet-qwc 4)
+                 (l.d s4 (-> instance origin long 1))
+                 (pextlh s3 s5 r0)
+                 (l.d s5 (-> instance origin long 2))
+                 (sra.w s3 s3 10) ;; sign extend and keep the implied factor of 64
+                 (l.q s1 (-> bucket dists))
+                 (pextlh s2 s2 r0)
+                 (l.q s0 (-> bucket rdists))
+                 (sra.w s2 s2 16) ;; rotation rows only need the sign extension
+                 (m.ni vf14 s1)
+                 (pextlh s4 s4 r0)
+                 (m.ni vf15 s0)
+                 (sra.w s4 s4 16)
+                 (m.ni vf13 s3)
+                 (pextlh s5 s5 r0)
+                 (m.ni vf10 s2)
+                 (sra.w s3 s5 16)
+                 ;; Two wind lookups, both keyed on the instance's authored wind-index. The gust sample
+                 ;; itself is picked out of the 64-entry ring by (index + wind-time) & 63, so neighbouring
+                 ;; objects do not all sway in phase and the whole field drifts as time advances. The
+                 ;; instance's own spring state lives in the level's wind-vectors array at its index.
+                 (l.hu s2 (-> instance wind-index))
+                 (add gp gp memory-cursor) ;; main-memory address this packet will land at
+                 (m.ni vf11 s4)
+                 (sll s5 s2 4)
+                 (m.ni vf12 s3)
+                 (add s4 s2 wind-time)
+                 (l.w s2 (-> instance-work wind-work))
+                 (and.i s4 s4 63)
+                 (l.w s3 (-> instance-work wind-vectors))
+                 (sll s1 s4 4)
+                 (l.w s4 (-> bucket flags))
+                 (add s5 s3 s5) ;; s5 = &wind-vectors[wind-index]
+                 (add s3 s1 s2) ;; s3 = &wind-work.wind-array[(wind-index + wind-time) & 63]
+                 (and.i s1 s4 1) ;; prototype flag 0: never draw this prototype
+                 (and.i s4 s4 2) ;; prototype flag 1: route this prototype through Generic
+                 (b.nz s1 tie-instance-advance-instance :delay (m.ni s1 vi1))
+                 (itof.vf vf13 vf13)
+                 ;; Read the wind clock for the next instance. On the first instance through this loop the
+                 ;; register still holds the wind-work pointer left over from setup, so instance zero hashes
+                 ;; against that instead -- it lands in the same 64-entry ring either way, so it only picks a
+                 ;; different gust sample.
+                 (l.w wind-time s2 (-> wind-work wind-time))
+                 (b.nz s1 tie-instance-advance-instance :delay (l.vf vf25 (-> instance-work min-dist)))
+                 ;; Transform the prototype bounds into camera space. The guard-plane minimum supplies the
+                 ;; near classification, while the two distance vectors select morph state and ordinary LOD.
+                 (nop!)
+                 (l.vf vf16 (-> instance-work hmge-d))
+                 (nop!)
+                 (l.vf vf17 (-> instance-work hvdf-offset))
+                 (mula.z.vf vf1 vf6)
+                 (s.w gp (-> instance-work upload-color-0 dma addr))
+                 (msub.w.vf vf8 vf1 vf2)
+                 (s.w gp (-> instance-work generic-color-0 dma addr))
+                 (add.vf.xyz vf5 vf0 vf0)
+                 (nop!)
+                 (add.vf.xyz vf13 vf13 vf2)
+                 (nop!)
+                 (mula.vf vf1 vf1)
+                 (nop!)
+                 (sub.vf vf14 vf8 vf14)
+                 (nop!)
+                 (add.w.vf.w vf5 vf5 vf17)
+                 (nop! :count 2)
+                 (l.vf vf30 (-> instance-work far-morph))
+                 (min.vf vf25 vf8 vf25)
+                 (nop!)
+                 (msub.vf.xyz vf15 vf14 vf15)
+                 (nop!)
+                 (min.y.vf.w vf5 vf5 vf16)
+                 (nop! :count 2)
+                 (l.vf vf24 (-> instance-work guard-plane 0))
+                 (nop!)
+                 (s.vf vf25 (-> instance-work min-dist))
+                 (min.vf.xyz vf15 vf15 vf1)
+                 (nop!)
+                 (max.x.vf.w vf5 vf5 vf16)
+                 (nop!)
+                 (sub.z.vf vf16 vf8 vf16)
+                 (nop! :count 2)
+                 (l.vf vf25 (-> instance-work guard-plane 1))
+                 (nop!)
+                 (l.vf vf26 (-> instance-work guard-plane 2))
+                 (nop!)
+                 (l.vf vf27 (-> instance-work guard-plane 3))
+                 (mula.x.vf vf24 vf2)
+                 (nop!)
+                 (madda.y.vf vf25 vf2)
+                 (nop!)
+                 (madda.z.vf vf26 vf2)
+                 (nop!)
+                 (msuba.w.vf vf27 vf0)
+                 (nop!)
+                 (msub.w.vf vf24 vf1 vf2)
+                 (nop! :count 2)
+                 (m s2 vf16)
+                 (mul.w.vf vf28 vf15 vf30)
+                 (nop!)
+                 (mul.w.vf vf29 vf15 vf30)
+                 (nop! :count 2)
+                 (l.vf vf19 (-> instance-work wind-const))
+                 (itof.vf vf10 vf10 :fixed 12)
+                 (nop!)
+                 (pcgt.w s1 r0 s2)
+                 (m s0 vf24)
+                 (mul.x.vf vf28 vf1 vf28)
+                 (nop!)
+                 (mul.z.vf vf29 vf1 vf29)
+                 (l.w s2 (-> bucket stiffness))
+                 (pcgt.w s0 r0 s0)
+                 (s.vf vf5 (-> packet-cursor fog))
+                 (ppach s0 r0 s0)
+                 (s.w s4 (-> packet-cursor fog))
+                 (or s1 s0 s1)
+                 (s.vf vf14 (-> instance-work dist-test))
+                 (ppacb s1 r0 s1)
+                 (mmi-nop!)
+                 ;; fog.y takes the reject flags: bit set means this instance needs the near renderer.
+                 (b.z s2 tie-instance-no-wind :delay (s.w s1 packet-cursor 84))
+                 ;; The wind spring. A prototype with zero stiffness skipped straight past this, so anything
+                 ;; that reaches here is meant to sway. wind-vectors[wind-index] is this instance's persistent
+                 ;; state -- two packed vector2w, a position and a velocity -- and wind-array[hash] is the gust
+                 ;; sample driving it. wind-const supplies the spring coefficients: 0.5 damping, a force scale
+                 ;; of 100, a timestep of 1/60, and -1.0 as the lower clamp against vf0.w's +1.0.
+                 ;;
+                 ;; The state is integer, so it is widened to floats with pextlw, integrated, clamped, and
+                 ;; packed back down with ppacw before being stored. The result is scaled by the prototype's
+                 ;; stiffness and then applied to the instance rows as a shear: each row's xz picks up a
+                 ;; multiple of its own y, so geometry at the base of the object does not move and the top
+                 ;; leans. That is the whole wind effect -- no per-vertex work, no extra VU pass, just three
+                 ;; multiply-adds on the transform before it is sent.
+                 (ftoi.vf.zw vf28 vf28)
+                 (l.d s1 s5 8)
+                 (ftoi.vf.zw vf29 vf29)
+                 (l.d s2 s5)
+                 (pextlw s1 r0 s1)
+                 (l.vf vf16 s3 12)
+                 (pextlw s3 r0 s2)
+                 (m vf18 s1)
+                 (nop!)
+                 (m vf17 s3)
+                 (mula.vf vf16 vf1)
+                 (nop!)
+                 (msuba.x.vf vf18 vf19)
+                 (nop!)
+                 (msub.y.vf vf16 vf17 vf19)
+                 (nop!)
+                 (sub.x.vf.x vf28 vf30 vf15)
+                 (nop!)
+                 (sub.z.vf.x vf29 vf1 vf15)
+                 (nop!)
+                 (itof.vf.zw vf28 vf28)
+                 (nop!)
+                 (mula.z.vf vf16 vf19)
+                 (nop!)
+                 (madd.vf vf18 vf1 vf18)
+                 (nop!)
+                 (itof.vf.zw vf29 vf29)
+                 (nop!)
+                 (add.y.vf.y vf28 vf0 vf0)
+                 (nop!)
+                 (add.y.vf.y vf29 vf0 vf0)
+                 (nop!)
+                 (mula.z.vf vf18 vf19)
+                 (nop!)
+                 (madd.vf vf17 vf17 vf1)
+                 (nop!)
+                 (itof.vf vf11 vf11 :fixed 12)
+                 (nop!)
+                 (itof.vf vf12 vf12 :fixed 12)
+                 (nop!)
+                 (sub.w.vf.w vf28 vf30 vf28)
+                 (nop!)
+                 (min.w.vf vf17 vf17 vf0)
+                 (nop!)
+                 (sub.w.vf.w vf29 vf30 vf29)
+                 (nop! :count 4)
+                 (m s3 vf18)
+                 (max.w.vf vf27 vf17 vf19)
+                 (nop!)
+                 (ppacw s3 r0 s3)
+                 (mmi-nop!)
+                 (nop! :count 4)
+                 (mul.w.vf vf27 vf27 vf15)
+                 (nop! :count 5)
+                 (mula.x.vf.yw vf0 vf0)
+                 (nop!)
+                 (mula.y.vf.xz vf27 vf10)
+                 (nop!)
+                 (madd.vf vf10 vf1 vf10)
+                 (nop! :count 2)
+                 (m s2 vf27)
+                 (mula.x.vf.yw vf0 vf0)
+                 (l.w s1 (-> instance-work paused))
+                 (mula.y.vf.xz vf27 vf11)
+                 (nop!)
+                 (madd.vf vf11 vf1 vf11)
+                 (nop!)
+                 (b.ne s1 s7 tie-instance-skip-wind-writeback :delay (ppacw s2 r0 s2))
+                 (mula.x.vf.yw vf0 vf0)
+                 (s.d s3 s5 8)
+                 (mula.y.vf.xz vf27 vf12)
+                 (s.d s2 s5)
+                 (b.nz s4 tie-instance-build-generic-records :delay (madd.vf vf12 vf1 vf12))
+                 (b tie-instance-build-ordinary-records :delay (nop!))
+                 ;; With the game paused the shear is still applied, but the spring state is not written back,
+                 ;; so everything holds its current lean instead of continuing to sway behind the menu.
+                 (label tie-instance-skip-wind-writeback)
+                 (mula.x.vf.yw vf0 vf0)
+                 (nop!)
+                 (mula.y.vf.xz vf27 vf12)
+                 (nop!)
+                 (b.nz s4 tie-instance-build-generic-records :delay (madd.vf vf12 vf1 vf12))
+                 (b tie-instance-build-ordinary-records :delay (nop!))
+                 ;; Stiffness zero: no wind. Finish the LOD distance and morph values and convert the two
+                 ;; remaining rotation rows, leaving the transform unsheared.
+                 (label tie-instance-no-wind)
+                 (ftoi.vf.zw vf28 vf28)
+                 (nop!)
+                 (ftoi.vf.zw vf29 vf29)
+                 (nop!)
+                 (sub.x.vf.x vf28 vf30 vf15)
+                 (nop!)
+                 (sub.z.vf.x vf29 vf1 vf15)
+                 (nop!)
+                 (itof.vf.zw vf28 vf28)
+                 (nop!)
+                 (itof.vf.zw vf29 vf29)
+                 (nop!)
+                 (add.y.vf.y vf28 vf0 vf0)
+                 (nop!)
+                 (add.y.vf.y vf29 vf0 vf0)
+                 (nop!)
+                 (sub.w.vf.w vf28 vf30 vf28)
+                 (nop!)
+                 (sub.w.vf.w vf29 vf30 vf29)
+                 (nop!)
+                 (itof.vf vf11 vf11 :fixed 12)
+                 (nop!)
+                 (b.nz s4 tie-instance-build-generic-records :delay (itof.vf vf12 vf12 :fixed 12)))
+      ;; Build ordinary or near instance records. The three projected-distance thresholds choose
+      ;; among ordinary variants 1..3; a near classification uses variant 0 and its near matrix.
+      (asm-block build-ordinary-instance-records
+                 (label tie-instance-build-ordinary-records)
+                 (nop!)
+                 (l.w s5 packet-cursor 84) ;; fog.y: the near-renderer reject flags stored above
+                 (nop!)
+                 (l.w s4 (-> instance-work dist-test w))
+                 (add.i packet-qwc packet-qwc 6)
+                 (l.w s3 (-> instance-work dist-test z))
+                 (b.nz s5 tie-instance-emit-near-record :delay (sub.w.vf.w vf10 vf10 vf10))
+                 (b.gt s4 r0 tie-instance-select-ordinary-lod-three :delay (nop!))
+                 (b.gt s3 r0 tie-instance-select-ordinary-lod-two :delay (nop!))
+                 (nop!)
+                 (l.h s4 (-> bucket count 1))
+                 (nop!)
+                 (l.w s5 (-> bucket next 1))
+                 (add.i s4 s4 1)
+                 (s.vf vf28 (-> packet-cursor morph))
+                 (mula.x.vf vf20 vf10)
+                 (add.i gp gp 96) ;; one instance record, tie-matrix sized
+                 (madda.y.vf vf21 vf10)
+                 (s.w gp (-> bucket next 1))
+                 (madd.z.vf vf10 vf22 vf10)
+                 (s.h s4 (-> bucket count 1))
+                 (mula.x.vf vf20 vf11)
+                 (l.bu s4 (-> bucket frag-count 1))
+                 (madda.y.vf vf21 vf11)
+                 (l.hu gp (-> bucket base-qw 1))
+                 (madd.z.vf vf11 vf22 vf11)
+                 (l.bu s3 (-> bucket index-start 1))
+                 (b tie-instance-emit-ordinary-record :delay (nop!))
+                 ;; Geometry variant two uses the middle distance result and its own list head and fragment data.
+                 (label tie-instance-select-ordinary-lod-two)
+                 (nop!)
+                 (l.h s4 (-> bucket count 2))
+                 (nop!)
+                 (l.w s5 (-> bucket next 2))
+                 (add.i s4 s4 1)
+                 (s.vf vf29 (-> packet-cursor morph))
+                 (mula.x.vf vf20 vf10)
+                 (add.i gp gp 96) ;; one instance record, tie-matrix sized
+                 (madda.y.vf vf21 vf10)
+                 (s.w gp (-> bucket next 2))
+                 (madd.z.vf vf10 vf22 vf10)
+                 (s.h s4 (-> bucket count 2))
+                 (mula.x.vf vf20 vf11)
+                 (l.bu s4 (-> bucket frag-count 2))
+                 (madda.y.vf vf21 vf11)
+                 (l.hu gp (-> bucket base-qw 2))
+                 (madd.z.vf vf11 vf22 vf11)
+                 (l.bu s3 (-> bucket index-start 2))
+                 (b tie-instance-emit-ordinary-record :delay (nop!))
+                 ;; Geometry variant three is the farthest ordinary representation.
+                 (label tie-instance-select-ordinary-lod-three)
+                 (nop!)
+                 (l.h s4 (-> bucket count 3))
+                 (nop!)
+                 (l.w s5 (-> bucket next 3))
+                 (add.i s4 s4 1)
+                 (s.vf vf30 (-> packet-cursor morph))
+                 (mula.x.vf vf20 vf10)
+                 (add.i gp gp 96) ;; one instance record, tie-matrix sized
+                 (madda.y.vf vf21 vf10)
+                 (s.w gp (-> bucket next 3))
+                 (madd.z.vf vf10 vf22 vf10)
+                 (s.h s4 (-> bucket count 3))
+                 (mula.x.vf vf20 vf11)
+                 (l.bu s4 (-> bucket frag-count 3))
+                 (madda.y.vf vf21 vf11)
+                 (l.hu gp (-> bucket base-qw 3))
+                 (madd.z.vf vf11 vf22 vf11)
+                 (l.bu s3 (-> bucket index-start 3))
+                 ;; Transform the four instance rows by the ordinary camera matrix and append the six-qword
+                 ;; instance record expected by the ordinary TIE VU1 input.
+                 (label tie-instance-emit-ordinary-record)
+                 (mula.x.vf vf20 vf12)
+                 (l.q s2 (-> instance-work upload-color-2))
+                 (madda.y.vf vf21 vf12)
+                 (l.q s1 (-> instance-work upload-color-ret))
+                 (madd.z.vf vf12 vf22 vf12)
+                 (sll gp gp 4)
+                 (mula.x.vf vf20 vf13)
+                 (add s3 s3 ra)
+                 (madda.y.vf vf21 vf13)
+                 (nop!)
+                 (madda.z.vf vf22 vf13)
+                 (nop!)
+                 (madd.w.vf vf13 vf23 vf0)
+                 (nop!)
+                 (s.vf vf10 (-> packet-cursor mat vector 0))
+                 (nop!)
+                 (s.vf vf11 (-> packet-cursor mat vector 1))
+                 (mov.z s2 s1 s5)
+                 (s.vf vf12 (-> packet-cursor mat vector 2))
+                 (add.i packet-cursor packet-cursor 96) ;; one instance record
+                 (b tie-instance-append-ordinary-command :delay (s.vf vf13 packet-cursor -48))
+                 ;; Variant zero uses the near projection matrix so geometry which crosses the camera plane can
+                 ;; be clipped before perspective division.
+                 (label tie-instance-emit-near-record)
+                 (nop!)
+                 (l.vf vf24 (-> instance-work tie-near-perspective-matrix 0))
+                 (nop!)
+                 (l.vf vf25 (-> instance-work tie-near-perspective-matrix 1))
+                 (nop!)
+                 (l.vf vf26 (-> instance-work tie-near-perspective-matrix 2))
+                 (nop!)
+                 (l.vf vf27 (-> instance-work tie-near-perspective-matrix 3))
+                 (nop!)
+                 (l.h s4 (-> bucket count 0))
+                 (nop!)
+                 (l.w s5 (-> bucket next 0))
+                 (add.i s4 s4 1)
+                 (s.vf vf28 (-> packet-cursor morph))
+                 (mula.x.vf vf24 vf10)
+                 (add.i gp gp 96) ;; one instance record, tie-matrix sized
+                 (madda.y.vf vf25 vf10)
+                 (s.w gp (-> bucket next 0))
+                 (madd.z.vf vf10 vf26 vf10)
+                 (s.h s4 (-> bucket count 0))
+                 (mula.x.vf vf24 vf11)
+                 (l.bu s4 (-> bucket frag-count 0))
+                 (madda.y.vf vf25 vf11)
+                 (l.hu gp (-> bucket base-qw 0))
+                 (madd.z.vf vf11 vf26 vf11)
+                 (l.bu s3 (-> bucket index-start 0))
+                 (mula.x.vf vf24 vf12)
+                 (l.q s2 (-> instance-work upload-color-2))
+                 (madda.y.vf vf25 vf12)
+                 (l.q s1 (-> instance-work upload-color-ret))
+                 (madd.z.vf vf12 vf26 vf12)
+                 (sll gp gp 4)
+                 (mula.x.vf vf24 vf13)
+                 (add s3 s3 ra)
+                 (madda.y.vf vf25 vf13)
+                 (nop!)
+                 (madda.z.vf vf26 vf13)
+                 (nop!)
+                 (madd.w.vf vf13 vf27 vf0)
+                 (nop!)
+                 (s.vf vf10 (-> packet-cursor mat vector 0))
+                 (nop!)
+                 (s.vf vf11 (-> packet-cursor mat vector 1))
+                 (nop!)
+                 (s.vf vf12 (-> packet-cursor mat vector 2))
+                 (mov.z s2 s1 s5)
+                 (s.vf vf13 (-> packet-cursor mat vector 3))
+                 (add.i packet-cursor packet-cursor 96) ;; one instance record
+                 ;; Append the three-qword command template which links this instance record to the selected
+                 ;; prototype/LOD list. Continue emitting commands while fragments remain in that geometry.
+                 (label tie-instance-append-ordinary-command)
+                 (nop!)
+                 (l.w ra instance (offset-of instance-tie color-indices))
+                 (nop!)
+                 (s.q s2 (-> instance-work upload-color-temp))
+                 (nop!)
+                 (l.bu s2 s3 144)
+                 (add s1 gp ra)
+                 (s.w s5 (-> instance-work upload-color-temp dma addr))
+                 (add.i packet-qwc packet-qwc 3)
+                 (s.w s1 (-> instance-work upload-color-1 dma addr))
+                 (sll s1 s2 2)
+                 (s.h s2 (-> instance-work upload-color-1))
+                 (sll s2 s2 4)
+                 (s.b s1 (-> instance-work upload-color-1 vif1 num))
+                 (add gp gp s2)
+                 (l.q s2 (-> instance-work upload-color-0))
+                 (add.i s5 s5 48)
+                 (l.q s1 (-> instance-work upload-color-1))
+                 (add.i packet-cursor packet-cursor 48)
+                 (l.q s0 (-> instance-work upload-color-temp))
+                 (add.i s3 s3 1)
+                 (s.q s2 packet-cursor -48)
+                 (add.i s4 s4 -1)
+                 (s.q s1 packet-cursor -32)
+                 (b.le s4 r0 tie-instance-advance-instance :delay (s.q s0 packet-cursor -16))
+                 ;; Every additional fragment reuses the transformed rows and appends only another list command.
+                 ;; Leave four qwords free so the command itself cannot straddle an output-bank transfer.
+                 (label tie-instance-append-more-ordinary-commands)
+                 (add.i s2 packet-qwc -252)
+                 (nop!)
+                 (b.le s2 r0 tie-instance-append-ordinary-after-flush :delay (nop!))
+                 (dma-wait-counting-stalls! packet-cursor
+                                            from-spr-channel
+                                            (-> instance-work wait-from-spr)
+                                            tie-instance-wait-ordinary-output
+                                            tie-instance-flush-ordinary-output)
+                 ;; Return the full bank, then resume the same prototype list in the alternate bank.
+                 (dma-return-output-bank! output-bank
+                                          TIE-INSTANCE-OUTPUT-FLIP
+                                          packet-cursor
+                                          packet-qwc
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-instance-flush-ordinary-output)
+                 (label tie-instance-append-ordinary-after-flush)
+                 (nop!)
+                 (l.bu s2 s3 144)
+                 (add s1 gp ra)
+                 (s.w s5 (-> instance-work upload-color-temp dma addr))
+                 (add.i packet-qwc packet-qwc 3)
+                 (s.w s1 (-> instance-work upload-color-1 dma addr))
+                 (sll s1 s2 2)
+                 (s.h s2 (-> instance-work upload-color-1))
+                 (sll s2 s2 4)
+                 (s.b s1 (-> instance-work upload-color-1 vif1 num))
+                 (add gp gp s2)
+                 (l.q s2 (-> instance-work upload-color-0))
+                 (add.i s5 s5 48)
+                 (l.q s1 (-> instance-work upload-color-1))
+                 (add.i packet-cursor packet-cursor 48)
+                 (l.q s0 (-> instance-work upload-color-temp))
+                 (add.i s3 s3 1)
+                 (s.q s2 packet-cursor -48)
+                 (add.i s4 s4 -1)
+                 (s.q s1 packet-cursor -32)
+                 (b.gt s4 r0 tie-instance-append-more-ordinary-commands :delay (s.q s0 packet-cursor -16))
+                 (b tie-instance-advance-instance :delay (nop!)))
+      ;; Generic uses the same transformed instance but keeps its own per-geometry chains.
+      ;;
+      ;; First it works out how strongly this instance should show its environment map. vf6 is the
+      ;; camera-rotation-transformed position, so squaring and summing its lanes and taking the square root
+      ;; gives the distance; envmap-fade-far plus the bounding radius minus that distance, scaled by
+      ;; envmap-rfade, is the fade fraction, clamped to the 0..128 range in constant.y and truncated to
+      ;; eight bits. A result of zero means the instance is past its reflection range, and since the
+      ;; environment map was the only reason to route it through GENERIC at all, it drops straight back to
+      ;; the ordinary renderer.
+      ;;
+      ;; The fade goes out in the instance record's fifth quadword, where generic-tie reads it back as the
+      ;; scale on the environment tint. instance-tie-work's refl-fade-fac and refl-fade-end are the
+      ;; global ends of the same curve.
+      (asm-block build-generic-instance-records
+                 (label tie-instance-build-generic-records)
+                 (mul.vf.xyz vf16 vf6 vf6)
+                 (nop! :count 2)
+                 (l.vf vf9 (-> bucket envmap-rfade))
+                 (sub.w.vf.w vf10 vf10 vf10)
+                 (nop! :count 3)
+                 (adda.y.vf.x vf16 vf16)
+                 (nop!)
+                 (madd.z.vf.x vf16 vf1 vf16)
+                 (nop!)
+                 (sqrt.x Q vf16)
+                 (nop!)
+                 (mula.y.vf vf1 vf9)
+                 (nop!)
+                 (madda.w.vf vf1 vf2)
+                 (nop! :count 2)
+                 (waitq)
+                 (msubq.vf vf16 vf1 Q)
+                 (nop!)
+                 (mul.x.vf vf16 vf16 vf9)
+                 (nop!)
+                 (max.x.vf.x vf16 vf16 vf0)
+                 (nop!)
+                 (min.y.vf.x vf16 vf16 vf3)
+                 (nop!)
+                 (ftoi.vf vf16 vf16)
+                 (nop! :count 2)
+                 (m s5 vf16)
+                 (nop! :count 2)
+                 (and.i s5 s5 255)
+                 (nop!)
+                 (b.z s5 tie-instance-build-ordinary-records :delay (nop!))
+                 (callms 29)
+                 (s.w s4 (-> instance-work flags))
+                 (nop!)
+                 (l.w s4 (-> instance-work dist-test w))
+                 (add.i packet-qwc packet-qwc 6)
+                 (l.w s3 (-> instance-work dist-test z))
+                 (nop!)
+                 (s.w s5 (-> packet-cursor fog))
+                 (b.gt s4 r0 tie-instance-select-generic-lod-three :delay (nop!))
+                 (b.gt s3 r0 tie-instance-select-generic-lod-two :delay (nop!))
+                 (nop!)
+                 (l.h s4 (-> bucket generic-count 1))
+                 (nop!)
+                 (l.w s5 (-> bucket generic-next 1))
+                 (add.i s4 s4 1)
+                 (s.vf vf28 (-> packet-cursor morph))
+                 (mula.x.vf vf24 vf10)
+                 (add.i gp gp 96) ;; one instance record, tie-matrix sized
+                 (madda.y.vf vf25 vf10)
+                 (s.w gp (-> bucket generic-next 1))
+                 (madd.z.vf vf10 vf26 vf10)
+                 (s.h s4 (-> bucket generic-count 1))
+                 (mula.x.vf vf24 vf11)
+                 (l.bu s3 (-> bucket frag-count 1))
+                 (madda.y.vf vf25 vf11)
+                 (l.hu gp (-> bucket base-qw 1))
+                 (madd.z.vf vf11 vf26 vf11)
+                 (l.bu s4 (-> bucket index-start 1))
+                 (b tie-instance-emit-generic-record :delay (nop!))
+                 ;; Select Generic geometry two when the middle distance threshold was crossed.
+                 (label tie-instance-select-generic-lod-two)
+                 (nop!)
+                 (l.h s4 (-> bucket generic-count 2))
+                 (nop!)
+                 (l.w s5 (-> bucket generic-next 2))
+                 (add.i s4 s4 1)
+                 (s.vf vf29 (-> packet-cursor morph))
+                 (mula.x.vf vf24 vf10)
+                 (add.i gp gp 96) ;; one instance record, tie-matrix sized
+                 (madda.y.vf vf25 vf10)
+                 (s.w gp (-> bucket generic-next 2))
+                 (madd.z.vf vf10 vf26 vf10)
+                 (s.h s4 (-> bucket generic-count 2))
+                 (mula.x.vf vf24 vf11)
+                 (l.bu s3 (-> bucket frag-count 2))
+                 (madda.y.vf vf25 vf11)
+                 (l.hu gp (-> bucket base-qw 2))
+                 (madd.z.vf vf11 vf26 vf11)
+                 (l.bu s4 (-> bucket index-start 2))
+                 (b tie-instance-emit-generic-record :delay (nop!))
+                 ;; Select the farthest Generic representation.
+                 (label tie-instance-select-generic-lod-three)
+                 (nop!)
+                 (l.h s4 (-> bucket generic-count 3))
+                 (nop!)
+                 (l.w s5 (-> bucket generic-next 3))
+                 (add.i s4 s4 1)
+                 (s.vf vf30 (-> packet-cursor morph))
+                 (mula.x.vf vf24 vf10)
+                 (add.i gp gp 96) ;; one instance record, tie-matrix sized
+                 (madda.y.vf vf25 vf10)
+                 (s.w gp (-> bucket generic-next 3))
+                 (madd.z.vf vf10 vf26 vf10)
+                 (s.h s4 (-> bucket generic-count 3))
+                 (mula.x.vf vf24 vf11)
+                 (l.bu s3 (-> bucket frag-count 3))
+                 (madda.y.vf vf25 vf11)
+                 (l.hu gp (-> bucket base-qw 3))
+                 (madd.z.vf vf11 vf26 vf11)
+                 (l.bu s4 (-> bucket index-start 3))
+                 ;; Transform the four rows with the Generic matrix, store the environment-map fade, and append
+                 ;; this instance to the selected Generic prototype chain.
+                 (label tie-instance-emit-generic-record)
+                 (mula.x.vf vf24 vf12)
+                 (sll gp gp 4)
+                 (madda.y.vf vf25 vf12)
+                 (add s4 s4 ra)
+                 (madd.z.vf vf12 vf26 vf12)
+                 (nop!)
+                 (mula.x.vf vf24 vf13)
+                 (nop!)
+                 (madda.y.vf vf25 vf13)
+                 (nop!)
+                 (madda.z.vf vf26 vf13)
+                 (nop!)
+                 (madd.w.vf vf13 vf27 vf0)
+                 (nop!)
+                 (s.vf vf10 (-> packet-cursor mat vector 0))
+                 (nop!)
+                 (s.vf vf11 (-> packet-cursor mat vector 1))
+                 (nop!)
+                 (s.vf vf12 (-> packet-cursor mat vector 2))
+                 (nop!)
+                 (s.vf vf13 (-> packet-cursor mat vector 3))
+                 (add.i packet-cursor packet-cursor 96) ;; one instance record
+                 (nop!)
+                 (l.w ra instance (offset-of instance-tie color-indices))
+                 (nop!)
+                 (l.bu s2 s4 144)
+                 (add s1 gp ra)
+                 (s.w s5 (-> instance-work generic-color-0 vif1))
+                 (add.i packet-qwc packet-qwc 3)
+                 (s.w s1 (-> instance-work generic-color-1 dma addr))
+                 (sll s1 s2 4)
+                 (s.h s2 (-> instance-work generic-color-1))
+                 (add gp gp s1)
+                 (l.q s2 (-> instance-work generic-color-0))
+                 (add.i s5 s5 48)
+                 (l.q s1 (-> instance-work generic-color-1))
+                 (add.i packet-cursor packet-cursor 48)
+                 (l.q s0 (-> instance-work generic-color-end))
+                 (add.i s4 s4 1)
+                 (s.q s2 packet-cursor -48)
+                 (add.i s3 s3 -1)
+                 (s.q s1 packet-cursor -32)
+                 (b.le s3 r0 tie-instance-advance-instance :delay (s.q s0 packet-cursor -16))
+                 ;; Additional Generic fragments share the transformed rows but each needs its own list command.
+                 (label tie-instance-append-more-generic-commands)
+                 (add.i s2 packet-qwc -252)
+                 (nop!)
+                 (b.le s2 r0 tie-instance-append-generic-after-flush :delay (nop!))
+                 (dma-wait-counting-stalls! packet-cursor
+                                            from-spr-channel
+                                            (-> instance-work wait-from-spr)
+                                            tie-instance-wait-generic-output
+                                            tie-instance-flush-generic-output)
+                 ;; Return the full bank before continuing the Generic list in the alternate bank.
+                 (dma-return-output-bank! output-bank
+                                          TIE-INSTANCE-OUTPUT-FLIP
+                                          packet-cursor
+                                          packet-qwc
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-instance-flush-generic-output)
+                 (label tie-instance-append-generic-after-flush)
+                 (nop!)
+                 (l.bu s2 s4 144)
+                 (add s1 gp ra)
+                 (s.w s5 (-> instance-work generic-color-0 vif1))
+                 (add.i packet-qwc packet-qwc 3)
+                 (s.w s1 (-> instance-work generic-color-1 dma addr))
+                 (sll s1 s2 4)
+                 (s.h s2 (-> instance-work generic-color-1))
+                 (add gp gp s1)
+                 (l.q s2 (-> instance-work generic-color-0))
+                 (add.i s5 s5 48)
+                 (l.q s1 (-> instance-work generic-color-1))
+                 (add.i packet-cursor packet-cursor 48)
+                 (l.q s0 (-> instance-work generic-color-end))
+                 (add.i s4 s4 1)
+                 (s.q s2 packet-cursor -48)
+                 (add.i s3 s3 -1)
+                 (s.q s1 packet-cursor -32)
+                 (b.gt s3 r0 tie-instance-append-more-generic-commands :delay (s.q s0 packet-cursor -16)))
+      ;; Shift to the next visibility bit and its corresponding 64-byte instance.
+      (asm-block advance-instance-stream
+                 (label tie-instance-advance-instance)
+                 (add.i instance-count instance-count -1)
+                 (srl vis-mask vis-mask 1)
+                 (add.i instance instance 64)
+                 (nop!)
+                 (b.nz vis-mask tie-instance-next-instance :delay (l.vf vf2 (-> instance bsphere)))
+                 ;; Restore the saved visibility cursors after the byte, then continue within this scratchpad
+                 ;; block or move to the next occupied 32-instance block.
+                 (label tie-instance-finish-visibility-byte)
+                 (nop!)
+                 (l.w ra (-> instance-work cur-vis-bits))
+                 (nop!)
+                 (l.w vis-mask (-> instance-work end-vis-bits))
+                 (b.ne ra vis-mask tie-instance-next-visibility-byte :delay (nop!))
+                 (b.gt instance-count r0 tie-instance-begin-instance-block :delay (nop!))
+                 (b.z packet-qwc tie-instance-wait-final-output :delay (nop!)))
+      ;; Return the last partial packet block, wait for it to leave scratchpad, and publish the
+      ;; advanced main-memory cursor back to the caller's dma-buffer.
+      ;; Wait until the previous bank is free before submitting the final partial bank.
+      (asm-block finish-instance-output
+                 (dma-wait-counting-stalls! a0
+                                            from-spr-channel
+                                            (-> instance-work wait-from-spr)
+                                            tie-instance-wait-final-output-space
+                                            tie-instance-flush-final-output)
+                 ;; Unlike a full-bank flush, the last transfer uses exactly the occupied qword count.
+                 (label tie-instance-flush-final-output)
+                 (s.w a1 (-> from-spr-channel sadr))
+                 (xor.i a0 a1 TIE-INSTANCE-OUTPUT-FLIP)
+                 (s.w memory-cursor (-> from-spr-channel madr))
+                 (sll a1 packet-qwc 4)
+                 (add memory-cursor memory-cursor a1)
+                 (m a0 a0)
+                 (s.w packet-qwc (-> from-spr-channel qwc))
+                 (add.i a0 r0 DMA-CHCR-STR)
+                 (s.w a0 (-> from-spr-channel chcr))
+                 (add.i a0 r0 0)
+                 ;; The caller cannot reuse the scratchpad output until the final from-scratchpad DMA completes.
+                 (dma-wait-counting-stalls! a0
+                                            from-spr-channel
+                                            (-> instance-work wait-from-spr)
+                                            tie-instance-wait-final-output
+                                            tie-instance-finish)
+                 (label tie-instance-finish)
+                 (l.w a0 (-> instance-work dma-buffer))
+                 (nop!)
+                 (s.w memory-cursor (-> dma-buf base))
+                 (nop!)
+                 (m v0 r0)
+                 (l.d ra sp)
+                 (l.q gp sp 112)
+                 (l.q s5 sp 96)
+                 (l.q s4 sp 80)
+                 (l.q s3 sp 64)
+                 (l.q s2 sp 48)
+                 (l.q s1 sp 32)
+                 (l.q s0 sp 16)
+                 (jr ra :delay (add.i sp sp 128))
+                 (nop! :count 2)
+                 (nop!)))))
+
+;; The EE TIE renderer is a three-stage pipeline. The instance pass culls placements, chooses the
+;; near, ordinary, or Generic LOD, and links compact instance records into the matching prototype
+;; bucket. The prototype passes then expand that prototype's time-of-day palette while alternating
+;; two scratchpad palette banks, upload every populated geometry fragment, and alternate two output
+;; banks while the finished DMA stream returns to main memory. VU1 consumes one prototype fragment
+;; at a time, alternates two instance-input banks so VIF can fill one while VU1 reads the other,
+;; and cycles three GIF-output banks so it can build the next fragment without overwriting data
+;; still waiting for the GIF. Prototype geometry is therefore uploaded once and reused by all
+;; instance records which selected it.
+
+(#unless PC_PORT
+  (defun draw-inline-array-prototype-tie-generic-asm ((dma-buf dma-buffer) (prototype-count int) (prototypes prototype-array-tie))
+    "Expand the selected TIE palettes and build Generic fragment chains for every populated
+     prototype geometry variant."
+    (declare (asm-func none) (allow-saved-regs))
+    ;; The instance pass has already linked records into each prototype's four Generic lists. This
+    ;; pass turns those lists and the prototype fragments into the compact stream consumed later by
+    ;; generic-tie, while overlapping main-memory transfers with palette and packet construction.
+    ;; Keep palette uploads in the two 1 KiB scratchpad color banks and packet output in the
+    ;; two 4 KiB output banks. Main-memory writes are issued in blocks of at most 256 qwords.
+    ;;
+    ;; The prototype scratchpad holds two 1 KiB palette banks, two 4 KiB output banks, and the
+    ;; prototype-tie-dma state area, all reached with spr-offset. prototype-tie-work fields and the DMA
+    ;; channel registers are read as fields off their typed base registers.
+    (rlet ((prototype-work :reg t0 :type prototype-tie-work)
+           (from-spr-channel :reg t1 :type dma-bank-spr)
+           (output-bank :reg t2)
+           (palette-bank :reg t3)
+           (to-spr-channel :reg t4 :type dma-bank-spr)
+           (dma-buf :reg a0 :type dma-buffer) ;; the argument, before a0 becomes the packet qword count
+           (scratch-base :reg a3 :type terrain-context)
+           (mood :reg t8 :type mood-context)
+           (fragment :reg t6 :type tie-fragment)
+           (memory-cursor :reg v1))
+      ;; The registers not aliased above genuinely change meaning every few instructions and keep their
+      ;; physical names: a0 is the caller's dma-buffer, then the count of quadwords occupied in the
+      ;; current output bank, then a DMA status word; a1 is the write cursor inside that bank, borrowed
+      ;; for channel status and byte counts; t5 through t9 pass around the bucket, its palette, its
+      ;; geometry pointers, the four time-of-day weight vectors, and finally the fragment cursor.
+      ;; Each block says what they are holding while it runs.
+      (asm-block setup-generic-prototype-stream
+                 (label tie-generic-prototype-entry)
+                 (add.i sp sp -112)
+                 (s.d ra sp)
+                 (s.q s1 sp 16)
+                 (s.q s2 sp 32)
+                 (s.q s3 sp 48)
+                 (s.q s4 sp 64)
+                 (s.q s5 sp 80)
+                 (s.q gp sp 96)
+                 (nop!)
+                 (lui scratch-base #x7000)
+                 (l.w memory-cursor (-> dma-buf base))
+                 (lui from-spr-channel #x1000)
+                 (lui output-bank #x1000)
+                 (sync.l)
+                 (cache dxwbin memory-cursor 0)
+                 (sync.l)
+                 (cache dxwbin memory-cursor 1)
+                 (sync.l)
+                 (m! prototype-work *prototype-tie-work*)
+                 (ori from-spr-channel from-spr-channel #xd000)
+                 (ori to-spr-channel output-bank #xd400)
+                 (ori palette-bank scratch-base 16)
+                 (ori output-bank scratch-base 2064)
+                 (s.w a0 scratch-base (spr-offset prototype-tie-dma dma-buffer))
+                 (add.i t7 a1 -1)
+                 (nop!)
+                 (l.w t6 a2 (offset-of prototype-array-tie data))
+                 (add.i a0 r0 0)
+                 (m a1 output-bank))
+      ;; One prototype per outer iteration. Its four Generic list heads say which of its geometries got
+      ;; instances; if all four are empty the prototype is skipped without reading anything else. Otherwise
+      ;; the heads, geometry pointers, fragment counts, and palette are copied into the scratchpad state
+      ;; area so the fragment loop can work from scratchpad rather than chasing main memory.
+      (asm-block prepare-generic-prototype
+                 (label tie-generic-prototype-next-prototype)
+                 (nop!)
+                 (l.q t5 t6 (offset-of prototype-bucket-tie generic-next))
+                 (add.i t8 a2 4)
+                 (s.w t7 scratch-base (spr-offset prototype-tie-dma length))
+                 (srl32 a2 t5 0)
+                 (s.w t8 (-> prototype-work prototype-array))
+                 (pcpyud t7 t5 t5)
+                 (l.w t9 t6 (offset-of prototype-bucket-tie tie-colors))
+                 (or t7 a2 t7)
+                 (l.w a2 t6 (offset-of prototype-bucket-tie frag-count))
+                 (b.z t7 tie-generic-prototype-advance-prototype :delay (l.w mood (-> scratch-base bsp mood)))
+                 (nop!)
+                 (l.q t7 t6 (offset-of prototype-bucket-tie geometry))
+                 (nop!)
+                 (s.q t5 scratch-base (spr-offset prototype-tie-dma next 0))
+                 (nop!)
+                 (s.w a2 scratch-base (spr-offset prototype-tie-dma frag-count 0))
+                 (nop!)
+                 (s.q t7 scratch-base (spr-offset prototype-tie-dma geometry 0))
+                 (nop!)
+                 (l.d a2 (-> prototype-work clamp))
+                 (nop!)
+                 (l.w t7 t9 4)
+                 (add.i ra t9 12)
+                 (l.q t5 (-> mood itimes 0))
+                 (sra t9 t7 2)
+                 (nop!)
+                 (add t9 t9 a0)
+                 (add.i gp r0 221)
+                 (sub t9 gp t9)
+                 (nop!)
+                 (b.ge t9 r0 tie-generic-prototype-upload-color-palette :delay (nop!)))
+      ;; A palette is up to 128 entries, which is 32 output quadwords plus its packet header, so it can
+      ;; easily be the thing that overflows the bank. Check first, return the bank if so, and only then
+      ;; start blending.
+      (asm-block upload-and-expand-generic-palette
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work generic-wait-from-spr)
+                                            tie-generic-prototype-wait-packet-output
+                                            tie-generic-prototype-flush-packet-output)
+                 ;; Return the occupied bank and continue palette construction in the other output bank.
+                 (dma-return-output-bank! output-bank
+                                          TIE-PROTOTYPE-OUTPUT-FLIP
+                                          a1
+                                          a0
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-generic-prototype-flush-packet-output)
+                 ;; Round the entry count up to a whole 1 KiB chunk -- 32 entries of 32 bytes each -- and reserve
+                 ;; the packet header plus the eight output quadwords the chunk will produce.
+                 (label tie-generic-prototype-upload-color-palette)
+                 (add.i t7 t7 31)
+                 (l.w t6 t6 132)
+                 (sra t7 t7 5)
+                 (add.i a0 a0 1)
+                 (sll t7 t7 3)
+                 (s.w t6 (-> prototype-work generic-palette vif0))
+                 (add a0 a0 t7)
+                 (s.h t7 (-> prototype-work generic-palette))
+                 (sll t9 t7 2)
+                 (l.q t6 (-> mood itimes 1))
+                 (nop!)
+                 (l.q gp (-> prototype-work generic-palette))
+                 (nop!)
+                 (l.q t7 (-> mood itimes 2))
+                 (nop!)
+                 (s.q gp a1)
+                 (add.i a1 a1 16)
+                 (l.q t8 (-> mood itimes 3))
+                 ;; The source colors come from main memory, so they are staged through the two 1 KiB color
+                 ;; banks: start the next kilobyte's transfer, blend the kilobyte that just landed, repeat.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work generic-wait-to-spr)
+                                            tie-generic-prototype-wait-color-upload
+                                            tie-generic-prototype-start-color-upload)
+                 ;; First kilobyte in flight.
+                 (label tie-generic-prototype-start-color-upload)
+                 (s.w ra (-> to-spr-channel madr))
+                 (add.i t9 t9 -32)
+                 (s.w palette-bank (-> to-spr-channel sadr))
+                 (add.i gp r0 64)
+                 (s.w gp (-> to-spr-channel qwc))
+                 (add.i gp r0 DMA-CHCR-STR)
+                 (s.w gp (-> to-spr-channel chcr))
+                 (add.i ra ra 1024)
+                 (label tie-generic-prototype-next-color-chunk)
+                 (m s5 palette-bank)
+                 (xor.i palette-bank palette-bank TIE-PROTOTYPE-PALETTE-FLIP)
+                 (b.le t9 r0 tie-generic-prototype-finish-color-upload :delay (add.i t9 t9 -32))
+                 ;; Wait before reusing a color bank for the next 1 KiB palette chunk.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work generic-wait-to-spr)
+                                            tie-generic-prototype-wait-next-color-upload
+                                            tie-generic-prototype-start-next-color-upload)
+                 ;; Kick off the next kilobyte before blending this one, so the transfer hides behind the
+                 ;; multiply-accumulate loop rather than in front of it.
+                 (label tie-generic-prototype-start-next-color-upload)
+                 (s.w ra (-> to-spr-channel madr))
+                 (nop!)
+                 (s.w palette-bank (-> to-spr-channel sadr))
+                 (add.i gp r0 64)
+                 (s.w gp (-> to-spr-channel qwc))
+                 (add.i gp r0 DMA-CHCR-STR)
+                 (s.w gp (-> to-spr-channel chcr))
+                 (add.i ra ra 1024)
+                 (b tie-generic-prototype-expand-color-block :delay (nop!))
+                 ;; The last kilobyte has no successor to hide behind, so this is the one wait that is always
+                 ;; paid in full.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work generic-wait-to-spr)
+                                            tie-generic-prototype-finish-color-upload
+                                            tie-generic-prototype-expand-color-block)
+                 ;; Prime the blend loop with the first two source quadwords.
+                 ;;
+                 ;; A palette entry is not one color, it is eight -- one per time-of-day slot -- packed as
+                 ;; 32 bytes. mood-context.itimes holds the eight weights for the current time of day, each
+                 ;; replicated once per channel, which fills exactly four quadwords of halfwords. So one
+                 ;; pmulth plus three pmaddh blend all eight slots of one entry across all four channels at
+                 ;; once, and the whole level's palette becomes 32 words per kilobyte of source.
+                 (label tie-generic-prototype-expand-color-block)
+                 (add.i gp a1 128)
+                 (l.q s2 s5 (offset-of time-of-day-palette data))
+                 (nop!)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (pextlb s3 r0 s2)
+                 (mmi-nop!)
+                 (pextub s2 r0 s2)
+                 (mmi-nop!)
+                 (pmulth r0 s3 t5)
+                 (mmi-nop!)
+                 (pextlb s3 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s2 t6)
+                 (mmi-nop!)
+                 (pextub s4 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s3 t7)
+                 (l.q s3 s5 (+ (offset-of time-of-day-palette data) 32))
+                 (add.i s5 s5 32)
+                 (nop!)
+                 (pmaddh r0 s4 t8)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (pextlb s2 r0 s3)
+                 (mmi-nop!)
+                 ;; One entry per iteration. pmfhl.lh collects the four packed accumulators, the shift by six
+                 ;; divides out the weights' 6-bit fraction, pcpyud plus add.h folds the two halves of the
+                 ;; sum together, pminh clamps every channel against the packed limit in prototype-tie-work,
+                 ;; and ppacb squeezes the four halfwords back down to one RGBA word. Thirty-two words from
+                 ;; the current 1 KiB source chunk.
+                 (label tie-generic-prototype-expand-eight-colors)
+                 (pextub s3 r0 s3)
+                 (mmi-nop!)
+                 (pmfhl.lh s1)
+                 (mmi-nop!)
+                 (pmulth r0 s2 t5)
+                 (mmi-nop!)
+                 (srl.h s2 s1 6)
+                 (mmi-nop!)
+                 (pcpyud s1 s2 s2)
+                 (mmi-nop!)
+                 (add.h s2 s1 s2)
+                 (mmi-nop!)
+                 (pminh s2 s2 a2)
+                 (mmi-nop!)
+                 (ppacb s1 r0 s2)
+                 (mmi-nop!)
+                 (pextlb s2 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s3 t6)
+                 (s.w s1 a1)
+                 (pextub s4 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s2 t7)
+                 (l.q s3 s5 (+ (offset-of time-of-day-palette data) 32))
+                 (add.i s5 s5 32)
+                 (add.i a1 a1 4)
+                 (pmaddh r0 s4 t8)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (b.ne a1 gp tie-generic-prototype-expand-eight-colors :delay (pextlb s2 r0 s3))
+                 (b.ge t9 r0 tie-generic-prototype-next-color-chunk :delay (nop!))
+                 (nop!)
+                 (l.w a2 scratch-base (spr-offset prototype-tie-dma next 0))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma geometry 1))
+                 (b.z a2
+                      tie-generic-prototype-select-geometry-one
+                      :delay
+                      (l.bu t5 scratch-base (spr-offset prototype-tie-dma frag-count 1)))
+                 (bgezal r0 tie-generic-prototype-begin-fragments :delay (nop!)))
+      ;; Four nearly identical selectors, one per Generic geometry, each testing its list head and calling
+      ;; the shared fragment loop if it is populated. They fall through into each other rather than
+      ;; looping, because the return address is what tells the fragment loop which selector to come back
+      ;; to -- cheaper than keeping a variant index around.
+      (asm-block select-generic-geometry
+                 (label tie-generic-prototype-select-geometry-one)
+                 (nop!)
+                 (l.w a2 scratch-base (spr-offset prototype-tie-dma next 1))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma geometry 1))
+                 (b.z a2
+                      tie-generic-prototype-select-geometry-two
+                      :delay
+                      (l.bu t5 scratch-base (spr-offset prototype-tie-dma frag-count 1)))
+                 (bgezal r0 tie-generic-prototype-begin-fragments :delay (nop!))
+                 ;; Test Generic variant two.
+                 (label tie-generic-prototype-select-geometry-two)
+                 (nop!)
+                 (l.w a2 scratch-base (spr-offset prototype-tie-dma next 2))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma geometry 2))
+                 (b.z a2
+                      tie-generic-prototype-select-geometry-three
+                      :delay
+                      (l.bu t5 scratch-base (spr-offset prototype-tie-dma frag-count 2)))
+                 (bgezal r0 tie-generic-prototype-begin-fragments :delay (nop!))
+                 ;; Test the final Generic variant before advancing to the next prototype bucket.
+                 (label tie-generic-prototype-select-geometry-three)
+                 (nop!)
+                 (l.w a2 scratch-base (spr-offset prototype-tie-dma next 3))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma geometry 3))
+                 (b.z a2
+                      tie-generic-prototype-advance-prototype
+                      :delay
+                      (l.bu t5 scratch-base (spr-offset prototype-tie-dma frag-count 3)))
+                 (bgezal r0 tie-generic-prototype-begin-fragments :delay (nop!))
+                 ;; Advance the prototype-array cursor and clear the tail words which terminate its Generic
+                 ;; chain. The saved prototype count controls the outer loop.
+                 (label tie-generic-prototype-advance-prototype)
+                 (nop!)
+                 (l.w a2 (-> prototype-work prototype-array))
+                 (nop!)
+                 (l.w t5 scratch-base (spr-offset prototype-tie-dma length))
+                 (nop!)
+                 (l.w t6 a2 12)
+                 (nop!)
+                 (s.w r0 a1 -56)
+                 (b.nz t5 tie-generic-prototype-next-prototype :delay (add.i t7 t5 -1))
+                 (b tie-generic-prototype-finish-output :delay (s.w r0 a1 -52))
+                 ;; A local call shares the fragment loop between all four geometry selectors; ra returns to the
+                 ;; selector which should test the next variant.
+                 (label tie-generic-prototype-begin-fragments)
+                 (add.i t6 t6 32)
+                 (s.w t5 (-> prototype-work generic-model-1 vif1)))
+      ;; Emit one fragment: patch the upload template with this fragment's stream addresses and counts and
+      ;; append it, followed by the CALL that runs the geometry's instance list. Check the bank has room
+      ;; first -- a fragment packet must not be split across two transfers, since the DMA controller would
+      ;; execute half a chain.
+      (asm-block emit-generic-fragments
+                 (label tie-generic-prototype-next-fragment)
+                 (add.i t7 a0 4)
+                 (add.i t8 r0 255)
+                 (sub t8 t8 t7)
+                 (l.w t7 (-> fragment gif-ref))
+                 (b.ge t8 r0 tie-generic-prototype-emit-fragment :delay (l.hu t8 (-> fragment gif-count)))
+                 ;; Wait for the previous bank before returning a packet which would overflow this one.
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work generic-wait-from-spr)
+                                            tie-generic-prototype-wait-fragment-output
+                                            tie-generic-prototype-flush-fragment-output)
+                 ;; Switch output banks and reset the occupied-qword count.
+                 (dma-return-output-bank! output-bank
+                                          TIE-PROTOTYPE-OUTPUT-FLIP
+                                          a1
+                                          a0
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-generic-prototype-flush-fragment-output)
+                 ;; Patch the four-qword Generic model template with this fragment's stream counts, output
+                 ;; address, instance-list head, and Generic data reference, then append it to the output bank.
+                 (label tie-generic-prototype-emit-fragment)
+                 (nop!)
+                 (l.hu t9 (-> fragment tex-count))
+                 (add t8 t8 t9)
+                 (l.w t9 (-> fragment point-ref))
+                 (add.i a0 a0 4)
+                 (l.hu gp (-> fragment vertex-count))
+                 (sll s5 a0 4)
+                 (s.w t7 (-> prototype-work generic-model-0 dma addr))
+                 (add t7 s5 memory-cursor)
+                 (s.h t8 (-> prototype-work generic-model-0))
+                 (nop!)
+                 (s.w t7 (-> prototype-work generic-model-0 vif1))
+                 (nop!)
+                 (s.w a2 (-> prototype-work generic-model-next dma addr))
+                 (nop!)
+                 (s.w t9 (-> prototype-work generic-model-1 dma addr))
+                 (nop!)
+                 (s.h gp (-> prototype-work generic-model-1))
+                 (nop!)
+                 (l.w t7 (-> fragment generic-ref))
+                 (nop!)
+                 (l.hu t8 (-> fragment generic-count))
+                 (nop!)
+                 (s.w t7 (-> prototype-work generic-model-2 dma addr))
+                 (nop!)
+                 (s.h t8 (-> prototype-work generic-model-2))
+                 (nop!)
+                 (l.q t7 (-> prototype-work generic-model-0))
+                 (nop!)
+                 (l.q t8 (-> prototype-work generic-model-1))
+                 (nop!)
+                 (l.q t9 (-> prototype-work generic-model-2))
+                 (nop!)
+                 (l.q gp (-> prototype-work generic-model-next))
+                 (nop!)
+                 (s.q t7 a1)
+                 (add.i t5 t5 -1)
+                 (s.q t8 a1 16)
+                 (add.i a2 a2 48)
+                 (s.q t9 a1 32)
+                 (s.q gp a1 48)
+                 (add.i a1 a1 64)
+                 (b.gt t5 r0 tie-generic-prototype-next-fragment :delay (add.i fragment fragment 64))
+                 (jr ra :delay (nop!)))
+      ;; Last bank out. This transfer uses the exact occupied quadword count rather than a full 256, and
+      ;; unlike every other flush the code has to wait for it to land before publishing the advanced cursor
+      ;; back into the caller's dma-buffer. An empty bank skips the transfer entirely.
+      (asm-block finish-generic-prototype-output
+                 (label tie-generic-prototype-finish-output)
+                 (b.z a0 tie-generic-prototype-wait-output-dma :delay (nop!))
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work generic-wait-from-spr)
+                                            tie-generic-prototype-wait-final-output
+                                            tie-generic-prototype-flush-final-output)
+                 ;; Submit exactly the occupied part of the last output bank.
+                 (label tie-generic-prototype-flush-final-output)
+                 (s.w output-bank (-> from-spr-channel sadr))
+                 (nop!)
+                 (s.w memory-cursor (-> from-spr-channel madr))
+                 (sll a1 a0 4)
+                 (add memory-cursor memory-cursor a1)
+                 (nop!)
+                 (s.w a0 (-> from-spr-channel qwc))
+                 (add.i a0 r0 DMA-CHCR-STR)
+                 (s.w a0 (-> from-spr-channel chcr))
+                 (nop!)
+                 ;; Wait until the last bank has reached main memory before returning it to the caller.
+                 (dma-wait-counting-stalls! a0
+                                            from-spr-channel
+                                            (-> prototype-work generic-wait-from-spr)
+                                            tie-generic-prototype-wait-output-dma
+                                            tie-generic-prototype-finish)
+                 (label tie-generic-prototype-finish)
+                 (l.w a0 scratch-base (spr-offset prototype-tie-dma dma-buffer))
+                 (nop!)
+                 (s.w memory-cursor (-> dma-buf base))
+                 (nop!)
+                 (m v0 r0)
+                 (l.d ra sp)
+                 (l.q gp sp 96)
+                 (l.q s5 sp 80)
+                 (l.q s4 sp 64)
+                 (l.q s3 sp 48)
+                 (l.q s2 sp 32)
+                 (l.q s1 sp 16)
+                 (jr ra :delay (add.i sp sp 112))
+                 (nop!)
+                 (nop!)))))
+
+(#unless PC_PORT
+  (defun draw-inline-array-prototype-tie-asm ((dma-buf dma-buffer) (prototype-count int) (prototypes prototype-array-tie))
+    "Expand the selected TIE palettes and build ordinary TIE fragment chains for geometry
+     variants one through three."
+    (declare (asm-func none) (allow-saved-regs))
+    ;; Instance records are already grouped by prototype and LOD. This pass supplies each populated
+    ;; fragment with its list, converts the prototype's time-of-day colors, and emits the VIF stream
+    ;; consumed by the ordinary TIE VU1 program.
+    ;; Alternate the 1 KiB palette banks and 4 KiB output banks so color conversion, packet
+    ;; construction, and scratchpad DMA can overlap.
+    ;;
+    ;; The scratchpad layout matches the Generic pass. spr-offset reaches the ordinary list heads,
+    ;; geometry pointers, fragment counts, and persistent output state in prototype-tie-dma; the packet
+    ;; templates and wait counters are fields of prototype-tie-work.
+    (rlet ((prototype-work :reg t0 :type prototype-tie-work)
+           (from-spr-channel :reg t1 :type dma-bank-spr)
+           (output-bank :reg t2)
+           (palette-bank :reg t3)
+           (to-spr-channel :reg t4 :type dma-bank-spr)
+           (dma-buf :reg a0 :type dma-buffer) ;; the argument, before a0 becomes the packet qword count
+           (scratch-base :reg a3 :type terrain-context)
+           (mood :reg t8 :type mood-context)
+           (fragment :reg t6 :type tie-fragment)
+           (memory-cursor :reg v1))
+      ;; The registers not aliased above genuinely change meaning every few instructions and keep their
+      ;; physical names: a0 is the caller's dma-buffer, then the count of quadwords occupied in the
+      ;; current output bank, then a DMA status word; a1 is the write cursor inside that bank, borrowed
+      ;; for channel status and byte counts; t5 through t9 pass around the bucket, its palette, its
+      ;; geometry pointers, the four time-of-day weight vectors, and finally the fragment cursor.
+      ;; Each block says what they are holding while it runs.
+      (asm-block setup-ordinary-prototype-stream
+                 (label tie-prototype-entry)
+                 (add.i sp sp -112)
+                 (s.d ra sp)
+                 (s.q s1 sp 16)
+                 (s.q s2 sp 32)
+                 (s.q s3 sp 48)
+                 (s.q s4 sp 64)
+                 (s.q s5 sp 80)
+                 (s.q gp sp 96)
+                 (nop!)
+                 (lui scratch-base #x7000)
+                 (l.w memory-cursor (-> dma-buf base))
+                 (lui from-spr-channel #x1000)
+                 (lui output-bank #x1000)
+                 (sync.l)
+                 (cache dxwbin memory-cursor 0)
+                 (sync.l)
+                 (cache dxwbin memory-cursor 1)
+                 (sync.l)
+                 (m! prototype-work *prototype-tie-work*)
+                 (ori from-spr-channel from-spr-channel #xd000)
+                 (ori to-spr-channel output-bank #xd400)
+                 (ori palette-bank scratch-base 16)
+                 (ori output-bank scratch-base 2064)
+                 (s.w a0 scratch-base (spr-offset prototype-tie-dma dma-buffer))
+                 (add.i t7 a1 -1)
+                 (nop!)
+                 (l.w t5 a2 (offset-of prototype-array-tie data))
+                 (add.i a0 r0 0)
+                 (m a1 output-bank))
+      ;; One prototype per outer iteration. Geometry 0 belongs to the near renderer, so this pass only
+      ;; looks at 1 through 3; if none of their list heads got an instance the prototype is skipped without
+      ;; reading anything else. Otherwise the heads, geometry pointers, fragment counts, and palette are
+      ;; copied into the scratchpad state area so the fragment loop can work from scratchpad rather than
+      ;; chasing main memory.
+      (asm-block prepare-ordinary-prototype
+                 (label tie-prototype-next-prototype)
+                 (nop!)
+                 (l.q t6 t5 (offset-of prototype-bucket-tie next))
+                 (add.i t8 a2 4)
+                 (s.w t7 scratch-base (spr-offset prototype-tie-dma length))
+                 (srl32 a2 t6 0)
+                 (s.w t8 (-> prototype-work prototype-array))
+                 (pcpyud t8 t6 t6)
+                 (l.w t7 t5 (offset-of prototype-bucket-tie tie-colors))
+                 (or t8 a2 t8)
+                 (l.w a2 t5 (offset-of prototype-bucket-tie frag-count))
+                 (b.z t8 tie-prototype-advance-prototype :delay (l.w mood (-> scratch-base bsp mood)))
+                 (nop!)
+                 (l.q t5 t5 (offset-of prototype-bucket-tie geometry))
+                 (nop!)
+                 (s.q t6 scratch-base (spr-offset prototype-tie-dma next 0))
+                 (nop!)
+                 (s.w a2 scratch-base (spr-offset prototype-tie-dma frag-count 0))
+                 (nop!)
+                 (s.q t5 scratch-base (spr-offset prototype-tie-dma geometry 0))
+                 (nop!)
+                 (l.d a2 (-> prototype-work clamp))
+                 (nop!)
+                 (l.w t6 t7 4)
+                 (add.i ra t7 12)
+                 (l.q t5 (-> mood itimes 0))
+                 (sra t7 t6 2)
+                 (nop!)
+                 (add t7 t7 a0)
+                 (add.i t9 r0 221)
+                 (sub t7 t9 t7)
+                 (nop!)
+                 (b.ge t7 r0 tie-prototype-upload-color-palette :delay (nop!)))
+      ;; A palette is up to 128 entries, which is 32 output quadwords plus its packet header, so it can
+      ;; easily be the thing that overflows the bank. Check first, return the bank if so, and only then
+      ;; start blending.
+      (asm-block upload-and-expand-ordinary-palette
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work wait-from-spr)
+                                            tie-prototype-wait-packet-output
+                                            tie-prototype-flush-packet-output)
+                 ;; Submit the occupied qwords and switch to the alternate output bank.
+                 (dma-return-output-bank! output-bank
+                                          TIE-PROTOTYPE-OUTPUT-FLIP
+                                          a1
+                                          a0
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-prototype-flush-packet-output)
+                 ;; Round the entry count up to a whole 1 KiB chunk -- 32 entries of 32 bytes each -- and reserve
+                 ;; the packet header plus the eight output quadwords the chunk will produce.
+                 (label tie-prototype-upload-color-palette)
+                 (add.i t7 t6 31)
+                 (l.q t6 (-> prototype-work upload-palette-0 quad))
+                 (sra t7 t7 5)
+                 (add.i a0 a0 2)
+                 (sll t9 t7 5)
+                 (s.q t6 a1)
+                 (sra t6 t9 2)
+                 (s.b t9 (-> prototype-work upload-palette-1 vif1 num))
+                 (add a0 a0 t6)
+                 (s.h t6 (-> prototype-work upload-palette-1))
+                 (nop!)
+                 (l.q t6 (-> mood itimes 1))
+                 (nop!)
+                 (l.q gp (-> prototype-work upload-palette-1))
+                 (nop!)
+                 (l.q t7 (-> mood itimes 2))
+                 (nop!)
+                 (s.q gp a1 16)
+                 (add.i a1 a1 32)
+                 (l.q t8 (-> mood itimes 3))
+                 ;; The source colors come from main memory, so they are staged through the two 1 KiB color
+                 ;; banks: start the next kilobyte's transfer, blend the kilobyte that just landed, repeat.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work wait-to-spr)
+                                            tie-prototype-wait-color-upload
+                                            tie-prototype-start-color-upload)
+                 ;; Start the first palette transfer.
+                 (label tie-prototype-start-color-upload)
+                 (s.w ra (-> to-spr-channel madr))
+                 (add.i t9 t9 -32)
+                 (s.w palette-bank (-> to-spr-channel sadr))
+                 (add.i gp r0 64)
+                 (s.w gp (-> to-spr-channel qwc))
+                 (add.i gp r0 DMA-CHCR-STR)
+                 (s.w gp (-> to-spr-channel chcr))
+                 (add.i ra ra 1024)
+                 (label tie-prototype-next-color-chunk)
+                 (m s5 palette-bank)
+                 (xor.i palette-bank palette-bank TIE-PROTOTYPE-PALETTE-FLIP)
+                 (b.le t9 r0 tie-prototype-finish-color-upload :delay (add.i t9 t9 -32))
+                 ;; Wait before reusing a color bank for the next 1 KiB source chunk.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work wait-to-spr)
+                                            tie-prototype-wait-next-color-upload
+                                            tie-prototype-start-next-color-upload)
+                 ;; Kick off the next kilobyte before blending this one, so the transfer hides behind the
+                 ;; multiply-accumulate loop rather than in front of it.
+                 (label tie-prototype-start-next-color-upload)
+                 (s.w ra (-> to-spr-channel madr))
+                 (nop!)
+                 (s.w palette-bank (-> to-spr-channel sadr))
+                 (add.i gp r0 64)
+                 (s.w gp (-> to-spr-channel qwc))
+                 (add.i gp r0 DMA-CHCR-STR)
+                 (s.w gp (-> to-spr-channel chcr))
+                 (add.i ra ra 1024)
+                 (b tie-prototype-expand-color-block :delay (nop!))
+                 ;; The last kilobyte has no successor to hide behind, so this is the one wait that is always
+                 ;; paid in full.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work wait-to-spr)
+                                            tie-prototype-finish-color-upload
+                                            tie-prototype-expand-color-block)
+                 ;; Prime the blend loop with the first two source quadwords.
+                 ;;
+                 ;; A palette entry is not one color, it is eight -- one per time-of-day slot -- packed as
+                 ;; 32 bytes. mood-context.itimes holds the eight weights for the current time of day, each
+                 ;; replicated once per channel, which fills exactly four quadwords of halfwords. So one
+                 ;; pmulth plus three pmaddh blend all eight slots of one entry across all four channels at
+                 ;; once, and the whole level's palette becomes 32 words per kilobyte of source.
+                 (label tie-prototype-expand-color-block)
+                 (add.i gp a1 128)
+                 (l.q s2 s5 (offset-of time-of-day-palette data))
+                 (nop!)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (pextlb s3 r0 s2)
+                 (mmi-nop!)
+                 (pextub s2 r0 s2)
+                 (mmi-nop!)
+                 (pmulth r0 s3 t5)
+                 (mmi-nop!)
+                 (pextlb s3 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s2 t6)
+                 (mmi-nop!)
+                 (pextub s4 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s3 t7)
+                 (l.q s3 s5 (+ (offset-of time-of-day-palette data) 32))
+                 (add.i s5 s5 32)
+                 (nop!)
+                 (pmaddh r0 s4 t8)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (pextlb s2 r0 s3)
+                 (mmi-nop!)
+                 ;; One entry per iteration. pmfhl.lh collects the four packed accumulators, the shift by six
+                 ;; divides out the weights' 6-bit fraction, pcpyud plus add.h folds the two halves of the
+                 ;; sum together, pminh clamps every channel against the packed limit in prototype-tie-work,
+                 ;; and ppacb squeezes the four halfwords back down to one RGBA word. Thirty-two words from
+                 ;; the current 1 KiB source chunk for the VU1 palette.
+                 (label tie-prototype-expand-eight-colors)
+                 (pextub s3 r0 s3)
+                 (mmi-nop!)
+                 (pmfhl.lh s1)
+                 (mmi-nop!)
+                 (pmulth r0 s2 t5)
+                 (mmi-nop!)
+                 (srl.h s2 s1 6)
+                 (mmi-nop!)
+                 (pcpyud s1 s2 s2)
+                 (mmi-nop!)
+                 (add.h s2 s1 s2)
+                 (mmi-nop!)
+                 (pminh s2 s2 a2)
+                 (mmi-nop!)
+                 (ppacb s1 r0 s2)
+                 (mmi-nop!)
+                 (pextlb s2 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s3 t6)
+                 (s.w s1 a1)
+                 (pextub s4 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s2 t7)
+                 (l.q s3 s5 (+ (offset-of time-of-day-palette data) 32))
+                 (add.i s5 s5 32)
+                 (add.i a1 a1 4)
+                 (pmaddh r0 s4 t8)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (b.ne a1 gp tie-prototype-expand-eight-colors :delay (pextlb s2 r0 s3))
+                 (b.ge t9 r0 tie-prototype-next-color-chunk :delay (nop!))
+                 (nop!)
+                 (l.w a2 scratch-base (spr-offset prototype-tie-dma next 1))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma geometry 1))
+                 (b.z a2 tie-prototype-select-geometry-two :delay (l.bu t5 scratch-base (spr-offset prototype-tie-dma frag-count 1)))
+                 (bgezal r0 tie-prototype-begin-fragments :delay (nop!)))
+      ;; Three nearly identical selectors, one per ordinary geometry, each testing its list head and calling
+      ;; the shared fragment loop if it is populated. They fall through into each other rather than looping,
+      ;; because the return address is what tells the fragment loop which selector to come back to.
+      (asm-block select-ordinary-geometry
+                 (label tie-prototype-select-geometry-two)
+                 (nop!)
+                 (l.w a2 scratch-base (spr-offset prototype-tie-dma next 2))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma geometry 2))
+                 (b.z a2 tie-prototype-select-geometry-three :delay (l.bu t5 scratch-base (spr-offset prototype-tie-dma frag-count 2)))
+                 (bgezal r0 tie-prototype-begin-fragments :delay (nop!))
+                 ;; Variant three is the final ordinary LOD.
+                 (label tie-prototype-select-geometry-three)
+                 (nop!)
+                 (l.w a2 scratch-base (spr-offset prototype-tie-dma next 3))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma geometry 3))
+                 (b.z a2 tie-prototype-advance-prototype :delay (l.bu t5 scratch-base (spr-offset prototype-tie-dma frag-count 3)))
+                 (bgezal r0 tie-prototype-begin-fragments :delay (nop!))
+                 ;; Advance the prototype-array cursor after all populated ordinary variants are emitted.
+                 (label tie-prototype-advance-prototype)
+                 (nop!)
+                 (l.w a2 (-> prototype-work prototype-array))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma length))
+                 (nop!)
+                 (l.w t5 a2 (offset-of prototype-array-tie data))
+                 (b.nz t6 tie-prototype-next-prototype :delay (add.i t7 t6 -1))
+                 (b tie-prototype-finish-output :delay (nop!))
+                 ;; A local call shares the fragment loop between the three LOD selectors.
+                 (label tie-prototype-begin-fragments)
+                 (add.i t6 t6 32)
+                 (nop!))
+      ;; Emit one fragment: patch the upload template with this fragment's stream addresses and counts and
+      ;; append it, followed by the CALL that runs the geometry's instance list. Check the bank has room
+      ;; first -- a fragment packet must not be split across two transfers, since the DMA controller would
+      ;; execute half a chain.
+      (asm-block emit-ordinary-fragments
+                 (label tie-prototype-next-fragment)
+                 (add.i t7 a0 4)
+                 (add.i t8 r0 255)
+                 (sub t7 t8 t7)
+                 (l.w t8 (-> fragment gif-ref))
+                 (b.ge t7 r0 tie-prototype-emit-fragment :delay (l.hu t7 (-> fragment gif-count)))
+                 ;; Wait for the previous output bank before flushing a packet that would overflow this one.
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work wait-from-spr)
+                                            tie-prototype-wait-fragment-output
+                                            tie-prototype-flush-fragment-output)
+                 ;; Submit this bank and continue the same geometry in the alternate bank.
+                 (dma-return-output-bank! output-bank
+                                          TIE-PROTOTYPE-OUTPUT-FLIP
+                                          a1
+                                          a0
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-prototype-flush-fragment-output)
+                 ;; Patch the four-qword ordinary model template with the fragment's vertex/triangle counts,
+                 ;; stream reference, palette reference, and selected instance-list head.
+                 (label tie-prototype-emit-fragment)
+                 (nop!)
+                 (l.w s5 (-> fragment point-ref))
+                 (nop!)
+                 (l.hu s4 (-> fragment tex-count))
+                 (nop!)
+                 (l.hu gp (-> fragment vertex-count))
+                 (nop!)
+                 (s.w t8 (-> prototype-work upload-model-0 dma addr))
+                 (nop!)
+                 (s.h s4 (-> prototype-work upload-model-0))
+                 (add.i t9 s4 #x4000)
+                 (s.b s4 (-> prototype-work upload-model-0 vif1 num))
+                 (sll s4 s4 4)
+                 (s.w s5 (-> prototype-work upload-model-2 dma addr))
+                 (add t8 t8 s4)
+                 (s.h gp (-> prototype-work upload-model-2))
+                 (sll gp gp 1)
+                 (s.w a2 (-> prototype-work upload-model-3 dma addr))
+                 (nop!)
+                 (s.b gp (-> prototype-work upload-model-2 vif1 num))
+                 (nop!)
+                 (s.w t8 (-> prototype-work upload-model-1 dma addr))
+                 (nop!)
+                 (s.h t7 (-> prototype-work upload-model-1))
+                 (sll t7 t7 2)
+                 (s.h t9 (-> prototype-work upload-model-1 vif1))
+                 (nop!)
+                 (s.b t7 (-> prototype-work upload-model-1 vif1 num))
+                 (nop!)
+                 (l.q t7 (-> prototype-work upload-model-0))
+                 (nop!)
+                 (l.q t8 (-> prototype-work upload-model-1))
+                 (nop!)
+                 (l.q t9 (-> prototype-work upload-model-2))
+                 (nop!)
+                 (l.q gp (-> prototype-work upload-model-3))
+                 (add.i a0 a0 4)
+                 (s.q t7 a1)
+                 (add.i t5 t5 -1)
+                 (s.q t8 a1 16)
+                 (add.i a2 a2 48)
+                 (s.q t9 a1 32)
+                 (s.q gp a1 48)
+                 (add.i a1 a1 64)
+                 (b.gt t5 r0 tie-prototype-next-fragment :delay (add.i fragment fragment 64))
+                 (jr ra :delay (nop!)))
+      ;; Last bank out. This transfer uses the exact occupied quadword count rather than a full 256, and
+      ;; unlike every other flush the code has to wait for it to land before publishing the advanced cursor
+      ;; back into the caller's dma-buffer. An empty bank skips the transfer entirely.
+      (asm-block finish-ordinary-prototype-output
+                 (label tie-prototype-finish-output)
+                 (b.z a0 tie-prototype-wait-output-dma :delay (nop!))
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work wait-from-spr)
+                                            tie-prototype-wait-final-output
+                                            tie-prototype-flush-final-output)
+                 ;; Submit exactly the occupied qwords in the last bank.
+                 (label tie-prototype-flush-final-output)
+                 (s.w output-bank (-> from-spr-channel sadr))
+                 (nop!)
+                 (s.w memory-cursor (-> from-spr-channel madr))
+                 (sll a1 a0 4)
+                 (add memory-cursor memory-cursor a1)
+                 (nop!)
+                 (s.w a0 (-> from-spr-channel qwc))
+                 (add.i a0 r0 DMA-CHCR-STR)
+                 (s.w a0 (-> from-spr-channel chcr))
+                 (nop!)
+                 ;; Wait for the final transfer before publishing the advanced dma-buffer cursor.
+                 (dma-wait-counting-stalls! a0
+                                            from-spr-channel
+                                            (-> prototype-work wait-from-spr)
+                                            tie-prototype-wait-output-dma
+                                            tie-prototype-finish)
+                 (label tie-prototype-finish)
+                 (l.w a0 scratch-base (spr-offset prototype-tie-dma dma-buffer))
+                 (nop!)
+                 (s.w memory-cursor (-> dma-buf base))
+                 (nop!)
+                 (m v0 r0)
+                 (l.d ra sp)
+                 (l.q gp sp 96)
+                 (l.q s5 sp 80)
+                 (l.q s4 sp 64)
+                 (l.q s3 sp 48)
+                 (l.q s2 sp 32)
+                 (l.q s1 sp 16)
+                 (jr ra :delay (add.i sp sp 112))
+                 (nop!)
+                 (nop!))))
+  (defun draw-inline-array-prototype-tie-near-asm ((dma-buf dma-buffer) (prototype-count int) (prototypes prototype-array-tie))
+    "Expand the selected TIE palettes and build near-TIE fragment chains for geometry variant
+     zero."
+    (declare (asm-func none) (allow-saved-regs))
+    ;; Near instances use a separate VU1 program because geometry crossing the camera plane must be
+    ;; clipped before perspective division. The packet format otherwise shares the prototype palette
+    ;; expansion and scratchpad output machinery used by ordinary TIE.
+    ;; Use the same palette and output double buffers as ordinary TIE, but consume only geometry
+    ;; variant zero, whose instances were classified for the near-camera clipping path.
+    ;;
+    ;; Near TIE uses variant zero from the same prototype state area and the five-quadword near-model
+    ;; packet in prototype-tie-work: one extra V4-8 stream at VU address 30 carrying the per-vertex data
+    ;; the clipper needs, and one more MSCAL, which is the only structural difference from the ordinary
+    ;; builder.
+    (rlet ((prototype-work :reg t0 :type prototype-tie-work)
+           (from-spr-channel :reg t1 :type dma-bank-spr)
+           (output-bank :reg t2)
+           (palette-bank :reg t3)
+           (to-spr-channel :reg t4 :type dma-bank-spr)
+           (dma-buf :reg a0 :type dma-buffer) ;; the argument, before a0 becomes the packet qword count
+           (scratch-base :reg a3 :type terrain-context)
+           (mood :reg t8 :type mood-context)
+           (fragment :reg t6 :type tie-fragment)
+           (memory-cursor :reg v1))
+      ;; The registers not aliased above genuinely change meaning every few instructions and keep their
+      ;; physical names: a0 is the caller's dma-buffer, then the count of quadwords occupied in the
+      ;; current output bank, then a DMA status word; a1 is the write cursor inside that bank, borrowed
+      ;; for channel status and byte counts; t5 through t9 pass around the bucket, its palette, its
+      ;; geometry pointers, the four time-of-day weight vectors, and finally the fragment cursor.
+      ;; Each block says what they are holding while it runs.
+      (asm-block setup-near-prototype-stream
+                 (label tie-near-prototype-entry)
+                 (add.i sp sp -112)
+                 (s.d ra sp)
+                 (s.q s1 sp 16)
+                 (s.q s2 sp 32)
+                 (s.q s3 sp 48)
+                 (s.q s4 sp 64)
+                 (s.q s5 sp 80)
+                 (s.q gp sp 96)
+                 (nop!)
+                 (lui scratch-base #x7000)
+                 (l.w memory-cursor (-> dma-buf base))
+                 (lui from-spr-channel #x1000)
+                 (lui output-bank #x1000)
+                 (sync.l)
+                 (cache dxwbin memory-cursor 0)
+                 (sync.l)
+                 (cache dxwbin memory-cursor 1)
+                 (sync.l)
+                 (m! prototype-work *prototype-tie-work*)
+                 (ori from-spr-channel from-spr-channel #xd000)
+                 (ori to-spr-channel output-bank #xd400)
+                 (ori palette-bank scratch-base 16)
+                 (ori output-bank scratch-base 2064)
+                 (s.w a0 scratch-base (spr-offset prototype-tie-dma dma-buffer))
+                 (add.i t7 a1 -1)
+                 (nop!)
+                 (l.w t5 a2 12)
+                 (add.i a0 r0 0)
+                 (m a1 output-bank))
+      ;; One prototype per outer iteration, and only geometry 0 -- the one the instance pass assigns to
+      ;; anything close enough to need clipping. A prototype whose variant-zero list is empty is skipped
+      ;; without reading anything else; otherwise its list head, geometry pointer, fragment count, and
+      ;; palette are copied into the scratchpad state area.
+      (asm-block prepare-near-prototype
+                 (label tie-near-prototype-next-prototype)
+                 (nop!)
+                 (l.w t6 t5 (offset-of prototype-bucket-tie next))
+                 (add.i a2 a2 4)
+                 (s.w t7 scratch-base (spr-offset prototype-tie-dma length))
+                 (nop!)
+                 (s.w a2 (-> prototype-work prototype-array))
+                 (nop!)
+                 (l.w t7 t5 (offset-of prototype-bucket-tie tie-colors))
+                 (nop!)
+                 (l.w a2 t5 (offset-of prototype-bucket-tie frag-count))
+                 (b.z t6 tie-near-prototype-advance-prototype :delay (l.w mood (-> scratch-base bsp mood)))
+                 (nop!)
+                 (l.q t5 t5 (offset-of prototype-bucket-tie geometry))
+                 (nop!)
+                 (s.q t6 scratch-base (spr-offset prototype-tie-dma next 0))
+                 (nop!)
+                 (s.w a2 scratch-base (spr-offset prototype-tie-dma frag-count 0))
+                 (nop!)
+                 (s.q t5 scratch-base (spr-offset prototype-tie-dma geometry 0))
+                 (nop!)
+                 (l.d a2 (-> prototype-work clamp))
+                 (nop!)
+                 (l.w t6 t7 4)
+                 (add.i ra t7 12)
+                 (l.q t5 (-> mood itimes 0))
+                 (sra t7 t6 2)
+                 (nop!)
+                 (add t7 t7 a0)
+                 (add.i t9 r0 221)
+                 (sub t7 t9 t7)
+                 (nop!)
+                 (b.ge t7 r0 tie-near-prototype-upload-color-palette :delay (nop!)))
+      ;; A palette is up to 128 entries, which is 32 output quadwords plus its packet header, so it can
+      ;; easily be the thing that overflows the bank. Check first, return the bank if so, and only then
+      ;; start blending.
+      (asm-block upload-and-expand-near-palette
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work near-wait-from-spr)
+                                            tie-near-prototype-wait-packet-output
+                                            tie-near-prototype-flush-packet-output)
+                 ;; Submit the occupied qwords and switch to the alternate output bank.
+                 (dma-return-output-bank! output-bank
+                                          TIE-PROTOTYPE-OUTPUT-FLIP
+                                          a1
+                                          a0
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-near-prototype-flush-packet-output)
+                 ;; Round the entry count up to a whole 1 KiB chunk -- 32 entries of 32 bytes each -- and reserve
+                 ;; the packet header plus the eight output quadwords the chunk will produce.
+                 (label tie-near-prototype-upload-color-palette)
+                 (add.i t7 t6 31)
+                 (l.q t6 (-> prototype-work upload-palette-0 quad))
+                 (sra t7 t7 5)
+                 (add.i a0 a0 2)
+                 (sll t9 t7 5)
+                 (s.q t6 a1)
+                 (sra t6 t9 2)
+                 (s.b t9 (-> prototype-work upload-palette-1 vif1 num))
+                 (add a0 a0 t6)
+                 (s.h t6 (-> prototype-work upload-palette-1))
+                 (nop!)
+                 (l.q t6 (-> mood itimes 1))
+                 (nop!)
+                 (l.q gp (-> prototype-work upload-palette-1))
+                 (nop!)
+                 (l.q t7 (-> mood itimes 2))
+                 (nop!)
+                 (s.q gp a1 16)
+                 (add.i a1 a1 32)
+                 (l.q t8 (-> mood itimes 3))
+                 ;; The source colors come from main memory, so they are staged through the two 1 KiB color
+                 ;; banks: start the next kilobyte's transfer, blend the kilobyte that just landed, repeat.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work near-wait-to-spr)
+                                            tie-near-prototype-wait-color-upload
+                                            tie-near-prototype-start-color-upload)
+                 ;; Start the first palette transfer.
+                 (label tie-near-prototype-start-color-upload)
+                 (s.w ra (-> to-spr-channel madr))
+                 (add.i t9 t9 -32)
+                 (s.w palette-bank (-> to-spr-channel sadr))
+                 (add.i gp r0 64)
+                 (s.w gp (-> to-spr-channel qwc))
+                 (add.i gp r0 DMA-CHCR-STR)
+                 (s.w gp (-> to-spr-channel chcr))
+                 (add.i ra ra 1024)
+                 (label tie-near-prototype-next-color-chunk)
+                 (m s5 palette-bank)
+                 (xor.i palette-bank palette-bank TIE-PROTOTYPE-PALETTE-FLIP)
+                 (b.le t9 r0 tie-near-prototype-finish-color-upload :delay (add.i t9 t9 -32))
+                 ;; Wait before reusing a color bank for the next 1 KiB source chunk.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work near-wait-to-spr)
+                                            tie-near-prototype-wait-next-color-upload
+                                            tie-near-prototype-start-next-color-upload)
+                 ;; Kick off the next kilobyte before blending this one, so the transfer hides behind the
+                 ;; multiply-accumulate loop rather than in front of it.
+                 (label tie-near-prototype-start-next-color-upload)
+                 (s.w ra (-> to-spr-channel madr))
+                 (nop!)
+                 (s.w palette-bank (-> to-spr-channel sadr))
+                 (add.i gp r0 64)
+                 (s.w gp (-> to-spr-channel qwc))
+                 (add.i gp r0 DMA-CHCR-STR)
+                 (s.w gp (-> to-spr-channel chcr))
+                 (add.i ra ra 1024)
+                 (b tie-near-prototype-expand-color-block :delay (nop!))
+                 ;; Wait for the last palette block, which has no following transfer to cover its latency.
+                 (dma-wait-counting-stalls! gp
+                                            to-spr-channel
+                                            (-> prototype-work near-wait-to-spr)
+                                            tie-near-prototype-finish-color-upload
+                                            tie-near-prototype-expand-color-block)
+                 ;; Prime the blend loop with the first two source quadwords.
+                 ;;
+                 ;; A palette entry is not one color, it is eight -- one per time-of-day slot -- packed as
+                 ;; 32 bytes. mood-context.itimes holds the eight weights for the current time of day, each
+                 ;; replicated once per channel, which fills exactly four quadwords of halfwords. So one
+                 ;; pmulth plus three pmaddh blend all eight slots of one entry across all four channels at
+                 ;; once, and the whole level's palette becomes 32 words per kilobyte of source.
+                 (label tie-near-prototype-expand-color-block)
+                 (add.i gp a1 128)
+                 (l.q s2 s5 (offset-of time-of-day-palette data))
+                 (nop!)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (pextlb s3 r0 s2)
+                 (mmi-nop!)
+                 (pextub s2 r0 s2)
+                 (mmi-nop!)
+                 (pmulth r0 s3 t5)
+                 (mmi-nop!)
+                 (pextlb s3 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s2 t6)
+                 (mmi-nop!)
+                 (pextub s4 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s3 t7)
+                 (l.q s3 s5 (+ (offset-of time-of-day-palette data) 32))
+                 (add.i s5 s5 32)
+                 (nop!)
+                 (pmaddh r0 s4 t8)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (pextlb s2 r0 s3)
+                 (mmi-nop!)
+                 ;; One entry per iteration. pmfhl.lh collects the four packed accumulators, the shift by six
+                 ;; divides out the weights' 6-bit fraction, pcpyud plus add.h folds the two halves of the
+                 ;; sum together, pminh clamps every channel against the packed limit in prototype-tie-work,
+                 ;; and ppacb squeezes the four halfwords back down to one RGBA word. Thirty-two words from
+                 ;; the current 1 KiB source chunk for the VU1 palette.
+                 (label tie-near-prototype-expand-eight-colors)
+                 (pextub s3 r0 s3)
+                 (mmi-nop!)
+                 (pmfhl.lh s1)
+                 (mmi-nop!)
+                 (pmulth r0 s2 t5)
+                 (mmi-nop!)
+                 (srl.h s2 s1 6)
+                 (mmi-nop!)
+                 (pcpyud s1 s2 s2)
+                 (mmi-nop!)
+                 (add.h s2 s1 s2)
+                 (mmi-nop!)
+                 (pminh s2 s2 a2)
+                 (mmi-nop!)
+                 (ppacb s1 r0 s2)
+                 (mmi-nop!)
+                 (pextlb s2 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s3 t6)
+                 (s.w s1 a1)
+                 (pextub s4 r0 s4)
+                 (mmi-nop!)
+                 (pmaddh r0 s2 t7)
+                 (l.q s3 s5 (+ (offset-of time-of-day-palette data) 32))
+                 (add.i s5 s5 32)
+                 (add.i a1 a1 4)
+                 (pmaddh r0 s4 t8)
+                 (l.q s4 s5 (+ (offset-of time-of-day-palette data) 16))
+                 (b.ne a1 gp tie-near-prototype-expand-eight-colors :delay (pextlb s2 r0 s3))
+                 (b.ge t9 r0 tie-near-prototype-next-color-chunk :delay (nop!))
+                 (nop!)
+                 (l.w a2 scratch-base (spr-offset prototype-tie-dma next 0))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma geometry 0))
+                 (nop!)
+                 (l.bu t5 scratch-base (spr-offset prototype-tie-dma frag-count 0))
+                 (add.i t6 t6 32)
+                 (nop!))
+      ;; Emit one fragment, five template quadwords instead of four: the extra V4-8 stream at VU address 30
+      ;; carries the per-vertex data the clipper needs, and there is one more MSCAL. Otherwise identical to
+      ;; the ordinary builder, including the rule that a fragment packet may not be split across two
+      ;; transfers.
+      (asm-block emit-near-fragments
+                 (label tie-near-prototype-next-fragment)
+                 (add.i t7 a0 4)
+                 (add.i t8 r0 255)
+                 (sub t7 t8 t7)
+                 (l.w t8 (-> fragment gif-ref))
+                 (b.ge t7 r0 tie-near-prototype-emit-fragment :delay (l.hu t7 (-> fragment gif-count)))
+                 ;; Wait for the previous output bank before flushing a packet that would overflow this one.
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work near-wait-from-spr)
+                                            tie-near-prototype-wait-fragment-output
+                                            tie-near-prototype-flush-fragment-output)
+                 ;; Submit this bank and continue the same prototype in the alternate bank.
+                 (dma-return-output-bank! output-bank
+                                          TIE-PROTOTYPE-OUTPUT-FLIP
+                                          a1
+                                          a0
+                                          memory-cursor
+                                          from-spr-channel
+                                          tie-near-prototype-flush-fragment-output)
+                 ;; Patch the five-qword near model template with ordinary and clipping-stream references,
+                 ;; vertex/triangle counts, palette state, and the variant-zero instance-list head.
+                 (label tie-near-prototype-emit-fragment)
+                 (nop!)
+                 (l.w s5 (-> fragment dp-ref))
+                 (nop!)
+                 (l.w s4 (-> fragment dp-qwc))
+                 (nop!)
+                 (l.hu s3 (-> fragment tex-count))
+                 (nop!)
+                 (l.w ra (-> fragment point-ref))
+                 (nop!)
+                 (l.hu gp (-> fragment vertex-count))
+                 (nop!)
+                 (s.w t8 (-> prototype-work upload-near-model-0 dma addr))
+                 (nop!)
+                 (s.h s3 (-> prototype-work upload-near-model-0))
+                 (add.i t9 s3 #x4000)
+                 (s.b s3 (-> prototype-work upload-near-model-0 vif1 num))
+                 (sll s3 s3 4)
+                 (s.h s4 (-> prototype-work upload-near-model-2))
+                 (sll s4 s4 2)
+                 (s.w s5 (-> prototype-work upload-near-model-2 dma addr))
+                 (add t8 t8 s3)
+                 (s.b s4 (-> prototype-work upload-near-model-2 vif1 num))
+                 (nop!)
+                 (s.h gp (-> prototype-work upload-near-model-3))
+                 (sll gp gp 1)
+                 (s.w ra (-> prototype-work upload-near-model-3 dma addr))
+                 (nop!)
+                 (s.b gp (-> prototype-work upload-near-model-3 vif1 num))
+                 (nop!)
+                 (s.w t8 (-> prototype-work upload-near-model-1 dma addr))
+                 (nop!)
+                 (s.h t7 (-> prototype-work upload-near-model-1))
+                 (sll t7 t7 2)
+                 (s.h t9 (-> prototype-work upload-near-model-1 vif1))
+                 (nop!)
+                 (s.b t7 (-> prototype-work upload-near-model-1 vif1 num))
+                 (nop!)
+                 (s.w a2 (-> prototype-work upload-near-model-4 dma addr))
+                 (nop!)
+                 (l.q t7 (-> prototype-work upload-near-model-0))
+                 (nop!)
+                 (l.q t8 (-> prototype-work upload-near-model-1))
+                 (nop!)
+                 (l.q t9 (-> prototype-work upload-near-model-2))
+                 (nop!)
+                 (l.q ra (-> prototype-work upload-near-model-3))
+                 (nop!)
+                 (l.q gp (-> prototype-work upload-near-model-4))
+                 (nop!)
+                 (s.q t7 a1)
+                 (add.i a0 a0 5)
+                 (s.q t8 a1 16)
+                 (add.i t5 t5 -1)
+                 (s.q t9 a1 32)
+                 (add.i a2 a2 48)
+                 (s.q ra a1 48)
+                 (s.q gp a1 64)
+                 (add.i a1 a1 80)
+                 (b.gt t5 r0 tie-near-prototype-next-fragment :delay (add.i fragment fragment 64))
+                 ;; Advance after every near fragment in this prototype has been appended.
+                 (label tie-near-prototype-advance-prototype)
+                 (nop!)
+                 (l.w a2 (-> prototype-work prototype-array))
+                 (nop!)
+                 (l.w t6 scratch-base (spr-offset prototype-tie-dma length))
+                 (nop!)
+                 (l.w t5 a2 12)
+                 (b.nz t6 tie-near-prototype-next-prototype :delay (add.i t7 t6 -1))
+                 (b tie-near-prototype-finish-output :delay (nop!)))
+      ;; Last bank out. This transfer uses the exact occupied quadword count rather than a full 256, and
+      ;; unlike every other flush the code has to wait for it to land before publishing the advanced cursor
+      ;; back into the caller's dma-buffer. An empty bank skips the transfer entirely.
+      (asm-block finish-near-prototype-output
+                 (label tie-near-prototype-finish-output)
+                 (b.z a0 tie-near-prototype-wait-output-dma :delay (nop!))
+                 (dma-wait-counting-stalls! a1
+                                            from-spr-channel
+                                            (-> prototype-work near-wait-from-spr)
+                                            tie-near-prototype-wait-final-output
+                                            tie-near-prototype-flush-final-output)
+                 ;; Submit exactly the occupied qwords in the last bank.
+                 (label tie-near-prototype-flush-final-output)
+                 (s.w output-bank (-> from-spr-channel sadr))
+                 (nop!)
+                 (s.w memory-cursor (-> from-spr-channel madr))
+                 (sll a1 a0 4)
+                 (add memory-cursor memory-cursor a1)
+                 (nop!)
+                 (s.w a0 (-> from-spr-channel qwc))
+                 (add.i a0 r0 DMA-CHCR-STR)
+                 (s.w a0 (-> from-spr-channel chcr))
+                 (nop!)
+                 ;; Wait for the last transfer before returning its main-memory cursor.
+                 (dma-wait-counting-stalls! a0
+                                            from-spr-channel
+                                            (-> prototype-work near-wait-from-spr)
+                                            tie-near-prototype-wait-output-dma
+                                            tie-near-prototype-finish)
+                 (label tie-near-prototype-finish)
+                 (l.w a0 scratch-base (spr-offset prototype-tie-dma dma-buffer))
+                 (nop!)
+                 (s.w memory-cursor (-> dma-buf base))
+                 (nop!)
+                 (m v0 r0)
+                 (l.d ra sp)
+                 (l.q gp sp 96)
+                 (l.q s5 sp 80)
+                 (l.q s4 sp 64)
+                 (l.q s3 sp 48)
+                 (l.q s2 sp 32)
+                 (l.q s1 sp 16)
+                 (jr ra :delay (add.i sp sp 112))
+                 (nop!)
+                 (nop!)))))

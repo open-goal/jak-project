@@ -172,8 +172,6 @@ set(RUNTIME_SOURCE
         mips2c/jak1_functions/sparticle.cpp
         mips2c/jak1_functions/test_func.cpp
         mips2c/jak1_functions/texture.cpp
-        mips2c/jak1_functions/tfrag.cpp
-        mips2c/jak1_functions/tie_methods.cpp
         mips2c/jak1_functions/time_of_day.cpp
         mips2c/jak2_functions/bones.cpp
         mips2c/jak2_functions/collide_cache.cpp

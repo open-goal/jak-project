@@ -9,7 +9,7 @@
 
 (defmethod setup-params! ((this sync-info) (period uint) (phase float) (ease-out float) (ease-in float))
   "Set the period in 300 Hz game-time ticks and the initial phase as a fraction of that period.
-   The base clock ignores ease-out and ease-in, which are retained for the shared subtype interface."
+   The base sync-info class ignores ease-out and ease-in."
   (set! (-> this period) period)
   (let* ((period-float (the float period))
          (phase-ticks (* phase period-float)))
@@ -75,9 +75,8 @@
    phase; the period is converted to 300 Hz game-time ticks. Return true when the resource exists,
    otherwise install the supplied defaults and return false. The base clock ignores default-ease-out
    and default-ease-in."
-  (local-vars (sync-tag res-tag))
-  (set! sync-tag (new 'static 'res-tag))
-  (let ((params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
+  (let* ((sync-tag (new 'static 'res-tag))
+         (params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
     (cond
       (params
        (setup-params! this
@@ -86,53 +85,57 @@
                       0.15
                       0.15)
        #t)
-      (else (setup-params! this default-period default-phase 0.15 0.15) #f))))
+      (else
+       (setup-params! this default-period default-phase 0.15 0.15)
+       #f))))
 
 (defmethod load-params! ((this sync-info-eased) (proc process) (default-period uint) (default-phase float) (default-ease-out float) (default-ease-in float))
   "Load the sync resource from proc. Four floats supply period seconds, initial phase,
    ease-out, and ease-in; a two-value resource uses the supplied easing defaults. Return true when the
    resource exists, otherwise install every supplied default and return false."
-  (local-vars (sync-tag res-tag))
-  (set! sync-tag (new 'static 'res-tag))
-  (let ((params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
+  (let* ((sync-tag (new 'static 'res-tag))
+         (params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
     (cond
       (params
        (if (>= (-> sync-tag elt-count) (the-as uint 4))
-         (setup-params! this
-                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
-                        (-> (the-as (pointer float) params) 1)
-                        (-> (the-as (pointer float) params) 2)
-                        (-> (the-as (pointer float) params) 3))
-         (setup-params! this
-                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
-                        (-> (the-as (pointer float) params) 1)
-                        default-ease-out
-                        default-ease-in))
+           (setup-params! this
+                          (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                          (-> (the-as (pointer float) params) 1)
+                          (-> (the-as (pointer float) params) 2)
+                          (-> (the-as (pointer float) params) 3))
+           (setup-params! this
+                          (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                          (-> (the-as (pointer float) params) 1)
+                          default-ease-out
+                          default-ease-in))
        #t)
-      (else (setup-params! this default-period default-phase default-ease-out default-ease-in) #f))))
+      (else
+       (setup-params! this default-period default-phase default-ease-out default-ease-in)
+       #f))))
 
 (defmethod load-params! ((this sync-info-paused) (proc process) (default-period uint) (default-phase float) (default-pause-after-out float) (default-pause-after-in float))
   "Load the sync resource from proc. Four floats supply period seconds, initial phase,
    pause-after-out, and pause-after-in; a two-value resource uses the supplied pause defaults. Return
    true when the resource exists, otherwise install every supplied default and return false."
-  (local-vars (sync-tag res-tag))
-  (set! sync-tag (new 'static 'res-tag))
-  (let ((params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
+  (let* ((sync-tag (new 'static 'res-tag))
+         (params (res-lump-data (-> proc entity) 'sync pointer :tag-ptr (& sync-tag))))
     (cond
       (params
        (if (>= (-> sync-tag elt-count) (the-as uint 4))
-         (setup-params! this
-                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
-                        (-> (the-as (pointer float) params) 1)
-                        (-> (the-as (pointer float) params) 2)
-                        (-> (the-as (pointer float) params) 3))
-         (setup-params! this
-                        (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
-                        (-> (the-as (pointer float) params) 1)
-                        default-pause-after-out
-                        default-pause-after-in))
+           (setup-params! this
+                          (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                          (-> (the-as (pointer float) params) 1)
+                          (-> (the-as (pointer float) params) 2)
+                          (-> (the-as (pointer float) params) 3))
+           (setup-params! this
+                          (the-as uint (the int (* 300.0 (-> (the-as (pointer float) params) 0))))
+                          (-> (the-as (pointer float) params) 1)
+                          default-pause-after-out
+                          default-pause-after-in))
        #t)
-      (else (setup-params! this default-period default-phase default-pause-after-out default-pause-after-in) #f))))
+      (else
+       (setup-params! this default-period default-phase default-pause-after-out default-pause-after-in)
+       #f))))
 
 (defmethod get-current-phase-no-mod ((this sync-info))
   "Return the base clock's wrapped phase from 0 through 1 without applying a subtype's easing

@@ -5,20 +5,6 @@
 (require "engine/dma/dma-buffer.gc")
 (require "engine/math/vector-h.gc")
 
-;; The DMA and VIF packets TIE builds its chains out of, initialized once at load time.
-;;
-;; Nothing here is sent as it stands. The packet builders in tie-methods.gc copy these quadwords into
-;; scratchpad and patch in the addresses, transfer lengths, and chain links for the instance or
-;; fragment they are working on. Keeping the constant words in a static template means the inner loop
-;; writes three or four words instead of assembling a packet from scratch, which matters when it is
-;; doing it once per instance.
-;;
-;; Fields left at zero below are the patched ones. The suspicious-looking VIF immediates are VU
-;; addresses: #x80c6 is 198 with its mask bits, #xc0cc is 204, #x4346 is 838.
-;;
-;; The instance stream is six V4-32 quadwords to VU 198 -- the transform, morph, and fog -- followed
-;; by packed V4-8 palette indices at 204. upload-color-2 and upload-color-ret are the same upload with
-;; different endings: both start VU entry 0, one continues the DMA chain and one returns from it.
 (define *instance-tie-work*
   (new 'static
        'instance-tie-work
@@ -57,24 +43,9 @@
        :refl-fade-fac -0.000625
        :refl-fade-end 409600.0))
 
-;; Both endings start entry 0 with an MSCAL; only their DMA tag differs. Assigned after the static
-;; definition because the same field is written twice and the second write is the one that survives.
 (set! (-> *instance-tie-work* upload-color-2 vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1))
-
 (set! (-> *instance-tie-work* upload-color-ret vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1))
 
-;; The same idea for prototype geometry, where the templates are bigger and there are three sets of
-;; them: ordinary, near, and Generic.
-;;
-;; A fragment upload is a palette (128 packed colors to VU 838), then the shaders and strip templates
-;; as V4-32 at VU 0, then the packed points as V4-8 at 0 and V4-16 at 50. The near path inserts one
-;; more V4-8 block at 30 for the data its clipper needs.
-;;
-;; Two MSCALs are threaded through the middle of that. Entry 4 is empty and exists only to wait for
-;; the previous VU1 invocation to finish reading the area about to be overwritten; entry 6 installs the
-;; newly arrived fragment's shader and strip templates into both of its GIF output banks. Putting them
-;; inside the upload rather than before it lets the palette transfer overlap the previous fragment's
-;; drawing.
 (define *prototype-tie-work*
   (new 'static
        'prototype-tie-work
@@ -165,8 +136,6 @@
        (new 'static 'dma-packet :dma (new 'static 'dma-tag :id (dma-tag-id next)))
        :clamp #x8000ff00ff00ff))
 
-;; Thread the two MSCALs into both upload chains. Same reason as the instance endings above: these
-;; fields are written twice and the second write wins.
 (set! (-> *prototype-tie-work* upload-model-1 vif0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscal) :msk #x1))
 
 (set! (-> *prototype-tie-work* upload-model-3 vif0) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd mscal) :msk #x1))

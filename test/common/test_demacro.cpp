@@ -286,6 +286,57 @@ TEST(Demacro, Jak1RecognizesDmaBucketConstruction) {
 )");
 }
 
+TEST(Demacro, Jak1RecognizesDmaCntPacketsWithExplicitQwc) {
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const std::string source = R"((begin
+  (let* ((dma-state dma-buf)
+         (mask-packet (the-as object (-> dma-state base))))
+    (set! (-> (the-as dma-packet mask-packet) dma)
+          (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-packet mask-packet) vif0)
+          (new 'static 'vif-tag :cmd (vif-cmd stmask)))
+    (set! (-> (the-as dma-packet mask-packet) vif1) (new 'static 'vif-tag))
+    (set! (-> dma-state base) (&+ (the-as pointer mask-packet) 16)))
+  (let* ((dma-state dma-buf)
+         (packet (the-as dma-packet (-> dma-state base))))
+    (set! (-> packet dma) (new 'static 'dma-tag :qwc qwc :id (dma-tag-id cnt)))
+    (set! (-> packet vif0) vif0)
+    (set! (-> packet vif1) vif1)
+    (set! (-> dma-state base) (&+ (the-as pointer packet) 16))))
+)";
+  const auto result = demacro::rewrite(source, rules);
+  EXPECT_EQ(result.rewrite_count(), 2);
+  EXPECT_EQ(result.source, R"((begin
+  (dma-buffer-add-cnt-vif2 dma-buf #x3 (new 'static 'vif-tag :cmd (vif-cmd stmask)) (new 'static 'vif-tag))
+  (dma-buffer-add-cnt-vif2 dma-buf qwc vif0 vif1))
+)");
+}
+
+TEST(Demacro, Jak1RecognizesDmaNextPackets) {
+  const auto rules =
+      demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));
+  const std::string source = R"((begin
+  (let ((packet (the-as object (-> dma-buf base))))
+    (set! (-> (the-as dma-packet packet) dma)
+          (new 'static 'dma-tag :id (dma-tag-id next) :addr next-address))
+    (set! (-> (the-as dma-packet packet) vif0) vif0)
+    (set! (-> (the-as dma-packet packet) vif1) vif1)
+    (set! (-> dma-buf base) (&+ (the-as pointer packet) 16)))
+  (let ((packet (the-as dma-packet (-> dma-buf base))))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+    (set! (-> packet vif0) (new 'static 'vif-tag))
+    (set! (-> packet vif1) (new 'static 'vif-tag))
+    (set! (-> dma-buf base) (&+ (the-as pointer packet) 16))))
+)";
+  const auto result = demacro::rewrite(source, rules);
+  EXPECT_EQ(result.rewrite_count(), 2);
+  EXPECT_EQ(result.source, R"((begin
+  (dma-buffer-add-next-vif2 dma-buf 0 next-address vif0 vif1)
+  (dma-buffer-add-next-vif2 dma-buf 0 0 (new 'static 'vif-tag) (new 'static 'vif-tag)))
+)");
+}
+
 TEST(Demacro, Jak1RecognizesInlinedFontEnumSetters) {
   const auto rules =
       demacro::load_rules(file_util::get_file_path({"decompiler/config/jak1/demacro.jsonc"}));

@@ -1,0 +1,1988 @@
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; EE-side conveniences
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Scratchpad. instance-shrub-dma is overlaid on the work area of the terrain-context, which is what
+;; keeps the level header at the bottom of the scratchpad intact -- and is where the otherwise
+;; mysterious sixteen in the bank addresses comes from.
+(defmacro spr-offset (type &rest path)
+  `(+ (offset-of terrain-context work) (offset-of ,type ,@path)))
+
+;; Alternating a pair of banks is one xor of whatever bits their two addresses disagree on. Deriving
+;; the masks documents the surprising part for free: the input pair toggles #x1470 rather than the
+;; #x1450 the 5200-byte bank spacing suggests, because both addresses carry the work-area bias.
+(defconstant SHRUB-INSTANCE-INPUT-FLIP
+  (logxor (spr-offset instance-shrub-dma instancea) (spr-offset instance-shrub-dma instanceb)))
+
+(defconstant SHRUB-OUTPUT-FLIP
+  (logxor (spr-offset instance-shrub-dma outa) (spr-offset instance-shrub-dma outb)))
+
+;; An output bank holds 128 quadwords. The largest thing one leaf can add to it is 21 quadwords --
+;; a billboard's fourteen plus a seven-quadword instance record -- and the near builder's records
+;; are twelve, so each pass hands the bank back while that much room is still left.
+(defconstant SHRUB-OUTPUT-BANK-QWC
+  (/ (- (spr-offset instance-shrub-dma outb) (spr-offset instance-shrub-dma outa)) 16))
+
+(defconstant SHRUB-OUTPUT-FLUSH-AT (- SHRUB-OUTPUT-BANK-QWC 22))
+
+(defconstant SHRUB-NEAR-OUTPUT-FLUSH-AT (- SHRUB-OUTPUT-BANK-QWC 13))
+
+
+;; Chain mode with tag transfer enabled, plus the start bit. The node chain's own tags are copied
+;; into the scratchpad ahead of each run of instances, which is how the run length the EE stashed in
+;; the tag's unused VIF word arrives with the data.
+(defconstant DMA-CHCR-CHAIN-TTE-START 324)
+
+;; A DMA tag's quadword count is its first halfword and its address is its second word, so patching
+;; either one in a near-shrub template is a byte or word store rather than a field write. A VIF
+;; tag's NUM is its third byte. These three name the displacements instead of leaving 16, 20, 30,
+;; 32, 36, 46 ... spread through the builder.
+(defmacro shrub-near-tag-qwc (field)
+  `(offset-of shrub-near-packet ,field dma))
+
+(defmacro shrub-near-tag-addr (field)
+  `(+ (offset-of shrub-near-packet ,field dma) 4))
+
+(defmacro shrub-near-unpack-num (field)
+  `(+ (offset-of shrub-near-packet ,field vif1) 2))
+
+(#when PC_PORT
+  ;; The PC renderer does not execute the shrub VU1 program.
+  (define shrub-vu1-block (new 'static 'vu-function :length #x0 :qlength #x0)))
+
+(#unless PC_PORT
+  (defvu1 shrub-vu1-block
+          ;; Register aliases for the draw entry. The three setup entries borrow most of these
+          ;; registers as anonymous quadword shuttles and address temporaries, so they keep their
+          ;; physical spellings; the names below mean what they say from #x067 onwards.
+          ;;
+          ;; The draw loop is a two-deep software pipeline: the -a and -b halves each carry one
+          ;; vertex from packed input through the transform, the perspective divide, the palette
+          ;; multiply and the store, one stage apart, so the divide of one vertex overlaps the
+          ;; transform of the next. That is why every register comes in an -a and a -b copy and why
+          ;; the same fifteen-pair body appears over and over below.
+          ;;
+          ;; vi10 and vf23 through vf27 are deliberately left physical. vi10 holds two unrelated
+          ;; things -- the -64 end-of-strip sentinel through the loop, then the GIF packet offset
+          ;; pulled out of kick-base at the end of an instance. vf23 and vf24 are quadwords lifted
+          ;; straight out of the model's object stream and vf25, vf26 and vf27 are built at entry 0
+          ;; with only their z lane set; all five end up in the first quadword of a vertex's output
+          ;; group, and which of the five is stored is what the strip tests below decide. Naming
+          ;; them would be inventing a meaning the instructions do not establish.
+          (rlet ((code-a :reg vi01) ;; strip control code for the -a vertex, from clr-a.w
+                 (dest-a :reg vi02) ;; GIF output address for the -a vertex
+                 (area-sign :reg vi03) ;; sign flag of the screen-space edge cross product
+                 (code-b :reg vi04) ;; strip control code for the -b vertex, from clr-b.w
+                 (dest-b :reg vi05) ;; GIF output address for the -b vertex
+                 (vtx-ptr :reg vi06) ;; cursor into the expanded vertex stream
+                 (clr-ptr :reg vi07) ;; cursor into the expanded color stream
+                 (stq-ptr :reg vi08) ;; cursor into the expanded texture-coordinate stream
+                 (obj-ptr :reg vi09) ;; cursor into the model's object-record stream
+                 (model-bank :reg vi11) ;; base of the model bank being drawn
+                 (stream-qwc :reg vi12) ;; quadwords per stream, so the three cursors are one apart
+                 (matrix-ptr :reg vi13) ;; cursor into the instance ring
+                 (inst-count :reg vi14) ;; instances left in this ring
+                 (kick-addr :reg vi15) ;; start of the GIF packet handed to XGKICK
+                 (vtx-a :reg vf01) ;; packed input vertex, then its clip-space position
+                 (pos-a :reg vf02) ;; screen position, then 12.4 fixed point
+                 (clr-a :reg vf03) ;; model color; w carries the strip control code
+                 (clr-a-lit :reg vf04) ;; model color times the instance color
+                 (stq-a :reg vf05) ;; texture coordinate
+                 (stq-a-q :reg vf06) ;; texture coordinate divided through by w
+                 (slot-a :reg vf07) ;; vertex plus gifbuf; w is this vertex's output address
+                 (vtx-b :reg vf08)
+                 (pos-b :reg vf09)
+                 (clr-b :reg vf10)
+                 (clr-b-lit :reg vf11)
+                 (stq-b :reg vf12)
+                 (stq-b-q :reg vf13)
+                 (slot-b :reg vf14)
+                 (edge-0 :reg vf15) ;; the two screen-space edges whose cross product gives
+                 (edge-1 :reg vf16) ;; the signed area of the triangle about to be emitted
+                 (gifbuf :reg vf17) ;; the two GIF buffer addresses, biased and duplicated
+                 (t-mtx0 :reg vf18) ;; instance transform, rows 0 through 3
+                 (t-mtx1 :reg vf19)
+                 (t-mtx2 :reg vf20)
+                 (t-mtx3 :reg vf21)
+                 (inst-color :reg vf22) ;; this instance's time-of-day color
+                 (kick-base :reg vf28) ;; biased GIF packet offset for the current instance
+                 (fog-clamp :reg vf29) ;; fog-min and fog-max
+                 (view-consts :reg vf30) ;; y is 2^23, z and w are pfog0 and pfog1
+                 (adgif-giftag :reg vf31) ;; the four-register A+D tag written ahead of each shader
+                 )
+            ;; Entry 0. Load the three quadwords of camera constants and build the address vectors
+            ;; the rest of the program runs on.
+            ;;
+            ;; gifbuf ends up holding the two GIF buffer addresses duplicated as (1 0 1 0) so that
+            ;; mr32, which rotates the lanes by one, swaps which buffer is in x while leaving the
+            ;; pair intact -- the same double-buffer trick the other background renderers use. The
+            ;; addresses are kept as floats biased by 2^23 (view-consts.y), because a small integer
+            ;; added to 2^23 lands in the low mantissa bits of an exactly representable float: adding
+            ;; a vertex's output offset to a buffer address is then one vector add, and mtir pulls
+            ;; the resulting VU address straight back out of the lane. The subtract-from-vf00 and
+            ;; subtract-from-self steps in the entry-17 path below are the same arithmetic run
+            ;; backwards to reach the second buffer.
+            (vu-pair (lq.xyzw adgif-giftag vi00 (shrub-view-const texture-giftag)) (nop)) ;; #x000
+            (vu-pair (lq.xyzw view-consts vi00 (shrub-view-const consts)) (nop)) ;; #x001
+            (vu-pair (lq.xyzw fog-clamp vi00 (shrub-view-const fog-clamp)) (nop)) ;; #x002
+            (vu-pair (iaddiu vi11 vi00 SHRUB-VU-MODEL-BANK-B) (nop)) ;; #x003
+            (vu-pair (iaddiu vi01 vi00 SHRUB-VU-GIF-BUFFER-1) (nop)) ;; #x004
+            (vu-pair (mfir.x gifbuf vi01) (nop)) ;; #x005
+            (vu-pair (mfir.z gifbuf vi01) (nop)) ;; #x006
+            (vu-pair (iaddiu vi01 vi00 SHRUB-VU-GIF-BUFFER-0) (nop)) ;; #x007
+            (vu-pair (mfir.y gifbuf vi01) (nop)) ;; #x008
+            (vu-pair (mfir.w gifbuf vi01) (nop)) ;; #x009
+            ;; Still entry 0: three of the five candidate first-quadwords for a vertex's output
+            ;; group get their z lane. The E bit at #x00f stops the program and #x010 runs in its
+            ;; delay pair, which is where the biased buffer addresses are finally formed.
+            (vu-pair (iaddi vi01 vi00 0x1) (nop)) ;; #x00a
+            (vu-pair (mfir.z vf25 vi01) (nop)) ;; #x00b
+            (vu-pair (iaddi vi01 vi00 0x1) (itof0.xyzw gifbuf gifbuf)) ;; #x00c
+            (vu-pair (mfir.z vf26 vi01) (nop)) ;; #x00d
+            (vu-pair (iaddi vi01 vi00 0x1) (nop)) ;; #x00e
+            (vu-pair (mfir.z vf27 vi01) (nop :e)) ;; #x00f
+            (vu-pair (nop) (addy.xyzw gifbuf gifbuf view-consts)) ;; #x010
+            ;; Entries 17 and 21 prepare a model that VIF has just unpacked into one of the two
+            ;; banks. They are the same code with one difference -- which instance ring the following
+            ;; draw entry will read -- so they both fall into model-init-common after selecting it.
+            ;;
+            ;; Three things happen here, once per model rather than once per instance, which is the
+            ;; whole point of splitting them out of the draw entry:
+            ;;
+            ;;   * the object stream is scattered into both GIF output buffers. Each quadword of that
+            ;;     stream carries its own destination in its w lane, so the loop is: read a quadword,
+            ;;     mtir the offset out of w, store the quadword at that offset in buffer 0 and again
+            ;;     at the same offset in buffer 1. This is what lays down the static shape of the
+            ;;     packet -- the strip tags and the per-shader register writes -- so the draw loop
+            ;;     only has to fill in the vertex triples between them.
+            ;;   * each shader becomes five quadwords: the four-register A+D tag in adgif-giftag
+            ;;     followed by the four register writes the exporter packed, again into both buffers.
+            ;;   * the packed vertex, color and texture-coordinate streams are converted in place to
+            ;;     the formats the transform wants: 16-bit vertices and colors to float, texture
+            ;;     coordinates from 20.12 fixed point. Two quadwords per iteration, expanding over
+            ;;     the same addresses they were read from.
+            (vu-pair (iaddiu vi01 vi00 SHRUB-VU-MODEL-BANK-SUM) (subx.xz gifbuf vf00 gifbuf)) ;; #x011
+            (vu-pair (isub vi11 vi01 vi11) (addy.xyzw kick-base vf00 view-consts)) ;; #x012
+            (vu-pair (b model-init-common) (nop)) ;; #x013
+            (vu-pair (iaddiu vi13 vi00 SHRUB-VU-RING-B) (nop)) ;; #x014
+            (vu-pair (iaddiu vi01 vi00 SHRUB-VU-MODEL-BANK-SUM) (subx.xz gifbuf vf00 gifbuf)) ;; #x015
+            (vu-pair (isub vi11 vi01 vi11) (addy.xyzw kick-base vf00 view-consts)) ;; #x016
+            (vu-pair (iaddiu vi13 vi00 SHRUB-VU-RING-A) (nop)) ;; #x017
+            (label model-init-common)
+            (vu-pair (isw.y vi13 vi00 (shrub-view-const mtx-buf-ptr)) (nop)) ;; #x018
+            (vu-pair (iaddi vi09 vi11 0x1) (suby.xz gifbuf gifbuf gifbuf)) ;; #x019
+            (vu-pair (ilwr.y vi05 vi11) (nop)) ;; #x01a
+            (vu-pair (ilwr.x vi15 vi11) (nop)) ;; #x01b
+            (vu-pair (lqi.xyzw vf01 vi09) (nop)) ;; #x01c
+            (vu-pair (nop) (addx.xz gifbuf gifbuf view-consts)) ;; #x01d
+            (vu-pair (nop) (nop)) ;; #x01e
+            (vu-pair (iaddi vi15 vi15 -0x1) (nop)) ;; #x01f
+            (vu-pair (mtir vi04 vf01.w) (nop)) ;; #x020
+            (vu-pair (mtir vi02 gifbuf.x) (nop)) ;; #x021
+            (vu-pair (ibne vi00 vi15 relocate-object-loop) (nop)) ;; #x022
+            (vu-pair (mtir vi03 gifbuf.y) (nop)) ;; #x023
+            (vu-pair (nop) (addz.y kick-base kick-base adgif-giftag)) ;; #x024
+            (label relocate-object-loop)
+            (vu-pair (lqi.xyzw vf02 vi09) (nop)) ;; #x025
+            (vu-pair (iadd vi01 vi04 vi02) (nop)) ;; #x026
+            (vu-pair (iadd vi14 vi04 vi03) (nop)) ;; #x027
+            (vu-pair (iaddi vi05 vi05 -0x1) (nop)) ;; #x028
+            (vu-pair (mtir vi04 vf02.w) (nop)) ;; #x029
+            (vu-pair (sq.xyzw vf01 vi01 0) (nop)) ;; #x02a
+            (vu-pair (ibeq vi00 vi05 begin-shader-relocation) (nop)) ;; #x02b
+            (vu-pair (sq.xyzw vf01 vi14 0) (nop)) ;; #x02c
+            (vu-pair (lqi.xyzw vf01 vi09) (nop)) ;; #x02d
+            (vu-pair (iadd vi01 vi04 vi02) (nop)) ;; #x02e
+            (vu-pair (iadd vi14 vi04 vi03) (nop)) ;; #x02f
+            (vu-pair (iaddi vi05 vi05 -0x1) (nop)) ;; #x030
+            (vu-pair (mtir vi04 vf01.w) (nop)) ;; #x031
+            (vu-pair (sq.xyzw vf02 vi01 0) (nop)) ;; #x032
+            (vu-pair (ibne vi00 vi05 relocate-object-loop) (nop)) ;; #x033
+            (vu-pair (sq.xyzw vf02 vi14 0) (nop)) ;; #x034
+            (label begin-shader-relocation)
+            (vu-pair (iaddi vi09 vi09 -0x1) (nop)) ;; #x035
+            (vu-pair (ilwr.x vi05 vi11) (nop)) ;; #x036
+            (label relocate-shader-loop)
+            (vu-pair (lqi.xyzw vf01 vi09) (nop)) ;; #x037
+            (vu-pair (lqi.xyzw vf02 vi09) (nop)) ;; #x038
+            (vu-pair (lqi.xyzw vf03 vi09) (nop)) ;; #x039
+            (vu-pair (lqi.xyzw vf04 vi09) (nop)) ;; #x03a
+            (vu-pair (mtir vi04 vf01.w) (nop)) ;; #x03b
+            (vu-pair (iaddi vi05 vi05 -0x1) (nop)) ;; #x03c
+            (vu-pair (nop) (nop)) ;; #x03d
+            (vu-pair (nop) (nop)) ;; #x03e
+            (vu-pair (iadd vi01 vi04 vi02) (nop)) ;; #x03f
+            (vu-pair (sq.xyzw adgif-giftag vi01 0) (nop)) ;; #x040
+            (vu-pair (sq.xyzw vf01 vi01 1) (nop)) ;; #x041
+            (vu-pair (sq.xyzw vf02 vi01 2) (nop)) ;; #x042
+            (vu-pair (sq.xyzw vf03 vi01 3) (nop)) ;; #x043
+            (vu-pair (sq.xyzw vf04 vi01 4) (nop)) ;; #x044
+            (vu-pair (iadd vi01 vi04 vi03) (nop)) ;; #x045
+            (vu-pair (sq.xyzw adgif-giftag vi01 0) (nop)) ;; #x046
+            (vu-pair (sq.xyzw vf01 vi01 1) (nop)) ;; #x047
+            (vu-pair (sq.xyzw vf02 vi01 2) (nop)) ;; #x048
+            (vu-pair (sq.xyzw vf03 vi01 3) (nop)) ;; #x049
+            (vu-pair (ibne vi00 vi05 relocate-shader-loop) (nop)) ;; #x04a
+            (vu-pair (sq.xyzw vf04 vi01 4) (nop)) ;; #x04b
+            (vu-pair (ilwr.z vi12 vi11) (nop)) ;; #x04c
+            (vu-pair (ilwr.w vi06 vi11) (nop)) ;; #x04d
+            (vu-pair (isw.x vi09 vi00 (shrub-view-const tex-start-ptr)) (nop)) ;; #x04e
+            (vu-pair (iaddi vi15 vi00 0x1) (nop)) ;; #x04f
+            (vu-pair (ior vi05 vi12 vi00) (nop)) ;; #x050
+            (vu-pair (iadd vi06 vi06 vi11) (nop)) ;; #x051
+            (vu-pair (iadd vi07 vi06 vi12) (nop)) ;; #x052
+            (vu-pair (iadd vi08 vi07 vi12) (nop)) ;; #x053
+            (vu-pair (iaddi vi05 vi05 0x1) (nop)) ;; #x054
+            (label expand-model-stream-loop)
+            (vu-pair (lq.xyzw vf01 vi06 0) (nop)) ;; #x055
+            (vu-pair (lq.xyz vf03 vi07 0) (nop)) ;; #x056
+            (vu-pair (lq.xyz vf05 vi08 0) (nop)) ;; #x057
+            (vu-pair (iaddi vi05 vi05 -0x2) (nop)) ;; #x058
+            (vu-pair (lq.xyzw vf08 vi06 1) (itof0.xyzw vf01 vf01)) ;; #x059
+            (vu-pair (lq.xyz vf10 vi07 1) (itof0.xyzw vf03 vf03)) ;; #x05a
+            (vu-pair (lq.xyz vf12 vi08 1) (itof12.xyzw vf05 vf05)) ;; #x05b
+            (vu-pair (nop) (nop)) ;; #x05c
+            (vu-pair (sqi.xyzw vf01 vi06) (itof0.xyzw vf08 vf08)) ;; #x05d
+            (vu-pair (sqi.xyz vf03 vi07) (itof0.xyzw vf10 vf10)) ;; #x05e
+            (vu-pair (ibeq vi00 vi05 model-init-done) (itof12.xyzw vf12 vf12)) ;; #x05f
+            (vu-pair (sqi.xyz vf05 vi08) (nop)) ;; #x060
+            (vu-pair (sqi.xyzw vf08 vi06) (nop)) ;; #x061
+            (vu-pair (sqi.xyz vf10 vi07) (nop)) ;; #x062
+            (vu-pair (ibne vi15 vi05 expand-model-stream-loop) (nop)) ;; #x063
+            (vu-pair (sqi.xyz vf12 vi08) (nop)) ;; #x064
+            (label model-init-done)
+            (vu-pair (nop) (nop :e)) ;; #x065
+            (vu-pair (nop) (nop)) ;; #x066
+            ;; Entry 103 draws one ring of instances against the model prepared above.
+            ;;
+            ;; Setup: flip the saved ring pointer to the ring this call owns, read its count word,
+            ;; and load the first instance's four transform rows and its time-of-day color. Fog
+            ;; comes out of the translation row: row3.z times pfog0 plus pfog1, clamped by fog-max,
+            ;; and converted to 12.4, so the whole instance is fogged as one flat value rather than
+            ;; per vertex. The three stream cursors are then laid out one stream-qwc apart from the
+            ;; model header's own base, and the pipeline is primed with the first two vertices.
+            ;;
+            ;; Steady state, per vertex: add gifbuf to the packed vertex so its w lane becomes an
+            ;; absolute output address, transform it by the four rows, start the divide by w, scale
+            ;; the texture coordinate by the reciprocal, multiply the model color by the instance
+            ;; color, convert the screen position to 12.4, and store the resulting triple at the
+            ;; address the vertex named. There is no output cursor and no ordering constraint between
+            ;; vertices, which is exactly what lets two of them stay in flight.
+            ;;
+            ;; The test between the halves is a triangle facing test done in screen space, and it is
+            ;; the reason the body below is repeated so many times. edge-0 and edge-1 are the two
+            ;; screen-space edges leaving the shared vertex; mulax/msubax across their x and y lanes
+            ;; forms the 2-D cross product, whose sign is the triangle's winding, and fsand lifts
+            ;; that sign bit out of the status flags into area-sign. Each vertex carries its own
+            ;; expected winding in the w lane of its color quadword -- which alternates along a
+            ;; triangle strip -- so comparing code against area-sign says whether this triangle faces
+            ;; the camera. A negative code instead means end of strip. Rather than branch on the
+            ;; result and stall, the loop is unrolled once per (pipeline half, comparison outcome)
+            ;; pair, which is why the same fifteen pairs appear as the strip-stage-* variants and why
+            ;; the only thing that actually differs between them is which quadword lands in the first
+            ;; slot of the vertex's output group.
+            (vu-pair (ilw.y matrix-ptr vi00 (shrub-view-const mtx-buf-ptr)) (nop)) ;; #x067
+            (vu-pair (iaddiu code-a vi00 SHRUB-VU-RING-SUM) (nop)) ;; #x068
+            (vu-pair (ilwr.w vtx-ptr model-bank) (nop)) ;; #x069
+            (vu-pair (ilw.x obj-ptr vi00 (shrub-view-const tex-start-ptr)) (nop)) ;; #x06a
+            (vu-pair (isub matrix-ptr code-a matrix-ptr) (nop)) ;; #x06b
+            (vu-pair (isw.y matrix-ptr vi00 (shrub-view-const mtx-buf-ptr)) (nop)) ;; #x06c
+            (vu-pair (ilwr.x inst-count matrix-ptr) (nop)) ;; #x06d
+            (vu-pair (lq.xyzw t-mtx3 matrix-ptr (shrub-matrix-qword mat vector 3)) (nop)) ;; #x06e
+            (vu-pair (lq.xyzw t-mtx0 matrix-ptr (shrub-matrix-qword mat vector 0)) (nop)) ;; #x06f
+            (vu-pair (lq.xyzw t-mtx1 matrix-ptr (shrub-matrix-qword mat vector 1)) (nop)) ;; #x070
+            (vu-pair (lq.xyzw t-mtx2 matrix-ptr (shrub-matrix-qword mat vector 2)) (nop)) ;; #x071
+            (vu-pair (lq.xyzw inst-color matrix-ptr (shrub-matrix-qword color)) (mulaz.w ACC t-mtx3 view-consts)) ;; #x072
+            (vu-pair (iaddi matrix-ptr matrix-ptr (+ SHRUB-VU-MATRIX-STRIDE 1)) (maddw.w pos-b view-consts vf00)) ;; #x073
+            (vu-pair (iadd vtx-ptr vtx-ptr model-bank) (nop)) ;; #x074
+            (vu-pair (iadd clr-ptr vtx-ptr stream-qwc) (nop)) ;; #x075
+            (vu-pair (iadd stq-ptr clr-ptr stream-qwc) (nop)) ;; #x076
+            (vu-pair (move.w clr-a-lit inst-color) (miniy.w pos-b pos-b fog-clamp)) ;; #x077
+            (vu-pair (move.w clr-b-lit inst-color) (nop)) ;; #x078
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (nop)) ;; #x079
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (nop)) ;; #x07a
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (ftoi4.w pos-a pos-b)) ;; #x07b
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (ftoi4.w pos-b pos-b)) ;; #x07c
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (add.xyzw slot-a vtx-a gifbuf)) ;; #x07d
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x07e
+            (vu-pair (nop) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x07f
+            (vu-pair (nop) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x080
+            (vu-pair (nop) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x081
+            (vu-pair (nop) (add.xyzw slot-b vtx-b gifbuf)) ;; #x082
+            (vu-pair (nop) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x083
+            (vu-pair (nop) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x084
+            (vu-pair (div Q vf00.w vtx-a.w) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x085
+            (vu-pair (nop) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x086
+            (vu-pair (nop) (nop)) ;; #x087
+            (vu-pair (nop) (nop)) ;; #x088
+            (vu-pair (nop) (nop)) ;; #x089
+            (vu-pair (nop) (nop)) ;; #x08a
+            (vu-pair (nop) (nop)) ;; #x08b
+            (vu-pair (nop) (mul.xyz pos-a vtx-a Q)) ;; #x08c
+            (vu-pair (nop) (mul.xyzw stq-a-q stq-a Q)) ;; #x08d
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x08e
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x08f
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (nop)) ;; #x090
+            (vu-pair (mtir dest-a slot-a.w) (nop)) ;; #x091
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (nop)) ;; #x092
+            (vu-pair (nop) (nop)) ;; #x093
+            (vu-pair (nop) (add.xyzw slot-a vtx-a gifbuf)) ;; #x094
+            (vu-pair (nop) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x095
+            (vu-pair (nop) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x096
+            (vu-pair (nop) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x097
+            (vu-pair (nop) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x098
+            (vu-pair (nop) (mul.xyz pos-b vtx-b Q)) ;; #x099
+            (vu-pair (nop) (mul.xyzw stq-b-q stq-b Q)) ;; #x09a
+            (label vertex-pipe-a-even)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x09b
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x09c
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (nop)) ;; #x09d
+            (vu-pair (mtir dest-b slot-b.w) (nop)) ;; #x09e
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x09f
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x0a0
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x0a1
+            (vu-pair (lqi.xyzw vf23 obj-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0a2
+            (vu-pair (lqi.xyzw vf24 obj-ptr) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x0a3
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x0a4
+            (vu-pair (isubiu vi10 vi00 0x40) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x0a5
+            (label vertex-pipe-b-even)
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x0a6
+            (vu-pair (sq.xyzw vf25 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x0a7
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x0a8
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x0a9
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (nop)) ;; #x0aa
+            (vu-pair (mtir dest-a slot-a.w) (nop)) ;; #x0ab
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x0ac
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x0ad
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x0ae
+            (vu-pair (nop) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0af
+            (vu-pair (nop) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x0b0
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x0b1
+            (vu-pair (nop) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x0b2
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x0b3
+            (vu-pair (sq.xyzw vf25 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x0b4
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x0b5
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x0b6
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (mulay.x ACC edge-0 edge-1)) ;; #x0b7
+            (vu-pair (mtir dest-b slot-b.w) (msubay.x ACC edge-1 edge-0)) ;; #x0b8
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x0b9
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x0ba
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x0bb
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0bc
+            (vu-pair (ibltz code-a strip-stage-a0) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x0bd
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x0be
+            (label compare-strip-edge-a)
+            (vu-pair (ibeq code-a area-sign select-strip-path-b) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x0bf
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x0c0
+            (vu-pair (b select-strip-path-a) (nop)) ;; #x0c1
+            (vu-pair (sq.xyzw vf23 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x0c2
+            (vu-pair (nop) (mul.xyzw stq-a-q stq-a Q)) ;; #x0c3
+            (label vertex-pipe-a-odd)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x0c4
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x0c5
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (nop)) ;; #x0c6
+            (vu-pair (mtir dest-a slot-a.w) (nop)) ;; #x0c7
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x0c8
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x0c9
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x0ca
+            (vu-pair (lqi.xyzw vf23 obj-ptr) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0cb
+            (vu-pair (lqi.xyzw vf24 obj-ptr) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x0cc
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x0cd
+            (vu-pair (isubiu vi10 vi00 0x40) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x0ce
+            (label vertex-pipe-b-odd)
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x0cf
+            (vu-pair (sq.xyzw vf25 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x0d0
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x0d1
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x0d2
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (nop)) ;; #x0d3
+            (vu-pair (mtir dest-b slot-b.w) (nop)) ;; #x0d4
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x0d5
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x0d6
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x0d7
+            (vu-pair (nop) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0d8
+            (vu-pair (nop) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x0d9
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x0da
+            (vu-pair (nop) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x0db
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x0dc
+            (vu-pair (sq.xyzw vf25 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x0dd
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x0de
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x0df
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (mulay.x ACC edge-0 edge-1)) ;; #x0e0
+            (vu-pair (mtir dest-a slot-a.w) (msubay.x ACC edge-1 edge-0)) ;; #x0e1
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x0e2
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x0e3
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x0e4
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0e5
+            (vu-pair (ibltz code-b reload-strip-b) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x0e6
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x0e7
+            (label compare-strip-edge-b)
+            (vu-pair (ibeq code-b area-sign advance-strip-a) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x0e8
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x0e9
+            (vu-pair (b continue-strip-b) (nop)) ;; #x0ea
+            (vu-pair (sq.xyzw vf23 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x0eb
+            (label continue-strip-a)
+            (vu-pair (sq.xyzw vf26 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x0ec
+            (label select-strip-path-a)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x0ed
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x0ee
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (mulay.x ACC edge-0 edge-1)) ;; #x0ef
+            (vu-pair (mtir dest-a slot-a.w) (msubay.x ACC edge-1 edge-0)) ;; #x0f0
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x0f1
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x0f2
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x0f3
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x0f4
+            (vu-pair (ibltz code-b flush-strip-a) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x0f5
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x0f6
+            (vu-pair (ibeq code-b area-sign advance-strip-a) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x0f7
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x0f8
+            (vu-pair (sq.xyzw vf26 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x0f9
+            (label continue-strip-b)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x0fa
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x0fb
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (mulay.x ACC edge-0 edge-1)) ;; #x0fc
+            (vu-pair (mtir dest-b slot-b.w) (msubay.x ACC edge-1 edge-0)) ;; #x0fd
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x0fe
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x0ff
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x100
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x101
+            (vu-pair (ibltz code-a reload-strip-a) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x102
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x103
+            (vu-pair (ibne code-a area-sign continue-strip-a) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x104
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x105
+            (label select-strip-path-b)
+            (vu-pair (b dispatch-strip-state) (nop)) ;; #x106
+            (vu-pair (sq.xyzw vf24 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x107
+            (label advance-strip-a)
+            (vu-pair (b finish-strip-a) (nop)) ;; #x108
+            (vu-pair (sq.xyzw vf24 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x109
+            (label advance-strip-b)
+            (vu-pair (sq.xyzw vf27 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x10a
+            (label dispatch-strip-state)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x10b
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x10c
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (mulax.y ACC edge-0 edge-1)) ;; #x10d
+            (vu-pair (mtir dest-a slot-a.w) (msubax.y ACC edge-1 edge-0)) ;; #x10e
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x10f
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x110
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x111
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x112
+            (vu-pair (ibltz code-b loop-strip-a) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x113
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x114
+            (vu-pair (ibeq code-b area-sign finish-strip-b) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x115
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x116
+            (vu-pair (sq.xyzw vf27 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x117
+            (label finish-strip-a)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x118
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x119
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (mulax.y ACC edge-0 edge-1)) ;; #x11a
+            (vu-pair (mtir dest-b slot-b.w) (msubax.y ACC edge-1 edge-0)) ;; #x11b
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x11c
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x11d
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x11e
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x11f
+            (vu-pair (ibltz code-a flush-strip-b) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x120
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x121
+            (vu-pair (ibne code-a area-sign advance-strip-b) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x122
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x123
+            (vu-pair (b select-strip-path-a) (nop)) ;; #x124
+            (vu-pair (sq.xyzw vf23 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x125
+            (label finish-strip-b)
+            (vu-pair (b continue-strip-b) (nop)) ;; #x126
+            (vu-pair (sq.xyzw vf23 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x127
+            (label flush-strip-a)
+            (vu-pair (ibne vi10 code-b strip-stage-a1) (nop)) ;; #x128
+            (vu-pair (iaddiu code-b code-b 0x80) (nop)) ;; #x129
+            (vu-pair (lqi.xyzw vf23 obj-ptr) (nop)) ;; #x12a
+            (vu-pair (b vertex-pipe-b-odd) (nop)) ;; #x12b
+            (vu-pair (lqi.xyzw vf24 obj-ptr) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x12c
+            (label reload-strip-a)
+            (vu-pair (ibne vi10 code-a kick-first-buffer) (nop)) ;; #x12d
+            (vu-pair (iaddiu code-a code-a 0x80) (nop)) ;; #x12e
+            (vu-pair (lqi.xyzw vf23 obj-ptr) (nop)) ;; #x12f
+            (vu-pair (b vertex-pipe-b-even) (nop)) ;; #x130
+            (vu-pair (lqi.xyzw vf24 obj-ptr) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x131
+            (label loop-strip-a)
+            (vu-pair (ibne vi10 code-b reload-first-buffer) (nop)) ;; #x132
+            (vu-pair (iaddiu code-b code-b 0x80) (nop)) ;; #x133
+            (vu-pair (lqi.xyzw vf23 obj-ptr) (nop)) ;; #x134
+            (vu-pair (b vertex-pipe-b-odd) (nop)) ;; #x135
+            (vu-pair (lqi.xyzw vf24 obj-ptr) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x136
+            (label flush-strip-b)
+            (vu-pair (ibne vi10 code-a reload-second-buffer) (nop)) ;; #x137
+            (vu-pair (iaddiu code-a code-a 0x80) (nop)) ;; #x138
+            (vu-pair (lqi.xyzw vf23 obj-ptr) (nop)) ;; #x139
+            (vu-pair (b vertex-pipe-b-even) (nop)) ;; #x13a
+            (vu-pair (lqi.xyzw vf24 obj-ptr) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x13b
+            (label reload-strip-b)
+            (vu-pair (ibeq vi10 code-b compare-strip-edge-b) (nop)) ;; #x13c
+            (vu-pair (iaddiu code-b code-b 0x80) (nop)) ;; #x13d
+            (vu-pair (ilwr.w vtx-ptr model-bank) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x13e
+            (vu-pair (mr32.xyzw gifbuf gifbuf) (mul.xyz pos-b vtx-b Q)) ;; #x13f
+            (vu-pair (lqi.xyzw t-mtx0 matrix-ptr) (nop)) ;; #x140
+            (vu-pair (lqi.xyzw t-mtx1 matrix-ptr) (nop)) ;; #x141
+            (vu-pair (lqi.xyzw t-mtx2 matrix-ptr) (nop)) ;; #x142
+            (vu-pair (lqi.xyzw t-mtx3 matrix-ptr) (nop)) ;; #x143
+            (vu-pair (iadd vtx-ptr vtx-ptr model-bank) (nop)) ;; #x144
+            (vu-pair (iadd clr-ptr vtx-ptr stream-qwc) (nop)) ;; #x145
+            (vu-pair (iadd stq-ptr clr-ptr stream-qwc) (nop)) ;; #x146
+            (vu-pair (ibeq code-b area-sign store-obj-1-and-resume-d0) (nop)) ;; #x147
+            (vu-pair (mtir code-b clr-b.w) (nop)) ;; #x148
+            (vu-pair (b strip-stage-a2) (nop)) ;; #x149
+            (vu-pair (sq.xyzw vf23 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x14a
+            (label strip-stage-a0)
+            (vu-pair (ibeq vi10 code-a compare-strip-edge-a) (nop)) ;; #x14b
+            (vu-pair (iaddiu code-a code-a 0x80) (nop)) ;; #x14c
+            (vu-pair (ilwr.w vtx-ptr model-bank) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x14d
+            (vu-pair (mr32.xyzw gifbuf gifbuf) (mul.xyz pos-a vtx-a Q)) ;; #x14e
+            (vu-pair (lqi.xyzw t-mtx0 matrix-ptr) (nop)) ;; #x14f
+            (vu-pair (lqi.xyzw t-mtx1 matrix-ptr) (nop)) ;; #x150
+            (vu-pair (lqi.xyzw t-mtx2 matrix-ptr) (nop)) ;; #x151
+            (vu-pair (lqi.xyzw t-mtx3 matrix-ptr) (nop)) ;; #x152
+            (vu-pair (iadd vtx-ptr vtx-ptr model-bank) (nop)) ;; #x153
+            (vu-pair (iadd clr-ptr vtx-ptr stream-qwc) (nop)) ;; #x154
+            (vu-pair (iadd stq-ptr clr-ptr stream-qwc) (nop)) ;; #x155
+            (vu-pair (ibeq code-a area-sign store-obj-1-and-resume-e0) (nop)) ;; #x156
+            (vu-pair (mtir code-a clr-a.w) (nop)) ;; #x157
+            (vu-pair (b strip-stage-c0) (nop)) ;; #x158
+            (vu-pair (sq.xyzw vf23 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x159
+            (label strip-stage-a1)
+            (vu-pair (ilwr.w vtx-ptr model-bank) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x15a
+            (vu-pair (mr32.xyzw gifbuf gifbuf) (mul.xyz pos-b vtx-b Q)) ;; #x15b
+            (vu-pair (lqi.xyzw t-mtx0 matrix-ptr) (nop)) ;; #x15c
+            (vu-pair (lqi.xyzw t-mtx1 matrix-ptr) (nop)) ;; #x15d
+            (vu-pair (lqi.xyzw t-mtx2 matrix-ptr) (nop)) ;; #x15e
+            (vu-pair (lqi.xyzw t-mtx3 matrix-ptr) (nop)) ;; #x15f
+            (vu-pair (iadd vtx-ptr vtx-ptr model-bank) (nop)) ;; #x160
+            (vu-pair (iadd clr-ptr vtx-ptr stream-qwc) (nop)) ;; #x161
+            (vu-pair (iadd stq-ptr clr-ptr stream-qwc) (nop)) ;; #x162
+            (vu-pair (ibeq code-b area-sign store-obj-1-and-resume-d0) (nop)) ;; #x163
+            (vu-pair (mtir code-b clr-b.w) (nop)) ;; #x164
+            (vu-pair (sq.xyzw vf26 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x165
+            (label strip-stage-a2)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x166
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x167
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (mulay.x ACC edge-0 edge-1)) ;; #x168
+            (vu-pair (mtir dest-b slot-b.w) (msubay.x ACC edge-1 edge-0)) ;; #x169
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x16a
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x16b
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x16c
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x16d
+            (vu-pair (ilw.x obj-ptr vi00 (shrub-view-const tex-start-ptr)) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x16e
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x16f
+            (vu-pair (ibeq code-a area-sign store-obj-1-and-resume-d1) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x170
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x171
+            (vu-pair (sq.xyzw vf26 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x172
+            (label strip-stage-a3)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x173
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x174
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (mulay.x ACC edge-0 edge-1)) ;; #x175
+            (vu-pair (mtir dest-a slot-a.w) (msubay.x ACC edge-1 edge-0)) ;; #x176
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x177
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x178
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x179
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x17a
+            (vu-pair (mtir vi10 kick-base.x) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x17b
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x17c
+            (vu-pair (lqi.xyzw inst-color matrix-ptr) (mulz.w pos-b t-mtx3 view-consts)) ;; #x17d
+            (vu-pair (ibeq code-b area-sign store-obj-1-and-resume-d2) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x17e
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x17f
+            (vu-pair (sq.xyzw vf26 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x180
+            (label strip-stage-b0)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x181
+            (vu-pair (div Q vf00.w vtx-a.w) (mulay.x ACC edge-0 edge-1)) ;; #x182
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (addw.w pos-b view-consts pos-b)) ;; #x183
+            (vu-pair (mtir dest-b slot-b.w) (msubay.x ACC edge-1 edge-0)) ;; #x184
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x185
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x186
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x187
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x188
+            (vu-pair (iaddi inst-count inst-count -0x1) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x189
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x18a
+            (vu-pair (mtir kick-addr gifbuf.x) (miniy.w pos-b pos-b fog-clamp)) ;; #x18b
+            (vu-pair (ibeq code-a area-sign store-obj-1-and-kick-second) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x18c
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x18d
+            (vu-pair (sq.xyzw vf26 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x18e
+            (label strip-stage-b1)
+            (vu-pair (move.w clr-a-lit inst-color) (addy.x kick-base vf00 kick-base)) ;; #x18f
+            (vu-pair (move.w clr-b-lit inst-color) (nop)) ;; #x190
+            (vu-pair (iadd kick-addr kick-addr vi10) (nop)) ;; #x191
+            (vu-pair (ibne vi00 inst-count vertex-pipe-a-odd) (ftoi4.w pos-a pos-b)) ;; #x192
+            ;; Kick the first output-buffer/parity variant. The following three exits cover the other
+            ;; buffer and strip-parity combinations, sharing the branch tails at the end of the block.
+            (vu-pair (xgkick kick-addr) (ftoi4.w pos-b pos-b)) ;; #x193
+            (vu-pair (nop) (nop :e)) ;; #x194
+            (vu-pair (nop) (nop)) ;; #x195
+            (label kick-first-buffer)
+            (vu-pair (ilwr.w vtx-ptr model-bank) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x196
+            (vu-pair (mr32.xyzw gifbuf gifbuf) (mul.xyz pos-a vtx-a Q)) ;; #x197
+            (vu-pair (lqi.xyzw t-mtx0 matrix-ptr) (nop)) ;; #x198
+            (vu-pair (lqi.xyzw t-mtx1 matrix-ptr) (nop)) ;; #x199
+            (vu-pair (lqi.xyzw t-mtx2 matrix-ptr) (nop)) ;; #x19a
+            (vu-pair (lqi.xyzw t-mtx3 matrix-ptr) (nop)) ;; #x19b
+            (vu-pair (iadd vtx-ptr vtx-ptr model-bank) (nop)) ;; #x19c
+            (vu-pair (iadd clr-ptr vtx-ptr stream-qwc) (nop)) ;; #x19d
+            (vu-pair (iadd stq-ptr clr-ptr stream-qwc) (nop)) ;; #x19e
+            (vu-pair (ibeq code-a area-sign store-obj-1-and-resume-e0) (nop)) ;; #x19f
+            (vu-pair (mtir code-a clr-a.w) (nop)) ;; #x1a0
+            (vu-pair (sq.xyzw vf26 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x1a1
+            (label strip-stage-c0)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x1a2
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x1a3
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (mulay.x ACC edge-0 edge-1)) ;; #x1a4
+            (vu-pair (mtir dest-a slot-a.w) (msubay.x ACC edge-1 edge-0)) ;; #x1a5
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x1a6
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x1a7
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x1a8
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x1a9
+            (vu-pair (ilw.x obj-ptr vi00 (shrub-view-const tex-start-ptr)) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x1aa
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x1ab
+            (vu-pair (ibeq code-b area-sign store-obj-1-and-resume-e1) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x1ac
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x1ad
+            (vu-pair (sq.xyzw vf26 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x1ae
+            (label strip-stage-c1)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x1af
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x1b0
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (mulay.x ACC edge-0 edge-1)) ;; #x1b1
+            (vu-pair (mtir dest-b slot-b.w) (msubay.x ACC edge-1 edge-0)) ;; #x1b2
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x1b3
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x1b4
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x1b5
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x1b6
+            (vu-pair (mtir vi10 kick-base.x) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x1b7
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x1b8
+            (vu-pair (lqi.xyzw inst-color matrix-ptr) (mulz.w pos-a t-mtx3 view-consts)) ;; #x1b9
+            (vu-pair (ibeq code-a area-sign store-obj-1-and-resume-e2) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x1ba
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x1bb
+            (vu-pair (sq.xyzw vf26 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x1bc
+            (label strip-stage-c2)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x1bd
+            (vu-pair (div Q vf00.w vtx-b.w) (mulay.x ACC edge-0 edge-1)) ;; #x1be
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (addw.w pos-a view-consts pos-a)) ;; #x1bf
+            (vu-pair (mtir dest-a slot-a.w) (msubay.x ACC edge-1 edge-0)) ;; #x1c0
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x1c1
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x1c2
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x1c3
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x1c4
+            (vu-pair (iaddi inst-count inst-count -0x1) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x1c5
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x1c6
+            (vu-pair (mtir kick-addr gifbuf.x) (miniy.w pos-a pos-a fog-clamp)) ;; #x1c7
+            (vu-pair (ibeq code-b area-sign store-obj-1-and-kick-final) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x1c8
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x1c9
+            (vu-pair (sq.xyzw vf26 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x1ca
+            (label strip-stage-c3)
+            (vu-pair (move.w clr-a-lit inst-color) (addy.x kick-base vf00 kick-base)) ;; #x1cb
+            (vu-pair (move.w clr-b-lit inst-color) (nop)) ;; #x1cc
+            (vu-pair (iadd kick-addr kick-addr vi10) (nop)) ;; #x1cd
+            (vu-pair (ibne vi00 inst-count vertex-pipe-a-even) (ftoi4.w pos-b pos-a)) ;; #x1ce
+            (vu-pair (xgkick kick-addr) (ftoi4.w pos-a pos-a)) ;; #x1cf
+            (vu-pair (nop) (nop :e)) ;; #x1d0
+            (vu-pair (nop) (nop)) ;; #x1d1
+            (label reload-first-buffer)
+            (vu-pair (ilwr.w vtx-ptr model-bank) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x1d2
+            (vu-pair (mr32.xyzw gifbuf gifbuf) (mul.xyz pos-b vtx-b Q)) ;; #x1d3
+            (vu-pair (lqi.xyzw t-mtx0 matrix-ptr) (nop)) ;; #x1d4
+            (vu-pair (lqi.xyzw t-mtx1 matrix-ptr) (nop)) ;; #x1d5
+            (vu-pair (lqi.xyzw t-mtx2 matrix-ptr) (nop)) ;; #x1d6
+            (vu-pair (lqi.xyzw t-mtx3 matrix-ptr) (nop)) ;; #x1d7
+            (vu-pair (iadd vtx-ptr vtx-ptr model-bank) (nop)) ;; #x1d8
+            (vu-pair (iadd clr-ptr vtx-ptr stream-qwc) (nop)) ;; #x1d9
+            (vu-pair (iadd stq-ptr clr-ptr stream-qwc) (nop)) ;; #x1da
+            (vu-pair (ibeq code-b area-sign store-obj-0-and-resume-a2) (nop)) ;; #x1db
+            (vu-pair (mtir code-b clr-b.w) (nop)) ;; #x1dc
+            (vu-pair (sq.xyzw vf27 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x1dd
+            (label strip-stage-d0)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x1de
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x1df
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (mulax.y ACC edge-0 edge-1)) ;; #x1e0
+            (vu-pair (mtir dest-b slot-b.w) (msubax.y ACC edge-1 edge-0)) ;; #x1e1
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x1e2
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x1e3
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x1e4
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x1e5
+            (vu-pair (ilw.x obj-ptr vi00 (shrub-view-const tex-start-ptr)) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x1e6
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x1e7
+            (vu-pair (ibeq code-a area-sign store-obj-0-and-resume-a3) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x1e8
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x1e9
+            (vu-pair (sq.xyzw vf27 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x1ea
+            (label strip-stage-d1)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x1eb
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x1ec
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (mulax.y ACC edge-0 edge-1)) ;; #x1ed
+            (vu-pair (mtir dest-a slot-a.w) (msubax.y ACC edge-1 edge-0)) ;; #x1ee
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x1ef
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x1f0
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x1f1
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x1f2
+            (vu-pair (mtir vi10 kick-base.x) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x1f3
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x1f4
+            (vu-pair (lqi.xyzw inst-color matrix-ptr) (mulz.w pos-b t-mtx3 view-consts)) ;; #x1f5
+            (vu-pair (ibeq code-b area-sign store-obj-0-and-resume-b0) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x1f6
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x1f7
+            (vu-pair (sq.xyzw vf27 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x1f8
+            (label strip-stage-d2)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x1f9
+            (vu-pair (div Q vf00.w vtx-a.w) (mulax.y ACC edge-0 edge-1)) ;; #x1fa
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (addw.w pos-b view-consts pos-b)) ;; #x1fb
+            (vu-pair (mtir dest-b slot-b.w) (msubax.y ACC edge-1 edge-0)) ;; #x1fc
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x1fd
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x1fe
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x1ff
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x200
+            (vu-pair (iaddi inst-count inst-count -0x1) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x201
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x202
+            (vu-pair (mtir kick-addr gifbuf.x) (miniy.w pos-b pos-b fog-clamp)) ;; #x203
+            (vu-pair (ibeq code-a area-sign store-obj-0-and-resume-b1) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x204
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x205
+            (vu-pair (sq.xyzw vf27 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x206
+            (label kick-second-buffer)
+            (vu-pair (move.w clr-a-lit inst-color) (addy.x kick-base vf00 kick-base)) ;; #x207
+            (vu-pair (move.w clr-b-lit inst-color) (nop)) ;; #x208
+            (vu-pair (iadd kick-addr kick-addr vi10) (nop)) ;; #x209
+            (vu-pair (ibne vi00 inst-count vertex-pipe-a-odd) (ftoi4.w pos-a pos-b)) ;; #x20a
+            (vu-pair (xgkick kick-addr) (ftoi4.w pos-b pos-b)) ;; #x20b
+            (vu-pair (nop) (nop :e)) ;; #x20c
+            (vu-pair (nop) (nop)) ;; #x20d
+            (label reload-second-buffer)
+            (vu-pair (ilwr.w vtx-ptr model-bank) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x20e
+            (vu-pair (mr32.xyzw gifbuf gifbuf) (mul.xyz pos-a vtx-a Q)) ;; #x20f
+            (vu-pair (lqi.xyzw t-mtx0 matrix-ptr) (nop)) ;; #x210
+            (vu-pair (lqi.xyzw t-mtx1 matrix-ptr) (nop)) ;; #x211
+            (vu-pair (lqi.xyzw t-mtx2 matrix-ptr) (nop)) ;; #x212
+            (vu-pair (lqi.xyzw t-mtx3 matrix-ptr) (nop)) ;; #x213
+            (vu-pair (iadd vtx-ptr vtx-ptr model-bank) (nop)) ;; #x214
+            (vu-pair (iadd clr-ptr vtx-ptr stream-qwc) (nop)) ;; #x215
+            (vu-pair (iadd stq-ptr clr-ptr stream-qwc) (nop)) ;; #x216
+            (vu-pair (ibeq code-a area-sign store-obj-0-and-resume-c0) (nop)) ;; #x217
+            (vu-pair (mtir code-a clr-a.w) (nop)) ;; #x218
+            (vu-pair (sq.xyzw vf27 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x219
+            (label strip-stage-e0)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x21a
+            (vu-pair (div Q vf00.w vtx-b.w) (nop)) ;; #x21b
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (mulax.y ACC edge-0 edge-1)) ;; #x21c
+            (vu-pair (mtir dest-a slot-a.w) (msubax.y ACC edge-1 edge-0)) ;; #x21d
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x21e
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x21f
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x220
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x221
+            (vu-pair (ilw.x obj-ptr vi00 (shrub-view-const tex-start-ptr)) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x222
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x223
+            (vu-pair (ibeq code-b area-sign store-obj-0-and-resume-c1) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x224
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x225
+            (vu-pair (sq.xyzw vf27 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x226
+            (label strip-stage-e1)
+            (vu-pair (lqi.xyzw vtx-b vtx-ptr) (mul.xyz clr-b-lit clr-b inst-color)) ;; #x227
+            (vu-pair (div Q vf00.w vtx-a.w) (nop)) ;; #x228
+            (vu-pair (lqi.xyzw stq-b stq-ptr) (mulax.y ACC edge-0 edge-1)) ;; #x229
+            (vu-pair (mtir dest-b slot-b.w) (msubax.y ACC edge-1 edge-0)) ;; #x22a
+            (vu-pair (lqi.xyzw clr-b clr-ptr) (sub.xyzw edge-0 pos-a pos-b)) ;; #x22b
+            (vu-pair (sq.xyzw stq-a-q dest-a 1) (ftoi4.xyz pos-a pos-a)) ;; #x22c
+            (vu-pair (sq.xyzw clr-a-lit dest-a 2) (add.xyzw slot-b vtx-b gifbuf)) ;; #x22d
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x22e
+            (vu-pair (mtir vi10 kick-base.x) (maddax.xyzw ACC t-mtx0 vtx-b)) ;; #x22f
+            (vu-pair (sq.xyzw pos-a dest-a 3) (madday.xyzw ACC t-mtx1 vtx-b)) ;; #x230
+            (vu-pair (lqi.xyzw inst-color matrix-ptr) (mulz.w pos-a t-mtx3 view-consts)) ;; #x231
+            (vu-pair (ibeq code-a area-sign store-obj-0-and-resume-c2) (maddz.xyzw vtx-b t-mtx2 vtx-b)) ;; #x232
+            (vu-pair (mtir code-a clr-a.w) (mul.xyz pos-a vtx-a Q)) ;; #x233
+            (vu-pair (sq.xyzw vf27 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x234
+            (label strip-stage-e2)
+            (vu-pair (lqi.xyzw vtx-a vtx-ptr) (mul.xyz clr-a-lit clr-a inst-color)) ;; #x235
+            (vu-pair (div Q vf00.w vtx-b.w) (mulax.y ACC edge-0 edge-1)) ;; #x236
+            (vu-pair (lqi.xyzw stq-a stq-ptr) (addw.w pos-a view-consts pos-a)) ;; #x237
+            (vu-pair (mtir dest-a slot-a.w) (msubax.y ACC edge-1 edge-0)) ;; #x238
+            (vu-pair (lqi.xyzw clr-a clr-ptr) (sub.xyzw edge-1 pos-b pos-a)) ;; #x239
+            (vu-pair (sq.xyzw stq-b-q dest-b 1) (ftoi4.xyz pos-b pos-b)) ;; #x23a
+            (vu-pair (sq.xyzw clr-b-lit dest-b 2) (add.xyzw slot-a vtx-a gifbuf)) ;; #x23b
+            (vu-pair (fsand area-sign 0x2) (mulaw.xyzw ACC t-mtx3 vf00)) ;; #x23c
+            (vu-pair (iaddi inst-count inst-count -0x1) (maddax.xyzw ACC t-mtx0 vtx-a)) ;; #x23d
+            (vu-pair (sq.xyzw pos-b dest-b 3) (madday.xyzw ACC t-mtx1 vtx-a)) ;; #x23e
+            (vu-pair (mtir kick-addr gifbuf.x) (miniy.w pos-a pos-a fog-clamp)) ;; #x23f
+            (vu-pair (ibeq code-b area-sign store-obj-0-and-resume-c3) (maddz.xyzw vtx-a t-mtx2 vtx-a)) ;; #x240
+            (vu-pair (mtir code-b clr-b.w) (mul.xyz pos-b vtx-b Q)) ;; #x241
+            (vu-pair (sq.xyzw vf27 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x242
+            (label kick-final-buffer)
+            (vu-pair (move.w clr-a-lit inst-color) (addy.x kick-base vf00 kick-base)) ;; #x243
+            (vu-pair (move.w clr-b-lit inst-color) (nop)) ;; #x244
+            (vu-pair (iadd kick-addr kick-addr vi10) (nop)) ;; #x245
+            (vu-pair (ibne vi00 inst-count vertex-pipe-a-even) (ftoi4.w pos-b pos-a)) ;; #x246
+            (vu-pair (xgkick kick-addr) (ftoi4.w pos-a pos-a)) ;; #x247
+            (vu-pair (nop) (nop :e)) ;; #x248
+            (vu-pair (nop) (nop)) ;; #x249
+            (label store-obj-1-and-resume-d0)
+            (vu-pair (b strip-stage-d0) (nop)) ;; #x24a
+            (vu-pair (sq.xyzw vf24 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x24b
+            (label store-obj-1-and-resume-d1)
+            (vu-pair (b strip-stage-d1) (nop)) ;; #x24c
+            (vu-pair (sq.xyzw vf24 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x24d
+            (label store-obj-1-and-resume-d2)
+            (vu-pair (b strip-stage-d2) (nop)) ;; #x24e
+            (vu-pair (sq.xyzw vf24 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x24f
+            (label store-obj-1-and-kick-second)
+            (vu-pair (b kick-second-buffer) (nop)) ;; #x250
+            (vu-pair (sq.xyzw vf24 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x251
+            (label store-obj-1-and-resume-e0)
+            (vu-pair (b strip-stage-e0) (nop)) ;; #x252
+            (vu-pair (sq.xyzw vf24 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x253
+            (label store-obj-1-and-resume-e1)
+            (vu-pair (b strip-stage-e1) (nop)) ;; #x254
+            (vu-pair (sq.xyzw vf24 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x255
+            (label store-obj-1-and-resume-e2)
+            (vu-pair (b strip-stage-e2) (nop)) ;; #x256
+            (vu-pair (sq.xyzw vf24 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x257
+            (label store-obj-1-and-kick-final)
+            (vu-pair (b kick-final-buffer) (nop)) ;; #x258
+            (vu-pair (sq.xyzw vf24 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x259
+            (label store-obj-0-and-resume-a2)
+            (vu-pair (b strip-stage-a2) (nop)) ;; #x25a
+            (vu-pair (sq.xyzw vf23 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x25b
+            (label store-obj-0-and-resume-a3)
+            (vu-pair (b strip-stage-a3) (nop)) ;; #x25c
+            (vu-pair (sq.xyzw vf23 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x25d
+            (label store-obj-0-and-resume-b0)
+            (vu-pair (b strip-stage-b0) (nop)) ;; #x25e
+            (vu-pair (sq.xyzw vf23 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x25f
+            (label store-obj-0-and-resume-b1)
+            (vu-pair (b strip-stage-b1) (nop)) ;; #x260
+            (vu-pair (sq.xyzw vf23 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x261
+            (label store-obj-0-and-resume-c0)
+            (vu-pair (b strip-stage-c0) (nop)) ;; #x262
+            (vu-pair (sq.xyzw vf23 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x263
+            (label store-obj-0-and-resume-c1)
+            (vu-pair (b strip-stage-c1) (nop)) ;; #x264
+            (vu-pair (sq.xyzw vf23 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x265
+            (label store-obj-0-and-resume-c2)
+            (vu-pair (b strip-stage-c2) (nop)) ;; #x266
+            (vu-pair (sq.xyzw vf23 dest-a 0) (mul.xyzw stq-a-q stq-a Q)) ;; #x267
+            (label store-obj-0-and-resume-c3)
+            (vu-pair (b strip-stage-c3) (nop)) ;; #x268
+            (vu-pair (sq.xyzw vf23 dest-b 0) (mul.xyzw stq-b-q stq-b Q)) ;; #x269
+            )))
+
+(#unless PC_PORT
+  (defun draw-inline-array-instance-shrub ((dma-buf dma-buffer) (nodes drawable) (node-count int) (buckets (inline-array prototype-bucket-shrub)))
+    "Walk node-count shrub BVH roots, cull them, classify every surviving leaf instance by prototype
+     and camera distance, and append its record to that prototype's near, opaque, translucent or
+     billboard chain. Instance records arrive through the scratchpad and the output packets are
+     assembled there too, so both transfers and the EE run at once. VU0 does the sphere-versus-plane
+     test, the camera depth, the instance transform and the wind spring."
+    (declare (asm-func none))
+    ;; The function never reads an instance or writes a packet in main memory if it can avoid it.
+    ;; Instances come in through two 5200-byte scratchpad banks, one being filled by the toSPR
+    ;; channel while the EE reads the other; finished packets go out of two 2048-byte banks, each
+    ;; handed to the fromSPR channel as soon as it is within one record of full. The node walk drives
+    ;; the input side: every time it collects a batch of leaf spans it writes a small DMA tag chain
+    ;; describing them and starts a chain-mode transfer, so the instances for the next batch are on
+    ;; their way while the current batch is being classified.
+    ;;
+    ;; Field accesses go through typed base registers, so instance-shrub-work, the prototype bucket,
+    ;; the leaf record, the wind state and the two DMA channel register banks all read as fields.
+    ;; Numeric displacements are left only where the address really is untyped: the packet layouts
+    ;; being assembled inside an output bank.
+    ;;
+    ;; VU0 state, established by background-upload-vu0 and by the entries called below:
+    ;;   vf1         1.0 in every lane
+    ;;   vf2         the point handed to VU0 -- a node or instance bounding sphere
+    ;;   vf4/vf6/vf7 entry 17 and 33 results: plane distances and camera depth
+    ;;   vf16..vf19  the background camera matrix
+    ;;   vf20..vf31  the shrub work area's planes, guard planes, hvdf offset and perspective rows
+    ;;   vi1         the reject flags VU0 leaves behind
+    (rlet ((work :reg t0 :type instance-shrub-work)
+           (memory-cursor :reg v1)
+           (output-bank :reg t1)
+           (packet-cursor :reg t3)
+           (packet-qwc :reg a3)
+           (wind-work :reg t2 :type wind-work)
+           (hashed-wind :reg t7 :type wind-work)
+           (from-spr-channel :reg a0 :type dma-bank-spr)
+           (to-spr-channel :reg t4 :type dma-bank-spr)
+           (node-stack :reg t4 :type instance-shrub-work)
+           (bucket :reg t4 :type prototype-bucket-shrub)
+           (near-geometry :reg t4 :type drawable-group)
+           (cached-bucket :reg a1)
+           (prev-bucket :reg a1 :type prototype-bucket-shrub)
+           (instance :reg a2)
+           (chain-cursor :reg a2)
+           (wind-state :reg a2 :type wind-vector)
+           (instance-bucket :reg a2 :type prototype-bucket-shrub)
+           (node :reg t8 :type draw-node)
+           (fragment :reg t8 :type generic-shrub-fragment)
+           (near-packet :reg t9)
+           (scratch-base :reg t3)
+           (instance-bank :reg t6)
+           (dma-buf :reg a0 :type dma-buffer)
+           (nodes :reg a1)
+           (node-count :reg a2)
+           (buckets :reg a3))
+      ;; Almost nothing here is arithmetic; it is the addresses the rest of the function runs on.
+      ;;
+      ;; Both scratchpad DMA channel register banks share the upper half of their address with the
+      ;; scratchpad bank bases, so two lui instructions cover four addresses. t5 first carries the
+      ;; toSPR channel address and is then reused for one of the node chain buffers; t7, t9, gp and
+      ;; ra are short-lived temporaries throughout the function and keep their physical spellings.
+      ;;
+      ;; The two node chain buffers are the surprising part. They are 128-byte staging areas for the
+      ;; DMA tags that fetch instance records, and they must be cache-line aligned because the EE
+      ;; writes them through the cache and then hands them to the DMAC -- hence the AND with -64. The
+      ;; three dummy quadwords in front of chaina exist to give that rounding somewhere to land.
+      (asm-block setup-instance-walk
+                 (label initialize-instance-walk)
+                 (add.i sp sp -32)
+                 (s.d ra sp)
+                 (s.q gp sp 16)
+                 (lui scratch-base #x7000)
+                 (l.w memory-cursor (-> dma-buf base))
+                 (lui t2 #x1000)
+                 (lui output-bank #x1000)
+                 ;; Write back and invalidate the two cache ways covering the DMA cursor before the
+                 ;; fromSPR channel starts writing behind the EE's back.
+                 (sync.l)
+                 (cache dxwbin memory-cursor 0)
+                 (sync.l)
+                 (cache dxwbin memory-cursor 1)
+                 (sync.l)
+                 (m! work *instance-shrub-work*)
+                 (ori t5 t2 #xd400)
+                 (s.w dma-buf (-> work dma-buffer))
+                 (ori from-spr-channel output-bank #xd000)
+                 (m! wind-work *wind-work*)
+                 (ori output-bank scratch-base (spr-offset instance-shrub-dma outa))
+                 (s.w r0 (-> work chains))
+                 (m node-stack work)
+                 (l.vf vf3 (-> work constants))
+                 (s.w t5 (-> work to-spr))
+                 (ori instance-bank scratch-base (spr-offset instance-shrub-dma instancea))
+                 ;; The near-packet cursor starts at the last of the six and counts down, so the
+                 ;; first near shrub of the frame uses a packet no earlier chain can still name.
+                 (add.i t7 r0 (* 5 (type-size shrub-near-packet)))
+                 (s.w buckets (-> work prototypes))
+                 (add.i packet-cursor r0 0)
+                 (s.w buckets (-> work bucket-ptr))
+                 (add.i packet-qwc r0 0)
+                 (s.w nodes (-> node-stack node 0))
+                 (m packet-cursor output-bank)
+                 (s.w node-count (-> node-stack length 0))
+                 (add.i cached-bucket r0 -1)
+                 (s.w t7 (-> work current-shrub-near-packet))
+                 (add.i t7 work (offset-of instance-shrub-work chaina))
+                 (s.w instance-bank (-> work src-ptr))
+                 (add.i a2 work (offset-of instance-shrub-work chainb))
+                 (s.w instance-bank (-> work instance-ptr))
+                 (add.i t6 r0 -64)
+                 (s.w t5 (-> work to-spr))
+                 (and t5 t7 t6)
+                 (s.w from-spr-channel (-> work from-spr))
+                 (and a2 a2 t6)
+                 (s.w t5 (-> work chain-ptr))
+                 (add.i t5 r0 -1)
+                 (s.w a2 (-> work chain-ptr-next))
+                 (nop!)
+                 (s.w t4 (-> work stack-ptr))
+                 (nop!)
+                 (s.w t5 (-> work last-shrubs))
+                 (nop!)
+                 (s.w r0 (-> work flags))
+                 (nop!)
+                 (s.w r0 (-> work inst-count))
+                 (nop!)
+                 (s.w r0 (-> work node-count)))
+      ;; Walk the BVH with an explicit stack, because a shrub tree has no fixed depth and no fixed
+      ;; child count. work.node and work.length are six-entry arrays a constant distance apart, so
+      ;; one cursor addresses both and its distance from the work area is the current depth. Seven
+      ;; levels is the limit, which is what t5 counts down.
+      ;;
+      ;; VU0 entry 17 turns a node's bounding sphere into four side-plane distances and a camera
+      ;; depth. Any negative plane distance rejects the whole subtree, and so does a negative depth.
+      ;; Otherwise a node either descends -- push its child span -- or, if its children are leaves,
+      ;; contributes one ref tag to the chain being built, with the leaf count stashed in the tag's
+      ;; VIF word where the scratchpad transfer will never look at it.
+      (asm-block walk-node-stack
+                 (label scan-node-stack)
+                 (callms 17)
+                 (l.w t4 (-> work stack-ptr))
+                 (add.i t5 r0 7)
+                 (l.w a2 (-> work chain-ptr))
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (label test-node)
+                 (sub t7 t4 work)
+                 (l.w t6 (-> node-stack length 0))
+                 (b.lt t7 r0 finish-node-stack-pass :delay (l.w node (-> node-stack node 0)))
+                 (b.z t6 skip-empty-node :delay (l.vf vf2 (-> node bsphere)))
+                 (nop!)
+                 (l.vf vf6 node -4)
+                 (vmulax.xyzw acc vf16 vf2)
+                 (l.bu t6 (-> node flags))
+                 (vmadday.xyzw acc vf17 vf2)
+                 (l.w t7 (-> node child))
+                 (vmaddaz.xyzw acc vf18 vf2)
+                 (l.bu node (-> node child-count))
+                 (vmsubaw.xyzw acc vf19 vf0)
+                 (l.q t9 (-> work dma-ref))
+                 (vmaddw.xyzw vf4 vf1 vf2)
+                 (s.w t7 (-> node-stack node 1))
+                 (vmulaw.xyzw acc vf1 vf6)
+                 (s.w node (-> node-stack length 1))
+                 (vmsubax.xyzw acc vf24 vf2)
+                 (s.q t9 chain-cursor)
+                 (vmsubay.xyzw acc vf25 vf2)
+                 (add.i t9 t7 -4)
+                 (vmsubaz.xyzw acc vf26 vf2)
+                 (sll t7 t8 2)
+                 (m ra vf4)
+                 (add t7 t7 t8)
+                 (vmsubaw.xyzw acc vf27 vf0)
+                 (s.w t9 chain-cursor 4)
+                 (vmaddw.xyzw vf7 vf1 vf2)
+                 (s.w node chain-cursor (offset-of dma-packet vif0))
+                 (pcgtw t8 r0 ra)
+                 (l.w t9 (-> node-stack length 0))
+                 (ppach ra r0 t8)
+                 (l.w node (-> node-stack node 0))
+                 (b.nz ra reject-or-finish-node :delay (s.b t7 chain-cursor))
+                 (nop!)
+                 (nop!)
+                 (add.i t7 t9 -1)
+                 (m t9 vf7)
+                 (add.i t8 t8 32)
+                 (nop!)
+                 (b.lt t9 r0 reject-or-finish-node :delay (nop!))
+                 (b.z t6 descend-visible-node :delay (nop!))
+                 (b test-node :delay (add.i t4 t4 4))
+                 (label descend-visible-node)
+                 (add.i a2 a2 16)
+                 (s.w t7 (-> node-stack length 0))
+                 (add.i t5 t5 -1)
+                 (s.w node (-> node-stack node 0))
+                 (b.le t5 r0 finish-node-stack-pass :delay (sub t6 t4 work))
+                 (b.gt t7 r0 test-node :delay (nop!))
+                 (b.le t6 r0 finish-node-stack-pass :delay (add.i t4 t4 -4))
+                 (label reject-or-finish-node)
+                 (nop!)
+                 (l.w t7 (-> node-stack length 0))
+                 (nop!)
+                 (l.w t6 (-> node-stack node 0))
+                 (add.i t7 t7 -1)
+                 (sub t8 t4 work)
+                 (add.i t6 t6 32)
+                 (s.w t7 (-> node-stack length 0))
+                 (b.gt t7 r0 test-node :delay (s.w t6 (-> node-stack node 0)))
+                 (b.le t8 r0 finish-node-stack-pass :delay (nop!))
+                 (label skip-empty-node)
+                 (b reject-or-finish-node :delay (add.i t4 t4 -4)))
+      ;; Hand the finished node chain to the toSPR channel and start filling the other one. The chain
+      ;; is a run of ref tags plus a terminating end tag, sent in chain mode with tag transfer
+      ;; enabled: each tag is copied into the scratchpad ahead of the instances it fetches, which is
+      ;; how the leaf count travels with the data and why the instance cursor starts one quadword into
+      ;; the bank. The two cache lines holding the chain are written back first, because the EE built
+      ;; it through the cache and the DMAC will read main memory.
+      (asm-block flush-node-chain
+                 (label finish-node-stack-pass)
+                 (nop!)
+                 (s.w t4 (-> work stack-ptr))
+                 (nop!)
+                 (l.w t5 (-> work chain-ptr))
+                 (nop!)
+                 (l.w t4 (-> work to-spr))
+                 (b.eq t5 a2 finish-node-walk :delay (l.q t5 (-> work dma-end)))
+                 (dma-wait-counting-stalls! t6 to-spr-channel (-> work wait-to-spr)
+                                            wait-to-scratchpad swap-node-chains-and-start-dma)
+                 (label swap-node-chains-and-start-dma)
+                 (nop!)
+                 (l.w t6 (-> work chains))
+                 (nop!)
+                 (s.q t5 chain-cursor)
+                 (l.w t5 (-> work chain-ptr))
+                 (add.i a2 r0 DMA-CHCR-CHAIN-TTE-START)
+                 (l.w t7 (-> work chain-ptr-next))
+                 (ori t8 r0 #xffff)
+                 (s.w t5 (-> work chain-ptr-next))
+                 (add.i t6 t6 1)
+                 (s.w t7 (-> work chain-ptr))
+                 (m t7 t5)
+                 (nop!)
+                 (s.w t6 (-> work chains))
+                 (nop!)
+                 (l.w t6 (-> work instance-ptr))
+                 (sync.l)
+                 (cache dxwbin t7 0)
+                 (sync.l)
+                 (cache dxwbin t7 1)
+                 (sync.l)
+                 (add.i t7 t7 64)
+                 (sync.l)
+                 (cache dxwbin t7 0)
+                 (sync.l)
+                 (cache dxwbin t7 1)
+                 (sync.l)
+                 (s.w t6 (-> to-spr-channel sadr))
+                 (s.w t5 (-> to-spr-channel tadr))
+                 (xor.i t5 t6 SHRUB-INSTANCE-INPUT-FLIP)
+                 (s.w r0 (-> to-spr-channel qwc))
+                 (sync.l)
+                 (s.w a2 (-> to-spr-channel chcr))
+                 (sync.l)
+                 (nop!)
+                 (s.w t5 (-> work src-ptr))
+                 (b choose-next-pass :delay (s.w t5 (-> work instance-ptr)))
+                 (label finish-node-walk)
+                 (b.lt cached-bucket r0 done :delay (l.w a2 (-> work instance-ptr)))
+                 (nop!)
+                 (s.w r0 (-> work last-shrubs))
+                 (nop!)
+                 (xor.i a2 a2 SHRUB-INSTANCE-INPUT-FLIP)
+                 (nop!)
+                 (s.w a2 (-> work src-ptr))
+                 (nop!)
+                 (s.w a2 (-> work instance-ptr))
+                 (dma-wait-counting-stalls! a2 to-spr-channel (-> work wait-to-spr)
+                                            wait-for-final-node-dma choose-next-pass)
+                 (label choose-next-pass)
+                 (b.ge cached-bucket r0 finish-instance-pass :delay (l.w a2 (-> work src-ptr)))
+                 (b scan-node-stack :delay (add.i cached-bucket r0 #x2710)))
+      ;; One leaf. Return the output bank first if this instance could overflow it, then let VU0 entry
+      ;; 33 test the instance's own bounding sphere and produce its camera depth. Consecutive
+      ;; instances usually share a prototype, so the bucket's four list heads live in the work area
+      ;; and are written back only when the bucket index changes -- cached-bucket holds the index they
+      ;; belong to, with 10000 meaning "nothing cached yet" and -1, before the first pass, "no
+      ;; instance has been looked at at all".
+      (asm-block load-next-instance
+                 (label load-instance)
+                 (add.i t4 packet-qwc (- SHRUB-OUTPUT-FLUSH-AT))
+                 (l.vf vf2 instance (offset-of instance-shrubbery bsphere))
+                 (b.le t4 r0 transform-instance :delay (l.bu t4 instance (offset-of instance-shrubbery bucket-index)))
+                 (nop!)
+                 (l.w from-spr-channel (-> work from-spr))
+                 (nop!)
+                 (nop!)
+                 (dma-wait-counting-stalls! packet-cursor from-spr-channel (-> work wait-from-spr)
+                                            wait-for-instance-upload upload-instance-bank)
+                 (dma-return-output-bank! output-bank SHRUB-OUTPUT-FLIP packet-cursor packet-qwc memory-cursor from-spr-channel
+                                          upload-instance-bank)
+                 (label transform-instance)
+                 (callms 33)
+                 (l.w t5 (-> work flags))
+                 (b.eq cached-bucket t4 classify-instance :delay (add.i t6 cached-bucket -10000))
+                 (b.z t6 prepare-instance-record :delay (l.w prev-bucket (-> work bucket-ptr)))
+                 (nop!)
+                 (l.q t5 (-> work last 0))
+                 (nop!)
+                 (l.q t6 (-> work next 0))
+                 (nop!)
+                 (l.q t7 (-> work count 0))
+                 (nop!)
+                 (s.q t5 (-> prev-bucket last-clear))
+                 (nop!)
+                 (s.q t6 (-> prev-bucket next-clear))
+                 (nop!)
+                 (s.q t7 (-> prev-bucket count-clear-qword))
+                 (label prepare-instance-record)
+                 (m cached-bucket t4)
+                 (l.w t5 (-> work prototypes))
+                 (add.i t6 r0 112)
+                 (s.q r0 (-> work last 0))
+                 (multu3 t4 t4 t6)
+                 (s.q r0 (-> work next 0))
+                 (add t4 t5 t4)
+                 (s.q r0 (-> work count 0))
+                 (nop!)
+                 (s.w t4 (-> work bucket-ptr))
+                 (nop!)
+                 (l.w t5 (-> bucket flags))
+                 (nop!)
+                 (l.vf vf15 (-> bucket rdists))
+                 (and.i t5 t5 1)
+                 (l.vf vf14 (-> bucket dists))
+                 (vmul.xyz vf15 vf15 vf3)
+                 (s.w t5 (-> work flags)))
+      ;; Unpack the instance and decide what it becomes.
+      ;;
+      ;; The 4x4 origin is stored as sixteen 16-bit values; pextlh spreads each row into a quadword
+      ;; and the VU0 conversions turn the rotation rows into 20.12 floats and the translation into
+      ;; whole units. The color index in the leaf selects one RGBA from the tree's 1024-entry
+      ;; time-of-day table, and the byte spread and shift turn it into the four floats that scale
+      ;; every vertex of this instance.
+      ;;
+      ;; The distance work produces one number that decides everything: a fade running 0 to 128
+      ;; across the band between this geometry and the next coarser one. 128 means the model has
+      ;; faded out completely, so the instance becomes a billboard and the wind path runs instead;
+      ;; below that the model is drawn with the fade in its alpha and 128 minus the fade is handed to
+      ;; the billboard, so the two crossfade. A prototype with no billboard geometry takes the flat
+      ;; path and is simply drawn.
+      (asm-block classify-instance
+                 (label classify-instance)
+                 (b.nz t5 advance-instance :delay (l.d t5 instance (offset-of instance-shrubbery origin data 12)))
+                 (nop!)
+                 (l.d t4 instance (offset-of instance-shrubbery origin data 0))
+                 (pextlh t5 t5 r0)
+                 (l.d t6 instance (offset-of instance-shrubbery origin data 4))
+                 (sra.w t7 t5 10)
+                 (l.d t5 instance (offset-of instance-shrubbery origin data 8))
+                 (pextlh t8 t4 r0)
+                 (l.hu t4 instance (offset-of instance-shrubbery color-indices))
+                 (sra.w t8 t8 16)
+                 (l.q t9 instance (offset-of instance-shrubbery flat-normal))
+                 (pextlh t6 t6 r0)
+                 (m.ni vf13 t7)
+                 (sra.w t6 t6 16)
+                 (m.ni vf18 t9)
+                 (pextlh t5 t5 r0)
+                 (m.ni vf10 t8)
+                 (sra.w t5 t5 16)
+                 (m.ni vf11 t6)
+                 (add t4 t4 work)
+                 (m.ni vf12 t5)
+                 (nop!)
+                 (cfc2.i t5 vi1)
+                 (vitof0.xyzw vf13 vf13)
+                 (l.w t6 t4 (offset-of instance-shrub-work colors))
+                 (b.nz t5 advance-instance :delay (l.q t4 (-> work color-constant)))
+                 (pextlb t5 r0 t6)
+                 (l.vf vf4 (-> work hmge-d))
+                 (pextlh t5 r0 t5)
+                 (l.vf vf25 (-> work min-dist))
+                 (vsub.xyzw vf9 vf6 vf14)
+                 (nop!)
+                 (sll.w t6 t5 8)
+                 (mmi-nop!)
+                 (add.w t4 t6 t4)
+                 (mmi-nop!)
+                 (vmula.xyzw acc vf1 vf3)
+                 (nop!)
+                 (vmsub.xyzw vf9 vf9 vf15)
+                 (s.q t5 (-> work bb-color))
+                 (vadd.xyz vf13 vf13 vf2)
+                 (s.q t4 (-> work color))
+                 (vsubw.xyzw vf8 vf6 vf2)
+                 (nop!)
+                 (vitof12.xyzw vf10 vf10)
+                 (nop!)
+                 (vmini.xyzw vf9 vf9 vf3)
+                 (l.w t4 (-> work bucket-ptr))
+                 (vadd.xyz vf18 vf18 vf13)
+                 (nop!)
+                 (vmulax.xyzw acc vf28 vf13)
+                 (l.w t4 (-> bucket geometry 3))
+                 (vmadday.xyzw acc vf29 vf13)
+                 (nop!)
+                 (vmaxx.xyzw vf9 vf9 vf0)
+                 (nop!)
+                 (vmaddaz.xyzw acc vf30 vf13)
+                 (nop!)
+                 (vmaddw.xyzw vf5 vf31 vf0)
+                 (nop!)
+                 (vitof12.xyzw vf11 vf11)
+                 (nop!)
+                 (ftoi.vf vf19 vf9)
+                 (nop!)
+                 (vmini.xyzw vf25 vf8 vf25)
+                 (nop!)
+                 (vsubz.xyzw vf4 vf8 vf4)
+                 (add.i t5 r0 128)
+                 (vitof12.xyzw vf12 vf12)
+                 (add.i t6 r0 255)
+                 (vmulw.y vf9 vf9 vf15)
+                 (nop!)
+                 (nop!)
+                 (m t7 vf19)
+                 (vdiv Q vf3.w vf5.w)
+                 (nop!)
+                 (and t6 t7 t6)
+                 (nop!)
+                 (sub t7 t5 t6)
+                 (s.w t6 (-> work color w))
+                 (b.eq t5 t6 prepare-wind-and-billboard :delay (s.vf vf25 (-> work min-dist)))
+                 (b.z t4 build-flat-instance :delay (s.w t7 (-> work bb-color w)))
+                 (vmulax.xyzw acc vf28 vf18)
+                 (l.q t4 (-> work billboard-tmpl))
+                 (vmadday.xyzw acc vf29 vf18)
+                 (l.q t5 (-> work billboard-tmpl gif))
+                 (vmaddaz.xyzw acc vf30 vf18)
+                 (l.w t6 (-> work last 3))
+                 (vmaddw.xyzw vf18 vf31 vf0)
+                 (l.w t7 (-> work next 3))
+                 (sll t8 packet-qwc 4)
+                 (l.vf vf8 (-> work hvdf-offset))
+                 (add t8 t8 memory-cursor)
+                 (l.vf vf7 instance (offset-of instance-shrubbery flat-normal))
+                 (vmulaq.xyz acc vf5 Q)
+                 (l.q a2 (-> work bb-color))
+                 (vmulaw.w acc vf5 vf0)
+                 (movz t6 t8 t6)
+                 (vmadd.xyzw vf5 vf1 vf8)
+                 (l.hu t9 (-> work count 3))
+                 (vmulq.w vf19 vf7 Q)
+                 (nop!)
+                 (add.i t9 t9 1)
+                 (l.vf vf6 (-> work billboard-const))
+                 (vmulq.xyzw vf26 vf1 Q)
+                 (s.w t6 (-> work last 3))
+                 (vmulq.xyzw vf27 vf1 Q)
+                 (s.w t8 (-> work next 3))
+                 (vnop)
+                 (nop!)
+                 (vmaxz.w vf5 vf5 vf6)
+                 (s.h t9 (-> work count 3))
+                 (vdiv Q vf3.w vf18.w)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf10)
+                 (s.q t4 packet-cursor)
+                 (vaddx.x vf26 vf0 vf0)
+                 (s.q t5 packet-cursor 16)
+                 (vminiw.w vf5 vf5 vf6)
+                 (s.q a2 packet-cursor 48)
+                 (vmadday.xyzw acc vf21 vf10)
+                 (s.q a2 packet-cursor 96)
+                 (vmaddz.xyzw vf10 vf22 vf10)
+                 (s.q a2 packet-cursor 144)
+                 (vmulaw.w acc vf18 vf0)
+                 (s.q a2 packet-cursor 192)
+                 (vmulaq.xyz acc vf18 Q)
+                 (s.w t7 packet-cursor 4)
+                 (vmadd.xyzw vf18 vf1 vf8)
+                 (nop!)
+                 (vmulq.w vf8 vf7 Q)
+                 (nop!)
+                 (vmulq.xyzw vf24 vf1 Q)
+                 (nop!)
+                 (vmulq.xyzw vf25 vf1 Q)
+                 (nop!)
+                 (vmaxz.w vf18 vf18 vf6)
+                 (nop!)
+                 (vadd.xy vf24 vf0 vf0)
+                 (nop!)
+                 (vaddy.y vf25 vf0 vf0)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf11)
+                 (nop!)
+                 (vminiw.w vf18 vf18 vf6)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf11)
+                 (nop!)
+                 (vmaddz.xyzw vf11 vf22 vf11)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf12)
+                 (nop!)
+                 (vsub.xyzw vf16 vf18 vf5)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf12)
+                 (nop!)
+                 (vmaddz.xyzw vf12 vf22 vf12)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf13)
+                 (nop!)
+                 (vaddy.y vf16 vf16 vf16)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf13)
+                 (nop!)
+                 (vmaddaz.xyzw acc vf22 vf13)
+                 (nop!)
+                 (vmaddw.xyzw vf13 vf23 vf0)
+                 (nop!)
+                 (vmul.xy vf17 vf16 vf16)
+                 (nop!)
+                 (nop!)
+                 (s.vf vf24 packet-cursor 32)
+                 (nop!)
+                 (s.vf vf25 packet-cursor 80)
+                 (nop!)
+                 (s.vf vf26 packet-cursor 128)
+                 (vaddy.x vf17 vf17 vf17)
+                 (nop!)
+                 (nop!)
+                 (s.vf vf27 packet-cursor 176)
+                 (vmulw.xyzw vf2 vf18 vf0)
+                 (nop!)
+                 (vmulw.xyzw vf4 vf18 vf0)
+                 (nop!)
+                 (vrsqrt Q vf0.w vf17.x)
+                 (nop!)
+                 (nop!)
+                 (vwaitq)
+                 (vmulq.xy vf17 vf16 Q)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (vsuby.x vf16 vf0 vf17)
+                 (nop!)
+                 (vaddx.y vf16 vf0 vf17)
+                 (nop!)
+                 (nop!)
+                 (s.vf vf10 packet-cursor 240)
+                 (nop!)
+                 (s.vf vf11 packet-cursor 256)
+                 (vmulw.xy vf8 vf16 vf8)
+                 (nop!)
+                 (vmulw.xy vf19 vf16 vf19)
+                 (nop!)
+                 (nop!)
+                 (l.q a2 (-> work color))
+                 (nop!)
+                 (nop!)
+                 (vmul.xy vf8 vf8 vf6)
+                 (nop!)
+                 (vmul.xy vf19 vf19 vf6)
+                 (nop!)
+                 (vmulw.xyzw vf6 vf5 vf0)
+                 (nop!)
+                 (vmulw.xyzw vf7 vf5 vf0)
+                 (s.q a2 packet-cursor 304)
+                 (vadd.xy vf2 vf18 vf8)
+                 (nop!)
+                 (vsub.xy vf4 vf18 vf8)
+                 (nop!)
+                 (vadd.xy vf6 vf5 vf19)
+                 (nop!)
+                 (vsub.xy vf7 vf5 vf19)
+                 (nop!)
+                 (vftoi4.xyzw vf2 vf2)
+                 (nop!)
+                 (vftoi4.xyzw vf4 vf4)
+                 (add.i packet-cursor packet-cursor 224)
+                 (vftoi4.xyzw vf6 vf6)
+                 (add.i packet-qwc packet-qwc 14)
+                 (vftoi4.xyzw vf7 vf7)
+                 (l.w a2 (-> work color w))
+                 (nop!)
+                 (s.vf vf2 packet-cursor -160)
+                 (nop!)
+                 (s.vf vf4 packet-cursor -112)
+                 (nop!)
+                 (s.vf vf6 packet-cursor -64)
+                 (b.z a2 advance-instance :delay (s.vf vf7 packet-cursor -16))
+                 (b append-first-lod-record :delay (nop!))
+                 (label build-flat-instance)
+                 (b.z t6 advance-instance :delay (vmulax.xyzw acc vf20 vf10))
+                 (vmadday.xyzw acc vf21 vf10)
+                 (l.q a2 (-> work color))
+                 (vmaddz.xyzw vf10 vf22 vf10)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf11)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf11)
+                 (nop!)
+                 (vmaddz.xyzw vf11 vf22 vf11)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf12)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf12)
+                 (nop!)
+                 (vmaddz.xyzw vf12 vf22 vf12)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf13)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf13)
+                 (nop!)
+                 (vmaddaz.xyzw acc vf22 vf13)
+                 (nop!)
+                 (vmaddw.xyzw vf13 vf23 vf0)
+                 (s.q a2 packet-cursor 80)
+                 (nop!)
+                 (s.vf vf10 packet-cursor 16)
+                 (nop!)
+                 (s.vf vf11 packet-cursor 32)
+                 (label append-first-lod-record)
+                 (sll a2 packet-qwc 4)
+                 (l.hu t4 (-> work mod-count 2))
+                 (add t5 a2 memory-cursor)
+                 (l.hu t7 (-> work count 2))
+                 (sll t6 t4 4)
+                 (l.w a2 (-> work next 2))
+                 (add t8 t6 work)
+                 (l.w t6 (-> work last 2))
+                 (add.i t7 t7 1)
+                 (l.q t8 t8 (offset-of instance-shrub-work matrix-tmpl))
+                 (add.i packet-qwc packet-qwc 6)
+                 (s.h t7 (-> work count 2))
+                 (add.i t7 t4 1)
+                 (s.q t8 packet-cursor)
+                 (add.i t8 t7 -20)
+                 (s.vf vf12 packet-cursor 48)
+                 (movz t7 r0 t8)
+                 (s.vf vf13 packet-cursor 64)
+                 (add.i t8 t4 -10)
+                 (s.h t7 (-> work mod-count 2))
+                 (add.i packet-cursor packet-cursor 96)
+                 (s.w a2 packet-cursor -92)
+                 (b.z t4 use-first-shared-matrix :delay (s.w t5 (-> work next 2)))
+                 (b.nz t8 select-first-matrix :delay (nop!))
+                 (label use-first-shared-matrix)
+                 (nop!)
+                 (l.q t4 (-> work mscalf-tmpl))
+                 (nop!)
+                 (l.q t7 (-> work mscalf-ret-tmpl))
+                 (nop!)
+                 (s.w t5 (-> work last 2))
+                 (nop!)
+                 (movz t4 t7 t6)
+                 (add.i packet-qwc packet-qwc 1)
+                 (s.q t4 packet-cursor)
+                 (nop!)
+                 (s.w a2 packet-cursor 4)
+                 (b advance-instance :delay (add.i packet-cursor packet-cursor 16))
+                 (label select-first-matrix)
+                 (add.i t5 t4 -9)
+                 (nop!)
+                 (b.z t5 use-first-indexed-matrix :delay (add.i t4 t4 -19))
+                 (b.nz t4 advance-instance :delay (nop!))
+                 (label use-first-indexed-matrix)
+                 (nop!)
+                 (sll t4 t7 4)
+                 (nop!)
+                 (add t4 t4 work)
+                 (add.i packet-qwc packet-qwc 1)
+                 (l.q t4 t4 (offset-of instance-shrub-work count-tmpl))
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (s.q t4 packet-cursor)
+                 (nop!)
+                 (s.w a2 packet-cursor 4)
+                 (b advance-instance :delay (add.i packet-cursor packet-cursor 16)))
+      ;; Shear the instance into the wind, and if it has faded to a billboard, build the quad.
+      ;;
+      ;; Each instance owns two words of spring state in the level's wind-vectors array, indexed by
+      ;; the wind-index packed into its transform. The driving force is one of 64 shared wind vectors
+      ;; chosen by hashing that index against the current wind tick, exactly as
+      ;; wind-get-hashed-index does, so neighbouring bushes sway out of phase without anyone storing
+      ;; a phase. The spring is integrated here and written straight back, and its result shears the
+      ;; instance's rows.
+      ;;
+      ;; The billboard is a camera-facing rectangle built from the leaf's own flat-normal and
+      ;; flat-hwidth: the half-width along the screen right vector, the normal for up, four corners
+      ;; converted to 12.4 and written as a GS packet. The paused flag selects an alternate axis.
+      (asm-block shear-instance-into-wind
+                 (label prepare-wind-and-billboard)
+                 (nop!)
+                 (l.w t4 (-> wind-work wind-time))
+                 (nop!)
+                 (l.hu t5 instance (offset-of instance-shrubbery wind-index))
+                 (nop!)
+                 (l.w a2 (-> work wind-vectors))
+                 (sll t6 t5 4)
+                 (l.vf vf19 (-> work wind-const))
+                 (add a2 a2 t6)
+                 (add t4 t5 t4)
+                 (and.i t5 t4 63)
+                 (l.d t4 (-> wind-state wind-vel))
+                 (sll t6 t5 4)
+                 (l.d t5 (-> wind-state wind-pos))
+                 (add t7 t6 wind-work)
+                 (m t6 vf4)
+                 (pextlw t4 r0 t4)
+                 (l.vf vf16 (-> hashed-wind wind-array 0))
+                 (pextlw t5 r0 t5)
+                 (m vf18 t4)
+                 (nop!)
+                 (m vf17 t5)
+                 (vmula.xyzw acc vf16 vf1)
+                 (nop!)
+                 (vmsubax.xyzw acc vf18 vf19)
+                 (nop!)
+                 (vmsuby.xyzw vf16 vf17 vf19)
+                 (nop!)
+                 (pcgtw t5 r0 t6)
+                 (mmi-nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (l.vf vf24 (-> work guard-plane 0))
+                 (vmulaz.xyzw acc vf16 vf19)
+                 (nop!)
+                 (vmadd.xyzw vf18 vf1 vf18)
+                 (nop!)
+                 (nop!)
+                 (l.vf vf25 (-> work guard-plane 1))
+                 (nop!)
+                 (l.vf vf26 (-> work guard-plane 2))
+                 (nop!)
+                 (l.vf vf27 (-> work guard-plane 3))
+                 (vmulaz.xyzw acc vf18 vf19)
+                 (nop!)
+                 (vmadd.xyzw vf17 vf17 vf1)
+                 (nop!)
+                 (vmulax.xyzw acc vf24 vf2)
+                 (nop!)
+                 (vmadday.xyzw acc vf25 vf2)
+                 (nop!)
+                 (vmaddaz.xyzw acc vf26 vf2)
+                 (nop!)
+                 (vminiw.xyzw vf17 vf17 vf0)
+                 (nop!)
+                 (vmsubaw.xyzw acc vf27 vf0)
+                 (nop!)
+                 (vmsubw.xyzw vf24 vf1 vf2)
+                 (nop!)
+                 (nop!)
+                 (m t4 vf18)
+                 (vmaxw.xyzw vf27 vf17 vf19)
+                 (nop!)
+                 (ppacw t4 r0 t4)
+                 (mmi-nop!)
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (m t6 vf24)
+                 (vmuly.xyzw vf27 vf27 vf9)
+                 (nop!)
+                 (pcgtw t6 r0 t6)
+                 (mmi-nop!)
+                 (ppach t6 r0 t6)
+                 (mmi-nop!)
+                 (vmulax.yw acc vf0 vf0)
+                 (nop!)
+                 (vmulay.xz acc vf27 vf10)
+                 (nop!)
+                 (vmadd.xyzw vf10 vf1 vf10)
+                 (nop!)
+                 (or t5 t6 t5)
+                 (m t6 vf27)
+                 (vmulax.yw acc vf0 vf0)
+                 (l.w t7 (-> work paused))
+                 (vmulay.xz acc vf27 vf11)
+                 (nop!)
+                 (vmadd.xyzw vf11 vf1 vf11)
+                 (nop!)
+                 (b.ne t7 s7 use-alternate-billboard-axis :delay (ppacw t6 r0 t6))
+                 (vmulax.yw acc vf0 vf0)
+                 (s.d t4 (-> wind-state wind-vel))
+                 (vmulay.xz acc vf27 vf12)
+                 (s.d t6 (-> wind-state wind-pos))
+                 (b.nz t5 finish-billboard-instance :delay (vmadd.xyzw vf12 vf1 vf12))
+                 (b append-second-lod-record :delay (nop!))
+                 (label use-alternate-billboard-axis)
+                 (vmulax.yw acc vf0 vf0)
+                 (nop!)
+                 (vmulay.xz acc vf27 vf12)
+                 (nop!)
+                 (b.nz t5 finish-billboard-instance :delay (vmadd.xyzw vf12 vf1 vf12)))
+      ;; The wind path's own record append: the same six quadwords as the flat path, but linked into
+      ;; the translucent geometry's chain rather than the opaque one, so a swaying shrub and a still
+      ;; one end up in different draws.
+      (asm-block append-billboard-instance
+                 (label append-second-lod-record)
+                 (vmulax.xyzw acc vf20 vf10)
+                 (l.q a2 (-> work color))
+                 (vmadday.xyzw acc vf21 vf10)
+                 (nop!)
+                 (vmaddz.xyzw vf10 vf22 vf10)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf11)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf11)
+                 (nop!)
+                 (vmaddz.xyzw vf11 vf22 vf11)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf12)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf12)
+                 (nop!)
+                 (vmaddz.xyzw vf12 vf22 vf12)
+                 (nop!)
+                 (vmulax.xyzw acc vf20 vf13)
+                 (nop!)
+                 (vmadday.xyzw acc vf21 vf13)
+                 (nop!)
+                 (vmaddaz.xyzw acc vf22 vf13)
+                 (nop!)
+                 (vmaddw.xyzw vf13 vf23 vf0)
+                 (s.q a2 packet-cursor 80)
+                 (nop!)
+                 (s.vf vf10 packet-cursor 16)
+                 (nop!)
+                 (s.vf vf11 packet-cursor 32)
+                 (sll a2 packet-qwc 4)
+                 (l.hu t4 (-> work mod-count 1))
+                 (add t5 a2 memory-cursor)
+                 (l.hu t7 (-> work count 1))
+                 (sll t6 t4 4)
+                 (l.w a2 (-> work next 1))
+                 (add t8 t6 work)
+                 (l.w t6 (-> work last 1))
+                 (add.i t7 t7 1)
+                 (l.q t8 t8 (offset-of instance-shrub-work matrix-tmpl))
+                 (add.i packet-qwc packet-qwc 6)
+                 (s.h t7 (-> work count 1))
+                 (add.i t7 t4 1)
+                 (s.q t8 packet-cursor)
+                 (add.i t8 t7 -20)
+                 (s.vf vf12 packet-cursor 48)
+                 (movz t7 r0 t8)
+                 (s.vf vf13 packet-cursor 64)
+                 (add.i t8 t4 -10)
+                 (s.h t7 (-> work mod-count 1))
+                 (add.i packet-cursor packet-cursor 96)
+                 (s.w a2 packet-cursor -92)
+                 (b.z t4 use-second-shared-matrix :delay (s.w t5 (-> work next 1)))
+                 (b.nz t8 select-second-matrix :delay (nop!))
+                 (label use-second-shared-matrix)
+                 (nop!)
+                 (l.q t4 (-> work mscalf-tmpl))
+                 (nop!)
+                 (l.q t7 (-> work mscalf-ret-tmpl))
+                 (nop!)
+                 (s.w t5 (-> work last 1))
+                 (nop!)
+                 (movz t4 t7 t6)
+                 (add.i packet-qwc packet-qwc 1)
+                 (s.q t4 packet-cursor)
+                 (nop!)
+                 (s.w a2 packet-cursor 4)
+                 (b advance-instance :delay (add.i packet-cursor packet-cursor 16))
+                 (label select-second-matrix)
+                 (add.i t5 t4 -9)
+                 (nop!)
+                 (b.z t5 use-second-indexed-matrix :delay (add.i t4 t4 -19))
+                 (b.nz t4 advance-instance :delay (nop!))
+                 (label use-second-indexed-matrix)
+                 (nop!)
+                 (sll t4 t7 4)
+                 (nop!)
+                 (add t4 t4 work)
+                 (add.i packet-qwc packet-qwc 1)
+                 (l.q t4 t4 (offset-of instance-shrub-work count-tmpl))
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (s.q t4 packet-cursor)
+                 (nop!)
+                 (s.w a2 packet-cursor 4)
+                 (b advance-instance :delay (add.i packet-cursor packet-cursor 16)))
+      ;; A near shrub goes to the generic renderer, which wants a full matrix and one upload per
+      ;; fragment rather than a compact instance record. Each fragment gets one shrub-near-packet --
+      ;; matrix, control stream, texture coordinates, colors, vertices, MSCAL -- patched from that
+      ;; fragment's own qwc and stream addresses and then copied into the output bank. The six
+      ;; templates are used round-robin because an earlier chain may still name the one just used, and
+      ;; every fragment rechecks the output bank, since a single instance can emit many of them.
+      (asm-block emit-near-instances
+                 (label finish-billboard-instance)
+                 (vmulax.xyzw acc vf28 vf10)
+                 (l.vf vf24 (-> work bb-color))
+                 (vmadday.xyzw acc vf29 vf10)
+                 (nop!)
+                 (vmaddz.xyzw vf10 vf30 vf10)
+                 (nop!)
+                 (vmulax.xyzw acc vf28 vf11)
+                 (nop!)
+                 (vmadday.xyzw acc vf29 vf11)
+                 (l.hu t4 (-> work near-count))
+                 (vmaddz.xyzw vf11 vf30 vf11)
+                 (l.w a2 (-> work bucket-ptr))
+                 (vmulax.xyzw acc vf28 vf12)
+                 (add.i t8 t4 1)
+                 (vmadday.xyzw acc vf29 vf12)
+                 (s.h t8 (-> work near-count))
+                 (vmaddz.xyzw vf12 vf30 vf12)
+                 (l.w t4 (-> instance-bucket geometry 0))
+                 (vmulax.xyzw acc vf28 vf13)
+                 (l.w t5 (-> work near-next))
+                 (vmadday.xyzw acc vf29 vf13)
+                 (l.h t6 (-> near-geometry length))
+                 (vmaddaz.xyzw acc vf30 vf13)
+                 (l.w a2 (-> work near-last))
+                 (vmaddw.xyzw vf13 vf31 vf0)
+                 (l.w t7 (-> work current-shrub-near-packet))
+                 (vitof0.xyz vf24 vf24)
+                 (s.h t8 (-> work count 0))
+                 (label refill-instance-bank)
+                 (add.i t8 packet-qwc (- SHRUB-NEAR-OUTPUT-FLUSH-AT))
+                 (nop!)
+                 (b.le t8 r0 advance-near-packet :delay (l.w fragment (-> near-geometry data 0)))
+                 (dma-wait-counting-stalls! packet-cursor from-spr-channel (-> work wait-from-spr)
+                                            wait-for-instance-refill start-instance-refill)
+                 (dma-return-output-bank! output-bank SHRUB-OUTPUT-FLIP packet-cursor packet-qwc memory-cursor from-spr-channel
+                                          start-instance-refill)
+                 (label advance-near-packet)
+                 (add t9 t7 work)
+                 (add.i t7 t7 -144)
+                 (add.i t4 t4 4)
+                 (add.i t9 t9 (offset-of instance-shrub-work shrub-near-packets))
+                 (b.ge t7 r0 emit-near-instance :delay (l.q ra near-packet))
+                 (nop!)
+                 (add.i t7 r0 720)
+                 (label emit-near-instance)
+                 ;; Near shrubs use the full matrix packet template. Rotate through the six near-packet slots so
+                 ;; matrix uploads can be linked without overwriting a packet still referenced by the DMA chain.
+                 (nop!)
+                 (s.w t5 near-packet (shrub-near-tag-addr mscal-tmpl))
+                 (sll t5 packet-qwc 4)
+                 (s.q ra packet-cursor)
+                 (add t5 t5 memory-cursor)
+                 (s.vf vf10 packet-cursor 16)
+                 (movz a2 t5 a2)
+                 (s.vf vf11 packet-cursor 32)
+                 (add.i packet-qwc packet-qwc 12)
+                 (s.vf vf12 packet-cursor 48)
+                 (nop!)
+                 (l.w ra (-> fragment vtx-cnt))
+                 (nop!)
+                 (s.vf vf13 packet-cursor 64)
+                 (nop!)
+                 (s.vf vf24 packet-cursor 80)
+                 (nop!)
+                 (s.w ra packet-cursor 96)
+                 (nop!)
+                 (l.w ra (-> fragment cnt))
+                 (nop!)
+                 (l.bu gp (-> fragment cnt-qwc))
+                 (nop!)
+                 (s.w ra near-packet (shrub-near-tag-addr header-tmpl))
+                 (nop!)
+                 (s.b gp near-packet (shrub-near-tag-qwc header-tmpl))
+                 (nop!)
+                 (s.b gp near-packet (shrub-near-unpack-num header-tmpl))
+                 (nop!)
+                 (l.w ra (-> fragment stq))
+                 (nop!)
+                 (l.bu gp (-> fragment stq-qwc))
+                 (nop!)
+                 (s.w ra near-packet (shrub-near-tag-addr stq-tmpl))
+                 (nop!)
+                 (s.b gp near-packet (shrub-near-tag-qwc stq-tmpl))
+                 (nop!)
+                 (l.w ra (-> fragment col))
+                 (nop!)
+                 (l.bu gp (-> fragment col-qwc))
+                 (nop!)
+                 (s.w ra near-packet (shrub-near-tag-addr color-tmpl))
+                 (nop!)
+                 (s.b gp near-packet (shrub-near-tag-qwc color-tmpl))
+                 (nop!)
+                 (l.w ra (-> fragment vtx))
+                 (nop!)
+                 (l.bu gp (-> fragment vtx-qwc))
+                 (nop!)
+                 (s.w ra near-packet (shrub-near-tag-addr vertex-tmpl))
+                 (nop!)
+                 (s.b gp near-packet (shrub-near-tag-qwc vertex-tmpl))
+                 (nop!)
+                 (l.w t8 (-> fragment vtx-cnt))
+                 (nop!)
+                 (l.q ra near-packet (offset-of shrub-near-packet header-tmpl))
+                 (nop!)
+                 (s.b t8 near-packet (shrub-near-unpack-num stq-tmpl))
+                 (nop!)
+                 (s.b t8 near-packet (shrub-near-unpack-num color-tmpl))
+                 (nop!)
+                 (s.b t8 near-packet (shrub-near-unpack-num vertex-tmpl))
+                 (nop!)
+                 (s.q ra packet-cursor 112)
+                 (nop!)
+                 (l.q t8 near-packet (offset-of shrub-near-packet stq-tmpl))
+                 (nop!)
+                 (l.q ra near-packet (offset-of shrub-near-packet color-tmpl))
+                 (nop!)
+                 (s.q t8 packet-cursor 128)
+                 (nop!)
+                 (s.q ra packet-cursor 144)
+                 (nop!)
+                 (l.q t8 near-packet (offset-of shrub-near-packet vertex-tmpl))
+                 (nop!)
+                 (l.q t9 near-packet (offset-of shrub-near-packet mscal-tmpl))
+                 (nop!)
+                 (s.q t8 packet-cursor 160)
+                 (add.i packet-cursor packet-cursor 192)
+                 (s.q t9 packet-cursor -16)
+                 (add.i t6 t6 -1)
+                 (nop!)
+                 (b.gt t6 r0 refill-instance-bank :delay (nop!))
+                 (nop!)
+                 (s.w t7 (-> work current-shrub-near-packet))
+                 (lui t4 #x1000)
+                 (s.w t5 (-> work near-next))
+                 (ori t4 t4 #xd400)
+                 (s.w a2 (-> work near-last))
+                 (nop!)
+                 (nop!))
+      ;; VU0 entry 25 reloads the plane and camera registers the transform and wind code above
+      ;; borrowed, so the next leaf is tested with the same convention. Then step the leaf cursor by
+      ;; one instance-shrubbery and count down the run this scratchpad tag described.
+      (asm-block advance-instance
+                 (label advance-instance)
+                 (callms 25)
+                 (l.w a2 (-> work src-ptr))
+                 (nop!)
+                 (l.w t4 (-> work shrub-count))
+                 (add.i a2 a2 80)
+                 (nop!)
+                 (add.i t4 t4 -1)
+                 (s.w a2 (-> work src-ptr))
+                 (b.gt t4 r0 load-instance :delay (s.w t4 (-> work shrub-count))))
+      ;; A run is finished. Read the next scratchpad tag: a nonzero leaf count starts another run, and
+      ;; if the node walk left more work the whole pass repeats. Otherwise flush the cached bucket
+      ;; heads, return the last partial output bank, and wait for both directions of scratchpad
+      ;; traffic before publishing the advanced DMA-buffer cursor -- the fromSPR channel is still
+      ;; writing into that buffer, so the store has to be last.
+      ;;
+      ;; a1, a2, t2 and t3 are four anonymous quadword shuttles in this block, which is why their
+      ;; physical spellings come back here.
+      (asm-block finish-instance-pass
+                 (label finish-instance-pass)
+                 (nop!)
+                 (l.w t4 chain-cursor (offset-of dma-packet vif0))
+                 (add.i a2 a2 16)
+                 (l.w t5 (-> work last-shrubs))
+                 (nop!)
+                 (s.w a2 (-> work src-ptr))
+                 (b.nz t4 load-instance :delay (s.w t4 (-> work shrub-count)))
+                 (b.nz t5 scan-node-stack :delay (nop!))
+                 (nop!)
+                 (l.w prev-bucket (-> work bucket-ptr))
+                 (nop!)
+                 (l.q a2 (-> work last 0))
+                 (nop!)
+                 (l.q t2 (-> work next 0))
+                 (nop!)
+                 (l.q t3 (-> work count 0))
+                 (nop!)
+                 (s.q a2 (-> prev-bucket last-clear))
+                 (nop!)
+                 (s.q t2 (-> prev-bucket next-clear))
+                 (nop!)
+                 (s.q t3 (-> prev-bucket count-clear-qword))
+                 (b.z packet-qwc wait-for-output-dma :delay (nop!))
+                 (nop!)
+                 (l.w from-spr-channel (-> work from-spr))
+                 (nop!)
+                 (nop!)
+                 (dma-wait-counting-stalls! a1 from-spr-channel (-> work wait-from-spr)
+                                            wait-for-final-instance-upload upload-final-instance-bank)
+                 (label upload-final-instance-bank)
+                 (s.w memory-cursor (-> from-spr-channel madr))
+                 (sll a1 packet-qwc 4)
+                 (s.w output-bank (-> from-spr-channel sadr))
+                 (xor.i a2 output-bank SHRUB-OUTPUT-FLIP)
+                 (add memory-cursor memory-cursor a1)
+                 (m a1 a2)
+                 (s.w packet-qwc (-> from-spr-channel qwc))
+                 (add.i a1 r0 DMA-CHCR-STR)
+                 (s.w a1 (-> from-spr-channel chcr))
+                 (add.i a1 r0 0)
+                 (dma-wait-counting-stalls! a1 from-spr-channel (-> work wait-from-spr)
+                                            wait-for-output-dma commit-dma-buffer)
+                 (label commit-dma-buffer)
+                 (l.w dma-buf (-> work dma-buffer))
+                 (nop!)
+                 (nop!)
+                 (nop!)
+                 (s.w memory-cursor (-> dma-buf base))
+                 (nop!)
+                 (label done)
+                 (m v0 r0)
+                 (l.d ra sp)
+                 (l.q gp sp 16)
+                 (jr ra :delay (add.i sp sp 32))
+                 (nop!)
+                 (nop!)
+                 (nop!)))))

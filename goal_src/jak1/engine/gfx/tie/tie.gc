@@ -12,33 +12,20 @@
 ;; Each fragment carries its own adgif shaders, packed points, strip packet templates, and a shared
 ;; time-of-day color palette; each instance record carries a transform, a wind phase, a LOD morph
 ;; weight, and the palette indices its vertices should use. Upload the fragment once, then let VU1
-;; chew through every instance that picked it. That is the whole trick, and it is why a level can
-;; afford several thousand crates and huts.
+;; chew through every instance that picked it.
 ;;
-;; The three interesting details, in the order you will meet them below:
-;;
-;;   * Level of detail is continuous, not stepped, and it is a tessellation rather than a swap. The
-;;     "tessellating" in the name is literal: a coarser geometry is the same surface with one level of
-;;     subdivision removed. A vertex that exists only at the finer level -- an interpolated point, or
-;;     "dvert" -- was created by splitting an edge, and it stores two vectors: where it was authored,
-;;     and the displacement that puts it back on the edge it split. It also stores the palette indices
+;;   * Level of detail uses a similar strategy to TFRAG where vertices collapse back to the midpoint
+;;     of an edge, creating degenerate triangles that can be removed without any popping.
+;;     These use a different format than tfrag: each simplifying vertex stores its own position
+;;     and the vector to move it back to the edge. It also stores the palette indices
 ;;     of that edge's two endpoints. Given t = the instance's morph weight, rising from 0 at the near
 ;;     edge of the LOD band to 1 at the far edge:
 ;;
 ;;         position = authored + t * displacement
 ;;         color    = (1 - t) * own + t * (color(parent1) + color(parent2)) / 2
 ;;
-;;     so at t = 1 the vertex has moved onto its parents' edge and taken that edge's shading, the
-;;     surface it belongs to *is* the coarser surface, and the triangles about to disappear are already
-;;     degenerate. Nothing pops. The reciprocal band lengths in the prototype's rdists are what make t
-;;     reach 1 precisely at the plane where the coarser geometry takes over.
-;;
-;;     Note which half of that is pinned by the hardware and which is data. The color blend is always
-;;     the plain average of the two parents -- the 0.5 is an immediate in the microprogram, not
-;;     something the exporter chooses. The displacement is authored, so nothing here forces the vertex
-;;     to land on the edge midpoint specifically; it is only the color that assumes it did. A collapse
-;;     to any other point on the edge would still be geometrically crack-free but would shade very
-;;     slightly wrong, so midpoint is the reading the two halves agree on.
+;;     so at t = 1 the vertex has moved onto its parents' edge and taken that edge's shading, so
+;;     the degenerate triangle can be removed.
 ;;
 ;;     T-junctions and cracks are avoided by a separate and much blunter decision: the LOD is chosen
 ;;     per instance, not per fragment, so every fragment of a prototype is always at the same
@@ -56,14 +43,9 @@
 ;;     owns by an offset carried in its own data. Nothing walks a strip list afterwards to collect
 ;;     vertices.
 ;;
-;;     Worth knowing because TFRAG, the other background renderer, is the opposite: it transforms into an
+;;     TFRAG is the opposite design for GIF building: it transforms into an
 ;;     intermediate array and then a separate pass walks an exported draw-point table, follows each entry
-;;     to a vertex, and copies it into the GIF buffer through a sequential cursor -- a gather. Almost
-;;     every structural difference between the two follows from that one choice, including why TFRAG can
-;;     redirect a strip by rewriting one record while TIE cannot, and why TIE needs three rotating output
-;;     banks where TFRAG needs two.
-;;
-;;     Three consequences here, and they explain most of what looks odd further down:
+;;     to a vertex, and copies it into the GIF buffer through a sequential cursor -- a gather.
 ;;
 ;;     There is no index buffer, so a vertex used by two triangle strips needs a slot in each. The
 ;;     exporter finds those and gives them a second offset; the renderer transforms once and stores the
@@ -73,10 +55,7 @@
 ;;     tag's count per fragment per frame. So every conditional below changes *what* goes into a slot,
 ;;     never *whether* a slot is filled.
 ;;
-;;     And there is no per-vertex branch in the steady state: the tails are handled by duplicating the
-;;     loop once per slot instead of testing, which is why the same twenty instructions appear as flush,
-;;     short, and dual-destination variants.
-;;   * GIF output rotates through three banks, not two, and the reason is entry 6 rather than entry 0.
+;;   * GIF output rotates through three banks, not two, to double buffer fragment and instance swaps.
 ;;     Within one fragment the two banks named by gifbuf alternate per instance in the ordinary
 ;;     double-buffered way: each entry-0 invocation rotates gifbuf, fills gifbuf.x, kicks it, and
 ;;     stops, so the bank being filled is never the bank the GIF is draining. The third bank exists
@@ -86,7 +65,6 @@
 ;;     the freshly kicked one alone. With two banks it would have to overwrite geometry the GIF had not
 ;;     read yet.
 ;;
-;; What lives where, since the data is spread across four levels of ownership and it matters which:
 ;;
 ;;   per level      the visibility string. One bit per instance, in BVH order, so a word of zeroes skips
 ;;                  32 instances without a transfer.
@@ -100,17 +78,11 @@
 ;;
 ;; The palette is the part worth being clear about. The colors themselves belong to the prototype and are
 ;; expanded and uploaded once per prototype per frame, to VU 838, where all of its fragments and all of
-;; its instances read the same 128 entries. What each instance owns is not colors but *indices* into
-;; them -- one per vertex, packed four to a quadword for base points and one quadword per interpolated
-;; point, uploaded to VU 204 with the instance's transform. So two crates built from the same prototype
-;; share every color yet can be lit completely differently, one standing in sunlight and one in shadow,
-;; at the cost of one byte per vertex.
+;; its instances read the same 128 entries. Each prototype has its own indices into
+;; that per-prototype pallete.
 ;;
-;; That is also why the palette upload sits *outside* the fragment loop and the index upload *inside*
-;; the per-instance chain: the expensive thing happens once, the cheap thing happens thousands of times.
-;;
-;; GENERIC models can also be routed into the TIE packet path; see generic-tie-convert and
-;; generic-tie-execute.
+;; TIE can emit to generic to handle environment maps, but we don't need this on PC: instead we just
+;; send all TIE to the PC renderers which handles environment mapping.
 
 ;; DECOMP BEGINS
 
@@ -137,7 +109,8 @@
   "Return the array header size plus storage for its active inline TIE instances."
   (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> this length) -1) 64))))
 
-;; INFO: this function exists in multiple non-identical object files
+;; This method is mistakenly duplicated, this earlier definition is overwritten by the later one.
+;; OpenGOAL flags this as an error, so we comment out on PC.
 (#unless PC_PORT
   (defmethod login ((this drawable-tree-instance-tie))
     "Leave this TIE instance tree unchanged."
@@ -223,8 +196,8 @@
     (dotimes (i (-> this debug-lines length))
       (+! (-> usage data 14 count) (-> (the-as (pointer int32) (-> this debug-lines i)) 0))
       (let ((debug-line-bytes (asize-of (the-as basic (-> this debug-lines i)))))
-        ;; TODO: the count is charged to tie-debug above, but the bytes are charged to tie-colors
-        ;; here. Verify which category the report intends.
+        ;; ????: the count is charged to tie-debug above, but the bytes are charged to tie-colors
+        ;; here.
         (+! (-> usage data 12 used) debug-line-bytes)
         (+! (-> usage data 12 total) (logand -16 (+ debug-line-bytes 15))))))
   (label cfg-13)
@@ -286,11 +259,6 @@
 ;; TIE Renderer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; The nine constant quadwords uploaded to VU1 966 through 974 once per frame. Six carry packet
-;; templates and the persistent buffer state installed by entry 8; the last three are the alpha-test
-;; packet and its two selectable TEST states. The overlays let the setup code write each quadword
-;; through whichever view is convenient -- GS types for the tags, vector for the float-biased
-;; addresses, qword for the integer bank addresses -- without a pile of casts.
 (deftype tie-consts (structure)
   ((data      uint32 24)
    (vector    vector 6 :inline :overlay-at (-> data 0))
@@ -352,23 +320,18 @@
 ;; draining. The third bank is for the fragment boundary. Entry 6 has to write templates into *both*
 ;; banks it will use, and at that moment the last instance of the previous fragment has an outstanding
 ;; kick on one of the two banks it was using. Rotating in the longest-idle bank keeps entry 6 away from
-;; it. Two banks would not be enough; four would buy nothing.
+;; it.
 ;;
-;; Deriving the third address by subtracting the two live ones from their sum costs two vector
-;; subtractions and no integer lookup, which is the only reason extra.x exists.
 ;;
 ;; Vertices are not assigned to a bank or a slot by their position in the stream. Each vertex carries
 ;; its own destination offset in the w lane of its position quadword; add the current bank's biased
-;; address, mtir it out, and that is where the triplet goes. No output cursor, no ordering constraint
-;; between vertices -- which is exactly what lets the render loops keep four of them in flight.
+;; address, mtir it out, and that is where the triplet goes.
 ;;
 ;; That addressing scheme is also how reuse works. The strip templates are prebuilt with a fixed slot
 ;; per vertex per strip, so there is no index buffer and a vertex belonging to two strips has to appear
 ;; in both. Such a vertex carries a second offset in the w lane of its ST quadword and the
 ;; dual-destination loop variants store the identical ST, RGBAQ and XYZF2 triplet to both slots -- same
-;; texture coordinates, same time-of-day color, same screen position, transformed once. Anything else
-;; would show: a position difference opens a crack, and an ST or color difference draws a visible seam
-;; down the shared edge. Both offsets are inside the bank currently being filled.
+;; texture coordinates, same time-of-day color, same screen position, transformed once.
 ;;
 ;; The four group-terminating addresses arrive as offsets relative to whichever bank the exporter had
 ;; in mind, so kick-addr remembers the base they are currently expressed against and each instance
@@ -1714,14 +1677,8 @@
    BASE/OFFSET, mode, and cycle state for the packed instance stream. alpha-blend controls the geometry
    primitive's ABE bit."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
-    ;; Install the microprogram and set the caller-selected TEST state before any TIE packets.
     (dma-buffer-add-vu-function dma-buf tie-vu1-block 1)
-    (let* ((v1-3 dma-buf)
-           (direct-packet (the-as dma-packet (-> v1-3 base))))
-      (set! (-> direct-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> direct-packet vif0) (new 'static 'vif-tag))
-      (set! (-> direct-packet vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-3 base) (&+ (the-as pointer direct-packet) 16)))
+    (dma-buffer-add-cnt-vif2 dma-buf #x2 (new 'static 'vif-tag) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
     (let* ((v1-4 dma-buf)
            (direct-gif (the-as gs-gif-tag (-> v1-4 base))))
       (set! (-> direct-gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
@@ -1732,7 +1689,6 @@
       (set! (-> (the-as (pointer gs-test) test-data) 0) test-state)
       (set! (-> (the-as (pointer gs-reg64) test-data) 1) (gs-reg64 test-1))
       (set! (-> v1-5 base) (&+ test-data 16)))
-    ;; Upload tie-consts to VU address 966.
     (let ((constant-qwc 9))
       (let* ((v1-6 dma-buf)
              (constant-packet (the-as dma-packet (-> v1-6 base))))
@@ -1742,27 +1698,13 @@
         (set! (-> v1-6 base) (&+ (the-as pointer constant-packet) 16)))
       (tie-init-consts (the-as tie-consts (-> dma-buf base)) alpha-blend)
       (&+! (-> dma-buf base) (* constant-qwc 16)))
-    ;; Entry 8 initializes the persistent GIF and instance-bank registers.
-    (let* ((v1-9 dma-buf)
-           (init-packet (the-as dma-packet (-> v1-9 base))))
-      (set! (-> init-packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
-      (set! (-> init-packet vif0) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1))
-      (set! (-> init-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-      (set! (-> v1-9 base) (&+ (the-as pointer init-packet) 16)))
-    ;; #x4b000000 is 2^23. When an upload selects VIF's additive mode, adding a small packed
-    ;; integer places it in the mantissa of an exactly representable float; mtir can recover the
-    ;; low address or index bits without a separate integer conversion.
-    (let* ((v1-10 dma-buf)
-           (row-packet (the-as dma-packet (-> v1-10 base))))
-      (set! (-> row-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> row-packet vif0) (new 'static 'vif-tag))
-      (set! (-> row-packet vif1) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
-      (set! (-> v1-10 base) (&+ (the-as pointer row-packet) 16)))
+    (dma-buffer-add-cnt-vif2 dma-buf
+                             0
+                             (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1)
+                             (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+    (dma-buffer-add-cnt-vif2 dma-buf #x2 (new 'static 'vif-tag) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
     (let ((row-data (the-as (pointer uint32) (-> dma-buf base))))
-      (set! (-> (the-as (inline-array vector4w) row-data) 0 x) #x4b000000)
-      (set! (-> (the-as (inline-array vector4w) row-data) 0 y) #x4b000000)
-      (set! (-> (the-as (inline-array vector4w) row-data) 0 z) #x4b000000)
-      (set! (-> (the-as (inline-array vector4w) row-data) 0 w) #x4b000000)
+      (set-vector! (-> (the-as (inline-array vector4w) row-data) 0) #x4b000000 #x4b000000 #x4b000000 #x4b000000)
       (set! (-> (the-as (pointer vif-tag) row-data) 4) (new 'static 'vif-tag :cmd (vif-cmd base)))
       (set! (-> (the-as (pointer vif-tag) row-data) 5) (new 'static 'vif-tag :imm #x2c :cmd (vif-cmd offset)))
       (set! (-> (the-as (pointer vif-tag) row-data) 6) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
@@ -1776,32 +1718,15 @@
   "Append the TIE shutdown packets, restoring the normal GS TEST state and clearing the VIF mask,
    mode, and ROW state changed by tie-init-engine."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
-    ;; Restore the ordinary alpha/depth test used after TIE drawing.
-    (let* ((v1-3 dma-buf)
-           (direct-packet (the-as dma-packet (-> v1-3 base))))
-      (set! (-> direct-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> direct-packet vif0) (new 'static 'vif-tag))
-      (set! (-> direct-packet vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-3 base) (&+ (the-as pointer direct-packet) 16)))
-    (let* ((v1-4 dma-buf)
-           (direct-gif (the-as gs-gif-tag (-> v1-4 base))))
-      (set! (-> direct-gif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
-      (set! (-> direct-gif regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-4 base) (&+ (the-as pointer direct-gif) 16)))
+    (dma-buffer-add-cnt-vif2 dma-buf #x2 (new 'static 'vif-tag) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+    (dma-buffer-add-gif-tag dma-buf (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1) GIF_REGS_ALL_AD)
     (let* ((v1-5 dma-buf)
            (test-data (-> v1-5 base)))
       (set! (-> (the-as (pointer gs-test) test-data) 0)
             (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal)))
       (set! (-> (the-as (pointer gs-reg64) test-data) 1) (gs-reg64 test-1))
       (set! (-> v1-5 base) (&+ test-data 16)))
-    ;; Clear the VIF mask, run the empty entry 4 to finish the VU invocation, and restore the
-    ;; default mode and all-zero ROW register for the following renderer.
-    (let* ((v1-6 dma-buf)
-           (mask-packet (the-as dma-packet (-> v1-6 base))))
-      (set! (-> mask-packet dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
-      (set! (-> mask-packet vif0) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
-      (set! (-> mask-packet vif1) (new 'static 'vif-tag))
-      (set! (-> v1-6 base) (&+ (the-as pointer mask-packet) 16)))
+    (dma-buffer-add-cnt-vif2 dma-buf #x2 (new 'static 'vif-tag :cmd (vif-cmd stmask)) (new 'static 'vif-tag))
     (let* ((v1-7 dma-buf)
            (reset-data (the-as (pointer uint32) (-> v1-7 base))))
       (set! (-> (the-as (pointer vif-tag) reset-data) 0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscalf) :msk #x1))
