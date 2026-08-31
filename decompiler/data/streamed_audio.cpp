@@ -435,7 +435,6 @@ void process_sfx(const fs::path& output_path, const fs::path& input_dir) {
     snd::SFXBlock* block =
         (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
 
-
     std::map<u32, std::string> names_by_index;
     for (const auto& [name, index] : block->Names) {
       names_by_index.insert({index, name});
