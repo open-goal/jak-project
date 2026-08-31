@@ -12,6 +12,11 @@
 #include "../common/synth.h"
 #include "game/sound/989snd/vagvoice.h"
 
+// This class is adapted from Player.cpp
+// Instead of being used to playback audio, it is used to generate the audio samples
+// that would ordinarily be generated during playback. These samples 
+// (made by calling the Tick function) are then written to .wav files.
+
 namespace snd {
 
 class FakePlayer {
