@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 
+#include "game/kernel/common/codegen.h"
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kmachine.h"
@@ -13,6 +14,16 @@
 #include "game/mips2c/mips2c_table.h"
 
 #include "fmt/format.h"
+
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_klink(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
 
 static constexpr bool link_debug_printfs = false;
 /*!
@@ -561,12 +572,26 @@ void link_control::jak1_finish(bool jump_from_c_to_goal) {
 
     // execute top level!
     if (m_entry.offset && (m_flags & LINK_FLAG_EXECUTE)) {
+#if defined(__SWITCH__)
+      {
+        char buf[128];
+        snprintf(buf, sizeof(buf), "[jak1_finish] obj=%s: top-level enter\n", m_object_name);
+        boot_log_klink(buf);
+      }
+#endif
       if (jump_from_c_to_goal) {
         u64 goal_stack = u64(g_ee_main_mem) + EE_MAIN_MEM_SIZE - GOAL_STACK_TOP_OFFSET;
         call_goal_on_stack(m_entry.cast<Function>(), goal_stack, s7.offset, g_ee_main_mem);
       } else {
         call_goal(m_entry.cast<Function>(), 0, 0, 0, s7.offset, g_ee_main_mem);
       }
+#if defined(__SWITCH__)
+      {
+        char buf[128];
+        snprintf(buf, sizeof(buf), "[jak1_finish] obj=%s: top-level ok\n", m_object_name);
+        boot_log_klink(buf);
+      }
+#endif
     }
 
     // inform compiler that we loaded.

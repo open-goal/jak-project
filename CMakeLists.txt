@@ -56,7 +56,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -fcxx-exceptions \
         -fexceptions \
         -fdiagnostics-color=always \
-        -mavx \
         -Wall \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
@@ -66,6 +65,12 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wno-ignored-qualifiers \
         -O3 \
         -D_CRT_SECURE_NO_WARNINGS")
+
+    # AVX is an x86-only ISA extension; cross builds (e.g. Switch's aarch64) set their own
+    # arch flags via CMAKE_CXX_FLAGS_INIT in their toolchain file instead.
+    if(NOT NINTENDO_SWITCH AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|i.86)$")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+    endif()
 
     # Increase stack size for windows, who's default is too low
     if(WIN32)
@@ -110,8 +115,13 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         -Wredundant-decls \
         -Wshadow \
         -Wsign-promo \
-        -fdiagnostics-color=always \
-        -mavx")
+        -fdiagnostics-color=always")
+
+    # AVX is an x86-only ISA extension; cross builds (e.g. Switch's aarch64) set their own
+    # arch flags via CMAKE_CXX_FLAGS_INIT in their toolchain file instead.
+    if(NOT NINTENDO_SWITCH AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|i.86)$")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+    endif()
 
     # additional c++ flags for release mode for our projects
     if(CMAKE_BUILD_TYPE MATCHES "Release")
@@ -248,28 +258,46 @@ else()
     set(CURL_USE_OPENSSL ON)
 endif()
 include_directories(third-party/curl/include)
-if(STATICALLY_LINK)
-    build_third_party_lib(curl libcurl_static)
+if(NINTENDO_SWITCH)
+    # No OpenSSL/mbedTLS portlib and no use for desktop update-check HTTP on a homebrew NRO.
+    message(STATUS "Switch: skipping libcurl")
 else()
-    build_third_party_lib(curl libcurl_shared)
+    if(STATICALLY_LINK)
+        build_third_party_lib(curl libcurl_static)
+    else()
+        build_third_party_lib(curl libcurl_shared)
+    endif()
 endif()
 
 # build repl library
-build_third_party_lib(replxx replxx)
+if(NOT NINTENDO_SWITCH)
+    build_third_party_lib(replxx replxx)
+endif()
 
 # SQLite - Jak 2/3's built in editor
 add_definitions(-DHAVE_USLEEP=1)
 add_definitions(-DSQLITE_THREADSAFE=1)
 add_definitions(-DSQLITE_ENABLE_JSON1)
 add_definitions(-DSQLITE_ENABLE_RTREE)
+if(NINTENDO_SWITCH)
+    # newlib on devkitA64 has no sys/mman.h. sqlite3.c's guard is
+    # `!defined(SQLITE_OMIT_WAL) || SQLITE_MAX_MMAP_SIZE>0`, so MAX_MMAP_SIZE=0 alone
+    # doesn't skip the include -- WAL must be omitted too.
+    add_definitions(-DSQLITE_MAX_MMAP_SIZE=0)
+    add_definitions(-DSQLITE_OMIT_WAL=1)
+    # No dynamic loader on Horizon OS -- everything is statically linked.
+    add_definitions(-DSQLITE_OMIT_LOAD_EXTENSION=1)
+endif()
 build_third_party_lib(sqlite3 sqlite3)
 
 # build tree-sitter parser
 include_directories(third-party/tree-sitter/tree-sitter/lib/include)
 build_third_party_lib(tree-sitter tree-sitter)
 
-# native OS dialogs for error messages
-build_third_party_lib(libtinyfiledialogs libtinyfiledialogs)
+# native OS dialogs for error messages (needs termios/a real windowing system; unused on Switch)
+if(NOT NINTENDO_SWITCH)
+    build_third_party_lib(libtinyfiledialogs libtinyfiledialogs)
+endif()
 
 # build format library
 include_directories(third-party/fmt/include)
@@ -285,24 +313,37 @@ add_subdirectory(decompiler)
 build_third_party_lib(cubeb cubeb)
 
 # build LSP
-add_subdirectory(lsp)
+if(NOT NINTENDO_SWITCH)
+    add_subdirectory(lsp)
+endif()
 
 # build libco and zstd
 build_third_party_lib(libco libco)
 build_third_party_lib(zstd libzstd_static)
 
 # build SDL
-include(SDLOptions)
-if(STATICALLY_LINK)
-    build_third_party_lib(SDL SDL3-static)
+if(NINTENDO_SWITCH)
+    # No SDL3 port exists for Switch -- devkitPro only ships SDL2. game/'s SDL3 call sites are
+    # routed through game/switch/sdl3_compat.h (a real compat shim, not a rebuild) instead, so
+    # SDL3::SDL3 just needs to resolve to devkitPro's actual SDL2 + its Switch-specific deps.
+    add_library(SDL3_switch_compat INTERFACE)
+    target_link_libraries(SDL3_switch_compat INTERFACE SDL2 SDL2main EGL glapi drm_nouveau)
+    add_library(SDL3::SDL3 ALIAS SDL3_switch_compat)
 else()
-    build_third_party_lib(SDL SDL3-shared)
+    include(SDLOptions)
+    if(STATICALLY_LINK)
+        build_third_party_lib(SDL SDL3-static)
+    else()
+        build_third_party_lib(SDL SDL3-shared)
+    endif()
 endif()
 
 # build imgui
 include_directories(third-party/glad/include)
 include_directories(third-party/SDL/include)
-build_third_party_lib(imgui imgui)
+if(NOT NINTENDO_SWITCH)
+    build_third_party_lib(imgui imgui)
+endif()
 
 # build the game code in C++
 add_subdirectory(game)
@@ -311,7 +352,9 @@ add_subdirectory(game)
 add_subdirectory(goalc)
 
 # build standalone tools
-add_subdirectory(tools)
+if(NOT NINTENDO_SWITCH)
+    add_subdirectory(tools)
+endif()
 
 # build the gtest libraries
 if(WIN32)
@@ -337,7 +380,9 @@ build_third_party_lib(xdelta3 xdelta3)
 
 # discord rich presence
 include_directories(third-party/discord-rpc/include)
-build_third_party_lib(discord-rpc discord-rpc)
+if(NOT NINTENDO_SWITCH)
+    build_third_party_lib(discord-rpc discord-rpc)
+endif()
 
 # build zydis third party library for disassembling x86
 # TODO - Once under CMake 3.13's policy CMP0077, override with `set()` instead

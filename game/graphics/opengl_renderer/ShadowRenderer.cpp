@@ -2,7 +2,11 @@
 
 #include <cfloat>
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 ShadowRenderer::ShadowRenderer(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   // create OpenGL objects
@@ -383,9 +387,13 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
       glUniform4f(
           glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"), 0.0f,
           0.0f, 0.0f, 0.5f);
+      #if !defined(__SWITCH__)
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      #endif
       glDrawElements(GL_TRIANGLES, (m_next_front_index - 6), GL_UNSIGNED_INT, nullptr);
+      #if !defined(__SWITCH__)
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      #endif
       glEnable(GL_BLEND);
     }
     prof.add_draw_call();
@@ -408,9 +416,13 @@ void ShadowRenderer::draw(SharedRenderState* render_state, ScopedProfilerNode& p
       glUniform4f(
           glGetUniformLocation(render_state->shaders[ShaderId::SHADOW].id(), "color_uniform"), 0.0f,
           0.0f, 0.0f, 0.5f);
+      #if !defined(__SWITCH__)
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      #endif
       glDrawElements(GL_TRIANGLES, (m_next_back_index - 0), GL_UNSIGNED_INT, nullptr);
+      #if !defined(__SWITCH__)
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      #endif
       glEnable(GL_BLEND);
     }
 

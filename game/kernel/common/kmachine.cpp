@@ -25,6 +25,16 @@
 #include "game/sce/libscf.h"
 #include "game/sce/sif_ee.h"
 
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_km(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 /*!
  * Where does OVERLORD load its data from?
  */
@@ -73,8 +83,14 @@ void InitCD() {
  * Initialize the GS and display the splash screen.
  */
 void InitVideo() {
+#if defined(__SWITCH__)
+  boot_log_km("[InitVideo] start\n");
+#endif
   if (!SplashScreen) {
     lg::info("InitVideo: skipping splash!\n");
+#if defined(__SWITCH__)
+    boot_log_km("[InitVideo] SplashScreen off, returning\n");
+#endif
     return;
   }
   std::map<int, std::string> lang_to_splash_map{
@@ -84,6 +100,9 @@ void InitVideo() {
       {SCE_PORTUGUESE_LANGUAGE, "POR"}, {SCE_KOREAN_LANGUAGE, "KOR"},
   };
   auto lang = ee::sceScfGetLanguage();
+#if defined(__SWITCH__)
+  boot_log_km("[InitVideo] got language\n");
+#endif
   if (!lang_to_splash_map.contains(lang)) {
     lg::warn("InitVideo: no splash for lang {}, falling back to english...\n", lang);
     lang = SCE_ENGLISH_LANGUAGE;
@@ -91,6 +110,9 @@ void InitVideo() {
   auto filename = "SCREEN1." + lang_to_splash_map.at(lang);
   auto path = file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] /
               "iso" / filename;
+#if defined(__SWITCH__)
+  boot_log_km("[InitVideo] computed splash path, about to fs::exists\n");
+#endif
   if (lang != SCE_ENGLISH_LANGUAGE && !fs::exists(path)) {
     lg::warn("InitVideo: file {} not found, falling back to english...\n", filename);
     path = file_util::get_jak_project_dir() / "out" / game_version_names[g_game_version] / "iso" /
@@ -98,9 +120,22 @@ void InitVideo() {
   }
   if (!fs::exists(path)) {
     lg::warn("InitVideo: splash screen not found!\n");
+#if defined(__SWITCH__)
+    boot_log_km("[InitVideo] splash not found, returning\n");
+#endif
     return;
   }
+#if defined(__SWITCH__)
+  boot_log_km("[InitVideo] splash found, about to read_binary_file\n");
+#endif
   auto data = file_util::read_binary_file(path);
+#if defined(__SWITCH__)
+  {
+    char buf[64];
+    snprintf(buf, sizeof(buf), "[InitVideo] read_binary_file done, size=%zu\n", data.size());
+    boot_log_km(buf);
+  }
+#endif
   // width is always 512, height is sometimes different (e.g. demo screens), so we infer from file
   // size
   constexpr int kWidth = 512;
@@ -118,10 +153,16 @@ void InitVideo() {
   Gfx::g_splash.width = kWidth;
   Gfx::g_splash.height = kHeight;
   Gfx::g_splash.ready.store(true);
+#if defined(__SWITCH__)
+  boot_log_km("[InitVideo] g_splash set, about to SplashTimer wait loop\n");
+#endif
   SplashTimer.start();
   while (SplashTimer.getSeconds() < SPLASH_SCREEN_TIME) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
+#if defined(__SWITCH__)
+  boot_log_km("[InitVideo] SplashTimer wait done, InitVideo returning\n");
+#endif
 }
 
 /*!

@@ -12,7 +12,7 @@
 #include "fmt/format.h"
 #include "third-party/json.hpp"
 
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 u64 get_current_tid() {
   return (u64)pthread_self();
 }

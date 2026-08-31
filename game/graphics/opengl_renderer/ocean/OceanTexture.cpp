@@ -2,7 +2,11 @@
 
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 constexpr int OCEAN_TEX_TBP_JAK1 = 8160;  // todo
 constexpr int OCEAN_TEX_TBP_JAK2 = 672;

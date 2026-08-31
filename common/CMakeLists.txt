@@ -28,6 +28,17 @@ endfunction()
 
 write_revision_h()
 
+if(NINTENDO_SWITCH)
+    # No terminal on Horizon OS, so no interactive REPL (replxx needs real termios).
+    set(COMMON_REPL_WRAPPER_SRC)
+    # No native OS dialog box on Switch, but the renderer does call this for real error
+    # reporting -- log instead of dropping it (see dialogs_switch.cpp).
+    set(COMMON_DIALOGS_SRC util/dialogs_switch.cpp)
+else()
+    set(COMMON_REPL_WRAPPER_SRC repl/repl_wrapper.cpp)
+    set(COMMON_DIALOGS_SRC util/dialogs.cpp)
+endif()
+
 add_library(common
         audio/audio_formats.cpp
         cross_os_debug/xdbg.cpp
@@ -58,7 +69,7 @@ add_library(common
         repl/config.cpp
         repl/nrepl/ReplClient.cpp
         repl/nrepl/ReplServer.cpp
-        repl/repl_wrapper.cpp
+        ${COMMON_REPL_WRAPPER_SRC}
         serialization/subtitles/subtitles_v1.cpp
         serialization/subtitles/subtitles_v2.cpp
         serialization/subtitles/subtitles.cpp
@@ -80,7 +91,7 @@ add_library(common
         util/dgo_util.cpp
         util/DgoReader.cpp
         util/DgoWriter.cpp
-        util/dialogs.cpp
+        ${COMMON_DIALOGS_SRC}
         util/diff.cpp
         util/FileUtil.cpp
         util/font/dbs/font_db_jak1.cpp
@@ -103,7 +114,13 @@ add_library(common
         versions/versions.cpp
         )
 
-target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs tiny_gltf)
+set(COMMON_REPLXX_LIB replxx)
+set(COMMON_DIALOGS_LIB libtinyfiledialogs)
+if(NINTENDO_SWITCH)
+    set(COMMON_REPLXX_LIB)
+    set(COMMON_DIALOGS_LIB)
+endif()
+target_link_libraries(common fmt lzokay ${COMMON_REPLXX_LIB} libzstd_static tree-sitter sqlite3 ${COMMON_DIALOGS_LIB} tiny_gltf)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)

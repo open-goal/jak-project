@@ -204,6 +204,14 @@ struct InstructionARM64 : InstructionImpl<InstructionARM64> {
 
   u32 encodings[max_instrs]{};
   u8 count = 0;
+  // Set only by IGen::ARM64::null()'s deliberate placeholder. emit()/length() used to detect
+  // "null" instructions by checking `count == 1 && encodings[0] == 0`, which is ambiguous: any
+  // real single-instruction encoding that happens to be the bit pattern 0x00000000 would also
+  // match and get silently skipped (0 bytes emitted instead of 4), shifting every subsequent
+  // instruction's byte offset by -4 and corrupting the rest of the function's machine code. This
+  // explicit flag removes that ambiguity -- confirmed root cause of undefined-instruction crashes
+  // when executing compiled top-level GOAL code on real ARM64 hardware/emulation.
+  bool is_null = false;
 
   // relocation kind and instruction word for linker patching
   ARM64::RelocKind reloc_kind = ARM64::RelocKind::NONE;
@@ -264,7 +272,7 @@ struct InstructionARM64 : InstructionImpl<InstructionARM64> {
   }
 
   uint32_t emit(uint8_t* buffer) const {
-    if (count == 1 && encodings[0] == 0) {
+    if (is_null) {
       return 0;
     }
     memcpy(buffer, encodings, count * 4);
@@ -272,7 +280,7 @@ struct InstructionARM64 : InstructionImpl<InstructionARM64> {
   }
 
   uint8_t length() const {
-    if (count == 1 && encodings[0] == 0) {
+    if (is_null) {
       return 0;
     }
     return count * 4;
@@ -1301,8 +1309,17 @@ class Instruction {
 
   Instruction() = delete;
 
-  template <typename T>
-  Instruction(T v) : instr(std::move(v)) {}
+  // Deliberately NOT a bare `template <typename T> Instruction(T v) : instr(std::move(v)) {}`.
+  // That let std::variant<InstructionX86, InstructionARM64>'s own converting constructor decide
+  // which alternative to build, and InstructionX86 has an implicit single-argument constructor
+  // (InstructionX86(u8 opcode)) that out-competed the exact-type match for InstructionARM64 --
+  // confirmed empirically (variant.index() == 0, i.e. InstructionX86, for every instruction
+  // built by IGen::ARM64 helpers) via direct instrumentation, not assumed. The result: every
+  // ARM64-compiled instruction silently got reinterpreted and re-encoded as if it were x86
+  // machine code, corrupting all ARM64 top-level GOAL code with undefined instructions. Explicit
+  // per-type overloads remove the ambiguity entirely.
+  Instruction(InstructionX86 v) : instr(std::move(v)) {}
+  Instruction(InstructionARM64 v) : instr(std::move(v)) {}
 
   u32 emit(u8* buffer) const {
     return std::visit([&](auto const& i) { return i.emit(buffer); }, instr);

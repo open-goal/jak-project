@@ -2,7 +2,11 @@
 
 #include "background/background_common.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 VisDataHandler::VisDataHandler(const std::string& name, int my_id) : BucketRenderer(name, my_id) {}
 

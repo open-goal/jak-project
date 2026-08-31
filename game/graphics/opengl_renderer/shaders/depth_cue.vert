@@ -12,7 +12,7 @@ out vec2 tex_coord;
 void main() {
   // Calculate color
   vec4 color = u_color;
-  color *= 2; // correct
+  color *= 2.; // correct
   
   fragment_color = color;
 
@@ -21,7 +21,7 @@ void main() {
 
   // Calculate vertex position
   vec4 position = vec4(xy.x, xy.y, u_depth, 1.0);
-  position.xyz = (position.xyz * 2) - 1.0; // convert from [0,1] to clip-space
+  position.xyz = (position.xyz * 2.) - 1.0; // convert from [0,1] to clip-space
 
   gl_Position = position;
 }

@@ -22,6 +22,27 @@ Shader::Shader(const std::string& shader_name, GameVersion version) : m_name(sha
   frag_src = std::regex_replace(frag_src, std::regex("SCISSOR_HEIGHT"), scissor_height);
   vert_src = std::regex_replace(vert_src, std::regex("SCISSOR_ADJUST"), "(" + scissor_adjust + ")");
 
+#if defined(__SWITCH__)
+  // Every shader here is plain #version 410 with nothing GL4-specific in it (see the
+  // graphics/ GLES survey) -- swap the desktop GLSL header for a GLSL ES one matching the
+  // GLES 3.1 context requested in opengl.cpp. GLES additionally requires an explicit float
+  // precision, which desktop GLSL doesn't have at all.
+  //
+  // Two bugs in the original version of this replacement, found from real compile errors:
+  // 1. The `^` anchor only matches the very start of the whole source string, not "start of a
+  //    line" -- shaders with a leading comment before their #version line (e.g. debug_red.vert)
+  //    never matched at all, so GLSL 410 reached the driver unmodified.
+  //  2. `#version 410` here is actually `#version 410 core\r\n` in the source (CRLF checkout).
+  //    Matching only the `#version 410` prefix left `" core\r"` dangling right after the
+  //    replacement's last line, producing "precision highp int; core" -- a syntax error, not
+  //    valid GLSL. Matching through end-of-line (`[^\r\n]*`) consumes that trailing text too.
+  const std::regex version_410_line("#version 410[^\r\n]*");
+  const std::string gles_header =
+      "#version 310 es\nprecision highp float;\nprecision highp int;";
+  vert_src = std::regex_replace(vert_src, version_410_line, gles_header);
+  frag_src = std::regex_replace(frag_src, version_410_line, gles_header);
+#endif
+
   m_vert_shader = glCreateShader(GL_VERTEX_SHADER);
   const char* src = vert_src.c_str();
   glShaderSource(m_vert_shader, 1, &src, nullptr);

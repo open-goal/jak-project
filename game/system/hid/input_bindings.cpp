@@ -6,7 +6,11 @@
 
 #include "game/system/hid/sdl_util.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/sdl3_compat.h"
+#else
 #include "third-party/SDL/include/SDL3/SDL.h"
+#endif
 
 InputModifiers::InputModifiers(const u16 sdl_mod_state) {
   need_shift = sdl_mod_state & SDL_KMOD_SHIFT;

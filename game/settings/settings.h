@@ -3,7 +3,11 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/sdl3_compat.h"
+#else
 #include "SDL3/SDL.h"
+#endif
 #include "game/system/hid/input_bindings.h"
 #include "game/system/hid/sdl_util.h"
 #include "game/tools/filter_menu/filter_menu.h"

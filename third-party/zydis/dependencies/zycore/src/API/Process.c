@@ -35,6 +35,9 @@
 #else
 #      include <windows.h>
 #endif
+#elif defined(__SWITCH__)
+// No msync/mmap API on Horizon OS; ZyanProcessFlushInstructionCache is unused by anything
+// this codebase's use of zydis actually calls.
 #elif defined(ZYAN_POSIX)
 #   include <sys/mman.h>
 #else
@@ -57,6 +60,12 @@ ZyanStatus ZyanProcessFlushInstructionCache(void* address, ZyanUSize size)
     {
         return ZYAN_STATUS_BAD_SYSTEMCALL;
     }
+
+#elif defined(__SWITCH__)
+
+    ZYAN_UNUSED(address);
+    ZYAN_UNUSED(size);
+    return ZYAN_STATUS_BAD_SYSTEMCALL;
 
 #elif defined(ZYAN_POSIX)
 

@@ -13,7 +13,7 @@ double FrameLimiter::round_to_nearest_60fps(double current) {
   return (frames_missed + 1) * one_frame;
 }
 
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 
 FrameLimiter::FrameLimiter() {}
 

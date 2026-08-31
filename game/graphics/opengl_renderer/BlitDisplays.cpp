@@ -93,14 +93,14 @@ void BlitDisplays::render(DmaFollower& dma,
   // the resolution/aspect/size changed, and there is a different letterbox than last frame.
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClearDepth(0.0);
+  glClearDepthf(0.0f);
   glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   glDisable(GL_BLEND);
 
   glBindFramebuffer(GL_FRAMEBUFFER, render_state->render_fb);
   glClearColor(0.0, 0.0, 0.0, 0.0);
-  glClearDepth(0.0);
+  glClearDepthf(0.0f);
   glClearStencil(0);
   glDepthMask(GL_TRUE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -203,11 +203,14 @@ void BlitDisplays::do_slow_time(SharedRenderState* render_state, ScopedProfilerN
 }
 
 void BlitDisplays::draw_debug_window() {
+#if !defined(__SWITCH__)
+  // glGetTexLevelParameteriv doesn't exist in GLES; debug-window-only tooling.
   glBindTexture(GL_TEXTURE_2D, m_copier->texture());
   int w, h;
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
   ImGui::Image((ImTextureID)(intptr_t)m_copier->texture(), ImVec2(w, h));
+#endif
 }
 
 void BlitDisplays::apply_color_filter(SharedRenderState* render_state, ScopedProfilerNode& prof) {

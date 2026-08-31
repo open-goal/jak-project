@@ -162,6 +162,14 @@
 #define SQLITE_OMIT_LOAD_EXTENSION 1
 #define SQLITE_ENABLE_LOCKING_STYLE 0
 #define HAVE_UTIME 1
+#elif defined(__SWITCH__)
+/* Horizon OS: newlib declares fchown/geteuid (from some POSIX-ish header) but devkitA64's libc
+** doesn't actually implement them -- they link-fail, not compile-fail. There's no #ifndef guard
+** on the HAVE_FCHOWN define below to override from the command line, so this needs its own
+** branch here instead. */
+#define OS_VXWORKS 0
+#define HAVE_READLINK 1
+#define HAVE_LSTAT 1
 #else
 /* This is not VxWorks. */
 #define OS_VXWORKS 0

@@ -4734,4 +4734,42 @@ GLAPI int GLAD_GL_ARB_texture_filter_anisotropic;
 }
 #endif
 
+
+/* Switch (GLES 3.1 via mesa/nouveau) compatibility.
+ *
+ * GL_UNSIGNED_INT_8_8_8_8[_REV] are desktop-GL packed pixel types that GLES 3.x does not accept:
+ * every glTexImage2D/glTexSubImage2D using them fails with GL_INVALID_ENUM, so the upload is
+ * silently dropped and the texture keeps its uninitialised contents. This project uses them for
+ * essentially all texture uploads (TexturePool, the time-of-day palettes, TextureAnimator, ...),
+ * which is why nothing was textured.
+ *
+ * For GL_RGBA on a little-endian host, GL_UNSIGNED_INT_8_8_8_8_REV is byte-for-byte identical to
+ * GL_UNSIGNED_BYTE, so this substitution is value-preserving rather than a reinterpretation.
+ * Overridden here, at the single point every renderer already includes, instead of at ~45 call
+ * sites.
+ */
+#if defined(__SWITCH__)
+#undef GL_UNSIGNED_INT_8_8_8_8_REV
+#define GL_UNSIGNED_INT_8_8_8_8_REV GL_UNSIGNED_BYTE
+#undef GL_UNSIGNED_INT_8_8_8_8
+#define GL_UNSIGNED_INT_8_8_8_8 GL_UNSIGNED_BYTE
+#endif
+
+
+/* GLES 3.x has no GL_PRIMITIVE_RESTART and no glPrimitiveRestartIndex(): glEnable() rejects the
+ * enum with GL_INVALID_ENUM and the restart is simply never applied, so every triangle strip in a
+ * draw runs together into one continuous strip -- the huge stretched polygons spanning the level.
+ *
+ * The GLES equivalent is GL_PRIMITIVE_RESTART_FIXED_INDEX, whose restart index is fixed at
+ * 2^n - 1, i.e. 0xFFFFFFFF for the u32 index buffers used here. Every call site already passes
+ * exactly UINT32_MAX, so remapping the enum and dropping the (now redundant) index setter is
+ * behaviour-preserving.
+ */
+#if defined(__SWITCH__)
+#undef GL_PRIMITIVE_RESTART
+#define GL_PRIMITIVE_RESTART GL_PRIMITIVE_RESTART_FIXED_INDEX
+#undef glPrimitiveRestartIndex
+#define glPrimitiveRestartIndex(index) ((void)(index))
+#endif
+
 #endif

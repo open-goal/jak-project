@@ -21,7 +21,11 @@
                                         const char* function,
                                         const std::string_view& msg);
 
-#ifdef _WIN32
+// __FUNCSIG__ only exists under MSVC-compatible compilers (real MSVC, or clang-cl) -- plain
+// clang++ in GNU-driver mode on Windows (e.g. MSYS2's CLANG64) already provides its own
+// GCC-compatible __PRETTY_FUNCTION__ and doesn't have __FUNCSIG__ at all, so gating this on
+// _MSC_VER (which both MSVC and clang-cl define) rather than bare _WIN32 is required.
+#ifdef _MSC_VER
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 

@@ -2,7 +2,11 @@
 
 #include "common/log/log.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 Hfrag::Hfrag(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   // generate shared index buffer
@@ -183,7 +187,7 @@ Hfrag::HfragLevel* Hfrag::get_hfrag_level(const std::string& name,
 void Hfrag::unload_hfrag_level(Hfrag::HfragLevel* lev) {
   ASSERT(lev->in_use);
   // delete OpenGL resources we created.
-  glBindTexture(GL_TEXTURE_1D, lev->time_of_day_texture);
+  glBindTexture(GL_TEXTURE_2D, lev->time_of_day_texture);
   glDeleteTextures(1, &lev->time_of_day_texture);
   glDeleteVertexArrays(1, &lev->vao);
 
@@ -255,11 +259,11 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
   );
   glActiveTexture(GL_TEXTURE10);
   glGenTextures(1, &lev->time_of_day_texture);
-  glBindTexture(GL_TEXTURE_1D, lev->time_of_day_texture);
-  glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
+  glBindTexture(GL_TEXTURE_2D, lev->time_of_day_texture);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 1, 0, GL_RGBA,
                GL_UNSIGNED_INT_8_8_8_8, nullptr);
-  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glBindVertexArray(0);
 
   // montage
@@ -389,9 +393,9 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
   // generate time of day texture
   interp_time_of_day(pc_data.camera.itimes, lev->hfrag->time_of_day_colors, m_color_result.data());
   glActiveTexture(GL_TEXTURE10);
-  glBindTexture(GL_TEXTURE_1D, lev->time_of_day_texture);
-  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, lev->num_colors, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                  m_color_result.data());
+  glBindTexture(GL_TEXTURE_2D, lev->time_of_day_texture);
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, lev->num_colors, 1, GL_RGBA,
+                  GL_UNSIGNED_INT_8_8_8_8_REV, m_color_result.data());
 
   // initialize data
   glBindVertexArray(lev->vao);

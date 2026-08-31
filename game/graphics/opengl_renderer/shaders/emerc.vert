@@ -36,16 +36,16 @@ layout (std140) uniform ub_bones {
 void main() {
 
 
-  vec4 p = vec4(position_in, 1);
+  vec4 p = vec4(position_in, 1.);
   vec4 vtx_pos = -bones[mats[0]].X * p * weights_in[0];
   vec3 rotated_nrm = bones[mats[0]].R * normal_in * weights_in[0];
 
   // game may send garbage bones if the weight is 0, don't let NaNs sneak in.
-  if (weights_in[1] > 0) {
+  if (weights_in[1] > 0.) {
     vtx_pos += -bones[mats[1]].X * p * weights_in[1];
     rotated_nrm += bones[mats[1]].R * normal_in * weights_in[1];
   }
-  if (weights_in[2] > 0) {
+  if (weights_in[2] > 0.) {
     vtx_pos += -bones[mats[2]].X * p * weights_in[2];
     rotated_nrm += bones[mats[2]].R * normal_in * weights_in[2];
   }
@@ -55,12 +55,12 @@ void main() {
   rotated_nrm = normalize(rotated_nrm);
 
   float Q = fog_constants.x / transformed[3];
-  fog = 255 - clamp(-transformed.w + hvdf_offset.w, fog_constants.y, fog_constants.z);
+  fog = 255. - clamp(-transformed.w + hvdf_offset.w, fog_constants.y, fog_constants.z);
 
   // emerc
   vec2 st_mod = st_in;
   {
-    vec4 vf10 = vec4(rotated_nrm, 1); // ??
+    vec4 vf10 = vec4(rotated_nrm, 1.); // ??
     // vf08 = transformed
     vec4 vf08 = transformed;
     // vf23 = unperspect
@@ -75,7 +75,7 @@ void main() {
     // mul.xyzw vf09, vf08, vf23 ;; do unperspect
     vec4 vf09 = vf08 * vf23;
     //subw.z vf10, vf10, vf00 ;; subtract 1 from z
-    vf10.z -= 1;
+    vf10.z -= 1.;
     //addw.z vf09, vf00, vf09 ;; xyww the unperspected thing
     vf09.z = vf09.w;
     //mul.xyz vf15, vf09, vf10 ;;
@@ -105,8 +105,8 @@ void main() {
     // this is required to make jak 1's envmapping look right
     // otherwise it behaves like the envmap texture is mirrored.
     // this is because we flip vtx_pos above with a negative sign.
-    st_mod.x = 1 - vf10.x;
-    st_mod.y = 1 - vf10.y;
+    st_mod.x = 1. - vf10.x;
+    st_mod.y = 1. - vf10.y;
 
     //mulz.xy vf24, vf10, vf24 ;; mul tex by q
   }
@@ -114,10 +114,10 @@ void main() {
   transformed.xyz *= Q;
   transformed.xyz += hvdf_offset.xyz;
   transformed.xy -= (2048.);
-  transformed.z /= (8388608);
-  transformed.z -= 1;
-  transformed.x /= (256);
-  transformed.y /= -(128);
+  transformed.z /= (8388608.);
+  transformed.z -= 1.;
+  transformed.x /= (256.);
+  transformed.y /= -(128.);
   transformed.xyz *= transformed.w;
   transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
   gl_Position = transformed;

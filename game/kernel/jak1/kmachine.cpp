@@ -46,6 +46,16 @@
 
 using namespace ee;
 
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_km(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 namespace jak1 {
 
 /*!
@@ -67,6 +77,13 @@ void InitParms(int argc, const char* const* argv) {
 
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
+#if defined(__SWITCH__)
+    {
+      char buf[96];
+      snprintf(buf, sizeof(buf), "[InitParms] loop i=%d arg=%s begin\n", i, arg.c_str());
+      boot_log_km(buf);
+    }
+#endif
     // DVD Settings
     // ----------------------------
 
@@ -162,6 +179,9 @@ void InitParms(int argc, const char* const* argv) {
       Msg(6, "dkernel: level %s\n", levelName.c_str());
       kstrcpy(DebugBootLevel, levelName.c_str());
     }
+#if defined(__SWITCH__)
+    boot_log_km("[InitParms] loop iteration end\n");
+#endif
   }
 }
 
@@ -307,6 +327,9 @@ AutoSplitterBlock g_auto_splitter_block_jak1;
  * TODO finish up things which are commented.
  */
 int InitMachine() {
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] start\n");
+#endif
   u32 debug_heap_end = (0xffffffff - DEBUG_HEAP_SPACE_FOR_STACK + 1) & 0x7ffffff;
 
   // initialize the global heap
@@ -329,12 +352,24 @@ int InitMachine() {
     kdebugheap.offset = 0;
   }
 
-  init_output();    // GOAL input/output buffer setup
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] heaps done, about to init_output\n");
+#endif
+  init_output();  // GOAL input/output buffer setup
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] init_output done, about to InitIOP\n");
+#endif
   jak1::InitIOP();  // start IOP/OVERLORD, loading our legal splash screen
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] InitIOP done, about to InitVideo\n");
+#endif
 
   // sceGsResetPath(); // reset VIF1, VU1, GIF
 
   InitVideo();  // display legal splash screen
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] InitVideo done\n");
+#endif
 
   // FlushCache(WRITEBACK_DCACHE);
   // FlushCache(INVALIDATE_ICACHE);
@@ -345,7 +380,13 @@ int InitMachine() {
   // }
 
   if (MasterDebug) {  // connect to GOAL compiler
+#if defined(__SWITCH__)
+    boot_log_km("[InitMachine] about to InitGoalProto\n");
+#endif
     InitGoalProto();
+#if defined(__SWITCH__)
+    boot_log_km("[InitMachine] InitGoalProto done\n");
+#endif
   } else {
     // shut down the deci2 stuff, we don't need it.
     ee::sceDeci2Disable();
@@ -354,11 +395,27 @@ int InitMachine() {
   lg::info("InitSound");
   InitSound();  // do nothing!
   lg::info("InitRPC");
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] about to InitRPC\n");
+#endif
   InitRPC();       // connect to IOP
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] InitRPC done\n");
+#endif
   reset_output();  // reset output buffers
   clear_print();
 
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] about to InitHeapAndSymbol\n");
+#endif
   s32 goal_status = InitHeapAndSymbol();  // init GOAL runtime, load kernel and engine
+#if defined(__SWITCH__)
+  {
+    char buf[64];
+    snprintf(buf, sizeof(buf), "[InitMachine] InitHeapAndSymbol done, status=%d\n", goal_status);
+    boot_log_km(buf);
+  }
+#endif
   if (goal_status < 0) {
     return goal_status;
   }
@@ -372,6 +429,9 @@ int InitMachine() {
   InitListenerConnect();
   lg::info("InitCheckListener");
   InitCheckListener();
+#if defined(__SWITCH__)
+  boot_log_km("[InitMachine] InitListenerConnect/InitCheckListener done, InitMachine returning\n");
+#endif
   Msg(6, "kernel: machine started\n");
   return 0;
 }

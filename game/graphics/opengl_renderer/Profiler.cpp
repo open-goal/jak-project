@@ -6,7 +6,11 @@
 #include "common/util/colors.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 ProfilerNode::ProfilerNode(const std::string& name) : m_name(name) {}
 

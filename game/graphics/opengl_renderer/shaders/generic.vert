@@ -49,7 +49,7 @@ void main() {
     transformed.xyz = position_in * scale.xyz;
     transformed.z += mat_32;
     transformed.w = mat_23 * position_in.z + mat_33;
-    transformed *= -1;
+    transformed *= -1.;
   }
 
 
@@ -57,13 +57,13 @@ void main() {
   // vu.Q = gen.fog.x() / gen.vtx_p0.w();
   float Q = fog_constants.x / transformed.w;
 
-  fog = 255 - clamp(-transformed.w + hvdf_offset.w, fog_constants.y, fog_constants.z);
+  fog = 255. - clamp(-transformed.w + hvdf_offset.w, fog_constants.y, fog_constants.z);
 
   // itof12.xyz vf18, vf22        texture int to float
   // vu.vf18.itof12(Mask::xyz, vu.vf22);
   tex_coord = tex_coord_in / 4096.f;
 
-  if (warp_sample_mode == 1) {
+  if (warp_sample_mode == 1u) {
     tex_coord = vec2(tex_coord.x, (1.0f - tex_coord.y - warp_off) * SCISSOR_ADJUST);
   }
 
@@ -82,12 +82,12 @@ void main() {
   transformed.xy -= (2048.);
 
   // correct z scale
-  transformed.z /= (8388608);
-  transformed.z -= 1;
+  transformed.z /= (8388608.);
+  transformed.z -= 1.;
 
   // correct xy scale
-  transformed.x /= (256);
-  transformed.y /= -(128);
+  transformed.x /= (256.);
+  transformed.y /= -(128.);
 
   // hack
   transformed.xyz *= transformed.w;
@@ -96,6 +96,6 @@ void main() {
   // scissoring area adjust
   gl_Position.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
 
-  fragment_color = vec4(rgba_in.rgb, rgba_in.a * 2);
+  fragment_color = vec4(rgba_in.rgb, rgba_in.a * 2.);
   tex_info = byte_info.xy;
 }

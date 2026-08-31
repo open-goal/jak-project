@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -186,6 +187,13 @@ class InputManager {
   std::optional<InputBindAssignmentMeta> m_waiting_for_bind = std::nullopt;
 
   void refresh_device_list();
+#if defined(__SWITCH__)
+  // devkitPro's SDL2 Switch backend re-emits SDL_CONTROLLERDEVICEADDED/REMOVED as a side effect
+  // of opening/closing controllers inside refresh_device_list() itself, which otherwise turns
+  // into an infinite feedback loop (event -> refresh -> more events -> ...), stalling the whole
+  // game loop before a single frame renders. A debounce timestamp breaks the cycle.
+  std::chrono::steady_clock::time_point m_last_device_list_refresh{};
+#endif
   void clear_inputs();
 
   void ignore_background_controller_events(const bool ignore);

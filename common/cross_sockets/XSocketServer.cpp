@@ -44,7 +44,7 @@ bool XSocketServer::init_server(bool failure_may_occur) {
 
   int yes = 1;
 
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   if (set_socket_option(listening_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0) {
     close_server_socket();
     return false;

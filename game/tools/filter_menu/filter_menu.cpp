@@ -3,8 +3,14 @@
 #include "game/graphics/gfx.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
+#if !defined(__SWITCH__)
 #include "third-party/imgui/imgui_stdlib.h"
+#endif
 
 void to_json(json& j, const DebugTextFilter& obj) {
   j = json{{"content", obj.content}, {"type", obj.type}};

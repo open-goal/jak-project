@@ -190,9 +190,12 @@ void GameController::process_event(const SDL_Event& event,
         }
       }
     }
-  } else if ((event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
-              event.type == SDL_EVENT_GAMEPAD_BUTTON_UP) &&
-             event.gbutton.which == m_sdl_instance_id) {
+  } else if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
+             event.type == SDL_EVENT_GAMEPAD_BUTTON_UP) {
+    if (event.gbutton.which != m_sdl_instance_id ||
+        m_settings->controller_binds.find(m_guid) == m_settings->controller_binds.end()) {
+      return;
+    }
     auto& binds = m_settings->controller_binds.at(m_guid);
 
     // https://wiki.libsdl.org/SDL3/SDL_GamepadButton

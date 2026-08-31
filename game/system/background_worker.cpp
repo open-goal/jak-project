@@ -2,7 +2,9 @@
 
 #include "common/log/log.h"
 
+#if !defined(__SWITCH__)
 #include "curl/curl.h"
+#endif
 
 bool BackgroundWorker::process_queues() {
   std::lock_guard<std::mutex> job_lock(job_queue_lock);
@@ -51,6 +53,11 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* use
 }
 
 void BackgroundWorker::job_web_request(WebRequestJobPayload payload) {
+#if defined(__SWITCH__)
+  // No libcurl/OpenSSL on Switch (see CMakeLists.txt); nothing on the real gameplay path
+  // depends on this succeeding, so fail honestly rather than hang.
+  payload.callback(false, payload.cache_id, "networking unavailable on this platform");
+#else
   // TODO - move this into some common util function
   CURL* curl;
   CURLcode res;
@@ -80,4 +87,5 @@ void BackgroundWorker::job_web_request(WebRequestJobPayload payload) {
       payload.callback(true, payload.cache_id, readBuffer);
     }
   }
+#endif
 }

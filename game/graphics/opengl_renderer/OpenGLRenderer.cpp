@@ -27,8 +27,14 @@
 #include "game/graphics/opengl_renderer/sprite/Sprite3.h"
 #include "game/graphics/pipelines/opengl.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
+#if !defined(__SWITCH__)
 #include "third-party/imgui/imgui_stdlib.h"
+#endif
 
 // for the vif callback
 #include "game/kernel/common/kmachine.h"
@@ -42,6 +48,17 @@
 namespace {
 std::string g_current_renderer;
 }
+
+#if defined(__SWITCH__)
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_ogr(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
 
 /*!
  * OpenGL Error callback. If we do something invalid, this will be called.
@@ -75,8 +92,10 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
     : m_render_state(texture_pool, loader, version),
       m_collide_renderer(version),
       m_version(version) {
-  // requires OpenGL 4.3
-#ifndef __APPLE__
+  // requires OpenGL 4.3 (core there; GLES only has this behind the optional GL_KHR_debug
+  // extension, not guaranteed present -- devkitPro's GLES driver doesn't expose it, so glad's
+  // function pointer for glDebugMessageCallback is null and calling it crashes immediately)
+#if !defined(__APPLE__) && !defined(__SWITCH__)
   // setup OpenGL errors
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
@@ -123,12 +142,18 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   glBindVertexArray(0);
 
   // end set up screen draw
+#if defined(__SWITCH__)
+  boot_log_ogr("[ogl_renderer] screen draw setup done, about to load_common\n");
+#endif
 
   const tfrag3::Level* common_level = nullptr;
   {
     auto p = scoped_prof("load-common");
     common_level = &m_render_state.loader->load_common(*m_render_state.texture_pool, "GAME");
   }
+#if defined(__SWITCH__)
+  boot_log_ogr("[ogl_renderer] load_common done\n");
+#endif
 
   // initialize all renderers
   switch (m_version) {
@@ -145,13 +170,22 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   }
 
   m_merc2 = std::make_shared<Merc2>(m_render_state.shaders, anim_slot_array());
+#if defined(__SWITCH__)
+  boot_log_ogr("[ogl_renderer] Merc2 constructed\n");
+#endif
   m_generic2 = std::make_shared<Generic2>(m_render_state.shaders);
+#if defined(__SWITCH__)
+  boot_log_ogr("[ogl_renderer] Generic2 constructed, about to init_bucket_renderers\n");
+#endif
 
   // initialize all renderers
   auto p = scoped_prof("init-bucket-renderers");
   switch (m_version) {
     case GameVersion::Jak1:
       init_bucket_renderers_jak1();
+#if defined(__SWITCH__)
+      boot_log_ogr("[ogl_renderer] init_bucket_renderers_jak1 done\n");
+#endif
       break;
     case GameVersion::Jak2:
       init_bucket_renderers_jak2();
@@ -661,6 +695,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   std::vector<tfrag3::TFragmentTreeKind> ice_tfrags = {tfrag3::TFragmentTreeKind::ICE};
   auto sky_gpu_blender = std::make_shared<SkyBlendGPU>();
   auto sky_cpu_blender = std::make_shared<SkyBlendCPU>();
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] sky blenders constructed\n");
+#endif
 
   //-------------
   // PRE TEXTURE
@@ -673,6 +710,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
   // 4 : OCEAN_MID_AND_FAR
   init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                        BucketId::OCEAN_MID_AND_FAR);
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] sky+ocean-mid-far done\n");
+#endif
 
   //-----------------------
   // LEVEL 0 tfrag texture
@@ -696,6 +736,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                                BucketId::GENERIC_TFRAG_TEX_LEVEL0, m_generic2,
                                                Generic2::Mode::NORMAL);
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL0 tfrag done\n");
+#endif
   //-----------------------
   // LEVEL 1 tfrag texture
   //-----------------------
@@ -718,6 +761,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                                BucketId::GENERIC_TFRAG_TEX_LEVEL1, m_generic2,
                                                Generic2::Mode::NORMAL);
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL1 tfrag done\n");
+#endif
   //-----------------------
   // LEVEL 0 shrub texture
   //-----------------------
@@ -734,6 +780,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                                BucketId::SHRUB_GENERIC_LEVEL0, m_generic2,
                                                Generic2::Mode::NORMAL);
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL0 shrub done\n");
+#endif
   //-----------------------
   // LEVEL 1 shrub texture
   //-----------------------
@@ -750,6 +799,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                                BucketId::SHRUB_GENERIC_LEVEL1, m_generic2,
                                                Generic2::Mode::NORMAL);
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL1 shrub done\n");
+#endif
   //-----------------------
   // LEVEL 0 alpha texture
   //-----------------------
@@ -768,6 +820,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                   anim_slot_array());
   // 37
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL0 alpha done\n");
+#endif
   //-----------------------
   // LEVEL 1 alpha texture
   //-----------------------
@@ -794,6 +849,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                                Generic2::Mode::NORMAL);                     // 46
   init_bucket_renderer<ShadowRenderer>("shadow", BucketCategory::OTHER, BucketId::SHADOW);  // 47
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL1 alpha + shadow done\n");
+#endif
   //-----------------------
   // LEVEL 0 pris texture
   //-----------------------
@@ -805,6 +863,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                                BucketId::GENERIC_PRIS_LEVEL0, m_generic2,
                                                Generic2::Mode::NORMAL);  // 50
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL0 pris done\n");
+#endif
   //-----------------------
   // LEVEL 1 pris texture
   //-----------------------
@@ -827,6 +888,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                                BucketId::GENERIC_PRIS, m_generic2,
                                                Generic2::Mode::NORMAL);  // 56
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL1 pris + eyes done\n");
+#endif
   //-----------------------
   // LEVEL 0 water texture
   //-----------------------
@@ -838,6 +902,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
                                                BucketId::GENERIC_WATER_LEVEL0, m_generic2,
                                                Generic2::Mode::NORMAL);  // 59
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL0 water done\n");
+#endif
   //-----------------------
   // LEVEL 1 water texture
   //-----------------------
@@ -851,25 +918,49 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
 
   init_bucket_renderer<OceanNear>("ocean-near", BucketCategory::OCEAN, BucketId::OCEAN_NEAR);  // 63
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] LEVEL1 water + ocean-near done\n");
+#endif
   //-----------------------
   // DEPTH CUE
   //-----------------------
   init_bucket_renderer<DepthCue>("depth-cue", BucketCategory::OTHER, BucketId::DEPTH_CUE);  // 64
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] depth-cue done\n");
+#endif
 
   //-----------------------
   // COMMON texture
   //-----------------------
   init_bucket_renderer<TextureUploadHandler>("common-tex", BucketCategory::TEX,
                                              BucketId::PRE_SPRITE_TEX, m_texture_animator);  // 65
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] common-tex done\n");
+#endif
 
   init_bucket_renderer<Sprite3>("sprite", BucketCategory::SPRITE, BucketId::SPRITE);  // 66
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] sprite done\n");
+#endif
 
   init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x20000);
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] debug done\n");
+#endif
   init_bucket_renderer<DirectRenderer>("debug-no-zbuf", BucketCategory::OTHER,
                                        BucketId::DEBUG_NO_ZBUF, 0x8000);
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] debug-no-zbuf done\n");
+#endif
   // an extra custom bucket!
   init_bucket_renderer<DirectRenderer>("subtitle", BucketCategory::OTHER, BucketId::SUBTITLE, 6000);
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] subtitle done\n");
+#endif
 
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] depth-cue + sprite + debug done, about to init_shaders/init_textures loop\n");
+#endif
   // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     if (!m_bucket_renderers[i]) {
@@ -880,8 +971,14 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
     m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
     m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak1);
   }
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] init_shaders/init_textures loop done\n");
+#endif
   sky_cpu_blender->init_textures(*m_render_state.texture_pool, m_version);
   sky_gpu_blender->init_textures(*m_render_state.texture_pool, m_version);
+#if defined(__SWITCH__)
+  boot_log_ogr("[bucket] sky blender init_textures done, init_bucket_renderers_jak1 returning\n");
+#endif
 }
 
 namespace {
@@ -1245,14 +1342,14 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
     glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClearDepth(0.0);
+    glClearDepthf(0.0f);
     glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     glDisable(GL_BLEND);
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_fbo_state.render_fbo->fbo_id);
     glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClearDepth(0.0);
+    glClearDepthf(0.0f);
     glClearStencil(0);
     glDepthMask(GL_TRUE);
     // Note: could rely on sky renderer to clear depth and color, but this causes problems with

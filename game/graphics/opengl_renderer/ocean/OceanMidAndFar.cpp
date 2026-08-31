@@ -1,6 +1,10 @@
 #include "OceanMidAndFar.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 OceanMidAndFar::OceanMidAndFar(const std::string& name, int my_id)
     : BucketRenderer(name, my_id),

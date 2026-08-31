@@ -10,7 +10,11 @@
 #include "game/settings/settings.h"
 #include "game/system/hid/input_manager.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/sdl3_compat.h"
+#else
 #include "third-party/SDL/include/SDL3/SDL.h"
+#endif
 
 /*
 TODO:

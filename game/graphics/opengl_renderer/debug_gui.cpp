@@ -12,7 +12,11 @@
 #include "game/system/hid/sdl_util.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 #include "third-party/imgui/imgui_style.h"
 
 void FrameTimeRecorder::finish_frame() {
@@ -272,6 +276,8 @@ void OpenGlDebugGui::draw_overlord_debug_menu() {
   }
 }
 
+#if !defined(__SWITCH__)
+// game/switch/imgui_stub.h already provides a no-op ImGui::applyFontStyle() for Switch.
 namespace ImGui {
 void applyFontStyle() {
   ImGuiIO& io = ImGui::GetIO();
@@ -310,3 +316,4 @@ void applyFontStyle() {
   io.FontGlobalScale = Gfx::g_debug_settings.imgui_font_scale;
 }
 }  // namespace ImGui
+#endif

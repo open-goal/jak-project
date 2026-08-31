@@ -7,14 +7,37 @@
 #include "game/graphics/pipelines/opengl.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 DirectRenderer::ScissorState DirectRenderer::m_scissor;
 
 constexpr PerGameVersion<int> game_height(448, 416, 416, 416);
 
+#if defined(__SWITCH__)
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_dr(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_size)
     : BucketRenderer(name, my_id), m_prim_buffer(batch_size) {
+#if defined(__SWITCH__)
+  {
+    char buf[128];
+    snprintf(buf, sizeof(buf), "[direct_renderer] ctor start, name=%s batch_size=%d\n",
+             name.c_str(), batch_size);
+    boot_log_dr(buf);
+  }
+#endif
   glGenBuffers(1, &m_ogl.vertex_buffer);
   glGenVertexArrays(1, &m_ogl.vao);
   glBindVertexArray(m_ogl.vao);
@@ -78,6 +101,9 @@ DirectRenderer::DirectRenderer(const std::string& name, int my_id, int batch_siz
   );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
+#if defined(__SWITCH__)
+  boot_log_dr("[direct_renderer] ctor end\n");
+#endif
 }
 
 DirectRenderer::~DirectRenderer() {
@@ -310,9 +336,13 @@ void DirectRenderer::flush_pending(SharedRenderState* render_state, ScopedProfil
   if (m_debug_state.wireframe) {
     render_state->shaders[ShaderId::DEBUG_RED].activate();
     glDisable(GL_BLEND);
+    #if !defined(__SWITCH__)
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    #endif
     glDrawArrays(GL_TRIANGLES, 0, m_prim_buffer.vert_count);
+    #if !defined(__SWITCH__)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    #endif
     m_blend_state_needs_gl_update = true;
     m_prim_gl_state_needs_gl_update = true;
     draw_count++;

@@ -165,6 +165,14 @@ std::string get_current_executable_path() {
     return std::string(argv[0]);
   }
   return std::string(buffer);
+#elif defined(__SWITCH__)
+  // NRO homebrew has no real filesystem path for its own running image (it's loaded straight
+  // into memory by the loader, not exec'd from a path argv[0] reliably carries) -- unlike every
+  // other platform here, there's nothing to introspect. Just report the fixed SD card location
+  // this game's data/ directory actually gets deployed to (the conventional
+  // sdmc:/switch/<title>/ layout homebrew uses), so try_get_data_dir()'s
+  // "next to the executable" logic still resolves to something real.
+  return "sdmc:/switch/jak1/gk.nro";
 #endif
 }
 

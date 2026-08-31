@@ -57,7 +57,18 @@ class Wrapper {
   std::vector<REPL::KeyBind> keybindings = {};
 };
 
+#if defined(__SWITCH__)
+// repl_wrapper.cpp (the real implementation) isn't built for Switch at all -- no interactive
+// REPL there -- but this one free function is also called from jak2/jak3/jakx kboot.cpp to name
+// a per-user dev startup-script folder, unrelated to the REPL itself. There's no such concept of
+// per-user dev folders on a shipped Switch build, so this just returns the same "unknown"
+// fallback the real implementation uses when it can't find a real username either.
+inline std::string find_repl_username() {
+  return "unknown";
+}
+#else
 std::string find_repl_username();
+#endif
 StartupFile load_user_startup_file(const std::string& username, const GameVersion game_version);
 REPL::Config load_repl_config(const std::string& username,
                               const GameVersion game_version,

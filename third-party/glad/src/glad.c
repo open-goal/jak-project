@@ -25,6 +25,13 @@
 #include <string.h>
 #include <glad/glad.h>
 
+#if !defined(__SWITCH__)
+/* gladLoadGL() (below) auto-opens the system GL library via LoadLibrary/dlopen and is never
+ * called on Switch -- the app always calls gladLoadGLLoader() with an explicit proc-address
+ * getter (SDL_GL_GetProcAddress) instead, which is a separate, independent function further
+ * down in this file. Horizon OS has no dynamic loader at all (everything is statically linked),
+ * so dlfcn.h doesn't exist there; this whole open_gl/close_gl/get_proc/gladLoadGL block is dead
+ * code for Switch and just needs to not be compiled, not reimplemented. */
 static void* get_proc(const char *namez);
 
 #if defined(_WIN32) || defined(__CYGWIN__)
@@ -156,6 +163,14 @@ int gladLoadGL(void) {
 
     return status;
 }
+#else
+/* game/ always calls gladLoadGLLoader(explicit getter) first, which does the real work; this
+ * call is just a redundant post-hoc success check with no dlopen'd GL library to verify, so it
+ * always reports success. */
+int gladLoadGL(void) {
+    return 1;
+}
+#endif /* !defined(__SWITCH__) */
 
 struct gladGLversionStruct GLVersion = { 0, 0 };
 

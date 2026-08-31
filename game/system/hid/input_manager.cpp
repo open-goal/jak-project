@@ -14,8 +14,14 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "game/runtime.h"
 
+#if !defined(__SWITCH__)
 #include "third-party/SDL/include/SDL3/SDL_hints.h"
+#endif
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 InputManager::InputManager(SDL_Window* window)
     : m_window(window),
@@ -137,6 +143,20 @@ void InputManager::refresh_device_list() {
         }
       }
     }
+#if defined(__SWITCH__)
+    // Citron/HOS exposes eight controllers that all share one GUID
+    // (000038f853776974636820436f6e7400). The GUID-keyed port mapping above is "last one wins",
+    // so port 0 ended up on the eighth device while every real event arrives from the first --
+    // input was being delivered and then routed to a pad that never reports anything. With
+    // indistinguishable GUIDs there is nothing to disambiguate on, so pin port 0 to the first
+    // controller.
+    if (!m_available_controllers.empty()) {
+      m_controller_port_mapping[0] = 0;
+      if (m_data.find(0) == m_data.end()) {
+        m_data[0] = std::make_shared<PadData>();
+      }
+    }
+#endif
     if (m_available_controllers.empty()) {
       lg::warn(
           "No active game controllers could be found or loaded successfully - inputs will not "
@@ -182,6 +202,16 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
   // Detect controller connections and disconnects
   if (sdl_util::is_any_event_type(event.type,
                                   {SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_REMOVED})) {
+#if defined(__SWITCH__)
+    // See m_last_device_list_refresh's declaration -- without this, opening/closing controllers
+    // inside refresh_device_list() re-triggers this same event, forever, before a single frame
+    // ever renders.
+    auto now = std::chrono::steady_clock::now();
+    if (now - m_last_device_list_refresh < std::chrono::milliseconds(500)) {
+      return;
+    }
+    m_last_device_list_refresh = now;
+#endif
     lg::info("Controller added or removed. refreshing controller device list");
     refresh_device_list();
   }

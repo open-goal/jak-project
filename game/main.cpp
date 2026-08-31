@@ -5,6 +5,8 @@
 
 #define STBI_WINDOWS_UTF8
 
+#include <clocale>
+#include <cstdio>
 #include <string>
 
 #include "runtime.h"
@@ -22,6 +24,16 @@
 #include "graphics/gfx_test.h"
 
 #include "third-party/CLI11.hpp"
+
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_main(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
 
 #ifdef _WIN32
 extern "C" {
@@ -45,6 +57,13 @@ void setup_logging(const std::string& game_name, bool verbose, bool disable_ansi
     lg::set_stdout_level(lg::level::info);
     lg::set_flush_level(lg::level::warn);
   }
+#if defined(__SWITCH__)
+  // Confirmed via boot-order tracing: the very first vprintf(stdout)/fflush(stdout) issued from a
+  // background SystemThread (the EE thread's first Msg() call in InitParms) hangs indefinitely on
+  // this platform, even though the same calls succeed fine from the main thread earlier in boot.
+  // The kernel runs almost entirely off the EE thread from here on, so keep logging file-only.
+  lg::set_stdout_level(lg::level::off);
+#endif
   if (disable_ansi_colors) {
     lg::disable_ansi_colors();
   }
@@ -87,7 +106,29 @@ std::string game_arg_documentation() {
  * Entry point for the game.
  */
 int main(int argc, char** argv) {
+#if defined(__SWITCH__)
+  boot_log_main("[main] entered\n");
+  // newlib resolves the locale's __mbtowc through the reent struct when formatting; on this
+  // toolchain it reads back null until the locale is set explicitly, and every raw printf() in
+  // the kernel/overlord layers then branches through a null pointer inside _svfiprintf_r.
+  setlocale(LC_ALL, "C");
+  boot_log_main("[main] locale initialized\n");
+  // Confirmed via boot-order tracing: real stdout hangs indefinitely on the first write/flush
+  // issued from any thread other than main (see setup_logging()'s lg::set_stdout_level(off) for
+  // the lg:: side of this). Plenty of code throughout the kernel/overlord/sce layers still calls
+  // raw printf()/fprintf(stdout, ...) directly though, bypassing lg:: entirely -- redirecting the
+  // actual FILE* stdout points at to a plain SD card file up front fixes all of those call sites
+  // in one place instead of hunting each one down.
+  freopen("sdmc:/gk_stdout.txt", "w", stdout);
+  // Fully-buffered by default since it's a file now, and abort() (which every failed ASSERT
+  // ends in) doesn't flush -- which is exactly how the message explaining a crash gets lost.
+  setvbuf(stdout, nullptr, _IONBF, 0);
+  boot_log_main("[main] stdout redirected to sdmc:/gk_stdout.txt\n");
+#endif
   ArgumentGuard u8_guard(argc, argv);
+#if defined(__SWITCH__)
+  boot_log_main("[main] ArgumentGuard constructed\n");
+#endif
 
   // CLI flags
   bool show_version = false;
@@ -105,6 +146,20 @@ int main(int argc, char** argv) {
   fs::path project_path_override;
   fs::path user_config_dir_override;
   std::vector<std::string> game_args;
+#if defined(__SWITCH__)
+  // CLI11 is skipped entirely on Switch (see below), which normally supplies these via
+  // `-- -boot -fakeiso -debug` (see Taskfile.yml's boot-game task, and kmachine.cpp's
+  // -fakeiso/-boot handling) -- without them the kernel never actually boots into the game.
+  // -debug is deliberately omitted: it sets MasterDebug, which makes InitMachine() call
+  // InitGoalProto() to open a DECI2 handshake expecting a real goalc REPL to connect -- nothing
+  // will ever connect to a standalone .nro, so that stalls boot forever.
+  game_args = {"-boot", "-fakeiso"};
+#endif
+#if !defined(__SWITCH__)
+  // Switch homebrew has no meaningful command line -- it's launched from a menu, not a shell --
+  // so there's nothing for CLI11 to parse here. The variables above already carry the right
+  // defaults for that case, so just skip the whole CLI11 app entirely rather than feeding it an
+  // effectively-empty argv.
   CLI::App app{"OpenGOAL Game Runtime"};
   app.add_flag("--version", show_version, "Display the built revision");
   app.add_option("-g,--game", game_name, "The game name: 'jak1' or 'jak2'");
@@ -137,9 +192,16 @@ int main(int argc, char** argv) {
   define_common_cli_arguments(app);
   app.allow_extras();
   CLI11_PARSE(app, argc, argv);
+#else
+  bool _cli_flag_disable_ansi = false;
+  boot_log_main("[main] CLI11 skipped on Switch\n");
+#endif
 
   // Log the version the game is compiled against so we don't have to guess
   lg::info("Compiled Version: {}", build_revision());
+#if defined(__SWITCH__)
+  boot_log_main("[main] lg::info(Compiled Version) done\n");
+#endif
 
   // Override the user's config dir, potentially (either because it was explicitly provided
   // or because it's portable mode)
@@ -180,7 +242,13 @@ int main(int argc, char** argv) {
 
   // Figure out if the CPU has AVX2 to enable higher performance AVX2 versions of functions.
   setup_cpu_info();
-  // If the CPU doesn't have AVX, GOAL code won't work and we exit.
+#if defined(__SWITCH__)
+  boot_log_main("[main] setup_cpu_info done\n");
+#endif
+  // If the CPU doesn't have AVX, GOAL code won't work and we exit -- except on Switch, where (as
+  // with Apple Silicon) SIMD goes through sse2neon.h's translation layer instead of real AVX, so
+  // the presence of hardware AVX was never the right thing to gate on here in the first place.
+#if !defined(__SWITCH__)
   if (!get_cpu_info().has_avx) {
 // Check if we are on a modern enough version of macOS so that AVX can be
 // emulated via rosetta
@@ -203,6 +271,7 @@ int main(int argc, char** argv) {
     return -1;
 #endif
   }
+#endif  // !defined(__SWITCH__)
 
   // set up file paths for resources. This is the full repository when developing, and the data
   // directory (a subset of the full repo) in release versions
@@ -266,6 +335,9 @@ int main(int argc, char** argv) {
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
     try {
       MasterExit = RuntimeExitStatus::RUNNING;
+#if defined(__SWITCH__)
+      boot_log_main("[main] about to call exec_runtime\n");
+#endif
       auto exit_status = exec_runtime(game_options, arg_ptrs.size(), arg_ptrs.data());
       switch (exit_status) {
         case RuntimeExitStatus::EXIT:

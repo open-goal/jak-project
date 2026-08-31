@@ -13,7 +13,11 @@
 #include "game/graphics/texture/jak3_tpage_dir.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 namespace {
 const char empty_string[] = "";

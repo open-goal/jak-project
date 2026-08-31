@@ -2,7 +2,11 @@
 
 #include "common/log/log.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 OceanNear::OceanNear(const std::string& name, int my_id)
     : BucketRenderer(name, my_id), m_texture_renderer(false) {

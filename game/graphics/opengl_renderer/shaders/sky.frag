@@ -3,7 +3,7 @@
 out vec4 color;
 
 in vec4 fragment_color;
-noperspective in vec3 tex_coord;
+in vec3 tex_coord;
 uniform sampler2D tex_T0;
 
 void main() {

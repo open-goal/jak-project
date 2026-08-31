@@ -11,9 +11,11 @@ uniform mat4 pc_camera;
 uniform float fog_constant;
 uniform float fog_min;
 uniform float fog_max;
-uniform sampler1D tex_T10; // note, sampled in the vertex shader on purpose.
 // uniform int decal;
 uniform float fog_hack_threshold;
+// GLES has no 1D textures/samplers at all -- the C++ side now creates this as a GL_TEXTURE_2D
+// with height 1, so indexing needs an explicit y=0 via ivec2 below.
+uniform sampler2D tex_T10;
 
 out vec4 fragment_color;
 out vec2 tex_coord;
@@ -28,17 +30,17 @@ void main() {
 
   vec3 vert = position_in - cam_trans.xyz;
   vec4 transformed = -pc_camera[3];
-  transformed -= pc_camera[0] * (32768.f * vx - cam_trans.x);
+  transformed -= pc_camera[0] * (32768.f * float(vx) - cam_trans.x);
   transformed -= pc_camera[1] * (position_in - cam_trans.y);
-  transformed -= pc_camera[2] * (32768.f * vz - cam_trans.z);
+  transformed -= pc_camera[2] * (32768.f * float(vz) - cam_trans.z);
 
-  fogginess = 255 - clamp(-transformed.w + hvdf_offset.w, fog_min, fog_max);
+  fogginess = 255. - clamp(-transformed.w + hvdf_offset.w, fog_min, fog_max);
 
   // scissoring area adjust
   transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
   gl_Position = transformed;
 
   // time of day lookup
-  fragment_color = texelFetch(tex_T10, time_of_day_index, 0);
+  fragment_color = texelFetch(tex_T10, ivec2(time_of_day_index, 0), 0);
   fragment_color.a = 1.0;
 }

@@ -56,16 +56,16 @@ maddz.xyzw vf26, vf28, vf25
 ```
 */
 void main() {
-  vec4 p = vec4(position_in, 1);
+  vec4 p = vec4(position_in, 1.);
   vec4 vtx_pos = -bones[mats[0]].X * p * weights_in[0];
   vec3 rotated_nrm = bones[mats[0]].R * normal_in * weights_in[0];
 
   // game may send garbage bones if the weight is 0, don't let NaNs sneak in.
-  if (weights_in[1] > 0) {
+  if (weights_in[1] > 0.) {
     vtx_pos += -bones[mats[1]].X * p * weights_in[1];
     rotated_nrm += bones[mats[1]].R * normal_in * weights_in[1];
   }
-  if (weights_in[2] > 0) {
+  if (weights_in[2] > 0.) {
     vtx_pos += -bones[mats[2]].X * p * weights_in[2];
     rotated_nrm += bones[mats[2]].R * normal_in * weights_in[2];
   }
@@ -74,7 +74,7 @@ void main() {
 
   rotated_nrm = normalize(rotated_nrm);
   vec3 light_intensity = light_dir0_fade.xyz * rotated_nrm.x + light_dir1_fade_en.xyz * rotated_nrm.y + light_dir2 * rotated_nrm.z;
-  light_intensity = max(light_intensity, vec3(0, 0, 0));
+  light_intensity = max(light_intensity, vec3(0., 0., 0.));
 
   vec4 light_color = light_ambient
                    + light_intensity.x * light_col0
@@ -84,15 +84,15 @@ void main() {
 
 
   float Q = fog_constants.x / transformed[3];
-  fog = 255 - clamp(-transformed.w + hvdf_offset.w, fog_constants.y, fog_constants.z);
+  fog = 255. - clamp(-transformed.w + hvdf_offset.w, fog_constants.y, fog_constants.z);
 
   transformed.xyz *= Q;
   transformed.xyz += hvdf_offset.xyz;
   transformed.xy -= (2048.);
-  transformed.z /= (8388608);
-  transformed.z -= 1;
-  transformed.x /= (256);
-  transformed.y /= -(128);
+  transformed.z /= (8388608.);
+  transformed.z -= 1.;
+  transformed.x /= (256.);
+  transformed.y /= -(128.);
   transformed.xyz *= transformed.w;
   transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
   gl_Position = transformed;

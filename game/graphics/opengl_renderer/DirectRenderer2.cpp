@@ -2,7 +2,11 @@
 
 #include "common/log/log.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 DirectRenderer2::DirectRenderer2(u32 max_verts,
                                  u32 max_inds,

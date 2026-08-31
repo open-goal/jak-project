@@ -364,10 +364,17 @@ add_subdirectory(sound)
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt SDL3::SDL3 imgui discord-rpc sound stb_image libco libcurl)
+if(NINTENDO_SWITCH)
+    # No imgui/discord-rpc/libcurl builds on Switch (see top-level CMakeLists.txt) -- their
+    # actual call sites are stubbed out in-place (discord_rpc_stub.h, background_worker.cpp,
+    # and the #if !defined(__SWITCH__) guards throughout opengl.cpp) rather than linked here.
+    target_link_libraries(runtime common fmt SDL3::SDL3 sound stb_image libco nx)
+else()
+    target_link_libraries(runtime common fmt SDL3::SDL3 imgui discord-rpc sound stb_image libco libcurl)
+endif()
 if(WIN32)
     target_link_libraries(runtime mman)
-else()
+elseif(NOT NINTENDO_SWITCH)
     target_link_libraries(runtime pthread dl)
 endif()
 

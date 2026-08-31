@@ -21,6 +21,12 @@
 #if defined(__APPLE__) && defined(__aarch64__)
 #include <pthread.h>  // pthread_jit_write_protect_np
 #endif
+#if defined(__SWITCH__)
+// See the matching comment in CodeTester.h -- avoids a struct-u128 vs typedef-u128 collision.
+#define u128 nx_u128
+#include <switch.h>
+#undef u128
+#endif
 
 #include <cstdio>
 
@@ -358,6 +364,11 @@ u64 CodeTester::execute() {
   auto ret = ((u64(*)())code_buffer)();
   pthread_jit_write_protect_np(0);
   return ret;
+#elif defined(__SWITCH__)
+  jitTransitionToExecutable(&m_jit);
+  auto ret = ((u64(*)())code_buffer_rx)();
+  jitTransitionToWritable(&m_jit);
+  return ret;
 #else
   return ((u64(*)())code_buffer)();
 #endif
@@ -378,6 +389,11 @@ u64 CodeTester::execute(u64 in0, u64 in1, u64 in2, u64 in3) {
   auto ret = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
   pthread_jit_write_protect_np(0);
   return ret;
+#elif defined(__SWITCH__)
+  jitTransitionToExecutable(&m_jit);
+  auto ret = ((u64(*)(u64, u64, u64, u64))code_buffer_rx)(in0, in1, in2, in3);
+  jitTransitionToWritable(&m_jit);
+  return ret;
 #else
   return ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
 #endif
@@ -392,13 +408,26 @@ void CodeTester::init_code_buffer(int capacity) {
 #if defined(__APPLE__) && defined(__aarch64__)
   code_buffer = (u8*)mmap(nullptr, capacity, PROT_READ | PROT_WRITE | PROT_EXEC,
                           MAP_ANONYMOUS | MAP_PRIVATE | MAP_JIT, -1, 0);
+#elif defined(__SWITCH__)
+  // Horizon enforces W^X: jitCreate gives back separate RW/RX aliases of the same pages instead
+  // of one RWX mapping. Round up to a page (0x1000) since jitCreate requires page-aligned size.
+  size_t jit_size = (size_t(capacity) + 0xfff) & ~size_t(0xfff);
+  Result rc = jitCreate(&m_jit, jit_size);
+  if (R_FAILED(rc)) {
+    ASSERT_MSG(false, "[CodeTester] jitCreate failed!");
+  }
+  jitTransitionToWritable(&m_jit);
+  code_buffer = (u8*)jitGetRwAddr(&m_jit);
+  code_buffer_rx = (u8*)jitGetRxAddr(&m_jit);
 #else
   code_buffer = (u8*)mmap(nullptr, capacity, PROT_EXEC | PROT_READ | PROT_WRITE,
                           MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 #endif
+#if !defined(__SWITCH__)
   if (code_buffer == (u8*)(-1)) {
     ASSERT_MSG(false, "[CodeTester] Failed to map memory!");
   }
+#endif
 #if defined(__APPLE__) && defined(__aarch64__)
   // allow writes before the first instruction
   pthread_jit_write_protect_np(0);
@@ -410,7 +439,11 @@ void CodeTester::init_code_buffer(int capacity) {
 
 CodeTester::~CodeTester() {
   if (code_buffer_capacity) {
+#if defined(__SWITCH__)
+    jitClose(&m_jit);
+#else
     munmap(code_buffer, code_buffer_capacity);
+#endif
   }
 }
 }  // namespace emitter

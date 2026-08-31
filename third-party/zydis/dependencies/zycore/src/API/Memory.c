@@ -30,6 +30,8 @@
 
 #if   defined(ZYAN_WINDOWS)
 
+#elif defined(__SWITCH__)
+// See Memory.h -- no general mmap/mprotect API on Horizon OS, and nothing here is ever called.
 #elif defined(ZYAN_POSIX)
 #   include <unistd.h>
 #else
@@ -53,6 +55,10 @@ ZyanU32 ZyanMemoryGetSystemPageSize(void)
 
     return system_info.dwPageSize;
 
+#elif defined(__SWITCH__)
+
+    return 0x1000;
+
 #elif defined(ZYAN_POSIX)
 
     return sysconf(_SC_PAGE_SIZE);
@@ -68,6 +74,10 @@ ZyanU32 ZyanMemoryGetSystemAllocationGranularity(void)
     GetSystemInfo(&system_info);
 
     return system_info.dwAllocationGranularity;
+
+#elif defined(__SWITCH__)
+
+    return 0x1000;
 
 #elif defined(ZYAN_POSIX)
 
@@ -91,6 +101,13 @@ ZyanStatus ZyanMemoryVirtualProtect(void* address, ZyanUSize size,
         return ZYAN_STATUS_BAD_SYSTEMCALL;
     }
 
+#elif defined(__SWITCH__)
+
+    ZYAN_UNUSED(address);
+    ZYAN_UNUSED(size);
+    ZYAN_UNUSED(protection);
+    return ZYAN_STATUS_BAD_SYSTEMCALL;
+
 #elif defined(ZYAN_POSIX)
 
     if (mprotect(address, size, protection))
@@ -113,6 +130,12 @@ ZyanStatus ZyanMemoryVirtualFree(void* address, ZyanUSize size)
         return ZYAN_STATUS_BAD_SYSTEMCALL;
     }
 
+#elif defined(__SWITCH__)
+
+    ZYAN_UNUSED(address);
+    ZYAN_UNUSED(size);
+    return ZYAN_STATUS_BAD_SYSTEMCALL;
+
 #elif defined(ZYAN_POSIX)
 
     if (munmap(address, size))
@@ -122,7 +145,7 @@ ZyanStatus ZyanMemoryVirtualFree(void* address, ZyanUSize size)
 
 #endif
 
-    return ZYAN_STATUS_SUCCESS;    
+    return ZYAN_STATUS_SUCCESS;
 }
 
 /* ---------------------------------------------------------------------------------------------- */

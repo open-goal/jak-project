@@ -7,7 +7,11 @@
 
 #include "common/serialization/subtitles/subtitles_v2.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 class SubtitleEditor {
  public:

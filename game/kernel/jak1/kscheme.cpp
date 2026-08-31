@@ -26,6 +26,16 @@
 
 using namespace jak1_symbols;
 
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_ks(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 namespace jak1 {
 // where to put a new symbol for the most recently searched for symbol that wasn't found
 u32 symbol_slot;
@@ -522,6 +532,12 @@ Ptr<Function> make_function_from_c(void* func, bool arg3_is_pp = false) {
   return make_function_from_c_systemv(func, arg3_is_pp);
 #elif __APPLE__
   return make_function_from_c_systemv(func, arg3_is_pp);
+#elif defined(__SWITCH__)
+  // Switch aarch64 uses AAPCS64, same calling convention as the existing Linux/macOS aarch64
+  // path -- this branch was simply never added when the file was ported, so every call fell off
+  // the end of this non-void function with no return statement (undefined behavior: whatever
+  // garbage was in the return register got used as the Function pointer by the caller).
+  return make_function_from_c_systemv(func, arg3_is_pp);
 #elif _WIN32
   return make_function_from_c_win32(func, arg3_is_pp);
 #endif
@@ -531,6 +547,8 @@ Ptr<Function> make_stack_arg_function_from_c(void* func) {
 #ifdef __linux__
   return make_stack_arg_function_from_c_systemv(func);
 #elif __APPLE__
+  return make_stack_arg_function_from_c_systemv(func);
+#elif defined(__SWITCH__)
   return make_stack_arg_function_from_c_systemv(func);
 #elif _WIN32
   return make_stack_arg_function_from_c_win32(func);
@@ -1457,12 +1475,18 @@ s32 test_function(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
  * This takes care of all initialization that isn't for the hardware itself.
  */
 s32 InitHeapAndSymbol() {
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] entered\n");
+#endif
   Timer heap_init_timer;
   // reset all mips2c functions
   Mips2C::gLinkedFunctionTable = {};
   // allocate memory for the symbol table
   auto symbol_table =
       kmalloc(kglobalheap, jak1::SYM_TABLE_MEM_SIZE, KMALLOC_MEMSET, "symbol-table").cast<u32>();
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] symbol table kmalloc done\n");
+#endif
 
   // pointer to the middle symbol is stored in the s7 register.
   s7 = symbol_table + (jak1::GOAL_MAX_SYMBOLS / 2) * 8 + BASIC_OFFSET;
@@ -1481,26 +1505,53 @@ s32 InitHeapAndSymbol() {
   // need to set up 'global fixed symbol so allocating memory works.
   *(s7 + FIX_SYM_GLOBAL_HEAP) = kglobalheap.offset;
 
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] about to alloc_and_init_type\n");
+#endif
   // allocate fundamental types
   alloc_and_init_type((s7 + FIX_SYM_TYPE_TYPE).cast<Symbol>(), 9);
   alloc_and_init_type((s7 + FIX_SYM_SYMBOL_TYPE).cast<Symbol>(), 9);
   alloc_and_init_type((s7 + FIX_SYM_STRING_TYPE).cast<Symbol>(), 9);
   alloc_and_init_type((s7 + FIX_SYM_FUNCTION_TYPE).cast<Symbol>(), 9);
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] alloc_and_init_type done\n");
+#endif
 
   // booleans
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] about to booleans\n");
+#endif
   set_fixed_symbol(FIX_SYM_FALSE, "#f", s7.offset + FIX_SYM_FALSE);
   set_fixed_symbol(FIX_SYM_TRUE, "#t", s7.offset + FIX_SYM_TRUE);
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] booleans done, about to make_nothing_func\n");
+#endif
 
   // functions
   set_fixed_symbol(FIX_SYM_NOTHING_FUNC, "nothing", make_nothing_func().offset);
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] make_nothing_func done, about to make_zero_func\n");
+#endif
   set_fixed_symbol(FIX_SYM_ZERO_FUNC, "zero-func", make_zero_func().offset);
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] make_zero_func done, about to asize_of_basic\n");
+#endif
   set_fixed_symbol(FIX_SYM_ASIZE_OF_BASIC_FUNC, "asize-of-basic-func",
                    make_function_from_c((void*)asize_of_basic).offset);
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] asize_of_basic done, about to copy_basic\n");
+#endif
   // NOTE: this is a typo in the game too.
   set_fixed_symbol(FIX_SYM_COPY_BASIC_FUNC, "asize-of-basic-func",
                    make_function_from_c((void*)copy_basic, true).offset);
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] copy_basic done, about to delete_basic\n");
+#endif
   set_fixed_symbol(FIX_SYM_DEL_BASIC_FUNC, "delete-basic",
                    make_function_from_c((void*)delete_basic).offset);
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] delete_basic done, about to heap symbols\n");
+#endif
 
   // heap symbols
   set_fixed_symbol(FIX_SYM_GLOBAL_HEAP, "global", kglobalheap.offset);
@@ -1522,6 +1573,9 @@ s32 InitHeapAndSymbol() {
   set_fixed_symbol(FIX_SYM_DGO, "dgo", 0);
   set_fixed_symbol(FIX_SYM_TOP_LEVEL, "top-level", *(s7 + FIX_SYM_NOTHING_FUNC));
 
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] fixed symbols done, about to OBJECT type\n");
+#endif
   // OBJECT type
   auto new_illegal_func = make_function_from_c((void*)new_illegal);
   auto delete_illegal_func = make_function_from_c((void*)delete_illegal);
@@ -1639,6 +1693,9 @@ s32 InitHeapAndSymbol() {
   set_fixed_type(FIX_SYM_FILE_STREAM_TYPE, "file-stream", (s7 + FIX_SYM_BASIC_TYPE).cast<Symbol>(),
                  pack_type_flag(9, 0, 0x14), 0, 0);
 
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] core types done, about to NUMERIC types\n");
+#endif
   // NUMERIC TYPES
   set_fixed_type(FIX_SYM_POINTER_TYPE, "pointer", (s7 + FIX_SYM_OBJECT_TYPE).cast<Symbol>(),
                  pack_type_flag(9, 0, 4), 0, 0);
@@ -1688,6 +1745,9 @@ s32 InitHeapAndSymbol() {
   set_fixed_type(FIX_SYM_UINT128_TYPE, "uint128", (s7 + FIX_SYM_UINTEGER_TYPE).cast<Symbol>(),
                  pack_type_flag(9, 0, 0x10), 0, 0);
 
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] numeric types done, about to Object new macro\n");
+#endif
   // Object new macro
   auto goal_new_object_func = make_function_from_c((void*)alloc_heap_object, true);
   object_type->new_method = goal_new_object_func;
@@ -1710,6 +1770,18 @@ s32 InitHeapAndSymbol() {
 
   // type system
   make_function_symbol_from_c("method-set!", (void*)method_set);
+#if defined(__SWITCH__)
+  {
+    // [Jak][DIAG] Verify method-set!'s symbol value looks sane right after creation, before
+    // anything else can touch it -- narrows down whether the bug is in stub creation itself or
+    // something corrupts it later (e.g. during subsequent DGO object loads).
+    auto ms_sym = intern_from_c("method-set!");
+    char buf[128];
+    snprintf(buf, sizeof(buf), "[InitHeapAndSymbol] method-set! symbol created, value=0x%x\n",
+             ms_sym->value);
+    boot_log_ks(buf);
+  }
+#endif
 
   // dgo
   make_stack_arg_function_symbol_from_c("link", (void*)link_and_exec_wrapper);
@@ -1751,7 +1823,13 @@ s32 InitHeapAndSymbol() {
   // set *boot-video-mode*
   intern_from_c("*boot-video-mode*")->value = 0;  // (u32)BootVideoMode;
 
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] misc symbols done, about to lg::info(Initialized GOAL heap)\n");
+#endif
   lg::info("Initialized GOAL heap in {:.2} ms", heap_init_timer.getMs());
+#if defined(__SWITCH__)
+  boot_log_ks("[InitHeapAndSymbol] Initialized GOAL heap logged, about to load kernel\n");
+#endif
   // load the kernel!
   if (MasterUseKernel) {
     Timer kernel_load_timer;

@@ -39,7 +39,12 @@ int Timer::clock_gettime_monotonic(struct timespec* tv) const {
 #endif
 
 void Timer::start() {
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
+  // OS_POSIX (common_types.h) only covers Linux/macOS -- deliberately not extended to Switch
+  // there, since it also gates unrelated mmap/sys-header code in other files (e.g. runtime.cpp)
+  // that isn't valid on this toolchain. devkitA64's libnx does implement clock_gettime(
+  // CLOCK_MONOTONIC, ...) though (confirmed: it's the standard homebrew timing API), so it's
+  // safe to just also take this branch here directly.
   clock_gettime(CLOCK_MONOTONIC, &_startTime);
 #elif _WIN32
   clock_gettime_monotonic(&_startTime);
@@ -48,7 +53,7 @@ void Timer::start() {
 
 int64_t Timer::getNs() const {
   struct timespec now = {};
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   clock_gettime(CLOCK_MONOTONIC, &now);
 #elif _WIN32
   clock_gettime_monotonic(&now);

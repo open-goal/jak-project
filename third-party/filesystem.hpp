@@ -80,6 +80,8 @@
 #define GHC_OS_QNX
 #elif defined(__HAIKU__)
 #define GHC_OS_HAIKU
+#elif defined(__SWITCH__)
+#define GHC_OS_SWITCH
 #else
 #error "Operating system currently not supported!"
 #endif

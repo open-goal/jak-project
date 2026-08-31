@@ -22,9 +22,9 @@ void main() {
 
     color.a = T0.a;
     color.rgb = T0.rgb * vtx_color;
-    color *= 2;
+    color *= 2.;
   } else {
     color.rgb = vtx_color;
-    color.a = 1;
+    color.a = 1.;
   }
 }

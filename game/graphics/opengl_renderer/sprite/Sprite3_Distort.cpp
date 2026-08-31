@@ -15,6 +15,17 @@ constexpr int SPRITE_RENDERER_MAX_DISTORT_SPRITES =
     256 * 12;  // size of sprite-aux-list in GOAL code * SPRITE_MAX_AMOUNT_MULT
 }  // namespace
 
+#if defined(__SWITCH__)
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_sp3d(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 void Sprite3::opengl_setup_distort() {
   // Create framebuffer to snapshot current render to a texture that can be bound for the distort
   // shader This will represent tex0 from the original GS data
@@ -88,19 +99,27 @@ void Sprite3::opengl_setup_distort() {
 
   // Instancing
   // ----------------------
-  glGenVertexArrays(1, &m_distort_instanced_ogl.vao);
-  glBindVertexArray(m_distort_instanced_ogl.vao);
-
+  // glVertexAttribDivisor hangs indefinitely on this GLES driver (Mesa/nouveau under Citron) --
+  // confirmed via boot-order tracing, not assumed. m_enable_distort_instancing (see
+  // distort_setup_instanced/distort_draw_instanced below) already exists as a runtime switch to
+  // the non-instanced path, so on Switch we skip creating the instanced GL objects entirely and
+  // force that flag off in the constructor. The CPU-side bookkeeping vectors below are still
+  // sized normally since nothing about them is GL-specific.
   int distort_max_sprite_slices = 0;
   for (int i = 3; i < 12; i++) {
     // For each 'resolution', there can be that many slices
     distort_max_sprite_slices += i;
   }
+  int distort_instanced_vert_buffer_len = distort_max_sprite_slices * 5;  // 5 vertices per slice
+  int distort_instance_buffer_len = SPRITE_RENDERER_MAX_DISTORT_SPRITES;
+
+#if !defined(__SWITCH__)
+  glGenVertexArrays(1, &m_distort_instanced_ogl.vao);
+  glBindVertexArray(m_distort_instanced_ogl.vao);
 
   glGenBuffers(1, &m_distort_instanced_ogl.vertex_buffer);
   glBindBuffer(GL_ARRAY_BUFFER, m_distort_instanced_ogl.vertex_buffer);
 
-  int distort_instanced_vert_buffer_len = distort_max_sprite_slices * 5;  // 5 vertices per slice
   glBufferData(GL_ARRAY_BUFFER, distort_instanced_vert_buffer_len * sizeof(SpriteDistortVertex),
                nullptr, GL_STREAM_DRAW);
 
@@ -124,7 +143,6 @@ void Sprite3::opengl_setup_distort() {
   glGenBuffers(1, &m_distort_instanced_ogl.instance_buffer);
   glBindBuffer(GL_ARRAY_BUFFER, m_distort_instanced_ogl.instance_buffer);
 
-  int distort_instance_buffer_len = SPRITE_RENDERER_MAX_DISTORT_SPRITES;
   glBufferData(GL_ARRAY_BUFFER, distort_instance_buffer_len * sizeof(SpriteDistortInstanceData),
                nullptr, GL_DYNAMIC_DRAW);
 
@@ -151,6 +169,9 @@ void Sprite3::opengl_setup_distort() {
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
+#else
+  m_enable_distort_instancing = false;
+#endif
 
   m_sprite_distorter_vertices_instanced.resize(distort_instanced_vert_buffer_len);
 

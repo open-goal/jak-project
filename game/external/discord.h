@@ -7,7 +7,11 @@
 
 #include "common/versions/versions.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/discord_rpc_stub.h"
+#else
 #include "third-party/discord-rpc/include/discord_rpc.h"
+#endif
 
 extern int gDiscordRpcEnabled;
 extern int64_t gStartTime;

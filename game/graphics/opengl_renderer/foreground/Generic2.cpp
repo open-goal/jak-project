@@ -2,7 +2,11 @@
 
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 Generic2::Generic2(ShaderLibrary& shaders,
                    u32 num_verts,

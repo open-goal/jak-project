@@ -3,7 +3,11 @@
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 #include "game/graphics/pipelines/opengl.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 // The sky texture system blends together sky textures from different levels and times of day
 // to create the final sky texture.

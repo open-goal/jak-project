@@ -248,7 +248,7 @@ s32 format_impl_jak3(uint64_t* args) {
               // too short
               if (justify == 0) {
                 char pad = ' ';
-                if (argument_data[1].data[0] != -1) {
+                if (argument_data[1].field() != -1) {
                   pad = argument_data[1].data[0];
                 }
                 kstrinsert(output_ptr, pad, desired_length - print_len);
@@ -298,7 +298,7 @@ s32 format_impl_jak3(uint64_t* args) {
               // too short
               if (justify == 0) {
                 char pad = ' ';
-                if (argument_data[1].data[0] != -1) {
+                if (argument_data[1].field() != -1) {
                   pad = argument_data[1].data[0];
                 }
                 kstrinsert(output_ptr, pad, desired_length - print_len);
@@ -380,33 +380,33 @@ s32 format_impl_jak3(uint64_t* args) {
         case 'X':  // hex, 64 bit, pad padchar
         case 'x': {
           char pad = '0';
-          if (argument_data[1].data[0] != -1) {
+          if (argument_data[1].field() != -1) {
             pad = argument_data[1].data[0];
           }
           u64 in = arg_regs[arg_reg_idx++];
-          kitoa(output_ptr, in, 16, argument_data[0].data[0], pad, 0);
+          kitoa(output_ptr, in, 16, argument_data[0].field(), pad, 0);
           output_ptr = strend(output_ptr);
         } break;
 
         case 'D':  // integer 64, pad padchar
         case 'd': {
           char pad = ' ';
-          if (argument_data[1].data[0] != -1) {
+          if (argument_data[1].field() != -1) {
             pad = argument_data[1].data[0];
           }
           u64 in = arg_regs[arg_reg_idx++];
-          kitoa(output_ptr, in, 10, argument_data[0].data[0], pad, 0);
+          kitoa(output_ptr, in, 10, argument_data[0].field(), pad, 0);
           output_ptr = strend(output_ptr);
         } break;
 
         case 'B':  // integer 64, pad padchar
         case 'b': {
           char pad = '0';
-          if (argument_data[1].data[0] != -1) {
+          if (argument_data[1].field() != -1) {
             pad = argument_data[1].data[0];
           }
           u64 in = arg_regs[arg_reg_idx++];
-          kitoa(output_ptr, in, 2, argument_data[0].data[0], pad, 0);
+          kitoa(output_ptr, in, 2, argument_data[0].field(), pad, 0);
           output_ptr = strend(output_ptr);
         } break;
 

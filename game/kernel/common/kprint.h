@@ -24,6 +24,10 @@ constexpr u32 PRINT_BUFFER_SIZE = 0x40000;  // upped from 0x2000 on PS2 because 
 
 struct format_struct {
   char data[0x40];
+  // -1 is the "not specified" sentinel. Plain `char` is signed on x86 but unsigned on aarch64,
+  // so comparing data[0] against a bare -1 there is always true (255 != -1) -- read it through a
+  // signed type so both platforms agree.
+  s32 field() const { return (signed char)data[0]; }
   void reset() {
     for (auto& c : data)
       c = -1;
@@ -64,7 +68,7 @@ void output_unload(const char* name);
  */
 void output_segment_load(const char* name, Ptr<u8> link_block, u32 flags);
 
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 /*!
  * Print to the GOAL print buffer from C
  */
@@ -81,7 +85,7 @@ void cprintf(const char* format, ...);
  */
 void reverse(char* s);
 
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 /*!
  * Print directly to the C stdout
  * The "k" parameter is ignored, so this is just like printf
@@ -95,7 +99,7 @@ void Msg(s32 k, const char* format, ...) __attribute__((format(printf, 2, 3)));
 void Msg(s32 k, const char* format, ...);
 #endif
 
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 /*!
  * Print directly to the C stdout
  * This is identical to Msg.
@@ -108,7 +112,7 @@ void MsgWarn(const char* format, ...) __attribute__((format(printf, 1, 2)));
  */
 void MsgWarn(const char* format, ...);
 #endif
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 /*!
  * Print directly to the C stdout
  * This is identical to Msg.

@@ -5,7 +5,7 @@
 
 // clang-format off
 #include "common/common_types.h"
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
@@ -24,7 +24,7 @@
 // clang-format on
 
 int open_socket(int af, int type, int protocol) {
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   return socket(af, type, protocol);
 #elif _WIN32
   WSADATA wsaData = {0};
@@ -47,7 +47,7 @@ int connect_socket(int socket, sockaddr* addr, int nameLen) {
   return result;
 }
 
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 int accept_socket(int socket, sockaddr* addr, socklen_t* addrLen) {
   return accept(socket, addr, addrLen);
 }
@@ -108,7 +108,7 @@ void close_socket(int sock) {
   if (sock < 0) {
     return;
   }
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   close(sock);
 #elif _WIN32
   closesocket(sock);
@@ -132,7 +132,7 @@ int set_socket_option(int socket, int level, int optname, const void* optval, in
 }
 
 int set_socket_timeout(int socket, long microSeconds) {
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   struct timeval timeout = {};
   timeout.tv_sec = 0;
   timeout.tv_usec = microSeconds;
@@ -152,7 +152,7 @@ int set_socket_timeout(int socket, long microSeconds) {
 
 int write_to_socket(int socket, const char* buf, int len) {
   int bytes_wrote = 0;
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   bytes_wrote = send(socket, buf, len, MSG_NOSIGNAL);
 #elif _WIN32
   bytes_wrote = send(socket, buf, len, 0);
@@ -164,7 +164,7 @@ int write_to_socket(int socket, const char* buf, int len) {
 }
 
 int read_from_socket(int socket, char* buf, int len) {
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   return read(socket, buf, len);
 #elif _WIN32
   return recv(socket, buf, len, 0);
@@ -172,7 +172,7 @@ int read_from_socket(int socket, char* buf, int len) {
 }
 
 bool socket_timed_out() {
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   return errno == EAGAIN;
 #elif _WIN32
   auto err = WSAGetLastError();

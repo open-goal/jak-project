@@ -15,10 +15,10 @@ uniform sampler2D tex_T1;
 void main() {
   vec4 transformed = position_in;
   transformed.xy -= (2048.);
-  transformed.z /= (8388608);
-  transformed.z -= 1;
-  transformed.x /= (256);
-  transformed.y /= -(128);
+  transformed.z /= (8388608.);
+  transformed.z -= 1.;
+  transformed.x /= (256.);
+  transformed.y /= -(128.);
   transformed.xyz *= transformed.w;
   // scissoring area adjust
   transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;

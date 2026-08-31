@@ -16,11 +16,32 @@
 #include <libkern/OSCacheControl.h>
 #endif
 
+#ifdef __SWITCH__
+// Deliberately not #include <switch.h> (or even just switch/arm/cache.h) here: it transitively
+// includes switch/types.h, which typedefs u128 to __uint128_t, conflicting with the struct u128
+// this project already defines in common/common_types.h (included by nearly everything). The
+// real symbols still link fine from libnx against a matching extern "C" prototype, so just
+// declare the two we need instead of pulling in the whole header.
+extern "C" {
+void armDCacheFlush(void* addr, size_t size);
+void armICacheInvalidate(void* addr, size_t size);
+}
+#endif
+
 /*!
  * Makes freshly written instructions visible to the CPU.
  */
 inline void flush_icache(void* addr, int size) {
-#ifdef __aarch64__
+#if defined(__SWITCH__)
+  // Horizon's JIT memory model doesn't allow raw DC/IC cache-maintenance instructions
+  // (__builtin___clear_cache) on Jit-mapped pages -- confirmed by the pre-existing TODO in
+  // runtime.cpp about needing armDCacheFlush/armICacheInvalidate here. Using the raw builtin traps
+  // instead of just being a no-op, and whatever handles that trap hangs rather than crashing, which
+  // is why every kernel-boot function that JITs a C trampoline (make_function_from_c and friends)
+  // was stalling forever the first time it tried to flush icache for freshly written code.
+  armDCacheFlush(addr, (size_t)size);
+  armICacheInvalidate(addr, (size_t)size);
+#elif defined(__aarch64__)
 #ifdef __APPLE__
   sys_icache_invalidate(addr, size);
 #else

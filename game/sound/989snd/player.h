@@ -18,7 +18,12 @@
 #include "../common/synth.h"
 #include "game/sound/989snd/vagvoice.h"
 
+#if defined(__SWITCH__)
+// cubeb has no backend compiled in for Switch; see cubeb_shim.h.
+#include "game/switch/cubeb_shim.h"
+#else
 #include "third-party/cubeb/cubeb/include/cubeb/cubeb.h"
+#endif
 
 namespace snd {
 

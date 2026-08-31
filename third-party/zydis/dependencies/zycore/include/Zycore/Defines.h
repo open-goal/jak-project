@@ -111,7 +111,13 @@
 /* Platform detection                                                                             */
 /* ============================================================================================== */
 
-#if defined(_WIN32)
+#if defined(__SWITCH__)
+// Horizon OS (Nintendo Switch homebrew, via devkitA64/libnx) has newlib-backed threads,
+// sockets, and file I/O, so it's POSIX-like enough for the rest of Zycore. The one real gap
+// (no general mmap/mprotect) is handled by dedicated __SWITCH__ branches in the memory API
+// itself, which take priority over the generic ZYAN_POSIX path there.
+#   define ZYAN_POSIX
+#elif defined(_WIN32)
 #   define ZYAN_WINDOWS
 #elif defined(__EMSCRIPTEN__)
 #   define ZYAN_EMSCRIPTEN

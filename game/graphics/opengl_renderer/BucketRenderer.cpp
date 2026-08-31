@@ -1,7 +1,11 @@
 #include "BucketRenderer.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 std::string BucketRenderer::name() const {
   return m_name;

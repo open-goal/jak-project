@@ -33,36 +33,36 @@ uniform sampler2D tex_T29;
 
 vec4 sample_tex(vec2 coord, uint unit) {
   switch (unit) {
-    case 0: return texture(tex_T20, coord);
-    case 1: return texture(tex_T21, coord);
-    case 2: return texture(tex_T22, coord);
-    case 3: return texture(tex_T23, coord);
-    case 4: return texture(tex_T24, coord);
-    case 5: return texture(tex_T25, coord);
-    case 6: return texture(tex_T26, coord);
-    case 7: return texture(tex_T27, coord);
-    case 8: return texture(tex_T28, coord);
-    case 9: return texture(tex_T29, coord);
-    default : return vec4(1.0, 0, 1.0, 1.0);
+    case 0u: return texture(tex_T20, coord);
+    case 1u: return texture(tex_T21, coord);
+    case 2u: return texture(tex_T22, coord);
+    case 3u: return texture(tex_T23, coord);
+    case 4u: return texture(tex_T24, coord);
+    case 5u: return texture(tex_T25, coord);
+    case 6u: return texture(tex_T26, coord);
+    case 7u: return texture(tex_T27, coord);
+    case 8u: return texture(tex_T28, coord);
+    case 9u: return texture(tex_T29, coord);
+    default : return vec4(1.0, 0., 1.0, 1.0);
   }
 }
 
 vec4 sample_tex_px(vec2 coordf, uint unit) {
   ivec2 coord;
-  coord.x = int(coordf.x / 16);
-  coord.y = int(coordf.y / 16);
+  coord.x = int(coordf.x / 16.);
+  coord.y = int(coordf.y / 16.);
   switch (unit) {
-    case 0: return texelFetch(tex_T20, coord, 0);
-    case 1: return texelFetch(tex_T21, coord, 0);
-    case 2: return texelFetch(tex_T22, coord, 0);
-    case 3: return texelFetch(tex_T23, coord, 0);
-    case 4: return texelFetch(tex_T24, coord, 0);
-    case 5: return texelFetch(tex_T25, coord, 0);
-    case 6: return texelFetch(tex_T26, coord, 0);
-    case 7: return texelFetch(tex_T27, coord, 0);
-    case 8: return texelFetch(tex_T28, coord, 0);
-    case 9: return texelFetch(tex_T29, coord, 0);
-    default : return vec4(1.0, 0, 1.0, 1.0);
+    case 0u: return texelFetch(tex_T20, coord, 0);
+    case 1u: return texelFetch(tex_T21, coord, 0);
+    case 2u: return texelFetch(tex_T22, coord, 0);
+    case 3u: return texelFetch(tex_T23, coord, 0);
+    case 4u: return texelFetch(tex_T24, coord, 0);
+    case 5u: return texelFetch(tex_T25, coord, 0);
+    case 6u: return texelFetch(tex_T26, coord, 0);
+    case 7u: return texelFetch(tex_T27, coord, 0);
+    case 8u: return texelFetch(tex_T28, coord, 0);
+    case 9u: return texelFetch(tex_T29, coord, 0);
+    default : return vec4(1.0, 0., 1.0, 1.0);
   }
 }
 
@@ -81,19 +81,19 @@ void main() {
   }
 
   vec4 T0;
-  if (use_uv == 1) {
+  if (use_uv == 1u) {
     T0 = sample_tex_px(tex_coord.xy, tex_info.x);
   } else {
     T0 = sample_tex(tex_coord.xy / tex_coord.z, tex_info.x);
   }
   // y is tcc
   // z is decal
-  if (T0.w == 0) {
+  if (T0.w == 0.) {
     T0.w = ta0;
   }
 
-  if (tex_info.y == 0) {
-    if (tex_info.z == 0) {
+  if (tex_info.y == 0u) {
+    if (tex_info.z == 0u) {
       // modulate + no tcc
       color.xyz = fragment_color.xyz * T0.xyz;
       color.w = fragment_color.w;
@@ -103,7 +103,7 @@ void main() {
       color.w = fragment_color.w;
     }
   } else {
-    if (tex_info.z == 0) {
+    if (tex_info.z == 0u) {
       // modulate + tcc
       color = fragment_color * T0;
     } else {
@@ -112,14 +112,14 @@ void main() {
       color.w = T0.w;
     }
   }
-  color *= 2;
+  color *= 2.;
   color.xyz *= color_mult;
   color.w *= alpha_mult;
   if (color.a < alpha_reject) {
     discard;
   }
-  if (tex_info.w == 1) {
-    color.xyz = mix(color.xyz, fog_color.rgb, clamp(fog_color.a * fog, 0, 1));
+  if (tex_info.w == 1u) {
+    color.xyz = mix(color.xyz, fog_color.rgb, clamp(fog_color.a * fog, 0., 1.));
   }
 
 }

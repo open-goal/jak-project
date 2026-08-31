@@ -29,6 +29,11 @@ size_t get_peak_rss() {
     return 0;
   }
 }
+#elif defined(__SWITCH__)
+// newlib's struct rusage on Horizon OS doesn't have ru_maxrss.
+size_t get_peak_rss() {
+  return 0;
+}
 #else
 #include <sys/resource.h>
 size_t get_peak_rss() {
@@ -164,13 +169,19 @@ void setup_cpu_info_macos(CpuInfo& info) {
   info.has_avx = result[2] & (1 << 28);
   __cpuidex(result, 7, 0);
   info.has_avx2 = result[1] & (1 << 5);
-#elif defined(__aarch64__) || defined(__arm64__)
+#elif defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
+  // NOTE: this function is macOS-only (only ever called under `#elif defined(__APPLE__)`
+  // below), but its body still has to compile on every aarch64 target since the enclosing
+  // function isn't itself platform-guarded. A bare `defined(__aarch64__)` here used to assume
+  // "aarch64 build" meant "Apple Silicon", which broke once a second aarch64 target existed.
   info.brand = "Apple";
   char buf[128];
   size_t len = sizeof(buf);
   if (sysctlbyname("hw.model", buf, &len, nullptr, 0) == 0) {
     info.model = buf;
   }
+  info.has_neon = true;
+#elif defined(__aarch64__) || defined(__arm64__)
   info.has_neon = true;
 #endif
 }
@@ -188,6 +199,10 @@ void setup_cpu_info() {
   setup_cpu_info_macos(gCpuInfo);
 #elif defined(__linux__)
   setup_cpu_info_linux(gCpuInfo);
+#elif defined(__SWITCH__)
+  gCpuInfo.brand = "Nintendo Switch";
+  gCpuInfo.model = "Tegra X1 (Cortex-A57)";
+  gCpuInfo.has_neon = true;
 #else
   gCpuInfo.brand = "Unknown Brand";
   gCpuInfo.model = "Unknown Model";

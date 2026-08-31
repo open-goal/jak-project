@@ -11,8 +11,14 @@
 #include "game/runtime.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
+#if !defined(__SWITCH__)
 #include "third-party/imgui/imgui_stdlib.h"
+#endif
 
 SubtitleEditor::SubtitleEditor() {
   m_filter_cutscenes = m_filter_placeholder;

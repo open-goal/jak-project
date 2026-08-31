@@ -9,7 +9,11 @@
 #include "game/graphics/opengl_renderer/slime_lut.h"
 #include "game/graphics/texture/TexturePool.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -59,6 +63,12 @@
 //  This breaks the fade-out/thresholding, and likely the colors. But it still looks vaguely like
 //  clouds.
 void debug_save_opengl_texture(const std::string& out, GLuint texture) {
+#if defined(__SWITCH__)
+  // glGetTexLevelParameteriv/glGetTexImage don't exist in GLES; this is debug-only texture
+  // dump tooling, not on any real gameplay path.
+  (void)out;
+  (void)texture;
+#else
   glBindTexture(GL_TEXTURE_2D, texture);
   int w, h;
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
@@ -67,6 +77,7 @@ void debug_save_opengl_texture(const std::string& out, GLuint texture) {
   std::vector<u8> data(w * h * 4);
   glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data.data());
   file_util::write_rgba_png(out, data.data(), w, h);
+#endif
 }
 
 /*!
@@ -569,15 +580,15 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
 
   // create the slime LUT texture
   glGenTextures(1, &m_slime_lut_texture);
-  glBindTexture(GL_TEXTURE_1D, m_slime_lut_texture);
+  glBindTexture(GL_TEXTURE_2D, m_slime_lut_texture);
   std::vector<u8> slime_data;
   for (auto x : kSlimeLutData) {
     slime_data.push_back(x * 255);
   }
-  glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, 256, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 1, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                slime_data.data());
-  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glBindTexture(GL_TEXTURE_2D, 0);
 
   shader.activate();
@@ -689,11 +700,17 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
 }
 
 void imgui_show_tex(GLuint tex) {
+#if !defined(__SWITCH__)
+  // glGetTexLevelParameteriv doesn't exist in GLES; this is imgui debug-window-only tooling
+  // (see the file's imgui_stub.h include above), not on any real gameplay path.
   glBindTexture(GL_TEXTURE_2D, tex);
   int w, h;
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
   ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(w, h));
+#else
+  (void)tex;
+#endif
 }
 
 void TextureAnimator::draw_debug_window() {
@@ -2771,6 +2788,11 @@ int update_opengl_noise_texture(GLuint texture,
 }
 
 void debug_save_opengl_u8_texture(const std::string& out, GLuint texture) {
+#if defined(__SWITCH__)
+  // See debug_save_opengl_texture above -- same GLES gap, same debug-only tooling.
+  (void)out;
+  (void)texture;
+#else
   glBindTexture(GL_TEXTURE_2D, texture);
   int w, h;
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
@@ -2786,6 +2808,7 @@ void debug_save_opengl_u8_texture(const std::string& out, GLuint texture) {
     data[i * 4 + 3] = 255;
   }
   file_util::write_rgba_png(out, data.data(), w, h);
+#endif
 }
 
 void TextureAnimator::setup_sky() {
@@ -2959,7 +2982,7 @@ void TextureAnimator::run_slime(const SlimeInput& input) {
     glUniform2fv(m_uniforms.uvs, 4, uv);
 
     glActiveTexture(GL_TEXTURE10);
-    glBindTexture(GL_TEXTURE_1D, m_slime_lut_texture);
+    glBindTexture(GL_TEXTURE_2D, m_slime_lut_texture);
     glActiveTexture(GL_TEXTURE0);
 
     // Anim 1:

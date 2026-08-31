@@ -27,13 +27,30 @@
 #if defined(__APPLE__) && defined(__aarch64__)
 #include <pthread.h>  // pthread_jit_write_protect_np
 #endif
+#if defined(__SWITCH__)
+// libnx's switch/types.h does `typedef __uint128_t u128;`, which conflicts with the
+// `struct u128` this codebase already declared above (common/common_types.h). Rename the
+// token for the scope of this include only -- every internal libnx use of "u128" (the typedef
+// itself and any struct fields of that type) becomes "nx_u128" consistently, and our own
+// `u128` is untouched afterward.
+#define u128 nx_u128
+#include <switch.h>  // Jit: dual RW/RX aliased JIT memory
+#undef u128
+#endif
 
 namespace emitter {
 class CodeTester {
  private:
   int code_buffer_size = 0;
   int code_buffer_capacity = 0;
+  // On most platforms this is both the writable and executable address. On Switch, libnx's Jit
+  // gives separate RW/RX aliases of the same physical pages, so code_buffer is the RW one here
+  // and code_buffer_rx (below) is the one actually called.
   u8* code_buffer = nullptr;
+#if defined(__SWITCH__)
+  Jit m_jit{};
+  u8* code_buffer_rx = nullptr;
+#endif
   RegisterInfo m_info;
   ObjectGenerator m_gen;
 
@@ -66,27 +83,10 @@ class CodeTester {
    */
   template <typename T>
   T execute_ret(u64 in0, u64 in1, u64 in2, u64 in3) {
-#if defined(__aarch64__)
-    // allegedly needed because ARM requires flushing after writing new instructions
-    // on x86 it does nothing
-    __builtin___clear_cache((char*)code_buffer, (char*)code_buffer + code_buffer_size);
-#endif
-    // clang-format off
-#if defined(__APPLE__) && defined(__aarch64__)
-  // block writes while generated code runs
-  pthread_jit_write_protect_np(1);
-  u64 result_u64 = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
-  pthread_jit_write_protect_np(0);
-  T result_T;
-  memcpy(&result_T, &result_u64, sizeof(T));
-  return result_T;
-#else
-  u64 result_u64 = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
-  T result_T;
-  memcpy(&result_T, &result_u64, sizeof(T));
-  return result_T;
-#endif
-    // clang-format on
+    u64 result_u64 = execute(in0, in1, in2, in3);
+    T result_T;
+    memcpy(&result_T, &result_u64, sizeof(T));
+    return result_T;
   }
 
   /*!

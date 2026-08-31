@@ -36,7 +36,11 @@ u64 call_goal_on_stack(Ptr<Function> f, u64 rsp, u64 st, void* offset);
 
 // align the host stack for each ABI
 #ifdef __aarch64__
-constexpr u64 GOAL_STACK_TOP_OFFSET = 16;
+// [Jak][DIAG] Was 16 -- the absolute minimum, putting the goal stack in the very last 16 bytes
+// of the 128MB g_ee_main_mem mapping. Testing whether Citron has a boundary bug in its fast
+// memory-access path right at the edge of a large mapped region by moving the stack well clear
+// of that edge.
+constexpr u64 GOAL_STACK_TOP_OFFSET = 0x10000;
 #else
 constexpr u64 GOAL_STACK_TOP_OFFSET = 8;
 #endif

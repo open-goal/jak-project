@@ -3,7 +3,11 @@
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 namespace {
 // Converts fixed point (with 4 bits for decimal) to floating point.

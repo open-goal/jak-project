@@ -53,6 +53,17 @@ struct ThreadID {
 };
 
 struct MemoryHandle {};
+#elif defined(__SWITCH__)
+// There is no cross-process ptrace-style debugger attach on Horizon OS. This is only used by
+// goalc's desktop live-debugger workflow, which doesn't apply to a shipped Switch NRO -- these
+// are stubs so `common` still links; every function below just fails/no-ops.
+struct ThreadID {
+  std::string to_string() const { return "switch"; }
+  explicit ThreadID(const std::string&) {}
+  ThreadID() = default;
+};
+
+struct MemoryHandle {};
 #endif
 
 /*!

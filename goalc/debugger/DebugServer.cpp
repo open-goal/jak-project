@@ -212,7 +212,7 @@ void DebugServer::send_line(int socket, const std::string& line) {
 }
 
 void DebugServer::accept_new_clients() {
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
   socklen_t addr_len = sizeof(addr);
 #else
   int addr_len = sizeof(addr);

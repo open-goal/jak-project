@@ -40,6 +40,9 @@
 
 #if   defined(ZYAN_WINDOWS)
 #   include <windows.h>
+#elif defined(__SWITCH__)
+// No general mmap/mprotect-style API on Horizon OS (only libnx's paired-alias Jit API), and
+// nothing in this codebase's actual use of zydis calls into Zycore's memory API anyway.
 #elif defined(ZYAN_POSIX)
 #   include <sys/mman.h>
 #else
@@ -62,6 +65,14 @@ typedef enum ZyanMemoryPageProtection_
     ZYAN_PAGE_EXECUTE           = PAGE_EXECUTE,
     ZYAN_PAGE_EXECUTE_READ      = PAGE_EXECUTE_READ,
     ZYAN_PAGE_EXECUTE_READWRITE = PAGE_EXECUTE_READWRITE
+
+#elif defined(__SWITCH__)
+
+    ZYAN_PAGE_READONLY          = 0,
+    ZYAN_PAGE_READWRITE         = 1,
+    ZYAN_PAGE_EXECUTE           = 2,
+    ZYAN_PAGE_EXECUTE_READ      = 3,
+    ZYAN_PAGE_EXECUTE_READWRITE = 4
 
 #elif defined(ZYAN_POSIX)
 

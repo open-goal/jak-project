@@ -6,7 +6,11 @@
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 namespace {
 
@@ -37,17 +41,43 @@ u32 process_sprite_chunk_header(DmaFollower& dma) {
 constexpr int SPRITE_RENDERER_MAX_SPRITES = 1920 * 12;
 }  // namespace
 
+#if defined(__SWITCH__)
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_sp3(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 Sprite3::Sprite3(const std::string& name, int my_id)
     : BucketRenderer(name, my_id), m_direct(name, my_id, 1024) {
+#if defined(__SWITCH__)
+  boot_log_sp3("[sprite3] embedded m_direct constructed, about to opengl_setup\n");
+#endif
   opengl_setup();
+#if defined(__SWITCH__)
+  boot_log_sp3("[sprite3] opengl_setup done\n");
+#endif
 }
 
 void Sprite3::opengl_setup() {
+#if defined(__SWITCH__)
+  boot_log_sp3("[sprite3] about to opengl_setup_normal\n");
+#endif
   // Set up OpenGL for 'normal' sprites
   opengl_setup_normal();
+#if defined(__SWITCH__)
+  boot_log_sp3("[sprite3] opengl_setup_normal done, about to opengl_setup_distort\n");
+#endif
 
   // Set up OpenGL for distort sprites
   opengl_setup_distort();
+#if defined(__SWITCH__)
+  boot_log_sp3("[sprite3] opengl_setup_distort done\n");
+#endif
 }
 
 void Sprite3::opengl_setup_normal() {

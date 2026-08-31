@@ -14,6 +14,16 @@
 #include "game/kernel/common/kprint.h"
 #include "game/sce/sif_ee.h"
 
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_kdgo(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 ee::sceSifClientData cd[6];  //! client data for each IOP Remove Procedure Call.
 u32 sShowStallMsg;           //! setting to show a "stalled on iop" message
 u16 x[8];                    //! stupid temporary for storing a message
@@ -81,6 +91,13 @@ u32 RpcBusy(s32 channel) {
  */
 void RpcSync(s32 channel) {
   if (RpcBusy(channel)) {
+#if defined(__SWITCH__)
+    {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "[RpcSync] entering busy-wait, channel=%d\n", channel);
+      boot_log_kdgo(buf);
+    }
+#endif
     if (sShowStallMsg) {
       Msg(6, "STALL: [kernel] waiting for IOP on RPC port #%d\n", channel);
     }

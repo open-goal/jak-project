@@ -134,11 +134,13 @@ ExtractorErrorCode decompile(const fs::path& in_folder,
 const std::unordered_map<std::string, GameIsoFlags> game_iso_flag_names = {
     {"jak1-black-label", FLAG_JAK1_BLACK_LABEL}};
 
-ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& data_subfolder) {
+ExtractorErrorCode compile(const fs::path& iso_data_path,
+                           const std::string& data_subfolder,
+                           emitter::InstructionSet instr_set) {
   // Determine which config to use from the database
   const auto version_info = get_version_info_or_default(iso_data_path);
 
-  Compiler compiler(game_name_to_version(version_info.game_name), emitter::InstructionSet::X86);
+  Compiler compiler(game_name_to_version(version_info.game_name), instr_set);
   compiler.make_system().set_constant("*iso-data*", absolute(iso_data_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
   file_util::set_iso_data_dir(absolute(iso_data_path));
@@ -190,6 +192,7 @@ int main(int argc, char** argv) {
   bool flag_folder = false;
   std::string game_name = "jak1";
   std::string decomp_config_override = "{}";
+  std::string instr_set_name = "x86";
 
   lg::initialize();
 
@@ -213,9 +216,22 @@ int main(int argc, char** argv) {
   app.add_flag("-c,--compile", flag_compile, "Compile the game");
   app.add_flag("-p,--play", flag_play, "Play the game");
   app.add_flag("-f,--folder", flag_folder, "Take ISO input from a folder");
+  app.add_option("--instruction-set", instr_set_name,
+                 "Select the x86 or ARM64 code generation backend for the compile step. "
+                 "Defaults to 'x86'.");
   define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
+
+  emitter::InstructionSet instr_set;
+  if (instr_set_name == "x86") {
+    instr_set = emitter::InstructionSet::X86;
+  } else if (instr_set_name == "arm64") {
+    instr_set = emitter::InstructionSet::ARM64;
+  } else {
+    lg::error("Instruction set '{}' must be 'x86' or 'arm64'", instr_set_name);
+    return 1;
+  }
 
   lg::info("Working Directory - {}", fs::current_path().string());
 
@@ -391,7 +407,7 @@ int main(int argc, char** argv) {
   }
 
   if (flag_compile) {
-    const auto status_code = compile(iso_data_path, data_subfolder);
+    const auto status_code = compile(iso_data_path, data_subfolder, instr_set);
     if (status_code != ExtractorErrorCode::SUCCESS) {
       return static_cast<int>(status_code);
     }

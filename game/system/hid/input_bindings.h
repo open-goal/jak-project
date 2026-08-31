@@ -11,7 +11,11 @@
 #include "common/log/log.h"
 #include "common/util/json_util.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/sdl3_compat.h"
+#else
 #include "SDL3/SDL.h"
+#endif
 
 #define GET_PRESSURE_BUTTON_DATA(button_name) \
   {button_data.at(ButtonIndex::button_name),  \

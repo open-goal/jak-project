@@ -152,11 +152,11 @@ void Shrub::update_load(const LevelData* loader_data) {
 
     glActiveTexture(GL_TEXTURE10);
     glGenTextures(1, &m_trees[l_tree].time_of_day_texture);
-    glBindTexture(GL_TEXTURE_1D, m_trees[l_tree].time_of_day_texture);
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
+    glBindTexture(GL_TEXTURE_2D, m_trees[l_tree].time_of_day_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 1, 0, GL_RGBA,
                  GL_UNSIGNED_INT_8_8_8_8, nullptr);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     glBindVertexArray(0);
   }
@@ -211,7 +211,7 @@ bool Shrub::setup_for_level(const std::string& level, SharedRenderState* render_
 
 void Shrub::discard_tree_cache() {
   for (auto& tree : m_trees) {
-    glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+    glBindTexture(GL_TEXTURE_2D, tree.time_of_day_texture);
     glDeleteTextures(1, &tree.time_of_day_texture);
     glDeleteBuffers(1, &tree.index_buffer);
     glDeleteBuffers(1, &tree.single_draw_index_buffer);
@@ -290,8 +290,8 @@ void Shrub::render_tree(int idx,
 
   Timer setup_timer;
   glActiveTexture(GL_TEXTURE10);
-  glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
-  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->color_count, GL_RGBA,
+  glBindTexture(GL_TEXTURE_2D, tree.time_of_day_texture);
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tree.colors->color_count, 1, GL_RGBA,
                   GL_UNSIGNED_INT_8_8_8_8_REV, m_color_result.data());
 
   first_tfrag_draw_setup(settings.camera, render_state, ShaderId::SHRUB);

@@ -7,7 +7,11 @@
 #include "game/graphics/texture/TexturePool.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 namespace {
 

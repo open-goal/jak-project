@@ -3,7 +3,11 @@
 #include "common/log/log.h"
 
 #include "fmt/ranges.h"
+#if defined(__SWITCH__)
+#include "game/switch/sdl3_compat.h"
+#else
 #include "third-party/SDL/include/SDL3/SDL.h"
+#endif
 
 namespace sdl_util {
 void log_error(const std::string& msg) {

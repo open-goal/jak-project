@@ -10,6 +10,16 @@
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/jak1/klink.h"
 
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_kdgo(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 namespace jak1 {
 
 RPC_Dgo_Cmd* sLastMsg;  //! Last DGO command sent to IOP
@@ -188,11 +198,25 @@ void load_and_link_dgo_from_c(const char* name,
     lg::debug("[link and exec] {:18s} {} {:6d} heap-use {:8d} {:8d}: 0x{:x}", objName,
               lastObjectLoaded, objSize, kheapused(kglobalheap),
               kdebugheap.offset ? kheapused(kdebugheap) : 0, kglobalheap->current.offset);
+#if defined(__SWITCH__)
+    {
+      char buf[128];
+      snprintf(buf, sizeof(buf), "[load_and_link_dgo_from_c] about to link_and_exec obj=%s size=%u last=%u\n",
+                objName, objSize, lastObjectLoaded);
+      boot_log_kdgo(buf);
+    }
+#endif
     link_and_exec(obj, objName, objSize, heap, linkFlag, jump_from_c_to_goal);  // link now!
+#if defined(__SWITCH__)
+    boot_log_kdgo("[load_and_link_dgo_from_c] link_and_exec returned\n");
+#endif
 
     // inform IOP we are done
     if (!lastObjectLoaded) {
       ContinueLoadingDGO(Ptr<u8>((heap->current + 0x3f).offset & 0xffffffc0));
+#if defined(__SWITCH__)
+      boot_log_kdgo("[load_and_link_dgo_from_c] ContinueLoadingDGO done\n");
+#endif
     }
   }
   sShowStallMsg = oldShowStall;

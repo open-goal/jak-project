@@ -4,6 +4,17 @@
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
 
+#if defined(__SWITCH__)
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_ksc(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 // total number of symbols in the table
 s32 NumSymbols;
 

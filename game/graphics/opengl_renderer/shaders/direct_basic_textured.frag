@@ -34,7 +34,7 @@ vec4 sample_tex_px(vec2 coordf, uint unit) {
   vec2 tex_size = vec2(textureSize(tex_T20, 0));
   // but texture perspective correction is disabled.
   // current uses are on quads with the same z so it doesn't really matter.
-  return textureProj(tex_T20, vec4(coord_px / tex_size, 1, 1));
+  return textureProj(tex_T20, vec4(coord_px / tex_size, 1., 1.));
 }
 
 void main() {
@@ -52,19 +52,19 @@ void main() {
   }
 
   vec4 T0;
-  if (use_uv == 1) {
+  if (use_uv == 1u) {
     T0 = sample_tex_px(tex_coord.xy, tex_info.x);
   } else {
     T0 = sample_tex(tex_coord.xy / tex_coord.z, tex_info.x);
   }
   // y is tcc
   // z is decal
-  if (T0.w == 0) {
+  if (T0.w == 0.) {
     T0.w = ta0;
   }
 
-  if (tex_info.y == 0) {
-    if (tex_info.z == 0) {
+  if (tex_info.y == 0u) {
+    if (tex_info.z == 0u) {
       // modulate + no tcc
       color.xyz = fragment_color.xyz * T0.xyz;
       color.w = fragment_color.w;
@@ -74,7 +74,7 @@ void main() {
       color.w = fragment_color.w;
     }
   } else {
-    if (tex_info.z == 0) {
+    if (tex_info.z == 0u) {
       // modulate + tcc
       color = fragment_color * T0;
     } else {
@@ -83,7 +83,7 @@ void main() {
       color.w = T0.w;
     }
   }
-  color *= 2;
+  color *= 2.;
   color.xyz *= color_mult;
   color.w *= alpha_mult;
   if (greater) {
@@ -99,8 +99,8 @@ void main() {
       discard;
     }
   }
-  if (tex_info.w == 1) {
-    color.xyz = mix(color.xyz, fog_color.rgb, clamp(fog_color.a * fog, 0, 1));
+  if (tex_info.w == 1u) {
+    color.xyz = mix(color.xyz, fog_color.rgb, clamp(fog_color.a * fog, 0., 1.));
   }
 
 }

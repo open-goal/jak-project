@@ -19,6 +19,17 @@
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+#elif defined(__SWITCH__)
+// See CodeTester.h -- avoids a struct-u128 vs typedef-u128 collision with libnx. Also rename
+// libnx's own (unrelated) Semaphore OS-primitive type, which collides with game/system's own
+// PS2 IOP-kernel emulation struct of the same name.
+#define u128 nx_u128
+#define Semaphore nx_Semaphore
+#include <switch.h>
+#undef u128
+#undef Semaphore
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #include <chrono>
@@ -92,6 +103,19 @@
 
 u8* g_ee_main_mem = nullptr;
 u8* g_ee_main_mem_exec = nullptr;
+#if defined(__SWITCH__)
+static Jit g_ee_jit;
+// Diagnostic-only: lg:: logging isn't visibly routed anywhere reachable from the host while
+// bringing up the Switch port, so boot-order issues get traced via a plain SD card text file
+// instead (same technique switch_jit_test.cpp used successfully). Raw open/write/close rather
+// than stdio, since these calls run from freshly spawned SystemThreads and we want to rule out
+// stdio-buffering/reentrancy as a variable while diagnosing why nothing was showing up here.
+#include "game/switch/boot_log.h"
+
+static void boot_log(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
 std::thread::id g_main_thread_id = std::thread::id();
 GameVersion g_game_version = GameVersion::Jak1;
 BackgroundWorker g_background_worker;
@@ -152,10 +176,17 @@ void deci2_runner(SystemThreadInterface& iface) {
  * SystemThread Function for the EE (PS2 Main CPU)
  */
 void ee_runner(SystemThreadInterface& iface) {
+#if defined(__SWITCH__)
+  boot_log("[ee_runner] start\n");
+#endif
   prof().root_event();
   // Allocate Main RAM. Must have execute enabled.
   // Apple Silicon uses separate writable and executable mappings for EE memory.
+  // EE_MEM_LOW_MAP is a constexpr false (see common/goal_constants.h) -- this whole branch is
+  // dead at runtime everywhere, but a regular `if` (unlike `if constexpr`) still requires both
+  // branches to type-check, and MAP_32BIT/mmap don't exist on Switch at all.
   if (EE_MEM_LOW_MAP) {
+#if !defined(__SWITCH__)
     g_ee_main_mem =
         (u8*)mmap((void*)0x10000000, EE_MAIN_MEM_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
 #ifdef __APPLE__
@@ -164,8 +195,43 @@ void ee_runner(SystemThreadInterface& iface) {
 #else
                   MAP_ANONYMOUS | MAP_32BIT | MAP_PRIVATE | MAP_POPULATE, 0, 0);
 #endif
+#endif
   } else {
-#if defined(__APPLE__) && defined(__aarch64__)
+#if defined(__SWITCH__)
+    // Horizon enforces W^X like Apple Silicon's hardened runtime, so this needs the same
+    // separate-writable/executable-view treatment as the __APPLE__ && __aarch64__ case below --
+    // just via libnx's Jit instead of mach_vm_remap. When the homebrew loader hints the newer
+    // CodeMemory syscalls (any current Atmosphere/hbmenu setup), libnx maps both views
+    // permanently and simultaneously at jitCreate time; jitTransitionTo* then just do cache
+    // maintenance (armDCacheFlush/armICacheInvalidate), not permission changes -- confirmed by
+    // reading libnx's actual jit.c, not assumed.
+    boot_log("[ee_runner] calling jitCreate\n");
+    Result rc = jitCreate(&g_ee_jit, EE_MAIN_MEM_SIZE);
+    {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "[ee_runner] jitCreate rc=0x%x\n", rc);
+      boot_log(buf);
+    }
+    if (R_FAILED(rc)) {
+      // Without EE main memory nothing downstream can run safely -- the other worker threads
+      // (IOP/deci/ee-worker) are already started by the time we get here and don't check for
+      // this failure before touching g_ee_main_mem, so silently returning here (the pre-existing
+      // behavior, matching the equally-unhandled mmap failure path on desktop below) leaves them
+      // racing to dereference a null pointer instead of surfacing the real error.
+      boot_log("[ee_runner] FATAL: jitCreate failed, aborting\n");
+      iface.initialization_complete();
+      abort();
+    }
+    jitTransitionToWritable(&g_ee_jit);
+    g_ee_main_mem = (u8*)jitGetRwAddr(&g_ee_jit);
+    g_ee_main_mem_exec = (u8*)jitGetRxAddr(&g_ee_jit);
+    {
+      char buf[96];
+      snprintf(buf, sizeof(buf), "[ee_runner] rw=%p rx=%p\n", (void*)g_ee_main_mem,
+               (void*)g_ee_main_mem_exec);
+      boot_log(buf);
+    }
+#elif defined(__APPLE__) && defined(__aarch64__)
     // mach_vm_remap needs an anonymous writable mapping
     g_ee_main_mem = (u8*)mmap((void*)EE_MAIN_MEM_MAP, EE_MAIN_MEM_SIZE, PROT_READ | PROT_WRITE,
                               MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -176,6 +242,7 @@ void ee_runner(SystemThreadInterface& iface) {
 #endif
   }
 
+#if !defined(__SWITCH__)
   if (g_ee_main_mem == (u8*)(-1)) {
     lg::debug("Failed to initialize main memory! {}", strerror(errno));
     iface.initialization_complete();
@@ -183,6 +250,7 @@ void ee_runner(SystemThreadInterface& iface) {
   }
 
   g_ee_main_mem_exec = g_ee_main_mem;
+#endif
 
 #if defined(__APPLE__) && defined(__aarch64__)
   // map the same pages again with read and execute access
@@ -219,12 +287,32 @@ void ee_runner(SystemThreadInterface& iface) {
   iface.initialization_complete();
 
   lg::debug("[EE] Run!");
+#if defined(__SWITCH__)
+  boot_log("[ee_runner] about to memset 128MB\n");
+#endif
   memset((void*)g_ee_main_mem, 0, EE_MAIN_MEM_SIZE);
+#if defined(__SWITCH__)
+  boot_log("[ee_runner] memset done\n");
+#endif
 
+#if !defined(__SWITCH__)
   // prevent access to the first 512 kB of memory.
   // On the PS2 this is the kernel and can't be accessed either.
   // this may not work well on systems with a page size > 1 MB.
+  // libnx's Jit maps the whole region with one permission each side; it doesn't support
+  // splitting off a sub-region, so this safety net (catches a null-ish GOAL pointer bug by
+  // faulting) is just unavailable on Switch, not replicated another way.
   mprotect((void*)g_ee_main_mem, EE_MAIN_MEM_LOW_PROTECT, PROT_NONE);
+#endif
+
+#if defined(__SWITCH__)
+  // Flush the zeroed region and make the RX view current before anything can run from it.
+  // TODO(switch): this needs to run again after every GOAL object-file load, not just here at
+  // startup -- otherwise newly-linked code loaded mid-game may execute stale/uninvalidated
+  // icache contents. Not yet wired into the kernel's object loader; unverified against real
+  // gameplay since nothing has been able to run this far yet.
+  jitTransitionToExecutable(&g_ee_jit);
+#endif
   fileio_init_globals();
   jak1::kboot_init_globals();
   jak2::kboot_init_globals();
@@ -291,6 +379,9 @@ void ee_runner(SystemThreadInterface& iface) {
  * be non-blocking)
  */
 void ee_worker_runner(SystemThreadInterface& iface) {
+#if defined(__SWITCH__)
+  boot_log("[ee_worker_runner] start\n");
+#endif
   iface.initialization_complete();
   while (!iface.get_want_exit()) {
     const auto queues_weres_empty = !g_background_worker.process_queues();
@@ -304,9 +395,15 @@ void ee_worker_runner(SystemThreadInterface& iface) {
  * SystemThread function for running the IOP (separate I/O Processor)
  */
 void iop_runner(SystemThreadInterface& iface, GameVersion version) {
+#if defined(__SWITCH__)
+  boot_log("[iop_runner] start\n");
+#endif
   prof().root_event();
   prof().begin_event("iop-init");
   IOP iop;
+#if defined(__SWITCH__)
+  boot_log("[iop_runner] IOP constructed\n");
+#endif
   lg::debug("[IOP] Restart!");
   iop.reset_allocator();
   ee::LIBRARY_sceSif_register(&iop);
@@ -418,6 +515,9 @@ void null_runner(SystemThreadInterface& iface) {
  * GOAL kernel arguments are currently ignored.
  */
 RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const char** argv) {
+#if defined(__SWITCH__)
+  boot_log("[exec_runtime] start (main thread)\n");
+#endif
   prof().root_event();
   g_argc = argc;
   g_argv = argv;
@@ -441,6 +541,9 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
     if (enable_display) {
       Gfx::Init(g_game_version);
     }
+#if defined(__SWITCH__)
+    boot_log("[exec_runtime] Gfx::Init done\n");
+#endif
   }
 
   // step 1: sce library prep
@@ -514,7 +617,11 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
     Gfx::Exit();
   }
   lg::info("GOAL Runtime Shutdown (code {})", fmt::underlying(MasterExit));
+#if defined(__SWITCH__)
+  jitClose(&g_ee_jit);
+#else
   munmap(g_ee_main_mem, EE_MAIN_MEM_SIZE);
+#endif
   Discord_Shutdown();
   return MasterExit;
 }

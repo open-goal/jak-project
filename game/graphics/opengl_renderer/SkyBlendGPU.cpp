@@ -16,11 +16,19 @@ SkyBlendGPU::SkyBlendGPU() {
   for (int i = 0; i < 2; i++) {
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffers[i]);
     glBindTexture(GL_TEXTURE_2D, m_textures[i]);
+    // See opengl_utils.cpp's FramebufferTexturePair -- GL_UNSIGNED_INT_8_8_8_8_REV isn't a
+    // color-renderable (format, type) combo for unsized GL_RGBA under GLES; this is a pure
+    // render target (draw-call filled, never CPU-uploaded), so GL_UNSIGNED_BYTE is safe.
+#if defined(__SWITCH__)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 0);
+#else
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_sizes[i], m_sizes[i], 0, GL_RGBA,
                  GL_UNSIGNED_INT_8_8_8_8_REV, 0);
+#endif
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_textures[i], 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_textures[i], 0);
     GLenum draw_buffers[1] = {GL_COLOR_ATTACHMENT0};
     glDrawBuffers(1, draw_buffers);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -130,7 +138,7 @@ SkyBlendStats SkyBlendGPU::do_sky_blends(DmaFollower& dma,
     // setup for rendering!
     glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffers[buffer_idx]);
     glViewport(0, 0, m_sizes[buffer_idx], m_sizes[buffer_idx]);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_textures[buffer_idx], 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_textures[buffer_idx], 0);
     render_state->shaders[ShaderId::SKY_BLEND].activate();
 
     // if the first is set, it disables alpha. we can just clear here, so it's easier to find

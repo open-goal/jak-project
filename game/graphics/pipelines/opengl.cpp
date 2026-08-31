@@ -8,6 +8,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <regex>
 #include <sstream>
 
 #include "common/dma/dma_copy.h"
@@ -31,14 +32,33 @@
 #include "game/system/hid/sdl_util.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/sdl3_compat.h"
+#else
 #include "third-party/SDL/include/SDL3/SDL.h"
 #include "third-party/SDL/include/SDL3/SDL_hints.h"
 #include "third-party/SDL/include/SDL3/SDL_version.h"
+#endif
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_freetype.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
 #include "third-party/imgui/imgui_impl_sdl3.h"
 #include "third-party/imgui/imgui_style.h"
+#endif
+#if defined(__SWITCH__)
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_gl(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 #define STBI_WINDOWS_UTF8
 #include "common/util/dialogs.h"
 #include "common/util/string_util.h"
@@ -122,21 +142,43 @@ static int gl_init(GfxGlobalSettings& settings) {
              compiled_sdl_version, linked_sdl_version);
   }
 
+#if defined(__SWITCH__)
+  {
+    // devkitPro's SDL2 Switch video driver doesn't appear to call this implicitly the way
+    // desktop drivers do -- without it, SDL_GL_MakeCurrent's internal glGetString sanity check
+    // fails with "SDL_LoadFunction() not implemented" and the context never comes up, even
+    // though CreateWindow/CreateContext themselves report success.
+    if (SDL_GL_LoadLibrary(nullptr) != 0) {
+      lg::error("SDL_GL_LoadLibrary failed: {}", SDL_GetError());
+    }
+  }
+#endif
+
   {
     auto p = scoped_prof("startup::sdl::set_gl_attributes");
 
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     if (settings.debug) {
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
     } else {
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     }
+    // devkitPro's Switch driver stack (nouveau via EGL) only ever hands out GLES contexts --
+    // no desktop GL exists there at all. The renderer itself doesn't lean on any GL4-only
+    // feature (see the graphics/ survey), so requesting GLES 3.1 here is a context-creation
+    // change, not a rendering-logic one.
+#if defined(__SWITCH__)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+#else
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 #ifndef __APPLE__
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 #else
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+#endif
 #endif
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -154,6 +196,14 @@ static void gl_exit() {
 static void init_imgui(SDL_Window* window,
                        SDL_GLContext gl_context,
                        const std::string& glsl_version) {
+#if defined(__SWITCH__)
+  // No imgui debug overlay on Switch -- it's dev-only tooling, and porting its own SDL3
+  // backend is a separate problem from the game's own SDL3 shim.
+  (void)window;
+  (void)gl_context;
+  (void)glsl_version;
+  return;
+#else
   // check that version of the library is okay
   IMGUI_CHECKVERSION();
 
@@ -184,6 +234,7 @@ static void init_imgui(SDL_Window* window,
 
   // set up the renderer
   ImGui_ImplOpenGL3_Init(glsl_version.c_str());
+#endif
 }
 
 static std::shared_ptr<GfxDisplay> gl_make_display(int width,
@@ -194,6 +245,20 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                                    bool is_main) {
   // Setup the window
   prof().instant_event("ROOT");
+#if defined(__SWITCH__)
+  // The nwindow/swapchain is created at this size and SDL never resizes it afterwards, so the
+  // caller's 640x480 default left the guest presenting a 640x480 surface while the renderer drew
+  // at the display resolution -- everything outside the bottom-left 640x480 of each frame was
+  // discarded, which is why the image looked magnified and cropped. Citron's own log showed it:
+  // "DequeueBuffer: w=640 h=480" every frame. Create the window at the real display size.
+  {
+    const SDL_DisplayMode* dm = SDL_GetCurrentDisplayMode(1);
+    if (dm && dm->w > 0 && dm->h > 0) {
+      width = dm->w;
+      height = dm->h;
+    }
+  }
+#endif
   prof().begin_event("startup::sdl::create_window");
   SDL_Window* window =
       SDL_CreateWindow(title, width, height,
@@ -236,7 +301,13 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   if (!gl_inited) {
     {
       auto p = scoped_prof("startup::sdl::glad_init");
+#if defined(__SWITCH__)
+      boot_log_gl("[opengl] about to gladLoadGLLoader\n");
+#endif
       gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
+#if defined(__SWITCH__)
+      boot_log_gl("[opengl] gladLoadGLLoader done, about to gladLoadGL\n");
+#endif
       if (!gladLoadGL()) {
         lg::error("GL init fail");
         dialogs::create_error_message_dialog("Critical Error Encountered",
@@ -245,10 +316,65 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
                                              "supports this and your drivers are up to date.");
         return NULL;
       }
+#if defined(__SWITCH__)
+      // glad is a desktop-GL loader and gates each entry point on the version string. Mesa
+      // reports "OpenGL ES 3.1", so glad loads its 1.0-3.1 blocks and skips the 4.x ones --
+      // leaving entry points that GLES 3.1 does provide (glClearDepthf, glMemoryBarrier,
+      // glDispatchCompute, ...) as null pointers that fault the moment a renderer calls them.
+      // Resolve those by name and report anything still missing rather than jumping to 0.
+      {
+        static const char* kEsProvided[] = {
+            "glClearDepthf",        "glDepthRangef",        "glMemoryBarrier",
+            "glDispatchCompute",    "glBindImageTexture",   "glTexStorage2D",
+            "glTexStorage3D",       "glDrawElementsIndirect", "glDrawArraysIndirect",
+            "glBindVertexBuffer",   "glVertexAttribFormat", "glVertexAttribIFormat",
+            "glVertexAttribBinding", "glVertexBindingDivisor", "glFramebufferParameteri",
+            "glGetProgramBinary",   "glProgramBinary",      "glProgramParameteri",
+            "glReleaseShaderCompiler", "glShaderBinary",    "glGetProgramInterfaceiv",
+            "glGetProgramResourceIndex", "glGetProgramResourceiv", "glGetProgramResourceLocation",
+            "glShaderStorageBlockBinding",
+        };
+        void** kSlots[] = {
+            (void**)&glad_glClearDepthf,        (void**)&glad_glDepthRangef,
+            (void**)&glad_glMemoryBarrier,      (void**)&glad_glDispatchCompute,
+            (void**)&glad_glBindImageTexture,   (void**)&glad_glTexStorage2D,
+            (void**)&glad_glTexStorage3D,       (void**)&glad_glDrawElementsIndirect,
+            (void**)&glad_glDrawArraysIndirect, (void**)&glad_glBindVertexBuffer,
+            (void**)&glad_glVertexAttribFormat, (void**)&glad_glVertexAttribIFormat,
+            (void**)&glad_glVertexAttribBinding, (void**)&glad_glVertexBindingDivisor,
+            (void**)&glad_glFramebufferParameteri, (void**)&glad_glGetProgramBinary,
+            (void**)&glad_glProgramBinary,      (void**)&glad_glProgramParameteri,
+            (void**)&glad_glReleaseShaderCompiler, (void**)&glad_glShaderBinary,
+            (void**)&glad_glGetProgramInterfaceiv, (void**)&glad_glGetProgramResourceIndex,
+            (void**)&glad_glGetProgramResourceiv, (void**)&glad_glGetProgramResourceLocation,
+            (void**)&glad_glShaderStorageBlockBinding,
+        };
+        for (size_t i = 0; i < sizeof(kSlots) / sizeof(kSlots[0]); i++) {
+          char buf[128];
+          if (!*kSlots[i]) {
+            *kSlots[i] = (void*)SDL_GL_GetProcAddress(kEsProvided[i]);
+            snprintf(buf, sizeof(buf), "[opengl] glad null: %s -> %s\n", kEsProvided[i],
+                     *kSlots[i] ? "resolved" : "STILL NULL");
+            boot_log_gl(buf);
+          }
+        }
+      }
+      // SDL_GL_GetProcAddress sets SDL's error string on every miss (devkitPro's SDL2 has no
+      // SDL_LoadFunction), and it persists: the next SDL_GetError() caller downstream reports
+      // "Failed loading glShaderStorageBlockBinding" as the cause of an unrelated failure.
+      SDL_ClearError();
+      boot_log_gl("[opengl] gladLoadGL succeeded\n");
+#endif
     }
     {
       auto p = scoped_prof("startup::sdl::gfx_data_init");
+#if defined(__SWITCH__)
+      boot_log_gl("[opengl] about to construct GraphicsData\n");
+#endif
       g_gfx_data = std::make_unique<GraphicsData>(game_version);
+#if defined(__SWITCH__)
+      boot_log_gl("[opengl] GraphicsData constructed\n");
+#endif
     }
     gl_inited = true;
     const char* gl_version = (const char*)glGetString(GL_VERSION);
@@ -356,6 +482,20 @@ void GLDisplay::init_splash() {
   auto frag_src =
       file_util::read_text_file(file_util::get_file_path({shader_folder, "splash.frag"}));
 
+#if defined(__SWITCH__)
+  // This shader is compiled through its own ad-hoc path here, not through Shader.cpp, so it
+  // never got the desktop-GLSL-410 -> GLSL ES swap that every other shader already has (see
+  // Shader.cpp's version_410_line regex). Without it, this compile fails every single frame
+  // (m_splash_program stays 0, so init_splash() retries from scratch each frame) since nothing
+  // ever marks it done -- real, continuous overhead on the render thread the whole time the
+  // splash screen is up.
+  const std::regex version_410_line("#version 410[^\r\n]*");
+  const std::string gles_header =
+      "#version 310 es\nprecision highp float;\nprecision highp int;";
+  vert_src = std::regex_replace(vert_src, version_410_line, gles_header);
+  frag_src = std::regex_replace(frag_src, version_410_line, gles_header);
+#endif
+
   constexpr int len = 1024;
   GLint compile_ok;
   char err[len];
@@ -411,6 +551,20 @@ void GLDisplay::init_splash() {
   }
 
   glGenVertexArrays(1, &m_splash_vao);
+  glBindVertexArray(m_splash_vao);
+  // This shader draws a full-screen quad using only gl_VertexID (no real vertex attributes),
+  // which is spec-legal but has proven unreliable on this Mesa/nouveau GLES driver in other
+  // places tonight (glVertexAttribDivisor hanging, glFramebufferTexture being unreliable, etc.).
+  // A VAO with zero enabled attribute arrays appears to be another instance of that: binding a
+  // single dummy attribute (never read by the shader) makes the draw behave correctly.
+  glGenBuffers(1, &m_splash_dummy_vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, m_splash_dummy_vbo);
+  constexpr float dummy_data[4] = {0.f, 0.f, 0.f, 0.f};
+  glBufferData(GL_ARRAY_BUFFER, sizeof(dummy_data), dummy_data, GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, 0, nullptr);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
 }
 
 void GLDisplay::draw_splash(int fb_w, int fb_h) {
@@ -441,6 +595,9 @@ GLDisplay::~GLDisplay() {
     glDeleteProgram(m_splash_program);
   if (m_splash_vao)
     glDeleteVertexArrays(1, &m_splash_vao);
+  if (m_splash_dummy_vbo)
+    glDeleteBuffers(1, &m_splash_dummy_vbo);
+#if !defined(__SWITCH__)
   // Cleanup ImGUI
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr;
@@ -448,6 +605,7 @@ GLDisplay::~GLDisplay() {
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
+#endif
   // Cleanup SDL
   SDL_GL_DestroyContext(m_gl_context);
   SDL_DestroyWindow(m_window);
@@ -570,12 +728,14 @@ void GLDisplay::process_sdl_events() {
       auto p = scoped_prof("sdl-display-manager");
       m_display_manager->process_sdl_event(evt);
     }
+#if !defined(__SWITCH__)
     if (!m_should_quit) {
       {
         auto p = scoped_prof("imgui-sdl-process");
         ImGui_ImplSDL3_ProcessEvent(&evt);
       }
     }
+#endif
     {
       auto p = scoped_prof("sdl-input-monitor-process-event");
       m_input_manager->process_sdl_event(evt);
@@ -594,6 +754,7 @@ void GLDisplay::render() {
   // approach). Binding handling is still taken care of by the event code though.
   {
     auto p = scoped_prof("sdl-input-monitor-poll-for-kb-mouse");
+#if !defined(__SWITCH__)
     ImGuiIO& io = ImGui::GetIO();
     if (io.WantCaptureKeyboard) {
       m_input_manager->clear_keyboard_actions();
@@ -605,6 +766,11 @@ void GLDisplay::render() {
     } else {
       m_input_manager->poll_mouse_data();
     }
+#else
+    // No imgui on Switch to ever want to capture input, so always poll for real.
+    m_input_manager->poll_keyboard_data();
+    m_input_manager->poll_mouse_data();
+#endif
     m_input_manager->finish_polling();
   }
   // Now process SDL Events
@@ -620,6 +786,7 @@ void GLDisplay::render() {
     m_input_manager->process_ee_events();
   }
 
+#if !defined(__SWITCH__)
   // imgui start of frame
   {
     auto p = scoped_prof("imgui-new-frame");
@@ -627,6 +794,7 @@ void GLDisplay::render() {
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
   }
+#endif
 
   // framebuffer size
   int fbuf_w, fbuf_h;
@@ -669,6 +837,7 @@ void GLDisplay::render() {
     }
   }
 
+#if !defined(__SWITCH__)
   // render debug
   if (is_imgui_visible()) {
     auto p = scoped_prof("debug-gui");
@@ -679,6 +848,7 @@ void GLDisplay::render() {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   }
+#endif
 
   // actual vsync
   g_gfx_data->debug_gui.finish_frame();

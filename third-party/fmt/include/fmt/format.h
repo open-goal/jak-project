@@ -44,6 +44,9 @@
 #  include <cmath>    // std::signbit
 #  include <cstddef>  // std::byte
 #  include <cstdint>  // uint32_t
+#  include <cstdlib>  // malloc/free -- must be visible before detail::allocator below for
+                       // two-phase lookup; some C library header configurations don't make
+                       // free() visible via any earlier transitive include in this file.
 #  include <cstring>  // std::memcpy
 #  include <limits>   // std::numeric_limits
 #  include <new>      // std::bad_alloc

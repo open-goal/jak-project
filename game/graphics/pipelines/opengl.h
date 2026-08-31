@@ -11,7 +11,11 @@
 #include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/sdl3_compat.h"
+#else
 #include "third-party/SDL/include/SDL3/SDL.h"
+#endif
 #include "third-party/glad/include/glad/glad.h"
 
 class GLDisplay : public GfxDisplay {
@@ -61,6 +65,7 @@ class GLDisplay : public GfxDisplay {
   GLuint m_splash_texture = 0;
   GLuint m_splash_program = 0;
   GLuint m_splash_vao = 0;
+  GLuint m_splash_dummy_vbo = 0;
   void init_splash();
   void draw_splash(int fb_w, int fb_h);
 };

@@ -162,6 +162,13 @@ Reader::Reader() {
  * Prompt the user and read the result.
  */
 std::optional<Object> Reader::read_from_stdin(const std::string& prompt, REPL::Wrapper& repl) {
+#if defined(__SWITCH__)
+  // No stdin/interactive terminal on Horizon OS, and repl_wrapper.cpp (real Wrapper::readline
+  // impl) isn't built for Switch at all -- see repl_wrapper.h.
+  (void)prompt;
+  (void)repl;
+  return {};
+#else
   // escape code will make sure that we remove any color
   std::string prompt_full = "\033[0m" + prompt;
 
@@ -183,6 +190,7 @@ std::optional<Object> Reader::read_from_stdin(const std::string& prompt, REPL::W
   } else {
     return {};
   }
+#endif
 }
 
 /*!

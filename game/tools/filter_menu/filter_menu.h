@@ -5,7 +5,11 @@
 
 #include "common/util/json_util.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 struct DebugTextFilter {
   enum class Type { CONTAINS, NOT_CONTAINS, REGEX };

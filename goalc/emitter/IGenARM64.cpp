@@ -2605,7 +2605,9 @@ InstructionARM64 trap() {
 
 InstructionARM64 null() {
   // dummy empty byte
-  return InstructionARM64(0b0);
+  InstructionARM64 result(0b0);
+  result.is_null = true;
+  return result;
 }
 
 /////////////////////////////

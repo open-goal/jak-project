@@ -82,7 +82,7 @@ void main() {
   vec4 transformed;
 
   // STEP 2: perspective transform for distance
-  vec4 transformed_pos_vf02 = matrix_transform(rendermode == 2 ? hud_matrix : camera, position);
+  vec4 transformed_pos_vf02 = matrix_transform(rendermode == 2u ? hud_matrix : camera, position);
   float Q = pfog0 / transformed_pos_vf02.w;
 
 
@@ -97,12 +97,12 @@ void main() {
 
 
   // STEP 4: actual vertex transformation
-  if (rendermode == 3) { // 3D sprites
+  if (rendermode == 3u) { // 3D sprites
 
     mat3 rot = sprite_quat_to_rot(quat);
     transformed = sprite_transform2(position, xyz_array[vert_id], rot, sx, sy);
 
-  } else if (rendermode == 1) { // 2D sprites
+  } else if (rendermode == 1u) { // 2D sprites
 
     transformed_pos_vf02.xyz *= Q;
     vec4 offset_pos_vf10 = transformed_pos_vf02 + hvdf_offset;
@@ -129,9 +129,9 @@ void main() {
 
     transformed = offset_pos_vf10 + vf12_rotated * xy0_vf19.x + vf13_rotated_trans * xy0_vf19.y;
 
-  } else if (rendermode == 2) { // hud sprites
+  } else if (rendermode == 2u) { // hud sprites
     transformed_pos_vf02.xyz *= Q;
-    vec4 offset_pos_vf10 = transformed_pos_vf02 + (matrix == 0 ? hud_hvdf_offset : hud_hvdf_user[matrix - 1]);
+    vec4 offset_pos_vf10 = transformed_pos_vf02 + (matrix == 0u ? hud_hvdf_offset : hud_hvdf_user[matrix - 1u]);
 
     // NOTE: no max scale for hud
     scales_vf01.z = max(scales_vf01.z, min_scale);
@@ -160,12 +160,12 @@ void main() {
   transformed.xy -= (2048.);
 
   // correct z scale
-  transformed.z /= (8388608);
-  transformed.z -= 1;
+  transformed.z /= (8388608.);
+  transformed.z -= 1.;
 
   // correct xy scale
-  transformed.x /= (256);
-  transformed.y /= -(128);
+  transformed.x /= (256.);
+  transformed.y /= -(128.);
 
   // hack
   transformed.xyz *= transformed.w;
@@ -174,7 +174,7 @@ void main() {
   // scissoring area adjust
   gl_Position.y *= SCISSOR_ADJUST;
 
-  fragment_color.w *= 2;
+  fragment_color.w *= 2.;
 
   tex_info = tex_info_in.xy;
 }

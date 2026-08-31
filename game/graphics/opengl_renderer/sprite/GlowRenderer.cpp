@@ -1,6 +1,10 @@
 #include "GlowRenderer.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 /*
  * The glow renderer draws a sprite, but only if the center of the sprite is "visible".

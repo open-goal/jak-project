@@ -1,6 +1,10 @@
 #include "Shadow2.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 Shadow2::Shadow2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
   m_vertex_buffer.resize(kMaxVerts);
@@ -495,9 +499,13 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
     if (m_debug_draw_volume) {
       glDisable(GL_BLEND);
       glUniform4f(m_ogl.uniforms.color, 0., 0.0, 0., 0.5);
+      #if !defined(__SWITCH__)
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      #endif
       glDrawElements(GL_TRIANGLE_STRIP, (m_front_index_buffer_used - 6), GL_UNSIGNED_INT, nullptr);
+      #if !defined(__SWITCH__)
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      #endif
       glEnable(GL_BLEND);
       prof.add_draw_call();
       prof.add_tri(m_front_index_buffer_used / 3);
@@ -520,9 +528,13 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
     if (m_debug_draw_volume) {
       glDisable(GL_BLEND);
       glUniform4f(m_ogl.uniforms.color, 0., 0.0, 0., 0.5);
+      #if !defined(__SWITCH__)
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      #endif
       glDrawElements(GL_TRIANGLE_STRIP, (m_back_index_buffer_used - 0), GL_UNSIGNED_INT, nullptr);
+      #if !defined(__SWITCH__)
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      #endif
       glEnable(GL_BLEND);
       prof.add_draw_call();
       prof.add_tri(m_back_index_buffer_used / 3);

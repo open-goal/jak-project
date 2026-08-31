@@ -27,6 +27,16 @@
 
 using namespace ee;
 
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_km(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
+
 namespace jak1 {
 VideoMode BootVideoMode;
 
@@ -47,10 +57,16 @@ void kboot_init_globals() {}
  * Add call to sceDeci2Reset when GOAL shuts down.
  */
 s32 goal_main(int argc, const char* const* argv) {
+#if defined(__SWITCH__)
+  boot_log_km("[goal_main] entered\n");
+#endif
   // Initialize global variables based on command line parameters
   // This call is not present in the retail version of the game
   // but the function is, and it likely goes here.
   InitParms(argc, argv);
+#if defined(__SWITCH__)
+  boot_log_km("[goal_main] InitParms done\n");
+#endif
 
   // Initialize CRC32 table for string hashing
   init_crc();
@@ -91,10 +107,23 @@ s32 goal_main(int argc, const char* const* argv) {
   // DebugSegment = 0;
 
   // Launch GOAL!
+#if defined(__SWITCH__)
+  boot_log_km("[goal_main] about to InitMachine\n");
+#endif
   if (InitMachine() >= 0) {    // init kernel
+#if defined(__SWITCH__)
+    boot_log_km("[goal_main] InitMachine ok, about to KernelCheckAndDispatch\n");
+    switch_boot_log_finish();
+#endif
     KernelCheckAndDispatch();  // run kernel
+#if defined(__SWITCH__)
+    boot_log_km("[goal_main] KernelCheckAndDispatch returned\n");
+#endif
     ShutdownMachine();         // kernel died, we should too.
   } else {
+#if defined(__SWITCH__)
+    boot_log_km("[goal_main] InitMachine FAILED\n");
+#endif
     fprintf(stderr, "InitMachine failed\n");
     exit(1);
   }

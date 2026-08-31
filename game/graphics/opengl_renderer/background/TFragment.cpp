@@ -2,7 +2,11 @@
 
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 namespace {
 bool looks_like_tfragment_dma(const DmaFollower& follow) {
@@ -337,11 +341,11 @@ void TFragment::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_k
                      tree.unpacked.indices.data(), GL_STREAM_DRAW);
 
         glGenTextures(1, &tree_cache.time_of_day_texture);
-        glBindTexture(GL_TEXTURE_1D, tree_cache.time_of_day_texture);
-        glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 0, GL_RGBA,
+        glBindTexture(GL_TEXTURE_2D, tree_cache.time_of_day_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TIME_OF_DAY_COLOR_COUNT, 1, 0, GL_RGBA,
                      GL_UNSIGNED_INT_8_8_8_8, nullptr);
-        glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glBindVertexArray(0);
       }
     }
@@ -423,8 +427,8 @@ void TFragment::render_tree(int geom,
   }
   interp_time_of_day(settings.camera.itimes, *tree.colors, m_color_result.data());
   glActiveTexture(GL_TEXTURE10);
-  glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
-  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->color_count, GL_RGBA,
+  glBindTexture(GL_TEXTURE_2D, tree.time_of_day_texture);
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tree.colors->color_count, 1, GL_RGBA,
                   GL_UNSIGNED_INT_8_8_8_8_REV, m_color_result.data());
 
   first_tfrag_draw_setup(settings.camera, render_state, ShaderId::TFRAG3);
@@ -566,7 +570,7 @@ void TFragment::discard_tree_cache() {
   for (int geom = 0; geom < GEOM_MAX; ++geom) {
     for (auto& tree : m_cached_trees[geom]) {
       if (tree.kind != tfrag3::TFragmentTreeKind::INVALID) {
-        glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+        glBindTexture(GL_TEXTURE_2D, tree.time_of_day_texture);
         glDeleteTextures(1, &tree.time_of_day_texture);
         glDeleteBuffers(1, &tree.single_draw_index_buffer);
         glDeleteBuffers(1, &tree.index_buffer);

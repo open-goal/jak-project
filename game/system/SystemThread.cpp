@@ -1,10 +1,17 @@
+// newlib hides pthread_setname_np (used below) behind its GNU-visibility feature-test macro,
+// which is latched in by whichever header first pulls in newlib's feature-test machinery -- has
+// to be defined before any other include in this file, not just before <pthread.h>.
+#if defined(__SWITCH__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include "SystemThread.h"
 
 #include "common/common_types.h"
 #include "common/log/log.h"
 #include "common/util/unicode_util.h"
 
-#ifdef OS_POSIX
+#if defined(OS_POSIX) || defined(__SWITCH__)
 #include <pthread.h>
 #else
 // Include order matters...
@@ -97,10 +104,13 @@ void* bootstrap_thread_func(void* x) {
   SystemThread* thd = (SystemThread*)x;
   SystemThreadInterface iface(thd);
 
-#ifdef __linux
+#if defined(__linux)
   pthread_setname_np(pthread_self(), thd->name.c_str());
 #elif __APPLE__
   pthread_setname_np(thd->name.c_str());
+#elif defined(__SWITCH__)
+  // newlib declares pthread_setname_np (behind _GNU_SOURCE) but devkitA64's libc doesn't
+  // actually implement it -- compiles, fails to link. Just a debug label, safe to skip.
 #else
   SetThreadDescription(GetCurrentThread(), (LPCWSTR)utf8_string_to_wide_string(thd->name).c_str());
 #endif

@@ -21,21 +21,22 @@ void main() {
   // for each vertex, we need to know which one it is. The order is always 2
   // vertices scaled by sizeX, 2 scaled by sizeY (sizeZ for tex coords), and
   // finally the center vertex which isn't modified.
-  float slice_vert_id = mod(gl_VertexID, 5);
+  // GLSL's mod() is float-only (unlike % which is int-only) -- gl_VertexID needs an explicit cast.
+  float slice_vert_id = mod(float(gl_VertexID), 5.);
 
   vec2 texture_coord = vec2(instance_xyz_s.w, instance_scale_t.w);
-  if (slice_vert_id < 2) {
+  if (slice_vert_id < 2.) {
     texture_coord += st * instance_scale_t.x;
-  } else if (slice_vert_id < 4) {
+  } else if (slice_vert_id < 4.) {
     texture_coord += st * instance_scale_t.z;
   }
 
   tex_coord = texture_coord;
 
   vec3 position = instance_xyz_s.xyz;
-  if (slice_vert_id < 2) {
+  if (slice_vert_id < 2.) {
     position += xyz * instance_scale_t.x;
-  } else if (slice_vert_id < 4) {
+  } else if (slice_vert_id < 4.) {
     position += xyz * instance_scale_t.y;
   }
 
@@ -44,11 +45,11 @@ void main() {
   // correct xy offset
   transformed.xy -= (2048.);
   // correct z scale
-  transformed.z /= (8388608);
-  transformed.z -= 1;
+  transformed.z /= (8388608.);
+  transformed.z -= 1.;
   // correct xy scale
-  transformed.x /= (256);
-  transformed.y /= -(128);
+  transformed.x /= (256.);
+  transformed.y /= -(128.);
   transformed.y *= HEIGHT_SCALE;
 
   gl_Position = transformed;

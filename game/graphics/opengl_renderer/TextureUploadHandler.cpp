@@ -7,7 +7,11 @@
 #include "game/graphics/pipelines/opengl.h"
 
 #include "fmt/format.h"
+#if defined(__SWITCH__)
+#include "game/switch/imgui_stub.h"
+#else
 #include "third-party/imgui/imgui.h"
+#endif
 
 TextureUploadHandler::TextureUploadHandler(const std::string& name,
                                            int my_id,

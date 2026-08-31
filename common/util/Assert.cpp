@@ -23,6 +23,11 @@ void private_assert_failed(const char* expr,
                     expr, msg, file, line, function);
     lg::die("{}", log);
   }
+#if defined(__SWITCH__)
+  // -O3 inlines Ptr<T>::operator*, so return_address(0) is the real offending call site.
+  // addr2line these against build-switch/game/gk to name it.
+  lg::error("assert call site: {}", __builtin_return_address(0));
+#endif
   abort();
 }
 

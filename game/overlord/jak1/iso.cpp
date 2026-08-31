@@ -23,6 +23,16 @@
 #include "game/overlord/jak1/dma.h"
 #include "game/overlord/jak1/fake_iso.h"
 #include "game/overlord/jak1/srpc.h"
+
+#if defined(__SWITCH__)
+#include <fcntl.h>
+#include <unistd.h>
+#include "game/switch/boot_log.h"
+
+static void boot_log_iso(const char* msg) {
+  switch_boot_log(msg);
+}
+#endif
 #include "game/runtime.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
@@ -116,6 +126,31 @@ u32 InitISOFS(const char* fs_mode, const char* loading_screen) {
 
   // ADDED
   isofs = &fake_iso;
+#if defined(__SWITCH__)
+  {
+    // One-shot audit: FS_PollDrive reads back null at the ISOThread call site even though
+    // fake_iso_init_globals() provably stores it, so check whether any other entry is missing too.
+    const void* const slots[] = {
+        (const void*)isofs->init,       (const void*)isofs->find,
+        (const void*)isofs->find_in,    (const void*)isofs->get_length,
+        (const void*)isofs->open,       (const void*)isofs->open_wad,
+        (const void*)isofs->close,      (const void*)isofs->begin_read,
+        (const void*)isofs->sync_read,  (const void*)isofs->load_sound_bank,
+        (const void*)isofs->load_music, (const void*)isofs->poll_drive};
+    static const char* const names[] = {"init",      "find",      "find_in",   "get_length",
+                                        "open",      "open_wad",  "close",     "begin_read",
+                                        "sync_read", "load_sbank", "load_music", "poll_drive"};
+    char buf[192];
+    snprintf(buf, sizeof(buf), "[InitISOFS] isofs=%p fake_iso=%p\n", (void*)isofs,
+             (void*)&fake_iso);
+    boot_log_iso(buf);
+    for (int i = 0; i < 12; i++) {
+      snprintf(buf, sizeof(buf), "[InitISOFS] %s = %p%s\n", names[i], slots[i],
+               slots[i] ? "" : "  <-- NULL");
+      boot_log_iso(buf);
+    }
+  }
+#endif
   (void)fs_mode;  // ignore user's request.
   // always pick fake_iso because the others are not useful.
   // END ADDED
@@ -325,8 +360,22 @@ void* RPC_DGO(unsigned int fno, void* _cmd, int y) {
  * heap, and is the only way to make sure that the entire heap can be filled.
  */
 void LoadDGO(RPC_Dgo_Cmd* cmd) {
+#if defined(__SWITCH__)
+  {
+    char buf[96];
+    snprintf(buf, sizeof(buf), "[LoadDGO] entered, name=%s\n", cmd->name);
+    boot_log_iso(buf);
+  }
+#endif
   // Find the file
   FileRecord* fr = isofs->find(cmd->name);
+#if defined(__SWITCH__)
+  {
+    char buf[64];
+    snprintf(buf, sizeof(buf), "[LoadDGO] isofs->find done, fr=%p\n", (void*)fr);
+    boot_log_iso(buf);
+  }
+#endif
   if (!fr) {
     cmd->result = DGO_RPC_RESULT_ERROR;
     return;
@@ -348,12 +397,21 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
 
   // printf("LOAD DGO -- 0x%x\n", cmd->buffer1);
 
+#if defined(__SWITCH__)
+  boot_log_iso("[LoadDGO] about to SendMbx(iso_mbx)\n");
+#endif
   // send the command to ISO Thread
   SendMbx(iso_mbx, &sLoadDGO);
+#if defined(__SWITCH__)
+  boot_log_iso("[LoadDGO] SendMbx done, about to WaitMbx(dgo_mbx)\n");
+#endif
 
   // wait for the ReturnMessage in the DGO callback state machine.
   // this happens when the first file is loaded
   WaitMbx(dgo_mbx);
+#if defined(__SWITCH__)
+  boot_log_iso("[LoadDGO] WaitMbx(dgo_mbx) returned\n");
+#endif
 
   if (sLoadDGO.status == CMD_STATUS_IN_PROGRESS) {
     // we got one, but there's more to load.

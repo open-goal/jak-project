@@ -16,6 +16,16 @@ FramebufferTexturePair::FramebufferTexturePair(int w, int h, u64 texture_format,
   GLint old_framebuffer;
   glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_framebuffer);
 
+#if defined(__SWITCH__)
+  // Every caller passes GL_UNSIGNED_INT_8_8_8_8_REV, a desktop-only packed pixel type that isn't
+  // a valid/color-renderable (format, type) combo for unsized GL_RGBA under GLES -- attaching it
+  // to a framebuffer fails with GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT. These are all pure
+  // render-to-texture targets (nullptr initial data, filled by draw calls, never CPU-uploaded),
+  // so the specific byte packing doesn't matter here; GL_UNSIGNED_BYTE is guaranteed
+  // color-renderable for GL_RGBA in GLES 3.x.
+  texture_format = GL_UNSIGNED_BYTE;
+#endif
+
   for (int i = 0; i < num_levels; i++) {
     glBindTexture(GL_TEXTURE_2D, m_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, num_levels);
@@ -30,7 +40,7 @@ FramebufferTexturePair::FramebufferTexturePair(int w, int h, u64 texture_format,
     glBindTexture(GL_TEXTURE_2D, m_texture);
     // I don't know if we really need to do this. whatever uses this texture should figure it out.
 
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, m_texture, i);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, m_texture, i);
     GLenum draw_buffers[1] = {GLenum(GL_COLOR_ATTACHMENT0 + i)};
     glDrawBuffers(1, draw_buffers);
     auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -85,7 +95,7 @@ FramebufferTexturePairContext::FramebufferTexturePairContext(FramebufferTextureP
   glGetIntegerv(GL_FRAMEBUFFER_BINDING, &m_old_framebuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, m_fb->m_framebuffers[level]);
   glViewport(0, 0, m_fb->m_w, m_fb->m_h);
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_fb->m_texture, level);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fb->m_texture, level);
 }
 
 void FramebufferTexturePairContext::switch_to(FramebufferTexturePair& fb) {
@@ -93,7 +103,7 @@ void FramebufferTexturePairContext::switch_to(FramebufferTexturePair& fb) {
     m_fb = &fb;
     glBindFramebuffer(GL_FRAMEBUFFER, m_fb->m_framebuffers[0]);
     glViewport(0, 0, m_fb->m_w, m_fb->m_h);
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_fb->m_texture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fb->m_texture, 0);
   }
 }
 
