@@ -23,11 +23,6 @@ void _mips2c_call_windows();
 namespace Mips2C {
 
 namespace jak1 {
-namespace draw_string { extern void link(); }
-namespace particle_adgif { extern void link(); }
-namespace sp_launch_particles_var { extern void link(); }
-namespace sp_process_block_3d { extern void link(); }
-namespace sp_process_block_2d { extern void link(); }
 namespace draw_large_polygon { extern void link(); }
 namespace init_sky_regs { extern void link(); }
 namespace clip_polygon_against_positive_hyperplane { extern void link(); }
@@ -381,10 +376,7 @@ LinkedFunctionTable gLinkedFunctionTable;
 Rng gRng;
 PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2CLinkCallbacks = {
     //////// JAK 1
-    {{"font", {jak1::draw_string::link}},
-     {"sparticle-launcher", {jak1::particle_adgif::link, jak1::sp_launch_particles_var::link}},
-     {"sparticle", {jak1::sp_process_block_3d::link, jak1::sp_process_block_2d::link}},
-     {"texture", {jak1::adgif_shader_texture_with_update::link}},
+    {{"texture", {jak1::adgif_shader_texture_with_update::link}},
      {"sky-tng",
       {jak1::draw_large_polygon::link, jak1::init_sky_regs::link,
        jak1::clip_polygon_against_positive_hyperplane::link, jak1::render_sky_quad::link,

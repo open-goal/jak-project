@@ -156,23 +156,22 @@ set(RUNTIME_SOURCE
         kernel/jakx/kscheme.cpp
         kernel/jakx/ksocket.cpp
         kernel/jakx/ksound.cpp
+
         mips2c/jak1_functions/bones.cpp
         mips2c/jak1_functions/collide_cache.cpp
         mips2c/jak1_functions/collide_edge_grab.cpp
         mips2c/jak1_functions/collide_mesh.cpp
         mips2c/jak1_functions/collide_probe.cpp
-        mips2c/jak1_functions/draw_string.cpp
         mips2c/jak1_functions/generic_merc.cpp
         mips2c/jak1_functions/merc_blend_shape.cpp
         mips2c/jak1_functions/ocean_vu0.cpp
         mips2c/jak1_functions/ocean.cpp
         mips2c/jak1_functions/shadow.cpp
         mips2c/jak1_functions/sky_tng.cpp
-        mips2c/jak1_functions/sparticle_launcher.cpp
-        mips2c/jak1_functions/sparticle.cpp
         mips2c/jak1_functions/test_func.cpp
         mips2c/jak1_functions/texture.cpp
         mips2c/jak1_functions/time_of_day.cpp
+
         mips2c/jak2_functions/bones.cpp
         mips2c/jak2_functions/collide_cache.cpp
         mips2c/jak2_functions/collide_edge_grab.cpp
