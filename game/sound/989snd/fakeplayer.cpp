@@ -22,7 +22,7 @@ FakePlayer::~FakePlayer() {}
 bool FakePlayer::Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStream, long samples) {
   static int htick = 200;
   static int stick = snd::SAMPLE_RATE;
-  
+
   for (long i = 0; i < samples; i++) {
     // The handlers expect to tick at 240hz
     // 48000/240 = 200

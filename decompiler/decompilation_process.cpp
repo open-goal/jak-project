@@ -314,11 +314,11 @@ int run_decompilation_process(decompiler::Config config,
 
     if (config.rip_streamed_audio) {
       process_streamed_audio(config, streaming_audio_out / "voice_lines", in_folder,
-                config.streamed_audio_file_names);
+                             config.streamed_audio_file_names);
       process_sfx(streaming_audio_out / "sfx", in_folder);
     }
     // Rip music for jak 1 or jak 2
-    if (config.rip_music && 
+    if (config.rip_music &&
         (config.game_version == GameVersion::Jak1 || config.game_version == GameVersion::Jak2)) {
       process_music(streaming_audio_out / "music", in_folder);
     }
