@@ -53,7 +53,6 @@ bool FakePlayer::Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStrea
 }
 
 u32 FakePlayer::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb) {
-  assert(m_handler == nullptr);
   auto bank = mLoader.GetBankByHandle(bank_id);
   if (bank == nullptr) {
     lg::error("play_sound: Bank {} does not exist", static_cast<void*>(bank_id));
@@ -142,7 +141,6 @@ BankHandle FakePlayer::LoadBank(std::span<u8> bank) {
 }
 
 void FakePlayer::UnloadBank(BankHandle bank_handle) {
-  assert(m_handler == nullptr);
   auto* bank = mLoader.GetBankByHandle(bank_handle);
   if (bank == nullptr)
     return;
