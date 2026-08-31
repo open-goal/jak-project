@@ -362,8 +362,8 @@ void process_music(const fs::path& output_path,
         if(variantName == "none")
           continue;
 
-        fakeplayer.SetSoundReg(0, flavaVariant.value);
         fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
+        fakeplayer.SetSoundReg(0, flavaVariant.value);
         fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
   
         auto file_name = variantName == "default" ? remove_trailing_spaces(mus_name.string()) : remove_trailing_spaces(mus_name.string()) + '_' + variantName;

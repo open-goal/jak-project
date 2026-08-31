@@ -317,7 +317,8 @@ if (config.levels_extract) {
                           config.streamed_audio_file_names);
       process_sfx(streaming_audio_out / "sfx", in_folder);
     }
-    if (config.rip_music){
+    //Rip music for jak 1 or jak 2
+    if (config.rip_music && (config.game_version == GameVersion::Jak1 || config.game_version == GameVersion::Jak2)){
       process_music(streaming_audio_out / "music", in_folder);
     }
   }
