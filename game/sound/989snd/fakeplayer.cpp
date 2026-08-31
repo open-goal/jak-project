@@ -2,8 +2,9 @@
 
 #include "sfxblock.h"
 
-#include "fmt/format.h"
 #include "game/sound/common/sound_types.h"
+
+#include "fmt/format.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -14,11 +15,9 @@
 
 namespace snd {
 
-FakePlayer::FakePlayer() : mVmanager(mSynth) {
-}
+FakePlayer::FakePlayer() : mVmanager(mSynth) {}
 
-FakePlayer::~FakePlayer() {
-}
+FakePlayer::~FakePlayer() {}
 
 bool FakePlayer::Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStream, long samples) {
   static int htick = 200;
@@ -30,10 +29,9 @@ bool FakePlayer::Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStrea
     if (htick == 200) {
       mTick++;
 
-      //m_handler->Tick returns true if the handler is done.
-      if(m_handler && m_handler->Tick())
-      {
-        m_handler = NULL; //deletes the handler.
+      // m_handler->Tick returns true if the handler is done.
+      if (m_handler && m_handler->Tick()){
+        m_handler = NULL; // deletes the handler.
         return true;
       }
 
@@ -49,7 +47,7 @@ bool FakePlayer::Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStrea
     htick++;
     auto s16Output = mSynth.Tick();
     leftStream.push_back(s16Output.left);
-    rightStream.push_back( s16Output.right);
+    rightStream.push_back(s16Output.right);
   }
   return false;
 }
@@ -75,12 +73,12 @@ u32 FakePlayer::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s3
 }
 
 u32 FakePlayer::PlaySoundByName(BankHandle bank_id,
-                            char* bank_name,
-                            char* sound_name,
-                            s32 vol,
-                            s32 pan,
-                            s32 pm,
-                            s32 pb) {
+                                char* bank_name,
+                                char* sound_name,
+                                s32 vol,
+                                s32 pan,
+                                s32 pm,
+                                s32 pb) {
   SoundBank* bank = nullptr;
   if (bank_id == 0 && bank_name != nullptr) {
     bank = mLoader.GetBankByName(bank_name);
@@ -103,7 +101,7 @@ u32 FakePlayer::PlaySoundByName(BankHandle bank_id,
 }
 
 void FakePlayer::StopSound() {
-  if(m_handler)
+  if (m_handler)
     m_handler->Stop();
   m_handler = nullptr;
 }
@@ -113,12 +111,12 @@ u32 FakePlayer::GetSoundID(u32 sound_handle) {
 }
 
 void FakePlayer::SetSoundReg(u8 reg, u8 value) {
-  if(m_handler)
+  if (m_handler)
     m_handler->SetRegister(reg, value);
 }
 
 u8 FakePlayer::GetSoundGroup(u32 sound_id) {
-  return m_handler ? m_handler->Group() : - 1;
+  return m_handler ? m_handler->Group() : -1;
 }
 
 
@@ -162,20 +160,20 @@ void FakePlayer::SetPlaybackMode(s32 mode) {
 }
 
 void FakePlayer::SetSoundVolPan(s32 sound_id, s32 vol, s32 pan) {
-  if(m_handler)
+  if (m_handler)
     m_handler->SetVolPan(vol, pan);
 }
 
 void FakePlayer::SetSoundPmod(s32 sound_handle, s32 mod) {
-  if(m_handler)
+  if (m_handler)
     m_handler->SetPMod(mod);
 }
 
 s32 FakePlayer::GetSoundUserData(BankHandle block_handle,
-                             char* block_name,
-                             s32 sound_id,
-                             char* sound_name,
-                             SFXUserData* dst) {
+                                  char* block_name,
+                                  s32 sound_id,
+                                  char* sound_name,
+                                  SFXUserData* dst) {
   SoundBank* bank = nullptr;
   if (block_handle == nullptr && block_name != nullptr) {
     bank = mLoader.GetBankByName(block_name);

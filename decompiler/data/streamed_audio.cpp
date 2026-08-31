@@ -335,17 +335,17 @@ void process_music(const fs::path& output_path,
   left_samples.reserve(THREE_MINUTES);
   right_samples.reserve(THREE_MINUTES);
   for(auto& mus : musFiles){
-    auto mus_name = mus.filename().replace_extension("");
+    auto mus_name = remove_trailing_spaces(mus.filename().replace_extension("").string());
     auto data = file_util::read_binary_file( mus );
 
     //Skip TWEAKVAL which is not a real musicbank
-    if(mus_name.string() == "TWEAKVAL")
+    if(mus_name == "TWEAKVAL")
       continue;
 
-    const size_t bank_offset = find_bank_offset(data); //Find where the sfx bank starts
     std::vector<std::string> sfx_names;
+    const size_t bank_offset = find_bank_offset(data); //Find where the music bank starts
     if (bank_offset == SIZE_MAX) {
-      lg::error("'{}' is not a valid .MUS bank.", mus_name.string());
+      lg::error("'{}' is not a valid .MUS bank.", mus_name);
       return;
     }
 
@@ -363,10 +363,10 @@ void process_music(const fs::path& output_path,
           continue;
 
         fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
-        fakeplayer.SetSoundReg(0, flavaVariant.value);
+        fakeplayer.SetSoundReg(flava_set->reg, flavaVariant.value);
         fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
   
-        auto file_name = variantName == "default" ? remove_trailing_spaces(mus_name.string()) : remove_trailing_spaces(mus_name.string()) + '_' + variantName;
+        auto file_name = variantName == "default" ? mus_name : mus_name + '_' + variantName;
         file_name = fmt::format("{}.wav", file_name);
         write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE,
                 output_folder / file_name);
@@ -379,16 +379,16 @@ void process_music(const fs::path& output_path,
     }
     //If no flavaset, just convert sound 0 with no fuss
     else{
-        fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
-        fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
-  
-        auto file_name = fmt::format("{}.wav", remove_trailing_spaces(mus_name));
-        write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE,
-                output_folder / file_name);
-        audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
-  
-        left_samples.clear();
-        right_samples.clear();
+      fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
+      fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
+
+      auto file_name = fmt::format("{}.wav", mus_name);
+      write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE,
+              output_folder / file_name);
+      audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
+
+      left_samples.clear();
+      right_samples.clear();
     }
     
     fakeplayer.UnloadBank(bank);
