@@ -102,6 +102,12 @@ u32 FakePlayer::PlaySoundByName(BankHandle bank_id,
   return 0;
 }
 
+void FakePlayer::StopSound() {
+  if(m_handler)
+    m_handler->Stop();
+  m_handler = nullptr;
+}
+
 u32 FakePlayer::GetSoundID(u32 sound_handle) {
   return m_handler ? m_handler->SoundID() : -1;
 }

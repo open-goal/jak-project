@@ -6,8 +6,8 @@
 namespace snd {
 
 const s32 MAX_VOLUME = 0x400;
-const u32 SAMPLE_RATE = 48000;
-
+const u32 SAMPLE_RATE = 48000; //48000 samples of 16bits per channel per second 
+//= 96000 bytes per second in mono, 192000 bytes per second in stereo
 struct VolPair {
   s16 left;
   s16 right;

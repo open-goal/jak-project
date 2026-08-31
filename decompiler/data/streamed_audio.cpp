@@ -6,6 +6,7 @@
 #include "common/log/log.h"
 #include "common/util/BinaryReader.h"
 #include "common/util/FileUtil.h"
+#include "../flava.h"
 #include "common/util/string_util.h"
 #include "game/sound/989snd/fakeplayer.h"
 #include "game/sound/989snd/musicbank.h"
@@ -326,15 +327,20 @@ void process_music(const fs::path& output_path,
   std::vector<fs::path> musFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.MUS"));
   double audio_len = 0.f;
 
-  //Create a fake player that will generate the samples to play the sounds exactly as they are in the games :)
+  //Create a fake player that will generate the samples to play the music tracks exactly as they are in the games :)
   snd::FakePlayer fakeplayer; 
   std::vector<s16> left_samples, right_samples;
+  //Generate three minutes worth of music
   const s64 THREE_MINUTES = snd::SAMPLE_RATE * 180;
   left_samples.reserve(THREE_MINUTES);
   right_samples.reserve(THREE_MINUTES);
   for(auto& mus : musFiles){
     auto mus_name = mus.filename().replace_extension("");
     auto data = file_util::read_binary_file( mus );
+
+    //Skip TWEAKVAL which is not a real musicbank
+    if(mus_name.string() == "TWEAKVAL")
+      continue;
 
     const size_t bank_offset = find_bank_offset(data); //Find where the sfx bank starts
     std::vector<std::string> sfx_names;
@@ -347,22 +353,43 @@ void process_music(const fs::path& output_path,
     file_util::create_dir_if_needed(output_folder);
     snd::MusicBank *bank = (snd::MusicBank*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
 
-    //TODO: flava by flava
-    // for(u32 sound_index = 0; sound_index < bank->Sounds.size(); ++sound_index)
-    // {
-    fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
-    
-    fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
+    const auto flava_set = flava::lookup(mus_name);
+    if(flava_set)
+    {
+      for(auto &flavaVariant : flava_set->variants)
+      {
+        const auto variantName = std::string(flavaVariant.name);
+        if(variantName == "none")
+          continue;
 
-
-    auto file_name = fmt::format("{}.wav", remove_trailing_spaces(mus_name));
-    write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE,
-            output_folder / file_name);
-    audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
-
-    left_samples.clear();
-    right_samples.clear();
-    // }
+        fakeplayer.SetSoundReg(0, flavaVariant.value);
+        fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
+        fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
+  
+        auto file_name = variantName == "default" ? remove_trailing_spaces(mus_name.string()) : remove_trailing_spaces(mus_name.string()) + '_' + variantName;
+        file_name = fmt::format("{}.wav", file_name);
+        write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE,
+                output_folder / file_name);
+        audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
+  
+        left_samples.clear();
+        right_samples.clear();
+        fakeplayer.StopSound();
+      }
+    }
+    //If no flavaset, just convert sound 0 with no fuss
+    else{
+        fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
+        fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
+  
+        auto file_name = fmt::format("{}.wav", remove_trailing_spaces(mus_name));
+        write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE,
+                output_folder / file_name);
+        audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
+  
+        left_samples.clear();
+        right_samples.clear();
+    }
     
     fakeplayer.UnloadBank(bank);
     lg::info("File {}, total {:.2f} minutes", mus.filename().string(), audio_len / 60.0);

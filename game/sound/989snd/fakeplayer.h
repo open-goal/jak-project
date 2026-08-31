@@ -24,6 +24,7 @@ class FakePlayer {
   BankHandle LoadBank(std::span<u8> bank);
 
   u32 PlaySound(BankHandle bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
+  void StopSound();
   u32 PlaySoundByName(BankHandle bank,
                       char* bank_name,
                       char* sound_name,
