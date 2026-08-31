@@ -8,12 +8,13 @@
 
 (define-extern othercam-init-by-other (function process-taskable symbol symbol symbol none :behavior othercam))
 
-;; Each task-control holds an ordered list of progression stages. A game task may have several
-;; stages, each identified by a monotonically increasing status. current-stage selects the first
-;; available stage or is -1 when none is active. The complete game-task list lives in game-info-h.
+;; Each task-control holds an ordered list of progression stages (cstages). 
+;; A game task may have several stages, each identified by a monotonically increasing status. 
+;; current-stage selects the first available stage or is -1 when none is active.
+;; The complete game-task list lives in game-info-h.
 ;; Most tasks award a power cell, while special tasks cover interactions such as the levitator.
-;; Stage conditions run as process-taskable behaviors so they can use the current character context
-;; while receiving the task-control whose sibling stages and reminders they inspect.
+;; Stage conditions run as process-taskable behaviors.
+
 (defenum task-status
   :type uint64
   (invalid 0)
@@ -37,35 +38,36 @@
 
 ;; DECOMP BEGINS
 
+;; A stage that a task can be at
 (deftype task-cstage (structure)
   ((game-task game-task)
    (status    task-status)
    (flags     task-flags)
    (condition (function task-control symbol :behavior process-taskable)))
   (:methods
-   (get-task "Return this stage's game task." (_type_) game-task)
-   (get-status "Return this stage's progress status." (_type_) task-status)
-   (task-available? "Return whether this stage may become current, closing it when persistent
-     progress has already passed it." (_type_ task-control) symbol)
-   (closed? "Return whether this stage is currently closed." (_type_) symbol)
-   (closed-by-default? "Return whether non-game resets leave this stage closed." (_type_) symbol)
-   (close-task! "Close this stage and advance its associated persistent task status when present." (_type_) int)
-   (open-task! "Clear this stage's transient closed flag." (_type_) int)))
+   (get-task (_type_) game-task)
+   (get-status (_type_) task-status)
+   (task-available? (_type_ task-control) symbol)
+   (closed? (_type_) symbol)
+   (closed-by-default? (_type_) symbol)
+   (close-task! (_type_) int)
+   (open-task! (_type_) int)))
 
+;; The array of stages for a single task.
 (deftype task-control (basic)
   ((current-stage int16)
    (stage         (array task-cstage)))
   (:methods
-   (current-task "Return the current task or game-task.none." (_type_) game-task)
-   (current-status "Return the current status or task-status.invalid." (_type_) task-status)
-   (close-current! "Close the current stage and select the first available task." (_type_) game-task)
-   (close-status! "Close a status for the current task and select the first available task." (_type_ task-status) game-task)
-   (first-any "Select and return the first available task in stage-array order." (_type_ symbol) game-task)
-   (reset! "Reset stage closure according to reset mode and closed-by-default flags." (_type_ symbol symbol) int)
-   (closed? "Return whether the matching task and status stage is closed." (_type_ game-task task-status) symbol)
-   (get-reminder "Read an indexed reminder byte from the task's persistent record." (_type_ int) int)
-   (save-reminder "Write an indexed reminder byte to the task's persistent record." (_type_ int int) int)
-   (exists? "Return whether a stage with the given task and status exists." (_type_ game-task task-status) symbol)))
+   (current-task (_type_) game-task)
+   (current-status (_type_) task-status)
+   (close-current! (_type_) game-task)
+   (close-status! (_type_ task-status) game-task)
+   (first-any (_type_ symbol) game-task)
+   (reset! (_type_ symbol symbol) int)
+   (closed? (_type_ game-task task-status) symbol)
+   (get-reminder (_type_ int) int)
+   (save-reminder (_type_ int int) int)
+   (exists? (_type_ game-task task-status) symbol)))
 
 ;; Tracks cooldown and repetition for positional NPC chatter.
 (deftype ambient-control (structure)
@@ -74,11 +76,9 @@
    (last-ambient-id   sound-id))
   :pack-me
   (:methods
-   (ambient-control-method-9 "Restart the ambient-chatter cooldown." (_type_) none)
-   (ambient-control-method-10 "Return the listener-to-speaker displacement after the cooldown when
-     the speaker is within the supplied distance." (_type_ vector time-frame float process-drawable) vector)
-   (play-ambient "Play a nonrepeating positional ambient line when hint and level conditions permit
-     it; force bypasses the hint-availability test." (_type_ string symbol vector) symbol)))
+   (reset-ambient-cooldown! (_type_) none)
+   (ambient-chatter-ready? (_type_ vector time-frame float process-drawable) vector)
+   (play-ambient (_type_ string symbol vector) symbol)))
 
 ;; Shared interaction, animation, camera, audio, and shadow state for task-giving characters.
 (deftype process-taskable (process-drawable)
@@ -121,47 +121,32 @@
    (be-clone handle)
    idle)
   (:methods
-   (get-art-elem "Return the art element on the active root animation channel." (_type_) art-element)
-   (play-anim! "Select the current task animation; commit? lets subtype implementations apply
-     progression changes when playback begins." (_type_ symbol) basic)
-   (prefetch-play-anim! "Select the current task animation without committing progression and
-     request it for streaming." (_type_) none)
-   (get-accept-anim "Return the task-accept animation, optionally committing the accepted choice." (_type_ symbol) spool-anim)
-   (push-accept-anim "Select the task-accept animation without committing and request it for
-     streaming." (_type_) none)
-   (get-reject-anim "Return the task-reject animation, optionally committing the rejected choice." (_type_ symbol) spool-anim)
-   (push-reject-anim "Select the task-reject animation without committing and request it for
-     streaming." (_type_) none)
-   (goto-post-anim-state! "Enter give-cell when a reward is owed, otherwise enter release." (_type_) none)
-   (should-display? "Return whether this taskable character should be visible." (_type_) symbol)
-   (init-as-taskable! "Initialize a taskable character's collision, skeleton, interaction, audio,
-     and shadow state." (_type_ object skeleton-group int int vector int) none)
-   (initialize-collision "Build and install this character's solid collision sphere at the supplied
-     center joint." (_type_ int vector) none)
-   (goto-initial-state! "Enter this character's initial hidden, reward, or idle state." (_type_) none)
-   (try-play-ambient-chatter "Try to play character-specific ambient speech; the base method does
-     nothing." (_type_) symbol)
-   (play-reminder "Try to play a reminder for the current task stage." (_type_) symbol)
+   (get-art-elem (_type_) art-element)
+   (play-anim! (_type_ symbol) basic)
+   (prefetch-play-anim! (_type_) none)
+   (get-accept-anim (_type_ symbol) spool-anim)
+   (push-accept-anim (_type_) none)
+   (get-reject-anim (_type_ symbol) spool-anim)
+   (push-reject-anim (_type_) none)
+   (goto-post-anim-state! (_type_) none)
+   (should-display? (_type_) symbol)
+   (init-as-taskable! (_type_ object skeleton-group int int vector int) none)
+   (initialize-collision (_type_ int vector) none)
+   (goto-initial-state! (_type_) none)
+   (try-play-ambient-chatter (_type_) symbol)
+   (play-reminder (_type_) symbol)
    (process-taskable-method-45 (_type_) symbol)
-   (update-music-and-flava! "Update proximity-controlled music and sound flavor settings, weighting
-     vertical separation fourfold." (_type_) none)
-   (target-above-threshold? "Return whether the target is above the interaction threshold." (_type_) symbol)
-   (draw-npc-shadow "Update the NPC shadow when its highest-detail geometry was drawn, otherwise
-     disable it." (_type_) none)
+   (update-music-and-flava! (_type_) none)
+   (target-above-threshold? (_type_) symbol)
+   (draw-npc-shadow (_type_) none)
    (hidden-other () _type_ :state)
-   (target-far-away? "Return whether the target, or the camera when no target exists, is far enough
-     away to leave hidden-other." (_type_) symbol)
-   (close-anim-file! "Return the streaming state of the current play animation." (_type_) symbol)
-   (setup-shadow-settings! "Set the character's default shadow clipping planes." (_type_) none)))
+   (target-far-away? (_type_) symbol)
+   (close-anim-file! (_type_) symbol)
+   (setup-shadow-settings! (_type_) none)))
 
 (defun-extern task-known? game-task symbol)
-
 (defun-extern task-control-reset symbol none)
-
 (define-extern task-closed? (function game-task task-status symbol))
-
 (define-extern get-task-status (function game-task task-status))
-
 (define-extern get-task-control (function game-task task-control))
-
 (define-extern close-specific-task! (function game-task task-status game-task))

@@ -1115,9 +1115,11 @@
   ;; at some point, this could be more optimized.
   ;; MIPS has an explicit abs.s instruction, but x86-64 doesn't.
   ;; modern clang on O3 does a comiss/branch and this is probably pretty close.
-  `(if (< (the float ,x) 0)
-       (- (the float ,x))
-       (the float ,x))
+  (with-gensyms (value)
+    `(let ((,value (the float ,x)))
+       (if (< ,value 0)
+         (- ,value)
+         ,value)))
   )
 
 (defmacro sqrtf (x)

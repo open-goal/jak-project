@@ -723,7 +723,7 @@
   (set! (-> this been-kicked) #f)
   (set! (-> this neck-joint-index) neck-joint)
   (set! (-> this cur-trans-hook) nothing)
-  (ambient-control-method-9 (-> this ambient))
+  (reset-ambient-cooldown! (-> this ambient))
   (set! (-> this event-hook) (-> (method-of-object this idle) event))
   (set! (-> this draw shadow-ctrl) (new 'process 'shadow-control 0.0 0.0 614400.0 (the-as float 60) 245760.0))
   (setup-shadow-settings! this)
@@ -743,13 +743,13 @@
   "Try to play character-specific ambient speech. The base implementation does nothing."
   (the-as symbol 0))
 
-(defmethod ambient-control-method-9 ((this ambient-control))
+(defmethod reset-ambient-cooldown! ((this ambient-control))
   "Restart the ambient-chatter cooldown at the current gameplay frame."
   (set! (-> this last-ambient-time) (-> *display* game-frame-counter))
   0
   (none))
 
-(defmethod ambient-control-method-10 ((this ambient-control) (out-vector vector) (cooldown time-frame) (max-distance float) (speaker process-drawable))
+(defmethod ambient-chatter-ready? ((this ambient-control) (out-vector vector) (cooldown time-frame) (max-distance float) (speaker process-drawable))
   "Fill out-vector with the displacement from the listener to speaker and return it only when
    cooldown ticks have elapsed and the speaker is within max-distance. Return #f otherwise."
   (when (< (- (-> *display* game-frame-counter) (-> this last-ambient-time)) cooldown)

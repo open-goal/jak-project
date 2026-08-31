@@ -8,8 +8,7 @@
 ;; DECOMP BEGINS
 
 (defmethod eval-position! ((this trajectory) (elapsed-time float) (result vector))
-  "Evaluate position after elapsed-time game-time ticks into result. Vertical motion includes
-   one half gravity times time squared; evaluation is not clamped to the solved flight duration."
+  "Evaluate position after elapsed-time game-time ticks into result."
   (vector-copy! result (-> this initial-position))
   (+! (-> result x) (* elapsed-time (-> this initial-velocity x)))
   (+! (-> result y) (* elapsed-time (-> this initial-velocity y)))
@@ -18,16 +17,14 @@
   result)
 
 (defmethod eval-velocity! ((this trajectory) (elapsed-time float) (result vector))
-  "Evaluate velocity after elapsed-time game-time ticks into result. Only the vertical
-   component changes under gravity."
+  "Evaluate velocity after elapsed-time game-time ticks into result."
   (vector-copy! result (-> this initial-velocity))
   (+! (-> result y) (* elapsed-time (-> this gravity)))
   result)
 
 (defmethod setup-from-to-duration! ((this trajectory) (start vector) (destination vector) (duration float) (gravity float))
   "Solve the initial velocity that moves from start to destination in duration game-time ticks
-   under constant vertical gravity. Store the supplied duration; callers must provide a positive,
-   nonzero duration."
+   under constant vertical gravity."
   (vector-copy! (-> this initial-position) start)
   (set! (-> this gravity) gravity)
   (set! (-> this time) duration)
@@ -41,7 +38,7 @@
 
 (defmethod setup-from-to-xz-vel! ((this trajectory) (start vector) (destination vector) (xz-speed float) (gravity float))
   "Solve a trajectory from start to destination at the requested nonzero horizontal speed
-   under constant vertical gravity. Horizontal distance divided by xz-speed determines the duration."
+   under constant vertical gravity."
   (let ((duration (/ (vector-vector-xz-distance destination start) xz-speed)))
     (setup-from-to-duration! this start destination duration gravity))
   0
@@ -74,8 +71,7 @@
   (none))
 
 (defmethod debug-draw! ((this trajectory))
-  "Draw the solved flight as ten translucent red line segments from time zero through the
-   stored duration, without depth testing."
+  "Draw the solved flight as ten translucent red line segments."
   (let ((previous-position (new 'stack-no-clear 'vector))
         (position (new 'stack-no-clear 'vector))
         (num-segments 10))

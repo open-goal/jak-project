@@ -29,9 +29,7 @@
 (defmethod debug-draw! ((this border-plane))
   "Draw this plane's name, origin, and normal, using green for a load action and red otherwise."
   (let* ((action (-> this action))
-         ;; pick color based on action
-         (color (if (= action 'load) (new 'static 'rgba :g #xff :a #x80) (new 'static 'rgba :r #xff :a #x80))))
-    ;; add text and vector
+         (color (if (= action 'load) (static-rgba 0 #xff 0 #x80) (static-rgba #xff 0 0 #x80))))
     (add-debug-text-sphere #t (bucket-id debug-no-zbuf) (-> this trans) 819.2 (symbol->string (-> this name)) color)
     (add-debug-vector #t (bucket-id debug-no-zbuf) (-> this trans) (-> this normal) (meters 2) color))
   0
@@ -131,10 +129,10 @@
   (-> this task-perm-list data task))
 
 (defmethod initialize! ((this game-info) (cause symbol) (save-to-load game-save) (continue-point-override string))
-  "Reset or reload game state for cause. dead records death statistics and becomes life or try
-   in play mode; game clears all persistent progress and selects a starting checkpoint; try and
-   game restore lives. In play mode, restart actors asynchronously at the selected checkpoint and
-   optionally load save-to-load. continue-point-override applies only to a game reset."
+  "Reset or reload game state for cause:
+   - dead : count a death. If in 'play mode, then continue with 'life/'try logic.
+   - game : reset all persistent information, restart at continue-point-override
+   - life : out of lives (unused feature), reset life counter."
   (local-vars (death-count int))
   (case cause
     (('dead)
@@ -199,6 +197,7 @@
        (set! (-> this in-level-time i) 0)
        (set! (-> this level-opened i) (the-as uint 0))
        (nop!))))
+  ;; reset lives
   (case cause
     (('game 'try)
      ;; full restart, or ran out of lives
@@ -276,7 +275,8 @@
                ;; increment our total money in the game (out of the 2000 max orbs)
                (+! (-> this money-total) amount)
                ;; if we have all the money in our level, display the all orbs graphic
-               (if (= (-> this money-per-level level-idx) (-> (get-game-count level-idx) money-count)) (activate-orb-all level-idx)))))))
+               (if (= (-> this money-per-level level-idx) (-> (get-game-count level-idx) money-count))
+                   (activate-orb-all level-idx)))))))
      ;; increment our current money count
      (+! (-> this money) amount))
     (('fuel-cell)
@@ -544,14 +544,14 @@
     (else ((method-of-type fact-info pickup-collectable!) this kind amount source-handle))))
 
 (defmethod lookup-entity-perm-by-aid ((this game-info) (aid actor-id))
-  "Return the saved entity permission record with actor ID aid, or #f when absent."
+  "Return the saved entity permanent records with actor ID aid, or #f when absent."
   (let ((perms (-> this perm-list)))
     (countdown (i (-> perms length))
       (if (= aid (-> perms data i aid)) (return (-> perms data i)))))
   (the-as entity-perm #f))
 
 (defmethod copy-perms-from-level! ((this game-info) (lev level))
-  "Copy task-bearing entity permission records from lev into persistent game state, replacing
+  "Copy entity permanent records from lev into persistent game state, replacing
    records with matching actor IDs and appending new records while capacity remains."
   (let ((perms (-> this perm-list)) ;; our perms
         (lev-entities (-> lev bsp level entity)) ;; entities in the level
@@ -576,7 +576,7 @@
   (none))
 
 (defmethod copy-perms-to-level! ((this game-info) (lev level))
-  "Copy matching persistent entity permission records into lev, then clear transient try-reset
+  "Copy matching persistent entity permanent records into lev, then clear transient try-reset
    status bits before the entities are used."
   (let ((lev-entities (-> lev bsp level entity)))
     (dotimes (lev-entity-idx (-> lev-entities length))
@@ -659,7 +659,7 @@
   (enum->string game-task task))
 
 (defmethod debug-print ((this game-info) (category symbol))
-  "Inspect game state and optionally print completed game tasks or saved entity permissions.
+  "Inspect game state and optionally print completed game tasks or saved entity permanents.
    Pass #f for both categories."
   (inspect this)
   (when (or (not category) (= category 'game-task))
