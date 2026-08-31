@@ -51,7 +51,7 @@ class FakePlayer {
                        SFXUserData* dst);
 
   bool Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStream, long samples);
-  
+
  private:
   std::unique_ptr<SoundHandler> m_handler;
 

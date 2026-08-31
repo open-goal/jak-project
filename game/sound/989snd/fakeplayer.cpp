@@ -30,8 +30,8 @@ bool FakePlayer::Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStrea
       mTick++;
 
       // m_handler->Tick returns true if the handler is done.
-      if (m_handler && m_handler->Tick()){
-        m_handler = NULL; // deletes the handler.
+      if (m_handler && m_handler->Tick()) {
+        m_handler = NULL;  // deletes the handler.
         return true;
       }
 
@@ -119,7 +119,6 @@ u8 FakePlayer::GetSoundGroup(u32 sound_id) {
   return m_handler ? m_handler->Group() : -1;
 }
 
-
 void FakePlayer::SetMasterVolume(u32 group, s32 volume) {
   if (volume > snd::MAX_VOLUME)
     volume = snd::MAX_VOLUME;
@@ -170,10 +169,10 @@ void FakePlayer::SetSoundPmod(s32 sound_handle, s32 mod) {
 }
 
 s32 FakePlayer::GetSoundUserData(BankHandle block_handle,
-                                  char* block_name,
-                                  s32 sound_id,
-                                  char* sound_name,
-                                  SFXUserData* dst) {
+                                 char* block_name,
+                                 s32 sound_id,
+                                 char* sound_name,
+                                 SFXUserData* dst) {
   SoundBank* bank = nullptr;
   if (block_handle == nullptr && block_name != nullptr) {
     bank = mLoader.GetBankByName(block_name);
