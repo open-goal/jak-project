@@ -308,13 +308,20 @@ if (config.levels_extract) {
 
   lg::info("[Mem] After extraction: {} MB", get_peak_rss() / (1024 * 1024));
 
-  if (config.rip_streamed_audio) {
+  if (config.rip_streamed_audio || config.rip_music){
     auto streaming_audio_out = out_folder / "audio";
     file_util::create_dir_if_needed(streaming_audio_out);
-    process_streamed_audio(config, streaming_audio_out / "voice_lines", in_folder,
-                         config.streamed_audio_file_names);
-    process_sfx(streaming_audio_out / "sfx", in_folder);
+
+    if (config.rip_streamed_audio) {
+      process_streamed_audio(config, streaming_audio_out / "voice_lines", in_folder,
+                          config.streamed_audio_file_names);
+      process_sfx(streaming_audio_out / "sfx", in_folder);
+    }
+    if (config.rip_music){
+      process_music(streaming_audio_out / "music", in_folder);
+    }
   }
+
 
   lg::info("Decompiler has finished successfully in {:.2f} seconds.", decomp_timer.getSeconds());
   return 0;

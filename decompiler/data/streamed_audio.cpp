@@ -8,7 +8,9 @@
 #include "common/util/FileUtil.h"
 #include "common/util/string_util.h"
 #include "game/sound/989snd/fakeplayer.h"
+#include "game/sound/989snd/musicbank.h"
 #include "game/sound/989snd/sfxblock.h"
+#include "game/sound/common/sound_types.h"
 #include "fmt/format.h"
 #include "third-party/json.hpp"
 
@@ -318,16 +320,67 @@ void parse_jak1_name_table(const std::vector<u8>& d,
   }
 }
 
-void process_sfx(const fs::path& output_path, 
+void process_music(const fs::path& output_path, 
                 const fs::path& input_dir) {
-  auto dir = input_dir / "SBK";
-  std::vector<fs::path> sbkFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.SBK"));
+  auto dir = input_dir / "MUS";
+  std::vector<fs::path> musFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.MUS"));
+  double audio_len = 0.f;
 
   //Create a fake player that will generate the samples to play the sounds exactly as they are in the games :)
   snd::FakePlayer fakeplayer; 
   std::vector<s16> left_samples, right_samples;
-  left_samples.reserve(1024*1024);
-  right_samples.reserve(1024*1024);
+  const s64 THREE_MINUTES = snd::SAMPLE_RATE * 180;
+  left_samples.reserve(THREE_MINUTES);
+  right_samples.reserve(THREE_MINUTES);
+  for(auto& mus : musFiles){
+    auto mus_name = mus.filename().replace_extension("");
+    auto data = file_util::read_binary_file( mus );
+
+    const size_t bank_offset = find_bank_offset(data); //Find where the sfx bank starts
+    std::vector<std::string> sfx_names;
+    if (bank_offset == SIZE_MAX) {
+      lg::error("'{}' is not a valid .MUS bank.", mus_name.string());
+      return;
+    }
+
+    auto output_folder= output_path / mus_name;
+    file_util::create_dir_if_needed(output_folder);
+    snd::MusicBank *bank = (snd::MusicBank*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
+
+    //TODO: flava by flava
+    // for(u32 sound_index = 0; sound_index < bank->Sounds.size(); ++sound_index)
+    // {
+    fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
+    
+    fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
+
+
+    auto file_name = fmt::format("{}.wav", remove_trailing_spaces(mus_name));
+    write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE,
+            output_folder / file_name);
+    audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
+
+    left_samples.clear();
+    right_samples.clear();
+    // }
+    
+    fakeplayer.UnloadBank(bank);
+    lg::info("File {}, total {:.2f} minutes", mus.filename().string(), audio_len / 60.0);
+  }
+}
+
+void process_sfx(const fs::path& output_path, 
+                const fs::path& input_dir) {
+  auto dir = input_dir / "SBK";
+  std::vector<fs::path> sbkFiles = file_util::find_files_in_dir(dir, std::regex(".*\\.SBK"));
+  double audio_len = 0.f;
+
+  //Create a fake player that will generate the samples to play the sounds exactly as they are in the games :)
+  snd::FakePlayer fakeplayer; 
+  std::vector<s16> left_samples, right_samples;
+  const s64 TEN_SECONDS = snd::SAMPLE_RATE * 10;
+  left_samples.reserve(TEN_SECONDS);
+  right_samples.reserve(TEN_SECONDS);
   for(auto& sbk : sbkFiles){
     auto sbk_name = sbk.filename().replace_extension("");
     auto data = file_util::read_binary_file(sbk);
@@ -336,7 +389,7 @@ void process_sfx(const fs::path& output_path,
     const size_t bank_offset = find_bank_offset(data); //Find where the sfx bank starts
     std::vector<std::string> sfx_names;
     if (bank_offset == SIZE_MAX) {
-      lg::error("'{}' is not a valid .MUS or .SBK bank.", sbk_name.string());
+      lg::error("'{}' is not a valid .SBK bank.", sbk_name.string());
       return;
     }
     if (bank_offset > 0) {
@@ -356,8 +409,7 @@ void process_sfx(const fs::path& output_path,
 
     for(u32 sound_index = 0; sound_index < block->Sounds.size(); ++sound_index)
     {
-      fakeplayer.PlaySound(block, sound_index, 0x400, 0, 0, 0);
-      const s64 TEN_SECONDS = 480000;
+      fakeplayer.PlaySound(block, sound_index, snd::MAX_VOLUME, 0, 0, 0);
       fakeplayer.Tick(left_samples, right_samples, TEN_SECONDS);
 
       std::string name;
@@ -370,57 +422,17 @@ void process_sfx(const fs::path& output_path,
 
 
       auto file_name = fmt::format("{}.wav", remove_trailing_spaces(name));
-      write_wave_file(left_samples, right_samples, 48000,
+      write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE,
               output_folder / file_name);
+      audio_len += left_samples.size() / (float)snd::SAMPLE_RATE;
 
       left_samples.clear();
       right_samples.clear();
     }
+    
     fakeplayer.UnloadBank(block);
-    // write_wave_file(left_samples, right_samples, header.sample_rate,
-    //             output_folder / suffix / file_name);
+    lg::info("File {}, total {:.2f} minutes", sbk.filename().string(), audio_len / 60.0);
   }
-
-
-  // auto dir_data = read_audio_dir(config, input_dir / "VAG" / "VAGDIR.AYB");
-  // double audio_len = 0.f;
-
-  // std::vector<std::string> langs;
-  // std::vector<std::vector<std::string>> filename_data;
-  // for (auto& e : dir_data.entries) {
-  //   std::vector<std::string> placeholders = {remove_trailing_spaces(e.name)};
-  //   for (size_t i = 0; i < audio_files.size(); i++) {
-  //     placeholders.push_back("????");
-  //   }
-  //   filename_data.push_back(placeholders);
-  // }
-
-  // for (size_t lang_id = 0; lang_id < audio_files.size(); lang_id++) {
-  //   auto& file = audio_files[lang_id];
-  //   auto wad_data = file_util::read_binary_file(input_dir / "VAG" / file);
-  //   auto suffix = fs::path(file).extension().string().substr(1);
-  //   bool int_bank_p = suffix.compare("INT") == 0;
-  //   langs.push_back(suffix);
-  //   for (int i = 0; i < dir_data.entry_count(); i++) {
-  //     auto entry = dir_data.entries.at(i);
-  //     if (entry.international != int_bank_p) {
-  //       continue;
-  //     }
-
-  //     lg::info("File {}, total {:.2f} minutes", entry.name, audio_len / 60.0);
-  //     auto data = std::span(wad_data).subspan(entry.start_byte);
-  //     auto info =
-  //         process_audio_file(output_path, data, entry.name, suffix, entry.stereo, dir_data.version);
-  //     audio_len += info.length_seconds;
-  //     filename_data[i][lang_id + 1] = info.filename;
-  //   }
-  // }
-
-  // nlohmann::json file_list;
-  // file_list["names"] = filename_data;
-  // file_list["languages"] = langs;
-
-  // file_util::write_text_file(output_path / "file_list.txt", file_list.dump(2));
 }
 
 void process_streamed_audio(const decompiler::Config& config,

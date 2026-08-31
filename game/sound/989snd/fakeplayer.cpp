@@ -3,6 +3,7 @@
 #include "sfxblock.h"
 
 #include "fmt/format.h"
+#include "game/sound/common/sound_types.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -21,7 +22,7 @@ FakePlayer::~FakePlayer() {
 
 bool FakePlayer::Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStream, long samples) {
   static int htick = 200;
-  static int stick = 48000;
+  static int stick = snd::SAMPLE_RATE;
   
   for (long i = 0; i < samples; i++) {
     // The handlers expect to tick at 240hz
@@ -39,7 +40,7 @@ bool FakePlayer::Tick(std::vector<s16>& leftStream, std::vector<s16>& rightStrea
       htick = 0;
     }
 
-    if (stick == 48000) {
+    if (stick == snd::SAMPLE_RATE) {
       // fmt::print("{} handlers active\n", m_handlers.size());
       stick = 0;
     }
@@ -116,8 +117,8 @@ u8 FakePlayer::GetSoundGroup(u32 sound_id) {
 
 
 void FakePlayer::SetMasterVolume(u32 group, s32 volume) {
-  if (volume > 0x400)
-    volume = 0x400;
+  if (volume > snd::MAX_VOLUME)
+    volume = snd::MAX_VOLUME;
 
   if (volume < 0)
     volume = 0;
@@ -129,7 +130,7 @@ void FakePlayer::SetMasterVolume(u32 group, s32 volume) {
 
   // Master volume
   if (group == 16) {
-    mSynth.SetMasterVol(0x3ffff * volume / 0x400);
+    mSynth.SetMasterVol(0x3ffff * volume / snd::MAX_VOLUME);
   }
 }
 

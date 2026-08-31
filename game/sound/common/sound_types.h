@@ -5,6 +5,9 @@
 
 namespace snd {
 
+const s32 MAX_VOLUME = 0x400;
+const u32 SAMPLE_RATE = 48000;
+
 struct VolPair {
   s16 left;
   s16 right;
