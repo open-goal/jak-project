@@ -353,7 +353,7 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
 
     auto output_folder = output_path / mus_name;
     file_util::create_dir_if_needed(output_folder);
-    snd::MusicBank* bank = 
+    snd::MusicBank* bank =
         (snd::MusicBank*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
 
     const auto flava_set = flava::lookup(mus_name);
@@ -432,7 +432,7 @@ void process_sfx(const fs::path& output_path, const fs::path& input_dir) {
 
     auto output_folder = output_path / sbk_name;
     file_util::create_dir_if_needed(output_folder);
-    snd::SFXBlock *block =
+    snd::SFXBlock* block =
         (snd::SFXBlock*)fakeplayer.LoadBank(std::span<u8>(data).subspan(bank_offset));
 
 

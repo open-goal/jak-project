@@ -72,7 +72,7 @@ inline const FlavaSet* lookup(std::string music_name) {
          {"assistant", 3},
          {"to-maincave", 4},
          {"to-snow", 5}}}},
-    {"maincave",
+      {"maincave",
        {0,
         {{"default", 0}, {"robocave", 1}, {"robocave-top", 2}, {"maincave", 3}, {"darkcave", 4}}}},
       {"snow",
