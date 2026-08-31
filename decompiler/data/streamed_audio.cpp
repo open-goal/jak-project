@@ -6,12 +6,11 @@
 #include "common/log/log.h"
 #include "common/util/BinaryReader.h"
 #include "common/util/FileUtil.h"
-#include "../flava.h"
-#include "common/util/string_util.h"
 #include "game/sound/989snd/fakeplayer.h"
 #include "game/sound/989snd/musicbank.h"
 #include "game/sound/989snd/sfxblock.h"
 #include "game/sound/common/sound_types.h"
+#include "game/sound/common/flava.h"
 #include "fmt/format.h"
 #include "third-party/json.hpp"
 

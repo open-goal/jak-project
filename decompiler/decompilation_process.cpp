@@ -308,7 +308,7 @@ if (config.levels_extract) {
 
   lg::info("[Mem] After extraction: {} MB", get_peak_rss() / (1024 * 1024));
 
-  if (config.rip_streamed_audio || config.rip_music){
+  if (config.rip_streamed_audio || config.rip_music) {
     auto streaming_audio_out = out_folder / "audio";
     file_util::create_dir_if_needed(streaming_audio_out);
 
