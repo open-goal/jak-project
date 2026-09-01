@@ -362,7 +362,8 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
         const auto variantName = std::string(flavaVariant.name);
         if (variantName == "none")
           continue;
-        bank->Sounds[0].Repeats = 1; //Turn off repetition for music. 0 means sound will repeat, 1 means it won't.
+        // Turn off repetition for music. 0 means sound will repeat, 1 means it won't.
+        bank->Sounds[0].Repeats = 1;
         fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
         if (flavaVariant.value > 0) {
           // Play for a tenth of a second before setting the register, then clear left/right samples
