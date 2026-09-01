@@ -242,6 +242,7 @@ int main(int argc, char** argv) {
   }
 
   bool force_debug_next_time = false;
+  bool force_retail_next_time = false;
   // always start with an empty arg, as internally kmachine starts at `1` not `0`
   std::vector<const char*> arg_ptrs = {""};
   for (auto& str : game_args) {
@@ -261,6 +262,15 @@ int main(int argc, char** argv) {
         arg_ptrs.push_back(str.data());
       }
     }
+    if (force_retail_next_time) {
+      force_retail_next_time = false;
+      arg_ptrs = {""};  // see above for rationale
+      for (auto& str : game_args) {
+        if (str != "-debug") {
+          arg_ptrs.push_back(str.data());
+        }
+      }
+    }
 
     // run the runtime in a loop so we can reset the game and have it restart cleanly
     lg::info("OpenGOAL Runtime {}.{}", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
@@ -275,6 +285,9 @@ int main(int argc, char** argv) {
           break;
         case RuntimeExitStatus::RESTART_IN_DEBUG:
           force_debug_next_time = true;
+          break;
+        case RuntimeExitStatus::RESTART_IN_RETAIL:
+          force_retail_next_time = true;
           break;
       }
     } catch (std::exception& ex) {

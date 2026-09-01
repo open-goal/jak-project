@@ -111,6 +111,9 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       if (ImGui::MenuItem("Reboot In Debug Mode!")) {
         want_reboot_in_debug = true;
       }
+      if (ImGui::MenuItem("Reboot In Retail Mode!")) {
+        want_reboot_in_retail = true;
+      }
       ImGui::EndMenu();
     }
 
