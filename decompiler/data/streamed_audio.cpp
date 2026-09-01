@@ -333,9 +333,9 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
   snd::FakePlayer fakeplayer;
   std::vector<s16> left_samples, right_samples;
   // Generate three minutes worth of music
-  const s64 THREE_MINUTES = snd::SAMPLE_RATE * 180;
-  left_samples.reserve(THREE_MINUTES);
-  right_samples.reserve(THREE_MINUTES);
+  const s64 FIVE_MINUTES = snd::SAMPLE_RATE * 300;
+  left_samples.reserve(FIVE_MINUTES);
+  right_samples.reserve(FIVE_MINUTES);
   for (auto& mus : musFiles) {
     auto mus_name = remove_trailing_spaces(mus.filename().replace_extension("").string());
     auto data = file_util::read_binary_file(mus);
@@ -362,7 +362,7 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
         const auto variantName = std::string(flavaVariant.name);
         if (variantName == "none")
           continue;
-
+        bank->Sounds[0].Repeats = 1; //Turn off repetition for music. 0 means sound will repeat, 1 means it won't.
         fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
         if (flavaVariant.value > 0) {
           // Play for a tenth of a second before setting the register, then clear left/right samples
@@ -373,7 +373,7 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
           left_samples.clear();
           right_samples.clear();
         }
-        fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
+        fakeplayer.Tick(left_samples, right_samples, FIVE_MINUTES);
 
         auto file_name = variantName == "default" ? mus_name : mus_name + '_' + variantName;
         file_name = fmt::format("{}.wav", file_name);
@@ -388,7 +388,7 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
     // If no flavaset, just convert sound 0 with no fuss
     else {
       fakeplayer.PlaySound(bank, 0, snd::MAX_VOLUME, 0, 0, 0);
-      fakeplayer.Tick(left_samples, right_samples, THREE_MINUTES);
+      fakeplayer.Tick(left_samples, right_samples, FIVE_MINUTES);
 
       auto file_name = fmt::format("{}.wav", mus_name);
       write_wave_file(left_samples, right_samples, snd::SAMPLE_RATE, output_folder / file_name);
