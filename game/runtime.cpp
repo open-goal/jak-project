@@ -9,8 +9,8 @@
 
 #include <sys/mman.h>
 #if defined(__APPLE__) && defined(__aarch64__)
-#include <mach/mach.h>
-#include <mach/mach_vm.h>
+#include "mach/mach.h"
+#include "mach/mach_vm.h"
 #endif
 #elif _WIN32
 #include <io.h>

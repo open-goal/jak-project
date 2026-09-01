@@ -11,8 +11,8 @@
 #include "game/kernel/common/codegen.h"
 
 #ifdef __APPLE__
-#include <mach/mach.h>
-#include <mach/mach_vm.h>
+#include "mach/mach.h"
+#include "mach/mach_vm.h"
 #include <sys/mman.h>
 #endif
 
