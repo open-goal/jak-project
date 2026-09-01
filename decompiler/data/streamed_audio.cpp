@@ -332,7 +332,7 @@ void process_music(const fs::path& output_path, const fs::path& input_dir) {
   // are in the games :)
   snd::FakePlayer fakeplayer;
   std::vector<s16> left_samples, right_samples;
-  // Generate three minutes worth of music
+  // Generate at most five minutes worth of music for each variation of each track.
   const s64 FIVE_MINUTES = snd::SAMPLE_RATE * 300;
   left_samples.reserve(FIVE_MINUTES);
   right_samples.reserve(FIVE_MINUTES);
