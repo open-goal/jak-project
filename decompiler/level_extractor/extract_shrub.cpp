@@ -490,16 +490,17 @@ void make_draws(tfrag3::Level& lev,
                         combo_tex, combo_tex >> 16, combo_tex & 0xffff, combo_tex & 0xffff));
               }
             }
+            auto resolved = tdb.resolve_texture(combo_tex);
             // add a new texture to the level data
             idx_in_lev_data = lev.textures.size();
             lev.textures.emplace_back();
             auto& new_tex = lev.textures.back();
             new_tex.combo_id = combo_tex;
-            new_tex.w = tex_it->second.w;
-            new_tex.h = tex_it->second.h;
+            new_tex.w = resolved.w;
+            new_tex.h = resolved.h;
             new_tex.debug_name = tex_it->second.name;
             new_tex.debug_tpage_name = tdb.tpage_names.at(tex_it->second.page);
-            new_tex.data = tex_it->second.rgba_bytes;
+            new_tex.data = std::move(resolved.rgba);
           }
 
           DrawMode mode = draw.settings.mode;
