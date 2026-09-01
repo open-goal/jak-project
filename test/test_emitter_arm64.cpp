@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 
 #include "emitter_test_helpers.h"
@@ -6,6 +7,7 @@
 #include "common/link_types.h"
 #include "common/type_system/TypeSystem.h"
 
+#include "capstone/arm.h"
 #include "goalc/compiler/IR.h"
 #include "goalc/debugger/DebugInfo.h"
 #include "goalc/emitter/CodeTester.h"
@@ -16,10 +18,8 @@
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
 #include "gtest/gtest.h"
-#include <capstone/arm.h>
-#include <fmt/base.h>
-#include <fmt/format.h>
 
+#include "fmt/base.h"
 #include "fmt/format.h"
 
 using namespace emitter;
